@@ -1,0 +1,303 @@
+.header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 18px 20px;
+  border: 1px solid rgba(31, 95, 49, 0.1);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top right, rgba(166, 211, 157, 0.16), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(244, 250, 243, 0.94));
+  box-shadow: 0 18px 44px rgba(18, 28, 39, 0.08);
+}
+
+.primaryBlock,
+.brandBlock,
+.metaGrid,
+.metaHead,
+.metaCopy {
+  display: grid;
+}
+
+.primaryBlock {
+  gap: 14px;
+  align-content: start;
+}
+
+.brandBlock {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.logoShell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  min-width: 72px;
+  height: 72px;
+  padding: 12px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(74, 154, 93, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.logo {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.brandCopy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.kicker,
+.metaCopy span {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-800);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.brandCopy strong {
+  color: var(--ink-900);
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2.2vw, 1.95rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.brandCopy small,
+.metaCopy small,
+.liveNote span {
+  color: var(--ink-700);
+}
+
+.brandCopy small {
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.liveNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.08);
+  border: 1px solid rgba(74, 154, 93, 0.12);
+}
+
+.liveDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2f8d4a, #70b67b);
+  box-shadow: 0 0 0 6px rgba(74, 154, 93, 0.12);
+}
+
+.liveNote span {
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.metaGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+.metaCard {
+  display: grid;
+  padding: 14px;
+  border-radius: 24px;
+  border: 1px solid rgba(74, 154, 93, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.noticeCard {
+  background:
+    radial-gradient(circle at top right, rgba(239, 216, 133, 0.2), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 250, 240, 0.94));
+}
+
+.accountCard {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.metaHead {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.noticeIcon,
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+}
+
+.noticeIcon {
+  background: rgba(223, 187, 83, 0.18);
+  color: #8f6a10;
+}
+
+.noticeSvg {
+  width: 20px;
+  height: 20px;
+}
+
+.avatar {
+  background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.metaCopy {
+  gap: 4px;
+  min-width: 0;
+}
+
+.metaCopy strong {
+  color: var(--ink-900);
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+.metaCopy small {
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 1100px) {
+  .header {
+    grid-template-columns: 1fr;
+  }
+
+  .metaGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .header {
+    gap: 12px;
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .brandBlock {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .logoShell {
+    width: 52px;
+    min-width: 52px;
+    height: 52px;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .brandCopy strong {
+    font-size: clamp(1.02rem, 4.8vw, 1.26rem);
+    line-height: 1.04;
+  }
+
+  .brandCopy small {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.78rem;
+    line-height: 1.42;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .liveNote {
+    width: auto;
+    min-height: 34px;
+    padding: 8px 10px;
+    border-radius: 16px;
+  }
+
+  .metaGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .metaCard {
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .liveDot {
+    width: 8px;
+    height: 8px;
+    box-shadow: 0 0 0 4px rgba(74, 154, 93, 0.12);
+  }
+
+  .liveNote span {
+    font-size: 0.76rem;
+  }
+
+  .noticeIcon,
+  .avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
+  }
+
+  .noticeSvg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .metaCopy strong {
+    font-size: 0.96rem;
+  }
+
+  .metaCopy small {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.74rem;
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .noticeCard .metaCopy small {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .metaGrid {
+    grid-template-columns: 1fr;
+  }
+}

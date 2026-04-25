@@ -1,0 +1,305 @@
+.heroInsightGrid,
+.decisionMiniGrid,
+.flowLegend,
+.laneList,
+.reviewBoard {
+  display: grid;
+  gap: 18px;
+}
+
+.heroInsightGrid {
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+  margin-top: 18px;
+}
+
+.flowCard,
+.decisionCard,
+.reviewLane,
+.laneItem {
+  border: 1px solid var(--line-soft);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 38px rgba(31, 95, 49, 0.08);
+}
+
+.flowCard,
+.decisionCard,
+.reviewLane {
+  padding: 20px;
+}
+
+.cardHeader,
+.laneHeader,
+.laneItemTop,
+.laneMeta,
+.flowLegendItem {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.cardHeader strong,
+.laneHeader strong,
+.decisionStat strong,
+.miniStat strong,
+.flowLegendMeta strong {
+  font-family: var(--font-display);
+  line-height: 1;
+}
+
+.cardHeader strong,
+.laneHeader strong {
+  font-size: 2rem;
+}
+
+.cardHeader h2,
+.laneHeader h3 {
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  letter-spacing: -0.04em;
+}
+
+.cardHeader h2 {
+  font-size: clamp(1.45rem, 2vw, 2rem);
+  line-height: 1;
+}
+
+.laneHeader h3 {
+  font-size: 1.35rem;
+  line-height: 1.05;
+}
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-800);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.flowTrack {
+  display: flex;
+  gap: 10px;
+  min-height: 18px;
+  margin: 20px 0 18px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.08);
+}
+
+.flowSegment,
+.flowSegmentEmpty {
+  display: block;
+  min-width: 0;
+  border-radius: inherit;
+}
+
+.flowSegment {
+  min-height: 10px;
+}
+
+.flowSegmentEmpty {
+  width: 100%;
+  min-height: 10px;
+  background: rgba(95, 117, 99, 0.12);
+}
+
+.flowStageActive {
+  background: linear-gradient(90deg, rgba(49, 110, 214, 0.94), rgba(102, 146, 225, 0.86));
+}
+
+.flowStageReview {
+  background: linear-gradient(90deg, rgba(193, 140, 46, 0.96), rgba(233, 189, 94, 0.88));
+}
+
+.flowStageDone {
+  background: linear-gradient(90deg, rgba(31, 95, 49, 0.98), rgba(74, 154, 93, 0.9));
+}
+
+.flowLegendItem {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(74, 154, 93, 0.05);
+  border: 1px solid rgba(74, 154, 93, 0.08);
+}
+
+.flowLegendItem > div:first-of-type {
+  flex: 1;
+}
+
+.flowLegendItem strong,
+.flowLegendMeta strong {
+  display: block;
+}
+
+.flowLegendItem small,
+.decisionStat small,
+.miniStat span,
+.laneItemTop p,
+.laneMeta span,
+.flowLegendMeta span {
+  color: var(--ink-600);
+}
+
+.flowLegendMeta {
+  text-align: right;
+}
+
+.flowDot {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  margin-top: 4px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.decisionCard {
+  align-content: start;
+}
+
+.decisionStat {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  margin-top: 18px;
+  border-radius: 20px;
+  background: rgba(74, 154, 93, 0.08);
+  border: 1px solid rgba(74, 154, 93, 0.12);
+}
+
+.decisionStat span,
+.miniStat span {
+  font-size: 0.88rem;
+}
+
+.decisionStat strong {
+  font-size: 2.3rem;
+}
+
+.decisionMiniGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.miniStat {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid var(--line-soft);
+}
+
+.miniStat strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.35rem;
+}
+
+.reviewBoard {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.reviewLane {
+  align-content: start;
+}
+
+.laneList {
+  margin-top: 18px;
+}
+
+.laneItem {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.laneItem:hover {
+  transform: translateY(-1px);
+  border-color: rgba(31, 95, 49, 0.2);
+  box-shadow: 0 18px 30px rgba(31, 95, 49, 0.1);
+}
+
+.laneItemTop strong {
+  color: var(--ink-900);
+}
+
+.laneItemTop p {
+  margin: 6px 0 0;
+  font-size: 0.94rem;
+}
+
+.laneMeta {
+  flex-wrap: wrap;
+  color: var(--ink-700);
+  font-size: 0.9rem;
+}
+
+.progressTrack {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.08);
+  overflow: hidden;
+}
+
+.progressTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.progressFillActive {
+  background: linear-gradient(90deg, rgba(49, 110, 214, 0.92), rgba(113, 155, 231, 0.84));
+}
+
+.progressFillReview {
+  background: linear-gradient(90deg, rgba(193, 140, 46, 0.94), rgba(233, 189, 94, 0.88));
+}
+
+.progressFillDone {
+  background: linear-gradient(90deg, rgba(31, 95, 49, 0.96), rgba(74, 154, 93, 0.9));
+}
+
+@media (max-width: 1080px) {
+  .heroInsightGrid,
+  .reviewBoard {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .flowCard,
+  .decisionCard,
+  .reviewLane {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .decisionMiniGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cardHeader,
+  .laneHeader,
+  .laneItemTop,
+  .flowLegendItem {
+    flex-direction: column;
+  }
+
+  .laneMeta {
+    gap: 8px 14px;
+  }
+
+  .cardHeader strong,
+  .laneHeader strong {
+    font-size: 1.6rem;
+  }
+}

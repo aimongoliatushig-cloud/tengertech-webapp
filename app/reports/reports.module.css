@@ -1,0 +1,703 @@
+.pageHeader,
+.sectionCard,
+.summaryCard,
+.projectSection,
+.reportCard,
+.emptyState {
+  border: 1px solid var(--line-soft);
+  border-radius: 28px;
+  background: var(--surface-panel-soft);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 48px var(--shadow-soft);
+}
+
+.pageHeader,
+.sectionCard,
+.projectSection,
+.emptyState {
+  padding: 22px;
+}
+
+.pageHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.titleBlock,
+.summaryCard,
+.projectSection,
+.reportCard,
+.emptyState {
+  display: grid;
+  gap: 12px;
+}
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-800);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.titleBlock h1,
+.projectHeader h2,
+.emptyState h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  letter-spacing: -0.04em;
+}
+
+.titleBlock h1 {
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 0.96;
+}
+
+.titleBlock p,
+.projectHeader p,
+.emptyState p {
+  color: var(--ink-700);
+  line-height: 1.7;
+}
+
+.pageAside,
+.dateMeta,
+.summaryStrip,
+.workflowSummaryGrid,
+.workflowColumns,
+.workflowList,
+.projectStack,
+.reportList,
+.projectMeta,
+.reportMeta,
+.departmentFilterGrid,
+.departmentFilterInner {
+  display: grid;
+  gap: 14px;
+}
+
+.pageAside {
+  align-content: start;
+}
+
+.dateMeta {
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(74, 154, 93, 0.08);
+  border: 1px solid rgba(74, 154, 93, 0.16);
+}
+
+.dateMeta span,
+.summaryCard span,
+.projectMeta span,
+.reportMeta span {
+  color: var(--ink-600);
+  font-size: 0.88rem;
+}
+
+.dateMeta strong,
+.summaryCard strong,
+.projectMeta strong {
+  font-family: var(--font-display);
+  line-height: 1;
+}
+
+.dateMeta strong {
+  font-size: 1.5rem;
+}
+
+.departmentFilterGrid {
+  margin-top: 6px;
+}
+
+.departmentFilterInner {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.departmentFilterCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 72px;
+  padding: 16px 18px;
+  border: 1px solid var(--line-soft);
+  border-radius: 22px;
+  background: rgba(74, 154, 93, 0.08);
+  color: var(--ink-900);
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.departmentFilterCard:hover {
+  transform: translateY(-1px);
+  border-color: rgba(31, 95, 49, 0.2);
+  background: rgba(74, 154, 93, 0.14);
+}
+
+.departmentFilterCard strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--brand-900);
+  font-size: 0.92rem;
+}
+
+.departmentFilterCardActive {
+  background: linear-gradient(135deg, rgba(31, 95, 49, 0.98), rgba(74, 154, 93, 0.92));
+  border-color: rgba(31, 95, 49, 0.28);
+  color: #f7fcf6;
+}
+
+.departmentFilterCardActive strong {
+  background: rgba(247, 252, 246, 0.16);
+  color: #f7fcf6;
+}
+
+.departmentFilterLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.departmentFilterLabel > span:last-child {
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.departmentFilterIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(31, 95, 49, 0.08);
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.departmentFilterCardActive .departmentFilterIcon {
+  background: rgba(247, 252, 246, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(247, 252, 246, 0.14);
+}
+
+.summaryStrip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 18px 0;
+}
+
+.workflowHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(240px, 0.8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.workflowHeader h2,
+.workflowColumnHeader h3 {
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  letter-spacing: -0.04em;
+}
+
+.workflowHeader p {
+  margin: 0;
+  color: var(--ink-700);
+  line-height: 1.7;
+}
+
+.workflowMetaCard,
+.workflowSummaryCard,
+.workflowColumn,
+.workflowItem,
+.workflowEmpty {
+  border: 1px solid var(--line-soft);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.workflowMetaCard,
+.workflowSummaryCard,
+.workflowColumn,
+.workflowItem,
+.workflowEmpty {
+  display: grid;
+  gap: 12px;
+}
+
+.workflowMetaCard,
+.workflowSummaryCard,
+.workflowColumn,
+.workflowEmpty {
+  padding: 18px;
+}
+
+.workflowMetaCard {
+  background: rgba(74, 154, 93, 0.08);
+}
+
+.workflowMetaCard span,
+.workflowSummaryCard span,
+.workflowItemMeta span {
+  color: var(--ink-600);
+  font-size: 0.88rem;
+}
+
+.workflowMetaCard strong,
+.workflowSummaryCard strong,
+.workflowColumnHeader strong {
+  font-family: var(--font-display);
+  line-height: 1;
+}
+
+.workflowMetaCard strong {
+  font-size: 2.2rem;
+}
+
+.workflowSummaryGrid,
+.workflowColumns {
+  margin-top: 18px;
+}
+
+.workflowSummaryGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.workflowSummaryCard strong {
+  font-size: 1.75rem;
+}
+
+.workflowColumns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.workflowColumn {
+  align-content: start;
+}
+
+.workflowColumnHeader,
+.workflowItemTop,
+.workflowItemMeta {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workflowColumnHeader strong {
+  font-size: 1.8rem;
+}
+
+.workflowColumnHeader h3 {
+  font-size: 1.3rem;
+  line-height: 1.05;
+}
+
+.workflowItem {
+  padding: 14px 16px;
+}
+
+.workflowItemTop strong {
+  color: var(--ink-900);
+}
+
+.workflowItemTop p {
+  margin: 6px 0 0;
+  color: var(--ink-600);
+  font-size: 0.92rem;
+}
+
+.workflowItemBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 62px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-800);
+  font-size: 0.86rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.workflowTrack {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  overflow: hidden;
+}
+
+.workflowTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(31, 95, 49, 0.94), rgba(74, 154, 93, 0.88));
+}
+
+.workflowEmpty {
+  min-height: 160px;
+  place-items: center;
+  text-align: center;
+  color: var(--ink-600);
+  line-height: 1.7;
+}
+
+.summaryCard {
+  padding: 18px;
+}
+
+.summaryCard strong {
+  font-size: 1.7rem;
+}
+
+.weightSectionHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.weightSectionHeader h2,
+.weightDayHeader h3 {
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  letter-spacing: -0.04em;
+}
+
+.weightSectionHeader p {
+  margin: 0;
+  color: var(--ink-700);
+  line-height: 1.7;
+}
+
+.weightMetaCard,
+.weightSummaryCard,
+.weightDayCard,
+.weightVehicleRow,
+.weightEmpty,
+.weightError {
+  border: 1px solid var(--line-soft);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.weightMetaCard,
+.weightSummaryCard,
+.weightDayCard,
+.weightVehicleRow,
+.weightEmpty,
+.weightError {
+  display: grid;
+  gap: 12px;
+}
+
+.weightMetaCard,
+.weightSummaryCard,
+.weightDayCard,
+.weightEmpty,
+.weightError {
+  padding: 18px;
+}
+
+.weightMetaCard {
+  background: rgba(74, 154, 93, 0.08);
+}
+
+.weightMetaCard span,
+.weightSummaryCard span,
+.weightVehicleMeta span,
+.weightVehicleValue span {
+  color: var(--ink-600);
+  font-size: 0.88rem;
+}
+
+.weightMetaCard strong,
+.weightSummaryCard strong,
+.weightDayHeader strong,
+.weightVehicleValue strong {
+  font-family: var(--font-display);
+  line-height: 1;
+}
+
+.weightMetaCard strong {
+  font-size: 1.4rem;
+}
+
+.weightMetaCard small,
+.weightSummaryCard small {
+  color: var(--ink-600);
+}
+
+.weightError {
+  margin-top: 18px;
+  background: rgba(245, 135, 31, 0.08);
+  border-color: rgba(245, 135, 31, 0.2);
+  color: var(--ink-800);
+}
+
+.weightSummaryGrid,
+.weightDayStack {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.weightSummaryGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.weightSummaryCard strong {
+  font-size: 1.75rem;
+}
+
+.weightDayCard {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.weightDayHeader,
+.weightVehicleRow {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.weightDayHeader {
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(31, 95, 49, 0.08);
+}
+
+.weightDayHeader strong {
+  font-size: 1.5rem;
+  color: var(--brand-900);
+}
+
+.weightVehicleList {
+  display: grid;
+  gap: 12px;
+}
+
+.weightVehicleRow {
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: rgba(74, 154, 93, 0.05);
+}
+
+.weightVehicleMeta {
+  display: grid;
+  gap: 4px;
+}
+
+.weightVehicleMeta strong {
+  color: var(--ink-900);
+  font-size: 1rem;
+}
+
+.weightVehicleValue {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  text-align: right;
+}
+
+.weightVehicleValue strong {
+  font-size: 1.35rem;
+  color: var(--brand-900);
+}
+
+.weightEmpty {
+  margin-top: 18px;
+  min-height: 160px;
+  place-items: center;
+  text-align: center;
+  color: var(--ink-600);
+  line-height: 1.7;
+}
+
+.projectStack {
+  margin-top: 18px;
+}
+
+.projectHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(31, 95, 49, 0.08);
+}
+
+.projectHeader h2 {
+  margin-top: 8px;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+  line-height: 1;
+}
+
+.projectHeader p {
+  margin: 0;
+}
+
+.projectMeta {
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  min-width: 250px;
+}
+
+.projectMeta div {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(74, 154, 93, 0.08);
+  border: 1px solid rgba(74, 154, 93, 0.12);
+}
+
+.projectMeta strong {
+  font-size: 1.15rem;
+}
+
+.reportList {
+  margin-top: 18px;
+}
+
+.reportCard {
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.reportTop {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.reportTop strong {
+  color: var(--ink-900);
+}
+
+.reportTop p {
+  margin: 6px 0 0;
+  color: var(--ink-600);
+}
+
+.reportStamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-800);
+  font-size: 0.86rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.reportMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.summaryBox {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(74, 154, 93, 0.05);
+  border: 1px solid rgba(74, 154, 93, 0.1);
+  color: var(--ink-800);
+  line-height: 1.65;
+}
+
+.emptyState {
+  margin-top: 18px;
+  text-align: center;
+}
+
+@media (max-width: 1080px) {
+  .pageHeader,
+  .summaryStrip,
+  .departmentFilterInner,
+  .weightSectionHeader,
+  .weightSummaryGrid,
+  .workflowHeader,
+  .workflowSummaryGrid,
+  .workflowColumns {
+    grid-template-columns: 1fr;
+  }
+
+  .projectHeader,
+  .reportTop,
+  .weightDayHeader,
+  .weightVehicleRow,
+  .workflowColumnHeader,
+  .workflowItemTop,
+  .workflowItemMeta {
+    flex-direction: column;
+  }
+
+  .projectMeta {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .pageHeader,
+  .sectionCard,
+  .projectSection,
+  .emptyState {
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .summaryStrip {
+    margin: 14px 0;
+  }
+
+  .projectMeta {
+    grid-template-columns: 1fr;
+  }
+
+  .reportStamp {
+    align-self: flex-start;
+  }
+
+  .workflowMetaCard,
+  .workflowSummaryCard,
+  .workflowColumn,
+  .weightMetaCard,
+  .weightSummaryCard,
+  .weightDayCard,
+  .weightEmpty,
+  .workflowEmpty {
+    padding: 16px;
+  }
+
+  .departmentFilterCard {
+    min-height: 64px;
+    padding: 14px 16px;
+  }
+
+  .weightVehicleValue {
+    justify-items: start;
+    text-align: left;
+  }
+}

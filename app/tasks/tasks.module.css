@@ -1,0 +1,609 @@
+.pageHeader,
+.summaryStrip,
+.filterPanel,
+.taskSection,
+.taskCard,
+.tableShell,
+.emptyState {
+  border: 1px solid var(--line-soft);
+  border-radius: 28px;
+  background: var(--surface-panel-soft);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 48px var(--shadow-soft);
+}
+
+.pageHeader,
+.filterPanel,
+.taskSection,
+.emptyState {
+  padding: 22px;
+}
+
+.pageHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.8fr);
+  gap: 18px;
+  margin-bottom: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(166, 211, 157, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 250, 244, 0.94));
+}
+
+.pageHeaderMain,
+.pageHeaderAside,
+.titleBlock,
+.userBlock,
+.dateFilterForm,
+.summaryCard,
+.taskCard,
+.taskIdentity,
+.taskInfoItem,
+.cardActions,
+.emptyState {
+  display: grid;
+  gap: 10px;
+}
+
+.titleBlock h1,
+.filterHeader h2,
+.sectionHeader h2,
+.emptyState h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  letter-spacing: -0.04em;
+}
+
+.titleBlock h1 {
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 0.96;
+}
+
+.titleBlock p,
+.filterHeader p,
+.subtleNote,
+.emptyState p {
+  color: var(--ink-700);
+  line-height: 1.65;
+}
+
+.pageKicker,
+.filterKicker {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-800);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.userBlock {
+  align-content: start;
+  padding: 18px;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(74, 154, 93, 0.08), rgba(255, 255, 255, 0.74));
+  border: 1px solid rgba(74, 154, 93, 0.16);
+}
+
+.userBlock span,
+.summaryCard span,
+.taskInfoItem span,
+.progressLabel span {
+  color: var(--ink-600);
+  font-size: 0.88rem;
+}
+
+.userBlock strong {
+  font-size: 1.3rem;
+}
+
+.pageHeaderAside {
+  align-content: start;
+}
+
+.dateFilterForm label {
+  color: var(--ink-900);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.dateRow,
+.headerActions,
+.filterHeader,
+.sectionHeader,
+.taskCardTop,
+.progressLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dateInput {
+  flex: 1;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--ink-900);
+  font: inherit;
+}
+
+.dateButton,
+.logoutButton,
+.secondaryLink,
+.primaryLink,
+.inlineLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.dateButton,
+.logoutButton,
+.primaryLink {
+  border: 0;
+  background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
+  color: #f7fcf6;
+}
+
+.secondaryLink,
+.inlineLink {
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--brand-800);
+}
+
+.logoutButton {
+  cursor: pointer;
+  font: inherit;
+}
+
+.summaryStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 14px;
+  margin: 18px 0;
+}
+
+.summaryCard {
+  padding: 18px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(166, 211, 157, 0.14), transparent 34%),
+    rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(74, 154, 93, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.summaryCard strong {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.summaryCard small {
+  color: var(--ink-700);
+}
+
+.filterPanel {
+  margin-bottom: 18px;
+}
+
+.filterHeader {
+  margin-bottom: 16px;
+}
+
+.filterHeader h2,
+.sectionHeader h2 {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  line-height: 1;
+}
+
+.filterHeader p,
+.sectionHeader p {
+  max-width: 320px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(74, 154, 93, 0.08);
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  text-align: right;
+}
+
+.filterScroller {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(170px, 1fr);
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.filterChip {
+  display: grid;
+  gap: 6px;
+  min-height: 78px;
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(74, 154, 93, 0.08);
+  color: var(--ink-900);
+  border: 1px solid rgba(74, 154, 93, 0.08);
+}
+
+.filterChip strong {
+  color: var(--brand-900);
+  font-size: 1.35rem;
+}
+
+.filterChipActive {
+  background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
+  color: #f7fcf6;
+}
+
+.filterChipActive strong {
+  color: #f7fcf6;
+}
+
+.taskSection {
+  display: grid;
+  gap: 18px;
+}
+
+.sectionHeader {
+  margin-bottom: 0;
+}
+
+.taskCardList {
+  display: grid;
+  gap: 16px;
+}
+
+.projectList {
+  display: grid;
+  gap: 16px;
+}
+
+.taskCard {
+  padding: 18px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(166, 211, 157, 0.12), transparent 36%),
+    rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(74, 154, 93, 0.1);
+}
+
+.projectCardLink {
+  color: inherit;
+  text-decoration: none;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.projectCardLink:hover {
+  transform: translateY(-2px);
+  border-color: rgba(31, 95, 49, 0.16);
+  box-shadow: 0 18px 32px rgba(31, 95, 49, 0.1);
+}
+
+.taskIdentity strong,
+.taskRoute {
+  color: var(--ink-900);
+}
+
+.taskIdentity strong {
+  font-size: 1.18rem;
+}
+
+.taskIdentity span {
+  color: var(--ink-700);
+}
+
+.taskRoute {
+  margin: 0;
+  font-size: 1.08rem;
+  font-weight: 700;
+}
+
+.taskInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.taskInfoItem {
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(240, 248, 239, 0.9);
+}
+
+.taskInfoItem strong,
+.progressLabel strong {
+  font-size: 1rem;
+  color: var(--ink-900);
+}
+
+.progressRow {
+  display: grid;
+  gap: 10px;
+}
+
+.progressTrack {
+  width: 100%;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(95, 117, 99, 0.12);
+}
+
+.progressTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--brand-700), #a6d39d);
+}
+
+.cardActions {
+  gap: 8px;
+}
+
+.subtleNote {
+  font-size: 0.92rem;
+}
+
+.projectCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.projectOpenLabel {
+  color: var(--brand-800);
+  font-size: 0.92rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tableShell {
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.taskTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.taskTable th,
+.taskTable td {
+  padding: 16px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+  text-align: left;
+}
+
+.taskTable th {
+  color: var(--ink-600);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tableProgress {
+  display: grid;
+  gap: 8px;
+  min-width: 120px;
+}
+
+.emptyState {
+  text-align: center;
+}
+
+@media (max-width: 1080px) {
+  .pageHeader,
+  .pageHeader {
+    grid-template-columns: 1fr;
+  }
+
+  .filterHeader,
+  .sectionHeader,
+  .dateRow,
+  .headerActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filterHeader p,
+  .sectionHeader p {
+    max-width: none;
+    text-align: left;
+  }
+
+  .summaryStrip {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(220px, 1fr);
+    overflow-x: auto;
+    padding: 0 2px 6px;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 820px) {
+  .pageHeader,
+  .filterPanel,
+  .taskSection,
+  .emptyState {
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .pageHeaderMain,
+  .pageHeaderAside,
+  .titleBlock,
+  .userBlock {
+    gap: 8px;
+  }
+
+  .titleBlock h1 {
+    font-size: clamp(1.75rem, 8vw, 2.4rem);
+    line-height: 1;
+  }
+
+  .titleBlock p {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.92rem;
+    line-height: 1.58;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+  }
+
+  .userBlock {
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .userBlock strong {
+    font-size: 1.08rem;
+  }
+
+  .summaryStrip {
+    grid-auto-columns: minmax(210px, 82vw);
+  }
+
+  .taskInfoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .projectCardFooter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tableShell {
+    display: none;
+  }
+}
+
+@media (min-width: 821px) {
+  .taskCardList {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .pageHeader {
+    margin-bottom: 14px;
+  }
+
+  .pageHeader,
+  .filterPanel,
+  .taskSection,
+  .emptyState {
+    padding: 16px;
+    border-radius: 22px;
+  }
+
+  .pageKicker,
+  .filterKicker {
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 0.7rem;
+  }
+
+  .titleBlock h1 {
+    font-size: clamp(1.65rem, 8vw, 2.1rem);
+    line-height: 1.02;
+  }
+
+  .titleBlock p {
+    font-size: 0.88rem;
+    line-height: 1.55;
+  }
+
+  .filterScroller {
+    grid-auto-columns: minmax(138px, 72%);
+  }
+
+  .summaryStrip {
+    grid-auto-columns: minmax(196px, 76vw);
+    gap: 12px;
+  }
+
+  .summaryCard {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .summaryCard strong {
+    font-size: 1.35rem;
+  }
+
+  .filterHeader p,
+  .sectionHeader p {
+    padding: 10px 12px;
+    font-size: 0.86rem;
+    line-height: 1.5;
+  }
+
+  .filterChip {
+    min-height: 72px;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .taskCardList {
+    gap: 12px;
+  }
+
+  .taskCard {
+    padding: 16px;
+    border-radius: 20px;
+    gap: 8px;
+  }
+
+  .taskIdentity strong {
+    font-size: 1.05rem;
+  }
+
+  .taskRoute {
+    font-size: 0.98rem;
+  }
+
+  .taskInfoItem {
+    padding: 10px 12px;
+    border-radius: 16px;
+  }
+
+  .progressTrack {
+    height: 8px;
+  }
+
+  .subtleNote {
+    font-size: 0.84rem;
+    line-height: 1.5;
+  }
+
+  .dateButton,
+  .logoutButton,
+  .secondaryLink,
+  .primaryLink,
+  .inlineLink {
+    width: 100%;
+  }
+}

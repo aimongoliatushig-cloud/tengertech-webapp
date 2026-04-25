@@ -1,0 +1,415 @@
+.boardCard,
+.errorCard {
+  border: 1px solid var(--line-soft);
+  border-radius: 28px;
+  background: var(--surface-panel-soft);
+  box-shadow: 0 18px 48px var(--shadow-soft);
+}
+
+.boardCard,
+.errorCard {
+  padding: 24px;
+}
+
+.boardCard {
+  margin-top: 18px;
+}
+
+.errorCard {
+  margin-top: 18px;
+  border-color: rgba(177, 94, 56, 0.25);
+  background: rgba(255, 245, 239, 0.95);
+}
+
+.errorCard h2 {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+}
+
+.errorCard p {
+  margin: 0;
+  color: var(--ink-700);
+  line-height: 1.7;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-800);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sectionHeader h1 {
+  margin: 12px 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.sectionHeader p {
+  max-width: 430px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(74, 154, 93, 0.08);
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  color: var(--ink-900);
+  font-size: 0.96rem;
+  font-weight: 500;
+  line-height: 1.7;
+  text-align: right;
+}
+
+.boardGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.mobileBoard {
+  display: none;
+}
+
+.mobileBucketInput {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mobileBucketGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mobileBucketCard {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.96),
+    rgba(243, 250, 245, 0.92)
+  );
+  cursor: pointer;
+  text-align: left;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.mobileBucketCard:hover {
+  transform: translateY(-1px);
+}
+
+.mobileBucketCardSelected {
+  border-color: rgba(35, 104, 57, 0.28);
+  box-shadow: 0 18px 32px rgba(45, 85, 57, 0.12);
+}
+
+.mobileBucketActive {
+  box-shadow: inset 0 4px 0 rgba(74, 154, 93, 0.32);
+}
+
+.mobileBucketRepair {
+  box-shadow: inset 0 4px 0 rgba(200, 138, 44, 0.28);
+}
+
+:global(#vehicle-bucket-active:checked)
+  ~ .mobileBucketGrid
+  .mobileBucketCardActive,
+:global(#vehicle-bucket-repair:checked)
+  ~ .mobileBucketGrid
+  .mobileBucketCardRepair {
+  border-color: rgba(35, 104, 57, 0.28);
+  box-shadow: 0 18px 32px rgba(45, 85, 57, 0.12);
+  transform: translateY(-1px);
+}
+
+.mobileBucketTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--ink-900);
+}
+
+.mobileBucketCount {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.mobileBucketDescription {
+  color: var(--ink-700);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.mobileBucketHint {
+  color: var(--brand-900);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.mobileBucketMeter {
+  display: block;
+  overflow: hidden;
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+}
+
+.mobileBucketMeterFill {
+  display: block;
+  width: calc(var(--vehicle-share, 0) * 100%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    rgba(74, 154, 93, 0.9),
+    rgba(121, 188, 126, 0.76)
+  );
+}
+
+.mobileBucketRepair .mobileBucketMeterFill {
+  background: linear-gradient(
+    90deg,
+    rgba(200, 138, 44, 0.88),
+    rgba(224, 177, 96, 0.74)
+  );
+}
+
+.mobilePanels {
+  margin-top: 14px;
+}
+
+.mobileDetailCard {
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid var(--line-soft);
+  background: var(--surface-panel);
+}
+
+.mobileDetailPanel {
+  display: none;
+}
+
+:global(#vehicle-bucket-active:checked)
+  ~ .mobilePanels
+  .mobileDetailActive,
+:global(#vehicle-bucket-repair:checked)
+  ~ .mobilePanels
+  .mobileDetailRepair {
+  display: block;
+}
+
+.mobileDetailHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.mobileDetailEyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-800);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mobileDetailHeader h2 {
+  margin: 10px 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 5vw, 2rem);
+  line-height: 1.05;
+}
+
+.mobileDetailText {
+  margin: 0 0 14px;
+  color: var(--ink-700);
+  line-height: 1.6;
+}
+
+.columnCard {
+  min-width: 0;
+  padding: 20px;
+  border-radius: 24px;
+  background: var(--surface-panel);
+  border: 1px solid var(--line-soft);
+}
+
+.columnActive {
+  box-shadow: inset 0 6px 0 rgba(74, 154, 93, 0.34);
+}
+
+.columnRepair {
+  box-shadow: inset 0 6px 0 rgba(200, 138, 44, 0.34);
+}
+
+.columnHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.columnLabel {
+  display: block;
+  color: var(--ink-700);
+  font-size: 0.86rem;
+}
+
+.columnHeader strong {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-900);
+  font-weight: 700;
+}
+
+.vehicleList {
+  display: grid;
+  gap: 12px;
+}
+
+.vehicleCard {
+  padding: 16px;
+  border-radius: 20px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(244, 250, 245, 0.92)
+  );
+  border: 1px solid rgba(74, 154, 93, 0.14);
+}
+
+.vehicleTop {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vehiclePlate {
+  font-size: 1.05rem;
+}
+
+.vehicleName {
+  margin: 10px 0 0;
+  color: var(--ink-700);
+  line-height: 1.55;
+}
+
+.vehicleState {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.vehicleStateActive {
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-900);
+}
+
+.vehicleStateRepair {
+  background: rgba(200, 138, 44, 0.16);
+  color: #8b5a13;
+}
+
+.emptyState {
+  padding: 24px 16px;
+  border-radius: 20px;
+  border: 1px dashed var(--line-soft);
+  background: rgba(255, 255, 255, 0.68);
+  color: var(--ink-700);
+  text-align: center;
+}
+
+@media (max-width: 960px) {
+  .boardGrid {
+    display: none;
+  }
+
+  .mobileBoard {
+    display: block;
+  }
+}
+
+@media (max-width: 720px) {
+  .sectionHeader {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .sectionHeader p {
+    max-width: none;
+    text-align: left;
+  }
+
+  .mobileBucketGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mobileBucketCard {
+    padding: 15px;
+  }
+
+  .mobileDetailCard {
+    padding: 16px;
+  }
+
+  .vehicleTop {
+    flex-direction: column;
+    align-items: start;
+  }
+}

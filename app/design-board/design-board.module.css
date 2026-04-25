@@ -1,0 +1,1101 @@
+.page {
+  --board-green-900: #1d5f34;
+  --board-green-800: #2f7747;
+  --board-green-700: #42905a;
+  --board-green-600: #69aa79;
+  --board-green-100: #edf7ee;
+  --board-green-050: #f6fbf6;
+  --board-ink-900: #19251d;
+  --board-ink-700: #4d6253;
+  --board-ink-600: #65766b;
+  --board-line: rgba(44, 93, 59, 0.12);
+  --board-shadow: rgba(28, 83, 45, 0.1);
+  --board-surface: rgba(255, 255, 255, 0.92);
+  --board-surface-strong: rgba(255, 255, 255, 0.98);
+  --board-status-good: #3f9152;
+  --board-status-good-soft: #eef8ef;
+  --board-status-attention: #c59a2b;
+  --board-status-attention-soft: #fff8df;
+  --board-status-urgent: #de8a37;
+  --board-status-urgent-soft: #fff2e7;
+  --board-status-late: #d15a47;
+  --board-status-late-soft: #fff0ec;
+  --board-status-pending: #7d8a7f;
+  --board-status-pending-soft: #f1f4f2;
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  padding: 36px 28px 56px;
+  background:
+    radial-gradient(circle at top left, rgba(113, 179, 124, 0.26), transparent 26%),
+    radial-gradient(circle at top right, rgba(52, 110, 66, 0.11), transparent 20%),
+    linear-gradient(180deg, #f7fbf5 0%, #edf5ed 48%, #f8fbf7 100%);
+  color: var(--board-ink-900);
+}
+
+.page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(45, 95, 60, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 95, 60, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.24), transparent 88%);
+  pointer-events: none;
+}
+
+.canvasGlow {
+  position: absolute;
+  top: 120px;
+  right: -180px;
+  width: 520px;
+  height: 520px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(99, 177, 111, 0.24), transparent 72%);
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+.boardHeader,
+.roleGrid {
+  position: relative;
+  z-index: 1;
+  max-width: 1840px;
+  margin: 0 auto;
+}
+
+.boardHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(340px, 420px);
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.boardCopy,
+.boardInfoCard,
+.legendCard,
+.rolePanel {
+  border: 1px solid var(--board-line);
+  border-radius: 34px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 251, 246, 0.92)),
+    var(--board-surface);
+  box-shadow: 0 22px 56px var(--board-shadow);
+  backdrop-filter: blur(18px);
+}
+
+.boardCopy {
+  display: grid;
+  gap: 18px;
+  padding: 32px;
+}
+
+.boardEyebrow,
+.roleEyebrow,
+.sectionEyebrow {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(56, 123, 73, 0.12);
+  color: var(--board-green-900);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.boardCopy h1 {
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(2.8rem, 4vw, 4.7rem);
+  line-height: 0.92;
+  letter-spacing: -0.06em;
+}
+
+.boardCopy p,
+.boardInfoCard p,
+.legendItem p,
+.roleHeaderCopy p,
+.metricCard p,
+.progressRow p,
+.listCopy p,
+.listCopy small,
+.routeMeta small,
+.flowSummary p,
+.mobilePrincipleCard p,
+.mapHintCard p,
+.confirmationSheet p {
+  color: var(--board-ink-700);
+  line-height: 1.65;
+}
+
+.questionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.questionCard {
+  display: grid;
+  gap: 8px;
+  padding: 18px 20px;
+  border: 1px solid rgba(44, 93, 59, 0.1);
+  border-radius: 22px;
+  background: rgba(248, 252, 248, 0.92);
+}
+
+.questionCard strong {
+  font-size: 1rem;
+}
+
+.questionCard span {
+  color: var(--board-ink-700);
+  line-height: 1.6;
+}
+
+.boardAside {
+  display: grid;
+  gap: 18px;
+}
+
+.boardInfoCard,
+.legendCard {
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+}
+
+.boardInfoCard h3,
+.legendCard h3,
+.roleHeaderCopy h2 {
+  font-family: var(--font-display), sans-serif;
+  letter-spacing: -0.04em;
+}
+
+.boardInfoCard h3 {
+  font-size: 1.9rem;
+  line-height: 0.98;
+}
+
+.legendHeader {
+  display: grid;
+  gap: 10px;
+}
+
+.legendGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(246, 250, 246, 0.94);
+}
+
+.legendItem p {
+  font-size: 0.9rem;
+}
+
+.roleGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.rolePanel {
+  display: grid;
+  gap: 20px;
+  min-height: 760px;
+  padding: 24px;
+}
+
+.roleHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.roleHeaderCopy {
+  display: grid;
+  gap: 12px;
+}
+
+.roleHeaderCopy h2 {
+  font-size: 2.05rem;
+  line-height: 0.98;
+}
+
+.roleMetaCard {
+  display: grid;
+  gap: 6px;
+  min-width: 150px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(44, 93, 59, 0.1);
+  background: rgba(244, 249, 244, 0.98);
+  text-align: right;
+}
+
+.roleMetaCard span,
+.metricTop span,
+.inventoryTop span,
+.flowBarHeader span,
+.utilityLabel,
+.routeCard span,
+.routeMeta span,
+.tableHeader span,
+.phoneTopBar span {
+  color: var(--board-ink-600);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.roleMetaCard strong {
+  font-family: var(--font-display), sans-serif;
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.executiveHero,
+.panelSplit,
+.departmentGrid,
+.masterGrid,
+.accountingGrid,
+.warehouseGrid,
+.warehouseLowerGrid,
+.mobilePanelLayout {
+  display: grid;
+  gap: 16px;
+}
+
+.executiveHero {
+  grid-template-columns: minmax(0, 1.2fr) minmax(240px, 0.8fr);
+}
+
+.metricStack,
+.metricRow,
+.listStack,
+.progressList,
+.checklist,
+.actionColumn {
+  display: grid;
+  gap: 12px;
+}
+
+.metricStack,
+.metricRow {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.metricCard {
+  --tone-border: rgba(44, 93, 59, 0.12);
+  --tone-surface: rgba(246, 250, 246, 0.92);
+  --tone-text: var(--board-green-900);
+  display: grid;
+  gap: 12px;
+  min-height: 100%;
+  padding: 20px;
+  border: 1px solid var(--tone-border);
+  border-radius: 26px;
+  background: var(--tone-surface);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.52);
+}
+
+.metricCompact {
+  padding: 18px;
+}
+
+.metricFeatured {
+  min-height: 226px;
+  padding: 24px;
+}
+
+.metricTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.metricCard strong {
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(2rem, 2.3vw, 3.2rem);
+  line-height: 0.96;
+  letter-spacing: -0.05em;
+  color: var(--board-ink-900);
+}
+
+.panelSplit,
+.departmentGrid,
+.accountingGrid,
+.warehouseGrid,
+.warehouseLowerGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.masterGrid {
+  grid-template-columns: minmax(0, 1.1fr) minmax(240px, 0.9fr);
+}
+
+.masterSide {
+  display: grid;
+  gap: 16px;
+}
+
+.sectionCard,
+.focusBanner,
+.progressRingCard,
+.mobilePrincipleCard,
+.mapHintCard,
+.confirmationSheet,
+.phoneShell,
+.inventoryCard,
+.mobileUtilityCard,
+.routeCard,
+.routeMeta,
+.flowBarCard,
+.flowSummary {
+  border: 1px solid rgba(44, 93, 59, 0.1);
+  border-radius: 26px;
+  background: rgba(252, 254, 252, 0.98);
+  box-shadow: 0 14px 32px rgba(28, 83, 45, 0.05);
+}
+
+.sectionCard {
+  display: grid;
+  gap: 14px;
+  min-height: 100%;
+  padding: 18px;
+}
+
+.sectionTall {
+  min-height: 100%;
+}
+
+.sectionHeader,
+.listTop,
+.inventoryTop,
+.flowBarHeader,
+.phoneTopBar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sectionHeader h3,
+.focusBanner h3,
+.progressRingCard p strong,
+.mobileTaskHero h3,
+.confirmationSheet h4 {
+  font-size: 1.08rem;
+}
+
+.statusChip {
+  --tone-border: rgba(44, 93, 59, 0.12);
+  --tone-surface: rgba(56, 123, 73, 0.12);
+  --tone-text: var(--board-green-900);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--tone-border);
+  border-radius: 999px;
+  background: var(--tone-surface);
+  color: var(--tone-text);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.toneGood {
+  --tone-border: rgba(63, 145, 82, 0.2);
+  --tone-surface: var(--board-status-good-soft);
+  --tone-text: #205e34;
+}
+
+.toneAttention {
+  --tone-border: rgba(197, 154, 43, 0.24);
+  --tone-surface: var(--board-status-attention-soft);
+  --tone-text: #8a6a11;
+}
+
+.toneUrgent {
+  --tone-border: rgba(222, 138, 55, 0.24);
+  --tone-surface: var(--board-status-urgent-soft);
+  --tone-text: #9d5717;
+}
+
+.toneLate {
+  --tone-border: rgba(209, 90, 71, 0.24);
+  --tone-surface: var(--board-status-late-soft);
+  --tone-text: #9c3020;
+}
+
+.tonePending {
+  --tone-border: rgba(125, 138, 127, 0.24);
+  --tone-surface: var(--board-status-pending-soft);
+  --tone-text: #5c655e;
+}
+
+.progressRow {
+  display: grid;
+  gap: 8px;
+}
+
+.progressRowHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.progressTrack {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(188, 204, 190, 0.4);
+}
+
+.progressFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--board-green-800), #6baa78);
+}
+
+.listCard {
+  --tone-accent: rgba(63, 145, 82, 0.22);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(44, 93, 59, 0.08);
+  border-left: 6px solid var(--tone-accent);
+  border-radius: 22px;
+  background: rgba(252, 253, 252, 0.98);
+}
+
+.listCardCompact {
+  padding: 14px;
+}
+
+.toneGood.listCard {
+  --tone-accent: rgba(63, 145, 82, 0.72);
+}
+
+.toneAttention.listCard {
+  --tone-accent: rgba(197, 154, 43, 0.72);
+}
+
+.toneUrgent.listCard {
+  --tone-accent: rgba(222, 138, 55, 0.72);
+}
+
+.toneLate.listCard {
+  --tone-accent: rgba(209, 90, 71, 0.72);
+}
+
+.tonePending.listCard {
+  --tone-accent: rgba(125, 138, 127, 0.72);
+}
+
+.listCopy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.listCopy strong {
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.listAside {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+  min-width: 110px;
+}
+
+.listAside span {
+  font-family: var(--font-display), sans-serif;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.actionButton:hover {
+  transform: translateY(-1px);
+}
+
+.actionPrimary {
+  background: linear-gradient(180deg, #418c58, #2e7446);
+  color: #ffffff;
+  box-shadow: 0 14px 28px rgba(46, 116, 70, 0.22);
+}
+
+.actionSecondary {
+  border-color: rgba(46, 116, 70, 0.14);
+  background: rgba(239, 247, 240, 0.96);
+  color: var(--board-green-900);
+}
+
+.actionGhost {
+  border-color: rgba(46, 116, 70, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--board-green-900);
+}
+
+.fullButton {
+  width: 100%;
+}
+
+.focusBanner {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px;
+  background:
+    linear-gradient(135deg, rgba(237, 247, 238, 0.98), rgba(255, 245, 240, 0.96)),
+    rgba(252, 254, 252, 0.98);
+}
+
+.focusBanner p {
+  max-width: 42ch;
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.checklist {
+  align-content: start;
+}
+
+.checklistItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(44, 93, 59, 0.1);
+  border-radius: 20px;
+  background: rgba(252, 253, 252, 0.98);
+}
+
+.checkbox {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  border: 2px solid rgba(46, 116, 70, 0.24);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.checkboxChecked {
+  background:
+    linear-gradient(180deg, #418c58, #2e7446);
+  border-color: transparent;
+  position: relative;
+}
+
+.checkboxChecked::after {
+  content: "";
+  position: absolute;
+  inset: 5px 6px 6px 5px;
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  transform: rotate(45deg);
+}
+
+.checklistCopy {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+}
+
+.progressRingCard {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.progressRingShell {
+  display: flex;
+  justify-content: center;
+}
+
+.progressRing {
+  display: grid;
+  place-items: center;
+  width: 166px;
+  height: 166px;
+  border-radius: 999px;
+  padding: 16px;
+}
+
+.progressRingInner {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: rgba(252, 254, 252, 0.98);
+  box-shadow: inset 0 0 0 1px rgba(44, 93, 59, 0.08);
+}
+
+.progressRingInner strong {
+  font-family: var(--font-display), sans-serif;
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+.progressRingInner span {
+  color: var(--board-ink-600);
+  font-size: 0.84rem;
+}
+
+.routeCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+}
+
+.routeCard strong,
+.routeMeta strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 1rem;
+}
+
+.routeMetaGrid,
+.mobileCardGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.routeMeta {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+}
+
+.actionColumn {
+  gap: 10px;
+}
+
+.mobilePanel {
+  min-height: 760px;
+}
+
+.mobilePanelLayout {
+  grid-template-columns: minmax(180px, 0.56fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.mobileNarrative {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.mobilePrincipleCard {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.mobileTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.phoneShell {
+  width: min(100%, 360px);
+  margin-inline: auto;
+  padding: 10px;
+  border-radius: 42px;
+  background:
+    linear-gradient(180deg, #fdfefd, #eff6ef),
+    rgba(255, 255, 255, 0.98);
+  box-shadow:
+    0 26px 52px rgba(28, 83, 45, 0.18),
+    inset 0 0 0 1px rgba(26, 43, 31, 0.08);
+}
+
+.phoneTopBar {
+  align-items: center;
+  padding: 8px 8px 14px;
+}
+
+.phoneTopBar strong {
+  font-size: 0.92rem;
+}
+
+.phoneBody {
+  display: grid;
+  gap: 14px;
+  padding: 8px;
+  border-radius: 32px;
+  background:
+    linear-gradient(180deg, rgba(247, 251, 247, 0.96), rgba(237, 246, 238, 0.94)),
+    rgba(244, 249, 244, 0.96);
+}
+
+.mobileTaskHero {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 250, 245, 0.96)),
+    rgba(255, 255, 255, 0.98);
+}
+
+.mobileActionStack {
+  display: grid;
+  gap: 10px;
+}
+
+.mobileUtilityCard {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+}
+
+.mobileUtilityCard strong {
+  font-size: 1rem;
+}
+
+.mapHintCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px;
+  background:
+    linear-gradient(135deg, rgba(233, 246, 235, 0.98), rgba(243, 248, 242, 0.94)),
+    rgba(252, 254, 252, 0.98);
+}
+
+.mapPin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 22px;
+  background: rgba(65, 140, 88, 0.14);
+  color: var(--board-green-900);
+  font-family: var(--font-display), sans-serif;
+  font-size: 1.3rem;
+}
+
+.confirmationSheet {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+}
+
+.tableShell {
+  overflow: hidden;
+  border: 1px solid rgba(44, 93, 59, 0.1);
+  border-radius: 22px;
+  background: rgba(252, 254, 252, 0.98);
+}
+
+.tableHeader,
+.tableRow {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1.4fr) 180px 120px;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 18px;
+}
+
+.tableHeader {
+  background: rgba(241, 246, 241, 0.98);
+}
+
+.tableRow + .tableRow {
+  border-top: 1px solid rgba(44, 93, 59, 0.08);
+}
+
+.tableRow strong {
+  font-size: 0.96rem;
+  line-height: 1.5;
+}
+
+.tableStatus {
+  justify-self: start;
+}
+
+.inventoryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.inventoryCard {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.inventoryTop > div {
+  display: grid;
+  gap: 4px;
+}
+
+.inventoryValue {
+  font-family: var(--font-display), sans-serif;
+  font-size: 2rem;
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+
+.flowBars {
+  display: grid;
+  grid-template-columns: 120px 120px minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.flowBarCard {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.tallBarTrack {
+  display: flex;
+  align-items: end;
+  height: 180px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: rgba(232, 239, 233, 0.92);
+}
+
+.tallBarFill {
+  display: block;
+  width: 100%;
+  border-radius: 20px 20px 0 0;
+  background: linear-gradient(180deg, #72b07e, #3f9152);
+}
+
+.tallBarFillAlt {
+  background: linear-gradient(180deg, #d9b455, #b08122);
+}
+
+.flowSummary {
+  display: grid;
+  align-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  background:
+    linear-gradient(180deg, rgba(245, 249, 245, 0.98), rgba(255, 248, 236, 0.96)),
+    rgba(252, 254, 252, 0.98);
+}
+
+@media (max-width: 1680px) {
+  .roleGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1440px) {
+  .boardHeader {
+    grid-template-columns: 1fr;
+  }
+
+  .executiveHero,
+  .masterGrid,
+  .mobilePanelLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .metricStack,
+  .metricRow,
+  .inventoryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .flowBars {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .tableHeader,
+  .tableRow {
+    grid-template-columns: 70px minmax(0, 1.2fr) 150px 100px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .page {
+    padding-inline: 18px;
+  }
+
+  .roleGrid,
+  .panelSplit,
+  .departmentGrid,
+  .accountingGrid,
+  .warehouseGrid,
+  .warehouseLowerGrid,
+  .routeMetaGrid,
+  .mobileCardGrid,
+  .questionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .rolePanel {
+    min-height: auto;
+  }
+
+  .focusBanner,
+  .roleHeader,
+  .mapHintCard,
+  .routeCard {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .roleMetaCard {
+    width: 100%;
+    text-align: left;
+  }
+
+  .flowBars {
+    grid-template-columns: 1fr;
+  }
+
+  .tableHeader,
+  .tableRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tableHeader {
+    display: none;
+  }
+
+  .tableRow {
+    gap: 8px;
+  }
+
+  .tableRow > span:first-child::before,
+  .tableRow > strong::before,
+  .tableStatus::before,
+  .tableRow > span:last-child::before {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--board-ink-600);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .tableRow > span:first-child::before {
+    content: "Огноо";
+  }
+
+  .tableRow > strong::before {
+    content: "Гүйлгээ";
+  }
+
+  .tableStatus::before {
+    content: "Төлөв";
+  }
+
+  .tableRow > span:last-child::before {
+    content: "Дүн";
+  }
+}
+
+@media (max-width: 780px) {
+  .page {
+    padding-top: 18px;
+  }
+
+  .boardCopy,
+  .boardInfoCard,
+  .legendCard,
+  .rolePanel {
+    border-radius: 28px;
+  }
+
+  .boardCopy,
+  .boardInfoCard,
+  .legendCard,
+  .rolePanel,
+  .sectionCard,
+  .focusBanner,
+  .progressRingCard,
+  .mobilePrincipleCard,
+  .mapHintCard,
+  .confirmationSheet,
+  .inventoryCard,
+  .mobileUtilityCard,
+  .routeCard,
+  .routeMeta,
+  .flowBarCard,
+  .flowSummary {
+    padding: 18px;
+  }
+
+  .boardCopy h1,
+  .roleHeaderCopy h2 {
+    font-size: clamp(2rem, 8vw, 2.8rem);
+  }
+
+  .roleGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .phoneShell {
+    width: 100%;
+  }
+
+  .actionRow {
+    width: 100%;
+  }
+
+  .actionRow .actionButton {
+    flex: 1;
+  }
+}
