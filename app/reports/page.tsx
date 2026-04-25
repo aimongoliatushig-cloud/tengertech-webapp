@@ -202,7 +202,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     : selectedUnit || selectedGroup?.name || "Бүх хэлтэс";
   const totalImages = filteredReports.reduce((sum, report) => sum + report.imageCount, 0);
   const totalAudios = filteredReports.reduce((sum, report) => sum + report.audioCount, 0);
-  const isGarbageTransportView = selectedDepartmentName === "Хог тээвэрлэлт";
+  const isGarbageTransportView =
+    selectedDepartmentName === "Авто бааз, хог тээвэрлэлтийн хэлтэс";
   let garbageWeightLedger = null as Awaited<ReturnType<typeof loadGarbageWeightLedger>> | null;
   let garbageWeightError = "";
 
@@ -586,7 +587,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   <span className={styles.kicker}>Өнөөдрийн явц</span>
                   <h2>Өнөөдөр явагдаж буй ажил</h2>
                   <p>
-                    Ерөнхий менежерийн шалгалтад орохоос өмнөх явц, шалгалт
+                    Үйл ажиллагаа хариуцсан менежерийн шалгалтад орохоос өмнөх явц, шалгалт
                     хүлээж буй ажил, бүрэн баталгаажсан ажлыг тусад нь харуулна.
                   </p>
                 </div>
@@ -611,7 +612,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 <article className={styles.workflowSummaryCard}>
                   <span>Шалгалт хүлээж буй</span>
                   <strong>{todayReviewTasks.length}</strong>
-                  <small>Ерөнхий менежерийн шийдвэр хүлээж буй ажилбар</small>
+                  <small>Үйл ажиллагаа хариуцсан менежерийн шийдвэр хүлээж буй ажилбар</small>
                 </article>
                 <article className={styles.workflowSummaryCard}>
                   <span>Бүрэн дууссан</span>
@@ -663,7 +664,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   <div className={styles.workflowColumnHeader}>
                     <div>
                       <span className={styles.kicker}>Шалгалт</span>
-                      <h3>Ерөнхий менежер хүлээж буй</h3>
+                      <h3>Үйл ажиллагаа хариуцсан менежер хүлээж буй</h3>
                     </div>
                     <strong>{todayReviewTasks.length}</strong>
                   </div>
@@ -690,7 +691,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                     </div>
                   ) : (
                     <div className={styles.workflowEmpty}>
-                      Ерөнхий менежерийн шалгалт хүлээж буй ажил алга байна.
+                      Үйл ажиллагаа хариуцсан менежерийн шалгалт хүлээж буй ажил алга байна.
                     </div>
                   )}
                 </article>

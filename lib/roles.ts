@@ -85,7 +85,7 @@ export function getRoleLabel(role: UserRole) {
     case "director":
       return "Захирал";
     case "general_manager":
-      return "Ерөнхий менежер";
+      return "Үйл ажиллагаа хариуцсан менежер";
     case "project_manager":
       return "Хэлтсийн дарга";
     case "senior_master":

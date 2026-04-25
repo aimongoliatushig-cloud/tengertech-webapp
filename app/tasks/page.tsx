@@ -337,7 +337,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
     ? "Надад оноогдсон ажилбар"
     : masterMode
       ? masterDepartmentName ?? "Миний алба нэгж"
-      : selectedDepartment?.name ?? "Бүх алба нэгж";
+      : selectedDepartment?.name ?? "Бүх алба хэлтэс";
 
   const taskListParams = new URLSearchParams();
   if (!workerMode && selectedDepartment?.name) {
@@ -458,7 +458,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                           defaultValue={selectedDepartment?.name ?? "all"}
                           className={styles.dateInput}
                         >
-                          <option value="all">Бүх алба нэгж</option>
+                          <option value="all">Бүх алба хэлтэс</option>
                           {snapshot.departments.map((department) => (
                             <option key={department.name} value={department.name}>
                               {department.name}

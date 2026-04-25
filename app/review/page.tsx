@@ -296,7 +296,7 @@ export default async function ReviewPage({ searchParams }: PageProps) {
         ? Math.round((visibleReviewTasks.length / totalWorkflowCount) * 100)
         : 0,
       tone: reviewStyles.flowStageReview,
-      note: "Ерөнхий менежерийн шийдвэр хүлээж буй",
+      note: "Үйл ажиллагаа хариуцсан менежерийн шийдвэр хүлээж буй",
     },
     {
       key: "done",

@@ -73,6 +73,31 @@ function getNumberValue(formData: FormData, key: string) {
   return Number(String(formData.get(key) ?? ""));
 }
 
+function getStringListValues(formData: FormData, keys: string[], maxItems = 20) {
+  const seenValues = new Set<string>();
+  const normalizedValues: string[] = [];
+
+  for (const key of keys) {
+    for (const rawValue of formData.getAll(key)) {
+      const normalizedValue = String(rawValue ?? "").trim().replace(/\s+/g, " ");
+      const dedupeKey = normalizedValue.toLowerCase();
+
+      if (!normalizedValue || seenValues.has(dedupeKey)) {
+        continue;
+      }
+
+      seenValues.add(dedupeKey);
+      normalizedValues.push(normalizedValue);
+
+      if (normalizedValues.length >= maxItems) {
+        return normalizedValues;
+      }
+    }
+  }
+
+  return normalizedValues;
+}
+
 function getUploadedFiles(formData: FormData, key: string) {
   return formData
     .getAll(key)
@@ -147,6 +172,10 @@ export async function createProjectAction(formData: FormData) {
   const deadline = String(formData.get("deadline") ?? "").trim();
   const garbageVehicleIdRaw = String(formData.get("garbage_vehicle_id") ?? "").trim();
   const garbageRouteIdRaw = String(formData.get("garbage_route_id") ?? "").trim();
+  const additionalLocations = getStringListValues(formData, [
+    "additional_locations",
+    "additional_location_draft",
+  ]);
   const connectionOverrides = {
     login: session.login,
     password: session.password,
@@ -203,7 +232,7 @@ export async function createProjectAction(formData: FormData) {
       redirectWithMessage(
         "/projects/new",
         "error",
-        "Хог тээвэрлэлтийн ажилд машин, маршрут, огноо гурвыг заавал сонгоно уу.",
+        "Хог тээвэрлэлтийн ажилд машин, байршил, огноо гурвыг заавал сонгоно уу.",
       );
     }
 
@@ -217,6 +246,41 @@ export async function createProjectAction(formData: FormData) {
         connectionOverrides,
       );
 
+      let extraLocationMessage = "";
+
+      if (additionalLocations.length) {
+        let createdLocationCount = 0;
+        const projectDetail = await loadProjectDetail(
+          result.project_id,
+          connectionOverrides,
+        ).catch(() => null);
+        const measurementUnitId =
+          projectDetail?.defaultUnitId ?? projectDetail?.allowedUnits[0]?.id ?? null;
+
+        try {
+          for (const location of additionalLocations) {
+            await createWorkspaceTask(
+              {
+                projectId: result.project_id,
+                name: location,
+                deadline: startDate,
+                measurementUnitId,
+                description: "Нэмэлтээр бүртгэсэн байршил.",
+              },
+              connectionOverrides,
+            );
+            createdLocationCount += 1;
+          }
+
+          extraLocationMessage = ` Нэмэлт ${createdLocationCount} байршил ажилбар болж нэмэгдлээ.`;
+        } catch (error) {
+          extraLocationMessage =
+            createdLocationCount > 0
+              ? ` Нэмэлт ${createdLocationCount} байршил нэмэгдсэн. Зарим нэмэлт байршил нэмэхэд алдаа гарлаа: ${getErrorMessage(error)}`
+              : ` Үндсэн ажил үүслээ, харин нэмэлт байршил нэмэхэд алдаа гарлаа: ${getErrorMessage(error)}`;
+        }
+      }
+
       revalidatePath("/");
       revalidatePath("/projects");
       revalidatePath("/tasks");
@@ -226,7 +290,7 @@ export async function createProjectAction(formData: FormData) {
       revalidatePath(`/projects/${result.project_id}`);
       redirect(
         `/projects/${result.project_id}?notice=${encodeURIComponent(
-          result.message || "Хог тээвэрлэлтийн ажил амжилттай үүслээ.",
+          `${result.message || "Хог тээвэрлэлтийн ажил амжилттай үүслээ."}${extraLocationMessage}`,
         )}`,
       );
     } catch (error) {

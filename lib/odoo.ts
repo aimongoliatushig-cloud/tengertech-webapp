@@ -1,6 +1,11 @@
 import "server-only";
 
 import { getDateKeyFromValue, getTodayDateKey } from "@/lib/dashboard-scope";
+import {
+  CANONICAL_DEPARTMENT_NAMES,
+  findDepartmentGroupByName,
+  normalizeOrganizationUnitName,
+} from "@/lib/department-groups";
 import type { RoleGroupFlags } from "@/lib/roles";
 
 type OdooRelation = [number, string] | false;
@@ -86,11 +91,6 @@ type OdooEmployeeRecord = {
   mobile_phone?: string | false;
   work_email?: string | false;
   user_id?: OdooRelation;
-};
-
-type OdooDepartmentRecord = {
-  id: number;
-  name: string;
 };
 
 type DepartmentCard = {
@@ -363,28 +363,23 @@ function buildOdooConnectionCandidates(connection: OdooConnection) {
   }));
 }
 
-const DEPARTMENT_ORDER = [
-  "Авто бааз",
-  "Хог тээвэрлэлт",
-  "Ногоон байгууламж",
-  "Зам талбайн цэвэрлэгээ",
-  "Тохижилт үйлчилгээ",
-] as const;
+const DEPARTMENT_ORDER = CANONICAL_DEPARTMENT_NAMES;
 
-const DEPARTMENT_LABELS: Record<(typeof DEPARTMENT_ORDER)[number], string> = {
-  "Авто бааз": "Техник, тээврийн бэлэн байдал",
-  "Хог тээвэрлэлт": "Ачилт, маршрут, цуглуулалт",
-  "Ногоон байгууламж": "Мод, зүлэг, хэлбэржүүлэлт",
-  "Зам талбайн цэвэрлэгээ": "Зам, талбай, явган зам",
-  "Тохижилт үйлчилгээ": "Нийтийн талбай, засвар, жижиг ажил",
+const DEPARTMENT_LABELS: Record<string, string> = {
+  "Санхүүгийн алба": "Санхүү, төлөвлөлт, тайлагнал",
+  "Захиргааны алба": "Захиргаа, бичиг хэрэг, удирдлага",
+  "Авто бааз, хог тээвэрлэлтийн хэлтэс": "Техник, маршрут, хог тээвэрлэлт",
+  "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс":
+    "Ногоон байгууламж, зам талбайн цэвэрлэгээ",
+  "Тохижилтын хэлтэс": "Нийтийн талбай, засвар, тохижилт",
 };
 
-const DEPARTMENT_ACCENTS: Record<(typeof DEPARTMENT_ORDER)[number], string> = {
-  "Авто бааз": "var(--tone-amber)",
-  "Хог тээвэрлэлт": "var(--tone-red)",
-  "Ногоон байгууламж": "var(--tone-teal)",
-  "Зам талбайн цэвэрлэгээ": "var(--tone-blue)",
-  "Тохижилт үйлчилгээ": "var(--tone-slate)",
+const DEPARTMENT_ACCENTS: Record<string, string> = {
+  "Санхүүгийн алба": "var(--tone-blue)",
+  "Захиргааны алба": "var(--tone-slate)",
+  "Авто бааз, хог тээвэрлэлтийн хэлтэс": "var(--tone-amber)",
+  "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс": "var(--tone-teal)",
+  "Тохижилтын хэлтэс": "var(--tone-slate)",
 };
 
 const OPERATION_TYPE_LABELS: Record<string, string> = {
@@ -793,15 +788,20 @@ function buildQuantityMetricSummary(tasks: OdooTaskRecord[]) {
 }
 
 function inferDepartmentUnitFromText(text: string) {
+  const canonicalName = normalizeOrganizationUnitName(text);
+  if (canonicalName) {
+    return canonicalName;
+  }
+
   const haystack = text.toLowerCase();
   if (haystack.includes("мод") || haystack.includes("ногоон") || haystack.includes("зүлэг")) {
-    return "Ногоон байгууламж";
+    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
   }
   if (haystack.includes("хог") || haystack.includes("маршрут") || haystack.includes("ачилт")) {
-    return "Хог тээвэрлэлт";
+    return "Авто бааз, хог тээвэрлэлтийн хэлтэс";
   }
   if (haystack.includes("авто") || haystack.includes("машин") || haystack.includes("техник")) {
-    return "Авто бааз";
+    return "Авто бааз, хог тээвэрлэлтийн хэлтэс";
   }
   if (
     haystack.includes("зам") ||
@@ -809,23 +809,23 @@ function inferDepartmentUnitFromText(text: string) {
     haystack.includes("цэвэрлэгээ") ||
     haystack.includes("гудамж")
   ) {
-    return "Зам талбайн цэвэрлэгээ";
+    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
   }
   if (haystack.includes("тохижилт") || haystack.includes("засвар")) {
-    return "Тохижилт үйлчилгээ";
+    return "Тохижилтын хэлтэс";
   }
   return UNKNOWN_DEPARTMENT;
 }
 
 function departmentUnitFromOperationType(operationType?: string | false) {
   if (operationType === "garbage") {
-    return "Хог тээвэрлэлт";
+    return "Авто бааз, хог тээвэрлэлтийн хэлтэс";
   }
   if (operationType === "street_cleaning") {
-    return "Зам талбайн цэвэрлэгээ";
+    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
   }
   if (operationType === "green_maintenance") {
-    return "Ногоон байгууламж";
+    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
   }
   return null;
 }
@@ -842,46 +842,19 @@ function normalizeDepartmentUnitName(
   const inferredFromText = inferDepartmentUnitFromText(
     `${normalizedDepartment} ${options.labelText ?? ""}`,
   );
+  const knownInferredFromText =
+    inferredFromText !== UNKNOWN_DEPARTMENT ? inferredFromText : null;
 
   if (!normalizedDepartment) {
-    return inferredFromOperation || inferredFromText;
+    return inferredFromOperation || knownInferredFromText || UNKNOWN_DEPARTMENT;
   }
 
-  if (
-    normalizedDepartment.includes("Авто бааз") &&
-    normalizedDepartment.includes("хог тээвэрлэлтийн")
-  ) {
-    return inferredFromOperation || inferredFromText || "Авто бааз";
+  const canonicalDepartment = normalizeOrganizationUnitName(normalizedDepartment);
+  if (canonicalDepartment) {
+    return canonicalDepartment;
   }
 
-  if (
-    normalizedDepartment.includes("Ногоон байгууламж") &&
-    normalizedDepartment.includes("цэвэрлэгээ")
-  ) {
-    return inferredFromOperation || inferredFromText || "Ногоон байгууламж";
-  }
-
-  if (normalizedDepartment.includes("Тохижилт")) {
-    return "Тохижилт үйлчилгээ";
-  }
-
-  if (normalizedDepartment.includes("Авто бааз")) {
-    return "Авто бааз";
-  }
-
-  if (normalizedDepartment.includes("Хог тээвэрлэлт")) {
-    return "Хог тээвэрлэлт";
-  }
-
-  if (normalizedDepartment.includes("Ногоон байгууламж")) {
-    return "Ногоон байгууламж";
-  }
-
-  if (normalizedDepartment.includes("Зам талбай")) {
-    return "Зам талбайн цэвэрлэгээ";
-  }
-
-  return inferredFromOperation || inferredFromText || normalizedDepartment;
+  return inferredFromOperation || knownInferredFromText || normalizedDepartment;
 }
 
 function priorityLabel(priority: string) {
@@ -990,7 +963,20 @@ function resolveDepartmentAccent(name: string) {
 }
 
 function resolveDepartmentIcon(name: string) {
+  const departmentGroup = findDepartmentGroupByName(name);
+  if (departmentGroup) {
+    return departmentGroup.icon;
+  }
+
   const normalized = name.trim().toLowerCase();
+
+  if (normalized.includes("санхүү")) {
+    return "₮";
+  }
+
+  if (normalized.includes("захиргаа") || normalized.includes("удирдлага")) {
+    return "🏢";
+  }
 
   if (normalized.includes("авто") || normalized.includes("машин") || normalized.includes("техник")) {
     return "🚚";
@@ -1343,7 +1329,9 @@ export async function loadHrEmployeeDirectory(
     .map((employee) => ({
       id: employee.id,
       name: employee.name,
-      departmentName: relationName(employee.department_id ?? false, UNKNOWN_DEPARTMENT),
+      departmentName: normalizeDepartmentUnitName(
+        relationName(employee.department_id ?? false, UNKNOWN_DEPARTMENT),
+      ),
       jobTitle:
         relationName(employee.job_id ?? false, "") ||
         employee.job_title ||
@@ -1499,7 +1487,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
   }
   const { uid, connection: resolvedConnection } = auth;
 
-  const [projects, tasks, departmentsFromOdoo] = await Promise.all([
+  const [projects, tasks] = await Promise.all([
     searchReadAll<OdooProjectRecord>(
       uid,
       "project.project",
@@ -1520,17 +1508,6 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       },
       resolvedConnection,
     ),
-    searchReadAll<OdooDepartmentRecord>(
-      uid,
-      "hr.department",
-      [],
-      {
-        fields: ["name"],
-        order: "name asc",
-      },
-      resolvedConnection,
-      200,
-    ).catch(() => []),
   ]);
 
   const reports = await searchReadAllWithFieldFallback<OdooReportRecord>(
@@ -1575,31 +1552,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     ]),
   );
 
-  const taskDepartmentNames = tasks.map((task) =>
-    resolveNormalizedTaskDepartmentName(task, projectDepartmentById),
-  );
-
-  const derivedDepartmentNames = Array.from(
-    new Set(
-      [...projectDepartmentById.values(), ...taskDepartmentNames]
-        .map((name) => name.trim())
-        .filter((name) => Boolean(name) && name !== UNKNOWN_DEPARTMENT),
-    ),
-  );
-
-  const orderedDepartmentNames = Array.from(
-    new Set([
-      ...departmentsFromOdoo
-        .map((department) => department.name.trim())
-        .filter(Boolean),
-      ...DEPARTMENT_ORDER.filter((name) => derivedDepartmentNames.includes(name)),
-      ...derivedDepartmentNames
-        .filter(
-          (name) => !DEPARTMENT_ORDER.includes(name as (typeof DEPARTMENT_ORDER)[number]),
-        )
-        .sort((left, right) => left.localeCompare(right, "mn")),
-    ]),
-  );
+  const orderedDepartmentNames = Array.from(new Set(DEPARTMENT_ORDER));
 
   const departmentSourceNames =
     orderedDepartmentNames.length > 0
@@ -1917,7 +1870,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       {
         label: "Хяналтын дараалал",
         value: String(reviewTasks.length),
-        note: "Ерөнхий менежер баталгаажуулалт хүлээж байна",
+        note: "Үйл ажиллагаа хариуцсан менежер баталгаажуулалт хүлээж байна",
         tone: "amber",
       },
       {
@@ -1992,7 +1945,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         label: "Хяналтын дараалал",
         value: "4",
-        note: "Ерөнхий менежер шалгаж байна",
+        note: "Үйл ажиллагаа хариуцсан менежер шалгаж байна",
         tone: "amber",
       },
       {
@@ -2048,7 +2001,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         id: 1,
         name: "2026 Мод хэлбэржүүлэлтийн хуваарь",
         manager: "BATAA",
-        departmentName: "Ногоон байгууламж",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
       stageLabel: "Хянагдаж буй ажил",
         stageBucket: "review",
         openTasks: 14,
@@ -2060,7 +2013,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         id: 2,
         name: "Хог тээвэрлэлтийн өглөөний маршрут",
         manager: "ankhaa",
-        departmentName: "Хог тээвэрлэлт",
+        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
         stageLabel: "Явагдаж буй ажил",
         stageBucket: "progress",
         openTasks: 5,
@@ -2072,7 +2025,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         id: 3,
         name: "Зам талбайн шөнийн цэвэрлэгээ",
         manager: "ankhaa",
-        departmentName: "Зам талбайн цэвэрлэгээ",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         stageLabel: "Хийгдэх ажил",
         stageBucket: "todo",
         openTasks: 6,
@@ -2085,7 +2038,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         id: 201,
         name: "5-р хороо - 32 модны тайлан",
-        departmentName: "Ногоон байгууламж",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
       stageLabel: "Хянагдаж буй ажил",
         stageBucket: "review",
@@ -2107,7 +2060,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         id: 202,
         name: "Хог тээврийн 2-р маршрут",
-        departmentName: "Хог тээвэрлэлт",
+        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
         projectName: "Хог тээвэрлэлтийн өглөөний маршрут",
         stageLabel: "Явагдаж буй ажил",
         stageBucket: "progress",
@@ -2129,7 +2082,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         id: 102,
         name: "7-р хороо - Төв замын захын цэвэрлэгээ",
-        departmentName: "Зам талбайн цэвэрлэгээ",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         projectName: "Зам талбайн шөнийн цэвэрлэгээ",
         stageLabel: "Хийгдэх ажил",
         stageBucket: "todo",
@@ -2151,7 +2104,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         id: 103,
         name: "Авто бааз - 3 машинд урсгал үйлчилгээ",
-        departmentName: "Авто бааз",
+        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
         projectName: "Техникийн өдөр тутмын бэлэн байдал",
         stageLabel: "Явагдаж буй ажил",
         stageBucket: "progress",
@@ -2174,7 +2127,7 @@ function fallbackSnapshot(): DashboardSnapshot {
     liveTasks: [
       {
         id: 101,
-        departmentName: "Ногоон байгууламж",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         name: "1-р хороо - 20-р байрны ар тал",
         projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
         stageLabel: "Явагдаж буй ажил",
@@ -2192,7 +2145,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       },
       {
         id: 102,
-        departmentName: "Зам талбайн цэвэрлэгээ",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         name: "7-р хороо - Төв замын захын цэвэрлэгээ",
         projectName: "Зам талбайн шөнийн цэвэрлэгээ",
         stageLabel: "Хийгдэх ажил",
@@ -2210,7 +2163,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       },
       {
         id: 103,
-        departmentName: "Авто бааз",
+        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
         name: "Авто бааз - 3 машинд урсгал үйлчилгээ",
         projectName: "Техникийн өдөр тутмын бэлэн байдал",
         stageLabel: "Явагдаж буй ажил",
@@ -2231,7 +2184,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         {
           id: 201,
           name: "5-р хороо - 32 модны тайлан",
-          departmentName: "Ногоон байгууламж",
+          departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
       stageLabel: "Хянагдаж буй ажил",
           deadline: "Өнөөдөр 16:30",
           projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
@@ -2242,7 +2195,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         {
           id: 202,
           name: "Хог тээврийн 2-р маршрут",
-          departmentName: "Хог тээвэрлэлт",
+          departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
       stageLabel: "Хянагдаж буй ажил",
           deadline: "Өнөөдөр 19:00",
           projectName: "Хог тээвэрлэлтийн өглөөний маршрут",
@@ -2255,7 +2208,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         id: 401,
         name: "Хогийн 2-р маршрут",
-        departmentName: "Хог тээвэрлэлт",
+        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
         projectName: "Өглөөний хог тээврийн маршрут",
         routeName: "2-р чиглэл",
         operationTypeLabel: "Хог цуглуулалт",
@@ -2270,7 +2223,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         id: 402,
         name: "Төв замын цэвэрлэгээ",
-        departmentName: "Зам талбайн цэвэрлэгээ",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         projectName: "Шөнийн гудамж цэвэрлэгээ",
         routeName: "7-р хорооны чиглэл",
         operationTypeLabel: "Гудамж цэвэрлэгээ",
@@ -2286,7 +2239,7 @@ function fallbackSnapshot(): DashboardSnapshot {
     reports: [
       {
         id: 301,
-        departmentName: "Ногоон байгууламж",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         reporter: "suldee",
         taskName: "1-р хороо - 20-р байрны ар тал",
         projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
@@ -2302,7 +2255,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       },
       {
         id: 302,
-        departmentName: "Хог тээвэрлэлт",
+        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
         reporter: "sarangerel",
         taskName: "Хог тээврийн 2-р маршрут",
         projectName: "Хог тээвэрлэлтийн өглөөний маршрут",

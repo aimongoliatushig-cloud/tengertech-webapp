@@ -403,7 +403,6 @@ export function AppMenu({
   const profileHref = "/profile";
   const canOpenCreateHub = canCreateProject || canCreateTasks || canWriteReports;
   const canViewHrDirectory =
-    roleLabel === "Ерөнхий менежер" ||
     roleLabel === "Үйл ажиллагаа хариуцсан менежер" ||
     roleLabel === "Захирал" ||
     roleLabel === "Системийн админ";

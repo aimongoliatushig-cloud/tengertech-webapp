@@ -1,5 +1,6 @@
 import "server-only";
 
+import { CANONICAL_DEPARTMENT_NAMES, normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { createOdooConnection, executeOdooKw, type OdooConnection } from "@/lib/odoo";
 
 type Relation = [number, string] | false;
@@ -153,6 +154,61 @@ export type GarbageRouteOption = {
   pointCount: number;
   subdistrictNames: string;
 };
+
+const GARBAGE_ROUTE_FIELD_VARIANTS = [
+  [
+    "name",
+    "code",
+    "project_id",
+    "shift_type",
+    "collection_point_count",
+    "subdistrict_names",
+  ],
+  ["name", "code", "project_id", "shift_type"],
+  ["name", "code", "project_id"],
+  ["name", "code"],
+  ["name"],
+];
+
+async function readFirstAvailable<T>(
+  attempts: Array<{
+    model: string;
+    domain: unknown[];
+    fields: string[];
+    order?: string;
+    limit?: number;
+  }>,
+  connectionOverrides: Partial<OdooConnection>,
+) {
+  let lastError: unknown = null;
+
+  for (const attempt of attempts) {
+    try {
+      const records = await executeOdooKw<T[]>(
+        attempt.model,
+        "search_read",
+        [attempt.domain],
+        {
+          fields: attempt.fields,
+          order: attempt.order,
+          limit: attempt.limit ?? 80,
+        },
+        connectionOverrides,
+      );
+
+      if (records.length) {
+        return records;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError) {
+    console.warn("Odoo option list could not be loaded:", lastError);
+  }
+  return [];
+}
 
 export type GarbageProjectCreateResult = {
   project_id: number;
@@ -452,17 +508,30 @@ export async function loadDepartmentOptions(
       connectionOverrides,
     );
 
-    return departments.map((department) => {
+    const optionByCanonicalName = new Map<string, DepartmentOption>();
+
+    for (const department of departments) {
       const parentName = Array.isArray(department.parent_id)
         ? department.parent_id[1]
         : "";
+      const canonicalName = normalizeOrganizationUnitName(
+        `${parentName} ${department.name}`,
+      );
 
-      return {
+      if (!canonicalName || optionByCanonicalName.has(canonicalName)) {
+        continue;
+      }
+
+      optionByCanonicalName.set(canonicalName, {
         id: department.id,
-        name: department.name,
-        label: parentName ? `${parentName} / ${department.name}` : department.name,
-      };
-    });
+        name: canonicalName,
+        label: canonicalName,
+      });
+    }
+
+    return CANONICAL_DEPARTMENT_NAMES
+      .map((name) => optionByCanonicalName.get(name))
+      .filter((option): option is DepartmentOption => Boolean(option));
   } catch {
     return [];
   }
@@ -533,96 +602,135 @@ export async function loadWorkTypeOptions(
 export async function loadGarbageVehicleOptions(
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<GarbageVehicleOption[]> {
-  try {
-    const crewTeams = await executeOdooKw<Array<{ vehicle_id: Relation }>>(
-      "mfo.crew.team",
-      "search_read",
-      [[["active", "=", true], ["operation_type", "=", "garbage"], ["vehicle_id", "!=", false]]],
+  const crewTeams = await readFirstAvailable<{ vehicle_id: Relation }>(
+    [
       {
+        model: "mfo.crew.team",
+        domain: [["active", "=", true], ["operation_type", "=", "garbage"], ["vehicle_id", "!=", false]],
         fields: ["vehicle_id"],
         order: "name asc",
-        limit: 80,
       },
-      connectionOverrides,
-    );
-
-    const vehicleIds = Array.from(
-      new Set(
-        crewTeams
-          .map((team) => relationId(team.vehicle_id))
-          .filter((value): value is number => Boolean(value)),
-      ),
-    );
-
-    if (!vehicleIds.length) {
-      return [];
-    }
-
-    const vehicles = await executeOdooKw<GarbageVehicleRecord[]>(
-      "fleet.vehicle",
-      "search_read",
-      [[["id", "in", vehicleIds], ["mfo_active_for_ops", "=", true]]],
       {
-        fields: ["name", "license_plate"],
-        order: "license_plate asc, name asc",
-        limit: vehicleIds.length,
+        model: "mfo.crew.team",
+        domain: [["operation_type", "=", "garbage"], ["vehicle_id", "!=", false]],
+        fields: ["vehicle_id"],
+        order: "name asc",
       },
-      connectionOverrides,
-    );
+      {
+        model: "mfo.crew.team",
+        domain: [["vehicle_id", "!=", false]],
+        fields: ["vehicle_id"],
+        order: "name asc",
+      },
+    ],
+    connectionOverrides,
+  );
 
-    return vehicles.map((vehicle) => {
-      const plate = vehicle.license_plate || vehicle.name || `Техник #${vehicle.id}`;
-      return {
-        id: vehicle.id,
-        label: plate,
-        plate,
-      };
-    });
-  } catch {
-    return [];
-  }
+  const vehicleIds = Array.from(
+    new Set(
+      crewTeams
+        .map((team) => relationId(team.vehicle_id))
+        .filter((value): value is number => Boolean(value)),
+    ),
+  );
+
+  const vehicles = vehicleIds.length
+    ? await readFirstAvailable<GarbageVehicleRecord>(
+        [
+          {
+            model: "fleet.vehicle",
+            domain: [["id", "in", vehicleIds], ["mfo_active_for_ops", "=", true]],
+            fields: ["name", "license_plate"],
+            order: "license_plate asc, name asc",
+            limit: vehicleIds.length,
+          },
+          {
+            model: "fleet.vehicle",
+            domain: [["id", "in", vehicleIds]],
+            fields: ["name", "license_plate"],
+            order: "license_plate asc, name asc",
+            limit: vehicleIds.length,
+          },
+        ],
+        connectionOverrides,
+      )
+    : [];
+
+  const fallbackVehicles = vehicles.length
+    ? vehicles
+    : await readFirstAvailable<GarbageVehicleRecord>(
+        [
+          {
+            model: "fleet.vehicle",
+            domain: [["mfo_active_for_ops", "=", true]],
+            fields: ["name", "license_plate"],
+            order: "license_plate asc, name asc",
+          },
+          {
+            model: "fleet.vehicle",
+            domain: [["active", "=", true]],
+            fields: ["name", "license_plate"],
+            order: "license_plate asc, name asc",
+          },
+          {
+            model: "fleet.vehicle",
+            domain: [],
+            fields: ["name", "license_plate"],
+            order: "license_plate asc, name asc",
+          },
+        ],
+        connectionOverrides,
+      );
+
+  return fallbackVehicles.map((vehicle) => {
+    const plate = vehicle.license_plate || vehicle.name || `Техник #${vehicle.id}`;
+    return {
+      id: vehicle.id,
+      label: plate,
+      plate,
+    };
+  });
+}
+
+function buildRouteAttempts(domainVariants: unknown[][]) {
+  return domainVariants.flatMap((domain) =>
+    GARBAGE_ROUTE_FIELD_VARIANTS.map((fields) => ({
+      model: "mfo.route",
+      domain,
+      fields,
+      order: fields.includes("code") ? "code asc, name asc" : "name asc",
+      limit: 200,
+    })),
+  );
 }
 
 export async function loadGarbageRouteOptions(
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<GarbageRouteOption[]> {
-  try {
-    const routes = await executeOdooKw<GarbageRouteRecord[]>(
-      "mfo.route",
-      "search_read",
-      [[["active", "=", true], ["operation_type", "=", "garbage"]]],
-      {
-        fields: [
-          "name",
-          "code",
-          "project_id",
-          "shift_type",
-          "collection_point_count",
-          "subdistrict_names",
-        ],
-        order: "code asc, name asc",
-        limit: 200,
-      },
-      connectionOverrides,
-    );
+  const routes = await readFirstAvailable<Partial<GarbageRouteRecord> & { id: number; name: string }>(
+    buildRouteAttempts([
+      [["active", "=", true], ["operation_type", "=", "garbage"]],
+      [["operation_type", "=", "garbage"]],
+      [["active", "=", true]],
+      [],
+    ]),
+    connectionOverrides,
+  );
 
-    return routes.map((route) => {
-      const code = route.code || "";
-      const routeLabel = code ? `${code} - ${route.name}` : route.name;
-      return {
-        id: route.id,
-        label: routeLabel,
-        name: route.name,
-        code,
-        projectId: relationId(route.project_id),
-        shiftType: route.shift_type || "morning",
-        pointCount: route.collection_point_count || 0,
-        subdistrictNames: route.subdistrict_names || "",
-      };
-    });
-  } catch {
-    return [];
-  }
+  return routes.map((route) => {
+    const code = route.code || "";
+    const routeLabel = code ? `${code} - ${route.name}` : route.name;
+    return {
+      id: route.id,
+      label: routeLabel,
+      name: route.name,
+      code,
+      projectId: relationId(route.project_id ?? false),
+      shiftType: route.shift_type || "morning",
+      pointCount: route.collection_point_count || 0,
+      subdistrictNames: route.subdistrict_names || "",
+    };
+  });
 }
 
 export async function loadProjectDetail(

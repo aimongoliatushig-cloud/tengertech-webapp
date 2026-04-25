@@ -459,7 +459,7 @@ function buildScope(snapshot: DashboardSnapshot, session: AppSession, variant: D
       : snapshot.teamLeaders.filter((leader) => leaderNames.has(leader.name));
 
   return {
-    scopeLabel: primaryDepartmentName ?? "Бүх алба нэгж",
+    scopeLabel: primaryDepartmentName ?? "Бүх алба хэлтэс",
     tasks,
     reviews,
     qualityAlerts,

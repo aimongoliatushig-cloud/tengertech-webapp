@@ -33,6 +33,11 @@ export type AppSession = {
   issuedAt: number;
 };
 
+type SessionReadResult = {
+  session: AppSession | null;
+  hasInvalidToken: boolean;
+};
+
 function getSessionKey() {
   const secret =
     process.env.SESSION_SECRET ?? "hot-tohjilt-local-session-secret-change-me";
@@ -65,18 +70,22 @@ function unsealSession(token: string) {
 }
 
 export async function getSession() {
+  const { session } = await readSession();
+  return session;
+}
+
+async function readSession(): Promise<SessionReadResult> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (!token) {
-    return null;
+    return { session: null, hasInvalidToken: false };
   }
 
   try {
-    return unsealSession(token);
+    return { session: unsealSession(token), hasInvalidToken: false };
   } catch {
-    cookieStore.delete(SESSION_COOKIE_NAME);
-    return null;
+    return { session: null, hasInvalidToken: true };
   }
 }
 
@@ -120,8 +129,11 @@ export function buildDestroyedSessionCookieHeader() {
 }
 
 export async function requireSession() {
-  const session = await getSession();
+  const { session, hasInvalidToken } = await readSession();
   if (!session) {
+    if (hasInvalidToken) {
+      redirect("/auth/logout");
+    }
     redirect("/login");
   }
   return session;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 
 import { SearchableSelect, type SearchableSelectOption } from "@/app/_components/searchable-select";
 import styles from "@/app/workspace.module.css";
@@ -75,6 +75,10 @@ function normalizeDepartmentValue(value?: string | null) {
   return (value ?? "").trim().toLowerCase();
 }
 
+function normalizeLocationName(value: string) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
 function departmentContains(
   department: Pick<DepartmentOption, "name" | "label"> | null | undefined,
   keyword: string,
@@ -122,6 +126,8 @@ export function NewWorkForm({
   });
   const [vehicleId, setVehicleId] = useState("");
   const [routeId, setRouteId] = useState("");
+  const [extraLocationDraft, setExtraLocationDraft] = useState("");
+  const [extraLocations, setExtraLocations] = useState<string[]>([]);
   const [shiftDate, setShiftDate] = useState(getTodayValue());
   const [trackQuantity, setTrackQuantity] = useState(false);
   const [operationType, setOperationType] = useState("");
@@ -172,9 +178,12 @@ export function NewWorkForm({
     }
 
     const vehicleLabel = selectedVehicle?.plate || "Машины дугаар";
-    const routeLabel = selectedRoute?.code || selectedRoute?.name || "Маршрут";
-    return `${vehicleLabel} - ${routeLabel} / ${shiftDate}`;
-  }, [isGarbageTransport, selectedRoute, selectedVehicle, shiftDate]);
+    const primaryLocationLabel = selectedRoute?.code || selectedRoute?.name || "Байршил";
+    const locationLabel = extraLocations.length
+      ? `${primaryLocationLabel} + ${extraLocations.length} байршил`
+      : primaryLocationLabel;
+    return `${vehicleLabel} - ${locationLabel} / ${shiftDate}`;
+  }, [extraLocations.length, isGarbageTransport, selectedRoute, selectedVehicle, shiftDate]);
 
   const unitHelperText = selectedWorkType
     ? `Энэ ажилд ашиглах боломжтой нэгжүүд: ${selectedWorkType.allowedUnitSummary}`
@@ -192,6 +201,30 @@ export function NewWorkForm({
     }
 
     setOperationUnit("standard");
+  };
+
+  const handleAddExtraLocation = () => {
+    const normalizedLocation = normalizeLocationName(extraLocationDraft);
+    if (!normalizedLocation) {
+      return;
+    }
+
+    setExtraLocations((currentLocations) => {
+      const alreadyAdded = currentLocations.some(
+        (location) => location.toLowerCase() === normalizedLocation.toLowerCase(),
+      );
+      return alreadyAdded ? currentLocations : [...currentLocations, normalizedLocation];
+    });
+    setExtraLocationDraft("");
+  };
+
+  const handleExtraLocationKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    handleAddExtraLocation();
   };
 
   return (
@@ -247,7 +280,7 @@ export function NewWorkForm({
                 onClick={() => setOperationUnit("garbage_transport")}
               >
                 <span>Хог тээвэрлэлт</span>
-                <small>Машин, маршрут, цэгийн ажилбар</small>
+                <small>Машин, байршил, цэгийн ажилбар</small>
               </button>
             </div>
           </div>
@@ -278,7 +311,7 @@ export function NewWorkForm({
             </div>
 
             <div className={styles.field}>
-              <label htmlFor="garbage_route_id">Маршрут</label>
+              <label htmlFor="garbage_route_id">Байршил</label>
               <select
                 id="garbage_route_id"
                 name="garbage_route_id"
@@ -286,7 +319,7 @@ export function NewWorkForm({
                 onChange={(event) => setRouteId(event.target.value)}
                 required={isGarbageTransport}
               >
-                <option value="">Маршрут сонгоно уу</option>
+                <option value="">Байршил сонгоно уу</option>
                 {garbageRouteOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
@@ -308,6 +341,56 @@ export function NewWorkForm({
             </div>
           </div>
 
+          <div className={styles.locationComposer}>
+            <div className={styles.field}>
+              <label htmlFor="additional_location_draft">Нэмэлт байршил</label>
+              <div className={styles.inlineFieldRow}>
+                <input
+                  id="additional_location_draft"
+                  name="additional_location_draft"
+                  type="text"
+                  value={extraLocationDraft}
+                  onChange={(event) => setExtraLocationDraft(event.target.value)}
+                  onKeyDown={handleExtraLocationKeyDown}
+                  placeholder="Жишээ: 12-р байрны урд тал"
+                />
+                <button
+                  type="button"
+                  className={`${styles.secondaryButton} ${styles.locationAddButton}`}
+                  onClick={handleAddExtraLocation}
+                  disabled={!extraLocationDraft.trim()}
+                >
+                  Нэмэх
+                </button>
+              </div>
+              <small className={styles.fieldHint}>
+                Сонгосон байршлаас гадна нэмэлтээр оруулах цэг, байрлалаа бичээд нэмнэ.
+              </small>
+            </div>
+
+            {extraLocations.length ? (
+              <div className={styles.locationList} aria-label="Нэмэлт байршлууд">
+                {extraLocations.map((location) => (
+                  <div className={styles.locationChip} key={location}>
+                    <span>{location}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExtraLocations((currentLocations) =>
+                          currentLocations.filter((item) => item !== location),
+                        )
+                      }
+                      aria-label={`${location} байршлыг хасах`}
+                    >
+                      Хасах
+                    </button>
+                    <input type="hidden" name="additional_locations" value={location} />
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
           <input type="hidden" name="name" value={generatedName} />
 
           <div className={styles.previewCard}>
@@ -315,7 +398,7 @@ export function NewWorkForm({
               <span className={styles.eyebrow}>Хог тээвэрлэлтийн ажил</span>
               <strong>
                 {generatedName ||
-                  "Машин, маршрут сонгоход нэр автоматаар үүснэ"}
+                  "Машин, байршил сонгоход нэр автоматаар үүснэ"}
               </strong>
             </div>
 
@@ -325,8 +408,12 @@ export function NewWorkForm({
                 <strong>{selectedVehicle?.plate || "Сонгоогүй"}</strong>
               </div>
               <div className={styles.previewMeta}>
-                <span>Маршрут</span>
+                <span>Байршил</span>
                 <strong>{selectedRoute?.label || "Сонгоогүй"}</strong>
+              </div>
+              <div className={styles.previewMeta}>
+                <span>Нэмэлт байршил</span>
+                <strong>{extraLocations.length ? `${extraLocations.length} нэмсэн` : "Нэмээгүй"}</strong>
               </div>
               <div className={styles.previewMeta}>
                 <span>Цэгийн тоо</span>
@@ -339,8 +426,9 @@ export function NewWorkForm({
             </div>
 
             <p className={styles.helperNote}>
-              Сонгосон машин, маршрут, огноогоор нэг ажил үүснэ. Тухайн маршрутын хог ачих цэг
-              бүр ажил дотор тусдаа ажилбар болж автоматаар үүснэ.
+              Сонгосон машин, байршил, огноогоор нэг ажил үүснэ. Тухайн байршлын хог ачих цэг
+              бүр ажил дотор тусдаа ажилбар болж автоматаар үүснэ. Нэмэлт байршлууд мөн тусдаа
+              ажилбар болж нэмэгдэнэ.
             </p>
             <p className={styles.helperNote}>
               Огноо: <strong>{formatDateLabel(shiftDate)}</strong>

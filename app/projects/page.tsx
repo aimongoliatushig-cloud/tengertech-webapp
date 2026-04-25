@@ -198,7 +198,8 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
           ? (availableUnits[0] ?? "")
           : "";
   const isAutoBaseView =
-    !masterMode && (requestedDepartment === "Авто бааз" || requestedUnit === "Авто бааз");
+    !masterMode &&
+    selectedGroup?.name === "Авто бааз, хог тээвэрлэлтийн хэлтэс";
 
   const scopedProjects = (masterMode
     ? filterByDepartment(snapshot.projects, masterDepartmentName)
