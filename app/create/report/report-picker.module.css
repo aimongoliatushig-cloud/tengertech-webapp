@@ -1,4 +1,4 @@
-.heroCard {
+﻿.heroCard {
   display: grid;
   gap: 18px;
   margin-bottom: 18px;
@@ -24,7 +24,7 @@
   gap: 6px;
   padding: 18px;
   border: 1px solid rgba(74, 154, 93, 0.12);
-  border-radius: 22px;
+  border-radius: var(--ds-radius-card);
   background: rgba(255, 255, 255, 0.84);
 }
 
@@ -35,10 +35,10 @@
 
 .heroMetaCard strong {
   color: var(--ink-900);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: clamp(1.4rem, 2.4vw, 1.9rem);
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .heroMetaCard small {
@@ -62,10 +62,10 @@
 
 .pickerHeader h2 {
   margin: 6px 0 0;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: clamp(1.5rem, 2.8vw, 2.1rem);
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .pickerHeader p {
@@ -85,9 +85,9 @@
   gap: 16px;
   padding: 20px;
   border: 1px solid var(--line-soft);
-  border-radius: 26px;
+  border-radius: var(--ds-radius-card);
   background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 16px 34px rgba(18, 28, 39, 0.06);
+  box-shadow: var(--ds-shadow-panel);
   transition:
     transform 180ms ease,
     box-shadow 180ms ease,
@@ -96,7 +96,7 @@
 
 .pickerCard:hover {
   transform: translateY(-2px);
-  box-shadow: 0 22px 42px rgba(31, 95, 49, 0.1);
+  box-shadow: var(--ds-shadow-panel);
 }
 
 .pickerCardTop,
@@ -115,10 +115,10 @@
 
 .pickerIdentity strong {
   color: var(--ink-900);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: clamp(1.2rem, 2vw, 1.55rem);
   line-height: 1.05;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .pickerIdentity span,
@@ -142,7 +142,7 @@
   display: grid;
   gap: 6px;
   padding: 14px;
-  border-radius: 18px;
+  border-radius: var(--ds-radius-card);
   background: rgba(74, 154, 93, 0.06);
   border: 1px solid rgba(74, 154, 93, 0.1);
 }
@@ -174,14 +174,14 @@
   gap: 10px;
   padding: 20px;
   border: 1px dashed rgba(74, 154, 93, 0.2);
-  border-radius: 24px;
+  border-radius: var(--ds-radius-card);
   background: rgba(255, 255, 255, 0.82);
 }
 
 .emptyState h3 {
   margin: 0;
   color: var(--ink-900);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
 }
 
 .emptyState p {
@@ -197,10 +197,411 @@
 
   .pickerCard {
     padding: 18px;
-    border-radius: 22px;
+    border-radius: var(--ds-radius-card);
   }
 
   .pickerMetaGrid {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Unified dashboard design-system migration */
+.shell,
+.workspaceShell,
+.chatShell,
+.errorShell,
+.page,
+.reportPage,
+.reportPreviewShell {
+  background: var(--ds-page-bg);
+  color: var(--ink-900);
+}
+
+.workspaceShell {
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+.workspaceSidebar,
+.menuColumn,
+.sideRail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  min-height: 100vh;
+  background: var(--ds-rail-bg);
+  border-right: 1px solid var(--ds-border);
+}
+
+.workspaceMain,
+.pageContent,
+.mainColumn {
+  min-width: 0;
+  padding: 0 20px 64px;
+}
+
+.infoPanel {
+  background: var(--ds-rail-bg);
+  color: var(--ink-900);
+  border-right: 1px solid var(--ds-border);
+}
+
+.formPanel {
+  background: var(--ds-page-bg);
+}
+
+.heroCard,
+.pageHeader,
+.sectionCard,
+.panel,
+.formCard,
+.form,
+.footerHint,
+.signalCard,
+.featureCard,
+.overviewPanel,
+.metricCard,
+.statCard,
+.summaryCard,
+.summaryBox,
+.alertCard,
+.attentionPanel,
+.dashboardCard,
+.dashboardPanel,
+.workspaceSection,
+.reportCard,
+.taskItem,
+.taskCard,
+.taskSection,
+.detailCard,
+.infoCard,
+.noticeCard,
+.noticeBanner,
+.errorCard,
+.emptyState,
+.pickerCard,
+.pickerSection,
+.conversationPanel,
+.conversationList,
+.messagePanel,
+.composer,
+.vehicleCard,
+.inventoryCard,
+.routeCard,
+.employeeCard,
+.employeeModal,
+.modalDialog,
+.modalCard,
+.confirmationSheet,
+.overviewBoard,
+.requestCard,
+.flowCard,
+.flowBarCard,
+.workflowSummaryCard,
+.workflowMetaCard,
+.workflowItem,
+.historyCard,
+.documentCard,
+.filterPanel,
+.calendarPanel,
+.calendarCard,
+.weightCard,
+.weightSummaryCard,
+.weightDayCard,
+.weightMetaCard,
+.mapHintCard,
+.stopCard,
+.mobilePanel,
+.mobileDetailCard,
+.mobileUtilityCard,
+.boardCard,
+.boardInfoCard,
+.rolePanel,
+.roleMetaCard,
+.capabilityCard,
+.logoutCard,
+.tableShell {
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-panel-bg);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.heroCard::after,
+.heroCard::before,
+.infoPanel::after,
+.infoPanel::before,
+.canvasGlow {
+  content: none;
+  display: none;
+}
+
+.kicker,
+.eyebrow,
+.formBadge,
+.contextTag,
+.sectionEyebrow,
+.sectionKicker,
+.overviewEyebrow,
+.pageKicker,
+.roleEyebrow,
+.masterInsightsKicker,
+.boardEyebrow,
+.mobileDetailEyebrow {
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-800);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.heroCard h1,
+.pageHeader h1,
+.formHeader h2,
+.titleBlock h1,
+.heroCopy h1,
+.overviewCopy h2,
+.sectionHeader h2,
+.panelHeader h2,
+.pickerHeader h1,
+.modalTitle,
+.introTitle {
+  color: #1f2b25;
+  font-family: var(--font-body);
+  font-size: clamp(1.25rem, 2vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.12;
+}
+
+.heroCard p,
+.pageHeader p,
+.formHeader p,
+.heroCopy p,
+.overviewCopy p,
+.sectionNote,
+.helperText,
+.subtleText,
+.emptyNote,
+.noticeMessage {
+  color: var(--ink-700);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton,
+.submitButton,
+.fullButton,
+.actionButton,
+.actionPrimary,
+.actionSecondary,
+.actionGhost,
+.primaryAction,
+.secondaryAction,
+.primaryLink,
+.secondaryLink,
+.smallLink,
+.backLink,
+.inlineLink,
+.rowButton,
+.dateButton,
+.locationAddButton,
+.createTaskTrigger,
+.closeButton,
+.modalCloseButton,
+.modalActions button,
+.subnavLink,
+.filterChip,
+.taskFilterChip,
+.departmentTab,
+.departmentFilterButton,
+.routeChip,
+.modeChip,
+.pickerCta,
+.cardLinkLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: var(--ds-control-height);
+  padding: 0 12px;
+  border-radius: var(--ds-radius-control);
+  border: 1px solid var(--ds-border);
+  background: var(--ds-panel-strong-bg);
+  color: var(--ink-900);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: none;
+}
+
+.primaryButton,
+.submitButton,
+.actionPrimary,
+.primaryAction,
+.subnavLinkActive,
+.filterChipActive,
+.taskFilterChipActive,
+.departmentTabActive,
+.departmentFilterButtonActive,
+.routeChipActive,
+.modeChipActive {
+  border-color: rgba(31, 95, 49, 0.22);
+  background: rgba(76, 158, 92, 0.11);
+  color: #256b37;
+}
+
+.field input,
+.field select,
+.field textarea,
+.form input,
+.form select,
+.form textarea,
+.dateInput,
+.mobileBucketInput,
+.searchableSelectButton,
+.searchableSelectSearch,
+.locationComposer input,
+.quoteForm input,
+.quoteForm textarea,
+.registrationForm input,
+.registrationForm select,
+.registrationForm textarea,
+.modalForm input,
+.modalForm select,
+.modalForm textarea {
+  width: 100%;
+  min-height: var(--ds-control-height);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-900);
+  box-shadow: none;
+}
+
+.tableShell,
+.taskTable,
+.tableList,
+.reportList,
+.vehicleList,
+.documentList,
+.historyList,
+.stopList,
+.workflowList {
+  overflow: hidden;
+}
+
+.tableHeader,
+.tableRow,
+.taskItemTop,
+.reportTop,
+.cardHeader,
+.laneHeader,
+.workflowColumnHeader,
+.sectionHeader,
+.panelHeader {
+  border-color: var(--ds-border);
+}
+
+.badge,
+.actionBadge,
+.countBadge,
+.statePill,
+.stagePill,
+.statusChip,
+.flagChip,
+.rolePill,
+.departmentBadge,
+.sidebarBadge,
+.panelCount {
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-800);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.metricIcon,
+.actionIcon,
+.departmentFilterIcon,
+.summaryShowcaseIcon,
+.conversationAvatar,
+.avatar,
+.employeePhoto,
+.employeePhotoLarge,
+.menuLinkIcon,
+.sidebarIcon {
+  border-radius: var(--ds-radius-icon);
+}
+
+@media (max-width: 1080px) {
+  .workspaceShell {
+    grid-template-columns: 1fr;
+  }
+
+  .workspaceSidebar,
+  .menuColumn,
+  .sideRail {
+    position: static;
+    min-height: 0;
+    border-right: 0;
+    background: transparent;
+  }
+
+  .workspaceMain,
+  .pageContent,
+  .mainColumn {
+    padding: 0 12px 96px;
+  }
+}
+
+@media (max-width: 720px) {
+  .heroCard,
+  .pageHeader,
+  .sectionCard,
+  .panel,
+  .formCard,
+  .form,
+  .overviewPanel,
+  .metricCard,
+  .reportCard,
+  .taskItem,
+  .detailCard,
+  .employeeCard,
+  .modalDialog,
+  .requestCard {
+    padding: 14px;
+  }
+
+  .heroCard,
+  .pageHeader,
+  .heroMeta,
+  .summaryGrid,
+  .metricsGrid,
+  .statsGrid,
+  .detailGrid,
+  .infoGrid,
+  .taskGrid,
+  .workflowColumns {
+    grid-template-columns: 1fr;
+  }
+}
+
+

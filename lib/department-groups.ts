@@ -23,7 +23,7 @@ export const DEPARTMENT_GROUPS: DepartmentGroupDefinition[] = [
   },
   {
     name: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
-    units: [],
+    units: ["Авто бааз", "Хог тээвэрлэлт"],
     aliases: [
       "Авто бааз",
       "Авто бааз, хог тээвэрлэлтийн хэлтэс",

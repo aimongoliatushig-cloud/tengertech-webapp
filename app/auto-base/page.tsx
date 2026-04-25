@@ -11,7 +11,19 @@ import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
 
-export default async function AutoBasePage() {
+type AutoBasePageProps = {
+  searchParams?: Promise<{
+    vehicle?: string | string[];
+    notice?: string | string[];
+    error?: string | string[];
+  }>;
+};
+
+function firstParam(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function AutoBasePage({ searchParams }: AutoBasePageProps) {
   const session = await requireSession();
   const allowedRoles = new Set(["system_admin", "director", "general_manager"]);
 
@@ -24,8 +36,13 @@ export default async function AutoBasePage() {
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const params = (await searchParams) ?? {};
+  const selectedVehicleId = Number(firstParam(params.vehicle) ?? "");
+  const notice = firstParam(params.notice) ?? "";
+  const error = firstParam(params.error) ?? "";
 
   let board = {
+    allVehicles: [],
     activeVehicles: [],
     repairVehicles: [],
     totalVehicles: 0,
@@ -91,7 +108,14 @@ export default async function AutoBasePage() {
                 </p>
               </div>
 
-              <AutoBaseBoard board={board} />
+              <AutoBaseBoard
+                board={board}
+                initialVehicleId={
+                  Number.isFinite(selectedVehicleId) && selectedVehicleId > 0 ? selectedVehicleId : null
+                }
+                notice={notice}
+                error={error}
+              />
             </section>
           </div>
         </div>

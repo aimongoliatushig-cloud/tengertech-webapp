@@ -1,4 +1,4 @@
-.shell {
+﻿.shell {
   min-height: 100vh;
   padding: 24px 24px 44px;
   background:
@@ -35,11 +35,11 @@
 .sourceNotice {
   width: 100%;
   border: 1px solid var(--line-soft);
-  border-radius: 32px;
+  border-radius: var(--ds-radius-card);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 252, 246, 0.92)),
     rgba(255, 255, 255, 0.94);
-  box-shadow: 0 20px 52px rgba(31, 95, 49, 0.08);
+  box-shadow: var(--ds-shadow-panel);
   backdrop-filter: blur(18px);
 }
 
@@ -80,7 +80,7 @@
   min-width: 188px;
   padding: 10px 14px;
   border: 1px solid rgba(31, 95, 49, 0.1);
-  border-radius: 24px;
+  border-radius: var(--ds-radius-card);
   background: rgba(255, 255, 255, 0.94);
 }
 
@@ -116,15 +116,15 @@
   font-family: var(--font-mono);
   font-size: 0.76rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .heroCopy h1,
 .sectionHeader h2,
 .actionListHeader h2 {
-  font-family: var(--font-display);
-  letter-spacing: -0.05em;
+  font-family: var(--font-body);
+  letter-spacing: 0;
 }
 
 .heroCopy h1 {
@@ -183,7 +183,7 @@
   display: grid;
   gap: 6px;
   padding: 14px 16px;
-  border-radius: 22px;
+  border-radius: var(--ds-radius-card);
   border: 1px solid rgba(31, 95, 49, 0.08);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), var(--tone-chip-bg));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
@@ -193,16 +193,16 @@
 .quickFilterLabel {
   font-size: 0.82rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .quickFilterValue {
   color: var(--ink-900);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 1.55rem;
   line-height: 0.94;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .userCard {
@@ -211,7 +211,7 @@
   min-width: 0;
   padding: 18px;
   border: 1px solid rgba(74, 154, 93, 0.12);
-  border-radius: 26px;
+  border-radius: var(--ds-radius-card);
   background:
     radial-gradient(circle at top right, rgba(166, 211, 157, 0.18), transparent 34%),
     linear-gradient(180deg, rgba(237, 247, 235, 0.98), rgba(247, 252, 246, 0.94));
@@ -233,7 +233,7 @@
 .sourceNotice strong {
   font-size: 0.76rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -252,7 +252,7 @@
   min-width: 82px;
   gap: 4px;
   padding: 10px 12px;
-  border-radius: 18px;
+  border-radius: var(--ds-radius-card);
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(31, 95, 49, 0.08);
   text-align: center;
@@ -262,16 +262,16 @@
   color: var(--ink-600);
   font-size: 0.74rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .userAlert strong {
   color: var(--brand-900);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 1.65rem;
   line-height: 0.92;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .logoutButton,
@@ -303,7 +303,7 @@
 .logoutButton:hover,
 .noticeLink:hover,
 .rowButton:hover {
-  box-shadow: 0 12px 24px rgba(31, 95, 49, 0.08);
+  box-shadow: var(--ds-shadow-panel);
 }
 
 .sourceNotice {
@@ -330,9 +330,9 @@
 .focusPanel {
   padding: 18px;
   border: 1px solid rgba(31, 95, 49, 0.12);
-  border-radius: 28px;
+  border-radius: var(--ds-radius-card);
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 38px rgba(31, 95, 49, 0.08);
+  box-shadow: var(--ds-shadow-panel);
 }
 
 .focusHeader {
@@ -345,10 +345,10 @@
 .focusHeader h2 {
   margin-top: 8px;
   color: var(--ink-900);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: clamp(1.35rem, 2.1vw, 1.9rem);
   line-height: 1.02;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .focusDescription {
@@ -362,7 +362,7 @@
   display: grid;
   gap: 10px;
   border: 1px solid rgba(31, 95, 49, 0.1);
-  border-radius: 22px;
+  border-radius: var(--ds-radius-card);
   background: rgba(247, 251, 246, 0.96);
 }
 
@@ -387,10 +387,10 @@
 
 .focusPrimaryTop span {
   color: var(--brand-900);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 1.2rem;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .focusPrimary p {
@@ -465,9 +465,9 @@
 .trendPanel,
 .trendStatCard {
   border: 1px solid rgba(31, 95, 49, 0.12);
-  border-radius: 28px;
+  border-radius: var(--ds-radius-card);
   background: rgba(255, 255, 255, 0.97);
-  box-shadow: 0 16px 36px rgba(31, 95, 49, 0.06);
+  box-shadow: var(--ds-shadow-panel);
 }
 
 .criticalCard {
@@ -515,7 +515,7 @@
   justify-content: center;
   width: 44px;
   height: 44px;
-  border-radius: 16px;
+  border-radius: var(--ds-radius-card);
   background: rgba(255, 255, 255, 0.88);
   font-size: 1.2rem;
 }
@@ -533,10 +533,10 @@
 }
 
 .criticalValue {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: clamp(2.4rem, 3.2vw, 3.6rem);
   line-height: 0.9;
-  letter-spacing: -0.06em;
+  letter-spacing: 0;
 }
 
 .criticalFoot {
@@ -570,10 +570,10 @@
 }
 
 .ringInner strong {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: clamp(2.2rem, 3vw, 3.4rem);
   line-height: 0.92;
-  letter-spacing: -0.06em;
+  letter-spacing: 0;
 }
 
 .ringSubtext {
@@ -598,7 +598,7 @@
   gap: 10px;
   padding: 14px 16px;
   border: 1px solid rgba(31, 95, 49, 0.08);
-  border-radius: 20px;
+  border-radius: var(--ds-radius-card);
   background: rgba(249, 252, 248, 0.96);
 }
 
@@ -615,10 +615,10 @@
 }
 
 .barRowHeader span {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 1.45rem;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 
 .barTrack {
@@ -649,7 +649,7 @@
   color: var(--tone-chip-text);
   font-size: 0.74rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -699,7 +699,7 @@
   border-radius: 999px;
   background: rgba(31, 95, 49, 0.08);
   color: var(--brand-900);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 1.1rem;
 }
 
@@ -716,7 +716,7 @@
   align-items: center;
   padding: 14px;
   border: 1px solid rgba(31, 95, 49, 0.08);
-  border-radius: 22px;
+  border-radius: var(--ds-radius-card);
   background: rgba(250, 252, 250, 0.98);
 }
 
@@ -772,7 +772,7 @@
   place-content: center;
   padding: 18px;
   border: 1px dashed rgba(95, 117, 99, 0.22);
-  border-radius: 22px;
+  border-radius: var(--ds-radius-card);
   background: rgba(246, 248, 245, 0.92);
   text-align: center;
 }
@@ -885,10 +885,10 @@
 }
 
 .trendStatCard strong {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 2rem;
   line-height: 0.95;
-  letter-spacing: -0.05em;
+  letter-spacing: 0;
 }
 
 @media (max-width: 1480px) {
@@ -956,7 +956,7 @@
   .section,
   .sourceNotice {
     padding: 16px;
-    border-radius: 24px;
+    border-radius: var(--ds-radius-card);
   }
 
   .brandBlock {
@@ -969,7 +969,7 @@
     min-width: 0;
     width: fit-content;
     padding: 8px 12px;
-    border-radius: 20px;
+    border-radius: var(--ds-radius-card);
   }
 
   .brandLogo {
@@ -1097,7 +1097,7 @@
 
   .quickFilterChip {
     padding: 12px 14px;
-    border-radius: 18px;
+    border-radius: var(--ds-radius-card);
   }
 
   .quickFilterValue {
@@ -1107,13 +1107,13 @@
   .userCard {
     gap: 10px;
     padding: 14px;
-    border-radius: 20px;
+    border-radius: var(--ds-radius-card);
   }
 
   .userAlert {
     min-width: 72px;
     padding: 8px 10px;
-    border-radius: 14px;
+    border-radius: var(--ds-radius-card);
   }
 
   .userAlert strong {
@@ -1123,7 +1123,7 @@
   .focusPanel {
     gap: 12px;
     padding: 16px;
-    border-radius: 22px;
+    border-radius: var(--ds-radius-card);
   }
 
   .focusHeader h2 {
@@ -1144,7 +1144,7 @@
   .actionList,
   .trendPanel,
   .trendStatCard {
-    border-radius: 22px;
+    border-radius: var(--ds-radius-card);
   }
 
   .focusPrimary,
@@ -1182,7 +1182,7 @@
 
   .barRow {
     padding: 12px 14px;
-    border-radius: 18px;
+    border-radius: var(--ds-radius-card);
   }
 
   .barRowHeader span {
@@ -1265,7 +1265,7 @@
 }
 
 .sidebarLogo {
-  width: 128px;
+  width: 150px;
   height: auto;
   object-fit: contain;
 }
@@ -1273,8 +1273,8 @@
 .sidebarBrand span {
   max-width: 150px;
   color: #698174;
-  font-size: 0.68rem;
-  line-height: 1.28;
+  font-size: 0.62rem;
+  line-height: 1.24;
 }
 
 .sidebarNav {
@@ -1480,7 +1480,7 @@
   border: 1px solid rgba(61, 107, 71, 0.1);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.78);
-  box-shadow: 0 12px 28px rgba(37, 71, 45, 0.05);
+  box-shadow: var(--ds-shadow-panel);
 }
 
 .metricCard {
@@ -1944,7 +1944,7 @@
   height: 8px;
   border-radius: 999px;
   background: var(--schedule-color);
-  box-shadow: 0 4px 10px rgba(33, 80, 44, 0.12);
+  box-shadow: var(--ds-shadow-panel);
 }
 
 .emptyCompact {
@@ -2058,3 +2058,404 @@
     width: 100%;
   }
 }
+
+
+/* Unified dashboard design-system migration */
+.shell,
+.workspaceShell,
+.chatShell,
+.errorShell,
+.page,
+.reportPage,
+.reportPreviewShell {
+  background: var(--ds-page-bg);
+  color: var(--ink-900);
+}
+
+.workspaceShell {
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+.workspaceSidebar,
+.menuColumn,
+.sideRail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  min-height: 100vh;
+  background: var(--ds-rail-bg);
+  border-right: 1px solid var(--ds-border);
+}
+
+.workspaceMain,
+.pageContent,
+.mainColumn {
+  min-width: 0;
+  padding: 0 20px 64px;
+}
+
+.infoPanel {
+  background: var(--ds-rail-bg);
+  color: var(--ink-900);
+  border-right: 1px solid var(--ds-border);
+}
+
+.formPanel {
+  background: var(--ds-page-bg);
+}
+
+.heroCard,
+.pageHeader,
+.sectionCard,
+.panel,
+.formCard,
+.form,
+.footerHint,
+.signalCard,
+.featureCard,
+.overviewPanel,
+.metricCard,
+.statCard,
+.summaryCard,
+.summaryBox,
+.alertCard,
+.attentionPanel,
+.dashboardCard,
+.dashboardPanel,
+.workspaceSection,
+.reportCard,
+.taskItem,
+.taskCard,
+.taskSection,
+.detailCard,
+.infoCard,
+.noticeCard,
+.noticeBanner,
+.errorCard,
+.emptyState,
+.pickerCard,
+.pickerSection,
+.conversationPanel,
+.conversationList,
+.messagePanel,
+.composer,
+.vehicleCard,
+.inventoryCard,
+.routeCard,
+.employeeCard,
+.employeeModal,
+.modalDialog,
+.modalCard,
+.confirmationSheet,
+.overviewBoard,
+.requestCard,
+.flowCard,
+.flowBarCard,
+.workflowSummaryCard,
+.workflowMetaCard,
+.workflowItem,
+.historyCard,
+.documentCard,
+.filterPanel,
+.calendarPanel,
+.calendarCard,
+.weightCard,
+.weightSummaryCard,
+.weightDayCard,
+.weightMetaCard,
+.mapHintCard,
+.stopCard,
+.mobilePanel,
+.mobileDetailCard,
+.mobileUtilityCard,
+.boardCard,
+.boardInfoCard,
+.rolePanel,
+.roleMetaCard,
+.capabilityCard,
+.logoutCard,
+.tableShell {
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-panel-bg);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.heroCard::after,
+.heroCard::before,
+.infoPanel::after,
+.infoPanel::before,
+.canvasGlow {
+  content: none;
+  display: none;
+}
+
+.kicker,
+.eyebrow,
+.formBadge,
+.contextTag,
+.sectionEyebrow,
+.sectionKicker,
+.overviewEyebrow,
+.pageKicker,
+.roleEyebrow,
+.masterInsightsKicker,
+.boardEyebrow,
+.mobileDetailEyebrow {
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-800);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.heroCard h1,
+.pageHeader h1,
+.formHeader h2,
+.titleBlock h1,
+.heroCopy h1,
+.overviewCopy h2,
+.sectionHeader h2,
+.panelHeader h2,
+.pickerHeader h1,
+.modalTitle,
+.introTitle {
+  color: #1f2b25;
+  font-family: var(--font-body);
+  font-size: clamp(1.25rem, 2vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.12;
+}
+
+.heroCard p,
+.pageHeader p,
+.formHeader p,
+.heroCopy p,
+.overviewCopy p,
+.sectionNote,
+.helperText,
+.subtleText,
+.emptyNote,
+.noticeMessage {
+  color: var(--ink-700);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton,
+.submitButton,
+.fullButton,
+.actionButton,
+.actionPrimary,
+.actionSecondary,
+.actionGhost,
+.primaryAction,
+.secondaryAction,
+.primaryLink,
+.secondaryLink,
+.smallLink,
+.backLink,
+.inlineLink,
+.rowButton,
+.dateButton,
+.locationAddButton,
+.createTaskTrigger,
+.closeButton,
+.modalCloseButton,
+.modalActions button,
+.subnavLink,
+.filterChip,
+.taskFilterChip,
+.departmentTab,
+.departmentFilterButton,
+.routeChip,
+.modeChip,
+.pickerCta,
+.cardLinkLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: var(--ds-control-height);
+  padding: 0 12px;
+  border-radius: var(--ds-radius-control);
+  border: 1px solid var(--ds-border);
+  background: var(--ds-panel-strong-bg);
+  color: var(--ink-900);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: none;
+}
+
+.primaryButton,
+.submitButton,
+.actionPrimary,
+.primaryAction,
+.subnavLinkActive,
+.filterChipActive,
+.taskFilterChipActive,
+.departmentTabActive,
+.departmentFilterButtonActive,
+.routeChipActive,
+.modeChipActive {
+  border-color: rgba(31, 95, 49, 0.22);
+  background: rgba(76, 158, 92, 0.11);
+  color: #256b37;
+}
+
+.field input,
+.field select,
+.field textarea,
+.form input,
+.form select,
+.form textarea,
+.dateInput,
+.mobileBucketInput,
+.searchableSelectButton,
+.searchableSelectSearch,
+.locationComposer input,
+.quoteForm input,
+.quoteForm textarea,
+.registrationForm input,
+.registrationForm select,
+.registrationForm textarea,
+.modalForm input,
+.modalForm select,
+.modalForm textarea {
+  width: 100%;
+  min-height: var(--ds-control-height);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-900);
+  box-shadow: none;
+}
+
+.tableShell,
+.taskTable,
+.tableList,
+.reportList,
+.vehicleList,
+.documentList,
+.historyList,
+.stopList,
+.workflowList {
+  overflow: hidden;
+}
+
+.tableHeader,
+.tableRow,
+.taskItemTop,
+.reportTop,
+.cardHeader,
+.laneHeader,
+.workflowColumnHeader,
+.sectionHeader,
+.panelHeader {
+  border-color: var(--ds-border);
+}
+
+.badge,
+.actionBadge,
+.countBadge,
+.statePill,
+.stagePill,
+.statusChip,
+.flagChip,
+.rolePill,
+.departmentBadge,
+.sidebarBadge,
+.panelCount {
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-800);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.metricIcon,
+.actionIcon,
+.departmentFilterIcon,
+.summaryShowcaseIcon,
+.conversationAvatar,
+.avatar,
+.employeePhoto,
+.employeePhotoLarge,
+.menuLinkIcon,
+.sidebarIcon {
+  border-radius: var(--ds-radius-icon);
+}
+
+@media (max-width: 1080px) {
+  .workspaceShell {
+    grid-template-columns: 1fr;
+  }
+
+  .workspaceSidebar,
+  .menuColumn,
+  .sideRail {
+    position: static;
+    min-height: 0;
+    border-right: 0;
+    background: transparent;
+  }
+
+  .workspaceMain,
+  .pageContent,
+  .mainColumn {
+    padding: 0 12px 96px;
+  }
+}
+
+@media (max-width: 720px) {
+  .heroCard,
+  .pageHeader,
+  .sectionCard,
+  .panel,
+  .formCard,
+  .form,
+  .overviewPanel,
+  .metricCard,
+  .reportCard,
+  .taskItem,
+  .detailCard,
+  .employeeCard,
+  .modalDialog,
+  .requestCard {
+    padding: 14px;
+  }
+
+  .heroCard,
+  .pageHeader,
+  .heroMeta,
+  .summaryGrid,
+  .metricsGrid,
+  .statsGrid,
+  .detailGrid,
+  .infoGrid,
+  .taskGrid,
+  .workflowColumns {
+    grid-template-columns: 1fr;
+  }
+}
+
+

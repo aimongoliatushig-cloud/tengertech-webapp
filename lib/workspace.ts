@@ -313,7 +313,10 @@ type StageBucket = "todo" | "progress" | "review" | "done" | "unknown";
 
 const STAGE_ALIASES: Array<[StageBucket, string[]]> = [
   ["todo", ["хийгдэх ажил", "hiigdeh ajil", "todo", "task"]],
-  ["progress", ["явагдаж буй ажил", "yovagdaj bui ajil", "progress", "in progress"]],
+  [
+    "progress",
+    ["явагдаж буй ажил", "хийгдэж", "хийж байна", "ажиллаж", "yovagdaj bui ajil", "progress", "in progress"],
+  ],
   ["review", ["шалгагдаж буй ажил", "хянагдаж буй ажил", "shalgagdaj bui ajil", "hyanagdaj bui ajil", "review", "changes requested"]],
   ["done", ["дууссан ажил", "duussan ajil", "done", "completed"]],
   ["todo", ["төлөвлөгдсөн", "хуваарилсан"]],

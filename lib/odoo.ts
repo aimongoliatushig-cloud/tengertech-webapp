@@ -4,6 +4,7 @@ import { getDateKeyFromValue, getTodayDateKey } from "@/lib/dashboard-scope";
 import {
   CANONICAL_DEPARTMENT_NAMES,
   findDepartmentGroupByName,
+  matchesDepartmentGroup,
   normalizeOrganizationUnitName,
 } from "@/lib/department-groups";
 import type { RoleGroupFlags } from "@/lib/roles";
@@ -84,6 +85,7 @@ type OdooUserRecord = {
 type OdooEmployeeRecord = {
   id: number;
   name: string;
+  active?: boolean;
   department_id?: OdooRelation;
   job_id?: OdooRelation;
   job_title?: string | false;
@@ -91,6 +93,21 @@ type OdooEmployeeRecord = {
   mobile_phone?: string | false;
   work_email?: string | false;
   user_id?: OdooRelation;
+  image_128?: string | false;
+  avatar_128?: string | false;
+  image_1920?: string | false;
+  parent_id?: OdooRelation;
+  contract_date_start?: string | false;
+  contract_date_end?: string | false;
+  sex?: string | false;
+  certificate?: string | false;
+  x_mn_employee_code?: string | false;
+  x_mn_grade_rank?: string | false;
+  x_mn_employment_status?: string | false;
+  x_mn_missing_document_count?: number;
+  x_mn_performance_score?: number;
+  x_mn_task_completion_percent?: number;
+  x_mn_discipline_score?: number;
 };
 
 type DepartmentCard = {
@@ -268,18 +285,39 @@ export type DashboardSnapshot = {
 export type HrEmployeeDirectoryItem = {
   id: number;
   name: string;
+  active: boolean;
   departmentName: string;
   jobTitle: string;
   workPhone: string;
   mobilePhone: string;
   workEmail: string;
   userName: string;
+  photoUrl: string;
+  employeeCode: string;
+  gradeRank: string;
+  statusKey: string;
+  statusLabel: string;
+  managerName: string;
+  startDate: string;
+  contractEndDate: string;
+  genderLabel: string;
+  educationLevel: string;
+  missingDocumentCount: number;
+  kpiScore: number;
+  taskCompletionPercent: number;
+  disciplineScore: number;
 };
 
 type OdooFleetVehicleRecord = {
   id: number;
   name: string;
   license_plate?: string | false;
+  model_id?: OdooRelation;
+  category_id?: OdooRelation;
+  vin_sn?: string | false;
+  odometer?: number | false;
+  fuel_type?: string | false;
+  driver_id?: OdooRelation;
   state_id?: OdooRelation;
   mfo_active_for_ops?: boolean;
   latest_repair_state?: string | false;
@@ -287,16 +325,52 @@ type OdooFleetVehicleRecord = {
   active?: boolean;
 };
 
+type OdooCrewTeamRecord = {
+  id: number;
+  name: string;
+  active?: boolean;
+  operation_type?: string | false;
+  vehicle_id?: OdooRelation;
+  driver_employee_id?: OdooRelation;
+  mfo_driver_employee_id?: OdooRelation;
+  loader_employee_id?: OdooRelation;
+  loader_employee_ids?: number[];
+  loader_ids?: number[];
+  mfo_loader_employee_ids?: number[];
+  mfo_loader_ids?: number[];
+  member_employee_ids?: number[];
+  member_ids?: number[];
+  employee_ids?: number[];
+};
+
+export type FleetVehicleCrewAssignment = {
+  teamId: number;
+  teamName: string;
+  operationType: string;
+  driverNames: string[];
+  loaderNames: string[];
+  memberNames: string[];
+};
+
 export type FleetVehicleBoardItem = {
   id: number;
   plate: string;
   name: string;
+  modelName: string;
+  categoryName: string;
+  vin: string;
+  odometerLabel: string;
+  fuelTypeLabel: string;
+  fleetDriverName: string;
   stateLabel: string;
   latestRepairState: string;
+  isOperational: boolean;
   isRepair: boolean;
+  crewAssignments: FleetVehicleCrewAssignment[];
 };
 
 export type FleetVehicleBoard = {
+  allVehicles: FleetVehicleBoardItem[];
   activeVehicles: FleetVehicleBoardItem[];
   repairVehicles: FleetVehicleBoardItem[];
   totalVehicles: number;
@@ -405,10 +479,13 @@ const TASK_STATUS_LABELS: Record<TaskStatusKey, string> = {
 };
 
 const UNKNOWN_DEPARTMENT = "Тодорхойгүй";
+const AUTO_BASE_DEPARTMENT = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
+const AUTO_BASE_UNIT = "Авто бааз";
+const WASTE_TRANSPORT_UNIT = "Хог тээвэрлэлт";
 
 const KNOWN_STAGE_MATCHERS: Array<[StageBucket, string[]]> = [
   ["todo", ["хийгдэх", "todo", "task"]],
-  ["progress", ["явагдаж", "progress", "hiihdej", "in progress"]],
+  ["progress", ["явагдаж", "хийгдэж", "хийж байна", "ажиллаж", "progress", "hiihdej", "in progress"]],
   ["review", ["шалгагдаж", "хянагдаж", "review", "changes requested", "shalgagdaj", "shalgah", "hyanagdaj"]],
   ["done", ["дууссан", "done", "completed", "duussan"]],
   ["todo", ["төлөвлөгдсөн", "хуваарилсан"]],
@@ -551,6 +628,7 @@ const REPORT_FIELD_VARIANTS: string[][] = [
 const HR_EMPLOYEE_FIELD_VARIANTS: string[][] = [
   [
     "name",
+    "active",
     "department_id",
     "job_id",
     "job_title",
@@ -558,17 +636,86 @@ const HR_EMPLOYEE_FIELD_VARIANTS: string[][] = [
     "mobile_phone",
     "work_email",
     "user_id",
+    "parent_id",
+    "contract_date_start",
+    "contract_date_end",
+    "sex",
+    "certificate",
+    "image_128",
+    "x_mn_employee_code",
+    "x_mn_grade_rank",
+    "x_mn_employment_status",
+    "x_mn_missing_document_count",
+    "x_mn_performance_score",
+    "x_mn_task_completion_percent",
+    "x_mn_discipline_score",
   ],
-  ["name", "department_id", "job_id", "work_phone", "mobile_phone", "work_email", "user_id"],
-  ["name", "department_id", "job_title", "work_phone", "mobile_phone", "work_email", "user_id"],
-  ["name", "department_id", "work_phone", "mobile_phone", "work_email", "user_id"],
-  ["name", "department_id"],
+  [
+    "name",
+    "active",
+    "department_id",
+    "job_id",
+    "job_title",
+    "work_phone",
+    "mobile_phone",
+    "work_email",
+    "user_id",
+    "image_128",
+  ],
+  [
+    "name",
+    "active",
+    "department_id",
+    "job_id",
+    "job_title",
+    "work_phone",
+    "mobile_phone",
+    "work_email",
+    "user_id",
+    "avatar_128",
+  ],
+  [
+    "name",
+    "active",
+    "department_id",
+    "job_id",
+    "job_title",
+    "work_phone",
+    "mobile_phone",
+    "work_email",
+    "user_id",
+    "image_1920",
+  ],
+  ["name", "active", "department_id", "job_id", "work_phone", "mobile_phone", "work_email", "user_id"],
+  ["name", "active", "department_id", "job_title", "work_phone", "mobile_phone", "work_email", "user_id"],
+  ["name", "active", "department_id", "work_phone", "mobile_phone", "work_email", "user_id"],
+  ["name", "active", "department_id"],
 ];
 
 const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
   [
     "name",
     "license_plate",
+    "model_id",
+    "category_id",
+    "vin_sn",
+    "odometer",
+    "fuel_type",
+    "driver_id",
+    "state_id",
+    "mfo_active_for_ops",
+    "latest_repair_state",
+    "vehicle_downtime_open",
+    "active",
+  ],
+  [
+    "name",
+    "license_plate",
+    "model_id",
+    "vin_sn",
+    "odometer",
+    "fuel_type",
+    "driver_id",
     "state_id",
     "mfo_active_for_ops",
     "latest_repair_state",
@@ -580,8 +727,113 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
   ["name", "license_plate", "active"],
 ];
 
+const CREW_TEAM_FIELD_VARIANTS: string[][] = [
+  [
+    "name",
+    "active",
+    "operation_type",
+    "vehicle_id",
+    "driver_employee_id",
+    "loader_employee_ids",
+    "member_employee_ids",
+  ],
+  [
+    "name",
+    "active",
+    "operation_type",
+    "vehicle_id",
+    "driver_employee_id",
+    "loader_ids",
+    "member_ids",
+  ],
+  [
+    "name",
+    "active",
+    "operation_type",
+    "vehicle_id",
+    "mfo_driver_employee_id",
+    "mfo_loader_employee_ids",
+    "member_employee_ids",
+  ],
+  [
+    "name",
+    "active",
+    "operation_type",
+    "vehicle_id",
+    "mfo_driver_employee_id",
+    "mfo_loader_ids",
+    "member_ids",
+  ],
+  [
+    "name",
+    "active",
+    "operation_type",
+    "vehicle_id",
+    "driver_employee_id",
+    "loader_employee_ids",
+    "employee_ids",
+  ],
+  [
+    "name",
+    "active",
+    "operation_type",
+    "vehicle_id",
+    "driver_employee_id",
+    "loader_ids",
+    "employee_ids",
+  ],
+  [
+    "name",
+    "active",
+    "operation_type",
+    "vehicle_id",
+    "driver_employee_id",
+    "loader_employee_id",
+    "member_employee_ids",
+  ],
+  ["name", "active", "operation_type", "vehicle_id", "driver_employee_id", "loader_employee_ids"],
+  ["name", "active", "operation_type", "vehicle_id", "driver_employee_id", "loader_ids"],
+  ["name", "active", "operation_type", "vehicle_id", "driver_employee_id", "employee_ids"],
+  ["name", "active", "vehicle_id", "driver_employee_id", "employee_ids"],
+  ["name", "vehicle_id", "driver_employee_id"],
+  ["name", "vehicle_id"],
+];
+
 function relationName(relation: OdooRelation, fallback = "Оноогоогүй") {
   return Array.isArray(relation) ? relation[1] : fallback;
+}
+
+function relationId(relation: OdooRelation) {
+  return Array.isArray(relation) ? relation[0] : null;
+}
+
+function resolveHrEmploymentStatus(employee: OdooEmployeeRecord) {
+  if (employee.active === false) {
+    return { key: "archived", label: "Архивласан" };
+  }
+
+  const status = employee.x_mn_employment_status || "active";
+  const labels: Record<string, string> = {
+    active: "Идэвхтэй",
+    probation: "Туршилт",
+    suspended: "Түдгэлзсэн",
+    terminated: "Чөлөөлөгдсөн",
+    rehired: "Дахин авсан",
+  };
+
+  return {
+    key: status,
+    label: labels[status] ?? "Идэвхтэй",
+  };
+}
+
+function resolveHrGenderLabel(value?: string | false) {
+  const labels: Record<string, string> = {
+    male: "Эрэгтэй",
+    female: "Эмэгтэй",
+    other: "Бусад",
+  };
+  return value ? (labels[value] ?? value) : "";
 }
 
 function normalizeFleetStatusValue(value?: string | false) {
@@ -788,20 +1040,25 @@ function buildQuantityMetricSummary(tasks: OdooTaskRecord[]) {
 }
 
 function inferDepartmentUnitFromText(text: string) {
+  const haystack = text.toLowerCase();
+  if (!haystack.trim()) {
+    return UNKNOWN_DEPARTMENT;
+  }
+
+  if (haystack.includes("хог") || haystack.includes("маршрут") || haystack.includes("ачилт")) {
+    return WASTE_TRANSPORT_UNIT;
+  }
+  if (haystack.includes("авто") || haystack.includes("машин") || haystack.includes("техник")) {
+    return AUTO_BASE_UNIT;
+  }
+
   const canonicalName = normalizeOrganizationUnitName(text);
   if (canonicalName) {
     return canonicalName;
   }
 
-  const haystack = text.toLowerCase();
   if (haystack.includes("мод") || haystack.includes("ногоон") || haystack.includes("зүлэг")) {
     return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
-  }
-  if (haystack.includes("хог") || haystack.includes("маршрут") || haystack.includes("ачилт")) {
-    return "Авто бааз, хог тээвэрлэлтийн хэлтэс";
-  }
-  if (haystack.includes("авто") || haystack.includes("машин") || haystack.includes("техник")) {
-    return "Авто бааз, хог тээвэрлэлтийн хэлтэс";
   }
   if (
     haystack.includes("зам") ||
@@ -819,7 +1076,7 @@ function inferDepartmentUnitFromText(text: string) {
 
 function departmentUnitFromOperationType(operationType?: string | false) {
   if (operationType === "garbage") {
-    return "Авто бааз, хог тээвэрлэлтийн хэлтэс";
+    return WASTE_TRANSPORT_UNIT;
   }
   if (operationType === "street_cleaning") {
     return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
@@ -827,6 +1084,22 @@ function departmentUnitFromOperationType(operationType?: string | false) {
   if (operationType === "green_maintenance") {
     return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
   }
+  return null;
+}
+
+function exactAutoBaseUnitFromDepartmentName(departmentName: string) {
+  const normalized = departmentName.trim().toLowerCase().replace(/\s+/g, " ");
+
+  if (normalized === AUTO_BASE_UNIT.toLowerCase()) {
+    return AUTO_BASE_UNIT;
+  }
+  if (
+    normalized === WASTE_TRANSPORT_UNIT.toLowerCase() ||
+    normalized === "хог тээвэрлэлтийн хэлтэс"
+  ) {
+    return WASTE_TRANSPORT_UNIT;
+  }
+
   return null;
 }
 
@@ -839,9 +1112,8 @@ function normalizeDepartmentUnitName(
 ) {
   const normalizedDepartment = (departmentName ?? "").trim();
   const inferredFromOperation = departmentUnitFromOperationType(options.operationType);
-  const inferredFromText = inferDepartmentUnitFromText(
-    `${normalizedDepartment} ${options.labelText ?? ""}`,
-  );
+  const inferredFromDepartment = exactAutoBaseUnitFromDepartmentName(normalizedDepartment);
+  const inferredFromText = inferDepartmentUnitFromText(options.labelText ?? "");
   const knownInferredFromText =
     inferredFromText !== UNKNOWN_DEPARTMENT ? inferredFromText : null;
 
@@ -850,6 +1122,15 @@ function normalizeDepartmentUnitName(
   }
 
   const canonicalDepartment = normalizeOrganizationUnitName(normalizedDepartment);
+  if (canonicalDepartment === AUTO_BASE_DEPARTMENT) {
+    return (
+      inferredFromOperation ||
+      knownInferredFromText ||
+      inferredFromDepartment ||
+      canonicalDepartment
+    );
+  }
+
   if (canonicalDepartment) {
     return canonicalDepartment;
   }
@@ -952,6 +1233,19 @@ function getTaskStatusKey(task: Pick<OdooTaskRecord, "stage_id" | "mfo_quality_e
 
 function getTaskStatusLabel(statusKey: TaskStatusKey) {
   return TASK_STATUS_LABELS[statusKey];
+}
+
+function imageDataUrl(value?: string | false) {
+  if (!value) {
+    return "";
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  return trimmed.startsWith("data:") ? trimmed : `data:image/png;base64,${trimmed}`;
 }
 
 function resolveDepartmentLabel(name: string) {
@@ -1307,7 +1601,7 @@ async function searchReadAllWithFieldFallback<T>(
 
 export async function loadHrEmployeeDirectory(
   connectionOverrides: Partial<OdooConnection> = {},
-) {
+): Promise<HrEmployeeDirectoryItem[]> {
   const auth = await authenticateWithFallback(createOdooConnection(connectionOverrides));
   if (!auth) {
     throw new Error("Odoo authentication failed");
@@ -1317,30 +1611,52 @@ export async function loadHrEmployeeDirectory(
   const employees = await searchReadAllWithFieldFallback<OdooEmployeeRecord>(
     uid,
     "hr.employee",
-    [["active", "=", true]],
+    [],
     HR_EMPLOYEE_FIELD_VARIANTS,
     {
       order: "name asc",
+      context: {
+        active_test: false,
+      },
     },
     connection,
   );
 
   return employees
-    .map((employee) => ({
-      id: employee.id,
-      name: employee.name,
-      departmentName: normalizeDepartmentUnitName(
-        relationName(employee.department_id ?? false, UNKNOWN_DEPARTMENT),
-      ),
-      jobTitle:
-        relationName(employee.job_id ?? false, "") ||
-        employee.job_title ||
-        "Албан тушаал бүртгээгүй",
-      workPhone: employee.work_phone || "",
-      mobilePhone: employee.mobile_phone || "",
-      workEmail: employee.work_email || "",
-      userName: relationName(employee.user_id ?? false, ""),
-    }))
+    .map((employee) => {
+      const status = resolveHrEmploymentStatus(employee);
+
+      return {
+        id: employee.id,
+        name: employee.name,
+        active: employee.active !== false,
+        departmentName: normalizeDepartmentUnitName(
+          relationName(employee.department_id ?? false, UNKNOWN_DEPARTMENT),
+        ),
+        jobTitle:
+          relationName(employee.job_id ?? false, "") ||
+          employee.job_title ||
+          "Албан тушаал бүртгээгүй",
+        workPhone: employee.work_phone || "",
+        mobilePhone: employee.mobile_phone || "",
+        workEmail: employee.work_email || "",
+        userName: relationName(employee.user_id ?? false, ""),
+        photoUrl: imageDataUrl(employee.image_128 || employee.avatar_128 || employee.image_1920),
+        employeeCode: employee.x_mn_employee_code || `EMP-${String(employee.id).padStart(5, "0")}`,
+        gradeRank: employee.x_mn_grade_rank || "",
+        statusKey: status.key,
+        statusLabel: status.label,
+        managerName: relationName(employee.parent_id ?? false, ""),
+        startDate: employee.contract_date_start || "",
+        contractEndDate: employee.contract_date_end || "",
+        genderLabel: resolveHrGenderLabel(employee.sex),
+        educationLevel: employee.certificate || "",
+        missingDocumentCount: employee.x_mn_missing_document_count ?? 0,
+        kpiScore: employee.x_mn_performance_score ?? 0,
+        taskCompletionPercent: employee.x_mn_task_completion_percent ?? 0,
+        disciplineScore: employee.x_mn_discipline_score ?? 0,
+      };
+    })
     .sort((left, right) => {
       const departmentOrder = left.departmentName.localeCompare(right.departmentName, "mn");
       if (departmentOrder !== 0) {
@@ -1348,6 +1664,129 @@ export async function loadHrEmployeeDirectory(
       }
       return left.name.localeCompare(right.name, "mn");
     });
+}
+
+function resolveFleetFuelTypeLabel(value: string) {
+  const labels: Record<string, string> = {
+    gasoline: "Бензин",
+    diesel: "Дизель",
+    electric: "Цахилгаан",
+    hybrid: "Хосолсон",
+    lpg: "Газ",
+  };
+  return labels[value] ?? value;
+}
+
+function uniqueValues(values: Array<number | null | undefined>) {
+  return Array.from(new Set(values.filter((value): value is number => Boolean(value))));
+}
+
+async function loadEmployeeNameMap(
+  uid: number,
+  employeeIds: number[],
+  connection: OdooConnection,
+) {
+  if (!employeeIds.length) {
+    return new Map<number, string>();
+  }
+
+  const employees = await executeKw<Array<{ id: number; name: string }>>(
+    uid,
+    "hr.employee",
+    "search_read",
+    [[["id", "in", employeeIds]]],
+    {
+      fields: ["name"],
+      limit: employeeIds.length,
+    },
+    connection,
+  );
+
+  return new Map(employees.map((employee) => [employee.id, employee.name]));
+}
+
+function namesFromIds(ids: number[] | undefined, employeeNames: Map<number, string>) {
+  return (ids ?? [])
+    .map((id) => employeeNames.get(id))
+    .filter((name): name is string => Boolean(name));
+}
+
+async function loadCrewAssignmentsByVehicle(uid: number, connection: OdooConnection) {
+  try {
+    const crewTeams = await searchReadAllWithFieldFallback<OdooCrewTeamRecord>(
+      uid,
+      "mfo.crew.team",
+      [["vehicle_id", "!=", false]],
+      CREW_TEAM_FIELD_VARIANTS,
+      {
+        order: "name asc",
+      },
+      connection,
+    );
+
+    const assignedCrewTeams = crewTeams.filter((team) => team.active !== false);
+    const employeeIds = uniqueValues(
+      assignedCrewTeams.flatMap((team) => [
+        relationId(team.driver_employee_id ?? false),
+        relationId(team.mfo_driver_employee_id ?? false),
+        relationId(team.loader_employee_id ?? false),
+        ...(team.loader_employee_ids ?? []),
+        ...(team.loader_ids ?? []),
+        ...(team.mfo_loader_employee_ids ?? []),
+        ...(team.mfo_loader_ids ?? []),
+        ...(team.member_employee_ids ?? []),
+        ...(team.member_ids ?? []),
+        ...(team.employee_ids ?? []),
+      ]),
+    );
+    const employeeNames = await loadEmployeeNameMap(uid, employeeIds, connection);
+    const byVehicle = new Map<number, FleetVehicleCrewAssignment[]>();
+
+    for (const team of assignedCrewTeams) {
+      const vehicleId = relationId(team.vehicle_id ?? false);
+      if (!vehicleId) {
+        continue;
+      }
+
+      const driverRelation = team.driver_employee_id || team.mfo_driver_employee_id || false;
+      const driverId = relationId(driverRelation);
+      const driverName = relationName(driverRelation, "");
+      const driverNames = driverName ? [driverName] : driverId ? namesFromIds([driverId], employeeNames) : [];
+      const loaderIds = uniqueValues([
+        relationId(team.loader_employee_id ?? false),
+        ...(team.loader_employee_ids ?? []),
+        ...(team.loader_ids ?? []),
+        ...(team.mfo_loader_employee_ids ?? []),
+        ...(team.mfo_loader_ids ?? []),
+      ]);
+      const memberIds = uniqueValues([
+        ...(team.member_employee_ids ?? []),
+        ...(team.member_ids ?? []),
+        ...(team.employee_ids ?? []),
+      ]);
+      const loaderNames = namesFromIds(loaderIds, employeeNames);
+      const memberNames = namesFromIds(memberIds, employeeNames).filter(
+        (name) => !driverNames.includes(name) && !loaderNames.includes(name),
+      );
+      const assignment: FleetVehicleCrewAssignment = {
+        teamId: team.id,
+        teamName: team.name || `Баг #${team.id}`,
+        operationType: team.operation_type || "",
+        driverNames,
+        loaderNames,
+        memberNames,
+      };
+
+      const current = byVehicle.get(vehicleId) ?? [];
+      current.push(assignment);
+      byVehicle.set(vehicleId, current);
+    }
+
+    return byVehicle;
+  } catch (error) {
+    console.warn("Fleet crew assignments could not be loaded:", error);
+    return new Map<number, FleetVehicleCrewAssignment[]>();
+  }
 }
 
 export async function loadFleetVehicleBoard(
@@ -1370,7 +1809,9 @@ export async function loadFleetVehicleBoard(
     connection,
   );
 
-  const normalizedVehicles = vehicles
+  const crewAssignmentsByVehicle = await loadCrewAssignmentsByVehicle(uid, connection);
+
+  const allVehicles = vehicles
     .map((vehicle) => {
       const stateLabel = relationName(vehicle.state_id ?? false, "");
       const latestRepairState = vehicle.latest_repair_state || "";
@@ -1380,29 +1821,38 @@ export async function loadFleetVehicleBoard(
         isRepairStatusLabel(latestRepairState);
       const isOperational = Boolean(vehicle.mfo_active_for_ops);
 
-      if (!isOperational && !isRepair) {
-        return null;
-      }
-
       return {
         id: vehicle.id,
         plate: vehicle.license_plate || vehicle.name || `Машин #${vehicle.id}`,
         name: vehicle.name || vehicle.license_plate || `Машин #${vehicle.id}`,
-        stateLabel: stateLabel || (isRepair ? "Засагдаж буй машин" : "Идэвхтэй машин"),
+        modelName: relationName(vehicle.model_id ?? false, ""),
+        categoryName: relationName(vehicle.category_id ?? false, ""),
+        vin: vehicle.vin_sn || "",
+        odometerLabel:
+          typeof vehicle.odometer === "number" && Number.isFinite(vehicle.odometer)
+            ? `${Math.round(vehicle.odometer).toLocaleString("mn-MN")} км`
+            : "",
+        fuelTypeLabel: resolveFleetFuelTypeLabel(vehicle.fuel_type || ""),
+        fleetDriverName: relationName(vehicle.driver_id ?? false, ""),
+        stateLabel:
+          stateLabel ||
+          (isRepair ? "Засагдаж буй машин" : isOperational ? "Идэвхтэй машин" : "Бүртгэлтэй машин"),
         latestRepairState,
+        isOperational,
         isRepair,
+        crewAssignments: crewAssignmentsByVehicle.get(vehicle.id) ?? [],
       } satisfies FleetVehicleBoardItem;
     })
-    .filter((vehicle): vehicle is FleetVehicleBoardItem => Boolean(vehicle))
     .sort((left, right) => left.plate.localeCompare(right.plate, "mn"));
 
-  const activeVehicles = normalizedVehicles.filter((vehicle) => !vehicle.isRepair);
-  const repairVehicles = normalizedVehicles.filter((vehicle) => vehicle.isRepair);
+  const activeVehicles = allVehicles.filter((vehicle) => vehicle.isOperational && !vehicle.isRepair);
+  const repairVehicles = allVehicles.filter((vehicle) => vehicle.isRepair);
 
   return {
+    allVehicles,
     activeVehicles,
     repairVehicles,
-    totalVehicles: normalizedVehicles.length,
+    totalVehicles: allVehicles.length,
     activeCount: activeVehicles.length,
     repairCount: repairVehicles.length,
   };
@@ -1560,11 +2010,18 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       : tasks.length || projects.length
         ? [UNKNOWN_DEPARTMENT]
         : [];
+  const matchesDepartmentBucket = (bucketName: string, itemDepartmentName: string) => {
+    const bucketGroup = findDepartmentGroupByName(bucketName);
+
+    return bucketGroup
+      ? matchesDepartmentGroup(bucketGroup, itemDepartmentName)
+      : itemDepartmentName === bucketName;
+  };
 
   const departments = departmentSourceNames.map((department) => {
     const departmentTasks = tasks.filter((task) => {
       const departmentName = resolveNormalizedTaskDepartmentName(task, projectDepartmentById);
-      return departmentName === department;
+      return matchesDepartmentBucket(department, departmentName);
     });
     const departmentDone = departmentTasks.filter(
       (task) => getStageBucket(relationName(task.stage_id, "")) === "done",

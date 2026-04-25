@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_employee_form_hr_custom_mn" model="ir.ui.view">
+        <field name="name">hr.employee.form.hr.custom.mn</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="priority">30</field>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="inside">
+                <button name="action_hr_mn_new_employee" type="object" string="Шинэ ажилтан" class="btn btn-secondary" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
+                <button name="action_hr_mn_edit" type="object" string="Засах" class="btn btn-secondary" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
+                <button name="action_hr_mn_transfer" type="object" string="Хэлтэс шилжүүлэх" class="btn btn-secondary" invisible="not active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
+                <button name="action_hr_mn_promote" type="object" string="Дэвшүүлэх" class="btn btn-secondary" invisible="not active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
+                <button name="action_hr_mn_suspend" type="object" string="Түдгэлзүүлэх" class="btn btn-secondary" invisible="not active or x_mn_employment_status == 'suspended'" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
+                <button name="action_hr_mn_terminate" type="object" string="Чөлөөлөх" class="btn btn-secondary" invisible="not active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
+                <button name="action_hr_mn_rehire" type="object" string="Дахин авах" class="btn btn-secondary" invisible="active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
+                <button name="action_hr_mn_archive" type="object" string="Архивлах" class="btn btn-secondary" invisible="not active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
+                <button name="action_hr_mn_print_employee_card" type="object" string="Карт хэвлэх" class="btn btn-primary"/>
+                <button name="action_hr_mn_export_excel" type="object" string="Excel экспорт"/>
+            </xpath>
+
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_hr_mn_documents" class="oe_stat_button" icon="fa-folder-open" type="object">
+                    <div class="o_stat_info">
+                        <span class="o_stat_value"><field name="x_mn_document_count"/></span>
+                        <span class="o_stat_text">Баримт</span>
+                    </div>
+                </button>
+                <button name="action_hr_mn_history" class="oe_stat_button" icon="fa-history" type="object" groups="hr_custom_mn.group_hr_custom_mn_officer">
+                    <div class="o_stat_info">
+                        <span class="o_stat_value"><field name="x_mn_history_count"/></span>
+                        <span class="o_stat_text">Түүх</span>
+                    </div>
+                </button>
+                <button name="action_hr_mn_performance" class="oe_stat_button" icon="fa-line-chart" type="object">
+                    <div class="o_stat_info">
+                        <span class="o_stat_value"><field name="x_mn_performance_count"/></span>
+                        <span class="o_stat_text">Үнэлгээ</span>
+                    </div>
+                </button>
+            </xpath>
+
+            <xpath expr="//notebook" position="inside">
+                <page name="hr_custom_mn_basic" string="HR мастер" groups="hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin">
+                    <group>
+                        <group string="Үндсэн мэдээлэл">
+                            <field name="x_mn_employee_code"/>
+                            <field name="name" string="Овог нэр"/>
+                            <field name="x_mn_english_name"/>
+                            <field name="x_mn_registration_number"/>
+                            <field name="sex" string="Хүйс"/>
+                            <field name="birthday" string="Төрсөн огноо"/>
+                            <field name="x_mn_age"/>
+                            <field name="image_1920" widget="image" string="Зураг"/>
+                        </group>
+                        <group string="Хувийн мэдээлэл">
+                            <field name="marital" string="Гэрлэлтийн байдал"/>
+                            <field name="x_mn_blood_type"/>
+                            <field name="country_id" string="Иргэншил"/>
+                            <field name="x_mn_military_status"/>
+                            <field name="x_mn_disability_status"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Холбоо барих">
+                            <field name="private_phone" string="Хувийн утас"/>
+                            <field name="work_phone" string="Ажлын утас"/>
+                            <field name="mobile_phone" string="Гар утас"/>
+                            <field name="work_email" string="И-мэйл"/>
+                            <field name="emergency_contact" string="Яаралтай холбоо барих хүн"/>
+                            <field name="emergency_phone" string="Яаралтай холбоо барих утас"/>
+                        </group>
+                        <group string="Хаяг">
+                            <field name="x_mn_current_address"/>
+                            <field name="x_mn_permanent_address"/>
+                        </group>
+                    </group>
+                </page>
+
+                <page name="hr_custom_mn_work" string="Ажил" groups="hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin">
+                    <group>
+                        <group string="Ажлын мэдээлэл">
+                            <field name="department_id" string="Хэлтэс"/>
+                            <field name="job_id" string="Албан тушаал"/>
+                            <field name="job_title" string="Ажлын байрны нэр"/>
+                            <field name="x_mn_grade_rank"/>
+                            <field name="employee_type" string="Ажил эрхлэлтийн төрөл"/>
+                            <field name="x_mn_employment_status"/>
+                            <field name="parent_id" string="Удирдлага"/>
+                        </group>
+                        <group string="Огноо ба байршил">
+                            <field name="contract_date_start" string="Эхэлсэн огноо"/>
+                            <field name="trial_date_end" string="Туршилтын хугацаа дуусах"/>
+                            <field name="contract_date_end" string="Гэрээ дуусах"/>
+                            <field name="work_location_id" string="Ажлын байршил"/>
+                            <field name="x_mn_service_years"/>
+                        </group>
+                    </group>
+                </page>
+
+                <page name="hr_custom_mn_public_service" string="Төрийн алба" groups="hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin">
+                    <group>
+                        <group>
+                            <field name="x_mn_public_service_category"/>
+                            <field name="x_mn_state_rank"/>
+                            <field name="x_mn_appointment_order_no"/>
+                            <field name="x_mn_appointment_date"/>
+                        </group>
+                        <group>
+                            <field name="x_mn_retirement_soon"/>
+                            <field name="x_mn_contract_ending_soon"/>
+                            <field name="x_mn_birthday_this_month"/>
+                        </group>
+                    </group>
+                </page>
+
+                <page name="hr_custom_mn_education" string="Боловсрол" groups="hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin">
+                    <group>
+                        <group>
+                            <field name="certificate" string="Боловсролын түвшин"/>
+                            <field name="study_school" string="Их сургууль"/>
+                            <field name="study_field" string="Мэргэжил"/>
+                            <field name="x_mn_graduation_year"/>
+                        </group>
+                        <group>
+                            <field name="x_mn_certificate_notes"/>
+                        </group>
+                    </group>
+                </page>
+
+                <page name="hr_custom_mn_health_bank" string="Эрүүл мэнд / Банк" groups="hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin">
+                    <group>
+                        <group string="Эрүүл мэнд">
+                            <field name="x_mn_disability_status"/>
+                            <field name="x_mn_medical_notes"/>
+                        </group>
+                        <group string="Банк ба бүртгэл">
+                            <field name="x_mn_bank_name"/>
+                            <field name="x_mn_bank_account_number"/>
+                            <field name="x_mn_tax_number"/>
+                            <field name="x_mn_insurance_number"/>
+                        </group>
+                    </group>
+                </page>
+
+                <page name="hr_custom_mn_performance" string="Гүйцэтгэл" groups="hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin">
+                    <group>
+                        <group string="Сүүлийн үнэлгээ">
+                            <field name="x_mn_performance_score"/>
+                            <field name="x_mn_task_completion_percent"/>
+                            <field name="x_mn_discipline_score"/>
+                        </group>
+                        <group string="Баримтын хяналт">
+                            <field name="x_mn_document_count"/>
+                            <field name="x_mn_missing_document_count"/>
+                            <field name="x_mn_has_missing_documents"/>
+                        </group>
+                    </group>
+                    <field name="x_mn_performance_ids" context="{'default_employee_id': id}">
+                        <list editable="bottom">
+                            <field name="evaluation_month"/>
+                            <field name="kpi_score"/>
+                            <field name="task_completion_percent"/>
+                            <field name="discipline_score"/>
+                            <field name="promotion_recommendation"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_employee_list_hr_custom_mn" model="ir.ui.view">
+        <field name="name">hr.employee.list.hr.custom.mn</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_tree"/>
+        <field name="arch" type="xml">
+            <field name="name" position="before">
+                <field name="x_mn_employee_code" optional="show"/>
+            </field>
+            <field name="job_id" position="after">
+                <field name="x_mn_grade_rank" optional="show"/>
+                <field name="x_mn_employment_status" widget="badge" optional="show"/>
+                <field name="x_mn_contract_ending_soon" optional="hide"/>
+                <field name="x_mn_has_missing_documents" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_employee_filter_hr_custom_mn" model="ir.ui.view">
+        <field name="name">hr.employee.search.hr.custom.mn</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_filter"/>
+        <field name="arch" type="xml">
+            <field name="department_id" position="after">
+                <field name="job_id" string="Албан тушаал"/>
+                <field name="x_mn_grade_rank"/>
+                <field name="sex" string="Хүйс"/>
+                <field name="certificate" string="Боловсрол"/>
+            </field>
+            <filter name="inactive" position="after">
+                <separator/>
+                <filter name="hr_mn_active" string="Идэвхтэй" domain="[('active', '=', True)]"/>
+                <filter name="hr_mn_gender_male" string="Эрэгтэй" domain="[('sex', '=', 'male')]"/>
+                <filter name="hr_mn_gender_female" string="Эмэгтэй" domain="[('sex', '=', 'female')]"/>
+                <filter name="hr_mn_age_under_30" string="30 хүртэл нас" domain="[('x_mn_age', '&lt;', 30)]"/>
+                <filter name="hr_mn_age_30_45" string="30-45 нас" domain="[('x_mn_age', '&gt;=', 30), ('x_mn_age', '&lt;=', 45)]"/>
+                <filter name="hr_mn_age_46_plus" string="46+ нас" domain="[('x_mn_age', '&gt;', 45)]"/>
+                <filter name="hr_mn_retirement_soon" string="Тэтгэвэрт ойртсон" domain="[('x_mn_retirement_soon', '=', True)]"/>
+                <filter name="hr_mn_contract_ending" string="Гэрээ дуусах дөхсөн" domain="[('x_mn_contract_ending_soon', '=', True)]"/>
+                <filter name="hr_mn_birthday_month" string="Энэ сарын төрсөн өдөр" domain="[('x_mn_birthday_this_month', '=', True)]"/>
+                <filter name="hr_mn_missing_documents" string="Дутуу баримттай" domain="[('x_mn_has_missing_documents', '=', True)]"/>
+            </filter>
+            <filter name="group_employee_type" position="after">
+                <filter name="group_hr_mn_grade" string="Зэрэг / Дэв" context="{'group_by': 'x_mn_grade_rank'}"/>
+                <filter name="group_hr_mn_status" string="Төлөв" context="{'group_by': 'x_mn_employment_status'}"/>
+                <filter name="group_hr_mn_education" string="Боловсрол" context="{'group_by': 'certificate'}"/>
+            </filter>
+        </field>
+    </record>
+
+    <record id="hr_kanban_view_employees_hr_custom_mn" model="ir.ui.view">
+        <field name="name">hr.employee.kanban.hr.custom.mn</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.hr_kanban_view_employees"/>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <xpath expr="//kanban/templates" position="before">
+                <field name="x_mn_employee_code"/>
+                <field name="x_mn_grade_rank"/>
+                <field name="x_mn_employment_status"/>
+                <field name="department_id"/>
+                <field name="job_title"/>
+                <field name="work_phone"/>
+                <field name="mobile_phone"/>
+                <field name="work_email"/>
+                <field name="x_mn_missing_document_count"/>
+            </xpath>
+            <xpath expr="//templates/t[@t-name='card']" position="replace">
+                <t t-name="card" class="o_hr_mn_employee_card">
+                    <article class="oe_kanban_global_click o_hr_mn_kanban_card">
+                        <aside class="o_hr_mn_kanban_photo">
+                            <field name="avatar_128" widget="background_image" options="{'zoom': true, 'zoom_delay': 1000}"/>
+                        </aside>
+                        <main class="o_hr_mn_kanban_body">
+                            <div class="o_hr_mn_kanban_header">
+                                <div>
+                                    <span class="o_hr_mn_code"><field name="x_mn_employee_code"/></span>
+                                    <strong class="o_hr_mn_name"><field name="name"/></strong>
+                                </div>
+                                <span class="o_hr_mn_status"><field name="x_mn_employment_status"/></span>
+                            </div>
+                            <div class="o_hr_mn_position">
+                                <field name="job_title"/>
+                                <span t-if="record.x_mn_grade_rank.raw_value"> · <field name="x_mn_grade_rank"/></span>
+                            </div>
+                            <div class="o_hr_mn_department">
+                                <i class="fa fa-sitemap" title="Хэлтэс"/>
+                                <field name="department_id"/>
+                            </div>
+                            <div class="o_hr_mn_contact_grid">
+                                <span t-if="record.work_phone.raw_value"><i class="fa fa-phone"/> <field name="work_phone"/></span>
+                                <span t-if="record.mobile_phone.raw_value"><i class="fa fa-mobile"/> <field name="mobile_phone"/></span>
+                                <span t-if="record.work_email.raw_value"><i class="fa fa-envelope"/> <field name="work_email"/></span>
+                            </div>
+                            <footer class="o_hr_mn_footer">
+                                <span t-if="record.x_mn_missing_document_count.raw_value" class="o_hr_mn_warning">
+                                    <field name="x_mn_missing_document_count"/> дутуу баримт
+                                </span>
+                                <span t-else="" class="o_hr_mn_ok">Баримт бүрэн</span>
+                                <field name="activity_ids" widget="kanban_activity"/>
+                            </footer>
+                        </main>
+                    </article>
+                </t>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_ir_attachment_hr_custom_mn_list" model="ir.ui.view">
+        <field name="name">ir.attachment.hr.custom.mn.list</field>
+        <field name="model">ir.attachment</field>
+        <field name="arch" type="xml">
+            <list string="HR баримтууд" create="1" edit="1">
+                <field name="name"/>
+                <field name="x_mn_document_type"/>
+                <field name="x_mn_document_date"/>
+                <field name="x_mn_expiry_date"/>
+                <field name="mimetype"/>
+                <field name="create_uid"/>
+                <field name="create_date"/>
+            </list>
+        </field>
+    </record>
+</odoo>

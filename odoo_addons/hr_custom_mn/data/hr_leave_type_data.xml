@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="leave_type_mn_annual" model="hr.leave.type">
+            <field name="name">Ээлжийн амралт</field>
+            <field name="requires_allocation">True</field>
+            <field name="employee_requests">False</field>
+            <field name="leave_validation_type">both</field>
+            <field name="allocation_validation_type">hr</field>
+            <field name="request_unit">day</field>
+            <field name="sequence">10</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="leave_type_mn_sick" model="hr.leave.type">
+            <field name="name">Өвчний чөлөө</field>
+            <field name="requires_allocation">False</field>
+            <field name="leave_validation_type">both</field>
+            <field name="request_unit">day</field>
+            <field name="support_document">True</field>
+            <field name="sequence">20</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="leave_type_mn_paid" model="hr.leave.type">
+            <field name="name">Цалинтай чөлөө</field>
+            <field name="requires_allocation">True</field>
+            <field name="employee_requests">False</field>
+            <field name="leave_validation_type">both</field>
+            <field name="allocation_validation_type">hr</field>
+            <field name="request_unit">day</field>
+            <field name="sequence">30</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="leave_type_mn_unpaid" model="hr.leave.type">
+            <field name="name">Цалингүй чөлөө</field>
+            <field name="requires_allocation">False</field>
+            <field name="leave_validation_type">both</field>
+            <field name="request_unit">day</field>
+            <field name="unpaid">True</field>
+            <field name="sequence">40</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="leave_type_mn_maternity" model="hr.leave.type">
+            <field name="name">Жирэмсний болон амаржсаны чөлөө</field>
+            <field name="requires_allocation">False</field>
+            <field name="leave_validation_type">both</field>
+            <field name="request_unit">day</field>
+            <field name="support_document">True</field>
+            <field name="sequence">50</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="leave_type_mn_special" model="hr.leave.type">
+            <field name="name">Тусгай чөлөө</field>
+            <field name="requires_allocation">False</field>
+            <field name="leave_validation_type">both</field>
+            <field name="request_unit">day</field>
+            <field name="sequence">60</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

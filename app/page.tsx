@@ -15,6 +15,7 @@ export default async function Home() {
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   let todayAssignments: Awaited<ReturnType<typeof loadAssignedGarbageTasks>>["assignments"] = [];
   let fleetBoard: Awaited<ReturnType<typeof loadFleetVehicleBoard>> = {
+    allVehicles: [],
     activeVehicles: [],
     repairVehicles: [],
     totalVehicles: 0,

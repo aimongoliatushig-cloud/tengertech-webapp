@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="hr_custom_mn.Dashboard">
+        <div class="o_hr_mn_dashboard">
+            <t t-if="state.loading">
+                <div class="o_hr_mn_loading">HR самбар ачаалж байна...</div>
+            </t>
+            <t t-else="">
+                <section class="o_hr_mn_dashboard_header">
+                    <div>
+                        <span>Human Resource Management</span>
+                        <h1>HR удирдлагын самбар</h1>
+                    </div>
+                </section>
+                <section class="o_hr_mn_metric_grid">
+                    <article><span>Нийт ажилтан</span><strong t-esc="state.data.cards.total"/></article>
+                    <article><span>Идэвхтэй</span><strong t-esc="state.data.cards.active"/></article>
+                    <article><span>Энэ сард шинээр</span><strong t-esc="state.data.cards.newThisMonth"/></article>
+                    <article><span>Өнөөдөр чөлөөтэй</span><strong t-esc="state.data.cards.onLeaveToday"/></article>
+                    <article><span>Тэтгэвэрт ойртсон</span><strong t-esc="state.data.cards.retiringSoon"/></article>
+                    <article><span>Гэрээ дуусах</span><strong t-esc="state.data.cards.contractExpiring"/></article>
+                    <article><span>Эрэгтэй / Эмэгтэй</span><strong><t t-esc="state.data.cards.male"/> / <t t-esc="state.data.cards.female"/></strong></article>
+                </section>
+                <section class="o_hr_mn_chart_grid">
+                    <t t-call="hr_custom_mn.ChartBlock">
+                        <t t-set="title" t-value="'Хэлтсийн хүн хүч'"/>
+                        <t t-set="items" t-value="state.data.departmentHeadcount"/>
+                    </t>
+                    <t t-call="hr_custom_mn.ChartBlock">
+                        <t t-set="title" t-value="'Насны бүтэц'"/>
+                        <t t-set="items" t-value="state.data.ageDistribution"/>
+                    </t>
+                    <t t-call="hr_custom_mn.ChartBlock">
+                        <t t-set="title" t-value="'Боловсролын түвшин'"/>
+                        <t t-set="items" t-value="state.data.educationLevel"/>
+                    </t>
+                    <t t-call="hr_custom_mn.ChartBlock">
+                        <t t-set="title" t-value="'Чөлөөний статистик'"/>
+                        <t t-set="items" t-value="state.data.leaveStatistics"/>
+                    </t>
+                    <t t-call="hr_custom_mn.ChartBlock">
+                        <t t-set="title" t-value="'Сарын ажилд авалт'"/>
+                        <t t-set="items" t-value="state.data.monthlyHiringTrend"/>
+                    </t>
+                </section>
+            </t>
+        </div>
+    </t>
+
+    <t t-name="hr_custom_mn.ChartBlock">
+        <article class="o_hr_mn_chart_card">
+            <h2 t-esc="title"/>
+            <div class="o_hr_mn_chart_rows">
+                <div t-foreach="items || []" t-as="item" t-key="item.label" class="o_hr_mn_chart_row">
+                    <div class="o_hr_mn_chart_label">
+                        <span t-esc="item.label"/>
+                        <strong t-esc="item.value"/>
+                    </div>
+                    <div class="o_hr_mn_chart_track">
+                        <span t-att-style="'width:' + item.percent + '%'"/>
+                    </div>
+                </div>
+            </div>
+        </article>
+    </t>
+
+    <t t-name="hr_custom_mn.OrgChart">
+        <div class="o_hr_mn_org">
+            <t t-if="state.loading">
+                <div class="o_hr_mn_loading">Байгууллагын бүтэц ачаалж байна...</div>
+            </t>
+            <t t-else="">
+                <section class="o_hr_mn_dashboard_header">
+                    <div>
+                        <span>Organization Chart</span>
+                        <h1>Байгууллагын бүтэц</h1>
+                    </div>
+                </section>
+                <section class="o_hr_mn_director" t-if="state.data.director">
+                    <span>Удирдлага</span>
+                    <strong t-esc="state.data.director.name"/>
+                    <small t-esc="state.data.director.jobTitle"/>
+                </section>
+                <section class="o_hr_mn_org_departments">
+                    <article t-foreach="state.data.departments || []" t-as="department" t-key="department.department" class="o_hr_mn_org_department">
+                        <header>
+                            <span>Хэлтэс</span>
+                            <h2 t-esc="department.department"/>
+                        </header>
+                        <div class="o_hr_mn_org_manager" t-foreach="department.managers" t-as="manager" t-key="manager.id">
+                            <strong t-esc="manager.name"/>
+                            <small t-esc="manager.jobTitle"/>
+                            <ul>
+                                <li t-foreach="manager.children" t-as="child" t-key="child.id">
+                                    <span t-esc="child.name"/>
+                                    <small t-esc="child.jobTitle"/>
+                                </li>
+                            </ul>
+                        </div>
+                        <ul class="o_hr_mn_org_loose" t-if="department.employees.length">
+                            <li t-foreach="department.employees" t-as="employee" t-key="employee.id">
+                                <span t-esc="employee.name"/>
+                                <small t-esc="employee.jobTitle"/>
+                            </li>
+                        </ul>
+                    </article>
+                </section>
+            </t>
+        </div>
+    </t>
+</templates>

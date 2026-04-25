@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_hr_custom_mn_generic" model="ir.actions.report">
+        <field name="name">HR тайлан</field>
+        <field name="model">hr.custom.mn.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hr_custom_mn.report_hr_custom_mn_generic</field>
+        <field name="report_file">hr_custom_mn.report_hr_custom_mn_generic</field>
+        <field name="print_report_name">object._report_title()</field>
+    </record>
+
+    <template id="report_hr_custom_mn_generic">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="report_data" t-value="doc.get_report_lines()"/>
+                <t t-set="lines" t-value="report_data[0]"/>
+                <t t-set="headers" t-value="report_data[1]"/>
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 t-esc="doc._report_title()"/>
+                        <table class="table table-sm o_main_table">
+                            <thead>
+                                <tr>
+                                    <t t-foreach="headers" t-as="header">
+                                        <th t-esc="header"/>
+                                    </t>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="lines" t-as="line">
+                                    <t t-foreach="line.get('values')" t-as="value">
+                                        <td t-esc="value"/>
+                                    </t>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

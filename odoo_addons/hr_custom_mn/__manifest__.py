@@ -1,0 +1,41 @@
+# -*- coding: utf-8 -*-
+{
+    "name": "Mongolian HR Management",
+    "summary": "Government style HR master data, leave, performance, dashboard, and reports",
+    "version": "19.0.1.0.0",
+    "category": "Human Resources/Employees",
+    "author": "TengerTech",
+    "website": "https://tengertech.mn",
+    "license": "LGPL-3",
+    "depends": [
+        "hr",
+        "hr_holidays",
+        "mail",
+        "web",
+    ],
+    "data": [
+        "security/hr_custom_mn_security.xml",
+        "security/ir.model.access.csv",
+        "data/ir_sequence_data.xml",
+        "data/hr_leave_type_data.xml",
+        "data/ir_cron_data.xml",
+        "report/employee_card_report.xml",
+        "report/hr_reports.xml",
+        "views/hr_employee_views.xml",
+        "views/hr_employee_history_views.xml",
+        "views/hr_performance_views.xml",
+        "views/hr_leave_views.xml",
+        "views/hr_dashboard_views.xml",
+        "views/hr_report_wizard_views.xml",
+        "views/menus.xml",
+    ],
+    "assets": {
+        "web.assets_backend": [
+            "hr_custom_mn/static/src/scss/hr_custom_mn.scss",
+            "hr_custom_mn/static/src/js/hr_dashboard.js",
+            "hr_custom_mn/static/src/xml/hr_dashboard_templates.xml",
+        ],
+    },
+    "installable": True,
+    "application": False,
+}

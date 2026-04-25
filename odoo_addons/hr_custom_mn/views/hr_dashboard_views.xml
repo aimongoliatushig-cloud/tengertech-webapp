@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_hr_custom_mn_dashboard" model="ir.actions.client">
+        <field name="name">HR удирдлагын самбар</field>
+        <field name="tag">hr_custom_mn_dashboard</field>
+    </record>
+
+    <record id="action_hr_custom_mn_org_chart" model="ir.actions.client">
+        <field name="name">Байгууллагын бүтэц</field>
+        <field name="tag">hr_custom_mn_org_chart</field>
+    </record>
+</odoo>

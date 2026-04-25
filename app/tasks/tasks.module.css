@@ -1,32 +1,31 @@
-.pageHeader,
+﻿.pageHeader,
 .summaryStrip,
+.calendarPanel,
 .filterPanel,
 .taskSection,
 .taskCard,
 .tableShell,
 .emptyState {
-  border: 1px solid var(--line-soft);
-  border-radius: 28px;
-  background: var(--surface-panel-soft);
+  border: 1px solid rgba(61, 107, 71, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(14px);
-  box-shadow: 0 18px 48px var(--shadow-soft);
+  box-shadow: var(--ds-shadow-panel);
 }
 
 .pageHeader,
+.calendarPanel,
 .filterPanel,
 .taskSection,
 .emptyState {
-  padding: 22px;
+  padding: 16px;
 }
 
 .pageHeader {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.8fr);
-  gap: 18px;
-  margin-bottom: 18px;
-  background:
-    radial-gradient(circle at top right, rgba(166, 211, 157, 0.16), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 250, 244, 0.94));
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.55fr);
+  gap: 14px;
+  margin-bottom: 16px;
 }
 
 .pageHeaderMain,
@@ -41,7 +40,7 @@
 .cardActions,
 .emptyState {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .titleBlock h1,
@@ -49,13 +48,15 @@
 .sectionHeader h2,
 .emptyState h3 {
   margin: 0;
-  font-family: var(--font-display);
-  letter-spacing: -0.04em;
+  color: #26342d;
+  font-family: var(--font-body);
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .titleBlock h1 {
-  font-size: clamp(2rem, 4vw, 3.4rem);
-  line-height: 0.96;
+  font-size: 1.04rem;
+  line-height: 1.2;
 }
 
 .titleBlock p,
@@ -63,7 +64,8 @@
 .subtleNote,
 .emptyState p {
   color: var(--ink-700);
-  line-height: 1.65;
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 .pageKicker,
@@ -71,24 +73,24 @@
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: rgba(74, 154, 93, 0.12);
+  min-height: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--brand-800);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .userBlock {
   align-content: start;
-  padding: 18px;
-  border-radius: 24px;
-  background:
-    linear-gradient(180deg, rgba(74, 154, 93, 0.08), rgba(255, 255, 255, 0.74));
-  border: 1px solid rgba(74, 154, 93, 0.16);
+  padding: 13px 14px;
+  border: 1px solid rgba(61, 107, 71, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .userBlock span,
@@ -96,11 +98,12 @@
 .taskInfoItem span,
 .progressLabel span {
   color: var(--ink-600);
-  font-size: 0.88rem;
+  font-size: 0.78rem;
 }
 
 .userBlock strong {
-  font-size: 1.3rem;
+  font-size: 0.95rem;
+  line-height: 1.25;
 }
 
 .pageHeaderAside {
@@ -109,7 +112,7 @@
 
 .dateFilterForm label {
   color: var(--ink-900);
-  font-size: 0.92rem;
+  font-size: 0.8rem;
   font-weight: 700;
 }
 
@@ -127,13 +130,14 @@
 
 .dateInput {
   flex: 1;
-  min-height: 48px;
-  padding: 0 14px;
+  min-height: 40px;
+  padding: 0 12px;
   border: 1px solid var(--line-soft);
-  border-radius: 16px;
+  border-radius: 8px;
   background: #fff;
   color: var(--ink-900);
   font: inherit;
+  font-size: 0.86rem;
 }
 
 .dateButton,
@@ -144,9 +148,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 48px;
-  padding: 0 18px;
-  border-radius: 999px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
   font-weight: 700;
 }
 
@@ -173,59 +178,121 @@
 .summaryStrip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  padding: 14px;
-  margin: 18px 0;
+  gap: 12px;
+  padding: 0;
+  margin: 0 0 16px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .summaryCard {
-  padding: 18px;
-  border-radius: 22px;
+  min-height: 92px;
+  padding: 13px 14px;
+  border-radius: 8px;
   background:
     radial-gradient(circle at top right, rgba(166, 211, 157, 0.14), transparent 34%),
     rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(74, 154, 93, 0.1);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  box-shadow: var(--ds-shadow-panel);
 }
 
 .summaryCard strong {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
+  font-family: var(--font-body);
+  font-size: 1.55rem;
   line-height: 1;
 }
 
 .summaryCard small {
   color: var(--ink-700);
+  font-size: 0.72rem;
+  line-height: 1.35;
 }
 
 .filterPanel {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
+}
+
+.calendarPanel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.calendarCard {
+  display: grid;
+  gap: 8px;
+  min-height: 92px;
+  padding: 13px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(74, 154, 93, 0.1);
+  background:
+    radial-gradient(circle at top right, rgba(166, 211, 157, 0.14), transparent 34%),
+    rgba(255, 255, 255, 0.94);
+}
+
+.calendarDate {
+  color: var(--ink-700);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.calendarCard strong {
+  color: var(--brand-900);
+  font-family: var(--font-body);
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.calendarStats {
+  display: grid;
+  gap: 4px;
+  color: var(--ink-700);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.calendarEmpty {
+  padding: 14px;
+  border: 1px dashed rgba(74, 154, 93, 0.22);
+  border-radius: 8px;
+  color: var(--ink-700);
+  font-size: 0.82rem;
+  text-align: center;
 }
 
 .filterHeader {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .filterHeader h2,
 .sectionHeader h2 {
-  font-size: clamp(1.4rem, 3vw, 2rem);
-  line-height: 1;
+  font-size: 0.98rem;
+  line-height: 1.25;
 }
 
 .filterHeader p,
 .sectionHeader p {
   max-width: 320px;
-  padding: 12px 14px;
-  border-radius: 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
   background: rgba(74, 154, 93, 0.08);
   border: 1px solid rgba(74, 154, 93, 0.14);
+  font-size: 0.78rem;
+  line-height: 1.5;
   text-align: right;
 }
 
 .filterScroller {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(170px, 1fr);
+  grid-auto-columns: minmax(145px, 1fr);
   gap: 12px;
   overflow-x: auto;
   padding-bottom: 2px;
@@ -233,10 +300,10 @@
 
 .filterChip {
   display: grid;
-  gap: 6px;
-  min-height: 78px;
-  padding: 16px;
-  border-radius: 22px;
+  gap: 4px;
+  min-height: 54px;
+  padding: 10px 12px;
+  border-radius: 8px;
   background: rgba(74, 154, 93, 0.08);
   color: var(--ink-900);
   border: 1px solid rgba(74, 154, 93, 0.08);
@@ -244,7 +311,7 @@
 
 .filterChip strong {
   color: var(--brand-900);
-  font-size: 1.35rem;
+  font-size: 1rem;
 }
 
 .filterChipActive {
@@ -258,7 +325,7 @@
 
 .taskSection {
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
 .sectionHeader {
@@ -267,17 +334,17 @@
 
 .taskCardList {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .projectList {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .taskCard {
-  padding: 18px;
-  border-radius: 24px;
+  padding: 13px 14px;
+  border-radius: 8px;
   background:
     radial-gradient(circle at top right, rgba(166, 211, 157, 0.12), transparent 36%),
     rgba(255, 255, 255, 0.96);
@@ -293,7 +360,7 @@
 .projectCardLink:hover {
   transform: translateY(-2px);
   border-color: rgba(31, 95, 49, 0.16);
-  box-shadow: 0 18px 32px rgba(31, 95, 49, 0.1);
+  box-shadow: var(--ds-shadow-panel);
 }
 
 .taskIdentity strong,
@@ -302,34 +369,36 @@
 }
 
 .taskIdentity strong {
-  font-size: 1.18rem;
+  font-size: 0.9rem;
+  line-height: 1.35;
 }
 
 .taskIdentity span {
   color: var(--ink-700);
+  font-size: 0.78rem;
 }
 
 .taskRoute {
   margin: 0;
-  font-size: 1.08rem;
+  font-size: 0.82rem;
   font-weight: 700;
 }
 
 .taskInfoGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .taskInfoItem {
-  padding: 12px 14px;
-  border-radius: 18px;
+  padding: 10px 12px;
+  border-radius: 8px;
   background: rgba(240, 248, 239, 0.9);
 }
 
 .taskInfoItem strong,
 .progressLabel strong {
-  font-size: 1rem;
+  font-size: 0.82rem;
   color: var(--ink-900);
 }
 
@@ -340,9 +409,9 @@
 
 .progressTrack {
   width: 100%;
-  height: 9px;
+  height: 8px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: 8px;
   background: rgba(95, 117, 99, 0.12);
 }
 
@@ -358,7 +427,7 @@
 }
 
 .subtleNote {
-  font-size: 0.92rem;
+  font-size: 0.78rem;
 }
 
 .projectCardFooter {
@@ -371,7 +440,7 @@
 
 .projectOpenLabel {
   color: var(--brand-800);
-  font-size: 0.92rem;
+  font-size: 0.78rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -388,7 +457,7 @@
 
 .taskTable th,
 .taskTable td {
-  padding: 16px 14px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--line-soft);
   vertical-align: middle;
   text-align: left;
@@ -396,10 +465,14 @@
 
 .taskTable th {
   color: var(--ink-600);
-  font-size: 0.82rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
   text-transform: uppercase;
+}
+
+.taskTable td {
+  font-size: 0.8rem;
 }
 
 .tableProgress {
@@ -441,15 +514,24 @@
     border: 0;
     box-shadow: none;
   }
+
+  .calendarGrid {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(220px, 1fr);
+    grid-template-columns: none;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
 }
 
 @media (max-width: 820px) {
   .pageHeader,
+  .calendarPanel,
   .filterPanel,
   .taskSection,
   .emptyState {
-    padding: 18px;
-    border-radius: 24px;
+    padding: 16px;
+    border-radius: 8px;
   }
 
   .pageHeaderMain,
@@ -460,29 +542,31 @@
   }
 
   .titleBlock h1 {
-    font-size: clamp(1.75rem, 8vw, 2.4rem);
-    line-height: 1;
+    font-size: 1.04rem;
+    line-height: 1.2;
   }
 
   .titleBlock p {
-    display: -webkit-box;
-    overflow: hidden;
-    font-size: 0.92rem;
-    line-height: 1.58;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 4;
+    display: block;
+    overflow: visible;
+    font-size: 0.78rem;
+    line-height: 1.45;
   }
 
   .userBlock {
-    padding: 14px;
-    border-radius: 20px;
+    padding: 13px 14px;
+    border-radius: 8px;
   }
 
   .userBlock strong {
-    font-size: 1.08rem;
+    font-size: 0.95rem;
   }
 
   .summaryStrip {
+    grid-auto-columns: minmax(210px, 82vw);
+  }
+
+  .calendarGrid {
     grid-auto-columns: minmax(210px, 82vw);
   }
 
@@ -508,32 +592,33 @@
 
 @media (max-width: 640px) {
   .pageHeader {
-    margin-bottom: 14px;
+    margin-bottom: 16px;
   }
 
   .pageHeader,
+  .calendarPanel,
   .filterPanel,
   .taskSection,
   .emptyState {
     padding: 16px;
-    border-radius: 22px;
+    border-radius: 8px;
   }
 
   .pageKicker,
   .filterKicker {
-    min-height: 28px;
-    padding: 0 10px;
-    font-size: 0.7rem;
+    min-height: 0;
+    padding: 0;
+    font-size: 0.76rem;
   }
 
   .titleBlock h1 {
-    font-size: clamp(1.65rem, 8vw, 2.1rem);
-    line-height: 1.02;
+    font-size: 1.04rem;
+    line-height: 1.2;
   }
 
   .titleBlock p {
-    font-size: 0.88rem;
-    line-height: 1.55;
+    font-size: 0.78rem;
+    line-height: 1.45;
   }
 
   .filterScroller {
@@ -546,25 +631,25 @@
   }
 
   .summaryCard {
-    padding: 16px;
-    border-radius: 20px;
+    padding: 13px 14px;
+    border-radius: 8px;
   }
 
   .summaryCard strong {
-    font-size: 1.35rem;
+    font-size: 1.55rem;
   }
 
   .filterHeader p,
   .sectionHeader p {
     padding: 10px 12px;
-    font-size: 0.86rem;
+    font-size: 0.78rem;
     line-height: 1.5;
   }
 
   .filterChip {
-    min-height: 72px;
-    padding: 14px;
-    border-radius: 18px;
+    min-height: 54px;
+    padding: 10px 12px;
+    border-radius: 8px;
   }
 
   .taskCardList {
@@ -572,22 +657,22 @@
   }
 
   .taskCard {
-    padding: 16px;
-    border-radius: 20px;
+    padding: 13px 14px;
+    border-radius: 8px;
     gap: 8px;
   }
 
   .taskIdentity strong {
-    font-size: 1.05rem;
+    font-size: 0.9rem;
   }
 
   .taskRoute {
-    font-size: 0.98rem;
+    font-size: 0.82rem;
   }
 
   .taskInfoItem {
     padding: 10px 12px;
-    border-radius: 16px;
+    border-radius: 8px;
   }
 
   .progressTrack {
@@ -607,3 +692,404 @@
     width: 100%;
   }
 }
+
+
+/* Unified dashboard design-system migration */
+.shell,
+.workspaceShell,
+.chatShell,
+.errorShell,
+.page,
+.reportPage,
+.reportPreviewShell {
+  background: var(--ds-page-bg);
+  color: var(--ink-900);
+}
+
+.workspaceShell {
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+.workspaceSidebar,
+.menuColumn,
+.sideRail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  min-height: 100vh;
+  background: var(--ds-rail-bg);
+  border-right: 1px solid var(--ds-border);
+}
+
+.workspaceMain,
+.pageContent,
+.mainColumn {
+  min-width: 0;
+  padding: 0 20px 64px;
+}
+
+.infoPanel {
+  background: var(--ds-rail-bg);
+  color: var(--ink-900);
+  border-right: 1px solid var(--ds-border);
+}
+
+.formPanel {
+  background: var(--ds-page-bg);
+}
+
+.heroCard,
+.pageHeader,
+.sectionCard,
+.panel,
+.formCard,
+.form,
+.footerHint,
+.signalCard,
+.featureCard,
+.overviewPanel,
+.metricCard,
+.statCard,
+.summaryCard,
+.summaryBox,
+.alertCard,
+.attentionPanel,
+.dashboardCard,
+.dashboardPanel,
+.workspaceSection,
+.reportCard,
+.taskItem,
+.taskCard,
+.taskSection,
+.detailCard,
+.infoCard,
+.noticeCard,
+.noticeBanner,
+.errorCard,
+.emptyState,
+.pickerCard,
+.pickerSection,
+.conversationPanel,
+.conversationList,
+.messagePanel,
+.composer,
+.vehicleCard,
+.inventoryCard,
+.routeCard,
+.employeeCard,
+.employeeModal,
+.modalDialog,
+.modalCard,
+.confirmationSheet,
+.overviewBoard,
+.requestCard,
+.flowCard,
+.flowBarCard,
+.workflowSummaryCard,
+.workflowMetaCard,
+.workflowItem,
+.historyCard,
+.documentCard,
+.filterPanel,
+.calendarPanel,
+.calendarCard,
+.weightCard,
+.weightSummaryCard,
+.weightDayCard,
+.weightMetaCard,
+.mapHintCard,
+.stopCard,
+.mobilePanel,
+.mobileDetailCard,
+.mobileUtilityCard,
+.boardCard,
+.boardInfoCard,
+.rolePanel,
+.roleMetaCard,
+.capabilityCard,
+.logoutCard,
+.tableShell {
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-panel-bg);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.heroCard::after,
+.heroCard::before,
+.infoPanel::after,
+.infoPanel::before,
+.canvasGlow {
+  content: none;
+  display: none;
+}
+
+.kicker,
+.eyebrow,
+.formBadge,
+.contextTag,
+.sectionEyebrow,
+.sectionKicker,
+.overviewEyebrow,
+.pageKicker,
+.roleEyebrow,
+.masterInsightsKicker,
+.boardEyebrow,
+.mobileDetailEyebrow {
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-800);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.heroCard h1,
+.pageHeader h1,
+.formHeader h2,
+.titleBlock h1,
+.heroCopy h1,
+.overviewCopy h2,
+.sectionHeader h2,
+.panelHeader h2,
+.pickerHeader h1,
+.modalTitle,
+.introTitle {
+  color: #1f2b25;
+  font-family: var(--font-body);
+  font-size: clamp(1.25rem, 2vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.12;
+}
+
+.heroCard p,
+.pageHeader p,
+.formHeader p,
+.heroCopy p,
+.overviewCopy p,
+.sectionNote,
+.helperText,
+.subtleText,
+.emptyNote,
+.noticeMessage {
+  color: var(--ink-700);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton,
+.submitButton,
+.fullButton,
+.actionButton,
+.actionPrimary,
+.actionSecondary,
+.actionGhost,
+.primaryAction,
+.secondaryAction,
+.primaryLink,
+.secondaryLink,
+.smallLink,
+.backLink,
+.inlineLink,
+.rowButton,
+.dateButton,
+.locationAddButton,
+.createTaskTrigger,
+.closeButton,
+.modalCloseButton,
+.modalActions button,
+.subnavLink,
+.filterChip,
+.taskFilterChip,
+.departmentTab,
+.departmentFilterButton,
+.routeChip,
+.modeChip,
+.pickerCta,
+.cardLinkLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: var(--ds-control-height);
+  padding: 0 12px;
+  border-radius: var(--ds-radius-control);
+  border: 1px solid var(--ds-border);
+  background: var(--ds-panel-strong-bg);
+  color: var(--ink-900);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: none;
+}
+
+.primaryButton,
+.submitButton,
+.actionPrimary,
+.primaryAction,
+.subnavLinkActive,
+.filterChipActive,
+.taskFilterChipActive,
+.departmentTabActive,
+.departmentFilterButtonActive,
+.routeChipActive,
+.modeChipActive {
+  border-color: rgba(31, 95, 49, 0.22);
+  background: rgba(76, 158, 92, 0.11);
+  color: #256b37;
+}
+
+.field input,
+.field select,
+.field textarea,
+.form input,
+.form select,
+.form textarea,
+.dateInput,
+.mobileBucketInput,
+.searchableSelectButton,
+.searchableSelectSearch,
+.locationComposer input,
+.quoteForm input,
+.quoteForm textarea,
+.registrationForm input,
+.registrationForm select,
+.registrationForm textarea,
+.modalForm input,
+.modalForm select,
+.modalForm textarea {
+  width: 100%;
+  min-height: var(--ds-control-height);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-900);
+  box-shadow: none;
+}
+
+.tableShell,
+.taskTable,
+.tableList,
+.reportList,
+.vehicleList,
+.documentList,
+.historyList,
+.stopList,
+.workflowList {
+  overflow: hidden;
+}
+
+.tableHeader,
+.tableRow,
+.taskItemTop,
+.reportTop,
+.cardHeader,
+.laneHeader,
+.workflowColumnHeader,
+.sectionHeader,
+.panelHeader {
+  border-color: var(--ds-border);
+}
+
+.badge,
+.actionBadge,
+.countBadge,
+.statePill,
+.stagePill,
+.statusChip,
+.flagChip,
+.rolePill,
+.departmentBadge,
+.sidebarBadge,
+.panelCount {
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-800);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.metricIcon,
+.actionIcon,
+.departmentFilterIcon,
+.summaryShowcaseIcon,
+.conversationAvatar,
+.avatar,
+.employeePhoto,
+.employeePhotoLarge,
+.menuLinkIcon,
+.sidebarIcon {
+  border-radius: var(--ds-radius-icon);
+}
+
+@media (max-width: 1080px) {
+  .workspaceShell {
+    grid-template-columns: 1fr;
+  }
+
+  .workspaceSidebar,
+  .menuColumn,
+  .sideRail {
+    position: static;
+    min-height: 0;
+    border-right: 0;
+    background: transparent;
+  }
+
+  .workspaceMain,
+  .pageContent,
+  .mainColumn {
+    padding: 0 12px 96px;
+  }
+}
+
+@media (max-width: 720px) {
+  .heroCard,
+  .pageHeader,
+  .sectionCard,
+  .panel,
+  .formCard,
+  .form,
+  .overviewPanel,
+  .metricCard,
+  .reportCard,
+  .taskItem,
+  .detailCard,
+  .employeeCard,
+  .modalDialog,
+  .requestCard {
+    padding: 14px;
+  }
+
+  .heroCard,
+  .pageHeader,
+  .heroMeta,
+  .summaryGrid,
+  .metricsGrid,
+  .statsGrid,
+  .detailGrid,
+  .infoGrid,
+  .taskGrid,
+  .workflowColumns {
+    grid-template-columns: 1fr;
+  }
+}
+
+

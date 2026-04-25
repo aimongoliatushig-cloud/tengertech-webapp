@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Exo_2, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Exo_2, IBM_Plex_Mono, IBM_Plex_Sans, Inter } from "next/font/google";
 
 import "./globals.css";
 
@@ -21,6 +21,12 @@ const mono = IBM_Plex_Mono({
   weight: ["400", "500"],
 });
 
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
 export const metadata: Metadata = {
   title: "Хот тохижилтын удирдлагын төв",
   description: "Odoo ERP дээр суурилсан хотын ажиллагааны хяналтын самбар",
@@ -35,7 +41,7 @@ export default function RootLayout({
     <html
       lang="mn"
       suppressHydrationWarning
-      className={`${display.variable} ${body.variable} ${mono.variable}`}
+      className={`${display.variable} ${body.variable} ${mono.variable} ${inter.variable}`}
     >
       <body suppressHydrationWarning>{children}</body>
     </html>

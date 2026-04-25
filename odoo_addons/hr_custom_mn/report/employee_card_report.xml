@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_hr_employee_card" model="ir.actions.report">
+        <field name="name">Ажилтны карт</field>
+        <field name="model">hr.employee</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hr_custom_mn.report_hr_employee_card</field>
+        <field name="report_file">hr_custom_mn.report_hr_employee_card</field>
+        <field name="print_report_name">'%s - employee-card' % (object.x_mn_employee_code or object.name)</field>
+    </record>
+
+    <template id="report_hr_employee_card">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2>Ажилтны карт</h2>
+                        <div class="row">
+                            <div class="col-3">
+                                <img t-if="doc.image_1920" t-att-src="image_data_uri(doc.image_1920)" style="max-width:130px; max-height:160px; border:1px solid #ddd;"/>
+                            </div>
+                            <div class="col-9">
+                                <h3 t-field="doc.name"/>
+                                <p><strong>Код:</strong> <span t-field="doc.x_mn_employee_code"/></p>
+                                <p><strong>Хэлтэс:</strong> <span t-field="doc.department_id"/></p>
+                                <p><strong>Албан тушаал:</strong> <span t-field="doc.job_title"/></p>
+                                <p><strong>Зэрэг:</strong> <span t-field="doc.x_mn_grade_rank"/></p>
+                                <p><strong>Утас:</strong> <span t-field="doc.work_phone"/></p>
+                                <p><strong>И-мэйл:</strong> <span t-field="doc.work_email"/></p>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

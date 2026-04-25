@@ -1,3 +1,7 @@
+@import "tailwindcss";
+
+@source "./**/*.{js,ts,jsx,tsx,mdx}";
+
 :root {
   --ink-950: #112019;
   --ink-900: #18251f;
@@ -29,6 +33,23 @@
   --line-soft: rgba(31, 95, 49, 0.12);
   --line-strong: rgba(31, 95, 49, 0.18);
   --shadow-soft: rgba(31, 95, 49, 0.08);
+  --ds-page-bg: #f6fbf6;
+  --ds-rail-bg: rgba(255, 255, 255, 0.92);
+  --ds-header-bg: rgba(255, 255, 255, 0.78);
+  --ds-panel-bg: rgba(255, 255, 255, 0.76);
+  --ds-panel-strong-bg: rgba(255, 255, 255, 0.88);
+  --ds-soft-bg: rgba(218, 238, 219, 0.78);
+  --ds-border: rgba(46, 125, 50, 0.1);
+  --ds-border-strong: rgba(46, 125, 50, 0.18);
+  --ds-shadow-panel: 0 20px 60px rgba(27, 73, 38, 0.08);
+  --ds-shadow-hover: 0 24px 70px rgba(27, 73, 38, 0.12);
+  --ds-radius-card: 22px;
+  --ds-radius-control: 18px;
+  --ds-radius-icon: 16px;
+  --ds-control-height: 40px;
+  --ds-control-height-sm: 34px;
+  --ds-gap: 12px;
+  --ds-gap-lg: 16px;
 }
 
 html {
@@ -75,6 +96,15 @@ textarea {
   font: inherit;
 }
 
+input,
+select,
+textarea {
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-900);
+}
+
 button {
   transition:
     transform 160ms ease,
@@ -96,4 +126,38 @@ button:disabled {
 :focus-visible {
   outline: 3px solid rgba(74, 154, 93, 0.28);
   outline-offset: 2px;
+}
+
+@keyframes eco-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes eco-leaf-float {
+  0% {
+    opacity: 0.2;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    opacity: 0.58;
+    transform: translate3d(16px, -18px, 0) rotate(14deg);
+  }
+  100% {
+    opacity: 0.2;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+.eco-fade-up {
+  animation: eco-fade-up 680ms ease both;
+}
+
+.eco-leaf-float {
+  animation: eco-leaf-float 6s ease-in-out infinite;
 }

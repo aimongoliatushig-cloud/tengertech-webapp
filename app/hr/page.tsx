@@ -67,7 +67,11 @@ export default async function HrPage({ searchParams }: PageProps) {
     }, new Map()),
   ).sort((left, right) => left[0].localeCompare(right[0], "mn"));
 
-  const linkedUserCount = employees.filter((employee) => employee.userName).length;
+  const activeCount = employees.filter((employee) => employee.active).length;
+  const inactiveCount = employees.length - activeCount;
+  const missingDocumentCount = employees.filter(
+    (employee) => employee.missingDocumentCount > 0,
+  ).length;
   const contactCount = employees.filter(
     (employee) => employee.workPhone || employee.mobilePhone || employee.workEmail,
   ).length;
@@ -100,38 +104,38 @@ export default async function HrPage({ searchParams }: PageProps) {
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
               title="Хүний нөөц"
-              subtitle="Бүх бүртгэлтэй ажилтны нэгдсэн жагсаалт"
+              subtitle="Ажилтны мастер бүртгэл, бүтэц, холбоо барих мэдээлэл"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               notificationCount={employees.length}
-              notificationNote={`${departments.length} хэлтсийн ${employees.length} ажилтан бүртгэлтэй`}
+              notificationNote={`${departments.length} хэлтсийн ${employees.length} ажилтан`}
             />
 
             <section className={styles.introCard}>
-              <span className={styles.eyebrow}>Ажилтны бүртгэл</span>
-              <h1 className={styles.introTitle}>Байгууллагын бүх ажилтан</h1>
+              <span className={styles.eyebrow}>Ажилтны мастер бүртгэл</span>
+              <h1 className={styles.introTitle}>Байгууллагын хүний нөөцийн лавлах</h1>
               <p className={styles.introText}>
-                Үйл ажиллагаа хариуцсан менежер болон захирлын түвшинд бүх бүртгэлтэй ажилтныг
-                хэлтсээр нь нэг дороос харна.
+                Хэлтэс, албан тушаал, код, холбоо барих мэдээлэл, баримтын бүрдэл,
+                гүйцэтгэлийн дохиог нэг дэлгэц дээр төвлөрүүлсэн HR картын харагдац.
               </p>
 
               <div className={styles.summaryGrid}>
                 <article className={styles.summaryCard}>
                   <span>Нийт ажилтан</span>
                   <strong>{employees.length}</strong>
-                  <small>Odoo дээр идэвхтэй бүртгэлтэй ажилтан</small>
+                  <small>{activeCount} идэвхтэй бүртгэл</small>
                 </article>
 
                 <article className={styles.summaryCard}>
                   <span>Хэлтэс</span>
                   <strong>{departments.length}</strong>
-                  <small>Ажилтан бүхий алба, нэгж</small>
+                  <small>{inactiveCount} архивласан / идэвхгүй бүртгэл</small>
                 </article>
 
                 <article className={styles.summaryCard}>
-                  <span>Холбоостой бүртгэл</span>
-                  <strong>{linkedUserCount}</strong>
-                  <small>{contactCount} ажилтан холбоо барих мэдээлэлтэй байна</small>
+                  <span>Баримтын хяналт</span>
+                  <strong>{missingDocumentCount}</strong>
+                  <small>{contactCount} ажилтан холбоо барих мэдээлэлтэй</small>
                 </article>
               </div>
             </section>
@@ -153,10 +157,10 @@ export default async function HrPage({ searchParams }: PageProps) {
             <section className={styles.sectionCard}>
               <div className={styles.sectionHeader}>
                 <div>
-                  <span className={styles.eyebrow}>Хэлтсийн жагсаалт</span>
-                  <h2>Бүх бүртгэлтэй ажилтан</h2>
+                  <span className={styles.eyebrow}>Ухаалаг жагсаалт</span>
+                  <h2>Ажилтны premium HR картууд</h2>
                 </div>
-                <p>Хэлтэс бүрийн дотор ажилтны нэр, албан тушаал, холбоо барих мэдээлэл харагдана.</p>
+                <p>Одоо ашиглаж буй Employees дэлгэцийг хэлтэс, төлөв, хайлтаар хурдан шүүх боломжтой болголоо.</p>
               </div>
 
               <HrDirectory
