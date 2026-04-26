@@ -18,9 +18,11 @@ import {
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 import {
   createGarbageWorkspaceProject,
+  createSeasonalWorkspacePlan,
   createWorkspaceProject,
   createWorkspaceTask,
   createWorkspaceTaskReport,
+  generateSeasonalWorkspaceExecution,
   loadProjectDetail,
   markWorkspaceTaskDone,
   loadDepartmentOptions,
@@ -147,6 +149,9 @@ export async function createProjectAction(formData: FormData) {
   const deadline = String(formData.get("deadline") ?? "").trim();
   const garbageVehicleIdRaw = String(formData.get("garbage_vehicle_id") ?? "").trim();
   const garbageRouteIdRaw = String(formData.get("garbage_route_id") ?? "").trim();
+  const seasonalWorkDaysJson = String(formData.get("seasonal_work_days_json") ?? "").trim();
+  const seasonalLinesJson = String(formData.get("seasonal_lines_json") ?? "").trim();
+  const seasonalNotes = String(formData.get("seasonal_notes") ?? "").trim();
   const connectionOverrides = {
     login: session.login,
     password: session.password,
@@ -227,6 +232,129 @@ export async function createProjectAction(formData: FormData) {
       redirect(
         `/projects/${result.project_id}?notice=${encodeURIComponent(
           result.message || "Хог тээвэрлэлтийн ажил амжилттай үүслээ.",
+        )}`,
+      );
+    } catch (error) {
+      rethrowIfRedirectError(error);
+      redirectWithMessage("/projects/new", "error", getErrorMessage(error));
+    }
+  }
+
+  if (operationUnit === "garbage_seasonal") {
+    if (!name || !effectiveDepartmentIdRaw || !startDate || !deadline) {
+      redirectWithMessage(
+        "/projects/new",
+        "error",
+        "Улирлын төлөвлөгөөнд нэр, хэлтэс, эхлэх болон дуусах огноог заавал оруулна уу.",
+      );
+    }
+
+    if (startDate > deadline) {
+      redirectWithMessage(
+        "/projects/new",
+        "error",
+        "Улирлын төлөвлөгөөний дуусах огноо эхлэх огнооноос өмнө байж болохгүй.",
+      );
+    }
+
+    let selectedWorkDays: string[] = [];
+    let seasonalLines: Array<{
+      sequence?: number;
+      khorooLabel?: string;
+      locationName?: string;
+      plannedVehicleCount?: number;
+      plannedTonnage?: number;
+      workDate?: string | null;
+      routeId?: number | null;
+      remarks?: string;
+    }> = [];
+
+    try {
+      selectedWorkDays = seasonalWorkDaysJson ? JSON.parse(seasonalWorkDaysJson) : [];
+      seasonalLines = seasonalLinesJson ? JSON.parse(seasonalLinesJson) : [];
+    } catch {
+      redirectWithMessage(
+        "/projects/new",
+        "error",
+        "Улирлын төлөвлөгөөний мөр эсвэл ажлын өдрийн мэдээлэл буруу байна.",
+      );
+    }
+
+    if (!selectedWorkDays.length) {
+      redirectWithMessage(
+        "/projects/new",
+        "error",
+        "Ажиллах өдрүүдээс дор хаяж нэгийг сонгоно уу.",
+      );
+    }
+
+    const normalizedLines = seasonalLines
+      .map((line, index) => ({
+        sequence: Number(line.sequence ?? index + 1),
+        khorooLabel: String(line.khorooLabel ?? "").trim(),
+        locationName: String(line.locationName ?? "").trim(),
+        plannedVehicleCount: Number(line.plannedVehicleCount ?? 0),
+        plannedTonnage: Number(line.plannedTonnage ?? 0),
+        workDate: String(line.workDate ?? "").trim(),
+        routeId:
+          line.routeId === null || line.routeId === undefined || line.routeId === ""
+            ? null
+            : Number(line.routeId),
+        remarks: String(line.remarks ?? "").trim(),
+      }))
+      .filter((line) => line.khorooLabel || line.locationName);
+
+    if (!normalizedLines.length) {
+      redirectWithMessage(
+        "/projects/new",
+        "error",
+        "Байршлын мөрөөс дор хаяж нэгийг бүрэн оруулна уу.",
+      );
+    }
+
+    const invalidLine = normalizedLines.find(
+      (line) =>
+        !line.khorooLabel ||
+        !line.locationName ||
+        !Number.isFinite(line.plannedVehicleCount) ||
+        line.plannedVehicleCount <= 0 ||
+        !Number.isFinite(line.plannedTonnage) ||
+        line.plannedTonnage <= 0 ||
+        (Boolean(line.workDate) && (line.workDate < startDate || line.workDate > deadline)),
+    );
+
+    if (invalidLine) {
+      redirectWithMessage(
+        "/projects/new",
+        "error",
+        "Мөр бүр дээр хороо, байршил, машин тоо, тонн талбаруудыг зөв бөглөж, ажлын өдөр нь төлөвлөгөөний хугацаанд байгаа эсэхийг шалгана уу.",
+      );
+    }
+
+    try {
+      const result = await createSeasonalWorkspacePlan(
+        {
+          name,
+          departmentId: Number(effectiveDepartmentIdRaw),
+          startDate,
+          endDate: deadline,
+          workDays: selectedWorkDays as Array<
+            "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday"
+          >,
+          notes: seasonalNotes,
+          lines: normalizedLines,
+        },
+        connectionOverrides,
+      );
+
+      revalidatePath("/");
+      revalidatePath("/projects");
+      revalidatePath("/tasks");
+      revalidatePath("/projects/new");
+      revalidatePath(`/projects/seasonal/${result.planId}`);
+      redirect(
+        `/projects/seasonal/${result.planId}?notice=${encodeURIComponent(
+          result.message || "Улирлын хог ачилтын төлөвлөгөө амжилттай үүслээ.",
         )}`,
       );
     } catch (error) {
@@ -425,6 +553,50 @@ export async function createTaskAction(formData: FormData) {
   } catch (error) {
     rethrowIfRedirectError(error);
     redirectWithMessage(`/projects/${projectId}`, "error", getErrorMessage(error), "#task-create-form");
+  }
+}
+
+export async function generateSeasonalExecutionAction(formData: FormData) {
+  const planId = Number(String(formData.get("plan_id") ?? ""));
+  const workDate = String(formData.get("work_date") ?? "").trim();
+
+  if (!planId || !workDate) {
+    redirectWithMessage(
+      `/projects/seasonal/${planId || ""}`,
+      "error",
+      "Гүйцэтгэл үүсгэх өдөр дутуу байна.",
+    );
+  }
+
+  const connectionOverrides = await getConnectionOverrides();
+
+  try {
+    const result = await generateSeasonalWorkspaceExecution(
+      {
+        planId,
+        workDate,
+      },
+      connectionOverrides,
+    );
+
+    revalidatePath("/");
+    revalidatePath("/projects");
+    revalidatePath("/tasks");
+    revalidatePath(`/projects/seasonal/${planId}`);
+    const notice =
+      typeof result === "object" && result?.message
+        ? result.message
+        : `${workDate} өдрийн гүйцэтгэлийг амжилттай үүсгэлээ.`;
+    redirect(
+      `/projects/seasonal/${planId}?notice=${encodeURIComponent(notice)}`,
+    );
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirectWithMessage(
+      `/projects/seasonal/${planId}`,
+      "error",
+      getErrorMessage(error),
+    );
   }
 }
 

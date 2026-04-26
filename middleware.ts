@@ -27,11 +27,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (hasSession && isPublicPath) {
-    const homeUrl = new URL("/", request.url);
-    return NextResponse.redirect(homeUrl);
-  }
-
   return NextResponse.next();
 }
 

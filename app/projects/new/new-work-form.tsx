@@ -14,6 +14,26 @@ import type {
 
 const GARBAGE_TRANSPORT_KEYWORD = "хог тээвэрлэлтийн";
 const AUTO_BASE_KEYWORD = "авто бааз";
+const WEEKDAY_OPTIONS = [
+  { key: "monday", label: "Даваа" },
+  { key: "tuesday", label: "Мягмар" },
+  { key: "wednesday", label: "Лхагва" },
+  { key: "thursday", label: "Пүрэв" },
+  { key: "friday", label: "Баасан" },
+  { key: "saturday", label: "Бямба" },
+  { key: "sunday", label: "Ням" },
+] as const;
+
+type SeasonalLineDraft = {
+  id: string;
+  khorooLabel: string;
+  locationName: string;
+  plannedVehicleCount: string;
+  plannedTonnage: string;
+  workDate: string;
+  routeId: string;
+  remarks: string;
+};
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
@@ -100,6 +120,19 @@ function isCombinedOperationsDepartment(
   );
 }
 
+function emptySeasonalLine(index: number): SeasonalLineDraft {
+  return {
+    id: `seasonal-line-${index}-${Date.now()}`,
+    khorooLabel: "",
+    locationName: "",
+    plannedVehicleCount: "",
+    plannedTonnage: "",
+    workDate: "",
+    routeId: "",
+    remarks: "",
+  };
+}
+
 export function NewWorkForm({
   action,
   departmentOptions,
@@ -126,6 +159,16 @@ export function NewWorkForm({
   const [trackQuantity, setTrackQuantity] = useState(false);
   const [operationType, setOperationType] = useState("");
   const [selectedUnitOverrideId, setSelectedUnitOverrideId] = useState<number | null>(null);
+  const [seasonalStartDate, setSeasonalStartDate] = useState(getTodayValue());
+  const [seasonalEndDate, setSeasonalEndDate] = useState(getTodayValue());
+  const [seasonalWorkDays, setSeasonalWorkDays] = useState<Array<(typeof WEEKDAY_OPTIONS)[number]["key"]>>([
+    "monday",
+    "wednesday",
+    "friday",
+  ]);
+  const [seasonalLines, setSeasonalLines] = useState<SeasonalLineDraft[]>([
+    emptySeasonalLine(0),
+  ]);
 
   const selectedDepartment = useMemo(
     () => departmentOptions.find((option) => String(option.id) === departmentId) ?? null,
@@ -162,8 +205,9 @@ export function NewWorkForm({
   const isCombinedDepartment = isCombinedOperationsDepartment(selectedDepartment);
   const supportsGarbageTransport = isGarbageTransportDepartment(selectedDepartment);
   const isGarbageTransport =
-    supportsGarbageTransport &&
-    (isCombinedDepartment ? operationUnit === "garbage_transport" : true);
+    supportsGarbageTransport && operationUnit === "garbage_transport";
+  const isSeasonalGarbage =
+    supportsGarbageTransport && operationUnit === "garbage_seasonal";
   const isDepartmentLocked = Boolean(lockedDepartmentId);
 
   const generatedName = useMemo(() => {
@@ -180,6 +224,22 @@ export function NewWorkForm({
     ? `Энэ ажилд ашиглах боломжтой нэгжүүд: ${selectedWorkType.allowedUnitSummary}`
     : "Эхлээд ажлын төрлөө сонгоно уу.";
 
+  const activeSeasonalLines = seasonalLines.filter(
+    (line) =>
+      line.khorooLabel ||
+      line.locationName ||
+      line.plannedVehicleCount ||
+      line.plannedTonnage ||
+      line.workDate,
+  );
+  const seasonalTotals = activeSeasonalLines.reduce(
+    (summary, line) => ({
+      vehicleCount: summary.vehicleCount + (Number(line.plannedVehicleCount) || 0),
+      tonnage: summary.tonnage + (Number(line.plannedTonnage) || 0),
+    }),
+    { vehicleCount: 0, tonnage: 0 },
+  );
+
   const handleDepartmentChange = (nextDepartmentId: string) => {
     setDepartmentId(nextDepartmentId);
     const nextDepartment = departmentOptions.find(
@@ -193,6 +253,30 @@ export function NewWorkForm({
 
     setOperationUnit("standard");
   };
+
+  const updateSeasonalLine = (
+    targetId: string,
+    key: keyof Omit<SeasonalLineDraft, "id">,
+    value: string,
+  ) => {
+    setSeasonalLines((current) =>
+      current.map((line) => (line.id === targetId ? { ...line, [key]: value } : line)),
+    );
+  };
+
+  const toggleSeasonalWorkDay = (dayKey: (typeof WEEKDAY_OPTIONS)[number]["key"]) => {
+    setSeasonalWorkDays((current) =>
+      current.includes(dayKey)
+        ? current.filter((value) => value !== dayKey)
+        : [...current, dayKey],
+    );
+  };
+
+  const seasonWorkDaysLabel = seasonalWorkDays.length
+    ? WEEKDAY_OPTIONS.filter((item) => seasonalWorkDays.includes(item.key))
+        .map((item) => item.label)
+        .join(", ")
+    : "Сонгоогүй";
 
   return (
     <form action={action} className={styles.form}>
@@ -224,21 +308,24 @@ export function NewWorkForm({
         </div>
       )}
 
-      {isCombinedDepartment ? (
+      {supportsGarbageTransport ? (
         <div className={styles.optionalSection}>
           <div className={styles.field}>
-            <label>Хэлтэс доторх ажил</label>
+            <label>Ажлын горим</label>
             <div className={styles.modeRail}>
-              <button
-                type="button"
-                className={`${styles.modeChip} ${
-                  operationUnit === "auto_base" ? styles.modeChipActive : ""
-                }`}
-                onClick={() => setOperationUnit("auto_base")}
-              >
-                <span>Авто бааз</span>
-                <small>Техник, засвар, бэлэн байдал</small>
-              </button>
+              {isCombinedDepartment ? (
+                <button
+                  type="button"
+                  className={`${styles.modeChip} ${
+                    operationUnit === "auto_base" ? styles.modeChipActive : ""
+                  }`}
+                  onClick={() => setOperationUnit("auto_base")}
+                >
+                  <span>Авто бааз</span>
+                  <small>Техник, засвар, бэлэн байдал</small>
+                </button>
+              ) : null}
+
               <button
                 type="button"
                 className={`${styles.modeChip} ${
@@ -246,8 +333,19 @@ export function NewWorkForm({
                 }`}
                 onClick={() => setOperationUnit("garbage_transport")}
               >
-                <span>Хог тээвэрлэлт</span>
-                <small>Машин, маршрут, цэгийн ажилбар</small>
+                <span>Тогтмол маршрут</span>
+                <small>Машин, маршрут, цэгийн өдөр тутмын ажил</small>
+              </button>
+
+              <button
+                type="button"
+                className={`${styles.modeChip} ${
+                  operationUnit === "garbage_seasonal" ? styles.modeChipActive : ""
+                }`}
+                onClick={() => setOperationUnit("garbage_seasonal")}
+              >
+                <span>Улирлын хог ачилт</span>
+                <small>Огнооны хүрээ, өдрүүд, байршлын мөрөөр төлөвлөнө</small>
               </button>
             </div>
           </div>
@@ -345,6 +443,267 @@ export function NewWorkForm({
             <p className={styles.helperNote}>
               Огноо: <strong>{formatDateLabel(shiftDate)}</strong>
             </p>
+          </div>
+        </>
+      ) : isSeasonalGarbage ? (
+        <>
+          <div className={styles.field}>
+            <label htmlFor="seasonal-name">Төлөвлөгөөний нэр</label>
+            <input
+              id="seasonal-name"
+              name="name"
+              type="text"
+              placeholder="Жишээ: 2026 хаврын үүсмэл хог ачилтын төлөвлөгөө"
+              required={isSeasonalGarbage}
+            />
+          </div>
+
+          <div className={styles.fieldRow}>
+            <div className={styles.field}>
+              <label htmlFor="seasonal-start-date">Эхлэх огноо</label>
+              <input
+                id="seasonal-start-date"
+                name="start_date"
+                type="date"
+                value={seasonalStartDate}
+                onChange={(event) => setSeasonalStartDate(event.target.value)}
+                required={isSeasonalGarbage}
+              />
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="seasonal-end-date">Дуусах огноо</label>
+              <input
+                id="seasonal-end-date"
+                name="deadline"
+                type="date"
+                value={seasonalEndDate}
+                onChange={(event) => setSeasonalEndDate(event.target.value)}
+                required={isSeasonalGarbage}
+              />
+            </div>
+          </div>
+
+          <div className={styles.optionalSection}>
+            <div className={styles.field}>
+              <label>Ажиллах өдрүүд</label>
+              <div className={styles.modeRail}>
+                {WEEKDAY_OPTIONS.map((day) => (
+                  <button
+                    key={day.key}
+                    type="button"
+                    className={`${styles.modeChip} ${
+                      seasonalWorkDays.includes(day.key) ? styles.modeChipActive : ""
+                    }`}
+                    onClick={() => toggleSeasonalWorkDay(day.key)}
+                  >
+                    <span>{day.label}</span>
+                    <small>Төлөвлөгөөнд энэ өдрийг оруулна</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <input
+              type="hidden"
+              name="seasonal_work_days_json"
+              value={JSON.stringify(seasonalWorkDays)}
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="seasonal-notes">Тайлбар</label>
+            <textarea
+              id="seasonal-notes"
+              name="seasonal_notes"
+              placeholder="Ээлж, онцгой нөхцөл, зохион байгуулалтын тайлбар"
+            />
+          </div>
+
+          <div className={styles.previewCard}>
+            <div className={styles.previewHeader}>
+              <span className={styles.eyebrow}>Байршлын мөрүүд</span>
+              <strong>Хороо, байршил, машин, тонн мэдээллээр төлөвлөнө</strong>
+            </div>
+
+            <div className={styles.previewGrid}>
+              <div className={styles.previewMeta}>
+                <span>Мөрийн тоо</span>
+                <strong>{activeSeasonalLines.length || seasonalLines.length}</strong>
+              </div>
+              <div className={styles.previewMeta}>
+                <span>Нийт машин</span>
+                <strong>{seasonalTotals.vehicleCount} машин</strong>
+              </div>
+              <div className={styles.previewMeta}>
+                <span>Нийт тонн</span>
+                <strong>{Math.round(seasonalTotals.tonnage * 100) / 100} тн</strong>
+              </div>
+              <div className={styles.previewMeta}>
+                <span>Ажиллах өдрүүд</span>
+                <strong>{seasonWorkDaysLabel}</strong>
+              </div>
+            </div>
+
+            <p className={styles.helperNote}>
+              Огнооны хүрээ: <strong>{formatDateLabel(seasonalStartDate)}</strong> -
+              <strong> {formatDateLabel(seasonalEndDate)}</strong>
+            </p>
+          </div>
+
+          {seasonalLines.map((line, index) => (
+            <div key={line.id} className={styles.optionalSection}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <span className={styles.sectionKicker}>Мөр {index + 1}</span>
+                  <small className={styles.sectionNote}>
+                    Хороо, байршил, машин тоо, тонныг мөрөөр оруулна.
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() =>
+                    setSeasonalLines((current) =>
+                      current.length > 1
+                        ? current.filter((item) => item.id !== line.id)
+                        : current,
+                    )
+                  }
+                  disabled={seasonalLines.length === 1}
+                >
+                  Мөр хасах
+                </button>
+              </div>
+
+              <div className={styles.fieldRow}>
+                <div className={styles.field}>
+                  <label>Хороо</label>
+                  <input
+                    type="text"
+                    value={line.khorooLabel}
+                    onChange={(event) =>
+                      updateSeasonalLine(line.id, "khorooLabel", event.target.value)
+                    }
+                    placeholder="Жишээ: 9-р хороо"
+                  />
+                </div>
+
+                <div className={styles.field}>
+                  <label>Байршил</label>
+                  <input
+                    type="text"
+                    value={line.locationName}
+                    onChange={(event) =>
+                      updateSeasonalLine(line.id, "locationName", event.target.value)
+                    }
+                    placeholder="Жишээ: Морин уулын доод жалга"
+                  />
+                </div>
+              </div>
+
+              <div className={styles.fieldRow}>
+                <div className={styles.field}>
+                  <label>Машин тоо</label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={line.plannedVehicleCount}
+                    onChange={(event) =>
+                      updateSeasonalLine(line.id, "plannedVehicleCount", event.target.value)
+                    }
+                    placeholder="1"
+                  />
+                </div>
+
+                <div className={styles.field}>
+                  <label>Тонн</label>
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value={line.plannedTonnage}
+                    onChange={(event) =>
+                      updateSeasonalLine(line.id, "plannedTonnage", event.target.value)
+                    }
+                    placeholder="12.5"
+                  />
+                </div>
+
+                <div className={styles.field}>
+                  <label>Ажлын өдөр</label>
+                  <input
+                    type="date"
+                    value={line.workDate}
+                    min={seasonalStartDate || undefined}
+                    max={seasonalEndDate || undefined}
+                    onChange={(event) =>
+                      updateSeasonalLine(line.id, "workDate", event.target.value)
+                    }
+                  />
+                  <small className={styles.fieldHint}>
+                    Хоосон орхивол ерөнхий өдрүүдийн хуваарийг дагана.
+                  </small>
+                </div>
+
+                <div className={styles.field}>
+                  <label>Маршрут</label>
+                  <select
+                    value={line.routeId}
+                    onChange={(event) =>
+                      updateSeasonalLine(line.id, "routeId", event.target.value)
+                    }
+                  >
+                    <option value="">Маршрутгүй</option>
+                    {garbageRouteOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className={styles.field}>
+                <label>Тэмдэглэл</label>
+                <textarea
+                  value={line.remarks}
+                  onChange={(event) =>
+                    updateSeasonalLine(line.id, "remarks", event.target.value)
+                  }
+                  placeholder="Тусгай чиглэл, заавар, хаяглал"
+                />
+              </div>
+            </div>
+          ))}
+
+          <input
+            type="hidden"
+            name="seasonal_lines_json"
+            value={JSON.stringify(
+              seasonalLines.map((line, index) => ({
+                sequence: index + 1,
+                khorooLabel: line.khorooLabel,
+                locationName: line.locationName,
+                plannedVehicleCount: line.plannedVehicleCount,
+                plannedTonnage: line.plannedTonnage,
+                workDate: line.workDate || null,
+                routeId: line.routeId ? Number(line.routeId) : null,
+                remarks: line.remarks,
+              })),
+            )}
+          />
+
+          <div className={styles.buttonRow}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() =>
+                setSeasonalLines((current) => [...current, emptySeasonalLine(current.length)])
+              }
+            >
+              Мөр нэмэх
+            </button>
           </div>
         </>
       ) : (
@@ -467,7 +826,11 @@ export function NewWorkForm({
 
       <div className={styles.buttonRow}>
         <button type="submit" className={styles.primaryButton}>
-          {isGarbageTransport ? "Хог тээвэрлэлтийн ажил үүсгэх" : "Ажил үүсгэх"}
+          {isGarbageTransport
+            ? "Хог тээвэрлэлтийн ажил үүсгэх"
+            : isSeasonalGarbage
+              ? "Улирлын төлөвлөгөө үүсгэх"
+              : "Ажил үүсгэх"}
         </button>
       </div>
     </form>

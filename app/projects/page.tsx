@@ -895,6 +895,9 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                             <p>
                               Алба нэгж: {project.departmentName} · Менежер:{" "}
                               {project.manager}
+                              {project.operationTypeLabel
+                                ? ` · ${project.operationTypeLabel}`
+                                : ""}
                             </p>
                           </div>
 
@@ -934,6 +937,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                           <h3>{project.name}</h3>
                           <p>
                             Алба нэгж: {project.departmentName} · Менежер: {project.manager}
+                            {project.operationTypeLabel ? ` · ${project.operationTypeLabel}` : ""}
                           </p>
 
                           <div className={styles.projectMeta}>

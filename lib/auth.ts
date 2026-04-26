@@ -10,7 +10,7 @@ import {
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { authenticateOdooUser } from "@/lib/odoo";
+import { authenticateOdooUser, createOdooConnection } from "@/lib/odoo";
 import {
   getRoleLabel,
   hasCapability,
@@ -30,8 +30,22 @@ export type AppSession = {
   name: string;
   role: UserRole;
   groupFlags?: RoleGroupFlags;
+  odooUrl: string;
+  odooDb: string;
   issuedAt: number;
 };
+
+function normalizeSessionUrl(url: string) {
+  return url.trim().replace(/\/+$/, "");
+}
+
+function getCurrentSessionConnection() {
+  const connection = createOdooConnection();
+  return {
+    odooUrl: normalizeSessionUrl(connection.url),
+    odooDb: connection.db.trim(),
+  };
+}
 
 function getSessionKey() {
   const secret =
@@ -73,9 +87,18 @@ export async function getSession() {
   }
 
   try {
-    return unsealSession(token);
+    const session = unsealSession(token);
+    const currentConnection = getCurrentSessionConnection();
+    if (
+      !session.odooUrl ||
+      !session.odooDb ||
+      normalizeSessionUrl(session.odooUrl) !== currentConnection.odooUrl ||
+      session.odooDb.trim() !== currentConnection.odooDb
+    ) {
+      return null;
+    }
+    return session;
   } catch {
-    cookieStore.delete(SESSION_COOKIE_NAME);
     return null;
   }
 }
@@ -140,6 +163,7 @@ export async function signInWithOdooCredentials(login: string, password: string)
     name: result.user.name,
     role: result.user.role,
     groupFlags: result.user.groupFlags,
+    ...getCurrentSessionConnection(),
     issuedAt: Date.now(),
   } satisfies AppSession;
 }

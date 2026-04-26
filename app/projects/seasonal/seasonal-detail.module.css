@@ -1,0 +1,160 @@
+.dayRail,
+.lineList,
+.warningList,
+.lineDayList {
+  display: grid;
+  gap: 16px;
+}
+
+.dayRail {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.dayCard,
+.lineCard,
+.warningCard {
+  padding: 18px;
+  border: 1px solid var(--line-soft);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 48px var(--shadow-soft);
+}
+
+.dayCard {
+  display: grid;
+  gap: 12px;
+}
+
+.dayCardTop,
+.lineCardTop,
+.warningTop,
+.miniRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dayCardTop strong,
+.lineCardTop strong,
+.warningTop strong {
+  font-size: 1rem;
+}
+
+.dayMeta,
+.warningCard p,
+.lineCard p {
+  margin: 0;
+  color: var(--ink-700);
+  line-height: 1.6;
+}
+
+.lineList {
+  margin-top: 18px;
+}
+
+.lineCard {
+  display: grid;
+  gap: 14px;
+}
+
+.lineBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(240px, 0.9fr);
+  gap: 16px;
+}
+
+.lineMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.lineMetaBox {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(244, 249, 243, 0.92);
+  border: 1px solid rgba(74, 154, 93, 0.12);
+}
+
+.lineMetaBox span,
+.miniRow span {
+  color: var(--ink-600);
+  font-size: 0.82rem;
+}
+
+.lineMetaBox strong,
+.miniRow strong {
+  color: var(--ink-900);
+  font-size: 0.98rem;
+}
+
+.lineDayList {
+  align-content: start;
+}
+
+.lineDayChip {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(74, 154, 93, 0.12);
+  background: rgba(247, 252, 246, 0.92);
+}
+
+.lineDayChip strong {
+  color: var(--ink-900);
+  font-size: 0.92rem;
+}
+
+.lineDayChip span,
+.lineDayChip a {
+  color: var(--ink-700);
+  font-size: 0.82rem;
+}
+
+.warningList {
+  margin-top: 18px;
+}
+
+.warningCard {
+  display: grid;
+  gap: 8px;
+  border-color: rgba(186, 91, 52, 0.18);
+  background: rgba(255, 248, 246, 0.94);
+}
+
+.warningCard a {
+  color: var(--brand-800);
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .lineBody {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .lineMetaGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .dayCard,
+  .lineCard,
+  .warningCard {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .dayCardTop,
+  .lineCardTop,
+  .warningTop,
+  .miniRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

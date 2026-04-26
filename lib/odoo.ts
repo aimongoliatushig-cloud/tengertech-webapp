@@ -12,6 +12,7 @@ type OdooProjectRecord = {
   ops_department_id: OdooRelation;
   date_start: string | false;
   date: string | false;
+  mfo_operation_type?: string | false;
 };
 
 type OdooTaskRecord = {
@@ -108,6 +109,7 @@ type ProjectCard = {
   name: string;
   manager: string;
   departmentName: string;
+  operationTypeLabel?: string;
   stageLabel: string;
   stageBucket: StageBucket;
   openTasks: number;
@@ -389,6 +391,7 @@ const DEPARTMENT_ACCENTS: Record<(typeof DEPARTMENT_ORDER)[number], string> = {
 
 const OPERATION_TYPE_LABELS: Record<string, string> = {
   garbage: "Хог цуглуулалт",
+  garbage_seasonal: "Улирлын хог ачилт",
   street_cleaning: "Гудамж цэвэрлэгээ",
   green_maintenance: "Ногоон байгууламж",
 };
@@ -818,7 +821,7 @@ function inferDepartmentUnitFromText(text: string) {
 }
 
 function departmentUnitFromOperationType(operationType?: string | false) {
-  if (operationType === "garbage") {
+  if (operationType === "garbage" || operationType === "garbage_seasonal") {
     return "Хог тээвэрлэлт";
   }
   if (operationType === "street_cleaning") {
@@ -1505,7 +1508,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       "project.project",
       [],
       {
-        fields: ["name", "user_id", "ops_department_id", "date_start", "date"],
+        fields: ["name", "user_id", "ops_department_id", "date_start", "date", "mfo_operation_type"],
         order: "create_date desc",
       },
       resolvedConnection,
@@ -1663,6 +1666,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         projectTaskDepartments[0] ??
         projectDepartmentById.get(project.id) ??
         resolveNormalizedProjectDepartmentName(project),
+      operationTypeLabel: operationTypeLabel(project.mfo_operation_type),
       stageLabel: STAGE_LABELS[stageBucket],
       stageBucket,
       openTasks: projectTasks.length - completed,

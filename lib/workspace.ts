@@ -160,6 +160,144 @@ export type GarbageProjectCreateResult = {
   message: string;
 };
 
+type SeasonalPlanRecord = {
+  id: number;
+  name: string;
+  department_id: Relation;
+  operation_type?: string | false;
+  date_start: string | false;
+  date_end: string | false;
+  work_days?: string | false;
+  state?: string | false;
+  notes?: string | false;
+};
+
+type SeasonalPlanLineRecord = {
+  id: number;
+  plan_id: Relation;
+  sequence?: number;
+  district_id?: Relation;
+  subdistrict_id?: Relation;
+  khoroo_label?: string | false;
+  location_name?: string | false;
+  planned_vehicle_count?: number;
+  planned_tonnage?: number;
+  route_id?: Relation;
+  remarks?: string | false;
+};
+
+type SeasonalPlanDayRecord = {
+  id: number;
+  plan_line_id: Relation;
+  work_date: string | false;
+  is_planned?: boolean;
+  status?: string | false;
+  assigned_vehicle_id?: Relation;
+  generated_task_id?: Relation;
+  actual_vehicle_count?: number;
+  actual_tonnage?: number;
+  completion_note?: string | false;
+};
+
+type SeasonalConflictTaskRecord = {
+  id: number;
+  name: string;
+  mfo_shift_date?: string | false;
+  mfo_vehicle_id?: Relation;
+  mfo_operation_type?: string | false;
+};
+
+export type SeasonalPlanLineInput = {
+  sequence: number;
+  khorooLabel: string;
+  locationName: string;
+  plannedVehicleCount: number;
+  plannedTonnage: number;
+  workDate?: string | null;
+  routeId?: number | null;
+  remarks?: string;
+};
+
+export type SeasonalPlanCreateResult = {
+  planId: number;
+  created: boolean;
+  message: string;
+};
+
+export type SeasonalPlanDay = {
+  id: number;
+  lineId: number;
+  workDate: string;
+  workDateLabel: string;
+  isPlanned: boolean;
+  status: string;
+  statusLabel: string;
+  assignedVehicleId: number | null;
+  assignedVehicleName: string;
+  generatedTaskId: number | null;
+  generatedTaskHref: string;
+  actualVehicleCount: number;
+  actualTonnage: number;
+  completionNote: string;
+};
+
+export type SeasonalPlanLine = {
+  id: number;
+  sequence: number;
+  districtName: string;
+  subdistrictName: string;
+  khorooLabel: string;
+  locationName: string;
+  plannedVehicleCount: number;
+  plannedVehicleCountLabel: string;
+  plannedTonnage: number;
+  plannedTonnageLabel: string;
+  routeId: number | null;
+  routeName: string;
+  remarks: string;
+  days: SeasonalPlanDay[];
+};
+
+export type SeasonalConflictWarning = {
+  id: string;
+  workDate: string;
+  workDateLabel: string;
+  vehicleName: string;
+  taskId: number;
+  taskName: string;
+  taskHref: string;
+  note: string;
+};
+
+export type SeasonalPlan = {
+  id: number;
+  name: string;
+  departmentName: string;
+  operationType: string;
+  state: string;
+  stateLabel: string;
+  dateStart: string;
+  dateEnd: string;
+  dateRangeLabel: string;
+  workDays: string[];
+  workDayLabels: string[];
+  notes: string;
+  lineCount: number;
+  plannedDateCount: number;
+  generatedDateCount: number;
+  totalPlannedVehicleCount: number;
+  totalPlannedTonnage: number;
+  totalPlannedTonnageLabel: string;
+  lines: SeasonalPlanLine[];
+  plannedDates: Array<{
+    dateKey: string;
+    dateLabel: string;
+    generatedCount: number;
+    pendingCount: number;
+  }>;
+  conflictWarnings: SeasonalConflictWarning[];
+};
+
 export type ProjectTaskCard = {
   id: number;
   name: string;
@@ -252,6 +390,18 @@ export type TaskDetail = {
   reportsLocked: boolean;
   reports: TaskReportFeedItem[];
 };
+
+const WEEKDAY_KEYS = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
+
+type WeekdayKey = (typeof WEEKDAY_KEYS)[number];
 
 type StageBucket = "todo" | "progress" | "review" | "done" | "unknown";
 
@@ -378,6 +528,116 @@ function formatDateInput(value?: string | false) {
   }
 
   return parsed.toISOString().slice(0, 10);
+}
+
+function formatShortDateLabel(value?: string | false) {
+  if (!value) {
+    return "Товлоогүй";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("mn-MN", {
+    month: "short",
+    day: "numeric",
+  }).format(parsed);
+}
+
+function formatTonnage(value?: number | null) {
+  const safeValue = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return `${Math.round(safeValue * 100) / 100} тн`;
+}
+
+function weekdayLabel(value: WeekdayKey) {
+  switch (value) {
+    case "monday":
+      return "Даваа";
+    case "tuesday":
+      return "Мягмар";
+    case "wednesday":
+      return "Лхагва";
+    case "thursday":
+      return "Пүрэв";
+    case "friday":
+      return "Баасан";
+    case "saturday":
+      return "Бямба";
+    case "sunday":
+      return "Ням";
+    default:
+      return value;
+  }
+}
+
+function parseWorkDays(value?: string | false) {
+  if (!value) {
+    return [] as WeekdayKey[];
+  }
+
+  const normalized = String(value).trim();
+  if (!normalized) {
+    return [] as WeekdayKey[];
+  }
+
+  try {
+    const parsed = JSON.parse(normalized) as string[];
+    return parsed.filter((item): item is WeekdayKey =>
+      WEEKDAY_KEYS.includes(item as WeekdayKey),
+    );
+  } catch {
+    return normalized
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item): item is WeekdayKey => WEEKDAY_KEYS.includes(item as WeekdayKey));
+  }
+}
+
+function seasonalStateLabel(value?: string | false) {
+  switch (value) {
+    case "approved":
+      return "Баталсан";
+    case "active":
+      return "Идэвхтэй";
+    case "done":
+      return "Дууссан";
+    case "cancelled":
+      return "Цуцалсан";
+    case "draft":
+    default:
+      return "Ноорог";
+  }
+}
+
+function seasonalDayStatusLabel(value?: string | false) {
+  switch (value) {
+    case "generated":
+      return "Үүсгэсэн";
+    case "in_progress":
+      return "Ажиллаж байна";
+    case "done":
+      return "Дууссан";
+    case "skipped":
+      return "Алгассан";
+    case "planned":
+    default:
+      return "Төлөвлөсөн";
+  }
+}
+
+function dateRangeLabel(startDate: string, endDate: string) {
+  if (!startDate && !endDate) {
+    return "Огноо тохируулаагүй";
+  }
+  if (!startDate || startDate === endDate) {
+    return formatShortDateLabel(startDate || endDate);
+  }
+  if (!endDate) {
+    return formatShortDateLabel(startDate);
+  }
+  return `${formatShortDateLabel(startDate)} - ${formatShortDateLabel(endDate)}`;
 }
 
 function priorityLabel(priority: string) {
@@ -625,6 +885,354 @@ export async function loadGarbageRouteOptions(
   }
 }
 
+async function loadSeasonalConflictWarnings(
+  planDays: SeasonalPlanDayRecord[],
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<SeasonalConflictWarning[]> {
+  const assignedDays = planDays.filter(
+    (day) => relationId(day.assigned_vehicle_id ?? false) && day.work_date,
+  );
+  if (!assignedDays.length) {
+    return [];
+  }
+
+  const dateKeys = Array.from(
+    new Set(
+      assignedDays
+        .map((day) => day.work_date || "")
+        .filter((value) => Boolean(value)),
+    ),
+  );
+  const vehicleIds = Array.from(
+    new Set(
+      assignedDays
+        .map((day) => relationId(day.assigned_vehicle_id ?? false))
+        .filter((value): value is number => Boolean(value)),
+    ),
+  );
+
+  if (!dateKeys.length || !vehicleIds.length) {
+    return [];
+  }
+
+  try {
+    const existingTasks = await executeOdooKw<SeasonalConflictTaskRecord[]>(
+      "project.task",
+      "search_read",
+      [[
+        ["mfo_shift_date", "in", dateKeys],
+        ["mfo_vehicle_id", "in", vehicleIds],
+        ["mfo_operation_type", "in", ["garbage", "garbage_seasonal"]],
+      ]],
+      {
+        fields: ["name", "mfo_shift_date", "mfo_vehicle_id", "mfo_operation_type"],
+        order: "mfo_shift_date asc, id asc",
+        limit: 500,
+      },
+      connectionOverrides,
+    );
+
+    const warnings: SeasonalConflictWarning[] = [];
+    for (const task of existingTasks) {
+      const taskDate = task.mfo_shift_date || "";
+      const vehicleId = relationId(task.mfo_vehicle_id ?? false);
+      if (!taskDate || !vehicleId) {
+        continue;
+      }
+
+      const linkedPlanDay = assignedDays.find(
+        (day) =>
+          day.work_date === taskDate &&
+          relationId(day.assigned_vehicle_id ?? false) === vehicleId &&
+          relationId(day.generated_task_id ?? false) !== task.id,
+      );
+
+      if (!linkedPlanDay) {
+        continue;
+      }
+
+      warnings.push({
+        id: `${linkedPlanDay.id}-${task.id}`,
+        workDate: taskDate,
+        workDateLabel: formatShortDateLabel(taskDate),
+        vehicleName: relationName(task.mfo_vehicle_id ?? false),
+        taskId: task.id,
+        taskName: task.name,
+        taskHref: `/tasks/${task.id}`,
+        note: `${operationTypeLabel(task.mfo_operation_type)} ажилтай давхцаж байна.`,
+      });
+    }
+
+    return warnings;
+  } catch {
+    return [];
+  }
+}
+
+export async function createSeasonalWorkspacePlan(
+  input: {
+    name: string;
+    departmentId: number;
+    startDate: string;
+    endDate: string;
+    workDays: WeekdayKey[];
+    notes?: string;
+    lines: SeasonalPlanLineInput[];
+  },
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<SeasonalPlanCreateResult> {
+  const payload = {
+    name: input.name.trim(),
+    department_id: input.departmentId,
+    operation_type: "garbage_seasonal",
+    date_start: input.startDate,
+    date_end: input.endDate,
+    work_days: input.workDays,
+    notes: input.notes?.trim() || false,
+    lines: input.lines.map((line, index) => ({
+      sequence: line.sequence || index + 1,
+      khoroo_label: line.khorooLabel.trim(),
+      location_name: line.locationName.trim(),
+      planned_vehicle_count: line.plannedVehicleCount,
+      planned_tonnage: line.plannedTonnage,
+      work_date: line.workDate || false,
+      route_id: line.routeId || false,
+      remarks: line.remarks?.trim() || false,
+    })),
+  };
+
+  const result = await executeOdooKw<
+    number | { plan_id?: number; id?: number; created?: boolean; message?: string }
+  >(
+    "mfo.seasonal.plan",
+    "action_mfo_create_seasonal_plan",
+    [payload],
+    {},
+    connectionOverrides,
+  );
+
+  if (typeof result === "number") {
+    return {
+      planId: result,
+      created: true,
+      message: "Улирлын хог ачилтын төлөвлөгөө амжилттай үүслээ.",
+    };
+  }
+
+  const planId = result.plan_id || result.id;
+  if (!planId) {
+    throw new Error("Улирлын төлөвлөгөөний дугаар буцаагдсангүй.");
+  }
+
+  return {
+    planId,
+    created: result.created ?? true,
+    message: result.message || "Улирлын хог ачилтын төлөвлөгөө амжилттай үүслээ.",
+  };
+}
+
+export async function generateSeasonalWorkspaceExecution(
+  input: {
+    planId: number;
+    workDate: string;
+  },
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  return executeOdooKw<
+    boolean | { created?: number; warning_count?: number; message?: string }
+  >(
+    "mfo.seasonal.plan",
+    "action_mfo_generate_seasonal_execution",
+    [[input.planId], { work_date: input.workDate }],
+    {},
+    connectionOverrides,
+  );
+}
+
+export async function loadSeasonalPlanDetail(
+  planId: number,
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<SeasonalPlan> {
+  const [plans, lines, days] = await Promise.all([
+    executeOdooKw<SeasonalPlanRecord[]>(
+      "mfo.seasonal.plan",
+      "search_read",
+      [[["id", "=", planId]]],
+      {
+        fields: [
+          "name",
+          "department_id",
+          "operation_type",
+          "date_start",
+          "date_end",
+          "work_days",
+          "state",
+          "notes",
+        ],
+        limit: 1,
+      },
+      connectionOverrides,
+    ),
+    executeOdooKw<SeasonalPlanLineRecord[]>(
+      "mfo.seasonal.plan.line",
+      "search_read",
+      [[["plan_id", "=", planId]]],
+      {
+        fields: [
+          "plan_id",
+          "sequence",
+          "district_id",
+          "subdistrict_id",
+          "khoroo_label",
+          "location_name",
+          "planned_vehicle_count",
+          "planned_tonnage",
+          "route_id",
+          "remarks",
+        ],
+        order: "sequence asc, id asc",
+        limit: 1000,
+      },
+      connectionOverrides,
+    ),
+    executeOdooKw<SeasonalPlanDayRecord[]>(
+      "mfo.seasonal.plan.day",
+      "search_read",
+      [[["plan_line_id.plan_id", "=", planId]]],
+      {
+        fields: [
+          "plan_line_id",
+          "work_date",
+          "is_planned",
+          "status",
+          "assigned_vehicle_id",
+          "generated_task_id",
+          "actual_vehicle_count",
+          "actual_tonnage",
+          "completion_note",
+        ],
+        order: "work_date asc, id asc",
+        limit: 5000,
+      },
+      connectionOverrides,
+    ),
+  ]);
+
+  const plan = plans[0];
+  if (!plan) {
+    throw new Error("Улирлын төлөвлөгөө олдсонгүй.");
+  }
+
+  const daysByLineId = new Map<number, SeasonalPlanDay[]>();
+  for (const day of days) {
+    const lineId = relationId(day.plan_line_id);
+    if (!lineId || !day.work_date) {
+      continue;
+    }
+
+    const dayItem: SeasonalPlanDay = {
+      id: day.id,
+      lineId,
+      workDate: day.work_date,
+      workDateLabel: formatShortDateLabel(day.work_date),
+      isPlanned: Boolean(day.is_planned ?? true),
+      status: day.status || "planned",
+      statusLabel: seasonalDayStatusLabel(day.status),
+      assignedVehicleId: relationId(day.assigned_vehicle_id ?? false),
+      assignedVehicleName: relationName(day.assigned_vehicle_id ?? false, "Оноогоогүй"),
+      generatedTaskId: relationId(day.generated_task_id ?? false),
+      generatedTaskHref: relationId(day.generated_task_id ?? false)
+        ? `/tasks/${relationId(day.generated_task_id ?? false)}`
+        : "",
+      actualVehicleCount: day.actual_vehicle_count ?? 0,
+      actualTonnage: day.actual_tonnage ?? 0,
+      completionNote: day.completion_note || "",
+    };
+
+    const existing = daysByLineId.get(lineId) ?? [];
+    existing.push(dayItem);
+    daysByLineId.set(lineId, existing);
+  }
+
+  const normalizedLines = lines.map<SeasonalPlanLine>((line, index) => {
+    const lineDays = daysByLineId.get(line.id) ?? [];
+
+    return {
+      id: line.id,
+      sequence: line.sequence ?? index + 1,
+      districtName: relationName(line.district_id ?? false, ""),
+      subdistrictName: relationName(line.subdistrict_id ?? false, ""),
+      khorooLabel: line.khoroo_label || "",
+      locationName: line.location_name || "",
+      plannedVehicleCount: line.planned_vehicle_count ?? 0,
+      plannedVehicleCountLabel: `${line.planned_vehicle_count ?? 0} машин`,
+      plannedTonnage: line.planned_tonnage ?? 0,
+      plannedTonnageLabel: formatTonnage(line.planned_tonnage ?? 0),
+      routeId: relationId(line.route_id ?? false),
+      routeName: relationName(line.route_id ?? false, "Маршрутгүй"),
+      remarks: line.remarks || "",
+      days: lineDays,
+    };
+  });
+
+  const plannedDateMap = new Map<string, { generatedCount: number; pendingCount: number }>();
+  for (const day of normalizedLines.flatMap((line) => line.days)) {
+    const existing = plannedDateMap.get(day.workDate) ?? { generatedCount: 0, pendingCount: 0 };
+    if (day.generatedTaskId) {
+      existing.generatedCount += 1;
+    } else {
+      existing.pendingCount += 1;
+    }
+    plannedDateMap.set(day.workDate, existing);
+  }
+
+  const plannedDates = Array.from(plannedDateMap.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([dateKey, counts]) => ({
+      dateKey,
+      dateLabel: formatShortDateLabel(dateKey),
+      generatedCount: counts.generatedCount,
+      pendingCount: counts.pendingCount,
+    }));
+
+  const conflictWarnings = await loadSeasonalConflictWarnings(days, connectionOverrides);
+  const totalPlannedVehicleCount = normalizedLines.reduce(
+    (sum, line) => sum + line.plannedVehicleCount,
+    0,
+  );
+  const totalPlannedTonnage = normalizedLines.reduce(
+    (sum, line) => sum + line.plannedTonnage,
+    0,
+  );
+
+  return {
+    id: plan.id,
+    name: plan.name,
+    departmentName: relationName(plan.department_id),
+    operationType: plan.operation_type || "garbage_seasonal",
+    state: plan.state || "draft",
+    stateLabel: seasonalStateLabel(plan.state),
+    dateStart: formatDateInput(plan.date_start),
+    dateEnd: formatDateInput(plan.date_end),
+    dateRangeLabel: dateRangeLabel(
+      formatDateInput(plan.date_start),
+      formatDateInput(plan.date_end),
+    ),
+    workDays: parseWorkDays(plan.work_days),
+    workDayLabels: parseWorkDays(plan.work_days).map((day) => weekdayLabel(day)),
+    notes: plan.notes || "",
+    lineCount: normalizedLines.length,
+    plannedDateCount: plannedDates.length,
+    generatedDateCount: plannedDates.filter((item) => item.generatedCount > 0).length,
+    totalPlannedVehicleCount,
+    totalPlannedTonnage,
+    totalPlannedTonnageLabel: formatTonnage(totalPlannedTonnage),
+    lines: normalizedLines,
+    plannedDates,
+    conflictWarnings,
+  };
+}
+
 export async function loadProjectDetail(
   projectId: number,
   connectionOverrides: Partial<OdooConnection> = {},
@@ -858,7 +1466,9 @@ export async function loadTaskDetail(
     projectId: relationId(task.project_id),
     projectName: relationName(task.project_id),
     operationType: task.mfo_operation_type || "",
-    quantityOptional: task.mfo_operation_type === "garbage",
+    quantityOptional:
+      task.mfo_operation_type === "garbage" ||
+      task.mfo_operation_type === "garbage_seasonal",
     stageLabel: displayStageLabel(relationName(task.stage_id, "")),
     stageBucket: normalizeStageBucket(relationName(task.stage_id, "")),
     state: task.state,
