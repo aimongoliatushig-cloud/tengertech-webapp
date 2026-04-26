@@ -29,25 +29,6 @@
   min-width: 0;
 }
 
-.menuButton {
-  display: inline-grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: #111b15;
-  cursor: pointer;
-}
-
-.menuButton svg {
-  width: 22px;
-  height: 22px;
-  stroke-width: 2.35;
-}
-
 .titleBlock {
   position: relative;
   z-index: 1;
@@ -328,11 +309,6 @@
 
   .headerUser small {
     font-size: 0.68rem;
-  }
-
-  .menuButton {
-    width: 32px;
-    height: 32px;
   }
 
   .leafOne {
