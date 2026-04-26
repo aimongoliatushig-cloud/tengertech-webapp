@@ -2,29 +2,50 @@
   position: relative;
   z-index: 10;
   display: flex;
-  min-height: 164px;
-  align-items: flex-start;
+  min-height: 112px;
+  align-items: center;
   justify-content: space-between;
-  gap: 22px;
+  gap: 20px;
   overflow: hidden;
-  margin: 0 -28px 18px;
-  padding: 28px 32px 62px;
+  margin: 0 -28px 20px;
+  padding: 0 28px;
   border-bottom: 1px solid rgba(46, 125, 50, 0.08);
-  background:
-    linear-gradient(90deg, rgba(246, 251, 246, 0.94) 0%, rgba(246, 251, 246, 0.58) 42%, rgba(246, 251, 246, 0.08) 100%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(246, 251, 246, 0.58)),
-    var(--workspace-header-image);
-  background-position: center bottom;
-  background-size: cover;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 1px 0 rgba(20, 48, 28, 0.02);
+  backdrop-filter: blur(18px);
 }
 
 .header::after {
-  position: absolute;
-  inset: auto 0 0;
-  height: 72px;
   content: "";
-  background: linear-gradient(180deg, rgba(246, 251, 246, 0), #f6fbf6 76%);
-  pointer-events: none;
+  display: none;
+}
+
+.titleArea {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  min-width: 0;
+}
+
+.menuButton {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #111b15;
+  cursor: pointer;
+}
+
+.menuButton svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2.35;
 }
 
 .titleBlock {
@@ -39,11 +60,11 @@
 .titleBlock h1 {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   margin: 0;
   color: #111b15;
   font-family: var(--font-inter), var(--font-body), sans-serif;
-  font-size: clamp(1.42rem, 2.2vw, 2rem);
+  font-size: clamp(1.42rem, 1.6vw, 1.78rem);
   font-weight: 800;
   letter-spacing: 0;
   line-height: 1.05;
@@ -60,8 +81,8 @@
 }
 
 .titleLeaf {
-  width: 23px;
-  height: 23px;
+  width: 19px;
+  height: 19px;
   flex: 0 0 auto;
   color: #2e7d32;
 }
@@ -70,9 +91,9 @@
   position: relative;
   z-index: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 14px;
   min-width: 0;
 }
 
@@ -80,8 +101,8 @@
 .notificationButton,
 .headerUser {
   border: 1px solid rgba(255, 255, 255, 0.72);
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 18px 50px rgba(27, 73, 38, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 28px rgba(27, 73, 38, 0.07);
   backdrop-filter: blur(18px);
 }
 
@@ -89,8 +110,8 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  min-height: 42px;
-  padding: 0 14px;
+  min-height: 48px;
+  padding: 0 16px;
   border-radius: var(--ds-radius-card);
   color: #1b1b1b;
 }
@@ -112,8 +133,8 @@
 .notificationButton {
   position: relative;
   display: inline-grid;
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   place-items: center;
   border-radius: var(--ds-radius-card);
   color: #1b1b1b;
@@ -142,9 +163,9 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
-  min-width: 236px;
-  min-height: 54px;
-  padding: 8px 12px 8px 14px;
+  min-width: 206px;
+  min-height: 58px;
+  padding: 8px 12px 8px 16px;
   border-radius: var(--ds-radius-card);
   color: #1b1b1b;
 }
@@ -177,11 +198,7 @@
 .leafOne,
 .leafTwo,
 .leafThree {
-  position: absolute;
-  z-index: 0;
-  color: rgba(46, 125, 50, 0.42);
-  filter: drop-shadow(0 10px 18px rgba(46, 125, 50, 0.18));
-  pointer-events: none;
+  display: none;
 }
 
 .leafOne {
@@ -222,7 +239,7 @@
 @media (max-width: 1180px) {
   .header {
     margin: 0 -18px 18px;
-    padding: 28px 22px 64px;
+    padding: 0 18px;
   }
 
   .headerActions {
@@ -236,44 +253,86 @@
 
 @media (max-width: 760px) {
   .header {
-    min-height: 230px;
-    flex-direction: column;
+    min-height: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
-    margin: 0 -12px 18px;
-    padding: 76px 16px 44px;
+    gap: 14px;
+    margin: 0 -12px 12px;
+    padding: 18px 12px 12px;
+    border-bottom-color: rgba(46, 125, 50, 0.08);
+    background: rgba(255, 255, 255, 0.88);
+  }
+
+  .titleArea {
+    gap: 12px;
   }
 
   .titleBlock {
-    max-width: none;
+    max-width: calc(100% - 70px);
+    gap: 5px;
+  }
+
+  .titleBlock h1 {
+    font-size: 1.18rem;
+    line-height: 1.15;
+  }
+
+  .titleLeaf {
+    width: 16px;
+    height: 16px;
   }
 
   .titleBlock span {
-    white-space: normal;
+    font-size: 0.78rem;
+    white-space: nowrap;
   }
 
   .headerActions {
-    justify-content: flex-start;
+    position: static;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    justify-content: stretch;
     gap: 10px;
   }
 
   .datePill {
-    order: 1;
     min-height: 44px;
-    padding: 0 13px;
+    padding: 0 12px;
+    border-radius: 12px;
   }
 
   .datePill span {
-    font-size: 0.78rem;
+    font-size: 0.76rem;
   }
 
   .notificationButton {
+    position: absolute;
+    top: 20px;
+    right: 16px;
     width: 44px;
     height: 44px;
+    border-radius: 999px;
   }
 
   .headerUser {
-    min-width: min(100%, 250px);
-    min-height: 52px;
+    min-width: 0;
+    min-height: 44px;
+    padding: 6px 10px 6px 12px;
+    border-radius: 12px;
+  }
+
+  .headerUser strong {
+    font-size: 0.78rem;
+  }
+
+  .headerUser small {
+    font-size: 0.68rem;
+  }
+
+  .menuButton {
+    width: 32px;
+    height: 32px;
   }
 
   .leafOne {

@@ -159,6 +159,27 @@ const COMPARISON_LIMIT = 4;
 const ACTION_ROW_LIMIT = 5;
 const TREND_DAY_COUNT = 7;
 
+function normalizeAssigneeId(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number.parseInt(value.trim(), 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function isUserAssignedToTask(task: SnapshotTask, userUid: number) {
+  const normalizedUid = String(userUid);
+
+  return (task.assigneeIds ?? []).some(
+    (assigneeId) => String(normalizeAssigneeId(assigneeId)) === normalizedUid,
+  );
+}
+
 function resolveVariant(session: AppSession): DashboardVariant {
   const role = getPrimaryAppRole({
     role: session.role,
@@ -385,9 +406,7 @@ function toneFromWorkerProject(item: WorkerProjectSummary): StatusTone {
 
 function buildScope(snapshot: DashboardSnapshot, session: AppSession, variant: DashboardVariant): ScopedCollections {
   if (variant === "worker") {
-    const assignedTasks = snapshot.taskDirectory.filter((task) =>
-      task.assigneeIds?.includes(session.uid),
-    );
+    const assignedTasks = snapshot.taskDirectory.filter((task) => isUserAssignedToTask(task, session.uid));
     const taskIds = new Set(assignedTasks.map((task) => task.id));
     const projectNames = new Set(assignedTasks.map((task) => task.projectName));
     const departmentNames = new Set(assignedTasks.map((task) => task.departmentName));

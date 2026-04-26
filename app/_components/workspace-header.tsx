@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import { Bell, CalendarDays, ChevronDown, Leaf } from "lucide-react";
+import { Bell, CalendarDays, ChevronDown, Leaf, Menu } from "lucide-react";
 
 import styles from "./workspace-header.module.css";
 
@@ -57,12 +57,17 @@ export function WorkspaceHeader({
       <Leaf className={styles.leafTwo} aria-hidden />
       <Leaf className={styles.leafThree} aria-hidden />
 
-      <div className={styles.titleBlock}>
-        <h1>
-          {title}
-          <Leaf className={styles.titleLeaf} aria-hidden />
-        </h1>
-        <span>{subtitle}</span>
+      <div className={styles.titleArea}>
+        <button type="button" className={styles.menuButton} aria-label="Цэс">
+          <Menu aria-hidden />
+        </button>
+        <div className={styles.titleBlock}>
+          <h1>
+            {title}
+            <Leaf className={styles.titleLeaf} aria-hidden />
+          </h1>
+          <span>{subtitle}</span>
+        </div>
       </div>
 
       <div className={styles.headerActions}>

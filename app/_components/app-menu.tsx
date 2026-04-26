@@ -13,6 +13,7 @@ import {
   Flag,
   LayoutDashboard,
   Leaf,
+  ListChecks,
   Menu,
   MessageSquare,
   PlusCircle,
@@ -130,6 +131,7 @@ export function AppMenu({
   workerMode = false,
   notificationCount = 0,
 }: AppMenuProps) {
+  void getDockLabel;
   void canViewQualityCenter;
   void variant;
   void masterMode;
@@ -214,13 +216,13 @@ export function AppMenu({
   }
 
   const activeItem = items.find(isItemActive) ?? items[0];
-  const mobileDockItems = [
-    items.find((item) => item.key === "dashboard"),
-    items.find((item) => item.key === "tasks"),
-    items.find((item) => item.key === "chat"),
-    items.find((item) => item.key === "review"),
-    items.find((item) => item.key === "profile"),
-  ].filter((item): item is MenuItem => Boolean(item));
+  const mobileDockItems: MenuItem[] = [
+    { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
+    { key: "projects", href: "/projects", label: "Ажлууд", icon: ListChecks },
+    { key: "new-project", href: "/create", label: "Шинэ ажил", icon: PlusCircle },
+    { key: "reports", href: canWriteReports ? "/reports" : "/review", label: "Тайлан", icon: BarChart3 },
+    { key: "hr", href: "/hr", label: "Миний баг", icon: Users },
+  ];
 
   const menuList = (
     <nav className={styles.menuList} aria-label="Үндсэн цэс">
@@ -332,11 +334,15 @@ export function AppMenu({
             <Link
               key={`dock-${item.key}`}
               href={item.href}
-              className={cn(styles.dockLink, isActive && styles.dockLinkActive)}
+              className={cn(
+                styles.dockLink,
+                item.key === "new-project" && styles.dockLinkCreate,
+                isActive && styles.dockLinkActive,
+              )}
               aria-current={isActive ? "page" : undefined}
             >
               <Icon aria-hidden />
-              <span>{getDockLabel(item.key)}</span>
+              <span>{item.label}</span>
             </Link>
           );
         })}

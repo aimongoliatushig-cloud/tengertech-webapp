@@ -33,6 +33,7 @@ import {
   CardTitle,
 } from "@/app/_components/ui/card";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
+import dashboardStyles from "@/app/dashboard-view.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import { getRoleLabel, hasCapability, isWorkerOnly, type AppSession } from "@/lib/auth";
 import { buildDashboardModel, type StatusTone } from "@/lib/dashboard-model";
@@ -115,6 +116,19 @@ function todayKey() {
   }).format(new Date());
 }
 
+function normalizeTaskAssigneeId(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number.parseInt(value.trim(), 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
 function isOverdue(task: DashboardSnapshot["taskDirectory"][number], currentDateKey: string) {
   return Boolean(
     task.scheduledDate &&
@@ -149,44 +163,46 @@ function StatCard({ metric }: { metric: DashboardStat }) {
 
   return (
     <Link href={metric.href} className="group block">
-      <Card className="grid h-full min-h-[112px] content-between p-3.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(27,73,38,0.12)]">
-        <div className="flex items-start justify-between gap-2.5">
-          <div className="min-w-0">
-            <span className="block text-[0.72rem] font-semibold leading-4 text-[#6B7280]">
+      <Card className={dashboardStyles.statCard}>
+        <div className={dashboardStyles.statCardTop}>
+          <div className={dashboardStyles.statCardText}>
+            <span className={dashboardStyles.statCardLabel}>
               {metric.label}
             </span>
-            <strong className="mt-1.5 block text-2xl font-extrabold leading-none tracking-normal text-[#111B15]">
+            <strong className={dashboardStyles.statCardNumber}>
               {metric.value}
             </strong>
           </div>
           <span
             className={cn(
-              "grid h-9 w-9 shrink-0 place-items-center rounded-[var(--ds-radius-card)]",
+              dashboardStyles.statCardIcon,
               STAT_TONE[metric.tone],
             )}
           >
-            <Icon className="h-4 w-4" />
+            <Icon />
           </span>
         </div>
-        <div className="mt-3 flex items-center gap-2 text-[0.7rem]">
-          <strong
-            className={cn(
-              "font-extrabold",
-              metric.tone === "urgent" ? "text-red-600" : "text-[#2E7D32]",
-            )}
-          >
-            {metric.progress}%
-          </strong>
-          <span className="min-w-0 flex-1 leading-4 text-[#6B7280]">{metric.helper}</span>
-        </div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#E8F3E8]">
-          <span
-            className={cn(
-              "block h-full rounded-full transition-all duration-700",
-              metric.tone === "urgent" ? "bg-red-500" : "bg-[#2E7D32]",
-            )}
-            style={{ width: `${metric.progress}%` }}
-          />
+        <div className={dashboardStyles.statCardBottom}>
+          <div className={dashboardStyles.statCardHelper}>
+            <strong
+              className={cn(
+                dashboardStyles.statCardPercent,
+                metric.tone === "urgent" ? "text-red-600" : "text-[#2E7D32]",
+              )}
+            >
+              {metric.progress}%
+            </strong>
+            <span>{metric.helper}</span>
+          </div>
+          <div className={dashboardStyles.statCardProgress}>
+            <span
+              className={cn(
+                dashboardStyles.statCardProgressFill,
+                metric.tone === "urgent" ? "bg-red-500" : "bg-[#2E7D32]",
+              )}
+              style={{ width: `${metric.progress}%` }}
+            />
+          </div>
         </div>
       </Card>
     </Link>
@@ -196,7 +212,7 @@ function StatCard({ metric }: { metric: DashboardStat }) {
 function ProgressRing({ value, size = "sm" }: { value: number; size?: "sm" | "lg" }) {
   return (
     <div
-      className={cn("grid shrink-0 place-items-center rounded-full p-1", size === "lg" ? "h-28 w-28" : "h-14 w-14")}
+      className={cn("grid shrink-0 place-items-center rounded-full p-1", size === "lg" ? "h-[132px] w-[132px]" : "h-14 w-14")}
       style={ringStyle(value)}
     >
       <div className="grid h-full w-full place-items-center rounded-full bg-white/92 text-center shadow-inner">
@@ -231,22 +247,21 @@ function DepartmentOverview({
   const total = tasks.length || autoDepartment?.openTasks || 0;
 
   return (
-    <Card className="overflow-hidden p-0">
+    <Card className={cn(dashboardStyles.softPanel, dashboardStyles.departmentCard)}>
       <div
-        className="min-h-[158px] bg-cover p-4"
+        className={dashboardStyles.departmentHero}
         style={{
           backgroundImage: `linear-gradient(90deg, rgba(246,251,246,.96) 0%, rgba(246,251,246,.78) 44%, rgba(246,251,246,.24) 100%), linear-gradient(180deg, rgba(246,251,246,.18), rgba(46,125,50,.06)), url(${DASHBOARD_IMAGES.overview})`,
-          backgroundPosition: "center right",
         }}
       >
-        <Badge className="bg-white/72 text-[#2E7D32]">Доторх нэгж</Badge>
-        <h2 className="mt-2.5 max-w-2xl text-xl font-extrabold leading-tight tracking-normal text-[#111B15]">
+        <Badge className={dashboardStyles.departmentBadge}>Доторх нэгж</Badge>
+        <h2 className={dashboardStyles.departmentTitle}>
           {departmentName}
         </h2>
-        <p className="mt-1.5 max-w-xl text-xs font-semibold leading-4 text-[#5E6E64]">
+        <p className={dashboardStyles.departmentDescription}>
           Энэ хэлтэс доторх ажлыг нэгжээр харуулна.
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className={dashboardStyles.departmentChips}>
           {[
             ["Бүгд", total, true],
             ["Авто бааз", autoBaseCount, false],
@@ -255,16 +270,16 @@ function DepartmentOverview({
             <span
               key={String(label)}
               className={cn(
-                "inline-flex min-h-8 items-center gap-2 rounded-full px-3 text-xs font-extrabold shadow-sm",
+                dashboardStyles.departmentChip,
                 active
                   ? "bg-[#2E7D32] text-white"
-                  : "border border-[#DCEFDA] bg-white/78 text-[#1B1B1B]",
+                  : "border border-[#DCEFDA] bg-white/86 text-[#1B1B1B]",
               )}
             >
               {label}
               <small
                 className={cn(
-                  "grid h-6 min-w-6 place-items-center rounded-full px-1.5 text-[0.68rem]",
+                  dashboardStyles.departmentChipCount,
                   active ? "bg-white/24 text-white" : "bg-[#E8F4E8] text-[#2E7D32]",
                 )}
               >
@@ -357,29 +372,94 @@ function CompletionDonut({
   total: number;
 }) {
   const completedShare = percent(completed, total);
+  const unclassified = Math.max(
+    0,
+    total - completed - working - review - overdue,
+  );
+  const performanceRows = [
+    { label: "Дууссан", value: completed, tone: "good" as StatusTone },
+    { label: "Явагдаж буй", value: working, tone: "good" as StatusTone },
+    { label: "Хүлээгдэж буй", value: review, tone: "attention" as StatusTone },
+    { label: "Хугацаа хэтэрсэн", value: overdue, tone: "urgent" as StatusTone },
+    ...(unclassified
+      ? [{ label: "Төлөвлөгдсөн", value: unclassified, tone: "muted" as StatusTone }]
+      : []),
+  ];
 
   return (
-    <Card className="p-4">
-      <CardTitle className="text-base">Ажил гүйцэтгэлийн харагдац</CardTitle>
-      <div className="mt-4 grid items-center gap-4 md:grid-cols-[120px_minmax(0,1fr)]">
+    <Card className={cn("p-4", dashboardStyles.softPanel, dashboardStyles.metricsCard)}>
+      <div className={dashboardStyles.analyticsCardHeader}>
+        <div>
+          <CardTitle className="text-[1.125rem] font-semibold">Ажил гүйцэтгэлийн харагдац</CardTitle>
+          <p className={dashboardStyles.metricsSummary}>Нийт ажлын гүйцэтгэл: {completedShare}%</p>
+        </div>
+      </div>
+
+      <div className={dashboardStyles.performancePanel}>
         <ProgressRing value={completedShare} size="lg" />
-        <div className="grid gap-3 text-xs">
-          {[
-            ["Дууссан", completed, "good"],
-            ["Явагдаж буй", working, "good"],
-            ["Хүлээгдэж буй", review, "attention"],
-            ["Хугацаа хэтэрсэн", overdue, "urgent"],
-          ].map(([label, value, tone]) => (
-            <div key={String(label)} className="flex items-center gap-3">
-              <span className={cn("h-3 w-3 rounded-full", STATUS_DOT[tone as StatusTone])} />
-              <span className="flex-1 text-[#5E6E64]">{label}</span>
-              <strong>{value}</strong>
-              <small className="text-[#7A897E]">({percent(Number(value), total)}%)</small>
-            </div>
-          ))}
+        <div className={dashboardStyles.progressLegend}>
+          {performanceRows.map(({ label, value, tone }) => {
+            const rate = percent(Number(value), total);
+            return (
+              <div key={label} className={dashboardStyles.progressLegendRow}>
+                <span className={cn("h-2.5 w-2.5 rounded-full", STATUS_DOT[tone])} />
+                <span className={cn(dashboardStyles.legendLabel, "text-[#526157]")}>{label}</span>
+                <strong className={dashboardStyles.legendValue}>{value}</strong>
+                <span className={dashboardStyles.legendPercent}>({rate}%)</span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </Card>
+  );
+}
+
+function MobilePriorityPanel({ canWriteReports }: { canWriteReports: boolean }) {
+  const quickActions = [
+    { label: "Шинэ ажил үүсгэх", href: "/create", icon: Plus },
+    { label: "Ажлын жагсаалт", href: "/projects", icon: ListChecks },
+    { label: "Тайлан харах", href: canWriteReports ? "/reports" : "/review", icon: BarChart3 },
+    { label: "Календар харах", href: "/tasks?view=today", icon: CalendarDays },
+  ];
+
+  return (
+    <div className={dashboardStyles.mobilePriorityPanel}>
+      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
+        <CardTitle className={dashboardStyles.sideCardTitle}>Түргэн холбоосууд</CardTitle>
+        <div className={dashboardStyles.sideQuickGrid}>
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+
+            return (
+              <Link key={action.label} href={action.href} className={dashboardStyles.sideQuickAction}>
+                <span className={dashboardStyles.sideQuickIcon}>
+                  <Icon />
+                </span>
+                <span>{action.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </Card>
+
+      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.quoteCard)}>
+        <div
+          className={dashboardStyles.quotePanel}
+          style={{
+            backgroundImage:
+              `linear-gradient(90deg, rgba(246,251,246,.9), rgba(246,251,246,.54)), url(${DASHBOARD_IMAGES.seedling})`,
+          }}
+        >
+          <Leaf className={dashboardStyles.quoteLeaf} />
+          <p className={dashboardStyles.quoteText}>
+            Өнөөдрийн уриа
+            <br />
+            “Байгалиа хайрлая, ирээдүйгээ хамгаалъя.”
+          </p>
+        </div>
+      </Card>
+    </div>
   );
 }
 
@@ -392,55 +472,75 @@ function WeeklyLineChart({ points }: { points: ReturnType<typeof buildDashboardM
         completion: 0,
         overdue: 0,
       }));
-  const toPolyline = (key: "completion" | "overdue") =>
-    values
-      .map((point, index) => {
-        const x = values.length === 1 ? 0 : (index / (values.length - 1)) * 100;
-        const y = 92 - clampPercent(point[key]) * 0.78;
+  const chartWidth = 180;
+  const chartLeft = 10;
+  const chartRight = 176;
+  const chartTop = 12;
+  const chartBottom = 86;
+  const chartHeight = chartBottom - chartTop;
+  const activityValues = values.map((point) =>
+    Math.min(4, Math.round((clampPercent(point.completion) + clampPercent(point.overdue)) / 25)),
+  );
+  const toActivityPolyline = () =>
+    activityValues
+      .map((activity, index) => {
+        const x = values.length === 1 ? chartLeft : chartLeft + (index / (values.length - 1)) * (chartRight - chartLeft);
+        const y = chartBottom - activity * (chartHeight / 4);
         return `${x},${y}`;
       })
       .join(" ");
+  const totalActivity = activityValues.reduce((sum, value) => sum + value, 0);
+  const hasActivity = activityValues.some((value) => value > 0);
+  const weekdayLabels = ["Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба", "Ням"];
+  const gridLines = [
+    { value: 4, y: chartTop },
+    { value: 3, y: chartTop + chartHeight * 0.25 },
+    { value: 2, y: chartTop + chartHeight * 0.5 },
+    { value: 1, y: chartTop + chartHeight * 0.75 },
+    { value: 0, y: chartBottom },
+  ];
 
   return (
-    <Card className="p-4">
-      <CardTitle className="text-base">Сүүлийн 7 хоногийн идэвх</CardTitle>
-      <div className="mt-3 rounded-[var(--ds-radius-card)] bg-[#F6FBF6]/80 p-3">
-        <svg viewBox="0 0 100 100" className="h-36 w-full overflow-visible">
-          {[22, 40, 58, 76].map((line) => (
-            <line
-              key={line}
-              x1="0"
-              x2="100"
-              y1={line}
-              y2={line}
-              stroke="rgba(107,114,128,.18)"
-              strokeDasharray="4 4"
-            />
+    <Card className={cn("p-4", dashboardStyles.softPanel, dashboardStyles.metricsCard)}>
+      <div className={dashboardStyles.weeklyHeader}>
+        <CardTitle className="text-[1.125rem] font-semibold">Сүүлийн 7 хоногийн идэвх</CardTitle>
+        <p className={dashboardStyles.metricsSummary}>Нийт идэвх: {Math.round(totalActivity)}</p>
+      </div>
+      <div className={dashboardStyles.weeklyChartWrap}>
+        {!hasActivity ? <p className={dashboardStyles.weeklyEmptyHint}>Одоогоор идэвх бүртгэгдээгүй</p> : null}
+        <svg viewBox={`0 0 ${chartWidth} 100`} className={cn("h-44 w-full", hasActivity ? "" : "opacity-55")}>
+          {gridLines.map((line) => (
+            <g key={`grid-${line.value}`}>
+              <text x="1.5" y={line.y + 1.5} className="fill-[#64756B] text-[4px] font-semibold">
+                {line.value}
+              </text>
+              <line
+                x1={chartLeft}
+                x2={chartWidth}
+                y1={line.y}
+                y2={line.y}
+                stroke="rgba(100, 116, 139, 0.18)"
+                strokeDasharray="3 4"
+              />
+            </g>
           ))}
           <polyline
-            points={toPolyline("completion")}
+            points={toActivityPolyline()}
             fill="none"
             stroke="#2E7D32"
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeWidth="2.5"
-          />
-          <polyline
-            points={toPolyline("overdue")}
-            fill="none"
-            stroke="#EF4444"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2.5"
+            strokeWidth="2"
           />
           {values.map((point, index) => {
-            const x = values.length === 1 ? 0 : (index / (values.length - 1)) * 100;
+            const x = values.length === 1 ? chartLeft : chartLeft + (index / (values.length - 1)) * (chartRight - chartLeft);
+            const activityY = chartBottom - activityValues[index] * (chartHeight / 4);
+
             return (
               <g key={point.id}>
-                <circle cx={x} cy={92 - clampPercent(point.completion) * 0.78} r="1.8" fill="#2E7D32" />
-                <circle cx={x} cy={92 - clampPercent(point.overdue) * 0.78} r="1.8" fill="#EF4444" />
-                <text x={x} y="104" textAnchor="middle" className="fill-[#6B7280] text-[4px] font-semibold">
-                  {point.label}
+                <circle cx={x} cy={activityY} r="2.15" fill="#2E7D32" />
+                <text x={x} y="97" textAnchor="middle" className="fill-[#526157] text-[4px] font-semibold">
+                  {weekdayLabels[index]}
                 </text>
               </g>
             );
@@ -474,30 +574,30 @@ function HrAttendanceCard({ summary }: { summary: HrDailyAttendanceSummary }) {
   ];
 
   return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between gap-3">
+    <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
+      <div className={dashboardStyles.sideCardHeader}>
         <div>
-          <CardTitle className="text-base">Хүний нөөц</CardTitle>
-          <CardDescription>Өнөөдрийн ирц</CardDescription>
+          <CardTitle className={dashboardStyles.sideCardTitle}>Хүний нөөц</CardTitle>
+          <CardDescription className={dashboardStyles.sideCardDescription}>Өнөөдрийн ирц</CardDescription>
         </div>
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--ds-radius-card)] bg-[#E7F5E7] text-[#2E7D32]">
-          <UsersRound className="h-4 w-4" />
+        <span className={dashboardStyles.sideHeaderIcon}>
+          <UsersRound />
         </span>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className={dashboardStyles.sideMiniGrid}>
         {items.map((item) => {
           const Icon = item.icon;
 
           return (
-            <div key={item.label} className="rounded-[var(--ds-radius-card)] bg-[#F6FBF6] p-2.5">
-              <span className={cn("mb-2 grid h-7 w-7 place-items-center rounded-lg", item.className)}>
-                <Icon className="h-3.5 w-3.5" />
+            <div key={item.label} className={dashboardStyles.sideMiniItem}>
+              <span className={cn(dashboardStyles.sideMiniIcon, item.className)}>
+                <Icon />
               </span>
-              <strong className="block text-xl leading-none tracking-normal text-[#111B15]">
+              <strong className={dashboardStyles.sideMiniValue}>
                 {item.value}
               </strong>
-              <span className="mt-1 block text-[0.68rem] font-bold leading-3 text-[#6B7280]">
+              <span className={dashboardStyles.sideMiniLabel}>
                 {item.label}
               </span>
             </div>
@@ -505,9 +605,9 @@ function HrAttendanceCard({ summary }: { summary: HrDailyAttendanceSummary }) {
         })}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-[#6B7280]">
+      <div className={dashboardStyles.sideCardFooter}>
         <span>Нийт ажилтан</span>
-        <strong className="text-[#111B15]">{summary.totalEmployees}</strong>
+        <strong>{summary.totalEmployees}</strong>
         {summary.leaveToday ? <span className="basis-full text-[#2E7D32]">Чөлөөтэй {summary.leaveToday}</span> : null}
       </div>
     </Card>
@@ -539,36 +639,38 @@ function RightPanel({
   ];
 
   return (
-    <aside className="grid content-start gap-3">
-      <Card className="p-4">
-        <CardTitle className="text-base">Түргэн холбоосууд</CardTitle>
-        <div className="mt-3 grid gap-2">
+    <aside className={dashboardStyles.rightRail}>
+      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
+        <CardTitle className={dashboardStyles.sideCardTitle}>Түргэн холбоосууд</CardTitle>
+        <div className={dashboardStyles.sideQuickGrid}>
           {quickActions.map((action) => {
             const Icon = action.icon;
             return (
               <Link
                 key={action.label}
                 href={action.href}
-                className="flex min-h-8 items-center gap-2 rounded-[var(--ds-radius-card)] bg-[#EDF6ED] px-3 text-xs font-extrabold text-[#1B1B1B] transition hover:-translate-y-0.5 hover:bg-[#DCEFDA]"
+                className={dashboardStyles.sideQuickAction}
               >
-                <Icon className="h-4 w-4 text-[#2E7D32]" />
-                {action.label}
+                <span className={dashboardStyles.sideQuickIcon}>
+                  <Icon />
+                </span>
+                <span>{action.label}</span>
               </Link>
             );
           })}
         </div>
       </Card>
 
-      <Card className="overflow-hidden p-0">
+      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.quoteCard)}>
         <div
-          className="min-h-[104px] bg-cover bg-center p-4 text-right"
+          className={dashboardStyles.quotePanel}
           style={{
             backgroundImage:
               `linear-gradient(90deg, rgba(246,251,246,.9), rgba(246,251,246,.54)), url(${DASHBOARD_IMAGES.seedling})`,
           }}
         >
-          <Leaf className="mb-3 ml-auto h-8 w-8 text-[#A5B82E]" />
-          <p className="text-xs font-extrabold leading-5 text-[#334238]">
+          <Leaf className={dashboardStyles.quoteLeaf} />
+          <p className={dashboardStyles.quoteText}>
             Өнөөдрийн уриа
             <br />
             “Байгалиа хайрлая, ирээдүйгээ хамгаалъя.”
@@ -576,9 +678,9 @@ function RightPanel({
         </div>
       </Card>
 
-      <Card className="p-4">
-        <CardTitle className="text-base">Системийн мэдээлэл</CardTitle>
-        <div className="mt-3 grid gap-2.5 text-xs">
+      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
+        <CardTitle className={dashboardStyles.sideCardTitle}>Системийн мэдээлэл</CardTitle>
+        <div className={dashboardStyles.systemList}>
           {[
             ["Хэрэглэгч", 128],
             ["Нийт ажил", totalTasks],
@@ -586,8 +688,8 @@ function RightPanel({
             ["Дууссан ажил", completedTasks],
             ["Анхаарах", alertCount],
           ].map(([label, value]) => (
-            <div key={String(label)} className="flex items-center justify-between">
-              <span className="text-[#6B7280]">{label}</span>
+            <div key={String(label)} className={dashboardStyles.systemRow}>
+              <span>{label}</span>
               <strong>{value}</strong>
             </div>
           ))}
@@ -596,16 +698,16 @@ function RightPanel({
 
       <HrAttendanceCard summary={hrAttendanceSummary} />
 
-      <Card className="p-4">
-        <CardTitle className="text-base">Цаг агаар</CardTitle>
-        <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
-          <Sun className="h-9 w-9 text-amber-400" />
+      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
+        <CardTitle className={dashboardStyles.sideCardTitle}>Цаг агаар</CardTitle>
+        <div className={dashboardStyles.weatherContent}>
+          <Sun className={dashboardStyles.weatherIcon} />
           <div>
-            <span className="block text-xs text-[#6B7280]">Улаанбаатар</span>
-            <strong className="text-xl tracking-normal">18°C</strong>
-            <small className="block text-[#6B7280]">Бага үүлтэй</small>
+            <span className={dashboardStyles.weatherCity}>Улаанбаатар</span>
+            <strong className={dashboardStyles.weatherTemp}>18°C</strong>
+            <small className={dashboardStyles.weatherNote}>Бага үүлтэй</small>
           </div>
-          <div className="rounded-[var(--ds-radius-card)] bg-[#E7F5E7] px-2.5 py-2 text-center text-[0.7rem] font-extrabold text-[#2E7D32]">
+          <div className={dashboardStyles.weatherBadge}>
             Сайн
             <br />
             AQI 38
@@ -613,30 +715,34 @@ function RightPanel({
         </div>
       </Card>
 
-      <Card className="overflow-hidden p-0">
+      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.landscapeCard)}>
         <div
-          className="min-h-[130px] bg-cover bg-center p-4 text-white"
+          className={dashboardStyles.landscapePanel}
           style={{
             backgroundImage: `linear-gradient(180deg, rgba(27,73,38,.1), rgba(17,42,26,.72)), url(${DASHBOARD_IMAGES.landscape})`,
           }}
         >
-          <Recycle className="h-7 w-7 text-[#A5D6A7]" />
-          <h3 className="mt-8 text-base font-extrabold leading-tight">Ногоон хот - ирээдүйн үнэ цэнэ</h3>
+          <Recycle className={dashboardStyles.landscapeIcon} />
+          <h3 className={dashboardStyles.landscapeTitle}>Ногоон хот - ирээдүйн үнэ цэнэ</h3>
         </div>
       </Card>
 
-      <Card className="p-4">
-        <CardTitle className="text-base">Техник</CardTitle>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-          <div className="rounded-[var(--ds-radius-card)] bg-[#F2F8F2] p-3">
-            <Truck className="mb-2 h-4 w-4 text-[#2E7D32]" />
-            <strong className="block text-xl">{fleetBoard.totalVehicles}</strong>
-            <span className="text-[#6B7280]">Нийт</span>
+      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
+        <CardTitle className={dashboardStyles.sideCardTitle}>Техник</CardTitle>
+        <div className={cn(dashboardStyles.sideMiniGrid, dashboardStyles.sideMiniGridTwo)}>
+          <div className={dashboardStyles.sideMiniItem}>
+            <span className={cn(dashboardStyles.sideMiniIcon, "bg-[#E7F5E7] text-[#2E7D32]")}>
+              <Truck />
+            </span>
+            <strong className={dashboardStyles.sideMiniValue}>{fleetBoard.totalVehicles}</strong>
+            <span className={dashboardStyles.sideMiniLabel}>Нийт</span>
           </div>
-          <div className="rounded-[var(--ds-radius-card)] bg-[#F2F8F2] p-3">
-            <Wind className="mb-2 h-4 w-4 text-[#2E7D32]" />
-            <strong className="block text-xl">{fleetBoard.activeCount}</strong>
-            <span className="text-[#6B7280]">Ажиллаж буй</span>
+          <div className={dashboardStyles.sideMiniItem}>
+            <span className={cn(dashboardStyles.sideMiniIcon, "bg-[#E7F5E7] text-[#2E7D32]")}>
+              <Wind />
+            </span>
+            <strong className={dashboardStyles.sideMiniValue}>{fleetBoard.activeCount}</strong>
+            <span className={dashboardStyles.sideMiniLabel}>Ажиллаж буй</span>
           </div>
         </div>
       </Card>
@@ -667,7 +773,12 @@ export function DashboardView({
   });
 
   const scopedTasks = workerMode
-    ? snapshot.taskDirectory.filter((task) => task.assigneeIds?.includes(session.uid))
+    ? snapshot.taskDirectory.filter((task) => {
+        const currentUserId = String(session.uid);
+        return (task.assigneeIds ?? []).some(
+          (assigneeId) => String(normalizeTaskAssigneeId(assigneeId)) === currentUserId,
+        );
+      })
     : snapshot.taskDirectory;
   const dashboardTasks = scopedTasks.length ? scopedTasks : snapshot.taskDirectory;
   const totalTasks = dashboardTasks.length || snapshot.totalTasks || 0;
@@ -684,7 +795,10 @@ export function DashboardView({
     return score[rightTone] - score[leftTone] || right.progress - left.progress;
   });
   const visibleTasks = sortedTasks.slice(0, 4);
-  const taskGridClassName = cn("mt-4 grid gap-3", visibleTasks.length > 1 && "xl:grid-cols-2");
+  const taskGridClassName = cn(
+    dashboardStyles.taskListBody,
+    visibleTasks.length > 1 && "xl:grid-cols-2",
+  );
 
   const statCards: DashboardStat[] = [
     {
@@ -777,13 +891,15 @@ export function DashboardView({
             backgroundImage={DASHBOARD_IMAGES.header}
           />
 
-          <div className="relative z-20 mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_288px]">
+          <div className="relative z-20 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="grid min-w-0 gap-4">
-              <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+              <section className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6", dashboardStyles.statGrid)}>
                 {statCards.map((metric) => (
                   <StatCard key={metric.label} metric={metric} />
                 ))}
               </section>
+
+              <MobilePriorityPanel canWriteReports={canWriteReports} />
 
               {fleetLoadError ? (
                 <Card className="border-amber-200 bg-amber-50/85 p-4 text-sm font-semibold text-amber-800">
@@ -791,12 +907,14 @@ export function DashboardView({
                 </Card>
               ) : null}
 
-              <DepartmentOverview snapshot={snapshot} tasks={dashboardTasks} />
+              <div className={dashboardStyles.departmentPanel}>
+                <DepartmentOverview snapshot={snapshot} tasks={dashboardTasks} />
+              </div>
 
-              <Card className="p-4">
-                <CardHeader className="flex-wrap gap-3">
-                  <div>
-                    <CardDescription className="font-extrabold uppercase tracking-normal">
+              <Card className={dashboardStyles.taskListCard}>
+                <CardHeader className={dashboardStyles.taskListHeader}>
+                  <div className={dashboardStyles.taskListHeaderText}>
+                    <CardDescription className={dashboardStyles.taskListKicker}>
                       Ажлын жагсаалт
                     </CardDescription>
                     <CardTitle>Нийт ажил</CardTitle>
@@ -806,7 +924,7 @@ export function DashboardView({
                   </div>
                   <Link
                     href="/tasks"
-                    className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[#E4F2E4] px-3.5 text-xs font-extrabold text-[#2E7D32] transition hover:-translate-y-0.5 hover:bg-[#DCEFDA]"
+                    className={dashboardStyles.taskListAction}
                   >
                     Календар төлөвлөгөө
                     <ChevronRight className="h-4 w-4" />
@@ -818,14 +936,18 @@ export function DashboardView({
                     <TaskCard key={task.id} task={task} currentDateKey={currentDateKey} />
                   ))}
                   {!visibleTasks.length ? (
-                    <div className="col-span-full rounded-2xl border border-dashed border-[#A5D6A7]/70 bg-[#F6FBF6] p-8 text-center text-sm font-semibold text-[#6B7280]">
-                      Одоогоор ажил бүртгэгдээгүй байна.
+                    <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>
+                      <span className={dashboardStyles.taskListEmptyIcon}>
+                        <ClipboardList />
+                      </span>
+                      <span className="mt-2 block text-[#1F2B24]">Одоогоор ажил бүртгэгдээгүй байна.</span>
+                      <small className="mt-1 block font-medium text-[#8A978E]">Шинэ ажил үүсгэж эхлээрэй.</small>
                     </div>
                   ) : null}
                 </div>
               </Card>
 
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+              <div className={cn("grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]", dashboardStyles.analyticsSection)}>
                 <CompletionDonut
                   completed={completedTasks}
                   working={workingTasks}
@@ -836,40 +958,40 @@ export function DashboardView({
                 <WeeklyLineChart points={model.trendPoints} />
               </div>
 
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
-                <Card className="p-4">
-                  <CardTitle className="text-base">Хурдан статистик</CardTitle>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className={cn("grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]", dashboardStyles.summaryGrid)}>
+                <Card className={cn(dashboardStyles.softPanel, dashboardStyles.quickStatsCard)}>
+                  <CardTitle className={dashboardStyles.quickStatsTitle}>Хурдан статистик</CardTitle>
+                  <div className={dashboardStyles.quickStatsGrid}>
                     {[
                       ["Өнөөдрийн ажил", snapshot.liveTasks.length, percent(snapshot.liveTasks.length, totalTasks)],
                       ["Энэ 7 хоног", model.trendPoints.reduce((sum, point) => sum + point.completion, 0), 0],
                       ["Энэ сар", completedTasks, percent(completedTasks, totalTasks)],
                     ].map(([label, value, rate]) => (
-                      <div key={String(label)} className="rounded-[var(--ds-radius-card)] bg-[#F2F8F2] p-3">
-                        <CalendarDays className="mb-2 h-4 w-4 text-[#2E7D32]" />
-                        <span className="block text-xs text-[#6B7280]">{label}</span>
-                        <strong className="mt-1 block text-xl tracking-normal">{value}</strong>
-                        <small className="font-extrabold text-[#2E7D32]">↑ {rate}%</small>
+                      <div key={String(label)} className={dashboardStyles.quickStatItem}>
+                        <CalendarDays className={dashboardStyles.quickStatIcon} />
+                        <span className={dashboardStyles.quickStatLabel}>{label}</span>
+                        <strong className={dashboardStyles.quickStatValue}>{value}</strong>
+                        <small className={dashboardStyles.quickStatRate}>↑ {rate}%</small>
                       </div>
                     ))}
                   </div>
                 </Card>
 
-                <Card className="p-4">
-                  <CardTitle className="text-base">Техник, тоног төхөөрөмж</CardTitle>
-                  <div className="mt-5 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
-                    <Truck className="h-8 w-8 text-[#2E7D32]" />
+                <Card className={cn(dashboardStyles.softPanel, dashboardStyles.fleetSummaryCard)}>
+                  <CardTitle className={dashboardStyles.fleetSummaryTitle}>Техник, тоног төхөөрөмж</CardTitle>
+                  <div className={dashboardStyles.fleetSummaryBody}>
+                    <Truck className={dashboardStyles.fleetSummaryIcon} />
                     <div>
-                      <strong className="block text-3xl tracking-normal">{fleetBoard.totalVehicles}</strong>
-                      <span className="text-[#6B7280]">Нийт техник</span>
+                      <strong className={dashboardStyles.fleetSummaryValue}>{fleetBoard.totalVehicles}</strong>
+                      <span className={dashboardStyles.fleetSummaryLabel}>Нийт техник</span>
                     </div>
                   </div>
                   <Link
                     href="/auto-base"
-                    className="mt-4 inline-flex items-center gap-2 text-xs font-extrabold text-[#2E7D32]"
+                    className={dashboardStyles.fleetSummaryLink}
                   >
                     Авто бааз
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight />
                   </Link>
                 </Card>
               </div>

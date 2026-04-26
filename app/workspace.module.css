@@ -3548,7 +3548,7 @@
 
 .contentWithMenu,
 .workspaceShell {
-  grid-template-columns: 236px minmax(0, 1fr);
+  grid-template-columns: 314px minmax(0, 1fr);
   gap: 0;
   align-items: stretch;
   max-width: none;
@@ -3571,7 +3571,7 @@
 .workspaceMain,
 .mainColumn {
   min-width: 0;
-  padding: 0 24px 40px;
+  padding: 0 28px 12px;
   overflow-x: hidden;
 }
 
