@@ -40,7 +40,7 @@ export default async function ProcurementDashboardPage() {
     <ProcurementShell
       session={session}
       procurementUser={procurementUser}
-      title="Ерөнхий менежерийн хяналтын самбар"
+      title="Үйл ажиллагаа хариуцсан менежерийн хяналтын самбар"
       description="Төслүүдийн худалдан авалтын явц, няравын ачаалал, нийлүүлэгчийн сонголт, шийдвэрлэх хугацааг төвлөрүүлэн харуулна."
       activeTab="dashboard"
     >

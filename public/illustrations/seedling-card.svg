@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 360" role="img" aria-label="Illustrated seedling">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f8fbf3"/>
+      <stop offset="0.58" stop-color="#e2f4dc"/>
+      <stop offset="1" stop-color="#bddfac"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#9ccc65"/>
+      <stop offset="1" stop-color="#2f7d40"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#1d5f34" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect width="800" height="360" fill="url(#bg)"/>
+  <path d="M0 252 C112 224 220 234 326 258 C458 288 598 266 800 220 L800 360 L0 360 Z" fill="#8fc979" opacity="0.58"/>
+  <path d="M0 292 C142 260 278 270 402 294 C552 324 662 310 800 286 L800 360 L0 360 Z" fill="#63a759" opacity="0.54"/>
+  <g filter="url(#shadow)" transform="translate(332 86)">
+    <ellipse cx="72" cy="204" rx="118" ry="28" fill="#6f523f" opacity="0.46"/>
+    <path d="M75 202 C80 154 79 118 73 70" fill="none" stroke="#3f7d3d" stroke-linecap="round" stroke-width="12"/>
+    <path d="M72 130 C38 84 0 77 -42 100 C-14 142 34 152 72 130 Z" fill="url(#leaf)"/>
+    <path d="M82 104 C102 52 148 28 202 42 C184 96 134 124 82 104 Z" fill="url(#leaf)"/>
+    <path d="M74 74 C56 34 72 5 112 -18 C136 26 118 62 74 74 Z" fill="#7fbd58"/>
+    <path d="M-15 106 C12 112 42 122 68 130" fill="none" stroke="#e1f3d6" stroke-linecap="round" stroke-width="5" opacity="0.62"/>
+    <path d="M112 95 C138 82 162 64 188 46" fill="none" stroke="#e1f3d6" stroke-linecap="round" stroke-width="5" opacity="0.62"/>
+  </g>
+  <g fill="#ffffff" opacity="0.38">
+    <circle cx="120" cy="76" r="28"/>
+    <circle cx="660" cy="96" r="38"/>
+    <circle cx="710" cy="150" r="18"/>
+  </g>
+</svg>

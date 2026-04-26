@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 
 import { SearchableSelect, type SearchableSelectOption } from "@/app/_components/searchable-select";
 import styles from "@/app/workspace.module.css";
@@ -34,6 +34,7 @@ type SeasonalLineDraft = {
   routeId: string;
   remarks: string;
 };
+const CUSTOM_WORK_TYPE_VALUE = "__new_work__";
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
@@ -93,6 +94,10 @@ function buildUnitOptions(workType: WorkTypeOption | null): SearchableSelectOpti
 
 function normalizeDepartmentValue(value?: string | null) {
   return (value ?? "").trim().toLowerCase();
+}
+
+function normalizeLocationName(value: string) {
+  return value.trim().replace(/\s+/g, " ");
 }
 
 function departmentContains(
@@ -155,6 +160,8 @@ export function NewWorkForm({
   });
   const [vehicleId, setVehicleId] = useState("");
   const [routeId, setRouteId] = useState("");
+  const [extraLocationDraft, setExtraLocationDraft] = useState("");
+  const [extraLocations, setExtraLocations] = useState<string[]>([]);
   const [shiftDate, setShiftDate] = useState(getTodayValue());
   const [trackQuantity, setTrackQuantity] = useState(false);
   const [operationType, setOperationType] = useState("");
@@ -183,7 +190,10 @@ export function NewWorkForm({
     [garbageRouteOptions, routeId],
   );
   const selectedWorkType = useMemo(
-    () => workTypeOptions.find((option) => option.operationType === operationType) ?? null,
+    () =>
+      operationType === CUSTOM_WORK_TYPE_VALUE
+        ? null
+        : workTypeOptions.find((option) => option.operationType === operationType) ?? null,
     [operationType, workTypeOptions],
   );
   const unitOptions = useMemo(() => buildUnitOptions(selectedWorkType), [selectedWorkType]);
@@ -209,6 +219,8 @@ export function NewWorkForm({
   const isSeasonalGarbage =
     supportsGarbageTransport && operationUnit === "garbage_seasonal";
   const isDepartmentLocked = Boolean(lockedDepartmentId);
+  const isCustomWorkType = operationType === CUSTOM_WORK_TYPE_VALUE;
+  const effectiveTrackQuantity = isCustomWorkType ? false : trackQuantity;
 
   const generatedName = useMemo(() => {
     if (!isGarbageTransport) {
@@ -216,9 +228,12 @@ export function NewWorkForm({
     }
 
     const vehicleLabel = selectedVehicle?.plate || "Машины дугаар";
-    const routeLabel = selectedRoute?.code || selectedRoute?.name || "Маршрут";
-    return `${vehicleLabel} - ${routeLabel} / ${shiftDate}`;
-  }, [isGarbageTransport, selectedRoute, selectedVehicle, shiftDate]);
+    const primaryLocationLabel = selectedRoute?.code || selectedRoute?.name || "Байршил";
+    const locationLabel = extraLocations.length
+      ? `${primaryLocationLabel} + ${extraLocations.length} байршил`
+      : primaryLocationLabel;
+    return `${vehicleLabel} - ${locationLabel} / ${shiftDate}`;
+  }, [extraLocations.length, isGarbageTransport, selectedRoute, selectedVehicle, shiftDate]);
 
   const unitHelperText = selectedWorkType
     ? `Энэ ажилд ашиглах боломжтой нэгжүүд: ${selectedWorkType.allowedUnitSummary}`
@@ -277,6 +292,39 @@ export function NewWorkForm({
         .map((item) => item.label)
         .join(", ")
     : "Сонгоогүй";
+
+  const handleOperationTypeChange = (nextOperationType: string) => {
+    setOperationType(nextOperationType);
+    setSelectedUnitOverrideId(null);
+
+    if (nextOperationType === CUSTOM_WORK_TYPE_VALUE) {
+      setTrackQuantity(false);
+    }
+  };
+
+  const handleAddExtraLocation = () => {
+    const normalizedLocation = normalizeLocationName(extraLocationDraft);
+    if (!normalizedLocation) {
+      return;
+    }
+
+    setExtraLocations((currentLocations) => {
+      const alreadyAdded = currentLocations.some(
+        (location) => location.toLowerCase() === normalizedLocation.toLowerCase(),
+      );
+      return alreadyAdded ? currentLocations : [...currentLocations, normalizedLocation];
+    });
+    setExtraLocationDraft("");
+  };
+
+  const handleExtraLocationKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    handleAddExtraLocation();
+  };
 
   return (
     <form action={action} className={styles.form}>
@@ -376,7 +424,7 @@ export function NewWorkForm({
             </div>
 
             <div className={styles.field}>
-              <label htmlFor="garbage_route_id">Маршрут</label>
+              <label htmlFor="garbage_route_id">Байршил</label>
               <select
                 id="garbage_route_id"
                 name="garbage_route_id"
@@ -384,7 +432,7 @@ export function NewWorkForm({
                 onChange={(event) => setRouteId(event.target.value)}
                 required={isGarbageTransport}
               >
-                <option value="">Маршрут сонгоно уу</option>
+                <option value="">Байршил сонгоно уу</option>
                 {garbageRouteOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
@@ -406,6 +454,56 @@ export function NewWorkForm({
             </div>
           </div>
 
+          <div className={styles.locationComposer}>
+            <div className={styles.field}>
+              <label htmlFor="additional_location_draft">Нэмэлт байршил</label>
+              <div className={styles.inlineFieldRow}>
+                <input
+                  id="additional_location_draft"
+                  name="additional_location_draft"
+                  type="text"
+                  value={extraLocationDraft}
+                  onChange={(event) => setExtraLocationDraft(event.target.value)}
+                  onKeyDown={handleExtraLocationKeyDown}
+                  placeholder="Жишээ: 12-р байрны урд тал"
+                />
+                <button
+                  type="button"
+                  className={`${styles.secondaryButton} ${styles.locationAddButton}`}
+                  onClick={handleAddExtraLocation}
+                  disabled={!extraLocationDraft.trim()}
+                >
+                  Нэмэх
+                </button>
+              </div>
+              <small className={styles.fieldHint}>
+                Сонгосон байршлаас гадна нэмэлтээр оруулах цэг, байрлалаа бичээд нэмнэ.
+              </small>
+            </div>
+
+            {extraLocations.length ? (
+              <div className={styles.locationList} aria-label="Нэмэлт байршлууд">
+                {extraLocations.map((location) => (
+                  <div className={styles.locationChip} key={location}>
+                    <span>{location}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExtraLocations((currentLocations) =>
+                          currentLocations.filter((item) => item !== location),
+                        )
+                      }
+                      aria-label={`${location} байршлыг хасах`}
+                    >
+                      Хасах
+                    </button>
+                    <input type="hidden" name="additional_locations" value={location} />
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
           <input type="hidden" name="name" value={generatedName} />
 
           <div className={styles.previewCard}>
@@ -413,7 +511,7 @@ export function NewWorkForm({
               <span className={styles.eyebrow}>Хог тээвэрлэлтийн ажил</span>
               <strong>
                 {generatedName ||
-                  "Машин, маршрут сонгоход нэр автоматаар үүснэ"}
+                  "Машин, байршил сонгоход нэр автоматаар үүснэ"}
               </strong>
             </div>
 
@@ -423,8 +521,12 @@ export function NewWorkForm({
                 <strong>{selectedVehicle?.plate || "Сонгоогүй"}</strong>
               </div>
               <div className={styles.previewMeta}>
-                <span>Маршрут</span>
+                <span>Байршил</span>
                 <strong>{selectedRoute?.label || "Сонгоогүй"}</strong>
+              </div>
+              <div className={styles.previewMeta}>
+                <span>Нэмэлт байршил</span>
+                <strong>{extraLocations.length ? `${extraLocations.length} нэмсэн` : "Нэмээгүй"}</strong>
               </div>
               <div className={styles.previewMeta}>
                 <span>Цэгийн тоо</span>
@@ -437,8 +539,9 @@ export function NewWorkForm({
             </div>
 
             <p className={styles.helperNote}>
-              Сонгосон машин, маршрут, огноогоор нэг ажил үүснэ. Тухайн маршрутын хог ачих цэг
-              бүр ажил дотор тусдаа ажилбар болж автоматаар үүснэ.
+              Сонгосон машин, байршил, огноогоор нэг ажил үүснэ. Тухайн байршлын хог ачих цэг
+              бүр ажил дотор тусдаа ажилбар болж автоматаар үүснэ. Нэмэлт байршлууд мөн тусдаа
+              ажилбар болж нэмэгдэнэ.
             </p>
             <p className={styles.helperNote}>
               Огноо: <strong>{formatDateLabel(shiftDate)}</strong>
@@ -738,10 +841,11 @@ export function NewWorkForm({
                 id="operation_type"
                 name="operation_type"
                 value={operationType}
-                onChange={(event) => setOperationType(event.target.value)}
+                onChange={(event) => handleOperationTypeChange(event.target.value)}
                 required
               >
                 <option value="">Ажлын төрөл сонгоно уу</option>
+                <option value={CUSTOM_WORK_TYPE_VALUE}>Шинэ ажил үүсгэх</option>
                 {workTypeOptions.map((option) => (
                   <option key={option.id} value={option.operationType}>
                     {option.name}
@@ -749,7 +853,9 @@ export function NewWorkForm({
                 ))}
               </select>
               <small className={styles.fieldHint}>
-                {selectedWorkType
+                {isCustomWorkType
+                  ? "Шинэ ажил ерөнхий төрлөөр үүснэ. Хэмжих нэгж шаардлагагүй бол шууд бүртгэж болно."
+                  : selectedWorkType
                   ? unitHelperText
                   : "Ажлын төрлөө сонгосноор зөвшөөрөгдсөн хэмжих нэгжүүд харагдана."}
               </small>
@@ -774,8 +880,9 @@ export function NewWorkForm({
               name="track_quantity"
               type="checkbox"
               value="1"
-              checked={trackQuantity}
+              checked={effectiveTrackQuantity}
               onChange={(event) => setTrackQuantity(event.target.checked)}
+              disabled={isCustomWorkType}
               className={styles.optionalCheckbox}
             />
             <label htmlFor="track_quantity" className={styles.optionalToggle}>
@@ -790,7 +897,7 @@ export function NewWorkForm({
 
             <div
               className={`${styles.optionalFields} ${
-                trackQuantity ? styles.optionalFieldsVisible : ""
+                effectiveTrackQuantity ? styles.optionalFieldsVisible : ""
               }`}
             >
               <div className={styles.field}>

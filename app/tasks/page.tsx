@@ -17,6 +17,12 @@ import {
   getTodayDateKey,
   pickPrimaryDepartmentName,
 } from "@/lib/dashboard-scope";
+import {
+  DEPARTMENT_GROUPS,
+  findDepartmentGroupByName,
+  findDepartmentGroupByUnit,
+  matchesDepartmentGroup,
+} from "@/lib/department-groups";
 import { loadMunicipalSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
 
 import styles from "./tasks.module.css";
@@ -74,6 +80,19 @@ function normalizeFilter(value: string): FilterKey {
 
 function normalizeQuickAction(value: string): QuickActionMode {
   return value === "report" ? "report" : "none";
+}
+
+function formatPlanDate(dateKey: string) {
+  const parsed = new Date(`${dateKey}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return dateKey;
+  }
+
+  return new Intl.DateTimeFormat("mn-MN", {
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  }).format(parsed);
 }
 
 function StagePill({
@@ -275,21 +294,49 @@ export default async function TasksPage({ searchParams }: PageProps) {
     !workerMode && !masterMode && requestedDepartment && requestedDepartment !== "all"
       ? snapshot.departments.find((department) => department.name === requestedDepartment) ?? null
       : null;
+  const requestedDepartmentGroup =
+    !workerMode && !masterMode && requestedDepartment && requestedDepartment !== "all"
+      ? findDepartmentGroupByName(requestedDepartment)
+      : null;
+  const requestedUnitGroup =
+    !workerMode && !masterMode && requestedDepartment && requestedDepartment !== "all"
+      ? findDepartmentGroupByUnit(requestedDepartment)
+      : null;
+  const selectedDepartmentUnit =
+    requestedUnitGroup?.units.includes(requestedDepartment) ? requestedDepartment : "";
+  const selectedDepartmentGroup =
+    !workerMode && !masterMode && requestedDepartment && requestedDepartment !== "all"
+      ? requestedDepartmentGroup ?? (!selectedDepartment && !selectedDepartmentUnit ? requestedUnitGroup : null)
+      : null;
+  const selectedDepartmentParam =
+    selectedDepartmentUnit || selectedDepartmentGroup?.name || selectedDepartment?.name || "";
 
   const scopedProjects = workerMode
     ? Array.from(new Set(workerTasks.map((task) => task.projectName)))
     : masterMode
       ? filterByDepartment(snapshot.projects, masterDepartmentName)
-    : snapshot.projects.filter(
-        (project) => !selectedDepartment || project.departmentName === selectedDepartment.name,
-      );
+      : snapshot.projects.filter((project) => {
+          if (selectedDepartmentUnit) {
+            return project.departmentName === selectedDepartmentUnit;
+          }
+          if (selectedDepartmentGroup) {
+            return matchesDepartmentGroup(selectedDepartmentGroup, project.departmentName);
+          }
+          return !selectedDepartment || project.departmentName === selectedDepartment.name;
+        });
   const scopedTasks = workerMode
     ? workerTasks
     : masterMode
       ? masterTodayTasks
-    : snapshot.taskDirectory.filter(
-        (task) => !selectedDepartment || task.departmentName === selectedDepartment.name,
-      );
+      : snapshot.taskDirectory.filter((task) => {
+          if (selectedDepartmentUnit) {
+            return task.departmentName === selectedDepartmentUnit;
+          }
+          if (selectedDepartmentGroup) {
+            return matchesDepartmentGroup(selectedDepartmentGroup, task.departmentName);
+          }
+          return !selectedDepartment || task.departmentName === selectedDepartment.name;
+        });
 
   const counts: Record<FilterKey, number> = masterMode
     ? {
@@ -337,11 +384,48 @@ export default async function TasksPage({ searchParams }: PageProps) {
     ? "Надад оноогдсон ажилбар"
     : masterMode
       ? masterDepartmentName ?? "Миний алба нэгж"
-      : selectedDepartment?.name ?? "Бүх алба нэгж";
+      : selectedDepartmentUnit || selectedDepartmentGroup?.name || selectedDepartment?.name || "Бүх алба хэлтэс";
+  const calendarPlanItems = Array.from(
+    scopedTasks
+      .filter((task) => task.scheduledDate)
+      .reduce<
+        Map<
+          string,
+          {
+            dateKey: string;
+            total: number;
+            working: number;
+            review: number;
+            verified: number;
+          }
+        >
+      >((accumulator, task) => {
+        const dateKey = task.scheduledDate ?? "";
+        const existing = accumulator.get(dateKey) ?? {
+          dateKey,
+          total: 0,
+          working: 0,
+          review: 0,
+          verified: 0,
+        };
+
+        existing.total += 1;
+        if (task.statusKey === "working") {
+          existing.working += 1;
+        } else if (task.statusKey === "review") {
+          existing.review += 1;
+        } else if (task.statusKey === "verified") {
+          existing.verified += 1;
+        }
+        accumulator.set(dateKey, existing);
+        return accumulator;
+      }, new Map())
+      .values(),
+  ).sort((left, right) => left.dateKey.localeCompare(right.dateKey));
 
   const taskListParams = new URLSearchParams();
-  if (!workerMode && selectedDepartment?.name) {
-    taskListParams.set("department", selectedDepartment.name);
+  if (!workerMode && selectedDepartmentParam) {
+    taskListParams.set("department", selectedDepartmentParam);
   }
   if (activeFilter !== "all") {
     taskListParams.set("filter", activeFilter);
@@ -455,10 +539,22 @@ export default async function TasksPage({ searchParams }: PageProps) {
                         <select
                           id="tasks-department"
                           name="department"
-                          defaultValue={selectedDepartment?.name ?? "all"}
+                          defaultValue={selectedDepartmentParam || "all"}
                           className={styles.dateInput}
                         >
-                          <option value="all">Бүх алба нэгж</option>
+                          <option value="all">Бүх алба хэлтэс</option>
+                          {DEPARTMENT_GROUPS.map((group) => (
+                            <option key={group.name} value={group.name}>
+                              {group.name}
+                            </option>
+                          ))}
+                          {DEPARTMENT_GROUPS.flatMap((group) =>
+                            group.units.map((unit) => (
+                              <option key={`${group.name}:${unit}`} value={unit}>
+                                {unit}
+                              </option>
+                            )),
+                          )}
                           {snapshot.departments.map((department) => (
                             <option key={department.name} value={department.name}>
                               {department.name}
@@ -530,6 +626,40 @@ export default async function TasksPage({ searchParams }: PageProps) {
               </article>
             </section>
 
+            {!workerMode ? (
+              <section className={styles.calendarPanel}>
+                <div className={styles.filterHeader}>
+                  <div>
+                    <span className={styles.filterKicker}>Календар төлөвлөгөө</span>
+                    <h2>{selectedDepartmentLabel}</h2>
+                  </div>
+                  <p>
+                    Огноотой ажилбаруудыг тухайн алба, хэлтсийн хүрээнд өдөр өдрөөр нь харуулна.
+                  </p>
+                </div>
+
+                {calendarPlanItems.length ? (
+                  <div className={styles.calendarGrid}>
+                    {calendarPlanItems.slice(0, 8).map((item) => (
+                      <article key={item.dateKey} className={styles.calendarCard}>
+                        <span className={styles.calendarDate}>{formatPlanDate(item.dateKey)}</span>
+                        <strong>{item.total}</strong>
+                        <div className={styles.calendarStats}>
+                          <span>Явж байгаа {item.working}</span>
+                          <span>Хяналт {item.review}</span>
+                          <span>Дууссан {item.verified}</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={styles.calendarEmpty}>
+                    Энэ хүрээнд огноотой календарь төлөвлөгөө одоогоор алга байна.
+                  </div>
+                )}
+              </section>
+            ) : null}
+
             {quickActionMode === "report" ? (
               <div className={`${shellStyles.message} ${shellStyles.noticeMessage}`}>
                 Тайлан оруулахын тулд эхлээд ажилбараа сонгоно. Дараагийн дэлгэц дээр тайлангийн
@@ -559,11 +689,11 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 </p>
               </div>
 
-              <div className={styles.filterScroller}>
+                  <div className={styles.filterScroller}>
                 {FILTERS.map((item) => {
                   const hrefParams = new URLSearchParams();
-                  if (!workerMode && selectedDepartment?.name) {
-                    hrefParams.set("department", selectedDepartment.name);
+                  if (!workerMode && selectedDepartmentParam) {
+                    hrefParams.set("department", selectedDepartmentParam);
                   }
                   if (item.key !== "all") {
                     hrefParams.set("filter", item.key);

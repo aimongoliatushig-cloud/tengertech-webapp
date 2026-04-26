@@ -10,11 +10,27 @@ import {
 } from "@/lib/auth";
 import { loadHrEmployeeDirectory } from "@/lib/odoo";
 
+import { HrDirectory } from "./hr-directory";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
 
-export default async function HrPage() {
+type PageProps = {
+  searchParams?: Promise<{
+    employee?: string | string[];
+    notice?: string | string[];
+    error?: string | string[];
+  }>;
+};
+
+function getParam(value?: string | string[]) {
+  if (Array.isArray(value)) {
+    return value[0] ?? "";
+  }
+  return value ?? "";
+}
+
+export default async function HrPage({ searchParams }: PageProps) {
   const session = await requireSession();
   const allowedRoles = new Set(["system_admin", "director", "general_manager"]);
 
@@ -51,10 +67,22 @@ export default async function HrPage() {
     }, new Map()),
   ).sort((left, right) => left[0].localeCompare(right[0], "mn"));
 
-  const linkedUserCount = employees.filter((employee) => employee.userName).length;
+  const activeCount = employees.filter((employee) => employee.active).length;
+  const inactiveCount = employees.length - activeCount;
+  const missingDocumentCount = employees.filter(
+    (employee) => employee.missingDocumentCount > 0,
+  ).length;
   const contactCount = employees.filter(
     (employee) => employee.workPhone || employee.mobilePhone || employee.workEmail,
   ).length;
+  const params = (await searchParams) ?? {};
+  const selectedEmployeeId = Number(getParam(params.employee) || 0);
+  const noticeMessage = getParam(params.notice);
+  const errorMessage = getParam(params.error);
+  const departmentGroups = departments.map(([departmentName, departmentEmployees]) => ({
+    departmentName,
+    employees: departmentEmployees,
+  }));
 
   return (
     <main className={shellStyles.shell}>
@@ -76,38 +104,38 @@ export default async function HrPage() {
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
               title="Хүний нөөц"
-              subtitle="Бүх бүртгэлтэй ажилтны нэгдсэн жагсаалт"
+              subtitle="Ажилтны мастер бүртгэл, бүтэц, холбоо барих мэдээлэл"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               notificationCount={employees.length}
-              notificationNote={`${departments.length} хэлтсийн ${employees.length} ажилтан бүртгэлтэй`}
+              notificationNote={`${departments.length} хэлтсийн ${employees.length} ажилтан`}
             />
 
             <section className={styles.introCard}>
-              <span className={styles.eyebrow}>Ажилтны бүртгэл</span>
-              <h1 className={styles.introTitle}>Байгууллагын бүх ажилтан</h1>
+              <span className={styles.eyebrow}>Ажилтны мастер бүртгэл</span>
+              <h1 className={styles.introTitle}>Байгууллагын хүний нөөцийн лавлах</h1>
               <p className={styles.introText}>
-                Ерөнхий менежер болон захирлын түвшинд бүх бүртгэлтэй ажилтныг
-                хэлтсээр нь нэг дороос харна.
+                Хэлтэс, албан тушаал, код, холбоо барих мэдээлэл, баримтын бүрдэл,
+                гүйцэтгэлийн дохиог нэг дэлгэц дээр төвлөрүүлсэн HR картын харагдац.
               </p>
 
               <div className={styles.summaryGrid}>
                 <article className={styles.summaryCard}>
                   <span>Нийт ажилтан</span>
                   <strong>{employees.length}</strong>
-                  <small>Odoo дээр идэвхтэй бүртгэлтэй ажилтан</small>
+                  <small>{activeCount} идэвхтэй бүртгэл</small>
                 </article>
 
                 <article className={styles.summaryCard}>
                   <span>Хэлтэс</span>
                   <strong>{departments.length}</strong>
-                  <small>Ажилтан бүхий алба, нэгж</small>
+                  <small>{inactiveCount} архивласан / идэвхгүй бүртгэл</small>
                 </article>
 
                 <article className={styles.summaryCard}>
-                  <span>Холбоостой бүртгэл</span>
-                  <strong>{linkedUserCount}</strong>
-                  <small>{contactCount} ажилтан холбоо барих мэдээлэлтэй байна</small>
+                  <span>Баримтын хяналт</span>
+                  <strong>{missingDocumentCount}</strong>
+                  <small>{contactCount} ажилтан холбоо барих мэдээлэлтэй</small>
                 </article>
               </div>
             </section>
@@ -119,60 +147,26 @@ export default async function HrPage() {
               </section>
             ) : null}
 
+            {noticeMessage || errorMessage ? (
+              <section className={errorMessage ? styles.errorCard : styles.noticeCard}>
+                <h2>{errorMessage ? "Бүртгэл хадгалагдсангүй" : "Бүртгэл хадгалагдлаа"}</h2>
+                <p>{errorMessage || noticeMessage}</p>
+              </section>
+            ) : null}
+
             <section className={styles.sectionCard}>
               <div className={styles.sectionHeader}>
                 <div>
-                  <span className={styles.eyebrow}>Хэлтсийн жагсаалт</span>
-                  <h2>Бүх бүртгэлтэй ажилтан</h2>
+                  <span className={styles.eyebrow}>Ухаалаг жагсаалт</span>
+                  <h2>Ажилтны premium HR картууд</h2>
                 </div>
-                <p>Хэлтэс бүрийн дотор ажилтны нэр, албан тушаал, холбоо барих мэдээлэл харагдана.</p>
+                <p>Одоо ашиглаж буй Employees дэлгэцийг хэлтэс, төлөв, хайлтаар хурдан шүүх боломжтой болголоо.</p>
               </div>
 
-              {departments.length ? (
-                <div className={styles.departmentList}>
-                  {departments.map(([departmentName, departmentEmployees]) => (
-                    <section key={departmentName} className={styles.departmentCard}>
-                      <div className={styles.departmentHeader}>
-                        <div>
-                          <h3>{departmentName}</h3>
-                          <p>Энэ хэлтэст {departmentEmployees.length} ажилтан бүртгэлтэй байна.</p>
-                        </div>
-                        <span className={styles.departmentBadge}>{departmentEmployees.length}</span>
-                      </div>
-
-                      <div className={styles.employeeGrid}>
-                        {departmentEmployees.map((employee) => (
-                          <article key={employee.id} className={styles.employeeCard}>
-                            <h4>{employee.name}</h4>
-                            <p className={styles.jobTitle}>{employee.jobTitle}</p>
-
-                            <div className={styles.metaStack}>
-                              <div className={styles.metaRow}>
-                                <span>Хэрэглэгч</span>
-                                <strong>{employee.userName || "Холбоогүй"}</strong>
-                              </div>
-                              <div className={styles.metaRow}>
-                                <span>Ажлын утас</span>
-                                <strong>{employee.workPhone || "Бүртгээгүй"}</strong>
-                              </div>
-                              <div className={styles.metaRow}>
-                                <span>Гар утас</span>
-                                <strong>{employee.mobilePhone || "Бүртгээгүй"}</strong>
-                              </div>
-                              <div className={styles.metaRow}>
-                                <span>И-мэйл</span>
-                                <strong>{employee.workEmail || "Бүртгээгүй"}</strong>
-                              </div>
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    </section>
-                  ))}
-                </div>
-              ) : (
-                <div className={styles.emptyState}>Одоогоор харагдах бүртгэлтэй ажилтан алга.</div>
-              )}
+              <HrDirectory
+                departments={departmentGroups}
+                initialEmployeeId={Number.isFinite(selectedEmployeeId) ? selectedEmployeeId : null}
+              />
             </section>
           </div>
         </div>

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" role="img" aria-label="Illustrated green mountains">
+  <defs>
+    <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#d7effb"/>
+      <stop offset="0.7" stop-color="#edf8ee"/>
+      <stop offset="1" stop-color="#cce8c2"/>
+    </linearGradient>
+    <linearGradient id="greenA" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#a6d889"/>
+      <stop offset="1" stop-color="#2f7d40"/>
+    </linearGradient>
+    <linearGradient id="greenB" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#d6edc9"/>
+      <stop offset="1" stop-color="#65a854"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="420" fill="url(#sky)"/>
+  <path d="M0 170 L130 64 L246 170 Z" fill="#d7e4ee"/>
+  <path d="M168 178 L330 36 L506 178 Z" fill="#c7d8e2"/>
+  <path d="M430 180 L560 78 L700 180 Z" fill="#dbe8ef"/>
+  <path d="M330 36 L396 178 L168 178 Z" fill="#f0f6f8" opacity="0.92"/>
+  <path d="M0 220 C110 170 194 178 290 214 C394 254 476 188 600 178 C720 170 806 198 900 168 L900 420 L0 420 Z" fill="url(#greenB)"/>
+  <path d="M0 284 C120 238 246 244 370 274 C514 308 646 282 900 230 L900 420 L0 420 Z" fill="url(#greenA)" opacity="0.92"/>
+  <path d="M0 338 C128 308 286 314 420 340 C586 372 722 354 900 318 L900 420 L0 420 Z" fill="#367f43"/>
+  <path d="M514 330 C580 286 672 282 732 326 C654 344 580 344 514 330 Z" fill="#235f34" opacity="0.38"/>
+  <g opacity="0.9">
+    <rect x="740" y="198" width="12" height="80" rx="6" fill="#5c783c"/>
+    <circle cx="746" cy="186" r="34" fill="#6aac55"/>
+    <circle cx="718" cy="208" r="24" fill="#83c160"/>
+    <circle cx="772" cy="211" r="26" fill="#347e42"/>
+  </g>
+</svg>

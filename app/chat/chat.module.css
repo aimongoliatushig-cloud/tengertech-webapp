@@ -1,0 +1,654 @@
+﻿.chatShell {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.conversationPanel,
+.messagePanel {
+  min-height: 680px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--ds-radius-card);
+  background: rgba(247, 252, 246, 0.94);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.conversationPanel {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 14px;
+  padding: 18px;
+}
+
+.panelHeader,
+.messageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.panelHeader span,
+.messageHeader span,
+.composer label {
+  color: var(--ink-600);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.panelHeader strong,
+.messageHeader strong {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.13);
+  color: var(--brand-900);
+}
+
+.conversationList {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.conversationButton {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 72px;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: var(--ds-radius-card);
+  background: transparent;
+  color: var(--ink-900);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.conversationButtonActive {
+  border-color: rgba(74, 154, 93, 0.18);
+  background: linear-gradient(135deg, rgba(232, 244, 230, 0.96), rgba(255, 255, 255, 0.86));
+}
+
+.conversationAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--ds-radius-card);
+  background: rgba(74, 154, 93, 0.14);
+  color: var(--brand-900);
+  font-weight: 800;
+}
+
+.conversationCopy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.conversationCopy strong,
+.messageHeader h2 {
+  margin: 0;
+  font-family: var(--font-body);
+}
+
+.conversationCopy small {
+  overflow: hidden;
+  color: var(--ink-600);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversationCount {
+  color: var(--ink-600);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.messagePanel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  padding: 20px;
+}
+
+.messageHeader {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.messageHeader h2 {
+  margin-top: 6px;
+  font-size: clamp(1.45rem, 2.4vw, 2.2rem);
+}
+
+.messageList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding: 18px 4px;
+}
+
+.messageBubble {
+  width: min(74%, 680px);
+  padding: 14px 16px;
+  border: 1px solid rgba(74, 154, 93, 0.12);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.messageBubbleOwn {
+  align-self: flex-end;
+  border-color: rgba(31, 95, 49, 0.18);
+  background: linear-gradient(135deg, rgba(31, 95, 49, 0.96), rgba(74, 154, 93, 0.9));
+  color: #f7fcf6;
+}
+
+.messageMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.messageMeta strong {
+  font-size: 0.95rem;
+}
+
+.messageMeta span,
+.messageMeta time {
+  color: var(--ink-600);
+  font-size: 0.78rem;
+}
+
+.messageBubbleOwn .messageMeta span,
+.messageBubbleOwn .messageMeta time {
+  color: rgba(247, 252, 246, 0.74);
+}
+
+.messageBubble p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+
+.composer {
+  display: grid;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.composerRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.composer textarea {
+  width: 100%;
+  min-height: 58px;
+  max-height: 160px;
+  resize: vertical;
+  padding: 12px 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--ink-900);
+  font: inherit;
+}
+
+.composer button {
+  min-height: 52px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
+  color: #f7fcf6;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.composer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+@media (max-width: 980px) {
+  .chatShell {
+    grid-template-columns: 1fr;
+  }
+
+  .conversationPanel,
+  .messagePanel {
+    min-height: 0;
+  }
+
+  .messagePanel {
+    min-height: 620px;
+  }
+}
+
+@media (max-width: 620px) {
+  .messageBubble {
+    width: 100%;
+  }
+
+  .composerRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Unified dashboard design-system migration */
+.shell,
+.workspaceShell,
+.chatShell,
+.errorShell,
+.page,
+.reportPage,
+.reportPreviewShell {
+  background: var(--ds-page-bg);
+  color: var(--ink-900);
+}
+
+.workspaceShell {
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+.workspaceSidebar,
+.menuColumn,
+.sideRail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  min-height: 100vh;
+  background: var(--ds-rail-bg);
+  border-right: 1px solid var(--ds-border);
+}
+
+.workspaceMain,
+.pageContent,
+.mainColumn {
+  min-width: 0;
+  padding: 0 20px 64px;
+}
+
+.infoPanel {
+  background: var(--ds-rail-bg);
+  color: var(--ink-900);
+  border-right: 1px solid var(--ds-border);
+}
+
+.formPanel {
+  background: var(--ds-page-bg);
+}
+
+.heroCard,
+.pageHeader,
+.sectionCard,
+.panel,
+.formCard,
+.form,
+.footerHint,
+.signalCard,
+.featureCard,
+.overviewPanel,
+.metricCard,
+.statCard,
+.summaryCard,
+.summaryBox,
+.alertCard,
+.attentionPanel,
+.dashboardCard,
+.dashboardPanel,
+.workspaceSection,
+.reportCard,
+.taskItem,
+.taskCard,
+.taskSection,
+.detailCard,
+.infoCard,
+.noticeCard,
+.noticeBanner,
+.errorCard,
+.emptyState,
+.pickerCard,
+.pickerSection,
+.conversationPanel,
+.conversationList,
+.messagePanel,
+.composer,
+.vehicleCard,
+.inventoryCard,
+.routeCard,
+.employeeCard,
+.employeeModal,
+.modalDialog,
+.modalCard,
+.confirmationSheet,
+.overviewBoard,
+.requestCard,
+.flowCard,
+.flowBarCard,
+.workflowSummaryCard,
+.workflowMetaCard,
+.workflowItem,
+.historyCard,
+.documentCard,
+.filterPanel,
+.calendarPanel,
+.calendarCard,
+.weightCard,
+.weightSummaryCard,
+.weightDayCard,
+.weightMetaCard,
+.mapHintCard,
+.stopCard,
+.mobilePanel,
+.mobileDetailCard,
+.mobileUtilityCard,
+.boardCard,
+.boardInfoCard,
+.rolePanel,
+.roleMetaCard,
+.capabilityCard,
+.logoutCard,
+.tableShell {
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-panel-bg);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.heroCard::after,
+.heroCard::before,
+.infoPanel::after,
+.infoPanel::before,
+.canvasGlow {
+  content: none;
+  display: none;
+}
+
+.kicker,
+.eyebrow,
+.formBadge,
+.contextTag,
+.sectionEyebrow,
+.sectionKicker,
+.overviewEyebrow,
+.pageKicker,
+.roleEyebrow,
+.masterInsightsKicker,
+.boardEyebrow,
+.mobileDetailEyebrow {
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-800);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.heroCard h1,
+.pageHeader h1,
+.formHeader h2,
+.titleBlock h1,
+.heroCopy h1,
+.overviewCopy h2,
+.sectionHeader h2,
+.panelHeader h2,
+.pickerHeader h1,
+.modalTitle,
+.introTitle {
+  color: #1f2b25;
+  font-family: var(--font-body);
+  font-size: clamp(1.25rem, 2vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.12;
+}
+
+.heroCard p,
+.pageHeader p,
+.formHeader p,
+.heroCopy p,
+.overviewCopy p,
+.sectionNote,
+.helperText,
+.subtleText,
+.emptyNote,
+.noticeMessage {
+  color: var(--ink-700);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton,
+.submitButton,
+.fullButton,
+.actionButton,
+.actionPrimary,
+.actionSecondary,
+.actionGhost,
+.primaryAction,
+.secondaryAction,
+.primaryLink,
+.secondaryLink,
+.smallLink,
+.backLink,
+.inlineLink,
+.rowButton,
+.dateButton,
+.locationAddButton,
+.createTaskTrigger,
+.closeButton,
+.modalCloseButton,
+.modalActions button,
+.subnavLink,
+.filterChip,
+.taskFilterChip,
+.departmentTab,
+.departmentFilterButton,
+.routeChip,
+.modeChip,
+.pickerCta,
+.cardLinkLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: var(--ds-control-height);
+  padding: 0 12px;
+  border-radius: var(--ds-radius-control);
+  border: 1px solid var(--ds-border);
+  background: var(--ds-panel-strong-bg);
+  color: var(--ink-900);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: none;
+}
+
+.primaryButton,
+.submitButton,
+.actionPrimary,
+.primaryAction,
+.subnavLinkActive,
+.filterChipActive,
+.taskFilterChipActive,
+.departmentTabActive,
+.departmentFilterButtonActive,
+.routeChipActive,
+.modeChipActive {
+  border-color: rgba(31, 95, 49, 0.22);
+  background: rgba(76, 158, 92, 0.11);
+  color: #256b37;
+}
+
+.field input,
+.field select,
+.field textarea,
+.form input,
+.form select,
+.form textarea,
+.dateInput,
+.mobileBucketInput,
+.searchableSelectButton,
+.searchableSelectSearch,
+.locationComposer input,
+.quoteForm input,
+.quoteForm textarea,
+.registrationForm input,
+.registrationForm select,
+.registrationForm textarea,
+.modalForm input,
+.modalForm select,
+.modalForm textarea {
+  width: 100%;
+  min-height: var(--ds-control-height);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-900);
+  box-shadow: none;
+}
+
+.tableShell,
+.taskTable,
+.tableList,
+.reportList,
+.vehicleList,
+.documentList,
+.historyList,
+.stopList,
+.workflowList {
+  overflow: hidden;
+}
+
+.tableHeader,
+.tableRow,
+.taskItemTop,
+.reportTop,
+.cardHeader,
+.laneHeader,
+.workflowColumnHeader,
+.sectionHeader,
+.panelHeader {
+  border-color: var(--ds-border);
+}
+
+.badge,
+.actionBadge,
+.countBadge,
+.statePill,
+.stagePill,
+.statusChip,
+.flagChip,
+.rolePill,
+.departmentBadge,
+.sidebarBadge,
+.panelCount {
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-800);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.metricIcon,
+.actionIcon,
+.departmentFilterIcon,
+.summaryShowcaseIcon,
+.conversationAvatar,
+.avatar,
+.employeePhoto,
+.employeePhotoLarge,
+.menuLinkIcon,
+.sidebarIcon {
+  border-radius: var(--ds-radius-icon);
+}
+
+@media (max-width: 1080px) {
+  .workspaceShell {
+    grid-template-columns: 1fr;
+  }
+
+  .workspaceSidebar,
+  .menuColumn,
+  .sideRail {
+    position: static;
+    min-height: 0;
+    border-right: 0;
+    background: transparent;
+  }
+
+  .workspaceMain,
+  .pageContent,
+  .mainColumn {
+    padding: 0 12px 96px;
+  }
+}
+
+@media (max-width: 720px) {
+  .heroCard,
+  .pageHeader,
+  .sectionCard,
+  .panel,
+  .formCard,
+  .form,
+  .overviewPanel,
+  .metricCard,
+  .reportCard,
+  .taskItem,
+  .detailCard,
+  .employeeCard,
+  .modalDialog,
+  .requestCard {
+    padding: 14px;
+  }
+
+  .heroCard,
+  .pageHeader,
+  .heroMeta,
+  .summaryGrid,
+  .metricsGrid,
+  .statsGrid,
+  .detailGrid,
+  .infoGrid,
+  .taskGrid,
+  .workflowColumns {
+    grid-template-columns: 1fr;
+  }
+}
+
+

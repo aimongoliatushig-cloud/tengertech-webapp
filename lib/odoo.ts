@@ -1,6 +1,12 @@
 import "server-only";
 
 import { getDateKeyFromValue, getTodayDateKey } from "@/lib/dashboard-scope";
+import {
+  CANONICAL_DEPARTMENT_NAMES,
+  findDepartmentGroupByName,
+  matchesDepartmentGroup,
+  normalizeOrganizationUnitName,
+} from "@/lib/department-groups";
 import type { RoleGroupFlags } from "@/lib/roles";
 
 type OdooRelation = [number, string] | false;
@@ -80,6 +86,7 @@ type OdooUserRecord = {
 type OdooEmployeeRecord = {
   id: number;
   name: string;
+  active?: boolean;
   department_id?: OdooRelation;
   job_id?: OdooRelation;
   job_title?: string | false;
@@ -87,11 +94,39 @@ type OdooEmployeeRecord = {
   mobile_phone?: string | false;
   work_email?: string | false;
   user_id?: OdooRelation;
+  image_128?: string | false;
+  avatar_128?: string | false;
+  image_1920?: string | false;
+  parent_id?: OdooRelation;
+  contract_date_start?: string | false;
+  contract_date_end?: string | false;
+  sex?: string | false;
+  certificate?: string | false;
+  x_mn_employee_code?: string | false;
+  x_mn_grade_rank?: string | false;
+  x_mn_employment_status?: string | false;
+  x_mn_missing_document_count?: number;
+  x_mn_performance_score?: number;
+  x_mn_task_completion_percent?: number;
+  x_mn_discipline_score?: number;
 };
 
-type OdooDepartmentRecord = {
+type OdooHrAttendanceRecord = {
   id: number;
-  name: string;
+  employee_id: OdooRelation;
+  check_in?: string | false;
+  check_out?: string | false;
+};
+
+type OdooHrLeaveRecord = {
+  id: number;
+  employee_id: OdooRelation;
+  state?: string | false;
+  holiday_status_id?: OdooRelation;
+  request_date_from?: string | false;
+  request_date_to?: string | false;
+  date_from?: string | false;
+  date_to?: string | false;
 };
 
 type DepartmentCard = {
@@ -270,18 +305,49 @@ export type DashboardSnapshot = {
 export type HrEmployeeDirectoryItem = {
   id: number;
   name: string;
+  active: boolean;
   departmentName: string;
   jobTitle: string;
   workPhone: string;
   mobilePhone: string;
   workEmail: string;
   userName: string;
+  photoUrl: string;
+  employeeCode: string;
+  gradeRank: string;
+  statusKey: string;
+  statusLabel: string;
+  managerName: string;
+  startDate: string;
+  contractEndDate: string;
+  genderLabel: string;
+  educationLevel: string;
+  missingDocumentCount: number;
+  kpiScore: number;
+  taskCompletionPercent: number;
+  disciplineScore: number;
+};
+
+export type HrDailyAttendanceSummary = {
+  totalEmployees: number;
+  workingToday: number;
+  absentToday: number;
+  sickToday: number;
+  leaveToday: number;
+  generatedAt: string;
+  source: "attendance" | "employee_status" | "empty";
 };
 
 type OdooFleetVehicleRecord = {
   id: number;
   name: string;
   license_plate?: string | false;
+  model_id?: OdooRelation;
+  category_id?: OdooRelation;
+  vin_sn?: string | false;
+  odometer?: number | false;
+  fuel_type?: string | false;
+  driver_id?: OdooRelation;
   state_id?: OdooRelation;
   mfo_active_for_ops?: boolean;
   latest_repair_state?: string | false;
@@ -289,16 +355,52 @@ type OdooFleetVehicleRecord = {
   active?: boolean;
 };
 
+type OdooCrewTeamRecord = {
+  id: number;
+  name: string;
+  active?: boolean;
+  operation_type?: string | false;
+  vehicle_id?: OdooRelation;
+  driver_employee_id?: OdooRelation;
+  mfo_driver_employee_id?: OdooRelation;
+  loader_employee_id?: OdooRelation;
+  loader_employee_ids?: number[];
+  loader_ids?: number[];
+  mfo_loader_employee_ids?: number[];
+  mfo_loader_ids?: number[];
+  member_employee_ids?: number[];
+  member_ids?: number[];
+  employee_ids?: number[];
+};
+
+export type FleetVehicleCrewAssignment = {
+  teamId: number;
+  teamName: string;
+  operationType: string;
+  driverNames: string[];
+  loaderNames: string[];
+  memberNames: string[];
+};
+
 export type FleetVehicleBoardItem = {
   id: number;
   plate: string;
   name: string;
+  modelName: string;
+  categoryName: string;
+  vin: string;
+  odometerLabel: string;
+  fuelTypeLabel: string;
+  fleetDriverName: string;
   stateLabel: string;
   latestRepairState: string;
+  isOperational: boolean;
   isRepair: boolean;
+  crewAssignments: FleetVehicleCrewAssignment[];
 };
 
 export type FleetVehicleBoard = {
+  allVehicles: FleetVehicleBoardItem[];
   activeVehicles: FleetVehicleBoardItem[];
   repairVehicles: FleetVehicleBoardItem[];
   totalVehicles: number;
@@ -365,28 +467,23 @@ function buildOdooConnectionCandidates(connection: OdooConnection) {
   }));
 }
 
-const DEPARTMENT_ORDER = [
-  "Авто бааз",
-  "Хог тээвэрлэлт",
-  "Ногоон байгууламж",
-  "Зам талбайн цэвэрлэгээ",
-  "Тохижилт үйлчилгээ",
-] as const;
+const DEPARTMENT_ORDER = CANONICAL_DEPARTMENT_NAMES;
 
-const DEPARTMENT_LABELS: Record<(typeof DEPARTMENT_ORDER)[number], string> = {
-  "Авто бааз": "Техник, тээврийн бэлэн байдал",
-  "Хог тээвэрлэлт": "Ачилт, маршрут, цуглуулалт",
-  "Ногоон байгууламж": "Мод, зүлэг, хэлбэржүүлэлт",
-  "Зам талбайн цэвэрлэгээ": "Зам, талбай, явган зам",
-  "Тохижилт үйлчилгээ": "Нийтийн талбай, засвар, жижиг ажил",
+const DEPARTMENT_LABELS: Record<string, string> = {
+  "Санхүүгийн алба": "Санхүү, төлөвлөлт, тайлагнал",
+  "Захиргааны алба": "Захиргаа, бичиг хэрэг, удирдлага",
+  "Авто бааз, хог тээвэрлэлтийн хэлтэс": "Техник, маршрут, хог тээвэрлэлт",
+  "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс":
+    "Ногоон байгууламж, зам талбайн цэвэрлэгээ",
+  "Тохижилтын хэлтэс": "Нийтийн талбай, засвар, тохижилт",
 };
 
-const DEPARTMENT_ACCENTS: Record<(typeof DEPARTMENT_ORDER)[number], string> = {
-  "Авто бааз": "var(--tone-amber)",
-  "Хог тээвэрлэлт": "var(--tone-red)",
-  "Ногоон байгууламж": "var(--tone-teal)",
-  "Зам талбайн цэвэрлэгээ": "var(--tone-blue)",
-  "Тохижилт үйлчилгээ": "var(--tone-slate)",
+const DEPARTMENT_ACCENTS: Record<string, string> = {
+  "Санхүүгийн алба": "var(--tone-blue)",
+  "Захиргааны алба": "var(--tone-slate)",
+  "Авто бааз, хог тээвэрлэлтийн хэлтэс": "var(--tone-amber)",
+  "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс": "var(--tone-teal)",
+  "Тохижилтын хэлтэс": "var(--tone-slate)",
 };
 
 const OPERATION_TYPE_LABELS: Record<string, string> = {
@@ -413,10 +510,13 @@ const TASK_STATUS_LABELS: Record<TaskStatusKey, string> = {
 };
 
 const UNKNOWN_DEPARTMENT = "Тодорхойгүй";
+const AUTO_BASE_DEPARTMENT = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
+const AUTO_BASE_UNIT = "Авто бааз";
+const WASTE_TRANSPORT_UNIT = "Хог тээвэрлэлт";
 
 const KNOWN_STAGE_MATCHERS: Array<[StageBucket, string[]]> = [
   ["todo", ["хийгдэх", "todo", "task"]],
-  ["progress", ["явагдаж", "progress", "hiihdej", "in progress"]],
+  ["progress", ["явагдаж", "хийгдэж", "хийж байна", "ажиллаж", "progress", "hiihdej", "in progress"]],
   ["review", ["шалгагдаж", "хянагдаж", "review", "changes requested", "shalgagdaj", "shalgah", "hyanagdaj"]],
   ["done", ["дууссан", "done", "completed", "duussan"]],
   ["todo", ["төлөвлөгдсөн", "хуваарилсан"]],
@@ -559,6 +659,7 @@ const REPORT_FIELD_VARIANTS: string[][] = [
 const HR_EMPLOYEE_FIELD_VARIANTS: string[][] = [
   [
     "name",
+    "active",
     "department_id",
     "job_id",
     "job_title",
@@ -566,17 +667,111 @@ const HR_EMPLOYEE_FIELD_VARIANTS: string[][] = [
     "mobile_phone",
     "work_email",
     "user_id",
+    "parent_id",
+    "contract_date_start",
+    "contract_date_end",
+    "sex",
+    "certificate",
+    "image_128",
+    "x_mn_employee_code",
+    "x_mn_grade_rank",
+    "x_mn_employment_status",
+    "x_mn_missing_document_count",
+    "x_mn_performance_score",
+    "x_mn_task_completion_percent",
+    "x_mn_discipline_score",
   ],
-  ["name", "department_id", "job_id", "work_phone", "mobile_phone", "work_email", "user_id"],
-  ["name", "department_id", "job_title", "work_phone", "mobile_phone", "work_email", "user_id"],
-  ["name", "department_id", "work_phone", "mobile_phone", "work_email", "user_id"],
-  ["name", "department_id"],
+  [
+    "name",
+    "active",
+    "department_id",
+    "job_id",
+    "job_title",
+    "work_phone",
+    "mobile_phone",
+    "work_email",
+    "user_id",
+    "image_128",
+  ],
+  [
+    "name",
+    "active",
+    "department_id",
+    "job_id",
+    "job_title",
+    "work_phone",
+    "mobile_phone",
+    "work_email",
+    "user_id",
+    "avatar_128",
+  ],
+  [
+    "name",
+    "active",
+    "department_id",
+    "job_id",
+    "job_title",
+    "work_phone",
+    "mobile_phone",
+    "work_email",
+    "user_id",
+    "image_1920",
+  ],
+  ["name", "active", "department_id", "job_id", "work_phone", "mobile_phone", "work_email", "user_id"],
+  ["name", "active", "department_id", "job_title", "work_phone", "mobile_phone", "work_email", "user_id"],
+  ["name", "active", "department_id", "work_phone", "mobile_phone", "work_email", "user_id"],
+  ["name", "active", "department_id"],
+];
+
+const HR_ATTENDANCE_EMPLOYEE_FIELD_VARIANTS: string[][] = [
+  ["name", "active", "x_mn_employment_status"],
+  ["name", "active"],
+];
+
+const HR_ATTENDANCE_FIELD_VARIANTS: string[][] = [
+  ["employee_id", "check_in", "check_out"],
+  ["employee_id", "check_in"],
+];
+
+const HR_LEAVE_FIELD_VARIANTS: string[][] = [
+  [
+    "employee_id",
+    "state",
+    "holiday_status_id",
+    "request_date_from",
+    "request_date_to",
+    "date_from",
+    "date_to",
+  ],
+  ["employee_id", "state", "holiday_status_id", "request_date_from", "request_date_to"],
+  ["employee_id", "state", "holiday_status_id", "date_from", "date_to"],
+  ["employee_id", "holiday_status_id"],
 ];
 
 const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
   [
     "name",
     "license_plate",
+    "model_id",
+    "category_id",
+    "vin_sn",
+    "odometer",
+    "fuel_type",
+    "driver_id",
+    "state_id",
+    "mfo_active_for_ops",
+    "latest_repair_state",
+    "vehicle_downtime_open",
+    "active",
+  ],
+  [
+    "name",
+    "license_plate",
+    "model_id",
+    "vin_sn",
+    "odometer",
+    "fuel_type",
+    "driver_id",
     "state_id",
     "mfo_active_for_ops",
     "latest_repair_state",
@@ -588,8 +783,150 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
   ["name", "license_plate", "active"],
 ];
 
+const CREW_TEAM_FIELD_VARIANTS: string[][] = [
+  [
+    "name",
+    "active",
+    "operation_type",
+    "vehicle_id",
+    "driver_employee_id",
+    "loader_employee_ids",
+    "member_employee_ids",
+  ],
+  [
+    "name",
+    "active",
+    "operation_type",
+    "vehicle_id",
+    "driver_employee_id",
+    "loader_ids",
+    "member_ids",
+  ],
+  [
+    "name",
+    "active",
+    "operation_type",
+    "vehicle_id",
+    "mfo_driver_employee_id",
+    "mfo_loader_employee_ids",
+    "member_employee_ids",
+  ],
+  [
+    "name",
+    "active",
+    "operation_type",
+    "vehicle_id",
+    "mfo_driver_employee_id",
+    "mfo_loader_ids",
+    "member_ids",
+  ],
+  [
+    "name",
+    "active",
+    "operation_type",
+    "vehicle_id",
+    "driver_employee_id",
+    "loader_employee_ids",
+    "employee_ids",
+  ],
+  [
+    "name",
+    "active",
+    "operation_type",
+    "vehicle_id",
+    "driver_employee_id",
+    "loader_ids",
+    "employee_ids",
+  ],
+  [
+    "name",
+    "active",
+    "operation_type",
+    "vehicle_id",
+    "driver_employee_id",
+    "loader_employee_id",
+    "member_employee_ids",
+  ],
+  ["name", "active", "operation_type", "vehicle_id", "driver_employee_id", "loader_employee_ids"],
+  ["name", "active", "operation_type", "vehicle_id", "driver_employee_id", "loader_ids"],
+  ["name", "active", "operation_type", "vehicle_id", "driver_employee_id", "employee_ids"],
+  ["name", "active", "vehicle_id", "driver_employee_id", "employee_ids"],
+  ["name", "vehicle_id", "driver_employee_id"],
+  ["name", "vehicle_id"],
+];
+
 function relationName(relation: OdooRelation, fallback = "Оноогоогүй") {
   return Array.isArray(relation) ? relation[1] : fallback;
+}
+
+function relationId(relation: OdooRelation) {
+  return Array.isArray(relation) ? relation[0] : null;
+}
+
+function resolveHrEmploymentStatus(employee: OdooEmployeeRecord) {
+  if (employee.active === false) {
+    return { key: "archived", label: "Архивласан" };
+  }
+
+  const status = employee.x_mn_employment_status || "active";
+  const labels: Record<string, string> = {
+    active: "Идэвхтэй",
+    probation: "Туршилт",
+    suspended: "Түдгэлзсэн",
+    terminated: "Чөлөөлөгдсөн",
+    rehired: "Дахин авсан",
+  };
+
+  return {
+    key: status,
+    label: labels[status] ?? "Идэвхтэй",
+  };
+}
+
+function normalizeHrStatusText(value?: string | false | null) {
+  return (typeof value === "string" ? value : "").trim().toLowerCase();
+}
+
+function isWorkingHrStatus(employee: OdooEmployeeRecord) {
+  const status = resolveHrEmploymentStatus(employee).key;
+  return employee.active !== false && ["active", "probation", "rehired"].includes(status);
+}
+
+function includesAnyToken(value: string, tokens: string[]) {
+  return tokens.some((token) => value.includes(token));
+}
+
+function isSickHrText(value?: string | false | null) {
+  const normalized = normalizeHrStatusText(value);
+  return includesAnyToken(normalized, ["sick", "ill", "medical", "ovch", "emneleg", "өвч", "эмнэл"]);
+}
+
+function isAbsentHrText(value?: string | false | null) {
+  const normalized = normalizeHrStatusText(value);
+  return includesAnyToken(normalized, ["absent", "no show", "tas", "ireegui", "тас", "ирээгүй"]);
+}
+
+function formatOdooDateTimeBoundary(date: Date) {
+  return date.toISOString().slice(0, 19).replace("T", " ");
+}
+
+function ulaanbaatarDayStart(dateKey: string) {
+  return new Date(`${dateKey}T00:00:00+08:00`);
+}
+
+function getNextDateKey(dateKey: string) {
+  const nextDate = ulaanbaatarDayStart(dateKey);
+  nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+  return getTodayDateKey(nextDate);
+}
+
+function resolveHrGenderLabel(value?: string | false) {
+  const labels: Record<string, string> = {
+    male: "Эрэгтэй",
+    female: "Эмэгтэй",
+    other: "Бусад",
+  };
+  return value ? (labels[value] ?? value) : "";
 }
 
 function normalizeFleetStatusValue(value?: string | false) {
@@ -797,14 +1134,24 @@ function buildQuantityMetricSummary(tasks: OdooTaskRecord[]) {
 
 function inferDepartmentUnitFromText(text: string) {
   const haystack = text.toLowerCase();
-  if (haystack.includes("мод") || haystack.includes("ногоон") || haystack.includes("зүлэг")) {
-    return "Ногоон байгууламж";
+  if (!haystack.trim()) {
+    return UNKNOWN_DEPARTMENT;
   }
+
   if (haystack.includes("хог") || haystack.includes("маршрут") || haystack.includes("ачилт")) {
-    return "Хог тээвэрлэлт";
+    return WASTE_TRANSPORT_UNIT;
   }
   if (haystack.includes("авто") || haystack.includes("машин") || haystack.includes("техник")) {
-    return "Авто бааз";
+    return AUTO_BASE_UNIT;
+  }
+
+  const canonicalName = normalizeOrganizationUnitName(text);
+  if (canonicalName) {
+    return canonicalName;
+  }
+
+  if (haystack.includes("мод") || haystack.includes("ногоон") || haystack.includes("зүлэг")) {
+    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
   }
   if (
     haystack.includes("зам") ||
@@ -812,24 +1159,40 @@ function inferDepartmentUnitFromText(text: string) {
     haystack.includes("цэвэрлэгээ") ||
     haystack.includes("гудамж")
   ) {
-    return "Зам талбайн цэвэрлэгээ";
+    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
   }
   if (haystack.includes("тохижилт") || haystack.includes("засвар")) {
-    return "Тохижилт үйлчилгээ";
+    return "Тохижилтын хэлтэс";
   }
   return UNKNOWN_DEPARTMENT;
 }
 
 function departmentUnitFromOperationType(operationType?: string | false) {
   if (operationType === "garbage" || operationType === "garbage_seasonal") {
-    return "Хог тээвэрлэлт";
+    return WASTE_TRANSPORT_UNIT;
   }
   if (operationType === "street_cleaning") {
-    return "Зам талбайн цэвэрлэгээ";
+    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
   }
   if (operationType === "green_maintenance") {
-    return "Ногоон байгууламж";
+    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
   }
+  return null;
+}
+
+function exactAutoBaseUnitFromDepartmentName(departmentName: string) {
+  const normalized = departmentName.trim().toLowerCase().replace(/\s+/g, " ");
+
+  if (normalized === AUTO_BASE_UNIT.toLowerCase()) {
+    return AUTO_BASE_UNIT;
+  }
+  if (
+    normalized === WASTE_TRANSPORT_UNIT.toLowerCase() ||
+    normalized === "хог тээвэрлэлтийн хэлтэс"
+  ) {
+    return WASTE_TRANSPORT_UNIT;
+  }
+
   return null;
 }
 
@@ -842,49 +1205,30 @@ function normalizeDepartmentUnitName(
 ) {
   const normalizedDepartment = (departmentName ?? "").trim();
   const inferredFromOperation = departmentUnitFromOperationType(options.operationType);
-  const inferredFromText = inferDepartmentUnitFromText(
-    `${normalizedDepartment} ${options.labelText ?? ""}`,
-  );
+  const inferredFromDepartment = exactAutoBaseUnitFromDepartmentName(normalizedDepartment);
+  const inferredFromText = inferDepartmentUnitFromText(options.labelText ?? "");
+  const knownInferredFromText =
+    inferredFromText !== UNKNOWN_DEPARTMENT ? inferredFromText : null;
 
   if (!normalizedDepartment) {
-    return inferredFromOperation || inferredFromText;
+    return inferredFromOperation || knownInferredFromText || UNKNOWN_DEPARTMENT;
   }
 
-  if (
-    normalizedDepartment.includes("Авто бааз") &&
-    normalizedDepartment.includes("хог тээвэрлэлтийн")
-  ) {
-    return inferredFromOperation || inferredFromText || "Авто бааз";
+  const canonicalDepartment = normalizeOrganizationUnitName(normalizedDepartment);
+  if (canonicalDepartment === AUTO_BASE_DEPARTMENT) {
+    return (
+      inferredFromOperation ||
+      knownInferredFromText ||
+      inferredFromDepartment ||
+      canonicalDepartment
+    );
   }
 
-  if (
-    normalizedDepartment.includes("Ногоон байгууламж") &&
-    normalizedDepartment.includes("цэвэрлэгээ")
-  ) {
-    return inferredFromOperation || inferredFromText || "Ногоон байгууламж";
+  if (canonicalDepartment) {
+    return canonicalDepartment;
   }
 
-  if (normalizedDepartment.includes("Тохижилт")) {
-    return "Тохижилт үйлчилгээ";
-  }
-
-  if (normalizedDepartment.includes("Авто бааз")) {
-    return "Авто бааз";
-  }
-
-  if (normalizedDepartment.includes("Хог тээвэрлэлт")) {
-    return "Хог тээвэрлэлт";
-  }
-
-  if (normalizedDepartment.includes("Ногоон байгууламж")) {
-    return "Ногоон байгууламж";
-  }
-
-  if (normalizedDepartment.includes("Зам талбай")) {
-    return "Зам талбайн цэвэрлэгээ";
-  }
-
-  return inferredFromOperation || inferredFromText || normalizedDepartment;
+  return inferredFromOperation || knownInferredFromText || normalizedDepartment;
 }
 
 function priorityLabel(priority: string) {
@@ -984,6 +1328,19 @@ function getTaskStatusLabel(statusKey: TaskStatusKey) {
   return TASK_STATUS_LABELS[statusKey];
 }
 
+function imageDataUrl(value?: string | false) {
+  if (!value) {
+    return "";
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  return trimmed.startsWith("data:") ? trimmed : `data:image/png;base64,${trimmed}`;
+}
+
 function resolveDepartmentLabel(name: string) {
   return DEPARTMENT_LABELS[name as keyof typeof DEPARTMENT_LABELS] ?? "Ажлын харьяалал";
 }
@@ -993,7 +1350,20 @@ function resolveDepartmentAccent(name: string) {
 }
 
 function resolveDepartmentIcon(name: string) {
+  const departmentGroup = findDepartmentGroupByName(name);
+  if (departmentGroup) {
+    return departmentGroup.icon;
+  }
+
   const normalized = name.trim().toLowerCase();
+
+  if (normalized.includes("санхүү")) {
+    return "₮";
+  }
+
+  if (normalized.includes("захиргаа") || normalized.includes("удирдлага")) {
+    return "🏢";
+  }
 
   if (normalized.includes("авто") || normalized.includes("машин") || normalized.includes("техник")) {
     return "🚚";
@@ -1324,7 +1694,7 @@ async function searchReadAllWithFieldFallback<T>(
 
 export async function loadHrEmployeeDirectory(
   connectionOverrides: Partial<OdooConnection> = {},
-) {
+): Promise<HrEmployeeDirectoryItem[]> {
   const auth = await authenticateWithFallback(createOdooConnection(connectionOverrides));
   if (!auth) {
     throw new Error("Odoo authentication failed");
@@ -1334,28 +1704,52 @@ export async function loadHrEmployeeDirectory(
   const employees = await searchReadAllWithFieldFallback<OdooEmployeeRecord>(
     uid,
     "hr.employee",
-    [["active", "=", true]],
+    [],
     HR_EMPLOYEE_FIELD_VARIANTS,
     {
       order: "name asc",
+      context: {
+        active_test: false,
+      },
     },
     connection,
   );
 
   return employees
-    .map((employee) => ({
-      id: employee.id,
-      name: employee.name,
-      departmentName: relationName(employee.department_id ?? false, UNKNOWN_DEPARTMENT),
-      jobTitle:
-        relationName(employee.job_id ?? false, "") ||
-        employee.job_title ||
-        "Албан тушаал бүртгээгүй",
-      workPhone: employee.work_phone || "",
-      mobilePhone: employee.mobile_phone || "",
-      workEmail: employee.work_email || "",
-      userName: relationName(employee.user_id ?? false, ""),
-    }))
+    .map((employee) => {
+      const status = resolveHrEmploymentStatus(employee);
+
+      return {
+        id: employee.id,
+        name: employee.name,
+        active: employee.active !== false,
+        departmentName: normalizeDepartmentUnitName(
+          relationName(employee.department_id ?? false, UNKNOWN_DEPARTMENT),
+        ),
+        jobTitle:
+          relationName(employee.job_id ?? false, "") ||
+          employee.job_title ||
+          "Албан тушаал бүртгээгүй",
+        workPhone: employee.work_phone || "",
+        mobilePhone: employee.mobile_phone || "",
+        workEmail: employee.work_email || "",
+        userName: relationName(employee.user_id ?? false, ""),
+        photoUrl: imageDataUrl(employee.image_128 || employee.avatar_128 || employee.image_1920),
+        employeeCode: employee.x_mn_employee_code || `EMP-${String(employee.id).padStart(5, "0")}`,
+        gradeRank: employee.x_mn_grade_rank || "",
+        statusKey: status.key,
+        statusLabel: status.label,
+        managerName: relationName(employee.parent_id ?? false, ""),
+        startDate: employee.contract_date_start || "",
+        contractEndDate: employee.contract_date_end || "",
+        genderLabel: resolveHrGenderLabel(employee.sex),
+        educationLevel: employee.certificate || "",
+        missingDocumentCount: employee.x_mn_missing_document_count ?? 0,
+        kpiScore: employee.x_mn_performance_score ?? 0,
+        taskCompletionPercent: employee.x_mn_task_completion_percent ?? 0,
+        disciplineScore: employee.x_mn_discipline_score ?? 0,
+      };
+    })
     .sort((left, right) => {
       const departmentOrder = left.departmentName.localeCompare(right.departmentName, "mn");
       if (departmentOrder !== 0) {
@@ -1363,6 +1757,297 @@ export async function loadHrEmployeeDirectory(
       }
       return left.name.localeCompare(right.name, "mn");
     });
+}
+
+async function loadTodayHrAttendanceRecords(
+  uid: number,
+  connection: OdooConnection,
+  todayStartUtc: string,
+  tomorrowStartUtc: string,
+) {
+  return searchReadAllWithFieldFallback<OdooHrAttendanceRecord>(
+    uid,
+    "hr.attendance",
+    [
+      ["check_in", ">=", todayStartUtc],
+      ["check_in", "<", tomorrowStartUtc],
+    ],
+    HR_ATTENDANCE_FIELD_VARIANTS,
+    {
+      order: "check_in desc",
+    },
+    connection,
+  );
+}
+
+async function loadTodayHrLeaveRecords(
+  uid: number,
+  connection: OdooConnection,
+  todayKeyValue: string,
+  todayStartUtc: string,
+  tomorrowStartUtc: string,
+) {
+  const domains: unknown[][] = [
+    [
+      ["state", "in", ["validate", "validate1"]],
+      ["request_date_from", "<=", todayKeyValue],
+      ["request_date_to", ">=", todayKeyValue],
+    ],
+    [
+      ["state", "in", ["validate", "validate1"]],
+      ["date_from", "<", tomorrowStartUtc],
+      ["date_to", ">=", todayStartUtc],
+    ],
+  ];
+
+  let lastError: unknown = null;
+  for (const domain of domains) {
+    try {
+      return await searchReadAllWithFieldFallback<OdooHrLeaveRecord>(
+        uid,
+        "hr.leave",
+        domain,
+        HR_LEAVE_FIELD_VARIANTS,
+        {
+          order: "id desc",
+        },
+        connection,
+      );
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("HR leave records could not be loaded.");
+}
+
+export async function loadHrDailyAttendanceSummary(
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<HrDailyAttendanceSummary> {
+  const auth = await authenticateWithFallback(createOdooConnection(connectionOverrides));
+  if (!auth) {
+    throw new Error("Odoo authentication failed");
+  }
+
+  const { uid, connection } = auth;
+  const today = getTodayDateKey();
+  const tomorrow = getNextDateKey(today);
+  const todayStartUtc = formatOdooDateTimeBoundary(ulaanbaatarDayStart(today));
+  const tomorrowStartUtc = formatOdooDateTimeBoundary(ulaanbaatarDayStart(tomorrow));
+
+  const employees = await searchReadAllWithFieldFallback<OdooEmployeeRecord>(
+    uid,
+    "hr.employee",
+    [],
+    HR_ATTENDANCE_EMPLOYEE_FIELD_VARIANTS,
+    {
+      order: "name asc",
+      context: {
+        active_test: false,
+      },
+    },
+    connection,
+  );
+
+  const activeEmployeeIds = new Set(
+    employees.filter((employee) => employee.active !== false).map((employee) => employee.id),
+  );
+  const totalEmployees = activeEmployeeIds.size;
+
+  let attendanceRecords: OdooHrAttendanceRecord[] = [];
+  let leaveRecords: OdooHrLeaveRecord[] = [];
+  let hasAttendanceSource = false;
+
+  try {
+    attendanceRecords = await loadTodayHrAttendanceRecords(uid, connection, todayStartUtc, tomorrowStartUtc);
+    hasAttendanceSource = true;
+  } catch (error) {
+    console.warn("HR attendance records could not be loaded for dashboard:", error);
+  }
+
+  try {
+    leaveRecords = await loadTodayHrLeaveRecords(uid, connection, today, todayStartUtc, tomorrowStartUtc);
+    hasAttendanceSource = true;
+  } catch (error) {
+    console.warn("HR leave records could not be loaded for dashboard:", error);
+  }
+
+  const workingEmployeeIds = new Set(
+    attendanceRecords
+      .map((record) => relationId(record.employee_id))
+      .filter((id): id is number => typeof id === "number" && activeEmployeeIds.has(id)),
+  );
+  const sickEmployeeIds = new Set<number>();
+  const leaveEmployeeIds = new Set<number>();
+
+  for (const record of leaveRecords) {
+    const employeeId = relationId(record.employee_id);
+    if (!employeeId || !activeEmployeeIds.has(employeeId) || workingEmployeeIds.has(employeeId)) {
+      continue;
+    }
+
+    const leaveType = relationName(record.holiday_status_id ?? false, "");
+    if (isSickHrText(leaveType)) {
+      sickEmployeeIds.add(employeeId);
+    } else {
+      leaveEmployeeIds.add(employeeId);
+    }
+  }
+
+  if (hasAttendanceSource) {
+    const accountedEmployeeIds = new Set<number>([
+      ...workingEmployeeIds,
+      ...sickEmployeeIds,
+      ...leaveEmployeeIds,
+    ]);
+
+    return {
+      totalEmployees,
+      workingToday: workingEmployeeIds.size,
+      absentToday: Math.max(totalEmployees - accountedEmployeeIds.size, 0),
+      sickToday: sickEmployeeIds.size,
+      leaveToday: leaveEmployeeIds.size,
+      generatedAt: new Date().toISOString(),
+      source: "attendance",
+    };
+  }
+
+  const fallbackWorking = employees.filter(isWorkingHrStatus).length;
+  const fallbackSick = employees.filter((employee) => isSickHrText(employee.x_mn_employment_status)).length;
+  const fallbackAbsent = employees.filter((employee) => isAbsentHrText(employee.x_mn_employment_status)).length;
+
+  return {
+    totalEmployees,
+    workingToday: fallbackWorking,
+    absentToday: fallbackAbsent,
+    sickToday: fallbackSick,
+    leaveToday: 0,
+    generatedAt: new Date().toISOString(),
+    source: employees.length ? "employee_status" : "empty",
+  };
+}
+
+function resolveFleetFuelTypeLabel(value: string) {
+  const labels: Record<string, string> = {
+    gasoline: "Бензин",
+    diesel: "Дизель",
+    electric: "Цахилгаан",
+    hybrid: "Хосолсон",
+    lpg: "Газ",
+  };
+  return labels[value] ?? value;
+}
+
+function uniqueValues(values: Array<number | null | undefined>) {
+  return Array.from(new Set(values.filter((value): value is number => Boolean(value))));
+}
+
+async function loadEmployeeNameMap(
+  uid: number,
+  employeeIds: number[],
+  connection: OdooConnection,
+) {
+  if (!employeeIds.length) {
+    return new Map<number, string>();
+  }
+
+  const employees = await executeKw<Array<{ id: number; name: string }>>(
+    uid,
+    "hr.employee",
+    "search_read",
+    [[["id", "in", employeeIds]]],
+    {
+      fields: ["name"],
+      limit: employeeIds.length,
+    },
+    connection,
+  );
+
+  return new Map(employees.map((employee) => [employee.id, employee.name]));
+}
+
+function namesFromIds(ids: number[] | undefined, employeeNames: Map<number, string>) {
+  return (ids ?? [])
+    .map((id) => employeeNames.get(id))
+    .filter((name): name is string => Boolean(name));
+}
+
+async function loadCrewAssignmentsByVehicle(uid: number, connection: OdooConnection) {
+  try {
+    const crewTeams = await searchReadAllWithFieldFallback<OdooCrewTeamRecord>(
+      uid,
+      "mfo.crew.team",
+      [["vehicle_id", "!=", false]],
+      CREW_TEAM_FIELD_VARIANTS,
+      {
+        order: "name asc",
+      },
+      connection,
+    );
+
+    const assignedCrewTeams = crewTeams.filter((team) => team.active !== false);
+    const employeeIds = uniqueValues(
+      assignedCrewTeams.flatMap((team) => [
+        relationId(team.driver_employee_id ?? false),
+        relationId(team.mfo_driver_employee_id ?? false),
+        relationId(team.loader_employee_id ?? false),
+        ...(team.loader_employee_ids ?? []),
+        ...(team.loader_ids ?? []),
+        ...(team.mfo_loader_employee_ids ?? []),
+        ...(team.mfo_loader_ids ?? []),
+        ...(team.member_employee_ids ?? []),
+        ...(team.member_ids ?? []),
+        ...(team.employee_ids ?? []),
+      ]),
+    );
+    const employeeNames = await loadEmployeeNameMap(uid, employeeIds, connection);
+    const byVehicle = new Map<number, FleetVehicleCrewAssignment[]>();
+
+    for (const team of assignedCrewTeams) {
+      const vehicleId = relationId(team.vehicle_id ?? false);
+      if (!vehicleId) {
+        continue;
+      }
+
+      const driverRelation = team.driver_employee_id || team.mfo_driver_employee_id || false;
+      const driverId = relationId(driverRelation);
+      const driverName = relationName(driverRelation, "");
+      const driverNames = driverName ? [driverName] : driverId ? namesFromIds([driverId], employeeNames) : [];
+      const loaderIds = uniqueValues([
+        relationId(team.loader_employee_id ?? false),
+        ...(team.loader_employee_ids ?? []),
+        ...(team.loader_ids ?? []),
+        ...(team.mfo_loader_employee_ids ?? []),
+        ...(team.mfo_loader_ids ?? []),
+      ]);
+      const memberIds = uniqueValues([
+        ...(team.member_employee_ids ?? []),
+        ...(team.member_ids ?? []),
+        ...(team.employee_ids ?? []),
+      ]);
+      const loaderNames = namesFromIds(loaderIds, employeeNames);
+      const memberNames = namesFromIds(memberIds, employeeNames).filter(
+        (name) => !driverNames.includes(name) && !loaderNames.includes(name),
+      );
+      const assignment: FleetVehicleCrewAssignment = {
+        teamId: team.id,
+        teamName: team.name || `Баг #${team.id}`,
+        operationType: team.operation_type || "",
+        driverNames,
+        loaderNames,
+        memberNames,
+      };
+
+      const current = byVehicle.get(vehicleId) ?? [];
+      current.push(assignment);
+      byVehicle.set(vehicleId, current);
+    }
+
+    return byVehicle;
+  } catch (error) {
+    console.warn("Fleet crew assignments could not be loaded:", error);
+    return new Map<number, FleetVehicleCrewAssignment[]>();
+  }
 }
 
 export async function loadFleetVehicleBoard(
@@ -1385,7 +2070,9 @@ export async function loadFleetVehicleBoard(
     connection,
   );
 
-  const normalizedVehicles = vehicles
+  const crewAssignmentsByVehicle = await loadCrewAssignmentsByVehicle(uid, connection);
+
+  const allVehicles = vehicles
     .map((vehicle) => {
       const stateLabel = relationName(vehicle.state_id ?? false, "");
       const latestRepairState = vehicle.latest_repair_state || "";
@@ -1395,29 +2082,43 @@ export async function loadFleetVehicleBoard(
         isRepairStatusLabel(latestRepairState);
       const isOperational = Boolean(vehicle.mfo_active_for_ops);
 
-      if (!isOperational && !isRepair) {
-        return null;
-      }
-
       return {
         id: vehicle.id,
         plate: vehicle.license_plate || vehicle.name || `Машин #${vehicle.id}`,
         name: vehicle.name || vehicle.license_plate || `Машин #${vehicle.id}`,
-        stateLabel: stateLabel || (isRepair ? "Засагдаж буй машин" : "Идэвхтэй машин"),
+        modelName: relationName(vehicle.model_id ?? false, ""),
+        categoryName: relationName(vehicle.category_id ?? false, ""),
+        vin: vehicle.vin_sn || "",
+        odometerLabel:
+          typeof vehicle.odometer === "number" && Number.isFinite(vehicle.odometer)
+            ? `${Math.round(vehicle.odometer).toLocaleString("mn-MN")} км`
+            : "",
+        fuelTypeLabel: resolveFleetFuelTypeLabel(vehicle.fuel_type || ""),
+        fleetDriverName: relationName(vehicle.driver_id ?? false, ""),
+        stateLabel:
+          stateLabel ||
+          (isRepair ? "Засагдаж буй машин" : isOperational ? "Идэвхтэй машин" : "Бүртгэлтэй машин"),
         latestRepairState,
+        isOperational,
         isRepair,
+        crewAssignments: crewAssignmentsByVehicle.get(vehicle.id) ?? [],
       } satisfies FleetVehicleBoardItem;
     })
-    .filter((vehicle): vehicle is FleetVehicleBoardItem => Boolean(vehicle))
     .sort((left, right) => left.plate.localeCompare(right.plate, "mn"));
 
-  const activeVehicles = normalizedVehicles.filter((vehicle) => !vehicle.isRepair);
-  const repairVehicles = normalizedVehicles.filter((vehicle) => vehicle.isRepair);
+  const activeVehicles = allVehicles.filter(
+    (vehicle) =>
+      vehicle.isOperational &&
+      !vehicle.isRepair &&
+      vehicle.crewAssignments.length > 0,
+  );
+  const repairVehicles = allVehicles.filter((vehicle) => vehicle.isRepair);
 
   return {
+    allVehicles,
     activeVehicles,
     repairVehicles,
-    totalVehicles: normalizedVehicles.length,
+    totalVehicles: allVehicles.length,
     activeCount: activeVehicles.length,
     repairCount: repairVehicles.length,
   };
@@ -1502,7 +2203,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
   }
   const { uid, connection: resolvedConnection } = auth;
 
-  const [projects, tasks, departmentsFromOdoo] = await Promise.all([
+  const [projects, tasks] = await Promise.all([
     searchReadAll<OdooProjectRecord>(
       uid,
       "project.project",
@@ -1523,17 +2224,6 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       },
       resolvedConnection,
     ),
-    searchReadAll<OdooDepartmentRecord>(
-      uid,
-      "hr.department",
-      [],
-      {
-        fields: ["name"],
-        order: "name asc",
-      },
-      resolvedConnection,
-      200,
-    ).catch(() => []),
   ]);
 
   const reports = await searchReadAllWithFieldFallback<OdooReportRecord>(
@@ -1578,31 +2268,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     ]),
   );
 
-  const taskDepartmentNames = tasks.map((task) =>
-    resolveNormalizedTaskDepartmentName(task, projectDepartmentById),
-  );
-
-  const derivedDepartmentNames = Array.from(
-    new Set(
-      [...projectDepartmentById.values(), ...taskDepartmentNames]
-        .map((name) => name.trim())
-        .filter((name) => Boolean(name) && name !== UNKNOWN_DEPARTMENT),
-    ),
-  );
-
-  const orderedDepartmentNames = Array.from(
-    new Set([
-      ...departmentsFromOdoo
-        .map((department) => department.name.trim())
-        .filter(Boolean),
-      ...DEPARTMENT_ORDER.filter((name) => derivedDepartmentNames.includes(name)),
-      ...derivedDepartmentNames
-        .filter(
-          (name) => !DEPARTMENT_ORDER.includes(name as (typeof DEPARTMENT_ORDER)[number]),
-        )
-        .sort((left, right) => left.localeCompare(right, "mn")),
-    ]),
-  );
+  const orderedDepartmentNames = Array.from(new Set(DEPARTMENT_ORDER));
 
   const departmentSourceNames =
     orderedDepartmentNames.length > 0
@@ -1610,11 +2276,18 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       : tasks.length || projects.length
         ? [UNKNOWN_DEPARTMENT]
         : [];
+  const matchesDepartmentBucket = (bucketName: string, itemDepartmentName: string) => {
+    const bucketGroup = findDepartmentGroupByName(bucketName);
+
+    return bucketGroup
+      ? matchesDepartmentGroup(bucketGroup, itemDepartmentName)
+      : itemDepartmentName === bucketName;
+  };
 
   const departments = departmentSourceNames.map((department) => {
     const departmentTasks = tasks.filter((task) => {
       const departmentName = resolveNormalizedTaskDepartmentName(task, projectDepartmentById);
-      return departmentName === department;
+      return matchesDepartmentBucket(department, departmentName);
     });
     const departmentDone = departmentTasks.filter(
       (task) => getStageBucket(relationName(task.stage_id, "")) === "done",
@@ -1921,7 +2594,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       {
         label: "Хяналтын дараалал",
         value: String(reviewTasks.length),
-        note: "Ерөнхий менежер баталгаажуулалт хүлээж байна",
+        note: "Үйл ажиллагаа хариуцсан менежер баталгаажуулалт хүлээж байна",
         tone: "amber",
       },
       {
@@ -1996,7 +2669,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         label: "Хяналтын дараалал",
         value: "4",
-        note: "Ерөнхий менежер шалгаж байна",
+        note: "Үйл ажиллагаа хариуцсан менежер шалгаж байна",
         tone: "amber",
       },
       {
@@ -2052,7 +2725,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         id: 1,
         name: "2026 Мод хэлбэржүүлэлтийн хуваарь",
         manager: "BATAA",
-        departmentName: "Ногоон байгууламж",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
       stageLabel: "Хянагдаж буй ажил",
         stageBucket: "review",
         openTasks: 14,
@@ -2064,7 +2737,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         id: 2,
         name: "Хог тээвэрлэлтийн өглөөний маршрут",
         manager: "ankhaa",
-        departmentName: "Хог тээвэрлэлт",
+        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
         stageLabel: "Явагдаж буй ажил",
         stageBucket: "progress",
         openTasks: 5,
@@ -2076,7 +2749,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         id: 3,
         name: "Зам талбайн шөнийн цэвэрлэгээ",
         manager: "ankhaa",
-        departmentName: "Зам талбайн цэвэрлэгээ",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         stageLabel: "Хийгдэх ажил",
         stageBucket: "todo",
         openTasks: 6,
@@ -2089,7 +2762,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         id: 201,
         name: "5-р хороо - 32 модны тайлан",
-        departmentName: "Ногоон байгууламж",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
       stageLabel: "Хянагдаж буй ажил",
         stageBucket: "review",
@@ -2111,7 +2784,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         id: 202,
         name: "Хог тээврийн 2-р маршрут",
-        departmentName: "Хог тээвэрлэлт",
+        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
         projectName: "Хог тээвэрлэлтийн өглөөний маршрут",
         stageLabel: "Явагдаж буй ажил",
         stageBucket: "progress",
@@ -2133,7 +2806,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         id: 102,
         name: "7-р хороо - Төв замын захын цэвэрлэгээ",
-        departmentName: "Зам талбайн цэвэрлэгээ",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         projectName: "Зам талбайн шөнийн цэвэрлэгээ",
         stageLabel: "Хийгдэх ажил",
         stageBucket: "todo",
@@ -2155,7 +2828,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         id: 103,
         name: "Авто бааз - 3 машинд урсгал үйлчилгээ",
-        departmentName: "Авто бааз",
+        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
         projectName: "Техникийн өдөр тутмын бэлэн байдал",
         stageLabel: "Явагдаж буй ажил",
         stageBucket: "progress",
@@ -2178,7 +2851,7 @@ function fallbackSnapshot(): DashboardSnapshot {
     liveTasks: [
       {
         id: 101,
-        departmentName: "Ногоон байгууламж",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         name: "1-р хороо - 20-р байрны ар тал",
         projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
         stageLabel: "Явагдаж буй ажил",
@@ -2196,7 +2869,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       },
       {
         id: 102,
-        departmentName: "Зам талбайн цэвэрлэгээ",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         name: "7-р хороо - Төв замын захын цэвэрлэгээ",
         projectName: "Зам талбайн шөнийн цэвэрлэгээ",
         stageLabel: "Хийгдэх ажил",
@@ -2214,7 +2887,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       },
       {
         id: 103,
-        departmentName: "Авто бааз",
+        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
         name: "Авто бааз - 3 машинд урсгал үйлчилгээ",
         projectName: "Техникийн өдөр тутмын бэлэн байдал",
         stageLabel: "Явагдаж буй ажил",
@@ -2235,7 +2908,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         {
           id: 201,
           name: "5-р хороо - 32 модны тайлан",
-          departmentName: "Ногоон байгууламж",
+          departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
       stageLabel: "Хянагдаж буй ажил",
           deadline: "Өнөөдөр 16:30",
           projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
@@ -2246,7 +2919,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         {
           id: 202,
           name: "Хог тээврийн 2-р маршрут",
-          departmentName: "Хог тээвэрлэлт",
+          departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
       stageLabel: "Хянагдаж буй ажил",
           deadline: "Өнөөдөр 19:00",
           projectName: "Хог тээвэрлэлтийн өглөөний маршрут",
@@ -2259,7 +2932,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         id: 401,
         name: "Хогийн 2-р маршрут",
-        departmentName: "Хог тээвэрлэлт",
+        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
         projectName: "Өглөөний хог тээврийн маршрут",
         routeName: "2-р чиглэл",
         operationTypeLabel: "Хог цуглуулалт",
@@ -2274,7 +2947,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         id: 402,
         name: "Төв замын цэвэрлэгээ",
-        departmentName: "Зам талбайн цэвэрлэгээ",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         projectName: "Шөнийн гудамж цэвэрлэгээ",
         routeName: "7-р хорооны чиглэл",
         operationTypeLabel: "Гудамж цэвэрлэгээ",
@@ -2290,7 +2963,7 @@ function fallbackSnapshot(): DashboardSnapshot {
     reports: [
       {
         id: 301,
-        departmentName: "Ногоон байгууламж",
+        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         reporter: "suldee",
         taskName: "1-р хороо - 20-р байрны ар тал",
         projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
@@ -2306,7 +2979,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       },
       {
         id: 302,
-        departmentName: "Хог тээвэрлэлт",
+        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
         reporter: "sarangerel",
         taskName: "Хог тээврийн 2-р маршрут",
         projectName: "Хог тээвэрлэлтийн өглөөний маршрут",

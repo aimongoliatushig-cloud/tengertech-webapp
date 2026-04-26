@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { AppMenu } from "@/app/_components/app-menu";
+import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import {
   getRoleLabel,
   hasCapability,
@@ -92,6 +93,14 @@ export function ProcurementShell({
       </div>
 
       <main className={styles.workspaceMain}>
+        <WorkspaceHeader
+          title="Худалдан авалт"
+          subtitle={description}
+          userName={session.name}
+          roleLabel={getRoleLabel(session.role)}
+          notificationNote={viewportLabel}
+        />
+
         <section className={styles.heroCard}>
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>Худалдан авалтын урсгал</p>

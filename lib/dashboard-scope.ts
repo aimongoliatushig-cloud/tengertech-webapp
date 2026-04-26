@@ -1,3 +1,8 @@
+import {
+  findDepartmentGroupByName,
+  matchesDepartmentGroup,
+} from "@/lib/department-groups";
+
 const APP_TIME_ZONE = "Asia/Ulaanbaatar";
 
 function formatDateKey(date: Date, timeZone = APP_TIME_ZONE) {
@@ -50,7 +55,11 @@ export function filterByDepartment<T extends { departmentName: string }>(
     return items;
   }
 
-  return items.filter((item) => item.departmentName === departmentName);
+  const group = findDepartmentGroupByName(departmentName);
+
+  return items.filter((item) =>
+    group ? matchesDepartmentGroup(group, item.departmentName) : item.departmentName === departmentName,
+  );
 }
 
 export function filterTasksToDate<T extends { scheduledDate?: string | null }>(
