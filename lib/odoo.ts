@@ -110,6 +110,24 @@ type OdooEmployeeRecord = {
   x_mn_discipline_score?: number;
 };
 
+type OdooHrAttendanceRecord = {
+  id: number;
+  employee_id: OdooRelation;
+  check_in?: string | false;
+  check_out?: string | false;
+};
+
+type OdooHrLeaveRecord = {
+  id: number;
+  employee_id: OdooRelation;
+  state?: string | false;
+  holiday_status_id?: OdooRelation;
+  request_date_from?: string | false;
+  request_date_to?: string | false;
+  date_from?: string | false;
+  date_to?: string | false;
+};
+
 type DepartmentCard = {
   name: string;
   label: string;
@@ -306,6 +324,16 @@ export type HrEmployeeDirectoryItem = {
   kpiScore: number;
   taskCompletionPercent: number;
   disciplineScore: number;
+};
+
+export type HrDailyAttendanceSummary = {
+  totalEmployees: number;
+  workingToday: number;
+  absentToday: number;
+  sickToday: number;
+  leaveToday: number;
+  generatedAt: string;
+  source: "attendance" | "employee_status" | "empty";
 };
 
 type OdooFleetVehicleRecord = {
@@ -692,6 +720,31 @@ const HR_EMPLOYEE_FIELD_VARIANTS: string[][] = [
   ["name", "active", "department_id"],
 ];
 
+const HR_ATTENDANCE_EMPLOYEE_FIELD_VARIANTS: string[][] = [
+  ["name", "active", "x_mn_employment_status"],
+  ["name", "active"],
+];
+
+const HR_ATTENDANCE_FIELD_VARIANTS: string[][] = [
+  ["employee_id", "check_in", "check_out"],
+  ["employee_id", "check_in"],
+];
+
+const HR_LEAVE_FIELD_VARIANTS: string[][] = [
+  [
+    "employee_id",
+    "state",
+    "holiday_status_id",
+    "request_date_from",
+    "request_date_to",
+    "date_from",
+    "date_to",
+  ],
+  ["employee_id", "state", "holiday_status_id", "request_date_from", "request_date_to"],
+  ["employee_id", "state", "holiday_status_id", "date_from", "date_to"],
+  ["employee_id", "holiday_status_id"],
+];
+
 const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
   [
     "name",
@@ -825,6 +878,43 @@ function resolveHrEmploymentStatus(employee: OdooEmployeeRecord) {
     key: status,
     label: labels[status] ?? "Идэвхтэй",
   };
+}
+
+function normalizeHrStatusText(value?: string | false | null) {
+  return (typeof value === "string" ? value : "").trim().toLowerCase();
+}
+
+function isWorkingHrStatus(employee: OdooEmployeeRecord) {
+  const status = resolveHrEmploymentStatus(employee).key;
+  return employee.active !== false && ["active", "probation", "rehired"].includes(status);
+}
+
+function includesAnyToken(value: string, tokens: string[]) {
+  return tokens.some((token) => value.includes(token));
+}
+
+function isSickHrText(value?: string | false | null) {
+  const normalized = normalizeHrStatusText(value);
+  return includesAnyToken(normalized, ["sick", "ill", "medical", "ovch", "emneleg", "өвч", "эмнэл"]);
+}
+
+function isAbsentHrText(value?: string | false | null) {
+  const normalized = normalizeHrStatusText(value);
+  return includesAnyToken(normalized, ["absent", "no show", "tas", "ireegui", "тас", "ирээгүй"]);
+}
+
+function formatOdooDateTimeBoundary(date: Date) {
+  return date.toISOString().slice(0, 19).replace("T", " ");
+}
+
+function ulaanbaatarDayStart(dateKey: string) {
+  return new Date(`${dateKey}T00:00:00+08:00`);
+}
+
+function getNextDateKey(dateKey: string) {
+  const nextDate = ulaanbaatarDayStart(dateKey);
+  nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+  return getTodayDateKey(nextDate);
 }
 
 function resolveHrGenderLabel(value?: string | false) {
@@ -1666,6 +1756,174 @@ export async function loadHrEmployeeDirectory(
     });
 }
 
+async function loadTodayHrAttendanceRecords(
+  uid: number,
+  connection: OdooConnection,
+  todayStartUtc: string,
+  tomorrowStartUtc: string,
+) {
+  return searchReadAllWithFieldFallback<OdooHrAttendanceRecord>(
+    uid,
+    "hr.attendance",
+    [
+      ["check_in", ">=", todayStartUtc],
+      ["check_in", "<", tomorrowStartUtc],
+    ],
+    HR_ATTENDANCE_FIELD_VARIANTS,
+    {
+      order: "check_in desc",
+    },
+    connection,
+  );
+}
+
+async function loadTodayHrLeaveRecords(
+  uid: number,
+  connection: OdooConnection,
+  todayKeyValue: string,
+  todayStartUtc: string,
+  tomorrowStartUtc: string,
+) {
+  const domains: unknown[][] = [
+    [
+      ["state", "in", ["validate", "validate1"]],
+      ["request_date_from", "<=", todayKeyValue],
+      ["request_date_to", ">=", todayKeyValue],
+    ],
+    [
+      ["state", "in", ["validate", "validate1"]],
+      ["date_from", "<", tomorrowStartUtc],
+      ["date_to", ">=", todayStartUtc],
+    ],
+  ];
+
+  let lastError: unknown = null;
+  for (const domain of domains) {
+    try {
+      return await searchReadAllWithFieldFallback<OdooHrLeaveRecord>(
+        uid,
+        "hr.leave",
+        domain,
+        HR_LEAVE_FIELD_VARIANTS,
+        {
+          order: "id desc",
+        },
+        connection,
+      );
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("HR leave records could not be loaded.");
+}
+
+export async function loadHrDailyAttendanceSummary(
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<HrDailyAttendanceSummary> {
+  const auth = await authenticateWithFallback(createOdooConnection(connectionOverrides));
+  if (!auth) {
+    throw new Error("Odoo authentication failed");
+  }
+
+  const { uid, connection } = auth;
+  const today = getTodayDateKey();
+  const tomorrow = getNextDateKey(today);
+  const todayStartUtc = formatOdooDateTimeBoundary(ulaanbaatarDayStart(today));
+  const tomorrowStartUtc = formatOdooDateTimeBoundary(ulaanbaatarDayStart(tomorrow));
+
+  const employees = await searchReadAllWithFieldFallback<OdooEmployeeRecord>(
+    uid,
+    "hr.employee",
+    [],
+    HR_ATTENDANCE_EMPLOYEE_FIELD_VARIANTS,
+    {
+      order: "name asc",
+      context: {
+        active_test: false,
+      },
+    },
+    connection,
+  );
+
+  const activeEmployeeIds = new Set(
+    employees.filter((employee) => employee.active !== false).map((employee) => employee.id),
+  );
+  const totalEmployees = activeEmployeeIds.size;
+
+  let attendanceRecords: OdooHrAttendanceRecord[] = [];
+  let leaveRecords: OdooHrLeaveRecord[] = [];
+  let hasAttendanceSource = false;
+
+  try {
+    attendanceRecords = await loadTodayHrAttendanceRecords(uid, connection, todayStartUtc, tomorrowStartUtc);
+    hasAttendanceSource = true;
+  } catch (error) {
+    console.warn("HR attendance records could not be loaded for dashboard:", error);
+  }
+
+  try {
+    leaveRecords = await loadTodayHrLeaveRecords(uid, connection, today, todayStartUtc, tomorrowStartUtc);
+    hasAttendanceSource = true;
+  } catch (error) {
+    console.warn("HR leave records could not be loaded for dashboard:", error);
+  }
+
+  const workingEmployeeIds = new Set(
+    attendanceRecords
+      .map((record) => relationId(record.employee_id))
+      .filter((id): id is number => typeof id === "number" && activeEmployeeIds.has(id)),
+  );
+  const sickEmployeeIds = new Set<number>();
+  const leaveEmployeeIds = new Set<number>();
+
+  for (const record of leaveRecords) {
+    const employeeId = relationId(record.employee_id);
+    if (!employeeId || !activeEmployeeIds.has(employeeId) || workingEmployeeIds.has(employeeId)) {
+      continue;
+    }
+
+    const leaveType = relationName(record.holiday_status_id ?? false, "");
+    if (isSickHrText(leaveType)) {
+      sickEmployeeIds.add(employeeId);
+    } else {
+      leaveEmployeeIds.add(employeeId);
+    }
+  }
+
+  if (hasAttendanceSource) {
+    const accountedEmployeeIds = new Set<number>([
+      ...workingEmployeeIds,
+      ...sickEmployeeIds,
+      ...leaveEmployeeIds,
+    ]);
+
+    return {
+      totalEmployees,
+      workingToday: workingEmployeeIds.size,
+      absentToday: Math.max(totalEmployees - accountedEmployeeIds.size, 0),
+      sickToday: sickEmployeeIds.size,
+      leaveToday: leaveEmployeeIds.size,
+      generatedAt: new Date().toISOString(),
+      source: "attendance",
+    };
+  }
+
+  const fallbackWorking = employees.filter(isWorkingHrStatus).length;
+  const fallbackSick = employees.filter((employee) => isSickHrText(employee.x_mn_employment_status)).length;
+  const fallbackAbsent = employees.filter((employee) => isAbsentHrText(employee.x_mn_employment_status)).length;
+
+  return {
+    totalEmployees,
+    workingToday: fallbackWorking,
+    absentToday: fallbackAbsent,
+    sickToday: fallbackSick,
+    leaveToday: 0,
+    generatedAt: new Date().toISOString(),
+    source: employees.length ? "employee_status" : "empty",
+  };
+}
+
 function resolveFleetFuelTypeLabel(value: string) {
   const labels: Record<string, string> = {
     gasoline: "Бензин",
@@ -1845,7 +2103,12 @@ export async function loadFleetVehicleBoard(
     })
     .sort((left, right) => left.plate.localeCompare(right.plate, "mn"));
 
-  const activeVehicles = allVehicles.filter((vehicle) => vehicle.isOperational && !vehicle.isRepair);
+  const activeVehicles = allVehicles.filter(
+    (vehicle) =>
+      vehicle.isOperational &&
+      !vehicle.isRepair &&
+      vehicle.crewAssignments.length > 0,
+  );
   const repairVehicles = allVehicles.filter((vehicle) => vehicle.isRepair);
 
   return {

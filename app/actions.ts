@@ -29,6 +29,8 @@ import {
   submitWorkspaceTaskForReview,
 } from "@/lib/workspace";
 
+const CUSTOM_WORK_TYPE_VALUE = "__new_work__";
+
 function getConnectionOverrides() {
   return requireSession().then((session) => ({
     login: session.login,
@@ -165,6 +167,8 @@ export async function createProjectAction(formData: FormData) {
   const departmentIdRaw = String(formData.get("department_id") ?? "").trim();
   const operationUnit = String(formData.get("operation_unit") ?? "").trim();
   const operationType = String(formData.get("operation_type") ?? "").trim();
+  const isCustomWorkType = operationType === CUSTOM_WORK_TYPE_VALUE;
+  const normalizedOperationType = isCustomWorkType ? "" : operationType;
   const trackQuantity = String(formData.get("track_quantity") ?? "").trim() === "1";
   const plannedQuantityRaw = String(formData.get("planned_quantity") ?? "").trim();
   const unitIdRaw = String(formData.get("unit_id") ?? "").trim();
@@ -308,9 +312,9 @@ export async function createProjectAction(formData: FormData) {
   }
 
   const selectedWorkType =
-    operationUnit !== "garbage_transport"
+    operationUnit !== "garbage_transport" && normalizedOperationType
       ? (await loadWorkTypeOptions(connectionOverrides)).find(
-          (option) => option.operationType === operationType,
+          (option) => option.operationType === normalizedOperationType,
         ) ?? null
       : null;
   const allowedUnitIds = new Set(selectedWorkType?.allowedUnits.map((unit) => unit.id) ?? []);
@@ -319,11 +323,19 @@ export async function createProjectAction(formData: FormData) {
       ? Number(unitIdRaw)
       : selectedWorkType?.defaultUnitId ?? selectedWorkType?.allowedUnits[0]?.id ?? null;
 
-  if (operationUnit !== "garbage_transport" && !selectedWorkType) {
+  if (operationUnit !== "garbage_transport" && !isCustomWorkType && !selectedWorkType) {
     redirectWithMessage("/projects/new", "error", "Ажлын төрлөө сонгоно уу.");
   }
 
   if (trackQuantity) {
+    if (operationUnit !== "garbage_transport" && !selectedWorkType) {
+      redirectWithMessage(
+        "/projects/new",
+        "error",
+        "Төлөвлөсөн хэмжээ ашиглах бол бүртгэлтэй ажлын төрөл сонгоно уу.",
+      );
+    }
+
     const plannedQuantity = Number(plannedQuantityRaw);
     if (!plannedQuantityRaw || Number.isNaN(plannedQuantity) || plannedQuantity <= 0) {
       redirectWithMessage(
@@ -361,7 +373,7 @@ export async function createProjectAction(formData: FormData) {
         name,
         managerId: managerIdRaw ? Number(managerIdRaw) : null,
         departmentId: effectiveDepartmentIdRaw ? Number(effectiveDepartmentIdRaw) : null,
-        operationType: operationType || undefined,
+        operationType: normalizedOperationType || undefined,
         trackQuantity,
         plannedQuantity:
           trackQuantity && plannedQuantityRaw ? Number(plannedQuantityRaw) : null,

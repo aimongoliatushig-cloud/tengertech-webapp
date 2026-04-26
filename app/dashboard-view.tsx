@@ -9,6 +9,7 @@ import {
   ChevronRight,
   ClipboardList,
   Clock3,
+  HeartPulse,
   Leaf,
   ListChecks,
   Plus,
@@ -16,6 +17,9 @@ import {
   ShieldCheck,
   Sun,
   Truck,
+  UserCheck,
+  UserX,
+  UsersRound,
   Wind,
   type LucideIcon,
 } from "lucide-react";
@@ -33,7 +37,12 @@ import shellStyles from "@/app/workspace.module.css";
 import { getRoleLabel, hasCapability, isWorkerOnly, type AppSession } from "@/lib/auth";
 import { buildDashboardModel, type StatusTone } from "@/lib/dashboard-model";
 import { type FieldAssignment } from "@/lib/field-ops";
-import { type DashboardSnapshot, type FleetVehicleBoard, type TaskStatusKey } from "@/lib/odoo";
+import {
+  type DashboardSnapshot,
+  type FleetVehicleBoard,
+  type HrDailyAttendanceSummary,
+  type TaskStatusKey,
+} from "@/lib/odoo";
 import { cn } from "@/lib/utils";
 
 type DashboardViewProps = {
@@ -42,6 +51,7 @@ type DashboardViewProps = {
   todayAssignments: FieldAssignment[];
   fleetBoard: FleetVehicleBoard;
   fleetLoadError?: string;
+  hrAttendanceSummary: HrDailyAttendanceSummary;
 };
 
 type DashboardStat = {
@@ -55,10 +65,12 @@ type DashboardStat = {
   short: string;
 };
 
-const TRUCK_IMAGE =
-  "https://images.pexels.com/photos/28440177/pexels-photo-28440177.jpeg?auto=compress&cs=tinysrgb&w=1400";
-const PROMO_IMAGE =
-  "https://images.pexels.com/photos/28835680/pexels-photo-28835680.jpeg?auto=compress&cs=tinysrgb&w=900";
+const DASHBOARD_IMAGES = {
+  header: "/illustrations/green-city-hero.svg",
+  overview: "/illustrations/green-park-banner.svg",
+  seedling: "/illustrations/seedling-card.svg",
+  landscape: "/illustrations/green-landscape-card.svg",
+};
 
 const STATUS_LABELS: Record<TaskStatusKey, string> = {
   planned: "Төлөвлөсөн",
@@ -137,26 +149,26 @@ function StatCard({ metric }: { metric: DashboardStat }) {
 
   return (
     <Link href={metric.href} className="group block">
-      <Card className="h-full p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(27,73,38,0.12)]">
-        <div className="flex items-start justify-between gap-3">
+      <Card className="grid h-full min-h-[112px] content-between p-3.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(27,73,38,0.12)]">
+        <div className="flex items-start justify-between gap-2.5">
           <div className="min-w-0">
-            <span className="block truncate text-xs font-semibold text-[#6B7280]">
+            <span className="block text-[0.72rem] font-semibold leading-4 text-[#6B7280]">
               {metric.label}
             </span>
-            <strong className="mt-1.5 block text-3xl font-extrabold leading-none tracking-[-0.04em] text-[#111B15]">
+            <strong className="mt-1.5 block text-2xl font-extrabold leading-none tracking-normal text-[#111B15]">
               {metric.value}
             </strong>
           </div>
           <span
             className={cn(
-              "grid h-10 w-10 shrink-0 place-items-center rounded-xl",
+              "grid h-9 w-9 shrink-0 place-items-center rounded-[var(--ds-radius-card)]",
               STAT_TONE[metric.tone],
             )}
           >
             <Icon className="h-4 w-4" />
           </span>
         </div>
-        <div className="mt-4 flex items-center gap-2 text-xs">
+        <div className="mt-3 flex items-center gap-2 text-[0.7rem]">
           <strong
             className={cn(
               "font-extrabold",
@@ -165,9 +177,9 @@ function StatCard({ metric }: { metric: DashboardStat }) {
           >
             {metric.progress}%
           </strong>
-          <span className="min-w-0 truncate text-[#6B7280]">{metric.helper}</span>
+          <span className="min-w-0 flex-1 leading-4 text-[#6B7280]">{metric.helper}</span>
         </div>
-        <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-[#E8F3E8]">
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#E8F3E8]">
           <span
             className={cn(
               "block h-full rounded-full transition-all duration-700",
@@ -184,13 +196,13 @@ function StatCard({ metric }: { metric: DashboardStat }) {
 function ProgressRing({ value, size = "sm" }: { value: number; size?: "sm" | "lg" }) {
   return (
     <div
-      className={cn("grid shrink-0 place-items-center rounded-full p-1", size === "lg" ? "h-32 w-32" : "h-14 w-14")}
+      className={cn("grid shrink-0 place-items-center rounded-full p-1", size === "lg" ? "h-28 w-28" : "h-14 w-14")}
       style={ringStyle(value)}
     >
       <div className="grid h-full w-full place-items-center rounded-full bg-white/92 text-center shadow-inner">
         <strong
           className={cn(
-            "font-extrabold leading-none tracking-[-0.06em] text-[#111B15]",
+            "font-extrabold leading-none tracking-normal text-[#111B15]",
             size === "lg" ? "text-2xl" : "text-sm",
           )}
         >
@@ -221,19 +233,20 @@ function DepartmentOverview({
   return (
     <Card className="overflow-hidden p-0">
       <div
-        className="min-h-[188px] bg-cover bg-center p-5"
+        className="min-h-[158px] bg-cover p-4"
         style={{
-          backgroundImage: `linear-gradient(90deg, rgba(246,251,246,.95) 0%, rgba(246,251,246,.78) 40%, rgba(246,251,246,.16) 100%), url(${TRUCK_IMAGE})`,
+          backgroundImage: `linear-gradient(90deg, rgba(246,251,246,.96) 0%, rgba(246,251,246,.78) 44%, rgba(246,251,246,.24) 100%), linear-gradient(180deg, rgba(246,251,246,.18), rgba(46,125,50,.06)), url(${DASHBOARD_IMAGES.overview})`,
+          backgroundPosition: "center right",
         }}
       >
         <Badge className="bg-white/72 text-[#2E7D32]">Доторх нэгж</Badge>
-        <h2 className="mt-3 max-w-2xl text-2xl font-extrabold leading-tight tracking-[-0.025em] text-[#111B15]">
+        <h2 className="mt-2.5 max-w-2xl text-xl font-extrabold leading-tight tracking-normal text-[#111B15]">
           {departmentName}
         </h2>
-        <p className="mt-2 max-w-xl text-xs font-semibold leading-5 text-[#5E6E64]">
+        <p className="mt-1.5 max-w-xl text-xs font-semibold leading-4 text-[#5E6E64]">
           Энэ хэлтэс доторх ажлыг нэгжээр харуулна.
         </p>
-        <div className="mt-5 flex flex-wrap gap-3">
+        <div className="mt-4 flex flex-wrap gap-2">
           {[
             ["Бүгд", total, true],
             ["Авто бааз", autoBaseCount, false],
@@ -242,7 +255,7 @@ function DepartmentOverview({
             <span
               key={String(label)}
               className={cn(
-                "inline-flex min-h-9 items-center gap-2 rounded-full px-4 text-xs font-extrabold shadow-sm",
+                "inline-flex min-h-8 items-center gap-2 rounded-full px-3 text-xs font-extrabold shadow-sm",
                 active
                   ? "bg-[#2E7D32] text-white"
                   : "border border-[#DCEFDA] bg-white/78 text-[#1B1B1B]",
@@ -276,17 +289,17 @@ function TaskCard({
 
   return (
     <Link href={task.href} className="group block">
-      <Card className="grid min-h-[178px] gap-4 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(27,73,38,0.11)]">
+      <Card className="grid min-h-[156px] gap-3 p-3.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(27,73,38,0.11)]">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="mb-2 flex items-center gap-2 text-[0.72rem] font-extrabold text-[#5E6E64]">
               <span className={cn("h-2 w-2 rounded-full", STATUS_DOT[tone])} />
               <span>{task.statusLabel || STATUS_LABELS[task.statusKey]}</span>
             </div>
-            <h3 className="truncate text-lg font-extrabold tracking-[-0.02em] text-[#111B15]">
+            <h3 className="text-base font-extrabold leading-snug tracking-normal text-[#111B15]">
               {task.name}
             </h3>
-            <p className="mt-1.5 line-clamp-2 text-xs font-semibold leading-5 text-[#6B7280]">
+            <p className="mt-1 text-xs font-semibold leading-4 text-[#6B7280]">
               Алба нэгж: {task.departmentName} · Менежер: {task.leaderName || "Бүртгэлгүй"}
             </p>
           </div>
@@ -297,15 +310,15 @@ function TaskCard({
 
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-[#F2F8F2] p-3">
+            <div className="rounded-[var(--ds-radius-card)] bg-[#F2F8F2] p-2.5">
               <span className="block text-xs font-semibold text-[#7A897E]">Нээлттэй ажил</span>
-              <strong className="mt-1.5 block text-xl tracking-[-0.04em] text-[#111B15]">
+              <strong className="mt-1.5 block text-xl tracking-normal text-[#111B15]">
                 {task.plannedQuantity || 0}
               </strong>
             </div>
-            <div className="rounded-xl bg-[#F2F8F2] p-3">
+            <div className="rounded-[var(--ds-radius-card)] bg-[#F2F8F2] p-2.5">
               <span className="block text-xs font-semibold text-[#7A897E]">Гүйцэтгэл</span>
-              <strong className="mt-1.5 block text-xl tracking-[-0.04em] text-[#111B15]">
+              <strong className="mt-1.5 block text-xl tracking-normal text-[#111B15]">
                 {clampPercent(task.progress)}%
               </strong>
             </div>
@@ -348,7 +361,7 @@ function CompletionDonut({
   return (
     <Card className="p-4">
       <CardTitle className="text-base">Ажил гүйцэтгэлийн харагдац</CardTitle>
-      <div className="mt-5 grid items-center gap-5 md:grid-cols-[132px_minmax(0,1fr)]">
+      <div className="mt-4 grid items-center gap-4 md:grid-cols-[120px_minmax(0,1fr)]">
         <ProgressRing value={completedShare} size="lg" />
         <div className="grid gap-3 text-xs">
           {[
@@ -391,8 +404,8 @@ function WeeklyLineChart({ points }: { points: ReturnType<typeof buildDashboardM
   return (
     <Card className="p-4">
       <CardTitle className="text-base">Сүүлийн 7 хоногийн идэвх</CardTitle>
-      <div className="mt-4 rounded-[1.25rem] bg-[#F6FBF6]/80 p-4">
-        <svg viewBox="0 0 100 100" className="h-44 w-full overflow-visible">
+      <div className="mt-3 rounded-[var(--ds-radius-card)] bg-[#F6FBF6]/80 p-3">
+        <svg viewBox="0 0 100 100" className="h-36 w-full overflow-visible">
           {[22, 40, 58, 76].map((line) => (
             <line
               key={line}
@@ -438,6 +451,69 @@ function WeeklyLineChart({ points }: { points: ReturnType<typeof buildDashboardM
   );
 }
 
+function HrAttendanceCard({ summary }: { summary: HrDailyAttendanceSummary }) {
+  const items = [
+    {
+      label: "Ажиллаж байна",
+      value: summary.workingToday,
+      icon: UserCheck,
+      className: "bg-[#E7F5E7] text-[#2E7D32]",
+    },
+    {
+      label: "Тасалсан",
+      value: summary.absentToday,
+      icon: UserX,
+      className: "bg-red-50 text-red-600",
+    },
+    {
+      label: "Өвчтэй",
+      value: summary.sickToday,
+      icon: HeartPulse,
+      className: "bg-amber-50 text-amber-700",
+    },
+  ];
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <CardTitle className="text-base">Хүний нөөц</CardTitle>
+          <CardDescription>Өнөөдрийн ирц</CardDescription>
+        </div>
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--ds-radius-card)] bg-[#E7F5E7] text-[#2E7D32]">
+          <UsersRound className="h-4 w-4" />
+        </span>
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {items.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <div key={item.label} className="rounded-[var(--ds-radius-card)] bg-[#F6FBF6] p-2.5">
+              <span className={cn("mb-2 grid h-7 w-7 place-items-center rounded-lg", item.className)}>
+                <Icon className="h-3.5 w-3.5" />
+              </span>
+              <strong className="block text-xl leading-none tracking-normal text-[#111B15]">
+                {item.value}
+              </strong>
+              <span className="mt-1 block text-[0.68rem] font-bold leading-3 text-[#6B7280]">
+                {item.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-[#6B7280]">
+        <span>Нийт ажилтан</span>
+        <strong className="text-[#111B15]">{summary.totalEmployees}</strong>
+        {summary.leaveToday ? <span className="basis-full text-[#2E7D32]">Чөлөөтэй {summary.leaveToday}</span> : null}
+      </div>
+    </Card>
+  );
+}
+
 function RightPanel({
   totalTasks,
   completedTasks,
@@ -445,6 +521,7 @@ function RightPanel({
   fleetBoard,
   alertCount,
   canWriteReports,
+  hrAttendanceSummary,
 }: {
   totalTasks: number;
   completedTasks: number;
@@ -452,6 +529,7 @@ function RightPanel({
   fleetBoard: FleetVehicleBoard;
   alertCount: number;
   canWriteReports: boolean;
+  hrAttendanceSummary: HrDailyAttendanceSummary;
 }) {
   const quickActions = [
     { label: "Шинэ ажил үүсгэх", href: "/create", icon: Plus },
@@ -471,7 +549,7 @@ function RightPanel({
               <Link
                 key={action.label}
                 href={action.href}
-                className="flex min-h-9 items-center gap-2 rounded-xl bg-[#EDF6ED] px-3 text-xs font-extrabold text-[#1B1B1B] transition hover:-translate-y-0.5 hover:bg-[#DCEFDA]"
+                className="flex min-h-8 items-center gap-2 rounded-[var(--ds-radius-card)] bg-[#EDF6ED] px-3 text-xs font-extrabold text-[#1B1B1B] transition hover:-translate-y-0.5 hover:bg-[#DCEFDA]"
               >
                 <Icon className="h-4 w-4 text-[#2E7D32]" />
                 {action.label}
@@ -486,7 +564,7 @@ function RightPanel({
           className="min-h-[104px] bg-cover bg-center p-4 text-right"
           style={{
             backgroundImage:
-              "linear-gradient(90deg, rgba(246,251,246,.88), rgba(246,251,246,.54)), url(https://images.pexels.com/photos/4751970/pexels-photo-4751970.jpeg?auto=compress&cs=tinysrgb&w=700)",
+              `linear-gradient(90deg, rgba(246,251,246,.9), rgba(246,251,246,.54)), url(${DASHBOARD_IMAGES.seedling})`,
           }}
         >
           <Leaf className="mb-3 ml-auto h-8 w-8 text-[#A5B82E]" />
@@ -516,16 +594,18 @@ function RightPanel({
         </div>
       </Card>
 
+      <HrAttendanceCard summary={hrAttendanceSummary} />
+
       <Card className="p-4">
         <CardTitle className="text-base">Цаг агаар</CardTitle>
         <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
           <Sun className="h-9 w-9 text-amber-400" />
           <div>
             <span className="block text-xs text-[#6B7280]">Улаанбаатар</span>
-            <strong className="text-xl tracking-[-0.04em]">18°C</strong>
+            <strong className="text-xl tracking-normal">18°C</strong>
             <small className="block text-[#6B7280]">Бага үүлтэй</small>
           </div>
-          <div className="rounded-xl bg-[#E7F5E7] px-2.5 py-2 text-center text-[0.7rem] font-extrabold text-[#2E7D32]">
+          <div className="rounded-[var(--ds-radius-card)] bg-[#E7F5E7] px-2.5 py-2 text-center text-[0.7rem] font-extrabold text-[#2E7D32]">
             Сайн
             <br />
             AQI 38
@@ -537,7 +617,7 @@ function RightPanel({
         <div
           className="min-h-[130px] bg-cover bg-center p-4 text-white"
           style={{
-            backgroundImage: `linear-gradient(180deg, rgba(27,73,38,.1), rgba(17,42,26,.72)), url(${PROMO_IMAGE})`,
+            backgroundImage: `linear-gradient(180deg, rgba(27,73,38,.1), rgba(17,42,26,.72)), url(${DASHBOARD_IMAGES.landscape})`,
           }}
         >
           <Recycle className="h-7 w-7 text-[#A5D6A7]" />
@@ -548,12 +628,12 @@ function RightPanel({
       <Card className="p-4">
         <CardTitle className="text-base">Техник</CardTitle>
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-          <div className="rounded-xl bg-[#F2F8F2] p-3">
+          <div className="rounded-[var(--ds-radius-card)] bg-[#F2F8F2] p-3">
             <Truck className="mb-2 h-4 w-4 text-[#2E7D32]" />
             <strong className="block text-xl">{fleetBoard.totalVehicles}</strong>
             <span className="text-[#6B7280]">Нийт</span>
           </div>
-          <div className="rounded-xl bg-[#F2F8F2] p-3">
+          <div className="rounded-[var(--ds-radius-card)] bg-[#F2F8F2] p-3">
             <Wind className="mb-2 h-4 w-4 text-[#2E7D32]" />
             <strong className="block text-xl">{fleetBoard.activeCount}</strong>
             <span className="text-[#6B7280]">Ажиллаж буй</span>
@@ -570,6 +650,7 @@ export function DashboardView({
   todayAssignments,
   fleetBoard,
   fleetLoadError = "",
+  hrAttendanceSummary,
 }: DashboardViewProps) {
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -602,6 +683,8 @@ export function DashboardView({
     const score = { urgent: 4, attention: 3, good: 2, muted: 1 };
     return score[rightTone] - score[leftTone] || right.progress - left.progress;
   });
+  const visibleTasks = sortedTasks.slice(0, 4);
+  const taskGridClassName = cn("mt-4 grid gap-3", visibleTasks.length > 1 && "xl:grid-cols-2");
 
   const statCards: DashboardStat[] = [
     {
@@ -691,28 +774,29 @@ export function DashboardView({
             userName={session.name}
             roleLabel={roleLabel}
             notificationCount={attentionCount}
+            backgroundImage={DASHBOARD_IMAGES.header}
           />
 
-          <section className="relative z-20 -mt-14 grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-            {statCards.map((metric) => (
-              <StatCard key={metric.label} metric={metric} />
-            ))}
-          </section>
-
-          {fleetLoadError ? (
-            <Card className="mt-5 border-amber-200 bg-amber-50/85 p-4 text-sm font-semibold text-amber-800">
-              {fleetLoadError}
-            </Card>
-          ) : null}
-
-          <div className="mt-4 grid gap-4 2xl:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="relative z-20 mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_288px]">
             <div className="grid min-w-0 gap-4">
+              <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+                {statCards.map((metric) => (
+                  <StatCard key={metric.label} metric={metric} />
+                ))}
+              </section>
+
+              {fleetLoadError ? (
+                <Card className="border-amber-200 bg-amber-50/85 p-4 text-sm font-semibold text-amber-800">
+                  {fleetLoadError}
+                </Card>
+              ) : null}
+
               <DepartmentOverview snapshot={snapshot} tasks={dashboardTasks} />
 
               <Card className="p-4">
-                <CardHeader>
+                <CardHeader className="flex-wrap gap-3">
                   <div>
-                    <CardDescription className="font-extrabold uppercase tracking-[0.08em]">
+                    <CardDescription className="font-extrabold uppercase tracking-normal">
                       Ажлын жагсаалт
                     </CardDescription>
                     <CardTitle>Нийт ажил</CardTitle>
@@ -729,11 +813,11 @@ export function DashboardView({
                   </Link>
                 </CardHeader>
 
-                <div className="mt-4 grid gap-3 xl:grid-cols-2">
-                  {sortedTasks.slice(0, 4).map((task) => (
+                <div className={taskGridClassName}>
+                  {visibleTasks.map((task) => (
                     <TaskCard key={task.id} task={task} currentDateKey={currentDateKey} />
                   ))}
-                  {!sortedTasks.length ? (
+                  {!visibleTasks.length ? (
                     <div className="col-span-full rounded-2xl border border-dashed border-[#A5D6A7]/70 bg-[#F6FBF6] p-8 text-center text-sm font-semibold text-[#6B7280]">
                       Одоогоор ажил бүртгэгдээгүй байна.
                     </div>
@@ -761,10 +845,10 @@ export function DashboardView({
                       ["Энэ 7 хоног", model.trendPoints.reduce((sum, point) => sum + point.completion, 0), 0],
                       ["Энэ сар", completedTasks, percent(completedTasks, totalTasks)],
                     ].map(([label, value, rate]) => (
-                      <div key={String(label)} className="rounded-xl bg-[#F2F8F2] p-3">
+                      <div key={String(label)} className="rounded-[var(--ds-radius-card)] bg-[#F2F8F2] p-3">
                         <CalendarDays className="mb-2 h-4 w-4 text-[#2E7D32]" />
                         <span className="block text-xs text-[#6B7280]">{label}</span>
-                        <strong className="mt-1 block text-xl tracking-[-0.04em]">{value}</strong>
+                        <strong className="mt-1 block text-xl tracking-normal">{value}</strong>
                         <small className="font-extrabold text-[#2E7D32]">↑ {rate}%</small>
                       </div>
                     ))}
@@ -776,7 +860,7 @@ export function DashboardView({
                   <div className="mt-5 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
                     <Truck className="h-8 w-8 text-[#2E7D32]" />
                     <div>
-                      <strong className="block text-3xl tracking-[-0.04em]">{fleetBoard.totalVehicles}</strong>
+                      <strong className="block text-3xl tracking-normal">{fleetBoard.totalVehicles}</strong>
                       <span className="text-[#6B7280]">Нийт техник</span>
                     </div>
                   </div>
@@ -798,6 +882,7 @@ export function DashboardView({
               fleetBoard={fleetBoard}
               alertCount={attentionCount}
               canWriteReports={canWriteReports}
+              hrAttendanceSummary={hrAttendanceSummary}
             />
           </div>
 

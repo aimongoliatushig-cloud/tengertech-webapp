@@ -1259,5 +1259,141 @@
   }
 }
 
+/* Reference dashboard alignment for procurement pages */
+.workspaceShell {
+  grid-template-columns: 236px minmax(0, 1fr);
+  gap: 0;
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  background:
+    linear-gradient(180deg, rgba(246, 251, 246, 0.98), rgba(237, 247, 238, 0.98)),
+    #f6fbf6;
+}
+
+.workspaceSidebar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  align-self: start;
+  min-height: 100vh;
+  border-right: 1px solid rgba(46, 125, 50, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.workspaceMain {
+  min-width: 0;
+  padding: 0 24px 40px;
+  overflow-x: hidden;
+}
+
+.heroCard,
+.overviewPanel,
+.metricCard,
+.cardSection,
+.statusBanner,
+.requestCard,
+.dashboardCard,
+.infoCard,
+.timelineItem,
+.documentCard,
+.formActionsCard,
+.quoteCard,
+.errorCard,
+.emptyState,
+.tableRow,
+.stickyActionBar {
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--ds-shadow-panel);
+  backdrop-filter: blur(16px);
+}
+
+.heroCard::after {
+  content: none;
+  display: none;
+}
+
+.heroMeta {
+  border-radius: var(--ds-radius-card);
+  background: rgba(218, 238, 219, 0.72);
+  border-color: rgba(46, 125, 50, 0.12);
+}
+
+.subnavLink,
+.primaryButton,
+.secondaryButton,
+.dangerButton,
+.stickyActionLink {
+  min-height: 38px;
+  border-radius: var(--ds-radius-control);
+  border-color: rgba(46, 125, 50, 0.12);
+  background: rgba(255, 255, 255, 0.86);
+  color: #1b1b1b;
+  font-family: var(--font-inter), var(--font-body), sans-serif;
+  font-weight: 800;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+
+.subnavLinkActive,
+.primaryButton {
+  border-color: rgba(46, 125, 50, 0.16);
+  background: #2e7d32;
+  color: #fff;
+}
+
+.eyebrow,
+.overviewEyebrow {
+  min-height: 30px;
+  width: fit-content;
+  padding: 0 10px;
+  border-radius: var(--ds-radius-control);
+  background: rgba(218, 238, 219, 0.9);
+  color: #2e7d32;
+  font-family: var(--font-inter), var(--font-body), sans-serif;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.fieldLabel input,
+.fieldLabel select,
+.fieldLabel textarea,
+.quoteCard input,
+.quoteCard select,
+.quoteCard textarea {
+  min-height: 40px;
+  border-color: rgba(46, 125, 50, 0.12);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+
+@media (max-width: 1080px) {
+  .workspaceShell {
+    grid-template-columns: 1fr;
+  }
+
+  .workspaceSidebar {
+    position: static;
+    min-height: 0;
+    border-right: 0;
+    background: transparent;
+  }
+
+  .workspaceMain {
+    padding: 0 18px 104px;
+  }
+}
+
+@media (max-width: 720px) {
+  .workspaceMain {
+    padding: 0 12px 112px;
+  }
+}
+
 
 

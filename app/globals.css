@@ -41,11 +41,11 @@
   --ds-soft-bg: rgba(218, 238, 219, 0.78);
   --ds-border: rgba(46, 125, 50, 0.1);
   --ds-border-strong: rgba(46, 125, 50, 0.18);
-  --ds-shadow-panel: 0 20px 60px rgba(27, 73, 38, 0.08);
-  --ds-shadow-hover: 0 24px 70px rgba(27, 73, 38, 0.12);
-  --ds-radius-card: 22px;
-  --ds-radius-control: 18px;
-  --ds-radius-icon: 16px;
+  --ds-shadow-panel: 0 14px 38px rgba(27, 73, 38, 0.08);
+  --ds-shadow-hover: 0 18px 48px rgba(27, 73, 38, 0.12);
+  --ds-radius-card: 8px;
+  --ds-radius-control: 8px;
+  --ds-radius-icon: 8px;
   --ds-control-height: 40px;
   --ds-control-height-sm: 34px;
   --ds-gap: 12px;

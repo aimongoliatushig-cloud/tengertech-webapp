@@ -885,17 +885,18 @@
   inset: 0;
   z-index: 80;
   display: grid;
-  place-items: center;
-  padding: 24px;
+  place-items: start center;
+  overflow-y: auto;
+  padding: clamp(16px, 4vh, 40px) 18px 18px;
   background: rgba(20, 33, 27, 0.36);
   backdrop-filter: blur(8px);
 }
 
 .vehicleModal {
-  width: min(920px, 100%);
-  max-height: calc(100dvh - 48px);
+  width: min(780px, 100%);
+  max-height: calc(100dvh - 36px);
   overflow: auto;
-  padding: 24px;
+  padding: 20px;
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-card);
   background: var(--ds-panel-bg);
@@ -906,15 +907,15 @@
   display: flex;
   align-items: start;
   justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 16px;
+  gap: 12px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--ds-border);
 }
 
 .vehicleModalHeader h2 {
-  margin: 10px 0 6px;
+  margin: 8px 0 4px;
   font-family: var(--font-body);
-  font-size: clamp(1.55rem, 3vw, 2.25rem);
+  font-size: clamp(1.5rem, 3vw, 2rem);
   line-height: 1;
   letter-spacing: 0;
 }
@@ -950,15 +951,15 @@
 .vehicleDetailGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 18px;
+  gap: 10px;
+  margin-top: 14px;
 }
 
 .vehicleDetailItem {
   display: grid;
-  gap: 7px;
+  gap: 6px;
   min-width: 0;
-  padding: 14px;
+  padding: 12px;
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-control);
   background: rgba(255, 255, 255, 0.72);
@@ -981,8 +982,8 @@
 }
 
 .vehicleCrewPanel {
-  margin-top: 18px;
-  padding: 16px;
+  margin-top: 14px;
+  padding: 14px;
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-card);
   background: rgba(74, 154, 93, 0.06);
@@ -1048,9 +1049,9 @@
 .vehicleEditForm {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 18px;
-  padding: 16px;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-card);
   background: rgba(255, 255, 255, 0.74);

@@ -14,6 +14,7 @@ import type {
 
 const GARBAGE_TRANSPORT_KEYWORD = "хог тээвэрлэлтийн";
 const AUTO_BASE_KEYWORD = "авто бааз";
+const CUSTOM_WORK_TYPE_VALUE = "__new_work__";
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
@@ -146,7 +147,10 @@ export function NewWorkForm({
     [garbageRouteOptions, routeId],
   );
   const selectedWorkType = useMemo(
-    () => workTypeOptions.find((option) => option.operationType === operationType) ?? null,
+    () =>
+      operationType === CUSTOM_WORK_TYPE_VALUE
+        ? null
+        : workTypeOptions.find((option) => option.operationType === operationType) ?? null,
     [operationType, workTypeOptions],
   );
   const unitOptions = useMemo(() => buildUnitOptions(selectedWorkType), [selectedWorkType]);
@@ -171,6 +175,8 @@ export function NewWorkForm({
     supportsGarbageTransport &&
     (isCombinedDepartment ? operationUnit === "garbage_transport" : true);
   const isDepartmentLocked = Boolean(lockedDepartmentId);
+  const isCustomWorkType = operationType === CUSTOM_WORK_TYPE_VALUE;
+  const effectiveTrackQuantity = isCustomWorkType ? false : trackQuantity;
 
   const generatedName = useMemo(() => {
     if (!isGarbageTransport) {
@@ -201,6 +207,15 @@ export function NewWorkForm({
     }
 
     setOperationUnit("standard");
+  };
+
+  const handleOperationTypeChange = (nextOperationType: string) => {
+    setOperationType(nextOperationType);
+    setSelectedUnitOverrideId(null);
+
+    if (nextOperationType === CUSTOM_WORK_TYPE_VALUE) {
+      setTrackQuantity(false);
+    }
   };
 
   const handleAddExtraLocation = () => {
@@ -467,10 +482,11 @@ export function NewWorkForm({
                 id="operation_type"
                 name="operation_type"
                 value={operationType}
-                onChange={(event) => setOperationType(event.target.value)}
+                onChange={(event) => handleOperationTypeChange(event.target.value)}
                 required
               >
                 <option value="">Ажлын төрөл сонгоно уу</option>
+                <option value={CUSTOM_WORK_TYPE_VALUE}>Шинэ ажил үүсгэх</option>
                 {workTypeOptions.map((option) => (
                   <option key={option.id} value={option.operationType}>
                     {option.name}
@@ -478,7 +494,9 @@ export function NewWorkForm({
                 ))}
               </select>
               <small className={styles.fieldHint}>
-                {selectedWorkType
+                {isCustomWorkType
+                  ? "Шинэ ажил ерөнхий төрлөөр үүснэ. Хэмжих нэгж шаардлагагүй бол шууд бүртгэж болно."
+                  : selectedWorkType
                   ? unitHelperText
                   : "Ажлын төрлөө сонгосноор зөвшөөрөгдсөн хэмжих нэгжүүд харагдана."}
               </small>
@@ -503,8 +521,9 @@ export function NewWorkForm({
               name="track_quantity"
               type="checkbox"
               value="1"
-              checked={trackQuantity}
+              checked={effectiveTrackQuantity}
               onChange={(event) => setTrackQuantity(event.target.checked)}
+              disabled={isCustomWorkType}
               className={styles.optionalCheckbox}
             />
             <label htmlFor="track_quantity" className={styles.optionalToggle}>
@@ -519,7 +538,7 @@ export function NewWorkForm({
 
             <div
               className={`${styles.optionalFields} ${
-                trackQuantity ? styles.optionalFieldsVisible : ""
+                effectiveTrackQuantity ? styles.optionalFieldsVisible : ""
               }`}
             >
               <div className={styles.field}>

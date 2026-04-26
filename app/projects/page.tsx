@@ -19,7 +19,7 @@ import {
   getAvailableUnits,
   matchesDepartmentGroup,
 } from "@/lib/department-groups";
-import { loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
+import { type DashboardSnapshot, loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
 
 type PageProps = {
   searchParams?: Promise<{
@@ -32,8 +32,23 @@ type PageProps = {
 
 type ProjectFilterKey = "all" | "progress" | "planned";
 type QuickActionMode = "task" | "report" | "none";
+type ProjectCardItem = DashboardSnapshot["projects"][number];
+
 const AUTO_BASE_GROUP_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
 const AUTO_BASE_UNIT_NAME = "Авто бааз";
+const GREEN_SERVICE_GROUP_NAME = "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
+const GREEN_SERVICE_UNITS = [
+  {
+    label: "Ногоон байгууламж",
+    note: "Мод, зүлэг, ногоон байгууламжийн арчилгаа болон тохижилтын ажил",
+    aliases: ["Ногоон байгууламж", "ногоон", "мод", "зүлэг", "ургамал", "усалгаа", "цэцэрлэг"],
+  },
+  {
+    label: "Цэвэрлэгээ үйлчилгээ",
+    note: "Зам талбай, нийтийн эзэмшлийн орчны цэвэрлэгээ үйлчилгээний ажил",
+    aliases: ["Цэвэрлэгээ үйлчилгээ", "Зам талбайн цэвэрлэгээ", "цэвэрл", "зам талбай", "гудамж"],
+  },
+] as const;
 const PROJECT_FILTERS: Array<{ key: ProjectFilterKey; label: string }> = [
   { key: "all", label: "Нийт ажил" },
   { key: "progress", label: "Гүйцэтгэж байгаа" },
@@ -48,7 +63,7 @@ const PROJECT_FILTERS: Array<{ key: ProjectFilterKey; label: string }> = [
   },
   {
     name: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
-    units: ["Ногоон байгууламж", "Зам талбайн цэвэрлэгээ"],
+    units: ["Ногоон байгууламж", "Цэвэрлэгээ үйлчилгээ"],
     icon: "🌿",
   },
   {
@@ -135,6 +150,84 @@ function formatShare(value: number, total: number) {
   return `${Math.round((value / total) * 100)}%`;
 }
 
+function normalizeUnitText(value?: string | null) {
+  return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function matchesUnitScope(unitName: string, departmentName?: string | null, projectName?: string | null) {
+  const normalizedUnit = normalizeUnitText(unitName);
+  const normalizedDepartment = normalizeUnitText(departmentName);
+  const normalizedProject = normalizeUnitText(projectName);
+  const searchText = `${normalizedDepartment} ${normalizedProject}`.trim();
+
+  if (!normalizedUnit || !searchText) {
+    return false;
+  }
+
+  if (normalizedDepartment === normalizedUnit) {
+    return true;
+  }
+
+  const greenServiceUnit = GREEN_SERVICE_UNITS.find(
+    (unit) => normalizeUnitText(unit.label) === normalizedUnit,
+  );
+
+  if (!greenServiceUnit) {
+    return normalizedDepartment.includes(normalizedUnit);
+  }
+
+  const unitSearchText =
+    normalizedDepartment === normalizeUnitText(GREEN_SERVICE_GROUP_NAME)
+      ? normalizedProject
+      : searchText;
+
+  return greenServiceUnit.aliases.some((alias) => unitSearchText.includes(normalizeUnitText(alias)));
+}
+
+function ProjectCardLink({
+  project,
+  href,
+  actionLabel,
+}: {
+  project: ProjectCardItem;
+  href: string;
+  actionLabel: string;
+}) {
+  return (
+    <Link href={href} className={styles.projectCard}>
+      <div className={styles.projectCardTop}>
+        <span>{project.deadline}</span>
+        <StagePill label={project.stageLabel} bucket={project.stageBucket} />
+      </div>
+
+      <h3>{project.name}</h3>
+      <p>
+        Алба нэгж: {project.departmentName} · Менежер: {project.manager}
+      </p>
+
+      <div className={styles.projectMeta}>
+        <div>
+          <span>Нээлттэй ажил</span>
+          <strong>{project.openTasks}</strong>
+        </div>
+        <div>
+          <span>Гүйцэтгэл</span>
+          <strong>{project.completion}%</strong>
+        </div>
+      </div>
+
+      <div className={styles.progressTrack}>
+        <span style={{ width: `${project.completion}%` }} />
+      </div>
+
+      <div className={styles.cardFooter}>
+        <span className={styles.cardLinkLabel}>{actionLabel}</span>
+        <strong aria-hidden>→</strong>
+      </div>
+    </Link>
+  );
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage({ searchParams }: PageProps) {
@@ -207,7 +300,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
     ? filterByDepartment(snapshot.projects, masterDepartmentName)
     : snapshot.projects.filter((project) => {
         if (selectedUnit) {
-          return project.departmentName === selectedUnit;
+          return matchesUnitScope(selectedUnit, project.departmentName, project.name);
         }
         if (selectedGroup) {
           return matchesDepartmentGroup(selectedGroup, project.departmentName);
@@ -235,7 +328,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
     ? filterByDepartment(snapshot.taskDirectory, masterDepartmentName)
     : snapshot.taskDirectory.filter((task) => {
         if (selectedUnit) {
-          return task.departmentName === selectedUnit;
+          return matchesUnitScope(selectedUnit, task.departmentName, task.projectName);
         }
         if (selectedGroup) {
           return matchesDepartmentGroup(selectedGroup, task.departmentName);
@@ -525,6 +618,30 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   const calendarPlanHref = `/tasks${
     calendarPlanParams.toString() ? `?${calendarPlanParams.toString()}` : ""
   }`;
+  const shouldShowGreenServiceSections =
+    !masterMode &&
+    !showAutoBaseFleet &&
+    !selectedUnit &&
+    selectedGroup?.name === GREEN_SERVICE_GROUP_NAME;
+  const greenServiceProjectSections = GREEN_SERVICE_UNITS.map((unit) => ({
+    ...unit,
+    projects: [] as ProjectCardItem[],
+  }));
+  const uncategorizedGreenServiceProjects: ProjectCardItem[] = [];
+
+  if (shouldShowGreenServiceSections) {
+    for (const project of activeProjects) {
+      const section = greenServiceProjectSections.find((item) =>
+        matchesUnitScope(item.label, project.departmentName, project.name),
+      );
+
+      if (section) {
+        section.projects.push(project);
+      } else {
+        uncategorizedGreenServiceProjects.push(project);
+      }
+    }
+  }
 
   return (
     <main className={styles.shell}>
@@ -654,8 +771,10 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                         <strong>
                           {unit === AUTO_BASE_UNIT_NAME && fleetBoard
                             ? fleetBoard.totalVehicles
-                            : snapshot.projects.filter((project) => project.departmentName === unit)
-                                .length}
+                            : snapshot.projects.filter((project) =>
+                                matchesDepartmentGroup(selectedGroup, project.departmentName) &&
+                                matchesUnitScope(unit, project.departmentName, project.name),
+                              ).length}
                         </strong>
                       </Link>
                     );
@@ -852,6 +971,62 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                     Авто баазын машины жагсаалт Odoo-оос ирээгүй байна.
                   </div>
                 )
+              ) : shouldShowGreenServiceSections ? (
+                <div className={styles.unitProjectSections}>
+                  {greenServiceProjectSections.map((section) => (
+                    <section key={section.label} className={styles.unitProjectSection}>
+                      <div className={styles.unitProjectSectionHeader}>
+                        <div>
+                          <span className={styles.unitProjectSectionKicker}>Доторх хэсэг</span>
+                          <h3>{section.label}</h3>
+                          <p>{section.note}</p>
+                        </div>
+                        <strong>{section.projects.length}</strong>
+                      </div>
+
+                      {section.projects.length ? (
+                        <div className={styles.projectRail}>
+                          {section.projects.map((project) => (
+                            <ProjectCardLink
+                              key={project.id}
+                              project={project}
+                              href={buildProjectHref(project.href)}
+                              actionLabel={projectCardLabel}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className={styles.emptyColumnState}>
+                          Одоогоор {section.label} дээр энэ ангиллын ажил алга байна.
+                        </div>
+                      )}
+                    </section>
+                  ))}
+
+                  {uncategorizedGreenServiceProjects.length ? (
+                    <section className={styles.unitProjectSection}>
+                      <div className={styles.unitProjectSectionHeader}>
+                        <div>
+                          <span className={styles.unitProjectSectionKicker}>Нэмэлт</span>
+                          <h3>Бусад ажил</h3>
+                          <p>Доторх хэсэг нь тодорхойгүй бүртгэлүүд</p>
+                        </div>
+                        <strong>{uncategorizedGreenServiceProjects.length}</strong>
+                      </div>
+
+                      <div className={styles.projectRail}>
+                        {uncategorizedGreenServiceProjects.map((project) => (
+                          <ProjectCardLink
+                            key={project.id}
+                            project={project}
+                            href={buildProjectHref(project.href)}
+                            actionLabel={projectCardLabel}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  ) : null}
+                </div>
               ) : activeProjects.length ? (
                 <>
                   {masterMode ? (
@@ -899,41 +1074,12 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                   ) : (
                     <div className={styles.projectRail}>
                       {activeProjects.map((project) => (
-                        <Link
+                        <ProjectCardLink
                           key={project.id}
+                          project={project}
                           href={buildProjectHref(project.href)}
-                          className={styles.projectCard}
-                        >
-                          <div className={styles.projectCardTop}>
-                            <span>{project.deadline}</span>
-                            <StagePill label={project.stageLabel} bucket={project.stageBucket} />
-                          </div>
-
-                          <h3>{project.name}</h3>
-                          <p>
-                            Алба нэгж: {project.departmentName} · Менежер: {project.manager}
-                          </p>
-
-                          <div className={styles.projectMeta}>
-                            <div>
-                              <span>Нээлттэй ажил</span>
-                              <strong>{project.openTasks}</strong>
-                            </div>
-                            <div>
-                              <span>Гүйцэтгэл</span>
-                              <strong>{project.completion}%</strong>
-                            </div>
-                          </div>
-
-                          <div className={styles.progressTrack}>
-                            <span style={{ width: `${project.completion}%` }} />
-                          </div>
-
-                          <div className={styles.cardFooter}>
-                            <span className={styles.cardLinkLabel}>{projectCardLabel}</span>
-                            <strong aria-hidden>→</strong>
-                          </div>
-                        </Link>
+                          actionLabel={projectCardLabel}
+                        />
                       ))}
                     </div>
                   )}

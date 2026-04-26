@@ -1,7 +1,12 @@
 import { DashboardView } from "@/app/dashboard-view";
 import { hasCapability, isWorkerOnly, requireSession } from "@/lib/auth";
 import { loadAssignedGarbageTasks } from "@/lib/field-ops";
-import { loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
+import {
+  loadFleetVehicleBoard,
+  loadHrDailyAttendanceSummary,
+  loadMunicipalSnapshot,
+  type HrDailyAttendanceSummary,
+} from "@/lib/odoo";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +28,15 @@ export default async function Home() {
     repairCount: 0,
   };
   let fleetLoadError = "";
+  let hrAttendanceSummary: HrDailyAttendanceSummary = {
+    totalEmployees: 0,
+    workingToday: 0,
+    absentToday: 0,
+    sickToday: 0,
+    leaveToday: 0,
+    generatedAt: "",
+    source: "empty",
+  };
 
   try {
     fleetBoard = await loadFleetVehicleBoard({
@@ -32,6 +46,15 @@ export default async function Home() {
   } catch (error) {
     console.warn("Fleet vehicle board could not be loaded for dashboard:", error);
     fleetLoadError = "Техникийн мэдээллийг Odoo Fleet-ээс уншиж чадсангүй.";
+  }
+
+  try {
+    hrAttendanceSummary = await loadHrDailyAttendanceSummary({
+      login: session.login,
+      password: session.password,
+    });
+  } catch (error) {
+    console.warn("HR attendance summary could not be loaded for dashboard:", error);
   }
 
   if (isWorkerOnly(session) && canUseFieldConsole) {
@@ -58,6 +81,7 @@ export default async function Home() {
       todayAssignments={todayAssignments}
       fleetBoard={fleetBoard}
       fleetLoadError={fleetLoadError}
+      hrAttendanceSummary={hrAttendanceSummary}
     />
   );
 }

@@ -11,10 +11,10 @@
   padding: 28px 32px 62px;
   border-bottom: 1px solid rgba(46, 125, 50, 0.08);
   background:
-    linear-gradient(90deg, rgba(246, 251, 246, 0.94) 0%, rgba(246, 251, 246, 0.58) 35%, rgba(246, 251, 246, 0.05) 100%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(246, 251, 246, 0.68)),
-    url("https://images.pexels.com/photos/28835680/pexels-photo-28835680.jpeg?auto=compress&cs=tinysrgb&w=1800");
-  background-position: center;
+    linear-gradient(90deg, rgba(246, 251, 246, 0.94) 0%, rgba(246, 251, 246, 0.58) 42%, rgba(246, 251, 246, 0.08) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(246, 251, 246, 0.58)),
+    var(--workspace-header-image);
+  background-position: center bottom;
   background-size: cover;
 }
 
@@ -45,7 +45,7 @@
   font-family: var(--font-inter), var(--font-body), sans-serif;
   font-size: clamp(1.42rem, 2.2vw, 2rem);
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
   line-height: 1.05;
 }
 
@@ -91,7 +91,7 @@
   gap: 10px;
   min-height: 42px;
   padding: 0 14px;
-  border-radius: 14px;
+  border-radius: var(--ds-radius-card);
   color: #1b1b1b;
 }
 
@@ -115,7 +115,7 @@
   width: 42px;
   height: 42px;
   place-items: center;
-  border-radius: 14px;
+  border-radius: var(--ds-radius-card);
   color: #1b1b1b;
 }
 
@@ -145,7 +145,7 @@
   min-width: 236px;
   min-height: 54px;
   padding: 8px 12px 8px 14px;
-  border-radius: 14px;
+  border-radius: var(--ds-radius-card);
   color: #1b1b1b;
 }
 

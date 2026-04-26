@@ -1308,6 +1308,68 @@
   gap: 16px;
 }
 
+.unitProjectSections {
+  display: grid;
+  gap: 16px;
+}
+
+.unitProjectSection {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(74, 154, 93, 0.12);
+  border-radius: 8px;
+  background: rgba(247, 252, 246, 0.78);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.56);
+}
+
+.unitProjectSectionHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.unitProjectSectionKicker {
+  color: #75867b;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.unitProjectSectionHeader h3 {
+  margin: 4px 0 0;
+  color: #1e2b24;
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.unitProjectSectionHeader p {
+  margin: 5px 0 0;
+  max-width: 620px;
+  color: #75867b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.unitProjectSectionHeader > strong {
+  display: inline-grid;
+  min-width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-900);
+  font-size: 0.9rem;
+}
+
+.unitProjectSection .projectRail {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .projectCard {
   display: grid;
   gap: 14px;
@@ -2541,6 +2603,7 @@
     font-size: 1.55rem;
   }
 
+  .unitProjectSection .projectRail,
   .projectRail,
   .projectMeta {
     grid-template-columns: 1fr;
@@ -3463,6 +3526,292 @@
   .modalDialog,
   .requestCard {
     border-radius: 20px;
+    padding: 16px;
+  }
+}
+
+/* Reference dashboard alignment across workspace pages */
+.shell,
+.workspaceShell,
+.chatShell,
+.errorShell,
+.page,
+.reportPage,
+.reportPreviewShell {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(246, 251, 246, 0.98), rgba(237, 247, 238, 0.98)),
+    #f6fbf6;
+  color: #1b1b1b;
+  font-family: var(--font-inter), var(--font-body), sans-serif;
+}
+
+.contentWithMenu,
+.workspaceShell {
+  grid-template-columns: 236px minmax(0, 1fr);
+  gap: 0;
+  align-items: stretch;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.menuColumn,
+.workspaceSidebar,
+.sideRail {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  min-height: 100vh;
+  border-right: 1px solid rgba(46, 125, 50, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.pageContent,
+.workspaceMain,
+.mainColumn {
+  min-width: 0;
+  padding: 0 24px 40px;
+  overflow-x: hidden;
+}
+
+.workspaceSection,
+.dashboardWorkspaceSection,
+.heroCard,
+.pageHeader,
+.sectionCard,
+.panel,
+.formCard,
+.form,
+.footerHint,
+.signalCard,
+.featureCard,
+.overviewPanel,
+.metricCard,
+.statCard,
+.summaryCard,
+.summaryBox,
+.alertCard,
+.attentionPanel,
+.dashboardCard,
+.dashboardPanel,
+.reportCard,
+.taskItem,
+.taskCard,
+.taskSection,
+.detailCard,
+.infoCard,
+.noticeCard,
+.noticeBanner,
+.errorCard,
+.emptyState,
+.pickerCard,
+.pickerSection,
+.conversationPanel,
+.conversationList,
+.messagePanel,
+.composer,
+.vehicleCard,
+.inventoryCard,
+.routeCard,
+.employeeCard,
+.employeeModal,
+.modalDialog,
+.modalCard,
+.confirmationSheet,
+.overviewBoard,
+.requestCard,
+.flowCard,
+.flowBarCard,
+.workflowSummaryCard,
+.workflowMetaCard,
+.workflowItem,
+.historyCard,
+.documentCard,
+.filterPanel,
+.calendarPanel,
+.calendarCard,
+.weightCard,
+.weightSummaryCard,
+.weightDayCard,
+.weightMetaCard,
+.mapHintCard,
+.stopCard,
+.mobilePanel,
+.mobileDetailCard,
+.mobileUtilityCard,
+.boardCard,
+.boardInfoCard,
+.rolePanel,
+.roleMetaCard,
+.capabilityCard,
+.logoutCard,
+.tableShell {
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--ds-shadow-panel);
+  backdrop-filter: blur(16px);
+}
+
+.workspaceSection,
+.dashboardWorkspaceSection {
+  margin-bottom: 16px;
+  padding: 18px;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton,
+.submitButton,
+.fullButton,
+.actionButton,
+.actionPrimary,
+.actionSecondary,
+.actionGhost,
+.primaryAction,
+.secondaryAction,
+.primaryLink,
+.secondaryLink,
+.smallLink,
+.backLink,
+.inlineLink,
+.rowButton,
+.dateButton,
+.locationAddButton,
+.createTaskTrigger,
+.closeButton,
+.modalCloseButton,
+.modalActions button,
+.subnavLink,
+.filterChip,
+.taskFilterChip,
+.departmentTab,
+.departmentFilterButton,
+.routeChip,
+.modeChip,
+.pickerCta,
+.cardLinkLabel {
+  min-height: 38px;
+  border-radius: var(--ds-radius-control);
+  border-color: rgba(46, 125, 50, 0.12);
+  background: rgba(255, 255, 255, 0.86);
+  color: #1b1b1b;
+  font-family: var(--font-inter), var(--font-body), sans-serif;
+  font-weight: 800;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+
+.primaryButton,
+.submitButton,
+.actionPrimary,
+.primaryAction,
+.subnavLinkActive,
+.filterChipActive,
+.taskFilterChipActive,
+.departmentTabActive,
+.departmentFilterButtonActive,
+.routeChipActive,
+.modeChipActive {
+  border-color: rgba(46, 125, 50, 0.16);
+  background: #2e7d32;
+  color: #fff;
+}
+
+.field input,
+.field select,
+.field textarea,
+.form input,
+.form select,
+.form textarea,
+.dateInput,
+.mobileBucketInput,
+.searchableSelectButton,
+.searchableSelectSearch,
+.locationComposer input,
+.quoteForm input,
+.quoteForm textarea,
+.registrationForm input,
+.registrationForm select,
+.registrationForm textarea,
+.modalForm input,
+.modalForm select,
+.modalForm textarea {
+  min-height: 40px;
+  border-color: rgba(46, 125, 50, 0.12);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+
+.kicker,
+.eyebrow,
+.formBadge,
+.contextTag,
+.sectionEyebrow,
+.sectionKicker,
+.overviewEyebrow,
+.pageKicker,
+.roleEyebrow,
+.masterInsightsKicker,
+.boardEyebrow,
+.mobileDetailEyebrow {
+  min-height: 30px;
+  border-radius: var(--ds-radius-control);
+  background: rgba(218, 238, 219, 0.9);
+  color: #2e7d32;
+  font-family: var(--font-inter), var(--font-body), sans-serif;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+@media (max-width: 1080px) {
+  .contentWithMenu,
+  .workspaceShell {
+    grid-template-columns: 1fr;
+  }
+
+  .menuColumn,
+  .workspaceSidebar,
+  .sideRail {
+    position: static;
+    min-height: 0;
+    border-right: 0;
+    background: transparent;
+  }
+
+  .pageContent,
+  .workspaceMain,
+  .mainColumn {
+    padding: 0 18px 104px;
+  }
+}
+
+@media (max-width: 720px) {
+  .pageContent,
+  .workspaceMain,
+  .mainColumn {
+    padding: 0 12px 112px;
+  }
+
+  .workspaceSection,
+  .dashboardWorkspaceSection,
+  .heroCard,
+  .pageHeader,
+  .sectionCard,
+  .panel,
+  .formCard,
+  .form,
+  .overviewPanel,
+  .metricCard,
+  .reportCard,
+  .taskItem,
+  .detailCard,
+  .employeeCard,
+  .modalDialog,
+  .requestCard {
     padding: 16px;
   }
 }

@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 import { Bell, CalendarDays, ChevronDown, Leaf } from "lucide-react";
 
 import styles from "./workspace-header.module.css";
@@ -9,7 +11,11 @@ type WorkspaceHeaderProps = {
   roleLabel: string;
   notificationCount?: number;
   notificationNote?: string;
+  backgroundImage?: string;
 };
+
+const DEFAULT_HEADER_IMAGE =
+  "/illustrations/green-city-hero.svg";
 
 function formatHeaderDate() {
   const parts = new Intl.DateTimeFormat("mn-MN", {
@@ -33,6 +39,7 @@ export function WorkspaceHeader({
   roleLabel,
   notificationCount = 0,
   notificationNote,
+  backgroundImage = DEFAULT_HEADER_IMAGE,
 }: WorkspaceHeaderProps) {
   const safeNotificationCount = Math.max(0, Math.round(notificationCount));
   const noticeText =
@@ -42,7 +49,10 @@ export function WorkspaceHeader({
       : "Шинэ анхаарах зүйл алга");
 
   return (
-    <header className={styles.header}>
+    <header
+      className={styles.header}
+      style={{ "--workspace-header-image": `url("${backgroundImage}")` } as CSSProperties}
+    >
       <Leaf className={styles.leafOne} aria-hidden />
       <Leaf className={styles.leafTwo} aria-hidden />
       <Leaf className={styles.leafThree} aria-hidden />
