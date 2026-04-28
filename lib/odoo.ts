@@ -27,6 +27,7 @@ type OdooTaskRecord = {
   project_id: OdooRelation;
   ops_department_id?: OdooRelation;
   stage_id: OdooRelation;
+  create_date?: string | false;
   ops_team_leader_id?: OdooRelation;
   user_ids?: number[];
   ops_planned_quantity?: number;
@@ -193,9 +194,11 @@ export type TaskDirectoryItem = {
   projectName: string;
   stageLabel: string;
   stageBucket: StageBucket;
+  createdDate?: string | null;
   statusKey: TaskStatusKey;
   statusLabel: string;
   deadline: string;
+  deadlineDateTime?: string | null;
   scheduledDate?: string | null;
   leaderName: string;
   priorityLabel: string;
@@ -539,6 +542,7 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "name",
     "project_id",
     "stage_id",
+    "create_date",
     "ops_team_leader_id",
     "user_ids",
     "ops_planned_quantity",
@@ -566,6 +570,7 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "name",
     "project_id",
     "stage_id",
+    "create_date",
     "ops_team_leader_id",
     "user_ids",
     "ops_planned_quantity",
@@ -587,6 +592,7 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "name",
     "project_id",
     "stage_id",
+    "create_date",
     "ops_team_leader_id",
     "user_ids",
     "ops_planned_quantity",
@@ -605,6 +611,7 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "name",
     "project_id",
     "stage_id",
+    "create_date",
     "ops_team_leader_id",
     "user_ids",
     "ops_planned_quantity",
@@ -1282,6 +1289,14 @@ function resolveNormalizedTaskDepartmentName(
     });
   }
 
+  const projectId = Array.isArray(task.project_id) ? task.project_id[0] : null;
+  if (projectId && projectDepartmentById.get(projectId)) {
+    return normalizeDepartmentUnitName(projectDepartmentById.get(projectId) as string, {
+      operationType: task.mfo_operation_type,
+      labelText: `${task.name} ${relationName(task.project_id, "")}`,
+    });
+  }
+
   const inferredFromOperation = departmentUnitFromOperationType(task.mfo_operation_type);
   if (inferredFromOperation) {
     return inferredFromOperation;
@@ -1292,14 +1307,6 @@ function resolveNormalizedTaskDepartmentName(
   );
   if (inferredFromText !== UNKNOWN_DEPARTMENT) {
     return inferredFromText;
-  }
-
-  const projectId = Array.isArray(task.project_id) ? task.project_id[0] : null;
-  if (projectId && projectDepartmentById.get(projectId)) {
-    return normalizeDepartmentUnitName(projectDepartmentById.get(projectId) as string, {
-      operationType: task.mfo_operation_type,
-      labelText: `${task.name} ${relationName(task.project_id, "")}`,
-    });
   }
 
   return UNKNOWN_DEPARTMENT;
@@ -2361,9 +2368,11 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         projectName: relationName(task.project_id, "Ажилгүй"),
         stageLabel: STAGE_LABELS[stageBucket],
         stageBucket,
+        createdDate: getDateKeyFromValue(task.create_date || null),
         statusKey,
         statusLabel: getTaskStatusLabel(statusKey),
         deadline: formatCompactDate(task.date_deadline),
+        deadlineDateTime: task.date_deadline || null,
         scheduledDate: getDateKeyFromValue(task.mfo_shift_date || task.date_deadline || null),
         leaderName: relationName(task.ops_team_leader_id ?? false),
         priorityLabel: priorityLabel(task.priority || ""),

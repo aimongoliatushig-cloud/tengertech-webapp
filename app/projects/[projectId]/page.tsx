@@ -13,6 +13,8 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { filterByDepartment } from "@/lib/dashboard-scope";
 import { loadProjectDetail } from "@/lib/workspace";
 
 import { ProjectTaskCreateForm } from "./project-task-create-form";
@@ -124,6 +126,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   const quickActionMode = normalizeQuickAction(getParam(query.quickAction));
   const safeReturnTo = returnTo.startsWith("/") ? returnTo : "";
   const masterMode = isMasterRole(session.role);
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
   const activeMenuKey = safeReturnTo.startsWith("/tasks")
     ? "tasks"
     : masterMode
@@ -162,6 +165,13 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
         </div>
       </main>
     );
+  }
+
+  if (
+    scopedDepartmentName &&
+    filterByDepartment([{ departmentName: project.departmentName }], scopedDepartmentName).length === 0
+  ) {
+    redirect("/projects");
   }
 
   const canCreateProject = hasCapability(session, "create_projects");
@@ -239,6 +249,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               masterMode={masterMode}
+              departmentScopeName={scopedDepartmentName}
             />
           </aside>
 

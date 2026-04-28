@@ -12,6 +12,8 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import {
   DEPARTMENT_GROUPS,
   findDepartmentGroupByName,
@@ -132,9 +134,19 @@ export default async function ReviewPage({ searchParams }: PageProps) {
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  const sourceTaskDirectory = filterByDepartment(snapshot.taskDirectory, scopedDepartmentName);
+  const sourceReviewQueue = filterByDepartment(snapshot.reviewQueue, scopedDepartmentName);
+  const sourceProjects = filterByDepartment(snapshot.projects, scopedDepartmentName);
+  const sourceDepartments = scopedDepartmentName
+    ? snapshot.departments.filter(
+        (department) =>
+          filterByDepartment([{ departmentName: department.name }], scopedDepartmentName).length > 0,
+      )
+    : snapshot.departments;
 
   const scopeMap = new Map<string, ReviewScope>();
-  for (const department of snapshot.departments) {
+  for (const department of sourceDepartments) {
     scopeMap.set(
       department.name,
       createUnitScope(department.name, {
@@ -146,16 +158,16 @@ export default async function ReviewPage({ searchParams }: PageProps) {
   }
 
   const allDepartmentNames = new Set<string>();
-  for (const department of snapshot.departments) {
+  for (const department of sourceDepartments) {
     allDepartmentNames.add(department.name);
   }
-  for (const task of snapshot.taskDirectory) {
+  for (const task of sourceTaskDirectory) {
     allDepartmentNames.add(task.departmentName);
   }
-  for (const item of snapshot.reviewQueue) {
+  for (const item of sourceReviewQueue) {
     allDepartmentNames.add(item.departmentName);
   }
-  for (const project of snapshot.projects) {
+  for (const project of sourceProjects) {
     allDepartmentNames.add(project.departmentName);
   }
 
@@ -182,7 +194,7 @@ export default async function ReviewPage({ searchParams }: PageProps) {
   }
 
   const scopes = Array.from(scopeMap.values()).map((scope) => {
-    const scopeTasks = snapshot.taskDirectory.filter((task) =>
+    const scopeTasks = sourceTaskDirectory.filter((task) =>
       scopeMatches(scope, task.departmentName),
     );
     const activeTasks = scopeTasks.filter(
@@ -205,7 +217,7 @@ export default async function ReviewPage({ searchParams }: PageProps) {
 
   const orderedScopes: ReviewScope[] = [];
   const appended = new Set<string>();
-  for (const department of snapshot.departments) {
+  for (const department of sourceDepartments) {
     const groupedScope =
       findDepartmentGroupByName(department.name) ?? findDepartmentGroupByUnit(department.name);
     const groupedScopeName = groupedScope?.name ?? null;
@@ -249,19 +261,28 @@ export default async function ReviewPage({ searchParams }: PageProps) {
     orderedScopes.find((scope) => scope.reviewTasks > 0) ??
     orderedScopes[0];
 
-  const scopedTasks = snapshot.taskDirectory.filter((task) =>
+  const scopedTasks = sourceTaskDirectory.filter((task) =>
     selectedScope ? scopeMatches(selectedScope, task.departmentName) : false,
   );
   const activeTasks = scopedTasks
     .filter((task) => task.stageBucket === "todo" || task.stageBucket === "progress")
     .sort((left, right) => right.progress - left.progress || left.name.localeCompare(right.name, "mn"));
-  const visibleReviewTasks = snapshot.reviewQueue.filter((item) =>
+  const visibleReviewTasks = sourceReviewQueue.filter((item) =>
     selectedScope ? scopeMatches(selectedScope, item.departmentName) : false,
   );
+  const todayDateKey = getTodayDateKey();
+  const newIncomingTasks = scopedTasks.filter(
+    (task) => task.createdDate === todayDateKey && task.statusKey !== "verified",
+  );
+  const notificationTaskIds = new Set([
+    ...visibleReviewTasks.map((task) => task.id),
+    ...newIncomingTasks.map((task) => task.id),
+  ]);
+  const notificationCount = notificationTaskIds.size;
   const reviewedTasks = scopedTasks
     .filter((task) => task.stageBucket === "done")
     .sort((left, right) => right.progress - left.progress || left.name.localeCompare(right.name, "mn"));
-  const scopedProjects = snapshot.projects.filter((project) =>
+  const scopedProjects = sourceProjects.filter((project) =>
     selectedScope ? scopeMatches(selectedScope, project.departmentName) : false,
   );
 
@@ -322,6 +343,8 @@ export default async function ReviewPage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              departmentScopeName={scopedDepartmentName}
+              notificationCount={notificationCount}
             />
           </aside>
 
@@ -331,8 +354,8 @@ export default async function ReviewPage({ searchParams }: PageProps) {
               subtitle="Шалгах, батлах урсгалын нэгтгэсэн самбар"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
-              notificationCount={visibleReviewTasks.length}
-              notificationNote={`${visibleReviewTasks.length} ажилбар шийдвэр хүлээж байна`}
+              notificationCount={notificationCount}
+              notificationNote={`${newIncomingTasks.length} шинэ ажил, ${visibleReviewTasks.length} хянах ажил байна`}
             />
 
             <section className={shellStyles.heroCard}>
@@ -441,48 +464,71 @@ export default async function ReviewPage({ searchParams }: PageProps) {
               </div>
             </section>
 
-            <section className={dashboardStyles.projectsSection}>
-              <div className={dashboardStyles.sectionHeader}>
+            <section className={reviewStyles.scopeSection}>
+              <div className={reviewStyles.scopeHeader}>
                 <div>
-                  <span className={dashboardStyles.kicker}>Алба нэгжийн шүүлт</span>
+                  <span className={reviewStyles.kicker}>Алба нэгжийн шүүлт</span>
                   <h2>Ямар нэгжийн хяналтыг харах вэ</h2>
-                  <small className={dashboardStyles.sectionNote}>
-                    Нэг удаад зөвхөн нэг алба нэгжийн урсгал, хянах ажил, хянасан ажлыг харуулна
-                  </small>
+                  <p>
+                    Нэг нэгж сонгоод тухайн хэлтсийн явж буй, хянах болон хянасан
+                    ажлын урсгалыг нэг дор харна.
+                  </p>
+                </div>
+                <div className={reviewStyles.scopeTotalPill}>
+                  <strong>{orderedScopes.length}</strong>
+                  <small>нэгж</small>
                 </div>
               </div>
 
-              <nav
-                className={dashboardStyles.departmentSelector}
-                aria-label="Алба нэгж сонгох цэс"
-              >
-                <div className={dashboardStyles.departmentTabBar}>
-                  {orderedScopes.map((scope) => {
-                    const isActive = scope.name === selectedScope?.name;
+              <nav className={reviewStyles.scopeGrid} aria-label="Алба нэгж сонгох">
+                {orderedScopes.map((scope) => {
+                  const isActive = scope.name === selectedScope?.name;
 
-                    return (
-                      <Link
-                        key={scope.name}
-                        href={`/review?department=${encodeURIComponent(scope.name)}`}
-                        className={`${dashboardStyles.departmentTab} ${
-                          isActive ? dashboardStyles.departmentTabActive : ""
-                        }`}
-                        aria-current={isActive ? "page" : undefined}
-                      >
-                        <span className={dashboardStyles.departmentTabLabel}>
-                          <span className={dashboardStyles.departmentTabIcon} aria-hidden>
+                  return (
+                    <Link
+                      key={scope.name}
+                      href={`/review?department=${encodeURIComponent(scope.name)}`}
+                      className={`${reviewStyles.scopeCard} ${
+                        isActive ? reviewStyles.scopeCardActive : ""
+                      }`}
+                      aria-current={isActive ? "page" : undefined}
+                    >
+                      <div className={reviewStyles.scopeCardTop}>
+                        <span className={reviewStyles.scopeName}>
+                          <span className={reviewStyles.scopeIcon} aria-hidden>
                             {scope.icon}
                           </span>
-                          <span>{scope.name}</span>
+                          <span>
+                            <strong>{scope.name}</strong>
+                            <small>{scope.label}</small>
+                          </span>
                         </span>
-                        <strong>{scope.reviewTasks}</strong>
-                      </Link>
-                    );
-                  })}
-                </div>
+                        <span className={reviewStyles.scopeBadge}>{scope.reviewTasks}</span>
+                      </div>
+
+                      <div className={reviewStyles.scopeStats}>
+                        <span className={reviewStyles.scopeStat}>
+                          <span>Явж буй</span>
+                          <strong>{scope.activeTasks}</strong>
+                        </span>
+                        <span className={reviewStyles.scopeStat}>
+                          <span>Хянах</span>
+                          <strong>{scope.reviewTasks}</strong>
+                        </span>
+                        <span className={reviewStyles.scopeStat}>
+                          <span>Хянасан</span>
+                          <strong>{scope.doneTasks}</strong>
+                        </span>
+                      </div>
+
+                      <span className={reviewStyles.scopeProgress} aria-hidden>
+                        <span style={{ width: `${Math.max(scope.completion, 4)}%` }} />
+                      </span>
+                    </Link>
+                  );
+                })}
               </nav>
             </section>
-
             {selectedScope ? (
               <section className={dashboardStyles.projectsSection}>
                 <div className={dashboardStyles.selectedDepartmentHeader}>

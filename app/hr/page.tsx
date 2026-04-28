@@ -8,6 +8,8 @@ import {
   hasCapability,
   requireSession,
 } from "@/lib/auth";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { filterByDepartment } from "@/lib/dashboard-scope";
 import { loadHrEmployeeDirectory } from "@/lib/odoo";
 
 import { HrDirectory } from "./hr-directory";
@@ -32,11 +34,19 @@ function getParam(value?: string | string[]) {
 
 export default async function HrPage({ searchParams }: PageProps) {
   const session = await requireSession();
-  const allowedRoles = new Set(["system_admin", "director", "general_manager"]);
+  const allowedRoles = new Set([
+    "system_admin",
+    "director",
+    "general_manager",
+    "project_manager",
+    "senior_master",
+    "team_leader",
+  ]);
 
   if (!allowedRoles.has(String(session.role))) {
     redirect("/");
   }
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
 
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -52,6 +62,7 @@ export default async function HrPage({ searchParams }: PageProps) {
       login: session.login,
       password: session.password,
     });
+    employees = filterByDepartment(employees, scopedDepartmentName);
   } catch (error) {
     console.error("HR directory could not be loaded:", error);
     loadError =
@@ -98,6 +109,7 @@ export default async function HrPage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              departmentScopeName={scopedDepartmentName}
             />
           </aside>
 

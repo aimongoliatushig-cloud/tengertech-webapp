@@ -13,11 +13,11 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
   filterByDepartment,
   filterTasksToDate,
   getTodayDateKey,
-  pickPrimaryDepartmentName,
 } from "@/lib/dashboard-scope";
 import {
   DEPARTMENT_GROUPS,
@@ -115,24 +115,21 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const masterMode = isMasterRole(session.role);
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  const departmentScopedMode = Boolean(scopedDepartmentName);
 
   const params = (await searchParams) ?? {};
   const requestedDepartment = getDepartmentParam(params.department);
   const requestedUnit = getDepartmentParam(params.unit);
-  const masterDepartmentName = masterMode
-    ? pickPrimaryDepartmentName({
-        taskDirectory: snapshot.taskDirectory,
-        reports: snapshot.reports,
-        projects: snapshot.projects,
-        departments: snapshot.departments,
-      })
-    : null;
 
   const selectedGroup =
-    !masterMode && requestedDepartment && requestedDepartment !== "all"
-      ? findDepartmentGroupByName(requestedDepartment) ??
-        findDepartmentGroupByUnit(requestedDepartment)
-      : null;
+    departmentScopedMode
+      ? findDepartmentGroupByName(scopedDepartmentName ?? "") ??
+        findDepartmentGroupByUnit(scopedDepartmentName ?? "")
+      : requestedDepartment && requestedDepartment !== "all"
+        ? findDepartmentGroupByName(requestedDepartment) ??
+          findDepartmentGroupByUnit(requestedDepartment)
+        : null;
   const availableUnits = selectedGroup ? getAvailableUnits(selectedGroup) : [];
   const selectedUnit =
     requestedUnit && availableUnits.includes(requestedUnit)
@@ -150,15 +147,15 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         : true;
   const todayDateKey = getTodayDateKey();
 
-  const filteredReports = masterMode
-    ? filterByDepartment(snapshot.reports, masterDepartmentName)
+  const filteredReports = departmentScopedMode
+    ? filterByDepartment(snapshot.reports, scopedDepartmentName)
     : snapshot.reports.filter((report) => matchesSelectedDepartment(report.departmentName));
 
-  const filteredReviewQueue = masterMode
-    ? filterByDepartment(snapshot.reviewQueue, masterDepartmentName)
+  const filteredReviewQueue = departmentScopedMode
+    ? filterByDepartment(snapshot.reviewQueue, scopedDepartmentName)
     : snapshot.reviewQueue.filter((item) => matchesSelectedDepartment(item.departmentName));
-  const filteredTaskDirectory = masterMode
-    ? filterByDepartment(snapshot.taskDirectory, masterDepartmentName)
+  const filteredTaskDirectory = departmentScopedMode
+    ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
     : snapshot.taskDirectory.filter((task) => matchesSelectedDepartment(task.departmentName));
   const todayScopedTasks = filterTasksToDate(filteredTaskDirectory, todayDateKey);
   const todayActiveTasks = todayScopedTasks.filter(
@@ -198,7 +195,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     .sort((left, right) => right.reports[0].id - left.reports[0].id);
 
   const selectedDepartmentName = masterMode
-    ? masterDepartmentName ?? "Миний алба нэгж"
+    ? scopedDepartmentName ?? "Миний алба нэгж"
     : selectedUnit || selectedGroup?.name || "Бүх хэлтэс";
   const totalImages = filteredReports.reduce((sum, report) => sum + report.imageCount, 0);
   const totalAudios = filteredReports.reduce((sum, report) => sum + report.audioCount, 0);
@@ -284,6 +281,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               masterMode={masterMode}
+              departmentScopeName={scopedDepartmentName}
             />
           </aside>
 
@@ -317,7 +315,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               </div>
             </header>
 
-            {!masterMode ? (
+            {!departmentScopedMode ? (
               <section className={styles.sectionCard}>
                 <div className={dashboardStyles.sectionHeader}>
                   <div>

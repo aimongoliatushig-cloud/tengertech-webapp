@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 
-import { Bell, CalendarDays, ChevronDown, Leaf, Menu } from "lucide-react";
+import Link from "next/link";
+import { Bell, CalendarDays, ChevronDown, Leaf } from "lucide-react";
 
 import styles from "./workspace-header.module.css";
 
@@ -11,6 +12,7 @@ type WorkspaceHeaderProps = {
   roleLabel: string;
   notificationCount?: number;
   notificationNote?: string;
+  notificationHref?: string;
   backgroundImage?: string;
 };
 
@@ -39,6 +41,7 @@ export function WorkspaceHeader({
   roleLabel,
   notificationCount = 0,
   notificationNote,
+  notificationHref = "/notifications",
   backgroundImage = DEFAULT_HEADER_IMAGE,
 }: WorkspaceHeaderProps) {
   const safeNotificationCount = Math.max(0, Math.round(notificationCount));
@@ -58,9 +61,6 @@ export function WorkspaceHeader({
       <Leaf className={styles.leafThree} aria-hidden />
 
       <div className={styles.titleArea}>
-        <button type="button" className={styles.menuButton} aria-label="Цэс">
-          <Menu aria-hidden />
-        </button>
         <div className={styles.titleBlock}>
           <h1>
             {title}
@@ -76,10 +76,15 @@ export function WorkspaceHeader({
           <span>{formatHeaderDate()}</span>
         </div>
 
-        <div className={styles.notificationButton} title={noticeText} aria-label={noticeText}>
+        <Link
+          className={styles.notificationButton}
+          href={notificationHref}
+          title={noticeText}
+          aria-label={`${noticeText}. Мэдэгдэл харах`}
+        >
           <Bell aria-hidden />
           {safeNotificationCount > 0 ? <span>{safeNotificationCount}</span> : null}
-        </div>
+        </Link>
 
         <div className={styles.headerUser}>
           <div>

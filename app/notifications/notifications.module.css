@@ -1,0 +1,155 @@
+.notificationGrid {
+  display: grid;
+  gap: 16px;
+}
+
+.notificationCard,
+.emptyCard {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.listHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.listHeader h2 {
+  margin: 0;
+  color: var(--ink-900);
+  font-size: clamp(1.4rem, 2vw, 1.9rem);
+}
+
+.listHeader p {
+  margin: 6px 0 0;
+  color: var(--ink-600);
+}
+
+.notificationList {
+  display: grid;
+  gap: 12px;
+}
+
+.notificationCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.notificationCard:hover {
+  transform: translateY(-1px);
+  border-color: rgba(46, 125, 50, 0.2);
+  box-shadow: 0 18px 38px rgba(27, 73, 38, 0.11);
+}
+
+.iconBubble {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 16px;
+  background: rgba(46, 125, 50, 0.1);
+  color: var(--brand-800);
+}
+
+.iconBubble svg {
+  width: 20px;
+  height: 20px;
+}
+
+.notificationTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.notificationTitle strong {
+  color: var(--ink-900);
+  font-size: 1rem;
+}
+
+.reasonPill {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 9px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-800);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.reasonPillUrgent {
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+}
+
+.notificationMeta {
+  margin: 7px 0 0;
+  color: var(--ink-600);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.notificationProgress {
+  display: grid;
+  gap: 5px;
+  min-width: 86px;
+  text-align: right;
+}
+
+.notificationProgress strong {
+  color: var(--ink-900);
+  font-size: 1.05rem;
+}
+
+.notificationProgress span {
+  color: var(--ink-600);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.emptyCard {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 40px 20px;
+  color: var(--ink-600);
+  text-align: center;
+}
+
+.emptyCard strong {
+  color: var(--ink-900);
+  font-size: 1.2rem;
+}
+
+@media (max-width: 640px) {
+  .notificationCard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .listHeader {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .notificationProgress {
+    min-width: 0;
+    text-align: left;
+  }
+}

@@ -29,25 +29,6 @@
   min-width: 0;
 }
 
-.menuButton {
-  display: inline-grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: #111b15;
-  cursor: pointer;
-}
-
-.menuButton svg {
-  width: 22px;
-  height: 22px;
-  stroke-width: 2.35;
-}
-
 .titleBlock {
   position: relative;
   z-index: 1;
@@ -138,6 +119,22 @@
   place-items: center;
   border-radius: var(--ds-radius-card);
   color: #1b1b1b;
+  text-decoration: none;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.notificationButton:hover {
+  border-color: rgba(46, 125, 50, 0.22);
+  box-shadow: 0 16px 34px rgba(27, 73, 38, 0.12);
+  transform: translateY(-1px);
+}
+
+.notificationButton:focus-visible {
+  outline: 3px solid rgba(46, 125, 50, 0.22);
+  outline-offset: 3px;
 }
 
 .notificationButton span {
@@ -328,11 +325,6 @@
 
   .headerUser small {
     font-size: 0.68rem;
-  }
-
-  .menuButton {
-    width: 32px;
-    height: 32px;
   }
 
   .leafOne {

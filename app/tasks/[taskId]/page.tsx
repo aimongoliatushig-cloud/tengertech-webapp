@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
@@ -18,6 +19,9 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { filterByDepartment } from "@/lib/dashboard-scope";
+import { loadMunicipalSnapshot } from "@/lib/odoo";
 import { loadTaskDetail } from "@/lib/workspace";
 
 import styles from "./task-detail.module.css";
@@ -82,6 +86,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const openReportComposer = composer === "report";
   const workerMode = isWorkerOnly(session);
   const masterMode = isMasterRole(session.role);
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
   const fromCreateFlow = safeReturnTo.startsWith("/create");
   const useExecutiveLayout = !masterMode && safeReturnTo.startsWith("/tasks");
   const activeMenuKey = fromCreateFlow
@@ -134,6 +139,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 roleLabel={getRoleLabel(session.role)}
                 masterMode={masterMode}
                 workerMode={workerMode}
+                departmentScopeName={scopedDepartmentName}
               />
             </aside>
 
@@ -152,6 +158,27 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
         </div>
       </main>
     );
+  }
+
+  if (workerMode || scopedDepartmentName) {
+    const snapshot = await loadMunicipalSnapshot({
+      login: session.login,
+      password: session.password,
+    });
+    const directoryTask = snapshot.taskDirectory.find((item) => item.id === task.id);
+
+    if (!directoryTask) {
+      redirect("/tasks");
+    }
+    if (workerMode && !directoryTask.assigneeIds?.includes(session.uid)) {
+      redirect("/tasks");
+    }
+    if (
+      scopedDepartmentName &&
+      filterByDepartment([directoryTask], scopedDepartmentName).length === 0
+    ) {
+      redirect("/tasks");
+    }
   }
 
   const canWriteReport = !task.reportsLocked && hasCapability(session, "write_workspace_reports");
@@ -193,6 +220,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
               roleLabel={getRoleLabel(session.role)}
               masterMode={masterMode}
               workerMode={workerMode}
+              departmentScopeName={scopedDepartmentName}
             />
           </aside>
 

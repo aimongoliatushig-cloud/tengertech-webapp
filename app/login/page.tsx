@@ -1,3 +1,4 @@
+﻿import Image from "next/image";
 import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth";
@@ -15,9 +16,9 @@ function getErrorMessage(code?: string) {
     case "missing":
       return "Нэвтрэх нэр болон нууц үгээ бөглөнө үү.";
     case "invalid":
-      return "Нэвтрэх мэдээлэл буруу байна. Odoo дээрх хэрэглэгчийн нэр, нууц үгээ шалгана уу.";
+      return "Нэвтрэх нэр эсвэл нууц үг буруу байна.";
     case "connection":
-      return "Odoo сервертэй холбогдож чадсангүй. Odoo ажиллаж байгаа эсэхийг шалгана уу.";
+      return "Сервертэй холбогдож чадсангүй. Түр хүлээгээд дахин оролдоно уу.";
     default:
       return "";
   }
@@ -35,76 +36,47 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <main className={styles.shell}>
-      <section className={styles.infoPanel}>
-        <div className={styles.infoIntro}>
-          <span className={styles.eyebrow}>Хотын ажиллагааны нэгдсэн платформ</span>
-          <h1>Хотын ажиллагааг нэг дороос удирдана</h1>
-          <p>
-            Odoo систем дэх ажил, талбарын тайлан, хяналтын мөр, багийн урсгалыг
-            гар утас болон компьютер дээр ижил ойлгомжтойгоор ашиглах орчин.
-          </p>
+      <section className={styles.brandPanel} aria-label="Хот тохижилтын нэвтрэх хэсэг">
+        <div className={styles.brandTop}>
+          <Image
+            src="/logo.png"
+            alt="Хот тохижилт үйлчилгээний төв"
+            width={184}
+            height={64}
+            className={styles.logo}
+            priority
+            unoptimized
+          />
+          <span className={styles.badge}>Дотоод систем</span>
         </div>
 
-        <div className={styles.signalGrid}>
-          <article className={styles.signalCard}>
-            <span>Шийдвэр</span>
-            <strong>1 самбар</strong>
-            <small>Менежерт яг одоо анхаарах зүйлс эхэндээ харагдана</small>
-          </article>
-          <article className={styles.signalCard}>
-            <span>Талбай</span>
-            <strong>Гар утсанд төвлөрсөн</strong>
-            <small>Маршрут, ажилбар, тайлангийн урсгал гар утсанд төвлөрсөн</small>
-          </article>
-          <article className={styles.signalCard}>
+        <div className={styles.heroCard}>
+          <span className={styles.kicker}>Дотоод нэгж</span>
+          <h1>Хот тохижилтын удирдлагын төв</h1>
+          <p>Өдрийн ажил, хэлтсийн урсгал, тайлан болон хяналтаа нэг дороос удирдана.</p>
+          <div className={styles.heroChips} aria-hidden>
+            <span>Ажил</span>
             <span>Тайлан</span>
-            <strong>Нэг урсгал</strong>
-            <small>Ноорог, илгээсэн, баталсан төлөв нэг логикоор явна</small>
-          </article>
-        </div>
-
-        <div className={styles.featureList}>
-          <article className={styles.featureCard}>
-            <strong>Үйл ажиллагаа хариуцсан менежер</strong>
-            <span>Шийдвэр шаардах эрсдэл, KPI, баталгаажуулалтыг эхний дэлгэц дээр харна</span>
-          </article>
-          <article className={styles.featureCard}>
-            <strong>Багийн ахлагч</strong>
-            <span>Өнөөдрийн ажил, тайлан, хоцролт гурвыг богино урсгалаар удирдана</span>
-          </article>
-          <article className={styles.featureCard}>
-            <strong>Ажилтан</strong>
-            <span>Зөвхөн надад оноогдсон ажил, тайлан, маршрутаа уншиж ажиллана</span>
-          </article>
+            <span>Хяналт</span>
+          </div>
         </div>
       </section>
 
       <section className={styles.formPanel}>
         <div className={styles.formWrap}>
           <div className={styles.formHeader}>
-            <span className={styles.formBadge}>Odoo нэвтрэлт</span>
+            <span className={styles.formBadge}>Нэвтрэх хэсэг</span>
             <h2>Нэвтрэх</h2>
-            <p>
-              Odoo дээрх одоогийн хэрэглэгчийн нэр, нууц үгээрээ шууд орно.
-              Тусдаа системийн эрх үүсгэх шаардлагагүй.
-            </p>
-          </div>
-
-          <div className={styles.formSteps}>
-            <span>1. Odoo эрхээр орно</span>
-            <span>2. Самбар автоматаар нээгдэнэ</span>
-            <span>3. Өөрийн үүрэгт тохирсон цэс гарна</span>
           </div>
 
           <form action="/auth/login" method="post" className={styles.form}>
             <label className={styles.field} htmlFor="login-name">
               <span>Нэвтрэх нэр</span>
-              <small>Odoo хэрэглэгчийн нэр эсвэл и-мэйл</small>
               <input
                 id="login-name"
                 name="login"
                 type="text"
-                placeholder="Жишээ нь: admin эсвэл suldee@gmail.com"
+                placeholder="Нэвтрэх нэрээ оруулна уу"
                 autoComplete="username"
                 enterKeyHint="next"
                 required
@@ -113,7 +85,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
             <label className={styles.field} htmlFor="login-password">
               <span>Нууц үг</span>
-              <small>Odoo дээр ашигладаг нууц үг</small>
               <input
                 id="login-password"
                 name="password"
@@ -128,17 +99,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             {errorMessage ? <p className={styles.errorBox}>{errorMessage}</p> : null}
 
             <button type="submit" className={styles.submitButton}>
-              Дашбоард руу нэвтрэх
+              Нэвтрэх
             </button>
           </form>
-
-          <div className={styles.footerHint}>
-            <div>
-              <span>Туршилтын эрх</span>
-              <small>Туршилтын эсвэл локал орчинд ашиглана</small>
-            </div>
-            <strong className={styles.footerCode}>admin / admin</strong>
-          </div>
         </div>
       </section>
     </main>
