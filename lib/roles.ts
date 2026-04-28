@@ -108,6 +108,7 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         context.role === "system_admin" ||
         context.role === "director" ||
         context.role === "general_manager" ||
+        context.role === "project_manager" ||
         context.role === "senior_master" ||
         context.role === "team_leader"
       );

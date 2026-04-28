@@ -1,0 +1,137 @@
+[
+  {
+    "viewport": "mobile",
+    "user": "system_admin",
+    "ok": false,
+    "errors": [
+      "expected scoped department info card",
+      "own department missing: Захиргааны алба"
+    ],
+    "visibleDepts": [],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-system_admin.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "director",
+    "ok": false,
+    "errors": [
+      "expected global System info card",
+      "expected all department labels, got Тохижилтын хэлтэс"
+    ],
+    "visibleDepts": [
+      "Тохижилтын хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-director.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "general_manager",
+    "ok": false,
+    "errors": [
+      "expected global System info card",
+      "expected all department labels, got Тохижилтын хэлтэс"
+    ],
+    "visibleDepts": [
+      "Тохижилтын хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-general_manager.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "pm_auto_garbage",
+    "ok": false,
+    "errors": [
+      "expected scoped department info card",
+      "own department missing: Авто бааз, хог тээвэрлэлтийн хэлтэс"
+    ],
+    "visibleDepts": [],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-pm_auto_garbage.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "pm_tohijilt",
+    "ok": false,
+    "errors": [
+      "expected scoped department info card"
+    ],
+    "visibleDepts": [
+      "Тохижилтын хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-pm_tohijilt.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "senior_master_green",
+    "ok": false,
+    "errors": [
+      "expected scoped department info card"
+    ],
+    "visibleDepts": [
+      "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-senior_master_green.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "team_leader_green_1",
+    "ok": false,
+    "errors": [
+      "expected scoped department info card"
+    ],
+    "visibleDepts": [
+      "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-team_leader_green_1.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "team_leader_green_2",
+    "ok": false,
+    "errors": [
+      "expected scoped department info card"
+    ],
+    "visibleDepts": [
+      "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-team_leader_green_2.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "worker_tohijilt_assigned",
+    "ok": false,
+    "errors": [
+      "expected scoped department info card"
+    ],
+    "visibleDepts": [
+      "Тохижилтын хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-worker_tohijilt_assigned.png"
+  }
+]

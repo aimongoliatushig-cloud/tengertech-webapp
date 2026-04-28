@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 
+import Link from "next/link";
 import { Bell, CalendarDays, ChevronDown, Leaf } from "lucide-react";
 
 import styles from "./workspace-header.module.css";
@@ -11,6 +12,7 @@ type WorkspaceHeaderProps = {
   roleLabel: string;
   notificationCount?: number;
   notificationNote?: string;
+  notificationHref?: string;
   backgroundImage?: string;
 };
 
@@ -39,6 +41,7 @@ export function WorkspaceHeader({
   roleLabel,
   notificationCount = 0,
   notificationNote,
+  notificationHref = "/notifications",
   backgroundImage = DEFAULT_HEADER_IMAGE,
 }: WorkspaceHeaderProps) {
   const safeNotificationCount = Math.max(0, Math.round(notificationCount));
@@ -73,10 +76,15 @@ export function WorkspaceHeader({
           <span>{formatHeaderDate()}</span>
         </div>
 
-        <div className={styles.notificationButton} title={noticeText} aria-label={noticeText}>
+        <Link
+          className={styles.notificationButton}
+          href={notificationHref}
+          title={noticeText}
+          aria-label={`${noticeText}. Мэдэгдэл харах`}
+        >
           <Bell aria-hidden />
           {safeNotificationCount > 0 ? <span>{safeNotificationCount}</span> : null}
-        </div>
+        </Link>
 
         <div className={styles.headerUser}>
           <div>

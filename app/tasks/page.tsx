@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import dashboardStyles from "@/app/page.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import {
   getRoleLabel,
@@ -82,60 +81,93 @@ function normalizeQuickAction(value: string): QuickActionMode {
   return value === "report" ? "report" : "none";
 }
 
-function formatPlanDate(dateKey: string) {
-  const parsed = new Date(`${dateKey}T00:00:00`);
+function formatWeekdayLabel(dateKey: string) {
+  const parsed = parseDateKey(dateKey);
+  if (!parsed) {
+    return { day: dateKey, weekday: "" };
+  }
+
+  return {
+    day: new Intl.DateTimeFormat("mn-MN", { day: "numeric" }).format(parsed),
+    weekday: new Intl.DateTimeFormat("mn-MN", { weekday: "short" }).format(parsed),
+  };
+}
+
+function formatTimelineTime(value?: string | null) {
+  if (!value) {
+    return "Өдөр";
+  }
+
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const parsed = new Date(normalized);
   if (Number.isNaN(parsed.getTime())) {
+    return "Өдөр";
+  }
+
+  return new Intl.DateTimeFormat("mn-MN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Ulaanbaatar",
+  }).format(parsed);
+}
+
+function parseDateKey(dateKey: string) {
+  const parsed = new Date(`${dateKey}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function toDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addDays(date: Date, days: number) {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
+}
+
+function getCalendarMonthLabel(dateKey: string) {
+  const parsed = parseDateKey(dateKey);
+  if (!parsed) {
     return dateKey;
   }
 
   return new Intl.DateTimeFormat("mn-MN", {
+    year: "numeric",
     month: "long",
-    day: "numeric",
-    weekday: "short",
   }).format(parsed);
 }
 
-function StagePill({
-  label,
-  bucket,
-}: {
-  label: string;
-  bucket: "todo" | "progress" | "review" | "done" | "unknown" | "problem";
-}) {
-  const tone =
-    bucket === "problem"
-      ? dashboardStyles.stageProblem
-      : bucket === "done"
-        ? dashboardStyles.stageDone
-        : bucket === "review"
-          ? dashboardStyles.stageReview
-          : bucket === "progress"
-            ? dashboardStyles.stageProgress
-            : dashboardStyles.stageTodo;
+function buildMonthCells(anchorDateKey: string) {
+  const anchorDate = parseDateKey(anchorDateKey) ?? new Date();
+  const firstDayOfMonth = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
+  const mondayOffset = (firstDayOfMonth.getDay() + 6) % 7;
+  const gridStart = addDays(firstDayOfMonth, -mondayOffset);
+  const todayKey = getTodayDateKey();
 
-  return (
-    <span
-      className={`${dashboardStyles.stagePill} ${tone}`}
-      aria-label={label}
-      title={label}
-    >
-      {label}
-    </span>
-  );
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = addDays(gridStart, index);
+    const dateKey = toDateKey(date);
+
+    return {
+      dateKey,
+      dayNumber: date.getDate(),
+      inMonth: date.getMonth() === anchorDate.getMonth(),
+      isToday: dateKey === todayKey,
+    };
+  });
 }
 
-function StatusBadge({
-  statusKey,
-  statusLabel,
-}: {
-  statusKey: "planned" | "working" | "review" | "verified" | "problem";
-  statusLabel: string;
-}) {
-  return (
-    <span className={`${dashboardStyles.statusBadge} ${dashboardStyles[`status${statusKey}`]}`}>
-      {statusLabel}
-    </span>
-  );
+function buildWeekDateKeys(anchorDateKey: string) {
+  const anchorDate = parseDateKey(anchorDateKey) ?? new Date();
+  const mondayOffset = (anchorDate.getDay() + 6) % 7;
+  const weekStart = addDays(anchorDate, -mondayOffset);
+
+  return Array.from({ length: 7 }, (_, index) => toDateKey(addDays(weekStart, index)));
 }
 
 function resolveTodayProjectStage(summary: Pick<
@@ -262,6 +294,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const canCreateFromCalendar = canCreateProject || canCreateTasks;
+  const calendarCreateHref = canCreateProject ? "/projects/new" : "/create";
   const workerMode = isWorkerOnly(session);
   const masterMode = isMasterRole(session.role);
   const scopedDepartmentName = await loadSessionDepartmentName(session);
@@ -395,6 +429,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
             working: number;
             review: number;
             verified: number;
+            tasks: TaskDirectoryItem[];
           }
         >
       >((accumulator, task) => {
@@ -405,9 +440,11 @@ export default async function TasksPage({ searchParams }: PageProps) {
           working: 0,
           review: 0,
           verified: 0,
+          tasks: [],
         };
 
         existing.total += 1;
+        existing.tasks.push(task);
         if (task.statusKey === "working") {
           existing.working += 1;
         } else if (task.statusKey === "review") {
@@ -419,7 +456,33 @@ export default async function TasksPage({ searchParams }: PageProps) {
         return accumulator;
       }, new Map())
       .values(),
-  ).sort((left, right) => left.dateKey.localeCompare(right.dateKey));
+  )
+    .map((item) => ({
+      ...item,
+      tasks: item.tasks.sort((left, right) => {
+        const leftTime = left.deadlineDateTime ?? "";
+        const rightTime = right.deadlineDateTime ?? "";
+        return leftTime.localeCompare(rightTime) || left.name.localeCompare(right.name, "mn");
+      }),
+    }))
+    .sort((left, right) => left.dateKey.localeCompare(right.dateKey));
+  const calendarAnchorDateKey = getTodayDateKey();
+  const calendarPlanByDate = new Map(calendarPlanItems.map((item) => [item.dateKey, item]));
+  const emptyCalendarItem = (dateKey: string) => ({
+    dateKey,
+    total: 0,
+    working: 0,
+    review: 0,
+    verified: 0,
+    tasks: [] as TaskDirectoryItem[],
+  });
+  const monthCalendarCells = buildMonthCells(calendarAnchorDateKey).map((cell) => ({
+    ...cell,
+    plan: calendarPlanByDate.get(cell.dateKey) ?? emptyCalendarItem(cell.dateKey),
+  }));
+  const weekCalendarItems = buildWeekDateKeys(calendarAnchorDateKey).map(
+    (dateKey) => calendarPlanByDate.get(dateKey) ?? emptyCalendarItem(dateKey),
+  );
 
   const taskListParams = new URLSearchParams();
   if (!workerMode && selectedDepartmentParam) {
@@ -432,7 +495,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
     taskListParams.set("quickAction", quickActionMode);
   }
   const taskListHref = taskListParams.toString() ? `/tasks?${taskListParams.toString()}` : "/tasks";
-  const taskActionLabel = quickActionMode === "report" ? "Тайлан оруулах" : "Дэлгэрэнгүй харах";
   const buildTaskHref = (taskHref: string) => {
     if (quickActionMode !== "report") {
       return taskHref;
@@ -484,6 +546,159 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   : `${visibleTasks.length} ажилбар одоогоор харагдаж байна`
               }
             />
+
+            {!workerMode ? (
+              <section className={styles.calendarPanel}>
+                <div className={styles.filterHeader}>
+                  <div>
+                    <span className={styles.filterKicker}>Календар төлөвлөгөө</span>
+                    <h2>{selectedDepartmentLabel}</h2>
+                  </div>
+                </div>
+
+                {calendarPlanItems.length ? (
+                  <div className={styles.calendarTimelineBoard}>
+                    <input
+                      className={`${styles.calendarViewInput} ${styles.calendarMonthToggle}`}
+                      type="radio"
+                      name="calendar-view"
+                      id="calendar-view-month"
+                      defaultChecked
+                    />
+                    <input
+                      className={`${styles.calendarViewInput} ${styles.calendarWeekToggle}`}
+                      type="radio"
+                      name="calendar-view"
+                      id="calendar-view-week"
+                    />
+                    <div className={styles.calendarToolbar}>
+                      <div className={styles.calendarViewControls} aria-label="Календарын харагдац">
+                        <label htmlFor="calendar-view-month">Сар</label>
+                        <label htmlFor="calendar-view-week">7 хоног</label>
+                      </div>
+                      {canCreateFromCalendar ? (
+                        <Link href={calendarCreateHref} className={styles.calendarCreateButton}>
+                          Ажил нэмэх
+                        </Link>
+                      ) : null}
+                    </div>
+
+                    <div className={styles.calendarViewPanels}>
+                    <section className={`${styles.workCalendar} ${styles.calendarViewPanel} ${styles.calendarMonthPanel}`}>
+                      <div className={styles.workCalendarTop}>
+                        <div className={styles.workCalendarBrand}>
+                          <span className={styles.workCalendarLogo} aria-hidden="true">◷</span>
+                          <div>
+                            <span>Сарын календарь</span>
+                            <h3>{getCalendarMonthLabel(calendarAnchorDateKey)}</h3>
+                          </div>
+                        </div>
+                        <div className={styles.calendarLegend}>
+                          <span><i className={styles.legendWorking} /> Явж байгаа</span>
+                          <span><i className={styles.legendReview} /> Хянах</span>
+                          <span><i className={styles.legendDone} /> Дууссан</span>
+                        </div>
+                      </div>
+
+                      <div className={styles.monthCalendar} aria-label="Сарын ажлын календарь">
+                        {["Да", "Мя", "Лх", "Пү", "Ба", "Бя", "Ня"].map((day) => (
+                          <span key={day} className={styles.monthWeekday}>{day}</span>
+                        ))}
+                        {monthCalendarCells.map((cell) => (
+                          <article
+                            key={cell.dateKey}
+                            className={`${styles.monthDay} ${!cell.inMonth ? styles.monthDayMuted : ""} ${
+                              cell.isToday ? styles.monthDayToday : ""
+                            }`}
+                          >
+                            <div className={styles.monthDayHeader}>
+                              <span>{cell.dayNumber}</span>
+                              {cell.plan.total > 0 ? <strong>{cell.plan.total}</strong> : null}
+                            </div>
+                            <div className={styles.monthDayTasks}>
+                              {cell.plan.tasks.slice(0, 2).map((task) => (
+                                <Link
+                                  key={`month-${cell.dateKey}-${task.id}`}
+                                  href={buildTaskHref(task.href)}
+                                  className={`${styles.monthTask} ${styles[`monthTask${task.statusKey}`]}`}
+                                >
+                                  <span>{task.name}</span>
+                                  <small>{formatTimelineTime(task.deadlineDateTime)}</small>
+                                </Link>
+                              ))}
+                              {cell.plan.tasks.length > 2 ? (
+                                <a href={`#calendar-day-${cell.dateKey}`} className={styles.monthMore}>
+                                  +{cell.plan.tasks.length - 2} ажилбар
+                                </a>
+                              ) : cell.plan.tasks.length === 0 && canCreateFromCalendar ? (
+                                <Link href={calendarCreateHref} className={styles.calendarEmptyCreate}>
+                                  Ажил нэмэх
+                                </Link>
+                              ) : null}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className={`${styles.weekCalendar} ${styles.calendarViewPanel} ${styles.calendarWeekPanel}`}>
+                      <div className={styles.weekCalendarTop}>
+                        <div className={styles.weekCalendarTitle}>
+                          <span className={styles.filterKicker}>7 хоног</span>
+                          <h3>Долоо хоногийн календарь</h3>
+                        </div>
+                      </div>
+
+                      <div className={styles.weekGridCalendar} aria-label="Долоо хоногийн ажлын календарь">
+                        {weekCalendarItems.map((item) => (
+                          <article key={`week-${item.dateKey}`} id={`calendar-day-${item.dateKey}`} className={styles.weekDayCard}>
+                            {(() => {
+                              const label = formatWeekdayLabel(item.dateKey);
+
+                              return (
+                                <div className={styles.weekDayHeader}>
+                                  <div>
+                                    <strong>{label.day}</strong>
+                                    <span>{label.weekday}</span>
+                                  </div>
+                                  {item.total > 0 ? <em>{item.total}</em> : null}
+                                </div>
+                              );
+                            })()}
+
+                            <div className={styles.weekDayTasks}>
+                              {item.tasks.length ? (
+                                item.tasks.map((task) => (
+                                  <Link
+                                    key={`${item.dateKey}-${task.id}`}
+                                    href={buildTaskHref(task.href)}
+                                    className={`${styles.weekTask} ${styles[`monthTask${task.statusKey}`]}`}
+                                  >
+                                    <span>{task.name}</span>
+                                    <small>{formatTimelineTime(task.deadlineDateTime)} • Явц {task.progress}%</small>
+                                  </Link>
+                                ))
+                              ) : canCreateFromCalendar ? (
+                                <Link href={calendarCreateHref} className={styles.weekEmptyCreate}>
+                                  Ажил нэмэх
+                                </Link>
+                              ) : (
+                                <span className={styles.weekEmpty}>Ажилбар алга</span>
+                              )}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={styles.calendarEmpty}>
+                    Энэ хүрээнд огноотой календарь төлөвлөгөө одоогоор алга байна.
+                  </div>
+                )}
+              </section>
+            ) : null}
 
             <header className={styles.pageHeader}>
               <div className={styles.pageHeaderMain}>
@@ -625,305 +840,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
               </article>
             </section>
 
-            {!workerMode ? (
-              <section className={styles.calendarPanel}>
-                <div className={styles.filterHeader}>
-                  <div>
-                    <span className={styles.filterKicker}>Календар төлөвлөгөө</span>
-                    <h2>{selectedDepartmentLabel}</h2>
-                  </div>
-                  <p>
-                    Огноотой ажилбаруудыг тухайн алба, хэлтсийн хүрээнд өдөр өдрөөр нь харуулна.
-                  </p>
-                </div>
 
-                {calendarPlanItems.length ? (
-                  <div className={styles.calendarGrid}>
-                    {calendarPlanItems.slice(0, 8).map((item) => (
-                      <article key={item.dateKey} className={styles.calendarCard}>
-                        <span className={styles.calendarDate}>{formatPlanDate(item.dateKey)}</span>
-                        <strong>{item.total}</strong>
-                        <div className={styles.calendarStats}>
-                          <span>Явж байгаа {item.working}</span>
-                          <span>Хяналт {item.review}</span>
-                          <span>Дууссан {item.verified}</span>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <div className={styles.calendarEmpty}>
-                    Энэ хүрээнд огноотой календарь төлөвлөгөө одоогоор алга байна.
-                  </div>
-                )}
-              </section>
-            ) : null}
-
-            {quickActionMode === "report" ? (
-              <div className={`${shellStyles.message} ${shellStyles.noticeMessage}`}>
-                Тайлан оруулахын тулд эхлээд ажилбараа сонгоно. Дараагийн дэлгэц дээр тайлангийн
-                цонх шууд нээгдэнэ.
-              </div>
-            ) : null}
-
-            {!masterMode ? (
-              <section className={styles.filterPanel}>
-              <div className={styles.filterHeader}>
-                <div>
-                  <span className={styles.filterKicker}>Төлөвийн шүүлт</span>
-                   <h2>
-                     {workerMode
-                       ? "Миний ажилбарын төлөв"
-                       : masterMode
-                        ? "Өнөөдрийн ажлыг төлөвөөр нь шүүх"
-                        : "Ажлыг хурдан ангилж харах"}
-                   </h2>
-                </div>
-                <p>
-                  {workerMode
-                    ? "Асуудалтай, хяналт хүлээж буй, баталгаажсан ажилбараа нэг товшилтоор ялгаж харна."
-                    : masterMode
-                      ? "Өнөөдөр явах ажил, төслүүдээ төлөвөөр нь ялгаад, дарахад доторх ажилбарын жагсаалт руу орно."
-                      : "Эхлээд асуудалтай, дараа нь хяналт хүлээж буй ажилбаруудыг ялгаж харахад тохиромжтой."}
-                </p>
-              </div>
-
-                  <div className={styles.filterScroller}>
-                {FILTERS.map((item) => {
-                  const hrefParams = new URLSearchParams();
-                  if (!workerMode && selectedDepartmentParam) {
-                    hrefParams.set("department", selectedDepartmentParam);
-                  }
-                  if (item.key !== "all") {
-                    hrefParams.set("filter", item.key);
-                  }
-                  if (quickActionMode !== "none") {
-                    hrefParams.set("quickAction", quickActionMode);
-                  }
-
-                  return (
-                    <Link
-                      key={item.key}
-                      href={`/tasks?${hrefParams.toString()}`}
-                      className={`${styles.filterChip} ${
-                        activeFilter === item.key ? styles.filterChipActive : ""
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                      <strong>{counts[item.key]}</strong>
-                    </Link>
-                  );
-                })}
-              </div>
-              </section>
-            ) : null}
-
-            <section className={styles.taskSection}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <span className={styles.filterKicker}>
-                    {workerMode
-                      ? "Миний жагсаалт"
-                      : masterMode
-                        ? "Өнөөдрийн жагсаалт"
-                        : "Ажлын жагсаалт"}
-                  </span>
-                  <h2>
-                    {workerMode
-                      ? "Надад хамаарах ажилбар"
-                      : masterMode
-                        ? "Өнөөдөр явах ажил"
-                        : "Odoo-оос татсан бүх ажилбар"}
-                  </h2>
-                </div>
-                <p>
-                  {workerMode
-                    ? `${visibleTasks.length} ажилбар танд одоогоор харагдаж байна`
-                    : masterMode
-                      ? `${visibleProjects.length} ажил, төсөл өнөөдөр энэ дэлгэц дээр харагдаж байна`
-                    : `${visibleTasks.length} ажилбар одоогоор дэлгэц дээр харагдаж байна`}
-                </p>
-              </div>
-
-              {masterMode ? (
-                visibleProjects.length ? (
-                  <div className={styles.projectList}>
-                    {visibleProjects.map((project) => (
-                      <Link
-                        key={project.id}
-                        href={`${project.href}?returnTo=/tasks`}
-                        className={`${styles.taskCard} ${styles.projectCardLink}`}
-                      >
-                        <div className={styles.taskCardTop}>
-                          <div className={styles.taskIdentity}>
-                            <strong>{project.name}</strong>
-                            <span>{project.departmentName}</span>
-                          </div>
-                          <StagePill label={project.stageLabel} bucket={project.stageBucket} />
-                        </div>
-
-                        <p className={styles.taskRoute}>Менежер: {project.manager}</p>
-
-                        <div className={styles.taskInfoGrid}>
-                          <div className={styles.taskInfoItem}>
-                            <span>Өнөөдрийн ажилбар</span>
-                            <strong>{project.todayTaskCount}</strong>
-                          </div>
-                          <div className={styles.taskInfoItem}>
-                            <span>Нээлттэй ажилбар</span>
-                            <strong>{project.openTasks}</strong>
-                          </div>
-                          <div className={styles.taskInfoItem}>
-                            <span>Хугацаа</span>
-                            <strong>{project.deadline}</strong>
-                          </div>
-                        </div>
-
-                        <div className={styles.progressRow}>
-                          <div className={styles.progressLabel}>
-                            <span>Ажлын явц</span>
-                            <strong>{project.completion}%</strong>
-                          </div>
-                          <div className={styles.progressTrack}>
-                            <span style={{ width: `${project.completion}%` }} />
-                          </div>
-                        </div>
-
-                        <div className={styles.projectCardFooter}>
-                          <span className={styles.subtleNote}>
-                            Явж байгаа {project.workingTaskCount} • Шалгагдах {project.reviewTaskCount}
-                            {" "}• Асуудалтай {project.problemTaskCount}
-                          </span>
-                          <strong className={styles.projectOpenLabel}>Ажилбар харах</strong>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <div className={styles.emptyState}>
-                    <h3>Өнөөдөр явах ажил олдсонгүй</h3>
-                    <p>Өөр төлөв сонгох эсвэл ажлын жагсаалт руу орж шинэ ажил нээнэ үү.</p>
-                  </div>
-                )
-              ) : visibleTasks.length ? (
-                <>
-                  <div className={styles.taskCardList}>
-                    {visibleTasks.map((task) => (
-                      <article key={task.id} className={styles.taskCard}>
-                        <div className={styles.taskCardTop}>
-                          <div className={styles.taskIdentity}>
-                            <strong>{task.name}</strong>
-                            <span>{task.projectName}</span>
-                          </div>
-                          <StatusBadge statusKey={task.statusKey} statusLabel={task.statusLabel} />
-                        </div>
-
-                        <p className={styles.taskRoute}>{task.departmentName}</p>
-
-                        <div className={styles.taskInfoGrid}>
-                          <div className={styles.taskInfoItem}>
-                            <span>Ахлагч</span>
-                            <strong>{task.leaderName}</strong>
-                          </div>
-                          <div className={styles.taskInfoItem}>
-                            <span>Хугацаа</span>
-                            <strong>{task.deadline}</strong>
-                          </div>
-                          <div className={styles.taskInfoItem}>
-                            <span>Ангилал</span>
-                            <strong>{task.operationTypeLabel}</strong>
-                          </div>
-                        </div>
-
-                        <div className={styles.progressRow}>
-                          <div className={styles.progressLabel}>
-                            <span>Ажлын явц</span>
-                            <strong>{task.progress}%</strong>
-                          </div>
-                          <div className={styles.progressTrack}>
-                            <span style={{ width: `${task.progress}%` }} />
-                          </div>
-                        </div>
-
-                        <div className={styles.cardActions}>
-                          <Link href={buildTaskHref(task.href)} className={styles.primaryLink}>
-                            {taskActionLabel}
-                          </Link>
-                          <span className={styles.subtleNote}>
-                            {task.completedQuantity}/{task.plannedQuantity} {task.measurementUnit} •{" "}
-                            {task.priorityLabel}
-                          </span>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-
-                  <div className={styles.tableShell}>
-                    <table className={styles.taskTable}>
-                      <thead>
-                        <tr>
-                          <th>Ажилбар</th>
-                          <th>Алба нэгж</th>
-                          <th>Ажил</th>
-                          <th>Төлөв</th>
-                          <th>Ахлагч</th>
-                          <th>Явц</th>
-                          <th>Дэлгэрэнгүй</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {visibleTasks.map((task) => (
-                          <tr key={task.id}>
-                            <td>
-                              <strong>{task.name}</strong>
-                            </td>
-                            <td>{task.departmentName}</td>
-                            <td>{task.projectName}</td>
-                            <td>
-                              <StatusBadge
-                                statusKey={task.statusKey}
-                                statusLabel={task.statusLabel}
-                              />
-                            </td>
-                            <td>{task.leaderName}</td>
-                            <td>
-                              <div className={styles.tableProgress}>
-                                <span>{task.progress}%</span>
-                                <div className={styles.progressTrack}>
-                                  <span style={{ width: `${task.progress}%` }} />
-                                </div>
-                              </div>
-                            </td>
-                            <td>
-                              <Link href={buildTaskHref(task.href)} className={styles.inlineLink}>
-                                {quickActionMode === "report" ? "Тайлан" : "Нээх"}
-                              </Link>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              ) : (
-                <div className={styles.emptyState}>
-                  <h3>
-                    {workerMode
-                      ? "Танд тохирох ажилбар энэ шүүлтээр олдсонгүй"
-                      : masterMode
-                        ? "Өнөөдөрт харагдах ажилбар олдсонгүй"
-                        : "Энэ шүүлтээр ажил олдсонгүй"}
-                  </h3>
-                  <p>
-                    {workerMode
-                      ? "Өөр төлөв сонгоод дахин шүүж үзнэ үү."
-                      : masterMode
-                        ? "Өөр төлөв сонгох эсвэл шинэ ажилбар нэмэхийн тулд ажлын жагсаалт руу орно уу."
-                        : "Өөр алба нэгж эсвэл өөр төлөв сонгоод дахин шүүж үзнэ үү."}
-                  </p>
-                </div>
-              )}
-            </section>
           </div>
         </div>
       </div>

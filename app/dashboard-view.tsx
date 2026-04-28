@@ -138,9 +138,36 @@ function isOverdue(task: DashboardSnapshot["taskDirectory"][number], currentDate
   );
 }
 
+function isNewIncomingTask(task: DashboardSnapshot["taskDirectory"][number], currentDateKey: string) {
+  return Boolean(task.createdDate === currentDateKey && task.statusKey !== "verified");
+}
+
+function countNotificationTasks(
+  tasks: DashboardSnapshot["taskDirectory"],
+  currentDateKey: string,
+) {
+  const taskIds = new Set<number>();
+
+  for (const task of tasks) {
+    if (
+      isNewIncomingTask(task, currentDateKey) ||
+      isOverdue(task, currentDateKey) ||
+      task.statusKey === "review" ||
+      task.issueFlag
+    ) {
+      taskIds.add(task.id);
+    }
+  }
+
+  return taskIds.size;
+}
+
 function statusTone(task: DashboardSnapshot["taskDirectory"][number], currentDateKey: string): StatusTone {
   if (task.issueFlag || isOverdue(task, currentDateKey) || task.statusKey === "problem") {
     return "urgent";
+  }
+  if (isNewIncomingTask(task, currentDateKey)) {
+    return "attention";
   }
   if (task.statusKey === "review") {
     return "attention";
@@ -246,6 +273,15 @@ function DepartmentOverview({
     (task) => task.departmentName.includes("Хог") || task.departmentName.includes("хог"),
   ).length;
   const total = tasks.length || autoDepartment?.openTasks || 0;
+  const isAutoWasteDepartment =
+    departmentName.includes("Авто") || departmentName.includes("Хог") || departmentName.includes("хог");
+  const departmentChips: Array<[string, number, boolean]> = isAutoWasteDepartment
+    ? [
+        ["Бүгд", total, true],
+        ["Авто бааз", autoBaseCount, false],
+        ["Хог тээвэрлэлт", wasteCount || total, false],
+      ]
+    : [["Бүгд", total, true]];
 
   return (
     <Card className={cn(dashboardStyles.softPanel, dashboardStyles.departmentCard)}>
@@ -263,11 +299,7 @@ function DepartmentOverview({
           Энэ хэлтэс доторх ажлыг нэгжээр харуулна.
         </p>
         <div className={dashboardStyles.departmentChips}>
-          {[
-            ["Бүгд", total, true],
-            ["Авто бааз", autoBaseCount, false],
-            ["Хог тээвэрлэлт", wasteCount || total, false],
-          ].map(([label, value, active]) => (
+          {departmentChips.map(([label, value, active]) => (
             <span
               key={String(label)}
               className={cn(
@@ -623,6 +655,8 @@ function RightPanel({
   alertCount,
   canWriteReports,
   hrAttendanceSummary,
+  departmentScopeName,
+  showFleetSummary,
 }: {
   totalTasks: number;
   completedTasks: number;
@@ -631,7 +665,25 @@ function RightPanel({
   alertCount: number;
   canWriteReports: boolean;
   hrAttendanceSummary: HrDailyAttendanceSummary;
+  departmentScopeName?: string | null;
+  showFleetSummary: boolean;
 }) {
+  const systemInfoTitle = departmentScopeName ? "Алба нэгжийн мэдээлэл" : "Системийн мэдээлэл";
+  const systemInfoRows: Array<[string, number]> = departmentScopeName
+    ? [
+        ["Ажилтан", hrAttendanceSummary.totalEmployees],
+        ["Нийт ажил", totalTasks],
+        ["Идэвхтэй ажил", workingTasks],
+        ["Дууссан ажил", completedTasks],
+        ["Анхаарах", alertCount],
+      ]
+    : [
+        ["Хэрэглэгч", 128],
+        ["Нийт ажил", totalTasks],
+        ["Идэвхтэй ажил", workingTasks],
+        ["Дууссан ажил", completedTasks],
+        ["Анхаарах", alertCount],
+      ];
   const quickActions = [
     { label: "Шинэ ажил үүсгэх", href: "/create", icon: Plus },
     { label: "Ажлын жагсаалт", href: "/projects", icon: ListChecks },
@@ -680,15 +732,9 @@ function RightPanel({
       </Card>
 
       <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
-        <CardTitle className={dashboardStyles.sideCardTitle}>Системийн мэдээлэл</CardTitle>
+        <CardTitle className={dashboardStyles.sideCardTitle}>{systemInfoTitle}</CardTitle>
         <div className={dashboardStyles.systemList}>
-          {[
-            ["Хэрэглэгч", 128],
-            ["Нийт ажил", totalTasks],
-            ["Идэвхтэй ажил", workingTasks],
-            ["Дууссан ажил", completedTasks],
-            ["Анхаарах", alertCount],
-          ].map(([label, value]) => (
+          {systemInfoRows.map(([label, value]) => (
             <div key={String(label)} className={dashboardStyles.systemRow}>
               <span>{label}</span>
               <strong>{value}</strong>
@@ -728,25 +774,27 @@ function RightPanel({
         </div>
       </Card>
 
-      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
-        <CardTitle className={dashboardStyles.sideCardTitle}>Техник</CardTitle>
-        <div className={cn(dashboardStyles.sideMiniGrid, dashboardStyles.sideMiniGridTwo)}>
-          <div className={dashboardStyles.sideMiniItem}>
-            <span className={cn(dashboardStyles.sideMiniIcon, "bg-[#E7F5E7] text-[#2E7D32]")}>
-              <Truck />
-            </span>
-            <strong className={dashboardStyles.sideMiniValue}>{fleetBoard.totalVehicles}</strong>
-            <span className={dashboardStyles.sideMiniLabel}>Нийт</span>
+      {showFleetSummary ? (
+        <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
+          <CardTitle className={dashboardStyles.sideCardTitle}>Техник</CardTitle>
+          <div className={cn(dashboardStyles.sideMiniGrid, dashboardStyles.sideMiniGridTwo)}>
+            <div className={dashboardStyles.sideMiniItem}>
+              <span className={cn(dashboardStyles.sideMiniIcon, "bg-[#E7F5E7] text-[#2E7D32]")}>
+                <Truck />
+              </span>
+              <strong className={dashboardStyles.sideMiniValue}>{fleetBoard.totalVehicles}</strong>
+              <span className={dashboardStyles.sideMiniLabel}>Нийт</span>
+            </div>
+            <div className={dashboardStyles.sideMiniItem}>
+              <span className={cn(dashboardStyles.sideMiniIcon, "bg-[#E7F5E7] text-[#2E7D32]")}>
+                <Wind />
+              </span>
+              <strong className={dashboardStyles.sideMiniValue}>{fleetBoard.activeCount}</strong>
+              <span className={dashboardStyles.sideMiniLabel}>Ажиллаж буй</span>
+            </div>
           </div>
-          <div className={dashboardStyles.sideMiniItem}>
-            <span className={cn(dashboardStyles.sideMiniIcon, "bg-[#E7F5E7] text-[#2E7D32]")}>
-              <Wind />
-            </span>
-            <strong className={dashboardStyles.sideMiniValue}>{fleetBoard.activeCount}</strong>
-            <span className={dashboardStyles.sideMiniLabel}>Ажиллаж буй</span>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      ) : null}
     </aside>
   );
 }
@@ -773,6 +821,12 @@ export function DashboardView({
     snapshot,
     todayAssignments,
   });
+  const scopeLabel = departmentScopeName ?? model.scopeLabel;
+  const showFleetSummary =
+    !departmentScopeName ||
+    departmentScopeName.includes("Авто") ||
+    departmentScopeName.includes("Хог") ||
+    departmentScopeName.includes("хог");
 
   const scopedTasks = workerMode
     ? snapshot.taskDirectory.filter((task) => {
@@ -789,7 +843,12 @@ export function DashboardView({
   const reviewTasks = dashboardTasks.filter((task) => task.statusKey === "review").length;
   const plannedTasks = dashboardTasks.filter((task) => task.statusKey === "planned").length;
   const overdueTasks = dashboardTasks.filter((task) => isOverdue(task, currentDateKey)).length;
-  const attentionCount = overdueTasks + reviewTasks + dashboardTasks.filter((task) => task.issueFlag).length;
+  const newIncomingTasks = dashboardTasks.filter((task) => isNewIncomingTask(task, currentDateKey)).length;
+  const attentionCount = countNotificationTasks(dashboardTasks, currentDateKey);
+  const notificationNote =
+    attentionCount > 0
+      ? `${newIncomingTasks} шинэ ажил, ${reviewTasks} хянах, ${overdueTasks} хугацаа хэтэрсэн`
+      : "Шинэ ажил, хянах зүйл алга";
   const sortedTasks = [...dashboardTasks].sort((left, right) => {
     const leftTone = statusTone(left, currentDateKey);
     const rightTone = statusTone(right, currentDateKey);
@@ -887,10 +946,11 @@ export function DashboardView({
         <div className={shellStyles.pageContent}>
           <WorkspaceHeader
             title={`Сайн байна уу, ${session.name}`}
-            subtitle={model.scopeLabel}
+            subtitle={scopeLabel}
             userName={session.name}
             roleLabel={roleLabel}
             notificationCount={attentionCount}
+            notificationNote={notificationNote}
             backgroundImage={DASHBOARD_IMAGES.header}
           />
 
@@ -922,7 +982,7 @@ export function DashboardView({
                     </CardDescription>
                     <CardTitle>Нийт ажил</CardTitle>
                     <CardDescription>
-                      {model.scopeLabel} · Сонгосон алба нэгжийн бүх ажлыг нэг дор харуулна
+                      {scopeLabel} · Сонгосон алба нэгжийн бүх ажлыг нэг дор харуулна
                     </CardDescription>
                   </div>
                   <Link
@@ -980,23 +1040,25 @@ export function DashboardView({
                   </div>
                 </Card>
 
-                <Card className={cn(dashboardStyles.softPanel, dashboardStyles.fleetSummaryCard)}>
-                  <CardTitle className={dashboardStyles.fleetSummaryTitle}>Техник, тоног төхөөрөмж</CardTitle>
-                  <div className={dashboardStyles.fleetSummaryBody}>
-                    <Truck className={dashboardStyles.fleetSummaryIcon} />
-                    <div>
-                      <strong className={dashboardStyles.fleetSummaryValue}>{fleetBoard.totalVehicles}</strong>
-                      <span className={dashboardStyles.fleetSummaryLabel}>Нийт техник</span>
+                {showFleetSummary ? (
+                  <Card className={cn(dashboardStyles.softPanel, dashboardStyles.fleetSummaryCard)}>
+                    <CardTitle className={dashboardStyles.fleetSummaryTitle}>Техник, тоног төхөөрөмж</CardTitle>
+                    <div className={dashboardStyles.fleetSummaryBody}>
+                      <Truck className={dashboardStyles.fleetSummaryIcon} />
+                      <div>
+                        <strong className={dashboardStyles.fleetSummaryValue}>{fleetBoard.totalVehicles}</strong>
+                        <span className={dashboardStyles.fleetSummaryLabel}>Нийт техник</span>
+                      </div>
                     </div>
-                  </div>
-                  <Link
-                    href="/auto-base"
-                    className={dashboardStyles.fleetSummaryLink}
-                  >
-                    Авто бааз
-                    <ChevronRight />
-                  </Link>
-                </Card>
+                    <Link
+                      href="/auto-base"
+                      className={dashboardStyles.fleetSummaryLink}
+                    >
+                      Авто бааз
+                      <ChevronRight />
+                    </Link>
+                  </Card>
+                ) : null}
               </div>
             </div>
 
@@ -1008,6 +1070,8 @@ export function DashboardView({
               alertCount={attentionCount}
               canWriteReports={canWriteReports}
               hrAttendanceSummary={hrAttendanceSummary}
+              departmentScopeName={departmentScopeName}
+              showFleetSummary={showFleetSummary}
             />
           </div>
 

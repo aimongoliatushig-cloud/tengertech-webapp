@@ -7,6 +7,191 @@
   gap: 18px;
 }
 
+.scopeSection {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: calc(var(--ds-radius-card) + 4px);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(193, 231, 199, 0.42), transparent 32%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(242, 249, 243, 0.92));
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.scopeHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.scopeHeader h2 {
+  margin: 8px 0 0;
+  color: var(--ink-900);
+  font-family: var(--font-body);
+  font-size: clamp(1.45rem, 2vw, 2rem);
+  line-height: 1.08;
+}
+
+.scopeHeader p {
+  max-width: 720px;
+  margin: 6px 0 0;
+  color: var(--ink-600);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.scopeTotalPill {
+  display: inline-grid;
+  min-width: 92px;
+  min-height: 54px;
+  place-items: center;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--brand-800);
+  font-weight: 900;
+  box-shadow: 0 14px 28px rgba(27, 73, 38, 0.07);
+}
+
+.scopeTotalPill small {
+  color: var(--ink-600);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.scopeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+  gap: 14px;
+}
+
+.scopeCard {
+  display: grid;
+  gap: 14px;
+  min-height: 150px;
+  padding: 16px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.86);
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 12px 28px rgba(27, 73, 38, 0.06);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.scopeCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(46, 125, 50, 0.24);
+  box-shadow: 0 18px 38px rgba(27, 73, 38, 0.11);
+}
+
+.scopeCardActive {
+  border-color: rgba(46, 125, 50, 0.34);
+  background:
+    linear-gradient(135deg, rgba(46, 125, 50, 0.13), rgba(255, 255, 255, 0.92)),
+    rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 42px rgba(46, 125, 50, 0.14);
+}
+
+.scopeCardTop,
+.scopeStats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.scopeName {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.scopeIcon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  background: rgba(46, 125, 50, 0.1);
+}
+
+.scopeName strong {
+  display: block;
+  overflow: hidden;
+  color: var(--ink-900);
+  font-size: 0.98rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scopeName small {
+  display: block;
+  margin-top: 3px;
+  color: var(--ink-600);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.scopeBadge {
+  display: inline-grid;
+  min-width: 34px;
+  height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--brand-700);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.scopeStats {
+  align-items: stretch;
+}
+
+.scopeStat {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(74, 154, 93, 0.07);
+}
+
+.scopeStat span {
+  color: var(--ink-600);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.scopeStat strong {
+  color: var(--ink-900);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.scopeProgress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(46, 125, 50, 0.1);
+}
+
+.scopeProgress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2e7d32, #9ccc65);
+}
+
 .heroInsightGrid {
   grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
   margin-top: 18px;
@@ -276,6 +461,24 @@
 }
 
 @media (max-width: 720px) {
+  .scopeSection {
+    padding: 16px;
+  }
+
+  .scopeHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .scopeTotalPill {
+    width: fit-content;
+  }
+
+  .scopeStats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .flowCard,
   .decisionCard,
   .reviewLane {

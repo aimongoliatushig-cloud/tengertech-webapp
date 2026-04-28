@@ -45,6 +45,7 @@ type MenuKey =
   | "procurement"
   | "profile"
   | "review"
+  | "notifications"
   | "quality"
   | "chat"
   | "new-project"
@@ -147,7 +148,7 @@ export function AppMenu({
 
   const [isOpen, setIsOpen] = useState(false);
   const canCreate = canCreateProject || canCreateTasks || canWriteReports;
-  const reviewHref = workerMode && canUseFieldConsole ? "/field" : "/review";
+  const reviewHref = workerMode && canUseFieldConsole ? "/field" : "/notifications";
 
   const visibleDepartmentGroups = departmentScopeName
     ? DEPARTMENT_GROUPS.filter((group) => {
@@ -226,6 +227,9 @@ export function AppMenu({
       return true;
     }
     if (item.key === "review" && active === "field") {
+      return true;
+    }
+    if (item.key === "review" && active === "notifications") {
       return true;
     }
     if (active === "auto-base" && item.departmentName?.includes("Авто")) {

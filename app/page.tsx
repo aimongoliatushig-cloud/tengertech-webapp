@@ -6,6 +6,7 @@ import { loadAssignedGarbageTasks } from "@/lib/field-ops";
 import {
   loadFleetVehicleBoard,
   loadHrDailyAttendanceSummary,
+  loadHrEmployeeDirectory,
   loadMunicipalSnapshot,
   type HrDailyAttendanceSummary,
 } from "@/lib/odoo";
@@ -18,7 +19,14 @@ export default async function Home() {
     login: session.login,
     password: session.password,
   });
-  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  let scopedDepartmentName = await loadSessionDepartmentName(session);
+  if (!scopedDepartmentName && isWorkerOnly(session)) {
+    const currentUserId = String(session.uid);
+    scopedDepartmentName =
+      snapshot.taskDirectory.find((task) =>
+        (task.assigneeIds ?? []).some((assigneeId) => String(assigneeId) === currentUserId),
+      )?.departmentName ?? null;
+  }
   const scopedDepartments = scopedDepartmentName
     ? snapshot.departments.filter(
         (department) =>
@@ -77,6 +85,34 @@ export default async function Home() {
     });
   } catch (error) {
     console.warn("HR attendance summary could not be loaded for dashboard:", error);
+  }
+
+  if (scopedDepartmentName) {
+    try {
+      const scopedEmployees = filterByDepartment(
+        await loadHrEmployeeDirectory({
+          login: session.login,
+          password: session.password,
+        }),
+        scopedDepartmentName,
+      );
+      const activeEmployees = scopedEmployees.filter((employee) => employee.active);
+      const workingToday = activeEmployees.filter((employee) => employee.statusKey === "working").length;
+      const sickToday = activeEmployees.filter((employee) => employee.statusKey === "sick").length;
+      const absentToday = activeEmployees.filter((employee) => employee.statusKey === "absent").length;
+
+      hrAttendanceSummary = {
+        totalEmployees: activeEmployees.length,
+        workingToday,
+        absentToday,
+        sickToday,
+        leaveToday: 0,
+        generatedAt: new Date().toISOString(),
+        source: scopedEmployees.length ? "employee_status" : "empty",
+      };
+    } catch (error) {
+      console.warn("Scoped HR summary could not be loaded for dashboard:", error);
+    }
   }
 
   if (isWorkerOnly(session) && canUseFieldConsole) {
