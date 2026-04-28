@@ -1,5 +1,7 @@
 import { DashboardView } from "@/app/dashboard-view";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { hasCapability, isWorkerOnly, requireSession } from "@/lib/auth";
+import { filterByDepartment } from "@/lib/dashboard-scope";
 import { loadAssignedGarbageTasks } from "@/lib/field-ops";
 import {
   loadFleetVehicleBoard,
@@ -16,6 +18,26 @@ export default async function Home() {
     login: session.login,
     password: session.password,
   });
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  const scopedDepartments = scopedDepartmentName
+    ? snapshot.departments.filter(
+        (department) =>
+          filterByDepartment([{ departmentName: department.name }], scopedDepartmentName).length > 0,
+      )
+    : snapshot.departments;
+  const visibleSnapshot = scopedDepartmentName
+    ? {
+        ...snapshot,
+        departments: scopedDepartments,
+        projects: filterByDepartment(snapshot.projects, scopedDepartmentName),
+        taskDirectory: filterByDepartment(snapshot.taskDirectory, scopedDepartmentName),
+        liveTasks: filterByDepartment(snapshot.liveTasks, scopedDepartmentName),
+        reviewQueue: filterByDepartment(snapshot.reviewQueue, scopedDepartmentName),
+        qualityAlerts: filterByDepartment(snapshot.qualityAlerts, scopedDepartmentName),
+        reports: filterByDepartment(snapshot.reports, scopedDepartmentName),
+        totalTasks: filterByDepartment(snapshot.taskDirectory, scopedDepartmentName).length,
+      }
+    : snapshot;
 
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   let todayAssignments: Awaited<ReturnType<typeof loadAssignedGarbageTasks>>["assignments"] = [];
@@ -77,7 +99,8 @@ export default async function Home() {
   return (
     <DashboardView
       session={session}
-      snapshot={snapshot}
+      snapshot={visibleSnapshot}
+      departmentScopeName={scopedDepartmentName}
       todayAssignments={todayAssignments}
       fleetBoard={fleetBoard}
       fleetLoadError={fleetLoadError}

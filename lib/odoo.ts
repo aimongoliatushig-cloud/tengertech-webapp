@@ -1282,6 +1282,14 @@ function resolveNormalizedTaskDepartmentName(
     });
   }
 
+  const projectId = Array.isArray(task.project_id) ? task.project_id[0] : null;
+  if (projectId && projectDepartmentById.get(projectId)) {
+    return normalizeDepartmentUnitName(projectDepartmentById.get(projectId) as string, {
+      operationType: task.mfo_operation_type,
+      labelText: `${task.name} ${relationName(task.project_id, "")}`,
+    });
+  }
+
   const inferredFromOperation = departmentUnitFromOperationType(task.mfo_operation_type);
   if (inferredFromOperation) {
     return inferredFromOperation;
@@ -1292,14 +1300,6 @@ function resolveNormalizedTaskDepartmentName(
   );
   if (inferredFromText !== UNKNOWN_DEPARTMENT) {
     return inferredFromText;
-  }
-
-  const projectId = Array.isArray(task.project_id) ? task.project_id[0] : null;
-  if (projectId && projectDepartmentById.get(projectId)) {
-    return normalizeDepartmentUnitName(projectDepartmentById.get(projectId) as string, {
-      operationType: task.mfo_operation_type,
-      labelText: `${task.name} ${relationName(task.project_id, "")}`,
-    });
   }
 
   return UNKNOWN_DEPARTMENT;

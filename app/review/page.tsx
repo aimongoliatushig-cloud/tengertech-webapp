@@ -12,6 +12,8 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { filterByDepartment } from "@/lib/dashboard-scope";
 import {
   DEPARTMENT_GROUPS,
   findDepartmentGroupByName,
@@ -132,9 +134,19 @@ export default async function ReviewPage({ searchParams }: PageProps) {
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  const sourceTaskDirectory = filterByDepartment(snapshot.taskDirectory, scopedDepartmentName);
+  const sourceReviewQueue = filterByDepartment(snapshot.reviewQueue, scopedDepartmentName);
+  const sourceProjects = filterByDepartment(snapshot.projects, scopedDepartmentName);
+  const sourceDepartments = scopedDepartmentName
+    ? snapshot.departments.filter(
+        (department) =>
+          filterByDepartment([{ departmentName: department.name }], scopedDepartmentName).length > 0,
+      )
+    : snapshot.departments;
 
   const scopeMap = new Map<string, ReviewScope>();
-  for (const department of snapshot.departments) {
+  for (const department of sourceDepartments) {
     scopeMap.set(
       department.name,
       createUnitScope(department.name, {
@@ -146,16 +158,16 @@ export default async function ReviewPage({ searchParams }: PageProps) {
   }
 
   const allDepartmentNames = new Set<string>();
-  for (const department of snapshot.departments) {
+  for (const department of sourceDepartments) {
     allDepartmentNames.add(department.name);
   }
-  for (const task of snapshot.taskDirectory) {
+  for (const task of sourceTaskDirectory) {
     allDepartmentNames.add(task.departmentName);
   }
-  for (const item of snapshot.reviewQueue) {
+  for (const item of sourceReviewQueue) {
     allDepartmentNames.add(item.departmentName);
   }
-  for (const project of snapshot.projects) {
+  for (const project of sourceProjects) {
     allDepartmentNames.add(project.departmentName);
   }
 
@@ -182,7 +194,7 @@ export default async function ReviewPage({ searchParams }: PageProps) {
   }
 
   const scopes = Array.from(scopeMap.values()).map((scope) => {
-    const scopeTasks = snapshot.taskDirectory.filter((task) =>
+    const scopeTasks = sourceTaskDirectory.filter((task) =>
       scopeMatches(scope, task.departmentName),
     );
     const activeTasks = scopeTasks.filter(
@@ -205,7 +217,7 @@ export default async function ReviewPage({ searchParams }: PageProps) {
 
   const orderedScopes: ReviewScope[] = [];
   const appended = new Set<string>();
-  for (const department of snapshot.departments) {
+  for (const department of sourceDepartments) {
     const groupedScope =
       findDepartmentGroupByName(department.name) ?? findDepartmentGroupByUnit(department.name);
     const groupedScopeName = groupedScope?.name ?? null;
@@ -249,19 +261,19 @@ export default async function ReviewPage({ searchParams }: PageProps) {
     orderedScopes.find((scope) => scope.reviewTasks > 0) ??
     orderedScopes[0];
 
-  const scopedTasks = snapshot.taskDirectory.filter((task) =>
+  const scopedTasks = sourceTaskDirectory.filter((task) =>
     selectedScope ? scopeMatches(selectedScope, task.departmentName) : false,
   );
   const activeTasks = scopedTasks
     .filter((task) => task.stageBucket === "todo" || task.stageBucket === "progress")
     .sort((left, right) => right.progress - left.progress || left.name.localeCompare(right.name, "mn"));
-  const visibleReviewTasks = snapshot.reviewQueue.filter((item) =>
+  const visibleReviewTasks = sourceReviewQueue.filter((item) =>
     selectedScope ? scopeMatches(selectedScope, item.departmentName) : false,
   );
   const reviewedTasks = scopedTasks
     .filter((task) => task.stageBucket === "done")
     .sort((left, right) => right.progress - left.progress || left.name.localeCompare(right.name, "mn"));
-  const scopedProjects = snapshot.projects.filter((project) =>
+  const scopedProjects = sourceProjects.filter((project) =>
     selectedScope ? scopeMatches(selectedScope, project.departmentName) : false,
   );
 
@@ -322,6 +334,7 @@ export default async function ReviewPage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              departmentScopeName={scopedDepartmentName}
             />
           </aside>
 

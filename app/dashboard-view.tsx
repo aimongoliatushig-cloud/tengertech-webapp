@@ -53,6 +53,7 @@ type DashboardViewProps = {
   fleetBoard: FleetVehicleBoard;
   fleetLoadError?: string;
   hrAttendanceSummary: HrDailyAttendanceSummary;
+  departmentScopeName?: string | null;
 };
 
 type DashboardStat = {
@@ -757,6 +758,7 @@ export function DashboardView({
   fleetBoard,
   fleetLoadError = "",
   hrAttendanceSummary,
+  departmentScopeName = null,
 }: DashboardViewProps) {
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -878,6 +880,7 @@ export function DashboardView({
             roleLabel={roleLabel}
             workerMode={workerMode}
             notificationCount={attentionCount}
+            departmentScopeName={departmentScopeName}
           />
         </aside>
 

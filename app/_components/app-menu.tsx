@@ -24,7 +24,13 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { DEPARTMENT_GROUPS, type DepartmentGroupDefinition } from "@/lib/department-groups";
+import {
+  DEPARTMENT_GROUPS,
+  findDepartmentGroupByName,
+  findDepartmentGroupByUnit,
+  matchesDepartmentGroup,
+  type DepartmentGroupDefinition,
+} from "@/lib/department-groups";
 import { cn } from "@/lib/utils";
 
 import styles from "./app-menu.module.css";
@@ -58,6 +64,7 @@ type AppMenuProps = {
   masterMode?: boolean;
   workerMode?: boolean;
   notificationCount?: number;
+  departmentScopeName?: string | null;
 };
 
 type MenuItem = {
@@ -130,6 +137,7 @@ export function AppMenu({
   masterMode = false,
   workerMode = false,
   notificationCount = 0,
+  departmentScopeName = null,
 }: AppMenuProps) {
   void getDockLabel;
   void canViewQualityCenter;
@@ -139,9 +147,20 @@ export function AppMenu({
 
   const [isOpen, setIsOpen] = useState(false);
   const canCreate = canCreateProject || canCreateTasks || canWriteReports;
-  const reviewHref = canUseFieldConsole ? "/field" : "/review";
+  const reviewHref = workerMode && canUseFieldConsole ? "/field" : "/review";
 
-  const departmentItems: MenuItem[] = DEPARTMENT_GROUPS.map((group, index) => ({
+  const visibleDepartmentGroups = departmentScopeName
+    ? DEPARTMENT_GROUPS.filter((group) => {
+        const scopedGroup =
+          findDepartmentGroupByName(departmentScopeName) ??
+          findDepartmentGroupByUnit(departmentScopeName);
+        return scopedGroup
+          ? group.name === scopedGroup.name
+          : matchesDepartmentGroup(group, departmentScopeName);
+      })
+    : DEPARTMENT_GROUPS;
+
+  const departmentItems: MenuItem[] = visibleDepartmentGroups.map((group, index) => ({
     key: `department-${index}`,
     href: `/projects?department=${encodeURIComponent(group.name)}`,
     label: group.name,

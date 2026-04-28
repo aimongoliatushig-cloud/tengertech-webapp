@@ -11,11 +11,11 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
   filterByDepartment,
   filterTasksToDate,
   getTodayDateKey,
-  pickPrimaryDepartmentName,
 } from "@/lib/dashboard-scope";
 import {
   DEPARTMENT_GROUPS,
@@ -264,21 +264,15 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const workerMode = isWorkerOnly(session);
   const masterMode = isMasterRole(session.role);
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  const departmentScopedMode = Boolean(scopedDepartmentName);
   const quickActionMode: QuickActionMode =
     workerMode && canWriteReports ? requestedQuickAction : "none";
   const workerTasks = workerMode
     ? snapshot.taskDirectory.filter((task) => task.assigneeIds?.includes(session.uid))
     : [];
-  const masterDepartmentName = masterMode
-    ? pickPrimaryDepartmentName({
-        taskDirectory: snapshot.taskDirectory,
-        reports: snapshot.reports,
-        projects: snapshot.projects,
-        departments: snapshot.departments,
-      })
-    : null;
   const masterDepartmentTasks = masterMode
-    ? filterByDepartment(snapshot.taskDirectory, masterDepartmentName)
+    ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
     : [];
   const masterTodayTasks = masterMode
     ? filterTasksToDate(masterDepartmentTasks, getTodayDateKey())
@@ -286,35 +280,37 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const masterTodayProjects = masterMode
     ? buildTodayProjectSummaries(
         masterTodayTasks,
-        filterByDepartment(snapshot.projects, masterDepartmentName),
+        filterByDepartment(snapshot.projects, scopedDepartmentName),
       )
     : [];
 
   const selectedDepartment =
-    !workerMode && !masterMode && requestedDepartment && requestedDepartment !== "all"
+    !workerMode && !masterMode && !departmentScopedMode && requestedDepartment && requestedDepartment !== "all"
       ? snapshot.departments.find((department) => department.name === requestedDepartment) ?? null
       : null;
   const requestedDepartmentGroup =
-    !workerMode && !masterMode && requestedDepartment && requestedDepartment !== "all"
+    !workerMode && !masterMode && !departmentScopedMode && requestedDepartment && requestedDepartment !== "all"
       ? findDepartmentGroupByName(requestedDepartment)
       : null;
   const requestedUnitGroup =
-    !workerMode && !masterMode && requestedDepartment && requestedDepartment !== "all"
+    !workerMode && !masterMode && !departmentScopedMode && requestedDepartment && requestedDepartment !== "all"
       ? findDepartmentGroupByUnit(requestedDepartment)
       : null;
   const selectedDepartmentUnit =
     requestedUnitGroup?.units.includes(requestedDepartment) ? requestedDepartment : "";
   const selectedDepartmentGroup =
-    !workerMode && !masterMode && requestedDepartment && requestedDepartment !== "all"
+    !workerMode && !masterMode && !departmentScopedMode && requestedDepartment && requestedDepartment !== "all"
       ? requestedDepartmentGroup ?? (!selectedDepartment && !selectedDepartmentUnit ? requestedUnitGroup : null)
       : null;
   const selectedDepartmentParam =
-    selectedDepartmentUnit || selectedDepartmentGroup?.name || selectedDepartment?.name || "";
+    scopedDepartmentName || selectedDepartmentUnit || selectedDepartmentGroup?.name || selectedDepartment?.name || "";
 
   const scopedProjects = workerMode
     ? Array.from(new Set(workerTasks.map((task) => task.projectName)))
     : masterMode
-      ? filterByDepartment(snapshot.projects, masterDepartmentName)
+      ? filterByDepartment(snapshot.projects, scopedDepartmentName)
+      : departmentScopedMode
+        ? filterByDepartment(snapshot.projects, scopedDepartmentName)
       : snapshot.projects.filter((project) => {
           if (selectedDepartmentUnit) {
             return project.departmentName === selectedDepartmentUnit;
@@ -328,6 +324,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
     ? workerTasks
     : masterMode
       ? masterTodayTasks
+      : departmentScopedMode
+        ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
       : snapshot.taskDirectory.filter((task) => {
           if (selectedDepartmentUnit) {
             return task.departmentName === selectedDepartmentUnit;
@@ -383,8 +381,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const selectedDepartmentLabel = workerMode
     ? "Надад оноогдсон ажилбар"
     : masterMode
-      ? masterDepartmentName ?? "Миний алба нэгж"
-      : selectedDepartmentUnit || selectedDepartmentGroup?.name || selectedDepartment?.name || "Бүх алба хэлтэс";
+      ? scopedDepartmentName ?? "Миний алба нэгж"
+      : scopedDepartmentName || selectedDepartmentUnit || selectedDepartmentGroup?.name || selectedDepartment?.name || "Бүх алба хэлтэс";
   const calendarPlanItems = Array.from(
     scopedTasks
       .filter((task) => task.scheduledDate)
@@ -463,6 +461,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
               roleLabel={getRoleLabel(session.role)}
               masterMode={masterMode}
               workerMode={workerMode}
+              departmentScopeName={scopedDepartmentName}
             />
           </aside>
 
@@ -515,7 +514,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 </div>
               </div>
 
-              {!masterMode ? (
+              {!masterMode && !departmentScopedMode ? (
                 <div className={styles.pageHeaderAside}>
                   {workerMode ? (
                     <div className={styles.userBlock}>

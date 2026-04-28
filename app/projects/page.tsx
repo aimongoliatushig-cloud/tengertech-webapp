@@ -12,7 +12,8 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
-import { filterByDepartment, getTodayDateKey, pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import {
   findDepartmentGroupByName,
   findDepartmentGroupByUnit,
@@ -247,26 +248,23 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const masterMode = isMasterRole(session.role);
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  const departmentScopedMode = Boolean(scopedDepartmentName);
 
   const params = (await searchParams) ?? {};
   const requestedDepartment = getDepartmentParam(params.department);
   const requestedUnit = getDepartmentParam(params.unit);
   const activeFilter = normalizeProjectFilter(getDepartmentParam(params.category));
   const quickActionMode = normalizeQuickAction(getDepartmentParam(params.quickAction));
-  const masterDepartmentName = masterMode
-    ? pickPrimaryDepartmentName({
-        taskDirectory: snapshot.taskDirectory,
-        reports: snapshot.reports,
-        projects: snapshot.projects,
-        departments: snapshot.departments,
-      })
-    : null;
 
   const detectedGroup =
-    !masterMode && requestedDepartment && requestedDepartment !== "all"
-      ? findDepartmentGroupByName(requestedDepartment) ??
-        findDepartmentGroupByUnit(requestedDepartment)
-      : null;
+    departmentScopedMode
+      ? findDepartmentGroupByName(scopedDepartmentName ?? "") ??
+        findDepartmentGroupByUnit(scopedDepartmentName ?? "")
+      : requestedDepartment && requestedDepartment !== "all"
+        ? findDepartmentGroupByName(requestedDepartment) ??
+          findDepartmentGroupByUnit(requestedDepartment)
+        : null;
 
   const selectedGroup = detectedGroup;
   const availableUnits = selectedGroup ? getAvailableUnits(selectedGroup) : [];
@@ -277,9 +275,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
       : requestedDepartment && availableUnits.includes(requestedDepartment)
         ? requestedDepartment
         : "";
-  const isAutoBaseView =
-    !masterMode &&
-    selectedGroup?.name === AUTO_BASE_GROUP_NAME;
+  const isAutoBaseView = selectedGroup?.name === AUTO_BASE_GROUP_NAME;
   const showAutoBaseFleet = isAutoBaseView && selectedUnit === AUTO_BASE_UNIT_NAME;
   let fleetBoard: Awaited<ReturnType<typeof loadFleetVehicleBoard>> | null = null;
   let fleetLoadError = "";
@@ -297,8 +293,8 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
     }
   }
 
-  const scopedProjects = (masterMode
-    ? filterByDepartment(snapshot.projects, masterDepartmentName)
+  const scopedProjects = (departmentScopedMode
+    ? filterByDepartment(snapshot.projects, scopedDepartmentName)
     : snapshot.projects.filter((project) => {
         if (selectedUnit) {
           return matchesUnitScope(selectedUnit, project.departmentName, project.name);
@@ -325,8 +321,8 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
 
     return right.completion - left.completion;
   });
-  const scopedTasks = masterMode
-    ? filterByDepartment(snapshot.taskDirectory, masterDepartmentName)
+  const scopedTasks = departmentScopedMode
+    ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
     : snapshot.taskDirectory.filter((task) => {
         if (selectedUnit) {
           return matchesUnitScope(selectedUnit, task.departmentName, task.projectName);
@@ -352,7 +348,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
       });
 
   const selectedDepartmentName = masterMode
-    ? masterDepartmentName ?? "Миний алба нэгж"
+    ? scopedDepartmentName ?? "Миний алба нэгж"
     : selectedUnit || selectedGroup?.name || "Бүх хэлтэс";
 
   const projectCounts = {
@@ -659,6 +655,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               masterMode={masterMode}
+              departmentScopeName={scopedDepartmentName}
             />
           </aside>
 
