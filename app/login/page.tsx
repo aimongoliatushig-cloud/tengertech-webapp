@@ -47,25 +47,17 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             priority
             unoptimized
           />
-          <span className={styles.badge}>Дотоод систем</span>
         </div>
 
         <div className={styles.heroCard}>
-          <span className={styles.kicker}>Дотоод нэгж</span>
           <h1>Хот тохижилтын удирдлагын төв</h1>
           <p>Өдрийн ажил, хэлтсийн урсгал, тайлан болон хяналтаа нэг дороос удирдана.</p>
-          <div className={styles.heroChips} aria-hidden>
-            <span>Ажил</span>
-            <span>Тайлан</span>
-            <span>Хяналт</span>
-          </div>
         </div>
       </section>
 
       <section className={styles.formPanel}>
         <div className={styles.formWrap}>
           <div className={styles.formHeader}>
-            <span className={styles.formBadge}>Нэвтрэх хэсэг</span>
             <h2>Нэвтрэх</h2>
           </div>
 
