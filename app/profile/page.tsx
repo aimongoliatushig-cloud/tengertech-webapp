@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
   getRoleLabel,
   hasCapability,
@@ -10,9 +11,21 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
+import { isAutoGarbageDepartment } from "@/lib/department-permissions";
 import { getPrimaryAppRole } from "@/lib/roles";
+import { loadRouteManagementData } from "@/lib/route-management";
+import { loadTeamMemberOptions } from "@/lib/team-management";
 
+import {
+  createProfileCollectionPointAction,
+  createProfileRouteAction,
+  createProfileTeamAction,
+} from "./actions";
 import styles from "./profile.module.css";
+
+type PageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
 
 type QuickLink = {
   href: string;
@@ -25,6 +38,10 @@ type CapabilityCard = {
   note: string;
   enabled: boolean;
 };
+
+function getValue(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] || "" : value || "";
+}
 
 function getInitials(userName: string) {
   const parts = userName
@@ -72,8 +89,12 @@ function formatSessionStart(value: number) {
 
 export const dynamic = "force-dynamic";
 
-export default async function ProfilePage() {
+export default async function ProfilePage({ searchParams }: PageProps) {
   const session = await requireSession();
+  const params = (await searchParams) || {};
+  const notice = getValue(params.notice);
+  const error = getValue(params.error);
+
   const roleLabel = getRoleLabel(session.role);
   const masterMode = isMasterRole(session.role);
   const workerMode = isWorkerOnly(session);
@@ -82,9 +103,31 @@ export default async function ProfilePage() {
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const departmentScopeName = await loadSessionDepartmentName(session);
   const canViewHrDirectory = new Set(["system_admin", "director", "general_manager"]).has(
     String(session.role),
   );
+  const canUseProcurement = new Set(["system_admin", "director", "general_manager"]).has(
+    String(session.role),
+  );
+  const canCreateTeam = new Set([
+    "system_admin",
+    "project_manager",
+    "senior_master",
+    "team_leader",
+  ]).has(String(session.role));
+  const canCreateRoute =
+    String(session.role) === "project_manager" && isAutoGarbageDepartment(departmentScopeName);
+  const connectionOverrides = {
+    login: session.login,
+    password: session.password,
+  };
+  const routeManagementData = canCreateRoute
+    ? await loadRouteManagementData(connectionOverrides)
+    : null;
+  const teamMemberOptions = canCreateTeam
+    ? await loadTeamMemberOptions(departmentScopeName, connectionOverrides)
+    : [];
 
   const appRoleLabel = getAppRoleLabel(
     getPrimaryAppRole({
@@ -116,6 +159,20 @@ export default async function ProfilePage() {
             label: "Ажлын жагсаалт",
             note: "Ажил, төслийн ерөнхий урсгал",
           },
+    canCreateTeam
+      ? {
+          href: "#team-route-settings",
+          label: "Баг үүсгэх",
+          note: "Өөрийн алба нэгжийн багийг нэмнэ",
+        }
+      : null,
+    canCreateRoute
+      ? {
+          href: "#team-route-settings",
+          label: "Маршрут үүсгэх",
+          note: "Хог ачилт, авто баазын маршрутыг нэмнэ",
+        }
+      : null,
     canUseFieldConsole
       ? {
           href: "/field",
@@ -123,11 +180,13 @@ export default async function ProfilePage() {
           note: "Маршрут ба талбайн ажлаа нээнэ",
         }
       : null,
-    {
-      href: "/procurement",
-      label: "Худалдан авалт",
-      note: "Хүсэлт ба шатны явцаа хянана",
-    },
+    canUseProcurement
+      ? {
+          href: "/procurement",
+          label: "Худалдан авалт",
+          note: "Хүсэлт ба шатны явцаа хянана",
+        }
+      : null,
     canWriteReports
       ? {
           href: "/reports",
@@ -139,7 +198,7 @@ export default async function ProfilePage() {
       ? {
           href: "/quality",
           label: "Чанарын төв",
-          note: "Чанарын хяналттай холбоотой мэдээлэл",
+          note: "Чанар, хяналтын урсгал нээнэ",
         }
       : null,
     canViewHrDirectory
@@ -161,6 +220,16 @@ export default async function ProfilePage() {
       label: "Ажилбар нэмэх",
       note: "Одоо байгаа ажлын дотор шинэ ажилбар нээх",
       enabled: canCreateTasks,
+    },
+    {
+      label: "Баг үүсгэх",
+      note: "Өөрийн алба нэгжид гүйцэтгэлийн баг нэмэх",
+      enabled: canCreateTeam,
+    },
+    {
+      label: "Маршрут үүсгэх",
+      note: "Зөвхөн Авто бааз, хог тээвэрлэлтийн хэлтсийн даргад нээлттэй",
+      enabled: canCreateRoute,
     },
     {
       label: "Тайлан оруулах",
@@ -203,6 +272,7 @@ export default async function ProfilePage() {
               roleLabel={roleLabel}
               masterMode={masterMode}
               workerMode={workerMode}
+              departmentScopeName={departmentScopeName}
             />
           </aside>
 
@@ -235,9 +305,9 @@ export default async function ProfilePage() {
                 </article>
 
                 <article className={styles.summaryCard}>
-                  <span>Нээлттэй хэсэг</span>
-                  <strong>{quickLinks.length}</strong>
-                  <small>Танд шууд ажиллах боломжтой хэсгүүд</small>
+                  <span>Алба нэгж</span>
+                  <strong>{departmentScopeName || "Бүх алба"}</strong>
+                  <small>Энэ эрхээр харагдах үндсэн хамрах хүрээ</small>
                 </article>
 
                 <article className={styles.summaryCard}>
@@ -260,12 +330,12 @@ export default async function ProfilePage() {
                   <span className={styles.eyebrow}>Шуурхай холбоос</span>
                   <h2>Танд хэрэгтэй үндсэн хэсгүүд</h2>
                 </div>
-                <p>Профайлаас шууд орох хамгийн их хэрэглэдэг хэсгүүд.</p>
+                <p>Профайлаас шууд орох хамгийн их хэрэглэгддэг хэсгүүд.</p>
               </div>
 
               <div className={styles.linkGrid}>
                 {quickLinks.map((item) => (
-                  <Link key={item.href} href={item.href} className={styles.linkCard}>
+                  <Link key={`${item.href}-${item.label}`} href={item.href} className={styles.linkCard}>
                     <div className={styles.linkCopy}>
                       <strong>{item.label}</strong>
                       <small>{item.note}</small>
@@ -276,6 +346,172 @@ export default async function ProfilePage() {
                   </Link>
                 ))}
               </div>
+            </section>
+
+            <section id="team-route-settings" className={styles.sectionCard}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <span className={styles.eyebrow}>Тохиргооны үйлдэл</span>
+                  <h2>Баг, хогийн цэг, маршрут</h2>
+                </div>
+                <p>
+                  Багийг эрхтэй хэрэглэгч үүсгэнэ. Хогийн цэг болон маршрут үүсгэх хэсэг зөвхөн
+                  Авто бааз, хог тээвэрлэлтийн хэлтсийн даргад нээлттэй.
+                </p>
+              </div>
+
+              {notice ? <p className={styles.noticeMessage}>{notice}</p> : null}
+              {error ? <p className={styles.errorMessage}>{error}</p> : null}
+
+              <div className={styles.formGrid}>
+                {canCreateTeam ? (
+                  <form action={createProfileTeamAction} className={styles.miniForm}>
+                    <div>
+                      <span className={styles.formBadge}>Баг</span>
+                      <h3>Шинэ баг үүсгэх</h3>
+                      <p>Баг таны одоогийн алба нэгжтэй автоматаар холбогдоно.</p>
+                    </div>
+                    <label className={styles.field}>
+                      <span>Багийн нэр</span>
+                      <input name="team_name" type="text" placeholder="Жишээ: Өглөөний ээлжийн баг" required />
+                    </label>
+                                        <label className={styles.field}>
+                      <span>?????? ??????</span>
+                      <select
+                        name="member_ids"
+                        multiple
+                        size={Math.min(Math.max(teamMemberOptions.length, 4), 8)}
+                      >
+                        {teamMemberOptions.map((employee) => (
+                          <option key={employee.id} value={employee.id}>
+                            {employee.label}
+                          </option>
+                        ))}
+                      </select>
+                      <small>Ctrl ???? ???? ??????? ???????.</small>
+                    </label>
+<button type="submit" className={styles.primaryMiniButton}>Баг үүсгэх</button>
+                  </form>
+                ) : (
+                  <article className={styles.lockedCard}>
+                    <span className={styles.formBadge}>Баг</span>
+                    <h3>Баг үүсгэх эрх хаалттай</h3>
+                    <p>Энэ үйлдэл хэлтсийн дарга, мастер болон системийн админд нээлттэй.</p>
+                  </article>
+                )}
+
+                {canCreateRoute && routeManagementData ? (
+                  <form action={createProfileCollectionPointAction} className={styles.miniForm}>
+                    <div>
+                      <span className={styles.formBadge}>Хогийн цэг</span>
+                      <h3>Хогийн цэг нэмэх</h3>
+                      <p>Цэг нэмээд дараа нь маршрутад сонгож холбоно.</p>
+                    </div>
+                    <label className={styles.field}>
+                      <span>Цэгийн нэр</span>
+                      <input name="point_name" type="text" placeholder="Жишээ: 8-р хороо - 20-р хогийн цэг" required />
+                    </label>
+                    <label className={styles.field}>
+                      <span>Хороо</span>
+                      <select name="subdistrict_id" required defaultValue="">
+                        <option value="" disabled>Хороо сонгох</option>
+                        {routeManagementData.subdistricts.map((subdistrict) => (
+                          <option key={subdistrict.id} value={subdistrict.id}>{subdistrict.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className={styles.field}>
+                      <span>Хаяг</span>
+                      <input name="point_address" type="text" placeholder="Нэмэлт хаяг, тайлбар" />
+                    </label>
+                    <button type="submit" className={styles.primaryMiniButton}>Хогийн цэг нэмэх</button>
+                  </form>
+                ) : null}
+              </div>
+
+              {canCreateRoute && routeManagementData ? (
+                <div className={styles.routeManager}>
+                  <div className={styles.routeListHeader}>
+                    <div>
+                      <span className={styles.formBadge}>Маршрут</span>
+                      <h3>Маршрутын жагсаалт</h3>
+                      <p>Odoo дээр бүртгэлтэй маршрутуудыг жагсаалтаар харуулж байна.</p>
+                    </div>
+                    <span className={styles.routeCount}>{routeManagementData.routes.length} маршрут</span>
+                  </div>
+
+                  <div className={styles.routeTable}>
+                    <div className={styles.routeTableHead}>
+                      <span>Маршрут</span>
+                      <span>Төсөл</span>
+                      <span>Хогийн цэг</span>
+                    </div>
+                    {routeManagementData.routes.length ? (
+                      routeManagementData.routes.map((route) => (
+                        <article key={route.id} className={styles.routeRow}>
+                          <strong>{route.name}</strong>
+                          <span>{route.projectName || "-"}</span>
+                          <small>
+                            {route.pointCount} цэг
+                            {route.pointNames.length ? [" · ", route.pointNames.slice(0, 3).join(", ")].join("") : ""}
+                          </small>
+                        </article>
+                      ))
+                    ) : (
+                      <p className={styles.emptyNote}>Одоогоор маршрут бүртгэгдээгүй байна.</p>
+                    )}
+                  </div>
+
+                  <form action={createProfileRouteAction} className={styles.routeCreateForm}>
+                    <div className={styles.routeListHeader}>
+                      <div>
+                        <span className={styles.formBadge}>Нэмэх</span>
+                        <h3>Маршрут нэмэх</h3>
+                        <p>Код болон ээлж харагдахгүй. Систем default өглөөний ээлжээр хадгална.</p>
+                      </div>
+                    </div>
+                    <div className={styles.formGrid}>
+                      <label className={styles.field}>
+                        <span>Маршрутын нэр</span>
+                        <input name="route_name" type="text" placeholder="Жишээ: Хог тээвэрлэлт - 8 хороо" required />
+                      </label>
+                      <label className={styles.field}>
+                        <span>Машин</span>
+                        <select name="vehicle_id" required defaultValue="">
+                          <option value="" disabled>Машин сонгох</option>
+                          {routeManagementData.vehicles.map((vehicle) => (
+                            <option key={vehicle.id} value={vehicle.id}>{vehicle.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className={styles.field}>
+                        <span>Баг</span>
+                        <select name="team_id" required defaultValue="">
+                          <option value="" disabled>Баг сонгох</option>
+                          {routeManagementData.teams.map((team) => (
+                            <option key={team.id} value={team.id}>{team.label}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className={styles.field}>
+                        <span>Хогийн цэгүүд</span>
+                        <select name="point_ids" multiple required size={Math.min(Math.max(routeManagementData.points.length, 4), 8)}>
+                          {routeManagementData.points.map((point) => (
+                            <option key={point.id} value={point.id}>{point.name}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <button type="submit" className={styles.primaryMiniButton}>Маршрут нэмэх</button>
+                  </form>
+                </div>
+              ) : (
+                <article className={styles.lockedCard}>
+                  <span className={styles.formBadge}>Маршрут</span>
+                  <h3>Маршрут үүсгэх эрх хязгаартай</h3>
+                  <p>Энэ хэсэг зөвхөн Авто бааз, хог тээвэрлэлтийн хэлтсийн даргаар нэвтрэхэд идэвхжинэ.</p>
+                </article>
+              )}
             </section>
 
             <section className={styles.sectionCard}>
@@ -324,7 +560,9 @@ export default async function ProfilePage() {
                   ))}
                 </div>
               ) : (
-                <p className={styles.emptyNote}>Одоогоор нэмэлт group эрх идэвхжээгүй байна.</p>
+                <p className={styles.emptyNote}>
+                  Одоогоор нэмэлт group эрх идэвхжээгүй байна.
+                </p>
               )}
             </section>
 
@@ -335,7 +573,7 @@ export default async function ProfilePage() {
                 <p>Хэрэв энэ төхөөрөмжийг өөр хүн ашиглах бол гараад үлдээнэ үү.</p>
               </div>
 
-          <form action="/auth/logout" method="post">
+              <form action="/auth/logout" method="post">
                 <button type="submit" className={styles.logoutButton}>
                   Гарах
                 </button>

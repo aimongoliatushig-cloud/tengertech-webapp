@@ -52,7 +52,7 @@
 
 .menuLink {
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr) auto;
+  grid-template-columns: 26px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 13px;
   min-height: 48px;
@@ -70,6 +70,95 @@
     border-color 180ms ease,
     color 180ms ease,
     box-shadow 180ms ease;
+}
+
+.linkLoadingHint,
+.createLoadingHint,
+.profileLoadingHint,
+.dockLoadingHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #2e7d32;
+  font-size: 0.68rem;
+  font-weight: 800;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+  white-space: nowrap;
+}
+
+.linkLoadingHint span:last-child,
+.createLoadingHint span:last-child,
+.profileLoadingHint span:last-child,
+.dockLoadingHint span:last-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.linkLoadingOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: rgba(246, 251, 246, 0.68);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+  backdrop-filter: blur(8px);
+}
+
+.linkLoadingOverlay[data-pending="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.linkLoadingOverlay > span {
+  display: inline-block;
+  width: 38px;
+  height: 38px;
+  border: 4px solid rgba(46, 125, 50, 0.18);
+  border-top-color: #2e7d32;
+  border-radius: 999px;
+  animation: appMenuSpin 720ms linear infinite;
+}
+
+.linkLoadingOverlay > strong {
+  position: absolute;
+  margin-top: 82px;
+  color: #1f7a35;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.linkLoadingHint[data-pending="true"],
+.createLoadingHint[data-pending="true"],
+.profileLoadingHint[data-pending="true"],
+.dockLoadingHint[data-pending="true"] {
+  opacity: 0;
+}
+
+.linkLoadingHint > span:first-child,
+.createLoadingHint > span:first-child,
+.profileLoadingHint > span:first-child,
+.dockLoadingHint > span:first-child {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(46, 125, 50, 0.22);
+  border-top-color: #2e7d32;
+  border-radius: 999px;
+  animation: appMenuSpin 720ms linear infinite;
+}
+
+@keyframes appMenuSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .menuLink:hover {
@@ -110,6 +199,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.profileLoadingHint span:last-child {
+  display: none;
 }
 
 .menuBadge {
@@ -357,6 +450,7 @@
   }
 
   .dockLink {
+    position: relative;
     display: grid;
     min-height: 58px;
     place-items: center;
@@ -367,6 +461,16 @@
     font-size: 0.62rem;
     font-weight: 800;
     text-decoration: none;
+  }
+
+  .dockLoadingHint {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+  }
+
+  .dockLoadingHint span:last-child {
+    display: none;
   }
 
   .dockLinkActive {

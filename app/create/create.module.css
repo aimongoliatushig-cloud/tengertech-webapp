@@ -63,6 +63,45 @@
     border-color 180ms ease;
 }
 
+.actionLoadingHint {
+  position: absolute;
+  inset: 14px 14px auto auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(46, 125, 50, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #2e7d32;
+  font-size: 0.74rem;
+  font-weight: 900;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 0 12px 26px rgba(27, 73, 38, 0.12);
+  transition: opacity 160ms ease;
+}
+
+.actionLoadingHint[data-pending="true"] {
+  opacity: 1;
+}
+
+.actionLoadingHint > span:first-child {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(46, 125, 50, 0.22);
+  border-top-color: #2e7d32;
+  border-radius: 999px;
+  animation: createSpin 720ms linear infinite;
+}
+
+@keyframes createSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .actionCard:hover {
   transform: translateY(-2px);
   box-shadow: var(--ds-shadow-panel);

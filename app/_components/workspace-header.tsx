@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { Bell, CalendarDays, ChevronDown, Leaf } from "lucide-react";
 
+import { NotificationPermissionButton } from "./notification-permission-button";
 import styles from "./workspace-header.module.css";
 
 type WorkspaceHeaderProps = {
@@ -75,6 +76,8 @@ export function WorkspaceHeader({
           <CalendarDays aria-hidden />
           <span>{formatHeaderDate()}</span>
         </div>
+
+        <NotificationPermissionButton className={styles.notificationPermissionButton} />
 
         <Link
           className={styles.notificationButton}

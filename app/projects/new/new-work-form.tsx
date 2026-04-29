@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type KeyboardEvent } from "react";
+import { useFormStatus } from "react-dom";
 
 import { SearchableSelect, type SearchableSelectOption } from "@/app/_components/searchable-select";
 import styles from "@/app/workspace.module.css";
@@ -46,6 +47,22 @@ type Props = {
   lockedDepartmentId?: string;
   lockedDepartmentLabel?: string;
 };
+
+function SubmitWorkButton({ label }: { label: string }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      className={`${styles.primaryButton} ${pending ? styles.primaryButtonPending : ""}`}
+      disabled={pending}
+      aria-busy={pending}
+    >
+      <span className={styles.submitSpinner} aria-hidden />
+      <span>{pending ? "Уншиж байна..." : label}</span>
+    </button>
+  );
+}
 
 function getTodayValue() {
   return new Date().toISOString().slice(0, 10);
@@ -221,6 +238,11 @@ export function NewWorkForm({
   const isDepartmentLocked = Boolean(lockedDepartmentId);
   const isCustomWorkType = operationType === CUSTOM_WORK_TYPE_VALUE;
   const effectiveTrackQuantity = isCustomWorkType ? false : trackQuantity;
+  const submitLabel = isGarbageTransport
+    ? "Хог тээвэрлэлтийн ажил үүсгэх"
+    : isSeasonalGarbage
+      ? "Улирлын төлөвлөгөө үүсгэх"
+      : "Ажил үүсгэх";
 
   const generatedName = useMemo(() => {
     if (!isGarbageTransport) {
@@ -932,13 +954,7 @@ export function NewWorkForm({
       )}
 
       <div className={styles.buttonRow}>
-        <button type="submit" className={styles.primaryButton}>
-          {isGarbageTransport
-            ? "Хог тээвэрлэлтийн ажил үүсгэх"
-            : isSeasonalGarbage
-              ? "Улирлын төлөвлөгөө үүсгэх"
-              : "Ажил үүсгэх"}
-        </button>
+        <SubmitWorkButton label={submitLabel} />
       </div>
     </form>
   );

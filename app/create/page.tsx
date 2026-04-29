@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
+import { ActionCardLink } from "@/app/create/action-card-link";
 import styles from "@/app/create/create.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import {
@@ -12,6 +12,7 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
 
 type ActionCard = {
   key: "project" | "task" | "report";
@@ -34,6 +35,10 @@ export default async function CreateHubPage() {
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const departmentScopeName =
+    session.role === "project_manager" || masterMode
+      ? await loadSessionDepartmentName(session)
+      : null;
 
   const actionCards: ActionCard[] = [
     ...(canCreateProject
@@ -100,6 +105,7 @@ export default async function CreateHubPage() {
               roleLabel={getRoleLabel(session.role)}
               masterMode={masterMode}
               workerMode={workerMode}
+              departmentScopeName={departmentScopeName}
             />
           </aside>
 
@@ -140,7 +146,11 @@ export default async function CreateHubPage() {
 
             <section className={styles.actionGrid} aria-label="Нэмэх сонголтууд">
               {actionCards.map((item) => (
-                <Link key={item.key} href={item.href} className={`${styles.actionCard} ${item.accent}`}>
+                <ActionCardLink
+                  key={item.key}
+                  href={item.href}
+                  className={`${styles.actionCard} ${item.accent}`}
+                >
                   <div className={styles.actionCardTop}>
                     <span className={styles.actionIcon} aria-hidden>
                       {item.icon}
@@ -157,7 +167,7 @@ export default async function CreateHubPage() {
                     <span>Үргэлжлүүлэх</span>
                     <strong aria-hidden>→</strong>
                   </div>
-                </Link>
+                </ActionCardLink>
               ))}
             </section>
           </div>

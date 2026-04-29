@@ -8,6 +8,7 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
 
 import { ChatClient } from "./chat-client";
 
@@ -23,6 +24,10 @@ export default async function ChatPage() {
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const departmentScopeName =
+    session.role === "project_manager" || masterMode || workerMode
+      ? await loadSessionDepartmentName(session)
+      : null;
 
   return (
     <main className={shellStyles.shell}>
@@ -40,6 +45,7 @@ export default async function ChatPage() {
               roleLabel={roleLabel}
               masterMode={masterMode}
               workerMode={workerMode}
+              departmentScopeName={departmentScopeName}
             />
           </aside>
 

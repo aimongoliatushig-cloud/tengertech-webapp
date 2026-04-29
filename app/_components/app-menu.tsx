@@ -33,6 +33,7 @@ import {
 } from "@/lib/department-groups";
 import { cn } from "@/lib/utils";
 
+import { PendingLinkIndicator } from "./pending-link-indicator";
 import styles from "./app-menu.module.css";
 
 type MenuKey =
@@ -265,6 +266,10 @@ export function AppMenu({
               <Icon />
             </span>
             <span className={styles.menuLabel}>{item.label}</span>
+            <PendingLinkIndicator
+              className={styles.linkLoadingHint}
+              overlayClassName={styles.linkLoadingOverlay}
+            />
             {item.badge ? <span className={styles.menuBadge}>{item.badge}</span> : null}
           </Link>
         );
@@ -291,9 +296,13 @@ export function AppMenu({
         <div className={styles.menuScroll}>{menuList}</div>
 
         {canCreate ? (
-          <Link href="/create" className={styles.createButton}>
+          <Link href="/create" prefetch={false} className={styles.createButton}>
             <PlusCircle aria-hidden />
             <span>Шинэ ажил</span>
+            <PendingLinkIndicator
+              className={styles.createLoadingHint}
+              overlayClassName={styles.linkLoadingOverlay}
+            />
           </Link>
         ) : null}
 
@@ -305,6 +314,10 @@ export function AppMenu({
             <strong>{userName}</strong>
             <small>{roleLabel}</small>
           </span>
+          <PendingLinkIndicator
+            className={styles.profileLoadingHint}
+            overlayClassName={styles.linkLoadingOverlay}
+          />
           <ChevronDown aria-hidden />
         </Link>
       </aside>
@@ -366,6 +379,11 @@ export function AppMenu({
             >
               <Icon aria-hidden />
               <span>{item.label}</span>
+              <PendingLinkIndicator
+                className={styles.dockLoadingHint}
+                overlayClassName={styles.linkLoadingOverlay}
+                label="..."
+              />
             </Link>
           );
         })}

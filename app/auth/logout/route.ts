@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { buildDestroyedSessionCookieHeader } from "@/lib/auth";
+import { buildPublicUrl } from "@/lib/request-url";
 
 function destroySession(request: Request) {
-  const response = NextResponse.redirect(new URL("/login", request.url), {
+  const response = NextResponse.redirect(buildPublicUrl(request, "/login"), {
     status: 303,
   });
   response.headers.append("Set-Cookie", buildDestroyedSessionCookieHeader());

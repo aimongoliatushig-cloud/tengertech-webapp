@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { buildSessionCookieHeader, signInWithOdooCredentials } from "@/lib/auth";
+import { buildPublicUrl } from "@/lib/request-url";
 
 function redirectTo(request: Request, path: string) {
-  return NextResponse.redirect(new URL(path, request.url), { status: 303 });
+  return NextResponse.redirect(buildPublicUrl(request, path), { status: 303 });
 }
 
 export async function POST(request: Request) {

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { buildPublicUrl } from "@/lib/request-url";
 import { SESSION_COOKIE_NAME } from "@/lib/session";
 
 const PUBLIC_PATHS = new Set([
@@ -23,7 +24,7 @@ export function middleware(request: NextRequest) {
   }
 
   if (!hasSession && !isPublicPath) {
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = buildPublicUrl(request, "/login");
     return NextResponse.redirect(loginUrl);
   }
 

@@ -79,6 +79,7 @@
 }
 
 .datePill,
+.notificationPermissionButton,
 .notificationButton,
 .headerUser {
   border: 1px solid rgba(255, 255, 255, 0.72);
@@ -97,7 +98,52 @@
   color: #1b1b1b;
 }
 
+.notificationPermissionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: var(--ds-radius-card);
+  color: #1f7a35;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.notificationPermissionButton:hover {
+  border-color: rgba(46, 125, 50, 0.22);
+  box-shadow: 0 16px 34px rgba(27, 73, 38, 0.12);
+  transform: translateY(-1px);
+}
+
+.notificationPermissionButton:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.notificationPermissionButton svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 2.3;
+}
+
+.notificationPermissionButton[data-state="denied"] {
+  cursor: default;
+  color: #8b5f16;
+}
+
+.notificationPermissionButton[data-state="denied"]:hover {
+  transform: none;
+}
+
 .datePill svg,
+.notificationPermissionButton svg,
 .notificationButton svg,
 .headerUser svg {
   width: 18px;
@@ -297,6 +343,17 @@
     min-height: 44px;
     padding: 0 12px;
     border-radius: 12px;
+  }
+
+  .notificationPermissionButton {
+    min-height: 44px;
+    padding: 0 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+  }
+
+  .notificationPermissionButton span {
+    display: none;
   }
 
   .datePill span {

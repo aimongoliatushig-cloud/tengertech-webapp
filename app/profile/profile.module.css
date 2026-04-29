@@ -259,6 +259,213 @@
   margin: 0;
 }
 
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.miniForm,
+.lockedCard {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background:
+    radial-gradient(circle at top right, rgba(166, 211, 157, 0.18), transparent 34%),
+    rgba(255, 255, 255, 0.92);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.miniForm h3,
+.lockedCard h3 {
+  margin: 8px 0 0;
+  color: var(--ink-900);
+  font-family: var(--font-body);
+  font-size: 1.18rem;
+  line-height: 1.2;
+}
+
+.miniForm p,
+.lockedCard p {
+  margin: 6px 0 0;
+  color: var(--ink-700);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.formBadge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-800);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  color: var(--ink-900);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink-900);
+  font: inherit;
+  font-weight: 600;
+  outline: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: rgba(31, 95, 49, 0.42);
+  box-shadow: 0 0 0 4px rgba(74, 154, 93, 0.12);
+}
+
+.twoColumnFields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.primaryMiniButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
+  color: #f7fcf6;
+  font: inherit;
+  font-weight: 800;
+  box-shadow: var(--ds-shadow-panel);
+  cursor: pointer;
+}
+
+.noticeMessage,
+.errorMessage {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: var(--ds-radius-control);
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.noticeMessage {
+  border: 1px solid rgba(74, 154, 93, 0.2);
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-900);
+}
+
+.errorMessage {
+  border: 1px solid rgba(220, 38, 38, 0.18);
+  background: rgba(254, 226, 226, 0.8);
+  color: #9f1239;
+}
+
+.routeManager {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.routeListHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.routeListHeader h3 {
+  margin: 8px 0 0;
+  color: var(--ink-900);
+  font-size: 1.18rem;
+}
+
+.routeListHeader p {
+  margin: 6px 0 0;
+  color: var(--ink-700);
+  line-height: 1.55;
+}
+
+.routeCount {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-900);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.routeTable,
+.routeCreateForm {
+  display: grid;
+  gap: 0;
+  padding: 16px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.routeTableHead,
+.routeRow {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(160px, 1fr) minmax(220px, 1.4fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.routeTableHead {
+  padding: 0 0 10px;
+  color: var(--ink-700);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.routeRow {
+  padding: 12px 0;
+  border-top: 1px solid var(--ds-border);
+}
+
+.routeRow strong {
+  color: var(--ink-900);
+}
+
+.routeRow span,
+.routeRow small {
+  color: var(--ink-700);
+  line-height: 1.45;
+}
+
+.routeCreateForm {
+  gap: 16px;
+}
+
 .logoutCard {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -289,6 +496,20 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .routeListHeader,
+  .routeTableHead,
+  .routeRow {
+    grid-template-columns: 1fr;
+  }
+
+  .routeListHeader {
+    flex-direction: column;
+  }
+
   .sectionHeader,
   .logoutCard {
     grid-template-columns: 1fr;
@@ -307,7 +528,8 @@
   .summaryGrid,
   .linkGrid,
   .capabilityCard,
-  .logoutCard {
+  .logoutCard,
+  .twoColumnFields {
     grid-template-columns: 1fr;
   }
 

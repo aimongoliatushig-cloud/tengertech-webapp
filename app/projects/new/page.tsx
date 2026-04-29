@@ -11,6 +11,7 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 import {
@@ -45,6 +46,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
   }
 
   const masterMode = isMasterRole(session.role);
+  const shouldLockDepartment = session.role === "project_manager" || masterMode;
   const params = (await searchParams) ?? {};
   const errorMessage = getMessage(params.error);
   const noticeMessage = getMessage(params.notice);
@@ -56,6 +58,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
     garbageRouteOptions,
     workTypeOptions,
     masterSnapshot,
+    sessionDepartmentName,
   ] = await Promise.all([
     loadProjectManagerOptions({
       login: session.login,
@@ -83,19 +86,21 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
           password: session.password,
         })
       : Promise.resolve(null),
+    shouldLockDepartment ? loadSessionDepartmentName(session) : Promise.resolve(null),
   ]);
 
   const masterDepartmentName =
-    masterMode && masterSnapshot
+    sessionDepartmentName ??
+    (masterMode && masterSnapshot
       ? pickPrimaryDepartmentName({
           taskDirectory: masterSnapshot.taskDirectory,
           reports: masterSnapshot.reports,
           projects: masterSnapshot.projects,
           departments: masterSnapshot.departments,
         })
-      : null;
+      : null);
   const lockedDepartmentOption =
-    masterMode && masterDepartmentName
+    shouldLockDepartment && masterDepartmentName
       ? departmentOptions.find((option) => option.name === masterDepartmentName) ?? null
       : null;
 
@@ -120,6 +125,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               masterMode={masterMode}
+              departmentScopeName={masterDepartmentName}
             />
           </aside>
 
@@ -147,12 +153,6 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
 
             {noticeMessage ? (
               <div className={`${styles.message} ${styles.noticeMessage}`}>{noticeMessage}</div>
-            ) : null}
-
-            {masterMode && lockedDepartmentOption ? (
-              <div className={`${styles.message} ${styles.noticeMessage}`}>
-                Таны харьяалах алба нэгж автоматаар сонгогдсон байна.
-              </div>
             ) : null}
 
             {!canCreateProject ? (

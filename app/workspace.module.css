@@ -2205,6 +2205,33 @@
   color: #f7fcf6;
 }
 
+.primaryButtonPending,
+.primaryButton:disabled {
+  cursor: wait;
+  opacity: 0.82;
+}
+
+.submitSpinner {
+  display: none;
+  width: 13px;
+  height: 13px;
+  margin-right: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.42);
+  border-top-color: #fff;
+  border-radius: 999px;
+  animation: submitSpin 720ms linear infinite;
+}
+
+.primaryButtonPending .submitSpinner {
+  display: inline-block;
+}
+
+@keyframes submitSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .secondaryButton {
   background: rgba(143, 189, 134, 0.18);
   color: #3f7146;
