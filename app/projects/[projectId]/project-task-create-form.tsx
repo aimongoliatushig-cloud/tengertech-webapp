@@ -14,6 +14,10 @@ type Props = {
   deadline: string;
   masterMode: boolean;
   teamLeaderOptions: SelectOption[];
+  crewTeamOptions: Array<{
+    id: number;
+    label: string;
+  }>;
   allowedUnits: WorkUnitOption[];
   defaultUnitId: number | null;
   allowedUnitSummary?: string;
@@ -36,6 +40,7 @@ export function ProjectTaskCreateForm({
   deadline,
   masterMode,
   teamLeaderOptions,
+  crewTeamOptions,
   allowedUnits,
   defaultUnitId,
   allowedUnitSummary,
@@ -77,16 +82,30 @@ export function ProjectTaskCreateForm({
       </div>
 
       {!masterMode ? (
-        <div className={styles.field}>
-          <label htmlFor="task-team-leader">Хариуцсан ахлагч</label>
-          <select id="task-team-leader" name="team_leader_id" defaultValue="">
-            <option value="">Сонгоогүй</option>
-            {teamLeaderOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.name}
-              </option>
-            ))}
-          </select>
+        <div className={styles.fieldRow}>
+          <div className={styles.field}>
+            <label htmlFor="task-team-leader">Хариуцсан мастер</label>
+            <select id="task-team-leader" name="team_leader_id" defaultValue="">
+              <option value="">Сонгоогүй</option>
+              {teamLeaderOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="task-crew-team">Баг</label>
+            <select id="task-crew-team" name="crew_team_id" defaultValue="">
+              <option value="">Баг сонгохгүй</option>
+              {crewTeamOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       ) : null}
 

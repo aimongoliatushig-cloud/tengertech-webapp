@@ -1773,6 +1773,233 @@
   gap: 16px;
 }
 
+.createWorkForm {
+  gap: 18px;
+}
+
+.createWorkIntro {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top left, rgba(180, 220, 170, 0.22), transparent 32%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(239, 249, 237, 0.9));
+  box-shadow: 0 18px 46px rgba(27, 73, 38, 0.07);
+}
+
+.createWorkIntroCopy {
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.createWorkIntroCopy h2 {
+  margin: 0;
+  color: #15231a;
+  font-size: clamp(1.45rem, 2.4vw, 2.1rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+
+.createWorkIntroCopy p {
+  max-width: 620px;
+  margin: 0;
+  color: #5c6b61;
+  font-size: 0.94rem;
+  font-weight: 650;
+  line-height: 1.65;
+}
+
+.createWorkSteps {
+  display: grid;
+  gap: 10px;
+}
+
+.createWorkStep {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 3px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.createWorkStep > span {
+  grid-row: span 2;
+  display: inline-grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(46, 125, 50, 0.11);
+  color: #2e7d32;
+}
+
+.createWorkStep svg,
+.createWorkSignalGrid svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.4;
+}
+
+.createWorkStep strong {
+  overflow: hidden;
+  color: #19251d;
+  font-size: 0.88rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.createWorkStep small {
+  overflow: hidden;
+  color: #627268;
+  font-size: 0.78rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.createWorkSignalGrid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.createWorkSignalGrid > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: center;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.createWorkSignalGrid svg {
+  grid-row: span 2;
+  color: #2e7d32;
+}
+
+.createWorkSignalGrid span {
+  color: #6c7b71;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.createWorkSignalGrid strong {
+  overflow: hidden;
+  color: #15231a;
+  font-size: 0.84rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.createWorkForm > .field,
+.createWorkForm > .fieldRow,
+.createWorkForm > .optionalSection,
+.createWorkForm > .locationComposer,
+.createWorkForm > .previewCard {
+  padding: 18px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 14px 36px rgba(27, 73, 38, 0.055);
+}
+
+.createWorkForm > .fieldRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  align-items: start;
+  justify-content: stretch;
+}
+
+.createWorkForm .field label {
+  color: #15231a;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.createWorkForm .field input,
+.createWorkForm .field select,
+.createWorkForm .field textarea {
+  border-color: rgba(46, 125, 50, 0.16);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.createWorkForm .field input:focus,
+.createWorkForm .field select:focus,
+.createWorkForm .field textarea:focus {
+  outline: 3px solid rgba(46, 125, 50, 0.16);
+  outline-offset: 2px;
+  border-color: rgba(46, 125, 50, 0.38);
+}
+
+.createWorkForm .modeRail {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.createWorkForm .modeChip {
+  justify-content: flex-start;
+  min-height: 104px;
+  padding: 16px;
+  border-radius: 20px;
+  text-align: left;
+}
+
+.createWorkForm .modeChipActive {
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 34%),
+    linear-gradient(135deg, #2e7d32, #3f9650);
+  color: #fff;
+}
+
+.createWorkForm .buttonRow {
+  justify-content: stretch;
+}
+
+.createWorkForm .primaryButton {
+  width: 100%;
+  min-height: 56px;
+  border-radius: 999px;
+  font-size: 0.96rem;
+}
+
+@media (max-width: 860px) {
+  .createWorkIntro {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .createWorkSignalGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .createWorkForm > .field,
+  .createWorkForm > .fieldRow,
+  .createWorkForm > .optionalSection,
+  .createWorkForm > .locationComposer,
+  .createWorkForm > .previewCard {
+    padding: 14px;
+    border-radius: 20px;
+  }
+}
+
 .masterTaskBoard {
   display: grid;
 }

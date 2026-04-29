@@ -116,6 +116,11 @@
     box-shadow 180ms ease;
 }
 
+.notificationPermissionWrap {
+  position: relative;
+  display: inline-flex;
+}
+
 .notificationPermissionButton:hover {
   border-color: rgba(46, 125, 50, 0.22);
   box-shadow: 0 16px 34px rgba(27, 73, 38, 0.12);
@@ -134,12 +139,84 @@
 }
 
 .notificationPermissionButton[data-state="denied"] {
-  cursor: default;
+  cursor: pointer;
   color: #8b5f16;
 }
 
 .notificationPermissionButton[data-state="denied"]:hover {
-  transform: none;
+  border-color: rgba(181, 121, 26, 0.24);
+  box-shadow: 0 16px 34px rgba(116, 70, 9, 0.12);
+}
+
+.notificationPermissionHelp {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 30;
+  width: min(330px, 82vw);
+  padding: 16px;
+  border: 1px solid rgba(181, 121, 26, 0.18);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 232, 0.98), rgba(255, 255, 255, 0.98)),
+    #fff;
+  box-shadow: 0 20px 54px rgba(43, 43, 18, 0.16);
+  color: #1f2c22;
+}
+
+.notificationPermissionHelp::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  right: 28px;
+  width: 14px;
+  height: 14px;
+  border-top: 1px solid rgba(181, 121, 26, 0.18);
+  border-left: 1px solid rgba(181, 121, 26, 0.18);
+  background: #fff9e8;
+  transform: rotate(45deg);
+}
+
+.notificationPermissionHelp strong {
+  display: block;
+  color: #6f490e;
+  font-size: 0.84rem;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.notificationPermissionHelp p {
+  margin: 8px 0 12px;
+  color: #5f6b63;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.55;
+}
+
+.notificationPermissionHelp button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(46, 125, 50, 0.18);
+  border-radius: 999px;
+  background: rgba(46, 125, 50, 0.08);
+  color: #1f7a35;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.notificationPermissionHelp button:hover {
+  background: rgba(46, 125, 50, 0.13);
+}
+
+.notificationPermissionHelp svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.4;
 }
 
 .datePill svg,
@@ -354,6 +431,21 @@
 
   .notificationPermissionButton span {
     display: none;
+  }
+
+  .notificationPermissionWrap {
+    align-items: stretch;
+  }
+
+  .notificationPermissionHelp {
+    left: 0;
+    right: auto;
+    width: min(300px, calc(100vw - 24px));
+  }
+
+  .notificationPermissionHelp::before {
+    left: 24px;
+    right: auto;
   }
 
   .datePill span {

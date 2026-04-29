@@ -77,7 +77,7 @@ export function WorkspaceHeader({
           <span>{formatHeaderDate()}</span>
         </div>
 
-        <NotificationPermissionButton className={styles.notificationPermissionButton} />
+        <NotificationPermissionButton />
 
         <Link
           className={styles.notificationButton}

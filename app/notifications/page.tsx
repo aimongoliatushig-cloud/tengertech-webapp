@@ -96,16 +96,20 @@ export default async function NotificationsPage() {
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const todayDateKey = getTodayDateKey();
   const currentUserId = String(session.uid);
+  const isAssignedToCurrentUser = (task: DashboardSnapshot["taskDirectory"][number]) =>
+    (task.assigneeIds ?? [])
+      .map(normalizeTaskAssigneeId)
+      .some((assigneeId) => assigneeId !== null && String(assigneeId) === currentUserId);
 
   const departmentScopedTasks = scopedDepartmentName
-    ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
+    ? snapshot.taskDirectory.filter(
+        (task) =>
+          filterByDepartment([task], scopedDepartmentName).length > 0 ||
+          isAssignedToCurrentUser(task),
+      )
     : snapshot.taskDirectory;
   const visibleTasks = workerMode
-    ? departmentScopedTasks.filter((task) =>
-        (task.assigneeIds ?? [])
-          .map(normalizeTaskAssigneeId)
-          .some((assigneeId) => assigneeId !== null && String(assigneeId) === currentUserId),
-      )
+    ? departmentScopedTasks.filter(isAssignedToCurrentUser)
     : departmentScopedTasks;
   const visibleReviewQueue = workerMode
     ? []

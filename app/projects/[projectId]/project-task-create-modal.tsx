@@ -14,6 +14,10 @@ type Props = {
   deadline: string;
   masterMode: boolean;
   teamLeaderOptions: SelectOption[];
+  crewTeamOptions: Array<{
+    id: number;
+    label: string;
+  }>;
   allowedUnits: WorkUnitOption[];
   defaultUnitId: number | null;
   allowedUnitSummary?: string;
@@ -26,6 +30,7 @@ export function ProjectTaskCreateModal({
   deadline,
   masterMode,
   teamLeaderOptions,
+  crewTeamOptions,
   allowedUnits,
   defaultUnitId,
   allowedUnitSummary,
@@ -110,6 +115,7 @@ export function ProjectTaskCreateModal({
                 deadline={deadline}
                 masterMode={masterMode}
                 teamLeaderOptions={teamLeaderOptions}
+                crewTeamOptions={crewTeamOptions}
                 allowedUnits={allowedUnits}
                 defaultUnitId={defaultUnitId}
                 allowedUnitSummary={allowedUnitSummary}

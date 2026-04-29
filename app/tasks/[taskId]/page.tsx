@@ -170,11 +170,13 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
     if (!directoryTask) {
       redirect("/tasks");
     }
-    if (workerMode && !directoryTask.assigneeIds?.includes(session.uid)) {
+    const isAssignedToSession = directoryTask.assigneeIds?.includes(session.uid) ?? false;
+    if (workerMode && !isAssignedToSession) {
       redirect("/tasks");
     }
     if (
       scopedDepartmentName &&
+      !isAssignedToSession &&
       filterByDepartment([directoryTask], scopedDepartmentName).length === 0
     ) {
       redirect("/tasks");

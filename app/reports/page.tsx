@@ -200,7 +200,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const totalImages = filteredReports.reduce((sum, report) => sum + report.imageCount, 0);
   const totalAudios = filteredReports.reduce((sum, report) => sum + report.audioCount, 0);
   const isGarbageTransportView =
-    selectedDepartmentName === "Авто бааз, хог тээвэрлэлтийн хэлтэс";
+    selectedUnit === "Хог тээвэрлэлт" ||
+    (!selectedUnit &&
+      selectedDepartmentName === "Авто бааз, хог тээвэрлэлтийн хэлтэс");
   let garbageWeightLedger = null as Awaited<ReturnType<typeof loadGarbageWeightLedger>> | null;
   let garbageWeightError = "";
 

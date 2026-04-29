@@ -19,6 +19,11 @@ type ProjectRecord = {
   ops_allowed_unit_summary?: string | false;
 };
 
+type ProjectCrewRecord = {
+  id: number;
+  mfo_crew_team_id?: Relation;
+};
+
 type TaskRecord = {
   id: number;
   name: string;
@@ -68,6 +73,21 @@ type UserRecord = {
   name: string;
   login: string;
   ops_user_type: string | false;
+};
+
+type CrewTeamRecord = {
+  id: number;
+  name: string;
+  vehicle_id?: Relation;
+  driver_employee_id?: Relation;
+  collector_employee_ids?: number[];
+  inspector_employee_id?: Relation;
+  member_user_ids?: number[];
+};
+
+type RouteCrewRecord = {
+  id: number;
+  project_id?: Relation;
 };
 
 type DepartmentRecord = {
@@ -383,6 +403,11 @@ export type ProjectDetail = {
   completion: number;
   tasks: ProjectTaskCard[];
   teamLeaderOptions: SelectOption[];
+  crewTeamOptions: Array<{
+    id: number;
+    label: string;
+    memberUserIds: number[];
+  }>;
   workTypeName: string;
   operationType: string;
   allowedUnits: WorkUnitOption[];
@@ -768,6 +793,93 @@ export async function loadTeamLeaderOptions(
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
   return loadUserOptions(["team_leader", "senior_master"], connectionOverrides);
+}
+
+export async function loadCrewTeamOptions(
+  operationType = "",
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const domain: unknown[] = [["active", "=", true]];
+  if (operationType) {
+    domain.push(["operation_type", "=", operationType]);
+  }
+
+  const query = (overrides: Partial<OdooConnection>) =>
+    executeOdooKw<CrewTeamRecord[]>(
+      "mfo.crew.team",
+      "search_read",
+      [domain],
+      {
+        fields: ["name", "vehicle_id", "member_user_ids"],
+        order: "name asc",
+        limit: 200,
+      },
+      overrides,
+    );
+
+  const teams = await query(connectionOverrides).catch(() => query({}).catch(() => []));
+
+  return teams.map((team) => {
+    const vehicleName = relationName(team.vehicle_id ?? false, "");
+    return {
+      id: team.id,
+      label: vehicleName ? `${team.name} (${vehicleName})` : team.name,
+      memberUserIds: team.member_user_ids ?? [],
+    };
+  });
+}
+
+async function loadCrewTeamForRoute(
+  routeId: number,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const routes = await executeOdooKw<RouteCrewRecord[]>(
+    "mfo.route",
+    "search_read",
+    [[["id", "=", routeId]]],
+    {
+      fields: ["project_id"],
+      limit: 1,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+  const routeProjectId = relationId(routes[0]?.project_id ?? false);
+  if (!routeProjectId) {
+    return null;
+  }
+
+  const projects = await executeOdooKw<ProjectCrewRecord[]>(
+    "project.project",
+    "search_read",
+    [[["id", "=", routeProjectId]]],
+    {
+      fields: ["mfo_crew_team_id"],
+      limit: 1,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+  const crewTeamId = relationId(projects[0]?.mfo_crew_team_id ?? false);
+  if (!crewTeamId) {
+    return null;
+  }
+
+  const teams = await executeOdooKw<CrewTeamRecord[]>(
+    "mfo.crew.team",
+    "search_read",
+    [[["id", "=", crewTeamId]]],
+    {
+      fields: [
+        "driver_employee_id",
+        "collector_employee_ids",
+        "inspector_employee_id",
+        "member_user_ids",
+      ],
+      limit: 1,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+
+  return teams[0] ? { ...teams[0], id: crewTeamId } : null;
 }
 
 export async function loadDepartmentOptions(
@@ -1429,6 +1541,10 @@ export async function loadProjectDetail(
     .filter((unit): unit is WorkUnitOption => Boolean(unit));
   const workType =
     workTypes.find((item) => item.operationType === project.mfo_operation_type) ?? null;
+  const crewTeamOptions = await loadCrewTeamOptions(
+    project.mfo_operation_type || "",
+    connectionOverrides,
+  );
   const allowedUnits =
     projectAllowedUnits.length > 0 ? projectAllowedUnits : workType?.allowedUnits ?? [];
   const defaultUnitId =
@@ -1471,6 +1587,7 @@ export async function loadProjectDetail(
       ),
     })),
     teamLeaderOptions,
+    crewTeamOptions,
     workTypeName: workType?.name ?? "",
     operationType: project.mfo_operation_type || "",
     allowedUnits,
@@ -1723,11 +1840,76 @@ export async function createGarbageWorkspaceProject(
   );
 }
 
+export async function assignGarbageProjectTasksFromRouteTeam(
+  input: {
+    projectId: number;
+    routeId: number;
+    vehicleId?: number | null;
+  },
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const crewTeam = await loadCrewTeamForRoute(input.routeId, connectionOverrides);
+  if (!crewTeam) {
+    return { assignedTaskCount: 0, hasCrewTeam: false };
+  }
+
+  const tasks = await executeOdooKw<Array<{ id: number }>>(
+    "project.task",
+    "search_read",
+    [[["project_id", "=", input.projectId]]],
+    {
+      fields: ["id"],
+      limit: 500,
+    },
+    connectionOverrides,
+  );
+  if (!tasks.length) {
+    return { assignedTaskCount: 0, hasCrewTeam: true };
+  }
+
+  const values: Record<string, unknown> = {
+    mfo_crew_team_id: crewTeam.id,
+    ops_planned_quantity: 1,
+  };
+  if (input.vehicleId) {
+    values.mfo_vehicle_id = input.vehicleId;
+  }
+  const memberUserIds = Array.from(new Set(crewTeam.member_user_ids ?? [])).filter(
+    (id) => Number.isFinite(id) && id > 0,
+  );
+  if (memberUserIds.length) {
+    values.user_ids = [[6, 0, memberUserIds]];
+  }
+  const driverEmployeeId = relationId(crewTeam.driver_employee_id ?? false);
+  const inspectorEmployeeId = relationId(crewTeam.inspector_employee_id ?? false);
+  if (driverEmployeeId) {
+    values.mfo_driver_employee_id = driverEmployeeId;
+  }
+  if (crewTeam.collector_employee_ids?.length) {
+    values.mfo_collector_employee_ids = [[6, 0, crewTeam.collector_employee_ids]];
+  }
+  if (inspectorEmployeeId) {
+    values.mfo_inspector_employee_id = inspectorEmployeeId;
+  }
+
+  await executeOdooKw<boolean>(
+    "project.task",
+    "write",
+    [tasks.map((task) => task.id), values],
+    {},
+    connectionOverrides,
+  );
+
+  return { assignedTaskCount: tasks.length, hasCrewTeam: true };
+}
+
 export async function createWorkspaceTask(
   input: {
     projectId: number;
     name: string;
     teamLeaderId?: number | null;
+    crewTeamId?: number | null;
+    assigneeUserIds?: number[];
     deadline?: string;
     measurementUnitId?: number | null;
     plannedQuantity?: number | null;
@@ -1743,6 +1925,15 @@ export async function createWorkspaceTask(
   if (input.teamLeaderId) {
     values.ops_team_leader_id = input.teamLeaderId;
   }
+  if (input.crewTeamId) {
+    values.mfo_crew_team_id = input.crewTeamId;
+  }
+  const assigneeUserIds = Array.from(
+    new Set([
+      ...(input.teamLeaderId ? [input.teamLeaderId] : []),
+      ...(input.assigneeUserIds ?? []),
+    ]),
+  ).filter((id) => Number.isFinite(id) && id > 0);
   if (input.deadline) {
     values.date_deadline = input.deadline;
   }
@@ -1756,13 +1947,25 @@ export async function createWorkspaceTask(
     values.description = input.description.trim();
   }
 
-  return executeOdooKw<number>(
+  const taskId = await executeOdooKw<number>(
     "project.task",
     "create",
     [values],
     {},
     connectionOverrides,
   );
+
+  if (assigneeUserIds.length) {
+    await executeOdooKw<boolean>(
+      "project.task",
+      "write",
+      [[taskId], { user_ids: [[6, 0, assigneeUserIds]] }],
+      {},
+      connectionOverrides,
+    );
+  }
+
+  return taskId;
 }
 
 export async function createWorkspaceTaskReport(

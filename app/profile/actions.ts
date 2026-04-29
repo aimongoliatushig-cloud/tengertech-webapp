@@ -179,6 +179,43 @@ export async function createProfileTeamAction(formData: FormData) {
   redirectToProfile("notice", "Баг амжилттай үүслээ.");
 }
 
+export async function archiveProfileTeamAction(formData: FormData) {
+  const session = await requireSession();
+  const canManageTeam = new Set([
+    "system_admin",
+    "project_manager",
+    "senior_master",
+    "team_leader",
+  ]).has(String(session.role));
+
+  if (!canManageTeam) {
+    redirectToProfile("error", "Баг хасах эрх таны хэрэглэгч дээр нээлттэй биш байна.");
+  }
+
+  const teamId = parsePositiveId(formData.get("team_id"));
+  if (!teamId) {
+    redirectToProfile("error", "Хасах багаа сонгоно уу.");
+  }
+
+  const connection = getSessionConnection(session);
+
+  try {
+    await executeOdooKw<boolean>(
+      "mfo.crew.team",
+      "write",
+      [[teamId], { active: false }],
+      {},
+      connection,
+    );
+  } catch (error) {
+    console.error("Failed to archive crew team", error);
+    redirectToProfile("error", "Баг хасах үед Odoo дээр алдаа гарлаа.");
+  }
+
+  revalidatePath("/profile");
+  redirectToProfile("notice", "Баг жагсаалтаас хасагдлаа.");
+}
+
 export async function createProfileRouteAction(formData: FormData) {
   const session = await requireSession();
   const departmentName = await loadSessionDepartmentName(session);

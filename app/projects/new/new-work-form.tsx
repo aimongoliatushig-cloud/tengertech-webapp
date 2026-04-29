@@ -3,6 +3,8 @@
 import { useMemo, useState, type KeyboardEvent } from "react";
 import { useFormStatus } from "react-dom";
 
+import { CalendarDays, CheckCircle2, ClipboardList, Layers3, Route, Truck } from "lucide-react";
+
 import { SearchableSelect, type SearchableSelectOption } from "@/app/_components/searchable-select";
 import styles from "@/app/workspace.module.css";
 import type {
@@ -93,11 +95,22 @@ function formatDateLabel(value: string) {
     return value;
   }
 
-  return new Intl.DateTimeFormat("mn-MN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(parsed);
+  const monthNames = [
+    "нэгдүгээр сар",
+    "хоёрдугаар сар",
+    "гуравдугаар сар",
+    "дөрөвдүгээр сар",
+    "тавдугаар сар",
+    "зургаадугаар сар",
+    "долдугаар сар",
+    "наймдугаар сар",
+    "есдүгээр сар",
+    "аравдугаар сар",
+    "арван нэгдүгээр сар",
+    "арван хоёрдугаар сар",
+  ];
+
+  return `${parsed.getFullYear()} оны ${monthNames[parsed.getMonth()]}ын ${parsed.getDate()}`;
 }
 
 function buildUnitOptions(workType: WorkTypeOption | null): SearchableSelectOption[] {
@@ -315,6 +328,24 @@ export function NewWorkForm({
         .join(", ")
     : "Сонгоогүй";
 
+  const formModeLabel = isGarbageTransport
+    ? "Хог тээвэрлэлтийн маршрут"
+    : isSeasonalGarbage
+      ? "Улирлын хог ачилтын төлөвлөгөө"
+      : "Ерөнхий ажил";
+  const formModeDescription = isGarbageTransport
+    ? "Машин, маршрут, огноо сонгоход ажил болон маршрутын цэгүүдийн ажилбар автоматаар үүснэ."
+    : isSeasonalGarbage
+      ? "Хорооны байрлал, машин, тонн, ажиллах өдрүүдээр олон мөрийн төлөвлөгөө үүсгэнэ."
+      : "Ажлын нэр, хариуцах ажилтан, төрөл, хугацаагаа оруулаад Odoo руу бүртгэнэ.";
+  const selectedDepartmentLabel =
+    lockedDepartmentLabel ?? selectedDepartment?.label ?? selectedDepartment?.name ?? "Сонгоогүй";
+  const previewTitle = isGarbageTransport
+    ? generatedName || "Машин, маршрут сонгоход нэр автоматаар үүснэ"
+    : isSeasonalGarbage
+      ? `${formatDateLabel(seasonalStartDate)} - ${formatDateLabel(seasonalEndDate)}`
+      : selectedWorkType?.name ?? (isCustomWorkType ? "Шинэ ажил" : "Ажлын төрлөө сонгоно уу");
+
   const handleOperationTypeChange = (nextOperationType: string) => {
     setOperationType(nextOperationType);
     setSelectedUnitOverrideId(null);
@@ -349,7 +380,55 @@ export function NewWorkForm({
   };
 
   return (
-    <form action={action} className={styles.form}>
+    <form action={action} className={`${styles.form} ${styles.createWorkForm}`}>
+      <div className={styles.createWorkIntro}>
+        <div className={styles.createWorkIntroCopy}>
+          <span className={styles.formBadge}>Ажил нэмэх урсгал</span>
+          <h2>{formModeLabel}</h2>
+          <p>{formModeDescription}</p>
+        </div>
+
+        <div className={styles.createWorkSteps} aria-label="Ажил үүсгэх алхам">
+          <div className={styles.createWorkStep}>
+            <span><Layers3 aria-hidden /></span>
+            <strong>Хэлтэс ба горим</strong>
+            <small>{selectedDepartmentLabel}</small>
+          </div>
+          <div className={styles.createWorkStep}>
+            <span><ClipboardList aria-hidden /></span>
+            <strong>Үндсэн мэдээлэл</strong>
+            <small>{previewTitle}</small>
+          </div>
+          <div className={styles.createWorkStep}>
+            <span><CheckCircle2 aria-hidden /></span>
+            <strong>Бүртгэх</strong>
+            <small>Odoo руу илгээхээс өмнө шалгана</small>
+          </div>
+        </div>
+
+        <div className={styles.createWorkSignalGrid} aria-label="Сонгосон ажлын товч мэдээлэл">
+          <div>
+            <Truck aria-hidden />
+            <span>Техник</span>
+            <strong>{selectedVehicle?.plate || "Сонгоогүй"}</strong>
+          </div>
+          <div>
+            <Route aria-hidden />
+            <span>Маршрут</span>
+            <strong>{selectedRoute?.code || selectedRoute?.name || "Сонгоогүй"}</strong>
+          </div>
+          <div>
+            <CalendarDays aria-hidden />
+            <span>Огноо</span>
+            <strong>
+              {isSeasonalGarbage
+                ? `${formatDateLabel(seasonalStartDate)} - ${formatDateLabel(seasonalEndDate)}`
+                : formatDateLabel(shiftDate)}
+            </strong>
+          </div>
+        </div>
+      </div>
+
       {isDepartmentLocked ? (
         <div className={styles.field}>
           <label>Хэлтэс</label>

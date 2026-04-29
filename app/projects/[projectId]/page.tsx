@@ -410,6 +410,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                       deadline={project.deadline}
                       masterMode={masterMode}
                       teamLeaderOptions={project.teamLeaderOptions}
+                      crewTeamOptions={project.crewTeamOptions}
                       allowedUnits={project.allowedUnits}
                       defaultUnitId={project.defaultUnitId}
                       allowedUnitSummary={project.allowedUnitSummary}
@@ -520,6 +521,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                     deadline={project.deadline}
                     masterMode={masterMode}
                     teamLeaderOptions={project.teamLeaderOptions}
+                    crewTeamOptions={project.crewTeamOptions}
                     allowedUnits={project.allowedUnits}
                     defaultUnitId={project.defaultUnitId}
                     allowedUnitSummary={project.allowedUnitSummary}

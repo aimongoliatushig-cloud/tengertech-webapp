@@ -14,9 +14,10 @@ import {
 import { isAutoGarbageDepartment } from "@/lib/department-permissions";
 import { getPrimaryAppRole } from "@/lib/roles";
 import { loadRouteManagementData } from "@/lib/route-management";
-import { loadTeamMemberOptions } from "@/lib/team-management";
+import { loadTeamManagementData, loadTeamMemberOptions } from "@/lib/team-management";
 
 import {
+  archiveProfileTeamAction,
   createProfileCollectionPointAction,
   createProfileRouteAction,
   createProfileTeamAction,
@@ -128,6 +129,9 @@ export default async function ProfilePage({ searchParams }: PageProps) {
   const teamMemberOptions = canCreateTeam
     ? await loadTeamMemberOptions(departmentScopeName, connectionOverrides)
     : [];
+  const teamManagementData = canCreateTeam
+    ? await loadTeamManagementData(departmentScopeName, connectionOverrides)
+    : { teams: [], totalTeams: 0 };
 
   const appRoleLabel = getAppRoleLabel(
     getPrimaryAppRole({
@@ -349,169 +353,268 @@ export default async function ProfilePage({ searchParams }: PageProps) {
             </section>
 
             <section id="team-route-settings" className={styles.sectionCard}>
-              <div className={styles.sectionHeader}>
+              <div className={styles.settingsHero}>
                 <div>
                   <span className={styles.eyebrow}>Тохиргооны үйлдэл</span>
                   <h2>Баг, хогийн цэг, маршрут</h2>
+                  <p>
+                    Алба нэгжийн багийг шууд жагсаалтаар харж, шинээр нэмэх болон идэвхгүй болгох боломжтой.
+                    Хогийн цэг, маршрут нь зөвхөн Авто бааз, хог тээвэрлэлтийн хэлтсийн эрхтэй хэрэглэгч дээр нээгдэнэ.
+                  </p>
                 </div>
-                <p>
-                  Багийг эрхтэй хэрэглэгч үүсгэнэ. Хогийн цэг болон маршрут үүсгэх хэсэг зөвхөн
-                  Авто бааз, хог тээвэрлэлтийн хэлтсийн даргад нээлттэй.
-                </p>
+                <div className={styles.settingsStats}>
+                  <span><strong>{teamManagementData.totalTeams}</strong> баг</span>
+                  <span><strong>{routeManagementData?.points.length ?? 0}</strong> хогийн цэг</span>
+                  <span><strong>{routeManagementData?.routes.length ?? 0}</strong> маршрут</span>
+                </div>
               </div>
 
               {notice ? <p className={styles.noticeMessage}>{notice}</p> : null}
               {error ? <p className={styles.errorMessage}>{error}</p> : null}
 
-              <div className={styles.formGrid}>
+              <div className={styles.settingsNav} aria-label="Тохиргооны хэсгүүд">
+                <a href="#settings-teams">
+                  <strong>Баг</strong>
+                  <span>Жагсаалт, гишүүд, нэмэх</span>
+                </a>
+                <a href="#settings-points" aria-disabled={!canCreateRoute}>
+                  <strong>Хогийн цэг</strong>
+                  <span>Цэгийн бүртгэл</span>
+                </a>
+                <a href="#settings-routes" aria-disabled={!canCreateRoute}>
+                  <strong>Маршрут</strong>
+                  <span>Машин, баг, цэг холбох</span>
+                </a>
+              </div>
+
+              <div id="settings-teams" className={styles.managementPanel}>
+                <div className={styles.managementHeader}>
+                  <div>
+                    <span className={styles.formBadge}>Баг</span>
+                    <h3>Багийн жагсаалт</h3>
+                    <p>Таны алба нэгжид холбоотой идэвхтэй багууд болон гишүүдийг харуулна.</p>
+                  </div>
+                  <span className={styles.routeCount}>{teamManagementData.totalTeams} баг</span>
+                </div>
+
                 {canCreateTeam ? (
-                  <form action={createProfileTeamAction} className={styles.miniForm}>
-                    <div>
-                      <span className={styles.formBadge}>Баг</span>
-                      <h3>Шинэ баг үүсгэх</h3>
-                      <p>Баг таны одоогийн алба нэгжтэй автоматаар холбогдоно.</p>
+                  <div className={styles.teamBoard}>
+                    <div className={styles.teamList}>
+                      {teamManagementData.teams.length ? (
+                        teamManagementData.teams.map((team) => (
+                          <article key={team.id} className={styles.teamCard}>
+                            <div>
+                              <strong>{team.name}</strong>
+                              <small>{team.departmentName || departmentScopeName || "Алба нэгж тодорхойгүй"}</small>
+                            </div>
+                            <div className={styles.teamMetaGrid}>
+                              <span>{team.memberIds.length} гишүүн</span>
+                              <span>{team.vehicleName || "Машин холбоогүй"}</span>
+                            </div>
+                            <p>
+                              {team.memberNames.length
+                                ? team.memberNames.slice(0, 4).join(", ")
+                                : "Гишүүн сонгоогүй байна."}
+                            </p>
+                            <form action={archiveProfileTeamAction}>
+                              <input type="hidden" name="team_id" value={team.id} />
+                              <button type="submit" className={styles.subtleDangerButton}>
+                                Жагсаалтаас хасах
+                              </button>
+                            </form>
+                          </article>
+                        ))
+                      ) : (
+                        <p className={styles.emptyNote}>Одоогоор баг бүртгэгдээгүй байна. Баруун талын form-оор шинэ баг нэмээрэй.</p>
+                      )}
                     </div>
-                    <label className={styles.field}>
-                      <span>Багийн нэр</span>
-                      <input name="team_name" type="text" placeholder="Жишээ: Өглөөний ээлжийн баг" required />
-                    </label>
-                                        <label className={styles.field}>
-                      <span>?????? ??????</span>
-                      <select
-                        name="member_ids"
-                        multiple
-                        size={Math.min(Math.max(teamMemberOptions.length, 4), 8)}
-                      >
-                        {teamMemberOptions.map((employee) => (
-                          <option key={employee.id} value={employee.id}>
-                            {employee.label}
-                          </option>
-                        ))}
-                      </select>
-                      <small>Ctrl ???? ???? ??????? ???????.</small>
-                    </label>
-<button type="submit" className={styles.primaryMiniButton}>Баг үүсгэх</button>
-                  </form>
+
+                    <form action={createProfileTeamAction} className={styles.miniForm}>
+                      <div>
+                        <span className={styles.formBadge}>Нэмэх</span>
+                        <h3>Шинэ баг үүсгэх</h3>
+                        <p>Баг таны одоогийн алба нэгжтэй автоматаар холбогдоно.</p>
+                      </div>
+                      <label className={styles.field}>
+                        <span>Багийн нэр</span>
+                        <input name="team_name" type="text" placeholder="Жишээ: Өглөөний ээлжийн баг" required />
+                      </label>
+                      <label className={styles.field}>
+                        <span>Багийн гишүүд</span>
+                        <select
+                          name="member_ids"
+                          multiple
+                          size={Math.min(Math.max(teamMemberOptions.length, 4), 8)}
+                        >
+                          {teamMemberOptions.map((employee) => (
+                            <option key={employee.id} value={employee.id}>
+                              {employee.label}
+                            </option>
+                          ))}
+                        </select>
+                        <small>Ctrl дарж олон ажилтан сонгоно.</small>
+                      </label>
+                      <button type="submit" className={styles.primaryMiniButton}>Баг үүсгэх</button>
+                    </form>
+                  </div>
                 ) : (
                   <article className={styles.lockedCard}>
                     <span className={styles.formBadge}>Баг</span>
-                    <h3>Баг үүсгэх эрх хаалттай</h3>
-                    <p>Энэ үйлдэл хэлтсийн дарга, мастер болон системийн админд нээлттэй.</p>
+                    <h3>Баг удирдах эрх хаалттай</h3>
+                    <p>Энэ хэсэг хэлтсийн дарга, мастер болон системийн админд нээлттэй.</p>
                   </article>
                 )}
-
-                {canCreateRoute && routeManagementData ? (
-                  <form action={createProfileCollectionPointAction} className={styles.miniForm}>
-                    <div>
-                      <span className={styles.formBadge}>Хогийн цэг</span>
-                      <h3>Хогийн цэг нэмэх</h3>
-                      <p>Цэг нэмээд дараа нь маршрутад сонгож холбоно.</p>
-                    </div>
-                    <label className={styles.field}>
-                      <span>Цэгийн нэр</span>
-                      <input name="point_name" type="text" placeholder="Жишээ: 8-р хороо - 20-р хогийн цэг" required />
-                    </label>
-                    <label className={styles.field}>
-                      <span>Хороо</span>
-                      <select name="subdistrict_id" required defaultValue="">
-                        <option value="" disabled>Хороо сонгох</option>
-                        {routeManagementData.subdistricts.map((subdistrict) => (
-                          <option key={subdistrict.id} value={subdistrict.id}>{subdistrict.label}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className={styles.field}>
-                      <span>Хаяг</span>
-                      <input name="point_address" type="text" placeholder="Нэмэлт хаяг, тайлбар" />
-                    </label>
-                    <button type="submit" className={styles.primaryMiniButton}>Хогийн цэг нэмэх</button>
-                  </form>
-                ) : null}
               </div>
 
-              {canCreateRoute && routeManagementData ? (
-                <div className={styles.routeManager}>
-                  <div className={styles.routeListHeader}>
-                    <div>
-                      <span className={styles.formBadge}>Маршрут</span>
-                      <h3>Маршрутын жагсаалт</h3>
-                      <p>Odoo дээр бүртгэлтэй маршрутуудыг жагсаалтаар харуулж байна.</p>
-                    </div>
-                    <span className={styles.routeCount}>{routeManagementData.routes.length} маршрут</span>
+              <div id="settings-points" className={styles.managementPanel}>
+                <div className={styles.managementHeader}>
+                  <div>
+                    <span className={styles.formBadge}>Хогийн цэг</span>
+                    <h3>Хогийн цэгийн бүртгэл</h3>
+                    <p>Маршрут үүсгэхдээ сонгох хогийн цэгүүдийг эндээс харж, нэмнэ.</p>
                   </div>
+                  <span className={styles.routeCount}>{routeManagementData?.points.length ?? 0} цэг</span>
+                </div>
 
-                  <div className={styles.routeTable}>
-                    <div className={styles.routeTableHead}>
-                      <span>Маршрут</span>
-                      <span>Төсөл</span>
-                      <span>Хогийн цэг</span>
+                {canCreateRoute && routeManagementData ? (
+                  <div className={styles.teamBoard}>
+                    <div className={styles.teamList}>
+                      {routeManagementData.points.length ? (
+                        routeManagementData.points.slice(0, 12).map((point) => (
+                          <article key={point.id} className={styles.teamCard}>
+                            <div>
+                              <strong>{point.name}</strong>
+                              <small>{point.subdistrictName || "Хороо тодорхойгүй"}</small>
+                            </div>
+                            <p>{point.address || "Хаяг, тайлбар нэмэгдээгүй."}</p>
+                          </article>
+                        ))
+                      ) : (
+                        <p className={styles.emptyNote}>Одоогоор хогийн цэг бүртгэгдээгүй байна.</p>
+                      )}
                     </div>
-                    {routeManagementData.routes.length ? (
-                      routeManagementData.routes.map((route) => (
-                        <article key={route.id} className={styles.routeRow}>
-                          <strong>{route.name}</strong>
-                          <span>{route.projectName || "-"}</span>
-                          <small>
-                            {route.pointCount} цэг
-                            {route.pointNames.length ? [" · ", route.pointNames.slice(0, 3).join(", ")].join("") : ""}
-                          </small>
-                        </article>
-                      ))
-                    ) : (
-                      <p className={styles.emptyNote}>Одоогоор маршрут бүртгэгдээгүй байна.</p>
-                    )}
-                  </div>
 
-                  <form action={createProfileRouteAction} className={styles.routeCreateForm}>
-                    <div className={styles.routeListHeader}>
+                    <form action={createProfileCollectionPointAction} className={styles.miniForm}>
                       <div>
                         <span className={styles.formBadge}>Нэмэх</span>
-                        <h3>Маршрут нэмэх</h3>
-                        <p>Код болон ээлж харагдахгүй. Систем default өглөөний ээлжээр хадгална.</p>
+                        <h3>Хогийн цэг нэмэх</h3>
+                        <p>Цэг нэмээд дараа нь маршрутад сонгож холбоно.</p>
                       </div>
-                    </div>
-                    <div className={styles.formGrid}>
                       <label className={styles.field}>
-                        <span>Маршрутын нэр</span>
-                        <input name="route_name" type="text" placeholder="Жишээ: Хог тээвэрлэлт - 8 хороо" required />
+                        <span>Цэгийн нэр</span>
+                        <input name="point_name" type="text" placeholder="Жишээ: 8-р хороо - 20-р хогийн цэг" required />
                       </label>
                       <label className={styles.field}>
-                        <span>Машин</span>
-                        <select name="vehicle_id" required defaultValue="">
-                          <option value="" disabled>Машин сонгох</option>
-                          {routeManagementData.vehicles.map((vehicle) => (
-                            <option key={vehicle.id} value={vehicle.id}>{vehicle.label}</option>
+                        <span>Хороо</span>
+                        <select name="subdistrict_id" required defaultValue="">
+                          <option value="" disabled>Хороо сонгох</option>
+                          {routeManagementData.subdistricts.map((subdistrict) => (
+                            <option key={subdistrict.id} value={subdistrict.id}>{subdistrict.label}</option>
                           ))}
                         </select>
                       </label>
                       <label className={styles.field}>
-                        <span>Баг</span>
-                        <select name="team_id" required defaultValue="">
-                          <option value="" disabled>Баг сонгох</option>
-                          {routeManagementData.teams.map((team) => (
-                            <option key={team.id} value={team.id}>{team.label}</option>
-                          ))}
-                        </select>
+                        <span>Хаяг</span>
+                        <input name="point_address" type="text" placeholder="Нэмэлт хаяг, тайлбар" />
                       </label>
-                      <label className={styles.field}>
-                        <span>Хогийн цэгүүд</span>
-                        <select name="point_ids" multiple required size={Math.min(Math.max(routeManagementData.points.length, 4), 8)}>
-                          {routeManagementData.points.map((point) => (
-                            <option key={point.id} value={point.id}>{point.name}</option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                    <button type="submit" className={styles.primaryMiniButton}>Маршрут нэмэх</button>
-                  </form>
+                      <button type="submit" className={styles.primaryMiniButton}>Хогийн цэг нэмэх</button>
+                    </form>
+                  </div>
+                ) : (
+                  <article className={styles.lockedCard}>
+                    <span className={styles.formBadge}>Хогийн цэг</span>
+                    <h3>Хогийн цэг нэмэх эрх хаалттай</h3>
+                    <p>Энэ хэсэг зөвхөн Авто бааз, хог тээвэрлэлтийн хэлтсийн даргад нээлттэй.</p>
+                  </article>
+                )}
+              </div>
+
+              <div id="settings-routes" className={styles.managementPanel}>
+                <div className={styles.managementHeader}>
+                  <div>
+                    <span className={styles.formBadge}>Маршрут</span>
+                    <h3>Маршрутын жагсаалт</h3>
+                    <p>Odoo дээр бүртгэлтэй маршрутуудыг жагсаалтаар харуулж байна.</p>
+                  </div>
+                  <span className={styles.routeCount}>{routeManagementData?.routes.length ?? 0} маршрут</span>
                 </div>
-              ) : (
-                <article className={styles.lockedCard}>
-                  <span className={styles.formBadge}>Маршрут</span>
-                  <h3>Маршрут үүсгэх эрх хязгаартай</h3>
-                  <p>Энэ хэсэг зөвхөн Авто бааз, хог тээвэрлэлтийн хэлтсийн даргаар нэвтрэхэд идэвхжинэ.</p>
-                </article>
-              )}
+
+                {canCreateRoute && routeManagementData ? (
+                  <div className={styles.routeManager}>
+                    <div className={styles.routeTable}>
+                      <div className={styles.routeTableHead}>
+                        <span>Маршрут</span>
+                        <span>Төсөл</span>
+                        <span>Хогийн цэг</span>
+                      </div>
+                      {routeManagementData.routes.length ? (
+                        routeManagementData.routes.map((route) => (
+                          <article key={route.id} className={styles.routeRow}>
+                            <strong>{route.name}</strong>
+                            <span>{route.projectName || "-"}</span>
+                            <small>
+                              {route.pointCount} цэг
+                              {route.pointNames.length ? [" · ", route.pointNames.slice(0, 3).join(", ")].join("") : ""}
+                            </small>
+                          </article>
+                        ))
+                      ) : (
+                        <p className={styles.emptyNote}>Одоогоор маршрут бүртгэгдээгүй байна.</p>
+                      )}
+                    </div>
+
+                    <form action={createProfileRouteAction} className={styles.routeCreateForm}>
+                      <div className={styles.routeListHeader}>
+                        <div>
+                          <span className={styles.formBadge}>Нэмэх</span>
+                          <h3>Маршрут нэмэх</h3>
+                          <p>Машин, баг болон хогийн цэгүүдийг сонгоход маршрут Odoo дээр үүснэ.</p>
+                        </div>
+                      </div>
+                      <div className={styles.formGrid}>
+                        <label className={styles.field}>
+                          <span>Маршрутын нэр</span>
+                          <input name="route_name" type="text" placeholder="Жишээ: Хог тээвэрлэлт - 8 хороо" required />
+                        </label>
+                        <label className={styles.field}>
+                          <span>Машин</span>
+                          <select name="vehicle_id" required defaultValue="">
+                            <option value="" disabled>Машин сонгох</option>
+                            {routeManagementData.vehicles.map((vehicle) => (
+                              <option key={vehicle.id} value={vehicle.id}>{vehicle.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className={styles.field}>
+                          <span>Баг</span>
+                          <select name="team_id" required defaultValue="">
+                            <option value="" disabled>Баг сонгох</option>
+                            {routeManagementData.teams.map((team) => (
+                              <option key={team.id} value={team.id}>{team.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className={styles.field}>
+                          <span>Хогийн цэгүүд</span>
+                          <select name="point_ids" multiple required size={Math.min(Math.max(routeManagementData.points.length, 4), 8)}>
+                            {routeManagementData.points.map((point) => (
+                              <option key={point.id} value={point.id}>{point.name}</option>
+                            ))}
+                          </select>
+                          <small>Ctrl дарж хэд хэдэн цэг сонгоно.</small>
+                        </label>
+                      </div>
+                      <button type="submit" className={styles.primaryMiniButton}>Маршрут нэмэх</button>
+                    </form>
+                  </div>
+                ) : (
+                  <article className={styles.lockedCard}>
+                    <span className={styles.formBadge}>Маршрут</span>
+                    <h3>Маршрут үүсгэх эрх хязгаартай</h3>
+                    <p>Энэ хэсэг зөвхөн Авто бааз, хог тээвэрлэлтийн хэлтсийн даргаар нэвтрэхэд идэвхжинэ.</p>
+                  </article>
+                )}
+              </div>
             </section>
 
             <section className={styles.sectionCard}>

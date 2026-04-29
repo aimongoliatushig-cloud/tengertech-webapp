@@ -17,6 +17,7 @@ import {
 } from "@/lib/field-ops";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 import {
+  assignGarbageProjectTasksFromRouteTeam,
   createGarbageWorkspaceProject,
   createSeasonalWorkspacePlan,
   createWorkspaceProject,
@@ -254,8 +255,20 @@ export async function createProjectAction(formData: FormData) {
         },
         connectionOverrides,
       );
+      const assignmentResult = await assignGarbageProjectTasksFromRouteTeam(
+        {
+          projectId: result.project_id,
+          routeId: Number(garbageRouteIdRaw),
+          vehicleId: Number(garbageVehicleIdRaw),
+        },
+        connectionOverrides,
+      ).catch(() => null);
 
       let extraLocationMessage = "";
+      const assignmentMessage =
+        assignmentResult?.assignedTaskCount
+          ? ` ${assignmentResult.assignedTaskCount} ажилбар багт оноогдлоо.`
+          : "";
 
       if (additionalLocations.length) {
         let createdLocationCount = 0;
@@ -290,6 +303,17 @@ export async function createProjectAction(formData: FormData) {
         }
       }
 
+      if (additionalLocations.length && assignmentResult?.hasCrewTeam) {
+        await assignGarbageProjectTasksFromRouteTeam(
+          {
+            projectId: result.project_id,
+            routeId: Number(garbageRouteIdRaw),
+            vehicleId: Number(garbageVehicleIdRaw),
+          },
+          connectionOverrides,
+        ).catch(() => null);
+      }
+
       revalidatePath("/");
       revalidatePath("/projects");
       revalidatePath("/tasks");
@@ -299,7 +323,7 @@ export async function createProjectAction(formData: FormData) {
       revalidatePath(`/projects/${result.project_id}`);
       redirect(
         `/projects/${result.project_id}?notice=${encodeURIComponent(
-          `${result.message || "Хог тээвэрлэлтийн ажил амжилттай үүслээ."}${extraLocationMessage}`,
+          `${result.message || "Хог тээвэрлэлтийн ажил амжилттай үүслээ."}${assignmentMessage}${extraLocationMessage}`,
         )}`,
       );
     } catch (error) {
@@ -528,6 +552,7 @@ export async function createTaskAction(formData: FormData) {
   const projectId = Number(String(formData.get("project_id") ?? ""));
   const name = String(formData.get("name") ?? "").trim();
   const teamLeaderIdRaw = String(formData.get("team_leader_id") ?? "").trim();
+  const crewTeamIdRaw = String(formData.get("crew_team_id") ?? "").trim();
   const deadline = String(formData.get("deadline") ?? "").trim();
   const unitIdRaw = String(formData.get("unit_id") ?? "").trim();
   const plannedQuantityRaw = String(formData.get("planned_quantity") ?? "").trim();
@@ -559,6 +584,9 @@ export async function createTaskAction(formData: FormData) {
     };
     const project = await loadProjectDetail(projectId, connectionOverrides);
     const allowedUnitIds = new Set(project.allowedUnits.map((unit) => unit.id));
+    const selectedCrewTeam = crewTeamIdRaw
+      ? project.crewTeamOptions.find((team) => team.id === Number(crewTeamIdRaw)) ?? null
+      : null;
     const measurementUnitId =
       unitIdRaw && Number.isFinite(Number(unitIdRaw))
         ? Number(unitIdRaw)
@@ -605,12 +633,24 @@ export async function createTaskAction(formData: FormData) {
       );
     }
 
+    if (crewTeamIdRaw && !selectedCrewTeam) {
+      redirectWithMessage(
+        `/projects/${projectId}`,
+        "error",
+        "Сонгосон баг энэ ажилд хамаарахгүй байна.",
+        "#task-create-form",
+      );
+    }
+
     const defaultTeamLeaderId = isMasterRole(session.role) ? session.uid : null;
+    const effectiveTeamLeaderId = teamLeaderIdRaw ? Number(teamLeaderIdRaw) : defaultTeamLeaderId;
     const taskId = await createWorkspaceTask(
       {
         projectId,
         name,
-        teamLeaderId: teamLeaderIdRaw ? Number(teamLeaderIdRaw) : defaultTeamLeaderId,
+        teamLeaderId: effectiveTeamLeaderId,
+        crewTeamId: selectedCrewTeam?.id ?? null,
+        assigneeUserIds: selectedCrewTeam?.memberUserIds ?? [],
         deadline: deadline || undefined,
         measurementUnitId,
         plannedQuantity,
