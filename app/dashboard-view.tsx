@@ -45,6 +45,7 @@ import {
   type TaskStatusKey,
 } from "@/lib/odoo";
 import { cn } from "@/lib/utils";
+import { type WeatherSnapshot } from "@/lib/weather";
 
 type DashboardViewProps = {
   session: AppSession;
@@ -54,6 +55,7 @@ type DashboardViewProps = {
   fleetLoadError?: string;
   hrAttendanceSummary: HrDailyAttendanceSummary;
   departmentScopeName?: string | null;
+  weather: WeatherSnapshot;
 };
 
 type DashboardStat = {
@@ -260,14 +262,20 @@ function ProgressRing({ value, size = "sm" }: { value: number; size?: "sm" | "lg
 function DepartmentOverview({
   snapshot,
   tasks,
+  departmentScopeName,
 }: {
   snapshot: DashboardSnapshot;
   tasks: DashboardSnapshot["taskDirectory"];
+  departmentScopeName?: string | null;
 }) {
   const autoDepartment =
+    (departmentScopeName
+      ? snapshot.departments.find((department) => department.name === departmentScopeName)
+      : null) ??
     snapshot.departments.find((department) => department.name.includes("Авто")) ??
     snapshot.departments[0];
-  const departmentName = autoDepartment?.name ?? "Авто бааз, хог тээвэрлэлтийн хэлтэс";
+  const departmentName =
+    departmentScopeName ?? autoDepartment?.name ?? "Авто бааз, хог тээвэрлэлтийн хэлтэс";
   const autoBaseCount = tasks.filter((task) => task.departmentName.includes("Авто бааз")).length;
   const wasteCount = tasks.filter(
     (task) => task.departmentName.includes("Хог") || task.departmentName.includes("хог"),
@@ -657,6 +665,8 @@ function RightPanel({
   hrAttendanceSummary,
   departmentScopeName,
   showFleetSummary,
+  workerMode,
+  weather,
 }: {
   totalTasks: number;
   completedTasks: number;
@@ -667,6 +677,8 @@ function RightPanel({
   hrAttendanceSummary: HrDailyAttendanceSummary;
   departmentScopeName?: string | null;
   showFleetSummary: boolean;
+  workerMode: boolean;
+  weather: WeatherSnapshot;
 }) {
   const systemInfoTitle = departmentScopeName ? "Алба нэгжийн мэдээлэл" : "Системийн мэдээлэл";
   const systemInfoRows: Array<[string, number]> = departmentScopeName
@@ -693,7 +705,8 @@ function RightPanel({
 
   return (
     <aside className={dashboardStyles.rightRail}>
-      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
+      {!workerMode ? (
+        <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
         <CardTitle className={dashboardStyles.sideCardTitle}>Түргэн холбоосууд</CardTitle>
         <div className={dashboardStyles.sideQuickGrid}>
           {quickActions.map((action) => {
@@ -712,7 +725,8 @@ function RightPanel({
             );
           })}
         </div>
-      </Card>
+        </Card>
+      ) : null}
 
       <Card className={cn(dashboardStyles.softPanel, dashboardStyles.quoteCard)}>
         <div
@@ -731,33 +745,42 @@ function RightPanel({
         </div>
       </Card>
 
-      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
-        <CardTitle className={dashboardStyles.sideCardTitle}>{systemInfoTitle}</CardTitle>
-        <div className={dashboardStyles.systemList}>
-          {systemInfoRows.map(([label, value]) => (
-            <div key={String(label)} className={dashboardStyles.systemRow}>
-              <span>{label}</span>
-              <strong>{value}</strong>
+      {!workerMode ? (
+        <>
+          <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
+            <CardTitle className={dashboardStyles.sideCardTitle}>{systemInfoTitle}</CardTitle>
+            <div className={dashboardStyles.systemList}>
+              {systemInfoRows.map(([label, value]) => (
+                <div key={String(label)} className={dashboardStyles.systemRow}>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </Card>
+          </Card>
 
-      <HrAttendanceCard summary={hrAttendanceSummary} />
+          <HrAttendanceCard summary={hrAttendanceSummary} />
+        </>
+      ) : null}
 
       <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
         <CardTitle className={dashboardStyles.sideCardTitle}>Цаг агаар</CardTitle>
         <div className={dashboardStyles.weatherContent}>
           <Sun className={dashboardStyles.weatherIcon} />
           <div>
-            <span className={dashboardStyles.weatherCity}>Улаанбаатар</span>
-            <strong className={dashboardStyles.weatherTemp}>18°C</strong>
-            <small className={dashboardStyles.weatherNote}>Бага үүлтэй</small>
+            <span className={dashboardStyles.weatherCity}>{weather.city}</span>
+            <strong className={dashboardStyles.weatherTemp}>
+              {weather.temperature === null ? "--" : weather.temperature}°C
+            </strong>
+            <small className={dashboardStyles.weatherNote}>
+              {weather.condition}
+              {weather.windSpeed !== null ? ` · Салхи ${weather.windSpeed} км/ц` : ""}
+            </small>
           </div>
           <div className={dashboardStyles.weatherBadge}>
-            Сайн
+            {weather.aqiLabel}
             <br />
-            AQI 38
+            AQI {weather.aqi ?? "--"}
           </div>
         </div>
       </Card>
@@ -807,6 +830,7 @@ export function DashboardView({
   fleetLoadError = "",
   hrAttendanceSummary,
   departmentScopeName = null,
+  weather,
 }: DashboardViewProps) {
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -836,8 +860,12 @@ export function DashboardView({
         );
       })
     : snapshot.taskDirectory;
-  const dashboardTasks = scopedTasks.length ? scopedTasks : snapshot.taskDirectory;
-  const totalTasks = dashboardTasks.length || snapshot.totalTasks || 0;
+  const dashboardTasks = workerMode
+    ? scopedTasks
+    : scopedTasks.length
+      ? scopedTasks
+      : snapshot.taskDirectory;
+  const totalTasks = workerMode ? dashboardTasks.length : dashboardTasks.length || snapshot.totalTasks || 0;
   const completedTasks = dashboardTasks.filter((task) => task.statusKey === "verified").length;
   const workingTasks = dashboardTasks.filter((task) => task.statusKey === "working").length;
   const reviewTasks = dashboardTasks.filter((task) => task.statusKey === "review").length;
@@ -962,7 +990,7 @@ export function DashboardView({
                 ))}
               </section>
 
-              <MobilePriorityPanel canWriteReports={canWriteReports} />
+              {!workerMode ? <MobilePriorityPanel canWriteReports={canWriteReports} /> : null}
 
               {fleetLoadError ? (
                 <Card className="border-amber-200 bg-amber-50/85 p-4 text-sm font-semibold text-amber-800">
@@ -971,7 +999,11 @@ export function DashboardView({
               ) : null}
 
               <div className={dashboardStyles.departmentPanel}>
-                <DepartmentOverview snapshot={snapshot} tasks={dashboardTasks} />
+                <DepartmentOverview
+                  snapshot={snapshot}
+                  tasks={dashboardTasks}
+                  departmentScopeName={departmentScopeName}
+                />
               </div>
 
               <Card className={dashboardStyles.taskListCard}>
@@ -1010,56 +1042,60 @@ export function DashboardView({
                 </div>
               </Card>
 
-              <div className={cn("grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]", dashboardStyles.analyticsSection)}>
-                <CompletionDonut
-                  completed={completedTasks}
-                  working={workingTasks}
-                  review={reviewTasks}
-                  overdue={overdueTasks}
-                  total={totalTasks}
-                />
-                <WeeklyLineChart points={model.trendPoints} />
-              </div>
-
-              <div className={cn("grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]", dashboardStyles.summaryGrid)}>
-                <Card className={cn(dashboardStyles.softPanel, dashboardStyles.quickStatsCard)}>
-                  <CardTitle className={dashboardStyles.quickStatsTitle}>Хурдан статистик</CardTitle>
-                  <div className={dashboardStyles.quickStatsGrid}>
-                    {[
-                      ["Өнөөдрийн ажил", snapshot.liveTasks.length, percent(snapshot.liveTasks.length, totalTasks)],
-                      ["Энэ 7 хоног", model.trendPoints.reduce((sum, point) => sum + point.completion, 0), 0],
-                      ["Энэ сар", completedTasks, percent(completedTasks, totalTasks)],
-                    ].map(([label, value, rate]) => (
-                      <div key={String(label)} className={dashboardStyles.quickStatItem}>
-                        <CalendarDays className={dashboardStyles.quickStatIcon} />
-                        <span className={dashboardStyles.quickStatLabel}>{label}</span>
-                        <strong className={dashboardStyles.quickStatValue}>{value}</strong>
-                        <small className={dashboardStyles.quickStatRate}>↑ {rate}%</small>
-                      </div>
-                    ))}
+              {!workerMode ? (
+                <>
+                  <div className={cn("grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]", dashboardStyles.analyticsSection)}>
+                    <CompletionDonut
+                      completed={completedTasks}
+                      working={workingTasks}
+                      review={reviewTasks}
+                      overdue={overdueTasks}
+                      total={totalTasks}
+                    />
+                    <WeeklyLineChart points={model.trendPoints} />
                   </div>
-                </Card>
 
-                {showFleetSummary ? (
-                  <Card className={cn(dashboardStyles.softPanel, dashboardStyles.fleetSummaryCard)}>
-                    <CardTitle className={dashboardStyles.fleetSummaryTitle}>Техник, тоног төхөөрөмж</CardTitle>
-                    <div className={dashboardStyles.fleetSummaryBody}>
-                      <Truck className={dashboardStyles.fleetSummaryIcon} />
-                      <div>
-                        <strong className={dashboardStyles.fleetSummaryValue}>{fleetBoard.totalVehicles}</strong>
-                        <span className={dashboardStyles.fleetSummaryLabel}>Нийт техник</span>
+                  <div className={cn("grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]", dashboardStyles.summaryGrid)}>
+                    <Card className={cn(dashboardStyles.softPanel, dashboardStyles.quickStatsCard)}>
+                      <CardTitle className={dashboardStyles.quickStatsTitle}>Хурдан статистик</CardTitle>
+                      <div className={dashboardStyles.quickStatsGrid}>
+                        {[
+                          ["Өнөөдрийн ажил", snapshot.liveTasks.length, percent(snapshot.liveTasks.length, totalTasks)],
+                          ["Энэ 7 хоног", model.trendPoints.reduce((sum, point) => sum + point.completion, 0), 0],
+                          ["Энэ сар", completedTasks, percent(completedTasks, totalTasks)],
+                        ].map(([label, value, rate]) => (
+                          <div key={String(label)} className={dashboardStyles.quickStatItem}>
+                            <CalendarDays className={dashboardStyles.quickStatIcon} />
+                            <span className={dashboardStyles.quickStatLabel}>{label}</span>
+                            <strong className={dashboardStyles.quickStatValue}>{value}</strong>
+                            <small className={dashboardStyles.quickStatRate}>↑ {rate}%</small>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                    <Link
-                      href="/auto-base"
-                      className={dashboardStyles.fleetSummaryLink}
-                    >
-                      Авто бааз
-                      <ChevronRight />
-                    </Link>
-                  </Card>
-                ) : null}
-              </div>
+                    </Card>
+
+                    {showFleetSummary ? (
+                      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.fleetSummaryCard)}>
+                        <CardTitle className={dashboardStyles.fleetSummaryTitle}>Техник, тоног төхөөрөмж</CardTitle>
+                        <div className={dashboardStyles.fleetSummaryBody}>
+                          <Truck className={dashboardStyles.fleetSummaryIcon} />
+                          <div>
+                            <strong className={dashboardStyles.fleetSummaryValue}>{fleetBoard.totalVehicles}</strong>
+                            <span className={dashboardStyles.fleetSummaryLabel}>Нийт техник</span>
+                          </div>
+                        </div>
+                        <Link
+                          href="/auto-base"
+                          className={dashboardStyles.fleetSummaryLink}
+                        >
+                          Авто бааз
+                          <ChevronRight />
+                        </Link>
+                      </Card>
+                    ) : null}
+                  </div>
+                </>
+              ) : null}
             </div>
 
             <RightPanel
@@ -1072,6 +1108,8 @@ export function DashboardView({
               hrAttendanceSummary={hrAttendanceSummary}
               departmentScopeName={departmentScopeName}
               showFleetSummary={showFleetSummary}
+              workerMode={workerMode}
+              weather={weather}
             />
           </div>
 

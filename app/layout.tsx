@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Exo_2, IBM_Plex_Mono, IBM_Plex_Sans, Inter } from "next/font/google";
 
+import { GlobalLoadingProvider } from "@/app/_components/global-loading";
+
 import "./globals.css";
 
 const display = Exo_2({
@@ -43,7 +45,9 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${display.variable} ${body.variable} ${mono.variable} ${inter.variable}`}
     >
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <GlobalLoadingProvider>{children}</GlobalLoadingProvider>
+      </body>
     </html>
   );
 }

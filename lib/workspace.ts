@@ -68,11 +68,33 @@ type ReportRecord = {
   task_measurement_unit_code?: string | false;
 };
 
+type MailMessageRecord = {
+  id: number;
+  author_id: Relation;
+  date: string | false;
+  body: string | false;
+  message_type: string | false;
+  subtype_id: Relation;
+};
+
 type UserRecord = {
   id: number;
   name: string;
   login: string;
   ops_user_type: string | false;
+  partner_id?: Relation;
+};
+
+type EmployeeUserRecord = {
+  id: number;
+  name: string;
+  department_id: Relation;
+  user_id: Relation;
+  job_id?: Relation;
+  job_title?: string | false;
+  work_phone?: string | false;
+  mobile_phone?: string | false;
+  work_email?: string | false;
 };
 
 type CrewTeamRecord = {
@@ -117,6 +139,8 @@ export type SelectOption = {
   name: string;
   login: string;
   role: string;
+  departmentName?: string;
+  phone?: string;
 };
 
 export type DepartmentOption = {
@@ -403,6 +427,7 @@ export type ProjectDetail = {
   completion: number;
   tasks: ProjectTaskCard[];
   teamLeaderOptions: SelectOption[];
+  departmentUserOptions: SelectOption[];
   crewTeamOptions: Array<{
     id: number;
     label: string;
@@ -411,6 +436,7 @@ export type ProjectDetail = {
   workTypeName: string;
   operationType: string;
   allowedUnits: WorkUnitOption[];
+  allUnitOptions: WorkUnitOption[];
   defaultUnitId: number | null;
   allowedUnitSummary: string;
 };
@@ -436,6 +462,15 @@ export type TaskReportFeedItem = {
     name: string;
     url: string;
   }[];
+};
+
+export type TaskMessageItem = {
+  id: number;
+  author: string;
+  postedAt: string;
+  body: string;
+  kind: "message" | "note" | "system";
+  subtype: string;
 };
 
 type WorkspaceReportAttachmentInput = {
@@ -470,6 +505,7 @@ export type TaskDetail = {
   canReturnForChanges: boolean;
   reportsLocked: boolean;
   reports: TaskReportFeedItem[];
+  messages: TaskMessageItem[];
 };
 
 const WEEKDAY_KEYS = [
@@ -518,6 +554,114 @@ function displayStageLabel(name: string) {
 
 function relationName(relation: Relation, fallback = "Тодорхойгүй") {
   return Array.isArray(relation) ? relation[1] : fallback;
+}
+
+function decodeHtmlEntities(value: string) {
+  const namedEntities: Record<string, string> = {
+    amp: "&",
+    gt: ">",
+    lt: "<",
+    nbsp: " ",
+    quot: '"',
+    apos: "'",
+  };
+
+  return value.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, entity: string) => {
+    const normalizedEntity = entity.toLowerCase();
+    if (normalizedEntity.startsWith("#x")) {
+      const codePoint = Number.parseInt(normalizedEntity.slice(2), 16);
+      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
+    }
+    if (normalizedEntity.startsWith("#")) {
+      const codePoint = Number.parseInt(normalizedEntity.slice(1), 10);
+      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
+    }
+    return namedEntities[normalizedEntity] ?? match;
+  });
+}
+
+function htmlToPlainText(value?: string | false) {
+  if (!value) {
+    return "";
+  }
+
+  return decodeHtmlEntities(
+    value
+      .replace(/<\s*br\s*\/?>/gi, "\n")
+      .replace(/<\/\s*(p|div|li|h[1-6])\s*>/gi, "\n")
+      .replace(/<[^>]*>/g, "")
+      .replace(/\r/g, "")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim(),
+  );
+}
+
+function plainTextToOdooHtml(value: string) {
+  const escaped = value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+  return escaped
+    .split(/\n{2,}/)
+    .map((paragraph) => `<p>${paragraph.replace(/\n/g, "<br/>")}</p>`)
+    .join("");
+}
+
+function classifyTaskMessage(message: MailMessageRecord): TaskMessageItem["kind"] {
+  const subtype = relationName(message.subtype_id, "").toLowerCase();
+  const messageType = String(message.message_type || "").toLowerCase();
+
+  if (subtype.includes("note")) {
+    return "note";
+  }
+  if (messageType === "comment" || subtype.includes("comment")) {
+    return "message";
+  }
+  return "system";
+}
+
+function filterCrewTeamsByDepartmentUsers<
+  T extends {
+    memberUserIds: number[];
+  },
+>(teams: T[], users: SelectOption[]) {
+  const departmentUserIds = new Set(users.map((user) => user.id));
+  if (!departmentUserIds.size) {
+    return [];
+  }
+
+  return teams.filter((team) =>
+    team.memberUserIds.some((userId) => departmentUserIds.has(userId)),
+  );
+}
+
+function dateInputToOdooDatetime(value: string) {
+  return value.includes(" ") ? value : `${value} 00:00:00`;
+}
+
+function isMasterLikeJobTitle(value: string) {
+  const title = value.trim().toLowerCase().replace(/\s+/g, " ");
+  return (
+    title.includes("ахлах мастер") ||
+    title.includes("мастер") ||
+    title.includes("даамал") ||
+    title.includes("талбайн инженер") ||
+    title.includes("talbain engineer") ||
+    title.includes("field engineer")
+  );
+}
+
+function getEmployeeJobTitle(employee: Pick<EmployeeUserRecord, "job_id" | "job_title">) {
+  return [
+    Array.isArray(employee.job_id) ? employee.job_id[1] : "",
+    employee.job_title || "",
+  ]
+    .join(" ")
+    .trim();
 }
 
 function relationId(relation: Relation) {
@@ -769,12 +913,144 @@ async function loadUserOptions(
       connectionOverrides,
     );
 
+    const userIds = users.map((user) => user.id);
+    const employeeDepartments = userIds.length
+      ? await executeOdooKw<
+          Array<{
+            user_id: Relation;
+            department_id: Relation;
+            job_id?: Relation;
+            job_title?: string | false;
+          }>
+        >(
+          "hr.employee",
+          "search_read",
+          [[["user_id", "in", userIds]]],
+          {
+            fields: ["user_id", "department_id"],
+            limit: 200,
+          },
+          connectionOverrides,
+        ).catch(() => [])
+      : [];
+    const departmentByUserId = new Map(
+      employeeDepartments
+        .map((employee) => [
+          Array.isArray(employee.user_id) ? employee.user_id[0] : null,
+          relationName(employee.department_id ?? false, ""),
+        ] as const)
+        .filter((entry): entry is readonly [number, string] => entry[0] !== null),
+    );
+
     return users.map((user) => ({
       id: user.id,
       name: user.name,
       login: user.login,
       role: user.ops_user_type || "worker",
+      departmentName: departmentByUserId.get(user.id),
     }));
+  } catch {
+    return [] satisfies SelectOption[];
+  }
+}
+
+async function loadDepartmentUserOptions(
+  departmentId: number | null,
+  connectionOverrides: Partial<OdooConnection>,
+) {
+  if (!departmentId) {
+    return [] satisfies SelectOption[];
+  }
+
+  try {
+    const employees = await executeOdooKw<EmployeeUserRecord[]>(
+      "hr.employee",
+      "search_read",
+      [[["department_id", "=", departmentId], ["user_id", "!=", false]]],
+      {
+        fields: [
+          "name",
+          "department_id",
+          "job_id",
+          "job_title",
+          "user_id",
+          "work_phone",
+          "mobile_phone",
+          "work_email",
+        ],
+        order: "name asc",
+        limit: 120,
+      },
+      connectionOverrides,
+    );
+    const options = employees.reduce<SelectOption[]>((items, employee) => {
+      const userId = relationId(employee.user_id);
+      if (!userId) {
+        return items;
+      }
+
+      const phone = employee.mobile_phone || employee.work_phone || "";
+      items.push({
+        id: userId,
+        name: relationName(employee.user_id, employee.name),
+        login: phone || employee.work_email || "",
+        phone: phone || "",
+        role: "department_user",
+        departmentName: relationName(employee.department_id, ""),
+      });
+      return items;
+    }, []);
+
+    return Array.from(new Map(options.map((option) => [option.id, option])).values());
+  } catch {
+    return [] satisfies SelectOption[];
+  }
+}
+
+async function loadMasterEmployeeUserOptions(
+  connectionOverrides: Partial<OdooConnection>,
+) {
+  try {
+    const employees = await executeOdooKw<EmployeeUserRecord[]>(
+      "hr.employee",
+      "search_read",
+      [[["user_id", "!=", false]]],
+      {
+        fields: [
+          "name",
+          "department_id",
+          "job_id",
+          "job_title",
+          "user_id",
+          "work_phone",
+          "mobile_phone",
+          "work_email",
+        ],
+        order: "department_id asc, name asc",
+        limit: 300,
+      },
+      connectionOverrides,
+    );
+
+    const options = employees.reduce<SelectOption[]>((items, employee) => {
+      const userId = relationId(employee.user_id);
+      if (!userId || !isMasterLikeJobTitle(getEmployeeJobTitle(employee))) {
+        return items;
+      }
+
+      const phone = employee.mobile_phone || employee.work_phone || "";
+      items.push({
+        id: userId,
+        name: relationName(employee.user_id, employee.name),
+        login: phone || employee.work_email || "",
+        phone: phone || "",
+        role: "senior_master",
+        departmentName: relationName(employee.department_id, ""),
+      });
+      return items;
+    }, []);
+
+    return Array.from(new Map(options.map((option) => [option.id, option])).values());
   } catch {
     return [] satisfies SelectOption[];
   }
@@ -792,7 +1068,16 @@ export async function loadProjectManagerOptions(
 export async function loadTeamLeaderOptions(
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
-  return loadUserOptions(["team_leader", "senior_master"], connectionOverrides);
+  const [roleOptions, inferredMasterOptions] = await Promise.all([
+    loadUserOptions(["team_leader", "senior_master"], connectionOverrides),
+    loadMasterEmployeeUserOptions(connectionOverrides),
+  ]);
+
+  return Array.from(
+    new Map(
+      [...roleOptions, ...inferredMasterOptions].map((option) => [option.id, option]),
+    ).values(),
+  ).sort((left, right) => left.name.localeCompare(right.name, "mn"));
 }
 
 export async function loadCrewTeamOptions(
@@ -1529,6 +1814,12 @@ export async function loadProjectDetail(
     throw new Error("Ажил олдсонгүй.");
   }
 
+  const projectDepartmentId = relationId(project.ops_department_id);
+  const departmentUserOptions = await loadDepartmentUserOptions(
+    projectDepartmentId,
+    connectionOverrides,
+  );
+
   const doneCount = tasks.filter(
     (task) => normalizeStageBucket(relationName(task.stage_id, "")) === "done",
   ).length;
@@ -1541,9 +1832,13 @@ export async function loadProjectDetail(
     .filter((unit): unit is WorkUnitOption => Boolean(unit));
   const workType =
     workTypes.find((item) => item.operationType === project.mfo_operation_type) ?? null;
-  const crewTeamOptions = await loadCrewTeamOptions(
+  const allCrewTeamOptions = await loadCrewTeamOptions(
     project.mfo_operation_type || "",
     connectionOverrides,
+  );
+  const crewTeamOptions = filterCrewTeamsByDepartmentUsers(
+    allCrewTeamOptions,
+    departmentUserOptions,
   );
   const allowedUnits =
     projectAllowedUnits.length > 0 ? projectAllowedUnits : workType?.allowedUnits ?? [];
@@ -1563,7 +1858,7 @@ export async function loadProjectDetail(
     managerName: relationName(project.user_id),
     managerId: relationId(project.user_id),
     departmentName: relationName(project.ops_department_id),
-    departmentId: relationId(project.ops_department_id),
+    departmentId: projectDepartmentId,
     startDate: formatDateInput(project.date_start),
     deadline: formatDateInput(project.date),
     taskCount: tasks.length,
@@ -1587,10 +1882,12 @@ export async function loadProjectDetail(
       ),
     })),
     teamLeaderOptions,
+    departmentUserOptions,
     crewTeamOptions,
     workTypeName: workType?.name ?? "",
     operationType: project.mfo_operation_type || "",
     allowedUnits,
+    allUnitOptions: workUnits,
     defaultUnitId,
     allowedUnitSummary,
   };
@@ -1658,9 +1955,23 @@ export async function loadTaskDetail(
       overrides,
     );
 
-  const [tasks, primaryReports] = await Promise.all([
+  const messageQuery = (overrides: Partial<OdooConnection>) =>
+    executeOdooKw<MailMessageRecord[]>(
+      "mail.message",
+      "search_read",
+      [[["model", "=", "project.task"], ["res_id", "=", taskId]]],
+      {
+        fields: ["author_id", "date", "body", "message_type", "subtype_id"],
+        order: "date desc, id desc",
+        limit: 40,
+      },
+      overrides,
+    );
+
+  const [tasks, primaryReports, primaryMessages] = await Promise.all([
     taskPromise,
     reportQuery(connectionOverrides).catch(() => [] as ReportRecord[]),
+    messageQuery(connectionOverrides).catch(() => [] as MailMessageRecord[]),
   ]);
 
   const task = tasks[0];
@@ -1669,17 +1980,21 @@ export async function loadTaskDetail(
   }
 
   let reports = primaryReports;
-  if (!reports.length) {
-    const primaryConnection = createOdooConnection(connectionOverrides);
-    const fallbackConnection = createOdooConnection();
-    const sameConnection =
-      primaryConnection.url === fallbackConnection.url &&
-      primaryConnection.db === fallbackConnection.db &&
-      primaryConnection.login === fallbackConnection.login &&
-      primaryConnection.password === fallbackConnection.password;
+  let messages = primaryMessages;
+  const primaryConnection = createOdooConnection(connectionOverrides);
+  const fallbackConnection = createOdooConnection();
+  const sameConnection =
+    primaryConnection.url === fallbackConnection.url &&
+    primaryConnection.db === fallbackConnection.db &&
+    primaryConnection.login === fallbackConnection.login &&
+    primaryConnection.password === fallbackConnection.password;
 
-    if (!sameConnection) {
+  if (!sameConnection) {
+    if (!reports.length) {
       reports = await reportQuery({}).catch(() => [] as ReportRecord[]);
+    }
+    if (!messages.length) {
+      messages = await messageQuery({}).catch(() => [] as MailMessageRecord[]);
     }
   }
 
@@ -1728,7 +2043,7 @@ export async function loadTaskDetail(
     teamLeaderName: relationName(task.ops_team_leader_id),
     assignees: assigneeNames,
     priorityLabel: priorityLabel(task.priority),
-    description: task.description || "",
+    description: htmlToPlainText(task.description),
     canSubmitForReview: Boolean(task.ops_can_submit_for_review),
     canMarkDone: Boolean(task.ops_can_mark_done),
     canReturnForChanges: Boolean(task.ops_can_return_for_changes),
@@ -1759,6 +2074,17 @@ export async function loadTaskDetail(
         url: `/api/odoo/attachments/${attachmentId}`,
       })),
     })),
+    messages: messages
+      .map((message) => ({
+        id: message.id,
+        author: relationName(message.author_id, "Систем"),
+        postedAt: formatDateLabel(message.date),
+        body: htmlToPlainText(message.body),
+        kind: classifyTaskMessage(message),
+        subtype: relationName(message.subtype_id, ""),
+      }))
+      .filter((message) => message.body)
+      .slice(0, 20),
   };
 }
 
@@ -1910,6 +2236,7 @@ export async function createWorkspaceTask(
     teamLeaderId?: number | null;
     crewTeamId?: number | null;
     assigneeUserIds?: number[];
+    startDate?: string;
     deadline?: string;
     measurementUnitId?: number | null;
     plannedQuantity?: number | null;
@@ -1936,6 +2263,9 @@ export async function createWorkspaceTask(
   ).filter((id) => Number.isFinite(id) && id > 0);
   if (input.deadline) {
     values.date_deadline = input.deadline;
+  }
+  if (input.startDate) {
+    values.mfo_planned_start = dateInputToOdooDatetime(input.startDate);
   }
   if (input.measurementUnitId) {
     values.ops_measurement_unit_id = input.measurementUnitId;
@@ -1968,6 +2298,66 @@ export async function createWorkspaceTask(
   return taskId;
 }
 
+export async function createWorkspaceTaskAttachments(
+  taskId: number,
+  attachments: WorkspaceReportAttachmentInput[],
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  if (!attachments.length) {
+    return [];
+  }
+
+  return Promise.all(
+    attachments.map((attachment) =>
+      executeOdooKw<number>(
+        "ir.attachment",
+        "create",
+        [
+          {
+            name: attachment.name,
+            datas: attachment.base64,
+            mimetype: attachment.mimeType || "application/octet-stream",
+            res_model: "project.task",
+            res_id: taskId,
+          },
+        ],
+        {},
+        connectionOverrides,
+      ),
+    ),
+  );
+}
+
+export async function createWorkspaceProjectAttachments(
+  projectId: number,
+  attachments: WorkspaceReportAttachmentInput[],
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  if (!attachments.length) {
+    return [];
+  }
+
+  return Promise.all(
+    attachments.map((attachment) =>
+      executeOdooKw<number>(
+        "ir.attachment",
+        "create",
+        [
+          {
+            name: attachment.name,
+            datas: attachment.base64,
+            mimetype: attachment.mimeType || "application/octet-stream",
+            res_model: "project.project",
+            res_id: projectId,
+          },
+        ],
+        {},
+        connectionOverrides,
+      ),
+    ),
+  );
+}
+
 export async function createWorkspaceTaskReport(
   input: {
     taskId: number;
@@ -1978,7 +2368,7 @@ export async function createWorkspaceTaskReport(
   },
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
-  return executeOdooKw<number>(
+  const reportId = await executeOdooKw<number>(
     "project.task",
     "action_ops_create_mobile_report",
     [
@@ -1986,13 +2376,67 @@ export async function createWorkspaceTaskReport(
       {
         report_text: input.reportText.trim(),
         reported_quantity: input.reportedQuantity,
-        image_attachments: input.imageAttachments ?? [],
-        audio_attachments: input.audioAttachments ?? [],
+        image_attachments: [],
+        audio_attachments: [],
       },
     ],
     {},
     connectionOverrides,
   );
+
+  const createReportAttachments = async (
+    attachments: WorkspaceReportAttachmentInput[] | undefined,
+  ) => {
+    const attachmentIds: number[] = [];
+
+    for (const attachment of attachments ?? []) {
+      const attachmentId = await executeOdooKw<number>(
+        "ir.attachment",
+        "create",
+        [
+          {
+            name: attachment.name,
+            datas: attachment.base64,
+            mimetype: attachment.mimeType || "application/octet-stream",
+            res_model: "ops.task.report",
+            res_id: reportId,
+          },
+        ],
+        {},
+        connectionOverrides,
+      );
+      attachmentIds.push(attachmentId);
+    }
+
+    return attachmentIds;
+  };
+
+  const [imageAttachmentIds, audioAttachmentIds] = await Promise.all([
+    createReportAttachments(input.imageAttachments),
+    createReportAttachments(input.audioAttachments),
+  ]);
+
+  if (imageAttachmentIds.length || audioAttachmentIds.length) {
+    await executeOdooKw<boolean>(
+      "ops.task.report",
+      "write",
+      [
+        [reportId],
+        {
+          ...(imageAttachmentIds.length
+            ? { image_attachment_ids: [[6, 0, imageAttachmentIds]] }
+            : {}),
+          ...(audioAttachmentIds.length
+            ? { audio_attachment_ids: [[6, 0, audioAttachmentIds]] }
+            : {}),
+        },
+      ],
+      {},
+      connectionOverrides,
+    );
+  }
+
+  return reportId;
 }
 
 export async function submitWorkspaceTaskForReview(
@@ -2008,6 +2452,309 @@ export async function submitWorkspaceTaskForReview(
   );
 }
 
+async function writeWorkspaceTaskCompletionFallback(
+  taskId: number,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const writeProgress = (values: Record<string, unknown>) =>
+    executeOdooKw<boolean>(
+      "project.task",
+      "write",
+      [[taskId], values],
+      {},
+      connectionOverrides,
+    );
+
+  try {
+    await writeProgress({
+      ops_planned_quantity: 1,
+      ops_completed_quantity: 1,
+      ops_progress_percent: 100,
+    });
+  } catch {
+    try {
+      await writeProgress({ ops_progress_percent: 100 });
+    } catch {
+      await writeProgress({
+        ops_planned_quantity: 1,
+        ops_completed_quantity: 1,
+      });
+    }
+  }
+}
+
+export async function completeUnmeasuredWorkspaceTaskForReview(
+  taskId: number,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  await writeWorkspaceTaskCompletionFallback(taskId, connectionOverrides);
+
+  return submitWorkspaceTaskForReview(taskId, connectionOverrides);
+}
+
+export async function sendWorkspaceTaskReportToReview(
+  taskId: number,
+  options: {
+    forceComplete?: boolean;
+  } = {},
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  if (options.forceComplete) {
+    await writeWorkspaceTaskCompletionFallback(taskId, connectionOverrides);
+  }
+
+  try {
+    return await submitWorkspaceTaskForReview(taskId, connectionOverrides);
+  } catch (error) {
+    if (!options.forceComplete) {
+      await writeWorkspaceTaskCompletionFallback(taskId, connectionOverrides);
+      return submitWorkspaceTaskForReview(taskId, connectionOverrides);
+    }
+
+    throw error;
+  }
+}
+
+async function loadDefaultActivityTypeId(connectionOverrides: Partial<OdooConnection>) {
+  const readActivityTypes = (domain: unknown[]) =>
+    executeOdooKw<Array<{ id: number }>>(
+      "mail.activity.type",
+      "search_read",
+      [domain],
+      {
+        fields: ["id"],
+        limit: 1,
+      },
+      connectionOverrides,
+    );
+
+  const defaultTypes = await readActivityTypes([["category", "=", "default"]]).catch(
+    () => [],
+  );
+  if (defaultTypes[0]?.id) {
+    return defaultTypes[0].id;
+  }
+
+  const fallbackTypes = await readActivityTypes([]).catch(() => []);
+  return fallbackTypes[0]?.id ?? null;
+}
+
+async function loadProjectTaskModelId(connectionOverrides: Partial<OdooConnection>) {
+  const models = await executeOdooKw<Array<{ id: number }>>(
+    "ir.model",
+    "search_read",
+    [[["model", "=", "project.task"]]],
+    {
+      fields: ["id"],
+      limit: 1,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+
+  return models[0]?.id ?? null;
+}
+
+export async function notifyWorkspaceTaskReportReviewers(
+  taskId: number,
+  reporterName: string,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  try {
+    const tasks = await executeOdooKw<
+      Array<{
+        id: number;
+        name: string;
+        project_id: Relation;
+        ops_team_leader_id: Relation;
+        user_ids: number[];
+      }>
+    >(
+      "project.task",
+      "search_read",
+      [[["id", "=", taskId]]],
+      {
+        fields: ["name", "project_id", "ops_team_leader_id", "user_ids"],
+        limit: 1,
+      },
+      connectionOverrides,
+    );
+    const task = tasks[0];
+    if (!task) {
+      return;
+    }
+
+    const projectId = relationId(task.project_id);
+    const projects = projectId
+      ? await executeOdooKw<
+          Array<{
+            id: number;
+            name: string;
+            user_id: Relation;
+            ops_department_id: Relation;
+          }>
+        >(
+          "project.project",
+          "search_read",
+          [[["id", "=", projectId]]],
+          {
+            fields: ["name", "user_id", "ops_department_id"],
+            limit: 1,
+          },
+          connectionOverrides,
+        ).catch(() => [])
+      : [];
+    const project = projects[0] ?? null;
+    const departmentId = project ? relationId(project.ops_department_id) : null;
+    const recipientIds = new Set<number>();
+    const teamLeaderId = relationId(task.ops_team_leader_id);
+    const projectManagerId = project ? relationId(project.user_id) : null;
+
+    if (teamLeaderId) {
+      recipientIds.add(teamLeaderId);
+    }
+    if (projectManagerId) {
+      recipientIds.add(projectManagerId);
+    }
+
+    const roleUsers = await executeOdooKw<UserRecord[]>(
+      "res.users",
+      "search_read",
+      [
+        [
+          ["share", "=", false],
+          ["ops_user_type", "in", ["director", "general_manager", "project_manager", "senior_master", "team_leader"]],
+        ],
+      ],
+      {
+        fields: ["name", "login", "ops_user_type", "partner_id"],
+        limit: 200,
+      },
+      connectionOverrides,
+    ).catch(() => []);
+
+    const departmentEmployees = departmentId
+      ? await executeOdooKw<
+          Array<{
+            user_id: Relation;
+            department_id: Relation;
+            job_id?: Relation;
+            job_title?: string | false;
+          }>
+        >(
+          "hr.employee",
+          "search_read",
+          [[["department_id", "=", departmentId], ["user_id", "!=", false]]],
+          {
+            fields: ["user_id", "department_id", "job_id", "job_title"],
+            limit: 300,
+          },
+          connectionOverrides,
+        ).catch(() => [])
+      : [];
+    const departmentUserIds = new Set(
+      departmentEmployees
+        .map((employee) => relationId(employee.user_id))
+        .filter((id): id is number => Boolean(id)),
+    );
+    const assignedUserIds = new Set(task.user_ids ?? []);
+
+    for (const user of roleUsers) {
+      const role = user.ops_user_type || "";
+      const isExecutiveReviewer = role === "director" || role === "general_manager";
+      const isDepartmentReviewer =
+        role === "project_manager" && (!departmentId || departmentUserIds.has(user.id));
+      const isMasterReviewer =
+        (role === "senior_master" || role === "team_leader") &&
+        (user.id === teamLeaderId || assignedUserIds.has(user.id));
+
+      if (isExecutiveReviewer || isDepartmentReviewer || isMasterReviewer) {
+        recipientIds.add(user.id);
+      }
+    }
+
+    for (const employee of departmentEmployees) {
+      const employeeUserId = relationId(employee.user_id);
+      if (employeeUserId && isMasterLikeJobTitle(getEmployeeJobTitle(employee))) {
+        recipientIds.add(employeeUserId);
+      }
+    }
+
+    const finalRecipientIds = Array.from(recipientIds).filter((id) => id > 0);
+    if (!finalRecipientIds.length) {
+      return;
+    }
+
+    const [activityTypeId, modelId, recipientUsers] = await Promise.all([
+      loadDefaultActivityTypeId(connectionOverrides),
+      loadProjectTaskModelId(connectionOverrides),
+      executeOdooKw<UserRecord[]>(
+        "res.users",
+        "search_read",
+        [[["id", "in", finalRecipientIds]]],
+        {
+          fields: ["name", "login", "ops_user_type", "partner_id"],
+          limit: finalRecipientIds.length,
+        },
+        connectionOverrides,
+      ).catch(() => []),
+    ]);
+
+    const title = "Шинэ тайлан хяналт хүлээж байна";
+    const projectName = relationName(task.project_id, "Ажил");
+    const note = [
+      `<p><strong>${task.name}</strong> ажилбар дээр шинэ тайлан орлоо.</p>`,
+      `<p>Ажил: ${projectName}<br/>Илгээсэн: ${reporterName}</p>`,
+      `<p><a href="/tasks/${task.id}">Тайлан шалгах</a></p>`,
+    ].join("");
+
+    if (activityTypeId && modelId) {
+      await Promise.all(
+        finalRecipientIds.map((userId) =>
+          executeOdooKw<number>(
+            "mail.activity",
+            "create",
+            [
+              {
+                activity_type_id: activityTypeId,
+                res_model: "project.task",
+                res_model_id: modelId,
+                res_id: task.id,
+                user_id: userId,
+                summary: title,
+                note,
+                date_deadline: new Date().toISOString().slice(0, 10),
+              },
+            ],
+            {},
+            connectionOverrides,
+          ).catch(() => 0),
+        ),
+      );
+    }
+
+    const partnerIds = recipientUsers
+      .map((user) => relationId(user.partner_id ?? false))
+      .filter((id): id is number => Boolean(id));
+    if (partnerIds.length) {
+      await executeOdooKw<number>(
+        "project.task",
+        "message_post",
+        [[task.id]],
+        {
+          body: note,
+          subject: title,
+          partner_ids: partnerIds,
+          message_type: "notification",
+          subtype_xmlid: "mail.mt_comment",
+        },
+        connectionOverrides,
+      ).catch(() => 0);
+    }
+  } catch (error) {
+    console.error("Failed to notify task report reviewers:", error);
+  }
+}
+
 export async function markWorkspaceTaskDone(
   taskId: number,
   connectionOverrides: Partial<OdooConnection> = {},
@@ -2017,6 +2764,88 @@ export async function markWorkspaceTaskDone(
     "action_ops_mark_done",
     [[taskId]],
     {},
+    connectionOverrides,
+  );
+}
+
+async function loadDoneTaskStageId(connectionOverrides: Partial<OdooConnection>) {
+  const stages = await executeOdooKw<Array<{ id: number; name: string }>>(
+    "project.task.type",
+    "search_read",
+    [
+      [
+        "|",
+        ["name", "ilike", "Дууссан"],
+        ["name", "ilike", "Done"],
+      ],
+    ],
+    {
+      fields: ["name"],
+      order: "sequence desc, id desc",
+      limit: 1,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+
+  return stages[0]?.id ?? null;
+}
+
+export async function forceWorkspaceTaskDone(
+  taskId: number,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const doneStageId = await loadDoneTaskStageId(connectionOverrides);
+  const values: Record<string, unknown> = {
+    ops_progress_percent: 100,
+  };
+
+  if (doneStageId) {
+    values.stage_id = doneStageId;
+  }
+
+  try {
+    values.state = "1_done";
+    return await executeOdooKw<boolean>(
+      "project.task",
+      "write",
+      [[taskId], values],
+      {},
+      connectionOverrides,
+    );
+  } catch {
+    delete values.state;
+    return executeOdooKw<boolean>(
+      "project.task",
+      "write",
+      [[taskId], values],
+      {},
+      connectionOverrides,
+    );
+  }
+}
+
+export async function postWorkspaceTaskMessage(
+  taskId: number,
+  input: {
+    body: string;
+    kind: "message" | "note";
+  },
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const body = input.body.trim();
+  if (!body) {
+    return 0;
+  }
+
+  return executeOdooKw<number>(
+    "project.task",
+    "message_post",
+    [[taskId]],
+    {
+      body: plainTextToOdooHtml(body),
+      message_type: "comment",
+      subtype_xmlid: input.kind === "note" ? "mail.mt_note" : "mail.mt_comment",
+    },
     connectionOverrides,
   );
 }

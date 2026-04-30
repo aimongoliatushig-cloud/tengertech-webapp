@@ -2034,6 +2034,102 @@
   line-height: 1.6;
 }
 
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 12px 14px;
+  border: 1px solid var(--ds-border);
+  border-radius: 8px;
+  background: rgba(247, 252, 246, 0.88);
+  color: var(--ink-900);
+  font-weight: 700;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.checkRow input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  accent-color: var(--brand-800);
+}
+
+.fileDropZone {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 14px;
+  border: 1px dashed rgba(47, 127, 70, 0.34);
+  border-radius: 8px;
+  background: rgba(238, 247, 237, 0.78);
+  color: var(--ink-700);
+  font-weight: 700;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.fileDropZone svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  color: var(--brand-800);
+}
+
+.hiddenFileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.attachmentPreviewGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.attachmentPreviewItem {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid var(--ds-border);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.attachmentPreviewItem img {
+  width: 42px;
+  height: 42px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.attachmentPreviewItem svg {
+  width: 28px;
+  height: 28px;
+  justify-self: center;
+  color: var(--brand-800);
+}
+
+.attachmentPreviewItem span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-700);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .locationComposer {
   display: grid;
   gap: 12px;
@@ -3781,6 +3877,130 @@
   .requestCard {
     border-radius: 20px;
     padding: 16px;
+  }
+}
+
+/* Task create modal polish */
+.modalDialog {
+  width: min(760px, calc(100vw - 32px));
+  overflow-x: hidden;
+}
+
+.modalTitle {
+  font-size: clamp(1.65rem, 3vw, 2.2rem);
+  line-height: 1.08;
+}
+
+.modalLead {
+  max-width: 560px;
+}
+
+.modalForm {
+  gap: 18px;
+}
+
+.modalForm > .field,
+.modalForm > .fieldRow {
+  min-width: 0;
+}
+
+.modalForm > .fieldRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px;
+}
+
+.modalForm .lockedFieldValue,
+.modalForm .searchableSelectButton,
+.modalForm input,
+.modalForm select,
+.modalForm textarea {
+  border-radius: 8px;
+}
+
+.modalForm textarea {
+  min-height: 108px;
+  resize: vertical;
+}
+
+.modalForm .checkRow {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  min-height: 58px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(249, 253, 248, 0.94);
+}
+
+.modalForm .checkRow input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  margin: 0;
+  justify-self: start;
+  box-shadow: none;
+}
+
+.modalForm .checkRow span {
+  min-width: 0;
+  color: var(--ink-900);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.modalForm .fileDropZone {
+  min-width: 0;
+  border-radius: 8px;
+}
+
+.modalForm .fileDropZone span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.modalForm .hiddenFileInput {
+  width: 1px;
+  min-height: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+}
+
+.createWorkForm .hiddenFileInput {
+  width: 1px;
+  min-height: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+}
+
+.modalActions {
+  position: sticky;
+  bottom: 0;
+  margin: 4px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid rgba(46, 125, 50, 0.12);
+  background: rgba(250, 253, 249, 0.96);
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 720px) {
+  .modalDialog {
+    width: min(100%, calc(100vw - 20px));
+  }
+
+  .modalForm > .fieldRow {
+    grid-template-columns: 1fr;
+  }
+
+  .modalActions {
+    bottom: 0;
+    margin: 2px 0 0;
+    padding: 14px 0 0;
   }
 }
 

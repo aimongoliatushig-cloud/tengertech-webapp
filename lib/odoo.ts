@@ -11,6 +11,14 @@ import type { RoleGroupFlags } from "@/lib/roles";
 
 type OdooRelation = [number, string] | false;
 
+const DEFAULT_ODOO_RPC_TIMEOUT_MS = 30_000;
+const configuredOdooRpcTimeoutMs = Number(process.env.ODOO_RPC_TIMEOUT_MS);
+const ODOO_RPC_TIMEOUT_MS =
+  Number.isFinite(configuredOdooRpcTimeoutMs) && configuredOdooRpcTimeoutMs > 0
+    ? configuredOdooRpcTimeoutMs
+    : DEFAULT_ODOO_RPC_TIMEOUT_MS;
+const ODOO_AUTH_CACHE_TTL_MS = 5 * 60_000;
+
 type OdooProjectRecord = {
   id: number;
   name: string;
@@ -82,6 +90,14 @@ type OdooUserRecord = {
   name: string;
   login: string;
   ops_user_type: string | false;
+};
+
+type OdooAuthEmployeeRecord = {
+  id: number;
+  name: string;
+  job_id?: OdooRelation;
+  job_title?: string | false;
+  department_id?: OdooRelation;
 };
 
 type OdooEmployeeRecord = {
@@ -288,6 +304,56 @@ export type AuthenticatedOdooUser = {
   };
 };
 
+function normalizeRoleTitle(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function inferRoleFromEmployeeTitle(employee?: OdooAuthEmployeeRecord | null) {
+  if (!employee) {
+    return null;
+  }
+
+  const title = normalizeRoleTitle(
+    [
+      Array.isArray(employee.job_id) ? employee.job_id[1] : "",
+      employee.job_title || "",
+    ].join(" "),
+  );
+
+  if (!title) {
+    return null;
+  }
+
+  if (title.includes("хэлтсийн дарга") || title.includes("албаны дарга")) {
+    return "project_manager";
+  }
+
+  if (
+    title.includes("ахлах мастер") ||
+    title.includes("мастер") ||
+    title.includes("даамал") ||
+    title.includes("талбайн инженер") ||
+    title.includes("talbain engineer") ||
+    title.includes("field engineer")
+  ) {
+    return "senior_master";
+  }
+
+  return null;
+}
+
+function resolveAuthenticatedRole(
+  explicitRole: string | false,
+  employee?: OdooAuthEmployeeRecord | null,
+) {
+  const role = explicitRole || "worker";
+  if (role && role !== "worker") {
+    return role;
+  }
+
+  return inferRoleFromEmployeeTitle(employee) ?? role;
+}
+
 export type DashboardSnapshot = {
   source: "live" | "demo";
   generatedAt: string;
@@ -425,6 +491,12 @@ type OdooAuthSession = {
   connection: OdooConnection;
 };
 
+type CachedOdooAuthSession = OdooAuthSession & {
+  expiresAt: number;
+};
+
+const odooAuthCache = new Map<string, CachedOdooAuthSession>();
+
 export function createOdooConnection(
   overrides: Partial<OdooConnection> = {},
 ): OdooConnection {
@@ -436,6 +508,40 @@ export function createOdooConnection(
 
 function normalizeOdooBaseUrl(url: string) {
   return url.trim().replace(/\/+$/, "");
+}
+
+function getOdooAuthCacheKey(connection: OdooConnection) {
+  return [
+    normalizeOdooBaseUrl(connection.url),
+    connection.db,
+    connection.login,
+    connection.password,
+  ].join("\u0000");
+}
+
+function readCachedOdooAuth(connection: OdooConnection): OdooAuthSession | null {
+  const cached = odooAuthCache.get(getOdooAuthCacheKey(connection));
+  if (!cached) {
+    return null;
+  }
+
+  if (cached.expiresAt <= Date.now()) {
+    odooAuthCache.delete(getOdooAuthCacheKey(connection));
+    return null;
+  }
+
+  return {
+    uid: cached.uid,
+    connection: cached.connection,
+  };
+}
+
+function writeCachedOdooAuth(uid: number, connection: OdooConnection) {
+  odooAuthCache.set(getOdooAuthCacheKey(connection), {
+    uid,
+    connection,
+    expiresAt: Date.now() + ODOO_AUTH_CACHE_TTL_MS,
+  });
 }
 
 function isLocalOdooHost(hostname: string) {
@@ -1411,7 +1517,7 @@ async function jsonRpc<T>(
       "Content-Type": "application/json",
     },
     cache: "no-store",
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(ODOO_RPC_TIMEOUT_MS),
     body: JSON.stringify({
       jsonrpc: "2.0",
       method: "call",
@@ -1464,9 +1570,15 @@ async function authenticateWithFallback(
   let lastError: unknown = null;
 
   for (const candidate of buildOdooConnectionCandidates(connection)) {
+    const cached = readCachedOdooAuth(candidate);
+    if (cached) {
+      return cached;
+    }
+
     try {
       const uid = await authenticate(candidate);
       if (uid) {
+        writeCachedOdooAuth(uid, candidate);
         return {
           uid,
           connection: candidate,
@@ -1510,6 +1622,20 @@ export async function authenticateOdooUser(
   if (!user) {
     return null;
   }
+
+  const employee = await executeKw<OdooAuthEmployeeRecord[]>(
+    uid,
+    "hr.employee",
+    "search_read",
+    [[["user_id", "=", uid]]],
+    {
+      fields: ["name", "job_id", "job_title", "department_id"],
+      limit: 1,
+    },
+    connection,
+  )
+    .then((employees) => employees[0] ?? null)
+    .catch(() => null);
 
   const [
     mfoManager,
@@ -1556,7 +1682,7 @@ export async function authenticateOdooUser(
     user: {
       name: user.name,
       login: user.login,
-      role: user.ops_user_type || "worker",
+      role: resolveAuthenticatedRole(user.ops_user_type, employee),
       groupFlags: {
         mfoManager,
         mfoDispatcher,

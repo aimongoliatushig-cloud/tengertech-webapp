@@ -12,13 +12,18 @@ type Props = {
   defaultOpen?: boolean;
   quantityOptional?: boolean;
   measurementUnit?: string;
+  variant?: "default" | "hero";
+  requireQuantity?: boolean;
 };
 
 export function TaskReportModal({
   action,
   taskId,
   defaultOpen = false,
+  quantityOptional = false,
   measurementUnit,
+  variant = "default",
+  requireQuantity,
 }: Props) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [mounted, setMounted] = useState(false);
@@ -55,6 +60,7 @@ export function TaskReportModal({
     };
   }, [isOpen]);
 
+  const shouldShowQuantity = requireQuantity ?? (!quantityOptional && Boolean(measurementUnit?.trim()));
   const quantityLabel = `Хийсэн хэмжээ${measurementUnit ? ` (${measurementUnit})` : ""}`;
 
   const modalContent =
@@ -72,12 +78,8 @@ export function TaskReportModal({
                 <div className={styles.modalTitleGroup}>
                   <span className={styles.kicker}>Гүйцэтгэлийн тайлан</span>
                   <strong className={styles.actionTitle} id="task-report-modal-title">
-                    Гүйцэтгэлийн тайлан оруулах
+                    Тайлан оруулах
                   </strong>
-                  <p className={styles.actionLead}>
-                    Тайлангийн тоо хэмжээг заавал 0-ээс их утгаар оруулж, текст тайлан, зураг,
-                    аудиог нэг дор бүртгэнэ.
-                  </p>
                 </div>
 
                 <button
@@ -96,32 +98,26 @@ export function TaskReportModal({
                 <div className={styles.modalBodyGrid}>
                   <section className={styles.modalSectionCard}>
                     <div className={styles.composerHighlight}>
-                      <strong>Текст тайлан</strong>
-                      <p className={styles.composerHint}>
-                        Хийсэн ажлаа товч, тодорхой бичнэ. Доорх тоо хэмжээ нь master-data
-                        хэмжих нэгжтэй автоматаар холбогдоно.
-                      </p>
+                      <strong>Тайлан</strong>
                     </div>
 
-                    <label htmlFor="reported_quantity" className={styles.modalField}>
-                      <span>{quantityLabel}</span>
-                      <input
-                        id="reported_quantity"
-                        name="reported_quantity"
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        inputMode="decimal"
-                        placeholder="Жишээ: 12"
-                        required
-                      />
-                      <small className={styles.inputHint}>
-                        Гүйцэтгэсэн хэмжээ 0-ээс их байх ёстой.
-                      </small>
-                    </label>
+                    {shouldShowQuantity ? (
+                      <label htmlFor="reported_quantity" className={styles.modalField}>
+                        <span>{quantityLabel}</span>
+                        <input
+                          id="reported_quantity"
+                          name="reported_quantity"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          inputMode="decimal"
+                          placeholder="Заавал биш"
+                        />
+                      </label>
+                    ) : null}
 
                     <label htmlFor="report_text" className={styles.modalField}>
-                      <span>Текст тайлан</span>
+                      <span>Тайлбар</span>
                       <textarea
                         id="report_text"
                         name="report_text"
@@ -134,10 +130,6 @@ export function TaskReportModal({
                   <section className={styles.modalSectionCard}>
                     <div className={styles.modalSectionHeading}>
                       <strong>Хавсралт</strong>
-                      <small className={styles.inputHint}>
-                        Зураг, аудиог хүссэн тоогоороо нэмээд тайлангаа илүү ойлгомжтой болгож
-                        болно.
-                      </small>
                     </div>
 
                     <MediaUploadField
@@ -146,8 +138,8 @@ export function TaskReportModal({
                       label="Зураг"
                       accept="image/*"
                       multiple
+                      maxFiles={10}
                       emptyStateLabel="Зураг сонгоогүй байна"
-                      helperText="Ажлын явц, өмнөх болон дараах байдлыг зургаар хавсаргаж болно."
                     />
 
                     <MediaUploadField
@@ -157,7 +149,6 @@ export function TaskReportModal({
                       accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.webm"
                       multiple
                       emptyStateLabel="Аудио файл сонгоогүй байна"
-                      helperText="Товч дуут тайлбар, орчны нөхцөл болон саадыг аудиогоор хавсаргаж болно."
                     />
                   </section>
                 </div>
@@ -171,7 +162,7 @@ export function TaskReportModal({
                     Болих
                   </button>
                   <button type="submit" className={styles.actionButton}>
-                    Гүйцэтгэлийн тайлан оруулах
+                    Тайлан илгээх
                   </button>
                 </div>
               </form>
@@ -183,8 +174,12 @@ export function TaskReportModal({
 
   return (
     <>
-      <button type="button" className={styles.actionButton} onClick={() => setIsOpen(true)}>
-        Гүйцэтгэлийн тайлан оруулах
+      <button
+        type="button"
+        className={variant === "hero" ? styles.heroReportButton : styles.actionButton}
+        onClick={() => setIsOpen(true)}
+      >
+        Тайлан оруулах
       </button>
       {modalContent}
     </>

@@ -11,14 +11,17 @@ import { ProjectTaskCreateForm } from "./project-task-create-form";
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
   projectId: number;
+  departmentName: string;
+  departmentHeadName: string;
+  departmentHeadId: number | null;
   deadline: string;
   masterMode: boolean;
-  teamLeaderOptions: SelectOption[];
+  departmentUserOptions: SelectOption[];
   crewTeamOptions: Array<{
     id: number;
     label: string;
   }>;
-  allowedUnits: WorkUnitOption[];
+  allUnitOptions: WorkUnitOption[];
   defaultUnitId: number | null;
   allowedUnitSummary?: string;
   defaultOpen?: boolean;
@@ -27,22 +30,31 @@ type Props = {
 export function ProjectTaskCreateModal({
   action,
   projectId,
+  departmentName,
+  departmentHeadName,
+  departmentHeadId,
   deadline,
   masterMode,
-  teamLeaderOptions,
+  departmentUserOptions,
   crewTeamOptions,
-  allowedUnits,
+  allUnitOptions,
   defaultUnitId,
   allowedUnitSummary,
   defaultOpen = false,
 }: Props) {
-  const [isOpen, setIsOpen] = useState(() => {
-    if (typeof window === "undefined") {
-      return defaultOpen;
-    }
+  const [isMounted, setIsMounted] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
-    return defaultOpen || window.location.hash === "#task-create-form";
-  });
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setIsMounted(true);
+      if (defaultOpen || window.location.hash === "#task-create-form") {
+        setIsOpen(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [defaultOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -68,7 +80,7 @@ export function ProjectTaskCreateModal({
     };
   }, [isOpen]);
 
-  const portalTarget = typeof document === "undefined" ? null : document.body;
+  const portalTarget = isMounted ? document.body : null;
 
   const modalContent =
     portalTarget && isOpen
@@ -89,7 +101,7 @@ export function ProjectTaskCreateModal({
                 <div className={styles.modalTitleGroup}>
                   <span className={styles.eyebrow}>Шинэ ажилбар</span>
                   <strong className={styles.modalTitle} id="project-task-create-title">
-                    {masterMode ? "Өнөөдрийн ажил нэмэх" : "Ажилбар үүсгэх"}
+                    {masterMode ? "Өнөөдрийн ажилбар нэмэх" : "Ажилбар үүсгэх"}
                   </strong>
                   <p className={styles.modalLead}>
                     Ажлын төрлөөс зөвшөөрөгдсөн хэмжих нэгжүүдээр шүүгдсэн хэлбэрээр шинэ
@@ -112,11 +124,13 @@ export function ProjectTaskCreateModal({
                 className={styles.modalForm}
                 footerClassName={styles.modalActions}
                 projectId={projectId}
+                departmentName={departmentName}
+                departmentHeadName={departmentHeadName}
+                departmentHeadId={departmentHeadId}
                 deadline={deadline}
-                masterMode={masterMode}
-                teamLeaderOptions={teamLeaderOptions}
+                departmentUserOptions={departmentUserOptions}
                 crewTeamOptions={crewTeamOptions}
-                allowedUnits={allowedUnits}
+                allUnitOptions={allUnitOptions}
                 defaultUnitId={defaultUnitId}
                 allowedUnitSummary={allowedUnitSummary}
               />
@@ -134,7 +148,7 @@ export function ProjectTaskCreateModal({
           className={`${styles.primaryButton} ${styles.createTaskTrigger}`}
           onClick={() => setIsOpen(true)}
         >
-          Ажил нэмэх
+          Ажилбар нэмэх
         </button>
       </div>
       {modalContent}

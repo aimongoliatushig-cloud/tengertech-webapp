@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import { useLinkStatus } from "next/link";
+
+import { useOptionalGlobalLoading } from "./global-loading";
 
 type PendingLinkIndicatorProps = {
   className: string;
@@ -10,32 +13,30 @@ type PendingLinkIndicatorProps = {
 
 export function PendingLinkIndicator({
   className,
-  overlayClassName,
-  label = "\u0423\u043d\u0448\u0438\u0436 \u0431\u0430\u0439\u043d\u0430",
+  label = "Уншиж байна...",
 }: PendingLinkIndicatorProps) {
   const { pending } = useLinkStatus();
+  const globalLoading = useOptionalGlobalLoading();
+  const loadingLabel = label === "..." ? "Уншиж байна..." : label;
+
+  useEffect(() => {
+    if (!pending || !globalLoading) {
+      return;
+    }
+
+    globalLoading.showLoading(loadingLabel);
+    return () => globalLoading.hideLoading();
+  }, [globalLoading, loadingLabel, pending]);
 
   return (
-    <>
-      <span
-        className={className}
-        data-pending={pending ? "true" : "false"}
-        aria-live="polite"
-        aria-label={pending ? label : undefined}
-      >
-        <span aria-hidden />
-        <span>{label}</span>
-      </span>
-      {overlayClassName ? (
-        <span
-          className={overlayClassName}
-          data-pending={pending ? "true" : "false"}
-          aria-hidden
-        >
-          <span />
-          <strong>{label}</strong>
-        </span>
-      ) : null}
-    </>
+    <span
+      className={className}
+      data-pending={pending ? "true" : "false"}
+      aria-live="polite"
+      aria-label={pending ? loadingLabel : undefined}
+    >
+      <span aria-hidden />
+      <span>{loadingLabel}</span>
+    </span>
   );
 }

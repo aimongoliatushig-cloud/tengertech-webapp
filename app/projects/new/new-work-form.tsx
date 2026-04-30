@@ -1,18 +1,25 @@
 "use client";
 
-import { useMemo, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { useFormStatus } from "react-dom";
 
-import { CalendarDays, CheckCircle2, ClipboardList, Layers3, Route, Truck } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  ClipboardList,
+  FileText,
+  Layers3,
+  Paperclip,
+  Route,
+  Truck,
+} from "lucide-react";
 
-import { SearchableSelect, type SearchableSelectOption } from "@/app/_components/searchable-select";
 import styles from "@/app/workspace.module.css";
 import type {
   DepartmentOption,
   GarbageRouteOption,
   GarbageVehicleOption,
   SelectOption,
-  WorkTypeOption,
 } from "@/lib/workspace";
 
 const GARBAGE_TRANSPORT_KEYWORD = "хог тээвэрлэлтийн";
@@ -39,15 +46,21 @@ type SeasonalLineDraft = {
 };
 const CUSTOM_WORK_TYPE_VALUE = "__new_work__";
 
+type FilePreview = {
+  name: string;
+  type: string;
+  url: string;
+};
+
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
   departmentOptions: DepartmentOption[];
   managerOptions: SelectOption[];
   garbageVehicleOptions: GarbageVehicleOption[];
   garbageRouteOptions: GarbageRouteOption[];
-  workTypeOptions: WorkTypeOption[];
   lockedDepartmentId?: string;
   lockedDepartmentLabel?: string;
+  initialDepartmentId?: string;
 };
 
 function SubmitWorkButton({ label }: { label: string }) {
@@ -113,15 +126,6 @@ function formatDateLabel(value: string) {
   return `${parsed.getFullYear()} оны ${monthNames[parsed.getMonth()]}ын ${parsed.getDate()}`;
 }
 
-function buildUnitOptions(workType: WorkTypeOption | null): SearchableSelectOption[] {
-  return (workType?.allowedUnits ?? []).map((unit) => ({
-    id: unit.id,
-    label: unit.name,
-    meta: `${unit.code} · ${unit.categoryLabel}`,
-    keywords: [unit.name, unit.code, unit.categoryLabel],
-  }));
-}
-
 function normalizeDepartmentValue(value?: string | null) {
   return (value ?? "").trim().toLowerCase();
 }
@@ -174,14 +178,15 @@ export function NewWorkForm({
   managerOptions,
   garbageVehicleOptions,
   garbageRouteOptions,
-  workTypeOptions,
   lockedDepartmentId,
   lockedDepartmentLabel,
+  initialDepartmentId,
 }: Props) {
-  const [departmentId, setDepartmentId] = useState(lockedDepartmentId ?? "");
+  const defaultDepartmentId = lockedDepartmentId ?? initialDepartmentId ?? "";
+  const [departmentId, setDepartmentId] = useState(defaultDepartmentId);
   const [operationUnit, setOperationUnit] = useState(() => {
     const initialDepartment = departmentOptions.find(
-      (option) => String(option.id) === (lockedDepartmentId ?? ""),
+      (option) => String(option.id) === defaultDepartmentId,
     );
 
     return isGarbageTransportDepartment(initialDepartment)
@@ -193,9 +198,6 @@ export function NewWorkForm({
   const [extraLocationDraft, setExtraLocationDraft] = useState("");
   const [extraLocations, setExtraLocations] = useState<string[]>([]);
   const [shiftDate, setShiftDate] = useState(getTodayValue());
-  const [trackQuantity, setTrackQuantity] = useState(false);
-  const [operationType, setOperationType] = useState("");
-  const [selectedUnitOverrideId, setSelectedUnitOverrideId] = useState<number | null>(null);
   const [seasonalStartDate, setSeasonalStartDate] = useState(getTodayValue());
   const [seasonalEndDate, setSeasonalEndDate] = useState(getTodayValue());
   const [seasonalWorkDays, setSeasonalWorkDays] = useState<Array<(typeof WEEKDAY_OPTIONS)[number]["key"]>>([
@@ -206,11 +208,47 @@ export function NewWorkForm({
   const [seasonalLines, setSeasonalLines] = useState<SeasonalLineDraft[]>([
     emptySeasonalLine(0),
   ]);
+  const [filePreviews, setFilePreviews] = useState<FilePreview[]>([]);
 
   const selectedDepartment = useMemo(
     () => departmentOptions.find((option) => String(option.id) === departmentId) ?? null,
     [departmentId, departmentOptions],
   );
+
+  useEffect(
+    () => () => {
+      filePreviews.forEach((file) => URL.revokeObjectURL(file.url));
+    },
+    [filePreviews],
+  );
+  const selectedDepartmentHead = useMemo(() => {
+    const departmentHeadOptions = managerOptions.filter(
+      (option) => option.role === "project_manager",
+    );
+
+    if (!selectedDepartment) {
+      return departmentHeadOptions.length === 1 ? departmentHeadOptions[0] : null;
+    }
+
+    const selectedDepartmentNames = [selectedDepartment.name, selectedDepartment.label]
+      .map(normalizeDepartmentValue)
+      .filter(Boolean);
+    const matchingDepartmentHead = departmentHeadOptions.find((option) => {
+      const managerDepartmentName = normalizeDepartmentValue(option.departmentName);
+      if (!managerDepartmentName) {
+        return false;
+      }
+
+      return selectedDepartmentNames.some(
+        (departmentName) =>
+          managerDepartmentName === departmentName ||
+          managerDepartmentName.includes(departmentName) ||
+          departmentName.includes(managerDepartmentName),
+      );
+    });
+
+    return matchingDepartmentHead ?? (departmentHeadOptions.length === 1 ? departmentHeadOptions[0] : null);
+  }, [managerOptions, selectedDepartment]);
   const selectedVehicle = useMemo(
     () => garbageVehicleOptions.find((option) => String(option.id) === vehicleId) ?? null,
     [garbageVehicleOptions, vehicleId],
@@ -219,29 +257,6 @@ export function NewWorkForm({
     () => garbageRouteOptions.find((option) => String(option.id) === routeId) ?? null,
     [garbageRouteOptions, routeId],
   );
-  const selectedWorkType = useMemo(
-    () =>
-      operationType === CUSTOM_WORK_TYPE_VALUE
-        ? null
-        : workTypeOptions.find((option) => option.operationType === operationType) ?? null,
-    [operationType, workTypeOptions],
-  );
-  const unitOptions = useMemo(() => buildUnitOptions(selectedWorkType), [selectedWorkType]);
-  const selectedUnitId = useMemo(() => {
-    if (!selectedWorkType) {
-      return null;
-    }
-
-    if (
-      selectedUnitOverrideId &&
-      selectedWorkType.allowedUnits.some((unit) => unit.id === selectedUnitOverrideId)
-    ) {
-      return selectedUnitOverrideId;
-    }
-
-    return selectedWorkType.defaultUnitId ?? selectedWorkType.allowedUnits[0]?.id ?? null;
-  }, [selectedUnitOverrideId, selectedWorkType]);
-
   const isCombinedDepartment = isCombinedOperationsDepartment(selectedDepartment);
   const supportsGarbageTransport = isGarbageTransportDepartment(selectedDepartment);
   const isGarbageTransport =
@@ -249,8 +264,6 @@ export function NewWorkForm({
   const isSeasonalGarbage =
     supportsGarbageTransport && operationUnit === "garbage_seasonal";
   const isDepartmentLocked = Boolean(lockedDepartmentId);
-  const isCustomWorkType = operationType === CUSTOM_WORK_TYPE_VALUE;
-  const effectiveTrackQuantity = isCustomWorkType ? false : trackQuantity;
   const submitLabel = isGarbageTransport
     ? "Хог тээвэрлэлтийн ажил үүсгэх"
     : isSeasonalGarbage
@@ -269,10 +282,6 @@ export function NewWorkForm({
       : primaryLocationLabel;
     return `${vehicleLabel} - ${locationLabel} / ${shiftDate}`;
   }, [extraLocations.length, isGarbageTransport, selectedRoute, selectedVehicle, shiftDate]);
-
-  const unitHelperText = selectedWorkType
-    ? `Энэ ажилд ашиглах боломжтой нэгжүүд: ${selectedWorkType.allowedUnitSummary}`
-    : "Эхлээд ажлын төрлөө сонгоно уу.";
 
   const activeSeasonalLines = seasonalLines.filter(
     (line) =>
@@ -337,23 +346,14 @@ export function NewWorkForm({
     ? "Машин, маршрут, огноо сонгоход ажил болон маршрутын цэгүүдийн ажилбар автоматаар үүснэ."
     : isSeasonalGarbage
       ? "Хорооны байрлал, машин, тонн, ажиллах өдрүүдээр олон мөрийн төлөвлөгөө үүсгэнэ."
-      : "Ажлын нэр, хариуцах ажилтан, төрөл, хугацаагаа оруулаад Odoo руу бүртгэнэ.";
+      : "Ажлын нэр, хариуцсан хэлтсийн дарга, хугацаагаа оруулаад Odoo руу бүртгэнэ.";
   const selectedDepartmentLabel =
     lockedDepartmentLabel ?? selectedDepartment?.label ?? selectedDepartment?.name ?? "Сонгоогүй";
   const previewTitle = isGarbageTransport
     ? generatedName || "Машин, маршрут сонгоход нэр автоматаар үүснэ"
     : isSeasonalGarbage
       ? `${formatDateLabel(seasonalStartDate)} - ${formatDateLabel(seasonalEndDate)}`
-      : selectedWorkType?.name ?? (isCustomWorkType ? "Шинэ ажил" : "Ажлын төрлөө сонгоно уу");
-
-  const handleOperationTypeChange = (nextOperationType: string) => {
-    setOperationType(nextOperationType);
-    setSelectedUnitOverrideId(null);
-
-    if (nextOperationType === CUSTOM_WORK_TYPE_VALUE) {
-      setTrackQuantity(false);
-    }
-  };
+      : selectedDepartmentHead?.name ?? "Хэлтсийн дарга";
 
   const handleAddExtraLocation = () => {
     const normalizedLocation = normalizeLocationName(extraLocationDraft);
@@ -922,45 +922,22 @@ export function NewWorkForm({
               required
             />
           </div>
+          <input type="hidden" name="operation_type" value={CUSTOM_WORK_TYPE_VALUE} />
 
-          <div className={styles.fieldRow}>
-            <div className={styles.field}>
-              <label htmlFor="manager_id">Хариуцах ажилтан</label>
-              <select id="manager_id" name="manager_id" defaultValue="">
-                <option value="">Дараа нь сонгоно</option>
-                {managerOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name} ({option.login})
-                  </option>
-                ))}
-              </select>
+          <div className={styles.field}>
+            <label>Хариуцах ажилтан</label>
+            <div className={styles.lockedFieldValue}>
+              {selectedDepartmentHead
+                ? `${selectedDepartmentHead.name} (${selectedDepartmentHead.login})`
+                : selectedDepartment
+                  ? "Хэлтсийн дарга олдсонгүй"
+                  : "Эхлээд хэлтэс сонгоно уу"}
             </div>
-
-            <div className={styles.field}>
-              <label htmlFor="operation_type">Ажлын төрөл</label>
-              <select
-                id="operation_type"
-                name="operation_type"
-                value={operationType}
-                onChange={(event) => handleOperationTypeChange(event.target.value)}
-                required
-              >
-                <option value="">Ажлын төрөл сонгоно уу</option>
-                <option value={CUSTOM_WORK_TYPE_VALUE}>Шинэ ажил үүсгэх</option>
-                {workTypeOptions.map((option) => (
-                  <option key={option.id} value={option.operationType}>
-                    {option.name}
-                  </option>
-                ))}
-              </select>
-              <small className={styles.fieldHint}>
-                {isCustomWorkType
-                  ? "Шинэ ажил ерөнхий төрлөөр үүснэ. Хэмжих нэгж шаардлагагүй бол шууд бүртгэж болно."
-                  : selectedWorkType
-                  ? unitHelperText
-                  : "Ажлын төрлөө сонгосноор зөвшөөрөгдсөн хэмжих нэгжүүд харагдана."}
-              </small>
-            </div>
+            <input
+              type="hidden"
+              name="manager_id"
+              value={selectedDepartmentHead ? String(selectedDepartmentHead.id) : ""}
+            />
           </div>
 
           <div className={styles.fieldRow}>
@@ -974,63 +951,48 @@ export function NewWorkForm({
               <input id="deadline" name="deadline" type="date" />
             </div>
           </div>
-
-          <div className={styles.optionalSection}>
-            <input
-              id="track_quantity"
-              name="track_quantity"
-              type="checkbox"
-              value="1"
-              checked={effectiveTrackQuantity}
-              onChange={(event) => setTrackQuantity(event.target.checked)}
-              disabled={isCustomWorkType}
-              className={styles.optionalCheckbox}
-            />
-            <label htmlFor="track_quantity" className={styles.optionalToggle}>
-              <span>
-                <span className={styles.optionalToggleTitle}>Төлөвлөсөн хэмжээ ашиглах</span>
-                <span className={styles.optionalToggleText}>
-                  Шаардлагатай үед төлөвлөсөн хэмжээ болон хэмжих нэгжийг master-data
-                  dropdown-оос сонгож бүртгэнэ.
-                </span>
-              </span>
-            </label>
-
-            <div
-              className={`${styles.optionalFields} ${
-                effectiveTrackQuantity ? styles.optionalFieldsVisible : ""
-              }`}
-            >
-              <div className={styles.field}>
-                <label htmlFor="planned_quantity">Төлөвлөсөн хэмжээ</label>
-                <input
-                  id="planned_quantity"
-                  name="planned_quantity"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  placeholder="48"
-                />
-              </div>
-
-              <div className={styles.field}>
-                <label>Хэмжих нэгж</label>
-                <SearchableSelect
-                  name="unit_id"
-                  value={selectedUnitId}
-                  options={unitOptions}
-                  placeholder="Хэмжих нэгж сонгоно уу"
-                  disabled={!selectedWorkType}
-                  searchPlaceholder="Нэгж хайна уу"
-                  emptyStateLabel="Энэ ажлын төрөлд тохирох нэгж алга."
-                  onChange={setSelectedUnitOverrideId}
-                />
-                <small className={styles.fieldHint}>{unitHelperText}</small>
-              </div>
-            </div>
-          </div>
         </>
       )}
+
+      <div className={styles.field}>
+        <label htmlFor="project-files">Файл хавсаргах</label>
+        <label className={styles.fileDropZone} htmlFor="project-files">
+          <Paperclip aria-hidden />
+          <span>PDF, зураг, бичиг баримт олон файлаар хавсаргана</span>
+        </label>
+        <input
+          id="project-files"
+          name="project_files"
+          type="file"
+          multiple
+          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+          className={styles.hiddenFileInput}
+          onChange={(event) => {
+            const nextPreviews = Array.from(event.target.files ?? []).map((file) => ({
+              name: file.name,
+              type: file.type,
+              url: URL.createObjectURL(file),
+            }));
+            filePreviews.forEach((file) => URL.revokeObjectURL(file.url));
+            setFilePreviews(nextPreviews);
+          }}
+        />
+        {filePreviews.length ? (
+          <div className={styles.attachmentPreviewGrid}>
+            {filePreviews.map((file) => (
+              <div className={styles.attachmentPreviewItem} key={`${file.name}-${file.url}`}>
+                {file.type.startsWith("image/") ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={file.url} alt={file.name} />
+                ) : (
+                  <FileText aria-hidden />
+                )}
+                <span>{file.name}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
       <div className={styles.buttonRow}>
         <SubmitWorkButton label={submitLabel} />

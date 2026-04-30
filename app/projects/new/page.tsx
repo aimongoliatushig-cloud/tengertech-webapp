@@ -19,7 +19,6 @@ import {
   loadGarbageRouteOptions,
   loadGarbageVehicleOptions,
   loadProjectManagerOptions,
-  loadWorkTypeOptions,
 } from "@/lib/workspace";
 
 import { NewWorkForm } from "@/app/projects/new/new-work-form";
@@ -28,6 +27,7 @@ type PageProps = {
   searchParams?: Promise<{
     error?: string | string[];
     notice?: string | string[];
+    department?: string | string[];
   }>;
 };
 
@@ -50,13 +50,13 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
   const params = (await searchParams) ?? {};
   const errorMessage = getMessage(params.error);
   const noticeMessage = getMessage(params.notice);
+  const requestedDepartment = getMessage(params.department);
 
   const [
     managerOptions,
     departmentOptions,
     garbageVehicleOptions,
     garbageRouteOptions,
-    workTypeOptions,
     masterSnapshot,
     sessionDepartmentName,
   ] = await Promise.all([
@@ -73,10 +73,6 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
       password: session.password,
     }),
     loadGarbageRouteOptions({
-      login: session.login,
-      password: session.password,
-    }),
-    loadWorkTypeOptions({
       login: session.login,
       password: session.password,
     }),
@@ -102,6 +98,18 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
   const lockedDepartmentOption =
     shouldLockDepartment && masterDepartmentName
       ? departmentOptions.find((option) => option.name === masterDepartmentName) ?? null
+      : null;
+  const initialDepartmentOption =
+    !lockedDepartmentOption && requestedDepartment
+      ? departmentOptions.find(
+          (option) =>
+            option.name === requestedDepartment ||
+            option.label === requestedDepartment ||
+            option.name.includes(requestedDepartment) ||
+            option.label.includes(requestedDepartment) ||
+            requestedDepartment.includes(option.name) ||
+            requestedDepartment.includes(option.label),
+        ) ?? null
       : null;
 
   const canCreateProject = hasCapability(session, "create_projects");
@@ -171,11 +179,13 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
                   managerOptions={managerOptions}
                   garbageVehicleOptions={garbageVehicleOptions}
                   garbageRouteOptions={garbageRouteOptions}
-                  workTypeOptions={workTypeOptions}
                   lockedDepartmentId={
                     lockedDepartmentOption ? String(lockedDepartmentOption.id) : undefined
                   }
                   lockedDepartmentLabel={lockedDepartmentOption?.label}
+                  initialDepartmentId={
+                    initialDepartmentOption ? String(initialDepartmentOption.id) : undefined
+                  }
                 />
               </section>
             )}

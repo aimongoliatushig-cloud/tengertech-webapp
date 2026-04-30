@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/auth";
 
+import { LoginForm } from "./login-form";
 import styles from "./page.module.css";
 
 type LoginPageProps = {
@@ -61,39 +62,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <h2>Нэвтрэх</h2>
           </div>
 
-          <form action="/auth/login" method="post" className={styles.form}>
-            <label className={styles.field} htmlFor="login-name">
-              <span>Нэвтрэх нэр</span>
-              <input
-                id="login-name"
-                name="login"
-                type="text"
-                placeholder="Нэвтрэх нэрээ оруулна уу"
-                autoComplete="username"
-                enterKeyHint="next"
-                required
-              />
-            </label>
-
-            <label className={styles.field} htmlFor="login-password">
-              <span>Нууц үг</span>
-              <input
-                id="login-password"
-                name="password"
-                type="password"
-                placeholder="Нууц үгээ оруулна уу"
-                autoComplete="current-password"
-                enterKeyHint="go"
-                required
-              />
-            </label>
-
-            {errorMessage ? <p className={styles.errorBox}>{errorMessage}</p> : null}
-
-            <button type="submit" className={styles.submitButton}>
-              Нэвтрэх
-            </button>
-          </form>
+          <LoginForm
+            className={styles.form}
+            fieldClassName={styles.field}
+            submitButtonClassName={styles.submitButton}
+            errorMessage={errorMessage}
+            errorClassName={styles.errorBox}
+          />
         </div>
       </section>
     </main>

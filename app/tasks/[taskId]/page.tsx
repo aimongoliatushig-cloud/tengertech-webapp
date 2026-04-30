@@ -7,6 +7,7 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import {
   createTaskReportAction,
   markTaskDoneAction,
+  postTaskMessageAction,
   returnTaskForChangesAction,
   submitTaskForReviewAction,
 } from "@/app/actions";
@@ -71,6 +72,17 @@ function StagePill({ label, bucket }: { label: string; bucket: string }) {
 
 function formatQuantityLabel(value: number, unit: string) {
   return `${value} ${unit}`.trim();
+}
+
+function messageKindLabel(kind: string) {
+  switch (kind) {
+    case "note":
+      return "Тэмдэглэл";
+    case "system":
+      return "Ажилбар";
+    default:
+      return "Зурвас";
+  }
 }
 
 export default async function TaskDetailPage({ params, searchParams }: PageProps) {
@@ -183,11 +195,29 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
     }
   }
 
-  const canWriteReport = !task.reportsLocked && hasCapability(session, "write_workspace_reports");
-  const quantitySummary = `${task.completedQuantity}/${task.plannedQuantity} ${task.measurementUnit}`;
-  const primaryActionLabel = task.canMarkDone
+  const canManageReview =
+    !workerMode && (canViewQualityCenter || canCreateTasks || masterMode);
+  const hasSubmittedReport = task.reports.length > 0;
+  const canMarkDone =
+    canManageReview && !["done"].includes(task.stageBucket) && (task.canMarkDone || hasSubmittedReport);
+  const canSubmitForReview =
+    canManageReview && task.canSubmitForReview && !hasSubmittedReport;
+  const canReturnForChanges =
+    canManageReview &&
+    !["done"].includes(task.stageBucket) &&
+    (task.canReturnForChanges || hasSubmittedReport);
+  const canWriteReport =
+    !task.reportsLocked &&
+    task.stageBucket !== "review" &&
+    task.stageBucket !== "done" &&
+    hasCapability(session, "write_workspace_reports");
+  const quantitySummary =
+    task.plannedQuantity > 0 && task.measurementUnit
+      ? `${task.completedQuantity}/${task.plannedQuantity} ${task.measurementUnit}`
+      : "";
+  const primaryActionLabel = canMarkDone
     ? "Ажилбарыг дуусгах"
-    : task.canSubmitForReview
+    : canSubmitForReview
       ? masterMode
         ? "Тайлан илгээх"
         : "Шалгалтад илгээх"
@@ -195,15 +225,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
         ? "Гүйцэтгэлийн тайлан оруулах"
         : "Мэдээлэл харах";
 
-  const helperText = task.canMarkDone
-    ? "Ажилбар бүрэн дууссан бол дуусгах товчоор дараагийн шат руу шилжүүлнэ."
-    : task.canSubmitForReview
-      ? masterMode
-        ? "Өдрийн тайлангаа багцлаад илгээхэд энэ ажилбарын тайлангийн урсгал дараагийн шат руу орно."
-        : "Тайлангаа шалгаад баталгаажуулалт руу илгээж болно."
-      : canWriteReport
-        ? "Odoo ERP дээрхтэй адил гүйцэтгэлийн тайлангийн маягтаар тайлбар, зураг, аудиогоо нэг дороос оруулна."
-        : "Одоогоор энэ ажилбарын мэдээллийг харах горим нээлттэй байна.";
+  const showReportComposer = !canMarkDone && !canSubmitForReview && canWriteReport;
 
   return (
     <main className={shellStyles.shell}>
@@ -228,12 +250,12 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
 
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
-              title="Ажилбарын дэлгэрэнгүй"
-              subtitle="Сонгосон ажилбарын тайлан ба гүйцэтгэлийн урсгал"
+              title={task.name}
+              subtitle={task.projectName}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               notificationCount={task.reports.length}
-              notificationNote={`${task.reports.length} тайлан энэ ажилбарт бүртгэгдсэн`}
+              notificationNote="Тайлан"
             />
 
             {errorMessage ? (
@@ -246,14 +268,24 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
             <section className={styles.summaryCard}>
               <div className={styles.summaryTop}>
                 <div className={styles.titleBlock}>
-                  <span className={styles.kicker}>Ажилбарын дэлгэрэнгүй</span>
+                  <span className={styles.kicker}>Ажилбар</span>
                   <h1>{task.name}</h1>
-                  <p className={styles.lead}>
-                    {task.projectName} ажлын энэ ажилбарын төлөв, хариуцсан баг, тайлангийн урсгалыг
-                    нэг дэлгэц дээр цэвэрхэн харуулна.
-                  </p>
+                  <span className={styles.taskProjectName}>{task.projectName}</span>
                 </div>
-                <StagePill label={task.stageLabel} bucket={task.stageBucket} />
+                <div className={styles.heroActionGroup}>
+                  <StagePill label={task.stageLabel} bucket={task.stageBucket} />
+                  {showReportComposer ? (
+                    <TaskReportModal
+                      action={createTaskReportAction}
+                      taskId={task.id}
+                      defaultOpen={openReportComposer}
+                      quantityOptional={task.quantityOptional}
+                      measurementUnit={task.measurementUnit}
+                      variant="hero"
+                      requireQuantity={Boolean(quantitySummary)}
+                    />
+                  ) : null}
+                </div>
               </div>
 
               <div className={styles.anchorRow}>
@@ -265,6 +297,9 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 </a>
                 <a href="#task-reports" className={styles.anchorLink}>
                   Тайлан
+                </a>
+                <a href="#task-chatter" className={styles.anchorLink}>
+                  Зурвас
                 </a>
               </div>
 
@@ -290,79 +325,6 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
 
             <section className={styles.pageGrid}>
               <div className={styles.mainColumn}>
-                <section className={styles.sectionCard} id="task-info">
-                  <div className={styles.sectionHead}>
-                    <div>
-                      <span className={styles.kicker}>Товч мэдээлэл</span>
-                      <h2>Ажилбарын гол мэдээлэл</h2>
-                    </div>
-                    <p>Хамгийн хэрэгтэй үзүүлэлтүүдийг эхэнд нь харуулна.</p>
-                  </div>
-
-                  <div className={styles.infoGrid}>
-                    <article className={styles.infoCard}>
-                      <span>Ажил</span>
-                      <strong>{task.projectName}</strong>
-                    </article>
-                    <article className={styles.infoCard}>
-                      <span>Мастер</span>
-                      <strong>{task.teamLeaderName}</strong>
-                    </article>
-                    <article className={styles.infoCard}>
-                      <span>Төлөвлөсөн хэмжээ</span>
-                      <strong>
-                        {formatQuantityLabel(
-                          task.plannedQuantity,
-                          task.measurementUnit,
-                        )}
-                      </strong>
-                    </article>
-                    <article className={styles.infoCard}>
-                      <span>Гүйцэтгэсэн хэмжээ</span>
-                      <strong>
-                        {formatQuantityLabel(
-                          task.completedQuantity,
-                          task.measurementUnit,
-                        )}
-                      </strong>
-                    </article>
-                    <article className={styles.infoCard}>
-                      <span>Үлдэгдэл</span>
-                      <strong>
-                        {formatQuantityLabel(
-                          task.remainingQuantity,
-                          task.measurementUnit,
-                        )}
-                      </strong>
-                    </article>
-                    <article className={styles.infoCard}>
-                      <span>Эрэмбэ</span>
-                      <strong>{task.priorityLabel}</strong>
-                    </article>
-                  </div>
-                </section>
-
-                <section className={styles.sectionCard}>
-                  <div className={styles.sectionHead}>
-                    <div>
-                      <span className={styles.kicker}>Хариуцсан хүмүүс</span>
-                      <h2>Багийн бүрэлдэхүүн</h2>
-                    </div>
-                  </div>
-
-                  <div className={styles.chipRow}>
-                    {task.assignees.length ? (
-                      task.assignees.map((name) => (
-                        <span key={name} className={styles.chip}>
-                          {name}
-                        </span>
-                      ))
-                    ) : (
-                      <span className={styles.chip}>Хүн оноогоогүй</span>
-                    )}
-                  </div>
-                </section>
-
                 {task.description ? (
                   <section className={styles.sectionCard}>
                     <div className={styles.sectionHead}>
@@ -382,7 +344,6 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                       <span className={styles.kicker}>Гүйцэтгэлийн тайлан</span>
                       <h2>Гүйцэтгэлийн тайлангууд</h2>
                     </div>
-                    <p>Илгээсэн тайлан, зураг, аудиог доороос харна.</p>
                   </div>
 
                   {task.reports.length ? (
@@ -394,13 +355,15 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                               <strong>{report.reporter}</strong>
                               <small>{report.submittedAt}</small>
                             </div>
-                            <StagePill
-                              label={formatQuantityLabel(
-                                report.quantity,
-                                task.measurementUnit,
-                              )}
-                              bucket="progress"
-                            />
+                            {quantitySummary ? (
+                              <StagePill
+                                label={formatQuantityLabel(
+                                  report.quantity,
+                                  task.measurementUnit,
+                                )}
+                                bucket="progress"
+                              />
+                            ) : null}
                           </div>
 
                           <div className={styles.reportMediaMeta}>
@@ -467,10 +430,9 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 <aside className={`${styles.actionCard} ${styles.stickyCard}`} id="task-actions">
                   <span className={styles.kicker}>Үндсэн үйлдэл</span>
                   <strong className={styles.actionTitle}>{primaryActionLabel}</strong>
-                  <p className={styles.actionLead}>{helperText}</p>
 
                   <div className={styles.actionStack}>
-                    {task.canMarkDone ? (
+                    {canMarkDone ? (
                       <form action={markTaskDoneAction}>
                         <input type="hidden" name="task_id" value={task.id} />
                         <button type="submit" className={styles.actionButton}>
@@ -479,25 +441,26 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                       </form>
                     ) : null}
 
-                    {task.canSubmitForReview ? (
+                    {canSubmitForReview ? (
                       <form action={submitTaskForReviewAction}>
                         <input type="hidden" name="task_id" value={task.id} />
                         <button
                           type="submit"
-                          className={task.canMarkDone ? styles.secondaryButton : styles.actionButton}
+                          className={canMarkDone ? styles.secondaryButton : styles.actionButton}
                         >
                           {masterMode ? "Тайлан илгээх" : "Шалгалтад илгээх"}
                         </button>
                       </form>
                     ) : null}
 
-                    {!task.canMarkDone && !task.canSubmitForReview && canWriteReport ? (
+                    {showReportComposer ? (
                       <TaskReportModal
                         action={createTaskReportAction}
                         taskId={task.id}
-                        defaultOpen={openReportComposer}
+                        defaultOpen={false}
                         quantityOptional={task.quantityOptional}
                         measurementUnit={task.measurementUnit}
+                        requireQuantity={Boolean(quantitySummary)}
                       />
                     ) : null}
                   </div>
@@ -505,10 +468,10 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                   <div className={styles.helperPanel}>
                     <small>Төлөв: {task.stageLabel}</small>
                     <small>Явц: {task.progress}%</small>
-                    <small>Хэмжээ: {quantitySummary}</small>
+                    {quantitySummary ? <small>Хэмжээ: {quantitySummary}</small> : null}
                   </div>
 
-                  {task.canReturnForChanges ? (
+                  {canReturnForChanges ? (
                     <form action={returnTaskForChangesAction} className={styles.returnBox}>
                       <input type="hidden" name="task_id" value={task.id} />
                       <label htmlFor="return_reason">Засвар шаардах шалтгаан</label>
@@ -523,6 +486,83 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                       </button>
                     </form>
                   ) : null}
+                </aside>
+
+                <aside className={styles.chatterCard} id="task-chatter">
+                  <div className={styles.chatterTop}>
+                    <div>
+                      <span className={styles.kicker}>Odoo chatter</span>
+                      <strong className={styles.actionTitle}>Зурвас ба тэмдэглэл</strong>
+                    </div>
+                    <span className={styles.chatterCount}>{task.messages.length}</span>
+                  </div>
+
+                  <form action={postTaskMessageAction} className={styles.chatterComposer}>
+                    <input type="hidden" name="task_id" value={task.id} />
+                    <label htmlFor="message_body" className={styles.modalField}>
+                      <span>Ажилбар дээр үлдээх текст</span>
+                      <textarea
+                        id="message_body"
+                        name="message_body"
+                        placeholder="Зурвас эсвэл дотоод тэмдэглэл бичнэ үү"
+                        rows={4}
+                        required
+                      />
+                    </label>
+                    <div className={styles.chatterActions}>
+                      <button
+                        type="submit"
+                        name="message_kind"
+                        value="message"
+                        className={styles.actionButton}
+                      >
+                        Зурвас илгээх
+                      </button>
+                      <button
+                        type="submit"
+                        name="message_kind"
+                        value="note"
+                        className={styles.secondaryButton}
+                      >
+                        Тэмдэглэл хөтлөх
+                      </button>
+                    </div>
+                  </form>
+
+                  {task.messages.length ? (
+                    <div className={styles.messageTimeline}>
+                      {task.messages.map((message) => (
+                        <article
+                          key={message.id}
+                          className={`${styles.messageItem} ${
+                            message.kind === "note"
+                              ? styles.messageItemNote
+                              : message.kind === "system"
+                                ? styles.messageItemSystem
+                                : ""
+                          }`}
+                        >
+                          <div className={styles.messageAvatar} aria-hidden="true">
+                            {message.author.slice(0, 1)}
+                          </div>
+                          <div className={styles.messageContent}>
+                            <div className={styles.messageMeta}>
+                              <strong>{message.author}</strong>
+                              <span>{message.postedAt}</span>
+                            </div>
+                            <span className={styles.messageKind}>
+                              {messageKindLabel(message.kind)}
+                            </span>
+                            <p>{message.body}</p>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.chatterEmpty}>
+                      Энэ ажилбар дээр зурвас, тэмдэглэл хараахан алга.
+                    </div>
+                  )}
                 </aside>
               </div>
             </section>

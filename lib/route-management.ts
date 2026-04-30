@@ -21,6 +21,11 @@ type RouteLineRecord = {
   collection_point_id: Relation;
 };
 
+type ProjectRecord = {
+  id: number;
+  mfo_operation_type?: string | false;
+};
+
 type PointRecord = {
   id: number;
   name: string;
@@ -47,6 +52,7 @@ export type RouteManagementData = {
     code: string;
     projectName: string;
     pointCount: number;
+    pointIds: number[];
     subdistrictNames: string;
     pointNames: string[];
   }>;
@@ -129,7 +135,30 @@ export async function loadRouteManagementData(
     ).catch(() => []),
   ]);
 
-  const routeIds = routes.map((route) => route.id);
+  const projectIds = Array.from(
+    new Set(routes.map((route) => relationId(route.project_id)).filter((id): id is number => Boolean(id))),
+  );
+  const routeProjectTypes = projectIds.length
+    ? await executeOdooKw<ProjectRecord[]>(
+        "project.project",
+        "search_read",
+        [[["id", "in", projectIds]]],
+        {
+          fields: ["mfo_operation_type"],
+          limit: projectIds.length,
+        },
+        connectionOverrides,
+      )
+        .then((projects) => new Map(projects.map((project) => [project.id, project.mfo_operation_type || ""])))
+        .catch(() => new Map<number, string>())
+    : new Map<number, string>();
+  const scopedRoutes = routeProjectTypes.size
+    ? routes.filter((route) => {
+        const projectId = relationId(route.project_id);
+        return !projectId || routeProjectTypes.get(projectId) === "garbage";
+      })
+    : routes;
+  const routeIds = scopedRoutes.map((route) => route.id);
   const routeLines = routeIds.length
     ? await executeOdooKw<RouteLineRecord[]>(
         "mfo.route.line",
@@ -145,8 +174,10 @@ export async function loadRouteManagementData(
     : [];
 
   const pointNamesByRouteId = new Map<number, string[]>();
+  const pointIdsByRouteId = new Map<number, number[]>();
   for (const line of routeLines) {
     const routeId = relationId(line.route_id);
+    const pointId = relationId(line.collection_point_id);
     const pointName = relationName(line.collection_point_id);
     if (!routeId || !pointName) {
       continue;
@@ -154,15 +185,21 @@ export async function loadRouteManagementData(
     const current = pointNamesByRouteId.get(routeId) ?? [];
     current.push(pointName);
     pointNamesByRouteId.set(routeId, current);
+    if (pointId) {
+      const currentIds = pointIdsByRouteId.get(routeId) ?? [];
+      currentIds.push(pointId);
+      pointIdsByRouteId.set(routeId, currentIds);
+    }
   }
 
   return {
-    routes: routes.map((route) => ({
+    routes: scopedRoutes.map((route) => ({
       id: route.id,
       name: route.name,
       code: route.code || "",
       projectName: relationName(route.project_id),
       pointCount: route.collection_point_count || pointNamesByRouteId.get(route.id)?.length || 0,
+      pointIds: pointIdsByRouteId.get(route.id) ?? [],
       subdistrictNames: route.subdistrict_names || "",
       pointNames: pointNamesByRouteId.get(route.id) ?? [],
     })),

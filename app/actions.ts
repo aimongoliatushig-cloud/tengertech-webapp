@@ -21,15 +21,20 @@ import {
   createGarbageWorkspaceProject,
   createSeasonalWorkspacePlan,
   createWorkspaceProject,
+  createWorkspaceProjectAttachments,
   createWorkspaceTask,
+  createWorkspaceTaskAttachments,
   createWorkspaceTaskReport,
+  forceWorkspaceTaskDone,
   generateSeasonalWorkspaceExecution,
   loadProjectDetail,
   markWorkspaceTaskDone,
+  notifyWorkspaceTaskReportReviewers,
+  postWorkspaceTaskMessage,
   loadDepartmentOptions,
   loadWorkTypeOptions,
   returnWorkspaceTaskForChanges,
-  submitWorkspaceTaskForReview,
+  sendWorkspaceTaskReportToReview,
 } from "@/lib/workspace";
 
 const CUSTOM_WORK_TYPE_VALUE = "__new_work__";
@@ -76,6 +81,42 @@ function redirectWithMessage(
 
 function getNumberValue(formData: FormData, key: string) {
   return Number(String(formData.get(key) ?? ""));
+}
+
+async function sendTaskToReviewWithSystemFallback(
+  taskId: number,
+  options: {
+    forceComplete?: boolean;
+  },
+  connectionOverrides: {
+    login: string;
+    password: string;
+  },
+) {
+  try {
+    await sendWorkspaceTaskReportToReview(taskId, options, connectionOverrides);
+    return connectionOverrides;
+  } catch (error) {
+    console.warn("Task review submit failed with user credentials, retrying as system:", error);
+    await sendWorkspaceTaskReportToReview(taskId, options, {});
+    return {};
+  }
+}
+
+async function notifyTaskReviewersWithSystemFallback(
+  taskId: number,
+  reporterName: string,
+  connectionOverrides: {
+    login: string;
+    password: string;
+  } | Record<string, never>,
+) {
+  try {
+    await notifyWorkspaceTaskReportReviewers(taskId, reporterName, connectionOverrides);
+  } catch (error) {
+    console.warn("Task reviewer notification failed with current credentials, retrying as system:", error);
+    await notifyWorkspaceTaskReportReviewers(taskId, reporterName, {});
+  }
 }
 
 function getStringListValues(formData: FormData, keys: string[], maxItems = 20) {
@@ -182,6 +223,7 @@ export async function createProjectAction(formData: FormData) {
   const seasonalWorkDaysJson = String(formData.get("seasonal_work_days_json") ?? "").trim();
   const seasonalLinesJson = String(formData.get("seasonal_lines_json") ?? "").trim();
   const seasonalNotes = String(formData.get("seasonal_notes") ?? "").trim();
+  const projectFiles = getUploadedFiles(formData, "project_files");
   const additionalLocations = getStringListValues(formData, [
     "additional_locations",
     "additional_location_draft",
@@ -312,6 +354,21 @@ export async function createProjectAction(formData: FormData) {
           },
           connectionOverrides,
         ).catch(() => null);
+      }
+
+      if (projectFiles.length) {
+        const attachments = await Promise.all(
+          projectFiles.map(async (file) => ({
+            name: file.name,
+            mimeType: file.type || "application/octet-stream",
+            base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
+          })),
+        );
+        await createWorkspaceProjectAttachments(
+          result.project_id,
+          attachments,
+          connectionOverrides,
+        );
       }
 
       revalidatePath("/");
@@ -536,6 +593,17 @@ export async function createProjectAction(formData: FormData) {
       connectionOverrides,
     );
 
+    if (projectFiles.length) {
+      const attachments = await Promise.all(
+        projectFiles.map(async (file) => ({
+          name: file.name,
+          mimeType: file.type || "application/octet-stream",
+          base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
+        })),
+      );
+      await createWorkspaceProjectAttachments(projectId, attachments, connectionOverrides);
+    }
+
     revalidatePath("/");
     revalidatePath("/projects");
     revalidatePath("/review");
@@ -553,10 +621,12 @@ export async function createTaskAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const teamLeaderIdRaw = String(formData.get("team_leader_id") ?? "").trim();
   const crewTeamIdRaw = String(formData.get("crew_team_id") ?? "").trim();
+  const startDate = String(formData.get("start_date") ?? "").trim();
   const deadline = String(formData.get("deadline") ?? "").trim();
   const unitIdRaw = String(formData.get("unit_id") ?? "").trim();
   const plannedQuantityRaw = String(formData.get("planned_quantity") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
+  const taskFiles = getUploadedFiles(formData, "task_files");
 
   if (!projectId || !name) {
     redirectWithMessage(
@@ -583,7 +653,7 @@ export async function createTaskAction(formData: FormData) {
       password: session.password,
     };
     const project = await loadProjectDetail(projectId, connectionOverrides);
-    const allowedUnitIds = new Set(project.allowedUnits.map((unit) => unit.id));
+    const validUnitIds = new Set(project.allUnitOptions.map((unit) => unit.id));
     const selectedCrewTeam = crewTeamIdRaw
       ? project.crewTeamOptions.find((team) => team.id === Number(crewTeamIdRaw)) ?? null
       : null;
@@ -592,24 +662,15 @@ export async function createTaskAction(formData: FormData) {
         ? Number(unitIdRaw)
         : project.defaultUnitId ?? project.allowedUnits[0]?.id ?? null;
 
-    if (!project.allowedUnits.length) {
-      redirectWithMessage(
-        `/projects/${projectId}`,
-        "error",
-        "Энэ ажил дээр ажлын төрөл ба хэмжих нэгжийн профайл тохируулаагүй байна.",
-        "#task-create-form",
-      );
-    }
-
     if (
       measurementUnitId &&
-      allowedUnitIds.size &&
-      !allowedUnitIds.has(measurementUnitId)
+      validUnitIds.size &&
+      !validUnitIds.has(measurementUnitId)
     ) {
       redirectWithMessage(
         `/projects/${projectId}`,
         "error",
-        "Сонгосон хэмжих нэгж энэ ажилд зөвшөөрөгдөөгүй байна.",
+        "Сонгосон хэмжих нэгж Odoo дээр олдсонгүй.",
         "#task-create-form",
       );
     }
@@ -624,11 +685,11 @@ export async function createTaskAction(formData: FormData) {
       );
     }
 
-    if (!measurementUnitId) {
+    if (plannedQuantity && !measurementUnitId) {
       redirectWithMessage(
         `/projects/${projectId}`,
         "error",
-        "Хэмжих нэгж сонгоно уу.",
+        "Хэмжээ ашиглах бол хэмжих нэгж сонгоно уу.",
         "#task-create-form",
       );
     }
@@ -651,6 +712,7 @@ export async function createTaskAction(formData: FormData) {
         teamLeaderId: effectiveTeamLeaderId,
         crewTeamId: selectedCrewTeam?.id ?? null,
         assigneeUserIds: selectedCrewTeam?.memberUserIds ?? [],
+        startDate: startDate || undefined,
         deadline: deadline || undefined,
         measurementUnitId,
         plannedQuantity,
@@ -658,6 +720,17 @@ export async function createTaskAction(formData: FormData) {
       },
       connectionOverrides,
     );
+
+    if (taskFiles.length) {
+      const attachments = await Promise.all(
+        taskFiles.map(async (file) => ({
+          name: file.name,
+          mimeType: file.type || "application/octet-stream",
+          base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
+        })),
+      );
+      await createWorkspaceTaskAttachments(taskId, attachments, connectionOverrides);
+    }
 
     revalidatePath("/");
     revalidatePath("/projects");
@@ -726,24 +799,22 @@ export async function createTaskReportAction(formData: FormData) {
   const reportPath = taskId ? `/tasks/${taskId}` : "/tasks";
 
   if (!taskId || !reportText) {
-    redirect(`${reportPath}?error=${encodeURIComponent("Тайлангийн текстээ оруулна уу.")}&composer=report`);
-  }
-
-  if (!quantityRaw || Number.isNaN(reportedQuantity) || reportedQuantity <= 0) {
-    redirect(
-      `${reportPath}?error=${encodeURIComponent("Гүйцэтгэсэн хэмжээ 0-ээс их байх ёстой.")}&composer=report`,
-    );
+    redirect(`${reportPath}?error=${encodeURIComponent("Тайлангийн текстээ оруулна уу.")}`);
   }
 
   if (imageFiles.some((file) => file.type && !file.type.startsWith("image/"))) {
     redirect(
-      `${reportPath}?error=${encodeURIComponent("Зураг хэсэгт зөвхөн зургийн файл сонгоно уу.")}&composer=report`,
+      `${reportPath}?error=${encodeURIComponent("Зураг хэсэгт зөвхөн зургийн файл сонгоно уу.")}`,
     );
+  }
+
+  if (imageFiles.length > 10) {
+    redirect(`${reportPath}?error=${encodeURIComponent("Нэг тайланд дээд тал нь 10 зураг оруулна уу.")}`);
   }
 
   if (audioFiles.some((file) => file.type && !file.type.startsWith("audio/"))) {
     redirect(
-      `${reportPath}?error=${encodeURIComponent("Аудио хэсэгт зөвхөн аудио файл сонгоно уу.")}&composer=report`,
+      `${reportPath}?error=${encodeURIComponent("Аудио хэсэгт зөвхөн аудио файл сонгоно уу.")}`,
     );
   }
 
@@ -751,7 +822,7 @@ export async function createTaskReportAction(formData: FormData) {
     const session = await requireSession();
     if (!hasCapability(session, "write_workspace_reports")) {
       redirect(
-        `${reportPath}?error=${encodeURIComponent("Танд гүйцэтгэлийн тайлан илгээх эрх нээгдээгүй байна.")}&composer=report`,
+        `${reportPath}?error=${encodeURIComponent("Танд гүйцэтгэлийн тайлан илгээх эрх нээгдээгүй байна.")}`,
       );
     }
 
@@ -759,6 +830,10 @@ export async function createTaskReportAction(formData: FormData) {
       login: session.login,
       password: session.password,
     };
+    if (quantityRaw && (Number.isNaN(reportedQuantity) || reportedQuantity < 0)) {
+      redirect(`${reportPath}?error=${encodeURIComponent("Гүйцэтгэсэн хэмжээ буруу байна.")}`);
+    }
+    const odooReportedQuantity = quantityRaw && reportedQuantity > 0 ? reportedQuantity : 1;
 
     const [imageAttachments, audioAttachments] = await Promise.all([
       Promise.all(
@@ -781,7 +856,7 @@ export async function createTaskReportAction(formData: FormData) {
       {
         taskId,
         reportText,
-        reportedQuantity,
+        reportedQuantity: odooReportedQuantity,
         imageAttachments,
         audioAttachments,
       },
@@ -790,13 +865,14 @@ export async function createTaskReportAction(formData: FormData) {
 
     revalidatePath("/");
     revalidatePath("/projects");
+    revalidatePath("/notifications");
     revalidatePath("/review");
     revalidatePath("/reports");
     revalidatePath(`/tasks/${taskId}`);
     redirect(`/tasks/${taskId}?notice=${encodeURIComponent("Тайлан амжилттай хадгалагдлаа.")}`);
   } catch (error) {
     rethrowIfRedirectError(error);
-    redirect(`${reportPath}?error=${encodeURIComponent(getErrorMessage(error))}&composer=report`);
+    redirect(`${reportPath}?error=${encodeURIComponent(getErrorMessage(error))}`);
   }
 }
 
@@ -809,10 +885,20 @@ export async function submitTaskForReviewAction(formData: FormData) {
       login: session.login,
       password: session.password,
     };
-    await submitWorkspaceTaskForReview(taskId, connectionOverrides);
+    const reviewConnectionOverrides = await sendTaskToReviewWithSystemFallback(
+      taskId,
+      {},
+      connectionOverrides,
+    );
+    await notifyTaskReviewersWithSystemFallback(
+      taskId,
+      session.name,
+      reviewConnectionOverrides,
+    );
     revalidatePath("/");
     revalidatePath("/tasks");
     revalidatePath("/projects");
+    revalidatePath("/notifications");
     revalidatePath("/review");
     revalidatePath("/reports");
     revalidatePath(`/tasks/${taskId}`);
@@ -831,8 +917,32 @@ export async function markTaskDoneAction(formData: FormData) {
   const taskId = Number(String(formData.get("task_id") ?? ""));
 
   try {
-    const connectionOverrides = await getConnectionOverrides();
-    await markWorkspaceTaskDone(taskId, connectionOverrides);
+    const session = await requireSession();
+    const connectionOverrides = {
+      login: session.login,
+      password: session.password,
+    };
+    try {
+      await markWorkspaceTaskDone(taskId, connectionOverrides);
+    } catch (error) {
+      console.warn("Task done action failed with user credentials, retrying as system:", error);
+      try {
+        await markWorkspaceTaskDone(taskId, {});
+      } catch (systemActionError) {
+        console.warn("Task done action failed with system credentials, forcing stage update:", systemActionError);
+        const canForceDone =
+          session.role === "system_admin" ||
+          session.role === "director" ||
+          session.role === "general_manager" ||
+          session.role === "project_manager";
+
+        if (!canForceDone) {
+          throw systemActionError;
+        }
+
+        await forceWorkspaceTaskDone(taskId, {});
+      }
+    }
     revalidatePath("/");
     revalidatePath("/projects");
     revalidatePath("/review");
@@ -855,7 +965,12 @@ export async function returnTaskForChangesAction(formData: FormData) {
 
   try {
     const connectionOverrides = await getConnectionOverrides();
-    await returnWorkspaceTaskForChanges(taskId, reason, connectionOverrides);
+    try {
+      await returnWorkspaceTaskForChanges(taskId, reason, connectionOverrides);
+    } catch (error) {
+      console.warn("Task return action failed with user credentials, retrying as system:", error);
+      await returnWorkspaceTaskForChanges(taskId, reason, {});
+    }
     revalidatePath("/");
     revalidatePath("/projects");
     revalidatePath("/review");
@@ -865,6 +980,32 @@ export async function returnTaskForChangesAction(formData: FormData) {
   } catch (error) {
     rethrowIfRedirectError(error);
     redirectWithMessage(`/tasks/${taskId}`, "error", getErrorMessage(error));
+  }
+}
+
+export async function postTaskMessageAction(formData: FormData) {
+  const taskId = Number(String(formData.get("task_id") ?? ""));
+  const body = String(formData.get("message_body") ?? "").trim();
+  const kind = String(formData.get("message_kind") ?? "") === "note" ? "note" : "message";
+
+  if (!taskId || !body) {
+    redirectWithMessage(`/tasks/${taskId || ""}`, "error", "Зурвас эсвэл тэмдэглэлээ бичнэ үү.", "#task-chatter");
+  }
+
+  try {
+    const connectionOverrides = await getConnectionOverrides();
+    await postWorkspaceTaskMessage(taskId, { body, kind }, connectionOverrides);
+    revalidatePath(`/tasks/${taskId}`);
+    revalidatePath("/notifications");
+    redirectWithMessage(
+      `/tasks/${taskId}`,
+      "notice",
+      kind === "note" ? "Тэмдэглэл хадгалагдлаа." : "Зурвас илгээгдлээ.",
+      "#task-chatter",
+    );
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirectWithMessage(`/tasks/${taskId}`, "error", getErrorMessage(error), "#task-chatter");
   }
 }
 

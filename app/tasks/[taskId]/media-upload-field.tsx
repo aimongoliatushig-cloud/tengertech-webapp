@@ -9,9 +9,10 @@ type Props = {
   name: string;
   label: string;
   accept: string;
-  helperText: string;
+  helperText?: string;
   emptyStateLabel: string;
   multiple?: boolean;
+  maxFiles?: number;
 };
 
 export function MediaUploadField({
@@ -22,9 +23,11 @@ export function MediaUploadField({
   helperText,
   emptyStateLabel,
   multiple = false,
+  maxFiles,
 }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [limitMessage, setLimitMessage] = useState("");
 
   const handlePick = () => {
     inputRef.current?.click();
@@ -35,11 +38,23 @@ export function MediaUploadField({
       inputRef.current.value = "";
     }
     setSelectedFiles([]);
+    setLimitMessage("");
   };
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const nextFiles = Array.from(event.target.files ?? []).map((file) => file.name);
-    setSelectedFiles(nextFiles);
+    const files = Array.from(event.target.files ?? []);
+    const limitedFiles = maxFiles ? files.slice(0, maxFiles) : files;
+
+    if (maxFiles && files.length > maxFiles) {
+      const dataTransfer = new DataTransfer();
+      limitedFiles.forEach((file) => dataTransfer.items.add(file));
+      event.target.files = dataTransfer.files;
+      setLimitMessage(`Дээд тал нь ${maxFiles} файл оруулна.`);
+    } else {
+      setLimitMessage("");
+    }
+
+    setSelectedFiles(limitedFiles.map((file) => file.name));
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -58,7 +73,8 @@ export function MediaUploadField({
       <div className={styles.filePickerHeader}>
         <div className={styles.filePickerTitleGroup}>
           <label htmlFor={id}>{label}</label>
-          <small className={styles.inputHint}>{helperText}</small>
+          {helperText ? <small className={styles.inputHint}>{helperText}</small> : null}
+          {maxFiles ? <small className={styles.inputHint}>Дээд тал нь {maxFiles} файл</small> : null}
         </div>
         <span className={styles.filePickerStatus}>{statusLabel}</span>
       </div>
@@ -117,6 +133,7 @@ export function MediaUploadField({
         ) : (
           <p className={styles.fileEmptyState}>{emptyStateLabel}</p>
         )}
+        {limitMessage ? <p className={styles.fileLimitMessage}>{limitMessage}</p> : null}
       </div>
     </div>
   );

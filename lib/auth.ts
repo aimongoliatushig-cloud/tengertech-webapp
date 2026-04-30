@@ -22,6 +22,7 @@ import {
 import { SESSION_COOKIE_NAME } from "@/lib/session";
 
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
+const WORKER_ROLE_REFRESH_INTERVAL_MS = 5 * 60_000;
 
 export type AppSession = {
   uid: number;
@@ -33,6 +34,7 @@ export type AppSession = {
   odooUrl: string;
   odooDb: string;
   issuedAt: number;
+  roleCheckedAt?: number;
 };
 
 function normalizeSessionUrl(url: string) {
@@ -88,6 +90,48 @@ export async function getSession() {
   return session;
 }
 
+async function refreshWorkerSessionRole(session: AppSession) {
+  if (session.role !== "worker") {
+    return session;
+  }
+
+  const lastRoleCheckAt = session.roleCheckedAt ?? session.issuedAt;
+  if (Date.now() - lastRoleCheckAt < WORKER_ROLE_REFRESH_INTERVAL_MS) {
+    return session;
+  }
+
+  try {
+    const refreshed = await authenticateOdooUser(session.login, session.password);
+    if (!refreshed || refreshed.uid !== session.uid) {
+      return {
+        ...session,
+        roleCheckedAt: Date.now(),
+      };
+    }
+
+    if (refreshed.user.role === session.role) {
+      return {
+        ...session,
+        roleCheckedAt: Date.now(),
+      };
+    }
+
+    return {
+      ...session,
+      name: refreshed.user.name,
+      login: refreshed.user.login,
+      role: refreshed.user.role,
+      groupFlags: refreshed.user.groupFlags,
+      roleCheckedAt: Date.now(),
+    } satisfies AppSession;
+  } catch {
+    return {
+      ...session,
+      roleCheckedAt: Date.now(),
+    };
+  }
+}
+
 async function readSession(): Promise<SessionReadResult> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
@@ -107,7 +151,10 @@ async function readSession(): Promise<SessionReadResult> {
     ) {
       return { session: null, hasInvalidToken: true };
     }
-    return { session, hasInvalidToken: false };
+    return {
+      session: await refreshWorkerSessionRole(session),
+      hasInvalidToken: false,
+    };
   } catch {
     return { session: null, hasInvalidToken: true };
   }
@@ -178,6 +225,7 @@ export async function signInWithOdooCredentials(login: string, password: string)
     groupFlags: result.user.groupFlags,
     ...getCurrentSessionConnection(),
     issuedAt: Date.now(),
+    roleCheckedAt: Date.now(),
   } satisfies AppSession;
 }
 

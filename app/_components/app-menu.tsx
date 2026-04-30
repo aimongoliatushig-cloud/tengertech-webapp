@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Leaf,
   ListChecks,
+  MapPin,
   Menu,
   MessageSquare,
   PlusCircle,
@@ -31,6 +32,7 @@ import {
   matchesDepartmentGroup,
   type DepartmentGroupDefinition,
 } from "@/lib/department-groups";
+import { isAutoGarbageDepartment } from "@/lib/department-permissions";
 import { cn } from "@/lib/utils";
 
 import { PendingLinkIndicator } from "./pending-link-indicator";
@@ -45,6 +47,7 @@ type MenuKey =
   | "projects"
   | "procurement"
   | "profile"
+  | "garbage-settings"
   | "review"
   | "notifications"
   | "quality"
@@ -144,12 +147,18 @@ export function AppMenu({
   void getDockLabel;
   void canViewQualityCenter;
   void variant;
-  void masterMode;
-  void workerMode;
 
   const [isOpen, setIsOpen] = useState(false);
-  const canCreate = canCreateProject || canCreateTasks || canWriteReports;
+  const baseCanCreate = !workerMode && (canCreateProject || canCreateTasks || canWriteReports);
   const reviewHref = workerMode && canUseFieldConsole ? "/field" : "/notifications";
+  const isGarbageDepartmentHead =
+    !workerMode &&
+    !masterMode &&
+    Boolean(departmentScopeName) &&
+    isAutoGarbageDepartment(departmentScopeName) &&
+    canCreateProject &&
+    canCreateTasks;
+  const canCreate = baseCanCreate && !isGarbageDepartmentHead;
 
   const visibleDepartmentGroups = departmentScopeName
     ? DEPARTMENT_GROUPS.filter((group) => {
@@ -170,7 +179,7 @@ export function AppMenu({
     departmentName: group.name,
   }));
 
-  const items: MenuItem[] = [
+  const defaultItems: MenuItem[] = [
     {
       key: "dashboard",
       href: "/",
@@ -221,7 +230,77 @@ export function AppMenu({
       label: "Тохиргоо",
       icon: Settings,
     },
+  ].filter((item) => {
+    if (!workerMode) {
+      return true;
+    }
+    return !["hr", "data-download", "reports", "chat"].includes(item.key);
+  });
+
+  const garbageDepartmentItems: MenuItem[] = [
+    {
+      key: "dashboard",
+      href: "/",
+      label: "Хяналтын самбар",
+      icon: LayoutDashboard,
+    },
+    {
+      key: "projects",
+      href: departmentItems[0]?.href ?? "/projects",
+      label: "Ажил",
+      icon: ListChecks,
+    },
+    {
+      key: "tasks",
+      href: "/tasks?view=today",
+      label: "Ажлын даалгавар",
+      icon: CalendarDays,
+    },
+    {
+      key: "garbage-teams",
+      href: "/settings/garbage-transport#teams",
+      label: "Багууд",
+      icon: Users,
+    },
+    {
+      key: "garbage-vehicles",
+      href: "/settings/garbage-transport#vehicles",
+      label: "Машинууд",
+      icon: Truck,
+    },
+    {
+      key: "garbage-routes",
+      href: "/settings/garbage-transport#routes",
+      label: "Маршрут",
+      icon: Flag,
+    },
+    {
+      key: "garbage-points",
+      href: "/settings/garbage-transport#points",
+      label: "Хогийн цэгүүд",
+      icon: MapPin,
+    },
+    {
+      key: "reports",
+      href: "/reports",
+      label: "Тайлан",
+      icon: BarChart3,
+    },
+    {
+      key: "garbage-complaints",
+      href: "/settings/garbage-transport#complaints",
+      label: "Гомдол",
+      icon: MessageSquare,
+    },
+    {
+      key: "garbage-settings",
+      href: "/settings/garbage-transport",
+      label: "Хог тээвэрлэлтийн тохиргоо",
+      icon: Settings,
+    },
   ];
+
+  const items = isGarbageDepartmentHead ? garbageDepartmentItems : defaultItems;
 
   function isItemActive(item: MenuItem) {
     if (item.key === active) {
@@ -240,13 +319,43 @@ export function AppMenu({
   }
 
   const activeItem = items.find(isItemActive) ?? items[0];
-  const mobileDockItems: MenuItem[] = [
-    { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
-    { key: "projects", href: "/projects", label: "Ажлууд", icon: ListChecks },
-    { key: "new-project", href: "/create", label: "Шинэ ажил", icon: PlusCircle },
-    { key: "reports", href: canWriteReports ? "/reports" : "/review", label: "Тайлан", icon: BarChart3 },
-    { key: "hr", href: "/hr", label: "Миний баг", icon: Users },
-  ];
+  const mobileDockItems: MenuItem[] = isGarbageDepartmentHead
+    ? [
+        { key: "dashboard", href: "/", label: "Самбар", icon: LayoutDashboard },
+        {
+          key: "projects",
+          href: departmentItems[0]?.href ?? "/projects",
+          label: "Ажил",
+          icon: ListChecks,
+        },
+        { key: "tasks", href: "/tasks?view=today", label: "Даалгавар", icon: CalendarDays },
+        { key: "reports", href: "/reports", label: "Тайлан", icon: BarChart3 },
+        {
+          key: "garbage-settings",
+          href: "/settings/garbage-transport",
+          label: "Тохиргоо",
+          icon: Settings,
+        },
+      ]
+    : workerMode
+      ? [
+          { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
+          {
+            key: "projects",
+            href: departmentItems[0]?.href ?? "/projects",
+            label: "Ажлууд",
+            icon: ListChecks,
+          },
+          { key: "review", href: reviewHref, label: "Мэдэгдэл", icon: Bell, badge: notificationCount },
+          { key: "profile", href: "/profile", label: "Тохиргоо", icon: Settings },
+        ]
+      : [
+          { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
+          { key: "projects", href: "/projects", label: "Ажлууд", icon: ListChecks },
+          { key: "new-project", href: "/create", label: "Шинэ ажил", icon: PlusCircle },
+          { key: "reports", href: canWriteReports ? "/reports" : "/review", label: "Тайлан", icon: BarChart3 },
+          { key: "hr", href: "/hr", label: "Миний баг", icon: Users },
+        ];
 
   const menuList = (
     <nav className={styles.menuList} aria-label="Үндсэн цэс">
@@ -306,7 +415,10 @@ export function AppMenu({
           </Link>
         ) : null}
 
-        <Link href="/profile" className={styles.profileCard}>
+        <Link
+          href={isGarbageDepartmentHead ? "/settings/garbage-transport" : "/profile"}
+          className={styles.profileCard}
+        >
           <span className={styles.profileAvatar} aria-hidden>
             {getInitials(userName)}
           </span>
@@ -333,7 +445,10 @@ export function AppMenu({
           <span>{activeItem.label}</span>
         </button>
 
-        <Link href="/profile" className={styles.mobileProfile}>
+        <Link
+          href={isGarbageDepartmentHead ? "/settings/garbage-transport" : "/profile"}
+          className={styles.mobileProfile}
+        >
           {getInitials(userName)}
         </Link>
       </div>

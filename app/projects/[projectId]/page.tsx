@@ -17,7 +17,6 @@ import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import { loadProjectDetail } from "@/lib/workspace";
 
-import { ProjectTaskCreateForm } from "./project-task-create-form";
 import { ProjectTaskCreateModal } from "./project-task-create-modal";
 
 type PageProps = {
@@ -403,15 +402,18 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                     </h2>
                   </div>
 
-                  {canCreateTasks && masterMode && quickActionMode !== "report" ? (
+                  {canCreateTasks && quickActionMode !== "report" ? (
                     <ProjectTaskCreateModal
                       action={createTaskAction}
                       projectId={project.id}
+                      departmentName={project.departmentName}
+                      departmentHeadName={project.managerName}
+                      departmentHeadId={project.managerId}
                       deadline={project.deadline}
                       masterMode={masterMode}
-                      teamLeaderOptions={project.teamLeaderOptions}
+                      departmentUserOptions={project.departmentUserOptions}
                       crewTeamOptions={project.crewTeamOptions}
-                      allowedUnits={project.allowedUnits}
+                      allUnitOptions={project.allUnitOptions}
                       defaultUnitId={project.defaultUnitId}
                       allowedUnitSummary={project.allowedUnitSummary}
                       defaultOpen={Boolean(errorMessage) || quickActionMode === "task"}
@@ -477,16 +479,18 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                         <div className={styles.taskItemTop}>
                           <div>
                             <h3>{task.name}</h3>
-                            <p>Хариуцсан мастер: {task.teamLeaderName}</p>
+                            <p>Хариуцсан ажилтан: {task.teamLeaderName}</p>
                           </div>
                           <StagePill label={task.stageLabel} bucket={task.stageBucket} />
                         </div>
 
                         <div className={styles.metaRow}>
-                          <span>
-                            Хэмжээ: {task.completedQuantity}/{task.plannedQuantity}{" "}
-                            {task.measurementUnit}
-                          </span>
+                          {task.plannedQuantity > 0 && task.measurementUnit ? (
+                            <span>
+                              Хэмжээ: {task.completedQuantity}/{task.plannedQuantity}{" "}
+                              {task.measurementUnit}
+                            </span>
+                          ) : null}
                           <span>Хугацаа: {task.deadline}</span>
                         </div>
 
@@ -503,31 +507,6 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                   </div>
                 )}
               </section>
-
-              {canCreateTasks && !masterMode ? (
-                <aside className={styles.formCard} id="task-create-form">
-                  <div className={styles.sectionHeader}>
-                    <div>
-                      <span className={styles.eyebrow}>Шинэ ажилбар</span>
-                      <h2>Ажилбар үүсгэх</h2>
-                    </div>
-                  </div>
-
-                  <ProjectTaskCreateForm
-                    action={createTaskAction}
-                    className={styles.form}
-                    footerClassName={styles.buttonRow}
-                    projectId={project.id}
-                    deadline={project.deadline}
-                    masterMode={masterMode}
-                    teamLeaderOptions={project.teamLeaderOptions}
-                    crewTeamOptions={project.crewTeamOptions}
-                    allowedUnits={project.allowedUnits}
-                    defaultUnitId={project.defaultUnitId}
-                    allowedUnitSummary={project.allowedUnitSummary}
-                  />
-                </aside>
-              ) : null}
             </section>
           </div>
         </div>

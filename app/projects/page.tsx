@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { AutoBaseBoard } from "@/app/auto-base/auto-base-board";
@@ -234,9 +233,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage({ searchParams }: PageProps) {
   const session = await requireSession();
-  if (isWorkerOnly(session)) {
-    redirect("/");
-  }
+  const workerMode = isWorkerOnly(session);
   const snapshot = await loadMunicipalSnapshot({
     login: session.login,
     password: session.password,
@@ -248,7 +245,14 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const masterMode = isMasterRole(session.role);
-  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  let scopedDepartmentName = await loadSessionDepartmentName(session);
+  if (!scopedDepartmentName && workerMode) {
+    const currentUserId = String(session.uid);
+    scopedDepartmentName =
+      snapshot.taskDirectory.find((task) =>
+        (task.assigneeIds ?? []).some((assigneeId) => String(assigneeId) === currentUserId),
+      )?.departmentName ?? null;
+  }
   const departmentScopedMode = Boolean(scopedDepartmentName);
 
   const params = (await searchParams) ?? {};
@@ -293,7 +297,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
     }
   }
 
-  const scopedProjects = (departmentScopedMode
+  let scopedProjects = (departmentScopedMode
     ? filterByDepartment(snapshot.projects, scopedDepartmentName)
     : snapshot.projects.filter((project) => {
         if (selectedUnit) {
@@ -321,7 +325,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
 
     return right.completion - left.completion;
   });
-  const scopedTasks = departmentScopedMode
+  let scopedTasks = departmentScopedMode
     ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
     : snapshot.taskDirectory.filter((task) => {
         if (selectedUnit) {
@@ -332,6 +336,15 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
         }
         return true;
       });
+
+  if (workerMode) {
+    const currentUserId = String(session.uid);
+    scopedTasks = scopedTasks.filter((task) =>
+      (task.assigneeIds ?? []).some((assigneeId) => String(assigneeId) === currentUserId),
+    );
+    const workerProjectNames = new Set(scopedTasks.map((task) => task.projectName));
+    scopedProjects = scopedProjects.filter((project) => workerProjectNames.has(project.name));
+  }
 
   const activeProjects = masterMode
     ? scopedProjects
@@ -615,6 +628,13 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   const calendarPlanHref = `/tasks${
     calendarPlanParams.toString() ? `?${calendarPlanParams.toString()}` : ""
   }`;
+  const newWorkParams = new URLSearchParams();
+  if (selectedUnit || selectedGroup?.name) {
+    newWorkParams.set("department", selectedUnit || selectedGroup?.name || "");
+  }
+  const newWorkHref = `/projects/new${
+    newWorkParams.toString() ? `?${newWorkParams.toString()}` : ""
+  }`;
   const shouldShowGreenServiceSections =
     !masterMode &&
     !showAutoBaseFleet &&
@@ -655,6 +675,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               masterMode={masterMode}
+              workerMode={workerMode}
               departmentScopeName={scopedDepartmentName}
             />
           </aside>
@@ -797,9 +818,16 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                   </small>
                 </div>
                 {!masterMode && !showAutoBaseFleet ? (
-                  <Link href={calendarPlanHref} className={styles.secondaryButton}>
-                    Календар төлөвлөгөө
-                  </Link>
+                  <div className={styles.buttonRow}>
+                    {canCreateProject ? (
+                      <Link href={newWorkHref} className={styles.primaryButton}>
+                        Ажил нэмэх
+                      </Link>
+                    ) : null}
+                    <Link href={calendarPlanHref} className={styles.secondaryButton}>
+                      Календар төлөвлөгөө
+                    </Link>
+                  </div>
                 ) : null}
               </div>
 
