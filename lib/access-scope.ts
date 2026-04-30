@@ -19,7 +19,6 @@ function getFallbackDepartmentName(session: Pick<AppSession, "role">) {
 
 export function shouldScopeToOwnDepartment(session: Pick<AppSession, "role">) {
   return (
-    session.role === "system_admin" ||
     session.role === "project_manager" ||
     session.role === "worker" ||
     isMasterRole(session.role)
