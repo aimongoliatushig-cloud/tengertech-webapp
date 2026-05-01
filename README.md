@@ -53,3 +53,8 @@ SESSION_COOKIE_SECURE=false
 - `lib/odoo.ts` - Odoo JSON-RPC integration + live auth
 - `middleware.ts` - login required route guard
 - `app/layout.tsx` - metadata, font setup
+
+## QA Documentation
+
+- [Municipal UI Acceptance Guide](docs/qa/municipal-ui-acceptance.md)
+- [QA screenshot and mockup assets](docs/qa-assets/README.md)
