@@ -65,7 +65,12 @@ class MunicipalProcurementRequest(models.Model):
         default=lambda self: self.env.company,
         required=True,
     )
-    is_over_threshold = fields.Boolean(string="1 саяас дээш", compute="_compute_is_over_threshold")
+    is_over_threshold = fields.Boolean(
+        string="1 саяас дээш",
+        compute="_compute_is_over_threshold",
+        store=True,
+        index=True,
+    )
 
     def _compute_is_over_threshold(self):
         for request in self:
