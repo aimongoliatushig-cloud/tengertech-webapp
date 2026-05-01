@@ -603,6 +603,66 @@ export async function createGarbageTransportPointAction(formData: FormData) {
   redirectToSettings("notice", "Хогийн цэг нэмэгдлээ.", "points");
 }
 
+export async function updateGarbageTransportPointAction(formData: FormData) {
+  const { connection } = await requireGarbageTransportHead();
+  const pointId = parsePositiveId(formData.get("point_id"));
+  const pointName = cleanInput(formData.get("point_name"));
+  const subdistrictId = parsePositiveId(formData.get("subdistrict_id"));
+
+  if (!pointId) {
+    redirectToSettings("error", "Хогийн цэг сонгоно уу.", "points");
+  }
+  if (!pointName) {
+    redirectToSettings("error", "Хогийн цэгийн нэр оруулна уу.", "points");
+  }
+  if (!subdistrictId) {
+    redirectToSettings("error", "Хогийн цэгийн хороог сонгоно уу.", "points");
+  }
+
+  try {
+    await writeOdooRecord(
+      "mfo.collection.point",
+      pointId,
+      {
+        name: pointName,
+        subdistrict_id: subdistrictId,
+      },
+      connection,
+    );
+  } catch (error) {
+    redirectToSettings(
+      "error",
+      getErrorMessage(error, "Хогийн цэг засах үед Odoo дээр алдаа гарлаа."),
+      "points",
+    );
+  }
+
+  revalidatePath(SETTINGS_PATH);
+  redirectToSettings("notice", "Хогийн цэг шинэчлэгдлээ.", "points");
+}
+
+export async function archiveGarbageTransportPointAction(formData: FormData) {
+  const { connection } = await requireGarbageTransportHead();
+  const pointId = parsePositiveId(formData.get("point_id"));
+
+  if (!pointId) {
+    redirectToSettings("error", "Хогийн цэг сонгоно уу.", "points");
+  }
+
+  try {
+    await writeOdooRecord("mfo.collection.point", pointId, { active: false }, connection);
+  } catch (error) {
+    redirectToSettings(
+      "error",
+      getErrorMessage(error, "Хогийн цэг устгах үед Odoo дээр алдаа гарлаа."),
+      "points",
+    );
+  }
+
+  revalidatePath(SETTINGS_PATH);
+  redirectToSettings("notice", "Хогийн цэг устгагдлаа.", "points");
+}
+
 export async function createGarbageTransportRouteAction(formData: FormData) {
   const { connection, departmentId } = await requireGarbageTransportHead();
   const routeName = cleanInput(formData.get("route_name"));

@@ -14,13 +14,17 @@ import {
   LayoutDashboard,
   Leaf,
   ListChecks,
+  LogOut,
   MapPin,
   Menu,
   MessageSquare,
   PlusCircle,
+  Route,
   Settings,
   Truck,
+  UserCircle,
   Users,
+  Wrench,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -42,6 +46,8 @@ type MenuKey =
   | "dashboard"
   | "tasks"
   | "auto-base"
+  | "fleet-repair"
+  | "garbage-routes"
   | "hr"
   | "field"
   | "projects"
@@ -149,6 +155,7 @@ export function AppMenu({
   void variant;
 
   const [isOpen, setIsOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const baseCanCreate = !workerMode && (canCreateProject || canCreateTasks || canWriteReports);
   const reviewHref = workerMode && canUseFieldConsole ? "/field" : "/notifications";
   const isGarbageDepartmentHead =
@@ -187,6 +194,12 @@ export function AppMenu({
       icon: LayoutDashboard,
     },
     ...departmentItems,
+    {
+      key: "fleet-repair",
+      href: "/fleet-repair/requests",
+      label: "Засварын хүсэлт",
+      icon: Wrench,
+    },
     {
       key: "hr",
       href: "/hr",
@@ -264,12 +277,18 @@ export function AppMenu({
     },
     {
       key: "garbage-vehicles",
-      href: "/settings/garbage-transport#vehicles",
+      href: "/fleet-repair/dashboard",
       label: "Машинууд",
       icon: Truck,
     },
     {
       key: "garbage-routes",
+      href: "/garbage-routes",
+      label: "Хог тээврийн маршрут",
+      icon: Route,
+    },
+    {
+      key: "garbage-route-settings",
       href: "/settings/garbage-transport#routes",
       label: "Маршрут",
       icon: Flag,
@@ -315,6 +334,9 @@ export function AppMenu({
     if (active === "auto-base" && item.departmentName?.includes("Авто")) {
       return true;
     }
+    if (active === "fleet-repair" && item.key === "garbage-vehicles") {
+      return true;
+    }
     return false;
   }
 
@@ -329,6 +351,7 @@ export function AppMenu({
           icon: ListChecks,
         },
         { key: "tasks", href: "/tasks?view=today", label: "Даалгавар", icon: CalendarDays },
+        { key: "garbage-routes", href: "/garbage-routes/today", label: "Маршрут", icon: Route },
         { key: "reports", href: "/reports", label: "Тайлан", icon: BarChart3 },
         {
           key: "garbage-settings",
@@ -415,23 +438,36 @@ export function AppMenu({
           </Link>
         ) : null}
 
-        <Link
-          href={isGarbageDepartmentHead ? "/settings/garbage-transport" : "/profile"}
-          className={styles.profileCard}
-        >
-          <span className={styles.profileAvatar} aria-hidden>
-            {getInitials(userName)}
-          </span>
-          <span className={styles.profileText}>
-            <strong>{userName}</strong>
-            <small>{roleLabel}</small>
-          </span>
-          <PendingLinkIndicator
-            className={styles.profileLoadingHint}
-            overlayClassName={styles.linkLoadingOverlay}
-          />
-          <ChevronDown aria-hidden />
-        </Link>
+        <div className={styles.profileMenuWrap}>
+          <button
+            type="button"
+            className={styles.profileCard}
+            aria-expanded={isProfileMenuOpen}
+            aria-controls="account-menu"
+            onClick={() => setIsProfileMenuOpen((open) => !open)}
+          >
+            <span className={styles.profileAvatar} aria-hidden>
+              {getInitials(userName)}
+            </span>
+            <span className={styles.profileText}>
+              <strong>{userName}</strong>
+              <small>{roleLabel}</small>
+            </span>
+            <ChevronDown aria-hidden className={cn(isProfileMenuOpen && styles.profileChevronOpen)} />
+          </button>
+          {isProfileMenuOpen ? (
+            <div id="account-menu" className={styles.profileMenu} role="menu">
+              <Link href="/profile" role="menuitem" className={styles.profileMenuLink}>
+                <UserCircle aria-hidden />
+                <span>Профайл</span>
+              </Link>
+              <Link href="/auth/logout" role="menuitem" className={styles.profileMenuLink}>
+                <LogOut aria-hidden />
+                <span>Гарах</span>
+              </Link>
+            </div>
+          ) : null}
+        </div>
       </aside>
 
       <div className={styles.mobileTopBar}>

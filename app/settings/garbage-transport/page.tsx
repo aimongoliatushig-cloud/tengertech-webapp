@@ -23,6 +23,7 @@ import { loadTeamManagementData, loadTeamMemberOptions } from "@/lib/team-manage
 import { loadWorkTypeOptions } from "@/lib/workspace";
 
 import {
+  archiveGarbageTransportPointAction,
   archiveGarbageTransportRouteAction,
   archiveGarbageTransportTeamAction,
   createGarbageTransportPointAction,
@@ -32,9 +33,11 @@ import {
   archiveGarbageTransportWorkTypeAction,
   createGarbageTransportWorkTypeAction,
   saveGarbageTransportPreferencesAction,
+  updateGarbageTransportPointAction,
   updateGarbageTransportRouteAction,
 } from "./actions";
 import styles from "./garbage-settings.module.css";
+import { PointManagementPanel } from "./point-management-panel";
 import { RouteCreateForm, RouteEditForm } from "./route-create-form";
 import { TeamCreateForm } from "./team-create-form";
 
@@ -549,40 +552,13 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
                 <span className={styles.countPill}>{routeData.points.length} цэг</span>
               </div>
 
-              <div className={styles.pointLayout}>
-                <form action={createGarbageTransportPointAction} className={styles.formPanel}>
-                  <span className={styles.eyebrow}>Хогийн цэг нэмэх</span>
-                  <label className={styles.field}>
-                    <span>Цэгийн нэр</span>
-                    <input name="point_name" placeholder="Жишээ: 8-р хороо 20-р цэг" required />
-                  </label>
-                  <label className={styles.field}>
-                    <span>Хороо</span>
-                    <select name="subdistrict_id" required defaultValue="">
-                      <option value="" disabled>Хороо сонгох</option>
-                      {routeData.subdistricts.map((subdistrict) => (
-                        <option key={subdistrict.id} value={subdistrict.id}>{subdistrict.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <button type="submit" className={styles.primaryButton}>Хогийн цэг нэмэх</button>
-                </form>
-
-                <div className={styles.cardList}>
-                  {routeData.points.length ? (
-                    routeData.points.slice(0, 30).map((point) => (
-                      <article key={point.id} className={styles.listCard}>
-                        <div>
-                          <strong>{point.name}</strong>
-                          <small>{point.subdistrictName || "Хороо сонгоогүй"}</small>
-                        </div>
-                      </article>
-                    ))
-                  ) : (
-                    <p className={styles.emptyState}>Хогийн цэг бүртгэгдээгүй байна.</p>
-                  )}
-                </div>
-              </div>
+              <PointManagementPanel
+                createAction={createGarbageTransportPointAction}
+                updateAction={updateGarbageTransportPointAction}
+                archiveAction={archiveGarbageTransportPointAction}
+                points={routeData.points}
+                subdistricts={routeData.subdistricts}
+              />
             </section>
 
             <section id="work-types" className={`${styles.sectionCard} ${styles.tabPanel}`}>

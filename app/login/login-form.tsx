@@ -54,8 +54,9 @@ export function LoginForm({
           window.location.assign(redirectTarget);
         } catch {
           isSubmittingRef.current = false;
-          hideLoading();
           window.location.assign("/login?error=connection");
+        } finally {
+          hideLoading();
         }
       }}
     >

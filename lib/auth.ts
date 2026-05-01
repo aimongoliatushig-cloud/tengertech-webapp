@@ -96,7 +96,13 @@ async function refreshWorkerSessionRole(session: AppSession) {
   }
 
   const lastRoleCheckAt = session.roleCheckedAt ?? session.issuedAt;
-  if (Date.now() - lastRoleCheckAt < WORKER_ROLE_REFRESH_INTERVAL_MS) {
+  const needsRepairGroupRefresh =
+    session.groupFlags?.fleetRepairAny === undefined ||
+    session.groupFlags?.opsStorekeeper === undefined;
+  if (
+    !needsRepairGroupRefresh &&
+    Date.now() - lastRoleCheckAt < WORKER_ROLE_REFRESH_INTERVAL_MS
+  ) {
     return session;
   }
 
@@ -109,7 +115,9 @@ async function refreshWorkerSessionRole(session: AppSession) {
       };
     }
 
-    if (refreshed.user.role === session.role) {
+    const groupFlagsChanged =
+      JSON.stringify(refreshed.user.groupFlags) !== JSON.stringify(session.groupFlags);
+    if (refreshed.user.role === session.role && !groupFlagsChanged) {
       return {
         ...session,
         roleCheckedAt: Date.now(),

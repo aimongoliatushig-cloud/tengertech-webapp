@@ -60,6 +60,7 @@ export type RouteManagementData = {
     id: number;
     name: string;
     address: string;
+    subdistrictId: number | null;
     subdistrictName: string;
   }>;
   subdistricts: Array<{
@@ -179,18 +180,22 @@ export async function loadRouteManagementData(
     const routeId = relationId(line.route_id);
     const pointId = relationId(line.collection_point_id);
     const pointName = relationName(line.collection_point_id);
-    if (!routeId || !pointName) {
+    if (!routeId || !pointName || !pointId) {
       continue;
     }
-    const current = pointNamesByRouteId.get(routeId) ?? [];
-    current.push(pointName);
-    pointNamesByRouteId.set(routeId, current);
-    if (pointId) {
-      const currentIds = pointIdsByRouteId.get(routeId) ?? [];
-      currentIds.push(pointId);
-      pointIdsByRouteId.set(routeId, currentIds);
+    const currentIds = pointIdsByRouteId.get(routeId) ?? [];
+    if (currentIds.includes(pointId)) {
+      continue;
     }
+    currentIds.push(pointId);
+    pointIdsByRouteId.set(routeId, currentIds);
+
+    const currentNames = pointNamesByRouteId.get(routeId) ?? [];
+    currentNames.push(pointName);
+    pointNamesByRouteId.set(routeId, currentNames);
   }
+  const uniquePoints = Array.from(new Map(points.map((point) => [point.id, point])).values());
+  const uniqueSubdistricts = Array.from(new Map(subdistricts.map((subdistrict) => [subdistrict.id, subdistrict])).values());
 
   return {
     routes: scopedRoutes.map((route) => ({
@@ -203,13 +208,14 @@ export async function loadRouteManagementData(
       subdistrictNames: route.subdistrict_names || "",
       pointNames: pointNamesByRouteId.get(route.id) ?? [],
     })),
-    points: points.map((point) => ({
+    points: uniquePoints.map((point) => ({
       id: point.id,
       name: point.name,
       address: point.address || "",
+      subdistrictId: relationId(point.subdistrict_id),
       subdistrictName: relationName(point.subdistrict_id),
     })),
-    subdistricts: subdistricts.map((subdistrict) => ({
+    subdistricts: uniqueSubdistricts.map((subdistrict) => ({
       id: subdistrict.id,
       label: `${relationName(subdistrict.district_id)} ${subdistrict.name}`.trim(),
     })),

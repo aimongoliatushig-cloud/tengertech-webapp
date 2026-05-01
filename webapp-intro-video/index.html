@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="mn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Хот тохижилтын удирдлагын төв - танилцуулга</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700;800;900&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=block"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #f4faf2;
+        color: #112019;
+        font-family: "IBM Plex Sans", sans-serif;
+      }
+
+      [data-composition-id="main"] {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 12% 4%, rgba(122, 183, 133, 0.26), rgba(122, 183, 133, 0) 30%),
+          radial-gradient(circle at 88% 88%, rgba(212, 170, 56, 0.18), rgba(212, 170, 56, 0) 24%),
+          linear-gradient(180deg, #f4faf2 0%, #e8f1e6 100%);
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .scene-content {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        width: 100%;
+        height: 100%;
+        padding: 86px 112px;
+        gap: 44px;
+      }
+
+      .scene.visible {
+        opacity: 1;
+      }
+
+      .bg-word {
+        position: absolute;
+        width: 620px;
+        height: 190px;
+        border: 2px solid rgba(31, 109, 52, 0.34);
+        border-radius: 999px;
+        background: rgba(122, 183, 133, 0.12);
+        color: rgba(31, 109, 52, 0.34);
+        font-family: "Exo 2", sans-serif;
+        font-size: 180px;
+        font-weight: 900;
+        letter-spacing: 0.01em;
+        line-height: 0.9;
+        white-space: nowrap;
+        opacity: 0.18;
+      }
+
+      .bg-word.one {
+        top: 78px;
+        left: 74px;
+      }
+
+      .bg-word.two {
+        right: -70px;
+        bottom: 60px;
+      }
+
+      .grain {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        opacity: 0.24;
+        background-image:
+          linear-gradient(rgba(31, 109, 52, 0.05) 1px, rgba(31, 109, 52, 0) 1px),
+          linear-gradient(90deg, rgba(31, 109, 52, 0.05) 1px, rgba(31, 109, 52, 0) 1px);
+        background-size: 56px 56px;
+      }
+
+      .copy {
+        display: flex;
+        flex: 0 0 640px;
+        min-width: 0;
+        flex-direction: column;
+        justify-content: center;
+        gap: 24px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        width: fit-content;
+        align-items: center;
+        gap: 12px;
+        border: 1px solid rgba(31, 109, 52, 0.16);
+        border-radius: 999px;
+        background: rgba(17, 32, 25, 0.94);
+        padding: 12px 18px;
+        color: #ffffff;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #d4aa38;
+        box-shadow: 0 0 0 8px rgba(212, 170, 56, 0.16);
+      }
+
+      h1,
+      h2 {
+        max-width: 850px;
+        color: #112019;
+        font-family: "Exo 2", sans-serif;
+        font-size: 86px;
+        font-weight: 900;
+        line-height: 0.98;
+      }
+
+      h1 {
+        font-size: 104px;
+      }
+
+      p {
+        max-width: 680px;
+        color: #33443a;
+        font-size: 30px;
+        font-weight: 500;
+        line-height: 1.32;
+      }
+
+      .brand-lockup {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+      }
+
+      .brand-logo {
+        width: 214px;
+        height: auto;
+        filter: drop-shadow(0 14px 28px rgba(31, 95, 49, 0.12));
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 94px;
+        height: 94px;
+        place-items: center;
+        border-radius: 26px;
+        background: rgba(255, 255, 255, 0.88);
+        box-shadow: 0 22px 64px rgba(27, 73, 38, 0.12);
+      }
+
+      .brand-mark img {
+        width: 76px;
+        height: 76px;
+      }
+
+      .visual {
+        position: relative;
+        display: flex;
+        flex: 1;
+        min-width: 0;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .device {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(31, 109, 52, 0.14);
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 30px 92px rgba(27, 73, 38, 0.16);
+      }
+
+      .desktop {
+        width: 1028px;
+        height: 648px;
+        border-radius: 26px;
+        padding: 18px;
+      }
+
+      .desktop::before {
+        content: "";
+        display: block;
+        height: 16px;
+        margin-bottom: 14px;
+        border-radius: 999px;
+        background:
+          radial-gradient(circle at 10px 8px, #c85b3d 0 5px, rgba(200, 91, 61, 0) 6px),
+          radial-gradient(circle at 30px 8px, #d4aa38 0 5px, rgba(212, 170, 56, 0) 6px),
+          radial-gradient(circle at 50px 8px, #2f7f46 0 5px, rgba(47, 127, 70, 0) 6px);
+      }
+
+      .desktop img {
+        width: 100%;
+        height: calc(100% - 30px);
+        border-radius: 14px;
+        object-fit: cover;
+        object-position: top left;
+      }
+
+      .phone {
+        width: 324px;
+        height: 672px;
+        border-radius: 38px;
+        padding: 18px 15px;
+      }
+
+      .phone img {
+        width: 100%;
+        height: 100%;
+        border-radius: 26px;
+        object-fit: cover;
+        object-position: top center;
+      }
+
+      .floating-card {
+        position: absolute;
+        z-index: 4;
+        min-width: 220px;
+        border: 1px solid rgba(31, 109, 52, 0.14);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.91);
+        padding: 18px 20px;
+        box-shadow: 0 20px 52px rgba(27, 73, 38, 0.14);
+      }
+
+      .floating-card strong {
+        display: block;
+        color: #112019;
+        font-family: "Exo 2", sans-serif;
+        font-size: 42px;
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+      }
+
+      .floating-card span {
+        display: block;
+        margin-top: 8px;
+        color: #33443a;
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 10px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+        background: rgba(17, 32, 25, 0.94);
+        padding: 11px 15px;
+        color: #ffffff;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 17px;
+        font-weight: 600;
+      }
+
+      .pill.amber {
+        background: rgba(255, 247, 228, 0.96);
+        color: #4a3007;
+      }
+
+      .stats-grid {
+        display: grid;
+        width: 100%;
+        max-width: 980px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+      }
+
+      .metric {
+        min-height: 190px;
+        border: 1px solid rgba(31, 109, 52, 0.12);
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.88);
+        padding: 28px;
+        box-shadow: 0 18px 50px rgba(27, 73, 38, 0.1);
+      }
+
+      .metric b {
+        display: block;
+        color: #112019;
+        font-family: "Exo 2", sans-serif;
+        font-size: 66px;
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+      }
+
+      .metric span {
+        display: block;
+        margin-top: 14px;
+        color: #33443a;
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.25;
+      }
+
+      .workflow {
+        display: grid;
+        width: 100%;
+        max-width: 970px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 22px;
+      }
+
+      .step {
+        min-height: 420px;
+        border: 1px solid rgba(31, 109, 52, 0.12);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.86);
+        padding: 26px;
+        box-shadow: 0 18px 54px rgba(27, 73, 38, 0.11);
+      }
+
+      .step-number {
+        color: #4a3007;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      .step h3 {
+        margin-top: 22px;
+        color: #112019;
+        font-family: "Exo 2", sans-serif;
+        font-size: 42px;
+        font-weight: 900;
+        line-height: 1.05;
+      }
+
+      .step p {
+        margin-top: 18px;
+        font-size: 22px;
+        line-height: 1.36;
+      }
+
+      .scene-intro .scene-content,
+      .scene-outro .scene-content {
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .scene-dashboard .floating-card.one {
+        top: 138px;
+        right: 44px;
+      }
+
+      .scene-dashboard .floating-card.two {
+        left: 8px;
+        bottom: 126px;
+      }
+
+      .scene-mobile .visual {
+        gap: 34px;
+      }
+
+      .scene-mobile .desktop {
+        width: 760px;
+        height: 548px;
+      }
+
+      .phone-note {
+        position: absolute;
+        right: 176px;
+        bottom: 126px;
+      }
+
+      .transition {
+        position: absolute;
+        inset: 0;
+        z-index: 40;
+        pointer-events: none;
+        overflow: hidden;
+      }
+
+      .wipe-strip {
+        position: absolute;
+        top: 0;
+        width: 28%;
+        height: 100%;
+        background: #1f6d34;
+        box-shadow: 24px 0 52px rgba(31, 109, 52, 0.18);
+      }
+
+      .wipe-strip:nth-child(2) {
+        left: 24%;
+        background: #2f7f46;
+      }
+
+      .wipe-strip:nth-child(3) {
+        left: 48%;
+        background: #7ab785;
+      }
+
+      .wipe-strip:nth-child(4) {
+        left: 72%;
+        background: #d4aa38;
+      }
+
+      .final-dim {
+        position: absolute;
+        inset: 0;
+        z-index: 60;
+        background: #112019;
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="28"
+      data-track-index="1"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="scene-intro" class="scene scene-intro visible">
+        <div class="grain" data-layout-ignore></div>
+        <div class="bg-word one" data-layout-ignore></div>
+        <div class="bg-word two" data-layout-ignore></div>
+        <div class="scene-content">
+          <div class="brand-lockup">
+            <div class="brand-mark"><img src="assets/app-icon-outro.png" alt="" /></div>
+            <img class="brand-logo" src="assets/logo-outro.png" alt="Хот тохижилт үйлчилгээний төв" />
+          </div>
+          <div class="copy">
+            <div class="eyebrow"><span class="dot"></span> Odoo ERP холболттой web app</div>
+            <h1>Хот тохижилтын удирдлагын төв</h1>
+            <p>Өдрийн ажил, хэлтсийн урсгал, тайлан болон хяналтыг нэг дэлгэцээс удирдана.</p>
+            <div class="pill-row">
+              <span class="pill">Dashboard</span>
+              <span class="pill amber">Review queue</span>
+              <span class="pill">Field mobile</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="scene-dashboard" class="scene scene-dashboard">
+        <div class="grain" data-layout-ignore></div>
+        <div class="bg-word one" data-layout-ignore></div>
+        <div class="scene-content">
+          <div class="copy">
+            <div class="eyebrow"><span class="dot"></span> Нэгдсэн хяналт</div>
+            <h2>Удирдлагын самбар бүх ажлыг нэгтгэнэ</h2>
+            <p>Төсөл, даалгавар, хэлтэс, техник, хүний нөөцийн мэдээлэл Odoo-оос шууд уншигдана.</p>
+          </div>
+          <div class="visual">
+            <div class="device desktop"><img src="assets/dashboard-preview.png" alt="Dashboard preview" /></div>
+            <div class="floating-card one"><strong>7</strong><span>хэлтсийн урсгал</span></div>
+            <div class="floating-card two"><strong>24/7</strong><span>live task tracking</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="scene-workflow" class="scene scene-workflow">
+        <div class="grain" data-layout-ignore></div>
+        <div class="bg-word two" data-layout-ignore></div>
+        <div class="scene-content">
+          <div class="copy">
+            <div class="eyebrow"><span class="dot"></span> Ажлын урсгал</div>
+            <h2>Даалгавар үүсээд баталгаажих хүртэл</h2>
+            <p>Менежер, ахлах мастер, талбайн ажилтан бүр өөрт хэрэгтэй харагдацаар ажиллана.</p>
+          </div>
+          <div class="workflow">
+            <article class="step">
+              <div class="step-number">01</div>
+              <h3>Төлөвлөх</h3>
+              <p>Төсөл, улирлын ажил, хэлтсийн даалгаврыг нэг бүрчлэн үүсгэнэ.</p>
+            </article>
+            <article class="step">
+              <div class="step-number">02</div>
+              <h3>Гүйцэтгэх</h3>
+              <p>Хариуцагч, статус, хугацаа, явцын мэдээлэл бодитоор шинэчлэгдэнэ.</p>
+            </article>
+            <article class="step">
+              <div class="step-number">03</div>
+              <h3>Хянах</h3>
+              <p>Тайлан, зураг, баталгаажуулалт review queue дээр төвлөрнө.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="scene-mobile" class="scene scene-mobile">
+        <div class="grain" data-layout-ignore></div>
+        <div class="bg-word one" data-layout-ignore></div>
+        <div class="scene-content">
+          <div class="copy">
+            <div class="eyebrow"><span class="dot"></span> Талбай дээрээс</div>
+            <h2>Ажилтан гар утсаараа тайлан илгээнэ</h2>
+            <p>Өнөөдрийн хуваарь, ажлын дэлгэрэнгүй, зурагтай тайлан, мэдэгдэл бүгд responsive.</p>
+          </div>
+          <div class="visual">
+            <div class="device desktop"><img src="assets/review-task.png" alt="Review task screen" /></div>
+            <div class="device phone"><img src="assets/mobile-worker.png" alt="Mobile worker screen" /></div>
+            <div class="floating-card phone-note"><strong>GPS</strong><span>зурагтай field report</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="scene-outro" class="scene scene-outro">
+        <div class="grain" data-layout-ignore></div>
+        <div class="bg-word one" data-layout-ignore></div>
+        <div class="bg-word two" data-layout-ignore></div>
+        <div class="scene-content">
+          <div class="brand-lockup">
+            <div class="brand-mark"><img src="assets/app-icon.png" alt="" /></div>
+            <img class="brand-logo" src="assets/logo.png" alt="Хот тохижилт үйлчилгээний төв" />
+          </div>
+          <div class="copy">
+            <div class="eyebrow"><span class="dot"></span> Нэг төвөөс удирдах боломж</div>
+            <h2>Хотын өдөр тутмын ажлыг илүү тод, хурдан, хяналттай болгоно</h2>
+            <div class="stats-grid">
+              <div class="metric"><b>ERP</b><span>Odoo өгөгдөлтэй холбогдоно</span></div>
+              <div class="metric"><b>UI</b><span>desktop болон mobile responsive</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="transition" data-layout-ignore>
+        <div class="wipe-strip"></div>
+        <div class="wipe-strip"></div>
+        <div class="wipe-strip"></div>
+        <div class="wipe-strip"></div>
+      </div>
+      <div class="final-dim"></div>
+
+      <script>
+        window.__timelines = window.__timelines || {};
+
+        const tl = gsap.timeline({ paused: true });
+
+        function has(selector) {
+          return document.querySelector(selector);
+        }
+
+        function fromIf(selector, vars, at) {
+          if (has(selector)) {
+            tl.from(selector, vars, at);
+          }
+        }
+
+        function toIf(selector, vars, at) {
+          if (has(selector)) {
+            tl.to(selector, vars, at);
+          }
+        }
+
+        function enter(scene, at) {
+          const root = `#scene-${scene}`;
+          fromIf(`${root} .eyebrow`, { y: 28, opacity: 0, duration: 0.52, ease: "power3.out" }, at + 0.18);
+          fromIf(`${root} h1, ${root} h2`, { y: 54, opacity: 0, duration: 0.72, ease: "expo.out" }, at + 0.32);
+          fromIf(`${root} p`, { x: -38, opacity: 0, duration: 0.58, ease: "power2.out" }, at + 0.58);
+          fromIf(`${root} .brand-lockup`, { scale: 0.92, opacity: 0, duration: 0.55, ease: "back.out(1.4)" }, at + 0.2);
+          fromIf(`${root} .pill`, { y: 24, opacity: 0, duration: 0.42, stagger: 0.08, ease: "sine.out" }, at + 0.86);
+          fromIf(`${root} .device`, { y: 70, scale: 0.96, opacity: 0, duration: 0.78, stagger: 0.12, ease: "power4.out" }, at + 0.34);
+          fromIf(`${root} .floating-card`, { x: 42, y: 28, opacity: 0, duration: 0.56, stagger: 0.14, ease: "back.out(1.25)" }, at + 0.92);
+          fromIf(`${root} .step`, { y: 58, rotation: -1.5, opacity: 0, duration: 0.64, stagger: 0.16, ease: "power3.out" }, at + 0.42);
+          fromIf(`${root} .metric`, { y: 34, opacity: 0, duration: 0.52, stagger: 0.12, ease: "power2.out" }, at + 1.02);
+          fromIf(`${root} .bg-word`, { opacity: 0, scale: 0.94, duration: 0.8, stagger: 0.08, ease: "sine.out" }, at + 0.12);
+        }
+
+        function ambient(scene, at, duration) {
+          const root = `#scene-${scene}`;
+          toIf(`${root} .bg-word.one`, { x: 28, y: -10, duration, ease: "sine.inOut" }, at);
+          toIf(`${root} .bg-word.two`, { x: -36, y: 16, duration, ease: "sine.inOut" }, at);
+          toIf(`${root} .device`, { y: -18, duration, ease: "sine.inOut" }, at + 0.4);
+          toIf(`${root} .floating-card`, { y: -16, duration: duration - 0.5, ease: "sine.inOut" }, at + 0.5);
+        }
+
+        function transition(fromScene, toScene, at) {
+          tl.to(".wipe-strip", { x: 2500, duration: 0.58, stagger: 0.035, ease: "power3.inOut" }, at);
+          tl.set(`#scene-${toScene}`, { opacity: 1 }, at + 0.3);
+          tl.set(`#scene-${fromScene}`, { opacity: 0 }, at + 0.34);
+          tl.set(".wipe-strip", { x: -2600 }, at + 0.92);
+        }
+
+        tl.set(".scene", { opacity: 0 }, 0);
+        tl.set(".wipe-strip", { x: -2600 }, 0);
+        tl.set("#scene-intro", { opacity: 1 }, 0);
+        enter("intro", 0);
+        ambient("intro", 0, 5.3);
+
+        transition("intro", "dashboard", 5.1);
+        enter("dashboard", 5.55);
+        ambient("dashboard", 5.45, 5.6);
+
+        transition("dashboard", "workflow", 10.8);
+        enter("workflow", 11.25);
+        ambient("workflow", 11.15, 5.4);
+
+        transition("workflow", "mobile", 16.2);
+        enter("mobile", 16.65);
+        ambient("mobile", 16.55, 5.8);
+
+        transition("mobile", "outro", 22.0);
+        enter("outro", 22.45);
+        ambient("outro", 22.35, 5.4);
+        tl.to(".final-dim", { opacity: 1, duration: 0.75, ease: "sine.inOut" }, 27.15);
+
+        window.__timelines["main"] = tl;
+      </script>
+    </main>
+  </body>
+</html>

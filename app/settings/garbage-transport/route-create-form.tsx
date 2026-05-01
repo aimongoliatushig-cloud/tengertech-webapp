@@ -27,6 +27,10 @@ function normalizeSearchText(value: string) {
   return value.toLocaleLowerCase("mn-MN").trim();
 }
 
+function uniqueIds(values: number[]) {
+  return Array.from(new Set(values.filter((value) => Number.isInteger(value) && value > 0)));
+}
+
 function RoutePointForm({
   action,
   points,
@@ -35,26 +39,30 @@ function RoutePointForm({
   route?: RouteEditFormProps["route"];
 }) {
   const [query, setQuery] = useState("");
-  const [selectedPointIds, setSelectedPointIds] = useState<number[]>(route?.pointIds ?? []);
+  const [selectedPointIds, setSelectedPointIds] = useState<number[]>(() => uniqueIds(route?.pointIds ?? []));
   const isEditMode = Boolean(route);
 
+  const uniquePoints = useMemo(
+    () => Array.from(new Map(points.map((point) => [point.id, point])).values()),
+    [points],
+  );
   const selectedIdSet = useMemo(() => new Set(selectedPointIds), [selectedPointIds]);
   const selectedPoints = useMemo(
     () => selectedPointIds
-      .map((pointId) => points.find((point) => point.id === pointId))
+      .map((pointId) => uniquePoints.find((point) => point.id === pointId))
       .filter((point): point is RoutePointOption => Boolean(point)),
-    [points, selectedPointIds],
+    [selectedPointIds, uniquePoints],
   );
   const filteredPoints = useMemo(() => {
     const normalizedQuery = normalizeSearchText(query);
     if (!normalizedQuery) {
-      return points;
+      return uniquePoints;
     }
 
-    return points.filter((point) =>
+    return uniquePoints.filter((point) =>
       normalizeSearchText(`${point.subdistrictName} ${point.name}`).includes(normalizedQuery),
     );
-  }, [points, query]);
+  }, [query, uniquePoints]);
 
   const togglePoint = (pointId: number) => {
     setSelectedPointIds((current) =>

@@ -17,6 +17,7 @@ import styles from "./global-loading.module.css";
 
 const DEFAULT_LOADING_MESSAGE = "Уншиж байна...";
 const DEFAULT_SAVING_MESSAGE = "Хадгалж байна...";
+const GLOBAL_LOADING_TIMEOUT_MS = 20_000;
 
 type GlobalLoadingContextValue = {
   isLoading: boolean;
@@ -105,6 +106,7 @@ export function GlobalLoadingProvider({ children }: { children: ReactNode }) {
   const [message, setMessage] = useState(DEFAULT_LOADING_MESSAGE);
   const [activeCount, setActiveCount] = useState(0);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const safetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didPathnameMountRef = useRef(false);
   const clickedSubmitFormsRef = useRef<WeakSet<HTMLFormElement>>(new WeakSet());
 
@@ -112,6 +114,13 @@ export function GlobalLoadingProvider({ children }: { children: ReactNode }) {
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
+    }
+  }, []);
+
+  const clearSafetyTimer = useCallback(() => {
+    if (safetyTimerRef.current) {
+      clearTimeout(safetyTimerRef.current);
+      safetyTimerRef.current = null;
     }
   }, []);
 
@@ -130,8 +139,24 @@ export function GlobalLoadingProvider({ children }: { children: ReactNode }) {
 
   const hideAllLoading = useCallback(() => {
     clearHideTimer();
+    clearSafetyTimer();
     setActiveCount(0);
-  }, [clearHideTimer]);
+  }, [clearHideTimer, clearSafetyTimer]);
+
+  useEffect(() => {
+    clearSafetyTimer();
+
+    if (activeCount <= 0) {
+      return;
+    }
+
+    safetyTimerRef.current = setTimeout(() => {
+      console.error("Global loading overlay timed out.");
+      setActiveCount(0);
+    }, GLOBAL_LOADING_TIMEOUT_MS);
+
+    return clearSafetyTimer;
+  }, [activeCount, clearSafetyTimer]);
 
   useEffect(() => {
     if (!didPathnameMountRef.current) {

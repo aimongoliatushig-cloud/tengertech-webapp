@@ -1,0 +1,484 @@
+.page {
+  display: grid;
+  gap: 18px;
+  padding: 20px 0 72px;
+  color: var(--ink-900);
+}
+
+.header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-panel-bg);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.header h1 {
+  margin: 10px 0 8px;
+  color: #1f2b25;
+  font-family: var(--font-body);
+  font-size: clamp(1.4rem, 2.4vw, 2rem);
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.header p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--ink-700);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-800);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subnav a,
+.primaryAction,
+.secondaryAction,
+.primaryButton,
+.formActions button,
+.actionForm button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--ds-control-height);
+  padding: 0 12px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-control);
+  background: var(--ds-panel-strong-bg);
+  color: var(--ink-900);
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primaryAction,
+.primaryButton {
+  border-color: rgba(31, 95, 49, 0.22);
+  background: rgba(76, 158, 92, 0.12);
+  color: #256b37;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metricCard,
+.panel,
+.formPanel,
+.tableShell,
+.statusPanel,
+.errorPanel,
+.emptyPanel,
+.noticePanel,
+.requestCard,
+.actionForm {
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-panel-bg);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.metricCard {
+  display: grid;
+  gap: 8px;
+  min-height: 128px;
+  padding: 16px;
+}
+
+.metricCard svg {
+  width: 22px;
+  height: 22px;
+  color: var(--brand-800);
+}
+
+.metricCard span {
+  color: var(--ink-700);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.metricCard strong {
+  align-self: end;
+  font-family: var(--font-body);
+  font-size: clamp(1.4rem, 2vw, 1.9rem);
+  line-height: 1;
+}
+
+.panel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.panel h2,
+.actionForm h3 {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  letter-spacing: 0;
+}
+
+.panel p {
+  margin: 0;
+  color: var(--ink-800);
+  line-height: 1.55;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panelHeader a,
+.panelHeader span {
+  color: var(--ink-700);
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+.requestList {
+  display: grid;
+  gap: 10px;
+}
+
+.requestCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) auto auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.requestCard div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.requestCard strong,
+.tableRow strong {
+  overflow-wrap: anywhere;
+}
+
+.requestCard span,
+.requestCard small {
+  color: var(--ink-700);
+  font-size: 0.84rem;
+}
+
+.stateBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-800);
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.statusPanel,
+.errorPanel,
+.emptyPanel,
+.noticePanel {
+  padding: 14px;
+  color: var(--ink-700);
+  line-height: 1.55;
+}
+
+.errorPanel {
+  border-color: rgba(177, 94, 56, 0.24);
+  background: rgba(255, 245, 239, 0.96);
+  color: #8a3f24;
+}
+
+.noticePanel {
+  border-color: rgba(74, 154, 93, 0.2);
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-900);
+}
+
+.filterBar input,
+.formPanel input,
+.formPanel select,
+.formPanel textarea,
+.actionForm input,
+.actionForm select,
+.actionForm textarea {
+  width: 100%;
+  min-height: var(--ds-control-height);
+  padding: 0 12px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-900);
+  font: inherit;
+}
+
+.formPanel textarea,
+.actionForm textarea {
+  padding-block: 10px;
+  resize: vertical;
+}
+
+.tableShell {
+  overflow: hidden;
+}
+
+.tableHeader,
+.tableRow {
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr 0.9fr 0.9fr 0.9fr;
+  gap: 12px;
+  align-items: center;
+  padding: 13px 14px;
+}
+
+.tableHeader {
+  background: rgba(74, 154, 93, 0.08);
+  color: var(--ink-700);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.tableRow {
+  border-top: 1px solid var(--ds-border);
+  color: inherit;
+  font-size: 0.88rem;
+  text-decoration: none;
+}
+
+.formPanel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.formPanel label,
+.actionForm label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  color: var(--ink-800);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.stepper {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stepper li {
+  min-height: 38px;
+  padding: 8px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--ink-700);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.stepper .stepActive {
+  border-color: rgba(31, 95, 49, 0.2);
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-900);
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.quoteGrid,
+.workflowGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.quoteCard,
+.quoteSelected {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.quoteSelected {
+  border-color: rgba(31, 95, 49, 0.28);
+  background: rgba(74, 154, 93, 0.11);
+}
+
+.quoteCard span,
+.quoteSelected span {
+  font-weight: 800;
+}
+
+.quoteCard small,
+.quoteSelected small {
+  color: var(--ink-700);
+}
+
+.actionForm {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.inlineFields {
+  display: grid;
+  grid-template-columns: 1fr 0.7fr 1fr;
+  gap: 8px;
+}
+
+.weekGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.weekGrid article {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.weekGrid span {
+  color: var(--ink-700);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 1120px) {
+  .metricGrid,
+  .detailGrid,
+  .quoteGrid,
+  .workflowGrid,
+  .weekGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stepper {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 12px 0 96px;
+  }
+
+  .header {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .metricGrid,
+  .detailGrid,
+  .quoteGrid,
+  .workflowGrid,
+  .weekGrid,
+  .inlineFields {
+    grid-template-columns: 1fr;
+  }
+
+  .metricGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .metricCard {
+    min-height: 126px;
+    padding: 12px;
+  }
+
+  .metricCard span {
+    font-size: 0.76rem;
+  }
+
+  .metricCard strong {
+    font-size: 1.35rem;
+  }
+
+  .requestCard,
+  .tableHeader,
+  .tableRow {
+    grid-template-columns: 1fr;
+  }
+
+  .tableHeader {
+    display: none;
+  }
+
+  .tableRow {
+    gap: 6px;
+  }
+
+  .stepper {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .formActions {
+    flex-direction: column-reverse;
+  }
+
+  .formActions button,
+  .primaryAction,
+  .secondaryAction {
+    width: 100%;
+  }
+}

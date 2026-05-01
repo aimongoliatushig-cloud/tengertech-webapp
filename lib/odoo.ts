@@ -486,6 +486,22 @@ const DEFAULT_CONNECTION: OdooConnection = {
   password: process.env.ODOO_PASSWORD ?? "admin",
 };
 
+const FLEET_REPAIR_GROUP_XML_IDS = {
+  mechanic: "fleet_repair_workflow.group_fleet_repair_mechanic",
+  teamLeader: "fleet_repair_workflow.group_fleet_repair_team_leader",
+  accounting: "fleet_repair_workflow.group_fleet_repair_accounting",
+  administration: "fleet_repair_workflow.group_fleet_repair_administration",
+  finance: "fleet_repair_workflow.group_fleet_repair_finance",
+  purchaser: "fleet_repair_workflow.group_fleet_repair_purchaser",
+  generalManager: "fleet_repair_workflow.group_fleet_repair_general_manager",
+  ceo: "fleet_repair_workflow.group_fleet_repair_ceo",
+  manager: "fleet_repair_workflow.group_fleet_repair_manager",
+} as const;
+
+const OPS_PROFILE_GROUP_XML_IDS = {
+  storekeeper: "ops_people_registry.group_ops_profile_storekeeper",
+} as const;
+
 type OdooAuthSession = {
   uid: number;
   connection: OdooConnection;
@@ -1637,45 +1653,58 @@ export async function authenticateOdooUser(
     .then((employees) => employees[0] ?? null)
     .catch(() => null);
 
+  const hasGroup = (xmlId: string) =>
+    executeKw<boolean>(
+      uid,
+      "res.users",
+      "has_group",
+      [[uid], xmlId],
+      {},
+      connection,
+    ).catch(() => false);
+
   const [
     mfoManager,
     mfoDispatcher,
     mfoInspector,
     mfoMobile,
+    fleetRepairMechanic,
+    fleetRepairTeamLeader,
+    fleetRepairAccounting,
+    fleetRepairAdministration,
+    fleetRepairFinance,
+    fleetRepairPurchaser,
+    fleetRepairGeneralManager,
+    fleetRepairCeo,
+    fleetRepairManager,
+    opsStorekeeper,
   ] = await Promise.all([
-    executeKw<boolean>(
-      uid,
-      "res.users",
-      "has_group",
-      [[uid], "municipal_field_ops.group_mfo_manager"],
-      {},
-      connection,
-    ),
-    executeKw<boolean>(
-      uid,
-      "res.users",
-      "has_group",
-      [[uid], "municipal_field_ops.group_mfo_dispatcher"],
-      {},
-      connection,
-    ),
-    executeKw<boolean>(
-      uid,
-      "res.users",
-      "has_group",
-      [[uid], "municipal_field_ops.group_mfo_inspector"],
-      {},
-      connection,
-    ),
-    executeKw<boolean>(
-      uid,
-      "res.users",
-      "has_group",
-      [[uid], "municipal_field_ops.group_mfo_mobile_user"],
-      {},
-      connection,
-    ),
+    hasGroup("municipal_field_ops.group_mfo_manager"),
+    hasGroup("municipal_field_ops.group_mfo_dispatcher"),
+    hasGroup("municipal_field_ops.group_mfo_inspector"),
+    hasGroup("municipal_field_ops.group_mfo_mobile_user"),
+    hasGroup(FLEET_REPAIR_GROUP_XML_IDS.mechanic),
+    hasGroup(FLEET_REPAIR_GROUP_XML_IDS.teamLeader),
+    hasGroup(FLEET_REPAIR_GROUP_XML_IDS.accounting),
+    hasGroup(FLEET_REPAIR_GROUP_XML_IDS.administration),
+    hasGroup(FLEET_REPAIR_GROUP_XML_IDS.finance),
+    hasGroup(FLEET_REPAIR_GROUP_XML_IDS.purchaser),
+    hasGroup(FLEET_REPAIR_GROUP_XML_IDS.generalManager),
+    hasGroup(FLEET_REPAIR_GROUP_XML_IDS.ceo),
+    hasGroup(FLEET_REPAIR_GROUP_XML_IDS.manager),
+    hasGroup(OPS_PROFILE_GROUP_XML_IDS.storekeeper),
   ]);
+  const canPurchaseFleetRepair = fleetRepairPurchaser || opsStorekeeper;
+  const fleetRepairAny =
+    fleetRepairMechanic ||
+    fleetRepairTeamLeader ||
+    fleetRepairAccounting ||
+    fleetRepairAdministration ||
+    fleetRepairFinance ||
+    canPurchaseFleetRepair ||
+    fleetRepairGeneralManager ||
+    fleetRepairCeo ||
+    fleetRepairManager;
 
   return {
     uid,
@@ -1688,6 +1717,17 @@ export async function authenticateOdooUser(
         mfoDispatcher,
         mfoInspector,
         mfoMobile,
+        fleetRepairAny,
+        fleetRepairMechanic,
+        fleetRepairTeamLeader,
+        fleetRepairAccounting,
+        fleetRepairAdministration,
+        fleetRepairFinance,
+        fleetRepairPurchaser: canPurchaseFleetRepair,
+        fleetRepairGeneralManager,
+        fleetRepairCeo,
+        fleetRepairManager,
+        opsStorekeeper,
       },
     },
   };

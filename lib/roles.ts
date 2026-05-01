@@ -13,6 +13,17 @@ export type RoleGroupFlags = {
   mfoDispatcher: boolean;
   mfoInspector: boolean;
   mfoMobile: boolean;
+  fleetRepairAny?: boolean;
+  fleetRepairMechanic?: boolean;
+  fleetRepairTeamLeader?: boolean;
+  fleetRepairAccounting?: boolean;
+  fleetRepairAdministration?: boolean;
+  fleetRepairFinance?: boolean;
+  fleetRepairPurchaser?: boolean;
+  fleetRepairGeneralManager?: boolean;
+  fleetRepairCeo?: boolean;
+  fleetRepairManager?: boolean;
+  opsStorekeeper?: boolean;
 };
 
 export type RoleContext = {
@@ -41,6 +52,17 @@ const EMPTY_GROUP_FLAGS: RoleGroupFlags = {
   mfoDispatcher: false,
   mfoInspector: false,
   mfoMobile: false,
+  fleetRepairAny: false,
+  fleetRepairMechanic: false,
+  fleetRepairTeamLeader: false,
+  fleetRepairAccounting: false,
+  fleetRepairAdministration: false,
+  fleetRepairFinance: false,
+  fleetRepairPurchaser: false,
+  fleetRepairGeneralManager: false,
+  fleetRepairCeo: false,
+  fleetRepairManager: false,
+  opsStorekeeper: false,
 };
 
 function normalizeGroupFlags(groupFlags?: Partial<RoleGroupFlags> | null): RoleGroupFlags {
