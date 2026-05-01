@@ -1,9 +1,5 @@
 "use client";
 
-import { useRef } from "react";
-
-import { useGlobalLoading } from "@/app/_components/global-loading";
-
 type LoginFormProps = {
   className: string;
   fieldClassName: string;
@@ -19,46 +15,12 @@ export function LoginForm({
   errorMessage,
   errorClassName,
 }: LoginFormProps) {
-  const formRef = useRef<HTMLFormElement>(null);
-  const isSubmittingRef = useRef(false);
-  const { hideLoading, showLoading } = useGlobalLoading();
-
   return (
     <form
-      ref={formRef}
       action="/auth/login"
       method="post"
       className={className}
-      data-global-loading="false"
       data-loading-label="Уншиж байна..."
-      onSubmit={async (event) => {
-        if (isSubmittingRef.current) {
-          return;
-        }
-
-        event.preventDefault();
-        isSubmittingRef.current = true;
-        showLoading("Уншиж байна...");
-
-        try {
-          const response = await fetch("/auth/login", {
-            method: "POST",
-            body: new FormData(event.currentTarget),
-            credentials: "same-origin",
-            redirect: "manual",
-          });
-          const redirectTarget =
-            response.headers.get("location") ??
-            (response.ok ? "/" : "/login?error=connection");
-
-          window.location.assign(redirectTarget);
-        } catch {
-          isSubmittingRef.current = false;
-          window.location.assign("/login?error=connection");
-        } finally {
-          hideLoading();
-        }
-      }}
     >
       <label className={fieldClassName} htmlFor="login-name">
         <span>Нэвтрэх нэр</span>

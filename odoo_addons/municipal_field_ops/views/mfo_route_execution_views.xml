@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mfo_route_execution_list" model="ir.ui.view">
+        <field name="name">mfo.route.execution.list</field>
+        <field name="model">mfo.route.execution</field>
+        <field name="arch" type="xml">
+            <list string="Өдрийн маршрут" decoration-success="state == 'verified'" decoration-danger="state == 'delayed'" decoration-muted="state == 'cancelled'">
+                <field name="date"/>
+                <field name="route_id"/>
+                <field name="vehicle_id"/>
+                <field name="driver_id"/>
+                <field name="inspector_id"/>
+                <field name="start_datetime"/>
+                <field name="end_datetime"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mfo_route_execution_form" model="ir.ui.view">
+        <field name="name">mfo.route.execution.form</field>
+        <field name="model">mfo.route.execution</field>
+        <field name="arch" type="xml">
+            <form string="Өдрийн маршрут">
+                <header>
+                    <button name="action_plan" string="Төлөвлөх" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_dispatch" string="Хуваарилах" type="object" class="btn-primary" invisible="state != 'planned'"/>
+                    <button name="action_start" string="Ажил эхлүүлэх" type="object" invisible="state != 'dispatched'"/>
+                    <button name="action_submit" string="Илгээх" type="object" invisible="state != 'in_progress'"/>
+                    <button name="action_verify" string="Батлах" type="object" class="btn-primary" invisible="state != 'submitted'"/>
+                    <button name="action_delay" string="Саатуулах" type="object" invisible="state not in ('dispatched', 'in_progress')"/>
+                    <button name="action_cancel" string="Цуцлах" type="object" invisible="state == 'cancelled'"/>
+                    <button name="action_reset_to_draft" string="Ноорог болгох" type="object" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,planned,dispatched,in_progress,submitted,verified"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="date"/>
+                            <field name="route_id"/>
+                            <field name="template_id"/>
+                            <field name="task_id"/>
+                        </group>
+                        <group>
+                            <field name="vehicle_id"/>
+                            <field name="driver_id"/>
+                            <field name="inspector_id"/>
+                            <field name="start_datetime"/>
+                            <field name="end_datetime"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Маршрутын цэг">
+                            <field name="stop_line_ids">
+                                <list editable="bottom">
+                                    <field name="sequence"/>
+                                    <field name="collection_point_id"/>
+                                    <field name="state"/>
+                                    <field name="arrival_datetime"/>
+                                    <field name="completed_datetime"/>
+                                    <field name="note"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Зурагт тайлан">
+                            <field name="report_ids">
+                                <list>
+                                    <field name="capture_datetime"/>
+                                    <field name="stop_line_id"/>
+                                    <field name="proof_type"/>
+                                    <field name="uploader_user_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Асуудал">
+                            <field name="issue_ids">
+                                <list>
+                                    <field name="report_datetime"/>
+                                    <field name="stop_line_id"/>
+                                    <field name="issue_type"/>
+                                    <field name="severity"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mfo_route_execution_search" model="ir.ui.view">
+        <field name="name">mfo.route.execution.search</field>
+        <field name="model">mfo.route.execution</field>
+        <field name="arch" type="xml">
+            <search string="Өдрийн маршрут">
+                <field name="date"/>
+                <field name="route_id"/>
+                <field name="vehicle_id"/>
+                <field name="driver_id"/>
+                <field name="inspector_id"/>
+                <filter name="today" string="Өнөөдөр" domain="[('date', '=', context_today())]"/>
+                <filter name="submitted" string="Хяналтын тайлан" domain="[('state', '=', 'submitted')]"/>
+                <group>
+                    <filter name="group_state" string="Төлөв" context="{'group_by': 'state'}"/>
+                    <filter name="group_route" string="Маршрут" context="{'group_by': 'route_id'}"/>
+                    <filter name="group_vehicle" string="Машин" context="{'group_by': 'vehicle_id'}"/>
+                    <filter name="group_inspector" string="Хяналтын ажилтан" context="{'group_by': 'inspector_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mfo_route_execution" model="ir.actions.act_window">
+        <field name="name">Өдрийн маршрут</field>
+        <field name="res_model">mfo.route.execution</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_mfo_route_execution_search"/>
+    </record>
+</odoo>

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_municipal_complaint_root"
+              name="Иргэний гомдол"
+              parent="municipal_core.menu_municipal_core_root"
+              sequence="70"
+              groups="municipal_public_services.group_municipal_complaint_manager,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_municipal_complaint"
+              name="Гомдлын бүртгэл"
+              parent="menu_municipal_complaint_root"
+              action="action_municipal_complaint"
+              sequence="10"/>
+
+    <menuitem id="menu_municipal_dashboard_root"
+              name="Dashboard"
+              parent="municipal_core.menu_municipal_core_root"
+              sequence="80"
+              groups="municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin,municipal_core.group_municipal_it"/>
+
+    <menuitem id="menu_municipal_dashboard_snapshot"
+              name="Dashboard snapshot"
+              parent="menu_municipal_dashboard_root"
+              action="action_municipal_dashboard_snapshot"
+              sequence="10"/>
+
+    <menuitem id="menu_municipal_operational_reports_root"
+              name="Нэгдсэн тайлан"
+              parent="municipal_core.menu_municipal_core_root"
+              sequence="85"
+              groups="municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_report_daily_work"
+              name="Өдрийн ажлын тайлан"
+              parent="menu_municipal_operational_reports_root"
+              action="action_report_daily_work"
+              sequence="10"/>
+
+    <menuitem id="menu_report_department_work"
+              name="Хэлтсийн тайлан"
+              parent="menu_municipal_operational_reports_root"
+              action="action_report_department_work"
+              sequence="20"/>
+
+    <menuitem id="menu_report_garbage_route"
+              name="Хог тээвэрлэлтийн тайлан"
+              parent="menu_municipal_operational_reports_root"
+              action="action_report_garbage_route"
+              sequence="30"/>
+
+    <menuitem id="menu_report_green_area"
+              name="Ногоон байгууламжийн тайлан"
+              parent="menu_municipal_operational_reports_root"
+              action="action_report_green_area_placeholder"
+              sequence="40"/>
+
+    <menuitem id="menu_report_improvement"
+              name="Тохижилтын тайлан"
+              parent="menu_municipal_operational_reports_root"
+              action="action_report_improvement_placeholder"
+              sequence="50"/>
+
+    <menuitem id="menu_report_repair"
+              name="Засварын тайлан"
+              parent="menu_municipal_operational_reports_root"
+              action="action_report_repair"
+              sequence="60"/>
+
+    <menuitem id="menu_report_overdue_work"
+              name="Хугацаа хэтэрсэн ажлын тайлан"
+              parent="menu_municipal_operational_reports_root"
+              action="action_report_overdue_work"
+              sequence="70"/>
+
+    <menuitem id="menu_report_with_photo"
+              name="Зурагтай тайлан"
+              parent="menu_municipal_operational_reports_root"
+              action="action_report_with_photo"
+              sequence="80"/>
+
+    <menuitem id="menu_municipal_audit_log"
+              name="Audit log"
+              parent="municipal_core.menu_municipal_settings_root"
+              action="action_municipal_audit_log"
+              sequence="80"
+              groups="municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin,municipal_core.group_municipal_it"/>
+</odoo>

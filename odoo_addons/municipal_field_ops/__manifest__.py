@@ -1,0 +1,31 @@
+# -*- coding: utf-8 -*-
+{
+    "name": "Хот тохижилтын талбайн ажиллагаа",
+    "summary": "Хог тээвэрлэлтийн маршрут, талбайн тайлан, гар утасны compatibility модуль",
+    "version": "19.0.1.0.1",
+    "category": "Operations/Municipal",
+    "author": "TengerTech",
+    "website": "https://tengertech.mn",
+    "license": "LGPL-3",
+    "depends": [
+        "municipal_core",
+        "project",
+        "fleet",
+        "hr",
+        "mail",
+        "uom",
+    ],
+    "data": [
+        "security/municipal_field_ops_security.xml",
+        "security/ir.model.access.csv",
+        "views/mfo_route_views.xml",
+        "views/mfo_collection_point_views.xml",
+        "views/mfo_route_template_views.xml",
+        "views/mfo_route_execution_views.xml",
+        "views/mfo_issue_report_views.xml",
+        "views/ops_task_report_views.xml",
+        "views/menus.xml",
+    ],
+    "installable": True,
+    "application": False,
+}

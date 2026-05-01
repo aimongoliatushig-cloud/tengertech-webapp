@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_municipal_core_root"
+              name="Хот тохижилтын систем"
+              sequence="15"
+              groups="municipal_core.group_municipal_worker,municipal_core.group_municipal_master,municipal_core.group_municipal_inspector,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_hr,municipal_core.group_municipal_admin,municipal_core.group_municipal_it"/>
+
+    <menuitem id="menu_municipal_work_root"
+              name="Ажил"
+              parent="menu_municipal_core_root"
+              sequence="10"/>
+
+    <menuitem id="menu_municipal_work_all"
+              name="Бүх ажил"
+              parent="menu_municipal_work_root"
+              action="action_municipal_work_all"
+              sequence="10"
+              groups="municipal_core.group_municipal_master,municipal_core.group_municipal_inspector,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin,municipal_core.group_municipal_it"/>
+
+    <menuitem id="menu_municipal_work_my"
+              name="Миний ажил"
+              parent="menu_municipal_work_root"
+              action="action_municipal_work_my"
+              sequence="20"/>
+
+    <menuitem id="menu_municipal_work_under_review"
+              name="Хяналтад байгаа"
+              parent="menu_municipal_work_root"
+              action="action_municipal_work_under_review"
+              sequence="30"
+              groups="municipal_core.group_municipal_inspector,municipal_core.group_municipal_master,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_municipal_work_returned"
+              name="Буцаагдсан"
+              parent="menu_municipal_work_root"
+              action="action_municipal_work_returned"
+              sequence="40"/>
+
+    <menuitem id="menu_municipal_work_type_under_work"
+              name="Ажлын төрөл"
+              parent="menu_municipal_work_root"
+              action="action_municipal_work_type"
+              sequence="50"
+              groups="municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_municipal_report_root"
+              name="Тайлан"
+              parent="menu_municipal_core_root"
+              sequence="20"/>
+
+    <menuitem id="menu_municipal_work_report"
+              name="Ажлын тайлан"
+              parent="menu_municipal_report_root"
+              action="action_municipal_work_report"
+              sequence="10"/>
+
+    <menuitem id="menu_municipal_hr_root"
+              name="Хүний нөөц"
+              parent="menu_municipal_core_root"
+              sequence="30"
+              groups="municipal_core.group_municipal_hr,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_municipal_attendance_issue"
+              name="Ирцийн асуудал"
+              parent="menu_municipal_hr_root"
+              action="action_municipal_attendance_issue"
+              sequence="10"/>
+
+    <menuitem id="menu_municipal_discipline"
+              name="Сахилгын бүртгэл"
+              parent="menu_municipal_hr_root"
+              action="action_municipal_discipline"
+              sequence="20"/>
+
+    <menuitem id="menu_municipal_employee_activity"
+              name="Ажилтны идэвх"
+              parent="menu_municipal_hr_root"
+              action="action_municipal_employee_activity"
+              sequence="30"
+              groups="municipal_core.group_municipal_hr,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_municipal_hr_reports_root"
+              name="HR тайлан"
+              parent="menu_municipal_hr_root"
+              sequence="40"/>
+
+    <menuitem id="menu_municipal_attendance_today_report"
+              name="Өдрийн ирцийн тайлан"
+              parent="menu_municipal_hr_reports_root"
+              action="action_municipal_attendance_today_report"
+              sequence="10"/>
+
+    <menuitem id="menu_municipal_attendance_late_report"
+              name="Хоцролтын тайлан"
+              parent="menu_municipal_hr_reports_root"
+              action="action_municipal_attendance_late_report"
+              sequence="20"/>
+
+    <menuitem id="menu_municipal_attendance_absence_report"
+              name="Таслалтын тайлан"
+              parent="menu_municipal_hr_reports_root"
+              action="action_municipal_attendance_absence_report"
+              sequence="30"/>
+
+    <menuitem id="menu_municipal_attendance_repeated_report"
+              name="Давтан зөрчилтэй ажилтны тайлан"
+              parent="menu_municipal_hr_reports_root"
+              action="action_municipal_attendance_repeated_report"
+              sequence="40"/>
+
+    <menuitem id="menu_municipal_discipline_report"
+              name="Сахилгын тайлан"
+              parent="menu_municipal_hr_reports_root"
+              action="action_municipal_discipline_report"
+              sequence="50"/>
+
+    <menuitem id="menu_municipal_activity_report"
+              name="Идэвхийн тайлан"
+              parent="menu_municipal_hr_reports_root"
+              action="action_municipal_employee_activity"
+              sequence="60"/>
+
+    <menuitem id="menu_municipal_settings_root"
+              name="Тохиргоо"
+              parent="menu_municipal_core_root"
+              sequence="90"
+              groups="municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_municipal_settings_work_type"
+              name="Ажлын төрөл"
+              parent="menu_municipal_settings_root"
+              action="action_municipal_work_type"
+              sequence="10"/>
+</odoo>

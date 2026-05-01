@@ -200,6 +200,57 @@ type ConnectionOverrides = Partial<OdooConnection>;
 const PROCUREMENT_API_SETUP_ERROR =
   "Худалдан авалтын API олдсонгүй. Odoo дээр municipal_procurement_workflow модуль суусан эсэх болон addons_path-д энэ repo-ийн custom_addons орсон эсэхийг шалгана уу.";
 
+export function isProcurementSetupError(error: unknown) {
+  return String(error).includes(PROCUREMENT_API_SETUP_ERROR);
+}
+
+export function createFallbackProcurementUser(session: {
+  uid: number;
+  name: string;
+  login: string;
+  role: string;
+}): ProcurementUser {
+  const isAdmin = session.role === "system_admin";
+  const isDirector = session.role === "director";
+  const isGeneralManager = session.role === "general_manager";
+
+  return {
+    id: session.uid,
+    name: session.name,
+    login: session.login,
+    company: "Тохижилт үйлчилгээний төв",
+    flags: {
+      requester: true,
+      storekeeper: false,
+      finance: false,
+      office_clerk: false,
+      contract_officer: false,
+      director: isDirector,
+      general_manager: isGeneralManager,
+      admin: isAdmin,
+    },
+  };
+}
+
+export function createEmptyProcurementDashboard(): ProcurementDashboard {
+  return {
+    metrics: {
+      total: 0,
+      low_flow: 0,
+      high_flow: 0,
+      payment_pending: 0,
+      receipt_pending: 0,
+      delayed: 0,
+      average_resolution_days: 0,
+      generated_on: new Date().toISOString(),
+    },
+    storekeeper_load: [],
+    project_progress: [],
+    supplier_counts: [],
+    items: [],
+  };
+}
+
 function getCookieHeaderValue(setCookieHeader: string | null) {
   if (!setCookieHeader) {
     throw new Error("Odoo session cookie олдсонгүй.");

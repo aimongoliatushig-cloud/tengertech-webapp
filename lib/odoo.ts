@@ -89,7 +89,7 @@ type OdooUserRecord = {
   id: number;
   name: string;
   login: string;
-  ops_user_type: string | false;
+  ops_user_type?: string | false;
 };
 
 type OdooAuthEmployeeRecord = {
@@ -339,6 +339,18 @@ function inferRoleFromEmployeeTitle(employee?: OdooAuthEmployeeRecord | null) {
       : "hr_specialist";
   }
 
+  if (title.includes("захирал") || title.includes("ceo") || title.includes("director")) {
+    return "director";
+  }
+
+  if (
+    title.includes("үйл ажиллагаа хариуцсан менежер") ||
+    title.includes("ерөнхий менежер") ||
+    title.includes("general manager")
+  ) {
+    return "general_manager";
+  }
+
   if (title.includes("хэлтсийн дарга") || title.includes("албаны дарга")) {
     return "project_manager";
   }
@@ -514,15 +526,15 @@ const DEFAULT_CONNECTION: OdooConnection = {
 };
 
 const FLEET_REPAIR_GROUP_XML_IDS = {
-  mechanic: "fleet_repair_workflow.group_fleet_repair_mechanic",
-  teamLeader: "fleet_repair_workflow.group_fleet_repair_team_leader",
-  accounting: "fleet_repair_workflow.group_fleet_repair_accounting",
-  administration: "fleet_repair_workflow.group_fleet_repair_administration",
-  finance: "fleet_repair_workflow.group_fleet_repair_finance",
-  purchaser: "fleet_repair_workflow.group_fleet_repair_purchaser",
-  generalManager: "fleet_repair_workflow.group_fleet_repair_general_manager",
-  ceo: "fleet_repair_workflow.group_fleet_repair_ceo",
-  manager: "fleet_repair_workflow.group_fleet_repair_manager",
+  mechanic: "municipal_repair_workflow.group_repair_mechanic",
+  teamLeader: "municipal_repair_workflow.group_repair_team_lead",
+  accounting: "municipal_repair_workflow.group_repair_finance",
+  administration: "municipal_repair_workflow.group_repair_manager",
+  finance: "municipal_repair_workflow.group_repair_finance",
+  purchaser: "municipal_repair_workflow.group_repair_storekeeper",
+  generalManager: "municipal_repair_workflow.group_repair_manager",
+  ceo: "municipal_repair_workflow.group_repair_director",
+  manager: "municipal_repair_workflow.group_repair_manager",
 } as const;
 
 const OPS_PROFILE_GROUP_XML_IDS = {
@@ -1659,7 +1671,23 @@ export async function authenticateOdooUser(
       limit: 1,
     },
     connection,
-  );
+  ).catch((error) => {
+    if (!String(error).includes("ops_user_type")) {
+      throw error;
+    }
+
+    return executeKw<OdooUserRecord[]>(
+      uid,
+      "res.users",
+      "search_read",
+      [[["id", "=", uid]]],
+      {
+        fields: ["name", "login"],
+        limit: 1,
+      },
+      connection,
+    );
+  });
 
   const user = users[0];
   if (!user) {
@@ -1691,6 +1719,7 @@ export async function authenticateOdooUser(
     ).catch(() => false);
 
   const [
+    systemAdmin,
     mfoManager,
     mfoDispatcher,
     mfoInspector,
@@ -1708,6 +1737,7 @@ export async function authenticateOdooUser(
     hrUser,
     hrManager,
   ] = await Promise.all([
+    hasGroup("base.group_system"),
     hasGroup("municipal_field_ops.group_mfo_manager"),
     hasGroup("municipal_field_ops.group_mfo_dispatcher"),
     hasGroup("municipal_field_ops.group_mfo_inspector"),
@@ -1737,7 +1767,9 @@ export async function authenticateOdooUser(
     fleetRepairCeo ||
     fleetRepairManager;
 
-  const inferredRole = resolveAuthenticatedRole(user.ops_user_type, employee);
+  const inferredRole = systemAdmin
+    ? "system_admin"
+    : resolveAuthenticatedRole(user.ops_user_type ?? false, employee);
   const role =
     inferredRole === "worker" && hrManager
       ? "hr_manager"

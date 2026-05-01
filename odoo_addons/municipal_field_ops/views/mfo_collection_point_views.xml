@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mfo_collection_point_list" model="ir.ui.view">
+        <field name="name">mfo.collection.point.list</field>
+        <field name="model">mfo.collection.point</field>
+        <field name="arch" type="xml">
+            <list string="Хогийн цэг">
+                <field name="name"/>
+                <field name="district"/>
+                <field name="khoroo"/>
+                <field name="location_text"/>
+                <field name="route_id"/>
+                <field name="frequency"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mfo_collection_point_form" model="ir.ui.view">
+        <field name="name">mfo.collection.point.form</field>
+        <field name="model">mfo.collection.point</field>
+        <field name="arch" type="xml">
+            <form string="Хогийн цэг">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="location_text"/>
+                            <field name="address"/>
+                            <field name="district"/>
+                            <field name="khoroo"/>
+                        </group>
+                        <group>
+                            <field name="district_id"/>
+                            <field name="subdistrict_id"/>
+                            <field name="gps_latitude"/>
+                            <field name="gps_longitude"/>
+                            <field name="route_id"/>
+                            <field name="frequency"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Зураг / хавсралт">
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mfo_collection_point_search" model="ir.ui.view">
+        <field name="name">mfo.collection.point.search</field>
+        <field name="model">mfo.collection.point</field>
+        <field name="arch" type="xml">
+            <search string="Хогийн цэг">
+                <field name="name"/>
+                <field name="district"/>
+                <field name="khoroo"/>
+                <field name="route_id"/>
+                <filter name="active" string="Идэвхтэй" domain="[('active', '=', True)]"/>
+                <group>
+                    <filter name="group_district" string="Дүүрэг" context="{'group_by': 'district'}"/>
+                    <filter name="group_khoroo" string="Хороо" context="{'group_by': 'khoroo'}"/>
+                    <filter name="group_route" string="Маршрут" context="{'group_by': 'route_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mfo_collection_point" model="ir.actions.act_window">
+        <field name="name">Хогийн цэг</field>
+        <field name="res_model">mfo.collection.point</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_mfo_collection_point_search"/>
+    </record>
+</odoo>

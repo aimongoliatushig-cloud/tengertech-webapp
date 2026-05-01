@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_municipal_work_list" model="ir.ui.view">
+        <field name="name">municipal.work.list</field>
+        <field name="model">municipal.work</field>
+        <field name="arch" type="xml">
+            <list string="Ажил" decoration-danger="state == 'returned'" decoration-success="state in ('approved', 'done')" decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="department_id"/>
+                <field name="work_type_id"/>
+                <field name="responsible_employee_id"/>
+                <field name="responsible_user_id"/>
+                <field name="start_datetime"/>
+                <field name="deadline_datetime"/>
+                <field name="priority"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_work_kanban" model="ir.ui.view">
+        <field name="name">municipal.work.kanban</field>
+        <field name="model">municipal.work</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state">
+                <field name="name"/>
+                <field name="department_id"/>
+                <field name="responsible_employee_id"/>
+                <field name="deadline_datetime"/>
+                <templates>
+                    <t t-name="card">
+                        <div>
+                            <strong><field name="name"/></strong>
+                            <div><field name="department_id"/></div>
+                            <div><field name="responsible_employee_id"/></div>
+                            <div><field name="deadline_datetime"/></div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_municipal_work_form" model="ir.ui.view">
+        <field name="name">municipal.work.form</field>
+        <field name="model">municipal.work</field>
+        <field name="arch" type="xml">
+            <form string="Ажил">
+                <header>
+                    <button name="action_plan" string="Төлөвлөх" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_assign" string="Хуваарилах" type="object" class="btn-primary" invisible="state not in ('planned', 'draft')"/>
+                    <button name="action_start" string="Ажил эхлүүлэх" type="object" class="btn-primary" invisible="state != 'assigned'"/>
+                    <button name="action_submit_report" string="Тайлан илгээсэн" type="object" invisible="state not in ('started', 'assigned')"/>
+                    <button name="action_review" string="Хяналтад авах" type="object" invisible="state != 'report_submitted'"/>
+                    <button name="action_return" string="Буцаах" type="object" invisible="state not in ('under_review', 'report_submitted')"/>
+                    <button name="action_approve" string="Батлах" type="object" class="btn-primary" invisible="state != 'under_review'"/>
+                    <button name="action_done" string="Ажил дуусгах" type="object" class="btn-primary" invisible="state != 'approved'"/>
+                    <button name="action_cancel" string="Цуцлах" type="object" invisible="state in ('done', 'cancelled')"/>
+                    <button name="action_reset_to_draft" string="Ноорог болгох" type="object" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,planned,assigned,started,report_submitted,under_review,returned,approved,done"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="department_id"/>
+                            <field name="work_type_id"/>
+                            <field name="priority"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="responsible_user_id"/>
+                            <field name="responsible_employee_id"/>
+                            <field name="manager_id"/>
+                            <field name="created_by" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="start_datetime"/>
+                            <field name="deadline_datetime"/>
+                            <field name="location_text"/>
+                        </group>
+                        <group>
+                            <field name="planned_quantity"/>
+                            <field name="actual_quantity" readonly="1"/>
+                            <field name="unit_of_measure"/>
+                            <field name="requires_photo"/>
+                            <field name="requires_approval"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Тайлбар">
+                            <field name="description"/>
+                        </page>
+                        <page string="Тайлан">
+                            <field name="report_ids" context="{'default_work_id': id, 'default_unit_of_measure': unit_of_measure, 'default_location_text': location_text}">
+                                <list>
+                                    <field name="report_datetime"/>
+                                    <field name="employee_id"/>
+                                    <field name="actual_quantity"/>
+                                    <field name="unit_of_measure"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Хавсралт">
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                        </page>
+                        <page string="Буцаалт">
+                            <group>
+                                <field name="rejection_reason"/>
+                                <field name="approved_by" readonly="1"/>
+                                <field name="rejected_by" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_municipal_work_search" model="ir.ui.view">
+        <field name="name">municipal.work.search</field>
+        <field name="model">municipal.work</field>
+        <field name="arch" type="xml">
+            <search string="Ажил">
+                <field name="name"/>
+                <field name="department_id"/>
+                <field name="work_type_id"/>
+                <field name="responsible_employee_id"/>
+                <field name="responsible_user_id"/>
+                <filter name="my_work" string="Миний ажил" domain="['|', ('responsible_user_id', '=', uid), ('responsible_employee_id.user_id', '=', uid)]"/>
+                <filter name="under_review" string="Хяналтад байгаа" domain="[('state', '=', 'under_review')]"/>
+                <filter name="returned" string="Буцаагдсан" domain="[('state', '=', 'returned')]"/>
+                <filter name="active" string="Идэвхтэй" domain="[('active', '=', True)]"/>
+                <group>
+                    <filter name="group_state" string="Төлөв" context="{'group_by': 'state'}"/>
+                    <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
+                    <filter name="group_type" string="Ажлын төрөл" context="{'group_by': 'work_type_id'}"/>
+                    <filter name="group_responsible" string="Хариуцсан ажилтан" context="{'group_by': 'responsible_employee_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_municipal_work_all" model="ir.actions.act_window">
+        <field name="name">Бүх ажил</field>
+        <field name="res_model">municipal.work</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="search_view_id" ref="view_municipal_work_search"/>
+    </record>
+
+    <record id="action_municipal_work_my" model="ir.actions.act_window">
+        <field name="name">Миний ажил</field>
+        <field name="res_model">municipal.work</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">['|', ('responsible_user_id', '=', uid), ('responsible_employee_id.user_id', '=', uid)]</field>
+        <field name="search_view_id" ref="view_municipal_work_search"/>
+    </record>
+
+    <record id="action_municipal_work_under_review" model="ir.actions.act_window">
+        <field name="name">Хяналтад байгаа</field>
+        <field name="res_model">municipal.work</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[('state', '=', 'under_review')]</field>
+        <field name="search_view_id" ref="view_municipal_work_search"/>
+    </record>
+
+    <record id="action_municipal_work_returned" model="ir.actions.act_window">
+        <field name="name">Буцаагдсан</field>
+        <field name="res_model">municipal.work</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[('state', '=', 'returned')]</field>
+        <field name="search_view_id" ref="view_municipal_work_search"/>
+    </record>
+</odoo>

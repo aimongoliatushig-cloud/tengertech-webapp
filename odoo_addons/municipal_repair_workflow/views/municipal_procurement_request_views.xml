@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_municipal_procurement_request_list" model="ir.ui.view">
+        <field name="name">municipal.procurement.request.list</field>
+        <field name="model">municipal.procurement.request</field>
+        <field name="arch" type="xml">
+            <list string="Худалдан авалтын хүсэлт" decoration-warning="state in ('finance_review', 'director_approval', 'contract_review')" decoration-success="state in ('received', 'done')" decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="request_type"/>
+                <field name="requested_by"/>
+                <field name="department_id"/>
+                <field name="repair_id"/>
+                <field name="amount_total"/>
+                <field name="is_over_threshold"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_procurement_request_form" model="ir.ui.view">
+        <field name="name">municipal.procurement.request.form</field>
+        <field name="model">municipal.procurement.request</field>
+        <field name="arch" type="xml">
+            <form string="Худалдан авалтын хүсэлт">
+                <header>
+                    <button name="action_submit_quotes" string="3 үнийн санал" type="object" invisible="state != 'draft'"/>
+                    <button name="action_finance_review" string="Санхүүгийн хяналт" type="object" invisible="state != 'quote'"/>
+                    <button name="action_finance_approve" string="Санхүү батлах" type="object" class="btn-primary" invisible="state != 'finance_review'"/>
+                    <button name="action_director_approve" string="Захирал батлах" type="object" class="btn-primary" invisible="state != 'director_approval'"/>
+                    <button name="action_mark_paid" string="Төлбөр тэмдэглэх" type="object" invisible="state not in ('payment', 'contract_review')"/>
+                    <button name="action_receive" string="Хүлээн авах" type="object" invisible="state not in ('payment', 'contract_review')"/>
+                    <button name="action_done" string="Дуусгах" type="object" invisible="state != 'received'"/>
+                    <button name="action_cancel" string="Цуцлах" type="object" invisible="state in ('done', 'cancelled')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,quote,finance_review,director_approval,contract_review,payment,received,done"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="request_type"/>
+                            <field name="requested_by" readonly="1"/>
+                            <field name="department_id"/>
+                            <field name="repair_id"/>
+                        </group>
+                        <group>
+                            <field name="amount_total"/>
+                            <field name="is_over_threshold" readonly="1"/>
+                            <field name="finance_approved_by" readonly="1"/>
+                            <field name="director_approved_by" readonly="1"/>
+                            <field name="received_by" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="3 үнийн санал">
+                            <field name="quote_attachment_ids" widget="many2many_binary"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_municipal_procurement_request_search" model="ir.ui.view">
+        <field name="name">municipal.procurement.request.search</field>
+        <field name="model">municipal.procurement.request</field>
+        <field name="arch" type="xml">
+            <search string="Худалдан авалтын хүсэлт">
+                <field name="name"/>
+                <field name="repair_id"/>
+                <field name="department_id"/>
+                <filter name="over_threshold" string="1 саяас дээш" domain="[('is_over_threshold', '=', True)]"/>
+                <filter name="payment" string="Төлбөр хүлээж буй" domain="[('state', '=', 'payment')]"/>
+                <group>
+                    <filter name="group_state" string="Төлөв" context="{'group_by': 'state'}"/>
+                    <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
+                    <filter name="group_request_type" string="Төрөл" context="{'group_by': 'request_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_municipal_procurement_request" model="ir.actions.act_window">
+        <field name="name">Худалдан авалтын хүсэлт</field>
+        <field name="res_model">municipal.procurement.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_municipal_procurement_request_search"/>
+    </record>
+</odoo>

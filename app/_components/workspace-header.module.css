@@ -7,8 +7,8 @@
   justify-content: space-between;
   gap: 20px;
   overflow: hidden;
-  margin: 0 -28px 20px;
-  padding: 0 28px;
+  margin: 0 0 20px;
+  padding: 0;
   border-bottom: 1px solid rgba(46, 125, 50, 0.08);
   background: rgba(255, 255, 255, 0.86);
   box-shadow: 0 1px 0 rgba(20, 48, 28, 0.02);

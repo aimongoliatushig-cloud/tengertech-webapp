@@ -1,0 +1,30 @@
+# -*- coding: utf-8 -*-
+{
+    "name": "Хот тохижилтын гомдол, dashboard, audit",
+    "summary": "Иргэний гомдол, QR холбоос, audit log, dashboard/report суурь модуль",
+    "version": "19.0.1.0.0",
+    "category": "Operations/Municipal",
+    "author": "TengerTech",
+    "website": "https://tengertech.mn",
+    "license": "LGPL-3",
+    "depends": [
+        "municipal_core",
+        "municipal_field_ops",
+        "municipal_repair_workflow",
+        "fleet",
+        "mail",
+    ],
+    "data": [
+        "security/municipal_public_services_security.xml",
+        "security/ir.model.access.csv",
+        "data/ir_sequence_data.xml",
+        "views/municipal_complaint_views.xml",
+        "views/municipal_audit_log_views.xml",
+        "views/municipal_dashboard_views.xml",
+        "views/municipal_report_views.xml",
+        "views/qr_views.xml",
+        "views/menus.xml",
+    ],
+    "installable": True,
+    "application": False,
+}

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_municipal_audit_log_list" model="ir.ui.view">
+        <field name="name">municipal.audit.log.list</field>
+        <field name="model">municipal.audit.log</field>
+        <field name="arch" type="xml">
+            <list string="Audit log" create="0" edit="0">
+                <field name="changed_date"/>
+                <field name="model_name"/>
+                <field name="record_display_name"/>
+                <field name="field_name"/>
+                <field name="old_value"/>
+                <field name="new_value"/>
+                <field name="change_type"/>
+                <field name="changed_by"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_audit_log_search" model="ir.ui.view">
+        <field name="name">municipal.audit.log.search</field>
+        <field name="model">municipal.audit.log</field>
+        <field name="arch" type="xml">
+            <search string="Audit log">
+                <field name="model_name"/>
+                <field name="record_display_name"/>
+                <field name="changed_by"/>
+                <filter name="state" string="Төлөв өөрчлөлт" domain="[('change_type', '=', 'state')]"/>
+                <group>
+                    <filter name="group_model" string="Model" context="{'group_by': 'model_name'}"/>
+                    <filter name="group_change_type" string="Төрөл" context="{'group_by': 'change_type'}"/>
+                    <filter name="group_user" string="Хэрэглэгч" context="{'group_by': 'changed_by'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_municipal_audit_log" model="ir.actions.act_window">
+        <field name="name">Audit log</field>
+        <field name="res_model">municipal.audit.log</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="view_municipal_audit_log_search"/>
+    </record>
+</odoo>

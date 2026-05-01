@@ -231,6 +231,12 @@ export function AppMenu({
       icon: BarChart3,
     },
     {
+      key: "procurement",
+      href: "/procurement/dashboard",
+      label: "Худалдан авалт",
+      icon: FileText,
+    },
+    {
       key: "chat",
       href: "/chat",
       label: "Чат",
@@ -259,7 +265,7 @@ export function AppMenu({
     if (item.key.startsWith("hr")) {
       return canViewHr;
     }
-    return !["data-download", "reports", "chat"].includes(item.key);
+    return !["data-download", "reports", "procurement", "chat"].includes(item.key);
   });
 
   const garbageDepartmentItems: MenuItem[] = [

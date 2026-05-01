@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_daily_work" model="ir.actions.act_window">
+        <field name="name">Өдрийн ажлын тайлан</field>
+        <field name="res_model">municipal.work</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_department': 1}</field>
+    </record>
+
+    <record id="action_report_department_work" model="ir.actions.act_window">
+        <field name="name">Хэлтсийн тайлан</field>
+        <field name="res_model">municipal.work</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_department': 1}</field>
+    </record>
+
+    <record id="action_report_garbage_route" model="ir.actions.act_window">
+        <field name="name">Хог тээвэрлэлтийн тайлан</field>
+        <field name="res_model">mfo.route.execution</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_state': 1}</field>
+    </record>
+
+    <record id="action_report_repair" model="ir.actions.act_window">
+        <field name="name">Засварын тайлан</field>
+        <field name="res_model">municipal.repair.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_state': 1}</field>
+    </record>
+
+    <record id="action_report_overdue_work" model="ir.actions.act_window">
+        <field name="name">Хугацаа хэтэрсэн ажлын тайлан</field>
+        <field name="res_model">municipal.work</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('deadline_datetime', '!=', False), ('state', 'not in', ['done', 'cancelled'])]</field>
+    </record>
+
+    <record id="action_report_with_photo" model="ir.actions.act_window">
+        <field name="name">Зурагтай тайлан</field>
+        <field name="res_model">municipal.work.report</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('attachment_ids', '!=', False)]</field>
+    </record>
+
+    <record id="action_report_green_area_placeholder" model="ir.actions.act_window">
+        <field name="name">Ногоон байгууламжийн тайлан</field>
+        <field name="res_model">municipal.work</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('work_type_id.code', 'ilike', 'green')]</field>
+    </record>
+
+    <record id="action_report_improvement_placeholder" model="ir.actions.act_window">
+        <field name="name">Тохижилтын тайлан</field>
+        <field name="res_model">municipal.work</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('work_type_id.code', 'ilike', 'improvement')]</field>
+    </record>
+</odoo>
