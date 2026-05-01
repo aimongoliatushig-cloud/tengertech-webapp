@@ -96,7 +96,7 @@
         <record id="rule_municipal_work_reviewers" model="ir.rule">
             <field name="name">Municipal work reviewer visible records</field>
             <field name="model_id" ref="model_municipal_work"/>
-            <field name="domain_force">['|', ('manager_id', '=', user.id), ('state', 'in', ['assigned', 'started', 'report_submitted', 'under_review', 'returned'])]</field>
+            <field name="domain_force">['|', '|', '|', ('manager_id', '=', user.id), ('responsible_user_id', '=', user.id), ('responsible_employee_id.user_id', '=', user.id), ('department_id.manager_id.user_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('group_municipal_inspector')), (4, ref('group_municipal_master'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -108,7 +108,18 @@
             <field name="name">Municipal work all managers</field>
             <field name="model_id" ref="model_municipal_work"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_municipal_manager')), (4, ref('group_municipal_director')), (4, ref('group_municipal_admin')), (4, ref('group_municipal_it'))]"/>
+            <field name="groups" eval="[(4, ref('group_municipal_manager')), (4, ref('group_municipal_director')), (4, ref('group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_municipal_work_it_related" model="ir.rule">
+            <field name="name">Municipal work IT related only</field>
+            <field name="model_id" ref="model_municipal_work"/>
+            <field name="domain_force">['|', '|', ('responsible_user_id', '=', user.id), ('manager_id', '=', user.id), ('created_by', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_municipal_it'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
 
         <record id="rule_municipal_report_worker_own" model="ir.rule">
@@ -128,7 +139,7 @@
         <record id="rule_municipal_report_reviewers" model="ir.rule">
             <field name="name">Municipal report reviewers</field>
             <field name="model_id" ref="model_municipal_work_report"/>
-            <field name="domain_force">['|', ('work_id.manager_id', '=', user.id), ('state', 'in', ['submitted', 'under_review', 'returned'])]</field>
+            <field name="domain_force">['|', '|', '|', '|', ('work_id.manager_id', '=', user.id), ('user_id', '=', user.id), ('employee_id.user_id', '=', user.id), ('work_id.responsible_user_id', '=', user.id), ('work_id.department_id.manager_id.user_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('group_municipal_inspector')), (4, ref('group_municipal_master'))]"/>
         </record>
 
@@ -136,7 +147,18 @@
             <field name="name">Municipal report all managers</field>
             <field name="model_id" ref="model_municipal_work_report"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_municipal_manager')), (4, ref('group_municipal_director')), (4, ref('group_municipal_admin')), (4, ref('group_municipal_it'))]"/>
+            <field name="groups" eval="[(4, ref('group_municipal_manager')), (4, ref('group_municipal_director')), (4, ref('group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_municipal_report_it_related" model="ir.rule">
+            <field name="name">Municipal report IT related only</field>
+            <field name="model_id" ref="model_municipal_work_report"/>
+            <field name="domain_force">['|', '|', '|', ('user_id', '=', user.id), ('work_id.manager_id', '=', user.id), ('work_id.responsible_user_id', '=', user.id), ('work_id.created_by', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_municipal_it'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
 
         <record id="rule_municipal_work_type_department" model="ir.rule">
@@ -175,7 +197,18 @@
             <field name="name">Municipal attendance HR all</field>
             <field name="model_id" ref="model_municipal_attendance_issue"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_municipal_hr')), (4, ref('group_municipal_manager')), (4, ref('group_municipal_director')), (4, ref('group_municipal_admin')), (4, ref('group_municipal_it'))]"/>
+            <field name="groups" eval="[(4, ref('group_municipal_hr')), (4, ref('group_municipal_manager')), (4, ref('group_municipal_director')), (4, ref('group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_municipal_attendance_it_none" model="ir.rule">
+            <field name="name">Municipal attendance IT no sensitive records</field>
+            <field name="model_id" ref="model_municipal_attendance_issue"/>
+            <field name="domain_force">[('id', '=', False)]</field>
+            <field name="groups" eval="[(4, ref('group_municipal_it'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
 
         <record id="rule_municipal_discipline_worker_own" model="ir.rule">
@@ -200,7 +233,18 @@
             <field name="name">Municipal discipline HR all</field>
             <field name="model_id" ref="model_municipal_discipline"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_municipal_hr')), (4, ref('group_municipal_manager')), (4, ref('group_municipal_director')), (4, ref('group_municipal_admin')), (4, ref('group_municipal_it'))]"/>
+            <field name="groups" eval="[(4, ref('group_municipal_hr')), (4, ref('group_municipal_manager')), (4, ref('group_municipal_director')), (4, ref('group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_municipal_discipline_it_none" model="ir.rule">
+            <field name="name">Municipal discipline IT no sensitive records</field>
+            <field name="model_id" ref="model_municipal_discipline"/>
+            <field name="domain_force">[('id', '=', False)]</field>
+            <field name="groups" eval="[(4, ref('group_municipal_it'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
     </data>
 </odoo>

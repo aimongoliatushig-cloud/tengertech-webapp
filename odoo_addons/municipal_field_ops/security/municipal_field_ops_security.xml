@@ -43,6 +43,55 @@
             <field name="groups" eval="[(4, ref('group_mfo_manager')), (4, ref('group_mfo_dispatcher'))]"/>
         </record>
 
+        <record id="rule_mfo_route_mobile_assigned" model="ir.rule">
+            <field name="name">MFO mobile assigned routes</field>
+            <field name="model_id" ref="model_mfo_route"/>
+            <field name="domain_force">['|', '|', ('driver_id.user_id', '=', user.id), ('inspector_id.user_id', '=', user.id), ('team_id.member_user_ids', 'in', [user.id])]</field>
+            <field name="groups" eval="[(4, ref('group_mfo_mobile_user'))]"/>
+        </record>
+
+        <record id="rule_mfo_route_line_manager_all" model="ir.rule">
+            <field name="name">MFO manager all route lines</field>
+            <field name="model_id" ref="model_mfo_route_line"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_mfo_manager')), (4, ref('group_mfo_dispatcher'))]"/>
+        </record>
+
+        <record id="rule_mfo_route_line_mobile_assigned" model="ir.rule">
+            <field name="name">MFO mobile assigned route lines</field>
+            <field name="model_id" ref="model_mfo_route_line"/>
+            <field name="domain_force">['|', '|', ('route_id.driver_id.user_id', '=', user.id), ('route_id.inspector_id.user_id', '=', user.id), ('route_id.team_id.member_user_ids', 'in', [user.id])]</field>
+            <field name="groups" eval="[(4, ref('group_mfo_mobile_user'))]"/>
+        </record>
+
+        <record id="rule_mfo_route_template_manager_all" model="ir.rule">
+            <field name="name">MFO manager all route templates</field>
+            <field name="model_id" ref="model_mfo_route_template"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_mfo_manager')), (4, ref('group_mfo_dispatcher'))]"/>
+        </record>
+
+        <record id="rule_mfo_route_template_mobile_assigned" model="ir.rule">
+            <field name="name">MFO mobile assigned route templates</field>
+            <field name="model_id" ref="model_mfo_route_template"/>
+            <field name="domain_force">['|', '|', ('driver_id.user_id', '=', user.id), ('inspector_id.user_id', '=', user.id), ('team_id.member_user_ids', 'in', [user.id])]</field>
+            <field name="groups" eval="[(4, ref('group_mfo_mobile_user'))]"/>
+        </record>
+
+        <record id="rule_mfo_crew_team_manager_all" model="ir.rule">
+            <field name="name">MFO manager all crew teams</field>
+            <field name="model_id" ref="model_mfo_crew_team"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_mfo_manager')), (4, ref('group_mfo_dispatcher'))]"/>
+        </record>
+
+        <record id="rule_mfo_crew_team_mobile_related" model="ir.rule">
+            <field name="name">MFO mobile related crew teams</field>
+            <field name="model_id" ref="model_mfo_crew_team"/>
+            <field name="domain_force">['|', '|', '|', ('member_user_ids', 'in', [user.id]), ('driver_employee_id.user_id', '=', user.id), ('inspector_employee_id.user_id', '=', user.id), ('collector_employee_ids.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_mfo_mobile_user'))]"/>
+        </record>
+
         <record id="rule_mfo_execution_mobile_assigned" model="ir.rule">
             <field name="name">MFO mobile assigned executions</field>
             <field name="model_id" ref="model_mfo_route_execution"/>
@@ -53,7 +102,7 @@
         <record id="rule_mfo_execution_inspector_assigned" model="ir.rule">
             <field name="name">MFO inspector assigned executions</field>
             <field name="model_id" ref="model_mfo_route_execution"/>
-            <field name="domain_force">['|', ('inspector_id.user_id', '=', user.id), ('state', 'in', ['submitted', 'in_progress', 'delayed'])]</field>
+            <field name="domain_force">['|', ('inspector_id.user_id', '=', user.id), ('task_id.mfo_inspector_employee_id.user_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('group_mfo_inspector'))]"/>
         </record>
 
@@ -75,7 +124,7 @@
             <field name="name">MFO manager all stops</field>
             <field name="model_id" ref="model_mfo_stop_execution_line"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_mfo_manager')), (4, ref('group_mfo_dispatcher')), (4, ref('group_mfo_inspector'))]"/>
+            <field name="groups" eval="[(4, ref('group_mfo_manager')), (4, ref('group_mfo_dispatcher'))]"/>
         </record>
 
         <record id="rule_mfo_proof_mobile_own" model="ir.rule">
@@ -89,7 +138,14 @@
             <field name="name">MFO manager all proofs</field>
             <field name="model_id" ref="model_mfo_proof_image"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_mfo_manager')), (4, ref('group_mfo_dispatcher')), (4, ref('group_mfo_inspector'))]"/>
+            <field name="groups" eval="[(4, ref('group_mfo_manager')), (4, ref('group_mfo_dispatcher'))]"/>
+        </record>
+
+        <record id="rule_mfo_proof_inspector_assigned" model="ir.rule">
+            <field name="name">MFO inspector assigned proofs</field>
+            <field name="model_id" ref="model_mfo_proof_image"/>
+            <field name="domain_force">['|', '|', ('execution_id.inspector_id.user_id', '=', user.id), ('stop_line_id.execution_id.inspector_id.user_id', '=', user.id), ('task_id.mfo_inspector_employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_mfo_inspector'))]"/>
         </record>
 
         <record id="rule_mfo_issue_mobile_related" model="ir.rule">
@@ -103,7 +159,28 @@
             <field name="name">MFO manager all issues</field>
             <field name="model_id" ref="model_mfo_issue_report"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_mfo_manager')), (4, ref('group_mfo_dispatcher')), (4, ref('group_mfo_inspector'))]"/>
+            <field name="groups" eval="[(4, ref('group_mfo_manager')), (4, ref('group_mfo_dispatcher'))]"/>
+        </record>
+
+        <record id="rule_mfo_issue_inspector_assigned" model="ir.rule">
+            <field name="name">MFO inspector assigned issues</field>
+            <field name="model_id" ref="model_mfo_issue_report"/>
+            <field name="domain_force">['|', '|', ('execution_id.inspector_id.user_id', '=', user.id), ('stop_line_id.execution_id.inspector_id.user_id', '=', user.id), ('task_id.mfo_inspector_employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_mfo_inspector'))]"/>
+        </record>
+
+        <record id="rule_mfo_daily_weight_total_manager_all" model="ir.rule">
+            <field name="name">MFO manager all daily weight totals</field>
+            <field name="model_id" ref="model_mfo_daily_weight_total"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_mfo_manager')), (4, ref('group_mfo_dispatcher'))]"/>
+        </record>
+
+        <record id="rule_mfo_daily_weight_total_mobile_related" model="ir.rule">
+            <field name="name">MFO mobile related daily weight totals</field>
+            <field name="model_id" ref="model_mfo_daily_weight_total"/>
+            <field name="domain_force">['|', '|', '|', ('task_id.user_ids', 'in', [user.id]), ('task_id.mfo_driver_employee_id.user_id', '=', user.id), ('task_id.mfo_inspector_employee_id.user_id', '=', user.id), ('task_id.mfo_crew_team_id.member_user_ids', 'in', [user.id])]</field>
+            <field name="groups" eval="[(4, ref('group_mfo_mobile_user'))]"/>
         </record>
 
         <record id="rule_ops_report_mobile_own" model="ir.rule">
@@ -117,7 +194,14 @@
             <field name="name">OPS report manager all</field>
             <field name="model_id" ref="model_ops_task_report"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_mfo_manager')), (4, ref('group_mfo_dispatcher')), (4, ref('group_mfo_inspector'))]"/>
+            <field name="groups" eval="[(4, ref('group_mfo_manager')), (4, ref('group_mfo_dispatcher'))]"/>
+        </record>
+
+        <record id="rule_ops_report_inspector_assigned" model="ir.rule">
+            <field name="name">OPS report inspector assigned</field>
+            <field name="model_id" ref="model_ops_task_report"/>
+            <field name="domain_force">['|', '|', ('task_id.user_ids', 'in', [user.id]), ('task_id.mfo_inspector_employee_id.user_id', '=', user.id), ('task_id.mfo_crew_team_id.member_user_ids', 'in', [user.id])]</field>
+            <field name="groups" eval="[(4, ref('group_mfo_inspector'))]"/>
         </record>
     </data>
 </odoo>

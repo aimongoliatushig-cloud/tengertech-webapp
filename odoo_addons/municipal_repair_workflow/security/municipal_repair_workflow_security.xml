@@ -67,14 +67,28 @@
             <field name="name">Repair managers all</field>
             <field name="model_id" ref="model_municipal_repair_request"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_team_lead')), (4, ref('group_repair_director')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_director')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_repair_team_lead_related" model="ir.rule">
+            <field name="name">Repair team lead related only</field>
+            <field name="model_id" ref="model_municipal_repair_request"/>
+            <field name="domain_force">['|', '|', ('supervisor_id', '=', user.id), ('mechanic_id.user_id', '=', user.id), ('department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_repair_team_lead'))]"/>
         </record>
 
         <record id="rule_repair_part_manager_all" model="ir.rule">
             <field name="name">Repair part managers all</field>
             <field name="model_id" ref="model_municipal_repair_part_line"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_team_lead')), (4, ref('group_repair_storekeeper')), (4, ref('group_repair_mechanic')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_storekeeper')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_repair_part_assigned_repair_roles" model="ir.rule">
+            <field name="name">Repair part assigned repair roles</field>
+            <field name="model_id" ref="model_municipal_repair_part_line"/>
+            <field name="domain_force">['|', '|', ('repair_id.mechanic_id.user_id', '=', user.id), ('repair_id.supervisor_id', '=', user.id), ('repair_id.department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_repair_team_lead')), (4, ref('group_repair_mechanic'))]"/>
         </record>
 
         <record id="rule_procurement_repair_roles" model="ir.rule">

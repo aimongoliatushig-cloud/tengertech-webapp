@@ -10,35 +10,41 @@
               name="Маршрут"
               parent="menu_mfo_root"
               action="action_mfo_route"
-              sequence="10"/>
+              sequence="10"
+              groups="municipal_field_ops.group_mfo_manager,municipal_field_ops.group_mfo_dispatcher"/>
 
     <menuitem id="menu_mfo_collection_point"
               name="Хогийн цэг"
               parent="menu_mfo_root"
               action="action_mfo_collection_point"
-              sequence="20"/>
+              sequence="20"
+              groups="municipal_field_ops.group_mfo_manager,municipal_field_ops.group_mfo_dispatcher"/>
 
     <menuitem id="menu_mfo_route_template"
               name="7 хоногийн маршрут загвар"
               parent="menu_mfo_root"
               action="action_mfo_route_template"
-              sequence="30"/>
+              sequence="30"
+              groups="municipal_field_ops.group_mfo_manager,municipal_field_ops.group_mfo_dispatcher"/>
 
     <menuitem id="menu_mfo_route_execution"
               name="Өдрийн маршрут"
               parent="menu_mfo_root"
               action="action_mfo_route_execution"
-              sequence="40"/>
+              sequence="40"
+              groups="municipal_field_ops.group_mfo_manager,municipal_field_ops.group_mfo_dispatcher,municipal_field_ops.group_mfo_inspector,municipal_field_ops.group_mfo_mobile_user"/>
 
     <menuitem id="menu_mfo_issue_report"
               name="Хяналтын тайлан"
               parent="menu_mfo_root"
               action="action_mfo_issue_report"
-              sequence="50"/>
+              sequence="50"
+              groups="municipal_field_ops.group_mfo_manager,municipal_field_ops.group_mfo_dispatcher,municipal_field_ops.group_mfo_inspector,municipal_field_ops.group_mfo_mobile_user"/>
 
     <menuitem id="menu_mfo_ops_task_report"
               name="Гар утасны ажлын тайлан"
               parent="menu_mfo_root"
               action="action_ops_task_report"
-              sequence="60"/>
+              sequence="60"
+              groups="municipal_field_ops.group_mfo_manager,municipal_field_ops.group_mfo_dispatcher,municipal_field_ops.group_mfo_inspector,municipal_field_ops.group_mfo_mobile_user"/>
 </odoo>

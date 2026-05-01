@@ -10,31 +10,36 @@
               name="Засварын хүсэлт"
               parent="menu_municipal_repair_root"
               action="action_municipal_repair_request"
-              sequence="10"/>
+              sequence="10"
+              groups="municipal_repair_workflow.group_repair_manager,municipal_repair_workflow.group_repair_team_lead,municipal_repair_workflow.group_repair_mechanic,municipal_repair_workflow.group_repair_storekeeper,municipal_repair_workflow.group_repair_finance,municipal_repair_workflow.group_repair_director,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_municipal_repair_diagnosis"
               name="Оношилгоо"
               parent="menu_municipal_repair_root"
               action="action_municipal_repair_diagnosis"
-              sequence="20"/>
+              sequence="20"
+              groups="municipal_repair_workflow.group_repair_manager,municipal_repair_workflow.group_repair_team_lead,municipal_repair_workflow.group_repair_mechanic,municipal_repair_workflow.group_repair_director,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_municipal_repair_parts"
               name="Сэлбэгийн хүсэлт"
               parent="menu_municipal_repair_root"
               action="action_municipal_repair_parts"
-              sequence="30"/>
+              sequence="30"
+              groups="municipal_repair_workflow.group_repair_manager,municipal_repair_workflow.group_repair_team_lead,municipal_repair_workflow.group_repair_mechanic,municipal_repair_workflow.group_repair_storekeeper,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_municipal_repair_in_progress"
               name="Засварт байгаа машин"
               parent="menu_municipal_repair_root"
               action="action_municipal_repair_in_progress"
-              sequence="40"/>
+              sequence="40"
+              groups="municipal_repair_workflow.group_repair_manager,municipal_repair_workflow.group_repair_team_lead,municipal_repair_workflow.group_repair_mechanic,municipal_repair_workflow.group_repair_director,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_municipal_repair_report"
               name="Засварын тайлан"
               parent="menu_municipal_repair_root"
               action="action_municipal_repair_report"
-              sequence="50"/>
+              sequence="50"
+              groups="municipal_repair_workflow.group_repair_manager,municipal_repair_workflow.group_repair_team_lead,municipal_repair_workflow.group_repair_director,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_municipal_inventory_procurement_root"
               name="Агуулах / Худалдан авалт"
@@ -70,5 +75,6 @@
               name="Машины төлөв"
               parent="menu_municipal_repair_root"
               action="action_fleet_vehicle_municipal_status"
-              sequence="60"/>
+              sequence="60"
+              groups="municipal_repair_workflow.group_repair_manager,municipal_repair_workflow.group_repair_team_lead,municipal_repair_workflow.group_repair_mechanic,municipal_repair_workflow.group_repair_director,municipal_core.group_municipal_admin"/>
 </odoo>
