@@ -11,6 +11,9 @@ class MunicipalDashboardSnapshot(models.Model):
     name = fields.Char(string="Нэр", required=True, default="Dashboard snapshot")
     dashboard_type = fields.Selection(
         [
+            ("garbage", "Хог тээвэрлэлтийн dashboard"),
+            ("finance", "Санхүү / нярав dashboard"),
+            ("complaint", "Иргэдийн санал гомдлын dashboard"),
             ("management", "Удирдлагын dashboard"),
             ("department", "Хэлтсийн dashboard"),
             ("hr", "HR dashboard"),
@@ -24,6 +27,15 @@ class MunicipalDashboardSnapshot(models.Model):
     generated_at = fields.Datetime(string="Үүсгэсэн огноо", default=fields.Datetime.now, required=True)
     data_json = fields.Text(string="Өгөгдөл")
     company_id = fields.Many2one("res.company", string="Компани", default=lambda self: self.env.company)
+
+    def _model_or_false(self, model_name):
+        if model_name not in self.env.registry:
+            return False
+        return self.env[model_name]
+
+    def _search_count_if_exists(self, model_name, domain):
+        model = self._model_or_false(model_name)
+        return model.search_count(domain) if model else 0
 
     @api.model
     def get_management_dashboard_data(self):
@@ -84,4 +96,55 @@ class MunicipalDashboardSnapshot(models.Model):
             "waitingApproval": repair_model.search_count([("state", "=", "waiting_approval")]),
             "completedRepairs": repair_model.search_count([("state", "in", ["done", "vehicle_returned"])]),
             "costSummary": sum(repair_model.search([]).mapped("amount_total")),
+        }
+
+    @api.model
+    def get_garbage_dashboard_data(self):
+        today = fields.Date.context_today(self)
+        return {
+            "todayRoutes": self._search_count_if_exists("mfo.route.execution", [("date", "=", today)]),
+            "inProgressRoutes": self._search_count_if_exists("mfo.route.execution", [("state", "=", "in_progress")]),
+            "submittedRoutes": self._search_count_if_exists("mfo.route.execution", [("state", "=", "submitted")]),
+            "verifiedRoutes": self._search_count_if_exists("mfo.route.execution", [("state", "=", "verified")]),
+            "openIssues": self._search_count_if_exists("mfo.issue.report", [("state", "!=", "resolved")]),
+            "missingProofStops": self._search_count_if_exists("mfo.stop.execution.line", [("proof_ids", "=", False)]),
+        }
+
+    @api.model
+    def get_finance_dashboard_data(self):
+        procurement_model = self._model_or_false("municipal.procurement.request")
+        if not procurement_model:
+            return {
+                "draftRequests": 0,
+                "quotationRequests": 0,
+                "financeReview": 0,
+                "directorApproval": 0,
+                "paymentWaiting": 0,
+                "warehouseReceived": 0,
+                "overThreshold": 0,
+                "amountTotal": 0,
+            }
+
+        return {
+            "draftRequests": procurement_model.search_count([("state", "=", "draft")]),
+            "quotationRequests": procurement_model.search_count([("state", "=", "quote")]),
+            "financeReview": procurement_model.search_count([("state", "=", "finance_review")]),
+            "directorApproval": procurement_model.search_count([("state", "=", "director_approval")]),
+            "paymentWaiting": procurement_model.search_count([("state", "=", "payment")]),
+            "warehouseReceived": procurement_model.search_count([("state", "=", "received")]),
+            "overThreshold": procurement_model.search_count([("is_over_threshold", "=", True)]),
+            "amountTotal": sum(procurement_model.search([]).mapped("amount_total")),
+        }
+
+    @api.model
+    def get_complaint_dashboard_data(self):
+        complaint_model = self.env["municipal.complaint"]
+        return {
+            "newComplaints": complaint_model.search_count([("state", "=", "new")]),
+            "assignedComplaints": complaint_model.search_count([("state", "=", "assigned")]),
+            "inProgressComplaints": complaint_model.search_count([("state", "=", "in_progress")]),
+            "resolvedComplaints": complaint_model.search_count([("state", "=", "resolved")]),
+            "rejectedComplaints": complaint_model.search_count([("state", "=", "rejected")]),
+            "withWork": complaint_model.search_count([("work_id", "!=", False)]),
+            "withPhoto": complaint_model.search_count([("photo_ids", "!=", False)]),
         }
