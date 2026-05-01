@@ -66,6 +66,18 @@
               action="action_report_repair"
               sequence="60"/>
 
+    <menuitem id="menu_report_procurement"
+              name="Санхүү / няравын тайлан"
+              parent="menu_municipal_operational_reports_root"
+              action="action_report_procurement"
+              sequence="65"/>
+
+    <menuitem id="menu_report_complaint"
+              name="Иргэдийн санал, гомдлын тайлан"
+              parent="menu_municipal_operational_reports_root"
+              action="action_report_complaint"
+              sequence="68"/>
+
     <menuitem id="menu_report_overdue_work"
               name="Хугацаа хэтэрсэн ажлын тайлан"
               parent="menu_municipal_operational_reports_root"

@@ -267,6 +267,16 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       note: garbageWeightLedger?.lastMonth.rangeLabel || "Сүүлийн 1 сарын дүн",
     },
   ] as const;
+  const exportParams = new URLSearchParams();
+  if (!departmentScopedMode && selectedGroup) {
+    exportParams.set("department", selectedGroup.name);
+  }
+  if (!departmentScopedMode && selectedUnit) {
+    exportParams.set("unit", selectedUnit);
+  }
+  const exportQuery = exportParams.toString();
+  const getExportHref = (format: "csv" | "excel" | "json") =>
+    `/api/reports/export?format=${format}${exportQuery ? `&${exportQuery}` : ""}`;
 
   return (
     <main className={shellStyles.shell}>
@@ -313,6 +323,17 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   <span>Сүүлд шинэчлэгдсэн</span>
                   <strong>{snapshot.generatedAt}</strong>
                   <small>{masterMode ? selectedDepartmentName : getRoleLabel(session.role)}</small>
+                </div>
+                <div className={styles.exportActions} aria-label="Тайлан экспортлох">
+                  <a className={styles.exportButton} href={getExportHref("excel")}>
+                    Excel
+                  </a>
+                  <a className={styles.exportButton} href={getExportHref("csv")}>
+                    CSV
+                  </a>
+                  <a className={styles.exportButton} href={getExportHref("json")}>
+                    JSON
+                  </a>
                 </div>
               </div>
             </header>
