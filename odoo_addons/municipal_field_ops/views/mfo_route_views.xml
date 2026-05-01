@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mfo_route_list" model="ir.ui.view">
+        <field name="name">mfo.route.list</field>
+        <field name="model">mfo.route</field>
+        <field name="arch" type="xml">
+            <list string="Маршрут" decoration-success="state == 'verified'" decoration-muted="state == 'cancelled'">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="department_id"/>
+                <field name="vehicle_id"/>
+                <field name="driver_id"/>
+                <field name="inspector_id"/>
+                <field name="weekday"/>
+                <field name="start_time" widget="float_time"/>
+                <field name="collection_point_count"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mfo_route_form" model="ir.ui.view">
+        <field name="name">mfo.route.form</field>
+        <field name="model">mfo.route</field>
+        <field name="arch" type="xml">
+            <form string="Маршрут">
+                <header>
+                    <button name="action_plan" string="Төлөвлөх" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_dispatch" string="Хуваарилах" type="object" class="btn-primary" invisible="state != 'planned'"/>
+                    <button name="action_start" string="Эхлүүлэх" type="object" invisible="state != 'dispatched'"/>
+                    <button name="action_submit" string="Илгээх" type="object" invisible="state != 'in_progress'"/>
+                    <button name="action_verify" string="Батлах" type="object" class="btn-primary" invisible="state != 'submitted'"/>
+                    <button name="action_delay" string="Саатуулах" type="object" invisible="state not in ('dispatched', 'in_progress')"/>
+                    <button name="action_cancel" string="Цуцлах" type="object" invisible="state == 'cancelled'"/>
+                    <button name="action_reset_to_draft" string="Ноорог болгох" type="object" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,planned,dispatched,in_progress,submitted,verified"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="code"/>
+                            <field name="department_id"/>
+                            <field name="project_id"/>
+                            <field name="operation_type"/>
+                        </group>
+                        <group>
+                            <field name="vehicle_id"/>
+                            <field name="driver_id"/>
+                            <field name="team_id"/>
+                            <field name="inspector_id"/>
+                            <field name="weekday"/>
+                            <field name="shift_type"/>
+                            <field name="start_time" widget="float_time"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Хогийн цэг">
+                            <field name="line_ids">
+                                <list editable="bottom">
+                                    <field name="sequence"/>
+                                    <field name="collection_point_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Дүгнэлт">
+                            <group>
+                                <field name="collection_point_count"/>
+                                <field name="subdistrict_names"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mfo_route_search" model="ir.ui.view">
+        <field name="name">mfo.route.search</field>
+        <field name="model">mfo.route</field>
+        <field name="arch" type="xml">
+            <search string="Маршрут">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="department_id"/>
+                <field name="vehicle_id"/>
+                <field name="driver_id"/>
+                <filter name="active" string="Идэвхтэй" domain="[('active', '=', True)]"/>
+                <filter name="planned" string="Төлөвлөсөн" domain="[('state', 'in', ['planned', 'dispatched'])]"/>
+                <group>
+                    <filter name="group_state" string="Төлөв" context="{'group_by': 'state'}"/>
+                    <filter name="group_weekday" string="Гараг" context="{'group_by': 'weekday'}"/>
+                    <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mfo_route" model="ir.actions.act_window">
+        <field name="name">Маршрут</field>
+        <field name="res_model">mfo.route</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_mfo_route_search"/>
+    </record>
+</odoo>

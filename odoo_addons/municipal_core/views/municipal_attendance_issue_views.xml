@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_municipal_attendance_issue_list" model="ir.ui.view">
+        <field name="name">municipal.attendance.issue.list</field>
+        <field name="model">municipal.attendance.issue</field>
+        <field name="arch" type="xml">
+            <list string="Ирцийн асуудал" decoration-success="state == 'approved'" decoration-warning="suggested_action in ('written_warning', 'discipline_proposal')" decoration-muted="state in ('archived', 'cancelled')">
+                <field name="date"/>
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="attendance_status"/>
+                <field name="issue_type"/>
+                <field name="late_minutes"/>
+                <field name="repeated_issue_count"/>
+                <field name="suggested_action"/>
+                <field name="registered_by"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_attendance_issue_form" model="ir.ui.view">
+        <field name="name">municipal.attendance.issue.form</field>
+        <field name="model">municipal.attendance.issue</field>
+        <field name="arch" type="xml">
+            <form string="Ирцийн асуудал">
+                <header>
+                    <button name="action_hr_review" string="Хүний нөөцийн хяналт" type="object" invisible="state != 'draft'"/>
+                    <button name="action_manager_review" string="Менежерийн хяналт" type="object" invisible="state != 'hr_review'"/>
+                    <button name="action_employee_explanation" string="Тайлбар авах" type="object" invisible="state not in ('hr_review', 'manager_review')"/>
+                    <button name="action_submit_employee_explanation" string="Тайлбар илгээх" type="object" class="btn-primary" invisible="state != 'employee_explanation'"/>
+                    <button name="action_approve" string="Батлах" type="object" class="btn-primary" invisible="state not in ('manager_review', 'employee_explanation')"/>
+                    <button name="action_create_discipline" string="Сахилгын бүртгэл үүсгэх" type="object" invisible="suggested_action == 'none'"/>
+                    <button name="action_archive" string="Архивлах" type="object" invisible="state != 'approved'"/>
+                    <button name="action_cancel" string="Цуцлах" type="object" invisible="state in ('archived', 'cancelled')"/>
+                    <button name="action_reset_to_draft" string="Ноорог болгох" type="object" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,hr_review,manager_review,employee_explanation,approved,archived"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="employee_id"/>
+                            <field name="department_id"/>
+                            <field name="date"/>
+                            <field name="attendance_status"/>
+                            <field name="issue_type"/>
+                        </group>
+                        <group>
+                            <field name="planned_start_time" widget="float_time"/>
+                            <field name="actual_check_in"/>
+                            <field name="actual_check_out"/>
+                            <field name="late_minutes"/>
+                            <field name="repeated_issue_count" readonly="1"/>
+                            <field name="suggested_action" readonly="1"/>
+                            <field name="registered_by" readonly="1"/>
+                            <field name="approved_by" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="source_work_id"/>
+                        <field name="source_work_report_id"/>
+                    </group>
+                    <notebook>
+                        <page string="Шалтгаан">
+                            <field name="reason"/>
+                        </page>
+                        <page string="Ажилтны тайлбар">
+                            <field name="employee_response"/>
+                            <field name="employee_explanation"/>
+                            <field name="employee_attachment_ids" widget="many2many_binary"/>
+                        </page>
+                        <page string="Хавсралт">
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_municipal_attendance_issue_search" model="ir.ui.view">
+        <field name="name">municipal.attendance.issue.search</field>
+        <field name="model">municipal.attendance.issue</field>
+        <field name="arch" type="xml">
+            <search string="Ирцийн асуудал">
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="attendance_status"/>
+                <field name="issue_type"/>
+                <filter name="today" string="Өнөөдөр" domain="[('date', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="approved" string="Баталгаажсан" domain="[('state', '=', 'approved')]"/>
+                <filter name="late" string="Хоцорсон" domain="[('issue_type', '=', 'late')]"/>
+                <filter name="absent" string="Тасалсан" domain="[('issue_type', '=', 'absent')]"/>
+                <filter name="needs_explanation" string="Тайлбар хүлээж буй" domain="[('state', '=', 'employee_explanation')]"/>
+                <filter name="discipline_suggested" string="Сахилгын саналтай" domain="[('suggested_action', '=', 'discipline_proposal')]"/>
+                <group>
+                    <filter name="group_state" string="Төлөв" context="{'group_by': 'state'}"/>
+                    <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
+                    <filter name="group_employee" string="Ажилтан" context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_attendance_status" string="Ирцийн төлөв" context="{'group_by': 'attendance_status'}"/>
+                    <filter name="group_issue_type" string="Асуудлын төрөл" context="{'group_by': 'issue_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_municipal_attendance_issue" model="ir.actions.act_window">
+        <field name="name">Ирцийн асуудал</field>
+        <field name="res_model">municipal.attendance.issue</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_municipal_attendance_issue_search"/>
+    </record>
+
+    <record id="action_municipal_attendance_today_report" model="ir.actions.act_window">
+        <field name="name">Өдрийн ирцийн тайлан</field>
+        <field name="res_model">municipal.attendance.issue</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('date', '=', context_today().strftime('%Y-%m-%d'))]</field>
+        <field name="context">{'search_default_group_attendance_status': 1}</field>
+        <field name="search_view_id" ref="view_municipal_attendance_issue_search"/>
+    </record>
+
+    <record id="action_municipal_attendance_late_report" model="ir.actions.act_window">
+        <field name="name">Хоцролтын тайлан</field>
+        <field name="res_model">municipal.attendance.issue</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('issue_type', '=', 'late')]</field>
+        <field name="context">{'search_default_group_employee': 1}</field>
+        <field name="search_view_id" ref="view_municipal_attendance_issue_search"/>
+    </record>
+
+    <record id="action_municipal_attendance_absence_report" model="ir.actions.act_window">
+        <field name="name">Таслалтын тайлан</field>
+        <field name="res_model">municipal.attendance.issue</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('issue_type', '=', 'absent')]</field>
+        <field name="context">{'search_default_group_employee': 1}</field>
+        <field name="search_view_id" ref="view_municipal_attendance_issue_search"/>
+    </record>
+
+    <record id="action_municipal_attendance_repeated_report" model="ir.actions.act_window">
+        <field name="name">Давтан зөрчилтэй ажилтны тайлан</field>
+        <field name="res_model">municipal.attendance.issue</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('suggested_action', 'in', ['written_warning', 'discipline_proposal'])]</field>
+        <field name="context">{'search_default_group_employee': 1}</field>
+        <field name="search_view_id" ref="view_municipal_attendance_issue_search"/>
+    </record>
+</odoo>

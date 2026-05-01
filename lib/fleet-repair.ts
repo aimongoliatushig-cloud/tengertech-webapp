@@ -115,6 +115,7 @@ export class FleetRepairPermissionError extends Error {
 
 const MODEL_CANDIDATES = [
   process.env.FLEET_REPAIR_MODEL,
+  "municipal.repair.request",
   "mfo.fleet.repair.request",
   "fleet.repair.request",
   "fleet.repair",
@@ -126,6 +127,7 @@ const LIST_FIELD_CANDIDATES = [
   "vehicle_id",
   "fleet_vehicle_id",
   "issue_summary",
+  "issue_description",
   "description",
   "damage_description",
   "parts_note",
@@ -148,6 +150,7 @@ const LIST_FIELD_CANDIDATES = [
   "supplier_quote_ids",
   "attachment_ids",
   "repair_note",
+  "procurement_request_id",
   "create_date",
   "request_date",
   "date",

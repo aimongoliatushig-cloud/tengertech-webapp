@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="seq_municipal_complaint" model="ir.sequence">
+        <field name="name">Иргэний гомдол</field>
+        <field name="code">municipal.complaint</field>
+        <field name="prefix">CMP/%(year)s/</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_fleet_vehicle_municipal_status_list" model="ir.ui.view">
+        <field name="name">fleet.vehicle.municipal.status.list</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="arch" type="xml">
+            <list string="Машины төлөв" decoration-danger="x_municipal_operational_status == 'in_repair'" decoration-muted="x_municipal_operational_status == 'inactive'">
+                <field name="name"/>
+                <field name="license_plate"/>
+                <field name="driver_id"/>
+                <field name="x_municipal_operational_status"/>
+                <field name="municipal_active_repair_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_fleet_vehicle_municipal_status_search" model="ir.ui.view">
+        <field name="name">fleet.vehicle.municipal.status.search</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="arch" type="xml">
+            <search string="Машины төлөв">
+                <field name="name"/>
+                <field name="license_plate"/>
+                <filter name="in_repair" string="Засварт байгаа" domain="[('x_municipal_operational_status', '=', 'in_repair')]"/>
+                <group>
+                    <filter name="group_status" string="Ашиглалтын төлөв" context="{'group_by': 'x_municipal_operational_status'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_fleet_vehicle_municipal_status" model="ir.actions.act_window">
+        <field name="name">Машины төлөв</field>
+        <field name="res_model">fleet.vehicle</field>
+        <field name="view_mode">list,form</field>
+        <field name="views" eval="[(ref('view_fleet_vehicle_municipal_status_list'), 'list'), (False, 'form')]"/>
+        <field name="search_view_id" ref="view_fleet_vehicle_municipal_status_search"/>
+    </record>
+</odoo>

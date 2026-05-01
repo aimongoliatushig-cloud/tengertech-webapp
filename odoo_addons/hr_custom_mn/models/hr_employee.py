@@ -624,6 +624,38 @@ class HrEmployee(models.Model):
                 for item in leave_groups
             ],
             "monthlyHiringTrend": self._get_hr_custom_mn_hiring_trend(active_employees),
+            "municipal": self._get_hr_custom_mn_municipal_dashboard_extension(),
+        }
+
+    @api.model
+    def _get_hr_custom_mn_municipal_dashboard_extension(self):
+        if (
+            not self.env.registry.get("municipal.attendance.issue")
+            or not self.env.registry.get("municipal.discipline")
+        ):
+            return {}
+        today = fields.Date.context_today(self)
+        attendance_model = self.env["municipal.attendance.issue"].sudo()
+        discipline_model = self.env["municipal.discipline"].sudo()
+        today_attendance = attendance_model.search([("date", "=", today)])
+        discipline_count = discipline_model.search_count(
+            [("state", "not in", ["cancelled", "archived"])]
+        )
+        repeated_absence = attendance_model.search(
+            [
+                ("issue_type", "=", "absent"),
+                ("state", "not in", ["cancelled", "archived"]),
+            ]
+        ).filtered(lambda issue: issue.repeated_issue_count >= 2)
+        return {
+            "todayAttendance": len(today_attendance),
+            "present": len(today_attendance.filtered(lambda issue: issue.attendance_status == "present")),
+            "late": len(today_attendance.filtered(lambda issue: issue.issue_type == "late")),
+            "absent": len(today_attendance.filtered(lambda issue: issue.issue_type == "absent")),
+            "leave": len(today_attendance.filtered(lambda issue: issue.attendance_status in ("leave", "annual_leave"))),
+            "sick": len(today_attendance.filtered(lambda issue: issue.attendance_status == "sick")),
+            "repeatedAbsence": len(repeated_absence),
+            "disciplineCases": discipline_count,
         }
 
     def _get_hr_custom_mn_age_distribution(self, employees):

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ops_task_report_list" model="ir.ui.view">
+        <field name="name">ops.task.report.list</field>
+        <field name="model">ops.task.report</field>
+        <field name="arch" type="xml">
+            <list string="Ажлын тайлан" decoration-danger="state == 'returned'" decoration-success="state == 'approved'">
+                <field name="report_datetime"/>
+                <field name="task_id"/>
+                <field name="reporter_id"/>
+                <field name="reported_quantity"/>
+                <field name="image_count"/>
+                <field name="audio_count"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ops_task_report_form" model="ir.ui.view">
+        <field name="name">ops.task.report.form</field>
+        <field name="model">ops.task.report</field>
+        <field name="arch" type="xml">
+            <form string="Ажлын тайлан">
+                <header>
+                    <button name="action_submit" string="Илгээх" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_review" string="Хяналтад авах" type="object" invisible="state != 'submitted'"/>
+                    <button name="action_return" string="Буцаах" type="object" invisible="state not in ('submitted', 'under_review')"/>
+                    <button name="action_approve" string="Батлах" type="object" class="btn-primary" invisible="state != 'under_review'"/>
+                    <button name="action_reset_to_draft" string="Ноорог болгох" type="object" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,under_review,returned,approved"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="task_id"/>
+                            <field name="municipal_report_id"/>
+                            <field name="reporter_id"/>
+                            <field name="user_id"/>
+                            <field name="report_datetime"/>
+                        </group>
+                        <group>
+                            <field name="reported_quantity"/>
+                            <field name="task_measurement_unit_id"/>
+                            <field name="task_measurement_unit_code"/>
+                            <field name="reviewed_by" readonly="1"/>
+                            <field name="approved_by" readonly="1"/>
+                            <field name="rejected_by" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Тайлбар">
+                            <field name="report_summary"/>
+                            <field name="rejection_reason"/>
+                        </page>
+                        <page string="Зураг">
+                            <field name="image_attachment_ids" widget="many2many_binary"/>
+                        </page>
+                        <page string="Дуу бичлэг">
+                            <field name="audio_attachment_ids" widget="many2many_binary"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ops_task_report_search" model="ir.ui.view">
+        <field name="name">ops.task.report.search</field>
+        <field name="model">ops.task.report</field>
+        <field name="arch" type="xml">
+            <search string="Ажлын тайлан">
+                <field name="task_id"/>
+                <field name="reporter_id"/>
+                <filter name="submitted" string="Илгээсэн" domain="[('state', '=', 'submitted')]"/>
+                <filter name="returned" string="Буцаагдсан" domain="[('state', '=', 'returned')]"/>
+                <group>
+                    <filter name="group_state" string="Төлөв" context="{'group_by': 'state'}"/>
+                    <filter name="group_reporter" string="Ажилтан" context="{'group_by': 'reporter_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ops_task_report" model="ir.actions.act_window">
+        <field name="name">Ажлын тайлан</field>
+        <field name="res_model">ops.task.report</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_ops_task_report_search"/>
+    </record>
+</odoo>

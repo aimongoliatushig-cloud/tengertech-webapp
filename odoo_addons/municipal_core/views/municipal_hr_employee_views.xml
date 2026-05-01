@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_employee_municipal_activity_list" model="ir.ui.view">
+        <field name="name">hr.employee.municipal.activity.list</field>
+        <field name="model">hr.employee</field>
+        <field name="arch" type="xml">
+            <list string="Ажилтны идэвх" decoration-success="municipal_activity_status == 'good'" decoration-warning="municipal_activity_status == 'attention'" decoration-danger="municipal_activity_status == 'risk'">
+                <field name="name"/>
+                <field name="department_id"/>
+                <field name="job_title"/>
+                <field name="municipal_assigned_work_count"/>
+                <field name="municipal_started_work_count"/>
+                <field name="municipal_done_work_count"/>
+                <field name="municipal_approved_report_count"/>
+                <field name="municipal_returned_report_count"/>
+                <field name="municipal_overdue_work_count"/>
+                <field name="municipal_absence_count"/>
+                <field name="municipal_late_count"/>
+                <field name="municipal_discipline_count"/>
+                <field name="municipal_activity_score"/>
+                <field name="municipal_activity_status"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_hr_employee_municipal_activity_search" model="ir.ui.view">
+        <field name="name">hr.employee.municipal.activity.search</field>
+        <field name="model">hr.employee</field>
+        <field name="arch" type="xml">
+            <search string="Ажилтны идэвх">
+                <field name="name"/>
+                <field name="department_id"/>
+                <filter name="active_employee" string="Идэвхтэй" domain="[('active', '=', True)]"/>
+                <group>
+                    <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_municipal_employee_activity" model="ir.actions.act_window">
+        <field name="name">Идэвхийн тайлан</field>
+        <field name="res_model">hr.employee</field>
+        <field name="view_mode">list,form</field>
+        <field name="views" eval="[(ref('view_hr_employee_municipal_activity_list'), 'list'), (False, 'form')]"/>
+        <field name="context">{'search_default_active_employee': 1}</field>
+        <field name="search_view_id" ref="view_hr_employee_municipal_activity_search"/>
+    </record>
+</odoo>

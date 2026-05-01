@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_municipal_work_qr_form_inherit" model="ir.ui.view">
+        <field name="name">municipal.work.qr.form.inherit</field>
+        <field name="model">municipal.work</field>
+        <field name="inherit_id" ref="municipal_core.view_municipal_work_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="QR">
+                    <button name="action_generate_qr_token" string="QR үүсгэх" type="object"/>
+                    <field name="qr_code" readonly="1"/>
+                    <field name="qr_token" readonly="1"/>
+                    <field name="qr_url" readonly="1"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

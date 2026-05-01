@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_municipal_repair_request_list" model="ir.ui.view">
+        <field name="name">municipal.repair.request.list</field>
+        <field name="model">municipal.repair.request</field>
+        <field name="arch" type="xml">
+            <list string="Засварын хүсэлт" decoration-success="state in ('done', 'vehicle_returned')" decoration-warning="state in ('waiting_parts', 'waiting_approval')" decoration-danger="priority in ('2', '3')" decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="request_date"/>
+                <field name="vehicle_id"/>
+                <field name="driver_id"/>
+                <field name="department_id"/>
+                <field name="mechanic_id"/>
+                <field name="priority"/>
+                <field name="amount_total"/>
+                <field name="contract_required"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_repair_request_form" model="ir.ui.view">
+        <field name="name">municipal.repair.request.form</field>
+        <field name="model">municipal.repair.request</field>
+        <field name="arch" type="xml">
+            <form string="Засварын хүсэлт">
+                <header>
+                    <button name="action_diagnose" string="Оношлох" type="object" invisible="state != 'new'"/>
+                    <button name="action_request_parts" string="Сэлбэг хүсэх" type="object" invisible="state not in ('diagnosed', 'waiting_parts')"/>
+                    <button name="action_request_approval" string="Баталгаанд илгээх" type="object" invisible="state not in ('diagnosed', 'waiting_parts')"/>
+                    <button name="action_approve" string="Батлах" type="object" class="btn-primary" invisible="state != 'waiting_approval'"/>
+                    <button name="action_start_repair" string="Засвар эхлүүлэх" type="object" class="btn-primary" invisible="state != 'approved'"/>
+                    <button name="action_done" string="Засвар дуусгах" type="object" invisible="state != 'in_repair'"/>
+                    <button name="action_return_vehicle" string="Машин буцаах" type="object" invisible="state != 'done'"/>
+                    <button name="action_cancel" string="Цуцлах" type="object" invisible="state in ('done', 'vehicle_returned', 'cancelled')"/>
+                    <button name="action_reset_to_new" string="Шинэ болгох" type="object" invisible="state == 'new'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="new,diagnosed,waiting_parts,waiting_approval,approved,in_repair,done,vehicle_returned"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="issue_summary"/>
+                            <field name="vehicle_id"/>
+                            <field name="driver_id"/>
+                            <field name="requested_by" readonly="1"/>
+                            <field name="request_date"/>
+                            <field name="department_id"/>
+                        </group>
+                        <group>
+                            <field name="mechanic_id"/>
+                            <field name="supervisor_id"/>
+                            <field name="priority"/>
+                            <field name="estimated_cost"/>
+                            <field name="actual_cost"/>
+                            <field name="amount_total" readonly="1"/>
+                            <field name="contract_required" readonly="1"/>
+                            <field name="approved_by" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Эвдрэл">
+                            <field name="issue_description"/>
+                            <field name="description"/>
+                            <field name="parts_note"/>
+                        </page>
+                        <page string="Оношилгоо">
+                            <field name="diagnosis"/>
+                            <field name="repair_note"/>
+                        </page>
+                        <page string="Сэлбэг">
+                            <field name="required_part_ids">
+                                <list editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="description"/>
+                                    <field name="quantity"/>
+                                    <field name="requested_quantity"/>
+                                    <field name="issued_quantity"/>
+                                    <field name="unit_of_measure"/>
+                                    <field name="estimated_unit_cost"/>
+                                    <field name="available_quantity"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Худалдан авалт">
+                            <field name="procurement_request_id"/>
+                            <group>
+                                <field name="payment_state"/>
+                                <field name="contract_state"/>
+                                <field name="order_state"/>
+                            </group>
+                        </page>
+                        <page string="Хавсралт">
+                            <field name="photo_ids" widget="many2many_binary"/>
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_municipal_repair_request_search" model="ir.ui.view">
+        <field name="name">municipal.repair.request.search</field>
+        <field name="model">municipal.repair.request</field>
+        <field name="arch" type="xml">
+            <search string="Засварын хүсэлт">
+                <field name="name"/>
+                <field name="vehicle_id"/>
+                <field name="driver_id"/>
+                <field name="mechanic_id"/>
+                <field name="department_id"/>
+                <filter name="in_repair" string="Засварт байгаа" domain="[('state', '=', 'in_repair')]"/>
+                <filter name="waiting_parts" string="Сэлбэг хүлээж буй" domain="[('state', '=', 'waiting_parts')]"/>
+                <filter name="waiting_approval" string="Баталгаа хүлээж буй" domain="[('state', '=', 'waiting_approval')]"/>
+                <group>
+                    <filter name="group_state" string="Төлөв" context="{'group_by': 'state'}"/>
+                    <filter name="group_vehicle" string="Машин" context="{'group_by': 'vehicle_id'}"/>
+                    <filter name="group_mechanic" string="Засварчин" context="{'group_by': 'mechanic_id'}"/>
+                    <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_municipal_repair_request" model="ir.actions.act_window">
+        <field name="name">Засварын хүсэлт</field>
+        <field name="res_model">municipal.repair.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_municipal_repair_request_search"/>
+    </record>
+
+    <record id="action_municipal_repair_diagnosis" model="ir.actions.act_window">
+        <field name="name">Оношилгоо</field>
+        <field name="res_model">municipal.repair.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', 'in', ['new', 'diagnosed'])]</field>
+        <field name="search_view_id" ref="view_municipal_repair_request_search"/>
+    </record>
+
+    <record id="action_municipal_repair_parts" model="ir.actions.act_window">
+        <field name="name">Сэлбэгийн хүсэлт</field>
+        <field name="res_model">municipal.repair.part.line</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_municipal_repair_in_progress" model="ir.actions.act_window">
+        <field name="name">Засварт байгаа машин</field>
+        <field name="res_model">municipal.repair.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'in_repair')]</field>
+        <field name="search_view_id" ref="view_municipal_repair_request_search"/>
+    </record>
+
+    <record id="action_municipal_repair_report" model="ir.actions.act_window">
+        <field name="name">Засварын тайлан</field>
+        <field name="res_model">municipal.repair.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_state': 1}</field>
+        <field name="search_view_id" ref="view_municipal_repair_request_search"/>
+    </record>
+</odoo>

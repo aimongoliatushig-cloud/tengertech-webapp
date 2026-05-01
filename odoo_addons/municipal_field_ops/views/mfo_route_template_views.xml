@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mfo_route_template_list" model="ir.ui.view">
+        <field name="name">mfo.route.template.list</field>
+        <field name="model">mfo.route.template</field>
+        <field name="arch" type="xml">
+            <list string="7 хоногийн маршрут загвар">
+                <field name="name"/>
+                <field name="department_id"/>
+                <field name="weekday"/>
+                <field name="route_id"/>
+                <field name="vehicle_id"/>
+                <field name="driver_id"/>
+                <field name="team_id"/>
+                <field name="inspector_id"/>
+                <field name="start_time" widget="float_time"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mfo_route_template_form" model="ir.ui.view">
+        <field name="name">mfo.route.template.form</field>
+        <field name="model">mfo.route.template</field>
+        <field name="arch" type="xml">
+            <form string="7 хоногийн маршрут загвар">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="department_id"/>
+                            <field name="weekday"/>
+                            <field name="route_id"/>
+                            <field name="start_time" widget="float_time"/>
+                        </group>
+                        <group>
+                            <field name="vehicle_id"/>
+                            <field name="driver_id"/>
+                            <field name="team_id"/>
+                            <field name="inspector_id"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mfo_route_template_search" model="ir.ui.view">
+        <field name="name">mfo.route.template.search</field>
+        <field name="model">mfo.route.template</field>
+        <field name="arch" type="xml">
+            <search string="7 хоногийн маршрут загвар">
+                <field name="name"/>
+                <field name="department_id"/>
+                <field name="route_id"/>
+                <filter name="active" string="Идэвхтэй" domain="[('active', '=', True)]"/>
+                <group>
+                    <filter name="group_weekday" string="Гараг" context="{'group_by': 'weekday'}"/>
+                    <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
+                    <filter name="group_route" string="Маршрут" context="{'group_by': 'route_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mfo_route_template" model="ir.actions.act_window">
+        <field name="name">7 хоногийн маршрут загвар</field>
+        <field name="res_model">mfo.route.template</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_mfo_route_template_search"/>
+    </record>
+</odoo>

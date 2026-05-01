@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_municipal_repair_root"
+              name="Засвар"
+              parent="municipal_core.menu_municipal_core_root"
+              sequence="50"
+              groups="municipal_repair_workflow.group_repair_manager,municipal_repair_workflow.group_repair_team_lead,municipal_repair_workflow.group_repair_mechanic,municipal_repair_workflow.group_repair_storekeeper,municipal_repair_workflow.group_repair_finance,municipal_repair_workflow.group_repair_director,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_municipal_repair_request"
+              name="Засварын хүсэлт"
+              parent="menu_municipal_repair_root"
+              action="action_municipal_repair_request"
+              sequence="10"/>
+
+    <menuitem id="menu_municipal_repair_diagnosis"
+              name="Оношилгоо"
+              parent="menu_municipal_repair_root"
+              action="action_municipal_repair_diagnosis"
+              sequence="20"/>
+
+    <menuitem id="menu_municipal_repair_parts"
+              name="Сэлбэгийн хүсэлт"
+              parent="menu_municipal_repair_root"
+              action="action_municipal_repair_parts"
+              sequence="30"/>
+
+    <menuitem id="menu_municipal_repair_in_progress"
+              name="Засварт байгаа машин"
+              parent="menu_municipal_repair_root"
+              action="action_municipal_repair_in_progress"
+              sequence="40"/>
+
+    <menuitem id="menu_municipal_repair_report"
+              name="Засварын тайлан"
+              parent="menu_municipal_repair_root"
+              action="action_municipal_repair_report"
+              sequence="50"/>
+
+    <menuitem id="menu_municipal_inventory_procurement_root"
+              name="Агуулах / Худалдан авалт"
+              parent="municipal_core.menu_municipal_core_root"
+              sequence="60"
+              groups="municipal_repair_workflow.group_repair_manager,municipal_repair_workflow.group_repair_storekeeper,municipal_repair_workflow.group_repair_finance,municipal_repair_workflow.group_repair_director,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_municipal_material_request"
+              name="Материалын хүсэлт"
+              parent="menu_municipal_inventory_procurement_root"
+              action="action_municipal_procurement_request"
+              sequence="10"/>
+
+    <menuitem id="menu_municipal_procurement_request"
+              name="Худалдан авалтын хүсэлт"
+              parent="menu_municipal_inventory_procurement_root"
+              action="action_municipal_procurement_request"
+              sequence="20"/>
+
+    <menuitem id="menu_municipal_procurement_quotes"
+              name="3 үнийн санал"
+              parent="menu_municipal_inventory_procurement_root"
+              action="action_municipal_procurement_request"
+              sequence="30"/>
+
+    <menuitem id="menu_municipal_procurement_receipt"
+              name="Хүлээн авалт"
+              parent="menu_municipal_inventory_procurement_root"
+              action="action_municipal_procurement_request"
+              sequence="40"/>
+
+    <menuitem id="menu_municipal_vehicle_status"
+              name="Машины төлөв"
+              parent="menu_municipal_repair_root"
+              action="action_fleet_vehicle_municipal_status"
+              sequence="60"/>
+</odoo>

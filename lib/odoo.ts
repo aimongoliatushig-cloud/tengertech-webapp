@@ -514,15 +514,15 @@ const DEFAULT_CONNECTION: OdooConnection = {
 };
 
 const FLEET_REPAIR_GROUP_XML_IDS = {
-  mechanic: "fleet_repair_workflow.group_fleet_repair_mechanic",
-  teamLeader: "fleet_repair_workflow.group_fleet_repair_team_leader",
-  accounting: "fleet_repair_workflow.group_fleet_repair_accounting",
-  administration: "fleet_repair_workflow.group_fleet_repair_administration",
-  finance: "fleet_repair_workflow.group_fleet_repair_finance",
-  purchaser: "fleet_repair_workflow.group_fleet_repair_purchaser",
-  generalManager: "fleet_repair_workflow.group_fleet_repair_general_manager",
-  ceo: "fleet_repair_workflow.group_fleet_repair_ceo",
-  manager: "fleet_repair_workflow.group_fleet_repair_manager",
+  mechanic: "municipal_repair_workflow.group_repair_mechanic",
+  teamLeader: "municipal_repair_workflow.group_repair_team_lead",
+  accounting: "municipal_repair_workflow.group_repair_finance",
+  administration: "municipal_repair_workflow.group_repair_manager",
+  finance: "municipal_repair_workflow.group_repair_finance",
+  purchaser: "municipal_repair_workflow.group_repair_storekeeper",
+  generalManager: "municipal_repair_workflow.group_repair_manager",
+  ceo: "municipal_repair_workflow.group_repair_director",
+  manager: "municipal_repair_workflow.group_repair_manager",
 } as const;
 
 const OPS_PROFILE_GROUP_XML_IDS = {

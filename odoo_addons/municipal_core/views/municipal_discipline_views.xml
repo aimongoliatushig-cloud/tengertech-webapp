@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_municipal_discipline_list" model="ir.ui.view">
+        <field name="name">municipal.discipline.list</field>
+        <field name="model">municipal.discipline</field>
+        <field name="arch" type="xml">
+            <list string="Сахилгын бүртгэл" decoration-success="state == 'approved'" decoration-warning="repeated" decoration-muted="state in ('archived', 'cancelled')">
+                <field name="violation_date"/>
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="violation_type"/>
+                <field name="repeated"/>
+                <field name="repeated_violation_count"/>
+                <field name="action_type"/>
+                <field name="employee_response"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_discipline_form" model="ir.ui.view">
+        <field name="name">municipal.discipline.form</field>
+        <field name="model">municipal.discipline</field>
+        <field name="arch" type="xml">
+            <form string="Сахилгын бүртгэл">
+                <header>
+                    <button name="action_hr_review" string="Хүний нөөцийн хяналт" type="object" invisible="state != 'draft'"/>
+                    <button name="action_manager_review" string="Менежерийн хяналт" type="object" invisible="state != 'hr_review'"/>
+                    <button name="action_employee_explanation" string="Тайлбар авах" type="object" invisible="state not in ('hr_review', 'manager_review')"/>
+                    <button name="action_submit_employee_explanation" string="Тайлбар илгээх" type="object" class="btn-primary" invisible="state != 'employee_explanation'"/>
+                    <button name="action_admin_review" string="Захиргааны хяналт" type="object" invisible="state not in ('manager_review', 'employee_explanation')"/>
+                    <button name="action_approve" string="Батлах" type="object" class="btn-primary" invisible="state != 'admin_review'"/>
+                    <button name="action_archive" string="Архивлах" type="object" invisible="state != 'approved'"/>
+                    <button name="action_cancel" string="Цуцлах" type="object" invisible="state in ('archived', 'cancelled')"/>
+                    <button name="action_reset_to_draft" string="Ноорог болгох" type="object" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,hr_review,manager_review,employee_explanation,admin_review,approved,archived"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="employee_id"/>
+                            <field name="department_id"/>
+                            <field name="violation_date"/>
+                            <field name="violation_type"/>
+                            <field name="source_attendance_issue_id"/>
+                            <field name="source_work_report_id"/>
+                        </group>
+                        <group>
+                            <field name="repeated" readonly="1"/>
+                            <field name="repeated_violation_count" readonly="1"/>
+                            <field name="action_type"/>
+                            <field name="penalty_amount"/>
+                            <field name="deduction_percent"/>
+                            <field name="approved_by" readonly="1"/>
+                            <field name="order_attachment_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Тайлбар">
+                            <field name="explanation"/>
+                        </page>
+                        <page string="Ажилтны тайлбар">
+                            <field name="employee_response"/>
+                            <field name="employee_explanation"/>
+                            <field name="employee_attachment_ids" widget="many2many_binary"/>
+                        </page>
+                        <page string="Хавсралт">
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_municipal_discipline_search" model="ir.ui.view">
+        <field name="name">municipal.discipline.search</field>
+        <field name="model">municipal.discipline</field>
+        <field name="arch" type="xml">
+            <search string="Сахилгын бүртгэл">
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="violation_type"/>
+                <field name="employee_response"/>
+                <filter name="approved" string="Баталгаажсан" domain="[('state', '=', 'approved')]"/>
+                <filter name="repeated" string="Давтан" domain="[('repeated', '=', True)]"/>
+                <filter name="needs_explanation" string="Тайлбар хүлээж буй" domain="[('state', '=', 'employee_explanation')]"/>
+                <group>
+                    <filter name="group_state" string="Төлөв" context="{'group_by': 'state'}"/>
+                    <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
+                    <filter name="group_employee" string="Ажилтан" context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_violation_type" string="Зөрчлийн төрөл" context="{'group_by': 'violation_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_municipal_discipline" model="ir.actions.act_window">
+        <field name="name">Сахилгын бүртгэл</field>
+        <field name="res_model">municipal.discipline</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_municipal_discipline_search"/>
+    </record>
+
+    <record id="action_municipal_discipline_report" model="ir.actions.act_window">
+        <field name="name">Сахилгын тайлан</field>
+        <field name="res_model">municipal.discipline</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_violation_type': 1}</field>
+        <field name="search_view_id" ref="view_municipal_discipline_search"/>
+    </record>
+</odoo>
