@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/auth";
+import { requireHrAccess } from "@/lib/hr";
 import { executeOdooKw } from "@/lib/odoo";
 
-const HR_ALLOWED_ROLES = new Set(["system_admin", "director", "general_manager"]);
 const MAX_EMPLOYEE_PHOTO_SIZE = 5 * 1024 * 1024;
 const ALLOWED_EMPLOYEE_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
@@ -52,7 +52,9 @@ function getOptionalImageFile(formData: FormData, key: string) {
 
 export async function updateHrEmployeeRegistrationAction(formData: FormData) {
   const session = await requireSession();
-  if (!HR_ALLOWED_ROLES.has(String(session.role))) {
+  try {
+    await requireHrAccess(session);
+  } catch {
     redirect("/");
   }
 

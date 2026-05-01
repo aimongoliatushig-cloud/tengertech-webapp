@@ -24,6 +24,8 @@ export type RoleGroupFlags = {
   fleetRepairCeo?: boolean;
   fleetRepairManager?: boolean;
   opsStorekeeper?: boolean;
+  hrUser?: boolean;
+  hrManager?: boolean;
 };
 
 export type RoleContext = {
@@ -63,6 +65,8 @@ const EMPTY_GROUP_FLAGS: RoleGroupFlags = {
   fleetRepairCeo: false,
   fleetRepairManager: false,
   opsStorekeeper: false,
+  hrUser: false,
+  hrManager: false,
 };
 
 function normalizeGroupFlags(groupFlags?: Partial<RoleGroupFlags> | null): RoleGroupFlags {
@@ -114,6 +118,10 @@ export function getRoleLabel(role: UserRole) {
       return "Ахлах мастер";
     case "team_leader":
       return "Мастер";
+    case "hr_specialist":
+      return "Хүний нөөцийн мэргэжилтэн";
+    case "hr_manager":
+      return "Хүний нөөцийн менежер";
     case "worker":
       return "Ажилтан";
     default:

@@ -319,13 +319,40 @@ function inferRoleFromEmployeeTitle(employee?: OdooAuthEmployeeRecord | null) {
       employee.job_title || "",
     ].join(" "),
   );
+  const department = normalizeRoleTitle(
+    Array.isArray(employee.department_id) ? employee.department_id[1] : "",
+  );
+  const titleWithDepartment = `${title} ${department}`;
 
   if (!title) {
     return null;
   }
 
+  if (
+    title.includes("хүний нөөц") ||
+    title.includes("human resources") ||
+    title.includes("hr specialist") ||
+    title.includes("hr manager")
+  ) {
+    return title.includes("manager") || title.includes("менежер")
+      ? "hr_manager"
+      : "hr_specialist";
+  }
+
   if (title.includes("хэлтсийн дарга") || title.includes("албаны дарга")) {
     return "project_manager";
+  }
+
+  if (
+    title.includes("тээвэрлэлтийн хяналтын ажилтан") ||
+    title.includes("тээврийн хяналтын ажилтан") ||
+    title.includes("хог тээврийн хяналтын ажилтан") ||
+    (title.includes("тээвэр") && title.includes("хяналт")) ||
+    (title.includes("teever") && title.includes("hyanalt")) ||
+    (title.includes("хяналтын ажилтан") &&
+      (titleWithDepartment.includes("хог тээвэр") || titleWithDepartment.includes("авто бааз")))
+  ) {
+    return "team_leader";
   }
 
   if (
@@ -1678,6 +1705,8 @@ export async function authenticateOdooUser(
     fleetRepairCeo,
     fleetRepairManager,
     opsStorekeeper,
+    hrUser,
+    hrManager,
   ] = await Promise.all([
     hasGroup("municipal_field_ops.group_mfo_manager"),
     hasGroup("municipal_field_ops.group_mfo_dispatcher"),
@@ -1693,6 +1722,8 @@ export async function authenticateOdooUser(
     hasGroup(FLEET_REPAIR_GROUP_XML_IDS.ceo),
     hasGroup(FLEET_REPAIR_GROUP_XML_IDS.manager),
     hasGroup(OPS_PROFILE_GROUP_XML_IDS.storekeeper),
+    hasGroup("hr.group_hr_user"),
+    hasGroup("hr.group_hr_manager"),
   ]);
   const canPurchaseFleetRepair = fleetRepairPurchaser || opsStorekeeper;
   const fleetRepairAny =
@@ -1706,12 +1737,18 @@ export async function authenticateOdooUser(
     fleetRepairCeo ||
     fleetRepairManager;
 
+  const inferredRole = resolveAuthenticatedRole(user.ops_user_type, employee);
+  const role =
+    inferredRole === "worker" && hrManager
+      ? "hr_manager"
+      : inferredRole;
+
   return {
     uid,
     user: {
       name: user.name,
       login: user.login,
-      role: resolveAuthenticatedRole(user.ops_user_type, employee),
+      role,
       groupFlags: {
         mfoManager,
         mfoDispatcher,
@@ -1728,6 +1765,8 @@ export async function authenticateOdooUser(
         fleetRepairCeo,
         fleetRepairManager,
         opsStorekeeper,
+        hrUser,
+        hrManager,
       },
     },
   };

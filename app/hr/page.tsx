@@ -1,188 +1,110 @@
-import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Activity, Building2, ClipboardPlus, FileCheck2, HeartPulse, Plus, Users } from "lucide-react";
 
-import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import shellStyles from "@/app/workspace.module.css";
-import {
-  getRoleLabel,
-  hasCapability,
-  requireSession,
-} from "@/lib/auth";
-import { loadSessionDepartmentName } from "@/lib/access-scope";
-import { filterByDepartment } from "@/lib/dashboard-scope";
-import { loadHrEmployeeDirectory } from "@/lib/odoo";
+import { getRoleLabel, requireSession } from "@/lib/auth";
+import { getHrStats, requireHrAccess } from "@/lib/hr";
 
-import { HrDirectory } from "./hr-directory";
-import styles from "./page.module.css";
+import { HrSectionNav } from "./hr-section-nav";
+import styles from "./hr.module.css";
 
 export const dynamic = "force-dynamic";
 
-type PageProps = {
-  searchParams?: Promise<{
-    employee?: string | string[];
-    notice?: string | string[];
-    error?: string | string[];
-  }>;
-};
+const actions = [
+  { href: "/hr/employees/new", label: "Шинэ ажилтан бүртгэх", icon: Plus },
+  { href: "/hr/leaves", label: "Чөлөө / өвчтэй бүртгэх", icon: ClipboardPlus },
+  { href: "/hr/clearance", label: "Тойрох хуудас", icon: FileCheck2 },
+];
 
-function getParam(value?: string | string[]) {
-  if (Array.isArray(value)) {
-    return value[0] ?? "";
-  }
-  return value ?? "";
-}
-
-export default async function HrPage({ searchParams }: PageProps) {
+export default async function HrDashboardPage() {
   const session = await requireSession();
-  const allowedRoles = new Set([
-    "system_admin",
-    "director",
-    "general_manager",
-    "project_manager",
-    "senior_master",
-    "team_leader",
-  ]);
-
-  if (!allowedRoles.has(String(session.role))) {
-    redirect("/");
+  const access = await requireHrAccess(session).catch(() => null);
+  if (!access) {
+    return null;
   }
-  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  const stats = await getHrStats(session).catch((error) => {
+    console.warn("HR dashboard stats could not be loaded:", error);
+    return {
+      totalEmployees: 0,
+      activeEmployees: 0,
+      leaveToday: 0,
+      sickToday: 0,
+      archivedEmployees: 0,
+      pendingClearance: 0,
+    };
+  });
 
-  const canCreateProject = hasCapability(session, "create_projects");
-  const canCreateTasks = hasCapability(session, "create_tasks");
-  const canWriteReports = hasCapability(session, "write_workspace_reports");
-  const canViewQualityCenter = hasCapability(session, "view_quality_center");
-  const canUseFieldConsole = hasCapability(session, "use_field_console");
-
-  let employees = [] as Awaited<ReturnType<typeof loadHrEmployeeDirectory>>;
-  let loadError = "";
-
-  try {
-    employees = await loadHrEmployeeDirectory({
-      login: session.login,
-      password: session.password,
-    });
-    employees = filterByDepartment(employees, scopedDepartmentName);
-  } catch (error) {
-    console.error("HR directory could not be loaded:", error);
-    loadError =
-      "Хүний нөөцийн мэдээллийг Odoo-оос уншиж чадсангүй. Холболт болон эрхийн тохиргоог шалгана уу.";
-  }
-
-  const departments = Array.from(
-    employees.reduce<Map<string, typeof employees>>((accumulator, employee) => {
-      const current = accumulator.get(employee.departmentName) ?? [];
-      current.push(employee);
-      accumulator.set(employee.departmentName, current);
-      return accumulator;
-    }, new Map()),
-  ).sort((left, right) => left[0].localeCompare(right[0], "mn"));
-
-  const activeCount = employees.filter((employee) => employee.active).length;
-  const inactiveCount = employees.length - activeCount;
-  const missingDocumentCount = employees.filter(
-    (employee) => employee.missingDocumentCount > 0,
-  ).length;
-  const contactCount = employees.filter(
-    (employee) => employee.workPhone || employee.mobilePhone || employee.workEmail,
-  ).length;
-  const params = (await searchParams) ?? {};
-  const selectedEmployeeId = Number(getParam(params.employee) || 0);
-  const noticeMessage = getParam(params.notice);
-  const errorMessage = getParam(params.error);
-  const departmentGroups = departments.map(([departmentName, departmentEmployees]) => ({
-    departmentName,
-    employees: departmentEmployees,
-  }));
+  const cards = [
+    { label: "Нийт ажилтан", value: stats.totalEmployees, icon: Users, note: "Бүх ажилтны мастер бүртгэл" },
+    { label: "Идэвхтэй ажилтан", value: stats.activeEmployees, icon: Activity, note: "Одоо ажиллаж буй бүртгэл" },
+    { label: "Чөлөө / өвчтэй", value: stats.leaveToday + stats.sickToday, icon: HeartPulse, note: "Өнөөдрийн бүртгэл" },
+    { label: "Тойрох хуудас", value: stats.pendingClearance, icon: FileCheck2, note: "Хүлээгдэж буй" },
+  ];
 
   return (
-    <main className={shellStyles.shell}>
-      <div className={shellStyles.container}>
-        <div className={shellStyles.contentWithMenu}>
-          <aside className={shellStyles.menuColumn}>
-            <AppMenu
-              active="hr"
-              canCreateProject={canCreateProject}
-              canCreateTasks={canCreateTasks}
-              canWriteReports={canWriteReports}
-              canViewQualityCenter={canViewQualityCenter}
-              canUseFieldConsole={canUseFieldConsole}
-              userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
-              departmentScopeName={scopedDepartmentName}
-            />
-          </aside>
+    <>
+      <WorkspaceHeader
+        title="Хүний нөөцийн удирдлага"
+        subtitle="Ажилтан, алба нэгж, чөлөө болон тойрох хуудсыг энгийн урсгалаар удирдана"
+        userName={session.name}
+        roleLabel={getRoleLabel(session.role)}
+        notificationCount={stats.leaveToday + stats.pendingClearance}
+        notificationNote="HR бүртгэлийн анхаарах зүйлс"
+      />
+      <HrSectionNav />
 
-          <div className={shellStyles.pageContent}>
-            <WorkspaceHeader
-              title="Хүний нөөц"
-              subtitle="Ажилтны мастер бүртгэл, бүтэц, холбоо барих мэдээлэл"
-              userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
-              notificationCount={employees.length}
-              notificationNote={`${departments.length} хэлтсийн ${employees.length} ажилтан`}
-            />
-
-            <section className={styles.introCard}>
-              <span className={styles.eyebrow}>Ажилтны мастер бүртгэл</span>
-              <h1 className={styles.introTitle}>Байгууллагын хүний нөөцийн лавлах</h1>
-              <p className={styles.introText}>
-                Хэлтэс, албан тушаал, код, холбоо барих мэдээлэл, баримтын бүрдэл,
-                гүйцэтгэлийн дохиог нэг дэлгэц дээр төвлөрүүлсэн HR картын харагдац.
-              </p>
-
-              <div className={styles.summaryGrid}>
-                <article className={styles.summaryCard}>
-                  <span>Нийт ажилтан</span>
-                  <strong>{employees.length}</strong>
-                  <small>{activeCount} идэвхтэй бүртгэл</small>
-                </article>
-
-                <article className={styles.summaryCard}>
-                  <span>Хэлтэс</span>
-                  <strong>{departments.length}</strong>
-                  <small>{inactiveCount} архивласан / идэвхгүй бүртгэл</small>
-                </article>
-
-                <article className={styles.summaryCard}>
-                  <span>Баримтын хяналт</span>
-                  <strong>{missingDocumentCount}</strong>
-                  <small>{contactCount} ажилтан холбоо барих мэдээлэлтэй</small>
-                </article>
+      <section className={styles.statGrid}>
+        {cards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <article key={card.label} className={styles.statCard}>
+              <span className={styles.statIcon}>
+                <Icon aria-hidden />
+              </span>
+              <div>
+                <small>{card.label}</small>
+                <strong>{card.value}</strong>
+                <p>{card.note}</p>
               </div>
-            </section>
+            </article>
+          );
+        })}
+      </section>
 
-            {loadError ? (
-              <section className={styles.errorCard}>
-                <h2>Хүний нөөцийн өгөгдөл ачаалж чадсангүй</h2>
-                <p>{loadError}</p>
-              </section>
-            ) : null}
-
-            {noticeMessage || errorMessage ? (
-              <section className={errorMessage ? styles.errorCard : styles.noticeCard}>
-                <h2>{errorMessage ? "Бүртгэл хадгалагдсангүй" : "Бүртгэл хадгалагдлаа"}</h2>
-                <p>{errorMessage || noticeMessage}</p>
-              </section>
-            ) : null}
-
-            <section className={styles.sectionCard}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <span className={styles.eyebrow}>Ухаалаг жагсаалт</span>
-                  <h2>Ажилтны premium HR картууд</h2>
-                </div>
-                <p>Одоо ашиглаж буй Employees дэлгэцийг хэлтэс, төлөв, хайлтаар хурдан шүүх боломжтой болголоо.</p>
-              </div>
-
-              <HrDirectory
-                departments={departmentGroups}
-                initialEmployeeId={Number.isFinite(selectedEmployeeId) ? selectedEmployeeId : null}
-              />
-            </section>
-          </div>
+      <section className={styles.actionPanel}>
+        <div>
+          <span className={styles.eyebrow}>HR үйлдэл</span>
+          <h2>Өдөр тутмын гол үйлдэл</h2>
         </div>
-      </div>
-    </main>
+        <div className={styles.actionGrid}>
+          {actions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <Link key={action.href + action.label} href={action.href} className={styles.actionButton}>
+                <Icon aria-hidden />
+                <span>{action.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className={styles.actionPanel}>
+        <div>
+          <span className={styles.eyebrow}>Алба нэгж</span>
+          <h2>Ажилтнуудыг нэгжээр харах</h2>
+        </div>
+        <div className={styles.actionGrid}>
+          <Link href="/hr/departments" className={styles.actionButton}>
+            <Building2 aria-hidden />
+            <span>Алба нэгжүүд</span>
+          </Link>
+          <Link href="/hr/employees" className={styles.actionButton}>
+            <Users aria-hidden />
+            <span>Ажилтны жагсаалт</span>
+          </Link>
+        </div>
+      </section>
+    </>
   );
 }

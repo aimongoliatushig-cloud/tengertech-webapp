@@ -23,6 +23,7 @@ import { SESSION_COOKIE_NAME } from "@/lib/session";
 
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 const WORKER_ROLE_REFRESH_INTERVAL_MS = 5 * 60_000;
+const CURRENT_SESSION_ROLE_INFERENCE_VERSION = 2;
 
 export type AppSession = {
   uid: number;
@@ -35,6 +36,7 @@ export type AppSession = {
   odooDb: string;
   issuedAt: number;
   roleCheckedAt?: number;
+  roleInferenceVersion?: number;
 };
 
 function normalizeSessionUrl(url: string) {
@@ -90,8 +92,13 @@ export async function getSession() {
   return session;
 }
 
-async function refreshWorkerSessionRole(session: AppSession) {
-  if (session.role !== "worker") {
+async function refreshSessionRole(session: AppSession) {
+  const shouldForceRefresh =
+    session.roleInferenceVersion !== CURRENT_SESSION_ROLE_INFERENCE_VERSION ||
+    session.role === "worker" ||
+    session.role === "hr_specialist" ||
+    session.role === "hr_manager";
+  if (!shouldForceRefresh) {
     return session;
   }
 
@@ -100,6 +107,8 @@ async function refreshWorkerSessionRole(session: AppSession) {
     session.groupFlags?.fleetRepairAny === undefined ||
     session.groupFlags?.opsStorekeeper === undefined;
   if (
+    session.roleInferenceVersion === CURRENT_SESSION_ROLE_INFERENCE_VERSION &&
+    session.role === "worker" &&
     !needsRepairGroupRefresh &&
     Date.now() - lastRoleCheckAt < WORKER_ROLE_REFRESH_INTERVAL_MS
   ) {
@@ -112,6 +121,7 @@ async function refreshWorkerSessionRole(session: AppSession) {
       return {
         ...session,
         roleCheckedAt: Date.now(),
+        roleInferenceVersion: CURRENT_SESSION_ROLE_INFERENCE_VERSION,
       };
     }
 
@@ -121,6 +131,7 @@ async function refreshWorkerSessionRole(session: AppSession) {
       return {
         ...session,
         roleCheckedAt: Date.now(),
+        roleInferenceVersion: CURRENT_SESSION_ROLE_INFERENCE_VERSION,
       };
     }
 
@@ -131,6 +142,7 @@ async function refreshWorkerSessionRole(session: AppSession) {
       role: refreshed.user.role,
       groupFlags: refreshed.user.groupFlags,
       roleCheckedAt: Date.now(),
+      roleInferenceVersion: CURRENT_SESSION_ROLE_INFERENCE_VERSION,
     } satisfies AppSession;
   } catch {
     return {
@@ -160,7 +172,7 @@ async function readSession(): Promise<SessionReadResult> {
       return { session: null, hasInvalidToken: true };
     }
     return {
-      session: await refreshWorkerSessionRole(session),
+      session: await refreshSessionRole(session),
       hasInvalidToken: false,
     };
   } catch {
@@ -234,6 +246,7 @@ export async function signInWithOdooCredentials(login: string, password: string)
     ...getCurrentSessionConnection(),
     issuedAt: Date.now(),
     roleCheckedAt: Date.now(),
+    roleInferenceVersion: CURRENT_SESSION_ROLE_INFERENCE_VERSION,
   } satisfies AppSession;
 }
 

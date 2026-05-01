@@ -3,6 +3,7 @@ import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { hasCapability, isWorkerOnly, requireSession } from "@/lib/auth";
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import { loadAssignedGarbageTasks } from "@/lib/field-ops";
+import { canAccessHr } from "@/lib/hr";
 import {
   loadFleetVehicleBoard,
   loadHrDailyAttendanceSummary,
@@ -72,6 +73,10 @@ export default async function Home() {
   };
   const workerMode = isWorkerOnly(session);
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const canViewHrPromise = canAccessHr(session).catch((error) => {
+    console.warn("HR access could not be resolved for dashboard menu:", error);
+    return false;
+  });
 
   const snapshotPromise = loadMunicipalSnapshot(connectionOverrides);
   const departmentScopeNamePromise = loadSessionDepartmentName(session);
@@ -118,13 +123,14 @@ export default async function Home() {
           return EMPTY_HR_ATTENDANCE_SUMMARY;
         });
 
-  const [snapshot, weather, fleetResult, hrAttendanceSummary, todayAssignments] =
+  const [snapshot, weather, fleetResult, hrAttendanceSummary, todayAssignments, canViewHr] =
     await Promise.all([
       snapshotPromise,
       weatherPromise,
       fleetBoardPromise,
       hrAttendanceSummaryPromise,
       todayAssignmentsPromise,
+      canViewHrPromise,
     ]);
 
   if (!scopedDepartmentName && workerMode) {
@@ -165,6 +171,7 @@ export default async function Home() {
       fleetLoadError={fleetResult.fleetLoadError}
       hrAttendanceSummary={hrAttendanceSummary}
       weather={weather}
+      canViewHr={canViewHr}
     />
   );
 }

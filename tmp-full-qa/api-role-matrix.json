@@ -1,0 +1,450 @@
+[
+  {
+    "label": "system_admin",
+    "login": "admin",
+    "loginOk": true,
+    "apis": [
+      {
+        "path": "/api/garbage-routes/options",
+        "status": 200,
+        "ms": 3282,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":true,\"inspection_write\":true,\"dashboard_view\":true,\"all_view\":true},\"roleLabel\":\"Жолооч / Хог ачигч\",\"vehicles\":[{\"id\":25,\"label\":"
+      },
+      {
+        "path": "/api/garbage-routes/today",
+        "status": 200,
+        "ms": 2067,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":true,\"inspection_write\":true,\"dashboard_view\":true,\"all_view\":true},\"date\":\"2026-05-01\",\"dateLabel\":\"2026 оны тавдугаар сарын 1\",\""
+      },
+      {
+        "path": "/api/garbage-routes/inspections",
+        "status": 200,
+        "ms": 472,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":true,\"inspection_write\":true,\"dashboard_view\":true,\"all_view\":true},\"inspections\":[]}"
+      },
+      {
+        "path": "/api/garbage-routes/dashboard",
+        "status": 200,
+        "ms": 3686,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":true,\"inspection_write\":true,\"dashboard_view\":true,\"all_view\":true},\"date\":\"2026-05-01\",\"dateLabel\":\"2026 оны тавдугаар сарын 1\",\""
+      },
+      {
+        "path": "/api/fleet-repair/requests",
+        "status": 200,
+        "ms": 1333,
+        "body": "{\"permissions\":{\"request\":true,\"quote\":true,\"finance\":true,\"contract\":true,\"director\":true,\"order\":true,\"repair\":true},\"requests\":[{\"id\":2,\"name\":\"FRR/2026/05/0006\",\"vehicle\":\"Kia/Bongo/2406УАК\",\"state\":\"draft\",\"stateLabel\":\"Ноорог\",\"totalA"
+      },
+      {
+        "path": "/api/fleet-repair/vehicles",
+        "status": 200,
+        "ms": 1229,
+        "body": "{\"vehicleOptions\":[{\"id\":25,\"label\":\"2406УАК - Kia/Bongo/2406УАК\"},{\"id\":26,\"label\":\"2407УБР - Kia/Bongo/2407УБР\"},{\"id\":27,\"label\":\"3561УНД - KAMAZ/KAMAZ/3561УНД\"},{\"id\":28,\"label\":\"4310УБВ - Dongfeng/Dong feng/4310УБВ\"},{\"id\":29,\"label\":\""
+      },
+      {
+        "path": "/api/hr/employees",
+        "status": 200,
+        "ms": 6075,
+        "body": "{\"employees\":[{\"id\":16,\"name\":\"А.Отгонтөгс\",\"active\":true,\"departmentName\":\"Захиргааны алба\",\"jobTitle\":\"Олон нийттэй харилцах ажилтан\",\"workPhone\":\"94843389\",\"mobilePhone\":\"94843389\",\"workEmail\":\"\",\"userName\":\"А.Отгонтөгс\",\"photoUrl\":\"data"
+      }
+    ]
+  },
+  {
+    "label": "director",
+    "login": "99996632",
+    "loginOk": true,
+    "apis": [
+      {
+        "path": "/api/garbage-routes/options",
+        "status": 200,
+        "ms": 2219,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"roleLabel\":\"Хэлтсийн дарга\",\"vehicles\":[{\"id\":25,\"label\":\"2"
+      },
+      {
+        "path": "/api/garbage-routes/today",
+        "status": 200,
+        "ms": 855,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"date\":\"2026-05-01\",\"dateLabel\":\"2026 оны тавдугаар сарын 1\""
+      },
+      {
+        "path": "/api/garbage-routes/inspections",
+        "status": 200,
+        "ms": 330,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"inspections\":[]}"
+      },
+      {
+        "path": "/api/garbage-routes/dashboard",
+        "status": 200,
+        "ms": 4600,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"date\":\"2026-05-01\",\"dateLabel\":\"2026 оны тавдугаар сарын 1\""
+      },
+      {
+        "path": "/api/fleet-repair/requests",
+        "status": 200,
+        "ms": 593,
+        "body": "{\"permissions\":{\"request\":false,\"quote\":false,\"finance\":false,\"contract\":false,\"director\":true,\"order\":false,\"repair\":false},\"requests\":[],\"repairLoadError\":\"Засварын хүсэлтийн жагсаалт одоогоор харагдахгүй байна. Машины жагсаалт болон шинэ"
+      },
+      {
+        "path": "/api/fleet-repair/vehicles",
+        "status": 200,
+        "ms": 4759,
+        "body": "{\"vehicleOptions\":[{\"id\":25,\"label\":\"2406УАК - Kia/Bongo/2406УАК\"},{\"id\":26,\"label\":\"2407УБР - Kia/Bongo/2407УБР\"},{\"id\":27,\"label\":\"3561УНД - KAMAZ/KAMAZ/3561УНД\"},{\"id\":28,\"label\":\"4310УБВ - Dongfeng/Dong feng/4310УБВ\"},{\"id\":29,\"label\":\""
+      },
+      {
+        "path": "/api/hr/employees",
+        "status": 200,
+        "ms": 3774,
+        "body": "{\"employees\":[{\"id\":16,\"name\":\"А.Отгонтөгс\",\"active\":true,\"departmentName\":\"Захиргааны алба\",\"jobTitle\":\"Олон нийттэй харилцах ажилтан\",\"workPhone\":\"94843389\",\"mobilePhone\":\"94843389\",\"workEmail\":\"\",\"userName\":\"А.Отгонтөгс\",\"photoUrl\":\"data"
+      }
+    ]
+  },
+  {
+    "label": "general_manager",
+    "login": "80007504",
+    "loginOk": true,
+    "apis": [
+      {
+        "path": "/api/garbage-routes/options",
+        "status": 200,
+        "ms": 6230,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"roleLabel\":\"Хэлтсийн дарга\",\"vehicles\":[{\"id\":25,\"label\":\"2"
+      },
+      {
+        "path": "/api/garbage-routes/today",
+        "status": 200,
+        "ms": 2663,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"date\":\"2026-05-01\",\"dateLabel\":\"2026 оны тавдугаар сарын 1\""
+      },
+      {
+        "path": "/api/garbage-routes/inspections",
+        "status": 200,
+        "ms": 705,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"inspections\":[]}"
+      },
+      {
+        "path": "/api/garbage-routes/dashboard",
+        "status": 200,
+        "ms": 1856,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"date\":\"2026-05-01\",\"dateLabel\":\"2026 оны тавдугаар сарын 1\""
+      },
+      {
+        "path": "/api/fleet-repair/requests",
+        "status": 200,
+        "ms": 1341,
+        "body": "{\"permissions\":{\"request\":true,\"quote\":false,\"finance\":true,\"contract\":false,\"director\":false,\"order\":false,\"repair\":false},\"requests\":[],\"repairLoadError\":\"Засварын хүсэлтийн жагсаалт одоогоор харагдахгүй байна. Машины жагсаалт болон шинэ "
+      },
+      {
+        "path": "/api/fleet-repair/vehicles",
+        "status": 200,
+        "ms": 4387,
+        "body": "{\"vehicleOptions\":[{\"id\":25,\"label\":\"2406УАК - Kia/Bongo/2406УАК\"},{\"id\":26,\"label\":\"2407УБР - Kia/Bongo/2407УБР\"},{\"id\":27,\"label\":\"3561УНД - KAMAZ/KAMAZ/3561УНД\"},{\"id\":28,\"label\":\"4310УБВ - Dongfeng/Dong feng/4310УБВ\"},{\"id\":29,\"label\":\""
+      },
+      {
+        "path": "/api/hr/employees",
+        "status": 200,
+        "ms": 4323,
+        "body": "{\"employees\":[{\"id\":16,\"name\":\"А.Отгонтөгс\",\"active\":true,\"departmentName\":\"Захиргааны алба\",\"jobTitle\":\"Олон нийттэй харилцах ажилтан\",\"workPhone\":\"94843389\",\"mobilePhone\":\"94843389\",\"workEmail\":\"\",\"userName\":\"А.Отгонтөгс\",\"photoUrl\":\"data"
+      }
+    ]
+  },
+  {
+    "label": "pm_auto_garbage",
+    "login": "88880943",
+    "loginOk": true,
+    "apis": [
+      {
+        "path": "/api/garbage-routes/options",
+        "status": 200,
+        "ms": 4786,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"roleLabel\":\"Хэлтсийн дарга\",\"vehicles\":[{\"id\":25,\"label\":\"2"
+      },
+      {
+        "path": "/api/garbage-routes/today",
+        "status": 200,
+        "ms": 2574,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"date\":\"2026-05-01\",\"dateLabel\":\"2026 оны тавдугаар сарын 1\""
+      },
+      {
+        "path": "/api/garbage-routes/inspections",
+        "status": 200,
+        "ms": 304,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"inspections\":[]}"
+      },
+      {
+        "path": "/api/garbage-routes/dashboard",
+        "status": 200,
+        "ms": 5000,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"date\":\"2026-05-01\",\"dateLabel\":\"2026 оны тавдугаар сарын 1\""
+      },
+      {
+        "path": "/api/fleet-repair/requests",
+        "status": 200,
+        "ms": 1428,
+        "body": "{\"permissions\":{\"request\":true,\"quote\":true,\"finance\":true,\"contract\":true,\"director\":true,\"order\":true,\"repair\":true},\"requests\":[{\"id\":2,\"name\":\"FRR/2026/05/0006\",\"vehicle\":\"Kia/Bongo/2406УАК\",\"state\":\"draft\",\"stateLabel\":\"Ноорог\",\"totalA"
+      },
+      {
+        "path": "/api/fleet-repair/vehicles",
+        "status": 200,
+        "ms": 1745,
+        "body": "{\"vehicleOptions\":[{\"id\":25,\"label\":\"2406УАК - Kia/Bongo/2406УАК\"},{\"id\":26,\"label\":\"2407УБР - Kia/Bongo/2407УБР\"},{\"id\":27,\"label\":\"3561УНД - KAMAZ/KAMAZ/3561УНД\"},{\"id\":28,\"label\":\"4310УБВ - Dongfeng/Dong feng/4310УБВ\"},{\"id\":29,\"label\":\""
+      },
+      {
+        "path": "/api/hr/employees",
+        "status": "ERR",
+        "ms": 7007,
+        "error": "timeout"
+      }
+    ]
+  },
+  {
+    "label": "pm_tohijilt",
+    "login": "99160453",
+    "loginOk": true,
+    "apis": [
+      {
+        "path": "/api/garbage-routes/options",
+        "status": 200,
+        "ms": 2472,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"roleLabel\":\"Хэлтсийн дарга\",\"vehicles\":[{\"id\":25,\"label\":\"2"
+      },
+      {
+        "path": "/api/garbage-routes/today",
+        "status": 200,
+        "ms": 2596,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"date\":\"2026-05-01\",\"dateLabel\":\"2026 оны тавдугаар сарын 1\""
+      },
+      {
+        "path": "/api/garbage-routes/inspections",
+        "status": 200,
+        "ms": 409,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"inspections\":[]}"
+      },
+      {
+        "path": "/api/garbage-routes/dashboard",
+        "status": 200,
+        "ms": 2353,
+        "body": "{\"permissions\":{\"weekly_create\":true,\"weekly_edit\":true,\"daily_change\":true,\"today_view\":true,\"point_execute\":false,\"inspection_write\":false,\"dashboard_view\":true,\"all_view\":true},\"date\":\"2026-05-01\",\"dateLabel\":\"2026 оны тавдугаар сарын 1\""
+      },
+      {
+        "path": "/api/fleet-repair/requests",
+        "status": 200,
+        "ms": 1846,
+        "body": "{\"permissions\":{\"request\":true,\"quote\":false,\"finance\":false,\"contract\":false,\"director\":false,\"order\":false,\"repair\":false},\"requests\":[],\"repairLoadError\":\"Засварын хүсэлтийн жагсаалт одоогоор харагдахгүй байна. Машины жагсаалт болон шинэ"
+      },
+      {
+        "path": "/api/fleet-repair/vehicles",
+        "status": 200,
+        "ms": 4506,
+        "body": "{\"vehicleOptions\":[{\"id\":25,\"label\":\"2406УАК - Kia/Bongo/2406УАК\"},{\"id\":26,\"label\":\"2407УБР - Kia/Bongo/2407УБР\"},{\"id\":27,\"label\":\"3561УНД - KAMAZ/KAMAZ/3561УНД\"},{\"id\":28,\"label\":\"4310УБВ - Dongfeng/Dong feng/4310УБВ\"},{\"id\":29,\"label\":\""
+      },
+      {
+        "path": "/api/hr/employees",
+        "status": 200,
+        "ms": 2973,
+        "body": "{\"employees\":[{\"id\":129,\"name\":\"Б.Батсуурь\",\"active\":true,\"departmentName\":\"Тохижилтын хэлтэс\",\"jobTitle\":\"Туслах ажилтан\",\"workPhone\":\"80043033\",\"mobilePhone\":\"\",\"workEmail\":\"\",\"userName\":\"Б.Батсуурь\",\"photoUrl\":\"data:image/png;base64,PD94"
+      }
+    ]
+  },
+  {
+    "label": "senior_master_green",
+    "login": "91100190",
+    "loginOk": true,
+    "apis": [
+      {
+        "path": "/api/garbage-routes/options",
+        "status": 200,
+        "ms": 2402,
+        "body": "{\"permissions\":{\"weekly_create\":false,\"weekly_edit\":false,\"daily_change\":false,\"today_view\":true,\"point_execute\":true,\"inspection_write\":false,\"dashboard_view\":false,\"all_view\":false},\"roleLabel\":\"Жолооч / Хог ачигч\",\"vehicles\":[{\"id\":25,\"l"
+      },
+      {
+        "path": "/api/garbage-routes/today",
+        "status": 200,
+        "ms": 4787,
+        "body": "{\"permissions\":{\"weekly_create\":false,\"weekly_edit\":false,\"daily_change\":false,\"today_view\":true,\"point_execute\":true,\"inspection_write\":false,\"dashboard_view\":false,\"all_view\":false},\"date\":\"2026-05-01\",\"dateLabel\":\"2026 оны тавдугаар сары"
+      },
+      {
+        "path": "/api/garbage-routes/inspections",
+        "status": 403,
+        "ms": 20,
+        "body": "{\"error\":\"Таны эрх хүрэхгүй байна.\"}"
+      },
+      {
+        "path": "/api/garbage-routes/dashboard",
+        "status": 403,
+        "ms": 17,
+        "body": "{\"error\":\"Таны эрх хүрэхгүй байна.\"}"
+      },
+      {
+        "path": "/api/fleet-repair/requests",
+        "status": 200,
+        "ms": 1562,
+        "body": "{\"permissions\":{\"request\":true,\"quote\":false,\"finance\":false,\"contract\":false,\"director\":false,\"order\":false,\"repair\":true},\"requests\":[],\"repairLoadError\":\"Засварын хүсэлтийн жагсаалт одоогоор харагдахгүй байна. Машины жагсаалт болон шинэ "
+      },
+      {
+        "path": "/api/fleet-repair/vehicles",
+        "status": 200,
+        "ms": 2813,
+        "body": "{\"vehicleOptions\":[{\"id\":25,\"label\":\"2406УАК - Kia/Bongo/2406УАК\"},{\"id\":26,\"label\":\"2407УБР - Kia/Bongo/2407УБР\"},{\"id\":27,\"label\":\"3561УНД - KAMAZ/KAMAZ/3561УНД\"},{\"id\":28,\"label\":\"4310УБВ - Dongfeng/Dong feng/4310УБВ\"},{\"id\":29,\"label\":\""
+      },
+      {
+        "path": "/api/hr/employees",
+        "status": 200,
+        "ms": 6864,
+        "body": "{\"employees\":[{\"id\":4,\"name\":\"Д.Бат-Эрдэнэ\",\"active\":true,\"departmentName\":\"Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс\",\"jobTitle\":\"Мастер\",\"workPhone\":\"90530609\",\"mobilePhone\":\"90530609\",\"workEmail\":\"\",\"userName\":\"Д.Бат-Эрдэнэ\",\"pho"
+      }
+    ]
+  },
+  {
+    "label": "team_leader_green_1",
+    "login": "88210622",
+    "loginOk": true,
+    "apis": [
+      {
+        "path": "/api/garbage-routes/options",
+        "status": 200,
+        "ms": 3911,
+        "body": "{\"permissions\":{\"weekly_create\":false,\"weekly_edit\":false,\"daily_change\":false,\"today_view\":true,\"point_execute\":true,\"inspection_write\":false,\"dashboard_view\":false,\"all_view\":false},\"roleLabel\":\"Жолооч / Хог ачигч\",\"vehicles\":[{\"id\":25,\"l"
+      },
+      {
+        "path": "/api/garbage-routes/today",
+        "status": 200,
+        "ms": 3520,
+        "body": "{\"permissions\":{\"weekly_create\":false,\"weekly_edit\":false,\"daily_change\":false,\"today_view\":true,\"point_execute\":true,\"inspection_write\":false,\"dashboard_view\":false,\"all_view\":false},\"date\":\"2026-05-01\",\"dateLabel\":\"2026 оны тавдугаар сары"
+      },
+      {
+        "path": "/api/garbage-routes/inspections",
+        "status": 403,
+        "ms": 39,
+        "body": "{\"error\":\"Таны эрх хүрэхгүй байна.\"}"
+      },
+      {
+        "path": "/api/garbage-routes/dashboard",
+        "status": 403,
+        "ms": 17,
+        "body": "{\"error\":\"Таны эрх хүрэхгүй байна.\"}"
+      },
+      {
+        "path": "/api/fleet-repair/requests",
+        "status": 200,
+        "ms": 1093,
+        "body": "{\"permissions\":{\"request\":true,\"quote\":false,\"finance\":false,\"contract\":false,\"director\":false,\"order\":false,\"repair\":true},\"requests\":[],\"repairLoadError\":\"Засварын хүсэлтийн жагсаалт одоогоор харагдахгүй байна. Машины жагсаалт болон шинэ "
+      },
+      {
+        "path": "/api/fleet-repair/vehicles",
+        "status": 200,
+        "ms": 2024,
+        "body": "{\"vehicleOptions\":[{\"id\":25,\"label\":\"2406УАК - Kia/Bongo/2406УАК\"},{\"id\":26,\"label\":\"2407УБР - Kia/Bongo/2407УБР\"},{\"id\":27,\"label\":\"3561УНД - KAMAZ/KAMAZ/3561УНД\"},{\"id\":28,\"label\":\"4310УБВ - Dongfeng/Dong feng/4310УБВ\"},{\"id\":29,\"label\":\""
+      },
+      {
+        "path": "/api/hr/employees",
+        "status": 200,
+        "ms": 4257,
+        "body": "{\"employees\":[{\"id\":114,\"name\":\"Б.Анхбаяр\",\"active\":true,\"departmentName\":\"Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс\",\"jobTitle\":\"Зам талбайн үйлчлэгч\",\"workPhone\":\"95191352\",\"mobilePhone\":\"\",\"workEmail\":\"\",\"userName\":\"Б.Анхбаяр\",\"p"
+      }
+    ]
+  },
+  {
+    "label": "team_leader_green_2",
+    "login": "90530609",
+    "loginOk": true,
+    "apis": [
+      {
+        "path": "/api/garbage-routes/options",
+        "status": 200,
+        "ms": 4219,
+        "body": "{\"permissions\":{\"weekly_create\":false,\"weekly_edit\":false,\"daily_change\":false,\"today_view\":true,\"point_execute\":true,\"inspection_write\":false,\"dashboard_view\":false,\"all_view\":false},\"roleLabel\":\"Жолооч / Хог ачигч\",\"vehicles\":[{\"id\":25,\"l"
+      },
+      {
+        "path": "/api/garbage-routes/today",
+        "status": 200,
+        "ms": 1895,
+        "body": "{\"permissions\":{\"weekly_create\":false,\"weekly_edit\":false,\"daily_change\":false,\"today_view\":true,\"point_execute\":true,\"inspection_write\":false,\"dashboard_view\":false,\"all_view\":false},\"date\":\"2026-05-01\",\"dateLabel\":\"2026 оны тавдугаар сары"
+      },
+      {
+        "path": "/api/garbage-routes/inspections",
+        "status": 403,
+        "ms": 19,
+        "body": "{\"error\":\"Таны эрх хүрэхгүй байна.\"}"
+      },
+      {
+        "path": "/api/garbage-routes/dashboard",
+        "status": 403,
+        "ms": 17,
+        "body": "{\"error\":\"Таны эрх хүрэхгүй байна.\"}"
+      },
+      {
+        "path": "/api/fleet-repair/requests",
+        "status": 200,
+        "ms": 1261,
+        "body": "{\"permissions\":{\"request\":true,\"quote\":false,\"finance\":false,\"contract\":false,\"director\":false,\"order\":false,\"repair\":true},\"requests\":[],\"repairLoadError\":\"Засварын хүсэлтийн жагсаалт одоогоор харагдахгүй байна. Машины жагсаалт болон шинэ "
+      },
+      {
+        "path": "/api/fleet-repair/vehicles",
+        "status": 200,
+        "ms": 2280,
+        "body": "{\"vehicleOptions\":[{\"id\":25,\"label\":\"2406УАК - Kia/Bongo/2406УАК\"},{\"id\":26,\"label\":\"2407УБР - Kia/Bongo/2407УБР\"},{\"id\":27,\"label\":\"3561УНД - KAMAZ/KAMAZ/3561УНД\"},{\"id\":28,\"label\":\"4310УБВ - Dongfeng/Dong feng/4310УБВ\"},{\"id\":29,\"label\":\""
+      },
+      {
+        "path": "/api/hr/employees",
+        "status": 200,
+        "ms": 3643,
+        "body": "{\"employees\":[{\"id\":4,\"name\":\"Д.Бат-Эрдэнэ\",\"active\":true,\"departmentName\":\"Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс\",\"jobTitle\":\"Мастер\",\"workPhone\":\"90530609\",\"mobilePhone\":\"90530609\",\"workEmail\":\"\",\"userName\":\"Д.Бат-Эрдэнэ\",\"pho"
+      }
+    ]
+  },
+  {
+    "label": "worker_tohijilt_assigned",
+    "login": "80043033",
+    "loginOk": true,
+    "apis": [
+      {
+        "path": "/api/garbage-routes/options",
+        "status": 200,
+        "ms": 3523,
+        "body": "{\"permissions\":{\"weekly_create\":false,\"weekly_edit\":false,\"daily_change\":false,\"today_view\":true,\"point_execute\":true,\"inspection_write\":false,\"dashboard_view\":false,\"all_view\":false},\"roleLabel\":\"Жолооч / Хог ачигч\",\"vehicles\":[{\"id\":25,\"l"
+      },
+      {
+        "path": "/api/garbage-routes/today",
+        "status": 200,
+        "ms": 3198,
+        "body": "{\"permissions\":{\"weekly_create\":false,\"weekly_edit\":false,\"daily_change\":false,\"today_view\":true,\"point_execute\":true,\"inspection_write\":false,\"dashboard_view\":false,\"all_view\":false},\"date\":\"2026-05-01\",\"dateLabel\":\"2026 оны тавдугаар сары"
+      },
+      {
+        "path": "/api/garbage-routes/inspections",
+        "status": 403,
+        "ms": 93,
+        "body": "{\"error\":\"Таны эрх хүрэхгүй байна.\"}"
+      },
+      {
+        "path": "/api/garbage-routes/dashboard",
+        "status": 403,
+        "ms": 559,
+        "body": "{\"error\":\"Таны эрх хүрэхгүй байна.\"}"
+      },
+      {
+        "path": "/api/fleet-repair/requests",
+        "status": 200,
+        "ms": 1653,
+        "body": "{\"permissions\":{\"request\":false,\"quote\":false,\"finance\":false,\"contract\":false,\"director\":false,\"order\":false,\"repair\":false},\"requests\":[],\"repairLoadError\":\"Засварын хүсэлтийн жагсаалт одоогоор харагдахгүй байна. Машины жагсаалт болон шин"
+      },
+      {
+        "path": "/api/fleet-repair/vehicles",
+        "status": 200,
+        "ms": 6739,
+        "body": "{\"vehicleOptions\":[{\"id\":25,\"label\":\"2406УАК - Kia/Bongo/2406УАК\"},{\"id\":26,\"label\":\"2407УБР - Kia/Bongo/2407УБР\"},{\"id\":27,\"label\":\"3561УНД - KAMAZ/KAMAZ/3561УНД\"},{\"id\":28,\"label\":\"4310УБВ - Dongfeng/Dong feng/4310УБВ\"},{\"id\":29,\"label\":\""
+      },
+      {
+        "path": "/api/hr/employees",
+        "status": 200,
+        "ms": 3151,
+        "body": "{\"employees\":[{\"id\":129,\"name\":\"Б.Батсуурь\",\"active\":true,\"departmentName\":\"Тохижилтын хэлтэс\",\"jobTitle\":\"Туслах ажилтан\",\"workPhone\":\"80043033\",\"mobilePhone\":\"\",\"workEmail\":\"\",\"userName\":\"Б.Батсуурь\",\"photoUrl\":\"data:image/png;base64,PD94"
+      }
+    ]
+  },
+  {
+    "label": "storekeeper_guess",
+    "login": "88990011",
+    "loginOk": false,
+    "apis": [],
+    "error": "login failed status=303 loc=http://localhost:3000/login?error=invalid"
+  }
+]

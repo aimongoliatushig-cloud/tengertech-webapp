@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import styles from "./garbage-routes.module.css";
+import { GarbageWeeklyTemplatePanel } from "./weekly-template-panel";
 
 type Permissions = Record<string, boolean>;
 type Option = { id: number; label: string; meta?: string; pointIds?: number[]; pointNames?: string[] };
@@ -76,17 +77,6 @@ type AssignmentDraft = {
   teamId: string;
   routeId: string;
   pointIds: number[];
-};
-
-type WeeklyPlanSummary = {
-  id: number;
-  name: string;
-  vehicleCount: number;
-  driverNames: string;
-  collectorCount: number;
-  pointCount: number;
-  statusLabel: string;
-  updatedAt: string;
 };
 
 type WeeklyPlanLine = {
@@ -283,70 +273,18 @@ function SelectField({
 }
 
 export function WeeklyPlanListClient() {
-  const { data, loading, error, refresh } = useApi<{ permissions: Permissions; plans: WeeklyPlanSummary[] }>(
-    "/api/garbage-routes/weekly-plans",
-  );
-  const [message, setMessage] = useState("");
-
-  async function generateToday() {
-    setMessage("Маршрут үүсгэж байна...");
-    try {
-      const result = await fetchJson<{ createdCount: number }>("/api/garbage-routes/generate-today", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      setMessage(`Өнөөдрийн ${result.createdCount} ажил үүслээ.`);
-      await refresh();
-    } catch (reason) {
-      setMessage(reason instanceof Error ? reason.message : "Маршрут үүсгэж чадсангүй.");
-    }
-  }
+  const { data: options, loading, error } = useApi<OptionsData>("/api/garbage-routes/options");
 
   return (
     <div className={styles.page}>
-      <ShellHeader
-        title="Долоо хоногийн маршрут төлөвлөлт"
-        subtitle="Машин бүрийн өдөр тутмын маршрут, жолооч болон 2 ачигчийн оноолтыг нэг дор хянана."
-        action={
-          data?.permissions.weekly_create ? (
-            <Link className={styles.primaryAction} href="/garbage-routes/weekly-plan/new">
-              <PlusCircle aria-hidden /> Шинэ төлөвлөгөө
-            </Link>
-          ) : null
-        }
-      />
-      <GarbageNav />
-      {data?.permissions.weekly_edit ? (
-        <button className={styles.secondaryAction} type="button" onClick={generateToday}>
-          <Send aria-hidden /> Өнөөдрийн ажлууд үүсгэх
-        </button>
-      ) : null}
-      {message ? <div className={styles.notice}>{message}</div> : null}
       <StatusPanel loading={loading} error={error} />
-      <section className={styles.table}>
-        <div className={styles.tableHead}>
-          <span>Долоо хоног</span>
-          <span>Машин</span>
-          <span>Жолооч</span>
-          <span>2 ачигч</span>
-          <span>Хогийн цэг</span>
-          <span>Төлөв</span>
-          <span>Сүүлд зассан</span>
-        </div>
-        {(data?.plans ?? []).map((plan) => (
-          <Link className={styles.tableRow} href={`/garbage-routes/weekly-plan/${plan.id}`} key={plan.id}>
-            <strong>{plan.name}</strong>
-            <span>{plan.vehicleCount}</span>
-            <span>{plan.driverNames || "Оноогоогүй"}</span>
-            <span>{plan.collectorCount}</span>
-            <span>{plan.pointCount}</span>
-            <StatusBadge label={plan.statusLabel} />
-            <span>{plan.updatedAt || "Бүртгэлгүй"}</span>
-          </Link>
-        ))}
-        {!loading && !(data?.plans ?? []).length ? <div className={styles.empty}>Төлөвлөгөө олдсонгүй.</div> : null}
-      </section>
+      {options ? (
+        <GarbageWeeklyTemplatePanel
+          routes={options.routes}
+          vehicles={options.vehicles}
+          teams={options.teams}
+        />
+      ) : null}
     </div>
   );
 }

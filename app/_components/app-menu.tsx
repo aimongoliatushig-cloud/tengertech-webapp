@@ -69,6 +69,7 @@ type AppMenuProps = {
   canWriteReports?: boolean;
   canViewQualityCenter?: boolean;
   canUseFieldConsole?: boolean;
+  canViewHr?: boolean;
   variant?: "default" | "executive";
   userName?: string;
   roleLabel?: string;
@@ -142,6 +143,7 @@ export function AppMenu({
   canWriteReports = false,
   canViewQualityCenter = false,
   canUseFieldConsole = false,
+  canViewHr = false,
   variant = "default",
   userName = "Хэрэглэгч",
   roleLabel = "Систем",
@@ -158,6 +160,7 @@ export function AppMenu({
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const baseCanCreate = !workerMode && (canCreateProject || canCreateTasks || canWriteReports);
   const reviewHref = workerMode && canUseFieldConsole ? "/field" : "/notifications";
+  const hrFocusedMode = canViewHr && roleLabel.toLocaleLowerCase("mn-MN").includes("хүний нөөц");
   const isGarbageDepartmentHead =
     !workerMode &&
     !masterMode &&
@@ -165,9 +168,11 @@ export function AppMenu({
     isAutoGarbageDepartment(departmentScopeName) &&
     canCreateProject &&
     canCreateTasks;
-  const canCreate = baseCanCreate && !isGarbageDepartmentHead;
+  const canCreate = baseCanCreate && !isGarbageDepartmentHead && !hrFocusedMode;
 
-  const visibleDepartmentGroups = departmentScopeName
+  const visibleDepartmentGroups = hrFocusedMode
+    ? []
+    : departmentScopeName
     ? DEPARTMENT_GROUPS.filter((group) => {
         const scopedGroup =
           findDepartmentGroupByName(departmentScopeName) ??
@@ -186,6 +191,12 @@ export function AppMenu({
     departmentName: group.name,
   }));
 
+  const hrItems: MenuItem[] = canViewHr
+    ? [
+        { key: "hr", href: "/hr", label: "Хүний нөөц", icon: Users },
+      ]
+    : [];
+
   const defaultItems: MenuItem[] = [
     {
       key: "dashboard",
@@ -193,18 +204,13 @@ export function AppMenu({
       label: "Ажлын самбар",
       icon: LayoutDashboard,
     },
+    ...hrItems,
     ...departmentItems,
     {
       key: "fleet-repair",
       href: "/fleet-repair/requests",
       label: "Засварын хүсэлт",
       icon: Wrench,
-    },
-    {
-      key: "hr",
-      href: "/hr",
-      label: "Хүний нөөц",
-      icon: Users,
     },
     {
       key: "tasks",
@@ -244,10 +250,16 @@ export function AppMenu({
       icon: Settings,
     },
   ].filter((item) => {
+    if (hrFocusedMode) {
+      return ["dashboard", "hr", "tasks", "review", "profile"].includes(item.key);
+    }
     if (!workerMode) {
       return true;
     }
-    return !["hr", "data-download", "reports", "chat"].includes(item.key);
+    if (item.key.startsWith("hr")) {
+      return canViewHr;
+    }
+    return !["data-download", "reports", "chat"].includes(item.key);
   });
 
   const garbageDepartmentItems: MenuItem[] = [
@@ -371,13 +383,16 @@ export function AppMenu({
           },
           { key: "review", href: reviewHref, label: "Мэдэгдэл", icon: Bell, badge: notificationCount },
           { key: "profile", href: "/profile", label: "Тохиргоо", icon: Settings },
+          ...(canViewHr ? [{ key: "hr", href: "/hr", label: "HR", icon: Users }] : []),
         ]
       : [
           { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
           { key: "projects", href: "/projects", label: "Ажлууд", icon: ListChecks },
           { key: "new-project", href: "/create", label: "Шинэ ажил", icon: PlusCircle },
           { key: "reports", href: canWriteReports ? "/reports" : "/review", label: "Тайлан", icon: BarChart3 },
-          { key: "hr", href: "/hr", label: "Миний баг", icon: Users },
+          canViewHr
+            ? { key: "hr", href: "/hr", label: "HR", icon: Users }
+            : { key: "profile", href: "/profile", label: "Тохиргоо", icon: Settings },
         ];
 
   const menuList = (
