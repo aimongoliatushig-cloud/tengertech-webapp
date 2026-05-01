@@ -16,6 +16,7 @@ import {
   uploadFieldStopProof,
 } from "@/lib/field-ops";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
+import { notifyPushEvent, type PushEventType } from "@/lib/push-notifications";
 import {
   assignGarbageProjectTasksFromRouteTeam,
   createGarbageWorkspaceProject,
@@ -116,6 +117,20 @@ async function notifyTaskReviewersWithSystemFallback(
   } catch (error) {
     console.warn("Task reviewer notification failed with current credentials, retrying as system:", error);
     await notifyWorkspaceTaskReportReviewers(taskId, reporterName, {});
+  }
+}
+
+async function notifyPushQuietly(input: {
+  eventType: PushEventType;
+  title?: string;
+  body?: string;
+  targetUrl?: string;
+  userIds?: number[];
+}) {
+  try {
+    await notifyPushEvent(input);
+  } catch (error) {
+    console.warn("Push notification failed:", error);
   }
 }
 
@@ -732,6 +747,21 @@ export async function createTaskAction(formData: FormData) {
       await createWorkspaceTaskAttachments(taskId, attachments, connectionOverrides);
     }
 
+    await notifyPushQuietly({
+      eventType: "new_work_assigned",
+      title: "Шинэ ажил оноогдлоо",
+      body: name,
+      targetUrl: `/tasks/${taskId}`,
+      userIds: Array.from(
+        new Set(
+          [
+            effectiveTeamLeaderId,
+            ...(selectedCrewTeam?.memberUserIds ?? []),
+          ].filter((value): value is number => Number.isFinite(value ?? NaN) && Number(value) > 0),
+        ),
+      ),
+    });
+
     revalidatePath("/");
     revalidatePath("/projects");
     revalidatePath("/tasks");
@@ -895,6 +925,12 @@ export async function submitTaskForReviewAction(formData: FormData) {
       session.name,
       reviewConnectionOverrides,
     );
+    await notifyPushQuietly({
+      eventType: "report_under_review",
+      title: "Тайлан хяналтад ирлээ",
+      body: `${session.name} тайлан илгээлээ.`,
+      targetUrl: `/review`,
+    });
     revalidatePath("/");
     revalidatePath("/tasks");
     revalidatePath("/projects");
@@ -943,6 +979,12 @@ export async function markTaskDoneAction(formData: FormData) {
         await forceWorkspaceTaskDone(taskId, {});
       }
     }
+    await notifyPushQuietly({
+      eventType: "work_approved",
+      title: "Ажил баталгаажлаа",
+      body: "Ажлын гүйцэтгэл баталгаажсан байна.",
+      targetUrl: `/tasks/${taskId}`,
+    });
     revalidatePath("/");
     revalidatePath("/projects");
     revalidatePath("/review");
@@ -971,6 +1013,12 @@ export async function returnTaskForChangesAction(formData: FormData) {
       console.warn("Task return action failed with user credentials, retrying as system:", error);
       await returnWorkspaceTaskForChanges(taskId, reason, {});
     }
+    await notifyPushQuietly({
+      eventType: "work_returned",
+      title: "Ажил буцаагдлаа",
+      body: reason,
+      targetUrl: `/tasks/${taskId}`,
+    });
     revalidatePath("/");
     revalidatePath("/projects");
     revalidatePath("/review");
