@@ -89,7 +89,7 @@ type OdooUserRecord = {
   id: number;
   name: string;
   login: string;
-  ops_user_type: string | false;
+  ops_user_type?: string | false;
 };
 
 type OdooAuthEmployeeRecord = {
@@ -337,6 +337,18 @@ function inferRoleFromEmployeeTitle(employee?: OdooAuthEmployeeRecord | null) {
     return title.includes("manager") || title.includes("менежер")
       ? "hr_manager"
       : "hr_specialist";
+  }
+
+  if (title.includes("захирал") || title.includes("ceo") || title.includes("director")) {
+    return "director";
+  }
+
+  if (
+    title.includes("үйл ажиллагаа хариуцсан менежер") ||
+    title.includes("ерөнхий менежер") ||
+    title.includes("general manager")
+  ) {
+    return "general_manager";
   }
 
   if (title.includes("хэлтсийн дарга") || title.includes("албаны дарга")) {
@@ -1659,7 +1671,23 @@ export async function authenticateOdooUser(
       limit: 1,
     },
     connection,
-  );
+  ).catch((error) => {
+    if (!String(error).includes("ops_user_type")) {
+      throw error;
+    }
+
+    return executeKw<OdooUserRecord[]>(
+      uid,
+      "res.users",
+      "search_read",
+      [[["id", "=", uid]]],
+      {
+        fields: ["name", "login"],
+        limit: 1,
+      },
+      connection,
+    );
+  });
 
   const user = users[0];
   if (!user) {
@@ -1691,6 +1719,7 @@ export async function authenticateOdooUser(
     ).catch(() => false);
 
   const [
+    systemAdmin,
     mfoManager,
     mfoDispatcher,
     mfoInspector,
@@ -1708,6 +1737,7 @@ export async function authenticateOdooUser(
     hrUser,
     hrManager,
   ] = await Promise.all([
+    hasGroup("base.group_system"),
     hasGroup("municipal_field_ops.group_mfo_manager"),
     hasGroup("municipal_field_ops.group_mfo_dispatcher"),
     hasGroup("municipal_field_ops.group_mfo_inspector"),
@@ -1737,7 +1767,9 @@ export async function authenticateOdooUser(
     fleetRepairCeo ||
     fleetRepairManager;
 
-  const inferredRole = resolveAuthenticatedRole(user.ops_user_type, employee);
+  const inferredRole = systemAdmin
+    ? "system_admin"
+    : resolveAuthenticatedRole(user.ops_user_type ?? false, employee);
   const role =
     inferredRole === "worker" && hrManager
       ? "hr_manager"

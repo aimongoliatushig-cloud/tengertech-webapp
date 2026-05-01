@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "qa:roles": "node scripts/webapp-role-qa.mjs"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.4",

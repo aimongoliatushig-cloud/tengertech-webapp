@@ -2,7 +2,7 @@
 {
     "name": "Хот тохижилтын үндсэн модуль",
     "summary": "Хот тохижилтын ажил, тайлан, ирц, сахилга, эрхийн суурь модуль",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.0.1",
     "category": "Operations/Municipal",
     "author": "TengerTech",
     "website": "https://tengertech.mn",

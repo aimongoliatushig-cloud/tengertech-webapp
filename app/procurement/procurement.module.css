@@ -1,5 +1,5 @@
 ﻿.workspaceShell {
-  --sidebar-width: minmax(18rem, 19.5rem);
+  --sidebar-width: 314px;
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   gap: 1.5rem;
@@ -874,7 +874,7 @@
 }
 
 .workspaceShell {
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 314px minmax(0, 1fr);
   gap: 0;
   max-width: none;
   margin: 0;
@@ -1261,7 +1261,7 @@
 
 /* Reference dashboard alignment for procurement pages */
 .workspaceShell {
-  grid-template-columns: 236px minmax(0, 1fr);
+  grid-template-columns: 314px minmax(0, 1fr);
   gap: 0;
   max-width: none;
   min-height: 100vh;

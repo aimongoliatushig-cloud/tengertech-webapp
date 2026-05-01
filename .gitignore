@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/tmp-webapp-role-qa/
 
 # next.js
 /.next/

@@ -2,7 +2,13 @@ import Link from "next/link";
 
 import { ProcurementShell } from "@/app/procurement/_components/procurement-shell";
 import { requireSession } from "@/lib/auth";
-import { loadProcurementDashboard, loadProcurementMe } from "@/lib/procurement";
+import {
+  createEmptyProcurementDashboard,
+  createFallbackProcurementUser,
+  isProcurementSetupError,
+  loadProcurementDashboard,
+  loadProcurementMe,
+} from "@/lib/procurement";
 
 import styles from "../procurement.module.css";
 
@@ -29,9 +35,26 @@ export default async function ProcurementDashboardPage() {
     login: session.login,
     password: session.password,
   };
-  const [procurementUser, dashboard] = await Promise.all([
-    loadProcurementMe(connectionOverrides),
-    loadProcurementDashboard({}, connectionOverrides),
+  const [procurementUser, dashboard, setupWarning] = await Promise.all([
+    loadProcurementMe(connectionOverrides).catch((error) => {
+      if (!isProcurementSetupError(error)) {
+        throw error;
+      }
+      return createFallbackProcurementUser(session);
+    }),
+    loadProcurementDashboard({}, connectionOverrides).catch((error) => {
+      if (!isProcurementSetupError(error)) {
+        throw error;
+      }
+      return createEmptyProcurementDashboard();
+    }),
+    loadProcurementMe(connectionOverrides)
+      .then(() => "")
+      .catch((error) =>
+        isProcurementSetupError(error)
+          ? "Худалдан авалтын backend API хараахан идэвхжээгүй байна. Үндсэн самбар уншигдаж байгаа бөгөөд API идэвхжсэний дараа бодит хүсэлтүүд энд харагдана."
+          : "",
+      ),
   ]);
 
   const highlightedItems = dashboard.items.slice(0, 3);
@@ -44,6 +67,12 @@ export default async function ProcurementDashboardPage() {
       description="Төслүүдийн худалдан авалтын явц, няравын ачаалал, нийлүүлэгчийн сонголт, шийдвэрлэх хугацааг төвлөрүүлэн харуулна."
       activeTab="dashboard"
     >
+      {setupWarning ? (
+        <section className={`${styles.statusBanner} ${styles.noticeBanner}`}>
+          {setupWarning}
+        </section>
+      ) : null}
+
       <section className={styles.overviewPanel}>
         <div className={styles.overviewCopy}>
           <p className={styles.overviewEyebrow}>Удирдлагын тойм</p>
