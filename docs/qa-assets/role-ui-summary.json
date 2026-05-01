@@ -1,0 +1,253 @@
+[
+  {
+    "viewport": "desktop",
+    "user": "system_admin",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Захиргааны алба"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": true,
+    "hasGlobalUserCount": false,
+    "screenshot": "desktop-system_admin.png"
+  },
+  {
+    "viewport": "desktop",
+    "user": "director",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Санхүүгийн алба",
+      "Захиргааны алба",
+      "Авто бааз, хог тээвэрлэлтийн хэлтэс",
+      "Хог тээвэрлэлт",
+      "Авто бааз",
+      "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
+      "Тохижилтын хэлтэс"
+    ],
+    "hasSystemInfo": true,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": true,
+    "screenshot": "desktop-director.png"
+  },
+  {
+    "viewport": "desktop",
+    "user": "general_manager",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Санхүүгийн алба",
+      "Захиргааны алба",
+      "Авто бааз, хог тээвэрлэлтийн хэлтэс",
+      "Хог тээвэрлэлт",
+      "Авто бааз",
+      "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
+      "Тохижилтын хэлтэс"
+    ],
+    "hasSystemInfo": true,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": true,
+    "screenshot": "desktop-general_manager.png"
+  },
+  {
+    "viewport": "desktop",
+    "user": "pm_auto_garbage",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Авто бааз, хог тээвэрлэлтийн хэлтэс",
+      "Хог тээвэрлэлт",
+      "Авто бааз"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": true,
+    "hasGlobalUserCount": false,
+    "screenshot": "desktop-pm_auto_garbage.png"
+  },
+  {
+    "viewport": "desktop",
+    "user": "pm_tohijilt",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Тохижилтын хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": true,
+    "hasGlobalUserCount": false,
+    "screenshot": "desktop-pm_tohijilt.png"
+  },
+  {
+    "viewport": "desktop",
+    "user": "senior_master_green",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": true,
+    "hasGlobalUserCount": false,
+    "screenshot": "desktop-senior_master_green.png"
+  },
+  {
+    "viewport": "desktop",
+    "user": "team_leader_green_1",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": true,
+    "hasGlobalUserCount": false,
+    "screenshot": "desktop-team_leader_green_1.png"
+  },
+  {
+    "viewport": "desktop",
+    "user": "team_leader_green_2",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": true,
+    "hasGlobalUserCount": false,
+    "screenshot": "desktop-team_leader_green_2.png"
+  },
+  {
+    "viewport": "desktop",
+    "user": "worker_tohijilt_assigned",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Тохижилтын хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": true,
+    "hasGlobalUserCount": false,
+    "screenshot": "desktop-worker_tohijilt_assigned.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "system_admin",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Захиргааны алба"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-system_admin.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "director",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Авто бааз",
+      "Тохижилтын хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-director.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "general_manager",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Авто бааз",
+      "Тохижилтын хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-general_manager.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "pm_auto_garbage",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Авто бааз, хог тээвэрлэлтийн хэлтэс",
+      "Авто бааз"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-pm_auto_garbage.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "pm_tohijilt",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Тохижилтын хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-pm_tohijilt.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "senior_master_green",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-senior_master_green.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "team_leader_green_1",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-team_leader_green_1.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "team_leader_green_2",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-team_leader_green_2.png"
+  },
+  {
+    "viewport": "mobile",
+    "user": "worker_tohijilt_assigned",
+    "ok": true,
+    "errors": [],
+    "visibleDepts": [
+      "Тохижилтын хэлтэс"
+    ],
+    "hasSystemInfo": false,
+    "hasScopedInfo": false,
+    "hasGlobalUserCount": false,
+    "screenshot": "mobile-worker_tohijilt_assigned.png"
+  }
+]

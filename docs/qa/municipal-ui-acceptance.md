@@ -10,6 +10,7 @@ This guide is for UI reviewers validating the municipal ERP web app and mobile-f
 - Confirm the app renders Mongolian Cyrillic text without mojibake.
 - Confirm the side menu on desktop and bottom navigation on mobile are stable for the current role.
 - Capture a screenshot for each flow and store new evidence under `docs/qa-assets/` when a reviewer needs a visual reference.
+- Use only test or staging data; do not store credentials, production data, or private citizen/employee information in screenshots.
 
 ## Reference Assets
 
@@ -18,6 +19,17 @@ This guide is for UI reviewers validating the municipal ERP web app and mobile-f
 | `docs/qa-assets/desktop-dashboard-preview.png` | Desktop dashboard visual reference |
 | `docs/qa-assets/mobile-dashboard-preview.png` | Mobile dashboard visual reference |
 | `docs/qa-assets/municipal-design-board-showcase.png` | Full design board / mockup reference |
+| `docs/qa-assets/mobile-worker-assigned.png` | Mobile worker assigned-work evidence |
+| `docs/qa-assets/manager-tohijilt-desktop.png` | Department manager desktop evidence |
+| `docs/qa-assets/inspector-master-desktop.png` | Inspector/master desktop evidence |
+| `docs/qa-assets/hr-dashboard-desktop.png` | HR desktop evidence |
+| `docs/qa-assets/hr-dashboard-mobile.png` | HR mobile evidence |
+| `docs/qa-assets/garbage-route-today-desktop.png` | Garbage route today-view evidence |
+| `docs/qa-assets/garbage-route-weekly-plan-mobile.png` | Garbage route weekly-plan mobile evidence |
+| `docs/qa-assets/repair-requests-list.png` | Repair request list evidence |
+| `docs/qa-assets/repair-request-detail.png` | Repair request detail evidence |
+| `docs/qa-assets/role-ui-summary.json` | Role UI smoke summary |
+| `docs/qa-assets/permission-matrix.json` | Permission matrix reference |
 
 ## Mobile Worker Flow
 
@@ -37,6 +49,11 @@ Acceptance checklist:
 - [ ] Returned work/report is clearly marked and can be edited/resubmitted.
 - [ ] Empty state is clear when no work is assigned.
 - [ ] Error and success messages are visible in Mongolian.
+
+Evidence:
+
+- `docs/qa-assets/mobile-worker-assigned.png`
+- `docs/qa-assets/role-ui-summary.json`
 
 Fail conditions:
 
@@ -62,6 +79,11 @@ Acceptance checklist:
 - [ ] Department report page filters to the correct department scope.
 - [ ] Desktop sidebar remains consistent across dashboard, work, tasks, reports, and review pages.
 
+Evidence:
+
+- `docs/qa-assets/manager-tohijilt-desktop.png`
+- `docs/qa-assets/permission-matrix.json`
+
 Fail conditions:
 
 - Manager sees unrelated departments without executive/admin permission.
@@ -81,6 +103,11 @@ Acceptance checklist:
 - [ ] Inspector can approve or verify route execution only where permitted.
 - [ ] Review queue distinguishes submitted, returned, overdue, and verified items.
 - [ ] Photo evidence is visible with before/after or completion context when available.
+
+Evidence:
+
+- `docs/qa-assets/inspector-master-desktop.png`
+- `docs/qa-assets/permission-matrix.json`
 
 Fail conditions:
 
@@ -103,6 +130,11 @@ Acceptance checklist:
 - [ ] Employee explanation flow is understandable and not mixed with manager-only actions.
 - [ ] HR approval/archive status is visible.
 - [ ] Sensitive discipline/attendance views are not exposed to unrelated worker roles.
+
+Evidence:
+
+- `docs/qa-assets/hr-dashboard-desktop.png`
+- `docs/qa-assets/hr-dashboard-mobile.png`
 
 Fail conditions:
 
@@ -127,6 +159,11 @@ Acceptance checklist:
 - [ ] Inspector review can verify/return route execution.
 - [ ] Missing proof photo or skipped-without-reason state is visible as a quality warning.
 
+Evidence:
+
+- `docs/qa-assets/garbage-route-today-desktop.png`
+- `docs/qa-assets/garbage-route-weekly-plan-mobile.png`
+
 Fail conditions:
 
 - Route screen hides assigned route from the assigned mobile user.
@@ -150,6 +187,11 @@ Acceptance checklist:
 - [ ] Repair completion and vehicle return states are visible.
 - [ ] Error/success feedback is visible after workflow actions.
 
+Evidence:
+
+- `docs/qa-assets/repair-requests-list.png`
+- `docs/qa-assets/repair-request-detail.png`
+
 Fail conditions:
 
 - Repair page exposes finance/director actions to non-approver users.
@@ -169,10 +211,20 @@ Use this table in the PR or QA note after running the checks.
 | Garbage route | Pending | Pending |  |  |
 | Repair | Pending | Pending |  |  |
 
+## Branch PR Checklist
+
+- [ ] Mobile worker flow documented.
+- [ ] Manager, inspector, HR, garbage, and repair flows documented.
+- [ ] Screenshots and mockups are stored under `docs/qa-assets/`.
+- [ ] No Odoo security or model files changed.
+- [ ] No frontend business logic changed.
+- [ ] `npm run lint`, `npx tsc --noEmit`, and `npm run build` pass.
+
 ## Out Of Scope For This Branch
 
 - Odoo security group changes.
 - Odoo record rule changes.
 - Backend model or workflow changes.
+- Frontend business logic or API route changes.
 - Push notification implementation.
 - Production deployment or database update.
