@@ -1736,6 +1736,8 @@ export async function authenticateOdooUser(
     opsStorekeeper,
     hrUser,
     hrManager,
+    municipalHse,
+    municipalPublicRelations,
   ] = await Promise.all([
     hasGroup("base.group_system"),
     hasGroup("municipal_field_ops.group_mfo_manager"),
@@ -1754,6 +1756,8 @@ export async function authenticateOdooUser(
     hasGroup(OPS_PROFILE_GROUP_XML_IDS.storekeeper),
     hasGroup("hr.group_hr_user"),
     hasGroup("hr.group_hr_manager"),
+    hasGroup("municipal_core.group_municipal_hse"),
+    hasGroup("municipal_core.group_municipal_public_relations"),
   ]);
   const canPurchaseFleetRepair = fleetRepairPurchaser || opsStorekeeper;
   const fleetRepairAny =
@@ -1773,6 +1777,10 @@ export async function authenticateOdooUser(
   const role =
     inferredRole === "worker" && hrManager
       ? "hr_manager"
+      : inferredRole === "worker" && municipalHse
+        ? "hse_officer"
+      : inferredRole === "worker" && municipalPublicRelations
+        ? "public_relations"
       : inferredRole;
 
   return {
@@ -1799,6 +1807,8 @@ export async function authenticateOdooUser(
         opsStorekeeper,
         hrUser,
         hrManager,
+        municipalHse,
+        municipalPublicRelations,
       },
     },
   };
