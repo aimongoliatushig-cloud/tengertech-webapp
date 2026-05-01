@@ -247,6 +247,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               departmentScopeName={scopedDepartmentName}
             />

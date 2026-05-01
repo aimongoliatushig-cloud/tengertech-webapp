@@ -292,6 +292,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               departmentScopeName={scopedDepartmentName}
             />

@@ -65,6 +65,7 @@ export default async function QualityPage() {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
             />
           </aside>
 

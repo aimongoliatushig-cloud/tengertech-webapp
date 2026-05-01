@@ -125,6 +125,7 @@ export default async function SeasonalPlanDetailPage({ params, searchParams }: P
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
             />
           </aside>

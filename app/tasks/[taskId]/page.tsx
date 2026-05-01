@@ -149,6 +149,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 canUseFieldConsole={canUseFieldConsole}
                 userName={session.name}
                 roleLabel={getRoleLabel(session.role)}
+                groupFlags={session.groupFlags}
                 masterMode={masterMode}
                 workerMode={workerMode}
                 departmentScopeName={scopedDepartmentName}
@@ -242,6 +243,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
               departmentScopeName={scopedDepartmentName}

@@ -43,6 +43,7 @@ export default async function ChatPage() {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={roleLabel}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
               departmentScopeName={departmentScopeName}

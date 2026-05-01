@@ -848,11 +848,17 @@ export function DashboardView({
     todayAssignments,
   });
   const scopeLabel = departmentScopeName ?? model.scopeLabel;
-  const showFleetSummary =
+  const showFleetSummary = Boolean(
     !departmentScopeName ||
     departmentScopeName.includes("Авто") ||
     departmentScopeName.includes("Хог") ||
-    departmentScopeName.includes("хог");
+      departmentScopeName.includes("хог") ||
+      session.groupFlags?.mfoManager ||
+      session.groupFlags?.mfoDispatcher ||
+      session.groupFlags?.mfoInspector ||
+      session.groupFlags?.mfoDriver ||
+      session.groupFlags?.fleetRepairAny,
+  );
 
   const scopedTasks = workerMode
     ? snapshot.taskDirectory.filter((task) => {
@@ -968,6 +974,7 @@ export function DashboardView({
             canViewHr={canViewHr}
             userName={session.name}
             roleLabel={roleLabel}
+            groupFlags={session.groupFlags}
             workerMode={workerMode}
             notificationCount={attentionCount}
             departmentScopeName={departmentScopeName}

@@ -11,10 +11,20 @@ export type UserRole =
   | string;
 
 export type RoleGroupFlags = {
+  municipalWorker?: boolean;
+  municipalMaster?: boolean;
+  municipalInspector?: boolean;
+  municipalDepartmentHead?: boolean;
+  municipalManager?: boolean;
+  municipalDirector?: boolean;
+  municipalHr?: boolean;
+  municipalIt?: boolean;
   mfoManager: boolean;
   mfoDispatcher: boolean;
   mfoInspector: boolean;
   mfoMobile: boolean;
+  mfoDriver?: boolean;
+  mfoLoader?: boolean;
   fleetRepairAny?: boolean;
   fleetRepairMechanic?: boolean;
   fleetRepairTeamLeader?: boolean;
@@ -30,6 +40,15 @@ export type RoleGroupFlags = {
   hrManager?: boolean;
   municipalHse?: boolean;
   municipalPublicRelations?: boolean;
+  complaintManager?: boolean;
+  environmentWorker?: boolean;
+  greenEngineer?: boolean;
+  greenMaster?: boolean;
+  improvementWelder?: boolean;
+  improvementFieldEngineer?: boolean;
+  improvementEngineer?: boolean;
+  improvementManager?: boolean;
+  environmentManager?: boolean;
 };
 
 export type RoleContext = {
@@ -54,10 +73,20 @@ export type Capability =
   | "use_field_console";
 
 const EMPTY_GROUP_FLAGS: RoleGroupFlags = {
+  municipalWorker: false,
+  municipalMaster: false,
+  municipalInspector: false,
+  municipalDepartmentHead: false,
+  municipalManager: false,
+  municipalDirector: false,
+  municipalHr: false,
+  municipalIt: false,
   mfoManager: false,
   mfoDispatcher: false,
   mfoInspector: false,
   mfoMobile: false,
+  mfoDriver: false,
+  mfoLoader: false,
   fleetRepairAny: false,
   fleetRepairMechanic: false,
   fleetRepairTeamLeader: false,
@@ -73,6 +102,15 @@ const EMPTY_GROUP_FLAGS: RoleGroupFlags = {
   hrManager: false,
   municipalHse: false,
   municipalPublicRelations: false,
+  complaintManager: false,
+  environmentWorker: false,
+  greenEngineer: false,
+  greenMaster: false,
+  improvementWelder: false,
+  improvementFieldEngineer: false,
+  improvementEngineer: false,
+  improvementManager: false,
+  environmentManager: false,
 };
 
 function normalizeGroupFlags(groupFlags?: Partial<RoleGroupFlags> | null): RoleGroupFlags {
@@ -91,19 +129,36 @@ export function getPrimaryAppRole(context: RoleContext): AppRole {
   if (context.role === "director" || context.role === "general_manager") {
     return "executive";
   }
+  if (groupFlags.municipalDirector || groupFlags.fleetRepairCeo) {
+    return "executive";
+  }
   if (groupFlags.mfoDispatcher) {
     return "dispatcher";
   }
-  if (groupFlags.mfoInspector) {
+  if (groupFlags.mfoInspector || groupFlags.municipalInspector) {
     return "inspector";
   }
   if (context.role === "hse_officer" || groupFlags.municipalHse) {
     return "inspector";
   }
-  if (context.role === "project_manager" || groupFlags.mfoManager) {
+  if (
+    context.role === "project_manager" ||
+    groupFlags.mfoManager ||
+    groupFlags.municipalManager ||
+    groupFlags.municipalDepartmentHead ||
+    groupFlags.environmentManager ||
+    groupFlags.improvementManager ||
+    groupFlags.fleetRepairManager
+  ) {
     return "manager";
   }
-  if (context.role === "senior_master" || context.role === "team_leader") {
+  if (
+    context.role === "senior_master" ||
+    context.role === "team_leader" ||
+    groupFlags.municipalMaster ||
+    groupFlags.greenMaster ||
+    groupFlags.fleetRepairTeamLeader
+  ) {
     return "leader";
   }
   return "field_user";
@@ -147,64 +202,106 @@ export function hasCapability(context: RoleContext, capability: Capability) {
 
   switch (capability) {
     case "create_projects":
-      return (
+      return Boolean(
         context.role === "system_admin" ||
         context.role === "director" ||
         context.role === "general_manager" ||
         context.role === "project_manager" ||
         context.role === "public_relations" ||
         groupFlags.municipalPublicRelations ||
+        groupFlags.complaintManager ||
+        groupFlags.municipalDepartmentHead ||
+        groupFlags.environmentManager ||
+        groupFlags.improvementManager ||
+        groupFlags.greenMaster ||
+        groupFlags.improvementEngineer ||
         context.role === "senior_master" ||
         context.role === "team_leader"
       );
     case "create_tasks":
-      return (
+      return Boolean(
         context.role === "system_admin" ||
         context.role === "director" ||
         context.role === "general_manager" ||
         context.role === "project_manager" ||
         context.role === "public_relations" ||
         groupFlags.municipalPublicRelations ||
+        groupFlags.complaintManager ||
+        groupFlags.municipalDepartmentHead ||
+        groupFlags.environmentManager ||
+        groupFlags.improvementManager ||
+        groupFlags.greenMaster ||
+        groupFlags.greenEngineer ||
+        groupFlags.improvementEngineer ||
+        groupFlags.improvementFieldEngineer ||
         context.role === "senior_master" ||
         context.role === "team_leader"
       );
     case "write_workspace_reports":
-      return (
+      return Boolean(
         context.role === "system_admin" ||
         context.role === "project_manager" ||
         context.role === "public_relations" ||
         groupFlags.municipalPublicRelations ||
+        groupFlags.complaintManager ||
+        groupFlags.mfoMobile ||
+        groupFlags.mfoDriver ||
+        groupFlags.mfoLoader ||
+        groupFlags.environmentWorker ||
+        groupFlags.greenEngineer ||
+        groupFlags.greenMaster ||
+        groupFlags.improvementWelder ||
+        groupFlags.improvementFieldEngineer ||
+        groupFlags.improvementEngineer ||
         context.role === "senior_master" ||
         context.role === "team_leader" ||
         context.role === "worker"
       );
     case "view_quality_center":
-      return (
+      return Boolean(
         context.role === "system_admin" ||
         context.role === "director" ||
         context.role === "general_manager" ||
         context.role === "project_manager" ||
         context.role === "hse_officer" ||
         groupFlags.municipalHse ||
+        groupFlags.municipalInspector ||
+        groupFlags.municipalDepartmentHead ||
         groupFlags.mfoManager ||
         groupFlags.mfoDispatcher ||
-        groupFlags.mfoInspector
+        groupFlags.mfoInspector ||
+        groupFlags.environmentManager ||
+        groupFlags.greenMaster ||
+        groupFlags.improvementManager ||
+        groupFlags.fleetRepairManager ||
+        groupFlags.fleetRepairTeamLeader
       );
     case "use_field_console":
       if (context.role === "general_manager") {
         return false;
       }
-      return (
+      return Boolean(
         context.role === "system_admin" ||
         context.role === "senior_master" ||
         context.role === "team_leader" ||
         context.role === "worker" ||
         context.role === "public_relations" ||
         groupFlags.municipalPublicRelations ||
+        groupFlags.complaintManager ||
         groupFlags.mfoManager ||
         groupFlags.mfoDispatcher ||
         groupFlags.mfoInspector ||
-        groupFlags.mfoMobile
+        groupFlags.mfoMobile ||
+        groupFlags.mfoDriver ||
+        groupFlags.mfoLoader ||
+        groupFlags.environmentWorker ||
+        groupFlags.greenEngineer ||
+        groupFlags.greenMaster ||
+        groupFlags.improvementWelder ||
+        groupFlags.improvementFieldEngineer ||
+        groupFlags.improvementEngineer ||
+        groupFlags.fleetRepairMechanic ||
+        groupFlags.fleetRepairTeamLeader
       );
     default:
       return false;
@@ -219,6 +316,16 @@ export function isWorkerOnly(context: RoleContext) {
     !groupFlags.mfoDispatcher &&
     !groupFlags.mfoInspector &&
     !groupFlags.municipalHse &&
-    !groupFlags.municipalPublicRelations
+    !groupFlags.municipalPublicRelations &&
+    !groupFlags.municipalDepartmentHead &&
+    !groupFlags.municipalManager &&
+    !groupFlags.environmentManager &&
+    !groupFlags.improvementManager &&
+    !groupFlags.greenMaster &&
+    !groupFlags.fleetRepairManager &&
+    !groupFlags.fleetRepairTeamLeader &&
+    !groupFlags.hrManager &&
+    !groupFlags.hrUser &&
+    !groupFlags.municipalHr
   );
 }

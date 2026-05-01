@@ -132,6 +132,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               departmentScopeName={masterDepartmentName}
             />

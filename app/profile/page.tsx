@@ -12,7 +12,7 @@ import {
   requireSession,
 } from "@/lib/auth";
 import { isAutoGarbageDepartment } from "@/lib/department-permissions";
-import { getPrimaryAppRole } from "@/lib/roles";
+import { getPrimaryAppRole, type RoleGroupFlags } from "@/lib/roles";
 import { loadRouteManagementData } from "@/lib/route-management";
 import { loadTeamManagementData, loadTeamMemberOptions } from "@/lib/team-management";
 
@@ -105,20 +105,39 @@ export default async function ProfilePage({ searchParams }: PageProps) {
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const departmentScopeName = await loadSessionDepartmentName(session);
-  const canViewHrDirectory = new Set(["system_admin", "director", "general_manager"]).has(
-    String(session.role),
+  const groupFlags: Partial<RoleGroupFlags> = session.groupFlags || {};
+  const canViewHrDirectory = Boolean(
+    new Set(["system_admin", "director", "general_manager"]).has(String(session.role)) ||
+      groupFlags.hrUser ||
+      groupFlags.hrManager ||
+      groupFlags.municipalHr,
   );
-  const canUseProcurement = new Set(["system_admin", "director", "general_manager"]).has(
-    String(session.role),
+  const canUseProcurement = Boolean(
+    new Set(["system_admin", "director", "general_manager"]).has(String(session.role)) ||
+      groupFlags.opsStorekeeper ||
+      groupFlags.fleetRepairPurchaser ||
+      groupFlags.fleetRepairFinance ||
+      groupFlags.fleetRepairAccounting ||
+      groupFlags.fleetRepairManager ||
+      groupFlags.fleetRepairCeo,
   );
-  const canCreateTeam = new Set([
-    "system_admin",
-    "project_manager",
-    "senior_master",
-    "team_leader",
-  ]).has(String(session.role));
-  const canCreateRoute =
-    String(session.role) === "project_manager" && isAutoGarbageDepartment(departmentScopeName);
+  const canCreateTeam = Boolean(
+    new Set(["system_admin", "project_manager", "senior_master", "team_leader"]).has(
+      String(session.role),
+    ) ||
+      groupFlags.mfoManager ||
+      groupFlags.mfoDispatcher ||
+      groupFlags.municipalDepartmentHead ||
+      groupFlags.environmentManager ||
+      groupFlags.improvementManager,
+  );
+  const canCreateRoute = Boolean(
+    isAutoGarbageDepartment(departmentScopeName) &&
+      (String(session.role) === "project_manager" ||
+        groupFlags.mfoManager ||
+        groupFlags.mfoDispatcher ||
+        groupFlags.municipalDepartmentHead),
+  );
   const connectionOverrides = {
     login: session.login,
     password: session.password,
@@ -274,6 +293,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={roleLabel}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
               departmentScopeName={departmentScopeName}

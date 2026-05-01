@@ -86,6 +86,7 @@ export default async function ReportTaskPickerPage({ params }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
             />

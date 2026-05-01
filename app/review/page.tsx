@@ -343,6 +343,7 @@ export default async function ReviewPage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               departmentScopeName={scopedDepartmentName}
               notificationCount={notificationCount}
             />

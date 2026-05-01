@@ -4,7 +4,7 @@
               name="Ногоон байгууламж, тохижилт"
               parent="municipal_core.menu_municipal_core_root"
               sequence="18"
-              groups="municipal_environment_services.group_environment_worker,municipal_environment_services.group_green_engineer,municipal_environment_services.group_green_master,municipal_environment_services.group_improvement_welder,municipal_environment_services.group_improvement_field_engineer,municipal_environment_services.group_improvement_manager,municipal_environment_services.group_environment_manager,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+              groups="municipal_environment_services.group_environment_worker,municipal_environment_services.group_green_engineer,municipal_environment_services.group_green_master,municipal_environment_services.group_improvement_welder,municipal_environment_services.group_improvement_field_engineer,municipal_environment_services.group_improvement_engineer,municipal_environment_services.group_improvement_manager,municipal_environment_services.group_environment_manager,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_green_root"
               name="Ногоон байгууламж"
@@ -51,7 +51,7 @@
               name="Тохижилт"
               parent="menu_environment_services_root"
               sequence="20"
-              groups="municipal_environment_services.group_environment_worker,municipal_environment_services.group_improvement_welder,municipal_environment_services.group_improvement_field_engineer,municipal_environment_services.group_improvement_manager,municipal_environment_services.group_environment_manager,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+              groups="municipal_environment_services.group_environment_worker,municipal_environment_services.group_improvement_welder,municipal_environment_services.group_improvement_field_engineer,municipal_environment_services.group_improvement_engineer,municipal_environment_services.group_improvement_manager,municipal_environment_services.group_environment_manager,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_improvement_my_activity"
               name="Миний тохижилтын ажил"
@@ -65,28 +65,28 @@
               parent="menu_improvement_root"
               action="action_municipal_improvement_area"
               sequence="10"
-              groups="municipal_environment_services.group_improvement_field_engineer,municipal_environment_services.group_improvement_manager,municipal_environment_services.group_environment_manager,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+              groups="municipal_environment_services.group_improvement_field_engineer,municipal_environment_services.group_improvement_engineer,municipal_environment_services.group_improvement_manager,municipal_environment_services.group_environment_manager,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_improvement_object"
               name="Сандал, хашаа, гэрэлтүүлэг"
               parent="menu_improvement_root"
               action="action_municipal_improvement_object"
               sequence="20"
-              groups="municipal_environment_services.group_improvement_welder,municipal_environment_services.group_improvement_field_engineer,municipal_environment_services.group_improvement_manager,municipal_environment_services.group_environment_manager,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+              groups="municipal_environment_services.group_improvement_welder,municipal_environment_services.group_improvement_field_engineer,municipal_environment_services.group_improvement_engineer,municipal_environment_services.group_improvement_manager,municipal_environment_services.group_environment_manager,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_improvement_activity"
               name="Засвар, гагнуур, угсралт"
               parent="menu_improvement_root"
               action="action_municipal_improvement_activity"
               sequence="30"
-              groups="municipal_environment_services.group_improvement_welder,municipal_environment_services.group_improvement_field_engineer,municipal_environment_services.group_improvement_manager,municipal_environment_services.group_environment_manager,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+              groups="municipal_environment_services.group_improvement_welder,municipal_environment_services.group_improvement_field_engineer,municipal_environment_services.group_improvement_engineer,municipal_environment_services.group_improvement_manager,municipal_environment_services.group_environment_manager,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_improvement_material_line"
               name="Материалын хэрэгцээ"
               parent="menu_improvement_root"
               action="action_municipal_improvement_material_line"
               sequence="40"
-              groups="municipal_environment_services.group_improvement_field_engineer,municipal_environment_services.group_improvement_manager,municipal_environment_services.group_environment_manager,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+              groups="municipal_environment_services.group_improvement_field_engineer,municipal_environment_services.group_improvement_engineer,municipal_environment_services.group_improvement_manager,municipal_environment_services.group_environment_manager,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_improvement_under_review"
               name="Хяналтад байгаа"

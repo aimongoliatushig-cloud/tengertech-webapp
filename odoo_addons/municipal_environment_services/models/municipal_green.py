@@ -51,7 +51,7 @@ class MunicipalGreenLocation(models.Model):
     area_unit = fields.Char(string="Хэмжих нэгж", default="м2")
     note = fields.Text(string="Тайлбар")
     asset_ids = fields.One2many("municipal.green.asset", "location_id", string="Ургамлын бүртгэл")
-    activity_ids = fields.One2many("municipal.green.activity", "location_id", string="Арчилгааны ажил")
+    green_activity_ids = fields.One2many("municipal.green.activity", "location_id", string="Арчилгааны ажил")
     photo_ids = fields.Many2many(
         "ir.attachment",
         "municipal_green_location_attachment_rel",

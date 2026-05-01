@@ -23,7 +23,7 @@ import { SESSION_COOKIE_NAME } from "@/lib/session";
 
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 const WORKER_ROLE_REFRESH_INTERVAL_MS = 5 * 60_000;
-const CURRENT_SESSION_ROLE_INFERENCE_VERSION = 3;
+const CURRENT_SESSION_ROLE_INFERENCE_VERSION = 4;
 
 export type AppSession = {
   uid: number;
@@ -107,7 +107,10 @@ async function refreshSessionRole(session: AppSession) {
   const lastRoleCheckAt = session.roleCheckedAt ?? session.issuedAt;
   const needsRepairGroupRefresh =
     session.groupFlags?.fleetRepairAny === undefined ||
-    session.groupFlags?.opsStorekeeper === undefined;
+    session.groupFlags?.opsStorekeeper === undefined ||
+    session.groupFlags?.mfoDriver === undefined ||
+    session.groupFlags?.environmentManager === undefined ||
+    session.groupFlags?.complaintManager === undefined;
   if (
     session.roleInferenceVersion === CURRENT_SESSION_ROLE_INFERENCE_VERSION &&
     session.role === "worker" &&

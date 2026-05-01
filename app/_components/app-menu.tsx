@@ -37,6 +37,7 @@ import {
   type DepartmentGroupDefinition,
 } from "@/lib/department-groups";
 import { isAutoGarbageDepartment } from "@/lib/department-permissions";
+import type { RoleGroupFlags } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 import { PendingLinkIndicator } from "./pending-link-indicator";
@@ -77,6 +78,7 @@ type AppMenuProps = {
   workerMode?: boolean;
   notificationCount?: number;
   departmentScopeName?: string | null;
+  groupFlags?: Partial<RoleGroupFlags> | null;
 };
 
 type MenuItem = {
@@ -151,6 +153,7 @@ export function AppMenu({
   workerMode = false,
   notificationCount = 0,
   departmentScopeName = null,
+  groupFlags = null,
 }: AppMenuProps) {
   void getDockLabel;
   void canViewQualityCenter;
@@ -158,9 +161,64 @@ export function AppMenu({
 
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const flags = groupFlags || {};
+  const executiveMode =
+    Boolean(flags.municipalDirector || flags.municipalManager || flags.fleetRepairCeo) ||
+    roleLabel.toLocaleLowerCase("mn-MN").includes("\u0437\u0430\u0445\u0438\u0440\u0430\u043B") ||
+    roleLabel.toLocaleLowerCase("mn-MN").includes("\u043C\u0435\u043D\u0435\u0436\u0435\u0440");
+  const mfoFieldMode = Boolean(flags.mfoDriver || flags.mfoLoader || flags.mfoMobile);
+  const mfoManagerMode = Boolean(flags.mfoManager || flags.mfoDispatcher || flags.mfoInspector);
+  const environmentMode = Boolean(
+    flags.environmentWorker ||
+      flags.greenEngineer ||
+      flags.greenMaster ||
+      flags.improvementWelder ||
+      flags.improvementFieldEngineer ||
+      flags.improvementEngineer ||
+      flags.improvementManager ||
+      flags.environmentManager,
+  );
+  const environmentFieldMode =
+    workerMode &&
+    Boolean(
+      flags.environmentWorker ||
+        flags.greenEngineer ||
+        flags.improvementWelder ||
+        flags.improvementFieldEngineer ||
+        flags.improvementEngineer,
+    );
+  const environmentManagerMode = Boolean(
+    flags.greenMaster || flags.improvementManager || flags.environmentManager,
+  );
+  const repairMode = Boolean(flags.fleetRepairAny);
+  const repairFieldMode =
+    workerMode && Boolean(flags.fleetRepairMechanic || flags.fleetRepairTeamLeader);
+  const procurementMode = Boolean(
+    flags.opsStorekeeper ||
+      flags.fleetRepairPurchaser ||
+      flags.fleetRepairFinance ||
+      flags.fleetRepairAccounting ||
+      flags.fleetRepairManager ||
+      flags.fleetRepairCeo,
+  );
+  const complaintMode = Boolean(
+    flags.municipalPublicRelations || flags.complaintManager || roleLabel.includes("\u041E\u043B\u043E\u043D \u043D\u0438\u0439\u0442"),
+  );
+  const inspectorMode = Boolean(
+    flags.mfoInspector || flags.municipalInspector || flags.municipalHse || flags.greenMaster,
+  );
+  const departmentManagerMode = Boolean(
+    flags.municipalDepartmentHead || environmentManagerMode || mfoManagerMode,
+  );
+  const showFleetRepair = repairMode || mfoManagerMode || executiveMode;
+  const showProcurement = procurementMode || executiveMode || flags.municipalDepartmentHead;
+  const showReports =
+    canWriteReports || executiveMode || departmentManagerMode || inspectorMode || canViewQualityCenter;
   const baseCanCreate = !workerMode && (canCreateProject || canCreateTasks || canWriteReports);
   const reviewHref = workerMode && canUseFieldConsole ? "/field" : "/notifications";
-  const hrFocusedMode = canViewHr && roleLabel.toLocaleLowerCase("mn-MN").includes("хүний нөөц");
+  const hrFocusedMode =
+    Boolean(canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr) &&
+    roleLabel.toLocaleLowerCase("mn-MN").includes("\u0445\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446");
   const isGarbageDepartmentHead =
     !workerMode &&
     !masterMode &&
@@ -191,68 +249,134 @@ export function AppMenu({
     departmentName: group.name,
   }));
 
-  const hrItems: MenuItem[] = canViewHr
+  const hrItems: MenuItem[] = canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr
     ? [
-        { key: "hr", href: "/hr", label: "Хүний нөөц", icon: Users },
+        { key: "hr", href: "/hr", label: "\u0425\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446", icon: Users },
       ]
     : [];
+
+  const roleFocusedItems: MenuItem[] = [
+    ...(mfoFieldMode || mfoManagerMode
+      ? [
+          {
+            key: "garbage-routes",
+            href: workerMode ? "/garbage-routes/today" : "/garbage-routes",
+            label: workerMode ? "\u04E8\u043D\u04E9\u04E9\u0434\u0440\u0438\u0439\u043D \u043C\u0430\u0440\u0448\u0440\u0443\u0442" : "\u0425\u043E\u0433 \u0442\u044D\u044D\u0432\u0440\u0438\u0439\u043D \u043C\u0430\u0440\u0448\u0440\u0443\u0442",
+            icon: Route,
+          },
+        ]
+      : []),
+    ...(environmentMode
+      ? [
+          {
+            key: "environment-work",
+            href: "/projects?department=%D0%9D%D0%BE%D0%B3%D0%BE%D0%BE%D0%BD%20%D0%B1%D0%B0%D0%B9%D0%B3%D1%83%D1%83%D0%BB%D0%B0%D0%BC%D0%B6%2C%20%D1%86%D1%8D%D0%B2%D1%8D%D1%80%D0%BB%D1%8D%D0%B3%D1%8D%D1%8D%20%D2%AF%D0%B9%D0%BB%D1%87%D0%B8%D0%BB%D0%B3%D1%8D%D1%8D%D0%BD%D0%B8%D0%B9%20%D1%85%D1%8D%D0%BB%D1%82%D1%8D%D1%81",
+            label: "\u041D\u043E\u0433\u043E\u043E\u043D \u0431\u0430\u0439\u0433\u0443\u0443\u043B\u0430\u043C\u0436, \u0442\u043E\u0445\u0438\u0436\u0438\u043B\u0442",
+            icon: Leaf,
+          },
+        ]
+      : []),
+    ...(workerMode && (mfoFieldMode || environmentFieldMode)
+      ? [
+          {
+            key: "field",
+            href: "/field",
+            label: "\u0422\u0430\u0439\u043B\u0430\u043D \u043E\u0440\u0443\u0443\u043B\u0430\u0445",
+            icon: ListChecks,
+          },
+        ]
+      : []),
+    ...(repairMode
+      ? [
+          {
+            key: "fleet-repair",
+            href: "/fleet-repair/requests",
+            label: "\u0417\u0430\u0441\u0432\u0430\u0440\u044B\u043D \u0445\u04AF\u0441\u044D\u043B\u0442",
+            icon: Wrench,
+          },
+        ]
+      : []),
+    ...(complaintMode
+      ? [
+          {
+            key: "complaints",
+            href: "/settings/garbage-transport#complaints",
+            label: "\u0418\u0440\u0433\u044D\u0434\u0438\u0439\u043D \u0441\u0430\u043D\u0430\u043B, \u0433\u043E\u043C\u0434\u043E\u043B",
+            icon: MessageSquare,
+          },
+        ]
+      : []),
+  ];
 
   const defaultItems: MenuItem[] = [
     {
       key: "dashboard",
       href: "/",
-      label: "Ажлын самбар",
+      label: "\u0410\u0436\u043B\u044B\u043D \u0441\u0430\u043C\u0431\u0430\u0440",
       icon: LayoutDashboard,
     },
     ...hrItems,
+    ...roleFocusedItems,
     ...departmentItems,
-    {
-      key: "fleet-repair",
-      href: "/fleet-repair/requests",
-      label: "Засварын хүсэлт",
-      icon: Wrench,
-    },
+    ...(showFleetRepair && !roleFocusedItems.some((item) => item.key === "fleet-repair")
+      ? [
+          {
+            key: "fleet-repair",
+            href: "/fleet-repair/requests",
+            label: "\u0417\u0430\u0441\u0432\u0430\u0440\u044B\u043D \u0445\u04AF\u0441\u044D\u043B\u0442",
+            icon: Wrench,
+          },
+        ]
+      : []),
     {
       key: "tasks",
       href: "/tasks?view=today",
-      label: "Календарь",
+      label: "\u041A\u0430\u043B\u0435\u043D\u0434\u0430\u0440\u044C",
       icon: CalendarDays,
     },
     {
       key: "data-download",
       href: "/data-download",
-      label: "Баримт бичиг",
+      label: "\u0411\u0430\u0440\u0438\u043C\u0442 \u0431\u0438\u0447\u0438\u0433",
       icon: FileText,
     },
-    {
-      key: "reports",
-      href: canWriteReports ? "/reports" : "/review",
-      label: "Тайлан, статистик",
-      icon: BarChart3,
-    },
-    {
-      key: "procurement",
-      href: "/procurement/dashboard",
-      label: "Худалдан авалт",
-      icon: FileText,
-    },
+    ...(showReports
+      ? [
+          {
+            key: "reports",
+            href: canWriteReports ? "/reports" : "/review",
+            label: "\u0422\u0430\u0439\u043B\u0430\u043D, \u0441\u0442\u0430\u0442\u0438\u0441\u0442\u0438\u043A",
+            icon: BarChart3,
+          },
+        ]
+      : []),
+    ...(showProcurement
+      ? [
+          {
+            key: "procurement",
+            href: "/procurement/dashboard",
+            label: "\u0425\u0443\u0434\u0430\u043B\u0434\u0430\u043D \u0430\u0432\u0430\u043B\u0442",
+            icon: FileText,
+          },
+        ]
+      : []),
     {
       key: "chat",
       href: "/chat",
-      label: "Чат",
+      label: "\u0427\u0430\u0442",
       icon: MessageSquare,
     },
     {
       key: "review",
       href: reviewHref,
-      label: "Мэдэгдэл",
+      label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B",
       icon: Bell,
       badge: notificationCount,
     },
     {
       key: "profile",
       href: "/profile",
-      label: "Тохиргоо",
+      label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E",
       icon: Settings,
     },
   ].filter((item) => {
@@ -263,9 +387,18 @@ export function AppMenu({
       return true;
     }
     if (item.key.startsWith("hr")) {
-      return canViewHr;
+      return canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr;
     }
-    return !["data-download", "reports", "procurement", "chat"].includes(item.key);
+    if (mfoFieldMode) {
+      return ["dashboard", "garbage-routes", "field", "review", "notifications", "profile"].includes(item.key);
+    }
+    if (environmentFieldMode) {
+      return ["dashboard", "environment-work", "field", "review", "notifications", "profile"].includes(item.key);
+    }
+    if (repairFieldMode) {
+      return ["dashboard", "fleet-repair", "review", "notifications", "profile"].includes(item.key);
+    }
+    return !["data-download", "reports", "procurement", "chat", "fleet-repair"].includes(item.key);
   });
 
   const garbageDepartmentItems: MenuItem[] = [
@@ -379,18 +512,48 @@ export function AppMenu({
         },
       ]
     : workerMode
-      ? [
-          { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
-          {
-            key: "projects",
-            href: departmentItems[0]?.href ?? "/projects",
-            label: "Ажлууд",
-            icon: ListChecks,
-          },
-          { key: "review", href: reviewHref, label: "Мэдэгдэл", icon: Bell, badge: notificationCount },
-          { key: "profile", href: "/profile", label: "Тохиргоо", icon: Settings },
-          ...(canViewHr ? [{ key: "hr", href: "/hr", label: "HR", icon: Users }] : []),
-        ]
+      ? mfoFieldMode
+        ? [
+            { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard },
+            { key: "garbage-routes", href: "/garbage-routes/today", label: "\u041C\u0430\u0440\u0448\u0440\u0443\u0442", icon: Route },
+            { key: "field", href: "/field", label: "\u0422\u0430\u0439\u043B\u0430\u043D", icon: ListChecks },
+            { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
+            { key: "profile", href: "/profile", label: "\u041F\u0440\u043E\u0444\u0430\u0439\u043B", icon: Settings },
+          ]
+        : environmentFieldMode
+          ? [
+              { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard },
+              {
+                key: "environment-work",
+                href: "/projects?department=%D0%9D%D0%BE%D0%B3%D0%BE%D0%BE%D0%BD%20%D0%B1%D0%B0%D0%B9%D0%B3%D1%83%D1%83%D0%BB%D0%B0%D0%BC%D0%B6%2C%20%D1%86%D1%8D%D0%B2%D1%8D%D1%80%D0%BB%D1%8D%D0%B3%D1%8D%D1%8D%20%D2%AF%D0%B9%D0%BB%D1%87%D0%B8%D0%BB%D0%B3%D1%8D%D1%8D%D0%BD%D0%B8%D0%B9%20%D1%85%D1%8D%D0%BB%D1%82%D1%8D%D1%81",
+                label: "\u0410\u0436\u0438\u043B",
+                icon: Leaf,
+              },
+              { key: "field", href: "/field", label: "\u0422\u0430\u0439\u043B\u0430\u043D", icon: ListChecks },
+              { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
+              { key: "profile", href: "/profile", label: "\u041F\u0440\u043E\u0444\u0430\u0439\u043B", icon: Settings },
+            ]
+          : repairFieldMode
+            ? [
+                { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard },
+                { key: "fleet-repair", href: "/fleet-repair/requests", label: "\u0417\u0430\u0441\u0432\u0430\u0440", icon: Wrench },
+                { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
+                { key: "profile", href: "/profile", label: "\u041F\u0440\u043E\u0444\u0430\u0439\u043B", icon: Settings },
+              ]
+            : [
+                { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard },
+                {
+                  key: "projects",
+                  href: departmentItems[0]?.href ?? "/projects",
+                  label: "\u0410\u0436\u043B\u0443\u0443\u0434",
+                  icon: ListChecks,
+                },
+                { key: "review", href: reviewHref, label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
+                { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
+                ...(canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr
+                  ? [{ key: "hr", href: "/hr", label: "HR", icon: Users }]
+                  : []),
+              ]
       : [
           { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
           { key: "projects", href: "/projects", label: "Ажлууд", icon: ListChecks },

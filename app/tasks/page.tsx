@@ -533,6 +533,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
               departmentScopeName={scopedDepartmentName}

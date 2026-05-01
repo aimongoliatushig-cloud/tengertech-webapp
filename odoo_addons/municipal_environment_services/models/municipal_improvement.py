@@ -49,7 +49,7 @@ class MunicipalImprovementArea(models.Model):
     gps_longitude = fields.Float(string="Уртраг", digits=(10, 7))
     note = fields.Text(string="Тайлбар")
     object_ids = fields.One2many("municipal.improvement.object", "area_id", string="Объектууд")
-    activity_ids = fields.One2many("municipal.improvement.activity", "area_id", string="Тохижилтын ажил")
+    improvement_activity_ids = fields.One2many("municipal.improvement.activity", "area_id", string="Тохижилтын ажил")
     photo_ids = fields.Many2many(
         "ir.attachment",
         "municipal_improvement_area_attachment_rel",

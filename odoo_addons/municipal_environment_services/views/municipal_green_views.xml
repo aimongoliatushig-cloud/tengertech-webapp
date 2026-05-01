@@ -61,7 +61,7 @@
                             </field>
                         </page>
                         <page string="Арчилгааны ажил">
-                            <field name="activity_ids" context="{'default_location_id': id}">
+                            <field name="green_activity_ids" context="{'default_location_id': id}">
                                 <list>
                                     <field name="name"/>
                                     <field name="activity_type"/>

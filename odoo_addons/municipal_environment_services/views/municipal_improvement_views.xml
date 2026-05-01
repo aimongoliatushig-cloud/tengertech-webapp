@@ -56,7 +56,7 @@
                             </field>
                         </page>
                         <page string="Тохижилтын ажил">
-                            <field name="activity_ids" context="{'default_area_id': id}">
+                            <field name="improvement_activity_ids" context="{'default_area_id': id}">
                                 <list>
                                     <field name="name"/>
                                     <field name="activity_type"/>
