@@ -2,7 +2,7 @@
 {
     "name": "Хот тохижилтын талбайн ажиллагаа",
     "summary": "Хог тээвэрлэлтийн маршрут, талбайн тайлан, гар утасны compatibility модуль",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.0.1",
     "category": "Operations/Municipal",
     "author": "TengerTech",
     "website": "https://tengertech.mn",

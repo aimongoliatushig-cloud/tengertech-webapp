@@ -287,7 +287,8 @@ class ProjectTask(models.Model):
         report = self.env["ops.task.report"].create(
             {
                 "task_id": self.id,
-                "reporter_id": self.env.user.employee_id.id or False,
+                "reporter_id": self.env.user.id,
+                "reporter_employee_id": self.env.user.employee_id.id or False,
                 "report_summary": values.get("report_text") or values.get("report_summary") or "",
                 "reported_quantity": values.get("reported_quantity") or 0,
             }

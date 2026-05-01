@@ -109,7 +109,7 @@
         <record id="rule_ops_report_mobile_own" model="ir.rule">
             <field name="name">OPS report mobile own</field>
             <field name="model_id" ref="model_ops_task_report"/>
-            <field name="domain_force">['|', ('user_id', '=', user.id), ('reporter_id.user_id', '=', user.id)]</field>
+            <field name="domain_force">['|', '|', ('user_id', '=', user.id), ('reporter_id', '=', user.id), ('reporter_employee_id.user_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('group_mfo_mobile_user'))]"/>
         </record>
 

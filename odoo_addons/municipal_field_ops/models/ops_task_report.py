@@ -12,7 +12,15 @@ class OpsTaskReport(models.Model):
 
     task_id = fields.Many2one("project.task", string="Ажил", required=True, ondelete="cascade", index=True)
     municipal_report_id = fields.Many2one("municipal.work.report", string="Хот тохижилтын тайлан", ondelete="set null")
-    reporter_id = fields.Many2one("hr.employee", string="Тайлагнасан ажилтан", index=True)
+    reporter_id = fields.Many2one("res.users", string="Тайлагнасан хэрэглэгч", default=lambda self: self.env.user, index=True)
+    reporter_employee_id = fields.Many2one(
+        "hr.employee",
+        string="Тайлагнасан ажилтан",
+        compute="_compute_reporter_employee_id",
+        store=True,
+        readonly=False,
+        index=True,
+    )
     user_id = fields.Many2one("res.users", string="Хэрэглэгч", default=lambda self: self.env.user, index=True)
     report_datetime = fields.Datetime(string="Тайлангийн огноо", default=fields.Datetime.now, required=True)
     report_summary = fields.Text(string="Тайлбар", required=True)
@@ -64,6 +72,11 @@ class OpsTaskReport(models.Model):
         for report in self:
             report.image_count = len(report.image_attachment_ids)
             report.audio_count = len(report.audio_attachment_ids)
+
+    @api.depends("reporter_id")
+    def _compute_reporter_employee_id(self):
+        for report in self:
+            report.reporter_employee_id = report.reporter_id.employee_id if report.reporter_id else False
 
     @api.constrains("state", "report_summary", "rejection_reason", "image_attachment_ids")
     def _check_report_requirements(self):
