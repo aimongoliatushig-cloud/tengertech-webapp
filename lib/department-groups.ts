@@ -52,6 +52,55 @@ export const DEPARTMENT_GROUPS: DepartmentGroupDefinition[] = [
     icon: "🏙️",
     accent: "var(--tone-slate)",
   },
+  {
+    name: "Хүний нөөц",
+    units: [],
+    aliases: ["HR", "Хүний нөөц", "Хүний нөөцийн алба"],
+    icon: "👥",
+    accent: "var(--tone-blue)",
+  },
+  {
+    name: "Ирц / идэвх / сахилга",
+    units: [],
+    aliases: ["Ирц", "Идэвх", "Сахилга", "Ирц идэвх сахилга"],
+    icon: "✅",
+    accent: "var(--tone-amber)",
+  },
+  {
+    name: "Дотоод хяналт",
+    units: [],
+    aliases: ["Дотоод хяналт", "Хяналтын алба"],
+    icon: "🛡️",
+    accent: "var(--tone-slate)",
+  },
+  {
+    name: "ХАБЭА",
+    units: [],
+    aliases: ["ХАБЭА", "Хөдөлмөрийн аюулгүй байдал", "Safety", "HSE"],
+    icon: "🦺",
+    accent: "var(--tone-amber)",
+  },
+  {
+    name: "Мэдээлэл технологи",
+    units: [],
+    aliases: ["IT", "Мэдээлэл технологи", "Мэдээллийн технологи"],
+    icon: "💻",
+    accent: "var(--tone-blue)",
+  },
+  {
+    name: "Олон нийттэй харилцах",
+    units: [],
+    aliases: ["PR", "Олон нийт", "Олон нийттэй харилцах"],
+    icon: "📣",
+    accent: "var(--tone-teal)",
+  },
+  {
+    name: "Иргэдийн санал, гомдол",
+    units: [],
+    aliases: ["Гомдол", "Иргэдийн санал", "Иргэдийн санал гомдол"],
+    icon: "💬",
+    accent: "var(--tone-slate)",
+  },
 ];
 
 export const CANONICAL_DEPARTMENT_NAMES = DEPARTMENT_GROUPS.map((group) => group.name);
@@ -97,6 +146,19 @@ export function normalizeOrganizationUnitName(departmentName?: string | null) {
   }
   if (normalized.includes("тохижилт") || normalized.includes("засвар")) {
     return "Тохижилтын хэлтэс";
+  }
+
+  if (normalized.includes("hr") || normalized.includes("human resource")) {
+    return DEPARTMENT_GROUPS.find((group) => group.aliases.includes("HR"))?.name ?? "";
+  }
+  if (normalized.includes("hse") || normalized.includes("safety")) {
+    return DEPARTMENT_GROUPS.find((group) => group.aliases.includes("HSE"))?.name ?? "";
+  }
+  if (/\b(it|ict)\b/.test(normalized) || normalized.includes("technology")) {
+    return DEPARTMENT_GROUPS.find((group) => group.aliases.includes("IT"))?.name ?? "";
+  }
+  if (/\bpr\b/.test(normalized) || normalized.includes("public relation")) {
+    return DEPARTMENT_GROUPS.find((group) => group.aliases.includes("PR"))?.name ?? "";
   }
 
   return "";
