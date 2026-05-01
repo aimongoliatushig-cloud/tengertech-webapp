@@ -11,6 +11,7 @@
         "municipal_core",
         "fleet",
         "product",
+        "stock",
         "mail",
     ],
     "data": [

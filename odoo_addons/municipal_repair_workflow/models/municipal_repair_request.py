@@ -120,6 +120,23 @@ class MunicipalRepairRequest(models.Model):
         readonly=True,
         copy=False,
     )
+    quote_line_ids = fields.One2many(
+        "municipal.procurement.quote",
+        "repair_id",
+        string="Үнийн саналууд",
+    )
+    supplier_quote_ids = fields.One2many(
+        "municipal.procurement.quote",
+        "repair_id",
+        string="Нийлүүлэгчийн үнийн саналууд",
+    )
+    selected_supplier_id = fields.Many2one(
+        "res.partner",
+        string="Сонгосон нийлүүлэгч",
+        related="procurement_request_id.selected_supplier_id",
+        store=True,
+        readonly=True,
+    )
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -217,7 +234,17 @@ class MunicipalRepairRequest(models.Model):
         return self._set_state("new", {"approved_by": False})
 
     def action_receive_parts(self, payload=None):
-        self.mapped("required_part_ids").write({"state": "issued"})
+        for request in self:
+            if request.procurement_request_id:
+                request.procurement_request_id.action_issue_to_repair()
+                continue
+            for line in request.required_part_ids:
+                line.write(
+                    {
+                        "state": "issued",
+                        "issued_quantity": line.requested_quantity or line.quantity or 0,
+                    }
+                )
         return self._set_state("approved")
 
     def action_add_quotes(self, payload=None):
@@ -259,6 +286,18 @@ class MunicipalRepairRequest(models.Model):
                     "company_id": request.company_id.id,
                 }
             )
+            for part in request.required_part_ids:
+                self.env["municipal.procurement.line"].create(
+                    {
+                        "procurement_id": procurement.id,
+                        "repair_part_line_id": part.id,
+                        "product_id": part.product_id.id or False,
+                        "description": part.description,
+                        "requested_quantity": part.requested_quantity or part.quantity or 1.0,
+                        "unit_of_measure": part.unit_of_measure,
+                        "estimated_unit_cost": part.estimated_unit_cost,
+                    }
+                )
             request.procurement_request_id = procurement.id
         return True
 
