@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "checks": {
+    "firstSaved": true,
+    "conflictShown": true,
+    "errorText": "Энэ машин сонгосон өдөр аль хэдийн өөр загварт оноогдсон байна."
+  }
+}

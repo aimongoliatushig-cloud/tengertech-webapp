@@ -1,37 +1,28 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarDays, CheckCircle2, Plus, Repeat2, Route, Truck, Users, X } from "lucide-react";
 
-import styles from "./garbage-routes.module.css";
+import type {
+  GarbageWeeklyTemplate,
+  GarbageWeeklyTemplateDay,
+  GarbageWeeklyTemplateDays,
+  GarbageWeeklyTemplateInput,
+} from "@/lib/garbage-weekly-template-types";
+import {
+  EMPTY_GARBAGE_WEEKLY_TEMPLATE_DAYS,
+  GARBAGE_WEEKLY_TEMPLATE_WEEKDAYS,
+  selectedGarbageWeeklyTemplateDayLabels,
+  shareGarbageWeeklyTemplateDays,
+} from "@/lib/garbage-weekly-template-types";
 
-type TemplateDays = {
-  monday: boolean;
-  tuesday: boolean;
-  wednesday: boolean;
-  thursday: boolean;
-  friday: boolean;
-  saturday: boolean;
-  sunday: boolean;
-};
+import styles from "./garbage-routes.module.css";
 
 type Option = {
   id: number;
   label: string;
   meta?: string;
 };
-
-export interface GarbageWeeklyTemplate {
-  id: string;
-  routeId: string;
-  vehicleId: string;
-  teamId: string;
-  days: TemplateDays;
-  active: boolean;
-  note?: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
 type WeeklyTemplatePanelProps = {
   routes: Option[];
@@ -48,31 +39,16 @@ type FormState = {
 };
 
 type ActiveEditor = {
-  day: keyof TemplateDays;
+  day: GarbageWeeklyTemplateDay;
   templateId?: string;
 };
 
-const STORAGE_KEY = "garbage-weekly-templates:v1";
-
-const EMPTY_DAYS: TemplateDays = {
-  monday: false,
-  tuesday: false,
-  wednesday: false,
-  thursday: false,
-  friday: false,
-  saturday: false,
-  sunday: false,
+type WeeklyTemplateResponse = {
+  templates?: GarbageWeeklyTemplate[];
+  error?: string;
 };
 
-const WEEKDAYS: Array<{ key: keyof TemplateDays; label: string }> = [
-  { key: "monday", label: "Даваа" },
-  { key: "tuesday", label: "Мягмар" },
-  { key: "wednesday", label: "Лхагва" },
-  { key: "thursday", label: "Пүрэв" },
-  { key: "friday", label: "Баасан" },
-  { key: "saturday", label: "Бямба" },
-  { key: "sunday", label: "Ням" },
-];
+const STORAGE_KEY = "garbage-weekly-templates:v1";
 
 const EMPTY_FORM: FormState = {
   routeId: "",
@@ -82,23 +58,8 @@ const EMPTY_FORM: FormState = {
   note: "",
 };
 
-function makeId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `weekly-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function dayOnly(day: keyof TemplateDays): TemplateDays {
-  return { ...EMPTY_DAYS, [day]: true };
-}
-
-function selectedDayLabels(days: TemplateDays) {
-  return WEEKDAYS.filter(({ key }) => days[key]).map(({ label }) => label);
-}
-
-function sharedDays(left: TemplateDays, right: TemplateDays) {
-  return WEEKDAYS.some(({ key }) => left[key] && right[key]);
+function dayOnly(day: GarbageWeeklyTemplateDay): GarbageWeeklyTemplateDays {
+  return { ...EMPTY_GARBAGE_WEEKLY_TEMPLATE_DAYS, [day]: true };
 }
 
 function optionLabel(options: Option[], id: string, fallback: string) {
@@ -117,50 +78,144 @@ function isWeeklyTemplate(value: unknown): value is GarbageWeeklyTemplate {
   return Boolean(record.id && record.routeId && record.vehicleId && record.teamId && record.days);
 }
 
+async function readJson(response: Response) {
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(typeof payload.error === "string" ? payload.error : "Мэдээлэл ачаалж чадсангүй.");
+  }
+  return payload as WeeklyTemplateResponse;
+}
+
 export function GarbageWeeklyTemplatePanel({ routes, vehicles, teams }: WeeklyTemplatePanelProps) {
   const [templates, setTemplates] = useState<GarbageWeeklyTemplate[]>([]);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editor, setEditor] = useState<ActiveEditor | null>(null);
   const [error, setError] = useState("");
-  const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const toPayload = useCallback(
+    (template: GarbageWeeklyTemplate | FormState, day?: GarbageWeeklyTemplateDay): GarbageWeeklyTemplateInput => {
+      const days = "days" in template ? template.days : dayOnly(day ?? "monday");
+      const routeId = template.routeId;
+      const vehicleId = template.vehicleId;
+      const teamId = template.teamId;
+
+      return {
+        routeId,
+        routeName: "routeName" in template
+          ? template.routeName
+          : optionLabel(routes, routeId, `#${routeId}`),
+        vehicleId,
+        vehicleName: "vehicleName" in template
+          ? template.vehicleName
+          : optionLabel(vehicles, vehicleId, `#${vehicleId}`),
+        teamId,
+        teamName: "teamName" in template
+          ? template.teamName
+          : optionLabel(teams, teamId, `#${teamId}`),
+        days,
+        active: template.active,
+        note: template.note?.trim(),
+      };
+    },
+    [routes, teams, vehicles],
+  );
 
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]") as unknown;
-      setTemplates(Array.isArray(saved) ? saved.filter(isWeeklyTemplate) : []);
-    } catch {
-      setTemplates([]);
-    } finally {
-      setLoaded(true);
+    let cancelled = false;
+
+    async function loadTemplates() {
+      setLoading(true);
+      try {
+        const response = await fetch("/api/garbage-routes/weekly-templates", { cache: "no-store" });
+        const payload = await readJson(response);
+        const serverTemplates = Array.isArray(payload.templates) ? payload.templates.filter(isWeeklyTemplate) : [];
+
+        if (!cancelled) {
+          setTemplates(serverTemplates);
+        }
+
+        if (serverTemplates.length === 0) {
+          await migrateLocalTemplates();
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : "Мэдээлэл ачаалж чадсангүй.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     }
-  }, []);
+
+    async function migrateLocalTemplates() {
+      let saved: unknown = [];
+      try {
+        saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      } catch {
+        saved = [];
+      }
+
+      const localTemplates = Array.isArray(saved) ? saved.filter(isWeeklyTemplate) : [];
+      if (localTemplates.length === 0) {
+        return;
+      }
+
+      let latestTemplates: GarbageWeeklyTemplate[] = [];
+      for (const template of localTemplates) {
+        try {
+          const response = await fetch("/api/garbage-routes/weekly-templates", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(toPayload(template)),
+          });
+          const payload = await readJson(response);
+          latestTemplates = Array.isArray(payload.templates) ? payload.templates.filter(isWeeklyTemplate) : latestTemplates;
+        } catch {
+          // Duplicate local samples should not block the page from loading.
+        }
+      }
+
+      if (!cancelled && latestTemplates.length) {
+        setTemplates(latestTemplates);
+      }
+    }
+
+    loadTemplates();
+    return () => {
+      cancelled = true;
+    };
+  }, [toPayload]);
 
   useEffect(() => {
-    if (loaded) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
-    }
-  }, [loaded, templates]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
+  }, [templates]);
 
   const activeCount = templates.filter((template) => template.active).length;
-  const assignmentCount = templates.reduce((total, template) => total + selectedDayLabels(template.days).length, 0);
-  const busiestDayCount = Math.max(...WEEKDAYS.map(({ key }) => templates.filter((template) => template.days[key]).length));
-  const rowCount = Math.max(
-    4,
-    busiestDayCount + 1,
+  const assignmentCount = templates.reduce(
+    (total, template) => total + selectedGarbageWeeklyTemplateDayLabels(template.days).length,
+    0,
   );
+  const busiestDayCount = Math.max(
+    0,
+    ...GARBAGE_WEEKLY_TEMPLATE_WEEKDAYS.map(({ key }) => templates.filter((template) => template.days[key]).length),
+  );
+  const rowCount = Math.max(4, busiestDayCount + 1);
   const rows = Array.from({ length: rowCount }, (_, index) => index);
 
   const templatesByDay = useMemo(() => {
-    return WEEKDAYS.reduce(
+    return GARBAGE_WEEKLY_TEMPLATE_WEEKDAYS.reduce(
       (accumulator, { key }) => ({
         ...accumulator,
         [key]: templates.filter((template) => template.days[key]),
       }),
-      {} as Record<keyof TemplateDays, GarbageWeeklyTemplate[]>,
+      {} as Record<GarbageWeeklyTemplateDay, GarbageWeeklyTemplate[]>,
     );
   }, [templates]);
 
-  function openEditor(day: keyof TemplateDays, template?: GarbageWeeklyTemplate) {
+  function openEditor(day: GarbageWeeklyTemplateDay, template?: GarbageWeeklyTemplate) {
     setEditor({ day, templateId: template?.id });
     setForm(
       template
@@ -187,7 +242,7 @@ export function GarbageWeeklyTemplatePanel({ routes, vehicles, teams }: WeeklyTe
     setError("");
   }
 
-  function validate(day: keyof TemplateDays) {
+  function validate(day: GarbageWeeklyTemplateDay) {
     if (!form.routeId) {
       return "Маршрут сонгоно уу";
     }
@@ -201,14 +256,14 @@ export function GarbageWeeklyTemplatePanel({ routes, vehicles, teams }: WeeklyTe
     const nextDays = dayOnly(day);
     const comparableTemplates = templates.filter((template) => template.id !== editor?.templateId);
     const hasVehicleConflict = comparableTemplates.some(
-      (template) => template.vehicleId === form.vehicleId && sharedDays(template.days, nextDays),
+      (template) => template.vehicleId === form.vehicleId && shareGarbageWeeklyTemplateDays(template.days, nextDays),
     );
     if (hasVehicleConflict) {
       return "Энэ машин сонгосон өдөр аль хэдийн өөр загварт оноогдсон байна.";
     }
 
     const hasTeamConflict = comparableTemplates.some(
-      (template) => template.teamId === form.teamId && sharedDays(template.days, nextDays),
+      (template) => template.teamId === form.teamId && shareGarbageWeeklyTemplateDays(template.days, nextDays),
     );
     if (hasTeamConflict) {
       return "Энэ баг сонгосон өдөр аль хэдийн өөр загварт оноогдсон байна.";
@@ -217,9 +272,9 @@ export function GarbageWeeklyTemplatePanel({ routes, vehicles, teams }: WeeklyTe
     return "";
   }
 
-  function saveTemplate(event: FormEvent<HTMLFormElement>) {
+  async function saveTemplate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!editor) {
+    if (!editor || saving) {
       return;
     }
 
@@ -229,55 +284,53 @@ export function GarbageWeeklyTemplatePanel({ routes, vehicles, teams }: WeeklyTe
       return;
     }
 
-    const now = new Date().toISOString();
-    if (editor.templateId) {
-      setTemplates((current) =>
-        current.map((template) =>
-          template.id === editor.templateId
-            ? {
-                ...template,
-                routeId: form.routeId,
-                vehicleId: form.vehicleId,
-                teamId: form.teamId,
-                days: dayOnly(editor.day),
-                active: form.active,
-                note: form.note.trim(),
-                updatedAt: now,
-              }
-            : template,
-        ),
-      );
-    } else {
-      setTemplates((current) => [
-        ...current,
-        {
-          id: makeId(),
-          routeId: form.routeId,
-          vehicleId: form.vehicleId,
-          teamId: form.teamId,
-          days: dayOnly(editor.day),
-          active: form.active,
-          note: form.note.trim(),
-          createdAt: now,
-          updatedAt: now,
-        },
-      ]);
+    setSaving(true);
+    try {
+      const targetUrl = editor.templateId
+        ? `/api/garbage-routes/weekly-templates/${encodeURIComponent(editor.templateId)}`
+        : "/api/garbage-routes/weekly-templates";
+      const response = await fetch(targetUrl, {
+        method: editor.templateId ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(toPayload(form, editor.day)),
+      });
+      const payload = await readJson(response);
+      setTemplates(Array.isArray(payload.templates) ? payload.templates.filter(isWeeklyTemplate) : []);
+      closeEditor();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Хадгалах үед алдаа гарлаа.");
+    } finally {
+      setSaving(false);
     }
-    closeEditor();
   }
 
-  function deleteTemplate(templateId: string) {
-    setTemplates((current) => current.filter((template) => template.id !== templateId));
-    if (editor?.templateId === templateId) {
-      closeEditor();
+  async function deleteTemplate(templateId: string) {
+    if (saving) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/garbage-routes/weekly-templates/${encodeURIComponent(templateId)}`, {
+        method: "DELETE",
+      });
+      const payload = await readJson(response);
+      setTemplates(Array.isArray(payload.templates) ? payload.templates.filter(isWeeklyTemplate) : []);
+      if (editor?.templateId === templateId) {
+        closeEditor();
+      }
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Устгах үед алдаа гарлаа.");
+    } finally {
+      setSaving(false);
     }
   }
 
   function renderTemplateCard(template: GarbageWeeklyTemplate) {
-    const routeName = optionLabel(routes, template.routeId, `#${template.routeId}`);
-    const vehicleName = optionLabel(vehicles, template.vehicleId, `#${template.vehicleId}`);
-    const teamName = optionLabel(teams, template.teamId, `#${template.teamId}`);
-    const dayKey = WEEKDAYS.find((day) => template.days[day.key])?.key ?? "monday";
+    const routeName = optionLabel(routes, template.routeId, template.routeName || `#${template.routeId}`);
+    const vehicleName = optionLabel(vehicles, template.vehicleId, template.vehicleName || `#${template.vehicleId}`);
+    const teamName = optionLabel(teams, template.teamId, template.teamName || `#${template.teamId}`);
+    const dayKey = GARBAGE_WEEKLY_TEMPLATE_WEEKDAYS.find((day) => template.days[day.key])?.key ?? "monday";
 
     return (
       <button
@@ -313,9 +366,12 @@ export function GarbageWeeklyTemplatePanel({ routes, vehicles, teams }: WeeklyTe
         </div>
       </div>
 
+      {loading ? <div className={styles.notice}>Мэдээлэл ачаалж байна...</div> : null}
+      {error && !editor ? <div className={styles.error}>{error}</div> : null}
+
       <div className={styles.weekMatrix}>
         <div className={styles.weekMatrixTopCell}>№</div>
-        {WEEKDAYS.map((day) => (
+        {GARBAGE_WEEKLY_TEMPLATE_WEEKDAYS.map((day) => (
           <div key={day.key} className={styles.weekMatrixDayHead}>
             <strong>{day.label}</strong>
             <button type="button" onClick={() => openEditor(day.key)}>
@@ -327,7 +383,7 @@ export function GarbageWeeklyTemplatePanel({ routes, vehicles, teams }: WeeklyTe
         {rows.map((rowIndex) => (
           <div className={styles.weekMatrixRow} key={rowIndex}>
             <div className={styles.weekMatrixNumber}>{rowIndex + 1}</div>
-            {WEEKDAYS.map((day) => {
+            {GARBAGE_WEEKLY_TEMPLATE_WEEKDAYS.map((day) => {
               const template = templatesByDay[day.key][rowIndex];
               const isEditing = Boolean(editor?.templateId) && editor?.day === day.key && editor.templateId === template?.id;
               const isAdding = editor?.day === day.key && !editor.templateId && !template && rowIndex === templatesByDay[day.key].length;
@@ -414,14 +470,19 @@ export function GarbageWeeklyTemplatePanel({ routes, vehicles, teams }: WeeklyTe
                       </label>
 
                       <div className={styles.weekMatrixFormActions}>
-                        <button type="submit" className={styles.primaryButton}>
-                          Хадгалах
+                        <button type="submit" className={styles.primaryButton} disabled={saving}>
+                          {saving ? "Хадгалж байна..." : "Хадгалах"}
                         </button>
-                        <button type="button" onClick={closeEditor}>
+                        <button type="button" onClick={closeEditor} disabled={saving}>
                           Болих
                         </button>
                         {editor.templateId ? (
-                          <button type="button" className={styles.dangerButton} onClick={() => deleteTemplate(editor.templateId!)}>
+                          <button
+                            type="button"
+                            className={styles.dangerButton}
+                            onClick={() => deleteTemplate(editor.templateId!)}
+                            disabled={saving}
+                          >
                             Устгах
                           </button>
                         ) : null}

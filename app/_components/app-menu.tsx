@@ -497,7 +497,7 @@ export function AppMenu({
         </button>
 
         <Link
-          href={isGarbageDepartmentHead ? "/settings/garbage-transport" : "/profile"}
+          href="/profile"
           className={styles.mobileProfile}
         >
           {getInitials(userName)}

@@ -22,6 +22,8 @@ import {
   findDepartmentGroupByUnit,
   matchesDepartmentGroup,
 } from "@/lib/department-groups";
+import { loadGarbageWeeklyTemplates } from "@/lib/garbage-weekly-template-store";
+import { expandGarbageWeeklyTemplatesToTasks } from "@/lib/garbage-weekly-template-tasks";
 import { loadMunicipalSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
 
 import styles from "./tasks.module.css";
@@ -283,11 +285,22 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const selectedFilter: FilterKey = isMasterRole(session.role) ? "all" : activeFilter;
   const requestedDepartment = getParam(params.department);
   const requestedQuickAction = normalizeQuickAction(getParam(params.quickAction));
+  const calendarAnchorDateKey = getTodayDateKey();
+  const calendarBaseCells = buildMonthCells(calendarAnchorDateKey);
+  const calendarRangeStart = calendarBaseCells[0]?.dateKey ?? calendarAnchorDateKey;
+  const calendarRangeEnd = calendarBaseCells[calendarBaseCells.length - 1]?.dateKey ?? calendarAnchorDateKey;
 
-  const snapshot = await loadMunicipalSnapshot({
-    login: session.login,
-    password: session.password,
-  });
+  const [snapshot, garbageWeeklyTemplates] = await Promise.all([
+    loadMunicipalSnapshot({
+      login: session.login,
+      password: session.password,
+    }),
+    loadGarbageWeeklyTemplates(),
+  ]);
+  const sourceTaskDirectory = [
+    ...snapshot.taskDirectory,
+    ...expandGarbageWeeklyTemplatesToTasks(garbageWeeklyTemplates, calendarRangeStart, calendarRangeEnd),
+  ];
 
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -303,10 +316,10 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const quickActionMode: QuickActionMode =
     workerMode && canWriteReports ? requestedQuickAction : "none";
   const workerTasks = workerMode
-    ? snapshot.taskDirectory.filter((task) => task.assigneeIds?.includes(session.uid))
+    ? sourceTaskDirectory.filter((task) => task.assigneeIds?.includes(session.uid))
     : [];
   const masterDepartmentTasks = masterMode
-    ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
+    ? filterByDepartment(sourceTaskDirectory, scopedDepartmentName)
     : [];
   const masterTodayTasks = masterMode
     ? filterTasksToDate(masterDepartmentTasks, getTodayDateKey())
@@ -359,8 +372,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
     : masterMode
       ? masterTodayTasks
       : departmentScopedMode
-        ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
-      : snapshot.taskDirectory.filter((task) => {
+        ? filterByDepartment(sourceTaskDirectory, scopedDepartmentName)
+      : sourceTaskDirectory.filter((task) => {
           if (selectedDepartmentUnit) {
             return task.departmentName === selectedDepartmentUnit;
           }
@@ -466,7 +479,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
       }),
     }))
     .sort((left, right) => left.dateKey.localeCompare(right.dateKey));
-  const calendarAnchorDateKey = getTodayDateKey();
   const calendarPlanByDate = new Map(calendarPlanItems.map((item) => [item.dateKey, item]));
   const emptyCalendarItem = (dateKey: string) => ({
     dateKey,
@@ -476,7 +488,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
     verified: 0,
     tasks: [] as TaskDirectoryItem[],
   });
-  const monthCalendarCells = buildMonthCells(calendarAnchorDateKey).map((cell) => ({
+  const monthCalendarCells = calendarBaseCells.map((cell) => ({
     ...cell,
     plan: calendarPlanByDate.get(cell.dateKey) ?? emptyCalendarItem(cell.dateKey),
   }));

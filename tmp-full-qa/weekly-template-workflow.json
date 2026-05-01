@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "checks": {
+    "matrix": true,
+    "popover": true,
+    "selectCount": 4,
+    "savedCard": true,
+    "storedCount": 1,
+    "firstHasMonday": true
+  },
+  "errors": []
+}

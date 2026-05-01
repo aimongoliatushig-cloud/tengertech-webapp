@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
@@ -106,9 +105,6 @@ export default async function ProfilePage({ searchParams }: PageProps) {
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const departmentScopeName = await loadSessionDepartmentName(session);
-  if (String(session.role) === "project_manager" && isAutoGarbageDepartment(departmentScopeName)) {
-    redirect("/settings/garbage-transport");
-  }
   const canViewHrDirectory = new Set(["system_admin", "director", "general_manager"]).has(
     String(session.role),
   );

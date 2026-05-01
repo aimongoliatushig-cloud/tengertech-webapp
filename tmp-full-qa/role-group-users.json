@@ -1,0 +1,19 @@
+{
+  "municipal_field_ops.group_mfo_inspector": [],
+  "municipal_field_ops.group_mfo_dispatcher": [],
+  "ops_people_registry.group_ops_profile_storekeeper": [
+    {
+      "id": 12,
+      "name": "Б.Сүхнаран",
+      "login": "95015011",
+      "active": true
+    },
+    {
+      "id": 11,
+      "name": "Д.Сумъяадорж",
+      "login": "95871256",
+      "active": true
+    }
+  ],
+  "fleet_repair_workflow.group_fleet_repair_purchaser": []
+}
