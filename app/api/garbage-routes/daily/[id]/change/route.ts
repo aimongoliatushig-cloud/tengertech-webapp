@@ -1,4 +1,5 @@
 import { changeDailyRoute, type DailyChangeInput } from "@/lib/garbage-routes";
+import { notifyPushEvent } from "@/lib/push-notifications";
 import { jsonError, numberParam, withSession } from "../../../_utils";
 
 export const dynamic = "force-dynamic";
@@ -15,5 +16,14 @@ export async function POST(request: Request, context: Context) {
   if (!payload) {
     return jsonError("Өөрчлөлтийн мэдээлэл буруу байна.", 400);
   }
-  return withSession((session) => changeDailyRoute(session, taskId, payload));
+  return withSession(async (session) => {
+    const result = await changeDailyRoute(session, taskId, payload);
+    await notifyPushEvent({
+      eventType: "route_changed",
+      title: "Маршрут өөрчлөгдлөө",
+      body: "Өдрийн маршрутын мэдээлэл шинэчлэгдлээ.",
+      targetUrl: `/garbage-routes/execution/${taskId}`,
+    }).catch((error) => console.warn("Route change push failed:", error));
+    return result;
+  });
 }
