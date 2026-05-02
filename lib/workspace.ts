@@ -134,6 +134,41 @@ type WorkTypeRecord = {
   default_unit_id: Relation;
 };
 
+async function searchReadWithFieldFallback<T>(
+  model: string,
+  domain: unknown[],
+  fields: string[],
+  kwargs: Record<string, unknown> = {},
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<T[]> {
+  const remainingFields = [...fields];
+
+  for (;;) {
+    try {
+      return await executeOdooKw<T[]>(
+        model,
+        "search_read",
+        [domain],
+        {
+          ...kwargs,
+          fields: remainingFields,
+        },
+        connectionOverrides,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const invalidField = message.match(/Invalid field '([^']+)'/)?.[1];
+      const fieldIndex = invalidField ? remainingFields.indexOf(invalidField) : -1;
+
+      if (fieldIndex < 0 || remainingFields.length <= 1) {
+        throw error;
+      }
+
+      remainingFields.splice(fieldIndex, 1);
+    }
+  }
+}
+
 export type SelectOption = {
   id: number;
   name: string;
@@ -1761,44 +1796,42 @@ export async function loadProjectDetail(
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<ProjectDetail> {
   const [projects, tasks, teamLeaderOptions, workUnits, workTypes] = await Promise.all([
-    executeOdooKw<ProjectRecord[]>(
+    searchReadWithFieldFallback<ProjectRecord>(
       "project.project",
-      "search_read",
-      [[["id", "=", projectId]]],
+      [["id", "=", projectId]],
+      [
+        "name",
+        "user_id",
+        "ops_department_id",
+        "date_start",
+        "date",
+        "mfo_operation_type",
+        "ops_allowed_unit_ids",
+        "ops_default_unit_id",
+        "ops_measurement_unit_id",
+        "ops_allowed_unit_summary",
+      ],
       {
-        fields: [
-          "name",
-          "user_id",
-          "ops_department_id",
-          "date_start",
-          "date",
-          "mfo_operation_type",
-          "ops_allowed_unit_ids",
-          "ops_default_unit_id",
-          "ops_measurement_unit_id",
-          "ops_allowed_unit_summary",
-        ],
         limit: 1,
       },
       connectionOverrides,
     ),
-    executeOdooKw<TaskRecord[]>(
+    searchReadWithFieldFallback<TaskRecord>(
       "project.task",
-      "search_read",
-      [[["project_id", "=", projectId]]],
+      [["project_id", "=", projectId]],
+      [
+        "name",
+        "sequence",
+        "stage_id",
+        "ops_team_leader_id",
+        "ops_planned_quantity",
+        "ops_completed_quantity",
+        "ops_progress_percent",
+        "ops_measurement_unit",
+        "ops_measurement_unit_id",
+        "date_deadline",
+      ],
       {
-        fields: [
-          "name",
-          "sequence",
-          "stage_id",
-          "ops_team_leader_id",
-          "ops_planned_quantity",
-          "ops_completed_quantity",
-          "ops_progress_percent",
-          "ops_measurement_unit",
-          "ops_measurement_unit_id",
-          "date_deadline",
-        ],
         order: "sequence asc, create_date asc, id asc",
         limit: 120,
       },
@@ -1897,58 +1930,56 @@ export async function loadTaskDetail(
   taskId: number,
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<TaskDetail> {
-  const taskPromise = executeOdooKw<TaskRecord[]>(
+  const taskPromise = searchReadWithFieldFallback<TaskRecord>(
     "project.task",
-    "search_read",
-    [[["id", "=", taskId]]],
+    [["id", "=", taskId]],
+    [
+      "name",
+      "project_id",
+      "stage_id",
+      "ops_team_leader_id",
+      "user_ids",
+      "mfo_operation_type",
+      "ops_planned_quantity",
+      "ops_completed_quantity",
+      "ops_remaining_quantity",
+      "ops_progress_percent",
+      "ops_measurement_unit",
+      "ops_measurement_unit_id",
+      "ops_measurement_unit_code",
+      "priority",
+      "date_deadline",
+      "state",
+      "description",
+      "ops_can_submit_for_review",
+      "ops_can_mark_done",
+      "ops_can_return_for_changes",
+      "ops_reports_locked",
+    ],
     {
-      fields: [
-        "name",
-        "project_id",
-        "stage_id",
-        "ops_team_leader_id",
-        "user_ids",
-        "mfo_operation_type",
-        "ops_planned_quantity",
-        "ops_completed_quantity",
-        "ops_remaining_quantity",
-        "ops_progress_percent",
-        "ops_measurement_unit",
-        "ops_measurement_unit_id",
-        "ops_measurement_unit_code",
-        "priority",
-        "date_deadline",
-        "state",
-        "description",
-        "ops_can_submit_for_review",
-        "ops_can_mark_done",
-        "ops_can_return_for_changes",
-        "ops_reports_locked",
-      ],
       limit: 1,
     },
     connectionOverrides,
   );
 
   const reportQuery = (overrides: Partial<OdooConnection>) =>
-    executeOdooKw<ReportRecord[]>(
+    searchReadWithFieldFallback<ReportRecord>(
       "ops.task.report",
-      "search_read",
-      [[["task_id", "=", taskId]]],
+      [["task_id", "=", taskId]],
+      [
+        "reporter_id",
+        "report_datetime",
+        "report_text",
+        "report_summary",
+        "reported_quantity",
+        "image_count",
+        "audio_count",
+        "image_attachment_ids",
+        "audio_attachment_ids",
+        "task_measurement_unit_id",
+        "task_measurement_unit_code",
+      ],
       {
-        fields: [
-          "reporter_id",
-          "report_datetime",
-          "report_text",
-          "report_summary",
-          "reported_quantity",
-          "image_count",
-          "audio_count",
-          "image_attachment_ids",
-          "audio_attachment_ids",
-          "task_measurement_unit_id",
-          "task_measurement_unit_code",
-        ],
         order: "report_datetime desc",
         limit: 60,
       },
