@@ -163,6 +163,15 @@ class MunicipalProcurementRequest(models.Model):
             if len(request._valid_quote_lines()) < 3:
                 raise UserError("Санхүүгийн хяналтад илгээхийн өмнө 3 нийлүүлэгчийн үнийн санал бүрэн оруулна уу.")
 
+    def _ensure_quote_evidence(self):
+        for request in self:
+            supplier_ids = request._valid_quote_lines().mapped("supplier_id").ids
+            if len(supplier_ids) != len(set(supplier_ids)):
+                raise UserError("3 үнийн саналыг давхардаагүй 3 нийлүүлэгчээс авсан байх ёстой.")
+            missing = request._valid_quote_lines().filtered(lambda quote: not quote.attachment_ids)
+            if missing and not request.quote_attachment_ids:
+                raise UserError("3 үнийн саналын хавсралт / баримтыг оруулна уу.")
+
     def _ensure_selected_quote(self):
         for request in self:
             selected = request.quote_line_ids.filtered("is_selected")
@@ -196,6 +205,7 @@ class MunicipalProcurementRequest(models.Model):
     def action_finance_review(self):
         self._ensure_procurement_lines()
         self._ensure_three_quotes()
+        self._ensure_quote_evidence()
         self._ensure_selected_quote()
         self._sync_amount_from_selected_quote()
         self.write({"state": "finance_review"})
@@ -204,6 +214,7 @@ class MunicipalProcurementRequest(models.Model):
     def action_finance_approve(self):
         for request in self:
             request._ensure_three_quotes()
+            request._ensure_quote_evidence()
             request._ensure_selected_quote()
             request._sync_amount_from_selected_quote()
             approval_amount = max(request.amount_total, request.selected_supplier_total)
@@ -238,6 +249,8 @@ class MunicipalProcurementRequest(models.Model):
                 raise UserError("1 саяас дээш худалдан авалтад захирлын баталгаа шаардлагатай.")
             if not request.finance_approved_by:
                 raise UserError("Санхүү батлаагүй худалдан авалтад төлбөр тэмдэглэх боломжгүй.")
+            if not request.payment_reference:
+                raise UserError("Төлбөрийн баримтын дугаарыг оруулна уу.")
         self.write({"state": "payment", "paid_by": self.env.user.id, "date_paid": fields.Datetime.now()})
         return True
 
@@ -249,6 +262,8 @@ class MunicipalProcurementRequest(models.Model):
                 raise UserError("1 саяас дээш худалдан авалтад захирлын баталгаа шаардлагатай.")
             if not request.finance_approved_by:
                 raise UserError("Санхүү батлаагүй худалдан авалтыг агуулахад хүлээн авах боломжгүй.")
+            if not request.receipt_note:
+                raise UserError("Агуулахад хүлээн авсан тэмдэглэлийг оруулна уу.")
             request._ensure_procurement_lines()
             for line in request.line_ids:
                 qty_to_receive = line.requested_quantity - line.received_quantity

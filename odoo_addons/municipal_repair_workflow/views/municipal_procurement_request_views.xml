@@ -51,7 +51,7 @@
                             <field name="selected_quote_id" readonly="1"/>
                             <field name="selected_supplier_id" readonly="1"/>
                             <field name="is_over_threshold" readonly="1"/>
-                            <field name="payment_reference"/>
+                            <field name="payment_reference" required="state in ('payment', 'contract_review')"/>
                         </group>
                     </group>
                     <notebook>
@@ -110,7 +110,7 @@
                                 <field name="received_by" readonly="1"/>
                                 <field name="date_received" readonly="1"/>
                             </group>
-                            <field name="receipt_note"/>
+                            <field name="receipt_note" required="state in ('payment', 'contract_review')"/>
                         </page>
                     </notebook>
                 </sheet>
