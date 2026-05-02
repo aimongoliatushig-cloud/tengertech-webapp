@@ -165,7 +165,7 @@ class MunicipalProcurementRequest(models.Model):
 
     def _ensure_quote_evidence(self):
         for request in self:
-            supplier_ids = request._valid_quote_lines().mapped("supplier_id").ids
+            supplier_ids = [quote.supplier_id.id for quote in request._valid_quote_lines()]
             if len(supplier_ids) != len(set(supplier_ids)):
                 raise UserError("3 үнийн саналыг давхардаагүй 3 нийлүүлэгчээс авсан байх ёстой.")
             missing = request._valid_quote_lines().filtered(lambda quote: not quote.attachment_ids)
