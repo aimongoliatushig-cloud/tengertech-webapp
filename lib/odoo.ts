@@ -3377,12 +3377,16 @@ function buildFallbackSnapshot(): DashboardSnapshot {
 
 export async function loadMunicipalSnapshot(
   connectionOverrides: Partial<OdooConnection> = {},
+  options: { allowFallback?: boolean } = {},
 ) {
   const connection = createOdooConnection(connectionOverrides);
 
   try {
     return await fetchLiveSnapshot(connection);
   } catch (error) {
+    if (options.allowFallback === false) {
+      throw error;
+    }
     console.warn("Falling back to demo dashboard snapshot:", error);
     return buildFallbackSnapshot();
   }

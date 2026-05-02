@@ -47,6 +47,13 @@ function getMessage(value?: string | string[]) {
   return value ?? "";
 }
 
+function addQueryMessage(href: string, key: "error" | "notice", message: string) {
+  const [pathname, queryString = ""] = href.split("?");
+  const params = new URLSearchParams(queryString);
+  params.set(key, message);
+  return `${pathname}?${params.toString()}`;
+}
+
 function StagePill({ label, bucket }: { label: string; bucket: string }) {
   const tone =
     bucket === "problem"
@@ -133,6 +140,10 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Ажилбарын мэдээлэл уншихад алдаа гарлаа.";
+
+    if (message.includes("Даалгавар олдсонгүй") || message.toLowerCase().includes("not found")) {
+      redirect(addQueryMessage(backHref, "error", "Ажилбар олдсонгүй эсвэл танд харах эрх алга."));
+    }
 
     return (
       <main className={shellStyles.shell}>

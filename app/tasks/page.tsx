@@ -291,10 +291,13 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const calendarRangeEnd = calendarBaseCells[calendarBaseCells.length - 1]?.dateKey ?? calendarAnchorDateKey;
 
   const [snapshot, garbageWeeklyTemplates] = await Promise.all([
-    loadMunicipalSnapshot({
-      login: session.login,
-      password: session.password,
-    }),
+    loadMunicipalSnapshot(
+      {
+        login: session.login,
+        password: session.password,
+      },
+      { allowFallback: false },
+    ),
     loadGarbageWeeklyTemplates(),
   ]);
   const sourceTaskDirectory = [
