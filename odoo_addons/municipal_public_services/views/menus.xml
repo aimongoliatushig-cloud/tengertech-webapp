@@ -4,7 +4,7 @@
               name="Иргэний гомдол"
               parent="municipal_core.menu_municipal_core_root"
               sequence="70"
-              groups="municipal_public_services.group_municipal_complaint_manager,municipal_core.group_municipal_public_relations,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+              groups="municipal_public_services.group_municipal_complaint_manager,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_municipal_complaint"
               name="Гомдлын бүртгэл"
@@ -16,7 +16,7 @@
               name="Dashboard"
               parent="municipal_core.menu_municipal_core_root"
               sequence="80"
-              groups="municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin,municipal_core.group_municipal_it"/>
+              groups="municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_municipal_dashboard_snapshot"
               name="Dashboard snapshot"
@@ -95,5 +95,5 @@
               parent="municipal_core.menu_municipal_settings_root"
               action="action_municipal_audit_log"
               sequence="80"
-              groups="municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin,municipal_core.group_municipal_it"/>
+              groups="municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
 </odoo>

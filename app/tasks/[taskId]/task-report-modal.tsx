@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 
 import { MediaUploadField } from "./media-upload-field";
 import styles from "./task-detail.module.css";
+import type { TaskQuantityLine } from "@/lib/workspace";
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
@@ -12,6 +13,7 @@ type Props = {
   defaultOpen?: boolean;
   quantityOptional?: boolean;
   measurementUnit?: string;
+  quantityLines?: TaskQuantityLine[];
   variant?: "default" | "hero";
   requireQuantity?: boolean;
 };
@@ -22,6 +24,7 @@ export function TaskReportModal({
   defaultOpen = false,
   quantityOptional = false,
   measurementUnit,
+  quantityLines = [],
   variant = "default",
   requireQuantity,
 }: Props) {
@@ -60,7 +63,10 @@ export function TaskReportModal({
     };
   }, [isOpen]);
 
-  const shouldShowQuantity = requireQuantity ?? (!quantityOptional && Boolean(measurementUnit?.trim()));
+  const hasMultipleQuantityLines = quantityLines.length > 1;
+  const shouldShowQuantity =
+    !hasMultipleQuantityLines &&
+    (requireQuantity ?? (!quantityOptional && Boolean(measurementUnit?.trim())));
   const quantityLabel = `Хийсэн хэмжээ${measurementUnit ? ` (${measurementUnit})` : ""}`;
 
   const modalContent =
@@ -101,7 +107,27 @@ export function TaskReportModal({
                       <strong>Тайлан</strong>
                     </div>
 
-                    {shouldShowQuantity ? (
+                    {hasMultipleQuantityLines ? (
+                      <div className={styles.reportQuantityLines}>
+                        <span className={styles.reportBodyLabel}>Хийсэн хэмжээ</span>
+                        {quantityLines.map((line, index) => (
+                          <label key={`${line.unit}-${index}`} className={styles.modalField}>
+                            <span>
+                              {line.unit} · төлөвлөсөн {line.quantity}
+                            </span>
+                            <input
+                              name="reported_quantity_line"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              inputMode="decimal"
+                              defaultValue={line.quantity}
+                            />
+                            <input type="hidden" name="reported_quantity_unit" value={line.unit} />
+                          </label>
+                        ))}
+                      </div>
+                    ) : shouldShowQuantity ? (
                       <label htmlFor="reported_quantity" className={styles.modalField}>
                         <span>{quantityLabel}</span>
                         <input

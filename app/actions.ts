@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { hasCapability, isMasterRole, requireSession } from "@/lib/auth";
+import { canSubmitWorkspaceReport, hasCapability, isMasterRole, requireSession } from "@/lib/auth";
 import { pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
 import {
   createFieldStopIssue,
@@ -21,14 +21,20 @@ import {
   assignGarbageProjectTasksFromRouteTeam,
   createGarbageWorkspaceProject,
   createSeasonalWorkspacePlan,
+  createWorkspaceCrewTeam,
   createWorkspaceProject,
   createWorkspaceProjectAttachments,
   createWorkspaceTask,
   createWorkspaceTaskAttachments,
   createWorkspaceTaskReport,
+  createWorkspaceWorkUnit,
+  deleteWorkspaceTaskReport,
+  deleteWorkspaceTask,
   forceWorkspaceTaskDone,
   generateSeasonalWorkspaceExecution,
+  loadTaskDetail,
   loadProjectDetail,
+  loadWorkspaceTaskReportOwner,
   markWorkspaceTaskDone,
   notifyWorkspaceTaskReportReviewers,
   postWorkspaceTaskMessage,
@@ -36,9 +42,40 @@ import {
   loadWorkTypeOptions,
   returnWorkspaceTaskForChanges,
   sendWorkspaceTaskReportToReview,
+  updateWorkspaceProjectDescription,
+  updateWorkspaceTask,
+  updateWorkspaceTaskReport,
 } from "@/lib/workspace";
 
 const CUSTOM_WORK_TYPE_VALUE = "__new_work__";
+
+function canMutateReportOwner(session: { uid: number; role: string }, ownerId: number | null) {
+  return session.role === "system_admin" || ownerId === session.uid;
+}
+
+async function assertCanReviewTaskAction(
+  taskId: number,
+  session: Awaited<ReturnType<typeof requireSession>>,
+  connectionOverrides: { login: string; password: string },
+) {
+  const task = await loadTaskDetail(taskId, connectionOverrides);
+  const isAssignedToCurrentUser = task.assigneeUserIds.includes(session.uid);
+  const hasOwnSubmittedReport = task.reports.some((report) => report.reporterId === session.uid);
+  const canReviewTask =
+    !isAssignedToCurrentUser &&
+    !hasOwnSubmittedReport &&
+    (hasCapability(session, "view_quality_center") ||
+      hasCapability(session, "create_tasks") ||
+      isMasterRole(session.role));
+
+  if (!canReviewTask) {
+    redirectWithMessage(
+      `/tasks/${taskId}`,
+      "error",
+      "Өөрт оноогдсон ажил эсвэл өөрийн илгээсэн тайланг өөрөө хянах боломжгүй.",
+    );
+  }
+}
 
 function getConnectionOverrides() {
   return requireSession().then((session) => ({
@@ -238,6 +275,7 @@ export async function createProjectAction(formData: FormData) {
   const seasonalWorkDaysJson = String(formData.get("seasonal_work_days_json") ?? "").trim();
   const seasonalLinesJson = String(formData.get("seasonal_lines_json") ?? "").trim();
   const seasonalNotes = String(formData.get("seasonal_notes") ?? "").trim();
+  const projectDescription = String(formData.get("project_description") ?? "").trim();
   const projectFiles = getUploadedFiles(formData, "project_files");
   const additionalLocations = getStringListValues(formData, [
     "additional_locations",
@@ -385,6 +423,13 @@ export async function createProjectAction(formData: FormData) {
           connectionOverrides,
         );
       }
+      if (projectDescription) {
+        await updateWorkspaceProjectDescription(
+          result.project_id,
+          projectDescription,
+          connectionOverrides,
+        );
+      }
 
       revalidatePath("/");
       revalidatePath("/projects");
@@ -505,7 +550,7 @@ export async function createProjectAction(formData: FormData) {
           workDays: selectedWorkDays as Array<
             "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday"
           >,
-          notes: seasonalNotes,
+          notes: seasonalNotes || projectDescription,
           lines: normalizedLines,
         },
         connectionOverrides,
@@ -604,6 +649,7 @@ export async function createProjectAction(formData: FormData) {
         measurementUnitId: trackQuantity ? measurementUnitId : null,
         startDate: startDate || undefined,
         deadline: deadline || undefined,
+        description: projectDescription || undefined,
       },
       connectionOverrides,
     );
@@ -617,6 +663,9 @@ export async function createProjectAction(formData: FormData) {
         })),
       );
       await createWorkspaceProjectAttachments(projectId, attachments, connectionOverrides);
+    }
+    if (projectDescription) {
+      await updateWorkspaceProjectDescription(projectId, projectDescription, connectionOverrides);
     }
 
     revalidatePath("/");
@@ -634,14 +683,35 @@ export async function createProjectAction(formData: FormData) {
 export async function createTaskAction(formData: FormData) {
   const projectId = Number(String(formData.get("project_id") ?? ""));
   const name = String(formData.get("name") ?? "").trim();
+  const taskKhoroo = String(formData.get("task_khoroo") ?? "").trim();
+  const taskLocation = String(formData.get("task_location") ?? "").trim();
+  const newTaskLocation = String(formData.get("new_task_location") ?? "").trim();
   const teamLeaderIdRaw = String(formData.get("team_leader_id") ?? "").trim();
   const crewTeamIdRaw = String(formData.get("crew_team_id") ?? "").trim();
+  const newCrewTeamName = String(formData.get("new_crew_team_name") ?? "").trim();
+  const newCrewMemberUserIds = formData
+    .getAll("new_crew_member_user_ids")
+    .map((value) => Number(String(value)))
+    .filter((value) => Number.isFinite(value) && value > 0);
   const startDate = String(formData.get("start_date") ?? "").trim();
   const deadline = String(formData.get("deadline") ?? "").trim();
-  const unitIdRaw = String(formData.get("unit_id") ?? "").trim();
-  const plannedQuantityRaw = String(formData.get("planned_quantity") ?? "").trim();
+  const unitIdValues = formData.getAll("unit_id").map((value) => String(value).trim());
+  const plannedQuantityValues = formData
+    .getAll("planned_quantity")
+    .map((value) => String(value).trim());
+  const newUnitNameValues = formData
+    .getAll("new_unit_name")
+    .map((value) => String(value).trim());
   const description = String(formData.get("description") ?? "").trim();
   const taskFiles = getUploadedFiles(formData, "task_files");
+  const effectiveTaskLocation = newTaskLocation || taskLocation;
+  const locationSummary = [
+    taskKhoroo ? `Хороо: ${taskKhoroo}` : "",
+    effectiveTaskLocation ? `Байршил: ${effectiveTaskLocation}` : "",
+  ].filter(Boolean);
+  const taskDescription = [locationSummary.join("\n"), description]
+    .filter(Boolean)
+    .join("\n\n");
 
   if (!projectId || !name) {
     redirectWithMessage(
@@ -669,45 +739,91 @@ export async function createTaskAction(formData: FormData) {
     };
     const project = await loadProjectDetail(projectId, connectionOverrides);
     const validUnitIds = new Set(project.allUnitOptions.map((unit) => unit.id));
-    const selectedCrewTeam = crewTeamIdRaw
+    let selectedCrewTeam = crewTeamIdRaw
       ? project.crewTeamOptions.find((team) => team.id === Number(crewTeamIdRaw)) ?? null
       : null;
-    const measurementUnitId =
-      unitIdRaw && Number.isFinite(Number(unitIdRaw))
-        ? Number(unitIdRaw)
-        : project.defaultUnitId ?? project.allowedUnits[0]?.id ?? null;
+    const quantityRows: Array<{
+      plannedQuantity: number;
+      measurementUnitId: number | null;
+      unitLabel: string;
+    }> = [];
+    const rowCount = Math.max(
+      plannedQuantityValues.length,
+      unitIdValues.length,
+      newUnitNameValues.length,
+    );
 
-    if (
-      measurementUnitId &&
-      validUnitIds.size &&
-      !validUnitIds.has(measurementUnitId)
-    ) {
-      redirectWithMessage(
-        `/projects/${projectId}`,
-        "error",
-        "Сонгосон хэмжих нэгж Odoo дээр олдсонгүй.",
-        "#task-create-form",
-      );
+    for (let index = 0; index < rowCount; index += 1) {
+      const plannedQuantityRaw = plannedQuantityValues[index] ?? "";
+      const unitIdRaw = unitIdValues[index] ?? "";
+      const newUnitName = newUnitNameValues[index] ?? "";
+
+      if (!plannedQuantityRaw && !unitIdRaw && !newUnitName) {
+        continue;
+      }
+
+      const plannedQuantity = Number(plannedQuantityRaw);
+      if (!plannedQuantityRaw || Number.isNaN(plannedQuantity) || plannedQuantity <= 0) {
+        redirectWithMessage(
+          `/projects/${projectId}`,
+          "error",
+          "Төлөвлөсөн хэмжээ 0-ээс их байх ёстой.",
+          "#task-create-form",
+        );
+      }
+
+      let measurementUnitId =
+        !newUnitName && unitIdRaw && Number.isFinite(Number(unitIdRaw))
+          ? Number(unitIdRaw)
+          : null;
+      let unitLabel =
+        project.allUnitOptions.find((unit) => unit.id === measurementUnitId)?.name ??
+        newUnitName;
+
+      if (newUnitName) {
+        try {
+          const createdUnit = await createWorkspaceWorkUnit(newUnitName, connectionOverrides);
+          measurementUnitId = createdUnit.id;
+          unitLabel = createdUnit.name;
+          validUnitIds.add(createdUnit.id);
+        } catch (error) {
+          console.warn("Хэмжих нэгж үүсгэх эрхгүй тул нэрийг ажилбарын тайлбарт хадгална.", error);
+          measurementUnitId = null;
+          unitLabel = newUnitName;
+        }
+      }
+
+      if (measurementUnitId === null && !newUnitName) {
+        redirectWithMessage(
+          `/projects/${projectId}`,
+          "error",
+          "Хэмжээ ашиглах бол хэмжих нэгж сонгоно уу эсвэл шинэ нэгжийн нэр оруулна уу.",
+          "#task-create-form",
+        );
+      }
+      const resolvedMeasurementUnitId =
+        measurementUnitId === null ? null : Number(measurementUnitId);
+
+      if (
+        resolvedMeasurementUnitId !== null &&
+        validUnitIds.size &&
+        !validUnitIds.has(resolvedMeasurementUnitId)
+      ) {
+        redirectWithMessage(
+          `/projects/${projectId}`,
+          "error",
+          "Сонгосон хэмжих нэгж Odoo дээр олдсонгүй.",
+          "#task-create-form",
+        );
+      }
+
+      quantityRows.push({
+        plannedQuantity,
+        measurementUnitId: resolvedMeasurementUnitId,
+        unitLabel,
+      });
     }
 
-    const plannedQuantity = plannedQuantityRaw ? Number(plannedQuantityRaw) : null;
-    if (plannedQuantityRaw && (plannedQuantity === null || Number.isNaN(plannedQuantity) || plannedQuantity <= 0)) {
-      redirectWithMessage(
-        `/projects/${projectId}`,
-        "error",
-        "Төлөвлөсөн хэмжээ 0-ээс их байх ёстой.",
-        "#task-create-form",
-      );
-    }
-
-    if (plannedQuantity && !measurementUnitId) {
-      redirectWithMessage(
-        `/projects/${projectId}`,
-        "error",
-        "Хэмжээ ашиглах бол хэмжих нэгж сонгоно уу.",
-        "#task-create-form",
-      );
-    }
 
     if (crewTeamIdRaw && !selectedCrewTeam) {
       redirectWithMessage(
@@ -718,8 +834,43 @@ export async function createTaskAction(formData: FormData) {
       );
     }
 
+    if (!selectedCrewTeam && newCrewTeamName) {
+      if (!newCrewMemberUserIds.length) {
+        redirectWithMessage(
+          `/projects/${projectId}`,
+          "error",
+          "Шинэ баг үүсгэх бол гишүүдээс дор хаяж нэг ажилтан сонгоно уу.",
+          "#task-create-form",
+        );
+      }
+
+      const createdTeam = await createWorkspaceCrewTeam(
+        {
+          name: newCrewTeamName,
+          departmentId: project.departmentId,
+          operationType: project.operationType || undefined,
+          memberUserIds: newCrewMemberUserIds,
+        },
+        connectionOverrides,
+      );
+      selectedCrewTeam = {
+        id: createdTeam.id,
+        label: newCrewTeamName,
+        memberUserIds: createdTeam.memberUserIds,
+      };
+    }
+
     const defaultTeamLeaderId = isMasterRole(session.role) ? session.uid : null;
     const effectiveTeamLeaderId = teamLeaderIdRaw ? Number(teamLeaderIdRaw) : defaultTeamLeaderId;
+    const quantitySummary = quantityRows
+      .map((row, index) => `${index + 1}. ${row.plannedQuantity} ${row.unitLabel || ""}`.trim())
+      .join("\n");
+    const effectiveTaskDescription = [
+      taskDescription,
+      quantitySummary ? `Тоо хэмжээ:\n${quantitySummary}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
     const taskId = await createWorkspaceTask(
       {
         projectId,
@@ -729,9 +880,9 @@ export async function createTaskAction(formData: FormData) {
         assigneeUserIds: selectedCrewTeam?.memberUserIds ?? [],
         startDate: startDate || undefined,
         deadline: deadline || undefined,
-        measurementUnitId,
-        plannedQuantity,
-        description: description || undefined,
+        measurementUnitId: quantityRows[0]?.measurementUnitId ?? null,
+        plannedQuantity: quantityRows[0]?.plannedQuantity ?? null,
+        description: effectiveTaskDescription || undefined,
       },
       connectionOverrides,
     );
@@ -772,6 +923,88 @@ export async function createTaskAction(formData: FormData) {
   } catch (error) {
     rethrowIfRedirectError(error);
     redirectWithMessage(`/projects/${projectId}`, "error", getErrorMessage(error), "#task-create-form");
+  }
+}
+
+export async function updateTaskAction(formData: FormData) {
+  const projectId = Number(String(formData.get("project_id") ?? ""));
+  const taskId = Number(String(formData.get("task_id") ?? ""));
+  const name = String(formData.get("name") ?? "").trim();
+  const deadline = String(formData.get("deadline") ?? "").trim();
+  const target = projectId ? `/projects/${projectId}` : "/projects";
+
+  if (!projectId || !taskId || !name) {
+    redirectWithMessage(
+      target,
+      "error",
+      "Ажилбар засахад шаардлагатай мэдээлэл дутуу байна.",
+    );
+  }
+
+  try {
+    const session = await requireSession();
+    if (!hasCapability(session, "create_tasks")) {
+      redirectWithMessage(target, "error", "Танд ажилбар засах эрх байхгүй байна.");
+    }
+
+    const connectionOverrides = {
+      login: session.login,
+      password: session.password,
+    };
+
+    await updateWorkspaceTask(
+      taskId,
+      {
+        name,
+        deadline,
+      },
+      connectionOverrides,
+    );
+
+    revalidatePath("/");
+    revalidatePath("/projects");
+    revalidatePath("/tasks");
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath(`/tasks/${taskId}`);
+    redirect(`${target}?notice=${encodeURIComponent("Ажилбар амжилттай шинэчлэгдлээ.")}`);
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirectWithMessage(target, "error", getErrorMessage(error));
+  }
+}
+
+export async function deleteTaskAction(formData: FormData) {
+  const projectId = Number(String(formData.get("project_id") ?? ""));
+  const taskId = Number(String(formData.get("task_id") ?? ""));
+  const target = projectId ? `/projects/${projectId}` : "/projects";
+
+  if (!projectId || !taskId) {
+    redirectWithMessage(
+      target,
+      "error",
+      "Ажилбар устгахад шаардлагатай мэдээлэл дутуу байна.",
+    );
+  }
+
+  try {
+    const session = await requireSession();
+    if (!hasCapability(session, "create_tasks")) {
+      redirectWithMessage(target, "error", "Танд ажилбар устгах эрх байхгүй байна.");
+    }
+
+    await deleteWorkspaceTask(taskId, {
+      login: session.login,
+      password: session.password,
+    });
+
+    revalidatePath("/");
+    revalidatePath("/projects");
+    revalidatePath("/tasks");
+    revalidatePath(`/projects/${projectId}`);
+    redirect(`${target}?notice=${encodeURIComponent("Ажилбар устгагдлаа.")}`);
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirectWithMessage(target, "error", getErrorMessage(error));
   }
 }
 
@@ -824,6 +1057,12 @@ export async function createTaskReportAction(formData: FormData) {
   const reportText = String(formData.get("report_text") ?? "").trim();
   const quantityRaw = String(formData.get("reported_quantity") ?? "").trim();
   const reportedQuantity = quantityRaw ? Number(quantityRaw) : 0;
+  const quantityLineValues = formData
+    .getAll("reported_quantity_line")
+    .map((value) => String(value).trim());
+  const quantityLineUnits = formData
+    .getAll("reported_quantity_unit")
+    .map((value) => String(value).trim());
   const imageFiles = getUploadedFiles(formData, "report_images");
   const audioFiles = getUploadedFiles(formData, "report_audios");
   const reportPath = taskId ? `/tasks/${taskId}` : "/tasks";
@@ -850,7 +1089,7 @@ export async function createTaskReportAction(formData: FormData) {
 
   try {
     const session = await requireSession();
-    if (!hasCapability(session, "write_workspace_reports")) {
+    if (!hasCapability(session, "write_workspace_reports") || !canSubmitWorkspaceReport(session)) {
       redirect(
         `${reportPath}?error=${encodeURIComponent("Танд гүйцэтгэлийн тайлан илгээх эрх нээгдээгүй байна.")}`,
       );
@@ -863,7 +1102,32 @@ export async function createTaskReportAction(formData: FormData) {
     if (quantityRaw && (Number.isNaN(reportedQuantity) || reportedQuantity < 0)) {
       redirect(`${reportPath}?error=${encodeURIComponent("Гүйцэтгэсэн хэмжээ буруу байна.")}`);
     }
-    const odooReportedQuantity = quantityRaw && reportedQuantity > 0 ? reportedQuantity : 1;
+    const quantityLineSummaries = quantityLineValues
+      .map((value, index) => {
+        if (!value) {
+          return null;
+        }
+        const quantity = Number(value);
+        if (Number.isNaN(quantity) || quantity < 0) {
+          redirect(`${reportPath}?error=${encodeURIComponent("Гүйцэтгэсэн хэмжээ буруу байна.")}`);
+        }
+        const unit = quantityLineUnits[index] || "нэгж";
+        return `${index + 1}. ${unit} ${quantity}`.trim();
+      })
+      .filter((value): value is string => Boolean(value));
+    const firstLineQuantity = quantityLineValues
+      .map((value) => Number(value))
+      .find((value) => Number.isFinite(value) && value > 0);
+    const odooReportedQuantity =
+      firstLineQuantity ?? (quantityRaw && reportedQuantity > 0 ? reportedQuantity : 1);
+    const effectiveReportText = [
+      quantityLineSummaries.length
+        ? `Гүйцэтгэсэн хэмжээ:\n${quantityLineSummaries.join("\n")}`
+        : "",
+      reportText,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
 
     const [imageAttachments, audioAttachments] = await Promise.all([
       Promise.all(
@@ -885,7 +1149,7 @@ export async function createTaskReportAction(formData: FormData) {
     await createWorkspaceTaskReport(
       {
         taskId,
-        reportText,
+        reportText: effectiveReportText,
         reportedQuantity: odooReportedQuantity,
         imageAttachments,
         audioAttachments,
@@ -906,6 +1170,174 @@ export async function createTaskReportAction(formData: FormData) {
   }
 }
 
+export async function updateTaskReportAction(formData: FormData) {
+  const taskId = Number(String(formData.get("task_id") ?? ""));
+  const reportId = Number(String(formData.get("report_id") ?? ""));
+  const reportText = String(formData.get("report_text") ?? "").trim();
+  const reportedQuantityRaw = String(formData.get("reported_quantity") ?? "").trim();
+  const reportedQuantity = reportedQuantityRaw ? Number(reportedQuantityRaw) : null;
+  const quantityLineValues = formData
+    .getAll("reported_quantity_line")
+    .map((value) => String(value).trim());
+  const quantityLineUnits = formData
+    .getAll("reported_quantity_unit")
+    .map((value) => String(value).trim());
+  const imageFiles = getUploadedFiles(formData, "report_images");
+  const audioFiles = getUploadedFiles(formData, "report_audios");
+  const removeImageAttachmentIds = formData
+    .getAll("remove_image_attachment_ids")
+    .map((value) => Number(String(value)))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const removeAudioAttachmentIds = formData
+    .getAll("remove_audio_attachment_ids")
+    .map((value) => Number(String(value)))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const reportPath = taskId ? `/tasks/${taskId}` : "/tasks";
+
+  if (!taskId || !reportId || !reportText) {
+    redirect(`${reportPath}?error=${encodeURIComponent("Тайлан засахад шаардлагатай мэдээлэл дутуу байна.")}`);
+  }
+
+  if (
+    reportedQuantityRaw &&
+    (reportedQuantity === null || Number.isNaN(reportedQuantity) || reportedQuantity < 0)
+  ) {
+    redirect(`${reportPath}?error=${encodeURIComponent("Гүйцэтгэсэн хэмжээ буруу байна.")}`);
+  }
+
+  if (imageFiles.some((file) => file.type && !file.type.startsWith("image/"))) {
+    redirect(`${reportPath}?error=${encodeURIComponent("Зураг хэсэгт зөвхөн зургийн файл сонгоно уу.")}`);
+  }
+
+  if (imageFiles.length > 10) {
+    redirect(`${reportPath}?error=${encodeURIComponent("Нэг тайланд дээд тал нь 10 зураг оруулна уу.")}`);
+  }
+
+  if (audioFiles.some((file) => file.type && !file.type.startsWith("audio/"))) {
+    redirect(`${reportPath}?error=${encodeURIComponent("Аудио хэсэгт зөвхөн аудио файл сонгоно уу.")}`);
+  }
+
+  try {
+    const session = await requireSession();
+    if (!hasCapability(session, "write_workspace_reports") || !canSubmitWorkspaceReport(session)) {
+      redirect(`${reportPath}?error=${encodeURIComponent("Танд тайлан засах эрх нээгдээгүй байна.")}`);
+    }
+    const reportOwnerId = await loadWorkspaceTaskReportOwner(reportId, {
+      login: session.login,
+      password: session.password,
+    });
+    if (!canMutateReportOwner(session, reportOwnerId)) {
+      redirect(`${reportPath}?error=${encodeURIComponent("Та зөвхөн өөрийн илгээсэн тайланг засах боломжтой.")}`);
+    }
+
+    const quantityLineSummaries = quantityLineValues
+      .map((value, index) => {
+        if (!value) {
+          return null;
+        }
+        const quantity = Number(value);
+        if (Number.isNaN(quantity) || quantity < 0) {
+          redirect(`${reportPath}?error=${encodeURIComponent("Гүйцэтгэсэн хэмжээ буруу байна.")}`);
+        }
+        const unit = quantityLineUnits[index] || "нэгж";
+        return `${index + 1}. ${unit} ${quantity}`.trim();
+      })
+      .filter((value): value is string => Boolean(value));
+    const firstLineQuantity = quantityLineValues
+      .map((value) => Number(value))
+      .find((value) => Number.isFinite(value) && value > 0);
+    const effectiveReportedQuantity =
+      firstLineQuantity ?? (reportedQuantityRaw ? reportedQuantity : null);
+    const effectiveReportText = [
+      quantityLineSummaries.length
+        ? `Гүйцэтгэсэн хэмжээ:\n${quantityLineSummaries.join("\n")}`
+        : "",
+      reportText,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    const [imageAttachments, audioAttachments] = await Promise.all([
+      Promise.all(
+        imageFiles.map(async (file) => ({
+          name: file.name,
+          mimeType: file.type || getFallbackMimeType(file.name, "image"),
+          base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
+        })),
+      ),
+      Promise.all(
+        audioFiles.map(async (file) => ({
+          name: file.name,
+          mimeType: file.type || getFallbackMimeType(file.name, "audio"),
+          base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
+        })),
+      ),
+    ]);
+
+    await updateWorkspaceTaskReport(
+      reportId,
+      {
+        reportText: effectiveReportText,
+        reportedQuantity: effectiveReportedQuantity,
+        imageAttachments,
+        audioAttachments,
+        removeImageAttachmentIds,
+        removeAudioAttachmentIds,
+      },
+      {
+        login: session.login,
+        password: session.password,
+      },
+    );
+
+    revalidatePath("/notifications");
+    revalidatePath("/review");
+    revalidatePath("/reports");
+    revalidatePath(`/tasks/${taskId}`);
+    redirect(`${reportPath}?notice=${encodeURIComponent("Тайлан шинэчлэгдлээ.")}#task-reports`);
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirect(`${reportPath}?error=${encodeURIComponent(getErrorMessage(error))}#task-reports`);
+  }
+}
+
+export async function deleteTaskReportAction(formData: FormData) {
+  const taskId = Number(String(formData.get("task_id") ?? ""));
+  const reportId = Number(String(formData.get("report_id") ?? ""));
+  const reportPath = taskId ? `/tasks/${taskId}` : "/tasks";
+
+  if (!taskId || !reportId) {
+    redirect(`${reportPath}?error=${encodeURIComponent("Устгах тайлан олдсонгүй.")}`);
+  }
+
+  try {
+    const session = await requireSession();
+    if (!hasCapability(session, "write_workspace_reports") || !canSubmitWorkspaceReport(session)) {
+      redirect(`${reportPath}?error=${encodeURIComponent("Танд тайлан устгах эрх нээгдээгүй байна.")}`);
+    }
+    const reportOwnerId = await loadWorkspaceTaskReportOwner(reportId, {
+      login: session.login,
+      password: session.password,
+    });
+    if (!canMutateReportOwner(session, reportOwnerId)) {
+      redirect(`${reportPath}?error=${encodeURIComponent("Та зөвхөн өөрийн илгээсэн тайланг устгах боломжтой.")}`);
+    }
+
+    await deleteWorkspaceTaskReport(reportId, {
+      login: session.login,
+      password: session.password,
+    });
+
+    revalidatePath("/notifications");
+    revalidatePath("/review");
+    revalidatePath("/reports");
+    revalidatePath(`/tasks/${taskId}`);
+    redirect(`${reportPath}?notice=${encodeURIComponent("Тайлан устгагдлаа.")}#task-reports`);
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirect(`${reportPath}?error=${encodeURIComponent(getErrorMessage(error))}#task-reports`);
+  }
+}
+
 export async function submitTaskForReviewAction(formData: FormData) {
   const taskId = Number(String(formData.get("task_id") ?? ""));
 
@@ -915,6 +1347,7 @@ export async function submitTaskForReviewAction(formData: FormData) {
       login: session.login,
       password: session.password,
     };
+    await assertCanReviewTaskAction(taskId, session, connectionOverrides);
     const reviewConnectionOverrides = await sendTaskToReviewWithSystemFallback(
       taskId,
       {},
@@ -958,6 +1391,7 @@ export async function markTaskDoneAction(formData: FormData) {
       login: session.login,
       password: session.password,
     };
+    await assertCanReviewTaskAction(taskId, session, connectionOverrides);
     try {
       await markWorkspaceTaskDone(taskId, connectionOverrides);
     } catch (error) {
@@ -1006,7 +1440,12 @@ export async function returnTaskForChangesAction(formData: FormData) {
   }
 
   try {
-    const connectionOverrides = await getConnectionOverrides();
+    const session = await requireSession();
+    const connectionOverrides = {
+      login: session.login,
+      password: session.password,
+    };
+    await assertCanReviewTaskAction(taskId, session, connectionOverrides);
     try {
       await returnWorkspaceTaskForChanges(taskId, reason, connectionOverrides);
     } catch (error) {
@@ -1035,14 +1474,31 @@ export async function postTaskMessageAction(formData: FormData) {
   const taskId = Number(String(formData.get("task_id") ?? ""));
   const body = String(formData.get("message_body") ?? "").trim();
   const kind = String(formData.get("message_kind") ?? "") === "note" ? "note" : "message";
+  const imageFiles = getUploadedFiles(formData, "message_images");
+  const audioFiles = getUploadedFiles(formData, "message_audio");
 
-  if (!taskId || !body) {
-    redirectWithMessage(`/tasks/${taskId || ""}`, "error", "Зурвас эсвэл тэмдэглэлээ бичнэ үү.", "#task-chatter");
+  if (!taskId || (!body && !imageFiles.length && !audioFiles.length)) {
+    redirectWithMessage(
+      `/tasks/${taskId || ""}`,
+      "error",
+      "Зурвас, зураг эсвэл аудио хавсаргана уу.",
+      "#task-chatter",
+    );
   }
 
   try {
     const connectionOverrides = await getConnectionOverrides();
-    await postWorkspaceTaskMessage(taskId, { body, kind }, connectionOverrides);
+    const attachments = await Promise.all(
+      [...imageFiles, ...audioFiles].map(async (file) => {
+        const family = file.type.startsWith("audio/") ? "audio" : "image";
+        return {
+          name: file.name,
+          mimeType: file.type || getFallbackMimeType(file.name, family),
+          base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
+        };
+      }),
+    );
+    await postWorkspaceTaskMessage(taskId, { body, kind, attachments }, connectionOverrides);
     revalidatePath(`/tasks/${taskId}`);
     revalidatePath("/notifications");
     redirectWithMessage(

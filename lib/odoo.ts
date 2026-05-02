@@ -504,6 +504,7 @@ export type FleetVehicleBoardItem = {
   latestRepairState: string;
   isOperational: boolean;
   isRepair: boolean;
+  isArchived: boolean;
   crewAssignments: FleetVehicleCrewAssignment[];
 };
 
@@ -1853,10 +1854,6 @@ export async function authenticateOdooUser(
   const role =
     inferredRole === "worker" && hrManager
       ? "hr_manager"
-      : inferredRole === "worker" && municipalHse
-        ? "hse_officer"
-      : inferredRole === "worker" && municipalPublicRelations
-        ? "public_relations"
       : inferredRole;
 
   return {
@@ -2411,10 +2408,13 @@ export async function loadFleetVehicleBoard(
   const vehicles = await searchReadAllWithFieldFallback<OdooFleetVehicleRecord>(
     uid,
     "fleet.vehicle",
-    [["active", "=", true]],
+    [],
     FLEET_VEHICLE_FIELD_VARIANTS,
     {
       order: "license_plate asc, name asc",
+      context: {
+        active_test: false,
+      },
     },
     connection,
   );
@@ -2429,7 +2429,8 @@ export async function loadFleetVehicleBoard(
         Boolean(vehicle.vehicle_downtime_open) ||
         isRepairStatusLabel(stateLabel) ||
         isRepairStatusLabel(latestRepairState);
-      const isOperational = Boolean(vehicle.mfo_active_for_ops);
+      const isArchived = vehicle.active === false;
+      const isOperational = !isArchived && (vehicle.mfo_active_for_ops !== false);
 
       return {
         id: vehicle.id,
@@ -2450,16 +2451,15 @@ export async function loadFleetVehicleBoard(
         latestRepairState,
         isOperational,
         isRepair,
+        isArchived,
         crewAssignments: crewAssignmentsByVehicle.get(vehicle.id) ?? [],
       } satisfies FleetVehicleBoardItem;
     })
+    .filter((vehicle) => !vehicle.isArchived && (vehicle.isOperational || vehicle.isRepair))
     .sort((left, right) => left.plate.localeCompare(right.plate, "mn"));
 
   const activeVehicles = allVehicles.filter(
-    (vehicle) =>
-      vehicle.isOperational &&
-      !vehicle.isRepair &&
-      vehicle.crewAssignments.length > 0,
+    (vehicle) => vehicle.isOperational && !vehicle.isRepair,
   );
   const repairVehicles = allVehicles.filter((vehicle) => vehicle.isRepair);
 

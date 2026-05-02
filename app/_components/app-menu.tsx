@@ -201,11 +201,9 @@ export function AppMenu({
       flags.fleetRepairManager ||
       flags.fleetRepairCeo,
   );
-  const complaintMode = Boolean(
-    flags.municipalPublicRelations || flags.complaintManager || roleLabel.includes("\u041E\u043B\u043E\u043D \u043D\u0438\u0439\u0442"),
-  );
+  const complaintMode = Boolean(flags.complaintManager);
   const inspectorMode = Boolean(
-    flags.mfoInspector || flags.municipalInspector || flags.municipalHse || flags.greenMaster,
+    flags.mfoInspector || flags.municipalInspector || flags.greenMaster,
   );
   const departmentManagerMode = Boolean(
     flags.municipalDepartmentHead || environmentManagerMode || mfoManagerMode,

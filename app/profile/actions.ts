@@ -1,15 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { loadSessionDepartmentName } from "@/lib/access-scope";
-import { requireSession } from "@/lib/auth";
+import { buildSessionCookieHeader, requireSession } from "@/lib/auth";
 import {
   isAutoGarbageDepartment,
   normalizeDepartmentText,
 } from "@/lib/department-permissions";
-import { executeOdooKw, type OdooConnection } from "@/lib/odoo";
+import { authenticateOdooUser, executeOdooKw, type OdooConnection } from "@/lib/odoo";
 import { loadDepartmentOptions } from "@/lib/workspace";
 
 type OdooFieldInfo = {
@@ -25,8 +26,34 @@ function cleanInput(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function redirectToProfile(kind: "notice" | "error", message: string): never {
-  redirect(`/profile?${kind}=${encodeURIComponent(message)}#team-route-settings`);
+function setSessionCookieFromHeader(
+  cookieStore: Awaited<ReturnType<typeof cookies>>,
+  cookieHeader: string,
+) {
+  const parts = cookieHeader.split(";").map((part) => part.trim());
+  const [nameValue, ...attributes] = parts;
+  const [name, ...valueParts] = nameValue.split("=");
+  const maxAgeAttribute = attributes.find((part) => part.toLowerCase().startsWith("max-age="));
+  const expiresAttribute = attributes.find((part) => part.toLowerCase().startsWith("expires="));
+
+  cookieStore.set({
+    name,
+    value: valueParts.join("="),
+    path: "/",
+    httpOnly: attributes.some((part) => part.toLowerCase() === "httponly"),
+    secure: attributes.some((part) => part.toLowerCase() === "secure"),
+    sameSite: "lax",
+    maxAge: maxAgeAttribute ? Number(maxAgeAttribute.split("=")[1]) : undefined,
+    expires: expiresAttribute ? new Date(expiresAttribute.slice("expires=".length)) : undefined,
+  });
+}
+
+function redirectToProfile(
+  kind: "notice" | "error",
+  message: string,
+  anchor = "team-route-settings",
+): never {
+  redirect(`/profile?${kind}=${encodeURIComponent(message)}#${anchor}`);
 }
 
 function getSessionConnection(session: Awaited<ReturnType<typeof requireSession>>) {
@@ -130,6 +157,82 @@ async function createOdooRecord(
     console.warn(`Retrying ${model} create with system Odoo connection`, error);
     return executeOdooKw<number>(model, "create", [supportedValues], {});
   }
+}
+
+async function changeOdooPassword(
+  uid: number,
+  currentPassword: string,
+  newPassword: string,
+  connection: Partial<OdooConnection>,
+) {
+  try {
+    await executeOdooKw<boolean>(
+      "res.users",
+      "change_password",
+      [currentPassword, newPassword],
+      {},
+      connection,
+    );
+    return;
+  } catch (firstError) {
+    console.warn("Odoo change_password failed, retrying password write for current user", firstError);
+  }
+
+  await executeOdooKw<boolean>(
+    "res.users",
+    "write",
+    [[uid], { password: newPassword }],
+    {},
+    connection,
+  );
+}
+
+export async function changeProfilePasswordAction(formData: FormData) {
+  const session = await requireSession();
+  const currentPassword = cleanInput(formData.get("current_password"));
+  const newPassword = cleanInput(formData.get("new_password"));
+  const confirmPassword = cleanInput(formData.get("confirm_password"));
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    redirectToProfile("error", "Одоогийн болон шинэ нууц үгээ бүрэн оруулна уу.", "password-settings");
+  }
+  if (newPassword.length < 8) {
+    redirectToProfile("error", "Шинэ нууц үг хамгийн багадаа 8 тэмдэгттэй байх ёстой.", "password-settings");
+  }
+  if (newPassword !== confirmPassword) {
+    redirectToProfile("error", "Шинэ нууц үгийн давталт таарахгүй байна.", "password-settings");
+  }
+  if (currentPassword === newPassword) {
+    redirectToProfile("error", "Шинэ нууц үг одоогийн нууц үгээс өөр байх ёстой.", "password-settings");
+  }
+
+  const verified = await authenticateOdooUser(session.login, currentPassword).catch(() => null);
+  if (!verified || verified.uid !== session.uid) {
+    redirectToProfile("error", "Одоогийн нууц үг буруу байна.", "password-settings");
+  }
+
+  try {
+    await changeOdooPassword(session.uid, currentPassword, newPassword, {
+      login: session.login,
+      password: currentPassword,
+    });
+  } catch (error) {
+    console.error("Failed to change current user's password", error);
+    redirectToProfile("error", "Нууц үг солих үед Odoo дээр алдаа гарлаа.", "password-settings");
+  }
+
+  const cookieStore = await cookies();
+  setSessionCookieFromHeader(
+    cookieStore,
+    buildSessionCookieHeader({
+      ...session,
+      password: newPassword,
+      roleCheckedAt: Date.now(),
+    }),
+  );
+
+  revalidatePath("/profile");
+  redirectToProfile("notice", "Нууц үг амжилттай солигдлоо.", "password-settings");
 }
 
 export async function createProfileTeamAction(formData: FormData) {

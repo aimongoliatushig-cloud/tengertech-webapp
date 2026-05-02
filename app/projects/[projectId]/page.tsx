@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { createTaskAction } from "@/app/actions";
+import { createTaskAction, deleteTaskAction, updateTaskAction } from "@/app/actions";
 import dashboardStyles from "@/app/page.module.css";
 import styles from "@/app/workspace.module.css";
 import {
@@ -18,6 +18,7 @@ import { filterByDepartment } from "@/lib/dashboard-scope";
 import { loadProjectDetail } from "@/lib/workspace";
 
 import { ProjectTaskCreateModal } from "./project-task-create-modal";
+import { ProjectTaskEditModal } from "./project-task-edit-modal";
 
 type PageProps = {
   params: Promise<{
@@ -32,14 +33,15 @@ type PageProps = {
   }>;
 };
 
-type TaskFilterKey = "all" | "todo" | "progress" | "review" | "done";
+type TaskFilterKey = "all" | "todo" | "progress" | "review" | "overdue" | "done";
 type QuickActionMode = "task" | "report" | "none";
 
 const TASK_FILTERS: Array<{ key: TaskFilterKey; label: string }> = [
   { key: "all", label: "Бүгд" },
-  { key: "todo", label: "Хийх ажил" },
-  { key: "progress", label: "Хийгдэж буй" },
-  { key: "review", label: "Шалгаж буй" },
+  { key: "todo", label: "Төлөвлөсөн" },
+  { key: "progress", label: "Гүйцэтгэж байгаа" },
+  { key: "review", label: "Хянаж байгаа" },
+  { key: "overdue", label: "Хугацаа хэтэрсэн" },
   { key: "done", label: "Дууссан" },
 ];
 
@@ -76,14 +78,18 @@ function resolveProjectStage(taskCounts: Record<TaskFilterKey, number>) {
   }
 
   if (taskCounts.review > 0) {
-    return { bucket: "review", label: "Шалгагдаж буй ажил" } as const;
+    return { bucket: "review", label: "Хянаж байгаа ажил" } as const;
   }
 
   if (taskCounts.progress > 0) {
-    return { bucket: "progress", label: "Явж байгаа ажил" } as const;
+    return { bucket: "progress", label: "Гүйцэтгэж байгаа ажил" } as const;
   }
 
-  return { bucket: "todo", label: "Хийгдэх ажил" } as const;
+  if (taskCounts.overdue > 0) {
+    return { bucket: "problem", label: "Хугацаа хэтэрсэн ажил" } as const;
+  }
+
+  return { bucket: "todo", label: "Төлөвлөсөн ажил" } as const;
 }
 
 function StagePill({ label, bucket }: { label: string; bucket: string }) {
@@ -185,6 +191,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     ).length,
     progress: project.tasks.filter((task) => task.stageBucket === "progress").length,
     review: project.tasks.filter((task) => task.stageBucket === "review").length,
+    overdue: project.tasks.filter((task) => task.isOverdue).length,
     done: project.tasks.filter((task) => task.stageBucket === "done").length,
   } satisfies Record<TaskFilterKey, number>;
 
@@ -196,6 +203,9 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     if (activeFilter === "todo") {
       return task.stageBucket === "todo" || task.stageBucket === "unknown";
     }
+    if (activeFilter === "overdue") {
+      return task.isOverdue;
+    }
 
     return task.stageBucket === activeFilter;
   });
@@ -205,24 +215,31 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   const taskBreakdown = [
     {
       key: "todo",
-      label: "Хийгдэх",
+      label: "Төлөвлөсөн",
       count: taskCounts.todo,
       share: taskCounts.all ? Math.round((taskCounts.todo / taskCounts.all) * 100) : 0,
       toneClass: styles.projectHeroBreakdownTodo,
     },
     {
       key: "progress",
-      label: "Явж буй",
+      label: "Гүйцэтгэж байгаа",
       count: taskCounts.progress,
       share: taskCounts.all ? Math.round((taskCounts.progress / taskCounts.all) * 100) : 0,
       toneClass: styles.projectHeroBreakdownProgress,
     },
     {
       key: "review",
-      label: "Шалгагдаж буй",
+      label: "Хянаж байгаа",
       count: taskCounts.review,
       share: taskCounts.all ? Math.round((taskCounts.review / taskCounts.all) * 100) : 0,
       toneClass: styles.projectHeroBreakdownReview,
+    },
+    {
+      key: "overdue",
+      label: "Хугацаа хэтэрсэн",
+      count: taskCounts.overdue,
+      share: taskCounts.all ? Math.round((taskCounts.overdue / taskCounts.all) * 100) : 0,
+      toneClass: styles.projectHeroBreakdownProblem,
     },
     {
       key: "done",
@@ -386,8 +403,62 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                 <Link href={backHref} className={styles.smallLink}>
                   {backLabel}
                 </Link>
+                <a
+                  href={`/api/workspace-report/export?type=project&id=${project.id}&format=word`}
+                  className={styles.secondaryButton}
+                >
+                  Word тайлан татах
+                </a>
+                <a
+                  href={`/api/workspace-report/export?type=project&id=${project.id}&format=pdf`}
+                  className={styles.secondaryButton}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  PDF хэвлэх
+                </a>
               </div>
             </section>
+
+            {project.description || project.attachments.length ? (
+              <section className={`${styles.sectionCard} ${styles.projectDetailCompact}`}>
+                <div className={styles.compactSectionHeader}>
+                  <div>
+                    <span className={styles.eyebrow}>Хавсралт ба тайлбар</span>
+                    <h2>Ажлын дэлгэрэнгүй мэдээлэл</h2>
+                  </div>
+                  <span className={styles.compactCountPill}>
+                    {project.attachments.length} файл
+                  </span>
+                </div>
+
+                <div className={styles.projectDetailCompactGrid}>
+                  {project.description ? (
+                    <div className={styles.descriptionCard}>
+                      <span className={styles.compactLabel}>Тайлбар</span>
+                      <p>{project.description}</p>
+                    </div>
+                  ) : null}
+
+                  {project.attachments.length ? (
+                    <div className={styles.documentList}>
+                      {project.attachments.map((attachment) => (
+                        <a
+                          key={attachment.id}
+                          href={attachment.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={styles.documentCard}
+                        >
+                          <strong>{attachment.name}</strong>
+                          <small>{attachment.mimetype}</small>
+                        </a>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
 
             <section className={masterMode ? styles.masterTaskBoard : styles.panelGrid}>
               <section className={styles.panel}>
@@ -464,41 +535,69 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                 {visibleTasks.length ? (
                   <div className={styles.taskGrid}>
                     {visibleTasks.map((task) => (
-                      <Link
+                      <article
                         key={task.id}
-                        href={
-                          quickActionMode === "report"
-                            ? `${task.href}?composer=report&returnTo=${encodeURIComponent(
-                                `/projects/${project.id}?quickAction=report&returnTo=${encodeURIComponent(
-                                  backHref,
-                                )}`,
-                              )}`
-                            : task.href
-                        }
                         className={styles.taskItem}
                       >
-                        <div className={styles.taskItemTop}>
-                          <div>
-                            <h3>{task.name}</h3>
-                            <p>Хариуцсан ажилтан: {task.teamLeaderName}</p>
+                        <Link
+                          href={
+                            quickActionMode === "report"
+                              ? `${task.href}?composer=report&returnTo=${encodeURIComponent(
+                                  `/projects/${project.id}?quickAction=report&returnTo=${encodeURIComponent(
+                                    backHref,
+                                  )}`,
+                                )}`
+                              : task.href
+                          }
+                          className={styles.taskItemLink}
+                        >
+                          <div className={styles.taskItemTop}>
+                            <div>
+                              <h3>{task.name}</h3>
+                              <p>
+                                Хариуцсан ажилтан: {task.teamLeaderName}
+                                {task.teamLeaderJobTitle ? ` · ${task.teamLeaderJobTitle}` : ""}
+                              </p>
+                            </div>
+                            <StagePill label={task.stageLabel} bucket={task.stageBucket} />
                           </div>
-                          <StagePill label={task.stageLabel} bucket={task.stageBucket} />
-                        </div>
 
-                        <div className={styles.metaRow}>
-                          {task.plannedQuantity > 0 && task.measurementUnit ? (
-                            <span>
-                              Хэмжээ: {task.completedQuantity}/{task.plannedQuantity}{" "}
-                              {task.measurementUnit}
-                            </span>
-                          ) : null}
-                          <span>Хугацаа: {task.deadline}</span>
-                        </div>
+                          <div className={styles.metaRow}>
+                            {task.quantitySummary ? (
+                              <div className={styles.taskQuantityLines}>
+                                <strong>Хэмжээ:</strong>
+                                {task.quantitySummaryLines.map((line) => (
+                                  <span key={line}>{line}</span>
+                                ))}
+                              </div>
+                            ) : null}
+                            <span>Хугацаа: {task.deadline}</span>
+                          </div>
 
-                        <div className={styles.progressTrack}>
-                          <span style={{ width: `${task.progress}%` }} />
-                        </div>
-                      </Link>
+                          <div className={styles.progressTrack}>
+                            <span style={{ width: `${task.progress}%` }} />
+                          </div>
+                        </Link>
+
+                        {canCreateTasks ? (
+                          <div className={styles.taskItemActions}>
+                            <ProjectTaskEditModal
+                              action={updateTaskAction}
+                              projectId={project.id}
+                              taskId={task.id}
+                              taskName={task.name}
+                              deadlineValue={task.deadlineValue}
+                            />
+                            <form action={deleteTaskAction}>
+                              <input type="hidden" name="project_id" value={project.id} />
+                              <input type="hidden" name="task_id" value={task.id} />
+                              <button type="submit" className={styles.dangerButton}>
+                                Устгах
+                              </button>
+                            </form>
+                          </div>
+                        ) : null}
+                      </article>
                     ))}
                   </div>
                 ) : (

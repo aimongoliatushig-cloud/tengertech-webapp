@@ -138,9 +138,6 @@ export function getPrimaryAppRole(context: RoleContext): AppRole {
   if (groupFlags.mfoInspector || groupFlags.municipalInspector) {
     return "inspector";
   }
-  if (context.role === "hse_officer" || groupFlags.municipalHse) {
-    return "inspector";
-  }
   if (
     context.role === "project_manager" ||
     groupFlags.mfoManager ||
@@ -207,8 +204,6 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         context.role === "director" ||
         context.role === "general_manager" ||
         context.role === "project_manager" ||
-        context.role === "public_relations" ||
-        groupFlags.municipalPublicRelations ||
         groupFlags.complaintManager ||
         groupFlags.municipalDepartmentHead ||
         groupFlags.environmentManager ||
@@ -224,8 +219,6 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         context.role === "director" ||
         context.role === "general_manager" ||
         context.role === "project_manager" ||
-        context.role === "public_relations" ||
-        groupFlags.municipalPublicRelations ||
         groupFlags.complaintManager ||
         groupFlags.municipalDepartmentHead ||
         groupFlags.environmentManager ||
@@ -241,8 +234,6 @@ export function hasCapability(context: RoleContext, capability: Capability) {
       return Boolean(
         context.role === "system_admin" ||
         context.role === "project_manager" ||
-        context.role === "public_relations" ||
-        groupFlags.municipalPublicRelations ||
         groupFlags.complaintManager ||
         groupFlags.mfoMobile ||
         groupFlags.mfoDriver ||
@@ -263,8 +254,6 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         context.role === "director" ||
         context.role === "general_manager" ||
         context.role === "project_manager" ||
-        context.role === "hse_officer" ||
-        groupFlags.municipalHse ||
         groupFlags.municipalInspector ||
         groupFlags.municipalDepartmentHead ||
         groupFlags.mfoManager ||
@@ -285,8 +274,6 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         context.role === "senior_master" ||
         context.role === "team_leader" ||
         context.role === "worker" ||
-        context.role === "public_relations" ||
-        groupFlags.municipalPublicRelations ||
         groupFlags.complaintManager ||
         groupFlags.mfoManager ||
         groupFlags.mfoDispatcher ||
@@ -308,6 +295,25 @@ export function hasCapability(context: RoleContext, capability: Capability) {
   }
 }
 
+export function canSubmitWorkspaceReport(context: RoleContext) {
+  const groupFlags = normalizeGroupFlags(context.groupFlags);
+  return Boolean(
+    context.role === "system_admin" ||
+    context.role === "senior_master" ||
+    context.role === "team_leader" ||
+    context.role === "worker" ||
+    groupFlags.mfoMobile ||
+    groupFlags.mfoDriver ||
+    groupFlags.mfoLoader ||
+    groupFlags.environmentWorker ||
+    groupFlags.greenEngineer ||
+    groupFlags.greenMaster ||
+    groupFlags.improvementWelder ||
+    groupFlags.improvementFieldEngineer ||
+    groupFlags.improvementEngineer
+  );
+}
+
 export function isWorkerOnly(context: RoleContext) {
   const groupFlags = normalizeGroupFlags(context.groupFlags);
   return (
@@ -315,8 +321,6 @@ export function isWorkerOnly(context: RoleContext) {
     !groupFlags.mfoManager &&
     !groupFlags.mfoDispatcher &&
     !groupFlags.mfoInspector &&
-    !groupFlags.municipalHse &&
-    !groupFlags.municipalPublicRelations &&
     !groupFlags.municipalDepartmentHead &&
     !groupFlags.municipalManager &&
     !groupFlags.environmentManager &&
