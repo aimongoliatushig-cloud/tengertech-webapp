@@ -124,7 +124,7 @@ export default async function Home() {
           console.warn("Fleet vehicle board could not be loaded for dashboard:", error);
           return {
             fleetBoard: EMPTY_FLEET_BOARD,
-            fleetLoadError: "Техникийн мэдээллийг Odoo Fleet-ээс уншиж чадсангүй.",
+            fleetLoadError: "Авто баазын техникийн мэдээллийг уншиж чадсангүй.",
           };
         });
   const hrAttendanceSummaryPromise = workerMode

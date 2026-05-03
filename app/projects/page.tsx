@@ -291,7 +291,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
     } catch (error) {
       console.error("Fleet vehicle board could not be loaded for projects auto-base view:", error);
       fleetLoadError =
-        "Авто баазын машины жагсаалтыг Odoo Fleet-ээс уншиж чадсангүй. Fleet эрх болон Odoo холболтын тохиргоог шалгана уу.";
+        "Авто баазын машины жагсаалтыг уншиж чадсангүй. Холболт болон эрхийн тохиргоог шалгана уу.";
     }
   }
 
@@ -808,7 +808,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                   <h2>{showAutoBaseFleet ? "Бүх машин" : masterMode ? selectedDepartmentName : filterTitle}</h2>
                   <small className={styles.sectionNote}>
                     {showAutoBaseFleet
-                      ? "Odoo Fleet дээр бүртгэлтэй авто баазын бүх машиныг харуулна"
+                      ? "Авто баазад бүртгэлтэй бүх машиныг харуулна"
                       : masterMode
                         ? sectionNote
                         : `${selectedDepartmentName} · ${filterNote}`}

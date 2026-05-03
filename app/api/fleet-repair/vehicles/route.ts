@@ -13,7 +13,7 @@ export async function GET() {
     return Response.json(await loadFleetRepairVehicleOptions(session));
   } catch {
     return Response.json(
-      { error: "Машины жагсаалтыг Odoo Fleet-ээс уншиж чадсангүй." },
+      { error: "Машины жагсаалтыг уншиж чадсангүй." },
       { status: 500 },
     );
   }
