@@ -203,7 +203,7 @@ function VehicleList({
           <p className={styles.vehicleName}>{vehicle.name}</p>
           <span className={styles.vehicleMetaLine}>
             {vehicle.vehicleTypeName || vehicle.categoryName || "Төрөлгүй"} ·{" "}
-            {vehicle.responsibleDriverName || vehicle.fleetDriverName || "Жолооч оноогоогүй"}
+            {vehicle.responsibleDriverName || "Жолооч оноогоогүй"}
           </span>
           <span className={styles.vehicleCrewPreview}>
             {assignedCrewCount(vehicle)
@@ -463,7 +463,7 @@ function DriverAssignmentForm({
 
         <div className={styles.driverAssignmentMeta}>
           <span>Одоогийн бүрэлдэхүүн</span>
-          <strong>{vehicle.responsibleDriverName || vehicle.fleetDriverName || "Жолооч оноогоогүй"}</strong>
+          <strong>{vehicle.responsibleDriverName || "Жолооч оноогоогүй"}</strong>
           <small>
             Ачигч 1: {vehicle.loader1Name || "оноогоогүй"} · Ачигч 2:{" "}
             {vehicle.loader2Name || "оноогоогүй"}
@@ -634,8 +634,7 @@ function VehicleDetailModal({
               <DetailItem label="Төлөв" value={vehicle.stateLabel} />
               <DetailItem label="VIN" value={vehicle.vin} />
               <DetailItem label="Одометр" value={vehicle.odometerLabel} />
-              <DetailItem label="Системийн жолооч" value={vehicle.fleetDriverName} />
-              <DetailItem label="Хариуцсан жолооч" value={vehicle.responsibleDriverName || vehicle.fleetDriverName} />
+              <DetailItem label="Хариуцсан жолооч" value={vehicle.responsibleDriverName} />
               <DetailItem label="Ачигч 1" value={vehicle.loader1Name} />
               <DetailItem label="Ачигч 2" value={vehicle.loader2Name} />
               <DetailItem label="Түлшний төрөл" value={vehicle.fuelTypeLabel} />
@@ -699,7 +698,7 @@ function VehicleDetailModal({
         {activeTab === "driver" ? (
           <section className={styles.vehicleTabPanel}>
             <div className={styles.vehicleDetailGrid}>
-              <DetailItem label="Одоогийн жолооч" value={vehicle.responsibleDriverName || vehicle.fleetDriverName} />
+              <DetailItem label="Одоогийн жолооч" value={vehicle.responsibleDriverName} />
               <DetailItem label="Ачигч 1" value={vehicle.loader1Name} />
               <DetailItem label="Ачигч 2" value={vehicle.loader2Name} />
               <DetailItem label="Хуваарилсан хүмүүс" value={`${crewCount}`} />
