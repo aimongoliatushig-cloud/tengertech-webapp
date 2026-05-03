@@ -140,19 +140,17 @@ type FleetVehicleBoard = {
   failedImportCount: number;
 };
 
+type VehicleFilterKey = "active" | "repair";
+
 type BucketConfig = {
-  key: "all" | "active" | "repair";
+  key: VehicleFilterKey;
   title: string;
   count: number;
   description: string;
   hint: string;
   emptyLabel: string;
   vehicles: FleetVehicleBoardItem[];
-  tone: "all" | "active" | "repair";
-  inputId: string;
-  panelTestId: string;
-  cardClassName: string;
-  panelClassName: string;
+  tone: "active" | "repair";
 };
 
 function cx(...values: Array<string | false | null | undefined>) {
@@ -892,53 +890,31 @@ export function AutoBaseBoard({
     [board.allVehicles],
   );
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
+  const [activeFilter, setActiveFilter] = useState<VehicleFilterKey>("active");
   const selectedVehicle = selectedVehicleId ? vehiclesById.get(selectedVehicleId) ?? null : null;
   const buckets: BucketConfig[] = [
-    {
-      key: "all",
-      title: "Бүх машин",
-      count: board.totalVehicles,
-      description: "Авто баазад бүртгэлтэй бүх машины жагсаалт.",
-      hint: "Бүгдийг харах",
-      emptyLabel: "Одоогоор бүртгэлтэй машин алга.",
-      vehicles: board.allVehicles,
-      tone: "all",
-      inputId: "vehicle-bucket-all",
-      panelTestId: "vehicle-bucket-detail-all",
-      cardClassName: styles.mobileBucketCardAll,
-      panelClassName: styles.mobileDetailAll,
-    },
     {
       key: "active",
       title: "Ажиллаж байгаа машин",
       count: board.activeCount,
       description: "Ажилд гарах боломжтой болон хуваарилагдсан машинууд.",
-      hint: "Жагсаалт нээх",
+      hint: "Ажиллаж байгаа жагсаалт",
       emptyLabel: "Одоогоор ажиллаж байгаа машин алга.",
       vehicles: board.activeVehicles,
       tone: "active",
-      inputId: "vehicle-bucket-active",
-      panelTestId: "vehicle-bucket-detail-active",
-      cardClassName: styles.mobileBucketCardActive,
-      panelClassName: styles.mobileDetailActive,
     },
     {
       key: "repair",
       title: "Засагдаж буй машин",
       count: board.repairCount,
       description: "Засвар, саатал, техникийн хүлээлттэй машинууд.",
-      hint: "Засвар харах",
+      hint: "Засвартай жагсаалт",
       emptyLabel: "Одоогоор засагдаж буй машин алга.",
       vehicles: board.repairVehicles,
       tone: "repair",
-      inputId: "vehicle-bucket-repair",
-      panelTestId: "vehicle-bucket-detail-repair",
-      cardClassName: styles.mobileBucketCardRepair,
-      panelClassName: styles.mobileDetailRepair,
     },
   ];
-  const desktopBuckets = buckets.filter((bucket) => bucket.key === "all" || bucket.vehicles.length > 0);
-  const shouldExpandAllVehicles = desktopBuckets.length === 1 && desktopBuckets[0]?.key === "all";
+  const selectedBucket = buckets.find((bucket) => bucket.key === activeFilter) ?? buckets[0];
 
   return (
     <>
@@ -994,120 +970,59 @@ export function AutoBaseBoard({
         </div>
       </div>
 
-      <div className={styles.mobileBoard}>
-        <input
-          id="vehicle-bucket-all"
-          className={styles.mobileBucketInput}
-          type="radio"
-          name="vehicle-bucket"
-          defaultChecked
-        />
-        <input
-          id="vehicle-bucket-active"
-          className={styles.mobileBucketInput}
-          type="radio"
-          name="vehicle-bucket"
-        />
-        <input
-          id="vehicle-bucket-repair"
-          className={styles.mobileBucketInput}
-          type="radio"
-          name="vehicle-bucket"
-        />
-
-        <div className={styles.mobileBucketGrid} data-testid="vehicle-bucket-grid">
+      <section className={styles.vehicleFilterBoard} data-testid="vehicle-filter-board">
+        <div className={styles.vehicleFilterTabs} role="tablist" aria-label="Машины төлөвөөр шүүх">
           {buckets.map((bucket) => (
-            <label
+            <button
               key={bucket.key}
-              htmlFor={bucket.inputId}
-              data-testid={`vehicle-bucket-${bucket.key}`}
+              type="button"
+              role="tab"
+              aria-selected={selectedBucket.key === bucket.key}
               className={cx(
-                styles.mobileBucketCard,
-                bucket.tone === "repair"
-                  ? styles.mobileBucketRepair
-                  : bucket.tone === "all"
-                    ? styles.mobileBucketAll
-                    : styles.mobileBucketActive,
-                bucket.cardClassName,
+                styles.vehicleFilterTab,
+                bucket.tone === "repair" ? styles.vehicleFilterTabRepair : styles.vehicleFilterTabActive,
+                selectedBucket.key === bucket.key && styles.vehicleFilterTabSelected,
               )}
-              style={meterStyle(bucket.count, board.totalVehicles)}
+              style={meterStyle(bucket.count, Math.max(board.totalVehicles, 1))}
+              onClick={() => setActiveFilter(bucket.key)}
             >
-              <span className={styles.mobileBucketTitle}>{bucket.title}</span>
-              <strong className={styles.mobileBucketCount}>{bucket.count}</strong>
-              <span className={styles.mobileBucketDescription}>{bucket.description}</span>
-              <span className={styles.mobileBucketHint}>{bucket.hint}</span>
-              <span className={styles.mobileBucketMeter} aria-hidden>
-                <span className={styles.mobileBucketMeterFill} />
+              <span className={styles.vehicleFilterTabText}>
+                <strong>{bucket.title}</strong>
+                <small>{bucket.hint}</small>
               </span>
-            </label>
+              <span className={styles.vehicleFilterCount}>{bucket.count}</span>
+              <span className={styles.vehicleFilterMeter} aria-hidden>
+                <span />
+              </span>
+            </button>
           ))}
         </div>
 
-        <div className={styles.mobilePanels}>
-          {buckets.map((bucket) => (
-            <section
-              key={bucket.key}
-              data-testid={bucket.panelTestId}
-              className={cx(
-                styles.mobileDetailCard,
-                styles.mobileDetailPanel,
-                bucket.panelClassName,
-              )}
-            >
-              <div className={styles.mobileDetailHeader}>
-                <div>
-                  <span className={styles.mobileDetailEyebrow}>Сонгосон төлөв</span>
-                  <h2>{bucket.title}</h2>
-                </div>
-                <span className={styles.countBadge}>{bucket.count}</span>
-              </div>
-
-              <p className={styles.mobileDetailText}>{bucket.description}</p>
-
-              <VehicleList
-                vehicles={bucket.vehicles}
-                emptyLabel={bucket.emptyLabel}
-                onSelectVehicle={(vehicle) => {
-                  setSelectedVehicleId(vehicle.id);
-                }}
-              />
-            </section>
-          ))}
-        </div>
-      </div>
-
-      <div className={styles.boardGrid} data-testid="vehicle-board-desktop">
-        {desktopBuckets.map((bucket) => (
-          <section
-            key={bucket.key}
-            className={cx(
-              styles.columnCard,
-              shouldExpandAllVehicles && bucket.key === "all" && styles.columnWide,
-              bucket.tone === "repair"
-                ? styles.columnRepair
-                : bucket.tone === "all"
-                  ? styles.columnAll
-                  : styles.columnActive,
-            )}
-          >
-            <div className={styles.columnHeader}>
-              <div>
-                <span className={styles.columnLabel}>{bucket.title}</span>
-                <strong>{bucket.count}</strong>
-              </div>
-              <span className={styles.countBadge}>{bucket.count}</span>
+        <section
+          className={cx(
+            styles.vehicleFilterPanel,
+            selectedBucket.tone === "repair" ? styles.vehicleFilterPanelRepair : styles.vehicleFilterPanelActive,
+          )}
+          role="tabpanel"
+        >
+          <div className={styles.vehicleFilterPanelHeader}>
+            <div>
+              <span className={styles.mobileDetailEyebrow}>Сонгосон төлөв</span>
+              <h2>{selectedBucket.title}</h2>
+              <p>{selectedBucket.description}</p>
             </div>
+            <span className={styles.countBadge}>{selectedBucket.count}</span>
+          </div>
 
-            <VehicleList
-              vehicles={bucket.vehicles}
-              emptyLabel={bucket.emptyLabel}
-              onSelectVehicle={(vehicle) => {
-                setSelectedVehicleId(vehicle.id);
-              }}
-            />
-          </section>
-        ))}
-      </div>
+          <VehicleList
+            vehicles={selectedBucket.vehicles}
+            emptyLabel={selectedBucket.emptyLabel}
+            onSelectVehicle={(vehicle) => {
+              setSelectedVehicleId(vehicle.id);
+            }}
+          />
+        </section>
+      </section>
 
       {selectedVehicle ? (
         <VehicleDetailModal
