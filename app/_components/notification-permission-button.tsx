@@ -7,12 +7,18 @@ const LABEL_ENABLING =
   "\u041c\u044d\u0434\u044d\u0433\u0434\u044d\u043b \u0438\u0434\u044d\u0432\u0445\u0436\u04af\u04af\u043b\u0436 \u0431\u0430\u0439\u043d\u0430...";
 const LABEL_TITLE =
   "\u041c\u044d\u0434\u044d\u0433\u0434\u044d\u043b \u0430\u0432\u0430\u0445\u044b\u0433 \u0437\u04e9\u0432\u0448\u04e9\u04e9\u0440\u04e9\u0445 \u04af\u04af?";
+const LABEL_SECURE_TITLE =
+  "\u041c\u044d\u0434\u044d\u0433\u0434\u044d\u043b\u0434 HTTPS \u0448\u0430\u0430\u0440\u0434\u043b\u0430\u0433\u0430\u0442\u0430\u0439";
 const LABEL_BODY =
   "\u0428\u0438\u043d\u044d \u0430\u0436\u0438\u043b, \u0442\u0430\u0439\u043b\u0430\u043d, \u0445\u0443\u0433\u0430\u0446\u0430\u0430\u043d\u044b \u0430\u043d\u0445\u0430\u0430\u0440\u0443\u0443\u043b\u0433\u044b\u0433 \u044d\u043d\u044d \u0442\u04e9\u0445\u04e9\u04e9\u0440\u04e9\u043c\u0436 \u0434\u044d\u044d\u0440 \u0430\u0432\u043d\u0430.";
 const LABEL_DISABLED =
   "Push \u0442\u04af\u043b\u0445\u04af\u04af\u0440 \u0430\u0447\u0430\u0430\u043b\u0430\u0433\u0434\u0430\u0430\u0433\u04af\u0439. Dev server-\u044d\u044d \u0434\u0430\u0445\u0438\u043d \u0430\u0441\u0430\u0430\u0433\u0430\u0430\u0434 \u0434\u0430\u0445\u0438\u043d \u043e\u0440\u043e\u043b\u0434\u043e\u043e\u0440\u043e\u0439.";
 const LABEL_INSECURE =
-  "Notification \u0437\u04e9\u0432\u0445\u04e9\u043d localhost \u044d\u0441\u0432\u044d\u043b HTTPS \u0434\u044d\u044d\u0440 \u0430\u0441\u0443\u0443\u043d\u0430.";
+  "\u041e\u0434\u043e\u043e\u0433\u0438\u0439\u043d \u0445\u0430\u044f\u0433 HTTP \u0442\u0443\u043b browser \u043c\u044d\u0434\u044d\u0433\u0434\u043b\u0438\u0439\u043d \u0437\u04e9\u0432\u0448\u04e9\u04e9\u0440\u04e9\u043b \u0430\u0441\u0443\u0443\u0445\u0433\u04af\u0439. HTTPS \u0434\u043e\u043c\u044d\u0439\u043d\u044d\u044d\u0440 \u043d\u044d\u044d\u0445\u044d\u0434 \u0438\u0434\u044d\u0432\u0445\u0436\u04af\u04af\u043b\u044d\u0445 \u0431\u043e\u043b\u043e\u043c\u0436\u0442\u043e\u0439.";
+const LABEL_OPEN_SECURE =
+  "HTTPS \u0445\u0430\u044f\u0433\u0430\u0430\u0440 \u043d\u044d\u044d\u0445";
+const LABEL_SECURE_REQUIRED =
+  "HTTPS \u0442\u043e\u0445\u0438\u0440\u0433\u043e\u043e \u0448\u0430\u0430\u0440\u0434\u043b\u0430\u0433\u0430\u0442\u0430\u0439";
 
 type PushStatus =
   | "checking"
@@ -78,10 +84,33 @@ async function loadPublicKey() {
   return payload?.enabled ? (payload.publicKey ?? null) : null;
 }
 
+function getConfiguredSecureUrl() {
+  const candidates = [
+    process.env.NEXT_PUBLIC_APP_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      const baseUrl = new URL(candidate as string);
+      if (baseUrl.protocol !== "https:") {
+        continue;
+      }
+
+      return new URL(`${window.location.pathname}${window.location.search}`, baseUrl).toString();
+    } catch {
+      // Ignore malformed public URLs and continue with the next configured value.
+    }
+  }
+
+  return null;
+}
+
 export function NotificationPermissionButton() {
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [status, setStatus] = useState<PushStatus>("checking");
   const [busy, setBusy] = useState(false);
+  const [secureUrl, setSecureUrl] = useState<string | null>(null);
 
   const requestAndSubscribe = useCallback(async () => {
     if (typeof window === "undefined" || !("Notification" in window)) {
@@ -90,6 +119,7 @@ export function NotificationPermissionButton() {
     }
 
     if (!window.isSecureContext) {
+      setSecureUrl(getConfiguredSecureUrl());
       setStatus("insecure");
       return;
     }
@@ -137,6 +167,7 @@ export function NotificationPermissionButton() {
 
     if (!window.isSecureContext) {
       console.warn("Notification permission requires HTTPS or localhost.");
+      setSecureUrl(getConfiguredSecureUrl());
       setStatus("insecure");
       return;
     }
@@ -187,6 +218,25 @@ export function NotificationPermissionButton() {
 
   const bodyText =
     status === "insecure" ? LABEL_INSECURE : status === "disabled" ? LABEL_DISABLED : LABEL_BODY;
+  const titleText = status === "insecure" ? LABEL_SECURE_TITLE : LABEL_TITLE;
+  const buttonText =
+    status === "insecure" ? (secureUrl ? LABEL_OPEN_SECURE : LABEL_SECURE_REQUIRED) : busy ? LABEL_ENABLING : LABEL_ENABLE;
+  const buttonDisabled = busy || (status === "insecure" && !secureUrl);
+  const buttonStyle = {
+    display: "block",
+    width: "100%",
+    marginTop: 12,
+    border: 0,
+    borderRadius: 999,
+    background: status === "insecure" && !secureUrl ? "#9CA3AF" : "#2E7D32",
+    color: "#fff",
+    cursor: buttonDisabled ? "not-allowed" : "pointer",
+    fontSize: 14,
+    fontWeight: 700,
+    padding: "12px 16px",
+    textAlign: "center" as const,
+    textDecoration: "none",
+  };
 
   return (
     <div
@@ -205,30 +255,31 @@ export function NotificationPermissionButton() {
       }}
     >
       <strong style={{ display: "block", fontSize: 15, marginBottom: 6 }}>
-        {LABEL_TITLE}
+        {titleText}
       </strong>
       <span style={{ display: "block", color: "#526157", fontSize: 13, lineHeight: 1.45 }}>
         {bodyText}
       </span>
+      {status === "insecure" && secureUrl ? (
+        <a href={secureUrl} style={buttonStyle}>
+          {buttonText}
+        </a>
+      ) : null}
+      {status === "insecure" && !secureUrl ? (
+        <button type="button" disabled style={buttonStyle}>
+          {buttonText}
+        </button>
+      ) : null}
+      {status !== "insecure" ? (
       <button
         type="button"
         onClick={() => void requestAndSubscribe()}
-        disabled={busy || status === "insecure"}
-        style={{
-          width: "100%",
-          marginTop: 12,
-          border: 0,
-          borderRadius: 999,
-          background: status === "insecure" ? "#9CA3AF" : "#2E7D32",
-          color: "#fff",
-          cursor: busy || status === "insecure" ? "not-allowed" : "pointer",
-          fontSize: 14,
-          fontWeight: 700,
-          padding: "12px 16px",
-        }}
+        disabled={buttonDisabled}
+        style={buttonStyle}
       >
-        {busy ? LABEL_ENABLING : LABEL_ENABLE}
+        {buttonText}
       </button>
+      ) : null}
     </div>
   );
 }
