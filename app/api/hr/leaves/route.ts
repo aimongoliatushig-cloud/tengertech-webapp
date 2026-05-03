@@ -55,6 +55,9 @@ export async function POST(request: Request) {
 
     if (!input.employeeId) return jsonError("Ажилтан сонгоно уу.", 400);
     if (!input.dateFrom || !input.dateTo) return jsonError("Эхлэх болон дуусах огноо заавал бөглөнө үү.", 400);
+    if (input.dateTo < input.dateFrom) {
+      return jsonError("Дуусах огноо эхлэх огнооноос өмнө байж болохгүй.", 400);
+    }
 
     return Response.json({ leave: await createLeave(session, input) }, { status: 201 });
   } catch (error) {

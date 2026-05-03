@@ -181,6 +181,16 @@ function statusTone(task: DashboardSnapshot["taskDirectory"][number], currentDat
   return "muted";
 }
 
+function projectTone(project: DashboardSnapshot["projects"][number]): StatusTone {
+  if (project.stageBucket === "review") {
+    return "attention";
+  }
+  if (project.stageBucket === "progress" || project.stageBucket === "done" || project.completion >= 100) {
+    return "good";
+  }
+  return "muted";
+}
+
 function ringStyle(value: number, color = "#2E7D32"): CSSProperties {
   const normalized = clampPercent(value);
 
@@ -393,6 +403,65 @@ function TaskCard({
           <div className="flex flex-wrap items-center justify-between gap-2 text-[0.72rem] font-semibold text-[#7A897E]">
             <span>Эхлэх: {task.scheduledDate || "-"}</span>
             <span>Дуусах: {task.deadline || "-"}</span>
+          </div>
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
+function ProjectCard({ project }: { project: DashboardSnapshot["projects"][number] }) {
+  const tone = projectTone(project);
+
+  return (
+    <Link href={project.href} className="group block">
+      <Card className="grid min-h-[156px] gap-3 p-3.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(27,73,38,0.11)]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="mb-2 flex items-center gap-2 text-[0.72rem] font-extrabold text-[#5E6E64]">
+              <span className={cn("h-2 w-2 rounded-full", STATUS_DOT[tone])} />
+              <span>{project.stageLabel}</span>
+            </div>
+            <h3 className="text-base font-extrabold leading-snug tracking-normal text-[#111B15]">
+              {project.name}
+            </h3>
+            <p className="mt-1 text-xs font-semibold leading-4 text-[#6B7280]">
+              Алба нэгж: {project.departmentName} · Менежер: {project.manager || "Бүртгэлгүй"}
+            </p>
+          </div>
+          <Badge tone={tone === "urgent" ? "red" : tone === "attention" ? "amber" : "green"}>
+            {project.stageLabel}
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-[var(--ds-radius-card)] bg-[#F2F8F2] p-2.5">
+              <span className="block text-xs font-semibold text-[#7A897E]">Ажилбар</span>
+              <strong className="mt-1.5 block text-xl tracking-normal text-[#111B15]">
+                {project.openTasks || 0}
+              </strong>
+            </div>
+            <div className="rounded-[var(--ds-radius-card)] bg-[#F2F8F2] p-2.5">
+              <span className="block text-xs font-semibold text-[#7A897E]">Гүйцэтгэл</span>
+              <strong className="mt-1.5 block text-xl tracking-normal text-[#111B15]">
+                {clampPercent(project.completion)}%
+              </strong>
+            </div>
+          </div>
+          <ProgressRing value={project.completion} />
+        </div>
+
+        <div className="grid gap-3">
+          <div className="h-1.5 overflow-hidden rounded-full bg-[#E6ECE7]">
+            <span
+              className="block h-full rounded-full bg-[#2E7D32]"
+              style={{ width: `${clampPercent(project.completion)}%` }}
+            />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[0.72rem] font-semibold text-[#7A897E]">
+            <span>Төрөл: {project.operationTypeLabel || "Ерөнхий"}</span>
+            <span>Дуусах: {project.deadline || "-"}</span>
           </div>
         </div>
       </Card>
@@ -848,11 +917,17 @@ export function DashboardView({
     todayAssignments,
   });
   const scopeLabel = departmentScopeName ?? model.scopeLabel;
-  const showFleetSummary =
+  const showFleetSummary = Boolean(
     !departmentScopeName ||
     departmentScopeName.includes("Авто") ||
     departmentScopeName.includes("Хог") ||
-    departmentScopeName.includes("хог");
+      departmentScopeName.includes("хог") ||
+      session.groupFlags?.mfoManager ||
+      session.groupFlags?.mfoDispatcher ||
+      session.groupFlags?.mfoInspector ||
+      session.groupFlags?.mfoDriver ||
+      session.groupFlags?.fleetRepairAny,
+  );
 
   const scopedTasks = workerMode
     ? snapshot.taskDirectory.filter((task) => {
@@ -867,12 +942,25 @@ export function DashboardView({
     : scopedTasks.length
       ? scopedTasks
       : snapshot.taskDirectory;
-  const totalTasks = workerMode ? dashboardTasks.length : dashboardTasks.length || snapshot.totalTasks || 0;
-  const completedTasks = dashboardTasks.filter((task) => task.statusKey === "verified").length;
-  const workingTasks = dashboardTasks.filter((task) => task.statusKey === "working").length;
-  const reviewTasks = dashboardTasks.filter((task) => task.statusKey === "review").length;
-  const plannedTasks = dashboardTasks.filter((task) => task.statusKey === "planned").length;
-  const overdueTasks = dashboardTasks.filter((task) => isOverdue(task, currentDateKey)).length;
+  const dashboardProjects = snapshot.projects.length ? snapshot.projects : [];
+  const totalTasks = workerMode
+    ? dashboardTasks.length
+    : dashboardProjects.length || snapshot.totalTasks || 0;
+  const completedTasks = workerMode
+    ? dashboardTasks.filter((task) => task.statusKey === "verified").length
+    : dashboardProjects.filter((project) => project.stageBucket === "done" || project.completion >= 100).length;
+  const workingTasks = workerMode
+    ? dashboardTasks.filter((task) => task.statusKey === "working").length
+    : dashboardProjects.filter((project) => project.stageBucket === "progress").length;
+  const reviewTasks = workerMode
+    ? dashboardTasks.filter((task) => task.statusKey === "review").length
+    : dashboardProjects.filter((project) => project.stageBucket === "review").length;
+  const plannedTasks = workerMode
+    ? dashboardTasks.filter((task) => task.statusKey === "planned").length
+    : dashboardProjects.filter((project) => project.stageBucket === "todo" || project.stageBucket === "unknown").length;
+  const overdueTasks = workerMode
+    ? dashboardTasks.filter((task) => isOverdue(task, currentDateKey)).length
+    : 0;
   const newIncomingTasks = dashboardTasks.filter((task) => isNewIncomingTask(task, currentDateKey)).length;
   const attentionCount = countNotificationTasks(dashboardTasks, currentDateKey);
   const notificationNote =
@@ -885,10 +973,18 @@ export function DashboardView({
     const score = { urgent: 4, attention: 3, good: 2, muted: 1 };
     return score[rightTone] - score[leftTone] || right.progress - left.progress;
   });
+  const sortedProjects = [...dashboardProjects].sort((left, right) => {
+    const leftTone = projectTone(left);
+    const rightTone = projectTone(right);
+    const score = { urgent: 4, attention: 3, good: 2, muted: 1 };
+    return score[rightTone] - score[leftTone] || right.completion - left.completion;
+  });
   const visibleTasks = sortedTasks.slice(0, 4);
+  const visibleProjects = sortedProjects.slice(0, 4);
+  const visibleWorkItems = workerMode ? visibleTasks.length : visibleProjects.length;
   const taskGridClassName = cn(
     dashboardStyles.taskListBody,
-    visibleTasks.length > 1 && "xl:grid-cols-2",
+    visibleWorkItems > 1 && "xl:grid-cols-2",
   );
 
   const statCards: DashboardStat[] = [
@@ -907,7 +1003,7 @@ export function DashboardView({
       value: String(plannedTasks),
       helper: "Эхлээгүй эсвэл хүлээгдэж буй",
       progress: percent(plannedTasks, totalTasks),
-      href: "/tasks?filter=planned",
+      href: workerMode ? "/tasks?filter=planned" : "/projects",
       icon: CalendarDays,
       tone: "good",
       short: "T",
@@ -917,7 +1013,7 @@ export function DashboardView({
       value: String(workingTasks),
       helper: "Яг одоо явагдаж буй",
       progress: percent(workingTasks, totalTasks),
-      href: "/tasks?filter=working",
+      href: workerMode ? "/tasks?filter=working" : "/projects",
       icon: Clock3,
       tone: "good",
       short: "G",
@@ -927,7 +1023,7 @@ export function DashboardView({
       value: String(reviewTasks),
       helper: "Баталгаажуулалт хүлээж буй",
       progress: percent(reviewTasks, totalTasks),
-      href: "/review",
+      href: workerMode ? "/review" : "/projects",
       icon: ShieldCheck,
       tone: "attention",
       short: "H",
@@ -935,9 +1031,9 @@ export function DashboardView({
     {
       label: "Хугацаа хэтэрсэн",
       value: String(overdueTasks),
-      helper: "Хугацаа өнгөрсөн ажилбар",
+      helper: workerMode ? "Хугацаа өнгөрсөн ажилбар" : "Хугацаа өнгөрсөн ажил",
       progress: percent(overdueTasks, totalTasks),
-      href: "/tasks?filter=overdue",
+      href: workerMode ? "/tasks?filter=overdue" : "/projects",
       icon: AlertTriangle,
       tone: overdueTasks ? "urgent" : "muted",
       short: "!",
@@ -947,7 +1043,7 @@ export function DashboardView({
       value: String(completedTasks),
       helper: "Бүрэн дууссан ажил",
       progress: percent(completedTasks, totalTasks),
-      href: "/reports",
+      href: workerMode ? "/reports" : "/projects",
       icon: CheckCircle2,
       tone: "good",
       short: "D",
@@ -968,6 +1064,7 @@ export function DashboardView({
             canViewHr={canViewHr}
             userName={session.name}
             roleLabel={roleLabel}
+            groupFlags={session.groupFlags}
             workerMode={workerMode}
             notificationCount={attentionCount}
             departmentScopeName={departmentScopeName}
@@ -1015,25 +1112,31 @@ export function DashboardView({
                     <CardDescription className={dashboardStyles.taskListKicker}>
                       Ажлын жагсаалт
                     </CardDescription>
-                    <CardTitle>Нийт ажил</CardTitle>
+                    <CardTitle>{workerMode ? "Миний ажилбар" : "Нийт ажил"}</CardTitle>
                     <CardDescription>
-                      {scopeLabel} · Сонгосон алба нэгжийн бүх ажлыг нэг дор харуулна
+                      {workerMode
+                        ? `${scopeLabel} · Танд оноогдсон ажилбаруудыг нэг дор харуулна`
+                        : `${scopeLabel} · Сонгосон алба нэгжийн үндсэн ажлуудыг нэг дор харуулна`}
                     </CardDescription>
                   </div>
                   <Link
-                    href="/tasks"
+                    href={workerMode ? "/tasks" : "/projects"}
                     className={dashboardStyles.taskListAction}
                   >
-                    Календар төлөвлөгөө
+                    {workerMode ? "Календар төлөвлөгөө" : "Ажлын жагсаалт"}
                     <ChevronRight className="h-4 w-4" />
                   </Link>
                 </CardHeader>
 
                 <div className={taskGridClassName}>
-                  {visibleTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} currentDateKey={currentDateKey} />
-                  ))}
-                  {!visibleTasks.length ? (
+                  {workerMode
+                    ? visibleTasks.map((task) => (
+                        <TaskCard key={task.id} task={task} currentDateKey={currentDateKey} />
+                      ))
+                    : visibleProjects.map((project) => (
+                        <ProjectCard key={project.id} project={project} />
+                      ))}
+                  {!visibleWorkItems ? (
                     <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>
                       <span className={dashboardStyles.taskListEmptyIcon}>
                         <ClipboardList />

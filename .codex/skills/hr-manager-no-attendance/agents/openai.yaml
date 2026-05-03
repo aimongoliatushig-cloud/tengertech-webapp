@@ -1,0 +1,4 @@
+interface:
+  display_name: "HR Manager No Attendance"
+  short_description: "Implement HR manager workflows without attendance data."
+  default_prompt: "Use this skill to implement the municipal HR manager module while excluding attendance, lateness, absence, check-in, and attendance KPI/reporting features."

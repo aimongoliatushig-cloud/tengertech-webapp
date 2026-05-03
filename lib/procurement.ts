@@ -53,6 +53,7 @@ export type ProcurementLine = {
   final_unit_price: number;
   final_subtotal: number;
   remark?: string | null;
+  images: ProcurementAttachment[];
 };
 
 export type ProcurementQuotation = {
@@ -112,8 +113,11 @@ export type ProcurementRequestSummary = {
   payment_status: ProcurementCodeLabel;
   receipt_status: ProcurementCodeLabel;
   is_over_threshold: boolean;
+  paid_amount?: number;
   payment_reference?: string | null;
+  payment_note?: string | null;
   payment_date?: string | null;
+  legal_state?: ProcurementCodeLabel;
   date_quotation_submitted?: string | null;
   date_director_decision?: string | null;
   date_order_issued?: string | null;
@@ -248,6 +252,17 @@ export function createEmptyProcurementDashboard(): ProcurementDashboard {
     project_progress: [],
     supplier_counts: [],
     items: [],
+  };
+}
+
+export function createFallbackProcurementMeta(taskId?: string, projectId?: string): ProcurementMeta {
+  return {
+    projects: projectId ? [{ id: Number(projectId), name: `Төсөл #${projectId}` }] : [],
+    tasks: taskId ? [{ id: Number(taskId), name: `Ажилбар #${taskId}`, project_id: Number(projectId || 0) }] : [],
+    departments: [],
+    storekeepers: [{ id: 0, name: "Odoo backend идэвхжсэний дараа сонгоно" }],
+    suppliers: [],
+    uoms: [],
   };
 }
 

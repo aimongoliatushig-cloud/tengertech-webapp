@@ -158,6 +158,7 @@ const LIST_FIELD_CANDIDATES = [
 
 const QUOTE_MODEL_CANDIDATES = [
   process.env.FLEET_REPAIR_QUOTE_MODEL,
+  "municipal.procurement.quote",
   "mfo.fleet.repair.quote",
   "fleet.repair.quote",
   "x_fleet_repair_quote",
@@ -171,6 +172,8 @@ const QUOTE_FIELD_CANDIDATES = [
   "amount",
   "amount_total",
   "total_amount",
+  "quotation_ref",
+  "notes",
   "contract_required",
   "requires_contract",
   "is_selected",

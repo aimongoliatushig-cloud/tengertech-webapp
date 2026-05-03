@@ -11,13 +11,23 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const login = String(formData.get("login") ?? "").trim();
   const password = String(formData.get("password") ?? "").trim();
+  const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  const loginIp =
+    forwardedFor ||
+    request.headers.get("x-real-ip")?.trim() ||
+    request.headers.get("cf-connecting-ip")?.trim() ||
+    "";
+  const userAgent = request.headers.get("user-agent")?.trim() || "";
 
   if (!login || !password) {
     return redirectTo(request, "/login?error=missing");
   }
 
   try {
-    const session = await signInWithOdooCredentials(login, password);
+    const session = await signInWithOdooCredentials(login, password, {
+      loginIp,
+      userAgent,
+    });
     if (!session) {
       return redirectTo(request, "/login?error=invalid");
     }

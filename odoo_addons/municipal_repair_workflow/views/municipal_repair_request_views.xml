@@ -91,11 +91,21 @@
                         </page>
                         <page string="Худалдан авалт">
                             <field name="procurement_request_id"/>
+                            <field name="selected_supplier_id" readonly="1"/>
                             <group>
                                 <field name="payment_state"/>
                                 <field name="contract_state"/>
                                 <field name="order_state"/>
                             </group>
+                            <field name="quote_line_ids">
+                                <list>
+                                    <field name="supplier_id"/>
+                                    <field name="quotation_ref"/>
+                                    <field name="amount_total"/>
+                                    <field name="contract_required"/>
+                                    <field name="is_selected"/>
+                                </list>
+                            </field>
                         </page>
                         <page string="Хавсралт">
                             <field name="photo_ids" widget="many2many_binary"/>

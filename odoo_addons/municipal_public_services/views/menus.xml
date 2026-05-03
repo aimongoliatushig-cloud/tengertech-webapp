@@ -16,7 +16,7 @@
               name="Dashboard"
               parent="municipal_core.menu_municipal_core_root"
               sequence="80"
-              groups="municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin,municipal_core.group_municipal_it"/>
+              groups="municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_municipal_dashboard_snapshot"
               name="Dashboard snapshot"
@@ -66,6 +66,18 @@
               action="action_report_repair"
               sequence="60"/>
 
+    <menuitem id="menu_report_procurement"
+              name="Санхүү / няравын тайлан"
+              parent="menu_municipal_operational_reports_root"
+              action="action_report_procurement"
+              sequence="65"/>
+
+    <menuitem id="menu_report_complaint"
+              name="Иргэдийн санал, гомдлын тайлан"
+              parent="menu_municipal_operational_reports_root"
+              action="action_report_complaint"
+              sequence="68"/>
+
     <menuitem id="menu_report_overdue_work"
               name="Хугацаа хэтэрсэн ажлын тайлан"
               parent="menu_municipal_operational_reports_root"
@@ -83,5 +95,5 @@
               parent="municipal_core.menu_municipal_settings_root"
               action="action_municipal_audit_log"
               sequence="80"
-              groups="municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin,municipal_core.group_municipal_it"/>
+              groups="municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
 </odoo>

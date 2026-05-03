@@ -132,6 +132,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               departmentScopeName={masterDepartmentName}
             />
@@ -140,7 +141,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
           <div className={styles.pageContent}>
             <WorkspaceHeader
               title={masterMode ? "Шинэ ажил" : "Ажил нэмэх"}
-              subtitle="Odoo руу шинэ ажил бүртгэх урсгал"
+              subtitle="Шинэ ажлын мэдээлэл, хугацаа, хавсралтыг бүртгэх урсгал"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
             />

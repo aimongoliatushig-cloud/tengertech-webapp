@@ -300,6 +300,14 @@
   margin-bottom: 12px;
 }
 
+.sectionHeader p {
+  margin: 0;
+  color: #66766b;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  text-align: right;
+}
+
 .sectionHeader span {
   display: inline-grid;
   min-width: 34px;
@@ -309,6 +317,141 @@
   background: rgba(218, 238, 219, 0.92);
   color: #2e7d32;
   font-weight: 850;
+}
+
+.manpowerPanel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.manpowerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.manpowerDepartment {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.manpowerHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.manpowerHeader h3 {
+  margin: 0;
+  color: #1f2b25;
+  font-size: 0.95rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.manpowerHeader span {
+  display: block;
+  margin-top: 3px;
+  color: #66766b;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.manpowerHeader strong {
+  color: #142017;
+  font-size: 1rem;
+}
+
+.manpowerTrack {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(46, 125, 50, 0.1);
+}
+
+.manpowerTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #2e7d32;
+}
+
+.manpowerEmployees {
+  display: grid;
+  gap: 6px;
+  max-height: 360px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.employeeRowLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid rgba(46, 125, 50, 0.09);
+  border-radius: 8px;
+  background: rgba(244, 250, 245, 0.82);
+  color: #1f2b25;
+  text-decoration: none;
+}
+
+.employeeRowLink:hover,
+.employeeRowLink:focus-visible {
+  border-color: rgba(46, 125, 50, 0.34);
+  background: rgba(218, 238, 219, 0.76);
+  outline: none;
+}
+
+.employeeRowLink span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.employeeRowLink strong,
+.employeeRowLink small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.employeeRowLink strong {
+  font-size: 0.82rem;
+}
+
+.employeeRowLink small {
+  color: #66766b;
+  font-size: 0.74rem;
+}
+
+.employeeRowLink em {
+  flex: 0 0 auto;
+  max-width: 118px;
+  overflow: hidden;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(46, 125, 50, 0.11);
+  color: #2e7d32;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .twoColumn {
@@ -511,11 +654,21 @@
   .toolbar,
   .formGrid,
   .formGridTwo,
+  .manpowerGrid,
   .detailGrid,
   .checklist,
   .hrTabs,
   .departmentGrid {
     grid-template-columns: 1fr;
+  }
+
+  .sectionHeader {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .sectionHeader p {
+    text-align: left;
   }
 
   .hrTabs {

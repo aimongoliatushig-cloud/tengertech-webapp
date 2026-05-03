@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_municipal_green_location_list" model="ir.ui.view">
+        <field name="name">municipal.green.location.list</field>
+        <field name="model">municipal.green.location</field>
+        <field name="arch" type="xml">
+            <list string="Ногоон байгууламжийн байршил">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="location_type"/>
+                <field name="department_id"/>
+                <field name="responsible_employee_id"/>
+                <field name="district"/>
+                <field name="khoroo"/>
+                <field name="area_size"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_green_location_form" model="ir.ui.view">
+        <field name="name">municipal.green.location.form</field>
+        <field name="model">municipal.green.location</field>
+        <field name="arch" type="xml">
+            <form string="Ногоон байгууламжийн байршил">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="location_type"/>
+                            <field name="department_id"/>
+                            <field name="responsible_employee_id"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="district"/>
+                            <field name="khoroo"/>
+                            <field name="address"/>
+                            <field name="gps_latitude"/>
+                            <field name="gps_longitude"/>
+                            <field name="area_size"/>
+                            <field name="area_unit"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Ургамлын бүртгэл">
+                            <field name="asset_ids" context="{'default_location_id': id}">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="asset_type"/>
+                                    <field name="species"/>
+                                    <field name="quantity"/>
+                                    <field name="unit"/>
+                                    <field name="condition"/>
+                                    <field name="responsible_employee_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Арчилгааны ажил">
+                            <field name="green_activity_ids" context="{'default_location_id': id}">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="activity_type"/>
+                                    <field name="assigned_employee_id"/>
+                                    <field name="planned_date"/>
+                                    <field name="actual_quantity"/>
+                                    <field name="unit"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Зураг">
+                            <field name="photo_ids" widget="many2many_binary"/>
+                        </page>
+                        <page string="Тайлбар">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_municipal_green_location_search" model="ir.ui.view">
+        <field name="name">municipal.green.location.search</field>
+        <field name="model">municipal.green.location</field>
+        <field name="arch" type="xml">
+            <search string="Ногоон байгууламжийн байршил">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="department_id"/>
+                <field name="district"/>
+                <field name="khoroo"/>
+                <filter name="active" string="Идэвхтэй" domain="[('active', '=', True)]"/>
+                <group>
+                    <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
+                    <filter name="group_type" string="Байршлын төрөл" context="{'group_by': 'location_type'}"/>
+                    <filter name="group_district" string="Дүүрэг" context="{'group_by': 'district'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_municipal_green_asset_list" model="ir.ui.view">
+        <field name="name">municipal.green.asset.list</field>
+        <field name="model">municipal.green.asset</field>
+        <field name="arch" type="xml">
+            <list string="Ургамлын бүртгэл" decoration-danger="condition in ('damaged', 'dead')" decoration-warning="condition == 'needs_care'" decoration-muted="not active">
+                <field name="name"/>
+                <field name="location_id"/>
+                <field name="department_id"/>
+                <field name="asset_type"/>
+                <field name="species"/>
+                <field name="quantity"/>
+                <field name="unit"/>
+                <field name="condition"/>
+                <field name="responsible_employee_id"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_green_asset_form" model="ir.ui.view">
+        <field name="name">municipal.green.asset.form</field>
+        <field name="model">municipal.green.asset</field>
+        <field name="arch" type="xml">
+            <form string="Ургамлын бүртгэл">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="location_id"/>
+                            <field name="department_id" readonly="1"/>
+                            <field name="asset_type"/>
+                            <field name="species"/>
+                            <field name="responsible_employee_id"/>
+                        </group>
+                        <group>
+                            <field name="quantity"/>
+                            <field name="unit"/>
+                            <field name="planted_date"/>
+                            <field name="condition"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Зураг">
+                            <field name="photo_ids" widget="many2many_binary"/>
+                        </page>
+                        <page string="Арчилгааны түүх">
+                            <field name="activity_ids" context="{'default_asset_id': id, 'default_location_id': location_id}">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="activity_type"/>
+                                    <field name="planned_date"/>
+                                    <field name="actual_quantity"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Тайлбар">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_municipal_green_asset_search" model="ir.ui.view">
+        <field name="name">municipal.green.asset.search</field>
+        <field name="model">municipal.green.asset</field>
+        <field name="arch" type="xml">
+            <search string="Ургамлын бүртгэл">
+                <field name="name"/>
+                <field name="location_id"/>
+                <field name="department_id"/>
+                <field name="asset_type"/>
+                <field name="condition"/>
+                <filter name="needs_care" string="Арчилгаа шаардлагатай" domain="[('condition', '=', 'needs_care')]"/>
+                <filter name="damaged" string="Гэмтсэн" domain="[('condition', 'in', ['damaged', 'dead'])]"/>
+                <group>
+                    <filter name="group_location" string="Байршил" context="{'group_by': 'location_id'}"/>
+                    <filter name="group_type" string="Төрөл" context="{'group_by': 'asset_type'}"/>
+                    <filter name="group_condition" string="Төлөв" context="{'group_by': 'condition'}"/>
+                    <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_municipal_green_activity_list" model="ir.ui.view">
+        <field name="name">municipal.green.activity.list</field>
+        <field name="model">municipal.green.activity</field>
+        <field name="arch" type="xml">
+            <list string="Ногоон байгууламжийн ажил" decoration-danger="state == 'returned'" decoration-success="state in ('approved', 'done')" decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="activity_type"/>
+                <field name="location_id"/>
+                <field name="asset_id"/>
+                <field name="department_id"/>
+                <field name="assigned_employee_id"/>
+                <field name="reviewer_id"/>
+                <field name="planned_date"/>
+                <field name="actual_quantity"/>
+                <field name="unit"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_green_activity_form" model="ir.ui.view">
+        <field name="name">municipal.green.activity.form</field>
+        <field name="model">municipal.green.activity</field>
+        <field name="arch" type="xml">
+            <form string="Ногоон байгууламжийн ажил">
+                <header>
+                    <button name="action_plan" string="Төлөвлөх" type="object" class="btn-primary" invisible="state != 'draft'"/>
+                    <button name="action_assign" string="Оноох" type="object" class="btn-primary" invisible="state not in ('draft', 'planned')"/>
+                    <button name="action_start" string="Эхлүүлэх" type="object" class="btn-primary" invisible="state != 'assigned'"/>
+                    <button name="action_submit" string="Тайлан илгээх" type="object" invisible="state not in ('assigned', 'in_progress', 'returned')"/>
+                    <button name="action_review" string="Хяналтад авах" type="object" invisible="state != 'submitted'"/>
+                    <button name="action_return" string="Буцаах" type="object" invisible="state not in ('submitted', 'under_review')"/>
+                    <button name="action_approve" string="Батлах" type="object" class="btn-primary" invisible="state != 'under_review'"/>
+                    <button name="action_done" string="Дуусгах" type="object" class="btn-primary" invisible="state != 'approved'"/>
+                    <button name="action_cancel" string="Цуцлах" type="object" invisible="state in ('done', 'cancelled')"/>
+                    <button name="action_reset_to_draft" string="Ноорог болгох" type="object" invisible="state == 'draft'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,planned,assigned,in_progress,submitted,under_review,returned,approved,done"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="activity_type"/>
+                            <field name="location_id"/>
+                            <field name="asset_id"/>
+                            <field name="department_id" readonly="1"/>
+                            <field name="work_id"/>
+                        </group>
+                        <group>
+                            <field name="assigned_user_id"/>
+                            <field name="assigned_employee_id"/>
+                            <field name="reviewer_id"/>
+                            <field name="planned_date"/>
+                            <field name="start_datetime"/>
+                            <field name="done_datetime"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="planned_quantity"/>
+                            <field name="actual_quantity"/>
+                            <field name="unit"/>
+                        </group>
+                        <group>
+                            <field name="requires_photo"/>
+                            <field name="approved_by" readonly="1"/>
+                            <field name="rejected_by" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Тайлбар">
+                            <field name="description"/>
+                        </page>
+                        <page string="Гүйцэтгэлийн тайлан">
+                            <field name="report_note"/>
+                            <field name="photo_ids" widget="many2many_binary"/>
+                        </page>
+                        <page string="Буцаалт">
+                            <field name="rejection_reason"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_municipal_green_activity_search" model="ir.ui.view">
+        <field name="name">municipal.green.activity.search</field>
+        <field name="model">municipal.green.activity</field>
+        <field name="arch" type="xml">
+            <search string="Ногоон байгууламжийн ажил">
+                <field name="name"/>
+                <field name="location_id"/>
+                <field name="asset_id"/>
+                <field name="department_id"/>
+                <field name="assigned_employee_id"/>
+                <filter name="my_work" string="Миний ажил" domain="['|', ('assigned_user_id', '=', uid), ('assigned_employee_id.user_id', '=', uid)]"/>
+                <filter name="under_review" string="Хяналтад" domain="[('state', '=', 'under_review')]"/>
+                <filter name="returned" string="Буцаагдсан" domain="[('state', '=', 'returned')]"/>
+                <group>
+                    <filter name="group_state" string="Төлөв" context="{'group_by': 'state'}"/>
+                    <filter name="group_type" string="Ажлын төрөл" context="{'group_by': 'activity_type'}"/>
+                    <filter name="group_location" string="Байршил" context="{'group_by': 'location_id'}"/>
+                    <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_municipal_green_location" model="ir.actions.act_window">
+        <field name="name">Ногоон байгууламжийн байршил</field>
+        <field name="res_model">municipal.green.location</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_municipal_green_location_search"/>
+    </record>
+
+    <record id="action_municipal_green_asset" model="ir.actions.act_window">
+        <field name="name">Ургамлын бүртгэл</field>
+        <field name="res_model">municipal.green.asset</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_municipal_green_asset_search"/>
+    </record>
+
+    <record id="action_municipal_green_activity" model="ir.actions.act_window">
+        <field name="name">Ногоон байгууламжийн ажил</field>
+        <field name="res_model">municipal.green.activity</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_municipal_green_activity_search"/>
+    </record>
+
+    <record id="action_municipal_green_my_activity" model="ir.actions.act_window">
+        <field name="name">Миний ногоон ажил</field>
+        <field name="res_model">municipal.green.activity</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">['|', ('assigned_user_id', '=', uid), ('assigned_employee_id.user_id', '=', uid)]</field>
+        <field name="search_view_id" ref="view_municipal_green_activity_search"/>
+    </record>
+
+    <record id="action_municipal_green_under_review" model="ir.actions.act_window">
+        <field name="name">Хяналтад байгаа ногоон ажил</field>
+        <field name="res_model">municipal.green.activity</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'under_review')]</field>
+        <field name="search_view_id" ref="view_municipal_green_activity_search"/>
+    </record>
+</odoo>

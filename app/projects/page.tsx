@@ -677,6 +677,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
               notificationCount={notificationCount}

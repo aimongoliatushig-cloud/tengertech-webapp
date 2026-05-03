@@ -694,6 +694,7 @@ export type FleetVehicleBoardItem = {
   weightReports: FleetVehicleDailyWeightItem[];
   fuelReports: FleetVehicleDailyFuelItem[];
   procurementLinks: FleetVehicleProcurementLink[];
+  isArchived: boolean;
   crewAssignments: FleetVehicleCrewAssignment[];
 };
 
@@ -742,6 +743,43 @@ const FLEET_REPAIR_GROUP_XML_IDS = {
 
 const OPS_PROFILE_GROUP_XML_IDS = {
   storekeeper: "ops_people_registry.group_ops_profile_storekeeper",
+} as const;
+
+const MUNICIPAL_CORE_GROUP_XML_IDS = {
+  worker: "municipal_core.group_municipal_worker",
+  master: "municipal_core.group_municipal_master",
+  inspector: "municipal_core.group_municipal_inspector",
+  departmentHead: "municipal_core.group_municipal_department_head",
+  manager: "municipal_core.group_municipal_manager",
+  director: "municipal_core.group_municipal_director",
+  hr: "municipal_core.group_municipal_hr",
+  it: "municipal_core.group_municipal_it",
+  hse: "municipal_core.group_municipal_hse",
+  publicRelations: "municipal_core.group_municipal_public_relations",
+} as const;
+
+const MFO_GROUP_XML_IDS = {
+  manager: "municipal_field_ops.group_mfo_manager",
+  dispatcher: "municipal_field_ops.group_mfo_dispatcher",
+  inspector: "municipal_field_ops.group_mfo_inspector",
+  mobile: "municipal_field_ops.group_mfo_mobile_user",
+  driver: "municipal_field_ops.group_mfo_driver",
+  loader: "municipal_field_ops.group_mfo_loader",
+} as const;
+
+const ENVIRONMENT_GROUP_XML_IDS = {
+  worker: "municipal_environment_services.group_environment_worker",
+  greenEngineer: "municipal_environment_services.group_green_engineer",
+  greenMaster: "municipal_environment_services.group_green_master",
+  improvementWelder: "municipal_environment_services.group_improvement_welder",
+  improvementFieldEngineer: "municipal_environment_services.group_improvement_field_engineer",
+  improvementEngineer: "municipal_environment_services.group_improvement_engineer",
+  improvementManager: "municipal_environment_services.group_improvement_manager",
+  environmentManager: "municipal_environment_services.group_environment_manager",
+} as const;
+
+const PUBLIC_SERVICE_GROUP_XML_IDS = {
+  complaintManager: "municipal_public_services.group_municipal_complaint_manager",
 } as const;
 
 type OdooAuthSession = {
@@ -1466,8 +1504,13 @@ function resolveHrEmploymentStatus(employee: OdooEmployeeRecord) {
   const labels: Record<string, string> = {
     active: "Идэвхтэй",
     probation: "Туршилт",
+    leave: "Чөлөөтэй",
+    sick: "Өвчтэй",
+    business_trip: "Томилолттой",
     suspended: "Түдгэлзсэн",
     terminated: "Чөлөөлөгдсөн",
+    resigned: "Ажлаас гарсан",
+    archived: "Архивласан",
     rehired: "Дахин авсан",
   };
 
@@ -2152,10 +2195,20 @@ export async function authenticateOdooUser(
 
   const [
     systemAdmin,
+    municipalWorker,
+    municipalMaster,
+    municipalInspector,
+    municipalDepartmentHead,
+    municipalManager,
+    municipalDirector,
+    municipalHr,
+    municipalIt,
     mfoManager,
     mfoDispatcher,
     mfoInspector,
     mfoMobile,
+    mfoDriver,
+    mfoLoader,
     fleetRepairMechanic,
     fleetRepairTeamLeader,
     fleetRepairAccounting,
@@ -2168,12 +2221,33 @@ export async function authenticateOdooUser(
     opsStorekeeper,
     hrUser,
     hrManager,
+    municipalHse,
+    municipalPublicRelations,
+    complaintManager,
+    environmentWorker,
+    greenEngineer,
+    greenMaster,
+    improvementWelder,
+    improvementFieldEngineer,
+    improvementEngineer,
+    improvementManager,
+    environmentManager,
   ] = await Promise.all([
     hasGroup("base.group_system"),
-    hasGroup("municipal_field_ops.group_mfo_manager"),
-    hasGroup("municipal_field_ops.group_mfo_dispatcher"),
-    hasGroup("municipal_field_ops.group_mfo_inspector"),
-    hasGroup("municipal_field_ops.group_mfo_mobile_user"),
+    hasGroup(MUNICIPAL_CORE_GROUP_XML_IDS.worker),
+    hasGroup(MUNICIPAL_CORE_GROUP_XML_IDS.master),
+    hasGroup(MUNICIPAL_CORE_GROUP_XML_IDS.inspector),
+    hasGroup(MUNICIPAL_CORE_GROUP_XML_IDS.departmentHead),
+    hasGroup(MUNICIPAL_CORE_GROUP_XML_IDS.manager),
+    hasGroup(MUNICIPAL_CORE_GROUP_XML_IDS.director),
+    hasGroup(MUNICIPAL_CORE_GROUP_XML_IDS.hr),
+    hasGroup(MUNICIPAL_CORE_GROUP_XML_IDS.it),
+    hasGroup(MFO_GROUP_XML_IDS.manager),
+    hasGroup(MFO_GROUP_XML_IDS.dispatcher),
+    hasGroup(MFO_GROUP_XML_IDS.inspector),
+    hasGroup(MFO_GROUP_XML_IDS.mobile),
+    hasGroup(MFO_GROUP_XML_IDS.driver),
+    hasGroup(MFO_GROUP_XML_IDS.loader),
     hasGroup(FLEET_REPAIR_GROUP_XML_IDS.mechanic),
     hasGroup(FLEET_REPAIR_GROUP_XML_IDS.teamLeader),
     hasGroup(FLEET_REPAIR_GROUP_XML_IDS.accounting),
@@ -2186,7 +2260,19 @@ export async function authenticateOdooUser(
     hasGroup(OPS_PROFILE_GROUP_XML_IDS.storekeeper),
     hasGroup("hr.group_hr_user"),
     hasGroup("hr.group_hr_manager"),
+    hasGroup(MUNICIPAL_CORE_GROUP_XML_IDS.hse),
+    hasGroup(MUNICIPAL_CORE_GROUP_XML_IDS.publicRelations),
+    hasGroup(PUBLIC_SERVICE_GROUP_XML_IDS.complaintManager),
+    hasGroup(ENVIRONMENT_GROUP_XML_IDS.worker),
+    hasGroup(ENVIRONMENT_GROUP_XML_IDS.greenEngineer),
+    hasGroup(ENVIRONMENT_GROUP_XML_IDS.greenMaster),
+    hasGroup(ENVIRONMENT_GROUP_XML_IDS.improvementWelder),
+    hasGroup(ENVIRONMENT_GROUP_XML_IDS.improvementFieldEngineer),
+    hasGroup(ENVIRONMENT_GROUP_XML_IDS.improvementEngineer),
+    hasGroup(ENVIRONMENT_GROUP_XML_IDS.improvementManager),
+    hasGroup(ENVIRONMENT_GROUP_XML_IDS.environmentManager),
   ]);
+  const hasMfoMobileAccess = mfoMobile || mfoDriver || mfoLoader;
   const canPurchaseFleetRepair = fleetRepairPurchaser || opsStorekeeper;
   const fleetRepairAny =
     fleetRepairMechanic ||
@@ -2214,10 +2300,20 @@ export async function authenticateOdooUser(
       login: user.login,
       role,
       groupFlags: {
+        municipalWorker,
+        municipalMaster,
+        municipalInspector,
+        municipalDepartmentHead,
+        municipalManager,
+        municipalDirector,
+        municipalHr,
+        municipalIt,
         mfoManager,
         mfoDispatcher,
         mfoInspector,
-        mfoMobile,
+        mfoMobile: hasMfoMobileAccess,
+        mfoDriver,
+        mfoLoader,
         fleetRepairAny,
         fleetRepairMechanic,
         fleetRepairTeamLeader,
@@ -2231,6 +2327,17 @@ export async function authenticateOdooUser(
         opsStorekeeper,
         hrUser,
         hrManager,
+        municipalHse,
+        municipalPublicRelations,
+        complaintManager,
+        environmentWorker,
+        greenEngineer,
+        greenMaster,
+        improvementWelder,
+        improvementFieldEngineer,
+        improvementEngineer,
+        improvementManager,
+        environmentManager,
       },
     },
   };
@@ -3190,10 +3297,12 @@ export async function loadFleetVehicleBoard(
         operationalStatusKey === "broken" ||
         isRepairStatusLabel(stateLabel) ||
         isRepairStatusLabel(latestRepairState);
+      const isArchived = vehicle.active === false;
       const isOperational =
-        Boolean(vehicle.mfo_active_for_ops) ||
-        operationalStatusKey === "available" ||
-        operationalStatusKey === "assigned";
+        !isArchived &&
+        (Boolean(vehicle.mfo_active_for_ops) ||
+          operationalStatusKey === "available" ||
+          operationalStatusKey === "assigned");
 
       return {
         id: vehicle.id,
@@ -3271,16 +3380,14 @@ export async function loadFleetVehicleBoard(
         weightReports: latestItems(weightReportResult.byVehicle.get(vehicle.id), 10),
         fuelReports: latestItems(fuelReportResult.byVehicle.get(vehicle.id), 10),
         procurementLinks: latestItems(procurementLinksByVehicle.get(vehicle.id), 8),
+        isArchived,
         crewAssignments: crewAssignmentsByVehicle.get(vehicle.id) ?? [],
       } satisfies FleetVehicleBoardItem;
     })
+    .filter((vehicle) => !vehicle.isArchived && (vehicle.isOperational || vehicle.isRepair))
     .sort((left, right) => left.plate.localeCompare(right.plate, "mn"));
 
-  const activeVehicles = allVehicles.filter(
-    (vehicle) =>
-      vehicle.isOperational &&
-      !vehicle.isRepair,
-  );
+  const activeVehicles = allVehicles.filter((vehicle) => vehicle.isOperational && !vehicle.isRepair);
   const repairVehicles = allVehicles.filter((vehicle) => vehicle.isRepair);
   const todayKey = getTodayDateKey();
   const todayWeightKg = weightReportResult.records
@@ -4237,12 +4344,16 @@ function buildFallbackSnapshot(): DashboardSnapshot {
 
 export async function loadMunicipalSnapshot(
   connectionOverrides: Partial<OdooConnection> = {},
+  options: { allowFallback?: boolean } = {},
 ) {
   const connection = createOdooConnection(connectionOverrides);
 
   try {
     return await fetchLiveSnapshot(connection);
   } catch (error) {
+    if (options.allowFallback === false) {
+      throw error;
+    }
     console.warn("Falling back to demo dashboard snapshot:", error);
     return buildFallbackSnapshot();
   }

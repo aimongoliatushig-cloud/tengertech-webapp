@@ -41,6 +41,33 @@ type OdooDictionaryRecord = {
   manager_id?: OdooRelation;
 };
 
+type HrEmployeeDirectoryApiRecord = {
+  id: number;
+  name?: string;
+  active?: boolean;
+  departmentName?: string;
+  jobTitle?: string;
+  workPhone?: string;
+  mobilePhone?: string;
+  workEmail?: string;
+  userName?: string;
+  photo?: string | false;
+  photoUrl?: string;
+  employeeCode?: string;
+  gradeRank?: string;
+  statusKey?: string;
+  statusLabel?: string;
+  managerName?: string;
+  startDate?: string;
+  contractEndDate?: string;
+  genderLabel?: string;
+  educationLevel?: string;
+  missingDocumentCount?: number;
+  kpiScore?: number;
+  taskCompletionPercent?: number;
+  disciplineScore?: number;
+};
+
 export type HrOption = {
   id: number;
   name: string;
@@ -51,7 +78,15 @@ export type HrStats = {
   activeEmployees: number;
   leaveToday: number;
   sickToday: number;
+  businessTripToday: number;
+  newEmployees: number;
+  resignedEmployees: number;
   archivedEmployees: number;
+  activeDiscipline: number;
+  completedDiscipline: number;
+  transfers: number;
+  expiringContracts: number;
+  missingAttachmentEmployees: number;
   pendingClearance: number;
 };
 
@@ -73,6 +108,8 @@ export type HrEmployeeCreateInput = {
   lastName?: string;
   firstName: string;
   registerNumber?: string;
+  gender?: string;
+  birthDate?: string;
   phone?: string;
   email?: string;
   departmentId?: number;
@@ -85,6 +122,8 @@ export type HrEmployeeCreateInput = {
   fieldRole?: string;
   workLocation?: string;
   emergencyContact?: string;
+  emergencyPhone?: string;
+  homeAddress?: string;
   note?: string;
 };
 
@@ -120,6 +159,19 @@ function containsHrText(value: unknown) {
   return HR_TEXT_TOKENS.some((token) => normalized.includes(token));
 }
 
+function containsAnyText(value: unknown, tokens: string[]) {
+  const normalized = normalizeText(value);
+  return tokens.some((token) => normalized.includes(token));
+}
+
+function isSickLeaveText(value: unknown) {
+  return containsAnyText(value, ["өвч", "эмнэл", "sick", "medical", "ill"]);
+}
+
+function isBusinessTripText(value: unknown) {
+  return containsAnyText(value, ["томилолт", "business trip", "trip"]);
+}
+
 function isHrRoleKey(value: unknown) {
   return HR_ROLE_KEYS.has(normalizeText(value));
 }
@@ -128,6 +180,38 @@ function getConnection(session: AppSession) {
   return {
     login: session.login,
     password: session.password,
+  };
+}
+
+function imageDataUrlFromBase64(value?: string | false) {
+  return value ? `data:image/png;base64,${value}` : "";
+}
+
+function mapHrEmployeeDirectoryApiRecord(record: HrEmployeeDirectoryApiRecord): HrEmployeeDirectoryItem {
+  return {
+    id: record.id,
+    name: record.name || `Ажилтан #${record.id}`,
+    active: record.active !== false,
+    departmentName: record.departmentName || "Хэлтэсгүй",
+    jobTitle: record.jobTitle || "Албан тушаал бүртгээгүй",
+    workPhone: record.workPhone || "",
+    mobilePhone: record.mobilePhone || "",
+    workEmail: record.workEmail || "",
+    userName: record.userName || "",
+    photoUrl: record.photoUrl || imageDataUrlFromBase64(record.photo),
+    employeeCode: record.employeeCode || `EMP-${String(record.id).padStart(5, "0")}`,
+    gradeRank: record.gradeRank || "",
+    statusKey: record.statusKey || (record.active === false ? "archived" : "active"),
+    statusLabel: record.statusLabel || (record.active === false ? "Архивласан" : "Идэвхтэй"),
+    managerName: record.managerName || "",
+    startDate: record.startDate || "",
+    contractEndDate: record.contractEndDate || "",
+    genderLabel: record.genderLabel || "",
+    educationLevel: record.educationLevel || "",
+    missingDocumentCount: Number(record.missingDocumentCount || 0),
+    kpiScore: Number(record.kpiScore || 0),
+    taskCompletionPercent: Number(record.taskCompletionPercent || 0),
+    disciplineScore: Number(record.disciplineScore || 0),
   };
 }
 
@@ -297,7 +381,26 @@ export async function requireHrAccess(session: AppSession) {
 }
 
 export async function getEmployees(session: AppSession) {
-  return loadHrEmployeeDirectory(getConnection(session));
+  const connection = getConnection(session);
+  try {
+    const records = await executeOdooKw<HrEmployeeDirectoryApiRecord[]>(
+      "hr.employee",
+      "get_hr_custom_mn_employee_directory",
+      [],
+      {},
+      connection,
+    );
+    if (Array.isArray(records) && records.length > 0) {
+      return records.map(mapHrEmployeeDirectoryApiRecord).sort((left, right) => {
+        const departmentOrder = left.departmentName.localeCompare(right.departmentName, "mn");
+        return departmentOrder || left.name.localeCompare(right.name, "mn");
+      });
+    }
+  } catch (error) {
+    console.warn("HR custom employee directory API unavailable, falling back to search_read:", error);
+  }
+
+  return loadHrEmployeeDirectory(connection);
 }
 
 export async function getEmployee(session: AppSession, id: number) {
@@ -377,9 +480,15 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
     "parent_id",
     "contract_date_start",
     "identification_id",
+    "x_mn_registration_number",
+    "x_mn_employment_status",
+    "birthday",
+    "sex",
     "active",
     "notes",
     "private_street",
+    "emergency_contact",
+    "emergency_phone",
   ];
   const fields = new Set(await getAvailableFields("hr.employee", desiredFields, session));
   const name = [data.lastName, data.firstName].map((value) => value?.trim()).filter(Boolean).join(" ");
@@ -390,6 +499,7 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
     data.fieldRole ? `Талбайн үүрэг: ${data.fieldRole}` : "",
     data.workLocation ? `Ажиллах байршил: ${data.workLocation}` : "",
     data.emergencyContact ? `Яаралтай холбоо: ${data.emergencyContact}` : "",
+    data.emergencyPhone ? `Яаралтай утас: ${data.emergencyPhone}` : "",
   ].filter(Boolean);
   const values: Record<string, unknown> = {};
 
@@ -403,9 +513,15 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
   if (fields.has("parent_id") && data.managerId) values.parent_id = data.managerId;
   if (fields.has("contract_date_start")) values.contract_date_start = data.startDate || false;
   if (fields.has("identification_id")) values.identification_id = data.registerNumber || false;
+  if (fields.has("x_mn_registration_number")) values.x_mn_registration_number = data.registerNumber || false;
+  if (fields.has("x_mn_employment_status")) values.x_mn_employment_status = "active";
+  if (fields.has("birthday")) values.birthday = data.birthDate || false;
+  if (fields.has("sex")) values.sex = data.gender || false;
   if (fields.has("active")) values.active = true;
   if (fields.has("notes")) values.notes = noteParts.join("\n") || false;
-  if (fields.has("private_street")) values.private_street = data.workLocation || false;
+  if (fields.has("private_street")) values.private_street = data.homeAddress || data.workLocation || false;
+  if (fields.has("emergency_contact")) values.emergency_contact = data.emergencyContact || false;
+  if (fields.has("emergency_phone")) values.emergency_phone = data.emergencyPhone || false;
 
   const createdId = await executeOdooKw<number>(
     "hr.employee",
@@ -571,24 +687,62 @@ export async function createLeave(session: AppSession, data: HrLeaveCreateInput)
 }
 
 export async function getHrStats(session: AppSession): Promise<HrStats> {
-  const [employees, leaves] = await Promise.all([getEmployees(session), getLeaves(session)]);
+  const [employees, leaves, activeDiscipline, completedDiscipline] = await Promise.all([
+    getEmployees(session),
+    getLeaves(session),
+    executeOdooKw<number>(
+      "municipal.discipline",
+      "search_count",
+      [[["state", "not in", ["cancelled", "archived", "approved"]]]],
+      {},
+      getConnection(session),
+    ).catch(() => 0),
+    executeOdooKw<number>(
+      "municipal.discipline",
+      "search_count",
+      [[["state", "in", ["approved", "archived"]]]],
+      {},
+      getConnection(session),
+    ).catch(() => 0),
+  ]);
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Ulaanbaatar",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+  const monthStart = today.slice(0, 8) + "01";
   const activeEmployees = employees.filter((employee) => employee.active);
-  const archivedEmployees = employees.filter((employee) => !employee.active);
+  const resignedEmployees = employees.filter((employee) => ["resigned", "terminated"].includes(employee.statusKey));
+  const archivedEmployees = employees.filter((employee) => !employee.active || employee.statusKey === "archived");
+  const newEmployees = employees.filter((employee) => employee.startDate && employee.startDate >= monthStart);
+  const expiringContracts = activeEmployees.filter((employee) => {
+    if (!employee.contractEndDate) return false;
+    const end = new Date(`${employee.contractEndDate}T00:00:00`);
+    const now = new Date(`${today}T00:00:00`);
+    if (Number.isNaN(end.getTime())) return false;
+    return end >= now && end.getTime() - now.getTime() <= 60 * 86_400_000;
+  });
+  const missingAttachmentEmployees = activeEmployees.filter((employee) => employee.missingDocumentCount > 0);
   const todayLeaves = leaves.filter((leave) => leave.dateFrom <= today && leave.dateTo >= today);
-  const sickToday = todayLeaves.filter((leave) => containsHrText(leave.typeName) || normalizeText(leave.typeName).includes("өвч"));
+  const sickToday = todayLeaves.filter((leave) => isSickLeaveText(leave.typeName));
+  const businessTripToday = todayLeaves.filter((leave) => isBusinessTripText(leave.typeName));
+  const leaveToday = todayLeaves.filter((leave) => !isSickLeaveText(leave.typeName) && !isBusinessTripText(leave.typeName));
 
   return {
     totalEmployees: employees.length,
     activeEmployees: activeEmployees.length,
-    leaveToday: todayLeaves.length,
+    leaveToday: leaveToday.length,
     sickToday: sickToday.length,
+    businessTripToday: businessTripToday.length,
+    newEmployees: newEmployees.length,
+    resignedEmployees: resignedEmployees.length,
     archivedEmployees: archivedEmployees.length,
+    activeDiscipline,
+    completedDiscipline,
+    transfers: 0,
+    expiringContracts: expiringContracts.length,
+    missingAttachmentEmployees: missingAttachmentEmployees.length,
     pendingClearance: 0,
   };
 }

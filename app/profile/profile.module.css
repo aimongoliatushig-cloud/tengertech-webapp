@@ -255,6 +255,56 @@
   font-weight: 700;
 }
 
+.sessionList {
+  display: grid;
+  gap: 12px;
+}
+
+.sessionCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 1.1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid rgba(74, 154, 93, 0.13);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.sessionCard > div:first-child {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sessionCard strong {
+  color: var(--ink-900);
+}
+
+.sessionCard small {
+  color: var(--ink-700);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.sessionMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sessionMetaGrid span {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: var(--ds-radius-control);
+  background: rgba(74, 154, 93, 0.08);
+}
+
+.sessionMetaGrid strong {
+  font-size: 0.88rem;
+}
+
 .emptyNote {
   margin: 0;
 }
@@ -459,6 +509,7 @@
 }
 
 .miniForm,
+.passwordForm,
 .lockedCard {
   display: grid;
   gap: 16px;
@@ -472,6 +523,7 @@
 }
 
 .miniForm h3,
+.passwordForm h3,
 .lockedCard h3 {
   margin: 8px 0 0;
   color: var(--ink-900);
@@ -481,6 +533,7 @@
 }
 
 .miniForm p,
+.passwordForm p,
 .lockedCard p {
   margin: 6px 0 0;
   color: var(--ink-700);
@@ -691,12 +744,14 @@
 
   .formGrid,
   .settingsHero,
-  .teamBoard {
+  .teamBoard,
+  .sessionCard {
     grid-template-columns: 1fr;
   }
 
   .settingsStats,
-  .settingsNav {
+  .settingsNav,
+  .sessionMetaGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -731,7 +786,8 @@
   .logoutCard,
   .twoColumnFields,
   .settingsStats,
-  .settingsNav {
+  .settingsNav,
+  .sessionMetaGrid {
     grid-template-columns: 1fr;
   }
 

@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <menuitem id="menu_hr_custom_mn_root"
-              name="HR удирдлага"
+              name="Хүний нөөц"
               parent="hr.menu_hr_root"
               sequence="1"
               groups="hr_custom_mn.group_hr_custom_mn_employee,hr_custom_mn.group_hr_custom_mn_manager,hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin"/>
 
     <menuitem id="menu_hr_custom_mn_dashboard"
-              name="Удирдлагын самбар"
+              name="Dashboard"
               parent="menu_hr_custom_mn_root"
               action="action_hr_custom_mn_dashboard"
               sequence="1"
               groups="hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin"/>
 
     <menuitem id="menu_hr_custom_mn_employee_master"
-              name="Ажилтны мастер"
+              name="Ажилтнууд"
               parent="menu_hr_custom_mn_root"
               action="hr.open_view_employee_list_my"
               sequence="5"/>
@@ -37,6 +37,13 @@
               action="hr_holidays.hr_leave_action_action_approve_department"
               sequence="25"
               groups="hr_custom_mn.group_hr_custom_mn_manager,hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin"/>
+
+    <menuitem id="menu_hr_custom_mn_employee_transfer"
+              name="Шилжилт хөдөлгөөн"
+              parent="menu_hr_custom_mn_root"
+              action="action_hr_custom_mn_employee_history"
+              sequence="28"
+              groups="hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin"/>
 
     <menuitem id="menu_hr_custom_mn_performance"
               name="Гүйцэтгэл"

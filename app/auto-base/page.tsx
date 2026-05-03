@@ -89,6 +89,7 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               notificationCount={notificationCount}
+              groupFlags={session.groupFlags}
             />
           </aside>
 

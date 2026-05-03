@@ -3,7 +3,7 @@
     <menuitem id="menu_municipal_core_root"
               name="Хот тохижилтын систем"
               sequence="15"
-              groups="municipal_core.group_municipal_worker,municipal_core.group_municipal_master,municipal_core.group_municipal_inspector,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_hr,municipal_core.group_municipal_admin,municipal_core.group_municipal_it"/>
+              groups="municipal_core.group_municipal_worker,municipal_core.group_municipal_master,municipal_core.group_municipal_inspector,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_hr,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_municipal_work_root"
               name="Ажил"
@@ -15,7 +15,7 @@
               parent="menu_municipal_work_root"
               action="action_municipal_work_all"
               sequence="10"
-              groups="municipal_core.group_municipal_master,municipal_core.group_municipal_inspector,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin,municipal_core.group_municipal_it"/>
+              groups="municipal_core.group_municipal_master,municipal_core.group_municipal_inspector,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
 
     <menuitem id="menu_municipal_work_my"
               name="Миний ажил"
@@ -64,7 +64,8 @@
               name="Ирцийн асуудал"
               parent="menu_municipal_hr_root"
               action="action_municipal_attendance_issue"
-              sequence="10"/>
+              sequence="10"
+              groups="base.group_no_one"/>
 
     <menuitem id="menu_municipal_discipline"
               name="Сахилгын бүртгэл"
@@ -88,25 +89,29 @@
               name="Өдрийн ирцийн тайлан"
               parent="menu_municipal_hr_reports_root"
               action="action_municipal_attendance_today_report"
-              sequence="10"/>
+              sequence="10"
+              groups="base.group_no_one"/>
 
     <menuitem id="menu_municipal_attendance_late_report"
               name="Хоцролтын тайлан"
               parent="menu_municipal_hr_reports_root"
               action="action_municipal_attendance_late_report"
-              sequence="20"/>
+              sequence="20"
+              groups="base.group_no_one"/>
 
     <menuitem id="menu_municipal_attendance_absence_report"
               name="Таслалтын тайлан"
               parent="menu_municipal_hr_reports_root"
               action="action_municipal_attendance_absence_report"
-              sequence="30"/>
+              sequence="30"
+              groups="base.group_no_one"/>
 
     <menuitem id="menu_municipal_attendance_repeated_report"
               name="Давтан зөрчилтэй ажилтны тайлан"
               parent="menu_municipal_hr_reports_root"
               action="action_municipal_attendance_repeated_report"
-              sequence="40"/>
+              sequence="40"
+              groups="base.group_no_one"/>
 
     <menuitem id="menu_municipal_discipline_report"
               name="Сахилгын тайлан"

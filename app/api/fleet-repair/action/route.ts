@@ -6,6 +6,7 @@ import {
   runFleetRepairAction,
   type FleetRepairPermissionKey,
 } from "@/lib/fleet-repair";
+import { notifyPushEvent } from "@/lib/push-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,24 @@ export async function POST(request: Request) {
       payload: collectPayload(formData),
       files: filesFrom(formData),
     });
+
+    if (action === "submit") {
+      await notifyPushEvent({
+        eventType: "vehicle_broken",
+        title: "Машины эвдрэл бүртгэгдлээ",
+        body: "Засварын шинэ хүсэлт ирлээ.",
+        targetUrl: `/fleet-repair/requests/${requestId}`,
+      }).catch((error) => console.warn("Repair submit push failed:", error));
+    }
+
+    if (action === "complete_repair") {
+      await notifyPushEvent({
+        eventType: "work_approved",
+        title: "Засвар дууслаа",
+        body: "Машины засварын хүсэлт дууссан төлөвт орлоо.",
+        targetUrl: `/fleet-repair/requests/${requestId}`,
+      }).catch((error) => console.warn("Repair completion push failed:", error));
+    }
 
     return Response.json({ ok: true });
   } catch (error) {

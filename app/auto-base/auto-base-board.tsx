@@ -51,6 +51,7 @@ type FleetVehicleBoardItem = {
   weightReports: FleetVehicleDailyWeightItem[];
   fuelReports: FleetVehicleDailyFuelItem[];
   procurementLinks: FleetVehicleProcurementLink[];
+  isArchived: boolean;
   crewAssignments: FleetVehicleCrewAssignment[];
 };
 

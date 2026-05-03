@@ -1,7 +1,13 @@
 import { ProcurementShell } from "@/app/procurement/_components/procurement-shell";
 import { createProcurementRequestAction } from "@/app/procurement/actions";
 import { requireSession } from "@/lib/auth";
-import { loadProcurementMe, loadProcurementMeta } from "@/lib/procurement";
+import {
+  createFallbackProcurementMeta,
+  createFallbackProcurementUser,
+  isProcurementSetupError,
+  loadProcurementMe,
+  loadProcurementMeta,
+} from "@/lib/procurement";
 
 import styles from "../procurement.module.css";
 
@@ -20,13 +26,32 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
   const params = (await searchParams) || {};
   const notice = getValue(params.notice);
   const error = getValue(params.error);
+  const selectedProjectId = getValue(params.project_id);
+  const selectedTaskId = getValue(params.task_id);
   const connectionOverrides = {
     login: session.login,
     password: session.password,
   };
-  const [procurementUser, meta] = await Promise.all([
-    loadProcurementMe(connectionOverrides),
-    loadProcurementMeta(connectionOverrides),
+  const [procurementUser, meta, setupWarning] = await Promise.all([
+    loadProcurementMe(connectionOverrides).catch((loadError) => {
+      if (!isProcurementSetupError(loadError)) {
+        throw loadError;
+      }
+      return createFallbackProcurementUser(session);
+    }),
+    loadProcurementMeta(connectionOverrides).catch((loadError) => {
+      if (!isProcurementSetupError(loadError)) {
+        throw loadError;
+      }
+      return createFallbackProcurementMeta(selectedTaskId, selectedProjectId);
+    }),
+    loadProcurementMe(connectionOverrides)
+      .then(() => "")
+      .catch((loadError) =>
+        isProcurementSetupError(loadError)
+          ? "Odoo дээр procurement API хараахан идэвхжээгүй байна. Хүсэлт үүсгэх form-ийг харуулж байгаа ч хадгалах бол Odoo module update шаардлагатай."
+          : "",
+      ),
   ]);
 
   return (
@@ -64,6 +89,7 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
 
       {notice ? <section className={`${styles.statusBanner} ${styles.noticeBanner}`}>{notice}</section> : null}
       {error ? <section className={`${styles.statusBanner} ${styles.errorBanner}`}>{error}</section> : null}
+      {setupWarning ? <section className={`${styles.statusBanner} ${styles.noticeBanner}`}>{setupWarning}</section> : null}
 
       {!procurementUser.flags.requester && !procurementUser.flags.admin ? (
         <section className={styles.cardSection}>
@@ -85,7 +111,7 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
               </label>
               <label className={styles.fieldLabel}>
                 Төсөл
-                <select name="project_id" defaultValue="">
+                <select name="project_id" defaultValue={selectedProjectId}>
                   <option value="">Сонгох</option>
                   {meta.projects.map((project) => (
                     <option key={project.id} value={project.id}>
@@ -96,7 +122,7 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
               </label>
               <label className={styles.fieldLabel}>
                 Ажилбар
-                <select name="task_id" defaultValue="">
+                <select name="task_id" defaultValue={selectedTaskId}>
                   <option value="">Сонгох</option>
                   {meta.tasks.map((task) => (
                     <option key={task.id} value={task.id}>
@@ -106,22 +132,11 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
                 </select>
               </label>
               <label className={styles.fieldLabel}>
-                Алба нэгж
-                <select name="department_id" defaultValue="">
-                  <option value="">Сонгох</option>
-                  {meta.departments.map((department) => (
-                    <option key={department.id} value={department.id}>
-                      {department.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.fieldLabel}>
                 Хариуцсан нярав
                 <select name="responsible_storekeeper_user_id" required defaultValue="">
                   <option value="">Сонгох</option>
                   {meta.storekeepers.map((storekeeper) => (
-                    <option key={storekeeper.id} value={storekeeper.id}>
+                    <option key={storekeeper.id} value={storekeeper.id || ""} disabled={!storekeeper.id}>
                       {storekeeper.name}
                     </option>
                   ))}
@@ -211,6 +226,10 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
                   <label>
                     Ойролцоох нэгж үнэ
                     <input type="number" step="0.01" min="0" name="line_approx_unit_price" />
+                  </label>
+                  <label>
+                    Барааны зураг
+                    <input type="file" name={`line_image_${index}`} accept="image/*" multiple />
                   </label>
                 </article>
               ))}

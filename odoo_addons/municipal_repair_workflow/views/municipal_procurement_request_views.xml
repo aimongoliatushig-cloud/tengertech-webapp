@@ -12,6 +12,7 @@
                 <field name="vehicle_id"/>
                 <field name="repair_id"/>
                 <field name="amount_total"/>
+                <field name="selected_supplier_total"/>
                 <field name="is_over_threshold"/>
                 <field name="state"/>
             </list>
@@ -24,12 +25,13 @@
         <field name="arch" type="xml">
             <form string="Худалдан авалтын хүсэлт">
                 <header>
-                    <button name="action_submit_quotes" string="3 үнийн санал" type="object" invisible="state != 'draft'"/>
-                    <button name="action_finance_review" string="Санхүүгийн хяналт" type="object" invisible="state != 'quote'"/>
+                    <button name="action_submit_quotes" string="3 үнийн санал авах" type="object" invisible="state != 'draft'"/>
+                    <button name="action_finance_review" string="Санхүүгийн хяналтад илгээх" type="object" invisible="state != 'quote'"/>
                     <button name="action_finance_approve" string="Санхүү батлах" type="object" class="btn-primary" invisible="state != 'finance_review'"/>
                     <button name="action_director_approve" string="Захирал батлах" type="object" class="btn-primary" invisible="state != 'director_approval'"/>
                     <button name="action_mark_paid" string="Төлбөр тэмдэглэх" type="object" invisible="state not in ('payment', 'contract_review')"/>
-                    <button name="action_receive" string="Хүлээн авах" type="object" invisible="state not in ('payment', 'contract_review')"/>
+                    <button name="action_receive" string="Агуулахад хүлээн авах" type="object" invisible="state not in ('payment', 'contract_review')"/>
+                    <button name="action_issue_to_repair" string="Засварт олгох" type="object" invisible="state not in ('received', 'done') or not repair_id"/>
                     <button name="action_done" string="Дуусгах" type="object" invisible="state != 'received'"/>
                     <button name="action_cancel" string="Цуцлах" type="object" invisible="state in ('done', 'cancelled')"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,quote,finance_review,director_approval,contract_review,payment,received,done"/>
@@ -40,21 +42,77 @@
                             <field name="name"/>
                             <field name="request_type"/>
                             <field name="requested_by" readonly="1"/>
+                            <field name="request_date"/>
                             <field name="department_id"/>
                             <field name="vehicle_id"/>
                             <field name="repair_id"/>
                         </group>
                         <group>
                             <field name="amount_total"/>
+                            <field name="selected_supplier_total" readonly="1"/>
+                            <field name="selected_quote_id" readonly="1"/>
+                            <field name="selected_supplier_id" readonly="1"/>
                             <field name="is_over_threshold" readonly="1"/>
-                            <field name="finance_approved_by" readonly="1"/>
-                            <field name="director_approved_by" readonly="1"/>
-                            <field name="received_by" readonly="1"/>
+                            <field name="payment_reference" required="state in ('payment', 'contract_review')"/>
                         </group>
                     </group>
                     <notebook>
+                        <page string="Материал / сэлбэг">
+                            <field name="line_ids">
+                                <list editable="bottom">
+                                    <field name="product_id"/>
+                                    <field name="description"/>
+                                    <field name="requested_quantity"/>
+                                    <field name="received_quantity"/>
+                                    <field name="issued_quantity"/>
+                                    <field name="unit_of_measure"/>
+                                    <field name="estimated_unit_cost"/>
+                                    <field name="subtotal"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
                         <page string="3 үнийн санал">
-                            <field name="quote_attachment_ids" widget="many2many_binary"/>
+                            <field name="quote_line_ids">
+                                <list editable="bottom">
+                                    <field name="sequence"/>
+                                    <field name="supplier_id"/>
+                                    <field name="quotation_ref"/>
+                                    <field name="quotation_date"/>
+                                    <field name="amount_total"/>
+                                    <field name="contract_required" readonly="1"/>
+                                    <field name="is_selected"/>
+                                </list>
+                            </field>
+                            <group>
+                                <field name="quote_attachment_ids" widget="many2many_binary"/>
+                            </group>
+                        </page>
+                        <page string="Агуулахын гүйлгээ">
+                            <field name="warehouse_move_ids">
+                                <list>
+                                    <field name="move_date"/>
+                                    <field name="move_type"/>
+                                    <field name="description"/>
+                                    <field name="quantity"/>
+                                    <field name="unit_of_measure"/>
+                                    <field name="user_id"/>
+                                    <field name="repair_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Баталгаажуулалт">
+                            <group>
+                                <field name="finance_approved_by" readonly="1"/>
+                                <field name="date_finance_approved" readonly="1"/>
+                                <field name="director_approved_by" readonly="1"/>
+                                <field name="date_director_decision" readonly="1"/>
+                                <field name="paid_by" readonly="1"/>
+                                <field name="date_paid" readonly="1"/>
+                                <field name="received_by" readonly="1"/>
+                                <field name="date_received" readonly="1"/>
+                            </group>
+                            <field name="receipt_note" required="state in ('payment', 'contract_review')"/>
                         </page>
                     </notebook>
                 </sheet>
@@ -72,14 +130,100 @@
                 <field name="vehicle_id"/>
                 <field name="repair_id"/>
                 <field name="department_id"/>
+                <field name="selected_supplier_id"/>
                 <filter name="over_threshold" string="1 саяас дээш" domain="[('is_over_threshold', '=', True)]"/>
                 <filter name="payment" string="Төлбөр хүлээж буй" domain="[('state', '=', 'payment')]"/>
+                <filter name="received" string="Агуулахад хүлээн авсан" domain="[('state', '=', 'received')]"/>
                 <group>
                     <filter name="group_state" string="Төлөв" context="{'group_by': 'state'}"/>
                     <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
                     <filter name="group_request_type" string="Төрөл" context="{'group_by': 'request_type'}"/>
+                    <filter name="group_supplier" string="Нийлүүлэгч" context="{'group_by': 'selected_supplier_id'}"/>
                 </group>
             </search>
+        </field>
+    </record>
+
+    <record id="view_municipal_procurement_line_list" model="ir.ui.view">
+        <field name="name">municipal.procurement.line.list</field>
+        <field name="model">municipal.procurement.line</field>
+        <field name="arch" type="xml">
+            <list string="Материал / сэлбэгийн мөр">
+                <field name="procurement_id"/>
+                <field name="repair_id"/>
+                <field name="product_id"/>
+                <field name="description"/>
+                <field name="requested_quantity"/>
+                <field name="received_quantity"/>
+                <field name="issued_quantity"/>
+                <field name="unit_of_measure"/>
+                <field name="subtotal"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_procurement_quote_list" model="ir.ui.view">
+        <field name="name">municipal.procurement.quote.list</field>
+        <field name="model">municipal.procurement.quote</field>
+        <field name="arch" type="xml">
+            <list string="Үнийн санал" decoration-success="is_selected">
+                <field name="procurement_id"/>
+                <field name="supplier_id"/>
+                <field name="quotation_ref"/>
+                <field name="quotation_date"/>
+                <field name="amount_total"/>
+                <field name="contract_required"/>
+                <field name="is_selected"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_warehouse_move_list" model="ir.ui.view">
+        <field name="name">municipal.warehouse.move.list</field>
+        <field name="model">municipal.warehouse.move</field>
+        <field name="arch" type="xml">
+            <list string="Агуулахын орлого / зарлага" decoration-success="move_type == 'in'" decoration-warning="move_type == 'out'">
+                <field name="move_date"/>
+                <field name="move_type"/>
+                <field name="procurement_id"/>
+                <field name="repair_id"/>
+                <field name="product_id"/>
+                <field name="description"/>
+                <field name="quantity"/>
+                <field name="unit_of_measure"/>
+                <field name="user_id"/>
+                <field name="department_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_warehouse_move_form" model="ir.ui.view">
+        <field name="name">municipal.warehouse.move.form</field>
+        <field name="model">municipal.warehouse.move</field>
+        <field name="arch" type="xml">
+            <form string="Агуулахын орлого / зарлага">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="move_type"/>
+                            <field name="move_date"/>
+                            <field name="procurement_id"/>
+                            <field name="repair_id"/>
+                            <field name="product_id"/>
+                        </group>
+                        <group>
+                            <field name="description"/>
+                            <field name="quantity"/>
+                            <field name="unit_of_measure"/>
+                            <field name="user_id"/>
+                            <field name="department_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="note"/>
+                </sheet>
+                <chatter/>
+            </form>
         </field>
     </record>
 
@@ -88,5 +232,23 @@
         <field name="res_model">municipal.procurement.request</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="view_municipal_procurement_request_search"/>
+    </record>
+
+    <record id="action_municipal_procurement_line" model="ir.actions.act_window">
+        <field name="name">Материал / сэлбэгийн мөр</field>
+        <field name="res_model">municipal.procurement.line</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="action_municipal_procurement_quote" model="ir.actions.act_window">
+        <field name="name">3 үнийн санал</field>
+        <field name="res_model">municipal.procurement.quote</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="action_municipal_warehouse_move" model="ir.actions.act_window">
+        <field name="name">Агуулахын орлого / зарлага</field>
+        <field name="res_model">municipal.warehouse.move</field>
+        <field name="view_mode">list,form</field>
     </record>
 </odoo>

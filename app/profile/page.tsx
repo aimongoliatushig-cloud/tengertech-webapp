@@ -5,6 +5,7 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
+  getDeviceLabel,
   getRoleLabel,
   hasCapability,
   isMasterRole,
@@ -12,12 +13,13 @@ import {
   requireSession,
 } from "@/lib/auth";
 import { isAutoGarbageDepartment } from "@/lib/department-permissions";
-import { getPrimaryAppRole } from "@/lib/roles";
+import { getPrimaryAppRole, type RoleGroupFlags } from "@/lib/roles";
 import { loadRouteManagementData } from "@/lib/route-management";
 import { loadTeamManagementData, loadTeamMemberOptions } from "@/lib/team-management";
 
 import {
   archiveProfileTeamAction,
+  changeProfilePasswordAction,
   createProfileCollectionPointAction,
   createProfileRouteAction,
   createProfileTeamAction,
@@ -88,6 +90,20 @@ function formatSessionStart(value: number) {
   }).format(value);
 }
 
+function maskIpAddress(value?: string | null) {
+  if (!value) {
+    return "Бүртгэгдээгүй";
+  }
+  if (value.includes(":")) {
+    return `${value.split(":").slice(0, 2).join(":")}:…`;
+  }
+  const parts = value.split(".");
+  if (parts.length === 4) {
+    return `${parts[0]}.${parts[1]}.${parts[2]}.***`;
+  }
+  return value;
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function ProfilePage({ searchParams }: PageProps) {
@@ -105,20 +121,39 @@ export default async function ProfilePage({ searchParams }: PageProps) {
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const departmentScopeName = await loadSessionDepartmentName(session);
-  const canViewHrDirectory = new Set(["system_admin", "director", "general_manager"]).has(
-    String(session.role),
+  const groupFlags: Partial<RoleGroupFlags> = session.groupFlags || {};
+  const canViewHrDirectory = Boolean(
+    new Set(["system_admin", "director", "general_manager"]).has(String(session.role)) ||
+      groupFlags.hrUser ||
+      groupFlags.hrManager ||
+      groupFlags.municipalHr,
   );
-  const canUseProcurement = new Set(["system_admin", "director", "general_manager"]).has(
-    String(session.role),
+  const canUseProcurement = Boolean(
+    new Set(["system_admin", "director", "general_manager"]).has(String(session.role)) ||
+      groupFlags.opsStorekeeper ||
+      groupFlags.fleetRepairPurchaser ||
+      groupFlags.fleetRepairFinance ||
+      groupFlags.fleetRepairAccounting ||
+      groupFlags.fleetRepairManager ||
+      groupFlags.fleetRepairCeo,
   );
-  const canCreateTeam = new Set([
-    "system_admin",
-    "project_manager",
-    "senior_master",
-    "team_leader",
-  ]).has(String(session.role));
-  const canCreateRoute =
-    String(session.role) === "project_manager" && isAutoGarbageDepartment(departmentScopeName);
+  const canCreateTeam = Boolean(
+    new Set(["system_admin", "project_manager", "senior_master", "team_leader"]).has(
+      String(session.role),
+    ) ||
+      groupFlags.mfoManager ||
+      groupFlags.mfoDispatcher ||
+      groupFlags.municipalDepartmentHead ||
+      groupFlags.environmentManager ||
+      groupFlags.improvementManager,
+  );
+  const canCreateRoute = Boolean(
+    isAutoGarbageDepartment(departmentScopeName) &&
+      (String(session.role) === "project_manager" ||
+        groupFlags.mfoManager ||
+        groupFlags.mfoDispatcher ||
+        groupFlags.municipalDepartmentHead),
+  );
   const connectionOverrides = {
     login: session.login,
     password: session.password,
@@ -274,6 +309,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={roleLabel}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
               departmentScopeName={departmentScopeName}
@@ -667,6 +703,86 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                   Одоогоор нэмэлт group эрх идэвхжээгүй байна.
                 </p>
               )}
+            </section>
+
+            <section id="password-settings" className={styles.sectionCard}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <span className={styles.eyebrow}>Аюулгүй байдал</span>
+                  <h2>Нууц үг солих</h2>
+                </div>
+                <p>Одоогийн нууц үгээ баталгаажуулаад шинэ нууц үгээ тохируулна.</p>
+              </div>
+
+              <form action={changeProfilePasswordAction} className={styles.passwordForm}>
+                <label className={styles.field}>
+                  <span>Одоогийн нууц үг</span>
+                  <input
+                    name="current_password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                  />
+                </label>
+                <div className={styles.twoColumnFields}>
+                  <label className={styles.field}>
+                    <span>Шинэ нууц үг</span>
+                    <input
+                      name="new_password"
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={8}
+                      required
+                    />
+                  </label>
+                  <label className={styles.field}>
+                    <span>Шинэ нууц үг давтах</span>
+                    <input
+                      name="confirm_password"
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={8}
+                      required
+                    />
+                  </label>
+                </div>
+                <button type="submit" className={styles.primaryMiniButton}>
+                  Нууц үг солих
+                </button>
+              </form>
+            </section>
+
+            <section className={styles.sectionCard}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <span className={styles.eyebrow}>Нэвтрэлтийн лог</span>
+                  <h2>Миний эрхээр орсон төхөөрөмж</h2>
+                </div>
+                <p>Энэ web app дээрх одоогийн session-ийн төхөөрөмж, IP болон нэвтэрсэн цаг.</p>
+              </div>
+
+              <div className={styles.sessionList}>
+                <article className={styles.sessionCard}>
+                  <div>
+                    <strong>{session.deviceLabel || getDeviceLabel(session.userAgent)}</strong>
+                    <small>{session.userAgent || "User agent бүртгэгдээгүй"}</small>
+                  </div>
+                  <div className={styles.sessionMetaGrid}>
+                    <span>
+                      <small>Нэвтэрсэн цаг</small>
+                      <strong>{formatSessionStart(session.issuedAt)}</strong>
+                    </span>
+                    <span>
+                      <small>IP хаяг</small>
+                      <strong>{maskIpAddress(session.loginIp)}</strong>
+                    </span>
+                    <span>
+                      <small>Төлөв</small>
+                      <strong>Идэвхтэй</strong>
+                    </span>
+                  </div>
+                </article>
+              </div>
             </section>
 
             <section className={styles.logoutCard}>

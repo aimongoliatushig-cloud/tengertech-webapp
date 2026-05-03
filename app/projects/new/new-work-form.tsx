@@ -5,8 +5,6 @@ import { useFormStatus } from "react-dom";
 
 import {
   CalendarDays,
-  CheckCircle2,
-  ClipboardList,
   FileText,
   Layers3,
   Paperclip,
@@ -346,14 +344,9 @@ export function NewWorkForm({
     ? "Машин, маршрут, огноо сонгоход ажил болон маршрутын цэгүүдийн ажилбар автоматаар үүснэ."
     : isSeasonalGarbage
       ? "Хорооны байрлал, машин, тонн, ажиллах өдрүүдээр олон мөрийн төлөвлөгөө үүсгэнэ."
-      : "Ажлын нэр, хариуцсан хэлтсийн дарга, хугацаагаа оруулаад Odoo руу бүртгэнэ.";
+      : "Ажлын нэр, хариуцсан хэлтсийн дарга, хугацаагаа оруулна.";
   const selectedDepartmentLabel =
     lockedDepartmentLabel ?? selectedDepartment?.label ?? selectedDepartment?.name ?? "Сонгоогүй";
-  const previewTitle = isGarbageTransport
-    ? generatedName || "Машин, маршрут сонгоход нэр автоматаар үүснэ"
-    : isSeasonalGarbage
-      ? `${formatDateLabel(seasonalStartDate)} - ${formatDateLabel(seasonalEndDate)}`
-      : selectedDepartmentHead?.name ?? "Хэлтсийн дарга";
 
   const handleAddExtraLocation = () => {
     const normalizedLocation = normalizeLocationName(extraLocationDraft);
@@ -394,29 +387,23 @@ export function NewWorkForm({
             <strong>Хэлтэс ба горим</strong>
             <small>{selectedDepartmentLabel}</small>
           </div>
-          <div className={styles.createWorkStep}>
-            <span><ClipboardList aria-hidden /></span>
-            <strong>Үндсэн мэдээлэл</strong>
-            <small>{previewTitle}</small>
-          </div>
-          <div className={styles.createWorkStep}>
-            <span><CheckCircle2 aria-hidden /></span>
-            <strong>Бүртгэх</strong>
-            <small>Odoo руу илгээхээс өмнө шалгана</small>
-          </div>
         </div>
 
         <div className={styles.createWorkSignalGrid} aria-label="Сонгосон ажлын товч мэдээлэл">
-          <div>
-            <Truck aria-hidden />
-            <span>Техник</span>
-            <strong>{selectedVehicle?.plate || "Сонгоогүй"}</strong>
-          </div>
-          <div>
-            <Route aria-hidden />
-            <span>Маршрут</span>
-            <strong>{selectedRoute?.code || selectedRoute?.name || "Сонгоогүй"}</strong>
-          </div>
+          {isGarbageTransport ? (
+            <>
+              <div>
+                <Truck aria-hidden />
+                <span>Техник</span>
+                <strong>{selectedVehicle?.plate || "Сонгоогүй"}</strong>
+              </div>
+              <div>
+                <Route aria-hidden />
+                <span>Маршрут</span>
+                <strong>{selectedRoute?.code || selectedRoute?.name || "Сонгоогүй"}</strong>
+              </div>
+            </>
+          ) : null}
           <div>
             <CalendarDays aria-hidden />
             <span>Огноо</span>
@@ -928,7 +915,13 @@ export function NewWorkForm({
             <label>Хариуцах ажилтан</label>
             <div className={styles.lockedFieldValue}>
               {selectedDepartmentHead
-                ? `${selectedDepartmentHead.name} (${selectedDepartmentHead.login})`
+                ? [
+                    selectedDepartmentHead.name,
+                    selectedDepartmentHead.jobTitle,
+                    selectedDepartmentHead.login,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
                 : selectedDepartment
                   ? "Хэлтсийн дарга олдсонгүй"
                   : "Эхлээд хэлтэс сонгоно уу"}
@@ -956,6 +949,15 @@ export function NewWorkForm({
 
       <div className={styles.field}>
         <label htmlFor="project-files">Файл хавсаргах</label>
+        <textarea
+          id="project-description"
+          name="project_description"
+          placeholder="Хавсралт болон ажлын дэлгэрэнгүй тайлбар бичнэ үү"
+          rows={4}
+        />
+        <small className={styles.fieldHint}>
+          Энэ тайлбар ажлын дэлгэрэнгүй дээр харагдана.
+        </small>
         <label className={styles.fileDropZone} htmlFor="project-files">
           <Paperclip aria-hidden />
           <span>PDF, зураг, бичиг баримт олон файлаар хавсаргана</span>
