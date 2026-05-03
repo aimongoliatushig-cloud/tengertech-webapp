@@ -165,7 +165,7 @@ export async function updateFleetVehicleAction(formData: FormData) {
       values.vin_sn = optionalOdooValue(getString(formData, "vin_sn"));
     }
     if ("odometer" in editableFields && formData.has("odometer")) {
-      values.odometer = optionalOdooNumber(getString(formData, "odometer"), "Одометр");
+      values.odometer = optionalOdooNumber(getString(formData, "odometer"), "Туулсан зам");
     }
     if ("fuel_type" in editableFields && formData.has("fuel_type")) {
       values.fuel_type = optionalOdooValue(getString(formData, "fuel_type"));

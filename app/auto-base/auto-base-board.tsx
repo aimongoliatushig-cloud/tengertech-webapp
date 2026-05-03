@@ -673,8 +673,8 @@ function VehicleDetailModal({
               <DetailItem label="Төрөл" value={vehicle.vehicleTypeName || vehicle.categoryName} />
               <DetailItem label="Хэлтэс" value={vehicle.departmentName} />
               <DetailItem label="Төлөв" value={vehicle.stateLabel} />
-              <DetailItem label="VIN" value={vehicle.vin} />
-              <DetailItem label="Одометр" value={vehicle.odometerLabel} />
+              <DetailItem label="Арлын дугаар" value={vehicle.vin} />
+              <DetailItem label="Туулсан зам" value={vehicle.odometerLabel} />
               <DetailItem label="Хариуцсан жолооч" value={vehicle.responsibleDriverName} />
               <DetailItem label="Ачигч 1" value={vehicle.loader1Name} />
               <DetailItem label="Ачигч 2" value={vehicle.loader2Name} />
@@ -858,12 +858,12 @@ function VehicleDetailModal({
           </label>
 
           <label className={styles.vehicleFormField}>
-            <span>VIN</span>
-            <input name="vin_sn" defaultValue={vehicle.vin} placeholder="VIN дугаар" />
+            <span>Арлын дугаар</span>
+            <input name="vin_sn" defaultValue={vehicle.vin} placeholder="Арлын дугаар" />
           </label>
 
           <label className={styles.vehicleFormField}>
-            <span>Одометр</span>
+            <span>Туулсан зам</span>
             <input
               name="odometer"
               type="number"
