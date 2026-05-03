@@ -776,9 +776,10 @@ export function AutoBaseBoard({
     () => new Map(board.allVehicles.map((vehicle) => [vehicle.id, vehicle])),
     [board.allVehicles],
   );
-  const [selectedVehicle, setSelectedVehicle] = useState<FleetVehicleBoardItem | null>(
-    initialVehicleId ? vehiclesById.get(initialVehicleId) ?? null : null,
+  const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(
+    initialVehicleId && vehiclesById.has(initialVehicleId) ? initialVehicleId : null,
   );
+  const selectedVehicle = selectedVehicleId ? vehiclesById.get(selectedVehicleId) ?? null : null;
   const buckets: BucketConfig[] = [
     {
       key: "all",
@@ -953,7 +954,9 @@ export function AutoBaseBoard({
               <VehicleList
                 vehicles={bucket.vehicles}
                 emptyLabel={bucket.emptyLabel}
-                onSelectVehicle={setSelectedVehicle}
+                onSelectVehicle={(vehicle) => {
+                  setSelectedVehicleId(vehicle.id);
+                }}
               />
             </section>
           ))}
@@ -985,7 +988,9 @@ export function AutoBaseBoard({
             <VehicleList
               vehicles={bucket.vehicles}
               emptyLabel={bucket.emptyLabel}
-              onSelectVehicle={setSelectedVehicle}
+              onSelectVehicle={(vehicle) => {
+                setSelectedVehicleId(vehicle.id);
+              }}
             />
           </section>
         ))}
@@ -996,7 +1001,9 @@ export function AutoBaseBoard({
           vehicle={selectedVehicle}
           driverOptions={board.driverOptions}
           loaderOptions={board.loaderOptions}
-          onClose={() => setSelectedVehicle(null)}
+          onClose={() => {
+            setSelectedVehicleId(null);
+          }}
         />
       ) : null}
     </>
