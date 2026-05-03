@@ -1367,6 +1367,7 @@ type OdooFieldMetadata = {
 type OdooNameOptionRecord = {
   id: number;
   name?: string | false;
+  parent_id?: OdooRelation;
 };
 
 function relationName(relation: OdooRelation, fallback = "Оноогоогүй") {
@@ -1400,12 +1401,15 @@ async function loadFleetVehicleDepartmentOptions(
   }
 
   const loadOptions = (domain: unknown[]) =>
-    searchReadAll<OdooNameOptionRecord>(
+    searchReadAllWithFieldFallback<OdooNameOptionRecord>(
       uid,
       relationModel,
       domain,
+      [
+        ["name", "parent_id"],
+        ["name"],
+      ],
       {
-        fields: ["name"],
         order: "name asc",
       },
       connection,
@@ -1415,8 +1419,14 @@ async function loadFleetVehicleDepartmentOptions(
   return records
     .map((record) => ({
       id: record.id,
-      name: String(record.name || "").trim(),
+      name:
+        normalizeOrganizationUnitName(
+          `${relationName(record.parent_id ?? false, "")} ${String(record.name || "")}`,
+        ) ||
+        normalizeOrganizationUnitName(String(record.name || "")) ||
+        String(record.name || "").trim(),
     }))
+    .sort((left, right) => left.name.localeCompare(right.name, "mn"))
     .filter((record) => record.name);
 }
 
@@ -3140,6 +3150,7 @@ export async function loadFleetVehicleBoard(
       const latestRepairState = vehicle.latest_repair_state || "";
       const operationalStatusKey = vehicle.x_municipal_operational_status || "";
       const operationalStatusLabel = FLEET_OPERATIONAL_STATUS_LABELS[operationalStatusKey] || "";
+      const rawDepartmentName = relationName(vehicle.municipal_department_id ?? false, "");
       const isRepair =
         Boolean(vehicle.vehicle_downtime_open) ||
         operationalStatusKey === "in_repair" ||
@@ -3161,7 +3172,7 @@ export async function loadFleetVehicleBoard(
           relationName(vehicle.municipal_vehicle_type_id ?? false, "") ||
           relationName(vehicle.category_id ?? false, ""),
         departmentId: relationId(vehicle.municipal_department_id ?? false),
-        departmentName: relationName(vehicle.municipal_department_id ?? false, ""),
+        departmentName: normalizeOrganizationUnitName(rawDepartmentName) || rawDepartmentName,
         vin: vehicle.vin_sn || "",
         odometerLabel:
           typeof vehicle.odometer === "number" && Number.isFinite(vehicle.odometer)
