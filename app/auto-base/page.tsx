@@ -5,6 +5,7 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
 import { getRoleLabel, hasCapability, requireSession } from "@/lib/auth";
 import { loadFleetVehicleBoard } from "@/lib/odoo";
+import { loadWorkspaceNotificationCount } from "@/lib/workspace-notifications";
 
 import { AutoBaseBoard } from "./auto-base-board";
 import styles from "./page.module.css";
@@ -40,6 +41,7 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
   const selectedVehicleId = Number(firstParam(params.vehicle) ?? "");
   const notice = firstParam(params.notice) ?? "";
   const error = firstParam(params.error) ?? "";
+  const notificationCount = await loadWorkspaceNotificationCount(session);
 
   let board = {
     allVehicles: [],
@@ -82,6 +84,7 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              notificationCount={notificationCount}
             />
           </aside>
 
@@ -91,8 +94,7 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
               subtitle="Идэвхтэй болон засагдаж буй машинуудын бодит төлөв"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
-              notificationCount={board.totalVehicles}
-              notificationNote={`${board.activeCount} ажиллаж байгаа, ${board.repairCount} засвартай машин байна`}
+              notificationCount={notificationCount}
             />
 
             {loadError ? (

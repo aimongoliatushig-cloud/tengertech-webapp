@@ -20,6 +20,7 @@ import {
   matchesDepartmentGroup,
 } from "@/lib/department-groups";
 import { type DashboardSnapshot, loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
+import { loadWorkspaceNotificationCount } from "@/lib/workspace-notifications";
 
 type PageProps = {
   searchParams?: Promise<{
@@ -657,6 +658,11 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
     }
   }
 
+  const notificationCount = await loadWorkspaceNotificationCount(session, {
+    snapshot,
+    scopedDepartmentName,
+  });
+
   return (
     <main className={styles.shell}>
       <div className={styles.container} id="projects-top">
@@ -673,6 +679,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
               roleLabel={getRoleLabel(session.role)}
               masterMode={masterMode}
               workerMode={workerMode}
+              notificationCount={notificationCount}
               departmentScopeName={scopedDepartmentName}
             />
           </aside>
@@ -683,14 +690,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
               subtitle={selectedDepartmentName}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
-              notificationCount={
-                showAutoBaseFleet && fleetBoard ? fleetBoard.totalVehicles : scopedProjects.length
-              }
-              notificationNote={
-                showAutoBaseFleet && fleetBoard
-                  ? `${fleetBoard.totalVehicles} машин Odoo Fleet дээр бүртгэлтэй байна`
-                  : `${scopedProjects.length} ажил, төсөл энэ хүрээнд байна`
-              }
+              notificationCount={notificationCount}
             />
 
             <section className={styles.summaryShowcaseGrid} aria-label="Нийт үзүүлэлт">
