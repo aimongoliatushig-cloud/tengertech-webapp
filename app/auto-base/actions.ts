@@ -86,6 +86,7 @@ export async function updateFleetVehicleAction(formData: FormData) {
           "mfo_active_for_ops",
           "latest_repair_state",
           "x_municipal_operational_status",
+          "fuel_type",
           "municipal_responsible_driver_id",
           "municipal_loader_1_id",
           "municipal_loader_2_id",
@@ -127,6 +128,9 @@ export async function updateFleetVehicleAction(formData: FormData) {
       values.x_municipal_operational_status = optionalOdooValue(
         getString(formData, "x_municipal_operational_status"),
       );
+    }
+    if ("fuel_type" in editableFields && formData.has("fuel_type")) {
+      values.fuel_type = optionalOdooValue(getString(formData, "fuel_type"));
     }
     if (
       "municipal_responsible_driver_id" in editableFields &&

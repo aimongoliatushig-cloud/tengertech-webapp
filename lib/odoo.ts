@@ -658,6 +658,7 @@ export type FleetVehicleBoardItem = {
   departmentName: string;
   vin: string;
   odometerLabel: string;
+  fuelTypeKey: string;
   fuelTypeLabel: string;
   fleetDriverName: string;
   responsibleDriverId: number | null;
@@ -3104,6 +3105,7 @@ export async function loadFleetVehicleBoard(
           typeof vehicle.odometer === "number" && Number.isFinite(vehicle.odometer)
             ? `${Math.round(vehicle.odometer).toLocaleString("mn-MN")} км`
             : "",
+        fuelTypeKey: vehicle.fuel_type || "",
         fuelTypeLabel: resolveFleetFuelTypeLabel(vehicle.fuel_type || ""),
         fleetDriverName: relationName(vehicle.driver_id ?? false, ""),
         responsibleDriverId: relationId(vehicle.municipal_responsible_driver_id ?? false),

@@ -25,6 +25,7 @@ type FleetVehicleBoardItem = {
   departmentName: string;
   vin: string;
   odometerLabel: string;
+  fuelTypeKey: string;
   fuelTypeLabel: string;
   fleetDriverName: string;
   responsibleDriverId: number | null;
@@ -264,6 +265,14 @@ const vehicleStatusOptions = [
   { value: "broken", label: "Эвдэрсэн" },
   { value: "retired", label: "Ашиглалтаас гарсан" },
   { value: "inactive", label: "Идэвхгүй" },
+];
+
+const fuelTypeOptions = [
+  { value: "diesel", label: "Дизель" },
+  { value: "gasoline", label: "Бензин" },
+  { value: "electric", label: "Цахилгаан" },
+  { value: "hybrid", label: "Хосолсон" },
+  { value: "lpg", label: "Газ" },
 ];
 
 function displayValue(value?: string | number) {
@@ -783,6 +792,18 @@ function VehicleDetailModal({
             <select name="x_municipal_operational_status" defaultValue={vehicle.operationalStatusKey}>
               <option value="">Сонгоогүй</option>
               {vehicleStatusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Түлшний төрөл</span>
+            <select name="fuel_type" defaultValue={vehicle.fuelTypeKey}>
+              <option value="">Сонгоогүй</option>
+              {fuelTypeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
