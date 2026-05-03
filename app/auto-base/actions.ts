@@ -33,6 +33,15 @@ function optionalOdooId(value: string) {
   return Number.isFinite(id) && id > 0 ? Math.trunc(id) : false;
 }
 
+function optionalStaffId(formData: FormData, key: string, label: string, vehicleId: number) {
+  const selectedId = optionalOdooId(getString(formData, key));
+  const typedLabel = getString(formData, `${key}_label`);
+  if (typedLabel && !selectedId) {
+    redirectWithMessage(vehicleId, "error", `${label}-г HR жагсаалтаас сонгоно уу.`);
+  }
+  return selectedId;
+}
+
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message) {
     return error.message;
@@ -124,15 +133,28 @@ export async function updateFleetVehicleAction(formData: FormData) {
       "municipal_responsible_driver_id" in editableFields &&
       formData.has("municipal_responsible_driver_id")
     ) {
-      values.municipal_responsible_driver_id = optionalOdooId(
-        getString(formData, "municipal_responsible_driver_id"),
+      values.municipal_responsible_driver_id = optionalStaffId(
+        formData,
+        "municipal_responsible_driver_id",
+        "Хариуцсан жолооч",
+        vehicleId,
       );
     }
     if ("municipal_loader_1_id" in editableFields && formData.has("municipal_loader_1_id")) {
-      values.municipal_loader_1_id = optionalOdooId(getString(formData, "municipal_loader_1_id"));
+      values.municipal_loader_1_id = optionalStaffId(
+        formData,
+        "municipal_loader_1_id",
+        "Ачигч 1",
+        vehicleId,
+      );
     }
     if ("municipal_loader_2_id" in editableFields && formData.has("municipal_loader_2_id")) {
-      values.municipal_loader_2_id = optionalOdooId(getString(formData, "municipal_loader_2_id"));
+      values.municipal_loader_2_id = optionalStaffId(
+        formData,
+        "municipal_loader_2_id",
+        "Ачигч 2",
+        vehicleId,
+      );
     }
     if ("municipal_insurance_company" in editableFields && formData.has("municipal_insurance_company")) {
       values.municipal_insurance_company = optionalOdooValue(

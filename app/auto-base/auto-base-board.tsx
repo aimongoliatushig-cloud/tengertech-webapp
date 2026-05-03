@@ -265,6 +265,49 @@ function displayValue(value?: string | number) {
   return value === undefined || value === null || value === "" ? "Бүртгээгүй" : String(value);
 }
 
+function normalizeStaffText(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function formatStaffOption(option: FleetVehicleDriverOption) {
+  return [
+    option.name,
+    option.departmentName,
+    option.jobTitle,
+    option.active ? "" : "Идэвхгүй",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function findStaffOption(value: string, options: FleetVehicleDriverOption[]) {
+  const normalized = normalizeStaffText(value);
+  if (!normalized) {
+    return null;
+  }
+
+  const exact = options.find(
+    (option) =>
+      normalizeStaffText(formatStaffOption(option)) === normalized ||
+      normalizeStaffText(option.name) === normalized,
+  );
+  if (exact) {
+    return exact;
+  }
+
+  const startsWithMatches = options.filter((option) =>
+    normalizeStaffText(formatStaffOption(option)).startsWith(normalized),
+  );
+  if (startsWithMatches.length === 1) {
+    return startsWithMatches[0];
+  }
+
+  const includesMatches = options.filter((option) =>
+    normalizeStaffText(formatStaffOption(option)).includes(normalized),
+  );
+  return includesMatches.length === 1 ? includesMatches[0] : null;
+}
+
 function DeadlinePanel({
   title,
   info,
@@ -312,6 +355,58 @@ function DriverHistoryList({ items }: { items: FleetVehicleDriverHistoryItem[] }
   );
 }
 
+function StaffPicker({
+  vehicleId,
+  name,
+  label,
+  placeholder,
+  options,
+  defaultId,
+}: {
+  vehicleId: number;
+  name: string;
+  label: string;
+  placeholder: string;
+  options: FleetVehicleDriverOption[];
+  defaultId: number | null;
+}) {
+  const defaultOption = defaultId ? options.find((option) => option.id === defaultId) : undefined;
+  const [query, setQuery] = useState(defaultOption ? formatStaffOption(defaultOption) : "");
+  const [selectedId, setSelectedId] = useState(defaultOption ? String(defaultOption.id) : "");
+  const listId = `${name}-${vehicleId}-options`;
+  const hasUnmatchedQuery = query.trim().length > 0 && !selectedId;
+
+  function updateSelection(value: string) {
+    setQuery(value);
+    const selected = findStaffOption(value, options);
+    setSelectedId(selected ? String(selected.id) : "");
+  }
+
+  return (
+    <label className={styles.vehicleFormField}>
+      <span>{label}</span>
+      <input type="hidden" name={name} value={selectedId} />
+      <input
+        name={`${name}_label`}
+        list={listId}
+        value={query}
+        placeholder={placeholder}
+        autoComplete="off"
+        onChange={(event) => updateSelection(event.target.value)}
+        onBlur={(event) => updateSelection(event.target.value)}
+      />
+      <datalist id={listId}>
+        {options.map((option) => (
+          <option key={option.id} value={formatStaffOption(option)} />
+        ))}
+      </datalist>
+      {hasUnmatchedQuery ? (
+        <small className={styles.formHintError}>HR жагсаалтаас сонгоно уу.</small>
+      ) : null}
+    </label>
+  );
+}
+
 function DriverAssignmentForm({
   vehicle,
   driverOptions,
@@ -336,50 +431,35 @@ function DriverAssignmentForm({
       <form action={updateFleetVehicleAction} className={styles.driverAssignmentForm}>
         <input type="hidden" name="vehicle_id" value={vehicle.id} />
 
-        <label className={styles.vehicleFormField}>
-          <span>Хариуцсан жолооч</span>
-          <select
-            name="municipal_responsible_driver_id"
-            defaultValue={vehicle.responsibleDriverId ?? ""}
-          >
-            <option value="">Жолооч оноогоогүй</option>
-            {driverOptions.map((driver) => (
-              <option key={driver.id} value={driver.id}>
-                {driver.name} · {driver.departmentName}
-                {driver.jobTitle ? ` · ${driver.jobTitle}` : ""}
-                {driver.active ? "" : " · Идэвхгүй"}
-              </option>
-            ))}
-          </select>
-        </label>
+        <StaffPicker
+          key={`driver-${vehicle.id}-${vehicle.responsibleDriverId ?? "none"}`}
+          vehicleId={vehicle.id}
+          name="municipal_responsible_driver_id"
+          label="Хариуцсан жолооч"
+          placeholder="Жолоочийн нэр бичиж HR жагсаалтаас сонгох"
+          options={driverOptions}
+          defaultId={vehicle.responsibleDriverId}
+        />
 
-        <label className={styles.vehicleFormField}>
-          <span>Ачигч 1</span>
-          <select name="municipal_loader_1_id" defaultValue={vehicle.loader1Id ?? ""}>
-            <option value="">Ачигч 1 оноогоогүй</option>
-            {loaderOptions.map((loader) => (
-              <option key={loader.id} value={loader.id}>
-                {loader.name} · {loader.departmentName}
-                {loader.jobTitle ? ` · ${loader.jobTitle}` : ""}
-                {loader.active ? "" : " · Идэвхгүй"}
-              </option>
-            ))}
-          </select>
-        </label>
+        <StaffPicker
+          key={`loader1-${vehicle.id}-${vehicle.loader1Id ?? "none"}`}
+          vehicleId={vehicle.id}
+          name="municipal_loader_1_id"
+          label="Ачигч 1"
+          placeholder="Ачигчийн нэр бичиж HR жагсаалтаас сонгох"
+          options={loaderOptions}
+          defaultId={vehicle.loader1Id}
+        />
 
-        <label className={styles.vehicleFormField}>
-          <span>Ачигч 2</span>
-          <select name="municipal_loader_2_id" defaultValue={vehicle.loader2Id ?? ""}>
-            <option value="">Ачигч 2 оноогоогүй</option>
-            {loaderOptions.map((loader) => (
-              <option key={loader.id} value={loader.id}>
-                {loader.name} · {loader.departmentName}
-                {loader.jobTitle ? ` · ${loader.jobTitle}` : ""}
-                {loader.active ? "" : " · Идэвхгүй"}
-              </option>
-            ))}
-          </select>
-        </label>
+        <StaffPicker
+          key={`loader2-${vehicle.id}-${vehicle.loader2Id ?? "none"}`}
+          vehicleId={vehicle.id}
+          name="municipal_loader_2_id"
+          label="Ачигч 2"
+          placeholder="Ачигчийн нэр бичиж HR жагсаалтаас сонгох"
+          options={loaderOptions}
+          defaultId={vehicle.loader2Id}
+        />
 
         <div className={styles.driverAssignmentMeta}>
           <span>Одоогийн бүрэлдэхүүн</span>

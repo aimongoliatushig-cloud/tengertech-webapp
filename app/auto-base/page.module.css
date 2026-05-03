@@ -1102,6 +1102,12 @@
   line-height: 1.35;
 }
 
+.formHintError {
+  color: #a33a25;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
 .deadlinePanel {
   display: grid;
   gap: 12px;
