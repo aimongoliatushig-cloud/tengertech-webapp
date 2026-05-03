@@ -222,7 +222,7 @@ function VehicleList({
           <span className={styles.vehicleMetaLine}>{vehicleCrewRoleSummary(vehicle)}</span>
           <span className={styles.vehicleCrewPreview}>
             {assignedCrewCount(vehicle)
-              ? `${assignedCrewCount(vehicle)} оноолт хуваарилагдсан`
+              ? `${assignedCrewCount(vehicle)} хүн · ${assignedLoaderCount(vehicle)} ачигч`
               : "Хуваарилсан хүнгүй"}
           </span>
         </button>
@@ -264,8 +264,44 @@ function directCrewMembers(vehicle: FleetVehicleBoardItem) {
   ].filter((member): member is { key: string; label: string; name: string } => Boolean(member));
 }
 
+function uniqueCrewNames(names: string[]) {
+  const seen = new Set<string>();
+  return names.filter((name) => {
+    const normalized = normalizeStaffText(name);
+    if (!normalized || seen.has(normalized)) {
+      return false;
+    }
+    seen.add(normalized);
+    return true;
+  });
+}
+
+function assignedDriverCount(vehicle: FleetVehicleBoardItem) {
+  return uniqueCrewNames([
+    vehicle.responsibleDriverName,
+    ...vehicle.crewAssignments.flatMap((assignment) => assignment.driverNames),
+  ]).length;
+}
+
+function assignedLoaderCount(vehicle: FleetVehicleBoardItem) {
+  return uniqueCrewNames([
+    vehicle.loader1Name,
+    vehicle.loader2Name,
+    ...vehicle.crewAssignments.flatMap((assignment) => assignment.loaderNames),
+  ]).length;
+}
+
 function assignedCrewCount(vehicle: FleetVehicleBoardItem) {
-  return directCrewMembers(vehicle).length + vehicle.crewAssignments.length;
+  return uniqueCrewNames([
+    vehicle.responsibleDriverName,
+    vehicle.loader1Name,
+    vehicle.loader2Name,
+    ...vehicle.crewAssignments.flatMap((assignment) => [
+      ...assignment.driverNames,
+      ...assignment.loaderNames,
+      ...assignment.memberNames,
+    ]),
+  ]).length;
 }
 
 function operationTypeLabel(value: string) {
@@ -629,7 +665,9 @@ function VehicleDetailModal({
     { key: "procurement", label: "Худалдан авалт" },
   ];
   const directCrew = directCrewMembers(vehicle);
-  const crewCount = directCrew.length + vehicle.crewAssignments.length;
+  const crewCount = assignedCrewCount(vehicle);
+  const driverCount = assignedDriverCount(vehicle);
+  const loaderCount = assignedLoaderCount(vehicle);
 
   return (
     <div className={styles.vehicleModalBackdrop} role="presentation" onClick={onClose}>
@@ -742,7 +780,8 @@ function VehicleDetailModal({
               <DetailItem label="Одоогийн жолооч" value={vehicle.responsibleDriverName} />
               <DetailItem label="Ачигч 1" value={vehicle.loader1Name} />
               <DetailItem label="Ачигч 2" value={vehicle.loader2Name} />
-              <DetailItem label="Хуваарилсан хүмүүс" value={`${crewCount}`} />
+              <DetailItem label="Хуваарилсан хүмүүс" value={`${crewCount} хүн · ${loaderCount} ачигч`} />
+              <DetailItem label="Жолоочийн тоо" value={`${driverCount}`} />
               <DetailItem label="Төлөв" value={vehicle.stateLabel} />
             </div>
             <DriverAssignmentForm

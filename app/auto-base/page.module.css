@@ -1411,12 +1411,22 @@
 
 .vehicleCrewCard {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
   padding: 14px;
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-control);
   background: rgba(255, 255, 255, 0.76);
+}
+
+.vehicleCrewCard > div {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.58);
 }
 
 .vehicleCrewType {
