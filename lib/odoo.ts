@@ -1078,8 +1078,13 @@ function resolveHrEmploymentStatus(employee: OdooEmployeeRecord) {
   const labels: Record<string, string> = {
     active: "Идэвхтэй",
     probation: "Туршилт",
+    leave: "Чөлөөтэй",
+    sick: "Өвчтэй",
+    business_trip: "Томилолттой",
     suspended: "Түдгэлзсэн",
     terminated: "Чөлөөлөгдсөн",
+    resigned: "Ажлаас гарсан",
+    archived: "Архивласан",
     rehired: "Дахин авсан",
   };
 

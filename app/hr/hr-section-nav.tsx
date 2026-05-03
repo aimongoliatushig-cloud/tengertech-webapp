@@ -2,16 +2,38 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, CalendarDays, ClipboardCheck, LayoutDashboard, Users } from "lucide-react";
+import {
+  Archive,
+  CalendarDays,
+  ClipboardCheck,
+  FileText,
+  HeartPulse,
+  LayoutDashboard,
+  Plane,
+  ScrollText,
+  Settings,
+  ShieldAlert,
+  Shuffle,
+  UserPlus,
+  Users,
+} from "lucide-react";
 
 import styles from "./hr.module.css";
 
 const items = [
-  { href: "/hr", label: "Хяналт", icon: LayoutDashboard },
+  { href: "/hr", label: "Dashboard", icon: LayoutDashboard },
   { href: "/hr/employees", label: "Ажилтнууд", icon: Users },
-  { href: "/hr/departments", label: "Алба нэгжүүд", icon: Building2 },
-  { href: "/hr/leaves", label: "Чөлөө / өвчтэй", icon: CalendarDays },
+  { href: "/hr/employees/new", label: "Шинэ ажилтан бүртгэх", icon: UserPlus },
+  { href: "/hr/leaves", label: "Чөлөө", icon: CalendarDays },
+  { href: "/hr/sick", label: "Өвчтэй", icon: HeartPulse },
+  { href: "/hr/trips", label: "Томилолт", icon: Plane },
+  { href: "/hr/discipline", label: "Сахилгын бүртгэл", icon: ShieldAlert },
+  { href: "/hr/orders", label: "Тушаал", icon: ScrollText },
+  { href: "/hr/transfers", label: "Шилжилт хөдөлгөөн", icon: Shuffle },
   { href: "/hr/clearance", label: "Тойрох хуудас", icon: ClipboardCheck },
+  { href: "/hr/archive", label: "Архив", icon: Archive },
+  { href: "/hr/reports", label: "Тайлан", icon: FileText },
+  { href: "/hr/settings", label: "Тохиргоо", icon: Settings },
 ];
 
 export function HrSectionNav() {

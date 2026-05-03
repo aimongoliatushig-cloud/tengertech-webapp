@@ -43,6 +43,8 @@ export async function POST(request: Request) {
       lastName: getString(formData, "lastName"),
       firstName: getString(formData, "firstName"),
       registerNumber: getString(formData, "registerNumber"),
+      gender: getString(formData, "gender"),
+      birthDate: getString(formData, "birthDate"),
       phone: getString(formData, "phone"),
       email: getString(formData, "email"),
       departmentId: getNumber(formData, "departmentId"),
@@ -55,11 +57,33 @@ export async function POST(request: Request) {
       fieldRole: getString(formData, "fieldRole"),
       workLocation: getString(formData, "workLocation"),
       emergencyContact: getString(formData, "emergencyContact"),
+      emergencyPhone: getString(formData, "emergencyPhone"),
+      homeAddress: getString(formData, "homeAddress"),
       note: getString(formData, "note"),
     };
 
+    if (!input.lastName) {
+      return jsonError("Ажилтны овог заавал бөглөнө үү.", 400);
+    }
     if (!input.firstName) {
       return jsonError("Ажилтны нэр заавал бөглөнө үү.", 400);
+    }
+    if (!input.registerNumber) {
+      return jsonError("Регистрийн дугаар заавал бөглөнө үү.", 400);
+    }
+    if (!input.departmentId) {
+      return jsonError("Хэлтэс / алба заавал сонгоно уу.", 400);
+    }
+    if (!input.jobId) {
+      return jsonError("Албан тушаал заавал сонгоно уу.", 400);
+    }
+    if (input.startDate) {
+      const startDate = new Date(`${input.startDate}T00:00:00`);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      if (!Number.isNaN(startDate.getTime()) && startDate > today) {
+        return jsonError("Ажилд орсон огноо ирээдүйн огноо байж болохгүй.", 400);
+      }
     }
 
     const employee = await createEmployee(session, input);

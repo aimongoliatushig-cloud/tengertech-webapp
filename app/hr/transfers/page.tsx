@@ -2,6 +2,7 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { getRoleLabel, requireSession } from "@/lib/auth";
 import { requireHrAccess } from "@/lib/hr";
 
+import { HrSectionNav } from "../hr-section-nav";
 import { RegistryPage } from "../hr-client";
 
 export default async function HrTransfersPage() {
@@ -19,6 +20,7 @@ export default async function HrTransfersPage() {
         roleLabel={getRoleLabel(session.role)}
         notificationNote="Шилжилт хөдөлгөөний бүртгэл"
       />
+      <HrSectionNav />
       <RegistryPage
         title="Шилжилт хөдөлгөөний жагсаалт"
         description="Өмнөх болон шинэ алба нэгж, албан тушаал, удирдлага, хүчинтэй огноо, тушаалын файлыг бүртгэнэ."

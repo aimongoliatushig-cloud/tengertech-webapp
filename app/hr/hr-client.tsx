@@ -16,8 +16,17 @@ function statusLabel(employee: HrEmployeeDirectoryItem) {
   if (!employee.active || employee.statusKey === "archived") {
     return "Архивлагдсан";
   }
+  if (employee.statusKey === "resigned" || employee.statusKey === "terminated") {
+    return "Ажлаас гарсан";
+  }
   if (employee.statusKey === "leave") {
     return "Чөлөөтэй";
+  }
+  if (employee.statusKey === "sick") {
+    return "Өвчтэй";
+  }
+  if (employee.statusKey === "business_trip") {
+    return "Томилолттой";
   }
   return "Идэвхтэй";
 }
@@ -77,6 +86,9 @@ export function EmployeeTable({ employees }: { employees: HrEmployeeDirectoryIte
           <option value={ALL}>Бүх төлөв</option>
           <option value="Идэвхтэй">Идэвхтэй</option>
           <option value="Чөлөөтэй">Чөлөөтэй</option>
+          <option value="Өвчтэй">Өвчтэй</option>
+          <option value="Томилолттой">Томилолттой</option>
+          <option value="Ажлаас гарсан">Ажлаас гарсан</option>
           <option value="Архивлагдсан">Архивлагдсан</option>
         </select>
         <Link href="/hr/employees/new" className={styles.primaryLink}>
@@ -168,13 +180,23 @@ export function EmployeeCreateForm({
     <form className={styles.formPanel} onSubmit={submit}>
       {message ? <p className={styles.errorText}>{message}</p> : null}
       <div className={styles.formGrid}>
-        <Field name="lastName" label="Овог" />
+        <Field name="lastName" label="Овог" required />
         <Field name="firstName" label="Нэр" required />
-        <Field name="registerNumber" label="Регистрийн дугаар" />
+        <Field name="registerNumber" label="Регистрийн дугаар" required />
+        <label className={styles.field}>
+          <span>Хүйс</span>
+          <select name="gender" defaultValue="">
+            <option value="">Сонгох</option>
+            <option value="male">Эрэгтэй</option>
+            <option value="female">Эмэгтэй</option>
+            <option value="other">Бусад</option>
+          </select>
+        </label>
+        <Field name="birthDate" label="Төрсөн огноо" type="date" />
         <Field name="phone" label="Утас" />
         <Field name="email" label="Имэйл" type="email" />
-        <Select name="departmentId" label="Алба нэгж" options={departments} />
-        <Select name="jobId" label="Албан тушаал" options={jobs} />
+        <Select name="departmentId" label="Хэлтэс / алба" options={departments} required />
+        <Select name="jobId" label="Албан тушаал" options={jobs} required />
         <Field name="jobTitle" label="Ажлын нэр" />
         <Select name="managerId" label="Удирдлага" options={managers} />
         <Field name="startDate" label="Ажилд орсон огноо" type="date" />
@@ -184,6 +206,7 @@ export function EmployeeCreateForm({
             <option>Үндсэн</option>
             <option>Түр</option>
             <option>Гэрээт</option>
+            <option>Улирлын</option>
           </select>
         </label>
         <label className={styles.checkField}>
@@ -203,6 +226,8 @@ export function EmployeeCreateForm({
         </label>
         <Field name="workLocation" label="Ажиллах байршил" />
         <Field name="emergencyContact" label="Яаралтай холбоо барих хүн" />
+        <Field name="emergencyPhone" label="Яаралтай холбоо барих утас" />
+        <Field name="homeAddress" label="Гэрийн хаяг" />
       </div>
       <label className={styles.field}>
         <span>Тэмдэглэл</span>
@@ -234,11 +259,21 @@ function Field({
   );
 }
 
-function Select({ label, name, options }: { label: string; name: string; options: HrOption[] }) {
+function Select({
+  label,
+  name,
+  options,
+  required = false,
+}: {
+  label: string;
+  name: string;
+  options: HrOption[];
+  required?: boolean;
+}) {
   return (
     <label className={styles.field}>
       <span>{label}</span>
-      <select name={name} defaultValue="">
+      <select name={name} defaultValue="" required={required}>
         <option value="">Сонгох</option>
         {options.map((option) => (
           <option key={option.id} value={option.id}>
@@ -251,21 +286,64 @@ function Select({ label, name, options }: { label: string; name: string; options
 }
 
 const detailTabs = [
-  "Ерөнхий мэдээлэл",
-  "Ажил / албан тушаал",
-  "Чөлөө / өвчтэй",
-  "Шилжилт хөдөлгөөн",
-  "Тойрох хуудас",
-  "Сахилга",
-  "Файл / хавсралт",
-  "Түүх",
+  "Үндсэн мэдээлэл",
+  "Ажлын мэдээлэл",
+  "Чөлөө / өвчтэй / томилолт",
+  "Сахилгын бүртгэл",
+  "Оноогдсон ажил",
+  "Тушаал / гэрээ",
+  "Хавсралт",
+  "Түүх / өөрчлөлт",
 ];
 
 export function EmployeeDetailTabs({ employee }: { employee: HrEmployeeDirectoryItem }) {
   const [tab, setTab] = useState(detailTabs[0]);
+  const tabContent: Record<string, { label: string; value: string }[]> = {
+    "Үндсэн мэдээлэл": [
+      { label: "Нэр", value: employee.name },
+      { label: "Ажилтны код", value: employee.employeeCode },
+      { label: "Хүйс", value: employee.genderLabel },
+      { label: "Утас", value: employee.workPhone || employee.mobilePhone },
+      { label: "И-мэйл", value: employee.workEmail },
+      { label: "Төлөв", value: employee.statusLabel },
+    ],
+    "Ажлын мэдээлэл": [
+      { label: "Хэлтэс / алба", value: employee.departmentName },
+      { label: "Албан тушаал", value: employee.jobTitle },
+      { label: "Шууд удирдлага", value: employee.managerName },
+      { label: "Ажилд орсон огноо", value: employee.startDate },
+      { label: "Гэрээ дуусах огноо", value: employee.contractEndDate },
+      { label: "Зэрэг / дэв", value: employee.gradeRank },
+    ],
+    "Чөлөө / өвчтэй / томилолт": [
+      { label: "Чөлөө бүртгэх", value: "Дээд талын Чөлөө бүртгэх үйлдлээр энэ ажилтанд бүртгэл үүсгэнэ." },
+      { label: "Өвчтэй бүртгэх", value: "Өвчтэй бүртгэл дээр эмнэлгийн магадлагаа, хавсралт оруулна." },
+      { label: "Томилолт бүртгэх", value: "Томилолтын газар, хугацаа, зорилго, баталсан хүн бүртгэнэ." },
+    ],
+    "Сахилгын бүртгэл": [
+      { label: "Сахилгын оноо", value: `${Math.round(employee.disciplineScore)}%` },
+      { label: "Ажилтны тайлбар", value: "Сахилгын бүртгэл дээр ажилтан web/mobile-оор тайлбар өгнө." },
+    ],
+    "Оноогдсон ажил": [
+      { label: "Даалгаврын биелэлт", value: `${Math.round(employee.taskCompletionPercent)}%` },
+      { label: "Ажлын төлөв", value: "Ажлаас гарсан ажилтанд шинэ ажил оноох үед анхааруулга гаргана." },
+    ],
+    "Тушаал / гэрээ": [
+      { label: "Гэрээ дуусах", value: employee.contractEndDate },
+      { label: "Тушаал / гэрээ", value: "Ажилд авах, чөлөөлөх, шилжилт, сахилга, нэмэлт гэрээний хавсралт хадгална." },
+    ],
+    Хавсралт: [
+      { label: "Дутуу хавсралт", value: `${employee.missingDocumentCount}` },
+      { label: "Хавсралт нэмэх", value: "Иргэний үнэмлэх, диплом, гэрээ, тушаал болон бусад файлыг profile дээр хадгална." },
+    ],
+    "Түүх / өөрчлөлт": [
+      { label: "Ажилтны түүх", value: "Хэлтэс, албан тушаал, удирдлага, төлөвийн өөрчлөлт бүртгэгдэнэ." },
+      { label: "KPI", value: `${Math.round(employee.kpiScore)}%` },
+    ],
+  };
 
   return (
-    <section className={styles.panel}>
+    <section id="profile-info" className={styles.panel}>
       <div className={styles.tabList}>
         {detailTabs.map((item) => (
           <button
@@ -280,16 +358,10 @@ export function EmployeeDetailTabs({ employee }: { employee: HrEmployeeDirectory
       </div>
 
       <div className={styles.detailGrid}>
-        <Info label="Нэр" value={employee.name} />
-        <Info label="Алба нэгж" value={employee.departmentName} />
-        <Info label="Албан тушаал" value={employee.jobTitle} />
-        <Info label="Утас" value={employee.workPhone || employee.mobilePhone} />
-        <Info label="Имэйл" value={employee.workEmail} />
-        <Info label="Ажилд орсон" value={employee.startDate} />
-        <Info label="Удирдлага" value={employee.managerName} />
-        <Info label="Төлөв" value={statusLabel(employee)} />
+        {(tabContent[tab] ?? []).map((item) => (
+          <Info key={item.label} label={item.label} value={item.value} />
+        ))}
       </div>
-      <p className={styles.mutedText}>{tab} хэсгийн дэлгэрэнгүй бүртгэл Odoo болон HR API-тай холбогдон өргөтгөхөд бэлэн.</p>
     </section>
   );
 }
@@ -307,13 +379,16 @@ export function LeavesClient({
   employees,
   leaveTypes,
   leaves,
+  defaultKind = "leave",
 }: {
   employees: HrEmployeeDirectoryItem[];
   leaveTypes: HrOption[];
   leaves: HrLeaveItem[];
+  defaultKind?: "leave" | "sick";
 }) {
   const searchParams = useSearchParams();
-  const defaultSick = searchParams.get("type") === "sick";
+  const defaultSick = defaultKind === "sick" || searchParams.get("type") === "sick";
+  const defaultEmployeeId = searchParams.get("employeeId") || "";
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -385,7 +460,7 @@ export function LeavesClient({
         {message ? <p className={message.includes("хадгалагд") ? styles.successText : styles.errorText}>{message}</p> : null}
         <label className={styles.field}>
           <span>Ажилтан</span>
-          <select name="employeeId" required>
+          <select name="employeeId" defaultValue={defaultEmployeeId} required>
             <option value="">Сонгох</option>
             {employees.map((employee) => (
               <option key={employee.id} value={employee.id}>
