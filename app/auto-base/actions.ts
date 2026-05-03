@@ -12,9 +12,8 @@ function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
-function redirectWithMessage(vehicleId: number, kind: "error" | "notice", message: string) {
+function redirectWithMessage(kind: "error" | "notice", message: string) {
   const params = new URLSearchParams({
-    vehicle: String(vehicleId),
     [kind]: message,
   });
   redirect(`/auto-base?${params.toString()}`);
@@ -33,11 +32,11 @@ function optionalOdooId(value: string) {
   return Number.isFinite(id) && id > 0 ? Math.trunc(id) : false;
 }
 
-function optionalStaffId(formData: FormData, key: string, label: string, vehicleId: number) {
+function optionalStaffId(formData: FormData, key: string, label: string) {
   const selectedId = optionalOdooId(getString(formData, key));
   const typedLabel = getString(formData, `${key}_label`);
   if (typedLabel && !selectedId) {
-    redirectWithMessage(vehicleId, "error", `${label}-г HR жагсаалтаас сонгоно уу.`);
+    redirectWithMessage("error", `${label}-г HR жагсаалтаас сонгоно уу.`);
   }
   return selectedId;
 }
@@ -137,7 +136,6 @@ export async function updateFleetVehicleAction(formData: FormData) {
         formData,
         "municipal_responsible_driver_id",
         "Хариуцсан жолооч",
-        vehicleId,
       );
     }
     if ("municipal_loader_1_id" in editableFields && formData.has("municipal_loader_1_id")) {
@@ -145,7 +143,6 @@ export async function updateFleetVehicleAction(formData: FormData) {
         formData,
         "municipal_loader_1_id",
         "Ачигч 1",
-        vehicleId,
       );
     }
     if ("municipal_loader_2_id" in editableFields && formData.has("municipal_loader_2_id")) {
@@ -153,7 +150,6 @@ export async function updateFleetVehicleAction(formData: FormData) {
         formData,
         "municipal_loader_2_id",
         "Ачигч 2",
-        vehicleId,
       );
     }
     if ("municipal_insurance_company" in editableFields && formData.has("municipal_insurance_company")) {
@@ -217,12 +213,11 @@ export async function updateFleetVehicleAction(formData: FormData) {
       ].some((field) => formData.has(field));
       if (submittedCrewFields) {
         redirectWithMessage(
-          vehicleId,
           "error",
           "Odoo дээр авто баазын жолооч, ачигчийн талбарууд суулгагдаагүй байна. municipal_repair_workflow module-ийг update хийнэ үү.",
         );
       }
-      redirectWithMessage(vehicleId, "error", "Засах боломжтой талбар олдсонгүй.");
+      redirectWithMessage("error", "Засах боломжтой талбар олдсонгүй.");
     }
 
     await executeOdooKw<boolean>(
@@ -242,7 +237,6 @@ export async function updateFleetVehicleAction(formData: FormData) {
       "municipal_loader_2_id",
     ]);
     redirectWithMessage(
-      vehicleId,
       "notice",
       updatedFields.length > 0 && updatedFields.every((field) => crewFields.has(field))
         ? "Жолооч, ачигчийн мэдээлэл шинэчлэгдлээ."
@@ -250,6 +244,6 @@ export async function updateFleetVehicleAction(formData: FormData) {
     );
   } catch (error) {
     rethrowIfRedirectError(error);
-    redirectWithMessage(vehicleId, "error", getErrorMessage(error));
+    redirectWithMessage("error", getErrorMessage(error));
   }
 }

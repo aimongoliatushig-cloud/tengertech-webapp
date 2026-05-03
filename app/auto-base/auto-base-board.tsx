@@ -873,7 +873,6 @@ function VehicleDetailModal({
 
 export function AutoBaseBoard({
   board,
-  initialVehicleId,
   notice,
   error,
 }: {
@@ -886,9 +885,7 @@ export function AutoBaseBoard({
     () => new Map(board.allVehicles.map((vehicle) => [vehicle.id, vehicle])),
     [board.allVehicles],
   );
-  const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(
-    initialVehicleId && vehiclesById.has(initialVehicleId) ? initialVehicleId : null,
-  );
+  const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
   const selectedVehicle = selectedVehicleId ? vehiclesById.get(selectedVehicleId) ?? null : null;
   const buckets: BucketConfig[] = [
     {
