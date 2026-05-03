@@ -624,6 +624,23 @@ function displayStageLabel(name: string) {
   }
 }
 
+function resolveEffectiveTaskStage(stageName: string, progress: number) {
+  const bucket = normalizeStageBucket(stageName);
+  const normalizedProgress = Math.max(0, Math.min(100, Math.round(progress)));
+
+  if (bucket === "review") {
+    return { bucket, label: displayStageLabel(stageName) };
+  }
+  if (bucket === "done" || normalizedProgress >= 100) {
+    return { bucket: "done" as const, label: "Дууссан ажил" };
+  }
+  if (bucket === "progress" || normalizedProgress > 0) {
+    return { bucket: "progress" as const, label: "Явагдаж буй ажил" };
+  }
+
+  return { bucket, label: displayStageLabel(stageName) };
+}
+
 function relationName(relation: Relation, fallback = "Тодорхойгүй") {
   return Array.isArray(relation) ? relation[1] : fallback;
 }
@@ -770,7 +787,7 @@ function enrichQuantityLinesWithReportProgress(
     const completedQuantity = completedByUnit.get(normalizeQuantityUnit(line.unit)) ?? 0;
     const cappedCompletedQuantity = Math.min(completedQuantity, line.quantity);
     const progress =
-      line.quantity > 0 ? Math.round((cappedCompletedQuantity / line.quantity) * 100) : 0;
+      line.quantity > 0 ? (cappedCompletedQuantity / line.quantity) * 100 : 0;
 
     return {
       ...line,
@@ -783,8 +800,15 @@ function enrichQuantityLinesWithReportProgress(
     (total, line) => total + Math.min(line.completedQuantity ?? 0, line.quantity),
     0,
   );
-  const progress =
-    plannedQuantity > 0 ? Math.min(100, Math.round((completedQuantity / plannedQuantity) * 100)) : 0;
+  const progress = quantityLines.length
+    ? Math.min(
+        100,
+        Math.round(
+          quantityLines.reduce((total, line) => total + (line.progress ?? 0), 0) /
+            quantityLines.length,
+        ),
+      )
+    : 0;
 
   return {
     quantityLines,
@@ -2292,12 +2316,6 @@ export async function loadProjectDetail(
     connectionOverrides,
   );
 
-  const doneCount = tasks.filter(
-    (task) => normalizeStageBucket(relationName(task.stage_id, "")) === "done",
-  ).length;
-  const reviewCount = tasks.filter(
-    (task) => normalizeStageBucket(relationName(task.stage_id, "")) === "review",
-  ).length;
   const unitMap = new Map(workUnits.map((unit) => [unit.id, unit]));
   const projectAllowedUnits = (project.ops_allowed_unit_ids ?? [])
     .map((unitId) => unitMap.get(unitId))
@@ -2334,6 +2352,40 @@ export async function loadProjectDetail(
     taskReports.push(report);
     reportsByTaskId.set(reportTaskId, taskReports);
   }
+  const taskCards = tasks.map((task) => {
+    const quantitySnapshot = getProjectTaskQuantitySnapshot(task, reportsByTaskId.get(task.id) ?? []);
+    const effectiveStage = resolveEffectiveTaskStage(
+      relationName(task.stage_id, ""),
+      quantitySnapshot.progress,
+    );
+
+    return {
+      id: task.id,
+      name: task.name,
+      href: `/tasks/${task.id}`,
+      stageLabel: effectiveStage.label,
+      stageBucket: effectiveStage.bucket,
+      isOverdue:
+        effectiveStage.bucket !== "done" &&
+        isPastDueDate(task.date_deadline),
+      progress: quantitySnapshot.progress,
+      deadline: formatDateLabel(task.date_deadline),
+      deadlineValue: task.date_deadline || "",
+      teamLeaderName: relationName(task.ops_team_leader_id, "Сонгоогүй"),
+      teamLeaderJobTitle:
+        departmentUserById.get(relationId(task.ops_team_leader_id) ?? 0)?.jobTitle ?? "",
+      plannedQuantity: quantitySnapshot.plannedQuantity,
+      completedQuantity: quantitySnapshot.completedQuantity,
+      measurementUnit: quantitySnapshot.measurementUnit,
+      quantitySummary: quantitySnapshot.quantitySummary,
+      quantitySummaryLines: quantitySnapshot.quantitySummaryLines,
+    };
+  });
+  const doneCount = taskCards.filter((task) => task.stageBucket === "done").length;
+  const reviewCount = taskCards.filter((task) => task.stageBucket === "review").length;
+  const completion = taskCards.length
+    ? Math.round(taskCards.reduce((total, task) => total + task.progress, 0) / taskCards.length)
+    : 0;
 
   return {
     id: project.id,
@@ -2354,33 +2406,8 @@ export async function loadProjectDetail(
     taskCount: tasks.length,
     reviewCount,
     doneCount,
-    completion: tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0,
-    tasks: tasks.map((task) => ({
-      id: task.id,
-      name: task.name,
-      href: `/tasks/${task.id}`,
-      stageLabel: displayStageLabel(relationName(task.stage_id, "")),
-      stageBucket: normalizeStageBucket(relationName(task.stage_id, "")),
-      isOverdue:
-        normalizeStageBucket(relationName(task.stage_id, "")) !== "done" &&
-        isPastDueDate(task.date_deadline),
-      progress: getProjectTaskQuantitySnapshot(task, reportsByTaskId.get(task.id) ?? []).progress,
-      deadline: formatDateLabel(task.date_deadline),
-      deadlineValue: task.date_deadline || "",
-      teamLeaderName: relationName(task.ops_team_leader_id, "Сонгоогүй"),
-      teamLeaderJobTitle:
-        departmentUserById.get(relationId(task.ops_team_leader_id) ?? 0)?.jobTitle ?? "",
-      plannedQuantity: getProjectTaskQuantitySnapshot(task, reportsByTaskId.get(task.id) ?? [])
-        .plannedQuantity,
-      completedQuantity: getProjectTaskQuantitySnapshot(task, reportsByTaskId.get(task.id) ?? [])
-        .completedQuantity,
-      measurementUnit: getProjectTaskQuantitySnapshot(task, reportsByTaskId.get(task.id) ?? [])
-        .measurementUnit,
-      quantitySummary: getProjectTaskQuantitySnapshot(task, reportsByTaskId.get(task.id) ?? [])
-        .quantitySummary,
-      quantitySummaryLines: getProjectTaskQuantitySnapshot(task, reportsByTaskId.get(task.id) ?? [])
-        .quantitySummaryLines,
-    })),
+    completion,
+    tasks: taskCards,
     teamLeaderOptions,
     departmentUserOptions,
     crewTeamOptions,
@@ -2604,6 +2631,10 @@ export async function loadTaskDetail(
     reportProgress.progress > 0
       ? reportProgress.progress
       : Math.round(task.ops_progress_percent ?? 0);
+  const effectiveStage = resolveEffectiveTaskStage(
+    relationName(task.stage_id, ""),
+    effectiveProgress,
+  );
 
   return {
     id: task.id,
@@ -2614,8 +2645,8 @@ export async function loadTaskDetail(
     quantityOptional:
       task.mfo_operation_type === "garbage" ||
       task.mfo_operation_type === "garbage_seasonal",
-    stageLabel: displayStageLabel(relationName(task.stage_id, "")),
-    stageBucket: normalizeStageBucket(relationName(task.stage_id, "")),
+    stageLabel: effectiveStage.label,
+    stageBucket: effectiveStage.bucket,
     state: task.state,
     deadline: formatDateLabel(task.date_deadline),
     measurementUnit: formatMeasurementUnit(
