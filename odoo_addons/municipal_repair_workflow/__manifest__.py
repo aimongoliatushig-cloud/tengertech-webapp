@@ -10,7 +10,10 @@
     "depends": [
         "municipal_core",
         "fleet",
+        "project",
         "product",
+        "purchase",
+        "account",
         "stock",
         "mail",
     ],

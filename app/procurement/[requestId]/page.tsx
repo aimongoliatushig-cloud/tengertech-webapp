@@ -727,6 +727,17 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
                     </label>
                   ) : null}
                   <label className={styles.fieldLabel}>
+                    Төлсөн дүн
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      name="paid_amount"
+                      defaultValue={item.paid_amount || ""}
+                      required
+                    />
+                  </label>
+                  <label className={styles.fieldLabel}>
                     Төлбөрийн лавлагаа
                     <input name="payment_reference" defaultValue={item.payment_reference || ""} />
                   </label>

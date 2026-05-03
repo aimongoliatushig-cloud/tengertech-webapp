@@ -254,6 +254,7 @@ export async function runProcurementWorkflowAction(formData: FormData) {
         requestId,
         {
           selected_quotation_id: getNumber(formData, "selected_quotation_id") || undefined,
+          paid_amount: getNumber(formData, "paid_amount") || undefined,
           payment_reference: getString(formData, "payment_reference") || undefined,
           payment_date: getString(formData, "payment_date") || undefined,
           note,
