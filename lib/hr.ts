@@ -69,6 +69,28 @@ type HrEmployeeDirectoryApiRecord = {
   disciplineScore?: number;
 };
 
+type HrTimeoffRequestSearchRecord = {
+  id: number;
+  name?: string | false;
+  employee_id?: OdooRelation;
+  department_id?: OdooRelation;
+  request_type?: string | false;
+  date_from?: string | false;
+  date_to?: string | false;
+  duration_days?: number | false;
+  reason?: string | false;
+  note?: string | false;
+  hr_note?: string | false;
+  rejection_reason?: string | false;
+  state?: string | false;
+  submitted_by?: OdooRelation;
+  submitted_date?: string | false;
+  reviewed_by?: OdooRelation;
+  approved_by?: OdooRelation;
+  rejected_by?: OdooRelation;
+  attachment_ids?: number[];
+};
+
 export type HrOption = {
   id: number;
   name: string;
@@ -954,6 +976,168 @@ function normalizeTimeoffRequest(record: Partial<HrTimeoffRequest>): HrTimeoffRe
   };
 }
 
+function normalizeTimeoffSearchRecord(record: HrTimeoffRequestSearchRecord): HrTimeoffRequest {
+  const requestType = record.request_type === "sick" ? "sick" : "time_off";
+  const state = (record.state || "draft") as HrTimeoffRequestState;
+  const dateFrom = String(record.date_from || "");
+  const dateTo = String(record.date_to || "");
+
+  return {
+    id: Number(record.id || 0),
+    name: String(record.name || ""),
+    employeeId: getRelationId(record.employee_id) || 0,
+    employeeName: getRelationName(record.employee_id, "Ажилтан сонгоогүй"),
+    departmentId: getRelationId(record.department_id),
+    departmentName: getRelationName(record.department_id, "Хэлтэсгүй"),
+    requestType,
+    requestTypeLabel: requestType === "sick" ? "Өвчтэй" : "Чөлөө",
+    dateFrom,
+    dateTo,
+    durationDays: Number(record.duration_days || dayCount(dateFrom, dateTo)),
+    reason: String(record.reason || ""),
+    note: String(record.note || ""),
+    hrNote: String(record.hr_note || ""),
+    rejectionReason: String(record.rejection_reason || ""),
+    state,
+    stateLabel: timeoffStateLabel(state),
+    submittedBy: getRelationName(record.submitted_by),
+    submittedDate: String(record.submitted_date || ""),
+    reviewedBy: getRelationName(record.reviewed_by),
+    approvedBy: getRelationName(record.approved_by),
+    rejectedBy: getRelationName(record.rejected_by),
+    hasAttachment: Boolean(record.attachment_ids?.length),
+    attachmentIds: Array.isArray(record.attachment_ids) ? record.attachment_ids : [],
+    canEdit: !["approved", "rejected", "cancelled"].includes(state),
+    canApprove: false,
+  };
+}
+
+async function scopeTimeoffRequestsForProfile(
+  session: AppSession,
+  requests: HrTimeoffRequest[],
+  profile: Awaited<ReturnType<typeof getHrAccessProfile>>,
+) {
+  if (profile.isHr) {
+    return requests;
+  }
+  const employees = await getEmployees(session);
+  const employeeIds = new Set(employees.map((employee) => employee.id));
+  const departmentId = profile.employee.departmentId;
+  const departmentName = normalizeText(profile.employee.departmentName);
+
+  return requests.filter((request) => {
+    if (employeeIds.has(request.employeeId)) {
+      return true;
+    }
+    if (departmentId && request.departmentId) {
+      return request.departmentId === departmentId;
+    }
+    return departmentName ? normalizeText(request.departmentName) === departmentName : false;
+  });
+}
+
+function getTodayKey() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ulaanbaatar",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function requestCoversToday(request: HrTimeoffRequest, today: string) {
+  return request.state === "approved" && request.dateFrom <= today && request.dateTo >= today;
+}
+
+function buildScopedTimeoffDashboard(
+  employees: HrEmployeeDirectoryItem[],
+  requests: HrTimeoffRequest[],
+  scope: "hr" | "department",
+  departmentName = "",
+): HrTimeoffDashboardData {
+  const today = getTodayKey();
+  const currentByEmployee = new Map<number, "time_off" | "sick">();
+
+  for (const request of requests) {
+    if (!requestCoversToday(request, today)) continue;
+    if (request.requestType === "sick") {
+      currentByEmployee.set(request.employeeId, "sick");
+    } else if (currentByEmployee.get(request.employeeId) !== "sick") {
+      currentByEmployee.set(request.employeeId, "time_off");
+    }
+  }
+
+  let activeEmployees = 0;
+  let timeOffEmployees = 0;
+  let sickEmployees = 0;
+  let archivedEmployees = 0;
+  const departmentRows = new Map<string, HrTimeoffDashboardData["departmentBreakdown"][number]>();
+
+  for (const employee of employees) {
+    const key = String(employee.departmentId || employee.departmentName || "Хэлтэсгүй");
+    if (!departmentRows.has(key)) {
+      departmentRows.set(key, {
+        departmentId: employee.departmentId || 0,
+        departmentName: employee.departmentName || "Хэлтэсгүй",
+        totalEmployees: 0,
+        activeEmployees: 0,
+        timeOffEmployees: 0,
+        sickEmployees: 0,
+        pendingRequests: 0,
+      });
+    }
+    const row = departmentRows.get(key)!;
+    row.totalEmployees += 1;
+
+    const dynamicStatus = currentByEmployee.get(employee.id);
+    if (!employee.active || ["archived", "terminated", "resigned"].includes(employee.statusKey)) {
+      archivedEmployees += 1;
+    } else if (dynamicStatus === "sick") {
+      sickEmployees += 1;
+      row.sickEmployees += 1;
+    } else if (dynamicStatus === "time_off") {
+      timeOffEmployees += 1;
+      row.timeOffEmployees += 1;
+    } else {
+      activeEmployees += 1;
+      row.activeEmployees += 1;
+    }
+  }
+
+  for (const request of requests) {
+    if (!["submitted", "hr_review"].includes(request.state)) continue;
+    const key = String(request.departmentId || request.departmentName || "Хэлтэсгүй");
+    const row = departmentRows.get(key);
+    if (row) {
+      row.pendingRequests += 1;
+    }
+  }
+
+  return {
+    scope,
+    departmentName,
+    cards: {
+      totalEmployees: employees.length,
+      activeEmployees,
+      timeOffEmployees,
+      sickEmployees,
+      archivedEmployees,
+      pendingRequests: requests.filter((request) => ["submitted", "hr_review"].includes(request.state)).length,
+      approvedRequests: requests.filter((request) => request.state === "approved").length,
+      rejectedRequests: requests.filter((request) => request.state === "rejected").length,
+    },
+    statusPie: [
+      { label: "Идэвхтэй", value: activeEmployees },
+      { label: "Чөлөөтэй", value: timeOffEmployees },
+      { label: "Өвчтэй", value: sickEmployees },
+    ],
+    departmentBreakdown: Array.from(departmentRows.values()).sort((left, right) =>
+      left.departmentName.localeCompare(right.departmentName, "mn"),
+    ),
+    latestRequests: requests.slice(0, 10),
+  };
+}
+
 function timeoffStateLabel(state: string) {
   switch (state) {
     case "draft":
@@ -979,7 +1163,8 @@ function isMissingTimeoffModelError(error: unknown) {
 }
 
 export async function getTimeoffRequests(session: AppSession, filters: Record<string, unknown> = {}) {
-  await requireHrAccess(session);
+  const profile = await requireHrAccess(session);
+  let requests: HrTimeoffRequest[] = [];
   try {
     const records = await executeOdooKw<Array<Partial<HrTimeoffRequest>>>(
       "municipal.hr.timeoff.request",
@@ -988,18 +1173,67 @@ export async function getTimeoffRequests(session: AppSession, filters: Record<st
       {},
       getConnection(session),
     );
-    return records.map(normalizeTimeoffRequest);
+    requests = records.map(normalizeTimeoffRequest);
   } catch (error) {
-    if (isMissingTimeoffModelError(error)) {
-      console.warn("HR time off request model is not installed yet:", error);
-      return [];
+    if (!isMissingTimeoffModelError(error)) {
+      console.warn("HR custom time off request API failed, falling back to search_read:", error);
+    } else {
+      console.warn("HR time off request model API is not installed yet:", error);
     }
-    throw error;
   }
+
+  if (!requests.length) {
+    try {
+      const records = await executeOdooKw<HrTimeoffRequestSearchRecord[]>(
+        "municipal.hr.timeoff.request",
+        "search_read",
+        [[]],
+        {
+          fields: [
+            "name",
+            "employee_id",
+            "department_id",
+            "request_type",
+            "date_from",
+            "date_to",
+            "duration_days",
+            "reason",
+            "note",
+            "hr_note",
+            "rejection_reason",
+            "state",
+            "submitted_by",
+            "submitted_date",
+            "reviewed_by",
+            "approved_by",
+            "rejected_by",
+            "attachment_ids",
+          ],
+          order: "submitted_date desc, id desc",
+          limit: 300,
+          context: { active_test: false },
+        },
+        getConnection(session),
+      );
+      requests = records.map(normalizeTimeoffSearchRecord);
+    } catch (error) {
+      if (isMissingTimeoffModelError(error)) {
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  return scopeTimeoffRequestsForProfile(session, requests, profile);
 }
 
 export async function getTimeoffDashboard(session: AppSession): Promise<HrTimeoffDashboardData> {
   const profile = await requireHrAccess(session);
+  if (!profile.isHr) {
+    const [employees, requests] = await Promise.all([getEmployees(session), getTimeoffRequests(session)]);
+    return buildScopedTimeoffDashboard(employees, requests, "department", profile.employee.departmentName);
+  }
+
   try {
     const dashboard = await executeOdooKw<HrTimeoffDashboardData>(
       "municipal.hr.timeoff.request",

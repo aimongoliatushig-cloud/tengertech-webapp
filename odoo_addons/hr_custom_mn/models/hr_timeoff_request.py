@@ -271,7 +271,6 @@ class MunicipalHrTimeoffRequest(models.Model):
         return any(
             self.env.user.has_group(group)
             for group in [
-                "hr.group_hr_user",
                 "hr.group_hr_manager",
                 "hr_custom_mn.group_hr_custom_mn_officer",
                 "hr_custom_mn.group_hr_custom_mn_admin",
