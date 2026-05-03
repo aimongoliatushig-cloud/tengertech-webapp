@@ -2,35 +2,23 @@ import Link from "next/link";
 import {
   Activity,
   Archive,
-  BriefcaseBusiness,
   ClipboardPlus,
   FileCheck2,
   FileWarning,
   HeartPulse,
-  Plus,
   ShieldAlert,
-  Shuffle,
-  UserPlus,
   Users,
 } from "lucide-react";
 
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { getRoleLabel, requireSession } from "@/lib/auth";
-import { getEmployees, getHrStats, requireHrAccess } from "@/lib/hr";
+import { getEmployees, getHrStats, getTimeoffDashboard, requireHrAccess } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
 import { HrSectionNav } from "./hr-section-nav";
 import styles from "./hr.module.css";
 
 export const dynamic = "force-dynamic";
-
-const actions = [
-  { href: "/hr/employees/new", label: "Шинэ ажилтан бүртгэх", icon: Plus },
-  { href: "/hr/leaves", label: "Чөлөө бүртгэх", icon: ClipboardPlus },
-  { href: "/hr/sick", label: "Өвчтэй бүртгэх", icon: HeartPulse },
-  { href: "/hr/trips", label: "Томилолт бүртгэх", icon: BriefcaseBusiness },
-  { href: "/hr/clearance", label: "Тойрох хуудас", icon: FileCheck2 },
-];
 
 function buildDepartmentGroups(employees: HrEmployeeDirectoryItem[]) {
   const groups = new Map<string, HrEmployeeDirectoryItem[]>();
@@ -96,7 +84,7 @@ export default async function HrDashboardPage() {
   if (!access) {
     return null;
   }
-  const [stats, employees] = await Promise.all([
+  const [stats, employees, timeoffDashboard] = await Promise.all([
     getHrStats(session).catch((error) => {
       console.warn("HR dashboard stats could not be loaded:", error);
       return {
@@ -120,36 +108,35 @@ export default async function HrDashboardPage() {
       console.warn("HR dashboard employee groups could not be loaded:", error);
       return [];
     }),
+    getTimeoffDashboard(session).catch((error) => {
+      console.warn("HR time off dashboard could not be loaded:", error);
+      return null;
+    }),
   ]);
+  const mode = access.isHr ? "hr" : "department";
+  const requestCards = timeoffDashboard?.cards;
 
   const cards = [
-    { label: "Нийт ажилтан", value: stats.totalEmployees, icon: Users, note: "Бүх ажилтны мастер бүртгэл" },
-    { label: "Идэвхтэй ажилтан", value: stats.activeEmployees, icon: Activity, note: "Одоо ажиллаж буй бүртгэл" },
-    { label: "Чөлөөтэй ажилтан", value: stats.leaveToday, icon: ClipboardPlus, note: "Өнөөдрийн чөлөөний бүртгэл" },
-    { label: "Өвчтэй ажилтан", value: stats.sickToday, icon: HeartPulse, note: "Өвчтэй бүртгэлтэй" },
-    { label: "Томилолттой ажилтан", value: stats.businessTripToday, icon: BriefcaseBusiness, note: "Идэвхтэй томилолт" },
-    { label: "Шинэ ажилтан", value: stats.newEmployees, icon: UserPlus, note: "Энэ сарын шинэ бүртгэл" },
-    { label: "Ажлаас гарсан ажилтан", value: stats.resignedEmployees, icon: Archive, note: "Чөлөөлөгдсөн төлөвтэй" },
-    { label: "Архивласан ажилтан", value: stats.archivedEmployees, icon: Archive, note: "Active жагсаалтаас тусдаа" },
-    { label: "Сахилгын идэвхтэй бүртгэл", value: stats.activeDiscipline, icon: ShieldAlert, note: "Шалгах шаардлагатай" },
-    { label: "Дууссан сахилгын бүртгэл", value: stats.completedDiscipline, icon: ShieldAlert, note: "Баталгаажсан эсвэл архивласан" },
-    { label: "Шилжилт хөдөлгөөн", value: stats.transfers, icon: Shuffle, note: "Бүртгэсэн өөрчлөлт" },
-    { label: "Дуусах дөхсөн гэрээ", value: stats.expiringContracts, icon: FileWarning, note: "60 хоногийн дотор" },
-    { label: "Дутуу хавсралттай ажилтан", value: stats.missingAttachmentEmployees, icon: FileWarning, note: "Баримтын бүрдэл дутуу" },
-    { label: "Тойрох хуудас", value: stats.pendingClearance, icon: FileCheck2, note: "Хүлээгдэж буй" },
+    { label: "Нийт ажилтан", value: requestCards?.totalEmployees ?? stats.totalEmployees, icon: Users, note: access.isHr ? "Бүх хэлтэс" : "Миний хэлтэс" },
+    { label: "Идэвхтэй", value: requestCards?.activeEmployees ?? stats.activeEmployees, icon: Activity, note: "Өнөөдрийн динамик төлөв" },
+    { label: "Чөлөөтэй", value: requestCards?.timeOffEmployees ?? stats.leaveToday, icon: ClipboardPlus, note: "Батлагдсан хүсэлт хүчинтэй" },
+    { label: "Өвчтэй", value: requestCards?.sickEmployees ?? stats.sickToday, icon: HeartPulse, note: "Батлагдсан өвчтэй хүсэлт" },
+    { label: "Хүлээгдэж буй хүсэлт", value: requestCards?.pendingRequests ?? 0, icon: FileWarning, note: "Илгээсэн / HR шалгаж байна" },
+    { label: "Батлагдсан", value: requestCards?.approvedRequests ?? 0, icon: FileCheck2, note: "HR баталсан" },
+    { label: "Татгалзсан", value: requestCards?.rejectedRequests ?? 0, icon: ShieldAlert, note: "HR татгалзсан" },
   ];
 
   return (
     <>
       <WorkspaceHeader
-        title="Хүний нөөцийн удирдлага"
-        subtitle="Ажилтны бүртгэл, хувийн хэрэг, чөлөө, өвчтэй, томилолт, сахилга, шилжилт, архив болон тойрох хуудсыг удирдана"
+        title={access.isHr ? "Хүний нөөцийн dashboard" : "Миний хэлтсийн хүний нөөц"}
+        subtitle={access.isHr ? "Бүх хэлтсийн ажилтан, чөлөө / өвчтэй хүсэлт болон төлөвийг хянана" : "Өөрийн хэлтсийн ажилтны идэвхтэй, чөлөөтэй, өвчтэй төлөв болон илгээсэн хүсэлтүүд"}
         userName={session.name}
         roleLabel={getRoleLabel(session.role)}
-        notificationCount={stats.leaveToday + stats.sickToday + stats.pendingClearance}
-        notificationNote="HR бүртгэлийн анхаарах зүйлс"
+        notificationCount={requestCards?.pendingRequests ?? 0}
+        notificationNote="Хүлээгдэж буй хүсэлт"
       />
-      <HrSectionNav />
+      <HrSectionNav mode={mode} />
 
       <section className={styles.statGrid}>
         {cards.map((card) => {
@@ -171,13 +158,56 @@ export default async function HrDashboardPage() {
 
       <DepartmentManpower employees={employees} />
 
+      {timeoffDashboard?.departmentBreakdown?.length ? (
+        <section className={styles.panel}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <span className={styles.eyebrow}>Request workflow</span>
+              <h2>Хэлтэс тус бүрийн төлөв</h2>
+            </div>
+          </div>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Хэлтэс</th>
+                  <th>Нийт</th>
+                  <th>Идэвхтэй</th>
+                  <th>Чөлөөтэй</th>
+                  <th>Өвчтэй</th>
+                  <th>Хүлээгдэж буй</th>
+                </tr>
+              </thead>
+              <tbody>
+                {timeoffDashboard.departmentBreakdown.map((row) => (
+                  <tr key={row.departmentId || row.departmentName}>
+                    <td>{row.departmentName}</td>
+                    <td>{row.totalEmployees}</td>
+                    <td>{row.activeEmployees}</td>
+                    <td>{row.timeOffEmployees}</td>
+                    <td>{row.sickEmployees}</td>
+                    <td>{row.pendingRequests}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
+
       <section className={styles.actionPanel}>
         <div>
-          <span className={styles.eyebrow}>HR үйлдэл</span>
-          <h2>HR бүртгэлийн гол үйлдэл</h2>
+          <span className={styles.eyebrow}>{access.isHr ? "HR review" : "Department Head"}</span>
+          <h2>{access.isHr ? "Хүсэлт хянах үйлдэл" : "Хүсэлт үүсгэх үйлдэл"}</h2>
         </div>
         <div className={styles.actionGrid}>
-          {actions.map((action) => {
+          {(access.isHr
+            ? [{ href: "/hr/leaves", label: "Ирсэн хүсэлтүүд", icon: ClipboardPlus }]
+            : [
+                { href: "/hr/employees", label: "Миний хэлтсийн ажилтнууд", icon: Users },
+                { href: "/hr/sick", label: "Чөлөө / өвчтэй хүсэлт", icon: HeartPulse },
+              ]
+          ).map((action) => {
             const Icon = action.icon;
             return (
               <Link key={action.href + action.label} href={action.href} className={styles.actionButton}>

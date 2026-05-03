@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_municipal_hr_timeoff_request_list" model="ir.ui.view">
+        <field name="name">municipal.hr.timeoff.request.list</field>
+        <field name="model">municipal.hr.timeoff.request</field>
+        <field name="arch" type="xml">
+            <list string="Чөлөө / өвчтэй хүсэлт"
+                  decoration-success="state == 'approved'"
+                  decoration-danger="state == 'rejected'"
+                  decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="request_type"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="duration_days"/>
+                <field name="submitted_by"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_hr_timeoff_request_form" model="ir.ui.view">
+        <field name="name">municipal.hr.timeoff.request.form</field>
+        <field name="model">municipal.hr.timeoff.request</field>
+        <field name="arch" type="xml">
+            <form string="Чөлөө / өвчтэй хүсэлт">
+                <header>
+                    <button name="action_submit"
+                            type="object"
+                            string="Илгээх"
+                            class="btn-primary"
+                            invisible="state not in ('draft',)"/>
+                    <button name="action_hr_review"
+                            type="object"
+                            string="HR шалгаж байна"
+                            invisible="state not in ('submitted',)"/>
+                    <button name="action_approve"
+                            type="object"
+                            string="Батлах"
+                            class="btn-primary"
+                            invisible="state not in ('submitted', 'hr_review')"/>
+                    <button name="action_reject"
+                            type="object"
+                            string="Татгалзах"
+                            invisible="state not in ('submitted', 'hr_review')"/>
+                    <button name="action_cancel"
+                            type="object"
+                            string="Цуцлах"
+                            invisible="state in ('approved', 'rejected', 'cancelled')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,hr_review,approved,rejected,cancelled"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="employee_id"/>
+                            <field name="department_id"/>
+                            <field name="request_type"/>
+                        </group>
+                        <group>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="duration_days" readonly="1"/>
+                            <field name="submitted_by" readonly="1"/>
+                            <field name="submitted_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="reason" placeholder="Шалтгаан заавал оруулна уу."/>
+                        <field name="note"/>
+                    </group>
+                    <notebook>
+                        <page string="Хавсралтын зураг">
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                        </page>
+                        <page string="HR шийдвэр">
+                            <group>
+                                <field name="reviewed_by" readonly="1"/>
+                                <field name="reviewed_date" readonly="1"/>
+                                <field name="approved_by" readonly="1"/>
+                                <field name="approved_date" readonly="1"/>
+                                <field name="rejected_by" readonly="1"/>
+                                <field name="rejected_date" readonly="1"/>
+                            </group>
+                            <field name="hr_note"/>
+                            <field name="rejection_reason"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_municipal_hr_timeoff_request_search" model="ir.ui.view">
+        <field name="name">municipal.hr.timeoff.request.search</field>
+        <field name="model">municipal.hr.timeoff.request</field>
+        <field name="arch" type="xml">
+            <search string="Чөлөө / өвчтэй хүсэлт хайх">
+                <field name="employee_id"/>
+                <field name="department_id"/>
+                <field name="request_type"/>
+                <field name="state"/>
+                <filter name="pending" string="Хүлээгдэж буй" domain="[('state', 'in', ['submitted', 'hr_review'])]"/>
+                <filter name="approved" string="Батлагдсан" domain="[('state', '=', 'approved')]"/>
+                <filter name="rejected" string="Татгалзсан" domain="[('state', '=', 'rejected')]"/>
+                <filter name="time_off" string="Чөлөө" domain="[('request_type', '=', 'time_off')]"/>
+                <filter name="sick" string="Өвчтэй" domain="[('request_type', '=', 'sick')]"/>
+                <group expand="0" string="Бүлэглэх">
+                    <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
+                    <filter name="group_state" string="Төлөв" context="{'group_by': 'state'}"/>
+                    <filter name="group_type" string="Төрөл" context="{'group_by': 'request_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_municipal_hr_timeoff_request_all" model="ir.actions.act_window">
+        <field name="name">Чөлөө / өвчтэй хүсэлтүүд</field>
+        <field name="res_model">municipal.hr.timeoff.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_municipal_hr_timeoff_request_search"/>
+        <field name="context">{'search_default_pending': 1}</field>
+    </record>
+
+    <record id="action_municipal_hr_timeoff_request_my" model="ir.actions.act_window">
+        <field name="name">Миний илгээсэн хүсэлтүүд</field>
+        <field name="res_model">municipal.hr.timeoff.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('submitted_by', '=', uid)]</field>
+        <field name="search_view_id" ref="view_municipal_hr_timeoff_request_search"/>
+    </record>
+</odoo>

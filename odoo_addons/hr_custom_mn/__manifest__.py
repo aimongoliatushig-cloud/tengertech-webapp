@@ -25,6 +25,7 @@
         "views/hr_employee_history_views.xml",
         "views/hr_performance_views.xml",
         "views/hr_leave_views.xml",
+        "views/hr_timeoff_request_views.xml",
         "views/hr_dashboard_views.xml",
         "views/hr_report_wizard_views.xml",
         "views/menus.xml",

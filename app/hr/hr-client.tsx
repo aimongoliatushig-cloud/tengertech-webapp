@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, FilePlus2, Search } from "lucide-react";
 
-import type { HrLeaveItem, HrOption } from "@/lib/hr";
+import type { HrLeaveItem, HrOption, HrTimeoffRequest } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
 import styles from "./hr.module.css";
@@ -31,7 +31,13 @@ function statusLabel(employee: HrEmployeeDirectoryItem) {
   return "Идэвхтэй";
 }
 
-export function EmployeeTable({ employees }: { employees: HrEmployeeDirectoryItem[] }) {
+export function EmployeeTable({
+  employees,
+  mode = "hr",
+}: {
+  employees: HrEmployeeDirectoryItem[];
+  mode?: "hr" | "department";
+}) {
   const searchParams = useSearchParams();
   const departments = useMemo(
     () => Array.from(new Set(employees.map((employee) => employee.departmentName).filter(Boolean))).sort(),
@@ -91,9 +97,11 @@ export function EmployeeTable({ employees }: { employees: HrEmployeeDirectoryIte
           <option value="Ажлаас гарсан">Ажлаас гарсан</option>
           <option value="Архивлагдсан">Архивлагдсан</option>
         </select>
-        <Link href="/hr/employees/new" className={styles.primaryLink}>
-          Шинэ ажилтан
-        </Link>
+        {mode === "hr" ? (
+          <Link href="/hr/employees/new" className={styles.primaryLink}>
+            Шинэ ажилтан
+          </Link>
+        ) : null}
       </div>
 
       <div className={styles.tableWrap}>
@@ -107,6 +115,7 @@ export function EmployeeTable({ employees }: { employees: HrEmployeeDirectoryIte
               <th>Утас</th>
               <th>Төлөв</th>
               <th>Ажилд орсон</th>
+              {mode === "department" ? <th>Үйлдэл</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -123,6 +132,14 @@ export function EmployeeTable({ employees }: { employees: HrEmployeeDirectoryIte
                   <span className={styles.statusPill}>{statusLabel(employee)}</span>
                 </td>
                 <td>{employee.startDate || "Бүртгээгүй"}</td>
+                {mode === "department" ? (
+                  <td>
+                    <div className={styles.checklist}>
+                      <Link href={`/hr/sick?employeeId=${employee.id}&type=time_off`}>Чөлөө хүсэх</Link>
+                      <Link href={`/hr/sick?employeeId=${employee.id}&type=sick`}>Өвчтэй бүртгэх</Link>
+                    </div>
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>
@@ -177,7 +194,7 @@ export function EmployeeCreateForm({
   }
 
   return (
-    <form className={styles.formPanel} onSubmit={submit}>
+    <form className={styles.formPanel} onSubmit={submit} noValidate>
       {message ? <p className={styles.errorText}>{message}</p> : null}
       <div className={styles.formGrid}>
         <Field name="lastName" label="Овог" required />
@@ -245,16 +262,18 @@ function Field({
   name,
   type = "text",
   required = false,
+  defaultValue,
 }: {
   label: string;
   name: string;
   type?: string;
   required?: boolean;
+  defaultValue?: string;
 }) {
   return (
     <label className={styles.field}>
       <span>{label}</span>
-      <input name={name} type={type} required={required} />
+      <input name={name} type={type} required={required} defaultValue={defaultValue} />
     </label>
   );
 }
@@ -375,6 +394,228 @@ function Info({ label, value }: { label: string; value?: string }) {
   );
 }
 
+export function TimeoffRequestsClient({
+  employees,
+  requests,
+  mode = "department",
+}: {
+  employees: HrEmployeeDirectoryItem[];
+  requests: HrTimeoffRequest[];
+  mode?: "hr" | "department";
+}) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const defaultType = searchParams.get("type") === "sick" ? "sick" : "time_off";
+  const defaultEmployeeId = searchParams.get("employeeId") || "";
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState("");
+  const [filter, setFilter] = useState(ALL);
+  const [editingRequest, setEditingRequest] = useState<HrTimeoffRequest | null>(null);
+
+  const visibleRequests = useMemo(() => {
+    if (filter === ALL) return requests;
+    return requests.filter((request) => request.state === filter || request.requestType === filter);
+  }, [filter, requests]);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending(true);
+    setMessage("");
+    const formData = new FormData(event.currentTarget);
+    try {
+      const response = await fetch(
+        editingRequest ? `/api/hr/timeoff-requests/${editingRequest.id}` : "/api/hr/timeoff-requests",
+        { method: editingRequest ? "PATCH" : "POST", body: formData },
+      );
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error || "Хүсэлт илгээхэд алдаа гарлаа.");
+      }
+      setMessage(editingRequest ? "Хүсэлт шинэчлэгдлээ." : formData.get("intent") === "draft" ? "Ноорог хадгалагдлаа." : "Хүсэлт HR-д илгээгдлээ.");
+      setEditingRequest(null);
+      router.refresh();
+      event.currentTarget.reset();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Хүсэлт илгээхэд алдаа гарлаа.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function runAction(requestId: number, action: "hr_review" | "approve" | "reject" | "cancel") {
+    setPending(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/hr/timeoff-requests/${requestId}/action`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error || "Үйлдэл хийхэд алдаа гарлаа.");
+      }
+      setMessage("Хүсэлтийн төлөв шинэчлэгдлээ.");
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Үйлдэл хийхэд алдаа гарлаа.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className={styles.twoColumn}>
+      <section className={styles.panel}>
+        <div className={styles.sectionHeader}>
+          <div>
+            <span className={styles.eyebrow}>{mode === "hr" ? "HR review" : "Department Head"}</span>
+            <h2>{mode === "hr" ? "Ирсэн хүсэлтүүд" : "Миний илгээсэн хүсэлтүүд"}</h2>
+          </div>
+          <span>{visibleRequests.length}</span>
+        </div>
+
+        <div className={styles.toolbar}>
+          <select value={filter} onChange={(event) => setFilter(event.target.value)}>
+            <option value={ALL}>Бүх хүсэлт</option>
+            <option value="submitted">Хүлээгдэж буй</option>
+            <option value="hr_review">HR шалгаж байна</option>
+            <option value="approved">Батлагдсан</option>
+            <option value="rejected">Татгалзсан</option>
+            <option value="time_off">Чөлөө</option>
+            <option value="sick">Өвчтэй</option>
+          </select>
+        </div>
+
+        {message ? <p className={message.includes("алдаа") || message.includes("эрх") ? styles.errorText : styles.successText}>{message}</p> : null}
+
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Ажилтан</th>
+                <th>Хэлтэс</th>
+                <th>Төрөл</th>
+                <th>Хугацаа</th>
+                <th>Илгээсэн</th>
+                <th>Төлөв</th>
+                <th>Хавсралт</th>
+                <th>Үйлдэл</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleRequests.map((request) => (
+                <tr key={request.id}>
+                  <td>
+                    <Link href={`/hr/employees/${request.employeeId}`}>{request.employeeName}</Link>
+                  </td>
+                  <td>{request.departmentName}</td>
+                  <td>{request.requestTypeLabel}</td>
+                  <td>
+                    {request.dateFrom} - {request.dateTo}
+                  </td>
+                  <td>{request.submittedBy || "Бүртгээгүй"}</td>
+                  <td>
+                    <span className={styles.statusPill}>{request.stateLabel}</span>
+                  </td>
+                  <td>{request.hasAttachment ? "Байгаа" : "Байхгүй"}</td>
+                  <td>
+                    <div className={styles.checklist}>
+                      {mode === "hr" && request.state === "submitted" ? (
+                        <button type="button" onClick={() => runAction(request.id, "hr_review")} disabled={pending}>
+                          HR шалгах
+                        </button>
+                      ) : null}
+                      {mode === "hr" && ["submitted", "hr_review"].includes(request.state) ? (
+                        <>
+                          <button type="button" onClick={() => runAction(request.id, "approve")} disabled={pending}>
+                            Батлах
+                          </button>
+                          <button type="button" onClick={() => runAction(request.id, "reject")} disabled={pending}>
+                            Татгалзах
+                          </button>
+                        </>
+                      ) : null}
+                      {mode === "department" && !["approved", "rejected", "cancelled"].includes(request.state) ? (
+                        <>
+                          <button type="button" onClick={() => setEditingRequest(request)} disabled={pending}>
+                            Засах
+                          </button>
+                          <button type="button" onClick={() => runAction(request.id, "cancel")} disabled={pending}>
+                            Цуцлах
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {!visibleRequests.length ? (
+          <div className={styles.emptyState}>
+            <strong>Одоогоор хүсэлт алга.</strong>
+            <span>{mode === "hr" ? "Хэлтсийн даргаас илгээсэн хүсэлт энд харагдана." : "Өөрийн хэлтсийн ажилтанд хүсэлт үүсгэнэ үү."}</span>
+          </div>
+        ) : null}
+      </section>
+
+      <form key={editingRequest?.id ?? "new"} className={styles.formPanel} onSubmit={submit} noValidate>
+        <h2>{editingRequest ? "Хүсэлт засах" : "Чөлөө / өвчтэй хүсэлт"}</h2>
+        <label className={styles.field}>
+          <span>Ажилтан</span>
+          <select name="employeeId" defaultValue={editingRequest?.employeeId || defaultEmployeeId} required disabled={Boolean(editingRequest)}>
+            <option value="">Сонгох</option>
+            {employees.map((employee) => (
+              <option key={employee.id} value={employee.id}>
+                {employee.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.field}>
+          <span>Төрөл</span>
+          <select name="requestType" defaultValue={editingRequest?.requestType || defaultType} required>
+            <option value="time_off">Чөлөө</option>
+            <option value="sick">Өвчтэй</option>
+          </select>
+        </label>
+        <div className={styles.formGridTwo}>
+          <Field name="dateFrom" label="Эхлэх огноо" type="date" required defaultValue={editingRequest?.dateFrom} />
+          <Field name="dateTo" label="Дуусах огноо" type="date" required defaultValue={editingRequest?.dateTo} />
+        </div>
+        <label className={styles.field}>
+          <span>Шалтгаан</span>
+          <textarea name="reason" rows={4} defaultValue={editingRequest?.reason || ""} required />
+        </label>
+        <label className={styles.field}>
+          <span>Хавсралтын зураг</span>
+          <input name="files" type="file" accept="image/*,.pdf" multiple required={!editingRequest?.hasAttachment} />
+        </label>
+        <label className={styles.field}>
+          <span>Тайлбар</span>
+          <textarea name="note" rows={3} defaultValue={editingRequest?.note || ""} />
+        </label>
+        <div className={styles.actionGrid}>
+          <button className={styles.primaryButton} name="intent" value="submit" disabled={pending}>
+            {pending ? "Илгээж байна..." : "Илгээх"}
+          </button>
+          <button className={styles.primaryButton} name="intent" value="draft" disabled={pending}>
+            Ноорог хадгалах
+          </button>
+          {editingRequest ? (
+            <button className={styles.primaryButton} type="button" onClick={() => setEditingRequest(null)} disabled={pending}>
+              Болих
+            </button>
+          ) : null}
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export function LeavesClient({
   employees,
   leaveTypes,
@@ -455,9 +696,10 @@ export function LeavesClient({
         ) : null}
       </section>
 
-      <form className={styles.formPanel} onSubmit={submit}>
+      <form className={styles.formPanel} onSubmit={submit} noValidate>
         <h2>{defaultSick ? "Өвчтэй чөлөө бүртгэх" : "Чөлөө бүртгэх"}</h2>
         {message ? <p className={message.includes("хадгалагд") ? styles.successText : styles.errorText}>{message}</p> : null}
+        <input name="leaveTypeName" type="hidden" value={defaultSick ? "Өвчтэй" : ""} />
         <label className={styles.field}>
           <span>Ажилтан</span>
           <select name="employeeId" defaultValue={defaultEmployeeId} required>

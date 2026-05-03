@@ -17,19 +17,20 @@ export default async function HrEmployeesPage() {
     console.warn("HR employees page could not load employees:", error);
     return [];
   });
+  const mode = access.isHr ? "hr" : "department";
 
   return (
     <>
       <WorkspaceHeader
-        title="Ажилтнууд"
-        subtitle="Odoo hr.employee бүртгэлээс ажилтны жагсаалт, хайлт, төлөвийн шүүлт"
+        title={access.isHr ? "Бүх ажилтнууд" : "Миний хэлтсийн ажилтнууд"}
+        subtitle={access.isHr ? "Odoo hr.employee бүртгэлээс бүх ажилтны жагсаалт, хайлт, төлөвийн шүүлт" : "Өөрийн хэлтсийн ажилтнуудыг хайж чөлөө / өвчтэй хүсэлт үүсгэнэ"}
         userName={session.name}
         roleLabel={getRoleLabel(session.role)}
         notificationCount={employees.length}
         notificationNote={`${employees.length} ажилтны бүртгэл`}
       />
-      <HrSectionNav />
-      <EmployeeTable employees={employees} />
+      <HrSectionNav mode={mode} />
+      <EmployeeTable employees={employees} mode={mode} />
     </>
   );
 }

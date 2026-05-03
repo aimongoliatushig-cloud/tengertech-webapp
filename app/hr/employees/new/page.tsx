@@ -1,6 +1,6 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { getRoleLabel, requireSession } from "@/lib/auth";
-import { getDepartments, getJobs, getManagers, requireHrAccess } from "@/lib/hr";
+import { getDepartments, getJobs, getManagers, requireHrSpecialistAccess } from "@/lib/hr";
 
 import { HrSectionNav } from "../../hr-section-nav";
 import { EmployeeCreateForm } from "../../hr-client";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NewHrEmployeePage() {
   const session = await requireSession();
-  const access = await requireHrAccess(session).catch(() => null);
+  const access = await requireHrSpecialistAccess(session).catch(() => null);
   if (!access) {
     return null;
   }
@@ -28,7 +28,7 @@ export default async function NewHrEmployeePage() {
         roleLabel={getRoleLabel(session.role)}
         notificationNote="Шинэ HR бүртгэл"
       />
-      <HrSectionNav />
+      <HrSectionNav mode={access.isHr ? "hr" : "department"} />
       <EmployeeCreateForm departments={departments} jobs={jobs} managers={managers} />
     </>
   );

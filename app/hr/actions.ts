@@ -19,9 +19,26 @@ function getEmployeeId(formData: FormData) {
 }
 
 function getErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message) {
-    return error.message;
+  const message = error instanceof Error && error.message ? error.message.trim() : "";
+  const normalized = message.toLocaleLowerCase("en-US");
+
+  if (/[\u0400-\u04ff]/.test(message)) {
+    return message;
   }
+
+  if (normalized.includes("access denied") || normalized.includes("access error") || normalized.includes("not allowed")) {
+    return "Odoo дээр энэ үйлдлийг хийх эрх хүрэлцэхгүй байна. Хэрэглэгчийн HR эрхийг шалгана уу.";
+  }
+
+  if (normalized.includes("missing required") || normalized.includes("required field")) {
+    return "Заавал бөглөх шаардлагатай мэдээлэл дутуу байна. Формын утгуудыг шалгана уу.";
+  }
+
+  if (message) {
+    console.error("HR employee action failed:", error);
+    return "Ажилтны бүртгэл хадгалах үед Odoo дээр алдаа гарлаа. Дэлгэрэнгүй мэдээлэл серверийн логт хадгалагдсан.";
+  }
+
   return "Ажилтны бүртгэл хадгалах үед алдаа гарлаа.";
 }
 

@@ -1,5 +1,5 @@
 import { getSession } from "@/lib/auth";
-import { createEmployee, getEmployees, requireHrAccess, type HrEmployeeCreateInput } from "@/lib/hr";
+import { createEmployee, getEmployees, requireHrAccess, requireHrSpecialistAccess, type HrEmployeeCreateInput } from "@/lib/hr";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   if (!session) return jsonError("Нэвтрэх шаардлагатай.", 401);
 
   try {
-    await requireHrAccess(session);
+    await requireHrSpecialistAccess(session);
     const formData = await request.formData();
     const input: HrEmployeeCreateInput = {
       lastName: getString(formData, "lastName"),

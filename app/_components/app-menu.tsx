@@ -406,6 +406,16 @@ export function AppMenu({
       label: "Хяналтын самбар",
       icon: LayoutDashboard,
     },
+    ...(canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr
+      ? [
+          {
+            key: "hr",
+            href: "/hr",
+            label: "Хүний нөөц",
+            icon: Users,
+          },
+        ]
+      : []),
     {
       key: "projects",
       href: departmentItems[0]?.href ?? "/projects",
