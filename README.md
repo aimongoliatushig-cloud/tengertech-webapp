@@ -28,10 +28,36 @@ npm run dev
 Дараа нь [http://localhost:3000](http://localhost:3000)-г нээнэ.
 Login хийхдээ Odoo дээрх одоогийн user/password-аа ашиглана.
 
+## Env / config стандарт
+
+Local, VPS, өөр төхөөрөмж дээр env нэр зөрөхөөс сэргийлж tracked template-үүдийг `config/env/` дотор хадгална.
+
+- Local template: `config/env/local.env.example`
+- VPS template: `config/env/vps.env.example`
+- Дэлгэрэнгүй заавар: `docs/env-config-standard.md`
+
+Шинэ төхөөрөмж дээр:
+
+```bash
+copy config\env\local.env.example .env.local
+npm run env:check
+```
+
+Local web app ажиллаж байсан ч Odoo backend нь shared VPS/staging Odoo руу заана. `http://localhost:8069`-ийг default Odoo backend болгон ашиглахгүй.
+
+VPS дээр:
+
+```bash
+cp config/env/vps.env.example .env
+npm run env:check -- --production
+```
+
+`.env*` бодит secret файлуудыг commit хийхгүй.
+
 ## Default Odoo тохиргоо
 
 ```env
-ODOO_URL=http://localhost:8069
+ODOO_URL=https://CHANGE_ME_ODOO_DOMAIN_OR_IP
 ODOO_DB=odoo19_admin
 ODOO_LOGIN=admin
 ODOO_PASSWORD=admin

@@ -18,6 +18,7 @@
         "views/municipal_work_type_views.xml",
         "views/municipal_work_report_views.xml",
         "views/municipal_work_views.xml",
+        "views/municipal_cleaning_views.xml",
         "views/municipal_attendance_issue_views.xml",
         "views/municipal_discipline_views.xml",
         "views/municipal_hr_employee_views.xml",

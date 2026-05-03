@@ -9,6 +9,7 @@ import {
   Layers3,
   Paperclip,
   Route,
+  Sparkles,
   Truck,
 } from "lucide-react";
 
@@ -17,11 +18,14 @@ import type {
   DepartmentOption,
   GarbageRouteOption,
   GarbageVehicleOption,
+  RoadCleaningAreaOption,
+  RoadCleaningEmployeeOption,
   SelectOption,
 } from "@/lib/workspace";
 
 const GARBAGE_TRANSPORT_KEYWORD = "хог тээвэрлэлтийн";
 const AUTO_BASE_KEYWORD = "авто бааз";
+const GREEN_SERVICE_KEYWORDS = ["ногоон", "цэвэрлэгээ", "зам талбай"];
 const WEEKDAY_OPTIONS = [
   { key: "monday", label: "Даваа" },
   { key: "tuesday", label: "Мягмар" },
@@ -42,7 +46,24 @@ type SeasonalLineDraft = {
   routeId: string;
   remarks: string;
 };
+
+type RoadCleaningLineDraft = {
+  id: string;
+  cleaningAreaId: string;
+  employeeId: string;
+  newAreaName: string;
+  showNewArea: boolean;
+};
+
 const CUSTOM_WORK_TYPE_VALUE = "__new_work__";
+const ROAD_CLEANING_DEFAULT_LINES = [
+  "Явган зам цэвэрлэх",
+  "Замын нуух цэвэрлэх",
+  "Хогийн сав шалгах",
+  "Жижиг хог / шарилж / зарын хуудас цэвэрлэх",
+  "Өмнөх зураг оруулах",
+  "Дараах зураг оруулах",
+];
 
 type FilePreview = {
   name: string;
@@ -56,6 +77,8 @@ type Props = {
   managerOptions: SelectOption[];
   garbageVehicleOptions: GarbageVehicleOption[];
   garbageRouteOptions: GarbageRouteOption[];
+  roadCleaningAreaOptions: RoadCleaningAreaOption[];
+  roadCleaningEmployeeOptions: RoadCleaningEmployeeOption[];
   lockedDepartmentId?: string;
   lockedDepartmentLabel?: string;
   initialDepartmentId?: string;
@@ -148,6 +171,12 @@ function isGarbageTransportDepartment(
   return departmentContains(department, GARBAGE_TRANSPORT_KEYWORD);
 }
 
+function isGreenServiceDepartment(
+  department: Pick<DepartmentOption, "name" | "label"> | null | undefined,
+) {
+  return GREEN_SERVICE_KEYWORDS.some((keyword) => departmentContains(department, keyword));
+}
+
 function isCombinedOperationsDepartment(
   department: Pick<DepartmentOption, "name" | "label"> | null | undefined,
 ) {
@@ -170,12 +199,24 @@ function emptySeasonalLine(index: number): SeasonalLineDraft {
   };
 }
 
+function emptyRoadCleaningLine(index: number): RoadCleaningLineDraft {
+  return {
+    id: `road-cleaning-line-${index}-${Date.now()}`,
+    cleaningAreaId: "",
+    employeeId: "",
+    newAreaName: "",
+    showNewArea: false,
+  };
+}
+
 export function NewWorkForm({
   action,
   departmentOptions,
   managerOptions,
   garbageVehicleOptions,
   garbageRouteOptions,
+  roadCleaningAreaOptions,
+  roadCleaningEmployeeOptions,
   lockedDepartmentId,
   lockedDepartmentLabel,
   initialDepartmentId,
@@ -187,12 +228,22 @@ export function NewWorkForm({
       (option) => String(option.id) === defaultDepartmentId,
     );
 
-    return isGarbageTransportDepartment(initialDepartment)
-      ? "garbage_transport"
-      : "standard";
+    if (isGarbageTransportDepartment(initialDepartment)) {
+      return "garbage_transport";
+    }
+
+    if (isGreenServiceDepartment(initialDepartment)) {
+      return "road_area_cleaning";
+    }
+
+    return "standard";
   });
   const [vehicleId, setVehicleId] = useState("");
   const [routeId, setRouteId] = useState("");
+  const [cleaningWorkDate, setCleaningWorkDate] = useState(getTodayValue());
+  const [roadCleaningLines, setRoadCleaningLines] = useState<RoadCleaningLineDraft[]>([
+    emptyRoadCleaningLine(0),
+  ]);
   const [extraLocationDraft, setExtraLocationDraft] = useState("");
   const [extraLocations, setExtraLocations] = useState<string[]>([]);
   const [shiftDate, setShiftDate] = useState(getTodayValue());
@@ -257,15 +308,21 @@ export function NewWorkForm({
   );
   const isCombinedDepartment = isCombinedOperationsDepartment(selectedDepartment);
   const supportsGarbageTransport = isGarbageTransportDepartment(selectedDepartment);
+  const supportsRoadAreaCleaning = isGreenServiceDepartment(selectedDepartment);
   const isGarbageTransport =
     supportsGarbageTransport && operationUnit === "garbage_transport";
   const isSeasonalGarbage =
     supportsGarbageTransport && operationUnit === "garbage_seasonal";
+  const isRoadAreaCleaning =
+    supportsRoadAreaCleaning && operationUnit === "road_area_cleaning";
   const isDepartmentLocked = Boolean(lockedDepartmentId);
+
   const submitLabel = isGarbageTransport
     ? "Хог тээвэрлэлтийн ажил үүсгэх"
     : isSeasonalGarbage
       ? "Улирлын төлөвлөгөө үүсгэх"
+      : isRoadAreaCleaning
+        ? "Зам талбайн цэвэрлэгээний ажил үүсгэх"
       : "Ажил үүсгэх";
 
   const generatedName = useMemo(() => {
@@ -280,7 +337,6 @@ export function NewWorkForm({
       : primaryLocationLabel;
     return `${vehicleLabel} - ${locationLabel} / ${shiftDate}`;
   }, [extraLocations.length, isGarbageTransport, selectedRoute, selectedVehicle, shiftDate]);
-
   const activeSeasonalLines = seasonalLines.filter(
     (line) =>
       line.khorooLabel ||
@@ -308,6 +364,11 @@ export function NewWorkForm({
       return;
     }
 
+    if (isGreenServiceDepartment(nextDepartment)) {
+      setOperationUnit("road_area_cleaning");
+      return;
+    }
+
     setOperationUnit("standard");
   };
 
@@ -318,6 +379,67 @@ export function NewWorkForm({
   ) => {
     setSeasonalLines((current) =>
       current.map((line) => (line.id === targetId ? { ...line, [key]: value } : line)),
+    );
+  };
+
+  const getRoadCleaningArea = (line: RoadCleaningLineDraft) =>
+    roadCleaningAreaOptions.find((option) => String(option.id) === line.cleaningAreaId) ??
+    null;
+
+  const getRoadCleaningEmployeeChoices = (line: RoadCleaningLineDraft) => {
+    const lineArea = getRoadCleaningArea(line);
+    if (!lineArea?.departmentId) {
+      return roadCleaningEmployeeOptions;
+    }
+
+    const departmentEmployees = roadCleaningEmployeeOptions.filter(
+      (employee) => employee.departmentId === lineArea.departmentId,
+    );
+    return departmentEmployees.length ? departmentEmployees : roadCleaningEmployeeOptions;
+  };
+
+  const getRoadCleaningEmployee = (employeeId: string) =>
+    roadCleaningEmployeeOptions.find((employee) => String(employee.id) === employeeId) ??
+    null;
+
+  const getRoadCleaningWorkName = (line: RoadCleaningLineDraft) => {
+    const lineArea = getRoadCleaningArea(line);
+    const lineEmployee = getRoadCleaningEmployee(line.employeeId);
+    const areaName = lineArea?.name || line.newAreaName.trim();
+
+    if (!areaName || !lineEmployee || !cleaningWorkDate) {
+      return "";
+    }
+
+    return `${areaName} - ${lineEmployee.name} - ${cleaningWorkDate}`;
+  };
+
+  const updateRoadCleaningLine = (
+    targetId: string,
+    key: keyof Omit<RoadCleaningLineDraft, "id">,
+    value: string | boolean,
+  ) => {
+    setRoadCleaningLines((current) =>
+      current.map((line) => {
+        if (line.id !== targetId) {
+          return line;
+        }
+
+        const nextLine = { ...line, [key]: value };
+        if (key === "cleaningAreaId") {
+          const nextArea =
+            roadCleaningAreaOptions.find((option) => String(option.id) === value) ?? null;
+          nextLine.employeeId = nextArea?.employeeId ? String(nextArea.employeeId) : "";
+          nextLine.newAreaName = "";
+          nextLine.showNewArea = false;
+        }
+        if (key === "showNewArea" && value) {
+          nextLine.cleaningAreaId = "";
+          nextLine.employeeId = "";
+        }
+
+        return nextLine;
+      }),
     );
   };
 
@@ -339,11 +461,15 @@ export function NewWorkForm({
     ? "Хог тээвэрлэлтийн маршрут"
     : isSeasonalGarbage
       ? "Улирлын хог ачилтын төлөвлөгөө"
+      : isRoadAreaCleaning
+        ? "Зам талбайн цэвэрлэгээ"
       : "Ерөнхий ажил";
   const formModeDescription = isGarbageTransport
     ? "Машин, маршрут, огноо сонгоход ажил болон маршрутын цэгүүдийн ажилбар автоматаар үүснэ."
     : isSeasonalGarbage
       ? "Хорооны байрлал, машин, тонн, ажиллах өдрүүдээр олон мөрийн төлөвлөгөө үүсгэнэ."
+      : isRoadAreaCleaning
+        ? "Цэвэрлэх талбай, ажиллах хугацаа, хариуцах ажилтныг бүртгэж зам талбайн цэвэрлэгээний ажлыг шууд үүсгэнэ."
       : "Ажлын нэр, хариуцсан хэлтсийн дарга, хугацаагаа оруулна.";
   const selectedDepartmentLabel =
     lockedDepartmentLabel ?? selectedDepartment?.label ?? selectedDepartment?.name ?? "Сонгоогүй";
@@ -482,6 +608,38 @@ export function NewWorkForm({
               >
                 <span>Улирлын хог ачилт</span>
                 <small>Огнооны хүрээ, өдрүүд, байршлын мөрөөр төлөвлөнө</small>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {supportsRoadAreaCleaning ? (
+        <div className={styles.optionalSection}>
+          <div className={styles.field}>
+            <label>Ажлын горим</label>
+            <div className={styles.modeRail}>
+              <button
+                type="button"
+                className={`${styles.modeChip} ${
+                  operationUnit === "road_area_cleaning" ? styles.modeChipActive : ""
+                }`}
+                onClick={() => setOperationUnit("road_area_cleaning")}
+              >
+                <Sparkles aria-hidden />
+                <span>Зам талбайн цэвэрлэгээ</span>
+                <small>Цэвэрлэх талбай, хугацаа, хариуцах ажилтантай ажил</small>
+              </button>
+
+              <button
+                type="button"
+                className={`${styles.modeChip} ${
+                  operationUnit === "standard" ? styles.modeChipActive : ""
+                }`}
+                onClick={() => setOperationUnit("standard")}
+              >
+                <span>Ерөнхий ажил</span>
+                <small>Ногоон байгууламжийн бусад ажил</small>
               </button>
             </div>
           </div>
@@ -897,6 +1055,198 @@ export function NewWorkForm({
             </button>
           </div>
         </>
+      ) : isRoadAreaCleaning ? (
+        <>
+          <div className={styles.field}>
+            <label htmlFor="work_date">Ажлын огноо</label>
+            <input
+              id="work_date"
+              name="work_date"
+              type="date"
+              value={cleaningWorkDate}
+              onChange={(event) => setCleaningWorkDate(event.target.value)}
+              required={isRoadAreaCleaning}
+            />
+          </div>
+
+          <div className={styles.optionalSection}>
+            <span className={styles.formBadge}>Ажилтан ба цэвэрлэх талбай</span>
+            <p className={styles.fieldHint}>
+              Мөр бүр тусдаа ажил болж үүснэ. Тухайн ажил дотор default ажилбарууд автоматаар нэмэгдэнэ.
+            </p>
+
+            {roadCleaningLines.map((line, index) => {
+              const lineArea = getRoadCleaningArea(line);
+              const employeeChoices = getRoadCleaningEmployeeChoices(line);
+              const generatedLineName = getRoadCleaningWorkName(line);
+
+              return (
+                <div className={styles.optionalSection} key={line.id}>
+                  <span className={styles.formBadge}>Мөр {index + 1}</span>
+                  <div className={styles.fieldRow}>
+                    <div className={styles.field}>
+                      <label htmlFor={`cleaning_area_${line.id}`}>Цэвэрлэх талбай</label>
+                      <select
+                        id={`cleaning_area_${line.id}`}
+                        value={line.cleaningAreaId}
+                        onChange={(event) =>
+                          updateRoadCleaningLine(line.id, "cleaningAreaId", event.target.value)
+                        }
+                        disabled={line.showNewArea}
+                      >
+                        <option value="">Цэвэрлэх талбай сонгоно уу</option>
+                        {roadCleaningAreaOptions.map((area) => (
+                          <option key={area.id} value={area.id}>
+                            {area.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className={styles.field}>
+                      <label htmlFor={`cleaning_employee_${line.id}`}>Хариуцсан ажилтан</label>
+                      <select
+                        id={`cleaning_employee_${line.id}`}
+                        value={line.employeeId}
+                        onChange={(event) =>
+                          updateRoadCleaningLine(line.id, "employeeId", event.target.value)
+                        }
+                      >
+                        <option value="">Ажилтан сонгоно уу</option>
+                        {employeeChoices.map((employee) => (
+                          <option key={employee.id} value={employee.id}>
+                            {[employee.name, employee.jobTitle, employee.departmentName]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className={styles.buttonRow}>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() =>
+                        updateRoadCleaningLine(line.id, "showNewArea", !line.showNewArea)
+                      }
+                    >
+                      {line.showNewArea ? "Бэлэн талбай сонгох" : "Талбай нэмэх"}
+                    </button>
+                    {roadCleaningLines.length > 1 ? (
+                      <button
+                        type="button"
+                        className={styles.dangerButton}
+                        onClick={() =>
+                          setRoadCleaningLines((current) =>
+                            current.filter((item) => item.id !== line.id),
+                          )
+                        }
+                      >
+                        Мөр устгах
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {line.showNewArea ? (
+                    <div className={styles.field}>
+                      <label htmlFor={`new_cleaning_area_${line.id}`}>Шинэ цэвэрлэх талбай</label>
+                      <input
+                        id={`new_cleaning_area_${line.id}`}
+                        type="text"
+                        value={line.newAreaName}
+                        onChange={(event) =>
+                          updateRoadCleaningLine(line.id, "newAreaName", event.target.value)
+                        }
+                        placeholder="Жишээ: Наадамчдын зам — 1-р хэсэг"
+                      />
+                    </div>
+                  ) : null}
+
+                  {lineArea ? (
+                    <div className={styles.fieldRow}>
+                      <div className={styles.lockedFieldValue}>
+                        <strong>Гудамж / замын нэр</strong>
+                        <span>{lineArea.streetName || "—"}</span>
+                      </div>
+                      <div className={styles.lockedFieldValue}>
+                        <strong>Эхлэх цэг</strong>
+                        <span>{lineArea.startPoint || "—"}</span>
+                      </div>
+                      <div className={styles.lockedFieldValue}>
+                        <strong>Дуусах цэг</strong>
+                        <span>{lineArea.endPoint || "—"}</span>
+                      </div>
+                      <div className={styles.lockedFieldValue}>
+                        <strong>Талбай /мкв/</strong>
+                        <span>{lineArea.areaM2 || "—"}</span>
+                      </div>
+                      <div className={styles.lockedFieldValue}>
+                        <strong>Давтамж</strong>
+                        <span>{lineArea.frequencyLabel || "—"}</span>
+                      </div>
+                      <div className={styles.lockedFieldValue}>
+                        <strong>Хариуцсан мастер</strong>
+                        <span>{lineArea.masterName || selectedDepartmentHead?.name || "—"}</span>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className={styles.lockedFieldValue}>
+                    <strong>Ажлын нэр</strong>
+                    <span>
+                      {generatedLineName ||
+                        "Цэвэрлэх талбай, ажилтан, огноо сонгоход автоматаар үүснэ."}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+
+            <input
+              type="hidden"
+              name="road_cleaning_lines_json"
+              value={JSON.stringify(
+                roadCleaningLines.map((line, index) => ({
+                  sequence: index + 1,
+                  cleaningAreaId: line.cleaningAreaId ? Number(line.cleaningAreaId) : null,
+                  employeeId: line.employeeId ? Number(line.employeeId) : null,
+                  newAreaName: line.newAreaName.trim(),
+                })),
+              )}
+            />
+            <input type="hidden" name="name" value="Зам талбайн цэвэрлэгээ" />
+
+            <div className={styles.buttonRow}>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() =>
+                  setRoadCleaningLines((current) => [
+                    ...current,
+                    emptyRoadCleaningLine(current.length),
+                  ])
+                }
+              >
+                Мөр нэмэх
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.optionalSection}>
+            <span className={styles.formBadge}>Автоматаар үүсэх ажилбарууд</span>
+            <p className={styles.fieldHint}>Эдгээр ажилбарууд автоматаар үүснэ.</p>
+            <div className={styles.attachmentPreviewGrid}>
+              {ROAD_CLEANING_DEFAULT_LINES.map((line) => (
+                <div className={styles.attachmentPreviewItem} key={line}>
+                  <FileText aria-hidden />
+                  <span>{line}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       ) : (
         <>
           <div className={styles.field}>
@@ -905,7 +1255,11 @@ export function NewWorkForm({
               id="name"
               name="name"
               type="text"
-              placeholder="Жишээ: Хаврын тохижилтын ажил"
+              placeholder={
+                isRoadAreaCleaning
+                  ? "Жишээ: Наадамчдын замын цэвэрлэгээ"
+                  : "Жишээ: Хаврын тохижилтын ажил"
+              }
               required
             />
           </div>
@@ -947,12 +1301,19 @@ export function NewWorkForm({
         </>
       )}
 
+      {!isRoadAreaCleaning ? (
       <div className={styles.field}>
-        <label htmlFor="project-files">Файл хавсаргах</label>
+        <label htmlFor="project-files">
+          {isRoadAreaCleaning ? "Нэмэлт тайлбар / Хавсралт файл" : "Файл хавсаргах"}
+        </label>
         <textarea
           id="project-description"
           name="project_description"
-          placeholder="Хавсралт болон ажлын дэлгэрэнгүй тайлбар бичнэ үү"
+          placeholder={
+            isRoadAreaCleaning
+              ? "Нэмэлт тайлбар бичнэ үү"
+              : "Хавсралт болон ажлын дэлгэрэнгүй тайлбар бичнэ үү"
+          }
           rows={4}
         />
         <small className={styles.fieldHint}>
@@ -995,6 +1356,7 @@ export function NewWorkForm({
           </div>
         ) : null}
       </div>
+      ) : null}
 
       <div className={styles.buttonRow}>
         <SubmitWorkButton label={submitLabel} />

@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_municipal_cleaning_area_list" model="ir.ui.view">
+        <field name="name">municipal.cleaning.area.list</field>
+        <field name="model">municipal.cleaning.area</field>
+        <field name="arch" type="xml">
+            <list string="Цэвэрлэх талбай">
+                <field name="name"/>
+                <field name="street_name"/>
+                <field name="start_point"/>
+                <field name="end_point"/>
+                <field name="area_m2"/>
+                <field name="department_id"/>
+                <field name="master_id"/>
+                <field name="employee_id"/>
+                <field name="frequency"/>
+                <field name="last_work_date"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_cleaning_area_form" model="ir.ui.view">
+        <field name="name">municipal.cleaning.area.form</field>
+        <field name="model">municipal.cleaning.area</field>
+        <field name="arch" type="xml">
+            <form string="Цэвэрлэх талбай">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_today_work" type="object" class="oe_stat_button" icon="fa-calendar-check-o">
+                            <field name="today_work_count" widget="statinfo" string="Өнөөдрийн ажил"/>
+                        </button>
+                        <button name="action_view_works" type="object" class="oe_stat_button" icon="fa-tasks">
+                            <field name="work_count" widget="statinfo" string="Нийт ажил"/>
+                        </button>
+                    </div>
+                    <group string="Үндсэн мэдээлэл">
+                        <group>
+                            <field name="name"/>
+                            <field name="street_name"/>
+                            <field name="start_point"/>
+                        </group>
+                        <group>
+                            <field name="end_point"/>
+                            <field name="area_m2"/>
+                            <field name="last_work_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Хариуцлага">
+                        <group>
+                            <field name="department_id"/>
+                            <field name="master_id"/>
+                            <field name="employee_id"/>
+                        </group>
+                        <group>
+                            <field name="frequency"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group string="Тайлбар">
+                        <field name="note" nolabel="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_municipal_cleaning_area_search" model="ir.ui.view">
+        <field name="name">municipal.cleaning.area.search</field>
+        <field name="model">municipal.cleaning.area</field>
+        <field name="arch" type="xml">
+            <search string="Цэвэрлэх талбай">
+                <field name="name"/>
+                <field name="street_name"/>
+                <field name="department_id"/>
+                <field name="master_id"/>
+                <field name="employee_id"/>
+                <filter name="active" string="Идэвхтэй" domain="[('active', '=', True)]"/>
+                <filter name="my_area" string="Миний хариуцсан" domain="['|', ('master_id.user_id', '=', uid), ('employee_id.user_id', '=', uid)]"/>
+                <group>
+                    <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
+                    <filter name="group_master" string="Мастер" context="{'group_by': 'master_id'}"/>
+                    <filter name="group_employee" string="Ажилтан" context="{'group_by': 'employee_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_municipal_cleaning_work_list" model="ir.ui.view">
+        <field name="name">municipal.cleaning.work.list</field>
+        <field name="model">municipal.work</field>
+        <field name="arch" type="xml">
+            <list string="Өнөөдрийн ажлууд" decoration-success="state in ('approved', 'done')" decoration-warning="state == 'returned'">
+                <field name="work_date"/>
+                <field name="cleaning_area_id"/>
+                <field name="department_id"/>
+                <field name="responsible_employee_id"/>
+                <field name="master_id"/>
+                <field name="state"/>
+                <field name="start_time"/>
+                <field name="end_time"/>
+                <field name="before_image" widget="image" optional="hide"/>
+                <field name="after_image" widget="image" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_work_form_cleaning_inherit" model="ir.ui.view">
+        <field name="name">municipal.work.form.cleaning.inherit</field>
+        <field name="model">municipal.work</field>
+        <field name="inherit_id" ref="municipal_core.view_municipal_work_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/field[@name='state']" position="before">
+                <button name="action_start_work" string="Ажил эхлүүлэх" type="object" class="btn-primary" invisible="not cleaning_area_id or state not in ('draft', 'planned', 'assigned', 'returned')"/>
+                <button name="action_finish_work" string="Ажил дуусгах" type="object" class="btn-primary" invisible="not cleaning_area_id or state != 'started'"/>
+                <button name="action_approve_work" string="Баталгаажуулах" type="object" class="btn-primary" invisible="not cleaning_area_id or state not in ('done', 'under_review', 'report_submitted')"/>
+                <button name="action_return_work" string="Буцаах" type="object" invisible="not cleaning_area_id or state not in ('done', 'under_review', 'report_submitted', 'approved')"/>
+            </xpath>
+            <xpath expr="//field[@name='manager_id']" position="after">
+                <field name="cleaning_area_id"/>
+                <field name="master_id"/>
+                <field name="work_date"/>
+            </xpath>
+            <xpath expr="//field[@name='location_text']" position="after">
+                <field name="cleaning_street_name" readonly="1"/>
+                <field name="cleaning_start_point" readonly="1"/>
+                <field name="cleaning_end_point" readonly="1"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Зам талбайн гүйцэтгэл" invisible="not cleaning_area_id">
+                    <group>
+                        <group string="Ажилбарын жагсаалт">
+                            <field name="line_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="is_done"/>
+                                    <field name="note"/>
+                                </list>
+                            </field>
+                        </group>
+                        <group string="Гүйцэтгэлийн мэдээлэл">
+                            <field name="start_time"/>
+                            <field name="end_time"/>
+                            <field name="before_image" widget="image"/>
+                            <field name="after_image" widget="image"/>
+                            <field name="employee_note"/>
+                        </group>
+                    </group>
+                    <group string="Хяналт">
+                        <field name="review_state"/>
+                        <field name="review_note"/>
+                        <field name="reviewed_by" readonly="1"/>
+                        <field name="reviewed_date" readonly="1"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_municipal_cleaning_area" model="ir.actions.act_window">
+        <field name="name">Цэвэрлэх талбай</field>
+        <field name="res_model">municipal.cleaning.area</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+
+    <record id="action_municipal_cleaning_work_today" model="ir.actions.act_window">
+        <field name="name">Өнөөдрийн ажлууд</field>
+        <field name="res_model">municipal.work</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('cleaning_area_id', '!=', False), ('work_date', '=', context_today())]</field>
+        <field name="context">{'default_work_date': context_today()}</field>
+    </record>
+
+    <record id="action_municipal_cleaning_work_my" model="ir.actions.act_window">
+        <field name="name">Миний ажил</field>
+        <field name="res_model">municipal.work</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('cleaning_area_id', '!=', False), ('work_date', '=', context_today()), ('responsible_employee_id.user_id', '=', uid), ('state', 'in', ('draft', 'planned', 'assigned', 'started', 'returned'))]</field>
+        <field name="context">{'default_work_date': context_today()}</field>
+    </record>
+
+    <menuitem id="menu_municipal_cleaning_root"
+              name="Зам талбай"
+              parent="menu_municipal_core_root"
+              sequence="12"
+              groups="municipal_core.group_municipal_worker,municipal_core.group_municipal_master,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_municipal_cleaning_area"
+              name="Цэвэрлэх талбай"
+              parent="menu_municipal_cleaning_root"
+              action="action_municipal_cleaning_area"
+              sequence="10"
+              groups="municipal_core.group_municipal_master,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_municipal_cleaning_work_today"
+              name="Өнөөдрийн ажлууд"
+              parent="menu_municipal_cleaning_root"
+              action="action_municipal_cleaning_work_today"
+              sequence="20"
+              groups="municipal_core.group_municipal_master,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_municipal_cleaning_work_my"
+              name="Миний ажил"
+              parent="menu_municipal_cleaning_root"
+              action="action_municipal_cleaning_work_my"
+              sequence="30"
+              groups="municipal_core.group_municipal_worker,municipal_core.group_municipal_master,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+</odoo>
