@@ -132,17 +132,6 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
                 </select>
               </label>
               <label className={styles.fieldLabel}>
-                Алба нэгж
-                <select name="department_id" defaultValue="">
-                  <option value="">Сонгох</option>
-                  {meta.departments.map((department) => (
-                    <option key={department.id} value={department.id}>
-                      {department.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.fieldLabel}>
                 Хариуцсан нярав
                 <select name="responsible_storekeeper_user_id" required defaultValue="">
                   <option value="">Сонгох</option>
@@ -237,6 +226,10 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
                   <label>
                     Ойролцоох нэгж үнэ
                     <input type="number" step="0.01" min="0" name="line_approx_unit_price" />
+                  </label>
+                  <label>
+                    Барааны зураг
+                    <input type="file" name={`line_image_${index}`} accept="image/*" multiple />
                   </label>
                 </article>
               ))}

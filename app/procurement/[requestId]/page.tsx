@@ -314,6 +314,13 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
                     <span className={styles.subtleText}>
                       {line.quantity} {line.uom?.name || ""} - {line.specification || "Тодорхойлолт оруулаагүй"}
                     </span>
+                    {line.images?.length ? (
+                      <ul className={styles.attachmentList}>
+                        {line.images.map((image) => (
+                          <li key={image.id}>{image.name}</li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </div>
                 ))}
               </div>

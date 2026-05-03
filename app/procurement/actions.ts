@@ -52,7 +52,7 @@ async function encodeFile(file: File) {
 async function uploadFilesToRequest(
   requestId: number,
   files: File[],
-  target: "request" | "document" | "quotation",
+  target: "request" | "document" | "quotation" | "line",
   connectionOverrides: Awaited<ReturnType<typeof getConnectionOverrides>>,
   extra: Record<string, unknown> = {},
 ) {
@@ -111,6 +111,7 @@ export async function createProcurementRequestAction(formData: FormData) {
       quantity: lineQuantities[index] || 0,
       uom_id: lineUoms[index] || undefined,
       approx_unit_price: linePrices[index] || 0,
+      form_index: index + 1,
     }))
     .filter((line) => line.product_name && line.quantity > 0);
 
@@ -142,6 +143,18 @@ export async function createProcurementRequestAction(formData: FormData) {
         document_type: "other",
         note: getString(formData, "notes_user") || undefined,
       });
+    }
+
+    for (const [index, line] of createdRequest.lines.entries()) {
+      const sourceLine = lines[index];
+      const lineFiles = getFiles(formData, `line_image_${sourceLine?.form_index || line.sequence}`);
+      if (lineFiles.length) {
+        await uploadFilesToRequest(createdRequest.id, lineFiles, "line", connectionOverrides, {
+          document_type: "product_image",
+          line_id: line.id,
+          note: line.product_name || undefined,
+        });
+      }
     }
 
     revalidateProcurementPaths(createdRequest.id);

@@ -53,6 +53,7 @@ export type ProcurementLine = {
   final_unit_price: number;
   final_subtotal: number;
   remark?: string | null;
+  images: ProcurementAttachment[];
 };
 
 export type ProcurementQuotation = {

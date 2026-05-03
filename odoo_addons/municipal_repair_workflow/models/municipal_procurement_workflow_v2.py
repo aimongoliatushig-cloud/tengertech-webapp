@@ -46,6 +46,7 @@ GROUPS = {
     "department_head": "municipal_core.group_municipal_department_head",
     "purchase_manager": "municipal_repair_workflow.group_procurement_purchase_manager",
     "storekeeper": "municipal_repair_workflow.group_procurement_storekeeper",
+    "repair_storekeeper": "municipal_repair_workflow.group_repair_storekeeper",
     "finance_user": "municipal_repair_workflow.group_procurement_finance_user",
     "administration_user": "municipal_repair_workflow.group_procurement_administration_user",
     "legal_user": "municipal_repair_workflow.group_procurement_legal_user",
@@ -737,8 +738,12 @@ class MunicipalProcurementRequest(models.Model):
         Partner = self.env["res.partner"].sudo()
         Uom = self.env["uom.uom"].sudo()
         Users = self.env["res.users"].sudo()
-        storekeeper_group = self.env.ref(GROUPS["purchase_manager"], raise_if_not_found=False)
-        storekeeper_domain = [("groups_id", "in", storekeeper_group.id)] if storekeeper_group else []
+        storekeeper_group_ids = []
+        for group_key in ("purchase_manager", "storekeeper", "repair_storekeeper"):
+            group = self.env.ref(GROUPS[group_key], raise_if_not_found=False)
+            if group:
+                storekeeper_group_ids.append(group.id)
+        storekeeper_domain = [("groups_id", "in", storekeeper_group_ids)] if storekeeper_group_ids else []
         tasks = Task.search([], limit=200, order="write_date desc")
         return {
             "ok": True,
@@ -887,6 +892,12 @@ class MunicipalProcurementRequest(models.Model):
         note = payload.get("note")
         if document_type == "director_order_final":
             self.ceo_order_attachment_ids = [(4, attachment.id)]
+        elif target == "line":
+            line = self.line_ids.filtered(lambda item: item.id == int(payload.get("line_id") or 0))[:1]
+            if not line:
+                raise UserError("A valid purchase item line is required for product image upload.")
+            attachment.write({"res_model": "municipal.procurement.line", "res_id": line.id})
+            line.image_ids = [(4, attachment.id)]
         elif document_type == "contract_final":
             if self.contract_draft_attachment_ids:
                 self.final_contract_attachment_ids = [(4, attachment.id)]
@@ -949,6 +960,7 @@ class MunicipalProcurementLine(models.Model):
             "final_unit_price": self.estimated_unit_cost,
             "final_subtotal": self.subtotal,
             "remark": self.note,
+            "images": [self.request_id._api_attachment_payload(attachment) for attachment in self.image_ids],
         }
 
 
@@ -1031,6 +1043,7 @@ class MunicipalProcurementDocument(models.Model):
     document_type = fields.Selection(
         [
             ("request_attachment", "Request attachment"),
+            ("product_image", "Product image"),
             ("quote", "Supplier quote"),
             ("director_order_final", "CEO order"),
             ("contract_final", "Contract"),
