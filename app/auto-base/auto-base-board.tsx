@@ -837,15 +837,6 @@ function VehicleDetailModal({
           </label>
 
           <label className={styles.vehicleFormField}>
-            <span>Засварын төлөв</span>
-            <input
-              name="latest_repair_state"
-              defaultValue={vehicle.latestRepairState}
-              placeholder="Жишээ: Засварт, Хүлээгдэж байна"
-            />
-          </label>
-
-          <label className={styles.vehicleFormField}>
             <span>Төлөв</span>
             <select name="x_municipal_operational_status" defaultValue={vehicle.operationalStatusKey}>
               <option value="">Сонгоогүй</option>
