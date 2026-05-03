@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class MunicipalProcurementRequest(models.Model):
@@ -31,6 +31,7 @@ class MunicipalProcurementRequest(models.Model):
     )
     department_id = fields.Many2one("hr.department", string="Хэлтэс", tracking=True)
     repair_id = fields.Many2one("municipal.repair.request", string="Засварын хүсэлт", ondelete="set null")
+    vehicle_id = fields.Many2one("fleet.vehicle", string="Машин техник", tracking=True)
     amount_total = fields.Float(string="Нийт дүн", tracking=True)
     quote_attachment_ids = fields.Many2many(
         "ir.attachment",
@@ -75,6 +76,22 @@ class MunicipalProcurementRequest(models.Model):
     def _compute_is_over_threshold(self):
         for request in self:
             request.is_over_threshold = request.amount_total >= 1000000
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            repair_id = vals.get("repair_id")
+            if repair_id and not vals.get("vehicle_id"):
+                repair = self.env["municipal.repair.request"].browse(repair_id)
+                vals["vehicle_id"] = repair.vehicle_id.id or False
+        return super().create(vals_list)
+
+    def write(self, vals):
+        result = super().write(vals)
+        for request in self:
+            if request.repair_id and not request.vehicle_id:
+                request.vehicle_id = request.repair_id.vehicle_id
+        return result
 
     def action_submit_quotes(self):
         self.write({"state": "quote"})

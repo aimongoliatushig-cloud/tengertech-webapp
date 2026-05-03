@@ -4,13 +4,178 @@
         <field name="name">fleet.vehicle.municipal.status.list</field>
         <field name="model">fleet.vehicle</field>
         <field name="arch" type="xml">
-            <list string="Машины төлөв" decoration-danger="x_municipal_operational_status == 'in_repair'" decoration-muted="x_municipal_operational_status == 'inactive'">
+            <list string="Машины төлөв" decoration-danger="x_municipal_operational_status in ('in_repair', 'broken')" decoration-muted="x_municipal_operational_status in ('inactive', 'retired')">
                 <field name="name"/>
                 <field name="license_plate"/>
-                <field name="driver_id"/>
+                <field name="municipal_vehicle_type_id"/>
+                <field name="municipal_department_id"/>
+                <field name="municipal_responsible_driver_id"/>
+                <field name="municipal_loader_1_id"/>
+                <field name="municipal_loader_2_id"/>
                 <field name="x_municipal_operational_status"/>
+                <field name="municipal_insurance_date_end"/>
+                <field name="municipal_next_inspection_date"/>
                 <field name="municipal_active_repair_count"/>
             </list>
+        </field>
+    </record>
+
+    <record id="view_fleet_vehicle_municipal_status_form" model="ir.ui.view">
+        <field name="name">fleet.vehicle.municipal.status.form</field>
+        <field name="model">fleet.vehicle</field>
+        <field name="arch" type="xml">
+            <form string="Машин техникийн мэдээлэл">
+                <header>
+                    <button name="action_send_deadline_reminder_activity" string="Сануулга үүсгэх" type="object"/>
+                    <field name="x_municipal_operational_status" widget="statusbar" statusbar_visible="available,assigned,in_repair,broken,retired"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="license_plate" placeholder="Улсын дугаар"/>
+                        </h1>
+                        <h2>
+                            <field name="name" placeholder="Машин техникийн нэр"/>
+                        </h2>
+                    </div>
+                    <notebook>
+                        <page string="Үндсэн мэдээлэл">
+                            <group>
+                                <group>
+                                    <field name="name"/>
+                                    <field name="license_plate"/>
+                                    <field name="municipal_vehicle_type_id"/>
+                                    <field name="category_id"/>
+                                    <field name="model_id"/>
+                                    <field name="vin_sn"/>
+                                </group>
+                                <group>
+                                    <field name="municipal_department_id"/>
+                                    <field name="municipal_responsible_driver_id"/>
+                                    <field name="municipal_loader_1_id"/>
+                                    <field name="municipal_loader_2_id"/>
+                                    <field name="driver_id"/>
+                                    <field name="odometer"/>
+                                    <field name="fuel_type"/>
+                                    <field name="state_id"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Хариуцсан жолооч">
+                            <group>
+                                <field name="municipal_responsible_driver_id" domain="['|', ('job_title', 'ilike', 'жолооч'), ('job_id.name', 'ilike', 'жолооч')]"/>
+                                <field name="municipal_loader_1_id" domain="['|', ('job_title', 'ilike', 'ачигч'), ('job_id.name', 'ilike', 'ачигч')]"/>
+                                <field name="municipal_loader_2_id" domain="['|', ('job_title', 'ilike', 'ачигч'), ('job_id.name', 'ilike', 'ачигч')]"/>
+                            </group>
+                            <field name="municipal_driver_history_ids" readonly="1">
+                                <list>
+                                    <field name="driver_id"/>
+                                    <field name="date_start"/>
+                                    <field name="date_end"/>
+                                    <field name="changed_by_id"/>
+                                    <field name="changed_date"/>
+                                    <field name="note"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Даатгал">
+                            <group>
+                                <group>
+                                    <field name="municipal_insurance_company"/>
+                                    <field name="municipal_insurance_policy_number"/>
+                                    <field name="municipal_insurance_date_start"/>
+                                    <field name="municipal_insurance_date_end"/>
+                                </group>
+                                <group>
+                                    <field name="municipal_insurance_days_remaining" readonly="1"/>
+                                    <field name="municipal_insurance_reminder_due" readonly="1"/>
+                                </group>
+                            </group>
+                            <field name="municipal_insurance_note"/>
+                            <field name="municipal_insurance_attachment_ids" widget="many2many_binary"/>
+                        </page>
+
+                        <page string="Улсын үзлэг">
+                            <group>
+                                <group>
+                                    <field name="municipal_inspection_date"/>
+                                    <field name="municipal_next_inspection_date"/>
+                                </group>
+                                <group>
+                                    <field name="municipal_inspection_days_remaining" readonly="1"/>
+                                    <field name="municipal_inspection_reminder_due" readonly="1"/>
+                                </group>
+                            </group>
+                            <field name="municipal_inspection_note"/>
+                            <field name="municipal_inspection_attachment_ids" widget="many2many_binary"/>
+                        </page>
+
+                        <page string="Засварын түүх">
+                            <field name="municipal_repair_request_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="request_date"/>
+                                    <field name="damage_type"/>
+                                    <field name="issue_summary"/>
+                                    <field name="mechanic_id"/>
+                                    <field name="amount_total"/>
+                                    <field name="state"/>
+                                    <field name="procurement_request_id"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Хог ачалтын жингийн тайлан">
+                            <field name="municipal_garbage_weight_report_ids" readonly="1">
+                                <list>
+                                    <field name="report_date"/>
+                                    <field name="weight"/>
+                                    <field name="unit"/>
+                                    <field name="source"/>
+                                    <field name="fetched_at"/>
+                                    <field name="state"/>
+                                    <field name="error_message"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Шатахууны мэдээлэл">
+                            <field name="municipal_garbage_fuel_report_ids" readonly="1">
+                                <list>
+                                    <field name="report_date"/>
+                                    <field name="fuel_liters"/>
+                                    <field name="fuel_type"/>
+                                    <field name="source"/>
+                                    <field name="fetched_at"/>
+                                    <field name="state"/>
+                                    <field name="error_message"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Худалдан авалтын холбоос">
+                            <field name="municipal_procurement_request_ids" readonly="1">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="repair_id"/>
+                                    <field name="amount_total"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
+                        </page>
+
+                        <page string="Баримт / хавсралт">
+                            <group>
+                                <field name="municipal_insurance_attachment_ids" widget="many2many_binary"/>
+                                <field name="municipal_inspection_attachment_ids" widget="many2many_binary"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
         </field>
     </record>
 
@@ -21,8 +186,18 @@
             <search string="Машины төлөв">
                 <field name="name"/>
                 <field name="license_plate"/>
+                <field name="municipal_vehicle_type_id"/>
+                <field name="municipal_department_id"/>
+                <field name="municipal_responsible_driver_id"/>
+                <field name="municipal_loader_1_id"/>
+                <field name="municipal_loader_2_id"/>
                 <filter name="in_repair" string="Засварт байгаа" domain="[('x_municipal_operational_status', '=', 'in_repair')]"/>
+                <filter name="insurance_due" string="Даатгал дуусах гэж байгаа" domain="[('municipal_insurance_reminder_due', '=', True)]"/>
+                <filter name="inspection_due" string="Үзлэг болох гэж байгаа" domain="[('municipal_inspection_reminder_due', '=', True)]"/>
+                <filter name="garbage_truck" string="Хогны машин" domain="[('municipal_vehicle_type_id.is_garbage_truck', '=', True)]"/>
                 <group>
+                    <filter name="group_type" string="Машины төрөл" context="{'group_by': 'municipal_vehicle_type_id'}"/>
+                    <filter name="group_department" string="Хэлтэс" context="{'group_by': 'municipal_department_id'}"/>
                     <filter name="group_status" string="Ашиглалтын төлөв" context="{'group_by': 'x_municipal_operational_status'}"/>
                 </group>
             </search>
@@ -33,7 +208,113 @@
         <field name="name">Машины төлөв</field>
         <field name="res_model">fleet.vehicle</field>
         <field name="view_mode">list,form</field>
-        <field name="views" eval="[(ref('view_fleet_vehicle_municipal_status_list'), 'list'), (False, 'form')]"/>
+        <field name="views" eval="[(ref('view_fleet_vehicle_municipal_status_list'), 'list'), (ref('view_fleet_vehicle_municipal_status_form'), 'form')]"/>
         <field name="search_view_id" ref="view_fleet_vehicle_municipal_status_search"/>
+        <field name="context">{'active_test': False}</field>
+    </record>
+
+    <record id="view_municipal_vehicle_type_list" model="ir.ui.view">
+        <field name="name">municipal.vehicle.type.list</field>
+        <field name="model">municipal.vehicle.type</field>
+        <field name="arch" type="xml">
+            <list string="Машин техникийн төрөл">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="is_garbage_truck"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_municipal_vehicle_type_form" model="ir.ui.view">
+        <field name="name">municipal.vehicle.type.form</field>
+        <field name="model">municipal.vehicle.type</field>
+        <field name="arch" type="xml">
+            <form string="Машин техникийн төрөл">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="sequence"/>
+                        <field name="is_garbage_truck"/>
+                        <field name="active"/>
+                    </group>
+                    <field name="description"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_municipal_vehicle_type" model="ir.actions.act_window">
+        <field name="name">Машин техникийн төрөл</field>
+        <field name="res_model">municipal.vehicle.type</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_municipal_garbage_weight_report_list" model="ir.ui.view">
+        <field name="name">municipal.garbage.weight.report.list</field>
+        <field name="model">municipal.garbage.weight.report</field>
+        <field name="arch" type="xml">
+            <list string="Хог ачалтын жингийн тайлан" decoration-danger="state == 'failed'">
+                <field name="report_date"/>
+                <field name="vehicle_id"/>
+                <field name="vehicle_license_plate"/>
+                <field name="weight"/>
+                <field name="unit"/>
+                <field name="source"/>
+                <field name="fetched_at"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_municipal_garbage_weight_report" model="ir.actions.act_window">
+        <field name="name">Хог ачалтын жингийн тайлан</field>
+        <field name="res_model">municipal.garbage.weight.report</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_municipal_garbage_fuel_report_list" model="ir.ui.view">
+        <field name="name">municipal.garbage.fuel.report.list</field>
+        <field name="model">municipal.garbage.fuel.report</field>
+        <field name="arch" type="xml">
+            <list string="Шатахууны мэдээлэл" decoration-danger="state == 'failed'">
+                <field name="report_date"/>
+                <field name="vehicle_id"/>
+                <field name="vehicle_license_plate"/>
+                <field name="fuel_liters"/>
+                <field name="fuel_type"/>
+                <field name="source"/>
+                <field name="fetched_at"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_municipal_garbage_fuel_report" model="ir.actions.act_window">
+        <field name="name">Шатахууны мэдээлэл</field>
+        <field name="res_model">municipal.garbage.fuel.report</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_municipal_garbage_sync_log_list" model="ir.ui.view">
+        <field name="name">municipal.garbage.sync.log.list</field>
+        <field name="model">municipal.garbage.sync.log</field>
+        <field name="arch" type="xml">
+            <list string="Автомат таталтын бүртгэл" decoration-danger="state == 'failed'">
+                <field name="sync_type"/>
+                <field name="run_at"/>
+                <field name="state"/>
+                <field name="record_count"/>
+                <field name="error_message"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_municipal_garbage_sync_log" model="ir.actions.act_window">
+        <field name="name">Автомат таталтын бүртгэл</field>
+        <field name="res_model">municipal.garbage.sync.log</field>
+        <field name="view_mode">list,form</field>
     </record>
 </odoo>

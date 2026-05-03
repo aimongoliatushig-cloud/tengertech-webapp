@@ -45,9 +45,18 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
     allVehicles: [],
     activeVehicles: [],
     repairVehicles: [],
+    driverOptions: [],
+    loaderOptions: [],
     totalVehicles: 0,
     activeCount: 0,
     repairCount: 0,
+    insuranceDueCount: 0,
+    inspectionDueCount: 0,
+    todayWeightLabel: "0 кг",
+    todayFuelLabel: "0 л",
+    highestFuelVehicle: "",
+    mostRepairedVehicle: "",
+    failedImportCount: 0,
   } as Awaited<ReturnType<typeof loadFleetVehicleBoard>>;
   let loadError = "";
 
@@ -86,7 +95,7 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               notificationCount={board.totalVehicles}
-              notificationNote={`${board.activeCount} идэвхтэй, ${board.repairCount} засагдаж буй машин байна`}
+              notificationNote={`${board.activeCount} ажиллаж байгаа, ${board.repairCount} засвартай машин байна`}
             />
 
             {loadError ? (

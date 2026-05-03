@@ -9,6 +9,7 @@
                 <field name="request_type"/>
                 <field name="requested_by"/>
                 <field name="department_id"/>
+                <field name="vehicle_id"/>
                 <field name="repair_id"/>
                 <field name="amount_total"/>
                 <field name="is_over_threshold"/>
@@ -40,6 +41,7 @@
                             <field name="request_type"/>
                             <field name="requested_by" readonly="1"/>
                             <field name="department_id"/>
+                            <field name="vehicle_id"/>
                             <field name="repair_id"/>
                         </group>
                         <group>
@@ -67,6 +69,7 @@
         <field name="arch" type="xml">
             <search string="Худалдан авалтын хүсэлт">
                 <field name="name"/>
+                <field name="vehicle_id"/>
                 <field name="repair_id"/>
                 <field name="department_id"/>
                 <filter name="over_threshold" string="1 саяас дээш" domain="[('is_over_threshold', '=', True)]"/>

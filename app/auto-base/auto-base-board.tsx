@@ -21,24 +21,123 @@ type FleetVehicleBoardItem = {
   name: string;
   modelName: string;
   categoryName: string;
+  vehicleTypeName: string;
+  departmentName: string;
   vin: string;
   odometerLabel: string;
   fuelTypeLabel: string;
   fleetDriverName: string;
+  responsibleDriverId: number | null;
+  responsibleDriverName: string;
+  loader1Id: number | null;
+  loader1Name: string;
+  loader2Id: number | null;
+  loader2Name: string;
   stateLabel: string;
+  operationalStatusKey: string;
   latestRepairState: string;
   isOperational: boolean;
   isRepair: boolean;
+  insurance: FleetVehicleDeadlineInfo;
+  inspection: FleetVehicleDeadlineInfo;
+  driverHistory: FleetVehicleDriverHistoryItem[];
+  repairHistory: FleetVehicleRepairHistoryItem[];
+  weightReports: FleetVehicleDailyWeightItem[];
+  fuelReports: FleetVehicleDailyFuelItem[];
+  procurementLinks: FleetVehicleProcurementLink[];
   crewAssignments: FleetVehicleCrewAssignment[];
+};
+
+type FleetVehicleDriverOption = {
+  id: number;
+  name: string;
+  active: boolean;
+  departmentName: string;
+  jobTitle: string;
+};
+
+type FleetVehicleDeadlineInfo = {
+  company?: string;
+  policyNumber?: string;
+  startDate?: string;
+  endDate?: string;
+  startDateValue?: string;
+  endDateValue?: string;
+  daysRemaining: number;
+  reminderDue: boolean;
+  note?: string;
+  attachmentCount: number;
+};
+
+type FleetVehicleDriverHistoryItem = {
+  id: number;
+  driverName: string;
+  dateStart: string;
+  dateEnd: string;
+  changedBy: string;
+  changedDate: string;
+};
+
+type FleetVehicleRepairHistoryItem = {
+  id: number;
+  name: string;
+  requestDate: string;
+  dateRange: string;
+  damageType: string;
+  description: string;
+  partsNote: string;
+  amountLabel: string;
+  mechanicName: string;
+  stateLabel: string;
+  procurementName: string;
+  attachmentCount: number;
+};
+
+type FleetVehicleDailyWeightItem = {
+  id: number;
+  reportDate: string;
+  weightLabel: string;
+  source: string;
+  fetchedAt: string;
+  stateLabel: string;
+  errorMessage: string;
+};
+
+type FleetVehicleDailyFuelItem = {
+  id: number;
+  reportDate: string;
+  fuelLabel: string;
+  fuelType: string;
+  source: string;
+  fetchedAt: string;
+  stateLabel: string;
+  errorMessage: string;
+};
+
+type FleetVehicleProcurementLink = {
+  id: number;
+  name: string;
+  repairName: string;
+  amountLabel: string;
+  stateLabel: string;
 };
 
 type FleetVehicleBoard = {
   allVehicles: FleetVehicleBoardItem[];
   activeVehicles: FleetVehicleBoardItem[];
   repairVehicles: FleetVehicleBoardItem[];
+  driverOptions: FleetVehicleDriverOption[];
+  loaderOptions: FleetVehicleDriverOption[];
   totalVehicles: number;
   activeCount: number;
   repairCount: number;
+  insuranceDueCount: number;
+  inspectionDueCount: number;
+  todayWeightLabel: string;
+  todayFuelLabel: string;
+  highestFuelVehicle: string;
+  mostRepairedVehicle: string;
+  failedImportCount: number;
 };
 
 type BucketConfig = {
@@ -102,6 +201,10 @@ function VehicleList({
             </span>
           </div>
           <p className={styles.vehicleName}>{vehicle.name}</p>
+          <span className={styles.vehicleMetaLine}>
+            {vehicle.vehicleTypeName || vehicle.categoryName || "Төрөлгүй"} ·{" "}
+            {vehicle.responsibleDriverName || vehicle.fleetDriverName || "Жолооч оноогоогүй"}
+          </span>
           <span className={styles.vehicleCrewPreview}>
             {vehicle.crewAssignments.length
               ? `${vehicle.crewAssignments.length} баг хуваарилагдсан`
@@ -135,13 +238,262 @@ function operationTypeLabel(value: string) {
   return labels[value] ?? value;
 }
 
+const vehicleStatusOptions = [
+  { value: "available", label: "Ажиллаж байгаа" },
+  { value: "assigned", label: "Оноогдсон" },
+  { value: "in_repair", label: "Засвартай" },
+  { value: "broken", label: "Эвдэрсэн" },
+  { value: "retired", label: "Ашиглалтаас гарсан" },
+  { value: "inactive", label: "Идэвхгүй" },
+];
+
+function displayValue(value?: string | number) {
+  return value === undefined || value === null || value === "" ? "Бүртгээгүй" : String(value);
+}
+
+function DeadlinePanel({
+  title,
+  info,
+}: {
+  title: string;
+  info: FleetVehicleDeadlineInfo;
+}) {
+  return (
+    <div className={styles.deadlinePanel}>
+      <div className={styles.deadlinePanelHeader}>
+        <strong>{title}</strong>
+        {info.reminderDue ? <span className={styles.warningBadge}>Сануулах</span> : null}
+      </div>
+      <div className={styles.vehicleDetailGrid}>
+        {"company" in info ? <DetailItem label="Компани" value={info.company || ""} /> : null}
+        {"policyNumber" in info ? <DetailItem label="Гэрээний дугаар" value={info.policyNumber || ""} /> : null}
+        <DetailItem label="Эхлэх / орсон огноо" value={info.startDate || ""} />
+        <DetailItem label="Дуусах / дараагийн огноо" value={info.endDate || ""} />
+        <DetailItem label="Үлдсэн хоног" value={String(info.daysRemaining || 0)} />
+        <DetailItem label="Баримт" value={`${info.attachmentCount || 0} файл`} />
+      </div>
+      {info.note ? <p className={styles.inlineNote}>{info.note}</p> : null}
+    </div>
+  );
+}
+
+function EmptyPanel({ children }: { children: string }) {
+  return <div className={styles.emptyState}>{children}</div>;
+}
+
+function DriverHistoryList({ items }: { items: FleetVehicleDriverHistoryItem[] }) {
+  if (!items.length) {
+    return <EmptyPanel>Жолоочийн түүх бүртгэгдээгүй байна.</EmptyPanel>;
+  }
+  return (
+    <div className={styles.historyList}>
+      {items.map((item) => (
+        <article key={item.id} className={styles.historyRow}>
+          <strong>{item.driverName}</strong>
+          <span>{displayValue(item.dateStart)} - {displayValue(item.dateEnd)}</span>
+          <small>{displayValue(item.changedBy)} · {displayValue(item.changedDate)}</small>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function DriverAssignmentForm({
+  vehicle,
+  driverOptions,
+  loaderOptions,
+}: {
+  vehicle: FleetVehicleBoardItem;
+  driverOptions: FleetVehicleDriverOption[];
+  loaderOptions: FleetVehicleDriverOption[];
+}) {
+  return (
+    <section className={styles.driverAssignmentPanel}>
+      <div className={styles.driverAssignmentIntro}>
+        <span className={styles.mobileDetailEyebrow}>Хүний нөөц</span>
+        <div>
+          <h3>Жолооч, ачигч оноох</h3>
+          <p>
+            HR бүртгэлтэй жолооч болон ачигчаас сонгож хадгалахад өмнөх жолоочийн түүх автоматаар үлдэнэ.
+          </p>
+        </div>
+      </div>
+
+      <form action={updateFleetVehicleAction} className={styles.driverAssignmentForm}>
+        <input type="hidden" name="vehicle_id" value={vehicle.id} />
+
+        <label className={styles.vehicleFormField}>
+          <span>Хариуцсан жолооч</span>
+          <select
+            name="municipal_responsible_driver_id"
+            defaultValue={vehicle.responsibleDriverId ?? ""}
+          >
+            <option value="">Жолооч оноогоогүй</option>
+            {driverOptions.map((driver) => (
+              <option key={driver.id} value={driver.id}>
+                {driver.name} · {driver.departmentName}
+                {driver.jobTitle ? ` · ${driver.jobTitle}` : ""}
+                {driver.active ? "" : " · Идэвхгүй"}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className={styles.vehicleFormField}>
+          <span>Ачигч 1</span>
+          <select name="municipal_loader_1_id" defaultValue={vehicle.loader1Id ?? ""}>
+            <option value="">Ачигч 1 оноогоогүй</option>
+            {loaderOptions.map((loader) => (
+              <option key={loader.id} value={loader.id}>
+                {loader.name} · {loader.departmentName}
+                {loader.jobTitle ? ` · ${loader.jobTitle}` : ""}
+                {loader.active ? "" : " · Идэвхгүй"}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className={styles.vehicleFormField}>
+          <span>Ачигч 2</span>
+          <select name="municipal_loader_2_id" defaultValue={vehicle.loader2Id ?? ""}>
+            <option value="">Ачигч 2 оноогоогүй</option>
+            {loaderOptions.map((loader) => (
+              <option key={loader.id} value={loader.id}>
+                {loader.name} · {loader.departmentName}
+                {loader.jobTitle ? ` · ${loader.jobTitle}` : ""}
+                {loader.active ? "" : " · Идэвхгүй"}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className={styles.driverAssignmentMeta}>
+          <span>Одоогийн бүрэлдэхүүн</span>
+          <strong>{vehicle.responsibleDriverName || vehicle.fleetDriverName || "Жолооч оноогоогүй"}</strong>
+          <small>
+            Ачигч 1: {vehicle.loader1Name || "оноогоогүй"} · Ачигч 2:{" "}
+            {vehicle.loader2Name || "оноогоогүй"}
+          </small>
+          <small>{driverOptions.length} HR жолооч · {loaderOptions.length} HR ачигч</small>
+        </div>
+
+        <div className={styles.vehicleModalActions}>
+          <button type="submit" className={styles.primaryButton}>
+            Бүрэлдэхүүн хадгалах
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function RepairHistoryList({ items }: { items: FleetVehicleRepairHistoryItem[] }) {
+  if (!items.length) {
+    return <EmptyPanel>Засварын түүх бүртгэгдээгүй байна.</EmptyPanel>;
+  }
+  return (
+    <div className={styles.historyList}>
+      {items.map((item) => (
+        <article key={item.id} className={styles.historyRow}>
+          <div className={styles.historyRowTop}>
+            <strong>{item.name}</strong>
+            <span className={styles.stateBadge}>{item.stateLabel || "Төлөвгүй"}</span>
+          </div>
+          <span>{item.damageType || item.description || "Эвдрэлийн мэдээлэлгүй"}</span>
+          <small>
+            {displayValue(item.requestDate)} · {displayValue(item.mechanicName)} · {item.amountLabel}
+          </small>
+          {item.procurementName ? <small>Худалдан авалт: {item.procurementName}</small> : null}
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function WeightReportList({ items }: { items: FleetVehicleDailyWeightItem[] }) {
+  if (!items.length) {
+    return <EmptyPanel>Жингийн тайлан бүртгэгдээгүй байна.</EmptyPanel>;
+  }
+  return (
+    <div className={styles.historyList}>
+      {items.map((item) => (
+        <article key={item.id} className={styles.historyRow}>
+          <div className={styles.historyRowTop}>
+            <strong>{item.weightLabel}</strong>
+            <span className={styles.stateBadge}>{item.stateLabel}</span>
+          </div>
+          <span>{displayValue(item.reportDate)} · {displayValue(item.source)}</span>
+          {item.errorMessage ? <small>{item.errorMessage}</small> : <small>Татсан: {displayValue(item.fetchedAt)}</small>}
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function FuelReportList({ items }: { items: FleetVehicleDailyFuelItem[] }) {
+  if (!items.length) {
+    return <EmptyPanel>Шатахууны мэдээлэл бүртгэгдээгүй байна.</EmptyPanel>;
+  }
+  return (
+    <div className={styles.historyList}>
+      {items.map((item) => (
+        <article key={item.id} className={styles.historyRow}>
+          <div className={styles.historyRowTop}>
+            <strong>{item.fuelLabel}</strong>
+            <span className={styles.stateBadge}>{item.stateLabel}</span>
+          </div>
+          <span>{displayValue(item.reportDate)} · {displayValue(item.fuelType)}</span>
+          {item.errorMessage ? <small>{item.errorMessage}</small> : <small>Татсан: {displayValue(item.fetchedAt)}</small>}
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function ProcurementList({ items }: { items: FleetVehicleProcurementLink[] }) {
+  if (!items.length) {
+    return <EmptyPanel>Худалдан авалтын холбоос бүртгэгдээгүй байна.</EmptyPanel>;
+  }
+  return (
+    <div className={styles.historyList}>
+      {items.map((item) => (
+        <article key={item.id} className={styles.historyRow}>
+          <div className={styles.historyRowTop}>
+            <strong>{item.name}</strong>
+            <span className={styles.stateBadge}>{item.stateLabel}</span>
+          </div>
+          <span>{displayValue(item.repairName)}</span>
+          <small>{item.amountLabel}</small>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function VehicleDetailModal({
   vehicle,
+  driverOptions,
+  loaderOptions,
   onClose,
 }: {
   vehicle: FleetVehicleBoardItem;
+  driverOptions: FleetVehicleDriverOption[];
+  loaderOptions: FleetVehicleDriverOption[];
   onClose: () => void;
 }) {
+  const [activeTab, setActiveTab] = useState("main");
+  const tabs = [
+    { key: "main", label: "Үндсэн мэдээлэл" },
+    { key: "driver", label: "Хариуцсан жолооч" },
+    { key: "insurance", label: "Даатгал" },
+    { key: "inspection", label: "Улсын үзлэг" },
+    { key: "repair", label: "Засварын түүх" },
+    { key: "weight", label: "Жингийн тайлан" },
+    { key: "fuel", label: "Шатахуун" },
+    { key: "procurement", label: "Худалдан авалт" },
+    { key: "edit", label: "Засах" },
+  ];
+
   return (
     <div className={styles.vehicleModalBackdrop} role="presentation" onClick={onClose}>
       <section
@@ -162,58 +514,135 @@ function VehicleDetailModal({
           </button>
         </div>
 
-        <div className={styles.vehicleDetailGrid}>
-          <DetailItem label="Марка / модель" value={vehicle.modelName || vehicle.name} />
-          <DetailItem label="Ангилал" value={vehicle.categoryName} />
-          <DetailItem label="Төлөв" value={vehicle.stateLabel} />
-          <DetailItem label="VIN" value={vehicle.vin} />
-          <DetailItem label="Одометр" value={vehicle.odometerLabel} />
-          <DetailItem label="Fleet жолооч" value={vehicle.fleetDriverName} />
+        <div className={styles.vehicleTabBar} role="tablist" aria-label="Машины дэлгэрэнгүй цонхнууд">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.key}
+              className={cx(styles.vehicleTabButton, activeTab === tab.key && styles.vehicleTabButtonActive)}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        <section className={styles.vehicleCrewPanel}>
-          <div className={styles.vehicleCrewHeader}>
-            <span className={styles.mobileDetailEyebrow}>Хуваарилсан хүмүүс</span>
-            <strong>{vehicle.crewAssignments.length}</strong>
-          </div>
-          {vehicle.crewAssignments.length ? (
-            <div className={styles.vehicleCrewList}>
-              {vehicle.crewAssignments.map((assignment) => (
-                <article key={assignment.teamId} className={styles.vehicleCrewCard}>
-                  {assignment.operationType ? (
-                    <p className={styles.vehicleCrewType}>
-                      {operationTypeLabel(assignment.operationType)}
-                    </p>
-                  ) : null}
-                  <div>
-                    <span>Баг</span>
-                    <strong>{assignment.teamName}</strong>
-                  </div>
-                  <div>
-                    <span>Жолооч</span>
-                    <strong>{namesLabel(assignment.driverNames)}</strong>
-                  </div>
-                  <div>
-                    <span>Ачигч</span>
-                    <strong>{namesLabel(assignment.loaderNames)}</strong>
-                  </div>
-                  {assignment.memberNames.length ? (
-                    <div>
-                      <span>Бусад гишүүд</span>
-                      <strong>{namesLabel(assignment.memberNames)}</strong>
-                    </div>
-                  ) : null}
-                </article>
-              ))}
+        {activeTab === "main" ? (
+          <section className={styles.vehicleTabPanel}>
+            <div className={styles.vehicleDetailGrid}>
+              <DetailItem label="Марка / модель" value={vehicle.modelName || vehicle.name} />
+              <DetailItem label="Төрөл" value={vehicle.vehicleTypeName || vehicle.categoryName} />
+              <DetailItem label="Хэлтэс" value={vehicle.departmentName} />
+              <DetailItem label="Төлөв" value={vehicle.stateLabel} />
+              <DetailItem label="VIN" value={vehicle.vin} />
+              <DetailItem label="Одометр" value={vehicle.odometerLabel} />
+              <DetailItem label="Системийн жолооч" value={vehicle.fleetDriverName} />
+              <DetailItem label="Түлшний төрөл" value={vehicle.fuelTypeLabel} />
             </div>
-          ) : (
-            <p className={styles.vehicleCrewEmpty}>
-              Энэ машин дээр идэвхтэй баг, жолооч, ачигч хуваарилагдаагүй байна.
-            </p>
-          )}
-        </section>
 
-        <form key={vehicle.id} action={updateFleetVehicleAction} className={styles.vehicleEditForm}>
+            <section className={styles.vehicleCrewPanel}>
+              <div className={styles.vehicleCrewHeader}>
+                <span className={styles.mobileDetailEyebrow}>Хуваарилсан хүмүүс</span>
+                <strong>{vehicle.crewAssignments.length}</strong>
+              </div>
+              {vehicle.crewAssignments.length ? (
+                <div className={styles.vehicleCrewList}>
+                  {vehicle.crewAssignments.map((assignment) => (
+                    <article key={assignment.teamId} className={styles.vehicleCrewCard}>
+                      {assignment.operationType ? (
+                        <p className={styles.vehicleCrewType}>
+                          {operationTypeLabel(assignment.operationType)}
+                        </p>
+                      ) : null}
+                      <div>
+                        <span>Баг</span>
+                        <strong>{assignment.teamName}</strong>
+                      </div>
+                      <div>
+                        <span>Жолооч</span>
+                        <strong>{namesLabel(assignment.driverNames)}</strong>
+                      </div>
+                      <div>
+                        <span>Ачигч</span>
+                        <strong>{namesLabel(assignment.loaderNames)}</strong>
+                      </div>
+                      {assignment.memberNames.length ? (
+                        <div>
+                          <span>Бусад гишүүд</span>
+                          <strong>{namesLabel(assignment.memberNames)}</strong>
+                        </div>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.vehicleCrewEmpty}>
+                  Энэ машин дээр идэвхтэй баг, жолооч, ачигч хуваарилагдаагүй байна.
+                </p>
+              )}
+            </section>
+          </section>
+        ) : null}
+
+        {activeTab === "driver" ? (
+          <section className={styles.vehicleTabPanel}>
+            <div className={styles.vehicleDetailGrid}>
+              <DetailItem label="Одоогийн жолооч" value={vehicle.responsibleDriverName || vehicle.fleetDriverName} />
+              <DetailItem label="Ачигч 1" value={vehicle.loader1Name} />
+              <DetailItem label="Ачигч 2" value={vehicle.loader2Name} />
+              <DetailItem label="Хуваарилсан баг" value={`${vehicle.crewAssignments.length}`} />
+              <DetailItem label="Төлөв" value={vehicle.stateLabel} />
+            </div>
+            <DriverAssignmentForm
+              vehicle={vehicle}
+              driverOptions={driverOptions}
+              loaderOptions={loaderOptions}
+            />
+            <DriverHistoryList items={vehicle.driverHistory} />
+          </section>
+        ) : null}
+
+        {activeTab === "insurance" ? (
+          <section className={styles.vehicleTabPanel}>
+            <DeadlinePanel title="Даатгалын мэдээлэл" info={vehicle.insurance} />
+          </section>
+        ) : null}
+
+        {activeTab === "inspection" ? (
+          <section className={styles.vehicleTabPanel}>
+            <DeadlinePanel title="Улсын үзлэгийн мэдээлэл" info={vehicle.inspection} />
+          </section>
+        ) : null}
+
+        {activeTab === "repair" ? (
+          <section className={styles.vehicleTabPanel}>
+            <RepairHistoryList items={vehicle.repairHistory} />
+          </section>
+        ) : null}
+
+        {activeTab === "weight" ? (
+          <section className={styles.vehicleTabPanel}>
+            <WeightReportList items={vehicle.weightReports} />
+          </section>
+        ) : null}
+
+        {activeTab === "fuel" ? (
+          <section className={styles.vehicleTabPanel}>
+            <FuelReportList items={vehicle.fuelReports} />
+          </section>
+        ) : null}
+
+        {activeTab === "procurement" ? (
+          <section className={styles.vehicleTabPanel}>
+            <ProcurementList items={vehicle.procurementLinks} />
+          </section>
+        ) : null}
+
+        {activeTab === "edit" ? (
+        <section className={styles.vehicleTabPanel}>
+          <form key={vehicle.id} action={updateFleetVehicleAction} className={styles.vehicleEditForm}>
           <input type="hidden" name="vehicle_id" value={vehicle.id} />
 
           <label className={styles.vehicleFormField}>
@@ -235,6 +664,78 @@ function VehicleDetailModal({
             />
           </label>
 
+          <label className={styles.vehicleFormField}>
+            <span>Төлөв</span>
+            <select name="x_municipal_operational_status" defaultValue={vehicle.operationalStatusKey}>
+              <option value="">Сонгоогүй</option>
+              {vehicleStatusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Даатгалын компани</span>
+            <input name="municipal_insurance_company" defaultValue={vehicle.insurance.company || ""} />
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Даатгалын гэрээний дугаар</span>
+            <input
+              name="municipal_insurance_policy_number"
+              defaultValue={vehicle.insurance.policyNumber || ""}
+            />
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Даатгал эхлэх огноо</span>
+            <input
+              name="municipal_insurance_date_start"
+              type="date"
+              defaultValue={vehicle.insurance.startDateValue || ""}
+            />
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Даатгал дуусах огноо</span>
+            <input
+              name="municipal_insurance_date_end"
+              type="date"
+              defaultValue={vehicle.insurance.endDateValue || ""}
+            />
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Улсын үзлэгт орсон огноо</span>
+            <input
+              name="municipal_inspection_date"
+              type="date"
+              defaultValue={vehicle.inspection.startDateValue || ""}
+            />
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Дараагийн үзлэгийн огноо</span>
+            <input
+              name="municipal_next_inspection_date"
+              type="date"
+              defaultValue={vehicle.inspection.endDateValue || ""}
+            />
+          </label>
+
+          <label className={cx(styles.vehicleFormField, styles.vehicleFormFieldWide)}>
+            <span>Даатгалын тайлбар</span>
+            <textarea name="municipal_insurance_note" defaultValue={vehicle.insurance.note || ""} />
+          </label>
+
+          <label className={cx(styles.vehicleFormField, styles.vehicleFormFieldWide)}>
+            <span>Улсын үзлэгийн тайлбар</span>
+            <textarea name="municipal_inspection_note" defaultValue={vehicle.inspection.note || ""} />
+          </label>
+
+          <input type="hidden" name="mfo_active_for_ops_present" value="1" />
           <label className={styles.vehicleCheckbox}>
             <input
               name="mfo_active_for_ops"
@@ -252,7 +753,9 @@ function VehicleDetailModal({
               Хадгалах
             </button>
           </div>
-        </form>
+          </form>
+        </section>
+        ) : null}
       </section>
     </div>
   );
@@ -293,11 +796,11 @@ export function AutoBaseBoard({
     },
     {
       key: "active",
-      title: "Идэвхтэй явж буй машин",
+      title: "Ажиллаж байгаа машин",
       count: board.activeCount,
-      description: "Өнөөдөр ажиллаж байгаа болон рейст гарсан машинууд.",
+      description: "Ажилд гарах боломжтой болон хуваарилагдсан машинууд.",
       hint: "Жагсаалт нээх",
-      emptyLabel: "Одоогоор идэвхтэй явж буй машин алга.",
+      emptyLabel: "Одоогоор ажиллаж байгаа машин алга.",
       vehicles: board.activeVehicles,
       tone: "active",
       inputId: "vehicle-bucket-active",
@@ -320,6 +823,8 @@ export function AutoBaseBoard({
       panelClassName: styles.mobileDetailRepair,
     },
   ];
+  const desktopBuckets = buckets.filter((bucket) => bucket.key === "all" || bucket.vehicles.length > 0);
+  const shouldExpandAllVehicles = desktopBuckets.length === 1 && desktopBuckets[0]?.key === "all";
 
   return (
     <>
@@ -331,6 +836,49 @@ export function AutoBaseBoard({
           {error || notice}
         </div>
       ) : null}
+
+      <div className={styles.metricGrid}>
+        <div className={styles.metricTile}>
+          <span>Нийт машин техник</span>
+          <strong>{board.totalVehicles}</strong>
+        </div>
+        <div className={styles.metricTile}>
+          <span>Ажиллаж байгаа</span>
+          <strong>{board.activeCount}</strong>
+        </div>
+        <div className={styles.metricTile}>
+          <span>Засвартай</span>
+          <strong>{board.repairCount}</strong>
+        </div>
+        <div className={styles.metricTile}>
+          <span>Даатгал сануулах</span>
+          <strong>{board.insuranceDueCount}</strong>
+        </div>
+        <div className={styles.metricTile}>
+          <span>Үзлэг сануулах</span>
+          <strong>{board.inspectionDueCount}</strong>
+        </div>
+        <div className={styles.metricTile}>
+          <span>Өнөөдрийн жин</span>
+          <strong>{board.todayWeightLabel}</strong>
+        </div>
+        <div className={styles.metricTile}>
+          <span>Өнөөдрийн шатахуун</span>
+          <strong>{board.todayFuelLabel}</strong>
+        </div>
+        <div className={styles.metricTile}>
+          <span>Алдаатай таталт</span>
+          <strong>{board.failedImportCount}</strong>
+        </div>
+        <div className={styles.metricTile}>
+          <span>Их шатахуун</span>
+          <strong>{board.highestFuelVehicle || "Байхгүй"}</strong>
+        </div>
+        <div className={styles.metricTile}>
+          <span>Их засварт орсон</span>
+          <strong>{board.mostRepairedVehicle || "Байхгүй"}</strong>
+        </div>
+      </div>
 
       <div className={styles.mobileBoard}>
         <input
@@ -413,11 +961,12 @@ export function AutoBaseBoard({
       </div>
 
       <div className={styles.boardGrid} data-testid="vehicle-board-desktop">
-        {buckets.map((bucket) => (
+        {desktopBuckets.map((bucket) => (
           <section
             key={bucket.key}
             className={cx(
               styles.columnCard,
+              shouldExpandAllVehicles && bucket.key === "all" && styles.columnWide,
               bucket.tone === "repair"
                 ? styles.columnRepair
                 : bucket.tone === "all"
@@ -445,6 +994,8 @@ export function AutoBaseBoard({
       {selectedVehicle ? (
         <VehicleDetailModal
           vehicle={selectedVehicle}
+          driverOptions={board.driverOptions}
+          loaderOptions={board.loaderOptions}
           onClose={() => setSelectedVehicle(null)}
         />
       ) : null}

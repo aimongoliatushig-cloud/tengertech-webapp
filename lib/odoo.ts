@@ -452,6 +452,12 @@ type OdooFleetVehicleRecord = {
   license_plate?: string | false;
   model_id?: OdooRelation;
   category_id?: OdooRelation;
+  municipal_vehicle_type_id?: OdooRelation;
+  municipal_department_id?: OdooRelation;
+  municipal_responsible_driver_id?: OdooRelation;
+  municipal_loader_1_id?: OdooRelation;
+  municipal_loader_2_id?: OdooRelation;
+  x_municipal_operational_status?: string | false;
   vin_sn?: string | false;
   odometer?: number | false;
   fuel_type?: string | false;
@@ -461,6 +467,20 @@ type OdooFleetVehicleRecord = {
   latest_repair_state?: string | false;
   vehicle_downtime_open?: boolean;
   active?: boolean;
+  municipal_insurance_company?: string | false;
+  municipal_insurance_policy_number?: string | false;
+  municipal_insurance_date_start?: string | false;
+  municipal_insurance_date_end?: string | false;
+  municipal_insurance_days_remaining?: number;
+  municipal_insurance_reminder_due?: boolean;
+  municipal_insurance_note?: string | false;
+  municipal_insurance_attachment_ids?: number[];
+  municipal_inspection_date?: string | false;
+  municipal_next_inspection_date?: string | false;
+  municipal_inspection_days_remaining?: number;
+  municipal_inspection_reminder_due?: boolean;
+  municipal_inspection_note?: string | false;
+  municipal_inspection_attachment_ids?: number[];
 };
 
 type OdooCrewTeamRecord = {
@@ -481,6 +501,70 @@ type OdooCrewTeamRecord = {
   employee_ids?: number[];
 };
 
+type OdooVehicleDriverHistoryRecord = {
+  id: number;
+  vehicle_id: OdooRelation;
+  driver_id: OdooRelation;
+  date_start?: string | false;
+  date_end?: string | false;
+  changed_by_id?: OdooRelation;
+  changed_date?: string | false;
+};
+
+type OdooRepairHistoryRecord = {
+  id: number;
+  name: string;
+  vehicle_id: OdooRelation;
+  request_date?: string | false;
+  repair_started_at?: string | false;
+  repair_done_at?: string | false;
+  damage_type?: string | false;
+  issue_summary?: string | false;
+  issue_description?: string | false;
+  description?: string | false;
+  parts_note?: string | false;
+  amount_total?: number;
+  actual_cost?: number;
+  mechanic_id?: OdooRelation;
+  state?: string | false;
+  procurement_request_id?: OdooRelation;
+  attachment_ids?: number[];
+  photo_ids?: number[];
+};
+
+type OdooGarbageWeightReportRecord = {
+  id: number;
+  report_date?: string | false;
+  vehicle_id: OdooRelation;
+  weight?: number;
+  unit?: string | false;
+  source?: string | false;
+  fetched_at?: string | false;
+  state?: string | false;
+  error_message?: string | false;
+};
+
+type OdooGarbageFuelReportRecord = {
+  id: number;
+  report_date?: string | false;
+  vehicle_id: OdooRelation;
+  fuel_liters?: number;
+  fuel_type?: string | false;
+  source?: string | false;
+  fetched_at?: string | false;
+  state?: string | false;
+  error_message?: string | false;
+};
+
+type OdooProcurementLinkRecord = {
+  id: number;
+  name: string;
+  vehicle_id?: OdooRelation;
+  repair_id?: OdooRelation;
+  amount_total?: number;
+  state?: string | false;
+};
+
 export type FleetVehicleCrewAssignment = {
   teamId: number;
   teamName: string;
@@ -490,20 +574,110 @@ export type FleetVehicleCrewAssignment = {
   memberNames: string[];
 };
 
+export type FleetVehicleDriverOption = {
+  id: number;
+  name: string;
+  active: boolean;
+  departmentName: string;
+  jobTitle: string;
+};
+
+export type FleetVehicleDeadlineInfo = {
+  company?: string;
+  policyNumber?: string;
+  startDate?: string;
+  endDate?: string;
+  startDateValue?: string;
+  endDateValue?: string;
+  daysRemaining: number;
+  reminderDue: boolean;
+  note?: string;
+  attachmentCount: number;
+};
+
+export type FleetVehicleDriverHistoryItem = {
+  id: number;
+  driverName: string;
+  dateStart: string;
+  dateEnd: string;
+  changedBy: string;
+  changedDate: string;
+};
+
+export type FleetVehicleRepairHistoryItem = {
+  id: number;
+  name: string;
+  requestDate: string;
+  dateRange: string;
+  damageType: string;
+  description: string;
+  partsNote: string;
+  amountLabel: string;
+  mechanicName: string;
+  stateLabel: string;
+  procurementName: string;
+  attachmentCount: number;
+};
+
+export type FleetVehicleDailyWeightItem = {
+  id: number;
+  reportDate: string;
+  weightLabel: string;
+  source: string;
+  fetchedAt: string;
+  stateLabel: string;
+  errorMessage: string;
+};
+
+export type FleetVehicleDailyFuelItem = {
+  id: number;
+  reportDate: string;
+  fuelLabel: string;
+  fuelType: string;
+  source: string;
+  fetchedAt: string;
+  stateLabel: string;
+  errorMessage: string;
+};
+
+export type FleetVehicleProcurementLink = {
+  id: number;
+  name: string;
+  repairName: string;
+  amountLabel: string;
+  stateLabel: string;
+};
+
 export type FleetVehicleBoardItem = {
   id: number;
   plate: string;
   name: string;
   modelName: string;
   categoryName: string;
+  vehicleTypeName: string;
+  departmentName: string;
   vin: string;
   odometerLabel: string;
   fuelTypeLabel: string;
   fleetDriverName: string;
+  responsibleDriverId: number | null;
+  responsibleDriverName: string;
+  loader1Id: number | null;
+  loader1Name: string;
+  loader2Id: number | null;
+  loader2Name: string;
   stateLabel: string;
+  operationalStatusKey: string;
   latestRepairState: string;
   isOperational: boolean;
   isRepair: boolean;
+  insurance: FleetVehicleDeadlineInfo;
+  inspection: FleetVehicleDeadlineInfo;
+  driverHistory: FleetVehicleDriverHistoryItem[];
+  repairHistory: FleetVehicleRepairHistoryItem[];
+  weightReports: FleetVehicleDailyWeightItem[];
+  fuelReports: FleetVehicleDailyFuelItem[];
+  procurementLinks: FleetVehicleProcurementLink[];
   crewAssignments: FleetVehicleCrewAssignment[];
 };
 
@@ -511,9 +685,18 @@ export type FleetVehicleBoard = {
   allVehicles: FleetVehicleBoardItem[];
   activeVehicles: FleetVehicleBoardItem[];
   repairVehicles: FleetVehicleBoardItem[];
+  driverOptions: FleetVehicleDriverOption[];
+  loaderOptions: FleetVehicleDriverOption[];
   totalVehicles: number;
   activeCount: number;
   repairCount: number;
+  insuranceDueCount: number;
+  inspectionDueCount: number;
+  todayWeightLabel: string;
+  todayFuelLabel: string;
+  highestFuelVehicle: string;
+  mostRepairedVehicle: string;
+  failedImportCount: number;
 };
 
 type StageBucket = "todo" | "progress" | "review" | "done" | "unknown";
@@ -922,6 +1105,12 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
     "license_plate",
     "model_id",
     "category_id",
+    "municipal_vehicle_type_id",
+    "municipal_department_id",
+    "municipal_responsible_driver_id",
+    "municipal_loader_1_id",
+    "municipal_loader_2_id",
+    "x_municipal_operational_status",
     "vin_sn",
     "odometer",
     "fuel_type",
@@ -930,6 +1119,20 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
     "mfo_active_for_ops",
     "latest_repair_state",
     "vehicle_downtime_open",
+    "municipal_insurance_company",
+    "municipal_insurance_policy_number",
+    "municipal_insurance_date_start",
+    "municipal_insurance_date_end",
+    "municipal_insurance_days_remaining",
+    "municipal_insurance_reminder_due",
+    "municipal_insurance_note",
+    "municipal_insurance_attachment_ids",
+    "municipal_inspection_date",
+    "municipal_next_inspection_date",
+    "municipal_inspection_days_remaining",
+    "municipal_inspection_reminder_due",
+    "municipal_inspection_note",
+    "municipal_inspection_attachment_ids",
     "active",
   ],
   [
@@ -1021,6 +1224,65 @@ const CREW_TEAM_FIELD_VARIANTS: string[][] = [
   ["name", "active", "vehicle_id", "driver_employee_id", "employee_ids"],
   ["name", "vehicle_id", "driver_employee_id"],
   ["name", "vehicle_id"],
+];
+
+const VEHICLE_DRIVER_HISTORY_FIELDS = [
+  "vehicle_id",
+  "driver_id",
+  "date_start",
+  "date_end",
+  "changed_by_id",
+  "changed_date",
+];
+
+const VEHICLE_REPAIR_HISTORY_FIELDS = [
+  "name",
+  "vehicle_id",
+  "request_date",
+  "repair_started_at",
+  "repair_done_at",
+  "damage_type",
+  "issue_summary",
+  "issue_description",
+  "description",
+  "parts_note",
+  "amount_total",
+  "actual_cost",
+  "mechanic_id",
+  "state",
+  "procurement_request_id",
+  "attachment_ids",
+  "photo_ids",
+];
+
+const VEHICLE_WEIGHT_REPORT_FIELDS = [
+  "report_date",
+  "vehicle_id",
+  "weight",
+  "unit",
+  "source",
+  "fetched_at",
+  "state",
+  "error_message",
+];
+
+const VEHICLE_FUEL_REPORT_FIELDS = [
+  "report_date",
+  "vehicle_id",
+  "fuel_liters",
+  "fuel_type",
+  "source",
+  "fetched_at",
+  "state",
+  "error_message",
+];
+
+const VEHICLE_PROCUREMENT_FIELDS = [
+  "name",
+  "vehicle_id",
+  "repair_id",
+  "amount_total",
+  "state",
 ];
 
 function relationName(relation: OdooRelation, fallback = "Оноогоогүй") {
@@ -1623,6 +1885,7 @@ async function authenticateWithFallback(
   connection: OdooConnection,
 ): Promise<OdooAuthSession | null> {
   let lastError: unknown = null;
+  let sawAuthenticationRejection = false;
 
   for (const candidate of buildOdooConnectionCandidates(connection)) {
     const cached = readCachedOdooAuth(candidate);
@@ -1639,9 +1902,14 @@ async function authenticateWithFallback(
           connection: candidate,
         };
       }
+      sawAuthenticationRejection = true;
     } catch (error) {
       lastError = error;
     }
+  }
+
+  if (sawAuthenticationRejection) {
+    return null;
   }
 
   if (lastError) {
@@ -2294,6 +2562,405 @@ async function loadCrewAssignmentsByVehicle(uid: number, connection: OdooConnect
   }
 }
 
+const FLEET_OPERATIONAL_STATUS_LABELS: Record<string, string> = {
+  available: "Ажиллаж байгаа",
+  assigned: "Оноогдсон",
+  in_repair: "Засвартай",
+  broken: "Эвдэрсэн",
+  retired: "Ашиглалтаас гарсан",
+  inactive: "Идэвхгүй",
+};
+
+const FLEET_IMPORT_STATE_LABELS: Record<string, string> = {
+  success: "Амжилттай",
+  failed: "Алдаатай",
+};
+
+const FLEET_REPAIR_STATE_LABELS: Record<string, string> = {
+  new: "Үүссэн",
+  diagnosed: "Оношилсон",
+  waiting_parts: "Сэлбэг хүлээж байна",
+  waiting_approval: "Баталгаа хүлээж байна",
+  approved: "Батлагдсан",
+  in_repair: "Хийгдэж байгаа",
+  done: "Дууссан",
+  vehicle_returned: "Машин буцаасан",
+  cancelled: "Цуцлагдсан",
+};
+
+const FLEET_PROCUREMENT_STATE_LABELS: Record<string, string> = {
+  draft: "Ноорог",
+  quote: "3 үнийн санал",
+  finance_review: "Санхүүгийн хяналт",
+  director_approval: "Захирлын баталгаа",
+  contract_review: "Гэрээний хяналт",
+  payment: "Төлбөр",
+  received: "Хүлээн авсан",
+  done: "Дууссан",
+  cancelled: "Цуцлагдсан",
+};
+
+function formatMoneyLabel(value?: number) {
+  return new Intl.NumberFormat("mn-MN", {
+    style: "currency",
+    currency: "MNT",
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+}
+
+function formatLiters(value?: number) {
+  return `${new Intl.NumberFormat("mn-MN", {
+    maximumFractionDigits: 1,
+  }).format(value || 0)} л`;
+}
+
+function formatWeight(value?: number, unit?: string | false) {
+  const normalizedUnit = unit === "ton" ? "тонн" : "кг";
+  return `${new Intl.NumberFormat("mn-MN", {
+    maximumFractionDigits: normalizedUnit === "тонн" ? 2 : 0,
+  }).format(value || 0)} ${normalizedUnit}`;
+}
+
+function formatOptionalCompactDate(value?: string | false) {
+  if (!value) {
+    return "";
+  }
+  return formatCompactDate(value);
+}
+
+function formatDateRange(start?: string | false, end?: string | false) {
+  const startLabel = formatOptionalCompactDate(start);
+  const endLabel = formatOptionalCompactDate(end);
+  if (startLabel && endLabel) {
+    return `${startLabel} - ${endLabel}`;
+  }
+  return startLabel || endLabel || "";
+}
+
+function attachmentCount(...values: Array<number[] | undefined>) {
+  return values.reduce((sum, ids) => sum + (ids?.length ?? 0), 0);
+}
+
+function appendMapItem<T>(map: Map<number, T[]>, key: number | null, item: T) {
+  if (!key) {
+    return;
+  }
+  const current = map.get(key) ?? [];
+  current.push(item);
+  map.set(key, current);
+}
+
+async function safeSearchReadFleetModel<T>(
+  uid: number,
+  model: string,
+  domain: unknown[],
+  fields: string[],
+  kwargs: Record<string, unknown>,
+  connection: OdooConnection,
+) {
+  try {
+    return await searchReadAll<T>(
+      uid,
+      model,
+      domain,
+      {
+        ...kwargs,
+        fields,
+      },
+      connection,
+    );
+  } catch (error) {
+    console.warn(`${model} could not be loaded for auto-base board:`, error);
+    return [];
+  }
+}
+
+async function loadDriverHistoryByVehicle(
+  uid: number,
+  vehicleIds: number[],
+  connection: OdooConnection,
+) {
+  const records = await safeSearchReadFleetModel<OdooVehicleDriverHistoryRecord>(
+    uid,
+    "municipal.vehicle.driver.history",
+    [["vehicle_id", "in", vehicleIds]],
+    VEHICLE_DRIVER_HISTORY_FIELDS,
+    { order: "date_start desc, id desc" },
+    connection,
+  );
+  const byVehicle = new Map<number, FleetVehicleDriverHistoryItem[]>();
+  for (const record of records) {
+    appendMapItem(byVehicle, relationId(record.vehicle_id), {
+      id: record.id,
+      driverName: relationName(record.driver_id, "Оноогоогүй"),
+      dateStart: formatOptionalCompactDate(record.date_start),
+      dateEnd: formatOptionalCompactDate(record.date_end),
+      changedBy: relationName(record.changed_by_id ?? false, ""),
+      changedDate: formatOptionalCompactDate(record.changed_date),
+    });
+  }
+  return byVehicle;
+}
+
+async function loadRepairHistoryByVehicle(
+  uid: number,
+  vehicleIds: number[],
+  connection: OdooConnection,
+) {
+  const records = await safeSearchReadFleetModel<OdooRepairHistoryRecord>(
+    uid,
+    "municipal.repair.request",
+    [["vehicle_id", "in", vehicleIds]],
+    VEHICLE_REPAIR_HISTORY_FIELDS,
+    { order: "request_date desc, id desc" },
+    connection,
+  );
+  const byVehicle = new Map<number, FleetVehicleRepairHistoryItem[]>();
+  for (const record of records) {
+    appendMapItem(byVehicle, relationId(record.vehicle_id), {
+      id: record.id,
+      name: record.name || `Засвар #${record.id}`,
+      requestDate: formatOptionalCompactDate(record.request_date),
+      dateRange: formatDateRange(record.repair_started_at, record.repair_done_at),
+      damageType: record.damage_type || "",
+      description: record.issue_summary || record.issue_description || record.description || "",
+      partsNote: record.parts_note || "",
+      amountLabel: formatMoneyLabel(record.amount_total || record.actual_cost || 0),
+      mechanicName: relationName(record.mechanic_id ?? false, ""),
+      stateLabel: FLEET_REPAIR_STATE_LABELS[String(record.state || "")] || String(record.state || ""),
+      procurementName: relationName(record.procurement_request_id ?? false, ""),
+      attachmentCount: attachmentCount(record.attachment_ids, record.photo_ids),
+    });
+  }
+  return byVehicle;
+}
+
+async function loadWeightReportsByVehicle(
+  uid: number,
+  vehicleIds: number[],
+  connection: OdooConnection,
+) {
+  const records = await safeSearchReadFleetModel<OdooGarbageWeightReportRecord>(
+    uid,
+    "municipal.garbage.weight.report",
+    [["vehicle_id", "in", vehicleIds]],
+    VEHICLE_WEIGHT_REPORT_FIELDS,
+    { order: "report_date desc, id desc" },
+    connection,
+  );
+  const byVehicle = new Map<number, FleetVehicleDailyWeightItem[]>();
+  for (const record of records) {
+    appendMapItem(byVehicle, relationId(record.vehicle_id), {
+      id: record.id,
+      reportDate: formatOptionalCompactDate(record.report_date),
+      weightLabel: formatWeight(record.weight, record.unit),
+      source: record.source || "Гадны систем",
+      fetchedAt: formatOptionalCompactDate(record.fetched_at),
+      stateLabel: FLEET_IMPORT_STATE_LABELS[String(record.state || "")] || String(record.state || ""),
+      errorMessage: record.error_message || "",
+    });
+  }
+  return { records, byVehicle };
+}
+
+async function loadFuelReportsByVehicle(
+  uid: number,
+  vehicleIds: number[],
+  connection: OdooConnection,
+) {
+  const records = await safeSearchReadFleetModel<OdooGarbageFuelReportRecord>(
+    uid,
+    "municipal.garbage.fuel.report",
+    [["vehicle_id", "in", vehicleIds]],
+    VEHICLE_FUEL_REPORT_FIELDS,
+    { order: "report_date desc, id desc" },
+    connection,
+  );
+  const byVehicle = new Map<number, FleetVehicleDailyFuelItem[]>();
+  for (const record of records) {
+    appendMapItem(byVehicle, relationId(record.vehicle_id), {
+      id: record.id,
+      reportDate: formatOptionalCompactDate(record.report_date),
+      fuelLabel: formatLiters(record.fuel_liters),
+      fuelType: record.fuel_type || "",
+      source: record.source || "Гадны систем",
+      fetchedAt: formatOptionalCompactDate(record.fetched_at),
+      stateLabel: FLEET_IMPORT_STATE_LABELS[String(record.state || "")] || String(record.state || ""),
+      errorMessage: record.error_message || "",
+    });
+  }
+  return { records, byVehicle };
+}
+
+async function loadProcurementLinksByVehicle(
+  uid: number,
+  vehicleIds: number[],
+  connection: OdooConnection,
+) {
+  const records = await safeSearchReadFleetModel<OdooProcurementLinkRecord>(
+    uid,
+    "municipal.procurement.request",
+    [["vehicle_id", "in", vehicleIds]],
+    VEHICLE_PROCUREMENT_FIELDS,
+    { order: "id desc" },
+    connection,
+  );
+  const byVehicle = new Map<number, FleetVehicleProcurementLink[]>();
+  for (const record of records) {
+    appendMapItem(byVehicle, relationId(record.vehicle_id ?? false), {
+      id: record.id,
+      name: record.name || `Худалдан авалт #${record.id}`,
+      repairName: relationName(record.repair_id ?? false, ""),
+      amountLabel: formatMoneyLabel(record.amount_total),
+      stateLabel: FLEET_PROCUREMENT_STATE_LABELS[String(record.state || "")] || String(record.state || ""),
+    });
+  }
+  return byVehicle;
+}
+
+function latestItems<T>(items: T[] | undefined, limit = 8) {
+  return (items ?? []).slice(0, limit);
+}
+
+function isDriverEmployeeRecord(employee: OdooEmployeeRecord) {
+  const titleText = normalizeRoleTitle(
+    [
+      relationName(employee.job_id ?? false, ""),
+      employee.job_title || "",
+    ].join(" "),
+  );
+
+  return (
+    titleText.includes("жолооч") ||
+    titleText.includes("driver") ||
+    titleText.includes("chauffeur")
+  );
+}
+
+function isLoaderEmployeeRecord(employee: OdooEmployeeRecord) {
+  const titleText = normalizeRoleTitle(
+    [
+      relationName(employee.job_id ?? false, ""),
+      employee.job_title || "",
+    ].join(" "),
+  );
+
+  return (
+    titleText.includes("ачигч") ||
+    titleText.includes("loader")
+  );
+}
+
+function toFleetStaffOption(employee: OdooEmployeeRecord): FleetVehicleDriverOption {
+  return {
+    id: employee.id,
+    name: employee.name,
+    active: employee.active !== false,
+    departmentName: normalizeDepartmentUnitName(
+      relationName(employee.department_id ?? false, UNKNOWN_DEPARTMENT),
+    ),
+    jobTitle:
+      relationName(employee.job_id ?? false, "") ||
+      employee.job_title ||
+      "Албан тушаал бүртгээгүй",
+  };
+}
+
+function sortFleetStaffOptions(
+  left: FleetVehicleDriverOption,
+  right: FleetVehicleDriverOption,
+) {
+  if (left.active !== right.active) {
+    return left.active ? -1 : 1;
+  }
+  return left.name.localeCompare(right.name, "mn");
+}
+
+async function loadFleetDriverOptions(
+  uid: number,
+  connection: OdooConnection,
+  vehicles: OdooFleetVehicleRecord[] = [],
+): Promise<FleetVehicleDriverOption[]> {
+  try {
+    const assignedDriverIds = new Set(
+      vehicles
+        .map((vehicle) => relationId(vehicle.municipal_responsible_driver_id ?? false))
+        .filter((id): id is number => Boolean(id)),
+    );
+    const employees = await searchReadAllWithFieldFallback<OdooEmployeeRecord>(
+      uid,
+      "hr.employee",
+      [],
+      [
+        ["name", "active", "department_id", "job_id", "job_title"],
+        ["name", "active", "department_id", "job_title"],
+        ["name", "active", "department_id"],
+        ["name", "active"],
+        ["name"],
+      ],
+      {
+        order: "name asc",
+        context: {
+          active_test: false,
+        },
+      },
+      connection,
+    );
+
+    return employees
+      .filter((employee) => isDriverEmployeeRecord(employee) || assignedDriverIds.has(employee.id))
+      .map(toFleetStaffOption)
+      .sort(sortFleetStaffOptions);
+  } catch (error) {
+    console.warn("HR employee driver options could not be loaded for auto-base board:", error);
+    return [];
+  }
+}
+
+async function loadFleetLoaderOptions(
+  uid: number,
+  connection: OdooConnection,
+  vehicles: OdooFleetVehicleRecord[] = [],
+): Promise<FleetVehicleDriverOption[]> {
+  try {
+    const assignedLoaderIds = new Set(
+      vehicles
+        .flatMap((vehicle) => [
+          relationId(vehicle.municipal_loader_1_id ?? false),
+          relationId(vehicle.municipal_loader_2_id ?? false),
+        ])
+        .filter((id): id is number => Boolean(id)),
+    );
+    const employees = await searchReadAllWithFieldFallback<OdooEmployeeRecord>(
+      uid,
+      "hr.employee",
+      [],
+      [
+        ["name", "active", "department_id", "job_id", "job_title"],
+        ["name", "active", "department_id", "job_title"],
+        ["name", "active", "department_id"],
+        ["name", "active"],
+        ["name"],
+      ],
+      {
+        order: "name asc",
+        context: {
+          active_test: false,
+        },
+      },
+      connection,
+    );
+
+    return employees
+      .filter((employee) => isLoaderEmployeeRecord(employee) || assignedLoaderIds.has(employee.id))
+      .map(toFleetStaffOption)
+      .sort(sortFleetStaffOptions);
+  } catch (error) {
+    console.warn("HR employee loader options could not be loaded for auto-base board:", error);
+    return [];
+  }
+}
+
 export async function loadFleetVehicleBoard(
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<FleetVehicleBoard> {
@@ -2306,25 +2973,54 @@ export async function loadFleetVehicleBoard(
   const vehicles = await searchReadAllWithFieldFallback<OdooFleetVehicleRecord>(
     uid,
     "fleet.vehicle",
-    [["active", "=", true]],
+    [],
     FLEET_VEHICLE_FIELD_VARIANTS,
     {
-      order: "license_plate asc, name asc",
+      order: "active desc, license_plate asc, name asc",
+      context: {
+        active_test: false,
+      },
     },
     connection,
   );
 
-  const crewAssignmentsByVehicle = await loadCrewAssignmentsByVehicle(uid, connection);
+  const vehicleIds = vehicles.map((vehicle) => vehicle.id);
+  const [
+    crewAssignmentsByVehicle,
+    driverHistoryByVehicle,
+    repairHistoryByVehicle,
+    weightReportResult,
+    fuelReportResult,
+    procurementLinksByVehicle,
+    driverOptions,
+    loaderOptions,
+  ] = await Promise.all([
+    loadCrewAssignmentsByVehicle(uid, connection),
+    loadDriverHistoryByVehicle(uid, vehicleIds, connection),
+    loadRepairHistoryByVehicle(uid, vehicleIds, connection),
+    loadWeightReportsByVehicle(uid, vehicleIds, connection),
+    loadFuelReportsByVehicle(uid, vehicleIds, connection),
+    loadProcurementLinksByVehicle(uid, vehicleIds, connection),
+    loadFleetDriverOptions(uid, connection, vehicles),
+    loadFleetLoaderOptions(uid, connection, vehicles),
+  ]);
 
   const allVehicles = vehicles
     .map((vehicle) => {
       const stateLabel = relationName(vehicle.state_id ?? false, "");
       const latestRepairState = vehicle.latest_repair_state || "";
+      const operationalStatusKey = vehicle.x_municipal_operational_status || "";
+      const operationalStatusLabel = FLEET_OPERATIONAL_STATUS_LABELS[operationalStatusKey] || "";
       const isRepair =
         Boolean(vehicle.vehicle_downtime_open) ||
+        operationalStatusKey === "in_repair" ||
+        operationalStatusKey === "broken" ||
         isRepairStatusLabel(stateLabel) ||
         isRepairStatusLabel(latestRepairState);
-      const isOperational = Boolean(vehicle.mfo_active_for_ops);
+      const isOperational =
+        Boolean(vehicle.mfo_active_for_ops) ||
+        operationalStatusKey === "available" ||
+        operationalStatusKey === "assigned";
 
       return {
         id: vehicle.id,
@@ -2332,6 +3028,10 @@ export async function loadFleetVehicleBoard(
         name: vehicle.name || vehicle.license_plate || `Машин #${vehicle.id}`,
         modelName: relationName(vehicle.model_id ?? false, ""),
         categoryName: relationName(vehicle.category_id ?? false, ""),
+        vehicleTypeName:
+          relationName(vehicle.municipal_vehicle_type_id ?? false, "") ||
+          relationName(vehicle.category_id ?? false, ""),
+        departmentName: relationName(vehicle.municipal_department_id ?? false, ""),
         vin: vehicle.vin_sn || "",
         odometerLabel:
           typeof vehicle.odometer === "number" && Number.isFinite(vehicle.odometer)
@@ -2339,12 +3039,56 @@ export async function loadFleetVehicleBoard(
             : "",
         fuelTypeLabel: resolveFleetFuelTypeLabel(vehicle.fuel_type || ""),
         fleetDriverName: relationName(vehicle.driver_id ?? false, ""),
+        responsibleDriverId: relationId(vehicle.municipal_responsible_driver_id ?? false),
+        responsibleDriverName: relationName(vehicle.municipal_responsible_driver_id ?? false, ""),
+        loader1Id: relationId(vehicle.municipal_loader_1_id ?? false),
+        loader1Name: relationName(vehicle.municipal_loader_1_id ?? false, ""),
+        loader2Id: relationId(vehicle.municipal_loader_2_id ?? false),
+        loader2Name: relationName(vehicle.municipal_loader_2_id ?? false, ""),
         stateLabel:
+          vehicle.active === false
+            ? "Архивласан"
+            :
+          operationalStatusLabel ||
           stateLabel ||
-          (isRepair ? "Засагдаж буй машин" : isOperational ? "Идэвхтэй машин" : "Бүртгэлтэй машин"),
+          (isRepair ? "Засвартай" : isOperational ? "Ажиллаж байгаа" : "Бүртгэлтэй"),
+        operationalStatusKey,
         latestRepairState,
         isOperational,
         isRepair,
+        insurance: {
+          company: vehicle.municipal_insurance_company || "",
+          policyNumber: vehicle.municipal_insurance_policy_number || "",
+          startDate: formatOptionalCompactDate(vehicle.municipal_insurance_date_start),
+          endDate: formatOptionalCompactDate(vehicle.municipal_insurance_date_end),
+          startDateValue: vehicle.municipal_insurance_date_start || "",
+          endDateValue: vehicle.municipal_insurance_date_end || "",
+          daysRemaining:
+            typeof vehicle.municipal_insurance_days_remaining === "number"
+              ? vehicle.municipal_insurance_days_remaining
+              : 0,
+          reminderDue: Boolean(vehicle.municipal_insurance_reminder_due),
+          note: vehicle.municipal_insurance_note || "",
+          attachmentCount: vehicle.municipal_insurance_attachment_ids?.length ?? 0,
+        },
+        inspection: {
+          startDate: formatOptionalCompactDate(vehicle.municipal_inspection_date),
+          endDate: formatOptionalCompactDate(vehicle.municipal_next_inspection_date),
+          startDateValue: vehicle.municipal_inspection_date || "",
+          endDateValue: vehicle.municipal_next_inspection_date || "",
+          daysRemaining:
+            typeof vehicle.municipal_inspection_days_remaining === "number"
+              ? vehicle.municipal_inspection_days_remaining
+              : 0,
+          reminderDue: Boolean(vehicle.municipal_inspection_reminder_due),
+          note: vehicle.municipal_inspection_note || "",
+          attachmentCount: vehicle.municipal_inspection_attachment_ids?.length ?? 0,
+        },
+        driverHistory: latestItems(driverHistoryByVehicle.get(vehicle.id)),
+        repairHistory: latestItems(repairHistoryByVehicle.get(vehicle.id), 10),
+        weightReports: latestItems(weightReportResult.byVehicle.get(vehicle.id), 10),
+        fuelReports: latestItems(fuelReportResult.byVehicle.get(vehicle.id), 10),
+        procurementLinks: latestItems(procurementLinksByVehicle.get(vehicle.id), 8),
         crewAssignments: crewAssignmentsByVehicle.get(vehicle.id) ?? [],
       } satisfies FleetVehicleBoardItem;
     })
@@ -2353,18 +3097,53 @@ export async function loadFleetVehicleBoard(
   const activeVehicles = allVehicles.filter(
     (vehicle) =>
       vehicle.isOperational &&
-      !vehicle.isRepair &&
-      vehicle.crewAssignments.length > 0,
+      !vehicle.isRepair,
   );
   const repairVehicles = allVehicles.filter((vehicle) => vehicle.isRepair);
+  const todayKey = getTodayDateKey();
+  const todayWeightKg = weightReportResult.records
+    .filter((record) => record.report_date === todayKey && record.state !== "failed")
+    .reduce((sum, record) => {
+      const value = record.weight || 0;
+      return sum + (record.unit === "ton" ? value * 1000 : value);
+    }, 0);
+  const todayFuelLiters = fuelReportResult.records
+    .filter((record) => record.report_date === todayKey && record.state !== "failed")
+    .reduce((sum, record) => sum + (record.fuel_liters || 0), 0);
+  const fuelByVehicle = new Map<number, number>();
+  for (const record of fuelReportResult.records) {
+    const vehicleId = relationId(record.vehicle_id);
+    if (!vehicleId || record.state === "failed") {
+      continue;
+    }
+    fuelByVehicle.set(vehicleId, (fuelByVehicle.get(vehicleId) ?? 0) + (record.fuel_liters || 0));
+  }
+  const highestFuelVehicleId = [...fuelByVehicle.entries()].sort((left, right) => right[1] - left[1])[0]?.[0];
+  const repairCountByVehicle = new Map(
+    allVehicles.map((vehicle) => [vehicle.id, vehicle.repairHistory.length]),
+  );
+  const mostRepairedVehicleId = [...repairCountByVehicle.entries()].sort((left, right) => right[1] - left[1])[0]?.[0];
+  const vehicleById = new Map(allVehicles.map((vehicle) => [vehicle.id, vehicle]));
+  const failedImportCount =
+    weightReportResult.records.filter((record) => record.state === "failed").length +
+    fuelReportResult.records.filter((record) => record.state === "failed").length;
 
   return {
     allVehicles,
     activeVehicles,
     repairVehicles,
+    driverOptions,
+    loaderOptions,
     totalVehicles: allVehicles.length,
     activeCount: activeVehicles.length,
     repairCount: repairVehicles.length,
+    insuranceDueCount: allVehicles.filter((vehicle) => vehicle.insurance.reminderDue).length,
+    inspectionDueCount: allVehicles.filter((vehicle) => vehicle.inspection.reminderDue).length,
+    todayWeightLabel: formatWeight(todayWeightKg, "kg"),
+    todayFuelLabel: formatLiters(todayFuelLiters),
+    highestFuelVehicle: highestFuelVehicleId ? vehicleById.get(highestFuelVehicleId)?.plate ?? "" : "",
+    mostRepairedVehicle: mostRepairedVehicleId ? vehicleById.get(mostRepairedVehicleId)?.plate ?? "" : "",
+    failedImportCount,
   };
 }
 

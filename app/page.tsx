@@ -21,9 +21,18 @@ const EMPTY_FLEET_BOARD: Awaited<ReturnType<typeof loadFleetVehicleBoard>> = {
   allVehicles: [],
   activeVehicles: [],
   repairVehicles: [],
+  driverOptions: [],
+  loaderOptions: [],
   totalVehicles: 0,
   activeCount: 0,
   repairCount: 0,
+  insuranceDueCount: 0,
+  inspectionDueCount: 0,
+  todayWeightLabel: "0 кг",
+  todayFuelLabel: "0 л",
+  highestFuelVehicle: "",
+  mostRepairedVehicle: "",
+  failedImportCount: 0,
 };
 
 const EMPTY_HR_ATTENDANCE_SUMMARY: HrDailyAttendanceSummary = {

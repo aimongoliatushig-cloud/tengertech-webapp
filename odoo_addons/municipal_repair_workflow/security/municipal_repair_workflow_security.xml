@@ -97,5 +97,47 @@
             <field name="domain_force">[(1, '=', 1)]</field>
             <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_storekeeper')), (4, ref('group_repair_finance')), (4, ref('group_repair_director')), (4, ref('municipal_core.group_municipal_admin'))]"/>
         </record>
+
+        <record id="rule_vehicle_driver_history_department_head" model="ir.rule">
+            <field name="name">Vehicle driver history department head</field>
+            <field name="model_id" ref="model_municipal_vehicle_driver_history"/>
+            <field name="domain_force">[('vehicle_id.municipal_department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_department_head'))]"/>
+        </record>
+
+        <record id="rule_vehicle_driver_history_manager_all" model="ir.rule">
+            <field name="name">Vehicle driver history managers all</field>
+            <field name="model_id" ref="model_municipal_vehicle_driver_history"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_garbage_weight_department_head" model="ir.rule">
+            <field name="name">Garbage weight department head</field>
+            <field name="model_id" ref="model_municipal_garbage_weight_report"/>
+            <field name="domain_force">[('vehicle_id.municipal_department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_department_head'))]"/>
+        </record>
+
+        <record id="rule_garbage_fuel_department_head" model="ir.rule">
+            <field name="name">Garbage fuel department head</field>
+            <field name="model_id" ref="model_municipal_garbage_fuel_report"/>
+            <field name="domain_force">[('vehicle_id.municipal_department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_department_head'))]"/>
+        </record>
+
+        <record id="rule_garbage_report_manager_all" model="ir.rule">
+            <field name="name">Garbage reports managers all</field>
+            <field name="model_id" ref="model_municipal_garbage_weight_report"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_garbage_fuel_manager_all" model="ir.rule">
+            <field name="name">Garbage fuel managers all</field>
+            <field name="model_id" ref="model_municipal_garbage_fuel_report"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+        </record>
     </data>
 </odoo>
