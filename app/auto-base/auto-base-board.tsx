@@ -619,7 +619,7 @@ function VehicleDetailModal({
   const [activeTab, setActiveTab] = useState("main");
   const tabs = [
     { key: "main", label: "Үндсэн мэдээлэл" },
-    { key: "edit", label: "Үндсэн засах" },
+    { key: "edit", label: "Мэдээлэл засах" },
     { key: "driver", label: "Хариуцсан жолооч" },
     { key: "insurance", label: "Даатгал" },
     { key: "inspection", label: "Улсын үзлэг" },
