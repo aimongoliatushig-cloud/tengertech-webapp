@@ -49,6 +49,7 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
     repairVehicles: [],
     driverOptions: [],
     loaderOptions: [],
+    departmentOptions: [],
     totalVehicles: 0,
     activeCount: 0,
     repairCount: 0,

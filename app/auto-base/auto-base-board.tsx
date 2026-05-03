@@ -22,6 +22,7 @@ type FleetVehicleBoardItem = {
   modelName: string;
   categoryName: string;
   vehicleTypeName: string;
+  departmentId: number | null;
   departmentName: string;
   vin: string;
   odometerLabel: string;
@@ -55,6 +56,11 @@ type FleetVehicleDriverOption = {
   active: boolean;
   departmentName: string;
   jobTitle: string;
+};
+
+type FleetVehicleDepartmentOption = {
+  id: number;
+  name: string;
 };
 
 type FleetVehicleDeadlineInfo = {
@@ -129,6 +135,7 @@ type FleetVehicleBoard = {
   repairVehicles: FleetVehicleBoardItem[];
   driverOptions: FleetVehicleDriverOption[];
   loaderOptions: FleetVehicleDriverOption[];
+  departmentOptions: FleetVehicleDepartmentOption[];
   totalVehicles: number;
   activeCount: number;
   repairCount: number;
@@ -582,16 +589,19 @@ function VehicleDetailModal({
   vehicle,
   driverOptions,
   loaderOptions,
+  departmentOptions,
   onClose,
 }: {
   vehicle: FleetVehicleBoardItem;
   driverOptions: FleetVehicleDriverOption[];
   loaderOptions: FleetVehicleDriverOption[];
+  departmentOptions: FleetVehicleDepartmentOption[];
   onClose: () => void;
 }) {
   const [activeTab, setActiveTab] = useState("main");
   const tabs = [
     { key: "main", label: "Үндсэн мэдээлэл" },
+    { key: "edit", label: "Үндсэн засах" },
     { key: "driver", label: "Хариуцсан жолооч" },
     { key: "insurance", label: "Даатгал" },
     { key: "inspection", label: "Улсын үзлэг" },
@@ -599,7 +609,6 @@ function VehicleDetailModal({
     { key: "weight", label: "Жингийн тайлан" },
     { key: "fuel", label: "Шатахуун" },
     { key: "procurement", label: "Худалдан авалт" },
-    { key: "edit", label: "Засах" },
   ];
   const directCrew = directCrewMembers(vehicle);
   const crewCount = directCrew.length + vehicle.crewAssignments.length;
@@ -794,6 +803,18 @@ function VehicleDetailModal({
               {vehicleStatusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Хэлтэс</span>
+            <select name="municipal_department_id" defaultValue={vehicle.departmentId ?? ""}>
+              <option value="">Сонгоогүй</option>
+              {departmentOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
                 </option>
               ))}
             </select>
@@ -1050,6 +1071,7 @@ export function AutoBaseBoard({
           vehicle={selectedVehicle}
           driverOptions={board.driverOptions}
           loaderOptions={board.loaderOptions}
+          departmentOptions={board.departmentOptions}
           onClose={() => {
             setSelectedVehicleId(null);
           }}

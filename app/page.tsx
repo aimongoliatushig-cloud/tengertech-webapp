@@ -23,6 +23,7 @@ const EMPTY_FLEET_BOARD: Awaited<ReturnType<typeof loadFleetVehicleBoard>> = {
   repairVehicles: [],
   driverOptions: [],
   loaderOptions: [],
+  departmentOptions: [],
   totalVehicles: 0,
   activeCount: 0,
   repairCount: 0,

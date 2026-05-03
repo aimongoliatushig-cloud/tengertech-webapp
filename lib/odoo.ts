@@ -648,6 +648,11 @@ export type FleetVehicleProcurementLink = {
   stateLabel: string;
 };
 
+export type FleetVehicleDepartmentOption = {
+  id: number;
+  name: string;
+};
+
 export type FleetVehicleBoardItem = {
   id: number;
   plate: string;
@@ -655,6 +660,7 @@ export type FleetVehicleBoardItem = {
   modelName: string;
   categoryName: string;
   vehicleTypeName: string;
+  departmentId: number | null;
   departmentName: string;
   vin: string;
   odometerLabel: string;
@@ -688,6 +694,7 @@ export type FleetVehicleBoard = {
   repairVehicles: FleetVehicleBoardItem[];
   driverOptions: FleetVehicleDriverOption[];
   loaderOptions: FleetVehicleDriverOption[];
+  departmentOptions: FleetVehicleDepartmentOption[];
   totalVehicles: number;
   activeCount: number;
   repairCount: number;
@@ -1353,12 +1360,64 @@ const VEHICLE_PROCUREMENT_FIELDS = [
   "state",
 ];
 
+type OdooFieldMetadata = {
+  relation?: string;
+};
+
+type OdooNameOptionRecord = {
+  id: number;
+  name?: string | false;
+};
+
 function relationName(relation: OdooRelation, fallback = "Оноогоогүй") {
   return Array.isArray(relation) ? relation[1] : fallback;
 }
 
 function relationId(relation: OdooRelation) {
   return Array.isArray(relation) ? relation[0] : null;
+}
+
+async function loadFleetVehicleDepartmentOptions(
+  uid: number,
+  connection: OdooConnection,
+): Promise<FleetVehicleDepartmentOption[]> {
+  let relationModel = "hr.department";
+
+  try {
+    const metadata = await executeKw<Record<string, OdooFieldMetadata>>(
+      uid,
+      "fleet.vehicle",
+      "fields_get",
+      [["municipal_department_id"]],
+      {
+        attributes: ["relation"],
+      },
+      connection,
+    );
+    relationModel = metadata.municipal_department_id?.relation || relationModel;
+  } catch (error) {
+    console.warn("Fleet vehicle department relation could not be resolved:", error);
+  }
+
+  const loadOptions = (domain: unknown[]) =>
+    searchReadAll<OdooNameOptionRecord>(
+      uid,
+      relationModel,
+      domain,
+      {
+        fields: ["name"],
+        order: "name asc",
+      },
+      connection,
+    );
+
+  const records = await loadOptions([["active", "=", true]]).catch(() => loadOptions([]));
+  return records
+    .map((record) => ({
+      id: record.id,
+      name: String(record.name || "").trim(),
+    }))
+    .filter((record) => record.name);
 }
 
 function resolveHrEmploymentStatus(employee: OdooEmployeeRecord) {
@@ -3062,6 +3121,7 @@ export async function loadFleetVehicleBoard(
     procurementLinksByVehicle,
     driverOptions,
     loaderOptions,
+    departmentOptions,
   ] = await Promise.all([
     loadCrewAssignmentsByVehicle(uid, connection),
     loadDriverHistoryByVehicle(uid, vehicleIds, connection),
@@ -3071,6 +3131,7 @@ export async function loadFleetVehicleBoard(
     loadProcurementLinksByVehicle(uid, vehicleIds, connection),
     loadFleetDriverOptions(uid, connection, vehicles),
     loadFleetLoaderOptions(uid, connection, vehicles),
+    loadFleetVehicleDepartmentOptions(uid, connection),
   ]);
 
   const allVehicles = vehicles
@@ -3099,6 +3160,7 @@ export async function loadFleetVehicleBoard(
         vehicleTypeName:
           relationName(vehicle.municipal_vehicle_type_id ?? false, "") ||
           relationName(vehicle.category_id ?? false, ""),
+        departmentId: relationId(vehicle.municipal_department_id ?? false),
         departmentName: relationName(vehicle.municipal_department_id ?? false, ""),
         vin: vehicle.vin_sn || "",
         odometerLabel:
@@ -3203,6 +3265,7 @@ export async function loadFleetVehicleBoard(
     repairVehicles,
     driverOptions,
     loaderOptions,
+    departmentOptions,
     totalVehicles: allVehicles.length,
     activeCount: activeVehicles.length,
     repairCount: repairVehicles.length,
