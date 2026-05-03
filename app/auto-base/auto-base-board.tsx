@@ -19,12 +19,16 @@ type FleetVehicleBoardItem = {
   id: number;
   plate: string;
   name: string;
+  modelId: number | null;
   modelName: string;
+  categoryId: number | null;
   categoryName: string;
+  vehicleTypeId: number | null;
   vehicleTypeName: string;
   departmentId: number | null;
   departmentName: string;
   vin: string;
+  odometerValue: string;
   odometerLabel: string;
   fuelTypeKey: string;
   fuelTypeLabel: string;
@@ -59,6 +63,11 @@ type FleetVehicleDriverOption = {
 };
 
 type FleetVehicleDepartmentOption = {
+  id: number;
+  name: string;
+};
+
+type FleetVehicleSelectOption = {
   id: number;
   name: string;
 };
@@ -136,6 +145,9 @@ type FleetVehicleBoard = {
   driverOptions: FleetVehicleDriverOption[];
   loaderOptions: FleetVehicleDriverOption[];
   departmentOptions: FleetVehicleDepartmentOption[];
+  modelOptions: FleetVehicleSelectOption[];
+  vehicleTypeOptions: FleetVehicleSelectOption[];
+  categoryOptions: FleetVehicleSelectOption[];
   totalVehicles: number;
   activeCount: number;
   repairCount: number;
@@ -590,12 +602,18 @@ function VehicleDetailModal({
   driverOptions,
   loaderOptions,
   departmentOptions,
+  modelOptions,
+  vehicleTypeOptions,
+  categoryOptions,
   onClose,
 }: {
   vehicle: FleetVehicleBoardItem;
   driverOptions: FleetVehicleDriverOption[];
   loaderOptions: FleetVehicleDriverOption[];
   departmentOptions: FleetVehicleDepartmentOption[];
+  modelOptions: FleetVehicleSelectOption[];
+  vehicleTypeOptions: FleetVehicleSelectOption[];
+  categoryOptions: FleetVehicleSelectOption[];
   onClose: () => void;
 }) {
   const [activeTab, setActiveTab] = useState("main");
@@ -788,6 +806,37 @@ function VehicleDetailModal({
           </label>
 
           <label className={styles.vehicleFormField}>
+            <span>Марка / модель</span>
+            <select name="model_id" defaultValue={vehicle.modelId ?? ""}>
+              <option value="">Сонгоогүй</option>
+              {modelOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Төрөл</span>
+            <select
+              name={vehicleTypeOptions.length ? "municipal_vehicle_type_id" : "category_id"}
+              defaultValue={
+                vehicleTypeOptions.length
+                  ? vehicle.vehicleTypeId ?? ""
+                  : vehicle.categoryId ?? ""
+              }
+            >
+              <option value="">Сонгоогүй</option>
+              {(vehicleTypeOptions.length ? vehicleTypeOptions : categoryOptions).map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.vehicleFormField}>
             <span>Засварын төлөв</span>
             <input
               name="latest_repair_state"
@@ -806,6 +855,23 @@ function VehicleDetailModal({
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>VIN</span>
+            <input name="vin_sn" defaultValue={vehicle.vin} placeholder="VIN дугаар" />
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Одометр</span>
+            <input
+              name="odometer"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={vehicle.odometerValue}
+              placeholder="0"
+            />
           </label>
 
           <label className={styles.vehicleFormField}>
@@ -1072,6 +1138,9 @@ export function AutoBaseBoard({
           driverOptions={board.driverOptions}
           loaderOptions={board.loaderOptions}
           departmentOptions={board.departmentOptions}
+          modelOptions={board.modelOptions}
+          vehicleTypeOptions={board.vehicleTypeOptions}
+          categoryOptions={board.categoryOptions}
           onClose={() => {
             setSelectedVehicleId(null);
           }}

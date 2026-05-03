@@ -32,6 +32,18 @@ function optionalOdooId(value: string) {
   return Number.isFinite(id) && id > 0 ? Math.trunc(id) : false;
 }
 
+function optionalOdooNumber(value: string, label: string) {
+  if (!value) {
+    return false;
+  }
+
+  const numericValue = Number(value.replace(",", "."));
+  if (!Number.isFinite(numericValue) || numericValue < 0) {
+    redirectWithMessage("error", `${label} зөв тоон утгатай байх ёстой.`);
+  }
+  return numericValue;
+}
+
 function optionalStaffId(formData: FormData, key: string, label: string) {
   const selectedId = optionalOdooId(getString(formData, key));
   const typedLabel = getString(formData, `${key}_label`);
@@ -83,10 +95,15 @@ export async function updateFleetVehicleAction(formData: FormData) {
         [
           "name",
           "license_plate",
+          "model_id",
+          "category_id",
+          "municipal_vehicle_type_id",
           "mfo_active_for_ops",
           "latest_repair_state",
           "x_municipal_operational_status",
           "municipal_department_id",
+          "vin_sn",
+          "odometer",
           "fuel_type",
           "municipal_responsible_driver_id",
           "municipal_loader_1_id",
@@ -113,6 +130,17 @@ export async function updateFleetVehicleAction(formData: FormData) {
     if ("license_plate" in editableFields && formData.has("license_plate")) {
       values.license_plate = optionalOdooValue(getString(formData, "license_plate"));
     }
+    if ("model_id" in editableFields && formData.has("model_id")) {
+      values.model_id = optionalOdooId(getString(formData, "model_id"));
+    }
+    if ("category_id" in editableFields && formData.has("category_id")) {
+      values.category_id = optionalOdooId(getString(formData, "category_id"));
+    }
+    if ("municipal_vehicle_type_id" in editableFields && formData.has("municipal_vehicle_type_id")) {
+      values.municipal_vehicle_type_id = optionalOdooId(
+        getString(formData, "municipal_vehicle_type_id"),
+      );
+    }
     if (
       "mfo_active_for_ops" in editableFields &&
       (formData.has("mfo_active_for_ops_present") || formData.has("mfo_active_for_ops"))
@@ -132,6 +160,12 @@ export async function updateFleetVehicleAction(formData: FormData) {
     }
     if ("municipal_department_id" in editableFields && formData.has("municipal_department_id")) {
       values.municipal_department_id = optionalOdooId(getString(formData, "municipal_department_id"));
+    }
+    if ("vin_sn" in editableFields && formData.has("vin_sn")) {
+      values.vin_sn = optionalOdooValue(getString(formData, "vin_sn"));
+    }
+    if ("odometer" in editableFields && formData.has("odometer")) {
+      values.odometer = optionalOdooNumber(getString(formData, "odometer"), "Одометр");
     }
     if ("fuel_type" in editableFields && formData.has("fuel_type")) {
       values.fuel_type = optionalOdooValue(getString(formData, "fuel_type"));

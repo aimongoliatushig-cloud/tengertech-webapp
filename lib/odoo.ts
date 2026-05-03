@@ -653,16 +653,25 @@ export type FleetVehicleDepartmentOption = {
   name: string;
 };
 
+export type FleetVehicleSelectOption = {
+  id: number;
+  name: string;
+};
+
 export type FleetVehicleBoardItem = {
   id: number;
   plate: string;
   name: string;
+  modelId: number | null;
   modelName: string;
+  categoryId: number | null;
   categoryName: string;
+  vehicleTypeId: number | null;
   vehicleTypeName: string;
   departmentId: number | null;
   departmentName: string;
   vin: string;
+  odometerValue: string;
   odometerLabel: string;
   fuelTypeKey: string;
   fuelTypeLabel: string;
@@ -695,6 +704,9 @@ export type FleetVehicleBoard = {
   driverOptions: FleetVehicleDriverOption[];
   loaderOptions: FleetVehicleDriverOption[];
   departmentOptions: FleetVehicleDepartmentOption[];
+  modelOptions: FleetVehicleSelectOption[];
+  vehicleTypeOptions: FleetVehicleSelectOption[];
+  categoryOptions: FleetVehicleSelectOption[];
   totalVehicles: number;
   activeCount: number;
   repairCount: number;
@@ -1382,22 +1394,42 @@ async function loadFleetVehicleDepartmentOptions(
   uid: number,
   connection: OdooConnection,
 ): Promise<FleetVehicleDepartmentOption[]> {
-  let relationModel = "hr.department";
+  return loadFleetVehicleRelationOptions(uid, connection, "municipal_department_id", (record) => (
+    normalizeOrganizationUnitName(
+      `${relationName(record.parent_id ?? false, "")} ${String(record.name || "")}`,
+    ) ||
+    normalizeOrganizationUnitName(String(record.name || "")) ||
+    String(record.name || "").trim()
+  ));
+}
+
+async function loadFleetVehicleRelationOptions(
+  uid: number,
+  connection: OdooConnection,
+  fieldName: string,
+  normalizeOptionName?: (record: OdooNameOptionRecord) => string,
+): Promise<FleetVehicleSelectOption[]> {
+  let relationModel = "";
 
   try {
     const metadata = await executeKw<Record<string, OdooFieldMetadata>>(
       uid,
       "fleet.vehicle",
       "fields_get",
-      [["municipal_department_id"]],
+      [[fieldName]],
       {
         attributes: ["relation"],
       },
       connection,
     );
-    relationModel = metadata.municipal_department_id?.relation || relationModel;
+    relationModel = metadata[fieldName]?.relation || "";
   } catch (error) {
-    console.warn("Fleet vehicle department relation could not be resolved:", error);
+    console.warn(`Fleet vehicle relation for ${fieldName} could not be resolved:`, error);
+    return [];
+  }
+
+  if (!relationModel) {
+    return [];
   }
 
   const loadOptions = (domain: unknown[]) =>
@@ -1419,12 +1451,7 @@ async function loadFleetVehicleDepartmentOptions(
   return records
     .map((record) => ({
       id: record.id,
-      name:
-        normalizeOrganizationUnitName(
-          `${relationName(record.parent_id ?? false, "")} ${String(record.name || "")}`,
-        ) ||
-        normalizeOrganizationUnitName(String(record.name || "")) ||
-        String(record.name || "").trim(),
+      name: normalizeOptionName?.(record) || String(record.name || "").trim(),
     }))
     .sort((left, right) => left.name.localeCompare(right.name, "mn"))
     .filter((record) => record.name);
@@ -3132,6 +3159,9 @@ export async function loadFleetVehicleBoard(
     driverOptions,
     loaderOptions,
     departmentOptions,
+    modelOptions,
+    vehicleTypeOptions,
+    categoryOptions,
   ] = await Promise.all([
     loadCrewAssignmentsByVehicle(uid, connection),
     loadDriverHistoryByVehicle(uid, vehicleIds, connection),
@@ -3142,6 +3172,9 @@ export async function loadFleetVehicleBoard(
     loadFleetDriverOptions(uid, connection, vehicles),
     loadFleetLoaderOptions(uid, connection, vehicles),
     loadFleetVehicleDepartmentOptions(uid, connection),
+    loadFleetVehicleRelationOptions(uid, connection, "model_id"),
+    loadFleetVehicleRelationOptions(uid, connection, "municipal_vehicle_type_id"),
+    loadFleetVehicleRelationOptions(uid, connection, "category_id"),
   ]);
 
   const allVehicles = vehicles
@@ -3166,8 +3199,11 @@ export async function loadFleetVehicleBoard(
         id: vehicle.id,
         plate: vehicle.license_plate || vehicle.name || `Машин #${vehicle.id}`,
         name: vehicle.name || vehicle.license_plate || `Машин #${vehicle.id}`,
+        modelId: relationId(vehicle.model_id ?? false),
         modelName: relationName(vehicle.model_id ?? false, ""),
+        categoryId: relationId(vehicle.category_id ?? false),
         categoryName: relationName(vehicle.category_id ?? false, ""),
+        vehicleTypeId: relationId(vehicle.municipal_vehicle_type_id ?? false),
         vehicleTypeName:
           relationName(vehicle.municipal_vehicle_type_id ?? false, "") ||
           relationName(vehicle.category_id ?? false, ""),
@@ -3177,6 +3213,10 @@ export async function loadFleetVehicleBoard(
         odometerLabel:
           typeof vehicle.odometer === "number" && Number.isFinite(vehicle.odometer)
             ? `${Math.round(vehicle.odometer).toLocaleString("mn-MN")} км`
+            : "",
+        odometerValue:
+          typeof vehicle.odometer === "number" && Number.isFinite(vehicle.odometer)
+            ? String(Math.round(vehicle.odometer))
             : "",
         fuelTypeKey: vehicle.fuel_type || "",
         fuelTypeLabel: resolveFleetFuelTypeLabel(vehicle.fuel_type || ""),
@@ -3277,6 +3317,9 @@ export async function loadFleetVehicleBoard(
     driverOptions,
     loaderOptions,
     departmentOptions,
+    modelOptions,
+    vehicleTypeOptions,
+    categoryOptions,
     totalVehicles: allVehicles.length,
     activeCount: activeVehicles.length,
     repairCount: repairVehicles.length,
