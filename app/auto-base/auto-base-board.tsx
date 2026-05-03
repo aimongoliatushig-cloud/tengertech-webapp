@@ -206,9 +206,9 @@ function VehicleList({
             {vehicle.responsibleDriverName || vehicle.fleetDriverName || "Жолооч оноогоогүй"}
           </span>
           <span className={styles.vehicleCrewPreview}>
-            {vehicle.crewAssignments.length
-              ? `${vehicle.crewAssignments.length} баг хуваарилагдсан`
-              : "Хуваарилсан баггүй"}
+            {assignedCrewCount(vehicle)
+              ? `${assignedCrewCount(vehicle)} оноолт хуваарилагдсан`
+              : "Хуваарилсан хүнгүй"}
           </span>
         </button>
       ))}
@@ -227,6 +227,20 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 
 function namesLabel(names: string[]) {
   return names.length ? names.join(", ") : "Оноогоогүй";
+}
+
+function directCrewMembers(vehicle: FleetVehicleBoardItem) {
+  return [
+    vehicle.responsibleDriverName
+      ? { key: "driver", label: "Хариуцсан жолооч", name: vehicle.responsibleDriverName }
+      : null,
+    vehicle.loader1Name ? { key: "loader1", label: "Ачигч 1", name: vehicle.loader1Name } : null,
+    vehicle.loader2Name ? { key: "loader2", label: "Ачигч 2", name: vehicle.loader2Name } : null,
+  ].filter((member): member is { key: string; label: string; name: string } => Boolean(member));
+}
+
+function assignedCrewCount(vehicle: FleetVehicleBoardItem) {
+  return directCrewMembers(vehicle).length + vehicle.crewAssignments.length;
 }
 
 function operationTypeLabel(value: string) {
@@ -493,6 +507,8 @@ function VehicleDetailModal({
     { key: "procurement", label: "Худалдан авалт" },
     { key: "edit", label: "Засах" },
   ];
+  const directCrew = directCrewMembers(vehicle);
+  const crewCount = directCrew.length + vehicle.crewAssignments.length;
 
   return (
     <div className={styles.vehicleModalBackdrop} role="presentation" onClick={onClose}>
@@ -539,16 +555,30 @@ function VehicleDetailModal({
               <DetailItem label="VIN" value={vehicle.vin} />
               <DetailItem label="Одометр" value={vehicle.odometerLabel} />
               <DetailItem label="Системийн жолооч" value={vehicle.fleetDriverName} />
+              <DetailItem label="Хариуцсан жолооч" value={vehicle.responsibleDriverName || vehicle.fleetDriverName} />
+              <DetailItem label="Ачигч 1" value={vehicle.loader1Name} />
+              <DetailItem label="Ачигч 2" value={vehicle.loader2Name} />
               <DetailItem label="Түлшний төрөл" value={vehicle.fuelTypeLabel} />
             </div>
 
             <section className={styles.vehicleCrewPanel}>
               <div className={styles.vehicleCrewHeader}>
                 <span className={styles.mobileDetailEyebrow}>Хуваарилсан хүмүүс</span>
-                <strong>{vehicle.crewAssignments.length}</strong>
+                <strong>{crewCount}</strong>
               </div>
-              {vehicle.crewAssignments.length ? (
+              {crewCount ? (
                 <div className={styles.vehicleCrewList}>
+                  {directCrew.length ? (
+                    <article className={styles.vehicleCrewCard}>
+                      <p className={styles.vehicleCrewType}>Шууд оноолт</p>
+                      {directCrew.map((member) => (
+                        <div key={member.key}>
+                          <span>{member.label}</span>
+                          <strong>{member.name}</strong>
+                        </div>
+                      ))}
+                    </article>
+                  ) : null}
                   {vehicle.crewAssignments.map((assignment) => (
                     <article key={assignment.teamId} className={styles.vehicleCrewCard}>
                       {assignment.operationType ? (
@@ -579,7 +609,7 @@ function VehicleDetailModal({
                 </div>
               ) : (
                 <p className={styles.vehicleCrewEmpty}>
-                  Энэ машин дээр идэвхтэй баг, жолооч, ачигч хуваарилагдаагүй байна.
+                  Энэ машин дээр жолооч, ачигч эсвэл идэвхтэй баг хуваарилагдаагүй байна.
                 </p>
               )}
             </section>
@@ -592,7 +622,7 @@ function VehicleDetailModal({
               <DetailItem label="Одоогийн жолооч" value={vehicle.responsibleDriverName || vehicle.fleetDriverName} />
               <DetailItem label="Ачигч 1" value={vehicle.loader1Name} />
               <DetailItem label="Ачигч 2" value={vehicle.loader2Name} />
-              <DetailItem label="Хуваарилсан баг" value={`${vehicle.crewAssignments.length}`} />
+              <DetailItem label="Хуваарилсан хүмүүс" value={`${crewCount}`} />
               <DetailItem label="Төлөв" value={vehicle.stateLabel} />
             </div>
             <DriverAssignmentForm
