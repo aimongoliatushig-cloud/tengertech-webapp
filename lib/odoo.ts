@@ -35,6 +35,7 @@ type OdooTaskRecord = {
   project_id: OdooRelation;
   ops_department_id?: OdooRelation;
   stage_id: OdooRelation;
+  description?: string | false;
   create_date?: string | false;
   ops_team_leader_id?: OdooRelation;
   user_ids?: number[];
@@ -65,6 +66,7 @@ type OdooReportRecord = {
   task_id: OdooRelation;
   reporter_id: OdooRelation;
   report_datetime: string;
+  report_text?: string | false;
   report_summary: string | false;
   reported_quantity: number;
   task_measurement_unit_id?: OdooRelation;
@@ -736,11 +738,241 @@ function getStageBucket(stageName?: string | null): StageBucket {
   return "unknown";
 }
 
+type QuantityLine = {
+  quantity: number;
+  unit: string;
+  completedQuantity?: number;
+  progress?: number;
+};
+
+type TaskQuantitySnapshot = {
+  stageBucket: StageBucket;
+  statusKey: TaskStatusKey;
+  progress: number;
+  plannedQuantity: number;
+  completedQuantity: number;
+  remainingQuantity: number;
+  quantitySummary: string;
+};
+
+function clampPercentValue(value: number) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function decodeHtmlEntities(value: string) {
+  const namedEntities: Record<string, string> = {
+    amp: "&",
+    lt: "<",
+    gt: ">",
+    quot: '"',
+    apos: "'",
+    nbsp: " ",
+  };
+
+  return value.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, entity: string) => {
+    const normalized = entity.toLowerCase();
+    if (normalized.startsWith("#x")) {
+      const codePoint = Number.parseInt(normalized.slice(2), 16);
+      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
+    }
+    if (normalized.startsWith("#")) {
+      const codePoint = Number.parseInt(normalized.slice(1), 10);
+      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
+    }
+    return namedEntities[normalized] ?? match;
+  });
+}
+
+function htmlToPlainText(value?: string | false) {
+  if (!value) {
+    return "";
+  }
+
+  return decodeHtmlEntities(value)
+    .replace(/<\s*br\s*\/?>/gi, "\n")
+    .replace(/<\/\s*(p|div|li|h[1-6])\s*>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function normalizeQuantityUnit(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[.,;:]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractTaskQuantityLines(description: string): QuantityLine[] {
+  const markerIndex = description.toLowerCase().indexOf("тоо хэмжээ");
+  if (markerIndex === -1) {
+    return [];
+  }
+
+  const quantityText = description.slice(markerIndex).replace(/^тоо хэмжээ\s*:?\s*/i, "");
+  const matches = Array.from(
+    quantityText.matchAll(/(?:^|\s)(?:\d+\.\s*)?(\d+(?:[.,]\d+)?)\s+([^\d\n]+?)(?=\s+\d+\.|\n|$)/gi),
+  );
+
+  return matches
+    .map((match) => ({
+      quantity: Number(match[1].replace(",", ".")),
+      unit: match[2].trim().replace(/[.,;:]+$/, ""),
+    }))
+    .filter((line) => Number.isFinite(line.quantity) && line.quantity > 0 && line.unit);
+}
+
+function extractReportQuantityLines(reportText: string): QuantityLine[] {
+  const normalizedText = htmlToPlainText(reportText);
+  const markerMatch = normalizedText.match(/гүйцэтгэсэн\s+хэмжээ\s*:?\s*/i);
+  if (!markerMatch || typeof markerMatch.index !== "number") {
+    return [];
+  }
+
+  const quantityBlock = normalizedText
+    .slice(markerMatch.index + markerMatch[0].length)
+    .split(/\n{2,}/)[0];
+  const lines = quantityBlock
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return lines
+    .map((line) => {
+      const match = line.match(/^(?:\d+\.\s*)?(.+?)\s+(\d+(?:[.,]\d+)?)$/);
+      if (!match) {
+        return null;
+      }
+      return {
+        quantity: Number(match[2].replace(",", ".")),
+        unit: match[1].trim().replace(/[.,;:]+$/, ""),
+      };
+    })
+    .filter(
+      (line): line is QuantityLine =>
+        line !== null &&
+        Number.isFinite(line.quantity) &&
+        line.quantity >= 0 &&
+        Boolean(line.unit),
+    );
+}
+
+function buildTaskQuantitySnapshot(task: OdooTaskRecord, reports: OdooReportRecord[]): TaskQuantitySnapshot {
+  const rawStageBucket = getStageBucket(relationName(task.stage_id, ""));
+  const plannedLines = extractTaskQuantityLines(htmlToPlainText(task.description));
+  if (!plannedLines.length && (task.ops_planned_quantity ?? 0) > 0) {
+    plannedLines.push({
+      quantity: task.ops_planned_quantity ?? 0,
+      unit: resolveTaskMeasurementUnit(task) || "нэгж",
+    });
+  }
+
+  const completedByUnit = new Map<string, number>();
+  for (const report of reports) {
+    const parsedLines = extractReportQuantityLines(report.report_text || report.report_summary || "");
+    if (parsedLines.length) {
+      for (const line of parsedLines) {
+        const key = normalizeQuantityUnit(line.unit);
+        completedByUnit.set(key, (completedByUnit.get(key) ?? 0) + line.quantity);
+      }
+      continue;
+    }
+
+    const reportedQuantity = report.reported_quantity ?? 0;
+    if (reportedQuantity > 0 && plannedLines.length === 1) {
+      const key = normalizeQuantityUnit(plannedLines[0].unit);
+      completedByUnit.set(key, (completedByUnit.get(key) ?? 0) + reportedQuantity);
+    }
+  }
+
+  const quantityLines = plannedLines.map((line) => {
+    const completedQuantity = completedByUnit.get(normalizeQuantityUnit(line.unit)) ?? 0;
+    const cappedCompletedQuantity = Math.min(completedQuantity, line.quantity);
+    const progress = line.quantity > 0 ? (cappedCompletedQuantity / line.quantity) * 100 : 0;
+
+    return {
+      ...line,
+      completedQuantity,
+      progress,
+    };
+  });
+  const plannedQuantity = quantityLines.length
+    ? quantityLines.reduce((total, line) => total + line.quantity, 0)
+    : (task.ops_planned_quantity ?? 0);
+  const parsedCompletedQuantity = quantityLines.reduce(
+    (total, line) => total + Math.min(line.completedQuantity ?? 0, line.quantity),
+    0,
+  );
+  const fallbackCompletedQuantity = task.ops_completed_quantity ?? 0;
+  const completedQuantity =
+    rawStageBucket === "done" && parsedCompletedQuantity <= 0 && plannedQuantity > 0
+      ? plannedQuantity
+      : parsedCompletedQuantity > 0
+        ? parsedCompletedQuantity
+        : fallbackCompletedQuantity;
+  const parsedProgress = quantityLines.length
+    ? quantityLines.reduce((total, line) => total + (line.progress ?? 0), 0) / quantityLines.length
+    : 0;
+  const rawProgress = task.ops_progress_percent ?? 0;
+  const progress =
+    rawStageBucket === "done" && Math.max(parsedProgress, rawProgress) <= 0
+      ? 100
+      : Math.max(parsedProgress, rawProgress);
+  const stageBucket =
+    rawStageBucket === "review"
+      ? "review"
+      : rawStageBucket === "done" || progress >= 100
+        ? "done"
+        : rawStageBucket === "progress" || progress > 0
+          ? "progress"
+          : rawStageBucket;
+  const rawStatusKey = getTaskStatusKey(task);
+  const statusKey =
+    rawStatusKey === "problem"
+      ? "problem"
+      : stageBucket === "done"
+      ? "verified"
+      : stageBucket === "review"
+        ? "review"
+        : stageBucket === "progress"
+          ? "working"
+          : rawStatusKey;
+
+  return {
+    stageBucket,
+    statusKey,
+    progress: clampPercentValue(progress),
+    plannedQuantity,
+    completedQuantity,
+    remainingQuantity: Math.max(plannedQuantity - completedQuantity, 0),
+    quantitySummary: quantityLines.length
+      ? quantityLines
+          .map((line) => {
+            const done =
+              stageBucket === "done" && (line.completedQuantity ?? 0) <= 0
+                ? line.quantity
+                : (line.completedQuantity ?? 0);
+            return `${done}/${line.quantity} ${line.unit}`.trim();
+          })
+          .join(", ")
+      : plannedQuantity > 0
+        ? `${completedQuantity}/${plannedQuantity} ${resolveTaskMeasurementUnit(task) || "нэгж"}`
+        : "",
+  };
+}
+
 const TASK_FIELD_VARIANTS: string[][] = [
   [
     "name",
     "project_id",
     "stage_id",
+    "description",
     "create_date",
     "ops_team_leader_id",
     "user_ids",
@@ -769,6 +1001,7 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "name",
     "project_id",
     "stage_id",
+    "description",
     "create_date",
     "ops_team_leader_id",
     "user_ids",
@@ -791,6 +1024,7 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "name",
     "project_id",
     "stage_id",
+    "description",
     "create_date",
     "ops_team_leader_id",
     "user_ids",
@@ -810,6 +1044,7 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "name",
     "project_id",
     "stage_id",
+    "description",
     "create_date",
     "ops_team_leader_id",
     "user_ids",
@@ -830,6 +1065,7 @@ const REPORT_FIELD_VARIANTS: string[][] = [
     "task_id",
     "reporter_id",
     "report_datetime",
+    "report_text",
     "report_summary",
     "reported_quantity",
     "task_measurement_unit_id",
@@ -843,6 +1079,7 @@ const REPORT_FIELD_VARIANTS: string[][] = [
     "task_id",
     "reporter_id",
     "report_datetime",
+    "report_text",
     "report_summary",
     "reported_quantity",
     "task_measurement_unit_id",
@@ -854,11 +1091,13 @@ const REPORT_FIELD_VARIANTS: string[][] = [
     "task_id",
     "reporter_id",
     "report_datetime",
+    "report_text",
     "report_summary",
     "reported_quantity",
     "task_measurement_unit_id",
     "task_measurement_unit_code",
   ],
+  ["task_id", "reporter_id", "report_datetime", "report_text", "report_summary", "reported_quantity"],
   ["task_id", "reporter_id", "report_datetime", "report_summary", "reported_quantity"],
 ];
 
@@ -2590,18 +2829,38 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     return [] as OdooReportRecord[];
   });
 
+  const reportsByTaskId = new Map<number, OdooReportRecord[]>();
+  for (const report of reports) {
+    const taskId = Array.isArray(report.task_id) ? report.task_id[0] : null;
+    if (!taskId) {
+      continue;
+    }
+    const taskReports = reportsByTaskId.get(taskId) ?? [];
+    taskReports.push(report);
+    reportsByTaskId.set(taskId, taskReports);
+  }
+  const quantitySnapshotByTaskId = new Map<number, TaskQuantitySnapshot>(
+    tasks.map((task) => [
+      task.id,
+      buildTaskQuantitySnapshot(task, reportsByTaskId.get(task.id) ?? []),
+    ]),
+  );
+  const taskQuantitySnapshot = (task: OdooTaskRecord) =>
+    quantitySnapshotByTaskId.get(task.id) ??
+    buildTaskQuantitySnapshot(task, reportsByTaskId.get(task.id) ?? []);
+
   const totalTasks = tasks.length;
-  const doneTasks = tasks.filter((task) => getStageBucket(relationName(task.stage_id, "")) === "done");
-  const reviewTasks = tasks.filter((task) => getStageBucket(relationName(task.stage_id, "")) === "review");
+  const doneTasks = tasks.filter((task) => taskQuantitySnapshot(task).stageBucket === "done");
+  const reviewTasks = tasks.filter((task) => taskQuantitySnapshot(task).stageBucket === "review");
   const activeTasks = tasks.filter((task) => {
-    const bucket = getStageBucket(relationName(task.stage_id, ""));
+    const bucket = taskQuantitySnapshot(task).stageBucket;
     return bucket === "todo" || bucket === "progress";
   });
   const overdueTasks = tasks.filter((task) => {
     if (!task.date_deadline) {
       return false;
     }
-    const bucket = getStageBucket(relationName(task.stage_id, ""));
+    const bucket = taskQuantitySnapshot(task).stageBucket;
     if (bucket === "done") {
       return false;
     }
@@ -2639,10 +2898,10 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       return matchesDepartmentBucket(department, departmentName);
     });
     const departmentDone = departmentTasks.filter(
-      (task) => getStageBucket(relationName(task.stage_id, "")) === "done",
+      (task) => taskQuantitySnapshot(task).stageBucket === "done",
     );
     const departmentReview = departmentTasks.filter(
-      (task) => getStageBucket(relationName(task.stage_id, "")) === "review",
+      (task) => taskQuantitySnapshot(task).stageBucket === "review",
     );
 
     return {
@@ -2665,10 +2924,9 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     const projectTaskDepartments = projectTasks
       .map((task) => resolveNormalizedTaskDepartmentName(task, projectDepartmentById))
       .filter((departmentName) => departmentName !== UNKNOWN_DEPARTMENT);
-    const completed = projectTasks.filter(
-      (task) => getStageBucket(relationName(task.stage_id, "")) === "done",
-    ).length;
-    const buckets = projectTasks.map((task) => getStageBucket(relationName(task.stage_id, "")));
+    const taskSnapshots = projectTasks.map((task) => taskQuantitySnapshot(task));
+    const completed = taskSnapshots.filter((snapshot) => snapshot.stageBucket === "done").length;
+    const buckets = taskSnapshots.map((snapshot) => snapshot.stageBucket);
     const stageBucket =
       buckets.includes("review")
         ? "review"
@@ -2692,7 +2950,12 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       stageLabel: STAGE_LABELS[stageBucket],
       stageBucket,
       openTasks: projectTasks.length - completed,
-      completion: projectTasks.length ? Math.round((completed / projectTasks.length) * 100) : 0,
+      completion: taskSnapshots.length
+        ? Math.round(
+            taskSnapshots.reduce((total, snapshot) => total + snapshot.progress, 0) /
+              taskSnapshots.length,
+          )
+        : 0,
       deadline: formatCompactDate(project.date),
       href: `/projects/${project.id}`,
     } satisfies ProjectCard;
@@ -2700,8 +2963,9 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
 
   const taskDirectory = tasks
     .map((task) => {
-      const stageBucket = getStageBucket(relationName(task.stage_id, ""));
-      const statusKey = getTaskStatusKey(task);
+      const quantitySnapshot = taskQuantitySnapshot(task);
+      const stageBucket = quantitySnapshot.stageBucket;
+      const statusKey = quantitySnapshot.statusKey;
 
       return {
         id: task.id,
@@ -2718,10 +2982,10 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         scheduledDate: getDateKeyFromValue(task.mfo_shift_date || task.date_deadline || null),
         leaderName: relationName(task.ops_team_leader_id ?? false),
         priorityLabel: priorityLabel(task.priority || ""),
-        progress: Math.round(task.ops_progress_percent ?? 0),
-        plannedQuantity: task.ops_planned_quantity ?? 0,
-        completedQuantity: task.ops_completed_quantity ?? 0,
-        remainingQuantity: task.ops_remaining_quantity ?? 0,
+        progress: quantitySnapshot.progress,
+        plannedQuantity: quantitySnapshot.plannedQuantity,
+        completedQuantity: quantitySnapshot.completedQuantity,
+        remainingQuantity: quantitySnapshot.remainingQuantity,
         measurementUnit: resolveTaskMeasurementUnit(task),
         operationTypeLabel: operationTypeLabel(task.mfo_operation_type),
         issueFlag: statusKey === "problem",
@@ -2751,17 +3015,17 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     name: task.name,
     departmentName: resolveTaskDepartmentName(task, projectDepartmentById),
     projectName: relationName(task.project_id),
-    stageLabel: STAGE_LABELS[getStageBucket(relationName(task.stage_id, ""))],
-    stageBucket: getStageBucket(relationName(task.stage_id, "")),
+    stageLabel: STAGE_LABELS[taskQuantitySnapshot(task).stageBucket],
+    stageBucket: taskQuantitySnapshot(task).stageBucket,
     deadline: formatCompactDate(task.date_deadline),
     scheduledDate: getDateKeyFromValue(task.mfo_shift_date || task.date_deadline || null),
-    plannedQuantity: task.ops_planned_quantity ?? 0,
-    completedQuantity: task.ops_completed_quantity ?? 0,
-    remainingQuantity: task.ops_remaining_quantity ?? 0,
+    plannedQuantity: taskQuantitySnapshot(task).plannedQuantity,
+    completedQuantity: taskQuantitySnapshot(task).completedQuantity,
+    remainingQuantity: taskQuantitySnapshot(task).remainingQuantity,
     measurementUnit: resolveTaskMeasurementUnit(task),
     leaderName: relationName(task.ops_team_leader_id ?? false),
     priorityLabel: priorityLabel(task.priority || ""),
-    progress: Math.round(task.ops_progress_percent ?? 0),
+    progress: taskQuantitySnapshot(task).progress,
     href: buildTaskHref(task.id, "/tasks"),
   }));
 
@@ -2773,7 +3037,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     deadline: formatCompactDate(task.date_deadline),
     projectName: relationName(task.project_id),
     leaderName: relationName(task.ops_team_leader_id ?? false),
-    progress: Math.round(task.ops_progress_percent ?? 0),
+    progress: taskQuantitySnapshot(task).progress,
     href: buildTaskHref(task.id, "/review"),
   }));
 
@@ -2866,14 +3130,15 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       squadSize: Math.max((task.user_ids?.length ?? 1) - 1, 0),
     };
 
-    const bucket = getStageBucket(relationName(task.stage_id, ""));
+    const snapshot = taskQuantitySnapshot(task);
+    const bucket = snapshot.stageBucket;
     if (bucket === "review") {
       entry.reviewTasks += 1;
     }
     if (bucket === "todo" || bucket === "progress") {
       entry.activeTasks += 1;
     }
-    entry.averageCompletion += task.ops_progress_percent ?? 0;
+    entry.averageCompletion += snapshot.progress;
     entry.squadSize = Math.max(entry.squadSize, Math.max((task.user_ids?.length ?? 1) - 1, 0));
     teamLeaderMap.set(leaderName, entry);
   }
@@ -2884,7 +3149,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         (task) => relationName(task.ops_team_leader_id ?? false, "Оноогоогүй") === leader.name,
       );
       const totalProgress = relatedTasks.reduce(
-        (sum, task) => sum + (task.ops_progress_percent ?? 0),
+        (sum, task) => sum + taskQuantitySnapshot(task).progress,
         0,
       );
       return {

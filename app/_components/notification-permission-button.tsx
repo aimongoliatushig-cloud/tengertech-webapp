@@ -46,7 +46,12 @@ async function registerPushSubscription(publicKey: string) {
 
 export function NotificationPermissionButton() {
   useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window) || !window.isSecureContext) {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      return;
+    }
+
+    if (!window.isSecureContext) {
+      console.warn("Notification permission requires HTTPS or localhost.");
       return;
     }
 
@@ -79,6 +84,9 @@ export function NotificationPermissionButton() {
 
         window.sessionStorage.setItem(NOTIFICATION_PERMISSION_SESSION_KEY, "1");
         const permission = await Notification.requestPermission();
+        if (permission === "default") {
+          window.sessionStorage.removeItem(NOTIFICATION_PERMISSION_SESSION_KEY);
+        }
         if (permission !== "granted" || cancelled) {
           return;
         }

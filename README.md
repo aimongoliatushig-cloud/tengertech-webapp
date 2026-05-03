@@ -28,6 +28,30 @@ npm run dev
 Дараа нь [http://localhost:3000](http://localhost:3000)-г нээнэ.
 Login хийхдээ Odoo дээрх одоогийн user/password-аа ашиглана.
 
+## Env / config стандарт
+
+Local, VPS, өөр төхөөрөмж дээр env нэр зөрөхөөс сэргийлж tracked template-үүдийг `config/env/` дотор хадгална.
+
+- Local template: `config/env/local.env.example`
+- VPS template: `config/env/vps.env.example`
+- Дэлгэрэнгүй заавар: `docs/env-config-standard.md`
+
+Шинэ төхөөрөмж дээр:
+
+```bash
+copy config\env\local.env.example .env.local
+npm run env:check
+```
+
+VPS дээр:
+
+```bash
+cp config/env/vps.env.example .env
+npm run env:check -- --production
+```
+
+`.env*` бодит secret файлуудыг commit хийхгүй.
+
 ## Default Odoo тохиргоо
 
 ```env

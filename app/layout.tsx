@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Exo_2, IBM_Plex_Mono, IBM_Plex_Sans, Inter } from "next/font/google";
 
 import { GlobalLoadingProvider } from "@/app/_components/global-loading";
+import { NotificationPermissionButton } from "@/app/_components/notification-permission-button";
 
 import "./globals.css";
 
@@ -46,6 +47,7 @@ export default function RootLayout({
       className={`${display.variable} ${body.variable} ${mono.variable} ${inter.variable}`}
     >
       <body suppressHydrationWarning>
+        <NotificationPermissionButton />
         <GlobalLoadingProvider>{children}</GlobalLoadingProvider>
       </body>
     </html>
