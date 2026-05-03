@@ -43,6 +43,8 @@ copy config\env\local.env.example .env.local
 npm run env:check
 ```
 
+Local web app ажиллаж байсан ч Odoo backend нь shared VPS/staging Odoo руу заана. `http://localhost:8069`-ийг default Odoo backend болгон ашиглахгүй.
+
 VPS дээр:
 
 ```bash
@@ -55,7 +57,7 @@ npm run env:check -- --production
 ## Default Odoo тохиргоо
 
 ```env
-ODOO_URL=http://localhost:8069
+ODOO_URL=https://CHANGE_ME_ODOO_DOMAIN_OR_IP
 ODOO_DB=odoo19_admin
 ODOO_LOGIN=admin
 ODOO_PASSWORD=admin

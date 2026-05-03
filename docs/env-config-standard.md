@@ -24,6 +24,8 @@ npm run env:check
 npm run dev
 ```
 
+Local web app `http://localhost:3000` дээр ажиллаж байсан ч `ODOO_URL` нь shared VPS/staging Odoo руу заана. `http://localhost:8069`-ийг default Odoo backend болгон ашиглахгүй.
+
 ## VPS setup
 
 ```bash
