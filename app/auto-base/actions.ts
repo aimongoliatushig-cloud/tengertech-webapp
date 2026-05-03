@@ -67,11 +67,6 @@ export async function updateFleetVehicleAction(formData: FormData) {
     redirect("/auto-base?error=Машины бүртгэл олдсонгүй.");
   }
 
-  const connectionOverrides = {
-    login: session.login,
-    password: session.password,
-  };
-
   try {
     const editableFields = await executeOdooKw<Record<string, unknown>>(
       "fleet.vehicle",
@@ -99,7 +94,6 @@ export async function updateFleetVehicleAction(formData: FormData) {
       {
         attributes: ["string"],
       },
-      connectionOverrides,
     );
     const values: Record<string, string | number | boolean | false> = {};
 
@@ -214,7 +208,6 @@ export async function updateFleetVehicleAction(formData: FormData) {
       "write",
       [[vehicleId], values],
       {},
-      connectionOverrides,
     );
 
     revalidatePath("/auto-base");

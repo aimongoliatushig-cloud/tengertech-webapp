@@ -61,10 +61,7 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
   let loadError = "";
 
   try {
-    board = await loadFleetVehicleBoard({
-      login: session.login,
-      password: session.password,
-    });
+    board = await loadFleetVehicleBoard();
   } catch (error) {
     console.error("Fleet vehicle board could not be loaded:", error);
     loadError =

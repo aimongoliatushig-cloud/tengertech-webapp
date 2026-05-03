@@ -286,10 +286,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
 
   if (isAutoBaseView) {
     try {
-      fleetBoard = await loadFleetVehicleBoard({
-        login: session.login,
-        password: session.password,
-      });
+      fleetBoard = await loadFleetVehicleBoard();
     } catch (error) {
       console.error("Fleet vehicle board could not be loaded for projects auto-base view:", error);
       fleetLoadError =

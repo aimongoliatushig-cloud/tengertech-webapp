@@ -111,7 +111,7 @@ export default async function Home() {
         fleetBoard: EMPTY_FLEET_BOARD,
         fleetLoadError: "",
       })
-    : loadFleetVehicleBoard(connectionOverrides)
+    : loadFleetVehicleBoard()
         .then((fleetBoard) => ({
           fleetBoard,
           fleetLoadError: "",
