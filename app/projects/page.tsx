@@ -154,11 +154,17 @@ function normalizeUnitText(value?: string | null) {
   return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function matchesUnitScope(unitName: string, departmentName?: string | null, projectName?: string | null) {
+function matchesUnitScope(
+  unitName: string,
+  departmentName?: string | null,
+  projectName?: string | null,
+  extraSearchText?: string | null,
+) {
   const normalizedUnit = normalizeUnitText(unitName);
   const normalizedDepartment = normalizeUnitText(departmentName);
   const normalizedProject = normalizeUnitText(projectName);
-  const searchText = `${normalizedDepartment} ${normalizedProject}`.trim();
+  const normalizedExtra = normalizeUnitText(extraSearchText);
+  const searchText = `${normalizedDepartment} ${normalizedProject} ${normalizedExtra}`.trim();
 
   if (!normalizedUnit || !searchText) {
     return false;
@@ -178,7 +184,7 @@ function matchesUnitScope(unitName: string, departmentName?: string | null, proj
 
   const unitSearchText =
     normalizedDepartment === normalizeUnitText(GREEN_SERVICE_GROUP_NAME)
-      ? normalizedProject
+      ? `${normalizedProject} ${normalizedExtra}`.trim()
       : searchText;
 
   return greenServiceUnit.aliases.some((alias) => unitSearchText.includes(normalizeUnitText(alias)));
@@ -297,11 +303,25 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
     }
   }
 
+  const projectTaskSearchByName = new Map<string, string>();
+  for (const task of snapshot.taskDirectory) {
+    const currentText = projectTaskSearchByName.get(task.projectName) ?? "";
+    projectTaskSearchByName.set(
+      task.projectName,
+      `${currentText} ${task.name} ${task.operationTypeLabel}`.trim(),
+    );
+  }
+
   let scopedProjects = (departmentScopedMode
     ? filterByDepartment(snapshot.projects, scopedDepartmentName)
     : snapshot.projects.filter((project) => {
         if (selectedUnit) {
-          return matchesUnitScope(selectedUnit, project.departmentName, project.name);
+          return matchesUnitScope(
+            selectedUnit,
+            project.departmentName,
+            project.name,
+            `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`,
+          );
         }
         if (selectedGroup) {
           return matchesDepartmentGroup(selectedGroup, project.departmentName);
@@ -649,7 +669,12 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   if (shouldShowGreenServiceSections) {
     for (const project of activeProjects) {
       const section = greenServiceProjectSections.find((item) =>
-        matchesUnitScope(item.label, project.departmentName, project.name),
+        matchesUnitScope(
+          item.label,
+          project.departmentName,
+          project.name,
+          `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`,
+        ),
       );
 
       if (section) {
@@ -793,7 +818,12 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                             ? fleetBoard.totalVehicles
                             : snapshot.projects.filter((project) =>
                                 matchesDepartmentGroup(selectedGroup, project.departmentName) &&
-                                matchesUnitScope(unit, project.departmentName, project.name),
+                                matchesUnitScope(
+                                  unit,
+                                  project.departmentName,
+                                  project.name,
+                                  `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`,
+                                ),
                               ).length}
                         </strong>
                       </Link>

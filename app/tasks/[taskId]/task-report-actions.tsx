@@ -242,13 +242,23 @@ export function TaskReportActions({
                     </div>
 
                     <MediaUploadField
-                      id={`${idPrefix}-report-images`}
-                      name="report_images"
-                      label="Зураг нэмэх"
+                      id={`${idPrefix}-report-before-images`}
+                      name="report_before_images"
+                      label="Өмнөх зураг нэмэх"
                       accept="image/*"
                       multiple
-                      maxFiles={10}
-                      emptyStateLabel="Шинэ зураг сонгоогүй байна"
+                      maxFiles={5}
+                      emptyStateLabel="Шинэ өмнөх зураг сонгоогүй байна"
+                    />
+
+                    <MediaUploadField
+                      id={`${idPrefix}-report-after-images`}
+                      name="report_after_images"
+                      label="Дараах зураг нэмэх"
+                      accept="image/*"
+                      multiple
+                      maxFiles={5}
+                      emptyStateLabel="Шинэ дараах зураг сонгоогүй байна"
                     />
 
                     <div className={styles.existingAttachmentGroup}>

@@ -22,7 +22,6 @@ import {
   Route,
   Settings,
   Truck,
-  UserCircle,
   Users,
   Wrench,
   X,
@@ -371,15 +370,9 @@ export function AppMenu({
       icon: Bell,
       badge: notificationCount,
     },
-    {
-      key: "profile",
-      href: "/profile",
-      label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E",
-      icon: Settings,
-    },
   ].filter((item) => {
     if (hrFocusedMode) {
-      return ["dashboard", "hr", "tasks", "review", "profile"].includes(item.key);
+      return ["dashboard", "hr", "tasks", "review"].includes(item.key);
     }
     if (!workerMode) {
       return true;
@@ -388,13 +381,13 @@ export function AppMenu({
       return canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr;
     }
     if (mfoFieldMode) {
-      return ["dashboard", "garbage-routes", "field", "review", "notifications", "profile"].includes(item.key);
+      return ["dashboard", "garbage-routes", "field", "review", "notifications"].includes(item.key);
     }
     if (environmentFieldMode) {
-      return ["dashboard", "environment-work", "field", "review", "notifications", "profile"].includes(item.key);
+      return ["dashboard", "environment-work", "field", "review", "notifications"].includes(item.key);
     }
     if (repairFieldMode) {
-      return ["dashboard", "fleet-repair", "review", "notifications", "profile"].includes(item.key);
+      return ["dashboard", "fleet-repair", "review", "notifications"].includes(item.key);
     }
     return !["data-download", "reports", "procurement", "chat", "fleet-repair"].includes(item.key);
   });
@@ -547,7 +540,6 @@ export function AppMenu({
                   icon: ListChecks,
                 },
                 { key: "review", href: reviewHref, label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
-                { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
                 ...(canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr
                   ? [{ key: "hr", href: "/hr", label: "HR", icon: Users }]
                   : []),
@@ -559,7 +551,7 @@ export function AppMenu({
           { key: "reports", href: canWriteReports ? "/reports" : "/review", label: "Тайлан", icon: BarChart3 },
           canViewHr
             ? { key: "hr", href: "/hr", label: "HR", icon: Users }
-            : { key: "profile", href: "/profile", label: "Тохиргоо", icon: Settings },
+            : { key: "chat", href: "/chat", label: "Чат", icon: MessageSquare },
         ];
 
   const menuList = (
@@ -640,8 +632,8 @@ export function AppMenu({
           {isProfileMenuOpen ? (
             <div id="account-menu" className={styles.profileMenu} role="menu">
               <Link href="/profile" role="menuitem" className={styles.profileMenuLink}>
-                <UserCircle aria-hidden />
-                <span>Профайл</span>
+                <Settings aria-hidden />
+                <span>Тохиргоо</span>
               </Link>
               <Link href="/auth/logout" role="menuitem" className={styles.profileMenuLink}>
                 <LogOut aria-hidden />

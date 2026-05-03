@@ -17,10 +17,10 @@ import {
 } from "@/lib/field-ops";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 import { notifyPushEvent, type PushEventType } from "@/lib/push-notifications";
+import { createLocalRoadCleaningArea } from "@/lib/road-cleaning-area-store";
 import {
   assignGarbageProjectTasksFromRouteTeam,
   createGarbageWorkspaceProject,
-  createRoadCleaningArea,
   createRoadCleaningWork,
   createSeasonalWorkspacePlan,
   createWorkspaceCrewTeam,
@@ -204,10 +204,39 @@ function getUploadedFiles(formData: FormData, key: string) {
     .filter((value): value is File => value instanceof File && value.size > 0);
 }
 
+type LabeledUploadFile = {
+  file: File;
+  label: string;
+};
+
+function getTaskReportImageUploads(formData: FormData): LabeledUploadFile[] {
+  return [
+    ...getUploadedFiles(formData, "report_before_images").map((file) => ({
+      file,
+      label: "Өмнөх зураг",
+    })),
+    ...getUploadedFiles(formData, "report_after_images").map((file) => ({
+      file,
+      label: "Дараах зураг",
+    })),
+    ...getUploadedFiles(formData, "report_images").map((file) => ({
+      file,
+      label: "Зураг",
+    })),
+  ];
+}
+
+function getLabeledAttachmentName(upload: LabeledUploadFile) {
+  const fileName = upload.file.name.trim();
+  return fileName ? `${upload.label} - ${fileName}` : upload.label;
+}
+
 type RoadCleaningLineInput = {
   sequence: number;
   cleaningAreaId: number | null;
   employeeId: number | null;
+  masterId: number | null;
+  areaName: string;
   newAreaName: string;
 };
 
@@ -232,16 +261,21 @@ function parseRoadCleaningLines(rawJson: string): RoadCleaningLineInput[] {
       const record = item && typeof item === "object" ? item as Record<string, unknown> : {};
       const cleaningAreaId = Number(record.cleaningAreaId);
       const employeeId = Number(record.employeeId);
+      const masterId = Number(record.masterId);
+      const areaName = String(record.areaName ?? "").trim();
       const newAreaName = String(record.newAreaName ?? "").trim();
 
       return {
         sequence: Number(record.sequence) || index + 1,
-        cleaningAreaId: Number.isFinite(cleaningAreaId) && cleaningAreaId > 0 ? cleaningAreaId : null,
+        cleaningAreaId:
+          Number.isFinite(cleaningAreaId) && cleaningAreaId !== 0 ? cleaningAreaId : null,
         employeeId: Number.isFinite(employeeId) && employeeId > 0 ? employeeId : null,
+        masterId: Number.isFinite(masterId) && masterId > 0 ? masterId : null,
+        areaName,
         newAreaName,
       };
     })
-    .filter((line) => line.employeeId && (line.cleaningAreaId || line.newAreaName));
+    .filter((line) => line.employeeId && (line.cleaningAreaId || line.areaName || line.newAreaName));
 }
 
 function getFallbackMimeType(fileName: string, family: "image" | "audio") {
@@ -392,15 +426,18 @@ export async function createProjectAction(formData: FormData) {
       for (const line of roadCleaningLines) {
         let cleaningAreaId = line.cleaningAreaId;
 
+        if (!line.masterId) {
+          throw new Error("Хариуцсан мастерийг заавал сонгоно уу.");
+        }
+
         if (!cleaningAreaId && line.newAreaName) {
-          cleaningAreaId = await createRoadCleaningArea(
-            {
-              name: line.newAreaName,
-              departmentId: effectiveDepartmentIdRaw ? Number(effectiveDepartmentIdRaw) : null,
-              employeeId: line.employeeId,
-            },
-            connectionOverrides,
-          );
+          const localArea = await createLocalRoadCleaningArea({
+            name: line.newAreaName,
+            departmentId: effectiveDepartmentIdRaw ? Number(effectiveDepartmentIdRaw) : null,
+            employeeId: line.employeeId,
+            masterId: line.masterId,
+          });
+          cleaningAreaId = localArea.id;
         }
 
         if (!cleaningAreaId || !line.employeeId) {
@@ -410,7 +447,10 @@ export async function createProjectAction(formData: FormData) {
         await createRoadCleaningWork(
           {
             cleaningAreaId,
+            areaName: line.areaName || line.newAreaName,
+            departmentId: effectiveDepartmentIdRaw ? Number(effectiveDepartmentIdRaw) : null,
             employeeId: line.employeeId,
+            masterId: line.masterId,
             workDate: cleaningWorkDate,
           },
           connectionOverrides,
@@ -1164,7 +1204,8 @@ export async function createTaskReportAction(formData: FormData) {
   const quantityLineUnits = formData
     .getAll("reported_quantity_unit")
     .map((value) => String(value).trim());
-  const imageFiles = getUploadedFiles(formData, "report_images");
+  const imageUploads = getTaskReportImageUploads(formData);
+  const imageFiles = imageUploads.map((upload) => upload.file);
   const audioFiles = getUploadedFiles(formData, "report_audios");
   const reportPath = taskId ? `/tasks/${taskId}` : "/tasks";
 
@@ -1232,10 +1273,10 @@ export async function createTaskReportAction(formData: FormData) {
 
     const [imageAttachments, audioAttachments] = await Promise.all([
       Promise.all(
-        imageFiles.map(async (file) => ({
-          name: file.name,
-          mimeType: file.type || getFallbackMimeType(file.name, "image"),
-          base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
+        imageUploads.map(async (upload) => ({
+          name: getLabeledAttachmentName(upload),
+          mimeType: upload.file.type || getFallbackMimeType(upload.file.name, "image"),
+          base64: Buffer.from(await upload.file.arrayBuffer()).toString("base64"),
         })),
       ),
       Promise.all(
@@ -1283,7 +1324,8 @@ export async function updateTaskReportAction(formData: FormData) {
   const quantityLineUnits = formData
     .getAll("reported_quantity_unit")
     .map((value) => String(value).trim());
-  const imageFiles = getUploadedFiles(formData, "report_images");
+  const imageUploads = getTaskReportImageUploads(formData);
+  const imageFiles = imageUploads.map((upload) => upload.file);
   const audioFiles = getUploadedFiles(formData, "report_audios");
   const removeImageAttachmentIds = formData
     .getAll("remove_image_attachment_ids")
@@ -1359,10 +1401,10 @@ export async function updateTaskReportAction(formData: FormData) {
       .join("\n\n");
     const [imageAttachments, audioAttachments] = await Promise.all([
       Promise.all(
-        imageFiles.map(async (file) => ({
-          name: file.name,
-          mimeType: file.type || getFallbackMimeType(file.name, "image"),
-          base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
+        imageUploads.map(async (upload) => ({
+          name: getLabeledAttachmentName(upload),
+          mimeType: upload.file.type || getFallbackMimeType(upload.file.name, "image"),
+          base64: Buffer.from(await upload.file.arrayBuffer()).toString("base64"),
         })),
       ),
       Promise.all(

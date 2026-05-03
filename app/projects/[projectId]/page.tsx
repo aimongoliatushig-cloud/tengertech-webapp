@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
@@ -70,6 +71,15 @@ function getProgressWidth(value: number) {
   }
 
   return `${Math.max(Math.min(value, 100), 6)}%`;
+}
+
+function isImageAttachment(attachment: { mimetype: string }) {
+  return attachment.mimetype.toLowerCase().startsWith("image/");
+}
+
+function isPdfAttachment(attachment: { mimetype: string; name: string }) {
+  const mimetype = attachment.mimetype.toLowerCase();
+  return mimetype === "application/pdf" || attachment.name.toLowerCase().endsWith(".pdf");
 }
 
 function resolveProjectStage(taskCounts: Record<TaskFilterKey, number>) {
@@ -433,28 +443,92 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                 </div>
 
                 <div className={styles.projectDetailCompactGrid}>
-                  {project.description ? (
-                    <div className={styles.descriptionCard}>
-                      <span className={styles.compactLabel}>Тайлбар</span>
-                      <p>{project.description}</p>
-                    </div>
-                  ) : null}
+                  <div className={styles.descriptionCard}>
+                    <span className={styles.compactLabel}>Тайлбар</span>
+                    <p>{project.description || "Тайлбар бүртгээгүй байна."}</p>
+                  </div>
 
                   {project.attachments.length ? (
-                    <div className={styles.documentList}>
-                      {project.attachments.map((attachment) => (
-                        <a
-                          key={attachment.id}
-                          href={attachment.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={styles.documentCard}
-                        >
-                          <strong>{attachment.name}</strong>
-                          <small>{attachment.mimetype}</small>
-                        </a>
-                      ))}
-                    </div>
+                    <details className={styles.attachmentDisclosure}>
+                      <summary className={styles.attachmentDisclosureSummary}>
+                        <span>Дэлгэрэнгүй хавсралт харах</span>
+                        <small>{project.attachments.length} файл</small>
+                      </summary>
+
+                      <div className={styles.attachmentDetailPanel}>
+                        <div className={styles.attachmentDetailDescription}>
+                          <span className={styles.compactLabel}>Тайлбар</span>
+                          <p>{project.description || "Тайлбар бүртгээгүй байна."}</p>
+                        </div>
+
+                        <div className={styles.attachmentPreviewList}>
+                          {project.attachments.map((attachment) => {
+                            if (isImageAttachment(attachment)) {
+                              return (
+                                <a
+                                  key={attachment.id}
+                                  href={attachment.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className={styles.attachmentPreviewCard}
+                                >
+                                  <div className={styles.attachmentPreviewHeader}>
+                                    <strong>{attachment.name}</strong>
+                                    <small>{attachment.mimetype}</small>
+                                  </div>
+                                  <span className={styles.attachmentImageFrame}>
+                                    <Image
+                                      src={attachment.url}
+                                      alt={attachment.name}
+                                      fill
+                                      unoptimized
+                                      sizes="(max-width: 720px) 100vw, 50vw"
+                                      className={styles.attachmentImagePreview}
+                                    />
+                                  </span>
+                                </a>
+                              );
+                            }
+
+                            if (isPdfAttachment(attachment)) {
+                              return (
+                                <div key={attachment.id} className={styles.attachmentPreviewCard}>
+                                  <div className={styles.attachmentPreviewHeader}>
+                                    <strong>{attachment.name}</strong>
+                                    <a
+                                      href={attachment.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className={styles.attachmentOpenLink}
+                                    >
+                                      Нээх
+                                    </a>
+                                  </div>
+                                  <iframe
+                                    src={attachment.url}
+                                    title={attachment.name}
+                                    className={styles.attachmentPdfPreview}
+                                  />
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <a
+                                key={attachment.id}
+                                href={attachment.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={styles.documentCard}
+                              >
+                                <strong>{attachment.name}</strong>
+                                <small>{attachment.mimetype}</small>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </details>
                   ) : null}
                 </div>
               </section>

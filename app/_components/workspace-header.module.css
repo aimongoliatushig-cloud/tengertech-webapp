@@ -6,7 +6,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  overflow: hidden;
+  overflow: visible;
   margin: 0 0 20px;
   padding: 0;
   border-bottom: 1px solid rgba(46, 125, 50, 0.08);
@@ -278,6 +278,12 @@
   line-height: 1;
 }
 
+.headerUserWrap {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
 .headerUser {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -288,9 +294,27 @@
   padding: 8px 12px 8px 16px;
   border-radius: var(--ds-radius-card);
   color: #1b1b1b;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
-.headerUser div {
+.headerUser:hover {
+  border-color: rgba(46, 125, 50, 0.22);
+  box-shadow: 0 16px 34px rgba(27, 73, 38, 0.12);
+  transform: translateY(-1px);
+}
+
+.headerUser:focus-visible {
+  outline: 3px solid rgba(46, 125, 50, 0.22);
+  outline-offset: 3px;
+}
+
+.headerUserText {
   min-width: 0;
 }
 
@@ -313,6 +337,66 @@
   color: #66766c;
   font-size: 0.7rem;
   font-weight: 600;
+}
+
+.headerUserChevronOpen {
+  transform: rotate(180deg);
+}
+
+.headerUserMenu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 40;
+  display: grid;
+  gap: 6px;
+  width: min(220px, 82vw);
+  padding: 8px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 22px 52px rgba(27, 73, 38, 0.16);
+}
+
+.headerUserMenu::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 22px;
+  width: 12px;
+  height: 12px;
+  border-top: 1px solid rgba(74, 154, 93, 0.14);
+  border-left: 1px solid rgba(74, 154, 93, 0.14);
+  background: rgba(255, 255, 255, 0.98);
+  transform: rotate(45deg);
+}
+
+.headerUserMenuLink {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: calc(var(--ds-radius-card) - 4px);
+  color: #1f2c22;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.headerUserMenuLink:hover,
+.headerUserMenuLink:focus-visible {
+  background: rgba(46, 125, 50, 0.08);
+  color: #1f7a35;
+  outline: none;
+}
+
+.headerUserMenuLink svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 2.3;
 }
 
 .leafOne,

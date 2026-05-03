@@ -159,13 +159,23 @@ export function TaskReportModal({
                     </div>
 
                     <MediaUploadField
-                      id="report_images"
-                      name="report_images"
-                      label="Зураг"
+                      id="report_before_images"
+                      name="report_before_images"
+                      label="Өмнөх зураг"
                       accept="image/*"
                       multiple
-                      maxFiles={10}
-                      emptyStateLabel="Зураг сонгоогүй байна"
+                      maxFiles={5}
+                      emptyStateLabel="Өмнөх зураг сонгоогүй байна"
+                    />
+
+                    <MediaUploadField
+                      id="report_after_images"
+                      name="report_after_images"
+                      label="Дараах зураг"
+                      accept="image/*"
+                      multiple
+                      maxFiles={5}
+                      emptyStateLabel="Дараах зураг сонгоогүй байна"
                     />
 
                     <MediaUploadField
