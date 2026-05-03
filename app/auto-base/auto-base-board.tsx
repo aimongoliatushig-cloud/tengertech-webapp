@@ -201,10 +201,7 @@ function VehicleList({
             </span>
           </div>
           <p className={styles.vehicleName}>{vehicle.name}</p>
-          <span className={styles.vehicleMetaLine}>
-            {vehicle.vehicleTypeName || vehicle.categoryName || "Төрөлгүй"} ·{" "}
-            {vehicle.responsibleDriverName || "Жолооч оноогоогүй"}
-          </span>
+          <span className={styles.vehicleMetaLine}>{vehicleCrewRoleSummary(vehicle)}</span>
           <span className={styles.vehicleCrewPreview}>
             {assignedCrewCount(vehicle)
               ? `${assignedCrewCount(vehicle)} оноолт хуваарилагдсан`
@@ -227,6 +224,16 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 
 function namesLabel(names: string[]) {
   return names.length ? names.join(", ") : "Оноогоогүй";
+}
+
+function vehicleCrewRoleSummary(vehicle: FleetVehicleBoardItem) {
+  const loaders = [vehicle.loader1Name, vehicle.loader2Name].filter(Boolean);
+  const parts = [
+    vehicle.responsibleDriverName ? `Жолооч: ${vehicle.responsibleDriverName}` : "",
+    loaders.length ? `Ачигч: ${loaders.join(", ")}` : "",
+  ].filter(Boolean);
+
+  return parts.length ? parts.join(" · ") : "Жолооч, ачигч оноогоогүй";
 }
 
 function directCrewMembers(vehicle: FleetVehicleBoardItem) {
