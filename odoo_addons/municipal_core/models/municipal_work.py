@@ -3,6 +3,8 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
+from .municipal_cleaning_area import CLEANING_DEFAULT_LINES
+
 
 WORK_STATES = [
     ("draft", "Ноорог"),
@@ -101,6 +103,58 @@ class MunicipalWork(models.Model):
         "work_id",
         string="Тайлангууд",
     )
+    cleaning_area_id = fields.Many2one(
+        "municipal.cleaning.area",
+        string="Цэвэрлэх талбай",
+        index=True,
+        tracking=True,
+        ondelete="set null",
+    )
+    work_date = fields.Date(string="Ажлын огноо", index=True, tracking=True)
+    master_id = fields.Many2one(
+        "hr.employee",
+        string="Хариуцсан мастер",
+        index=True,
+        tracking=True,
+    )
+    start_time = fields.Datetime(string="Эхэлсэн цаг", tracking=True)
+    end_time = fields.Datetime(string="Дууссан цаг", tracking=True)
+    before_image = fields.Binary(string="Өмнөх зураг", attachment=True)
+    after_image = fields.Binary(string="Дараах зураг", attachment=True)
+    employee_note = fields.Text(string="Ажилтны тайлбар")
+    review_note = fields.Text(string="Мастерын тэмдэглэл", tracking=True)
+    reviewed_by = fields.Many2one("res.users", string="Хянасан хэрэглэгч", readonly=True)
+    reviewed_date = fields.Datetime(string="Хянасан огноо", readonly=True)
+    review_state = fields.Selection(
+        [
+            ("pending", "Хүлээгдэж байна"),
+            ("returned", "Буцаасан"),
+            ("approved", "Баталгаажсан"),
+        ],
+        string="Хяналтын төлөв",
+        default="pending",
+        tracking=True,
+    )
+    line_ids = fields.One2many(
+        "municipal.work.line",
+        "work_id",
+        string="Ажилбарууд",
+    )
+    cleaning_street_name = fields.Char(
+        related="cleaning_area_id.street_name",
+        string="Гудамж / замын нэр",
+        readonly=True,
+    )
+    cleaning_start_point = fields.Char(
+        related="cleaning_area_id.start_point",
+        string="Эхлэх цэг",
+        readonly=True,
+    )
+    cleaning_end_point = fields.Char(
+        related="cleaning_area_id.end_point",
+        string="Дуусах цэг",
+        readonly=True,
+    )
     created_by = fields.Many2one(
         "res.users",
         string="Үүсгэсэн хэрэглэгч",
@@ -166,6 +220,37 @@ class MunicipalWork(models.Model):
         self.write(values)
         return True
 
+    def write(self, vals):
+        basic_worker = (
+            self.env.user.has_group("municipal_core.group_municipal_worker")
+            and not self.env.user.has_group("municipal_core.group_municipal_master")
+            and not self.env.user.has_group("municipal_core.group_municipal_department_head")
+            and not self.env.user.has_group("municipal_core.group_municipal_manager")
+            and not self.env.user.has_group("municipal_core.group_municipal_director")
+            and not self.env.user.has_group("municipal_core.group_municipal_admin")
+        )
+        if basic_worker:
+            allowed_fields = {
+                "line_ids",
+                "before_image",
+                "after_image",
+                "employee_note",
+                "start_time",
+                "end_time",
+                "state",
+            }
+            if set(vals) - allowed_fields:
+                raise UserError("Ажилтан зөвхөн өөрийн гүйцэтгэлийн мэдээллийг шинэчилнэ.")
+            if vals.get("state") and vals["state"] not in {"started", "report_submitted", "done"}:
+                raise UserError("Ажилтан зөвхөн ажил эхлүүлэх, тайлан илгээх болон дуусгах төлөвт шилжүүлнэ.")
+            for record in self:
+                if not (
+                    record.responsible_user_id == self.env.user
+                    or record.responsible_employee_id.user_id == self.env.user
+                ):
+                    raise UserError("Та зөвхөн өөрт хуваарилагдсан ажлыг шинэчилнэ.")
+        return super().write(vals)
+
     def action_plan(self):
         return self._set_state("planned")
 
@@ -214,6 +299,91 @@ class MunicipalWork(models.Model):
                 "approved_by": False,
                 "rejected_by": False,
                 "rejection_reason": False,
+            },
+        )
+
+    def _create_default_cleaning_lines(self):
+        for record in self.filtered("cleaning_area_id"):
+            if record.line_ids:
+                continue
+            self.env["municipal.work.line"].sudo().create(
+                [
+                    {
+                        "work_id": record.id,
+                        "name": line_name,
+                        "sequence": index * 10,
+                    }
+                    for index, line_name in enumerate(CLEANING_DEFAULT_LINES, start=1)
+                ]
+            )
+        return True
+
+    def _user_can_manage_cleaning_work(self):
+        self.ensure_one()
+        user = self.env.user
+        if (
+            user.has_group("municipal_core.group_municipal_manager")
+            or user.has_group("municipal_core.group_municipal_director")
+            or user.has_group("municipal_core.group_municipal_admin")
+        ):
+            return True
+        if self.manager_id == user:
+            return True
+        if self.master_id.user_id == user:
+            return True
+        if self.department_id.manager_id.user_id == user:
+            return True
+        return False
+
+    def _check_cleaning_employee_or_manager(self):
+        for record in self.filtered("cleaning_area_id"):
+            user = self.env.user
+            is_employee = (
+                record.responsible_user_id == user
+                or record.responsible_employee_id.user_id == user
+            )
+            if not is_employee and not record._user_can_manage_cleaning_work():
+                raise UserError("Та зөвхөн өөрт хуваарилагдсан цэвэрлэгээний ажлыг гүйцэтгэнэ.")
+
+    def action_start_work(self):
+        self._check_cleaning_employee_or_manager()
+        return self._set_state("started", {"start_time": fields.Datetime.now()})
+
+    def action_finish_work(self):
+        self._check_cleaning_employee_or_manager()
+        for record in self.filtered("cleaning_area_id"):
+            if not record.before_image or not record.after_image:
+                raise UserError("Ажил дуусгахын өмнө өмнөх болон дараах зураг оруулна уу.")
+        return self._set_state("done", {"end_time": fields.Datetime.now()})
+
+    def action_approve_work(self):
+        for record in self.filtered("cleaning_area_id"):
+            if not record._user_can_manage_cleaning_work():
+                raise UserError("Энэ ажлыг баталгаажуулах эрх танд байхгүй.")
+        return self._set_state(
+            "approved",
+            {
+                "review_state": "approved",
+                "reviewed_by": self.env.user.id,
+                "reviewed_date": fields.Datetime.now(),
+                "approved_by": self.env.user.id,
+            },
+        )
+
+    def action_return_work(self):
+        for record in self.filtered("cleaning_area_id"):
+            if not record._user_can_manage_cleaning_work():
+                raise UserError("Энэ ажлыг буцаах эрх танд байхгүй.")
+            if not record.review_note:
+                raise UserError("Буцаахын өмнө мастерын тэмдэглэл оруулна уу.")
+        return self._set_state(
+            "returned",
+            {
+                "review_state": "returned",
+                "reviewed_by": self.env.user.id,
+                "reviewed_date": fields.Datetime.now(),
+                "rejected_by": self.env.user.id,
+                "rejection_reason": self[:1].review_note,
             },
         )
 

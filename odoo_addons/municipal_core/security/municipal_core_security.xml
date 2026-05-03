@@ -233,6 +233,64 @@
             <field name="groups" eval="[(4, ref('group_municipal_worker')), (4, ref('group_municipal_manager')), (4, ref('group_municipal_director')), (4, ref('group_municipal_admin')), (4, ref('group_municipal_it'))]"/>
         </record>
 
+        <record id="rule_municipal_cleaning_area_worker_own" model="ir.rule">
+            <field name="name">Municipal cleaning area worker own</field>
+            <field name="model_id" ref="model_municipal_cleaning_area"/>
+            <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_municipal_worker'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_municipal_cleaning_area_master" model="ir.rule">
+            <field name="name">Municipal cleaning area master responsible</field>
+            <field name="model_id" ref="model_municipal_cleaning_area"/>
+            <field name="domain_force">['|', ('master_id.user_id', '=', user.id), ('department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_municipal_master')), (4, ref('group_municipal_department_head'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_municipal_cleaning_area_all" model="ir.rule">
+            <field name="name">Municipal cleaning area all managers</field>
+            <field name="model_id" ref="model_municipal_cleaning_area"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_municipal_manager')), (4, ref('group_municipal_director')), (4, ref('group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_municipal_work_line_worker_own" model="ir.rule">
+            <field name="name">Municipal work line worker own</field>
+            <field name="model_id" ref="model_municipal_work_line"/>
+            <field name="domain_force">['|', ('work_id.responsible_user_id', '=', user.id), ('work_id.responsible_employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_municipal_worker'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_municipal_work_line_master" model="ir.rule">
+            <field name="name">Municipal work line master responsible</field>
+            <field name="model_id" ref="model_municipal_work_line"/>
+            <field name="domain_force">['|', '|', ('work_id.manager_id', '=', user.id), ('work_id.master_id.user_id', '=', user.id), ('work_id.department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_municipal_master')), (4, ref('group_municipal_department_head'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_municipal_work_line_all" model="ir.rule">
+            <field name="name">Municipal work line all managers</field>
+            <field name="model_id" ref="model_municipal_work_line"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_municipal_manager')), (4, ref('group_municipal_director')), (4, ref('group_municipal_admin'))]"/>
+        </record>
+
         <record id="rule_municipal_attendance_worker_own" model="ir.rule">
             <field name="name">Municipal attendance worker own</field>
             <field name="model_id" ref="model_municipal_attendance_issue"/>

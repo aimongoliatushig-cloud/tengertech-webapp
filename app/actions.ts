@@ -20,6 +20,8 @@ import { notifyPushEvent, type PushEventType } from "@/lib/push-notifications";
 import {
   assignGarbageProjectTasksFromRouteTeam,
   createGarbageWorkspaceProject,
+  createRoadCleaningArea,
+  createRoadCleaningWork,
   createSeasonalWorkspacePlan,
   createWorkspaceCrewTeam,
   createWorkspaceProject,
@@ -202,6 +204,46 @@ function getUploadedFiles(formData: FormData, key: string) {
     .filter((value): value is File => value instanceof File && value.size > 0);
 }
 
+type RoadCleaningLineInput = {
+  sequence: number;
+  cleaningAreaId: number | null;
+  employeeId: number | null;
+  newAreaName: string;
+};
+
+function parseRoadCleaningLines(rawJson: string): RoadCleaningLineInput[] {
+  if (!rawJson) {
+    return [];
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawJson);
+  } catch {
+    return [];
+  }
+
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+
+  return parsed
+    .map((item, index) => {
+      const record = item && typeof item === "object" ? item as Record<string, unknown> : {};
+      const cleaningAreaId = Number(record.cleaningAreaId);
+      const employeeId = Number(record.employeeId);
+      const newAreaName = String(record.newAreaName ?? "").trim();
+
+      return {
+        sequence: Number(record.sequence) || index + 1,
+        cleaningAreaId: Number.isFinite(cleaningAreaId) && cleaningAreaId > 0 ? cleaningAreaId : null,
+        employeeId: Number.isFinite(employeeId) && employeeId > 0 ? employeeId : null,
+        newAreaName,
+      };
+    })
+    .filter((line) => line.employeeId && (line.cleaningAreaId || line.newAreaName));
+}
+
 function getFallbackMimeType(fileName: string, family: "image" | "audio") {
   const normalizedName = fileName.trim().toLowerCase();
   const extension = normalizedName.includes(".")
@@ -275,6 +317,8 @@ export async function createProjectAction(formData: FormData) {
   const seasonalWorkDaysJson = String(formData.get("seasonal_work_days_json") ?? "").trim();
   const seasonalLinesJson = String(formData.get("seasonal_lines_json") ?? "").trim();
   const seasonalNotes = String(formData.get("seasonal_notes") ?? "").trim();
+  const roadCleaningLinesJson = String(formData.get("road_cleaning_lines_json") ?? "").trim();
+  const cleaningWorkDate = String(formData.get("work_date") ?? "").trim();
   const projectDescription = String(formData.get("project_description") ?? "").trim();
   const projectFiles = getUploadedFiles(formData, "project_files");
   const additionalLocations = getStringListValues(formData, [
@@ -330,6 +374,63 @@ export async function createProjectAction(formData: FormData) {
     }
 
     effectiveDepartmentIdRaw = String(lockedDepartmentId);
+  }
+
+  if (operationUnit === "road_area_cleaning") {
+    const roadCleaningLines = parseRoadCleaningLines(roadCleaningLinesJson);
+
+    if (!cleaningWorkDate || !roadCleaningLines.length) {
+      redirectWithMessage(
+        "/projects/new",
+        "error",
+        "Цэвэрлэх талбай, хариуцсан ажилтан, ажлын огноог заавал сонгоно уу.",
+      );
+    }
+
+    try {
+      let createdCount = 0;
+      for (const line of roadCleaningLines) {
+        let cleaningAreaId = line.cleaningAreaId;
+
+        if (!cleaningAreaId && line.newAreaName) {
+          cleaningAreaId = await createRoadCleaningArea(
+            {
+              name: line.newAreaName,
+              departmentId: effectiveDepartmentIdRaw ? Number(effectiveDepartmentIdRaw) : null,
+              employeeId: line.employeeId,
+            },
+            connectionOverrides,
+          );
+        }
+
+        if (!cleaningAreaId || !line.employeeId) {
+          throw new Error("Цэвэрлэх талбай болон хариуцсан ажилтны мөр бүрийг бүрэн сонгоно уу.");
+        }
+
+        await createRoadCleaningWork(
+          {
+            cleaningAreaId,
+            employeeId: line.employeeId,
+            workDate: cleaningWorkDate,
+          },
+          connectionOverrides,
+        );
+        createdCount += 1;
+      }
+
+      revalidatePath("/");
+      revalidatePath("/projects");
+      revalidatePath("/tasks");
+      revalidatePath("/field");
+      revalidatePath("/projects/new");
+      redirect(
+        "/projects/new?notice=" +
+          encodeURIComponent(createdCount + " зам талбайн цэвэрлэгээний ажил амжилттай үүслээ."),
+      );
+    } catch (error) {
+      rethrowIfRedirectError(error);
+      redirectWithMessage("/projects/new", "error", getErrorMessage(error));
+    }
   }
 
   if (operationUnit === "garbage_transport") {

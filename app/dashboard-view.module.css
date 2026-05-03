@@ -76,10 +76,8 @@
 
 .statCardHelper {
   display: flex;
-  min-height: 32px;
   align-items: center;
   gap: 6px;
-  color: #6b7280;
   font-size: 0.72rem;
   line-height: 1.25;
 }
@@ -220,8 +218,50 @@
   grid-template-columns: 132px minmax(240px, 360px);
   align-items: center;
   justify-content: start;
-  gap: 14px;
-  padding: 8px 8px 4px 12px;
+  gap: 18px;
+  padding: 10px 8px 6px 12px;
+}
+
+.segmentedDonut {
+  display: grid;
+  width: 132px;
+  height: 132px;
+  place-items: center;
+  border-radius: 999px;
+  padding: 20px;
+  box-shadow: inset 0 0 0 1px rgba(17, 27, 21, 0.04);
+}
+
+.donutCenter {
+  display: grid;
+  width: 92px;
+  height: 92px;
+  place-items: center;
+  align-content: center;
+  border-radius: 999px;
+  background: #fff;
+  color: #111b15;
+  text-align: center;
+  box-shadow:
+    0 10px 28px rgba(17, 27, 21, 0.08),
+    inset 0 0 0 1px rgba(46, 125, 50, 0.08);
+}
+
+.donutCenter strong {
+  display: block;
+  font-size: 1.65rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.donutCenter span {
+  display: block;
+  margin-top: 5px;
+  color: #6f7e74;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.1;
 }
 
 .progressLegend {
@@ -284,6 +324,108 @@
   font-size: 0.78rem;
   font-weight: 600;
   pointer-events: none;
+}
+
+.weeklyLegend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 34px;
+  margin-top: 8px;
+  color: #526157;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.weeklyLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.weeklyLegend i {
+  display: block;
+  width: 22px;
+  height: 2px;
+  border-radius: 999px;
+}
+
+.departmentPerformanceCard {
+  padding: 18px 20px;
+}
+
+.departmentPerformanceHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.departmentPerformanceHeader span {
+  color: #2e7d32;
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.departmentPerformanceList {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.departmentPerformanceRow {
+  display: grid;
+  grid-template-columns: 42px minmax(140px, 190px) minmax(160px, 1fr) 46px;
+  align-items: center;
+  gap: 12px;
+}
+
+.departmentPerformanceIcon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 999px;
+  background: #e2f3e4;
+  color: #2e7d32;
+}
+
+.departmentPerformanceIcon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.departmentPerformanceName {
+  min-width: 0;
+  color: #1f2b24;
+  font-size: 0.82rem;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.departmentPerformanceTrack {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e6ece7;
+}
+
+.departmentPerformanceTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #2e7d32;
+}
+
+.departmentPerformanceRow strong {
+  color: #1f2b24;
+  font-size: 0.84rem;
+  font-weight: 900;
+  line-height: 1;
+  text-align: right;
 }
 
 .quickStatsCard {
@@ -714,16 +856,21 @@
 }
 
 .taskListCard {
-  height: 252px;
+  min-height: 0;
   overflow: hidden;
-  padding: 18px 20px 20px;
+  padding: 28px 32px 32px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  background:
+    radial-gradient(circle at 90% 0%, rgba(46, 125, 50, 0.06), transparent 34%),
+    rgba(255, 255, 255, 0.94);
+  box-shadow: 0 26px 70px rgba(27, 73, 38, 0.1);
 }
 
 .taskListHeader {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  gap: 16px;
+  gap: 22px;
 }
 
 .taskListHeaderText {
@@ -734,11 +881,27 @@
 
 .taskListKicker {
   color: #6d7b70;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 900;
   line-height: 1;
   letter-spacing: 0;
   text-transform: uppercase;
+}
+
+.taskListHeaderText :global(h3) {
+  color: #111b15;
+  font-size: clamp(1.55rem, 1.1rem + 1.2vw, 2.15rem);
+  font-weight: 950;
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.taskListHeaderText :global(p) {
+  max-width: 720px;
+  color: #6b7280;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .taskListTitle {
@@ -762,38 +925,315 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 34px;
-  padding: 0 12px;
+  height: 48px;
+  padding: 0 22px;
   border-radius: 999px;
-  background: #e8f5e9;
-  color: #111b15;
-  font-size: 0.74rem;
+  background: linear-gradient(135deg, #2e7d32, #3f9b4b);
+  color: #fff;
+  font-size: 0.86rem;
   font-weight: 900;
   line-height: 1;
   white-space: nowrap;
+  box-shadow: 0 14px 28px rgba(46, 125, 50, 0.22);
   transition:
     transform 160ms ease,
-    background 160ms ease;
+    box-shadow 160ms ease;
 }
 
 .taskListAction:hover {
   transform: translateY(-1px);
-  background: #dcefdc;
+  box-shadow: 0 18px 34px rgba(46, 125, 50, 0.28);
 }
 
 .taskListAction svg {
   width: 15px;
   height: 15px;
+  color: currentColor;
+}
+
+.taskListFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.taskListFilterShell {
+  min-width: 0;
+}
+
+.taskListFilterInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.taskListFilterChip {
+  display: inline-flex;
+  min-width: 168px;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 16px;
+  border: 1px solid rgba(46, 125, 50, 0.16);
+  border-radius: 14px;
+  background: #fff;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 8px 22px rgba(27, 73, 38, 0.05);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
+}
+
+.taskListFilterChip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(46, 125, 50, 0.34);
   color: #2e7d32;
+  box-shadow: 0 14px 28px rgba(27, 73, 38, 0.1);
+}
+
+.taskListFilterChip:focus-visible {
+  outline: 3px solid rgba(46, 125, 50, 0.24);
+  outline-offset: 3px;
+}
+
+.taskListFilterChipSelected {
+  border-color: rgba(46, 125, 50, 0.36);
+  color: #2e7d32;
+  box-shadow: 0 12px 30px rgba(46, 125, 50, 0.1);
+}
+
+:global(#dashboard-project-filter-progress):checked ~ .taskListFilters label[for="dashboard-project-filter-progress"],
+:global(#dashboard-project-filter-pending):checked ~ .taskListFilters label[for="dashboard-project-filter-pending"],
+:global(#dashboard-project-filter-done):checked ~ .taskListFilters label[for="dashboard-project-filter-done"],
+:global(#dashboard-project-filter-planned):checked ~ .taskListFilters label[for="dashboard-project-filter-planned"] {
+  border-color: rgba(46, 125, 50, 0.36);
+  color: #2e7d32;
+  box-shadow: 0 12px 30px rgba(46, 125, 50, 0.1);
+}
+
+.taskListFilterChipAmber {
+  border-color: rgba(245, 158, 11, 0.22);
+}
+
+.taskListFilterChipMuted {
+  border-color: rgba(107, 114, 128, 0.18);
+}
+
+.taskListFilterDot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #2e7d32;
+}
+
+.taskListFilterChipAmber .taskListFilterDot {
+  background: #f2a900;
+}
+
+.taskListFilterChipMuted .taskListFilterDot {
+  background: #8b95a1;
+}
+
+.taskListFilterChip small {
+  display: grid;
+  min-width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #eef6ef;
+  color: #2e7d32;
+  font-size: 0.8rem;
+  font-weight: 950;
 }
 
 .taskListBody {
-  margin-top: 10px;
+  margin-top: 22px;
   display: grid;
-  max-height: 154px;
-  gap: 3px;
+  gap: 20px;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.taskListBodyScrollable {
+  max-height: 560px;
   overflow-y: auto;
-  padding-right: 2px;
+  overscroll-behavior: contain;
+  padding-right: 8px;
+  scrollbar-color: rgba(46, 125, 50, 0.42) rgba(46, 125, 50, 0.08);
+  scrollbar-width: thin;
+}
+
+.taskListFilterPanels {
+  min-width: 0;
+}
+
+.taskListFilterPanel {
+  display: none;
+}
+
+.taskListFilterPanelDefault {
+  display: grid;
+}
+
+:global(#dashboard-project-filter-progress):checked ~ .taskListFilterPanels .taskListFilterPanelDefault,
+:global(#dashboard-project-filter-pending):checked ~ .taskListFilterPanels .taskListFilterPanelDefault,
+:global(#dashboard-project-filter-done):checked ~ .taskListFilterPanels .taskListFilterPanelDefault,
+:global(#dashboard-project-filter-planned):checked ~ .taskListFilterPanels .taskListFilterPanelDefault {
+  display: none;
+}
+
+:global(#dashboard-project-filter-progress):checked ~ .taskListFilterPanels .taskListFilterPanelProgress,
+:global(#dashboard-project-filter-pending):checked ~ .taskListFilterPanels .taskListFilterPanelPending,
+:global(#dashboard-project-filter-done):checked ~ .taskListFilterPanels .taskListFilterPanelDone,
+:global(#dashboard-project-filter-planned):checked ~ .taskListFilterPanels .taskListFilterPanelPlanned {
+  display: grid;
+}
+
+.projectListLink {
+  display: block;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.projectListCard {
+  display: grid;
+  min-height: 276px;
+  align-content: start;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid rgba(17, 27, 21, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow:
+    0 16px 44px rgba(17, 27, 21, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+.projectListLink:hover .projectListCard {
+  transform: translateY(-3px);
+  border-color: rgba(46, 125, 50, 0.26);
+  box-shadow: 0 24px 58px rgba(27, 73, 38, 0.14);
+}
+
+.projectListTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.projectListIcon {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  background: #e9f6ec;
+  color: #2e7d32;
+}
+
+.projectListIcon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.projectListIconAmber {
+  background: #fff3d2;
+  color: #e7a400;
+}
+
+.projectListIconMuted {
+  background: #edf4fb;
+  color: #4d78b7;
+}
+
+.projectListContent {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.projectListTitle {
+  display: -webkit-box;
+  min-height: 3.02em;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: #1b2520;
+  font-size: 1.18rem;
+  font-weight: 950;
+  line-height: 1.28;
+  letter-spacing: 0;
+}
+
+.projectListMeta {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: #6b7280;
+  font-size: 0.86rem;
+  font-weight: 650;
+  line-height: 1.42;
+}
+
+.projectListDivider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(17, 27, 21, 0.06), rgba(17, 27, 21, 0.1), rgba(17, 27, 21, 0.04));
+}
+
+.projectListMetrics {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+}
+
+.projectListMetric {
+  min-width: 0;
+}
+
+.projectListMetric + .projectListMetric {
+  padding-left: 18px;
+  border-left: 1px solid rgba(17, 27, 21, 0.08);
+}
+
+.projectListMetric span {
+  display: block;
+  color: #8a978e;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.projectListMetric strong {
+  display: block;
+  margin-top: 8px;
+  color: #1b2520;
+  font-size: 1.8rem;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .taskListEmpty {
@@ -883,13 +1323,9 @@
   }
 
   .statCardHelper {
-    align-items: flex-start;
+    align-items: center;
     gap: 4px;
     font-size: 0.68rem;
-  }
-
-  .statCardHelper span {
-    line-height: 1.2;
   }
 
   .mobilePriorityPanel {
