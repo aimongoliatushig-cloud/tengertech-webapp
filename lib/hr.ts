@@ -96,6 +96,11 @@ export type HrOption = {
   name: string;
 };
 
+export type HrSelectionOption = {
+  id: string;
+  name: string;
+};
+
 export type HrStats = {
   totalEmployees: number;
   activeEmployees: number;
@@ -227,6 +232,16 @@ export type HrTimeoffRequestCreateInput = {
   reason: string;
   note?: string;
   submit?: boolean;
+  files?: File[];
+};
+
+export type HrDisciplineCreateInput = {
+  employeeId: number;
+  violationType: string;
+  violationDate: string;
+  actionType: string;
+  explanation?: string;
+  employeeExplanation?: string;
   files?: File[];
 };
 
@@ -1157,6 +1172,133 @@ function timeoffStateLabel(state: string) {
   }
 }
 
+function normalizeSelectionOptions(value: unknown): HrSelectionOption[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((item) => {
+      if (!Array.isArray(item) || item.length < 2) {
+        return null;
+      }
+      const id = String(item[0] ?? "").trim();
+      const name = String(item[1] ?? "").trim();
+      return id && name ? { id, name } : null;
+    })
+    .filter((item): item is HrSelectionOption => Boolean(item));
+}
+
+export async function getDisciplineActionOptions(session: AppSession): Promise<HrSelectionOption[]> {
+  try {
+    const fields = await executeOdooKw<Record<string, { selection?: unknown }>>(
+      "municipal.discipline",
+      "fields_get",
+      [["action_type"]],
+      { attributes: ["string", "type", "selection"] },
+      getConnection(session),
+    );
+    const options = normalizeSelectionOptions(fields.action_type?.selection);
+    if (options.length) {
+      return options;
+    }
+  } catch (error) {
+    console.warn("Odoo discipline action_type selection could not be loaded:", error);
+  }
+
+  return [
+    { id: "warning", name: "Сануулга" },
+    { id: "deduction", name: "20% цалингийн суутгал" },
+    { id: "termination_proposal", name: "Ажлаас халах санал" },
+  ];
+}
+
+export async function getDisciplineViolationOptions(session: AppSession): Promise<HrSelectionOption[]> {
+  try {
+    const fields = await executeOdooKw<Record<string, { selection?: unknown }>>(
+      "municipal.discipline",
+      "fields_get",
+      [["violation_type"]],
+      { attributes: ["string", "type", "selection"] },
+      getConnection(session),
+    );
+    const options = normalizeSelectionOptions(fields.violation_type?.selection).filter((option) => option.id !== "attendance");
+    if (options.length) {
+      return options;
+    }
+  } catch (error) {
+    console.warn("Odoo discipline violation_type selection could not be loaded:", error);
+  }
+
+  return [
+    { id: "safety", name: "ХАБЭА" },
+    { id: "quality", name: "Чанар" },
+    { id: "behavior", name: "Ёс зүй" },
+    { id: "property", name: "Эд хөрөнгө" },
+    { id: "no_report", name: "Тайлан өгөөгүй" },
+    { id: "returned_report", name: "Тайлан буцаагдсан" },
+    { id: "other", name: "Бусад" },
+  ];
+}
+
+export async function createDiscipline(session: AppSession, data: HrDisciplineCreateInput) {
+  await requireHrSpecialistAccess(session);
+  const attachments = await filesToAttachments(data.files);
+  const values: Record<string, unknown> = {
+    employee_id: data.employeeId,
+    violation_type: data.violationType,
+    violation_date: data.violationDate,
+    action_type: data.actionType,
+    explanation: data.explanation || false,
+    employee_explanation: data.employeeExplanation || false,
+  };
+
+  if (data.actionType === "deduction" || data.actionType.includes("20")) {
+    values.deduction_percent = 20;
+  }
+
+  const disciplineId = await executeOdooKw<number>(
+    "municipal.discipline",
+    "create",
+    [values],
+    {},
+    getConnection(session),
+  );
+
+  if (attachments.length) {
+    const attachmentIds: number[] = [];
+    for (const attachment of attachments) {
+      const attachmentId = await executeOdooKw<number>(
+        "ir.attachment",
+        "create",
+        [
+          {
+            name: attachment.name,
+            datas: attachment.datas,
+            res_model: "municipal.discipline",
+            res_id: disciplineId,
+            mimetype: attachment.mimetype,
+          },
+        ],
+        {},
+        getConnection(session),
+      );
+      attachmentIds.push(attachmentId);
+    }
+
+    if (attachmentIds.length) {
+      await executeOdooKw<boolean>(
+        "municipal.discipline",
+        "write",
+        [[disciplineId], { attachment_ids: attachmentIds.map((id) => [4, id]) }],
+        {},
+        getConnection(session),
+      );
+    }
+  }
+
+  return { id: disciplineId };
+}
+
 function isMissingTimeoffModelError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? "");
   return message.includes("municipal.hr.timeoff.request") || message.includes("get_hr_timeoff") || message.includes("not found");
@@ -1183,8 +1325,8 @@ export async function getTimeoffRequests(session: AppSession, filters: Record<st
   }
 
   if (!requests.length) {
-    try {
-      const records = await executeOdooKw<HrTimeoffRequestSearchRecord[]>(
+    const readRequests = (connectionOverrides: Partial<ReturnType<typeof getConnection>> = {}) =>
+      executeOdooKw<HrTimeoffRequestSearchRecord[]>(
         "municipal.hr.timeoff.request",
         "search_read",
         [[]],
@@ -1213,14 +1355,26 @@ export async function getTimeoffRequests(session: AppSession, filters: Record<st
           limit: 300,
           context: { active_test: false },
         },
-        getConnection(session),
+        connectionOverrides,
       );
+
+    try {
+      const records = await readRequests(getConnection(session));
       requests = records.map(normalizeTimeoffSearchRecord);
     } catch (error) {
-      if (isMissingTimeoffModelError(error)) {
+      if (!isMissingTimeoffModelError(error)) {
+        console.warn("HR time off request session search_read failed, retrying with service account:", error);
+      }
+      try {
+        const records = await readRequests();
+        requests = records.map(normalizeTimeoffSearchRecord);
+      } catch (serviceError) {
+        if (isMissingTimeoffModelError(serviceError)) {
+          return [];
+        }
+        console.warn("HR time off request service search_read failed:", serviceError);
         return [];
       }
-      throw error;
     }
   }
 

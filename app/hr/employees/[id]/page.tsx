@@ -30,9 +30,9 @@ function employeeActions(employeeId: number) {
   const employeeQuery = `employeeId=${employeeId}`;
 
   return [
-    { label: "Засах", href: "#profile-info", icon: Pencil },
-    { label: "Чөлөө бүртгэх", href: `/hr/leaves?${employeeQuery}`, icon: FileCheck2 },
-    { label: "Өвчтэй бүртгэх", href: `/hr/sick?${employeeQuery}`, icon: HeartPulse },
+    { label: "Засах", href: `/hr/employees/${employeeId}#profile-info`, icon: Pencil },
+    { label: "Чөлөө бүртгэх", href: `/hr/sick?${employeeQuery}&type=time_off`, icon: FileCheck2 },
+    { label: "Өвчтэй бүртгэх", href: `/hr/sick?${employeeQuery}&type=sick`, icon: HeartPulse },
     { label: "Томилолт бүртгэх", href: `/hr/trips?${employeeQuery}`, icon: Plane },
     { label: "Сахилгын бүртгэл", href: `/hr/discipline?${employeeQuery}`, icon: ShieldAlert },
     { label: "Тушаал / гэрээ", href: `/hr/orders?${employeeQuery}`, icon: ScrollText },

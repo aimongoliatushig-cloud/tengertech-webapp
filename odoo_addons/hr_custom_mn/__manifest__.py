@@ -11,6 +11,7 @@
         "hr",
         "hr_holidays",
         "mail",
+        "municipal_core",
         "web",
     ],
     "data": [

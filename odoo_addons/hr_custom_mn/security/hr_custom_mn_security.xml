@@ -205,5 +205,12 @@
             <field name="domain_force">[(1, '=', 1)]</field>
             <field name="groups" eval="[(4, ref('group_hr_custom_mn_officer')), (4, ref('group_hr_custom_mn_admin'))]"/>
         </record>
+
+        <record id="rule_municipal_discipline_hr_custom_all" model="ir.rule">
+            <field name="name">HR MN municipal discipline all</field>
+            <field name="model_id" ref="municipal_core.model_municipal_discipline"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_hr_custom_mn_officer')), (4, ref('group_hr_custom_mn_admin'))]"/>
+        </record>
     </data>
 </odoo>

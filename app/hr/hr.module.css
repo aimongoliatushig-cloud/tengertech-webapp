@@ -235,6 +235,27 @@
   gap: 14px;
 }
 
+.selectedEmployeeContext {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  border-radius: 8px;
+  background: rgba(218, 238, 219, 0.55);
+}
+
+.selectedEmployeeContext span,
+.selectedEmployeeContext small {
+  color: #637568;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.selectedEmployeeContext strong {
+  color: #1f2b25;
+  font-size: 1rem;
+}
+
 .formGrid,
 .formGridTwo {
   display: grid;

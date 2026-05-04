@@ -5,12 +5,26 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, FilePlus2, Search } from "lucide-react";
 
-import type { HrLeaveItem, HrOption, HrTimeoffRequest } from "@/lib/hr";
+import type { HrLeaveItem, HrOption, HrSelectionOption, HrTimeoffRequest } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
 import styles from "./hr.module.css";
 
 const ALL = "__all__";
+
+type RegistryOption = HrSelectionOption | { id: number | string; name: string };
+
+export type RegistryField =
+  | string
+  | {
+      label: string;
+      name?: string;
+      type?: string;
+      defaultValue?: string;
+      readOnly?: boolean;
+      required?: boolean;
+      options?: RegistryOption[];
+    };
 
 function statusLabel(employee: HrEmployeeDirectoryItem) {
   if (!employee.active || employee.statusKey === "archived") {
@@ -263,17 +277,19 @@ function Field({
   type = "text",
   required = false,
   defaultValue,
+  readOnly = false,
 }: {
   label: string;
   name: string;
   type?: string;
   required?: boolean;
   defaultValue?: string;
+  readOnly?: boolean;
 }) {
   return (
     <label className={styles.field}>
       <span>{label}</span>
-      <input name={name} type={type} required={required} defaultValue={defaultValue} />
+      <input name={name} type={type} required={required} defaultValue={defaultValue} readOnly={readOnly} />
     </label>
   );
 }
@@ -407,6 +423,10 @@ export function TimeoffRequestsClient({
   const router = useRouter();
   const defaultType = searchParams.get("type") === "sick" ? "sick" : "time_off";
   const defaultEmployeeId = searchParams.get("employeeId") || "";
+  const selectedEmployee = useMemo(
+    () => employees.find((employee) => String(employee.id) === defaultEmployeeId) ?? null,
+    [defaultEmployeeId, employees],
+  );
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [filter, setFilter] = useState(ALL);
@@ -564,6 +584,16 @@ export function TimeoffRequestsClient({
 
       <form key={editingRequest?.id ?? "new"} className={styles.formPanel} onSubmit={submit} noValidate>
         <h2>{editingRequest ? "Хүсэлт засах" : "Чөлөө / өвчтэй хүсэлт"}</h2>
+        {!editingRequest && selectedEmployee ? (
+          <div className={styles.selectedEmployeeContext}>
+            <span>Сонгосон ажилтан</span>
+            <strong>{selectedEmployee.name}</strong>
+            <small>
+              {selectedEmployee.departmentName || "Хэлтэс бүртгээгүй"} ·{" "}
+              {selectedEmployee.jobTitle || "Албан тушаал бүртгээгүй"}
+            </small>
+          </div>
+        ) : null}
         <label className={styles.field}>
           <span>Ажилтан</span>
           <select name="employeeId" defaultValue={editingRequest?.employeeId || defaultEmployeeId} required disabled={Boolean(editingRequest)}>
@@ -630,6 +660,10 @@ export function LeavesClient({
   const searchParams = useSearchParams();
   const defaultSick = defaultKind === "sick" || searchParams.get("type") === "sick";
   const defaultEmployeeId = searchParams.get("employeeId") || "";
+  const selectedEmployee = useMemo(
+    () => employees.find((employee) => String(employee.id) === defaultEmployeeId) ?? null,
+    [defaultEmployeeId, employees],
+  );
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -699,6 +733,16 @@ export function LeavesClient({
       <form className={styles.formPanel} onSubmit={submit} noValidate>
         <h2>{defaultSick ? "Өвчтэй чөлөө бүртгэх" : "Чөлөө бүртгэх"}</h2>
         {message ? <p className={message.includes("хадгалагд") ? styles.successText : styles.errorText}>{message}</p> : null}
+        {selectedEmployee ? (
+          <div className={styles.selectedEmployeeContext}>
+            <span>Сонгосон ажилтан</span>
+            <strong>{selectedEmployee.name}</strong>
+            <small>
+              {selectedEmployee.departmentName || "Хэлтэс бүртгээгүй"} ·{" "}
+              {selectedEmployee.jobTitle || "Албан тушаал бүртгээгүй"}
+            </small>
+          </div>
+        ) : null}
         <input name="leaveTypeName" type="hidden" value={defaultSick ? "Өвчтэй" : ""} />
         <label className={styles.field}>
           <span>Ажилтан</span>
@@ -751,12 +795,90 @@ export function RegistryPage({
   description,
   fields,
   checklist,
+  selectedEmployee,
+  submitEndpoint,
+  submitLabel = "Бүртгэл үүсгэх",
+  successMessage = "Бүртгэл үүсгэгдлээ.",
 }: {
   title: string;
   description: string;
-  fields: string[];
+  fields: RegistryField[];
   checklist?: string[];
+  selectedEmployee?: HrEmployeeDirectoryItem | null;
+  submitEndpoint?: string;
+  submitLabel?: string;
+  successMessage?: string;
 }) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!submitEndpoint) {
+      return;
+    }
+
+    setPending(true);
+    setMessage("");
+    const formData = new FormData(event.currentTarget);
+    try {
+      const response = await fetch(submitEndpoint, { method: "POST", body: formData });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error || "Бүртгэл үүсгэхэд алдаа гарлаа.");
+      }
+      setMessage(successMessage);
+      event.currentTarget.reset();
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Бүртгэл үүсгэхэд алдаа гарлаа.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  function normalizeField(field: RegistryField) {
+    return typeof field === "string" ? { label: field, name: field } : { name: field.label, ...field };
+  }
+
+  function renderSelectedEmployeeField(field: ReturnType<typeof normalizeField>) {
+    if (!selectedEmployee) {
+      return null;
+    }
+
+    if (field.label === "Ажилтан") {
+      return (
+        <label key={field.label} className={styles.field}>
+          <span>Ажилтан</span>
+          <input value={selectedEmployee.name} readOnly />
+          <input name="employeeId" type="hidden" value={selectedEmployee.id} />
+        </label>
+      );
+    }
+
+    if (field.label === "Хэлтэс") {
+      return (
+        <label key={field.label} className={styles.field}>
+          <span>Хэлтэс</span>
+          <input value={selectedEmployee.departmentName || "Хэлтэс бүртгээгүй"} readOnly />
+          {selectedEmployee.departmentId ? <input name="departmentId" type="hidden" value={selectedEmployee.departmentId} /> : null}
+        </label>
+      );
+    }
+
+    if (field.label === "Албан тушаал") {
+      return (
+        <label key={field.label} className={styles.field}>
+          <span>Албан тушаал</span>
+          <input value={selectedEmployee.jobTitle || "Албан тушаал бүртгээгүй"} readOnly />
+        </label>
+      );
+    }
+
+    return null;
+  }
+
   return (
     <div className={styles.twoColumn}>
       <section className={styles.panel}>
@@ -779,23 +901,66 @@ export function RegistryPage({
           </div>
         ) : null}
       </section>
-      <section className={styles.formPanel}>
+      <form className={styles.formPanel} onSubmit={submit} noValidate>
         <h2>Шинэ бүртгэл</h2>
         <p className={styles.mutedText}>{description}</p>
+        {message ? <p className={message.includes("алдаа") ? styles.errorText : styles.successText}>{message}</p> : null}
+        {selectedEmployee ? (
+          <div className={styles.selectedEmployeeContext}>
+            <span>Сонгосон ажилтан</span>
+            <strong>{selectedEmployee.name}</strong>
+            <small>
+              {selectedEmployee.departmentName || "Хэлтэс бүртгээгүй"} ·{" "}
+              {selectedEmployee.jobTitle || "Албан тушаал бүртгээгүй"}
+            </small>
+          </div>
+        ) : null}
         <div className={styles.formGrid}>
-          {fields.map((field) => (
-            <Field key={field} name={field} label={field} />
-          ))}
+          {fields.map((field) => {
+            const fieldConfig = normalizeField(field);
+            const selectedField = renderSelectedEmployeeField(fieldConfig);
+            if (selectedField) {
+              return selectedField;
+            }
+
+            if (fieldConfig.options?.length) {
+              return (
+                <label key={fieldConfig.label} className={styles.field}>
+                  <span>{fieldConfig.label}</span>
+                  <select name={fieldConfig.name} defaultValue={fieldConfig.defaultValue || ""} required={fieldConfig.required}>
+                    <option value="">Сонгох</option>
+                    {fieldConfig.options.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              );
+            }
+
+            return (
+              <Field
+                key={fieldConfig.label}
+                name={fieldConfig.name}
+                label={fieldConfig.label}
+                type={fieldConfig.type}
+                defaultValue={fieldConfig.defaultValue}
+                readOnly={fieldConfig.readOnly}
+                required={fieldConfig.required}
+              />
+            );
+          })}
         </div>
         <label className={styles.field}>
           <span>Хавсралт</span>
-          <input type="file" />
+          <input name="files" type="file" multiple />
         </label>
-        <button className={styles.primaryButton} type="button">
+        <button className={styles.primaryButton} type={submitEndpoint ? "submit" : "button"} disabled={pending}>
           <FilePlus2 aria-hidden />
-          Бүртгэл үүсгэх
+          {pending ? "Үүсгэж байна..." : submitLabel}
         </button>
-      </section>
+      </form>
     </div>
   );
 }
