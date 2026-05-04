@@ -108,7 +108,7 @@
                 <filter name="rejected" string="Татгалзсан" domain="[('state', '=', 'rejected')]"/>
                 <filter name="time_off" string="Чөлөө" domain="[('request_type', '=', 'time_off')]"/>
                 <filter name="sick" string="Өвчтэй" domain="[('request_type', '=', 'sick')]"/>
-                <group expand="0" string="Бүлэглэх">
+                <group>
                     <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>
                     <filter name="group_state" string="Төлөв" context="{'group_by': 'state'}"/>
                     <filter name="group_type" string="Төрөл" context="{'group_by': 'request_type'}"/>
