@@ -160,7 +160,7 @@ async function renderTaskReport(task: TaskDetail, credentials: { login: string; 
     `${task.name} - ажлын тайлан`,
     `<h1>Ажлын гүйцэтгэлийн тайлан</h1>
     <div class="meta">
-      <div><strong>Ажилбар:</strong> ${escapeHtml(task.name)}</div>
+      <div><strong>Даалгавар:</strong> ${escapeHtml(task.name)}</div>
       <div><strong>Төсөл/ажил:</strong> ${escapeHtml(task.projectName)}</div>
       <div><strong>Төлөв:</strong> ${escapeHtml(task.stageLabel)}</div>
       <div><strong>Явц:</strong> ${task.progress}%</div>
@@ -169,7 +169,7 @@ async function renderTaskReport(task: TaskDetail, credentials: { login: string; 
     </div>
     <h2>Төлөвлөсөн ба гүйцэтгэсэн хэмжээ</h2>
     <div class="box">${quantitySummary(task)}</div>
-    <h2>Ажилбарын тайлбар</h2>
+    <h2>Даалгаврын тайлбар</h2>
     <div class="box">${nl2br(task.description || "Тайлбар оруулаагүй.")}</div>
     <h2>Гүйцэтгэлийн тайлангууд</h2>
     ${reportsHtml}
@@ -208,12 +208,12 @@ function renderProjectReport(project: ProjectDetail) {
     </div>
     <h2>Ерөнхий тайлбар</h2>
     <div class="box">${nl2br(project.description || "Тайлбар оруулаагүй.")}</div>
-    <h2>Ажилбарууд</h2>
+    <h2>Даалгаврууд</h2>
     <table>
       <thead>
         <tr>
           <th>№</th>
-          <th>Ажилбар</th>
+          <th>Даалгавар</th>
           <th>Төлөв</th>
           <th>Явц</th>
           <th>Хариуцсан ажилтан</th>
@@ -221,7 +221,7 @@ function renderProjectReport(project: ProjectDetail) {
           <th>Тоо хэмжээ</th>
         </tr>
       </thead>
-      <tbody>${rows || '<tr><td colspan="7">Ажилбар бүртгэгдээгүй.</td></tr>'}</tbody>
+      <tbody>${rows || '<tr><td colspan="7">Даалгавар бүртгэгдээгүй.</td></tr>'}</tbody>
     </table>
     <div class="signature">
       <div>Бэлтгэсэн</div>
@@ -242,18 +242,18 @@ async function assertCanAccessTask(taskId: number, session: NonNullable<Awaited<
   });
   const directoryTask = snapshot.taskDirectory.find((item) => item.id === taskId);
   if (!directoryTask) {
-    throw new Error("Ажилбар олдсонгүй эсвэл танд харах эрх алга.");
+    throw new Error("Даалгавар олдсонгүй эсвэл танд харах эрх алга.");
   }
   const isAssigned = directoryTask.assigneeIds?.includes(session.uid) ?? false;
   if (isWorkerOnly(session) && !isAssigned) {
-    throw new Error("Ажилбар олдсонгүй эсвэл танд харах эрх алга.");
+    throw new Error("Даалгавар олдсонгүй эсвэл танд харах эрх алга.");
   }
   if (
     scopedDepartmentName &&
     !isAssigned &&
     filterByDepartment([directoryTask], scopedDepartmentName).length === 0
   ) {
-    throw new Error("Ажилбар олдсонгүй эсвэл танд харах эрх алга.");
+    throw new Error("Даалгавар олдсонгүй эсвэл танд харах эрх алга.");
   }
 }
 

@@ -42,19 +42,19 @@ async function loadScopeMeta(
   const directoryTask = snapshot.taskDirectory.find((item) => item.id === taskId);
 
   if (!directoryTask) {
-    throw new Error("Ажилбар олдсонгүй эсвэл танд харах эрх алга.");
+    throw new Error("Даалгавар олдсонгүй эсвэл танд харах эрх алга.");
   }
 
   const isAssigned = directoryTask.assigneeIds?.includes(session.uid) ?? false;
   if (isWorkerOnly(session) && !isAssigned) {
-    throw new Error("Ажилбар олдсонгүй эсвэл танд харах эрх алга.");
+    throw new Error("Даалгавар олдсонгүй эсвэл танд харах эрх алга.");
   }
   if (
     scopedDepartmentName &&
     !isAssigned &&
     filterByDepartment([directoryTask], scopedDepartmentName).length === 0
   ) {
-    throw new Error("Ажилбар олдсонгүй эсвэл танд харах эрх алга.");
+    throw new Error("Даалгавар олдсонгүй эсвэл танд харах эрх алга.");
   }
 
   return directoryTask;
@@ -69,13 +69,13 @@ export async function POST(request: Request, context: RouteContext) {
   const { id } = await context.params;
   const taskId = Number(id);
   if (!taskId || !Number.isFinite(taskId)) {
-    return Response.json({ error: "Ажилбарын дугаар буруу байна." }, { status: 400 });
+    return Response.json({ error: "Даалгаврын дугаар буруу байна." }, { status: 400 });
   }
 
   const body = (await request.json().catch(() => ({}))) as ExportRequest;
   const selectedIds = parseSelectedIds(body.selectedWorkItemIds);
   if (!selectedIds.length) {
-    return Response.json({ error: "Тайланд оруулах ажилбар сонгоно уу." }, { status: 400 });
+    return Response.json({ error: "Тайланд оруулах даалгавар сонгоно уу." }, { status: 400 });
   }
 
   try {
@@ -89,7 +89,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     if (selectedReports.length !== selectedSet.size) {
       return Response.json(
-        { error: "Сонгосон ажилбар энэ ажилд хамаарахгүй байна." },
+        { error: "Сонгосон даалгавар энэ ажилд хамаарахгүй байна." },
         { status: 400 },
       );
     }

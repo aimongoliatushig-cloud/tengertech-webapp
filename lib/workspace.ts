@@ -2791,7 +2791,7 @@ export async function loadTaskDetail(
         assigneeUserIds = Array.from(new Set([...assigneeUserIds, ...memberUserIds]));
       }
     } catch (error) {
-      console.warn("Ажилбарын багийн гишүүдийг уншиж чадсангүй.", error);
+      console.warn("Даалгаврын багийн гишүүдийг уншиж чадсангүй.", error);
     }
   }
 
@@ -3196,6 +3196,9 @@ async function createRoadCleaningWorkspaceProjectFallback(
 
   return {
     workId: projectId,
+    assignedUserIds: [employeeUserId, masterUserId].filter(
+      (userId): userId is number => Boolean(userId),
+    ),
     message: "Зам талбайн цэвэрлэгээний ажил project/task хэлбэрээр амжилттай үүслээ.",
   };
 }
@@ -3417,6 +3420,10 @@ export async function createRoadCleaningWork(
 
   return {
     workId,
+    assignedUserIds: [
+      relationId(employee.user_id) || null,
+      relationId(masterEmployee?.user_id ?? false) || null,
+    ].filter((userId): userId is number => Boolean(userId)),
     message: "Зам талбайн цэвэрлэгээний ажил амжилттай үүслээ.",
   };
 }
@@ -4221,7 +4228,7 @@ export async function notifyWorkspaceTaskReportReviewers(
     const title = "Шинэ тайлан хяналт хүлээж байна";
     const projectName = relationName(task.project_id, "Ажил");
     const note = [
-      `<p><strong>${task.name}</strong> ажилбар дээр шинэ тайлан орлоо.</p>`,
+      `<p><strong>${task.name}</strong> даалгавар дээр шинэ тайлан орлоо.</p>`,
       `<p>Ажил: ${projectName}<br/>Илгээсэн: ${reporterName}</p>`,
       `<p><a href="/tasks/${task.id}">Тайлан шалгах</a></p>`,
     ].join("");

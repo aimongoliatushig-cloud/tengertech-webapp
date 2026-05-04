@@ -19,6 +19,12 @@ const ODOO_RPC_TIMEOUT_MS =
     : DEFAULT_ODOO_RPC_TIMEOUT_MS;
 const ODOO_AUTH_CACHE_TTL_MS = 5 * 60_000;
 
+function isRoadCleaningPhotoPlaceholderTaskName(value: string) {
+  const normalized = value.trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
+
+  return normalized.includes("өмнөх зураг") || normalized.includes("дараах зураг");
+}
+
 type OdooProjectRecord = {
   id: number;
   name: string;
@@ -2791,7 +2797,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
   }
   const { uid, connection: resolvedConnection } = auth;
 
-  const [projects, tasks] = await Promise.all([
+  const [projects, rawTasks] = await Promise.all([
     searchReadAll<OdooProjectRecord>(
       uid,
       "project.project",
@@ -2813,6 +2819,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       resolvedConnection,
     ),
   ]);
+  const tasks = rawTasks.filter((task) => !isRoadCleaningPhotoPlaceholderTaskName(task.name));
 
   const reports = await searchReadAllWithFieldFallback<OdooReportRecord>(
     uid,
@@ -3202,7 +3209,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     totalTasks,
     metrics: [
       {
-        label: "Идэвхтэй ажилбар",
+        label: "Идэвхтэй даалгавар",
         value: String(activeTasks.length),
         note: `${overdueTasks.length} нь хугацаа давсан`,
         tone: overdueTasks.length ? "red" : "slate",
@@ -3216,7 +3223,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       {
         label: "Нийт гүйцэтгэл",
         value: `${completionRate}%`,
-        note: `${doneTasks.length}/${totalTasks} ажилбар дууссан`,
+        note: `${doneTasks.length}/${totalTasks} даалгавар дууссан`,
         tone: "teal",
       },
       {
@@ -3230,11 +3237,11 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       {
         label: "Чанарын анхааруулга",
         value: String(qualitySourceTasks.length),
-        note: "Талбарын гүйцэтгэл дээр засах шаардлагатай ажилбар",
+        note: "Талбарын гүйцэтгэл дээр засах шаардлагатай даалгавар",
         tone: qualitySourceTasks.length ? "red" : "teal",
       },
       {
-        label: "Зураг дутсан ажилбар",
+        label: "Зураг дутсан даалгавар",
         value: String(missingProofTasks.length),
         note: "Өмнө, дараах зураг бүрэн биш",
         tone: missingProofTasks.length ? "amber" : "teal",
@@ -3248,7 +3255,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       {
         label: "Маршрутын зөрүү",
         value: String(deviationTasks.length),
-        note: `${unresolvedQualityTasks.length} ажилбар нээлттэй цэгтэй`,
+        note: `${unresolvedQualityTasks.length} даалгавар нээлттэй цэгтэй`,
         tone: deviationTasks.length ? "amber" : "slate",
       },
     ],
@@ -3277,7 +3284,7 @@ function fallbackSnapshot(): DashboardSnapshot {
     totalTasks: 28,
     metrics: [
       {
-        label: "Идэвхтэй ажилбар",
+        label: "Идэвхтэй даалгавар",
         value: "18",
         note: "3 нь хугацаа давсан",
         tone: "red",
@@ -3291,7 +3298,7 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         label: "Нийт гүйцэтгэл",
         value: "64%",
-        note: "18/28 ажилбар дээр ахиц бүртгэгдсэн",
+        note: "18/28 даалгавар дээр ахиц бүртгэгдсэн",
         tone: "teal",
       },
       {
@@ -3305,11 +3312,11 @@ function fallbackSnapshot(): DashboardSnapshot {
       {
         label: "Чанарын анхааруулга",
         value: "5",
-        note: "Талбарын гүйцэтгэл дээр дахин хянах ажилбар",
+        note: "Талбарын гүйцэтгэл дээр дахин хянах даалгавар",
         tone: "red",
       },
       {
-        label: "Зураг дутсан ажилбар",
+        label: "Зураг дутсан даалгавар",
         value: "2",
         note: "Өмнө эсвэл дараах зураг бүрэн биш",
         tone: "amber",

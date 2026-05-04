@@ -62,7 +62,7 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
       session={session}
       procurementUser={procurementUser}
       title="Миний худалдан авалт"
-      description="Төсөл, ажилбартай холбоотой худалдан авалтын хүсэлтүүдээ нэг дэлгэцээс хянаж, шат бүрийн явцыг шууд харна."
+      description="Төсөл, даалгавартай холбоотой худалдан авалтын хүсэлтүүдээ нэг дэлгэцээс хянаж, шат бүрийн явцыг шууд харна."
       activeTab="list"
     >
       <section className={styles.overviewPanel}>

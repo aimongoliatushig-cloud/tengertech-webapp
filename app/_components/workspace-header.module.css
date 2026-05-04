@@ -1,6 +1,6 @@
 .header {
   position: relative;
-  z-index: 10;
+  z-index: 200;
   display: flex;
   min-height: 112px;
   align-items: center;
@@ -70,7 +70,7 @@
 
 .headerActions {
   position: relative;
-  z-index: 1;
+  z-index: 210;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -280,6 +280,7 @@
 
 .headerUserWrap {
   position: relative;
+  z-index: 220;
   display: inline-flex;
   min-width: 0;
 }
@@ -347,7 +348,7 @@
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
-  z-index: 40;
+  z-index: 1000;
   display: grid;
   gap: 6px;
   width: min(220px, 82vw);

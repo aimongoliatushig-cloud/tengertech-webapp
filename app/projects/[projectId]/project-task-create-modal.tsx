@@ -99,13 +99,13 @@ export function ProjectTaskCreateModal({
             >
               <div className={styles.modalHeader}>
                 <div className={styles.modalTitleGroup}>
-                  <span className={styles.eyebrow}>Шинэ ажилбар</span>
+                  <span className={styles.eyebrow}>Шинэ даалгавар</span>
                   <strong className={styles.modalTitle} id="project-task-create-title">
-                    {masterMode ? "Өнөөдрийн ажилбар нэмэх" : "Ажилбар үүсгэх"}
+                    {masterMode ? "Өнөөдрийн даалгавар нэмэх" : "Даалгавар үүсгэх"}
                   </strong>
                   <p className={styles.modalLead}>
                     Ажлын төрлөөс зөвшөөрөгдсөн хэмжих нэгжүүдээр шүүгдсэн хэлбэрээр шинэ
-                    ажилбар бүртгэнэ.
+                    даалгавар бүртгэнэ.
                   </p>
                 </div>
 
@@ -148,7 +148,7 @@ export function ProjectTaskCreateModal({
           className={`${styles.primaryButton} ${styles.createTaskTrigger}`}
           onClick={() => setIsOpen(true)}
         >
-          Ажилбар нэмэх
+          Даалгавар нэмэх
         </button>
       </div>
       {modalContent}

@@ -329,7 +329,6 @@ export function isWorkerOnly(context: RoleContext) {
     !groupFlags.fleetRepairManager &&
     !groupFlags.fleetRepairTeamLeader &&
     !groupFlags.hrManager &&
-    !groupFlags.hrUser &&
     !groupFlags.municipalHr
   );
 }

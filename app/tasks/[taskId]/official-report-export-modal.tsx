@@ -58,7 +58,7 @@ export function OfficialReportExportModal({ taskId, items }: Props) {
 
   const exportReport = (type: ExportType) => {
     if (!selectedIds.length) {
-      setMessage("Тайланд оруулах ажилбар сонгоно уу.");
+      setMessage("Тайланд оруулах даалгавар сонгоно уу.");
       return;
     }
 
@@ -113,7 +113,7 @@ export function OfficialReportExportModal({ taskId, items }: Props) {
             <div className={styles.modalHeader}>
               <div>
                 <span className={styles.kicker}>ИЛТГЭХ ХУУДАС</span>
-                <h2 id="official-report-title">Тайланд оруулах ажилбар сонгох</h2>
+                <h2 id="official-report-title">Тайланд оруулах даалгавар сонгох</h2>
               </div>
               <button
                 type="button"
@@ -125,7 +125,7 @@ export function OfficialReportExportModal({ taskId, items }: Props) {
             </div>
 
             <div className={styles.reportSelectToolbar}>
-              <strong>Сонгосон ажилбар: {selectedCount}</strong>
+              <strong>Сонгосон даалгавар: {selectedCount}</strong>
               <div className={styles.reportSelectActions}>
                 <button
                   type="button"
@@ -172,8 +172,8 @@ export function OfficialReportExportModal({ taskId, items }: Props) {
                 ))
               ) : (
                 <div className={styles.emptyState}>
-                  <h2>Ажилбар олдсонгүй</h2>
-                  <p>Энэ ажил дээр тайланд оруулах ажилбар бүртгэгдээгүй байна.</p>
+                  <h2>Даалгавар олдсонгүй</h2>
+                  <p>Энэ ажил дээр тайланд оруулах даалгавар бүртгэгдээгүй байна.</p>
                 </div>
               )}
             </div>

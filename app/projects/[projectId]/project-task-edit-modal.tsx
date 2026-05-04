@@ -71,12 +71,12 @@ export function ProjectTaskEditModal({
             >
               <div className={styles.modalHeader}>
                 <div className={styles.modalTitleGroup}>
-                  <span className={styles.eyebrow}>Ажилбар засах</span>
+                  <span className={styles.eyebrow}>Даалгавар засах</span>
                   <strong className={styles.modalTitle} id={titleId}>
-                    Ажилбар засах
+                    Даалгавар засах
                   </strong>
                   <p className={styles.modalLead}>
-                    Тухайн ажилбарын мэдээллийг шинэчилнэ.
+                    Тухайн даалгаврын мэдээллийг шинэчилнэ.
                   </p>
                 </div>
 
@@ -96,7 +96,7 @@ export function ProjectTaskEditModal({
 
                 <div className={styles.fieldRow}>
                   <div className={styles.field}>
-                    <label>Одоогийн ажилбар</label>
+                    <label>Одоогийн даалгавар</label>
                     <div className={styles.lockedFieldValue}>{taskName}</div>
                   </div>
 
@@ -107,7 +107,7 @@ export function ProjectTaskEditModal({
                 </div>
 
                 <label className={styles.field}>
-                  <span>Ажилбарын нэр</span>
+                  <span>Даалгаврын нэр</span>
                   <input name="name" defaultValue={taskName} required />
                 </label>
 

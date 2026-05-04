@@ -94,20 +94,20 @@ export default async function ReportTaskPickerPage({ params }: PageProps) {
 
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
-              title="Тайлангийн ажилбар сонгох"
-              subtitle="Сонгосон ажлын доторх ажилбаруудаас тайлангийн урсгал руу орно"
+              title="Тайлангийн даалгавар сонгох"
+              subtitle="Сонгосон ажлын доторх даалгавруудаас тайлангийн урсгал руу орно"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               notificationCount={projectTasks.length}
-              notificationNote={`${projectTasks.length} ажилбар тайлан оруулах боломжтой байна`}
+              notificationNote={`${projectTasks.length} даалгавар тайлан оруулах боломжтой байна`}
             />
 
             <section className={`${shellStyles.heroCard} ${styles.heroCard}`}>
-              <span className={shellStyles.eyebrow}>Тайлангийн ажилбар</span>
+              <span className={shellStyles.eyebrow}>Тайлангийн даалгавар</span>
               <h1>{project.name}</h1>
               <p>
-                Доорх ажилбарын аль нэгийг сонгоход тайлангийн цонх шууд нээгдэнэ. Энэ
-                дэлгэц дээр зөвхөн тайлан оруулах боломжтой ажилбарууд харагдана.
+                Доорх даалгаврын аль нэгийг сонгоход тайлангийн цонх шууд нээгдэнэ. Энэ
+                дэлгэц дээр зөвхөн тайлан оруулах боломжтой даалгаврууд харагдана.
               </p>
 
               <div className={styles.heroActions}>
@@ -123,9 +123,9 @@ export default async function ReportTaskPickerPage({ params }: PageProps) {
                   <small>Тайлан оруулах хүрээ</small>
                 </article>
                 <article className={styles.heroMetaCard}>
-                  <span>Ажилбар</span>
+                  <span>Даалгавар</span>
                   <strong>{projectTasks.length}</strong>
-                  <small>Энэ ажлын идэвхтэй ажилбар</small>
+                  <small>Энэ ажлын идэвхтэй даалгавар</small>
                 </article>
               </div>
             </section>
@@ -133,11 +133,11 @@ export default async function ReportTaskPickerPage({ params }: PageProps) {
             <section className={styles.pickerSection}>
               <div className={styles.pickerHeader}>
                 <div>
-                  <span className={shellStyles.eyebrow}>Ажилбарын жагсаалт</span>
-                  <h2>Тайлан оруулах ажилбараа сонго</h2>
+                  <span className={shellStyles.eyebrow}>Даалгаврын жагсаалт</span>
+                  <h2>Тайлан оруулах даалгавраа сонго</h2>
                 </div>
                 <p>
-                  Ажилбар дээр дарахад гүйцэтгэлийн тайлангийн цонх автоматаар нээгдэнэ.
+                  Даалгавар дээр дарахад гүйцэтгэлийн тайлангийн цонх автоматаар нээгдэнэ.
                 </p>
               </div>
 
@@ -190,9 +190,9 @@ export default async function ReportTaskPickerPage({ params }: PageProps) {
                 </div>
               ) : (
                 <div className={styles.emptyState}>
-                  <h3>Ажилбар олдсонгүй</h3>
+                  <h3>Даалгавар олдсонгүй</h3>
                   <p>
-                    Энэ ажлын идэвхтэй ажилбар одоогоор алга байна. Өөр ажлыг сонгож
+                    Энэ ажлын идэвхтэй даалгавар одоогоор алга байна. Өөр ажлыг сонгож
                     дахин орж үзнэ үү.
                   </p>
                 </div>

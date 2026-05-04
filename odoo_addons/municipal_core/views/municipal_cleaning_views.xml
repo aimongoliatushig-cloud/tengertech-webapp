@@ -130,7 +130,7 @@
             <xpath expr="//notebook" position="inside">
                 <page string="Зам талбайн гүйцэтгэл" invisible="not cleaning_area_id">
                     <group>
-                        <group string="Ажилбарын жагсаалт">
+                        <group string="Даалгаврын жагсаалт">
                             <field name="line_ids" nolabel="1">
                                 <list editable="bottom">
                                     <field name="sequence" widget="handle"/>

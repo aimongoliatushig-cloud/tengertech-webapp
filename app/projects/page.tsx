@@ -446,11 +446,11 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
     },
     {
       key: "task",
-      label: "Ажилбарын явц",
+      label: "Даалгаврын явц",
       value: averageTaskProgress,
-      note: "Нээлттэй ажилбарын бодит явц.",
+      note: "Нээлттэй даалгаврын бодит явц.",
       cardClass: styles.masterInsightsProgressCardTask,
-      unitLabel: "Ажилбар",
+      unitLabel: "Даалгавар",
     },
   ] as const;
   const statusDistribution = [
@@ -492,23 +492,23 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
       note: "Бүртгэлтэй ажил",
     },
     {
-      label: "Нийт ажилбар",
+      label: "Нийт даалгавар",
       value: String(scopedTasks.length),
-      note: "Бүх ажилбарын нийлбэр",
+      note: "Бүх даалгаврын нийлбэр",
     },
     {
-      label: "Нээлттэй ажилбар",
+      label: "Нээлттэй даалгавар",
       value: String(totalOpenTaskCount),
-      note: "Хаагдаагүй ажилбар",
+      note: "Хаагдаагүй даалгавар",
     },
   ] as const;
   const progressGap = averageTaskProgress - averageProjectCompletion;
   const progressGapLabel =
     progressGap === 0
-      ? "Ажил, ажилбарын явц ижил түвшинд байна."
+      ? "Ажил, даалгаврын явц ижил түвшинд байна."
       : progressGap > 0
-        ? `Ажилбарын явц ажлынхаас ${progressGap}% өндөр байна.`
-        : `Ажлын явц ажилбарынхаас ${Math.abs(progressGap)}% өндөр байна.`;
+        ? `Даалгаврын явц ажлынхаас ${progressGap}% өндөр байна.`
+        : `Ажлын явц даалгаврынхаас ${Math.abs(progressGap)}% өндөр байна.`;
   const buildScopedListHref = (filter: ProjectFilterKey) => {
     const hrefParams = new URLSearchParams();
     if (selectedGroup?.name) {
@@ -567,7 +567,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
       label: "Хугацаа хэтэрсэн",
       value: String(overdueProjectsCount),
       delta: formatShare(overdueProjectsCount, scopedProjects.length),
-      note: "Хугацаа өнгөрсөн ажилбартай ажил",
+      note: "Хугацаа өнгөрсөн даалгавартай ажил",
       icon: "!",
       tone: styles.summaryCardUrgent,
       href: buildScopedListHref("all"),
@@ -613,24 +613,24 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   const selectionReturnTo = `/projects${selectionParams.toString() ? `?${selectionParams.toString()}` : ""}`;
   const quickActionMessage =
     quickActionMode === "task"
-      ? "Эхлээд ажил сонгоод тухайн ажлын дотор шинэ ажилбар нэмнэ."
+      ? "Эхлээд ажил сонгоод тухайн ажлын дотор шинэ даалгавар нэмнэ."
       : quickActionMode === "report"
-        ? "Эхлээд ажил сонгоод, дараа нь ажилбар дээрээс тайлан оруулна."
+        ? "Эхлээд ажил сонгоод, дараа нь даалгавар дээрээс тайлан оруулна."
         : "";
   const sectionNote =
     quickActionMode === "task"
-      ? "Ажил сонгоод дармагц ажилбар нэмэх цонх руу орно."
+      ? "Ажил сонгоод дармагц даалгавар нэмэх цонх руу орно."
       : quickActionMode === "report"
-        ? "Ажил сонгоод доторх ажилбараас тайлан оруулах урсгал руу орно."
+        ? "Ажил сонгоод доторх даалгавраас тайлан оруулах урсгал руу орно."
         : masterMode
-          ? "Ажил дээр дарахад тухайн ажлаас шинэ ажилбар нээх болон өнөөдрийн урсгал руу орно."
-          : "Ажил дээр дарахад тухайн ажлын ажилбарууд нээгдэнэ";
+          ? "Ажил дээр дарахад тухайн ажлаас шинэ даалгавар нээх болон өнөөдрийн урсгал руу орно."
+          : "Ажил дээр дарахад тухайн ажлын даалгаврууд нээгдэнэ";
   const projectCardLabel =
     quickActionMode === "task"
-      ? "Энэ ажил дээр ажилбар нэмэх"
+      ? "Энэ ажил дээр даалгавар нэмэх"
       : quickActionMode === "report"
-        ? "Ажилбар сонгох"
-        : "Ажлын ажилбар харах";
+        ? "Даалгавар сонгох"
+        : "Ажлын даалгавар харах";
   const buildProjectHref = (projectHref: string) => {
     if (quickActionMode === "none") {
       return projectHref;
@@ -870,7 +870,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                         <span className={styles.masterInsightsKicker}>Явцын диаграм</span>
                         <h3>Нэгжийн ажлын зураг</h3>
                         <p>
-                          Ажил, ажилбарын явц болон төлөвийн бүтцийг нэг дор харуулна.
+                          Ажил, даалгаврын явц болон төлөвийн бүтцийг нэг дор харуулна.
                         </p>
                       </div>
 
@@ -968,7 +968,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                       <span className={styles.masterInsightsStoryKicker}>Өнөөдрийн зураг</span>
                       <h3>{selectedDepartmentName}</h3>
                       <p>
-                        Ачаалал, хяналтын шат, нээлттэй ажилбарын байдлыг товч харуулна.
+                        Ачаалал, хяналтын шат, нээлттэй даалгаврын байдлыг товч харуулна.
                       </p>
 
                       <div className={styles.masterInsightsStoryList}>
@@ -987,9 +987,9 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                           </span>
                         </div>
                         <div className={styles.masterInsightsStoryItem}>
-                          <strong>Ажилбарын ачаалал</strong>
+                          <strong>Даалгаврын ачаалал</strong>
                           <span>
-                            {scopedTasks.length} ажилбараас {totalOpenTaskCount} нь нээлттэй байна.
+                            {scopedTasks.length} даалгавраас {totalOpenTaskCount} нь нээлттэй байна.
                           </span>
                         </div>
                       </div>
@@ -1000,7 +1000,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                           <strong>{totalOpenTaskCount}</strong>
                         </div>
                         <div className={styles.masterInsightsStoryStat}>
-                          <span>Нийт ажилбар</span>
+                          <span>Нийт даалгавар</span>
                           <strong>{scopedTasks.length}</strong>
                         </div>
                         <div className={styles.masterInsightsStoryStat}>
@@ -1113,7 +1113,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
 
                           <div className={styles.reviewMeta}>
                             <strong>{project.openTasks}</strong>
-                            <span>Нээлттэй ажилбар</span>
+                            <span>Нээлттэй даалгавар</span>
                             <span>{project.deadline}</span>
                           </div>
 

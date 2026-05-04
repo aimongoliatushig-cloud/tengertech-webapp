@@ -603,7 +603,7 @@ export function NewWorkForm({
         ? "Зам талбайн цэвэрлэгээ"
       : "Ерөнхий ажил";
   const formModeDescription = isGarbageTransport
-    ? "Машин, маршрут, огноо сонгоход ажил болон маршрутын цэгүүдийн ажилбар автоматаар үүснэ."
+    ? "Машин, маршрут, огноо сонгоход ажил болон маршрутын цэгүүдийн даалгавар автоматаар үүснэ."
     : isSeasonalGarbage
       ? "Хорооны байрлал, машин, тонн, ажиллах өдрүүдээр олон мөрийн төлөвлөгөө үүсгэнэ."
       : isRoadAreaCleaning
@@ -924,8 +924,8 @@ export function NewWorkForm({
 
             <p className={styles.helperNote}>
               Сонгосон машин, байршил, огноогоор нэг ажил үүснэ. Тухайн байршлын хог ачих цэг
-              бүр ажил дотор тусдаа ажилбар болж автоматаар үүснэ. Нэмэлт байршлууд мөн тусдаа
-              ажилбар болж нэмэгдэнэ.
+              бүр ажил дотор тусдаа даалгавар болж автоматаар үүснэ. Нэмэлт байршлууд мөн тусдаа
+              даалгавар болж нэмэгдэнэ.
             </p>
             <p className={styles.helperNote}>
               Огноо: <strong>{formatDateLabel(shiftDate)}</strong>
@@ -1230,7 +1230,7 @@ export function NewWorkForm({
           <div className={styles.optionalSection}>
             <span className={styles.formBadge}>Ажилтан ба цэвэрлэх талбай</span>
             <p className={styles.fieldHint}>
-              Мөр бүр тусдаа ажил болж үүснэ. Тухайн ажил дотор default ажилбарууд автоматаар нэмэгдэнэ.
+              Мөр бүр тусдаа ажил болж үүснэ. Тухайн ажил дотор default даалгаврууд автоматаар нэмэгдэнэ.
             </p>
 
             {roadCleaningLines.map((line, index) => {
@@ -1412,8 +1412,8 @@ export function NewWorkForm({
           </div>
 
           <div className={styles.optionalSection}>
-            <span className={styles.formBadge}>Автоматаар үүсэх ажилбарууд</span>
-            <p className={styles.fieldHint}>Эдгээр ажилбарууд автоматаар үүснэ.</p>
+            <span className={styles.formBadge}>Автоматаар үүсэх даалгаврууд</span>
+            <p className={styles.fieldHint}>Эдгээр даалгаврууд автоматаар үүснэ.</p>
             <div className={styles.attachmentPreviewGrid}>
               {ROAD_CLEANING_DEFAULT_LINES.map((line) => (
                 <div className={styles.attachmentPreviewItem} key={line}>

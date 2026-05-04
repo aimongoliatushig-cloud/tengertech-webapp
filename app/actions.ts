@@ -423,6 +423,7 @@ export async function createProjectAction(formData: FormData) {
 
     try {
       let createdCount = 0;
+      const assignedRoadCleaningUserIds = new Set<number>();
       for (const line of roadCleaningLines) {
         let cleaningAreaId = line.cleaningAreaId;
 
@@ -444,7 +445,7 @@ export async function createProjectAction(formData: FormData) {
           throw new Error("Цэвэрлэх талбай болон хариуцсан ажилтны мөр бүрийг бүрэн сонгоно уу.");
         }
 
-        await createRoadCleaningWork(
+        const createdWork = await createRoadCleaningWork(
           {
             cleaningAreaId,
             areaName: line.areaName || line.newAreaName,
@@ -455,7 +456,23 @@ export async function createProjectAction(formData: FormData) {
           },
           connectionOverrides,
         );
+        for (const userId of createdWork.assignedUserIds ?? []) {
+          assignedRoadCleaningUserIds.add(userId);
+        }
         createdCount += 1;
+      }
+
+      if (assignedRoadCleaningUserIds.size) {
+        await notifyPushQuietly({
+          eventType: "new_work_assigned",
+          title: "Шинэ ажил оноогдлоо",
+          body:
+            createdCount > 1
+              ? `${createdCount} зам талбайн цэвэрлэгээний ажил танд оноогдлоо.`
+              : "Зам талбайн цэвэрлэгээний ажил танд оноогдлоо.",
+          targetUrl: "/tasks",
+          userIds: Array.from(assignedRoadCleaningUserIds),
+        });
       }
 
       revalidatePath("/");
@@ -503,7 +520,7 @@ export async function createProjectAction(formData: FormData) {
       let extraLocationMessage = "";
       const assignmentMessage =
         assignmentResult?.assignedTaskCount
-          ? ` ${assignmentResult.assignedTaskCount} ажилбар багт оноогдлоо.`
+          ? ` ${assignmentResult.assignedTaskCount} даалгавар багт оноогдлоо.`
           : "";
 
       if (additionalLocations.length) {
@@ -530,7 +547,7 @@ export async function createProjectAction(formData: FormData) {
             createdLocationCount += 1;
           }
 
-          extraLocationMessage = ` Нэмэлт ${createdLocationCount} байршил ажилбар болж нэмэгдлээ.`;
+          extraLocationMessage = ` Нэмэлт ${createdLocationCount} байршил даалгавар болж нэмэгдлээ.`;
         } catch (error) {
           extraLocationMessage =
             createdLocationCount > 0
@@ -869,7 +886,7 @@ export async function createTaskAction(formData: FormData) {
       redirectWithMessage(
         `/projects/${projectId}`,
         "error",
-        "Танд энэ ажил дээр ажилбар нэмэх эрх нээгдээгүй байна.",
+        "Танд энэ ажил дээр даалгавар нэмэх эрх нээгдээгүй байна.",
         "#task-create-form",
       );
     }
@@ -928,7 +945,7 @@ export async function createTaskAction(formData: FormData) {
           unitLabel = createdUnit.name;
           validUnitIds.add(createdUnit.id);
         } catch (error) {
-          console.warn("Хэмжих нэгж үүсгэх эрхгүй тул нэрийг ажилбарын тайлбарт хадгална.", error);
+          console.warn("Хэмжих нэгж үүсгэх эрхгүй тул нэрийг даалгаврын тайлбарт хадгална.", error);
           measurementUnitId = null;
           unitLabel = newUnitName;
         }
@@ -1078,14 +1095,14 @@ export async function updateTaskAction(formData: FormData) {
     redirectWithMessage(
       target,
       "error",
-      "Ажилбар засахад шаардлагатай мэдээлэл дутуу байна.",
+      "Даалгавар засахад шаардлагатай мэдээлэл дутуу байна.",
     );
   }
 
   try {
     const session = await requireSession();
     if (!hasCapability(session, "create_tasks")) {
-      redirectWithMessage(target, "error", "Танд ажилбар засах эрх байхгүй байна.");
+      redirectWithMessage(target, "error", "Танд даалгавар засах эрх байхгүй байна.");
     }
 
     const connectionOverrides = {
@@ -1107,7 +1124,7 @@ export async function updateTaskAction(formData: FormData) {
     revalidatePath("/tasks");
     revalidatePath(`/projects/${projectId}`);
     revalidatePath(`/tasks/${taskId}`);
-    redirect(`${target}?notice=${encodeURIComponent("Ажилбар амжилттай шинэчлэгдлээ.")}`);
+    redirect(`${target}?notice=${encodeURIComponent("Даалгавар амжилттай шинэчлэгдлээ.")}`);
   } catch (error) {
     rethrowIfRedirectError(error);
     redirectWithMessage(target, "error", getErrorMessage(error));
@@ -1123,14 +1140,14 @@ export async function deleteTaskAction(formData: FormData) {
     redirectWithMessage(
       target,
       "error",
-      "Ажилбар устгахад шаардлагатай мэдээлэл дутуу байна.",
+      "Даалгавар устгахад шаардлагатай мэдээлэл дутуу байна.",
     );
   }
 
   try {
     const session = await requireSession();
     if (!hasCapability(session, "create_tasks")) {
-      redirectWithMessage(target, "error", "Танд ажилбар устгах эрх байхгүй байна.");
+      redirectWithMessage(target, "error", "Танд даалгавар устгах эрх байхгүй байна.");
     }
 
     await deleteWorkspaceTask(taskId, {
@@ -1142,7 +1159,7 @@ export async function deleteTaskAction(formData: FormData) {
     revalidatePath("/projects");
     revalidatePath("/tasks");
     revalidatePath(`/projects/${projectId}`);
-    redirect(`${target}?notice=${encodeURIComponent("Ажилбар устгагдлаа.")}`);
+    redirect(`${target}?notice=${encodeURIComponent("Даалгавар устгагдлаа.")}`);
   } catch (error) {
     rethrowIfRedirectError(error);
     redirectWithMessage(target, "error", getErrorMessage(error));
@@ -1196,6 +1213,7 @@ export async function generateSeasonalExecutionAction(formData: FormData) {
 export async function createTaskReportAction(formData: FormData) {
   const taskId = Number(String(formData.get("task_id") ?? ""));
   const reportText = String(formData.get("report_text") ?? "").trim();
+  const workItemName = String(formData.get("report_work_item_name") ?? "").trim();
   const quantityRaw = String(formData.get("reported_quantity") ?? "").trim();
   const reportedQuantity = quantityRaw ? Number(quantityRaw) : 0;
   const quantityLineValues = formData
@@ -1204,6 +1222,8 @@ export async function createTaskReportAction(formData: FormData) {
   const quantityLineUnits = formData
     .getAll("reported_quantity_unit")
     .map((value) => String(value).trim());
+  const beforeImageFiles = getUploadedFiles(formData, "report_before_images");
+  const afterImageFiles = getUploadedFiles(formData, "report_after_images");
   const imageUploads = getTaskReportImageUploads(formData);
   const imageFiles = imageUploads.map((upload) => upload.file);
   const audioFiles = getUploadedFiles(formData, "report_audios");
@@ -1211,6 +1231,12 @@ export async function createTaskReportAction(formData: FormData) {
 
   if (!taskId || !reportText) {
     redirect(`${reportPath}?error=${encodeURIComponent("Тайлангийн текстээ оруулна уу.")}`);
+  }
+
+  if (!beforeImageFiles.length || !afterImageFiles.length) {
+    redirect(
+      `${reportPath}?error=${encodeURIComponent("Өмнөх зураг болон дараах зургийг заавал оруулна уу.")}`,
+    );
   }
 
   if (imageFiles.some((file) => file.type && !file.type.startsWith("image/"))) {
@@ -1263,6 +1289,7 @@ export async function createTaskReportAction(formData: FormData) {
     const odooReportedQuantity =
       firstLineQuantity ?? (quantityRaw && reportedQuantity > 0 ? reportedQuantity : 1);
     const effectiveReportText = [
+      workItemName ? `Даалгавар: ${workItemName}` : "",
       quantityLineSummaries.length
         ? `Гүйцэтгэсэн хэмжээ:\n${quantityLineSummaries.join("\n")}`
         : "",
@@ -1299,13 +1326,16 @@ export async function createTaskReportAction(formData: FormData) {
       connectionOverrides,
     );
 
+    await sendWorkspaceTaskReportToReview(taskId, { forceComplete: true }, connectionOverrides);
+    await notifyWorkspaceTaskReportReviewers(taskId, session.name, connectionOverrides);
+
     revalidatePath("/");
     revalidatePath("/projects");
     revalidatePath("/notifications");
     revalidatePath("/review");
     revalidatePath("/reports");
     revalidatePath(`/tasks/${taskId}`);
-    redirect(`/tasks/${taskId}?notice=${encodeURIComponent("Тайлан амжилттай хадгалагдлаа.")}`);
+    redirect(`/tasks/${taskId}?notice=${encodeURIComponent("Тайлан илгээгдэж, хяналт руу орлоо.")}`);
   } catch (error) {
     rethrowIfRedirectError(error);
     redirect(`${reportPath}?error=${encodeURIComponent(getErrorMessage(error))}`);

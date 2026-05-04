@@ -34,7 +34,7 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
       session={session}
       procurementUser={procurementUser}
       title="Шинэ худалдан авалтын хүсэлт"
-      description="Төсөл эсвэл ажилбартай шууд холбож, шаардлагатай бараа, үйлчилгээ, сэлбэгийн хэрэгцээг хурдан бүртгэнэ."
+      description="Төсөл эсвэл даалгавартай шууд холбож, шаардлагатай бараа, үйлчилгээ, сэлбэгийн хэрэгцээг хурдан бүртгэнэ."
       activeTab="new"
     >
       <section className={styles.overviewPanel}>
@@ -75,7 +75,7 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
             <div className={styles.sectionHeader}>
               <div>
                 <h2>Суурь мэдээлэл</h2>
-                <p>Гарчиг, төсөл, ажилбар, алба нэгж, хариуцсан нярав, огноо зэрэг анхны мэдээллээ оруулна.</p>
+                <p>Гарчиг, төсөл, даалгавар, алба нэгж, хариуцсан нярав, огноо зэрэг анхны мэдээллээ оруулна.</p>
               </div>
             </div>
             <div className={styles.formGrid}>
@@ -95,7 +95,7 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
                 </select>
               </label>
               <label className={styles.fieldLabel}>
-                Ажилбар
+                Даалгавар
                 <select name="task_id" defaultValue="">
                   <option value="">Сонгох</option>
                   {meta.tasks.map((task) => (
