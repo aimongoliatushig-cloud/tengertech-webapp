@@ -41,6 +41,57 @@ type OdooDictionaryRecord = {
   manager_id?: OdooRelation;
 };
 
+type HrTransferHistorySearchRecord = {
+  id: number;
+  employee_id?: OdooRelation;
+  date?: string | false;
+  old_department_id?: OdooRelation;
+  new_department_id?: OdooRelation;
+  old_job_id?: OdooRelation;
+  new_job_id?: OdooRelation;
+  old_manager_id?: OdooRelation;
+  new_manager_id?: OdooRelation;
+  note?: string | false;
+};
+
+type HrAttachmentSearchRecord = {
+  id: number;
+  name?: string | false;
+};
+
+type HrEmployeeTransferSnapshot = {
+  department_id?: OdooRelation;
+  job_id?: OdooRelation;
+  parent_id?: OdooRelation;
+};
+
+type HrEmployeeSingleSearchRecord = {
+  id: number;
+  name?: string | false;
+  active?: boolean;
+  department_id?: OdooRelation;
+  job_id?: OdooRelation;
+  job_title?: string | false;
+  work_phone?: string | false;
+  mobile_phone?: string | false;
+  work_email?: string | false;
+  user_id?: OdooRelation;
+  image_128?: string | false;
+  avatar_128?: string | false;
+  parent_id?: OdooRelation;
+  contract_date_start?: string | false;
+  contract_date_end?: string | false;
+  sex?: string | false;
+  certificate?: string | false;
+  x_mn_employee_code?: string | false;
+  x_mn_grade_rank?: string | false;
+  x_mn_employment_status?: string | false;
+  x_mn_missing_document_count?: number | false;
+  x_mn_performance_score?: number | false;
+  x_mn_task_completion_percent?: number | false;
+  x_mn_discipline_score?: number | false;
+};
+
 type HrEmployeeDirectoryApiRecord = {
   id: number;
   name?: string;
@@ -88,6 +139,21 @@ type HrTimeoffRequestSearchRecord = {
   reviewed_by?: OdooRelation;
   approved_by?: OdooRelation;
   rejected_by?: OdooRelation;
+  attachment_ids?: number[];
+};
+
+type HrDisciplineSearchRecord = {
+  id: number;
+  employee_id?: OdooRelation;
+  department_id?: OdooRelation;
+  violation_type?: string | false;
+  violation_date?: string | false;
+  action_type?: string | false;
+  state?: string | false;
+  repeated?: boolean;
+  repeated_violation_count?: number | false;
+  explanation?: string | false;
+  employee_explanation?: string | false;
   attachment_ids?: number[];
 };
 
@@ -176,6 +242,26 @@ export type HrTimeoffDashboardData = {
   latestRequests: HrTimeoffRequest[];
 };
 
+export type HrDisciplineRecord = {
+  id: number;
+  employeeId: number | null;
+  employeeName: string;
+  departmentId: number | null;
+  departmentName: string;
+  violationType: string;
+  violationTypeLabel: string;
+  violationDate: string;
+  actionType: string;
+  actionTypeLabel: string;
+  state: string;
+  stateLabel: string;
+  repeated: boolean;
+  repeatedViolationCount: number;
+  explanation: string;
+  employeeExplanation: string;
+  hasAttachment: boolean;
+};
+
 export type HrLeaveItem = {
   id: number;
   employeeId: number | null;
@@ -213,6 +299,41 @@ export type HrEmployeeCreateInput = {
   note?: string;
 };
 
+export type HrEmployeeTransferInput = {
+  employeeId: number;
+  newDepartmentId?: number;
+  newJobId?: number;
+  newManagerId?: number;
+  effectiveDate: string;
+  reason: string;
+  files?: File[];
+};
+
+export type HrEmployeeTerminationInput = {
+  employeeId: number;
+  terminationDate: string;
+  reason: string;
+  note?: string;
+  files?: File[];
+};
+
+export type HrEmployeeTransferRecord = {
+  id: number;
+  employeeId: number;
+  employeeName: string;
+  date: string;
+  oldDepartmentName: string;
+  newDepartmentName: string;
+  oldJobName: string;
+  newJobName: string;
+  oldManagerName: string;
+  newManagerName: string;
+  note: string;
+  attachmentId?: number;
+  attachmentName?: string;
+  attachmentUrl?: string;
+};
+
 export type HrLeaveCreateInput = {
   employeeId: number;
   leaveTypeId?: number;
@@ -244,6 +365,8 @@ export type HrDisciplineCreateInput = {
   employeeExplanation?: string;
   files?: File[];
 };
+
+export type HrDisciplineUpdateInput = HrDisciplineCreateInput;
 
 type HrLeaveAttachmentInput = {
   name: string;
@@ -340,6 +463,68 @@ function mapHrEmployeeDirectoryApiRecord(record: HrEmployeeDirectoryApiRecord): 
     kpiScore: Number(record.kpiScore || 0),
     taskCompletionPercent: Number(record.taskCompletionPercent || 0),
     disciplineScore: Number(record.disciplineScore || 0),
+  };
+}
+
+function resolveDirectEmployeeStatus(record: HrEmployeeSingleSearchRecord) {
+  if (record.active === false) {
+    return { key: "archived", label: "Архивласан" };
+  }
+
+  const key = record.x_mn_employment_status || "active";
+  const labels: Record<string, string> = {
+    active: "Идэвхтэй",
+    probation: "Туршилт",
+    leave: "Чөлөөтэй",
+    sick: "Өвчтэй",
+    business_trip: "Томилолттой",
+    suspended: "Түдгэлзсэн",
+    terminated: "Чөлөөлөгдсөн",
+    resigned: "Ажлаас гарсан",
+    archived: "Архивласан",
+    rehired: "Дахин авсан",
+  };
+
+  return { key, label: labels[key] ?? "Идэвхтэй" };
+}
+
+function resolveDirectEmployeeGenderLabel(value?: string | false) {
+  const labels: Record<string, string> = {
+    male: "Эрэгтэй",
+    female: "Эмэгтэй",
+    other: "Бусад",
+  };
+  return value ? (labels[value] ?? value) : "";
+}
+
+function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): HrEmployeeDirectoryItem {
+  const status = resolveDirectEmployeeStatus(record);
+
+  return {
+    id: record.id,
+    name: record.name || `Ажилтан #${record.id}`,
+    active: record.active !== false,
+    departmentId: getRelationId(record.department_id),
+    departmentName: getRelationName(record.department_id, "Хэлтэсгүй"),
+    jobTitle: getRelationName(record.job_id) || record.job_title || "Албан тушаал бүртгээгүй",
+    workPhone: record.work_phone || "",
+    mobilePhone: record.mobile_phone || "",
+    workEmail: record.work_email || "",
+    userName: getRelationName(record.user_id),
+    photoUrl: imageDataUrlFromBase64(record.image_128 || record.avatar_128),
+    employeeCode: record.x_mn_employee_code || `EMP-${String(record.id).padStart(5, "0")}`,
+    gradeRank: record.x_mn_grade_rank || "",
+    statusKey: status.key,
+    statusLabel: status.label,
+    managerName: getRelationName(record.parent_id),
+    startDate: record.contract_date_start || "",
+    contractEndDate: record.contract_date_end || "",
+    genderLabel: resolveDirectEmployeeGenderLabel(record.sex),
+    educationLevel: record.certificate || "",
+    missingDocumentCount: Number(record.x_mn_missing_document_count || 0),
+    kpiScore: Number(record.x_mn_performance_score || 0),
+    taskCompletionPercent: Number(record.x_mn_task_completion_percent || 0),
+    disciplineScore: Number(record.x_mn_discipline_score || 0),
   };
 }
 
@@ -448,8 +633,11 @@ export async function getHrAccessProfile(session: AppSession) {
   if (ADMIN_ROLES.has(String(session.role))) {
     reasons.push("admin");
   }
-  if (session.groupFlags?.hrManager) {
-    reasons.push("Odoo HR manager group");
+  if (HR_ROLE_KEYS.has(String(session.role))) {
+    reasons.push("session role");
+  }
+  if (session.groupFlags?.hrUser || session.groupFlags?.hrManager || session.groupFlags?.municipalHr) {
+    reasons.push("HR group flag");
   }
 
   const [employee, user] = await Promise.all([readCurrentEmployee(session), readCurrentUser(session)]);
@@ -554,6 +742,14 @@ export async function requireHrSpecialistAccess(session: AppSession) {
   return profile;
 }
 
+export async function requireDepartmentHeadTimeoffRequestAccess(session: AppSession) {
+  const profile = await requireHrAccess(session);
+  if (profile.isHr || !profile.isDepartmentHead) {
+    throw new Error("HR_TIMEOFF_REQUESTER_ONLY");
+  }
+  return profile;
+}
+
 function scopeEmployeesForProfile(employees: HrEmployeeDirectoryItem[], profile: Awaited<ReturnType<typeof getHrAccessProfile>>) {
   if (profile.isHr) {
     return employees;
@@ -600,7 +796,59 @@ export async function getEmployees(session: AppSession) {
 
 export async function getEmployee(session: AppSession, id: number) {
   const employees = await getEmployees(session);
-  return employees.find((employee) => employee.id === id) ?? null;
+  const listedEmployee = employees.find((employee) => employee.id === id);
+  if (listedEmployee) {
+    return listedEmployee;
+  }
+
+  const profile = await requireHrAccess(session);
+  const desiredFields = [
+    "name",
+    "active",
+    "department_id",
+    "job_id",
+    "job_title",
+    "work_phone",
+    "mobile_phone",
+    "work_email",
+    "user_id",
+    "image_128",
+    "avatar_128",
+    "parent_id",
+    "contract_date_start",
+    "contract_date_end",
+    "sex",
+    "certificate",
+    "x_mn_employee_code",
+    "x_mn_grade_rank",
+    "x_mn_employment_status",
+    "x_mn_missing_document_count",
+    "x_mn_performance_score",
+    "x_mn_task_completion_percent",
+    "x_mn_discipline_score",
+  ];
+  const fields = await getAvailableFields("hr.employee", desiredFields, session);
+
+  const records = await executeOdooKw<HrEmployeeSingleSearchRecord[]>(
+    "hr.employee",
+    "search_read",
+    [[["id", "=", id]]],
+    {
+      fields,
+      limit: 1,
+      context: { active_test: false },
+    },
+    getConnection(session),
+  ).catch((error) => {
+    console.warn(`HR employee ${id} could not be loaded directly:`, error);
+    return [];
+  });
+  const employee = records[0] ? mapHrEmployeeSingleSearchRecord(records[0]) : null;
+  if (!employee) {
+    return null;
+  }
+
+  return scopeEmployeesForProfile([employee], profile)[0] ?? null;
 }
 
 export async function getDepartments(session: AppSession): Promise<HrOption[]> {
@@ -960,6 +1208,264 @@ async function filesToAttachments(files?: File[]): Promise<HrLeaveAttachmentInpu
   return attachments;
 }
 
+async function attachFilesToEmployee(
+  session: AppSession,
+  employeeId: number,
+  attachments: HrLeaveAttachmentInput[],
+  prefix: string,
+) {
+  for (const attachment of attachments) {
+    await executeOdooKw<number>(
+      "ir.attachment",
+      "create",
+      [
+        {
+          name: `${prefix} - ${attachment.name}`,
+          datas: attachment.datas,
+          res_model: "hr.employee",
+          res_id: employeeId,
+          mimetype: attachment.mimetype,
+        },
+      ],
+      {},
+      getConnection(session),
+    );
+  }
+}
+
+async function attachFilesToTransferHistory(
+  session: AppSession,
+  historyId: number,
+  attachments: HrLeaveAttachmentInput[],
+  prefix: string,
+) {
+  const ids: number[] = [];
+  for (const attachment of attachments) {
+    const attachmentId = await executeOdooKw<number>(
+      "ir.attachment",
+      "create",
+      [
+        {
+          name: `${prefix} - ${attachment.name}`,
+          datas: attachment.datas,
+          res_model: "hr.custom.mn.employee.history",
+          res_id: historyId,
+          mimetype: attachment.mimetype,
+        },
+      ],
+      {},
+      getConnection(session),
+    );
+    ids.push(attachmentId);
+  }
+  return ids;
+}
+
+function normalizeTransferHistory(
+  record: HrTransferHistorySearchRecord,
+  attachmentsByHistoryId: Map<number, HrAttachmentSearchRecord[]>,
+): HrEmployeeTransferRecord {
+  const attachments = attachmentsByHistoryId.get(record.id) ?? [];
+  const firstAttachment = attachments[0];
+  return {
+    id: record.id,
+    employeeId: getRelationId(record.employee_id) || 0,
+    employeeName: getRelationName(record.employee_id, "Ажилтан бүртгээгүй"),
+    date: String(record.date || "").slice(0, 10),
+    oldDepartmentName: getRelationName(record.old_department_id, "-"),
+    newDepartmentName: getRelationName(record.new_department_id, "-"),
+    oldJobName: getRelationName(record.old_job_id, "-"),
+    newJobName: getRelationName(record.new_job_id, "-"),
+    oldManagerName: getRelationName(record.old_manager_id, "-"),
+    newManagerName: getRelationName(record.new_manager_id, "-"),
+    note: String(record.note || ""),
+    attachmentId: firstAttachment?.id,
+    attachmentName: firstAttachment?.name || (firstAttachment ? `Хавсралт #${firstAttachment.id}` : ""),
+    attachmentUrl: firstAttachment ? `/api/odoo/attachments/${firstAttachment.id}` : "",
+  };
+}
+
+async function readEmployeeTransferSnapshot(session: AppSession, employeeId: number) {
+  const fields = await getAvailableFields("hr.employee", ["department_id", "job_id", "parent_id"], session);
+  const records = await executeOdooKw<HrEmployeeTransferSnapshot[]>(
+    "hr.employee",
+    "search_read",
+    [[["id", "=", employeeId]]],
+    { fields, limit: 1, context: { active_test: false } },
+    getConnection(session),
+  );
+  return records[0] ?? {};
+}
+
+export async function getEmployeeTransfers(session: AppSession): Promise<HrEmployeeTransferRecord[]> {
+  await requireHrSpecialistAccess(session);
+  const records = await executeOdooKw<HrTransferHistorySearchRecord[]>(
+    "hr.custom.mn.employee.history",
+    "search_read",
+    [[["action_type", "=", "transfer"]]],
+    {
+      fields: [
+        "employee_id",
+        "date",
+        "old_department_id",
+        "new_department_id",
+        "old_job_id",
+        "new_job_id",
+        "old_manager_id",
+        "new_manager_id",
+        "note",
+      ],
+      order: "date desc, id desc",
+      limit: 300,
+    },
+    getConnection(session),
+  ).catch((error) => {
+    console.warn("HR transfer history could not be loaded:", error);
+    return [];
+  });
+  const historyIds = records.map((record) => record.id);
+  const attachments = historyIds.length
+    ? await executeOdooKw<Array<HrAttachmentSearchRecord & { res_id?: number }>>(
+        "ir.attachment",
+        "search_read",
+        [[["res_model", "=", "hr.custom.mn.employee.history"], ["res_id", "in", historyIds]]],
+        { fields: ["name", "res_id"], order: "id asc" },
+        getConnection(session),
+      ).catch((error) => {
+        console.warn("HR transfer history attachments could not be loaded:", error);
+        return [];
+      })
+    : [];
+  const attachmentsByHistoryId = new Map<number, HrAttachmentSearchRecord[]>();
+  for (const attachment of attachments) {
+    if (!attachment.res_id) continue;
+    const list = attachmentsByHistoryId.get(attachment.res_id) ?? [];
+    list.push({ id: attachment.id, name: attachment.name });
+    attachmentsByHistoryId.set(attachment.res_id, list);
+  }
+  return records.map((record) => normalizeTransferHistory(record, attachmentsByHistoryId));
+}
+
+function ensureDateOrder(value: string, label: string) {
+  if (!value) {
+    throw new Error(`${label} заавал оруулна уу.`);
+  }
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`${label} зөв огноо биш байна.`);
+  }
+}
+
+export async function createEmployeeTransfer(session: AppSession, data: HrEmployeeTransferInput) {
+  await requireHrSpecialistAccess(session);
+  if (!data.employeeId) {
+    throw new Error("Ажилтан заавал сонгоно уу.");
+  }
+  if (!data.newDepartmentId && !data.newJobId && !data.newManagerId) {
+    throw new Error("Шинэ хэлтэс, албан тушаал эсвэл удирдлагаас дор хаяж нэгийг сонгоно уу.");
+  }
+  ensureDateOrder(data.effectiveDate, "Хүчинтэй огноо");
+  if (!data.reason.trim()) {
+    throw new Error("Шалтгаан заавал оруулна уу.");
+  }
+
+  const [employee, oldSnapshot] = await Promise.all([
+    getEmployee(session, data.employeeId),
+    readEmployeeTransferSnapshot(session, data.employeeId),
+  ]);
+  const fields = new Set(await getAvailableFields("hr.employee", ["department_id", "job_id", "parent_id"], session));
+  const values: Record<string, unknown> = {};
+  if (fields.has("department_id") && data.newDepartmentId) values.department_id = data.newDepartmentId;
+  if (fields.has("job_id") && data.newJobId) values.job_id = data.newJobId;
+  if (fields.has("parent_id") && data.newManagerId) values.parent_id = data.newManagerId;
+
+  if (Object.keys(values).length) {
+    await executeOdooKw<boolean>("hr.employee", "write", [[data.employeeId], values], {}, getConnection(session));
+  }
+
+  const attachments = await filesToAttachments(data.files);
+  const [updatedEmployee, newSnapshot] = await Promise.all([
+    getEmployee(session, data.employeeId),
+    readEmployeeTransferSnapshot(session, data.employeeId),
+  ]);
+  const historyId = await executeOdooKw<number>(
+    "hr.custom.mn.employee.history",
+    "create",
+    [
+      {
+        employee_id: data.employeeId,
+        action_type: "transfer",
+        date: `${data.effectiveDate} 00:00:00`,
+        old_department_id: getRelationId(oldSnapshot.department_id) || false,
+        new_department_id: getRelationId(newSnapshot.department_id) || false,
+        old_job_id: getRelationId(oldSnapshot.job_id) || false,
+        new_job_id: getRelationId(newSnapshot.job_id) || false,
+        old_manager_id: getRelationId(oldSnapshot.parent_id) || false,
+        new_manager_id: getRelationId(newSnapshot.parent_id) || false,
+        note: data.reason,
+      },
+    ],
+    {},
+    getConnection(session),
+  );
+  await attachFilesToTransferHistory(session, historyId, attachments, `Шилжилт хөдөлгөөн ${data.effectiveDate}`);
+  await attachFilesToEmployee(session, data.employeeId, attachments, `Шилжилт хөдөлгөөн ${data.effectiveDate}`);
+
+  return {
+    id: historyId,
+    employeeId: data.employeeId,
+    employeeName: employee?.name || "Ажилтан",
+    date: data.effectiveDate,
+    oldDepartmentName: employee?.departmentName || "-",
+    newDepartmentName: updatedEmployee?.departmentName || "-",
+    oldJobName: employee?.jobTitle || "-",
+    newJobName: updatedEmployee?.jobTitle || "-",
+    oldManagerName: employee?.managerName || "-",
+    newManagerName: updatedEmployee?.managerName || "-",
+    note: data.reason,
+  };
+}
+
+export async function terminateEmployee(session: AppSession, data: HrEmployeeTerminationInput) {
+  await requireHrSpecialistAccess(session);
+  if (!data.employeeId) {
+    throw new Error("Ажилтан заавал сонгоно уу.");
+  }
+  ensureDateOrder(data.terminationDate, "Ажлаас гарсан огноо");
+  if (!data.reason.trim()) {
+    throw new Error("Ажлаас гарах шалтгаан заавал оруулна уу.");
+  }
+
+  const fields = new Set(
+    await getAvailableFields(
+      "hr.employee",
+      ["active", "departure_date", "departure_description"],
+      session,
+    ),
+  );
+  const values: Record<string, unknown> = {};
+  if (fields.has("active")) values.active = false;
+  if (fields.has("departure_date")) values.departure_date = data.terminationDate;
+  if (fields.has("departure_description")) {
+    values.departure_description = [data.reason, data.note].filter(Boolean).join("\n");
+  }
+
+  if (!Object.keys(values).length) {
+    throw new Error("Odoo дээр ажилтныг архивлах талбар олдсонгүй.");
+  }
+
+  await executeOdooKw<boolean>("hr.employee", "write", [[data.employeeId], values], {}, getConnection(session));
+  const attachments = await filesToAttachments(data.files);
+  await attachFilesToEmployee(
+    session,
+    data.employeeId,
+    attachments,
+    `Ажлаас чөлөөлөх ${data.terminationDate}`,
+  );
+
+  return getEmployee(session, data.employeeId);
+}
+
 function normalizeTimeoffRequest(record: Partial<HrTimeoffRequest>): HrTimeoffRequest {
   return {
     id: Number(record.id || 0),
@@ -1240,14 +1746,104 @@ export async function getDisciplineViolationOptions(session: AppSession): Promis
   ];
 }
 
+function disciplineStateLabel(state: string) {
+  switch (state) {
+    case "draft":
+      return "Хүчинтэй";
+    case "hr_review":
+      return "Хүний нөөцийн хяналт";
+    case "manager_review":
+      return "Менежерийн хяналт";
+    case "employee_explanation":
+      return "Ажилтны тайлбар";
+    case "admin_review":
+      return "Захиргааны хяналт";
+    case "approved":
+      return "Хүчинтэй";
+    case "archived":
+      return "Архивласан";
+    case "cancelled":
+      return "Цуцлагдсан";
+    default:
+      return state || "Тодорхойгүй";
+  }
+}
+
+export async function getDisciplineRecords(session: AppSession): Promise<HrDisciplineRecord[]> {
+  await requireHrAccess(session);
+  const [violationOptions, actionOptions] = await Promise.all([
+    getDisciplineViolationOptions(session),
+    getDisciplineActionOptions(session),
+  ]);
+  const violationLabels = new Map(violationOptions.map((option) => [option.id, option.name]));
+  const actionLabels = new Map(actionOptions.map((option) => [option.id, option.name]));
+
+  return executeOdooKw<HrDisciplineSearchRecord[]>(
+    "municipal.discipline",
+    "search_read",
+    [[["state", "!=", "cancelled"]]],
+    {
+      fields: [
+        "employee_id",
+        "department_id",
+        "violation_type",
+        "violation_date",
+        "action_type",
+        "state",
+        "repeated",
+        "repeated_violation_count",
+        "explanation",
+        "employee_explanation",
+        "attachment_ids",
+      ],
+      order: "violation_date desc, id desc",
+      limit: 300,
+    },
+    getConnection(session),
+  )
+    .then((records) =>
+      records.map((record) => {
+        const violationType = String(record.violation_type || "");
+        const actionType = String(record.action_type || "");
+        const state = String(record.state || "approved") === "draft" ? "approved" : String(record.state || "approved");
+        return {
+          id: record.id,
+          employeeId: getRelationId(record.employee_id),
+          employeeName: getRelationName(record.employee_id, "Ажилтан бүртгээгүй"),
+          departmentId: getRelationId(record.department_id),
+          departmentName: getRelationName(record.department_id, "Хэлтэс бүртгээгүй"),
+          violationType,
+          violationTypeLabel: violationLabels.get(violationType) || (violationType === "attendance" ? "Ирц" : violationType) || "Тодорхойгүй",
+          violationDate: String(record.violation_date || ""),
+          actionType,
+          actionTypeLabel: actionLabels.get(actionType) || actionType || "Тодорхойгүй",
+          state,
+          stateLabel: disciplineStateLabel(state),
+          repeated: Boolean(record.repeated),
+          repeatedViolationCount: Number(record.repeated_violation_count || 0),
+          explanation: String(record.explanation || ""),
+          employeeExplanation: String(record.employee_explanation || ""),
+          hasAttachment: Boolean(record.attachment_ids?.length),
+        };
+      }),
+    )
+    .catch((error) => {
+      console.warn("HR discipline records could not be loaded:", error);
+      return [];
+    });
+}
+
 export async function createDiscipline(session: AppSession, data: HrDisciplineCreateInput) {
   await requireHrSpecialistAccess(session);
   const attachments = await filesToAttachments(data.files);
+  const currentUser = await readCurrentUser(session).catch(() => null);
   const values: Record<string, unknown> = {
     employee_id: data.employeeId,
     violation_type: data.violationType,
     violation_date: data.violationDate,
     action_type: data.actionType,
+    state: "approved",
+    approved_by: currentUser?.id || false,
     explanation: data.explanation || false,
     employee_explanation: data.employeeExplanation || false,
   };
@@ -1264,39 +1860,119 @@ export async function createDiscipline(session: AppSession, data: HrDisciplineCr
     getConnection(session),
   );
 
-  if (attachments.length) {
-    const attachmentIds: number[] = [];
-    for (const attachment of attachments) {
-      const attachmentId = await executeOdooKw<number>(
-        "ir.attachment",
-        "create",
-        [
-          {
-            name: attachment.name,
-            datas: attachment.datas,
-            res_model: "municipal.discipline",
-            res_id: disciplineId,
-            mimetype: attachment.mimetype,
-          },
-        ],
-        {},
-        getConnection(session),
-      );
-      attachmentIds.push(attachmentId);
-    }
-
-    if (attachmentIds.length) {
-      await executeOdooKw<boolean>(
-        "municipal.discipline",
-        "write",
-        [[disciplineId], { attachment_ids: attachmentIds.map((id) => [4, id]) }],
-        {},
-        getConnection(session),
-      );
-    }
-  }
+  await attachFilesToDiscipline(session, disciplineId, attachments);
 
   return { id: disciplineId };
+}
+
+export async function updateDiscipline(session: AppSession, disciplineId: number, data: HrDisciplineUpdateInput) {
+  await requireHrSpecialistAccess(session);
+  const attachments = await filesToAttachments(data.files);
+  const currentUser = await readCurrentUser(session).catch(() => null);
+  const values: Record<string, unknown> = {
+    employee_id: data.employeeId,
+    violation_type: data.violationType,
+    violation_date: data.violationDate,
+    action_type: data.actionType,
+    state: "approved",
+    approved_by: currentUser?.id || false,
+    explanation: data.explanation || false,
+    employee_explanation: data.employeeExplanation || false,
+  };
+
+  if (data.actionType === "deduction" || data.actionType.includes("20")) {
+    values.deduction_percent = 20;
+  } else {
+    values.deduction_percent = 0;
+  }
+
+  await executeOdooKw<boolean>(
+    "municipal.discipline",
+    "write",
+    [[disciplineId], values],
+    {},
+    getConnection(session),
+  );
+  await attachFilesToDiscipline(session, disciplineId, attachments);
+
+  return { id: disciplineId };
+}
+
+export async function deleteDiscipline(session: AppSession, disciplineId: number) {
+  await requireHrSpecialistAccess(session);
+  try {
+    await executeOdooKw<boolean>(
+      "municipal.discipline",
+      "unlink",
+      [[disciplineId]],
+      {},
+      getConnection(session),
+    );
+  } catch (error) {
+    if (!isOdooAccessError(error)) {
+      throw error;
+    }
+    await executeOdooKw<boolean>(
+      "municipal.discipline",
+      "write",
+      [[disciplineId], { state: "cancelled" }],
+      {},
+      getConnection(session),
+    );
+  }
+  return { id: disciplineId };
+}
+
+function isOdooAccessError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  const normalized = message.toLocaleLowerCase("en-US");
+  return (
+    normalized.includes("access denied") ||
+    normalized.includes("access error") ||
+    normalized.includes("not allowed") ||
+    normalized.includes("эрх хүрэлцэхгүй") ||
+    normalized.includes("зөвшөөрөгдөөгүй")
+  );
+}
+
+async function attachFilesToDiscipline(
+  session: AppSession,
+  disciplineId: number,
+  attachments: Awaited<ReturnType<typeof filesToAttachments>>,
+) {
+  if (!attachments.length) {
+    return;
+  }
+
+  const attachmentIds: number[] = [];
+  for (const attachment of attachments) {
+    const attachmentId = await executeOdooKw<number>(
+      "ir.attachment",
+      "create",
+      [
+        {
+          name: attachment.name,
+          datas: attachment.datas,
+          res_model: "municipal.discipline",
+          res_id: disciplineId,
+          mimetype: attachment.mimetype,
+        },
+      ],
+      {},
+      getConnection(session),
+    );
+    attachmentIds.push(attachmentId);
+  }
+
+  if (attachmentIds.length) {
+    await executeOdooKw<boolean>(
+      "municipal.discipline",
+      "write",
+      [[disciplineId], { attachment_ids: attachmentIds.map((id) => [4, id]) }],
+      {},
+      getConnection(session),
+    );
+  }
 }
 
 function isMissingTimeoffModelError(error: unknown) {
@@ -1430,7 +2106,7 @@ export async function getTimeoffDashboard(session: AppSession): Promise<HrTimeof
 }
 
 export async function createTimeoffRequest(session: AppSession, data: HrTimeoffRequestCreateInput) {
-  await requireHrAccess(session);
+  await requireDepartmentHeadTimeoffRequestAccess(session);
   const attachments = await filesToAttachments(data.files);
   if (data.submit && !attachments.length) {
     throw new Error("Хүсэлт илгээхийн тулд хавсралтын зураг заавал оруулна уу.");
@@ -1464,7 +2140,7 @@ export async function createTimeoffRequest(session: AppSession, data: HrTimeoffR
 }
 
 export async function updateTimeoffRequest(session: AppSession, requestId: number, data: HrTimeoffRequestCreateInput) {
-  await requireHrAccess(session);
+  await requireDepartmentHeadTimeoffRequestAccess(session);
   const attachments = await filesToAttachments(data.files);
   try {
     const result = await executeOdooKw<Partial<HrTimeoffRequest>>(
@@ -1503,7 +2179,7 @@ export async function actionTimeoffRequest(
   if (action === "approve" || action === "reject" || action === "hr_review") {
     await requireHrSpecialistAccess(session);
   } else {
-    await requireHrAccess(session);
+    await requireDepartmentHeadTimeoffRequestAccess(session);
   }
   const result = await executeOdooKw<Partial<HrTimeoffRequest>>(
     "municipal.hr.timeoff.request",

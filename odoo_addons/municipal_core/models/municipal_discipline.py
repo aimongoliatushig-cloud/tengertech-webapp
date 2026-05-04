@@ -124,7 +124,7 @@ class MunicipalDiscipline(models.Model):
             ("cancelled", "Цуцлагдсан"),
         ],
         string="Төлөв",
-        default="draft",
+        default="approved",
         required=True,
         tracking=True,
     )
@@ -140,6 +140,14 @@ class MunicipalDiscipline(models.Model):
         default=lambda self: self.env.company,
         required=True,
     )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            vals.setdefault("state", "approved")
+            if vals.get("state") == "approved" and not vals.get("approved_by"):
+                vals["approved_by"] = self.env.user.id
+        return super().create(vals_list)
 
     def write(self, vals):
         self._check_employee_self_service_write(vals)

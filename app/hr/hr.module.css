@@ -5,7 +5,16 @@
   margin-bottom: 16px;
 }
 
+.chartGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
 .statCard,
+.chartPanel,
+.detailPanel,
 .panel,
 .formPanel,
 .actionPanel,
@@ -22,6 +31,25 @@
   gap: 12px;
   min-height: 148px;
   padding: 16px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.statCard:hover,
+.statCardSelected {
+  border-color: rgba(46, 125, 50, 0.38);
+  box-shadow: 0 16px 34px rgba(46, 125, 50, 0.14);
+  transform: translateY(-1px);
+}
+
+.statCardSelected {
+  outline: 2px solid rgba(46, 125, 50, 0.18);
 }
 
 .statIcon {
@@ -37,6 +65,8 @@
 .statIcon svg,
 .actionButton svg,
 .primaryButton svg,
+.secondaryButton svg,
+.dangerButton svg,
 .checklist svg,
 .searchBox svg {
   width: 18px;
@@ -69,24 +99,243 @@
 }
 
 .actionPanel,
+.chartPanel,
+.detailPanel,
 .panel,
 .formPanel,
 .accessDenied {
   padding: 18px;
 }
 
+.chartPanel,
 .actionPanel {
   display: grid;
   gap: 16px;
 }
 
+.chartPanel {
+  align-content: start;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chartPanel h2,
 .actionPanel h2,
 .panel h2,
 .formPanel h2 {
   margin: 3px 0 0;
   color: #1f2b25;
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   line-height: 1.2;
+}
+
+.chartBody {
+  display: grid;
+  grid-template-columns: minmax(120px, 150px) minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+
+.chartFigure {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chartFigure > strong {
+  color: #26342d;
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.chartSideStack {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pieChart,
+.donutChart {
+  position: relative;
+  display: grid;
+  width: min(150px, 100%);
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--chart-gradient);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55), 0 18px 32px rgba(35, 92, 49, 0.16);
+  overflow: hidden;
+  transform-origin: center;
+  animation: chartReveal 720ms cubic-bezier(0.2, 0.85, 0.2, 1) both;
+}
+
+.pieChart::before,
+.donutChart::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: conic-gradient(transparent 0deg 350deg, rgba(255, 255, 255, 0.72) 350deg 360deg);
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+.donutChart::after {
+  content: "";
+  position: absolute;
+  inset: 26%;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: inset 0 0 0 1px rgba(46, 125, 50, 0.08);
+}
+
+.chartCenter {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  text-align: center;
+  text-shadow: 0 1px 8px rgba(20, 32, 23, 0.3);
+}
+
+.donutChart .chartCenter {
+  color: #18261d;
+  text-shadow: none;
+}
+
+.chartCenter span {
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.chartCenter strong {
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.chartLegend {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chartLegendRow {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  align-items: start;
+  gap: 4px 7px;
+  color: #2c3a31;
+  font-size: 0.74rem;
+  line-height: 1.25;
+}
+
+.chartLegendRow span {
+  width: 8px;
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 50%;
+}
+
+.chartLegendRow em {
+  overflow: hidden;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chartLegendRow strong {
+  grid-column: 2;
+  justify-self: start;
+  font-size: 0.72rem;
+}
+
+.chartTopList {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 8px;
+  background: rgba(238, 247, 239, 0.72);
+}
+
+.chartTopListHeader {
+  display: grid;
+  gap: 3px;
+  color: #1f2b25;
+  font-size: 0.74rem;
+  line-height: 1.25;
+}
+
+.chartTopListHeader span,
+.chartTopList p {
+  margin: 0;
+  color: #66766b;
+  font-size: 0.7rem;
+}
+
+.chartTopRow {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px 7px;
+  min-height: 34px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  color: #203029;
+  text-decoration: none;
+}
+
+.chartTopRow:hover {
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.chartTopRow > span {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 999px;
+  background: #2e7d32;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.chartTopRow div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.chartTopRow strong,
+.chartTopRow small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chartTopRow strong {
+  font-size: 0.74rem;
+}
+
+.chartTopRow small,
+.chartTopRow em {
+  color: #66766b;
+  font-size: 0.68rem;
+}
+
+.chartTopRow em {
+  grid-column: 2;
+  justify-self: start;
+  font-style: normal;
+  font-weight: 850;
+  white-space: nowrap;
 }
 
 .actionGrid {
@@ -97,7 +346,9 @@
 
 .actionButton,
 .primaryLink,
-.primaryButton {
+.primaryButton,
+.secondaryButton,
+.dangerButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -198,6 +449,70 @@
   color: #1f7a35;
   font-weight: 850;
   text-decoration: none;
+}
+
+.detailPanel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.detailList {
+  display: grid;
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 8px;
+  background: rgba(247, 251, 247, 0.7);
+}
+
+.detailRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(46, 125, 50, 0.1);
+  color: #203029;
+  text-decoration: none;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.detailRow:last-child {
+  border-bottom: 0;
+}
+
+.detailRow:hover {
+  background: rgba(218, 238, 219, 0.6);
+  color: #1f7a35;
+}
+
+.detailRow span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.detailRow strong,
+.detailRow small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailRow small,
+.detailRow em {
+  color: #66766b;
+  font-size: 0.82rem;
+}
+
+.detailRow em {
+  justify-self: end;
+  font-style: normal;
+  font-weight: 800;
+  text-align: right;
 }
 
 .statusPill {
@@ -431,6 +746,30 @@
   text-decoration: none;
 }
 
+.secondaryButton {
+  background: #eef7ef;
+  color: #1f7a35;
+}
+
+.dangerButton {
+  background: #fff1ee;
+  border-color: rgba(184, 62, 36, 0.18);
+  color: #b43f24;
+}
+
+.recordActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.recordActions .secondaryButton,
+.recordActions .dangerButton {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 0.78rem;
+}
+
 .employeeRowLink:hover,
 .employeeRowLink:focus-visible {
   border-color: rgba(46, 125, 50, 0.34);
@@ -478,6 +817,11 @@
 .twoColumn {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  gap: 16px;
+}
+
+.singleColumn {
+  display: grid;
   gap: 16px;
 }
 
@@ -654,7 +998,27 @@
   line-height: 1.6;
 }
 
+@keyframes chartReveal {
+  from {
+    opacity: 0;
+    transform: scale(0.88) rotate(-16deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
 @media (max-width: 1280px) {
+  .chartGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .chartBody {
+    grid-template-columns: minmax(170px, 240px) minmax(0, 1fr);
+  }
+
   .statGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -671,6 +1035,7 @@
 
 @media (max-width: 760px) {
   .statGrid,
+  .chartGrid,
   .actionGrid,
   .toolbar,
   .formGrid,
@@ -698,5 +1063,35 @@
 
   .statCard {
     min-height: 0;
+  }
+
+  .chartBody,
+  .detailRow {
+    grid-template-columns: 1fr;
+  }
+
+  .pieChart,
+  .donutChart {
+    justify-self: center;
+    max-width: 220px;
+  }
+
+  .detailRow em {
+    justify-self: start;
+    text-align: left;
+  }
+
+  .chartTopListHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .chartTopRow {
+    grid-template-columns: 26px minmax(0, 1fr);
+  }
+
+  .chartTopRow em {
+    grid-column: 2;
+    justify-self: start;
   }
 }

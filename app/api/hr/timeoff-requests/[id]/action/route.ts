@@ -43,6 +43,9 @@ export async function POST(
     if (error instanceof Error && error.message === "HR_ACCESS_DENIED") {
       return jsonError("Энэ үйлдлийг хийх HR эрх хүрэлцэхгүй байна.", 403);
     }
+    if (error instanceof Error && error.message === "HR_TIMEOFF_REQUESTER_ONLY") {
+      return jsonError("Зөвхөн хэлтсийн дарга өөрийн илгээсэн хүсэлтийг цуцлах боломжтой.", 403);
+    }
     console.error("POST /api/hr/timeoff-requests/[id]/action failed:", error);
     return jsonError(errorMessage(error));
   }

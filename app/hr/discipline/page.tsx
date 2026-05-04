@@ -1,6 +1,13 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { getRoleLabel, requireSession } from "@/lib/auth";
-import { getDisciplineActionOptions, getDisciplineViolationOptions, getEmployee, requireHrAccess } from "@/lib/hr";
+import {
+  getDisciplineActionOptions,
+  getDisciplineRecords,
+  getDisciplineViolationOptions,
+  getEmployees,
+  getEmployee,
+  requireHrAccess,
+} from "@/lib/hr";
 
 import { HrSectionNav } from "../hr-section-nav";
 import { RegistryPage } from "../hr-client";
@@ -21,10 +28,32 @@ export default async function HrDisciplinePage({ searchParams }: PageProps) {
   const selectedEmployee = Number.isFinite(selectedEmployeeId)
     ? await getEmployee(session, selectedEmployeeId).catch(() => null)
     : null;
-  const [actionOptions, violationOptions] = await Promise.all([
+  const [actionOptions, violationOptions, disciplineRecords, employees] = await Promise.all([
     getDisciplineActionOptions(session),
     getDisciplineViolationOptions(session),
+    getDisciplineRecords(session),
+    getEmployees(session),
   ]);
+  const employeeById = new Map(employees.map((employee) => [employee.id, employee]));
+  const registryRecords = disciplineRecords.map((record) => ({
+    id: record.id,
+    employeeId: record.employeeId,
+    employeeName: record.employeeName,
+    employeeHref: record.employeeId ? `/hr/employees/${record.employeeId}` : "",
+    departmentId: record.departmentId,
+    departmentName: record.departmentName,
+    jobTitle: record.employeeId ? employeeById.get(record.employeeId)?.jobTitle || "" : "",
+    violationType: record.violationType,
+    violationTypeLabel: record.violationTypeLabel,
+    violationDate: record.violationDate,
+    actionType: record.actionType,
+    actionTypeLabel: record.actionTypeLabel,
+    explanation: record.explanation,
+    employeeExplanation: record.employeeExplanation,
+    stateLabel: record.stateLabel,
+    repeatedLabel: record.repeated ? `Давтан (${record.repeatedViolationCount})` : "Үгүй",
+    hasAttachmentLabel: record.hasAttachment ? "Байгаа" : "Байхгүй",
+  }));
 
   return (
     <>
@@ -33,6 +62,7 @@ export default async function HrDisciplinePage({ searchParams }: PageProps) {
         subtitle="Ажил үүрэг, чанар, тайлан, хариуцлага, аюулгүй ажиллагаа болон бусад HR сахилгын бүртгэл"
         userName={session.name}
         roleLabel={getRoleLabel(session.role)}
+        notificationCount={disciplineRecords.length}
         notificationNote="Сахилгын бүртгэл"
       />
       <HrSectionNav />
@@ -53,6 +83,19 @@ export default async function HrDisciplinePage({ searchParams }: PageProps) {
         submitEndpoint="/api/hr/discipline"
         submitLabel="Сахилгын бүртгэл үүсгэх"
         successMessage="Сахилгын бүртгэл үүсгэгдлээ."
+        records={registryRecords}
+        columns={[
+          { key: "employeeName", label: "Ажилтан", hrefKey: "employeeHref" },
+          { key: "departmentName", label: "Хэлтэс" },
+          { key: "violationTypeLabel", label: "Зөрчлийн төрөл" },
+          { key: "violationDate", label: "Огноо" },
+          { key: "actionTypeLabel", label: "Авсан арга хэмжээ" },
+          { key: "stateLabel", label: "Төлөв" },
+          { key: "repeatedLabel", label: "Давтан" },
+          { key: "hasAttachmentLabel", label: "Хавсралт" },
+        ]}
+        createAnchorLabel="Сахилгын бүртгэл үүсгэх"
+        allowRecordActions
       />
     </>
   );

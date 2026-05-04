@@ -7,6 +7,7 @@ import {
   FileText,
   HeartPulse,
   LayoutDashboard,
+  ShieldAlert,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -19,6 +20,7 @@ const hrItems = [
   { href: "/hr/employees/new", label: "Шинэ ажилтан бүртгэх", icon: UserPlus },
   { href: "/hr/leaves", label: "Ирсэн хүсэлтүүд", icon: CalendarDays },
   { href: "/hr/sick", label: "Чөлөө / өвчтэй хүсэлтүүд", icon: HeartPulse },
+  { href: "/hr/discipline", label: "Сахилгын бүртгэл", icon: ShieldAlert },
   { href: "/hr/reports", label: "Тайлан", icon: FileText },
 ];
 

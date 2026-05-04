@@ -89,6 +89,12 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === "HR_ACCESS_DENIED") {
       return jsonError("Танд хүний нөөцийн хэсэгт хандах эрх байхгүй байна.", 403);
     }
+    if (error instanceof Error && error.message === "HR_TIMEOFF_REQUESTER_ONLY") {
+      return jsonError(
+        "Зөвхөн хэлтсийн дарга өөрийн хэлтсийн ажилтанд чөлөө / өвчтэй хүсэлт илгээх боломжтой. Хүний нөөцийн мэргэжилтэн зөвхөн ирсэн хүсэлтийг хянаж батална эсвэл татгалзана.",
+        403,
+      );
+    }
     console.error("POST /api/hr/timeoff-requests failed:", error);
     return jsonError(errorMessage(error));
   }

@@ -1,20 +1,12 @@
 import Link from "next/link";
-import {
-  Activity,
-  Archive,
-  ClipboardPlus,
-  FileCheck2,
-  FileWarning,
-  HeartPulse,
-  ShieldAlert,
-  Users,
-} from "lucide-react";
+import { Archive, ClipboardPlus, HeartPulse, Users } from "lucide-react";
 
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { getRoleLabel, requireSession } from "@/lib/auth";
-import { getEmployees, getHrStats, getTimeoffDashboard, requireHrAccess } from "@/lib/hr";
+import { getDisciplineRecords, getEmployees, getTimeoffDashboard, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
+import { HrDashboardClient } from "./hr-dashboard-client";
 import { HrSectionNav } from "./hr-section-nav";
 import styles from "./hr.module.css";
 
@@ -84,26 +76,7 @@ export default async function HrDashboardPage() {
   if (!access) {
     return null;
   }
-  const [stats, employees, timeoffDashboard] = await Promise.all([
-    getHrStats(session).catch((error) => {
-      console.warn("HR dashboard stats could not be loaded:", error);
-      return {
-        totalEmployees: 0,
-        activeEmployees: 0,
-        leaveToday: 0,
-        sickToday: 0,
-        businessTripToday: 0,
-        newEmployees: 0,
-        resignedEmployees: 0,
-        archivedEmployees: 0,
-        activeDiscipline: 0,
-        completedDiscipline: 0,
-        transfers: 0,
-        expiringContracts: 0,
-        missingAttachmentEmployees: 0,
-        pendingClearance: 0,
-      };
-    }),
+  const [employees, timeoffDashboard, timeoffRequests, disciplineRecords] = await Promise.all([
     getEmployees(session).catch((error) => {
       console.warn("HR dashboard employee groups could not be loaded:", error);
       return [];
@@ -112,19 +85,17 @@ export default async function HrDashboardPage() {
       console.warn("HR time off dashboard could not be loaded:", error);
       return null;
     }),
+    getTimeoffRequests(session).catch((error) => {
+      console.warn("HR time off requests could not be loaded:", error);
+      return [];
+    }),
+    getDisciplineRecords(session).catch((error) => {
+      console.warn("HR discipline records could not be loaded:", error);
+      return [];
+    }),
   ]);
   const mode = access.isHr ? "hr" : "department";
   const requestCards = timeoffDashboard?.cards;
-
-  const cards = [
-    { label: "Нийт ажилтан", value: requestCards?.totalEmployees ?? stats.totalEmployees, icon: Users, note: access.isHr ? "Бүх хэлтэс" : "Миний хэлтэс" },
-    { label: "Идэвхтэй", value: requestCards?.activeEmployees ?? stats.activeEmployees, icon: Activity, note: "Өнөөдрийн динамик төлөв" },
-    { label: "Чөлөөтэй", value: requestCards?.timeOffEmployees ?? stats.leaveToday, icon: ClipboardPlus, note: "Батлагдсан хүсэлт хүчинтэй" },
-    { label: "Өвчтэй", value: requestCards?.sickEmployees ?? stats.sickToday, icon: HeartPulse, note: "Батлагдсан өвчтэй хүсэлт" },
-    { label: "Хүлээгдэж буй хүсэлт", value: requestCards?.pendingRequests ?? 0, icon: FileWarning, note: "Илгээсэн / HR шалгаж байна" },
-    { label: "Батлагдсан", value: requestCards?.approvedRequests ?? 0, icon: FileCheck2, note: "HR баталсан" },
-    { label: "Татгалзсан", value: requestCards?.rejectedRequests ?? 0, icon: ShieldAlert, note: "HR татгалзсан" },
-  ];
 
   return (
     <>
@@ -138,23 +109,13 @@ export default async function HrDashboardPage() {
       />
       <HrSectionNav mode={mode} />
 
-      <section className={styles.statGrid}>
-        {cards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <article key={card.label} className={styles.statCard}>
-              <span className={styles.statIcon}>
-                <Icon aria-hidden />
-              </span>
-              <div>
-                <small>{card.label}</small>
-                <strong>{card.value}</strong>
-                <p>{card.note}</p>
-              </div>
-            </article>
-          );
-        })}
-      </section>
+      <HrDashboardClient
+        accessMode={mode}
+        employees={employees}
+        requests={timeoffRequests}
+        dashboard={timeoffDashboard}
+        disciplineRecords={disciplineRecords}
+      />
 
       <DepartmentManpower employees={employees} />
 

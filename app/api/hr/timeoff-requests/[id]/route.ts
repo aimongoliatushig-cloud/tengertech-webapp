@@ -60,6 +60,12 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     if (error instanceof Error && error.message === "HR_ACCESS_DENIED") {
       return jsonError("Танд хүний нөөцийн хэсэгт хандах эрх байхгүй байна.", 403);
     }
+    if (error instanceof Error && error.message === "HR_TIMEOFF_REQUESTER_ONLY") {
+      return jsonError(
+        "Зөвхөн хэлтсийн дарга өөрийн илгээсэн чөлөө / өвчтэй хүсэлтийг эцсийн шийдвэр гарахаас өмнө засах боломжтой.",
+        403,
+      );
+    }
     console.error("PATCH /api/hr/timeoff-requests/[id] failed:", error);
     return jsonError(error instanceof Error ? error.message : "Хүсэлт засахад алдаа гарлаа.");
   }

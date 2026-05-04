@@ -3,7 +3,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, FilePlus2, Search } from "lucide-react";
+import { Check, FilePlus2, Pencil, Search, Trash2 } from "lucide-react";
 
 import type { HrLeaveItem, HrOption, HrSelectionOption, HrTimeoffRequest } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
@@ -20,7 +20,9 @@ function isErrorMessage(message: string) {
     normalized.includes("хүрэлцэхгүй") ||
     normalized.includes("зөвшөөрөгдөхгүй") ||
     normalized.includes("боломжгүй") ||
-    normalized.includes("шаардлагатай")
+    normalized.includes("шаардлагатай") ||
+    normalized.includes("заавал") ||
+    normalized.includes("хавсралт")
   );
 }
 
@@ -37,6 +39,14 @@ export type RegistryField =
       required?: boolean;
       options?: RegistryOption[];
     };
+
+type RegistryRecord = Record<string, string | number | boolean | null | undefined>;
+
+export type RegistryColumn = {
+  key: string;
+  label: string;
+  hrefKey?: string;
+};
 
 function statusLabel(employee: HrEmployeeDirectoryItem) {
   if (!employee.active || employee.statusKey === "archived") {
@@ -451,22 +461,33 @@ export function TimeoffRequestsClient({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setPending(true);
+    const form = event.currentTarget;
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     setMessage("");
-    const formData = new FormData(event.currentTarget);
+    const formData = new FormData(form);
+    const intent = submitter?.value || String(formData.get("intent") || "submit");
+    if (submitter?.name && !formData.has(submitter.name)) {
+      formData.set(submitter.name, intent);
+    }
+    const hasNewAttachment = formData.getAll("files").some((value) => value instanceof File && value.size > 0);
+    if (intent !== "draft" && !editingRequest?.hasAttachment && !hasNewAttachment) {
+      setMessage("Хүсэлт илгээхийн тулд хавсралтын зураг заавал оруулна уу.");
+      return;
+    }
+    setPending(true);
     try {
       const response = await fetch(
         editingRequest ? `/api/hr/timeoff-requests/${editingRequest.id}` : "/api/hr/timeoff-requests",
         { method: editingRequest ? "PATCH" : "POST", body: formData },
       );
-      const payload = await response.json();
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
       if (!response.ok) {
         throw new Error(payload.error || "Хүсэлт илгээхэд алдаа гарлаа.");
       }
       setMessage(editingRequest ? "Хүсэлт шинэчлэгдлээ." : formData.get("intent") === "draft" ? "Ноорог хадгалагдлаа." : "Хүсэлт HR-д илгээгдлээ.");
       setEditingRequest(null);
       router.refresh();
-      event.currentTarget.reset();
+      form.reset();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Хүсэлт илгээхэд алдаа гарлаа.");
     } finally {
@@ -497,7 +518,7 @@ export function TimeoffRequestsClient({
   }
 
   return (
-    <div className={styles.twoColumn}>
+    <div className={mode === "hr" ? styles.singleColumn : styles.twoColumn}>
       <section className={styles.panel}>
         <div className={styles.sectionHeader}>
           <div>
@@ -594,8 +615,10 @@ export function TimeoffRequestsClient({
         ) : null}
       </section>
 
+      {mode === "department" ? (
       <form key={editingRequest?.id ?? "new"} className={styles.formPanel} onSubmit={submit} noValidate>
         <h2>{editingRequest ? "Хүсэлт засах" : "Чөлөө / өвчтэй хүсэлт"}</h2>
+        {message ? <p className={isErrorMessage(message) ? styles.errorText : styles.successText}>{message}</p> : null}
         {!editingRequest && selectedEmployee ? (
           <div className={styles.selectedEmployeeContext}>
             <span>Сонгосон ажилтан</span>
@@ -654,6 +677,7 @@ export function TimeoffRequestsClient({
           ) : null}
         </div>
       </form>
+      ) : null}
     </div>
   );
 }
@@ -811,6 +835,10 @@ export function RegistryPage({
   submitEndpoint,
   submitLabel = "Бүртгэл үүсгэх",
   successMessage = "Бүртгэл үүсгэгдлээ.",
+  records = [],
+  columns = [],
+  createAnchorLabel = "Шинэ бүртгэл үүсгэх",
+  allowRecordActions = false,
 }: {
   title: string;
   description: string;
@@ -820,10 +848,17 @@ export function RegistryPage({
   submitEndpoint?: string;
   submitLabel?: string;
   successMessage?: string;
+  records?: RegistryRecord[];
+  columns?: RegistryColumn[];
+  createAnchorLabel?: string;
+  allowRecordActions?: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [deletePendingId, setDeletePendingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [editingRecord, setEditingRecord] = useState<RegistryRecord | null>(null);
+  const selectedContext = editingRecord || selectedEmployee;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -833,20 +868,53 @@ export function RegistryPage({
 
     setPending(true);
     setMessage("");
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     try {
-      const response = await fetch(submitEndpoint, { method: "POST", body: formData });
+      const endpoint =
+        editingRecord && allowRecordActions ? `${submitEndpoint}/${encodeURIComponent(String(editingRecord.id))}` : submitEndpoint;
+      const response = await fetch(endpoint, { method: editingRecord && allowRecordActions ? "PATCH" : "POST", body: formData });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.error || "Бүртгэл үүсгэхэд алдаа гарлаа.");
+        throw new Error(payload.error || (editingRecord ? "Бүртгэл засахад алдаа гарлаа." : "Бүртгэл үүсгэхэд алдаа гарлаа."));
       }
-      setMessage(successMessage);
-      event.currentTarget.reset();
+      setMessage(editingRecord ? "Бүртгэл засагдлаа." : successMessage);
+      setEditingRecord(null);
+      form.reset();
       router.refresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Бүртгэл үүсгэхэд алдаа гарлаа.");
+      setMessage(error instanceof Error ? error.message : editingRecord ? "Бүртгэл засахад алдаа гарлаа." : "Бүртгэл үүсгэхэд алдаа гарлаа.");
     } finally {
       setPending(false);
+    }
+  }
+
+  async function deleteRecord(record: RegistryRecord) {
+    if (!submitEndpoint || !allowRecordActions || !record.id) {
+      return;
+    }
+    if (!window.confirm("Энэ сахилгын бүртгэлийг устгах уу?")) {
+      return;
+    }
+
+    const recordId = String(record.id);
+    setDeletePendingId(recordId);
+    setMessage("");
+    try {
+      const response = await fetch(`${submitEndpoint}/${encodeURIComponent(recordId)}`, { method: "DELETE" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || "Бүртгэл устгахад алдаа гарлаа.");
+      }
+      if (editingRecord?.id === record.id) {
+        setEditingRecord(null);
+      }
+      setMessage("Бүртгэл устгагдлаа.");
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Бүртгэл устгахад алдаа гарлаа.");
+    } finally {
+      setDeletePendingId(null);
     }
   }
 
@@ -854,36 +922,49 @@ export function RegistryPage({
     return typeof field === "string" ? { label: field, name: field } : { name: field.label, ...field };
   }
 
+  function getRecordValue(field: ReturnType<typeof normalizeField>) {
+    if (!editingRecord) {
+      return field.defaultValue || "";
+    }
+    const value = editingRecord[field.name || field.label];
+    return value === null || value === undefined ? field.defaultValue || "" : String(value);
+  }
+
   function renderSelectedEmployeeField(field: ReturnType<typeof normalizeField>) {
-    if (!selectedEmployee) {
+    if (!selectedContext) {
       return null;
     }
 
     if (field.label === "Ажилтан") {
+      const employeeId = editingRecord?.employeeId || selectedEmployee?.id;
+      const employeeName = String(editingRecord?.employeeName || selectedEmployee?.name || "Ажилтан бүртгээгүй");
       return (
         <label key={field.label} className={styles.field}>
           <span>Ажилтан</span>
-          <input value={selectedEmployee.name} readOnly />
-          <input name="employeeId" type="hidden" value={selectedEmployee.id} />
+          <input value={employeeName} readOnly />
+          {employeeId ? <input name="employeeId" type="hidden" value={String(employeeId)} /> : null}
         </label>
       );
     }
 
     if (field.label === "Хэлтэс") {
+      const departmentId = editingRecord?.departmentId || selectedEmployee?.departmentId;
+      const departmentName = String(editingRecord?.departmentName || selectedEmployee?.departmentName || "Хэлтэс бүртгээгүй");
       return (
         <label key={field.label} className={styles.field}>
           <span>Хэлтэс</span>
-          <input value={selectedEmployee.departmentName || "Хэлтэс бүртгээгүй"} readOnly />
-          {selectedEmployee.departmentId ? <input name="departmentId" type="hidden" value={selectedEmployee.departmentId} /> : null}
+          <input value={departmentName} readOnly />
+          {departmentId ? <input name="departmentId" type="hidden" value={String(departmentId)} /> : null}
         </label>
       );
     }
 
     if (field.label === "Албан тушаал") {
+      const jobTitle = String(editingRecord?.jobTitle || selectedEmployee?.jobTitle || "Албан тушаал бүртгээгүй");
       return (
         <label key={field.label} className={styles.field}>
           <span>Албан тушаал</span>
-          <input value={selectedEmployee.jobTitle || "Албан тушаал бүртгээгүй"} readOnly />
+          <input value={jobTitle} readOnly />
         </label>
       );
     }
@@ -896,12 +977,82 @@ export function RegistryPage({
       <section className={styles.panel}>
         <div className={styles.sectionHeader}>
           <h2>{title}</h2>
-          <span>0</span>
+          <span>{records.length}</span>
         </div>
-        <div className={styles.emptyState}>
-          <strong>Одоогоор бүртгэл алга.</strong>
-          <span>Шинэ бүртгэл үүсгэж эхлээрэй.</span>
-        </div>
+        {submitEndpoint ? (
+          <div className={styles.toolbar}>
+            <a
+              href="#new-registry-record"
+              className={styles.primaryLink}
+              onClick={() => {
+                setEditingRecord(null);
+                setMessage("");
+              }}
+            >
+              {createAnchorLabel}
+            </a>
+          </div>
+        ) : null}
+        {records.length && columns.length ? (
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  {columns.map((column) => (
+                    <th key={column.key}>{column.label}</th>
+                  ))}
+                  {allowRecordActions ? <th>Үйлдэл</th> : null}
+                </tr>
+              </thead>
+              <tbody>
+                {records.map((record) => (
+                  <tr key={String(record.id)}>
+                    {columns.map((column) => {
+                      const value = record[column.key];
+                      const href = column.hrefKey ? record[column.hrefKey] : "";
+                      return (
+                        <td key={column.key}>
+                          {href ? <Link href={String(href)}>{String(value || "Бүртгээгүй")}</Link> : String(value || "Бүртгээгүй")}
+                        </td>
+                      );
+                    })}
+                    {allowRecordActions ? (
+                      <td>
+                        <div className={styles.recordActions}>
+                          <a
+                            href="#new-registry-record"
+                            className={styles.secondaryButton}
+                            onClick={() => {
+                              setEditingRecord(record);
+                              setMessage("");
+                            }}
+                          >
+                            <Pencil aria-hidden />
+                            Засах
+                          </a>
+                          <button
+                            type="button"
+                            className={styles.dangerButton}
+                            disabled={deletePendingId === String(record.id)}
+                            onClick={() => deleteRecord(record)}
+                          >
+                            <Trash2 aria-hidden />
+                            {deletePendingId === String(record.id) ? "Устгаж байна..." : "Устгах"}
+                          </button>
+                        </div>
+                      </td>
+                    ) : null}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className={styles.emptyState}>
+            <strong>Одоогоор бүртгэл алга.</strong>
+            <span>Шинэ бүртгэл үүсгэж эхлээрэй.</span>
+          </div>
+        )}
         {checklist ? (
           <div className={styles.checklist}>
             {checklist.map((item) => (
@@ -913,17 +1064,17 @@ export function RegistryPage({
           </div>
         ) : null}
       </section>
-      <form className={styles.formPanel} onSubmit={submit} noValidate>
-        <h2>Шинэ бүртгэл</h2>
+      <form key={editingRecord ? `edit-${editingRecord.id}` : "new-registry-record"} id="new-registry-record" className={styles.formPanel} onSubmit={submit} noValidate>
+        <h2>{editingRecord ? "Бүртгэл засах" : "Шинэ бүртгэл"}</h2>
         <p className={styles.mutedText}>{description}</p>
         {message ? <p className={isErrorMessage(message) ? styles.errorText : styles.successText}>{message}</p> : null}
-        {selectedEmployee ? (
+        {selectedContext ? (
           <div className={styles.selectedEmployeeContext}>
             <span>Сонгосон ажилтан</span>
-            <strong>{selectedEmployee.name}</strong>
+            <strong>{String(editingRecord?.employeeName || selectedEmployee?.name || "Ажилтан бүртгээгүй")}</strong>
             <small>
-              {selectedEmployee.departmentName || "Хэлтэс бүртгээгүй"} ·{" "}
-              {selectedEmployee.jobTitle || "Албан тушаал бүртгээгүй"}
+              {String(editingRecord?.departmentName || selectedEmployee?.departmentName || "Хэлтэс бүртгээгүй")} ·{" "}
+              {String(editingRecord?.jobTitle || selectedEmployee?.jobTitle || "Албан тушаал бүртгээгүй")}
             </small>
           </div>
         ) : null}
@@ -939,7 +1090,7 @@ export function RegistryPage({
               return (
                 <label key={fieldConfig.label} className={styles.field}>
                   <span>{fieldConfig.label}</span>
-                  <select name={fieldConfig.name} defaultValue={fieldConfig.defaultValue || ""} required={fieldConfig.required}>
+                  <select name={fieldConfig.name} defaultValue={getRecordValue(fieldConfig)} required={fieldConfig.required}>
                     <option value="">Сонгох</option>
                     {fieldConfig.options.map((option) => (
                       <option key={option.id} value={option.id}>
@@ -957,7 +1108,7 @@ export function RegistryPage({
                 name={fieldConfig.name}
                 label={fieldConfig.label}
                 type={fieldConfig.type}
-                defaultValue={fieldConfig.defaultValue}
+                defaultValue={getRecordValue(fieldConfig)}
                 readOnly={fieldConfig.readOnly}
                 required={fieldConfig.required}
               />
@@ -968,10 +1119,17 @@ export function RegistryPage({
           <span>Хавсралт</span>
           <input name="files" type="file" multiple />
         </label>
-        <button className={styles.primaryButton} type={submitEndpoint ? "submit" : "button"} disabled={pending}>
-          <FilePlus2 aria-hidden />
-          {pending ? "Үүсгэж байна..." : submitLabel}
-        </button>
+        <div className={styles.actionGrid}>
+          <button className={styles.primaryButton} type={submitEndpoint ? "submit" : "button"} disabled={pending}>
+            <FilePlus2 aria-hidden />
+            {pending ? (editingRecord ? "Хадгалж байна..." : "Үүсгэж байна...") : editingRecord ? "Хадгалах" : submitLabel}
+          </button>
+          {editingRecord ? (
+            <button className={styles.secondaryButton} type="button" disabled={pending} onClick={() => setEditingRecord(null)}>
+              Болих
+            </button>
+          ) : null}
+        </div>
       </form>
     </div>
   );
