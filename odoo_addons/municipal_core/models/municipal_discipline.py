@@ -159,6 +159,8 @@ class MunicipalDiscipline(models.Model):
             "municipal_core.group_municipal_manager",
             "municipal_core.group_municipal_director",
             "municipal_core.group_municipal_admin",
+            "hr_custom_mn.group_hr_custom_mn_officer",
+            "hr_custom_mn.group_hr_custom_mn_admin",
         ]
         if any(self.env.user.has_group(group) for group in privileged_groups):
             return

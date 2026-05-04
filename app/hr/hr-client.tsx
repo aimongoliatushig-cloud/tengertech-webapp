@@ -12,6 +12,18 @@ import styles from "./hr.module.css";
 
 const ALL = "__all__";
 
+function isErrorMessage(message: string) {
+  const normalized = message.toLocaleLowerCase("mn-MN");
+  return (
+    normalized.includes("алдаа") ||
+    normalized.includes("эрх") ||
+    normalized.includes("хүрэлцэхгүй") ||
+    normalized.includes("зөвшөөрөгдөхгүй") ||
+    normalized.includes("боломжгүй") ||
+    normalized.includes("шаардлагатай")
+  );
+}
+
 type RegistryOption = HrSelectionOption | { id: number | string; name: string };
 
 export type RegistryField =
@@ -904,7 +916,7 @@ export function RegistryPage({
       <form className={styles.formPanel} onSubmit={submit} noValidate>
         <h2>Шинэ бүртгэл</h2>
         <p className={styles.mutedText}>{description}</p>
-        {message ? <p className={message.includes("алдаа") ? styles.errorText : styles.successText}>{message}</p> : null}
+        {message ? <p className={isErrorMessage(message) ? styles.errorText : styles.successText}>{message}</p> : null}
         {selectedEmployee ? (
           <div className={styles.selectedEmployeeContext}>
             <span>Сонгосон ажилтан</span>
