@@ -22,7 +22,6 @@ export function canAccessGeneralDashboard(context: GeneralDashboardAccessContext
       context.role === "director" ||
       context.role === "general_manager" ||
       flags.municipalDirector ||
-      flags.municipalManager ||
       flags.fleetRepairCeo ||
       flags.fleetRepairGeneralManager,
   );

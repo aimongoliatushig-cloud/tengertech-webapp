@@ -168,12 +168,8 @@ export function AppMenu({
   const showGeneralDashboard = Boolean(
     canViewGeneralDashboard ||
       flags.municipalDirector ||
-      flags.municipalManager ||
       flags.fleetRepairCeo ||
-      flags.fleetRepairGeneralManager ||
-      roleLabelLower.includes("\u0437\u0430\u0445\u0438\u0440\u0430\u043B") ||
-      roleLabelLower.includes("\u0435\u0440\u04E9\u043D\u0445\u0438\u0439 \u043C\u0435\u043D\u0435\u0436\u0435\u0440") ||
-      roleLabelLower.includes("\u04AF\u0439\u043B \u0430\u0436\u0438\u043B\u043B\u0430\u0433\u0430\u0430 \u0445\u0430\u0440\u0438\u0443\u0446\u0441\u0430\u043D \u043C\u0435\u043D\u0435\u0436\u0435\u0440"),
+      flags.fleetRepairGeneralManager,
   );
   const executiveMode =
     Boolean(flags.municipalDirector || flags.municipalManager || flags.fleetRepairCeo) ||
