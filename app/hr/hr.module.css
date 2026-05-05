@@ -550,6 +550,64 @@
   gap: 14px;
 }
 
+.employeeProfileSummary {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(46, 125, 50, 0.1);
+}
+
+.employeePhotoFrame {
+  display: grid;
+  width: 112px;
+  aspect-ratio: 1;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(46, 125, 50, 0.16);
+  border-radius: 8px;
+  background: rgba(218, 238, 219, 0.72);
+}
+
+.employeePhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.employeePhotoPlaceholder {
+  color: #2e7d32;
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.employeeProfileText {
+  min-width: 0;
+}
+
+.employeeProfileText p {
+  margin: 6px 0 0;
+  color: #66766b;
+  font-size: 0.86rem;
+  font-weight: 750;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.profileEditForm {
+  display: grid;
+  gap: 14px;
+}
+
+.profileEditActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .selectedEmployeeContext {
   display: grid;
   gap: 4px;
@@ -1066,8 +1124,13 @@
   }
 
   .chartBody,
-  .detailRow {
+  .detailRow,
+  .employeeProfileSummary {
     grid-template-columns: 1fr;
+  }
+
+  .employeePhotoFrame {
+    width: 96px;
   }
 
   .pieChart,
