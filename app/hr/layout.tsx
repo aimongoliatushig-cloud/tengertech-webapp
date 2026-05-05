@@ -28,7 +28,7 @@ export default async function HrLayout({ children }: { children: React.ReactNode
             canWriteReports={hasCapability(session, "write_workspace_reports")}
             canViewQualityCenter={hasCapability(session, "view_quality_center")}
             canUseFieldConsole={hasCapability(session, "use_field_console")}
-            canViewHr={hrProfile.isHr}
+            canViewHr={hrProfile.canAccessHr}
             userName={session.name}
             roleLabel={roleLabel}
             groupFlags={session.groupFlags}
@@ -37,15 +37,15 @@ export default async function HrLayout({ children }: { children: React.ReactNode
         </aside>
 
         <div className={shellStyles.pageContent}>
-          {hrProfile.isHr ? (
+          {hrProfile.canAccessHr ? (
             children
           ) : (
             <section className={styles.accessDenied}>
               <span>Хүний нөөц</span>
               <h1>Танд хүний нөөцийн хэсэгт хандах эрх байхгүй байна.</h1>
               <p>
-                Энэ хэсэг зөвхөн хүний нөөцийн мэргэжилтэн, хүний нөөцийн менежер болон
-                системийн админд нээлттэй.
+                Энэ хэсэг хүний нөөцийн мэргэжилтэн болон өөрийн хэлтсийн хүсэлт үүсгэх
+                эрхтэй хэлтсийн даргад нээлттэй.
               </p>
             </section>
           )}

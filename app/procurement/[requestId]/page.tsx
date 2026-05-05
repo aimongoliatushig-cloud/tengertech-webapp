@@ -314,6 +314,13 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
                     <span className={styles.subtleText}>
                       {line.quantity} {line.uom?.name || ""} - {line.specification || "Тодорхойлолт оруулаагүй"}
                     </span>
+                    {line.images?.length ? (
+                      <ul className={styles.attachmentList}>
+                        {line.images.map((image) => (
+                          <li key={image.id}>{image.name}</li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -726,6 +733,17 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
                       </select>
                     </label>
                   ) : null}
+                  <label className={styles.fieldLabel}>
+                    Төлсөн дүн
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      name="paid_amount"
+                      defaultValue={item.paid_amount || ""}
+                      required
+                    />
+                  </label>
                   <label className={styles.fieldLabel}>
                     Төлбөрийн лавлагаа
                     <input name="payment_reference" defaultValue={item.payment_reference || ""} />

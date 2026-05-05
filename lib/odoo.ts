@@ -422,6 +422,7 @@ export type HrEmployeeDirectoryItem = {
   id: number;
   name: string;
   active: boolean;
+  departmentId?: number | null;
   departmentName: string;
   jobTitle: string;
   workPhone: string;
@@ -1749,8 +1750,13 @@ function resolveHrEmploymentStatus(employee: OdooEmployeeRecord) {
   const labels: Record<string, string> = {
     active: "Идэвхтэй",
     probation: "Туршилт",
+    leave: "Чөлөөтэй",
+    sick: "Өвчтэй",
+    business_trip: "Томилолттой",
     suspended: "Түдгэлзсэн",
     terminated: "Чөлөөлөгдсөн",
+    resigned: "Ажлаас гарсан",
+    archived: "Архивласан",
     rehired: "Дахин авсан",
   };
 
@@ -2746,6 +2752,7 @@ export async function loadHrEmployeeDirectory(
         id: employee.id,
         name: employee.name,
         active: employee.active !== false,
+        departmentId: Array.isArray(employee.department_id) ? employee.department_id[0] : null,
         departmentName: normalizeDepartmentUnitName(
           relationName(employee.department_id ?? false, UNKNOWN_DEPARTMENT),
         ),

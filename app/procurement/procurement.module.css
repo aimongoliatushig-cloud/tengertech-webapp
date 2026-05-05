@@ -725,6 +725,13 @@
   resize: vertical;
 }
 
+.attachmentList {
+  margin: 0.65rem 0 0;
+  padding-left: 1.1rem;
+  color: #35594d;
+  font-size: 0.86rem;
+}
+
 .radioRow {
   display: flex;
   flex-wrap: wrap;

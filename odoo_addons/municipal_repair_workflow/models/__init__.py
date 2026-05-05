@@ -6,4 +6,5 @@ from . import municipal_vehicle_driver_history
 from . import municipal_garbage_sync
 from . import municipal_repair_request
 from . import municipal_procurement_request
+from . import municipal_procurement_workflow_v2
 from . import res_config_settings

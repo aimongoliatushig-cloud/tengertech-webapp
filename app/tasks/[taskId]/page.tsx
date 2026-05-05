@@ -265,12 +265,17 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
         : "Мэдээлэл харах";
 
   const showReportComposer = !canMarkDone && !canSubmitForReview && canOpenReportComposer;
+  const procurementCreateHref = `/procurement/new?task_id=${task.id}`;
   const actionPanel = (
     <aside className={styles.actionCard} id="task-actions">
       <span className={styles.kicker}>Үндсэн үйлдэл</span>
       <strong className={styles.actionTitle}>{primaryActionLabel}</strong>
 
       <div className={styles.actionStack}>
+        <Link href={procurementCreateHref} className={styles.secondaryButton}>
+          Худалдан авах хүсэлт үүсгэх
+        </Link>
+
         {canMarkDone ? (
           <form action={markTaskDoneAction}>
             <input type="hidden" name="task_id" value={task.id} />

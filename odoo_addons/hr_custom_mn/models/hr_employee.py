@@ -4,7 +4,7 @@ from collections import defaultdict
 from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 
 from .ir_attachment import DOCUMENT_TYPES
 from .xlsx_export import build_xlsx
@@ -58,8 +58,13 @@ class HrEmployee(models.Model):
         [
             ("active", "Идэвхтэй"),
             ("probation", "Туршилтын хугацаа"),
+            ("leave", "Чөлөөтэй"),
+            ("sick", "Өвчтэй"),
+            ("business_trip", "Томилолттой"),
             ("suspended", "Түр түдгэлзсэн"),
             ("terminated", "Чөлөөлөгдсөн"),
+            ("resigned", "Ажлаас гарсан"),
+            ("archived", "Архивласан"),
             ("rehired", "Дахин ажилд орсон"),
         ],
         string="Ажил эрхлэлтийн төлөв",
@@ -629,34 +634,161 @@ class HrEmployee(models.Model):
 
     @api.model
     def _get_hr_custom_mn_municipal_dashboard_extension(self):
-        if (
-            not self.env.registry.get("municipal.attendance.issue")
-            or not self.env.registry.get("municipal.discipline")
-        ):
+        if not self.env.registry.get("municipal.discipline"):
             return {}
-        today = fields.Date.context_today(self)
-        attendance_model = self.env["municipal.attendance.issue"].sudo()
         discipline_model = self.env["municipal.discipline"].sudo()
-        today_attendance = attendance_model.search([("date", "=", today)])
         discipline_count = discipline_model.search_count(
             [("state", "not in", ["cancelled", "archived"])]
         )
-        repeated_absence = attendance_model.search(
-            [
-                ("issue_type", "=", "absent"),
-                ("state", "not in", ["cancelled", "archived"]),
-            ]
-        ).filtered(lambda issue: issue.repeated_issue_count >= 2)
         return {
-            "todayAttendance": len(today_attendance),
-            "present": len(today_attendance.filtered(lambda issue: issue.attendance_status == "present")),
-            "late": len(today_attendance.filtered(lambda issue: issue.issue_type == "late")),
-            "absent": len(today_attendance.filtered(lambda issue: issue.issue_type == "absent")),
-            "leave": len(today_attendance.filtered(lambda issue: issue.attendance_status in ("leave", "annual_leave"))),
-            "sick": len(today_attendance.filtered(lambda issue: issue.attendance_status == "sick")),
-            "repeatedAbsence": len(repeated_absence),
             "disciplineCases": discipline_count,
         }
+
+    @api.model
+    def _check_hr_custom_mn_api_access(self):
+        allowed_groups = [
+            "hr.group_hr_user",
+            "hr_custom_mn.group_hr_custom_mn_manager",
+            "hr_custom_mn.group_hr_custom_mn_officer",
+            "hr_custom_mn.group_hr_custom_mn_admin",
+        ]
+        current_employee = self.env.user.employee_id
+        hr_text = " ".join(
+            [
+                current_employee.department_id.display_name or "",
+                current_employee.job_id.display_name or "",
+                current_employee.job_title or "",
+            ]
+        ).lower()
+        has_hr_profile = "hr" in hr_text or "human resource" in hr_text or "хүний нөөц" in hr_text
+        if not any(self.env.user.has_group(group) for group in allowed_groups) and not has_hr_profile:
+            raise AccessError("Ажилтны HR жагсаалт харах эрх хүрэлцэхгүй байна.")
+        return True
+
+    @api.model
+    def get_hr_custom_mn_employee_directory(self):
+        self._check_hr_custom_mn_api_access()
+        domain = []
+        if not any(
+            self.env.user.has_group(group)
+            for group in [
+                "hr.group_hr_user",
+                "hr_custom_mn.group_hr_custom_mn_officer",
+                "hr_custom_mn.group_hr_custom_mn_admin",
+            ]
+        ):
+            user_department = self.env.user.employee_id.department_id
+            domain = [("department_id", "=", user_department.id)] if user_department else [("user_id", "=", self.env.user.id)]
+        employees = self.sudo().with_context(active_test=False).search(domain, order="department_id, name")
+        status_labels = dict(self._fields["x_mn_employment_status"].selection)
+        gender_labels = dict(self._fields["sex"].selection) if "sex" in self._fields else {}
+        today = fields.Date.context_today(self)
+        current_status_by_employee = {}
+        if self.env.registry.get("municipal.hr.timeoff.request") and employees:
+            requests = self.env["municipal.hr.timeoff.request"].sudo().search(
+                [
+                    ("employee_id", "in", employees.ids),
+                    ("state", "=", "approved"),
+                    ("date_from", "<=", today),
+                    ("date_to", ">=", today),
+                ]
+            )
+            for request in requests:
+                if request.request_type == "sick":
+                    current_status_by_employee[request.employee_id.id] = ("sick", "Өвчтэй")
+                elif current_status_by_employee.get(request.employee_id.id, ("", ""))[0] != "sick":
+                    current_status_by_employee[request.employee_id.id] = ("leave", "Чөлөөтэй")
+        return [
+            {
+                "id": employee.id,
+                "name": employee.name or "",
+                "active": bool(employee.active),
+                "departmentId": employee.department_id.id or False,
+                "departmentName": employee.department_id.display_name or "Хэлтэсгүй",
+                "jobTitle": employee.job_id.display_name or employee.job_title or "Албан тушаал бүртгээгүй",
+                "workPhone": employee.work_phone or "",
+                "mobilePhone": employee.mobile_phone or "",
+                "workEmail": employee.work_email or "",
+                "userName": employee.user_id.display_name or "",
+                "photo": employee.image_128 or employee.avatar_128 or False,
+                "employeeCode": employee.x_mn_employee_code or "EMP-%05d" % employee.id,
+                "gradeRank": employee.x_mn_grade_rank or "",
+                "statusKey": "archived"
+                if not employee.active
+                else current_status_by_employee.get(employee.id, (employee.x_mn_employment_status or "active", ""))[0],
+                "statusLabel": "Архивласан"
+                if not employee.active
+                else current_status_by_employee.get(employee.id, ("", ""))[1]
+                or status_labels.get(employee.x_mn_employment_status, "Идэвхтэй"),
+                "managerName": employee.parent_id.display_name or "",
+                "startDate": str(employee.contract_date_start or ""),
+                "contractEndDate": str(employee.contract_date_end or ""),
+                "genderLabel": gender_labels.get(employee.sex, "") if employee.sex else "",
+                "educationLevel": employee.certificate or "",
+                "missingDocumentCount": employee.x_mn_missing_document_count or 0,
+                "kpiScore": employee.x_mn_performance_score or 0,
+                "taskCompletionPercent": employee.x_mn_task_completion_percent or 0,
+                "disciplineScore": employee.x_mn_discipline_score or 0,
+            }
+            for employee in employees
+        ]
+
+    @api.model
+    def create_hr_custom_mn_leave(self, payload):
+        self._check_hr_custom_mn_api_access()
+        payload = payload or {}
+        employee_id = int(payload.get("employeeId") or 0)
+        leave_type_id = int(payload.get("leaveTypeId") or 0)
+        date_from = payload.get("dateFrom")
+        date_to = payload.get("dateTo")
+        if not employee_id:
+            raise UserError("Ажилтан сонгоно уу.")
+        if not date_from or not date_to:
+            raise UserError("Эхлэх болон дуусах огноо заавал бөглөнө үү.")
+        if date_to < date_from:
+            raise UserError("Дуусах огноо эхлэх огнооноос өмнө байж болохгүй.")
+
+        employee = self.sudo().browse(employee_id).exists()
+        if not employee:
+            raise UserError("Ажилтны бүртгэл олдсонгүй.")
+
+        leave_type_model = self.env["hr.leave.type"].sudo()
+        leave_type = leave_type_model.browse(leave_type_id).exists() if leave_type_id else leave_type_model
+        if not leave_type and payload.get("leaveTypeName"):
+            leave_type = leave_type_model.search(
+                [("name", "ilike", payload.get("leaveTypeName"))],
+                limit=1,
+            )
+        if not leave_type:
+            leave_type = leave_type_model.search([], limit=1)
+        if not leave_type:
+            raise UserError("Чөлөөний төрөл Odoo дээр олдсонгүй.")
+
+        values = {
+            "employee_id": employee.id,
+            "holiday_status_id": leave_type.id,
+            "request_date_from": date_from,
+            "request_date_to": date_to,
+            "name": payload.get("note") or payload.get("leaveTypeName") or "HR чөлөөний бүртгэл",
+        }
+        leave = self.env["hr.leave"].sudo().create(values)
+
+        for attachment in payload.get("attachments") or []:
+            if not attachment.get("datas"):
+                continue
+            self.env["ir.attachment"].sudo().create(
+                {
+                    "name": attachment.get("name") or "Хавсралт",
+                    "datas": attachment.get("datas"),
+                    "res_model": "hr.leave",
+                    "res_id": leave.id,
+                    "mimetype": attachment.get("mimetype") or "application/octet-stream",
+                }
+            )
+
+        if payload.get("confirm"):
+            leave.sudo().action_confirm()
+        return {"id": leave.id}
 
     def _get_hr_custom_mn_age_distribution(self, employees):
         buckets = [

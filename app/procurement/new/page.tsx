@@ -20,6 +20,7 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
   const params = (await searchParams) || {};
   const notice = getValue(params.notice);
   const error = getValue(params.error);
+  const selectedTaskId = getValue(params.task_id);
   const connectionOverrides = {
     login: session.login,
     password: session.password,
@@ -96,7 +97,7 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
               </label>
               <label className={styles.fieldLabel}>
                 Даалгавар
-                <select name="task_id" defaultValue="">
+                <select name="task_id" defaultValue={selectedTaskId}>
                   <option value="">Сонгох</option>
                   {meta.tasks.map((task) => (
                     <option key={task.id} value={task.id}>

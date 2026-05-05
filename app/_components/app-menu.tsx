@@ -143,6 +143,7 @@ export function AppMenu({
   canCreateTasks = false,
   canWriteReports = false,
   canViewQualityCenter = false,
+  canUseFieldConsole = false,
   canViewHr = false,
   variant = "default",
   userName = "Хэрэглэгч",
@@ -211,10 +212,13 @@ export function AppMenu({
   const showReports =
     canWriteReports || executiveMode || departmentManagerMode || inspectorMode || canViewQualityCenter;
   const baseCanCreate = !workerMode && (canCreateProject || canCreateTasks || canWriteReports);
-  const reviewHref = "/notifications";
+  const reviewHref = workerMode && canUseFieldConsole ? "/field" : "/notifications";
+  const roleLabelLower = roleLabel.toLocaleLowerCase("mn-MN");
+  const roleLooksHr = roleLabelLower.includes("\u0445\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446");
+  const roleLooksDepartmentHead = roleLabelLower.includes("\u0445\u044D\u043B\u0442\u0441\u0438\u0439\u043D \u0434\u0430\u0440\u0433\u0430");
+  const hasHrGroupAccess = Boolean(flags.hrUser || flags.hrManager || flags.municipalHr);
   const hrFocusedMode =
-    Boolean(canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr) &&
-    roleLabel.toLocaleLowerCase("mn-MN").includes("\u0445\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446");
+    roleLooksHr || Boolean(hasHrGroupAccess && canViewHr && !departmentManagerMode && !roleLooksDepartmentHead);
   const isGarbageDepartmentHead =
     !workerMode &&
     !masterMode &&
@@ -245,7 +249,7 @@ export function AppMenu({
     departmentName: group.name,
   }));
 
-  const hrItems: MenuItem[] = canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr
+  const hrItems: MenuItem[] = canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr || roleLooksHr
     ? [
         { key: "hr", href: "/hr", label: "\u0425\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446", icon: Users },
       ]
@@ -365,7 +369,7 @@ export function AppMenu({
     },
   ].filter((item) => {
     if (hrFocusedMode) {
-      return ["dashboard", "hr", "tasks", "review"].includes(item.key);
+      return ["hr", "profile"].includes(item.key);
     }
     if (!workerMode) {
       return true;
@@ -395,6 +399,16 @@ export function AppMenu({
       label: "Хяналтын самбар",
       icon: LayoutDashboard,
     },
+    ...(canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr
+      ? [
+          {
+            key: "hr",
+            href: "/hr",
+            label: "Хүний нөөц",
+            icon: Users,
+          },
+        ]
+      : []),
     {
       key: "projects",
       href: departmentItems[0]?.href ?? "/projects",
@@ -498,7 +512,12 @@ export function AppMenu({
           icon: Settings,
         },
       ]
-    : workerMode
+    : hrFocusedMode
+      ? [
+          { key: "hr", href: "/hr", label: "HR", icon: Users },
+          { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
+        ]
+      : workerMode
       ? mfoFieldMode
         ? [
             { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard },
@@ -584,7 +603,7 @@ export function AppMenu({
       aria-label="Ажлын орчны цэс"
     >
       <aside className={styles.menuBar}>
-        <Link href="/" className={styles.brandBlock}>
+        <Link href={hrFocusedMode ? "/hr" : "/"} className={styles.brandBlock}>
           <Image
             src="/logo.png"
             alt="Хот тохижилт үйлчилгээний төв"

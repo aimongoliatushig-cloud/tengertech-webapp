@@ -48,6 +48,55 @@
         <field name="implied_ids" eval="[(4, ref('municipal_core.group_municipal_director'))]"/>
     </record>
 
+    <record id="group_procurement_purchase_manager" model="res.groups">
+        <field name="name">Procurement / Purchase Manager</field>
+        <field name="sequence">70</field>
+        <field name="privilege_id" ref="res_groups_privilege_municipal_repair"/>
+        <field name="implied_ids" eval="[(4, ref('group_repair_storekeeper'))]"/>
+    </record>
+
+    <record id="group_procurement_storekeeper" model="res.groups">
+        <field name="name">Procurement Storekeeper</field>
+        <field name="sequence">80</field>
+        <field name="privilege_id" ref="res_groups_privilege_municipal_repair"/>
+        <field name="implied_ids" eval="[(4, ref('group_repair_storekeeper'))]"/>
+    </record>
+
+    <record id="group_procurement_finance_user" model="res.groups">
+        <field name="name">Procurement Finance User</field>
+        <field name="sequence">90</field>
+        <field name="privilege_id" ref="res_groups_privilege_municipal_repair"/>
+        <field name="implied_ids" eval="[(4, ref('group_repair_finance'))]"/>
+    </record>
+
+    <record id="group_procurement_administration_user" model="res.groups">
+        <field name="name">Procurement Administration User</field>
+        <field name="sequence">100</field>
+        <field name="privilege_id" ref="res_groups_privilege_municipal_repair"/>
+        <field name="implied_ids" eval="[(4, ref('municipal_core.group_municipal_worker'))]"/>
+    </record>
+
+    <record id="group_procurement_legal_user" model="res.groups">
+        <field name="name">Procurement Legal User</field>
+        <field name="sequence">110</field>
+        <field name="privilege_id" ref="res_groups_privilege_municipal_repair"/>
+        <field name="implied_ids" eval="[(4, ref('municipal_core.group_municipal_worker'))]"/>
+    </record>
+
+    <record id="group_procurement_ceo" model="res.groups">
+        <field name="name">Procurement CEO</field>
+        <field name="sequence">120</field>
+        <field name="privilege_id" ref="res_groups_privilege_municipal_repair"/>
+        <field name="implied_ids" eval="[(4, ref('group_repair_director'))]"/>
+    </record>
+
+    <record id="group_procurement_general_manager" model="res.groups">
+        <field name="name">Procurement General Manager</field>
+        <field name="sequence">130</field>
+        <field name="privilege_id" ref="res_groups_privilege_municipal_repair"/>
+        <field name="implied_ids" eval="[(4, ref('municipal_core.group_municipal_manager'))]"/>
+    </record>
+
     <data noupdate="1">
         <record id="rule_repair_mechanic_assigned" model="ir.rule">
             <field name="name">Repair mechanic assigned only</field>
@@ -95,7 +144,18 @@
             <field name="name">Repair procurement visible roles</field>
             <field name="model_id" ref="model_municipal_procurement_request"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_storekeeper')), (4, ref('group_repair_finance')), (4, ref('group_repair_director')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_storekeeper')), (4, ref('group_repair_finance')), (4, ref('group_repair_director')), (4, ref('group_procurement_purchase_manager')), (4, ref('group_procurement_storekeeper')), (4, ref('group_procurement_finance_user')), (4, ref('group_procurement_administration_user')), (4, ref('group_procurement_legal_user')), (4, ref('group_procurement_ceo')), (4, ref('group_procurement_general_manager')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_procurement_department_head_own_department" model="ir.rule">
+            <field name="name">Procurement department head own department</field>
+            <field name="model_id" ref="model_municipal_procurement_request"/>
+            <field name="domain_force">['|', ('requested_by', '=', user.id), ('department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_department_head'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
 
         <record id="rule_procurement_request_repair_related" model="ir.rule">

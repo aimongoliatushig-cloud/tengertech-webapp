@@ -15,6 +15,7 @@ import {
   canSubmitWorkspaceReport,
   getRoleLabel,
   hasCapability,
+  isHrOnlyRole,
   isMasterRole,
   isWorkerOnly,
   type RoleGroupFlags,
@@ -303,4 +304,11 @@ export async function signInWithOdooCredentials(
   } satisfies AppSession;
 }
 
-export { canSubmitWorkspaceReport, getRoleLabel, hasCapability, isMasterRole, isWorkerOnly };
+export {
+  canSubmitWorkspaceReport,
+  getRoleLabel,
+  hasCapability,
+  isHrOnlyRole,
+  isMasterRole,
+  isWorkerOnly,
+};

@@ -1,6 +1,12 @@
 import { DashboardView } from "@/app/dashboard-view";
+import { redirect } from "next/navigation";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
-import { hasCapability, isWorkerOnly, requireSession } from "@/lib/auth";
+import {
+  hasCapability,
+  isHrOnlyRole,
+  isWorkerOnly,
+  requireSession,
+} from "@/lib/auth";
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import { loadAssignedGarbageTasks } from "@/lib/field-ops";
 import { canAccessHr } from "@/lib/hr";
@@ -80,6 +86,10 @@ async function loadScopedHrAttendanceSummary(
 
 export default async function Home() {
   const session = await requireSession();
+  if (isHrOnlyRole(session)) {
+    redirect("/hr");
+  }
+
   const connectionOverrides = {
     login: session.login,
     password: session.password,
