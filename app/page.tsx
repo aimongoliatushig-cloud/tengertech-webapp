@@ -9,6 +9,7 @@ import {
 } from "@/lib/auth";
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import { loadAssignedGarbageTasks } from "@/lib/field-ops";
+import { canAccessGeneralDashboard } from "@/lib/general-dashboard-access";
 import { canAccessHr } from "@/lib/hr";
 import {
   loadFleetVehicleBoard,
@@ -95,6 +96,7 @@ export default async function Home() {
     password: session.password,
   };
   const workerMode = isWorkerOnly(session);
+  const canViewGeneralDashboard = canAccessGeneralDashboard(session);
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const canViewHrPromise = canAccessHr(session).catch((error) => {
     console.warn("HR access could not be resolved for dashboard menu:", error);
@@ -195,6 +197,7 @@ export default async function Home() {
       hrAttendanceSummary={hrAttendanceSummary}
       weather={weather}
       canViewHr={canViewHr}
+      canViewGeneralDashboard={canViewGeneralDashboard}
     />
   );
 }
