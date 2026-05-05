@@ -1,0 +1,245 @@
+[
+  {
+    "label": "system_admin",
+    "garbageStatus": 200,
+    "garbage": {
+      "weekly_create": true,
+      "weekly_edit": true,
+      "daily_change": true,
+      "today_view": true,
+      "point_execute": true,
+      "inspection_write": true,
+      "dashboard_view": true,
+      "all_view": true
+    },
+    "garbageRole": "Жолооч / Хог ачигч",
+    "fleetStatus": 200,
+    "fleet": {
+      "request": true,
+      "quote": true,
+      "finance": true,
+      "contract": true,
+      "director": true,
+      "order": true,
+      "repair": true
+    },
+    "hrStatus": 200,
+    "hrCount": 136
+  },
+  {
+    "label": "director",
+    "garbageStatus": 200,
+    "garbage": {
+      "weekly_create": true,
+      "weekly_edit": true,
+      "daily_change": true,
+      "today_view": true,
+      "point_execute": false,
+      "inspection_write": false,
+      "dashboard_view": true,
+      "all_view": true
+    },
+    "garbageRole": "Хэлтсийн дарга",
+    "fleetStatus": 200,
+    "fleet": {
+      "request": false,
+      "quote": false,
+      "finance": false,
+      "contract": false,
+      "director": true,
+      "order": false,
+      "repair": false
+    },
+    "hrStatus": 403,
+    "hrCount": null
+  },
+  {
+    "label": "general_manager",
+    "garbageStatus": 200,
+    "garbage": {
+      "weekly_create": true,
+      "weekly_edit": true,
+      "daily_change": true,
+      "today_view": true,
+      "point_execute": false,
+      "inspection_write": false,
+      "dashboard_view": true,
+      "all_view": true
+    },
+    "garbageRole": "Хэлтсийн дарга",
+    "fleetStatus": 200,
+    "fleet": {
+      "request": true,
+      "quote": false,
+      "finance": true,
+      "contract": false,
+      "director": false,
+      "order": false,
+      "repair": false
+    },
+    "hrStatus": 403,
+    "hrCount": null
+  },
+  {
+    "label": "pm_auto_garbage",
+    "garbageStatus": 200,
+    "garbage": {
+      "weekly_create": true,
+      "weekly_edit": true,
+      "daily_change": true,
+      "today_view": true,
+      "point_execute": false,
+      "inspection_write": false,
+      "dashboard_view": true,
+      "all_view": true
+    },
+    "garbageRole": "Хэлтсийн дарга",
+    "fleetStatus": 200,
+    "fleet": {
+      "request": true,
+      "quote": true,
+      "finance": true,
+      "contract": true,
+      "director": true,
+      "order": true,
+      "repair": true
+    },
+    "hrStatus": 403,
+    "hrCount": null
+  },
+  {
+    "label": "pm_tohijilt",
+    "garbageStatus": 200,
+    "garbage": {
+      "weekly_create": true,
+      "weekly_edit": true,
+      "daily_change": true,
+      "today_view": true,
+      "point_execute": false,
+      "inspection_write": false,
+      "dashboard_view": true,
+      "all_view": true
+    },
+    "garbageRole": "Хэлтсийн дарга",
+    "fleetStatus": 200,
+    "fleet": {
+      "request": true,
+      "quote": false,
+      "finance": false,
+      "contract": false,
+      "director": false,
+      "order": false,
+      "repair": false
+    },
+    "hrStatus": 403,
+    "hrCount": null
+  },
+  {
+    "label": "senior_master_green",
+    "garbageStatus": 200,
+    "garbage": {
+      "weekly_create": false,
+      "weekly_edit": false,
+      "daily_change": false,
+      "today_view": true,
+      "point_execute": true,
+      "inspection_write": false,
+      "dashboard_view": false,
+      "all_view": false
+    },
+    "garbageRole": "Жолооч / Хог ачигч",
+    "fleetStatus": 200,
+    "fleet": {
+      "request": true,
+      "quote": false,
+      "finance": false,
+      "contract": false,
+      "director": false,
+      "order": false,
+      "repair": true
+    },
+    "hrStatus": 403,
+    "hrCount": null
+  },
+  {
+    "label": "team_leader_green_1",
+    "garbageStatus": 200,
+    "garbage": {
+      "weekly_create": false,
+      "weekly_edit": false,
+      "daily_change": false,
+      "today_view": true,
+      "point_execute": true,
+      "inspection_write": false,
+      "dashboard_view": false,
+      "all_view": false
+    },
+    "garbageRole": "Жолооч / Хог ачигч",
+    "fleetStatus": 200,
+    "fleet": {
+      "request": true,
+      "quote": false,
+      "finance": false,
+      "contract": false,
+      "director": false,
+      "order": false,
+      "repair": true
+    },
+    "hrStatus": 403,
+    "hrCount": null
+  },
+  {
+    "label": "team_leader_green_2",
+    "garbageStatus": 200,
+    "garbage": {
+      "weekly_create": false,
+      "weekly_edit": false,
+      "daily_change": false,
+      "today_view": true,
+      "point_execute": true,
+      "inspection_write": false,
+      "dashboard_view": false,
+      "all_view": false
+    },
+    "garbageRole": "Жолооч / Хог ачигч",
+    "fleetStatus": 200,
+    "fleet": {
+      "request": true,
+      "quote": false,
+      "finance": false,
+      "contract": false,
+      "director": false,
+      "order": false,
+      "repair": true
+    },
+    "hrStatus": 403,
+    "hrCount": null
+  },
+  {
+    "label": "worker_tohijilt_assigned",
+    "garbageStatus": 200,
+    "garbage": {
+      "weekly_create": false,
+      "weekly_edit": false,
+      "daily_change": false,
+      "today_view": true,
+      "point_execute": true,
+      "inspection_write": false,
+      "dashboard_view": false,
+      "all_view": false
+    },
+    "garbageRole": "Жолооч / Хог ачигч",
+    "fleetStatus": 200,
+    "fleet": {
+      "request": true,
+      "quote": false,
+      "finance": false,
+      "contract": false,
+      "director": false,
+      "order": false,
+      "repair": true
+    },
+    "hrStatus": 403,
+    "hrCount": null
+  }
+]
