@@ -148,8 +148,15 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
 
   const handleOpenCamera = async () => {
     setCameraError("");
+    const existingCount =
+      (galleryInputRef.current?.files?.length ?? 0) + (cameraInputRef.current?.files?.length ?? 0);
+    if (existingCount >= maxFiles) {
+      setLimitMessage(`Дээд тал нь ${maxFiles} зураг оруулна.`);
+      return;
+    }
+
     if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError("Камер нээх боломжгүй байна. Утасны browser дээр камераар дарна уу.");
+      cameraInputRef.current?.click();
       return;
     }
 
@@ -168,6 +175,7 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
       }, 0);
     } catch {
       setCameraError("Камер ашиглах зөвшөөрөл өгөөд дахин оролдоно уу.");
+      cameraInputRef.current?.click();
     }
   };
 
@@ -256,7 +264,7 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
             </button>
             <button type="button" className={styles.mediaActionButtonPrimary} onClick={handleCapturePhoto}>
               <Camera size={18} strokeWidth={2.4} aria-hidden="true" />
-              Зураг дарах
+              Зураг оруулах
             </button>
           </div>
         </div>
