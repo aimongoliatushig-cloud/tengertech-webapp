@@ -49,6 +49,7 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
   const [limitMessage, setLimitMessage] = useState("");
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState("");
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
 
   const syncSelectedFiles = () => {
     previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
@@ -82,6 +83,7 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    setCameraStream(null);
     setCameraOpen(false);
   };
 
@@ -92,6 +94,36 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
       previewUrlsRef.current = [];
     };
   }, []);
+
+  useEffect(() => {
+    if (!cameraOpen || !cameraStream || !videoRef.current) {
+      return;
+    }
+
+    const video = videoRef.current;
+    video.srcObject = cameraStream;
+    video.muted = true;
+    video.playsInline = true;
+
+    const playVideo = () => {
+      void video.play().catch(() => {
+        setCameraError("Камер нээгдсэн боловч дүрс тоглуулахад алдаа гарлаа. Камерын зөвшөөрлөө шалгаад дахин оролдоно уу.");
+      });
+    };
+
+    if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+      playVideo();
+    } else {
+      video.addEventListener("loadedmetadata", playVideo, { once: true });
+    }
+
+    return () => {
+      video.removeEventListener("loadedmetadata", playVideo);
+      if (video.srcObject === cameraStream) {
+        video.srcObject = null;
+      }
+    };
+  }, [cameraOpen, cameraStream]);
 
   const assignFilesToInput = (input: HTMLInputElement, files: File[]) => {
     const dataTransfer = new DataTransfer();
@@ -148,8 +180,15 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
 
   const handleOpenCamera = async () => {
     setCameraError("");
+    const existingCount =
+      (galleryInputRef.current?.files?.length ?? 0) + (cameraInputRef.current?.files?.length ?? 0);
+    if (existingCount >= maxFiles) {
+      setLimitMessage(`Дээд тал нь ${maxFiles} зураг оруулна.`);
+      return;
+    }
+
     if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError("Камер нээх боломжгүй байна. Утасны browser дээр камераар дарна уу.");
+      cameraInputRef.current?.click();
       return;
     }
 
@@ -159,15 +198,11 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
         audio: false,
       });
       cameraStreamRef.current = stream;
+      setCameraStream(stream);
       setCameraOpen(true);
-      window.setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          void videoRef.current.play();
-        }
-      }, 0);
     } catch {
       setCameraError("Камер ашиглах зөвшөөрөл өгөөд дахин оролдоно уу.");
+      cameraInputRef.current?.click();
     }
   };
 
@@ -249,14 +284,14 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
 
       {cameraOpen ? (
         <div className={styles.cameraCapturePanel}>
-          <video ref={videoRef} playsInline muted />
+          <video ref={videoRef} autoPlay playsInline muted />
           <div className={styles.cameraCaptureActions}>
             <button type="button" className={styles.mediaActionButton} onClick={stopCamera}>
               Болих
             </button>
             <button type="button" className={styles.mediaActionButtonPrimary} onClick={handleCapturePhoto}>
               <Camera size={18} strokeWidth={2.4} aria-hidden="true" />
-              Зураг дарах
+              Зураг оруулах
             </button>
           </div>
         </div>

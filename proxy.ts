@@ -50,12 +50,11 @@ async function unsealProxySession(token: string) {
 
 function hasHrAccess(session: ProxySession) {
   const flags = session.groupFlags ?? {};
+  const role = session.role;
   return Boolean(
-    session.role === "hr_specialist" ||
-      session.role === "hr_manager" ||
-      flags.hrUser ||
-      flags.hrManager ||
-      flags.municipalHr,
+    role === "hr_specialist" ||
+      role === "hr_manager" ||
+      (role !== "worker" && (flags.hrUser || flags.hrManager || flags.municipalHr)),
   );
 }
 

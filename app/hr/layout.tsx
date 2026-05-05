@@ -1,10 +1,10 @@
+import { redirect } from "next/navigation";
+
 import { AppMenu } from "@/app/_components/app-menu";
 import shellStyles from "@/app/workspace.module.css";
-import { getRoleLabel, hasCapability, requireSession } from "@/lib/auth";
+import { getRoleLabel, hasCapability, isWorkerOnly, requireSession } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { getHrAccessProfile } from "@/lib/hr";
-
-import styles from "./hr.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,10 @@ export default async function HrLayout({ children }: { children: React.ReactNode
     loadSessionDepartmentName(session),
     getHrAccessProfile(session),
   ]);
+
+  if (!hrProfile.isHr) {
+    redirect(isWorkerOnly(session) ? "/tasks" : "/");
+  }
 
   const roleLabel = getRoleLabel(session.role);
 
@@ -28,7 +32,7 @@ export default async function HrLayout({ children }: { children: React.ReactNode
             canWriteReports={hasCapability(session, "write_workspace_reports")}
             canViewQualityCenter={hasCapability(session, "view_quality_center")}
             canUseFieldConsole={hasCapability(session, "use_field_console")}
-            canViewHr={hrProfile.canAccessHr}
+            canViewHr={hrProfile.isHr}
             userName={session.name}
             roleLabel={roleLabel}
             groupFlags={session.groupFlags}
@@ -36,20 +40,7 @@ export default async function HrLayout({ children }: { children: React.ReactNode
           />
         </aside>
 
-        <div className={shellStyles.pageContent}>
-          {hrProfile.canAccessHr ? (
-            children
-          ) : (
-            <section className={styles.accessDenied}>
-              <span>Хүний нөөц</span>
-              <h1>Танд хүний нөөцийн хэсэгт хандах эрх байхгүй байна.</h1>
-              <p>
-                Энэ хэсэг хүний нөөцийн мэргэжилтэн болон өөрийн хэлтсийн хүсэлт үүсгэх
-                эрхтэй хэлтсийн даргад нээлттэй.
-              </p>
-            </section>
-          )}
-        </div>
+        <div className={shellStyles.pageContent}>{children}</div>
       </div>
     </main>
   );
