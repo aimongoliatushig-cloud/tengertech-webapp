@@ -40,11 +40,19 @@ class MunicipalProcurementApiController(http.Controller):
     def login(self):
         payload = _json_body()
         try:
-            uid = request.session.authenticate(
-                payload.get("db") or request.env.cr.dbname,
-                payload.get("login"),
-                payload.get("password"),
-            )
+            credential = {
+                "login": payload.get("login"),
+                "password": payload.get("password"),
+                "type": "password",
+            }
+            try:
+                uid = request.session.authenticate(payload.get("db") or request.env.cr.dbname, credential)
+            except TypeError:
+                uid = request.session.authenticate(
+                    payload.get("db") or request.env.cr.dbname,
+                    payload.get("login"),
+                    payload.get("password"),
+                )
             if uid:
                 request.update_env(user=uid)
             user = request.env.user

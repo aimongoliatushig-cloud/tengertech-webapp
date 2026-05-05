@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState, type CSSProperties } from "react";
 
 import { updateFleetVehicleAction } from "./actions";
@@ -19,6 +20,7 @@ type FleetVehicleBoardItem = {
   id: number;
   plate: string;
   name: string;
+  imageUrl: string;
   modelId: number | null;
   modelName: string;
   categoryId: number | null;
@@ -162,6 +164,7 @@ type FleetVehicleBoard = {
 };
 
 type VehicleFilterKey = "active" | "repair";
+type VehicleTypeFilterKey = "all" | "none" | `type-${number}`;
 
 type BucketConfig = {
   key: VehicleFilterKey;
@@ -182,6 +185,34 @@ function meterStyle(count: number, total: number): CSSProperties {
   return {
     "--vehicle-share": total > 0 ? count / total : 0,
   } as CSSProperties;
+}
+
+function vehicleTypeFilterKey(vehicle: FleetVehicleBoardItem): VehicleTypeFilterKey {
+  return vehicle.vehicleTypeId ? `type-${vehicle.vehicleTypeId}` : "none";
+}
+
+function VehicleThumbnail({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!vehicle.imageUrl || failed) {
+    return (
+      <span className={styles.vehicleThumbPlaceholder} aria-hidden>
+        {vehicle.plate.slice(0, 1)}
+      </span>
+    );
+  }
+
+  return (
+    <Image
+      className={styles.vehicleThumb}
+      src={vehicle.imageUrl}
+      alt=""
+      width={320}
+      height={180}
+      unoptimized
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
 function VehicleList({
@@ -206,6 +237,7 @@ function VehicleList({
           className={styles.vehicleCard}
           onClick={() => onSelectVehicle(vehicle)}
         >
+          <VehicleThumbnail vehicle={vehicle} />
           <div className={styles.vehicleTop}>
             <strong className={styles.vehiclePlate}>{vehicle.plate}</strong>
             <span
@@ -220,6 +252,7 @@ function VehicleList({
             </span>
           </div>
           <p className={styles.vehicleName}>{vehicle.name}</p>
+          <span className={styles.vehicleTypeLine}>{vehicle.vehicleTypeName || "Төрөлгүй"}</span>
           <span className={styles.vehicleMetaLine}>{vehicleCrewRoleSummary(vehicle)}</span>
           <span className={styles.vehicleCrewPreview}>
             {assignedCrewCount(vehicle)
@@ -1030,6 +1063,7 @@ export function AutoBaseBoard({
   );
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState<VehicleFilterKey>("active");
+  const [activeVehicleType, setActiveVehicleType] = useState<VehicleTypeFilterKey>("all");
   const selectedVehicle = selectedVehicleId ? vehiclesById.get(selectedVehicleId) ?? null : null;
   const buckets: BucketConfig[] = [
     {
@@ -1054,6 +1088,29 @@ export function AutoBaseBoard({
     },
   ];
   const selectedBucket = buckets.find((bucket) => bucket.key === activeFilter) ?? buckets[0];
+  const vehicleTypeFilters = Array.from(
+    selectedBucket.vehicles.reduce(
+      (items, vehicle) => {
+        const key = vehicleTypeFilterKey(vehicle);
+        const current = items.get(key);
+        items.set(key, {
+          key,
+          label: vehicle.vehicleTypeName || "Төрөлгүй",
+          count: (current?.count ?? 0) + 1,
+        });
+        return items;
+      },
+      new Map<VehicleTypeFilterKey, { key: VehicleTypeFilterKey; label: string; count: number }>(),
+    ).values(),
+  ).sort((left, right) => left.label.localeCompare(right.label, "mn"));
+  const effectiveVehicleType =
+    activeVehicleType === "all" || vehicleTypeFilters.some((item) => item.key === activeVehicleType)
+      ? activeVehicleType
+      : "all";
+  const filteredVehicles =
+    effectiveVehicleType === "all"
+      ? selectedBucket.vehicles
+      : selectedBucket.vehicles.filter((vehicle) => vehicleTypeFilterKey(vehicle) === effectiveVehicleType);
 
   return (
     <>
@@ -1137,6 +1194,34 @@ export function AutoBaseBoard({
           ))}
         </div>
 
+        {vehicleTypeFilters.length ? (
+          <div className={styles.vehicleTypeFilterBar} aria-label="Машины төрлөөр шүүх">
+            <button
+              type="button"
+              className={cx(
+                styles.vehicleTypeFilterButton,
+                effectiveVehicleType === "all" && styles.vehicleTypeFilterButtonActive,
+              )}
+              onClick={() => setActiveVehicleType("all")}
+            >
+              Бүгд <span>{selectedBucket.vehicles.length}</span>
+            </button>
+            {vehicleTypeFilters.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={cx(
+                  styles.vehicleTypeFilterButton,
+                  effectiveVehicleType === item.key && styles.vehicleTypeFilterButtonActive,
+                )}
+                onClick={() => setActiveVehicleType(item.key)}
+              >
+                {item.label} <span>{item.count}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
         <section
           className={cx(
             styles.vehicleFilterPanel,
@@ -1154,7 +1239,7 @@ export function AutoBaseBoard({
           </div>
 
           <VehicleList
-            vehicles={selectedBucket.vehicles}
+            vehicles={filteredVehicles}
             emptyLabel={selectedBucket.emptyLabel}
             onSelectVehicle={(vehicle) => {
               setSelectedVehicleId(vehicle.id);
