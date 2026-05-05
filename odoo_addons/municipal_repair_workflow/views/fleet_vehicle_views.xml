@@ -168,6 +168,11 @@
 
                         <page string="Баримт / хавсралт">
                             <group>
+                                <field name="municipal_photo_front_attachment_ids" widget="many2many_binary"/>
+                                <field name="municipal_photo_left_attachment_ids" widget="many2many_binary"/>
+                                <field name="municipal_photo_right_attachment_ids" widget="many2many_binary"/>
+                                <field name="municipal_certificate_attachment_ids" widget="many2many_binary"/>
+                                <field name="municipal_other_document_attachment_ids" widget="many2many_binary"/>
                                 <field name="municipal_insurance_attachment_ids" widget="many2many_binary"/>
                                 <field name="municipal_inspection_attachment_ids" widget="many2many_binary"/>
                             </group>

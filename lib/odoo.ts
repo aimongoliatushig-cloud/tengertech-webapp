@@ -493,6 +493,18 @@ type OdooFleetVehicleRecord = {
   municipal_inspection_reminder_due?: boolean;
   municipal_inspection_note?: string | false;
   municipal_inspection_attachment_ids?: number[];
+  municipal_photo_front_attachment_ids?: number[];
+  municipal_photo_left_attachment_ids?: number[];
+  municipal_photo_right_attachment_ids?: number[];
+  municipal_certificate_attachment_ids?: number[];
+  municipal_other_document_attachment_ids?: number[];
+};
+
+type OdooAttachmentMetaRecord = {
+  id: number;
+  name?: string | false;
+  mimetype?: string | false;
+  create_date?: string | false;
 };
 
 type OdooCrewTeamRecord = {
@@ -660,6 +672,22 @@ export type FleetVehicleProcurementLink = {
   stateLabel: string;
 };
 
+export type FleetVehicleAttachmentItem = {
+  id: number;
+  name: string;
+  mimetype: string;
+  url: string;
+  isImage: boolean;
+};
+
+export type FleetVehicleAttachmentGroups = {
+  frontPhotos: FleetVehicleAttachmentItem[];
+  leftPhotos: FleetVehicleAttachmentItem[];
+  rightPhotos: FleetVehicleAttachmentItem[];
+  certificates: FleetVehicleAttachmentItem[];
+  otherDocuments: FleetVehicleAttachmentItem[];
+};
+
 export type FleetVehicleDepartmentOption = {
   id: number;
   name: string;
@@ -707,6 +735,7 @@ export type FleetVehicleBoardItem = {
   weightReports: FleetVehicleDailyWeightItem[];
   fuelReports: FleetVehicleDailyFuelItem[];
   procurementLinks: FleetVehicleProcurementLink[];
+  attachments: FleetVehicleAttachmentGroups;
   crewAssignments: FleetVehicleCrewAssignment[];
 };
 
@@ -1441,6 +1470,11 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
     "municipal_inspection_reminder_due",
     "municipal_inspection_note",
     "municipal_inspection_attachment_ids",
+    "municipal_photo_front_attachment_ids",
+    "municipal_photo_left_attachment_ids",
+    "municipal_photo_right_attachment_ids",
+    "municipal_certificate_attachment_ids",
+    "municipal_other_document_attachment_ids",
     "active",
   ],
   [
@@ -1473,6 +1507,11 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
     "municipal_inspection_reminder_due",
     "municipal_inspection_note",
     "municipal_inspection_attachment_ids",
+    "municipal_photo_front_attachment_ids",
+    "municipal_photo_left_attachment_ids",
+    "municipal_photo_right_attachment_ids",
+    "municipal_certificate_attachment_ids",
+    "municipal_other_document_attachment_ids",
     "active",
   ],
   [
@@ -3169,6 +3208,14 @@ function attachmentCount(...values: Array<number[] | undefined>) {
   return values.reduce((sum, ids) => sum + (ids?.length ?? 0), 0);
 }
 
+function uniqueAttachmentIds(...values: Array<number[] | undefined>) {
+  return [...new Set(values.flatMap((ids) => ids ?? []))].filter((id) => Number.isFinite(id));
+}
+
+function attachmentItems(ids: number[] | undefined, byId: Map<number, FleetVehicleAttachmentItem>) {
+  return (ids ?? []).map((id) => byId.get(id)).filter((item): item is FleetVehicleAttachmentItem => Boolean(item));
+}
+
 function appendMapItem<T>(map: Map<number, T[]>, key: number | null, item: T) {
   if (!key) {
     return;
@@ -3201,6 +3248,42 @@ async function safeSearchReadFleetModel<T>(
     console.warn(`${model} could not be loaded for auto-base board:`, error);
     return [];
   }
+}
+
+async function loadAttachmentItemsById(
+  uid: number,
+  attachmentIds: number[],
+  connection: OdooConnection,
+) {
+  const ids = [...new Set(attachmentIds)].filter((id) => Number.isFinite(id) && id > 0);
+  if (!ids.length) {
+    return new Map<number, FleetVehicleAttachmentItem>();
+  }
+
+  const records = await safeSearchReadFleetModel<OdooAttachmentMetaRecord>(
+    uid,
+    "ir.attachment",
+    [["id", "in", ids]],
+    ["name", "mimetype", "create_date"],
+    { order: "create_date desc, id desc" },
+    connection,
+  );
+
+  return new Map(
+    records.map((record) => {
+      const mimetype = record.mimetype || "application/octet-stream";
+      return [
+        record.id,
+        {
+          id: record.id,
+          name: record.name || `attachment-${record.id}`,
+          mimetype,
+          url: `/api/odoo/attachments/${record.id}`,
+          isImage: mimetype.startsWith("image/"),
+        },
+      ];
+    }),
+  );
 }
 
 async function loadDriverHistoryByVehicle(
@@ -3513,6 +3596,17 @@ export async function loadFleetVehicleBoard(
   );
 
   const vehicleIds = vehicles.map((vehicle) => vehicle.id);
+  const vehicleAttachmentIds = uniqueAttachmentIds(
+    ...vehicles.flatMap((vehicle) => [
+      vehicle.municipal_photo_front_attachment_ids,
+      vehicle.municipal_photo_left_attachment_ids,
+      vehicle.municipal_photo_right_attachment_ids,
+      vehicle.municipal_certificate_attachment_ids,
+      vehicle.municipal_other_document_attachment_ids,
+      vehicle.municipal_insurance_attachment_ids,
+      vehicle.municipal_inspection_attachment_ids,
+    ]),
+  );
   const [
     crewAssignmentsByVehicle,
     driverHistoryByVehicle,
@@ -3526,6 +3620,7 @@ export async function loadFleetVehicleBoard(
     modelOptions,
     vehicleTypeOptions,
     categoryOptions,
+    attachmentItemsById,
   ] = await Promise.all([
     loadCrewAssignmentsByVehicle(uid, connection),
     loadDriverHistoryByVehicle(uid, vehicleIds, connection),
@@ -3539,6 +3634,7 @@ export async function loadFleetVehicleBoard(
     loadFleetVehicleRelationOptions(uid, connection, "model_id"),
     loadFleetVehicleRelationOptions(uid, connection, "municipal_vehicle_type_id"),
     loadFleetVehicleRelationOptions(uid, connection, "category_id"),
+    loadAttachmentItemsById(uid, vehicleAttachmentIds, connection),
   ]);
 
   const allVehicles = vehicles
@@ -3638,6 +3734,13 @@ export async function loadFleetVehicleBoard(
         weightReports: latestItems(weightReportResult.byVehicle.get(vehicle.id), 10),
         fuelReports: latestItems(fuelReportResult.byVehicle.get(vehicle.id), 10),
         procurementLinks: latestItems(procurementLinksByVehicle.get(vehicle.id), 8),
+        attachments: {
+          frontPhotos: attachmentItems(vehicle.municipal_photo_front_attachment_ids, attachmentItemsById),
+          leftPhotos: attachmentItems(vehicle.municipal_photo_left_attachment_ids, attachmentItemsById),
+          rightPhotos: attachmentItems(vehicle.municipal_photo_right_attachment_ids, attachmentItemsById),
+          certificates: attachmentItems(vehicle.municipal_certificate_attachment_ids, attachmentItemsById),
+          otherDocuments: attachmentItems(vehicle.municipal_other_document_attachment_ids, attachmentItemsById),
+        },
         crewAssignments: crewAssignmentsByVehicle.get(vehicle.id) ?? [],
       } satisfies FleetVehicleBoardItem;
     })

@@ -8,6 +8,34 @@ import { executeOdooKw } from "@/lib/odoo";
 
 const AUTO_BASE_ALLOWED_ROLES = new Set(["system_admin", "director", "general_manager"]);
 
+const VEHICLE_ATTACHMENT_FIELD_BY_KIND = {
+  photo_front: {
+    field: "municipal_photo_front_attachment_ids",
+    label: "Урд талаас авсан зураг",
+    inputName: "photo_front_files",
+  },
+  photo_left: {
+    field: "municipal_photo_left_attachment_ids",
+    label: "Зүүн талаас авсан зураг",
+    inputName: "photo_left_files",
+  },
+  photo_right: {
+    field: "municipal_photo_right_attachment_ids",
+    label: "Баруун талаас авсан зураг",
+    inputName: "photo_right_files",
+  },
+  certificate: {
+    field: "municipal_certificate_attachment_ids",
+    label: "Гэрчилгээний баримт",
+    inputName: "certificate_files",
+  },
+  other_document: {
+    field: "municipal_other_document_attachment_ids",
+    label: "Бусад бичиг баримт",
+    inputName: "other_document_files",
+  },
+} as const;
+
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
@@ -74,6 +102,30 @@ function rethrowIfRedirectError(error: unknown) {
   if (isRedirectException(error)) {
     throw error;
   }
+}
+
+function getUploadFiles(formData: FormData, key: string) {
+  return formData
+    .getAll(key)
+    .filter((value): value is File => value instanceof File && value.size > 0);
+}
+
+async function createVehicleAttachment(vehicleId: number, file: File) {
+  const buffer = Buffer.from(await file.arrayBuffer());
+  return executeOdooKw<number>(
+    "ir.attachment",
+    "create",
+    [
+      {
+        name: file.name || "vehicle-attachment",
+        datas: buffer.toString("base64"),
+        mimetype: file.type || "application/octet-stream",
+        res_model: "fleet.vehicle",
+        res_id: vehicleId,
+      },
+    ],
+    {},
+  );
 }
 
 export async function updateFleetVehicleAction(formData: FormData) {
@@ -284,6 +336,76 @@ export async function updateFleetVehicleAction(formData: FormData) {
         ? "Жолооч, ачигчийн мэдээлэл шинэчлэгдлээ."
         : "Машины мэдээлэл шинэчлэгдлээ.",
     );
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirectWithMessage("error", getErrorMessage(error));
+  }
+}
+
+export async function uploadFleetVehicleAttachmentAction(formData: FormData) {
+  const session = await requireSession();
+  if (!AUTO_BASE_ALLOWED_ROLES.has(String(session.role))) {
+    redirect("/");
+  }
+
+  const vehicleId = Number(getString(formData, "vehicle_id"));
+  if (!Number.isFinite(vehicleId) || vehicleId <= 0) {
+    redirect("/auto-base?error=Машины бүртгэл олдсонгүй.");
+  }
+
+  const uploadGroups = Object.values(VEHICLE_ATTACHMENT_FIELD_BY_KIND)
+    .map((config) => ({
+      config,
+      files: getUploadFiles(formData, config.inputName),
+    }))
+    .filter((group) => group.files.length > 0);
+
+  const legacyKind = getString(formData, "attachment_kind") as keyof typeof VEHICLE_ATTACHMENT_FIELD_BY_KIND;
+  const legacyConfig = VEHICLE_ATTACHMENT_FIELD_BY_KIND[legacyKind];
+  const legacyFiles = legacyConfig ? getUploadFiles(formData, "files") : [];
+  if (legacyConfig && legacyFiles.length) {
+    uploadGroups.push({ config: legacyConfig, files: legacyFiles });
+  }
+
+  if (!uploadGroups.length) {
+    redirectWithMessage("error", "Зураг эсвэл бичиг баримтын файл сонгоно уу.");
+  }
+
+  try {
+    const requiredFields = [...new Set(uploadGroups.map((group) => group.config.field))];
+    const fields = await executeOdooKw<Record<string, unknown>>(
+      "fleet.vehicle",
+      "fields_get",
+      [requiredFields],
+      { attributes: ["string"] },
+    );
+    if (requiredFields.some((field) => !(field in fields))) {
+      redirectWithMessage(
+        "error",
+        "Odoo дээр машины зураг, бичиг баримтын талбарууд суулгагдаагүй байна. municipal_repair_workflow module-ийг update хийнэ үү.",
+      );
+    }
+
+    const values: Record<string, Array<[4, number]>> = {};
+    for (const group of uploadGroups) {
+      const attachmentIds = [];
+      for (const file of group.files) {
+        attachmentIds.push(await createVehicleAttachment(vehicleId, file));
+      }
+      values[group.config.field] = attachmentIds.map((id) => [4, id]);
+    }
+
+    await executeOdooKw<boolean>(
+      "fleet.vehicle",
+      "write",
+      [[vehicleId], values],
+      {},
+    );
+
+    revalidatePath("/auto-base");
+    revalidatePath("/projects");
+    revalidatePath("/");
+    redirectWithMessage("notice", "Зураг, бичиг баримт хадгалагдлаа.");
   } catch (error) {
     rethrowIfRedirectError(error);
     redirectWithMessage("error", getErrorMessage(error));

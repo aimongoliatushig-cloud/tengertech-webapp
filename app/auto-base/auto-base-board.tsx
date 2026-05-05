@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState, type CSSProperties } from "react";
 
-import { updateFleetVehicleAction } from "./actions";
+import { updateFleetVehicleAction, uploadFleetVehicleAttachmentAction } from "./actions";
 
 import styles from "./page.module.css";
 
@@ -52,6 +53,7 @@ type FleetVehicleBoardItem = {
   weightReports: FleetVehicleDailyWeightItem[];
   fuelReports: FleetVehicleDailyFuelItem[];
   procurementLinks: FleetVehicleProcurementLink[];
+  attachments: FleetVehicleAttachmentGroups;
   crewAssignments: FleetVehicleCrewAssignment[];
 };
 
@@ -137,6 +139,22 @@ type FleetVehicleProcurementLink = {
   repairName: string;
   amountLabel: string;
   stateLabel: string;
+};
+
+type FleetVehicleAttachmentItem = {
+  id: number;
+  name: string;
+  mimetype: string;
+  url: string;
+  isImage: boolean;
+};
+
+type FleetVehicleAttachmentGroups = {
+  frontPhotos: FleetVehicleAttachmentItem[];
+  leftPhotos: FleetVehicleAttachmentItem[];
+  rightPhotos: FleetVehicleAttachmentItem[];
+  certificates: FleetVehicleAttachmentItem[];
+  otherDocuments: FleetVehicleAttachmentItem[];
 };
 
 type FleetVehicleBoard = {
@@ -634,6 +652,199 @@ function ProcurementList({ items }: { items: FleetVehicleProcurementLink[] }) {
   );
 }
 
+function AttachmentUploadForm({
+  vehicleId,
+}: {
+  vehicleId: number;
+}) {
+  return (
+    <form
+      action={uploadFleetVehicleAttachmentAction}
+      className={styles.vehicleAttachmentUploadForm}
+      encType="multipart/form-data"
+    >
+      <input type="hidden" name="vehicle_id" value={vehicleId} />
+      <div className={styles.vehicleAttachmentUploadGrid}>
+        <label className={styles.vehicleFormField}>
+          <span>Урд талаас авсан зураг</span>
+          <input name="photo_front_files" type="file" accept="image/*" multiple />
+        </label>
+        <label className={styles.vehicleFormField}>
+          <span>Зүүн талаас авсан зураг</span>
+          <input name="photo_left_files" type="file" accept="image/*" multiple />
+        </label>
+        <label className={styles.vehicleFormField}>
+          <span>Баруун талаас авсан зураг</span>
+          <input name="photo_right_files" type="file" accept="image/*" multiple />
+        </label>
+        <label className={styles.vehicleFormField}>
+          <span>Гэрчилгээний баримт</span>
+          <input
+            name="certificate_files"
+            type="file"
+            accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
+            multiple
+          />
+        </label>
+        <label className={styles.vehicleFormField}>
+          <span>Бусад бичиг баримт</span>
+          <input
+            name="other_document_files"
+            type="file"
+            accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
+            multiple
+          />
+        </label>
+      </div>
+      <small>Оруулах бүх зураг, бичиг баримтаа сонгоод нэг удаа хадгална.</small>
+      <button type="submit" className={styles.primaryButton}>
+        Бүх зураг, баримт хадгалах
+      </button>
+    </form>
+  );
+}
+
+function AttachmentGallery({
+  title,
+  items,
+  emptyLabel,
+}: {
+  title: string;
+  items: FleetVehicleAttachmentItem[];
+  emptyLabel: string;
+}) {
+  return (
+    <section className={styles.vehicleAttachmentSection}>
+      <div className={styles.vehicleAttachmentSectionHeader}>
+        <strong>{title}</strong>
+        <span>{items.length}</span>
+      </div>
+      {items.length ? (
+        <div className={styles.vehiclePhotoGrid}>
+          {items.map((item) => (
+            <a
+              key={item.id}
+              className={styles.vehiclePhotoLink}
+              href={item.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {item.isImage ? (
+                <Image
+                  src={item.url}
+                  alt={item.name}
+                  width={320}
+                  height={240}
+                  sizes="(max-width: 720px) 100vw, 240px"
+                  unoptimized
+                />
+              ) : (
+                <span className={styles.vehicleFilePreview}>Файл</span>
+              )}
+              <strong>{item.name}</strong>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p className={styles.vehicleAttachmentEmpty}>{emptyLabel}</p>
+      )}
+    </section>
+  );
+}
+
+function AttachmentList({
+  title,
+  items,
+  emptyLabel,
+}: {
+  title: string;
+  items: FleetVehicleAttachmentItem[];
+  emptyLabel: string;
+}) {
+  return (
+    <section className={styles.vehicleAttachmentSection}>
+      <div className={styles.vehicleAttachmentSectionHeader}>
+        <strong>{title}</strong>
+        <span>{items.length}</span>
+      </div>
+      {items.length ? (
+        <div className={styles.vehicleDocumentList}>
+          {items.map((item) => (
+            <a key={item.id} href={item.url} target="_blank" rel="noreferrer">
+              <strong>{item.name}</strong>
+              <small>{item.mimetype || "Файл"}</small>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <p className={styles.vehicleAttachmentEmpty}>{emptyLabel}</p>
+      )}
+    </section>
+  );
+}
+
+function VehicleAttachmentOverview({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
+  return (
+    <div className={styles.vehicleAttachmentGrid}>
+      <AttachmentGallery
+        title="Урд талын зураг"
+        items={vehicle.attachments.frontPhotos}
+        emptyLabel="Урд талаас авсан зураг оруулаагүй байна."
+      />
+      <AttachmentGallery
+        title="Зүүн талын зураг"
+        items={vehicle.attachments.leftPhotos}
+        emptyLabel="Зүүн талаас авсан зураг оруулаагүй байна."
+      />
+      <AttachmentGallery
+        title="Баруун талын зураг"
+        items={vehicle.attachments.rightPhotos}
+        emptyLabel="Баруун талаас авсан зураг оруулаагүй байна."
+      />
+      <AttachmentList
+        title="Гэрчилгээний баримт"
+        items={vehicle.attachments.certificates}
+        emptyLabel="Гэрчилгээний баримт хавсаргаагүй байна."
+      />
+      <AttachmentList
+        title="Бусад бичиг баримт"
+        items={vehicle.attachments.otherDocuments}
+        emptyLabel="Бусад бичиг баримт хавсаргаагүй байна."
+      />
+    </div>
+  );
+}
+
+function VehicleAttachmentsPanel({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
+  const totalPhotoCount =
+    vehicle.attachments.frontPhotos.length +
+    vehicle.attachments.leftPhotos.length +
+    vehicle.attachments.rightPhotos.length;
+  const totalDocumentCount =
+    vehicle.attachments.certificates.length + vehicle.attachments.otherDocuments.length;
+
+  return (
+    <div className={styles.vehicleAttachmentPanel}>
+      <div className={styles.vehicleAttachmentIntro}>
+        <span className={styles.mobileDetailEyebrow}>Зураг / бичиг баримт</span>
+        <div>
+          <h3>Машины зураг, гэрчилгээ, бусад баримт</h3>
+          <p>
+            Машины урд, зүүн, баруун талаас авсан зураг болон гэрчилгээ, бусад бичиг баримтыг тусад нь хадгална.
+          </p>
+        </div>
+        <strong>{totalPhotoCount} зураг · {totalDocumentCount} баримт</strong>
+      </div>
+
+      <AttachmentUploadForm vehicleId={vehicle.id} />
+
+      <p className={styles.vehicleAttachmentEmpty}>
+        Оруулсан зураг, бичиг баримтууд Үндсэн мэдээлэл tab дээр харагдана.
+      </p>
+    </div>
+  );
+}
+
 function VehicleDetailModal({
   vehicle,
   driverOptions,
@@ -664,6 +875,7 @@ function VehicleDetailModal({
     { key: "weight", label: "Жингийн тайлан" },
     { key: "fuel", label: "Шатахуун" },
     { key: "procurement", label: "Худалдан авалт" },
+    { key: "attachments", label: "Зураг / баримт" },
   ];
   const directCrew = directCrewMembers(vehicle);
   const crewCount = assignedCrewCount(vehicle);
@@ -772,6 +984,19 @@ function VehicleDetailModal({
                 </p>
               )}
             </section>
+            <section className={styles.vehicleMainAttachmentPanel}>
+              <div className={styles.vehicleAttachmentSectionHeader}>
+                <strong>Машины зураг, бичиг баримт</strong>
+                <span>
+                  {vehicle.attachments.frontPhotos.length +
+                    vehicle.attachments.leftPhotos.length +
+                    vehicle.attachments.rightPhotos.length +
+                    vehicle.attachments.certificates.length +
+                    vehicle.attachments.otherDocuments.length}
+                </span>
+              </div>
+              <VehicleAttachmentOverview vehicle={vehicle} />
+            </section>
           </section>
         ) : null}
 
@@ -827,6 +1052,12 @@ function VehicleDetailModal({
         {activeTab === "procurement" ? (
           <section className={styles.vehicleTabPanel}>
             <ProcurementList items={vehicle.procurementLinks} />
+          </section>
+        ) : null}
+
+        {activeTab === "attachments" ? (
+          <section className={styles.vehicleTabPanel}>
+            <VehicleAttachmentsPanel vehicle={vehicle} />
           </section>
         ) : null}
 
@@ -1100,7 +1331,7 @@ export function AutoBaseBoard({
           <strong>{board.failedImportCount}</strong>
         </div>
         <div className={styles.metricTile}>
-          <span>Их шатахуун</span>
+          <span>Шатахуун их зарцуулж байгаа</span>
           <strong>{board.highestFuelVehicle || "Байхгүй"}</strong>
         </div>
         <div className={styles.metricTile}>
