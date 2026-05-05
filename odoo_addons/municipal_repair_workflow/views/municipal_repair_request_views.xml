@@ -11,6 +11,7 @@
                 <field name="driver_id"/>
                 <field name="department_id"/>
                 <field name="mechanic_id"/>
+                <field name="damage_type"/>
                 <field name="priority"/>
                 <field name="amount_total"/>
                 <field name="contract_required"/>
@@ -43,6 +44,7 @@
                     <group>
                         <group>
                             <field name="issue_summary"/>
+                            <field name="damage_type"/>
                             <field name="vehicle_id"/>
                             <field name="driver_id"/>
                             <field name="requested_by" readonly="1"/>
@@ -58,6 +60,8 @@
                             <field name="amount_total" readonly="1"/>
                             <field name="contract_required" readonly="1"/>
                             <field name="approved_by" readonly="1"/>
+                            <field name="repair_started_at" readonly="1"/>
+                            <field name="repair_done_at" readonly="1"/>
                         </group>
                     </group>
                     <notebook>

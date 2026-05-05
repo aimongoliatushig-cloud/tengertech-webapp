@@ -77,4 +77,32 @@
               action="action_fleet_vehicle_municipal_status"
               sequence="60"
               groups="municipal_repair_workflow.group_repair_manager,municipal_repair_workflow.group_repair_team_lead,municipal_repair_workflow.group_repair_mechanic,municipal_repair_workflow.group_repair_director,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_municipal_vehicle_type"
+              name="Машин техникийн төрөл"
+              parent="menu_municipal_repair_root"
+              action="action_municipal_vehicle_type"
+              sequence="70"
+              groups="municipal_repair_workflow.group_repair_manager,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_municipal_garbage_weight_report"
+              name="Хог ачалтын жин"
+              parent="menu_municipal_repair_root"
+              action="action_municipal_garbage_weight_report"
+              sequence="80"
+              groups="municipal_repair_workflow.group_repair_manager,municipal_core.group_municipal_department_head,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_municipal_garbage_fuel_report"
+              name="Шатахууны мэдээлэл"
+              parent="menu_municipal_repair_root"
+              action="action_municipal_garbage_fuel_report"
+              sequence="90"
+              groups="municipal_repair_workflow.group_repair_manager,municipal_core.group_municipal_department_head,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_municipal_garbage_sync_log"
+              name="Автомат таталтын бүртгэл"
+              parent="menu_municipal_repair_root"
+              action="action_municipal_garbage_sync_log"
+              sequence="100"
+              groups="municipal_repair_workflow.group_repair_manager,municipal_core.group_municipal_admin"/>
 </odoo>

@@ -41,6 +41,7 @@ class MunicipalRepairRequest(models.Model):
         tracking=True,
     )
     issue_description = fields.Text(string="Эвдрэлийн тайлбар", tracking=True)
+    damage_type = fields.Char(string="Эвдрэлийн төрөл", tracking=True)
     description = fields.Text(string="Тайлбар")
     parts_note = fields.Text(string="Сэлбэгийн тэмдэглэл")
     photo_ids = fields.Many2many(
@@ -94,6 +95,8 @@ class MunicipalRepairRequest(models.Model):
         default="none",
     )
     repair_note = fields.Text(string="Засварын тэмдэглэл")
+    repair_started_at = fields.Datetime(string="Засвар эхэлсэн огноо", readonly=True)
+    repair_done_at = fields.Datetime(string="Засвар дууссан огноо", readonly=True)
     approved_by = fields.Many2one("res.users", string="Баталсан хэрэглэгч", readonly=True)
     company_id = fields.Many2one(
         "res.company",
@@ -215,11 +218,11 @@ class MunicipalRepairRequest(models.Model):
 
     def action_start_repair(self):
         self._set_vehicle_status("in_repair")
-        return self._set_state("in_repair")
+        return self._set_state("in_repair", {"repair_started_at": fields.Datetime.now()})
 
     def action_done(self, payload=None):
         self._set_vehicle_status("available")
-        self._set_state("done")
+        self._set_state("done", {"repair_done_at": fields.Datetime.now()})
         return True
 
     def action_return_vehicle(self):
@@ -282,6 +285,7 @@ class MunicipalRepairRequest(models.Model):
                     "request_type": "repair_part",
                     "department_id": request.department_id.id or False,
                     "repair_id": request.id,
+                    "vehicle_id": request.vehicle_id.id,
                     "amount_total": request.amount_total,
                     "company_id": request.company_id.id,
                 }

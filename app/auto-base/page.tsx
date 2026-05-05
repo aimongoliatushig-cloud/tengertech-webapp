@@ -5,6 +5,7 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
 import { getRoleLabel, hasCapability, requireSession } from "@/lib/auth";
 import { loadFleetVehicleBoard } from "@/lib/odoo";
+import { loadWorkspaceNotificationCount } from "@/lib/workspace-notifications";
 
 import { AutoBaseBoard } from "./auto-base-board";
 import styles from "./page.module.css";
@@ -40,22 +41,33 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
   const selectedVehicleId = Number(firstParam(params.vehicle) ?? "");
   const notice = firstParam(params.notice) ?? "";
   const error = firstParam(params.error) ?? "";
+  const notificationCount = await loadWorkspaceNotificationCount(session);
 
   let board = {
     allVehicles: [],
     activeVehicles: [],
     repairVehicles: [],
+    driverOptions: [],
+    loaderOptions: [],
+    departmentOptions: [],
+    modelOptions: [],
+    vehicleTypeOptions: [],
+    categoryOptions: [],
     totalVehicles: 0,
     activeCount: 0,
     repairCount: 0,
+    insuranceDueCount: 0,
+    inspectionDueCount: 0,
+    todayWeightLabel: "0 кг",
+    todayFuelLabel: "0 л",
+    highestFuelVehicle: "",
+    mostRepairedVehicle: "",
+    failedImportCount: 0,
   } as Awaited<ReturnType<typeof loadFleetVehicleBoard>>;
   let loadError = "";
 
   try {
-    board = await loadFleetVehicleBoard({
-      login: session.login,
-      password: session.password,
-    });
+    board = await loadFleetVehicleBoard();
   } catch (error) {
     console.error("Fleet vehicle board could not be loaded:", error);
     loadError =
@@ -77,6 +89,7 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               groupFlags={session.groupFlags}
+              notificationCount={notificationCount}
             />
           </aside>
 
@@ -86,8 +99,7 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
               subtitle="Идэвхтэй болон засагдаж буй машинуудын бодит төлөв"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
-              notificationCount={board.totalVehicles}
-              notificationNote={`${board.activeCount} идэвхтэй, ${board.repairCount} засагдаж буй машин байна`}
+              notificationCount={notificationCount}
             />
 
             {loadError ? (

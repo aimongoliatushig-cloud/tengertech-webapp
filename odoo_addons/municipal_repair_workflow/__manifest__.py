@@ -17,7 +17,9 @@
     "data": [
         "security/municipal_repair_workflow_security.xml",
         "security/ir.model.access.csv",
+        "data/municipal_vehicle_type_data.xml",
         "data/ir_sequence_data.xml",
+        "data/ir_cron_data.xml",
         "views/municipal_repair_request_views.xml",
         "views/municipal_procurement_request_views.xml",
         "views/fleet_vehicle_views.xml",

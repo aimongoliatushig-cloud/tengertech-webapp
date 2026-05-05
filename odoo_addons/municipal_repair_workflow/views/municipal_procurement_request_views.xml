@@ -9,6 +9,7 @@
                 <field name="request_type"/>
                 <field name="requested_by"/>
                 <field name="department_id"/>
+                <field name="vehicle_id"/>
                 <field name="repair_id"/>
                 <field name="amount_total"/>
                 <field name="selected_supplier_total"/>
@@ -43,6 +44,7 @@
                             <field name="requested_by" readonly="1"/>
                             <field name="request_date"/>
                             <field name="department_id"/>
+                            <field name="vehicle_id"/>
                             <field name="repair_id"/>
                         </group>
                         <group>
@@ -125,6 +127,7 @@
         <field name="arch" type="xml">
             <search string="Худалдан авалтын хүсэлт">
                 <field name="name"/>
+                <field name="vehicle_id"/>
                 <field name="repair_id"/>
                 <field name="department_id"/>
                 <field name="selected_supplier_id"/>

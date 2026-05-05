@@ -29,6 +29,10 @@ This repository contains:
 
 All user-facing UI text must be Mongolian Cyrillic, including labels, buttons, menus, statuses, warnings, dashboard text, and mobile messages.
 
+## Project Requirement References
+
+When working on auto-base, fleet repair, vehicle registration, driver assignment, insurance, inspection reminders, garbage-truck daily weight/fuel imports, or procurement links, read `docs/codex/auto-base-user-requirements-addendum.md` before implementation.
+
 ## Absolute Safety Rules
 
 1. Never delete existing modules or working logic unless explicitly asked.

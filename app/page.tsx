@@ -21,9 +21,22 @@ const EMPTY_FLEET_BOARD: Awaited<ReturnType<typeof loadFleetVehicleBoard>> = {
   allVehicles: [],
   activeVehicles: [],
   repairVehicles: [],
+  driverOptions: [],
+  loaderOptions: [],
+  departmentOptions: [],
+  modelOptions: [],
+  vehicleTypeOptions: [],
+  categoryOptions: [],
   totalVehicles: 0,
   activeCount: 0,
   repairCount: 0,
+  insuranceDueCount: 0,
+  inspectionDueCount: 0,
+  todayWeightLabel: "0 кг",
+  todayFuelLabel: "0 л",
+  highestFuelVehicle: "",
+  mostRepairedVehicle: "",
+  failedImportCount: 0,
 };
 
 const EMPTY_HR_ATTENDANCE_SUMMARY: HrDailyAttendanceSummary = {
@@ -102,7 +115,7 @@ export default async function Home() {
         fleetBoard: EMPTY_FLEET_BOARD,
         fleetLoadError: "",
       })
-    : loadFleetVehicleBoard(connectionOverrides)
+    : loadFleetVehicleBoard()
         .then((fleetBoard) => ({
           fleetBoard,
           fleetLoadError: "",
@@ -111,7 +124,7 @@ export default async function Home() {
           console.warn("Fleet vehicle board could not be loaded for dashboard:", error);
           return {
             fleetBoard: EMPTY_FLEET_BOARD,
-            fleetLoadError: "Техникийн мэдээллийг Odoo Fleet-ээс уншиж чадсангүй.",
+            fleetLoadError: "Авто баазын техникийн мэдээллийг уншиж чадсангүй.",
           };
         });
   const hrAttendanceSummaryPromise = workerMode

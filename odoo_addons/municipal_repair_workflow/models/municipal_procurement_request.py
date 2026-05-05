@@ -51,6 +51,7 @@ class MunicipalProcurementRequest(models.Model):
     )
     department_id = fields.Many2one("hr.department", string="Хэлтэс", tracking=True)
     repair_id = fields.Many2one("municipal.repair.request", string="Засварын хүсэлт", ondelete="set null")
+    vehicle_id = fields.Many2one("fleet.vehicle", string="Машин техник", tracking=True)
     line_ids = fields.One2many(
         "municipal.procurement.line",
         "procurement_id",
