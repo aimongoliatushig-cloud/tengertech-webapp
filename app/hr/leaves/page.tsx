@@ -1,9 +1,9 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { getRoleLabel, requireSession } from "@/lib/auth";
-import { getEmployees, getLeaves, getLeaveTypes, requireHrAccess } from "@/lib/hr";
+import { getEmployees, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
 
 import { HrSectionNav } from "../hr-section-nav";
-import { LeavesClient } from "../hr-client";
+import { TimeoffRequestsClient } from "../hr-client";
 
 export const dynamic = "force-dynamic";
 
@@ -13,24 +13,24 @@ export default async function HrLeavesPage() {
   if (!access) {
     return null;
   }
-  const [employees, leaveTypes, leaves] = await Promise.all([
+  const [employees, requests] = await Promise.all([
     getEmployees(session).catch(() => []),
-    getLeaveTypes(session),
-    getLeaves(session),
+    getTimeoffRequests(session),
   ]);
+  const mode = access.isHr ? "hr" : "department";
 
   return (
     <>
       <WorkspaceHeader
-        title="Чөлөө / өвчтэй"
-        subtitle="Ээлжийн амралт, цалинтай болон цалингүй чөлөө, өвчтэй бүртгэлийг удирдана"
+        title={access.isHr ? "Ирсэн хүсэлтүүд" : "Миний илгээсэн хүсэлтүүд"}
+        subtitle={access.isHr ? "Хэлтсийн даргаас ирсэн чөлөө / өвчтэй хүсэлтийг хянаж батална эсвэл татгалзана" : "Өөрийн хэлтсийн ажилтанд илгээсэн чөлөө / өвчтэй хүсэлтүүд"}
         userName={session.name}
         roleLabel={getRoleLabel(session.role)}
-        notificationCount={leaves.length}
-        notificationNote="Чөлөөний бүртгэл"
+        notificationCount={requests.length}
+        notificationNote="Чөлөө / өвчтэй хүсэлт"
       />
-      <HrSectionNav />
-      <LeavesClient employees={employees} leaveTypes={leaveTypes} leaves={leaves} />
+      <HrSectionNav mode={mode} />
+      <TimeoffRequestsClient employees={employees} requests={requests} mode={mode} />
     </>
   );
 }

@@ -2341,6 +2341,146 @@
   overflow-wrap: anywhere;
 }
 
+.attachmentDisclosure {
+  display: grid;
+  gap: 10px;
+}
+
+.attachmentDisclosureSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid rgba(47, 127, 70, 0.2);
+  border-radius: var(--ds-radius-control);
+  background: rgba(238, 247, 237, 0.9);
+  color: var(--brand-800);
+  font-weight: 900;
+  cursor: pointer;
+  list-style: none;
+}
+
+.attachmentDisclosureSummary::-webkit-details-marker {
+  display: none;
+}
+
+.attachmentDisclosureSummary::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  color: var(--brand-800);
+  transform: rotate(45deg);
+  transition: transform 0.16s ease;
+}
+
+.attachmentDisclosure[open] .attachmentDisclosureSummary::after {
+  transform: rotate(225deg);
+}
+
+.attachmentDisclosureSummary small {
+  margin-left: auto;
+  color: var(--ink-700);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.attachmentDetailPanel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.attachmentDetailDescription {
+  display: grid;
+  gap: 6px;
+  color: var(--ink-800);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.attachmentDetailDescription p {
+  margin: 0;
+}
+
+.attachmentPreviewList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.attachmentPreviewCard {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(74, 154, 93, 0.16);
+  border-radius: var(--ds-radius-control);
+  background: rgba(250, 253, 249, 0.94);
+  color: var(--ink-900);
+  text-decoration: none;
+}
+
+.attachmentPreviewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.attachmentPreviewHeader strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachmentPreviewHeader small {
+  flex: 0 0 auto;
+  color: var(--ink-700);
+  font-size: 0.78rem;
+}
+
+.attachmentImageFrame,
+.attachmentImagePreview,
+.attachmentPdfPreview {
+  width: 100%;
+  border: 1px solid rgba(74, 154, 93, 0.12);
+  border-radius: var(--ds-radius-control);
+  background: #fff;
+}
+
+.attachmentImageFrame {
+  position: relative;
+  display: block;
+  min-height: 360px;
+  overflow: hidden;
+}
+
+.attachmentImagePreview {
+  object-fit: contain;
+}
+
+.attachmentPdfPreview {
+  min-height: 520px;
+}
+
+.attachmentOpenLink {
+  flex: 0 0 auto;
+  color: var(--brand-800);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
 .projectDetailCompact {
   display: grid;
   gap: 10px;
@@ -2661,6 +2801,7 @@
 .lockedFieldValue {
   display: flex;
   align-items: center;
+  gap: 8px;
   min-height: 48px;
   padding: 12px 14px;
   border: 1px solid rgba(74, 154, 93, 0.14);
@@ -2668,6 +2809,26 @@
   background: rgba(242, 249, 240, 0.92);
   color: var(--ink-900);
   font-weight: 600;
+}
+
+.lockedFieldValue strong,
+.lockedFieldValue span {
+  min-width: 0;
+}
+
+.lockedFieldValue strong {
+  flex: 0 0 auto;
+}
+
+.lockedFieldValue span {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .lockedFieldValue {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 .modalOverlay {
@@ -2878,8 +3039,15 @@
 }
 
 .dangerButton {
+  gap: 8px;
   background: rgba(182, 79, 61, 0.14);
   color: #8f2a19;
+}
+
+.dangerButton svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
 }
 
 .message {

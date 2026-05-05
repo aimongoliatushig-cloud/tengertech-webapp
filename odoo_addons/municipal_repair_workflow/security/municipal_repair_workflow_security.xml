@@ -172,6 +172,41 @@
             <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_storekeeper')), (4, ref('group_repair_finance')), (4, ref('group_repair_director')), (4, ref('municipal_core.group_municipal_admin'))]"/>
         </record>
 
+        <record id="rule_procurement_line_repair_related" model="ir.rule">
+            <field name="name">Procurement lines repair related users</field>
+            <field name="model_id" ref="model_municipal_procurement_line"/>
+            <field name="domain_force">['|', '|', ('repair_id.mechanic_id.user_id', '=', user.id), ('repair_id.supervisor_id', '=', user.id), ('repair_id.department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_repair_team_lead')), (4, ref('group_repair_mechanic'))]"/>
+        </record>
+
+        <record id="rule_procurement_quote_privileged" model="ir.rule">
+            <field name="name">Procurement quotes privileged roles</field>
+            <field name="model_id" ref="model_municipal_procurement_quote"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_storekeeper')), (4, ref('group_repair_finance')), (4, ref('group_repair_director')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_procurement_quote_repair_related" model="ir.rule">
+            <field name="name">Procurement quotes repair related users</field>
+            <field name="model_id" ref="model_municipal_procurement_quote"/>
+            <field name="domain_force">['|', '|', ('repair_id.mechanic_id.user_id', '=', user.id), ('repair_id.supervisor_id', '=', user.id), ('repair_id.department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_repair_team_lead')), (4, ref('group_repair_mechanic'))]"/>
+        </record>
+
+        <record id="rule_warehouse_move_privileged" model="ir.rule">
+            <field name="name">Warehouse moves privileged roles</field>
+            <field name="model_id" ref="model_municipal_warehouse_move"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_storekeeper')), (4, ref('group_repair_finance')), (4, ref('group_repair_director')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_warehouse_move_repair_related" model="ir.rule">
+            <field name="name">Warehouse moves repair related users</field>
+            <field name="model_id" ref="model_municipal_warehouse_move"/>
+            <field name="domain_force">['|', '|', ('repair_id.mechanic_id.user_id', '=', user.id), ('repair_id.supervisor_id', '=', user.id), ('repair_id.department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_repair_team_lead')), (4, ref('group_repair_mechanic'))]"/>
+        </record>
+
         <record id="rule_vehicle_driver_history_department_head" model="ir.rule">
             <field name="name">Vehicle driver history department head</field>
             <field name="model_id" ref="model_municipal_vehicle_driver_history"/>
@@ -212,41 +247,6 @@
             <field name="model_id" ref="model_municipal_garbage_fuel_report"/>
             <field name="domain_force">[(1, '=', 1)]</field>
             <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('municipal_core.group_municipal_admin'))]"/>
-        </record>
-
-        <record id="rule_procurement_line_repair_related" model="ir.rule">
-            <field name="name">Procurement lines repair related users</field>
-            <field name="model_id" ref="model_municipal_procurement_line"/>
-            <field name="domain_force">['|', '|', ('repair_id.mechanic_id.user_id', '=', user.id), ('repair_id.supervisor_id', '=', user.id), ('repair_id.department_id.manager_id.user_id', '=', user.id)]</field>
-            <field name="groups" eval="[(4, ref('group_repair_team_lead')), (4, ref('group_repair_mechanic'))]"/>
-        </record>
-
-        <record id="rule_procurement_quote_privileged" model="ir.rule">
-            <field name="name">Procurement quotes privileged roles</field>
-            <field name="model_id" ref="model_municipal_procurement_quote"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_storekeeper')), (4, ref('group_repair_finance')), (4, ref('group_repair_director')), (4, ref('municipal_core.group_municipal_admin'))]"/>
-        </record>
-
-        <record id="rule_procurement_quote_repair_related" model="ir.rule">
-            <field name="name">Procurement quotes repair related users</field>
-            <field name="model_id" ref="model_municipal_procurement_quote"/>
-            <field name="domain_force">['|', '|', ('repair_id.mechanic_id.user_id', '=', user.id), ('repair_id.supervisor_id', '=', user.id), ('repair_id.department_id.manager_id.user_id', '=', user.id)]</field>
-            <field name="groups" eval="[(4, ref('group_repair_team_lead')), (4, ref('group_repair_mechanic'))]"/>
-        </record>
-
-        <record id="rule_warehouse_move_privileged" model="ir.rule">
-            <field name="name">Warehouse moves privileged roles</field>
-            <field name="model_id" ref="model_municipal_warehouse_move"/>
-            <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_storekeeper')), (4, ref('group_repair_finance')), (4, ref('group_repair_director')), (4, ref('municipal_core.group_municipal_admin'))]"/>
-        </record>
-
-        <record id="rule_warehouse_move_repair_related" model="ir.rule">
-            <field name="name">Warehouse moves repair related users</field>
-            <field name="model_id" ref="model_municipal_warehouse_move"/>
-            <field name="domain_force">['|', '|', ('repair_id.mechanic_id.user_id', '=', user.id), ('repair_id.supervisor_id', '=', user.id), ('repair_id.department_id.manager_id.user_id', '=', user.id)]</field>
-            <field name="groups" eval="[(4, ref('group_repair_team_lead')), (4, ref('group_repair_mechanic'))]"/>
         </record>
     </data>
 </odoo>

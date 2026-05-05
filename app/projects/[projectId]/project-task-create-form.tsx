@@ -207,7 +207,7 @@ export function ProjectTaskCreateForm({
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="task-name">Ажилбарын нэр</label>
+        <label htmlFor="task-name">Даалгаврын нэр</label>
         <input
           id="task-name"
           name="name"
@@ -261,7 +261,7 @@ export function ProjectTaskCreateForm({
           ) : null}
           {isLocationConfirmed && newTaskLocation.trim() ? (
             <small className={styles.inlineConfirmNote}>
-              “{newTaskLocation.trim()}” байршлыг энэ ажилбарт хадгална.
+              “{newTaskLocation.trim()}” байршлыг энэ даалгаварт хадгална.
             </small>
           ) : null}
         </div>
@@ -364,8 +364,8 @@ export function ProjectTaskCreateForm({
                 </div>
               </fieldset>
               <p className={styles.fieldHint}>
-                Гишүүдээ сонгоод доорх “Ажилбар нэмэх” товчийг дарахад баг хамт үүсэж,
-                ажилбарт оноогдоно.
+                Гишүүдээ сонгоод доорх “Даалгавар нэмэх” товчийг дарахад баг хамт үүсэж,
+                даалгаварт оноогдоно.
               </p>
             </div>
           ) : null}
@@ -560,7 +560,7 @@ export function ProjectTaskCreateForm({
 
       <div className={footerClassName}>
         <button type="submit" className={styles.primaryButton}>
-          Ажилбар нэмэх
+          Даалгавар нэмэх
         </button>
       </div>
     </form>

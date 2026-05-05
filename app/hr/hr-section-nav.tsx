@@ -3,41 +3,37 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Archive,
   CalendarDays,
-  ClipboardCheck,
   FileText,
   HeartPulse,
   LayoutDashboard,
-  Plane,
-  ScrollText,
-  Settings,
   ShieldAlert,
-  Shuffle,
   UserPlus,
   Users,
 } from "lucide-react";
 
 import styles from "./hr.module.css";
 
-const items = [
-  { href: "/hr", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/hr/employees", label: "Ажилтнууд", icon: Users },
+const hrItems = [
+  { href: "/hr", label: "Самбар", icon: LayoutDashboard },
+  { href: "/hr/employees", label: "Бүх ажилтнууд", icon: Users },
   { href: "/hr/employees/new", label: "Шинэ ажилтан бүртгэх", icon: UserPlus },
-  { href: "/hr/leaves", label: "Чөлөө", icon: CalendarDays },
-  { href: "/hr/sick", label: "Өвчтэй", icon: HeartPulse },
-  { href: "/hr/trips", label: "Томилолт", icon: Plane },
+  { href: "/hr/leaves", label: "Ирсэн хүсэлтүүд", icon: CalendarDays },
+  { href: "/hr/sick", label: "Чөлөө / өвчтэй хүсэлтүүд", icon: HeartPulse },
   { href: "/hr/discipline", label: "Сахилгын бүртгэл", icon: ShieldAlert },
-  { href: "/hr/orders", label: "Тушаал", icon: ScrollText },
-  { href: "/hr/transfers", label: "Шилжилт хөдөлгөөн", icon: Shuffle },
-  { href: "/hr/clearance", label: "Тойрох хуудас", icon: ClipboardCheck },
-  { href: "/hr/archive", label: "Архив", icon: Archive },
   { href: "/hr/reports", label: "Тайлан", icon: FileText },
-  { href: "/hr/settings", label: "Тохиргоо", icon: Settings },
 ];
 
-export function HrSectionNav() {
+const departmentItems = [
+  { href: "/hr", label: "Самбар", icon: LayoutDashboard },
+  { href: "/hr/employees", label: "Миний хэлтсийн ажилтнууд", icon: Users },
+  { href: "/hr/leaves", label: "Миний илгээсэн хүсэлтүүд", icon: CalendarDays },
+  { href: "/hr/sick", label: "Чөлөө / өвчтэй хүсэлт", icon: HeartPulse },
+];
+
+export function HrSectionNav({ mode = "hr" }: { mode?: "hr" | "department" }) {
   const pathname = usePathname();
+  const items = mode === "department" ? departmentItems : hrItems;
 
   return (
     <nav className={styles.hrTabs} aria-label="Хүний нөөцийн дотоод цэс">

@@ -246,6 +246,7 @@
 
 .profileMenuWrap {
   position: relative;
+  z-index: 80;
   margin: 0 24px 24px;
 }
 
@@ -336,7 +337,7 @@
   right: 0;
   bottom: calc(100% + 8px);
   left: 0;
-  z-index: 20;
+  z-index: 1000;
   display: grid;
   gap: 6px;
   padding: 8px;
@@ -374,6 +375,10 @@
 
 @media (max-width: 1080px) {
   .menuBar {
+    display: none;
+  }
+
+  .workerMenuShell .mobileTopBar {
     display: none;
   }
 

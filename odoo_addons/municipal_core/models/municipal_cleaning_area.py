@@ -11,8 +11,6 @@ CLEANING_DEFAULT_LINES = [
     "Замын нуух цэвэрлэх",
     "Хогийн сав шалгах",
     "Жижиг хог / шарилж / зарын хуудас цэвэрлэх",
-    "Өмнөх зураг оруулах",
-    "Дараах зураг оруулах",
 ]
 
 
@@ -190,7 +188,7 @@ class MunicipalCleaningArea(models.Model):
 
 class MunicipalWorkLine(models.Model):
     _name = "municipal.work.line"
-    _description = "Ажлын ажилбар"
+    _description = "Ажлын даалгавар"
     _order = "sequence, id"
 
     work_id = fields.Many2one(
@@ -200,7 +198,7 @@ class MunicipalWorkLine(models.Model):
         ondelete="cascade",
         index=True,
     )
-    name = fields.Char(string="Ажилбар", required=True)
+    name = fields.Char(string="Даалгавар", required=True)
     is_done = fields.Boolean(string="Хийгдсэн")
     sequence = fields.Integer(string="Дараалал", default=10)
     note = fields.Text(string="Тайлбар")

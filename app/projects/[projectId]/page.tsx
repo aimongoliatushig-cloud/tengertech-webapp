@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
@@ -70,6 +71,15 @@ function getProgressWidth(value: number) {
   }
 
   return `${Math.max(Math.min(value, 100), 6)}%`;
+}
+
+function isImageAttachment(attachment: { mimetype: string }) {
+  return attachment.mimetype.toLowerCase().startsWith("image/");
+}
+
+function isPdfAttachment(attachment: { mimetype: string; name: string }) {
+  const mimetype = attachment.mimetype.toLowerCase();
+  return mimetype === "application/pdf" || attachment.name.toLowerCase().endsWith(".pdf");
 }
 
 function resolveProjectStage(taskCounts: Record<TaskFilterKey, number>) {
@@ -273,11 +283,11 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
           <div className={styles.pageContent}>
             <WorkspaceHeader
               title="Ажлын дэлгэрэнгүй"
-              subtitle="Сонгосон ажлын гол хяналт ба ажилбарын урсгал"
+              subtitle="Сонгосон ажлын гол хяналт ба даалгаврын урсгал"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               notificationCount={activeTaskCount}
-              notificationNote={`${activeTaskCount} идэвхтэй ажилбар одоогоор явж байна`}
+              notificationNote={`${activeTaskCount} идэвхтэй даалгавар одоогоор явж байна`}
             />
 
             {errorMessage ? (
@@ -290,22 +300,22 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
             <section className={styles.heroCard}>
               <span className={styles.eyebrow}>
                 {quickActionMode === "task"
-                  ? "Ажилбар нэмэх"
+                  ? "Даалгавар нэмэх"
                   : quickActionMode === "report"
                     ? "Тайлан оруулах"
                     : masterMode
                       ? "Ажил нэмэх урсгал"
-                      : "Ажлын ажилбар"}
+                      : "Ажлын даалгавар"}
               </span>
               <h1>{project.name}</h1>
               <p>
                 {quickActionMode === "task"
-                  ? "Энэ ажлыг сонгосон тул одоо шууд шинэ ажилбар нэмж болно."
+                  ? "Энэ ажлыг сонгосон тул одоо шууд шинэ даалгавар нэмж болно."
                   : quickActionMode === "report"
-                    ? "Энэ ажлын доторх ажилбаруудаас нэгийг сонгоод тайлан оруулах цонх руу орно."
+                    ? "Энэ ажлын доторх даалгавруудаас нэгийг сонгоод тайлан оруулах цонх руу орно."
                   : masterMode
-                  ? "Мастер хэрэглэгч энэ ажлын хүрээнд шинэ ажилбар нээж, өнөөдрийн урсгалаа тайлантай нь хамт удирдана."
-                  : "Энэ дэлгэц дээр зөвхөн тухайн ажлын ажилбарууд харагдана. Тухайн ажилбар дээр дарж дараагийн дэлгэрэнгүй рүү орно."}
+                  ? "Мастер хэрэглэгч энэ ажлын хүрээнд шинэ даалгавар нээж, өнөөдрийн урсгалаа тайлантай нь хамт удирдана."
+                  : "Энэ дэлгэц дээр зөвхөн тухайн ажлын даалгаврууд харагдана. Тухайн даалгавар дээр дарж дараагийн дэлгэрэнгүй рүү орно."}
               </p>
 
               <div className={styles.projectHeroGrid}>
@@ -379,7 +389,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                     <span className={styles.projectHeroCardLabel}>Өнөөдрийн төвлөрөх зүйл</span>
                     <div className={styles.projectHeroSignalMain}>
                       <strong>{activeTaskCount}</strong>
-                      <span>идэвхтэй ажилбар</span>
+                      <span>идэвхтэй даалгавар</span>
                     </div>
                     <div className={styles.projectHeroSignalRow}>
                       <div className={styles.projectHeroSignalPill}>
@@ -433,28 +443,92 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                 </div>
 
                 <div className={styles.projectDetailCompactGrid}>
-                  {project.description ? (
-                    <div className={styles.descriptionCard}>
-                      <span className={styles.compactLabel}>Тайлбар</span>
-                      <p>{project.description}</p>
-                    </div>
-                  ) : null}
+                  <div className={styles.descriptionCard}>
+                    <span className={styles.compactLabel}>Тайлбар</span>
+                    <p>{project.description || "Тайлбар бүртгээгүй байна."}</p>
+                  </div>
 
                   {project.attachments.length ? (
-                    <div className={styles.documentList}>
-                      {project.attachments.map((attachment) => (
-                        <a
-                          key={attachment.id}
-                          href={attachment.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={styles.documentCard}
-                        >
-                          <strong>{attachment.name}</strong>
-                          <small>{attachment.mimetype}</small>
-                        </a>
-                      ))}
-                    </div>
+                    <details className={styles.attachmentDisclosure}>
+                      <summary className={styles.attachmentDisclosureSummary}>
+                        <span>Дэлгэрэнгүй хавсралт харах</span>
+                        <small>{project.attachments.length} файл</small>
+                      </summary>
+
+                      <div className={styles.attachmentDetailPanel}>
+                        <div className={styles.attachmentDetailDescription}>
+                          <span className={styles.compactLabel}>Тайлбар</span>
+                          <p>{project.description || "Тайлбар бүртгээгүй байна."}</p>
+                        </div>
+
+                        <div className={styles.attachmentPreviewList}>
+                          {project.attachments.map((attachment) => {
+                            if (isImageAttachment(attachment)) {
+                              return (
+                                <a
+                                  key={attachment.id}
+                                  href={attachment.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className={styles.attachmentPreviewCard}
+                                >
+                                  <div className={styles.attachmentPreviewHeader}>
+                                    <strong>{attachment.name}</strong>
+                                    <small>{attachment.mimetype}</small>
+                                  </div>
+                                  <span className={styles.attachmentImageFrame}>
+                                    <Image
+                                      src={attachment.url}
+                                      alt={attachment.name}
+                                      fill
+                                      unoptimized
+                                      sizes="(max-width: 720px) 100vw, 50vw"
+                                      className={styles.attachmentImagePreview}
+                                    />
+                                  </span>
+                                </a>
+                              );
+                            }
+
+                            if (isPdfAttachment(attachment)) {
+                              return (
+                                <div key={attachment.id} className={styles.attachmentPreviewCard}>
+                                  <div className={styles.attachmentPreviewHeader}>
+                                    <strong>{attachment.name}</strong>
+                                    <a
+                                      href={attachment.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className={styles.attachmentOpenLink}
+                                    >
+                                      Нээх
+                                    </a>
+                                  </div>
+                                  <iframe
+                                    src={attachment.url}
+                                    title={attachment.name}
+                                    className={styles.attachmentPdfPreview}
+                                  />
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <a
+                                key={attachment.id}
+                                href={attachment.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={styles.documentCard}
+                              >
+                                <strong>{attachment.name}</strong>
+                                <small>{attachment.mimetype}</small>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </details>
                   ) : null}
                 </div>
               </section>
@@ -467,10 +541,10 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                     <span className={styles.eyebrow}>Ажлын самбар</span>
                     <h2>
                       {quickActionMode === "report"
-                        ? "Тайлан оруулах ажилбар сонгох"
+                        ? "Тайлан оруулах даалгавар сонгох"
                         : masterMode
                           ? "Ажил дээрх өнөөдрийн урсгал"
-                          : "Ажлын ажилбарууд"}
+                          : "Ажлын даалгаврууд"}
                     </h2>
                   </div>
 
@@ -493,10 +567,10 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                   ) : (
                     <p>
                       {quickActionMode === "report"
-                        ? "Доорх ажилбарын аль нэгийг сонгоод тайлангийн цонх руу орно."
+                        ? "Доорх даалгаврын аль нэгийг сонгоод тайлангийн цонх руу орно."
                         : masterMode
-                        ? "Доорх ажилбар бүр дээр дарж тайлангийн урсгал руу орно."
-                        : "Доорх ажилбар бүр дээр дарахад тухайн ажилбарын дэлгэрэнгүй нээгдэнэ."}
+                        ? "Доорх даалгавар бүр дээр дарж тайлангийн урсгал руу орно."
+                        : "Доорх даалгавар бүр дээр дарахад тухайн даалгаврын дэлгэрэнгүй нээгдэнэ."}
                     </p>
                   )}
                 </div>
@@ -602,8 +676,8 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                   </div>
                 ) : (
                   <div className={styles.emptyState}>
-                    <h2>Ажилбар алга</h2>
-                    <p>Энэ төлөв дээр харагдах ажилбар одоогоор алга байна.</p>
+                    <h2>Даалгавар алга</h2>
+                    <p>Энэ төлөв дээр харагдах даалгавар одоогоор алга байна.</p>
                   </div>
                 )}
               </section>

@@ -41,7 +41,6 @@ import {
   type DashboardSnapshot,
   type FleetVehicleBoard,
   type HrDailyAttendanceSummary,
-  type TaskStatusKey,
 } from "@/lib/odoo";
 import { cn } from "@/lib/utils";
 import { type WeatherSnapshot } from "@/lib/weather";
@@ -74,21 +73,6 @@ const DASHBOARD_IMAGES = {
   overview: "/illustrations/green-park-banner.svg",
   seedling: "/illustrations/seedling-card.svg",
   landscape: "/illustrations/green-landscape-card.svg",
-};
-
-const STATUS_LABELS: Record<TaskStatusKey, string> = {
-  planned: "Төлөвлөсөн",
-  working: "Гүйцэтгэж байгаа",
-  review: "Хянаж байгаа",
-  verified: "Дууссан",
-  problem: "Асуудалтай",
-};
-
-const STATUS_DOT: Record<StatusTone, string> = {
-  good: "bg-[#2E7D32]",
-  attention: "bg-[#F4B000]",
-  urgent: "bg-[#EF4444]",
-  muted: "bg-slate-400",
 };
 
 const STAT_TONE: Record<StatusTone, string> = {
@@ -337,6 +321,87 @@ function ringStyle(value: number, color = "#2E7D32"): CSSProperties {
   };
 }
 
+function hasDashboardWork(project: DashboardSnapshot["projects"][number]) {
+  return project.openTasks > 0 || project.completion > 0 || project.stageBucket === "done";
+}
+
+type WorkerWorkSummary = {
+  name: string;
+  departmentName: string;
+  manager: string;
+  href: string;
+  taskCount: number;
+  reviewCount: number;
+  doneCount: number;
+  progress: number;
+  tone: StatusTone;
+};
+
+function buildWorkerWorkSummaries(
+  tasks: DashboardSnapshot["taskDirectory"],
+  projects: DashboardSnapshot["projects"],
+  currentDateKey: string,
+) {
+  const projectByName = new Map(projects.map((project) => [project.name, project]));
+  const score = { urgent: 4, attention: 3, good: 2, muted: 1 };
+
+  return Array.from(
+    tasks
+      .reduce<
+        Map<
+          string,
+          {
+            name: string;
+            departmentName: string;
+            manager: string;
+            tasks: DashboardSnapshot["taskDirectory"];
+          }
+        >
+      >((groups, task) => {
+        const project = projectByName.get(task.projectName);
+        const existing = groups.get(task.projectName) ?? {
+          name: task.projectName,
+          departmentName: project?.departmentName ?? task.departmentName,
+          manager: project?.manager ?? task.leaderName,
+          tasks: [],
+        };
+
+        existing.tasks.push(task);
+        groups.set(task.projectName, existing);
+        return groups;
+      }, new Map())
+      .values(),
+  )
+    .map<WorkerWorkSummary>((work) => {
+      const tones = work.tasks.map((task) => statusTone(task, currentDateKey));
+      const tone = tones.reduce<StatusTone>(
+        (current, nextTone) => (score[nextTone] > score[current] ? nextTone : current),
+        "muted",
+      );
+      const taskCount = work.tasks.length;
+
+      return {
+        name: work.name,
+        departmentName: work.departmentName,
+        manager: work.manager,
+        href: `/tasks?work=${encodeURIComponent(work.name)}`,
+        taskCount,
+        reviewCount: work.tasks.filter((task) => task.statusKey === "review").length,
+        doneCount: work.tasks.filter((task) => task.statusKey === "verified").length,
+        progress: taskCount
+          ? Math.round(work.tasks.reduce((total, task) => total + task.progress, 0) / taskCount)
+          : 0,
+        tone,
+      };
+    })
+    .sort(
+      (left, right) =>
+        score[right.tone] - score[left.tone] ||
+        right.taskCount - left.taskCount ||
+        left.name.localeCompare(right.name, "mn"),
+    );
+}
+
 function StatCard({ metric }: { metric: DashboardStat }) {
   const Icon = metric.icon;
 
@@ -482,65 +547,39 @@ function DepartmentOverview({
   );
 }
 
-function TaskCard({
-  task,
-  currentDateKey,
-}: {
-  task: DashboardSnapshot["taskDirectory"][number];
-  currentDateKey: string;
-}) {
-  const tone = statusTone(task, currentDateKey);
+function WorkerWorkCard({ work }: { work: WorkerWorkSummary }) {
+  const badgeTone =
+    work.tone === "urgent" ? "red" : work.tone === "attention" ? "amber" : work.tone === "good" ? "green" : "slate";
 
   return (
-    <Link href={task.href} className="group block">
-      <Card className="grid gap-3 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(27,73,38,0.11)]">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-          <div className="min-w-0">
-            <div className="mb-2 flex min-w-0 flex-wrap items-center gap-2 text-[0.72rem] font-extrabold text-[#5E6E64]">
-              <span className={cn("h-2 w-2 rounded-full", STATUS_DOT[tone])} />
-              <span>{task.statusLabel || STATUS_LABELS[task.statusKey]}</span>
-            </div>
-            <h3 className="text-base font-extrabold leading-snug tracking-normal text-[#111B15]">
-              {task.name}
-            </h3>
-            <p className="mt-1 text-xs font-semibold leading-4 text-[#6B7280]">
-              Алба нэгж: {task.departmentName} · Менежер: {task.leaderName || "Бүртгэлгүй"}
-            </p>
-          </div>
-          <Badge tone={tone === "urgent" ? "red" : tone === "attention" ? "amber" : "green"}>
-            {tone === "muted" ? "Төлөвлөсөн" : task.statusLabel || STATUS_LABELS[task.statusKey]}
-          </Badge>
+    <Link href={work.href} className={dashboardStyles.projectListLink}>
+      <Card className={dashboardStyles.projectListCard}>
+        <div className={dashboardStyles.projectListTop}>
+          <span className={dashboardStyles.projectListIcon}>
+            <ClipboardList />
+          </span>
+          <Badge tone={badgeTone}>{work.taskCount} даалгавар</Badge>
         </div>
 
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-[var(--ds-radius-card)] bg-[#F2F8F2] p-2.5">
-              <span className="block text-xs font-semibold text-[#7A897E]">Нээлттэй ажил</span>
-              <strong className="mt-1.5 block text-xl tracking-normal text-[#111B15]">
-                {task.plannedQuantity || 0}
-              </strong>
-            </div>
-            <div className="rounded-[var(--ds-radius-card)] bg-[#F2F8F2] p-2.5">
-              <span className="block text-xs font-semibold text-[#7A897E]">Гүйцэтгэл</span>
-              <strong className="mt-1.5 block text-xl tracking-normal text-[#111B15]">
-                {clampPercent(task.progress)}%
-              </strong>
-            </div>
-          </div>
-          <ProgressRing value={task.progress} />
+        <div className={dashboardStyles.projectListContent}>
+          <h3 className={dashboardStyles.projectListTitle}>{work.name}</h3>
+          <p className={dashboardStyles.projectListMeta}>
+            Алба нэгж: {work.departmentName} · Менежер: {work.manager || "Бүртгэлгүй"}
+          </p>
         </div>
 
-        <div className="grid gap-3">
-          <div className="h-1.5 overflow-hidden rounded-full bg-[#E6ECE7]">
-            <span
-              className="block h-full rounded-full bg-[#2E7D32]"
-              style={{ width: `${clampPercent(task.progress)}%` }}
-            />
+        <div className={dashboardStyles.projectListDivider} />
+
+        <div className={dashboardStyles.projectListMetrics}>
+          <div className={dashboardStyles.projectListMetric}>
+            <span>Даалгавар</span>
+            <strong>{work.taskCount}</strong>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-[0.72rem] font-semibold text-[#7A897E]">
-            <span>Эхлэх: {task.scheduledDate || "-"}</span>
-            <span>Дуусах: {task.deadline || "-"}</span>
+          <div className={dashboardStyles.projectListMetric}>
+            <span>Гүйцэтгэл</span>
+            <strong>{clampPercent(work.progress)}%</strong>
           </div>
+          <ProgressRing value={work.progress} />
         </div>
       </Card>
     </Link>
@@ -578,7 +617,7 @@ function ProjectCard({ project }: { project: DashboardSnapshot["projects"][numbe
 
         <div className={dashboardStyles.projectListMetrics}>
           <div className={dashboardStyles.projectListMetric}>
-            <span>Ажилбар</span>
+            <span>Даалгавар</span>
             <strong>{project.openTasks || 0}</strong>
           </div>
           <div className={dashboardStyles.projectListMetric}>
@@ -640,7 +679,7 @@ function CompletionDonut({
       <div className={dashboardStyles.analyticsCardHeader}>
         <div>
           <CardTitle className="text-[1.125rem] font-semibold">Ажил гүйцэтгэлийн харагдац</CardTitle>
-          <p className={dashboardStyles.metricsSummary}>Нийт ажилбарын гүйцэтгэл: {clampPercent(progress)}%</p>
+          <p className={dashboardStyles.metricsSummary}>Нийт даалгаврын гүйцэтгэл: {clampPercent(progress)}%</p>
         </div>
       </div>
 
@@ -1176,7 +1215,7 @@ export function DashboardView({
     : scopedTasks.length
       ? scopedTasks
       : snapshot.taskDirectory;
-  const dashboardProjects = snapshot.projects.length ? snapshot.projects : [];
+  const dashboardProjects = snapshot.projects.filter(hasDashboardWork);
   const workItemStats = dashboardTaskStats(dashboardTasks, currentDateKey);
   const totalTasks = workerMode
     ? dashboardTasks.length
@@ -1202,21 +1241,18 @@ export function DashboardView({
     attentionCount > 0
       ? `${newIncomingTasks} шинэ ажил, ${reviewTasks} хянах, ${overdueTasks} хугацаа хэтэрсэн`
       : "Шинэ ажил, хянах зүйл алга";
-  const sortedTasks = [...dashboardTasks].sort((left, right) => {
-    const leftTone = statusTone(left, currentDateKey);
-    const rightTone = statusTone(right, currentDateKey);
-    const score = { urgent: 4, attention: 3, good: 2, muted: 1 };
-    return score[rightTone] - score[leftTone] || right.progress - left.progress;
-  });
   const sortedProjects = [...dashboardProjects].sort((left, right) => {
     const leftTone = projectTone(left);
     const rightTone = projectTone(right);
     const score = { urgent: 4, attention: 3, good: 2, muted: 1 };
     return score[rightTone] - score[leftTone] || right.completion - left.completion;
   });
-  const visibleTasks = sortedTasks.slice(0, 4);
+  const workerWorkSummaries = workerMode
+    ? buildWorkerWorkSummaries(dashboardTasks, snapshot.projects, currentDateKey)
+    : [];
+  const visibleWorkerWorks = workerWorkSummaries.slice(0, 4);
   const visibleProjects = sortedProjects.slice(0, 3);
-  const visibleWorkItems = workerMode ? visibleTasks.length : visibleProjects.length;
+  const visibleWorkItems = workerMode ? visibleWorkerWorks.length : visibleProjects.length;
   const projectStatusChips = projectStatusFilterChips(sortedProjects);
   const projectStatusSections = projectStatusChips.map((chip) => ({
     ...chip,
@@ -1272,7 +1308,7 @@ export function DashboardView({
     {
       label: "Хугацаа хэтэрсэн",
       value: String(overdueTasks),
-      helper: workerMode ? "Хугацаа өнгөрсөн ажилбар" : "Хугацаа өнгөрсөн ажил",
+      helper: workerMode ? "Хугацаа өнгөрсөн даалгавар" : "Хугацаа өнгөрсөн ажил",
       progress: percent(overdueTasks, totalTasks),
       href: workerMode ? "/tasks?filter=overdue" : "/projects",
       icon: AlertTriangle,
@@ -1325,11 +1361,13 @@ export function DashboardView({
 
           <div className="relative z-20 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="grid min-w-0 gap-4">
-              <section className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6", dashboardStyles.statGrid)}>
-                {statCards.map((metric) => (
-                  <StatCard key={metric.label} metric={metric} />
-                ))}
-              </section>
+              {!workerMode ? (
+                <section className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6", dashboardStyles.statGrid)}>
+                  {statCards.map((metric) => (
+                    <StatCard key={metric.label} metric={metric} />
+                  ))}
+                </section>
+              ) : null}
 
               {!workerMode ? <MobilePriorityPanel canWriteReports={canWriteReports} /> : null}
 
@@ -1356,8 +1394,8 @@ export function DashboardView({
 
                 {workerMode ? (
                   <div className={taskGridClassName}>
-                    {visibleTasks.map((task) => (
-                      <TaskCard key={task.id} task={task} currentDateKey={currentDateKey} />
+                    {visibleWorkerWorks.map((work) => (
+                      <WorkerWorkCard key={work.name} work={work} />
                     ))}
                     {!visibleWorkItems ? (
                       <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>

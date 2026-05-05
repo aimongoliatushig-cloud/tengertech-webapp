@@ -207,10 +207,10 @@ export async function generateOfficialTaskDocx(context: OfficialReportContext) {
       ],
     }),
     textParagraph(
-      `${departmentName} нь ${displayDate()} өдрийн байдлаар "${task.name}" ажлын хүрээнд дараах ажилбаруудыг хийж гүйцэтгэсэн болно.`,
+      `${departmentName} нь ${displayDate()} өдрийн байдлаар "${task.name}" ажлын хүрээнд дараах даалгавруудыг хийж гүйцэтгэсэн болно.`,
       { indent: true },
     ),
-    labelParagraph("Нийт сонгосон ажилбар", String(context.selectedReports.length)),
+    labelParagraph("Нийт сонгосон даалгавар", String(context.selectedReports.length)),
     labelParagraph("Гүйцэтгэлийн хувь", `${task.progress}%`),
     labelParagraph("Төлөв", task.stageLabel),
     new Table({
@@ -363,9 +363,9 @@ function buildOfficialHtml(context: OfficialReportContext, imagePayloads: Map<nu
   <div class="date-line"><span>${displayDate()}</span><span>Улаанбаатар хот</span></div>
   <p>${escapeHtml(departmentName)} нь ${displayDate()} өдрийн байдлаар "${escapeHtml(
     task.name,
-  )}" ажлын хүрээнд дараах ажилбаруудыг хийж гүйцэтгэсэн болно.</p>
+  )}" ажлын хүрээнд дараах даалгавруудыг хийж гүйцэтгэсэн болно.</p>
   <div class="summary">
-    <div>Нийт сонгосон ажилбар: ${context.selectedReports.length}</div>
+    <div>Нийт сонгосон даалгавар: ${context.selectedReports.length}</div>
     <div>Гүйцэтгэлийн хувь: ${task.progress}%</div>
     <div>Төлөв: ${escapeHtml(task.stageLabel)}</div>
   </div>

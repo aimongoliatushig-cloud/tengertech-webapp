@@ -158,13 +158,14 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     login: session.login,
     password: session.password,
   };
-  const routeManagementData = canCreateRoute
+  const showFullProfile = !workerMode;
+  const routeManagementData = showFullProfile && canCreateRoute
     ? await loadRouteManagementData(connectionOverrides)
     : null;
-  const teamMemberOptions = canCreateTeam
+  const teamMemberOptions = showFullProfile && canCreateTeam
     ? await loadTeamMemberOptions(departmentScopeName, connectionOverrides)
     : [];
-  const teamManagementData = canCreateTeam
+  const teamManagementData = showFullProfile && canCreateTeam
     ? await loadTeamManagementData(departmentScopeName, connectionOverrides)
     : { teams: [], totalTeams: 0 };
 
@@ -184,7 +185,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     workerMode
       ? {
           href: "/tasks",
-          label: "Миний ажилбар",
+          label: "Миний даалгавар",
           note: "Надад оноогдсон ажлуудаа харна",
         }
       : masterMode
@@ -256,8 +257,8 @@ export default async function ProfilePage({ searchParams }: PageProps) {
       enabled: canCreateProject,
     },
     {
-      label: "Ажилбар нэмэх",
-      note: "Одоо байгаа ажлын дотор шинэ ажилбар нээх",
+      label: "Даалгавар нэмэх",
+      note: "Одоо байгаа ажлын дотор шинэ даалгавар нээх",
       enabled: canCreateTasks,
     },
     {
@@ -272,7 +273,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     },
     {
       label: "Тайлан оруулах",
-      note: "Ажилбар дээр тайлан үүсгэж илгээх",
+      note: "Даалгавар дээр тайлан үүсгэж илгээх",
       enabled: canWriteReports,
     },
     {
@@ -318,14 +319,123 @@ export default async function ProfilePage({ searchParams }: PageProps) {
 
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
-              title="Профайл"
-              subtitle="Таны бүртгэл, эрх, ажлын урсгалын товч мэдээлэл"
+              title={workerMode ? "Тохиргоо" : "Профайл"}
+              subtitle={
+                workerMode
+                  ? "Системээс гарах, нууц үг солих болон нэвтэрсэн төхөөрөмжөө шалгах"
+                  : "Таны бүртгэл, эрх, ажлын урсгалын товч мэдээлэл"
+              }
               userName={session.name}
               roleLabel={roleLabel}
-              notificationCount={enabledCapabilityCount}
-              notificationNote={`${enabledCapabilityCount} боломж одоо нээлттэй байна`}
+              notificationCount={workerMode ? 0 : enabledCapabilityCount}
+              notificationNote={
+                workerMode
+                  ? "Аюулгүй байдлын үндсэн тохиргоо"
+                  : `${enabledCapabilityCount} боломж одоо нээлттэй байна`
+              }
             />
 
+            {workerMode ? (
+              <>
+                {notice ? <p className={styles.noticeMessage}>{notice}</p> : null}
+                {error ? <p className={styles.errorMessage}>{error}</p> : null}
+
+                <section id="password-settings" className={`${styles.sectionCard} ${styles.workerSettingsCard}`}>
+                  <div className={styles.sectionHeader}>
+                    <div>
+                      <span className={styles.eyebrow}>Аюулгүй байдал</span>
+                      <h2>Нууц үг солих</h2>
+                    </div>
+                    <p>Шинэ нууц үг 8-аас дээш тэмдэгттэй байна.</p>
+                  </div>
+
+                  <form action={changeProfilePasswordAction} className={styles.passwordForm}>
+                    <label className={styles.field}>
+                      <span>Одоогийн нууц үг</span>
+                      <input
+                        name="current_password"
+                        type="password"
+                        autoComplete="current-password"
+                        required
+                      />
+                    </label>
+                    <div className={styles.twoColumnFields}>
+                      <label className={styles.field}>
+                        <span>Шинэ нууц үг</span>
+                        <input
+                          name="new_password"
+                          type="password"
+                          autoComplete="new-password"
+                          minLength={8}
+                          required
+                        />
+                      </label>
+                      <label className={styles.field}>
+                        <span>Шинэ нууц үг давтах</span>
+                        <input
+                          name="confirm_password"
+                          type="password"
+                          autoComplete="new-password"
+                          minLength={8}
+                          required
+                        />
+                      </label>
+                    </div>
+                    <button type="submit" className={styles.primaryMiniButton}>
+                      Нууц үг солих
+                    </button>
+                  </form>
+                </section>
+
+                <section className={`${styles.sectionCard} ${styles.workerSettingsCard}`}>
+                  <div className={styles.sectionHeader}>
+                    <div>
+                      <span className={styles.eyebrow}>Нэвтрэлтийн лог</span>
+                      <h2>Миний эрхээр орсон төхөөрөмж</h2>
+                    </div>
+                    <p>Одоогийн нэвтрэлтийн төхөөрөмж, IP болон цаг.</p>
+                  </div>
+
+                  <div className={styles.sessionList}>
+                    <article className={styles.sessionCard}>
+                      <div>
+                        <strong>{session.deviceLabel || getDeviceLabel(session.userAgent)}</strong>
+                        <small>{session.userAgent || "User agent бүртгэгдээгүй"}</small>
+                      </div>
+                      <div className={styles.sessionMetaGrid}>
+                        <span>
+                          <small>Нэвтэрсэн цаг</small>
+                          <strong>{formatSessionStart(session.issuedAt)}</strong>
+                        </span>
+                        <span>
+                          <small>IP хаяг</small>
+                          <strong>{maskIpAddress(session.loginIp)}</strong>
+                        </span>
+                        <span>
+                          <small>Төлөв</small>
+                          <strong>Идэвхтэй</strong>
+                        </span>
+                      </div>
+                    </article>
+                  </div>
+                </section>
+
+                <section className={`${styles.logoutCard} ${styles.workerSettingsCard}`}>
+                  <div>
+                    <span className={styles.eyebrow}>Сесс</span>
+                    <h2>Системээс гарах</h2>
+                    <p>Энэ төхөөрөмжийг өөр хүн ашиглах бол системээс гарна уу.</p>
+                  </div>
+
+                  <form action="/auth/logout" method="post">
+                    <button type="submit" className={styles.logoutButton}>
+                      Гарах
+                    </button>
+                  </form>
+                </section>
+              </>
+            ) : (
+            <>
             <section className={`${shellStyles.heroCard} ${styles.heroCard}`}>
               <div className={styles.identityBlock}>
                 <span className={styles.avatar}>{getInitials(session.name)}</span>
@@ -798,6 +908,8 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                 </button>
               </form>
             </section>
+            </>
+            )}
           </div>
         </div>
       </div>

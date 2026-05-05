@@ -44,6 +44,7 @@ type FleetVehicleBoardItem = {
   latestRepairState: string;
   isOperational: boolean;
   isRepair: boolean;
+  isArchived: boolean;
   insurance: FleetVehicleDeadlineInfo;
   inspection: FleetVehicleDeadlineInfo;
   driverHistory: FleetVehicleDriverHistoryItem[];
@@ -51,7 +52,6 @@ type FleetVehicleBoardItem = {
   weightReports: FleetVehicleDailyWeightItem[];
   fuelReports: FleetVehicleDailyFuelItem[];
   procurementLinks: FleetVehicleProcurementLink[];
-  isArchived: boolean;
   crewAssignments: FleetVehicleCrewAssignment[];
 };
 

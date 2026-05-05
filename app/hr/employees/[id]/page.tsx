@@ -30,15 +30,23 @@ function employeeActions(employeeId: number) {
   const employeeQuery = `employeeId=${employeeId}`;
 
   return [
-    { label: "Засах", href: "#profile-info", icon: Pencil },
-    { label: "Чөлөө бүртгэх", href: `/hr/leaves?${employeeQuery}`, icon: FileCheck2 },
-    { label: "Өвчтэй бүртгэх", href: `/hr/sick?${employeeQuery}`, icon: HeartPulse },
+    { label: "Засах", href: `/hr/employees/${employeeId}#profile-info`, icon: Pencil },
+    { label: "Чөлөө бүртгэх", href: `/hr/sick?${employeeQuery}&type=time_off`, icon: FileCheck2 },
+    { label: "Өвчтэй бүртгэх", href: `/hr/sick?${employeeQuery}&type=sick`, icon: HeartPulse },
     { label: "Томилолт бүртгэх", href: `/hr/trips?${employeeQuery}`, icon: Plane },
     { label: "Сахилгын бүртгэл", href: `/hr/discipline?${employeeQuery}`, icon: ShieldAlert },
     { label: "Тушаал / гэрээ", href: `/hr/orders?${employeeQuery}`, icon: ScrollText },
     { label: "Шилжилт хөдөлгөөн", href: `/hr/transfers?${employeeQuery}`, icon: Repeat2 },
     { label: "Тойрох хуудас", href: `/hr/clearance?${employeeQuery}`, icon: BriefcaseBusiness },
     { label: "Архивлах", href: `/hr/archive?${employeeQuery}`, icon: Archive },
+  ];
+}
+
+function departmentHeadEmployeeActions(employeeId: number) {
+  const employeeQuery = `employeeId=${employeeId}`;
+  return [
+    { label: "Чөлөө хүсэх", href: `/hr/sick?${employeeQuery}&type=time_off`, icon: FileCheck2 },
+    { label: "Өвчтэй бүртгэх", href: `/hr/sick?${employeeQuery}&type=sick`, icon: HeartPulse },
   ];
 }
 
@@ -57,6 +65,8 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
   if (!employee) {
     notFound();
   }
+  const mode = access.isHr ? "hr" : "department";
+  const actions = access.isHr ? employeeActions(employee.id) : departmentHeadEmployeeActions(employee.id);
 
   return (
     <>
@@ -67,7 +77,7 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
         roleLabel={getRoleLabel(session.role)}
         notificationNote="Ажилтны дэлгэрэнгүй"
       />
-      <HrSectionNav />
+      <HrSectionNav mode={mode} />
 
       <section className={styles.actionPanel}>
         <div>
@@ -75,7 +85,7 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
           <h2>{employee.name}</h2>
         </div>
         <div className={styles.actionGrid}>
-          {employeeActions(employee.id).map((action) => {
+          {actions.map((action) => {
             const Icon = action.icon;
             return (
               <Link key={action.label} href={action.href} className={styles.actionButton}>

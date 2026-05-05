@@ -138,7 +138,7 @@ class MunicipalWork(models.Model):
     line_ids = fields.One2many(
         "municipal.work.line",
         "work_id",
-        string="Ажилбарууд",
+        string="Даалгаврууд",
     )
     cleaning_street_name = fields.Char(
         related="cleaning_area_id.street_name",

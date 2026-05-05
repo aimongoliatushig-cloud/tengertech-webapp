@@ -10,7 +10,7 @@ description: Branch-specific guardrails for the task/report/dashboard side of th
 Use this skill when working on the municipal ERP task workflow side:
 
 - Ажил / project pages
-- Ажилбар / task detail and creation/edit flows
+- Даалгавар / task detail and creation/edit flows
 - Гүйцэтгэлийн тайлан / report create, edit, delete, review UI
 - Progress and status calculation
 - Dashboard and project summary views
@@ -75,9 +75,9 @@ Do not overwrite another side's changes. If a file has unrelated edits, preserve
 - Do not run production DB updates or Odoo module upgrades unless explicitly requested.
 - Keep task/project/report meaning clear:
   - `/projects` = parent ажил
-  - `/projects/[id]` = selected ажил and its ажилбарууд
-  - `/tasks/[id]` = one ажилбар
-  - `/field` = worker's assigned ажилбар/report flow
+  - `/projects/[id]` = selected ажил and its даалгаврууд
+  - `/tasks/[id]` = one даалгавар
+  - `/field` = worker's assigned даалгавар/report flow
 - Progress and status must be consistent across project cards, task detail, report export, and dashboard.
 - Report permissions must separate worker, manager, reviewer, and admin actions.
 

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft, CalendarDays, ClipboardList, MoreVertical } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
@@ -91,7 +92,7 @@ function messageKindLabel(kind: string) {
     case "note":
       return "Тэмдэглэл";
     case "system":
-      return "Ажилбар";
+      return "Даалгавар";
     default:
       return "Зурвас";
   }
@@ -131,11 +132,11 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const backHref = safeReturnTo || (workerMode || masterMode ? "/tasks" : "/projects");
   const backLabel =
     fromCreateFlow
-      ? "Тайлангийн ажилбар сонгох руу буцах"
+      ? "Тайлангийн даалгавар сонгох руу буцах"
       : masterMode
       ? "Өнөөдрийн ажил руу буцах"
       : useExecutiveLayout || workerMode
-        ? "Ажилбар руу буцах"
+        ? "Даалгавар руу буцах"
         : "Ажил руу буцах";
 
   const canCreateProject = hasCapability(session, "create_projects");
@@ -152,10 +153,10 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
     });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Ажилбарын мэдээлэл уншихад алдаа гарлаа.";
+      error instanceof Error ? error.message : "Даалгаврын мэдээлэл уншихад алдаа гарлаа.";
 
     if (message.includes("Даалгавар олдсонгүй") || message.toLowerCase().includes("not found")) {
-      redirect(addQueryMessage(backHref, "error", "Ажилбар олдсонгүй эсвэл танд харах эрх алга."));
+      redirect(addQueryMessage(backHref, "error", "Даалгавар олдсонгүй эсвэл танд харах эрх алга."));
     }
 
     return (
@@ -182,7 +183,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
 
             <div className={shellStyles.pageContent}>
               <section className={styles.emptyState}>
-                <h2>Ажилбарыг нээж чадсангүй</h2>
+                <h2>Даалгаврыг нээж чадсангүй</h2>
                 <p>{message}</p>
                 <div className={shellStyles.buttonRow}>
                   <Link href={backHref} className={shellStyles.smallLink}>
@@ -254,7 +255,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
       : [];
   const canOpenReportComposer = canWriteReport && canSubmitWorkspaceReport(session);
   const primaryActionLabel = canMarkDone
-    ? "Ажилбарыг дуусгах"
+    ? "Даалгаврыг дуусгах"
     : canSubmitForReview
       ? masterMode
         ? "Тайлан илгээх"
@@ -279,7 +280,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
           <form action={markTaskDoneAction}>
             <input type="hidden" name="task_id" value={task.id} />
             <button type="submit" className={styles.actionButton}>
-              Ажилбарыг дуусгах
+              Даалгаврыг дуусгах
             </button>
           </form>
         ) : null}
@@ -305,6 +306,8 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
             measurementUnit={task.measurementUnit}
             quantityLines={quantityLines}
             requireQuantity={Boolean(quantitySummary)}
+            simpleMobile={workerMode}
+            workItemName={task.name}
           />
         ) : null}
       </div>
@@ -365,14 +368,28 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
           </aside>
 
           <div className={shellStyles.pageContent}>
-            <WorkspaceHeader
-              title={task.name}
-              subtitle={task.projectName}
-              userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
-              notificationCount={task.reports.length}
-              notificationNote="Тайлан"
-            />
+            <div className={workerMode ? styles.workerDetailDesktopHeader : undefined}>
+              <WorkspaceHeader
+                title={task.name}
+                subtitle={task.projectName}
+                userName={session.name}
+                roleLabel={getRoleLabel(session.role)}
+                notificationCount={task.reports.length}
+                notificationNote="Тайлан"
+              />
+            </div>
+
+            {workerMode ? (
+              <header className={styles.workerDetailMobileHeader}>
+                <Link href={backHref} aria-label={backLabel} className={styles.workerDetailIconButton}>
+                  <ArrowLeft size={22} strokeWidth={2.4} aria-hidden="true" />
+                </Link>
+                <strong>Даалгаврын дэлгэрэнгүй</strong>
+                <Link href="/profile" aria-label="Тохиргоо" className={styles.workerDetailIconButton}>
+                  <MoreVertical size={22} strokeWidth={2.4} aria-hidden="true" />
+                </Link>
+              </header>
+            ) : null}
 
             {errorMessage ? (
               <div className={`${shellStyles.message} ${shellStyles.errorMessage}`}>{errorMessage}</div>
@@ -382,9 +399,20 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
             ) : null}
 
             <section className={styles.summaryCard}>
+              {workerMode ? (
+                <div className={styles.workerDetailMobileHero}>
+                  <div className={styles.workerDetailHeroIcon} aria-hidden="true">
+                    <ClipboardList size={30} strokeWidth={2.3} />
+                  </div>
+                  <div className={styles.workerDetailHeroMeta}>
+                    <span>ID: {task.id}</span>
+                    <StagePill label={task.stageLabel} bucket={task.stageBucket} />
+                  </div>
+                </div>
+              ) : null}
               <div className={styles.summaryTop}>
                 <div className={styles.titleBlock}>
-                  <span className={styles.kicker}>Ажилбар</span>
+                  <span className={styles.kicker}>Даалгавар</span>
                   <h1>{task.name}</h1>
                   <span className={styles.taskProjectName}>{task.projectName}</span>
                 </div>
@@ -400,6 +428,8 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                       quantityLines={quantityLines}
                       variant="hero"
                       requireQuantity={Boolean(quantitySummary)}
+                      simpleMobile={workerMode}
+                      workItemName={task.name}
                     />
                   ) : null}
                 </div>
@@ -441,7 +471,12 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 </article>
                 <article className={styles.heroStatCard}>
                   <span>Хугацаа</span>
-                  <strong>{task.deadline}</strong>
+                  <strong>
+                    {workerMode ? (
+                      <CalendarDays size={18} strokeWidth={2.3} aria-hidden="true" />
+                    ) : null}
+                    {task.deadline}
+                  </strong>
                 </article>
                 <article className={styles.heroStatCard}>
                   <span>Тайлан</span>
@@ -474,7 +509,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                     <div className={styles.sectionHead}>
                       <div>
                         <span className={styles.kicker}>Тайлбар</span>
-                        <h2>Ажилбарын тайлбар</h2>
+                        <h2>Даалгаврын тайлбар</h2>
                       </div>
                     </div>
 
@@ -502,11 +537,13 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                       <TaskReportModal
                         action={createTaskReportAction}
                         taskId={task.id}
-                        defaultOpen={openReportComposer}
+                        defaultOpen={false}
                         quantityOptional={task.quantityOptional}
                         measurementUnit={task.measurementUnit}
                         quantityLines={quantityLines}
                         requireQuantity={Boolean(quantitySummary)}
+                        simpleMobile={workerMode}
+                        workItemName={task.name}
                       />
                     ) : (
                       <span className={styles.reportUnavailable}>
@@ -602,7 +639,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                   ) : (
                     <div className={styles.emptyState}>
                       <h2>Гүйцэтгэлийн тайлан алга</h2>
-                      <p>Одоогоор энэ ажилбар дээр тайлан бүртгэгдээгүй байна.</p>
+                      <p>Одоогоор энэ даалгавар дээр тайлан бүртгэгдээгүй байна.</p>
                     </div>
                   )}
                 </section>
@@ -642,7 +679,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                     </div>
                   ) : (
                     <div className={styles.chatterEmpty}>
-                      Энэ ажилбарт хариуцсан ажилтан эсвэл багийн гишүүд хараахан оноогдоогүй байна.
+                      Энэ даалгаварт хариуцсан ажилтан эсвэл багийн гишүүд хараахан оноогдоогүй байна.
                     </div>
                   )}
                 </aside>
@@ -659,7 +696,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                   <form action={postTaskMessageAction} className={styles.chatterComposer}>
                     <input type="hidden" name="task_id" value={task.id} />
                     <label htmlFor="message_body" className={styles.modalField}>
-                      <span>Ажилбар дээр үлдээх текст</span>
+                      <span>Даалгавар дээр үлдээх текст</span>
                       <textarea
                         id="message_body"
                         name="message_body"
@@ -765,7 +802,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                     </div>
                   ) : (
                     <div className={styles.chatterEmpty}>
-                      Энэ ажилбар дээр зурвас, тэмдэглэл хараахан алга.
+                      Энэ даалгавар дээр зурвас, тэмдэглэл хараахан алга.
                     </div>
                   )}
                 </aside>

@@ -233,6 +233,7 @@ export function hasCapability(context: RoleContext, capability: Capability) {
     case "write_workspace_reports":
       return Boolean(
         context.role === "system_admin" ||
+        context.role === "general_manager" ||
         context.role === "project_manager" ||
         groupFlags.complaintManager ||
         groupFlags.mfoMobile ||
@@ -329,7 +330,34 @@ export function isWorkerOnly(context: RoleContext) {
     !groupFlags.fleetRepairManager &&
     !groupFlags.fleetRepairTeamLeader &&
     !groupFlags.hrManager &&
-    !groupFlags.hrUser &&
     !groupFlags.municipalHr
   );
+}
+
+export function isHrOnlyRole(context: RoleContext) {
+  const groupFlags = normalizeGroupFlags(context.groupFlags);
+  const explicitHrRole = context.role === "hr_specialist" || context.role === "hr_manager";
+  const hasHrAccess = Boolean(
+    explicitHrRole ||
+      groupFlags.hrUser ||
+      groupFlags.hrManager ||
+      groupFlags.municipalHr
+  );
+  const hasExecutiveOrAdminAccess = Boolean(
+    context.role === "system_admin" ||
+      context.role === "director" ||
+      context.role === "general_manager" ||
+      groupFlags.municipalDirector ||
+      groupFlags.fleetRepairCeo
+  );
+  const hasDepartmentHeadAccess = Boolean(
+    context.role === "project_manager" ||
+      groupFlags.municipalDepartmentHead ||
+      groupFlags.municipalManager ||
+      groupFlags.mfoManager ||
+      groupFlags.environmentManager ||
+      groupFlags.improvementManager
+  );
+
+  return hasHrAccess && !hasExecutiveOrAdminAccess && (explicitHrRole || !hasDepartmentHeadAccess);
 }

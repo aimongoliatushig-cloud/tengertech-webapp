@@ -408,7 +408,7 @@ async function loadTodayGarbageTaskRecords(
         "mfo_can_start",
         "mfo_can_submit",
       ],
-      order: "mfo_start_datetime desc, mfo_planned_start asc, id asc",
+      order: "mfo_start_datetime desc, mfo_shift_date asc, id asc",
       limit: 20,
     },
     connectionOverrides,

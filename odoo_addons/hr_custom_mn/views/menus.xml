@@ -7,7 +7,7 @@
               groups="hr_custom_mn.group_hr_custom_mn_employee,hr_custom_mn.group_hr_custom_mn_manager,hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin"/>
 
     <menuitem id="menu_hr_custom_mn_dashboard"
-              name="Dashboard"
+              name="Самбар"
               parent="menu_hr_custom_mn_root"
               action="action_hr_custom_mn_dashboard"
               sequence="1"
@@ -26,15 +26,15 @@
               sequence="10"/>
 
     <menuitem id="menu_hr_custom_mn_leave"
-              name="Чөлөө"
+              name="Чөлөө / өвчтэй хүсэлт"
               parent="menu_hr_custom_mn_root"
-              action="hr_holidays.hr_leave_action_my"
+              action="action_municipal_hr_timeoff_request_my"
               sequence="20"/>
 
     <menuitem id="menu_hr_custom_mn_leave_approval"
-              name="Чөлөө батлах"
+              name="Ирсэн хүсэлтүүд"
               parent="menu_hr_custom_mn_root"
-              action="hr_holidays.hr_leave_action_action_approve_department"
+              action="action_municipal_hr_timeoff_request_all"
               sequence="25"
               groups="hr_custom_mn.group_hr_custom_mn_manager,hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin"/>
 

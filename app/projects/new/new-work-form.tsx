@@ -10,6 +10,7 @@ import {
   Paperclip,
   Route,
   Sparkles,
+  Trash2,
   Truck,
 } from "lucide-react";
 
@@ -26,6 +27,12 @@ import type {
 const GARBAGE_TRANSPORT_KEYWORD = "хог тээвэрлэлтийн";
 const AUTO_BASE_KEYWORD = "авто бааз";
 const GREEN_SERVICE_KEYWORDS = ["ногоон", "цэвэрлэгээ", "зам талбай"];
+const ROAD_CLEANING_EMPLOYEE_DEPARTMENT_KEYWORDS = [
+  "ногоон",
+  "цэвэрлэгээ үйлчилгээний хэлтэс",
+];
+const ROAD_CLEANING_EMPLOYEE_JOB_KEYWORD = "зам талбайн үйлчлэгч";
+const ROAD_CLEANING_MASTER_JOB_KEYWORDS = ["мастер", "зам талбайн ахлах мастер"];
 const WEEKDAY_OPTIONS = [
   { key: "monday", label: "Даваа" },
   { key: "tuesday", label: "Мягмар" },
@@ -61,8 +68,6 @@ const ROAD_CLEANING_DEFAULT_LINES = [
   "Замын нуух цэвэрлэх",
   "Хогийн сав шалгах",
   "Жижиг хог / шарилж / зарын хуудас цэвэрлэх",
-  "Өмнөх зураг оруулах",
-  "Дараах зураг оруулах",
 ];
 
 type FilePreview = {
@@ -186,6 +191,31 @@ function isCombinedOperationsDepartment(
   );
 }
 
+function isRoadCleaningServiceEmployee(employee: RoadCleaningEmployeeOption) {
+  const departmentName = normalizeDepartmentValue(employee.departmentName);
+  const jobTitle = normalizeDepartmentValue(employee.jobTitle);
+
+  return (
+    ROAD_CLEANING_EMPLOYEE_DEPARTMENT_KEYWORDS.every((keyword) =>
+      departmentName.includes(keyword),
+    ) && jobTitle.includes(ROAD_CLEANING_EMPLOYEE_JOB_KEYWORD)
+  );
+}
+
+function isRoadCleaningMasterEmployee(employee: RoadCleaningEmployeeOption) {
+  const departmentName = normalizeDepartmentValue(employee.departmentName);
+  const jobTitle = normalizeDepartmentValue(employee.jobTitle);
+
+  return (
+    ROAD_CLEANING_EMPLOYEE_DEPARTMENT_KEYWORDS.every((keyword) =>
+      departmentName.includes(keyword),
+    ) &&
+    ROAD_CLEANING_MASTER_JOB_KEYWORDS.some(
+      (keyword) => jobTitle === keyword || jobTitle.includes(keyword),
+    )
+  );
+}
+
 function emptySeasonalLine(index: number): SeasonalLineDraft {
   return {
     id: `seasonal-line-${index}-${Date.now()}`,
@@ -241,9 +271,13 @@ export function NewWorkForm({
   const [vehicleId, setVehicleId] = useState("");
   const [routeId, setRouteId] = useState("");
   const [cleaningWorkDate, setCleaningWorkDate] = useState(getTodayValue());
+  const [cleaningMasterId, setCleaningMasterId] = useState("");
   const [roadCleaningLines, setRoadCleaningLines] = useState<RoadCleaningLineDraft[]>([
     emptyRoadCleaningLine(0),
   ]);
+  const [roadCleaningAreaChoices, setRoadCleaningAreaChoices] = useState(roadCleaningAreaOptions);
+  const [roadCleaningAreaError, setRoadCleaningAreaError] = useState("");
+  const [savingRoadCleaningAreaId, setSavingRoadCleaningAreaId] = useState("");
   const [extraLocationDraft, setExtraLocationDraft] = useState("");
   const [extraLocations, setExtraLocations] = useState<string[]>([]);
   const [shiftDate, setShiftDate] = useState(getTodayValue());
@@ -383,24 +417,42 @@ export function NewWorkForm({
   };
 
   const getRoadCleaningArea = (line: RoadCleaningLineDraft) =>
-    roadCleaningAreaOptions.find((option) => String(option.id) === line.cleaningAreaId) ??
+    roadCleaningAreaChoices.find((option) => String(option.id) === line.cleaningAreaId) ??
     null;
 
   const getRoadCleaningEmployeeChoices = (line: RoadCleaningLineDraft) => {
-    const lineArea = getRoadCleaningArea(line);
-    if (!lineArea?.departmentId) {
-      return roadCleaningEmployeeOptions;
+    const roadCleaningEmployees = roadCleaningEmployeeOptions.filter(
+      isRoadCleaningServiceEmployee,
+    );
+
+    if (!line.cleaningAreaId) {
+      return roadCleaningEmployees;
     }
 
-    const departmentEmployees = roadCleaningEmployeeOptions.filter(
-      (employee) => employee.departmentId === lineArea.departmentId,
+    const lineArea = getRoadCleaningArea(line);
+    const areaDepartmentEmployees = roadCleaningEmployees.filter(
+      (employee) => employee.departmentId === lineArea?.departmentId,
     );
-    return departmentEmployees.length ? departmentEmployees : roadCleaningEmployeeOptions;
+
+    return areaDepartmentEmployees.length ? areaDepartmentEmployees : roadCleaningEmployees;
   };
 
   const getRoadCleaningEmployee = (employeeId: string) =>
     roadCleaningEmployeeOptions.find((employee) => String(employee.id) === employeeId) ??
     null;
+
+  const roadCleaningMasterChoices = useMemo(() => {
+    const masterEmployees = roadCleaningEmployeeOptions.filter(isRoadCleaningMasterEmployee);
+
+    if (!selectedDepartment) {
+      return masterEmployees;
+    }
+
+    const departmentMasters = masterEmployees.filter(
+      (employee) => employee.departmentId === selectedDepartment.id,
+    );
+    return departmentMasters.length ? departmentMasters : masterEmployees;
+  }, [roadCleaningEmployeeOptions, selectedDepartment]);
 
   const getRoadCleaningWorkName = (line: RoadCleaningLineDraft) => {
     const lineArea = getRoadCleaningArea(line);
@@ -419,6 +471,14 @@ export function NewWorkForm({
     key: keyof Omit<RoadCleaningLineDraft, "id">,
     value: string | boolean,
   ) => {
+    if (key === "cleaningAreaId" && typeof value === "string" && !cleaningMasterId) {
+      const nextArea =
+        roadCleaningAreaChoices.find((option) => String(option.id) === value) ?? null;
+      if (nextArea?.masterId) {
+        setCleaningMasterId(String(nextArea.masterId));
+      }
+    }
+
     setRoadCleaningLines((current) =>
       current.map((line) => {
         if (line.id !== targetId) {
@@ -428,19 +488,97 @@ export function NewWorkForm({
         const nextLine = { ...line, [key]: value };
         if (key === "cleaningAreaId") {
           const nextArea =
-            roadCleaningAreaOptions.find((option) => String(option.id) === value) ?? null;
-          nextLine.employeeId = nextArea?.employeeId ? String(nextArea.employeeId) : "";
+            roadCleaningAreaChoices.find((option) => String(option.id) === value) ?? null;
+          nextLine.employeeId = nextArea?.employeeId
+            ? String(nextArea.employeeId)
+            : nextLine.employeeId;
           nextLine.newAreaName = "";
           nextLine.showNewArea = false;
         }
         if (key === "showNewArea" && value) {
           nextLine.cleaningAreaId = "";
-          nextLine.employeeId = "";
         }
 
         return nextLine;
       }),
     );
+  };
+
+  const removeRoadCleaningLine = (targetId: string) => {
+    setRoadCleaningLines((current) => {
+      if (current.length <= 1) {
+        return [emptyRoadCleaningLine(0)];
+      }
+
+      return current.filter((line) => line.id !== targetId);
+    });
+  };
+
+  const createRoadCleaningAreaFromLine = async (targetId: string) => {
+    const targetLine = roadCleaningLines.find((line) => line.id === targetId);
+    const areaName = targetLine?.newAreaName.trim() ?? "";
+    if (!targetLine || !areaName) {
+      setRoadCleaningAreaError("Цэвэрлэх талбайн нэр оруулна уу.");
+      return;
+    }
+
+    setRoadCleaningAreaError("");
+    setSavingRoadCleaningAreaId(targetId);
+    try {
+      const selectedMaster = roadCleaningEmployeeOptions.find(
+        (employee) => String(employee.id) === cleaningMasterId,
+      );
+      const selectedEmployee = roadCleaningEmployeeOptions.find(
+        (employee) => String(employee.id) === targetLine.employeeId,
+      );
+      const response = await fetch("/api/road-cleaning/areas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: areaName,
+          departmentId: selectedDepartment?.id ?? null,
+          departmentName: selectedDepartment?.name ?? selectedDepartment?.label ?? "",
+          masterId: cleaningMasterId ? Number(cleaningMasterId) : null,
+          masterName: selectedMaster?.name ?? "",
+          employeeId: targetLine.employeeId ? Number(targetLine.employeeId) : null,
+          employeeName: selectedEmployee?.name ?? "",
+        }),
+      });
+      const payload = await response.json().catch(() => null) as {
+        area?: RoadCleaningAreaOption;
+        error?: string;
+      } | null;
+
+      if (!response.ok || !payload?.area) {
+        throw new Error(payload?.error || "Цэвэрлэх талбай нэмэхэд алдаа гарлаа.");
+      }
+
+      const savedArea = payload.area;
+      setRoadCleaningAreaChoices((current) => {
+        const exists = current.some((area) => area.id === savedArea.id);
+        return exists ? current : [...current, savedArea].sort((left, right) =>
+          left.name.localeCompare(right.name, "mn"),
+        );
+      });
+      setRoadCleaningLines((current) =>
+        current.map((line) =>
+          line.id === targetId
+            ? {
+                ...line,
+                cleaningAreaId: String(savedArea.id),
+                newAreaName: "",
+                showNewArea: false,
+              }
+            : line,
+        ),
+      );
+    } catch (error) {
+      setRoadCleaningAreaError(
+        error instanceof Error ? error.message : "Цэвэрлэх талбай нэмэхэд алдаа гарлаа.",
+      );
+    } finally {
+      setSavingRoadCleaningAreaId("");
+    }
   };
 
   const toggleSeasonalWorkDay = (dayKey: (typeof WEEKDAY_OPTIONS)[number]["key"]) => {
@@ -465,7 +603,7 @@ export function NewWorkForm({
         ? "Зам талбайн цэвэрлэгээ"
       : "Ерөнхий ажил";
   const formModeDescription = isGarbageTransport
-    ? "Машин, маршрут, огноо сонгоход ажил болон маршрутын цэгүүдийн ажилбар автоматаар үүснэ."
+    ? "Машин, маршрут, огноо сонгоход ажил болон маршрутын цэгүүдийн даалгавар автоматаар үүснэ."
     : isSeasonalGarbage
       ? "Хорооны байрлал, машин, тонн, ажиллах өдрүүдээр олон мөрийн төлөвлөгөө үүсгэнэ."
       : isRoadAreaCleaning
@@ -786,8 +924,8 @@ export function NewWorkForm({
 
             <p className={styles.helperNote}>
               Сонгосон машин, байршил, огноогоор нэг ажил үүснэ. Тухайн байршлын хог ачих цэг
-              бүр ажил дотор тусдаа ажилбар болж автоматаар үүснэ. Нэмэлт байршлууд мөн тусдаа
-              ажилбар болж нэмэгдэнэ.
+              бүр ажил дотор тусдаа даалгавар болж автоматаар үүснэ. Нэмэлт байршлууд мөн тусдаа
+              даалгавар болж нэмэгдэнэ.
             </p>
             <p className={styles.helperNote}>
               Огноо: <strong>{formatDateLabel(shiftDate)}</strong>
@@ -1057,22 +1195,42 @@ export function NewWorkForm({
         </>
       ) : isRoadAreaCleaning ? (
         <>
-          <div className={styles.field}>
-            <label htmlFor="work_date">Ажлын огноо</label>
-            <input
-              id="work_date"
-              name="work_date"
-              type="date"
-              value={cleaningWorkDate}
-              onChange={(event) => setCleaningWorkDate(event.target.value)}
-              required={isRoadAreaCleaning}
-            />
+          <div className={styles.fieldRow}>
+            <div className={styles.field}>
+              <label htmlFor="work_date">Ажлын огноо</label>
+              <input
+                id="work_date"
+                name="work_date"
+                type="date"
+                value={cleaningWorkDate}
+                onChange={(event) => setCleaningWorkDate(event.target.value)}
+                required={isRoadAreaCleaning}
+              />
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="cleaning_master_id">Хариуцсан мастер</label>
+              <select
+                id="cleaning_master_id"
+                value={cleaningMasterId}
+                onChange={(event) => setCleaningMasterId(event.target.value)}
+                required={isRoadAreaCleaning}
+              >
+                <option value="">Мастер сонгоно уу</option>
+                {roadCleaningMasterChoices.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {[employee.name, employee.jobTitle, employee.departmentName]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className={styles.optionalSection}>
             <span className={styles.formBadge}>Ажилтан ба цэвэрлэх талбай</span>
             <p className={styles.fieldHint}>
-              Мөр бүр тусдаа ажил болж үүснэ. Тухайн ажил дотор default ажилбарууд автоматаар нэмэгдэнэ.
+              Мөр бүр тусдаа ажил болж үүснэ. Тухайн ажил дотор default даалгаврууд автоматаар нэмэгдэнэ.
             </p>
 
             {roadCleaningLines.map((line, index) => {
@@ -1095,7 +1253,7 @@ export function NewWorkForm({
                         disabled={line.showNewArea}
                       >
                         <option value="">Цэвэрлэх талбай сонгоно уу</option>
-                        {roadCleaningAreaOptions.map((area) => (
+                        {roadCleaningAreaChoices.map((area) => (
                           <option key={area.id} value={area.id}>
                             {area.name}
                           </option>
@@ -1134,34 +1292,49 @@ export function NewWorkForm({
                     >
                       {line.showNewArea ? "Бэлэн талбай сонгох" : "Талбай нэмэх"}
                     </button>
-                    {roadCleaningLines.length > 1 ? (
-                      <button
-                        type="button"
-                        className={styles.dangerButton}
-                        onClick={() =>
-                          setRoadCleaningLines((current) =>
-                            current.filter((item) => item.id !== line.id),
-                          )
-                        }
-                      >
-                        Мөр устгах
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      className={styles.dangerButton}
+                      onClick={() => removeRoadCleaningLine(line.id)}
+                      aria-label={`Мөр ${index + 1} устгах`}
+                    >
+                      <Trash2 aria-hidden />
+                      <span>Мөр устгах</span>
+                    </button>
                   </div>
 
                   {line.showNewArea ? (
-                    <div className={styles.field}>
-                      <label htmlFor={`new_cleaning_area_${line.id}`}>Шинэ цэвэрлэх талбай</label>
-                      <input
-                        id={`new_cleaning_area_${line.id}`}
-                        type="text"
-                        value={line.newAreaName}
-                        onChange={(event) =>
-                          updateRoadCleaningLine(line.id, "newAreaName", event.target.value)
-                        }
-                        placeholder="Жишээ: Наадамчдын зам — 1-р хэсэг"
-                      />
-                    </div>
+                    <>
+                      <div className={styles.field}>
+                        <label htmlFor={`new_cleaning_area_${line.id}`}>Шинэ цэвэрлэх талбай</label>
+                        <input
+                          id={`new_cleaning_area_${line.id}`}
+                          type="text"
+                          value={line.newAreaName}
+                          onChange={(event) =>
+                            updateRoadCleaningLine(line.id, "newAreaName", event.target.value)
+                          }
+                          placeholder="Жишээ: Наадамчдын зам — 1-р хэсэг"
+                        />
+                      </div>
+                      <div className={styles.buttonRow}>
+                        <button
+                          type="button"
+                          className={styles.secondaryButton}
+                          onClick={() => createRoadCleaningAreaFromLine(line.id)}
+                          disabled={savingRoadCleaningAreaId === line.id}
+                        >
+                          {savingRoadCleaningAreaId === line.id
+                            ? "Хадгалж байна..."
+                            : "Талбай хадгалах"}
+                        </button>
+                      </div>
+                      {roadCleaningAreaError ? (
+                        <p className={`${styles.message} ${styles.errorMessage}`}>
+                          {roadCleaningAreaError}
+                        </p>
+                      ) : null}
+                    </>
                   ) : null}
 
                   {lineArea ? (
@@ -1212,6 +1385,10 @@ export function NewWorkForm({
                   sequence: index + 1,
                   cleaningAreaId: line.cleaningAreaId ? Number(line.cleaningAreaId) : null,
                   employeeId: line.employeeId ? Number(line.employeeId) : null,
+                  masterId: cleaningMasterId
+                    ? Number(cleaningMasterId)
+                    : (getRoadCleaningArea(line)?.masterId ?? null),
+                  areaName: getRoadCleaningArea(line)?.name || line.newAreaName.trim(),
                   newAreaName: line.newAreaName.trim(),
                 })),
               )}
@@ -1235,8 +1412,8 @@ export function NewWorkForm({
           </div>
 
           <div className={styles.optionalSection}>
-            <span className={styles.formBadge}>Автоматаар үүсэх ажилбарууд</span>
-            <p className={styles.fieldHint}>Эдгээр ажилбарууд автоматаар үүснэ.</p>
+            <span className={styles.formBadge}>Автоматаар үүсэх даалгаврууд</span>
+            <p className={styles.fieldHint}>Эдгээр даалгаврууд автоматаар үүснэ.</p>
             <div className={styles.attachmentPreviewGrid}>
               {ROAD_CLEANING_DEFAULT_LINES.map((line) => (
                 <div className={styles.attachmentPreviewItem} key={line}>
