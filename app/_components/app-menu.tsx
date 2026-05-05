@@ -326,7 +326,7 @@ export function AppMenu({
     {
       key: "dashboard",
       href: "/",
-      label: "\u0410\u0436\u043B\u044B\u043D \u0441\u0430\u043C\u0431\u0430\u0440",
+      label: "Хяналтын самбар",
       icon: LayoutDashboard,
     },
     ...hrItems,
