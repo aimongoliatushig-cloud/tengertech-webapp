@@ -30,7 +30,7 @@ function employeeActions(employeeId: number) {
   const employeeQuery = `employeeId=${employeeId}`;
 
   return [
-    { label: "Засах", href: `/hr/employees/${employeeId}#profile-info`, icon: Pencil },
+    { label: "Засах", href: `/hr/employees/${employeeId}?edit=profile#profile-info`, icon: Pencil },
     { label: "Чөлөө бүртгэх", href: `/hr/sick?${employeeQuery}&type=time_off`, icon: FileCheck2 },
     { label: "Өвчтэй бүртгэх", href: `/hr/sick?${employeeQuery}&type=sick`, icon: HeartPulse },
     { label: "Томилолт бүртгэх", href: `/hr/trips?${employeeQuery}`, icon: Plane },
@@ -97,7 +97,7 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
         </div>
       </section>
 
-      <EmployeeDetailTabs employee={employee} />
+      <EmployeeDetailTabs employee={employee} canEdit={access.isHr} />
     </>
   );
 }
