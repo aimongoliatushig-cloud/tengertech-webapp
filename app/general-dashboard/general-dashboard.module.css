@@ -1,0 +1,429 @@
+.page {
+  min-height: 100vh;
+  padding: 22px 28px 28px;
+  background:
+    radial-gradient(circle at 78% 0%, rgba(22, 119, 210, 0.08), transparent 30%),
+    linear-gradient(180deg, #f8fafc 0%, #f3f7fb 100%);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 22px;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  margin: 0;
+  color: #080d1a;
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.header p {
+  margin: 10px 0 0;
+  color: #4c5a73;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.headerPill,
+.profileCard {
+  display: inline-flex;
+  min-height: 58px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
+  font-size: 0.84rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.headerPill svg,
+.profileCard svg {
+  width: 18px;
+  height: 18px;
+}
+
+.profileCard {
+  min-width: 220px;
+  justify-content: space-between;
+}
+
+.profileCard strong,
+.profileCard small {
+  display: block;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileCard small {
+  margin-top: 3px;
+  color: #526179;
+  font-size: 0.72rem;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.metricCard,
+.departmentCard,
+.weatherPanel,
+.noticeCard {
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.06);
+}
+
+.metricCard {
+  display: grid;
+  min-height: 204px;
+  align-content: space-between;
+  padding: 22px;
+}
+
+.metricTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.metricIcon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+}
+
+.metricIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.metricTop strong {
+  color: #101827;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.metricBody {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.metricValue {
+  display: block;
+  color: #030712;
+  font-size: 2.25rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.metricNote {
+  display: block;
+  margin-top: 10px;
+  color: #526179;
+  font-size: 0.76rem;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.ring {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  padding: 7px;
+}
+
+.ringInner {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  border-radius: inherit;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+
+.section {
+  margin-top: 36px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sectionHeader h2 {
+  margin: 0;
+  color: #101827;
+  font-size: 1.18rem;
+  font-weight: 900;
+}
+
+.sectionHeader p {
+  margin: 6px 0 0;
+  color: #526179;
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
+.departmentGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.departmentCard {
+  display: grid;
+  min-height: 320px;
+  padding: 22px;
+}
+
+.departmentTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.departmentTop svg {
+  width: 30px;
+  height: 30px;
+}
+
+.departmentTop strong {
+  color: #101827;
+  font-size: 0.98rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.largeRing {
+  width: 118px;
+  height: 118px;
+  margin: 22px auto;
+  padding: 8px;
+}
+
+.largeRing strong,
+.largeRing small {
+  display: block;
+  text-align: center;
+}
+
+.largeRing strong {
+  color: #030712;
+  font-size: 1.55rem;
+  font-weight: 950;
+}
+
+.largeRing small {
+  margin-top: 4px;
+  color: #526179;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.departmentStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid #d8deea;
+  border-bottom: 1px solid #d8deea;
+  padding: 14px 0;
+}
+
+.departmentStats div {
+  min-width: 0;
+  padding: 0 8px;
+  text-align: center;
+}
+
+.departmentStats div + div {
+  border-left: 1px solid #d8deea;
+}
+
+.departmentStats span {
+  display: block;
+  color: #31405a;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.departmentStats strong {
+  display: block;
+  margin-top: 8px;
+  color: #030712;
+  font-size: 1.05rem;
+  font-weight: 950;
+}
+
+.departmentFooter {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+  color: #0f172a;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.departmentFooter strong {
+  color: #ef3124;
+}
+
+.weatherPanel,
+.noticeCard {
+  margin-top: 26px;
+  padding: 22px;
+}
+
+.weatherNow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #a44900;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.weatherNow svg {
+  width: 18px;
+  height: 18px;
+}
+
+.weatherNow strong {
+  color: #0f172a;
+}
+
+.weatherGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.weatherDay {
+  display: grid;
+  min-height: 144px;
+  align-content: start;
+  justify-items: center;
+  gap: 9px;
+  padding: 14px 10px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+  background: #f8fbff;
+  text-align: center;
+}
+
+.weatherDay svg {
+  width: 24px;
+  height: 24px;
+  color: #f58a07;
+}
+
+.weatherDay span,
+.weatherDay strong,
+.weatherDay small {
+  line-height: 1.2;
+}
+
+.weatherDay span {
+  color: #263b63;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.weatherDay strong {
+  color: #030712;
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.weatherDay small {
+  color: #526179;
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.noticeCard {
+  color: #7c2d12;
+  background: #fff7ed;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+@media (max-width: 1320px) {
+  .header {
+    flex-direction: column;
+  }
+
+  .headerActions {
+    justify-content: flex-start;
+  }
+
+  .metricGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .departmentGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .weatherGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 18px 12px 112px;
+  }
+
+  .metricGrid,
+  .departmentGrid,
+  .weatherGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .headerPill,
+  .profileCard {
+    width: 100%;
+  }
+}

@@ -6,13 +6,25 @@ export type WeatherSnapshot = {
   aqiLabel: string;
   windSpeed: number | null;
   observedAt: string | null;
+  weeklyForecast: WeatherForecastDay[];
+};
+
+export type WeatherForecastDay = {
+  date: string;
+  weekday: string;
+  condition: string;
+  temperatureMax: number | null;
+  temperatureMin: number | null;
+  precipitationChance: number | null;
 };
 
 const ULAANBAATAR_COORDS = {
   latitude: 47.9189,
   longitude: 106.9176,
 };
-const WEATHER_REQUEST_TIMEOUT_MS = 3_500;
+const ULAANBAATAR_TIME_ZONE = "Asia/Ulaanb\x61\x61t\x61r";
+const WEATHER_REQUEST_TIMEOUT_MS = 10_000;
+const AIR_QUALITY_REQUEST_TIMEOUT_MS = 5_000;
 
 function weatherCodeLabel(code: number | null | undefined) {
   if (code === 0) {
@@ -57,13 +69,15 @@ export async function loadUlaanbaatarWeather(): Promise<WeatherSnapshot> {
   weatherUrl.searchParams.set("latitude", String(ULAANBAATAR_COORDS.latitude));
   weatherUrl.searchParams.set("longitude", String(ULAANBAATAR_COORDS.longitude));
   weatherUrl.searchParams.set("current", "temperature_2m,weather_code,wind_speed_10m");
-  weatherUrl.searchParams.set("timezone", "Asia/Ulaanbaatar");
+  weatherUrl.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max");
+  weatherUrl.searchParams.set("timezone", ULAANBAATAR_TIME_ZONE);
+  weatherUrl.searchParams.set("forecast_days", "7");
 
   const airUrl = new URL("https://air-quality-api.open-meteo.com/v1/air-quality");
   airUrl.searchParams.set("latitude", String(ULAANBAATAR_COORDS.latitude));
   airUrl.searchParams.set("longitude", String(ULAANBAATAR_COORDS.longitude));
   airUrl.searchParams.set("current", "us_aqi");
-  airUrl.searchParams.set("timezone", "Asia/Ulaanbaatar");
+  airUrl.searchParams.set("timezone", ULAANBAATAR_TIME_ZONE);
 
   const fallback: WeatherSnapshot = {
     city: "Улаанбаатар",
@@ -73,14 +87,14 @@ export async function loadUlaanbaatarWeather(): Promise<WeatherSnapshot> {
     aqiLabel: "AQI",
     windSpeed: null,
     observedAt: null,
+    weeklyForecast: [],
   };
 
   try {
-    const signal = AbortSignal.timeout(WEATHER_REQUEST_TIMEOUT_MS);
-    const [weatherResponse, airResponse] = await Promise.all([
-      fetch(weatherUrl, { cache: "no-store", signal }),
-      fetch(airUrl, { cache: "no-store", signal }),
-    ]);
+    const weatherResponse = await fetch(weatherUrl, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(WEATHER_REQUEST_TIMEOUT_MS),
+    });
 
     if (!weatherResponse.ok) {
       throw new Error(`Weather request failed: ${weatherResponse.status}`);
@@ -93,12 +107,48 @@ export async function loadUlaanbaatarWeather(): Promise<WeatherSnapshot> {
         wind_speed_10m?: number;
         time?: string;
       };
+      daily?: {
+        time?: string[];
+        weather_code?: number[];
+        temperature_2m_max?: number[];
+        temperature_2m_min?: number[];
+        precipitation_probability_max?: number[];
+      };
     };
-    const air = airResponse.ok
-      ? ((await airResponse.json()) as { current?: { us_aqi?: number } })
-      : null;
+    const air = await fetch(airUrl, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(AIR_QUALITY_REQUEST_TIMEOUT_MS),
+    })
+      .then((response) =>
+        response.ok
+          ? (response.json() as Promise<{ current?: { us_aqi?: number } }>)
+          : null,
+      )
+      .catch(() => null);
     const currentWeather = weather.current;
     const aqi = air?.current?.us_aqi ?? null;
+    const daily = weather.daily;
+    const weeklyForecast =
+      daily?.time?.slice(0, 7).map((date, index) => ({
+        date,
+        weekday: new Intl.DateTimeFormat("mn-MN", {
+          timeZone: ULAANBAATAR_TIME_ZONE,
+          weekday: "short",
+        }).format(new Date(`${date}T12:00:00+08:00`)),
+        condition: weatherCodeLabel(daily.weather_code?.[index]),
+        temperatureMax:
+          typeof daily.temperature_2m_max?.[index] === "number"
+            ? Math.round(daily.temperature_2m_max[index])
+            : null,
+        temperatureMin:
+          typeof daily.temperature_2m_min?.[index] === "number"
+            ? Math.round(daily.temperature_2m_min[index])
+            : null,
+        precipitationChance:
+          typeof daily.precipitation_probability_max?.[index] === "number"
+            ? Math.round(daily.precipitation_probability_max[index])
+            : null,
+      })) ?? [];
 
     return {
       city: "Улаанбаатар",
@@ -114,6 +164,7 @@ export async function loadUlaanbaatarWeather(): Promise<WeatherSnapshot> {
           ? Math.round(currentWeather.wind_speed_10m)
           : null,
       observedAt: currentWeather?.time ?? null,
+      weeklyForecast,
     };
   } catch (error) {
     console.warn("Live weather could not be loaded:", error);

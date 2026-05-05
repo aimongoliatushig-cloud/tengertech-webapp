@@ -43,6 +43,7 @@ import { PendingLinkIndicator } from "./pending-link-indicator";
 import styles from "./app-menu.module.css";
 
 type MenuKey =
+  | "general-dashboard"
   | "dashboard"
   | "tasks"
   | "auto-base"
@@ -70,6 +71,7 @@ type AppMenuProps = {
   canViewQualityCenter?: boolean;
   canUseFieldConsole?: boolean;
   canViewHr?: boolean;
+  canViewGeneralDashboard?: boolean;
   variant?: "default" | "executive";
   userName?: string;
   roleLabel?: string;
@@ -145,6 +147,7 @@ export function AppMenu({
   canViewQualityCenter = false,
   canUseFieldConsole = false,
   canViewHr = false,
+  canViewGeneralDashboard = false,
   variant = "default",
   userName = "Хэрэглэгч",
   roleLabel = "Систем",
@@ -161,10 +164,21 @@ export function AppMenu({
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const flags = groupFlags || {};
+  const roleLabelLower = roleLabel.toLocaleLowerCase("mn-MN");
+  const showGeneralDashboard = Boolean(
+    canViewGeneralDashboard ||
+      flags.municipalDirector ||
+      flags.municipalManager ||
+      flags.fleetRepairCeo ||
+      flags.fleetRepairGeneralManager ||
+      roleLabelLower.includes("\u0437\u0430\u0445\u0438\u0440\u0430\u043B") ||
+      roleLabelLower.includes("\u0435\u0440\u04E9\u043D\u0445\u0438\u0439 \u043C\u0435\u043D\u0435\u0436\u0435\u0440") ||
+      roleLabelLower.includes("\u04AF\u0439\u043B \u0430\u0436\u0438\u043B\u043B\u0430\u0433\u0430\u0430 \u0445\u0430\u0440\u0438\u0443\u0446\u0441\u0430\u043D \u043C\u0435\u043D\u0435\u0436\u0435\u0440"),
+  );
   const executiveMode =
     Boolean(flags.municipalDirector || flags.municipalManager || flags.fleetRepairCeo) ||
-    roleLabel.toLocaleLowerCase("mn-MN").includes("\u0437\u0430\u0445\u0438\u0440\u0430\u043B") ||
-    roleLabel.toLocaleLowerCase("mn-MN").includes("\u043C\u0435\u043D\u0435\u0436\u0435\u0440");
+    roleLabelLower.includes("\u0437\u0430\u0445\u0438\u0440\u0430\u043B") ||
+    roleLabelLower.includes("\u043C\u0435\u043D\u0435\u0436\u0435\u0440");
   const mfoFieldMode = Boolean(flags.mfoDriver || flags.mfoLoader || flags.mfoMobile);
   const mfoManagerMode = Boolean(flags.mfoManager || flags.mfoDispatcher || flags.mfoInspector);
   const environmentMode = Boolean(
@@ -213,7 +227,6 @@ export function AppMenu({
     canWriteReports || executiveMode || departmentManagerMode || inspectorMode || canViewQualityCenter;
   const baseCanCreate = !workerMode && (canCreateProject || canCreateTasks || canWriteReports);
   const reviewHref = workerMode && canUseFieldConsole ? "/field" : "/notifications";
-  const roleLabelLower = roleLabel.toLocaleLowerCase("mn-MN");
   const roleLooksHr = roleLabelLower.includes("\u0445\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446");
   const roleLooksDepartmentHead = roleLabelLower.includes("\u0445\u044D\u043B\u0442\u0441\u0438\u0439\u043D \u0434\u0430\u0440\u0433\u0430");
   const hasHrGroupAccess = Boolean(flags.hrUser || flags.hrManager || flags.municipalHr);
@@ -299,6 +312,16 @@ export function AppMenu({
   ];
 
   const defaultItems: MenuItem[] = [
+    ...(showGeneralDashboard
+      ? [
+          {
+            key: "general-dashboard",
+            href: "/general-dashboard",
+            label: "Ерөнхий хяналт",
+            icon: BarChart3,
+          },
+        ]
+      : []),
     {
       key: "dashboard",
       href: "/",
@@ -393,6 +416,16 @@ export function AppMenu({
   });
 
   const garbageDepartmentItems: MenuItem[] = [
+    ...(showGeneralDashboard
+      ? [
+          {
+            key: "general-dashboard",
+            href: "/general-dashboard",
+            label: "Ерөнхий хяналт",
+            icon: BarChart3,
+          },
+        ]
+      : []),
     {
       key: "dashboard",
       href: "/",
@@ -559,6 +592,9 @@ export function AppMenu({
                 { key: "review", href: reviewHref, label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
               ]
       : [
+          ...(showGeneralDashboard
+            ? [{ key: "general-dashboard", href: "/general-dashboard", label: "Ерөнхий", icon: BarChart3 }]
+            : []),
           { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
           { key: "projects", href: "/projects", label: "Ажлууд", icon: ListChecks },
           { key: "new-project", href: "/create", label: "Шинэ ажил", icon: PlusCircle },
@@ -603,7 +639,7 @@ export function AppMenu({
       aria-label="Ажлын орчны цэс"
     >
       <aside className={styles.menuBar}>
-        <Link href={hrFocusedMode ? "/hr" : "/"} className={styles.brandBlock}>
+        <Link href={hrFocusedMode ? "/hr" : showGeneralDashboard ? "/general-dashboard" : "/"} className={styles.brandBlock}>
           <Image
             src="/logo.png"
             alt="Хот тохижилт үйлчилгээний төв"

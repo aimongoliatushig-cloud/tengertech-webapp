@@ -55,6 +55,7 @@ type DashboardViewProps = {
   departmentScopeName?: string | null;
   weather: WeatherSnapshot;
   canViewHr?: boolean;
+  canViewGeneralDashboard?: boolean;
 };
 
 type DashboardStat = {
@@ -1175,6 +1176,7 @@ export function DashboardView({
   departmentScopeName = null,
   weather,
   canViewHr = false,
+  canViewGeneralDashboard = false,
 }: DashboardViewProps) {
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -1339,6 +1341,7 @@ export function DashboardView({
             canViewQualityCenter={canViewQualityCenter}
             canUseFieldConsole={canUseFieldConsole}
             canViewHr={canViewHr}
+            canViewGeneralDashboard={canViewGeneralDashboard}
             userName={session.name}
             roleLabel={roleLabel}
             groupFlags={session.groupFlags}
