@@ -12,6 +12,7 @@ import { redirect } from "next/navigation";
 
 import { authenticateOdooUser, createOdooConnection } from "@/lib/odoo";
 import {
+  canSubmitWorkspaceReport,
   getRoleLabel,
   hasCapability,
   isMasterRole,
@@ -23,7 +24,7 @@ import { SESSION_COOKIE_NAME } from "@/lib/session";
 
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 const WORKER_ROLE_REFRESH_INTERVAL_MS = 5 * 60_000;
-const CURRENT_SESSION_ROLE_INFERENCE_VERSION = 2;
+const CURRENT_SESSION_ROLE_INFERENCE_VERSION = 4;
 
 export type AppSession = {
   uid: number;
@@ -35,8 +36,17 @@ export type AppSession = {
   odooUrl: string;
   odooDb: string;
   issuedAt: number;
+  sessionId?: string;
+  loginIp?: string;
+  userAgent?: string;
+  deviceLabel?: string;
   roleCheckedAt?: number;
   roleInferenceVersion?: number;
+};
+
+export type SessionDeviceMetadata = {
+  loginIp?: string;
+  userAgent?: string;
 };
 
 function normalizeSessionUrl(url: string) {
@@ -96,6 +106,8 @@ async function refreshSessionRole(session: AppSession) {
   const shouldForceRefresh =
     session.roleInferenceVersion !== CURRENT_SESSION_ROLE_INFERENCE_VERSION ||
     session.role === "worker" ||
+    session.role === "hse_officer" ||
+    session.role === "public_relations" ||
     session.role === "hr_specialist" ||
     session.role === "hr_manager";
   if (!shouldForceRefresh) {
@@ -105,7 +117,10 @@ async function refreshSessionRole(session: AppSession) {
   const lastRoleCheckAt = session.roleCheckedAt ?? session.issuedAt;
   const needsRepairGroupRefresh =
     session.groupFlags?.fleetRepairAny === undefined ||
-    session.groupFlags?.opsStorekeeper === undefined;
+    session.groupFlags?.opsStorekeeper === undefined ||
+    session.groupFlags?.mfoDriver === undefined ||
+    session.groupFlags?.environmentManager === undefined ||
+    session.groupFlags?.complaintManager === undefined;
   if (
     session.roleInferenceVersion === CURRENT_SESSION_ROLE_INFERENCE_VERSION &&
     session.role === "worker" &&
@@ -184,6 +199,36 @@ function shouldUseSecureSessionCookie() {
   return process.env.SESSION_COOKIE_SECURE?.trim().toLowerCase() === "true";
 }
 
+export function getDeviceLabel(userAgent?: string | null) {
+  const value = (userAgent ?? "").toLowerCase();
+  if (!value) {
+    return "Тодорхойгүй төхөөрөмж";
+  }
+
+  const os = value.includes("android")
+    ? "Android"
+    : value.includes("iphone") || value.includes("ipad")
+      ? "iOS"
+    : value.includes("windows")
+      ? "Windows"
+    : value.includes("mac os")
+      ? "macOS"
+    : value.includes("linux")
+      ? "Linux"
+      : "Төхөөрөмж";
+  const browser = value.includes("edg/")
+    ? "Edge"
+    : value.includes("chrome/")
+      ? "Chrome"
+    : value.includes("firefox/")
+      ? "Firefox"
+    : value.includes("safari/")
+      ? "Safari"
+      : "Browser";
+
+  return `${os} / ${browser}`;
+}
+
 export function buildSessionCookieHeader(session: AppSession) {
   const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000).toUTCString();
   const parts = [
@@ -230,7 +275,11 @@ export async function requireSession() {
   return session;
 }
 
-export async function signInWithOdooCredentials(login: string, password: string) {
+export async function signInWithOdooCredentials(
+  login: string,
+  password: string,
+  metadata: SessionDeviceMetadata = {},
+) {
   const result = await authenticateOdooUser(login, password);
   if (!result) {
     return null;
@@ -245,9 +294,13 @@ export async function signInWithOdooCredentials(login: string, password: string)
     groupFlags: result.user.groupFlags,
     ...getCurrentSessionConnection(),
     issuedAt: Date.now(),
+    sessionId: randomBytes(12).toString("hex"),
+    loginIp: metadata.loginIp,
+    userAgent: metadata.userAgent,
+    deviceLabel: getDeviceLabel(metadata.userAgent),
     roleCheckedAt: Date.now(),
     roleInferenceVersion: CURRENT_SESSION_ROLE_INFERENCE_VERSION,
   } satisfies AppSession;
 }
 
-export { getRoleLabel, hasCapability, isMasterRole, isWorkerOnly };
+export { canSubmitWorkspaceReport, getRoleLabel, hasCapability, isMasterRole, isWorkerOnly };

@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_ops_work_unit_tree" model="ir.ui.view">
+        <field name="name">ops.work.unit.tree</field>
+        <field name="model">ops.work.unit</field>
+        <field name="arch" type="xml">
+            <list string="Хэмжих нэгжийн лавлах" default_order="sequence asc, name asc">
+                <field name="sequence"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="category"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ops_work_unit_form" model="ir.ui.view">
+        <field name="name">ops.work.unit.form</field>
+        <field name="model">ops.work.unit</field>
+        <field name="arch" type="xml">
+            <form string="Хэмжих нэгж">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="code"/>
+                            <field name="category"/>
+                        </group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ops_work_unit_search" model="ir.ui.view">
+        <field name="name">ops.work.unit.search</field>
+        <field name="model">ops.work.unit</field>
+        <field name="arch" type="xml">
+            <search string="Хэмжих нэгж">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="category"/>
+                <filter string="Идэвхтэй" name="active_units" domain="[('active', '=', True)]"/>
+                <group>
+                    <filter string="Ангилал" name="groupby_category" context="{'group_by': 'category'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ops_work_unit" model="ir.actions.act_window">
+        <field name="name">Хэмжих нэгж</field>
+        <field name="res_model">ops.work.unit</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_ops_work_unit_search"/>
+    </record>
+
+    <record id="view_ops_work_type_tree" model="ir.ui.view">
+        <field name="name">ops.work.type.tree</field>
+        <field name="model">ops.work.type</field>
+        <field name="arch" type="xml">
+            <list string="Ажлын төрлийн нэгжийн профайл" default_order="sequence asc, name asc">
+                <field name="sequence"/>
+                <field name="name"/>
+                <field name="operation_type"/>
+                <field name="default_unit_id"/>
+                <field name="allowed_unit_summary"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ops_work_type_form" model="ir.ui.view">
+        <field name="name">ops.work.type.form</field>
+        <field name="model">ops.work.type</field>
+        <field name="arch" type="xml">
+            <form string="Ажлын төрлийн нэгжийн профайл">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="operation_type"/>
+                            <field name="default_unit_id" domain="[('id', 'in', allowed_unit_ids)]" options="{'no_create': True}"/>
+                        </group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                            <field name="allowed_unit_summary" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Зөвшөөрсөн нэгжүүд">
+                            <field name="allowed_unit_ids" widget="many2many_tags"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_ops_work_type_search" model="ir.ui.view">
+        <field name="name">ops.work.type.search</field>
+        <field name="model">ops.work.type</field>
+        <field name="arch" type="xml">
+            <search string="Ажлын төрөл">
+                <field name="name"/>
+                <field name="operation_type"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ops_work_type" model="ir.actions.act_window">
+        <field name="name">Ажлын төрлийн нэгж</field>
+        <field name="res_model">ops.work.type</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_ops_work_type_search"/>
+    </record>
+
+    <record id="view_ops_work_unit_review_tree" model="ir.ui.view">
+        <field name="name">ops.work.unit.review.tree</field>
+        <field name="model">ops.work.unit.review</field>
+        <field name="arch" type="xml">
+            <list string="Нэгжийн migration шалгах мөр" default_order="create_date desc">
+                <field name="create_date"/>
+                <field name="model_name"/>
+                <field name="res_id"/>
+                <field name="field_name"/>
+                <field name="raw_value"/>
+                <field name="normalized_key"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ops_work_unit_review_form" model="ir.ui.view">
+        <field name="name">ops.work.unit.review.form</field>
+        <field name="model">ops.work.unit.review</field>
+        <field name="arch" type="xml">
+            <form string="Migration шалгах мөр">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="model_name" readonly="1"/>
+                            <field name="res_id" readonly="1"/>
+                            <field name="field_name" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="raw_value" readonly="1"/>
+                            <field name="normalized_key" readonly="1"/>
+                            <field name="state"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="note"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_ops_work_unit_review" model="ir.actions.act_window">
+        <field name="name">Нэгжийн migration шалгах мөр</field>
+        <field name="res_model">ops.work.unit.review</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_ops_work_unit" name="Хэмжих нэгж" action="action_ops_work_unit" sequence="910"/>
+    <menuitem id="menu_ops_work_type" name="Ажлын төрлийн нэгж" action="action_ops_work_type" sequence="911"/>
+    <menuitem id="menu_ops_work_unit_review" name="Нэгжийн migration шалгах мөр" action="action_ops_work_unit_review" sequence="912"/>
+</odoo>

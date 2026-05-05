@@ -260,6 +260,7 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={roleLabel}
+              groupFlags={session.groupFlags}
               departmentScopeName={departmentScopeName}
             />
           </aside>

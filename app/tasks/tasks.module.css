@@ -988,6 +988,546 @@
   gap: 12px;
 }
 
+.workerWorkSection {
+  gap: 14px;
+}
+
+.workerDesktopHeader {
+  display: block;
+}
+
+.workerMobileHome {
+  display: none;
+}
+
+.workerMobileTop,
+.workerGreeting,
+.workerDepartmentHero,
+.workerWeatherCard {
+  min-width: 0;
+}
+
+.workerMobileTop {
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.workerMobileLogo {
+  width: 156px;
+  height: auto;
+  object-fit: contain;
+}
+
+.workerMobileNotice {
+  position: relative;
+  display: inline-grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 1px solid rgba(46, 125, 65, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--ink-900);
+  box-shadow: 0 14px 34px rgba(27, 73, 38, 0.08);
+}
+
+.workerMobileNotice span {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #2f8d3f;
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 900;
+}
+
+.workerGreeting {
+  gap: 4px;
+}
+
+.workerGreeting span,
+.workerGreeting p {
+  color: var(--ink-700);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.workerGreeting h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #17231c;
+  font-size: clamp(1.85rem, 8vw, 2.35rem);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.04;
+}
+
+.workerGreeting h1 svg {
+  flex: 0 0 auto;
+  color: var(--brand-800);
+}
+
+.workerDepartmentHero {
+  position: relative;
+  display: grid;
+  min-height: 220px;
+  overflow: hidden;
+  padding: 28px 22px;
+  border: 1px solid rgba(46, 125, 65, 0.12);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(221, 239, 219, 0.92)),
+    #f3faf2;
+  box-shadow: 0 22px 60px rgba(27, 73, 38, 0.1);
+}
+
+.workerDepartmentHero > div {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 10px;
+  max-width: 76%;
+}
+
+.workerDepartmentHero span {
+  color: var(--brand-800);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.workerDepartmentHero strong {
+  color: #17231c;
+  font-size: clamp(1.26rem, 6vw, 1.72rem);
+  font-weight: 900;
+  line-height: 1.18;
+}
+
+.workerDepartmentHero p {
+  margin: 0;
+  color: var(--ink-700);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.workerHeroPill {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 38px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 13px 0 15px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 900;
+  box-shadow: 0 14px 26px rgba(31, 95, 49, 0.22);
+}
+
+.workerHeroPill strong {
+  display: inline-flex;
+  min-width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  font-size: 0.76rem;
+}
+
+.workerHeroScene {
+  position: absolute;
+  right: -20px;
+  bottom: -8px;
+  width: 210px;
+  height: 150px;
+  opacity: 0.92;
+}
+
+.workerHeroScene::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 -20px;
+  height: 74px;
+  border-radius: 90% 0 0 0;
+  background:
+    linear-gradient(160deg, rgba(74, 154, 93, 0.35), rgba(74, 154, 93, 0.08)),
+    #cbe8c7;
+}
+
+.workerHeroScene i {
+  position: absolute;
+  bottom: 42px;
+  display: block;
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #b9e2ae, #5da669);
+}
+
+.workerHeroScene i:nth-child(1) {
+  right: 4px;
+  bottom: 64px;
+  width: 88px;
+  height: 88px;
+  opacity: 0.82;
+}
+
+.workerHeroScene i:nth-child(2) {
+  right: 58px;
+  background: linear-gradient(145deg, #d1edc8, #77b879);
+}
+
+.workerHeroScene i:nth-child(3) {
+  right: 118px;
+  bottom: 28px;
+  width: 66px;
+  height: 66px;
+  background: linear-gradient(145deg, #c7e8bd, #4f965d);
+}
+
+.workerWeatherCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(46, 125, 65, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 44px rgba(27, 73, 38, 0.08);
+}
+
+.workerWeatherCard > div {
+  display: grid;
+  gap: 4px;
+}
+
+.workerWeatherCard span,
+.workerWeatherCard small {
+  color: var(--ink-600);
+  font-weight: 700;
+}
+
+.workerWeatherCard strong {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #17231c;
+  font-size: 1.08rem;
+  font-weight: 900;
+}
+
+.workerWeatherCard strong svg {
+  color: #f2a000;
+}
+
+.workerAqiBadge {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(218, 238, 219, 0.9);
+  color: var(--brand-800) !important;
+  font-size: 0.78rem;
+  font-weight: 900 !important;
+  white-space: nowrap;
+}
+
+.workerHeroHeader {
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.workerHeroHeader p {
+  max-width: 540px;
+  margin: 6px 0 0;
+  color: var(--ink-600);
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.workerHeroSummary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(96px, 1fr));
+  gap: 8px;
+  min-width: 230px;
+}
+
+.workerHeroSummary span {
+  display: grid;
+  gap: 3px;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: 8px;
+  background: rgba(240, 248, 239, 0.86);
+  color: var(--ink-600);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.workerHeroSummary strong {
+  color: var(--ink-900);
+  font-size: 1.28rem;
+  line-height: 1;
+}
+
+.workerWorkList {
+  display: grid;
+  gap: 16px;
+}
+
+.workerWorkCard {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(74, 154, 93, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(46, 125, 65, 0.08), transparent 34%),
+    rgba(255, 255, 255, 0.98);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.workerWorkTop,
+.workerWorkStats,
+.workerLineItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.workerWorkTop {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.workerWorkIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 8px;
+  background: rgba(46, 125, 65, 0.12);
+  color: var(--brand-800);
+}
+
+.workerWorkTop small {
+  color: var(--ink-600);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.workerProgressBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink-900);
+  font-size: 0.95rem;
+  font-weight: 900;
+  box-shadow: 0 14px 28px rgba(29, 64, 40, 0.08);
+}
+
+.workerWorkStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.workerWorkStats span {
+  display: grid;
+  gap: 4px;
+  min-height: 58px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: rgba(240, 248, 239, 0.92);
+  color: var(--ink-600);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.workerWorkStats strong {
+  color: var(--ink-900);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.workerPrimaryTask {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 12px 14px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
+  color: #fff;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  box-shadow: 0 16px 30px rgba(29, 112, 51, 0.18);
+  cursor: pointer;
+}
+
+.workerPrimaryTask small,
+.workerPrimaryTask strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workerPrimaryTask small {
+  margin-bottom: 4px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.workerPrimaryTask strong {
+  color: #fff;
+  font-size: 0.94rem;
+  line-height: 1.25;
+}
+
+.workerPrimaryIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.workerLineListHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 2px;
+  color: var(--ink-700);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.workerLineListHeader small {
+  color: var(--ink-500);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.workerLineList {
+  display: grid;
+  gap: 7px;
+}
+
+.workerLineItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 62px;
+  padding: 10px 12px;
+  width: 100%;
+  border: 1px solid rgba(74, 154, 93, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  cursor: pointer;
+}
+
+.workerLineItem:hover {
+  transform: translateY(-1px);
+  border-color: rgba(46, 125, 65, 0.24);
+  box-shadow: 0 12px 22px rgba(29, 64, 40, 0.08);
+}
+
+.workerTaskNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-900);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.workerLineItem div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.workerLineItem strong {
+  overflow: hidden;
+  color: var(--ink-900);
+  font-size: 0.92rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workerLineItem small {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-600);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.workerLineAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: rgba(46, 125, 65, 0.1);
+  color: var(--brand-900);
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .taskCard {
   padding: 13px 14px;
   border-radius: 8px;
@@ -1251,6 +1791,10 @@
     grid-template-columns: 1fr;
   }
 
+  .workerWorkStats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .projectCardFooter {
     align-items: flex-start;
     flex-direction: column;
@@ -1261,13 +1805,181 @@
   }
 }
 
-@media (min-width: 821px) {
-  .taskCardList {
+@media (max-width: 640px) {
+  .workerDesktopHeader {
     display: none;
   }
-}
 
-@media (max-width: 640px) {
+  .workerMobileHome {
+    display: grid;
+    gap: 22px;
+    padding: 18px 6px 6px;
+  }
+
+  .workerMobileTop {
+    display: flex;
+  }
+
+  .workerWorkSection {
+    margin-top: 16px;
+    padding: 0 6px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .workerHeroHeader {
+    padding: 0 2px;
+  }
+
+  .workerHeroHeader .filterKicker,
+  .workerHeroHeader p,
+  .workerHeroSummary {
+    display: none;
+  }
+
+  .workerHeroHeader h2 {
+    font-size: 1.18rem;
+    line-height: 1.2;
+  }
+
+  .workerWorkList {
+    gap: 16px;
+  }
+
+  .workerWorkCard {
+    gap: 16px;
+    padding: 20px 16px 16px;
+    border-radius: 8px;
+    background:
+      radial-gradient(circle at 92% 12%, rgba(218, 238, 219, 0.72), transparent 30%),
+      rgba(255, 255, 255, 0.94);
+    box-shadow: 0 22px 60px rgba(27, 73, 38, 0.09);
+  }
+
+  .workerWorkTop {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 14px;
+  }
+
+  .workerWorkIcon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(46, 125, 65, 0.1);
+  }
+
+  .workerWorkTop .taskIdentity > span {
+    display: none;
+  }
+
+  .workerWorkTop .taskIdentity strong {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 1.22rem;
+    line-height: 1.25;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .workerWorkTop .taskIdentity small {
+    margin-top: 4px;
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  .workerProgressBadge {
+    width: 56px;
+    height: 56px;
+    box-shadow: inset 0 0 0 6px rgba(46, 125, 65, 0.08);
+  }
+
+  .workerWorkStats {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(46, 125, 65, 0.1);
+  }
+
+  .workerWorkStats span {
+    min-height: 52px;
+    padding: 0 14px;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .workerWorkStats span:first-child {
+    border-right: 1px solid rgba(46, 125, 65, 0.1);
+  }
+
+  .workerWorkStats span:nth-child(2) {
+    display: none;
+  }
+
+  .workerWorkStats strong {
+    font-size: 1.48rem;
+  }
+
+  .workerPrimaryTask {
+    min-height: 62px;
+    border-radius: 8px;
+  }
+
+  .workerLineListHeader {
+    display: flex;
+    padding: 0 2px;
+  }
+
+  .workerLineListHeader small {
+    display: none;
+  }
+
+  .workerLineItem {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 74px;
+    padding: 14px 0;
+    border-width: 0 0 1px;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .workerLineItem:last-child {
+    border-bottom: 0;
+  }
+
+  .workerTaskNumber {
+    width: 26px;
+    height: 26px;
+    border: 1px solid rgba(31, 95, 49, 0.16);
+    background: #fff;
+    color: transparent;
+    font-size: 0;
+  }
+
+  .workerTaskNumber::after {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid rgba(31, 95, 49, 0.22);
+  }
+
+  .workerLineItem strong {
+    font-size: 0.96rem;
+    line-height: 1.32;
+    white-space: normal;
+  }
+
+  .workerLineAction {
+    grid-column: auto;
+    width: auto;
+    min-width: 68px;
+    background: rgba(235, 241, 247, 0.9);
+    color: #607083;
+  }
+
   .pageHeader {
     margin-bottom: 16px;
   }
@@ -1360,6 +2072,70 @@
     padding: 13px 14px;
     border-radius: 8px;
     gap: 8px;
+  }
+
+  .workerWorkCard {
+    padding: 12px;
+  }
+
+  .workerHeroHeader {
+    align-items: stretch;
+  }
+
+  .workerHeroHeader p {
+    display: none;
+  }
+
+  .workerHeroSummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 0;
+    width: 100%;
+  }
+
+  .workerWorkTop {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .workerProgressBadge {
+    width: 50px;
+    height: 50px;
+  }
+
+  .workerPrimaryTask {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .workerLineListHeader {
+    display: none;
+  }
+
+  .workerLineItem {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .workerLineAction {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .workerWorkStats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .workerWorkStats span {
+    min-height: 56px;
+    padding: 8px;
+    font-size: 0.7rem;
+  }
+
+  .workerWorkStats strong {
+    font-size: 1.15rem;
+  }
+
+  .workerLineItem strong {
+    white-space: normal;
   }
 
   .taskIdentity strong {
@@ -1805,4 +2581,180 @@
   }
 }
 
+@media (max-width: 640px) {
+  .workerDesktopHeader {
+    display: none;
+  }
 
+  .workerMobileHome {
+    display: grid;
+    gap: 22px;
+    padding: 18px 6px 6px;
+  }
+
+  .workerMobileTop {
+    display: flex;
+  }
+
+  .workerWorkSection {
+    margin-top: 16px;
+    padding: 0 6px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .workerHeroHeader {
+    align-items: center;
+    padding: 0 2px;
+  }
+
+  .workerHeroHeader .filterKicker,
+  .workerHeroHeader p,
+  .workerHeroSummary {
+    display: none;
+  }
+
+  .workerHeroHeader h2 {
+    font-size: 1.18rem;
+    line-height: 1.2;
+  }
+
+  .workerWorkList {
+    gap: 16px;
+  }
+
+  .workerWorkCard {
+    gap: 16px;
+    padding: 20px 16px 16px;
+    border-radius: 8px;
+    background:
+      radial-gradient(circle at 92% 12%, rgba(218, 238, 219, 0.72), transparent 30%),
+      rgba(255, 255, 255, 0.94);
+    box-shadow: 0 22px 60px rgba(27, 73, 38, 0.09);
+  }
+
+  .workerWorkTop {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .workerWorkIcon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(46, 125, 65, 0.1);
+  }
+
+  .workerWorkTop .taskIdentity > span {
+    display: none;
+  }
+
+  .workerWorkTop .taskIdentity strong {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 1.22rem;
+    line-height: 1.25;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .workerWorkTop .taskIdentity small {
+    margin-top: 4px;
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  .workerProgressBadge {
+    width: 56px;
+    height: 56px;
+    box-shadow: inset 0 0 0 6px rgba(46, 125, 65, 0.08);
+  }
+
+  .workerWorkStats {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(46, 125, 65, 0.1);
+  }
+
+  .workerWorkStats span {
+    min-height: 52px;
+    padding: 0 14px;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .workerWorkStats span:first-child {
+    border-right: 1px solid rgba(46, 125, 65, 0.1);
+  }
+
+  .workerWorkStats span:nth-child(2) {
+    display: none;
+  }
+
+  .workerWorkStats strong {
+    font-size: 1.48rem;
+  }
+
+  .workerPrimaryTask {
+    min-height: 62px;
+    border-radius: 8px;
+  }
+
+  .workerLineListHeader {
+    display: flex;
+    padding: 0 2px;
+  }
+
+  .workerLineListHeader small {
+    display: none;
+  }
+
+  .workerLineItem {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 74px;
+    padding: 14px 0;
+    border-width: 0 0 1px;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .workerLineItem:last-child {
+    border-bottom: 0;
+  }
+
+  .workerTaskNumber {
+    width: 26px;
+    height: 26px;
+    border: 1px solid rgba(31, 95, 49, 0.16);
+    background: #fff;
+    color: transparent;
+    font-size: 0;
+  }
+
+  .workerTaskNumber::after {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid rgba(31, 95, 49, 0.22);
+  }
+
+  .workerLineItem strong {
+    font-size: 0.96rem;
+    line-height: 1.32;
+    white-space: normal;
+  }
+
+  .workerLineAction {
+    grid-column: auto;
+    width: auto;
+    min-width: 68px;
+    background: rgba(235, 241, 247, 0.9);
+    color: #607083;
+  }
+}

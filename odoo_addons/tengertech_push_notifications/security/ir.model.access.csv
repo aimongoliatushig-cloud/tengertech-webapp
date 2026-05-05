@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_push_subscription_user,tengertech.push.subscription.user,model_tengertech_push_subscription,base.group_user,1,1,1,0
+access_push_subscription_manager,tengertech.push.subscription.manager,model_tengertech_push_subscription,municipal_core.group_municipal_manager,1,1,1,0
+access_push_subscription_admin,tengertech.push.subscription.admin,model_tengertech_push_subscription,municipal_core.group_municipal_admin,1,1,1,1
+access_push_event_manager,tengertech.push.event.manager,model_tengertech_push_event,municipal_core.group_municipal_manager,1,1,1,0
+access_push_event_director,tengertech.push.event.director,model_tengertech_push_event,municipal_core.group_municipal_director,1,0,0,0
+access_push_event_admin,tengertech.push.event.admin,model_tengertech_push_event,municipal_core.group_municipal_admin,1,1,1,1

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "odoo_addons/**",
+    "odoo erp/**",
+    ".deploy-backups/**",
     "next-env.d.ts",
   ]),
 ]);

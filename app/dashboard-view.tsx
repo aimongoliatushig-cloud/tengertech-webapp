@@ -18,7 +18,6 @@ import {
   Sun,
   Truck,
   UserCheck,
-  UserX,
   UsersRound,
   Wind,
   type LucideIcon,
@@ -42,7 +41,6 @@ import {
   type DashboardSnapshot,
   type FleetVehicleBoard,
   type HrDailyAttendanceSummary,
-  type TaskStatusKey,
 } from "@/lib/odoo";
 import { cn } from "@/lib/utils";
 import { type WeatherSnapshot } from "@/lib/weather";
@@ -75,21 +73,6 @@ const DASHBOARD_IMAGES = {
   overview: "/illustrations/green-park-banner.svg",
   seedling: "/illustrations/seedling-card.svg",
   landscape: "/illustrations/green-landscape-card.svg",
-};
-
-const STATUS_LABELS: Record<TaskStatusKey, string> = {
-  planned: "Төлөвлөсөн",
-  working: "Гүйцэтгэж байгаа",
-  review: "Хянаж байгаа",
-  verified: "Дууссан",
-  problem: "Асуудалтай",
-};
-
-const STATUS_DOT: Record<StatusTone, string> = {
-  good: "bg-[#2E7D32]",
-  attention: "bg-[#F4B000]",
-  urgent: "bg-[#EF4444]",
-  muted: "bg-slate-400",
 };
 
 const STAT_TONE: Record<StatusTone, string> = {
@@ -165,6 +148,52 @@ function countNotificationTasks(
   return taskIds.size;
 }
 
+function dashboardTaskBucket(
+  task: DashboardSnapshot["taskDirectory"][number],
+  currentDateKey: string,
+): "done" | "working" | "review" | "overdue" | "planned" {
+  if (task.statusKey === "verified" || task.progress >= 100) {
+    return "done";
+  }
+  if (task.statusKey === "review") {
+    return "review";
+  }
+  if (isOverdue(task, currentDateKey)) {
+    return "overdue";
+  }
+  if (task.statusKey === "working" || task.progress > 0) {
+    return "working";
+  }
+
+  return "planned";
+}
+
+function dashboardTaskStats(tasks: DashboardSnapshot["taskDirectory"], currentDateKey: string) {
+  const stats = {
+    total: tasks.length,
+    completed: 0,
+    working: 0,
+    review: 0,
+    overdue: 0,
+    planned: 0,
+    progress: 0,
+  };
+
+  for (const task of tasks) {
+    const bucket = dashboardTaskBucket(task, currentDateKey);
+    if (bucket === "done") {
+      stats.completed += 1;
+    } else {
+      stats[bucket] += 1;
+    }
+    stats.progress += clampPercent(task.progress);
+  }
+
+  stats.progress = stats.total ? Math.round(stats.progress / stats.total) : 0;
+
+  return stats;
+}
+
 function statusTone(task: DashboardSnapshot["taskDirectory"][number], currentDateKey: string): StatusTone {
   if (task.issueFlag || isOverdue(task, currentDateKey) || task.statusKey === "problem") {
     return "urgent";
@@ -181,12 +210,196 @@ function statusTone(task: DashboardSnapshot["taskDirectory"][number], currentDat
   return "muted";
 }
 
+function projectTone(project: DashboardSnapshot["projects"][number]): StatusTone {
+  if (project.stageBucket === "review") {
+    return "attention";
+  }
+  if (project.stageBucket === "progress" || project.stageBucket === "done" || project.completion >= 100) {
+    return "good";
+  }
+  return "muted";
+}
+
+function projectDisplayStageLabel(project: DashboardSnapshot["projects"][number]) {
+  if (project.stageLabel && project.stageLabel !== "Тодорхойгүй") {
+    return project.stageLabel;
+  }
+
+  if (project.stageBucket === "done" || project.completion >= 100) {
+    return "Дууссан";
+  }
+  if (project.stageBucket === "progress" || project.completion > 0) {
+    return "Явагдаж буй";
+  }
+  if (project.stageBucket === "review") {
+    return "Хянаж байгаа";
+  }
+  return "Төлөвлөгдсөн";
+}
+
+function projectListIcon(project: DashboardSnapshot["projects"][number]): LucideIcon {
+  const text = `${project.name} ${project.departmentName} ${project.operationTypeLabel ?? ""}`.toLowerCase();
+
+  if (text.includes("хог") || text.includes("тээвэр")) {
+    return Truck;
+  }
+  if (text.includes("ногоон") || text.includes("мод") || text.includes("цэцэг") || text.includes("зүлэг")) {
+    return Leaf;
+  }
+  if (text.includes("цэвэр") || text.includes("тохиж")) {
+    return Recycle;
+  }
+
+  return ClipboardList;
+}
+
+function ProjectListIcon({ project }: { project: DashboardSnapshot["projects"][number] }) {
+  const icon = projectListIcon(project);
+
+  if (icon === Truck) {
+    return <Truck />;
+  }
+  if (icon === Leaf) {
+    return <Leaf />;
+  }
+  if (icon === Recycle) {
+    return <Recycle />;
+  }
+
+  return <ClipboardList />;
+}
+
+type ProjectStatusFilterKey = "progress" | "pending" | "done" | "planned";
+
+function projectMatchesStatusFilter(
+  project: DashboardSnapshot["projects"][number],
+  filter: ProjectStatusFilterKey,
+) {
+  if (filter === "progress") {
+    return project.stageBucket === "progress";
+  }
+  if (filter === "pending") {
+    return project.stageBucket === "review" || project.stageBucket === "todo";
+  }
+  if (filter === "done") {
+    return project.stageBucket === "done" || project.completion >= 100;
+  }
+
+  return (
+    project.stageBucket !== "progress" &&
+    project.stageBucket !== "review" &&
+    project.stageBucket !== "done" &&
+    project.completion < 100
+  );
+}
+
+function projectStatusFilterChips(projects: DashboardSnapshot["projects"]) {
+  const active = projects.filter((project) => project.stageBucket === "progress").length;
+  const pending = projects.filter((project) => project.stageBucket === "review" || project.stageBucket === "todo").length;
+  const done = projects.filter((project) => project.stageBucket === "done" || project.completion >= 100).length;
+  const planned = projects.filter(
+    (project) =>
+      project.stageBucket !== "progress" &&
+      project.stageBucket !== "review" &&
+      project.stageBucket !== "done" &&
+      project.completion < 100,
+  ).length;
+
+  return [
+    { key: "progress" as const, label: "Явагдаж буй", count: active, tone: "green" },
+    { key: "pending" as const, label: "Хүлээгдэж буй", count: pending, tone: "amber" },
+    { key: "done" as const, label: "Дууссан", count: done, tone: "green" },
+    { key: "planned" as const, label: "Төлөвлөгдсөн", count: planned, tone: "muted" },
+  ];
+}
+
 function ringStyle(value: number, color = "#2E7D32"): CSSProperties {
   const normalized = clampPercent(value);
 
   return {
     background: `conic-gradient(${color} ${normalized * 3.6}deg, rgba(165,214,167,.32) 0deg)`,
   };
+}
+
+function hasDashboardWork(project: DashboardSnapshot["projects"][number]) {
+  return project.openTasks > 0 || project.completion > 0 || project.stageBucket === "done";
+}
+
+type WorkerWorkSummary = {
+  name: string;
+  departmentName: string;
+  manager: string;
+  href: string;
+  taskCount: number;
+  reviewCount: number;
+  doneCount: number;
+  progress: number;
+  tone: StatusTone;
+};
+
+function buildWorkerWorkSummaries(
+  tasks: DashboardSnapshot["taskDirectory"],
+  projects: DashboardSnapshot["projects"],
+  currentDateKey: string,
+) {
+  const projectByName = new Map(projects.map((project) => [project.name, project]));
+  const score = { urgent: 4, attention: 3, good: 2, muted: 1 };
+
+  return Array.from(
+    tasks
+      .reduce<
+        Map<
+          string,
+          {
+            name: string;
+            departmentName: string;
+            manager: string;
+            tasks: DashboardSnapshot["taskDirectory"];
+          }
+        >
+      >((groups, task) => {
+        const project = projectByName.get(task.projectName);
+        const existing = groups.get(task.projectName) ?? {
+          name: task.projectName,
+          departmentName: project?.departmentName ?? task.departmentName,
+          manager: project?.manager ?? task.leaderName,
+          tasks: [],
+        };
+
+        existing.tasks.push(task);
+        groups.set(task.projectName, existing);
+        return groups;
+      }, new Map())
+      .values(),
+  )
+    .map<WorkerWorkSummary>((work) => {
+      const tones = work.tasks.map((task) => statusTone(task, currentDateKey));
+      const tone = tones.reduce<StatusTone>(
+        (current, nextTone) => (score[nextTone] > score[current] ? nextTone : current),
+        "muted",
+      );
+      const taskCount = work.tasks.length;
+
+      return {
+        name: work.name,
+        departmentName: work.departmentName,
+        manager: work.manager,
+        href: `/tasks?work=${encodeURIComponent(work.name)}`,
+        taskCount,
+        reviewCount: work.tasks.filter((task) => task.statusKey === "review").length,
+        doneCount: work.tasks.filter((task) => task.statusKey === "verified").length,
+        progress: taskCount
+          ? Math.round(work.tasks.reduce((total, task) => total + task.progress, 0) / taskCount)
+          : 0,
+        tone,
+      };
+    })
+    .sort(
+      (left, right) =>
+        score[right.tone] - score[left.tone] ||
+        right.taskCount - left.taskCount ||
+        left.name.localeCompare(right.name, "mn"),
+    );
 }
 
 function StatCard({ metric }: { metric: DashboardStat }) {
@@ -223,7 +436,6 @@ function StatCard({ metric }: { metric: DashboardStat }) {
             >
               {metric.progress}%
             </strong>
-            <span>{metric.helper}</span>
           </div>
           <div className={dashboardStyles.statCardProgress}>
             <span
@@ -335,65 +547,84 @@ function DepartmentOverview({
   );
 }
 
-function TaskCard({
-  task,
-  currentDateKey,
-}: {
-  task: DashboardSnapshot["taskDirectory"][number];
-  currentDateKey: string;
-}) {
-  const tone = statusTone(task, currentDateKey);
+function WorkerWorkCard({ work }: { work: WorkerWorkSummary }) {
+  const badgeTone =
+    work.tone === "urgent" ? "red" : work.tone === "attention" ? "amber" : work.tone === "good" ? "green" : "slate";
 
   return (
-    <Link href={task.href} className="group block">
-      <Card className="grid min-h-[156px] gap-3 p-3.5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(27,73,38,0.11)]">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="mb-2 flex items-center gap-2 text-[0.72rem] font-extrabold text-[#5E6E64]">
-              <span className={cn("h-2 w-2 rounded-full", STATUS_DOT[tone])} />
-              <span>{task.statusLabel || STATUS_LABELS[task.statusKey]}</span>
-            </div>
-            <h3 className="text-base font-extrabold leading-snug tracking-normal text-[#111B15]">
-              {task.name}
-            </h3>
-            <p className="mt-1 text-xs font-semibold leading-4 text-[#6B7280]">
-              Алба нэгж: {task.departmentName} · Менежер: {task.leaderName || "Бүртгэлгүй"}
-            </p>
-          </div>
-          <Badge tone={tone === "urgent" ? "red" : tone === "attention" ? "amber" : "green"}>
-            {tone === "muted" ? "Төлөвлөсөн" : task.statusLabel || STATUS_LABELS[task.statusKey]}
-          </Badge>
+    <Link href={work.href} className={dashboardStyles.projectListLink}>
+      <Card className={dashboardStyles.projectListCard}>
+        <div className={dashboardStyles.projectListTop}>
+          <span className={dashboardStyles.projectListIcon}>
+            <ClipboardList />
+          </span>
+          <Badge tone={badgeTone}>{work.taskCount} даалгавар</Badge>
         </div>
 
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-[var(--ds-radius-card)] bg-[#F2F8F2] p-2.5">
-              <span className="block text-xs font-semibold text-[#7A897E]">Нээлттэй ажил</span>
-              <strong className="mt-1.5 block text-xl tracking-normal text-[#111B15]">
-                {task.plannedQuantity || 0}
-              </strong>
-            </div>
-            <div className="rounded-[var(--ds-radius-card)] bg-[#F2F8F2] p-2.5">
-              <span className="block text-xs font-semibold text-[#7A897E]">Гүйцэтгэл</span>
-              <strong className="mt-1.5 block text-xl tracking-normal text-[#111B15]">
-                {clampPercent(task.progress)}%
-              </strong>
-            </div>
-          </div>
-          <ProgressRing value={task.progress} />
+        <div className={dashboardStyles.projectListContent}>
+          <h3 className={dashboardStyles.projectListTitle}>{work.name}</h3>
+          <p className={dashboardStyles.projectListMeta}>
+            Алба нэгж: {work.departmentName} · Менежер: {work.manager || "Бүртгэлгүй"}
+          </p>
         </div>
 
-        <div className="grid gap-3">
-          <div className="h-1.5 overflow-hidden rounded-full bg-[#E6ECE7]">
-            <span
-              className="block h-full rounded-full bg-[#2E7D32]"
-              style={{ width: `${clampPercent(task.progress)}%` }}
-            />
+        <div className={dashboardStyles.projectListDivider} />
+
+        <div className={dashboardStyles.projectListMetrics}>
+          <div className={dashboardStyles.projectListMetric}>
+            <span>Даалгавар</span>
+            <strong>{work.taskCount}</strong>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-[0.72rem] font-semibold text-[#7A897E]">
-            <span>Эхлэх: {task.scheduledDate || "-"}</span>
-            <span>Дуусах: {task.deadline || "-"}</span>
+          <div className={dashboardStyles.projectListMetric}>
+            <span>Гүйцэтгэл</span>
+            <strong>{clampPercent(work.progress)}%</strong>
           </div>
+          <ProgressRing value={work.progress} />
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
+function ProjectCard({ project }: { project: DashboardSnapshot["projects"][number] }) {
+  const tone = projectTone(project);
+  const badgeTone = tone === "urgent" ? "red" : tone === "attention" ? "amber" : tone === "good" ? "green" : "slate";
+
+  return (
+    <Link href={project.href} className={dashboardStyles.projectListLink}>
+      <Card className={dashboardStyles.projectListCard}>
+        <div className={dashboardStyles.projectListTop}>
+          <span
+            className={cn(
+              dashboardStyles.projectListIcon,
+              tone === "attention" && dashboardStyles.projectListIconAmber,
+              tone === "muted" && dashboardStyles.projectListIconMuted,
+            )}
+          >
+            <ProjectListIcon project={project} />
+          </span>
+          <Badge tone={badgeTone}>{projectDisplayStageLabel(project)}</Badge>
+        </div>
+
+        <div className={dashboardStyles.projectListContent}>
+          <h3 className={dashboardStyles.projectListTitle}>{project.name}</h3>
+          <p className={dashboardStyles.projectListMeta}>
+            Алба нэгж: {project.departmentName} · Менежер: {project.manager || "Бүртгэлгүй"}
+          </p>
+        </div>
+
+        <div className={dashboardStyles.projectListDivider} />
+
+        <div className={dashboardStyles.projectListMetrics}>
+          <div className={dashboardStyles.projectListMetric}>
+            <span>Даалгавар</span>
+            <strong>{project.openTasks || 0}</strong>
+          </div>
+          <div className={dashboardStyles.projectListMetric}>
+            <span>Гүйцэтгэл</span>
+            <strong>{clampPercent(project.completion)}%</strong>
+          </div>
+          <ProgressRing value={project.completion} />
         </div>
       </Card>
     </Link>
@@ -405,46 +636,66 @@ function CompletionDonut({
   working,
   review,
   overdue,
+  planned,
   total,
+  progress,
 }: {
   completed: number;
   working: number;
   review: number;
   overdue: number;
+  planned: number;
   total: number;
+  progress: number;
 }) {
-  const completedShare = percent(completed, total);
   const unclassified = Math.max(
     0,
-    total - completed - working - review - overdue,
+    total - completed - working - review - overdue - planned,
   );
   const performanceRows = [
-    { label: "Дууссан", value: completed, tone: "good" as StatusTone },
-    { label: "Явагдаж буй", value: working, tone: "good" as StatusTone },
-    { label: "Хүлээгдэж буй", value: review, tone: "attention" as StatusTone },
-    { label: "Хугацаа хэтэрсэн", value: overdue, tone: "urgent" as StatusTone },
+    { label: "Төлөвлөгдсөн", value: planned, color: "#9AA7B4" },
+    { label: "Гүйцэтгэж байгаа", value: working, color: "#2F8A96" },
+    { label: "Хянаж байгаа", value: review, color: "#F4B000" },
+    { label: "Хугацаа хэтэрсэн", value: overdue, color: "#EF4444" },
+    { label: "Дууссан", value: completed, color: "#2E7D32" },
     ...(unclassified
-      ? [{ label: "Төлөвлөгдсөн", value: unclassified, tone: "muted" as StatusTone }]
+      ? [{ label: "Тодорхойгүй", value: unclassified, color: "#D6DAD7" }]
       : []),
   ];
+  const donutStyle = segmentedDonutStyle(
+    [
+      { value: completed, color: "#2E7D32" },
+      { value: working, color: "#2F8A96" },
+      { value: review, color: "#F4B000" },
+      { value: overdue, color: "#EF4444" },
+      { value: planned, color: "#9AA7B4" },
+      { value: unclassified, color: "#D6DAD7" },
+    ],
+    total,
+  );
 
   return (
     <Card className={cn("p-4", dashboardStyles.softPanel, dashboardStyles.metricsCard)}>
       <div className={dashboardStyles.analyticsCardHeader}>
         <div>
           <CardTitle className="text-[1.125rem] font-semibold">Ажил гүйцэтгэлийн харагдац</CardTitle>
-          <p className={dashboardStyles.metricsSummary}>Нийт ажлын гүйцэтгэл: {completedShare}%</p>
+          <p className={dashboardStyles.metricsSummary}>Нийт даалгаврын гүйцэтгэл: {clampPercent(progress)}%</p>
         </div>
       </div>
 
       <div className={dashboardStyles.performancePanel}>
-        <ProgressRing value={completedShare} size="lg" />
+        <div className={dashboardStyles.segmentedDonut} style={donutStyle}>
+          <div className={dashboardStyles.donutCenter}>
+            <strong>{clampPercent(progress)}%</strong>
+            <span>Гүйцэтгэл</span>
+          </div>
+        </div>
         <div className={dashboardStyles.progressLegend}>
-          {performanceRows.map(({ label, value, tone }) => {
+          {performanceRows.map(({ label, value, color }) => {
             const rate = percent(Number(value), total);
             return (
               <div key={label} className={dashboardStyles.progressLegendRow}>
-                <span className={cn("h-2.5 w-2.5 rounded-full", STATUS_DOT[tone])} />
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
                 <span className={cn(dashboardStyles.legendLabel, "text-[#526157]")}>{label}</span>
                 <strong className={dashboardStyles.legendValue}>{value}</strong>
                 <span className={dashboardStyles.legendPercent}>({rate}%)</span>
@@ -455,6 +706,32 @@ function CompletionDonut({
       </div>
     </Card>
   );
+}
+
+function segmentedDonutStyle(parts: Array<{ value: number; color: string }>, total: number): CSSProperties {
+  if (!total) {
+    return {
+      background: "conic-gradient(#E7ECE8 0deg 360deg)",
+    };
+  }
+
+  let cursor = 0;
+  const segments = parts
+    .filter((part) => part.value > 0)
+    .map((part) => {
+      const start = cursor;
+      const end = cursor + (part.value / total) * 360;
+      cursor = end;
+      return `${part.color} ${start}deg ${end}deg`;
+    });
+
+  if (cursor < 360) {
+    segments.push(`#E7ECE8 ${cursor}deg 360deg`);
+  }
+
+  return {
+    background: `conic-gradient(${segments.join(", ")})`,
+  };
 }
 
 function MobilePriorityPanel({ canWriteReports }: { canWriteReports: boolean }) {
@@ -514,33 +791,31 @@ function WeeklyLineChart({ points }: { points: ReturnType<typeof buildDashboardM
         completion: 0,
         overdue: 0,
       }));
-  const chartWidth = 180;
-  const chartLeft = 10;
-  const chartRight = 176;
-  const chartTop = 12;
-  const chartBottom = 86;
+  const chartWidth = 220;
+  const chartLeft = 20;
+  const chartRight = 214;
+  const chartTop = 10;
+  const chartBottom = 82;
   const chartHeight = chartBottom - chartTop;
-  const activityValues = values.map((point) =>
-    Math.min(4, Math.round((clampPercent(point.completion) + clampPercent(point.overdue)) / 25)),
+  const completedValues = values.map((point) => clampPercent(point.completion));
+  const plannedValues = values.map((point) =>
+    clampPercent(Math.max(point.completion, point.completion + Math.max(12, point.overdue * 0.25))),
   );
-  const toActivityPolyline = () =>
-    activityValues
+  const toPolyline = (series: number[]) =>
+    series
       .map((activity, index) => {
         const x = values.length === 1 ? chartLeft : chartLeft + (index / (values.length - 1)) * (chartRight - chartLeft);
-        const y = chartBottom - activity * (chartHeight / 4);
+        const y = chartBottom - (clampPercent(activity) / 100) * chartHeight;
         return `${x},${y}`;
       })
       .join(" ");
-  const totalActivity = activityValues.reduce((sum, value) => sum + value, 0);
-  const hasActivity = activityValues.some((value) => value > 0);
+  const totalActivity = Math.round(completedValues.reduce((sum, value) => sum + value, 0) / Math.max(1, completedValues.length));
+  const hasActivity = completedValues.some((value) => value > 0) || plannedValues.some((value) => value > 0);
   const weekdayLabels = ["Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба", "Ням"];
-  const gridLines = [
-    { value: 4, y: chartTop },
-    { value: 3, y: chartTop + chartHeight * 0.25 },
-    { value: 2, y: chartTop + chartHeight * 0.5 },
-    { value: 1, y: chartTop + chartHeight * 0.75 },
-    { value: 0, y: chartBottom },
-  ];
+  const gridLines = [100, 80, 60, 40, 20, 0].map((value) => ({
+    value,
+    y: chartBottom - (value / 100) * chartHeight,
+  }));
 
   return (
     <Card className={cn("p-4", dashboardStyles.softPanel, dashboardStyles.metricsCard)}>
@@ -567,7 +842,15 @@ function WeeklyLineChart({ points }: { points: ReturnType<typeof buildDashboardM
             </g>
           ))}
           <polyline
-            points={toActivityPolyline()}
+            points={toPolyline(plannedValues)}
+            fill="none"
+            stroke="#9AA3A9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <polyline
+            points={toPolyline(completedValues)}
             fill="none"
             stroke="#2E7D32"
             strokeLinecap="round"
@@ -576,11 +859,13 @@ function WeeklyLineChart({ points }: { points: ReturnType<typeof buildDashboardM
           />
           {values.map((point, index) => {
             const x = values.length === 1 ? chartLeft : chartLeft + (index / (values.length - 1)) * (chartRight - chartLeft);
-            const activityY = chartBottom - activityValues[index] * (chartHeight / 4);
+            const completedY = chartBottom - (completedValues[index] / 100) * chartHeight;
+            const plannedY = chartBottom - (plannedValues[index] / 100) * chartHeight;
 
             return (
               <g key={point.id}>
-                <circle cx={x} cy={activityY} r="2.15" fill="#2E7D32" />
+                <circle cx={x} cy={plannedY} r="1.9" fill="#9AA3A9" />
+                <circle cx={x} cy={completedY} r="2.15" fill="#2E7D32" />
                 <text x={x} y="97" textAnchor="middle" className="fill-[#526157] text-[4px] font-semibold">
                   {weekdayLabels[index]}
                 </text>
@@ -589,8 +874,66 @@ function WeeklyLineChart({ points }: { points: ReturnType<typeof buildDashboardM
           })}
         </svg>
       </div>
+      <div className={dashboardStyles.weeklyLegend}>
+        <span><i className="bg-[#9AA3A9]" />Төлөвлөгдсөн</span>
+        <span><i className="bg-[#2E7D32]" />Гүйцэтгэсэн</span>
+      </div>
     </Card>
   );
+}
+
+function DepartmentPerformanceCard({ departments }: { departments: DashboardSnapshot["departments"] }) {
+  const rows = departments
+    .filter((department) => department.openTasks > 0 || department.completion > 0)
+    .slice(0, 5);
+
+  if (!rows.length) {
+    return null;
+  }
+
+  return (
+    <Card className={cn(dashboardStyles.softPanel, dashboardStyles.departmentPerformanceCard)}>
+      <div className={dashboardStyles.departmentPerformanceHeader}>
+        <CardTitle className="text-[1.125rem] font-semibold">Хэлтэс тус бүрийн гүйцэтгэл</CardTitle>
+        <span>Хувиар</span>
+      </div>
+      <div className={dashboardStyles.departmentPerformanceList}>
+        {rows.map((department) => {
+          const Icon = departmentIcon(department.name);
+          const value = clampPercent(department.completion);
+
+          return (
+            <div key={department.name} className={dashboardStyles.departmentPerformanceRow}>
+              <span className={dashboardStyles.departmentPerformanceIcon}>
+                <Icon />
+              </span>
+              <span className={dashboardStyles.departmentPerformanceName}>{department.label || department.name}</span>
+              <span className={dashboardStyles.departmentPerformanceTrack}>
+                <span style={{ width: `${value}%` }} />
+              </span>
+              <strong>{value}%</strong>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function departmentIcon(name: string): LucideIcon {
+  if (name.includes("Хог") || name.includes("Авто")) {
+    return Truck;
+  }
+  if (name.includes("Ногоон")) {
+    return Leaf;
+  }
+  if (name.includes("Нийтийн")) {
+    return UsersRound;
+  }
+  if (name.includes("Тохиж")) {
+    return Recycle;
+  }
+  return ClipboardList;
 }
 
 function HrAttendanceCard({ summary }: { summary: HrDailyAttendanceSummary }) {
@@ -602,10 +945,10 @@ function HrAttendanceCard({ summary }: { summary: HrDailyAttendanceSummary }) {
       className: "bg-[#E7F5E7] text-[#2E7D32]",
     },
     {
-      label: "Тасалсан",
-      value: summary.absentToday,
-      icon: UserX,
-      className: "bg-red-50 text-red-600",
+      label: "Чөлөөтэй",
+      value: summary.leaveToday,
+      icon: Clock3,
+      className: "bg-sky-50 text-sky-700",
     },
     {
       label: "Өвчтэй",
@@ -650,7 +993,6 @@ function HrAttendanceCard({ summary }: { summary: HrDailyAttendanceSummary }) {
       <div className={dashboardStyles.sideCardFooter}>
         <span>Нийт ажилтан</span>
         <strong>{summary.totalEmployees}</strong>
-        {summary.leaveToday ? <span className="basis-full text-[#2E7D32]">Чөлөөтэй {summary.leaveToday}</span> : null}
       </div>
     </Card>
   );
@@ -848,11 +1190,17 @@ export function DashboardView({
     todayAssignments,
   });
   const scopeLabel = departmentScopeName ?? model.scopeLabel;
-  const showFleetSummary =
+  const showFleetSummary = Boolean(
     !departmentScopeName ||
     departmentScopeName.includes("Авто") ||
     departmentScopeName.includes("Хог") ||
-    departmentScopeName.includes("хог");
+      departmentScopeName.includes("хог") ||
+      session.groupFlags?.mfoManager ||
+      session.groupFlags?.mfoDispatcher ||
+      session.groupFlags?.mfoInspector ||
+      session.groupFlags?.mfoDriver ||
+      session.groupFlags?.fleetRepairAny,
+  );
 
   const scopedTasks = workerMode
     ? snapshot.taskDirectory.filter((task) => {
@@ -867,28 +1215,53 @@ export function DashboardView({
     : scopedTasks.length
       ? scopedTasks
       : snapshot.taskDirectory;
-  const totalTasks = workerMode ? dashboardTasks.length : dashboardTasks.length || snapshot.totalTasks || 0;
-  const completedTasks = dashboardTasks.filter((task) => task.statusKey === "verified").length;
-  const workingTasks = dashboardTasks.filter((task) => task.statusKey === "working").length;
-  const reviewTasks = dashboardTasks.filter((task) => task.statusKey === "review").length;
-  const plannedTasks = dashboardTasks.filter((task) => task.statusKey === "planned").length;
-  const overdueTasks = dashboardTasks.filter((task) => isOverdue(task, currentDateKey)).length;
+  const dashboardProjects = snapshot.projects.filter(hasDashboardWork);
+  const workItemStats = dashboardTaskStats(dashboardTasks, currentDateKey);
+  const totalTasks = workerMode
+    ? dashboardTasks.length
+    : dashboardProjects.length || snapshot.totalTasks || 0;
+  const completedTasks = workerMode
+    ? dashboardTasks.filter((task) => task.statusKey === "verified").length
+    : dashboardProjects.filter((project) => project.stageBucket === "done" || project.completion >= 100).length;
+  const workingTasks = workerMode
+    ? dashboardTasks.filter((task) => task.statusKey === "working").length
+    : dashboardProjects.filter((project) => project.stageBucket === "progress").length;
+  const reviewTasks = workerMode
+    ? dashboardTasks.filter((task) => task.statusKey === "review").length
+    : dashboardProjects.filter((project) => project.stageBucket === "review").length;
+  const plannedTasks = workerMode
+    ? dashboardTasks.filter((task) => task.statusKey === "planned").length
+    : dashboardProjects.filter((project) => project.stageBucket === "todo" || project.stageBucket === "unknown").length;
+  const overdueTasks = workerMode
+    ? dashboardTasks.filter((task) => isOverdue(task, currentDateKey)).length
+    : 0;
   const newIncomingTasks = dashboardTasks.filter((task) => isNewIncomingTask(task, currentDateKey)).length;
   const attentionCount = countNotificationTasks(dashboardTasks, currentDateKey);
   const notificationNote =
     attentionCount > 0
       ? `${newIncomingTasks} шинэ ажил, ${reviewTasks} хянах, ${overdueTasks} хугацаа хэтэрсэн`
       : "Шинэ ажил, хянах зүйл алга";
-  const sortedTasks = [...dashboardTasks].sort((left, right) => {
-    const leftTone = statusTone(left, currentDateKey);
-    const rightTone = statusTone(right, currentDateKey);
+  const sortedProjects = [...dashboardProjects].sort((left, right) => {
+    const leftTone = projectTone(left);
+    const rightTone = projectTone(right);
     const score = { urgent: 4, attention: 3, good: 2, muted: 1 };
-    return score[rightTone] - score[leftTone] || right.progress - left.progress;
+    return score[rightTone] - score[leftTone] || right.completion - left.completion;
   });
-  const visibleTasks = sortedTasks.slice(0, 4);
+  const workerWorkSummaries = workerMode
+    ? buildWorkerWorkSummaries(dashboardTasks, snapshot.projects, currentDateKey)
+    : [];
+  const visibleWorkerWorks = workerWorkSummaries.slice(0, 4);
+  const visibleProjects = sortedProjects.slice(0, 3);
+  const visibleWorkItems = workerMode ? visibleWorkerWorks.length : visibleProjects.length;
+  const projectStatusChips = projectStatusFilterChips(sortedProjects);
+  const projectStatusSections = projectStatusChips.map((chip) => ({
+    ...chip,
+    projects: sortedProjects.filter((project) => projectMatchesStatusFilter(project, chip.key)),
+  }));
   const taskGridClassName = cn(
     dashboardStyles.taskListBody,
-    visibleTasks.length > 1 && "xl:grid-cols-2",
+    workerMode && visibleWorkItems > 1 && "xl:grid-cols-2",
+    !workerMode && visibleWorkItems > 1 && "lg:grid-cols-2 2xl:grid-cols-3",
   );
 
   const statCards: DashboardStat[] = [
@@ -907,7 +1280,7 @@ export function DashboardView({
       value: String(plannedTasks),
       helper: "Эхлээгүй эсвэл хүлээгдэж буй",
       progress: percent(plannedTasks, totalTasks),
-      href: "/tasks?filter=planned",
+      href: workerMode ? "/tasks?filter=planned" : "/projects",
       icon: CalendarDays,
       tone: "good",
       short: "T",
@@ -917,7 +1290,7 @@ export function DashboardView({
       value: String(workingTasks),
       helper: "Яг одоо явагдаж буй",
       progress: percent(workingTasks, totalTasks),
-      href: "/tasks?filter=working",
+      href: workerMode ? "/tasks?filter=working" : "/projects",
       icon: Clock3,
       tone: "good",
       short: "G",
@@ -927,7 +1300,7 @@ export function DashboardView({
       value: String(reviewTasks),
       helper: "Баталгаажуулалт хүлээж буй",
       progress: percent(reviewTasks, totalTasks),
-      href: "/review",
+      href: workerMode ? "/review" : "/projects",
       icon: ShieldCheck,
       tone: "attention",
       short: "H",
@@ -935,9 +1308,9 @@ export function DashboardView({
     {
       label: "Хугацаа хэтэрсэн",
       value: String(overdueTasks),
-      helper: "Хугацаа өнгөрсөн ажилбар",
+      helper: workerMode ? "Хугацаа өнгөрсөн даалгавар" : "Хугацаа өнгөрсөн ажил",
       progress: percent(overdueTasks, totalTasks),
-      href: "/tasks?filter=overdue",
+      href: workerMode ? "/tasks?filter=overdue" : "/projects",
       icon: AlertTriangle,
       tone: overdueTasks ? "urgent" : "muted",
       short: "!",
@@ -947,7 +1320,7 @@ export function DashboardView({
       value: String(completedTasks),
       helper: "Бүрэн дууссан ажил",
       progress: percent(completedTasks, totalTasks),
-      href: "/reports",
+      href: workerMode ? "/reports" : "/projects",
       icon: CheckCircle2,
       tone: "good",
       short: "D",
@@ -968,6 +1341,7 @@ export function DashboardView({
             canViewHr={canViewHr}
             userName={session.name}
             roleLabel={roleLabel}
+            groupFlags={session.groupFlags}
             workerMode={workerMode}
             notificationCount={attentionCount}
             departmentScopeName={departmentScopeName}
@@ -987,11 +1361,13 @@ export function DashboardView({
 
           <div className="relative z-20 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="grid min-w-0 gap-4">
-              <section className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6", dashboardStyles.statGrid)}>
-                {statCards.map((metric) => (
-                  <StatCard key={metric.label} metric={metric} />
-                ))}
-              </section>
+              {!workerMode ? (
+                <section className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6", dashboardStyles.statGrid)}>
+                  {statCards.map((metric) => (
+                    <StatCard key={metric.label} metric={metric} />
+                  ))}
+                </section>
+              ) : null}
 
               {!workerMode ? <MobilePriorityPanel canWriteReports={canWriteReports} /> : null}
 
@@ -1012,51 +1388,123 @@ export function DashboardView({
               <Card className={dashboardStyles.taskListCard}>
                 <CardHeader className={dashboardStyles.taskListHeader}>
                   <div className={dashboardStyles.taskListHeaderText}>
-                    <CardDescription className={dashboardStyles.taskListKicker}>
-                      Ажлын жагсаалт
-                    </CardDescription>
-                    <CardTitle>Нийт ажил</CardTitle>
-                    <CardDescription>
-                      {scopeLabel} · Сонгосон алба нэгжийн бүх ажлыг нэг дор харуулна
-                    </CardDescription>
+                    <CardTitle>Ажлын жагсаалт</CardTitle>
                   </div>
-                  <Link
-                    href="/tasks"
-                    className={dashboardStyles.taskListAction}
-                  >
-                    Календар төлөвлөгөө
-                    <ChevronRight className="h-4 w-4" />
-                  </Link>
                 </CardHeader>
 
-                <div className={taskGridClassName}>
-                  {visibleTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} currentDateKey={currentDateKey} />
-                  ))}
-                  {!visibleTasks.length ? (
-                    <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>
-                      <span className={dashboardStyles.taskListEmptyIcon}>
-                        <ClipboardList />
-                      </span>
-                      <span className="mt-2 block text-[#1F2B24]">Одоогоор ажил бүртгэгдээгүй байна.</span>
-                      <small className="mt-1 block font-medium text-[#8A978E]">Шинэ ажил үүсгэж эхлээрэй.</small>
+                {workerMode ? (
+                  <div className={taskGridClassName}>
+                    {visibleWorkerWorks.map((work) => (
+                      <WorkerWorkCard key={work.name} work={work} />
+                    ))}
+                    {!visibleWorkItems ? (
+                      <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>
+                        <span className={dashboardStyles.taskListEmptyIcon}>
+                          <ClipboardList />
+                        </span>
+                        <span className="mt-2 block text-[#1F2B24]">Одоогоор ажил бүртгэгдээгүй байна.</span>
+                        <small className="mt-1 block font-medium text-[#8A978E]">Шинэ ажил үүсгэж эхлээрэй.</small>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className={dashboardStyles.taskListFilterShell}>
+                    {projectStatusChips.map((chip) => (
+                      <input
+                        key={chip.key}
+                        type="radio"
+                        id={`dashboard-project-filter-${chip.key}`}
+                        name="dashboard-project-filter"
+                        className={dashboardStyles.taskListFilterInput}
+                      />
+                    ))}
+                  <div className={dashboardStyles.taskListFilters}>
+                    {projectStatusChips.map((chip) => (
+                      <label
+                        key={chip.label}
+                        htmlFor={`dashboard-project-filter-${chip.key}`}
+                        className={cn(
+                          dashboardStyles.taskListFilterChip,
+                          chip.tone === "amber" && dashboardStyles.taskListFilterChipAmber,
+                          chip.tone === "muted" && dashboardStyles.taskListFilterChipMuted,
+                        )}
+                      >
+                        <span className={dashboardStyles.taskListFilterDot} />
+                        {chip.label}
+                        <small>{chip.count}</small>
+                      </label>
+                    ))}
+                  </div>
+                    <div className={dashboardStyles.taskListFilterPanels}>
+                      <div
+                        className={cn(
+                          taskGridClassName,
+                          dashboardStyles.taskListFilterPanel,
+                          dashboardStyles.taskListFilterPanelDefault,
+                        )}
+                      >
+                        {visibleProjects.map((project) => (
+                          <ProjectCard key={project.id} project={project} />
+                        ))}
+                        {!visibleProjects.length ? (
+                          <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>
+                            <span className={dashboardStyles.taskListEmptyIcon}>
+                              <ClipboardList />
+                            </span>
+                            <span className="mt-2 block text-[#1F2B24]">Одоогоор ажил бүртгэгдээгүй байна.</span>
+                            <small className="mt-1 block font-medium text-[#8A978E]">Шинэ ажил үүсгэж эхлээрэй.</small>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {projectStatusSections.map((section) => (
+                        <div
+                          key={section.key}
+                          className={cn(
+                            taskGridClassName,
+                            dashboardStyles.taskListBodyScrollable,
+                            dashboardStyles.taskListFilterPanel,
+                            section.key === "progress" && dashboardStyles.taskListFilterPanelProgress,
+                            section.key === "pending" && dashboardStyles.taskListFilterPanelPending,
+                            section.key === "done" && dashboardStyles.taskListFilterPanelDone,
+                            section.key === "planned" && dashboardStyles.taskListFilterPanelPlanned,
+                          )}
+                        >
+                          {section.projects.map((project) => (
+                            <ProjectCard key={project.id} project={project} />
+                          ))}
+                          {!section.projects.length ? (
+                            <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>
+                              <span className={dashboardStyles.taskListEmptyIcon}>
+                                <ClipboardList />
+                              </span>
+                              <span className="mt-2 block text-[#1F2B24]">{section.label} ажил алга.</span>
+                              <small className="mt-1 block font-medium text-[#8A978E]">Өөр төлөв сонгоод шалгана уу.</small>
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
                     </div>
-                  ) : null}
-                </div>
+                  </div>
+                )}
               </Card>
 
               {!workerMode ? (
                 <>
                   <div className={cn("grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]", dashboardStyles.analyticsSection)}>
                     <CompletionDonut
-                      completed={completedTasks}
-                      working={workingTasks}
-                      review={reviewTasks}
-                      overdue={overdueTasks}
-                      total={totalTasks}
+                      completed={workItemStats.completed}
+                      working={workItemStats.working}
+                      review={workItemStats.review}
+                      overdue={workItemStats.overdue}
+                      planned={workItemStats.planned}
+                      total={workItemStats.total}
+                      progress={workItemStats.progress}
                     />
                     <WeeklyLineChart points={model.trendPoints} />
                   </div>
+
+                  <DepartmentPerformanceCard departments={snapshot.departments} />
 
                   <div className={cn("grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]", dashboardStyles.summaryGrid)}>
                     <Card className={cn(dashboardStyles.softPanel, dashboardStyles.quickStatsCard)}>

@@ -267,6 +267,16 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       note: garbageWeightLedger?.lastMonth.rangeLabel || "Сүүлийн 1 сарын дүн",
     },
   ] as const;
+  const exportParams = new URLSearchParams();
+  if (!departmentScopedMode && selectedGroup) {
+    exportParams.set("department", selectedGroup.name);
+  }
+  if (!departmentScopedMode && selectedUnit) {
+    exportParams.set("unit", selectedUnit);
+  }
+  const exportQuery = exportParams.toString();
+  const getExportHref = (format: "csv" | "excel" | "json") =>
+    `/api/reports/export?format=${format}${exportQuery ? `&${exportQuery}` : ""}`;
 
   return (
     <main className={shellStyles.shell}>
@@ -282,6 +292,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               departmentScopeName={scopedDepartmentName}
             />
@@ -294,7 +305,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               notificationCount={filteredReviewQueue.length}
-              notificationNote={`${filteredReviewQueue.length} ажилбар хяналт хүлээж байна`}
+              notificationNote={`${filteredReviewQueue.length} даалгавар хяналт хүлээж байна`}
             />
 
             <header className={styles.pageHeader}>
@@ -313,6 +324,17 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   <span>Сүүлд шинэчлэгдсэн</span>
                   <strong>{snapshot.generatedAt}</strong>
                   <small>{masterMode ? selectedDepartmentName : getRoleLabel(session.role)}</small>
+                </div>
+                <div className={styles.exportActions} aria-label="Тайлан экспортлох">
+                  <a className={styles.exportButton} href={getExportHref("excel")}>
+                    Excel
+                  </a>
+                  <a className={styles.exportButton} href={getExportHref("csv")}>
+                    CSV
+                  </a>
+                  <a className={styles.exportButton} href={getExportHref("json")}>
+                    JSON
+                  </a>
                 </div>
               </div>
             </header>
@@ -448,9 +470,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               </article>
               {!masterMode ? (
                 <article className={styles.summaryCard}>
-                  <span>Хянах ажилбар</span>
+                  <span>Хянах даалгавар</span>
                   <strong>{filteredReviewQueue.length}</strong>
-                  <small>Хяналт хүлээж буй ажилбар</small>
+                  <small>Хяналт хүлээж буй даалгавар</small>
                 </article>
               ) : null}
               <article className={styles.summaryCard}>
@@ -594,7 +616,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 <div className={styles.workflowMetaCard}>
                   <span>Өнөөдрийн дундаж явц</span>
                   <strong>{todayAverageProgress}%</strong>
-                  <small>{todayScopedTasks.length} ажилбарын нийлбэр төлөв</small>
+                  <small>{todayScopedTasks.length} даалгаврын нийлбэр төлөв</small>
                 </div>
               </div>
 
@@ -602,22 +624,22 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 <article className={styles.workflowSummaryCard}>
                   <span>Өнөөдрийн ажил</span>
                   <strong>{todayScopedTasks.length}</strong>
-                  <small>Өнөөдрийн огноонд төлөвлөгдсөн нийт ажилбар</small>
+                  <small>Өнөөдрийн огноонд төлөвлөгдсөн нийт даалгавар</small>
                 </article>
                 <article className={styles.workflowSummaryCard}>
                   <span>Явж буй</span>
                   <strong>{todayActiveTasks.length}</strong>
-                  <small>Шалгалтад хараахан ороогүй ажилбар</small>
+                  <small>Шалгалтад хараахан ороогүй даалгавар</small>
                 </article>
                 <article className={styles.workflowSummaryCard}>
                   <span>Шалгалт хүлээж буй</span>
                   <strong>{todayReviewTasks.length}</strong>
-                  <small>Үйл ажиллагаа хариуцсан менежерийн шийдвэр хүлээж буй ажилбар</small>
+                  <small>Үйл ажиллагаа хариуцсан менежерийн шийдвэр хүлээж буй даалгавар</small>
                 </article>
                 <article className={styles.workflowSummaryCard}>
                   <span>Бүрэн дууссан</span>
                   <strong>{todayDoneTasks.length}</strong>
-                  <small>Баталгаажиж хаагдсан ажилбар</small>
+                  <small>Баталгаажиж хаагдсан даалгавар</small>
                 </article>
               </div>
 

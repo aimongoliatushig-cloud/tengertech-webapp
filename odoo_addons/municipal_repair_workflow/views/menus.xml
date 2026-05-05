@@ -50,7 +50,7 @@
     <menuitem id="menu_municipal_material_request"
               name="Материалын хүсэлт"
               parent="menu_municipal_inventory_procurement_root"
-              action="action_municipal_procurement_request"
+              action="action_municipal_procurement_line"
               sequence="10"/>
 
     <menuitem id="menu_municipal_procurement_request"
@@ -62,13 +62,13 @@
     <menuitem id="menu_municipal_procurement_quotes"
               name="3 үнийн санал"
               parent="menu_municipal_inventory_procurement_root"
-              action="action_municipal_procurement_request"
+              action="action_municipal_procurement_quote"
               sequence="30"/>
 
     <menuitem id="menu_municipal_procurement_receipt"
-              name="Хүлээн авалт"
+              name="Агуулахын орлого / зарлага"
               parent="menu_municipal_inventory_procurement_root"
-              action="action_municipal_procurement_request"
+              action="action_municipal_warehouse_move"
               sequence="40"/>
 
     <menuitem id="menu_municipal_vehicle_status"

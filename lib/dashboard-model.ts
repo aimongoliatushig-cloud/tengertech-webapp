@@ -854,7 +854,7 @@ export function buildDashboardModel(input: {
     {
       id: "activeToday",
       title: "Өнөөдрийн идэвхтэй ажлууд",
-      description: "Өнөөдөр бодитоор хөдөлж буй ажилбар, маршрут.",
+      description: "Өнөөдөр бодитоор хөдөлж буй даалгавар, маршрут.",
       actionLabel: variant === "worker" ? "Өдрийн ажлыг нээх" : "Өнөөдрийн ажлыг харах",
       href: variant === "worker" && todayAssignments.length ? "/field" : "/tasks?view=today",
       tone: "good",
@@ -943,7 +943,7 @@ export function buildDashboardModel(input: {
   } else if (variant === "manager" || variant === "leader") {
     comparisonTitle = "Багийн товч мэдээлэл";
     comparisonDescription = "Багийн ачаалал, хяналт, дундаж явцыг удирдлагын түвшинд харуулна.";
-    comparisonActionLabel = "Ажилбарын жагсаалт руу орох";
+    comparisonActionLabel = "Даалгаврын жагсаалт руу орох";
     comparisonHref = "/tasks";
     comparisonCards = (scoped.teamLeaders.length ? scoped.teamLeaders : snapshot.teamLeaders)
       .slice(0, COMPARISON_LIMIT)
@@ -959,7 +959,7 @@ export function buildDashboardModel(input: {
   } else {
     comparisonTitle = "Надад хамаарах ажлын товч мэдээлэл";
     comparisonDescription = "Танд холбогдсон ажлыг жижиг бүлгүүдээр нь харахад зориулсан хэсэг.";
-    comparisonActionLabel = "Ажилбар руу орох";
+    comparisonActionLabel = "Даалгавар руу орох";
     comparisonHref = "/tasks";
     comparisonCards = scoped.workerProjects.slice(0, COMPARISON_LIMIT).map((item) => {
       const completionRate = item.totalTasks

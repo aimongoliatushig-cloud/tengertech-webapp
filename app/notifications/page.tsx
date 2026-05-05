@@ -200,6 +200,7 @@ export default async function NotificationsPage() {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
               notificationCount={notifications.length}

@@ -5,14 +5,26 @@ export type UserRole =
   | "project_manager"
   | "senior_master"
   | "team_leader"
+  | "hse_officer"
+  | "public_relations"
   | "worker"
   | string;
 
 export type RoleGroupFlags = {
+  municipalWorker?: boolean;
+  municipalMaster?: boolean;
+  municipalInspector?: boolean;
+  municipalDepartmentHead?: boolean;
+  municipalManager?: boolean;
+  municipalDirector?: boolean;
+  municipalHr?: boolean;
+  municipalIt?: boolean;
   mfoManager: boolean;
   mfoDispatcher: boolean;
   mfoInspector: boolean;
   mfoMobile: boolean;
+  mfoDriver?: boolean;
+  mfoLoader?: boolean;
   fleetRepairAny?: boolean;
   fleetRepairMechanic?: boolean;
   fleetRepairTeamLeader?: boolean;
@@ -26,6 +38,17 @@ export type RoleGroupFlags = {
   opsStorekeeper?: boolean;
   hrUser?: boolean;
   hrManager?: boolean;
+  municipalHse?: boolean;
+  municipalPublicRelations?: boolean;
+  complaintManager?: boolean;
+  environmentWorker?: boolean;
+  greenEngineer?: boolean;
+  greenMaster?: boolean;
+  improvementWelder?: boolean;
+  improvementFieldEngineer?: boolean;
+  improvementEngineer?: boolean;
+  improvementManager?: boolean;
+  environmentManager?: boolean;
 };
 
 export type RoleContext = {
@@ -50,10 +73,20 @@ export type Capability =
   | "use_field_console";
 
 const EMPTY_GROUP_FLAGS: RoleGroupFlags = {
+  municipalWorker: false,
+  municipalMaster: false,
+  municipalInspector: false,
+  municipalDepartmentHead: false,
+  municipalManager: false,
+  municipalDirector: false,
+  municipalHr: false,
+  municipalIt: false,
   mfoManager: false,
   mfoDispatcher: false,
   mfoInspector: false,
   mfoMobile: false,
+  mfoDriver: false,
+  mfoLoader: false,
   fleetRepairAny: false,
   fleetRepairMechanic: false,
   fleetRepairTeamLeader: false,
@@ -67,6 +100,17 @@ const EMPTY_GROUP_FLAGS: RoleGroupFlags = {
   opsStorekeeper: false,
   hrUser: false,
   hrManager: false,
+  municipalHse: false,
+  municipalPublicRelations: false,
+  complaintManager: false,
+  environmentWorker: false,
+  greenEngineer: false,
+  greenMaster: false,
+  improvementWelder: false,
+  improvementFieldEngineer: false,
+  improvementEngineer: false,
+  improvementManager: false,
+  environmentManager: false,
 };
 
 function normalizeGroupFlags(groupFlags?: Partial<RoleGroupFlags> | null): RoleGroupFlags {
@@ -85,16 +129,33 @@ export function getPrimaryAppRole(context: RoleContext): AppRole {
   if (context.role === "director" || context.role === "general_manager") {
     return "executive";
   }
+  if (groupFlags.municipalDirector || groupFlags.fleetRepairCeo) {
+    return "executive";
+  }
   if (groupFlags.mfoDispatcher) {
     return "dispatcher";
   }
-  if (groupFlags.mfoInspector) {
+  if (groupFlags.mfoInspector || groupFlags.municipalInspector) {
     return "inspector";
   }
-  if (context.role === "project_manager" || groupFlags.mfoManager) {
+  if (
+    context.role === "project_manager" ||
+    groupFlags.mfoManager ||
+    groupFlags.municipalManager ||
+    groupFlags.municipalDepartmentHead ||
+    groupFlags.environmentManager ||
+    groupFlags.improvementManager ||
+    groupFlags.fleetRepairManager
+  ) {
     return "manager";
   }
-  if (context.role === "senior_master" || context.role === "team_leader") {
+  if (
+    context.role === "senior_master" ||
+    context.role === "team_leader" ||
+    groupFlags.municipalMaster ||
+    groupFlags.greenMaster ||
+    groupFlags.fleetRepairTeamLeader
+  ) {
     return "leader";
   }
   return "field_user";
@@ -118,6 +179,10 @@ export function getRoleLabel(role: UserRole) {
       return "Ахлах мастер";
     case "team_leader":
       return "Мастер";
+    case "hse_officer":
+      return "ХАБЭА хяналтын ажилтан";
+    case "public_relations":
+      return "Олон нийттэй харилцах ажилтан";
     case "hr_specialist":
       return "Хүний нөөцийн мэргэжилтэн";
     case "hr_manager":
@@ -134,58 +199,119 @@ export function hasCapability(context: RoleContext, capability: Capability) {
 
   switch (capability) {
     case "create_projects":
-      return (
+      return Boolean(
         context.role === "system_admin" ||
         context.role === "director" ||
         context.role === "general_manager" ||
         context.role === "project_manager" ||
+        groupFlags.complaintManager ||
+        groupFlags.municipalDepartmentHead ||
+        groupFlags.environmentManager ||
+        groupFlags.improvementManager ||
+        groupFlags.greenMaster ||
+        groupFlags.improvementEngineer ||
         context.role === "senior_master" ||
         context.role === "team_leader"
       );
     case "create_tasks":
-      return (
+      return Boolean(
         context.role === "system_admin" ||
         context.role === "director" ||
         context.role === "general_manager" ||
         context.role === "project_manager" ||
+        groupFlags.complaintManager ||
+        groupFlags.municipalDepartmentHead ||
+        groupFlags.environmentManager ||
+        groupFlags.improvementManager ||
+        groupFlags.greenMaster ||
+        groupFlags.greenEngineer ||
+        groupFlags.improvementEngineer ||
+        groupFlags.improvementFieldEngineer ||
         context.role === "senior_master" ||
         context.role === "team_leader"
       );
     case "write_workspace_reports":
-      return (
+      return Boolean(
         context.role === "system_admin" ||
         context.role === "project_manager" ||
+        groupFlags.complaintManager ||
+        groupFlags.mfoMobile ||
+        groupFlags.mfoDriver ||
+        groupFlags.mfoLoader ||
+        groupFlags.environmentWorker ||
+        groupFlags.greenEngineer ||
+        groupFlags.greenMaster ||
+        groupFlags.improvementWelder ||
+        groupFlags.improvementFieldEngineer ||
+        groupFlags.improvementEngineer ||
         context.role === "senior_master" ||
         context.role === "team_leader" ||
         context.role === "worker"
       );
     case "view_quality_center":
-      return (
+      return Boolean(
         context.role === "system_admin" ||
         context.role === "director" ||
         context.role === "general_manager" ||
         context.role === "project_manager" ||
+        groupFlags.municipalInspector ||
+        groupFlags.municipalDepartmentHead ||
         groupFlags.mfoManager ||
         groupFlags.mfoDispatcher ||
-        groupFlags.mfoInspector
+        groupFlags.mfoInspector ||
+        groupFlags.environmentManager ||
+        groupFlags.greenMaster ||
+        groupFlags.improvementManager ||
+        groupFlags.fleetRepairManager ||
+        groupFlags.fleetRepairTeamLeader
       );
     case "use_field_console":
       if (context.role === "general_manager") {
         return false;
       }
-      return (
+      return Boolean(
         context.role === "system_admin" ||
         context.role === "senior_master" ||
         context.role === "team_leader" ||
         context.role === "worker" ||
+        groupFlags.complaintManager ||
         groupFlags.mfoManager ||
         groupFlags.mfoDispatcher ||
         groupFlags.mfoInspector ||
-        groupFlags.mfoMobile
+        groupFlags.mfoMobile ||
+        groupFlags.mfoDriver ||
+        groupFlags.mfoLoader ||
+        groupFlags.environmentWorker ||
+        groupFlags.greenEngineer ||
+        groupFlags.greenMaster ||
+        groupFlags.improvementWelder ||
+        groupFlags.improvementFieldEngineer ||
+        groupFlags.improvementEngineer ||
+        groupFlags.fleetRepairMechanic ||
+        groupFlags.fleetRepairTeamLeader
       );
     default:
       return false;
   }
+}
+
+export function canSubmitWorkspaceReport(context: RoleContext) {
+  const groupFlags = normalizeGroupFlags(context.groupFlags);
+  return Boolean(
+    context.role === "system_admin" ||
+    context.role === "senior_master" ||
+    context.role === "team_leader" ||
+    context.role === "worker" ||
+    groupFlags.mfoMobile ||
+    groupFlags.mfoDriver ||
+    groupFlags.mfoLoader ||
+    groupFlags.environmentWorker ||
+    groupFlags.greenEngineer ||
+    groupFlags.greenMaster ||
+    groupFlags.improvementWelder ||
+    groupFlags.improvementFieldEngineer ||
+    groupFlags.improvementEngineer
+  );
 }
 
 export function isWorkerOnly(context: RoleContext) {
@@ -194,6 +320,15 @@ export function isWorkerOnly(context: RoleContext) {
     context.role === "worker" &&
     !groupFlags.mfoManager &&
     !groupFlags.mfoDispatcher &&
-    !groupFlags.mfoInspector
+    !groupFlags.mfoInspector &&
+    !groupFlags.municipalDepartmentHead &&
+    !groupFlags.municipalManager &&
+    !groupFlags.environmentManager &&
+    !groupFlags.improvementManager &&
+    !groupFlags.greenMaster &&
+    !groupFlags.fleetRepairManager &&
+    !groupFlags.fleetRepairTeamLeader &&
+    !groupFlags.hrManager &&
+    !groupFlags.municipalHr
   );
 }

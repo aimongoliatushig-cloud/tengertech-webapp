@@ -1,9 +1,10 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { createTaskAction } from "@/app/actions";
+import { createTaskAction, deleteTaskAction, updateTaskAction } from "@/app/actions";
 import dashboardStyles from "@/app/page.module.css";
 import styles from "@/app/workspace.module.css";
 import {
@@ -18,6 +19,7 @@ import { filterByDepartment } from "@/lib/dashboard-scope";
 import { loadProjectDetail } from "@/lib/workspace";
 
 import { ProjectTaskCreateModal } from "./project-task-create-modal";
+import { ProjectTaskEditModal } from "./project-task-edit-modal";
 
 type PageProps = {
   params: Promise<{
@@ -32,14 +34,15 @@ type PageProps = {
   }>;
 };
 
-type TaskFilterKey = "all" | "todo" | "progress" | "review" | "done";
+type TaskFilterKey = "all" | "todo" | "progress" | "review" | "overdue" | "done";
 type QuickActionMode = "task" | "report" | "none";
 
 const TASK_FILTERS: Array<{ key: TaskFilterKey; label: string }> = [
   { key: "all", label: "Бүгд" },
-  { key: "todo", label: "Хийх ажил" },
-  { key: "progress", label: "Хийгдэж буй" },
-  { key: "review", label: "Шалгаж буй" },
+  { key: "todo", label: "Төлөвлөсөн" },
+  { key: "progress", label: "Гүйцэтгэж байгаа" },
+  { key: "review", label: "Хянаж байгаа" },
+  { key: "overdue", label: "Хугацаа хэтэрсэн" },
   { key: "done", label: "Дууссан" },
 ];
 
@@ -70,20 +73,33 @@ function getProgressWidth(value: number) {
   return `${Math.max(Math.min(value, 100), 6)}%`;
 }
 
+function isImageAttachment(attachment: { mimetype: string }) {
+  return attachment.mimetype.toLowerCase().startsWith("image/");
+}
+
+function isPdfAttachment(attachment: { mimetype: string; name: string }) {
+  const mimetype = attachment.mimetype.toLowerCase();
+  return mimetype === "application/pdf" || attachment.name.toLowerCase().endsWith(".pdf");
+}
+
 function resolveProjectStage(taskCounts: Record<TaskFilterKey, number>) {
   if (taskCounts.all > 0 && taskCounts.done === taskCounts.all) {
     return { bucket: "done", label: "Дууссан ажил" } as const;
   }
 
   if (taskCounts.review > 0) {
-    return { bucket: "review", label: "Шалгагдаж буй ажил" } as const;
+    return { bucket: "review", label: "Хянаж байгаа ажил" } as const;
   }
 
   if (taskCounts.progress > 0) {
-    return { bucket: "progress", label: "Явж байгаа ажил" } as const;
+    return { bucket: "progress", label: "Гүйцэтгэж байгаа ажил" } as const;
   }
 
-  return { bucket: "todo", label: "Хийгдэх ажил" } as const;
+  if (taskCounts.overdue > 0) {
+    return { bucket: "problem", label: "Хугацаа хэтэрсэн ажил" } as const;
+  }
+
+  return { bucket: "todo", label: "Төлөвлөсөн ажил" } as const;
 }
 
 function StagePill({ label, bucket }: { label: string; bucket: string }) {
@@ -185,6 +201,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     ).length,
     progress: project.tasks.filter((task) => task.stageBucket === "progress").length,
     review: project.tasks.filter((task) => task.stageBucket === "review").length,
+    overdue: project.tasks.filter((task) => task.isOverdue).length,
     done: project.tasks.filter((task) => task.stageBucket === "done").length,
   } satisfies Record<TaskFilterKey, number>;
 
@@ -196,6 +213,9 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     if (activeFilter === "todo") {
       return task.stageBucket === "todo" || task.stageBucket === "unknown";
     }
+    if (activeFilter === "overdue") {
+      return task.isOverdue;
+    }
 
     return task.stageBucket === activeFilter;
   });
@@ -205,24 +225,31 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   const taskBreakdown = [
     {
       key: "todo",
-      label: "Хийгдэх",
+      label: "Төлөвлөсөн",
       count: taskCounts.todo,
       share: taskCounts.all ? Math.round((taskCounts.todo / taskCounts.all) * 100) : 0,
       toneClass: styles.projectHeroBreakdownTodo,
     },
     {
       key: "progress",
-      label: "Явж буй",
+      label: "Гүйцэтгэж байгаа",
       count: taskCounts.progress,
       share: taskCounts.all ? Math.round((taskCounts.progress / taskCounts.all) * 100) : 0,
       toneClass: styles.projectHeroBreakdownProgress,
     },
     {
       key: "review",
-      label: "Шалгагдаж буй",
+      label: "Хянаж байгаа",
       count: taskCounts.review,
       share: taskCounts.all ? Math.round((taskCounts.review / taskCounts.all) * 100) : 0,
       toneClass: styles.projectHeroBreakdownReview,
+    },
+    {
+      key: "overdue",
+      label: "Хугацаа хэтэрсэн",
+      count: taskCounts.overdue,
+      share: taskCounts.all ? Math.round((taskCounts.overdue / taskCounts.all) * 100) : 0,
+      toneClass: styles.projectHeroBreakdownProblem,
     },
     {
       key: "done",
@@ -247,6 +274,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               departmentScopeName={scopedDepartmentName}
             />
@@ -255,11 +283,11 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
           <div className={styles.pageContent}>
             <WorkspaceHeader
               title="Ажлын дэлгэрэнгүй"
-              subtitle="Сонгосон ажлын гол хяналт ба ажилбарын урсгал"
+              subtitle="Сонгосон ажлын гол хяналт ба даалгаврын урсгал"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               notificationCount={activeTaskCount}
-              notificationNote={`${activeTaskCount} идэвхтэй ажилбар одоогоор явж байна`}
+              notificationNote={`${activeTaskCount} идэвхтэй даалгавар одоогоор явж байна`}
             />
 
             {errorMessage ? (
@@ -272,22 +300,22 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
             <section className={styles.heroCard}>
               <span className={styles.eyebrow}>
                 {quickActionMode === "task"
-                  ? "Ажилбар нэмэх"
+                  ? "Даалгавар нэмэх"
                   : quickActionMode === "report"
                     ? "Тайлан оруулах"
                     : masterMode
                       ? "Ажил нэмэх урсгал"
-                      : "Ажлын ажилбар"}
+                      : "Ажлын даалгавар"}
               </span>
               <h1>{project.name}</h1>
               <p>
                 {quickActionMode === "task"
-                  ? "Энэ ажлыг сонгосон тул одоо шууд шинэ ажилбар нэмж болно."
+                  ? "Энэ ажлыг сонгосон тул одоо шууд шинэ даалгавар нэмж болно."
                   : quickActionMode === "report"
-                    ? "Энэ ажлын доторх ажилбаруудаас нэгийг сонгоод тайлан оруулах цонх руу орно."
+                    ? "Энэ ажлын доторх даалгавруудаас нэгийг сонгоод тайлан оруулах цонх руу орно."
                   : masterMode
-                  ? "Мастер хэрэглэгч энэ ажлын хүрээнд шинэ ажилбар нээж, өнөөдрийн урсгалаа тайлантай нь хамт удирдана."
-                  : "Энэ дэлгэц дээр зөвхөн тухайн ажлын ажилбарууд харагдана. Тухайн ажилбар дээр дарж дараагийн дэлгэрэнгүй рүү орно."}
+                  ? "Мастер хэрэглэгч энэ ажлын хүрээнд шинэ даалгавар нээж, өнөөдрийн урсгалаа тайлантай нь хамт удирдана."
+                  : "Энэ дэлгэц дээр зөвхөн тухайн ажлын даалгаврууд харагдана. Тухайн даалгавар дээр дарж дараагийн дэлгэрэнгүй рүү орно."}
               </p>
 
               <div className={styles.projectHeroGrid}>
@@ -361,7 +389,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                     <span className={styles.projectHeroCardLabel}>Өнөөдрийн төвлөрөх зүйл</span>
                     <div className={styles.projectHeroSignalMain}>
                       <strong>{activeTaskCount}</strong>
-                      <span>идэвхтэй ажилбар</span>
+                      <span>идэвхтэй даалгавар</span>
                     </div>
                     <div className={styles.projectHeroSignalRow}>
                       <div className={styles.projectHeroSignalPill}>
@@ -385,8 +413,126 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                 <Link href={backHref} className={styles.smallLink}>
                   {backLabel}
                 </Link>
+                <a
+                  href={`/api/workspace-report/export?type=project&id=${project.id}&format=word`}
+                  className={styles.secondaryButton}
+                >
+                  Word тайлан татах
+                </a>
+                <a
+                  href={`/api/workspace-report/export?type=project&id=${project.id}&format=pdf`}
+                  className={styles.secondaryButton}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  PDF хэвлэх
+                </a>
               </div>
             </section>
+
+            {project.description || project.attachments.length ? (
+              <section className={`${styles.sectionCard} ${styles.projectDetailCompact}`}>
+                <div className={styles.compactSectionHeader}>
+                  <div>
+                    <span className={styles.eyebrow}>Хавсралт ба тайлбар</span>
+                    <h2>Ажлын дэлгэрэнгүй мэдээлэл</h2>
+                  </div>
+                  <span className={styles.compactCountPill}>
+                    {project.attachments.length} файл
+                  </span>
+                </div>
+
+                <div className={styles.projectDetailCompactGrid}>
+                  <div className={styles.descriptionCard}>
+                    <span className={styles.compactLabel}>Тайлбар</span>
+                    <p>{project.description || "Тайлбар бүртгээгүй байна."}</p>
+                  </div>
+
+                  {project.attachments.length ? (
+                    <details className={styles.attachmentDisclosure}>
+                      <summary className={styles.attachmentDisclosureSummary}>
+                        <span>Дэлгэрэнгүй хавсралт харах</span>
+                        <small>{project.attachments.length} файл</small>
+                      </summary>
+
+                      <div className={styles.attachmentDetailPanel}>
+                        <div className={styles.attachmentDetailDescription}>
+                          <span className={styles.compactLabel}>Тайлбар</span>
+                          <p>{project.description || "Тайлбар бүртгээгүй байна."}</p>
+                        </div>
+
+                        <div className={styles.attachmentPreviewList}>
+                          {project.attachments.map((attachment) => {
+                            if (isImageAttachment(attachment)) {
+                              return (
+                                <a
+                                  key={attachment.id}
+                                  href={attachment.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className={styles.attachmentPreviewCard}
+                                >
+                                  <div className={styles.attachmentPreviewHeader}>
+                                    <strong>{attachment.name}</strong>
+                                    <small>{attachment.mimetype}</small>
+                                  </div>
+                                  <span className={styles.attachmentImageFrame}>
+                                    <Image
+                                      src={attachment.url}
+                                      alt={attachment.name}
+                                      fill
+                                      unoptimized
+                                      sizes="(max-width: 720px) 100vw, 50vw"
+                                      className={styles.attachmentImagePreview}
+                                    />
+                                  </span>
+                                </a>
+                              );
+                            }
+
+                            if (isPdfAttachment(attachment)) {
+                              return (
+                                <div key={attachment.id} className={styles.attachmentPreviewCard}>
+                                  <div className={styles.attachmentPreviewHeader}>
+                                    <strong>{attachment.name}</strong>
+                                    <a
+                                      href={attachment.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className={styles.attachmentOpenLink}
+                                    >
+                                      Нээх
+                                    </a>
+                                  </div>
+                                  <iframe
+                                    src={attachment.url}
+                                    title={attachment.name}
+                                    className={styles.attachmentPdfPreview}
+                                  />
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <a
+                                key={attachment.id}
+                                href={attachment.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={styles.documentCard}
+                              >
+                                <strong>{attachment.name}</strong>
+                                <small>{attachment.mimetype}</small>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </details>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
 
             <section className={masterMode ? styles.masterTaskBoard : styles.panelGrid}>
               <section className={styles.panel}>
@@ -395,10 +541,10 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                     <span className={styles.eyebrow}>Ажлын самбар</span>
                     <h2>
                       {quickActionMode === "report"
-                        ? "Тайлан оруулах ажилбар сонгох"
+                        ? "Тайлан оруулах даалгавар сонгох"
                         : masterMode
                           ? "Ажил дээрх өнөөдрийн урсгал"
-                          : "Ажлын ажилбарууд"}
+                          : "Ажлын даалгаврууд"}
                     </h2>
                   </div>
 
@@ -421,10 +567,10 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                   ) : (
                     <p>
                       {quickActionMode === "report"
-                        ? "Доорх ажилбарын аль нэгийг сонгоод тайлангийн цонх руу орно."
+                        ? "Доорх даалгаврын аль нэгийг сонгоод тайлангийн цонх руу орно."
                         : masterMode
-                        ? "Доорх ажилбар бүр дээр дарж тайлангийн урсгал руу орно."
-                        : "Доорх ажилбар бүр дээр дарахад тухайн ажилбарын дэлгэрэнгүй нээгдэнэ."}
+                        ? "Доорх даалгавар бүр дээр дарж тайлангийн урсгал руу орно."
+                        : "Доорх даалгавар бүр дээр дарахад тухайн даалгаврын дэлгэрэнгүй нээгдэнэ."}
                     </p>
                   )}
                 </div>
@@ -463,47 +609,75 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                 {visibleTasks.length ? (
                   <div className={styles.taskGrid}>
                     {visibleTasks.map((task) => (
-                      <Link
+                      <article
                         key={task.id}
-                        href={
-                          quickActionMode === "report"
-                            ? `${task.href}?composer=report&returnTo=${encodeURIComponent(
-                                `/projects/${project.id}?quickAction=report&returnTo=${encodeURIComponent(
-                                  backHref,
-                                )}`,
-                              )}`
-                            : task.href
-                        }
                         className={styles.taskItem}
                       >
-                        <div className={styles.taskItemTop}>
-                          <div>
-                            <h3>{task.name}</h3>
-                            <p>Хариуцсан ажилтан: {task.teamLeaderName}</p>
+                        <Link
+                          href={
+                            quickActionMode === "report"
+                              ? `${task.href}?composer=report&returnTo=${encodeURIComponent(
+                                  `/projects/${project.id}?quickAction=report&returnTo=${encodeURIComponent(
+                                    backHref,
+                                  )}`,
+                                )}`
+                              : task.href
+                          }
+                          className={styles.taskItemLink}
+                        >
+                          <div className={styles.taskItemTop}>
+                            <div>
+                              <h3>{task.name}</h3>
+                              <p>
+                                Хариуцсан ажилтан: {task.teamLeaderName}
+                                {task.teamLeaderJobTitle ? ` · ${task.teamLeaderJobTitle}` : ""}
+                              </p>
+                            </div>
+                            <StagePill label={task.stageLabel} bucket={task.stageBucket} />
                           </div>
-                          <StagePill label={task.stageLabel} bucket={task.stageBucket} />
-                        </div>
 
-                        <div className={styles.metaRow}>
-                          {task.plannedQuantity > 0 && task.measurementUnit ? (
-                            <span>
-                              Хэмжээ: {task.completedQuantity}/{task.plannedQuantity}{" "}
-                              {task.measurementUnit}
-                            </span>
-                          ) : null}
-                          <span>Хугацаа: {task.deadline}</span>
-                        </div>
+                          <div className={styles.metaRow}>
+                            {task.quantitySummary ? (
+                              <div className={styles.taskQuantityLines}>
+                                <strong>Хэмжээ:</strong>
+                                {task.quantitySummaryLines.map((line) => (
+                                  <span key={line}>{line}</span>
+                                ))}
+                              </div>
+                            ) : null}
+                            <span>Хугацаа: {task.deadline}</span>
+                          </div>
 
-                        <div className={styles.progressTrack}>
-                          <span style={{ width: `${task.progress}%` }} />
-                        </div>
-                      </Link>
+                          <div className={styles.progressTrack}>
+                            <span style={{ width: `${task.progress}%` }} />
+                          </div>
+                        </Link>
+
+                        {canCreateTasks ? (
+                          <div className={styles.taskItemActions}>
+                            <ProjectTaskEditModal
+                              action={updateTaskAction}
+                              projectId={project.id}
+                              taskId={task.id}
+                              taskName={task.name}
+                              deadlineValue={task.deadlineValue}
+                            />
+                            <form action={deleteTaskAction}>
+                              <input type="hidden" name="project_id" value={project.id} />
+                              <input type="hidden" name="task_id" value={task.id} />
+                              <button type="submit" className={styles.dangerButton}>
+                                Устгах
+                              </button>
+                            </form>
+                          </div>
+                        ) : null}
+                      </article>
                     ))}
                   </div>
                 ) : (
                   <div className={styles.emptyState}>
-                    <h2>Ажилбар алга</h2>
-                    <p>Энэ төлөв дээр харагдах ажилбар одоогоор алга байна.</p>
+                    <h2>Даалгавар алга</h2>
+                    <p>Энэ төлөв дээр харагдах даалгавар одоогоор алга байна.</p>
                   </div>
                 )}
               </section>

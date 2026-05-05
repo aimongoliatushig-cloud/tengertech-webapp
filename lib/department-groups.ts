@@ -52,6 +52,27 @@ export const DEPARTMENT_GROUPS: DepartmentGroupDefinition[] = [
     icon: "🏙️",
     accent: "var(--tone-slate)",
   },
+  {
+    name: "Хүний нөөц",
+    units: [],
+    aliases: ["HR", "Хүний нөөц", "Хүний нөөцийн алба"],
+    icon: "👥",
+    accent: "var(--tone-blue)",
+  },
+  {
+    name: "Дотоод хяналт",
+    units: [],
+    aliases: ["Дотоод хяналт", "Хяналтын алба"],
+    icon: "🛡️",
+    accent: "var(--tone-slate)",
+  },
+  {
+    name: "Иргэдийн санал, гомдол",
+    units: [],
+    aliases: ["Гомдол", "Иргэдийн санал", "Иргэдийн санал гомдол"],
+    icon: "💬",
+    accent: "var(--tone-slate)",
+  },
 ];
 
 export const CANONICAL_DEPARTMENT_NAMES = DEPARTMENT_GROUPS.map((group) => group.name);
@@ -99,6 +120,9 @@ export function normalizeOrganizationUnitName(departmentName?: string | null) {
     return "Тохижилтын хэлтэс";
   }
 
+  if (normalized.includes("hr") || normalized.includes("human resource")) {
+    return DEPARTMENT_GROUPS.find((group) => group.aliases.includes("HR"))?.name ?? "";
+  }
   return "";
 }
 

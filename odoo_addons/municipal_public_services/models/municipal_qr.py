@@ -48,14 +48,6 @@ class MfoRoute(models.Model):
     _inherit = ["mfo.route", "municipal.qr.mixin"]
 
 
-class MfoCollectionPoint(models.Model):
-    _name = "mfo.collection.point"
-    _inherit = ["mfo.collection.point", "municipal.qr.mixin"]
-
-    def _municipal_qr_slug(self):
-        return "garbage-point"
-
-
 class MunicipalRepairRequest(models.Model):
     _name = "municipal.repair.request"
     _inherit = ["municipal.repair.request", "municipal.qr.mixin"]

@@ -29,6 +29,7 @@ type FleetVehicleBoardItem = {
   latestRepairState: string;
   isOperational: boolean;
   isRepair: boolean;
+  isArchived: boolean;
   crewAssignments: FleetVehicleCrewAssignment[];
 };
 

@@ -19,6 +19,8 @@ import {
   loadGarbageRouteOptions,
   loadGarbageVehicleOptions,
   loadProjectManagerOptions,
+  loadRoadCleaningAreaOptions,
+  loadRoadCleaningEmployeeOptions,
 } from "@/lib/workspace";
 
 import { NewWorkForm } from "@/app/projects/new/new-work-form";
@@ -57,6 +59,8 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
     departmentOptions,
     garbageVehicleOptions,
     garbageRouteOptions,
+    roadCleaningAreaOptions,
+    roadCleaningEmployeeOptions,
     masterSnapshot,
     sessionDepartmentName,
   ] = await Promise.all([
@@ -73,6 +77,14 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
       password: session.password,
     }),
     loadGarbageRouteOptions({
+      login: session.login,
+      password: session.password,
+    }),
+    loadRoadCleaningAreaOptions({
+      login: session.login,
+      password: session.password,
+    }),
+    loadRoadCleaningEmployeeOptions({
       login: session.login,
       password: session.password,
     }),
@@ -132,6 +144,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               departmentScopeName={masterDepartmentName}
             />
@@ -140,7 +153,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
           <div className={styles.pageContent}>
             <WorkspaceHeader
               title={masterMode ? "Шинэ ажил" : "Ажил нэмэх"}
-              subtitle="Odoo руу шинэ ажил бүртгэх урсгал"
+              subtitle="Шинэ ажлын мэдээлэл, хугацаа, хавсралтыг бүртгэх урсгал"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
             />
@@ -151,7 +164,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
               <p>
                 {masterMode
                   ? "Мастер хэрэглэгч зөвхөн өөрийн харьяалах алба нэгж дээр шинэ ажил үүсгэнэ. Хэлтэс автоматаар сонгогдсон тул нэр, хугацаа, шаардлагатай мэдээллээ оруулахад хангалттай."
-                  : "Энгийн ажил дээр нэрээ гараар оруулна. Харин хог тээвэрлэлтийн үед машин, маршрут, огноо сонгоход нэг ажил автоматаар үүсэж, тухайн маршрутын хог ачих цэг бүр тусдаа ажилбар болж нэмэгдэнэ."}
+                  : "Энгийн ажил дээр нэрээ гараар оруулна. Харин хог тээвэрлэлтийн үед машин, маршрут, огноо сонгоход нэг ажил автоматаар үүсэж, тухайн маршрутын хог ачих цэг бүр тусдаа даалгавар болж нэмэгдэнэ."}
               </p>
             </section>
 
@@ -179,6 +192,8 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
                   managerOptions={managerOptions}
                   garbageVehicleOptions={garbageVehicleOptions}
                   garbageRouteOptions={garbageRouteOptions}
+                  roadCleaningAreaOptions={roadCleaningAreaOptions}
+                  roadCleaningEmployeeOptions={roadCleaningEmployeeOptions}
                   lockedDepartmentId={
                     lockedDepartmentOption ? String(lockedDepartmentOption.id) : undefined
                   }

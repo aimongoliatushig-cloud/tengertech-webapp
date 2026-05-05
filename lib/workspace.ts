@@ -2,6 +2,10 @@ import "server-only";
 
 import { CANONICAL_DEPARTMENT_NAMES, normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { createOdooConnection, executeOdooKw, type OdooConnection } from "@/lib/odoo";
+import {
+  findLocalRoadCleaningAreaOption,
+  loadLocalRoadCleaningAreaOptions,
+} from "@/lib/road-cleaning-area-store";
 
 type Relation = [number, string] | false;
 
@@ -12,6 +16,7 @@ type ProjectRecord = {
   ops_department_id: Relation;
   date_start: string | false;
   date: string | false;
+  description?: string | false;
   mfo_operation_type?: string | false;
   ops_allowed_unit_ids?: number[];
   ops_default_unit_id?: Relation;
@@ -32,6 +37,7 @@ type TaskRecord = {
   stage_id: Relation;
   ops_team_leader_id: Relation;
   user_ids: number[];
+  mfo_crew_team_id?: Relation;
   mfo_operation_type?: string | false;
   ops_planned_quantity: number;
   ops_completed_quantity: number;
@@ -46,6 +52,7 @@ type TaskRecord = {
   priority: string;
   date_deadline: string | false;
   state: string;
+  mfo_state?: string | false;
   description?: string | false;
   ops_can_submit_for_review?: boolean;
   ops_can_mark_done?: boolean;
@@ -55,6 +62,7 @@ type TaskRecord = {
 
 type ReportRecord = {
   id: number;
+  task_id?: Relation;
   reporter_id: Relation;
   report_datetime: string;
   report_text: string;
@@ -64,6 +72,7 @@ type ReportRecord = {
   audio_count: number;
   image_attachment_ids: number[];
   audio_attachment_ids: number[];
+  state?: string | false;
   task_measurement_unit_id?: Relation;
   task_measurement_unit_code?: string | false;
 };
@@ -75,6 +84,13 @@ type MailMessageRecord = {
   body: string | false;
   message_type: string | false;
   subtype_id: Relation;
+  attachment_ids?: number[];
+};
+
+type OdooAttachmentRecord = {
+  id: number;
+  name: string | false;
+  mimetype: string | false;
 };
 
 type UserRecord = {
@@ -95,6 +111,20 @@ type EmployeeUserRecord = {
   work_phone?: string | false;
   mobile_phone?: string | false;
   work_email?: string | false;
+};
+
+type CleaningAreaRecord = {
+  id: number;
+  name: string;
+  street_name?: string | false;
+  start_point?: string | false;
+  end_point?: string | false;
+  area_m2?: number | false;
+  department_id?: Relation;
+  master_id?: Relation;
+  employee_id?: Relation;
+  frequency?: string | false;
+  note?: string | false;
 };
 
 type CrewTeamRecord = {
@@ -134,12 +164,48 @@ type WorkTypeRecord = {
   default_unit_id: Relation;
 };
 
+async function searchReadWithFieldFallback<T>(
+  model: string,
+  domain: unknown[],
+  fields: string[],
+  kwargs: Record<string, unknown> = {},
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<T[]> {
+  const remainingFields = [...fields];
+
+  for (;;) {
+    try {
+      return await executeOdooKw<T[]>(
+        model,
+        "search_read",
+        [domain],
+        {
+          ...kwargs,
+          fields: remainingFields,
+        },
+        connectionOverrides,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const invalidField = message.match(/Invalid field '([^']+)'/)?.[1];
+      const fieldIndex = invalidField ? remainingFields.indexOf(invalidField) : -1;
+
+      if (fieldIndex < 0 || remainingFields.length <= 1) {
+        throw error;
+      }
+
+      remainingFields.splice(fieldIndex, 1);
+    }
+  }
+}
+
 export type SelectOption = {
   id: number;
   name: string;
   login: string;
   role: string;
   departmentName?: string;
+  jobTitle?: string;
   phone?: string;
 };
 
@@ -155,6 +221,34 @@ export type WorkUnitOption = {
   code: string;
   category: string;
   categoryLabel: string;
+};
+
+export type RoadCleaningAreaOption = {
+  id: number;
+  name: string;
+  streetName: string;
+  startPoint: string;
+  endPoint: string;
+  areaM2: number;
+  departmentId: number | null;
+  departmentName: string;
+  masterId: number | null;
+  masterName: string;
+  employeeId: number | null;
+  employeeName: string;
+  frequency: string;
+  frequencyLabel: string;
+  note: string;
+};
+
+export type RoadCleaningEmployeeOption = {
+  id: number;
+  name: string;
+  departmentId: number | null;
+  departmentName: string;
+  jobTitle: string;
+  phone: string;
+  userId: number | null;
 };
 
 export type WorkTypeOption = {
@@ -404,12 +498,24 @@ export type ProjectTaskCard = {
   href: string;
   stageLabel: string;
   stageBucket: StageBucket;
+  isOverdue: boolean;
   progress: number;
   deadline: string;
+  deadlineValue: string;
   teamLeaderName: string;
+  teamLeaderJobTitle: string;
   plannedQuantity: number;
   completedQuantity: number;
   measurementUnit: string;
+  quantitySummary: string;
+  quantitySummaryLines: string[];
+};
+
+export type WorkspaceAttachmentItem = {
+  id: number;
+  name: string;
+  mimetype: string;
+  url: string;
 };
 
 export type ProjectDetail = {
@@ -421,6 +527,8 @@ export type ProjectDetail = {
   departmentId: number | null;
   startDate: string;
   deadline: string;
+  description: string;
+  attachments: WorkspaceAttachmentItem[];
   taskCount: number;
   reviewCount: number;
   doneCount: number;
@@ -443,6 +551,7 @@ export type ProjectDetail = {
 
 export type TaskReportFeedItem = {
   id: number;
+  reporterId: number | null;
   reporter: string;
   submittedAt: string;
   summary: string;
@@ -471,6 +580,14 @@ export type TaskMessageItem = {
   body: string;
   kind: "message" | "note" | "system";
   subtype: string;
+  attachments: WorkspaceAttachmentItem[];
+};
+
+export type TaskQuantityLine = {
+  quantity: number;
+  unit: string;
+  completedQuantity?: number;
+  progress?: number;
 };
 
 type WorkspaceReportAttachmentInput = {
@@ -491,12 +608,15 @@ export type TaskDetail = {
   state: string;
   deadline: string;
   measurementUnit: string;
+  quantityLines: TaskQuantityLine[];
   plannedQuantity: number;
   completedQuantity: number;
   remainingQuantity: number;
   progress: number;
   teamLeaderName: string;
+  crewTeamName: string;
   assignees: string[];
+  assigneeUserIds: number[];
   priorityLabel: string;
   description: string;
   measurementUnitCode: string;
@@ -523,33 +643,55 @@ type WeekdayKey = (typeof WEEKDAY_KEYS)[number];
 type StageBucket = "todo" | "progress" | "review" | "done" | "unknown";
 
 const STAGE_ALIASES: Array<[StageBucket, string[]]> = [
-  ["todo", ["хийгдэх ажил", "hiigdeh ajil", "todo", "task"]],
+  ["todo", ["төлөвлөгдсөн", "хийгдэх ажил", "хуваарилсан", "draft", "dispatched", "planned", "hiigdeh ajil", "todo", "task"]],
   [
     "progress",
-    ["явагдаж буй ажил", "хийгдэж", "хийж байна", "ажиллаж", "yovagdaj bui ajil", "progress", "in progress"],
+    ["явагдаж буй", "явагдаж буй ажил", "хийгдэж", "хийж байна", "ажиллаж", "in_progress", "yovagdaj bui ajil", "progress", "in progress"],
   ],
-  ["review", ["шалгагдаж буй ажил", "хянагдаж буй ажил", "shalgagdaj bui ajil", "hyanagdaj bui ajil", "review", "changes requested"]],
-  ["done", ["дууссан ажил", "duussan ajil", "done", "completed"]],
+  ["review", ["хянагдаж буй", "шалгагдаж буй ажил", "хянагдаж буй ажил", "submitted", "under_review", "shalgagdaj bui ajil", "hyanagdaj bui ajil", "review", "changes requested"]],
+  ["done", ["дууссан", "дууссан ажил", "verified", "approved", "1_done", "duussan ajil", "done", "completed"]],
   ["todo", ["төлөвлөгдсөн", "хуваарилсан"]],
   ["progress", ["гүйцэтгэж байна"]],
   ["review", ["шалгаж байна"]],
   ["done", ["дууссан"]],
 ];
 
-function displayStageLabel(name: string) {
-  const bucket = normalizeStageBucket(name);
-  switch (bucket) {
-    case "todo":
-      return "Хийгдэх ажил";
-    case "progress":
-      return "Явагдаж буй ажил";
-    case "review":
-      return "Хянагдаж буй ажил";
-    case "done":
-      return "Дууссан ажил";
-    default:
-      return name || "Тодорхойгүй";
+function resolveEffectiveTaskStage(
+  stageName: string,
+  progress: number,
+  context: {
+    reportCount?: number;
+    reportStates?: Array<string | false | undefined>;
+    mfoState?: string | false;
+    taskState?: string | false;
+  } = {},
+) {
+  const stateBucket = normalizeStageBucket(String(context.taskState || ""));
+  const mfoBucket = normalizeStageBucket(String(context.mfoState || ""));
+  const reportBuckets = (context.reportStates ?? []).map((state) =>
+    normalizeStageBucket(String(state || "")),
+  );
+  const bucket =
+    stateBucket === "done"
+      ? stateBucket
+      : mfoBucket !== "unknown"
+        ? mfoBucket
+        : reportBuckets.includes("review")
+          ? "review"
+          : normalizeStageBucket(stageName);
+  const normalizedProgress = Math.max(0, Math.min(100, Math.round(progress)));
+
+  if (bucket === "done") {
+    return { bucket: "done" as const, label: "Дууссан" };
   }
+  if (bucket === "review") {
+    return { bucket: "review" as const, label: "Хянагдаж буй" };
+  }
+  if (bucket === "progress" || normalizedProgress > 0 || (context.reportCount ?? 0) > 0) {
+    return { bucket: "progress" as const, label: "Явагдаж буй" };
+  }
+
+  return { bucket: "todo" as const, label: "Төлөвлөгдсөн" };
 }
 
 function relationName(relation: Relation, fallback = "Тодорхойгүй") {
@@ -585,16 +727,14 @@ function htmlToPlainText(value?: string | false) {
     return "";
   }
 
-  return decodeHtmlEntities(
-    value
-      .replace(/<\s*br\s*\/?>/gi, "\n")
-      .replace(/<\/\s*(p|div|li|h[1-6])\s*>/gi, "\n")
-      .replace(/<[^>]*>/g, "")
-      .replace(/\r/g, "")
-      .replace(/[ \t]+\n/g, "\n")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim(),
-  );
+  return decodeHtmlEntities(value)
+    .replace(/<\s*br\s*\/?>/gi, "\n")
+    .replace(/<\/\s*(p|div|li|h[1-6])\s*>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 function plainTextToOdooHtml(value: string) {
@@ -609,6 +749,196 @@ function plainTextToOdooHtml(value: string) {
     .split(/\n{2,}/)
     .map((paragraph) => `<p>${paragraph.replace(/\n/g, "<br/>")}</p>`)
     .join("");
+}
+
+function extractTaskQuantityLines(description: string): TaskQuantityLine[] {
+  const markerIndex = description.toLowerCase().indexOf("тоо хэмжээ");
+  if (markerIndex === -1) {
+    return [];
+  }
+
+  const quantityText = description.slice(markerIndex).replace(/^тоо хэмжээ\s*:?\s*/i, "");
+  const matches = Array.from(
+    quantityText.matchAll(/(?:^|\s)(?:\d+\.\s*)?(\d+(?:[.,]\d+)?)\s+([^\d\n]+?)(?=\s+\d+\.|\n|$)/gi),
+  );
+
+  return matches
+    .map((match) => ({
+      quantity: Number(match[1].replace(",", ".")),
+      unit: match[2].trim().replace(/[.,;:]+$/, ""),
+    }))
+    .filter((line) => Number.isFinite(line.quantity) && line.quantity > 0 && line.unit);
+}
+
+function normalizeQuantityUnit(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[.,;:]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractReportQuantityLines(reportText: string): TaskQuantityLine[] {
+  const normalizedText = htmlToPlainText(reportText);
+  const markerMatch = normalizedText.match(/гүйцэтгэсэн\s+хэмжээ\s*:?\s*/i);
+  if (!markerMatch || typeof markerMatch.index !== "number") {
+    return [];
+  }
+
+  const quantityBlock = normalizedText
+    .slice(markerMatch.index + markerMatch[0].length)
+    .split(/\n{2,}/)[0];
+  const lines = quantityBlock
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return lines
+    .map((line) => {
+      const match = line.match(/^(?:\d+\.\s*)?(.+?)\s+(\d+(?:[.,]\d+)?)$/);
+      if (!match) {
+        return null;
+      }
+      return {
+        quantity: Number(match[2].replace(",", ".")),
+        unit: match[1].trim().replace(/[.,;:]+$/, ""),
+      };
+    })
+    .filter(
+      (line): line is TaskQuantityLine =>
+        line !== null &&
+        Number.isFinite(line.quantity) &&
+        line.quantity >= 0 &&
+        Boolean(line.unit),
+    );
+}
+
+function enrichQuantityLinesWithReportProgress(
+  plannedLines: TaskQuantityLine[],
+  reports: ReportRecord[],
+) {
+  if (!plannedLines.length) {
+    return {
+      quantityLines: plannedLines,
+      completedQuantity: 0,
+      progress: 0,
+      remainingQuantity: 0,
+    };
+  }
+
+  const completedByUnit = new Map<string, number>();
+
+  for (const report of reports) {
+    const reportLines = extractReportQuantityLines(report.report_text || report.report_summary || "");
+    for (const line of reportLines) {
+      const key = normalizeQuantityUnit(line.unit);
+      completedByUnit.set(key, (completedByUnit.get(key) ?? 0) + line.quantity);
+    }
+  }
+
+  const quantityLines = plannedLines.map((line) => {
+    const completedQuantity = completedByUnit.get(normalizeQuantityUnit(line.unit)) ?? 0;
+    const cappedCompletedQuantity = Math.min(completedQuantity, line.quantity);
+    const progress =
+      line.quantity > 0 ? (cappedCompletedQuantity / line.quantity) * 100 : 0;
+
+    return {
+      ...line,
+      completedQuantity,
+      progress,
+    };
+  });
+  const plannedQuantity = quantityLines.reduce((total, line) => total + line.quantity, 0);
+  const completedQuantity = quantityLines.reduce(
+    (total, line) => total + Math.min(line.completedQuantity ?? 0, line.quantity),
+    0,
+  );
+  const progress = quantityLines.length
+    ? Math.min(
+        100,
+        Math.round(
+          quantityLines.reduce((total, line) => total + (line.progress ?? 0), 0) /
+            quantityLines.length,
+        ),
+      )
+    : 0;
+
+  return {
+    quantityLines,
+    completedQuantity,
+    progress,
+    remainingQuantity: Math.max(plannedQuantity - completedQuantity, 0),
+  };
+}
+
+function getProjectTaskQuantitySnapshot(task: TaskRecord, reports: ReportRecord[]) {
+  const stageBucket = normalizeStageBucket(relationName(task.stage_id, ""));
+  const measurementUnit = formatMeasurementUnit(task.ops_measurement_unit_id, task.ops_measurement_unit);
+  const plannedLines = extractTaskQuantityLines(htmlToPlainText(task.description));
+
+  if (!plannedLines.length) {
+    const reportLinesByUnit = new Map<string, TaskQuantityLine>();
+    for (const report of reports) {
+      for (const line of extractReportQuantityLines(report.report_text || report.report_summary || "")) {
+        const key = normalizeQuantityUnit(line.unit);
+        const currentLine = reportLinesByUnit.get(key);
+        reportLinesByUnit.set(key, {
+          unit: line.unit,
+          quantity: Math.max(currentLine?.quantity ?? 0, line.quantity),
+        });
+      }
+    }
+    plannedLines.push(...reportLinesByUnit.values());
+  }
+
+  if (!plannedLines.length && (task.ops_planned_quantity ?? 0) > 0) {
+    plannedLines.push({
+      quantity: task.ops_planned_quantity ?? 0,
+      unit: measurementUnit,
+    });
+  }
+
+  const reportProgress = enrichQuantityLinesWithReportProgress(plannedLines, reports);
+  const quantityLines = reportProgress.quantityLines.length
+    ? reportProgress.quantityLines
+    : plannedLines;
+  const plannedQuantity = quantityLines.length
+    ? quantityLines.reduce((total, line) => total + line.quantity, 0)
+    : (task.ops_planned_quantity ?? 0);
+  const completedQuantity =
+    stageBucket === "done" && plannedQuantity > 0
+      ? plannedQuantity
+      : reportProgress.completedQuantity > 0
+        ? reportProgress.completedQuantity
+        : (task.ops_completed_quantity ?? 0);
+  const progress =
+    stageBucket === "done"
+      ? 100
+      : reportProgress.progress > 0
+        ? reportProgress.progress
+        : Math.round(task.ops_progress_percent ?? 0);
+  const quantitySummary = quantityLines.length
+    ? quantityLines
+        .map((line) => {
+          const done = stageBucket === "done" ? line.quantity : (line.completedQuantity ?? 0);
+          return `${done}/${line.quantity} ${line.unit}`.trim();
+        })
+        .join(", ")
+    : plannedQuantity > 0 && measurementUnit
+      ? `${completedQuantity}/${plannedQuantity} ${measurementUnit}`.trim()
+      : "";
+  const quantitySummaryLines = quantitySummary
+    ? quantitySummary.split(",").map((line) => line.trim()).filter(Boolean)
+    : [];
+
+  return {
+    plannedQuantity,
+    completedQuantity,
+    progress,
+    measurementUnit,
+    quantitySummary,
+    quantitySummaryLines,
+  };
 }
 
 function classifyTaskMessage(message: MailMessageRecord): TaskMessageItem["kind"] {
@@ -725,6 +1055,19 @@ function normalizeStageBucket(name: string) {
     }
   }
   return "unknown";
+}
+
+function isPastDueDate(value?: string | false | null) {
+  if (!value) {
+    return false;
+  }
+
+  const parsed = new Date(`${value}T23:59:59`);
+  if (Number.isNaN(parsed.getTime())) {
+    return false;
+  }
+
+  return parsed.getTime() < Date.now();
 }
 
 function formatDateLabel(value?: string | false) {
@@ -927,19 +1270,25 @@ async function loadUserOptions(
           "search_read",
           [[["user_id", "in", userIds]]],
           {
-            fields: ["user_id", "department_id"],
+            fields: ["user_id", "department_id", "job_id", "job_title"],
             limit: 200,
           },
           connectionOverrides,
         ).catch(() => [])
       : [];
-    const departmentByUserId = new Map(
+    const employeeByUserId = new Map(
       employeeDepartments
         .map((employee) => [
           Array.isArray(employee.user_id) ? employee.user_id[0] : null,
-          relationName(employee.department_id ?? false, ""),
+          {
+            departmentName: relationName(employee.department_id ?? false, ""),
+            jobTitle: getEmployeeJobTitle(employee),
+          },
         ] as const)
-        .filter((entry): entry is readonly [number, string] => entry[0] !== null),
+        .filter(
+          (entry): entry is readonly [number, { departmentName: string; jobTitle: string }] =>
+            entry[0] !== null,
+        ),
     );
 
     return users.map((user) => ({
@@ -947,7 +1296,8 @@ async function loadUserOptions(
       name: user.name,
       login: user.login,
       role: user.ops_user_type || "worker",
-      departmentName: departmentByUserId.get(user.id),
+      departmentName: employeeByUserId.get(user.id)?.departmentName,
+      jobTitle: employeeByUserId.get(user.id)?.jobTitle,
     }));
   } catch {
     return [] satisfies SelectOption[];
@@ -997,6 +1347,7 @@ async function loadDepartmentUserOptions(
         phone: phone || "",
         role: "department_user",
         departmentName: relationName(employee.department_id, ""),
+        jobTitle: getEmployeeJobTitle(employee),
       });
       return items;
     }, []);
@@ -1046,6 +1397,7 @@ async function loadMasterEmployeeUserOptions(
         phone: phone || "",
         role: "senior_master",
         departmentName: relationName(employee.department_id, ""),
+        jobTitle: getEmployeeJobTitle(employee),
       });
       return items;
     }, []);
@@ -1053,6 +1405,118 @@ async function loadMasterEmployeeUserOptions(
     return Array.from(new Map(options.map((option) => [option.id, option])).values());
   } catch {
     return [] satisfies SelectOption[];
+  }
+}
+
+function formatCleaningFrequency(value?: string | false) {
+  switch (value) {
+    case "daily":
+      return "Өдөр бүр";
+    case "one_time":
+      return "Нэг удаа";
+    case "weekly":
+      return "7 хоног бүр";
+    case "manual":
+      return "Гараар";
+    default:
+      return "Тодорхойгүй";
+  }
+}
+
+export async function loadRoadCleaningAreaOptions(
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const localAreas = await loadLocalRoadCleaningAreaOptions();
+  try {
+    const areas = await executeOdooKw<CleaningAreaRecord[]>(
+      "municipal.cleaning.area",
+      "search_read",
+      [[["active", "=", true]]],
+      {
+        fields: [
+          "name",
+          "street_name",
+          "start_point",
+          "end_point",
+          "area_m2",
+          "department_id",
+          "master_id",
+          "employee_id",
+          "frequency",
+          "note",
+        ],
+        order: "street_name asc, name asc",
+        limit: 300,
+      },
+      connectionOverrides,
+    );
+
+    const odooAreas = areas.map<RoadCleaningAreaOption>((area) => ({
+      id: area.id,
+      name: area.name,
+      streetName: String(area.street_name || ""),
+      startPoint: String(area.start_point || ""),
+      endPoint: String(area.end_point || ""),
+      areaM2: Number(area.area_m2 || 0),
+      departmentId: relationId(area.department_id ?? false),
+      departmentName: relationName(area.department_id ?? false, ""),
+      masterId: relationId(area.master_id ?? false),
+      masterName: relationName(area.master_id ?? false, ""),
+      employeeId: relationId(area.employee_id ?? false),
+      employeeName: relationName(area.employee_id ?? false, ""),
+      frequency: String(area.frequency || ""),
+      frequencyLabel: formatCleaningFrequency(area.frequency),
+      note: String(area.note || ""),
+    }));
+    const odooNames = new Set(odooAreas.map((area) => area.name.trim().toLowerCase()));
+    return [
+      ...odooAreas,
+      ...localAreas.filter((area) => !odooNames.has(area.name.trim().toLowerCase())),
+    ];
+  } catch {
+    return localAreas;
+  }
+}
+
+export async function loadRoadCleaningEmployeeOptions(
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  try {
+    const employees = await executeOdooKw<EmployeeUserRecord[]>(
+      "hr.employee",
+      "search_read",
+      [[["active", "=", true]]],
+      {
+        fields: [
+          "name",
+          "department_id",
+          "job_id",
+          "job_title",
+          "user_id",
+          "work_phone",
+          "mobile_phone",
+          "work_email",
+        ],
+        order: "department_id asc, name asc",
+        limit: 600,
+      },
+      connectionOverrides,
+    );
+
+    return employees.map<RoadCleaningEmployeeOption>((employee) => {
+      const phone = employee.mobile_phone || employee.work_phone || "";
+      return {
+        id: employee.id,
+        name: employee.name,
+        departmentId: relationId(employee.department_id),
+        departmentName: relationName(employee.department_id, ""),
+        jobTitle: getEmployeeJobTitle(employee),
+        phone: phone || employee.work_email || "",
+        userId: relationId(employee.user_id),
+      };
+    });
+  } catch {
+    return [] satisfies RoadCleaningEmployeeOption[];
   }
 }
 
@@ -1112,6 +1576,110 @@ export async function loadCrewTeamOptions(
       memberUserIds: team.member_user_ids ?? [],
     };
   });
+}
+
+async function loadModelFieldNames(
+  model: string,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const fields = await executeOdooKw<Record<string, unknown>>(
+    model,
+    "fields_get",
+    [],
+    {},
+    connectionOverrides,
+  );
+
+  return new Set(Object.keys(fields));
+}
+
+function keepSupportedValues(
+  values: Record<string, unknown>,
+  fieldNames: Set<string>,
+) {
+  return Object.fromEntries(
+    Object.entries(values).filter(
+      ([fieldName, value]) => fieldNames.has(fieldName) && value !== undefined,
+    ),
+  );
+}
+
+export async function createWorkspaceCrewTeam(
+  input: {
+    name: string;
+    departmentId?: number | null;
+    operationType?: string;
+    memberUserIds: number[];
+  },
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const teamName = input.name.trim();
+  const memberUserIds = Array.from(new Set(input.memberUserIds)).filter(
+    (id) => Number.isFinite(id) && id > 0,
+  );
+
+  if (!teamName) {
+    throw new Error("Багийн нэр оруулна уу.");
+  }
+  if (!memberUserIds.length) {
+    throw new Error("Багийн гишүүдээс дор хаяж нэг ажилтан сонгоно уу.");
+  }
+
+  const [fieldNames, employees] = await Promise.all([
+    loadModelFieldNames("mfo.crew.team", connectionOverrides),
+    executeOdooKw<Array<{ id: number; user_id: Relation }>>(
+      "hr.employee",
+      "search_read",
+      [[["user_id", "in", memberUserIds]]],
+      {
+        fields: ["user_id"],
+        limit: 300,
+      },
+      connectionOverrides,
+    ).catch(() => []),
+  ]);
+  const memberEmployeeIds = employees.map((employee) => employee.id);
+  const leaderEmployeeId = memberEmployeeIds[0] ?? null;
+  const memberUserCommand = [[6, 0, memberUserIds]];
+  const memberEmployeeCommand = memberEmployeeIds.length
+    ? [[6, 0, memberEmployeeIds]]
+    : undefined;
+
+  const values = keepSupportedValues(
+    {
+      name: teamName,
+      active: true,
+      department_id: input.departmentId || undefined,
+      ops_department_id: input.departmentId || undefined,
+      member_user_ids: memberUserCommand,
+      user_ids: memberUserCommand,
+      collector_user_ids: memberUserCommand,
+      member_employee_ids: memberEmployeeCommand,
+      collector_employee_ids: memberEmployeeCommand,
+      employee_ids: memberEmployeeCommand,
+      member_ids: memberEmployeeCommand,
+      loader_employee_ids: memberEmployeeCommand,
+      loader_ids: memberEmployeeCommand,
+      driver_employee_id: leaderEmployeeId || undefined,
+      mfo_driver_employee_id: leaderEmployeeId || undefined,
+      leader_employee_id: leaderEmployeeId || undefined,
+      team_leader_id: leaderEmployeeId || undefined,
+      master_employee_id: leaderEmployeeId || undefined,
+      responsible_employee_id: leaderEmployeeId || undefined,
+    },
+    fieldNames,
+  );
+
+  return {
+    id: await executeOdooKw<number>(
+      "mfo.crew.team",
+      "create",
+      [values],
+      {},
+      connectionOverrides,
+    ),
+    memberUserIds,
+  };
 }
 
 async function loadCrewTeamForRoute(
@@ -1232,6 +1800,65 @@ export async function loadWorkUnitOptions(
   } catch {
     return [];
   }
+}
+
+function slugifyUnitCode(value: string) {
+  const ascii = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  return ascii || `unit_${Date.now().toString(36)}`;
+}
+
+export async function createWorkspaceWorkUnit(
+  name: string,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const unitName = name.trim();
+  if (!unitName) {
+    throw new Error("Хэмжих нэгжийн нэр оруулна уу.");
+  }
+
+  const existing = await executeOdooKw<WorkUnitRecord[]>(
+    "ops.work.unit",
+    "search_read",
+    [[["name", "=", unitName]]],
+    {
+      fields: ["name", "code", "category", "sequence"],
+      limit: 1,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+
+  if (existing[0]) {
+    return buildWorkUnitOption(existing[0]);
+  }
+
+  const code = `${slugifyUnitCode(unitName)}_${Date.now().toString(36)}`;
+  const unitId = await executeOdooKw<number>(
+    "ops.work.unit",
+    "create",
+    [
+      {
+        name: unitName,
+        code,
+        category: "other",
+        active: true,
+      },
+    ],
+    {},
+    connectionOverrides,
+  );
+
+  return {
+    id: unitId,
+    name: unitName,
+    code,
+    category: "other",
+    categoryLabel: unitCategoryLabel("other"),
+  };
 }
 
 export async function loadWorkTypeOptions(
@@ -1760,53 +2387,90 @@ export async function loadProjectDetail(
   projectId: number,
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<ProjectDetail> {
-  const [projects, tasks, teamLeaderOptions, workUnits, workTypes] = await Promise.all([
-    executeOdooKw<ProjectRecord[]>(
+  const [projects, tasks, attachments, teamLeaderOptions, workUnits, workTypes, projectReports] = await Promise.all([
+    searchReadWithFieldFallback<ProjectRecord>(
       "project.project",
-      "search_read",
-      [[["id", "=", projectId]]],
+      [["id", "=", projectId]],
+      [
+        "name",
+        "user_id",
+        "ops_department_id",
+        "date_start",
+        "date",
+        "description",
+        "mfo_operation_type",
+        "ops_allowed_unit_ids",
+        "ops_default_unit_id",
+        "ops_measurement_unit_id",
+        "ops_allowed_unit_summary",
+      ],
       {
-        fields: [
-          "name",
-          "user_id",
-          "ops_department_id",
-          "date_start",
-          "date",
-          "mfo_operation_type",
-          "ops_allowed_unit_ids",
-          "ops_default_unit_id",
-          "ops_measurement_unit_id",
-          "ops_allowed_unit_summary",
-        ],
         limit: 1,
       },
       connectionOverrides,
     ),
-    executeOdooKw<TaskRecord[]>(
+    searchReadWithFieldFallback<TaskRecord>(
       "project.task",
-      "search_read",
-      [[["project_id", "=", projectId]]],
+      [["project_id", "=", projectId]],
+      [
+        "name",
+        "sequence",
+        "stage_id",
+        "ops_team_leader_id",
+        "ops_planned_quantity",
+        "ops_completed_quantity",
+        "ops_progress_percent",
+        "ops_measurement_unit",
+        "ops_measurement_unit_id",
+        "date_deadline",
+        "state",
+        "mfo_state",
+        "description",
+      ],
       {
-        fields: [
-          "name",
-          "sequence",
-          "stage_id",
-          "ops_team_leader_id",
-          "ops_planned_quantity",
-          "ops_completed_quantity",
-          "ops_progress_percent",
-          "ops_measurement_unit",
-          "ops_measurement_unit_id",
-          "date_deadline",
-        ],
         order: "sequence asc, create_date asc, id asc",
         limit: 120,
       },
       connectionOverrides,
     ),
+    executeOdooKw<OdooAttachmentRecord[]>(
+      "ir.attachment",
+      "search_read",
+      [[["res_model", "=", "project.project"], ["res_id", "=", projectId]]],
+      {
+        fields: ["name", "mimetype"],
+        order: "create_date desc, id desc",
+        limit: 100,
+      },
+      connectionOverrides,
+    ).catch(() => []),
     loadTeamLeaderOptions(connectionOverrides),
     loadWorkUnitOptions(connectionOverrides),
     loadWorkTypeOptions(connectionOverrides),
+    searchReadWithFieldFallback<ReportRecord>(
+      "ops.task.report",
+      [["task_id.project_id", "=", projectId]],
+      [
+        "task_id",
+        "reporter_id",
+        "report_datetime",
+        "report_text",
+        "report_summary",
+        "reported_quantity",
+        "image_count",
+        "audio_count",
+        "image_attachment_ids",
+        "audio_attachment_ids",
+        "state",
+        "task_measurement_unit_id",
+        "task_measurement_unit_code",
+      ],
+      {
+        order: "report_datetime desc, id desc",
+        limit: 300,
+      },
+      connectionOverrides,
+    ).catch(() => [] as ReportRecord[]),
   ]);
 
   const project = projects[0];
@@ -1820,12 +2484,6 @@ export async function loadProjectDetail(
     connectionOverrides,
   );
 
-  const doneCount = tasks.filter(
-    (task) => normalizeStageBucket(relationName(task.stage_id, "")) === "done",
-  ).length;
-  const reviewCount = tasks.filter(
-    (task) => normalizeStageBucket(relationName(task.stage_id, "")) === "review",
-  ).length;
   const unitMap = new Map(workUnits.map((unit) => [unit.id, unit]));
   const projectAllowedUnits = (project.ops_allowed_unit_ids ?? [])
     .map((unitId) => unitMap.get(unitId))
@@ -1840,6 +2498,7 @@ export async function loadProjectDetail(
     allCrewTeamOptions,
     departmentUserOptions,
   );
+  const departmentUserById = new Map(departmentUserOptions.map((user) => [user.id, user]));
   const allowedUnits =
     projectAllowedUnits.length > 0 ? projectAllowedUnits : workType?.allowedUnits ?? [];
   const defaultUnitId =
@@ -1851,6 +2510,68 @@ export async function loadProjectDetail(
     project.ops_allowed_unit_summary ||
     workType?.allowedUnitSummary ||
     allowedUnits.map((unit) => unit.name).join(", ");
+  const reportsByTaskId = new Map<number, ReportRecord[]>();
+  for (const report of projectReports) {
+    const reportTaskId = relationId(report.task_id ?? false);
+    if (!reportTaskId) {
+      continue;
+    }
+    const taskReports = reportsByTaskId.get(reportTaskId) ?? [];
+    taskReports.push(report);
+    reportsByTaskId.set(reportTaskId, taskReports);
+  }
+  const taskCards = tasks
+    .filter((task) => !isRoadCleaningPhotoPlaceholderLine(task.name))
+    .map((task) => {
+    const taskReports = reportsByTaskId.get(task.id) ?? [];
+    const quantitySnapshot = getProjectTaskQuantitySnapshot(task, taskReports);
+    const effectiveStage = resolveEffectiveTaskStage(
+      relationName(task.stage_id, ""),
+      quantitySnapshot.progress,
+      {
+        reportCount: taskReports.length,
+        reportStates: taskReports.map((report) => report.state),
+        mfoState: task.mfo_state,
+        taskState: task.state,
+      },
+    );
+
+    return {
+      id: task.id,
+      name: task.name,
+      href: `/tasks/${task.id}`,
+      stageLabel: effectiveStage.label,
+      stageBucket: effectiveStage.bucket,
+      isOverdue:
+        effectiveStage.bucket !== "done" &&
+        isPastDueDate(task.date_deadline),
+      progress: quantitySnapshot.progress,
+      deadline: formatDateLabel(task.date_deadline),
+      deadlineValue: task.date_deadline || "",
+      teamLeaderName: relationName(task.ops_team_leader_id, "Сонгоогүй"),
+      teamLeaderJobTitle:
+        departmentUserById.get(relationId(task.ops_team_leader_id) ?? 0)?.jobTitle ?? "",
+      plannedQuantity: quantitySnapshot.plannedQuantity,
+      completedQuantity: quantitySnapshot.completedQuantity,
+      measurementUnit: quantitySnapshot.measurementUnit,
+      quantitySummary: quantitySnapshot.quantitySummary,
+      quantitySummaryLines: quantitySnapshot.quantitySummaryLines,
+    };
+  }).sort((left, right) => {
+    const leftSequence = getRoadCleaningDefaultLineSequence(left.name);
+    const rightSequence = getRoadCleaningDefaultLineSequence(right.name);
+
+    if (leftSequence === null && rightSequence === null) {
+      return 0;
+    }
+
+    return (leftSequence ?? Number.MAX_SAFE_INTEGER) - (rightSequence ?? Number.MAX_SAFE_INTEGER);
+  });
+  const doneCount = taskCards.filter((task) => task.stageBucket === "done").length;
+  const reviewCount = taskCards.filter((task) => task.stageBucket === "review").length;
+  const completion = taskCards.length
+    ? Math.round(taskCards.reduce((total, task) => total + task.progress, 0) / taskCards.length)
+    : 0;
 
   return {
     id: project.id,
@@ -1861,26 +2582,18 @@ export async function loadProjectDetail(
     departmentId: projectDepartmentId,
     startDate: formatDateInput(project.date_start),
     deadline: formatDateInput(project.date),
-    taskCount: tasks.length,
+    description: htmlToPlainText(project.description),
+    attachments: attachments.map((attachment) => ({
+      id: attachment.id,
+      name: attachment.name || `attachment-${attachment.id}`,
+      mimetype: attachment.mimetype || "application/octet-stream",
+      url: `/api/odoo/attachments/${attachment.id}`,
+    })),
+    taskCount: taskCards.length,
     reviewCount,
     doneCount,
-    completion: tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0,
-    tasks: tasks.map((task) => ({
-      id: task.id,
-      name: task.name,
-      href: `/tasks/${task.id}`,
-      stageLabel: displayStageLabel(relationName(task.stage_id, "")),
-      stageBucket: normalizeStageBucket(relationName(task.stage_id, "")),
-      progress: Math.round(task.ops_progress_percent ?? 0),
-      deadline: formatDateLabel(task.date_deadline),
-      teamLeaderName: relationName(task.ops_team_leader_id),
-      plannedQuantity: task.ops_planned_quantity ?? 0,
-      completedQuantity: task.ops_completed_quantity ?? 0,
-      measurementUnit: formatMeasurementUnit(
-        task.ops_measurement_unit_id,
-        task.ops_measurement_unit,
-      ),
-    })),
+    completion,
+    tasks: taskCards,
     teamLeaderOptions,
     departmentUserOptions,
     crewTeamOptions,
@@ -1897,58 +2610,58 @@ export async function loadTaskDetail(
   taskId: number,
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<TaskDetail> {
-  const taskPromise = executeOdooKw<TaskRecord[]>(
+  const taskPromise = searchReadWithFieldFallback<TaskRecord>(
     "project.task",
-    "search_read",
-    [[["id", "=", taskId]]],
+    [["id", "=", taskId]],
+    [
+      "name",
+      "project_id",
+      "stage_id",
+      "ops_team_leader_id",
+      "user_ids",
+      "mfo_crew_team_id",
+      "mfo_operation_type",
+      "ops_planned_quantity",
+      "ops_completed_quantity",
+      "ops_remaining_quantity",
+      "ops_progress_percent",
+      "ops_measurement_unit",
+      "ops_measurement_unit_id",
+      "ops_measurement_unit_code",
+      "priority",
+      "date_deadline",
+      "state",
+      "description",
+      "ops_can_submit_for_review",
+      "ops_can_mark_done",
+      "ops_can_return_for_changes",
+      "ops_reports_locked",
+    ],
     {
-      fields: [
-        "name",
-        "project_id",
-        "stage_id",
-        "ops_team_leader_id",
-        "user_ids",
-        "mfo_operation_type",
-        "ops_planned_quantity",
-        "ops_completed_quantity",
-        "ops_remaining_quantity",
-        "ops_progress_percent",
-        "ops_measurement_unit",
-        "ops_measurement_unit_id",
-        "ops_measurement_unit_code",
-        "priority",
-        "date_deadline",
-        "state",
-        "description",
-        "ops_can_submit_for_review",
-        "ops_can_mark_done",
-        "ops_can_return_for_changes",
-        "ops_reports_locked",
-      ],
       limit: 1,
     },
     connectionOverrides,
   );
 
   const reportQuery = (overrides: Partial<OdooConnection>) =>
-    executeOdooKw<ReportRecord[]>(
+    searchReadWithFieldFallback<ReportRecord>(
       "ops.task.report",
-      "search_read",
-      [[["task_id", "=", taskId]]],
+      [["task_id", "=", taskId]],
+      [
+        "reporter_id",
+        "report_datetime",
+        "report_text",
+        "report_summary",
+        "reported_quantity",
+        "image_count",
+        "audio_count",
+        "image_attachment_ids",
+        "audio_attachment_ids",
+        "state",
+        "task_measurement_unit_id",
+        "task_measurement_unit_code",
+      ],
       {
-        fields: [
-          "reporter_id",
-          "report_datetime",
-          "report_text",
-          "report_summary",
-          "reported_quantity",
-          "image_count",
-          "audio_count",
-          "image_attachment_ids",
-          "audio_attachment_ids",
-          "task_measurement_unit_id",
-          "task_measurement_unit_code",
-        ],
         order: "report_datetime desc",
         limit: 60,
       },
@@ -1961,7 +2674,7 @@ export async function loadTaskDetail(
       "search_read",
       [[["model", "=", "project.task"], ["res_id", "=", taskId]]],
       {
-        fields: ["author_id", "date", "body", "message_type", "subtype_id"],
+        fields: ["author_id", "date", "body", "message_type", "subtype_id", "attachment_ids"],
         order: "date desc, id desc",
         limit: 40,
       },
@@ -1997,8 +2710,35 @@ export async function loadTaskDetail(
       messages = await messageQuery({}).catch(() => [] as MailMessageRecord[]);
     }
   }
+  const messageAttachmentIds = Array.from(
+    new Set(messages.flatMap((message) => message.attachment_ids ?? [])),
+  );
+  const messageAttachments = messageAttachmentIds.length
+    ? await executeOdooKw<OdooAttachmentRecord[]>(
+        "ir.attachment",
+        "search_read",
+        [[["id", "in", messageAttachmentIds]]],
+        {
+          fields: ["name", "mimetype"],
+          limit: messageAttachmentIds.length,
+        },
+        connectionOverrides,
+      ).catch(() => [])
+    : [];
+  const messageAttachmentById = new Map(
+    messageAttachments.map((attachment) => [
+      attachment.id,
+      {
+        id: attachment.id,
+        name: attachment.name || `attachment-${attachment.id}`,
+        mimetype: attachment.mimetype || "application/octet-stream",
+        url: `/api/odoo/attachments/${attachment.id}`,
+      },
+    ]),
+  );
 
   let assigneeNames: string[] = [];
+  let assigneeUserIds: number[] = [...(task.user_ids ?? [])];
   if (task.user_ids?.length) {
     try {
       const assignees = await executeOdooKw<UserRecord[]>(
@@ -2017,6 +2757,77 @@ export async function loadTaskDetail(
       assigneeNames = task.user_ids.map((id) => `Хэрэглэгч #${id}`);
     }
   }
+  const crewTeamId = relationId(task.mfo_crew_team_id ?? false);
+  const crewTeamName = relationName(task.mfo_crew_team_id ?? false, "");
+
+  if (crewTeamId) {
+    try {
+      const teams = await executeOdooKw<CrewTeamRecord[]>(
+        "mfo.crew.team",
+        "search_read",
+        [[["id", "=", crewTeamId]]],
+        {
+          fields: ["name", "member_user_ids"],
+          limit: 1,
+        },
+        connectionOverrides,
+      );
+      const memberUserIds = teams[0]?.member_user_ids ?? [];
+      if (memberUserIds.length) {
+        const crewUsers = await executeOdooKw<UserRecord[]>(
+          "res.users",
+          "search_read",
+          [[["id", "in", memberUserIds]]],
+          {
+            fields: ["name", "login", "ops_user_type"],
+            order: "name asc",
+            limit: memberUserIds.length,
+          },
+          connectionOverrides,
+        );
+        assigneeNames = Array.from(
+          new Set([...assigneeNames, ...crewUsers.map((user) => user.name)]),
+        );
+        assigneeUserIds = Array.from(new Set([...assigneeUserIds, ...memberUserIds]));
+      }
+    } catch (error) {
+      console.warn("Даалгаврын багийн гишүүдийг уншиж чадсангүй.", error);
+    }
+  }
+
+  const taskDescription = htmlToPlainText(task.description);
+  const quantityLines = extractTaskQuantityLines(taskDescription);
+  if (!quantityLines.length && (task.ops_planned_quantity ?? 0) > 0) {
+    quantityLines.push({
+      quantity: task.ops_planned_quantity ?? 0,
+      unit: formatMeasurementUnit(task.ops_measurement_unit_id, task.ops_measurement_unit),
+    });
+  }
+  const reportProgress = enrichQuantityLinesWithReportProgress(quantityLines, reports);
+  const effectiveQuantityLines = reportProgress.quantityLines.length
+    ? reportProgress.quantityLines
+    : quantityLines;
+  const effectivePlannedQuantity = effectiveQuantityLines.length
+    ? effectiveQuantityLines.reduce((total, line) => total + line.quantity, 0)
+    : (task.ops_planned_quantity ?? 0);
+  const effectiveCompletedQuantity =
+    reportProgress.completedQuantity > 0
+      ? reportProgress.completedQuantity
+      : (task.ops_completed_quantity ?? 0);
+  const effectiveProgress =
+    reportProgress.progress > 0
+      ? reportProgress.progress
+      : Math.round(task.ops_progress_percent ?? 0);
+  const effectiveStage = resolveEffectiveTaskStage(
+    relationName(task.stage_id, ""),
+    effectiveProgress,
+    {
+      reportCount: reports.length,
+      reportStates: reports.map((report) => report.state),
+      mfoState: task.mfo_state,
+      taskState: task.state,
+    },
+  );
 
   return {
     id: task.id,
@@ -2027,29 +2838,36 @@ export async function loadTaskDetail(
     quantityOptional:
       task.mfo_operation_type === "garbage" ||
       task.mfo_operation_type === "garbage_seasonal",
-    stageLabel: displayStageLabel(relationName(task.stage_id, "")),
-    stageBucket: normalizeStageBucket(relationName(task.stage_id, "")),
+    stageLabel: effectiveStage.label,
+    stageBucket: effectiveStage.bucket,
     state: task.state,
     deadline: formatDateLabel(task.date_deadline),
     measurementUnit: formatMeasurementUnit(
       task.ops_measurement_unit_id,
       task.ops_measurement_unit,
     ),
+    quantityLines: effectiveQuantityLines,
     measurementUnitCode: task.ops_measurement_unit_code || "",
-    plannedQuantity: task.ops_planned_quantity ?? 0,
-    completedQuantity: task.ops_completed_quantity ?? 0,
-    remainingQuantity: task.ops_remaining_quantity ?? 0,
-    progress: Math.round(task.ops_progress_percent ?? 0),
+    plannedQuantity: effectivePlannedQuantity,
+    completedQuantity: effectiveCompletedQuantity,
+    remainingQuantity:
+      reportProgress.progress > 0
+        ? reportProgress.remainingQuantity
+        : (task.ops_remaining_quantity ?? 0),
+    progress: effectiveProgress,
     teamLeaderName: relationName(task.ops_team_leader_id),
+    crewTeamName,
     assignees: assigneeNames,
+    assigneeUserIds,
     priorityLabel: priorityLabel(task.priority),
-    description: htmlToPlainText(task.description),
+    description: taskDescription,
     canSubmitForReview: Boolean(task.ops_can_submit_for_review),
     canMarkDone: Boolean(task.ops_can_mark_done),
     canReturnForChanges: Boolean(task.ops_can_return_for_changes),
     reportsLocked: Boolean(task.ops_reports_locked),
     reports: reports.map((report) => ({
       id: report.id,
+      reporterId: relationId(report.reporter_id),
       reporter: relationName(report.reporter_id),
       submittedAt: formatDateLabel(report.report_datetime),
       summary: report.report_summary || "Тайлбар оруулаагүй",
@@ -2082,8 +2900,11 @@ export async function loadTaskDetail(
         body: htmlToPlainText(message.body),
         kind: classifyTaskMessage(message),
         subtype: relationName(message.subtype_id, ""),
+        attachments: (message.attachment_ids ?? [])
+          .map((attachmentId) => messageAttachmentById.get(attachmentId))
+          .filter((attachment): attachment is WorkspaceAttachmentItem => Boolean(attachment)),
       }))
-      .filter((message) => message.body)
+      .filter((message) => message.body || message.attachments.length)
       .slice(0, 20),
   };
 }
@@ -2099,6 +2920,7 @@ export async function createWorkspaceProject(
     measurementUnitId?: number | null;
     startDate?: string;
     deadline?: string;
+    description?: string;
   },
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
@@ -2164,6 +2986,446 @@ export async function createGarbageWorkspaceProject(
     {},
     connectionOverrides,
   );
+}
+
+const ROAD_CLEANING_DEFAULT_LINES = [
+  "Явган зам цэвэрлэх",
+  "Замын нуух цэвэрлэх",
+  "Хогийн сав шалгах",
+  "Жижиг хог / шарилж / зарын хуудас цэвэрлэх",
+];
+const ROAD_CLEANING_DEFAULT_LINE_SEQUENCE = new Map(
+  ROAD_CLEANING_DEFAULT_LINES.map((lineName, index) => [
+    normalizeRoadCleaningDefaultLineName(lineName),
+    (index + 1) * 10,
+  ]),
+);
+const ROAD_CLEANING_EMPLOYEE_DEPARTMENT_KEYWORDS = [
+  "ногоон",
+  "цэвэрлэгээ үйлчилгээний хэлтэс",
+];
+const ROAD_CLEANING_EMPLOYEE_JOB_KEYWORD = "зам талбайн үйлчлэгч";
+const ROAD_CLEANING_MASTER_JOB_KEYWORDS = ["мастер", "зам талбайн ахлах мастер"];
+
+function normalizeRoadCleaningMatcherValue(value?: string | false) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function normalizeRoadCleaningDefaultLineName(value: string) {
+  return value.trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
+}
+
+function getRoadCleaningDefaultLineSequence(value: string) {
+  const normalized = normalizeRoadCleaningDefaultLineName(value);
+  return ROAD_CLEANING_DEFAULT_LINE_SEQUENCE.get(normalized) ?? null;
+}
+
+function isRoadCleaningPhotoPlaceholderLine(value: string) {
+  const normalized = normalizeRoadCleaningDefaultLineName(value);
+  return normalized.includes("өмнөх зураг") || normalized.includes("дараах зураг");
+}
+
+function isRoadCleaningServiceEmployeeRecord(employee: EmployeeUserRecord) {
+  const departmentName = normalizeRoadCleaningMatcherValue(
+    relationName(employee.department_id, ""),
+  );
+  const jobTitle = normalizeRoadCleaningMatcherValue(getEmployeeJobTitle(employee));
+
+  return (
+    ROAD_CLEANING_EMPLOYEE_DEPARTMENT_KEYWORDS.every((keyword) =>
+      departmentName.includes(keyword),
+    ) && jobTitle.includes(ROAD_CLEANING_EMPLOYEE_JOB_KEYWORD)
+  );
+}
+
+function isRoadCleaningMasterEmployeeRecord(employee: EmployeeUserRecord) {
+  const departmentName = normalizeRoadCleaningMatcherValue(
+    relationName(employee.department_id, ""),
+  );
+  const jobTitle = normalizeRoadCleaningMatcherValue(getEmployeeJobTitle(employee));
+
+  return (
+    ROAD_CLEANING_EMPLOYEE_DEPARTMENT_KEYWORDS.every((keyword) =>
+      departmentName.includes(keyword),
+    ) &&
+    ROAD_CLEANING_MASTER_JOB_KEYWORDS.some(
+      (keyword) => jobTitle === keyword || jobTitle.includes(keyword),
+    )
+  );
+}
+
+function isMissingMunicipalModelError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return (
+    message.includes("doesn't exist") ||
+    message.includes("does not exist") ||
+    message.includes("Invalid field") ||
+    message.includes("Unknown field")
+  );
+}
+
+async function loadAndValidateRoadCleaningServiceEmployee(
+  employeeId: number,
+  connectionOverrides: Partial<OdooConnection>,
+) {
+  const [employee] = await executeOdooKw<EmployeeUserRecord[]>(
+    "hr.employee",
+    "read",
+    [[employeeId]],
+    {
+      fields: ["name", "user_id", "department_id", "job_id", "job_title"],
+    },
+    connectionOverrides,
+  );
+
+  if (!employee) {
+    throw new Error("Хариуцсан ажилтан олдсонгүй.");
+  }
+
+  if (!isRoadCleaningServiceEmployeeRecord(employee)) {
+    throw new Error(
+      "Хариуцсан ажилтан нь Ногоон байгуулламж, цэвэрлэгээ үйлчилгээний хэлтсийн Зам талбайн үйлчлэгч байх ёстой.",
+    );
+  }
+
+  return employee;
+}
+
+async function loadAndValidateRoadCleaningMasterEmployee(
+  employeeId: number,
+  connectionOverrides: Partial<OdooConnection>,
+) {
+  const [employee] = await executeOdooKw<EmployeeUserRecord[]>(
+    "hr.employee",
+    "read",
+    [[employeeId]],
+    {
+      fields: ["name", "user_id", "department_id", "job_id", "job_title"],
+    },
+    connectionOverrides,
+  );
+
+  if (!employee) {
+    throw new Error("Хариуцсан мастер олдсонгүй.");
+  }
+
+  if (!isRoadCleaningMasterEmployeeRecord(employee)) {
+    throw new Error(
+      "Хариуцсан мастер нь Ногоон байгуулламж, цэвэрлэгээ үйлчилгээний хэлтсийн Мастер эсвэл Зам талбайн ахлах мастер байх ёстой.",
+    );
+  }
+
+  return employee;
+}
+
+async function ensureRoadCleaningWorkType(connectionOverrides: Partial<OdooConnection>) {
+  const existing = await executeOdooKw<Array<{ id: number }>>(
+    "municipal.work.type",
+    "search_read",
+    [[["code", "=", "road_area_cleaning"]]],
+    { fields: ["id"], limit: 1 },
+    connectionOverrides,
+  );
+
+  if (existing[0]?.id) {
+    return existing[0].id;
+  }
+
+  return executeOdooKw<number>(
+    "municipal.work.type",
+    "create",
+    [
+      {
+        name: "Зам талбайн цэвэрлэгээ",
+        code: "road_area_cleaning",
+        default_requires_photo: true,
+        default_requires_approval: true,
+        default_unit_of_measure: "мкв",
+      },
+    ],
+    {},
+    connectionOverrides,
+  );
+}
+
+async function createRoadCleaningWorkspaceProjectFallback(
+  input: {
+    areaName: string;
+    departmentId?: number | null;
+    employee: EmployeeUserRecord;
+    masterEmployee: EmployeeUserRecord | null;
+    workDate: string;
+    description: string;
+  },
+  connectionOverrides: Partial<OdooConnection>,
+) {
+  const employeeUserId = relationId(input.employee.user_id) || null;
+  const masterUserId = relationId(input.masterEmployee?.user_id ?? false) || null;
+  const departmentId =
+    input.departmentId || relationId(input.employee.department_id ?? false) || null;
+  const projectId = await createWorkspaceProject(
+    {
+      name: `${input.areaName} - ${input.employee.name} - ${input.workDate}`,
+      managerId: masterUserId,
+      departmentId,
+      startDate: input.workDate,
+      deadline: input.workDate,
+      description: input.description,
+    },
+    connectionOverrides,
+  );
+
+  for (const [index, lineName] of ROAD_CLEANING_DEFAULT_LINES.entries()) {
+    await createWorkspaceTask(
+      {
+        projectId,
+        name: lineName,
+        teamLeaderId: masterUserId,
+        assigneeUserIds: employeeUserId ? [employeeUserId] : [],
+        startDate: input.workDate,
+        deadline: input.workDate,
+        description: input.description,
+        sequence: (index + 1) * 10,
+      },
+      connectionOverrides,
+    );
+  }
+
+  return {
+    workId: projectId,
+    assignedUserIds: [employeeUserId, masterUserId].filter(
+      (userId): userId is number => Boolean(userId),
+    ),
+    message: "Зам талбайн цэвэрлэгээний ажил project/task хэлбэрээр амжилттай үүслээ.",
+  };
+}
+
+export async function createRoadCleaningArea(
+  input: {
+    name: string;
+    departmentId?: number | null;
+    employeeId?: number | null;
+    masterId?: number | null;
+  },
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const name = input.name.trim();
+  if (!name) {
+    throw new Error("Цэвэрлэх талбайн нэр оруулна уу.");
+  }
+
+  if (input.employeeId) {
+    await loadAndValidateRoadCleaningServiceEmployee(input.employeeId, connectionOverrides);
+  }
+  if (input.masterId) {
+    await loadAndValidateRoadCleaningMasterEmployee(input.masterId, connectionOverrides);
+  }
+
+  return executeOdooKw<number>(
+    "municipal.cleaning.area",
+    "create",
+    [
+      {
+        name,
+        department_id: input.departmentId || false,
+        employee_id: input.employeeId || false,
+        master_id: input.masterId || false,
+        frequency: "daily",
+        active: true,
+      },
+    ],
+    {},
+    connectionOverrides,
+  );
+}
+
+export async function createRoadCleaningWork(
+  input: {
+    cleaningAreaId?: number | null;
+    areaName?: string;
+    departmentId?: number | null;
+    employeeId: number;
+    masterId?: number | null;
+    workDate: string;
+    note?: string;
+  },
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const employee = await loadAndValidateRoadCleaningServiceEmployee(
+    input.employeeId,
+    connectionOverrides,
+  );
+
+  const localArea =
+    input.cleaningAreaId && input.cleaningAreaId < 0
+      ? await findLocalRoadCleaningAreaOption(input.cleaningAreaId)
+      : null;
+  let area: CleaningAreaRecord | null = null;
+  if (input.cleaningAreaId && input.cleaningAreaId > 0) {
+    try {
+      const [odooArea] = await executeOdooKw<CleaningAreaRecord[]>(
+        "municipal.cleaning.area",
+        "read",
+        [[input.cleaningAreaId]],
+        {
+          fields: [
+            "name",
+            "street_name",
+            "start_point",
+            "end_point",
+            "area_m2",
+            "department_id",
+            "master_id",
+            "employee_id",
+            "note",
+          ],
+        },
+        connectionOverrides,
+      );
+      area = odooArea ?? null;
+    } catch (error) {
+      if (!isMissingMunicipalModelError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  const areaName = area?.name || localArea?.name || input.areaName?.trim() || "";
+  if (!areaName) {
+    throw new Error("Цэвэрлэх талбай сонгоно уу.");
+  }
+
+  const masterEmployeeId = input.masterId || relationId(area?.master_id ?? false);
+  const masterEmployee = masterEmployeeId
+    ? await loadAndValidateRoadCleaningMasterEmployee(masterEmployeeId, connectionOverrides)
+    : null;
+
+  if (input.cleaningAreaId && input.cleaningAreaId > 0) {
+    const duplicate = await executeOdooKw<Array<{ id: number }>>(
+      "municipal.work",
+      "search_read",
+      [
+        [
+          ["cleaning_area_id", "=", input.cleaningAreaId],
+          ["responsible_employee_id", "=", input.employeeId],
+          ["work_date", "=", input.workDate],
+          ["active", "=", true],
+        ],
+      ],
+      { fields: ["id"], limit: 1 },
+      connectionOverrides,
+    );
+
+    if (duplicate[0]?.id) {
+      throw new Error("Энэ талбай дээр энэ ажилтанд тухайн өдрийн ажил аль хэдийн үүссэн байна.");
+    }
+  }
+
+  const routeText = [area?.start_point || "", area?.end_point || ""].filter(Boolean).join(" → ");
+  const description = [
+    input.note?.trim() || area?.note || localArea?.note || "",
+    area?.street_name ? `Гудамж / замын нэр: ${area.street_name}` : "",
+    area?.start_point ? `Эхлэх цэг: ${area.start_point}` : "",
+    area?.end_point ? `Дуусах цэг: ${area.end_point}` : "",
+    area?.area_m2 ? `Талбай /мкв/: ${area.area_m2}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  let workTypeId = 0;
+  try {
+    workTypeId = await ensureRoadCleaningWorkType(connectionOverrides);
+  } catch (error) {
+    if (!isMissingMunicipalModelError(error)) {
+      throw error;
+    }
+  }
+
+  if (!area || !input.cleaningAreaId || input.cleaningAreaId < 0 || !workTypeId) {
+    return createRoadCleaningWorkspaceProjectFallback(
+      {
+        areaName,
+        departmentId: input.departmentId,
+        employee,
+        masterEmployee,
+        workDate: input.workDate,
+        description,
+      },
+      connectionOverrides,
+    );
+  }
+
+  let workId: number;
+  try {
+    workId = await executeOdooKw<number>(
+      "municipal.work",
+      "create",
+      [
+        {
+          name: `${areaName} - ${employee.name} - ${input.workDate}`,
+          department_id: relationId(area.department_id ?? false) || false,
+          work_type_id: workTypeId,
+          cleaning_area_id: input.cleaningAreaId,
+          responsible_employee_id: input.employeeId,
+          responsible_user_id: relationId(employee.user_id) || false,
+          manager_id: relationId(masterEmployee?.user_id ?? false) || false,
+          master_id: masterEmployeeId || false,
+          work_date: input.workDate,
+          start_datetime: `${input.workDate} 00:00:00`,
+          deadline_datetime: `${input.workDate} 23:59:59`,
+          planned_quantity: Number(area.area_m2 || 0),
+          unit_of_measure: "мкв",
+          location_text: [area.street_name || "", routeText].filter(Boolean).join(" · "),
+          description,
+          requires_photo: true,
+          requires_approval: true,
+          state: "draft",
+        },
+      ],
+      {},
+      connectionOverrides,
+    );
+  } catch (error) {
+    if (!isMissingMunicipalModelError(error)) {
+      throw error;
+    }
+    return createRoadCleaningWorkspaceProjectFallback(
+      {
+        areaName,
+        departmentId: input.departmentId,
+        employee,
+        masterEmployee,
+        workDate: input.workDate,
+        description,
+      },
+      connectionOverrides,
+    );
+  }
+
+  await executeOdooKw<number[]>(
+    "municipal.work.line",
+    "create",
+    [
+      ROAD_CLEANING_DEFAULT_LINES.map((name, index) => ({
+        work_id: workId,
+        name,
+        sequence: (index + 1) * 10,
+      })),
+    ],
+    {},
+    connectionOverrides,
+  );
+
+  return {
+    workId,
+    assignedUserIds: [
+      relationId(employee.user_id) || null,
+      relationId(masterEmployee?.user_id ?? false) || null,
+    ].filter((userId): userId is number => Boolean(userId)),
+    message: "Зам талбайн цэвэрлэгээний ажил амжилттай үүслээ.",
+  };
 }
 
 export async function assignGarbageProjectTasksFromRouteTeam(
@@ -2241,19 +3503,21 @@ export async function createWorkspaceTask(
     measurementUnitId?: number | null;
     plannedQuantity?: number | null;
     description?: string;
+    sequence?: number | null;
   },
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
-  const values: Record<string, unknown> = {
+  const baseValues: Record<string, unknown> = {
     project_id: input.projectId,
     name: input.name.trim(),
   };
+  const optionalValues: Record<string, unknown> = {};
 
   if (input.teamLeaderId) {
-    values.ops_team_leader_id = input.teamLeaderId;
+    optionalValues.ops_team_leader_id = input.teamLeaderId;
   }
   if (input.crewTeamId) {
-    values.mfo_crew_team_id = input.crewTeamId;
+    optionalValues.mfo_crew_team_id = input.crewTeamId;
   }
   const assigneeUserIds = Array.from(
     new Set([
@@ -2262,40 +3526,103 @@ export async function createWorkspaceTask(
     ]),
   ).filter((id) => Number.isFinite(id) && id > 0);
   if (input.deadline) {
-    values.date_deadline = input.deadline;
+    optionalValues.date_deadline = input.deadline;
   }
   if (input.startDate) {
-    values.mfo_planned_start = dateInputToOdooDatetime(input.startDate);
+    optionalValues.mfo_planned_start = dateInputToOdooDatetime(input.startDate);
   }
   if (input.measurementUnitId) {
-    values.ops_measurement_unit_id = input.measurementUnitId;
+    optionalValues.ops_measurement_unit_id = input.measurementUnitId;
   }
   if (typeof input.plannedQuantity === "number" && !Number.isNaN(input.plannedQuantity)) {
-    values.ops_planned_quantity = input.plannedQuantity;
+    optionalValues.ops_planned_quantity = input.plannedQuantity;
   }
   if (input.description) {
-    values.description = input.description.trim();
+    optionalValues.description = input.description.trim();
+  }
+  if (typeof input.sequence === "number" && Number.isFinite(input.sequence)) {
+    optionalValues.sequence = input.sequence;
   }
 
   const taskId = await executeOdooKw<number>(
     "project.task",
     "create",
-    [values],
+    [baseValues],
     {},
     connectionOverrides,
   );
 
+  const writeTaskValues = async (values: Record<string, unknown>) =>
+    executeOdooKw<boolean>("project.task", "write", [[taskId], values], {}, connectionOverrides);
+
+  if (Object.keys(optionalValues).length) {
+    try {
+      await writeTaskValues(optionalValues);
+    } catch (error) {
+      console.warn("Project task optional fields write failed; retrying field by field.", error);
+      for (const [fieldName, value] of Object.entries(optionalValues)) {
+        try {
+          await writeTaskValues({ [fieldName]: value });
+        } catch (fieldError) {
+          console.warn(`Project task optional field skipped: ${fieldName}`, fieldError);
+        }
+      }
+    }
+  }
+
   if (assigneeUserIds.length) {
-    await executeOdooKw<boolean>(
-      "project.task",
-      "write",
-      [[taskId], { user_ids: [[6, 0, assigneeUserIds]] }],
-      {},
-      connectionOverrides,
-    );
+    try {
+      await writeTaskValues({ user_ids: [[6, 0, assigneeUserIds]] });
+    } catch (error) {
+      console.warn("Project task assignee write skipped.", error);
+    }
   }
 
   return taskId;
+}
+
+export async function updateWorkspaceTask(
+  taskId: number,
+  input: {
+    name?: string;
+    deadline?: string;
+  },
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const values: Record<string, unknown> = {};
+  const name = input.name?.trim();
+
+  if (name) {
+    values.name = name;
+  }
+  if (typeof input.deadline === "string") {
+    values.date_deadline = input.deadline || false;
+  }
+
+  if (!Object.keys(values).length) {
+    return false;
+  }
+
+  return executeOdooKw<boolean>(
+    "project.task",
+    "write",
+    [[taskId], values],
+    {},
+    connectionOverrides,
+  );
+}
+
+export async function deleteWorkspaceTask(
+  taskId: number,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  return executeOdooKw<boolean>(
+    "project.task",
+    "unlink",
+    [[taskId]],
+    {},
+    connectionOverrides,
+  );
 }
 
 export async function createWorkspaceTaskAttachments(
@@ -2349,6 +3676,36 @@ export async function createWorkspaceProjectAttachments(
             mimetype: attachment.mimeType || "application/octet-stream",
             res_model: "project.project",
             res_id: projectId,
+          },
+        ],
+        {},
+        connectionOverrides,
+      ),
+    ),
+  );
+}
+
+export async function createRoadCleaningWorkAttachments(
+  workId: number,
+  attachments: WorkspaceReportAttachmentInput[],
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  if (!attachments.length) {
+    return [];
+  }
+
+  return Promise.all(
+    attachments.map((attachment) =>
+      executeOdooKw<number>(
+        "ir.attachment",
+        "create",
+        [
+          {
+            name: attachment.name,
+            datas: attachment.base64,
+            mimetype: attachment.mimeType || "application/octet-stream",
+            res_model: "municipal.work",
+            res_id: workId,
           },
         ],
         {},
@@ -2437,6 +3794,175 @@ export async function createWorkspaceTaskReport(
   }
 
   return reportId;
+}
+
+export async function updateWorkspaceTaskReport(
+  reportId: number,
+  input: {
+    reportText: string;
+    reportedQuantity?: number | null;
+    imageAttachments?: WorkspaceReportAttachmentInput[];
+    audioAttachments?: WorkspaceReportAttachmentInput[];
+    removeImageAttachmentIds?: number[];
+    removeAudioAttachmentIds?: number[];
+  },
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const fieldNames = await loadModelFieldNames("ops.task.report", connectionOverrides);
+  const values: Record<string, unknown> = keepSupportedValues(
+    {
+      report_text: input.reportText.trim(),
+      report_summary: input.reportText.trim(),
+    },
+    fieldNames,
+  );
+
+  if (
+    typeof input.reportedQuantity === "number" &&
+    Number.isFinite(input.reportedQuantity) &&
+    input.reportedQuantity >= 0 &&
+    fieldNames.has("reported_quantity")
+  ) {
+    values.reported_quantity = input.reportedQuantity;
+  }
+
+  const updated = Object.keys(values).length
+    ? await executeOdooKw<boolean>(
+        "ops.task.report",
+        "write",
+        [[reportId], values],
+        {},
+        connectionOverrides,
+      )
+    : true;
+
+  const createReportAttachments = async (
+    attachments: WorkspaceReportAttachmentInput[] | undefined,
+  ) => {
+    const attachmentIds: number[] = [];
+
+    for (const attachment of attachments ?? []) {
+      const attachmentId = await executeOdooKw<number>(
+        "ir.attachment",
+        "create",
+        [
+          {
+            name: attachment.name,
+            datas: attachment.base64,
+            mimetype: attachment.mimeType || "application/octet-stream",
+            res_model: "ops.task.report",
+            res_id: reportId,
+          },
+        ],
+        {},
+        connectionOverrides,
+      );
+      attachmentIds.push(attachmentId);
+    }
+
+    return attachmentIds;
+  };
+
+  const [newImageIds, newAudioIds] = await Promise.all([
+    createReportAttachments(input.imageAttachments),
+    createReportAttachments(input.audioAttachments),
+  ]);
+  const removeImageIds = Array.from(new Set(input.removeImageAttachmentIds ?? []));
+  const removeAudioIds = Array.from(new Set(input.removeAudioAttachmentIds ?? []));
+
+  if (newImageIds.length || newAudioIds.length || removeImageIds.length || removeAudioIds.length) {
+    const currentReports = await executeOdooKw<
+      Array<{
+        image_attachment_ids?: number[];
+        audio_attachment_ids?: number[];
+      }>
+    >(
+      "ops.task.report",
+      "search_read",
+      [[["id", "=", reportId]]],
+      {
+        fields: ["image_attachment_ids", "audio_attachment_ids"],
+        limit: 1,
+      },
+      connectionOverrides,
+    );
+    const currentImageIds = currentReports[0]?.image_attachment_ids ?? [];
+    const currentAudioIds = currentReports[0]?.audio_attachment_ids ?? [];
+    const nextImageIds = Array.from(
+      new Set([
+        ...currentImageIds.filter((id) => !removeImageIds.includes(id)),
+        ...newImageIds,
+      ]),
+    );
+    const nextAudioIds = Array.from(
+      new Set([
+        ...currentAudioIds.filter((id) => !removeAudioIds.includes(id)),
+        ...newAudioIds,
+      ]),
+    );
+
+    await executeOdooKw<boolean>(
+      "ops.task.report",
+      "write",
+      [
+        [reportId],
+        {
+          image_attachment_ids: [[6, 0, nextImageIds]],
+          audio_attachment_ids: [[6, 0, nextAudioIds]],
+        },
+      ],
+      {},
+      connectionOverrides,
+    );
+  }
+
+  const detachedAttachmentIds = [...removeImageIds, ...removeAudioIds];
+  if (detachedAttachmentIds.length) {
+    try {
+      await executeOdooKw<boolean>(
+        "ir.attachment",
+        "unlink",
+        [detachedAttachmentIds],
+        {},
+        connectionOverrides,
+      );
+    } catch (error) {
+      console.warn("Report attachment files could not be deleted after detach.", error);
+    }
+  }
+
+  return updated;
+}
+
+export async function loadWorkspaceTaskReportOwner(
+  reportId: number,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const reports = await executeOdooKw<Array<{ id: number; reporter_id: Relation }>>(
+    "ops.task.report",
+    "search_read",
+    [[["id", "=", reportId]]],
+    {
+      fields: ["reporter_id"],
+      limit: 1,
+    },
+    connectionOverrides,
+  );
+
+  return relationId(reports[0]?.reporter_id ?? false);
+}
+
+export async function deleteWorkspaceTaskReport(
+  reportId: number,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  return executeOdooKw<boolean>(
+    "ops.task.report",
+    "unlink",
+    [[reportId]],
+    {},
+    connectionOverrides,
+  );
 }
 
 export async function submitWorkspaceTaskForReview(
@@ -2702,7 +4228,7 @@ export async function notifyWorkspaceTaskReportReviewers(
     const title = "Шинэ тайлан хяналт хүлээж байна";
     const projectName = relationName(task.project_id, "Ажил");
     const note = [
-      `<p><strong>${task.name}</strong> ажилбар дээр шинэ тайлан орлоо.</p>`,
+      `<p><strong>${task.name}</strong> даалгавар дээр шинэ тайлан орлоо.</p>`,
       `<p>Ажил: ${projectName}<br/>Илгээсэн: ${reporterName}</p>`,
       `<p><a href="/tasks/${task.id}">Тайлан шалгах</a></p>`,
     ].join("");
@@ -2829,12 +4355,34 @@ export async function postWorkspaceTaskMessage(
   input: {
     body: string;
     kind: "message" | "note";
+    attachments?: WorkspaceReportAttachmentInput[];
   },
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
   const body = input.body.trim();
-  if (!body) {
+  const attachments = input.attachments ?? [];
+  if (!body && !attachments.length) {
     return 0;
+  }
+  const attachmentIds: number[] = [];
+
+  for (const attachment of attachments) {
+    const attachmentId = await executeOdooKw<number>(
+      "ir.attachment",
+      "create",
+      [
+        {
+          name: attachment.name,
+          datas: attachment.base64,
+          mimetype: attachment.mimeType || "application/octet-stream",
+          res_model: "project.task",
+          res_id: taskId,
+        },
+      ],
+      {},
+      connectionOverrides,
+    );
+    attachmentIds.push(attachmentId);
   }
 
   return executeOdooKw<number>(
@@ -2842,12 +4390,37 @@ export async function postWorkspaceTaskMessage(
     "message_post",
     [[taskId]],
     {
-      body: plainTextToOdooHtml(body),
+      body: plainTextToOdooHtml(body || "Хавсралт илгээлээ."),
       message_type: "comment",
       subtype_xmlid: input.kind === "note" ? "mail.mt_note" : "mail.mt_comment",
+      ...(attachmentIds.length ? { attachment_ids: [[6, 0, attachmentIds]] } : {}),
     },
     connectionOverrides,
   );
+}
+
+export async function updateWorkspaceProjectDescription(
+  projectId: number,
+  description: string,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const value = description.trim();
+  if (!value) {
+    return false;
+  }
+
+  try {
+    return await executeOdooKw<boolean>(
+      "project.project",
+      "write",
+      [[projectId], { description: value }],
+      {},
+      connectionOverrides,
+    );
+  } catch (error) {
+    console.warn("Project description хадгалах боломжгүй байна:", error);
+    return false;
+  }
 }
 
 export async function returnWorkspaceTaskForChanges(
@@ -2855,24 +4428,108 @@ export async function returnWorkspaceTaskForChanges(
   reason: string,
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
-  const wizardId = await executeOdooKw<number>(
-    "ops.task.return.wizard",
-    "create",
-    [
-      {
-        task_id: taskId,
-        return_reason: reason.trim(),
-      },
-    ],
-    {},
-    connectionOverrides,
-  );
+  const returnReason = reason.trim() || "Засвар шаардсан тул буцаалаа.";
 
-  return executeOdooKw(
-    "ops.task.return.wizard",
-    "action_confirm_return",
-    [[wizardId]],
-    {},
-    connectionOverrides,
-  );
+  try {
+    await executeOdooKw<boolean>(
+      "project.task",
+      "action_mfo_return",
+      [[taskId], returnReason],
+      {},
+      connectionOverrides,
+    );
+  } catch (primaryError) {
+    try {
+      const wizardId = await executeOdooKw<number>(
+        "ops.task.return.wizard",
+        "create",
+        [
+          {
+            task_id: taskId,
+            return_reason: returnReason,
+          },
+        ],
+        {},
+        connectionOverrides,
+      );
+
+      await executeOdooKw(
+        "ops.task.return.wizard",
+        "action_confirm_return",
+        [[wizardId]],
+        {},
+        connectionOverrides,
+      );
+    } catch (wizardError) {
+      const taskFields = await loadModelFieldNames("project.task", connectionOverrides);
+      const taskValues = keepSupportedValues(
+        {
+          mfo_state: "returned",
+        },
+        taskFields,
+      );
+
+      if (Object.keys(taskValues).length) {
+        await executeOdooKw<boolean>(
+          "project.task",
+          "write",
+          [[taskId], taskValues],
+          {},
+          connectionOverrides,
+        );
+      } else {
+        console.warn("Task return fallback could not update project.task state.", {
+          primaryError,
+          wizardError,
+        });
+      }
+    }
+  }
+
+  try {
+    const reportIds = await executeOdooKw<number[]>(
+      "ops.task.report",
+      "search",
+      [[["task_id", "=", taskId], ["state", "in", ["draft", "submitted", "under_review"]]]],
+      {},
+      connectionOverrides,
+    );
+
+    if (reportIds.length) {
+      await executeOdooKw<boolean>(
+        "ops.task.report",
+        "write",
+        [reportIds, { rejection_reason: returnReason }],
+        {},
+        connectionOverrides,
+      );
+      await executeOdooKw<boolean>(
+        "ops.task.report",
+        "action_return",
+        [reportIds],
+        {},
+        connectionOverrides,
+      );
+    }
+  } catch (reportError) {
+    console.warn("Task reports could not be marked as returned.", reportError);
+  }
+
+  try {
+    await executeOdooKw<number>(
+      "project.task",
+      "message_post",
+      [[taskId]],
+      {
+        body: plainTextToOdooHtml(`Засвар нэхэж буцаасан шалтгаан:\n${returnReason}`),
+        message_type: "comment",
+        subtype_xmlid: "mail.mt_comment",
+      },
+      connectionOverrides,
+    );
+  } catch (messageError) {
+    console.warn("Task return message could not be posted.", messageError);
+  }
+
+  return true;
 }

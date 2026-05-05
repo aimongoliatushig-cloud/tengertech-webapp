@@ -31,6 +31,7 @@ export default async function HrLayout({ children }: { children: React.ReactNode
             canViewHr={hrProfile.isHr}
             userName={session.name}
             roleLabel={roleLabel}
+            groupFlags={session.groupFlags}
             departmentScopeName={scopedDepartmentName}
           />
         </aside>

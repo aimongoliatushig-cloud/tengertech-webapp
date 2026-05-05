@@ -76,6 +76,7 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
             />
           </aside>
 

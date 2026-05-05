@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from . import municipal_work_type
+from . import municipal_cleaning_area
 from . import municipal_work
 from . import municipal_work_report
 from . import municipal_attendance_issue

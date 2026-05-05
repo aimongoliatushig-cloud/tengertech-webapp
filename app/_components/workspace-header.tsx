@@ -1,9 +1,9 @@
 import type { CSSProperties } from "react";
 
 import Link from "next/link";
-import { Bell, CalendarDays, ChevronDown, Leaf } from "lucide-react";
+import { Bell, CalendarDays, Leaf } from "lucide-react";
 
-import { NotificationPermissionButton } from "./notification-permission-button";
+import { WorkspaceHeaderUserMenu } from "./workspace-header-user-menu";
 import styles from "./workspace-header.module.css";
 
 type WorkspaceHeaderProps = {
@@ -77,8 +77,6 @@ export function WorkspaceHeader({
           <span>{formatHeaderDate()}</span>
         </div>
 
-        <NotificationPermissionButton />
-
         <Link
           className={styles.notificationButton}
           href={notificationHref}
@@ -89,13 +87,7 @@ export function WorkspaceHeader({
           {safeNotificationCount > 0 ? <span>{safeNotificationCount}</span> : null}
         </Link>
 
-        <div className={styles.headerUser}>
-          <div>
-            <strong>{userName}</strong>
-            <small>{roleLabel}</small>
-          </div>
-          <ChevronDown aria-hidden />
-        </div>
+        <WorkspaceHeaderUserMenu userName={userName} roleLabel={roleLabel} />
       </div>
     </header>
   );

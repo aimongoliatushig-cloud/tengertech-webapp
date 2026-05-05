@@ -96,6 +96,33 @@
   border: 1px solid rgba(74, 154, 93, 0.16);
 }
 
+.exportActions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.exportButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid rgba(74, 154, 93, 0.18);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--brand-800);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.exportButton:hover {
+  border-color: rgba(74, 154, 93, 0.32);
+  background: rgba(74, 154, 93, 0.1);
+}
+
 .dateMeta span,
 .summaryCard span,
 .projectMeta span,

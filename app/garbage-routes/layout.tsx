@@ -21,6 +21,7 @@ export default async function GarbageRoutesLayout({ children }: { children: Reac
               canUseFieldConsole={hasCapability(session, "use_field_console")}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               departmentScopeName="Авто бааз, хог тээвэрлэлтийн хэлтэс"
             />
           </aside>

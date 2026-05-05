@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FileText, Paperclip } from "lucide-react";
+import { FileText, Paperclip, PlusCircle } from "lucide-react";
 
 import { SearchableSelect, type SearchableSelectOption } from "@/app/_components/searchable-select";
 import styles from "@/app/workspace.module.css";
@@ -32,6 +32,27 @@ type FilePreview = {
   url: string;
 };
 
+type QuantityRow = {
+  id: string;
+  unitId: number | null;
+  newUnitName: string;
+  isUnitConfirmed: boolean;
+};
+
+const KHOROO_OPTIONS = Array.from({ length: 25 }, (_, index) => `${index + 1}-р хороо`);
+const LOCATION_OPTIONS = [
+  "Нийтийн эзэмшлийн гудамж",
+  "Орон сууцны хороолол",
+  "Сургууль, цэцэрлэгийн орчим",
+  "Автобусны буудал",
+  "Цэцэрлэгт хүрээлэн",
+  "Тоглоомын талбай",
+  "Явган хүний зам",
+  "Ногоон байгууламж",
+  "Хогийн цэг",
+  "Бусад байршил",
+];
+
 function buildUnitOptions(units: WorkUnitOption[]): SearchableSelectOption[] {
   return units.map((unit) => ({
     id: unit.id,
@@ -45,8 +66,17 @@ function buildUserOptions(users: SelectOption[]): SearchableSelectOption[] {
   return users.map((user) => ({
     id: user.id,
     label: user.name,
-    meta: user.phone || user.login || user.departmentName || "Утас бүртгэлгүй",
-    keywords: [user.name, user.phone ?? "", user.login, user.departmentName ?? ""],
+    meta:
+      [user.jobTitle, user.departmentName, user.phone || user.login]
+        .filter(Boolean)
+        .join(" · ") || "Албан тушаал бүртгэлгүй",
+    keywords: [
+      user.name,
+      user.jobTitle ?? "",
+      user.phone ?? "",
+      user.login,
+      user.departmentName ?? "",
+    ],
   }));
 }
 
@@ -62,6 +92,15 @@ function preferCommonUnits(units: WorkUnitOption[]) {
     .sort((left, right) => left.index - right.index);
 
   return scored.length ? scored.map((item) => item.unit) : units;
+}
+
+function createQuantityRow(unitId: number | null): QuantityRow {
+  return {
+    id: `quantity-row-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    unitId,
+    newUnitName: "",
+    isUnitConfirmed: false,
+  };
 }
 
 export function ProjectTaskCreateForm({
@@ -97,6 +136,7 @@ export function ProjectTaskCreateForm({
         login: "",
         role: "department_head",
         departmentName,
+        jobTitle: "Хэлтсийн дарга",
       },
       ...departmentUserOptions,
     ];
@@ -105,29 +145,37 @@ export function ProjectTaskCreateForm({
     () => buildUserOptions(filteredDepartmentUsers),
     [filteredDepartmentUsers],
   );
-  const [selectedAssigneeId, setSelectedAssigneeId] = useState<number | null>(
-    departmentHeadId,
-  );
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState<number | null>(null);
+  const [newTaskLocation, setNewTaskLocation] = useState("");
+  const [isLocationConfirmed, setIsLocationConfirmed] = useState(false);
   const [useTeam, setUseTeam] = useState(false);
+  const [showNewTeamFields, setShowNewTeamFields] = useState(false);
+  const [teamMemberQuery, setTeamMemberQuery] = useState("");
   const [useQuantity, setUseQuantity] = useState(false);
-  const [selectedUnitOverrideId, setSelectedUnitOverrideId] = useState<number | null>(
-    defaultUnitId ?? selectableUnits[0]?.id ?? null,
-  );
+  const defaultQuantityUnitId = defaultUnitId ?? selectableUnits[0]?.id ?? null;
+  const [quantityRows, setQuantityRows] = useState<QuantityRow[]>([
+    createQuantityRow(defaultQuantityUnitId),
+  ]);
   const [filePreviews, setFilePreviews] = useState<FilePreview[]>([]);
-  const selectedUnitId = useMemo(() => {
-    if (
-      selectedUnitOverrideId &&
-      selectableUnits.some((unit) => unit.id === selectedUnitOverrideId)
-    ) {
-      return selectedUnitOverrideId;
+  const filteredTeamMembers = useMemo(() => {
+    const normalizedQuery = teamMemberQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return filteredDepartmentUsers;
     }
 
-    return defaultUnitId ?? selectableUnits[0]?.id ?? null;
-  }, [defaultUnitId, selectableUnits, selectedUnitOverrideId]);
-
-  useEffect(() => {
-    setSelectedAssigneeId(departmentHeadId);
-  }, [departmentHeadId]);
+    return filteredDepartmentUsers.filter((user) =>
+      [
+        user.name,
+        user.jobTitle ?? "",
+        user.phone ?? "",
+        user.login,
+        user.departmentName ?? "",
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [filteredDepartmentUsers, teamMemberQuery]);
 
   useEffect(
     () => () => {
@@ -159,7 +207,7 @@ export function ProjectTaskCreateForm({
       </div>
 
       <div className={styles.field}>
-        <label htmlFor="task-name">Ажилбарын нэр</label>
+        <label htmlFor="task-name">Даалгаврын нэр</label>
         <input
           id="task-name"
           name="name"
@@ -167,6 +215,56 @@ export function ProjectTaskCreateForm({
           placeholder="Жишээ: Хогийн савны тойргийн цэвэрлэгээ"
           required
         />
+      </div>
+
+      <div className={styles.fieldRow}>
+        <div className={styles.field}>
+          <label htmlFor="task-khoroo">Хороо</label>
+          <select id="task-khoroo" name="task_khoroo" defaultValue="">
+            <option value="">Хороо сонгох</option>
+            {KHOROO_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="task-location">Байршил</label>
+          <select id="task-location" name="task_location" defaultValue="">
+            <option value="">Байршил сонгох</option>
+            {LOCATION_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+          <input
+            name="new_task_location"
+            placeholder="Шинэ байршил шууд нэмэх"
+            className={styles.inlineUnitInput}
+            value={newTaskLocation}
+            onChange={(event) => {
+              setNewTaskLocation(event.target.value);
+              setIsLocationConfirmed(false);
+            }}
+          />
+          {newTaskLocation.trim() ? (
+            <button
+              type="button"
+              className={styles.inlineConfirmButton}
+              onClick={() => setIsLocationConfirmed(true)}
+            >
+              Байршил нэмэх
+            </button>
+          ) : null}
+          {isLocationConfirmed && newTaskLocation.trim() ? (
+            <small className={styles.inlineConfirmNote}>
+              “{newTaskLocation.trim()}” байршлыг энэ даалгаварт хадгална.
+            </small>
+          ) : null}
+        </div>
       </div>
 
       <div className={styles.field}>
@@ -215,6 +313,62 @@ export function ProjectTaskCreateForm({
               Сонгосон хэлтэст хамаарах баг Odoo дээр олдсонгүй.
             </small>
           ) : null}
+          <button
+            type="button"
+            className={styles.inlineLink}
+            onClick={() => setShowNewTeamFields((current) => !current)}
+          >
+            <PlusCircle aria-hidden />
+            <span>Шинэ баг нэмэх</span>
+          </button>
+          {showNewTeamFields ? (
+            <div className={styles.inlineTeamPanel}>
+              <label>
+                <span>Багийн нэр</span>
+                <input
+                  name="new_crew_team_name"
+                  placeholder="Жишээ: Ногоон байгууламжийн баг 01"
+                />
+              </label>
+              <fieldset>
+                <legend>Багийн гишүүд</legend>
+                <input
+                  type="search"
+                  value={teamMemberQuery}
+                  onChange={(event) => setTeamMemberQuery(event.target.value)}
+                  placeholder="Нэр, албан тушаал эсвэл утсаар хайх"
+                  className={styles.inlineMemberSearch}
+                />
+                <div className={styles.inlineMemberList}>
+                  {filteredTeamMembers.length ? (
+                    filteredTeamMembers.map((user) => (
+                      <label key={user.id}>
+                        <input
+                          type="checkbox"
+                          name="new_crew_member_user_ids"
+                          value={user.id}
+                        />
+                        <span>
+                          <strong>{user.name}</strong>
+                          <small>
+                            {[user.jobTitle, user.phone || user.login]
+                              .filter(Boolean)
+                              .join(" · ") || "Албан тушаал бүртгэлгүй"}
+                          </small>
+                        </span>
+                      </label>
+                    ))
+                  ) : (
+                    <p>Тохирох ажилтан олдсонгүй.</p>
+                  )}
+                </div>
+              </fieldset>
+              <p className={styles.fieldHint}>
+                Гишүүдээ сонгоод доорх “Даалгавар нэмэх” товчийг дарахад баг хамт үүсэж,
+                даалгаварт оноогдоно.
+              </p>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -240,33 +394,116 @@ export function ProjectTaskCreateForm({
       </label>
 
       {useQuantity ? (
-        <div className={styles.fieldRow}>
-          <div className={styles.field}>
-            <label htmlFor="task-planned-quantity">Тоо хэмжээ</label>
-            <input
-              id="task-planned-quantity"
-              name="planned_quantity"
-              type="number"
-              min="0.01"
-              step="0.01"
-              placeholder="12"
-            />
-          </div>
+        <div className={styles.quantityRows}>
+          {quantityRows.map((row, index) => (
+            <div className={styles.quantityRow} key={row.id}>
+              <div className={styles.field}>
+                <label htmlFor={`task-planned-quantity-${row.id}`}>
+                  Тоо хэмжээ {index + 1}
+                </label>
+                <input
+                  id={`task-planned-quantity-${row.id}`}
+                  name="planned_quantity"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="12"
+                />
+              </div>
 
-          <div className={styles.field}>
-            <label>Хэмжих нэгж</label>
-            <SearchableSelect
-              name="unit_id"
-              value={selectedUnitId}
-              options={unitOptions}
-              placeholder="Хэмжих нэгж сонгоно уу"
-              disabled={!selectableUnits.length}
-              searchPlaceholder="Нэгж хайна уу"
-              emptyStateLabel="Тохирох хэмжих нэгж алга."
-              onChange={setSelectedUnitOverrideId}
-            />
-            <small className={styles.fieldHint}>{helperText}</small>
+              <div className={styles.field}>
+                <label>Хэмжих нэгж</label>
+                <SearchableSelect
+                  name="unit_id"
+                  value={row.unitId}
+                  options={unitOptions}
+                  placeholder="Хэмжих нэгж сонгоно уу"
+                  disabled={!selectableUnits.length}
+                  searchPlaceholder="Нэгж хайна уу"
+                  emptyStateLabel="Тохирох хэмжих нэгж алга."
+                  onChange={(nextUnitId) =>
+                    setQuantityRows((currentRows) =>
+                      currentRows.map((item) =>
+                        item.id === row.id
+                          ? { ...item, unitId: nextUnitId, isUnitConfirmed: false }
+                          : item,
+                      ),
+                    )
+                  }
+                />
+                <input
+                  name="new_unit_name"
+                  placeholder="Эсвэл шинэ нэгжийн нэр оруулах"
+                  className={styles.inlineUnitInput}
+                  value={row.newUnitName}
+                  onChange={(event) =>
+                    setQuantityRows((currentRows) =>
+                      currentRows.map((item) =>
+                        item.id === row.id
+                          ? {
+                              ...item,
+                              newUnitName: event.target.value,
+                              isUnitConfirmed: false,
+                              unitId: null,
+                            }
+                          : item,
+                      ),
+                    )
+                  }
+                />
+                {row.newUnitName.trim() ? (
+                  <button
+                    type="button"
+                    className={styles.inlineConfirmButton}
+                    onClick={() =>
+                      setQuantityRows((currentRows) =>
+                        currentRows.map((item) =>
+                          item.id === row.id ? { ...item, isUnitConfirmed: true } : item,
+                        ),
+                      )
+                    }
+                  >
+                    Нэгж нэмэх
+                  </button>
+                ) : null}
+                {row.isUnitConfirmed && row.newUnitName.trim() ? (
+                  <small className={styles.inlineConfirmNote}>
+                    “{row.newUnitName.trim()}” нэгжийг энэ хэмжээний мөрөнд ашиглана.
+                  </small>
+                ) : null}
+              </div>
+
+              {quantityRows.length > 1 ? (
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() =>
+                    setQuantityRows((currentRows) =>
+                      currentRows.filter((item) => item.id !== row.id),
+                    )
+                  }
+                >
+                  Мөр хасах
+                </button>
+              ) : null}
+            </div>
+          ))}
+
+          <div className={styles.buttonRow}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() =>
+                setQuantityRows((currentRows) => [
+                  ...currentRows,
+                  createQuantityRow(defaultQuantityUnitId),
+                ])
+              }
+            >
+              Хэмжээний мөр нэмэх
+            </button>
           </div>
+          <small className={styles.fieldHint}>{helperText}</small>
         </div>
       ) : null}
 
@@ -323,7 +560,7 @@ export function ProjectTaskCreateForm({
 
       <div className={footerClassName}>
         <button type="submit" className={styles.primaryButton}>
-          Ажилбар нэмэх
+          Даалгавар нэмэх
         </button>
       </div>
     </form>

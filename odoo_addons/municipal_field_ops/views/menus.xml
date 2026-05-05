@@ -4,7 +4,7 @@
               name="Хог тээвэрлэлт"
               parent="municipal_core.menu_municipal_core_root"
               sequence="15"
-              groups="municipal_field_ops.group_mfo_manager,municipal_field_ops.group_mfo_dispatcher,municipal_field_ops.group_mfo_inspector,municipal_field_ops.group_mfo_mobile_user"/>
+              groups="municipal_field_ops.group_mfo_manager,municipal_field_ops.group_mfo_dispatcher,municipal_field_ops.group_mfo_inspector,municipal_field_ops.group_mfo_mobile_user,municipal_field_ops.group_mfo_driver,municipal_field_ops.group_mfo_loader"/>
 
     <menuitem id="menu_mfo_route"
               name="Маршрут"
@@ -32,19 +32,19 @@
               parent="menu_mfo_root"
               action="action_mfo_route_execution"
               sequence="40"
-              groups="municipal_field_ops.group_mfo_manager,municipal_field_ops.group_mfo_dispatcher,municipal_field_ops.group_mfo_inspector,municipal_field_ops.group_mfo_mobile_user"/>
+              groups="municipal_field_ops.group_mfo_manager,municipal_field_ops.group_mfo_dispatcher,municipal_field_ops.group_mfo_inspector,municipal_field_ops.group_mfo_mobile_user,municipal_field_ops.group_mfo_driver,municipal_field_ops.group_mfo_loader"/>
 
     <menuitem id="menu_mfo_issue_report"
               name="Хяналтын тайлан"
               parent="menu_mfo_root"
               action="action_mfo_issue_report"
               sequence="50"
-              groups="municipal_field_ops.group_mfo_manager,municipal_field_ops.group_mfo_dispatcher,municipal_field_ops.group_mfo_inspector,municipal_field_ops.group_mfo_mobile_user"/>
+              groups="municipal_field_ops.group_mfo_manager,municipal_field_ops.group_mfo_dispatcher,municipal_field_ops.group_mfo_inspector,municipal_field_ops.group_mfo_mobile_user,municipal_field_ops.group_mfo_driver,municipal_field_ops.group_mfo_loader"/>
 
     <menuitem id="menu_mfo_ops_task_report"
               name="Гар утасны ажлын тайлан"
               parent="menu_mfo_root"
               action="action_ops_task_report"
               sequence="60"
-              groups="municipal_field_ops.group_mfo_manager,municipal_field_ops.group_mfo_dispatcher,municipal_field_ops.group_mfo_inspector,municipal_field_ops.group_mfo_mobile_user"/>
+              groups="municipal_field_ops.group_mfo_manager,municipal_field_ops.group_mfo_dispatcher,municipal_field_ops.group_mfo_inspector,municipal_field_ops.group_mfo_mobile_user,municipal_field_ops.group_mfo_driver,municipal_field_ops.group_mfo_loader"/>
 </odoo>

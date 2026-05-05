@@ -105,6 +105,7 @@ export default async function ReportProjectPickerPage() {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
             />
@@ -113,7 +114,7 @@ export default async function ReportProjectPickerPage() {
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
               title="Тайлангийн ажил сонгох"
-              subtitle="Зөвхөн идэвхтэй ажлуудаас сонгоод дараагийн алхамд ажилбар руу орно"
+              subtitle="Зөвхөн идэвхтэй ажлуудаас сонгоод дараагийн алхамд даалгавар руу орно"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               notificationCount={activeProjects.length}
@@ -125,7 +126,7 @@ export default async function ReportProjectPickerPage() {
               <h1>Ажил сонгоно</h1>
               <p>
                 Энэ дэлгэц дээр зөвхөн идэвхтэй ажил харагдана. Ажил дээр дарахад тухайн
-                ажлын тайлан оруулах боломжтой ажилбаруудын жагсаалт руу шууд орно.
+                ажлын тайлан оруулах боломжтой даалгавруудын жагсаалт руу шууд орно.
               </p>
 
               <div className={styles.heroActions}>
@@ -141,9 +142,9 @@ export default async function ReportProjectPickerPage() {
                   <small>Тайлангийн дараагийн алхам руу орох ажил</small>
                 </article>
                 <article className={styles.heroMetaCard}>
-                  <span>Нээлттэй ажилбар</span>
+                  <span>Нээлттэй даалгавар</span>
                   <strong>{activeTasks.length}</strong>
-                  <small>Тайлан хүлээж байгаа нийт ажилбар</small>
+                  <small>Тайлан хүлээж байгаа нийт даалгавар</small>
                 </article>
               </div>
             </section>
@@ -155,7 +156,7 @@ export default async function ReportProjectPickerPage() {
                   <h2>Тайлан оруулах ажлаа сонго</h2>
                 </div>
                 <p>
-                  Нэг ажлыг сонгосны дараа зөвхөн тэр ажлын доторх ажилбарууд харагдана.
+                  Нэг ажлыг сонгосны дараа зөвхөн тэр ажлын доторх даалгаврууд харагдана.
                 </p>
               </div>
 
@@ -181,7 +182,7 @@ export default async function ReportProjectPickerPage() {
 
                         <div className={styles.pickerMetaGrid}>
                           <div className={styles.pickerStat}>
-                            <span>Нээлттэй ажилбар</span>
+                            <span>Нээлттэй даалгавар</span>
                             <strong>{project.taskCount}</strong>
                           </div>
                           <div className={styles.pickerStat}>
@@ -203,7 +204,7 @@ export default async function ReportProjectPickerPage() {
                             Явж буй {project.workingTaskCount} • Шалгагдаж буй{" "}
                             {project.reviewTaskCount} • Асуудалтай {project.problemTaskCount}
                           </span>
-                          <span className={styles.pickerCta}>Ажилбар сонгох</span>
+                          <span className={styles.pickerCta}>Даалгавар сонгох</span>
                         </div>
                       </Link>
                     );

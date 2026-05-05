@@ -39,6 +39,7 @@ export default async function DataDownloadPage() {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              groupFlags={session.groupFlags}
             />
           </aside>
 

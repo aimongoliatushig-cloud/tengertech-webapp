@@ -151,7 +151,6 @@ export function GlobalLoadingProvider({ children }: { children: ReactNode }) {
     }
 
     safetyTimerRef.current = setTimeout(() => {
-      console.error("Global loading overlay timed out.");
       setActiveCount(0);
     }, GLOBAL_LOADING_TIMEOUT_MS);
 

@@ -87,6 +87,7 @@ export function ProcurementShell({
           variant={procurementUser.flags.general_manager || procurementUser.flags.director ? "executive" : "default"}
           userName={session.name}
           roleLabel={getRoleLabel(session.role)}
+          groupFlags={session.groupFlags}
           masterMode={isMasterRole(session.role)}
           workerMode={isWorkerOnly(session)}
         />
