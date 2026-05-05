@@ -3,7 +3,7 @@
     <menuitem id="menu_municipal_core_root"
               name="Хот тохижилтын систем"
               sequence="15"
-              groups="municipal_core.group_municipal_worker,municipal_core.group_municipal_master,municipal_core.group_municipal_inspector,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_hr,municipal_core.group_municipal_admin"/>
+              groups="municipal_core.group_municipal_worker,municipal_core.group_municipal_master,municipal_core.group_municipal_inspector,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_hr,municipal_core.group_municipal_admin,municipal_core.group_municipal_it,municipal_core.group_municipal_hse,municipal_core.group_municipal_public_relations"/>
 
     <menuitem id="menu_municipal_work_root"
               name="Ажил"
@@ -15,7 +15,7 @@
               parent="menu_municipal_work_root"
               action="action_municipal_work_all"
               sequence="10"
-              groups="municipal_core.group_municipal_master,municipal_core.group_municipal_inspector,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+              groups="municipal_core.group_municipal_master,municipal_core.group_municipal_inspector,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin,municipal_core.group_municipal_it,municipal_core.group_municipal_hse,municipal_core.group_municipal_public_relations"/>
 
     <menuitem id="menu_municipal_work_my"
               name="Миний ажил"
@@ -28,7 +28,7 @@
               parent="menu_municipal_work_root"
               action="action_municipal_work_under_review"
               sequence="30"
-              groups="municipal_core.group_municipal_inspector,municipal_core.group_municipal_master,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+              groups="municipal_core.group_municipal_inspector,municipal_core.group_municipal_master,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin,municipal_core.group_municipal_hse"/>
 
     <menuitem id="menu_municipal_work_returned"
               name="Буцаагдсан"

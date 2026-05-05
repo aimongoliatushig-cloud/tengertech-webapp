@@ -2541,6 +2541,10 @@ export async function authenticateOdooUser(
   const role =
     inferredRole === "worker" && hrManager
       ? "hr_manager"
+      : inferredRole === "worker" && municipalHse
+        ? "hse_officer"
+      : inferredRole === "worker" && municipalPublicRelations
+        ? "public_relations"
       : inferredRole;
 
   return {

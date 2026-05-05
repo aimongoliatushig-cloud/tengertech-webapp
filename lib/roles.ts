@@ -138,6 +138,9 @@ export function getPrimaryAppRole(context: RoleContext): AppRole {
   if (groupFlags.mfoInspector || groupFlags.municipalInspector) {
     return "inspector";
   }
+  if (context.role === "hse_officer" || groupFlags.municipalHse) {
+    return "inspector";
+  }
   if (
     context.role === "project_manager" ||
     groupFlags.mfoManager ||
@@ -210,6 +213,8 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         groupFlags.improvementManager ||
         groupFlags.greenMaster ||
         groupFlags.improvementEngineer ||
+        context.role === "public_relations" ||
+        groupFlags.municipalPublicRelations ||
         context.role === "senior_master" ||
         context.role === "team_leader"
       );
@@ -227,6 +232,8 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         groupFlags.greenEngineer ||
         groupFlags.improvementEngineer ||
         groupFlags.improvementFieldEngineer ||
+        context.role === "public_relations" ||
+        groupFlags.municipalPublicRelations ||
         context.role === "senior_master" ||
         context.role === "team_leader"
       );
@@ -245,6 +252,8 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         groupFlags.improvementWelder ||
         groupFlags.improvementFieldEngineer ||
         groupFlags.improvementEngineer ||
+        context.role === "public_relations" ||
+        groupFlags.municipalPublicRelations ||
         context.role === "senior_master" ||
         context.role === "team_leader" ||
         context.role === "worker"
@@ -257,6 +266,8 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         context.role === "project_manager" ||
         groupFlags.municipalInspector ||
         groupFlags.municipalDepartmentHead ||
+        context.role === "hse_officer" ||
+        groupFlags.municipalHse ||
         groupFlags.mfoManager ||
         groupFlags.mfoDispatcher ||
         groupFlags.mfoInspector ||
@@ -276,6 +287,8 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         context.role === "team_leader" ||
         context.role === "worker" ||
         groupFlags.complaintManager ||
+        context.role === "public_relations" ||
+        groupFlags.municipalPublicRelations ||
         groupFlags.mfoManager ||
         groupFlags.mfoDispatcher ||
         groupFlags.mfoInspector ||
@@ -330,7 +343,9 @@ export function isWorkerOnly(context: RoleContext) {
     !groupFlags.fleetRepairManager &&
     !groupFlags.fleetRepairTeamLeader &&
     !groupFlags.hrManager &&
-    !groupFlags.municipalHr
+    !groupFlags.municipalHr &&
+    !groupFlags.municipalHse &&
+    !groupFlags.municipalPublicRelations
   );
 }
 
