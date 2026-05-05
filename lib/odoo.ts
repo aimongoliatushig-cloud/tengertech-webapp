@@ -459,6 +459,9 @@ type OdooFleetVehicleRecord = {
   id: number;
   name: string;
   license_plate?: string | false;
+  image_128?: string | false;
+  avatar_128?: string | false;
+  image_1920?: string | false;
   model_id?: OdooRelation;
   category_id?: OdooRelation;
   municipal_vehicle_type_id?: OdooRelation;
@@ -671,6 +674,7 @@ export type FleetVehicleBoardItem = {
   id: number;
   plate: string;
   name: string;
+  imageUrl: string;
   modelId: number | null;
   modelName: string;
   categoryId: number | null;
@@ -1407,6 +1411,7 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
   [
     "name",
     "license_plate",
+    "image_128",
     "model_id",
     "category_id",
     "municipal_vehicle_type_id",
@@ -1442,6 +1447,7 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
   [
     "name",
     "license_plate",
+    "avatar_128",
     "model_id",
     "category_id",
     "municipal_vehicle_type_id",
@@ -1474,6 +1480,7 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
   [
     "name",
     "license_plate",
+    "image_1920",
     "model_id",
     "category_id",
     "municipal_vehicle_type_id",
@@ -3555,6 +3562,7 @@ export async function loadFleetVehicleBoard(
         id: vehicle.id,
         plate: vehicle.license_plate || vehicle.name || `Машин #${vehicle.id}`,
         name: vehicle.name || vehicle.license_plate || `Машин #${vehicle.id}`,
+        imageUrl: imageDataUrl(vehicle.image_128 || vehicle.avatar_128 || vehicle.image_1920),
         modelId: relationId(vehicle.model_id ?? false),
         modelName: relationName(vehicle.model_id ?? false, ""),
         categoryId: relationId(vehicle.category_id ?? false),

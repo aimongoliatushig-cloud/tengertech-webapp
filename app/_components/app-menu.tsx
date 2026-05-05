@@ -21,6 +21,7 @@ import {
   PlusCircle,
   Route,
   Settings,
+  ShoppingCart,
   Truck,
   Users,
   Wrench,
@@ -369,7 +370,7 @@ export function AppMenu({
             key: "procurement",
             href: "/procurement/dashboard",
             label: "\u0425\u0443\u0434\u0430\u043B\u0434\u0430\u043D \u0430\u0432\u0430\u043B\u0442",
-            icon: FileText,
+            icon: ShoppingCart,
           },
         ]
       : []),
@@ -457,9 +458,9 @@ export function AppMenu({
       icon: Users,
     },
     {
-      key: "garbage-vehicles",
-      href: "/fleet-repair/dashboard",
-      label: "Машинууд",
+      key: "auto-base",
+      href: "/auto-base",
+      label: "Авто бааз",
       icon: Truck,
     },
     {
@@ -493,6 +494,12 @@ export function AppMenu({
       icon: MessageSquare,
     },
     {
+      key: "procurement",
+      href: "/procurement/dashboard",
+      label: "Худалдан авалт",
+      icon: ShoppingCart,
+    },
+    {
       key: "garbage-settings",
       href: "/settings/garbage-transport",
       label: "Хог тээвэрлэлтийн тохиргоо",
@@ -515,7 +522,7 @@ export function AppMenu({
     if (active === "auto-base" && item.departmentName?.includes("Авто")) {
       return true;
     }
-    if (active === "fleet-repair" && item.key === "garbage-vehicles") {
+    if (active === "fleet-repair" && item.key === "auto-base") {
       return true;
     }
     return false;
@@ -533,6 +540,7 @@ export function AppMenu({
         },
         { key: "tasks", href: "/tasks?view=today", label: "Даалгавар", icon: CalendarDays },
         { key: "garbage-routes", href: "/garbage-routes/today", label: "Маршрут", icon: Route },
+        { key: "procurement", href: "/procurement/dashboard", label: "Худалдан", icon: ShoppingCart },
         { key: "reports", href: "/reports", label: "Тайлан", icon: BarChart3 },
         {
           key: "garbage-settings",
@@ -594,6 +602,9 @@ export function AppMenu({
           { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
           { key: "projects", href: "/projects", label: "Ажлууд", icon: ListChecks },
           { key: "new-project", href: "/create", label: "Шинэ ажил", icon: PlusCircle },
+          ...(showProcurement
+            ? [{ key: "procurement", href: "/procurement/dashboard", label: "Худалдан", icon: ShoppingCart }]
+            : []),
           { key: "reports", href: canWriteReports ? "/reports" : "/review", label: "Тайлан", icon: BarChart3 },
           canViewHr
             ? { key: "hr", href: "/hr", label: "HR", icon: Users }

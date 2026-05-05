@@ -4,6 +4,7 @@ import { ProcurementShell } from "@/app/procurement/_components/procurement-shel
 import { requireSession } from "@/lib/auth";
 import {
   loadProcurementDashboard,
+  loadProcurementMeta,
   loadProcurementMe,
   loadProcurementRequests,
 } from "@/lib/procurement";
@@ -30,6 +31,7 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
   const search = getValue(params.search);
   const state = getValue(params.state);
   const flow = getValue(params.flow);
+  const departmentId = getValue(params.department_id);
   const notice = getValue(params.notice);
   const error = getValue(params.error);
   const connectionOverrides = {
@@ -37,7 +39,7 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
     password: session.password,
   };
 
-  const [procurementUser, requestBundle, dashboard] = await Promise.all([
+  const [procurementUser, requestBundle, dashboard, meta] = await Promise.all([
     loadProcurementMe(connectionOverrides),
     loadProcurementRequests(
       {
@@ -45,24 +47,31 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
         search,
         state,
         flow_type: flow,
+        department_id: departmentId,
         limit: 20,
       },
       connectionOverrides,
     ),
-    loadProcurementDashboard({}, connectionOverrides),
+    loadProcurementDashboard({ department_id: departmentId }, connectionOverrides),
+    loadProcurementMeta(connectionOverrides),
   ]);
 
+  const isExecutiveView = procurementUser.flags.director || procurementUser.flags.general_manager || procurementUser.flags.admin;
   const filteredTotal = requestBundle.items.length;
   const delayedCount = requestBundle.items.filter((item) => item.is_delayed).length;
   const pendingCount = requestBundle.items.filter((item) => !item.paid || !item.received).length;
-  const filterSummary = state || flow || search ? "Шүүлтүүр идэвхтэй" : "Бүх хүсэлт харагдаж байна";
+  const filterSummary = state || flow || search || departmentId ? "Шүүлтүүр идэвхтэй" : "Бүх хүсэлт харагдаж байна";
 
   return (
     <ProcurementShell
       session={session}
       procurementUser={procurementUser}
-      title="Миний худалдан авалт"
-      description="Төсөл, даалгавартай холбоотой худалдан авалтын хүсэлтүүдээ нэг дэлгэцээс хянаж, шат бүрийн явцыг шууд харна."
+      title={isExecutiveView ? "Бүх хэлтсийн худалдан авалт" : "Миний худалдан авалт"}
+      description={
+        isExecutiveView
+          ? "CEO болон удирдлага бүх хэлтсийн худалдан авалтын хүсэлтийг жагсаалтаар харж, хэлтэс, төлөв, дүнгээр шүүнэ."
+          : "Төсөл, даалгавартай холбоотой худалдан авалтын хүсэлтүүдээ нэг дэлгэцээс хянаж, шат бүрийн явцыг шууд харна."
+      }
       activeTab="list"
     >
       <section className={styles.overviewPanel}>
@@ -157,6 +166,17 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
               <option value="high">1 саяас дээш</option>
             </select>
           </label>
+          <label className={styles.fieldLabel}>
+            Хэлтэс
+            <select name="department_id" defaultValue={departmentId}>
+              <option value="">Бүгд</option>
+              {meta.departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className={styles.buttonRow}>
             <button type="submit" className={styles.primaryButton}>
               Шүүх
@@ -195,6 +215,7 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
                 </div>
                 <div className={styles.metaList}>
                   <span><strong>Төсөл:</strong> {item.project?.name || "Сонгоогүй"}</span>
+                  <span><strong>Хэлтэс:</strong> {item.department?.name || "Сонгоогүй"}</span>
                   <span><strong>Нярав:</strong> {item.storekeeper?.name || "Сонгоогүй"}</span>
                   <span><strong>Огноо:</strong> {item.required_date || "Товлоогүй"}</span>
                   <span><strong>Дүн:</strong> {formatMoney(item.selected_supplier_total || item.amount_approx_total)} төг</span>

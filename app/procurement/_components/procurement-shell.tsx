@@ -69,6 +69,8 @@ export function ProcurementShell({
     procurementUser.flags.contract_officer ||
     procurementUser.flags.admin;
   const showCreate = procurementUser.flags.requester || procurementUser.flags.admin;
+  const isExecutiveProcurementView =
+    procurementUser.flags.general_manager || procurementUser.flags.director || procurementUser.flags.admin;
   const viewportLabel =
     session.role === "director" || session.role === "general_manager"
       ? "Удирдлагын хяналтын харагдац"
@@ -127,7 +129,7 @@ export function ProcurementShell({
             href="/procurement"
             className={`${styles.subnavLink} ${activeTab === "list" ? styles.subnavLinkActive : ""}`}
           >
-            Миний худалдан авалт
+            {isExecutiveProcurementView ? "Бүх худалдан авалт" : "Миний худалдан авалт"}
           </Link>
           {showAssigned ? (
             <Link

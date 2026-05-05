@@ -123,6 +123,50 @@
   gap: 12px;
 }
 
+.vehicleTypeFilterBar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+}
+
+.vehicleTypeFilterButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(74, 154, 93, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--ink-800);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.vehicleTypeFilterButton span {
+  display: inline-grid;
+  min-width: 22px;
+  min-height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-900);
+  font-size: 0.76rem;
+}
+
+.vehicleTypeFilterButton:hover,
+.vehicleTypeFilterButton:focus-visible,
+.vehicleTypeFilterButtonActive {
+  border-color: rgba(31, 95, 49, 0.3);
+  background: rgba(232, 245, 236, 0.95);
+  color: var(--brand-900);
+  outline: none;
+}
+
 .vehicleFilterTab {
   position: relative;
   display: grid;
@@ -533,6 +577,27 @@
   border: 1px solid rgba(74, 154, 93, 0.14);
 }
 
+.vehicleThumb,
+.vehicleThumbPlaceholder {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--ds-radius-control);
+  border: 1px solid rgba(74, 154, 93, 0.12);
+  background: rgba(232, 245, 236, 0.9);
+}
+
+.vehicleThumb {
+  object-fit: cover;
+}
+
+.vehicleThumbPlaceholder {
+  display: grid;
+  place-items: center;
+  color: var(--brand-800);
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
 .vehicleTop {
   display: flex;
   align-items: start;
@@ -548,6 +613,19 @@
   margin: 10px 0 0;
   color: var(--ink-700);
   line-height: 1.55;
+}
+
+.vehicleTypeLine {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgba(40, 92, 62, 0.08);
+  color: var(--brand-900);
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .vehicleMetaLine {
