@@ -633,11 +633,11 @@ export async function getHrAccessProfile(session: AppSession) {
   if (ADMIN_ROLES.has(String(session.role))) {
     reasons.push("admin");
   }
-  if (HR_ROLE_KEYS.has(String(session.role))) {
-    reasons.push("session role");
+  if (HR_ROLE_KEYS.has(normalizeText(session.role))) {
+    reasons.push("session HR role");
   }
   if (session.groupFlags?.hrUser || session.groupFlags?.hrManager || session.groupFlags?.municipalHr) {
-    reasons.push("HR group flag");
+    reasons.push("Odoo HR group flag");
   }
 
   const [employee, user] = await Promise.all([readCurrentEmployee(session), readCurrentUser(session)]);
@@ -699,13 +699,21 @@ export async function getHrAccessProfile(session: AppSession) {
     departmentHeadReasons.push("department manager group name");
   }
 
-  const isHr = reasons.length > 0;
+  const sessionRole = normalizeText(session.role);
+  const isHr = Boolean(
+    ADMIN_ROLES.has(String(session.role)) ||
+      HR_ROLE_KEYS.has(sessionRole) ||
+      (sessionRole !== "worker" &&
+        (session.groupFlags?.hrUser ||
+          session.groupFlags?.hrManager ||
+          session.groupFlags?.municipalHr))
+  );
   const isDepartmentHead = !isHr && departmentHeadReasons.length > 0;
 
   return {
     isHr,
     isDepartmentHead,
-    canAccessHr: isHr || isDepartmentHead,
+    canAccessHr: isHr,
     scope: isHr ? "hr" : "department",
     reasons,
     departmentHeadReasons,
@@ -723,12 +731,12 @@ export async function getHrAccessProfile(session: AppSession) {
 
 export async function canAccessHr(session: AppSession) {
   const profile = await getHrAccessProfile(session);
-  return profile.canAccessHr;
+  return profile.isHr;
 }
 
 export async function requireHrAccess(session: AppSession) {
   const profile = await getHrAccessProfile(session);
-  if (!profile.canAccessHr) {
+  if (!profile.isHr) {
     throw new Error("HR_ACCESS_DENIED");
   }
   return profile;
@@ -743,7 +751,7 @@ export async function requireHrSpecialistAccess(session: AppSession) {
 }
 
 export async function requireDepartmentHeadTimeoffRequestAccess(session: AppSession) {
-  const profile = await requireHrAccess(session);
+  const profile = await getHrAccessProfile(session);
   if (profile.isHr || !profile.isDepartmentHead) {
     throw new Error("HR_TIMEOFF_REQUESTER_ONLY");
   }

@@ -205,7 +205,12 @@ const PROCUREMENT_API_SETUP_ERROR =
   "Худалдан авалтын API олдсонгүй. Odoo дээр municipal_procurement_workflow модуль суусан эсэх болон addons_path-д энэ repo-ийн custom_addons орсон эсэхийг шалгана уу.";
 
 export function isProcurementSetupError(error: unknown) {
-  return String(error).includes(PROCUREMENT_API_SETUP_ERROR);
+  const message = String(error);
+  return (
+    message.includes(PROCUREMENT_API_SETUP_ERROR) ||
+    message.includes("Session.authenticate() takes 3 positional arguments but 4 were given") ||
+    message.includes("mpw/api/login")
+  );
 }
 
 export function createFallbackProcurementUser(session: {
