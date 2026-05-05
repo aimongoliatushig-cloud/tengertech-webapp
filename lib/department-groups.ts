@@ -73,27 +73,6 @@ export const DEPARTMENT_GROUPS: DepartmentGroupDefinition[] = [
     icon: "💬",
     accent: "var(--tone-slate)",
   },
-  {
-    name: "HSE",
-    units: [],
-    aliases: ["HSE", "Safety"],
-    icon: "HSE",
-    accent: "var(--tone-amber)",
-  },
-  {
-    name: "IT",
-    units: [],
-    aliases: ["IT", "ICT", "Technology"],
-    icon: "IT",
-    accent: "var(--tone-blue)",
-  },
-  {
-    name: "PR",
-    units: [],
-    aliases: ["PR", "Public relations"],
-    icon: "PR",
-    accent: "var(--tone-teal)",
-  },
 ];
 
 export const CANONICAL_DEPARTMENT_NAMES = DEPARTMENT_GROUPS.map((group) => group.name);
@@ -143,15 +122,6 @@ export function normalizeOrganizationUnitName(departmentName?: string | null) {
 
   if (normalized.includes("hr") || normalized.includes("human resource")) {
     return DEPARTMENT_GROUPS.find((group) => group.aliases.includes("HR"))?.name ?? "";
-  }
-  if (normalized.includes("hse") || normalized.includes("safety")) {
-    return DEPARTMENT_GROUPS.find((group) => group.aliases.includes("HSE"))?.name ?? "";
-  }
-  if (/\b(it|ict)\b/.test(normalized) || normalized.includes("technology")) {
-    return DEPARTMENT_GROUPS.find((group) => group.aliases.includes("IT"))?.name ?? "";
-  }
-  if (/\bpr\b/.test(normalized) || normalized.includes("public relation")) {
-    return DEPARTMENT_GROUPS.find((group) => group.aliases.includes("PR"))?.name ?? "";
   }
   return "";
 }
