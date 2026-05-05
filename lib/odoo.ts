@@ -125,6 +125,7 @@ type OdooEmployeeRecord = {
   parent_id?: OdooRelation;
   contract_date_start?: string | false;
   contract_date_end?: string | false;
+  birthday?: string | false;
   sex?: string | false;
   certificate?: string | false;
   x_mn_employee_code?: string | false;
@@ -437,6 +438,8 @@ export type HrEmployeeDirectoryItem = {
   managerName: string;
   startDate: string;
   contractEndDate: string;
+  birthDate: string;
+  genderKey: string;
   genderLabel: string;
   educationLevel: string;
   missingDocumentCount: number;
@@ -1329,6 +1332,7 @@ const HR_EMPLOYEE_FIELD_VARIANTS: string[][] = [
     "parent_id",
     "contract_date_start",
     "contract_date_end",
+    "birthday",
     "sex",
     "certificate",
     "image_128",
@@ -2779,6 +2783,8 @@ export async function loadHrEmployeeDirectory(
         managerName: relationName(employee.parent_id ?? false, ""),
         startDate: employee.contract_date_start || "",
         contractEndDate: employee.contract_date_end || "",
+        birthDate: employee.birthday || "",
+        genderKey: employee.sex || "",
         genderLabel: resolveHrGenderLabel(employee.sex),
         educationLevel: employee.certificate || "",
         missingDocumentCount: employee.x_mn_missing_document_count ?? 0,

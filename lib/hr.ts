@@ -78,9 +78,11 @@ type HrEmployeeSingleSearchRecord = {
   user_id?: OdooRelation;
   image_128?: string | false;
   avatar_128?: string | false;
+  image_1920?: string | false;
   parent_id?: OdooRelation;
   contract_date_start?: string | false;
   contract_date_end?: string | false;
+  birthday?: string | false;
   sex?: string | false;
   certificate?: string | false;
   x_mn_employee_code?: string | false;
@@ -112,6 +114,8 @@ type HrEmployeeDirectoryApiRecord = {
   managerName?: string;
   startDate?: string;
   contractEndDate?: string;
+  birthDate?: string;
+  genderKey?: string;
   genderLabel?: string;
   educationLevel?: string;
   missingDocumentCount?: number;
@@ -457,6 +461,8 @@ function mapHrEmployeeDirectoryApiRecord(record: HrEmployeeDirectoryApiRecord): 
     managerName: record.managerName || "",
     startDate: record.startDate || "",
     contractEndDate: record.contractEndDate || "",
+    birthDate: record.birthDate || "",
+    genderKey: record.genderKey || "",
     genderLabel: record.genderLabel || "",
     educationLevel: record.educationLevel || "",
     missingDocumentCount: Number(record.missingDocumentCount || 0),
@@ -511,7 +517,7 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     mobilePhone: record.mobile_phone || "",
     workEmail: record.work_email || "",
     userName: getRelationName(record.user_id),
-    photoUrl: imageDataUrlFromBase64(record.image_128 || record.avatar_128),
+    photoUrl: imageDataUrlFromBase64(record.image_128 || record.avatar_128 || record.image_1920),
     employeeCode: record.x_mn_employee_code || `EMP-${String(record.id).padStart(5, "0")}`,
     gradeRank: record.x_mn_grade_rank || "",
     statusKey: status.key,
@@ -519,6 +525,8 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     managerName: getRelationName(record.parent_id),
     startDate: record.contract_date_start || "",
     contractEndDate: record.contract_date_end || "",
+    birthDate: record.birthday || "",
+    genderKey: record.sex || "",
     genderLabel: resolveDirectEmployeeGenderLabel(record.sex),
     educationLevel: record.certificate || "",
     missingDocumentCount: Number(record.x_mn_missing_document_count || 0),
@@ -797,10 +805,6 @@ export async function getEmployees(session: AppSession) {
 export async function getEmployee(session: AppSession, id: number) {
   const employees = await getEmployees(session);
   const listedEmployee = employees.find((employee) => employee.id === id);
-  if (listedEmployee) {
-    return listedEmployee;
-  }
-
   const profile = await requireHrAccess(session);
   const desiredFields = [
     "name",
@@ -814,9 +818,11 @@ export async function getEmployee(session: AppSession, id: number) {
     "user_id",
     "image_128",
     "avatar_128",
+    "image_1920",
     "parent_id",
     "contract_date_start",
     "contract_date_end",
+    "birthday",
     "sex",
     "certificate",
     "x_mn_employee_code",
@@ -845,10 +851,24 @@ export async function getEmployee(session: AppSession, id: number) {
   });
   const employee = records[0] ? mapHrEmployeeSingleSearchRecord(records[0]) : null;
   if (!employee) {
-    return null;
+    return listedEmployee ?? null;
   }
 
-  return scopeEmployeesForProfile([employee], profile)[0] ?? null;
+  const scopedEmployee = scopeEmployeesForProfile([employee], profile)[0];
+  if (!scopedEmployee) {
+    return listedEmployee ?? null;
+  }
+
+  return listedEmployee
+    ? {
+        ...scopedEmployee,
+        ...listedEmployee,
+        birthDate: scopedEmployee.birthDate || listedEmployee.birthDate,
+        genderKey: scopedEmployee.genderKey || listedEmployee.genderKey,
+        genderLabel: scopedEmployee.genderLabel || listedEmployee.genderLabel,
+        photoUrl: scopedEmployee.photoUrl || listedEmployee.photoUrl,
+      }
+    : scopedEmployee;
 }
 
 export async function getDepartments(session: AppSession): Promise<HrOption[]> {
@@ -978,15 +998,42 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
 export async function updateEmployee(
   session: AppSession,
   id: number,
-  data: Partial<HrEmployeeCreateInput & Pick<HrEmployeeDirectoryItem, "workPhone" | "mobilePhone" | "workEmail">>,
+  data: Partial<
+    HrEmployeeCreateInput &
+      Pick<
+        HrEmployeeDirectoryItem,
+        "name" | "employeeCode" | "workPhone" | "mobilePhone" | "workEmail" | "birthDate" | "genderKey"
+      >
+  >,
 ) {
-  const desiredFields = ["work_phone", "mobile_phone", "work_email", "department_id", "job_id", "job_title", "parent_id", "active"];
+  const desiredFields = [
+    "name",
+    "work_phone",
+    "mobile_phone",
+    "work_email",
+    "department_id",
+    "job_id",
+    "job_title",
+    "parent_id",
+    "x_mn_employee_code",
+    "birthday",
+    "sex",
+    "active",
+  ];
   const fields = new Set(await getAvailableFields("hr.employee", desiredFields, session));
   const values: Record<string, unknown> = {};
 
+  if (fields.has("name") && data.name !== undefined) values.name = data.name?.trim() || false;
+  if (fields.has("x_mn_employee_code") && data.employeeCode !== undefined) {
+    values.x_mn_employee_code = data.employeeCode?.trim() || false;
+  }
   if (fields.has("work_phone") && data.workPhone !== undefined) values.work_phone = data.workPhone || false;
   if (fields.has("mobile_phone") && data.mobilePhone !== undefined) values.mobile_phone = data.mobilePhone || false;
   if (fields.has("work_email") && data.workEmail !== undefined) values.work_email = data.workEmail || false;
+  if (fields.has("birthday") && data.birthDate !== undefined) values.birthday = data.birthDate || false;
+  if (fields.has("sex") && (data.genderKey !== undefined || data.gender !== undefined)) {
+    values.sex = data.genderKey || data.gender || false;
+  }
   if (fields.has("department_id") && data.departmentId) values.department_id = data.departmentId;
   if (fields.has("job_id") && data.jobId) values.job_id = data.jobId;
   if (fields.has("job_title") && data.jobTitle !== undefined) values.job_title = data.jobTitle || false;

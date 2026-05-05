@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, FilePlus2, Pencil, Search, Trash2 } from "lucide-react";
@@ -353,13 +354,87 @@ const detailTabs = [
   "Түүх / өөрчлөлт",
 ];
 
-export function EmployeeDetailTabs({ employee }: { employee: HrEmployeeDirectoryItem }) {
+function employeeGenderValue(employee: HrEmployeeDirectoryItem) {
+  if (employee.genderKey) {
+    return employee.genderKey;
+  }
+  if (employee.genderLabel === "Эрэгтэй") {
+    return "male";
+  }
+  if (employee.genderLabel === "Эмэгтэй") {
+    return "female";
+  }
+  if (employee.genderLabel === "Бусад") {
+    return "other";
+  }
+  return "";
+}
+
+export function EmployeeDetailTabs({
+  employee,
+  canEdit = false,
+}: {
+  employee: HrEmployeeDirectoryItem;
+  canEdit?: boolean;
+}) {
   const [tab, setTab] = useState(detailTabs[0]);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [editing, setEditing] = useState(canEdit && searchParams.get("edit") === "profile");
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messageIsError, setMessageIsError] = useState(false);
+  const initials = employee.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toLocaleUpperCase("mn-MN");
+
+  async function submitProfileEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    setPending(true);
+    setMessage("");
+    setMessageIsError(false);
+
+    try {
+      const response = await fetch(`/api/hr/employees/${employee.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: String(formData.get("name") || ""),
+          employeeCode: String(formData.get("employeeCode") || ""),
+          genderKey: String(formData.get("genderKey") || ""),
+          birthDate: String(formData.get("birthDate") || ""),
+          workPhone: String(formData.get("workPhone") || ""),
+          mobilePhone: String(formData.get("mobilePhone") || ""),
+          workEmail: String(formData.get("workEmail") || ""),
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error || "Ажилтны мэдээлэл хадгалахад алдаа гарлаа.");
+      }
+      setMessage("Ажилтны мэдээлэл хадгалагдлаа.");
+      setEditing(false);
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Ажилтны мэдээлэл хадгалахад алдаа гарлаа.");
+      setMessageIsError(true);
+    } finally {
+      setPending(false);
+    }
+  }
+
   const tabContent: Record<string, { label: string; value: string }[]> = {
     "Үндсэн мэдээлэл": [
       { label: "Нэр", value: employee.name },
       { label: "Ажилтны код", value: employee.employeeCode },
       { label: "Хүйс", value: employee.genderLabel },
+      { label: "Төрсөн огноо", value: employee.birthDate },
       { label: "Утас", value: employee.workPhone || employee.mobilePhone },
       { label: "И-мэйл", value: employee.workEmail },
       { label: "Төлөв", value: employee.statusLabel },
@@ -401,6 +476,38 @@ export function EmployeeDetailTabs({ employee }: { employee: HrEmployeeDirectory
 
   return (
     <section id="profile-info" className={styles.panel}>
+      <div className={styles.employeeProfileSummary}>
+        <div className={styles.employeePhotoFrame}>
+          {employee.photoUrl ? (
+            <Image
+              src={employee.photoUrl}
+              alt={`${employee.name} зураг`}
+              width={112}
+              height={112}
+              className={styles.employeePhoto}
+              unoptimized
+            />
+          ) : (
+            <span className={styles.employeePhotoPlaceholder}>{initials || "А"}</span>
+          )}
+        </div>
+        <div className={styles.employeeProfileText}>
+          <span className={styles.eyebrow}>Ажилтны зураг</span>
+          <h2>{employee.name}</h2>
+          <p>
+            {employee.departmentName || "Хэлтэс бүртгээгүй"} · {employee.jobTitle || "Албан тушаал бүртгээгүй"}
+          </p>
+          {canEdit ? (
+            <div className={styles.profileEditActions}>
+              <button type="button" className={styles.secondaryButton} onClick={() => setEditing((value) => !value)}>
+                <Pencil aria-hidden />
+                <span>{editing ? "Болих" : "Засах"}</span>
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
       <div className={styles.tabList}>
         {detailTabs.map((item) => (
           <button
@@ -414,11 +521,43 @@ export function EmployeeDetailTabs({ employee }: { employee: HrEmployeeDirectory
         ))}
       </div>
 
-      <div className={styles.detailGrid}>
-        {(tabContent[tab] ?? []).map((item) => (
-          <Info key={item.label} label={item.label} value={item.value} />
-        ))}
-      </div>
+      {message ? <p className={messageIsError ? styles.errorText : styles.successText}>{message}</p> : null}
+
+      {canEdit && editing && tab === detailTabs[0] ? (
+        <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+          <div className={styles.formGrid}>
+            <Field name="name" label="Нэр" defaultValue={employee.name} required />
+            <Field name="employeeCode" label="Ажилтны код" defaultValue={employee.employeeCode} />
+            <label className={styles.field}>
+              <span>Хүйс</span>
+              <select name="genderKey" defaultValue={employeeGenderValue(employee)}>
+                <option value="">Сонгох</option>
+                <option value="male">Эрэгтэй</option>
+                <option value="female">Эмэгтэй</option>
+                <option value="other">Бусад</option>
+              </select>
+            </label>
+            <Field name="birthDate" label="Төрсөн огноо" type="date" defaultValue={employee.birthDate} />
+            <Field name="workPhone" label="Ажлын утас" defaultValue={employee.workPhone} />
+            <Field name="mobilePhone" label="Гар утас" defaultValue={employee.mobilePhone} />
+            <Field name="workEmail" label="И-мэйл" type="email" defaultValue={employee.workEmail} />
+          </div>
+          <div className={styles.profileEditActions}>
+            <button className={styles.primaryButton} disabled={pending}>
+              {pending ? "Хадгалж байна..." : "Хадгалах"}
+            </button>
+            <button type="button" className={styles.secondaryButton} onClick={() => setEditing(false)} disabled={pending}>
+              Болих
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className={styles.detailGrid}>
+          {(tabContent[tab] ?? []).map((item) => (
+            <Info key={item.label} label={item.label} value={item.value} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

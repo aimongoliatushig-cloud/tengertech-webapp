@@ -56,6 +56,23 @@ const EMPTY_HR_ATTENDANCE_SUMMARY: HrDailyAttendanceSummary = {
   source: "empty",
 };
 
+const EMPTY_MUNICIPAL_SNAPSHOT: Awaited<ReturnType<typeof loadMunicipalSnapshot>> = {
+  source: "live",
+  generatedAt: "",
+  metrics: [],
+  qualityMetrics: [],
+  departments: [],
+  projects: [],
+  taskDirectory: [],
+  liveTasks: [],
+  reviewQueue: [],
+  qualityAlerts: [],
+  reports: [],
+  teamLeaders: [],
+  odooBaseUrl: "",
+  totalTasks: 0,
+};
+
 async function loadScopedHrAttendanceSummary(
   scopedDepartmentName: string,
   connectionOverrides: ConnectionOverrides,
@@ -97,13 +114,20 @@ export default async function Home() {
   };
   const workerMode = isWorkerOnly(session);
   const canViewGeneralDashboard = canAccessGeneralDashboard(session);
+  const generalDashboardMode = canViewGeneralDashboard;
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const canViewHrPromise = canAccessHr(session).catch((error) => {
     console.warn("HR access could not be resolved for dashboard menu:", error);
     return false;
   });
 
-  const snapshotPromise = loadMunicipalSnapshot(connectionOverrides);
+  const snapshotPromise = loadMunicipalSnapshot(
+    connectionOverrides,
+    generalDashboardMode ? { allowFallback: false } : {},
+  ).catch((error) => {
+    console.warn("Municipal snapshot could not be loaded for dashboard:", error);
+    return EMPTY_MUNICIPAL_SNAPSHOT;
+  });
   const departmentScopeNamePromise = loadSessionDepartmentName(session);
   const weatherPromise = loadUlaanbaatarWeather();
   const todayAssignmentsPromise =
@@ -122,6 +146,9 @@ export default async function Home() {
       : Promise.resolve([]);
 
   let scopedDepartmentName = await departmentScopeNamePromise;
+  if (generalDashboardMode) {
+    scopedDepartmentName = null;
+  }
   const fleetBoardPromise = workerMode
     ? Promise.resolve({
         fleetBoard: EMPTY_FLEET_BOARD,

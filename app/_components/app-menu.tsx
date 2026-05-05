@@ -92,6 +92,28 @@ type MenuItem = {
   departmentName?: string;
 };
 
+const HIDDEN_GLOBAL_MENU_KEYS = new Set([
+  "fleet-repair",
+  "complaints",
+  "garbage-complaints",
+  "data-download",
+  "procurement",
+]);
+
+const HIDDEN_DEPARTMENT_MENU_NAMES = new Set([
+  "Хүний нөөц",
+  "Дотоод хяналт",
+  "Иргэдийн санал, гомдол",
+]);
+
+function isHiddenDepartmentMenu(group: DepartmentGroupDefinition) {
+  return HIDDEN_DEPARTMENT_MENU_NAMES.has(group.name);
+}
+
+function isHiddenMenuItem(item: MenuItem) {
+  return HIDDEN_GLOBAL_MENU_KEYS.has(item.key);
+}
+
 function getInitials(userName: string) {
   const parts = userName
     .split(/\s+/)
@@ -251,13 +273,15 @@ export function AppMenu({
       })
     : DEPARTMENT_GROUPS;
 
-  const departmentItems: MenuItem[] = visibleDepartmentGroups.map((group, index) => ({
-    key: `department-${index}`,
-    href: `/projects?department=${encodeURIComponent(group.name)}`,
-    label: group.name,
-    icon: getDepartmentMenuIcon(group),
-    departmentName: group.name,
-  }));
+  const departmentItems: MenuItem[] = visibleDepartmentGroups
+    .filter((group) => !isHiddenDepartmentMenu(group))
+    .map((group, index) => ({
+      key: `department-${index}`,
+      href: `/projects?department=${encodeURIComponent(group.name)}`,
+      label: group.name,
+      icon: getDepartmentMenuIcon(group),
+      departmentName: group.name,
+    }));
 
   const hrItems: MenuItem[] = canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr || roleLooksHr
     ? [
@@ -322,7 +346,7 @@ export function AppMenu({
     {
       key: "dashboard",
       href: "/",
-      label: "\u0410\u0436\u043B\u044B\u043D \u0441\u0430\u043C\u0431\u0430\u0440",
+      label: "Хяналтын самбар",
       icon: LayoutDashboard,
     },
     ...hrItems,
@@ -388,6 +412,9 @@ export function AppMenu({
       badge: notificationCount,
     },
   ].filter((item) => {
+    if (isHiddenMenuItem(item)) {
+      return false;
+    }
     if (hrFocusedMode) {
       return ["hr", "profile"].includes(item.key);
     }
@@ -507,7 +534,9 @@ export function AppMenu({
     },
   ];
 
-  const items = isGarbageDepartmentHead ? garbageDepartmentItems : defaultItems;
+  const items = (isGarbageDepartmentHead ? garbageDepartmentItems : defaultItems).filter(
+    (item) => !isHiddenMenuItem(item),
+  );
 
   function isItemActive(item: MenuItem) {
     if (item.key === active) {
@@ -529,7 +558,7 @@ export function AppMenu({
   }
 
   const activeItem = items.find(isItemActive) ?? items[0];
-  const mobileDockItems: MenuItem[] = isGarbageDepartmentHead
+  const mobileDockItems: MenuItem[] = (isGarbageDepartmentHead
     ? [
         { key: "dashboard", href: "/", label: "Самбар", icon: LayoutDashboard },
         {
@@ -609,7 +638,7 @@ export function AppMenu({
           canViewHr
             ? { key: "hr", href: "/hr", label: "HR", icon: Users }
             : { key: "chat", href: "/chat", label: "Чат", icon: MessageSquare },
-        ];
+        ]).filter((item) => !isHiddenMenuItem(item));
 
   const menuList = (
     <nav className={styles.menuList} aria-label="Үндсэн цэс">

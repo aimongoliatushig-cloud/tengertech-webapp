@@ -20,6 +20,7 @@ import {
   UserCheck,
   UsersRound,
   Wind,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -83,8 +84,18 @@ const STAT_TONE: Record<StatusTone, string> = {
   muted: "bg-slate-100 text-slate-600",
 };
 
+const GENERAL_DASHBOARD_ALLOWED_LOGINS = new Set(["99996632", "80007504"]);
+
 function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function normalizeLoginDigits(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+function canViewGeneralDashboard(session: AppSession) {
+  return GENERAL_DASHBOARD_ALLOWED_LOGINS.has(normalizeLoginDigits(session.login));
 }
 
 function percent(value: number, total: number) {
@@ -1166,6 +1177,482 @@ function RightPanel({
   );
 }
 
+type ExecutiveMetric = {
+  label: string;
+  value: string;
+  note: string;
+  progress: number;
+  icon: LucideIcon;
+  tone: "green" | "orange" | "blue" | "purple" | "red";
+};
+
+type ExecutiveDepartmentMetric = {
+  name: string;
+  progress: number;
+  total: number;
+  working: number;
+  review: number;
+  risky: number;
+  icon: LucideIcon;
+  tone: ExecutiveMetric["tone"];
+};
+
+const EXECUTIVE_TONE_COLORS: Record<ExecutiveMetric["tone"], string> = {
+  green: "#078251",
+  orange: "#f58a07",
+  blue: "#1677d2",
+  purple: "#453f99",
+  red: "#ef4444",
+};
+
+function formatExecutiveDate() {
+  return new Intl.DateTimeFormat("mn-MN", {
+    timeZone: "Asia/Ulaanbaatar",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "long",
+  }).format(new Date());
+}
+
+function formatExecutiveTime() {
+  return new Intl.DateTimeFormat("mn-MN", {
+    timeZone: "Asia/Ulaanbaatar",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date());
+}
+
+function ExecutiveRing({
+  value,
+  tone,
+  size = "sm",
+}: {
+  value: number;
+  tone: ExecutiveMetric["tone"];
+  size?: "sm" | "lg";
+}) {
+  const color = EXECUTIVE_TONE_COLORS[tone];
+  return (
+    <span
+      className={cn(
+        dashboardStyles.executiveRing,
+        size === "lg" && dashboardStyles.executiveRingLarge,
+      )}
+      style={{
+        background: `conic-gradient(${color} ${clampPercent(value) * 3.6}deg, #e5e7eb 0deg)`,
+      }}
+    >
+      <span>
+        {size === "lg" ? (
+          <>
+            <strong>{clampPercent(value)}%</strong>
+            <small>Гүйцэтгэл</small>
+          </>
+        ) : null}
+      </span>
+    </span>
+  );
+}
+
+function ExecutiveMetricCard({ metric }: { metric: ExecutiveMetric }) {
+  const Icon = metric.icon;
+  const color = EXECUTIVE_TONE_COLORS[metric.tone];
+
+  return (
+    <Card className={dashboardStyles.executiveMetricCard}>
+      <div className={dashboardStyles.executiveMetricHeader}>
+        <span
+          className={dashboardStyles.executiveMetricIcon}
+          style={{ color, backgroundColor: `${color}16` }}
+        >
+          <Icon />
+        </span>
+        <strong>{metric.label}</strong>
+      </div>
+      <div className={dashboardStyles.executiveMetricBody}>
+        <div>
+          <span className={dashboardStyles.executiveMetricValue}>{metric.value}</span>
+          <small className={dashboardStyles.executiveMetricNote}>{metric.note}</small>
+        </div>
+        {metric.progress > 0 && metric.progress < 100 ? (
+          <ExecutiveRing value={metric.progress} tone={metric.tone} />
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
+function ExecutiveDepartmentCard({ department }: { department: ExecutiveDepartmentMetric }) {
+  const Icon = department.icon;
+  const color = EXECUTIVE_TONE_COLORS[department.tone];
+
+  return (
+    <Card className={dashboardStyles.executiveDepartmentCard} style={{ borderColor: `${color}2e` }}>
+      <div className={dashboardStyles.executiveDepartmentHeader}>
+        <span className={dashboardStyles.executiveDepartmentIcon} style={{ color }}>
+          <Icon />
+        </span>
+        <strong>{department.name}</strong>
+      </div>
+      <ExecutiveRing value={department.progress} tone={department.tone} size="lg" />
+      <div className={dashboardStyles.executiveDepartmentStats}>
+        <div>
+          <span>Нийт ажил</span>
+          <strong>{department.total}</strong>
+        </div>
+        <div>
+          <span>Ажиллаж буй</span>
+          <strong>{department.working}</strong>
+        </div>
+        <div>
+          <span>Хянах ажил</span>
+          <strong>{department.review}</strong>
+        </div>
+      </div>
+      <div className={dashboardStyles.executiveDepartmentFooter}>
+        <span>Эрсдэлтэй болон хугацаа хэтэрсэн ажил</span>
+        <strong>{department.risky}</strong>
+      </div>
+    </Card>
+  );
+}
+
+function ExecutiveWeatherPanel({ weather }: { weather: WeatherSnapshot }) {
+  const forecast = weather.weeklyForecast.length
+    ? weather.weeklyForecast
+    : Array.from({ length: 7 }, (_, index) => {
+        const date = new Date();
+        date.setDate(date.getDate() + index);
+        return {
+          date: date.toISOString().slice(0, 10),
+          weekday: new Intl.DateTimeFormat("mn-MN", {
+            timeZone: "Asia/Ulaanbaatar",
+            weekday: "short",
+          }).format(date),
+          condition: weather.condition,
+          temperatureMax: weather.temperature,
+          temperatureMin: weather.temperature,
+          precipitationChance: null,
+        };
+      });
+
+  return (
+    <Card className={dashboardStyles.executiveWeatherPanel}>
+      <div className={dashboardStyles.executiveSectionHeader}>
+        <div>
+          <h2>7 хоногийн цаг агаар</h2>
+          <p>{weather.city} хотын ажлын төлөвлөлтөд ашиглах урьдчилсан мэдээ</p>
+        </div>
+        <div className={dashboardStyles.executiveWeatherNow}>
+          <Sun />
+          <strong>{weather.temperature === null ? "--" : weather.temperature}°C</strong>
+          <span>{weather.condition}</span>
+        </div>
+      </div>
+      <div className={dashboardStyles.executiveWeatherGrid}>
+        {forecast.map((day) => (
+          <div key={day.date} className={dashboardStyles.executiveWeatherDay}>
+            <span>{day.weekday}</span>
+            <Sun />
+            <strong>
+              {day.temperatureMax === null ? "--" : day.temperatureMax}° / {day.temperatureMin === null ? "--" : day.temperatureMin}°
+            </strong>
+            <small>{day.condition}</small>
+            <small>{day.precipitationChance === null ? "Тунадас --" : `Тунадас ${day.precipitationChance}%`}</small>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function buildExecutiveDepartmentMetrics({
+  snapshot,
+  tasks,
+  currentDateKey,
+}: {
+  snapshot: DashboardSnapshot;
+  tasks: DashboardSnapshot["taskDirectory"];
+  currentDateKey: string;
+}): ExecutiveDepartmentMetric[] {
+  const matchedDepartment = (keywords: string[]) =>
+    snapshot.departments.find((department) =>
+      keywords.some((keyword) => department.name.includes(keyword) || department.label.includes(keyword)),
+    );
+  const matchedTasks = (keywords: string[]) =>
+    tasks.filter((task) =>
+      keywords.some((keyword) => task.departmentName.includes(keyword) || task.operationTypeLabel.includes(keyword)),
+    );
+  const departmentProgress = (keywords: string[], departmentTasks: DashboardSnapshot["taskDirectory"]) => {
+    const matchedDepartment = snapshot.departments.find((department) =>
+      keywords.some((keyword) => department.name.includes(keyword) || department.label.includes(keyword)),
+    );
+    if (matchedDepartment) {
+      return clampPercent(matchedDepartment.completion);
+    }
+    return departmentTasks.length
+      ? Math.round(departmentTasks.reduce((sum, task) => sum + clampPercent(task.progress), 0) / departmentTasks.length)
+      : 0;
+  };
+  const buildDepartment = (
+    name: string,
+    keywords: string[],
+    icon: LucideIcon,
+    tone: ExecutiveMetric["tone"],
+  ) => {
+    const departmentTasks = matchedTasks(keywords);
+    const department = matchedDepartment(keywords);
+    const total = departmentTasks.length || department?.openTasks || 0;
+    const working = departmentTasks.filter((task) => task.statusKey === "working").length;
+    const review = departmentTasks.filter((task) => task.statusKey === "review").length;
+    const risky = departmentTasks.filter((task) => task.issueFlag || isOverdue(task, currentDateKey)).length;
+
+    return {
+      name,
+      progress: departmentProgress(keywords, departmentTasks),
+      total,
+      working,
+      review: review || department?.reviewTasks || 0,
+      risky,
+      icon,
+      tone,
+    };
+  };
+
+  return [
+    buildDepartment(
+      "Авто бааз, хог тээвэрлэлт",
+      ["Авто", "Хог", "хог", "тээвэр"],
+      Truck,
+      "blue",
+    ),
+    buildDepartment(
+      "Гудамж цэвэрлэгээ",
+      ["Гудамж", "цэвэр"],
+      Recycle,
+      "orange",
+    ),
+    buildDepartment(
+      "Ногоон байгууламж",
+      ["Ногоон", "мод", "зүлэг"],
+      Leaf,
+      "green",
+    ),
+    buildDepartment(
+      "Тохижилт үйлчилгээ",
+      ["Тохижилт", "үйлчилгээ"],
+      Wrench,
+      "purple",
+    ),
+  ];
+}
+
+function statSourceNote(snapshot: DashboardSnapshot) {
+  if (!snapshot.generatedAt) {
+    return "Odoo дата ачаалагдсангүй";
+  }
+  return snapshot.source === "live" ? "Odoo бодит дата" : "Odoo холболтгүй үеийн demo дата";
+}
+
+function fleetSourceNote(fleetBoard: FleetVehicleBoard) {
+  return fleetBoard.totalVehicles ? "Fleet/Odoo бодит дата" : "Техникийн дата олдсонгүй";
+}
+
+function hrSourceNote(summary: HrDailyAttendanceSummary) {
+  if (summary.source === "empty") {
+    return "HR дата олдсонгүй";
+  }
+  return summary.source === "attendance" ? "HR ирцийн бодит дата" : "HR ажилтны төлөвийн дата";
+}
+
+function ExecutiveDashboardView({
+  session,
+  roleLabel,
+  canCreateProject,
+  canCreateTasks,
+  canWriteReports,
+  canViewQualityCenter,
+  canUseFieldConsole,
+  canViewHr,
+  notificationCount,
+  notificationNote,
+  totalTasks,
+  completedTasks,
+  workingTasks,
+  reviewTasks,
+  overdueTasks,
+  currentDateKey,
+  workItemStats,
+  dashboardTasks,
+  snapshot,
+  fleetBoard,
+  hrAttendanceSummary,
+  weather,
+}: {
+  session: AppSession;
+  roleLabel: string;
+  canCreateProject: boolean;
+  canCreateTasks: boolean;
+  canWriteReports: boolean;
+  canViewQualityCenter: boolean;
+  canUseFieldConsole: boolean;
+  canViewHr: boolean;
+  notificationCount: number;
+  notificationNote: string;
+  totalTasks: number;
+  completedTasks: number;
+  workingTasks: number;
+  reviewTasks: number;
+  overdueTasks: number;
+  currentDateKey: string;
+  workItemStats: ReturnType<typeof dashboardTaskStats>;
+  dashboardTasks: DashboardSnapshot["taskDirectory"];
+  snapshot: DashboardSnapshot;
+  fleetBoard: FleetVehicleBoard;
+  hrAttendanceSummary: HrDailyAttendanceSummary;
+  weather: WeatherSnapshot;
+}) {
+  const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
+  const hrUsage = percent(hrAttendanceSummary.workingToday, hrAttendanceSummary.totalEmployees);
+  const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
+  const overdueRate = percent(overdueTasks, totalTasks);
+  const activeTasks = Math.max(totalTasks - completedTasks, workingTasks + reviewTasks);
+  const sourceNote = statSourceNote(snapshot);
+  const metrics: ExecutiveMetric[] = [
+    {
+      label: "нийт гүйцэтгэл",
+      value: `${overallProgress}%`,
+      note: sourceNote,
+      progress: overallProgress,
+      icon: CheckCircle2,
+      tone: "green",
+    },
+    {
+      label: "хянах ажил",
+      value: String(reviewTasks),
+      note: sourceNote,
+      progress: percent(reviewTasks, totalTasks),
+      icon: ShieldCheck,
+      tone: "blue",
+    },
+    {
+      label: "хүний нөөцийн ашиглалт",
+      value: `${hrUsage}%`,
+      note: hrSourceNote(hrAttendanceSummary),
+      progress: hrUsage,
+      icon: UsersRound,
+      tone: "green",
+    },
+    {
+      label: "техникийн ашиглалт",
+      value: `${fleetUsage}%`,
+      note: fleetSourceNote(fleetBoard),
+      progress: fleetUsage,
+      icon: Truck,
+      tone: "purple",
+    },
+    {
+      label: "хугацаа хэтэрсэн ажил",
+      value: `${overdueRate}%`,
+      note: sourceNote,
+      progress: overdueRate,
+      icon: Clock3,
+      tone: "orange",
+    },
+    {
+      label: "идэвхтэй ажил",
+      value: String(activeTasks),
+      note: sourceNote,
+      progress: 100,
+      icon: ClipboardList,
+      tone: "green",
+    },
+  ];
+  const departmentMetrics = buildExecutiveDepartmentMetrics({
+    snapshot,
+    tasks: dashboardTasks,
+    currentDateKey,
+  });
+
+  return (
+    <main className={cn(shellStyles.shell, dashboardStyles.executiveShell)}>
+      <div className={shellStyles.contentWithMenu}>
+        <aside className={shellStyles.menuColumn}>
+          <AppMenu
+            active="dashboard"
+            canCreateProject={canCreateProject}
+            canCreateTasks={canCreateTasks}
+            canWriteReports={canWriteReports}
+            canViewQualityCenter={canViewQualityCenter}
+            canUseFieldConsole={canUseFieldConsole}
+            canViewHr={canViewHr}
+            userName={session.name}
+            roleLabel={roleLabel}
+            groupFlags={session.groupFlags}
+            workerMode={false}
+            notificationCount={notificationCount}
+          />
+        </aside>
+
+        <div className={cn(shellStyles.pageContent, dashboardStyles.executivePage)}>
+          <header className={dashboardStyles.executiveHeader}>
+            <div>
+              <h1>Ерөнхий хяналтын самбар</h1>
+              <p>Бүх хэлтсийн ажлын нэгдсэн тойм</p>
+            </div>
+            <div className={dashboardStyles.executiveHeaderActions}>
+              <div className={dashboardStyles.executiveHeaderPill}>
+                <CalendarDays />
+                <span>{formatExecutiveDate()}</span>
+              </div>
+              <div className={dashboardStyles.executiveHeaderPill}>
+                <Clock3 />
+                <span>{formatExecutiveTime()}</span>
+              </div>
+              <Link href="/notifications" className={dashboardStyles.executiveNotificationButton} aria-label="Мэдэгдэл">
+                <AlertTriangle />
+                {notificationCount ? <span>{notificationCount}</span> : null}
+              </Link>
+              <Link href="/profile" className={dashboardStyles.executiveProfileCard}>
+                <span>{session.name.slice(0, 1).toLocaleUpperCase("mn-MN")}</span>
+                <div>
+                  <strong>{session.name}</strong>
+                  <small>{roleLabel}</small>
+                </div>
+                <ChevronRight />
+              </Link>
+            </div>
+          </header>
+
+          <section className={dashboardStyles.executiveMetricGrid}>
+            {metrics.map((metric) => (
+              <ExecutiveMetricCard key={metric.label} metric={metric} />
+            ))}
+          </section>
+
+          <section className={dashboardStyles.executiveSection}>
+            <div className={dashboardStyles.executiveSectionHeader}>
+              <div>
+                <h2>Хэлтсүүдийн ажлын нөхцөл байдал</h2>
+                <p>{notificationNote}</p>
+              </div>
+            </div>
+            <div className={dashboardStyles.executiveDepartmentGrid}>
+              {departmentMetrics.map((department) => (
+                <ExecutiveDepartmentCard key={department.name} department={department} />
+              ))}
+            </div>
+          </section>
+
+          <ExecutiveWeatherPanel weather={weather} />
+        </div>
+      </div>
+    </main>
+  );
+}
+
 export function DashboardView({
   session,
   snapshot,
@@ -1328,6 +1815,35 @@ export function DashboardView({
       short: "D",
     },
   ];
+
+  if (canViewGeneralDashboard(session) && !workerMode) {
+    return (
+      <ExecutiveDashboardView
+        session={session}
+        roleLabel={roleLabel}
+        canCreateProject={canCreateProject}
+        canCreateTasks={canCreateTasks}
+        canWriteReports={canWriteReports}
+        canViewQualityCenter={canViewQualityCenter}
+        canUseFieldConsole={canUseFieldConsole}
+        canViewHr={canViewHr}
+        notificationCount={attentionCount}
+        notificationNote={notificationNote}
+        totalTasks={totalTasks}
+        completedTasks={completedTasks}
+        workingTasks={workingTasks}
+        reviewTasks={reviewTasks}
+        overdueTasks={overdueTasks}
+        currentDateKey={currentDateKey}
+        workItemStats={workItemStats}
+        dashboardTasks={dashboardTasks}
+        snapshot={snapshot}
+        fleetBoard={fleetBoard}
+        hrAttendanceSummary={hrAttendanceSummary}
+        weather={weather}
+      />
+    );
+  }
 
   return (
     <main className={shellStyles.shell}>

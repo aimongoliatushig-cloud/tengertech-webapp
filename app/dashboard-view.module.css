@@ -1491,3 +1491,529 @@
     grid-template-columns: 1fr;
   }
 }
+
+.executiveShell.executiveShell {
+  background:
+    radial-gradient(circle at 76% 0%, rgba(15, 118, 110, 0.08), transparent 28%),
+    linear-gradient(180deg, #f8fafc 0%, #f3f7fb 100%);
+}
+
+.executivePage {
+  min-height: 100vh;
+  padding: 22px 28px 28px;
+}
+
+.executiveHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 22px;
+  margin-bottom: 28px;
+}
+
+.executiveHeader h1 {
+  margin: 0;
+  color: #080d1a;
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.executiveHeader p {
+  margin: 10px 0 0;
+  color: #4c5a73;
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.executiveHeaderActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
+}
+
+.executiveHeaderPill,
+.executiveNotificationButton,
+.executiveProfileCard {
+  min-height: 64px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
+}
+
+.executiveHeaderPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  color: #0f172a;
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.executiveHeaderPill svg,
+.executiveNotificationButton svg,
+.executiveProfileCard svg {
+  width: 18px;
+  height: 18px;
+}
+
+.executiveNotificationButton {
+  position: relative;
+  display: grid;
+  width: 64px;
+  place-items: center;
+  color: #0f172a;
+}
+
+.executiveNotificationButton span {
+  position: absolute;
+  top: -6px;
+  right: 8px;
+  display: grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ef3124;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.executiveProfileCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 228px;
+  padding: 10px 14px;
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.executiveProfileCard > span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 999px;
+  background: #e8f3ff;
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.executiveProfileCard strong,
+.executiveProfileCard small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.executiveProfileCard strong {
+  font-size: 0.84rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.executiveProfileCard small {
+  margin-top: 3px;
+  color: #435268;
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.executiveMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.executiveMetricCard,
+.executiveDepartmentCard,
+.executiveWeatherPanel {
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.06);
+}
+
+.executiveMetricCard {
+  display: grid;
+  min-height: 230px;
+  align-content: space-between;
+  padding: 24px 22px;
+}
+
+.executiveMetricHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.executiveMetricHeader strong {
+  color: #101827;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.executiveMetricIcon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+}
+
+.executiveMetricIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.executiveMetricBody {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.executiveMetricValue {
+  display: block;
+  color: #030712;
+  font-size: 2.35rem;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.executiveMetricDelta,
+.executiveMetricNote {
+  display: block;
+  margin-top: 12px;
+  color: #078251;
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.executiveMetricDeltaRed {
+  color: #ef3124;
+}
+
+.executiveMetricNote {
+  margin-top: 8px;
+  color: #263b63;
+  font-weight: 700;
+}
+
+.executiveRing {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  padding: 7px;
+}
+
+.executiveRing > span {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  align-content: center;
+  border-radius: inherit;
+  background: #fff;
+  text-align: center;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+
+.executiveRingLarge {
+  width: 122px;
+  height: 122px;
+  margin: 26px auto 24px;
+  padding: 8px;
+}
+
+.executiveRingLarge strong {
+  color: #030712;
+  font-size: 1.6rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.executiveRingLarge small {
+  margin-top: 6px;
+  color: #0f172a;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.executiveSection {
+  margin-top: 42px;
+}
+
+.executiveSectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.executiveSectionHeader h2 {
+  margin: 0;
+  color: #101827;
+  font-size: 1.18rem;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.executiveSectionHeader p {
+  margin: 6px 0 0;
+  color: #526179;
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.executiveDepartmentGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 22px;
+  margin-top: 22px;
+}
+
+.executiveDepartmentCard {
+  display: grid;
+  min-height: 386px;
+  padding: 26px 22px 24px;
+}
+
+.executiveDepartmentHeader {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.executiveDepartmentHeader strong {
+  color: #101827;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.executiveDepartmentIcon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 auto;
+  place-items: center;
+}
+
+.executiveDepartmentIcon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.executiveDepartmentStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 10px;
+  border-bottom: 1px solid #d8deea;
+  padding-bottom: 20px;
+}
+
+.executiveDepartmentStats div {
+  min-width: 0;
+  padding: 0 10px;
+  text-align: center;
+}
+
+.executiveDepartmentStats div + div {
+  border-left: 1px solid #d8deea;
+}
+
+.executiveDepartmentStats span {
+  display: block;
+  color: #31405a;
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.executiveDepartmentStats strong {
+  display: block;
+  margin-top: 10px;
+  color: #030712;
+  font-size: 1.05rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.executiveDepartmentFooter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  margin-top: 20px;
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.executiveDepartmentFooter strong {
+  color: #ef3124;
+  font-size: 1.05rem;
+  font-weight: 950;
+}
+
+.executiveWeatherPanel {
+  margin-top: 28px;
+  padding: 22px;
+}
+
+.executiveWeatherNow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #a44900;
+  font-size: 0.82rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.executiveWeatherNow svg {
+  width: 18px;
+  height: 18px;
+}
+
+.executiveWeatherNow strong {
+  color: #0f172a;
+  font-size: 1.05rem;
+}
+
+.executiveWeatherGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.executiveWeatherDay {
+  display: grid;
+  min-height: 148px;
+  align-content: start;
+  justify-items: center;
+  gap: 9px;
+  padding: 14px 10px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+  background: #f8fbff;
+  text-align: center;
+}
+
+.executiveWeatherDay span {
+  color: #263b63;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.executiveWeatherDay svg {
+  width: 24px;
+  height: 24px;
+  color: #f58a07;
+}
+
+.executiveWeatherDay strong {
+  color: #030712;
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.executiveWeatherDay small {
+  color: #526179;
+  font-size: 0.7rem;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+@media (max-width: 1320px) {
+  .executiveHeader {
+    flex-direction: column;
+  }
+
+  .executiveHeaderActions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .executiveMetricGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .executiveDepartmentGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .executiveWeatherGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .executivePage {
+    padding: 18px 12px 112px;
+  }
+
+  .executiveMetricGrid,
+  .executiveDepartmentGrid,
+  .executiveWeatherGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .executiveMetricCard {
+    min-height: 180px;
+  }
+
+  .executiveProfileCard,
+  .executiveHeaderPill {
+    width: 100%;
+  }
+
+  .executiveNotificationButton {
+    width: 64px;
+  }
+
+  .executiveWeatherNow {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+}
