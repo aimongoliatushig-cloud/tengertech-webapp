@@ -84,18 +84,8 @@ const STAT_TONE: Record<StatusTone, string> = {
   muted: "bg-slate-100 text-slate-600",
 };
 
-const GENERAL_DASHBOARD_ALLOWED_LOGINS = new Set(["99996632", "80007504"]);
-
 function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
-}
-
-function normalizeLoginDigits(value: string) {
-  return value.replace(/\D/g, "");
-}
-
-function canViewGeneralDashboard(session: AppSession) {
-  return GENERAL_DASHBOARD_ALLOWED_LOGINS.has(normalizeLoginDigits(session.login));
 }
 
 function percent(value: number, total: number) {
@@ -1816,7 +1806,7 @@ export function DashboardView({
     },
   ];
 
-  if (canViewGeneralDashboard(session) && !workerMode) {
+  if (canViewGeneralDashboard && !workerMode) {
     return (
       <ExecutiveDashboardView
         session={session}
