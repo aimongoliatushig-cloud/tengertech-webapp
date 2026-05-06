@@ -11,6 +11,7 @@ import {
   ChevronDown,
   FileText,
   Flag,
+  CircleHelp,
   LayoutDashboard,
   Leaf,
   ListChecks,
@@ -60,6 +61,7 @@ type MenuKey =
   | "notifications"
   | "quality"
   | "chat"
+  | "help"
   | "new-project"
   | "reports"
   | "data-download";
@@ -405,6 +407,12 @@ export function AppMenu({
       icon: MessageSquare,
     },
     {
+      key: "help",
+      href: "/help",
+      label: "\u0422\u0443\u0441\u043B\u0430\u043C\u0436",
+      icon: CircleHelp,
+    },
+    {
       key: "review",
       href: reviewHref,
       label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B",
@@ -428,13 +436,13 @@ export function AppMenu({
       return false;
     }
     if (mfoFieldMode) {
-      return ["dashboard", "tasks", "chat", "review", "notifications"].includes(item.key);
+      return ["dashboard", "tasks", "chat", "help", "review", "notifications"].includes(item.key);
     }
     if (environmentFieldMode) {
-      return ["dashboard", "environment-work", "chat", "review", "notifications"].includes(item.key);
+      return ["dashboard", "environment-work", "chat", "help", "review", "notifications"].includes(item.key);
     }
     if (repairFieldMode) {
-      return ["dashboard", "fleet-repair", "chat", "review", "notifications"].includes(item.key);
+      return ["dashboard", "fleet-repair", "chat", "help", "review", "notifications"].includes(item.key);
     }
     return !["data-download", "reports", "procurement", "fleet-repair"].includes(item.key);
   });
