@@ -607,25 +607,23 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                 </div>
 
                 {visibleTasks.length ? (
-                  <div className={styles.taskGrid}>
-                    {visibleTasks.map((task) => (
-                      <article
-                        key={task.id}
-                        className={styles.taskItem}
-                      >
-                        <Link
-                          href={
-                            quickActionMode === "report"
-                              ? `${task.href}?composer=report&returnTo=${encodeURIComponent(
-                                  `/projects/${project.id}?quickAction=report&returnTo=${encodeURIComponent(
-                                    backHref,
-                                  )}`,
-                                )}`
-                              : task.href
-                          }
-                          className={styles.taskItemLink}
-                        >
-                          <div className={styles.taskItemTop}>
+                  <div className={styles.projectTaskFlowList}>
+                    {visibleTasks.map((task, index) => {
+                      const taskHref =
+                        quickActionMode === "report"
+                          ? `${task.href}?composer=report&returnTo=${encodeURIComponent(
+                              `/projects/${project.id}?quickAction=report&returnTo=${encodeURIComponent(
+                                backHref,
+                              )}`,
+                            )}`
+                          : task.href;
+
+                      return (
+                        <article key={task.id} className={styles.projectTaskFlowItem}>
+                          <Link href={taskHref} className={styles.projectTaskFlowLink}>
+                          <span className={styles.projectTaskNumber}>{index + 1}</span>
+                          <div className={styles.projectTaskMain}>
+                            <div className={styles.projectTaskTitleRow}>
                             <div>
                               <h3>{task.name}</h3>
                               <p>
@@ -636,9 +634,9 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                             <StagePill label={task.stageLabel} bucket={task.stageBucket} />
                           </div>
 
-                          <div className={styles.metaRow}>
+                          <div className={styles.projectTaskMetaGrid}>
                             {task.quantitySummary ? (
-                              <div className={styles.taskQuantityLines}>
+                              <div className={styles.projectTaskQuantityCell}>
                                 <strong>Хэмжээ:</strong>
                                 {task.quantitySummaryLines.map((line) => (
                                   <span key={line}>{line}</span>
@@ -648,13 +646,14 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                             <span>Хугацаа: {task.deadline}</span>
                           </div>
 
-                          <div className={styles.progressTrack}>
-                            <span style={{ width: `${task.progress}%` }} />
+                          <div className={styles.projectTaskProgressTrack}>
+                            <span style={{ width: getProgressWidth(task.progress) }} />
+                          </div>
                           </div>
                         </Link>
 
                         {canCreateTasks ? (
-                          <div className={styles.taskItemActions}>
+                          <div className={styles.projectTaskFlowActions}>
                             <ProjectTaskEditModal
                               action={updateTaskAction}
                               projectId={project.id}
@@ -671,8 +670,9 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                             </form>
                           </div>
                         ) : null}
-                      </article>
-                    ))}
+                        </article>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className={styles.emptyState}>

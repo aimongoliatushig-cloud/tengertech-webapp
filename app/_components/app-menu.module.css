@@ -383,17 +383,19 @@
   }
 
   .mobileTopBar {
-    position: sticky;
-    top: 8px;
+    position: relative;
+    top: auto;
     z-index: 60;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
-    padding: 10px 12px;
+    margin: 0;
+    padding: 10px 12px 8px;
     border: 1px solid rgba(46, 125, 50, 0.12);
-    border-radius: 22px;
-    background: rgba(255, 255, 255, 0.78);
-    box-shadow: 0 18px 44px rgba(27, 73, 38, 0.1);
+    border-bottom: 0;
+    border-radius: 20px 20px 0 0;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: none;
     backdrop-filter: blur(20px);
   }
 

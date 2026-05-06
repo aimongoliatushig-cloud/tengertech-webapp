@@ -1008,6 +1008,7 @@ function RightPanel({
   hrAttendanceSummary,
   departmentScopeName,
   showFleetSummary,
+  showHrSummary,
   workerMode,
   weather,
 }: {
@@ -1020,6 +1021,7 @@ function RightPanel({
   hrAttendanceSummary: HrDailyAttendanceSummary;
   departmentScopeName?: string | null;
   showFleetSummary: boolean;
+  showHrSummary: boolean;
   workerMode: boolean;
   weather: WeatherSnapshot;
 }) {
@@ -1039,6 +1041,9 @@ function RightPanel({
         ["Дууссан ажил", completedTasks],
         ["Анхаарах", alertCount],
       ];
+  const visibleSystemInfoRows = showHrSummary
+    ? systemInfoRows
+    : systemInfoRows.filter((_, index) => index !== 0);
   const quickActions = [
     { label: "Шинэ ажил үүсгэх", href: "/create", icon: Plus },
     { label: "Ажлын жагсаалт", href: "/projects", icon: ListChecks },
@@ -1093,7 +1098,7 @@ function RightPanel({
           <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
             <CardTitle className={dashboardStyles.sideCardTitle}>{systemInfoTitle}</CardTitle>
             <div className={dashboardStyles.systemList}>
-              {systemInfoRows.map(([label, value]) => (
+              {visibleSystemInfoRows.map(([label, value]) => (
                 <div key={String(label)} className={dashboardStyles.systemRow}>
                   <span>{label}</span>
                   <strong>{value}</strong>
@@ -1102,7 +1107,7 @@ function RightPanel({
             </div>
           </Card>
 
-          <HrAttendanceCard summary={hrAttendanceSummary} />
+          {showHrSummary ? <HrAttendanceCard summary={hrAttendanceSummary} /> : null}
         </>
       ) : null}
 
@@ -1182,6 +1187,7 @@ export function DashboardView({
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const workerMode = isWorkerOnly(session);
+  const showHrSummary = Boolean(canViewHr && !workerMode);
   const roleLabel = getRoleLabel(session.role);
   const currentDateKey = todayKey();
   const model = buildDashboardModel({
@@ -1559,6 +1565,7 @@ export function DashboardView({
               hrAttendanceSummary={hrAttendanceSummary}
               departmentScopeName={departmentScopeName}
               showFleetSummary={showFleetSummary}
+              showHrSummary={showHrSummary}
               workerMode={workerMode}
               weather={weather}
             />

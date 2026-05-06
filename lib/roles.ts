@@ -352,7 +352,11 @@ export function isHrOnlyRole(context: RoleContext) {
   );
   const hasDepartmentHeadAccess = Boolean(
     context.role === "project_manager" ||
+      context.role === "senior_master" ||
+      context.role === "team_leader" ||
       groupFlags.municipalDepartmentHead ||
+      groupFlags.municipalMaster ||
+      groupFlags.greenMaster ||
       groupFlags.municipalManager ||
       groupFlags.mfoManager ||
       groupFlags.environmentManager ||

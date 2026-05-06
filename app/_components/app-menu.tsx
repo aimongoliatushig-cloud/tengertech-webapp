@@ -217,8 +217,10 @@ export function AppMenu({
   const roleLooksHr = roleLabelLower.includes("\u0445\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446");
   const roleLooksDepartmentHead = roleLabelLower.includes("\u0445\u044D\u043B\u0442\u0441\u0438\u0439\u043D \u0434\u0430\u0440\u0433\u0430");
   const hasHrGroupAccess = Boolean(flags.hrUser || flags.hrManager || flags.municipalHr);
+  const canShowHrMenu = Boolean(canViewHr || (roleLooksHr && !masterMode && !workerMode));
   const hrFocusedMode =
-    roleLooksHr || Boolean(hasHrGroupAccess && canViewHr && !departmentManagerMode && !roleLooksDepartmentHead);
+    canShowHrMenu &&
+    (roleLooksHr || Boolean(hasHrGroupAccess && canViewHr && !departmentManagerMode && !roleLooksDepartmentHead));
   const isGarbageDepartmentHead =
     !workerMode &&
     !masterMode &&
@@ -249,14 +251,14 @@ export function AppMenu({
     departmentName: group.name,
   }));
 
-  const hrItems: MenuItem[] = canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr || roleLooksHr
+  const hrItems: MenuItem[] = canShowHrMenu
     ? [
         { key: "hr", href: "/hr", label: "\u0425\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446", icon: Users },
       ]
     : [];
 
   const roleFocusedItems: MenuItem[] = [
-    ...(mfoFieldMode || mfoManagerMode
+    ...((workerMode && mfoFieldMode) || mfoManagerMode
       ? [
           {
             key: workerMode ? "tasks" : "garbage-routes",
@@ -399,7 +401,7 @@ export function AppMenu({
       label: "Хяналтын самбар",
       icon: LayoutDashboard,
     },
-    ...(canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr
+    ...(canShowHrMenu
       ? [
           {
             key: "hr",
@@ -563,7 +565,7 @@ export function AppMenu({
           { key: "projects", href: "/projects", label: "Ажлууд", icon: ListChecks },
           { key: "new-project", href: "/create", label: "Шинэ ажил", icon: PlusCircle },
           { key: "reports", href: canWriteReports ? "/reports" : "/review", label: "Тайлан", icon: BarChart3 },
-          canViewHr
+          canShowHrMenu
             ? { key: "hr", href: "/hr", label: "HR", icon: Users }
             : { key: "chat", href: "/chat", label: "Чат", icon: MessageSquare },
         ];

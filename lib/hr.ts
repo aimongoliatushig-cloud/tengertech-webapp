@@ -629,6 +629,22 @@ async function readGroupNames(groupIds: number[], session: AppSession) {
 export async function getHrAccessProfile(session: AppSession) {
   const reasons: string[] = [];
   const departmentHeadReasons: string[] = [];
+  const isExplicitDepartmentHead = Boolean(
+    session.role === "project_manager" ||
+      session.groupFlags?.municipalDepartmentHead ||
+      session.groupFlags?.municipalManager ||
+      session.groupFlags?.mfoManager ||
+      session.groupFlags?.environmentManager ||
+      session.groupFlags?.improvementManager
+  );
+  const isMasterOrOperationalLeader = Boolean(
+    !isExplicitDepartmentHead &&
+      (session.role === "senior_master" ||
+        session.role === "team_leader" ||
+        session.groupFlags?.municipalMaster ||
+        session.groupFlags?.greenMaster ||
+        session.groupFlags?.fleetRepairTeamLeader)
+  );
 
   if (ADMIN_ROLES.has(String(session.role))) {
     reasons.push("admin");
@@ -636,7 +652,11 @@ export async function getHrAccessProfile(session: AppSession) {
   if (HR_ROLE_KEYS.has(normalizeText(session.role))) {
     reasons.push("session HR role");
   }
-  if (session.groupFlags?.hrUser || session.groupFlags?.hrManager || session.groupFlags?.municipalHr) {
+  if (
+    !isMasterOrOperationalLeader &&
+    !isExplicitDepartmentHead &&
+    (session.groupFlags?.hrUser || session.groupFlags?.hrManager || session.groupFlags?.municipalHr)
+  ) {
     reasons.push("Odoo HR group flag");
   }
 
@@ -704,16 +724,18 @@ export async function getHrAccessProfile(session: AppSession) {
     ADMIN_ROLES.has(String(session.role)) ||
       HR_ROLE_KEYS.has(sessionRole) ||
       (sessionRole !== "worker" &&
+        !isMasterOrOperationalLeader &&
+        !isExplicitDepartmentHead &&
         (session.groupFlags?.hrUser ||
           session.groupFlags?.hrManager ||
           session.groupFlags?.municipalHr))
   );
-  const isDepartmentHead = !isHr && departmentHeadReasons.length > 0;
+  const isDepartmentHead = Boolean(!isHr && !isMasterOrOperationalLeader && departmentHeadReasons.length > 0);
 
   return {
     isHr,
     isDepartmentHead,
-    canAccessHr: isHr,
+    canAccessHr: isHr || isDepartmentHead,
     scope: isHr ? "hr" : "department",
     reasons,
     departmentHeadReasons,
@@ -731,12 +753,12 @@ export async function getHrAccessProfile(session: AppSession) {
 
 export async function canAccessHr(session: AppSession) {
   const profile = await getHrAccessProfile(session);
-  return profile.isHr;
+  return profile.canAccessHr;
 }
 
 export async function requireHrAccess(session: AppSession) {
   const profile = await getHrAccessProfile(session);
-  if (!profile.isHr) {
+  if (!profile.canAccessHr) {
     throw new Error("HR_ACCESS_DENIED");
   }
   return profile;
@@ -1778,7 +1800,7 @@ function disciplineStateLabel(state: string) {
 }
 
 export async function getDisciplineRecords(session: AppSession): Promise<HrDisciplineRecord[]> {
-  await requireHrAccess(session);
+  const profile = await requireHrAccess(session);
   const [violationOptions, actionOptions] = await Promise.all([
     getDisciplineViolationOptions(session),
     getDisciplineActionOptions(session),
@@ -1809,11 +1831,11 @@ export async function getDisciplineRecords(session: AppSession): Promise<HrDisci
     },
     getConnection(session),
   )
-    .then((records) =>
-      records.map((record) => {
-        const violationType = String(record.violation_type || "");
-        const actionType = String(record.action_type || "");
-        const state = String(record.state || "approved") === "draft" ? "approved" : String(record.state || "approved");
+      .then((records) => {
+        const mappedRecords = records.map((record) => {
+          const violationType = String(record.violation_type || "");
+          const actionType = String(record.action_type || "");
+          const state = String(record.state || "approved") === "draft" ? "approved" : String(record.state || "approved");
         return {
           id: record.id,
           employeeId: getRelationId(record.employee_id),
@@ -1831,10 +1853,23 @@ export async function getDisciplineRecords(session: AppSession): Promise<HrDisci
           repeatedViolationCount: Number(record.repeated_violation_count || 0),
           explanation: String(record.explanation || ""),
           employeeExplanation: String(record.employee_explanation || ""),
-          hasAttachment: Boolean(record.attachment_ids?.length),
-        };
-      }),
-    )
+            hasAttachment: Boolean(record.attachment_ids?.length),
+          };
+        });
+
+        if (profile.isHr) {
+          return mappedRecords;
+        }
+
+        const departmentId = profile.employee.departmentId;
+        const departmentName = normalizeText(profile.employee.departmentName);
+        return mappedRecords.filter((record) => {
+          if (departmentId && record.departmentId) {
+            return record.departmentId === departmentId;
+          }
+          return departmentName ? normalizeText(record.departmentName) === departmentName : false;
+        });
+      })
     .catch((error) => {
       console.warn("HR discipline records could not be loaded:", error);
       return [];

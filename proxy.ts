@@ -51,10 +51,19 @@ async function unsealProxySession(token: string) {
 function hasHrAccess(session: ProxySession) {
   const flags = session.groupFlags ?? {};
   const role = session.role;
+  const masterOrOperationalLeader = Boolean(
+    role === "senior_master" ||
+      role === "team_leader" ||
+      flags.municipalMaster ||
+      flags.greenMaster ||
+      flags.fleetRepairTeamLeader,
+  );
   return Boolean(
     role === "hr_specialist" ||
       role === "hr_manager" ||
-      (role !== "worker" && (flags.hrUser || flags.hrManager || flags.municipalHr)),
+      (role !== "worker" &&
+        !masterOrOperationalLeader &&
+        (flags.hrUser || flags.hrManager || flags.municipalHr)),
   );
 }
 
@@ -62,7 +71,10 @@ function hasDepartmentHeadAccess(session: ProxySession) {
   const flags = session.groupFlags ?? {};
   return Boolean(
     session.role === "project_manager" ||
+      session.role === "senior_master" ||
+      session.role === "team_leader" ||
       flags.municipalDepartmentHead ||
+      flags.municipalMaster ||
       flags.municipalManager ||
       flags.mfoManager ||
       flags.environmentManager ||

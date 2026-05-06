@@ -429,6 +429,7 @@
 }
 
 .quickStatsCard {
+  display: none;
   min-height: 132px;
   padding: 14px 16px 16px;
 }

@@ -2031,6 +2031,11 @@
 
 .masterTaskBoard {
   display: grid;
+  min-width: 0;
+}
+
+.masterTaskBoard > .panel {
+  min-width: 0;
 }
 
 .createTaskTriggerWrap {
@@ -2071,6 +2076,196 @@
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid rgba(74, 154, 93, 0.12);
+}
+
+.projectTaskFlowList {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.projectTaskFlowItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  min-height: 104px;
+  padding: 14px;
+  border: 1px solid rgba(47, 127, 70, 0.14);
+  border-radius: 12px;
+  background: rgba(250, 253, 249, 0.96);
+  box-shadow: 0 12px 28px rgba(27, 73, 38, 0.045);
+}
+
+.projectTaskFlowLink {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 14px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.projectTaskNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(74, 154, 93, 0.14);
+  color: var(--brand-900);
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.projectTaskMain {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.projectTaskTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.projectTaskTitleRow > div {
+  min-width: 0;
+}
+
+.projectTaskTitleRow h3 {
+  margin: 0;
+  color: var(--ink-900);
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 1.4vw, 1.18rem);
+  line-height: 1.25;
+}
+
+.projectTaskTitleRow p {
+  margin: 4px 0 0;
+  color: var(--ink-700);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.projectTaskMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.projectTaskMetaGrid > span,
+.projectTaskQuantityCell {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: rgba(238, 247, 237, 0.75);
+}
+
+.projectTaskMetaGrid small,
+.projectTaskQuantityCell strong:first-child {
+  color: var(--ink-600);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.projectTaskMetaGrid strong,
+.projectTaskMetaGrid > span,
+.projectTaskQuantityCell span {
+  color: var(--ink-900);
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.projectTaskQuantityCell {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.projectTaskQuantityCell span {
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-900);
+  overflow-wrap: anywhere;
+}
+
+.projectTaskProgressTrack {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(35, 61, 42, 0.08);
+}
+
+.projectTaskProgressTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--brand-800), rgba(132, 195, 122, 0.92));
+}
+
+.projectTaskFlowActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 154px;
+}
+
+.projectTaskFlowActions .dangerButton,
+.projectTaskFlowActions summary {
+  min-height: 38px;
+  border-radius: 10px;
+}
+
+@media (max-width: 860px) {
+  .projectTaskFlowItem {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .projectTaskFlowLink {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .projectTaskNumber {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 0.88rem;
+  }
+
+  .projectTaskTitleRow {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .projectTaskMetaGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .projectTaskFlowActions {
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .projectTaskFlowActions > *,
+  .projectTaskFlowActions form,
+  .projectTaskFlowActions button,
+  .projectTaskFlowActions summary {
+    flex: 1 1 0;
+  }
 }
 
 .taskEditPanel {
