@@ -50,6 +50,7 @@ export default async function HrClearancePage({ searchParams }: PageProps) {
     state: record.state,
     stateLabel: record.stateLabel,
     note: record.note,
+    attachmentIds: record.attachmentIds,
   }));
 
   return (
@@ -106,6 +107,7 @@ export default async function HrClearancePage({ searchParams }: PageProps) {
         successMessage="Тойрох хуудас хадгалагдлаа."
         records={registryRecords}
         columns={[
+          { key: "attachmentIds", label: "Хавсралт", type: "attachments" },
           { key: "employeeName", label: "Ажилтан" },
           { key: "savedDate", label: "Хадгалсан огноо" },
           { key: "sectionLabel", label: "Шалгах хэсэг" },

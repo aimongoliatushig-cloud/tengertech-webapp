@@ -125,6 +125,9 @@ type OdooEmployeeRecord = {
   parent_id?: OdooRelation;
   contract_date_start?: string | false;
   contract_date_end?: string | false;
+  trial_date_start?: string | false;
+  x_mn_probation_date_start?: string | false;
+  trial_date_end?: string | false;
   birthday?: string | false;
   sex?: string | false;
   certificate?: string | false;
@@ -438,6 +441,8 @@ export type HrEmployeeDirectoryItem = {
   managerName: string;
   startDate: string;
   contractEndDate: string;
+  probationStartDate: string;
+  probationEndDate: string;
   birthDate: string;
   genderKey: string;
   genderLabel: string;
@@ -1332,6 +1337,9 @@ const HR_EMPLOYEE_FIELD_VARIANTS: string[][] = [
     "parent_id",
     "contract_date_start",
     "contract_date_end",
+    "trial_date_start",
+    "x_mn_probation_date_start",
+    "trial_date_end",
     "birthday",
     "sex",
     "certificate",
@@ -2783,6 +2791,8 @@ export async function loadHrEmployeeDirectory(
         managerName: relationName(employee.parent_id ?? false, ""),
         startDate: employee.contract_date_start || "",
         contractEndDate: employee.contract_date_end || "",
+        probationStartDate: employee.trial_date_start || employee.x_mn_probation_date_start || "",
+        probationEndDate: employee.trial_date_end || "",
         birthDate: employee.birthday || "",
         genderKey: employee.sex || "",
         genderLabel: resolveHrGenderLabel(employee.sex),
@@ -3758,7 +3768,10 @@ export async function fetchOdooAttachmentContent(
   };
 
   const primaryConnection = createOdooConnection(connectionOverrides);
-  const primaryResult = await attemptRead(primaryConnection);
+  const primaryResult = await attemptRead(primaryConnection).catch((error) => {
+    console.warn(`Odoo attachment ${attachmentId} primary read failed:`, error);
+    return null;
+  });
   if (primaryResult) {
     return primaryResult;
   }
@@ -3774,7 +3787,10 @@ export async function fetchOdooAttachmentContent(
     return null;
   }
 
-  return attemptRead(fallbackConnection);
+  return attemptRead(fallbackConnection).catch((error) => {
+    console.warn(`Odoo attachment ${attachmentId} fallback read failed:`, error);
+    return null;
+  });
 }
 
 async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardSnapshot> {

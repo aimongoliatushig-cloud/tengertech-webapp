@@ -54,6 +54,7 @@ class HrEmployee(models.Model):
     x_mn_current_address = fields.Text(string="Одоо оршин суугаа хаяг", groups="hr.group_hr_user")
     x_mn_permanent_address = fields.Text(string="Байнгын хаяг", groups="hr.group_hr_user")
     x_mn_grade_rank = fields.Char(string="Зэрэг / Дэв", tracking=True)
+    x_mn_probation_date_start = fields.Date(string="Туршилтын хугацаа эхлэх", tracking=True)
     x_mn_employment_status = fields.Selection(
         [
             ("active", "Идэвхтэй"),
@@ -723,6 +724,8 @@ class HrEmployee(models.Model):
                 "managerName": employee.parent_id.display_name or "",
                 "startDate": str(employee.contract_date_start or ""),
                 "contractEndDate": str(employee.contract_date_end or ""),
+                "probationStartDate": str(employee.trial_date_start or employee.x_mn_probation_date_start or ""),
+                "probationEndDate": str(employee.trial_date_end or ""),
                 "birthDate": str(employee.birthday or ""),
                 "genderKey": employee.sex or "",
                 "genderLabel": gender_labels.get(employee.sex, "") if employee.sex else "",

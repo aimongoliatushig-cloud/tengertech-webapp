@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { AppSession } from "@/lib/auth";
-import { executeOdooKw, type HrEmployeeDirectoryItem, loadHrEmployeeDirectory } from "@/lib/odoo";
+import { executeOdooKw, type HrEmployeeDirectoryItem, loadHrEmployeeDirectory, type OdooConnection } from "@/lib/odoo";
 
 type OdooRelation = [number, string] | false;
 
@@ -82,6 +82,9 @@ type HrEmployeeSingleSearchRecord = {
   parent_id?: OdooRelation;
   contract_date_start?: string | false;
   contract_date_end?: string | false;
+  trial_date_start?: string | false;
+  x_mn_probation_date_start?: string | false;
+  trial_date_end?: string | false;
   birthday?: string | false;
   sex?: string | false;
   certificate?: string | false;
@@ -114,6 +117,8 @@ type HrEmployeeDirectoryApiRecord = {
   managerName?: string;
   startDate?: string;
   contractEndDate?: string;
+  probationStartDate?: string;
+  probationEndDate?: string;
   birthDate?: string;
   genderKey?: string;
   genderLabel?: string;
@@ -418,6 +423,8 @@ type HrLeaveAttachmentInput = {
   mimetype: string;
 };
 
+const MAX_EMPLOYEE_PHOTO_SIZE = 5 * 1024 * 1024;
+const ALLOWED_EMPLOYEE_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const ADMIN_ROLES = new Set(["system_admin"]);
 const HR_ROLE_KEYS = new Set(["hr_specialist", "hr_manager"]);
 const HR_TEXT_TOKENS = ["хүний нөөц", "human resources", "hr specialist", "hr manager"];
@@ -501,6 +508,8 @@ function mapHrEmployeeDirectoryApiRecord(record: HrEmployeeDirectoryApiRecord): 
     managerName: record.managerName || "",
     startDate: record.startDate || "",
     contractEndDate: record.contractEndDate || "",
+    probationStartDate: record.probationStartDate || "",
+    probationEndDate: record.probationEndDate || "",
     birthDate: record.birthDate || "",
     genderKey: record.genderKey || "",
     genderLabel: record.genderLabel || "",
@@ -565,6 +574,8 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     managerName: getRelationName(record.parent_id),
     startDate: record.contract_date_start || "",
     contractEndDate: record.contract_date_end || "",
+    probationStartDate: record.trial_date_start || record.x_mn_probation_date_start || "",
+    probationEndDate: record.trial_date_end || "",
     birthDate: record.birthday || "",
     genderKey: record.sex || "",
     genderLabel: resolveDirectEmployeeGenderLabel(record.sex),
@@ -587,6 +598,7 @@ async function getAvailableFields(
   model: string,
   desiredFields: string[],
   session: AppSession,
+  connectionOverrides: Partial<OdooConnection> = getConnection(session),
 ) {
   try {
     const fields = await executeOdooKw<Record<string, unknown>>(
@@ -594,7 +606,7 @@ async function getAvailableFields(
       "fields_get",
       [desiredFields],
       { attributes: ["string", "type"] },
-      getConnection(session),
+      connectionOverrides,
     );
     return desiredFields.filter((field) => Boolean(fields[field]));
   } catch (error) {
@@ -616,7 +628,7 @@ async function readCurrentEmployee(session: AppSession) {
     "mfo_field_role",
     "x_field_role",
   ];
-  const fields = await getAvailableFields("hr.employee", desiredFields, session);
+  const fields = await getAvailableFields("hr.employee", desiredFields, session, {});
 
   return executeOdooKw<CurrentEmployeeRecord[]>(
     "hr.employee",
@@ -870,6 +882,9 @@ export async function getEmployee(session: AppSession, id: number) {
     "parent_id",
     "contract_date_start",
     "contract_date_end",
+    "trial_date_start",
+    "x_mn_probation_date_start",
+    "trial_date_end",
     "birthday",
     "sex",
     "certificate",
@@ -881,7 +896,7 @@ export async function getEmployee(session: AppSession, id: number) {
     "x_mn_task_completion_percent",
     "x_mn_discipline_score",
   ];
-  const fields = await getAvailableFields("hr.employee", desiredFields, session);
+  const fields = await getAvailableFields("hr.employee", desiredFields, session, {});
 
   const records = await executeOdooKw<HrEmployeeSingleSearchRecord[]>(
     "hr.employee",
@@ -892,7 +907,6 @@ export async function getEmployee(session: AppSession, id: number) {
       limit: 1,
       context: { active_test: false },
     },
-    getConnection(session),
   ).catch((error) => {
     console.warn(`HR employee ${id} could not be loaded directly:`, error);
     return [];
@@ -912,6 +926,8 @@ export async function getEmployee(session: AppSession, id: number) {
         ...scopedEmployee,
         ...listedEmployee,
         birthDate: scopedEmployee.birthDate || listedEmployee.birthDate,
+        probationStartDate: scopedEmployee.probationStartDate,
+        probationEndDate: scopedEmployee.probationEndDate,
         genderKey: scopedEmployee.genderKey || listedEmployee.genderKey,
         genderLabel: scopedEmployee.genderLabel || listedEmployee.genderLabel,
         photoUrl: scopedEmployee.photoUrl || listedEmployee.photoUrl,
@@ -1050,8 +1066,20 @@ export async function updateEmployee(
     HrEmployeeCreateInput &
       Pick<
         HrEmployeeDirectoryItem,
-        "name" | "employeeCode" | "workPhone" | "mobilePhone" | "workEmail" | "birthDate" | "genderKey"
+        | "name"
+        | "employeeCode"
+        | "workPhone"
+        | "mobilePhone"
+        | "workEmail"
+        | "birthDate"
+        | "probationStartDate"
+        | "probationEndDate"
+        | "genderKey"
       >
+      & {
+        employeePhoto?: File;
+        files?: File[];
+      }
   >,
 ) {
   const desiredFields = [
@@ -1065,6 +1093,10 @@ export async function updateEmployee(
     "parent_id",
     "x_mn_employee_code",
     "birthday",
+    "trial_date_start",
+    "x_mn_probation_date_start",
+    "trial_date_end",
+    "image_1920",
     "sex",
     "active",
   ];
@@ -1079,6 +1111,23 @@ export async function updateEmployee(
   if (fields.has("mobile_phone") && data.mobilePhone !== undefined) values.mobile_phone = data.mobilePhone || false;
   if (fields.has("work_email") && data.workEmail !== undefined) values.work_email = data.workEmail || false;
   if (fields.has("birthday") && data.birthDate !== undefined) values.birthday = data.birthDate || false;
+  if ((fields.has("trial_date_start") || !fields.has("x_mn_probation_date_start")) && data.probationStartDate !== undefined) {
+    values.trial_date_start = data.probationStartDate || false;
+  } else if (fields.has("x_mn_probation_date_start") && data.probationStartDate !== undefined) {
+    values.x_mn_probation_date_start = data.probationStartDate || false;
+  }
+  if ((fields.has("trial_date_end") || data.probationEndDate !== undefined) && data.probationEndDate !== undefined) {
+    values.trial_date_end = data.probationEndDate || false;
+  }
+  if (fields.has("image_1920") && data.employeePhoto?.size) {
+    if (!ALLOWED_EMPLOYEE_PHOTO_TYPES.has(data.employeePhoto.type)) {
+      throw new Error("Зөвхөн JPG, PNG эсвэл WebP зураг оруулна уу.");
+    }
+    if (data.employeePhoto.size > MAX_EMPLOYEE_PHOTO_SIZE) {
+      throw new Error("Ажилтны зураг 5MB-аас бага байх ёстой.");
+    }
+    values.image_1920 = Buffer.from(await data.employeePhoto.arrayBuffer()).toString("base64");
+  }
   if (fields.has("sex") && (data.genderKey !== undefined || data.gender !== undefined)) {
     values.sex = data.genderKey || data.gender || false;
   }
@@ -1088,11 +1137,15 @@ export async function updateEmployee(
   if (fields.has("parent_id") && data.managerId) values.parent_id = data.managerId;
   if (fields.has("active") && data.isFieldEmployee === false) values.active = false;
 
-  if (!Object.keys(values).length) {
+  const attachments = await filesToAttachments(data.files);
+  if (!Object.keys(values).length && !attachments.length) {
     return getEmployee(session, id);
   }
 
-  await executeOdooKw<boolean>("hr.employee", "write", [[id], values], {}, getConnection(session));
+  if (Object.keys(values).length) {
+    await executeOdooKw<boolean>("hr.employee", "write", [[id], values]);
+  }
+  await attachFilesToEmployee(session, id, attachments, "Ажилтны профайл");
   return getEmployee(session, id);
 }
 
@@ -2339,7 +2392,7 @@ function normalizeClearanceRecord(record: Partial<HrClearanceRecord>): HrClearan
     state,
     stateLabel: record.stateLabel || clearanceStateLabel(state),
     note: record.note || "",
-    hasAttachment: Boolean(record.hasAttachment),
+    hasAttachment: Boolean(record.hasAttachment || record.attachmentIds?.length),
     attachmentIds: record.attachmentIds || [],
   };
 }

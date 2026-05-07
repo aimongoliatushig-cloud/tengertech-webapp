@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -41,12 +41,13 @@ export type RegistryField =
       options?: RegistryOption[];
     };
 
-type RegistryRecord = Record<string, string | number | boolean | null | undefined>;
+type RegistryRecord = Record<string, string | number | boolean | number[] | null | undefined>;
 
 export type RegistryColumn = {
   key: string;
   label: string;
   hrefKey?: string;
+  type?: "attachments";
 };
 
 function statusLabel(employee: HrEmployeeDirectoryItem) {
@@ -371,7 +372,7 @@ function employeeGenderValue(employee: HrEmployeeDirectoryItem) {
 }
 
 export function EmployeeDetailTabs({
-  employee,
+  employee: initialEmployee,
   canEdit = false,
 }: {
   employee: HrEmployeeDirectoryItem;
@@ -380,10 +381,12 @@ export function EmployeeDetailTabs({
   const [tab, setTab] = useState(detailTabs[0]);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [employee, setEmployee] = useState(initialEmployee);
   const [editing, setEditing] = useState(canEdit && searchParams.get("edit") === "profile");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [messageIsError, setMessageIsError] = useState(false);
+  const editParam = searchParams.get("edit");
   const initials = employee.name
     .split(/\s+/)
     .filter(Boolean)
@@ -391,6 +394,22 @@ export function EmployeeDetailTabs({
     .map((part) => part[0])
     .join("")
     .toLocaleUpperCase("mn-MN");
+
+  useEffect(() => {
+    if (canEdit && editParam === "profile") {
+      setTab(detailTabs[0]);
+      setEditing(true);
+    }
+  }, [canEdit, editParam]);
+
+  useEffect(() => {
+    setEmployee(initialEmployee);
+  }, [initialEmployee]);
+
+  function closeProfileEdit() {
+    setEditing(false);
+    router.replace(`/hr/employees/${employee.id}#profile-info`, { scroll: false });
+  }
 
   async function submitProfileEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -403,23 +422,20 @@ export function EmployeeDetailTabs({
     try {
       const response = await fetch(`/api/hr/employees/${employee.id}`, {
         method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          name: String(formData.get("name") || ""),
-          employeeCode: String(formData.get("employeeCode") || ""),
-          genderKey: String(formData.get("genderKey") || ""),
-          birthDate: String(formData.get("birthDate") || ""),
-          workPhone: String(formData.get("workPhone") || ""),
-          mobilePhone: String(formData.get("mobilePhone") || ""),
-          workEmail: String(formData.get("workEmail") || ""),
-        }),
+        body: formData,
       });
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      const payload = (await response.json().catch(() => ({}))) as {
+        employee?: HrEmployeeDirectoryItem;
+        error?: string;
+      };
       if (!response.ok) {
         throw new Error(payload.error || "Ажилтны мэдээлэл хадгалахад алдаа гарлаа.");
       }
       setMessage("Ажилтны мэдээлэл хадгалагдлаа.");
-      setEditing(false);
+      if (payload.employee) {
+        setEmployee(payload.employee);
+      }
+      closeProfileEdit();
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Ажилтны мэдээлэл хадгалахад алдаа гарлаа.");
@@ -435,6 +451,8 @@ export function EmployeeDetailTabs({
       { label: "Ажилтны код", value: employee.employeeCode },
       { label: "Хүйс", value: employee.genderLabel },
       { label: "Төрсөн огноо", value: employee.birthDate },
+      { label: "Туршилтын хугацаа эхлэх", value: employee.probationStartDate },
+      { label: "Туршилтын хугацаа дуусах", value: employee.probationEndDate },
       { label: "Утас", value: employee.workPhone || employee.mobilePhone },
       { label: "И-мэйл", value: employee.workEmail },
       { label: "Төлөв", value: employee.statusLabel },
@@ -497,14 +515,6 @@ export function EmployeeDetailTabs({
           <p>
             {employee.departmentName || "Хэлтэс бүртгээгүй"} · {employee.jobTitle || "Албан тушаал бүртгээгүй"}
           </p>
-          {canEdit ? (
-            <div className={styles.profileEditActions}>
-              <button type="button" className={styles.secondaryButton} onClick={() => setEditing((value) => !value)}>
-                <Pencil aria-hidden />
-                <span>{editing ? "Болих" : "Засах"}</span>
-              </button>
-            </div>
-          ) : null}
         </div>
       </div>
 
@@ -538,15 +548,35 @@ export function EmployeeDetailTabs({
               </select>
             </label>
             <Field name="birthDate" label="Төрсөн огноо" type="date" defaultValue={employee.birthDate} />
+            <Field
+              name="probationStartDate"
+              label="Туршилтын хугацаа эхлэх"
+              type="date"
+              defaultValue={employee.probationStartDate}
+            />
+            <Field
+              name="probationEndDate"
+              label="Туршилтын хугацаа дуусах"
+              type="date"
+              defaultValue={employee.probationEndDate}
+            />
             <Field name="workPhone" label="Ажлын утас" defaultValue={employee.workPhone} />
             <Field name="mobilePhone" label="Гар утас" defaultValue={employee.mobilePhone} />
             <Field name="workEmail" label="И-мэйл" type="email" defaultValue={employee.workEmail} />
+            <label className={styles.field}>
+              <span>Ажилтны зураг</span>
+              <input name="employeePhoto" type="file" accept="image/jpeg,image/png,image/webp" />
+            </label>
+            <label className={styles.field}>
+              <span>Хавсралт нэмэх</span>
+              <input name="files" type="file" multiple />
+            </label>
           </div>
           <div className={styles.profileEditActions}>
             <button className={styles.primaryButton} disabled={pending}>
               {pending ? "Хадгалж байна..." : "Хадгалах"}
             </button>
-            <button type="button" className={styles.secondaryButton} onClick={() => setEditing(false)} disabled={pending}>
+            <button type="button" className={styles.secondaryButton} onClick={closeProfileEdit} disabled={pending}>
               Болих
             </button>
           </div>
@@ -1149,6 +1179,24 @@ export function RegistryPage({
                     {columns.map((column) => {
                       const value = record[column.key];
                       const href = column.hrefKey ? record[column.hrefKey] : "";
+                      if (column.type === "attachments") {
+                        const attachmentIds = Array.isArray(value) ? value.filter((id) => Number.isFinite(Number(id))) : [];
+                        return (
+                          <td key={column.key}>
+                            {attachmentIds.length ? (
+                              <div className={styles.checklist}>
+                                {attachmentIds.map((id, index) => (
+                                  <Link key={id} className={styles.secondaryButton} href={`/hr/attachments/${id}`}>
+                                    {attachmentIds.length > 1 ? `Хавсралт ${index + 1}` : "Нээх"}
+                                  </Link>
+                                ))}
+                              </div>
+                            ) : (
+                              "Байхгүй"
+                            )}
+                          </td>
+                        );
+                      }
                       return (
                         <td key={column.key}>
                           {href ? <Link href={String(href)}>{String(value || "Бүртгээгүй")}</Link> : String(value || "Бүртгээгүй")}

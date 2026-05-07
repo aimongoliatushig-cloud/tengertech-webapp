@@ -90,6 +90,7 @@
                         </group>
                         <group string="Огноо ба байршил">
                             <field name="contract_date_start" string="Эхэлсэн огноо"/>
+                            <field name="trial_date_start" string="Туршилтын хугацаа эхлэх"/>
                             <field name="trial_date_end" string="Туршилтын хугацаа дуусах"/>
                             <field name="contract_date_end" string="Гэрээ дуусах"/>
                             <field name="work_location_id" string="Ажлын байршил"/>

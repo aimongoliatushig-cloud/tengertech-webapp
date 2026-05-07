@@ -451,6 +451,27 @@
   text-decoration: none;
 }
 
+.pdfViewerShell {
+  min-height: 72vh;
+  padding: 12px;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  border-radius: 8px;
+  background: #eef2ef;
+}
+
+.pdfCanvasStack {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+}
+
+.pdfCanvas {
+  max-width: 100%;
+  height: auto;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(31, 43, 37, 0.12);
+}
+
 .detailPanel {
   display: grid;
   gap: 14px;
