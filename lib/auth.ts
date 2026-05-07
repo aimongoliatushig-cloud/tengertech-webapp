@@ -179,16 +179,20 @@ async function readSession(): Promise<SessionReadResult> {
   try {
     const session = unsealSession(token);
     const currentConnection = getCurrentSessionConnection();
-    if (
+    const hasConnectionMismatch =
       !session.odooUrl ||
       !session.odooDb ||
       normalizeSessionUrl(session.odooUrl) !== currentConnection.odooUrl ||
-      session.odooDb.trim() !== currentConnection.odooDb
-    ) {
-      return { session: null, hasInvalidToken: true };
-    }
+      session.odooDb.trim() !== currentConnection.odooDb;
+    const normalizedSession = hasConnectionMismatch
+      ? {
+          ...session,
+          ...currentConnection,
+        }
+      : session;
+
     return {
-      session: await refreshSessionRole(session),
+      session: await refreshSessionRole(normalizedSession),
       hasInvalidToken: false,
     };
   } catch {
@@ -269,7 +273,7 @@ export async function requireSession() {
   const { session, hasInvalidToken } = await readSession();
   if (!session) {
     if (hasInvalidToken) {
-      redirect("/auth/logout");
+      redirect("/login");
     }
     redirect("/login");
   }

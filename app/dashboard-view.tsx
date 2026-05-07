@@ -1175,7 +1175,6 @@ function RightPanel({
 type ExecutiveMetric = {
   label: string;
   value: string;
-  note: string;
   progress: number;
   icon: LucideIcon;
   tone: "green" | "orange" | "blue" | "purple" | "red";
@@ -1199,25 +1198,6 @@ const EXECUTIVE_TONE_COLORS: Record<ExecutiveMetric["tone"], string> = {
   purple: "#453f99",
   red: "#ef4444",
 };
-
-function formatExecutiveDate() {
-  return new Intl.DateTimeFormat("mn-MN", {
-    timeZone: "Asia/Ulaanbaatar",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "long",
-  }).format(new Date());
-}
-
-function formatExecutiveTime() {
-  return new Intl.DateTimeFormat("mn-MN", {
-    timeZone: "Asia/Ulaanbaatar",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date());
-}
 
 function ExecutiveRing({
   value,
@@ -1269,7 +1249,6 @@ function ExecutiveMetricCard({ metric }: { metric: ExecutiveMetric }) {
       <div className={dashboardStyles.executiveMetricBody}>
         <div>
           <span className={dashboardStyles.executiveMetricValue}>{metric.value}</span>
-          <small className={dashboardStyles.executiveMetricNote}>{metric.note}</small>
         </div>
         {metric.progress > 0 && metric.progress < 100 ? (
           <ExecutiveRing value={metric.progress} tone={metric.tone} />
@@ -1444,24 +1423,6 @@ function buildExecutiveDepartmentMetrics({
   ];
 }
 
-function statSourceNote(snapshot: DashboardSnapshot) {
-  if (!snapshot.generatedAt) {
-    return "Odoo дата ачаалагдсангүй";
-  }
-  return snapshot.source === "live" ? "Odoo бодит дата" : "Odoo холболтгүй үеийн demo дата";
-}
-
-function fleetSourceNote(fleetBoard: FleetVehicleBoard) {
-  return fleetBoard.totalVehicles ? "Fleet/Odoo бодит дата" : "Техникийн дата олдсонгүй";
-}
-
-function hrSourceNote(summary: HrDailyAttendanceSummary) {
-  if (summary.source === "empty") {
-    return "HR дата олдсонгүй";
-  }
-  return summary.source === "attendance" ? "HR ирцийн бодит дата" : "HR ажилтны төлөвийн дата";
-}
-
 function ExecutiveDashboardView({
   session,
   roleLabel,
@@ -1514,12 +1475,10 @@ function ExecutiveDashboardView({
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
   const overdueRate = percent(overdueTasks, totalTasks);
   const activeTasks = Math.max(totalTasks - completedTasks, workingTasks + reviewTasks);
-  const sourceNote = statSourceNote(snapshot);
   const metrics: ExecutiveMetric[] = [
     {
       label: "нийт гүйцэтгэл",
       value: `${overallProgress}%`,
-      note: sourceNote,
       progress: overallProgress,
       icon: CheckCircle2,
       tone: "green",
@@ -1527,7 +1486,6 @@ function ExecutiveDashboardView({
     {
       label: "хянах ажил",
       value: String(reviewTasks),
-      note: sourceNote,
       progress: percent(reviewTasks, totalTasks),
       icon: ShieldCheck,
       tone: "blue",
@@ -1535,7 +1493,6 @@ function ExecutiveDashboardView({
     {
       label: "хүний нөөцийн ашиглалт",
       value: `${hrUsage}%`,
-      note: hrSourceNote(hrAttendanceSummary),
       progress: hrUsage,
       icon: UsersRound,
       tone: "green",
@@ -1543,7 +1500,6 @@ function ExecutiveDashboardView({
     {
       label: "техникийн ашиглалт",
       value: `${fleetUsage}%`,
-      note: fleetSourceNote(fleetBoard),
       progress: fleetUsage,
       icon: Truck,
       tone: "purple",
@@ -1551,7 +1507,6 @@ function ExecutiveDashboardView({
     {
       label: "хугацаа хэтэрсэн ажил",
       value: `${overdueRate}%`,
-      note: sourceNote,
       progress: overdueRate,
       icon: Clock3,
       tone: "orange",
@@ -1559,7 +1514,6 @@ function ExecutiveDashboardView({
     {
       label: "идэвхтэй ажил",
       value: String(activeTasks),
-      note: sourceNote,
       progress: 100,
       icon: ClipboardList,
       tone: "green",
@@ -1591,35 +1545,15 @@ function ExecutiveDashboardView({
           />
         </aside>
 
-        <div className={cn(shellStyles.pageContent, dashboardStyles.executivePage)}>
-          <header className={dashboardStyles.executiveHeader}>
-            <div>
-              <h1>Ерөнхий хяналтын самбар</h1>
-              <p>Бүх хэлтсийн ажлын нэгдсэн тойм</p>
-            </div>
-            <div className={dashboardStyles.executiveHeaderActions}>
-              <div className={dashboardStyles.executiveHeaderPill}>
-                <CalendarDays />
-                <span>{formatExecutiveDate()}</span>
-              </div>
-              <div className={dashboardStyles.executiveHeaderPill}>
-                <Clock3 />
-                <span>{formatExecutiveTime()}</span>
-              </div>
-              <Link href="/notifications" className={dashboardStyles.executiveNotificationButton} aria-label="Мэдэгдэл">
-                <AlertTriangle />
-                {notificationCount ? <span>{notificationCount}</span> : null}
-              </Link>
-              <Link href="/profile" className={dashboardStyles.executiveProfileCard}>
-                <span>{session.name.slice(0, 1).toLocaleUpperCase("mn-MN")}</span>
-                <div>
-                  <strong>{session.name}</strong>
-                  <small>{roleLabel}</small>
-                </div>
-                <ChevronRight />
-              </Link>
-            </div>
-          </header>
+        <div className={shellStyles.pageContent}>
+          <WorkspaceHeader
+            title="Ерөнхий хяналтын самбар"
+            subtitle="Бүх хэлтсийн ажлын нэгдсэн тойм"
+            userName={session.name}
+            roleLabel={roleLabel}
+            notificationCount={notificationCount}
+            notificationNote={notificationNote}
+          />
 
           <section className={dashboardStyles.executiveMetricGrid}>
             {metrics.map((metric) => (

@@ -1,10 +1,7 @@
 import type { CSSProperties } from "react";
 
-import Link from "next/link";
 import {
-  CalendarDays,
   CheckCircle2,
-  ChevronRight,
   ClipboardList,
   Clock3,
   Leaf,
@@ -19,6 +16,7 @@ import {
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { Card } from "@/app/_components/ui/card";
+import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import styles from "@/app/general-dashboard/general-dashboard.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import { getRoleLabel, hasCapability, type AppSession } from "@/lib/auth";
@@ -40,7 +38,7 @@ type Tone = "green" | "orange" | "blue" | "purple" | "red";
 type Metric = {
   label: string;
   value: string;
-  note: string;
+  note?: string;
   progress: number;
   icon: LucideIcon;
   tone: Tone;
@@ -79,25 +77,6 @@ function todayKey() {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date());
-}
-
-function formatDate() {
-  return new Intl.DateTimeFormat("mn-MN", {
-    timeZone: "Asia/Ulaanbaatar",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "long",
-  }).format(new Date());
-}
-
-function formatTime() {
-  return new Intl.DateTimeFormat("mn-MN", {
-    timeZone: "Asia/Ulaanbaatar",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
   }).format(new Date());
 }
 
@@ -147,7 +126,7 @@ function MetricCard({ metric }: { metric: Metric }) {
       <div className={styles.metricBody}>
         <div>
           <span className={styles.metricValue}>{metric.value}</span>
-          <small className={styles.metricNote}>{metric.note}</small>
+          {metric.note ? <small className={styles.metricNote}>{metric.note}</small> : null}
         </div>
         {metric.progress > 0 && metric.progress < 100 ? <Ring value={metric.progress} tone={metric.tone} /> : null}
       </div>
@@ -267,13 +246,6 @@ function buildDepartmentMetrics(snapshot: DashboardSnapshot, currentDateKey: str
   ];
 }
 
-function snapshotNote(snapshot: DashboardSnapshot) {
-  if (!snapshot.generatedAt) {
-    return "Odoo дата ачаалагдсангүй";
-  }
-  return "Odoo бодит дата";
-}
-
 export function GeneralDashboardView({
   session,
   snapshot,
@@ -295,14 +267,12 @@ export function GeneralDashboardView({
     : snapshot.departments.length
       ? Math.round(snapshot.departments.reduce((sum, department) => sum + clampPercent(department.completion), 0) / snapshot.departments.length)
       : 0;
-  const sourceNote = snapshotNote(snapshot);
   const metrics: Metric[] = [
-    { label: "нийт гүйцэтгэл", value: `${progress}%`, note: sourceNote, progress, icon: CheckCircle2, tone: "green" },
-    { label: "хянах ажил", value: String(reviewTasks), note: sourceNote, progress: percent(reviewTasks, totalTasks), icon: ShieldCheck, tone: "blue" },
+    { label: "нийт гүйцэтгэл", value: `${progress}%`, progress, icon: CheckCircle2, tone: "green" },
+    { label: "хянах ажил", value: String(reviewTasks), progress: percent(reviewTasks, totalTasks), icon: ShieldCheck, tone: "blue" },
     {
       label: "хүний нөөцийн ашиглалт",
       value: `${percent(hrAttendanceSummary.workingToday, hrAttendanceSummary.totalEmployees)}%`,
-      note: hrAttendanceSummary.source === "empty" ? "HR дата олдсонгүй" : "HR бодит дата",
       progress: percent(hrAttendanceSummary.workingToday, hrAttendanceSummary.totalEmployees),
       icon: UsersRound,
       tone: "green",
@@ -310,13 +280,12 @@ export function GeneralDashboardView({
     {
       label: "техникийн ашиглалт",
       value: `${percent(fleetBoard.activeCount, fleetBoard.totalVehicles)}%`,
-      note: fleetBoard.totalVehicles ? "Fleet/Odoo бодит дата" : "Техникийн дата олдсонгүй",
       progress: percent(fleetBoard.activeCount, fleetBoard.totalVehicles),
       icon: Truck,
       tone: "purple",
     },
-    { label: "хугацаа хэтэрсэн ажил", value: `${percent(overdueTasks, totalTasks)}%`, note: sourceNote, progress: percent(overdueTasks, totalTasks), icon: Clock3, tone: "orange" },
-    { label: "идэвхтэй ажил", value: String(Math.max(totalTasks - completedTasks, workingTasks + reviewTasks)), note: sourceNote, progress: 100, icon: ClipboardList, tone: "green" },
+    { label: "хугацаа хэтэрсэн ажил", value: `${percent(overdueTasks, totalTasks)}%`, progress: percent(overdueTasks, totalTasks), icon: Clock3, tone: "orange" },
+    { label: "идэвхтэй ажил", value: String(Math.max(totalTasks - completedTasks, workingTasks + reviewTasks)), progress: 100, icon: ClipboardList, tone: "green" },
   ];
   const departmentMetrics = buildDepartmentMetrics(snapshot, currentDateKey);
 
@@ -342,29 +311,14 @@ export function GeneralDashboardView({
         </aside>
 
         <div className={cn(shellStyles.pageContent, styles.page)}>
-          <header className={styles.header}>
-            <div>
-              <h1>Ерөнхий хяналтын самбар</h1>
-              <p>Бүх хэлтсийн ажлын нэгдсэн бодит тойм</p>
-            </div>
-            <div className={styles.headerActions}>
-              <div className={styles.headerPill}>
-                <CalendarDays />
-                <span>{formatDate()}</span>
-              </div>
-              <div className={styles.headerPill}>
-                <Clock3 />
-                <span>{formatTime()}</span>
-              </div>
-              <Link href="/profile" className={styles.profileCard}>
-                <div>
-                  <strong>{session.name}</strong>
-                  <small>{roleLabel}</small>
-                </div>
-                <ChevronRight />
-              </Link>
-            </div>
-          </header>
+          <WorkspaceHeader
+            title="Ерөнхий хяналтын самбар"
+            subtitle="Бүх хэлтсийн ажлын нэгдсэн бодит тойм"
+            userName={session.name}
+            roleLabel={roleLabel}
+            notificationCount={reviewTasks + overdueTasks}
+            notificationNote={`${reviewTasks + overdueTasks} анхаарах ажил байна`}
+          />
 
           <section className={styles.metricGrid}>
             {metrics.map((metric) => (
@@ -373,14 +327,13 @@ export function GeneralDashboardView({
           </section>
 
           {!snapshot.generatedAt ? (
-            <div className={styles.noticeCard}>Odoo live дата ачаалагдсангүй. Demo тоо харуулахгүйгээр хоосон төлөв үзүүлж байна.</div>
+            <div className={styles.noticeCard}>Дата ачаалагдсангүй. Demo тоо харуулахгүйгээр хоосон төлөв үзүүлж байна.</div>
           ) : null}
 
           <section className={styles.section}>
             <div className={styles.sectionHeader}>
               <div>
                 <h2>Хэлтсүүдийн ажлын нөхцөл байдал</h2>
-                <p>Project/task болон хэлтсийн Odoo дата дээр үндэслэв.</p>
               </div>
             </div>
             <div className={styles.departmentGrid}>

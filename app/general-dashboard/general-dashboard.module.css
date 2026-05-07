@@ -1,83 +1,8 @@
 .page {
   min-height: 100vh;
-  padding: 22px 28px 28px;
   background:
     radial-gradient(circle at 78% 0%, rgba(22, 119, 210, 0.08), transparent 30%),
     linear-gradient(180deg, #f8fafc 0%, #f3f7fb 100%);
-}
-
-.header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 22px;
-  margin-bottom: 24px;
-}
-
-.header h1 {
-  margin: 0;
-  color: #080d1a;
-  font-size: 2rem;
-  font-weight: 900;
-  line-height: 1.05;
-  letter-spacing: 0;
-}
-
-.header p {
-  margin: 10px 0 0;
-  color: #4c5a73;
-  font-size: 0.95rem;
-  font-weight: 650;
-}
-
-.headerActions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.headerPill,
-.profileCard {
-  display: inline-flex;
-  min-height: 58px;
-  align-items: center;
-  gap: 10px;
-  padding: 0 16px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.92);
-  color: #0f172a;
-  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
-  font-size: 0.84rem;
-  font-weight: 850;
-  text-decoration: none;
-}
-
-.headerPill svg,
-.profileCard svg {
-  width: 18px;
-  height: 18px;
-}
-
-.profileCard {
-  min-width: 220px;
-  justify-content: space-between;
-}
-
-.profileCard strong,
-.profileCard small {
-  display: block;
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.profileCard small {
-  margin-top: 3px;
-  color: #526179;
-  font-size: 0.72rem;
 }
 
 .metricGrid {
@@ -390,14 +315,6 @@
 }
 
 @media (max-width: 1320px) {
-  .header {
-    flex-direction: column;
-  }
-
-  .headerActions {
-    justify-content: flex-start;
-  }
-
   .metricGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -412,18 +329,9 @@
 }
 
 @media (max-width: 720px) {
-  .page {
-    padding: 18px 12px 112px;
-  }
-
   .metricGrid,
   .departmentGrid,
   .weatherGrid {
     grid-template-columns: 1fr;
-  }
-
-  .headerPill,
-  .profileCard {
-    width: 100%;
   }
 }

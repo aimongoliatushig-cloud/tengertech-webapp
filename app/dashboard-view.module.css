@@ -1499,142 +1499,6 @@
     linear-gradient(180deg, #f8fafc 0%, #f3f7fb 100%);
 }
 
-.executivePage {
-  min-height: 100vh;
-  padding: 22px 28px 28px;
-}
-
-.executiveHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 22px;
-  margin-bottom: 28px;
-}
-
-.executiveHeader h1 {
-  margin: 0;
-  color: #080d1a;
-  font-size: 2rem;
-  font-weight: 900;
-  line-height: 1.05;
-  letter-spacing: 0;
-}
-
-.executiveHeader p {
-  margin: 10px 0 0;
-  color: #4c5a73;
-  font-size: 0.95rem;
-  font-weight: 650;
-  line-height: 1.35;
-}
-
-.executiveHeaderActions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  min-width: 0;
-}
-
-.executiveHeaderPill,
-.executiveNotificationButton,
-.executiveProfileCard {
-  min-height: 64px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
-}
-
-.executiveHeaderPill {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 20px;
-  color: #0f172a;
-  font-size: 0.84rem;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.executiveHeaderPill svg,
-.executiveNotificationButton svg,
-.executiveProfileCard svg {
-  width: 18px;
-  height: 18px;
-}
-
-.executiveNotificationButton {
-  position: relative;
-  display: grid;
-  width: 64px;
-  place-items: center;
-  color: #0f172a;
-}
-
-.executiveNotificationButton span {
-  position: absolute;
-  top: -6px;
-  right: 8px;
-  display: grid;
-  min-width: 22px;
-  height: 22px;
-  place-items: center;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: #ef3124;
-  color: #fff;
-  font-size: 0.72rem;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.executiveProfileCard {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  min-width: 228px;
-  padding: 10px 14px;
-  color: #0f172a;
-  text-decoration: none;
-}
-
-.executiveProfileCard > span {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  border-radius: 999px;
-  background: #e8f3ff;
-  color: #0f172a;
-  font-weight: 900;
-}
-
-.executiveProfileCard strong,
-.executiveProfileCard small {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.executiveProfileCard strong {
-  font-size: 0.84rem;
-  font-weight: 900;
-  line-height: 1.15;
-}
-
-.executiveProfileCard small {
-  margin-top: 3px;
-  color: #435268;
-  font-size: 0.72rem;
-  font-weight: 650;
-}
-
 .executiveMetricGrid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -1964,16 +1828,6 @@
 }
 
 @media (max-width: 1320px) {
-  .executiveHeader {
-    flex-direction: column;
-  }
-
-  .executiveHeaderActions {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-
   .executiveMetricGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -1988,10 +1842,6 @@
 }
 
 @media (max-width: 720px) {
-  .executivePage {
-    padding: 18px 12px 112px;
-  }
-
   .executiveMetricGrid,
   .executiveDepartmentGrid,
   .executiveWeatherGrid {
@@ -2000,15 +1850,6 @@
 
   .executiveMetricCard {
     min-height: 180px;
-  }
-
-  .executiveProfileCard,
-  .executiveHeaderPill {
-    width: 100%;
-  }
-
-  .executiveNotificationButton {
-    width: 64px;
   }
 
   .executiveWeatherNow {
