@@ -33,6 +33,15 @@ type StoredPushSubscription = BrowserPushSubscription & {
   user_id: number;
 };
 
+type PushDeliveryAudit = {
+  subscription_id: number;
+  user_id: number;
+  endpoint_tail: string;
+  status: "sent" | "failed";
+  error_message?: string;
+  target_url: string;
+};
+
 type PushEventInput = {
   eventType: PushEventType;
   title?: string;
@@ -176,9 +185,27 @@ async function loadSubscriptions(userIds?: number[]) {
   );
 }
 
-async function logPushEvent(input: PushEventInput, sentCount: number, failedCount: number) {
+function endpointTail(endpoint: string) {
+  return endpoint.slice(-28);
+}
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message.slice(0, 500);
+  }
+
+  return String(error ?? "Тодорхойгүй алдаа").slice(0, 500);
+}
+
+async function logPushEvent(
+  input: PushEventInput,
+  sentCount: number,
+  failedCount: number,
+  deliveryAudit: PushDeliveryAudit[] = [],
+  failureReason?: string,
+) {
   const defaults = EVENT_DEFAULTS[input.eventType];
-  await executeOdooKw<number>(
+  const eventId = await executeOdooKw<number>(
     "tengertech.push.event",
     "log_event",
     [
@@ -188,18 +215,35 @@ async function logPushEvent(input: PushEventInput, sentCount: number, failedCoun
         body: input.body || defaults.body,
         target_url: input.targetUrl || defaults.targetUrl,
         target_user_ids: input.userIds?.length ? [[6, 0, input.userIds]] : false,
+        target_user_count: input.userIds?.length ?? 0,
         sent_count: sentCount,
         failed_count: failedCount,
+        skipped_count: failureReason ? 1 : 0,
+        failure_reason: failureReason || false,
       },
     ],
   ).catch((error) => {
     console.warn("Push event log failed:", error);
+    return null;
+  });
+
+  if (!eventId || !deliveryAudit.length) {
+    return;
+  }
+
+  await executeOdooKw<number>(
+    "tengertech.push.delivery",
+    "log_delivery_batch",
+    [eventId, deliveryAudit],
+  ).catch((error) => {
+    console.warn("Push delivery audit log failed:", error);
   });
 }
 
 export async function notifyPushEvent(input: PushEventInput) {
   const config = configureWebPush();
   if (!config) {
+    await logPushEvent(input, 0, 0, [], "Push түлхүүрийн тохиргоо дутуу байна");
     return { sent: 0, failed: 0, skipped: "missing_vapid" as const };
   }
 
@@ -210,7 +254,7 @@ export async function notifyPushEvent(input: PushEventInput) {
   });
 
   if (!subscriptions.length) {
-    await logPushEvent(input, 0, 0);
+    await logPushEvent(input, 0, 0, [], "Идэвхтэй push төхөөрөмж олдсонгүй");
     return { sent: 0, failed: 0 };
   }
 
@@ -227,8 +271,22 @@ export async function notifyPushEvent(input: PushEventInput) {
   const results = await Promise.allSettled(
     subscriptions.map((subscription) => webpush.sendNotification(subscription, payload)),
   );
+  const targetUrl = input.targetUrl || defaults.targetUrl;
+  const deliveryAudit = results.map((result, index) => {
+    const subscription = subscriptions[index];
+    const sent = result.status === "fulfilled";
+
+    return {
+      subscription_id: subscription.id,
+      user_id: subscription.user_id,
+      endpoint_tail: endpointTail(subscription.endpoint),
+      status: sent ? ("sent" as const) : ("failed" as const),
+      error_message: sent ? undefined : errorMessage(result.reason),
+      target_url: targetUrl,
+    };
+  });
   const sent = results.filter((result) => result.status === "fulfilled").length;
   const failed = results.length - sent;
-  await logPushEvent(input, sent, failed);
+  await logPushEvent(input, sent, failed, deliveryAudit);
   return { sent, failed };
 }

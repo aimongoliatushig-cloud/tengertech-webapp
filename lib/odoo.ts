@@ -262,6 +262,7 @@ export type TaskDirectoryItem = {
   id: number;
   name: string;
   departmentName: string;
+  projectId?: number | null;
   projectName: string;
   stageLabel: string;
   stageBucket: StageBucket;
@@ -4360,6 +4361,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         id: task.id,
         name: task.name,
         departmentName: resolveTaskDepartmentName(task, projectDepartmentById),
+        projectId: Array.isArray(task.project_id) ? task.project_id[0] : null,
         projectName: relationName(task.project_id, "Ажилгүй"),
         stageLabel: STAGE_LABELS[stageBucket],
         stageBucket,

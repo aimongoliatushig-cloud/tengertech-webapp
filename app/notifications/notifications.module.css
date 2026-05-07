@@ -35,6 +35,37 @@
   gap: 12px;
 }
 
+.notificationListBlock {
+  display: grid;
+  gap: 12px;
+}
+
+.readToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ink-600);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.readToolbar button {
+  min-height: 36px;
+  border: 1px solid rgba(46, 125, 50, 0.18);
+  border-radius: 999px;
+  padding: 0 14px;
+  background: rgba(46, 125, 50, 0.1);
+  color: var(--brand-800);
+  cursor: pointer;
+  font: inherit;
+}
+
+.readToolbar button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .notificationCard {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -47,6 +78,11 @@
     transform 160ms ease,
     border-color 160ms ease,
     box-shadow 160ms ease;
+}
+
+.notificationCardUnread {
+  border-color: rgba(46, 125, 50, 0.32);
+  background: linear-gradient(90deg, rgba(232, 246, 235, 0.96), rgba(255, 255, 255, 0.94));
 }
 
 .notificationCard:hover {
@@ -97,6 +133,27 @@
 .reasonPillUrgent {
   background: rgba(239, 68, 68, 0.1);
   color: #b91c1c;
+}
+
+.unreadPill,
+.readPill {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 9px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.unreadPill {
+  background: rgba(46, 125, 50, 0.14);
+  color: var(--brand-800);
+}
+
+.readPill {
+  background: rgba(100, 116, 139, 0.1);
+  color: var(--ink-600);
 }
 
 .timePill {
@@ -156,6 +213,11 @@
   }
 
   .listHeader {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .readToolbar {
     align-items: start;
     flex-direction: column;
   }

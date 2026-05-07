@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { AlertTriangle, Bell, CheckCircle2, ClipboardList } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
@@ -13,13 +12,14 @@ import {
   requireSession,
 } from "@/lib/auth";
 import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
+import { loadReadNotificationKeys } from "@/lib/notification-state";
 import { loadMunicipalSnapshot, type DashboardSnapshot } from "@/lib/odoo";
-import { cn } from "@/lib/utils";
 
+import { NotificationList, type NotificationListItem } from "./notification-list";
 import styles from "./notifications.module.css";
 
 type NotificationItem = {
-  id: number | string;
+  key: string;
   name: string;
   departmentName: string;
   projectName: string;
@@ -123,19 +123,6 @@ function getRequestTimeMs() {
   return Date.now();
 }
 
-function reasonLabel(reason: NotificationItem["reasons"][number]) {
-  switch (reason) {
-    case "new":
-      return "Шинэ ажил";
-    case "review":
-      return "Хянах";
-    case "overdue":
-      return "Хугацаа хэтэрсэн";
-    case "issue":
-      return "Анхаарах";
-  }
-}
-
 export const dynamic = "force-dynamic";
 
 export default async function NotificationsPage() {
@@ -194,13 +181,15 @@ export default async function NotificationsPage() {
       }, new Map())
     : new Map<string, { taskCount: number; progressTotal: number }>();
 
-  const notificationsById = new Map<number | string, NotificationItem>();
+  const notificationsById = new Map<string, NotificationItem>();
   const ensureFromTask = (task: DashboardSnapshot["taskDirectory"][number]) => {
-    const itemKey = workerMode ? `work:${task.projectName}` : task.id;
+    const itemKey = workerMode ? `work:${task.projectId ?? task.projectName}` : `task:${task.id}`;
     const sortTimeMs = taskNotificationTimeMs(task);
+    const notificationKey = `${itemKey}:${sortTimeMs || "unknown"}`;
     const existing = notificationsById.get(itemKey);
     if (existing) {
       if (sortTimeMs > existing.sortTimeMs) {
+        existing.key = notificationKey;
         existing.sortTimeMs = sortTimeMs;
         existing.timeLabel = formatNotificationTime(sortTimeMs, nowMs);
       }
@@ -214,7 +203,7 @@ export default async function NotificationsPage() {
         : task.progress;
 
     const item: NotificationItem = {
-      id: itemKey,
+      key: notificationKey,
       name: workerMode ? task.projectName : task.name,
       departmentName: task.departmentName,
       projectName: task.projectName,
@@ -242,7 +231,9 @@ export default async function NotificationsPage() {
       addReason(item, "issue");
     }
     if (!item.reasons.length) {
-      notificationsById.delete(workerMode ? `work:${task.projectName}` : task.id);
+      notificationsById.delete(
+        workerMode ? `work:${task.projectId ?? task.projectName}` : `task:${task.id}`,
+      );
     }
   }
 
@@ -251,7 +242,7 @@ export default async function NotificationsPage() {
     const item = existingTask
       ? ensureFromTask(existingTask)
       : {
-          id: reviewTask.id,
+          key: `review:${reviewTask.id}`,
           name: reviewTask.name,
           departmentName: reviewTask.departmentName,
           projectName: reviewTask.projectName,
@@ -263,7 +254,7 @@ export default async function NotificationsPage() {
           timeLabel: formatNotificationTime(0, nowMs),
           reasons: [],
         };
-    notificationsById.set(reviewTask.id, item);
+    notificationsById.set(item.key, item);
     addReason(item, "review");
   }
 
@@ -276,11 +267,21 @@ export default async function NotificationsPage() {
       left.name.localeCompare(right.name, "mn")
     );
   });
-  const newCount = notifications.filter((item) => item.reasons.includes("new")).length;
-  const reviewCount = notifications.filter((item) => item.reasons.includes("review")).length;
-  const overdueCount = notifications.filter((item) => item.reasons.includes("overdue")).length;
+  const readKeys = await loadReadNotificationKeys(
+    session,
+    notifications.map((item) => item.key),
+  );
+  const notificationItems: NotificationListItem[] = notifications.map((item) => ({
+    ...item,
+    isRead: readKeys.has(item.key),
+  }));
+  const unreadNotifications = notificationItems.filter((item) => !item.isRead);
+  const unreadCount = unreadNotifications.length;
+  const newCount = unreadNotifications.filter((item) => item.reasons.includes("new")).length;
+  const reviewCount = unreadNotifications.filter((item) => item.reasons.includes("review")).length;
+  const overdueCount = unreadNotifications.filter((item) => item.reasons.includes("overdue")).length;
   const notificationNote =
-    notifications.length > 0
+    unreadCount > 0
       ? `${newCount} шинэ ажил, ${reviewCount} хянах, ${overdueCount} хугацаа хэтэрсэн`
       : "Шинэ мэдэгдэл алга";
 
@@ -301,7 +302,7 @@ export default async function NotificationsPage() {
               groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
-              notificationCount={notifications.length}
+              notificationCount={unreadCount}
               departmentScopeName={scopedDepartmentName}
             />
           </aside>
@@ -312,7 +313,7 @@ export default async function NotificationsPage() {
               subtitle="Танд ирсэн шинэ ажил, хянах болон анхаарах зүйлс"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
-              notificationCount={notifications.length}
+              notificationCount={unreadCount}
               notificationNote={notificationNote}
             />
 
@@ -324,49 +325,8 @@ export default async function NotificationsPage() {
                 </div>
               </div>
 
-              {notifications.length ? (
-                <div className={styles.notificationList}>
-                  {notifications.map((item) => (
-                    <Link key={item.id} href={item.href} className={styles.notificationCard}>
-                      <span className={styles.iconBubble} aria-hidden>
-                        {item.reasons.includes("overdue") || item.reasons.includes("issue") ? (
-                          <AlertTriangle />
-                        ) : item.reasons.includes("review") ? (
-                          <ClipboardList />
-                        ) : (
-                          <Bell />
-                        )}
-                      </span>
-                      <div>
-                        <div className={styles.notificationTitle}>
-                          <strong>{item.name}</strong>
-                          {item.reasons.map((reason) => (
-                            <span
-                              key={reason}
-                              className={cn(
-                                styles.reasonPill,
-                                (reason === "overdue" || reason === "issue") &&
-                                  styles.reasonPillUrgent,
-                              )}
-                            >
-                              {reasonLabel(reason)}
-                            </span>
-                          ))}
-                          <span className={styles.timePill}>{item.timeLabel}</span>
-                        </div>
-                        <p className={styles.notificationMeta}>
-                          {item.departmentName} ·{" "}
-                          {workerMode ? `${item.taskCount} ажилбар` : item.projectName} ·{" "}
-                          {item.stageLabel}
-                        </p>
-                      </div>
-                      <div className={styles.notificationProgress}>
-                        <strong>{item.progress}%</strong>
-                        <span>Явц</span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+              {notificationItems.length ? (
+                <NotificationList items={notificationItems} workerMode={workerMode} />
               ) : (
                 <article className={styles.emptyCard}>
                   <CheckCircle2 aria-hidden />

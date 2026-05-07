@@ -3,7 +3,7 @@
 {
     "name": "Tengertech Push Notifications",
     "summary": "Web push subscription storage for the municipal PWA",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.1.0",
     "category": "Productivity",
     "author": "TengerTech",
     "license": "LGPL-3",
