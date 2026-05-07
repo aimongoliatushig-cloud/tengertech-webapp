@@ -25,11 +25,14 @@ function getFiles(formData: FormData, key: string) {
   return formData.getAll(key).filter((value): value is File => value instanceof File && value.size > 0);
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session) return jsonError("Нэвтрэх шаардлагатай.", 401);
   try {
-    return Response.json({ records: await getClearanceRecords(session) });
+    const employeeId = Number(new URL(request.url).searchParams.get("employeeId") || "");
+    return Response.json({
+      records: await getClearanceRecords(session, Number.isFinite(employeeId) && employeeId > 0 ? employeeId : undefined),
+    });
   } catch {
     return jsonError("Танд тойрох хуудасны хэсэгт хандах HR эрх байхгүй байна.", 403);
   }

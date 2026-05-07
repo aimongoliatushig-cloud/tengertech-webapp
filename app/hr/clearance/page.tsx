@@ -33,7 +33,7 @@ export default async function HrClearancePage({ searchParams }: PageProps) {
     : null;
   const [employees, records] = await Promise.all([
     getEmployees(session).catch(() => []),
-    getClearanceRecords(session).catch(() => []),
+    getClearanceRecords(session, selectedEmployee ? selectedEmployee.id : undefined).catch(() => []),
   ]);
   const employeeOptions = employees.map((employee) => ({ id: employee.id, name: employee.name }));
   const registryRecords = records.map((record) => ({

@@ -2424,13 +2424,17 @@ function isMissingClearanceModelError(error: unknown) {
   return message.includes("municipal.hr.clearance.sheet") || message.includes("get_hr_clearance_sheet") || message.includes("not found");
 }
 
-export async function getClearanceRecords(session: AppSession): Promise<HrClearanceRecord[]> {
+export async function getClearanceRecords(session: AppSession, employeeId?: number): Promise<HrClearanceRecord[]> {
   await requireHrSpecialistAccess(session);
+  const filters = {
+    limit: 300,
+    ...(employeeId && Number.isFinite(employeeId) ? { employeeId } : {}),
+  };
   try {
     const records = await executeOdooKw<Array<Partial<HrClearanceRecord>>>(
       "municipal.hr.clearance.sheet",
       "get_hr_clearance_sheet_directory",
-      [{ limit: 300 }],
+      [filters],
       {},
       getConnection(session),
     );
@@ -2442,10 +2446,11 @@ export async function getClearanceRecords(session: AppSession): Promise<HrCleara
   }
 
   try {
+    const domain = employeeId && Number.isFinite(employeeId) ? [["employee_id", "=", employeeId]] : [];
     const records = await executeOdooKw<HrClearanceSearchRecord[]>(
       "municipal.hr.clearance.sheet",
       "search_read",
-      [[]],
+      [domain],
       {
         fields: ["name", "employee_id", "department_id", "job_id", "saved_date", "section", "state", "note", "attachment_ids"],
         order: "saved_date desc, id desc",
