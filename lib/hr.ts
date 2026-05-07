@@ -1192,7 +1192,7 @@ export async function createLeave(session: AppSession, data: HrLeaveCreateInput)
   if (fields.has("holiday_status_id")) values.holiday_status_id = holidayStatusId;
   if (fields.has("request_date_from")) values.request_date_from = data.dateFrom;
   if (fields.has("request_date_to")) values.request_date_to = data.dateTo;
-  if (fields.has("name")) values.name = data.note || data.leaveTypeName || "HR чөлөөний бүртгэл";
+  if (fields.has("name")) values.name = data.note || data.leaveTypeName || "Хүний нөөцийн чөлөөний бүртгэл";
 
   const leaveId = await executeOdooKw<number>("hr.leave", "create", [values], {}, getConnection(session));
 
@@ -1721,7 +1721,7 @@ function timeoffStateLabel(state: string) {
     case "submitted":
       return "Илгээсэн";
     case "hr_review":
-      return "HR шалгаж байна";
+      return "Хүний нөөц шалгаж байна";
     case "approved":
       return "Батлагдсан";
     case "rejected":

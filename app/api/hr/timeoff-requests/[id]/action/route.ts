@@ -41,7 +41,7 @@ export async function POST(
     return Response.json({ request: result });
   } catch (error) {
     if (error instanceof Error && error.message === "HR_ACCESS_DENIED") {
-      return jsonError("Энэ үйлдлийг хийх HR эрх хүрэлцэхгүй байна.", 403);
+      return jsonError("Энэ үйлдлийг хийх хүний нөөцийн эрх хүрэлцэхгүй байна.", 403);
     }
     if (error instanceof Error && error.message === "HR_TIMEOFF_REQUESTER_ONLY") {
       return jsonError("Зөвхөн хэлтсийн дарга өөрийн илгээсэн хүсэлтийг цуцлах боломжтой.", 403);

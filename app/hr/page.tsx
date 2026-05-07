@@ -158,7 +158,7 @@ export default async function HrDashboardPage() {
 
       <section className={styles.actionPanel}>
         <div>
-          <span className={styles.eyebrow}>{access.isHr ? "HR review" : "Department Head"}</span>
+          <span className={styles.eyebrow}>{access.isHr ? "Хүний нөөц шалгах" : "Хэлтсийн дарга"}</span>
           <h2>{access.isHr ? "Хүсэлт хянах үйлдэл" : "Хүсэлт үүсгэх үйлдэл"}</h2>
         </div>
         <div className={styles.actionGrid}>

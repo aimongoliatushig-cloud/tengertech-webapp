@@ -16,11 +16,11 @@ export default async function HrReportsPage() {
   return (
     <>
       <WorkspaceHeader
-        title="HR тайлан"
+        title="Хүний нөөцийн тайлан"
         subtitle="Ажилтан, хэлтэс, чөлөө, өвчтэй, томилолт, сахилга, шилжилт, тушаал, тойрох хуудас, архивын тайлан"
         userName={session.name}
         roleLabel={getRoleLabel(session.role)}
-        notificationNote="HR тайлан"
+        notificationNote="Хүний нөөцийн тайлан"
       />
       <HrSectionNav />
       <section className={styles.statGrid}>
@@ -38,7 +38,7 @@ export default async function HrReportsPage() {
             <div>
               <small>{label}</small>
               <strong>{value}</strong>
-              <p>Odoo болон HR бүртгэлээс тооцсон үзүүлэлт</p>
+              <p>Odoo болон хүний нөөцийн бүртгэлээс тооцсон үзүүлэлт</p>
             </div>
           </article>
         ))}
@@ -46,7 +46,7 @@ export default async function HrReportsPage() {
       <section className={styles.actionPanel}>
         <div>
           <span className={styles.eyebrow}>Тайлан татах</span>
-          <h2>Гарах HR тайлангууд</h2>
+          <h2>Гарах хүний нөөцийн тайлангууд</h2>
         </div>
         <div className={styles.actionGrid}>
           {[

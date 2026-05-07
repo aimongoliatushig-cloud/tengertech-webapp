@@ -31,7 +31,7 @@ function translateDisciplineError(error: unknown) {
   if (isMongolianMessage(message)) return message;
 
   if (normalized.includes("access denied") || normalized.includes("access error") || normalized.includes("not allowed")) {
-    return "Odoo дээр сахилгын бүртгэл үүсгэх эрх хүрэлцэхгүй байна. HR эрх болон municipal_core эрхийг шалгана уу.";
+    return "Odoo дээр сахилгын бүртгэл үүсгэх эрх хүрэлцэхгүй байна. Хүний нөөцийн эрх болон municipal_core эрхийг шалгана уу.";
   }
 
   if (normalized.includes("missing required") || normalized.includes("required field")) {
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     return Response.json({ discipline: await createDiscipline(session, input) }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "HR_ACCESS_DENIED") {
-      return jsonError("Танд сахилгын бүртгэл үүсгэх HR эрх байхгүй байна.", 403);
+      return jsonError("Танд сахилгын бүртгэл үүсгэх хүний нөөцийн эрх байхгүй байна.", 403);
     }
     return jsonError(translateDisciplineError(error));
   }

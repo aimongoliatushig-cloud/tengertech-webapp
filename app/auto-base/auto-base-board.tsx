@@ -1,5 +1,16 @@
 "use client";
 
+import {
+  AlertTriangle,
+  CalendarCheck2,
+  CircleCheckBig,
+  Fuel,
+  Scale,
+  ShieldCheck,
+  Truck,
+  Wrench,
+  type LucideIcon,
+} from "lucide-react";
 import Image from "next/image";
 import { useMemo, useState, type CSSProperties } from "react";
 
@@ -202,6 +213,26 @@ function meterStyle(count: number, total: number): CSSProperties {
   } as CSSProperties;
 }
 
+function MetricTile({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className={styles.metricTile}>
+      <span className={styles.metricTileIcon} aria-hidden="true">
+        <Icon size={18} strokeWidth={2.35} />
+      </span>
+      <span className={styles.metricTileLabel}>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
 function VehicleList({
   vehicles,
   emptyLabel,
@@ -224,6 +255,7 @@ function VehicleList({
           className={styles.vehicleCard}
           onClick={() => onSelectVehicle(vehicle)}
         >
+          <VehicleCardPhoto vehicle={vehicle} />
           <div className={styles.vehicleTop}>
             <strong className={styles.vehiclePlate}>{vehicle.plate}</strong>
             <span
@@ -246,6 +278,31 @@ function VehicleList({
           </span>
         </button>
       ))}
+    </div>
+  );
+}
+
+function VehicleCardPhoto({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
+  const frontPhoto =
+    vehicle.attachments.frontPhotos.find((item) => item.isImage) ?? vehicle.attachments.frontPhotos[0];
+
+  return (
+    <div className={styles.vehicleCardPhoto}>
+      {frontPhoto?.isImage ? (
+        <Image
+          src={frontPhoto.url}
+          alt={`${vehicle.plate} урд талын зураг`}
+          width={420}
+          height={236}
+          sizes="(max-width: 720px) 100vw, 360px"
+          unoptimized
+        />
+      ) : (
+        <span>
+          <strong>{vehicle.plate}</strong>
+          <small>Урд талын зураг оруулаагүй</small>
+        </span>
+      )}
     </div>
   );
 }
@@ -368,34 +425,6 @@ function formatStaffOption(option: FleetVehicleDriverOption) {
     .join(" · ");
 }
 
-function findStaffOption(value: string, options: FleetVehicleDriverOption[]) {
-  const normalized = normalizeStaffText(value);
-  if (!normalized) {
-    return null;
-  }
-
-  const exact = options.find(
-    (option) =>
-      normalizeStaffText(formatStaffOption(option)) === normalized ||
-      normalizeStaffText(option.name) === normalized,
-  );
-  if (exact) {
-    return exact;
-  }
-
-  const startsWithMatches = options.filter((option) =>
-    normalizeStaffText(formatStaffOption(option)).startsWith(normalized),
-  );
-  if (startsWithMatches.length === 1) {
-    return startsWithMatches[0];
-  }
-
-  const includesMatches = options.filter((option) =>
-    normalizeStaffText(formatStaffOption(option)).includes(normalized),
-  );
-  return includesMatches.length === 1 ? includesMatches[0] : null;
-}
-
 function DeadlinePanel({
   title,
   info,
@@ -426,13 +455,27 @@ function EmptyPanel({ children }: { children: string }) {
   return <div className={styles.emptyState}>{children}</div>;
 }
 
+function uniqueDriverHistoryItems(items: FleetVehicleDriverHistoryItem[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = normalizeStaffText(item.driverName);
+    if (!key || seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
 function DriverHistoryList({ items }: { items: FleetVehicleDriverHistoryItem[] }) {
-  if (!items.length) {
+  const visibleItems = uniqueDriverHistoryItems(items);
+
+  if (!visibleItems.length) {
     return <EmptyPanel>Жолоочийн түүх бүртгэгдээгүй байна.</EmptyPanel>;
   }
   return (
     <div className={styles.historyList}>
-      {items.map((item) => (
+      {visibleItems.map((item) => (
         <article key={item.id} className={styles.historyRow}>
           <strong>{item.driverName}</strong>
           <span>{displayValue(item.dateStart)} - {displayValue(item.dateEnd)}</span>
@@ -444,53 +487,27 @@ function DriverHistoryList({ items }: { items: FleetVehicleDriverHistoryItem[] }
 }
 
 function StaffPicker({
-  vehicleId,
   name,
   label,
-  placeholder,
   options,
   defaultId,
 }: {
-  vehicleId: number;
   name: string;
   label: string;
-  placeholder: string;
   options: FleetVehicleDriverOption[];
   defaultId: number | null;
 }) {
-  const defaultOption = defaultId ? options.find((option) => option.id === defaultId) : undefined;
-  const [query, setQuery] = useState(defaultOption ? formatStaffOption(defaultOption) : "");
-  const [selectedId, setSelectedId] = useState(defaultOption ? String(defaultOption.id) : "");
-  const listId = `${name}-${vehicleId}-options`;
-  const hasUnmatchedQuery = query.trim().length > 0 && !selectedId;
-
-  function updateSelection(value: string) {
-    setQuery(value);
-    const selected = findStaffOption(value, options);
-    setSelectedId(selected ? String(selected.id) : "");
-  }
-
   return (
     <label className={styles.vehicleFormField}>
       <span>{label}</span>
-      <input type="hidden" name={name} value={selectedId} />
-      <input
-        name={`${name}_label`}
-        list={listId}
-        value={query}
-        placeholder={placeholder}
-        autoComplete="off"
-        onChange={(event) => updateSelection(event.target.value)}
-        onBlur={(event) => updateSelection(event.target.value)}
-      />
-      <datalist id={listId}>
+      <select name={name} defaultValue={defaultId ?? ""}>
+        <option value="">Оноогоогүй</option>
         {options.map((option) => (
-          <option key={option.id} value={formatStaffOption(option)} />
+          <option key={option.id} value={option.id}>
+            {formatStaffOption(option)}
+          </option>
         ))}
-      </datalist>
-      {hasUnmatchedQuery ? (
-        <small className={styles.formHintError}>HR жагсаалтаас сонгоно уу.</small>
-      ) : null}
+      </select>
     </label>
   );
 }
@@ -511,7 +528,7 @@ function DriverAssignmentForm({
         <div>
           <h3>Жолооч, ачигч оноох</h3>
           <p>
-            HR бүртгэлтэй жолооч болон ачигчаас сонгож хадгалахад өмнөх жолоочийн түүх автоматаар үлдэнэ.
+            Хүний нөөцийн бүртгэлтэй жолооч болон ачигчаас сонгож хадгалахад өмнөх жолоочийн түүх автоматаар үлдэнэ.
           </p>
         </div>
       </div>
@@ -521,30 +538,24 @@ function DriverAssignmentForm({
 
         <StaffPicker
           key={`driver-${vehicle.id}-${vehicle.responsibleDriverId ?? "none"}`}
-          vehicleId={vehicle.id}
           name="municipal_responsible_driver_id"
           label="Хариуцсан жолооч"
-          placeholder="Жолоочийн нэр бичиж HR жагсаалтаас сонгох"
           options={driverOptions}
           defaultId={vehicle.responsibleDriverId}
         />
 
         <StaffPicker
           key={`loader1-${vehicle.id}-${vehicle.loader1Id ?? "none"}`}
-          vehicleId={vehicle.id}
           name="municipal_loader_1_id"
           label="Ачигч 1"
-          placeholder="Ачигчийн нэр бичиж HR жагсаалтаас сонгох"
           options={loaderOptions}
           defaultId={vehicle.loader1Id}
         />
 
         <StaffPicker
           key={`loader2-${vehicle.id}-${vehicle.loader2Id ?? "none"}`}
-          vehicleId={vehicle.id}
           name="municipal_loader_2_id"
           label="Ачигч 2"
-          placeholder="Ачигчийн нэр бичиж HR жагсаалтаас сонгох"
           options={loaderOptions}
           defaultId={vehicle.loader2Id}
         />
@@ -556,7 +567,7 @@ function DriverAssignmentForm({
             Ачигч 1: {vehicle.loader1Name || "оноогоогүй"} · Ачигч 2:{" "}
             {vehicle.loader2Name || "оноогоогүй"}
           </small>
-          <small>{driverOptions.length} HR жолооч · {loaderOptions.length} HR ачигч</small>
+          <small>Хүний нөөц: {driverOptions.length} жолооч · {loaderOptions.length} ачигч</small>
         </div>
 
         <div className={styles.vehicleModalActions}>
@@ -1298,46 +1309,16 @@ export function AutoBaseBoard({
       ) : null}
 
       <div className={styles.metricGrid}>
-        <div className={styles.metricTile}>
-          <span>Нийт машин техник</span>
-          <strong>{board.totalVehicles}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Ажиллаж байгаа</span>
-          <strong>{board.activeCount}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Засвартай</span>
-          <strong>{board.repairCount}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Даатгал сануулах</span>
-          <strong>{board.insuranceDueCount}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Үзлэг сануулах</span>
-          <strong>{board.inspectionDueCount}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Өнөөдрийн жин</span>
-          <strong>{board.todayWeightLabel}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Өнөөдрийн шатахуун</span>
-          <strong>{board.todayFuelLabel}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Алдаатай таталт</span>
-          <strong>{board.failedImportCount}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Шатахуун их зарцуулж байгаа</span>
-          <strong>{board.highestFuelVehicle || "Байхгүй"}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Их засварт орсон</span>
-          <strong>{board.mostRepairedVehicle || "Байхгүй"}</strong>
-        </div>
+        <MetricTile icon={Truck} label="Нийт машин техник" value={board.totalVehicles} />
+        <MetricTile icon={CircleCheckBig} label="Ажиллаж байгаа" value={board.activeCount} />
+        <MetricTile icon={Wrench} label="Засвартай" value={board.repairCount} />
+        <MetricTile icon={ShieldCheck} label="Даатгал сануулах" value={board.insuranceDueCount} />
+        <MetricTile icon={CalendarCheck2} label="Үзлэг сануулах" value={board.inspectionDueCount} />
+        <MetricTile icon={Scale} label="Өнөөдрийн жин" value={board.todayWeightLabel} />
+        <MetricTile icon={Fuel} label="Өнөөдрийн шатахуун" value={board.todayFuelLabel} />
+        <MetricTile icon={AlertTriangle} label="Алдаатай таталт" value={board.failedImportCount} />
+        <MetricTile icon={Fuel} label="Шатахуун их зарцуулж байгаа" value={board.highestFuelVehicle || "Байхгүй"} />
+        <MetricTile icon={Wrench} label="Их засварт орсон" value={board.mostRepairedVehicle || "Байхгүй"} />
       </div>
 
       <section className={styles.vehicleFilterBoard} data-testid="vehicle-filter-board">

@@ -302,7 +302,7 @@ export function GeneralDashboardView({
     {
       label: "хүний нөөцийн ашиглалт",
       value: `${percent(hrAttendanceSummary.workingToday, hrAttendanceSummary.totalEmployees)}%`,
-      note: hrAttendanceSummary.source === "empty" ? "HR дата олдсонгүй" : "HR бодит дата",
+      note: hrAttendanceSummary.source === "empty" ? "Хүний нөөцийн дата олдсонгүй" : "Хүний нөөцийн бодит дата",
       progress: percent(hrAttendanceSummary.workingToday, hrAttendanceSummary.totalEmployees),
       icon: UsersRound,
       tone: "green",

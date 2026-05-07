@@ -41,7 +41,7 @@ export default async function HrArchivePage({ searchParams }: PageProps) {
       <HrSectionNav />
       <RegistryPage
         title="Ажлаас гарсан болон архивлагдсан ажилтнууд"
-        description="Ажлаас гарах огноо, шалтгаан, тушаал/шийдвэрийн хавсралтыг бүртгэнэ. Энэ үйлдлийг зөвхөн HR мэргэжилтэн хийнэ."
+        description="Ажлаас гарах огноо, шалтгаан, тушаал/шийдвэрийн хавсралтыг бүртгэнэ. Энэ үйлдлийг зөвхөн хүний нөөцийн мэргэжилтэн хийнэ."
         submitEndpoint={selectedEmployee ? `/api/hr/employees/${selectedEmployee.id}/terminate` : undefined}
         submitLabel="Ажлаас гаргах"
         successMessage="Ажилтан ажлаас гарсан төлөвтэй архивлагдлаа."

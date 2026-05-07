@@ -1493,6 +1493,73 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
     "fuel_type",
     "driver_id",
     "state_id",
+    "mfo_active_for_ops",
+    "latest_repair_state",
+    "vehicle_downtime_open",
+    "municipal_insurance_company",
+    "municipal_insurance_policy_number",
+    "municipal_insurance_date_start",
+    "municipal_insurance_date_end",
+    "municipal_insurance_days_remaining",
+    "municipal_insurance_reminder_due",
+    "municipal_insurance_note",
+    "municipal_insurance_attachment_ids",
+    "municipal_inspection_date",
+    "municipal_next_inspection_date",
+    "municipal_inspection_days_remaining",
+    "municipal_inspection_reminder_due",
+    "municipal_inspection_note",
+    "municipal_inspection_attachment_ids",
+    "active",
+  ],
+  [
+    "name",
+    "license_plate",
+    "model_id",
+    "category_id",
+    "municipal_vehicle_type_id",
+    "municipal_department_id",
+    "municipal_responsible_driver_id",
+    "municipal_loader_1_id",
+    "municipal_loader_2_id",
+    "x_municipal_operational_status",
+    "vin_sn",
+    "odometer",
+    "fuel_type",
+    "driver_id",
+    "state_id",
+    "municipal_insurance_company",
+    "municipal_insurance_policy_number",
+    "municipal_insurance_date_start",
+    "municipal_insurance_date_end",
+    "municipal_insurance_days_remaining",
+    "municipal_insurance_reminder_due",
+    "municipal_insurance_note",
+    "municipal_insurance_attachment_ids",
+    "municipal_inspection_date",
+    "municipal_next_inspection_date",
+    "municipal_inspection_days_remaining",
+    "municipal_inspection_reminder_due",
+    "municipal_inspection_note",
+    "municipal_inspection_attachment_ids",
+    "active",
+  ],
+  [
+    "name",
+    "license_plate",
+    "model_id",
+    "category_id",
+    "municipal_vehicle_type_id",
+    "municipal_department_id",
+    "municipal_responsible_driver_id",
+    "municipal_loader_1_id",
+    "municipal_loader_2_id",
+    "x_municipal_operational_status",
+    "vin_sn",
+    "odometer",
+    "fuel_type",
+    "driver_id",
+    "state_id",
     "municipal_insurance_company",
     "municipal_insurance_policy_number",
     "municipal_insurance_date_start",
@@ -3195,6 +3262,27 @@ function formatOptionalCompactDate(value?: string | false) {
   return formatCompactDate(value);
 }
 
+function formatOptionalDateWithYear(value?: string | false) {
+  if (!value) {
+    return "";
+  }
+
+  const dateOnlyMatch = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const parsed = dateOnlyMatch
+    ? new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]))
+    : new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("mn-MN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(parsed);
+}
+
 function formatDateRange(start?: string | false, end?: string | false) {
   const startLabel = formatOptionalCompactDate(start);
   const endLabel = formatOptionalCompactDate(end);
@@ -3704,8 +3792,8 @@ export async function loadFleetVehicleBoard(
         insurance: {
           company: vehicle.municipal_insurance_company || "",
           policyNumber: vehicle.municipal_insurance_policy_number || "",
-          startDate: formatOptionalCompactDate(vehicle.municipal_insurance_date_start),
-          endDate: formatOptionalCompactDate(vehicle.municipal_insurance_date_end),
+          startDate: formatOptionalDateWithYear(vehicle.municipal_insurance_date_start),
+          endDate: formatOptionalDateWithYear(vehicle.municipal_insurance_date_end),
           startDateValue: vehicle.municipal_insurance_date_start || "",
           endDateValue: vehicle.municipal_insurance_date_end || "",
           daysRemaining:
@@ -3717,8 +3805,8 @@ export async function loadFleetVehicleBoard(
           attachmentCount: vehicle.municipal_insurance_attachment_ids?.length ?? 0,
         },
         inspection: {
-          startDate: formatOptionalCompactDate(vehicle.municipal_inspection_date),
-          endDate: formatOptionalCompactDate(vehicle.municipal_next_inspection_date),
+          startDate: formatOptionalDateWithYear(vehicle.municipal_inspection_date),
+          endDate: formatOptionalDateWithYear(vehicle.municipal_next_inspection_date),
           startDateValue: vehicle.municipal_inspection_date || "",
           endDateValue: vehicle.municipal_next_inspection_date || "",
           daysRemaining:

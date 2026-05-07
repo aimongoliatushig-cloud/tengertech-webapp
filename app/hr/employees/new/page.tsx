@@ -26,7 +26,7 @@ export default async function NewHrEmployeePage() {
         subtitle="Ажилтны үндсэн мэдээлэл, алба нэгж, албан тушаал, холбоо барих мэдээллийг Odoo дээр үүсгэнэ"
         userName={session.name}
         roleLabel={getRoleLabel(session.role)}
-        notificationNote="Шинэ HR бүртгэл"
+        notificationNote="Шинэ хүний нөөцийн бүртгэл"
       />
       <HrSectionNav mode={access.isHr ? "hr" : "department"} />
       <EmployeeCreateForm departments={departments} jobs={jobs} managers={managers} />

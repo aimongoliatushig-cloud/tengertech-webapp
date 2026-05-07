@@ -252,21 +252,21 @@ export function HrDashboardClient({
       label: "Хүлээгдэж буй хүсэлт",
       value: cardsSource?.pendingRequests ?? pendingRequests.length,
       icon: FileWarning,
-      note: "Илгээсэн / HR шалгаж байна",
+      note: "Илгээсэн / хүний нөөц шалгаж байна",
     },
     {
       kind: "approved",
       label: "Батлагдсан",
       value: cardsSource?.approvedRequests ?? approvedRequests.length,
       icon: FileCheck2,
-      note: "HR баталсан",
+      note: "Хүний нөөц баталсан",
     },
     {
       kind: "rejected",
       label: "Татгалзсан",
       value: cardsSource?.rejectedRequests ?? rejectedRequests.length,
       icon: ShieldAlert,
-      note: "HR татгалзсан",
+      note: "Хүний нөөц татгалзсан",
     },
   ];
 

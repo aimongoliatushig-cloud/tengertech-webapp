@@ -623,7 +623,7 @@ export function TimeoffRequestsClient({
       if (!response.ok) {
         throw new Error(payload.error || "Хүсэлт илгээхэд алдаа гарлаа.");
       }
-      setMessage(editingRequest ? "Хүсэлт шинэчлэгдлээ." : formData.get("intent") === "draft" ? "Ноорог хадгалагдлаа." : "Хүсэлт HR-д илгээгдлээ.");
+      setMessage(editingRequest ? "Хүсэлт шинэчлэгдлээ." : formData.get("intent") === "draft" ? "Ноорог хадгалагдлаа." : "Хүсэлт хүний нөөцөд илгээгдлээ.");
       setEditingRequest(null);
       router.refresh();
       form.reset();
@@ -661,7 +661,7 @@ export function TimeoffRequestsClient({
       <section className={styles.panel}>
         <div className={styles.sectionHeader}>
           <div>
-            <span className={styles.eyebrow}>{mode === "hr" ? "HR review" : "Department Head"}</span>
+            <span className={styles.eyebrow}>{mode === "hr" ? "Хүний нөөц шалгах" : "Хэлтсийн дарга"}</span>
             <h2>{mode === "hr" ? "Ирсэн хүсэлтүүд" : "Миний илгээсэн хүсэлтүүд"}</h2>
           </div>
           <span>{visibleRequests.length}</span>
@@ -671,7 +671,7 @@ export function TimeoffRequestsClient({
           <select value={filter} onChange={(event) => setFilter(event.target.value)}>
             <option value={ALL}>Бүх хүсэлт</option>
             <option value="submitted">Хүлээгдэж буй</option>
-            <option value="hr_review">HR шалгаж байна</option>
+            <option value="hr_review">Хүний нөөц шалгаж байна</option>
             <option value="approved">Батлагдсан</option>
             <option value="rejected">Татгалзсан</option>
             <option value="time_off">Чөлөө</option>
@@ -715,7 +715,7 @@ export function TimeoffRequestsClient({
                     <div className={styles.checklist}>
                       {mode === "hr" && request.state === "submitted" ? (
                         <button type="button" onClick={() => runAction(request.id, "hr_review")} disabled={pending}>
-                          HR шалгах
+                          Хүний нөөц шалгах
                         </button>
                       ) : null}
                       {mode === "hr" && ["submitted", "hr_review"].includes(request.state) ? (

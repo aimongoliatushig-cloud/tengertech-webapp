@@ -283,6 +283,14 @@ function firstTextLine(value: string, fallback = "") {
     .find(Boolean) ?? fallback;
 }
 
+function odooDateValue(field?: FieldMap[string]) {
+  const now = new Date();
+  if (field?.type === "datetime") {
+    return now.toISOString().slice(0, 19).replace("T", " ");
+  }
+  return now.toISOString().slice(0, 10);
+}
+
 function idArrayValue(record: RepairRecord, names: string[]) {
   for (const name of names) {
     const value = record[name];
@@ -591,21 +599,25 @@ async function createAttachments(
     if (!file.size) {
       continue;
     }
-    const payload = await fileToAttachmentPayload(file);
-    const id = await executeOdooKw<number>(
-      "ir.attachment",
-      "create",
-      [
-        {
-          ...payload,
-          res_model: model,
-          res_id: recordId,
-        },
-      ],
-      {},
-      connection,
-    );
-    ids.push(id);
+    try {
+      const payload = await fileToAttachmentPayload(file);
+      const id = await executeOdooKw<number>(
+        "ir.attachment",
+        "create",
+        [
+          {
+            ...payload,
+            res_model: model,
+            res_id: recordId,
+          },
+        ],
+        {},
+        connection,
+      );
+      ids.push(id);
+    } catch (error) {
+      console.warn("Fleet repair attachment could not be saved:", error);
+    }
   }
   return ids;
 }
@@ -639,14 +651,20 @@ export async function createFleetRepairRequest(session: AppSession, input: Fleet
   }
   const fields = await fieldsForModel(model, connection);
   const values: Record<string, unknown> = {};
+  const summary = input.issueSummary || firstTextLine(input.description, "Засварын хүсэлт");
 
   if (input.vehicleId && "vehicle_id" in fields) {
     values.vehicle_id = input.vehicleId;
   } else if (input.vehicleId && "fleet_vehicle_id" in fields) {
     values.fleet_vehicle_id = input.vehicleId;
   }
+  if ("name" in fields) {
+    values.name = summary;
+  }
   if ("issue_summary" in fields) {
-    values.issue_summary = input.issueSummary || firstTextLine(input.description, "Засварын хүсэлт");
+    values.issue_summary = summary;
+  } else if ("issue_description" in fields) {
+    values.issue_description = summary;
   }
   if ("description" in fields) {
     values.description = input.description;
@@ -657,6 +675,11 @@ export async function createFleetRepairRequest(session: AppSession, input: Fleet
     values.parts_note = input.partsNote;
   } else if ("part_note" in fields) {
     values.part_note = input.partsNote;
+  }
+  if ("request_date" in fields) {
+    values.request_date = odooDateValue(fields.request_date);
+  } else if ("date" in fields) {
+    values.date = odooDateValue(fields.date);
   }
 
   const createdId = await executeOdooKw<number>(model, "create", [values], {}, connection);
@@ -669,7 +692,9 @@ export async function createFleetRepairRequest(session: AppSession, input: Fleet
       ACTION_METHODS.submit,
       { attachment_ids: attachmentIds },
       connection,
-    );
+    ).catch((error) => {
+      console.warn("Fleet repair submit action could not be called after create:", error);
+    });
   }
 
   return { id: createdId, attachmentIds };

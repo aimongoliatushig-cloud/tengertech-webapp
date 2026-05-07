@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Хот тохижилтын ERP",
     short_name: "Хот ERP",
-    description: "Хот тохижилт, хог тээвэр, засвар, HR ажлын PWA систем",
+    description: "Хот тохижилт, хог тээвэр, засвар, хүний нөөцийн ажлын PWA систем",
     start_url: "/",
     scope: "/",
     display: "standalone",

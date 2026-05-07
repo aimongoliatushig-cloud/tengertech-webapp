@@ -76,7 +76,7 @@ function optionalStaffId(formData: FormData, key: string, label: string) {
   const selectedId = optionalOdooId(getString(formData, key));
   const typedLabel = getString(formData, `${key}_label`);
   if (typedLabel && !selectedId) {
-    redirectWithMessage("error", `${label}-г HR жагсаалтаас сонгоно уу.`);
+    redirectWithMessage("error", `${label}-г хүний нөөцийн жагсаалтаас сонгоно уу.`);
   }
   return selectedId;
 }

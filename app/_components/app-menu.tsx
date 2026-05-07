@@ -572,7 +572,7 @@ export function AppMenu({
       ]
     : hrFocusedMode
       ? [
-          { key: "hr", href: "/hr", label: "HR", icon: Users },
+          { key: "hr", href: "/hr", label: "Хүний нөөц", icon: Users },
           { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
         ]
       : workerMode
@@ -625,7 +625,7 @@ export function AppMenu({
           { key: "new-project", href: "/create", label: "Шинэ ажил", icon: PlusCircle },
           { key: "reports", href: canWriteReports ? "/reports" : "/review", label: "Тайлан", icon: BarChart3 },
           canViewHr
-            ? { key: "hr", href: "/hr", label: "HR", icon: Users }
+            ? { key: "hr", href: "/hr", label: "Хүний нөөц", icon: Users }
             : { key: "chat", href: "/chat", label: "Чат", icon: MessageSquare },
         ]).filter((item) => !isHiddenMenuItem(item));
 

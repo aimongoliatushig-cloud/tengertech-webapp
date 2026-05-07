@@ -27,7 +27,7 @@ function getErrorMessage(error: unknown) {
   }
 
   if (normalized.includes("access denied") || normalized.includes("access error") || normalized.includes("not allowed")) {
-    return "Odoo дээр энэ үйлдлийг хийх эрх хүрэлцэхгүй байна. Хэрэглэгчийн HR эрхийг шалгана уу.";
+    return "Odoo дээр энэ үйлдлийг хийх эрх хүрэлцэхгүй байна. Хэрэглэгчийн хүний нөөцийн эрхийг шалгана уу.";
   }
 
   if (normalized.includes("missing required") || normalized.includes("required field")) {

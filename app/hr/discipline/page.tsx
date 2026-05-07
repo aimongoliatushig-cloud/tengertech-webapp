@@ -59,7 +59,7 @@ export default async function HrDisciplinePage({ searchParams }: PageProps) {
     <>
       <WorkspaceHeader
         title="Сахилгын бүртгэл"
-        subtitle="Ажил үүрэг, чанар, тайлан, хариуцлага, аюулгүй ажиллагаа болон бусад HR сахилгын бүртгэл"
+        subtitle="Ажил үүрэг, чанар, тайлан, хариуцлага, аюулгүй ажиллагаа болон бусад хүний нөөцийн сахилгын бүртгэл"
         userName={session.name}
         roleLabel={getRoleLabel(session.role)}
         notificationCount={disciplineRecords.length}

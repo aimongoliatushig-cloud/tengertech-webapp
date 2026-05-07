@@ -40,11 +40,11 @@ function translateHrLeaveError(error: unknown) {
   }
 
   if (normalized.includes("doesn't have 'create' access") || normalized.includes("have create access")) {
-    return "Odoo дээр энэ хэрэглэгчид чөлөөний бүртгэл үүсгэх эрх хүрэлцэхгүй байна. HR custom module шинэчлэгдсэн эсэх болон хэрэглэгчийн HR эрхийг шалгана уу.";
+    return "Odoo дээр энэ хэрэглэгчид чөлөөний бүртгэл үүсгэх эрх хүрэлцэхгүй байна. Хүний нөөцийн custom module шинэчлэгдсэн эсэх болон хэрэглэгчийн хүний нөөцийн эрхийг шалгана уу.";
   }
 
   if (normalized.includes("access denied") || normalized.includes("access error") || normalized.includes("not allowed")) {
-    return "Odoo дээр энэ үйлдлийг хийх эрх хүрэлцэхгүй байна. Хэрэглэгчийн HR эрхийг шалгана уу.";
+    return "Odoo дээр энэ үйлдлийг хийх эрх хүрэлцэхгүй байна. Хэрэглэгчийн хүний нөөцийн эрхийг шалгана уу.";
   }
 
   if (normalized.includes("missing required") || normalized.includes("required field")) {

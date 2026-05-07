@@ -93,7 +93,7 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     return Response.json({ discipline: await updateDiscipline(session, disciplineId, input) });
   } catch (error) {
     if (error instanceof Error && error.message === "HR_ACCESS_DENIED") {
-      return jsonError("Танд сахилгын бүртгэл засах HR эрх байхгүй байна.", 403);
+      return jsonError("Танд сахилгын бүртгэл засах хүний нөөцийн эрх байхгүй байна.", 403);
     }
     return jsonError(translateDisciplineError(error));
   }
@@ -112,7 +112,7 @@ export async function DELETE(_request: Request, ctx: RouteCtx) {
     return Response.json({ discipline: await deleteDiscipline(session, disciplineId) });
   } catch (error) {
     if (error instanceof Error && error.message === "HR_ACCESS_DENIED") {
-      return jsonError("Танд сахилгын бүртгэл устгах HR эрх байхгүй байна.", 403);
+      return jsonError("Танд сахилгын бүртгэл устгах хүний нөөцийн эрх байхгүй байна.", 403);
     }
     return jsonError(translateDisciplineError(error));
   }

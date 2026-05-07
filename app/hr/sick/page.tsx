@@ -23,7 +23,7 @@ export default async function HrSickPage() {
     <>
       <WorkspaceHeader
         title="Чөлөө / өвчтэй хүсэлт"
-        subtitle="Хэлтсийн дарга ажилтанд чөлөө эсвэл өвчтэй хүсэлт үүсгэж HR-д илгээнэ"
+        subtitle="Хэлтсийн дарга ажилтанд чөлөө эсвэл өвчтэй хүсэлт үүсгэж хүний нөөцөд илгээнэ"
         userName={session.name}
         roleLabel={getRoleLabel(session.role)}
         notificationCount={requests.filter((item) => item.requestType === "sick").length}

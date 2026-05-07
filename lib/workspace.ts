@@ -1904,87 +1904,27 @@ export async function loadWorkTypeOptions(
 export async function loadGarbageVehicleOptions(
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<GarbageVehicleOption[]> {
-  const crewTeams = await readFirstAvailable<{ vehicle_id: Relation }>(
+  const vehicles = await readFirstAvailable<GarbageVehicleRecord>(
     [
       {
-        model: "mfo.crew.team",
-        domain: [["active", "=", true], ["operation_type", "=", "garbage"], ["vehicle_id", "!=", false]],
-        fields: ["vehicle_id"],
-        order: "name asc",
+        model: "fleet.vehicle",
+        domain: [["active", "=", true]],
+        fields: ["name", "license_plate"],
+        order: "license_plate asc, name asc",
+        limit: 500,
       },
       {
-        model: "mfo.crew.team",
-        domain: [["operation_type", "=", "garbage"], ["vehicle_id", "!=", false]],
-        fields: ["vehicle_id"],
-        order: "name asc",
-      },
-      {
-        model: "mfo.crew.team",
-        domain: [["vehicle_id", "!=", false]],
-        fields: ["vehicle_id"],
-        order: "name asc",
+        model: "fleet.vehicle",
+        domain: [],
+        fields: ["name", "license_plate"],
+        order: "license_plate asc, name asc",
+        limit: 500,
       },
     ],
     connectionOverrides,
   );
 
-  const vehicleIds = Array.from(
-    new Set(
-      crewTeams
-        .map((team) => relationId(team.vehicle_id))
-        .filter((value): value is number => Boolean(value)),
-    ),
-  );
-
-  const vehicles = vehicleIds.length
-    ? await readFirstAvailable<GarbageVehicleRecord>(
-        [
-          {
-            model: "fleet.vehicle",
-            domain: [["id", "in", vehicleIds], ["mfo_active_for_ops", "=", true]],
-            fields: ["name", "license_plate"],
-            order: "license_plate asc, name asc",
-            limit: vehicleIds.length,
-          },
-          {
-            model: "fleet.vehicle",
-            domain: [["id", "in", vehicleIds]],
-            fields: ["name", "license_plate"],
-            order: "license_plate asc, name asc",
-            limit: vehicleIds.length,
-          },
-        ],
-        connectionOverrides,
-      )
-    : [];
-
-  const fallbackVehicles = vehicles.length
-    ? vehicles
-    : await readFirstAvailable<GarbageVehicleRecord>(
-        [
-          {
-            model: "fleet.vehicle",
-            domain: [["mfo_active_for_ops", "=", true]],
-            fields: ["name", "license_plate"],
-            order: "license_plate asc, name asc",
-          },
-          {
-            model: "fleet.vehicle",
-            domain: [["active", "=", true]],
-            fields: ["name", "license_plate"],
-            order: "license_plate asc, name asc",
-          },
-          {
-            model: "fleet.vehicle",
-            domain: [],
-            fields: ["name", "license_plate"],
-            order: "license_plate asc, name asc",
-          },
-        ],
-        connectionOverrides,
-      );
-
-  return fallbackVehicles.map((vehicle) => {
+  return vehicles.map((vehicle) => {
     const plate = vehicle.license_plate || vehicle.name || `Техник #${vehicle.id}`;
     return {
       id: vehicle.id,
