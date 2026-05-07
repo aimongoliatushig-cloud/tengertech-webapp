@@ -1,7 +1,13 @@
 import "server-only";
 
 import type { AppSession } from "@/lib/auth";
-import { executeOdooKw, type HrEmployeeDirectoryItem, loadHrEmployeeDirectory, type OdooConnection } from "@/lib/odoo";
+import {
+  createOdooConnection,
+  executeOdooKw,
+  type HrEmployeeDirectoryItem,
+  loadHrEmployeeDirectory,
+  type OdooConnection,
+} from "@/lib/odoo";
 
 type OdooRelation = [number, string] | false;
 
@@ -177,6 +183,27 @@ type HrClearanceSearchRecord = {
   state?: string | false;
   note?: string | false;
   attachment_ids?: number[];
+};
+
+type HrReportFallbackAttachmentRecord = {
+  id: number;
+  name?: string | false;
+  create_date?: string | false;
+  create_uid?: OdooRelation;
+  datas?: string | false;
+  mimetype?: string | false;
+};
+
+type HrReportLine = {
+  values?: unknown[];
+};
+
+type HrCompanyLogoRecord = {
+  id: number;
+  name?: string | false;
+  logo?: string | false;
+  logo_web?: string | false;
+  image_1920?: string | false;
 };
 
 export type HrOption = {
@@ -364,6 +391,47 @@ export type HrClearanceRecord = {
   note: string;
   hasAttachment: boolean;
   attachmentIds: number[];
+};
+
+export type HrReportType =
+  | "employee_list"
+  | "department_employee"
+  | "new_employee"
+  | "resigned_employee"
+  | "leave"
+  | "sick"
+  | "business_trip"
+  | "discipline"
+  | "transfer"
+  | "order_contract"
+  | "clearance"
+  | "archive";
+
+export type HrGeneratedReport = {
+  id: number;
+  name: string;
+  reportType: HrReportType;
+  reportTypeLabel: string;
+  dateFrom: string;
+  dateTo: string;
+  generatedDate: string;
+  generatedBy: string;
+  departmentName: string;
+  attachmentId: number | null;
+  downloadUrl: string;
+};
+
+export type HrReportGenerateInput = {
+  reportType: HrReportType;
+  dateFrom: string;
+  dateTo: string;
+  departmentId?: number;
+};
+
+export type HrReportPdfPayload = {
+  name: string;
+  mimetype: string;
+  datas: string;
 };
 
 export type HrEmployeeTransferRecord = {
@@ -2500,6 +2568,530 @@ export async function createClearanceRecord(session: AppSession, data: HrClearan
       throw new Error("hr_custom_mn module шинэчлэгдээгүй байна. VPS дээр module upgrade/reload хийсний дараа тойрох хуудас хадгална уу.");
     }
     throw error;
+  }
+}
+
+export async function deleteClearanceRecord(session: AppSession, clearanceId: number) {
+  await requireHrSpecialistAccess(session);
+  if (!clearanceId) {
+    throw new Error("Тойрох хуудасны дугаар буруу байна.");
+  }
+
+  const deleted = await executeOdooKw<boolean>(
+    "municipal.hr.clearance.sheet",
+    "unlink",
+    [[clearanceId]],
+    {},
+  );
+
+  if (!deleted) {
+    throw new Error("Тойрох хуудас устгахад алдаа гарлаа.");
+  }
+
+  return { id: clearanceId, deleted: true };
+}
+
+function normalizeGeneratedReport(record: Partial<HrGeneratedReport>): HrGeneratedReport {
+  return {
+    id: Number(record.id || 0),
+    name: record.name || "",
+    reportType: (record.reportType || "employee_list") as HrReportType,
+    reportTypeLabel: record.reportTypeLabel || "HR тайлан",
+    dateFrom: record.dateFrom || "",
+    dateTo: record.dateTo || "",
+    generatedDate: record.generatedDate || "",
+    generatedBy: record.generatedBy || "",
+    departmentName: record.departmentName || "",
+    attachmentId: record.attachmentId ?? null,
+    downloadUrl: record.downloadUrl || (record.id ? `/api/hr/reports/${record.id}/download` : ""),
+  };
+}
+
+function isMissingHrReportArchiveModelError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return message.includes("municipal.hr.report.archive") || message.includes("get_hr_report_archive") || message.includes("not found");
+}
+
+const HR_REPORT_LABELS: Record<HrReportType, string> = {
+  employee_list: "Ажилтны жагсаалт",
+  department_employee: "Хэлтэс тус бүрийн ажилтны тайлан",
+  new_employee: "Шинээр орсон ажилтны тайлан",
+  resigned_employee: "Ажлаас гарсан ажилтны тайлан",
+  leave: "Чөлөөний тайлан",
+  sick: "Өвчтэй ажилтны тайлан",
+  business_trip: "Томилолтын тайлан",
+  discipline: "Сахилгын тайлан",
+  transfer: "Шилжилт хөдөлгөөний тайлан",
+  order_contract: "Тушаал, гэрээний тайлан",
+  clearance: "Тойрох хуудасны тайлан",
+  archive: "Архивын тайлан",
+};
+
+const FALLBACK_HR_REPORT_PREFIX = "HR_REPORT_ARCHIVE";
+const FALLBACK_HR_REPORT_MODEL = "hr.custom.mn.report.wizard";
+
+function fallbackWizardReportType(reportType: HrReportType) {
+  const map: Partial<Record<HrReportType, string>> = {
+    employee_list: "employee_master",
+    department_employee: "department_structure",
+    new_employee: "employee_master",
+    resigned_employee: "employee_master",
+    leave: "leave",
+    sick: "leave",
+    business_trip: "employee_master",
+    discipline: "employee_master",
+    transfer: "employee_master",
+    order_contract: "missing_document",
+    clearance: "employee_master",
+    archive: "employee_master",
+  };
+  return map[reportType] || "employee_master";
+}
+
+function fallbackReportName(data: HrReportGenerateInput) {
+  return `${FALLBACK_HR_REPORT_PREFIX}__${data.reportType}__${data.dateFrom}__${data.dateTo}__${HR_REPORT_LABELS[data.reportType]}.pdf`;
+}
+
+function parseFallbackReportAttachment(record: HrReportFallbackAttachmentRecord): HrGeneratedReport | null {
+  const name = String(record.name || "");
+  if (!name.startsWith(`${FALLBACK_HR_REPORT_PREFIX}__`)) {
+    return null;
+  }
+  const [, reportType, dateFrom, dateTo, ...labelParts] = name.replace(/\.pdf$/i, "").split("__");
+  const normalizedType = (reportType || "employee_list") as HrReportType;
+  return normalizeGeneratedReport({
+    id: record.id,
+    name: labelParts.join("__") || HR_REPORT_LABELS[normalizedType] || name,
+    reportType: normalizedType,
+    reportTypeLabel: HR_REPORT_LABELS[normalizedType] || "HR тайлан",
+    dateFrom: dateFrom || "",
+    dateTo: dateTo || "",
+    generatedDate: String(record.create_date || ""),
+    generatedBy: getRelationName(record.create_uid),
+    attachmentId: record.id,
+    downloadUrl: `/api/hr/reports/${record.id}/download?fallback=attachment`,
+  });
+}
+
+function normalizePdfPayload(result: unknown): string {
+  if (Array.isArray(result)) {
+    const first = result[0];
+    if (typeof first === "string") {
+      return first;
+    }
+    if (first && typeof first === "object" && "data" in first && typeof first.data === "string") {
+      return first.data;
+    }
+  }
+  if (typeof result === "string") {
+    return result;
+  }
+  throw new Error("Odoo PDF render response буруу байна.");
+}
+
+async function fetchFallbackReportPdfOverHttp(session: AppSession, wizardId: number) {
+  const connection = createOdooConnection(getConnection(session));
+  const baseUrl = connection.url.replace(/\/+$/, "");
+  const authResponse = await fetch(`${baseUrl}/web/session/authenticate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "call",
+      params: {
+        db: connection.db,
+        login: connection.login,
+        password: connection.password,
+      },
+      id: `hr-report-auth-${Date.now()}`,
+    }),
+  });
+  if (!authResponse.ok) {
+    throw new Error(`Odoo web session нээхэд HTTP ${authResponse.status} алдаа гарлаа.`);
+  }
+  const authPayload = (await authResponse.json()) as { result?: { uid?: number }; error?: { message?: string } };
+  if (!authPayload.result?.uid) {
+    throw new Error(authPayload.error?.message || "Odoo web session нээж чадсангүй.");
+  }
+  const cookie = authResponse.headers.get("set-cookie")?.split(";")[0] || "";
+  const pdfResponse = await fetch(`${baseUrl}/report/pdf/hr_custom_mn.report_hr_custom_mn_generic/${wizardId}`, {
+    headers: cookie ? { Cookie: cookie } : {},
+    cache: "no-store",
+  });
+  if (!pdfResponse.ok) {
+    throw new Error(`Odoo PDF татахад HTTP ${pdfResponse.status} алдаа гарлаа.`);
+  }
+  return Buffer.from(await pdfResponse.arrayBuffer()).toString("base64");
+}
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+async function readCompanyForFallbackPdf(session: AppSession) {
+  const companies = await executeOdooKw<HrCompanyLogoRecord[]>(
+    "res.company",
+    "search_read",
+    [[]],
+    { fields: ["name", "logo", "logo_web"], limit: 1 },
+    getConnection(session),
+  ).catch(() => []);
+  return companies[0] || null;
+}
+
+async function renderFallbackPdfWithPlaywright(
+  session: AppSession,
+  title: string,
+  dateFrom: string,
+  dateTo: string,
+  headers: string[],
+  rows: HrReportLine[],
+) {
+  const { chromium } = await import("playwright");
+  const company = await readCompanyForFallbackPdf(session);
+  const logo = company?.logo || company?.logo_web || "";
+  const html = `<!doctype html>
+<html lang="mn">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    @page { size: A4 landscape; margin: 14mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #1f2b25; font-family: Arial, "Segoe UI", sans-serif; font-size: 11px; }
+    header { display: grid; grid-template-columns: 72px 1fr; gap: 14px; align-items: center; margin-bottom: 16px; }
+    .logo { width: 64px; height: 64px; object-fit: contain; }
+    .placeholder { display: grid; width: 64px; height: 64px; place-items: center; border: 1px solid #cfd8d1; color: #2e7d32; font-weight: 700; }
+    h1 { margin: 0 0 6px; font-size: 20px; line-height: 1.2; }
+    .meta { color: #526257; font-size: 11px; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { padding: 7px 6px; border: 1px solid #d9e3dc; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+    th { background: #eef7ef; color: #244d2f; font-weight: 700; }
+    tbody tr:nth-child(even) td { background: #f8fbf8; }
+    footer { margin-top: 12px; color: #66766b; font-size: 10px; }
+  </style>
+</head>
+<body>
+  <header>
+    ${logo ? `<img class="logo" src="data:image/png;base64,${logo}" alt="Лого" />` : `<div class="placeholder">Лого</div>`}
+    <div>
+      <h1>${escapeHtml(title)}</h1>
+      <div class="meta">${escapeHtml(company?.name || "Компани")} · ${escapeHtml(dateFrom)} - ${escapeHtml(dateTo)}</div>
+    </div>
+  </header>
+  <table>
+    <thead>
+      <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
+    </thead>
+    <tbody>
+      ${
+        rows.length
+          ? rows
+              .map((line) => `<tr>${(line.values || []).map((value) => `<td>${escapeHtml(value)}</td>`).join("")}</tr>`)
+              .join("")
+          : `<tr><td colspan="${Math.max(headers.length, 1)}">Бүртгэл олдсонгүй.</td></tr>`
+      }
+    </tbody>
+  </table>
+  <footer>Тайлан гаргасан огноо: ${escapeHtml(new Date().toLocaleString("mn-MN", { timeZone: "Asia/Ulaanbaatar" }))}</footer>
+</body>
+</html>`;
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "load" });
+    const pdf = await page.pdf({ format: "A4", landscape: true, printBackground: true });
+    return Buffer.from(pdf).toString("base64");
+  } finally {
+    await browser.close();
+  }
+}
+
+async function buildNextFallbackReportData(session: AppSession, data: HrReportGenerateInput): Promise<[HrReportLine[], string[]]> {
+  if (data.reportType === "leave" || data.reportType === "sick") {
+    const requestType: HrTimeoffRequestType = data.reportType === "sick" ? "sick" : "time_off";
+    const requests = await getTimeoffRequests(session, { requestType, departmentId: data.departmentId || undefined });
+    const filtered = requests.filter((request) => {
+      if (data.dateFrom && request.dateTo < data.dateFrom) return false;
+      if (data.dateTo && request.dateFrom > data.dateTo) return false;
+      return true;
+    });
+    return [
+      filtered.map((request) => ({
+        values: [
+          request.employeeName,
+          request.departmentName,
+          request.dateFrom,
+          request.dateTo,
+          request.durationDays,
+          request.stateLabel,
+          request.reason || request.note,
+        ],
+      })),
+      ["Ажилтан", "Хэлтэс", "Эхлэх", "Дуусах", "Нийт өдөр", "Төлөв", "Шалтгаан"],
+    ];
+  }
+
+  const employees = await getEmployees(session);
+  const filteredEmployees = data.departmentId
+    ? employees.filter((employee) => employee.departmentId === data.departmentId)
+    : employees;
+  return [
+    filteredEmployees.map((employee) => ({
+      values: [
+        employee.employeeCode,
+        employee.name,
+        employee.departmentName,
+        employee.jobTitle,
+        employee.workPhone || employee.mobilePhone,
+        employee.workEmail,
+        employee.statusLabel,
+      ],
+    })),
+    ["Код", "Овог нэр", "Хэлтэс", "Албан тушаал", "Утас", "И-мэйл", "Төлөв"],
+  ];
+}
+
+async function getFallbackGeneratedHrReports(
+  session: AppSession,
+  filters: { reportType?: string; dateFrom?: string; dateTo?: string } = {},
+) {
+  const domain: unknown[] = [
+    ["res_model", "=", FALLBACK_HR_REPORT_MODEL],
+    ["name", "ilike", `${FALLBACK_HR_REPORT_PREFIX}__`],
+  ];
+  if (filters.reportType) {
+    domain.push(["name", "ilike", `${FALLBACK_HR_REPORT_PREFIX}__${filters.reportType}__`]);
+  }
+  const records = await executeOdooKw<HrReportFallbackAttachmentRecord[]>(
+    "ir.attachment",
+    "search_read",
+    [domain],
+    {
+      fields: ["name", "create_date", "create_uid", "mimetype"],
+      order: "create_date desc, id desc",
+      limit: 500,
+    },
+    getConnection(session),
+  );
+  return records
+    .map(parseFallbackReportAttachment)
+    .filter((record): record is HrGeneratedReport => Boolean(record))
+    .filter((record) => {
+      if (filters.dateFrom && record.dateTo < filters.dateFrom) return false;
+      if (filters.dateTo && record.dateFrom > filters.dateTo) return false;
+      return true;
+    });
+}
+
+async function generateFallbackHrReport(session: AppSession, data: HrReportGenerateInput) {
+  const wizardId = await executeOdooKw<number>(
+    "hr.custom.mn.report.wizard",
+    "create",
+    [
+      {
+        report_type: fallbackWizardReportType(data.reportType),
+        output_format: "pdf",
+        date_from: data.dateFrom,
+        date_to: data.dateTo,
+        department_id: data.departmentId || false,
+      },
+    ],
+    {},
+    getConnection(session),
+  );
+  let datas = "";
+  if (data.reportType === "leave" || data.reportType === "sick") {
+    const reportData = await buildNextFallbackReportData(session, data);
+    datas = await renderFallbackPdfWithPlaywright(
+      session,
+      HR_REPORT_LABELS[data.reportType],
+      data.dateFrom,
+      data.dateTo,
+      reportData[1],
+      reportData[0],
+    );
+  } else {
+    try {
+      const rendered = await executeOdooKw<unknown>(
+        "ir.actions.report",
+        "_render_qweb_pdf",
+        ["hr_custom_mn.report_hr_custom_mn_generic", [wizardId]],
+        {},
+        getConnection(session),
+      );
+      datas = normalizePdfPayload(rendered);
+    } catch (error) {
+      console.warn("HR fallback report RPC render failed, retrying over Odoo HTTP report route:", error);
+      try {
+        datas = await fetchFallbackReportPdfOverHttp(session, wizardId);
+      } catch (httpError) {
+        console.warn("HR fallback report HTTP render failed, rendering PDF in Next server:", httpError);
+        let reportData: [HrReportLine[], string[]];
+        try {
+          reportData = await executeOdooKw<[HrReportLine[], string[]]>(
+            "hr.custom.mn.report.wizard",
+            "get_report_lines",
+            [[wizardId]],
+            {},
+            getConnection(session),
+          );
+        } catch (linesError) {
+          console.warn("HR fallback report wizard lines failed, rendering from Next data:", linesError);
+          reportData = await buildNextFallbackReportData(session, data);
+        }
+        datas = await renderFallbackPdfWithPlaywright(
+          session,
+          HR_REPORT_LABELS[data.reportType],
+          data.dateFrom,
+          data.dateTo,
+          reportData[1] || [],
+          reportData[0] || [],
+        );
+      }
+    }
+  }
+  const name = fallbackReportName(data);
+  const attachmentId = await executeOdooKw<number>(
+    "ir.attachment",
+    "create",
+    [
+      {
+        name,
+        type: "binary",
+        datas,
+        mimetype: "application/pdf",
+        res_model: FALLBACK_HR_REPORT_MODEL,
+        res_id: wizardId,
+      },
+    ],
+    {},
+    getConnection(session),
+  );
+  return normalizeGeneratedReport({
+    id: attachmentId,
+    name: HR_REPORT_LABELS[data.reportType],
+    reportType: data.reportType,
+    reportTypeLabel: HR_REPORT_LABELS[data.reportType],
+    dateFrom: data.dateFrom,
+    dateTo: data.dateTo,
+    attachmentId,
+    downloadUrl: `/api/hr/reports/${attachmentId}/download?fallback=attachment`,
+  });
+}
+
+export async function getGeneratedHrReports(
+  session: AppSession,
+  filters: { reportType?: string; dateFrom?: string; dateTo?: string } = {},
+): Promise<HrGeneratedReport[]> {
+  await requireHrSpecialistAccess(session);
+  try {
+    const records = await executeOdooKw<Array<Partial<HrGeneratedReport>>>(
+      "municipal.hr.report.archive",
+      "get_hr_report_archive_directory",
+      [{ ...filters, limit: 500 }],
+      {},
+      getConnection(session),
+    );
+    return records.map(normalizeGeneratedReport);
+  } catch (error) {
+    if (isMissingHrReportArchiveModelError(error)) {
+      return getFallbackGeneratedHrReports(session, filters).catch(() => []);
+    }
+    console.warn("HR generated report archive could not be loaded:", error);
+    return [];
+  }
+}
+
+export async function generateHrReport(session: AppSession, data: HrReportGenerateInput) {
+  await requireHrSpecialistAccess(session);
+  ensureDateOrder(data.dateFrom, "Эхлэх огноо");
+  ensureDateOrder(data.dateTo, "Дуусах огноо");
+  if (data.dateTo < data.dateFrom) {
+    throw new Error("Дуусах огноо эхлэх огнооноос өмнө байж болохгүй.");
+  }
+  try {
+    const report = await executeOdooKw<Partial<HrGeneratedReport>>(
+      "municipal.hr.report.archive",
+      "generate_hr_report_archive",
+      [
+        {
+          reportType: data.reportType,
+          dateFrom: data.dateFrom,
+          dateTo: data.dateTo,
+          departmentId: data.departmentId || false,
+        },
+      ],
+      {},
+      getConnection(session),
+    );
+    return normalizeGeneratedReport(report);
+  } catch (error) {
+    if (isMissingHrReportArchiveModelError(error)) {
+      return generateFallbackHrReport(session, data);
+    }
+    throw error;
+  }
+}
+
+export async function deleteGeneratedHrReport(session: AppSession, reportId: number) {
+  await requireHrSpecialistAccess(session);
+  if (!reportId) {
+    throw new Error("Тайлангийн дугаар буруу байна.");
+  }
+  let deleted = false;
+  try {
+    deleted = await executeOdooKw<boolean>("municipal.hr.report.archive", "unlink", [[reportId]], {}, getConnection(session));
+  } catch (error) {
+    if (!isMissingHrReportArchiveModelError(error)) {
+      throw error;
+    }
+    deleted = await executeOdooKw<boolean>("ir.attachment", "unlink", [[reportId]], {}, getConnection(session));
+  }
+  if (!deleted) {
+    throw new Error("Тайлан устгахад алдаа гарлаа.");
+  }
+  return { id: reportId, deleted: true };
+}
+
+export async function getGeneratedHrReportPdf(session: AppSession, reportId: number): Promise<HrReportPdfPayload> {
+  await requireHrSpecialistAccess(session);
+  if (!reportId) {
+    throw new Error("Тайлангийн дугаар буруу байна.");
+  }
+  try {
+    return await executeOdooKw<HrReportPdfPayload>(
+      "municipal.hr.report.archive",
+      "get_pdf_payload",
+      [[reportId]],
+      {},
+      getConnection(session),
+    );
+  } catch (error) {
+    if (!isMissingHrReportArchiveModelError(error)) {
+      throw error;
+    }
+    const attachments = await executeOdooKw<HrReportFallbackAttachmentRecord[]>(
+      "ir.attachment",
+      "search_read",
+      [[["id", "=", reportId], ["name", "ilike", `${FALLBACK_HR_REPORT_PREFIX}__`]]],
+      { fields: ["name", "mimetype", "datas"], limit: 1 },
+      getConnection(session),
+    );
+    const attachment = attachments[0];
+    if (!attachment?.datas) {
+      throw new Error("PDF файл олдсонгүй.");
+    }
+    return {
+      name: String(attachment.name || "hr-report.pdf"),
+      mimetype: String(attachment.mimetype || "application/pdf"),
+      datas: String(attachment.datas),
+    };
   }
 }
 

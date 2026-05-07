@@ -1,23 +1,42 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { getRoleLabel, requireSession } from "@/lib/auth";
-import { getHrStats, requireHrAccess } from "@/lib/hr";
+import { getDepartments, getGeneratedHrReports, getHrStats, requireHrAccess } from "@/lib/hr";
 
 import { HrSectionNav } from "../hr-section-nav";
 import styles from "../hr.module.css";
+import { HrReportsClient } from "./hr-reports-client";
 
-export default async function HrReportsPage() {
+type PageProps = {
+  searchParams?: Promise<{
+    reportType?: string | string[];
+    departmentId?: string | string[];
+    dateFrom?: string | string[];
+    dateTo?: string | string[];
+  }>;
+};
+
+function firstParam(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] || "" : value || "";
+}
+
+export default async function HrReportsPage({ searchParams }: PageProps) {
   const session = await requireSession();
   const access = await requireHrAccess(session).catch(() => null);
   if (!access) {
     return null;
   }
-  const stats = await getHrStats(session);
+  const params = (await searchParams) ?? {};
+  const [stats, reports, departments] = await Promise.all([
+    getHrStats(session),
+    getGeneratedHrReports(session),
+    getDepartments(session).catch(() => []),
+  ]);
 
   return (
     <>
       <WorkspaceHeader
         title="HR тайлан"
-        subtitle="Ажилтан, хэлтэс, чөлөө, өвчтэй, томилолт, сахилга, шилжилт, тушаал, тойрох хуудас, архивын тайлан"
+        subtitle="Ажилтан, хэлтэс, чөлөө, өвчтэй, томилолт, сахилга, шилжилт, тушаал, тойрох хуудас, архивын PDF тайлан"
         userName={session.name}
         roleLabel={getRoleLabel(session.role)}
         notificationNote="HR тайлан"
@@ -43,32 +62,16 @@ export default async function HrReportsPage() {
           </article>
         ))}
       </section>
-      <section className={styles.actionPanel}>
-        <div>
-          <span className={styles.eyebrow}>Тайлан татах</span>
-          <h2>Гарах HR тайлангууд</h2>
-        </div>
-        <div className={styles.actionGrid}>
-          {[
-            "Ажилтны жагсаалт",
-            "Хэлтэс тус бүрийн ажилтны тайлан",
-            "Шинээр орсон ажилтны тайлан",
-            "Ажлаас гарсан ажилтны тайлан",
-            "Чөлөөний тайлан",
-            "Өвчтэй ажилтны тайлан",
-            "Томилолтын тайлан",
-            "Сахилгын тайлан",
-            "Шилжилт хөдөлгөөний тайлан",
-            "Тушаал, гэрээний тайлан",
-            "Тойрох хуудасны тайлан",
-            "Архивын тайлан",
-          ].map((label) => (
-            <button key={label} type="button" className={styles.primaryButton}>
-              {label}
-            </button>
-          ))}
-        </div>
-      </section>
+      <HrReportsClient
+        reports={reports}
+        departments={departments}
+        initialFilters={{
+          reportType: firstParam(params.reportType),
+          departmentId: firstParam(params.departmentId),
+          dateFrom: firstParam(params.dateFrom),
+          dateTo: firstParam(params.dateTo),
+        }}
+      />
     </>
   );
 }
