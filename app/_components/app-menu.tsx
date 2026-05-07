@@ -285,7 +285,14 @@ export function AppMenu({
       departmentName: group.name,
     }));
 
-  const hrItems: MenuItem[] = canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr || roleLooksHr
+  const hrItems: MenuItem[] =
+    canViewHr ||
+    flags.hrUser ||
+    flags.hrManager ||
+    flags.municipalHr ||
+    roleLooksHr ||
+    roleLooksDepartmentHead ||
+    flags.municipalDepartmentHead
     ? [
         { key: "hr", href: "/hr", label: "\u0425\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446", icon: Users },
       ]

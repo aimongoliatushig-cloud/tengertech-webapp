@@ -15,7 +15,7 @@ export default async function HrLayout({ children }: { children: React.ReactNode
     getHrAccessProfile(session),
   ]);
 
-  if (!hrProfile.isHr) {
+  if (!hrProfile.canAccessHr) {
     redirect(isWorkerOnly(session) ? "/tasks" : "/");
   }
 
@@ -32,7 +32,7 @@ export default async function HrLayout({ children }: { children: React.ReactNode
             canWriteReports={hasCapability(session, "write_workspace_reports")}
             canViewQualityCenter={hasCapability(session, "view_quality_center")}
             canUseFieldConsole={hasCapability(session, "use_field_console")}
-            canViewHr={hrProfile.isHr}
+            canViewHr={hrProfile.canAccessHr}
             userName={session.name}
             roleLabel={roleLabel}
             groupFlags={session.groupFlags}

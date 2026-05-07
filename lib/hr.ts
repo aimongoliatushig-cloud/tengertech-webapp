@@ -496,7 +496,18 @@ const ALLOWED_EMPLOYEE_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/
 const ADMIN_ROLES = new Set(["system_admin"]);
 const HR_ROLE_KEYS = new Set(["hr_specialist", "hr_manager"]);
 const HR_TEXT_TOKENS = ["хүний нөөц", "human resources", "hr specialist", "hr manager"];
-const DEPARTMENT_HEAD_ROLES = new Set(["project_manager"]);
+const HR_GROUP_XML_IDS = [
+  "hr.group_hr_user",
+  "hr.group_hr_manager",
+  "municipal_core.group_municipal_hr",
+  "hr_custom_mn.group_hr_custom_mn_officer",
+  "hr_custom_mn.group_hr_custom_mn_admin",
+];
+const DEPARTMENT_HEAD_GROUP_XML_IDS = [
+  "municipal_core.group_municipal_department_head",
+  "hr_custom_mn.group_hr_custom_mn_manager",
+];
+const DEPARTMENT_HEAD_ROLES = new Set(["project_manager", "department_head", "department_manager", "municipal_department_head"]);
 const DEPARTMENT_HEAD_TEXT_TOKENS = [
   "хэлтсийн дарга",
   "албаны дарга",
@@ -550,6 +561,16 @@ function getConnection(session: AppSession) {
     login: session.login,
     password: session.password,
   };
+}
+
+async function hasOdooGroup(session: AppSession, xmlId: string) {
+  return executeOdooKw<boolean>(
+    "res.users",
+    "has_group",
+    [[session.uid], xmlId],
+    {},
+    getConnection(session),
+  ).catch(() => false);
 }
 
 function imageDataUrlFromBase64(value?: string | false) {
@@ -768,8 +789,15 @@ export async function getHrAccessProfile(session: AppSession) {
     reasons.push("Odoo HR group flag");
   }
 
-  const [employee, user] = await Promise.all([readCurrentEmployee(session), readCurrentUser(session)]);
+  const [employee, user, hrGroupChecks, departmentHeadGroupChecks] = await Promise.all([
+    readCurrentEmployee(session),
+    readCurrentUser(session),
+    Promise.all(HR_GROUP_XML_IDS.map((xmlId) => hasOdooGroup(session, xmlId))),
+    Promise.all(DEPARTMENT_HEAD_GROUP_XML_IDS.map((xmlId) => hasOdooGroup(session, xmlId))),
+  ]);
   const groupNames = await readGroupNames(user?.groups_id ?? [], session);
+  const hasLiveHrGroup = hrGroupChecks.some(Boolean);
+  const hasLiveDepartmentHeadGroup = departmentHeadGroupChecks.some(Boolean);
 
   const jobName = getRelationName(employee?.job_id);
   const departmentName = getRelationName(employee?.department_id);
@@ -784,6 +812,9 @@ export async function getHrAccessProfile(session: AppSession) {
 
   if (containsHrText(jobName) || containsHrText(employee?.job_title)) {
     reasons.push("job title");
+  }
+  if (hasLiveHrGroup) {
+    reasons.push("Odoo HR group");
   }
   if (containsHrText(departmentName)) {
     reasons.push("department");
@@ -805,7 +836,7 @@ export async function getHrAccessProfile(session: AppSession) {
     reasons.push("custom role key");
   }
 
-  if (DEPARTMENT_HEAD_ROLES.has(String(session.role))) {
+  if (isDepartmentHeadRoleKey(session.role)) {
     departmentHeadReasons.push("project manager role");
   }
   if (
@@ -816,6 +847,9 @@ export async function getHrAccessProfile(session: AppSession) {
     session.groupFlags?.improvementManager
   ) {
     departmentHeadReasons.push("department manager group flag");
+  }
+  if (hasLiveDepartmentHeadGroup) {
+    departmentHeadReasons.push("department manager group");
   }
   if (
     containsAnyText(jobName, DEPARTMENT_HEAD_TEXT_TOKENS) ||
@@ -828,20 +862,23 @@ export async function getHrAccessProfile(session: AppSession) {
   }
 
   const sessionRole = normalizeText(session.role);
-  const isHr = Boolean(
-    ADMIN_ROLES.has(String(session.role)) ||
-      HR_ROLE_KEYS.has(sessionRole) ||
-      (sessionRole !== "worker" &&
-        (session.groupFlags?.hrUser ||
-          session.groupFlags?.hrManager ||
-          session.groupFlags?.municipalHr))
+  const hasDepartmentHeadAccess = departmentHeadReasons.length > 0;
+  const hasExplicitHrAccess = Boolean(
+    ADMIN_ROLES.has(String(session.role)) || HR_ROLE_KEYS.has(sessionRole) || roleKeys.some(isHrRoleKey),
   );
-  const isDepartmentHead = !isHr && departmentHeadReasons.length > 0;
+  const hasHrGroupAccess = Boolean(
+    session.groupFlags?.hrUser ||
+      session.groupFlags?.hrManager ||
+      session.groupFlags?.municipalHr ||
+      hasLiveHrGroup,
+  );
+  const isHr = Boolean(hasExplicitHrAccess || (!hasDepartmentHeadAccess && (hasHrGroupAccess || reasons.length > 0)));
+  const isDepartmentHead = !isHr && hasDepartmentHeadAccess;
 
   return {
     isHr,
     isDepartmentHead,
-    canAccessHr: isHr,
+    canAccessHr: isHr || isDepartmentHead,
     scope: isHr ? "hr" : "department",
     reasons,
     departmentHeadReasons,
@@ -859,12 +896,12 @@ export async function getHrAccessProfile(session: AppSession) {
 
 export async function canAccessHr(session: AppSession) {
   const profile = await getHrAccessProfile(session);
-  return profile.isHr;
+  return profile.canAccessHr;
 }
 
 export async function requireHrAccess(session: AppSession) {
   const profile = await getHrAccessProfile(session);
-  if (!profile.isHr) {
+  if (!profile.canAccessHr) {
     throw new Error("HR_ACCESS_DENIED");
   }
   return profile;
@@ -1986,18 +2023,24 @@ function disciplineStateLabel(state: string) {
 }
 
 export async function getDisciplineRecords(session: AppSession): Promise<HrDisciplineRecord[]> {
-  await requireHrAccess(session);
+  const profile = await requireHrAccess(session);
   const [violationOptions, actionOptions] = await Promise.all([
     getDisciplineViolationOptions(session),
     getDisciplineActionOptions(session),
   ]);
   const violationLabels = new Map(violationOptions.map((option) => [option.id, option.name]));
   const actionLabels = new Map(actionOptions.map((option) => [option.id, option.name]));
+  const domain: unknown[] = [["state", "!=", "cancelled"]];
+  if (!profile.isHr && profile.employee.departmentId) {
+    domain.push(["department_id", "=", profile.employee.departmentId]);
+  } else if (!profile.isHr && !profile.employee.departmentName && profile.employee.id) {
+    domain.push(["employee_id", "=", profile.employee.id]);
+  }
 
   return executeOdooKw<HrDisciplineSearchRecord[]>(
     "municipal.discipline",
     "search_read",
-    [[["state", "!=", "cancelled"]]],
+    [domain],
     {
       fields: [
         "employee_id",
@@ -2018,7 +2061,8 @@ export async function getDisciplineRecords(session: AppSession): Promise<HrDisci
     getConnection(session),
   )
     .then((records) =>
-      records.map((record) => {
+      records
+        .map((record) => {
         const violationType = String(record.violation_type || "");
         const actionType = String(record.action_type || "");
         const state = String(record.state || "approved") === "draft" ? "approved" : String(record.state || "approved");
@@ -2041,7 +2085,17 @@ export async function getDisciplineRecords(session: AppSession): Promise<HrDisci
           employeeExplanation: String(record.employee_explanation || ""),
           hasAttachment: Boolean(record.attachment_ids?.length),
         };
-      }),
+        })
+        .filter((record) => {
+          if (profile.isHr) {
+            return true;
+          }
+          if (profile.employee.departmentId && record.departmentId) {
+            return record.departmentId === profile.employee.departmentId;
+          }
+          const departmentName = normalizeText(profile.employee.departmentName);
+          return departmentName ? normalizeText(record.departmentName) === departmentName : record.employeeId === profile.employee.id;
+        }),
     )
     .catch((error) => {
       console.warn("HR discipline records could not be loaded:", error);
