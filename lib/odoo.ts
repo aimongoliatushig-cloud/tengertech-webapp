@@ -266,6 +266,7 @@ export type TaskDirectoryItem = {
   stageLabel: string;
   stageBucket: StageBucket;
   createdDate?: string | null;
+  createdAt?: string | null;
   statusKey: TaskStatusKey;
   statusLabel: string;
   deadline: string;
@@ -4363,6 +4364,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         stageLabel: STAGE_LABELS[stageBucket],
         stageBucket,
         createdDate: getDateKeyFromValue(task.create_date || null),
+        createdAt: task.create_date || null,
         statusKey,
         statusLabel: getTaskStatusLabel(statusKey),
         deadline: formatCompactDate(task.date_deadline),

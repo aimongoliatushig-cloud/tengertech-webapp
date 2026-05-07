@@ -19,13 +19,16 @@ import { cn } from "@/lib/utils";
 import styles from "./notifications.module.css";
 
 type NotificationItem = {
-  id: number;
+  id: number | string;
   name: string;
   departmentName: string;
   projectName: string;
   stageLabel: string;
   href: string;
   progress: number;
+  taskCount: number;
+  sortTimeMs: number;
+  timeLabel: string;
   reasons: Array<"new" | "review" | "overdue" | "issue">;
 };
 
@@ -54,6 +57,70 @@ function addReason(item: NotificationItem, reason: NotificationItem["reasons"][n
   if (!item.reasons.includes(reason)) {
     item.reasons.push(reason);
   }
+}
+
+function notificationPriority(item: NotificationItem) {
+  const priority = { issue: 4, overdue: 3, review: 2, new: 1 };
+  return Math.max(...item.reasons.map((reason) => priority[reason]));
+}
+
+function parseNotificationTimeMs(value?: string | null) {
+  if (!value) {
+    return 0;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return 0;
+  }
+
+  const normalized = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T");
+  const parsed = Date.parse(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function taskNotificationTimeMs(task: DashboardSnapshot["taskDirectory"][number]) {
+  return (
+    parseNotificationTimeMs(task.latestReport?.submittedAt) ||
+    parseNotificationTimeMs(task.createdAt) ||
+    parseNotificationTimeMs(task.createdDate)
+  );
+}
+
+function formatNotificationTime(sortTimeMs: number, nowMs: number) {
+  if (!sortTimeMs) {
+    return "Огноо тодорхойгүй";
+  }
+
+  const diffMs = Math.max(0, nowMs - sortTimeMs);
+  const minuteMs = 60 * 1000;
+  const hourMs = 60 * minuteMs;
+  const dayMs = 24 * hourMs;
+
+  if (diffMs < minuteMs) {
+    return "Саяхан";
+  }
+
+  if (diffMs < hourMs) {
+    return `${Math.floor(diffMs / minuteMs)} минутын өмнө`;
+  }
+
+  if (diffMs < dayMs) {
+    return `${Math.floor(diffMs / hourMs)} цагийн өмнө`;
+  }
+
+  if (diffMs < 7 * dayMs) {
+    return `${Math.floor(diffMs / dayMs)} өдрийн өмнө`;
+  }
+
+  return new Intl.DateTimeFormat("mn-MN", {
+    month: "long",
+    day: "numeric",
+  }).format(new Date(sortTimeMs));
+}
+
+function getRequestTimeMs() {
+  return Date.now();
 }
 
 function reasonLabel(reason: NotificationItem["reasons"][number]) {
@@ -95,6 +162,7 @@ export default async function NotificationsPage() {
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const todayDateKey = getTodayDateKey();
+  const nowMs = getRequestTimeMs();
   const currentUserId = String(session.uid);
   const isAssignedToCurrentUser = (task: DashboardSnapshot["taskDirectory"][number]) =>
     (task.assigneeIds ?? [])
@@ -116,25 +184,49 @@ export default async function NotificationsPage() {
     : scopedDepartmentName
       ? filterByDepartment(snapshot.reviewQueue, scopedDepartmentName)
       : snapshot.reviewQueue;
+  const workerWorkStats = workerMode
+    ? visibleTasks.reduce<Map<string, { taskCount: number; progressTotal: number }>>((groups, task) => {
+        const existing = groups.get(task.projectName) ?? { taskCount: 0, progressTotal: 0 };
+        existing.taskCount += 1;
+        existing.progressTotal += task.progress;
+        groups.set(task.projectName, existing);
+        return groups;
+      }, new Map())
+    : new Map<string, { taskCount: number; progressTotal: number }>();
 
-  const notificationsById = new Map<number, NotificationItem>();
+  const notificationsById = new Map<number | string, NotificationItem>();
   const ensureFromTask = (task: DashboardSnapshot["taskDirectory"][number]) => {
-    const existing = notificationsById.get(task.id);
+    const itemKey = workerMode ? `work:${task.projectName}` : task.id;
+    const sortTimeMs = taskNotificationTimeMs(task);
+    const existing = notificationsById.get(itemKey);
     if (existing) {
+      if (sortTimeMs > existing.sortTimeMs) {
+        existing.sortTimeMs = sortTimeMs;
+        existing.timeLabel = formatNotificationTime(sortTimeMs, nowMs);
+      }
       return existing;
     }
+    const workStats = workerWorkStats.get(task.projectName);
+    const taskCount = workerMode ? (workStats?.taskCount ?? 1) : 1;
+    const progress =
+      workerMode && workStats?.taskCount
+        ? Math.round(workStats.progressTotal / workStats.taskCount)
+        : task.progress;
 
     const item: NotificationItem = {
-      id: task.id,
-      name: task.name,
+      id: itemKey,
+      name: workerMode ? task.projectName : task.name,
       departmentName: task.departmentName,
       projectName: task.projectName,
-      stageLabel: task.stageLabel,
-      href: task.href,
-      progress: task.progress,
+      stageLabel: workerMode ? "Ажлын мэдэгдэл" : task.stageLabel,
+      href: workerMode ? `/tasks?work=${encodeURIComponent(task.projectName)}` : task.href,
+      progress,
+      taskCount,
+      sortTimeMs,
+      timeLabel: formatNotificationTime(sortTimeMs, nowMs),
       reasons: [],
     };
-    notificationsById.set(task.id, item);
+    notificationsById.set(itemKey, item);
     return item;
   };
 
@@ -150,7 +242,7 @@ export default async function NotificationsPage() {
       addReason(item, "issue");
     }
     if (!item.reasons.length) {
-      notificationsById.delete(task.id);
+      notificationsById.delete(workerMode ? `work:${task.projectName}` : task.id);
     }
   }
 
@@ -166,6 +258,9 @@ export default async function NotificationsPage() {
           stageLabel: reviewTask.stageLabel,
           href: reviewTask.href,
           progress: reviewTask.progress,
+          taskCount: 1,
+          sortTimeMs: 0,
+          timeLabel: formatNotificationTime(0, nowMs),
           reasons: [],
         };
     notificationsById.set(reviewTask.id, item);
@@ -173,10 +268,13 @@ export default async function NotificationsPage() {
   }
 
   const notifications = Array.from(notificationsById.values()).sort((left, right) => {
-    const priority = { issue: 4, overdue: 3, review: 2, new: 1 };
-    const leftScore = Math.max(...left.reasons.map((reason) => priority[reason]));
-    const rightScore = Math.max(...right.reasons.map((reason) => priority[reason]));
-    return rightScore - leftScore || left.name.localeCompare(right.name, "mn");
+    const leftScore = notificationPriority(left);
+    const rightScore = notificationPriority(right);
+    return (
+      right.sortTimeMs - left.sortTimeMs ||
+      rightScore - leftScore ||
+      left.name.localeCompare(right.name, "mn")
+    );
   });
   const newCount = notifications.filter((item) => item.reasons.includes("new")).length;
   const reviewCount = notifications.filter((item) => item.reasons.includes("review")).length;
@@ -254,9 +352,12 @@ export default async function NotificationsPage() {
                               {reasonLabel(reason)}
                             </span>
                           ))}
+                          <span className={styles.timePill}>{item.timeLabel}</span>
                         </div>
                         <p className={styles.notificationMeta}>
-                          {item.departmentName} · {item.projectName} · {item.stageLabel}
+                          {item.departmentName} ·{" "}
+                          {workerMode ? `${item.taskCount} ажилбар` : item.projectName} ·{" "}
+                          {item.stageLabel}
                         </p>
                       </div>
                       <div className={styles.notificationProgress}>
