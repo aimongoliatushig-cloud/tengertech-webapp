@@ -45,7 +45,6 @@ import { PendingLinkIndicator } from "./pending-link-indicator";
 import styles from "./app-menu.module.css";
 
 type MenuKey =
-  | "general-dashboard"
   | "dashboard"
   | "tasks"
   | "auto-base"
@@ -172,7 +171,6 @@ export function AppMenu({
   canViewQualityCenter = false,
   canUseFieldConsole = false,
   canViewHr = false,
-  canViewGeneralDashboard = false,
   variant = "default",
   userName = "Хэрэглэгч",
   roleLabel = "Систем",
@@ -190,12 +188,6 @@ export function AppMenu({
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const flags = groupFlags || {};
   const roleLabelLower = roleLabel.toLocaleLowerCase("mn-MN");
-  const showGeneralDashboard = Boolean(
-    canViewGeneralDashboard ||
-      flags.municipalDirector ||
-      flags.fleetRepairCeo ||
-      flags.fleetRepairGeneralManager,
-  );
   const executiveMode =
     Boolean(flags.municipalDirector || flags.municipalManager || flags.fleetRepairCeo) ||
     roleLabelLower.includes("\u0437\u0430\u0445\u0438\u0440\u0430\u043B") ||
@@ -337,16 +329,6 @@ export function AppMenu({
   ];
 
   const defaultItems: MenuItem[] = [
-    ...(showGeneralDashboard
-      ? [
-          {
-            key: "general-dashboard",
-            href: "/general-dashboard",
-            label: "Ерөнхий хяналт",
-            icon: BarChart3,
-          },
-        ]
-      : []),
     {
       key: "dashboard",
       href: "/",
@@ -450,16 +432,6 @@ export function AppMenu({
   });
 
   const garbageDepartmentItems: MenuItem[] = [
-    ...(showGeneralDashboard
-      ? [
-          {
-            key: "general-dashboard",
-            href: "/general-dashboard",
-            label: "Ерөнхий хяналт",
-            icon: BarChart3,
-          },
-        ]
-      : []),
     {
       key: "dashboard",
       href: "/",
@@ -635,9 +607,6 @@ export function AppMenu({
                 { key: "review", href: reviewHref, label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
               ]
       : [
-          ...(showGeneralDashboard
-            ? [{ key: "general-dashboard", href: "/general-dashboard", label: "Ерөнхий", icon: BarChart3 }]
-            : []),
           { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
           { key: "projects", href: "/projects", label: "Ажлууд", icon: ListChecks },
           { key: "new-project", href: "/create", label: "Шинэ ажил", icon: PlusCircle },
@@ -685,7 +654,7 @@ export function AppMenu({
       aria-label="Ажлын орчны цэс"
     >
       <aside className={styles.menuBar}>
-        <Link href={hrFocusedMode ? "/hr" : showGeneralDashboard ? "/general-dashboard" : "/"} className={styles.brandBlock}>
+        <Link href={hrFocusedMode ? "/hr" : "/"} className={styles.brandBlock}>
           <Image
             src="/logo.png"
             alt="Хот тохижилт үйлчилгээний төв"
@@ -734,10 +703,12 @@ export function AppMenu({
                 <Settings aria-hidden />
                 <span>Тохиргоо</span>
               </Link>
-              <Link href="/auth/logout" role="menuitem" className={styles.profileMenuLink}>
-                <LogOut aria-hidden />
-                <span>Гарах</span>
-              </Link>
+              <form action="/auth/logout" method="post">
+                <button type="submit" role="menuitem" className={styles.profileMenuLink}>
+                  <LogOut aria-hidden />
+                  <span>Гарах</span>
+                </button>
+              </form>
             </div>
           ) : null}
         </div>

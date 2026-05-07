@@ -78,15 +78,17 @@ export function WorkspaceHeaderUserMenu({
             <Settings aria-hidden />
             <span>Тохиргоо</span>
           </Link>
-          <Link
-            href="/auth/logout"
-            role="menuitem"
-            className={styles.headerUserMenuLink}
-            onClick={() => setIsOpen(false)}
-          >
-            <LogOut aria-hidden />
-            <span>Гарах</span>
-          </Link>
+          <form action="/auth/logout" method="post">
+            <button
+              type="submit"
+              role="menuitem"
+              className={styles.headerUserMenuLink}
+              onClick={() => setIsOpen(false)}
+            >
+              <LogOut aria-hidden />
+              <span>Гарах</span>
+            </button>
+          </form>
         </div>
       ) : null}
     </div>

@@ -372,18 +372,28 @@
   transform: rotate(45deg);
 }
 
+.headerUserMenu form {
+  margin: 0;
+}
+
 .headerUserMenuLink {
   position: relative;
   z-index: 1;
   display: flex;
+  width: 100%;
   align-items: center;
   gap: 10px;
   min-height: 42px;
   padding: 0 12px;
+  border: 0;
   border-radius: calc(var(--ds-radius-card) - 4px);
+  background: transparent;
   color: #1f2c22;
+  cursor: pointer;
+  font: inherit;
   font-size: 0.82rem;
   font-weight: 800;
+  text-align: left;
   text-decoration: none;
 }
 

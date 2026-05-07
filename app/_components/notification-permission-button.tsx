@@ -12,7 +12,9 @@ const LABEL_SECURE_TITLE =
 const LABEL_BODY =
   "\u0428\u0438\u043d\u044d \u0430\u0436\u0438\u043b, \u0442\u0430\u0439\u043b\u0430\u043d, \u0445\u0443\u0433\u0430\u0446\u0430\u0430\u043d\u044b \u0430\u043d\u0445\u0430\u0430\u0440\u0443\u0443\u043b\u0433\u044b\u0433 \u044d\u043d\u044d \u0442\u04e9\u0445\u04e9\u04e9\u0440\u04e9\u043c\u0436 \u0434\u044d\u044d\u0440 \u0430\u0432\u043d\u0430.";
 const LABEL_DISABLED =
-  "Push \u0442\u04af\u043b\u0445\u04af\u04af\u0440 \u0430\u0447\u0430\u0430\u043b\u0430\u0433\u0434\u0430\u0430\u0433\u04af\u0439. Dev server-\u044d\u044d \u0434\u0430\u0445\u0438\u043d \u0430\u0441\u0430\u0430\u0433\u0430\u0430\u0434 \u0434\u0430\u0445\u0438\u043d \u043e\u0440\u043e\u043b\u0434\u043e\u043e\u0440\u043e\u0439.";
+  "Push \u0442\u04af\u043b\u0445\u04af\u04af\u0440 \u0430\u0447\u0430\u0430\u043b\u0430\u0433\u0434\u0430\u0430\u0433\u04af\u0439. \u0421\u0435\u0440\u0432\u0435\u0440\u0438\u0439\u043d \u0442\u043e\u0445\u0438\u0440\u0433\u043e\u043e\u0433 \u0448\u0430\u043b\u0433\u0430\u043d\u0430 \u0443\u0443.";
+const LABEL_ERROR =
+  "\u041c\u044d\u0434\u044d\u0433\u0434\u043b\u0438\u0439\u043d \u0437\u04e9\u0432\u0448\u04e9\u04e9\u0440\u04e9\u043b \u0441\u0443\u0443\u043b\u0433\u0430\u0445 \u04af\u0435\u0434 \u0430\u043b\u0434\u0430\u0430 \u0433\u0430\u0440\u043b\u0430\u0430. \u0421\u0435\u0440\u0432\u0435\u0440\u0438\u0439\u043d push \u0442\u043e\u0445\u0438\u0440\u0433\u043e\u043e\u0433 \u0448\u0430\u043b\u0433\u0430\u043d\u0430 \u0443\u0443.";
 const LABEL_INSECURE =
   "\u041e\u0434\u043e\u043e\u0433\u0438\u0439\u043d \u0445\u0430\u044f\u0433 HTTP \u0442\u0443\u043b browser \u043c\u044d\u0434\u044d\u0433\u0434\u043b\u0438\u0439\u043d \u0437\u04e9\u0432\u0448\u04e9\u04e9\u0440\u04e9\u043b \u0430\u0441\u0443\u0443\u0445\u0433\u04af\u0439. HTTPS \u0434\u043e\u043c\u044d\u0439\u043d\u044d\u044d\u0440 \u043d\u044d\u044d\u0445\u044d\u0434 \u0438\u0434\u044d\u0432\u0445\u0436\u04af\u04af\u043b\u044d\u0445 \u0431\u043e\u043b\u043e\u043c\u0436\u0442\u043e\u0439.";
 const LABEL_OPEN_SECURE =
@@ -126,10 +128,7 @@ export function NotificationPermissionButton() {
 
     setBusy(true);
     try {
-      const resolvedKey = publicKey ?? (await loadPublicKey());
-      setPublicKey(resolvedKey);
-
-      if (!resolvedKey) {
+      if (!publicKey) {
         setStatus("disabled");
         return;
       }
@@ -149,7 +148,7 @@ export function NotificationPermissionButton() {
         return;
       }
 
-      await registerPushSubscription(resolvedKey);
+      await registerPushSubscription(publicKey);
       setStatus("granted");
     } catch (error) {
       console.warn("Push subscription failed:", error);
@@ -217,11 +216,23 @@ export function NotificationPermissionButton() {
   }
 
   const bodyText =
-    status === "insecure" ? LABEL_INSECURE : status === "disabled" ? LABEL_DISABLED : LABEL_BODY;
-  const titleText = status === "insecure" ? LABEL_SECURE_TITLE : LABEL_TITLE;
+    status === "insecure"
+      ? LABEL_INSECURE
+      : status === "disabled"
+        ? LABEL_DISABLED
+        : status === "error"
+          ? LABEL_ERROR
+          : LABEL_BODY;
+  const titleText =
+    status === "insecure"
+      ? LABEL_SECURE_TITLE
+      : status === "disabled" || status === "error"
+        ? "\u041c\u044d\u0434\u044d\u0433\u0434\u044d\u043b \u0438\u0434\u044d\u0432\u0445\u0436\u044d\u044d\u0433\u04af\u0439"
+        : LABEL_TITLE;
   const buttonText =
     status === "insecure" ? (secureUrl ? LABEL_OPEN_SECURE : LABEL_SECURE_REQUIRED) : busy ? LABEL_ENABLING : LABEL_ENABLE;
   const buttonDisabled = busy || (status === "insecure" && !secureUrl);
+  const showActionButton = status === "ready" || status === "insecure";
   const buttonStyle = {
     display: "block",
     width: "100%",
@@ -260,17 +271,17 @@ export function NotificationPermissionButton() {
       <span style={{ display: "block", color: "#526157", fontSize: 13, lineHeight: 1.45 }}>
         {bodyText}
       </span>
-      {status === "insecure" && secureUrl ? (
+      {showActionButton && status === "insecure" && secureUrl ? (
         <a href={secureUrl} style={buttonStyle}>
           {buttonText}
         </a>
       ) : null}
-      {status === "insecure" && !secureUrl ? (
+      {showActionButton && status === "insecure" && !secureUrl ? (
         <button type="button" disabled style={buttonStyle}>
           {buttonText}
         </button>
       ) : null}
-      {status !== "insecure" ? (
+      {showActionButton && status !== "insecure" ? (
       <button
         type="button"
         onClick={() => void requestAndSubscribe()}

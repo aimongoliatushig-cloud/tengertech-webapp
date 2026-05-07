@@ -294,7 +294,7 @@ export function GeneralDashboardView({
       <div className={shellStyles.contentWithMenu}>
         <aside className={shellStyles.menuColumn}>
           <AppMenu
-            active="general-dashboard"
+            active="dashboard"
             canCreateProject={hasCapability(session, "create_projects")}
             canCreateTasks={hasCapability(session, "create_tasks")}
             canWriteReports={hasCapability(session, "write_workspace_reports")}
