@@ -170,7 +170,12 @@ async function notifyPushQuietly(input: {
   userIds?: number[];
 }) {
   try {
-    await notifyPushEvent(input);
+    const result = await notifyPushEvent(input);
+    console.info("[push] event result", {
+      eventType: input.eventType,
+      userIds: input.userIds ?? [],
+      result,
+    });
   } catch (error) {
     console.warn("Push notification failed:", error);
   }
@@ -489,6 +494,7 @@ export async function createProjectAction(formData: FormData) {
       revalidatePath("/");
       revalidatePath("/projects");
       revalidatePath("/tasks");
+      revalidatePath("/notifications");
       revalidatePath("/field");
       revalidatePath("/projects/new");
       redirect(
@@ -613,6 +619,7 @@ export async function createProjectAction(formData: FormData) {
       revalidatePath("/");
       revalidatePath("/projects");
       revalidatePath("/tasks");
+      revalidatePath("/notifications");
       revalidatePath("/review");
       revalidatePath("/reports");
       revalidatePath("/projects/new");
@@ -1096,6 +1103,7 @@ export async function createTaskAction(formData: FormData) {
     revalidatePath("/");
     revalidatePath("/projects");
     revalidatePath("/tasks");
+    revalidatePath("/notifications");
     revalidatePath("/review");
     revalidatePath("/reports");
     revalidatePath(`/projects/${projectId}`);

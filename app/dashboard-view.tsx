@@ -1669,7 +1669,7 @@ export function DashboardView({
   const workerWorkSummaries = workerMode
     ? buildWorkerWorkSummaries(dashboardTasks, snapshot.projects, currentDateKey)
     : [];
-  const visibleWorkerWorks = workerWorkSummaries.slice(0, 4);
+  const visibleWorkerWorks = workerWorkSummaries;
   const visibleProjects = sortedProjects.slice(0, 3);
   const visibleWorkItems = workerMode ? visibleWorkerWorks.length : visibleProjects.length;
   const projectStatusChips = projectStatusFilterChips(sortedProjects);

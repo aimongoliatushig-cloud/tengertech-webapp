@@ -297,14 +297,21 @@ export function AppMenu({
           },
         ]
       : []),
-    ...(environmentMode
+    ...(environmentMode && !(workerMode && mfoFieldMode)
       ? [
-          {
-            key: "environment-work",
-            href: "/projects?department=%D0%9D%D0%BE%D0%B3%D0%BE%D0%BE%D0%BD%20%D0%B1%D0%B0%D0%B9%D0%B3%D1%83%D1%83%D0%BB%D0%B0%D0%BC%D0%B6%2C%20%D1%86%D1%8D%D0%B2%D1%8D%D1%80%D0%BB%D1%8D%D0%B3%D1%8D%D1%8D%20%D2%AF%D0%B9%D0%BB%D1%87%D0%B8%D0%BB%D0%B3%D1%8D%D1%8D%D0%BD%D0%B8%D0%B9%20%D1%85%D1%8D%D0%BB%D1%82%D1%8D%D1%81",
-            label: "\u041D\u043E\u0433\u043E\u043E\u043D \u0431\u0430\u0439\u0433\u0443\u0443\u043B\u0430\u043C\u0436, \u0442\u043E\u0445\u0438\u0436\u0438\u043B\u0442",
-            icon: Leaf,
-          },
+          workerMode
+            ? {
+                key: "tasks",
+                href: "/tasks",
+                label: "\u04E8\u043D\u04E9\u04E9\u0434\u0440\u0438\u0439\u043D \u0430\u0436\u0438\u043B",
+                icon: ListChecks,
+              }
+            : {
+                key: "environment-work",
+                href: "/projects?department=%D0%9D%D0%BE%D0%B3%D0%BE%D0%BE%D0%BD%20%D0%B1%D0%B0%D0%B9%D0%B3%D1%83%D1%83%D0%BB%D0%B0%D0%BC%D0%B6%2C%20%D1%86%D1%8D%D0%B2%D1%8D%D1%80%D0%BB%D1%8D%D0%B3%D1%8D%D1%8D%20%D2%AF%D0%B9%D0%BB%D1%87%D0%B8%D0%BB%D0%B3%D1%8D%D1%8D%D0%BD%D0%B8%D0%B9%20%D1%85%D1%8D%D0%BB%D1%82%D1%8D%D1%81",
+                label: "\u041D\u043E\u0433\u043E\u043E\u043D \u0431\u0430\u0439\u0433\u0443\u0443\u043B\u0430\u043C\u0436, \u0442\u043E\u0445\u0438\u0436\u0438\u043B\u0442",
+                icon: Leaf,
+              },
         ]
       : []),
     ...(repairMode
@@ -424,7 +431,7 @@ export function AppMenu({
       return ["dashboard", "tasks", "chat", "help", "review", "notifications"].includes(item.key);
     }
     if (environmentFieldMode) {
-      return ["dashboard", "environment-work", "chat", "help", "review", "notifications"].includes(item.key);
+      return ["dashboard", "tasks", "chat", "help", "review", "notifications"].includes(item.key);
     }
     if (repairFieldMode) {
       return ["dashboard", "fleet-repair", "chat", "help", "review", "notifications"].includes(item.key);
@@ -578,12 +585,7 @@ export function AppMenu({
         : environmentFieldMode
           ? [
               { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard },
-              {
-                key: "environment-work",
-                href: "/projects?department=%D0%9D%D0%BE%D0%B3%D0%BE%D0%BE%D0%BD%20%D0%B1%D0%B0%D0%B9%D0%B3%D1%83%D1%83%D0%BB%D0%B0%D0%BC%D0%B6%2C%20%D1%86%D1%8D%D0%B2%D1%8D%D1%80%D0%BB%D1%8D%D0%B3%D1%8D%D1%8D%20%D2%AF%D0%B9%D0%BB%D1%87%D0%B8%D0%BB%D0%B3%D1%8D%D1%8D%D0%BD%D0%B8%D0%B9%20%D1%85%D1%8D%D0%BB%D1%82%D1%8D%D1%81",
-                label: "\u0410\u0436\u0438\u043B",
-                icon: Leaf,
-              },
+              { key: "tasks", href: "/tasks", label: "\u0410\u0436\u0438\u043B", icon: ListChecks },
               { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
               { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
               { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
