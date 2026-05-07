@@ -45,6 +45,13 @@
               sequence="28"
               groups="hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin"/>
 
+    <menuitem id="menu_hr_custom_mn_clearance"
+              name="Тойрох хуудас"
+              parent="menu_hr_custom_mn_root"
+              action="action_municipal_hr_clearance_sheet"
+              sequence="29"
+              groups="hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin"/>
+
     <menuitem id="menu_hr_custom_mn_performance"
               name="Гүйцэтгэл"
               parent="menu_hr_custom_mn_root"

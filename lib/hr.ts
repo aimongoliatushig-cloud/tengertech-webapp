@@ -161,6 +161,19 @@ type HrDisciplineSearchRecord = {
   attachment_ids?: number[];
 };
 
+type HrClearanceSearchRecord = {
+  id: number;
+  name?: string | false;
+  employee_id?: OdooRelation;
+  department_id?: OdooRelation;
+  job_id?: OdooRelation;
+  saved_date?: string | false;
+  section?: string | false;
+  state?: string | false;
+  note?: string | false;
+  attachment_ids?: number[];
+};
+
 export type HrOption = {
   id: number;
   name: string;
@@ -319,6 +332,33 @@ export type HrEmployeeTerminationInput = {
   reason: string;
   note?: string;
   files?: File[];
+};
+
+export type HrClearanceCreateInput = {
+  employeeId: number;
+  savedDate: string;
+  section?: string;
+  state?: string;
+  note?: string;
+  files?: File[];
+};
+
+export type HrClearanceRecord = {
+  id: number;
+  name: string;
+  employeeId: number | null;
+  employeeName: string;
+  departmentId: number | null;
+  departmentName: string;
+  jobTitle: string;
+  savedDate: string;
+  section: string;
+  sectionLabel: string;
+  state: string;
+  stateLabel: string;
+  note: string;
+  hasAttachment: boolean;
+  attachmentIds: number[];
 };
 
 export type HrEmployeeTransferRecord = {
@@ -2246,8 +2286,167 @@ export async function actionTimeoffRequest(
   return normalizeTimeoffRequest(result);
 }
 
+function clearanceStateLabel(state: string) {
+  switch (state) {
+    case "draft":
+      return "Ноорог";
+    case "submitted":
+      return "Илгээсэн";
+    case "pending":
+      return "Хүлээгдэж байна";
+    case "approved":
+      return "Баталгаажсан";
+    case "incomplete":
+      return "Дутуу";
+    case "done":
+      return "Дууссан";
+    default:
+      return state || "Тодорхойгүй";
+  }
+}
+
+function clearanceSectionLabel(section: string) {
+  switch (section) {
+    case "warehouse":
+      return "Нярав";
+    case "it":
+      return "IT";
+    case "finance":
+      return "Санхүү";
+    case "manager":
+      return "Шууд удирдлага";
+    case "hr":
+      return "HR";
+    default:
+      return section || "Тодорхойгүй";
+  }
+}
+
+function normalizeClearanceRecord(record: Partial<HrClearanceRecord>): HrClearanceRecord {
+  const state = record.state || "draft";
+  const section = record.section || "hr";
+  return {
+    id: Number(record.id || 0),
+    name: record.name || "",
+    employeeId: record.employeeId ?? null,
+    employeeName: record.employeeName || "Ажилтан бүртгээгүй",
+    departmentId: record.departmentId ?? null,
+    departmentName: record.departmentName || "Хэлтэс бүртгээгүй",
+    jobTitle: record.jobTitle || "",
+    savedDate: record.savedDate || "",
+    section,
+    sectionLabel: record.sectionLabel || clearanceSectionLabel(section),
+    state,
+    stateLabel: record.stateLabel || clearanceStateLabel(state),
+    note: record.note || "",
+    hasAttachment: Boolean(record.hasAttachment),
+    attachmentIds: record.attachmentIds || [],
+  };
+}
+
+function normalizeClearanceSearchRecord(record: HrClearanceSearchRecord): HrClearanceRecord {
+  const state = String(record.state || "draft");
+  const section = String(record.section || "hr");
+  return {
+    id: record.id,
+    name: String(record.name || ""),
+    employeeId: getRelationId(record.employee_id),
+    employeeName: getRelationName(record.employee_id, "Ажилтан бүртгээгүй"),
+    departmentId: getRelationId(record.department_id),
+    departmentName: getRelationName(record.department_id, "Хэлтэс бүртгээгүй"),
+    jobTitle: getRelationName(record.job_id),
+    savedDate: String(record.saved_date || ""),
+    section,
+    sectionLabel: clearanceSectionLabel(section),
+    state,
+    stateLabel: clearanceStateLabel(state),
+    note: String(record.note || ""),
+    hasAttachment: Boolean(record.attachment_ids?.length),
+    attachmentIds: record.attachment_ids || [],
+  };
+}
+
+function isMissingClearanceModelError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return message.includes("municipal.hr.clearance.sheet") || message.includes("get_hr_clearance_sheet") || message.includes("not found");
+}
+
+export async function getClearanceRecords(session: AppSession): Promise<HrClearanceRecord[]> {
+  await requireHrSpecialistAccess(session);
+  try {
+    const records = await executeOdooKw<Array<Partial<HrClearanceRecord>>>(
+      "municipal.hr.clearance.sheet",
+      "get_hr_clearance_sheet_directory",
+      [{ limit: 300 }],
+      {},
+      getConnection(session),
+    );
+    return records.map(normalizeClearanceRecord);
+  } catch (error) {
+    if (!isMissingClearanceModelError(error)) {
+      console.warn("HR clearance directory API failed, falling back to search_read:", error);
+    }
+  }
+
+  try {
+    const records = await executeOdooKw<HrClearanceSearchRecord[]>(
+      "municipal.hr.clearance.sheet",
+      "search_read",
+      [[]],
+      {
+        fields: ["name", "employee_id", "department_id", "job_id", "saved_date", "section", "state", "note", "attachment_ids"],
+        order: "saved_date desc, id desc",
+        limit: 300,
+        context: { active_test: false },
+      },
+      getConnection(session),
+    );
+    return records.map(normalizeClearanceSearchRecord);
+  } catch (error) {
+    if (isMissingClearanceModelError(error)) {
+      return [];
+    }
+    console.warn("HR clearance search_read failed:", error);
+    return [];
+  }
+}
+
+export async function createClearanceRecord(session: AppSession, data: HrClearanceCreateInput) {
+  await requireHrSpecialistAccess(session);
+  if (!data.employeeId) {
+    throw new Error("Ажилтан заавал сонгоно уу.");
+  }
+  ensureDateOrder(data.savedDate, "Хадгалсан огноо");
+  const attachments = await filesToAttachments(data.files);
+
+  try {
+    const result = await executeOdooKw<Partial<HrClearanceRecord>>(
+      "municipal.hr.clearance.sheet",
+      "create_hr_clearance_sheet",
+      [
+        {
+          employeeId: data.employeeId,
+          savedDate: data.savedDate,
+          section: data.section || "hr",
+          state: data.state || "draft",
+          note: data.note || "",
+          attachments,
+        },
+      ],
+      {},
+      getConnection(session),
+    );
+    return normalizeClearanceRecord(result);
+  } catch (error) {
+    if (isMissingClearanceModelError(error)) {
+      throw new Error("hr_custom_mn module шинэчлэгдээгүй байна. VPS дээр module upgrade/reload хийсний дараа тойрох хуудас хадгална уу.");
+    }
+    throw error;
+  }
+}
+
 export async function getHrStats(session: AppSession): Promise<HrStats> {
-  const [employees, timeoffDashboard, activeDiscipline, completedDiscipline] = await Promise.all([
+  const [employees, timeoffDashboard, activeDiscipline, completedDiscipline, pendingClearance] = await Promise.all([
     getEmployees(session),
     getTimeoffDashboard(session),
     executeOdooKw<number>(
@@ -2261,6 +2460,13 @@ export async function getHrStats(session: AppSession): Promise<HrStats> {
       "municipal.discipline",
       "search_count",
       [[["state", "in", ["approved", "archived"]]]],
+      {},
+      getConnection(session),
+    ).catch(() => 0),
+    executeOdooKw<number>(
+      "municipal.hr.clearance.sheet",
+      "search_count",
+      [[["state", "in", ["submitted", "pending", "incomplete"]]]],
       {},
       getConnection(session),
     ).catch(() => 0),
@@ -2299,6 +2505,6 @@ export async function getHrStats(session: AppSession): Promise<HrStats> {
     transfers: 0,
     expiringContracts: expiringContracts.length,
     missingAttachmentEmployees: missingAttachmentEmployees.length,
-    pendingClearance: 0,
+    pendingClearance,
   };
 }
