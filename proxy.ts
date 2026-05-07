@@ -7,6 +7,8 @@ import { SESSION_COOKIE_NAME } from "@/lib/session";
 const PUBLIC_PATHS = new Set([
   "/login",
   "/design-board",
+  "/api/push/public-key",
+  "/api/push/subscription",
   "/api/wrs-report/normalized",
 ]);
 const AUTH_ACTION_PATHS = new Set([
