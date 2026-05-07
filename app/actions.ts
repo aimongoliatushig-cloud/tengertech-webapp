@@ -152,11 +152,14 @@ async function notifyTaskReviewersWithSystemFallback(
   } | Record<string, never>,
 ) {
   try {
-    await notifyWorkspaceTaskReportReviewers(taskId, reporterName, connectionOverrides);
+    const recipientIds = await notifyWorkspaceTaskReportReviewers(taskId, reporterName, connectionOverrides);
+    if (recipientIds.length) {
+      return recipientIds;
+    }
   } catch (error) {
     console.warn("Task reviewer notification failed with current credentials, retrying as system:", error);
-    await notifyWorkspaceTaskReportReviewers(taskId, reporterName, {});
   }
+  return notifyWorkspaceTaskReportReviewers(taskId, reporterName, {});
 }
 
 async function notifyPushQuietly(input: {
@@ -171,6 +174,14 @@ async function notifyPushQuietly(input: {
   } catch (error) {
     console.warn("Push notification failed:", error);
   }
+}
+
+function uniquePositiveUserIds(values: Array<number | null | undefined>) {
+  return Array.from(
+    new Set(
+      values.filter((value): value is number => Number.isFinite(value ?? NaN) && Number(value) > 0),
+    ),
+  );
 }
 
 function getStringListValues(formData: FormData, keys: string[], maxItems = 20) {
@@ -567,6 +578,16 @@ export async function createProjectAction(formData: FormData) {
         ).catch(() => null);
       }
 
+      if (assignmentResult?.assignedUserIds?.length) {
+        await notifyPushQuietly({
+          eventType: "new_work_assigned",
+          title: "Шинэ ажил оноогдлоо",
+          body: result.message || "Хог тээврийн шинэ ажил танд оноогдлоо.",
+          targetUrl: `/projects/${result.project_id}`,
+          userIds: assignmentResult.assignedUserIds,
+        });
+      }
+
       if (projectFiles.length) {
         const attachments = await Promise.all(
           projectFiles.map(async (file) => ({
@@ -828,6 +849,7 @@ export async function createProjectAction(formData: FormData) {
 
     revalidatePath("/");
     revalidatePath("/projects");
+    revalidatePath("/field");
     revalidatePath("/review");
     revalidatePath("/reports");
     revalidatePath("/projects/new");
@@ -1326,10 +1348,27 @@ export async function createTaskReportAction(formData: FormData) {
       connectionOverrides,
     );
 
-    await sendWorkspaceTaskReportToReview(taskId, { forceComplete: true }, connectionOverrides);
-    await notifyWorkspaceTaskReportReviewers(taskId, session.name, connectionOverrides);
+    const reviewConnectionOverrides = await sendTaskToReviewWithSystemFallback(
+      taskId,
+      { forceComplete: true },
+      connectionOverrides,
+    );
+    const reviewerIds = await notifyTaskReviewersWithSystemFallback(
+      taskId,
+      session.name,
+      reviewConnectionOverrides,
+    );
+    await notifyPushQuietly({
+      eventType: "report_under_review",
+      title: "Тайлан хяналтад ирлээ",
+      body: `${session.name} тайлан илгээлээ.`,
+      targetUrl: `/tasks/${taskId}`,
+      userIds: reviewerIds,
+    });
 
     revalidatePath("/");
+    revalidatePath("/tasks");
+    revalidatePath("/field");
     revalidatePath("/projects");
     revalidatePath("/notifications");
     revalidatePath("/review");
@@ -1526,7 +1565,7 @@ export async function submitTaskForReviewAction(formData: FormData) {
       {},
       connectionOverrides,
     );
-    await notifyTaskReviewersWithSystemFallback(
+    const reviewerIds = await notifyTaskReviewersWithSystemFallback(
       taskId,
       session.name,
       reviewConnectionOverrides,
@@ -1536,10 +1575,12 @@ export async function submitTaskForReviewAction(formData: FormData) {
       title: "Тайлан хяналтад ирлээ",
       body: `${session.name} тайлан илгээлээ.`,
       targetUrl: `/review`,
+      userIds: reviewerIds,
     });
     revalidatePath("/");
     revalidatePath("/tasks");
     revalidatePath("/projects");
+    revalidatePath("/field");
     revalidatePath("/notifications");
     revalidatePath("/review");
     revalidatePath("/reports");
@@ -1565,6 +1606,7 @@ export async function markTaskDoneAction(formData: FormData) {
       password: session.password,
     };
     await assertCanReviewTaskAction(taskId, session, connectionOverrides);
+    const taskBeforeReview = await loadTaskDetail(taskId, connectionOverrides).catch(() => null);
     try {
       await markWorkspaceTaskDone(taskId, connectionOverrides);
     } catch (error) {
@@ -1591,9 +1633,14 @@ export async function markTaskDoneAction(formData: FormData) {
       title: "Ажил баталгаажлаа",
       body: "Ажлын гүйцэтгэл баталгаажсан байна.",
       targetUrl: `/tasks/${taskId}`,
+      userIds: uniquePositiveUserIds([
+        ...(taskBeforeReview?.assigneeUserIds ?? []),
+        ...(taskBeforeReview?.reports.map((report) => report.reporterId) ?? []),
+      ]),
     });
     revalidatePath("/");
     revalidatePath("/projects");
+    revalidatePath("/field");
     revalidatePath("/review");
     revalidatePath("/reports");
     revalidatePath(`/tasks/${taskId}`);
@@ -1619,19 +1666,29 @@ export async function returnTaskForChangesAction(formData: FormData) {
       password: session.password,
     };
     await assertCanReviewTaskAction(taskId, session, connectionOverrides);
+    const taskBeforeReturn = await loadTaskDetail(taskId, connectionOverrides).catch(() => null);
     try {
       await returnWorkspaceTaskForChanges(taskId, reason, connectionOverrides);
     } catch (error) {
       console.warn("Task return action failed with user credentials, retrying as system:", error);
       await returnWorkspaceTaskForChanges(taskId, reason, {});
     }
+    const taskAfterReturn = await loadTaskDetail(taskId, connectionOverrides).catch(() => null);
     await notifyPushQuietly({
       eventType: "work_returned",
       title: "Ажил буцаагдлаа",
       body: reason,
-      targetUrl: `/tasks/${taskId}`,
+      targetUrl: `/tasks?filter=problem`,
+      userIds: uniquePositiveUserIds([
+        ...(taskBeforeReturn?.assigneeUserIds ?? []),
+        ...(taskBeforeReturn?.reports.map((report) => report.reporterId) ?? []),
+        ...(taskAfterReturn?.assigneeUserIds ?? []),
+        ...(taskAfterReturn?.reports.map((report) => report.reporterId) ?? []),
+      ]),
     });
     revalidatePath("/");
+    revalidatePath("/tasks");
+    revalidatePath("/notifications");
     revalidatePath("/projects");
     revalidatePath("/review");
     revalidatePath("/reports");

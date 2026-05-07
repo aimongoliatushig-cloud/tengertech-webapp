@@ -41,6 +41,9 @@ type OdooTaskRecord = {
   project_id: OdooRelation;
   ops_department_id?: OdooRelation;
   stage_id: OdooRelation;
+  state?: string | false;
+  mfo_state?: string | false;
+  municipal_work_id?: OdooRelation;
   description?: string | false;
   create_date?: string | false;
   ops_team_leader_id?: OdooRelation;
@@ -55,7 +58,6 @@ type OdooTaskRecord = {
   priority?: string;
   date_deadline?: string | false;
   mfo_shift_date?: string | false;
-  state?: string;
   mfo_is_operation_project?: boolean;
   mfo_operation_type?: string | false;
   mfo_route_id?: OdooRelation;
@@ -75,6 +77,8 @@ type OdooReportRecord = {
   report_text?: string | false;
   report_summary: string | false;
   reported_quantity: number;
+  state?: string | false;
+  rejection_reason?: string | false;
   task_measurement_unit_id?: OdooRelation;
   task_measurement_unit_code?: string | false;
   image_count?: number;
@@ -87,6 +91,20 @@ type OdooAttachmentRecord = {
   id: number;
   name: string | false;
   mimetype: string | false;
+  res_id?: number | false;
+};
+
+type OdooWorkReturnRecord = {
+  id: number;
+  state?: string | false;
+  rejection_reason?: string | false;
+};
+
+type OdooTaskMessageRecord = {
+  id: number;
+  res_id?: number | false;
+  body?: string | false;
+  date?: string | false;
 };
 
 type OdooAttachmentBinaryRecord = OdooAttachmentRecord & {
@@ -212,6 +230,34 @@ type LiveTask = {
 
 export type TaskStatusKey = "planned" | "working" | "review" | "verified" | "problem";
 
+export type TaskDirectoryReportSummary = {
+  id: number;
+  reporter: string;
+  submittedAt: string;
+  state: string;
+  stateLabel: string;
+  stateBucket: "review" | "done" | "problem" | "progress";
+  summary: string;
+  text: string;
+  reportedQuantity: number;
+  measurementUnit: string;
+  rejectionReason: string;
+  imageCount: number;
+  audioCount: number;
+  images: {
+    id: number;
+    name: string;
+    mimetype: string;
+    url: string;
+  }[];
+  audios: {
+    id: number;
+    name: string;
+    mimetype: string;
+    url: string;
+  }[];
+};
+
 export type TaskDirectoryItem = {
   id: number;
   name: string;
@@ -235,6 +281,7 @@ export type TaskDirectoryItem = {
   operationTypeLabel: string;
   issueFlag: boolean;
   assigneeIds?: number[];
+  latestReport?: TaskDirectoryReportSummary;
   href: string;
 };
 
@@ -245,6 +292,11 @@ type ReportFeedItem = {
   departmentName: string;
   projectName: string;
   summary: string;
+  text: string;
+  state: string;
+  stateLabel: string;
+  stateBucket: "review" | "done" | "problem" | "progress";
+  rejectionReason: string;
   reportedQuantity: number;
   measurementUnit: string;
   measurementUnitCode: string;
@@ -736,7 +788,7 @@ export type FleetVehicleBoard = {
   failedImportCount: number;
 };
 
-type StageBucket = "todo" | "progress" | "review" | "done" | "unknown";
+type StageBucket = "todo" | "progress" | "review" | "done" | "problem" | "unknown";
 
 const DEFAULT_CONNECTION: OdooConnection = {
   url: process.env.ODOO_URL ?? "http://localhost:8069",
@@ -919,6 +971,7 @@ const STAGE_LABELS: Record<StageBucket, string> = {
   progress: "Явагдаж буй ажил",
   review: "Хянагдаж буй ажил",
   done: "Дууссан ажил",
+  problem: "Засвар шаардсан ажил",
   unknown: "Тодорхойгүй",
 };
 
@@ -927,7 +980,7 @@ const TASK_STATUS_LABELS: Record<TaskStatusKey, string> = {
   working: "Ажиллаж байна",
   review: "Хянагдаж байна",
   verified: "Баталгаажсан",
-  problem: "Асуудалтай",
+  problem: "Засвар шаардсан",
 };
 
 const UNKNOWN_DEPARTMENT = "Тодорхойгүй";
@@ -1018,6 +1071,23 @@ function htmlToPlainText(value?: string | false) {
     .trim();
 }
 
+function extractTaskReturnReason(value?: string | false) {
+  const text = htmlToPlainText(value);
+  if (!text) {
+    return "";
+  }
+
+  const markerMatch = text.match(/Засвар\s+нэхэж\s+буцаасан\s+шалтгаан\s*:?\s*/i);
+  if (!markerMatch || markerMatch.index === undefined) {
+    return "";
+  }
+
+  return text
+    .slice(markerMatch.index + markerMatch[0].length)
+    .split(/\n{2,}/)[0]
+    .trim();
+}
+
 function normalizeQuantityUnit(value: string) {
   return value
     .toLowerCase()
@@ -1082,6 +1152,10 @@ function extractReportQuantityLines(reportText: string): QuantityLine[] {
 
 function buildTaskQuantitySnapshot(task: OdooTaskRecord, reports: OdooReportRecord[]): TaskQuantitySnapshot {
   const rawStageBucket = getStageBucket(relationName(task.stage_id, ""));
+  const taskStateBucket = reportStateBucket(task.state);
+  const mfoStateBucket = reportStateBucket(task.mfo_state);
+  const hasReturnedReport = reports.some((report) => reportStateBucket(report.state) === "problem");
+  const forcedProblem = taskStateBucket === "problem" || mfoStateBucket === "problem" || hasReturnedReport;
   const plannedLines = extractTaskQuantityLines(htmlToPlainText(task.description));
   if (!plannedLines.length && (task.ops_planned_quantity ?? 0) > 0) {
     plannedLines.push({
@@ -1142,7 +1216,9 @@ function buildTaskQuantitySnapshot(task: OdooTaskRecord, reports: OdooReportReco
       ? 100
       : Math.max(parsedProgress, rawProgress);
   const stageBucket =
-    rawStageBucket === "review"
+    forcedProblem
+      ? "problem"
+      : rawStageBucket === "review"
       ? "review"
       : rawStageBucket === "done" || progress >= 100
         ? "done"
@@ -1151,7 +1227,7 @@ function buildTaskQuantitySnapshot(task: OdooTaskRecord, reports: OdooReportReco
           : rawStageBucket;
   const rawStatusKey = getTaskStatusKey(task);
   const statusKey =
-    rawStatusKey === "problem"
+    forcedProblem || rawStatusKey === "problem"
       ? "problem"
       : stageBucket === "done"
       ? "verified"
@@ -1189,6 +1265,9 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "name",
     "project_id",
     "stage_id",
+    "state",
+    "mfo_state",
+    "municipal_work_id",
     "description",
     "create_date",
     "ops_team_leader_id",
@@ -1218,6 +1297,9 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "name",
     "project_id",
     "stage_id",
+    "state",
+    "mfo_state",
+    "municipal_work_id",
     "description",
     "create_date",
     "ops_team_leader_id",
@@ -1241,6 +1323,9 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "name",
     "project_id",
     "stage_id",
+    "state",
+    "mfo_state",
+    "municipal_work_id",
     "description",
     "create_date",
     "ops_team_leader_id",
@@ -1261,6 +1346,9 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "name",
     "project_id",
     "stage_id",
+    "state",
+    "mfo_state",
+    "municipal_work_id",
     "description",
     "create_date",
     "ops_team_leader_id",
@@ -1285,6 +1373,8 @@ const REPORT_FIELD_VARIANTS: string[][] = [
     "report_text",
     "report_summary",
     "reported_quantity",
+    "state",
+    "rejection_reason",
     "task_measurement_unit_id",
     "task_measurement_unit_code",
     "image_count",
@@ -1299,6 +1389,8 @@ const REPORT_FIELD_VARIANTS: string[][] = [
     "report_text",
     "report_summary",
     "reported_quantity",
+    "state",
+    "rejection_reason",
     "task_measurement_unit_id",
     "task_measurement_unit_code",
     "image_count",
@@ -1311,10 +1403,21 @@ const REPORT_FIELD_VARIANTS: string[][] = [
     "report_text",
     "report_summary",
     "reported_quantity",
+    "state",
+    "rejection_reason",
     "task_measurement_unit_id",
     "task_measurement_unit_code",
   ],
-  ["task_id", "reporter_id", "report_datetime", "report_text", "report_summary", "reported_quantity"],
+  [
+    "task_id",
+    "reporter_id",
+    "report_datetime",
+    "report_text",
+    "report_summary",
+    "reported_quantity",
+    "state",
+    "rejection_reason",
+  ],
   ["task_id", "reporter_id", "report_datetime", "report_summary", "reported_quantity"],
 ];
 
@@ -2220,6 +2323,40 @@ function getTaskStatusKey(task: Pick<OdooTaskRecord, "stage_id" | "mfo_quality_e
 
 function getTaskStatusLabel(statusKey: TaskStatusKey) {
   return TASK_STATUS_LABELS[statusKey];
+}
+
+function reportStateLabel(state?: string | false) {
+  switch (String(state || "").toLowerCase()) {
+    case "submitted":
+    case "under_review":
+      return "Тайлан илгээсэн";
+    case "returned":
+    case "rejected":
+      return "Буцаагдсан";
+    case "approved":
+      return "Баталгаажсан";
+    case "draft":
+      return "Ноорог";
+    default:
+      return state ? String(state) : "Тайлан";
+  }
+}
+
+function reportStateBucket(
+  state?: string | false,
+): TaskDirectoryReportSummary["stateBucket"] {
+  switch (String(state || "").toLowerCase()) {
+    case "submitted":
+    case "under_review":
+      return "review";
+    case "returned":
+    case "rejected":
+      return "problem";
+    case "approved":
+      return "done";
+    default:
+      return "progress";
+  }
 }
 
 function imageDataUrl(value?: string | false) {
@@ -3955,55 +4092,6 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     } satisfies ProjectCard;
   });
 
-  const taskDirectory = tasks
-    .map((task) => {
-      const quantitySnapshot = taskQuantitySnapshot(task);
-      const stageBucket = quantitySnapshot.stageBucket;
-      const statusKey = quantitySnapshot.statusKey;
-
-      return {
-        id: task.id,
-        name: task.name,
-        departmentName: resolveTaskDepartmentName(task, projectDepartmentById),
-        projectName: relationName(task.project_id, "Ажилгүй"),
-        stageLabel: STAGE_LABELS[stageBucket],
-        stageBucket,
-        createdDate: getDateKeyFromValue(task.create_date || null),
-        statusKey,
-        statusLabel: getTaskStatusLabel(statusKey),
-        deadline: formatCompactDate(task.date_deadline),
-        deadlineDateTime: task.date_deadline || null,
-        scheduledDate: getDateKeyFromValue(task.mfo_shift_date || task.date_deadline || null),
-        leaderName: relationName(task.ops_team_leader_id ?? false),
-        priorityLabel: priorityLabel(task.priority || ""),
-        progress: quantitySnapshot.progress,
-        plannedQuantity: quantitySnapshot.plannedQuantity,
-        completedQuantity: quantitySnapshot.completedQuantity,
-        remainingQuantity: quantitySnapshot.remainingQuantity,
-        measurementUnit: resolveTaskMeasurementUnit(task),
-        operationTypeLabel: operationTypeLabel(task.mfo_operation_type),
-        issueFlag: statusKey === "problem",
-        assigneeIds: task.user_ids ?? [],
-        href: buildTaskHref(task.id, "/tasks"),
-      } satisfies TaskDirectoryItem;
-    })
-    .sort((left, right) => {
-      const statusPriority: Record<TaskStatusKey, number> = {
-        problem: 0,
-        review: 1,
-        working: 2,
-        planned: 3,
-        verified: 4,
-      };
-
-      const statusDiff = statusPriority[left.statusKey] - statusPriority[right.statusKey];
-      if (statusDiff !== 0) {
-        return statusDiff;
-      }
-
-      return left.name.localeCompare(right.name, "mn");
-    });
-
   const liveTasks = activeTasks.map((task) => ({
     id: task.id,
     name: task.name,
@@ -4034,6 +4122,14 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     progress: taskQuantitySnapshot(task).progress,
     href: buildTaskHref(task.id, "/review"),
   }));
+
+  const reportAttachmentIdsByReportId = new Map<number, { imageIds: number[]; audioIds: number[] }>();
+  for (const report of reports) {
+    reportAttachmentIdsByReportId.set(report.id, {
+      imageIds: [...(report.image_attachment_ids ?? [])],
+      audioIds: [...(report.audio_attachment_ids ?? [])],
+    });
+  }
 
   const attachmentIds = [
     ...new Set(
@@ -4067,10 +4163,49 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     }
   }
 
-  const reportTaskMap = new Map(tasks.map((task) => [task.id, task]));
-  const reportsFeed = reports.map((report) => {
-    const task = Array.isArray(report.task_id) ? reportTaskMap.get(report.task_id[0]) : undefined;
-    const images = (report.image_attachment_ids ?? []).map((attachmentId) => {
+  const reportIds = reports.map((report) => report.id);
+  if (reportIds.length) {
+    try {
+      const fallbackAttachments = await searchReadAll<OdooAttachmentRecord>(
+        uid,
+        "ir.attachment",
+        [["res_model", "=", "ops.task.report"], ["res_id", "in", reportIds]],
+        {
+          fields: ["name", "mimetype", "res_id"],
+          order: "create_date asc, id asc",
+        },
+        connection,
+        400,
+      );
+
+      for (const attachment of fallbackAttachments) {
+        const reportId = typeof attachment.res_id === "number" ? attachment.res_id : 0;
+        if (!reportId) {
+          continue;
+        }
+        attachmentMap.set(attachment.id, attachment);
+        const entry =
+          reportAttachmentIdsByReportId.get(reportId) ?? { imageIds: [], audioIds: [] };
+        const mimetype = String(attachment.mimetype || "").toLowerCase();
+        if (mimetype.startsWith("image/") && !entry.imageIds.includes(attachment.id)) {
+          entry.imageIds.push(attachment.id);
+        }
+        if (mimetype.startsWith("audio/") && !entry.audioIds.includes(attachment.id)) {
+          entry.audioIds.push(attachment.id);
+        }
+        reportAttachmentIdsByReportId.set(reportId, entry);
+      }
+    } catch (error) {
+      console.warn("ops.task.report хавсралтын fallback уншихад алдаа гарлаа:", error);
+    }
+  }
+
+  const getReportImageIds = (report: OdooReportRecord) =>
+    reportAttachmentIdsByReportId.get(report.id)?.imageIds ?? report.image_attachment_ids ?? [];
+  const getReportAudioIds = (report: OdooReportRecord) =>
+    reportAttachmentIdsByReportId.get(report.id)?.audioIds ?? report.audio_attachment_ids ?? [];
+  const buildReportImages = (report: OdooReportRecord) =>
+    getReportImageIds(report).map((attachmentId) => {
       const attachment = attachmentMap.get(attachmentId);
       return {
         id: attachmentId,
@@ -4079,7 +4214,8 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         url: `/api/odoo/attachments/${attachmentId}`,
       };
     });
-    const audios = (report.audio_attachment_ids ?? []).map((attachmentId) => {
+  const buildReportAudios = (report: OdooReportRecord) =>
+    getReportAudioIds(report).map((attachmentId) => {
       const attachment = attachmentMap.get(attachmentId);
       return {
         id: attachmentId,
@@ -4088,6 +4224,12 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         url: `/api/odoo/attachments/${attachmentId}`,
       };
     });
+
+  const reportTaskMap = new Map(tasks.map((task) => [task.id, task]));
+  const reportsFeed = reports.map((report) => {
+    const task = Array.isArray(report.task_id) ? reportTaskMap.get(report.task_id[0]) : undefined;
+    const images = buildReportImages(report);
+    const audios = buildReportAudios(report);
     return {
       id: report.id,
       reporter: relationName(report.reporter_id),
@@ -4096,7 +4238,12 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         ? resolveTaskDepartmentName(task, projectDepartmentById)
         : "Тодорхойгүй",
       projectName: task ? relationName(task.project_id) : "Ажилгүй",
-      summary: report.report_summary || "Тайлбар оруулаагүй",
+      summary: htmlToPlainText(report.report_summary) || "Тайлбар оруулаагүй",
+      text: htmlToPlainText(report.report_text),
+      state: String(report.state || ""),
+      stateLabel: reportStateLabel(report.state),
+      stateBucket: reportStateBucket(report.state),
+      rejectionReason: htmlToPlainText(report.rejection_reason),
       reportedQuantity: report.reported_quantity ?? 0,
       measurementUnit: resolveUnitLabel(
         report.task_measurement_unit_id,
@@ -4105,13 +4252,152 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       ),
       measurementUnitCode:
         report.task_measurement_unit_code || (task ? resolveTaskMeasurementCode(task) : ""),
-      imageCount: report.image_count ?? 0,
-      audioCount: report.audio_count ?? 0,
+      imageCount: Math.max(report.image_count ?? 0, images.length),
+      audioCount: Math.max(report.audio_count ?? 0, audios.length),
       submittedAt: formatCompactDate(report.report_datetime),
       images,
       audios,
     } satisfies ReportFeedItem;
   });
+
+  const workIdsByTaskId = new Map<number, number>();
+  for (const task of tasks) {
+    const workId = relationId(task.municipal_work_id ?? false);
+    if (workId) {
+      workIdsByTaskId.set(task.id, workId);
+    }
+  }
+  const returnedWorkById = new Map<number, OdooWorkReturnRecord>();
+  const workIds = Array.from(new Set(workIdsByTaskId.values()));
+  if (workIds.length) {
+    const workRecords = await searchReadAll<OdooWorkReturnRecord>(
+      uid,
+      "municipal.work",
+      [["id", "in", workIds]],
+      {
+        fields: ["state", "rejection_reason"],
+      },
+      resolvedConnection,
+      200,
+    ).catch(() => [] as OdooWorkReturnRecord[]);
+    for (const work of workRecords) {
+      returnedWorkById.set(work.id, work);
+    }
+  }
+
+  const returnReasonByTaskId = new Map<number, string>();
+  const taskIds = tasks.map((task) => task.id).filter((id) => id > 0);
+  if (taskIds.length) {
+    const taskMessages = await searchReadAll<OdooTaskMessageRecord>(
+      uid,
+      "mail.message",
+      [
+        ["model", "=", "project.task"],
+        ["res_id", "in", taskIds],
+      ],
+      {
+        fields: ["res_id", "body", "date"],
+        order: "date desc, id desc",
+      },
+      resolvedConnection,
+      300,
+    ).catch(() => [] as OdooTaskMessageRecord[]);
+
+    for (const message of taskMessages) {
+      const taskId = typeof message.res_id === "number" ? message.res_id : 0;
+      if (!taskId || returnReasonByTaskId.has(taskId)) {
+        continue;
+      }
+      const reason = extractTaskReturnReason(message.body);
+      if (reason) {
+        returnReasonByTaskId.set(taskId, reason);
+      }
+    }
+  }
+
+  const latestReportByTaskId = new Map<number, TaskDirectoryReportSummary>();
+  for (const report of reportsFeed) {
+    const taskId = reports.find((item) => item.id === report.id)?.task_id;
+    const resolvedTaskId = Array.isArray(taskId) ? taskId[0] : null;
+    if (!resolvedTaskId || latestReportByTaskId.has(resolvedTaskId)) {
+      continue;
+    }
+    const workId = workIdsByTaskId.get(resolvedTaskId);
+    const workReturn = workId ? returnedWorkById.get(workId) : undefined;
+    const workReturnReason = htmlToPlainText(workReturn?.rejection_reason);
+    const messageReturnReason = returnReasonByTaskId.get(resolvedTaskId) || "";
+    const effectiveStateBucket =
+      report.stateBucket === "problem" || reportStateBucket(workReturn?.state) === "problem"
+        ? "problem"
+        : report.stateBucket;
+    latestReportByTaskId.set(resolvedTaskId, {
+      id: report.id,
+      reporter: report.reporter,
+      submittedAt: report.submittedAt,
+      state: report.state,
+      stateLabel: report.stateLabel,
+      stateBucket: effectiveStateBucket,
+      summary: report.summary,
+      text: report.text,
+      reportedQuantity: report.reportedQuantity,
+      measurementUnit: report.measurementUnit,
+      rejectionReason: report.rejectionReason || workReturnReason || messageReturnReason,
+      imageCount: report.imageCount,
+      audioCount: report.audioCount,
+      images: report.images,
+      audios: report.audios,
+    });
+  }
+
+  const taskDirectory = tasks
+    .map((task) => {
+      const quantitySnapshot = taskQuantitySnapshot(task);
+      const stageBucket = quantitySnapshot.stageBucket;
+      const statusKey = quantitySnapshot.statusKey;
+
+      return {
+        id: task.id,
+        name: task.name,
+        departmentName: resolveTaskDepartmentName(task, projectDepartmentById),
+        projectName: relationName(task.project_id, "Ажилгүй"),
+        stageLabel: STAGE_LABELS[stageBucket],
+        stageBucket,
+        createdDate: getDateKeyFromValue(task.create_date || null),
+        statusKey,
+        statusLabel: getTaskStatusLabel(statusKey),
+        deadline: formatCompactDate(task.date_deadline),
+        deadlineDateTime: task.date_deadline || null,
+        scheduledDate: getDateKeyFromValue(task.mfo_shift_date || task.date_deadline || null),
+        leaderName: relationName(task.ops_team_leader_id ?? false),
+        priorityLabel: priorityLabel(task.priority || ""),
+        progress: quantitySnapshot.progress,
+        plannedQuantity: quantitySnapshot.plannedQuantity,
+        completedQuantity: quantitySnapshot.completedQuantity,
+        remainingQuantity: quantitySnapshot.remainingQuantity,
+        measurementUnit: resolveTaskMeasurementUnit(task),
+        operationTypeLabel: operationTypeLabel(task.mfo_operation_type),
+        issueFlag: statusKey === "problem",
+        assigneeIds: task.user_ids ?? [],
+        latestReport: latestReportByTaskId.get(task.id),
+        href: buildTaskHref(task.id, "/tasks"),
+      } satisfies TaskDirectoryItem;
+    })
+    .sort((left, right) => {
+      const statusPriority: Record<TaskStatusKey, number> = {
+        problem: 0,
+        review: 1,
+        working: 2,
+        planned: 3,
+        verified: 4,
+      };
+
+      const statusDiff = statusPriority[left.statusKey] - statusPriority[right.statusKey];
+      if (statusDiff !== 0) {
+        return statusDiff;
+      }
+
+      return left.name.localeCompare(right.name, "mn");
+    });
 
   const teamLeaderMap = new Map<string, TeamLeaderCard>();
   for (const task of tasks) {
@@ -4578,6 +4864,11 @@ function fallbackSnapshot(): DashboardSnapshot {
         taskName: "1-р хороо - 20-р байрны ар тал",
         projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
         summary: "21 мод хэлбэржүүлж, 1 зураг, 1 аудио тайлан хавсаргасан.",
+        text: "21 мод хэлбэржүүлж, 1 зураг, 1 аудио тайлан хавсаргасан.",
+        state: "submitted",
+        stateLabel: "Тайлан илгээсэн",
+        stateBucket: "review",
+        rejectionReason: "",
         reportedQuantity: 21,
         measurementUnit: "мод",
         measurementUnitCode: "tree",
@@ -4594,6 +4885,11 @@ function fallbackSnapshot(): DashboardSnapshot {
         taskName: "Хог тээврийн 2-р маршрут",
         projectName: "Хог тээвэрлэлтийн өглөөний маршрут",
         summary: "Маршрут дууссан, дахин ачилт 18:00-д эхэлнэ.",
+        text: "Маршрут дууссан, дахин ачилт 18:00-д эхэлнэ.",
+        state: "submitted",
+        stateLabel: "Тайлан илгээсэн",
+        stateBucket: "review",
+        rejectionReason: "",
         reportedQuantity: 4,
         measurementUnit: "удаа",
         measurementUnitCode: "times",

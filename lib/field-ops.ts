@@ -83,6 +83,13 @@ type DailyWeightTotalRecord = {
   note: string | false;
 };
 
+type FieldReportStatusRecord = {
+  id: number;
+  task_id: Relation;
+  state: string | false;
+  rejection_reason: string | false;
+};
+
 type FieldOpsTaskSelection = {
   shiftDate?: string;
   selectedTaskId?: number | null;
@@ -93,6 +100,7 @@ export type FieldProofImage = {
   id: number;
   proofType: string;
   proofTypeLabel: string;
+  imageUrl: string;
   capturedAt: string;
   uploader: string;
   description: string;
@@ -157,6 +165,7 @@ export type FieldAssignment = {
   startedAt: string;
   endedAt: string;
   endShiftSummary: string;
+  returnedReason: string;
   stopCount: number;
   completedStopCount: number;
   skippedStopCount: number;
@@ -193,8 +202,9 @@ const TASK_STATE_LABELS: Record<string, string> = {
   draft: "Төлөвлөгдсөн",
   dispatched: "Хуваарилсан",
   in_progress: "Ажиллаж байна",
-  submitted: "Илгээсэн",
+  submitted: "Тайлан илгээсэн",
   verified: "Баталгаажсан",
+  returned: "Буцаагдсан",
   cancelled: "Цуцалсан",
 };
 
@@ -439,7 +449,7 @@ export async function loadAssignedGarbageTasks(
 
   const taskIds = taskRecords.map((task) => task.id);
 
-  const [stopRecords, proofRecords, issueRecords, weightRecords] = await Promise.all([
+  const [stopRecords, proofRecords, issueRecords, weightRecords, reportStatusRecords] = await Promise.all([
     executeOdooKw<StopRecord[]>(
       "mfo.stop.execution.line",
       "search_read",
@@ -517,6 +527,17 @@ export async function loadAssignedGarbageTasks(
       },
       connectionOverrides,
     ),
+    executeOdooKw<FieldReportStatusRecord[]>(
+      "ops.task.report",
+      "search_read",
+      [[["task_id", "in", taskIds]]],
+      {
+        fields: ["task_id", "state", "rejection_reason"],
+        order: "report_datetime desc, id desc",
+        limit: 500,
+      },
+      connectionOverrides,
+    ).catch(() => []),
   ]);
 
   const proofsByStopId = new Map<number, FieldProofImage[]>();
@@ -530,6 +551,7 @@ export async function loadAssignedGarbageTasks(
       id: proof.id,
       proofType: proof.proof_type,
       proofTypeLabel: proofTypeLabel(proof.proof_type),
+      imageUrl: `/api/field/proofs/${proof.id}/image`,
       capturedAt: formatDateTimeLabel(proof.capture_datetime),
       uploader: relationName(proof.uploader_user_id),
       description: proof.description || "",
@@ -572,6 +594,17 @@ export async function loadAssignedGarbageTasks(
       note: weight.note || "",
     });
     weightsByTaskId.set(taskId, existing);
+  }
+
+  const returnedReasonByTaskId = new Map<number, string>();
+  for (const report of reportStatusRecords) {
+    const taskId = relationId(report.task_id);
+    if (!taskId || returnedReasonByTaskId.has(taskId)) {
+      continue;
+    }
+    if (report.state === "returned" && report.rejection_reason) {
+      returnedReasonByTaskId.set(taskId, report.rejection_reason);
+    }
   }
 
   const stopsByTaskId = new Map<number, FieldStop[]>();
@@ -635,6 +668,7 @@ export async function loadAssignedGarbageTasks(
       startedAt: formatDateTimeLabel(task.mfo_start_datetime),
       endedAt: formatDateTimeLabel(task.mfo_end_datetime),
       endShiftSummary: task.mfo_end_shift_summary || "",
+      returnedReason: returnedReasonByTaskId.get(task.id) ?? "",
       stopCount: task.mfo_stop_count ?? stops.length,
       completedStopCount: task.mfo_completed_stop_count ?? 0,
       skippedStopCount: task.mfo_skipped_stop_count ?? 0,

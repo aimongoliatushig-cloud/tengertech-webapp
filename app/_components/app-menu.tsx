@@ -245,6 +245,7 @@ export function AppMenu({
   const hasHrGroupAccess = Boolean(flags.hrUser || flags.hrManager || flags.municipalHr);
   const canShowHrMenu = Boolean(canViewHr || (roleLooksHr && !masterMode && !workerMode));
   const hrFocusedMode =
+    !workerMode &&
     canShowHrMenu &&
     (roleLooksHr || Boolean(hasHrGroupAccess && canViewHr && !departmentManagerMode && !roleLooksDepartmentHead));
   const isGarbageDepartmentHead =
@@ -572,7 +573,7 @@ export function AppMenu({
             { key: "tasks", href: "/tasks", label: "Ажил", icon: ListChecks },
             { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
             { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
-            { key: "profile", href: "/profile", label: "\u041F\u0440\u043E\u0444\u0430\u0439\u043B", icon: Settings },
+            { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
           ]
         : environmentFieldMode
           ? [
@@ -585,7 +586,7 @@ export function AppMenu({
               },
               { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
               { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
-              { key: "profile", href: "/profile", label: "\u041F\u0440\u043E\u0444\u0430\u0439\u043B", icon: Settings },
+              { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
             ]
           : repairFieldMode
             ? [
@@ -593,18 +594,14 @@ export function AppMenu({
                 { key: "fleet-repair", href: "/fleet-repair/requests", label: "\u0417\u0430\u0441\u0432\u0430\u0440", icon: Wrench },
                 { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
                 { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
-                { key: "profile", href: "/profile", label: "\u041F\u0440\u043E\u0444\u0430\u0439\u043B", icon: Settings },
+                { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
               ]
             : [
                 { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard },
-                {
-                  key: "projects",
-                  href: departmentItems[0]?.href ?? "/projects",
-                  label: "\u0410\u0436\u043B\u0443\u0443\u0434",
-                  icon: ListChecks,
-                },
+                { key: "tasks", href: "/tasks", label: "\u0410\u0436\u0438\u043B", icon: ListChecks },
                 { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
                 { key: "review", href: reviewHref, label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
+                { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
               ]
       : [
           { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },

@@ -1378,56 +1378,6 @@
   line-height: 1;
 }
 
-.workerPrimaryTask {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  min-height: 72px;
-  padding: 12px 14px;
-  width: 100%;
-  border: 0;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
-  color: #fff;
-  font: inherit;
-  text-align: left;
-  text-decoration: none;
-  box-shadow: 0 16px 30px rgba(29, 112, 51, 0.18);
-  cursor: pointer;
-}
-
-.workerPrimaryTask small,
-.workerPrimaryTask strong {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.workerPrimaryTask small {
-  margin-bottom: 4px;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
-.workerPrimaryTask strong {
-  color: #fff;
-  font-size: 0.94rem;
-  line-height: 1.25;
-}
-
-.workerPrimaryIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.16);
-}
-
 .workerLineListHeader {
   display: flex;
   align-items: flex-end;
@@ -1511,6 +1461,19 @@
   color: var(--ink-600);
   font-size: 0.74rem;
   font-weight: 700;
+}
+
+.workerReturnReason {
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  color: #9a3412;
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workerLineAction {
@@ -1921,11 +1884,6 @@
     font-size: 1.48rem;
   }
 
-  .workerPrimaryTask {
-    min-height: 62px;
-    border-radius: 8px;
-  }
-
   .workerLineListHeader {
     display: flex;
     padding: 0 2px;
@@ -1969,6 +1927,10 @@
   .workerLineItem strong {
     font-size: 0.96rem;
     line-height: 1.32;
+    white-space: normal;
+  }
+
+  .workerReturnReason {
     white-space: normal;
   }
 
@@ -2100,10 +2062,6 @@
   .workerProgressBadge {
     width: 50px;
     height: 50px;
-  }
-
-  .workerPrimaryTask {
-    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
   .workerLineListHeader {
@@ -2699,11 +2657,6 @@
     font-size: 1.48rem;
   }
 
-  .workerPrimaryTask {
-    min-height: 62px;
-    border-radius: 8px;
-  }
-
   .workerLineListHeader {
     display: flex;
     padding: 0 2px;
@@ -2747,6 +2700,10 @@
   .workerLineItem strong {
     font-size: 0.96rem;
     line-height: 1.32;
+    white-space: normal;
+  }
+
+  .workerReturnReason {
     white-space: normal;
   }
 

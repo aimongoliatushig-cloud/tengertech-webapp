@@ -121,6 +121,173 @@
   gap: 8px;
 }
 
+.reportReturnReason {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid rgba(185, 72, 44, 0.2);
+  border-radius: var(--ds-radius-card);
+  background: rgba(185, 72, 44, 0.08);
+  color: #7f2f1c;
+}
+
+.reportReturnReason strong {
+  font-size: 0.9rem;
+}
+
+.reportReturnReason p {
+  margin: 0;
+  color: #5f291b;
+}
+
+.existingReportView {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 18px;
+  min-height: 0;
+}
+
+.existingReportPanel {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  padding: 18px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(248, 253, 249, 0.94), rgba(255, 255, 255, 0.96));
+}
+
+.existingReportTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.existingReportTop div,
+.existingReportText {
+  display: grid;
+  gap: 5px;
+}
+
+.existingReportTop strong,
+.existingReportText strong {
+  color: var(--ink-900);
+  font-weight: 900;
+}
+
+.existingReportTop small,
+.existingReportText p,
+.existingReportMeta span {
+  color: var(--ink-600);
+  font-weight: 700;
+}
+
+.existingReportTop > span {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(226, 238, 255, 0.9);
+  color: #245283;
+  font-size: 0.8rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.existingReportTop > span[data-state="done"] {
+  background: rgba(222, 244, 225, 0.95);
+  color: #21753a;
+}
+
+.existingReportTop > span[data-state="problem"] {
+  background: rgba(250, 231, 226, 0.95);
+  color: #9a3412;
+}
+
+.existingReportText p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.65;
+}
+
+.existingReportMeta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.existingReportMeta span {
+  display: grid;
+  gap: 4px;
+  min-height: 70px;
+  align-content: center;
+  padding: 12px;
+  border: 1px solid rgba(74, 154, 93, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.existingReportMeta strong {
+  color: var(--ink-900);
+  font-size: 1.15rem;
+}
+
+.existingReportImageGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.existingReportImageGrid a {
+  overflow: hidden;
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--ink-700);
+  text-decoration: none;
+}
+
+.existingReportImageGrid img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border-radius: 9px;
+  object-fit: cover;
+}
+
+.existingReportImageGrid span {
+  overflow: hidden;
+  color: var(--ink-600);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.existingReportAudioList {
+  display: grid;
+  gap: 10px;
+}
+
+.existingReportAudioCard {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.existingReportAudioCard audio {
+  width: 100%;
+}
+
 .reportBody p {
   margin: 0;
   white-space: pre-wrap;
@@ -1453,11 +1620,6 @@
   padding: 18px;
 }
 
-.reportCard > .reportCardTop,
-.reportCard > .reportMediaMeta {
-  display: none;
-}
-
 .reportCardTop strong {
   font-size: 1.12rem;
   color: var(--ink-900);
@@ -2496,6 +2658,31 @@
     gap: 12px;
     overflow-y: auto;
     padding: 0 0 10px;
+  }
+
+  .existingReportView {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    overflow-y: auto;
+    padding-bottom: 10px;
+  }
+
+  .existingReportPanel {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .existingReportTop {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .existingReportMeta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .existingReportImageGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .modalSectionCard {

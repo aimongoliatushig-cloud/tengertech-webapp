@@ -7,13 +7,16 @@ import {
   ClipboardCheck,
   Clock3,
   Leaf,
-  Send,
   Sun,
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { createTaskReportAction } from "@/app/actions";
+import {
+  createTaskReportAction,
+  deleteTaskReportAction,
+  updateTaskReportAction,
+} from "@/app/actions";
 import shellStyles from "@/app/workspace.module.css";
 import {
   getRoleLabel,
@@ -95,6 +98,40 @@ function normalizeFilter(value: string): FilterKey {
 
 function normalizeQuickAction(value: string): QuickActionMode {
   return value === "report" ? "report" : "none";
+}
+
+function workerTaskActionLabel(task: TaskDirectoryItem) {
+  if (task.statusKey === "verified") {
+    return "Баталгаажсан";
+  }
+  if (task.statusKey === "review") {
+    return "Илгээсэн";
+  }
+  if (task.statusKey === "problem") {
+    return "Засах";
+  }
+  return "Тайлан";
+}
+
+function workerTaskReturnReason(task: TaskDirectoryItem) {
+  if (task.statusKey !== "problem") {
+    return "";
+  }
+  return task.latestReport?.rejectionReason?.trim() || "Засвар нэхэж буцаасан байна.";
+}
+
+function getWorkerExistingReport(task: TaskDirectoryItem) {
+  if (!task.latestReport) {
+    return undefined;
+  }
+  if (task.statusKey !== "problem") {
+    return task.latestReport;
+  }
+  return {
+    ...task.latestReport,
+    stateBucket: "problem" as const,
+    rejectionReason: task.latestReport.rejectionReason?.trim() || "",
+  };
 }
 
 function formatWeekdayLabel(dateKey: string) {
@@ -1069,7 +1106,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
                       const reviewCount = work.tasks.filter((task) => task.statusKey === "review").length;
                       const doneCount = work.tasks.filter((task) => task.statusKey === "verified").length;
                       const openCount = Math.max(work.tasks.length - doneCount, 0);
-                      const nextTask = work.tasks.find((task) => task.statusKey !== "verified") ?? work.tasks[0];
                       const progress = work.tasks.length
                         ? Math.round(
                             work.tasks.reduce((total, task) => total + task.progress, 0) /
@@ -1106,40 +1142,21 @@ export default async function TasksPage({ searchParams }: PageProps) {
                             </span>
                           </div>
 
-                          {nextTask ? (
-                            <TaskReportModal
-                              action={createTaskReportAction}
-                              taskId={Number(nextTask.id)}
-                              simpleMobile
-                              workItemName={nextTask.name}
-                              triggerClassName={styles.workerPrimaryTask}
-                              triggerContent={
-                                <>
-                                  <span className={styles.workerPrimaryIcon} aria-hidden="true">
-                                    <Send size={18} strokeWidth={2.5} />
-                                  </span>
-                                  <span>
-                                    <small>Дараагийн даалгавар</small>
-                                    <strong>{nextTask.name}</strong>
-                                  </span>
-                                  <ChevronRight size={20} strokeWidth={2.4} aria-hidden="true" />
-                                </>
-                              }
-                            />
-                          ) : null}
-
                           <div className={styles.workerLineListHeader}>
                             <span>{work.tasks.length} даалгавар</span>
-                            <small>Тайлан хүлээж буй даалгавар</small>
+                            <small>Даалгаврын төлөв</small>
                           </div>
                           <div className={styles.workerLineList}>
                             {work.tasks.map((task, index) => (
                               <TaskReportModal
                                 key={task.id}
                                 action={createTaskReportAction}
+                                updateAction={updateTaskReportAction}
+                                deleteAction={deleteTaskReportAction}
                                 taskId={Number(task.id)}
                                 simpleMobile
                                 workItemName={task.name}
+                                existingReport={getWorkerExistingReport(task)}
                                 triggerClassName={styles.workerLineItem}
                                 triggerContent={
                                   <>
@@ -1150,10 +1167,15 @@ export default async function TasksPage({ searchParams }: PageProps) {
                                         <Clock3 size={14} strokeWidth={2.3} aria-hidden="true" />
                                         {task.deadline} · {task.statusLabel}
                                       </small>
+                                      {workerTaskReturnReason(task) ? (
+                                        <em className={styles.workerReturnReason}>
+                                          {workerTaskReturnReason(task)}
+                                        </em>
+                                      ) : null}
                                     </div>
                                     <span className={styles.workerLineAction}>
                                       <CheckCircle2 size={16} strokeWidth={2.4} aria-hidden="true" />
-                                      Тайлан
+                                      {workerTaskActionLabel(task)}
                                     </span>
                                   </>
                                 }

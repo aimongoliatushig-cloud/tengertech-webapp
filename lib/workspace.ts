@@ -73,6 +73,7 @@ type ReportRecord = {
   image_attachment_ids: number[];
   audio_attachment_ids: number[];
   state?: string | false;
+  rejection_reason?: string | false;
   task_measurement_unit_id?: Relation;
   task_measurement_unit_code?: string | false;
 };
@@ -91,6 +92,7 @@ type OdooAttachmentRecord = {
   id: number;
   name: string | false;
   mimetype: string | false;
+  res_id?: number | false;
 };
 
 type UserRecord = {
@@ -554,6 +556,10 @@ export type TaskReportFeedItem = {
   reporterId: number | null;
   reporter: string;
   submittedAt: string;
+  state: string;
+  stateLabel: string;
+  stateBucket: StageBucket;
+  rejectionReason: string;
   summary: string;
   text: string;
   quantity: number;
@@ -640,9 +646,10 @@ const WEEKDAY_KEYS = [
 
 type WeekdayKey = (typeof WEEKDAY_KEYS)[number];
 
-type StageBucket = "todo" | "progress" | "review" | "done" | "unknown";
+type StageBucket = "todo" | "progress" | "review" | "done" | "problem" | "unknown";
 
 const STAGE_ALIASES: Array<[StageBucket, string[]]> = [
+  ["problem", ["returned", "rejected", "changes_requested", "return", "буцаасан", "буцаагдсан", "засвар"]],
   ["todo", ["төлөвлөгдсөн", "хийгдэх ажил", "хуваарилсан", "draft", "dispatched", "planned", "hiigdeh ajil", "todo", "task"]],
   [
     "progress",
@@ -672,17 +679,22 @@ function resolveEffectiveTaskStage(
     normalizeStageBucket(String(state || "")),
   );
   const bucket =
-    stateBucket === "done"
-      ? stateBucket
-      : mfoBucket !== "unknown"
-        ? mfoBucket
-        : reportBuckets.includes("review")
-          ? "review"
-          : normalizeStageBucket(stageName);
+    stateBucket === "problem" || mfoBucket === "problem" || reportBuckets.includes("problem")
+      ? "problem"
+      : stateBucket === "done"
+        ? stateBucket
+        : mfoBucket !== "unknown"
+          ? mfoBucket
+          : reportBuckets.includes("review")
+            ? "review"
+            : normalizeStageBucket(stageName);
   const normalizedProgress = Math.max(0, Math.min(100, Math.round(progress)));
 
   if (bucket === "done") {
     return { bucket: "done" as const, label: "Дууссан" };
+  }
+  if (bucket === "problem") {
+    return { bucket: "problem" as const, label: "Засвар шаардсан" };
   }
   if (bucket === "review") {
     return { bucket: "review" as const, label: "Хянагдаж буй" };
@@ -1055,6 +1067,38 @@ function normalizeStageBucket(name: string) {
     }
   }
   return "unknown";
+}
+
+function reportStateLabel(state?: string | false) {
+  switch (String(state || "").toLowerCase()) {
+    case "submitted":
+    case "under_review":
+      return "Тайлан илгээсэн";
+    case "returned":
+    case "rejected":
+      return "Буцаагдсан";
+    case "approved":
+      return "Баталгаажсан";
+    case "draft":
+      return "Ноорог";
+    default:
+      return state ? String(state) : "Тайлан";
+  }
+}
+
+function reportStateBucket(state?: string | false): StageBucket {
+  switch (String(state || "").toLowerCase()) {
+    case "submitted":
+    case "under_review":
+      return "review";
+    case "returned":
+    case "rejected":
+      return "problem";
+    case "approved":
+      return "done";
+    default:
+      return "progress";
+  }
 }
 
 function isPastDueDate(value?: string | false | null) {
@@ -2462,6 +2506,7 @@ export async function loadProjectDetail(
         "image_attachment_ids",
         "audio_attachment_ids",
         "state",
+        "rejection_reason",
         "task_measurement_unit_id",
         "task_measurement_unit_code",
       ],
@@ -2736,6 +2781,59 @@ export async function loadTaskDetail(
       },
     ]),
   );
+  const reportIds = reports.map((report) => report.id).filter((id) => id > 0);
+  const fallbackReportAttachments = reportIds.length
+    ? await executeOdooKw<OdooAttachmentRecord[]>(
+        "ir.attachment",
+        "search_read",
+        [[["res_model", "=", "ops.task.report"], ["res_id", "in", reportIds]]],
+        {
+          fields: ["name", "mimetype", "res_id"],
+          order: "create_date asc, id asc",
+          limit: Math.max(reportIds.length * 20, 100),
+        },
+        connectionOverrides,
+      ).catch(() => [])
+    : [];
+  const fallbackReportAttachmentsByReportId = new Map<number, OdooAttachmentRecord[]>();
+  for (const attachment of fallbackReportAttachments) {
+    if (!attachment.res_id) {
+      continue;
+    }
+    const existing = fallbackReportAttachmentsByReportId.get(attachment.res_id) ?? [];
+    existing.push(attachment);
+    fallbackReportAttachmentsByReportId.set(attachment.res_id, existing);
+  }
+  const reportAttachmentItem = (
+    attachmentId: number,
+    fallbackAttachments: OdooAttachmentRecord[],
+    fallbackName: string,
+  ) => {
+    const fallbackAttachment = fallbackAttachments.find((attachment) => attachment.id === attachmentId);
+    return {
+      id: attachmentId,
+      name: fallbackAttachment?.name || `${fallbackName}-${attachmentId}`,
+      url: `/api/odoo/attachments/${attachmentId}`,
+    };
+  };
+  const reportAttachmentIds = (
+    primaryIds: number[] | undefined,
+    fallbackAttachments: OdooAttachmentRecord[],
+    mimePrefix: string,
+  ) => {
+    const ids = new Set<number>();
+    for (const id of primaryIds ?? []) {
+      if (Number.isFinite(id) && id > 0) {
+        ids.add(id);
+      }
+    }
+    for (const attachment of fallbackAttachments) {
+      if ((attachment.mimetype || "").startsWith(mimePrefix)) {
+        ids.add(attachment.id);
+      }
+    }
+    return Array.from(ids);
+  };
 
   let assigneeNames: string[] = [];
   let assigneeUserIds: number[] = [...(task.user_ids ?? [])];
@@ -2865,11 +2963,20 @@ export async function loadTaskDetail(
     canMarkDone: Boolean(task.ops_can_mark_done),
     canReturnForChanges: Boolean(task.ops_can_return_for_changes),
     reportsLocked: Boolean(task.ops_reports_locked),
-    reports: reports.map((report) => ({
+    reports: reports.map((report) => {
+      const fallbackAttachments = fallbackReportAttachmentsByReportId.get(report.id) ?? [];
+      const imageIds = reportAttachmentIds(report.image_attachment_ids, fallbackAttachments, "image/");
+      const audioIds = reportAttachmentIds(report.audio_attachment_ids, fallbackAttachments, "audio/");
+
+      return {
       id: report.id,
       reporterId: relationId(report.reporter_id),
       reporter: relationName(report.reporter_id),
       submittedAt: formatDateLabel(report.report_datetime),
+      state: String(report.state || ""),
+      stateLabel: reportStateLabel(report.state),
+      stateBucket: reportStateBucket(report.state),
+      rejectionReason: htmlToPlainText(report.rejection_reason),
       summary: report.report_summary || "Тайлбар оруулаагүй",
       text: report.report_text || "",
       quantity: report.reported_quantity ?? 0,
@@ -2879,19 +2986,16 @@ export async function loadTaskDetail(
       ),
       measurementUnitCode:
         report.task_measurement_unit_code || task.ops_measurement_unit_code || "",
-      imageCount: report.image_count ?? 0,
-      audioCount: report.audio_count ?? 0,
-      images: (report.image_attachment_ids ?? []).map((attachmentId) => ({
-        id: attachmentId,
-        name: `image-${attachmentId}`,
-        url: `/api/odoo/attachments/${attachmentId}`,
-      })),
-      audios: (report.audio_attachment_ids ?? []).map((attachmentId) => ({
-        id: attachmentId,
-        name: `audio-${attachmentId}`,
-        url: `/api/odoo/attachments/${attachmentId}`,
-      })),
-    })),
+      imageCount: Math.max(report.image_count ?? 0, imageIds.length),
+      audioCount: Math.max(report.audio_count ?? 0, audioIds.length),
+      images: imageIds.map((attachmentId) =>
+        reportAttachmentItem(attachmentId, fallbackAttachments, "image"),
+      ),
+      audios: audioIds.map((attachmentId) =>
+        reportAttachmentItem(attachmentId, fallbackAttachments, "audio"),
+      ),
+      };
+    }),
     messages: messages
       .map((message) => ({
         id: message.id,
@@ -3438,7 +3542,7 @@ export async function assignGarbageProjectTasksFromRouteTeam(
 ) {
   const crewTeam = await loadCrewTeamForRoute(input.routeId, connectionOverrides);
   if (!crewTeam) {
-    return { assignedTaskCount: 0, hasCrewTeam: false };
+    return { assignedTaskCount: 0, hasCrewTeam: false, assignedUserIds: [] };
   }
 
   const tasks = await executeOdooKw<Array<{ id: number }>>(
@@ -3452,7 +3556,7 @@ export async function assignGarbageProjectTasksFromRouteTeam(
     connectionOverrides,
   );
   if (!tasks.length) {
-    return { assignedTaskCount: 0, hasCrewTeam: true };
+    return { assignedTaskCount: 0, hasCrewTeam: true, assignedUserIds: [] };
   }
 
   const values: Record<string, unknown> = {
@@ -3488,7 +3592,7 @@ export async function assignGarbageProjectTasksFromRouteTeam(
     connectionOverrides,
   );
 
-  return { assignedTaskCount: tasks.length, hasCrewTeam: true };
+  return { assignedTaskCount: tasks.length, hasCrewTeam: true, assignedUserIds: memberUserIds };
 }
 
 export async function createWorkspaceTask(
@@ -4106,7 +4210,7 @@ export async function notifyWorkspaceTaskReportReviewers(
     );
     const task = tasks[0];
     if (!task) {
-      return;
+      return [];
     }
 
     const projectId = relationId(task.project_id);
@@ -4207,7 +4311,7 @@ export async function notifyWorkspaceTaskReportReviewers(
 
     const finalRecipientIds = Array.from(recipientIds).filter((id) => id > 0);
     if (!finalRecipientIds.length) {
-      return;
+      return [];
     }
 
     const [activityTypeId, modelId, recipientUsers] = await Promise.all([
@@ -4276,8 +4380,10 @@ export async function notifyWorkspaceTaskReportReviewers(
         connectionOverrides,
       ).catch(() => 0);
     }
+    return finalRecipientIds;
   } catch (error) {
     console.error("Failed to notify task report reviewers:", error);
+    return [];
   }
 }
 
@@ -4490,26 +4596,40 @@ export async function returnWorkspaceTaskForChanges(
     const reportIds = await executeOdooKw<number[]>(
       "ops.task.report",
       "search",
-      [[["task_id", "=", taskId], ["state", "in", ["draft", "submitted", "under_review"]]]],
+      [[["task_id", "=", taskId], ["state", "in", ["draft", "submitted", "under_review", "approved"]]]],
       {},
       connectionOverrides,
     );
 
     if (reportIds.length) {
-      await executeOdooKw<boolean>(
-        "ops.task.report",
-        "write",
-        [reportIds, { rejection_reason: returnReason }],
-        {},
-        connectionOverrides,
+      const reportFields = await loadModelFieldNames("ops.task.report", connectionOverrides);
+      const returnValues = keepSupportedValues(
+        {
+          rejection_reason: returnReason,
+          state: "returned",
+        },
+        reportFields,
       );
-      await executeOdooKw<boolean>(
-        "ops.task.report",
-        "action_return",
-        [reportIds],
-        {},
-        connectionOverrides,
-      );
+      if (Object.keys(returnValues).length) {
+        await executeOdooKw<boolean>(
+          "ops.task.report",
+          "write",
+          [reportIds, returnValues],
+          {},
+          connectionOverrides,
+        );
+      }
+      try {
+        await executeOdooKw<boolean>(
+          "ops.task.report",
+          "action_return",
+          [reportIds],
+          {},
+          connectionOverrides,
+        );
+      } catch (actionReturnError) {
+        console.warn("Task reports were written as returned but action_return failed.", actionReturnError);
+      }
     }
   } catch (reportError) {
     console.warn("Task reports could not be marked as returned.", reportError);

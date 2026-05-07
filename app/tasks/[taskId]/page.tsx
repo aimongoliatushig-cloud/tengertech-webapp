@@ -614,6 +614,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                               <strong>{report.reporter}</strong>
                               <small>{report.submittedAt}</small>
                             </div>
+                            <StagePill label={report.stateLabel} bucket={report.stateBucket} />
                             {quantitySummary ? (
                               <StagePill
                                 label={formatQuantityLabel(
@@ -629,6 +630,13 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                             <span className={styles.chip}>{report.imageCount} зураг</span>
                             <span className={styles.chip}>{report.audioCount} аудио</span>
                           </div>
+
+                          {report.rejectionReason ? (
+                            <div className={styles.reportReturnReason}>
+                              <strong>Буцаасан шалтгаан</strong>
+                              <p>{report.rejectionReason}</p>
+                            </div>
+                          ) : null}
 
                           <div className={styles.reportBody}>
                             <strong className={styles.reportBodyLabel}>Тайлбар</strong>

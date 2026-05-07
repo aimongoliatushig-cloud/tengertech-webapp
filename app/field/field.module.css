@@ -285,6 +285,16 @@
   border: 1px solid rgba(63, 113, 70, 0.14);
 }
 
+.historyImage {
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(63, 113, 70, 0.14);
+  margin-bottom: 10px;
+}
+
 .historyCard strong,
 .historyCard span,
 .historyCard small {
@@ -300,6 +310,22 @@
 .historyCard p {
   margin: 10px 0 0;
   color: var(--ink-900);
+}
+
+.returnedNotice {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: var(--ds-radius-card);
+  border: 1px solid rgba(185, 72, 44, 0.2);
+  background: rgba(185, 72, 44, 0.08);
+  color: #7f2f1c;
+}
+
+.returnedNotice p {
+  margin: 0;
+  color: #5f291b;
+  line-height: 1.55;
 }
 
 .helperText {

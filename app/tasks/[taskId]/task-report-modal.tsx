@@ -2,13 +2,43 @@
 
 import { type ChangeEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 import { Camera, ImagePlus, Mic, Plus, RotateCcw, Square, X } from "lucide-react";
 
 import styles from "./task-detail.module.css";
 import type { TaskQuantityLine } from "@/lib/workspace";
 
+export type ExistingTaskReport = {
+  id: number;
+  reporter: string;
+  submittedAt: string;
+  stateLabel: string;
+  stateBucket?: "review" | "done" | "problem" | "progress";
+  summary: string;
+  text: string;
+  reportedQuantity: number;
+  measurementUnit: string;
+  rejectionReason: string;
+  imageCount: number;
+  audioCount: number;
+  images: {
+    id: number;
+    name: string;
+    mimetype: string;
+    url: string;
+  }[];
+  audios: {
+    id: number;
+    name: string;
+    mimetype: string;
+    url: string;
+  }[];
+};
+
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
+  updateAction?: (formData: FormData) => void | Promise<void>;
+  deleteAction?: (formData: FormData) => void | Promise<void>;
   taskId: number;
   defaultOpen?: boolean;
   quantityOptional?: boolean;
@@ -18,6 +48,7 @@ type Props = {
   requireQuantity?: boolean;
   simpleMobile?: boolean;
   workItemName?: string;
+  existingReport?: ExistingTaskReport;
   triggerClassName?: string;
   triggerContent?: ReactNode;
 };
@@ -28,6 +59,14 @@ type PhotoReportFieldProps = {
   label: string;
   maxFiles: number;
   emptyStateLabel: string;
+  existingAttachments?: ExistingMediaAttachment[];
+  removeFieldName?: string;
+};
+
+type ExistingMediaAttachment = {
+  id: number;
+  name: string;
+  url: string;
 };
 
 type PhotoPreview = {
@@ -38,7 +77,15 @@ type PhotoPreview = {
   url: string;
 };
 
-function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoReportFieldProps) {
+function PhotoReportField({
+  id,
+  name,
+  label,
+  maxFiles,
+  emptyStateLabel,
+  existingAttachments = [],
+  removeFieldName,
+}: PhotoReportFieldProps) {
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -46,6 +93,7 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
   const previewUrlsRef = useRef<string[]>([]);
   const captureSequenceRef = useRef(0);
   const [selectedFiles, setSelectedFiles] = useState<PhotoPreview[]>([]);
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<number[]>([]);
   const [limitMessage, setLimitMessage] = useState("");
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState("");
@@ -132,7 +180,8 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
   };
 
   const limitInputFiles = (event: ChangeEvent<HTMLInputElement>, otherInput: HTMLInputElement | null) => {
-    const otherCount = otherInput?.files?.length ?? 0;
+    const existingCount = existingAttachments.length - removedAttachmentIds.length;
+    const otherCount = (otherInput?.files?.length ?? 0) + existingCount;
     const allowedCount = Math.max(maxFiles - otherCount, 0);
     const files = Array.from(event.target.files ?? []);
     const limitedFiles = files.slice(0, allowedCount);
@@ -182,7 +231,8 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
     setCameraError("");
     const existingCount =
       (galleryInputRef.current?.files?.length ?? 0) + (cameraInputRef.current?.files?.length ?? 0);
-    if (existingCount >= maxFiles) {
+    const visibleExistingCount = existingAttachments.length - removedAttachmentIds.length;
+    if (existingCount + visibleExistingCount >= maxFiles) {
       setLimitMessage(`Дээд тал нь ${maxFiles} зураг оруулна.`);
       return;
     }
@@ -215,7 +265,8 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
     }
 
     const existingCount = (galleryInputRef.current?.files?.length ?? 0) + (input.files?.length ?? 0);
-    if (existingCount >= maxFiles) {
+    const visibleExistingCount = existingAttachments.length - removedAttachmentIds.length;
+    if (existingCount + visibleExistingCount >= maxFiles) {
       setLimitMessage(`Дээд тал нь ${maxFiles} зураг оруулна.`);
       stopCamera();
       return;
@@ -238,7 +289,11 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
     stopCamera();
   };
 
-  const statusLabel = selectedFiles.length ? `${selectedFiles.length}/${maxFiles}` : emptyStateLabel;
+  const visibleExistingAttachments = existingAttachments.filter(
+    (attachment) => !removedAttachmentIds.includes(attachment.id),
+  );
+  const totalSelectedCount = visibleExistingAttachments.length + selectedFiles.length;
+  const statusLabel = totalSelectedCount ? `${totalSelectedCount}/${maxFiles}` : emptyStateLabel;
 
   return (
     <div className={styles.reportMediaField}>
@@ -298,8 +353,31 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
       ) : null}
       {cameraError ? <p className={styles.fileLimitMessage}>{cameraError}</p> : null}
 
-      {selectedFiles.length ? (
+      {removeFieldName
+        ? removedAttachmentIds.map((attachmentId) => (
+            <input key={attachmentId} type="hidden" name={removeFieldName} value={attachmentId} />
+          ))
+        : null}
+
+      {totalSelectedCount ? (
         <div className={styles.mediaPreviewList}>
+          {visibleExistingAttachments.map((attachment) => (
+            <figure key={`existing-${attachment.id}`} className={styles.mediaPreviewTile}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={attachment.url} alt={attachment.name} />
+              <button
+                type="button"
+                aria-label={`${attachment.name} устгах`}
+                onClick={() =>
+                  setRemovedAttachmentIds((current) =>
+                    current.includes(attachment.id) ? current : [...current, attachment.id],
+                  )
+                }
+              >
+                <X size={15} strokeWidth={2.6} aria-hidden="true" />
+              </button>
+            </figure>
+          ))}
           {selectedFiles.map((file) => (
             <figure key={file.id} className={styles.mediaPreviewTile}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -313,7 +391,7 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
               </button>
             </figure>
           ))}
-          {selectedFiles.length < maxFiles ? (
+          {totalSelectedCount < maxFiles ? (
             <button type="button" className={styles.mediaAddTile} onClick={() => galleryInputRef.current?.click()}>
               <Plus size={22} strokeWidth={2.3} aria-hidden="true" />
               <span>Нэмэх</span>
@@ -339,7 +417,13 @@ function PhotoReportField({ id, name, label, maxFiles, emptyStateLabel }: PhotoR
 
 type AudioRecorderStatus = "idle" | "recording" | "ready" | "error";
 
-function AudioRecorderField() {
+function AudioRecorderField({
+  existingAudios = [],
+  removeFieldName,
+}: {
+  existingAudios?: ExistingMediaAttachment[];
+  removeFieldName?: string;
+}) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -351,6 +435,8 @@ function AudioRecorderField() {
   const [audioUrl, setAudioUrl] = useState("");
   const [durationLabel, setDurationLabel] = useState("");
   const [message, setMessage] = useState("Файл сонгохгүй, зөвхөн микрофоноор шууд бичнэ.");
+  const [removedAudioIds, setRemovedAudioIds] = useState<number[]>([]);
+  const visibleExistingAudios = existingAudios.filter((audio) => !removedAudioIds.includes(audio.id));
 
   const clearAudioUrl = () => {
     if (audioUrlRef.current) {
@@ -458,6 +544,31 @@ function AudioRecorderField() {
       </div>
 
       <input ref={inputRef} name="report_audios" type="file" accept="audio/*" className={styles.hiddenFileInput} />
+      {removeFieldName
+        ? removedAudioIds.map((audioId) => (
+            <input key={audioId} type="hidden" name={removeFieldName} value={audioId} />
+          ))
+        : null}
+
+      {visibleExistingAudios.length ? (
+        <div className={styles.existingReportAudioList}>
+          {visibleExistingAudios.map((audio) => (
+            <div key={audio.id} className={styles.existingReportAudioCard}>
+              <strong>{audio.name}</strong>
+              <audio controls preload="none" src={audio.url} />
+              <button
+                type="button"
+                className={styles.attachmentRemoveButton}
+                onClick={() =>
+                  setRemovedAudioIds((current) => (current.includes(audio.id) ? current : [...current, audio.id]))
+                }
+              >
+                Устгах
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <div className={styles.audioRecorderPanel} data-recording={status === "recording" ? "true" : "false"}>
         <span className={styles.audioRecorderIcon} aria-hidden="true">
@@ -503,8 +614,146 @@ function AudioRecorderField() {
   );
 }
 
+function ExistingReportView({ report }: { report: ExistingTaskReport }) {
+  const reportText = report.text || report.summary || "Тайлбар оруулаагүй байна.";
+  const quantityLabel =
+    report.reportedQuantity > 0
+      ? `${report.reportedQuantity} ${report.measurementUnit || "нэгж"}`.trim()
+      : "";
+
+  return (
+    <div className={styles.existingReportView}>
+      <section className={styles.existingReportPanel}>
+        <div className={styles.existingReportTop}>
+          <div>
+            <strong>{report.reporter || "Ажилтан"}</strong>
+            <small>{report.submittedAt || "Огноо тодорхойгүй"}</small>
+          </div>
+          <span data-state={report.stateBucket || "progress"}>{report.stateLabel || "Тайлан"}</span>
+        </div>
+
+        {report.rejectionReason ? (
+          <div className={styles.reportReturnReason}>
+            <strong>Буцаасан шалтгаан</strong>
+            <p>{report.rejectionReason}</p>
+          </div>
+        ) : null}
+
+        <div className={styles.existingReportText}>
+          <strong>Тайлбар</strong>
+          <p>{reportText}</p>
+        </div>
+
+        <div className={styles.existingReportMeta}>
+          {quantityLabel ? (
+            <span>
+              <strong>{quantityLabel}</strong>
+              Гүйцэтгэсэн хэмжээ
+            </span>
+          ) : null}
+          <span>
+            <strong>{report.imageCount}</strong>
+            Зураг
+          </span>
+          <span>
+            <strong>{report.audioCount}</strong>
+            Аудио
+          </span>
+        </div>
+      </section>
+
+      <section className={styles.existingReportPanel}>
+        <div className={styles.modalSectionHeading}>
+          <strong>Хавсралт</strong>
+        </div>
+
+        {report.images.length ? (
+          <div className={styles.existingReportImageGrid}>
+            {report.images.map((image) => (
+              <a key={image.id} href={image.url} target="_blank" rel="noreferrer">
+                <Image
+                  src={image.url}
+                  alt={image.name}
+                  width={360}
+                  height={260}
+                  unoptimized
+                />
+                <span>{image.name}</span>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.mediaEmptyText}>Зураг хавсаргаагүй байна.</p>
+        )}
+
+        {report.audios.length ? (
+          <div className={styles.existingReportAudioList}>
+            {report.audios.map((audio) => (
+              <div key={audio.id} className={styles.existingReportAudioCard}>
+                <strong>{audio.name}</strong>
+                <audio controls preload="none" src={audio.url} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.mediaEmptyText}>Аудио хавсаргаагүй байна.</p>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function getEditableReportText(rawText: string) {
+  const lines = rawText.split(/\r?\n/);
+  const bodyLines: string[] = [];
+  let skippingQuantityBlock = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (/^Даалгавар\s*:/i.test(trimmed)) {
+      continue;
+    }
+
+    if (/^Гүйцэтгэсэн хэмжээ\s*:?$/i.test(trimmed)) {
+      skippingQuantityBlock = true;
+      continue;
+    }
+
+    if (skippingQuantityBlock) {
+      if (!trimmed) {
+        skippingQuantityBlock = false;
+      }
+      continue;
+    }
+
+    bodyLines.push(line);
+  }
+
+  return bodyLines.join("\n").trim();
+}
+
+function splitReportImages(images: ExistingTaskReport["images"]) {
+  const beforeImages: ExistingMediaAttachment[] = [];
+  const afterImages: ExistingMediaAttachment[] = [];
+
+  for (const image of images) {
+    const normalizedName = image.name.toLowerCase();
+    const attachment = { id: image.id, name: image.name, url: image.url };
+    if (normalizedName.includes("дараах") || normalizedName.includes("after")) {
+      afterImages.push(attachment);
+    } else {
+      beforeImages.push(attachment);
+    }
+  }
+
+  return { beforeImages, afterImages };
+}
+
 export function TaskReportModal({
   action,
+  updateAction,
+  deleteAction,
   taskId,
   defaultOpen = false,
   quantityOptional = false,
@@ -514,6 +763,7 @@ export function TaskReportModal({
   requireQuantity,
   simpleMobile = false,
   workItemName,
+  existingReport,
   triggerClassName,
   triggerContent,
 }: Props) {
@@ -528,6 +778,14 @@ export function TaskReportModal({
   useEffect(() => {
     setIsOpen(defaultOpen);
   }, [defaultOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    setReportText(existingReport ? getEditableReportText(existingReport.text || existingReport.summary || "") : "");
+  }, [existingReport, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -560,6 +818,18 @@ export function TaskReportModal({
     (requireQuantity ?? (!quantityOptional && Boolean(measurementUnit?.trim())));
   const quantityLabel = `Хийсэн хэмжээ${measurementUnit ? ` (${measurementUnit})` : ""}`;
   const closeModal = () => setIsOpen(false);
+  const canEditExistingReport = Boolean(existingReport && updateAction);
+  const existingImageGroups = existingReport ? splitReportImages(existingReport.images) : { beforeImages: [], afterImages: [] };
+  const existingAudios = existingReport
+    ? existingReport.audios.map((audio) => ({ id: audio.id, name: audio.name, url: audio.url }))
+    : [];
+  const modalTitle = canEditExistingReport
+    ? "Даалгаврын тайлан засах"
+    : simpleMobile
+      ? "Даалгаврын тайлан илгээх"
+      : "Тайлан оруулах";
+  const formAction = canEditExistingReport && updateAction ? updateAction : action;
+  const returnReasonText = existingReport?.rejectionReason?.trim() || "";
 
   const modalContent =
     mounted && isOpen
@@ -586,7 +856,7 @@ export function TaskReportModal({
                 <div className={styles.modalTitleGroup}>
                   <span className={styles.kicker}>Гүйцэтгэлийн тайлан</span>
                   <strong className={styles.actionTitle} id="task-report-modal-title">
-                    {simpleMobile ? "Даалгаврын тайлан илгээх" : "Тайлан оруулах"}
+                    {modalTitle}
                   </strong>
                   {workItemName ? <small className={styles.modalSubtitle}>{workItemName}</small> : null}
                 </div>
@@ -601,11 +871,30 @@ export function TaskReportModal({
                 </button>
               </div>
 
-              <form action={action} className={styles.modalForm}>
+              {existingReport && !canEditExistingReport ? (
+                <div className={styles.modalForm}>
+                  <ExistingReportView report={existingReport} />
+
+                  <div className={styles.modalActions}>
+                    <button type="button" className={styles.actionButton} onClick={closeModal}>
+                      Хаах
+                    </button>
+                  </div>
+                </div>
+              ) : (
+              <form action={formAction} className={styles.modalForm}>
                 <input type="hidden" name="task_id" value={taskId} />
+                {existingReport ? <input type="hidden" name="report_id" value={existingReport.id} /> : null}
 
                 <div className={styles.modalBodyGrid}>
                   <section className={styles.modalSectionCard}>
+                    {canEditExistingReport && (returnReasonText || existingReport?.stateBucket === "problem") ? (
+                      <div className={styles.reportReturnReason}>
+                        <strong>Засвар нэхэж буцаасан шалтгаан</strong>
+                        <p>{returnReasonText || "Засвар шаардсан байна."}</p>
+                      </div>
+                    ) : null}
+
                     <div className={styles.composerHighlight}>
                       <strong>Тайлан</strong>
                     </div>
@@ -681,6 +970,8 @@ export function TaskReportModal({
                       label="Өмнөх зураг"
                       maxFiles={5}
                       emptyStateLabel="Өмнөх зураг сонгоогүй байна"
+                      existingAttachments={existingImageGroups.beforeImages}
+                      removeFieldName="remove_image_attachment_ids"
                     />
 
                     <PhotoReportField
@@ -689,9 +980,14 @@ export function TaskReportModal({
                       label="Дараах зураг"
                       maxFiles={5}
                       emptyStateLabel="Дараах зураг сонгоогүй байна"
+                      existingAttachments={existingImageGroups.afterImages}
+                      removeFieldName="remove_image_attachment_ids"
                     />
 
-                    <AudioRecorderField />
+                    <AudioRecorderField
+                      existingAudios={existingAudios}
+                      removeFieldName="remove_audio_attachment_ids"
+                    />
                   </section>
                 </div>
 
@@ -704,10 +1000,25 @@ export function TaskReportModal({
                     Болих
                   </button>
                   <button type="submit" className={styles.actionButton}>
-                    {simpleMobile ? "Илгээх" : "Тайлан илгээх"}
+                    {canEditExistingReport ? "Хадгалах" : simpleMobile ? "Илгээх" : "Тайлан илгээх"}
                   </button>
+                  {canEditExistingReport && deleteAction ? (
+                    <button
+                      type="submit"
+                      className={styles.warningButton}
+                      formAction={deleteAction}
+                      onClick={(event) => {
+                        if (!window.confirm("Энэ тайланг устгах уу?")) {
+                          event.preventDefault();
+                        }
+                      }}
+                    >
+                      Устгах
+                    </button>
+                  ) : null}
                 </div>
               </form>
+              )}
             </div>
           </div>,
           document.body,
