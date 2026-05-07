@@ -798,11 +798,16 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                     if (quickActionMode !== "none") {
                       hrefParams.set("quickAction", quickActionMode);
                     }
+                    const isGarbageTransportRouteUnit =
+                      isAutoBaseView && unit !== AUTO_BASE_UNIT_NAME;
+                    const unitHref = isGarbageTransportRouteUnit
+                      ? "/garbage-routes/weekly-plan"
+                      : `/projects?${hrefParams.toString()}`;
 
                     return (
                       <Link
                         key={unit}
-                        href={`/projects?${hrefParams.toString()}`}
+                        href={unitHref}
                         className={`${styles.taskFilterChip} ${
                           selectedUnit === unit
                             ? styles.taskFilterChipActive

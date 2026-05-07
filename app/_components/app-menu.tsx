@@ -289,13 +289,13 @@ export function AppMenu({
     : [];
 
   const roleFocusedItems: MenuItem[] = [
-    ...(mfoFieldMode || mfoManagerMode
+    ...(workerMode && mfoFieldMode
       ? [
           {
-            key: workerMode ? "tasks" : "garbage-routes",
-            href: workerMode ? "/tasks" : "/garbage-routes",
-            label: workerMode ? "Өнөөдрийн ажил" : "\u0425\u043E\u0433 \u0442\u044D\u044D\u0432\u0440\u0438\u0439\u043D \u043C\u0430\u0440\u0448\u0440\u0443\u0442",
-            icon: workerMode ? ListChecks : Route,
+            key: "tasks",
+            href: "/tasks",
+            label: "Өнөөдрийн ажил",
+            icon: ListChecks,
           },
         ]
       : []),
@@ -542,6 +542,13 @@ export function AppMenu({
       return true;
     }
     if (active === "auto-base" && item.departmentName?.includes("Авто")) {
+      return true;
+    }
+    if (
+      active === "garbage-routes" &&
+      item.departmentName &&
+      isAutoGarbageDepartment(item.departmentName)
+    ) {
       return true;
     }
     if (active === "fleet-repair" && item.key === "garbage-vehicles") {
