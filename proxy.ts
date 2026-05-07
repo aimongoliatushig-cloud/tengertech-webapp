@@ -94,6 +94,8 @@ function isHrAllowedPath(pathname: string) {
   return (
     pathname === "/hr" ||
     pathname.startsWith("/hr/") ||
+    pathname === "/chat" ||
+    pathname.startsWith("/chat/") ||
     pathname === "/profile" ||
     pathname === "/auth/logout" ||
     pathname === "/api/hr" ||

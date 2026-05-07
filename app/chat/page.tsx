@@ -24,6 +24,13 @@ export default async function ChatPage() {
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const canViewHr = Boolean(
+    session.role === "hr_specialist" ||
+      session.role === "hr_manager" ||
+      session.groupFlags?.hrUser ||
+      session.groupFlags?.hrManager ||
+      session.groupFlags?.municipalHr,
+  );
   const departmentScopeName =
     session.role === "project_manager" || masterMode || workerMode
       ? await loadSessionDepartmentName(session)
@@ -41,6 +48,7 @@ export default async function ChatPage() {
               canWriteReports={canWriteReports}
               canViewQualityCenter={canViewQualityCenter}
               canUseFieldConsole={canUseFieldConsole}
+              canViewHr={canViewHr}
               userName={session.name}
               roleLabel={roleLabel}
               groupFlags={session.groupFlags}

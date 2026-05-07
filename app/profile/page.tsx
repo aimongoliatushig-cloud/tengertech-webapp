@@ -128,6 +128,13 @@ export default async function ProfilePage({ searchParams }: PageProps) {
       groupFlags.hrManager ||
       groupFlags.municipalHr,
   );
+  const isHrProfile = Boolean(
+    String(session.role) === "hr_specialist" ||
+      String(session.role) === "hr_manager" ||
+      groupFlags.hrUser ||
+      groupFlags.hrManager ||
+      groupFlags.municipalHr,
+  );
   const canUseProcurement = Boolean(
     new Set(["system_admin", "director", "general_manager"]).has(String(session.role)) ||
       groupFlags.opsStorekeeper ||
@@ -159,13 +166,14 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     password: session.password,
   };
   const showFullProfile = !workerMode;
-  const routeManagementData = showFullProfile && canCreateRoute
+  const showTeamRouteSettings = showFullProfile && !isHrProfile;
+  const routeManagementData = showTeamRouteSettings && canCreateRoute
     ? await loadRouteManagementData(connectionOverrides)
     : null;
-  const teamMemberOptions = showFullProfile && canCreateTeam
+  const teamMemberOptions = showTeamRouteSettings && canCreateTeam
     ? await loadTeamMemberOptions(departmentScopeName, connectionOverrides)
     : [];
-  const teamManagementData = showFullProfile && canCreateTeam
+  const teamManagementData = showTeamRouteSettings && canCreateTeam
     ? await loadTeamManagementData(departmentScopeName, connectionOverrides)
     : { teams: [], totalTeams: 0 };
 
@@ -436,6 +444,8 @@ export default async function ProfilePage({ searchParams }: PageProps) {
               </>
             ) : (
             <>
+            {!isHrProfile ? (
+            <>
             <section className={`${shellStyles.heroCard} ${styles.heroCard}`}>
               <div className={styles.identityBlock}>
                 <span className={styles.avatar}>{getInitials(session.name)}</span>
@@ -497,7 +507,10 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                 ))}
               </div>
             </section>
+            </>
+            ) : null}
 
+            {showTeamRouteSettings ? (
             <section id="team-route-settings" className={styles.sectionCard}>
               <div className={styles.settingsHero}>
                 <div>
@@ -762,6 +775,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                 )}
               </div>
             </section>
+            ) : null}
 
             <section className={styles.sectionCard}>
               <div className={styles.sectionHeader}>

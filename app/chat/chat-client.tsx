@@ -77,16 +77,30 @@ const INITIAL_MESSAGES: Record<string, ChatMessage[]> = {
   ],
 };
 
-function formatTime(value: string) {
+function formatDateTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return "";
   }
 
   return new Intl.DateTimeFormat("mn-MN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Asia/Ulaanbaatar",
   }).format(date);
+}
+
+function formatConversationPreview(message: ChatMessage | undefined, fallback: string) {
+  if (!message) {
+    return fallback;
+  }
+
+  const timestamp = formatDateTime(message.sentAt);
+  const meta = [message.author, timestamp].filter(Boolean).join(" - ");
+  return meta ? `${meta}: ${message.body}` : message.body;
 }
 
 function buildEmptyMessageMap() {
@@ -198,7 +212,7 @@ export function ChatClient({
                 </span>
                 <span className={styles.conversationCopy}>
                   <strong>{conversation.name}</strong>
-                  <small>{lastMessage?.body ?? conversation.description}</small>
+                  <small>{formatConversationPreview(lastMessage, conversation.description)}</small>
                 </span>
                 <span className={styles.conversationCount}>{messages.length}</span>
               </button>
@@ -223,9 +237,11 @@ export function ChatClient({
               className={`${styles.messageBubble} ${message.own ? styles.messageBubbleOwn : ""}`}
             >
               <div className={styles.messageMeta}>
-                <strong>{message.author}</strong>
-                <span>{message.roleLabel}</span>
-                <time>{formatTime(message.sentAt)}</time>
+                <div className={styles.messageAuthor}>
+                  <strong>{message.author}</strong>
+                  <span>{message.roleLabel}</span>
+                </div>
+                <time dateTime={message.sentAt}>{formatDateTime(message.sentAt)}</time>
               </div>
               <p>{message.body}</p>
             </article>

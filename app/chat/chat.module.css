@@ -156,10 +156,19 @@
 
 .messageMeta {
   display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.messageAuthor {
+  display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 8px;
+  min-width: 0;
 }
 
 .messageMeta strong {
@@ -170,6 +179,12 @@
 .messageMeta time {
   color: var(--ink-600);
   font-size: 0.78rem;
+}
+
+.messageMeta time {
+  margin-left: auto;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .messageBubbleOwn .messageMeta span,

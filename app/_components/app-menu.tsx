@@ -55,6 +55,7 @@ type MenuKey =
   | "field"
   | "projects"
   | "procurement"
+  | "project-tracker"
   | "profile"
   | "garbage-settings"
   | "review"
@@ -250,6 +251,11 @@ export function AppMenu({
   const reviewHref = workerMode && canUseFieldConsole ? "/field" : "/notifications";
   const roleLooksHr = roleLabelLower.includes("\u0445\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446");
   const roleLooksDepartmentHead = roleLabelLower.includes("\u0445\u044D\u043B\u0442\u0441\u0438\u0439\u043D \u0434\u0430\u0440\u0433\u0430");
+  const departmentHeadMode = Boolean(
+    roleLooksDepartmentHead ||
+      flags.municipalDepartmentHead ||
+      flags.mfoManager,
+  );
   const hasHrGroupAccess = Boolean(flags.hrUser || flags.hrManager || flags.municipalHr);
   const hrFocusedMode =
     roleLooksHr || Boolean(hasHrGroupAccess && canViewHr && !departmentManagerMode && !roleLooksDepartmentHead);
@@ -258,8 +264,7 @@ export function AppMenu({
     !masterMode &&
     Boolean(departmentScopeName) &&
     isAutoGarbageDepartment(departmentScopeName) &&
-    canCreateProject &&
-    canCreateTasks;
+    departmentHeadMode;
   const canCreate = baseCanCreate && !isGarbageDepartmentHead && !hrFocusedMode;
 
   const visibleDepartmentGroups = hrFocusedMode
@@ -299,7 +304,7 @@ export function AppMenu({
     : [];
 
   const roleFocusedItems: MenuItem[] = [
-    ...(mfoFieldMode || mfoManagerMode
+    ...((workerMode && mfoFieldMode) || (mfoManagerMode && isGarbageDepartmentHead)
       ? [
           {
             key: workerMode ? "tasks" : "garbage-routes",
@@ -431,7 +436,7 @@ export function AppMenu({
       return false;
     }
     if (hrFocusedMode) {
-      return ["hr", "profile"].includes(item.key);
+      return ["hr", "chat", "profile"].includes(item.key);
     }
     if (!workerMode) {
       return true;
@@ -596,6 +601,7 @@ export function AppMenu({
     : hrFocusedMode
       ? [
           { key: "hr", href: "/hr", label: "HR", icon: Users },
+          { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
           { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
         ]
       : workerMode
