@@ -96,6 +96,10 @@ function hasExecutiveOrAdminAccess(session: ProxySession) {
 }
 
 function isHrOnlySession(session: ProxySession) {
+  if (session.role === "worker") {
+    return false;
+  }
+
   const explicitHrRole = session.role === "hr_specialist" || session.role === "hr_manager";
   return (
     hasHrAccess(session) &&

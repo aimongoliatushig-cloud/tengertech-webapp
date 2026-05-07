@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -91,7 +91,46 @@ type MenuItem = {
   icon: LucideIcon;
   badge?: number;
   departmentName?: string;
+  hardNavigate?: boolean;
 };
+
+function MenuLink({
+  item,
+  className,
+  ariaCurrent,
+  onClick,
+  children,
+}: {
+  item: MenuItem;
+  className: string;
+  ariaCurrent?: "page";
+  onClick?: () => void;
+  children: ReactNode;
+}) {
+  if (item.hardNavigate) {
+    return (
+      <a
+        href={item.href}
+        className={className}
+        aria-current={ariaCurrent}
+        onClick={onClick}
+      >
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <Link
+      href={item.href}
+      className={className}
+      aria-current={ariaCurrent}
+      onClick={onClick}
+    >
+      {children}
+    </Link>
+  );
+}
 
 const HIDDEN_GLOBAL_MENU_KEYS = new Set([
   "fleet-repair",
@@ -340,8 +379,9 @@ export function AppMenu({
     {
       key: "dashboard",
       href: "/",
-      label: "Хяналтын самбар",
+      label: workerMode ? "Нүүр" : "Хяналтын самбар",
       icon: LayoutDashboard,
+      hardNavigate: workerMode,
     },
     ...hrItems,
     ...roleFocusedItems,
@@ -576,7 +616,7 @@ export function AppMenu({
       : workerMode
       ? mfoFieldMode
         ? [
-            { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard },
+            { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard, hardNavigate: true },
             { key: "tasks", href: "/tasks", label: "Ажил", icon: ListChecks },
             { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
             { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
@@ -584,7 +624,7 @@ export function AppMenu({
           ]
         : environmentFieldMode
           ? [
-              { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard },
+              { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard, hardNavigate: true },
               { key: "tasks", href: "/tasks", label: "\u0410\u0436\u0438\u043B", icon: ListChecks },
               { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
               { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
@@ -592,14 +632,14 @@ export function AppMenu({
             ]
           : repairFieldMode
             ? [
-                { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard },
+                { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard, hardNavigate: true },
                 { key: "fleet-repair", href: "/fleet-repair/requests", label: "\u0417\u0430\u0441\u0432\u0430\u0440", icon: Wrench },
                 { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
                 { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
                 { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
               ]
             : [
-                { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard },
+                { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard, hardNavigate: true },
                 { key: "tasks", href: "/tasks", label: "\u0410\u0436\u0438\u043B", icon: ListChecks },
                 { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
                 { key: "review", href: reviewHref, label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
@@ -625,11 +665,11 @@ export function AppMenu({
         const isActive = isItemActive(item);
 
         return (
-          <Link
+          <MenuLink
             key={item.key}
-            href={item.href}
+            item={item}
             className={cn(styles.menuLink, isActive && styles.menuLinkActive)}
-            aria-current={isActive ? "page" : undefined}
+            ariaCurrent={isActive ? "page" : undefined}
             onClick={() => setIsOpen(false)}
           >
             <span className={styles.menuIcon} aria-hidden>
@@ -641,7 +681,7 @@ export function AppMenu({
               overlayClassName={styles.linkLoadingOverlay}
             />
             {item.badge ? <span className={styles.menuBadge}>{item.badge}</span> : null}
-          </Link>
+          </MenuLink>
         );
       })}
     </nav>
@@ -761,15 +801,15 @@ export function AppMenu({
           const isActive = isItemActive(item);
 
           return (
-            <Link
+            <MenuLink
               key={`dock-${item.key}`}
-              href={item.href}
+              item={item}
               className={cn(
                 styles.dockLink,
                 item.key === "new-project" && styles.dockLinkCreate,
                 isActive && styles.dockLinkActive,
               )}
-              aria-current={isActive ? "page" : undefined}
+              ariaCurrent={isActive ? "page" : undefined}
             >
               <Icon aria-hidden />
               <span>{item.label}</span>
@@ -778,7 +818,7 @@ export function AppMenu({
                 overlayClassName={styles.linkLoadingOverlay}
                 label="..."
               />
-            </Link>
+            </MenuLink>
           );
         })}
       </div>

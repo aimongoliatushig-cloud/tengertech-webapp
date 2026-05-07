@@ -104,7 +104,8 @@ async function loadScopedHrAttendanceSummary(
 
 export default async function Home() {
   const session = await requireSession();
-  if (isHrOnlyRole(session)) {
+  const workerMode = isWorkerOnly(session);
+  if (!workerMode && isHrOnlyRole(session)) {
     redirect("/hr");
   }
 
@@ -112,7 +113,6 @@ export default async function Home() {
     login: session.login,
     password: session.password,
   };
-  const workerMode = isWorkerOnly(session);
   const canViewGeneralDashboard = canAccessGeneralDashboard(session);
   const generalDashboardMode = canViewGeneralDashboard;
   const canUseFieldConsole = hasCapability(session, "use_field_console");

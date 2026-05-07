@@ -350,6 +350,10 @@ export function isWorkerOnly(context: RoleContext) {
 }
 
 export function isHrOnlyRole(context: RoleContext) {
+  if (context.role === "worker") {
+    return false;
+  }
+
   const groupFlags = normalizeGroupFlags(context.groupFlags);
   const explicitHrRole = context.role === "hr_specialist" || context.role === "hr_manager";
   const hasHrAccess = Boolean(
