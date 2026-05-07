@@ -78,9 +78,11 @@ type HrEmployeeSingleSearchRecord = {
   user_id?: OdooRelation;
   image_128?: string | false;
   avatar_128?: string | false;
+  image_1920?: string | false;
   parent_id?: OdooRelation;
   contract_date_start?: string | false;
   contract_date_end?: string | false;
+  birthday?: string | false;
   sex?: string | false;
   certificate?: string | false;
   x_mn_employee_code?: string | false;
@@ -112,6 +114,8 @@ type HrEmployeeDirectoryApiRecord = {
   managerName?: string;
   startDate?: string;
   contractEndDate?: string;
+  birthDate?: string;
+  genderKey?: string;
   genderLabel?: string;
   educationLevel?: string;
   missingDocumentCount?: number;
@@ -154,6 +158,19 @@ type HrDisciplineSearchRecord = {
   repeated_violation_count?: number | false;
   explanation?: string | false;
   employee_explanation?: string | false;
+  attachment_ids?: number[];
+};
+
+type HrClearanceSearchRecord = {
+  id: number;
+  name?: string | false;
+  employee_id?: OdooRelation;
+  department_id?: OdooRelation;
+  job_id?: OdooRelation;
+  saved_date?: string | false;
+  section?: string | false;
+  state?: string | false;
+  note?: string | false;
   attachment_ids?: number[];
 };
 
@@ -317,6 +334,33 @@ export type HrEmployeeTerminationInput = {
   files?: File[];
 };
 
+export type HrClearanceCreateInput = {
+  employeeId: number;
+  savedDate: string;
+  section?: string;
+  state?: string;
+  note?: string;
+  files?: File[];
+};
+
+export type HrClearanceRecord = {
+  id: number;
+  name: string;
+  employeeId: number | null;
+  employeeName: string;
+  departmentId: number | null;
+  departmentName: string;
+  jobTitle: string;
+  savedDate: string;
+  section: string;
+  sectionLabel: string;
+  state: string;
+  stateLabel: string;
+  note: string;
+  hasAttachment: boolean;
+  attachmentIds: number[];
+};
+
 export type HrEmployeeTransferRecord = {
   id: number;
   employeeId: number;
@@ -457,6 +501,8 @@ function mapHrEmployeeDirectoryApiRecord(record: HrEmployeeDirectoryApiRecord): 
     managerName: record.managerName || "",
     startDate: record.startDate || "",
     contractEndDate: record.contractEndDate || "",
+    birthDate: record.birthDate || "",
+    genderKey: record.genderKey || "",
     genderLabel: record.genderLabel || "",
     educationLevel: record.educationLevel || "",
     missingDocumentCount: Number(record.missingDocumentCount || 0),
@@ -511,7 +557,7 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     mobilePhone: record.mobile_phone || "",
     workEmail: record.work_email || "",
     userName: getRelationName(record.user_id),
-    photoUrl: imageDataUrlFromBase64(record.image_128 || record.avatar_128),
+    photoUrl: imageDataUrlFromBase64(record.image_128 || record.avatar_128 || record.image_1920),
     employeeCode: record.x_mn_employee_code || `EMP-${String(record.id).padStart(5, "0")}`,
     gradeRank: record.x_mn_grade_rank || "",
     statusKey: status.key,
@@ -519,6 +565,8 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     managerName: getRelationName(record.parent_id),
     startDate: record.contract_date_start || "",
     contractEndDate: record.contract_date_end || "",
+    birthDate: record.birthday || "",
+    genderKey: record.sex || "",
     genderLabel: resolveDirectEmployeeGenderLabel(record.sex),
     educationLevel: record.certificate || "",
     missingDocumentCount: Number(record.x_mn_missing_document_count || 0),
@@ -827,10 +875,6 @@ export async function getEmployees(session: AppSession) {
 export async function getEmployee(session: AppSession, id: number) {
   const employees = await getEmployees(session);
   const listedEmployee = employees.find((employee) => employee.id === id);
-  if (listedEmployee) {
-    return listedEmployee;
-  }
-
   const profile = await requireHrAccess(session);
   const desiredFields = [
     "name",
@@ -844,9 +888,11 @@ export async function getEmployee(session: AppSession, id: number) {
     "user_id",
     "image_128",
     "avatar_128",
+    "image_1920",
     "parent_id",
     "contract_date_start",
     "contract_date_end",
+    "birthday",
     "sex",
     "certificate",
     "x_mn_employee_code",
@@ -875,10 +921,24 @@ export async function getEmployee(session: AppSession, id: number) {
   });
   const employee = records[0] ? mapHrEmployeeSingleSearchRecord(records[0]) : null;
   if (!employee) {
-    return null;
+    return listedEmployee ?? null;
   }
 
-  return scopeEmployeesForProfile([employee], profile)[0] ?? null;
+  const scopedEmployee = scopeEmployeesForProfile([employee], profile)[0];
+  if (!scopedEmployee) {
+    return listedEmployee ?? null;
+  }
+
+  return listedEmployee
+    ? {
+        ...scopedEmployee,
+        ...listedEmployee,
+        birthDate: scopedEmployee.birthDate || listedEmployee.birthDate,
+        genderKey: scopedEmployee.genderKey || listedEmployee.genderKey,
+        genderLabel: scopedEmployee.genderLabel || listedEmployee.genderLabel,
+        photoUrl: scopedEmployee.photoUrl || listedEmployee.photoUrl,
+      }
+    : scopedEmployee;
 }
 
 export async function getDepartments(session: AppSession): Promise<HrOption[]> {
@@ -1008,15 +1068,42 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
 export async function updateEmployee(
   session: AppSession,
   id: number,
-  data: Partial<HrEmployeeCreateInput & Pick<HrEmployeeDirectoryItem, "workPhone" | "mobilePhone" | "workEmail">>,
+  data: Partial<
+    HrEmployeeCreateInput &
+      Pick<
+        HrEmployeeDirectoryItem,
+        "name" | "employeeCode" | "workPhone" | "mobilePhone" | "workEmail" | "birthDate" | "genderKey"
+      >
+  >,
 ) {
-  const desiredFields = ["work_phone", "mobile_phone", "work_email", "department_id", "job_id", "job_title", "parent_id", "active"];
+  const desiredFields = [
+    "name",
+    "work_phone",
+    "mobile_phone",
+    "work_email",
+    "department_id",
+    "job_id",
+    "job_title",
+    "parent_id",
+    "x_mn_employee_code",
+    "birthday",
+    "sex",
+    "active",
+  ];
   const fields = new Set(await getAvailableFields("hr.employee", desiredFields, session));
   const values: Record<string, unknown> = {};
 
+  if (fields.has("name") && data.name !== undefined) values.name = data.name?.trim() || false;
+  if (fields.has("x_mn_employee_code") && data.employeeCode !== undefined) {
+    values.x_mn_employee_code = data.employeeCode?.trim() || false;
+  }
   if (fields.has("work_phone") && data.workPhone !== undefined) values.work_phone = data.workPhone || false;
   if (fields.has("mobile_phone") && data.mobilePhone !== undefined) values.mobile_phone = data.mobilePhone || false;
   if (fields.has("work_email") && data.workEmail !== undefined) values.work_email = data.workEmail || false;
+  if (fields.has("birthday") && data.birthDate !== undefined) values.birthday = data.birthDate || false;
+  if (fields.has("sex") && (data.genderKey !== undefined || data.gender !== undefined)) {
+    values.sex = data.genderKey || data.gender || false;
+  }
   if (fields.has("department_id") && data.departmentId) values.department_id = data.departmentId;
   if (fields.has("job_id") && data.jobId) values.job_id = data.jobId;
   if (fields.has("job_title") && data.jobTitle !== undefined) values.job_title = data.jobTitle || false;
@@ -2234,8 +2321,167 @@ export async function actionTimeoffRequest(
   return normalizeTimeoffRequest(result);
 }
 
+function clearanceStateLabel(state: string) {
+  switch (state) {
+    case "draft":
+      return "Ноорог";
+    case "submitted":
+      return "Илгээсэн";
+    case "pending":
+      return "Хүлээгдэж байна";
+    case "approved":
+      return "Баталгаажсан";
+    case "incomplete":
+      return "Дутуу";
+    case "done":
+      return "Дууссан";
+    default:
+      return state || "Тодорхойгүй";
+  }
+}
+
+function clearanceSectionLabel(section: string) {
+  switch (section) {
+    case "warehouse":
+      return "Нярав";
+    case "it":
+      return "IT";
+    case "finance":
+      return "Санхүү";
+    case "manager":
+      return "Шууд удирдлага";
+    case "hr":
+      return "HR";
+    default:
+      return section || "Тодорхойгүй";
+  }
+}
+
+function normalizeClearanceRecord(record: Partial<HrClearanceRecord>): HrClearanceRecord {
+  const state = record.state || "draft";
+  const section = record.section || "hr";
+  return {
+    id: Number(record.id || 0),
+    name: record.name || "",
+    employeeId: record.employeeId ?? null,
+    employeeName: record.employeeName || "Ажилтан бүртгээгүй",
+    departmentId: record.departmentId ?? null,
+    departmentName: record.departmentName || "Хэлтэс бүртгээгүй",
+    jobTitle: record.jobTitle || "",
+    savedDate: record.savedDate || "",
+    section,
+    sectionLabel: record.sectionLabel || clearanceSectionLabel(section),
+    state,
+    stateLabel: record.stateLabel || clearanceStateLabel(state),
+    note: record.note || "",
+    hasAttachment: Boolean(record.hasAttachment),
+    attachmentIds: record.attachmentIds || [],
+  };
+}
+
+function normalizeClearanceSearchRecord(record: HrClearanceSearchRecord): HrClearanceRecord {
+  const state = String(record.state || "draft");
+  const section = String(record.section || "hr");
+  return {
+    id: record.id,
+    name: String(record.name || ""),
+    employeeId: getRelationId(record.employee_id),
+    employeeName: getRelationName(record.employee_id, "Ажилтан бүртгээгүй"),
+    departmentId: getRelationId(record.department_id),
+    departmentName: getRelationName(record.department_id, "Хэлтэс бүртгээгүй"),
+    jobTitle: getRelationName(record.job_id),
+    savedDate: String(record.saved_date || ""),
+    section,
+    sectionLabel: clearanceSectionLabel(section),
+    state,
+    stateLabel: clearanceStateLabel(state),
+    note: String(record.note || ""),
+    hasAttachment: Boolean(record.attachment_ids?.length),
+    attachmentIds: record.attachment_ids || [],
+  };
+}
+
+function isMissingClearanceModelError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return message.includes("municipal.hr.clearance.sheet") || message.includes("get_hr_clearance_sheet") || message.includes("not found");
+}
+
+export async function getClearanceRecords(session: AppSession): Promise<HrClearanceRecord[]> {
+  await requireHrSpecialistAccess(session);
+  try {
+    const records = await executeOdooKw<Array<Partial<HrClearanceRecord>>>(
+      "municipal.hr.clearance.sheet",
+      "get_hr_clearance_sheet_directory",
+      [{ limit: 300 }],
+      {},
+      getConnection(session),
+    );
+    return records.map(normalizeClearanceRecord);
+  } catch (error) {
+    if (!isMissingClearanceModelError(error)) {
+      console.warn("HR clearance directory API failed, falling back to search_read:", error);
+    }
+  }
+
+  try {
+    const records = await executeOdooKw<HrClearanceSearchRecord[]>(
+      "municipal.hr.clearance.sheet",
+      "search_read",
+      [[]],
+      {
+        fields: ["name", "employee_id", "department_id", "job_id", "saved_date", "section", "state", "note", "attachment_ids"],
+        order: "saved_date desc, id desc",
+        limit: 300,
+        context: { active_test: false },
+      },
+      getConnection(session),
+    );
+    return records.map(normalizeClearanceSearchRecord);
+  } catch (error) {
+    if (isMissingClearanceModelError(error)) {
+      return [];
+    }
+    console.warn("HR clearance search_read failed:", error);
+    return [];
+  }
+}
+
+export async function createClearanceRecord(session: AppSession, data: HrClearanceCreateInput) {
+  await requireHrSpecialistAccess(session);
+  if (!data.employeeId) {
+    throw new Error("Ажилтан заавал сонгоно уу.");
+  }
+  ensureDateOrder(data.savedDate, "Хадгалсан огноо");
+  const attachments = await filesToAttachments(data.files);
+
+  try {
+    const result = await executeOdooKw<Partial<HrClearanceRecord>>(
+      "municipal.hr.clearance.sheet",
+      "create_hr_clearance_sheet",
+      [
+        {
+          employeeId: data.employeeId,
+          savedDate: data.savedDate,
+          section: data.section || "hr",
+          state: data.state || "draft",
+          note: data.note || "",
+          attachments,
+        },
+      ],
+      {},
+      getConnection(session),
+    );
+    return normalizeClearanceRecord(result);
+  } catch (error) {
+    if (isMissingClearanceModelError(error)) {
+      throw new Error("hr_custom_mn module шинэчлэгдээгүй байна. VPS дээр module upgrade/reload хийсний дараа тойрох хуудас хадгална уу.");
+    }
+    throw error;
+  }
+}
+
 export async function getHrStats(session: AppSession): Promise<HrStats> {
-  const [employees, timeoffDashboard, activeDiscipline, completedDiscipline] = await Promise.all([
+  const [employees, timeoffDashboard, activeDiscipline, completedDiscipline, pendingClearance] = await Promise.all([
     getEmployees(session),
     getTimeoffDashboard(session),
     executeOdooKw<number>(
@@ -2249,6 +2495,13 @@ export async function getHrStats(session: AppSession): Promise<HrStats> {
       "municipal.discipline",
       "search_count",
       [[["state", "in", ["approved", "archived"]]]],
+      {},
+      getConnection(session),
+    ).catch(() => 0),
+    executeOdooKw<number>(
+      "municipal.hr.clearance.sheet",
+      "search_count",
+      [[["state", "in", ["submitted", "pending", "incomplete"]]]],
       {},
       getConnection(session),
     ).catch(() => 0),
@@ -2287,6 +2540,6 @@ export async function getHrStats(session: AppSession): Promise<HrStats> {
     transfers: 0,
     expiringContracts: expiringContracts.length,
     missingAttachmentEmployees: missingAttachmentEmployees.length,
-    pendingClearance: 0,
+    pendingClearance,
   };
 }

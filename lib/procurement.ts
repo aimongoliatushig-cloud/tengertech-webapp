@@ -166,6 +166,7 @@ export type ProcurementDashboard = {
     generated_on: string;
   };
   storekeeper_load: Array<ProcurementParty & { count: number }>;
+  department_counts: Array<ProcurementParty & { count: number }>;
   project_progress: Array<ProcurementParty & { count: number }>;
   supplier_counts: Array<ProcurementParty & { count: number }>;
   items: ProcurementRequestSummary[];
@@ -178,6 +179,7 @@ type ApiEnvelope<T> = {
   items?: T[];
   metrics?: ProcurementDashboard["metrics"];
   storekeeper_load?: ProcurementDashboard["storekeeper_load"];
+  department_counts?: ProcurementDashboard["department_counts"];
   project_progress?: ProcurementDashboard["project_progress"];
   supplier_counts?: ProcurementDashboard["supplier_counts"];
   pagination?: {
@@ -254,6 +256,7 @@ export function createEmptyProcurementDashboard(): ProcurementDashboard {
       generated_on: new Date().toISOString(),
     },
     storekeeper_load: [],
+    department_counts: [],
     project_progress: [],
     supplier_counts: [],
     items: [],
@@ -316,13 +319,46 @@ async function loginToProcurementApi(connectionOverrides: ConnectionOverrides = 
   });
 
   const payload = await readApiEnvelope<never>(response, loginPath);
-  if (!response.ok || !payload.ok) {
+  if (response.ok && payload.ok) {
+    return {
+      connection,
+      cookie: getCookieHeaderValue(response.headers.get("set-cookie")),
+      user: payload.user!,
+    };
+  }
+
+  const errorMessage = payload.error?.message || "";
+  if (!errorMessage.includes("Session.authenticate() takes")) {
     throw new Error(payload.error?.message || "Procurement API нэвтрэлт амжилтгүй боллоо.");
+  }
+
+  const fallbackResponse = await fetch(`${connection.url}/web/session/authenticate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      params: {
+        db: connection.db,
+        login: connection.login,
+        password: connection.password,
+      },
+    }),
+  });
+  const fallbackPayload = (await fallbackResponse.json()) as {
+    result?: { uid?: number };
+    error?: { message?: string };
+  };
+  if (!fallbackResponse.ok || !fallbackPayload.result?.uid) {
+    throw new Error(fallbackPayload.error?.message || "Procurement API нэвтрэлт амжилтгүй боллоо.");
   }
 
   return {
     connection,
-    cookie: getCookieHeaderValue(response.headers.get("set-cookie")),
+    cookie: getCookieHeaderValue(fallbackResponse.headers.get("set-cookie")),
     user: payload.user!,
   };
 }
@@ -425,6 +461,7 @@ export async function loadProcurementDashboard(
   return {
     metrics: response.metrics!,
     storekeeper_load: response.storekeeper_load || [],
+    department_counts: response.department_counts || [],
     project_progress: response.project_progress || [],
     supplier_counts: response.supplier_counts || [],
     items: response.items || [],

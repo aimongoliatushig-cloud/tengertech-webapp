@@ -16,6 +16,7 @@ import {
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
+import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurement";
 import { loadProjectDetail } from "@/lib/workspace";
 
 import { ProjectTaskCreateModal } from "./project-task-create-modal";
@@ -159,13 +160,14 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     : masterMode
       ? "Нэгжийн самбар руу буцах"
       : "Ажлууд руу буцах";
+  const connectionOverrides = {
+    login: session.login,
+    password: session.password,
+  };
 
   let project;
   try {
-    project = await loadProjectDetail(projectId, {
-      login: session.login,
-      password: session.password,
-    });
+    project = await loadProjectDetail(projectId, connectionOverrides);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Ажлыг уншихад алдаа гарлаа.";
@@ -194,6 +196,17 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const procurementBundle = await loadProcurementRequests(
+    { project_id: project.id, limit: 5 },
+    connectionOverrides,
+  ).catch((error) => {
+    if (!isProcurementSetupError(error)) {
+      console.warn("Project procurement links could not be loaded:", error);
+    }
+    return { items: [], pagination: { page: 1, limit: 5, total: 0, pages: 1 } };
+  });
+  const procurementItems = procurementBundle.items;
+  const procurementCreateHref = `/procurement/new?project_id=${project.id}`;
   const taskCounts = {
     all: project.tasks.length,
     todo: project.tasks.filter(
@@ -428,6 +441,37 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                   PDF хэвлэх
                 </a>
               </div>
+            </section>
+
+            <section className={`${styles.sectionCard} ${styles.projectDetailCompact}`}>
+              <div className={styles.compactSectionHeader}>
+                <div>
+                  <span className={styles.eyebrow}>Худалдан авалт</span>
+                  <h2>Энэ ажилтай холбоотой худалдан авалт</h2>
+                </div>
+                <Link href={procurementCreateHref} className={styles.secondaryButton}>
+                  Хүсэлт үүсгэх
+                </Link>
+              </div>
+
+              {procurementItems.length ? (
+                <div className={styles.projectDetailCompactGrid}>
+                  {procurementItems.map((item) => (
+                    <Link key={item.id} href={`/procurement/${item.id}`} className={styles.descriptionCard}>
+                      <span className={styles.compactLabel}>{item.name}</span>
+                      <strong>{item.title}</strong>
+                      <p>
+                        {item.state.label} · {item.payment_status.label} · {item.receipt_status.label}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.descriptionCard}>
+                  <span className={styles.compactLabel}>Одоогоор хүсэлт алга</span>
+                  <p>Энэ ажлаас материал, сэлбэг, үйлчилгээ авах шаардлагатай бол эндээс шууд хүсэлт үүсгэнэ.</p>
+                </div>
+              )}
             </section>
 
             {project.description || project.attachments.length ? (

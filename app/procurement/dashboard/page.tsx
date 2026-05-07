@@ -58,13 +58,18 @@ export default async function ProcurementDashboardPage() {
   ]);
 
   const highlightedItems = dashboard.items.slice(0, 3);
+  const isExecutiveView = procurementUser.flags.director || procurementUser.flags.general_manager || procurementUser.flags.admin;
 
   return (
     <ProcurementShell
       session={session}
       procurementUser={procurementUser}
-      title="Үйл ажиллагаа хариуцсан менежерийн хяналтын самбар"
-      description="Төслүүдийн худалдан авалтын явц, няравын ачаалал, нийлүүлэгчийн сонголт, шийдвэрлэх хугацааг төвлөрүүлэн харуулна."
+      title={isExecutiveView ? "Бүх хэлтсийн худалдан авалтын хяналт" : "Үйл ажиллагаа хариуцсан менежерийн хяналтын самбар"}
+      description={
+        isExecutiveView
+          ? "CEO болон удирдлага бүх хэлтсийн худалдан авалтын хүсэлт, төлөв, дүн, хариуцагчийг хэлтэс тус бүрээр нэгтгэн харна."
+          : "Төслүүдийн худалдан авалтын явц, няравын ачаалал, нийлүүлэгчийн сонголт, шийдвэрлэх хугацааг төвлөрүүлэн харуулна."
+      }
       activeTab="dashboard"
     >
       {setupWarning ? (
@@ -127,6 +132,29 @@ export default async function ProcurementDashboardPage() {
       </section>
 
       <section className={styles.dashboardGrid}>
+        <article className={styles.dashboardCard}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <h3>Хэлтэс тус бүрийн худалдан авалт</h3>
+              <p>Бүх хэлтсийн хүсэлтийг тоогоор нь бүлэглэж харуулна.</p>
+            </div>
+          </div>
+          {dashboard.department_counts.length ? (
+            <div className={styles.tableList}>
+              {dashboard.department_counts.map((item) => (
+                <Link key={item.id} href={`/procurement?department_id=${item.id}`} className={styles.tableRow}>
+                  <div className={styles.tableRowHeader}>
+                    <strong>{item.name}</strong>
+                    <span className={styles.badge}>{item.count} хүсэлт</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.emptyState}>Хэлтсээр бүлэглэх худалдан авалтын мэдээлэл алга байна.</div>
+          )}
+        </article>
+
         <article className={styles.dashboardCard}>
           <div className={styles.sectionHeader}>
             <div>

@@ -723,6 +723,8 @@ class HrEmployee(models.Model):
                 "managerName": employee.parent_id.display_name or "",
                 "startDate": str(employee.contract_date_start or ""),
                 "contractEndDate": str(employee.contract_date_end or ""),
+                "birthDate": str(employee.birthday or ""),
+                "genderKey": employee.sex or "",
                 "genderLabel": gender_labels.get(employee.sex, "") if employee.sex else "",
                 "educationLevel": employee.certificate or "",
                 "missingDocumentCount": employee.x_mn_missing_document_count or 0,

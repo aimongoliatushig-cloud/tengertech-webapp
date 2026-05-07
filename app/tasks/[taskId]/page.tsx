@@ -27,6 +27,7 @@ import {
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
+import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurement";
 import { loadTaskDetail } from "@/lib/workspace";
 
 import styles from "./task-detail.module.css";
@@ -144,13 +145,14 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const connectionOverrides = {
+    login: session.login,
+    password: session.password,
+  };
 
   let task;
   try {
-    task = await loadTaskDetail(taskId, {
-      login: session.login,
-      password: session.password,
-    });
+    task = await loadTaskDetail(taskId, connectionOverrides);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Даалгаврын мэдээлэл уншихад алдаа гарлаа.";
@@ -265,7 +267,21 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
         : "Мэдээлэл харах";
 
   const showReportComposer = !canMarkDone && !canSubmitForReview && canOpenReportComposer;
-  const procurementCreateHref = `/procurement/new?task_id=${task.id}`;
+  const procurementBundle = await loadProcurementRequests(
+    { task_id: task.id, limit: 5 },
+    connectionOverrides,
+  ).catch((error) => {
+    if (!isProcurementSetupError(error)) {
+      console.warn("Task procurement links could not be loaded:", error);
+    }
+    return { items: [], pagination: { page: 1, limit: 5, total: 0, pages: 1 } };
+  });
+  const procurementItems = procurementBundle.items;
+  const procurementCreateParams = new URLSearchParams({ task_id: String(task.id) });
+  if (task.projectId) {
+    procurementCreateParams.set("project_id", String(task.projectId));
+  }
+  const procurementCreateHref = `/procurement/new?${procurementCreateParams.toString()}`;
   const actionPanel = (
     <aside className={styles.actionCard} id="task-actions">
       <span className={styles.kicker}>Үндсэн үйлдэл</span>
@@ -504,6 +520,43 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
 
             <section className={styles.pageGrid}>
               <div className={styles.mainColumn}>
+                <section className={styles.sectionCard}>
+                  <div className={styles.sectionHead}>
+                    <div>
+                      <span className={styles.kicker}>Худалдан авалт</span>
+                      <h2>Энэ даалгавартай холбоотой хүсэлт</h2>
+                    </div>
+                    <Link href={procurementCreateHref} className={styles.secondaryButton}>
+                      Хүсэлт үүсгэх
+                    </Link>
+                  </div>
+
+                  {procurementItems.length ? (
+                    <div className={styles.reportList}>
+                      {procurementItems.map((item) => (
+                        <Link key={item.id} href={`/procurement/${item.id}`} className={styles.reportCard}>
+                          <div className={styles.reportCardTop}>
+                            <div className={styles.metaGroup}>
+                              <strong>{item.title}</strong>
+                              <small>{item.name}</small>
+                            </div>
+                            <StagePill label={item.state.label} bucket={item.is_delayed ? "problem" : "progress"} />
+                          </div>
+                          <div className={styles.reportMediaMeta}>
+                            <span className={styles.chip}>{item.payment_status.label}</span>
+                            <span className={styles.chip}>{item.receipt_status.label}</span>
+                            {item.flow_type ? <span className={styles.chip}>{item.flow_type.label}</span> : null}
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.descriptionCard}>
+                      Энэ даалгаварт бүртгэлтэй худалдан авалтын хүсэлт алга байна.
+                    </div>
+                  )}
+                </section>
+
                 {task.description ? (
                   <section className={styles.sectionCard}>
                     <div className={styles.sectionHead}>

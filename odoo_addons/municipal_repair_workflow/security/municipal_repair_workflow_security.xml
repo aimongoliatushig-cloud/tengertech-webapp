@@ -169,7 +169,18 @@
             <field name="name">Procurement lines privileged roles</field>
             <field name="model_id" ref="model_municipal_procurement_line"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_storekeeper')), (4, ref('group_repair_finance')), (4, ref('group_repair_director')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_storekeeper')), (4, ref('group_repair_finance')), (4, ref('group_repair_director')), (4, ref('group_procurement_purchase_manager')), (4, ref('group_procurement_storekeeper')), (4, ref('group_procurement_finance_user')), (4, ref('group_procurement_administration_user')), (4, ref('group_procurement_legal_user')), (4, ref('group_procurement_ceo')), (4, ref('group_procurement_general_manager')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_procurement_line_department_head_own_department" model="ir.rule">
+            <field name="name">Procurement lines department head own department</field>
+            <field name="model_id" ref="model_municipal_procurement_line"/>
+            <field name="domain_force">['|', ('procurement_id.requested_by', '=', user.id), ('procurement_id.department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_department_head'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
 
         <record id="rule_procurement_line_repair_related" model="ir.rule">
@@ -183,7 +194,18 @@
             <field name="name">Procurement quotes privileged roles</field>
             <field name="model_id" ref="model_municipal_procurement_quote"/>
             <field name="domain_force">[(1, '=', 1)]</field>
-            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_storekeeper')), (4, ref('group_repair_finance')), (4, ref('group_repair_director')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_storekeeper')), (4, ref('group_repair_finance')), (4, ref('group_repair_director')), (4, ref('group_procurement_purchase_manager')), (4, ref('group_procurement_storekeeper')), (4, ref('group_procurement_finance_user')), (4, ref('group_procurement_administration_user')), (4, ref('group_procurement_legal_user')), (4, ref('group_procurement_ceo')), (4, ref('group_procurement_general_manager')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_procurement_quote_department_head_own_department" model="ir.rule">
+            <field name="name">Procurement quotes department head own department</field>
+            <field name="model_id" ref="model_municipal_procurement_quote"/>
+            <field name="domain_force">['|', ('procurement_id.requested_by', '=', user.id), ('procurement_id.department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_department_head'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
 
         <record id="rule_procurement_quote_repair_related" model="ir.rule">

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { buildSessionCookieHeader, signInWithOdooCredentials } from "@/lib/auth";
+import { canAccessGeneralDashboard, GENERAL_DASHBOARD_PATH } from "@/lib/general-dashboard-access";
 import { buildPublicUrl } from "@/lib/request-url";
 
 function redirectTo(request: Request, path: string) {
@@ -32,7 +33,10 @@ export async function POST(request: Request) {
       return redirectTo(request, "/login?error=invalid");
     }
 
-    const response = redirectTo(request, "/");
+    const response = redirectTo(
+      request,
+      canAccessGeneralDashboard(session) ? GENERAL_DASHBOARD_PATH : "/",
+    );
     response.headers.append("Set-Cookie", buildSessionCookieHeader(session));
     return response;
   } catch {
