@@ -2,6 +2,7 @@
 
 import { type ChangeEvent, type KeyboardEvent, useRef, useState } from "react";
 
+import { compressInputImages } from "./report-upload-utils";
 import styles from "./task-detail.module.css";
 
 type Props = {
@@ -28,6 +29,7 @@ export function MediaUploadField({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [limitMessage, setLimitMessage] = useState("");
+  const [uploadMessage, setUploadMessage] = useState("");
 
   const handlePick = () => {
     inputRef.current?.click();
@@ -39,9 +41,19 @@ export function MediaUploadField({
     }
     setSelectedFiles([]);
     setLimitMessage("");
+    setUploadMessage("");
   };
 
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    if (accept.includes("image")) {
+      setUploadMessage("Зураг шахаж бэлдэж байна...");
+      const compression = await compressInputImages(event.target);
+      if (compression.changed) {
+        console.info("[report-upload] image compression", compression);
+      }
+      setUploadMessage("");
+    }
+
     const files = Array.from(event.target.files ?? []);
     const limitedFiles = maxFiles ? files.slice(0, maxFiles) : files;
 
@@ -75,6 +87,7 @@ export function MediaUploadField({
           <label htmlFor={id}>{label}</label>
           {helperText ? <small className={styles.inputHint}>{helperText}</small> : null}
           {maxFiles ? <small className={styles.inputHint}>Дээд тал нь {maxFiles} файл</small> : null}
+          {uploadMessage ? <small className={styles.inputHint}>{uploadMessage}</small> : null}
         </div>
         <span className={styles.filePickerStatus}>{statusLabel}</span>
       </div>

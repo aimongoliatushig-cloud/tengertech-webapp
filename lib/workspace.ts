@@ -3882,6 +3882,24 @@ export async function createRoadCleaningWorkAttachments(
   );
 }
 
+async function runWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+) {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await worker(items[index], index);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 export async function createWorkspaceTaskReport(
   input: {
     taskId: number;
@@ -3911,10 +3929,8 @@ export async function createWorkspaceTaskReport(
   const createReportAttachments = async (
     attachments: WorkspaceReportAttachmentInput[] | undefined,
   ) => {
-    const attachmentIds: number[] = [];
-
-    for (const attachment of attachments ?? []) {
-      const attachmentId = await executeOdooKw<number>(
+    return runWithConcurrency(attachments ?? [], 3, (attachment) =>
+      executeOdooKw<number>(
         "ir.attachment",
         "create",
         [
@@ -3924,15 +3940,12 @@ export async function createWorkspaceTaskReport(
             mimetype: attachment.mimeType || "application/octet-stream",
             res_model: "ops.task.report",
             res_id: reportId,
-          },
+        },
         ],
         {},
         connectionOverrides,
-      );
-      attachmentIds.push(attachmentId);
-    }
-
-    return attachmentIds;
+      ),
+    );
   };
 
   const [imageAttachmentIds, audioAttachmentIds] = await Promise.all([
@@ -4006,10 +4019,8 @@ export async function updateWorkspaceTaskReport(
   const createReportAttachments = async (
     attachments: WorkspaceReportAttachmentInput[] | undefined,
   ) => {
-    const attachmentIds: number[] = [];
-
-    for (const attachment of attachments ?? []) {
-      const attachmentId = await executeOdooKw<number>(
+    return runWithConcurrency(attachments ?? [], 3, (attachment) =>
+      executeOdooKw<number>(
         "ir.attachment",
         "create",
         [
@@ -4019,15 +4030,12 @@ export async function updateWorkspaceTaskReport(
             mimetype: attachment.mimeType || "application/octet-stream",
             res_model: "ops.task.report",
             res_id: reportId,
-          },
+        },
         ],
         {},
         connectionOverrides,
-      );
-      attachmentIds.push(attachmentId);
-    }
-
-    return attachmentIds;
+      ),
+    );
   };
 
   const [newImageIds, newAudioIds] = await Promise.all([

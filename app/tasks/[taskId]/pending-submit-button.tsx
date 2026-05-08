@@ -8,27 +8,30 @@ import styles from "./task-detail.module.css";
 type PendingSubmitButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
   pendingLabel: string;
+  forcePending?: boolean;
 };
 
 export function PendingSubmitButton({
   children,
   pendingLabel,
+  forcePending = false,
   disabled,
   className,
   ...props
 }: PendingSubmitButtonProps) {
   const { pending } = useFormStatus();
+  const isPending = pending || forcePending;
 
   return (
     <button
       {...props}
       type={props.type ?? "submit"}
       className={className}
-      disabled={disabled || pending}
-      aria-busy={pending}
-      data-pending={pending ? "true" : "false"}
+      disabled={disabled || isPending}
+      aria-busy={isPending}
+      data-pending={isPending ? "true" : "false"}
     >
-      {pending ? (
+      {isPending ? (
         <>
           <span className={styles.submitSpinner} aria-hidden="true" />
           <span>{pendingLabel}</span>

@@ -1,10 +1,11 @@
 "use client";
 
-import { type ChangeEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { Camera, ImagePlus, Mic, Plus, RotateCcw, Square, X } from "lucide-react";
 
+import { compressInputImages } from "./report-upload-utils";
 import styles from "./task-detail.module.css";
 import type { TaskQuantityLine } from "@/lib/workspace";
 import { PendingSubmitButton } from "./pending-submit-button";
@@ -98,6 +99,7 @@ function PhotoReportField({
   const [selectedFiles, setSelectedFiles] = useState<PhotoPreview[]>([]);
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState<number[]>([]);
   const [limitMessage, setLimitMessage] = useState("");
+  const [uploadMessage, setUploadMessage] = useState("");
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -199,7 +201,13 @@ function PhotoReportField({
     }
   };
 
-  const handleGalleryChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleGalleryChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    setUploadMessage("Зураг шахаж бэлдэж байна...");
+    const compression = await compressInputImages(event.target);
+    if (compression.changed) {
+      console.info("[report-upload] image compression", compression);
+    }
+    setUploadMessage("");
     limitInputFiles(event, cameraInputRef.current);
     syncSelectedFiles();
   };
@@ -279,7 +287,7 @@ function PhotoReportField({
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.78));
     if (!blob) {
       setCameraError("Зураг хадгалах боломжгүй байна.");
       return;
@@ -355,6 +363,7 @@ function PhotoReportField({
         </div>
       ) : null}
       {cameraError ? <p className={styles.fileLimitMessage}>{cameraError}</p> : null}
+      {uploadMessage ? <p className={styles.uploadProgressText}>{uploadMessage}</p> : null}
 
       {removeFieldName
         ? removedAttachmentIds.map((attachmentId) => (
@@ -775,6 +784,9 @@ export function TaskReportModal({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [mounted, setMounted] = useState(false);
   const [reportText, setReportText] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const generatedSubmitToken = useId();
+  const submitToken = `${generatedSubmitToken}-${taskId}-${existingReport?.id ?? "new"}`;
 
   useEffect(() => {
     setMounted(true);
@@ -790,6 +802,7 @@ export function TaskReportModal({
     }
 
     setReportText(existingReport ? getEditableReportText(existingReport.text || existingReport.summary || "") : "");
+    setIsSubmitting(false);
   }, [existingReport, isOpen]);
 
   useEffect(() => {
@@ -835,6 +848,19 @@ export function TaskReportModal({
       : "Тайлан оруулах";
   const formAction = canEditExistingReport && updateAction ? updateAction : action;
   const returnReasonText = existingReport?.rejectionReason?.trim() || "";
+  const handleReportSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (isSubmitting) {
+      event.preventDefault();
+      return;
+    }
+
+    setIsSubmitting(true);
+    console.info("[report-submit] client submit start", {
+      taskId,
+      mode: canEditExistingReport ? "update" : "create",
+      hasToken: Boolean(submitToken),
+    });
+  };
 
   const modalContent =
     mounted && isOpen
@@ -887,9 +913,10 @@ export function TaskReportModal({
                   </div>
                 </div>
               ) : (
-              <form action={formAction} className={styles.modalForm}>
+              <form action={formAction} className={styles.modalForm} onSubmit={handleReportSubmit}>
                 <input type="hidden" name="task_id" value={taskId} />
                 {existingReport ? <input type="hidden" name="report_id" value={existingReport.id} /> : null}
+                <input type="hidden" name="report_submit_token" value={submitToken} />
 
                 <div className={styles.modalBodyGrid}>
                   <section className={styles.modalSectionCard}>
@@ -1000,12 +1027,14 @@ export function TaskReportModal({
                   <button
                     type="button"
                     className={styles.modalSecondaryButton}
+                    disabled={isSubmitting}
                     onClick={closeModal}
                   >
                     Болих
                   </button>
                   <PendingSubmitButton
                     className={styles.actionButton}
+                    forcePending={isSubmitting}
                     pendingLabel={canEditExistingReport ? "Хадгалж байна..." : "Илгээж байна..."}
                   >
                     {canEditExistingReport ? "Хадгалах" : simpleMobile ? "Илгээх" : "Тайлан илгээх"}
@@ -1013,6 +1042,7 @@ export function TaskReportModal({
                   {canEditExistingReport && deleteAction ? (
                     <PendingSubmitButton
                       className={styles.warningButton}
+                      forcePending={isSubmitting}
                       pendingLabel="Устгаж байна..."
                       formAction={deleteAction}
                       onClick={(event) => {
@@ -1043,6 +1073,8 @@ export function TaskReportModal({
         aria-disabled={triggerDisabled ? "true" : undefined}
         onClick={() => {
           if (!triggerDisabled) {
+            console.info("[report-form-timing] client_open_report_modal", { taskId });
+            setIsSubmitting(false);
             setIsOpen(true);
           }
         }}

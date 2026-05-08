@@ -252,7 +252,11 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
     );
   }
 
-  if (workerMode || masterMode || scopedDepartmentName) {
+  if (workerMode) {
+    if (!task.assigneeUserIds.includes(session.uid)) {
+      redirect("/tasks");
+    }
+  } else if (masterMode || scopedDepartmentName) {
     const snapshot = await loadMunicipalSnapshot({
       login: session.login,
       password: session.password,
@@ -263,9 +267,6 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
       redirect("/tasks");
     }
     const isAssignedToSession = directoryTask.assigneeIds?.includes(session.uid) ?? false;
-    if (workerMode && !isAssignedToSession) {
-      redirect("/tasks");
-    }
     if (
       masterMode &&
       filterTasksForResponsibleMaster([directoryTask], snapshot.projects, session).length === 0

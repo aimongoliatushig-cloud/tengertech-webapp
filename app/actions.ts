@@ -51,6 +51,74 @@ import {
 } from "@/lib/workspace";
 
 const CUSTOM_WORK_TYPE_VALUE = "__new_work__";
+const REPORT_SUBMIT_LOCK_TTL_MS = 2 * 60_000;
+const reportSubmitLocks = new Map<string, number>();
+
+function createReportTiming(flow: string, base: Record<string, unknown> = {}) {
+  const startedAt = Date.now();
+  let lastMarkAt = startedAt;
+
+  return {
+    mark(step: string, extra: Record<string, unknown> = {}) {
+      const now = Date.now();
+      console.info("[report-submit-timing]", {
+        flow,
+        step,
+        totalMs: now - startedAt,
+        stepMs: now - lastMarkAt,
+        ...base,
+        ...extra,
+      });
+      lastMarkAt = now;
+    },
+    async step<T>(step: string, fn: () => Promise<T>, extra: Record<string, unknown> = {}) {
+      const stepStartedAt = Date.now();
+      try {
+        return await fn();
+      } finally {
+        const now = Date.now();
+        console.info("[report-submit-timing]", {
+          flow,
+          step,
+          totalMs: now - startedAt,
+          stepMs: now - stepStartedAt,
+          ...base,
+          ...extra,
+        });
+        lastMarkAt = now;
+      }
+    },
+  };
+}
+
+function cleanupReportSubmitLocks() {
+  const now = Date.now();
+  for (const [key, expiresAt] of reportSubmitLocks.entries()) {
+    if (expiresAt <= now) {
+      reportSubmitLocks.delete(key);
+    }
+  }
+}
+
+function acquireReportSubmitLock(mode: string, taskId: number, token: string) {
+  if (!token) {
+    return { key: "", acquired: true };
+  }
+
+  cleanupReportSubmitLocks();
+  const key = `${mode}:${taskId}:${token}`;
+  if (reportSubmitLocks.has(key)) {
+    return { key, acquired: false };
+  }
+  reportSubmitLocks.set(key, Date.now() + REPORT_SUBMIT_LOCK_TTL_MS);
+  return { key, acquired: true };
+}
+
+function releaseReportSubmitLock(key: string) {
+  if (key) {
+    reportSubmitLocks.delete(key);
+  }
+}
 
 function canMutateReportOwner(session: { uid: number; role: string }, ownerId: number | null) {
   return session.role === "system_admin" || ownerId === session.uid;
@@ -1274,8 +1342,11 @@ export async function generateSeasonalExecutionAction(formData: FormData) {
 
 export async function createTaskReportAction(formData: FormData) {
   const taskId = Number(String(formData.get("task_id") ?? ""));
+  const timer = createReportTiming("create", { taskId });
+  timer.mark("server_action_received");
   const reportText = String(formData.get("report_text") ?? "").trim();
   const workItemName = String(formData.get("report_work_item_name") ?? "").trim();
+  const submitToken = String(formData.get("report_submit_token") ?? "").trim();
   const quantityRaw = String(formData.get("reported_quantity") ?? "").trim();
   const reportedQuantity = quantityRaw ? Number(quantityRaw) : 0;
   const quantityLineValues = formData
@@ -1290,6 +1361,7 @@ export async function createTaskReportAction(formData: FormData) {
   const imageFiles = imageUploads.map((upload) => upload.file);
   const audioFiles = getUploadedFiles(formData, "report_audios");
   const reportPath = taskId ? `/tasks/${taskId}` : "/tasks";
+  let submitLockKey = "";
 
   if (!taskId || !reportText) {
     redirect(`${reportPath}?error=${encodeURIComponent("Тайлангийн текстээ оруулна уу.")}`);
@@ -1329,10 +1401,24 @@ export async function createTaskReportAction(formData: FormData) {
       login: session.login,
       password: session.password,
     };
-    await assertWorkerTaskReportDateIsOpen(taskId, session, connectionOverrides, reportPath);
+    await timer.step("validation_task_date", () =>
+      assertWorkerTaskReportDateIsOpen(taskId, session, connectionOverrides, reportPath),
+    );
+    const lock = acquireReportSubmitLock("create", taskId, submitToken);
+    submitLockKey = lock.key;
+    if (!lock.acquired) {
+      timer.mark("duplicate_submit_blocked");
+      redirect(`${reportPath}?notice=${encodeURIComponent("Тайлан илгээгдэж байна. Давхар илгээх шаардлагагүй.")}`);
+    }
     if (quantityRaw && (Number.isNaN(reportedQuantity) || reportedQuantity < 0)) {
       redirect(`${reportPath}?error=${encodeURIComponent("Гүйцэтгэсэн хэмжээ буруу байна.")}`);
     }
+    timer.mark("validation_done", {
+      imageCount: imageFiles.length,
+      audioCount: audioFiles.length,
+      imageBytes: imageFiles.reduce((total, file) => total + file.size, 0),
+      audioBytes: audioFiles.reduce((total, file) => total + file.size, 0),
+    });
     const quantityLineSummaries = quantityLineValues
       .map((value, index) => {
         if (!value) {
@@ -1361,7 +1447,7 @@ export async function createTaskReportAction(formData: FormData) {
       .filter(Boolean)
       .join("\n\n");
 
-    const [imageAttachments, audioAttachments] = await Promise.all([
+    const [imageAttachments, audioAttachments] = await timer.step("file_upload_prepare", () => Promise.all([
       Promise.all(
         imageUploads.map(async (upload) => ({
           name: getLabeledAttachmentName(upload),
@@ -1376,9 +1462,9 @@ export async function createTaskReportAction(formData: FormData) {
           base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
         })),
       ),
-    ]);
+    ]));
 
-    await createWorkspaceTaskReport(
+    await timer.step("odoo_create_report", () => createWorkspaceTaskReport(
       {
         taskId,
         reportText: effectiveReportText,
@@ -1387,26 +1473,27 @@ export async function createTaskReportAction(formData: FormData) {
         audioAttachments,
       },
       connectionOverrides,
-    );
+    ));
 
-    const reviewConnectionOverrides = await sendTaskToReviewWithSystemFallback(
+    const reviewConnectionOverrides = await timer.step("odoo_submit_for_review", () => sendTaskToReviewWithSystemFallback(
       taskId,
       { forceComplete: true },
       connectionOverrides,
-    );
-    const reviewerIds = await notifyTaskReviewersWithSystemFallback(
+    ));
+    const reviewerIds = await timer.step("odoo_notify_reviewers", () => notifyTaskReviewersWithSystemFallback(
       taskId,
       session.name,
       reviewConnectionOverrides,
-    );
-    await notifyPushQuietly({
+    ));
+    await timer.step("push_notify", () => notifyPushQuietly({
       eventType: "report_under_review",
       title: "Тайлан хяналтад ирлээ",
       body: `${session.name} тайлан илгээлээ.`,
       targetUrl: `/tasks/${taskId}`,
       userIds: reviewerIds,
-    });
+    }));
 
+    timer.mark("cache_invalidation_start");
     revalidatePath("/");
     revalidatePath("/tasks");
     revalidatePath("/field");
@@ -1415,9 +1502,15 @@ export async function createTaskReportAction(formData: FormData) {
     revalidatePath("/review");
     revalidatePath("/reports");
     revalidatePath(`/tasks/${taskId}`);
+    timer.mark("cache_invalidation_end");
+    timer.mark("redirect_start");
     redirect(`/tasks/${taskId}?notice=${encodeURIComponent("Тайлан илгээгдэж, хяналт руу орлоо.")}`);
   } catch (error) {
-    rethrowIfRedirectError(error);
+    if (isRedirectException(error)) {
+      throw error;
+    }
+    releaseReportSubmitLock(submitLockKey);
+    timer.mark("submit_error", { message: getErrorMessage(error) });
     redirect(`${reportPath}?error=${encodeURIComponent(getErrorMessage(error))}`);
   }
 }
@@ -1425,6 +1518,9 @@ export async function createTaskReportAction(formData: FormData) {
 export async function updateTaskReportAction(formData: FormData) {
   const taskId = Number(String(formData.get("task_id") ?? ""));
   const reportId = Number(String(formData.get("report_id") ?? ""));
+  const timer = createReportTiming("update", { taskId, reportId });
+  timer.mark("server_action_received");
+  const submitToken = String(formData.get("report_submit_token") ?? "").trim();
   const reportText = String(formData.get("report_text") ?? "").trim();
   const reportedQuantityRaw = String(formData.get("reported_quantity") ?? "").trim();
   const reportedQuantity = reportedQuantityRaw ? Number(reportedQuantityRaw) : null;
@@ -1446,6 +1542,7 @@ export async function updateTaskReportAction(formData: FormData) {
     .map((value) => Number(String(value)))
     .filter((value) => Number.isFinite(value) && value > 0);
   const reportPath = taskId ? `/tasks/${taskId}` : "/tasks";
+  let submitLockKey = "";
 
   if (!taskId || !reportId || !reportText) {
     redirect(`${reportPath}?error=${encodeURIComponent("Тайлан засахад шаардлагатай мэдээлэл дутуу байна.")}`);
@@ -1475,14 +1572,14 @@ export async function updateTaskReportAction(formData: FormData) {
     if (!hasCapability(session, "write_workspace_reports") || !canSubmitWorkspaceReport(session)) {
       redirect(`${reportPath}?error=${encodeURIComponent("Танд тайлан засах эрх нээгдээгүй байна.")}`);
     }
-    const reportOwnerId = await loadWorkspaceTaskReportOwner(reportId, {
+    const reportOwnerId = await timer.step("odoo_report_owner", () => loadWorkspaceTaskReportOwner(reportId, {
       login: session.login,
       password: session.password,
-    });
+    }));
     if (!canMutateReportOwner(session, reportOwnerId)) {
       redirect(`${reportPath}?error=${encodeURIComponent("Та зөвхөн өөрийн илгээсэн тайланг засах боломжтой.")}`);
     }
-    await assertWorkerTaskReportDateIsOpen(
+    await timer.step("validation_task_date", () => assertWorkerTaskReportDateIsOpen(
       taskId,
       session,
       {
@@ -1490,7 +1587,13 @@ export async function updateTaskReportAction(formData: FormData) {
         password: session.password,
       },
       reportPath,
-    );
+    ));
+    const lock = acquireReportSubmitLock("update", taskId, submitToken);
+    submitLockKey = lock.key;
+    if (!lock.acquired) {
+      timer.mark("duplicate_submit_blocked");
+      redirect(`${reportPath}?notice=${encodeURIComponent("Тайлан хадгалагдаж байна. Давхар хадгалах шаардлагагүй.")}#task-reports`);
+    }
 
     const quantityLineSummaries = quantityLineValues
       .map((value, index) => {
@@ -1518,7 +1621,7 @@ export async function updateTaskReportAction(formData: FormData) {
     ]
       .filter(Boolean)
       .join("\n\n");
-    const [imageAttachments, audioAttachments] = await Promise.all([
+    const [imageAttachments, audioAttachments] = await timer.step("file_upload_prepare", () => Promise.all([
       Promise.all(
         imageUploads.map(async (upload) => ({
           name: getLabeledAttachmentName(upload),
@@ -1533,9 +1636,9 @@ export async function updateTaskReportAction(formData: FormData) {
           base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
         })),
       ),
-    ]);
+    ]));
 
-    await updateWorkspaceTaskReport(
+    await timer.step("odoo_update_report", () => updateWorkspaceTaskReport(
       reportId,
       {
         reportText: effectiveReportText,
@@ -1549,15 +1652,22 @@ export async function updateTaskReportAction(formData: FormData) {
         login: session.login,
         password: session.password,
       },
-    );
+    ));
 
+    timer.mark("cache_invalidation_start");
     revalidatePath("/notifications");
     revalidatePath("/review");
     revalidatePath("/reports");
     revalidatePath(`/tasks/${taskId}`);
+    timer.mark("cache_invalidation_end");
+    timer.mark("redirect_start");
     redirect(`${reportPath}?notice=${encodeURIComponent("Тайлан шинэчлэгдлээ.")}#task-reports`);
   } catch (error) {
-    rethrowIfRedirectError(error);
+    if (isRedirectException(error)) {
+      throw error;
+    }
+    releaseReportSubmitLock(submitLockKey);
+    timer.mark("submit_error", { message: getErrorMessage(error) });
     redirect(`${reportPath}?error=${encodeURIComponent(getErrorMessage(error))}#task-reports`);
   }
 }
