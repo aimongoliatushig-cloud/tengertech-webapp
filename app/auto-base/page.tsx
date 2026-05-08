@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { getRoleLabel, hasCapability, requireSession } from "@/lib/auth";
+import { isAutoGarbageDepartment } from "@/lib/department-permissions";
 import { loadFleetVehicleBoard } from "@/lib/odoo";
 import { loadWorkspaceNotificationCount } from "@/lib/workspace-notifications";
 
@@ -27,8 +29,14 @@ function firstParam(value?: string | string[]) {
 export default async function AutoBasePage({ searchParams }: AutoBasePageProps) {
   const session = await requireSession();
   const allowedRoles = new Set(["system_admin", "director", "general_manager"]);
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  const isGarbageDepartmentHead =
+    Boolean(scopedDepartmentName) &&
+    isAutoGarbageDepartment(scopedDepartmentName) &&
+    hasCapability(session, "create_projects") &&
+    hasCapability(session, "create_tasks");
 
-  if (!allowedRoles.has(String(session.role))) {
+  if (!allowedRoles.has(String(session.role)) && !isGarbageDepartmentHead) {
     redirect("/");
   }
 
@@ -89,14 +97,15 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               notificationCount={notificationCount}
+              departmentScopeName={scopedDepartmentName}
               groupFlags={session.groupFlags}
             />
           </aside>
 
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
-              title="Авто бааз"
-              subtitle="Идэвхтэй болон засагдаж буй машинуудын бодит төлөв"
+              title="Машин техник"
+              subtitle="Авто баазын машин техникийг төрөл, төлөв, хариуцсан ажилтнаар хянах самбар"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               notificationCount={notificationCount}

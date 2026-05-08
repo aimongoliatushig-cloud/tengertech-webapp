@@ -484,9 +484,9 @@ export function AppMenu({
       icon: Users,
     },
     {
-      key: "garbage-vehicles",
-      href: "/fleet-repair/dashboard",
-      label: "Машинууд",
+      key: "auto-base",
+      href: "/auto-base",
+      label: "Машин техник",
       icon: Truck,
     },
     {
@@ -549,9 +549,6 @@ export function AppMenu({
       item.departmentName &&
       isAutoGarbageDepartment(item.departmentName)
     ) {
-      return true;
-    }
-    if (active === "fleet-repair" && item.key === "garbage-vehicles") {
       return true;
     }
     return false;

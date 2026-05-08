@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { AppMenu } from "@/app/_components/app-menu";
-import { AutoBaseBoard } from "@/app/auto-base/auto-base-board";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import styles from "@/app/workspace.module.css";
 import {
@@ -19,7 +18,7 @@ import {
   getAvailableUnits,
   matchesDepartmentGroup,
 } from "@/lib/department-groups";
-import { type DashboardSnapshot, loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
+import { type DashboardSnapshot, loadMunicipalSnapshot } from "@/lib/odoo";
 import { loadWorkspaceNotificationCount } from "@/lib/workspace-notifications";
 
 type PageProps = {
@@ -287,19 +286,6 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
         ? requestedDepartment
         : "";
   const isAutoBaseView = selectedGroup?.name === AUTO_BASE_GROUP_NAME;
-  const showAutoBaseFleet = isAutoBaseView && selectedUnit === AUTO_BASE_UNIT_NAME;
-  let fleetBoard: Awaited<ReturnType<typeof loadFleetVehicleBoard>> | null = null;
-  let fleetLoadError = "";
-
-  if (isAutoBaseView) {
-    try {
-      fleetBoard = await loadFleetVehicleBoard();
-    } catch (error) {
-      console.error("Fleet vehicle board could not be loaded for projects auto-base view:", error);
-      fleetLoadError =
-        "Авто баазын машины жагсаалтыг уншиж чадсангүй. Холболт болон эрхийн тохиргоог шалгана уу.";
-    }
-  }
 
   const projectTaskSearchByName = new Map<string, string>();
   for (const task of snapshot.taskDirectory) {
@@ -655,7 +641,6 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   }`;
   const shouldShowGreenServiceSections =
     !masterMode &&
-    !showAutoBaseFleet &&
     !selectedUnit &&
     selectedGroup?.name === GREEN_SERVICE_GROUP_NAME;
   const greenServiceProjectSections = GREEN_SERVICE_UNITS.map((unit) => ({
@@ -694,7 +679,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
         <div className={styles.contentWithMenu}>
           <aside className={styles.menuColumn}>
             <AppMenu
-              active={masterMode ? "dashboard" : isAutoBaseView ? "auto-base" : "projects"}
+              active={masterMode ? "dashboard" : "projects"}
               canCreateProject={canCreateProject}
               canCreateTasks={canCreateTasks}
               canWriteReports={canWriteReports}
@@ -816,17 +801,15 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                       >
                         <span>{unit}</span>
                         <strong>
-                          {unit === AUTO_BASE_UNIT_NAME && fleetBoard
-                            ? fleetBoard.totalVehicles
-                            : snapshot.projects.filter((project) =>
-                                matchesDepartmentGroup(selectedGroup, project.departmentName) &&
-                                matchesUnitScope(
-                                  unit,
-                                  project.departmentName,
-                                  project.name,
-                                  `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`,
-                                ),
-                              ).length}
+                          {snapshot.projects.filter((project) =>
+                            matchesDepartmentGroup(selectedGroup, project.departmentName) &&
+                            matchesUnitScope(
+                              unit,
+                              project.departmentName,
+                              project.name,
+                              `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`,
+                            ),
+                          ).length}
                         </strong>
                       </Link>
                     );
@@ -839,18 +822,14 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
               <div className={styles.sectionHeader}>
                 <div>
                   <span className={styles.sectionKicker}>
-                    {showAutoBaseFleet ? "Машины жагсаалт" : masterMode ? "Нэгжийн ажил" : "Ажлын жагсаалт"}
+                    {masterMode ? "Нэгжийн ажил" : "Ажлын жагсаалт"}
                   </span>
-                  <h2>{showAutoBaseFleet ? "Бүх машин" : masterMode ? selectedDepartmentName : filterTitle}</h2>
+                  <h2>{masterMode ? selectedDepartmentName : filterTitle}</h2>
                   <small className={styles.sectionNote}>
-                    {showAutoBaseFleet
-                      ? "Авто баазад бүртгэлтэй бүх машиныг харуулна"
-                      : masterMode
-                        ? sectionNote
-                        : `${selectedDepartmentName} · ${filterNote}`}
+                    {masterMode ? sectionNote : `${selectedDepartmentName} · ${filterNote}`}
                   </small>
                 </div>
-                {!masterMode && !showAutoBaseFleet ? (
+                {!masterMode ? (
                   <div className={styles.buttonRow}>
                     {canCreateProject ? (
                       <Link href={newWorkHref} className={styles.primaryButton}>
@@ -864,7 +843,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                 ) : null}
               </div>
 
-              {!showAutoBaseFleet && masterMode ? (
+              {masterMode ? (
                 <div className={styles.masterInsightsGrid}>
                   <article className={styles.masterInsightsChart}>
                     <div className={styles.masterInsightsHeader}>
@@ -1020,17 +999,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                 </div>
               ) : null}
 
-              {showAutoBaseFleet ? (
-                fleetLoadError ? (
-                  <div className={styles.emptyColumnState}>{fleetLoadError}</div>
-                ) : fleetBoard ? (
-                  <AutoBaseBoard board={fleetBoard} />
-                ) : (
-                  <div className={styles.emptyColumnState}>
-                    Авто баазын машины жагсаалт Odoo-оос ирээгүй байна.
-                  </div>
-                )
-              ) : shouldShowGreenServiceSections ? (
+              {shouldShowGreenServiceSections ? (
                 <div className={styles.unitProjectSections}>
                   {greenServiceProjectSections.map((section) => (
                     <section key={section.label} className={styles.unitProjectSection}>

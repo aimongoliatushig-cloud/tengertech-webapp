@@ -3732,12 +3732,12 @@ export async function loadFleetVehicleBoard(
       const operationalStatusKey = vehicle.x_municipal_operational_status || "";
       const operationalStatusLabel = FLEET_OPERATIONAL_STATUS_LABELS[operationalStatusKey] || "";
       const rawDepartmentName = relationName(vehicle.municipal_department_id ?? false, "");
-      const isRepair =
-        Boolean(vehicle.vehicle_downtime_open) ||
-        operationalStatusKey === "in_repair" ||
-        operationalStatusKey === "broken" ||
-        isRepairStatusLabel(stateLabel) ||
-        isRepairStatusLabel(latestRepairState);
+      const hasExplicitOperationalStatus = Boolean(operationalStatusKey);
+      const isRepair = hasExplicitOperationalStatus
+        ? operationalStatusKey === "in_repair" || operationalStatusKey === "broken"
+        : Boolean(vehicle.vehicle_downtime_open) ||
+          isRepairStatusLabel(stateLabel) ||
+          isRepairStatusLabel(latestRepairState);
       const isArchived = vehicle.active === false;
       const isOperational =
         !isArchived &&

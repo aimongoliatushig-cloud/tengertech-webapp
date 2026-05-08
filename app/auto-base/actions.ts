@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireSession } from "@/lib/auth";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { hasCapability, requireSession, type AppSession } from "@/lib/auth";
+import { isAutoGarbageDepartment } from "@/lib/department-permissions";
 import { executeOdooKw } from "@/lib/odoo";
 
 const AUTO_BASE_ALLOWED_ROLES = new Set(["system_admin", "director", "general_manager"]);
@@ -38,6 +40,20 @@ const VEHICLE_ATTACHMENT_FIELD_BY_KIND = {
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
+}
+
+async function canManageAutoBase(session: AppSession) {
+  if (AUTO_BASE_ALLOWED_ROLES.has(String(session.role))) {
+    return true;
+  }
+
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  return (
+    Boolean(scopedDepartmentName) &&
+    isAutoGarbageDepartment(scopedDepartmentName) &&
+    hasCapability(session, "create_projects") &&
+    hasCapability(session, "create_tasks")
+  );
 }
 
 function redirectWithMessage(kind: "error" | "notice", message: string) {
@@ -130,7 +146,7 @@ async function createVehicleAttachment(vehicleId: number, file: File) {
 
 export async function updateFleetVehicleAction(formData: FormData) {
   const session = await requireSession();
-  if (!AUTO_BASE_ALLOWED_ROLES.has(String(session.role))) {
+  if (!(await canManageAutoBase(session))) {
     redirect("/");
   }
 
@@ -342,9 +358,72 @@ export async function updateFleetVehicleAction(formData: FormData) {
   }
 }
 
+export async function updateFleetVehicleStatusAction(formData: FormData) {
+  const session = await requireSession();
+  if (!(await canManageAutoBase(session))) {
+    redirect("/");
+  }
+
+  const vehicleId = Number(getString(formData, "vehicle_id"));
+  const targetStatus = getString(formData, "target_status");
+  if (!Number.isFinite(vehicleId) || vehicleId <= 0) {
+    redirect("/auto-base?error=Машины бүртгэл олдсонгүй.");
+  }
+  if (!["available", "in_repair"].includes(targetStatus)) {
+    redirectWithMessage("error", "Машины төлөв буруу байна.");
+  }
+
+  try {
+    const requiredFields = [
+      "x_municipal_operational_status",
+      "mfo_active_for_ops",
+      "latest_repair_state",
+    ];
+    const editableFields = await executeOdooKw<Record<string, unknown>>(
+      "fleet.vehicle",
+      "fields_get",
+      [requiredFields],
+      { attributes: ["string"] },
+    );
+    const values: Record<string, string | boolean | false> = {};
+
+    if ("x_municipal_operational_status" in editableFields) {
+      values.x_municipal_operational_status = targetStatus;
+    }
+    if ("mfo_active_for_ops" in editableFields) {
+      values.mfo_active_for_ops = targetStatus === "available";
+    }
+    if ("latest_repair_state" in editableFields) {
+      values.latest_repair_state = targetStatus === "in_repair" ? "in_repair" : false;
+    }
+
+    if (!Object.keys(values).length) {
+      redirectWithMessage(
+        "error",
+        "Odoo дээр машины төлөв солих талбарууд суулгагдаагүй байна. municipal_repair_workflow module-ийг update хийнэ үү.",
+      );
+    }
+
+    await executeOdooKw<boolean>("fleet.vehicle", "write", [[vehicleId], values], {});
+
+    revalidatePath("/auto-base");
+    revalidatePath("/projects");
+    revalidatePath("/");
+    redirectWithMessage(
+      "notice",
+      targetStatus === "available"
+        ? "Машиныг ажиллаж байгаа төлөвт орууллаа."
+        : "Машиныг засвартай төлөвт орууллаа.",
+    );
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirectWithMessage("error", getErrorMessage(error));
+  }
+}
+
 export async function uploadFleetVehicleAttachmentAction(formData: FormData) {
   const session = await requireSession();
-  if (!AUTO_BASE_ALLOWED_ROLES.has(String(session.role))) {
+  if (!(await canManageAutoBase(session))) {
     redirect("/");
   }
 

@@ -264,6 +264,7 @@ type GarbageVehicleRecord = {
   id: number;
   name: string;
   license_plate: string | false;
+  category_id?: Relation;
 };
 
 type GarbageRouteRecord = {
@@ -281,6 +282,22 @@ export type GarbageVehicleOption = {
   label: string;
   plate: string;
 };
+
+const GARBAGE_VEHICLE_CATEGORY_NAMES = ["Хог ачилт"];
+
+function normalizeGarbageVehicleCategory(value: string) {
+  return value.trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
+}
+
+function isGarbageCollectionVehicle(vehicle: GarbageVehicleRecord) {
+  const categoryName = relationName(vehicle.category_id ?? false, "");
+  const normalizedCategory = normalizeGarbageVehicleCategory(categoryName);
+
+  return GARBAGE_VEHICLE_CATEGORY_NAMES.some((name) => {
+    const normalizedName = normalizeGarbageVehicleCategory(name);
+    return normalizedCategory === normalizedName || normalizedCategory.includes(normalizedName);
+  });
+}
 
 export type GarbageRouteOption = {
   id: number;
@@ -1904,19 +1921,38 @@ export async function loadWorkTypeOptions(
 export async function loadGarbageVehicleOptions(
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<GarbageVehicleOption[]> {
+  const categoryDomain = [
+    "|",
+    ["category_id.name", "in", GARBAGE_VEHICLE_CATEGORY_NAMES],
+    ["category_id.name", "ilike", "Хог ачилт"],
+  ];
   const vehicles = await readFirstAvailable<GarbageVehicleRecord>(
     [
       {
         model: "fleet.vehicle",
+        domain: ["&", ["active", "=", true], ...categoryDomain],
+        fields: ["name", "license_plate", "category_id"],
+        order: "license_plate asc, name asc",
+        limit: 500,
+      },
+      {
+        model: "fleet.vehicle",
+        domain: categoryDomain,
+        fields: ["name", "license_plate", "category_id"],
+        order: "license_plate asc, name asc",
+        limit: 500,
+      },
+      {
+        model: "fleet.vehicle",
         domain: [["active", "=", true]],
-        fields: ["name", "license_plate"],
+        fields: ["name", "license_plate", "category_id"],
         order: "license_plate asc, name asc",
         limit: 500,
       },
       {
         model: "fleet.vehicle",
         domain: [],
-        fields: ["name", "license_plate"],
+        fields: ["name", "license_plate", "category_id"],
         order: "license_plate asc, name asc",
         limit: 500,
       },
@@ -1924,7 +1960,7 @@ export async function loadGarbageVehicleOptions(
     connectionOverrides,
   );
 
-  return vehicles.map((vehicle) => {
+  return vehicles.filter(isGarbageCollectionVehicle).map((vehicle) => {
     const plate = vehicle.license_plate || vehicle.name || `Техник #${vehicle.id}`;
     return {
       id: vehicle.id,
