@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
+import { markTaskDoneAction } from "@/app/actions";
 import dashboardStyles from "@/app/page.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import {
@@ -27,6 +28,10 @@ import {
   matchesDepartmentGroup,
 } from "@/lib/department-groups";
 import { loadGarbageWeightLedger } from "@/lib/garbage-weight-ledger";
+import {
+  filterProjectsForResponsibleMaster,
+  filterTasksForResponsibleMaster,
+} from "@/lib/master-scope";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 
 import styles from "./reports.module.css";
@@ -40,6 +45,8 @@ type PageProps = {
 
 type FeedReport = {
   id: number;
+  taskId?: number | null;
+  reporterId?: number | null;
   reporter: string;
   taskName: string;
   departmentName: string;
@@ -49,6 +56,8 @@ type FeedReport = {
   measurementUnit: string;
   imageCount: number;
   audioCount: number;
+  stateLabel: string;
+  stateBucket: "review" | "done" | "problem" | "progress";
   submittedAt: string;
   images: {
     id: number;
@@ -97,17 +106,32 @@ function formatQuantity(value: number, unit: string) {
   return `${value} ${unit}`.trim();
 }
 
+function reportStatusLabel(report: Pick<FeedReport, "stateBucket" | "stateLabel">) {
+  switch (report.stateBucket) {
+    case "done":
+      return "Баталгаажсан";
+    case "problem":
+      return "Засвар шаардсан";
+    case "review":
+      return "Хяналт хүлээж байна";
+    default:
+      return report.stateLabel || "Тайлан орсон";
+  }
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage({ searchParams }: PageProps) {
   const session = await requireSession();
-  if (isWorkerOnly(session)) {
+  const workerMode = isWorkerOnly(session);
+  if (workerMode) {
     redirect("/");
   }
-  const snapshot = await loadMunicipalSnapshot({
+  const snapshotPromise = loadMunicipalSnapshot({
     login: session.login,
     password: session.password,
   });
+  const scopedDepartmentNamePromise = loadSessionDepartmentName(session);
 
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -115,7 +139,11 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const masterMode = isMasterRole(session.role);
-  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  const seniorMasterMode = session.role === "senior_master";
+  const [snapshot, scopedDepartmentName] = await Promise.all([
+    snapshotPromise,
+    scopedDepartmentNamePromise,
+  ]);
   const departmentScopedMode = Boolean(scopedDepartmentName);
 
   const params = (await searchParams) ?? {};
@@ -147,16 +175,37 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         : true;
   const todayDateKey = getTodayDateKey();
 
-  const filteredReports = departmentScopedMode
+  let filteredReports = departmentScopedMode
     ? filterByDepartment(snapshot.reports, scopedDepartmentName)
     : snapshot.reports.filter((report) => matchesSelectedDepartment(report.departmentName));
 
-  const filteredReviewQueue = departmentScopedMode
+  let filteredReviewQueue = departmentScopedMode
     ? filterByDepartment(snapshot.reviewQueue, scopedDepartmentName)
     : snapshot.reviewQueue.filter((item) => matchesSelectedDepartment(item.departmentName));
-  const filteredTaskDirectory = departmentScopedMode
+  let filteredTaskDirectory = departmentScopedMode
     ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
     : snapshot.taskDirectory.filter((task) => matchesSelectedDepartment(task.departmentName));
+  if (masterMode) {
+    const candidateProjects = departmentScopedMode
+      ? filterByDepartment(snapshot.projects, scopedDepartmentName)
+      : snapshot.projects.filter((project) => matchesSelectedDepartment(project.departmentName));
+    const masterTasks = filterTasksForResponsibleMaster(
+      filteredTaskDirectory,
+      candidateProjects,
+      session,
+    );
+    const masterProjects = filterProjectsForResponsibleMaster(candidateProjects, masterTasks, session);
+    const masterProjectIds = new Set(masterProjects.map((project) => project.id));
+    const masterTaskIds = new Set(masterTasks.map((task) => task.id));
+
+    filteredTaskDirectory = masterTasks;
+    filteredReviewQueue = filterTasksForResponsibleMaster(filteredReviewQueue, masterProjects, session);
+    filteredReports = filteredReports.filter((report) =>
+      seniorMasterMode
+        ? masterProjectIds.has(report.projectId ?? -1)
+        : masterTaskIds.has(report.taskId ?? -1),
+    );
+  }
   const todayScopedTasks = filterTasksToDate(filteredTaskDirectory, todayDateKey);
   const todayActiveTasks = todayScopedTasks.filter(
     (task) => task.stageBucket === "todo" || task.stageBucket === "progress",
@@ -193,10 +242,16 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       reports: group.reports.sort((left, right) => right.id - left.id),
     }))
     .sort((left, right) => right.reports[0].id - left.reports[0].id);
+  const taskDirectoryById = new Map(filteredTaskDirectory.map((task) => [task.id, task]));
+  const canReviewReports = !workerMode && (canViewQualityCenter || canCreateTasks || masterMode);
 
   const selectedDepartmentName = masterMode
     ? scopedDepartmentName ?? "Миний алба нэгж"
     : selectedUnit || selectedGroup?.name || "Бүх хэлтэс";
+  const masterReportTitle = seniorMasterMode ? "Нэгжийн тайлангийн хяналт" : "Миний хариуцсан тайлан";
+  const masterReportDescription = seniorMasterMode
+    ? "Ахлах мастер өөрийн алба нэгжийн бүх мастерийн илгээсэн тайланг ажлаар нь бүлэглэж хянана."
+    : "Мастер зөвхөн өөрт хариуцуулсан ажил, багийн илгээсэн тайланг ажлаар нь бүлэглэж хянана.";
   const totalImages = filteredReports.reduce((sum, report) => sum + report.imageCount, 0);
   const totalAudios = filteredReports.reduce((sum, report) => sum + report.audioCount, 0);
   const isGarbageTransportView =
@@ -221,7 +276,11 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     {
       title: masterMode ? "Алба нэгж" : "Сонгосон хүрээ",
       value: selectedDepartmentName,
-      note: masterMode ? "Жингийн тайлангийн хүрээ" : "Жингээр харагдах багц",
+      note: masterMode
+        ? seniorMasterMode
+          ? "Нэгжийн жингийн тайлангийн хүрээ"
+          : "Хариуцсан ажлын жингийн тайлан"
+        : "Жингээр харагдах багц",
     },
     {
       title: "Энэ сар",
@@ -311,10 +370,10 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             <header className={styles.pageHeader}>
               <div className={styles.titleBlock}>
                 <span className={styles.kicker}>Тайлан</span>
-                <h1>{masterMode ? "Нэгжийн тайлангийн урсгал" : "Хэлтсийн тайлан"}</h1>
+                <h1>{masterMode ? masterReportTitle : "Хэлтсийн тайлан"}</h1>
                 <p>
                   {masterMode
-                    ? "Мастер хэрэглэгчид зөвхөн өөрийн алба нэгжийн илгээсэн тайлан энд харагдана. Ажлаар нь бүлэглэж, зураг аудио хавсралтыг нэг дороос харуулна."
+                    ? masterReportDescription
                     : "Эхлээд хэлтсээ сонгоно. Дараа нь доторх нэгжээ сонгоод, тухайн нэгжийн ажлуудаар тайланг бүлэглэж харуулна."}
                 </p>
               </div>
@@ -779,14 +838,27 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                     </div>
 
                     <div className={styles.reportList}>
-                      {group.reports.map((report) => (
+                      {group.reports.map((report) => {
+                        const task = report.taskId ? taskDirectoryById.get(report.taskId) : undefined;
+                        const canFinishReview =
+                          canReviewReports &&
+                          Boolean(task) &&
+                          task?.stageBucket !== "done" &&
+                          (task?.stageBucket === "review" || report.stateBucket === "review") &&
+                          !(task?.assigneeIds?.includes(session.uid) ?? false) &&
+                          report.reporterId !== session.uid;
+                        const taskHref = report.taskId
+                          ? `/tasks/${report.taskId}?returnTo=${encodeURIComponent("/reports")}#task-actions`
+                          : "";
+
+                        return (
                         <article key={report.id} className={styles.reportCard}>
                           <div className={styles.reportTop}>
                             <div>
                               <strong>{report.taskName}</strong>
                               <p>{report.submittedAt}</p>
                             </div>
-                            <span className={styles.reportStamp}>Тайлан орсон</span>
+                            <span className={styles.reportStamp}>{reportStatusLabel(report)}</span>
                           </div>
 
                           <div className={styles.reportMeta}>
@@ -799,6 +871,22 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                           </div>
 
                           <div className={styles.summaryBox}>{report.summary}</div>
+
+                          <div className={styles.reportActions}>
+                            {taskHref ? (
+                              <Link href={taskHref} className={styles.reportActionLink}>
+                                Ажил шалгах
+                              </Link>
+                            ) : null}
+                            {canFinishReview && report.taskId ? (
+                              <form action={markTaskDoneAction}>
+                                <input type="hidden" name="task_id" value={report.taskId} />
+                                <button type="submit" className={styles.reportDoneButton}>
+                                  Ажил хянаж дуусгах
+                                </button>
+                              </form>
+                            ) : null}
+                          </div>
 
                           {report.images.length ? (
                             <div className={dashboardStyles.reportImageGrid}>
@@ -839,7 +927,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                             </div>
                           ) : null}
                         </article>
-                      ))}
+                        );
+                      })}
                     </div>
                   </article>
                 ))}

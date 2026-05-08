@@ -1,4 +1,4 @@
-import "server-only";
+﻿import "server-only";
 
 import { getDateKeyFromValue, getTodayDateKey } from "@/lib/dashboard-scope";
 import {
@@ -18,11 +18,12 @@ const ODOO_RPC_TIMEOUT_MS =
     ? configuredOdooRpcTimeoutMs
     : DEFAULT_ODOO_RPC_TIMEOUT_MS;
 const ODOO_AUTH_CACHE_TTL_MS = 5 * 60_000;
+const ODOO_READ_RPC_CACHE_TTL_MS = 2 * 60_000;
 
 function isRoadCleaningPhotoPlaceholderTaskName(value: string) {
   const normalized = value.trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
 
-  return normalized.includes("өмнөх зураг") || normalized.includes("дараах зураг");
+  return normalized.includes("Ó©Ð¼Ð½Ó©Ñ… Ð·ÑƒÑ€Ð°Ð³") || normalized.includes("Ð´Ð°Ñ€Ð°Ð°Ñ… Ð·ÑƒÑ€Ð°Ð³");
 }
 
 type OdooProjectRecord = {
@@ -186,6 +187,7 @@ type DepartmentCard = {
 type ProjectCard = {
   id: number;
   name: string;
+  managerId?: number | null;
   manager: string;
   departmentName: string;
   operationTypeLabel?: string;
@@ -203,7 +205,9 @@ type ReviewItem = {
   departmentName: string;
   stageLabel: string;
   deadline: string;
+  projectId?: number | null;
   projectName: string;
+  leaderId?: number | null;
   leaderName: string;
   progress: number;
   href: string;
@@ -213,6 +217,7 @@ type LiveTask = {
   id: number;
   name: string;
   departmentName: string;
+  projectId?: number | null;
   projectName: string;
   stageLabel: string;
   stageBucket: StageBucket;
@@ -222,6 +227,7 @@ type LiveTask = {
   completedQuantity: number;
   remainingQuantity: number;
   measurementUnit: string;
+  leaderId?: number | null;
   leaderName: string;
   priorityLabel: string;
   progress: number;
@@ -273,6 +279,7 @@ export type TaskDirectoryItem = {
   deadline: string;
   deadlineDateTime?: string | null;
   scheduledDate?: string | null;
+  leaderId?: number | null;
   leaderName: string;
   priorityLabel: string;
   progress: number;
@@ -289,9 +296,12 @@ export type TaskDirectoryItem = {
 
 type ReportFeedItem = {
   id: number;
+  taskId?: number | null;
+  reporterId?: number | null;
   reporter: string;
   taskName: string;
   departmentName: string;
+  projectId?: number | null;
   projectName: string;
   summary: string;
   text: string;
@@ -392,49 +402,49 @@ function inferRoleFromEmployeeTitle(employee?: OdooAuthEmployeeRecord | null) {
   }
 
   if (
-    title.includes("хүний нөөц") ||
+    title.includes("Ñ…Ò¯Ð½Ð¸Ð¹ Ð½Ó©Ó©Ñ†") ||
     title.includes("human resources") ||
     title.includes("hr specialist") ||
     title.includes("hr manager")
   ) {
-    return title.includes("manager") || title.includes("менежер")
+    return title.includes("manager") || title.includes("Ð¼ÐµÐ½ÐµÐ¶ÐµÑ€")
       ? "hr_manager"
       : "hr_specialist";
   }
 
-  if (title.includes("захирал") || title.includes("ceo") || title.includes("director")) {
+  if (title.includes("Ð·Ð°Ñ…Ð¸Ñ€Ð°Ð»") || title.includes("ceo") || title.includes("director")) {
     return "director";
   }
 
   if (
-    title.includes("үйл ажиллагаа хариуцсан менежер") ||
-    title.includes("ерөнхий менежер") ||
+    title.includes("Ò¯Ð¹Ð» Ð°Ð¶Ð¸Ð»Ð»Ð°Ð³Ð°Ð° Ñ…Ð°Ñ€Ð¸ÑƒÑ†ÑÐ°Ð½ Ð¼ÐµÐ½ÐµÐ¶ÐµÑ€") ||
+    title.includes("ÐµÑ€Ó©Ð½Ñ…Ð¸Ð¹ Ð¼ÐµÐ½ÐµÐ¶ÐµÑ€") ||
     title.includes("general manager")
   ) {
     return "general_manager";
   }
 
-  if (title.includes("хэлтсийн дарга") || title.includes("албаны дарга")) {
+  if (title.includes("Ñ…ÑÐ»Ñ‚ÑÐ¸Ð¹Ð½ Ð´Ð°Ñ€Ð³Ð°") || title.includes("Ð°Ð»Ð±Ð°Ð½Ñ‹ Ð´Ð°Ñ€Ð³Ð°")) {
     return "project_manager";
   }
 
   if (
-    title.includes("тээвэрлэлтийн хяналтын ажилтан") ||
-    title.includes("тээврийн хяналтын ажилтан") ||
-    title.includes("хог тээврийн хяналтын ажилтан") ||
-    (title.includes("тээвэр") && title.includes("хяналт")) ||
+    title.includes("Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑÐ½Ð°Ð»Ñ‚Ñ‹Ð½ Ð°Ð¶Ð¸Ð»Ñ‚Ð°Ð½") ||
+    title.includes("Ñ‚ÑÑÐ²Ñ€Ð¸Ð¹Ð½ Ñ…ÑÐ½Ð°Ð»Ñ‚Ñ‹Ð½ Ð°Ð¶Ð¸Ð»Ñ‚Ð°Ð½") ||
+    title.includes("Ñ…Ð¾Ð³ Ñ‚ÑÑÐ²Ñ€Ð¸Ð¹Ð½ Ñ…ÑÐ½Ð°Ð»Ñ‚Ñ‹Ð½ Ð°Ð¶Ð¸Ð»Ñ‚Ð°Ð½") ||
+    (title.includes("Ñ‚ÑÑÐ²ÑÑ€") && title.includes("Ñ…ÑÐ½Ð°Ð»Ñ‚")) ||
     (title.includes("teever") && title.includes("hyanalt")) ||
-    (title.includes("хяналтын ажилтан") &&
-      (titleWithDepartment.includes("хог тээвэр") || titleWithDepartment.includes("авто бааз")))
+    (title.includes("Ñ…ÑÐ½Ð°Ð»Ñ‚Ñ‹Ð½ Ð°Ð¶Ð¸Ð»Ñ‚Ð°Ð½") &&
+      (titleWithDepartment.includes("Ñ…Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€") || titleWithDepartment.includes("Ð°Ð²Ñ‚Ð¾ Ð±Ð°Ð°Ð·")))
   ) {
     return "team_leader";
   }
 
   if (
-    title.includes("ахлах мастер") ||
-    title.includes("мастер") ||
-    title.includes("даамал") ||
-    title.includes("талбайн инженер") ||
+    title.includes("Ð°Ñ…Ð»Ð°Ñ… Ð¼Ð°ÑÑ‚ÐµÑ€") ||
+    title.includes("Ð¼Ð°ÑÑ‚ÐµÑ€") ||
+    title.includes("Ð´Ð°Ð°Ð¼Ð°Ð»") ||
+    title.includes("Ñ‚Ð°Ð»Ð±Ð°Ð¹Ð½ Ð¸Ð½Ð¶ÐµÐ½ÐµÑ€") ||
     title.includes("talbain engineer") ||
     title.includes("field engineer")
   ) {
@@ -863,6 +873,37 @@ type CachedOdooAuthSession = OdooAuthSession & {
 
 const odooAuthCache = new Map<string, CachedOdooAuthSession>();
 
+type CachedMunicipalSnapshot = {
+  expiresAt: number;
+  value: DashboardSnapshot;
+};
+
+type CachedFleetVehicleBoard = {
+  expiresAt: number;
+  value: FleetVehicleBoard;
+};
+
+type CachedOdooReadRpc = {
+  expiresAt: number;
+  value: unknown;
+};
+
+type CachedHrDailyAttendanceSummary = {
+  expiresAt: number;
+  value: HrDailyAttendanceSummary;
+};
+
+const MUNICIPAL_SNAPSHOT_CACHE_TTL_MS = 2 * 60_000;
+const FLEET_VEHICLE_BOARD_CACHE_TTL_MS = 60_000;
+const municipalSnapshotCache = new Map<string, CachedMunicipalSnapshot>();
+const fleetVehicleBoardCache = new Map<string, CachedFleetVehicleBoard>();
+const municipalSnapshotPendingCache = new Map<string, Promise<DashboardSnapshot>>();
+const fleetVehicleBoardPendingCache = new Map<string, Promise<FleetVehicleBoard>>();
+const odooReadRpcCache = new Map<string, CachedOdooReadRpc>();
+const odooReadRpcPendingCache = new Map<string, Promise<unknown>>();
+const hrDailyAttendanceSummaryCache = new Map<string, CachedHrDailyAttendanceSummary>();
+const hrDailyAttendanceSummaryPendingCache = new Map<string, Promise<HrDailyAttendanceSummary>>();
+
 export function createOdooConnection(
   overrides: Partial<OdooConnection> = {},
 ): OdooConnection {
@@ -883,6 +924,147 @@ function getOdooAuthCacheKey(connection: OdooConnection) {
     connection.login,
     connection.password,
   ].join("\u0000");
+}
+
+function getMunicipalSnapshotCacheKey(connection: OdooConnection) {
+  return getOdooAuthCacheKey(connection);
+}
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableSerialize).join(",")}]`;
+  }
+
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableSerialize(record[key])}`)
+      .join(",")}}`;
+  }
+
+  return JSON.stringify(value);
+}
+
+function isOdooReadMethod(method: string) {
+  return (
+    method === "search" ||
+    method === "read" ||
+    method === "search_read" ||
+    method === "search_count" ||
+    method === "name_search" ||
+    method === "fields_get"
+  );
+}
+
+function isCacheableOdooReadRequest(
+  model: string,
+  method: string,
+  kwargs: Record<string, unknown>,
+) {
+  const fields = Array.isArray(kwargs.fields) ? kwargs.fields : [];
+  if (model === "ir.attachment" && fields.includes("datas")) {
+    return false;
+  }
+
+  return isOdooReadMethod(method);
+}
+
+function getOdooReadRpcCacheKey(
+  uid: number,
+  model: string,
+  method: string,
+  methodArgs: unknown[],
+  kwargs: Record<string, unknown>,
+  connection: OdooConnection,
+) {
+  return stableSerialize({
+    connection: getOdooAuthCacheKey(connection),
+    uid,
+    model,
+    method,
+    methodArgs,
+    kwargs,
+  });
+}
+
+function clearOdooReadCaches(connection?: OdooConnection) {
+  const authKey = connection ? getOdooAuthCacheKey(connection) : "";
+
+  if (!authKey) {
+    odooReadRpcCache.clear();
+    odooReadRpcPendingCache.clear();
+    municipalSnapshotCache.clear();
+    municipalSnapshotPendingCache.clear();
+    fleetVehicleBoardCache.clear();
+    fleetVehicleBoardPendingCache.clear();
+    hrDailyAttendanceSummaryCache.clear();
+    hrDailyAttendanceSummaryPendingCache.clear();
+    return;
+  }
+
+  for (const key of odooReadRpcCache.keys()) {
+    if (key.includes(authKey)) {
+      odooReadRpcCache.delete(key);
+    }
+  }
+  for (const key of odooReadRpcPendingCache.keys()) {
+    if (key.includes(authKey)) {
+      odooReadRpcPendingCache.delete(key);
+    }
+  }
+  municipalSnapshotCache.delete(authKey);
+  municipalSnapshotPendingCache.delete(authKey);
+  fleetVehicleBoardCache.delete(authKey);
+  fleetVehicleBoardPendingCache.delete(authKey);
+  hrDailyAttendanceSummaryCache.delete(authKey);
+  hrDailyAttendanceSummaryPendingCache.delete(authKey);
+}
+
+function readCachedMunicipalSnapshot(connection: OdooConnection) {
+  const cacheKey = getMunicipalSnapshotCacheKey(connection);
+  const cached = municipalSnapshotCache.get(cacheKey);
+
+  if (!cached) {
+    return null;
+  }
+
+  if (cached.expiresAt <= Date.now()) {
+    municipalSnapshotCache.delete(cacheKey);
+    return null;
+  }
+
+  return cached.value;
+}
+
+function writeCachedMunicipalSnapshot(connection: OdooConnection, value: DashboardSnapshot) {
+  municipalSnapshotCache.set(getMunicipalSnapshotCacheKey(connection), {
+    value,
+    expiresAt: Date.now() + MUNICIPAL_SNAPSHOT_CACHE_TTL_MS,
+  });
+}
+
+function readCachedFleetVehicleBoard(connection: OdooConnection) {
+  const cacheKey = getMunicipalSnapshotCacheKey(connection);
+  const cached = fleetVehicleBoardCache.get(cacheKey);
+
+  if (!cached) {
+    return null;
+  }
+
+  if (cached.expiresAt <= Date.now()) {
+    fleetVehicleBoardCache.delete(cacheKey);
+    return null;
+  }
+
+  return cached.value;
+}
+
+function writeCachedFleetVehicleBoard(connection: OdooConnection, value: FleetVehicleBoard) {
+  fleetVehicleBoardCache.set(getMunicipalSnapshotCacheKey(connection), {
+    value,
+    expiresAt: Date.now() + FLEET_VEHICLE_BOARD_CACHE_TTL_MS,
+  });
 }
 
 function readCachedOdooAuth(connection: OdooConnection): OdooAuthSession | null {
@@ -945,59 +1127,59 @@ function buildOdooConnectionCandidates(connection: OdooConnection) {
 const DEPARTMENT_ORDER = CANONICAL_DEPARTMENT_NAMES;
 
 const DEPARTMENT_LABELS: Record<string, string> = {
-  "Санхүүгийн алба": "Санхүү, төлөвлөлт, тайлагнал",
-  "Захиргааны алба": "Захиргаа, бичиг хэрэг, удирдлага",
-  "Авто бааз, хог тээвэрлэлтийн хэлтэс": "Техник, маршрут, хог тээвэрлэлт",
-  "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс":
-    "Ногоон байгууламж, зам талбайн цэвэрлэгээ",
-  "Тохижилтын хэлтэс": "Нийтийн талбай, засвар, тохижилт",
+  "Ð¡Ð°Ð½Ñ…Ò¯Ò¯Ð³Ð¸Ð¹Ð½ Ð°Ð»Ð±Ð°": "Ð¡Ð°Ð½Ñ…Ò¯Ò¯, Ñ‚Ó©Ð»Ó©Ð²Ð»Ó©Ð»Ñ‚, Ñ‚Ð°Ð¹Ð»Ð°Ð³Ð½Ð°Ð»",
+  "Ð—Ð°Ñ…Ð¸Ñ€Ð³Ð°Ð°Ð½Ñ‹ Ð°Ð»Ð±Ð°": "Ð—Ð°Ñ…Ð¸Ñ€Ð³Ð°Ð°, Ð±Ð¸Ñ‡Ð¸Ð³ Ñ…ÑÑ€ÑÐ³, ÑƒÐ´Ð¸Ñ€Ð´Ð»Ð°Ð³Ð°",
+  "ÐÐ²Ñ‚Ð¾ Ð±Ð°Ð°Ð·, Ñ…Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑÐ»Ñ‚ÑÑ": "Ð¢ÐµÑ…Ð½Ð¸Ðº, Ð¼Ð°Ñ€ÑˆÑ€ÑƒÑ‚, Ñ…Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚",
+  "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ»Ñ‚ÑÑ":
+    "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ð·Ð°Ð¼ Ñ‚Ð°Ð»Ð±Ð°Ð¹Ð½ Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ",
+  "Ð¢Ð¾Ñ…Ð¸Ð¶Ð¸Ð»Ñ‚Ñ‹Ð½ Ñ…ÑÐ»Ñ‚ÑÑ": "ÐÐ¸Ð¹Ñ‚Ð¸Ð¹Ð½ Ñ‚Ð°Ð»Ð±Ð°Ð¹, Ð·Ð°ÑÐ²Ð°Ñ€, Ñ‚Ð¾Ñ…Ð¸Ð¶Ð¸Ð»Ñ‚",
 };
 
 const DEPARTMENT_ACCENTS: Record<string, string> = {
-  "Санхүүгийн алба": "var(--tone-blue)",
-  "Захиргааны алба": "var(--tone-slate)",
-  "Авто бааз, хог тээвэрлэлтийн хэлтэс": "var(--tone-amber)",
-  "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс": "var(--tone-teal)",
-  "Тохижилтын хэлтэс": "var(--tone-slate)",
+  "Ð¡Ð°Ð½Ñ…Ò¯Ò¯Ð³Ð¸Ð¹Ð½ Ð°Ð»Ð±Ð°": "var(--tone-blue)",
+  "Ð—Ð°Ñ…Ð¸Ñ€Ð³Ð°Ð°Ð½Ñ‹ Ð°Ð»Ð±Ð°": "var(--tone-slate)",
+  "ÐÐ²Ñ‚Ð¾ Ð±Ð°Ð°Ð·, Ñ…Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑÐ»Ñ‚ÑÑ": "var(--tone-amber)",
+  "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ»Ñ‚ÑÑ": "var(--tone-teal)",
+  "Ð¢Ð¾Ñ…Ð¸Ð¶Ð¸Ð»Ñ‚Ñ‹Ð½ Ñ…ÑÐ»Ñ‚ÑÑ": "var(--tone-slate)",
 };
 
 const OPERATION_TYPE_LABELS: Record<string, string> = {
-  garbage: "Хог цуглуулалт",
-  garbage_seasonal: "Улирлын хог ачилт",
-  street_cleaning: "Гудамж цэвэрлэгээ",
-  green_maintenance: "Ногоон байгууламж",
+  garbage: "Ð¥Ð¾Ð³ Ñ†ÑƒÐ³Ð»ÑƒÑƒÐ»Ð°Ð»Ñ‚",
+  garbage_seasonal: "Ð£Ð»Ð¸Ñ€Ð»Ñ‹Ð½ Ñ…Ð¾Ð³ Ð°Ñ‡Ð¸Ð»Ñ‚",
+  street_cleaning: "Ð“ÑƒÐ´Ð°Ð¼Ð¶ Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ",
+  green_maintenance: "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶",
 };
 
 const STAGE_LABELS: Record<StageBucket, string> = {
-  todo: "Хийгдэх ажил",
-  progress: "Явагдаж буй ажил",
-  review: "Хянагдаж буй ажил",
-  done: "Дууссан ажил",
-  problem: "Засвар шаардсан ажил",
-  unknown: "Тодорхойгүй",
+  todo: "Ð¥Ð¸Ð¹Ð³Ð´ÑÑ… Ð°Ð¶Ð¸Ð»",
+  progress: "Ð¯Ð²Ð°Ð³Ð´Ð°Ð¶ Ð±ÑƒÐ¹ Ð°Ð¶Ð¸Ð»",
+  review: "Ð¥ÑÐ½Ð°Ð³Ð´Ð°Ð¶ Ð±ÑƒÐ¹ Ð°Ð¶Ð¸Ð»",
+  done: "Ð”ÑƒÑƒÑÑÐ°Ð½ Ð°Ð¶Ð¸Ð»",
+  problem: "Ð—Ð°ÑÐ²Ð°Ñ€ ÑˆÐ°Ð°Ñ€Ð´ÑÐ°Ð½ Ð°Ð¶Ð¸Ð»",
+  unknown: "Ð¢Ð¾Ð´Ð¾Ñ€Ñ…Ð¾Ð¹Ð³Ò¯Ð¹",
 };
 
 const TASK_STATUS_LABELS: Record<TaskStatusKey, string> = {
-  planned: "Төлөвлөгдсөн",
-  working: "Ажиллаж байна",
-  review: "Хянагдаж байна",
-  verified: "Баталгаажсан",
-  problem: "Засвар шаардсан",
+  planned: "Ð¢Ó©Ð»Ó©Ð²Ð»Ó©Ð³Ð´ÑÓ©Ð½",
+  working: "ÐÐ¶Ð¸Ð»Ð»Ð°Ð¶ Ð±Ð°Ð¹Ð½Ð°",
+  review: "Ð¥ÑÐ½Ð°Ð³Ð´Ð°Ð¶ Ð±Ð°Ð¹Ð½Ð°",
+  verified: "Ð‘Ð°Ñ‚Ð°Ð»Ð³Ð°Ð°Ð¶ÑÐ°Ð½",
+  problem: "Ð—Ð°ÑÐ²Ð°Ñ€ ÑˆÐ°Ð°Ñ€Ð´ÑÐ°Ð½",
 };
 
-const UNKNOWN_DEPARTMENT = "Тодорхойгүй";
-const AUTO_BASE_DEPARTMENT = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
-const AUTO_BASE_UNIT = "Авто бааз";
-const WASTE_TRANSPORT_UNIT = "Хог тээвэрлэлт";
+const UNKNOWN_DEPARTMENT = "Ð¢Ð¾Ð´Ð¾Ñ€Ñ…Ð¾Ð¹Ð³Ò¯Ð¹";
+const AUTO_BASE_DEPARTMENT = "ÐÐ²Ñ‚Ð¾ Ð±Ð°Ð°Ð·, Ñ…Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑÐ»Ñ‚ÑÑ";
+const AUTO_BASE_UNIT = "ÐÐ²Ñ‚Ð¾ Ð±Ð°Ð°Ð·";
+const WASTE_TRANSPORT_UNIT = "Ð¥Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚";
 
 const KNOWN_STAGE_MATCHERS: Array<[StageBucket, string[]]> = [
-  ["todo", ["хийгдэх", "todo", "task"]],
-  ["progress", ["явагдаж", "хийгдэж", "хийж байна", "ажиллаж", "progress", "hiihdej", "in progress"]],
-  ["review", ["шалгагдаж", "хянагдаж", "review", "changes requested", "shalgagdaj", "shalgah", "hyanagdaj"]],
-  ["done", ["дууссан", "done", "completed", "duussan"]],
-  ["todo", ["төлөвлөгдсөн", "хуваарилсан"]],
-  ["progress", ["гүйцэтгэж"]],
-  ["review", ["шалгаж"]],
+  ["todo", ["Ñ…Ð¸Ð¹Ð³Ð´ÑÑ…", "todo", "task"]],
+  ["progress", ["ÑÐ²Ð°Ð³Ð´Ð°Ð¶", "Ñ…Ð¸Ð¹Ð³Ð´ÑÐ¶", "Ñ…Ð¸Ð¹Ð¶ Ð±Ð°Ð¹Ð½Ð°", "Ð°Ð¶Ð¸Ð»Ð»Ð°Ð¶", "progress", "hiihdej", "in progress"]],
+  ["review", ["ÑˆÐ°Ð»Ð³Ð°Ð³Ð´Ð°Ð¶", "Ñ…ÑÐ½Ð°Ð³Ð´Ð°Ð¶", "review", "changes requested", "shalgagdaj", "shalgah", "hyanagdaj"]],
+  ["done", ["Ð´ÑƒÑƒÑÑÐ°Ð½", "done", "completed", "duussan"]],
+  ["todo", ["Ñ‚Ó©Ð»Ó©Ð²Ð»Ó©Ð³Ð´ÑÓ©Ð½", "Ñ…ÑƒÐ²Ð°Ð°Ñ€Ð¸Ð»ÑÐ°Ð½"]],
+  ["progress", ["Ð³Ò¯Ð¹Ñ†ÑÑ‚Ð³ÑÐ¶"]],
+  ["review", ["ÑˆÐ°Ð»Ð³Ð°Ð¶"]],
 ];
 
 function getStageBucket(stageName?: string | null): StageBucket {
@@ -1079,7 +1261,7 @@ function extractTaskReturnReason(value?: string | false) {
     return "";
   }
 
-  const markerMatch = text.match(/Засвар\s+нэхэж\s+буцаасан\s+шалтгаан\s*:?\s*/i);
+  const markerMatch = text.match(/Ð—Ð°ÑÐ²Ð°Ñ€\s+Ð½ÑÑ…ÑÐ¶\s+Ð±ÑƒÑ†Ð°Ð°ÑÐ°Ð½\s+ÑˆÐ°Ð»Ñ‚Ð³Ð°Ð°Ð½\s*:?\s*/i);
   if (!markerMatch || markerMatch.index === undefined) {
     return "";
   }
@@ -1099,12 +1281,12 @@ function normalizeQuantityUnit(value: string) {
 }
 
 function extractTaskQuantityLines(description: string): QuantityLine[] {
-  const markerIndex = description.toLowerCase().indexOf("тоо хэмжээ");
+  const markerIndex = description.toLowerCase().indexOf("Ñ‚Ð¾Ð¾ Ñ…ÑÐ¼Ð¶ÑÑ");
   if (markerIndex === -1) {
     return [];
   }
 
-  const quantityText = description.slice(markerIndex).replace(/^тоо хэмжээ\s*:?\s*/i, "");
+  const quantityText = description.slice(markerIndex).replace(/^Ñ‚Ð¾Ð¾ Ñ…ÑÐ¼Ð¶ÑÑ\s*:?\s*/i, "");
   const matches = Array.from(
     quantityText.matchAll(/(?:^|\s)(?:\d+\.\s*)?(\d+(?:[.,]\d+)?)\s+([^\d\n]+?)(?=\s+\d+\.|\n|$)/gi),
   );
@@ -1119,7 +1301,7 @@ function extractTaskQuantityLines(description: string): QuantityLine[] {
 
 function extractReportQuantityLines(reportText: string): QuantityLine[] {
   const normalizedText = htmlToPlainText(reportText);
-  const markerMatch = normalizedText.match(/гүйцэтгэсэн\s+хэмжээ\s*:?\s*/i);
+  const markerMatch = normalizedText.match(/Ð³Ò¯Ð¹Ñ†ÑÑ‚Ð³ÑÑÑÐ½\s+Ñ…ÑÐ¼Ð¶ÑÑ\s*:?\s*/i);
   if (!markerMatch || typeof markerMatch.index !== "number") {
     return [];
   }
@@ -1162,7 +1344,7 @@ function buildTaskQuantitySnapshot(task: OdooTaskRecord, reports: OdooReportReco
   if (!plannedLines.length && (task.ops_planned_quantity ?? 0) > 0) {
     plannedLines.push({
       quantity: task.ops_planned_quantity ?? 0,
-      unit: resolveTaskMeasurementUnit(task) || "нэгж",
+      unit: resolveTaskMeasurementUnit(task) || "Ð½ÑÐ³Ð¶",
     });
   }
 
@@ -1257,7 +1439,7 @@ function buildTaskQuantitySnapshot(task: OdooTaskRecord, reports: OdooReportReco
           })
           .join(", ")
       : plannedQuantity > 0
-        ? `${completedQuantity}/${plannedQuantity} ${resolveTaskMeasurementUnit(task) || "нэгж"}`
+        ? `${completedQuantity}/${plannedQuantity} ${resolveTaskMeasurementUnit(task) || "Ð½ÑÐ³Ð¶"}`
         : "",
   };
 }
@@ -1782,7 +1964,7 @@ type OdooNameOptionRecord = {
   parent_id?: OdooRelation;
 };
 
-function relationName(relation: OdooRelation, fallback = "Оноогоогүй") {
+function relationName(relation: OdooRelation, fallback = "ÐžÐ½Ð¾Ð¾Ð³Ð¾Ð¾Ð³Ò¯Ð¹") {
   return Array.isArray(relation) ? relation[1] : fallback;
 }
 
@@ -1859,26 +2041,26 @@ async function loadFleetVehicleRelationOptions(
 
 function resolveHrEmploymentStatus(employee: OdooEmployeeRecord) {
   if (employee.active === false) {
-    return { key: "archived", label: "Архивласан" };
+    return { key: "archived", label: "ÐÑ€Ñ…Ð¸Ð²Ð»Ð°ÑÐ°Ð½" };
   }
 
   const status = employee.x_mn_employment_status || "active";
   const labels: Record<string, string> = {
-    active: "Идэвхтэй",
-    probation: "Туршилт",
-    leave: "Чөлөөтэй",
-    sick: "Өвчтэй",
-    business_trip: "Томилолттой",
-    suspended: "Түдгэлзсэн",
-    terminated: "Чөлөөлөгдсөн",
-    resigned: "Ажлаас гарсан",
-    archived: "Архивласан",
-    rehired: "Дахин авсан",
+    active: "Ð˜Ð´ÑÐ²Ñ…Ñ‚ÑÐ¹",
+    probation: "Ð¢ÑƒÑ€ÑˆÐ¸Ð»Ñ‚",
+    leave: "Ð§Ó©Ð»Ó©Ó©Ñ‚ÑÐ¹",
+    sick: "Ó¨Ð²Ñ‡Ñ‚ÑÐ¹",
+    business_trip: "Ð¢Ð¾Ð¼Ð¸Ð»Ð¾Ð»Ñ‚Ñ‚Ð¾Ð¹",
+    suspended: "Ð¢Ò¯Ð´Ð³ÑÐ»Ð·ÑÑÐ½",
+    terminated: "Ð§Ó©Ð»Ó©Ó©Ð»Ó©Ð³Ð´ÑÓ©Ð½",
+    resigned: "ÐÐ¶Ð»Ð°Ð°Ñ Ð³Ð°Ñ€ÑÐ°Ð½",
+    archived: "ÐÑ€Ñ…Ð¸Ð²Ð»Ð°ÑÐ°Ð½",
+    rehired: "Ð”Ð°Ñ…Ð¸Ð½ Ð°Ð²ÑÐ°Ð½",
   };
 
   return {
     key: status,
-    label: labels[status] ?? "Идэвхтэй",
+    label: labels[status] ?? "Ð˜Ð´ÑÐ²Ñ…Ñ‚ÑÐ¹",
   };
 }
 
@@ -1897,12 +2079,12 @@ function includesAnyToken(value: string, tokens: string[]) {
 
 function isSickHrText(value?: string | false | null) {
   const normalized = normalizeHrStatusText(value);
-  return includesAnyToken(normalized, ["sick", "ill", "medical", "ovch", "emneleg", "өвч", "эмнэл"]);
+  return includesAnyToken(normalized, ["sick", "ill", "medical", "ovch", "emneleg", "Ó©Ð²Ñ‡", "ÑÐ¼Ð½ÑÐ»"]);
 }
 
 function isAbsentHrText(value?: string | false | null) {
   const normalized = normalizeHrStatusText(value);
-  return includesAnyToken(normalized, ["absent", "no show", "tas", "ireegui", "тас", "ирээгүй"]);
+  return includesAnyToken(normalized, ["absent", "no show", "tas", "ireegui", "Ñ‚Ð°Ñ", "Ð¸Ñ€ÑÑÐ³Ò¯Ð¹"]);
 }
 
 function formatOdooDateTimeBoundary(date: Date) {
@@ -1921,9 +2103,9 @@ function getNextDateKey(dateKey: string) {
 
 function resolveHrGenderLabel(value?: string | false) {
   const labels: Record<string, string> = {
-    male: "Эрэгтэй",
-    female: "Эмэгтэй",
-    other: "Бусад",
+    male: "Ð­Ñ€ÑÐ³Ñ‚ÑÐ¹",
+    female: "Ð­Ð¼ÑÐ³Ñ‚ÑÐ¹",
+    other: "Ð‘ÑƒÑÐ°Ð´",
   };
   return value ? (labels[value] ?? value) : "";
 }
@@ -1943,17 +2125,17 @@ function isRepairStatusLabel(value?: string | false) {
     "completed",
     "fixed",
     "cancel",
-    "цуцлагдсан",
-    "дууссан",
-    "баталгаажсан",
+    "Ñ†ÑƒÑ†Ð»Ð°Ð³Ð´ÑÐ°Ð½",
+    "Ð´ÑƒÑƒÑÑÐ°Ð½",
+    "Ð±Ð°Ñ‚Ð°Ð»Ð³Ð°Ð°Ð¶ÑÐ°Ð½",
   ];
   if (resolvedTokens.some((token) => normalized.includes(token))) {
     return false;
   }
 
   return [
-    "засагдаж",
-    "засварт",
+    "Ð·Ð°ÑÐ°Ð³Ð´Ð°Ð¶",
+    "Ð·Ð°ÑÐ²Ð°Ñ€Ñ‚",
     "repair",
     "waiting repair",
     "parts received",
@@ -1963,7 +2145,7 @@ function isRepairStatusLabel(value?: string | false) {
 
 function formatCompactDate(value?: string | false) {
   if (!value) {
-    return "Товлоогүй";
+    return "Ð¢Ð¾Ð²Ð»Ð¾Ð¾Ð³Ò¯Ð¹";
   }
 
   const parsed = new Date(value);
@@ -1993,55 +2175,55 @@ function formatQuantity(value: number, unit: string) {
 }
 
 const STANDARD_UNIT_LABELS: Record<string, string> = {
-  pcs: "Ширхэг",
-  kg: "Кг",
-  tn: "Тн",
-  m: "Метр",
-  km: "Км",
-  m2: "М²",
-  m3: "М³",
-  liter: "Литр",
-  times: "Удаа",
-  point: "Цэг",
-  vehicle: "Машин",
-  tree: "Мод",
+  pcs: "Ð¨Ð¸Ñ€Ñ…ÑÐ³",
+  kg: "ÐšÐ³",
+  tn: "Ð¢Ð½",
+  m: "ÐœÐµÑ‚Ñ€",
+  km: "ÐšÐ¼",
+  m2: "ÐœÂ²",
+  m3: "ÐœÂ³",
+  liter: "Ð›Ð¸Ñ‚Ñ€",
+  times: "Ð£Ð´Ð°Ð°",
+  point: "Ð¦ÑÐ³",
+  vehicle: "ÐœÐ°ÑˆÐ¸Ð½",
+  tree: "ÐœÐ¾Ð´",
 };
 
 const UNIT_CODE_ALIASES: Record<string, string> = {
-  "ширхэг": "pcs",
-  "ш": "pcs",
+  "ÑˆÐ¸Ñ€Ñ…ÑÐ³": "pcs",
+  "Ñˆ": "pcs",
   pcs: "pcs",
   piece: "pcs",
   pieces: "pcs",
-  "кг": "kg",
+  "ÐºÐ³": "kg",
   kg: "kg",
   kilogram: "kg",
-  "тн": "tn",
+  "Ñ‚Ð½": "tn",
   tn: "tn",
   ton: "tn",
-  "метр": "m",
-  "м": "m",
+  "Ð¼ÐµÑ‚Ñ€": "m",
+  "Ð¼": "m",
   m: "m",
-  "км": "km",
+  "ÐºÐ¼": "km",
   km: "km",
-  "м2": "m2",
-  "м²": "m2",
+  "Ð¼2": "m2",
+  "Ð¼Â²": "m2",
   sqm: "m2",
-  "м3": "m3",
-  "м³": "m3",
-  "мкуб": "m3",
+  "Ð¼3": "m3",
+  "Ð¼Â³": "m3",
+  "Ð¼ÐºÑƒÐ±": "m3",
   m3: "m3",
-  "литр": "liter",
-  "л": "liter",
+  "Ð»Ð¸Ñ‚Ñ€": "liter",
+  "Ð»": "liter",
   liter: "liter",
-  "удаа": "times",
-  "рейс": "times",
+  "ÑƒÐ´Ð°Ð°": "times",
+  "Ñ€ÐµÐ¹Ñ": "times",
   times: "times",
-  "цэг": "point",
+  "Ñ†ÑÐ³": "point",
   point: "point",
-  "машин": "vehicle",
+  "Ð¼Ð°ÑˆÐ¸Ð½": "vehicle",
   vehicle: "vehicle",
-  "мод": "tree",
+  "Ð¼Ð¾Ð´": "tree",
   tree: "tree",
 };
 
@@ -2051,8 +2233,8 @@ function normalizeUnitValue(value?: string | false) {
     .trim()
     .toLowerCase()
     .replace(/[.\s_-]+/g, "")
-    .replace("²", "2")
-    .replace("³", "3");
+    .replace("Â²", "2")
+    .replace("Â³", "3");
 }
 
 function resolveUnitCodeFromText(value?: string | false) {
@@ -2068,7 +2250,7 @@ function resolveUnitLabel(
   relation?: OdooRelation,
   code?: string | false,
   legacyValue?: string | false,
-  fallback = "нэгж",
+  fallback = "Ð½ÑÐ³Ð¶",
 ) {
   if (Array.isArray(relation)) {
     return relation[1];
@@ -2086,7 +2268,7 @@ function resolveUnitLabel(
   return fallback;
 }
 
-function resolveTaskMeasurementUnit(task: OdooTaskRecord, fallback = "нэгж") {
+function resolveTaskMeasurementUnit(task: OdooTaskRecord, fallback = "Ð½ÑÐ³Ð¶") {
   return resolveUnitLabel(
     task.ops_measurement_unit_id,
     task.ops_measurement_unit_code,
@@ -2137,10 +2319,10 @@ function inferDepartmentUnitFromText(text: string) {
     return UNKNOWN_DEPARTMENT;
   }
 
-  if (haystack.includes("хог") || haystack.includes("маршрут") || haystack.includes("ачилт")) {
+  if (haystack.includes("Ñ…Ð¾Ð³") || haystack.includes("Ð¼Ð°Ñ€ÑˆÑ€ÑƒÑ‚") || haystack.includes("Ð°Ñ‡Ð¸Ð»Ñ‚")) {
     return WASTE_TRANSPORT_UNIT;
   }
-  if (haystack.includes("авто") || haystack.includes("машин") || haystack.includes("техник")) {
+  if (haystack.includes("Ð°Ð²Ñ‚Ð¾") || haystack.includes("Ð¼Ð°ÑˆÐ¸Ð½") || haystack.includes("Ñ‚ÐµÑ…Ð½Ð¸Ðº")) {
     return AUTO_BASE_UNIT;
   }
 
@@ -2149,19 +2331,19 @@ function inferDepartmentUnitFromText(text: string) {
     return canonicalName;
   }
 
-  if (haystack.includes("мод") || haystack.includes("ногоон") || haystack.includes("зүлэг")) {
-    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
+  if (haystack.includes("Ð¼Ð¾Ð´") || haystack.includes("Ð½Ð¾Ð³Ð¾Ð¾Ð½") || haystack.includes("Ð·Ò¯Ð»ÑÐ³")) {
+    return "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ»Ñ‚ÑÑ";
   }
   if (
-    haystack.includes("зам") ||
-    haystack.includes("талбай") ||
-    haystack.includes("цэвэрлэгээ") ||
-    haystack.includes("гудамж")
+    haystack.includes("Ð·Ð°Ð¼") ||
+    haystack.includes("Ñ‚Ð°Ð»Ð±Ð°Ð¹") ||
+    haystack.includes("Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ") ||
+    haystack.includes("Ð³ÑƒÐ´Ð°Ð¼Ð¶")
   ) {
-    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
+    return "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ»Ñ‚ÑÑ";
   }
-  if (haystack.includes("тохижилт") || haystack.includes("засвар")) {
-    return "Тохижилтын хэлтэс";
+  if (haystack.includes("Ñ‚Ð¾Ñ…Ð¸Ð¶Ð¸Ð»Ñ‚") || haystack.includes("Ð·Ð°ÑÐ²Ð°Ñ€")) {
+    return "Ð¢Ð¾Ñ…Ð¸Ð¶Ð¸Ð»Ñ‚Ñ‹Ð½ Ñ…ÑÐ»Ñ‚ÑÑ";
   }
   return UNKNOWN_DEPARTMENT;
 }
@@ -2171,10 +2353,10 @@ function departmentUnitFromOperationType(operationType?: string | false) {
     return WASTE_TRANSPORT_UNIT;
   }
   if (operationType === "street_cleaning") {
-    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
+    return "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ»Ñ‚ÑÑ";
   }
   if (operationType === "green_maintenance") {
-    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
+    return "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ»Ñ‚ÑÑ";
   }
   return null;
 }
@@ -2187,7 +2369,7 @@ function exactAutoBaseUnitFromDepartmentName(departmentName: string) {
   }
   if (
     normalized === WASTE_TRANSPORT_UNIT.toLowerCase() ||
-    normalized === "хог тээвэрлэлтийн хэлтэс"
+    normalized === "Ñ…Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑÐ»Ñ‚ÑÑ"
   ) {
     return WASTE_TRANSPORT_UNIT;
   }
@@ -2233,13 +2415,13 @@ function normalizeDepartmentUnitName(
 function priorityLabel(priority: string) {
   switch (priority) {
     case "3":
-      return "Яаралтай";
+      return "Ð¯Ð°Ñ€Ð°Ð»Ñ‚Ð°Ð¹";
     case "2":
-      return "Өндөр";
+      return "Ó¨Ð½Ð´Ó©Ñ€";
     case "1":
-      return "Дунд";
+      return "Ð”ÑƒÐ½Ð´";
     default:
-      return "Тогтмол";
+      return "Ð¢Ð¾Ð³Ñ‚Ð¼Ð¾Ð»";
   }
 }
 
@@ -2255,7 +2437,7 @@ function resolveTaskDepartmentName(
 
 function operationTypeLabel(operationType?: string | false) {
   if (!operationType) {
-    return "Ерөнхий ажил";
+    return "Ð•Ñ€Ó©Ð½Ñ…Ð¸Ð¹ Ð°Ð¶Ð¸Ð»";
   }
   return OPERATION_TYPE_LABELS[operationType] ?? operationType;
 }
@@ -2331,16 +2513,16 @@ function reportStateLabel(state?: string | false) {
   switch (String(state || "").toLowerCase()) {
     case "submitted":
     case "under_review":
-      return "Тайлан илгээсэн";
+      return "Ð¢Ð°Ð¹Ð»Ð°Ð½ Ð¸Ð»Ð³ÑÑÑÑÐ½";
     case "returned":
     case "rejected":
-      return "Буцаагдсан";
+      return "Ð‘ÑƒÑ†Ð°Ð°Ð³Ð´ÑÐ°Ð½";
     case "approved":
-      return "Баталгаажсан";
+      return "Ð‘Ð°Ñ‚Ð°Ð»Ð³Ð°Ð°Ð¶ÑÐ°Ð½";
     case "draft":
-      return "Ноорог";
+      return "ÐÐ¾Ð¾Ñ€Ð¾Ð³";
     default:
-      return state ? String(state) : "Тайлан";
+      return state ? String(state) : "Ð¢Ð°Ð¹Ð»Ð°Ð½";
   }
 }
 
@@ -2375,7 +2557,7 @@ function imageDataUrl(value?: string | false) {
 }
 
 function resolveDepartmentLabel(name: string) {
-  return DEPARTMENT_LABELS[name as keyof typeof DEPARTMENT_LABELS] ?? "Ажлын харьяалал";
+  return DEPARTMENT_LABELS[name as keyof typeof DEPARTMENT_LABELS] ?? "ÐÐ¶Ð»Ñ‹Ð½ Ñ…Ð°Ñ€ÑŒÑÐ°Ð»Ð°Ð»";
 }
 
 function resolveDepartmentAccent(name: string) {
@@ -2390,35 +2572,35 @@ function resolveDepartmentIcon(name: string) {
 
   const normalized = name.trim().toLowerCase();
 
-  if (normalized.includes("санхүү")) {
-    return "₮";
+  if (normalized.includes("ÑÐ°Ð½Ñ…Ò¯Ò¯")) {
+    return "â‚®";
   }
 
-  if (normalized.includes("захиргаа") || normalized.includes("удирдлага")) {
-    return "🏢";
+  if (normalized.includes("Ð·Ð°Ñ…Ð¸Ñ€Ð³Ð°Ð°") || normalized.includes("ÑƒÐ´Ð¸Ñ€Ð´Ð»Ð°Ð³Ð°")) {
+    return "ðŸ¢";
   }
 
-  if (normalized.includes("авто") || normalized.includes("машин") || normalized.includes("техник")) {
-    return "🚚";
+  if (normalized.includes("Ð°Ð²Ñ‚Ð¾") || normalized.includes("Ð¼Ð°ÑˆÐ¸Ð½") || normalized.includes("Ñ‚ÐµÑ…Ð½Ð¸Ðº")) {
+    return "ðŸšš";
   }
 
-  if (normalized.includes("хог") || normalized.includes("ачилт") || normalized.includes("маршрут")) {
-    return "♻️";
+  if (normalized.includes("Ñ…Ð¾Ð³") || normalized.includes("Ð°Ñ‡Ð¸Ð»Ñ‚") || normalized.includes("Ð¼Ð°Ñ€ÑˆÑ€ÑƒÑ‚")) {
+    return "â™»ï¸";
   }
 
-  if (normalized.includes("ногоон") || normalized.includes("мод") || normalized.includes("зүлэг")) {
-    return "🌿";
+  if (normalized.includes("Ð½Ð¾Ð³Ð¾Ð¾Ð½") || normalized.includes("Ð¼Ð¾Ð´") || normalized.includes("Ð·Ò¯Ð»ÑÐ³")) {
+    return "ðŸŒ¿";
   }
 
-  if (normalized.includes("зам") || normalized.includes("цэвэрлэгээ") || normalized.includes("гудамж")) {
-    return "🧹";
+  if (normalized.includes("Ð·Ð°Ð¼") || normalized.includes("Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ") || normalized.includes("Ð³ÑƒÐ´Ð°Ð¼Ð¶")) {
+    return "ðŸ§¹";
   }
 
-  if (normalized.includes("тохижилт") || normalized.includes("үйлчилгээ") || normalized.includes("засвар")) {
-    return "🏙️";
+  if (normalized.includes("Ñ‚Ð¾Ñ…Ð¸Ð¶Ð¸Ð»Ñ‚") || normalized.includes("Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑ") || normalized.includes("Ð·Ð°ÑÐ²Ð°Ñ€")) {
+    return "ðŸ™ï¸";
   }
 
-  return "🏢";
+  return "ðŸ¢";
 }
 
 function buildTaskHref(taskId: number, returnTo = "/tasks") {
@@ -2451,7 +2633,7 @@ async function jsonRpc<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`Odoo JSON-RPC хүсэлт HTTP ${response.status} алдаатай дууслаа.`);
+    throw new Error(`Odoo JSON-RPC Ñ…Ò¯ÑÑÐ»Ñ‚ HTTP ${response.status} Ð°Ð»Ð´Ð°Ð°Ñ‚Ð°Ð¹ Ð´ÑƒÑƒÑÐ»Ð°Ð°.`);
   }
 
   const payload = (await response.json()) as {
@@ -2468,7 +2650,7 @@ async function jsonRpc<T>(
     throw new Error(
       payload.error.data?.message ??
         payload.error.message ??
-        "Odoo JSON-RPC алдаа тодорхойгүй байна.",
+        "Odoo JSON-RPC Ð°Ð»Ð´Ð°Ð° Ñ‚Ð¾Ð´Ð¾Ñ€Ñ…Ð¾Ð¹Ð³Ò¯Ð¹ Ð±Ð°Ð¹Ð½Ð°.",
     );
   }
 
@@ -2747,6 +2929,62 @@ async function executeKw<T>(
   kwargs: Record<string, unknown>,
   connection: OdooConnection,
 ) {
+  const readRequest = isOdooReadMethod(method);
+  const cacheableRead = isCacheableOdooReadRequest(model, method, kwargs);
+  const cacheKey = cacheableRead
+    ? getOdooReadRpcCacheKey(uid, model, method, methodArgs, kwargs, connection)
+    : "";
+
+  if (cacheKey) {
+    const cached = odooReadRpcCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value as T;
+    }
+    if (cached) {
+      odooReadRpcCache.delete(cacheKey);
+    }
+
+    const pending = odooReadRpcPendingCache.get(cacheKey);
+    if (pending) {
+      return pending as Promise<T>;
+    }
+  }
+
+  const requestPromise = executeKwUncached<T>(uid, model, method, methodArgs, kwargs, connection)
+    .then((result) => {
+      if (cacheKey) {
+        odooReadRpcCache.set(cacheKey, {
+          value: result,
+          expiresAt: Date.now() + ODOO_READ_RPC_CACHE_TTL_MS,
+        });
+      } else {
+        if (!readRequest) {
+          clearOdooReadCaches(connection);
+        }
+      }
+      return result;
+    })
+    .finally(() => {
+      if (cacheKey) {
+        odooReadRpcPendingCache.delete(cacheKey);
+      }
+    });
+
+  if (cacheKey) {
+    odooReadRpcPendingCache.set(cacheKey, requestPromise);
+  }
+
+  return requestPromise;
+}
+
+async function executeKwUncached<T>(
+  uid: number,
+  model: string,
+  method: string,
+  methodArgs: unknown[],
+  kwargs: Record<string, unknown>,
+  connection: OdooConnection,
+) {
   if (method === "search_read") {
     const [domain = [], positionalFields] = methodArgs as [unknown?, unknown?];
     const fields =
@@ -2868,7 +3106,7 @@ async function searchReadAllWithFieldFallback<T>(
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error(`${model} өгөгдөл уншихад алдаа гарлаа.`);
+  throw lastError instanceof Error ? lastError : new Error(`${model} Ó©Ð³Ó©Ð³Ð´Ó©Ð» ÑƒÐ½ÑˆÐ¸Ñ…Ð°Ð´ Ð°Ð»Ð´Ð°Ð° Ð³Ð°Ñ€Ð»Ð°Ð°.`);
 }
 
 export async function loadHrEmployeeDirectory(
@@ -2909,7 +3147,7 @@ export async function loadHrEmployeeDirectory(
         jobTitle:
           relationName(employee.job_id ?? false, "") ||
           employee.job_title ||
-          "Албан тушаал бүртгээгүй",
+          "ÐÐ»Ð±Ð°Ð½ Ñ‚ÑƒÑˆÐ°Ð°Ð» Ð±Ò¯Ñ€Ñ‚Ð³ÑÑÐ³Ò¯Ð¹",
         workPhone: employee.work_phone || "",
         mobilePhone: employee.mobile_phone || "",
         workEmail: employee.work_email || "",
@@ -3006,7 +3244,32 @@ async function loadTodayHrLeaveRecords(
 export async function loadHrDailyAttendanceSummary(
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<HrDailyAttendanceSummary> {
-  const auth = await authenticateWithFallback(createOdooConnection(connectionOverrides));
+  const requestedConnection = createOdooConnection(connectionOverrides);
+  const cacheKey = getMunicipalSnapshotCacheKey(requestedConnection);
+  const cached = hrDailyAttendanceSummaryCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+  if (cached) {
+    hrDailyAttendanceSummaryCache.delete(cacheKey);
+  }
+
+  const pending = hrDailyAttendanceSummaryPendingCache.get(cacheKey);
+  if (pending) {
+    return pending;
+  }
+
+  const summaryPromise = fetchLiveHrDailyAttendanceSummary(requestedConnection).finally(() => {
+    hrDailyAttendanceSummaryPendingCache.delete(cacheKey);
+  });
+  hrDailyAttendanceSummaryPendingCache.set(cacheKey, summaryPromise);
+  return summaryPromise;
+}
+
+async function fetchLiveHrDailyAttendanceSummary(
+  requestedConnection: OdooConnection,
+): Promise<HrDailyAttendanceSummary> {
+  const auth = await authenticateWithFallback(requestedConnection);
   if (!auth) {
     throw new Error("Odoo authentication failed");
   }
@@ -3083,7 +3346,7 @@ export async function loadHrDailyAttendanceSummary(
       ...leaveEmployeeIds,
     ]);
 
-    return {
+    const summary: HrDailyAttendanceSummary = {
       totalEmployees,
       workingToday: workingEmployeeIds.size,
       absentToday: Math.max(totalEmployees - accountedEmployeeIds.size, 0),
@@ -3092,13 +3355,18 @@ export async function loadHrDailyAttendanceSummary(
       generatedAt: new Date().toISOString(),
       source: "attendance",
     };
+    hrDailyAttendanceSummaryCache.set(getMunicipalSnapshotCacheKey(connection), {
+      value: summary,
+      expiresAt: Date.now() + ODOO_READ_RPC_CACHE_TTL_MS,
+    });
+    return summary;
   }
 
   const fallbackWorking = employees.filter(isWorkingHrStatus).length;
   const fallbackSick = employees.filter((employee) => isSickHrText(employee.x_mn_employment_status)).length;
   const fallbackAbsent = employees.filter((employee) => isAbsentHrText(employee.x_mn_employment_status)).length;
 
-  return {
+  const summary: HrDailyAttendanceSummary = {
     totalEmployees,
     workingToday: fallbackWorking,
     absentToday: fallbackAbsent,
@@ -3107,15 +3375,20 @@ export async function loadHrDailyAttendanceSummary(
     generatedAt: new Date().toISOString(),
     source: employees.length ? "employee_status" : "empty",
   };
+  hrDailyAttendanceSummaryCache.set(getMunicipalSnapshotCacheKey(connection), {
+    value: summary,
+    expiresAt: Date.now() + ODOO_READ_RPC_CACHE_TTL_MS,
+  });
+  return summary;
 }
 
 function resolveFleetFuelTypeLabel(value: string) {
   const labels: Record<string, string> = {
-    gasoline: "Бензин",
-    diesel: "Дизель",
-    electric: "Цахилгаан",
-    hybrid: "Хосолсон",
-    lpg: "Газ",
+    gasoline: "Ð‘ÐµÐ½Ð·Ð¸Ð½",
+    diesel: "Ð”Ð¸Ð·ÐµÐ»ÑŒ",
+    electric: "Ð¦Ð°Ñ…Ð¸Ð»Ð³Ð°Ð°Ð½",
+    hybrid: "Ð¥Ð¾ÑÐ¾Ð»ÑÐ¾Ð½",
+    lpg: "Ð“Ð°Ð·",
   };
   return labels[value] ?? value;
 }
@@ -3213,7 +3486,7 @@ async function loadCrewAssignmentsByVehicle(uid: number, connection: OdooConnect
       );
       const assignment: FleetVehicleCrewAssignment = {
         teamId: team.id,
-        teamName: team.name || `Баг #${team.id}`,
+        teamName: team.name || `Ð‘Ð°Ð³ #${team.id}`,
         operationType: team.operation_type || "",
         driverNames,
         loaderNames,
@@ -3233,41 +3506,41 @@ async function loadCrewAssignmentsByVehicle(uid: number, connection: OdooConnect
 }
 
 const FLEET_OPERATIONAL_STATUS_LABELS: Record<string, string> = {
-  available: "Ажиллаж байгаа",
-  assigned: "Оноогдсон",
-  in_repair: "Засвартай",
-  broken: "Эвдэрсэн",
-  retired: "Ашиглалтаас гарсан",
-  inactive: "Идэвхгүй",
+  available: "ÐÐ¶Ð¸Ð»Ð»Ð°Ð¶ Ð±Ð°Ð¹Ð³Ð°Ð°",
+  assigned: "ÐžÐ½Ð¾Ð¾Ð³Ð´ÑÐ¾Ð½",
+  in_repair: "Ð—Ð°ÑÐ²Ð°Ñ€Ñ‚Ð°Ð¹",
+  broken: "Ð­Ð²Ð´ÑÑ€ÑÑÐ½",
+  retired: "ÐÑˆÐ¸Ð³Ð»Ð°Ð»Ñ‚Ð°Ð°Ñ Ð³Ð°Ñ€ÑÐ°Ð½",
+  inactive: "Ð˜Ð´ÑÐ²Ñ…Ð³Ò¯Ð¹",
 };
 
 const FLEET_IMPORT_STATE_LABELS: Record<string, string> = {
-  success: "Амжилттай",
-  failed: "Алдаатай",
+  success: "ÐÐ¼Ð¶Ð¸Ð»Ñ‚Ñ‚Ð°Ð¹",
+  failed: "ÐÐ»Ð´Ð°Ð°Ñ‚Ð°Ð¹",
 };
 
 const FLEET_REPAIR_STATE_LABELS: Record<string, string> = {
-  new: "Үүссэн",
-  diagnosed: "Оношилсон",
-  waiting_parts: "Сэлбэг хүлээж байна",
-  waiting_approval: "Баталгаа хүлээж байна",
-  approved: "Батлагдсан",
-  in_repair: "Хийгдэж байгаа",
-  done: "Дууссан",
-  vehicle_returned: "Машин буцаасан",
-  cancelled: "Цуцлагдсан",
+  new: "Ò®Ò¯ÑÑÑÐ½",
+  diagnosed: "ÐžÐ½Ð¾ÑˆÐ¸Ð»ÑÐ¾Ð½",
+  waiting_parts: "Ð¡ÑÐ»Ð±ÑÐ³ Ñ…Ò¯Ð»ÑÑÐ¶ Ð±Ð°Ð¹Ð½Ð°",
+  waiting_approval: "Ð‘Ð°Ñ‚Ð°Ð»Ð³Ð°Ð° Ñ…Ò¯Ð»ÑÑÐ¶ Ð±Ð°Ð¹Ð½Ð°",
+  approved: "Ð‘Ð°Ñ‚Ð»Ð°Ð³Ð´ÑÐ°Ð½",
+  in_repair: "Ð¥Ð¸Ð¹Ð³Ð´ÑÐ¶ Ð±Ð°Ð¹Ð³Ð°Ð°",
+  done: "Ð”ÑƒÑƒÑÑÐ°Ð½",
+  vehicle_returned: "ÐœÐ°ÑˆÐ¸Ð½ Ð±ÑƒÑ†Ð°Ð°ÑÐ°Ð½",
+  cancelled: "Ð¦ÑƒÑ†Ð»Ð°Ð³Ð´ÑÐ°Ð½",
 };
 
 const FLEET_PROCUREMENT_STATE_LABELS: Record<string, string> = {
-  draft: "Ноорог",
-  quote: "3 үнийн санал",
-  finance_review: "Санхүүгийн хяналт",
-  director_approval: "Захирлын баталгаа",
-  contract_review: "Гэрээний хяналт",
-  payment: "Төлбөр",
-  received: "Хүлээн авсан",
-  done: "Дууссан",
-  cancelled: "Цуцлагдсан",
+  draft: "ÐÐ¾Ð¾Ñ€Ð¾Ð³",
+  quote: "3 Ò¯Ð½Ð¸Ð¹Ð½ ÑÐ°Ð½Ð°Ð»",
+  finance_review: "Ð¡Ð°Ð½Ñ…Ò¯Ò¯Ð³Ð¸Ð¹Ð½ Ñ…ÑÐ½Ð°Ð»Ñ‚",
+  director_approval: "Ð—Ð°Ñ…Ð¸Ñ€Ð»Ñ‹Ð½ Ð±Ð°Ñ‚Ð°Ð»Ð³Ð°Ð°",
+  contract_review: "Ð“ÑÑ€ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ½Ð°Ð»Ñ‚",
+  payment: "Ð¢Ó©Ð»Ð±Ó©Ñ€",
+  received: "Ð¥Ò¯Ð»ÑÑÐ½ Ð°Ð²ÑÐ°Ð½",
+  done: "Ð”ÑƒÑƒÑÑÐ°Ð½",
+  cancelled: "Ð¦ÑƒÑ†Ð»Ð°Ð³Ð´ÑÐ°Ð½",
 };
 
 function formatMoneyLabel(value?: number) {
@@ -3281,13 +3554,13 @@ function formatMoneyLabel(value?: number) {
 function formatLiters(value?: number) {
   return `${new Intl.NumberFormat("mn-MN", {
     maximumFractionDigits: 1,
-  }).format(value || 0)} л`;
+  }).format(value || 0)} Ð»`;
 }
 
 function formatWeight(value?: number, unit?: string | false) {
-  const normalizedUnit = unit === "ton" ? "тонн" : "кг";
+  const normalizedUnit = unit === "ton" ? "Ñ‚Ð¾Ð½Ð½" : "ÐºÐ³";
   return `${new Intl.NumberFormat("mn-MN", {
-    maximumFractionDigits: normalizedUnit === "тонн" ? 2 : 0,
+    maximumFractionDigits: normalizedUnit === "Ñ‚Ð¾Ð½Ð½" ? 2 : 0,
   }).format(value || 0)} ${normalizedUnit}`;
 }
 
@@ -3362,7 +3635,7 @@ async function loadDriverHistoryByVehicle(
   for (const record of records) {
     appendMapItem(byVehicle, relationId(record.vehicle_id), {
       id: record.id,
-      driverName: relationName(record.driver_id, "Оноогоогүй"),
+      driverName: relationName(record.driver_id, "ÐžÐ½Ð¾Ð¾Ð³Ð¾Ð¾Ð³Ò¯Ð¹"),
       dateStart: formatOptionalCompactDate(record.date_start),
       dateEnd: formatOptionalCompactDate(record.date_end),
       changedBy: relationName(record.changed_by_id ?? false, ""),
@@ -3389,7 +3662,7 @@ async function loadRepairHistoryByVehicle(
   for (const record of records) {
     appendMapItem(byVehicle, relationId(record.vehicle_id), {
       id: record.id,
-      name: record.name || `Засвар #${record.id}`,
+      name: record.name || `Ð—Ð°ÑÐ²Ð°Ñ€ #${record.id}`,
       requestDate: formatOptionalCompactDate(record.request_date),
       dateRange: formatDateRange(record.repair_started_at, record.repair_done_at),
       damageType: record.damage_type || "",
@@ -3424,7 +3697,7 @@ async function loadWeightReportsByVehicle(
       id: record.id,
       reportDate: formatOptionalCompactDate(record.report_date),
       weightLabel: formatWeight(record.weight, record.unit),
-      source: record.source || "Гадны систем",
+      source: record.source || "Ð“Ð°Ð´Ð½Ñ‹ ÑÐ¸ÑÑ‚ÐµÐ¼",
       fetchedAt: formatOptionalCompactDate(record.fetched_at),
       stateLabel: FLEET_IMPORT_STATE_LABELS[String(record.state || "")] || String(record.state || ""),
       errorMessage: record.error_message || "",
@@ -3453,7 +3726,7 @@ async function loadFuelReportsByVehicle(
       reportDate: formatOptionalCompactDate(record.report_date),
       fuelLabel: formatLiters(record.fuel_liters),
       fuelType: record.fuel_type || "",
-      source: record.source || "Гадны систем",
+      source: record.source || "Ð“Ð°Ð´Ð½Ñ‹ ÑÐ¸ÑÑ‚ÐµÐ¼",
       fetchedAt: formatOptionalCompactDate(record.fetched_at),
       stateLabel: FLEET_IMPORT_STATE_LABELS[String(record.state || "")] || String(record.state || ""),
       errorMessage: record.error_message || "",
@@ -3479,7 +3752,7 @@ async function loadProcurementLinksByVehicle(
   for (const record of records) {
     appendMapItem(byVehicle, relationId(record.vehicle_id ?? false), {
       id: record.id,
-      name: record.name || `Худалдан авалт #${record.id}`,
+      name: record.name || `Ð¥ÑƒÐ´Ð°Ð»Ð´Ð°Ð½ Ð°Ð²Ð°Ð»Ñ‚ #${record.id}`,
       repairName: relationName(record.repair_id ?? false, ""),
       amountLabel: formatMoneyLabel(record.amount_total),
       stateLabel: FLEET_PROCUREMENT_STATE_LABELS[String(record.state || "")] || String(record.state || ""),
@@ -3501,7 +3774,7 @@ function isDriverEmployeeRecord(employee: OdooEmployeeRecord) {
   );
 
   return (
-    titleText.includes("жолооч") ||
+    titleText.includes("Ð¶Ð¾Ð»Ð¾Ð¾Ñ‡") ||
     titleText.includes("driver") ||
     titleText.includes("chauffeur")
   );
@@ -3516,7 +3789,7 @@ function isLoaderEmployeeRecord(employee: OdooEmployeeRecord) {
   );
 
   return (
-    titleText.includes("ачигч") ||
+    titleText.includes("Ð°Ñ‡Ð¸Ð³Ñ‡") ||
     titleText.includes("loader")
   );
 }
@@ -3532,7 +3805,7 @@ function toFleetStaffOption(employee: OdooEmployeeRecord): FleetVehicleDriverOpt
     jobTitle:
       relationName(employee.job_id ?? false, "") ||
       employee.job_title ||
-      "Албан тушаал бүртгээгүй",
+      "ÐÐ»Ð±Ð°Ð½ Ñ‚ÑƒÑˆÐ°Ð°Ð» Ð±Ò¯Ñ€Ñ‚Ð³ÑÑÐ³Ò¯Ð¹",
   };
 }
 
@@ -3634,7 +3907,27 @@ async function loadFleetLoaderOptions(
 export async function loadFleetVehicleBoard(
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<FleetVehicleBoard> {
-  const auth = await authenticateWithFallback(createOdooConnection(connectionOverrides));
+  const requestedConnection = createOdooConnection(connectionOverrides);
+  const cachedBoard = readCachedFleetVehicleBoard(requestedConnection);
+  if (cachedBoard) {
+    return cachedBoard;
+  }
+
+  const cacheKey = getMunicipalSnapshotCacheKey(requestedConnection);
+  const pendingBoard = fleetVehicleBoardPendingCache.get(cacheKey);
+  if (pendingBoard) {
+    return pendingBoard;
+  }
+
+  const boardPromise = fetchLiveFleetVehicleBoard(requestedConnection).finally(() => {
+    fleetVehicleBoardPendingCache.delete(cacheKey);
+  });
+  fleetVehicleBoardPendingCache.set(cacheKey, boardPromise);
+  return boardPromise;
+}
+
+async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
+  const auth = await authenticateWithFallback(requestedConnection);
   if (!auth) {
     throw new Error("Odoo authentication failed");
   }
@@ -3705,8 +3998,8 @@ export async function loadFleetVehicleBoard(
 
       return {
         id: vehicle.id,
-        plate: vehicle.license_plate || vehicle.name || `Машин #${vehicle.id}`,
-        name: vehicle.name || vehicle.license_plate || `Машин #${vehicle.id}`,
+        plate: vehicle.license_plate || vehicle.name || `ÐœÐ°ÑˆÐ¸Ð½ #${vehicle.id}`,
+        name: vehicle.name || vehicle.license_plate || `ÐœÐ°ÑˆÐ¸Ð½ #${vehicle.id}`,
         imageUrl: imageDataUrl(vehicle.image_128 || vehicle.avatar_128 || vehicle.image_1920),
         modelId: relationId(vehicle.model_id ?? false),
         modelName: relationName(vehicle.model_id ?? false, ""),
@@ -3721,7 +4014,7 @@ export async function loadFleetVehicleBoard(
         vin: vehicle.vin_sn || "",
         odometerLabel:
           typeof vehicle.odometer === "number" && Number.isFinite(vehicle.odometer)
-            ? `${Math.round(vehicle.odometer).toLocaleString("mn-MN")} км`
+            ? `${Math.round(vehicle.odometer).toLocaleString("mn-MN")} ÐºÐ¼`
             : "",
         odometerValue:
           typeof vehicle.odometer === "number" && Number.isFinite(vehicle.odometer)
@@ -3738,11 +4031,11 @@ export async function loadFleetVehicleBoard(
         loader2Name: relationName(vehicle.municipal_loader_2_id ?? false, ""),
         stateLabel:
           vehicle.active === false
-            ? "Архивласан"
+            ? "ÐÑ€Ñ…Ð¸Ð²Ð»Ð°ÑÐ°Ð½"
             :
           operationalStatusLabel ||
           stateLabel ||
-          (isRepair ? "Засвартай" : isOperational ? "Ажиллаж байгаа" : "Бүртгэлтэй"),
+          (isRepair ? "Ð—Ð°ÑÐ²Ð°Ñ€Ñ‚Ð°Ð¹" : isOperational ? "ÐÐ¶Ð¸Ð»Ð»Ð°Ð¶ Ð±Ð°Ð¹Ð³Ð°Ð°" : "Ð‘Ò¯Ñ€Ñ‚Ð³ÑÐ»Ñ‚ÑÐ¹"),
         operationalStatusKey,
         latestRepairState,
         isOperational,
@@ -3821,7 +4114,7 @@ export async function loadFleetVehicleBoard(
     weightReportResult.records.filter((record) => record.state === "failed").length +
     fuelReportResult.records.filter((record) => record.state === "failed").length;
 
-  return {
+  const board = {
     allVehicles,
     activeVehicles,
     repairVehicles,
@@ -3842,6 +4135,8 @@ export async function loadFleetVehicleBoard(
     mostRepairedVehicle: mostRepairedVehicleId ? vehicleById.get(mostRepairedVehicleId)?.plate ?? "" : "",
     failedImportCount,
   };
+  writeCachedFleetVehicleBoard(connection, board);
+  return board;
 }
 
 export async function executeOdooKw<T>(
@@ -3958,7 +4253,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     resolvedConnection,
     200,
   ).catch((error) => {
-    console.warn("ops.task.report өгөгдөл уншихад алдаа гарлаа:", error);
+    console.warn("ops.task.report Ó©Ð³Ó©Ð³Ð´Ó©Ð» ÑƒÐ½ÑˆÐ¸Ñ…Ð°Ð´ Ð°Ð»Ð´Ð°Ð° Ð³Ð°Ñ€Ð»Ð°Ð°:", error);
     return [] as OdooReportRecord[];
   });
 
@@ -4074,6 +4369,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     return {
       id: project.id,
       name: project.name,
+      managerId: relationId(project.user_id),
       manager: relationName(project.user_id),
       departmentName:
         projectTaskDepartments[0] ??
@@ -4098,6 +4394,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     id: task.id,
     name: task.name,
     departmentName: resolveTaskDepartmentName(task, projectDepartmentById),
+    projectId: Array.isArray(task.project_id) ? task.project_id[0] : null,
     projectName: relationName(task.project_id),
     stageLabel: STAGE_LABELS[taskQuantitySnapshot(task).stageBucket],
     stageBucket: taskQuantitySnapshot(task).stageBucket,
@@ -4107,6 +4404,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     completedQuantity: taskQuantitySnapshot(task).completedQuantity,
     remainingQuantity: taskQuantitySnapshot(task).remainingQuantity,
     measurementUnit: resolveTaskMeasurementUnit(task),
+    leaderId: relationId(task.ops_team_leader_id ?? false),
     leaderName: relationName(task.ops_team_leader_id ?? false),
     priorityLabel: priorityLabel(task.priority || ""),
     progress: taskQuantitySnapshot(task).progress,
@@ -4119,7 +4417,9 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     departmentName: resolveTaskDepartmentName(task, projectDepartmentById),
     stageLabel: relationName(task.stage_id, STAGE_LABELS.review),
     deadline: formatCompactDate(task.date_deadline),
+    projectId: Array.isArray(task.project_id) ? task.project_id[0] : null,
     projectName: relationName(task.project_id),
+    leaderId: relationId(task.ops_team_leader_id ?? false),
     leaderName: relationName(task.ops_team_leader_id ?? false),
     progress: taskQuantitySnapshot(task).progress,
     href: buildTaskHref(task.id, "/review"),
@@ -4161,7 +4461,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         attachmentMap.set(attachment.id, attachment);
       }
     } catch (error) {
-      console.warn("ir.attachment өгөгдөл уншихад алдаа гарлаа:", error);
+      console.warn("ir.attachment Ó©Ð³Ó©Ð³Ð´Ó©Ð» ÑƒÐ½ÑˆÐ¸Ñ…Ð°Ð´ Ð°Ð»Ð´Ð°Ð° Ð³Ð°Ñ€Ð»Ð°Ð°:", error);
     }
   }
 
@@ -4198,7 +4498,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         reportAttachmentIdsByReportId.set(reportId, entry);
       }
     } catch (error) {
-      console.warn("ops.task.report хавсралтын fallback уншихад алдаа гарлаа:", error);
+      console.warn("ops.task.report Ñ…Ð°Ð²ÑÑ€Ð°Ð»Ñ‚Ñ‹Ð½ fallback ÑƒÐ½ÑˆÐ¸Ñ…Ð°Ð´ Ð°Ð»Ð´Ð°Ð° Ð³Ð°Ñ€Ð»Ð°Ð°:", error);
     }
   }
 
@@ -4229,18 +4529,22 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
 
   const reportTaskMap = new Map(tasks.map((task) => [task.id, task]));
   const reportsFeed = reports.map((report) => {
-    const task = Array.isArray(report.task_id) ? reportTaskMap.get(report.task_id[0]) : undefined;
+    const taskId = Array.isArray(report.task_id) ? report.task_id[0] : null;
+    const task = taskId ? reportTaskMap.get(taskId) : undefined;
     const images = buildReportImages(report);
     const audios = buildReportAudios(report);
     return {
       id: report.id,
+      taskId,
+      reporterId: relationId(report.reporter_id),
       reporter: relationName(report.reporter_id),
       taskName: relationName(report.task_id),
       departmentName: task
         ? resolveTaskDepartmentName(task, projectDepartmentById)
-        : "Тодорхойгүй",
-      projectName: task ? relationName(task.project_id) : "Ажилгүй",
-      summary: htmlToPlainText(report.report_summary) || "Тайлбар оруулаагүй",
+        : "Ð¢Ð¾Ð´Ð¾Ñ€Ñ…Ð¾Ð¹Ð³Ò¯Ð¹",
+      projectId: task && Array.isArray(task.project_id) ? task.project_id[0] : null,
+      projectName: task ? relationName(task.project_id) : "ÐÐ¶Ð¸Ð»Ð³Ò¯Ð¹",
+      summary: htmlToPlainText(report.report_summary) || "Ð¢Ð°Ð¹Ð»Ð±Ð°Ñ€ Ð¾Ñ€ÑƒÑƒÐ»Ð°Ð°Ð³Ò¯Ð¹",
       text: htmlToPlainText(report.report_text),
       state: String(report.state || ""),
       stateLabel: reportStateLabel(report.state),
@@ -4362,7 +4666,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         name: task.name,
         departmentName: resolveTaskDepartmentName(task, projectDepartmentById),
         projectId: Array.isArray(task.project_id) ? task.project_id[0] : null,
-        projectName: relationName(task.project_id, "Ажилгүй"),
+        projectName: relationName(task.project_id, "ÐÐ¶Ð¸Ð»Ð³Ò¯Ð¹"),
         stageLabel: STAGE_LABELS[stageBucket],
         stageBucket,
         createdDate: getDateKeyFromValue(task.create_date || null),
@@ -4372,6 +4676,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         deadline: formatCompactDate(task.date_deadline),
         deadlineDateTime: task.date_deadline || null,
         scheduledDate: getDateKeyFromValue(task.mfo_shift_date || task.date_deadline || null),
+        leaderId: relationId(task.ops_team_leader_id ?? false),
         leaderName: relationName(task.ops_team_leader_id ?? false),
         priorityLabel: priorityLabel(task.priority || ""),
         progress: quantitySnapshot.progress,
@@ -4405,7 +4710,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
 
   const teamLeaderMap = new Map<string, TeamLeaderCard>();
   for (const task of tasks) {
-      const leaderName = relationName(task.ops_team_leader_id ?? false, "Оноогоогүй");
+      const leaderName = relationName(task.ops_team_leader_id ?? false, "ÐžÐ½Ð¾Ð¾Ð³Ð¾Ð¾Ð³Ò¯Ð¹");
     const entry = teamLeaderMap.get(leaderName) ?? {
       name: leaderName,
       activeTasks: 0,
@@ -4430,7 +4735,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
   const teamLeaders = Array.from(teamLeaderMap.values())
     .map((leader) => {
       const relatedTasks = tasks.filter(
-        (task) => relationName(task.ops_team_leader_id ?? false, "Оноогоогүй") === leader.name,
+        (task) => relationName(task.ops_team_leader_id ?? false, "ÐžÐ½Ð¾Ð¾Ð³Ð¾Ð¾Ð³Ò¯Ð¹") === leader.name,
       );
       const totalProgress = relatedTasks.reduce(
         (sum, task) => sum + taskQuantitySnapshot(task).progress,
@@ -4463,7 +4768,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       name: task.name,
       departmentName: resolveTaskDepartmentName(task, projectDepartmentById),
       projectName: relationName(task.project_id),
-      routeName: relationName(task.mfo_route_id ?? false, "Маршрутгүй"),
+      routeName: relationName(task.mfo_route_id ?? false, "ÐœÐ°Ñ€ÑˆÑ€ÑƒÑ‚Ð³Ò¯Ð¹"),
       operationTypeLabel: operationTypeLabel(task.mfo_operation_type),
       exceptionCount: task.mfo_quality_exception_count ?? 0,
       unresolvedStopCount: task.mfo_unresolved_stop_count ?? 0,
@@ -4486,53 +4791,53 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     totalTasks,
     metrics: [
       {
-        label: "Идэвхтэй даалгавар",
+        label: "Ð˜Ð´ÑÐ²Ñ…Ñ‚ÑÐ¹ Ð´Ð°Ð°Ð»Ð³Ð°Ð²Ð°Ñ€",
         value: String(activeTasks.length),
-        note: `${overdueTasks.length} нь хугацаа давсан`,
+        note: `${overdueTasks.length} Ð½ÑŒ Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð° Ð´Ð°Ð²ÑÐ°Ð½`,
         tone: overdueTasks.length ? "red" : "slate",
       },
       {
-        label: "Хяналтын дараалал",
+        label: "Ð¥ÑÐ½Ð°Ð»Ñ‚Ñ‹Ð½ Ð´Ð°Ñ€Ð°Ð°Ð»Ð°Ð»",
         value: String(reviewTasks.length),
-        note: "Үйл ажиллагаа хариуцсан менежер баталгаажуулалт хүлээж байна",
+        note: "Ò®Ð¹Ð» Ð°Ð¶Ð¸Ð»Ð»Ð°Ð³Ð°Ð° Ñ…Ð°Ñ€Ð¸ÑƒÑ†ÑÐ°Ð½ Ð¼ÐµÐ½ÐµÐ¶ÐµÑ€ Ð±Ð°Ñ‚Ð°Ð»Ð³Ð°Ð°Ð¶ÑƒÑƒÐ»Ð°Ð»Ñ‚ Ñ…Ò¯Ð»ÑÑÐ¶ Ð±Ð°Ð¹Ð½Ð°",
         tone: "amber",
       },
       {
-        label: "Нийт гүйцэтгэл",
+        label: "ÐÐ¸Ð¹Ñ‚ Ð³Ò¯Ð¹Ñ†ÑÑ‚Ð³ÑÐ»",
         value: `${completionRate}%`,
-        note: `${doneTasks.length}/${totalTasks} даалгавар дууссан`,
+        note: `${doneTasks.length}/${totalTasks} Ð´Ð°Ð°Ð»Ð³Ð°Ð²Ð°Ñ€ Ð´ÑƒÑƒÑÑÐ°Ð½`,
         tone: "teal",
       },
       {
-        label: "Хэмжээний биелэлт",
+        label: "Ð¥ÑÐ¼Ð¶ÑÑÐ½Ð¸Ð¹ Ð±Ð¸ÐµÐ»ÑÐ»Ñ‚",
         value: completedQuantitySummary,
-        note: "Стандарт нэгжийн кодоор нэгтгэсэн",
+        note: "Ð¡Ñ‚Ð°Ð½Ð´Ð°Ñ€Ñ‚ Ð½ÑÐ³Ð¶Ð¸Ð¹Ð½ ÐºÐ¾Ð´Ð¾Ð¾Ñ€ Ð½ÑÐ³Ñ‚Ð³ÑÑÑÐ½",
         tone: "slate",
       },
     ],
     qualityMetrics: [
       {
-        label: "Чанарын анхааруулга",
+        label: "Ð§Ð°Ð½Ð°Ñ€Ñ‹Ð½ Ð°Ð½Ñ…Ð°Ð°Ñ€ÑƒÑƒÐ»Ð³Ð°",
         value: String(qualitySourceTasks.length),
-        note: "Талбарын гүйцэтгэл дээр засах шаардлагатай даалгавар",
+        note: "Ð¢Ð°Ð»Ð±Ð°Ñ€Ñ‹Ð½ Ð³Ò¯Ð¹Ñ†ÑÑ‚Ð³ÑÐ» Ð´ÑÑÑ€ Ð·Ð°ÑÐ°Ñ… ÑˆÐ°Ð°Ñ€Ð´Ð»Ð°Ð³Ð°Ñ‚Ð°Ð¹ Ð´Ð°Ð°Ð»Ð³Ð°Ð²Ð°Ñ€",
         tone: qualitySourceTasks.length ? "red" : "teal",
       },
       {
-        label: "Зураг дутсан даалгавар",
+        label: "Ð—ÑƒÑ€Ð°Ð³ Ð´ÑƒÑ‚ÑÐ°Ð½ Ð´Ð°Ð°Ð»Ð³Ð°Ð²Ð°Ñ€",
         value: String(missingProofTasks.length),
-        note: "Өмнө, дараах зураг бүрэн биш",
+        note: "Ó¨Ð¼Ð½Ó©, Ð´Ð°Ñ€Ð°Ð°Ñ… Ð·ÑƒÑ€Ð°Ð³ Ð±Ò¯Ñ€ÑÐ½ Ð±Ð¸Ñˆ",
         tone: missingProofTasks.length ? "amber" : "teal",
       },
       {
-        label: "Синк анхааруулга",
+        label: "Ð¡Ð¸Ð½Ðº Ð°Ð½Ñ…Ð°Ð°Ñ€ÑƒÑƒÐ»Ð³Ð°",
         value: String(syncWarningTasks.length),
-        note: "WRS эсвэл жингийн өгөгдөл бүрэн биш",
+        note: "WRS ÑÑÐ²ÑÐ» Ð¶Ð¸Ð½Ð³Ð¸Ð¹Ð½ Ó©Ð³Ó©Ð³Ð´Ó©Ð» Ð±Ò¯Ñ€ÑÐ½ Ð±Ð¸Ñˆ",
         tone: syncWarningTasks.length ? "red" : "slate",
       },
       {
-        label: "Маршрутын зөрүү",
+        label: "ÐœÐ°Ñ€ÑˆÑ€ÑƒÑ‚Ñ‹Ð½ Ð·Ó©Ñ€Ò¯Ò¯",
         value: String(deviationTasks.length),
-        note: `${unresolvedQualityTasks.length} даалгавар нээлттэй цэгтэй`,
+        note: `${unresolvedQualityTasks.length} Ð´Ð°Ð°Ð»Ð³Ð°Ð²Ð°Ñ€ Ð½ÑÑÐ»Ñ‚Ñ‚ÑÐ¹ Ñ†ÑÐ³Ñ‚ÑÐ¹`,
         tone: deviationTasks.length ? "amber" : "slate",
       },
     ],
@@ -4561,53 +4866,53 @@ function fallbackSnapshot(): DashboardSnapshot {
     totalTasks: 28,
     metrics: [
       {
-        label: "Идэвхтэй даалгавар",
+        label: "Ð˜Ð´ÑÐ²Ñ…Ñ‚ÑÐ¹ Ð´Ð°Ð°Ð»Ð³Ð°Ð²Ð°Ñ€",
         value: "18",
-        note: "3 нь хугацаа давсан",
+        note: "3 Ð½ÑŒ Ñ…ÑƒÐ³Ð°Ñ†Ð°Ð° Ð´Ð°Ð²ÑÐ°Ð½",
         tone: "red",
       },
       {
-        label: "Хяналтын дараалал",
+        label: "Ð¥ÑÐ½Ð°Ð»Ñ‚Ñ‹Ð½ Ð´Ð°Ñ€Ð°Ð°Ð»Ð°Ð»",
         value: "4",
-        note: "Үйл ажиллагаа хариуцсан менежер шалгаж байна",
+        note: "Ò®Ð¹Ð» Ð°Ð¶Ð¸Ð»Ð»Ð°Ð³Ð°Ð° Ñ…Ð°Ñ€Ð¸ÑƒÑ†ÑÐ°Ð½ Ð¼ÐµÐ½ÐµÐ¶ÐµÑ€ ÑˆÐ°Ð»Ð³Ð°Ð¶ Ð±Ð°Ð¹Ð½Ð°",
         tone: "amber",
       },
       {
-        label: "Нийт гүйцэтгэл",
+        label: "ÐÐ¸Ð¹Ñ‚ Ð³Ò¯Ð¹Ñ†ÑÑ‚Ð³ÑÐ»",
         value: "64%",
-        note: "18/28 даалгавар дээр ахиц бүртгэгдсэн",
+        note: "18/28 Ð´Ð°Ð°Ð»Ð³Ð°Ð²Ð°Ñ€ Ð´ÑÑÑ€ Ð°Ñ…Ð¸Ñ† Ð±Ò¯Ñ€Ñ‚Ð³ÑÐ³Ð´ÑÑÐ½",
         tone: "teal",
       },
       {
-        label: "Хэмжээний биелэлт",
-        value: "713 мод",
-        note: "Өнөөдрийн тайлангаас автоматаар тооцсон",
+        label: "Ð¥ÑÐ¼Ð¶ÑÑÐ½Ð¸Ð¹ Ð±Ð¸ÐµÐ»ÑÐ»Ñ‚",
+        value: "713 Ð¼Ð¾Ð´",
+        note: "Ó¨Ð½Ó©Ó©Ð´Ñ€Ð¸Ð¹Ð½ Ñ‚Ð°Ð¹Ð»Ð°Ð½Ð³Ð°Ð°Ñ Ð°Ð²Ñ‚Ð¾Ð¼Ð°Ñ‚Ð°Ð°Ñ€ Ñ‚Ð¾Ð¾Ñ†ÑÐ¾Ð½",
         tone: "slate",
       },
     ],
     qualityMetrics: [
       {
-        label: "Чанарын анхааруулга",
+        label: "Ð§Ð°Ð½Ð°Ñ€Ñ‹Ð½ Ð°Ð½Ñ…Ð°Ð°Ñ€ÑƒÑƒÐ»Ð³Ð°",
         value: "5",
-        note: "Талбарын гүйцэтгэл дээр дахин хянах даалгавар",
+        note: "Ð¢Ð°Ð»Ð±Ð°Ñ€Ñ‹Ð½ Ð³Ò¯Ð¹Ñ†ÑÑ‚Ð³ÑÐ» Ð´ÑÑÑ€ Ð´Ð°Ñ…Ð¸Ð½ Ñ…ÑÐ½Ð°Ñ… Ð´Ð°Ð°Ð»Ð³Ð°Ð²Ð°Ñ€",
         tone: "red",
       },
       {
-        label: "Зураг дутсан даалгавар",
+        label: "Ð—ÑƒÑ€Ð°Ð³ Ð´ÑƒÑ‚ÑÐ°Ð½ Ð´Ð°Ð°Ð»Ð³Ð°Ð²Ð°Ñ€",
         value: "2",
-        note: "Өмнө эсвэл дараах зураг бүрэн биш",
+        note: "Ó¨Ð¼Ð½Ó© ÑÑÐ²ÑÐ» Ð´Ð°Ñ€Ð°Ð°Ñ… Ð·ÑƒÑ€Ð°Ð³ Ð±Ò¯Ñ€ÑÐ½ Ð±Ð¸Ñˆ",
         tone: "amber",
       },
       {
-        label: "Синк анхааруулга",
+        label: "Ð¡Ð¸Ð½Ðº Ð°Ð½Ñ…Ð°Ð°Ñ€ÑƒÑƒÐ»Ð³Ð°",
         value: "1",
-        note: "Жингийн синкийг нягтлах шаардлагатай",
+        note: "Ð–Ð¸Ð½Ð³Ð¸Ð¹Ð½ ÑÐ¸Ð½ÐºÐ¸Ð¹Ð³ Ð½ÑÐ³Ñ‚Ð»Ð°Ñ… ÑˆÐ°Ð°Ñ€Ð´Ð»Ð°Ð³Ð°Ñ‚Ð°Ð¹",
         tone: "red",
       },
       {
-        label: "Маршрутын зөрүү",
+        label: "ÐœÐ°Ñ€ÑˆÑ€ÑƒÑ‚Ñ‹Ð½ Ð·Ó©Ñ€Ò¯Ò¯",
         value: "2",
-        note: "Зөрүү эсвэл хаагдаагүй цэг илэрсэн",
+        note: "Ð—Ó©Ñ€Ò¯Ò¯ ÑÑÐ²ÑÐ» Ñ…Ð°Ð°Ð³Ð´Ð°Ð°Ð³Ò¯Ð¹ Ñ†ÑÐ³ Ð¸Ð»ÑÑ€ÑÑÐ½",
         tone: "amber",
       },
     ],
@@ -4623,127 +4928,127 @@ function fallbackSnapshot(): DashboardSnapshot {
     projects: [
       {
         id: 1,
-        name: "2026 Мод хэлбэржүүлэлтийн хуваарь",
+        name: "2026 ÐœÐ¾Ð´ Ñ…ÑÐ»Ð±ÑÑ€Ð¶Ò¯Ò¯Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑƒÐ²Ð°Ð°Ñ€ÑŒ",
         manager: "BATAA",
-        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
-      stageLabel: "Хянагдаж буй ажил",
+        departmentName: "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ»Ñ‚ÑÑ",
+      stageLabel: "Ð¥ÑÐ½Ð°Ð³Ð´Ð°Ð¶ Ð±ÑƒÐ¹ Ð°Ð¶Ð¸Ð»",
         stageBucket: "review",
         openTasks: 14,
         completion: 71,
-        deadline: "4-р сарын 20, 18:00",
+        deadline: "4-Ñ€ ÑÐ°Ñ€Ñ‹Ð½ 20, 18:00",
         href: "/projects/1",
       },
       {
         id: 2,
-        name: "Хог тээвэрлэлтийн өглөөний маршрут",
+        name: "Ð¥Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ó©Ð³Ð»Ó©Ó©Ð½Ð¸Ð¹ Ð¼Ð°Ñ€ÑˆÑ€ÑƒÑ‚",
         manager: "ankhaa",
-        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
-        stageLabel: "Явагдаж буй ажил",
+        departmentName: "ÐÐ²Ñ‚Ð¾ Ð±Ð°Ð°Ð·, Ñ…Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑÐ»Ñ‚ÑÑ",
+        stageLabel: "Ð¯Ð²Ð°Ð³Ð´Ð°Ð¶ Ð±ÑƒÐ¹ Ð°Ð¶Ð¸Ð»",
         stageBucket: "progress",
         openTasks: 5,
         completion: 62,
-        deadline: "Өнөөдөр 20:00",
+        deadline: "Ó¨Ð½Ó©Ó©Ð´Ó©Ñ€ 20:00",
         href: "/projects/2",
       },
       {
         id: 3,
-        name: "Зам талбайн шөнийн цэвэрлэгээ",
+        name: "Ð—Ð°Ð¼ Ñ‚Ð°Ð»Ð±Ð°Ð¹Ð½ ÑˆÓ©Ð½Ð¸Ð¹Ð½ Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ",
         manager: "ankhaa",
-        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
-        stageLabel: "Хийгдэх ажил",
+        departmentName: "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ»Ñ‚ÑÑ",
+        stageLabel: "Ð¥Ð¸Ð¹Ð³Ð´ÑÑ… Ð°Ð¶Ð¸Ð»",
         stageBucket: "todo",
         openTasks: 6,
         completion: 35,
-        deadline: "4-р сарын 17, 06:00",
+        deadline: "4-Ñ€ ÑÐ°Ñ€Ñ‹Ð½ 17, 06:00",
         href: "/projects/3",
       },
     ],
     taskDirectory: [
       {
         id: 201,
-        name: "5-р хороо - 32 модны тайлан",
-        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
-        projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
-      stageLabel: "Хянагдаж буй ажил",
+        name: "5-Ñ€ Ñ…Ð¾Ñ€Ð¾Ð¾ - 32 Ð¼Ð¾Ð´Ð½Ñ‹ Ñ‚Ð°Ð¹Ð»Ð°Ð½",
+        departmentName: "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ»Ñ‚ÑÑ",
+        projectName: "2026 ÐœÐ¾Ð´ Ñ…ÑÐ»Ð±ÑÑ€Ð¶Ò¯Ò¯Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑƒÐ²Ð°Ð°Ñ€ÑŒ",
+      stageLabel: "Ð¥ÑÐ½Ð°Ð³Ð´Ð°Ð¶ Ð±ÑƒÐ¹ Ð°Ð¶Ð¸Ð»",
         stageBucket: "review",
         statusKey: "review",
-        statusLabel: "Шалгаж байна",
-        deadline: "Өнөөдөр 16:30",
+        statusLabel: "Ð¨Ð°Ð»Ð³Ð°Ð¶ Ð±Ð°Ð¹Ð½Ð°",
+        deadline: "Ó¨Ð½Ó©Ó©Ð´Ó©Ñ€ 16:30",
         scheduledDate: todayDateKey,
         leaderName: "suldee",
-        priorityLabel: "Өндөр",
+        priorityLabel: "Ó¨Ð½Ð´Ó©Ñ€",
         progress: 100,
         plannedQuantity: 32,
         completedQuantity: 32,
         remainingQuantity: 0,
-        measurementUnit: "мод",
-        operationTypeLabel: "Ерөнхий ажил",
+        measurementUnit: "Ð¼Ð¾Ð´",
+        operationTypeLabel: "Ð•Ñ€Ó©Ð½Ñ…Ð¸Ð¹ Ð°Ð¶Ð¸Ð»",
         issueFlag: false,
         href: buildTaskHref(201, "/tasks"),
       },
       {
         id: 202,
-        name: "Хог тээврийн 2-р маршрут",
-        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
-        projectName: "Хог тээвэрлэлтийн өглөөний маршрут",
-        stageLabel: "Явагдаж буй ажил",
+        name: "Ð¥Ð¾Ð³ Ñ‚ÑÑÐ²Ñ€Ð¸Ð¹Ð½ 2-Ñ€ Ð¼Ð°Ñ€ÑˆÑ€ÑƒÑ‚",
+        departmentName: "ÐÐ²Ñ‚Ð¾ Ð±Ð°Ð°Ð·, Ñ…Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑÐ»Ñ‚ÑÑ",
+        projectName: "Ð¥Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ó©Ð³Ð»Ó©Ó©Ð½Ð¸Ð¹ Ð¼Ð°Ñ€ÑˆÑ€ÑƒÑ‚",
+        stageLabel: "Ð¯Ð²Ð°Ð³Ð´Ð°Ð¶ Ð±ÑƒÐ¹ Ð°Ð¶Ð¸Ð»",
         stageBucket: "progress",
         statusKey: "problem",
-        statusLabel: "Асуудалтай",
-        deadline: "Өнөөдөр 19:00",
+        statusLabel: "ÐÑÑƒÑƒÐ´Ð°Ð»Ñ‚Ð°Ð¹",
+        deadline: "Ó¨Ð½Ó©Ó©Ð´Ó©Ñ€ 19:00",
         scheduledDate: todayDateKey,
         leaderName: "sarangerel",
-        priorityLabel: "Яаралтай",
+        priorityLabel: "Ð¯Ð°Ñ€Ð°Ð»Ñ‚Ð°Ð¹",
         progress: 88,
         plannedQuantity: 5,
         completedQuantity: 4,
         remainingQuantity: 1,
-        measurementUnit: "ачилт",
-        operationTypeLabel: "Хог цуглуулалт",
+        measurementUnit: "Ð°Ñ‡Ð¸Ð»Ñ‚",
+        operationTypeLabel: "Ð¥Ð¾Ð³ Ñ†ÑƒÐ³Ð»ÑƒÑƒÐ»Ð°Ð»Ñ‚",
         issueFlag: true,
         href: buildTaskHref(202, "/tasks"),
       },
       {
         id: 102,
-        name: "7-р хороо - Төв замын захын цэвэрлэгээ",
-        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
-        projectName: "Зам талбайн шөнийн цэвэрлэгээ",
-        stageLabel: "Хийгдэх ажил",
+        name: "7-Ñ€ Ñ…Ð¾Ñ€Ð¾Ð¾ - Ð¢Ó©Ð² Ð·Ð°Ð¼Ñ‹Ð½ Ð·Ð°Ñ…Ñ‹Ð½ Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ",
+        departmentName: "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ»Ñ‚ÑÑ",
+        projectName: "Ð—Ð°Ð¼ Ñ‚Ð°Ð»Ð±Ð°Ð¹Ð½ ÑˆÓ©Ð½Ð¸Ð¹Ð½ Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ",
+        stageLabel: "Ð¥Ð¸Ð¹Ð³Ð´ÑÑ… Ð°Ð¶Ð¸Ð»",
         stageBucket: "todo",
         statusKey: "planned",
-        statusLabel: "Төлөвлөгдсөн",
-        deadline: "Маргааш 06:00",
+        statusLabel: "Ð¢Ó©Ð»Ó©Ð²Ð»Ó©Ð³Ð´ÑÓ©Ð½",
+        deadline: "ÐœÐ°Ñ€Ð³Ð°Ð°Ñˆ 06:00",
         scheduledDate: tomorrowDateKey,
         leaderName: "temuulen",
-        priorityLabel: "Яаралтай",
+        priorityLabel: "Ð¯Ð°Ñ€Ð°Ð»Ñ‚Ð°Ð¹",
         progress: 0,
         plannedQuantity: 12,
         completedQuantity: 0,
         remainingQuantity: 12,
-        measurementUnit: "км²",
-        operationTypeLabel: "Гудамж цэвэрлэгээ",
+        measurementUnit: "ÐºÐ¼Â²",
+        operationTypeLabel: "Ð“ÑƒÐ´Ð°Ð¼Ð¶ Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ",
         issueFlag: false,
         href: buildTaskHref(102, "/tasks"),
       },
       {
         id: 103,
-        name: "Авто бааз - 3 машинд урсгал үйлчилгээ",
-        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
-        projectName: "Техникийн өдөр тутмын бэлэн байдал",
-        stageLabel: "Явагдаж буй ажил",
+        name: "ÐÐ²Ñ‚Ð¾ Ð±Ð°Ð°Ð· - 3 Ð¼Ð°ÑˆÐ¸Ð½Ð´ ÑƒÑ€ÑÐ³Ð°Ð» Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑ",
+        departmentName: "ÐÐ²Ñ‚Ð¾ Ð±Ð°Ð°Ð·, Ñ…Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑÐ»Ñ‚ÑÑ",
+        projectName: "Ð¢ÐµÑ…Ð½Ð¸ÐºÐ¸Ð¹Ð½ Ó©Ð´Ó©Ñ€ Ñ‚ÑƒÑ‚Ð¼Ñ‹Ð½ Ð±ÑÐ»ÑÐ½ Ð±Ð°Ð¹Ð´Ð°Ð»",
+        stageLabel: "Ð¯Ð²Ð°Ð³Ð´Ð°Ð¶ Ð±ÑƒÐ¹ Ð°Ð¶Ð¸Ð»",
         stageBucket: "progress",
         statusKey: "working",
-        statusLabel: "Ажиллаж байна",
-        deadline: "Өнөөдөр 17:30",
+        statusLabel: "ÐÐ¶Ð¸Ð»Ð»Ð°Ð¶ Ð±Ð°Ð¹Ð½Ð°",
+        deadline: "Ó¨Ð½Ó©Ó©Ð´Ó©Ñ€ 17:30",
         scheduledDate: todayDateKey,
         leaderName: "bold",
-        priorityLabel: "Дунд",
+        priorityLabel: "Ð”ÑƒÐ½Ð´",
         progress: 33,
         plannedQuantity: 3,
         completedQuantity: 1,
         remainingQuantity: 2,
-        measurementUnit: "машин",
-        operationTypeLabel: "Ерөнхий ажил",
+        measurementUnit: "Ð¼Ð°ÑˆÐ¸Ð½",
+        operationTypeLabel: "Ð•Ñ€Ó©Ð½Ñ…Ð¸Ð¹ Ð°Ð¶Ð¸Ð»",
         issueFlag: false,
         href: buildTaskHref(103, "/tasks"),
       },
@@ -4751,55 +5056,55 @@ function fallbackSnapshot(): DashboardSnapshot {
     liveTasks: [
       {
         id: 101,
-        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
-        name: "1-р хороо - 20-р байрны ар тал",
-        projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
-        stageLabel: "Явагдаж буй ажил",
+        departmentName: "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ»Ñ‚ÑÑ",
+        name: "1-Ñ€ Ñ…Ð¾Ñ€Ð¾Ð¾ - 20-Ñ€ Ð±Ð°Ð¹Ñ€Ð½Ñ‹ Ð°Ñ€ Ñ‚Ð°Ð»",
+        projectName: "2026 ÐœÐ¾Ð´ Ñ…ÑÐ»Ð±ÑÑ€Ð¶Ò¯Ò¯Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑƒÐ²Ð°Ð°Ñ€ÑŒ",
+        stageLabel: "Ð¯Ð²Ð°Ð³Ð´Ð°Ð¶ Ð±ÑƒÐ¹ Ð°Ð¶Ð¸Ð»",
         stageBucket: "progress",
-        deadline: "Өнөөдөр 18:00",
+        deadline: "Ó¨Ð½Ó©Ó©Ð´Ó©Ñ€ 18:00",
         scheduledDate: todayDateKey,
         plannedQuantity: 48,
         completedQuantity: 21,
         remainingQuantity: 27,
-        measurementUnit: "мод",
+        measurementUnit: "Ð¼Ð¾Ð´",
         leaderName: "suldee",
-        priorityLabel: "Өндөр",
+        priorityLabel: "Ó¨Ð½Ð´Ó©Ñ€",
         progress: 44,
         href: buildTaskHref(101, "/tasks"),
       },
       {
         id: 102,
-        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
-        name: "7-р хороо - Төв замын захын цэвэрлэгээ",
-        projectName: "Зам талбайн шөнийн цэвэрлэгээ",
-        stageLabel: "Хийгдэх ажил",
+        departmentName: "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ»Ñ‚ÑÑ",
+        name: "7-Ñ€ Ñ…Ð¾Ñ€Ð¾Ð¾ - Ð¢Ó©Ð² Ð·Ð°Ð¼Ñ‹Ð½ Ð·Ð°Ñ…Ñ‹Ð½ Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ",
+        projectName: "Ð—Ð°Ð¼ Ñ‚Ð°Ð»Ð±Ð°Ð¹Ð½ ÑˆÓ©Ð½Ð¸Ð¹Ð½ Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ",
+        stageLabel: "Ð¥Ð¸Ð¹Ð³Ð´ÑÑ… Ð°Ð¶Ð¸Ð»",
         stageBucket: "todo",
-        deadline: "Маргааш 06:00",
+        deadline: "ÐœÐ°Ñ€Ð³Ð°Ð°Ñˆ 06:00",
         scheduledDate: tomorrowDateKey,
         plannedQuantity: 12,
         completedQuantity: 0,
         remainingQuantity: 12,
-        measurementUnit: "км²",
+        measurementUnit: "ÐºÐ¼Â²",
         leaderName: "temuulen",
-        priorityLabel: "Яаралтай",
+        priorityLabel: "Ð¯Ð°Ñ€Ð°Ð»Ñ‚Ð°Ð¹",
         progress: 0,
         href: buildTaskHref(102, "/tasks"),
       },
       {
         id: 103,
-        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
-        name: "Авто бааз - 3 машинд урсгал үйлчилгээ",
-        projectName: "Техникийн өдөр тутмын бэлэн байдал",
-        stageLabel: "Явагдаж буй ажил",
+        departmentName: "ÐÐ²Ñ‚Ð¾ Ð±Ð°Ð°Ð·, Ñ…Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑÐ»Ñ‚ÑÑ",
+        name: "ÐÐ²Ñ‚Ð¾ Ð±Ð°Ð°Ð· - 3 Ð¼Ð°ÑˆÐ¸Ð½Ð´ ÑƒÑ€ÑÐ³Ð°Ð» Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑ",
+        projectName: "Ð¢ÐµÑ…Ð½Ð¸ÐºÐ¸Ð¹Ð½ Ó©Ð´Ó©Ñ€ Ñ‚ÑƒÑ‚Ð¼Ñ‹Ð½ Ð±ÑÐ»ÑÐ½ Ð±Ð°Ð¹Ð´Ð°Ð»",
+        stageLabel: "Ð¯Ð²Ð°Ð³Ð´Ð°Ð¶ Ð±ÑƒÐ¹ Ð°Ð¶Ð¸Ð»",
         stageBucket: "progress",
-        deadline: "Өнөөдөр 17:30",
+        deadline: "Ó¨Ð½Ó©Ó©Ð´Ó©Ñ€ 17:30",
         scheduledDate: todayDateKey,
         plannedQuantity: 3,
         completedQuantity: 1,
         remainingQuantity: 2,
-        measurementUnit: "машин",
+        measurementUnit: "Ð¼Ð°ÑˆÐ¸Ð½",
         leaderName: "bold",
-        priorityLabel: "Дунд",
+        priorityLabel: "Ð”ÑƒÐ½Ð´",
         progress: 33,
         href: buildTaskHref(103, "/tasks"),
       },
@@ -4807,22 +5112,22 @@ function fallbackSnapshot(): DashboardSnapshot {
     reviewQueue: [
         {
           id: 201,
-          name: "5-р хороо - 32 модны тайлан",
-          departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
-      stageLabel: "Хянагдаж буй ажил",
-          deadline: "Өнөөдөр 16:30",
-          projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
+          name: "5-Ñ€ Ñ…Ð¾Ñ€Ð¾Ð¾ - 32 Ð¼Ð¾Ð´Ð½Ñ‹ Ñ‚Ð°Ð¹Ð»Ð°Ð½",
+          departmentName: "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ»Ñ‚ÑÑ",
+      stageLabel: "Ð¥ÑÐ½Ð°Ð³Ð´Ð°Ð¶ Ð±ÑƒÐ¹ Ð°Ð¶Ð¸Ð»",
+          deadline: "Ó¨Ð½Ó©Ó©Ð´Ó©Ñ€ 16:30",
+          projectName: "2026 ÐœÐ¾Ð´ Ñ…ÑÐ»Ð±ÑÑ€Ð¶Ò¯Ò¯Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑƒÐ²Ð°Ð°Ñ€ÑŒ",
           leaderName: "suldee",
           progress: 100,
         href: buildTaskHref(201, "/review"),
       },
         {
           id: 202,
-          name: "Хог тээврийн 2-р маршрут",
-          departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
-      stageLabel: "Хянагдаж буй ажил",
-          deadline: "Өнөөдөр 19:00",
-          projectName: "Хог тээвэрлэлтийн өглөөний маршрут",
+          name: "Ð¥Ð¾Ð³ Ñ‚ÑÑÐ²Ñ€Ð¸Ð¹Ð½ 2-Ñ€ Ð¼Ð°Ñ€ÑˆÑ€ÑƒÑ‚",
+          departmentName: "ÐÐ²Ñ‚Ð¾ Ð±Ð°Ð°Ð·, Ñ…Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑÐ»Ñ‚ÑÑ",
+      stageLabel: "Ð¥ÑÐ½Ð°Ð³Ð´Ð°Ð¶ Ð±ÑƒÐ¹ Ð°Ð¶Ð¸Ð»",
+          deadline: "Ó¨Ð½Ó©Ó©Ð´Ó©Ñ€ 19:00",
+          projectName: "Ð¥Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ó©Ð³Ð»Ó©Ó©Ð½Ð¸Ð¹ Ð¼Ð°Ñ€ÑˆÑ€ÑƒÑ‚",
           leaderName: "sarangerel",
           progress: 88,
         href: buildTaskHref(202, "/review"),
@@ -4831,11 +5136,11 @@ function fallbackSnapshot(): DashboardSnapshot {
     qualityAlerts: [
       {
         id: 401,
-        name: "Хогийн 2-р маршрут",
-        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
-        projectName: "Өглөөний хог тээврийн маршрут",
-        routeName: "2-р чиглэл",
-        operationTypeLabel: "Хог цуглуулалт",
+        name: "Ð¥Ð¾Ð³Ð¸Ð¹Ð½ 2-Ñ€ Ð¼Ð°Ñ€ÑˆÑ€ÑƒÑ‚",
+        departmentName: "ÐÐ²Ñ‚Ð¾ Ð±Ð°Ð°Ð·, Ñ…Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑÐ»Ñ‚ÑÑ",
+        projectName: "Ó¨Ð³Ð»Ó©Ó©Ð½Ð¸Ð¹ Ñ…Ð¾Ð³ Ñ‚ÑÑÐ²Ñ€Ð¸Ð¹Ð½ Ð¼Ð°Ñ€ÑˆÑ€ÑƒÑ‚",
+        routeName: "2-Ñ€ Ñ‡Ð¸Ð³Ð»ÑÐ»",
+        operationTypeLabel: "Ð¥Ð¾Ð³ Ñ†ÑƒÐ³Ð»ÑƒÑƒÐ»Ð°Ð»Ñ‚",
         exceptionCount: 3,
         unresolvedStopCount: 1,
         missingProofStopCount: 1,
@@ -4846,11 +5151,11 @@ function fallbackSnapshot(): DashboardSnapshot {
       },
       {
         id: 402,
-        name: "Төв замын цэвэрлэгээ",
-        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
-        projectName: "Шөнийн гудамж цэвэрлэгээ",
-        routeName: "7-р хорооны чиглэл",
-        operationTypeLabel: "Гудамж цэвэрлэгээ",
+        name: "Ð¢Ó©Ð² Ð·Ð°Ð¼Ñ‹Ð½ Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ",
+        departmentName: "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ»Ñ‚ÑÑ",
+        projectName: "Ð¨Ó©Ð½Ð¸Ð¹Ð½ Ð³ÑƒÐ´Ð°Ð¼Ð¶ Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ",
+        routeName: "7-Ñ€ Ñ…Ð¾Ñ€Ð¾Ð¾Ð½Ñ‹ Ñ‡Ð¸Ð³Ð»ÑÐ»",
+        operationTypeLabel: "Ð“ÑƒÐ´Ð°Ð¼Ð¶ Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ",
         exceptionCount: 2,
         unresolvedStopCount: 1,
         missingProofStopCount: 0,
@@ -4863,45 +5168,45 @@ function fallbackSnapshot(): DashboardSnapshot {
     reports: [
       {
         id: 301,
-        departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
+        departmentName: "ÐÐ¾Ð³Ð¾Ð¾Ð½ Ð±Ð°Ð¹Ð³ÑƒÑƒÐ»Ð°Ð¼Ð¶, Ñ†ÑÐ²ÑÑ€Ð»ÑÐ³ÑÑ Ò¯Ð¹Ð»Ñ‡Ð¸Ð»Ð³ÑÑÐ½Ð¸Ð¹ Ñ…ÑÐ»Ñ‚ÑÑ",
         reporter: "suldee",
-        taskName: "1-р хороо - 20-р байрны ар тал",
-        projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
-        summary: "21 мод хэлбэржүүлж, 1 зураг, 1 аудио тайлан хавсаргасан.",
-        text: "21 мод хэлбэржүүлж, 1 зураг, 1 аудио тайлан хавсаргасан.",
+        taskName: "1-Ñ€ Ñ…Ð¾Ñ€Ð¾Ð¾ - 20-Ñ€ Ð±Ð°Ð¹Ñ€Ð½Ñ‹ Ð°Ñ€ Ñ‚Ð°Ð»",
+        projectName: "2026 ÐœÐ¾Ð´ Ñ…ÑÐ»Ð±ÑÑ€Ð¶Ò¯Ò¯Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑƒÐ²Ð°Ð°Ñ€ÑŒ",
+        summary: "21 Ð¼Ð¾Ð´ Ñ…ÑÐ»Ð±ÑÑ€Ð¶Ò¯Ò¯Ð»Ð¶, 1 Ð·ÑƒÑ€Ð°Ð³, 1 Ð°ÑƒÐ´Ð¸Ð¾ Ñ‚Ð°Ð¹Ð»Ð°Ð½ Ñ…Ð°Ð²ÑÐ°Ñ€Ð³Ð°ÑÐ°Ð½.",
+        text: "21 Ð¼Ð¾Ð´ Ñ…ÑÐ»Ð±ÑÑ€Ð¶Ò¯Ò¯Ð»Ð¶, 1 Ð·ÑƒÑ€Ð°Ð³, 1 Ð°ÑƒÐ´Ð¸Ð¾ Ñ‚Ð°Ð¹Ð»Ð°Ð½ Ñ…Ð°Ð²ÑÐ°Ñ€Ð³Ð°ÑÐ°Ð½.",
         state: "submitted",
-        stateLabel: "Тайлан илгээсэн",
+        stateLabel: "Ð¢Ð°Ð¹Ð»Ð°Ð½ Ð¸Ð»Ð³ÑÑÑÑÐ½",
         stateBucket: "review",
         rejectionReason: "",
         reportedQuantity: 21,
-        measurementUnit: "мод",
+        measurementUnit: "Ð¼Ð¾Ð´",
         measurementUnitCode: "tree",
         imageCount: 1,
         audioCount: 1,
         images: [],
         audios: [],
-        submittedAt: "Өнөөдөр 15:30",
+        submittedAt: "Ó¨Ð½Ó©Ó©Ð´Ó©Ñ€ 15:30",
       },
       {
         id: 302,
-        departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
+        departmentName: "ÐÐ²Ñ‚Ð¾ Ð±Ð°Ð°Ð·, Ñ…Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ñ…ÑÐ»Ñ‚ÑÑ",
         reporter: "sarangerel",
-        taskName: "Хог тээврийн 2-р маршрут",
-        projectName: "Хог тээвэрлэлтийн өглөөний маршрут",
-        summary: "Маршрут дууссан, дахин ачилт 18:00-д эхэлнэ.",
-        text: "Маршрут дууссан, дахин ачилт 18:00-д эхэлнэ.",
+        taskName: "Ð¥Ð¾Ð³ Ñ‚ÑÑÐ²Ñ€Ð¸Ð¹Ð½ 2-Ñ€ Ð¼Ð°Ñ€ÑˆÑ€ÑƒÑ‚",
+        projectName: "Ð¥Ð¾Ð³ Ñ‚ÑÑÐ²ÑÑ€Ð»ÑÐ»Ñ‚Ð¸Ð¹Ð½ Ó©Ð³Ð»Ó©Ó©Ð½Ð¸Ð¹ Ð¼Ð°Ñ€ÑˆÑ€ÑƒÑ‚",
+        summary: "ÐœÐ°Ñ€ÑˆÑ€ÑƒÑ‚ Ð´ÑƒÑƒÑÑÐ°Ð½, Ð´Ð°Ñ…Ð¸Ð½ Ð°Ñ‡Ð¸Ð»Ñ‚ 18:00-Ð´ ÑÑ…ÑÐ»Ð½Ñ.",
+        text: "ÐœÐ°Ñ€ÑˆÑ€ÑƒÑ‚ Ð´ÑƒÑƒÑÑÐ°Ð½, Ð´Ð°Ñ…Ð¸Ð½ Ð°Ñ‡Ð¸Ð»Ñ‚ 18:00-Ð´ ÑÑ…ÑÐ»Ð½Ñ.",
         state: "submitted",
-        stateLabel: "Тайлан илгээсэн",
+        stateLabel: "Ð¢Ð°Ð¹Ð»Ð°Ð½ Ð¸Ð»Ð³ÑÑÑÑÐ½",
         stateBucket: "review",
         rejectionReason: "",
         reportedQuantity: 4,
-        measurementUnit: "удаа",
+        measurementUnit: "ÑƒÐ´Ð°Ð°",
         measurementUnitCode: "times",
         imageCount: 2,
         audioCount: 0,
         images: [],
         audios: [],
-        submittedAt: "Өнөөдөр 14:10",
+        submittedAt: "Ó¨Ð½Ó©Ó©Ð´Ó©Ñ€ 14:10",
       },
     ],
     teamLeaders: [
@@ -4939,14 +5244,40 @@ export async function loadMunicipalSnapshot(
   options: { allowFallback?: boolean } = {},
 ) {
   const connection = createOdooConnection(connectionOverrides);
-
-  try {
-    return await fetchLiveSnapshot(connection);
-  } catch (error) {
-    if (options.allowFallback === false) {
-      throw error;
-    }
-    console.warn("Falling back to demo dashboard snapshot:", error);
-    return buildFallbackSnapshot();
+  const cachedSnapshot = readCachedMunicipalSnapshot(connection);
+  if (cachedSnapshot) {
+    return cachedSnapshot;
   }
+
+  const cacheKey = getMunicipalSnapshotCacheKey(connection);
+  const canUsePendingSnapshot = options.allowFallback !== false;
+  if (canUsePendingSnapshot) {
+    const pendingSnapshot = municipalSnapshotPendingCache.get(cacheKey);
+    if (pendingSnapshot) {
+      return pendingSnapshot;
+    }
+  }
+
+  const snapshotPromise = (async () => {
+    try {
+      const snapshot = await fetchLiveSnapshot(connection);
+      writeCachedMunicipalSnapshot(connection, snapshot);
+      return snapshot;
+    } catch (error) {
+      if (options.allowFallback === false) {
+        throw error;
+      }
+      console.warn("Falling back to demo dashboard snapshot:", error);
+      const fallback = buildFallbackSnapshot();
+      writeCachedMunicipalSnapshot(connection, fallback);
+      return fallback;
+    }
+  })().finally(() => {
+    municipalSnapshotPendingCache.delete(cacheKey);
+  });
+
+  if (canUsePendingSnapshot) {
+    municipalSnapshotPendingCache.set(cacheKey, snapshotPromise);
+  }
+  return snapshotPromise;
 }

@@ -654,6 +654,43 @@
   line-height: 1.65;
 }
 
+.reportActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.reportActions form {
+  display: contents;
+}
+
+.reportActionLink,
+.reportDoneButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: var(--ds-radius-control);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.reportActionLink {
+  border: 1px solid rgba(74, 154, 93, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--brand-900);
+}
+
+.reportDoneButton {
+  border: 0;
+  background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
+  color: #f7fcf6;
+}
+
 .emptyState {
   margin-top: 18px;
   text-align: center;

@@ -1,0 +1,50 @@
+.screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(166, 211, 157, 0.16), transparent 24%),
+    linear-gradient(180deg, var(--surface-page) 0%, var(--surface-shell) 100%);
+  color: var(--ink-900);
+}
+
+.panel {
+  width: min(360px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 26px 28px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--surface-panel);
+  box-shadow: 0 18px 48px var(--shadow-soft);
+  text-align: center;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 4px solid rgba(122, 183, 133, 0.22);
+  border-top-color: var(--brand-800);
+  border-right-color: var(--brand-700);
+  animation: route-loading-spin 780ms linear infinite;
+}
+
+.panel strong {
+  font-size: 16px;
+  font-weight: 750;
+}
+
+@keyframes route-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 1.4s;
+  }
+}

@@ -1,6 +1,10 @@
-import { getSession, isWorkerOnly } from "@/lib/auth";
+import { getSession, isMasterRole, isWorkerOnly } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
+import {
+  filterProjectsForResponsibleMaster,
+  filterTasksForResponsibleMaster,
+} from "@/lib/master-scope";
 import { executeOdooKw, loadMunicipalSnapshot } from "@/lib/odoo";
 import { loadProjectDetail, loadTaskDetail, type ProjectDetail, type TaskDetail } from "@/lib/workspace";
 
@@ -232,7 +236,7 @@ function renderProjectReport(project: ProjectDetail) {
 
 async function assertCanAccessTask(taskId: number, session: NonNullable<Awaited<ReturnType<typeof getSession>>>) {
   const scopedDepartmentName = await loadSessionDepartmentName(session);
-  if (!isWorkerOnly(session) && !scopedDepartmentName) {
+  if (!isWorkerOnly(session) && !isMasterRole(session.role) && !scopedDepartmentName) {
     return;
   }
 
@@ -249,11 +253,47 @@ async function assertCanAccessTask(taskId: number, session: NonNullable<Awaited<
     throw new Error("Даалгавар олдсонгүй эсвэл танд харах эрх алга.");
   }
   if (
+    isMasterRole(session.role) &&
+    filterTasksForResponsibleMaster([directoryTask], snapshot.projects, session).length === 0
+  ) {
+    throw new Error("Даалгавар олдсонгүй эсвэл танд харах эрх алга.");
+  }
+  if (
     scopedDepartmentName &&
     !isAssigned &&
     filterByDepartment([directoryTask], scopedDepartmentName).length === 0
   ) {
     throw new Error("Даалгавар олдсонгүй эсвэл танд харах эрх алга.");
+  }
+}
+
+async function assertCanAccessProject(
+  projectId: number,
+  session: NonNullable<Awaited<ReturnType<typeof getSession>>>,
+) {
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  if (!isMasterRole(session.role) && !scopedDepartmentName) {
+    return;
+  }
+
+  const snapshot = await loadMunicipalSnapshot({
+    login: session.login,
+    password: session.password,
+  });
+  const project = snapshot.projects.find((item) => item.id === projectId);
+  if (!project) {
+    throw new Error("Ажил олдсонгүй эсвэл танд харах эрх алга.");
+  }
+
+  const departmentAllowed =
+    !scopedDepartmentName ||
+    filterByDepartment([{ departmentName: project.departmentName }], scopedDepartmentName).length > 0;
+  const masterAllowed =
+    !isMasterRole(session.role) ||
+    filterProjectsForResponsibleMaster([project], snapshot.taskDirectory, session).length > 0;
+
+  if (!departmentAllowed || !masterAllowed) {
+    throw new Error("Ажил олдсонгүй эсвэл танд харах эрх алга.");
   }
 }
 
@@ -275,7 +315,10 @@ export async function GET(request: Request) {
   const credentials = { login: session.login, password: session.password };
   const html =
     type === "project"
-      ? renderProjectReport(await loadProjectDetail(id, credentials))
+      ? await (async () => {
+          await assertCanAccessProject(id, session);
+          return renderProjectReport(await loadProjectDetail(id, credentials));
+        })()
       : await (async () => {
           await assertCanAccessTask(id, session);
           return renderTaskReport(await loadTaskDetail(id, credentials), credentials);

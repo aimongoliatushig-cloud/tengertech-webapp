@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { canSubmitWorkspaceReport, hasCapability, isMasterRole, isWorkerOnly, requireSession } from "@/lib/auth";
 import { getTodayDateKey, pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
+import { filterTasksForResponsibleMaster } from "@/lib/master-scope";
 import {
   createFieldStopIssue,
   markFieldStopArrived,
@@ -79,14 +80,27 @@ async function assertCanReviewTaskAction(
   connectionOverrides: { login: string; password: string },
 ) {
   const task = await loadTaskDetail(taskId, connectionOverrides);
+  if (isMasterRole(session.role)) {
+    const snapshot = await loadMunicipalSnapshot(connectionOverrides);
+    const directoryTask = snapshot.taskDirectory.find((item) => item.id === taskId);
+    if (
+      !directoryTask ||
+      filterTasksForResponsibleMaster([directoryTask], snapshot.projects, session).length === 0
+    ) {
+      redirectWithMessage(
+        `/tasks/${taskId}`,
+        "error",
+        "Даалгавар олдсонгүй эсвэл танд харах эрх алга.",
+      );
+    }
+  }
   const isAssignedToCurrentUser = task.assigneeUserIds.includes(session.uid);
   const hasOwnSubmittedReport = task.reports.some((report) => report.reporterId === session.uid);
   const canReviewTask =
-    !isAssignedToCurrentUser &&
     !hasOwnSubmittedReport &&
-    (hasCapability(session, "view_quality_center") ||
-      hasCapability(session, "create_tasks") ||
-      isMasterRole(session.role));
+    (isMasterRole(session.role) ||
+      (!isAssignedToCurrentUser &&
+        (hasCapability(session, "view_quality_center") || hasCapability(session, "create_tasks"))));
 
   if (!canReviewTask) {
     redirectWithMessage(
@@ -1651,16 +1665,6 @@ export async function markTaskDoneAction(formData: FormData) {
         await markWorkspaceTaskDone(taskId, {});
       } catch (systemActionError) {
         console.warn("Task done action failed with system credentials, forcing stage update:", systemActionError);
-        const canForceDone =
-          session.role === "system_admin" ||
-          session.role === "director" ||
-          session.role === "general_manager" ||
-          session.role === "project_manager";
-
-        if (!canForceDone) {
-          throw systemActionError;
-        }
-
         await forceWorkspaceTaskDone(taskId, {});
       }
     }
@@ -1677,6 +1681,7 @@ export async function markTaskDoneAction(formData: FormData) {
     revalidatePath("/");
     revalidatePath("/projects");
     revalidatePath("/field");
+    revalidatePath("/notifications");
     revalidatePath("/review");
     revalidatePath("/reports");
     revalidatePath(`/tasks/${taskId}`);

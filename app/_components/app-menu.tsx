@@ -1,9 +1,10 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   BarChart3,
   Bell,
@@ -93,6 +94,8 @@ type MenuItem = {
   departmentName?: string;
   hardNavigate?: boolean;
 };
+
+let warmedWorkspaceRoutes = false;
 
 function MenuLink({
   item,
@@ -224,8 +227,33 @@ export function AppMenu({
   void canViewQualityCenter;
   void variant;
 
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (warmedWorkspaceRoutes) {
+      return;
+    }
+    warmedWorkspaceRoutes = true;
+
+    const routes = [
+      "/projects",
+      "/tasks?view=today",
+      "/profile",
+      "/reports",
+      "/review",
+      "/notifications",
+    ];
+    const timers = routes.map((route, index) =>
+      window.setTimeout(() => {
+        router.prefetch(route);
+      }, 500 + index * 250),
+    );
+
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [router]);
+
   const flags = groupFlags || {};
   const roleLabelLower = roleLabel.toLocaleLowerCase("mn-MN");
   const executiveMode =

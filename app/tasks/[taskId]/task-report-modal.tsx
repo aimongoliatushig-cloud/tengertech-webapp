@@ -7,6 +7,7 @@ import { Camera, ImagePlus, Mic, Plus, RotateCcw, Square, X } from "lucide-react
 
 import styles from "./task-detail.module.css";
 import type { TaskQuantityLine } from "@/lib/workspace";
+import { PendingSubmitButton } from "./pending-submit-button";
 
 export type ExistingTaskReport = {
   id: number;
@@ -1003,13 +1004,16 @@ export function TaskReportModal({
                   >
                     Болих
                   </button>
-                  <button type="submit" className={styles.actionButton}>
+                  <PendingSubmitButton
+                    className={styles.actionButton}
+                    pendingLabel={canEditExistingReport ? "Хадгалж байна..." : "Илгээж байна..."}
+                  >
                     {canEditExistingReport ? "Хадгалах" : simpleMobile ? "Илгээх" : "Тайлан илгээх"}
-                  </button>
+                  </PendingSubmitButton>
                   {canEditExistingReport && deleteAction ? (
-                    <button
-                      type="submit"
+                    <PendingSubmitButton
                       className={styles.warningButton}
+                      pendingLabel="Устгаж байна..."
                       formAction={deleteAction}
                       onClick={(event) => {
                         if (!window.confirm("Энэ тайланг устгах уу?")) {
@@ -1018,7 +1022,7 @@ export function TaskReportModal({
                       }}
                     >
                       Устгах
-                    </button>
+                    </PendingSubmitButton>
                   ) : null}
                 </div>
               </form>

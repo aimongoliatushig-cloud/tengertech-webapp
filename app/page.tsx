@@ -4,6 +4,7 @@ import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
   hasCapability,
   isHrOnlyRole,
+  isMasterRole,
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
@@ -106,6 +107,7 @@ async function loadScopedHrAttendanceSummary(
 export default async function Home() {
   const session = await requireSession();
   const workerMode = isWorkerOnly(session);
+  const masterMode = isMasterRole(session.role);
   if (!workerMode && isHrOnlyRole(session)) {
     redirect("/hr");
   }
@@ -146,10 +148,6 @@ export default async function Home() {
           })
       : Promise.resolve([]);
 
-  let scopedDepartmentName = await departmentScopeNamePromise;
-  if (generalDashboardMode) {
-    scopedDepartmentName = null;
-  }
   const fleetBoardPromise = workerMode
     ? Promise.resolve({
         fleetBoard: EMPTY_FLEET_BOARD,
@@ -167,6 +165,10 @@ export default async function Home() {
             fleetLoadError: "Авто баазын техникийн мэдээллийг уншиж чадсангүй.",
           };
         });
+  let scopedDepartmentName = await departmentScopeNamePromise;
+  if (generalDashboardMode) {
+    scopedDepartmentName = null;
+  }
   const hrAttendanceSummaryPromise = workerMode
     ? Promise.resolve(EMPTY_HR_ATTENDANCE_SUMMARY)
     : scopedDepartmentName
@@ -193,6 +195,10 @@ export default async function Home() {
         (task.assigneeIds ?? []).some((assigneeId) => String(assigneeId) === currentUserId),
       )?.departmentName ?? null;
   }
+  const notificationSummaryPromise = loadWorkspaceNotificationSummary(session, {
+    snapshot,
+    scopedDepartmentName,
+  });
 
   const scopedDepartments = scopedDepartmentName
     ? snapshot.departments.filter(
@@ -200,23 +206,39 @@ export default async function Home() {
           filterByDepartment([{ departmentName: department.name }], scopedDepartmentName).length > 0,
       )
     : snapshot.departments;
-  const visibleSnapshot = scopedDepartmentName
-    ? {
-        ...snapshot,
-        departments: scopedDepartments,
-        projects: filterByDepartment(snapshot.projects, scopedDepartmentName),
-        taskDirectory: filterByDepartment(snapshot.taskDirectory, scopedDepartmentName),
-        liveTasks: filterByDepartment(snapshot.liveTasks, scopedDepartmentName),
-        reviewQueue: filterByDepartment(snapshot.reviewQueue, scopedDepartmentName),
-        qualityAlerts: filterByDepartment(snapshot.qualityAlerts, scopedDepartmentName),
-        reports: filterByDepartment(snapshot.reports, scopedDepartmentName),
-        totalTasks: filterByDepartment(snapshot.taskDirectory, scopedDepartmentName).length,
-      }
-    : snapshot;
-  const notificationSummary = await loadWorkspaceNotificationSummary(session, {
-    snapshot,
-    scopedDepartmentName,
-  });
+  const departmentScopedProjects = scopedDepartmentName
+    ? filterByDepartment(snapshot.projects, scopedDepartmentName)
+    : snapshot.projects;
+  const departmentScopedTasks = scopedDepartmentName
+    ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
+    : snapshot.taskDirectory;
+  const departmentScopedProjectIds = new Set(departmentScopedProjects.map((project) => project.id));
+  const departmentScopedProjectNames = new Set(departmentScopedProjects.map((project) => project.name));
+  const departmentScopedReviewQueue = scopedDepartmentName
+    ? filterByDepartment(snapshot.reviewQueue, scopedDepartmentName)
+    : snapshot.reviewQueue;
+  const visibleSnapshot = {
+    ...snapshot,
+    departments: scopedDepartments,
+    projects: departmentScopedProjects,
+    taskDirectory: departmentScopedTasks,
+    liveTasks: scopedDepartmentName ? filterByDepartment(snapshot.liveTasks, scopedDepartmentName) : snapshot.liveTasks,
+    reviewQueue: departmentScopedReviewQueue,
+    qualityAlerts: (scopedDepartmentName
+      ? filterByDepartment(snapshot.qualityAlerts, scopedDepartmentName)
+      : snapshot.qualityAlerts
+    ).filter((alert) =>
+      masterMode && scopedDepartmentName ? departmentScopedProjectNames.has(alert.projectName) : true,
+    ),
+    reports: (scopedDepartmentName
+      ? filterByDepartment(snapshot.reports, scopedDepartmentName)
+      : snapshot.reports
+    ).filter((report) =>
+      masterMode && scopedDepartmentName ? departmentScopedProjectIds.has(report.projectId ?? -1) : true,
+    ),
+    totalTasks: departmentScopedTasks.length,
+  };
+  const notificationSummary = await notificationSummaryPromise;
   const notificationNote =
     notificationSummary.unreadCount > 0
       ? `${notificationSummary.newCount} шинэ ажил, ${notificationSummary.reviewCount} хянах, ${notificationSummary.overdueCount} хугацаа хэтэрсэн`

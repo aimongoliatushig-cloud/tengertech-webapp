@@ -83,7 +83,6 @@ export function WorkspaceHeaderUserMenu({
               type="submit"
               role="menuitem"
               className={styles.headerUserMenuLink}
-              onClick={() => setIsOpen(false)}
             >
               <LogOut aria-hidden />
               <span>Гарах</span>

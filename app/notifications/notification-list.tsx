@@ -117,7 +117,11 @@ export function NotificationList({
             <Link
               key={item.key}
               href={item.href}
-              onClick={() => markOneReadInBackground(item)}
+              onClick={(event) => {
+                event.preventDefault();
+                markOneReadInBackground(item);
+                router.push(item.href);
+              }}
               className={cn(styles.notificationCard, !isRead && styles.notificationCardUnread)}
             >
               <span className={styles.iconBubble} aria-hidden>
@@ -152,7 +156,7 @@ export function NotificationList({
                 </div>
                 <p className={styles.notificationMeta}>
                   {item.departmentName} ·{" "}
-                  {workerMode ? `${item.taskCount} ажилбар` : item.projectName} ·{" "}
+                  {workerMode || item.taskCount > 1 ? `${item.taskCount} даалгавар` : item.projectName} ·{" "}
                   {item.stageLabel}
                 </p>
               </div>

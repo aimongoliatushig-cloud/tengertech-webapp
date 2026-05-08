@@ -14,6 +14,7 @@ import {
 import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import { loadReadNotificationKeys } from "@/lib/notification-state";
 import { loadMunicipalSnapshot, type DashboardSnapshot } from "@/lib/odoo";
+import { fixMojibakeText } from "@/lib/text-normalize";
 
 import { NotificationList, type NotificationListItem } from "./notification-list";
 import styles from "./notifications.module.css";
@@ -132,16 +133,34 @@ function buildWorkerNotificationHref(task: DashboardSnapshot["taskDirectory"][nu
   return `/tasks?${params.toString()}`;
 }
 
+function buildWorkNotificationHref(
+  task: DashboardSnapshot["taskDirectory"][number],
+  projectById: Map<number, DashboardSnapshot["projects"][number]>,
+  workerMode: boolean,
+) {
+  if (workerMode) {
+    return buildWorkerNotificationHref(task);
+  }
+
+  if (typeof task.projectId === "number") {
+    return projectById.get(task.projectId)?.href ?? `/projects/${task.projectId}`;
+  }
+
+  return buildWorkerNotificationHref(task);
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function NotificationsPage() {
   const session = await requireSession();
-  const snapshot = await loadMunicipalSnapshot({
+  const snapshotPromise = loadMunicipalSnapshot({
     login: session.login,
     password: session.password,
   });
+  const scopedDepartmentNamePromise = loadSessionDepartmentName(session);
 
-  let scopedDepartmentName = await loadSessionDepartmentName(session);
+  const snapshot = await snapshotPromise;
+  let scopedDepartmentName = await scopedDepartmentNamePromise;
   if (!scopedDepartmentName && isWorkerOnly(session)) {
     const currentUserId = String(session.uid);
     scopedDepartmentName =
@@ -165,6 +184,9 @@ export default async function NotificationsPage() {
       .map(normalizeTaskAssigneeId)
       .some((assigneeId) => assigneeId !== null && String(assigneeId) === currentUserId);
 
+  const departmentScopedProjects = scopedDepartmentName
+    ? filterByDepartment(snapshot.projects, scopedDepartmentName)
+    : snapshot.projects;
   const departmentScopedTasks = scopedDepartmentName
     ? snapshot.taskDirectory.filter(
         (task) =>
@@ -172,6 +194,8 @@ export default async function NotificationsPage() {
           isAssignedToCurrentUser(task),
       )
     : snapshot.taskDirectory;
+  const projectById = new Map(departmentScopedProjects.map((project) => [project.id, project]));
+  const groupedByWorkMode = workerMode || masterMode;
   const visibleTasks = workerMode
     ? departmentScopedTasks.filter(isAssignedToCurrentUser)
     : departmentScopedTasks;
@@ -180,19 +204,21 @@ export default async function NotificationsPage() {
     : scopedDepartmentName
       ? filterByDepartment(snapshot.reviewQueue, scopedDepartmentName)
       : snapshot.reviewQueue;
-  const workerWorkStats = workerMode
+  const workStats = groupedByWorkMode
     ? visibleTasks.reduce<Map<string, { taskCount: number; progressTotal: number }>>((groups, task) => {
-        const existing = groups.get(task.projectName) ?? { taskCount: 0, progressTotal: 0 };
+        const workKey = String(task.projectId ?? task.projectName);
+        const existing = groups.get(workKey) ?? { taskCount: 0, progressTotal: 0 };
         existing.taskCount += 1;
         existing.progressTotal += task.progress;
-        groups.set(task.projectName, existing);
+        groups.set(workKey, existing);
         return groups;
       }, new Map())
     : new Map<string, { taskCount: number; progressTotal: number }>();
 
   const notificationsById = new Map<string, NotificationItem>();
   const ensureFromTask = (task: DashboardSnapshot["taskDirectory"][number]) => {
-    const itemKey = workerMode ? `work:${task.projectId ?? task.projectName}` : `task:${task.id}`;
+    const workKey = String(task.projectId ?? task.projectName);
+    const itemKey = groupedByWorkMode ? `work:${workKey}` : `task:${task.id}`;
     const sortTimeMs = taskNotificationTimeMs(task);
     const notificationKey = `${itemKey}:${sortTimeMs || "unknown"}`;
     const existing = notificationsById.get(itemKey);
@@ -204,20 +230,20 @@ export default async function NotificationsPage() {
       }
       return existing;
     }
-    const workStats = workerWorkStats.get(task.projectName);
-    const taskCount = workerMode ? (workStats?.taskCount ?? 1) : 1;
+    const groupedStats = workStats.get(workKey);
+    const taskCount = groupedByWorkMode ? (groupedStats?.taskCount ?? 1) : 1;
     const progress =
-      workerMode && workStats?.taskCount
-        ? Math.round(workStats.progressTotal / workStats.taskCount)
+      groupedByWorkMode && groupedStats?.taskCount
+        ? Math.round(groupedStats.progressTotal / groupedStats.taskCount)
         : task.progress;
 
     const item: NotificationItem = {
       key: notificationKey,
-      name: workerMode ? task.projectName : task.name,
-      departmentName: task.departmentName,
-      projectName: task.projectName,
-      stageLabel: workerMode ? "Ажлын мэдэгдэл" : task.stageLabel,
-      href: workerMode ? buildWorkerNotificationHref(task) : task.href,
+      name: fixMojibakeText(groupedByWorkMode ? task.projectName : task.name),
+      departmentName: fixMojibakeText(task.departmentName),
+      projectName: fixMojibakeText(task.projectName),
+      stageLabel: groupedByWorkMode ? "Ажлын мэдэгдэл" : fixMojibakeText(task.stageLabel),
+      href: groupedByWorkMode ? buildWorkNotificationHref(task, projectById, workerMode) : task.href,
       progress,
       taskCount,
       sortTimeMs,
@@ -241,29 +267,37 @@ export default async function NotificationsPage() {
     }
     if (!item.reasons.length) {
       notificationsById.delete(
-        workerMode ? `work:${task.projectId ?? task.projectName}` : `task:${task.id}`,
+        groupedByWorkMode ? `work:${task.projectId ?? task.projectName}` : `task:${task.id}`,
       );
     }
   }
 
   for (const reviewTask of visibleReviewQueue) {
     const existingTask = visibleTasks.find((task) => task.id === reviewTask.id);
+    const reviewItemKey = groupedByWorkMode
+      ? `work:${reviewTask.projectId ?? reviewTask.projectName}`
+      : `review:${reviewTask.id}`;
+    const reviewWorkStats = workStats.get(String(reviewTask.projectId ?? reviewTask.projectName));
     const item = existingTask
       ? ensureFromTask(existingTask)
-      : {
-          key: `review:${reviewTask.id}`,
-          name: reviewTask.name,
-          departmentName: reviewTask.departmentName,
-          projectName: reviewTask.projectName,
-          stageLabel: reviewTask.stageLabel,
-          href: reviewTask.href,
-          progress: reviewTask.progress,
-          taskCount: 1,
+      : notificationsById.get(reviewItemKey) ?? {
+          key: groupedByWorkMode ? `${reviewItemKey}:unknown` : reviewItemKey,
+          name: fixMojibakeText(groupedByWorkMode ? reviewTask.projectName : reviewTask.name),
+          departmentName: fixMojibakeText(reviewTask.departmentName),
+          projectName: fixMojibakeText(reviewTask.projectName),
+          stageLabel: groupedByWorkMode ? "Ажлын мэдэгдэл" : fixMojibakeText(reviewTask.stageLabel),
+          href: groupedByWorkMode && typeof reviewTask.projectId === "number"
+            ? projectById.get(reviewTask.projectId)?.href ?? `/projects/${reviewTask.projectId}`
+            : reviewTask.href,
+          progress: groupedByWorkMode && reviewWorkStats?.taskCount
+            ? Math.round(reviewWorkStats.progressTotal / reviewWorkStats.taskCount)
+            : reviewTask.progress,
+          taskCount: groupedByWorkMode ? (reviewWorkStats?.taskCount ?? 1) : 1,
           sortTimeMs: 0,
           timeLabel: formatNotificationTime(0, nowMs),
           reasons: [],
         };
-    notificationsById.set(item.key, item);
+    notificationsById.set(reviewItemKey, item);
     addReason(item, "review");
   }
 

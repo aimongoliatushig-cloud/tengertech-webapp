@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { buildDestroyedSessionCookieHeader } from "@/lib/auth";
+import { isAllowedPostOrigin } from "@/lib/auth-guard";
 import { buildPublicUrl } from "@/lib/request-url";
 
 function destroySession(request: Request) {
@@ -11,10 +12,22 @@ function destroySession(request: Request) {
   return response;
 }
 
-export async function GET(request: Request) {
-  return destroySession(request);
+export async function GET() {
+  return NextResponse.json(
+    { error: "Гарах үйлдлийг зөвхөн POST хүсэлтээр гүйцэтгэнэ." },
+    {
+      status: 405,
+      headers: {
+        Allow: "POST",
+      },
+    },
+  );
 }
 
 export async function POST(request: Request) {
+  if (!isAllowedPostOrigin(request)) {
+    return NextResponse.json({ error: "Хүсэлтийн эх сурвалж буруу байна." }, { status: 403 });
+  }
+
   return destroySession(request);
 }

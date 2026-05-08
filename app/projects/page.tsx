@@ -20,6 +20,10 @@ import {
   matchesDepartmentGroup,
 } from "@/lib/department-groups";
 import { type DashboardSnapshot, loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
+import {
+  filterProjectsForResponsibleMaster,
+  filterTasksForResponsibleMaster,
+} from "@/lib/master-scope";
 import { loadWorkspaceNotificationCount } from "@/lib/workspace-notifications";
 
 type PageProps = {
@@ -241,10 +245,13 @@ export const dynamic = "force-dynamic";
 export default async function ProjectsPage({ searchParams }: PageProps) {
   const session = await requireSession();
   const workerMode = isWorkerOnly(session);
-  const snapshot = await loadMunicipalSnapshot({
+  const connectionOverrides = {
     login: session.login,
     password: session.password,
-  });
+  };
+  const snapshotPromise = loadMunicipalSnapshot(connectionOverrides);
+  const scopedDepartmentNamePromise = loadSessionDepartmentName(session);
+  const paramsPromise: NonNullable<PageProps["searchParams"]> = searchParams ?? Promise.resolve({});
 
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -252,8 +259,11 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const masterMode = isMasterRole(session.role);
-  let scopedDepartmentName = await loadSessionDepartmentName(session);
+  const seniorMasterMode = session.role === "senior_master";
+  let scopedDepartmentName = await scopedDepartmentNamePromise;
+  let snapshot: DashboardSnapshot | null = null;
   if (!scopedDepartmentName && workerMode) {
+    snapshot = await snapshotPromise;
     const currentUserId = String(session.uid);
     scopedDepartmentName =
       snapshot.taskDirectory.find((task) =>
@@ -262,7 +272,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   }
   const departmentScopedMode = Boolean(scopedDepartmentName);
 
-  const params = (await searchParams) ?? {};
+  const params = (await paramsPromise) ?? {};
   const requestedDepartment = getDepartmentParam(params.department);
   const requestedUnit = getDepartmentParam(params.unit);
   const activeFilter = normalizeProjectFilter(getDepartmentParam(params.category));
@@ -291,7 +301,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   let fleetBoard: Awaited<ReturnType<typeof loadFleetVehicleBoard>> | null = null;
   let fleetLoadError = "";
 
-  if (isAutoBaseView) {
+  if (showAutoBaseFleet) {
     try {
       fleetBoard = await loadFleetVehicleBoard();
     } catch (error) {
@@ -300,6 +310,14 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
         "Авто баазын машины жагсаалтыг уншиж чадсангүй. Холболт болон эрхийн тохиргоог шалгана уу.";
     }
   }
+
+  if (!snapshot) {
+    snapshot = await snapshotPromise;
+  }
+  const notificationCountPromise = loadWorkspaceNotificationCount(session, {
+    snapshot,
+    scopedDepartmentName,
+  });
 
   const projectTaskSearchByName = new Map<string, string>();
   for (const task of snapshot.taskDirectory) {
@@ -355,6 +373,11 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
         return true;
       });
 
+  if (masterMode) {
+    scopedTasks = filterTasksForResponsibleMaster(scopedTasks, scopedProjects, session);
+    scopedProjects = filterProjectsForResponsibleMaster(scopedProjects, scopedTasks, session);
+  }
+
   if (workerMode) {
     const currentUserId = String(session.uid);
     scopedTasks = scopedTasks.filter((task) =>
@@ -381,6 +404,10 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   const selectedDepartmentName = masterMode
     ? scopedDepartmentName ?? "Миний алба нэгж"
     : selectedUnit || selectedGroup?.name || "Бүх хэлтэс";
+  const masterProjectSectionLabel = seniorMasterMode ? "Нэгжийн бүх ажил" : "Миний хариуцсан ажил";
+  const masterProjectSectionNote = seniorMasterMode
+    ? "Ахлах мастер нэгжийн бүх мастер, бүх ажлын явцыг харна"
+    : "Мастер зөвхөн өөрт хариуцуулсан ажил, тайланг харна";
 
   const projectCounts = {
     all: scopedProjects.length,
@@ -615,14 +642,6 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
       : quickActionMode === "report"
         ? "Эхлээд ажил сонгоод, дараа нь даалгавар дээрээс тайлан оруулна."
         : "";
-  const sectionNote =
-    quickActionMode === "task"
-      ? "Ажил сонгоод дармагц даалгавар нэмэх цонх руу орно."
-      : quickActionMode === "report"
-        ? "Ажил сонгоод доторх даалгавраас тайлан оруулах урсгал руу орно."
-        : masterMode
-          ? "Ажил дээр дарахад тухайн ажлаас шинэ даалгавар нээх болон өнөөдрийн урсгал руу орно."
-          : "Ажил дээр дарахад тухайн ажлын даалгаврууд нээгдэнэ";
   const projectCardLabel =
     quickActionMode === "task"
       ? "Энэ ажил дээр даалгавар нэмэх"
@@ -683,10 +702,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
     }
   }
 
-  const notificationCount = await loadWorkspaceNotificationCount(session, {
-    snapshot,
-    scopedDepartmentName,
-  });
+  const notificationCount = await notificationCountPromise;
 
   return (
     <main className={styles.shell}>
@@ -834,14 +850,14 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
               <div className={styles.sectionHeader}>
                 <div>
                   <span className={styles.sectionKicker}>
-                    {showAutoBaseFleet ? "Машины жагсаалт" : masterMode ? "Нэгжийн ажил" : "Ажлын жагсаалт"}
+                    {showAutoBaseFleet ? "Машины жагсаалт" : masterMode ? masterProjectSectionLabel : "Ажлын жагсаалт"}
                   </span>
                   <h2>{showAutoBaseFleet ? "Бүх машин" : masterMode ? selectedDepartmentName : filterTitle}</h2>
                   <small className={styles.sectionNote}>
                     {showAutoBaseFleet
                       ? "Авто баазад бүртгэлтэй бүх машиныг харуулна"
                       : masterMode
-                        ? sectionNote
+                        ? masterProjectSectionNote
                         : `${selectedDepartmentName} · ${filterNote}`}
                   </small>
                 </div>

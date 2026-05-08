@@ -2405,6 +2405,73 @@
   border-radius: var(--ds-radius-icon);
 }
 
+.reportImageGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.reviewReportImageGrid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.reportImageLink {
+  position: relative;
+  overflow: hidden;
+  display: block;
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--ds-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.reviewReportImageLink {
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(31, 95, 49, 0.08);
+}
+
+.reportImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reportImageCaption {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(12, 34, 20, 0.78);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+}
+
+.reportAudioList {
+  display: grid;
+  gap: 10px;
+}
+
+.reportAudioCard {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--ds-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.reportAudioPlayer {
+  width: 100%;
+}
+
 @media (max-width: 1080px) {
   .workspaceShell {
     grid-template-columns: 1fr;

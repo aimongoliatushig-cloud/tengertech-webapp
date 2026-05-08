@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   Clock3,
   Leaf,
+  Plus,
   Sun,
 } from "lucide-react";
 
@@ -39,7 +40,11 @@ import {
 } from "@/lib/department-groups";
 import { loadGarbageWeeklyTemplates } from "@/lib/garbage-weekly-template-store";
 import { expandGarbageWeeklyTemplatesToTasks } from "@/lib/garbage-weekly-template-tasks";
-import { loadMunicipalSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
+import { loadMunicipalSnapshot, type DashboardSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
+import {
+  filterProjectsForResponsibleMaster,
+  filterTasksForResponsibleMaster,
+} from "@/lib/master-scope";
 import { loadWorkspaceNotificationSummary } from "@/lib/workspace-notifications";
 
 import styles from "./tasks.module.css";
@@ -377,22 +382,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const calendarBaseCells = buildMonthCells(calendarAnchorDateKey);
   const calendarRangeStart = calendarBaseCells[0]?.dateKey ?? calendarAnchorDateKey;
   const calendarRangeEnd = calendarBaseCells[calendarBaseCells.length - 1]?.dateKey ?? calendarAnchorDateKey;
-
-  const [snapshot, garbageWeeklyTemplates] = await Promise.all([
-    loadMunicipalSnapshot(
-      {
-        login: session.login,
-        password: session.password,
-      },
-      { allowFallback: false },
-    ),
-    loadGarbageWeeklyTemplates(),
-  ]);
-  const sourceTaskDirectory = [
-    ...snapshot.taskDirectory,
-    ...expandGarbageWeeklyTemplatesToTasks(garbageWeeklyTemplates, calendarRangeStart, calendarRangeEnd),
-  ];
-
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
   const canWriteReports = hasCapability(session, "write_workspace_reports");
@@ -402,12 +391,82 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const calendarCreateHref = canCreateProject ? "/projects/new" : "/create";
   const workerMode = isWorkerOnly(session);
   const masterMode = isMasterRole(session.role);
-  const selectedFilter: FilterKey = workerMode || masterMode ? "all" : activeFilter;
-  const scopedDepartmentName = await loadSessionDepartmentName(session);
-  const notificationSummary = await loadWorkspaceNotificationSummary(session, {
+  const seniorMasterMode = session.role === "senior_master";
+
+  let snapshot: DashboardSnapshot;
+  let garbageWeeklyTemplates: Awaited<ReturnType<typeof loadGarbageWeeklyTemplates>>;
+  let scopedDepartmentName: Awaited<ReturnType<typeof loadSessionDepartmentName>>;
+  const scopedDepartmentNamePromise = loadSessionDepartmentName(session);
+
+  try {
+    [snapshot, garbageWeeklyTemplates, scopedDepartmentName] = await Promise.all([
+      loadMunicipalSnapshot(
+        {
+          login: session.login,
+          password: session.password,
+        },
+        { allowFallback: false },
+      ),
+      loadGarbageWeeklyTemplates(),
+      scopedDepartmentNamePromise,
+    ]);
+  } catch (error) {
+    console.error("Tasks page data load failed:", error);
+
+    return (
+      <main className={shellStyles.shell}>
+        <div className={shellStyles.container}>
+          <div className={shellStyles.contentWithMenu}>
+            <aside className={shellStyles.menuColumn}>
+              <AppMenu
+                active="tasks"
+                canCreateProject={canCreateProject}
+                canCreateTasks={canCreateTasks}
+                canWriteReports={canWriteReports}
+                canViewQualityCenter={canViewQualityCenter}
+                canUseFieldConsole={canUseFieldConsole}
+                userName={session.name}
+                roleLabel={getRoleLabel(session.role)}
+                groupFlags={session.groupFlags}
+                masterMode={masterMode}
+                workerMode={workerMode}
+                notificationCount={0}
+              />
+            </aside>
+
+            <div className={shellStyles.pageContent}>
+              <WorkspaceHeader
+                title="Даалгавар"
+                subtitle="Танд оноогдсон даалгаврын жагсаалт"
+                userName={session.name}
+                roleLabel={getRoleLabel(session.role)}
+                notificationCount={0}
+                notificationNote="Мэдээлэл түр ачаалсангүй"
+              />
+
+              <section className={styles.taskSection}>
+                <div className={styles.emptyState}>
+                  <h3>Ажлын мэдээлэл түр ачаалсангүй</h3>
+                  <p>Odoo серверээс мэдээлэл авахад хугацаа хэтэрлээ. Дахин ачаалаад үзнэ үү.</p>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+  const notificationSummaryPromise = loadWorkspaceNotificationSummary(session, {
     snapshot,
     scopedDepartmentName,
   });
+  const sourceTaskDirectory = [
+    ...snapshot.taskDirectory,
+    ...expandGarbageWeeklyTemplatesToTasks(garbageWeeklyTemplates, calendarRangeStart, calendarRangeEnd),
+  ];
+
+  const selectedFilter: FilterKey = workerMode || masterMode ? "all" : activeFilter;
+  const notificationSummary = await notificationSummaryPromise;
   const taskNotificationNote =
     notificationSummary.unreadCount > 0
       ? `${notificationSummary.newCount} шинэ ажил, ${notificationSummary.reviewCount} хянах, ${notificationSummary.overdueCount} хугацаа хэтэрсэн`
@@ -431,17 +490,32 @@ export default async function TasksPage({ searchParams }: PageProps) {
             (requestedWorkNameKey && normalizeWorkName(task.projectName) === requestedWorkNameKey),
         )
       : workerTasks;
+  const masterDepartmentProjects = masterMode
+    ? filterByDepartment(snapshot.projects, scopedDepartmentName)
+    : [];
   const masterDepartmentTasks = masterMode
     ? filterByDepartment(sourceTaskDirectory, scopedDepartmentName)
+    : [];
+  const personalMasterTasks = masterMode
+    ? filterTasksForResponsibleMaster(masterDepartmentTasks, masterDepartmentProjects, session)
+    : [];
+  const personalMasterProjects = masterMode
+    ? filterProjectsForResponsibleMaster(masterDepartmentProjects, masterDepartmentTasks, session)
     : [];
   const masterTodayTasks = masterMode
     ? filterTasksToDate(masterDepartmentTasks, todayDateKey)
     : [];
+  const personalMasterTodayTasks = masterMode
+    ? filterTasksToDate(personalMasterTasks, todayDateKey)
+    : [];
   const masterTodayProjects = masterMode
     ? buildTodayProjectSummaries(
         masterTodayTasks,
-        filterByDepartment(snapshot.projects, scopedDepartmentName),
+        masterDepartmentProjects,
       )
+    : [];
+  const personalMasterTodayProjects = masterMode
+    ? buildTodayProjectSummaries(personalMasterTodayTasks, personalMasterProjects)
     : [];
 
   const selectedDepartment =
@@ -468,7 +542,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const scopedProjects = workerMode
     ? Array.from(new Set(visibleWorkerTasks.map((task) => task.projectName)))
     : masterMode
-      ? filterByDepartment(snapshot.projects, scopedDepartmentName)
+      ? masterDepartmentProjects
       : departmentScopedMode
         ? filterByDepartment(snapshot.projects, scopedDepartmentName)
       : snapshot.projects.filter((project) => {
@@ -543,6 +617,13 @@ export default async function TasksPage({ searchParams }: PageProps) {
     : masterMode
       ? scopedDepartmentName ?? "Миний алба нэгж"
       : scopedDepartmentName || selectedDepartmentUnit || selectedDepartmentGroup?.name || selectedDepartment?.name || "Бүх алба хэлтэс";
+  const masterFlowKicker = seniorMasterMode ? "Ахлах мастерын хяналт" : "Мастерын ажил";
+  const masterFlowDescription = seniorMasterMode
+    ? "Ахлах мастер өөрийн алба нэгжийн өнөөдөр явах бүх ажил, бүх мастерийн тайланг нэг дор хянана."
+    : "Мастер зөвхөн өөрт хариуцуулсан өнөөдрийн ажил, багийн тайлангаа хянана.";
+  const masterScopeSummary = seniorMasterMode
+    ? "Ахлах мастерийн нэгжийн өнөөдрийн нийт ажил харагдаж байна"
+    : "Зөвхөн танд хариуцуулсан өнөөдрийн ажил харагдаж байна";
   const calendarPlanItems = Array.from(
     scopedTasks
       .filter((task) => task.scheduledDate)
@@ -834,6 +915,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                       </div>
                       {canCreateFromCalendar ? (
                         <Link href={calendarCreateHref} className={styles.calendarCreateButton}>
+                          <Plus size={16} aria-hidden="true" />
                           Ажил нэмэх
                         </Link>
                       ) : null}
@@ -869,7 +951,18 @@ export default async function TasksPage({ searchParams }: PageProps) {
                           >
                             <div className={styles.monthDayHeader}>
                               <span>{cell.dayNumber}</span>
-                              {cell.plan.total > 0 ? <strong>{cell.plan.total}</strong> : null}
+                              {cell.plan.total > 0 ? (
+                                <strong>{cell.plan.total}</strong>
+                              ) : canCreateFromCalendar ? (
+                                <Link
+                                  href={calendarCreateHref}
+                                  className={styles.calendarDayQuickCreate}
+                                  aria-label={`${cell.dateKey} өдөр ажил нэмэх`}
+                                  title="Ажил нэмэх"
+                                >
+                                  <Plus size={15} aria-hidden="true" />
+                                </Link>
+                              ) : null}
                             </div>
                             <div className={styles.monthDayTasks}>
                               {cell.plan.tasks.slice(0, 2).map((task) => (
@@ -886,10 +979,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
                                 <a href={`#calendar-day-${cell.dateKey}`} className={styles.monthMore}>
                                   +{cell.plan.tasks.length - 2} даалгавар
                                 </a>
-                              ) : cell.plan.tasks.length === 0 && canCreateFromCalendar ? (
-                                <Link href={calendarCreateHref} className={styles.calendarEmptyCreate}>
-                                  Ажил нэмэх
-                                </Link>
                               ) : null}
                             </div>
                           </article>
@@ -917,7 +1006,18 @@ export default async function TasksPage({ searchParams }: PageProps) {
                                     <strong>{label.day}</strong>
                                     <span>{label.weekday}</span>
                                   </div>
-                                  {item.total > 0 ? <em>{item.total}</em> : null}
+                                  {item.total > 0 ? (
+                                    <em>{item.total}</em>
+                                  ) : canCreateFromCalendar ? (
+                                    <Link
+                                      href={calendarCreateHref}
+                                      className={styles.calendarDayQuickCreate}
+                                      aria-label={`${item.dateKey} өдөр ажил нэмэх`}
+                                      title="Ажил нэмэх"
+                                    >
+                                      <Plus size={15} aria-hidden="true" />
+                                    </Link>
+                                  ) : null}
                                 </div>
                               );
                             })()}
@@ -934,10 +1034,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
                                     <small>{formatTimelineTime(task.deadlineDateTime)} • Явц {task.progress}%</small>
                                   </Link>
                                 ))
-                              ) : canCreateFromCalendar ? (
-                                <Link href={calendarCreateHref} className={styles.weekEmptyCreate}>
-                                  Ажил нэмэх
-                                </Link>
                               ) : (
                                 <span className={styles.weekEmpty}>Даалгавар алга</span>
                               )}
@@ -961,7 +1057,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
               <div className={styles.pageHeaderMain}>
                 <div className={styles.titleBlock}>
                   <span className={styles.pageKicker}>
-                    {workerMode ? "Миний урсгал" : masterMode ? "Мастерын урсгал" : "Бүх урсгал"}
+                    {workerMode ? "Миний урсгал" : masterMode ? masterFlowKicker : "Бүх урсгал"}
                   </span>
                    <h1>
                      {workerMode
@@ -974,9 +1070,9 @@ export default async function TasksPage({ searchParams }: PageProps) {
                      {workerMode
                        ? "Зөвхөн танд хамаарах даалгавруудыг эндээс харна. Төлөвөөр нь хурдан шүүж, дэлгэрэнгүй рүү шууд орж ажлаа үргэлжлүүлнэ."
                        : masterMode
-                        ? "Мастер хэрэглэгчид зөвхөн өөрийн алба нэгжийн өнөөдөр явах ажил, төслүүд харагдана. Ажил дээр дарахад тухайн ажлын доторх даалгавар руу орно."
+                         ? masterFlowDescription
                         : "Odoo ERP дээр бүртгэгдсэн бүх даалгаврыг алба нэгж, ажил, төлөвөөр нь нэг дороос харуулна. Асуудалтай болон хяналт хүлээж буй даалгавруудыг эхэнд нь ялгаж, дэлгэрэнгүй рүү шууд нээнэ."}
-                   </p>
+                  </p>
                 </div>
 
                 <div className={styles.userBlock}>
@@ -1059,7 +1155,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   {workerMode
                     ? "Зөвхөн танд оноогдсон даалгавруудыг харуулж байна"
                     : masterMode
-                      ? "Мастер хэрэглэгчид зөвхөн өөрийн нэгжийн өнөөдөр явах ажил харагдана"
+                      ? masterScopeSummary
                     : `${snapshot.departments.length} алба нэгжээс шүүж байна`}
                 </small>
               </article>
@@ -1260,50 +1356,101 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 )}
               </section>
             ) : masterMode ? (
-              <section className={styles.taskSection}>
-                <div className={styles.sectionHeader}>
-                  <div>
-                    <span className={styles.filterKicker}>Мастерын урсгал</span>
-                    <h2>Өнөөдрийн ажлууд</h2>
+              <>
+                <section className={styles.taskSection}>
+                  <div className={styles.sectionHeader}>
+                    <div>
+                      <span className={styles.filterKicker}>Миний урсгал</span>
+                      <h2>Миний хариуцсан ажил</h2>
+                    </div>
                   </div>
-                </div>
 
-                {visibleProjects.length ? (
-                  <div className={styles.projectList}>
-                    {visibleProjects.map((project) => (
-                      <Link key={project.id} href={project.href} className={`${styles.taskCard} ${styles.projectCardLink}`}>
-                        <div className={styles.taskCardTop}>
-                          <div className={styles.taskIdentity}>
-                            <span>{project.departmentName}</span>
-                            <strong>{project.name}</strong>
+                  {personalMasterTodayProjects.length ? (
+                    <div className={styles.projectList}>
+                      {personalMasterTodayProjects.map((project) => (
+                        <Link key={`mine-${project.id}`} href={project.href} className={`${styles.taskCard} ${styles.projectCardLink}`}>
+                          <div className={styles.taskCardTop}>
+                            <div className={styles.taskIdentity}>
+                              <span>{project.departmentName}</span>
+                              <strong>{project.name}</strong>
+                            </div>
+                            <span className={styles.statusChip}>{project.stageLabel}</span>
                           </div>
-                          <span className={styles.statusChip}>{project.stageLabel}</span>
-                        </div>
-                        <div className={styles.taskInfoGrid}>
-                          <span className={styles.taskInfoItem}>
-                            <span>Даалгавар</span>
-                            <strong>{project.todayTaskCount}</strong>
-                          </span>
-                          <span className={styles.taskInfoItem}>
-                            <span>Нээлттэй</span>
-                            <strong>{project.openTasks}</strong>
-                          </span>
-                          <span className={styles.taskInfoItem}>
-                            <span>Гүйцэтгэл</span>
-                            <strong>{project.completion}%</strong>
-                          </span>
-                        </div>
-                        <span className={styles.projectOpenLabel}>Даалгаврууд харах</span>
-                      </Link>
-                    ))}
+                          <div className={styles.taskInfoGrid}>
+                            <span className={styles.taskInfoItem}>
+                              <span>Даалгавар</span>
+                              <strong>{project.todayTaskCount}</strong>
+                            </span>
+                            <span className={styles.taskInfoItem}>
+                              <span>Нээлттэй</span>
+                              <strong>{project.openTasks}</strong>
+                            </span>
+                            <span className={styles.taskInfoItem}>
+                              <span>Гүйцэтгэл</span>
+                              <strong>{project.completion}%</strong>
+                            </span>
+                          </div>
+                          <span className={styles.projectOpenLabel}>Даалгаврууд харах</span>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.emptyState}>
+                      <h3>{seniorMasterMode ? "Өнөөдрийн нэгжийн ажил алга" : "Өнөөдөр танд хариуцсан ажил алга"}</h3>
+                      <p>
+                        {seniorMasterMode
+                          ? "Энэ нэгж дээр өнөөдөр эхлэх эсвэл үргэлжлэх ажил бүртгэгдээгүй байна."
+                          : "Нийт ажлын хэсгээс алба нэгжийн ажлуудыг хянаж болно."}
+                      </p>
+                    </div>
+                  )}
+                </section>
+
+                <section className={styles.taskSection}>
+                  <div className={styles.sectionHeader}>
+                    <div>
+                      <span className={styles.filterKicker}>{masterFlowKicker}</span>
+                      <h2>{seniorMasterMode ? "Нэгжийн бүх ажил" : "Миний хариуцсан ажил"}</h2>
+                    </div>
                   </div>
-                ) : (
-                  <div className={styles.emptyState}>
-                    <h3>Өнөөдөр ажил алга</h3>
-                    <p>Сонгосон шүүлтэд таарах ажил одоогоор харагдахгүй байна.</p>
-                  </div>
-                )}
-              </section>
+
+                  {visibleProjects.length ? (
+                    <div className={styles.projectList}>
+                      {visibleProjects.map((project) => (
+                        <Link key={project.id} href={project.href} className={`${styles.taskCard} ${styles.projectCardLink}`}>
+                          <div className={styles.taskCardTop}>
+                            <div className={styles.taskIdentity}>
+                              <span>{project.departmentName}</span>
+                              <strong>{project.name}</strong>
+                            </div>
+                            <span className={styles.statusChip}>{project.stageLabel}</span>
+                          </div>
+                          <div className={styles.taskInfoGrid}>
+                            <span className={styles.taskInfoItem}>
+                              <span>Даалгавар</span>
+                              <strong>{project.todayTaskCount}</strong>
+                            </span>
+                            <span className={styles.taskInfoItem}>
+                              <span>Нээлттэй</span>
+                              <strong>{project.openTasks}</strong>
+                            </span>
+                            <span className={styles.taskInfoItem}>
+                              <span>Гүйцэтгэл</span>
+                              <strong>{project.completion}%</strong>
+                            </span>
+                          </div>
+                          <span className={styles.projectOpenLabel}>Даалгаврууд харах</span>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.emptyState}>
+                      <h3>Өнөөдөр ажил алга</h3>
+                      <p>Сонгосон шүүлтэд таарах ажил одоогоор харагдахгүй байна.</p>
+                    </div>
+                  )}
+                </section>
+              </>
             ) : (
               <section className={styles.taskSection}>
                 <div className={styles.sectionHeader}>

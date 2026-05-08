@@ -1,7 +1,7 @@
 import "server-only";
 
 import { loadSessionDepartmentName } from "@/lib/access-scope";
-import { type AppSession, isWorkerOnly } from "@/lib/auth";
+import { type AppSession, isMasterRole, isWorkerOnly } from "@/lib/auth";
 import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import { loadReadNotificationKeys } from "@/lib/notification-state";
 import { loadMunicipalSnapshot, type DashboardSnapshot } from "@/lib/odoo";
@@ -96,6 +96,7 @@ export function buildWorkspaceNotificationRecords(
 ) {
   const todayDateKey = getTodayDateKey();
   const workerMode = isWorkerOnly(session);
+  const masterMode = isMasterRole(session.role);
   const currentUserId = String(session.uid);
 
   const departmentScopedTasks = scopedDepartmentName
@@ -105,9 +106,11 @@ export function buildWorkspaceNotificationRecords(
           isAssignedToUser(task, currentUserId),
       )
     : snapshot.taskDirectory;
+  const groupedByWorkMode = workerMode || masterMode;
   const visibleTasks = workerMode
     ? departmentScopedTasks.filter((task) => isAssignedToUser(task, currentUserId))
     : departmentScopedTasks;
+  const visibleTasksById = new Map(visibleTasks.map((task) => [task.id, task]));
   const visibleReviewQueue = workerMode
     ? []
     : scopedDepartmentName
@@ -123,7 +126,7 @@ export function buildWorkspaceNotificationRecords(
     }
   >();
   const ensureFromTask = (task: DashboardSnapshot["taskDirectory"][number]) => {
-    const itemKey = workerMode ? `work:${task.projectId ?? task.projectName}` : `task:${task.id}`;
+    const itemKey = groupedByWorkMode ? `work:${task.projectId ?? task.projectName}` : `task:${task.id}`;
     const sortTimeMs = taskNotificationTimeMs(task);
     const existing = notificationsById.get(itemKey);
 
@@ -160,11 +163,14 @@ export function buildWorkspaceNotificationRecords(
   }
 
   for (const reviewTask of visibleReviewQueue) {
-    const existingTask = visibleTasks.find((task) => task.id === reviewTask.id);
+    const existingTask = visibleTasksById.get(reviewTask.id);
+    const reviewItemKey = groupedByWorkMode
+      ? `work:${reviewTask.projectId ?? reviewTask.projectName}`
+      : `review:${reviewTask.id}`;
     const item = existingTask
       ? ensureFromTask(existingTask)
-      : {
-          itemKey: `review:${reviewTask.id}`,
+      : notificationsById.get(reviewItemKey) ?? {
+          itemKey: reviewItemKey,
           sortTimeMs: 0,
           reasons: [] as NotificationReason[],
         };
@@ -173,7 +179,9 @@ export function buildWorkspaceNotificationRecords(
   }
 
   return Array.from(notificationsById.values()).map((item) => ({
-    key: `${item.itemKey}:${item.sortTimeMs || "unknown"}`,
+    key: item.itemKey.startsWith("review:")
+      ? item.itemKey
+      : `${item.itemKey}:${item.sortTimeMs || "unknown"}`,
     reasons: item.reasons,
   })) satisfies WorkspaceNotificationRecord[];
 }

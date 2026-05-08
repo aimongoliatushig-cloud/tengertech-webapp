@@ -2,7 +2,6 @@ import type { CSSProperties } from "react";
 
 import Link from "next/link";
 import {
-  AlertTriangle,
   BarChart3,
   CalendarDays,
   CheckCircle2,
@@ -35,7 +34,7 @@ import {
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import dashboardStyles from "@/app/dashboard-view.module.css";
 import shellStyles from "@/app/workspace.module.css";
-import { getRoleLabel, hasCapability, isWorkerOnly, type AppSession } from "@/lib/auth";
+import { getRoleLabel, hasCapability, isMasterRole, isWorkerOnly, type AppSession } from "@/lib/auth";
 import { buildDashboardModel, type StatusTone } from "@/lib/dashboard-model";
 import { type FieldAssignment } from "@/lib/field-ops";
 import {
@@ -61,17 +60,6 @@ type DashboardViewProps = {
   notificationNote?: string;
 };
 
-type DashboardStat = {
-  label: string;
-  value: string;
-  helper: string;
-  progress: number;
-  href: string;
-  icon: LucideIcon;
-  tone: StatusTone;
-  short: string;
-};
-
 const DASHBOARD_IMAGES = {
   header: "/illustrations/green-city-hero.svg",
   overview: "/illustrations/green-park-banner.svg",
@@ -79,15 +67,65 @@ const DASHBOARD_IMAGES = {
   landscape: "/illustrations/green-landscape-card.svg",
 };
 
-const STAT_TONE: Record<StatusTone, string> = {
-  good: "bg-emerald-50 text-[#2E7D32]",
-  attention: "bg-amber-50 text-amber-700",
-  urgent: "bg-red-50 text-red-600",
-  muted: "bg-slate-100 text-slate-600",
-};
-
 function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function mojibakeByte(character: string) {
+  const code = character.charCodeAt(0);
+  const windows1252: Record<number, number> = {
+    0x20ac: 0x80,
+    0x201a: 0x82,
+    0x0192: 0x83,
+    0x201e: 0x84,
+    0x2026: 0x85,
+    0x2020: 0x86,
+    0x2021: 0x87,
+    0x02c6: 0x88,
+    0x2030: 0x89,
+    0x0160: 0x8a,
+    0x2039: 0x8b,
+    0x0152: 0x8c,
+    0x017d: 0x8e,
+    0x2018: 0x91,
+    0x2019: 0x92,
+    0x201c: 0x93,
+    0x201d: 0x94,
+    0x2022: 0x95,
+    0x2013: 0x96,
+    0x2014: 0x97,
+    0x02dc: 0x98,
+    0x2122: 0x99,
+    0x0161: 0x9a,
+    0x203a: 0x9b,
+    0x0153: 0x9c,
+    0x017e: 0x9e,
+    0x0178: 0x9f,
+  };
+
+  return windows1252[code] ?? (code <= 0xff ? code : null);
+}
+
+function decodeMojibakeToken(token: string) {
+  const bytes: number[] = [];
+  for (const character of token) {
+    const byte = mojibakeByte(character);
+    if (byte === null) {
+      return token;
+    }
+    bytes.push(byte);
+  }
+
+  const decoded = new TextDecoder("utf-8", { fatal: false }).decode(Uint8Array.from(bytes));
+  return decoded.includes("�") ? token : decoded;
+}
+
+function fixMojibakeText(value: string) {
+  if (!/[ÐÑÒÓÂÃ]/.test(value)) {
+    return value;
+  }
+
+  return value.replace(/[ÐÑÒÓÂÃ][\u0080-\u00ff\u0192\u02c6\u02dc\u0152\u0153\u0160\u0161\u0178\u017d\u017e\u2013\u2014\u2018-\u201e\u2020-\u2022\u2026\u2030\u2039\u203a\u20ac\u2122]*/g, decodeMojibakeToken);
 }
 
 function percent(value: number, total: number) {
@@ -118,6 +156,13 @@ function normalizeTaskAssigneeId(value: unknown) {
   }
 
   return null;
+}
+
+function isSameDashboardUser(
+  left: number | string | null | undefined,
+  right: number | string,
+) {
+  return left !== null && left !== undefined && String(left) === String(right);
 }
 
 function isOverdue(task: DashboardSnapshot["taskDirectory"][number], currentDateKey: string) {
@@ -225,8 +270,9 @@ function projectTone(project: DashboardSnapshot["projects"][number]): StatusTone
 }
 
 function projectDisplayStageLabel(project: DashboardSnapshot["projects"][number]) {
-  if (project.stageLabel && project.stageLabel !== "Тодорхойгүй") {
-    return project.stageLabel;
+  const stageLabel = fixMojibakeText(project.stageLabel || "");
+  if (stageLabel && stageLabel !== "Тодорхойгүй") {
+    return stageLabel;
   }
 
   if (project.stageBucket === "done" || project.completion >= 100) {
@@ -242,7 +288,9 @@ function projectDisplayStageLabel(project: DashboardSnapshot["projects"][number]
 }
 
 function projectListIcon(project: DashboardSnapshot["projects"][number]): LucideIcon {
-  const text = `${project.name} ${project.departmentName} ${project.operationTypeLabel ?? ""}`.toLowerCase();
+  const text = fixMojibakeText(
+    `${project.name} ${project.departmentName} ${project.operationTypeLabel ?? ""}`,
+  ).toLowerCase();
 
   if (text.includes("хог") || text.includes("тээвэр")) {
     return Truck;
@@ -406,56 +454,6 @@ function buildWorkerWorkSummaries(
     );
 }
 
-function StatCard({ metric }: { metric: DashboardStat }) {
-  const Icon = metric.icon;
-
-  return (
-    <Link href={metric.href} className="group block">
-      <Card className={dashboardStyles.statCard}>
-        <div className={dashboardStyles.statCardTop}>
-          <div className={dashboardStyles.statCardText}>
-            <span className={dashboardStyles.statCardLabel}>
-              {metric.label}
-            </span>
-            <strong className={dashboardStyles.statCardNumber}>
-              {metric.value}
-            </strong>
-          </div>
-          <span
-            className={cn(
-              dashboardStyles.statCardIcon,
-              STAT_TONE[metric.tone],
-            )}
-          >
-            <Icon />
-          </span>
-        </div>
-        <div className={dashboardStyles.statCardBottom}>
-          <div className={dashboardStyles.statCardHelper}>
-            <strong
-              className={cn(
-                dashboardStyles.statCardPercent,
-                metric.tone === "urgent" ? "text-red-600" : "text-[#2E7D32]",
-              )}
-            >
-              {metric.progress}%
-            </strong>
-          </div>
-          <div className={dashboardStyles.statCardProgress}>
-            <span
-              className={cn(
-                dashboardStyles.statCardProgressFill,
-                metric.tone === "urgent" ? "bg-red-500" : "bg-[#2E7D32]",
-              )}
-              style={{ width: `${metric.progress}%` }}
-            />
-          </div>
-        </div>
-      </Card>
-    </Link>
-  );
-}
-
 function ProgressRing({ value, size = "sm" }: { value: number; size?: "sm" | "lg" }) {
   return (
     <div
@@ -478,11 +476,9 @@ function ProgressRing({ value, size = "sm" }: { value: number; size?: "sm" | "lg
 
 function DepartmentOverview({
   snapshot,
-  tasks,
   departmentScopeName,
 }: {
   snapshot: DashboardSnapshot;
-  tasks: DashboardSnapshot["taskDirectory"];
   departmentScopeName?: string | null;
 }) {
   const autoDepartment =
@@ -493,20 +489,7 @@ function DepartmentOverview({
     snapshot.departments[0];
   const departmentName =
     departmentScopeName ?? autoDepartment?.name ?? "Авто бааз, хог тээвэрлэлтийн хэлтэс";
-  const autoBaseCount = tasks.filter((task) => task.departmentName.includes("Авто бааз")).length;
-  const wasteCount = tasks.filter(
-    (task) => task.departmentName.includes("Хог") || task.departmentName.includes("хог"),
-  ).length;
-  const total = tasks.length || autoDepartment?.openTasks || 0;
-  const isAutoWasteDepartment =
-    departmentName.includes("Авто") || departmentName.includes("Хог") || departmentName.includes("хог");
-  const departmentChips: Array<[string, number, boolean]> = isAutoWasteDepartment
-    ? [
-        ["Бүгд", total, true],
-        ["Авто бааз", autoBaseCount, false],
-        ["Хог тээвэрлэлт", wasteCount || total, false],
-      ]
-    : [["Бүгд", total, true]];
+  const fixedDepartmentName = fixMojibakeText(departmentName);
 
   return (
     <Card className={cn(dashboardStyles.softPanel, dashboardStyles.departmentCard)}>
@@ -516,36 +499,13 @@ function DepartmentOverview({
           backgroundImage: `linear-gradient(90deg, rgba(246,251,246,.96) 0%, rgba(246,251,246,.78) 44%, rgba(246,251,246,.24) 100%), linear-gradient(180deg, rgba(246,251,246,.18), rgba(46,125,50,.06)), url(${DASHBOARD_IMAGES.overview})`,
         }}
       >
-        <Badge className={dashboardStyles.departmentBadge}>Доторх нэгж</Badge>
+        <Badge className={dashboardStyles.departmentBadge}>Хэлтэс</Badge>
         <h2 className={dashboardStyles.departmentTitle}>
-          {departmentName}
+          {fixedDepartmentName}
         </h2>
         <p className={dashboardStyles.departmentDescription}>
-          Энэ хэлтэс доторх ажлыг нэгжээр харуулна.
+          Цэвэр цэмцгэр, ногоон орчны ажлыг нэг дор харуулна.
         </p>
-        <div className={dashboardStyles.departmentChips}>
-          {departmentChips.map(([label, value, active]) => (
-            <span
-              key={String(label)}
-              className={cn(
-                dashboardStyles.departmentChip,
-                active
-                  ? "bg-[#2E7D32] text-white"
-                  : "border border-[#DCEFDA] bg-white/86 text-[#1B1B1B]",
-              )}
-            >
-              {label}
-              <small
-                className={cn(
-                  dashboardStyles.departmentChipCount,
-                  active ? "bg-white/24 text-white" : "bg-[#E8F4E8] text-[#2E7D32]",
-                )}
-              >
-                {value}
-              </small>
-            </span>
-          ))}
-        </div>
       </div>
     </Card>
   );
@@ -554,6 +514,9 @@ function DepartmentOverview({
 function WorkerWorkCard({ work }: { work: WorkerWorkSummary }) {
   const badgeTone =
     work.tone === "urgent" ? "red" : work.tone === "attention" ? "amber" : work.tone === "good" ? "green" : "slate";
+  const workName = fixMojibakeText(work.name);
+  const departmentName = fixMojibakeText(work.departmentName);
+  const managerName = fixMojibakeText(work.manager || "Бүртгэлгүй");
 
   return (
     <Link href={work.href} className={dashboardStyles.projectListLink}>
@@ -566,9 +529,9 @@ function WorkerWorkCard({ work }: { work: WorkerWorkSummary }) {
         </div>
 
         <div className={dashboardStyles.projectListContent}>
-          <h3 className={dashboardStyles.projectListTitle}>{work.name}</h3>
+          <h3 className={dashboardStyles.projectListTitle}>{workName}</h3>
           <p className={dashboardStyles.projectListMeta}>
-            Алба нэгж: {work.departmentName} · Менежер: {work.manager || "Бүртгэлгүй"}
+            Алба нэгж: {departmentName} · Менежер: {managerName}
           </p>
         </div>
 
@@ -593,6 +556,9 @@ function WorkerWorkCard({ work }: { work: WorkerWorkSummary }) {
 function ProjectCard({ project }: { project: DashboardSnapshot["projects"][number] }) {
   const tone = projectTone(project);
   const badgeTone = tone === "urgent" ? "red" : tone === "attention" ? "amber" : tone === "good" ? "green" : "slate";
+  const projectName = fixMojibakeText(project.name);
+  const departmentName = fixMojibakeText(project.departmentName);
+  const managerName = fixMojibakeText(project.manager || "Бүртгэлгүй");
 
   return (
     <Link href={project.href} className={dashboardStyles.projectListLink}>
@@ -611,9 +577,9 @@ function ProjectCard({ project }: { project: DashboardSnapshot["projects"][numbe
         </div>
 
         <div className={dashboardStyles.projectListContent}>
-          <h3 className={dashboardStyles.projectListTitle}>{project.name}</h3>
+          <h3 className={dashboardStyles.projectListTitle}>{projectName}</h3>
           <p className={dashboardStyles.projectListMeta}>
-            Алба нэгж: {project.departmentName} · Менежер: {project.manager || "Бүртгэлгүй"}
+            Алба нэгж: {departmentName} · Менежер: {managerName}
           </p>
         </div>
 
@@ -903,7 +869,9 @@ function DepartmentPerformanceCard({ departments }: { departments: DashboardSnap
       </div>
       <div className={dashboardStyles.departmentPerformanceList}>
         {rows.map((department) => {
-          const Icon = departmentIcon(department.name);
+          const fixedDepartmentName = fixMojibakeText(department.name);
+          const fixedDepartmentLabel = fixMojibakeText(department.label || department.name);
+          const Icon = departmentIcon(fixedDepartmentName);
           const value = clampPercent(department.completion);
 
           return (
@@ -911,7 +879,7 @@ function DepartmentPerformanceCard({ departments }: { departments: DashboardSnap
               <span className={dashboardStyles.departmentPerformanceIcon}>
                 <Icon />
               </span>
-              <span className={dashboardStyles.departmentPerformanceName}>{department.label || department.name}</span>
+              <span className={dashboardStyles.departmentPerformanceName}>{fixedDepartmentLabel}</span>
               <span className={dashboardStyles.departmentPerformanceTrack}>
                 <span style={{ width: `${value}%` }} />
               </span>
@@ -1604,6 +1572,7 @@ export function DashboardView({
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const workerMode = isWorkerOnly(session);
+  const masterMode = isMasterRole(session.role);
   const showHrSummary = Boolean(canViewHr && !workerMode);
   const roleLabel = getRoleLabel(session.role);
   const currentDateKey = todayKey();
@@ -1652,9 +1621,6 @@ export function DashboardView({
   const reviewTasks = workerMode
     ? dashboardTasks.filter((task) => task.statusKey === "review").length
     : dashboardProjects.filter((project) => project.stageBucket === "review").length;
-  const plannedTasks = workerMode
-    ? dashboardTasks.filter((task) => task.statusKey === "planned").length
-    : dashboardProjects.filter((project) => project.stageBucket === "todo" || project.stageBucket === "unknown").length;
   const overdueTasks = workerMode
     ? dashboardTasks.filter((task) => isOverdue(task, currentDateKey)).length
     : 0;
@@ -1672,11 +1638,36 @@ export function DashboardView({
     const score = { urgent: 4, attention: 3, good: 2, muted: 1 };
     return score[rightTone] - score[leftTone] || right.completion - left.completion;
   });
+  const currentUserId = String(session.uid);
+  const currentMasterProjectIds = new Set(
+    dashboardProjects
+      .filter((project) => isSameDashboardUser(project.managerId, currentUserId))
+      .map((project) => project.id),
+  );
+  const currentMasterTasks = masterMode
+    ? dashboardTasks.filter(
+        (task) =>
+          isSameDashboardUser(task.leaderId, currentUserId) ||
+          (typeof task.projectId === "number" && currentMasterProjectIds.has(task.projectId)),
+      )
+    : [];
+  const currentMasterTaskProjectIds = new Set(
+    currentMasterTasks
+      .map((task) => task.projectId)
+      .filter((projectId): projectId is number => typeof projectId === "number"),
+  );
+  const currentMasterProjects = masterMode
+    ? sortedProjects.filter(
+        (project) =>
+          isSameDashboardUser(project.managerId, currentUserId) ||
+          currentMasterTaskProjectIds.has(project.id),
+      )
+    : [];
   const workerWorkSummaries = workerMode
     ? buildWorkerWorkSummaries(dashboardTasks, snapshot.projects, currentDateKey)
     : [];
   const visibleWorkerWorks = workerWorkSummaries;
-  const visibleProjects = sortedProjects.slice(0, 3);
+  const visibleProjects = masterMode ? sortedProjects : sortedProjects.slice(0, 3);
   const visibleWorkItems = workerMode ? visibleWorkerWorks.length : visibleProjects.length;
   const projectStatusChips = projectStatusFilterChips(sortedProjects);
   const projectStatusSections = projectStatusChips.map((chip) => ({
@@ -1688,69 +1679,10 @@ export function DashboardView({
     workerMode && visibleWorkItems > 1 && "xl:grid-cols-2",
     !workerMode && visibleWorkItems > 1 && "lg:grid-cols-2 2xl:grid-cols-3",
   );
-
-  const statCards: DashboardStat[] = [
-    {
-      label: "Нийт ажил",
-      value: String(totalTasks),
-      helper: "Энэ нэгж дээр бүртгэсэн",
-      progress: 100,
-      href: "/projects",
-      icon: ClipboardList,
-      tone: "good",
-      short: "A",
-    },
-    {
-      label: "Төлөвлөсөн",
-      value: String(plannedTasks),
-      helper: "Эхлээгүй эсвэл хүлээгдэж буй",
-      progress: percent(plannedTasks, totalTasks),
-      href: workerMode ? "/tasks?filter=planned" : "/projects",
-      icon: CalendarDays,
-      tone: "good",
-      short: "T",
-    },
-    {
-      label: "Гүйцэтгэж байгаа",
-      value: String(workingTasks),
-      helper: "Яг одоо явагдаж буй",
-      progress: percent(workingTasks, totalTasks),
-      href: workerMode ? "/tasks?filter=working" : "/projects",
-      icon: Clock3,
-      tone: "good",
-      short: "G",
-    },
-    {
-      label: "Хянаж байгаа",
-      value: String(reviewTasks),
-      helper: "Баталгаажуулалт хүлээж буй",
-      progress: percent(reviewTasks, totalTasks),
-      href: workerMode ? "/review" : "/projects",
-      icon: ShieldCheck,
-      tone: "attention",
-      short: "H",
-    },
-    {
-      label: "Хугацаа хэтэрсэн",
-      value: String(overdueTasks),
-      helper: workerMode ? "Хугацаа өнгөрсөн даалгавар" : "Хугацаа өнгөрсөн ажил",
-      progress: percent(overdueTasks, totalTasks),
-      href: workerMode ? "/tasks?filter=overdue" : "/projects",
-      icon: AlertTriangle,
-      tone: overdueTasks ? "urgent" : "muted",
-      short: "!",
-    },
-    {
-      label: "Дууссан",
-      value: String(completedTasks),
-      helper: "Бүрэн дууссан ажил",
-      progress: percent(completedTasks, totalTasks),
-      href: workerMode ? "/reports" : "/projects",
-      icon: CheckCircle2,
-      tone: "good",
-      short: "D",
-    },
-  ];
+  const currentMasterGridClassName = cn(
+    dashboardStyles.taskListBody,
+    currentMasterProjects.length > 1 && "lg:grid-cols-2 2xl:grid-cols-3",
+  );
 
   if (canViewGeneralDashboard && !workerMode) {
     return (
@@ -1816,14 +1748,6 @@ export function DashboardView({
 
           <div className="relative z-20 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="grid min-w-0 gap-4">
-              {!workerMode ? (
-                <section className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6", dashboardStyles.statGrid)}>
-                  {statCards.map((metric) => (
-                    <StatCard key={metric.label} metric={metric} />
-                  ))}
-                </section>
-              ) : null}
-
               {!workerMode ? <MobilePriorityPanel canWriteReports={canWriteReports} /> : null}
 
               {fleetLoadError ? (
@@ -1835,15 +1759,50 @@ export function DashboardView({
               <div className={dashboardStyles.departmentPanel}>
                 <DepartmentOverview
                   snapshot={snapshot}
-                  tasks={dashboardTasks}
                   departmentScopeName={departmentScopeName}
                 />
               </div>
 
+              {masterMode ? (
+                <Card className={dashboardStyles.taskListCard}>
+                  <CardHeader className={dashboardStyles.taskListHeader}>
+                    <div className={dashboardStyles.taskListHeaderText}>
+                      <CardTitle>Миний хариуцсан ажил</CardTitle>
+                      <CardDescription>
+                        Таны нэр дээр хариуцагчаар бүртгэгдсэн ажил, даалгаврууд.
+                      </CardDescription>
+                    </div>
+                    <Badge tone={currentMasterProjects.length ? "green" : "slate"}>
+                      {currentMasterProjects.length} ажил
+                    </Badge>
+                  </CardHeader>
+
+                  <div className={currentMasterGridClassName}>
+                    {currentMasterProjects.map((project) => (
+                      <ProjectCard key={`mine-${project.id}`} project={project} />
+                    ))}
+                    {!currentMasterProjects.length ? (
+                      <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>
+                        <span className={dashboardStyles.taskListEmptyIcon}>
+                          <UserCheck />
+                        </span>
+                        <span className="mt-2 block text-[#1F2B24]">Танд хариуцсан ажил бүртгэгдээгүй байна.</span>
+                        <small className="mt-1 block font-medium text-[#8A978E]">Нийт ажлын жагсаалтаас алба нэгжийн ажлуудаа харж болно.</small>
+                      </div>
+                    ) : null}
+                  </div>
+                </Card>
+              ) : null}
+
               <Card className={dashboardStyles.taskListCard}>
                 <CardHeader className={dashboardStyles.taskListHeader}>
                   <div className={dashboardStyles.taskListHeaderText}>
-                    <CardTitle>Ажлын жагсаалт</CardTitle>
+                    <CardTitle>{masterMode ? "Алба нэгжийн бүх ажил" : "Ажлын жагсаалт"}</CardTitle>
+                    {masterMode ? (
+                      <CardDescription>
+                        Энэ хэсэгт нэгжийн нийт ажил харагдана. Мастер бүр нэг нэгнийхээ ажлын явцыг хянаж болно.
+                      </CardDescription>
+                    ) : null}
                   </div>
                 </CardHeader>
 

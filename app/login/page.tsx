@@ -20,6 +20,8 @@ function getErrorMessage(code?: string) {
       return "Нэвтрэх нэр эсвэл нууц үг буруу байна.";
     case "connection":
       return "Сервертэй холбогдож чадсангүй. Түр хүлээгээд дахин оролдоно уу.";
+    case "rate-limit":
+      return "Олон удаа буруу оролдлого хийлээ. Түр хүлээгээд дахин оролдоно уу.";
     default:
       return "";
   }
@@ -45,6 +47,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             width={184}
             height={64}
             className={styles.logo}
+            style={{ width: "184px", height: "auto" }}
             priority
             unoptimized
           />

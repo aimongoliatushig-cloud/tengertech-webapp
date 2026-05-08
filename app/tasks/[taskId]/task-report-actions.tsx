@@ -5,6 +5,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { MediaUploadField } from "./media-upload-field";
+import { PendingSubmitButton } from "./pending-submit-button";
 import styles from "./task-detail.module.css";
 
 type ReportAttachment = {
@@ -307,9 +308,9 @@ export function TaskReportActions({
                   >
                     Болих
                   </button>
-                  <button type="submit" className={styles.actionButton}>
+                  <PendingSubmitButton className={styles.actionButton} pendingLabel="Хадгалж байна...">
                     Хадгалах
-                  </button>
+                  </PendingSubmitButton>
                 </div>
               </form>
             </div>
@@ -333,9 +334,9 @@ export function TaskReportActions({
       >
         <input type="hidden" name="task_id" value={taskId} />
         <input type="hidden" name="report_id" value={reportId} />
-        <button type="submit" className={styles.warningButton}>
+        <PendingSubmitButton className={styles.warningButton} pendingLabel="Устгаж байна...">
           Устгах
-        </button>
+        </PendingSubmitButton>
       </form>
       {editModal}
     </div>

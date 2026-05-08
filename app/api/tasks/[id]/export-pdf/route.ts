@@ -1,6 +1,7 @@
-import { getSession, isWorkerOnly } from "@/lib/auth";
+import { getSession, isMasterRole, isWorkerOnly } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
+import { filterTasksForResponsibleMaster } from "@/lib/master-scope";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 import {
   generateOfficialTaskPdf,
@@ -47,6 +48,12 @@ async function loadScopeMeta(
 
   const isAssigned = directoryTask.assigneeIds?.includes(session.uid) ?? false;
   if (isWorkerOnly(session) && !isAssigned) {
+    throw new Error("Даалгавар олдсонгүй эсвэл танд харах эрх алга.");
+  }
+  if (
+    isMasterRole(session.role) &&
+    filterTasksForResponsibleMaster([directoryTask], snapshot.projects, session).length === 0
+  ) {
     throw new Error("Даалгавар олдсонгүй эсвэл танд харах эрх алга.");
   }
   if (

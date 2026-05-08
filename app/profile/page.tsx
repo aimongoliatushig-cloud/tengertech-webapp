@@ -164,15 +164,17 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     password: session.password,
   };
   const showFullProfile = !workerMode;
-  const routeManagementData = showFullProfile && canCreateRoute
-    ? await loadRouteManagementData(connectionOverrides)
-    : null;
-  const teamMemberOptions = showFullProfile && canCreateTeam
-    ? await loadTeamMemberOptions(departmentScopeName, connectionOverrides)
-    : [];
-  const teamManagementData = showFullProfile && canCreateTeam
-    ? await loadTeamManagementData(departmentScopeName, connectionOverrides)
-    : { teams: [], totalTeams: 0 };
+  const [routeManagementData, teamMemberOptions, teamManagementData] = await Promise.all([
+    showFullProfile && canCreateRoute
+      ? loadRouteManagementData(connectionOverrides)
+      : Promise.resolve(null),
+    showFullProfile && canCreateTeam
+      ? loadTeamMemberOptions(departmentScopeName, connectionOverrides)
+      : Promise.resolve([]),
+    showFullProfile && canCreateTeam
+      ? loadTeamManagementData(departmentScopeName, connectionOverrides)
+      : Promise.resolve({ teams: [], totalTeams: 0 }),
+  ]);
 
   const appRoleLabel = getAppRoleLabel(
     getPrimaryAppRole({

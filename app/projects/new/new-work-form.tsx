@@ -216,6 +216,12 @@ function isRoadCleaningMasterEmployee(employee: RoadCleaningEmployeeOption) {
   );
 }
 
+function roadCleaningMasterRoleLabel(employee: RoadCleaningEmployeeOption) {
+  return normalizeDepartmentValue(employee.jobTitle).includes("ахлах мастер")
+    ? "Ахлах мастер"
+    : "Мастер";
+}
+
 function emptySeasonalLine(index: number): SeasonalLineDraft {
   return {
     id: `seasonal-line-${index}-${Date.now()}`,
@@ -443,15 +449,20 @@ export function NewWorkForm({
 
   const roadCleaningMasterChoices = useMemo(() => {
     const masterEmployees = roadCleaningEmployeeOptions.filter(isRoadCleaningMasterEmployee);
+    const departmentMasters = selectedDepartment
+      ? masterEmployees.filter((employee) => employee.departmentId === selectedDepartment.id)
+      : [];
+    const source = selectedDepartment && departmentMasters.length ? departmentMasters : masterEmployees;
 
-    if (!selectedDepartment) {
-      return masterEmployees;
-    }
-
-    const departmentMasters = masterEmployees.filter(
-      (employee) => employee.departmentId === selectedDepartment.id,
-    );
-    return departmentMasters.length ? departmentMasters : masterEmployees;
+    return [...source].sort((left, right) => {
+      const roleDiff =
+        (roadCleaningMasterRoleLabel(left) === "Ахлах мастер" ? 0 : 1) -
+        (roadCleaningMasterRoleLabel(right) === "Ахлах мастер" ? 0 : 1);
+      if (roleDiff !== 0) {
+        return roleDiff;
+      }
+      return left.name.localeCompare(right.name, "mn");
+    });
   }, [roadCleaningEmployeeOptions, selectedDepartment]);
 
   const getRoadCleaningWorkName = (line: RoadCleaningLineDraft) => {
@@ -1218,7 +1229,7 @@ export function NewWorkForm({
                 <option value="">Мастер сонгоно уу</option>
                 {roadCleaningMasterChoices.map((employee) => (
                   <option key={employee.id} value={employee.id}>
-                    {[employee.name, employee.jobTitle, employee.departmentName]
+                    {[employee.name, roadCleaningMasterRoleLabel(employee), employee.departmentName]
                       .filter(Boolean)
                       .join(" · ")}
                   </option>

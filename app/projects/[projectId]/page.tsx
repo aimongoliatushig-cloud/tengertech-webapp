@@ -16,6 +16,8 @@ import {
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
+import { filterProjectsForResponsibleMaster } from "@/lib/master-scope";
+import { loadMunicipalSnapshot } from "@/lib/odoo";
 import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurement";
 import { loadProjectDetail } from "@/lib/workspace";
 
@@ -126,6 +128,21 @@ function StagePill({ label, bucket }: { label: string; bucket: string }) {
   );
 }
 
+function taskCardToneClass(bucket: string) {
+  switch (bucket) {
+    case "problem":
+      return styles.projectTaskFlowItemProblem;
+    case "done":
+      return styles.projectTaskFlowItemDone;
+    case "review":
+      return styles.projectTaskFlowItemReview;
+    case "progress":
+      return styles.projectTaskFlowItemProgress;
+    default:
+      return styles.projectTaskFlowItemTodo;
+  }
+}
+
 export default async function ProjectDetailPage({ params, searchParams }: PageProps) {
   const session = await requireSession();
   if (isWorkerOnly(session)) {
@@ -189,6 +206,16 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     filterByDepartment([{ departmentName: project.departmentName }], scopedDepartmentName).length === 0
   ) {
     redirect("/projects");
+  }
+  if (masterMode) {
+    const snapshot = await loadMunicipalSnapshot(connectionOverrides);
+    const snapshotProject = snapshot.projects.find((item) => item.id === project.id);
+    if (
+      !snapshotProject ||
+      filterProjectsForResponsibleMaster([snapshotProject], snapshot.taskDirectory, session).length === 0
+    ) {
+      redirect("/projects");
+    }
   }
 
   const canCreateProject = hasCapability(session, "create_projects");
@@ -661,9 +688,17 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                               )}`,
                             )}`
                           : task.href;
+                      const reviewHref = `${task.href}?returnTo=${encodeURIComponent(
+                        `/projects/${project.id}`,
+                      )}#task-reports`;
+                      const canReviewTaskFromBoard =
+                        masterMode && task.reportCount > 0 && task.stageBucket !== "done";
 
                       return (
-                        <article key={task.id} className={styles.projectTaskFlowItem}>
+                        <article
+                          key={task.id}
+                          className={`${styles.projectTaskFlowItem} ${taskCardToneClass(task.stageBucket)}`}
+                        >
                           <Link href={taskHref} className={styles.projectTaskFlowLink}>
                           <span className={styles.projectTaskNumber}>{index + 1}</span>
                           <div className={styles.projectTaskMain}>
@@ -675,10 +710,20 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                                 {task.teamLeaderJobTitle ? ` · ${task.teamLeaderJobTitle}` : ""}
                               </p>
                             </div>
-                            <StagePill label={task.stageLabel} bucket={task.stageBucket} />
                           </div>
 
                           <div className={styles.projectTaskMetaGrid}>
+                            <div className={styles.projectTaskStateCell}>
+                              <small>Төлөв</small>
+                              <div className={styles.projectTaskStateRow}>
+                                <StagePill label={task.stageLabel} bucket={task.stageBucket} />
+                                {task.reportCount ? (
+                                  <span className={styles.projectTaskReportCount}>
+                                    {task.reportCount} тайлан
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
                             {task.quantitySummary ? (
                               <div className={styles.projectTaskQuantityCell}>
                                 <strong>Хэмжээ:</strong>
@@ -696,22 +741,31 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                           </div>
                         </Link>
 
-                        {canCreateTasks ? (
+                        {canReviewTaskFromBoard || canCreateTasks ? (
                           <div className={styles.projectTaskFlowActions}>
-                            <ProjectTaskEditModal
-                              action={updateTaskAction}
-                              projectId={project.id}
-                              taskId={task.id}
-                              taskName={task.name}
-                              deadlineValue={task.deadlineValue}
-                            />
-                            <form action={deleteTaskAction}>
-                              <input type="hidden" name="project_id" value={project.id} />
-                              <input type="hidden" name="task_id" value={task.id} />
-                              <button type="submit" className={styles.dangerButton}>
-                                Устгах
-                              </button>
-                            </form>
+                            {canReviewTaskFromBoard ? (
+                              <Link href={reviewHref} className={styles.projectTaskReviewButton}>
+                                Шалгах
+                              </Link>
+                            ) : null}
+                            {canCreateTasks ? (
+                              <ProjectTaskEditModal
+                                action={updateTaskAction}
+                                projectId={project.id}
+                                taskId={task.id}
+                                taskName={task.name}
+                                deadlineValue={task.deadlineValue}
+                              />
+                            ) : null}
+                            {canCreateTasks ? (
+                              <form action={deleteTaskAction}>
+                                <input type="hidden" name="project_id" value={project.id} />
+                                <input type="hidden" name="task_id" value={task.id} />
+                                <button type="submit" className={styles.dangerButton}>
+                                  Устгах
+                                </button>
+                              </form>
+                            ) : null}
                           </div>
                         ) : null}
                         </article>

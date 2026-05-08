@@ -512,6 +512,7 @@ export type ProjectTaskCard = {
   measurementUnit: string;
   quantitySummary: string;
   quantitySummaryLines: string[];
+  reportCount: number;
 };
 
 export type WorkspaceAttachmentItem = {
@@ -673,24 +674,28 @@ function resolveEffectiveTaskStage(
     reportStates?: Array<string | false | undefined>;
     mfoState?: string | false;
     taskState?: string | false;
+    reportsLocked?: boolean;
   } = {},
 ) {
   const stateBucket = normalizeStageBucket(String(context.taskState || ""));
   const mfoBucket = normalizeStageBucket(String(context.mfoState || ""));
+  const stageBucket = normalizeStageBucket(stageName);
   const reportBuckets = (context.reportStates ?? []).map((state) =>
     normalizeStageBucket(String(state || "")),
   );
+  const normalizedProgress = Math.max(0, Math.min(100, Math.round(progress)));
   const bucket =
-    stateBucket === "problem" || mfoBucket === "problem" || reportBuckets.includes("problem")
-      ? "problem"
-      : stateBucket === "done"
-        ? stateBucket
-        : mfoBucket !== "unknown"
+    stateBucket === "done" || mfoBucket === "done" || stageBucket === "done"
+      ? "done"
+      : context.reportsLocked && normalizedProgress >= 100
+        ? "done"
+        : stateBucket === "problem" || mfoBucket === "problem" || reportBuckets.includes("problem")
+          ? "problem"
+          : mfoBucket !== "unknown"
           ? mfoBucket
           : reportBuckets.includes("review")
             ? "review"
-            : normalizeStageBucket(stageName);
-  const normalizedProgress = Math.max(0, Math.min(100, Math.round(progress)));
+            : stageBucket;
 
   if (bucket === "done") {
     return { bucket: "done" as const, label: "Дууссан" };
@@ -889,6 +894,7 @@ function getProjectTaskQuantitySnapshot(task: TaskRecord, reports: ReportRecord[
   const stageBucket = normalizeStageBucket(relationName(task.stage_id, ""));
   const measurementUnit = formatMeasurementUnit(task.ops_measurement_unit_id, task.ops_measurement_unit);
   const plannedLines = extractTaskQuantityLines(htmlToPlainText(task.description));
+  let hasExplicitQuantityLines = plannedLines.length > 0;
 
   if (!plannedLines.length) {
     const reportLinesByUnit = new Map<string, TaskQuantityLine>();
@@ -903,6 +909,7 @@ function getProjectTaskQuantitySnapshot(task: TaskRecord, reports: ReportRecord[
       }
     }
     plannedLines.push(...reportLinesByUnit.values());
+    hasExplicitQuantityLines = plannedLines.length > 0;
   }
 
   if (!plannedLines.length && (task.ops_planned_quantity ?? 0) > 0) {
@@ -941,8 +948,16 @@ function getProjectTaskQuantitySnapshot(task: TaskRecord, reports: ReportRecord[
     : plannedQuantity > 0 && measurementUnit
       ? `${completedQuantity}/${plannedQuantity} ${measurementUnit}`.trim()
       : "";
-  const quantitySummaryLines = quantitySummary
-    ? quantitySummary.split(",").map((line) => line.trim()).filter(Boolean)
+  const isPlaceholderQuantity =
+    !hasExplicitQuantityLines &&
+    quantityLines.length <= 1 &&
+    plannedQuantity <= 1 &&
+    ["нэгж", "unit"].includes(normalizeQuantityUnit(measurementUnit)) &&
+    task.mfo_operation_type !== "garbage" &&
+    task.mfo_operation_type !== "garbage_seasonal";
+  const displayQuantitySummary = isPlaceholderQuantity ? "" : quantitySummary;
+  const quantitySummaryLines = displayQuantitySummary
+    ? displayQuantitySummary.split(",").map((line) => line.trim()).filter(Boolean)
     : [];
 
   return {
@@ -950,7 +965,7 @@ function getProjectTaskQuantitySnapshot(task: TaskRecord, reports: ReportRecord[
     completedQuantity,
     progress,
     measurementUnit,
-    quantitySummary,
+    quantitySummary: displayQuantitySummary,
     quantitySummaryLines,
   };
 }
@@ -1000,12 +1015,26 @@ function isMasterLikeJobTitle(value: string) {
 }
 
 function getEmployeeJobTitle(employee: Pick<EmployeeUserRecord, "job_id" | "job_title">) {
-  return [
+  const parts = [
     Array.isArray(employee.job_id) ? employee.job_id[1] : "",
     employee.job_title || "",
   ]
+    .map((part) => String(part).replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  const uniqueParts = parts.filter(
+    (part, index) =>
+      parts.findIndex((candidate) => candidate.toLowerCase() === part.toLowerCase()) === index,
+  );
+  const words = uniqueParts.join(" ").split(" ");
+
+  return words
+    .filter((word, index) => index === 0 || word.toLowerCase() !== words[index - 1].toLowerCase())
     .join(" ")
     .trim();
+}
+
+function roleFromMasterJobTitle(jobTitle: string): "senior_master" | "team_leader" {
+  return jobTitle.toLowerCase().includes("ахлах мастер") ? "senior_master" : "team_leader";
 }
 
 function relationId(relation: Relation) {
@@ -1436,14 +1465,15 @@ async function loadMasterEmployeeUserOptions(
       }
 
       const phone = employee.mobile_phone || employee.work_phone || "";
+      const jobTitle = getEmployeeJobTitle(employee);
       items.push({
         id: userId,
         name: relationName(employee.user_id, employee.name),
         login: phone || employee.work_email || "",
         phone: phone || "",
-        role: "senior_master",
+        role: roleFromMasterJobTitle(jobTitle),
         departmentName: relationName(employee.department_id, ""),
-        jobTitle: getEmployeeJobTitle(employee),
+        jobTitle,
       });
       return items;
     }, []);
@@ -1587,7 +1617,21 @@ export async function loadTeamLeaderOptions(
     new Map(
       [...roleOptions, ...inferredMasterOptions].map((option) => [option.id, option]),
     ).values(),
-  ).sort((left, right) => left.name.localeCompare(right.name, "mn"));
+  ).sort((left, right) => {
+    const roleRank = (role: string) => (role === "senior_master" ? 0 : 1);
+    const rankDiff = roleRank(left.role) - roleRank(right.role);
+    if (rankDiff !== 0) {
+      return rankDiff;
+    }
+    const departmentDiff = (left.departmentName ?? "").localeCompare(
+      right.departmentName ?? "",
+      "mn",
+    );
+    if (departmentDiff !== 0) {
+      return departmentDiff;
+    }
+    return left.name.localeCompare(right.name, "mn");
+  });
 }
 
 export async function loadCrewTeamOptions(
@@ -2468,9 +2512,11 @@ export async function loadProjectDetail(
         "ops_progress_percent",
         "ops_measurement_unit",
         "ops_measurement_unit_id",
+        "mfo_operation_type",
         "date_deadline",
         "state",
         "mfo_state",
+        "ops_reports_locked",
         "description",
       ],
       {
@@ -2580,6 +2626,7 @@ export async function loadProjectDetail(
         reportStates: taskReports.map((report) => report.state),
         mfoState: task.mfo_state,
         taskState: task.state,
+        reportsLocked: Boolean(task.ops_reports_locked),
       },
     );
 
@@ -2603,6 +2650,7 @@ export async function loadProjectDetail(
       measurementUnit: quantitySnapshot.measurementUnit,
       quantitySummary: quantitySnapshot.quantitySummary,
       quantitySummaryLines: quantitySnapshot.quantitySummaryLines,
+      reportCount: taskReports.length,
     };
   }).sort((left, right) => {
     const leftSequence = getRoadCleaningDefaultLineSequence(left.name);
@@ -2657,39 +2705,57 @@ export async function loadTaskDetail(
   taskId: number,
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<TaskDetail> {
-  const taskPromise = searchReadWithFieldFallback<TaskRecord>(
-    "project.task",
-    [["id", "=", taskId]],
-    [
-      "name",
-      "project_id",
-      "stage_id",
-      "ops_team_leader_id",
-      "user_ids",
-      "mfo_crew_team_id",
-      "mfo_operation_type",
-      "ops_planned_quantity",
-      "ops_completed_quantity",
-      "ops_remaining_quantity",
-      "ops_progress_percent",
-      "ops_measurement_unit",
-      "ops_measurement_unit_id",
-      "ops_measurement_unit_code",
-      "priority",
-      "date_deadline",
-      "mfo_shift_date",
-      "state",
-      "description",
-      "ops_can_submit_for_review",
-      "ops_can_mark_done",
-      "ops_can_return_for_changes",
-      "ops_reports_locked",
-    ],
-    {
-      limit: 1,
-    },
-    connectionOverrides,
-  );
+  const taskQuery = (overrides: Partial<OdooConnection>) =>
+    searchReadWithFieldFallback<TaskRecord>(
+      "project.task",
+      [["id", "=", taskId]],
+      [
+        "name",
+        "project_id",
+        "stage_id",
+        "ops_team_leader_id",
+        "user_ids",
+        "mfo_crew_team_id",
+        "mfo_operation_type",
+        "ops_planned_quantity",
+        "ops_completed_quantity",
+        "ops_remaining_quantity",
+        "ops_progress_percent",
+        "ops_measurement_unit",
+        "ops_measurement_unit_id",
+        "ops_measurement_unit_code",
+        "priority",
+        "date_deadline",
+        "mfo_shift_date",
+        "state",
+        "description",
+        "ops_can_submit_for_review",
+        "ops_can_mark_done",
+        "ops_can_return_for_changes",
+        "ops_reports_locked",
+      ],
+      {
+        limit: 1,
+      },
+      overrides,
+    );
+
+  const primaryConnection = createOdooConnection(connectionOverrides);
+  const fallbackConnection = createOdooConnection();
+  const sameConnection =
+    primaryConnection.url === fallbackConnection.url &&
+    primaryConnection.db === fallbackConnection.db &&
+    primaryConnection.login === fallbackConnection.login &&
+    primaryConnection.password === fallbackConnection.password;
+
+  const taskPromise = taskQuery(connectionOverrides).catch((error) => {
+    if (sameConnection) {
+      throw error;
+    }
+
+    console.warn("Task detail could not be loaded with user credentials, retrying as system:", error);
+    return taskQuery({});
+  });
 
   const reportQuery = (overrides: Partial<OdooConnection>) =>
     searchReadWithFieldFallback<ReportRecord>(
@@ -2742,14 +2808,6 @@ export async function loadTaskDetail(
 
   let reports = primaryReports;
   let messages = primaryMessages;
-  const primaryConnection = createOdooConnection(connectionOverrides);
-  const fallbackConnection = createOdooConnection();
-  const sameConnection =
-    primaryConnection.url === fallbackConnection.url &&
-    primaryConnection.db === fallbackConnection.db &&
-    primaryConnection.login === fallbackConnection.login &&
-    primaryConnection.password === fallbackConnection.password;
-
   if (!sameConnection) {
     if (!reports.length) {
       reports = await reportQuery({}).catch(() => [] as ReportRecord[]);
@@ -2927,6 +2985,7 @@ export async function loadTaskDetail(
       reportStates: reports.map((report) => report.state),
       mfoState: task.mfo_state,
       taskState: task.state,
+      reportsLocked: Boolean(task.ops_reports_locked),
     },
   );
 
@@ -4297,19 +4356,13 @@ export async function notifyWorkspaceTaskReportReviewers(
       const isExecutiveReviewer = role === "director" || role === "general_manager";
       const isDepartmentReviewer =
         role === "project_manager" && (!departmentId || departmentUserIds.has(user.id));
+      const isSeniorMasterReviewer =
+        role === "senior_master" && (!departmentId || departmentUserIds.has(user.id));
       const isMasterReviewer =
-        (role === "senior_master" || role === "team_leader") &&
-        (user.id === teamLeaderId || assignedUserIds.has(user.id));
+        role === "team_leader" && (user.id === teamLeaderId || assignedUserIds.has(user.id));
 
-      if (isExecutiveReviewer || isDepartmentReviewer || isMasterReviewer) {
+      if (isExecutiveReviewer || isDepartmentReviewer || isSeniorMasterReviewer || isMasterReviewer) {
         recipientIds.add(user.id);
-      }
-    }
-
-    for (const employee of departmentEmployees) {
-      const employeeUserId = relationId(employee.user_id);
-      if (employeeUserId && isMasterLikeJobTitle(getEmployeeJobTitle(employee))) {
-        recipientIds.add(employeeUserId);
       }
     }
 
@@ -4395,35 +4448,56 @@ export async function markWorkspaceTaskDone(
   taskId: number,
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
-  return executeOdooKw<boolean>(
-    "project.task",
-    "action_ops_mark_done",
-    [[taskId]],
-    {},
-    connectionOverrides,
-  );
+  try {
+    return await executeOdooKw<boolean>(
+      "project.task",
+      "action_ops_mark_done",
+      [[taskId]],
+      {},
+      connectionOverrides,
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes("action_ops_mark_done") && !message.toLowerCase().includes("does not exist")) {
+      throw error;
+    }
+
+    return forceWorkspaceTaskDone(taskId, connectionOverrides);
+  }
 }
 
 async function loadDoneTaskStageId(connectionOverrides: Partial<OdooConnection>) {
-  const stages = await executeOdooKw<Array<{ id: number; name: string }>>(
-    "project.task.type",
-    "search_read",
-    [
-      [
-        "|",
-        ["name", "ilike", "Дууссан"],
-        ["name", "ilike", "Done"],
-      ],
-    ],
-    {
-      fields: ["name"],
-      order: "sequence desc, id desc",
-      limit: 1,
-    },
-    connectionOverrides,
-  ).catch(() => []);
+  const readStages = (domain: unknown[]) =>
+    executeOdooKw<Array<{ id: number; name: string }>>(
+      "project.task.type",
+      "search_read",
+      [domain],
+      {
+        fields: ["name"],
+        order: "sequence desc, id desc",
+        limit: 1,
+      },
+      connectionOverrides,
+    ).catch(() => []);
 
-  return stages[0]?.id ?? null;
+  const nameDomains = [
+    [["name", "ilike", "Дууссан ажил"]],
+    [["name", "ilike", "Дууссан"]],
+    [["name", "ilike", "Done"]],
+    [["name", "ilike", "Completed"]],
+    [["name", "ilike", "Approved"]],
+    [["name", "ilike", "Verified"]],
+  ];
+
+  for (const domain of nameDomains) {
+    const stages = await readStages(domain);
+    if (stages[0]?.id) {
+      return stages[0].id;
+    }
+  }
+
+  const foldedStages = await readStages([["fold", "=", true]]);
+  return foldedStages[0]?.id ?? null;
 }
 
 export async function forceWorkspaceTaskDone(
@@ -4431,32 +4505,87 @@ export async function forceWorkspaceTaskDone(
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
   const doneStageId = await loadDoneTaskStageId(connectionOverrides);
-  const values: Record<string, unknown> = {
+  const taskFields = await loadModelFieldNames("project.task", connectionOverrides).catch(() => null);
+  let values: Record<string, unknown> = {
     ops_progress_percent: 100,
+    ops_reports_locked: true,
+    mfo_state: "done",
+    state: "1_done",
   };
 
   if (doneStageId) {
     values.stage_id = doneStageId;
   }
 
-  try {
-    values.state = "1_done";
-    return await executeOdooKw<boolean>(
+  if (taskFields) {
+    values = keepSupportedValues(values, taskFields);
+  }
+
+  const writeDoneValues = async (nextValues: Record<string, unknown>) =>
+    executeOdooKw<boolean>(
       "project.task",
       "write",
-      [[taskId], values],
+      [[taskId], nextValues],
       {},
       connectionOverrides,
     );
+
+  try {
+    const result = await writeDoneValues(values);
+    await markWorkspaceTaskReportsApproved(taskId, connectionOverrides);
+    return result;
   } catch {
     delete values.state;
-    return executeOdooKw<boolean>(
-      "project.task",
-      "write",
-      [[taskId], values],
+    try {
+      const result = await writeDoneValues(values);
+      await markWorkspaceTaskReportsApproved(taskId, connectionOverrides);
+      return result;
+    } catch {
+      delete values.mfo_state;
+      const result = await writeDoneValues(values);
+      await markWorkspaceTaskReportsApproved(taskId, connectionOverrides);
+      return result;
+    }
+  }
+}
+
+async function markWorkspaceTaskReportsApproved(
+  taskId: number,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  try {
+    const reportIds = await executeOdooKw<number[]>(
+      "ops.task.report",
+      "search",
+      [[["task_id", "=", taskId]]],
       {},
       connectionOverrides,
     );
+
+    if (!reportIds.length) {
+      return;
+    }
+
+    const reportFields = await loadModelFieldNames("ops.task.report", connectionOverrides);
+    const approvedValues = keepSupportedValues(
+      {
+        state: "approved",
+        rejection_reason: "",
+      },
+      reportFields,
+    );
+
+    if (Object.keys(approvedValues).length) {
+      await executeOdooKw<boolean>(
+        "ops.task.report",
+        "write",
+        [reportIds, approvedValues],
+        {},
+        connectionOverrides,
+      );
+    }
+  } catch (error) {
+    console.warn("Task reports could not be marked as approved.", error);
   }
 }
 

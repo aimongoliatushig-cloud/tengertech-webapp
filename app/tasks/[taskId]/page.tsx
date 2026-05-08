@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, CalendarDays, ClipboardList, MoreVertical } from "lucide-react";
+import { ArrowLeft, CalendarDays, ClipboardCheck, ClipboardList, MoreVertical } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
@@ -26,12 +26,14 @@ import {
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
+import { filterTasksForResponsibleMaster } from "@/lib/master-scope";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurement";
 import { loadTaskDetail } from "@/lib/workspace";
 
 import styles from "./task-detail.module.css";
 import { OfficialReportExportModal } from "./official-report-export-modal";
+import { PendingSubmitButton } from "./pending-submit-button";
 import { TaskReportActions } from "./task-report-actions";
 import { TaskReportModal } from "./task-report-modal";
 
@@ -107,6 +109,57 @@ function formatReportText(value: string) {
   );
 }
 
+function cleanReviewReportText(value: string) {
+  return formatReportText(value)
+    .replace(/\bQA\s+\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function reportImageLabel(index: number, total: number) {
+  if (total === 1) {
+    return "Нотлох зураг";
+  }
+  if (index === 0) {
+    return "Өмнөх зураг";
+  }
+  if (index === 1) {
+    return "Дараах зураг";
+  }
+  return `Нэмэлт зураг ${index + 1}`;
+}
+
+function taskDetailErrorMessage(error: unknown) {
+  const message =
+    error instanceof Error ? error.message : "Даалгаврын мэдээлэл уншихад алдаа гарлаа.";
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes("fetch failed") ||
+    normalized.includes("econnrefused") ||
+    normalized.includes("etimedout") ||
+    normalized.includes("network")
+  ) {
+    return "Odoo сервертэй холбогдож чадсангүй. Түр хүлээгээд дахин оролдоно уу.";
+  }
+
+  if (message.includes("Odoo authentication failed")) {
+    return "Odoo нэвтрэлт баталгаажсангүй. Дахин нэвтэрч оролдоно уу.";
+  }
+
+  return message;
+}
+
+function isPlaceholderQuantity(task: Awaited<ReturnType<typeof loadTaskDetail>>) {
+  const unit = task.measurementUnit.trim().toLowerCase();
+  const hasOnlyDefaultUnit =
+    task.quantityLines.length <= 1 &&
+    task.plannedQuantity <= 1 &&
+    (unit === "нэгж" || unit === "unit" || !unit);
+
+  return hasOnlyDefaultUnit && task.operationType !== "garbage" && task.operationType !== "garbage_seasonal";
+}
+
 export default async function TaskDetailPage({ params, searchParams }: PageProps) {
   const session = await requireSession();
   const resolvedParams = await params;
@@ -154,8 +207,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   try {
     task = await loadTaskDetail(taskId, connectionOverrides);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Даалгаврын мэдээлэл уншихад алдаа гарлаа.";
+    const message = taskDetailErrorMessage(error);
 
     if (message.includes("Даалгавар олдсонгүй") || message.toLowerCase().includes("not found")) {
       redirect(addQueryMessage(backHref, "error", "Даалгавар олдсонгүй эсвэл танд харах эрх алга."));
@@ -200,7 +252,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
     );
   }
 
-  if (workerMode || scopedDepartmentName) {
+  if (workerMode || masterMode || scopedDepartmentName) {
     const snapshot = await loadMunicipalSnapshot({
       login: session.login,
       password: session.password,
@@ -212,6 +264,12 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
     }
     const isAssignedToSession = directoryTask.assigneeIds?.includes(session.uid) ?? false;
     if (workerMode && !isAssignedToSession) {
+      redirect("/tasks");
+    }
+    if (
+      masterMode &&
+      filterTasksForResponsibleMaster([directoryTask], snapshot.projects, session).length === 0
+    ) {
       redirect("/tasks");
     }
     if (
@@ -228,9 +286,10 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const hasOwnSubmittedReport = task.reports.some((report) => report.reporterId === session.uid);
   const canManageReview =
     !workerMode &&
-    !isAssignedToCurrentUser &&
     !hasOwnSubmittedReport &&
-    (canViewQualityCenter || canCreateTasks || masterMode);
+    (masterMode || (!isAssignedToCurrentUser && (canViewQualityCenter || canCreateTasks)));
+  const reviewFocusedMode =
+    !workerMode && hasSubmittedReport && (masterMode || canViewQualityCenter || canCreateTasks);
   const canMarkDone =
     canManageReview && !["done"].includes(task.stageBucket) && (task.canMarkDone || hasSubmittedReport);
   const canSubmitForReview =
@@ -244,38 +303,52 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
     task.stageBucket !== "review" &&
     task.stageBucket !== "done" &&
     hasCapability(session, "write_workspace_reports");
+  const hasMeaningfulQuantity = !isPlaceholderQuantity(task);
   const quantitySummary =
-    task.quantityLines.length
+    hasMeaningfulQuantity && task.quantityLines.length
       ? `${task.completedQuantity}/${task.plannedQuantity} нэгж`
-      : task.plannedQuantity > 0 && task.measurementUnit
+      : hasMeaningfulQuantity && task.plannedQuantity > 0 && task.measurementUnit
       ? `${task.completedQuantity}/${task.plannedQuantity} ${task.measurementUnit}`
       : "";
-  const quantityLines = task.quantityLines.length
+  const quantityLines = hasMeaningfulQuantity && task.quantityLines.length
     ? task.quantityLines
     : quantitySummary
       ? [{ quantity: task.plannedQuantity, unit: task.measurementUnit }]
       : [];
   const canOpenReportComposer = canWriteReport && canSubmitWorkspaceReport(session);
-  const primaryActionLabel = canMarkDone
-    ? "Даалгаврыг дуусгах"
+  const primaryActionLabel = reviewFocusedMode
+    ? "Шалгалтын үр дүн"
+    : canMarkDone
+      ? "Ажил хянаж дуусгах"
+      : canSubmitForReview
+        ? masterMode
+          ? "Тайлан илгээх"
+          : "Шалгалтад илгээх"
+        : canOpenReportComposer
+          ? "Гүйцэтгэлийн тайлан оруулах"
+          : "Мэдээлэл харах";
+  const primaryActionHint = reviewFocusedMode
+    ? ""
+    : canMarkDone
+    ? "Тайланг шалгаад зөв бол дуусгана. Засах зүйл байвал шалтгаанаа бичээд буцаана."
     : canSubmitForReview
-      ? masterMode
-        ? "Тайлан илгээх"
-        : "Шалгалтад илгээх"
+      ? "Гүйцэтгэлийн мэдээллийг шалгалтад шилжүүлнэ."
       : canOpenReportComposer
-        ? "Гүйцэтгэлийн тайлан оруулах"
-        : "Мэдээлэл харах";
+        ? "Хийсэн ажлын тайлбар, хэмжээ, зураг болон аудио нотолгоог нэг удаа оруулна."
+        : "Энэ төлөв дээр хийх үндсэн үйлдэл алга байна.";
 
-  const showReportComposer = !canMarkDone && !canSubmitForReview && canOpenReportComposer;
-  const procurementBundle = await loadProcurementRequests(
-    { task_id: task.id, limit: 5 },
-    connectionOverrides,
-  ).catch((error) => {
-    if (!isProcurementSetupError(error)) {
-      console.warn("Task procurement links could not be loaded:", error);
-    }
-    return { items: [], pagination: { page: 1, limit: 5, total: 0, pages: 1 } };
-  });
+  const showReportComposer = !canManageReview && !canMarkDone && !canSubmitForReview && canOpenReportComposer;
+  const procurementBundle = reviewFocusedMode
+    ? { items: [], pagination: { page: 1, limit: 5, total: 0, pages: 1 } }
+    : await loadProcurementRequests(
+        { task_id: task.id, limit: 5 },
+        connectionOverrides,
+      ).catch((error) => {
+        if (!isProcurementSetupError(error)) {
+          console.warn("Task procurement links could not be loaded:", error);
+        }
+        return { items: [], pagination: { page: 1, limit: 5, total: 0, pages: 1 } };
+      });
   const procurementItems = procurementBundle.items;
   const procurementCreateParams = new URLSearchParams({ task_id: String(task.id) });
   if (task.projectId) {
@@ -283,33 +356,42 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   }
   const procurementCreateHref = `/procurement/new?${procurementCreateParams.toString()}`;
   const actionPanel = (
-    <aside className={styles.actionCard} id="task-actions">
-      <span className={styles.kicker}>Үндсэн үйлдэл</span>
+    <aside className={`${styles.actionCard} ${reviewFocusedMode ? styles.reviewActionCard : ""}`} id="task-actions">
+      <span className={styles.kicker}>{reviewFocusedMode ? "Үр дүн" : "Үндсэн үйлдэл"}</span>
       <strong className={styles.actionTitle}>{primaryActionLabel}</strong>
+      {reviewFocusedMode ? (
+        <div className={styles.reviewResultBar}>
+          <span>Одоогийн төлөв</span>
+          <strong>{task.stageLabel}</strong>
+        </div>
+      ) : null}
+      {primaryActionHint ? <p className={styles.actionLead}>{primaryActionHint}</p> : null}
 
-      <div className={styles.actionStack}>
-        <Link href={procurementCreateHref} className={styles.secondaryButton}>
-          Худалдан авах хүсэлт үүсгэх
-        </Link>
-
+      <div className={`${styles.actionStack} ${reviewFocusedMode ? styles.reviewActionStack : ""}`}>
         {canMarkDone ? (
           <form action={markTaskDoneAction}>
             <input type="hidden" name="task_id" value={task.id} />
-            <button type="submit" className={styles.actionButton}>
-              Даалгаврыг дуусгах
-            </button>
+            <PendingSubmitButton
+              className={`${styles.actionButton} ${reviewFocusedMode ? styles.reviewDoneButton : ""}`}
+              pendingLabel="Дуусгаж баталгаажуулж байна..."
+            >
+              {reviewFocusedMode ? (
+                <ClipboardCheck size={22} strokeWidth={2.5} aria-hidden="true" />
+              ) : null}
+              <span>Ажил хянаж дуусгах</span>
+            </PendingSubmitButton>
           </form>
         ) : null}
 
         {canSubmitForReview ? (
           <form action={submitTaskForReviewAction}>
             <input type="hidden" name="task_id" value={task.id} />
-            <button
-              type="submit"
+            <PendingSubmitButton
               className={canMarkDone ? styles.secondaryButton : styles.actionButton}
+              pendingLabel={masterMode ? "Илгээж байна..." : "Шалгалтад илгээж байна..."}
             >
               {masterMode ? "Тайлан илгээх" : "Шалгалтад илгээх"}
-            </button>
+            </PendingSubmitButton>
           </form>
         ) : null}
 
@@ -317,7 +399,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
           <TaskReportModal
             action={createTaskReportAction}
             taskId={task.id}
-            defaultOpen={false}
+            defaultOpen={openReportComposer}
             quantityOptional={task.quantityOptional}
             measurementUnit={task.measurementUnit}
             quantityLines={quantityLines}
@@ -328,34 +410,36 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
         ) : null}
       </div>
 
-      <div className={styles.helperPanel}>
-        <small>Төлөв: {task.stageLabel}</small>
-        <small>Явц: {task.progress}%</small>
-        {quantityLines.length ? (
-          <small>
-            Хэмжээ:{" "}
-            {quantityLines
-              .map((line) =>
-                `${line.completedQuantity ?? 0}/${line.quantity} ${line.unit}`.trim(),
-              )
-              .join(", ")}
-          </small>
-        ) : null}
-      </div>
+      {!reviewFocusedMode ? (
+        <div className={styles.helperPanel}>
+          <small>Төлөв: {task.stageLabel}</small>
+          <small>Явц: {task.progress}%</small>
+          {quantityLines.length ? (
+            <small>
+              Хэмжээ:{" "}
+              {quantityLines
+                .map((line) =>
+                  `${line.completedQuantity ?? 0}/${line.quantity} ${line.unit}`.trim(),
+                )
+                .join(", ")}
+            </small>
+          ) : null}
+        </div>
+      ) : null}
 
       {canReturnForChanges ? (
         <form action={returnTaskForChangesAction} className={styles.returnBox}>
           <input type="hidden" name="task_id" value={task.id} />
-          <label htmlFor="return_reason">Засвар шаардах шалтгаан</label>
+          <label htmlFor="return_reason">Буцаах шалтгаан</label>
           <textarea
             id="return_reason"
             name="return_reason"
-            placeholder="Юуг засах ёстойг товч тодорхой бичнэ үү"
+            placeholder="Жишээ: дараах зураг дутуу, хэмжээ зөрсөн, талбай дутуу цэвэрлэсэн..."
             required
           />
-          <button type="submit" className={styles.warningButton}>
+          <PendingSubmitButton className={styles.warningButton} pendingLabel="Буцааж байна...">
             Засвар нэхэж буцаах
-          </button>
+          </PendingSubmitButton>
         </form>
       ) : null}
     </aside>
@@ -400,7 +484,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 <Link href={backHref} aria-label={backLabel} className={styles.workerDetailIconButton}>
                   <ArrowLeft size={22} strokeWidth={2.4} aria-hidden="true" />
                 </Link>
-                <strong>Даалгаврын дэлгэрэнгүй</strong>
+                <strong>{reviewFocusedMode ? "Тайлан шалгах" : "Даалгаврын дэлгэрэнгүй"}</strong>
                 <Link href="/profile" aria-label="Тохиргоо" className={styles.workerDetailIconButton}>
                   <MoreVertical size={22} strokeWidth={2.4} aria-hidden="true" />
                 </Link>
@@ -414,11 +498,15 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
               <div className={`${shellStyles.message} ${shellStyles.noticeMessage}`}>{noticeMessage}</div>
             ) : null}
 
-            <section className={styles.summaryCard}>
+            <section className={`${styles.summaryCard} ${reviewFocusedMode ? styles.reviewSummaryCard : ""}`}>
               {workerMode ? (
                 <div className={styles.workerDetailMobileHero}>
                   <div className={styles.workerDetailHeroIcon} aria-hidden="true">
-                    <ClipboardList size={30} strokeWidth={2.3} />
+                    {reviewFocusedMode ? (
+                      <ClipboardCheck size={30} strokeWidth={2.3} />
+                    ) : (
+                      <ClipboardList size={30} strokeWidth={2.3} />
+                    )}
                   </div>
                   <div className={styles.workerDetailHeroMeta}>
                     <span>ID: {task.id}</span>
@@ -428,55 +516,49 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
               ) : null}
               <div className={styles.summaryTop}>
                 <div className={styles.titleBlock}>
-                  <span className={styles.kicker}>Даалгавар</span>
-                  <h1>{task.name}</h1>
-                  <span className={styles.taskProjectName}>{task.projectName}</span>
+                  <span className={styles.kicker}>{reviewFocusedMode ? "Шалгалт" : "Даалгавар"}</span>
+                  <h1>{canManageReview ? "Тайлан шалгах" : "Даалгаврын мэдээлэл"}</h1>
+                  {!reviewFocusedMode ? (
+                    <span className={styles.taskProjectName}>
+                      {task.name} · {task.projectName}
+                    </span>
+                  ) : null}
                 </div>
                 <div className={styles.heroActionGroup}>
                   <StagePill label={task.stageLabel} bucket={task.stageBucket} />
-                  {showReportComposer ? (
-                    <TaskReportModal
-                      action={createTaskReportAction}
-                      taskId={task.id}
-                      defaultOpen={openReportComposer}
-                      quantityOptional={task.quantityOptional}
-                      measurementUnit={task.measurementUnit}
-                      quantityLines={quantityLines}
-                      variant="hero"
-                      requireQuantity={Boolean(quantitySummary)}
-                      simpleMobile={workerMode}
-                      workItemName={task.name}
-                    />
-                  ) : null}
                 </div>
               </div>
 
-              <div className={styles.anchorRow}>
-                <Link href={backHref} className={styles.anchorLink}>
-                  {backLabel}
-                </Link>
-                <a href="#task-actions" className={styles.anchorLink}>
-                  Үндсэн үйлдэл
-                </a>
-                <a href="#task-reports" className={styles.anchorLink}>
-                  Тайлан
-                </a>
-                <a href="#task-chatter" className={styles.anchorLink}>
-                  Зурвас
-                </a>
-                <OfficialReportExportModal
-                  taskId={task.id}
-                  items={task.reports.map((report) => ({
-                    id: report.id,
-                    title: task.name,
-                    reporter: report.reporter,
-                    submittedAt: report.submittedAt,
-                    summary: report.summary || report.text,
-                  }))}
-                />
-              </div>
+              {!reviewFocusedMode ? (
+                <div className={styles.anchorRow}>
+                  <Link href={backHref} className={styles.anchorLink}>
+                    {backLabel}
+                  </Link>
+                  <>
+                    <a href="#task-actions" className={styles.anchorLink}>
+                      Шийдвэр
+                    </a>
+                    <a href="#task-reports" className={styles.anchorLink}>
+                      Тайлан
+                    </a>
+                  </>
+                  <a href="#task-chatter" className={styles.anchorLink}>
+                    Зурвас
+                  </a>
+                  <OfficialReportExportModal
+                    taskId={task.id}
+                    items={task.reports.map((report) => ({
+                      id: report.id,
+                      title: task.name,
+                      reporter: report.reporter,
+                      submittedAt: report.submittedAt,
+                      summary: report.summary || report.text,
+                    }))}
+                  />
+                </div>
+              ) : null}
 
-              <div className={styles.heroStats}>
+              <div className={`${styles.heroStats} ${reviewFocusedMode ? styles.reviewStats : ""}`}>
                 <article className={styles.heroStatCard}>
                   <span>Төлөв</span>
                   <strong>{task.stageLabel}</strong>
@@ -485,15 +567,17 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                   <span>Явц</span>
                   <strong>{task.progress}%</strong>
                 </article>
-                <article className={styles.heroStatCard}>
-                  <span>Хугацаа</span>
-                  <strong>
-                    {workerMode ? (
-                      <CalendarDays size={18} strokeWidth={2.3} aria-hidden="true" />
-                    ) : null}
-                    {task.deadline}
-                  </strong>
-                </article>
+                {!reviewFocusedMode ? (
+                  <article className={styles.heroStatCard}>
+                    <span>Хугацаа</span>
+                    <strong>
+                      {workerMode ? (
+                        <CalendarDays size={18} strokeWidth={2.3} aria-hidden="true" />
+                      ) : null}
+                      {task.deadline}
+                    </strong>
+                  </article>
+                ) : null}
                 <article className={styles.heroStatCard}>
                   <span>Тайлан</span>
                   <strong>{task.reports.length}</strong>
@@ -518,8 +602,11 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
               ) : null}
             </section>
 
-            <section className={styles.pageGrid}>
+            <section className={`${styles.pageGrid} ${reviewFocusedMode ? styles.reviewPageGrid : ""}`}>
               <div className={styles.mainColumn}>
+                {!reviewFocusedMode ? actionPanel : null}
+
+                {!reviewFocusedMode ? (
                 <section className={styles.sectionCard}>
                   <div className={styles.sectionHead}>
                     <div>
@@ -556,8 +643,9 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                     </div>
                   )}
                 </section>
+                ) : null}
 
-                {task.description ? (
+                {!reviewFocusedMode && task.description ? (
                   <section className={styles.sectionCard}>
                     <div className={styles.sectionHead}>
                       <div>
@@ -573,63 +661,56 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 <section className={styles.sectionCard} id="task-reports">
                   <div className={styles.sectionHead}>
                     <div>
-                      <span className={styles.kicker}>Гүйцэтгэлийн тайлан</span>
-                      <h2>Гүйцэтгэлийн тайлангууд</h2>
+                      <span className={styles.kicker}>{reviewFocusedMode ? "Илгээсэн тайлан" : "Гүйцэтгэлийн тайлан"}</span>
+                      <h2>{reviewFocusedMode ? "Тайлан" : "Гүйцэтгэлийн тайлангууд"}</h2>
                     </div>
-                  </div>
-
-                  <div className={styles.inlineReportComposer}>
-                    <div>
-                      <strong>Гүйцэтгэлийн тайлан оруулах</strong>
-                      <p>
-                        Хийсэн ажлын тайлбар, тоо хэмжээ, зураг болон аудио нотолгоогоо эндээс
-                        илгээнэ.
-                      </p>
-                    </div>
-                    {canOpenReportComposer ? (
-                      <TaskReportModal
-                        action={createTaskReportAction}
-                        taskId={task.id}
-                        defaultOpen={false}
-                        quantityOptional={task.quantityOptional}
-                        measurementUnit={task.measurementUnit}
-                        quantityLines={quantityLines}
-                        requireQuantity={Boolean(quantitySummary)}
-                        simpleMobile={workerMode}
-                        workItemName={task.name}
-                      />
-                    ) : (
-                      <span className={styles.reportUnavailable}>
-                        Энэ төлөв дээр тайлан нэмэх эрх нээгдээгүй байна.
-                      </span>
-                    )}
                   </div>
 
                   {task.reports.length ? (
                     <div className={styles.reportList}>
-                      {task.reports.map((report) => (
-                        <article key={report.id} className={styles.reportCard}>
+                      {task.reports.map((report) => {
+                        const reportText = cleanReviewReportText(report.text || report.summary);
+                        const showReportText = reviewFocusedMode
+                          ? Boolean(reportText)
+                          : Boolean(report.text || report.summary);
+
+                        return (
+                        <article
+                          key={report.id}
+                          className={`${styles.reportCard} ${reviewFocusedMode ? styles.reviewReportCard : ""}`}
+                        >
                           <div className={styles.reportCardTop}>
-                            <div className={styles.metaGroup}>
-                              <strong>{report.reporter}</strong>
-                              <small>{report.submittedAt}</small>
-                            </div>
-                            <StagePill label={report.stateLabel} bucket={report.stateBucket} />
-                            {quantitySummary ? (
-                              <StagePill
-                                label={formatQuantityLabel(
-                                  report.quantity,
-                                  task.measurementUnit,
-                                )}
-                                bucket="progress"
-                              />
-                            ) : null}
+                            {reviewFocusedMode ? (
+                              <div className={styles.reviewReportMeta}>
+                                <span>Илгээсэн огноо</span>
+                                <strong>{report.submittedAt}</strong>
+                              </div>
+                            ) : (
+                              <>
+                                <div className={styles.metaGroup}>
+                                  <strong>{report.reporter}</strong>
+                                  <small>{report.submittedAt}</small>
+                                </div>
+                                <StagePill label={report.stateLabel} bucket={report.stateBucket} />
+                                {hasMeaningfulQuantity && quantitySummary ? (
+                                  <StagePill
+                                    label={formatQuantityLabel(
+                                      report.quantity,
+                                      task.measurementUnit,
+                                    )}
+                                    bucket="progress"
+                                  />
+                                ) : null}
+                              </>
+                            )}
                           </div>
 
-                          <div className={styles.reportMediaMeta}>
-                            <span className={styles.chip}>{report.imageCount} зураг</span>
-                            <span className={styles.chip}>{report.audioCount} аудио</span>
-                          </div>
+                          {!reviewFocusedMode ? (
+                            <div className={styles.reportMediaMeta}>
+                              {report.imageCount ? <span className={styles.chip}>{report.imageCount} зураг</span> : null}
+                              {report.audioCount ? <span className={styles.chip}>{report.audioCount} аудио</span> : null}
+                            </div>
+                          ) : null}
 
                           {report.rejectionReason ? (
                             <div className={styles.reportReturnReason}>
@@ -638,10 +719,12 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                             </div>
                           ) : null}
 
-                          <div className={styles.reportBody}>
-                            <strong className={styles.reportBodyLabel}>Тайлбар</strong>
-                            <p>{formatReportText(report.text || report.summary)}</p>
-                          </div>
+                          {showReportText ? (
+                            <div className={reviewFocusedMode ? styles.reviewReportNote : styles.reportBody}>
+                              <strong className={styles.reportBodyLabel}>Тайлбар</strong>
+                              <p>{reviewFocusedMode ? reportText : formatReportText(report.text || report.summary)}</p>
+                            </div>
+                          ) : null}
 
                           {report.reporterId === session.uid && canSubmitWorkspaceReport(session) ? (
                             <TaskReportActions
@@ -657,14 +740,20 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                           ) : null}
 
                           {report.images.length ? (
-                            <div className={dashboardStyles.reportImageGrid}>
-                              {report.images.map((image) => (
+                            <div
+                              className={`${dashboardStyles.reportImageGrid} ${
+                                reviewFocusedMode ? dashboardStyles.reviewReportImageGrid : ""
+                              }`}
+                            >
+                              {report.images.map((image, imageIndex) => (
                                 <a
                                   key={image.id}
                                   href={image.url}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className={dashboardStyles.reportImageLink}
+                                  className={`${dashboardStyles.reportImageLink} ${
+                                    reviewFocusedMode ? dashboardStyles.reviewReportImageLink : ""
+                                  }`}
                                 >
                                   <Image
                                     src={image.url}
@@ -674,6 +763,11 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                                     height={240}
                                     unoptimized
                                   />
+                                  {reviewFocusedMode ? (
+                                    <span className={dashboardStyles.reportImageCaption}>
+                                      {reportImageLabel(imageIndex, report.images.length)}
+                                    </span>
+                                  ) : null}
                                 </a>
                               ))}
                             </div>
@@ -695,7 +789,8 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                             </div>
                           ) : null}
                         </article>
-                      ))}
+                      );
+                      })}
                     </div>
                   ) : (
                     <div className={styles.emptyState}>
@@ -704,11 +799,136 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                     </div>
                   )}
                 </section>
-                {actionPanel}
+                {reviewFocusedMode ? actionPanel : null}
               </div>
 
               <div className={styles.sideColumn}>
-                <aside className={styles.chatterCard}>
+                {reviewFocusedMode ? (
+                <aside className={`${styles.chatterCard} ${styles.reviewChatCard}`} id="task-chatter">
+                  <div className={styles.chatterTop}>
+                    <div>
+                      <span className={styles.kicker}>Чат</span>
+                      <strong className={styles.actionTitle}>Зурвас</strong>
+                    </div>
+                    <span className={styles.chatterCount}>{task.messages.length}</span>
+                  </div>
+
+                  <form action={postTaskMessageAction} className={styles.chatterComposer}>
+                    <input type="hidden" name="task_id" value={task.id} />
+                    <label htmlFor="message_body" className={styles.modalField}>
+                      <span>Зурвас</span>
+                      <textarea
+                        id="message_body"
+                        name="message_body"
+                        placeholder="Шалгалтын тэмдэглэл бичнэ үү"
+                        rows={3}
+                      />
+                    </label>
+                    <div className={styles.messageAttachmentInputs}>
+                      <label>
+                        <span>Зураг</span>
+                        <input name="message_images" type="file" accept="image/*" multiple />
+                      </label>
+                      <label>
+                        <span>Аудио</span>
+                        <input name="message_audio" type="file" accept="audio/*" capture />
+                      </label>
+                    </div>
+                    <div className={styles.chatterActions}>
+                      <button
+                        type="submit"
+                        name="message_kind"
+                        value="message"
+                        className={styles.actionButton}
+                      >
+                        Илгээх
+                      </button>
+                      <button
+                        type="submit"
+                        name="message_kind"
+                        value="note"
+                        className={styles.secondaryButton}
+                      >
+                        Тэмдэглэл
+                      </button>
+                    </div>
+                  </form>
+
+                  {task.messages.length ? (
+                    <div className={styles.messageTimeline}>
+                      {task.messages.map((message) => (
+                        <article
+                          key={message.id}
+                          className={`${styles.messageItem} ${
+                            message.kind === "note"
+                              ? styles.messageItemNote
+                              : message.kind === "system"
+                                ? styles.messageItemSystem
+                                : ""
+                          }`}
+                        >
+                          <div className={styles.messageAvatar} aria-hidden="true">
+                            {message.author.slice(0, 1)}
+                          </div>
+                          <div className={styles.messageContent}>
+                            <div className={styles.messageMeta}>
+                              <strong>{message.author}</strong>
+                              <span>{message.postedAt}</span>
+                            </div>
+                            <span className={styles.messageKind}>
+                              {messageKindLabel(message.kind)}
+                            </span>
+                            {message.body ? <p>{message.body}</p> : null}
+                            {message.attachments.length ? (
+                              <div className={styles.messageAttachments}>
+                                {message.attachments.map((attachment) =>
+                                  attachment.mimetype.startsWith("image/") ? (
+                                    <a
+                                      key={attachment.id}
+                                      href={attachment.url}
+                                      className={styles.messageImageLink}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      <Image
+                                        src={attachment.url}
+                                        alt={attachment.name}
+                                        width={180}
+                                        height={120}
+                                      />
+                                    </a>
+                                  ) : attachment.mimetype.startsWith("audio/") ? (
+                                    <div key={attachment.id} className={styles.messageAudioItem}>
+                                      <strong>{attachment.name}</strong>
+                                      <audio controls preload="none" src={attachment.url} />
+                                    </div>
+                                  ) : (
+                                    <a
+                                      key={attachment.id}
+                                      href={attachment.url}
+                                      className={styles.messageFileLink}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      {attachment.name}
+                                    </a>
+                                  ),
+                                )}
+                              </div>
+                            ) : null}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.chatterEmpty}>
+                      Энэ ажил дээр зурвас хараахан алга.
+                    </div>
+                  )}
+                </aside>
+                ) : null}
+
+                <aside className={`${styles.chatterCard} ${styles.teamCard}`}>
                   <div className={styles.chatterTop}>
                     <div>
                       <span className={styles.kicker}>Хариуцсан бүрэлдэхүүн</span>
@@ -745,7 +965,8 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                   )}
                 </aside>
 
-                <aside className={styles.chatterCard} id="task-chatter">
+                {!reviewFocusedMode ? (
+                <aside className={styles.chatterCard}>
                   <div className={styles.chatterTop}>
                     <div>
                       <span className={styles.kicker}>Odoo chatter</span>
@@ -867,6 +1088,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                     </div>
                   )}
                 </aside>
+                ) : null}
               </div>
             </section>
           </div>
