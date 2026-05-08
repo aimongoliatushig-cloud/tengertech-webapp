@@ -1,4 +1,7 @@
+import { Suspense } from "react";
+
 import { DashboardView } from "@/app/dashboard-view";
+import { LoadingShell } from "@/app/_components/loading-shell";
 import { redirect } from "next/navigation";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
@@ -25,6 +28,7 @@ import { loadWorkspaceNotificationSummary } from "@/lib/workspace-notifications"
 export const dynamic = "force-dynamic";
 
 type ConnectionOverrides = NonNullable<Parameters<typeof loadMunicipalSnapshot>[0]>;
+type DashboardSession = Awaited<ReturnType<typeof requireSession>>;
 
 const EMPTY_FLEET_BOARD: Awaited<ReturnType<typeof loadFleetVehicleBoard>> = {
   allVehicles: [],
@@ -111,6 +115,23 @@ export default async function Home() {
   if (!workerMode && isHrOnlyRole(session)) {
     redirect("/hr");
   }
+
+  return (
+    <Suspense fallback={<LoadingShell />}>
+      <DashboardPageContent session={session} workerMode={workerMode} masterMode={masterMode} />
+    </Suspense>
+  );
+}
+
+async function DashboardPageContent({
+  session,
+  workerMode,
+  masterMode,
+}: {
+  session: DashboardSession;
+  workerMode: boolean;
+  masterMode: boolean;
+}) {
 
   const connectionOverrides = {
     login: session.login,

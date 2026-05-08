@@ -236,6 +236,10 @@ export function AppMenu({
       return;
     }
     warmedWorkspaceRoutes = true;
+    void fetch("/api/workspace/warm", {
+      cache: "no-store",
+      credentials: "same-origin",
+    }).catch(() => null);
 
     const routes = [
       "/projects",

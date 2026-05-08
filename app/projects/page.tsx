@@ -1,7 +1,10 @@
+import { Suspense } from "react";
+
 import Link from "next/link";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { AutoBaseBoard } from "@/app/auto-base/auto-base-board";
+import { LoadingShell } from "@/app/_components/loading-shell";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import styles from "@/app/workspace.module.css";
 import {
@@ -38,6 +41,7 @@ type PageProps = {
 type ProjectFilterKey = "all" | "progress" | "planned";
 type QuickActionMode = "task" | "report" | "none";
 type ProjectCardItem = DashboardSnapshot["projects"][number];
+type ProjectsSession = Awaited<ReturnType<typeof requireSession>>;
 
 const AUTO_BASE_GROUP_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
 const AUTO_BASE_UNIT_NAME = "Авто бааз";
@@ -244,6 +248,20 @@ export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage({ searchParams }: PageProps) {
   const session = await requireSession();
+
+  return (
+    <Suspense fallback={<LoadingShell />}>
+      <ProjectsPageContent searchParams={searchParams} session={session} />
+    </Suspense>
+  );
+}
+
+async function ProjectsPageContent({
+  searchParams,
+  session,
+}: PageProps & {
+  session: ProjectsSession;
+}) {
   const workerMode = isWorkerOnly(session);
   const connectionOverrides = {
     login: session.login,

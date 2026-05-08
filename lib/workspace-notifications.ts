@@ -13,6 +13,38 @@ type WorkspaceNotificationRecord = {
   reasons: NotificationReason[];
 };
 
+type WorkspaceNotificationSummary = {
+  unreadCount: number;
+  newCount: number;
+  reviewCount: number;
+  overdueCount: number;
+  issueCount: number;
+};
+
+type CachedWorkspaceNotificationSummary = {
+  expiresAt: number;
+  value: WorkspaceNotificationSummary;
+};
+
+const WORKSPACE_NOTIFICATION_SUMMARY_CACHE_TTL_MS = 15_000;
+const workspaceNotificationSummaryCache = new Map<string, CachedWorkspaceNotificationSummary>();
+
+function getWorkspaceNotificationSummaryCacheKey(
+  session: AppSession,
+  snapshot: DashboardSnapshot,
+  scopedDepartmentName: string | null,
+) {
+  return [
+    session.uid,
+    session.login,
+    session.role,
+    scopedDepartmentName ?? "",
+    snapshot.generatedAt,
+    snapshot.taskDirectory.length,
+    snapshot.reviewQueue.length,
+  ].join(":");
+}
+
 function normalizeTaskAssigneeId(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -237,6 +269,19 @@ export async function loadWorkspaceNotificationSummary(
     scopedDepartmentName = resolveWorkerDepartmentName(snapshot, session);
   }
 
+  const cacheKey = getWorkspaceNotificationSummaryCacheKey(
+    session,
+    snapshot,
+    scopedDepartmentName,
+  );
+  const cached = workspaceNotificationSummaryCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+  if (cached) {
+    workspaceNotificationSummaryCache.delete(cacheKey);
+  }
+
   const notifications = buildWorkspaceNotificationRecords(snapshot, session, scopedDepartmentName);
   const readKeys = await loadReadNotificationKeys(
     session,
@@ -244,11 +289,16 @@ export async function loadWorkspaceNotificationSummary(
   );
   const unreadNotifications = notifications.filter((item) => !readKeys.has(item.key));
 
-  return {
+  const summary = {
     unreadCount: unreadNotifications.length,
     newCount: unreadNotifications.filter((item) => item.reasons.includes("new")).length,
     reviewCount: unreadNotifications.filter((item) => item.reasons.includes("review")).length,
     overdueCount: unreadNotifications.filter((item) => item.reasons.includes("overdue")).length,
     issueCount: unreadNotifications.filter((item) => item.reasons.includes("issue")).length,
   };
+  workspaceNotificationSummaryCache.set(cacheKey, {
+    value: summary,
+    expiresAt: Date.now() + WORKSPACE_NOTIFICATION_SUMMARY_CACHE_TTL_MS,
+  });
+  return summary;
 }
