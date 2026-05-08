@@ -436,17 +436,17 @@
   .mobileBackdrop {
     position: fixed;
     inset: 0;
-    z-index: 90;
+    z-index: 1200;
     display: block;
     border: 0;
-    background: rgba(12, 28, 17, 0.26);
-    backdrop-filter: blur(8px);
+    background: rgba(12, 28, 17, 0.42);
+    backdrop-filter: blur(10px);
   }
 
   .mobileSheet {
     position: fixed;
     inset: 0 auto 0 0;
-    z-index: 91;
+    z-index: 1210;
     display: grid;
     width: min(360px, calc(100vw - 18px));
     grid-template-rows: auto minmax(0, 1fr);
@@ -454,9 +454,8 @@
     overflow-y: auto;
     padding: 20px 14px;
     border-radius: 0 28px 28px 0;
-    background: rgba(255, 255, 255, 0.95);
+    background: #ffffff;
     box-shadow: 22px 0 56px rgba(12, 28, 17, 0.18);
-    backdrop-filter: blur(24px);
   }
 
   .mobileSheetHeader {

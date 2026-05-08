@@ -3648,7 +3648,6 @@
   }
 }
 
-
 /* Unified dashboard design-system migration */
 .shell,
 .workspaceShell,
@@ -4784,4 +4783,9 @@
   }
 }
 
-
+@media (max-width: 1080px) {
+  .menuColumn {
+    position: relative;
+    z-index: 1300;
+  }
+}
