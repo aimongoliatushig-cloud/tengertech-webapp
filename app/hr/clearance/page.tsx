@@ -115,6 +115,7 @@ export default async function HrClearancePage({ searchParams }: PageProps) {
           { key: "note", label: "Тэмдэглэл" },
         ]}
         createAnchorLabel="Тойрох хуудас нэмэх"
+        allowRecordDelete
       />
     </>
   );

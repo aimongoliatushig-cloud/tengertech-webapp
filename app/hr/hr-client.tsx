@@ -1008,6 +1008,7 @@ export function RegistryPage({
   columns = [],
   createAnchorLabel = "Шинэ бүртгэл үүсгэх",
   allowRecordActions = false,
+  allowRecordDelete = false,
 }: {
   title: string;
   description: string;
@@ -1021,6 +1022,7 @@ export function RegistryPage({
   columns?: RegistryColumn[];
   createAnchorLabel?: string;
   allowRecordActions?: boolean;
+  allowRecordDelete?: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -1059,10 +1061,10 @@ export function RegistryPage({
   }
 
   async function deleteRecord(record: RegistryRecord) {
-    if (!submitEndpoint || !allowRecordActions || !record.id) {
+    if (!submitEndpoint || (!allowRecordActions && !allowRecordDelete) || !record.id) {
       return;
     }
-    if (!window.confirm("Энэ сахилгын бүртгэлийг устгах уу?")) {
+    if (!window.confirm("Энэ бүртгэлийг устгах уу?")) {
       return;
     }
 
@@ -1170,7 +1172,7 @@ export function RegistryPage({
                   {columns.map((column) => (
                     <th key={column.key}>{column.label}</th>
                   ))}
-                  {allowRecordActions ? <th>Үйлдэл</th> : null}
+                  {allowRecordActions || allowRecordDelete ? <th>Үйлдэл</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -1203,20 +1205,22 @@ export function RegistryPage({
                         </td>
                       );
                     })}
-                    {allowRecordActions ? (
+                    {allowRecordActions || allowRecordDelete ? (
                       <td>
                         <div className={styles.recordActions}>
-                          <a
-                            href="#new-registry-record"
-                            className={styles.secondaryButton}
-                            onClick={() => {
-                              setEditingRecord(record);
-                              setMessage("");
-                            }}
-                          >
-                            <Pencil aria-hidden />
-                            Засах
-                          </a>
+                          {allowRecordActions ? (
+                            <a
+                              href="#new-registry-record"
+                              className={styles.secondaryButton}
+                              onClick={() => {
+                                setEditingRecord(record);
+                                setMessage("");
+                              }}
+                            >
+                              <Pencil aria-hidden />
+                              Засах
+                            </a>
+                          ) : null}
                           <button
                             type="button"
                             className={styles.dangerButton}
