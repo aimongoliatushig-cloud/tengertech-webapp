@@ -19,6 +19,7 @@ import {
   type HrDailyAttendanceSummary,
 } from "@/lib/odoo";
 import { loadUlaanbaatarWeather } from "@/lib/weather";
+import { loadWorkspaceNotificationSummary } from "@/lib/workspace-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -212,6 +213,14 @@ export default async function Home() {
         totalTasks: filterByDepartment(snapshot.taskDirectory, scopedDepartmentName).length,
       }
     : snapshot;
+  const notificationSummary = await loadWorkspaceNotificationSummary(session, {
+    snapshot,
+    scopedDepartmentName,
+  });
+  const notificationNote =
+    notificationSummary.unreadCount > 0
+      ? `${notificationSummary.newCount} шинэ ажил, ${notificationSummary.reviewCount} хянах, ${notificationSummary.overdueCount} хугацаа хэтэрсэн`
+      : "Шинэ ажил, хянах зүйл алга";
 
   return (
     <DashboardView
@@ -225,6 +234,8 @@ export default async function Home() {
       weather={weather}
       canViewHr={canViewHr}
       canViewGeneralDashboard={canViewGeneralDashboard}
+      notificationCount={notificationSummary.unreadCount}
+      notificationNote={notificationNote}
     />
   );
 }

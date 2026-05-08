@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { canSubmitWorkspaceReport, hasCapability, isMasterRole, requireSession } from "@/lib/auth";
-import { pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
+import { canSubmitWorkspaceReport, hasCapability, isMasterRole, isWorkerOnly, requireSession } from "@/lib/auth";
+import { getTodayDateKey, pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
 import {
   createFieldStopIssue,
   markFieldStopArrived,
@@ -53,6 +53,24 @@ const CUSTOM_WORK_TYPE_VALUE = "__new_work__";
 
 function canMutateReportOwner(session: { uid: number; role: string }, ownerId: number | null) {
   return session.role === "system_admin" || ownerId === session.uid;
+}
+
+function isFutureDateKey(dateKey: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateKey) && dateKey > getTodayDateKey();
+}
+
+async function assertWorkerTaskReportDateIsOpen(
+  taskId: number,
+  session: Awaited<ReturnType<typeof requireSession>>,
+  connectionOverrides: { login: string; password: string },
+  reportPath: string,
+) {
+  const task = await loadTaskDetail(taskId, connectionOverrides);
+  const isAssignedWorker = isWorkerOnly(session) || task.assigneeUserIds.includes(session.uid);
+
+  if (isAssignedWorker && isFutureDateKey(task.scheduledDate)) {
+    redirectWithMessage(reportPath, "error", "Тайланг зөвхөн тухайн ажлын өдөр оруулна уу.");
+  }
 }
 
 async function assertCanReviewTaskAction(
@@ -1297,6 +1315,7 @@ export async function createTaskReportAction(formData: FormData) {
       login: session.login,
       password: session.password,
     };
+    await assertWorkerTaskReportDateIsOpen(taskId, session, connectionOverrides, reportPath);
     if (quantityRaw && (Number.isNaN(reportedQuantity) || reportedQuantity < 0)) {
       redirect(`${reportPath}?error=${encodeURIComponent("Гүйцэтгэсэн хэмжээ буруу байна.")}`);
     }
@@ -1449,6 +1468,15 @@ export async function updateTaskReportAction(formData: FormData) {
     if (!canMutateReportOwner(session, reportOwnerId)) {
       redirect(`${reportPath}?error=${encodeURIComponent("Та зөвхөн өөрийн илгээсэн тайланг засах боломжтой.")}`);
     }
+    await assertWorkerTaskReportDateIsOpen(
+      taskId,
+      session,
+      {
+        login: session.login,
+        password: session.password,
+      },
+      reportPath,
+    );
 
     const quantityLineSummaries = quantityLineValues
       .map((value, index) => {

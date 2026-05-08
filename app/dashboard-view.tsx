@@ -57,6 +57,8 @@ type DashboardViewProps = {
   weather: WeatherSnapshot;
   canViewHr?: boolean;
   canViewGeneralDashboard?: boolean;
+  notificationCount?: number;
+  notificationNote?: string;
 };
 
 type DashboardStat = {
@@ -1593,6 +1595,8 @@ export function DashboardView({
   weather,
   canViewHr = false,
   canViewGeneralDashboard = false,
+  notificationCount,
+  notificationNote,
 }: DashboardViewProps) {
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -1655,11 +1659,13 @@ export function DashboardView({
     ? dashboardTasks.filter((task) => isOverdue(task, currentDateKey)).length
     : 0;
   const newIncomingTasks = dashboardTasks.filter((task) => isNewIncomingTask(task, currentDateKey)).length;
-  const attentionCount = countNotificationTasks(dashboardTasks, currentDateKey);
-  const notificationNote =
-    attentionCount > 0
+  const computedAttentionCount = countNotificationTasks(dashboardTasks, currentDateKey);
+  const attentionCount = notificationCount ?? computedAttentionCount;
+  const effectiveNotificationNote =
+    notificationNote ??
+    (attentionCount > 0
       ? `${newIncomingTasks} шинэ ажил, ${reviewTasks} хянах, ${overdueTasks} хугацаа хэтэрсэн`
-      : "Шинэ ажил, хянах зүйл алга";
+      : "Шинэ ажил, хянах зүйл алга");
   const sortedProjects = [...dashboardProjects].sort((left, right) => {
     const leftTone = projectTone(left);
     const rightTone = projectTone(right);
@@ -1758,7 +1764,7 @@ export function DashboardView({
         canUseFieldConsole={canUseFieldConsole}
         canViewHr={canViewHr}
         notificationCount={attentionCount}
-        notificationNote={notificationNote}
+        notificationNote={effectiveNotificationNote}
         totalTasks={totalTasks}
         completedTasks={completedTasks}
         workingTasks={workingTasks}
@@ -1804,7 +1810,7 @@ export function DashboardView({
             userName={session.name}
             roleLabel={roleLabel}
             notificationCount={attentionCount}
-            notificationNote={notificationNote}
+            notificationNote={effectiveNotificationNote}
             backgroundImage={DASHBOARD_IMAGES.header}
           />
 

@@ -123,6 +123,15 @@ function getRequestTimeMs() {
   return Date.now();
 }
 
+function buildWorkerNotificationHref(task: DashboardSnapshot["taskDirectory"][number]) {
+  const params = new URLSearchParams();
+  params.set("work", task.projectName);
+  if (task.projectId) {
+    params.set("workId", String(task.projectId));
+  }
+  return `/tasks?${params.toString()}`;
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function NotificationsPage() {
@@ -208,7 +217,7 @@ export default async function NotificationsPage() {
       departmentName: task.departmentName,
       projectName: task.projectName,
       stageLabel: workerMode ? "Ажлын мэдэгдэл" : task.stageLabel,
-      href: workerMode ? `/tasks?work=${encodeURIComponent(task.projectName)}` : task.href,
+      href: workerMode ? buildWorkerNotificationHref(task) : task.href,
       progress,
       taskCount,
       sortTimeMs,

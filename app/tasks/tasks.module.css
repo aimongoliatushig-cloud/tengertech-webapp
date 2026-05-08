@@ -1426,6 +1426,17 @@
   box-shadow: 0 12px 22px rgba(29, 64, 40, 0.08);
 }
 
+.workerLineItem:disabled {
+  cursor: not-allowed;
+  opacity: 0.78;
+}
+
+.workerLineItem:disabled:hover {
+  transform: none;
+  border-color: rgba(74, 154, 93, 0.12);
+  box-shadow: none;
+}
+
 .workerTaskNumber {
   display: inline-flex;
   align-items: center;
@@ -1476,6 +1487,19 @@
   white-space: nowrap;
 }
 
+.workerFutureReportReason {
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  color: #607083;
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .workerLineAction {
   display: inline-flex;
   align-items: center;
@@ -1489,6 +1513,11 @@
   font-size: 0.78rem;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.workerLineItem:disabled .workerLineAction {
+  background: rgba(235, 241, 247, 0.9);
+  color: #607083;
 }
 
 .taskCard {
@@ -1930,7 +1959,8 @@
     white-space: normal;
   }
 
-  .workerReturnReason {
+  .workerReturnReason,
+  .workerFutureReportReason {
     white-space: normal;
   }
 
@@ -2703,7 +2733,8 @@
     white-space: normal;
   }
 
-  .workerReturnReason {
+  .workerReturnReason,
+  .workerFutureReportReason {
     white-space: normal;
   }
 

@@ -51,6 +51,8 @@ type Props = {
   existingReport?: ExistingTaskReport;
   triggerClassName?: string;
   triggerContent?: ReactNode;
+  triggerDisabled?: boolean;
+  triggerDisabledReason?: string;
 };
 
 type PhotoReportFieldProps = {
@@ -766,6 +768,8 @@ export function TaskReportModal({
   existingReport,
   triggerClassName,
   triggerContent,
+  triggerDisabled = false,
+  triggerDisabledReason,
 }: Props) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [mounted, setMounted] = useState(false);
@@ -1030,7 +1034,14 @@ export function TaskReportModal({
       <button
         type="button"
         className={triggerClassName ?? (variant === "hero" ? styles.heroReportButton : styles.actionButton)}
-        onClick={() => setIsOpen(true)}
+        disabled={triggerDisabled}
+        title={triggerDisabledReason}
+        aria-disabled={triggerDisabled ? "true" : undefined}
+        onClick={() => {
+          if (!triggerDisabled) {
+            setIsOpen(true);
+          }
+        }}
       >
         {triggerContent ?? (simpleMobile ? "Даалгаврын тайлан илгээх" : "Тайлан оруулах")}
       </button>

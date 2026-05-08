@@ -220,6 +220,7 @@ export function AppMenu({
   groupFlags = null,
 }: AppMenuProps) {
   void getDockLabel;
+  void canUseFieldConsole;
   void canViewQualityCenter;
   void variant;
 
@@ -278,7 +279,7 @@ export function AppMenu({
   const showReports =
     canWriteReports || executiveMode || departmentManagerMode || inspectorMode || canViewQualityCenter;
   const baseCanCreate = !workerMode && (canCreateProject || canCreateTasks || canWriteReports);
-  const reviewHref = workerMode && canUseFieldConsole ? "/field" : "/notifications";
+  const reviewHref = "/notifications";
   const roleLooksHr = roleLabelLower.includes("\u0445\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446");
   const roleLooksDepartmentHead = roleLabelLower.includes("\u0445\u044D\u043B\u0442\u0441\u0438\u0439\u043D \u0434\u0430\u0440\u0433\u0430");
   const hasHrGroupAccess = Boolean(flags.hrUser || flags.hrManager || flags.municipalHr);

@@ -51,6 +51,7 @@ type TaskRecord = {
   ops_allowed_unit_summary?: string | false;
   priority: string;
   date_deadline: string | false;
+  mfo_shift_date?: string | false;
   state: string;
   mfo_state?: string | false;
   description?: string | false;
@@ -613,6 +614,7 @@ export type TaskDetail = {
   stageBucket: StageBucket;
   state: string;
   deadline: string;
+  scheduledDate: string;
   measurementUnit: string;
   quantityLines: TaskQuantityLine[];
   plannedQuantity: number;
@@ -2675,6 +2677,7 @@ export async function loadTaskDetail(
       "ops_measurement_unit_code",
       "priority",
       "date_deadline",
+      "mfo_shift_date",
       "state",
       "description",
       "ops_can_submit_for_review",
@@ -2940,6 +2943,7 @@ export async function loadTaskDetail(
     stageBucket: effectiveStage.bucket,
     state: task.state,
     deadline: formatDateLabel(task.date_deadline),
+    scheduledDate: formatDateInput(task.mfo_shift_date || task.date_deadline),
     measurementUnit: formatMeasurementUnit(
       task.ops_measurement_unit_id,
       task.ops_measurement_unit,

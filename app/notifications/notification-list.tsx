@@ -73,13 +73,12 @@ export function NotificationList({
     [items, readKeys],
   );
 
-  const markOneRead = (key: string) => {
-    if (readKeys.has(key)) {
+  const markOneReadInBackground = (item: NotificationListItem) => {
+    if (readKeys.has(item.key)) {
       return;
     }
-
-    setReadKeys((current) => new Set(current).add(key));
-    void markRead([key]);
+    setReadKeys((current) => new Set(current).add(item.key));
+    void markRead([item.key]);
   };
 
   const markAllRead = () => {
@@ -118,7 +117,7 @@ export function NotificationList({
             <Link
               key={item.key}
               href={item.href}
-              onClick={() => markOneRead(item.key)}
+              onClick={() => markOneReadInBackground(item)}
               className={cn(styles.notificationCard, !isRead && styles.notificationCardUnread)}
             >
               <span className={styles.iconBubble} aria-hidden>

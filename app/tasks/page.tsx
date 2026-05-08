@@ -40,6 +40,7 @@ import {
 import { loadGarbageWeeklyTemplates } from "@/lib/garbage-weekly-template-store";
 import { expandGarbageWeeklyTemplatesToTasks } from "@/lib/garbage-weekly-template-tasks";
 import { loadMunicipalSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
+import { loadWorkspaceNotificationSummary } from "@/lib/workspace-notifications";
 
 import styles from "./tasks.module.css";
 import { TaskReportModal } from "./[taskId]/task-report-modal";
@@ -53,6 +54,7 @@ type PageProps = {
     filter?: string | string[];
     quickAction?: string | string[];
     work?: string | string[];
+    workId?: string | string[];
   }>;
 };
 
@@ -100,6 +102,15 @@ function normalizeQuickAction(value: string): QuickActionMode {
   return value === "report" ? "report" : "none";
 }
 
+function normalizeWorkName(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("mn-MN");
+}
+
+function normalizeIdParam(value: string) {
+  const parsed = Number.parseInt(value.trim(), 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function workerTaskActionLabel(task: TaskDirectoryItem) {
   if (task.statusKey === "verified") {
     return "Баталгаажсан";
@@ -118,6 +129,28 @@ function workerTaskReturnReason(task: TaskDirectoryItem) {
     return "";
   }
   return task.latestReport?.rejectionReason?.trim() || "Засвар нэхэж буцаасан байна.";
+}
+
+function isFutureWorkerTask(task: TaskDirectoryItem, todayDateKey: string) {
+  return Boolean(task.scheduledDate && task.scheduledDate > todayDateKey);
+}
+
+function workerTaskBlockedReportReason(task: TaskDirectoryItem, todayDateKey: string) {
+  if (!isFutureWorkerTask(task, todayDateKey)) {
+    return "";
+  }
+  return "Тайланг төлөвлөсөн өдөр оруулна.";
+}
+
+function workerTaskVisibleNote(task: TaskDirectoryItem, todayDateKey: string) {
+  return workerTaskReturnReason(task) || workerTaskBlockedReportReason(task, todayDateKey);
+}
+
+function workerTaskVisibleActionLabel(task: TaskDirectoryItem, todayDateKey: string) {
+  if (isFutureWorkerTask(task, todayDateKey)) {
+    return "Хүлээгдэж байна";
+  }
+  return workerTaskActionLabel(task);
 }
 
 function getWorkerExistingReport(task: TaskDirectoryItem) {
@@ -336,7 +369,11 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const requestedDepartment = getParam(params.department);
   const requestedQuickAction = normalizeQuickAction(getParam(params.quickAction));
   const requestedWorkName = getParam(params.work).trim();
-  const calendarAnchorDateKey = getTodayDateKey();
+  const requestedWorkId = normalizeIdParam(getParam(params.workId));
+  const requestedWorkNameKey = normalizeWorkName(requestedWorkName);
+  const hasRequestedWorkerWork = Boolean(requestedWorkId || requestedWorkNameKey);
+  const todayDateKey = getTodayDateKey();
+  const calendarAnchorDateKey = todayDateKey;
   const calendarBaseCells = buildMonthCells(calendarAnchorDateKey);
   const calendarRangeStart = calendarBaseCells[0]?.dateKey ?? calendarAnchorDateKey;
   const calendarRangeEnd = calendarBaseCells[calendarBaseCells.length - 1]?.dateKey ?? calendarAnchorDateKey;
@@ -367,24 +404,38 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const masterMode = isMasterRole(session.role);
   const selectedFilter: FilterKey = workerMode || masterMode ? "all" : activeFilter;
   const scopedDepartmentName = await loadSessionDepartmentName(session);
+  const notificationSummary = await loadWorkspaceNotificationSummary(session, {
+    snapshot,
+    scopedDepartmentName,
+  });
+  const taskNotificationNote =
+    notificationSummary.unreadCount > 0
+      ? `${notificationSummary.newCount} шинэ ажил, ${notificationSummary.reviewCount} хянах, ${notificationSummary.overdueCount} хугацаа хэтэрсэн`
+      : "Шинэ мэдэгдэл алга";
   const departmentScopedMode = Boolean(scopedDepartmentName);
   const quickActionMode: QuickActionMode =
     workerMode && canWriteReports ? requestedQuickAction : "none";
+  const assignedWorkerTasks = workerMode
+    ? sourceTaskDirectory.filter((task) => task.assigneeIds?.includes(session.uid))
+    : [];
   const workerTasks = workerMode
-    ? filterTasksToDate(
-        sourceTaskDirectory.filter((task) => task.assigneeIds?.includes(session.uid)),
-        getTodayDateKey(),
-      )
+    ? hasRequestedWorkerWork
+      ? assignedWorkerTasks
+      : filterTasksToDate(assignedWorkerTasks, todayDateKey)
     : [];
   const visibleWorkerTasks =
-    workerMode && requestedWorkName
-      ? workerTasks.filter((task) => task.projectName === requestedWorkName)
+    workerMode && hasRequestedWorkerWork
+      ? workerTasks.filter(
+          (task) =>
+            (requestedWorkId !== null && task.projectId === requestedWorkId) ||
+            (requestedWorkNameKey && normalizeWorkName(task.projectName) === requestedWorkNameKey),
+        )
       : workerTasks;
   const masterDepartmentTasks = masterMode
     ? filterByDepartment(sourceTaskDirectory, scopedDepartmentName)
     : [];
   const masterTodayTasks = masterMode
-    ? filterTasksToDate(masterDepartmentTasks, getTodayDateKey())
+    ? filterTasksToDate(masterDepartmentTasks, todayDateKey)
     : [];
   const masterTodayProjects = masterMode
     ? buildTodayProjectSummaries(
@@ -571,6 +622,9 @@ export default async function TasksPage({ searchParams }: PageProps) {
   if (workerMode && requestedWorkName) {
     taskListParams.set("work", requestedWorkName);
   }
+  if (workerMode && requestedWorkId !== null) {
+    taskListParams.set("workId", String(requestedWorkId));
+  }
   const taskListHref = taskListParams.toString() ? `/tasks?${taskListParams.toString()}` : "/tasks";
   const buildTaskHref = (taskHref: string) => {
     if (quickActionMode !== "report") {
@@ -657,6 +711,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
               groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
+              notificationCount={notificationSummary.unreadCount}
               departmentScopeName={scopedDepartmentName}
             />
           </aside>
@@ -674,12 +729,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 }
                 userName={session.name}
                 roleLabel={getRoleLabel(session.role)}
-                notificationCount={masterMode ? visibleProjects.length : visibleTasks.length}
-                notificationNote={
-                  masterMode
-                    ? `${visibleProjects.length} ажил, төсөл өнөөдөр харагдаж байна`
-                    : `${visibleTasks.length} даалгавар одоогоор харагдаж байна`
-                }
+                notificationCount={notificationSummary.unreadCount}
+                notificationNote={taskNotificationNote}
               />
             </div>
 
@@ -697,10 +748,12 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   <Link
                     href="/notifications"
                     className={styles.workerMobileNotice}
-                    aria-label={`${visibleTasks.length} мэдэгдэл харах`}
+                    aria-label={`${notificationSummary.unreadCount} мэдэгдэл харах`}
                   >
                     <Bell size={21} strokeWidth={2.35} aria-hidden="true" />
-                    {visibleTasks.length ? <span>{visibleTasks.length}</span> : null}
+                    {notificationSummary.unreadCount ? (
+                      <span>{notificationSummary.unreadCount}</span>
+                    ) : null}
                   </Link>
                 </div>
 
@@ -1147,40 +1200,53 @@ export default async function TasksPage({ searchParams }: PageProps) {
                             <small>Даалгаврын төлөв</small>
                           </div>
                           <div className={styles.workerLineList}>
-                            {work.tasks.map((task, index) => (
-                              <TaskReportModal
-                                key={task.id}
-                                action={createTaskReportAction}
-                                updateAction={updateTaskReportAction}
-                                deleteAction={deleteTaskReportAction}
-                                taskId={Number(task.id)}
-                                simpleMobile
-                                workItemName={task.name}
-                                existingReport={getWorkerExistingReport(task)}
-                                triggerClassName={styles.workerLineItem}
-                                triggerContent={
-                                  <>
-                                    <span className={styles.workerTaskNumber}>{index + 1}</span>
-                                    <div>
-                                      <strong>{task.name}</strong>
-                                      <small>
-                                        <Clock3 size={14} strokeWidth={2.3} aria-hidden="true" />
-                                        {task.deadline} · {task.statusLabel}
-                                      </small>
-                                      {workerTaskReturnReason(task) ? (
-                                        <em className={styles.workerReturnReason}>
-                                          {workerTaskReturnReason(task)}
-                                        </em>
-                                      ) : null}
-                                    </div>
-                                    <span className={styles.workerLineAction}>
-                                      <CheckCircle2 size={16} strokeWidth={2.4} aria-hidden="true" />
-                                      {workerTaskActionLabel(task)}
-                                    </span>
-                                  </>
-                                }
-                              />
-                            ))}
+                            {work.tasks.map((task, index) => {
+                              const blockedReportReason = workerTaskBlockedReportReason(task, todayDateKey);
+                              const visibleNote = workerTaskVisibleNote(task, todayDateKey);
+
+                              return (
+                                <TaskReportModal
+                                  key={task.id}
+                                  action={createTaskReportAction}
+                                  updateAction={updateTaskReportAction}
+                                  deleteAction={deleteTaskReportAction}
+                                  taskId={Number(task.id)}
+                                  simpleMobile
+                                  workItemName={task.name}
+                                  existingReport={getWorkerExistingReport(task)}
+                                  triggerClassName={styles.workerLineItem}
+                                  triggerDisabled={Boolean(blockedReportReason)}
+                                  triggerDisabledReason={blockedReportReason}
+                                  triggerContent={
+                                    <>
+                                      <span className={styles.workerTaskNumber}>{index + 1}</span>
+                                      <div>
+                                        <strong>{task.name}</strong>
+                                        <small>
+                                          <Clock3 size={14} strokeWidth={2.3} aria-hidden="true" />
+                                          {task.deadline} · {task.statusLabel}
+                                        </small>
+                                        {visibleNote ? (
+                                          <em
+                                            className={
+                                              blockedReportReason
+                                                ? styles.workerFutureReportReason
+                                                : styles.workerReturnReason
+                                            }
+                                          >
+                                            {visibleNote}
+                                          </em>
+                                        ) : null}
+                                      </div>
+                                      <span className={styles.workerLineAction}>
+                                        <CheckCircle2 size={16} strokeWidth={2.4} aria-hidden="true" />
+                                        {workerTaskVisibleActionLabel(task, todayDateKey)}
+                                      </span>
+                                    </>
+                                  }
+                                />
+                              );
+                            })}
                           </div>
                         </article>
                       );
