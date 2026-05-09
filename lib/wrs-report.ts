@@ -8,7 +8,7 @@ const WRS_REPORT_URL = process.env.WRS_REPORT_URL?.trim() || DEFAULT_WRS_REPORT_
 const WRS_REPORT_LOGIN = process.env.WRS_REPORT_LOGIN?.trim() || "5673461";
 const WRS_REPORT_PASSWORD = process.env.WRS_REPORT_PASSWORD?.trim() || WRS_REPORT_LOGIN;
 const WRS_DEFAULT_BRANCH_NAME =
-  "\u041c\u043e\u0440\u0438\u043d\u0433\u0438\u0439\u043d \u044d\u043d\u0433\u044d\u0440\u0438\u0439\u043d \u0442\u04e9\u0432\u043b\u04e9\u0440\u0441\u04e9\u043d \u0445\u043e\u0433\u0438\u0439\u043d \u0446\u044d\u0433";
+  "\u041d\u0430\u0440\u0430\u043d\u0433\u0438\u0439\u043d \u044d\u043d\u0433\u044d\u0440\u0438\u0439\u043d \u0442\u04e9\u0432\u043b\u04e9\u0440\u0441\u04e9\u043d \u0445\u043e\u0433\u0438\u0439\u043d \u0446\u044d\u0433";
 const WRS_REQUIRED_BRANCH_NAME =
   process.env.WRS_REPORT_BRANCH_NAME?.trim() || WRS_DEFAULT_BRANCH_NAME;
 const PARAMETER_CAPTION_SELECTOR = "label.dxbrv-params-caption[for]";
@@ -204,11 +204,11 @@ async function fillReportDate(page: Page, inputId: string, value: string) {
 async function selectBranch(page: Page, branchId: string) {
   const currentBranchId =
     (await page.evaluate((selector) => {
-      const ids = Array.from(document.querySelectorAll(selector))
-        .map((label) => label.getAttribute("for") ?? "")
-        .filter(Boolean);
-
-      return ids[2] ?? null;
+      const labels = Array.from(document.querySelectorAll(selector));
+      const branchLabel = labels.find((label) =>
+        (label.textContent ?? "").toLowerCase().includes("салбар"),
+      );
+      return branchLabel?.getAttribute("for") ?? labels[2]?.getAttribute("for") ?? null;
     }, PARAMETER_CAPTION_SELECTOR)) ?? branchId;
 
   const branchInput = page.locator(`input#${currentBranchId}`);
@@ -224,12 +224,21 @@ async function selectBranch(page: Page, branchId: string) {
 
   await waitForSubmitButtonEnabled(page);
 
-  const comboBoxId = (await branchInput.getAttribute("parent-id"))?.trim() ?? "";
+  const comboBoxId =
+    (await branchInput.evaluate((input) => {
+      const parentId = input.getAttribute("parent-id")?.trim();
+      const parent = parentId ? document.getElementById(parentId) : null;
+      const combo = parent || input.closest("dxbl-combo-box, dxbl-date-edit");
+      return combo?.id || parentId || "";
+    })) ?? "";
   const dropdownButton = comboBoxId
     ? page
         .locator(`[id="${comboBoxId}"] button[aria-label="Open or close the drop-down window"]`)
         .first()
-    : page.locator('button[aria-label="Open or close the drop-down window"]').last();
+    : branchInput
+        .locator("xpath=ancestor::*[self::dxbl-combo-box or self::dxbl-date-edit][1]")
+        .locator('button[aria-label="Open or close the drop-down window"]')
+        .first();
 
   await dropdownButton.waitFor({
     state: "attached",

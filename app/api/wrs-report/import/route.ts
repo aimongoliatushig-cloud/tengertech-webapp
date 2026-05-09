@@ -112,7 +112,7 @@ async function loadVehicleByCode() {
 
 async function upsertWeightReport(input: {
   reportDate: string;
-  vehicle: FleetVehicleRecord;
+  vehicle?: FleetVehicleRecord;
   vehicleCode: string;
   weightKg: number;
 }) {
@@ -133,7 +133,7 @@ async function upsertWeightReport(input: {
   );
   const values = {
     report_date: input.reportDate,
-    vehicle_id: input.vehicle.id,
+    vehicle_id: input.vehicle?.id ?? false,
     vehicle_license_plate: input.vehicleCode,
     weight: input.weightKg,
     unit: "kg",
@@ -192,7 +192,6 @@ async function handleRequest(request: Request) {
           vehicleLabel: total.vehicleLabel,
           weightKg: total.netWeightTotal,
         });
-        continue;
       }
 
       const result = await upsertWeightReport({

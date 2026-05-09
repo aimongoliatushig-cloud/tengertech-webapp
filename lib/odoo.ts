@@ -3697,7 +3697,7 @@ async function loadWeightReportsByVehicle(
   const records = await safeSearchReadFleetModel<OdooGarbageWeightReportRecord>(
     uid,
     "municipal.garbage.weight.report",
-    [["vehicle_id", "in", vehicleIds]],
+    ["|", ["vehicle_id", "in", vehicleIds], ["vehicle_id", "=", false]],
     VEHICLE_WEIGHT_REPORT_FIELDS,
     { order: "report_date desc, id desc" },
     connection,
@@ -4098,10 +4098,16 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
   );
   const repairVehicles = allVehicles.filter((vehicle) => vehicle.isRepair);
   const todayKey = getTodayDateKey();
-  const displayedWeightDateKey = getPreviousDateKey(todayKey);
-  const todayWeightKg = weightReportResult.records
-    .filter((record) => record.report_date === displayedWeightDateKey && record.state !== "failed")
-    .reduce((sum, record) => {
+  const previousDateKey = getPreviousDateKey(todayKey);
+  const todayWeightRecords = weightReportResult.records.filter(
+    (record) => record.report_date === todayKey && record.state !== "failed",
+  );
+  const displayedWeightRecords = todayWeightRecords.length
+    ? todayWeightRecords
+    : weightReportResult.records.filter(
+        (record) => record.report_date === previousDateKey && record.state !== "failed",
+      );
+  const todayWeightKg = displayedWeightRecords.reduce((sum, record) => {
       const value = record.weight || 0;
       return sum + (record.unit === "ton" ? value * 1000 : value);
     }, 0);
