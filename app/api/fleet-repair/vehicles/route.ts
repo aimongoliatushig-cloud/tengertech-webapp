@@ -1,5 +1,5 @@
 import { getSession } from "@/lib/auth";
-import { loadFleetRepairVehicleOptions } from "@/lib/fleet-repair";
+import { getFleetRepairPermissions, loadFleetRepairVehicleOptions } from "@/lib/fleet-repair";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +7,9 @@ export async function GET() {
   const session = await getSession();
   if (!session) {
     return Response.json({ error: "Нэвтрэх шаардлагатай." }, { status: 401 });
+  }
+  if (!getFleetRepairPermissions(session).request) {
+    return Response.json({ error: "Засварын хүсэлт үүсгэх эрхгүй байна." }, { status: 403 });
   }
 
   try {

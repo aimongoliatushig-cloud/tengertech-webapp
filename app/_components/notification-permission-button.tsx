@@ -214,6 +214,7 @@ export function NotificationPermissionButton() {
   const [status, setStatus] = useState<PushStatus>("checking");
   const [busy, setBusy] = useState(false);
   const [secureUrl, setSecureUrl] = useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const setPublicKeyFailure = useCallback((reason: PublicKeyFailureReason) => {
     setPublicKey(null);
@@ -266,6 +267,22 @@ export function NotificationPermissionButton() {
       setBusy(false);
     }
   }, [publicKey, setPublicKeyFailure]);
+
+  useEffect(() => {
+    const syncMobileMenuState = () => {
+      setIsMobileMenuOpen(document.body.dataset.mobileMenuOpen === "true");
+    };
+
+    syncMobileMenuState();
+
+    const observer = new MutationObserver(syncMobileMenuState);
+    observer.observe(document.body, {
+      attributeFilter: ["data-mobile-menu-open"],
+      attributes: true,
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -331,7 +348,7 @@ export function NotificationPermissionButton() {
     };
   }, [setPublicKeyFailure]);
 
-  if (status === "checking" || status === "unsupported" || status === "granted") {
+  if (isMobileMenuOpen || status === "checking" || status === "unsupported" || status === "granted") {
     return null;
   }
 
@@ -386,6 +403,7 @@ export function NotificationPermissionButton() {
 
   return (
     <div
+      data-notification-permission-card
       style={{
         position: "fixed",
         right: 20,

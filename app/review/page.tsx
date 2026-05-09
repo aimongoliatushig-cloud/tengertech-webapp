@@ -124,17 +124,20 @@ export default async function ReviewPage({ searchParams }: PageProps) {
   if (isWorkerOnly(session) || isMasterRole(session.role)) {
     redirect("/");
   }
-  const snapshotPromise = loadMunicipalSnapshot({
-    login: session.login,
-    password: session.password,
-  });
-  const scopedDepartmentNamePromise = loadSessionDepartmentName(session);
-
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  if (!canViewQualityCenter && !canCreateTasks) {
+    redirect("/");
+  }
+
+  const snapshotPromise = loadMunicipalSnapshot({
+    login: session.login,
+    password: session.password,
+  });
+  const scopedDepartmentNamePromise = loadSessionDepartmentName(session);
   const [snapshot, scopedDepartmentName] = await Promise.all([
     snapshotPromise,
     scopedDepartmentNamePromise,

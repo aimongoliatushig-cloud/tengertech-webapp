@@ -4651,6 +4651,22 @@
   }
 }
 
+@media (max-width: 1080px) {
+  .contentWithMenu {
+    isolation: isolate;
+  }
+
+  .menuColumn {
+    position: relative;
+    z-index: 1400;
+  }
+
+  .pageContent {
+    position: relative;
+    z-index: 0;
+  }
+}
+
 /* Task create modal polish */
 .modalDialog {
   width: min(760px, calc(100vw - 32px));

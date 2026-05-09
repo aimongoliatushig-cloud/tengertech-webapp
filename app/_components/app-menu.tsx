@@ -136,11 +136,8 @@ function MenuLink({
 }
 
 const HIDDEN_GLOBAL_MENU_KEYS = new Set([
-  "fleet-repair",
   "complaints",
   "garbage-complaints",
-  "data-download",
-  "procurement",
 ]);
 
 const HIDDEN_DEPARTMENT_MENU_NAMES = new Set([
@@ -258,6 +255,19 @@ export function AppMenu({
     return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [router]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      delete document.body.dataset.mobileMenuOpen;
+      return;
+    }
+
+    document.body.dataset.mobileMenuOpen = "true";
+
+    return () => {
+      delete document.body.dataset.mobileMenuOpen;
+    };
+  }, [isOpen]);
+
   const flags = groupFlags || {};
   const roleLabelLower = roleLabel.toLocaleLowerCase("mn-MN");
   const executiveMode =
@@ -314,6 +324,9 @@ export function AppMenu({
   const reviewHref = "/notifications";
   const roleLooksHr = roleLabelLower.includes("\u0445\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446");
   const roleLooksDepartmentHead = roleLabelLower.includes("\u0445\u044D\u043B\u0442\u0441\u0438\u0439\u043D \u0434\u0430\u0440\u0433\u0430");
+  const roleLooksSystemAdmin =
+    roleLabelLower.includes("\u0441\u0438\u0441\u0442\u0435\u043c\u0438\u0439\u043d \u0430\u0434\u043c\u0438\u043d") ||
+    roleLabelLower.includes("system admin");
   const hasHrGroupAccess = Boolean(flags.hrUser || flags.hrManager || flags.municipalHr);
   const canShowHrMenu = Boolean(canViewHr || (roleLooksHr && !masterMode && !workerMode));
   const hrFocusedMode =
@@ -325,8 +338,13 @@ export function AppMenu({
     !masterMode &&
     Boolean(departmentScopeName) &&
     isAutoGarbageDepartment(departmentScopeName) &&
-    canCreateProject &&
-    canCreateTasks;
+    !roleLooksSystemAdmin &&
+    Boolean(
+      flags.mfoManager ||
+        flags.mfoDispatcher ||
+        roleLooksDepartmentHead ||
+        (flags.municipalDepartmentHead && !executiveMode),
+    );
   const canCreate = baseCanCreate && !isGarbageDepartmentHead && !hrFocusedMode;
 
   const visibleDepartmentGroups = hrFocusedMode

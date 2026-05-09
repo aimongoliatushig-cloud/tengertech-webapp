@@ -192,17 +192,21 @@ function getRoleLabelForGarbage(session: AppSession) {
 
 export function getGarbageRoutePermissions(session: AppSession): GarbageRoutePermissions {
   const isAdmin = session.role === "system_admin";
-  const isHead = isAdmin || session.role === "project_manager" || Boolean(session.groupFlags?.mfoManager);
-  const isInspector = isAdmin || Boolean(session.groupFlags?.mfoInspector);
+  const isHead =
+    session.role === "project_manager" ||
+    Boolean(session.groupFlags?.mfoManager || session.groupFlags?.mfoDispatcher);
+  const isInspector = Boolean(session.groupFlags?.mfoInspector);
   const isExecutive = isAdmin || session.role === "director" || session.role === "general_manager";
-  const isMobile = session.role === "worker" || Boolean(session.groupFlags?.mfoMobile);
+  const isMobile = Boolean(
+    session.groupFlags?.mfoMobile || session.groupFlags?.mfoDriver || session.groupFlags?.mfoLoader,
+  );
 
   return {
     weekly_create: isHead,
     weekly_edit: isHead,
     daily_change: isHead,
     today_view: isMobile || isHead || isInspector || isExecutive,
-    point_execute: isMobile || isAdmin,
+    point_execute: isMobile,
     inspection_write: isInspector,
     dashboard_view: isHead || isExecutive,
     all_view: isHead || isInspector || isExecutive,
@@ -212,6 +216,44 @@ export function getGarbageRoutePermissions(session: AppSession): GarbageRoutePer
 function assertPermission(session: AppSession, action: GarbageRouteAction) {
   if (!getGarbageRoutePermissions(session)[action]) {
     throw new Error("Таны эрх хүрэхгүй байна.");
+  }
+}
+
+function isAssignedToRouteTask(task: OdooRecord, employeeId: number | null) {
+  if (!employeeId) {
+    return false;
+  }
+  return (
+    relationId(task.mfo_driver_employee_id) === employeeId ||
+    numberArray(task.mfo_collector_employee_ids).includes(employeeId)
+  );
+}
+
+async function assertDailyTaskAccess(
+  session: AppSession,
+  taskId: number,
+  connection: Partial<OdooConnection>,
+  action: GarbageRouteAction,
+) {
+  assertPermission(session, action);
+  const permissions = getGarbageRoutePermissions(session);
+  if (permissions.all_view || permissions.daily_change) {
+    return;
+  }
+
+  const [employeeId, tasks] = await Promise.all([
+    getCurrentEmployeeId(session, connection),
+    searchRead<OdooRecord>(
+      ODOO_MODELS.dailyRouteTask,
+      [["id", "=", taskId]],
+      ["mfo_driver_employee_id", "mfo_collector_employee_ids"],
+      { limit: 1 },
+      connection,
+    ),
+  ]);
+  const task = tasks[0];
+  if (!task || !isAssignedToRouteTask(task, employeeId)) {
+    throw new Error("Танд энэ маршрутыг харах эрхгүй байна.");
   }
 }
 
@@ -401,6 +443,7 @@ async function replaceRouteLines(routeId: number, pointIds: number[], connection
 }
 
 export async function loadGarbageRouteOptions(session: AppSession): Promise<GarbageRouteOptions> {
+  assertPermission(session, "all_view");
   const connection = connectionFromSession(session);
   const [vehicles, employees, teams, routes, points, departments] = await Promise.all([
     loadGarbageVehicleOptions(connection).catch(() => []),
@@ -947,6 +990,7 @@ export async function loadDailyRoute(session: AppSession, taskId: number) {
   if (!task) {
     return null;
   }
+  await assertDailyTaskAccess(session, taskId, connection, "today_view");
   const route = await normalizeTask(task, connection, true);
   const [proofs, issues] = await Promise.all([
     searchRead<OdooRecord>(
@@ -1031,14 +1075,26 @@ async function validateSequentialAccess(
 export async function markPointArrived(session: AppSession, stopLineId: number, skipReason?: string) {
   assertPermission(session, "point_execute");
   const connection = connectionFromSession(session);
+  const targetLines = await searchRead<OdooRecord>(
+    ODOO_MODELS.routePointLine,
+    [["id", "=", stopLineId]],
+    ["task_id"],
+    { limit: 1 },
+    connection,
+  );
+  const targetTaskId = relationId(targetLines[0]?.task_id);
+  if (!targetTaskId) {
+    throw new Error("Маршрут олдсонгүй.");
+  }
+  await assertDailyTaskAccess(session, targetTaskId, connection, "point_execute");
   const line = await validateSequentialAccess(stopLineId, skipReason || null, connection);
+  const taskId = relationId(line.task_id);
   await writeRecord(
     ODOO_MODELS.routePointLine,
     [stopLineId],
     { status: "arrived", arrival_datetime: new Date().toISOString().replace("T", " ").slice(0, 19) },
     connection,
   );
-  const taskId = relationId(line.task_id);
   if (taskId) {
     await writeRecord(ODOO_MODELS.dailyRouteTask, [taskId], { mfo_state: "in_progress" }, connection);
   }
@@ -1094,6 +1150,7 @@ export async function uploadPointProof(
   if (!taskId) {
     throw new Error("Маршрут олдсонгүй.");
   }
+  await assertDailyTaskAccess(session, taskId, connection, "point_execute");
   const attachmentType = proofType === "before" ? "Өмнөх зураг" : "Дараах зураг";
   const datas = await fileToBase64(file);
   const proofId = await createRecord<number>(
@@ -1148,6 +1205,7 @@ export async function reportPointIssue(
   if (!line || !taskId) {
     throw new Error("Маршрут олдсонгүй.");
   }
+  await assertDailyTaskAccess(session, taskId, connection, "point_execute");
   const issueId = await createRecord<number>(
     ODOO_MODELS.issueReport,
     {
@@ -1189,6 +1247,7 @@ export async function completePoint(
   if (!taskId) {
     throw new Error("Маршрут олдсонгүй.");
   }
+  await assertDailyTaskAccess(session, taskId, connection, "point_execute");
   const proofs = await searchRead<OdooRecord>(
     ODOO_MODELS.proofImage,
     [["stop_line_id", "=", stopLineId]],

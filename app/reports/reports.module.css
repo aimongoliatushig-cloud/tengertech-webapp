@@ -449,6 +449,53 @@
   background: rgba(74, 154, 93, 0.08);
 }
 
+.weightReportToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.weightReportToolbar .exportActions {
+  min-width: min(360px, 100%);
+  margin-top: 0;
+}
+
+.weightReportForm {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(130px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.weightReportForm input,
+.weightReportForm button {
+  min-height: 38px;
+  border: 1px solid rgba(74, 154, 93, 0.18);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink-900);
+  font: inherit;
+  font-size: 0.86rem;
+}
+
+.weightReportForm input {
+  padding: 0 10px;
+}
+
+.weightReportForm button {
+  padding: 0 14px;
+  color: var(--brand-800);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.weightReportForm button:hover {
+  border-color: rgba(74, 154, 93, 0.32);
+  background: rgba(74, 154, 93, 0.1);
+}
+
 .weightMetaCard span,
 .weightSummaryCard span,
 .weightVehicleMeta span,
@@ -710,6 +757,7 @@
 
   .projectHeader,
   .reportTop,
+  .weightReportToolbar,
   .weightDayHeader,
   .weightVehicleRow,
   .workflowColumnHeader,
@@ -763,6 +811,11 @@
   .weightVehicleValue {
     justify-items: start;
     text-align: left;
+  }
+
+  .weightReportForm {
+    grid-template-columns: 1fr;
+    width: 100%;
   }
 }
 

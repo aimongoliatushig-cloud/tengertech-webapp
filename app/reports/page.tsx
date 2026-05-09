@@ -106,6 +106,17 @@ function formatQuantity(value: number, unit: string) {
   return `${value} ${unit}`.trim();
 }
 
+function shiftDateKey(dateKey: string, days: number) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function startOfMonthDateKey(dateKey: string) {
+  return `${dateKey.slice(0, 8)}01`;
+}
+
 function reportStatusLabel(report: Pick<FeedReport, "stateBucket" | "stateLabel">) {
   switch (report.stateBucket) {
     case "done":
@@ -336,6 +347,10 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const exportQuery = exportParams.toString();
   const getExportHref = (format: "csv" | "excel" | "json") =>
     `/api/reports/export?format=${format}${exportQuery ? `&${exportQuery}` : ""}`;
+  const garbageReportWeekStart = shiftDateKey(todayDateKey, -6);
+  const garbageReportMonthStart = startOfMonthDateKey(todayDateKey);
+  const getGarbageWeightReportHref = (startDate: string, endDate = startDate) =>
+    `/api/garbage-transport/weight-report?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
 
   return (
     <main className={shellStyles.shell}>
@@ -592,6 +607,42 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                     <strong>{garbageWeightLedger?.rangeLabel || "Мэдээлэл алга"}</strong>
                     <small>{garbageWeightLedger?.generatedAtLabel || snapshot.generatedAt}</small>
                   </div>
+                </div>
+
+                <div className={styles.weightReportToolbar}>
+                  <div className={styles.exportActions} aria-label="Хог тээврийн жингийн тайлан">
+                    <a
+                      className={styles.exportButton}
+                      href={getGarbageWeightReportHref(todayDateKey)}
+                      target="_blank"
+                    >
+                      Өдөр
+                    </a>
+                    <a
+                      className={styles.exportButton}
+                      href={getGarbageWeightReportHref(garbageReportWeekStart, todayDateKey)}
+                      target="_blank"
+                    >
+                      7 хоног
+                    </a>
+                    <a
+                      className={styles.exportButton}
+                      href={getGarbageWeightReportHref(garbageReportMonthStart, todayDateKey)}
+                      target="_blank"
+                    >
+                      Сар
+                    </a>
+                  </div>
+                  <form
+                    className={styles.weightReportForm}
+                    action="/api/garbage-transport/weight-report"
+                    method="get"
+                    target="_blank"
+                  >
+                    <input type="date" name="startDate" defaultValue={todayDateKey} aria-label="Эхлэх огноо" />
+                    <input type="date" name="endDate" defaultValue={todayDateKey} aria-label="Дуусах огноо" />
+                    <button type="submit">Хугацаагаар</button>
+                  </form>
                 </div>
 
                 {garbageWeightError ? (

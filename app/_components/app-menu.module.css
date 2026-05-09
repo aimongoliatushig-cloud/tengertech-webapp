@@ -384,6 +384,11 @@
 }
 
 @media (max-width: 1080px) {
+  .menuShell {
+    position: relative;
+    z-index: 1300;
+  }
+
   .menuBar {
     display: none;
   }
@@ -468,7 +473,7 @@
     overflow-y: auto;
     padding: calc(18px + env(safe-area-inset-top, 0px)) 14px calc(18px + env(safe-area-inset-bottom, 0px));
     border-radius: 0 28px 28px 0;
-    background: rgba(255, 255, 255, 0.95);
+    background: #fff;
     box-shadow: 22px 0 56px rgba(12, 28, 17, 0.18);
     backdrop-filter: blur(24px);
     overscroll-behavior: contain;

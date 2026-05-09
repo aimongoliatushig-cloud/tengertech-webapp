@@ -1,11 +1,16 @@
 import { AppMenu } from "@/app/_components/app-menu";
 import { getRoleLabel, hasCapability, requireSession } from "@/lib/auth";
+import { canAccessFleetRepair } from "@/lib/fleet-repair";
 import shellStyles from "@/app/workspace.module.css";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function FleetRepairLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
+  if (!canAccessFleetRepair(session)) {
+    redirect("/");
+  }
 
   return (
     <main className={shellStyles.shell}>

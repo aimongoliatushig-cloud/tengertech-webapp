@@ -1,11 +1,17 @@
 import { AppMenu } from "@/app/_components/app-menu";
 import shellStyles from "@/app/workspace.module.css";
 import { getRoleLabel, hasCapability, requireSession } from "@/lib/auth";
+import { getGarbageRoutePermissions } from "@/lib/garbage-routes";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function GarbageRoutesLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
+  const permissions = getGarbageRoutePermissions(session);
+  if (!Object.values(permissions).some(Boolean)) {
+    redirect("/");
+  }
 
   return (
     <main className={shellStyles.shell}>

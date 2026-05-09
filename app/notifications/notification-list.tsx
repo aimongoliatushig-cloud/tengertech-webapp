@@ -58,11 +58,12 @@ async function markRead(keys: string[]) {
 
 export function NotificationList({
   items,
-  workerMode,
+  groupedByWorkMode,
 }: {
   items: NotificationListItem[];
-  workerMode: boolean;
+  groupedByWorkMode: boolean;
 }) {
+  const workerMode = groupedByWorkMode;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [readKeys, setReadKeys] = useState(

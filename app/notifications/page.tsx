@@ -171,6 +171,10 @@ export default async function NotificationsPage() {
 
   const workerMode = isWorkerOnly(session);
   const masterMode = isMasterRole(session.role);
+  const executiveWorkMode =
+    session.role === "director" ||
+    session.role === "general_manager" ||
+    Boolean(session.groupFlags?.municipalDirector || session.groupFlags?.fleetRepairCeo);
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
   const canWriteReports = hasCapability(session, "write_workspace_reports");
@@ -195,7 +199,7 @@ export default async function NotificationsPage() {
       )
     : snapshot.taskDirectory;
   const projectById = new Map(departmentScopedProjects.map((project) => [project.id, project]));
-  const groupedByWorkMode = workerMode || masterMode;
+  const groupedByWorkMode = workerMode || masterMode || executiveWorkMode;
   const visibleTasks = workerMode
     ? departmentScopedTasks.filter(isAssignedToCurrentUser)
     : departmentScopedTasks;
@@ -369,7 +373,10 @@ export default async function NotificationsPage() {
               </div>
 
               {notificationItems.length ? (
-                <NotificationList items={notificationItems} workerMode={workerMode} />
+                <NotificationList
+                  items={notificationItems}
+                  groupedByWorkMode={groupedByWorkMode}
+                />
               ) : (
                 <article className={styles.emptyCard}>
                   <CheckCircle2 aria-hidden />

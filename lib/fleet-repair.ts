@@ -480,7 +480,6 @@ export function getFleetRepairPermissions(session: AppSession): FleetRepairPermi
   const isAdmin = normalizedRole === "system_admin";
   const isDirector = normalizedRole === "director";
   const isManager = ["general_manager", "project_manager"].includes(normalizedRole);
-  const isMechanic = ["senior_master", "team_leader", "worker"].includes(normalizedRole);
   const isPurchase = ["storekeeper", "warehouse", "nyrav", "purchase"].some((role) =>
     normalizedRole.includes(role),
   );
@@ -497,12 +496,15 @@ export function getFleetRepairPermissions(session: AppSession): FleetRepairPermi
   const isRepairPurchaser = Boolean(groupFlags?.fleetRepairPurchaser);
   const isRepairGeneralManager = Boolean(groupFlags?.fleetRepairGeneralManager);
   const isRepairCeo = Boolean(groupFlags?.fleetRepairCeo);
+  const isTransportOps = Boolean(
+    groupFlags?.mfoManager || groupFlags?.mfoDispatcher || groupFlags?.mfoInspector,
+  );
 
   return {
     request:
       isAdmin ||
       isManager ||
-      isMechanic ||
+      isTransportOps ||
       isRepairManager ||
       isRepairMechanic ||
       isRepairTeamLeader,
@@ -516,11 +518,22 @@ export function getFleetRepairPermissions(session: AppSession): FleetRepairPermi
     contract: isAdmin || isLegal || isRepairManager || isRepairAdministration,
     director: isAdmin || isDirector || isRepairManager || isRepairCeo || isRepairGeneralManager,
     order: isAdmin || isOffice || isRepairManager || isRepairAdministration,
-    repair: isAdmin || isMechanic || isRepairManager || isRepairMechanic || isRepairTeamLeader,
+    repair: isAdmin || isRepairManager || isRepairMechanic || isRepairTeamLeader,
   };
 }
 
+export function canAccessFleetRepair(session: AppSession) {
+  return Object.values(getFleetRepairPermissions(session)).some(Boolean);
+}
+
+function assertFleetRepairAccess(session: AppSession) {
+  if (!canAccessFleetRepair(session)) {
+    throw new FleetRepairPermissionError("Засварын workflow харах эрхгүй байна.");
+  }
+}
+
 export async function loadFleetRepairRequests(session: AppSession) {
+  assertFleetRepairAccess(session);
   const connection = connectionFromSession(session);
   const repairResult = await loadRequestRecords(connection).catch((error) => ({
     error,
@@ -535,6 +548,7 @@ export async function loadFleetRepairRequests(session: AppSession) {
 }
 
 export async function loadFleetRepairRequest(session: AppSession, requestId: number) {
+  assertFleetRepairAccess(session);
   const connection = connectionFromSession(session);
   const { records } = await loadRequestRecords(connection, [["id", "=", requestId]], 1);
   const record = records[0];
@@ -678,6 +692,9 @@ export async function createFleetRepairRequest(session: AppSession, input: Fleet
 export async function loadFleetRepairVehicleOptions(
   session: AppSession,
 ): Promise<FleetRepairVehicleOptions> {
+  if (!getFleetRepairPermissions(session).request) {
+    throw new FleetRepairPermissionError(FLEET_REPAIR_CREATE_DENIED_MESSAGE);
+  }
   const connection = connectionFromSession(session);
   const [vehicleBoard, createAccess] = await Promise.all([
     loadFleetVehicleBoard(connection),
@@ -718,6 +735,7 @@ export async function runFleetRepairAction(session: AppSession, input: FleetRepa
 }
 
 export async function loadFleetRepairDashboard(session: AppSession): Promise<FleetRepairDashboard> {
+  assertFleetRepairAccess(session);
   const connection = connectionFromSession(session);
   const [repairResult, garbage, vehicleBoard] = await Promise.all([
     loadRequestRecords(connection, [], 12).catch((error) => ({
@@ -757,6 +775,7 @@ export async function loadFleetRepairDashboard(session: AppSession): Promise<Fle
 }
 
 export async function loadFleetRepairGarbage(session: AppSession): Promise<FleetRepairGarbageSnapshot> {
+  assertFleetRepairAccess(session);
   const ledger = await loadGarbageWeightLedger(connectionFromSession(session));
   const byVehicleMap = new Map<string, { vehicle: string; tons: number; trips: number }>();
 

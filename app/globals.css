@@ -74,6 +74,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+body[data-mobile-menu-open="true"] {
+  overflow: hidden;
+}
+
+body[data-mobile-menu-open="true"] [data-notification-permission-card] {
+  display: none !important;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

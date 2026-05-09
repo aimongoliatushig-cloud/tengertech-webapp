@@ -28,6 +28,7 @@ type WeeklyTemplatePanelProps = {
   routes: Option[];
   vehicles: Option[];
   teams: Option[];
+  canEdit?: boolean;
 };
 
 type FormState = {
@@ -86,7 +87,7 @@ async function readJson(response: Response) {
   return payload as WeeklyTemplateResponse;
 }
 
-export function GarbageWeeklyTemplatePanel({ routes, vehicles, teams }: WeeklyTemplatePanelProps) {
+export function GarbageWeeklyTemplatePanel({ routes, vehicles, teams, canEdit = true }: WeeklyTemplatePanelProps) {
   const [templates, setTemplates] = useState<GarbageWeeklyTemplate[]>([]);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editor, setEditor] = useState<ActiveEditor | null>(null);
@@ -216,6 +217,9 @@ export function GarbageWeeklyTemplatePanel({ routes, vehicles, teams }: WeeklyTe
   }, [templates]);
 
   function openEditor(day: GarbageWeeklyTemplateDay, template?: GarbageWeeklyTemplate) {
+    if (!canEdit) {
+      return;
+    }
     setEditor({ day, templateId: template?.id });
     setForm(
       template
@@ -336,6 +340,7 @@ export function GarbageWeeklyTemplatePanel({ routes, vehicles, teams }: WeeklyTe
       <button
         type="button"
         className={styles.weekMatrixCard}
+        disabled={!canEdit}
         onClick={() => openEditor(dayKey, template)}
       >
         <span>
@@ -374,9 +379,11 @@ export function GarbageWeeklyTemplatePanel({ routes, vehicles, teams }: WeeklyTe
         {GARBAGE_WEEKLY_TEMPLATE_WEEKDAYS.map((day) => (
           <div key={day.key} className={styles.weekMatrixDayHead}>
             <strong>{day.label}</strong>
-            <button type="button" onClick={() => openEditor(day.key)}>
-              <Plus aria-hidden size={17} /> Нэмэх
-            </button>
+            {canEdit ? (
+              <button type="button" onClick={() => openEditor(day.key)}>
+                <Plus aria-hidden size={17} /> Нэмэх
+              </button>
+            ) : null}
           </div>
         ))}
 
@@ -390,12 +397,12 @@ export function GarbageWeeklyTemplatePanel({ routes, vehicles, teams }: WeeklyTe
 
               return (
                 <div className={styles.weekMatrixCell} key={day.key}>
-                  {template ? renderTemplateCard(template) : (
+                  {template ? renderTemplateCard(template) : canEdit ? (
                     <button type="button" className={styles.weekMatrixEmpty} onClick={() => openEditor(day.key)}>
                       <Plus aria-hidden size={20} />
                       <span>Нэмэх</span>
                     </button>
-                  )}
+                  ) : null}
 
                   {(isEditing || isAdding) && editor ? (
                     <form className={styles.weekMatrixPopover} onSubmit={saveTemplate}>

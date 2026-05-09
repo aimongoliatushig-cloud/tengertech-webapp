@@ -283,6 +283,7 @@ export function WeeklyPlanListClient() {
           routes={options.routes}
           vehicles={options.vehicles}
           teams={options.teams}
+          canEdit={Boolean(options.permissions.weekly_create || options.permissions.weekly_edit)}
         />
       ) : null}
     </div>
