@@ -260,7 +260,15 @@ class ProjectTask(models.Model):
 
     def action_mfo_submit_for_verification(self):
         for task in self:
-            if task.municipal_work_id.requires_photo and not task.mfo_proof_image_ids:
+            has_report_images = self.env["ops.task.report"].search_count(
+                [
+                    ("task_id", "=", task.id),
+                    ("state", "in", ["draft", "submitted", "under_review", "approved"]),
+                    ("image_attachment_ids", "!=", False),
+                ],
+                limit=1,
+            )
+            if task.municipal_work_id.requires_photo and not task.mfo_proof_image_ids and not has_report_images:
                 raise UserError("Тайлан илгээхийн өмнө зураг хавсаргана уу.")
         self.write({"mfo_state": "submitted", "mfo_end_datetime": fields.Datetime.now()})
         self.mapped("municipal_work_id").action_submit_report()

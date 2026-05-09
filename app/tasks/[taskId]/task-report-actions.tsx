@@ -328,7 +328,11 @@ export function TaskReportActions({
                   >
                     Болих
                   </button>
-                  <PendingSubmitButton className={styles.actionButton} pendingLabel="Хадгалж байна...">
+                  <PendingSubmitButton
+                    className={styles.actionButton}
+                    pendingLabel="Хадгалж байна..."
+                    forcePending={isSubmitting}
+                  >
                     Хадгалах
                   </PendingSubmitButton>
                 </div>
