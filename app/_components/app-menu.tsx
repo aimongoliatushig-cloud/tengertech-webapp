@@ -17,7 +17,6 @@ import {
   Leaf,
   ListChecks,
   LogOut,
-  MapPin,
   Menu,
   MessageSquare,
   PlusCircle,
@@ -568,7 +567,7 @@ export function AppMenu({
     {
       key: "auto-base",
       href: "/auto-base",
-      label: "Авто бааз",
+      label: "Машин техник",
       icon: Truck,
     },
     {
@@ -582,12 +581,6 @@ export function AppMenu({
       href: "/settings/garbage-transport#routes",
       label: "Маршрут",
       icon: Flag,
-    },
-    {
-      key: "garbage-points",
-      href: "/settings/garbage-transport#points",
-      label: "Хогийн цэгүүд",
-      icon: MapPin,
     },
     {
       key: "reports",

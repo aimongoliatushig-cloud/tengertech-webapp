@@ -163,8 +163,13 @@ type FleetVehicleBoard = {
   failedImportCount: number;
 };
 
-type VehicleFilterKey = "active" | "repair";
-type VehicleTypeFilterKey = "all" | "none" | `type-${number}`;
+type VehicleFilterKey = "all" | "active" | "repair";
+type VehicleCategoryFilter = {
+  key: string;
+  id: number | null;
+  name: string;
+  count: number;
+};
 
 type BucketConfig = {
   key: VehicleFilterKey;
@@ -187,8 +192,32 @@ function meterStyle(count: number, total: number): CSSProperties {
   } as CSSProperties;
 }
 
-function vehicleTypeFilterKey(vehicle: FleetVehicleBoardItem): VehicleTypeFilterKey {
-  return vehicle.vehicleTypeId ? `type-${vehicle.vehicleTypeId}` : "none";
+const ALL_CATEGORY_KEY = "all";
+const UNCATEGORIZED_CATEGORY_KEY = "uncategorized";
+const PREFERRED_CATEGORY_NAMES = ["Хог ачилт", "Усалгаа", "Өргөгч", "Ковш"];
+
+function normalizeCategoryName(value: string) {
+  return value.trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
+}
+
+function vehicleCategoryKey(vehicle: Pick<FleetVehicleBoardItem, "categoryId" | "categoryName">) {
+  if (vehicle.categoryId) {
+    return `id:${vehicle.categoryId}`;
+  }
+  const normalizedName = normalizeCategoryName(vehicle.categoryName);
+  return normalizedName ? `name:${normalizedName}` : UNCATEGORIZED_CATEGORY_KEY;
+}
+
+function categoryOptionKey(option: FleetVehicleSelectOption) {
+  return option.id ? `id:${option.id}` : `name:${normalizeCategoryName(option.name)}`;
+}
+
+function preferredCategoryRank(name: string) {
+  const normalizedName = normalizeCategoryName(name);
+  const index = PREFERRED_CATEGORY_NAMES.findIndex(
+    (preferredName) => normalizeCategoryName(preferredName) === normalizedName,
+  );
+  return index === -1 ? PREFERRED_CATEGORY_NAMES.length + 1 : index;
 }
 
 function VehicleThumbnail({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
@@ -1062,55 +1091,114 @@ export function AutoBaseBoard({
     [board.allVehicles],
   );
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
-  const [activeFilter, setActiveFilter] = useState<VehicleFilterKey>("active");
-  const [activeVehicleType, setActiveVehicleType] = useState<VehicleTypeFilterKey>("all");
+  const [activeFilter, setActiveFilter] = useState<VehicleFilterKey>("all");
+  const [activeCategoryKey, setActiveCategoryKey] = useState(ALL_CATEGORY_KEY);
   const selectedVehicle = selectedVehicleId ? vehiclesById.get(selectedVehicleId) ?? null : null;
+  const categoryFilters = useMemo<VehicleCategoryFilter[]>(() => {
+    const counts = new Map<string, number>();
+    const options = new Map<string, VehicleCategoryFilter>();
+
+    for (const vehicle of board.allVehicles) {
+      const key = vehicleCategoryKey(vehicle);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+      if (key !== UNCATEGORIZED_CATEGORY_KEY && !options.has(key)) {
+        options.set(key, {
+          key,
+          id: vehicle.categoryId,
+          name: vehicle.categoryName || "Ангилалгүй",
+          count: 0,
+        });
+      }
+    }
+
+    for (const option of board.categoryOptions) {
+      const key = categoryOptionKey(option);
+      if (!options.has(key)) {
+        options.set(key, {
+          key,
+          id: option.id,
+          name: option.name,
+          count: 0,
+        });
+      }
+    }
+
+    const categoryItems = Array.from(options.values())
+      .map((option) => ({
+        ...option,
+        count: counts.get(option.key) ?? 0,
+      }))
+      .sort((left, right) => {
+        const rankDelta = preferredCategoryRank(left.name) - preferredCategoryRank(right.name);
+        return rankDelta || left.name.localeCompare(right.name, "mn-MN");
+      });
+
+    if (counts.has(UNCATEGORIZED_CATEGORY_KEY)) {
+      categoryItems.push({
+        key: UNCATEGORIZED_CATEGORY_KEY,
+        id: null,
+        name: "Ангилалгүй",
+        count: counts.get(UNCATEGORIZED_CATEGORY_KEY) ?? 0,
+      });
+    }
+
+    return [
+      {
+        key: ALL_CATEGORY_KEY,
+        id: null,
+        name: "Бүгд",
+        count: board.totalVehicles,
+      },
+      ...categoryItems,
+    ];
+  }, [board.allVehicles, board.categoryOptions, board.totalVehicles]);
+  const selectedCategory =
+    categoryFilters.find((category) => category.key === activeCategoryKey) ?? categoryFilters[0];
+  const categoryVehicles =
+    selectedCategory.key === ALL_CATEGORY_KEY
+      ? board.allVehicles
+      : board.allVehicles.filter((vehicle) => vehicleCategoryKey(vehicle) === selectedCategory.key);
+  const categoryActiveVehicles = categoryVehicles.filter((vehicle) => !vehicle.isRepair);
+  const categoryRepairVehicles = categoryVehicles.filter((vehicle) => vehicle.isRepair);
   const buckets: BucketConfig[] = [
+    {
+      key: "all",
+      title:
+        selectedCategory.key === ALL_CATEGORY_KEY
+          ? "Бүх машин техник"
+          : `${selectedCategory.name} машин техник`,
+      count: categoryVehicles.length,
+      description:
+        selectedCategory.key === ALL_CATEGORY_KEY
+          ? "Авто баазад бүртгэлтэй бүх машин техникийг харуулна."
+          : `${selectedCategory.name} ангилалд бүртгэлтэй машин техникийг харуулна.`,
+      hint: "Нийт жагсаалт",
+      emptyLabel: "Энэ ангилалд бүртгэлтэй машин техник алга.",
+      vehicles: categoryVehicles,
+      tone: "active",
+    },
     {
       key: "active",
       title: "Ажиллаж байгаа машин",
-      count: board.activeCount,
+      count: categoryActiveVehicles.length,
       description: "Ажилд гарах боломжтой болон хуваарилагдсан машинууд.",
       hint: "Ажиллаж байгаа жагсаалт",
       emptyLabel: "Одоогоор ажиллаж байгаа машин алга.",
-      vehicles: board.activeVehicles,
+      vehicles: categoryActiveVehicles,
       tone: "active",
     },
     {
       key: "repair",
       title: "Засагдаж буй машин",
-      count: board.repairCount,
+      count: categoryRepairVehicles.length,
       description: "Засвар, саатал, техникийн хүлээлттэй машинууд.",
       hint: "Засвартай жагсаалт",
       emptyLabel: "Одоогоор засагдаж буй машин алга.",
-      vehicles: board.repairVehicles,
+      vehicles: categoryRepairVehicles,
       tone: "repair",
     },
   ];
   const selectedBucket = buckets.find((bucket) => bucket.key === activeFilter) ?? buckets[0];
-  const vehicleTypeFilters = Array.from(
-    selectedBucket.vehicles.reduce(
-      (items, vehicle) => {
-        const key = vehicleTypeFilterKey(vehicle);
-        const current = items.get(key);
-        items.set(key, {
-          key,
-          label: vehicle.vehicleTypeName || "Төрөлгүй",
-          count: (current?.count ?? 0) + 1,
-        });
-        return items;
-      },
-      new Map<VehicleTypeFilterKey, { key: VehicleTypeFilterKey; label: string; count: number }>(),
-    ).values(),
-  ).sort((left, right) => left.label.localeCompare(right.label, "mn"));
-  const effectiveVehicleType =
-    activeVehicleType === "all" || vehicleTypeFilters.some((item) => item.key === activeVehicleType)
-      ? activeVehicleType
-      : "all";
-  const filteredVehicles =
-    effectiveVehicleType === "all"
-      ? selectedBucket.vehicles
-      : selectedBucket.vehicles.filter((vehicle) => vehicleTypeFilterKey(vehicle) === effectiveVehicleType);
 
   return (
     <>
@@ -1167,6 +1255,35 @@ export function AutoBaseBoard({
       </div>
 
       <section className={styles.vehicleFilterBoard} data-testid="vehicle-filter-board">
+        <div className={styles.vehicleCategoryHeader}>
+          <div>
+            <span className={styles.mobileDetailEyebrow}>Машин техникийн ангилал</span>
+            <h2>Ангиллаар харах</h2>
+          </div>
+          <p>Odoo Fleet-ийн ангиллын талбараар хог ачилт, усалгаа, өргөгч, ковш болон бусад машиныг шүүнэ.</p>
+        </div>
+        <div className={styles.vehicleCategoryPills} role="tablist" aria-label="Машины ангиллаар шүүх">
+          {categoryFilters.map((category) => (
+            <button
+              key={category.key}
+              type="button"
+              role="tab"
+              aria-selected={selectedCategory.key === category.key}
+              className={cx(
+                styles.vehicleCategoryPill,
+                selectedCategory.key === category.key && styles.vehicleCategoryPillSelected,
+              )}
+              onClick={() => {
+                setActiveCategoryKey(category.key);
+                setActiveFilter("all");
+              }}
+            >
+              <span>{category.name}</span>
+              <strong>{category.count}</strong>
+            </button>
+          ))}
+        </div>
+
         <div className={styles.vehicleFilterTabs} role="tablist" aria-label="Машины төлөвөөр шүүх">
           {buckets.map((bucket) => (
             <button
@@ -1194,34 +1311,6 @@ export function AutoBaseBoard({
           ))}
         </div>
 
-        {vehicleTypeFilters.length ? (
-          <div className={styles.vehicleTypeFilterBar} aria-label="Машины төрлөөр шүүх">
-            <button
-              type="button"
-              className={cx(
-                styles.vehicleTypeFilterButton,
-                effectiveVehicleType === "all" && styles.vehicleTypeFilterButtonActive,
-              )}
-              onClick={() => setActiveVehicleType("all")}
-            >
-              Бүгд <span>{selectedBucket.vehicles.length}</span>
-            </button>
-            {vehicleTypeFilters.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                className={cx(
-                  styles.vehicleTypeFilterButton,
-                  effectiveVehicleType === item.key && styles.vehicleTypeFilterButtonActive,
-                )}
-                onClick={() => setActiveVehicleType(item.key)}
-              >
-                {item.label} <span>{item.count}</span>
-              </button>
-            ))}
-          </div>
-        ) : null}
-
         <section
           className={cx(
             styles.vehicleFilterPanel,
@@ -1239,7 +1328,7 @@ export function AutoBaseBoard({
           </div>
 
           <VehicleList
-            vehicles={filteredVehicles}
+            vehicles={selectedBucket.vehicles}
             emptyLabel={selectedBucket.emptyLabel}
             onSelectVehicle={(vehicle) => {
               setSelectedVehicleId(vehicle.id);
