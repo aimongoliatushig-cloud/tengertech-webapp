@@ -53,10 +53,20 @@ async function unsealProxySession(token: string) {
 function hasHrAccess(session: ProxySession) {
   const flags = session.groupFlags ?? {};
   const role = session.role;
+  const transportInspectorOnly = Boolean(
+    role === "transport_inspector" ||
+      (flags.mfoInspector && !flags.mfoManager && !flags.mfoDispatcher),
+  );
+  if (transportInspectorOnly) {
+    return false;
+  }
+
   const masterOrOperationalLeader = Boolean(
     role === "senior_master" ||
       role === "team_leader" ||
+      role === "transport_inspector" ||
       flags.municipalMaster ||
+      flags.mfoInspector ||
       flags.greenMaster ||
       flags.fleetRepairTeamLeader,
   );

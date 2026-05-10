@@ -116,7 +116,7 @@ export function TeamCreateForm({ action, memberOptions, vehicles }: TeamCreateFo
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Нэр, албан тушаал, хэлтэс"
+              placeholder="Нэр, жолооч эсвэл ачигч"
             />
           </label>
           <div className={styles.selectedMembers} aria-live="polite">

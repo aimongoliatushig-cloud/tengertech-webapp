@@ -12,8 +12,6 @@ Current assets:
 - `inspector-master-desktop.png` - inspector/master desktop screenshot.
 - `hr-dashboard-desktop.png` - HR dashboard desktop screenshot.
 - `hr-dashboard-mobile.png` - HR dashboard mobile screenshot.
-- `garbage-route-today-desktop.png` - garbage route today-view desktop screenshot.
-- `garbage-route-weekly-plan-mobile.png` - garbage route weekly-plan mobile screenshot.
 - `repair-requests-list.png` - repair request list screenshot.
 - `repair-request-detail.png` - repair request detail screenshot.
 - `role-ui-summary.json` - role UI screenshot run summary.

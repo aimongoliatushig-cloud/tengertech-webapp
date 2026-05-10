@@ -15,8 +15,10 @@ import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 import {
+  loadActiveGarbageVehicleOptions,
   loadDepartmentOptions,
-  loadGarbageRouteOptions,
+  loadGarbagePointOptions,
+  loadGarbageSubdistrictOptions,
   loadGarbageVehicleOptions,
   loadProjectManagerOptions,
   loadRoadCleaningAreaOptions,
@@ -48,7 +50,17 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
   }
 
   const masterMode = isMasterRole(session.role);
-  const shouldLockDepartment = session.role === "project_manager" || masterMode;
+  const transportInspectorMode = Boolean(
+    session.role === "transport_inspector" ||
+      (session.groupFlags?.mfoInspector &&
+        !session.groupFlags?.mfoManager &&
+        !session.groupFlags?.mfoDispatcher),
+  );
+  const shouldLockDepartment =
+    session.role === "project_manager" ||
+    transportInspectorMode ||
+    masterMode ||
+    Boolean(session.groupFlags?.mfoInspector);
   const params = (await searchParams) ?? {};
   const errorMessage = getMessage(params.error);
   const noticeMessage = getMessage(params.notice);
@@ -58,7 +70,9 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
     managerOptions,
     departmentOptions,
     garbageVehicleOptions,
-    garbageRouteOptions,
+    activeGarbageVehicleOptions,
+    garbagePointOptions,
+    garbageSubdistrictOptions,
     roadCleaningAreaOptions,
     roadCleaningEmployeeOptions,
     masterSnapshot,
@@ -75,8 +89,16 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
     loadGarbageVehicleOptions({
       login: session.login,
       password: session.password,
+    }, { requireCurrentEmployeeScope: transportInspectorMode }),
+    loadActiveGarbageVehicleOptions({
+      login: session.login,
+      password: session.password,
     }),
-    loadGarbageRouteOptions({
+    loadGarbagePointOptions({
+      login: session.login,
+      password: session.password,
+    }, { requireCurrentEmployeeScope: transportInspectorMode }),
+    loadGarbageSubdistrictOptions({
       login: session.login,
       password: session.password,
     }),
@@ -193,7 +215,9 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
                   departmentOptions={departmentOptions}
                   managerOptions={managerOptions}
                   garbageVehicleOptions={garbageVehicleOptions}
-                  garbageRouteOptions={garbageRouteOptions}
+                  activeGarbageVehicleOptions={activeGarbageVehicleOptions}
+                  garbagePointOptions={garbagePointOptions}
+                  garbageSubdistrictOptions={garbageSubdistrictOptions}
                   roadCleaningAreaOptions={roadCleaningAreaOptions}
                   roadCleaningEmployeeOptions={roadCleaningEmployeeOptions}
                   lockedDepartmentId={

@@ -285,10 +285,13 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const hasSubmittedReport = task.reports.length > 0;
   const isAssignedToCurrentUser = task.assigneeUserIds.includes(session.uid);
   const hasOwnSubmittedReport = task.reports.some((report) => report.reporterId === session.uid);
+  const canInspectAssignedTransportTask = session.role === "transport_inspector";
   const canManageReview =
     !workerMode &&
     !hasOwnSubmittedReport &&
-    (masterMode || (!isAssignedToCurrentUser && (canViewQualityCenter || canCreateTasks)));
+    (masterMode ||
+      (canInspectAssignedTransportTask && (canViewQualityCenter || canCreateTasks)) ||
+      (!isAssignedToCurrentUser && (canViewQualityCenter || canCreateTasks)));
   const reviewFocusedMode =
     !workerMode && hasSubmittedReport && (masterMode || canViewQualityCenter || canCreateTasks);
   const canMarkDone =

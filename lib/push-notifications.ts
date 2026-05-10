@@ -89,7 +89,7 @@ const EVENT_DEFAULTS: Record<PushEventType, { title: string; body: string; targe
   route_changed: {
     title: "Маршрут өөрчлөгдлөө",
     body: "Өдрийн маршрутын мэдээлэл шинэчлэгдлээ.",
-    targetUrl: "/garbage-routes/today",
+    targetUrl: "/tasks?view=today",
   },
   vehicle_broken: {
     title: "Машины эвдрэл бүртгэгдлээ",

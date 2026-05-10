@@ -20,7 +20,6 @@ import {
   Menu,
   MessageSquare,
   PlusCircle,
-  Route,
   Settings,
   ShoppingCart,
   Truck,
@@ -44,12 +43,13 @@ import { cn } from "@/lib/utils";
 import { PendingLinkIndicator } from "./pending-link-indicator";
 import styles from "./app-menu.module.css";
 
+const AUTO_GARBAGE_DEPARTMENT_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
+
 type MenuKey =
   | "dashboard"
   | "tasks"
   | "auto-base"
   | "fleet-repair"
-  | "garbage-routes"
   | "hr"
   | "field"
   | "projects"
@@ -309,8 +309,12 @@ export function AppMenu({
       flags.fleetRepairCeo,
   );
   const complaintMode = Boolean(flags.complaintManager);
+  const isTransportInspectorRole =
+    roleLabelLower.includes("тээвэрлэлтийн хяналтын ажилтан") ||
+    roleLabelLower.includes("тээврийн хяналтын ажилтан") ||
+    roleLabelLower.includes("хог тээврийн хяналтын ажилтан");
   const inspectorMode = Boolean(
-    flags.mfoInspector || flags.municipalInspector || flags.greenMaster,
+    isTransportInspectorRole || flags.mfoInspector || flags.municipalInspector || flags.greenMaster,
   );
   const departmentManagerMode = Boolean(
     flags.municipalDepartmentHead || environmentManagerMode || mfoManagerMode,
@@ -326,6 +330,14 @@ export function AppMenu({
   const roleLooksSystemAdmin =
     roleLabelLower.includes("\u0441\u0438\u0441\u0442\u0435\u043c\u0438\u0439\u043d \u0430\u0434\u043c\u0438\u043d") ||
     roleLabelLower.includes("system admin");
+  const transportInspectorMode =
+    !workerMode &&
+    !executiveMode &&
+    Boolean(isTransportInspectorRole || flags.mfoInspector) &&
+    !flags.mfoManager &&
+    !flags.mfoDispatcher &&
+    !flags.municipalDepartmentHead &&
+    !roleLooksDepartmentHead;
   const hasHrGroupAccess = Boolean(flags.hrUser || flags.hrManager || flags.municipalHr);
   const hasDepartmentHeadHrAccess =
     !masterMode &&
@@ -339,9 +351,10 @@ export function AppMenu({
         flags.improvementManager,
     );
   const canShowHrMenu = Boolean(
-    canViewHr ||
-      hasDepartmentHeadHrAccess ||
-      (!masterMode && !workerMode && (roleLooksHr || hasHrGroupAccess || roleLooksSystemAdmin)),
+    !transportInspectorMode &&
+      (canViewHr ||
+        hasDepartmentHeadHrAccess ||
+        (!masterMode && !workerMode && (roleLooksHr || hasHrGroupAccess || roleLooksSystemAdmin))),
   );
   const hrFocusedMode =
     !workerMode &&
@@ -391,13 +404,13 @@ export function AppMenu({
     : [];
 
   const roleFocusedItems: MenuItem[] = [
-    ...((workerMode && mfoFieldMode) || mfoManagerMode
+    ...(workerMode && mfoFieldMode
       ? [
           {
-            key: workerMode ? "tasks" : "garbage-routes",
-            href: workerMode ? "/tasks" : "/garbage-routes",
-            label: workerMode ? "Өнөөдрийн ажил" : "\u0425\u043E\u0433 \u0442\u044D\u044D\u0432\u0440\u0438\u0439\u043D \u043C\u0430\u0440\u0448\u0440\u0443\u0442",
-            icon: workerMode ? ListChecks : Route,
+            key: "tasks",
+            href: "/tasks",
+            label: "Өнөөдрийн ажил",
+            icon: ListChecks,
           },
         ]
       : []),
@@ -568,28 +581,10 @@ export function AppMenu({
       icon: ListChecks,
     },
     {
-      key: "tasks",
-      href: "/tasks?view=today",
-      label: "Ажлын даалгавар",
-      icon: CalendarDays,
-    },
-    {
       key: "auto-base",
       href: "/auto-base",
       label: "Машин техник",
       icon: Truck,
-    },
-    {
-      key: "garbage-routes",
-      href: "/garbage-routes",
-      label: "Хог тээврийн маршрут",
-      icon: Route,
-    },
-    {
-      key: "garbage-route-settings",
-      href: "/settings/garbage-transport#routes",
-      label: "Маршрут",
-      icon: Flag,
     },
     {
       key: "reports",
@@ -604,12 +599,6 @@ export function AppMenu({
       icon: MessageSquare,
     },
     {
-      key: "procurement",
-      href: "/procurement/dashboard",
-      label: "Худалдан авалт",
-      icon: ShoppingCart,
-    },
-    {
       key: "garbage-settings",
       href: "/settings/garbage-transport",
       label: "Хог тээвэрлэлтийн тохиргоо",
@@ -617,9 +606,42 @@ export function AppMenu({
     },
   ];
 
-  const items = (isGarbageDepartmentHead ? garbageDepartmentItems : defaultItems).filter(
-    (item) => !isHiddenMenuItem(item),
-  );
+  const inspectorWorkHref = `/projects?department=${encodeURIComponent(AUTO_GARBAGE_DEPARTMENT_NAME)}`;
+  const inspectorNewWorkHref = `/projects/new?department=${encodeURIComponent(AUTO_GARBAGE_DEPARTMENT_NAME)}`;
+  const transportInspectorItems: MenuItem[] = [
+    {
+      key: "dashboard",
+      href: "/",
+      label: "Ажлын самбар",
+      icon: LayoutDashboard,
+    },
+    {
+      key: "projects",
+      href: inspectorWorkHref,
+      label: "Миний ажил",
+      icon: ListChecks,
+    },
+    {
+      key: "new-project",
+      href: inspectorNewWorkHref,
+      label: "Ажил нэмэх",
+      icon: PlusCircle,
+    },
+    {
+      key: "review",
+      href: reviewHref,
+      label: "Мэдэгдэл",
+      icon: Bell,
+      badge: notificationCount,
+    },
+  ];
+
+  const items = (transportInspectorMode
+    ? transportInspectorItems
+    : isGarbageDepartmentHead
+      ? garbageDepartmentItems
+      : defaultItems
+  ).filter((item) => !isHiddenMenuItem(item));
 
   function isItemActive(item: MenuItem) {
     if (item.key === active) {
@@ -629,6 +651,9 @@ export function AppMenu({
       return true;
     }
     if (item.key === "review" && active === "notifications") {
+      return true;
+    }
+    if (item.key === "projects" && active === "tasks") {
       return true;
     }
     if (active === "auto-base" && item.departmentName?.includes("Авто")) {
@@ -641,7 +666,25 @@ export function AppMenu({
   }
 
   const activeItem = items.find(isItemActive) ?? items[0];
-  const mobileDockItems: MenuItem[] = (isGarbageDepartmentHead
+  const mobileDockItems: MenuItem[] = (transportInspectorMode
+    ? [
+        { key: "dashboard", href: "/", label: "Самбар", icon: LayoutDashboard },
+        {
+          key: "projects",
+          href: inspectorWorkHref,
+          label: "Ажил",
+          icon: ListChecks,
+        },
+        {
+          key: "new-project",
+          href: inspectorNewWorkHref,
+          label: "Нэмэх",
+          icon: PlusCircle,
+        },
+        { key: "review", href: reviewHref, label: "Мэдэгдэл", icon: Bell, badge: notificationCount },
+        { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
+      ]
+    : isGarbageDepartmentHead
     ? [
         { key: "dashboard", href: "/", label: "Самбар", icon: LayoutDashboard },
         {
@@ -650,9 +693,6 @@ export function AppMenu({
           label: "Ажил",
           icon: ListChecks,
         },
-        { key: "tasks", href: "/tasks?view=today", label: "Даалгавар", icon: CalendarDays },
-        { key: "garbage-routes", href: "/garbage-routes/today", label: "Маршрут", icon: Route },
-        { key: "procurement", href: "/procurement/dashboard", label: "Худалдан", icon: ShoppingCart },
         { key: "reports", href: "/reports", label: "Тайлан", icon: BarChart3 },
         {
           key: "garbage-settings",

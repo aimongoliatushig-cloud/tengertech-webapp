@@ -5,7 +5,8 @@ import { FileText, Paperclip, PlusCircle } from "lucide-react";
 
 import { SearchableSelect, type SearchableSelectOption } from "@/app/_components/searchable-select";
 import styles from "@/app/workspace.module.css";
-import type { SelectOption, WorkUnitOption } from "@/lib/workspace";
+import type { FleetVehicleDriverOption } from "@/lib/odoo";
+import type { GarbagePointOption, SelectOption, WorkUnitOption } from "@/lib/workspace";
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
@@ -24,6 +25,17 @@ type Props = {
   allUnitOptions: WorkUnitOption[];
   defaultUnitId: number | null;
   allowedUnitSummary?: string;
+  operationType?: string;
+  garbagePointOptions?: GarbagePointOption[];
+  garbageLoaderOptions?: FleetVehicleDriverOption[];
+  garbageVehicleContext?: {
+    vehicleId: number | null;
+    vehicleName: string;
+    driverEmployeeId: number | null;
+    driverName: string;
+    collectorEmployeeIds: number[];
+    collectorNames: string[];
+  } | null;
 };
 
 type FilePreview = {
@@ -117,6 +129,10 @@ export function ProjectTaskCreateForm({
   allUnitOptions,
   defaultUnitId,
   allowedUnitSummary,
+  operationType = "",
+  garbagePointOptions = [],
+  garbageLoaderOptions = [],
+  garbageVehicleContext = null,
 }: Props) {
   const selectableUnits = useMemo(() => preferCommonUnits(allUnitOptions), [allUnitOptions]);
   const unitOptions = useMemo(() => buildUnitOptions(selectableUnits), [selectableUnits]);
@@ -152,6 +168,12 @@ export function ProjectTaskCreateForm({
   const [showNewTeamFields, setShowNewTeamFields] = useState(false);
   const [teamMemberQuery, setTeamMemberQuery] = useState("");
   const [useQuantity, setUseQuantity] = useState(false);
+  const isGarbageRouteTask = operationType === "garbage";
+  const [selectedGarbageKhoroo, setSelectedGarbageKhoroo] = useState("");
+  const [selectedGarbagePointIds, setSelectedGarbagePointIds] = useState<string[]>([]);
+  const [selectedGarbageCollectorIds, setSelectedGarbageCollectorIds] = useState<string[]>(
+    () => garbageVehicleContext?.collectorEmployeeIds.map(String) ?? [],
+  );
   const defaultQuantityUnitId = defaultUnitId ?? selectableUnits[0]?.id ?? null;
   const [quantityRows, setQuantityRows] = useState<QuantityRow[]>([
     createQuantityRow(defaultQuantityUnitId),
@@ -176,6 +198,45 @@ export function ProjectTaskCreateForm({
         .includes(normalizedQuery),
     );
   }, [filteredDepartmentUsers, teamMemberQuery]);
+  const garbageKhorooOptions = useMemo(
+    () =>
+      Array.from(new Set(garbagePointOptions.map((point) => point.subdistrictName).filter(Boolean))),
+    [garbagePointOptions],
+  );
+  const filteredGarbagePoints = useMemo(() => {
+    if (!selectedGarbageKhoroo) {
+      return [];
+    }
+    return garbagePointOptions.filter((point) => point.subdistrictName === selectedGarbageKhoroo);
+  }, [garbagePointOptions, selectedGarbageKhoroo]);
+  const garbageLoaderById = useMemo(
+    () => new Map(garbageLoaderOptions.map((loader) => [String(loader.id), loader])),
+    [garbageLoaderOptions],
+  );
+  const availableGarbageLoaders = useMemo(
+    () =>
+      garbageLoaderOptions.filter(
+        (loader) => !selectedGarbageCollectorIds.includes(String(loader.id)),
+      ),
+    [garbageLoaderOptions, selectedGarbageCollectorIds],
+  );
+  const selectedGarbageCollectorLabels = selectedGarbageCollectorIds.map((collectorId, index) => {
+    const employee = garbageLoaderById.get(collectorId);
+    return employee?.name ?? garbageVehicleContext?.collectorNames[index] ?? `Ачигч #${collectorId}`;
+  });
+
+  const addGarbageCollector = (collectorId: string) => {
+    if (!collectorId) {
+      return;
+    }
+    setSelectedGarbageCollectorIds((current) =>
+      current.includes(collectorId) ? current : [...current, collectorId],
+    );
+  };
+
+  const removeGarbageCollector = (collectorId: string) => {
+    setSelectedGarbageCollectorIds((current) => current.filter((item) => item !== collectorId));
+  };
 
   useEffect(
     () => () => {
@@ -189,6 +250,163 @@ export function ProjectTaskCreateForm({
         allowedUnitSummary || selectableUnits.map((unit) => unit.name).join(", ")
       }`
     : "Хэмжих нэгжийн сонголт одоогоор алга.";
+
+  if (isGarbageRouteTask) {
+    return (
+      <form action={action} className={className}>
+        <input type="hidden" name="project_id" value={projectId} />
+        <input type="hidden" name="garbage_task_mode" value="1" />
+        <input type="hidden" name="name" value="Нэмэлт хогийн цэг" />
+        <input type="hidden" name="deadline" value={deadline} />
+        {garbageVehicleContext?.vehicleId ? (
+          <input type="hidden" name="garbage_vehicle_id" value={garbageVehicleContext.vehicleId} />
+        ) : null}
+        {garbageVehicleContext?.driverEmployeeId ? (
+          <input
+            type="hidden"
+            name="garbage_driver_employee_id"
+            value={garbageVehicleContext.driverEmployeeId}
+          />
+        ) : null}
+        {selectedGarbageCollectorIds.map((collectorId) => (
+          <input key={collectorId} type="hidden" name="garbage_collector_employee_ids" value={collectorId} />
+        ))}
+
+        <div className={styles.fieldRow}>
+          <div className={styles.field}>
+            <label>Хэлтэс</label>
+            <div className={styles.lockedFieldValue}>{departmentName}</div>
+          </div>
+
+          <div className={styles.field}>
+            <label>Ажил дээрх машин</label>
+            <div className={styles.lockedFieldValue}>
+              {garbageVehicleContext?.vehicleName || "Машин оноогдоогүй"}
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.fieldRow}>
+          <div className={styles.field}>
+            <label>Жолооч</label>
+            <div className={styles.lockedFieldValue}>
+              {garbageVehicleContext?.driverName || "Жолооч оноогоогүй"}
+            </div>
+          </div>
+
+          <div className={styles.field}>
+            <label>Ачигч</label>
+            <div className={styles.editableChipRow}>
+              {selectedGarbageCollectorIds.length ? (
+                selectedGarbageCollectorIds.map((collectorId, index) => (
+                  <span key={collectorId} className={styles.editableChip}>
+                    {selectedGarbageCollectorLabels[index]}
+                    <button
+                      type="button"
+                      aria-label={`${selectedGarbageCollectorLabels[index]} хасах`}
+                      onClick={() => removeGarbageCollector(collectorId)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))
+              ) : (
+                <span className={styles.mutedInline}>Ачигч сонгоогүй</span>
+              )}
+            </div>
+            <select
+              value=""
+              className={styles.inlineUnitInput}
+              aria-label="Ачигч нэмэх"
+              onChange={(event) => addGarbageCollector(event.target.value)}
+              disabled={!availableGarbageLoaders.length}
+            >
+              <option value="">
+                {availableGarbageLoaders.length ? "Ачигч нэмэх" : "Нэмэх ачигч алга"}
+              </option>
+              {availableGarbageLoaders.map((loader) => (
+                <option key={loader.id} value={loader.id}>
+                  {[loader.name, loader.jobTitle].filter(Boolean).join(" · ")}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="task-khoroo">Хороо</label>
+          <select
+            id="task-khoroo"
+            name="task_khoroo"
+            value={selectedGarbageKhoroo}
+            onChange={(event) => {
+              setSelectedGarbageKhoroo(event.target.value);
+              setSelectedGarbagePointIds([]);
+            }}
+            required
+          >
+            <option value="">Хороо сонгох</option>
+            {garbageKhorooOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <fieldset className={styles.inlineTeamPanel}>
+          <legend>Хогийн цэг сонгох</legend>
+          {!selectedGarbageKhoroo ? (
+            <p className={styles.fieldHint}>Эхлээд хороо сонгоход тухайн хорооны цэгүүд гарна.</p>
+          ) : filteredGarbagePoints.length ? (
+            <div className={styles.inlineMemberList}>
+              {filteredGarbagePoints.map((point) => {
+                const pointId = String(point.id);
+                return (
+                  <label key={point.id}>
+                    <input
+                      type="checkbox"
+                      name="garbage_task_point_ids"
+                      value={point.id}
+                      checked={selectedGarbagePointIds.includes(pointId)}
+                      onChange={(event) =>
+                        setSelectedGarbagePointIds((current) =>
+                          event.target.checked
+                            ? [...current, pointId]
+                            : current.filter((item) => item !== pointId),
+                        )
+                      }
+                    />
+                    <span>
+                      <strong>{point.name}</strong>
+                      <small>{point.subdistrictName}</small>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          ) : (
+            <p className={styles.fieldHint}>Энэ хороонд оноогдсон хогийн цэг олдсонгүй.</p>
+          )}
+        </fieldset>
+
+        <div className={styles.field}>
+          <label htmlFor="task-deadline">Ажлын өдөр</label>
+          <input id="task-deadline" type="date" value={deadline} readOnly />
+        </div>
+
+        <div className={footerClassName}>
+          <button
+            type="submit"
+            className={styles.primaryButton}
+            disabled={!selectedGarbagePointIds.length || !garbageVehicleContext?.vehicleId}
+          >
+            Сонгосон цэгүүдийг даалгавар болгох
+          </button>
+        </div>
+      </form>
+    );
+  }
 
   return (
     <form action={action} className={className}>

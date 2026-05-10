@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { requireSession } from "@/lib/auth";
 import { isAutoGarbageDepartment, normalizeDepartmentText } from "@/lib/department-permissions";
+import { saveLocalInspectorScope } from "@/lib/inspector-scope-store";
 import { executeOdooKw, type OdooConnection } from "@/lib/odoo";
 import { loadDepartmentOptions } from "@/lib/workspace";
 
@@ -29,6 +30,11 @@ type WorkUnitRecord = {
 type WorkTypeRecord = {
   id: number;
   active?: boolean;
+};
+
+type CrewTeamInspectorRecord = {
+  id: number;
+  inspector_employee_id?: [number, string] | false;
 };
 
 function cleanInput(value: FormDataEntryValue | null) {
@@ -240,6 +246,27 @@ async function loadGarbageWorkUnitIds(connection: Partial<OdooConnection>) {
   return ids.length ? ids : units.slice(0, 1).map((unit) => unit.id);
 }
 
+async function loadTeamInspectorEmployeeId(
+  teamId: number | null,
+  connection: Partial<OdooConnection>,
+) {
+  if (!teamId) {
+    return null;
+  }
+  const teams = await executeOdooKw<CrewTeamInspectorRecord[]>(
+    "mfo.crew.team",
+    "search_read",
+    [[["id", "=", teamId]]],
+    {
+      fields: ["inspector_employee_id"],
+      limit: 1,
+    },
+    connection,
+  ).catch(() => []);
+  const value = teams[0]?.inspector_employee_id;
+  return Array.isArray(value) ? value[0] : null;
+}
+
 async function requireGarbageTransportHead() {
   const session = await requireSession();
   const departmentName = await loadSessionDepartmentName(session);
@@ -397,6 +424,74 @@ export async function archiveGarbageTransportTeamAction(formData: FormData) {
   redirectToSettings("notice", "Баг идэвхгүй боллоо.", "teams");
 }
 
+export async function saveGarbageTransportInspectorScopeAction(formData: FormData) {
+  const { connection } = await requireGarbageTransportHead();
+  const inspectorEmployeeId = parsePositiveId(formData.get("inspector_employee_id"));
+  const subdistrictIds = parsePositiveIds(formData.getAll("scope_subdistrict_ids"));
+  const pointIds = parsePositiveIds(formData.getAll("scope_point_ids"));
+  const vehicleIds = parsePositiveIds(formData.getAll("scope_vehicle_ids"));
+
+  if (!inspectorEmployeeId) {
+    redirectToSettings("error", "Хяналтын байцаагч сонгоно уу.", "inspectors");
+  }
+
+  await saveLocalInspectorScope({
+    inspectorEmployeeId,
+    subdistrictIds,
+    pointIds,
+    vehicleIds,
+  });
+
+  try {
+    await writeOdooRecord(
+      "hr.employee",
+      inspectorEmployeeId,
+      {
+        mfo_inspected_team_ids: [[6, 0, []]],
+        mfo_inspected_subdistrict_ids: [[6, 0, subdistrictIds]],
+        mfo_inspected_point_ids: [[6, 0, pointIds]],
+        mfo_inspected_vehicle_ids: [[6, 0, vehicleIds]],
+      },
+      connection,
+    );
+
+    const currentlyAssignedTeams = await executeOdooKw<Array<{ id: number }>>(
+      "mfo.crew.team",
+      "search_read",
+      [[["inspector_employee_id", "=", inspectorEmployeeId]]],
+      {
+        fields: ["id"],
+        limit: 500,
+      },
+      connection,
+    ).catch(() => []);
+    const teamsToClear = currentlyAssignedTeams
+      .map((team) => team.id);
+
+    for (const teamId of teamsToClear) {
+      await writeOdooRecord("mfo.crew.team", teamId, { inspector_employee_id: false }, connection);
+    }
+
+    for (const vehicleId of vehicleIds) {
+      await writeOdooRecord("fleet.vehicle", vehicleId, { mfo_garbage_work_create_allowed: true }, connection);
+    }
+  } catch (error) {
+    const message = getErrorMessage(error, "Хяналтын байцаагчийн scope хадгалах үед Odoo дээр алдаа гарлаа.");
+    if (message.includes("Invalid field")) {
+      console.warn("Inspector scope saved locally because Odoo scope fields are not available yet.", message);
+    } else {
+      redirectToSettings(
+        "error",
+        message,
+        "inspectors",
+      );
+    }
+  }
+
+  revalidatePath(SETTINGS_PATH);
+  redirectToSettings("notice", "Хяналтын байцаагчийн scope хадгалагдлаа.", "inspectors");
+}
+
 export async function createGarbageTransportWorkTypeAction(formData: FormData) {
   const { connection } = await requireGarbageTransportHead();
   const workTypeName = cleanInput(formData.get("work_type_name"));
@@ -550,6 +645,60 @@ export async function createGarbageTransportVehicleAction(formData: FormData) {
   redirectToSettings("notice", "Машин нэмэгдлээ.", "vehicles");
 }
 
+export async function createGarbageTransportSubdistrictAction(formData: FormData) {
+  const { connection } = await requireGarbageTransportHead();
+  const subdistrictName = cleanInput(formData.get("subdistrict_name"));
+  const districtId = parsePositiveId(formData.get("district_id"));
+  const districtName = cleanInput(formData.get("district_name"));
+
+  if (!subdistrictName) {
+    redirectToSettings("error", "Хорооны нэр оруулна уу.", "points");
+  }
+
+  try {
+    let effectiveDistrictId = districtId;
+    if (!effectiveDistrictId && districtName) {
+      const existingDistricts = await executeOdooKw<Array<{ id: number }>>(
+        "mfo.district",
+        "search_read",
+        [[["name", "=", districtName]]],
+        {
+          fields: ["id"],
+          limit: 1,
+        },
+        connection,
+      ).catch(() => []);
+      effectiveDistrictId = existingDistricts[0]?.id ?? (await createOdooRecord(
+        "mfo.district",
+        {
+          name: districtName,
+          active: true,
+        },
+        connection,
+      ));
+    }
+
+    await createOdooRecord(
+      "mfo.subdistrict",
+      {
+        name: subdistrictName,
+        district_id: effectiveDistrictId,
+        active: true,
+      },
+      connection,
+    );
+  } catch (error) {
+    redirectToSettings(
+      "error",
+      getErrorMessage(error, "Хороо нэмэх үед Odoo дээр алдаа гарлаа."),
+      "points",
+    );
+  }
+
+  revalidatePath(SETTINGS_PATH);
+  redirectToSettings("notice", "Хороо нэмэгдлээ.", "points");
+}
+
 export async function createGarbageTransportPointAction(formData: FormData) {
   const { connection } = await requireGarbageTransportHead();
   const pointName = cleanInput(formData.get("point_name"));
@@ -675,6 +824,7 @@ export async function createGarbageTransportRouteAction(formData: FormData) {
   }
 
   try {
+    const inspectorEmployeeId = await loadTeamInspectorEmployeeId(teamId, connection);
     const projectId = await createOdooRecord(
       "project.project",
       {
@@ -703,6 +853,7 @@ export async function createGarbageTransportRouteAction(formData: FormData) {
           shift_type: "morning",
           crew_team_id: teamId,
           team_id: teamId,
+          inspector_id: inspectorEmployeeId,
           vehicle_id: vehicleId,
           assigned_vehicle_id: vehicleId,
         },

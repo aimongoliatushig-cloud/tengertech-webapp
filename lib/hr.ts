@@ -675,6 +675,29 @@ async function readGroupNames(groupIds: number[], session: AppSession) {
 }
 
 export async function getHrAccessProfile(session: AppSession) {
+  if (
+    session.role === "transport_inspector" ||
+    (session.groupFlags?.mfoInspector && !session.groupFlags?.mfoManager && !session.groupFlags?.mfoDispatcher)
+  ) {
+    return {
+      isHr: false,
+      isDepartmentHead: false,
+      canAccessHr: false,
+      scope: "department" as const,
+      reasons: [],
+      departmentHeadReasons: [],
+      employee: {
+        id: null,
+        name: session.name,
+        jobTitle: "",
+        departmentId: null,
+        departmentName: "",
+        fieldRole: "",
+      },
+      groupNames: [],
+    };
+  }
+
   const reasons: string[] = [];
   const departmentHeadReasons: string[] = [];
   const isExplicitDepartmentHead = Boolean(

@@ -38,8 +38,6 @@ import {
   findDepartmentGroupByUnit,
   matchesDepartmentGroup,
 } from "@/lib/department-groups";
-import { loadGarbageWeeklyTemplates } from "@/lib/garbage-weekly-template-store";
-import { expandGarbageWeeklyTemplatesToTasks } from "@/lib/garbage-weekly-template-tasks";
 import { loadMunicipalSnapshot, type DashboardSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
 import {
   filterProjectsForResponsibleMaster,
@@ -380,8 +378,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const todayDateKey = getTodayDateKey();
   const calendarAnchorDateKey = todayDateKey;
   const calendarBaseCells = buildMonthCells(calendarAnchorDateKey);
-  const calendarRangeStart = calendarBaseCells[0]?.dateKey ?? calendarAnchorDateKey;
-  const calendarRangeEnd = calendarBaseCells[calendarBaseCells.length - 1]?.dateKey ?? calendarAnchorDateKey;
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
   const canWriteReports = hasCapability(session, "write_workspace_reports");
@@ -394,12 +390,11 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const seniorMasterMode = session.role === "senior_master";
 
   let snapshot: DashboardSnapshot;
-  let garbageWeeklyTemplates: Awaited<ReturnType<typeof loadGarbageWeeklyTemplates>>;
   let scopedDepartmentName: Awaited<ReturnType<typeof loadSessionDepartmentName>>;
   const scopedDepartmentNamePromise = loadSessionDepartmentName(session);
 
   try {
-    [snapshot, garbageWeeklyTemplates, scopedDepartmentName] = await Promise.all([
+    [snapshot, scopedDepartmentName] = await Promise.all([
       loadMunicipalSnapshot(
         {
           login: session.login,
@@ -407,7 +402,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
         },
         { allowFallback: false },
       ),
-      loadGarbageWeeklyTemplates(),
       scopedDepartmentNamePromise,
     ]);
   } catch (error) {
@@ -460,10 +454,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
     snapshot,
     scopedDepartmentName,
   });
-  const sourceTaskDirectory = [
-    ...snapshot.taskDirectory,
-    ...expandGarbageWeeklyTemplatesToTasks(garbageWeeklyTemplates, calendarRangeStart, calendarRangeEnd),
-  ];
+  const sourceTaskDirectory = snapshot.taskDirectory;
 
   const selectedFilter: FilterKey = workerMode || masterMode ? "all" : activeFilter;
   const notificationSummary = await notificationSummaryPromise;

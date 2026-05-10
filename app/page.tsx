@@ -79,6 +79,18 @@ const EMPTY_MUNICIPAL_SNAPSHOT: Awaited<ReturnType<typeof loadMunicipalSnapshot>
   totalTasks: 0,
 };
 
+const AUTO_BASE_GARBAGE_DEPARTMENT_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
+
+function isTransportInspectorSession(session: DashboardSession) {
+  return Boolean(
+    session.role === "transport_inspector" ||
+      (session.groupFlags?.mfoInspector &&
+        !session.groupFlags?.mfoManager &&
+        !session.groupFlags?.mfoDispatcher &&
+        !session.groupFlags?.municipalDepartmentHead),
+  );
+}
+
 async function loadScopedHrAttendanceSummary(
   scopedDepartmentName: string,
   connectionOverrides: ConnectionOverrides,
@@ -137,7 +149,8 @@ async function DashboardPageContent({
     login: session.login,
     password: session.password,
   };
-  const canViewGeneralDashboard = canAccessGeneralDashboard(session);
+  const transportInspectorMode = isTransportInspectorSession(session);
+  const canViewGeneralDashboard = !transportInspectorMode && canAccessGeneralDashboard(session);
   const generalDashboardMode = canViewGeneralDashboard;
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const canViewHrPromise = canAccessHr(session).catch((error) => {
@@ -187,7 +200,9 @@ async function DashboardPageContent({
           };
         });
   let scopedDepartmentName = await departmentScopeNamePromise;
-  if (generalDashboardMode) {
+  if (transportInspectorMode) {
+    scopedDepartmentName = AUTO_BASE_GARBAGE_DEPARTMENT_NAME;
+  } else if (generalDashboardMode) {
     scopedDepartmentName = null;
   }
   const hrAttendanceSummaryPromise = workerMode

@@ -17,9 +17,9 @@ import {
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import { filterProjectsForResponsibleMaster } from "@/lib/master-scope";
-import { loadMunicipalSnapshot } from "@/lib/odoo";
+import { loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
 import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurement";
-import { loadProjectDetail } from "@/lib/workspace";
+import { loadGarbagePointOptions, loadProjectDetail } from "@/lib/workspace";
 
 import { ProjectTaskCreateModal } from "./project-task-create-modal";
 import { ProjectTaskEditModal } from "./project-task-edit-modal";
@@ -223,6 +223,21 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const isGarbageRouteProject = project.operationType === "garbage";
+  const garbageSourceTask =
+    project.tasks.find((task) => task.vehicleId) ??
+    project.tasks.find((task) => task.driverEmployeeId || task.collectorEmployeeIds.length) ??
+    null;
+  const [garbagePointOptions, garbageLoaderOptions] = isGarbageRouteProject
+    ? await Promise.all([
+        loadGarbagePointOptions(connectionOverrides, {
+          requireCurrentEmployeeScope: session.role === "transport_inspector",
+        }).catch(() => []),
+        loadFleetVehicleBoard(connectionOverrides)
+          .then((board) => board.loaderOptions)
+          .catch(() => []),
+      ])
+    : [[], []];
   const procurementBundle = await loadProcurementRequests(
     { project_id: project.id, limit: 5 },
     connectionOverrides,
@@ -261,6 +276,15 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   });
   const stageSummary = resolveProjectStage(taskCounts);
   const activeTaskCount = taskCounts.progress + taskCounts.review;
+  const projectVehicleNames = Array.from(
+    new Set(project.tasks.map((task) => task.vehicleName).filter(Boolean)),
+  );
+  const projectDriverNames = Array.from(
+    new Set(project.tasks.map((task) => task.driverName).filter(Boolean)),
+  );
+  const projectCollectorNames = Array.from(
+    new Set(project.tasks.flatMap((task) => task.collectorNames).filter(Boolean)),
+  );
   const completionDegrees = Math.round((project.completion / 100) * 360);
   const taskBreakdown = [
     {
@@ -422,6 +446,24 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                         <span>Дуусах огноо</span>
                         <strong>{project.deadline}</strong>
                       </div>
+                      {projectVehicleNames.length ? (
+                        <div>
+                          <span>Машин</span>
+                          <strong>{projectVehicleNames.join(", ")}</strong>
+                        </div>
+                      ) : null}
+                      {projectDriverNames.length ? (
+                        <div>
+                          <span>Жолооч</span>
+                          <strong>{projectDriverNames.join(", ")}</strong>
+                        </div>
+                      ) : null}
+                      {projectCollectorNames.length ? (
+                        <div>
+                          <span>Ачигч</span>
+                          <strong>{projectCollectorNames.join(", ")}</strong>
+                        </div>
+                      ) : null}
                     </div>
                   </article>
 
@@ -633,6 +675,21 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                       allUnitOptions={project.allUnitOptions}
                       defaultUnitId={project.defaultUnitId}
                       allowedUnitSummary={project.allowedUnitSummary}
+                      operationType={project.operationType}
+                      garbagePointOptions={garbagePointOptions}
+                      garbageLoaderOptions={garbageLoaderOptions}
+                      garbageVehicleContext={
+                        garbageSourceTask
+                          ? {
+                              vehicleId: garbageSourceTask.vehicleId,
+                              vehicleName: garbageSourceTask.vehicleName,
+                              driverEmployeeId: garbageSourceTask.driverEmployeeId,
+                              driverName: garbageSourceTask.driverName,
+                              collectorEmployeeIds: garbageSourceTask.collectorEmployeeIds,
+                              collectorNames: garbageSourceTask.collectorNames,
+                            }
+                          : null
+                      }
                       defaultOpen={Boolean(errorMessage) || quickActionMode === "task"}
                     />
                   ) : (
@@ -709,6 +766,16 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                                 Хариуцсан ажилтан: {task.teamLeaderName}
                                 {task.teamLeaderJobTitle ? ` · ${task.teamLeaderJobTitle}` : ""}
                               </p>
+                              {task.assignees.length || task.vehicleName || task.driverName || task.collectorNames.length ? (
+                                <p>
+                                  {task.assignees.length ? `Оноосон: ${task.assignees.join(", ")}` : ""}
+                                  {task.vehicleName ? `${task.assignees.length ? " · " : ""}Машин: ${task.vehicleName}` : ""}
+                                  {task.driverName ? `${task.assignees.length || task.vehicleName ? " · " : ""}Жолооч: ${task.driverName}` : ""}
+                                  {task.collectorNames.length
+                                    ? `${task.assignees.length || task.vehicleName || task.driverName ? " · " : ""}Ачигч: ${task.collectorNames.join(", ")}`
+                                    : ""}
+                                </p>
+                              ) : null}
                             </div>
                           </div>
 

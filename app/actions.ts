@@ -16,12 +16,11 @@ import {
   submitFieldShift,
   uploadFieldStopProof,
 } from "@/lib/field-ops";
-import { loadMunicipalSnapshot } from "@/lib/odoo";
+import { executeOdooKw, loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
+import { createProcurementRequest, uploadProcurementAttachment } from "@/lib/procurement";
 import { notifyPushEvent, type PushEventType } from "@/lib/push-notifications";
 import { createLocalRoadCleaningArea } from "@/lib/road-cleaning-area-store";
 import {
-  assignGarbageProjectTasksFromRouteTeam,
-  createGarbageWorkspaceProject,
   createRoadCleaningWork,
   createSeasonalWorkspacePlan,
   createWorkspaceCrewTeam,
@@ -35,6 +34,8 @@ import {
   deleteWorkspaceTask,
   forceWorkspaceTaskDone,
   generateSeasonalWorkspaceExecution,
+  loadGarbagePointOptions,
+  loadGarbageVehicleOptions,
   loadTaskDetail,
   loadProjectDetail,
   loadWorkspaceTaskReportOwner,
@@ -164,9 +165,12 @@ async function assertCanReviewTaskAction(
   }
   const isAssignedToCurrentUser = task.assigneeUserIds.includes(session.uid);
   const hasOwnSubmittedReport = task.reports.some((report) => report.reporterId === session.uid);
+  const canInspectAssignedTransportTask = session.role === "transport_inspector";
   const canReviewTask =
     !hasOwnSubmittedReport &&
     (isMasterRole(session.role) ||
+      (canInspectAssignedTransportTask &&
+        (hasCapability(session, "view_quality_center") || hasCapability(session, "create_tasks"))) ||
       (!isAssignedToCurrentUser &&
         (hasCapability(session, "view_quality_center") || hasCapability(session, "create_tasks"))));
 
@@ -221,6 +225,154 @@ function redirectWithMessage(
 
 function getNumberValue(formData: FormData, key: string) {
   return Number(String(formData.get(key) ?? ""));
+}
+
+function relationIdValue(value: unknown) {
+  if (Array.isArray(value)) {
+    const id = Number(value[0]);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  return null;
+}
+
+type GarbageVehicleCrewRecord = {
+  id: number;
+  name?: string | false;
+  license_plate?: string | false;
+  municipal_responsible_driver_id?: [number, string] | false;
+  municipal_loader_1_id?: [number, string] | false;
+  municipal_loader_2_id?: [number, string] | false;
+  driver_id?: [number, string] | false;
+  driver_employee_id?: [number, string] | false;
+  mfo_driver_employee_id?: [number, string] | false;
+  loader_employee_id?: [number, string] | false;
+};
+
+type EmployeeUserAssignmentRecord = {
+  id: number;
+  name?: string | false;
+  user_id?: [number, string] | false;
+  job_title?: string | false;
+  job_id?: [number, string] | false;
+};
+
+async function loadEmployeeUserAssignments(
+  employeeIds: number[],
+  connectionOverrides: Record<string, never> | { login: string; password: string },
+) {
+  const uniqueEmployeeIds = Array.from(new Set(employeeIds)).filter((id) => Number.isFinite(id) && id > 0);
+  if (!uniqueEmployeeIds.length) {
+    return { userIds: [] as number[], labels: [] as string[] };
+  }
+
+  const employees = await executeOdooKw<EmployeeUserAssignmentRecord[]>(
+    "hr.employee",
+    "search_read",
+    [[["id", "in", uniqueEmployeeIds]]],
+    {
+      fields: ["name", "user_id", "job_title", "job_id"],
+      limit: uniqueEmployeeIds.length,
+    },
+    connectionOverrides,
+  ).catch(() =>
+    executeOdooKw<EmployeeUserAssignmentRecord[]>(
+      "hr.employee",
+      "search_read",
+      [[["id", "in", uniqueEmployeeIds]]],
+      {
+        fields: ["name", "user_id"],
+        limit: uniqueEmployeeIds.length,
+      },
+      connectionOverrides,
+    ).catch(() => []),
+  );
+
+  return {
+    userIds: uniquePositiveUserIds(employees.map((employee) => relationIdValue(employee.user_id))),
+    labels: employees.map((employee) => {
+      const role = employee.job_title || (Array.isArray(employee.job_id) ? employee.job_id[1] : "");
+      return [employee.name || "", role].filter(Boolean).join(" - ");
+    }).filter(Boolean),
+  };
+}
+
+async function assignSeasonalPlanVehicles(
+  planId: number,
+  lines: Array<{ sequence: number; vehicleIds?: number[] }>,
+  connectionOverrides: { login: string; password: string },
+) {
+  const scopedLines = lines.filter((line) => line.vehicleIds?.length);
+  if (!scopedLines.length) {
+    return;
+  }
+
+  const sequences = scopedLines.map((line) => line.sequence);
+  const planLines = await executeOdooKw<Array<{ id: number; sequence?: number }>>(
+    "mfo.seasonal.plan.line",
+    "search_read",
+    [[["plan_id", "=", planId], ["sequence", "in", sequences]]],
+    {
+      fields: ["sequence"],
+      order: "sequence asc, id asc",
+      limit: 1000,
+    },
+    connectionOverrides,
+  );
+  const lineIdBySequence = new Map(
+    planLines.map((line) => [Number(line.sequence ?? 0), line.id] as const),
+  );
+  const lineIds = planLines.map((line) => line.id);
+  if (!lineIds.length) {
+    return;
+  }
+
+  const days = await executeOdooKw<
+    Array<{ id: number; plan_line_id?: [number, string] | false; work_date?: string | false }>
+  >(
+    "mfo.seasonal.plan.day",
+    "search_read",
+    [[["plan_line_id", "in", lineIds]]],
+    {
+      fields: ["plan_line_id", "work_date"],
+      order: "plan_line_id asc, work_date asc, id asc",
+      limit: 5000,
+    },
+    connectionOverrides,
+  );
+  const daysByLineId = new Map<number, typeof days>();
+  for (const day of days) {
+    const lineId = relationIdValue(day.plan_line_id ?? false);
+    if (!lineId) {
+      continue;
+    }
+    daysByLineId.set(lineId, [...(daysByLineId.get(lineId) ?? []), day]);
+  }
+
+  for (const line of scopedLines) {
+    const lineId = lineIdBySequence.get(line.sequence);
+    const vehicleIds = line.vehicleIds ?? [];
+    const lineDays = lineId ? daysByLineId.get(lineId) ?? [] : [];
+    if (!lineDays.length || !vehicleIds.length) {
+      continue;
+    }
+
+    const slotIndexByDate = new Map<string, number>();
+    for (const day of lineDays) {
+      const dateKey = day.work_date || "single";
+      const slotIndex = slotIndexByDate.get(dateKey) ?? 0;
+      slotIndexByDate.set(dateKey, slotIndex + 1);
+      await executeOdooKw<boolean>(
+        "mfo.seasonal.plan.day",
+        "write",
+        [[day.id], { assigned_vehicle_id: vehicleIds[slotIndex % vehicleIds.length] }],
+        {},
+        connectionOverrides,
+      );
+    }
+  }
 }
 
 async function sendTaskToReviewWithSystemFallback(
@@ -289,35 +441,18 @@ function uniquePositiveUserIds(values: Array<number | null | undefined>) {
   );
 }
 
-function getStringListValues(formData: FormData, keys: string[], maxItems = 20) {
-  const seenValues = new Set<string>();
-  const normalizedValues: string[] = [];
-
-  for (const key of keys) {
-    for (const rawValue of formData.getAll(key)) {
-      const normalizedValue = String(rawValue ?? "").trim().replace(/\s+/g, " ");
-      const dedupeKey = normalizedValue.toLowerCase();
-
-      if (!normalizedValue || seenValues.has(dedupeKey)) {
-        continue;
-      }
-
-      seenValues.add(dedupeKey);
-      normalizedValues.push(normalizedValue);
-
-      if (normalizedValues.length >= maxItems) {
-        return normalizedValues;
-      }
-    }
-  }
-
-  return normalizedValues;
-}
-
 function getUploadedFiles(formData: FormData, key: string) {
   return formData
     .getAll(key)
     .filter((value): value is File => value instanceof File && value.size > 0);
+}
+
+async function encodeProcurementUpload(file: File) {
+  return {
+    name: file.name || "Хавсралт",
+    mimetype: file.type || "application/octet-stream",
+    data: Buffer.from(await file.arrayBuffer()).toString("base64"),
+  };
 }
 
 type LabeledUploadFile = {
@@ -463,7 +598,25 @@ export async function createProjectAction(formData: FormData) {
   const startDate = String(formData.get("start_date") ?? "").trim();
   const deadline = String(formData.get("deadline") ?? "").trim();
   const garbageVehicleIdRaw = String(formData.get("garbage_vehicle_id") ?? "").trim();
-  const garbageRouteIdRaw = String(formData.get("garbage_route_id") ?? "").trim();
+  const garbageSubdistrictIdRaw = String(formData.get("garbage_subdistrict_id") ?? "").trim();
+  const garbagePointIds = formData
+    .getAll("garbage_point_ids")
+    .map((value) => Number(String(value ?? "")))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const garbageLoaderOverride = String(formData.get("garbage_loader_override") ?? "") === "1";
+  const garbageLoaderEmployeeIds = formData
+    .getAll("garbage_loader_employee_ids")
+    .map((value) => Number(String(value ?? "")))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const autoBaseVehicleIdRaw = String(formData.get("auto_base_vehicle_id") ?? "").trim();
+  const autoBaseVehicleLabel = String(formData.get("auto_base_vehicle_label") ?? "").trim();
+  const autoBaseItemName = String(formData.get("auto_base_item_name") ?? "").trim();
+  const autoBaseItemDescription = String(formData.get("auto_base_item_description") ?? "").trim();
+  const autoBaseItemQuantityRaw = String(formData.get("auto_base_item_quantity") ?? "").trim();
+  const autoBaseItemUnitPriceRaw = String(formData.get("auto_base_item_unit_price") ?? "").trim();
+  const autoBaseRequiredDate = String(formData.get("auto_base_required_date") ?? "").trim();
+  const autoBaseItemImages = getUploadedFiles(formData, "auto_base_item_images");
+  const autoBaseExtraLinesJson = String(formData.get("auto_base_extra_lines_json") ?? "").trim();
   const seasonalWorkDaysJson = String(formData.get("seasonal_work_days_json") ?? "").trim();
   const seasonalLinesJson = String(formData.get("seasonal_lines_json") ?? "").trim();
   const seasonalNotes = String(formData.get("seasonal_notes") ?? "").trim();
@@ -471,14 +624,16 @@ export async function createProjectAction(formData: FormData) {
   const cleaningWorkDate = String(formData.get("work_date") ?? "").trim();
   const projectDescription = String(formData.get("project_description") ?? "").trim();
   const projectFiles = getUploadedFiles(formData, "project_files");
-  const additionalLocations = getStringListValues(formData, [
-    "additional_locations",
-    "additional_location_draft",
-  ]);
   const connectionOverrides = {
     login: session.login,
     password: session.password,
   };
+  const transportInspectorMode = Boolean(
+    session.role === "transport_inspector" ||
+      (session.groupFlags?.mfoInspector &&
+        !session.groupFlags?.mfoManager &&
+        !session.groupFlags?.mfoDispatcher),
+  );
 
   if (!hasCapability(session, "create_projects")) {
     redirectWithMessage(
@@ -607,91 +762,383 @@ export async function createProjectAction(formData: FormData) {
     }
   }
 
-  if (operationUnit === "garbage_transport") {
-    if (!effectiveDepartmentIdRaw || !garbageVehicleIdRaw || !garbageRouteIdRaw || !startDate) {
+  if (operationUnit === "auto_base") {
+    const vehicleLabel = autoBaseVehicleLabel || (autoBaseVehicleIdRaw ? `Машин #${autoBaseVehicleIdRaw}` : "");
+    let extraAutoBaseLines: Array<{
+      sequence?: number;
+      itemName?: string;
+      description?: string;
+      quantity?: string | number;
+      unitPrice?: string | number;
+      imageFieldName?: string;
+    }> = [];
+
+    try {
+      extraAutoBaseLines = autoBaseExtraLinesJson ? JSON.parse(autoBaseExtraLinesJson) : [];
+    } catch {
       redirectWithMessage(
         "/projects/new",
         "error",
-        "Хог тээвэрлэлтийн ажилд машин, байршил, огноо гурвыг заавал сонгоно уу.",
+        "Худалдан авалтын нэмэлт мөрийн мэдээлэл буруу байна.",
+      );
+    }
+
+    const autoBaseLines = [
+      {
+        isPrimary: true,
+        sequence: 1,
+        itemName: autoBaseItemName,
+        description: autoBaseItemDescription,
+        quantity: autoBaseItemQuantityRaw,
+        unitPrice: autoBaseItemUnitPriceRaw,
+        imageFieldName: "auto_base_item_images",
+      },
+      ...extraAutoBaseLines.map((line) => ({ ...line, isPrimary: false })),
+    ]
+      .map((line, index) => ({
+        isPrimary: Boolean(line.isPrimary),
+        sequence: Number(line.sequence ?? index + 1),
+        itemName: String(line.itemName ?? "").trim(),
+        description: String(line.description ?? "").trim(),
+        quantity: Number(line.quantity ?? 0),
+        unitPrice: Number(line.unitPrice ?? 0),
+        hasUnitPrice: String(line.unitPrice ?? "").trim() !== "",
+        imageFieldName: String(line.imageFieldName ?? "").trim(),
+      }))
+      .filter((line) => line.isPrimary || line.itemName || line.description || line.hasUnitPrice);
+    const requestTitle = name ||
+      [
+        vehicleLabel,
+        autoBaseLines.length > 1
+          ? `${autoBaseLines.length} төрлийн сэлбэг`
+          : autoBaseLines[0]?.itemName,
+      ].filter(Boolean).join(" - ");
+
+    if (!effectiveDepartmentIdRaw || !autoBaseVehicleIdRaw || !autoBaseLines.length) {
+      redirectWithMessage(
+        "/projects/new",
+        "error",
+        "Авто баазын худалдан авалтын хүсэлтэд машин болон авах зүйлийн мөрийг заавал оруулна уу.",
+      );
+    }
+
+    const invalidLine = autoBaseLines.find(
+      (line) =>
+        !line.itemName ||
+        !Number.isFinite(line.quantity) ||
+        line.quantity <= 0 ||
+        (line.hasUnitPrice && (!Number.isFinite(line.unitPrice) || line.unitPrice < 0)),
+    );
+
+    if (invalidLine) {
+      redirectWithMessage(
+        "/projects/new",
+        "error",
+        "Мөр бүр дээр авах зүйлийн нэр, авах тоо, нэгж үнийг зөв оруулна уу.",
       );
     }
 
     try {
-      const result = await createGarbageWorkspaceProject(
+      const descriptionParts = [
+        vehicleLabel ? `Машин: ${vehicleLabel}` : "",
+        autoBaseVehicleIdRaw ? `Машины ID: ${autoBaseVehicleIdRaw}` : "",
+        autoBaseLines.length > 1 ? `Мөрийн тоо: ${autoBaseLines.length}` : "",
+      ].filter(Boolean);
+      const createdRequest = await createProcurementRequest(
         {
-          vehicleId: Number(garbageVehicleIdRaw),
-          routeId: Number(garbageRouteIdRaw),
-          shiftDate: startDate,
+          title: requestTitle || autoBaseLines[0]?.itemName,
+          department_id: effectiveDepartmentIdRaw,
+          description: descriptionParts.join("\n"),
+          procurement_type: "spare_part",
+          urgency: "medium",
+          required_date: autoBaseRequiredDate || undefined,
+          lines: autoBaseLines.map((line, index) => ({
+            product_name: line.itemName,
+            specification: line.description || (vehicleLabel ? `Машин: ${vehicleLabel}` : ""),
+            quantity: line.quantity,
+            approx_unit_price: Number.isFinite(line.unitPrice) ? line.unitPrice : 0,
+            form_index: line.sequence || index + 1,
+          })),
         },
         connectionOverrides,
       );
-      const assignmentResult = await assignGarbageProjectTasksFromRouteTeam(
-        {
-          projectId: result.project_id,
-          routeId: Number(garbageRouteIdRaw),
-          vehicleId: Number(garbageVehicleIdRaw),
-        },
-        connectionOverrides,
-      ).catch(() => null);
 
-      let extraLocationMessage = "";
-      const assignmentMessage =
-        assignmentResult?.assignedTaskCount
-          ? ` ${assignmentResult.assignedTaskCount} даалгавар багт оноогдлоо.`
-          : "";
-
-      if (additionalLocations.length) {
-        let createdLocationCount = 0;
-        const projectDetail = await loadProjectDetail(
-          result.project_id,
-          connectionOverrides,
-        ).catch(() => null);
-        const measurementUnitId =
-          projectDetail?.defaultUnitId ?? projectDetail?.allowedUnits[0]?.id ?? null;
-
-        try {
-          for (const location of additionalLocations) {
-            await createWorkspaceTask(
-              {
-                projectId: result.project_id,
-                name: location,
-                deadline: startDate,
-                measurementUnitId,
-                description: "Нэмэлтээр бүртгэсэн байршил.",
-              },
-              connectionOverrides,
-            );
-            createdLocationCount += 1;
-          }
-
-          extraLocationMessage = ` Нэмэлт ${createdLocationCount} байршил даалгавар болж нэмэгдлээ.`;
-        } catch (error) {
-          extraLocationMessage =
-            createdLocationCount > 0
-              ? ` Нэмэлт ${createdLocationCount} байршил нэмэгдсэн. Зарим нэмэлт байршил нэмэхэд алдаа гарлаа: ${getErrorMessage(error)}`
-              : ` Үндсэн ажил үүслээ, харин нэмэлт байршил нэмэхэд алдаа гарлаа: ${getErrorMessage(error)}`;
+      for (const [index, line] of autoBaseLines.entries()) {
+        const createdLine = createdRequest.lines[index];
+        const lineImages = line.imageFieldName === "auto_base_item_images"
+          ? autoBaseItemImages
+          : getUploadedFiles(formData, line.imageFieldName);
+        if (!createdLine || !lineImages.length) {
+          continue;
+        }
+        for (const file of lineImages) {
+          await uploadProcurementAttachment(
+            createdRequest.id,
+            {
+              ...(await encodeProcurementUpload(file)),
+              target: "line",
+              document_type: "product_image",
+              line_id: createdLine.id,
+              note: line.itemName,
+            },
+            connectionOverrides,
+          );
         }
       }
 
-      if (additionalLocations.length && assignmentResult?.hasCrewTeam) {
-        await assignGarbageProjectTasksFromRouteTeam(
-          {
-            projectId: result.project_id,
-            routeId: Number(garbageRouteIdRaw),
-            vehicleId: Number(garbageVehicleIdRaw),
-          },
-          connectionOverrides,
-        ).catch(() => null);
+      revalidatePath("/procurement");
+      revalidatePath("/procurement/assigned");
+      revalidatePath("/procurement/dashboard");
+      revalidatePath("/projects/new");
+      revalidatePath(`/procurement/${createdRequest.id}`);
+      redirect(
+        `/procurement/${createdRequest.id}?notice=${encodeURIComponent(
+          "Авто баазын худалдан авалтын хүсэлт амжилттай үүслээ.",
+        )}`,
+      );
+    } catch (error) {
+      rethrowIfRedirectError(error);
+      redirectWithMessage("/projects/new", "error", getErrorMessage(error));
+    }
+  }
+
+  if (operationUnit === "garbage_transport") {
+    if (!effectiveDepartmentIdRaw || !garbageVehicleIdRaw || !garbageSubdistrictIdRaw || !garbagePointIds.length || !startDate) {
+      redirectWithMessage(
+        "/projects/new",
+        "error",
+        "Хог тээвэрлэлтийн ажилд машин, хороо, хогийн цэг, огноог заавал сонгоно уу.",
+      );
+    }
+
+    try {
+      const garbageWorkConnection = transportInspectorMode ? {} : connectionOverrides;
+      if (transportInspectorMode) {
+        const [allowedVehicles, allowedPoints] = await Promise.all([
+          loadGarbageVehicleOptions(connectionOverrides, { requireCurrentEmployeeScope: true }),
+          loadGarbagePointOptions(connectionOverrides, { requireCurrentEmployeeScope: true }),
+        ]);
+        const selectedVehicleId = Number(garbageVehicleIdRaw);
+        const allowedVehicleIds = new Set(allowedVehicles.map((vehicle) => vehicle.id));
+        const allowedPointIds = new Set(allowedPoints.map((point) => point.id));
+        const hasOutOfScopePoint = garbagePointIds.some((pointId) => !allowedPointIds.has(pointId));
+
+        if (!allowedVehicleIds.has(selectedVehicleId) || hasOutOfScopePoint) {
+          redirectWithMessage(
+            "/projects/new",
+            "error",
+            "Танд оноогдоогүй машин, хороо болон хогийн цэгээр ажил үүсгэх боломжгүй.",
+          );
+        }
       }
 
-      if (assignmentResult?.assignedUserIds?.length) {
-        await notifyPushQuietly({
-          eventType: "new_work_assigned",
-          title: "Шинэ ажил оноогдлоо",
-          body: result.message || "Хог тээврийн шинэ ажил танд оноогдлоо.",
-          targetUrl: `/projects/${result.project_id}`,
-          userIds: assignmentResult.assignedUserIds,
-        });
+      const [vehicles, points, currentEmployees, fleetBoard] = await Promise.all([
+        executeOdooKw<GarbageVehicleCrewRecord[]>(
+          "fleet.vehicle",
+          "search_read",
+          [[["id", "=", Number(garbageVehicleIdRaw)]]],
+          {
+            fields: [
+              "name",
+              "license_plate",
+              "municipal_responsible_driver_id",
+              "municipal_loader_1_id",
+              "municipal_loader_2_id",
+              "driver_id",
+              "driver_employee_id",
+              "mfo_driver_employee_id",
+              "loader_employee_id",
+            ],
+            limit: 1,
+          },
+          garbageWorkConnection,
+        ).catch(() =>
+          executeOdooKw<GarbageVehicleCrewRecord[]>(
+            "fleet.vehicle",
+            "search_read",
+            [[["id", "=", Number(garbageVehicleIdRaw)]]],
+            { fields: ["name", "license_plate"], limit: 1 },
+            garbageWorkConnection,
+          ).catch(() => []),
+        ),
+        executeOdooKw<Array<{ id: number; name: string; subdistrict_id?: [number, string] | false }>>(
+          "mfo.collection.point",
+          "search_read",
+          [[["id", "in", garbagePointIds]]],
+          { fields: ["name", "subdistrict_id"], order: "subdistrict_id asc, name asc", limit: 500 },
+          garbageWorkConnection,
+        ).catch(() => []),
+        executeOdooKw<Array<{ id: number }>>(
+          "hr.employee",
+          "search_read",
+          [[["user_id", "=", session.uid]]],
+          { fields: ["id"], limit: 1 },
+          garbageWorkConnection,
+        ).catch(() => []),
+        loadFleetVehicleBoard().catch(() => null),
+      ]);
+      const selectedVehicle = vehicles[0] ?? null;
+      const boardVehicle = fleetBoard?.allVehicles.find((vehicle) => vehicle.id === Number(garbageVehicleIdRaw)) ?? null;
+      const vehicleName = selectedVehicle?.license_plate || selectedVehicle?.name || `Машин #${garbageVehicleIdRaw}`;
+      const resolvedVehicleName = boardVehicle?.plate || vehicleName;
+      const vehicleDriverId =
+        relationIdValue(selectedVehicle?.municipal_responsible_driver_id) ??
+        relationIdValue(selectedVehicle?.driver_employee_id) ??
+        relationIdValue(selectedVehicle?.mfo_driver_employee_id) ??
+        relationIdValue(selectedVehicle?.driver_id) ??
+        boardVehicle?.responsibleDriverId ??
+        null;
+      const defaultVehicleCollectorIds = Array.from(
+        new Set(
+          [
+            relationIdValue(selectedVehicle?.municipal_loader_1_id),
+            relationIdValue(selectedVehicle?.municipal_loader_2_id),
+            relationIdValue(selectedVehicle?.loader_employee_id),
+            boardVehicle?.loader1Id ?? null,
+            boardVehicle?.loader2Id ?? null,
+          ].filter((id): id is number => Boolean(id)),
+        ),
+      );
+      const vehicleCollectorIds = garbageLoaderOverride
+        ? Array.from(new Set(garbageLoaderEmployeeIds))
+        : defaultVehicleCollectorIds;
+      const vehicleWorkerAssignments = await loadEmployeeUserAssignments(
+        [vehicleDriverId, ...vehicleCollectorIds].filter((id): id is number => Boolean(id)),
+        garbageWorkConnection,
+      );
+      const fallbackCrewNames = [
+        boardVehicle?.responsibleDriverName,
+        boardVehicle?.loader1Name,
+        boardVehicle?.loader2Name,
+      ].filter((value): value is string => Boolean(value));
+      const fallbackCrewUsers = fallbackCrewNames.length
+        ? (
+            await Promise.all(
+              fallbackCrewNames.map((crewName) =>
+                executeOdooKw<Array<{ id: number; name?: string | false }>>(
+                  "res.users",
+                  "search_read",
+                  [[["name", "ilike", crewName]]],
+                  { fields: ["name"], limit: 1 },
+                  garbageWorkConnection,
+                ).catch(() => []),
+              ),
+            )
+          ).flat()
+        : [];
+      const assignedGarbageUserIds = uniquePositiveUserIds([
+        session.uid,
+        ...vehicleWorkerAssignments.userIds,
+        ...fallbackCrewUsers.map((user) => user.id),
+      ]);
+      const vehicleWorkerLabels = vehicleWorkerAssignments.labels.length
+        ? vehicleWorkerAssignments.labels
+        : fallbackCrewNames;
+      const vehicleWorkerSummary = vehicleWorkerLabels.length
+        ? `Жолооч/ачигч: ${vehicleWorkerLabels.join(", ")}`
+        : "";
+      const subdistrict = points.find((point) => Array.isArray(point.subdistrict_id))?.subdistrict_id;
+      const subdistrictName = Array.isArray(subdistrict) ? subdistrict[1] : "Сонгосон хороо";
+      const createdProjectId = await createWorkspaceProject(
+        {
+          name: name || `${resolvedVehicleName} - ${subdistrictName} / ${startDate}`,
+          managerId: session.uid,
+          departmentId: Number(effectiveDepartmentIdRaw),
+          operationType: "garbage",
+          startDate,
+          deadline: startDate,
+          description: [projectDescription, vehicleWorkerSummary].filter(Boolean).join("\n") || undefined,
+        },
+        garbageWorkConnection,
+      );
+      const parentTaskId = await createWorkspaceTask(
+        {
+          projectId: createdProjectId,
+          name: name
+            ? `${name} - ${points[0]?.name ?? "Хогийн цэг"}`
+            : `${resolvedVehicleName} - ${subdistrictName} - ${points[0]?.name ?? "Хогийн цэг"} - ${startDate}`,
+          deadline: startDate,
+          plannedQuantity: 1,
+          description: [projectDescription || "Хяналтын ажилтны оруулсан хог тээвэрлэлтийн даалгавар.", vehicleWorkerSummary]
+            .filter(Boolean)
+            .join("\n"),
+          assigneeUserIds: assignedGarbageUserIds,
+        },
+        garbageWorkConnection,
+      );
+      await executeOdooKw<boolean>(
+        "project.task",
+        "write",
+        [[parentTaskId], {
+          mfo_operation_type: "garbage",
+          mfo_state: "dispatched",
+          mfo_shift_date: startDate,
+          mfo_vehicle_id: Number(garbageVehicleIdRaw),
+          ...(vehicleDriverId ? { mfo_driver_employee_id: vehicleDriverId } : {}),
+          ...(vehicleCollectorIds.length
+            ? { mfo_collector_employee_ids: [[6, 0, vehicleCollectorIds]] }
+            : {}),
+          mfo_inspector_employee_id: currentEmployees[0]?.id || false,
+        }],
+        {},
+        garbageWorkConnection,
+      ).catch(() => false);
+      for (const [index, point] of points.entries()) {
+        const taskId = index === 0
+          ? parentTaskId
+          : await createWorkspaceTask(
+              {
+                projectId: createdProjectId,
+                name: name
+                  ? `${name} - ${point.name}`
+                  : `${resolvedVehicleName} - ${
+                      Array.isArray(point.subdistrict_id) ? point.subdistrict_id[1] : subdistrictName
+                    } - ${point.name} - ${startDate}`,
+                deadline: startDate,
+                plannedQuantity: 1,
+                description: [
+                  projectDescription || `Хяналтын ажилтны оруулсан хог тээвэрлэлтийн даалгавар. Хогийн цэг: ${point.name}.`,
+                  vehicleWorkerSummary,
+                ]
+                  .filter(Boolean)
+                  .join("\n"),
+                sequence: (index + 1) * 10,
+                assigneeUserIds: assignedGarbageUserIds,
+              },
+              garbageWorkConnection,
+            );
+
+        if (index > 0) {
+          await executeOdooKw<boolean>(
+            "project.task",
+            "write",
+            [[taskId], {
+              mfo_operation_type: "garbage",
+              mfo_state: "dispatched",
+              mfo_shift_date: startDate,
+              mfo_vehicle_id: Number(garbageVehicleIdRaw),
+              ...(vehicleDriverId ? { mfo_driver_employee_id: vehicleDriverId } : {}),
+              ...(vehicleCollectorIds.length
+                ? { mfo_collector_employee_ids: [[6, 0, vehicleCollectorIds]] }
+                : {}),
+              mfo_inspector_employee_id: currentEmployees[0]?.id || false,
+            }],
+            {},
+            garbageWorkConnection,
+          ).catch(() => false);
+        }
+
+        await executeOdooKw<number>(
+          "mfo.stop.execution.line",
+          "create",
+          [{
+            task_id: taskId,
+            collection_point_id: point.id,
+            sequence: 10,
+          }],
+          {},
+          garbageWorkConnection,
+        );
       }
 
       if (projectFiles.length) {
@@ -703,17 +1150,20 @@ export async function createProjectAction(formData: FormData) {
           })),
         );
         await createWorkspaceProjectAttachments(
-          result.project_id,
+          createdProjectId,
           attachments,
-          connectionOverrides,
+          garbageWorkConnection,
         );
       }
-      if (projectDescription) {
-        await updateWorkspaceProjectDescription(
-          result.project_id,
-          projectDescription,
-          connectionOverrides,
-        );
+
+      if (assignedGarbageUserIds.length) {
+        await notifyPushQuietly({
+          eventType: "new_work_assigned",
+          title: "Шинэ хог тээврийн ажил оноогдлоо",
+          body: `${resolvedVehicleName} дээр ${points.length} хогийн цэгийн даалгавар оноогдлоо.`,
+          targetUrl: `/projects/${createdProjectId}`,
+          userIds: assignedGarbageUserIds,
+        });
       }
 
       revalidatePath("/");
@@ -723,10 +1173,10 @@ export async function createProjectAction(formData: FormData) {
       revalidatePath("/review");
       revalidatePath("/reports");
       revalidatePath("/projects/new");
-      revalidatePath(`/projects/${result.project_id}`);
+      revalidatePath(`/projects/${createdProjectId}`);
       redirect(
-        `/projects/${result.project_id}?notice=${encodeURIComponent(
-          `${result.message || "Хог тээвэрлэлтийн ажил амжилттай үүслээ."}${assignmentMessage}${extraLocationMessage}`,
+        `/projects/${createdProjectId}?notice=${encodeURIComponent(
+          `Хог тээвэрлэлтийн ажил амжилттай үүслээ. ${points.length} хогийн цэг нэмэгдлээ.`,
         )}`,
       );
     } catch (error) {
@@ -740,7 +1190,7 @@ export async function createProjectAction(formData: FormData) {
       redirectWithMessage(
         "/projects/new",
         "error",
-        "Улирлын төлөвлөгөөнд нэр, хэлтэс, эхлэх болон дуусах огноог заавал оруулна уу.",
+        "Гэнэтийн ажилд нэр, хэлтэс, эхлэх болон дуусах огноог заавал оруулна уу.",
       );
     }
 
@@ -748,11 +1198,20 @@ export async function createProjectAction(formData: FormData) {
       redirectWithMessage(
         "/projects/new",
         "error",
-        "Улирлын төлөвлөгөөний дуусах огноо эхлэх огнооноос өмнө байж болохгүй.",
+        "Гэнэтийн ажлын дуусах огноо эхлэх огнооноос өмнө байж болохгүй.",
       );
     }
 
-    let selectedWorkDays: string[] = [];
+    const allWorkDays = [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+      "sunday",
+    ];
+    let selectedWorkDays: string[] = allWorkDays;
     let seasonalLines: Array<{
       sequence?: number;
       khorooLabel?: string;
@@ -761,55 +1220,60 @@ export async function createProjectAction(formData: FormData) {
       plannedTonnage?: number;
       workDate?: string | null;
       routeId?: number | string | null;
+      vehicleIds?: Array<number | string>;
       remarks?: string;
     }> = [];
 
     try {
-      selectedWorkDays = seasonalWorkDaysJson ? JSON.parse(seasonalWorkDaysJson) : [];
+      selectedWorkDays = seasonalWorkDaysJson ? JSON.parse(seasonalWorkDaysJson) : selectedWorkDays;
       seasonalLines = seasonalLinesJson ? JSON.parse(seasonalLinesJson) : [];
     } catch {
       redirectWithMessage(
         "/projects/new",
         "error",
-        "Улирлын төлөвлөгөөний мөр эсвэл ажлын өдрийн мэдээлэл буруу байна.",
+        "Гэнэтийн ажлын мөрийн мэдээлэл буруу байна.",
       );
     }
 
     if (!selectedWorkDays.length) {
-      redirectWithMessage(
-        "/projects/new",
-        "error",
-        "Ажиллах өдрүүдээс дор хаяж нэгийг сонгоно уу.",
-      );
+      selectedWorkDays = allWorkDays;
     }
 
     const normalizedLines = seasonalLines
-      .map((line, index) => ({
-        sequence: Number(line.sequence ?? index + 1),
-        khorooLabel: String(line.khorooLabel ?? "").trim(),
-        locationName: String(line.locationName ?? "").trim(),
-        plannedVehicleCount: Number(line.plannedVehicleCount ?? 0),
-        plannedTonnage: Number(line.plannedTonnage ?? 0),
-        workDate: String(line.workDate ?? "").trim(),
-        routeId:
-          line.routeId === null || line.routeId === undefined || line.routeId === ""
-            ? null
-            : Number(line.routeId),
-        remarks: String(line.remarks ?? "").trim(),
-      }))
+      .map((line, index) => {
+        const vehicleIds = Array.isArray(line.vehicleIds)
+          ? line.vehicleIds
+              .map((value) => Number(value))
+              .filter((value) => Number.isFinite(value) && value > 0)
+          : [];
+
+        return {
+          sequence: Number(line.sequence ?? index + 1),
+          khorooLabel: String(line.khorooLabel ?? "").trim(),
+          locationName: String(line.locationName ?? "").trim(),
+          vehicleIds,
+          plannedVehicleCount: vehicleIds.length || Number(line.plannedVehicleCount ?? 0),
+          plannedTonnage: Number(line.plannedTonnage ?? 0),
+          workDate: String(line.workDate ?? "").trim(),
+          routeId:
+            line.routeId === null || line.routeId === undefined || line.routeId === ""
+              ? null
+              : Number(line.routeId),
+          remarks: String(line.remarks ?? "").trim(),
+        };
+      })
       .filter((line) => line.khorooLabel || line.locationName);
 
     if (!normalizedLines.length) {
       redirectWithMessage(
         "/projects/new",
         "error",
-        "Байршлын мөрөөс дор хаяж нэгийг бүрэн оруулна уу.",
+        "Гэнэтийн ажлын байршлын мөрөөс дор хаяж нэгийг оруулна уу.",
       );
     }
 
     const invalidLine = normalizedLines.find(
       (line) =>
-        !line.khorooLabel ||
         !line.locationName ||
         !Number.isFinite(line.plannedVehicleCount) ||
         line.plannedVehicleCount <= 0 ||
@@ -822,7 +1286,7 @@ export async function createProjectAction(formData: FormData) {
       redirectWithMessage(
         "/projects/new",
         "error",
-        "Мөр бүр дээр хороо, байршил, машин тоо, тонн талбаруудыг зөв бөглөж, ажлын өдөр нь төлөвлөгөөний хугацаанд байгаа эсэхийг шалгана уу.",
+        "Мөр бүр дээр байршил, машин, тонн талбаруудыг зөв бөглөнө үү.",
       );
     }
 
@@ -841,6 +1305,9 @@ export async function createProjectAction(formData: FormData) {
         },
         connectionOverrides,
       );
+      await assignSeasonalPlanVehicles(result.planId, normalizedLines, connectionOverrides).catch((error) => {
+        console.warn("Ad hoc work vehicle assignment failed:", error);
+      });
 
       revalidatePath("/");
       revalidatePath("/projects");
@@ -849,7 +1316,7 @@ export async function createProjectAction(formData: FormData) {
       revalidatePath(`/projects/seasonal/${result.planId}`);
       redirect(
         `/projects/seasonal/${result.planId}?notice=${encodeURIComponent(
-          result.message || "Улирлын хог ачилтын төлөвлөгөө амжилттай үүслээ.",
+          result.message || "Гэнэтийн ажил амжилттай үүслээ.",
         )}`,
       );
     } catch (error) {
@@ -970,6 +1437,19 @@ export async function createProjectAction(formData: FormData) {
 export async function createTaskAction(formData: FormData) {
   const projectId = Number(String(formData.get("project_id") ?? ""));
   const name = String(formData.get("name") ?? "").trim();
+  const garbageTaskMode = String(formData.get("garbage_task_mode") ?? "") === "1";
+  const garbageTaskPointIds = formData
+    .getAll("garbage_task_point_ids")
+    .map((value) => Number(String(value ?? "")))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  const garbageTaskVehicleId = Number(String(formData.get("garbage_vehicle_id") ?? ""));
+  const garbageTaskDriverEmployeeId = Number(
+    String(formData.get("garbage_driver_employee_id") ?? ""),
+  );
+  const garbageTaskCollectorEmployeeIds = formData
+    .getAll("garbage_collector_employee_ids")
+    .map((value) => Number(String(value ?? "")))
+    .filter((value) => Number.isFinite(value) && value > 0);
   const taskKhoroo = String(formData.get("task_khoroo") ?? "").trim();
   const taskLocation = String(formData.get("task_location") ?? "").trim();
   const newTaskLocation = String(formData.get("new_task_location") ?? "").trim();
@@ -1025,6 +1505,148 @@ export async function createTaskAction(formData: FormData) {
       password: session.password,
     };
     const project = await loadProjectDetail(projectId, connectionOverrides);
+
+    if (garbageTaskMode && project.operationType === "garbage") {
+      if (!garbageTaskVehicleId || !garbageTaskPointIds.length) {
+        redirectWithMessage(
+          `/projects/${projectId}`,
+          "error",
+          "Хог тээврийн даалгаварт машин болон хогийн цэг заавал сонгогдсон байх ёстой.",
+          "#task-create-form",
+        );
+      }
+
+      const [points, currentEmployees, vehicleRecords] = await Promise.all([
+        executeOdooKw<Array<{ id: number; name: string; subdistrict_id?: [number, string] | false }>>(
+          "mfo.collection.point",
+          "search_read",
+          [[["id", "in", garbageTaskPointIds]]],
+          {
+            fields: ["name", "subdistrict_id"],
+            order: "subdistrict_id asc, name asc",
+            limit: garbageTaskPointIds.length,
+          },
+          connectionOverrides,
+        ).catch(() => []),
+        executeOdooKw<Array<{ id: number }>>(
+          "hr.employee",
+          "search_read",
+          [[["user_id", "=", session.uid]]],
+          { fields: ["id"], limit: 1 },
+          connectionOverrides,
+        ).catch(() => []),
+        executeOdooKw<Array<{ id: number; name?: string | false; license_plate?: string | false }>>(
+          "fleet.vehicle",
+          "search_read",
+          [[["id", "=", garbageTaskVehicleId]]],
+          { fields: ["name", "license_plate"], limit: 1 },
+          connectionOverrides,
+        ).catch(() => []),
+      ]);
+
+      if (!points.length) {
+        redirectWithMessage(
+          `/projects/${projectId}`,
+          "error",
+          "Сонгосон хогийн цэгүүд Odoo дээр олдсонгүй.",
+          "#task-create-form",
+        );
+      }
+
+      const vehicleRecord = vehicleRecords[0] ?? null;
+      const vehicleName =
+        vehicleRecord?.license_plate || vehicleRecord?.name || `Машин #${garbageTaskVehicleId}`;
+      const driverEmployeeId = Number.isFinite(garbageTaskDriverEmployeeId)
+        ? garbageTaskDriverEmployeeId
+        : null;
+      const collectorEmployeeIds = Array.from(new Set(garbageTaskCollectorEmployeeIds));
+      const workerAssignments = await loadEmployeeUserAssignments(
+        [driverEmployeeId, ...collectorEmployeeIds].filter((id): id is number => Boolean(id)),
+        connectionOverrides,
+      );
+      const assignedUserIds = uniquePositiveUserIds([
+        session.uid,
+        ...workerAssignments.userIds,
+      ]);
+      const inspectorEmployeeId = currentEmployees[0]?.id ?? null;
+      const effectiveDate = deadline || project.deadline || project.startDate || getTodayDateKey();
+      const createdTaskIds: number[] = [];
+
+      for (const [index, point] of points.entries()) {
+        const subdistrictName = Array.isArray(point.subdistrict_id)
+          ? point.subdistrict_id[1]
+          : taskKhoroo || "Хороо";
+        const taskName =
+          name && name !== "Нэмэлт хогийн цэг"
+            ? `${name} - ${point.name}`
+            : `${vehicleName} - ${subdistrictName} - ${point.name} - ${effectiveDate}`;
+        const crewSummary = workerAssignments.labels.length
+          ? `Жолооч/ачигч: ${workerAssignments.labels.join(", ")}`
+          : "";
+        const taskId = await createWorkspaceTask(
+          {
+            projectId,
+            name: taskName,
+            teamLeaderId: session.uid,
+            assigneeUserIds: assignedUserIds,
+            deadline: effectiveDate,
+            plannedQuantity: 1,
+            description: [
+              `Хог тээвэрлэлтийн нэмэлт цэг: ${subdistrictName} · ${point.name}.`,
+              crewSummary,
+            ]
+              .filter(Boolean)
+              .join("\n"),
+            sequence: (project.taskCount + index + 1) * 10,
+            operationType: "garbage",
+            shiftDate: effectiveDate,
+            vehicleId: garbageTaskVehicleId,
+            driverEmployeeId,
+            collectorEmployeeIds,
+            inspectorEmployeeId,
+          },
+          connectionOverrides,
+        );
+
+        await executeOdooKw<number>(
+          "mfo.stop.execution.line",
+          "create",
+          [
+            {
+              task_id: taskId,
+              collection_point_id: point.id,
+              sequence: 10,
+            },
+          ],
+          {},
+          connectionOverrides,
+        ).catch(() => 0);
+
+        createdTaskIds.push(taskId);
+      }
+
+      await notifyPushQuietly({
+        eventType: "new_work_assigned",
+        title: "Шинэ хог тээврийн даалгавар",
+        body: `${vehicleName} дээр ${createdTaskIds.length} хогийн цэг нэмэгдлээ.`,
+        targetUrl: `/projects/${projectId}`,
+        userIds: assignedUserIds,
+      });
+
+      revalidatePath("/");
+      revalidatePath("/projects");
+      revalidatePath("/tasks");
+      revalidatePath("/notifications");
+      revalidatePath("/review");
+      revalidatePath("/reports");
+      revalidatePath(`/projects/${projectId}`);
+      redirect(
+        `/projects/${projectId}?notice=${encodeURIComponent(
+          `${createdTaskIds.length} хогийн цэг даалгавар болж нэмэгдлээ.`,
+        )}`,
+      );
+    }
+
     const validUnitIds = new Set(project.allUnitOptions.map((unit) => unit.id));
     let selectedCrewTeam = crewTeamIdRaw
       ? project.crewTeamOptions.find((team) => team.id === Number(crewTeamIdRaw)) ?? null

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
   getRoleLabel,
   hasCapability,
@@ -40,7 +41,7 @@ function getViewportLabel(procurementUser: ProcurementUser) {
   return "Хүсэлт гаргагчийн харагдац";
 }
 
-export function ProcurementShell({
+export async function ProcurementShell({
   session,
   procurementUser,
   title,
@@ -53,6 +54,7 @@ export function ProcurementShell({
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const departmentScopeName = await loadSessionDepartmentName(session);
 
   const showAssigned =
     procurementUser.flags.storekeeper ||
@@ -92,6 +94,7 @@ export function ProcurementShell({
           groupFlags={session.groupFlags}
           masterMode={isMasterRole(session.role)}
           workerMode={isWorkerOnly(session)}
+          departmentScopeName={departmentScopeName}
         />
       </div>
 

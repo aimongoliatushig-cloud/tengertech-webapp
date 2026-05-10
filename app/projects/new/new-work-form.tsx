@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import {
@@ -17,7 +17,8 @@ import {
 import styles from "@/app/workspace.module.css";
 import type {
   DepartmentOption,
-  GarbageRouteOption,
+  GarbagePointOption,
+  GarbageSubdistrictOption,
   GarbageVehicleOption,
   RoadCleaningAreaOption,
   RoadCleaningEmployeeOption,
@@ -47,11 +48,9 @@ type SeasonalLineDraft = {
   id: string;
   khorooLabel: string;
   locationName: string;
+  vehicleIds: string[];
   plannedVehicleCount: string;
   plannedTonnage: string;
-  workDate: string;
-  routeId: string;
-  remarks: string;
 };
 
 type RoadCleaningLineDraft = {
@@ -60,6 +59,15 @@ type RoadCleaningLineDraft = {
   employeeId: string;
   newAreaName: string;
   showNewArea: boolean;
+};
+
+type AutoBaseLineDraft = {
+  id: string;
+  itemName: string;
+  description: string;
+  quantity: string;
+  unitPrice: string;
+  imagePreviews: FilePreview[];
 };
 
 const CUSTOM_WORK_TYPE_VALUE = "__new_work__";
@@ -81,7 +89,9 @@ type Props = {
   departmentOptions: DepartmentOption[];
   managerOptions: SelectOption[];
   garbageVehicleOptions: GarbageVehicleOption[];
-  garbageRouteOptions: GarbageRouteOption[];
+  activeGarbageVehicleOptions?: GarbageVehicleOption[];
+  garbagePointOptions: GarbagePointOption[];
+  garbageSubdistrictOptions?: GarbageSubdistrictOption[];
   roadCleaningAreaOptions: RoadCleaningAreaOption[];
   roadCleaningEmployeeOptions: RoadCleaningEmployeeOption[];
   lockedDepartmentId?: string;
@@ -107,21 +117,6 @@ function SubmitWorkButton({ label }: { label: string }) {
 
 function getTodayValue() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function formatShiftLabel(shiftType: string) {
-  switch (shiftType) {
-    case "morning":
-      return "Өглөө";
-    case "day":
-      return "Өдөр";
-    case "evening":
-      return "Орой";
-    case "night":
-      return "Шөнө";
-    default:
-      return "Тодорхойгүй";
-  }
 }
 
 function formatDateLabel(value: string) {
@@ -154,10 +149,6 @@ function formatDateLabel(value: string) {
 
 function normalizeDepartmentValue(value?: string | null) {
   return (value ?? "").trim().toLowerCase();
-}
-
-function normalizeLocationName(value: string) {
-  return value.trim().replace(/\s+/g, " ");
 }
 
 function departmentContains(
@@ -227,11 +218,9 @@ function emptySeasonalLine(index: number): SeasonalLineDraft {
     id: `seasonal-line-${index}-${Date.now()}`,
     khorooLabel: "",
     locationName: "",
+    vehicleIds: [],
     plannedVehicleCount: "",
     plannedTonnage: "",
-    workDate: "",
-    routeId: "",
-    remarks: "",
   };
 }
 
@@ -245,12 +234,25 @@ function emptyRoadCleaningLine(index: number): RoadCleaningLineDraft {
   };
 }
 
+function emptyAutoBaseLine(index: number): AutoBaseLineDraft {
+  return {
+    id: `auto-base-line-${index}-${Date.now()}`,
+    itemName: "",
+    description: "",
+    quantity: "1",
+    unitPrice: "",
+    imagePreviews: [],
+  };
+}
+
 export function NewWorkForm({
   action,
   departmentOptions,
   managerOptions,
   garbageVehicleOptions,
-  garbageRouteOptions,
+  activeGarbageVehicleOptions = [],
+  garbagePointOptions,
+  garbageSubdistrictOptions: activeSubdistrictOptions = [],
   roadCleaningAreaOptions,
   roadCleaningEmployeeOptions,
   lockedDepartmentId,
@@ -275,7 +277,15 @@ export function NewWorkForm({
     return "standard";
   });
   const [vehicleId, setVehicleId] = useState("");
-  const [routeId, setRouteId] = useState("");
+  const [autoBaseVehicleId, setAutoBaseVehicleId] = useState("");
+  const [autoBaseItemName, setAutoBaseItemName] = useState("");
+  const [autoBaseQuantity, setAutoBaseQuantity] = useState("1");
+  const [autoBaseUnitPrice, setAutoBaseUnitPrice] = useState("");
+  const [autoBaseLines, setAutoBaseLines] = useState<AutoBaseLineDraft[]>([]);
+  const autoBaseLinesRef = useRef(autoBaseLines);
+  const [garbageSubdistrictId, setGarbageSubdistrictId] = useState("");
+  const [selectedGarbagePointIds, setSelectedGarbagePointIds] = useState<string[]>([]);
+  const [selectedLoaderIds, setSelectedLoaderIds] = useState<string[]>([]);
   const [cleaningWorkDate, setCleaningWorkDate] = useState(getTodayValue());
   const [cleaningMasterId, setCleaningMasterId] = useState("");
   const [roadCleaningLines, setRoadCleaningLines] = useState<RoadCleaningLineDraft[]>([
@@ -284,31 +294,35 @@ export function NewWorkForm({
   const [roadCleaningAreaChoices, setRoadCleaningAreaChoices] = useState(roadCleaningAreaOptions);
   const [roadCleaningAreaError, setRoadCleaningAreaError] = useState("");
   const [savingRoadCleaningAreaId, setSavingRoadCleaningAreaId] = useState("");
-  const [extraLocationDraft, setExtraLocationDraft] = useState("");
-  const [extraLocations, setExtraLocations] = useState<string[]>([]);
   const [shiftDate, setShiftDate] = useState(getTodayValue());
   const [seasonalStartDate, setSeasonalStartDate] = useState(getTodayValue());
   const [seasonalEndDate, setSeasonalEndDate] = useState(getTodayValue());
-  const [seasonalWorkDays, setSeasonalWorkDays] = useState<Array<(typeof WEEKDAY_OPTIONS)[number]["key"]>>([
-    "monday",
-    "wednesday",
-    "friday",
-  ]);
   const [seasonalLines, setSeasonalLines] = useState<SeasonalLineDraft[]>([
     emptySeasonalLine(0),
   ]);
-  const [filePreviews, setFilePreviews] = useState<FilePreview[]>([]);
+  const [autoBaseImagePreviews, setAutoBaseImagePreviews] = useState<FilePreview[]>([]);
 
   const selectedDepartment = useMemo(
     () => departmentOptions.find((option) => String(option.id) === departmentId) ?? null,
     [departmentId, departmentOptions],
   );
 
+  useEffect(() => {
+    autoBaseLinesRef.current = autoBaseLines;
+  }, [autoBaseLines]);
   useEffect(
     () => () => {
-      filePreviews.forEach((file) => URL.revokeObjectURL(file.url));
+      autoBaseLinesRef.current.forEach((line) =>
+        line.imagePreviews.forEach((file) => URL.revokeObjectURL(file.url)),
+      );
     },
-    [filePreviews],
+    [],
+  );
+  useEffect(
+    () => () => {
+      autoBaseImagePreviews.forEach((file) => URL.revokeObjectURL(file.url));
+    },
+    [autoBaseImagePreviews],
   );
   const selectedDepartmentHead = useMemo(() => {
     const departmentHeadOptions = managerOptions.filter(
@@ -342,15 +356,74 @@ export function NewWorkForm({
     () => garbageVehicleOptions.find((option) => String(option.id) === vehicleId) ?? null,
     [garbageVehicleOptions, vehicleId],
   );
-  const selectedRoute = useMemo(
-    () => garbageRouteOptions.find((option) => String(option.id) === routeId) ?? null,
-    [garbageRouteOptions, routeId],
+  useEffect(() => {
+    setSelectedLoaderIds((selectedVehicle?.loaderIds ?? []).map(String));
+  }, [selectedVehicle]);
+  const loaderEmployeeOptions = useMemo(() => {
+    const selectedLoaderIdSet = new Set(selectedLoaderIds);
+    return roadCleaningEmployeeOptions.filter((employee) => {
+      const normalizedJob = normalizeDepartmentValue(employee.jobTitle);
+      const normalizedDepartment = normalizeDepartmentValue(employee.departmentName);
+      return (
+        selectedLoaderIdSet.has(String(employee.id)) ||
+        normalizedJob.includes("ачигч") ||
+        (normalizedDepartment.includes("хог") && normalizedJob.includes("тээвэр"))
+      );
+    });
+  }, [roadCleaningEmployeeOptions, selectedLoaderIds]);
+  const loaderEmployeeById = useMemo(
+    () => new Map(loaderEmployeeOptions.map((employee) => [String(employee.id), employee])),
+    [loaderEmployeeOptions],
+  );
+  const selectedLoaderLabels = selectedLoaderIds.map((loaderId, index) => {
+    const employee = loaderEmployeeById.get(loaderId);
+    return employee?.name ?? selectedVehicle?.loaderNames?.[index] ?? `Ачигч #${loaderId}`;
+  });
+  const selectedAutoBaseVehicle = useMemo(
+    () => garbageVehicleOptions.find((option) => String(option.id) === autoBaseVehicleId) ?? null,
+    [autoBaseVehicleId, garbageVehicleOptions],
+  );
+  const seasonalVehicleOptions = activeGarbageVehicleOptions.length
+    ? activeGarbageVehicleOptions
+    : garbageVehicleOptions;
+  const garbageSubdistrictOptions = useMemo(() => {
+    const optionMap = new Map<string, { id: string; label: string }>();
+    for (const point of garbagePointOptions) {
+      const id = point.subdistrictId ? String(point.subdistrictId) : "none";
+      const label = point.subdistrictName || "Хороо сонгоогүй";
+      if (!optionMap.has(id)) {
+        optionMap.set(id, { id, label });
+      }
+    }
+    return Array.from(optionMap.values());
+  }, [garbagePointOptions]);
+  const seasonalSubdistrictOptions = activeSubdistrictOptions.length
+    ? activeSubdistrictOptions.map((option) => ({
+        id: String(option.id),
+        label: option.label,
+      }))
+    : garbageSubdistrictOptions.filter((option) => option.id !== "none");
+  const filteredGarbagePointOptions = useMemo(() => {
+    if (!garbageSubdistrictId) {
+      return [];
+    }
+    return garbagePointOptions.filter((point) =>
+      garbageSubdistrictId === "none"
+        ? !point.subdistrictId
+        : String(point.subdistrictId) === garbageSubdistrictId,
+    );
+  }, [garbagePointOptions, garbageSubdistrictId]);
+  const selectedGarbagePoints = useMemo(
+    () => garbagePointOptions.filter((point) => selectedGarbagePointIds.includes(String(point.id))),
+    [garbagePointOptions, selectedGarbagePointIds],
   );
   const isCombinedDepartment = isCombinedOperationsDepartment(selectedDepartment);
   const supportsGarbageTransport = isGarbageTransportDepartment(selectedDepartment);
   const supportsRoadAreaCleaning = isGreenServiceDepartment(selectedDepartment);
   const isGarbageTransport =
     supportsGarbageTransport && operationUnit === "garbage_transport";
+  const isAutoBase =
+    supportsGarbageTransport && operationUnit === "auto_base";
   const isSeasonalGarbage =
     supportsGarbageTransport && operationUnit === "garbage_seasonal";
   const isRoadAreaCleaning =
@@ -359,8 +432,10 @@ export function NewWorkForm({
 
   const submitLabel = isGarbageTransport
     ? "Хог тээвэрлэлтийн ажил үүсгэх"
+    : isAutoBase
+      ? "Худалдан авалтын хүсэлт үүсгэх"
     : isSeasonalGarbage
-      ? "Улирлын төлөвлөгөө үүсгэх"
+      ? "Гэнэтийн ажил үүсгэх"
       : isRoadAreaCleaning
         ? "Зам талбайн цэвэрлэгээний ажил үүсгэх"
       : "Ажил үүсгэх";
@@ -371,23 +446,60 @@ export function NewWorkForm({
     }
 
     const vehicleLabel = selectedVehicle?.plate || "Машины дугаар";
-    const primaryLocationLabel = selectedRoute?.code || selectedRoute?.name || "Байршил";
-    const locationLabel = extraLocations.length
-      ? `${primaryLocationLabel} + ${extraLocations.length} байршил`
-      : primaryLocationLabel;
-    return `${vehicleLabel} - ${locationLabel} / ${shiftDate}`;
-  }, [extraLocations.length, isGarbageTransport, selectedRoute, selectedVehicle, shiftDate]);
+    const selectedSubdistrictLabel =
+      garbageSubdistrictOptions.find((option) => option.id === garbageSubdistrictId)?.label ??
+      "Хороо";
+    const primaryLocationLabel = selectedGarbagePoints.length
+      ? `${selectedSubdistrictLabel} / ${selectedGarbagePoints.length} цэг`
+      : selectedSubdistrictLabel;
+    return `${vehicleLabel} - ${primaryLocationLabel} / ${shiftDate}`;
+  }, [
+    garbageSubdistrictId,
+    garbageSubdistrictOptions,
+    isGarbageTransport,
+    selectedGarbagePoints.length,
+    selectedVehicle,
+    shiftDate,
+  ]);
+  const autoBaseTotalPrice = useMemo(() => {
+    const primaryTotal = (Number(autoBaseQuantity) || 0) * (Number(autoBaseUnitPrice) || 0);
+    return autoBaseLines.reduce((total, line) => {
+      const quantity = Number(line.quantity) || 0;
+      const unitPrice = Number(line.unitPrice) || 0;
+      return total + quantity * unitPrice;
+    }, primaryTotal);
+  }, [autoBaseLines, autoBaseQuantity, autoBaseUnitPrice]);
+  const activeAutoBaseLines = autoBaseLines.filter(
+    (line) =>
+      line.itemName.trim() ||
+      line.description.trim() ||
+      line.unitPrice.trim() ||
+      line.imagePreviews.length,
+  );
+  const autoBaseRequestTitle = useMemo(() => {
+    const vehicleLabel = selectedAutoBaseVehicle?.plate || selectedAutoBaseVehicle?.label || "Машин";
+    const namedLines = [autoBaseItemName, ...autoBaseLines.map((line) => line.itemName)]
+      .map((itemName) => itemName.trim())
+      .filter(Boolean);
+    const itemLabel =
+      namedLines.length > 1
+        ? `${namedLines.length} төрлийн сэлбэг`
+        : namedLines[0] || "авах зүйл";
+    return `${vehicleLabel} - ${itemLabel}`;
+  }, [autoBaseItemName, autoBaseLines, selectedAutoBaseVehicle]);
   const activeSeasonalLines = seasonalLines.filter(
     (line) =>
       line.khorooLabel ||
       line.locationName ||
+      line.vehicleIds.length ||
       line.plannedVehicleCount ||
-      line.plannedTonnage ||
-      line.workDate,
+      line.plannedTonnage,
   );
   const seasonalTotals = activeSeasonalLines.reduce(
     (summary, line) => ({
-      vehicleCount: summary.vehicleCount + (Number(line.plannedVehicleCount) || 0),
+      vehicleCount:
+        summary.vehicleCount +
+        (line.vehicleIds.length || (!seasonalVehicleOptions.length ? Number(line.plannedVehicleCount) : 0) || 0),
       tonnage: summary.tonnage + (Number(line.plannedTonnage) || 0),
     }),
     { vehicleCount: 0, tonnage: 0 },
@@ -412,13 +524,100 @@ export function NewWorkForm({
     setOperationUnit("standard");
   };
 
+  const handleGarbageSubdistrictChange = (nextSubdistrictId: string) => {
+    setGarbageSubdistrictId(nextSubdistrictId);
+    setSelectedGarbagePointIds([]);
+  };
+
+  const toggleGarbagePoint = (pointId: number) => {
+    const value = String(pointId);
+    setSelectedGarbagePointIds((current) =>
+      current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value],
+    );
+  };
+
+  const addLoader = (loaderId: string) => {
+    if (!loaderId) {
+      return;
+    }
+    setSelectedLoaderIds((current) => (
+      current.includes(loaderId) ? current : [...current, loaderId]
+    ));
+  };
+
+  const removeLoader = (loaderId: string) => {
+    setSelectedLoaderIds((current) => current.filter((item) => item !== loaderId));
+  };
+
+  const updateAutoBaseLine = (
+    targetId: string,
+    key: keyof Omit<AutoBaseLineDraft, "id" | "imagePreviews">,
+    value: string,
+  ) => {
+    setAutoBaseLines((current) =>
+      current.map((line) => (line.id === targetId ? { ...line, [key]: value } : line)),
+    );
+  };
+
+  const updateAutoBaseLineImages = (targetId: string, files: FileList | null) => {
+    const nextPreviews = Array.from(files ?? []).map((file) => ({
+      name: file.name,
+      type: file.type,
+      url: URL.createObjectURL(file),
+    }));
+
+    setAutoBaseLines((current) =>
+      current.map((line) => {
+        if (line.id !== targetId) {
+          return line;
+        }
+        line.imagePreviews.forEach((file) => URL.revokeObjectURL(file.url));
+        return { ...line, imagePreviews: nextPreviews };
+      }),
+    );
+  };
+
+  const removeAutoBaseLine = (targetId: string) => {
+    setAutoBaseLines((current) => {
+      if (current.length <= 1) {
+        return current;
+      }
+      const removedLine = current.find((line) => line.id === targetId);
+      removedLine?.imagePreviews.forEach((file) => URL.revokeObjectURL(file.url));
+      return current.filter((line) => line.id !== targetId);
+    });
+  };
+
   const updateSeasonalLine = (
     targetId: string,
-    key: keyof Omit<SeasonalLineDraft, "id">,
+    key: keyof Omit<SeasonalLineDraft, "id" | "vehicleIds">,
     value: string,
   ) => {
     setSeasonalLines((current) =>
       current.map((line) => (line.id === targetId ? { ...line, [key]: value } : line)),
+    );
+  };
+
+  const toggleSeasonalLineVehicle = (targetId: string, vehicleIdValue: number) => {
+    const value = String(vehicleIdValue);
+    setSeasonalLines((current) =>
+      current.map((line) => {
+        if (line.id !== targetId) {
+          return line;
+        }
+
+        const vehicleIds = line.vehicleIds.includes(value)
+          ? line.vehicleIds.filter((item) => item !== value)
+          : [...line.vehicleIds, value];
+
+        return {
+          ...line,
+          vehicleIds,
+          plannedVehicleCount: vehicleIds.length ? String(vehicleIds.length) : "",
+        };
+      }),
     );
   };
 
@@ -592,60 +791,22 @@ export function NewWorkForm({
     }
   };
 
-  const toggleSeasonalWorkDay = (dayKey: (typeof WEEKDAY_OPTIONS)[number]["key"]) => {
-    setSeasonalWorkDays((current) =>
-      current.includes(dayKey)
-        ? current.filter((value) => value !== dayKey)
-        : [...current, dayKey],
-    );
-  };
-
-  const seasonWorkDaysLabel = seasonalWorkDays.length
-    ? WEEKDAY_OPTIONS.filter((item) => seasonalWorkDays.includes(item.key))
-        .map((item) => item.label)
-        .join(", ")
-    : "Сонгоогүй";
-
   const formModeLabel = isGarbageTransport
     ? "Хог тээвэрлэлтийн маршрут"
     : isSeasonalGarbage
-      ? "Улирлын хог ачилтын төлөвлөгөө"
+      ? "Гэнэтийн ажил"
       : isRoadAreaCleaning
         ? "Зам талбайн цэвэрлэгээ"
       : "Ерөнхий ажил";
   const formModeDescription = isGarbageTransport
     ? "Машин, маршрут, огноо сонгоход ажил болон маршрутын цэгүүдийн даалгавар автоматаар үүснэ."
     : isSeasonalGarbage
-      ? "Хорооны байрлал, машин, тонн, ажиллах өдрүүдээр олон мөрийн төлөвлөгөө үүсгэнэ."
+      ? "Сэг зэм, барилгын хог зэрэг бүртгэлгүй байршлыг гараар оруулж, олон машинтай ажил үүсгэнэ."
       : isRoadAreaCleaning
         ? "Цэвэрлэх талбай, ажиллах хугацаа, хариуцах ажилтныг бүртгэж зам талбайн цэвэрлэгээний ажлыг шууд үүсгэнэ."
       : "Ажлын нэр, хариуцсан хэлтсийн дарга, хугацаагаа оруулна.";
   const selectedDepartmentLabel =
     lockedDepartmentLabel ?? selectedDepartment?.label ?? selectedDepartment?.name ?? "Сонгоогүй";
-
-  const handleAddExtraLocation = () => {
-    const normalizedLocation = normalizeLocationName(extraLocationDraft);
-    if (!normalizedLocation) {
-      return;
-    }
-
-    setExtraLocations((currentLocations) => {
-      const alreadyAdded = currentLocations.some(
-        (location) => location.toLowerCase() === normalizedLocation.toLowerCase(),
-      );
-      return alreadyAdded ? currentLocations : [...currentLocations, normalizedLocation];
-    });
-    setExtraLocationDraft("");
-  };
-
-  const handleExtraLocationKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== "Enter") {
-      return;
-    }
-
-    event.preventDefault();
-    handleAddExtraLocation();
-  };
 
   return (
     <form action={action} className={`${styles.form} ${styles.createWorkForm}`}>
@@ -674,8 +835,12 @@ export function NewWorkForm({
               </div>
               <div>
                 <Route aria-hidden />
-                <span>Маршрут</span>
-                <strong>{selectedRoute?.code || selectedRoute?.name || "Сонгоогүй"}</strong>
+                <span>Хороо / цэг</span>
+                <strong>
+                  {garbageSubdistrictOptions.find((option) => option.id === garbageSubdistrictId)?.label ||
+                    "Сонгоогүй"}
+                  {selectedGarbagePoints.length ? ` · ${selectedGarbagePoints.length} цэг` : ""}
+                </strong>
               </div>
             </>
           ) : null}
@@ -755,8 +920,8 @@ export function NewWorkForm({
                 }`}
                 onClick={() => setOperationUnit("garbage_seasonal")}
               >
-                <span>Улирлын хог ачилт</span>
-                <small>Огнооны хүрээ, өдрүүд, байршлын мөрөөр төлөвлөнө</small>
+                <span>Гэнэтийн ажил</span>
+                <small>Сэг зэм, барилгын хог зэрэг гараар оруулах байршилтай ажил</small>
               </button>
             </div>
           </div>
@@ -819,16 +984,16 @@ export function NewWorkForm({
             </div>
 
             <div className={styles.field}>
-              <label htmlFor="garbage_route_id">Байршил</label>
+              <label htmlFor="garbage_subdistrict_id">Хороо</label>
               <select
-                id="garbage_route_id"
-                name="garbage_route_id"
-                value={routeId}
-                onChange={(event) => setRouteId(event.target.value)}
+                id="garbage_subdistrict_id"
+                name="garbage_subdistrict_id"
+                value={garbageSubdistrictId}
+                onChange={(event) => handleGarbageSubdistrictChange(event.target.value)}
                 required={isGarbageTransport}
               >
-                <option value="">Байршил сонгоно уу</option>
-                {garbageRouteOptions.map((option) => (
+                <option value="">Өөрт оноогдсон хороо сонгох</option>
+                {garbageSubdistrictOptions.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
                   </option>
@@ -849,57 +1014,37 @@ export function NewWorkForm({
             </div>
           </div>
 
-          <div className={styles.locationComposer}>
-            <div className={styles.field}>
-              <label htmlFor="additional_location_draft">Нэмэлт байршил</label>
-              <div className={styles.inlineFieldRow}>
-                <input
-                  id="additional_location_draft"
-                  name="additional_location_draft"
-                  type="text"
-                  value={extraLocationDraft}
-                  onChange={(event) => setExtraLocationDraft(event.target.value)}
-                  onKeyDown={handleExtraLocationKeyDown}
-                  placeholder="Жишээ: 12-р байрны урд тал"
-                />
-                <button
-                  type="button"
-                  className={`${styles.secondaryButton} ${styles.locationAddButton}`}
-                  onClick={handleAddExtraLocation}
-                  disabled={!extraLocationDraft.trim()}
-                >
-                  Нэмэх
-                </button>
-              </div>
-              <small className={styles.fieldHint}>
-                Сонгосон байршлаас гадна нэмэлтээр оруулах цэг, байрлалаа бичээд нэмнэ.
-              </small>
-            </div>
-
-            {extraLocations.length ? (
-              <div className={styles.locationList} aria-label="Нэмэлт байршлууд">
-                {extraLocations.map((location) => (
-                  <div className={styles.locationChip} key={location}>
-                    <span>{location}</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExtraLocations((currentLocations) =>
-                          currentLocations.filter((item) => item !== location),
-                        )
-                      }
-                      aria-label={`${location} байршлыг хасах`}
-                    >
-                      Хасах
-                    </button>
-                    <input type="hidden" name="additional_locations" value={location} />
-                  </div>
-                ))}
-              </div>
-            ) : null}
+          <div className={styles.optionalSection}>
+            <span className={styles.formBadge}>Хогийн цэг сонгох</span>
+            {garbageSubdistrictId ? (
+              filteredGarbagePointOptions.length ? (
+                <div className={styles.pointCheckboxGrid}>
+                  {filteredGarbagePointOptions.map((point) => (
+                    <label key={point.id} className={styles.pointCheckbox}>
+                      <input
+                        type="checkbox"
+                        name="garbage_point_ids"
+                        value={point.id}
+                        checked={selectedGarbagePointIds.includes(String(point.id))}
+                        onChange={() => toggleGarbagePoint(point.id)}
+                      />
+                      <span>{point.name}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.helperNote}>Энэ хороонд танд оноогдсон хогийн цэг алга.</p>
+              )
+            ) : (
+              <p className={styles.helperNote}>Эхлээд өөрт оноогдсон хороогоо сонгоно уу.</p>
+            )}
           </div>
 
           <input type="hidden" name="name" value={generatedName} />
+          <input type="hidden" name="garbage_loader_override" value="1" />
+          {selectedLoaderIds.map((loaderId) => (
+            <input key={loaderId} type="hidden" name="garbage_loader_employee_ids" value={loaderId} />
+          ))}
 
           <div className={styles.previewCard}>
             <div className={styles.previewHeader}>
@@ -916,42 +1061,375 @@ export function NewWorkForm({
                 <strong>{selectedVehicle?.plate || "Сонгоогүй"}</strong>
               </div>
               <div className={styles.previewMeta}>
-                <span>Байршил</span>
-                <strong>{selectedRoute?.label || "Сонгоогүй"}</strong>
+                <span>Жолооч</span>
+                <strong>{selectedVehicle?.driverName || "Оноогоогүй"}</strong>
               </div>
               <div className={styles.previewMeta}>
-                <span>Нэмэлт байршил</span>
-                <strong>{extraLocations.length ? `${extraLocations.length} нэмсэн` : "Нэмээгүй"}</strong>
+                <span>Ачигч</span>
+                {selectedLoaderIds.length ? (
+                  <div className={styles.editableChipRow}>
+                    {selectedLoaderIds.map((loaderId, index) => (
+                      <span key={loaderId} className={styles.editableChip}>
+                        <strong>{selectedLoaderLabels[index]}</strong>
+                        <button
+                          type="button"
+                          onClick={() => removeLoader(loaderId)}
+                          aria-label={`${selectedLoaderLabels[index]} хасах`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <strong>Оноогоогүй</strong>
+                )}
+                <select
+                  aria-label="Ачигч нэмэх"
+                  value=""
+                  onChange={(event) => {
+                    addLoader(event.target.value);
+                    event.currentTarget.value = "";
+                  }}
+                >
+                  <option value="">Ачигч нэмэх</option>
+                  {loaderEmployeeOptions
+                    .filter((employee) => !selectedLoaderIds.includes(String(employee.id)))
+                    .map((employee) => (
+                      <option key={employee.id} value={employee.id}>
+                        {employee.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div className={styles.previewMeta}>
+                <span>Хороо</span>
+                <strong>
+                  {garbageSubdistrictOptions.find((option) => option.id === garbageSubdistrictId)?.label ||
+                    "Сонгоогүй"}
+                </strong>
               </div>
               <div className={styles.previewMeta}>
                 <span>Цэгийн тоо</span>
-                <strong>{selectedRoute ? `${selectedRoute.pointCount} цэг` : "—"}</strong>
+                <strong>{selectedGarbagePoints.length ? `${selectedGarbagePoints.length} цэг` : "—"}</strong>
               </div>
               <div className={styles.previewMeta}>
-                <span>Ээлж</span>
-                <strong>{selectedRoute ? formatShiftLabel(selectedRoute.shiftType) : "—"}</strong>
+                <span>Ажил оруулсан</span>
+                <strong>Хяналтын байцаагч</strong>
               </div>
             </div>
 
             <p className={styles.helperNote}>
-              Сонгосон машин, байршил, огноогоор нэг ажил үүснэ. Тухайн байршлын хог ачих цэг
-              бүр ажил дотор тусдаа даалгавар болж автоматаар үүснэ. Нэмэлт байршлууд мөн тусдаа
-              даалгавар болж нэмэгдэнэ.
+              Сонгосон машин, хороо, хогийн цэгүүдээр тухайн өдрийн ажил үүснэ. Хогийн цэг бүр
+              ажил дотор тусдаа цэг болж нэмэгдэнэ.
             </p>
             <p className={styles.helperNote}>
               Огноо: <strong>{formatDateLabel(shiftDate)}</strong>
             </p>
           </div>
         </>
+      ) : isAutoBase ? (
+        <>
+          <input type="hidden" name="name" value={autoBaseRequestTitle} />
+          <input
+            type="hidden"
+            name="auto_base_vehicle_label"
+            value={selectedAutoBaseVehicle?.plate || selectedAutoBaseVehicle?.label || ""}
+          />
+
+          <div className={styles.fieldRow}>
+            <div className={styles.field}>
+              <label htmlFor="auto_base_vehicle_id">Машин</label>
+              <select
+                id="auto_base_vehicle_id"
+                name="auto_base_vehicle_id"
+                value={autoBaseVehicleId}
+                onChange={(event) => setAutoBaseVehicleId(event.target.value)}
+                required={isAutoBase}
+              >
+                <option value="">Машин сонгох</option>
+                {garbageVehicleOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="auto_base_required_date">Шаардлагатай огноо</label>
+              <input id="auto_base_required_date" name="auto_base_required_date" type="date" />
+            </div>
+          </div>
+
+          <div className={styles.optionalSection}>
+            <span className={styles.formBadge}>Худалдан авалтын хүсэлт</span>
+            <div className={styles.field}>
+              <label htmlFor="auto_base_item_name">Авах зүйлийн нэр</label>
+              <input
+                id="auto_base_item_name"
+                name="auto_base_item_name"
+                value={autoBaseItemName}
+                onChange={(event) => setAutoBaseItemName(event.target.value)}
+                placeholder="Жишээ: Дугуй, аккумлятор, сэлбэг"
+                required={isAutoBase}
+              />
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="auto_base_item_description">Тайлбар</label>
+              <textarea
+                id="auto_base_item_description"
+                name="auto_base_item_description"
+                placeholder="Марк, хэмжээ, техникийн шаардлага, яагаад авах шаардлагатайг бичнэ үү"
+              />
+            </div>
+
+            <div className={styles.fieldRow}>
+              <div className={styles.field}>
+                <label htmlFor="auto_base_item_quantity">Авах тоо</label>
+                <input
+                  id="auto_base_item_quantity"
+                  name="auto_base_item_quantity"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={autoBaseQuantity}
+                  onChange={(event) => setAutoBaseQuantity(event.target.value)}
+                  required={isAutoBase}
+                />
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="auto_base_item_unit_price">Нэгж үнэ</label>
+                <input
+                  id="auto_base_item_unit_price"
+                  name="auto_base_item_unit_price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={autoBaseUnitPrice}
+                  onChange={(event) => setAutoBaseUnitPrice(event.target.value)}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="auto_base_item_images">Зураг</label>
+              <label className={styles.fileDropZone} htmlFor="auto_base_item_images">
+                <Paperclip aria-hidden />
+                <span>Зураг байвал хавсаргана. Заавал биш.</span>
+              </label>
+              <input
+                id="auto_base_item_images"
+                name="auto_base_item_images"
+                type="file"
+                multiple
+                accept="image/*"
+                className={styles.hiddenFileInput}
+                onChange={(event) => {
+                  const nextPreviews = Array.from(event.target.files ?? []).map((file) => ({
+                    name: file.name,
+                    type: file.type,
+                    url: URL.createObjectURL(file),
+                  }));
+                  autoBaseImagePreviews.forEach((file) => URL.revokeObjectURL(file.url));
+                  setAutoBaseImagePreviews(nextPreviews);
+                }}
+              />
+              {autoBaseImagePreviews.length ? (
+                <div className={styles.attachmentPreviewGrid}>
+                  {autoBaseImagePreviews.map((file) => (
+                    <div className={styles.attachmentPreviewItem} key={`${file.name}-${file.url}`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={file.url} alt={file.name} />
+                      <span>{file.name}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <input
+              type="hidden"
+              name="auto_base_extra_lines_json"
+              value={JSON.stringify(
+                autoBaseLines.map((line, index) => ({
+                  sequence: index + 2,
+                  itemName: line.itemName,
+                  description: line.description,
+                  quantity: line.quantity,
+                  unitPrice: line.unitPrice,
+                  imageFieldName: `auto_base_extra_item_images_${line.id}`,
+                })),
+              )}
+            />
+
+            {autoBaseLines.map((line, index) => (
+              <section key={line.id} className={styles.optionalSection}>
+                <div className={styles.sectionHeader}>
+                  <div>
+                    <span className={styles.sectionKicker}>Мөр {index + 2}</span>
+                    <small className={styles.sectionNote}>
+                      Нэмэлт сэлбэг, материалын нэр, тоо, үнийг тусад нь оруулна.
+                    </small>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => removeAutoBaseLine(line.id)}
+                  >
+                    Мөр хасах
+                  </button>
+                </div>
+
+                <div className={styles.field}>
+                  <label htmlFor={`auto_base_extra_item_name_${line.id}`}>Авах зүйлийн нэр</label>
+                  <input
+                    id={`auto_base_extra_item_name_${line.id}`}
+                    value={line.itemName}
+                    onChange={(event) =>
+                      updateAutoBaseLine(line.id, "itemName", event.target.value)
+                    }
+                    placeholder="Жишээ: Тос, фильтр, ремень"
+                    required={isAutoBase}
+                  />
+                </div>
+
+                <div className={styles.field}>
+                  <label htmlFor={`auto_base_extra_item_description_${line.id}`}>Тайлбар</label>
+                  <textarea
+                    id={`auto_base_extra_item_description_${line.id}`}
+                    value={line.description}
+                    onChange={(event) =>
+                      updateAutoBaseLine(line.id, "description", event.target.value)
+                    }
+                    placeholder="Марк, хэмжээ, техникийн шаардлага"
+                  />
+                </div>
+
+                <div className={styles.fieldRow}>
+                  <div className={styles.field}>
+                    <label htmlFor={`auto_base_extra_item_quantity_${line.id}`}>Авах тоо</label>
+                    <input
+                      id={`auto_base_extra_item_quantity_${line.id}`}
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={line.quantity}
+                      onChange={(event) =>
+                        updateAutoBaseLine(line.id, "quantity", event.target.value)
+                      }
+                      required={isAutoBase}
+                    />
+                  </div>
+
+                  <div className={styles.field}>
+                    <label htmlFor={`auto_base_extra_item_unit_price_${line.id}`}>Нэгж үнэ</label>
+                    <input
+                      id={`auto_base_extra_item_unit_price_${line.id}`}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={line.unitPrice}
+                      onChange={(event) =>
+                        updateAutoBaseLine(line.id, "unitPrice", event.target.value)
+                      }
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.field}>
+                  <label htmlFor={`auto_base_extra_item_images_${line.id}`}>Зураг</label>
+                  <label
+                    className={styles.fileDropZone}
+                    htmlFor={`auto_base_extra_item_images_${line.id}`}
+                  >
+                    <Paperclip aria-hidden />
+                    <span>Зураг байвал хавсаргана. Заавал биш.</span>
+                  </label>
+                  <input
+                    id={`auto_base_extra_item_images_${line.id}`}
+                    name={`auto_base_extra_item_images_${line.id}`}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className={styles.hiddenFileInput}
+                    onChange={(event) => updateAutoBaseLineImages(line.id, event.target.files)}
+                  />
+                  {line.imagePreviews.length ? (
+                    <div className={styles.attachmentPreviewGrid}>
+                      {line.imagePreviews.map((file) => (
+                        <div className={styles.attachmentPreviewItem} key={`${file.name}-${file.url}`}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={file.url} alt={file.name} />
+                          <span>{file.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+            ))}
+
+            <div className={styles.buttonRow}>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() =>
+                  setAutoBaseLines((current) => [...current, emptyAutoBaseLine(current.length)])
+                }
+              >
+                Мөр нэмэх
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.previewCard}>
+            <div className={styles.previewHeader}>
+              <span className={styles.eyebrow}>Шууд худалдан авалтын хүсэлт</span>
+              <strong>{autoBaseRequestTitle}</strong>
+            </div>
+            <div className={styles.previewGrid}>
+              <div className={styles.previewMeta}>
+                <span>Машин</span>
+                <strong>{selectedAutoBaseVehicle?.plate || selectedAutoBaseVehicle?.label || "Сонгоогүй"}</strong>
+              </div>
+              <div className={styles.previewMeta}>
+                <span>Авах зүйл</span>
+                <strong>
+                  {[autoBaseItemName, ...autoBaseLines.map((line) => line.itemName)]
+                    .map((itemName) => itemName.trim())
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .join(", ") || "Оруулаагүй"}
+                </strong>
+              </div>
+              <div className={styles.previewMeta}>
+                <span>Мөрийн тоо</span>
+                <strong>{1 + activeAutoBaseLines.length}</strong>
+              </div>
+              <div className={styles.previewMeta}>
+                <span>Нийт дүн</span>
+                <strong>{autoBaseTotalPrice ? autoBaseTotalPrice.toLocaleString("mn-MN") : "0"} ₮</strong>
+              </div>
+            </div>
+            <p className={styles.helperNote}>
+              Илгээхэд энэ мэдээллээр худалдан авалтын хүсэлт шууд үүсэж, зураг хавсаргасан бол мөрийн зурагт хадгалагдана.
+            </p>
+          </div>
+        </>
       ) : isSeasonalGarbage ? (
         <>
           <div className={styles.field}>
-            <label htmlFor="seasonal-name">Төлөвлөгөөний нэр</label>
+            <label htmlFor="seasonal-name">Ажлын нэр</label>
             <input
               id="seasonal-name"
               name="name"
               type="text"
-              placeholder="Жишээ: 2026 хаврын үүсмэл хог ачилтын төлөвлөгөө"
+              placeholder="Жишээ: Барилгын хог ачилт"
               required={isSeasonalGarbage}
             />
           </div>
@@ -982,45 +1460,16 @@ export function NewWorkForm({
             </div>
           </div>
 
-          <div className={styles.optionalSection}>
-            <div className={styles.field}>
-              <label>Ажиллах өдрүүд</label>
-              <div className={styles.modeRail}>
-                {WEEKDAY_OPTIONS.map((day) => (
-                  <button
-                    key={day.key}
-                    type="button"
-                    className={`${styles.modeChip} ${
-                      seasonalWorkDays.includes(day.key) ? styles.modeChipActive : ""
-                    }`}
-                    onClick={() => toggleSeasonalWorkDay(day.key)}
-                  >
-                    <span>{day.label}</span>
-                    <small>Төлөвлөгөөнд энэ өдрийг оруулна</small>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <input
-              type="hidden"
-              name="seasonal_work_days_json"
-              value={JSON.stringify(seasonalWorkDays)}
-            />
-          </div>
-
-          <div className={styles.field}>
-            <label htmlFor="seasonal-notes">Тайлбар</label>
-            <textarea
-              id="seasonal-notes"
-              name="seasonal_notes"
-              placeholder="Ээлж, онцгой нөхцөл, зохион байгуулалтын тайлбар"
-            />
-          </div>
+          <input
+            type="hidden"
+            name="seasonal_work_days_json"
+            value={JSON.stringify(WEEKDAY_OPTIONS.map((day) => day.key))}
+          />
 
           <div className={styles.previewCard}>
             <div className={styles.previewHeader}>
-              <span className={styles.eyebrow}>Байршлын мөрүүд</span>
-              <strong>Хороо, байршил, машин, тонн мэдээллээр төлөвлөнө</strong>
+              <span className={styles.eyebrow}>Гэнэтийн ажлын мөрүүд</span>
+              <strong>Гараар оруулсан байршил, машин, тонн мэдээллээр ажил үүсгэнэ</strong>
             </div>
 
             <div className={styles.previewGrid}>
@@ -1036,10 +1485,6 @@ export function NewWorkForm({
                 <span>Нийт тонн</span>
                 <strong>{Math.round(seasonalTotals.tonnage * 100) / 100} тн</strong>
               </div>
-              <div className={styles.previewMeta}>
-                <span>Ажиллах өдрүүд</span>
-                <strong>{seasonWorkDaysLabel}</strong>
-              </div>
             </div>
 
             <p className={styles.helperNote}>
@@ -1054,7 +1499,7 @@ export function NewWorkForm({
                 <div>
                   <span className={styles.sectionKicker}>Мөр {index + 1}</span>
                   <small className={styles.sectionNote}>
-                    Хороо, байршил, машин тоо, тонныг мөрөөр оруулна.
+                    Байршил, машин, тонныг мөрөөр оруулна. Хороо заавал биш.
                   </small>
                 </div>
                 <button
@@ -1075,44 +1520,81 @@ export function NewWorkForm({
 
               <div className={styles.fieldRow}>
                 <div className={styles.field}>
-                  <label>Хороо</label>
-                  <input
-                    type="text"
-                    value={line.khorooLabel}
-                    onChange={(event) =>
-                      updateSeasonalLine(line.id, "khorooLabel", event.target.value)
-                    }
-                    placeholder="Жишээ: 9-р хороо"
-                  />
+                  <label>Хороо / бүс</label>
+                  {seasonalSubdistrictOptions.length ? (
+                    <select
+                      value={line.khorooLabel}
+                      onChange={(event) =>
+                        updateSeasonalLine(line.id, "khorooLabel", event.target.value)
+                      }
+                    >
+                      <option value="">Хороо сонгоно уу</option>
+                      {seasonalSubdistrictOptions.map((option) => (
+                        <option key={option.id} value={option.label}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={line.khorooLabel}
+                      onChange={(event) =>
+                        updateSeasonalLine(line.id, "khorooLabel", event.target.value)
+                      }
+                      placeholder="Жишээ: 9-р хороо"
+                    />
+                  )}
                 </div>
 
                 <div className={styles.field}>
-                  <label>Байршил</label>
+                  <label>Гараар оруулах байршил</label>
                   <input
                     type="text"
                     value={line.locationName}
                     onChange={(event) =>
                       updateSeasonalLine(line.id, "locationName", event.target.value)
                     }
-                    placeholder="Жишээ: Морин уулын доод жалга"
+                    placeholder="Жишээ: Барилгын хог, сэг зэм байгаа байршил"
                   />
                 </div>
               </div>
 
-              <div className={styles.fieldRow}>
+              {seasonalVehicleOptions.length ? (
                 <div className={styles.field}>
-                  <label>Машин тоо</label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={line.plannedVehicleCount}
-                    onChange={(event) =>
-                      updateSeasonalLine(line.id, "plannedVehicleCount", event.target.value)
-                    }
-                    placeholder="1"
-                  />
+                  <label>Машинууд</label>
+                  <div className={styles.pointCheckboxGrid}>
+                    {seasonalVehicleOptions.map((option) => (
+                      <label key={option.id} className={styles.pointCheckbox}>
+                        <input
+                          type="checkbox"
+                          checked={line.vehicleIds.includes(String(option.id))}
+                          onChange={() => toggleSeasonalLineVehicle(line.id, option.id)}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <small className={styles.fieldHint}>Нэгээс олон машин сонгож болно.</small>
                 </div>
+              ) : null}
+
+              <div className={styles.fieldRow}>
+                {!seasonalVehicleOptions.length ? (
+                  <div className={styles.field}>
+                    <label>Машин тоо</label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={line.plannedVehicleCount}
+                      onChange={(event) =>
+                        updateSeasonalLine(line.id, "plannedVehicleCount", event.target.value)
+                      }
+                      placeholder="1"
+                    />
+                  </div>
+                ) : null}
 
                 <div className={styles.field}>
                   <label>Тонн</label>
@@ -1127,50 +1609,6 @@ export function NewWorkForm({
                     placeholder="12.5"
                   />
                 </div>
-
-                <div className={styles.field}>
-                  <label>Ажлын өдөр</label>
-                  <input
-                    type="date"
-                    value={line.workDate}
-                    min={seasonalStartDate || undefined}
-                    max={seasonalEndDate || undefined}
-                    onChange={(event) =>
-                      updateSeasonalLine(line.id, "workDate", event.target.value)
-                    }
-                  />
-                  <small className={styles.fieldHint}>
-                    Хоосон орхивол ерөнхий өдрүүдийн хуваарийг дагана.
-                  </small>
-                </div>
-
-                <div className={styles.field}>
-                  <label>Маршрут</label>
-                  <select
-                    value={line.routeId}
-                    onChange={(event) =>
-                      updateSeasonalLine(line.id, "routeId", event.target.value)
-                    }
-                  >
-                    <option value="">Маршрутгүй</option>
-                    {garbageRouteOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className={styles.field}>
-                <label>Тэмдэглэл</label>
-                <textarea
-                  value={line.remarks}
-                  onChange={(event) =>
-                    updateSeasonalLine(line.id, "remarks", event.target.value)
-                  }
-                  placeholder="Тусгай чиглэл, заавар, хаяглал"
-                />
               </div>
             </div>
           ))}
@@ -1183,11 +1621,13 @@ export function NewWorkForm({
                 sequence: index + 1,
                 khorooLabel: line.khorooLabel,
                 locationName: line.locationName,
-                plannedVehicleCount: line.plannedVehicleCount,
+                vehicleIds: line.vehicleIds.map(Number),
+                plannedVehicleCount:
+                  line.vehicleIds.length || (!seasonalVehicleOptions.length ? line.plannedVehicleCount : ""),
                 plannedTonnage: line.plannedTonnage,
-                workDate: line.workDate || null,
-                routeId: line.routeId ? Number(line.routeId) : null,
-                remarks: line.remarks,
+                workDate: null,
+                routeId: null,
+                remarks: "",
               })),
             )}
           />
@@ -1488,63 +1928,6 @@ export function NewWorkForm({
           </div>
         </>
       )}
-
-      {!isRoadAreaCleaning ? (
-      <div className={styles.field}>
-        <label htmlFor="project-files">
-          {isRoadAreaCleaning ? "Нэмэлт тайлбар / Хавсралт файл" : "Файл хавсаргах"}
-        </label>
-        <textarea
-          id="project-description"
-          name="project_description"
-          placeholder={
-            isRoadAreaCleaning
-              ? "Нэмэлт тайлбар бичнэ үү"
-              : "Хавсралт болон ажлын дэлгэрэнгүй тайлбар бичнэ үү"
-          }
-          rows={4}
-        />
-        <small className={styles.fieldHint}>
-          Энэ тайлбар ажлын дэлгэрэнгүй дээр харагдана.
-        </small>
-        <label className={styles.fileDropZone} htmlFor="project-files">
-          <Paperclip aria-hidden />
-          <span>PDF, зураг, бичиг баримт олон файлаар хавсаргана</span>
-        </label>
-        <input
-          id="project-files"
-          name="project_files"
-          type="file"
-          multiple
-          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-          className={styles.hiddenFileInput}
-          onChange={(event) => {
-            const nextPreviews = Array.from(event.target.files ?? []).map((file) => ({
-              name: file.name,
-              type: file.type,
-              url: URL.createObjectURL(file),
-            }));
-            filePreviews.forEach((file) => URL.revokeObjectURL(file.url));
-            setFilePreviews(nextPreviews);
-          }}
-        />
-        {filePreviews.length ? (
-          <div className={styles.attachmentPreviewGrid}>
-            {filePreviews.map((file) => (
-              <div className={styles.attachmentPreviewItem} key={`${file.name}-${file.url}`}>
-                {file.type.startsWith("image/") ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={file.url} alt={file.name} />
-                ) : (
-                  <FileText aria-hidden />
-                )}
-                <span>{file.name}</span>
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </div>
-      ) : null}
 
       <div className={styles.buttonRow}>
         <SubmitWorkButton label={submitLabel} />

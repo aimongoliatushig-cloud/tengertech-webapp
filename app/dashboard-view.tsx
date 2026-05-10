@@ -1023,6 +1023,31 @@ function RightPanel({
             </div>
           </Card>
 
+          {showFleetSummary ? (
+            <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
+              <CardTitle className={dashboardStyles.sideCardTitle}>Өнөөдрийн ачсан хог</CardTitle>
+              <p className={dashboardStyles.sideCardDescription}>
+                Машинаар татагдсан жингийн бүртгэлээс нэгтгэн харуулна.
+              </p>
+              <div className={cn(dashboardStyles.sideMiniGrid, dashboardStyles.sideMiniGridTwo)}>
+                <div className={dashboardStyles.sideMiniItem}>
+                  <span className={cn(dashboardStyles.sideMiniIcon, "bg-[#E7F5E7] text-[#2E7D32]")}>
+                    <Recycle />
+                  </span>
+                  <strong className={dashboardStyles.sideMiniValue}>{fleetBoard.todayWeightLabel}</strong>
+                  <span className={dashboardStyles.sideMiniLabel}>Ачсан жин</span>
+                </div>
+                <div className={dashboardStyles.sideMiniItem}>
+                  <span className={cn(dashboardStyles.sideMiniIcon, "bg-[#E7F5E7] text-[#2E7D32]")}>
+                    <Truck />
+                  </span>
+                  <strong className={dashboardStyles.sideMiniValue}>{fleetBoard.activeCount}</strong>
+                  <span className={dashboardStyles.sideMiniLabel}>Ажиллаж буй машин</span>
+                </div>
+              </div>
+            </Card>
+          ) : null}
+
           {showHrSummary ? <HrAttendanceCard summary={hrAttendanceSummary} /> : null}
         </>
       ) : null}

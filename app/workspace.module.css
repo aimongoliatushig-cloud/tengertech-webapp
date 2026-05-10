@@ -929,6 +929,55 @@
   font-size: 0.88rem;
 }
 
+.editableChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mutedInline {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--ink-600);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.editableChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 8px 0 10px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--ink-900);
+}
+
+.editableChip strong {
+  font-size: 0.92rem;
+}
+
+.editableChip button {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(18, 80, 39, 0.12);
+  color: var(--brand-800);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.editableChip button:hover {
+  background: rgba(185, 28, 28, 0.14);
+  color: #991b1b;
+}
+
 .modeRail {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2828,6 +2877,35 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+.pointCheckboxGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.pointCheckbox {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--ds-radius-card);
+  background: var(--surface-panel);
+  color: var(--ink-900);
+  font-weight: 800;
+}
+
+.pointCheckbox input {
+  margin-top: 3px;
+}
+
+.pointCheckbox span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .attachmentPreviewGrid {

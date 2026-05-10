@@ -98,7 +98,7 @@ export default async function SeasonalPlanDetailPage({ params, searchParams }: P
       <main className={workspaceStyles.shell}>
         <div className={workspaceStyles.container}>
           <section className={workspaceStyles.emptyState}>
-            <h2>Улирлын төлөвлөгөө нээгдсэнгүй</h2>
+            <h2>Гэнэтийн ажил нээгдсэнгүй</h2>
             <p>{error instanceof Error ? error.message : "Мэдээлэл уншихад алдаа гарлаа."}</p>
           </section>
         </div>
@@ -132,8 +132,8 @@ export default async function SeasonalPlanDetailPage({ params, searchParams }: P
 
           <div className={workspaceStyles.pageContent}>
             <WorkspaceHeader
-              title="Улирлын хог ачилтын төлөвлөгөө"
-              subtitle="Төлөвлөгөө, мөрийн хуваарь, өдрөөр гүйцэтгэл үүсгэх самбар"
+              title="Гэнэтийн ажил"
+              subtitle="Гараар оруулсан байршил, машин, өдрөөр гүйцэтгэл үүсгэх самбар"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
               notificationCount={plan.conflictWarnings.length}
@@ -156,17 +156,17 @@ export default async function SeasonalPlanDetailPage({ params, searchParams }: P
             ) : null}
 
             <section className={workspaceStyles.heroCard}>
-              <span className={workspaceStyles.eyebrow}>Seasonal plan</span>
+              <span className={workspaceStyles.eyebrow}>Ad hoc work</span>
               <h1>{plan.name}</h1>
               <p>
-                Энэ төлөвлөгөө нь өдөр тутмын тогтмол маршруттай холилдохгүйгээр улирлын хог
-                ачилтын байршил, өдрүүд, гүйцэтгэлийн үүсгэлтийг тусад нь удирдана.
+                Энэ ажил нь тогтмол маршрутын хогийн цэгээс тусдаа, сэг зэм болон барилгын хог зэрэг
+                гараар оруулсан байршил, олон машин, үргэлжлэх өдрүүдийн гүйцэтгэлийг удирдана.
               </p>
 
               <div className={workspaceStyles.buttonRow}>
                 <StagePill label={plan.stateLabel} bucket={stateBucket(plan.state)} />
                 <Link href="/projects/new" className={workspaceStyles.smallLink}>
-                  Шинэ төлөвлөгөө үүсгэх
+                  Шинэ гэнэтийн ажил үүсгэх
                 </Link>
                 <Link href="/projects" className={workspaceStyles.smallLink}>
                   Ажлууд руу буцах
@@ -211,9 +211,9 @@ export default async function SeasonalPlanDetailPage({ params, searchParams }: P
               <div className={workspaceStyles.sectionHeader}>
                 <div>
                   <span className={workspaceStyles.sectionKicker}>Өдрөөр үүсгэх</span>
-                  <h2>Execution generation</h2>
+                  <h2>Гүйцэтгэл үүсгэх</h2>
                   <small className={workspaceStyles.sectionNote}>
-                    Сонгосон өдрийн seasonal мөрүүдээс гүйцэтгэлийн task-ууд үүсгэнэ.
+                    Сонгосон өдрийн гэнэтийн ажлын мөрүүдээс гүйцэтгэлийн task-ууд үүсгэнэ.
                   </small>
                 </div>
               </div>
@@ -256,7 +256,7 @@ export default async function SeasonalPlanDetailPage({ params, searchParams }: P
                     <span className={workspaceStyles.sectionKicker}>Анхааруулга</span>
                     <h2>Давхцлын warning</h2>
                     <small className={workspaceStyles.sectionNote}>
-                      Ижил өдөр, ижил машинтай regular эсвэл seasonal task олдсон.
+                      Ижил өдөр, ижил машинтай тогтмол маршрут эсвэл гэнэтийн ажил олдсон.
                     </small>
                   </div>
                 </div>
@@ -282,7 +282,7 @@ export default async function SeasonalPlanDetailPage({ params, searchParams }: P
                   <span className={workspaceStyles.sectionKicker}>Мөрийн жагсаалт</span>
                   <h2>Байршил, машин, тонн</h2>
                   <small className={workspaceStyles.sectionNote}>
-                    Зураг дээрх хүснэгтийн мөр бүр энд тусдаа seasonal line байдлаар хадгалагдана.
+                    Гараар оруулсан байршил бүр энд тусдаа ажлын мөр байдлаар хадгалагдана.
                   </small>
                 </div>
               </div>
@@ -313,7 +313,7 @@ export default async function SeasonalPlanDetailPage({ params, searchParams }: P
                           <strong>{line.plannedTonnageLabel}</strong>
                         </div>
                         <div className={styles.lineMetaBox}>
-                          <span>Маршрут</span>
+                          <span>Байршлын төрөл</span>
                           <strong>{line.routeName}</strong>
                         </div>
                         <div className={styles.lineMetaBox}>

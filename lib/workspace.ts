@@ -1,7 +1,8 @@
 import "server-only";
 
 import { CANONICAL_DEPARTMENT_NAMES, normalizeOrganizationUnitName } from "@/lib/department-groups";
-import { createOdooConnection, executeOdooKw, type OdooConnection } from "@/lib/odoo";
+import { findLocalInspectorScope } from "@/lib/inspector-scope-store";
+import { createOdooConnection, executeOdooKw, loadFleetVehicleBoard, type OdooConnection } from "@/lib/odoo";
 import {
   findLocalRoadCleaningAreaOption,
   loadLocalRoadCleaningAreaOptions,
@@ -52,6 +53,9 @@ type TaskRecord = {
   priority: string;
   date_deadline: string | false;
   mfo_shift_date?: string | false;
+  mfo_vehicle_id?: Relation;
+  mfo_driver_employee_id?: Relation;
+  mfo_collector_employee_ids?: number[];
   state: string;
   mfo_state?: string | false;
   description?: string | false;
@@ -267,6 +271,15 @@ type GarbageVehicleRecord = {
   id: number;
   name: string;
   license_plate: string | false;
+  mfo_garbage_work_create_allowed?: boolean;
+};
+
+type GarbagePointRecord = {
+  id: number;
+  name: string;
+  subdistrict_id?: Relation;
+  inspector_employee_ids?: number[];
+  operation_type?: string | false;
 };
 
 type GarbageRouteRecord = {
@@ -283,6 +296,24 @@ export type GarbageVehicleOption = {
   id: number;
   label: string;
   plate: string;
+  driverId?: number | null;
+  driverName?: string;
+  loaderIds?: number[];
+  loaderNames?: string[];
+};
+
+export type GarbagePointOption = {
+  id: number;
+  label: string;
+  name: string;
+  subdistrictId: number | null;
+  subdistrictName: string;
+};
+
+export type GarbageSubdistrictOption = {
+  id: number;
+  label: string;
+  name: string;
 };
 
 export type GarbageRouteOption = {
@@ -408,6 +439,7 @@ export type SeasonalPlanLineInput = {
   sequence: number;
   khorooLabel: string;
   locationName: string;
+  vehicleIds?: number[];
   plannedVehicleCount: number;
   plannedTonnage: number;
   workDate?: string | null;
@@ -507,6 +539,14 @@ export type ProjectTaskCard = {
   deadlineValue: string;
   teamLeaderName: string;
   teamLeaderJobTitle: string;
+  assignees: string[];
+  assigneeUserIds: number[];
+  vehicleId: number | null;
+  vehicleName: string;
+  driverEmployeeId: number | null;
+  driverName: string;
+  collectorEmployeeIds: number[];
+  collectorNames: string[];
   plannedQuantity: number;
   completedQuantity: number;
   measurementUnit: string;
@@ -1276,7 +1316,7 @@ function seasonalDayStatusLabel(value?: string | false) {
 function operationTypeLabel(value?: string | false) {
   switch (value) {
     case "garbage_seasonal":
-      return "Улирлын хог ачилт";
+      return "Гэнэтийн ажил";
     case "garbage":
       return "Хог тээвэрлэлт";
     case "street_cleaning":
@@ -1991,9 +2031,328 @@ export async function loadWorkTypeOptions(
   }
 }
 
+async function loadCurrentUserId(connectionOverrides: Partial<OdooConnection> = {}) {
+  if (!connectionOverrides.login) {
+    return null;
+  }
+
+  const users = await executeOdooKw<Array<{ id: number }>>(
+    "res.users",
+    "search_read",
+    [[["login", "=", connectionOverrides.login]]],
+    {
+      fields: ["id"],
+      limit: 1,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+
+  return users[0]?.id ?? null;
+}
+
+async function loadCurrentEmployeeId(
+  connectionOverrides: Partial<OdooConnection> = {},
+  userId?: number | null,
+) {
+  const resolvedUserId = userId ?? (await loadCurrentUserId(connectionOverrides));
+  if (!resolvedUserId) {
+    return null;
+  }
+
+  const employeesByUser = await executeOdooKw<Array<{ id: number }>>(
+    "hr.employee",
+    "search_read",
+    [[["user_id", "=", resolvedUserId]]],
+    {
+      fields: ["id"],
+      limit: 1,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+
+  return employeesByUser[0]?.id ?? null;
+}
+
+async function loadCurrentInspectorVehicleScope(
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  if (!connectionOverrides.login) {
+    return [];
+  }
+
+  const userId = await loadCurrentUserId(connectionOverrides);
+  const employeeId = await loadCurrentEmployeeId(connectionOverrides, userId);
+
+  if (employeeId) {
+    const localScope = await findLocalInspectorScope(employeeId);
+    if (localScope?.vehicleIds.length) {
+      return localScope.vehicleIds;
+    }
+
+    const employees = await executeOdooKw<Array<{ mfo_inspected_vehicle_ids?: number[] }>>(
+      "hr.employee",
+      "search_read",
+      [[["id", "=", employeeId]]],
+      {
+        fields: ["mfo_inspected_vehicle_ids"],
+        limit: 1,
+      },
+      connectionOverrides,
+    ).catch(() => []);
+
+    if (employees[0]?.mfo_inspected_vehicle_ids?.length) {
+      return employees[0].mfo_inspected_vehicle_ids;
+    }
+  }
+
+  if (!userId) {
+    return [];
+  }
+
+  const vehiclesByInspector = await executeOdooKw<Array<{ id: number }>>(
+    "fleet.vehicle",
+    "search_read",
+    [[["mfo_inspector_employee_ids.user_id", "=", userId]]],
+    {
+      fields: ["id"],
+      limit: 500,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+
+  return vehiclesByInspector.map((vehicle) => vehicle.id);
+}
+
+async function loadCurrentEmployeeScope(
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  if (!connectionOverrides.login) {
+    return { employeeId: null as number | null, subdistrictIds: [] as number[], pointIds: [] as number[] };
+  }
+
+  const userId = await loadCurrentUserId(connectionOverrides);
+  const employeeId = await loadCurrentEmployeeId(connectionOverrides, userId);
+
+  if (employeeId) {
+    const localScope = await findLocalInspectorScope(employeeId);
+    if (localScope && (localScope.subdistrictIds.length || localScope.pointIds.length)) {
+      return {
+        employeeId,
+        subdistrictIds: localScope.subdistrictIds,
+        pointIds: localScope.pointIds,
+      };
+    }
+
+    const employees = await executeOdooKw<Array<{
+      mfo_inspected_subdistrict_ids?: number[];
+      mfo_inspected_point_ids?: number[];
+    }>>(
+      "hr.employee",
+      "search_read",
+      [[["id", "=", employeeId]]],
+      {
+        fields: ["mfo_inspected_subdistrict_ids", "mfo_inspected_point_ids"],
+        limit: 1,
+      },
+      connectionOverrides,
+    ).catch(() => []);
+
+    const scopedEmployee = employees[0];
+    if (
+      (scopedEmployee?.mfo_inspected_subdistrict_ids?.length ?? 0) > 0 ||
+      (scopedEmployee?.mfo_inspected_point_ids?.length ?? 0) > 0
+    ) {
+      return {
+        employeeId,
+        subdistrictIds: scopedEmployee?.mfo_inspected_subdistrict_ids ?? [],
+        pointIds: scopedEmployee?.mfo_inspected_point_ids ?? [],
+      };
+    }
+  }
+
+  if (!userId) {
+    return { employeeId, subdistrictIds: [], pointIds: [] };
+  }
+
+  const assignedPoints = await executeOdooKw<Array<{ id: number; subdistrict_id?: Relation }>>(
+    "mfo.collection.point",
+    "search_read",
+    [[["inspector_employee_ids.user_id", "=", userId]]],
+    {
+      fields: ["id", "subdistrict_id"],
+      limit: 1000,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+
+  return {
+    employeeId,
+    subdistrictIds: Array.from(
+      new Set(
+        assignedPoints
+          .map((point) => relationId(point.subdistrict_id ?? false))
+          .filter((value): value is number => Boolean(value)),
+      ),
+    ),
+    pointIds: assignedPoints.map((point) => point.id),
+  };
+}
+
+export async function loadGarbagePointOptions(
+  connectionOverrides: Partial<OdooConnection> = {},
+  options: { requireCurrentEmployeeScope?: boolean } = {},
+): Promise<GarbagePointOption[]> {
+  const [employeeScope, fieldMap] = await Promise.all([
+    loadCurrentEmployeeScope(connectionOverrides),
+    executeOdooKw<Record<string, unknown>>(
+      "mfo.collection.point",
+      "fields_get",
+      [],
+      { attributes: ["type"] },
+      connectionOverrides,
+    ).catch(() => null),
+  ]);
+  const domain: unknown[] = [["active", "=", true]];
+  if (fieldMap?.operation_type) {
+    domain.push(["operation_type", "=", "garbage"]);
+  }
+  if (employeeScope.pointIds.length && employeeScope.subdistrictIds.length) {
+    domain.push("|", ["id", "in", employeeScope.pointIds], ["subdistrict_id", "in", employeeScope.subdistrictIds]);
+  } else if (employeeScope.pointIds.length) {
+    domain.push(["id", "in", employeeScope.pointIds]);
+  } else if (employeeScope.subdistrictIds.length) {
+    domain.push(["subdistrict_id", "in", employeeScope.subdistrictIds]);
+  } else if (options.requireCurrentEmployeeScope) {
+    return [];
+  }
+  const fields = ["name", "subdistrict_id"];
+  if (fieldMap?.inspector_employee_ids) {
+    fields.push("inspector_employee_ids");
+  }
+
+  const points = await executeOdooKw<GarbagePointRecord[]>(
+    "mfo.collection.point",
+    "search_read",
+    [domain],
+    {
+      fields,
+      order: "subdistrict_id asc, name asc",
+      limit: 800,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+
+  return points.map((point) => {
+    const subdistrictName = relationName(point.subdistrict_id ?? false);
+    return {
+      id: point.id,
+      name: point.name,
+      label: subdistrictName ? `${subdistrictName} · ${point.name}` : point.name,
+      subdistrictId: relationId(point.subdistrict_id ?? false),
+      subdistrictName,
+    };
+  });
+}
+
+export async function loadGarbageSubdistrictOptions(
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<GarbageSubdistrictOption[]> {
+  const subdistricts = await readFirstAvailable<{
+    id: number;
+    name: string;
+    district_id?: Relation;
+  }>(
+    [
+      {
+        model: "mfo.subdistrict",
+        domain: [["active", "=", true]],
+        fields: ["name", "district_id"],
+        order: "district_id asc, name asc",
+        limit: 500,
+      },
+      {
+        model: "mfo.subdistrict",
+        domain: [],
+        fields: ["name", "district_id"],
+        order: "district_id asc, name asc",
+        limit: 500,
+      },
+    ],
+    connectionOverrides,
+  );
+
+  return subdistricts.map((subdistrict) => {
+    const districtName = relationName(subdistrict.district_id ?? false, "");
+    return {
+      id: subdistrict.id,
+      name: subdistrict.name,
+      label: districtName ? `${districtName} · ${subdistrict.name}` : subdistrict.name,
+    };
+  });
+}
+
 export async function loadGarbageVehicleOptions(
   connectionOverrides: Partial<OdooConnection> = {},
+  options: { requireCurrentEmployeeScope?: boolean } = {},
 ): Promise<GarbageVehicleOption[]> {
+  const inspectorVehicleScopeIds = await loadCurrentInspectorVehicleScope(connectionOverrides);
+  if (inspectorVehicleScopeIds.length) {
+    const fleetBoard = await loadFleetVehicleBoard().catch(() => null);
+    if (fleetBoard?.allVehicles.length) {
+      const vehiclesById = new Map(fleetBoard.allVehicles.map((vehicle) => [vehicle.id, vehicle]));
+      const scopedBoardVehicles = inspectorVehicleScopeIds
+        .map((vehicleId) => vehiclesById.get(vehicleId))
+        .filter((vehicle): vehicle is NonNullable<typeof vehicle> => Boolean(vehicle));
+
+      if (scopedBoardVehicles.length) {
+        return scopedBoardVehicles.map((vehicle) => ({
+          id: vehicle.id,
+          label: vehicle.plate,
+          plate: vehicle.plate,
+          driverId: vehicle.responsibleDriverId,
+          driverName: vehicle.responsibleDriverName || vehicle.fleetDriverName || "",
+          loaderIds: [vehicle.loader1Id, vehicle.loader2Id].filter((id): id is number => Boolean(id)),
+          loaderNames: [vehicle.loader1Name, vehicle.loader2Name].filter((name): name is string => Boolean(name)),
+        }));
+      }
+    }
+
+    const scopedVehicles = await readFirstAvailable<GarbageVehicleRecord>(
+      [
+        {
+          model: "fleet.vehicle",
+          domain: [["id", "in", inspectorVehicleScopeIds], ["mfo_garbage_work_create_allowed", "=", true]],
+          fields: ["name", "license_plate", "mfo_garbage_work_create_allowed"],
+          order: "license_plate asc, name asc",
+          limit: inspectorVehicleScopeIds.length,
+        },
+        {
+          model: "fleet.vehicle",
+          domain: [["id", "in", inspectorVehicleScopeIds]],
+          fields: ["name", "license_plate"],
+          order: "license_plate asc, name asc",
+          limit: inspectorVehicleScopeIds.length,
+        },
+      ],
+      connectionOverrides,
+    );
+
+    return scopedVehicles
+      .filter((vehicle) => vehicle.mfo_garbage_work_create_allowed !== false)
+      .map((vehicle) => {
+        const plate = vehicle.license_plate || vehicle.name || `Ð¢ÐµÑ…Ð½Ð¸Ðº #${vehicle.id}`;
+        return {
+          id: vehicle.id,
+          label: plate,
+          plate,
+        };
+      });
+  }
+
+  if (options.requireCurrentEmployeeScope) {
+    return [];
+  }
+
   const crewTeams = await readFirstAvailable<{ vehicle_id: Relation }>(
     [
       {
@@ -2074,12 +2433,72 @@ export async function loadGarbageVehicleOptions(
         connectionOverrides,
       );
 
+  const fleetBoard = await loadFleetVehicleBoard().catch(() => null);
+  const boardVehicleById = new Map((fleetBoard?.allVehicles ?? []).map((vehicle) => [vehicle.id, vehicle]));
+
   return fallbackVehicles.map((vehicle) => {
+    const boardVehicle = boardVehicleById.get(vehicle.id);
     const plate = vehicle.license_plate || vehicle.name || `Техник #${vehicle.id}`;
     return {
       id: vehicle.id,
-      label: plate,
-      plate,
+      label: boardVehicle?.plate || plate,
+      plate: boardVehicle?.plate || plate,
+      driverId: boardVehicle?.responsibleDriverId ?? null,
+      driverName: boardVehicle?.responsibleDriverName || boardVehicle?.fleetDriverName || "",
+      loaderIds: [boardVehicle?.loader1Id, boardVehicle?.loader2Id].filter((id): id is number => Boolean(id)),
+      loaderNames: [boardVehicle?.loader1Name, boardVehicle?.loader2Name].filter(
+        (name): name is string => Boolean(name),
+      ),
+    };
+  });
+}
+
+export async function loadActiveGarbageVehicleOptions(
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<GarbageVehicleOption[]> {
+  const vehicles = await readFirstAvailable<GarbageVehicleRecord>(
+    [
+      {
+        model: "fleet.vehicle",
+        domain: [["mfo_active_for_ops", "=", true]],
+        fields: ["name", "license_plate"],
+        order: "license_plate asc, name asc",
+        limit: 500,
+      },
+      {
+        model: "fleet.vehicle",
+        domain: [["active", "=", true]],
+        fields: ["name", "license_plate"],
+        order: "license_plate asc, name asc",
+        limit: 500,
+      },
+      {
+        model: "fleet.vehicle",
+        domain: [],
+        fields: ["name", "license_plate"],
+        order: "license_plate asc, name asc",
+        limit: 500,
+      },
+    ],
+    connectionOverrides,
+  );
+
+  const fleetBoard = await loadFleetVehicleBoard().catch(() => null);
+  const boardVehicleById = new Map((fleetBoard?.allVehicles ?? []).map((vehicle) => [vehicle.id, vehicle]));
+
+  return vehicles.map((vehicle) => {
+    const boardVehicle = boardVehicleById.get(vehicle.id);
+    const plate = vehicle.license_plate || vehicle.name || `Техник #${vehicle.id}`;
+    return {
+      id: vehicle.id,
+      label: boardVehicle?.plate || plate,
+      plate: boardVehicle?.plate || plate,
+      driverId: boardVehicle?.responsibleDriverId ?? null,
+      driverName: boardVehicle?.responsibleDriverName || boardVehicle?.fleetDriverName || "",
+      loaderIds: [boardVehicle?.loader1Id, boardVehicle?.loader2Id].filter((id): id is number => Boolean(id)),
+      loaderNames: [boardVehicle?.loader1Name, boardVehicle?.loader2Name].filter(
+        (name): name is string => Boolean(name),
+      ),
     };
   });
 }
@@ -2255,19 +2674,19 @@ export async function createSeasonalWorkspacePlan(
     return {
       planId: result,
       created: true,
-      message: "Улирлын хог ачилтын төлөвлөгөө амжилттай үүслээ.",
+      message: "Гэнэтийн ажил амжилттай үүслээ.",
     };
   }
 
   const planId = result.plan_id || result.id;
   if (!planId) {
-    throw new Error("Улирлын төлөвлөгөөний дугаар буцаагдсангүй.");
+    throw new Error("Гэнэтийн ажлын дугаар буцаагдсангүй.");
   }
 
   return {
     planId,
     created: result.created ?? true,
-    message: result.message || "Улирлын хог ачилтын төлөвлөгөө амжилттай үүслээ.",
+    message: result.message || "Гэнэтийн ажил амжилттай үүслээ.",
   };
 }
 
@@ -2360,7 +2779,7 @@ export async function loadSeasonalPlanDetail(
 
   const plan = plans[0];
   if (!plan) {
-    throw new Error("Улирлын төлөвлөгөө олдсонгүй.");
+    throw new Error("Гэнэтийн ажил олдсонгүй.");
   }
 
   const daysByLineId = new Map<number, SeasonalPlanDay[]>();
@@ -2409,7 +2828,7 @@ export async function loadSeasonalPlanDetail(
       plannedTonnage: line.planned_tonnage ?? 0,
       plannedTonnageLabel: formatTonnage(line.planned_tonnage ?? 0),
       routeId: relationId(line.route_id ?? false),
-      routeName: relationName(line.route_id ?? false, "Маршрутгүй"),
+      routeName: relationName(line.route_id ?? false, "Гараар оруулсан байршил"),
       remarks: line.remarks || "",
       days: lineDays,
     };
@@ -2507,6 +2926,7 @@ export async function loadProjectDetail(
         "sequence",
         "stage_id",
         "ops_team_leader_id",
+        "user_ids",
         "ops_planned_quantity",
         "ops_completed_quantity",
         "ops_progress_percent",
@@ -2517,6 +2937,10 @@ export async function loadProjectDetail(
         "state",
         "mfo_state",
         "ops_reports_locked",
+        "mfo_shift_date",
+        "mfo_vehicle_id",
+        "mfo_driver_employee_id",
+        "mfo_collector_employee_ids",
         "description",
       ],
       {
@@ -2613,11 +3037,61 @@ export async function loadProjectDetail(
     taskReports.push(report);
     reportsByTaskId.set(reportTaskId, taskReports);
   }
+
+  const taskAssigneeUserIds = Array.from(new Set(tasks.flatMap((task) => task.user_ids ?? [])));
+  const taskAssigneeUsers = taskAssigneeUserIds.length
+    ? await executeOdooKw<UserRecord[]>(
+        "res.users",
+        "search_read",
+        [[["id", "in", taskAssigneeUserIds]]],
+        {
+          fields: ["name", "login", "ops_user_type"],
+          order: "name asc",
+          limit: taskAssigneeUserIds.length,
+        },
+        connectionOverrides,
+      ).catch(() => [])
+    : [];
+  const taskAssigneeUserById = new Map(taskAssigneeUsers.map((user) => [user.id, user]));
+  const taskCrewEmployeeIds = Array.from(
+    new Set(
+      tasks.flatMap((task) => [
+        relationId(task.mfo_driver_employee_id ?? false),
+        ...(task.mfo_collector_employee_ids ?? []),
+      ]).filter((id): id is number => Boolean(id)),
+    ),
+  );
+  const taskCrewEmployees = taskCrewEmployeeIds.length
+    ? await executeOdooKw<EmployeeUserRecord[]>(
+        "hr.employee",
+        "search_read",
+        [[["id", "in", taskCrewEmployeeIds]]],
+        {
+          fields: ["name", "user_id", "department_id", "job_id", "job_title"],
+          order: "name asc",
+          limit: taskCrewEmployeeIds.length,
+        },
+        connectionOverrides,
+      ).catch(() => [])
+    : [];
+  const taskCrewEmployeeById = new Map(taskCrewEmployees.map((employee) => [employee.id, employee]));
+
   const taskCards = tasks
     .filter((task) => !isRoadCleaningPhotoPlaceholderLine(task.name))
     .map((task) => {
     const taskReports = reportsByTaskId.get(task.id) ?? [];
     const quantitySnapshot = getProjectTaskQuantitySnapshot(task, taskReports);
+    const assigneeUserIds = task.user_ids ?? [];
+    const assigneeNames = assigneeUserIds.map(
+      (userId) => taskAssigneeUserById.get(userId)?.name || `Хэрэглэгч #${userId}`,
+    );
+    const vehicleId = relationId(task.mfo_vehicle_id ?? false);
+    const driverEmployeeId = relationId(task.mfo_driver_employee_id ?? false);
+    const driverName = relationName(task.mfo_driver_employee_id ?? false, "");
+    const collectorEmployeeIds = task.mfo_collector_employee_ids ?? [];
+    const collectorNames = collectorEmployeeIds
+      .map((employeeId) => taskCrewEmployeeById.get(employeeId)?.name || "")
+      .filter(Boolean);
     const effectiveStage = resolveEffectiveTaskStage(
       relationName(task.stage_id, ""),
       quantitySnapshot.progress,
@@ -2645,6 +3119,14 @@ export async function loadProjectDetail(
       teamLeaderName: relationName(task.ops_team_leader_id, "Сонгоогүй"),
       teamLeaderJobTitle:
         departmentUserById.get(relationId(task.ops_team_leader_id) ?? 0)?.jobTitle ?? "",
+      assignees: assigneeNames,
+      assigneeUserIds,
+      vehicleId,
+      vehicleName: relationName(task.mfo_vehicle_id ?? false, ""),
+      driverEmployeeId,
+      driverName,
+      collectorEmployeeIds,
+      collectorNames,
       plannedQuantity: quantitySnapshot.plannedQuantity,
       completedQuantity: quantitySnapshot.completedQuantity,
       measurementUnit: quantitySnapshot.measurementUnit,
@@ -2727,6 +3209,9 @@ export async function loadTaskDetail(
         "priority",
         "date_deadline",
         "mfo_shift_date",
+        "mfo_vehicle_id",
+        "mfo_driver_employee_id",
+        "mfo_collector_employee_ids",
         "state",
         "description",
         "ops_can_submit_for_review",
@@ -3671,6 +4156,12 @@ export async function createWorkspaceTask(
     plannedQuantity?: number | null;
     description?: string;
     sequence?: number | null;
+    operationType?: string;
+    shiftDate?: string;
+    vehicleId?: number | null;
+    driverEmployeeId?: number | null;
+    collectorEmployeeIds?: number[];
+    inspectorEmployeeId?: number | null;
   },
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
@@ -3709,6 +4200,29 @@ export async function createWorkspaceTask(
   }
   if (typeof input.sequence === "number" && Number.isFinite(input.sequence)) {
     optionalValues.sequence = input.sequence;
+  }
+  if (input.operationType) {
+    optionalValues.mfo_operation_type = input.operationType;
+  }
+  if (input.shiftDate) {
+    optionalValues.mfo_shift_date = input.shiftDate;
+  }
+  if (input.vehicleId) {
+    optionalValues.mfo_vehicle_id = input.vehicleId;
+  }
+  if (input.driverEmployeeId) {
+    optionalValues.mfo_driver_employee_id = input.driverEmployeeId;
+  }
+  if (input.collectorEmployeeIds?.length) {
+    optionalValues.mfo_collector_employee_ids = [
+      [6, 0, Array.from(new Set(input.collectorEmployeeIds))],
+    ];
+  }
+  if (input.inspectorEmployeeId) {
+    optionalValues.mfo_inspector_employee_id = input.inspectorEmployeeId;
+  }
+  if (assigneeUserIds.length) {
+    baseValues.user_ids = [[6, 0, assigneeUserIds]];
   }
 
   const taskId = await executeOdooKw<number>(

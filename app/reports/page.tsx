@@ -33,6 +33,11 @@ import {
   filterTasksForResponsibleMaster,
 } from "@/lib/master-scope";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
+import {
+  createEmptyProcurementDashboard,
+  isProcurementSetupError,
+  loadProcurementDashboard,
+} from "@/lib/procurement";
 
 import styles from "./reports.module.css";
 
@@ -40,6 +45,10 @@ type PageProps = {
   searchParams?: Promise<{
     department?: string | string[];
     unit?: string | string[];
+    report?: string | string[];
+    period?: string | string[];
+    startDate?: string | string[];
+    endDate?: string | string[];
   }>;
 };
 
@@ -117,6 +126,48 @@ function startOfMonthDateKey(dateKey: string) {
   return `${dateKey.slice(0, 8)}01`;
 }
 
+function isDateKey(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function normalizeDateRange(startDate: string, endDate: string) {
+  if (startDate <= endDate) {
+    return { startDate, endDate };
+  }
+
+  return { startDate: endDate, endDate: startDate };
+}
+
+function formatDateLabel(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  return new Intl.DateTimeFormat("mn-MN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(date);
+}
+
+function formatRangeLabel(startDate: string, endDate: string) {
+  if (startDate === endDate) {
+    return formatDateLabel(startDate);
+  }
+
+  return `${formatDateLabel(startDate)} - ${formatDateLabel(endDate)}`;
+}
+
+function formatKgLabel(value: number) {
+  return `${new Intl.NumberFormat("mn-MN", {
+    maximumFractionDigits: 0,
+  }).format(Math.round(value))} кг`;
+}
+
+function formatMoneyLabel(value: number) {
+  return `${new Intl.NumberFormat("mn-MN", {
+    maximumFractionDigits: 0,
+  }).format(Math.round(value))} ₮`;
+}
+
 function reportStatusLabel(report: Pick<FeedReport, "stateBucket" | "stateLabel">) {
   switch (report.stateBucket) {
     case "done":
@@ -160,6 +211,10 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const params = (await searchParams) ?? {};
   const requestedDepartment = getDepartmentParam(params.department);
   const requestedUnit = getDepartmentParam(params.unit);
+  const requestedReport = getDepartmentParam(params.report);
+  const requestedPeriod = getDepartmentParam(params.period);
+  const requestedStartDate = getDepartmentParam(params.startDate);
+  const requestedEndDate = getDepartmentParam(params.endDate);
 
   const selectedGroup =
     departmentScopedMode
@@ -269,6 +324,44 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     selectedUnit === "Хог тээвэрлэлт" ||
     (!selectedUnit &&
       selectedDepartmentName === "Авто бааз, хог тээвэрлэлтийн хэлтэс");
+  const reportPeriodOptions = [
+    {
+      key: "today",
+      label: "Өнөөдөр",
+      startDate: todayDateKey,
+      endDate: todayDateKey,
+      hint: "Өнөөдрийн таталтын дүн",
+    },
+    {
+      key: "week",
+      label: "Энэ 7 хоног",
+      startDate: shiftDateKey(todayDateKey, -6),
+      endDate: todayDateKey,
+      hint: "Сүүлийн 7 өдрийн дүн",
+    },
+    {
+      key: "month",
+      label: "Энэ сар",
+      startDate: startOfMonthDateKey(todayDateKey),
+      endDate: todayDateKey,
+      hint: "Сарын эхнээс өнөөдрийг хүртэл",
+    },
+  ] as const;
+  const defaultReportType = isGarbageTransportView ? "garbage" : "work";
+  const selectedReportType = ["garbage", "procurement", "work"].includes(requestedReport)
+    ? requestedReport
+    : defaultReportType;
+  const selectedPeriodOption = reportPeriodOptions.find((option) => option.key === requestedPeriod);
+  const customRange =
+    isDateKey(requestedStartDate) && isDateKey(requestedEndDate)
+      ? normalizeDateRange(requestedStartDate, requestedEndDate)
+      : null;
+  const selectedDateRange = customRange ?? selectedPeriodOption ?? reportPeriodOptions[0];
+  const selectedStartDate = selectedDateRange.startDate;
+  const selectedEndDate = selectedDateRange.endDate;
+  const selectedRangeLabel = formatRangeLabel(selectedStartDate, selectedEndDate);
+  const activePeriodKey = customRange ? "custom" : selectedPeriodOption?.key ?? "today";
+
   let garbageWeightLedger = null as Awaited<ReturnType<typeof loadGarbageWeightLedger>> | null;
   let garbageWeightError = "";
 
@@ -276,12 +369,29 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     garbageWeightLedger = await loadGarbageWeightLedger({
         login: session.login,
         password: session.password,
-      });
+      }, { maxDays: 90 });
     } catch (error) {
       console.error("Garbage transport weight ledger could not be loaded:", error);
       garbageWeightError =
         "Хог тээвэрлэлтийн жингийн мэдээллийг Odoo-оос уншиж чадсангүй.";
     }
+
+  let procurementDashboard = createEmptyProcurementDashboard();
+  let procurementReportError = "";
+  try {
+    procurementDashboard = await loadProcurementDashboard(
+      { limit: 100 },
+      {
+        login: session.login,
+        password: session.password,
+      },
+    );
+  } catch (error) {
+    console.error("Procurement report summary could not be loaded:", error);
+    procurementReportError = isProcurementSetupError(error)
+      ? "Худалдан авалтын модуль Odoo дээр идэвхгүй байна."
+      : "Худалдан авалтын тайлангийн мэдээллийг Odoo-оос уншиж чадсангүй.";
+  }
 
   const garbageSummaryCards = [
     {
@@ -337,6 +447,82 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       note: garbageWeightLedger?.lastMonth.rangeLabel || "Сүүлийн 1 сарын дүн",
     },
   ] as const;
+  const selectedGarbageDayItems =
+    garbageWeightLedger?.dayItems.filter(
+      (day) => day.dateKey >= selectedStartDate && day.dateKey <= selectedEndDate,
+    ) ?? [];
+  const selectedGarbageTotalKg = selectedGarbageDayItems.reduce(
+    (sum, day) => sum + day.totalKg,
+    0,
+  );
+  const selectedGarbageVehicleKeys = new Set<string>();
+  const selectedGarbageVehicleTotals = new Map<
+    string,
+    {
+      vehicleName: string;
+      primaryLabel: string;
+      routeName: string;
+      kg: number;
+      taskCount: number;
+      dates: Set<string>;
+    }
+  >();
+  let selectedGarbageRecordCount = 0;
+
+  for (const day of selectedGarbageDayItems) {
+    for (const row of day.rows) {
+      selectedGarbageRecordCount += 1;
+      selectedGarbageVehicleKeys.add(row.vehicleKey);
+      const existing = selectedGarbageVehicleTotals.get(row.vehicleKey);
+      if (existing) {
+        existing.kg += row.kg;
+        existing.taskCount += row.taskCount;
+        existing.dates.add(day.dateKey);
+        if (!existing.routeName && row.routeName) {
+          existing.routeName = row.routeName;
+        }
+      } else {
+        selectedGarbageVehicleTotals.set(row.vehicleKey, {
+          vehicleName: row.vehicleName,
+          primaryLabel: row.primaryLabel,
+          routeName: row.routeName,
+          kg: row.kg,
+          taskCount: row.taskCount,
+          dates: new Set([day.dateKey]),
+        });
+      }
+    }
+  }
+
+  const selectedGarbageVehicleRows = Array.from(selectedGarbageVehicleTotals.values())
+    .sort((left, right) => right.kg - left.kg)
+    .slice(0, 8);
+  const selectedProcurementItems = procurementDashboard.items.filter((item) => {
+    const candidateDates = [
+      item.required_date,
+      item.payment_date,
+      item.date_paid,
+      item.date_received,
+      item.date_quotation_submitted,
+    ];
+    return candidateDates.some((date) => {
+      const dateKey = typeof date === "string" ? date.slice(0, 10) : "";
+      return isDateKey(dateKey) && dateKey >= selectedStartDate && dateKey <= selectedEndDate;
+    });
+  });
+  const procurementTotalAmount = selectedProcurementItems.reduce(
+    (sum, item) => sum + (item.selected_supplier_total || item.amount_approx_total || 0),
+    0,
+  );
+  const procurementPaidAmount = selectedProcurementItems.reduce(
+    (sum, item) => sum + (item.paid_amount || 0),
+    0,
+  );
+  const procurementPendingCount = selectedProcurementItems.filter((item) => !item.received).length;
+  const procurementDelayedCount = selectedProcurementItems.filter((item) => item.is_delayed).length;
+  const procurementHighValueCount = selectedProcurementItems.filter(
+    (item) => item.is_over_threshold,
+  ).length;
   const exportParams = new URLSearchParams();
   if (!departmentScopedMode && selectedGroup) {
     exportParams.set("department", selectedGroup.name);
@@ -345,10 +531,15 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     exportParams.set("unit", selectedUnit);
   }
   const exportQuery = exportParams.toString();
+  const getReportHref = (updates: Record<string, string>) => {
+    const hrefParams = new URLSearchParams(exportParams);
+    for (const [key, value] of Object.entries(updates)) {
+      hrefParams.set(key, value);
+    }
+    return `/reports?${hrefParams.toString()}`;
+  };
   const getExportHref = (format: "csv" | "excel" | "json") =>
     `/api/reports/export?format=${format}${exportQuery ? `&${exportQuery}` : ""}`;
-  const garbageReportWeekStart = shiftDateKey(todayDateKey, -6);
-  const garbageReportMonthStart = startOfMonthDateKey(todayDateKey);
   const getGarbageWeightReportHref = (startDate: string, endDate = startDate) =>
     `/api/garbage-transport/weight-report?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
 
@@ -563,6 +754,107 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               )}
             </section>
 
+            <section className={styles.reportHub}>
+              <div className={styles.reportHubHeader}>
+                <div>
+                  <span className={styles.kicker}>Тайлан татах төв</span>
+                  <h2>Хугацаа, төрлөө сонгоод тайлангаа нэг дор авна</h2>
+                  <p>
+                    Хог тээврийн жинг машин тус бүрээр нэгтгэж, худалдан авалтын хүсэлтийн явцыг
+                    тухайн сонгосон хугацаагаар харуулна.
+                  </p>
+                </div>
+                <div className={styles.weightMetaCard}>
+                  <span>Сонгосон хугацаа</span>
+                  <strong>{selectedRangeLabel}</strong>
+                  <small>{customRange ? "Гараар сонгосон огноо" : "Шуурхай хугацааны сонголт"}</small>
+                </div>
+              </div>
+
+              <div className={styles.periodRail}>
+                {reportPeriodOptions.map((option) => (
+                  <Link
+                    key={option.key}
+                    href={getReportHref({ report: selectedReportType, period: option.key })}
+                    className={`${styles.periodButton} ${
+                      activePeriodKey === option.key ? styles.periodButtonActive : ""
+                    }`}
+                  >
+                    <strong>{option.label}</strong>
+                    <span>{option.hint}</span>
+                  </Link>
+                ))}
+              </div>
+
+              <form className={styles.rangeForm} action="/reports" method="get">
+                {exportParams.get("department") ? (
+                  <input type="hidden" name="department" value={exportParams.get("department") ?? ""} />
+                ) : null}
+                {exportParams.get("unit") ? (
+                  <input type="hidden" name="unit" value={exportParams.get("unit") ?? ""} />
+                ) : null}
+                <input type="hidden" name="report" value={selectedReportType} />
+                <input type="hidden" name="period" value="custom" />
+                <label>
+                  <span>Эхлэх огноо</span>
+                  <input type="date" name="startDate" defaultValue={selectedStartDate} />
+                </label>
+                <label>
+                  <span>Дуусах огноо</span>
+                  <input type="date" name="endDate" defaultValue={selectedEndDate} />
+                </label>
+                <button type="submit">Хугацаагаар харах</button>
+              </form>
+
+              <div className={styles.reportTypeGrid}>
+                <Link
+                  href={getReportHref({
+                    report: "garbage",
+                    period: activePeriodKey,
+                    startDate: selectedStartDate,
+                    endDate: selectedEndDate,
+                  })}
+                  className={`${styles.reportTypeCard} ${
+                    selectedReportType === "garbage" ? styles.reportTypeCardActive : ""
+                  }`}
+                >
+                  <span>Хогийн жин</span>
+                  <strong>{formatKgLabel(selectedGarbageTotalKg)}</strong>
+                  <small>{selectedGarbageVehicleKeys.size} машин, {selectedGarbageRecordCount} мөр</small>
+                </Link>
+                <Link
+                  href={getReportHref({
+                    report: "procurement",
+                    period: activePeriodKey,
+                    startDate: selectedStartDate,
+                    endDate: selectedEndDate,
+                  })}
+                  className={`${styles.reportTypeCard} ${
+                    selectedReportType === "procurement" ? styles.reportTypeCardActive : ""
+                  }`}
+                >
+                  <span>Худалдан авалт</span>
+                  <strong>{selectedProcurementItems.length} хүсэлт</strong>
+                  <small>{formatMoneyLabel(procurementTotalAmount)} дүнтэй</small>
+                </Link>
+                <Link
+                  href={getReportHref({
+                    report: "work",
+                    period: activePeriodKey,
+                    startDate: selectedStartDate,
+                    endDate: selectedEndDate,
+                  })}
+                  className={`${styles.reportTypeCard} ${
+                    selectedReportType === "work" ? styles.reportTypeCardActive : ""
+                  }`}
+                >
+                  <span>Ажлын тайлан</span>
+                  <strong>{filteredReports.length} тайлан</strong>
+                  <small>{groupedReports.length} ажил дээр бүртгэгдсэн</small>
+                </Link>
+              </div>
+            </section>
+
             {!isGarbageTransportView ? (
               <section className={styles.sectionCard}>
                 <div className={dashboardStyles.sectionHeader}>
@@ -610,39 +902,31 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 </div>
 
                 <div className={styles.weightReportToolbar}>
+                  <div className={styles.weightToolbarText}>
+                    <strong>Сонгосон хугацааны тайлан</strong>
+                    <span>{selectedRangeLabel}</span>
+                  </div>
                   <div className={styles.exportActions} aria-label="Хог тээврийн жингийн тайлан">
                     <a
                       className={styles.exportButton}
-                      href={getGarbageWeightReportHref(todayDateKey)}
+                      href={getGarbageWeightReportHref(selectedStartDate, selectedEndDate)}
                       target="_blank"
                     >
-                      Өдөр
+                      Excel татах
                     </a>
                     <a
                       className={styles.exportButton}
-                      href={getGarbageWeightReportHref(garbageReportWeekStart, todayDateKey)}
-                      target="_blank"
+                      href={getReportHref({ report: "garbage", period: "today" })}
                     >
-                      7 хоног
+                      Өнөөдөр
                     </a>
                     <a
                       className={styles.exportButton}
-                      href={getGarbageWeightReportHref(garbageReportMonthStart, todayDateKey)}
-                      target="_blank"
+                      href={getReportHref({ report: "garbage", period: "month" })}
                     >
-                      Сар
+                      Энэ сар
                     </a>
                   </div>
-                  <form
-                    className={styles.weightReportForm}
-                    action="/api/garbage-transport/weight-report"
-                    method="get"
-                    target="_blank"
-                  >
-                    <input type="date" name="startDate" defaultValue={todayDateKey} aria-label="Эхлэх огноо" />
-                    <input type="date" name="endDate" defaultValue={todayDateKey} aria-label="Дуусах огноо" />
-                    <button type="submit">Хугацаагаар</button>
-                  </form>
                 </div>
 
                 {garbageWeightError ? (
@@ -652,29 +936,43 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 <div className={styles.weightSummaryGrid}>
                   <article className={styles.weightSummaryCard}>
                     <span>Нийт жин</span>
-                    <strong>{garbageWeightLedger?.totalLabel || "0 кг"}</strong>
-                    <small>Одоо харагдаж буй өдрүүдийн нийлбэр</small>
+                    <strong>{formatKgLabel(selectedGarbageTotalKg)}</strong>
+                    <small>{selectedRangeLabel}</small>
                   </article>
                   <article className={styles.weightSummaryCard}>
                     <span>Огноо</span>
-                    <strong>{garbageWeightLedger?.dateCount || 0}</strong>
+                    <strong>{selectedGarbageDayItems.length}</strong>
                     <small>Жин бүртгэгдсэн өдөр</small>
                   </article>
                   <article className={styles.weightSummaryCard}>
                     <span>Машин</span>
-                    <strong>{garbageWeightLedger?.vehicleCount || 0}</strong>
+                    <strong>{selectedGarbageVehicleKeys.size}</strong>
                     <small>Жин орсон техник</small>
                   </article>
                   <article className={styles.weightSummaryCard}>
                     <span>Мөр</span>
-                    <strong>{garbageWeightLedger?.recordCount || 0}</strong>
+                    <strong>{selectedGarbageRecordCount}</strong>
                     <small>Өдөр-машины нэгтгэсэн бичлэг</small>
                   </article>
                 </div>
 
-                {garbageWeightLedger?.dayItems.length ? (
+                {selectedGarbageVehicleRows.length ? (
+                  <div className={styles.vehicleAggregateGrid}>
+                    {selectedGarbageVehicleRows.map((row) => (
+                      <article key={row.primaryLabel} className={styles.vehicleAggregateCard}>
+                        <span>{row.primaryLabel}</span>
+                        <strong>{formatKgLabel(row.kg)}</strong>
+                        <small>
+                          {row.dates.size} өдөр, {row.taskCount} ажил
+                        </small>
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
+
+                {selectedGarbageDayItems.length ? (
                   <div className={styles.weightDayStack}>
-                    {garbageWeightLedger.dayItems.map((day) => (
+                    {selectedGarbageDayItems.map((day) => (
                       <article key={day.dateKey} className={styles.weightDayCard}>
                         <div className={styles.weightDayHeader}>
                           <div>
@@ -712,6 +1010,72 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 )}
               </section>
             ) : null}
+
+            <section className={styles.sectionCard}>
+              <div className={styles.weightSectionHeader}>
+                <div>
+                  <span className={styles.kicker}>Худалдан авалтын тайлан</span>
+                  <h2>Хүсэлт, төлбөр, хүлээн авалтын нэгтгэл</h2>
+                  <p>
+                    Сонгосон хугацаанд шаардлагатай огноо, төлбөр, хүлээн авалт бүртгэгдсэн
+                    худалдан авалтын хүсэлтүүдийг дүнгээр нь харуулна.
+                  </p>
+                </div>
+                <div className={styles.weightMetaCard}>
+                  <span>Системийн нийт тойм</span>
+                  <strong>{procurementDashboard.metrics.total} хүсэлт</strong>
+                  <small>{procurementDashboard.metrics.delayed} хоцорсон, {procurementDashboard.metrics.payment_pending} төлбөр хүлээгдэж байна</small>
+                </div>
+              </div>
+
+              {procurementReportError ? (
+                <div className={styles.weightError}>{procurementReportError}</div>
+              ) : null}
+
+              <div className={styles.procurementReportGrid}>
+                <article className={styles.procurementMetricCard}>
+                  <span>Сонгосон хугацааны хүсэлт</span>
+                  <strong>{selectedProcurementItems.length}</strong>
+                  <small>{selectedRangeLabel}</small>
+                </article>
+                <article className={styles.procurementMetricCard}>
+                  <span>Нийт дүн</span>
+                  <strong>{formatMoneyLabel(procurementTotalAmount)}</strong>
+                  <small>Сонгосон нийлүүлэгч эсвэл ойролцоо дүн</small>
+                </article>
+                <article className={styles.procurementMetricCard}>
+                  <span>Төлсөн дүн</span>
+                  <strong>{formatMoneyLabel(procurementPaidAmount)}</strong>
+                  <small>{procurementPendingCount} хүсэлт хүлээгдэж байна</small>
+                </article>
+                <article className={styles.procurementMetricCard}>
+                  <span>1 саяас дээш</span>
+                  <strong>{procurementHighValueCount}</strong>
+                  <small>{procurementDelayedCount} хоцорсон хүсэлт</small>
+                </article>
+              </div>
+
+              {selectedProcurementItems.length ? (
+                <div className={styles.procurementList}>
+                  {selectedProcurementItems.slice(0, 6).map((item) => (
+                    <article key={item.id} className={styles.procurementListItem}>
+                      <div>
+                        <strong>{item.title || item.name}</strong>
+                        <span>{item.department?.name || "Алба нэгж тодорхойгүй"}</span>
+                      </div>
+                      <div>
+                        <strong>{formatMoneyLabel(item.selected_supplier_total || item.amount_approx_total || 0)}</strong>
+                        <span>{item.state.label}</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.weightEmpty}>
+                  Сонгосон хугацаанд худалдан авалтын хүсэлт бүртгэгдээгүй байна.
+                </div>
+              )}
+            </section>
 
             <section className={styles.sectionCard}>
               <div className={styles.workflowHeader}>

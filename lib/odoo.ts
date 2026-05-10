@@ -63,6 +63,9 @@ type OdooTaskRecord = {
   mfo_is_operation_project?: boolean;
   mfo_operation_type?: string | false;
   mfo_route_id?: OdooRelation;
+  mfo_vehicle_id?: OdooRelation;
+  mfo_driver_employee_id?: OdooRelation;
+  mfo_collector_employee_ids?: number[];
   mfo_unresolved_stop_count?: number;
   mfo_missing_proof_stop_count?: number;
   mfo_route_deviation_stop_count?: number;
@@ -118,6 +121,7 @@ type OdooUserRecord = {
   name: string;
   login: string;
   ops_user_type?: string | false;
+  groups_id?: number[];
 };
 
 type OdooAuthEmployeeRecord = {
@@ -126,6 +130,18 @@ type OdooAuthEmployeeRecord = {
   job_id?: OdooRelation;
   job_title?: string | false;
   department_id?: OdooRelation;
+};
+
+type OdooGroupMembershipRecord = {
+  id: number;
+  implied_ids?: number[];
+  trans_implied_ids?: number[];
+};
+
+type OdooExternalIdRecord = {
+  module?: string | false;
+  name?: string | false;
+  res_id?: number | false;
 };
 
 type OdooEmployeeRecord = {
@@ -438,7 +454,7 @@ function inferRoleFromEmployeeTitle(employee?: OdooAuthEmployeeRecord | null) {
     (title.includes("хяналтын ажилтан") &&
       (titleWithDepartment.includes("хог тээвэр") || titleWithDepartment.includes("авто бааз")))
   ) {
-    return "team_leader";
+    return "transport_inspector";
   }
 
   if (
@@ -459,12 +475,98 @@ function resolveAuthenticatedRole(
   explicitRole: string | false,
   employee?: OdooAuthEmployeeRecord | null,
 ) {
+  const inferredRole = inferRoleFromEmployeeTitle(employee);
+  if (inferredRole === "transport_inspector") {
+    return inferredRole;
+  }
+
   const role = explicitRole || "worker";
   if (role && role !== "worker") {
     return role;
   }
 
-  return inferRoleFromEmployeeTitle(employee) ?? role;
+  return inferredRole ?? role;
+}
+
+async function expandUserGroupIds(
+  uid: number,
+  groupIds: number[],
+  connection: OdooConnection,
+) {
+  const allGroupIds = new Set(groupIds);
+  let frontier = groupIds;
+
+  while (frontier.length) {
+    const groups = await executeKw<OdooGroupMembershipRecord[]>(
+      uid,
+      "res.groups",
+      "search_read",
+      [[["id", "in", frontier]]],
+      {
+        fields: ["implied_ids", "trans_implied_ids"],
+        limit: frontier.length,
+      },
+      connection,
+    );
+    const next: number[] = [];
+
+    for (const group of groups) {
+      for (const impliedId of [
+        ...(group.implied_ids ?? []),
+        ...(group.trans_implied_ids ?? []),
+      ]) {
+        if (!allGroupIds.has(impliedId)) {
+          allGroupIds.add(impliedId);
+          next.push(impliedId);
+        }
+      }
+    }
+
+    frontier = next;
+  }
+
+  return Array.from(allGroupIds);
+}
+
+async function readUserGroupXmlIds(
+  uid: number,
+  user: OdooUserRecord,
+  connection: OdooConnection,
+) {
+  if (!Array.isArray(user.groups_id)) {
+    return null;
+  }
+
+  const directGroupIds = user.groups_id;
+  if (!directGroupIds.length) {
+    return new Set<string>();
+  }
+
+  try {
+    const groupIds = await expandUserGroupIds(uid, directGroupIds, connection);
+    const externalIds = await executeKw<OdooExternalIdRecord[]>(
+      uid,
+      "ir.model.data",
+      "search_read",
+      [[["model", "=", "res.groups"], ["res_id", "in", groupIds]]],
+      {
+        fields: ["module", "name", "res_id"],
+        limit: Math.max(groupIds.length * 3, 1),
+      },
+      connection,
+    );
+
+    return new Set(
+      externalIds
+        .map((record) =>
+          record.module && record.name ? `${record.module}.${record.name}` : "",
+        )
+        .filter(Boolean),
+    );
+  } catch (error) {
+    console.warn("Fast group membership lookup failed; falling back to has_group:", error);
+    return null;
+  }
 }
 
 export type DashboardSnapshot = {
@@ -1146,7 +1248,7 @@ const DEPARTMENT_ACCENTS: Record<string, string> = {
 
 const OPERATION_TYPE_LABELS: Record<string, string> = {
   garbage: "Хог цуглуулалт",
-  garbage_seasonal: "Улирлын хог ачилт",
+  garbage_seasonal: "Гэнэтийн ажил",
   street_cleaning: "Гудамж цэвэрлэгээ",
   green_maintenance: "Ногоон байгууламж",
 };
@@ -1471,6 +1573,9 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "mfo_is_operation_project",
     "mfo_operation_type",
     "mfo_route_id",
+    "mfo_vehicle_id",
+    "mfo_driver_employee_id",
+    "mfo_collector_employee_ids",
     "mfo_unresolved_stop_count",
     "mfo_missing_proof_stop_count",
     "mfo_route_deviation_stop_count",
@@ -1503,6 +1608,9 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "mfo_is_operation_project",
     "mfo_operation_type",
     "mfo_route_id",
+    "mfo_vehicle_id",
+    "mfo_driver_employee_id",
+    "mfo_collector_employee_ids",
   ],
   [
     "name",
@@ -2725,62 +2833,56 @@ export async function authenticateOdooUser(
   }
   const { uid, connection } = auth;
 
-  const users = await executeKw<OdooUserRecord[]>(
-    uid,
-    "res.users",
-    "search_read",
-    [[["id", "=", uid]]],
-    {
-      fields: ["name", "login", "ops_user_type"],
-      limit: 1,
-    },
-    connection,
-  ).catch((error) => {
-    if (!String(error).includes("ops_user_type")) {
-      throw error;
-    }
-
-    return executeKw<OdooUserRecord[]>(
+  const readAuthenticatedUser = async (fields: string[]) =>
+    executeKw<OdooUserRecord[]>(
       uid,
       "res.users",
       "search_read",
       [[["id", "=", uid]]],
       {
-        fields: ["name", "login"],
+        fields,
         limit: 1,
       },
       connection,
     );
-  });
+  const users = await readAuthenticatedUser(["name", "login", "ops_user_type", "groups_id"])
+    .catch(() => readAuthenticatedUser(["name", "login", "ops_user_type"]))
+    .catch(() => readAuthenticatedUser(["name", "login", "groups_id"]))
+    .catch(() => readAuthenticatedUser(["name", "login"]));
 
   const user = users[0];
   if (!user) {
     return null;
   }
 
-  const employee = await executeKw<OdooAuthEmployeeRecord[]>(
-    uid,
-    "hr.employee",
-    "search_read",
-    [[["user_id", "=", uid]]],
-    {
-      fields: ["name", "job_id", "job_title", "department_id"],
-      limit: 1,
-    },
-    connection,
-  )
-    .then((employees) => employees[0] ?? null)
-    .catch(() => null);
+  const [userGroupXmlIds, employee] = await Promise.all([
+    readUserGroupXmlIds(uid, user, connection),
+    executeKw<OdooAuthEmployeeRecord[]>(
+      uid,
+      "hr.employee",
+      "search_read",
+      [[["user_id", "=", uid]]],
+      {
+        fields: ["name", "job_id", "job_title", "department_id"],
+        limit: 1,
+      },
+      connection,
+    )
+      .then((employees) => employees[0] ?? null)
+      .catch(() => null),
+  ]);
 
   const hasGroup = (xmlId: string) =>
-    executeKw<boolean>(
-      uid,
-      "res.users",
-      "has_group",
-      [[uid], xmlId],
-      {},
-      connection,
-    ).catch(() => false);
+    userGroupXmlIds
+      ? userGroupXmlIds.has(xmlId)
+      : executeKw<boolean>(
+          uid,
+          "res.users",
+          "has_group",
+          [[uid], xmlId],
+          {},
+          connection,
+        ).catch(() => false);
 
   const [
     systemAdmin,
@@ -2880,7 +2982,9 @@ export async function authenticateOdooUser(
   const role =
     inferredRole === "worker" && hrManager
       ? "hr_manager"
-      : inferredRole;
+      : inferredRole === "team_leader" && mfoInspector && !mfoManager && !mfoDispatcher
+        ? "transport_inspector"
+        : inferredRole;
 
   return {
     uid,

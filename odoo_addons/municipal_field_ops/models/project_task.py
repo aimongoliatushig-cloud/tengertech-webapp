@@ -9,7 +9,7 @@ class ProjectProject(models.Model):
 
     mfo_is_operation_project = fields.Boolean(string="Талбайн ажиллагааны төсөл")
     mfo_operation_type = fields.Selection(
-        [("garbage", "Хог тээвэрлэлт"), ("garbage_seasonal", "Улирлын хог тээвэрлэлт")],
+        [("garbage", "Хог тээвэрлэлт"), ("garbage_seasonal", "Гэнэтийн ажил")],
         string="Ажиллагааны төрөл",
     )
     mfo_default_shift_type = fields.Selection(
@@ -130,7 +130,7 @@ class ProjectTask(models.Model):
     ops_measurement_unit = fields.Char(string="Хэмжих нэгж")
     ops_measurement_unit_code = fields.Char(string="Хэмжих нэгжийн код")
     mfo_operation_type = fields.Selection(
-        [("garbage", "Хог тээвэрлэлт"), ("garbage_seasonal", "Улирлын хог тээвэрлэлт")],
+        [("garbage", "Хог тээвэрлэлт"), ("garbage_seasonal", "Гэнэтийн ажил")],
         string="Ажиллагааны төрөл",
     )
     mfo_state = fields.Selection(
