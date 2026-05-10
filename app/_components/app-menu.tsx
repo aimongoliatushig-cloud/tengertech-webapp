@@ -327,7 +327,22 @@ export function AppMenu({
     roleLabelLower.includes("\u0441\u0438\u0441\u0442\u0435\u043c\u0438\u0439\u043d \u0430\u0434\u043c\u0438\u043d") ||
     roleLabelLower.includes("system admin");
   const hasHrGroupAccess = Boolean(flags.hrUser || flags.hrManager || flags.municipalHr);
-  const canShowHrMenu = Boolean(canViewHr || (roleLooksHr && !masterMode && !workerMode));
+  const hasDepartmentHeadHrAccess =
+    !masterMode &&
+    !workerMode &&
+    Boolean(
+      roleLooksDepartmentHead ||
+        flags.municipalDepartmentHead ||
+        flags.municipalManager ||
+        flags.mfoManager ||
+        flags.environmentManager ||
+        flags.improvementManager,
+    );
+  const canShowHrMenu = Boolean(
+    canViewHr ||
+      hasDepartmentHeadHrAccess ||
+      (!masterMode && !workerMode && (roleLooksHr || hasHrGroupAccess || roleLooksSystemAdmin)),
+  );
   const hrFocusedMode =
     !workerMode &&
     canShowHrMenu &&
@@ -557,12 +572,6 @@ export function AppMenu({
       href: "/tasks?view=today",
       label: "Ажлын даалгавар",
       icon: CalendarDays,
-    },
-    {
-      key: "garbage-teams",
-      href: "/settings/garbage-transport#teams",
-      label: "Багууд",
-      icon: Users,
     },
     {
       key: "auto-base",
