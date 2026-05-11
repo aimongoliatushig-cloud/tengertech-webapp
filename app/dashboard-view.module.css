@@ -107,6 +107,11 @@
   display: none;
 }
 
+.dashboardMainGrid,
+.dashboardPrimaryColumn {
+  min-width: 0;
+}
+
 .departmentPanel {
   display: block;
 }
@@ -1332,10 +1337,15 @@
   .mobilePriorityPanel {
     display: grid;
     gap: 10px;
+    order: 2;
   }
 
   .mobilePriorityPanel .sideCard {
     padding: 14px;
+  }
+
+  .mobilePriorityPanel .quoteCard {
+    display: none;
   }
 
   .mobilePriorityPanel .sideQuickGrid {
@@ -1842,14 +1852,75 @@
 }
 
 @media (max-width: 720px) {
-  .executiveMetricGrid,
+  .executiveMetricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
   .executiveDepartmentGrid,
   .executiveWeatherGrid {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .executiveMetricCard {
-    min-height: 180px;
+    min-height: 132px;
+    padding: 14px 12px;
+  }
+
+  .executiveMetricHeader {
+    gap: 8px;
+  }
+
+  .executiveMetricHeader strong {
+    font-size: 0.74rem;
+    line-height: 1.2;
+  }
+
+  .executiveMetricIcon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .executiveMetricBody {
+    gap: 8px;
+  }
+
+  .executiveMetricValue {
+    font-size: 1.48rem;
+  }
+
+  .executiveRing {
+    width: 44px;
+    height: 44px;
+    padding: 5px;
+  }
+
+  .executiveSection {
+    margin-top: 18px;
+  }
+
+  .executiveDepartmentCard,
+  .executiveWeatherPanel {
+    padding: 16px;
+  }
+
+  .executiveRingLarge {
+    width: 88px;
+    height: 88px;
+    margin: 14px auto;
+  }
+
+  .executiveRingLarge strong {
+    font-size: 1.18rem;
+  }
+
+  .executiveDepartmentStats {
+    padding: 10px 0;
+  }
+
+  .executiveWeatherDay {
+    min-height: 118px;
   }
 
   .executiveWeatherNow {

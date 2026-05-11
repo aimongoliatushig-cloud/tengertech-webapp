@@ -750,6 +750,7 @@ export function AppMenu({
             ? { key: "hr", href: "/hr", label: "HR", icon: Users }
             : { key: "chat", href: "/chat", label: "Чат", icon: MessageSquare },
         ]).filter((item) => !isHiddenMenuItem(item));
+  const visibleMobileDockItems = mobileDockItems.slice(0, 5);
 
   const menuList = (
     <nav className={styles.menuList} aria-label="Үндсэн цэс">
@@ -889,7 +890,7 @@ export function AppMenu({
       ) : null}
 
       <div className={styles.mobileDock} aria-label="Хурдан цэс">
-        {mobileDockItems.map((item) => {
+        {visibleMobileDockItems.map((item) => {
           const Icon = item.icon;
           const isActive = isItemActive(item);
 

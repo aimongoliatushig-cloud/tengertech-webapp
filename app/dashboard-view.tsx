@@ -1715,10 +1715,8 @@ export function DashboardView({
             backgroundImage={DASHBOARD_IMAGES.header}
           />
 
-          <div className="relative z-20 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="grid min-w-0 gap-4">
-              {!workerMode ? <MobilePriorityPanel canWriteReports={canWriteReports} /> : null}
-
+          <div className={cn("relative z-20 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]", dashboardStyles.dashboardMainGrid)}>
+            <div className={cn("grid min-w-0 gap-4", dashboardStyles.dashboardPrimaryColumn)}>
               {fleetLoadError ? (
                 <Card className="border-amber-200 bg-amber-50/85 p-4 text-sm font-semibold text-amber-800">
                   {fleetLoadError}
@@ -1871,6 +1869,8 @@ export function DashboardView({
                   </div>
                 )}
               </Card>
+
+              {!workerMode ? <MobilePriorityPanel canWriteReports={canWriteReports} /> : null}
 
               {!workerMode ? (
                 <>
