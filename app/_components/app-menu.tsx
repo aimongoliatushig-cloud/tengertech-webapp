@@ -616,6 +616,12 @@ export function AppMenu({
       icon: LayoutDashboard,
     },
     {
+      key: "auto-base",
+      href: "/#my-vehicles",
+      label: "Миний машин",
+      icon: Truck,
+    },
+    {
       key: "projects",
       href: inspectorWorkHref,
       label: "Миний ажил",

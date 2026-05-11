@@ -92,6 +92,8 @@ function PhotoReportField({
 }: PhotoReportFieldProps) {
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryFilesRef = useRef<File[]>([]);
+  const cameraFilesRef = useRef<File[]>([]);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const previewUrlsRef = useRef<string[]>([]);
@@ -110,6 +112,8 @@ function PhotoReportField({
 
     const galleryFiles = Array.from(galleryInputRef.current?.files ?? []);
     const cameraFiles = Array.from(cameraInputRef.current?.files ?? []);
+    galleryFilesRef.current = galleryFiles;
+    cameraFilesRef.current = cameraFiles;
     const previews = [
       ...galleryFiles.map((file, index) => ({
         id: `gallery-${file.name}-${file.lastModified}-${index}`,
@@ -184,17 +188,25 @@ function PhotoReportField({
     input.files = dataTransfer.files;
   };
 
-  const limitInputFiles = (event: ChangeEvent<HTMLInputElement>, otherInput: HTMLInputElement | null) => {
+  const appendFilesToInput = ({
+    input,
+    currentFiles,
+    incomingFiles,
+    otherCount,
+  }: {
+    input: HTMLInputElement;
+    currentFiles: File[];
+    incomingFiles: File[];
+    otherCount: number;
+  }) => {
     const existingCount = existingAttachments.length - removedAttachmentIds.length;
-    const otherCount = (otherInput?.files?.length ?? 0) + existingCount;
-    const allowedCount = Math.max(maxFiles - otherCount, 0);
-    const files = Array.from(event.target.files ?? []);
-    const limitedFiles = files.slice(0, allowedCount);
+    const allowedCount = Math.max(maxFiles - existingCount - otherCount - currentFiles.length, 0);
+    const acceptedFiles = incomingFiles.slice(0, allowedCount);
+    const nextFiles = [...currentFiles, ...acceptedFiles].slice(0, maxFiles);
 
-    if (files.length > limitedFiles.length) {
-      const dataTransfer = new DataTransfer();
-      limitedFiles.forEach((file) => dataTransfer.items.add(file));
-      event.target.files = dataTransfer.files;
+    assignFilesToInput(input, nextFiles);
+
+    if (incomingFiles.length > acceptedFiles.length) {
       setLimitMessage(`Дээд тал нь ${maxFiles} зураг оруулна.`);
     } else {
       setLimitMessage("");
@@ -208,12 +220,22 @@ function PhotoReportField({
       console.info("[report-upload] image compression", compression);
     }
     setUploadMessage("");
-    limitInputFiles(event, cameraInputRef.current);
+    appendFilesToInput({
+      input: event.target,
+      currentFiles: galleryFilesRef.current,
+      incomingFiles: Array.from(event.target.files ?? []),
+      otherCount: cameraFilesRef.current.length,
+    });
     syncSelectedFiles();
   };
 
   const handleCameraChange = (event: ChangeEvent<HTMLInputElement>) => {
-    limitInputFiles(event, galleryInputRef.current);
+    appendFilesToInput({
+      input: event.target,
+      currentFiles: cameraFilesRef.current,
+      incomingFiles: Array.from(event.target.files ?? []),
+      otherCount: galleryFilesRef.current.length,
+    });
     syncSelectedFiles();
   };
 
@@ -224,6 +246,8 @@ function PhotoReportField({
     if (cameraInputRef.current) {
       cameraInputRef.current.value = "";
     }
+    galleryFilesRef.current = [];
+    cameraFilesRef.current = [];
     setSelectedFiles([]);
     setLimitMessage("");
   };
@@ -235,6 +259,11 @@ function PhotoReportField({
     }
     const files = Array.from(targetInput.files ?? []).filter((_, index) => index !== sourceIndex);
     assignFilesToInput(targetInput, files);
+    if (source === "gallery") {
+      galleryFilesRef.current = files;
+    } else {
+      cameraFilesRef.current = files;
+    }
     syncSelectedFiles();
   };
 

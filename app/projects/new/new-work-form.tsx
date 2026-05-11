@@ -97,6 +97,8 @@ type Props = {
   lockedDepartmentId?: string;
   lockedDepartmentLabel?: string;
   initialDepartmentId?: string;
+  initialGarbageVehicleId?: string;
+  initialGarbageShiftDate?: string;
 };
 
 function SubmitWorkButton({ label }: { label: string }) {
@@ -258,6 +260,8 @@ export function NewWorkForm({
   lockedDepartmentId,
   lockedDepartmentLabel,
   initialDepartmentId,
+  initialGarbageVehicleId,
+  initialGarbageShiftDate,
 }: Props) {
   const defaultDepartmentId = lockedDepartmentId ?? initialDepartmentId ?? "";
   const [departmentId, setDepartmentId] = useState(defaultDepartmentId);
@@ -276,7 +280,7 @@ export function NewWorkForm({
 
     return "standard";
   });
-  const [vehicleId, setVehicleId] = useState("");
+  const [vehicleId, setVehicleId] = useState(initialGarbageVehicleId ?? "");
   const [autoBaseVehicleId, setAutoBaseVehicleId] = useState("");
   const [autoBaseItemName, setAutoBaseItemName] = useState("");
   const [autoBaseQuantity, setAutoBaseQuantity] = useState("1");
@@ -294,7 +298,7 @@ export function NewWorkForm({
   const [roadCleaningAreaChoices, setRoadCleaningAreaChoices] = useState(roadCleaningAreaOptions);
   const [roadCleaningAreaError, setRoadCleaningAreaError] = useState("");
   const [savingRoadCleaningAreaId, setSavingRoadCleaningAreaId] = useState("");
-  const [shiftDate, setShiftDate] = useState(getTodayValue());
+  const [shiftDate, setShiftDate] = useState(initialGarbageShiftDate ?? getTodayValue());
   const [seasonalStartDate, setSeasonalStartDate] = useState(getTodayValue());
   const [seasonalEndDate, setSeasonalEndDate] = useState(getTodayValue());
   const [seasonalLines, setSeasonalLines] = useState<SeasonalLineDraft[]>([
@@ -964,6 +968,16 @@ export function NewWorkForm({
 
       {isGarbageTransport ? (
         <>
+          {initialGarbageVehicleId ? (
+            <div className={styles.optionalSection}>
+              <span className={styles.formBadge}>Машинаас даалгавар үүсгэж байна</span>
+              <p className={styles.helperNote}>
+                Сонгосон машин, огноо, хороо болон хогийн цэгүүд нь даалгаварт хадгалагдана.
+                Ингэснээр өдөр тутмын болон 7 хоногийн тайлан машин, огноогоор зөв шүүгдэнэ.
+              </p>
+            </div>
+          ) : null}
+
           <div className={styles.fieldRow}>
             <div className={styles.field}>
               <label htmlFor="garbage_vehicle_id">Машины дугаар</label>

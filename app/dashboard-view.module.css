@@ -1094,6 +1094,770 @@
   display: grid;
 }
 
+.assignedVehicleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.assignedVehicleCard {
+  width: 100%;
+  appearance: none;
+  display: grid;
+  align-items: start;
+  gap: 12px;
+  min-height: 218px;
+  padding: 18px;
+  border: 1px solid rgba(46, 125, 50, 0.13);
+  border-radius: var(--ds-radius-card);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(46, 125, 50, 0.08), transparent 40%),
+    #fff;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  box-shadow: 0 14px 34px rgba(27, 73, 38, 0.08);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.assignedVehicleCard:hover,
+.assignedVehicleCard:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(46, 125, 50, 0.34);
+  box-shadow: 0 20px 44px rgba(27, 73, 38, 0.12);
+  outline: none;
+}
+
+.assignedVehicleCardActive {
+  border-color: rgba(46, 125, 50, 0.48);
+  box-shadow:
+    0 20px 44px rgba(27, 73, 38, 0.12),
+    inset 0 0 0 1px rgba(46, 125, 50, 0.18);
+}
+
+.assignedVehicleIcon {
+  display: grid;
+  width: 100%;
+  height: 86px;
+  place-items: center;
+  border-radius: var(--ds-radius-control);
+  background: #e5f5e7;
+  color: #2e7d32;
+  overflow: hidden;
+}
+
+.assignedVehicleIcon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.assignedVehicleIcon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.assignedVehicleContent {
+  display: grid;
+  justify-items: center;
+  min-width: 0;
+  gap: 4px;
+}
+
+.assignedVehicleKicker {
+  color: #6d7b70;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.assignedVehicleContent strong {
+  color: #111b15;
+  font-size: 1.24rem;
+  font-weight: 950;
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.assignedVehicleContent small {
+  color: #6b7280;
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.assignedVehicleStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.assignedVehicleStats span {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  text-align: center;
+}
+
+.assignedVehicleStats small,
+.assignedVehicleProgress small {
+  color: #6b7280;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.assignedVehicleStats strong {
+  color: #111b15;
+  font-size: 0.92rem;
+  font-weight: 950;
+  line-height: 1.1;
+}
+
+.assignedVehicleProgress {
+  display: grid;
+  gap: 8px;
+}
+
+.assignedVehicleProgress > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.assignedVehicleProgress strong {
+  color: #111b15;
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+
+.assignedVehicleProgress i {
+  display: block;
+  block-size: 7px;
+  max-inline-size: 100%;
+  border-radius: 999px;
+  background: #2e7d32;
+  box-shadow: 0 0 0 1px rgba(46, 125, 50, 0.08);
+}
+
+.assignedVehicleAction {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--ds-radius-control);
+  background: #2e7d32;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.assignedVehicleAction svg {
+  width: 16px;
+  height: 16px;
+}
+
+.inspectorVehicleDetail {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: var(--ds-radius-card);
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(27, 73, 38, 0.07);
+}
+
+.inspectorVehicleDetailHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.inspectorVehicleDetailHeader div {
+  min-width: 0;
+}
+
+.inspectorVehicleDetailHeader span {
+  color: #2e7d32;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.inspectorVehicleDetailHeader h3 {
+  margin: 4px 0 0;
+  color: #111b15;
+  font-size: 1.15rem;
+  font-weight: 950;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.inspectorVehicleDetailHeader button {
+  display: inline-flex;
+  min-height: 40px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--ds-radius-control);
+  background: #2e7d32;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.inspectorVehicleDetailHeader button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.inspectorVehicleSummaryRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.inspectorVehicleSummaryRow span {
+  display: grid;
+  gap: 3px;
+  min-height: 58px;
+  align-content: center;
+  padding: 10px 12px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: var(--ds-radius-control);
+  background: #f7fbf8;
+  color: #6b7280;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.inspectorVehicleSummaryRow strong {
+  color: #111b15;
+  font-size: 1.05rem;
+  font-weight: 950;
+}
+
+.inspectorTaskRows {
+  display: grid;
+  gap: 8px;
+}
+
+.inspectorTaskRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: var(--ds-radius-control);
+  color: inherit;
+  text-decoration: none;
+}
+
+.inspectorTaskRow:hover {
+  border-color: rgba(46, 125, 50, 0.26);
+  background: #f7fbf8;
+}
+
+.inspectorTaskRow strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #1f2b24;
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.inspectorTaskRow small {
+  display: block;
+  margin-top: 3px;
+  color: #6b7280;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.inspectorTaskRow svg {
+  width: 16px;
+  height: 16px;
+  color: #8a978e;
+}
+
+.inspectorTaskStatusIcon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 999px;
+  background: #fff8e7;
+  color: #f2a900;
+}
+
+.inspectorTaskStatusIconDone {
+  background: #e5f5e7;
+  color: #2e7d32;
+}
+
+.inspectorModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(17, 27, 21, 0.38);
+  backdrop-filter: blur(10px);
+}
+
+.inspectorModal {
+  display: flex;
+  flex-direction: column;
+  width: min(720px, 100%);
+  max-height: min(780px, calc(100dvh - 24px));
+  overflow: hidden;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  border-radius: var(--ds-radius-card);
+  background: #fff;
+  box-shadow: 0 30px 90px rgba(17, 27, 21, 0.28);
+}
+
+.inspectorModalHeader {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px;
+  border-bottom: 1px solid rgba(46, 125, 50, 0.1);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(46, 125, 50, 0.12), transparent 36%),
+    #f7fbf8;
+}
+
+.inspectorModalHeader span {
+  color: #2e7d32;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.inspectorModalHeader h2 {
+  margin: 6px 0 4px;
+  color: #111b15;
+  font-size: clamp(1.55rem, 1.1rem + 1.5vw, 2.2rem);
+  font-weight: 950;
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.inspectorModalHeader p {
+  margin: 0;
+  color: #607168;
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.inspectorModalClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid rgba(46, 125, 50, 0.16);
+  border-radius: var(--ds-radius-control);
+  background: #fff;
+  color: #1f2b24;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.inspectorModalClose svg {
+  width: 16px;
+  height: 16px;
+}
+
+.inspectorTaskForm {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 18px;
+  overflow: hidden;
+  padding: 22px 24px 24px;
+}
+
+.inspectorField {
+  display: grid;
+  gap: 8px;
+}
+
+.inspectorField span,
+.inspectorPointHeader span {
+  color: #2f3b34;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.inspectorField select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid rgba(46, 125, 50, 0.18);
+  border-radius: var(--ds-radius-control);
+  background: #fff;
+  color: #111b15;
+  font: inherit;
+  font-size: 0.94rem;
+  font-weight: 750;
+}
+
+.inspectorPointSection {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.inspectorPointHeader {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.inspectorPointHeader > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.inspectorPointHeader strong {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #e5f5e7;
+  color: #2e7d32;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.inspectorPointTools {
+  display: flex;
+  gap: 8px;
+}
+
+.inspectorPointTools button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 1px solid rgba(46, 125, 50, 0.16);
+  border-radius: 999px;
+  background: #fff;
+  color: #2e7d32;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.inspectorPointTools button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.inspectorPointGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  min-height: 0;
+  max-height: 360px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-color: rgba(46, 125, 50, 0.42) rgba(46, 125, 50, 0.08);
+  scrollbar-width: thin;
+}
+
+.inspectorPoint {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  border-radius: var(--ds-radius-control);
+  background: #fff;
+  color: #1f2b24;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.inspectorPoint input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  accent-color: #2e7d32;
+}
+
+.inspectorPointSelected {
+  border-color: rgba(46, 125, 50, 0.34);
+  background: #f1f8f2;
+  box-shadow: inset 0 0 0 1px rgba(46, 125, 50, 0.1);
+}
+
+.inspectorEmptyNote,
+.inspectorErrorNote {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--ds-radius-control);
+  font-size: 0.84rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.inspectorEmptyNote {
+  background: #f7fbf8;
+  color: #607168;
+}
+
+.inspectorErrorNote {
+  border: 1px solid rgba(177, 94, 56, 0.18);
+  background: rgba(255, 245, 239, 0.96);
+  color: #8a3f24;
+}
+
+.inspectorModalActions {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 2px -24px -24px;
+  padding: 14px 24px calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(46, 125, 50, 0.1);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 -14px 30px rgba(17, 27, 21, 0.08);
+}
+
+.inspectorModalSecondary,
+.inspectorModalPrimary {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  border-radius: var(--ds-radius-control);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.inspectorModalSecondary {
+  border: 1px solid rgba(46, 125, 50, 0.16);
+  background: #fff;
+  color: #1f2b24;
+}
+
+.inspectorModalPrimary {
+  border: 0;
+  background: #2e7d32;
+  color: #fff;
+}
+
+.inspectorModalPrimary:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 720px) {
+  .assignedVehicleGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .assignedVehicleCard {
+    min-height: 172px;
+    grid-template-columns: 96px minmax(0, 1fr);
+    align-items: center;
+    padding: 14px;
+  }
+
+  .assignedVehicleIcon {
+    grid-row: span 2;
+    height: 76px;
+  }
+
+  .assignedVehicleContent {
+    justify-items: start;
+  }
+
+  .assignedVehicleStats {
+    grid-column: 1 / -1;
+  }
+
+  .assignedVehicleProgress {
+    grid-column: 1 / -1;
+  }
+
+  .inspectorVehicleDetail {
+    padding: 14px;
+  }
+
+  .inspectorVehicleDetailHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .inspectorVehicleDetailHeader button {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .inspectorVehicleSummaryRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .inspectorTaskRow strong {
+    -webkit-line-clamp: 2;
+  }
+
+  .inspectorModalBackdrop {
+    align-items: stretch;
+    justify-items: stretch;
+    padding: 0;
+  }
+
+  .inspectorModal {
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .inspectorModalHeader {
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px 12px;
+  }
+
+  .inspectorModalHeader h2 {
+    margin-top: 3px;
+    font-size: 1.6rem;
+  }
+
+  .inspectorModalHeader p {
+    font-size: 0.8rem;
+  }
+
+  .inspectorModalClose {
+    min-width: 42px;
+    min-height: 42px;
+    padding: 0;
+  }
+
+  .inspectorModalClose span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .inspectorTaskForm {
+    gap: 12px;
+    padding: 14px 16px 0;
+  }
+
+  .inspectorField select {
+    min-height: 50px;
+    font-size: 0.94rem;
+  }
+
+  .inspectorPointHeader {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .inspectorPointHeader > div:first-child {
+    justify-content: space-between;
+  }
+
+  .inspectorPointTools {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .inspectorPointTools button {
+    min-height: 38px;
+  }
+
+  .inspectorPointGrid {
+    grid-template-columns: 1fr;
+    max-height: none;
+    flex: 1 1 auto;
+    padding-right: 2px;
+    padding-bottom: 6px;
+  }
+
+  .inspectorPoint {
+    min-height: 54px;
+    padding: 12px;
+    font-size: 0.9rem;
+  }
+
+  .inspectorPoint input {
+    width: 20px;
+    height: 20px;
+  }
+
+  .inspectorModalActions {
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    margin: 0 -16px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .inspectorModalSecondary,
+  .inspectorModalPrimary {
+    min-height: 50px;
+    padding: 0 10px;
+    font-size: 0.84rem;
+  }
+}
+
 :global(#dashboard-project-filter-progress):checked ~ .taskListFilterPanels .taskListFilterPanelDefault,
 :global(#dashboard-project-filter-pending):checked ~ .taskListFilterPanels .taskListFilterPanelDefault,
 :global(#dashboard-project-filter-done):checked ~ .taskListFilterPanels .taskListFilterPanelDefault,

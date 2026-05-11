@@ -1,11 +1,14 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useMemo, useState, type CSSProperties } from "react";
 
 import { updateFleetVehicleAction } from "./actions";
 
 import styles from "./page.module.css";
+
+const AUTO_GARBAGE_DEPARTMENT_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
 
 type FleetVehicleCrewAssignment = {
   teamId: number;
@@ -244,6 +247,20 @@ function VehicleThumbnail({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
   );
 }
 
+function getTodayValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function buildGarbageTaskHref(vehicle: FleetVehicleBoardItem) {
+  const params = new URLSearchParams({
+    department: AUTO_GARBAGE_DEPARTMENT_NAME,
+    vehicle: String(vehicle.id),
+    date: getTodayValue(),
+  });
+
+  return `/projects/new?${params.toString()}`;
+}
+
 function VehicleList({
   vehicles,
   emptyLabel,
@@ -260,35 +277,43 @@ function VehicleList({
   return (
     <div className={styles.vehicleList}>
       {vehicles.map((vehicle) => (
-        <button
-          key={vehicle.id}
-          type="button"
-          className={styles.vehicleCard}
-          onClick={() => onSelectVehicle(vehicle)}
-        >
-          <VehicleThumbnail vehicle={vehicle} />
-          <div className={styles.vehicleTop}>
-            <strong className={styles.vehiclePlate}>{vehicle.plate}</strong>
-            <span
-              className={cx(
-                styles.vehicleState,
-                vehicle.isRepair ? styles.vehicleStateRepair : styles.vehicleStateActive,
-              )}
-            >
-              {vehicle.isRepair
-                ? vehicle.latestRepairState || vehicle.stateLabel || "Засварт"
-                : vehicle.stateLabel || (vehicle.isOperational ? "Идэвхтэй" : "Бүртгэлтэй")}
+        <article key={vehicle.id} className={styles.vehicleCard}>
+          <button
+            type="button"
+            className={styles.vehicleCardMain}
+            onClick={() => onSelectVehicle(vehicle)}
+          >
+            <VehicleThumbnail vehicle={vehicle} />
+            <div className={styles.vehicleTop}>
+              <strong className={styles.vehiclePlate}>{vehicle.plate}</strong>
+              <span
+                className={cx(
+                  styles.vehicleState,
+                  vehicle.isRepair ? styles.vehicleStateRepair : styles.vehicleStateActive,
+                )}
+              >
+                {vehicle.isRepair
+                  ? vehicle.latestRepairState || vehicle.stateLabel || "Засварт"
+                  : vehicle.stateLabel || (vehicle.isOperational ? "Идэвхтэй" : "Бүртгэлтэй")}
+              </span>
+            </div>
+            <p className={styles.vehicleName}>{vehicle.name}</p>
+            <span className={styles.vehicleTypeLine}>{vehicle.vehicleTypeName || "Төрөлгүй"}</span>
+            <span className={styles.vehicleMetaLine}>{vehicleCrewRoleSummary(vehicle)}</span>
+            <span className={styles.vehicleCrewPreview}>
+              {assignedCrewCount(vehicle)
+                ? `${assignedCrewCount(vehicle)} хүн · ${assignedLoaderCount(vehicle)} ачигч`
+                : "Хуваарилсан хүнгүй"}
             </span>
-          </div>
-          <p className={styles.vehicleName}>{vehicle.name}</p>
-          <span className={styles.vehicleTypeLine}>{vehicle.vehicleTypeName || "Төрөлгүй"}</span>
-          <span className={styles.vehicleMetaLine}>{vehicleCrewRoleSummary(vehicle)}</span>
-          <span className={styles.vehicleCrewPreview}>
-            {assignedCrewCount(vehicle)
-              ? `${assignedCrewCount(vehicle)} хүн · ${assignedLoaderCount(vehicle)} ачигч`
-              : "Хуваарилсан хүнгүй"}
-          </span>
-        </button>
+          </button>
+          {vehicle.isRepair ? (
+            <span className={styles.vehicleTaskLinkDisabled}>Засвартай машин</span>
+          ) : (
+            <Link className={styles.vehicleTaskLink} href={buildGarbageTaskHref(vehicle)} prefetch={false}>
+              Даалгавар нэмэх
+            </Link>
+          )}
+        </article>
       ))}
     </div>
   );
@@ -747,9 +772,18 @@ function VehicleDetailModal({
             <h2 id={`vehicle-detail-${vehicle.id}`}>{vehicle.plate}</h2>
             <p>{vehicle.name}</p>
           </div>
-          <button type="button" className={styles.vehicleModalClose} onClick={onClose}>
-            Хаах
-          </button>
+          <div className={styles.vehicleModalHeaderActions}>
+            {vehicle.isRepair ? (
+              <span className={styles.vehicleTaskLinkDisabled}>Засвартай машин</span>
+            ) : (
+              <Link className={styles.vehicleTaskLink} href={buildGarbageTaskHref(vehicle)} prefetch={false}>
+                Даалгавар нэмэх
+              </Link>
+            )}
+            <button type="button" className={styles.vehicleModalClose} onClick={onClose}>
+              Хаах
+            </button>
+          </div>
         </div>
 
         <div className={styles.vehicleTabBar} role="tablist" aria-label="Машины дэлгэрэнгүй цонхнууд">

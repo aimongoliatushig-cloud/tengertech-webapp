@@ -23,6 +23,13 @@ import {
   type HrDailyAttendanceSummary,
 } from "@/lib/odoo";
 import { loadUlaanbaatarWeather } from "@/lib/weather";
+import {
+  loadDepartmentOptions,
+  loadGarbagePointOptions,
+  loadGarbageVehicleOptions,
+  type GarbagePointOption,
+  type GarbageVehicleOption,
+} from "@/lib/workspace";
 import { loadWorkspaceNotificationSummary } from "@/lib/workspace-notifications";
 
 export const dynamic = "force-dynamic";
@@ -181,6 +188,35 @@ async function DashboardPageContent({
             return [];
           })
       : Promise.resolve([]);
+  const assignedGarbageVehiclesPromise: Promise<GarbageVehicleOption[]> = transportInspectorMode
+    ? loadGarbageVehicleOptions(connectionOverrides, { requireCurrentEmployeeScope: true }).catch((error) => {
+        console.warn("Inspector vehicle scope could not be loaded for dashboard:", error);
+        return [];
+      })
+    : Promise.resolve([]);
+  const assignedGarbagePointOptionsPromise: Promise<GarbagePointOption[]> = transportInspectorMode
+    ? loadGarbagePointOptions(connectionOverrides, { requireCurrentEmployeeScope: true }).catch((error) => {
+        console.warn("Inspector point scope could not be loaded for dashboard:", error);
+        return [];
+      })
+    : Promise.resolve([]);
+  const garbageDepartmentIdPromise: Promise<number | null> = transportInspectorMode
+    ? loadDepartmentOptions(connectionOverrides)
+        .then((departments) => {
+          const exact = departments.find((department) => department.name === AUTO_BASE_GARBAGE_DEPARTMENT_NAME);
+          const fuzzy = departments.find(
+            (department) =>
+              department.name.includes("хог") ||
+              department.name.includes("Хог") ||
+              department.name.includes("Авто"),
+          );
+          return (exact ?? fuzzy)?.id ?? null;
+        })
+        .catch((error) => {
+          console.warn("Garbage department could not be resolved for inspector popup:", error);
+          return null;
+        })
+    : Promise.resolve(null);
 
   const fleetBoardPromise = workerMode
     ? Promise.resolve({
@@ -214,15 +250,27 @@ async function DashboardPageContent({
           return EMPTY_HR_ATTENDANCE_SUMMARY;
         });
 
-  const [snapshot, weather, fleetResult, hrAttendanceSummary, todayAssignments, canViewHr] =
-    await Promise.all([
-      snapshotPromise,
-      weatherPromise,
-      fleetBoardPromise,
-      hrAttendanceSummaryPromise,
-      todayAssignmentsPromise,
-      canViewHrPromise,
-    ]);
+  const [
+    snapshot,
+    weather,
+    fleetResult,
+    hrAttendanceSummary,
+    todayAssignments,
+    canViewHr,
+    assignedGarbageVehicles,
+    assignedGarbagePointOptions,
+    garbageDepartmentId,
+  ] = await Promise.all([
+    snapshotPromise,
+    weatherPromise,
+    fleetBoardPromise,
+    hrAttendanceSummaryPromise,
+    todayAssignmentsPromise,
+    canViewHrPromise,
+    assignedGarbageVehiclesPromise,
+    assignedGarbagePointOptionsPromise,
+    garbageDepartmentIdPromise,
+  ]);
 
   if (!scopedDepartmentName && workerMode) {
     const currentUserId = String(session.uid);
@@ -286,6 +334,9 @@ async function DashboardPageContent({
       snapshot={visibleSnapshot}
       departmentScopeName={scopedDepartmentName}
       todayAssignments={todayAssignments}
+      assignedGarbageVehicles={assignedGarbageVehicles}
+      assignedGarbagePointOptions={assignedGarbagePointOptions}
+      garbageDepartmentId={garbageDepartmentId}
       fleetBoard={fleetResult.fleetBoard}
       fleetLoadError={fleetResult.fleetLoadError}
       hrAttendanceSummary={hrAttendanceSummary}

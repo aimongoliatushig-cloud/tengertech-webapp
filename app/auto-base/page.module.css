@@ -1221,7 +1221,6 @@
   color: inherit;
   font: inherit;
   text-align: left;
-  cursor: pointer;
   transition:
     transform 160ms ease,
     border-color 160ms ease,
@@ -1229,11 +1228,58 @@
 }
 
 .vehicleCard:hover,
-.vehicleCard:focus-visible {
+.vehicleCard:focus-within {
   border-color: rgba(31, 95, 49, 0.24);
   box-shadow: 0 18px 34px rgba(31, 95, 49, 0.12);
   outline: none;
   transform: translateY(-1px);
+}
+
+.vehicleCardMain {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vehicleCardMain:focus-visible,
+.vehicleTaskLink:focus-visible {
+  outline: 2px solid rgba(31, 95, 49, 0.55);
+  outline-offset: 3px;
+}
+
+.vehicleTaskLink,
+.vehicleTaskLinkDisabled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: var(--ds-radius-control);
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.vehicleTaskLink {
+  background: var(--brand-700);
+  color: #fff;
+}
+
+.vehicleTaskLink:hover {
+  background: var(--brand-800);
+}
+
+.vehicleTaskLinkDisabled {
+  border: 1px solid rgba(177, 94, 56, 0.18);
+  background: rgba(255, 245, 239, 0.96);
+  color: #8a3f24;
 }
 
 .vehicleCrewPreview {
@@ -1310,6 +1356,14 @@
   margin: 0;
   color: var(--ink-700);
   line-height: 1.55;
+}
+
+.vehicleModalHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .vehicleModalClose {
@@ -1705,8 +1759,17 @@
     flex-direction: column;
   }
 
-  .vehicleModalClose {
+  .vehicleModalHeaderActions {
     width: 100%;
+  }
+
+  .vehicleModalHeaderActions .vehicleTaskLink,
+  .vehicleModalHeaderActions .vehicleTaskLinkDisabled {
+    flex: 1 1 160px;
+  }
+
+  .vehicleModalClose {
+    flex: 1 1 120px;
   }
 
   .vehicleDetailGrid,

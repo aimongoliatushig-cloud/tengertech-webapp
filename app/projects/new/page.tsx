@@ -32,8 +32,12 @@ type PageProps = {
     error?: string | string[];
     notice?: string | string[];
     department?: string | string[];
+    vehicle?: string | string[];
+    date?: string | string[];
   }>;
 };
+
+const AUTO_GARBAGE_DEPARTMENT_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
 
 function getMessage(value?: string | string[]) {
   if (Array.isArray(value)) {
@@ -65,6 +69,8 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
   const errorMessage = getMessage(params.error);
   const noticeMessage = getMessage(params.notice);
   const requestedDepartment = getMessage(params.department);
+  const requestedVehicleId = getMessage(params.vehicle);
+  const requestedShiftDate = getMessage(params.date);
 
   const [
     managerOptions,
@@ -133,18 +139,28 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
     shouldLockDepartment && masterDepartmentName
       ? departmentOptions.find((option) => option.name === masterDepartmentName) ?? null
       : null;
+  const effectiveRequestedDepartment =
+    requestedDepartment || (requestedVehicleId ? AUTO_GARBAGE_DEPARTMENT_NAME : "");
   const initialDepartmentOption =
-    !lockedDepartmentOption && requestedDepartment
+    !lockedDepartmentOption && effectiveRequestedDepartment
       ? departmentOptions.find(
           (option) =>
-            option.name === requestedDepartment ||
-            option.label === requestedDepartment ||
-            option.name.includes(requestedDepartment) ||
-            option.label.includes(requestedDepartment) ||
-            requestedDepartment.includes(option.name) ||
-            requestedDepartment.includes(option.label),
+            option.name === effectiveRequestedDepartment ||
+            option.label === effectiveRequestedDepartment ||
+            option.name.includes(effectiveRequestedDepartment) ||
+            option.label.includes(effectiveRequestedDepartment) ||
+            effectiveRequestedDepartment.includes(option.name) ||
+            effectiveRequestedDepartment.includes(option.label),
         ) ?? null
       : null;
+  const initialGarbageVehicleId =
+    requestedVehicleId &&
+    garbageVehicleOptions.some((option) => String(option.id) === requestedVehicleId)
+      ? requestedVehicleId
+      : undefined;
+  const initialGarbageShiftDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedShiftDate)
+    ? requestedShiftDate
+    : undefined;
 
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -227,6 +243,8 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
                   initialDepartmentId={
                     initialDepartmentOption ? String(initialDepartmentOption.id) : undefined
                   }
+                  initialGarbageVehicleId={initialGarbageVehicleId}
+                  initialGarbageShiftDate={initialGarbageShiftDate}
                 />
               </section>
             )}

@@ -1039,94 +1039,113 @@ export async function createProjectAction(formData: FormData) {
         : "";
       const subdistrict = points.find((point) => Array.isArray(point.subdistrict_id))?.subdistrict_id;
       const subdistrictName = Array.isArray(subdistrict) ? subdistrict[1] : "Сонгосон хороо";
-      const createdProjectId = await createWorkspaceProject(
-        {
-          name: name || `${resolvedVehicleName} - ${subdistrictName} / ${startDate}`,
-          managerId: session.uid,
-          departmentId: Number(effectiveDepartmentIdRaw),
-          operationType: "garbage",
-          startDate,
-          deadline: startDate,
-          description: [projectDescription, vehicleWorkerSummary].filter(Boolean).join("\n") || undefined,
-        },
-        garbageWorkConnection,
-      );
-      const parentTaskId = await createWorkspaceTask(
-        {
-          projectId: createdProjectId,
-          name: name
-            ? `${name} - ${points[0]?.name ?? "Хогийн цэг"}`
-            : `${resolvedVehicleName} - ${subdistrictName} - ${points[0]?.name ?? "Хогийн цэг"} - ${startDate}`,
-          deadline: startDate,
-          plannedQuantity: 1,
-          description: [projectDescription || "Хяналтын ажилтны оруулсан хог тээвэрлэлтийн даалгавар.", vehicleWorkerSummary]
-            .filter(Boolean)
-            .join("\n"),
-          assigneeUserIds: assignedGarbageUserIds,
-        },
-        garbageWorkConnection,
-      );
-      await executeOdooKw<boolean>(
-        "project.task",
-        "write",
-        [[parentTaskId], {
-          mfo_operation_type: "garbage",
-          mfo_state: "dispatched",
-          mfo_shift_date: startDate,
-          mfo_vehicle_id: Number(garbageVehicleIdRaw),
-          ...(vehicleDriverId ? { mfo_driver_employee_id: vehicleDriverId } : {}),
-          ...(vehicleCollectorIds.length
-            ? { mfo_collector_employee_ids: [[6, 0, vehicleCollectorIds]] }
-            : {}),
-          mfo_inspector_employee_id: currentEmployees[0]?.id || false,
-        }],
-        {},
-        garbageWorkConnection,
-      ).catch(() => false);
-      for (const [index, point] of points.entries()) {
-        const taskId = index === 0
-          ? parentTaskId
-          : await createWorkspaceTask(
-              {
-                projectId: createdProjectId,
-                name: name
-                  ? `${name} - ${point.name}`
-                  : `${resolvedVehicleName} - ${
-                      Array.isArray(point.subdistrict_id) ? point.subdistrict_id[1] : subdistrictName
-                    } - ${point.name} - ${startDate}`,
-                deadline: startDate,
-                plannedQuantity: 1,
-                description: [
-                  projectDescription || `Хяналтын ажилтны оруулсан хог тээвэрлэлтийн даалгавар. Хогийн цэг: ${point.name}.`,
-                  vehicleWorkerSummary,
-                ]
-                  .filter(Boolean)
-                  .join("\n"),
-                sequence: (index + 1) * 10,
-                assigneeUserIds: assignedGarbageUserIds,
-              },
-              garbageWorkConnection,
-            );
+      if (!points.length) {
+        redirectWithMessage(
+          "/projects/new",
+          "error",
+          "Сонгосон хогийн цэг олдсонгүй. Хороо болон цэгээ дахин сонгоно уу.",
+        );
+      }
 
-        if (index > 0) {
-          await executeOdooKw<boolean>(
-            "project.task",
-            "write",
-            [[taskId], {
-              mfo_operation_type: "garbage",
-              mfo_state: "dispatched",
-              mfo_shift_date: startDate,
-              mfo_vehicle_id: Number(garbageVehicleIdRaw),
-              ...(vehicleDriverId ? { mfo_driver_employee_id: vehicleDriverId } : {}),
-              ...(vehicleCollectorIds.length
-                ? { mfo_collector_employee_ids: [[6, 0, vehicleCollectorIds]] }
-                : {}),
-              mfo_inspector_employee_id: currentEmployees[0]?.id || false,
-            }],
-            {},
+      const existingVehicleTasks = await executeOdooKw<Array<{ id: number; project_id?: [number, string] | false }>>(
+        "project.task",
+        "search_read",
+        [[
+          ["mfo_operation_type", "=", "garbage"],
+          ["mfo_shift_date", "=", startDate],
+          ["mfo_vehicle_id", "=", Number(garbageVehicleIdRaw)],
+        ]],
+        { fields: ["project_id"], order: "id asc", limit: 500 },
+        garbageWorkConnection,
+      ).catch(() => []);
+      const existingProjectId =
+        existingVehicleTasks
+          .map((task) => relationIdValue(task.project_id))
+          .find((projectId): projectId is number => Boolean(projectId)) ?? null;
+      const createdProjectId =
+        existingProjectId ??
+        (await createWorkspaceProject(
+          {
+            name: `${resolvedVehicleName} / ${startDate}`,
+            managerId: session.uid,
+            departmentId: Number(effectiveDepartmentIdRaw),
+            operationType: "garbage",
+            startDate,
+            deadline: startDate,
+            description: [projectDescription, vehicleWorkerSummary].filter(Boolean).join("\n") || undefined,
+          },
+          garbageWorkConnection,
+        ));
+      const existingTaskIds = existingVehicleTasks.map((task) => task.id).filter((id) => Number.isFinite(id));
+      const existingStopLines = existingTaskIds.length
+        ? await executeOdooKw<Array<{ collection_point_id?: [number, string] | false }>>(
+            "mfo.stop.execution.line",
+            "search_read",
+            [[
+              ["task_id", "in", existingTaskIds],
+              ["collection_point_id", "in", garbagePointIds],
+            ]],
+            { fields: ["collection_point_id"], limit: 1000 },
             garbageWorkConnection,
-          ).catch(() => false);
-        }
+          ).catch(() => [])
+        : [];
+      const existingPointIds = new Set(
+        existingStopLines
+          .map((line) => relationIdValue(line.collection_point_id))
+          .filter((pointId): pointId is number => Boolean(pointId)),
+      );
+      const pointsToCreate = points.filter((point) => !existingPointIds.has(point.id));
+
+      if (!pointsToCreate.length) {
+        revalidatePath("/");
+        revalidatePath("/projects");
+        revalidatePath("/tasks");
+        revalidatePath("/projects/new");
+        revalidatePath(`/projects/${createdProjectId}`);
+        redirect(
+          `/projects/${createdProjectId}?notice=${encodeURIComponent(
+            "Сонгосон хогийн цэгүүд энэ машины өнөөдрийн ажил дээр аль хэдийн нэмэгдсэн байна.",
+          )}`,
+        );
+      }
+
+      for (const [index, point] of pointsToCreate.entries()) {
+        const pointSubdistrictName = Array.isArray(point.subdistrict_id) ? point.subdistrict_id[1] : subdistrictName;
+        const taskId = await createWorkspaceTask(
+          {
+            projectId: createdProjectId,
+            name: `${resolvedVehicleName} - ${pointSubdistrictName} - ${point.name} - ${startDate}`,
+            deadline: startDate,
+            plannedQuantity: 1,
+            description: [
+              projectDescription || `Хяналтын ажилтны оруулсан хог тээвэрлэлтийн даалгавар. Хогийн цэг: ${point.name}.`,
+              vehicleWorkerSummary,
+            ]
+              .filter(Boolean)
+              .join("\n"),
+            sequence: (existingTaskIds.length + index + 1) * 10,
+            assigneeUserIds: assignedGarbageUserIds,
+          },
+          garbageWorkConnection,
+        );
+
+        await executeOdooKw<boolean>(
+          "project.task",
+          "write",
+          [[taskId], {
+            mfo_operation_type: "garbage",
+            mfo_state: "dispatched",
+            mfo_shift_date: startDate,
+            mfo_vehicle_id: Number(garbageVehicleIdRaw),
+            ...(vehicleDriverId ? { mfo_driver_employee_id: vehicleDriverId } : {}),
+            ...(vehicleCollectorIds.length
+              ? { mfo_collector_employee_ids: [[6, 0, vehicleCollectorIds]] }
+              : {}),
+            mfo_inspector_employee_id: currentEmployees[0]?.id || false,
+          }],
+          {},
+          garbageWorkConnection,
+        ).catch(() => false);
 
         await executeOdooKw<number>(
           "mfo.stop.execution.line",
@@ -1160,7 +1179,7 @@ export async function createProjectAction(formData: FormData) {
         await notifyPushQuietly({
           eventType: "new_work_assigned",
           title: "Шинэ хог тээврийн ажил оноогдлоо",
-          body: `${resolvedVehicleName} дээр ${points.length} хогийн цэгийн даалгавар оноогдлоо.`,
+          body: `${resolvedVehicleName} дээр ${pointsToCreate.length} хогийн цэгийн даалгавар нэмэгдлээ.`,
           targetUrl: `/projects/${createdProjectId}`,
           userIds: assignedGarbageUserIds,
         });
@@ -1176,7 +1195,9 @@ export async function createProjectAction(formData: FormData) {
       revalidatePath(`/projects/${createdProjectId}`);
       redirect(
         `/projects/${createdProjectId}?notice=${encodeURIComponent(
-          `Хог тээвэрлэлтийн ажил амжилттай үүслээ. ${points.length} хогийн цэг нэмэгдлээ.`,
+          existingProjectId
+            ? `${resolvedVehicleName} машины өнөөдрийн ажил дээр ${pointsToCreate.length} хогийн цэг нэмэгдлээ.`
+            : `Хог тээвэрлэлтийн ажил амжилттай үүслээ. ${pointsToCreate.length} хогийн цэг нэмэгдлээ.`,
         )}`,
       );
     } catch (error) {

@@ -31,6 +31,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/app/_components/ui/card";
+import { DashboardInspectorVehiclePanel } from "@/app/dashboard-inspector-vehicle-panel";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import dashboardStyles from "@/app/dashboard-view.module.css";
 import shellStyles from "@/app/workspace.module.css";
@@ -45,11 +46,15 @@ import {
 import { cn } from "@/lib/utils";
 import { fixMojibakeText } from "@/lib/text-normalize";
 import { type WeatherSnapshot } from "@/lib/weather";
+import { type GarbagePointOption, type GarbageVehicleOption } from "@/lib/workspace";
 
 type DashboardViewProps = {
   session: AppSession;
   snapshot: DashboardSnapshot;
   todayAssignments: FieldAssignment[];
+  assignedGarbageVehicles?: GarbageVehicleOption[];
+  assignedGarbagePointOptions?: GarbagePointOption[];
+  garbageDepartmentId?: number | null;
   fleetBoard: FleetVehicleBoard;
   fleetLoadError?: string;
   hrAttendanceSummary: HrDailyAttendanceSummary;
@@ -87,6 +92,16 @@ function todayKey() {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+}
+
+function isTransportInspectorDashboard(session: AppSession) {
+  return Boolean(
+    session.role === "transport_inspector" ||
+      (session.groupFlags?.mfoInspector &&
+        !session.groupFlags?.mfoManager &&
+        !session.groupFlags?.mfoDispatcher &&
+        !session.groupFlags?.municipalDepartmentHead),
+  );
 }
 
 function normalizeTaskAssigneeId(value: unknown) {
@@ -1525,6 +1540,9 @@ export function DashboardView({
   session,
   snapshot,
   todayAssignments,
+  assignedGarbageVehicles = [],
+  assignedGarbagePointOptions = [],
+  garbageDepartmentId = null,
   fleetBoard,
   fleetLoadError = "",
   hrAttendanceSummary,
@@ -1542,6 +1560,7 @@ export function DashboardView({
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const workerMode = isWorkerOnly(session);
   const masterMode = isMasterRole(session.role);
+  const transportInspectorMode = isTransportInspectorDashboard(session);
   const showHrSummary = Boolean(canViewHr && !workerMode);
   const roleLabel = getRoleLabel(session.role);
   const currentDateKey = todayKey();
@@ -1729,6 +1748,16 @@ export function DashboardView({
                   departmentScopeName={departmentScopeName}
                 />
               </div>
+
+              {transportInspectorMode ? (
+                <DashboardInspectorVehiclePanel
+                  vehicles={assignedGarbageVehicles}
+                  garbagePointOptions={assignedGarbagePointOptions}
+                  departmentId={garbageDepartmentId}
+                  tasks={dashboardTasks}
+                  fleetBoard={fleetBoard}
+                />
+              ) : null}
 
               {masterMode ? (
                 <Card className={dashboardStyles.taskListCard}>
