@@ -108,9 +108,9 @@ export function DashboardInspectorVehiclePanel({
 }: InspectorVehiclePanelProps) {
   const [activeVehicleId, setActiveVehicleId] = useState<number | null>(null);
   const [modalVehicleId, setModalVehicleId] = useState<number | null>(null);
+  const [workDate, setWorkDate] = useState(todayKey);
   const [subdistrictId, setSubdistrictId] = useState("");
   const [selectedPointIds, setSelectedPointIds] = useState<string[]>([]);
-  const shiftDate = todayKey();
 
   useEffect(() => {
     if (!modalVehicleId) {
@@ -154,7 +154,7 @@ export function DashboardInspectorVehiclePanel({
       const searchablePlate = normalizeText(plate);
       const todayTasks = tasks.filter((task) => {
         const text = normalizeText(`${task.name} ${task.projectName} ${task.departmentName} ${task.operationTypeLabel}`);
-        return task.scheduledDate === shiftDate && text.includes(searchablePlate);
+        return task.scheduledDate === workDate && text.includes(searchablePlate);
       });
       const done = todayTasks.filter(isDoneTask).length;
       const total = todayTasks.length;
@@ -162,7 +162,7 @@ export function DashboardInspectorVehiclePanel({
         ? Math.round(todayTasks.reduce((sum, task) => sum + Math.max(0, Math.min(100, task.progress)), 0) / total)
         : 0;
       const todayWeight =
-        boardVehicle?.weightReports.find((report) => report.reportDate === shiftDate)?.weightLabel ??
+        boardVehicle?.weightReports.find((report) => report.reportDate === workDate)?.weightLabel ??
         "0 кг";
 
       return {
@@ -177,7 +177,7 @@ export function DashboardInspectorVehiclePanel({
         weightLabel: todayWeight,
       };
     });
-  }, [fleetBoard.allVehicles, shiftDate, tasks, vehicles]);
+  }, [fleetBoard.allVehicles, tasks, vehicles, workDate]);
 
   const activeSummary =
     vehicleSummaries.find((summary) => summary.vehicle.id === activeVehicleId) ?? vehicleSummaries[0] ?? null;
@@ -187,7 +187,7 @@ export function DashboardInspectorVehiclePanel({
     subdistrictOptions.find((option) => option.id === subdistrictId)?.label ?? "";
   const modalVehicleLabel = modalSummary?.plate ?? "";
   const generatedName = modalSummary
-    ? `${modalVehicleLabel} / ${shiftDate}${selectedSubdistrictLabel ? ` - ${selectedSubdistrictLabel}` : ""}`
+    ? `${modalVehicleLabel} / ${workDate}${selectedSubdistrictLabel ? ` - ${selectedSubdistrictLabel}` : ""}`
     : "";
 
   function openTaskModal(vehicleId: number) {
@@ -227,7 +227,17 @@ export function DashboardInspectorVehiclePanel({
               Танд хариуцуулсан машинууд. Машинаа сонгоод өнөөдрийн даалгавар, гүйцэтгэлээ нэг дор харна.
             </CardDescription>
           </div>
-          <Badge tone={vehicles.length ? "green" : "slate"}>{vehicles.length} машин</Badge>
+          <div className={dashboardStyles.inspectorHeaderTools}>
+            <label>
+              <span>Огноо</span>
+              <input
+                type="date"
+                value={workDate}
+                onChange={(event) => setWorkDate(event.target.value || todayKey())}
+              />
+            </label>
+            <Badge tone={vehicles.length ? "green" : "slate"}>{vehicles.length} машин</Badge>
+          </div>
         </CardHeader>
 
         {vehicles.length ? (
@@ -255,7 +265,7 @@ export function DashboardInspectorVehiclePanel({
                     </span>
                     <span className={dashboardStyles.assignedVehicleContent}>
                       <strong>{summary.plate}</strong>
-                      <small>{shiftDate}</small>
+                      <small>{workDate}</small>
                     </span>
                     <span className={dashboardStyles.assignedVehicleStats}>
                       <span>
@@ -287,8 +297,8 @@ export function DashboardInspectorVehiclePanel({
               <section className={dashboardStyles.inspectorVehicleDetail}>
                 <div className={dashboardStyles.inspectorVehicleDetailHeader}>
                   <div>
-                    <span>Өнөөдрийн ажил</span>
-                    <h3>{activeSummary.plate} / {shiftDate}</h3>
+                    <span>Сонгосон өдрийн ажил</span>
+                    <h3>{activeSummary.plate} / {workDate}</h3>
                   </div>
                   <button type="button" onClick={() => openTaskModal(activeSummary.vehicle.id)}>
                     <Plus aria-hidden />
@@ -358,7 +368,7 @@ export function DashboardInspectorVehiclePanel({
               <div>
                 <span>Шинэ даалгавар</span>
                 <h2 id="inspector-vehicle-task-title">{modalVehicleLabel}</h2>
-                <p>Өнөөдөр: {formatDateLabel(shiftDate)}. Хороо болон хогийн цэгээ сонгоно.</p>
+                <p>Огноо: {formatDateLabel(workDate)}. Хороо болон хогийн цэгээ сонгоно.</p>
               </div>
               <button type="button" className={dashboardStyles.inspectorModalClose} onClick={closeModal}>
                 <X aria-hidden />
@@ -370,12 +380,22 @@ export function DashboardInspectorVehiclePanel({
               <input type="hidden" name="operation_unit" value="garbage_transport" />
               <input type="hidden" name="department_id" value={departmentId ?? ""} />
               <input type="hidden" name="garbage_vehicle_id" value={modalVehicle.id} />
-              <input type="hidden" name="start_date" value={shiftDate} />
               <input type="hidden" name="name" value={generatedName} />
               <input type="hidden" name="garbage_loader_override" value="1" />
               {(modalVehicle.loaderIds ?? []).map((loaderId) => (
                 <input key={loaderId} type="hidden" name="garbage_loader_employee_ids" value={loaderId} />
               ))}
+
+              <label className={dashboardStyles.inspectorField}>
+                <span>Огноо</span>
+                <input
+                  type="date"
+                  name="start_date"
+                  value={workDate}
+                  onChange={(event) => setWorkDate(event.target.value || todayKey())}
+                  required
+                />
+              </label>
 
               <label className={dashboardStyles.inspectorField}>
                 <span>Хороо</span>
