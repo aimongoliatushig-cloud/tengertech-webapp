@@ -1,7 +1,8 @@
 import "server-only";
 
 import { CANONICAL_DEPARTMENT_NAMES, normalizeOrganizationUnitName } from "@/lib/department-groups";
-import { createOdooConnection, executeOdooKw, type OdooConnection } from "@/lib/odoo";
+import { findLocalInspectorScope } from "@/lib/inspector-scope-store";
+import { createOdooConnection, executeOdooKw, loadFleetVehicleBoard, type OdooConnection } from "@/lib/odoo";
 import {
   findLocalRoadCleaningAreaOption,
   loadLocalRoadCleaningAreaOptions,
@@ -51,6 +52,10 @@ type TaskRecord = {
   ops_allowed_unit_summary?: string | false;
   priority: string;
   date_deadline: string | false;
+  mfo_shift_date?: string | false;
+  mfo_vehicle_id?: Relation;
+  mfo_driver_employee_id?: Relation;
+  mfo_collector_employee_ids?: number[];
   state: string;
   mfo_state?: string | false;
   description?: string | false;
@@ -73,6 +78,7 @@ type ReportRecord = {
   image_attachment_ids: number[];
   audio_attachment_ids: number[];
   state?: string | false;
+  rejection_reason?: string | false;
   task_measurement_unit_id?: Relation;
   task_measurement_unit_code?: string | false;
 };
@@ -91,6 +97,7 @@ type OdooAttachmentRecord = {
   id: number;
   name: string | false;
   mimetype: string | false;
+  res_id?: number | false;
 };
 
 type UserRecord = {
@@ -264,7 +271,15 @@ type GarbageVehicleRecord = {
   id: number;
   name: string;
   license_plate: string | false;
-  category_id?: Relation;
+  mfo_garbage_work_create_allowed?: boolean;
+};
+
+type GarbagePointRecord = {
+  id: number;
+  name: string;
+  subdistrict_id?: Relation;
+  inspector_employee_ids?: number[];
+  operation_type?: string | false;
 };
 
 type GarbageRouteRecord = {
@@ -281,23 +296,25 @@ export type GarbageVehicleOption = {
   id: number;
   label: string;
   plate: string;
+  driverId?: number | null;
+  driverName?: string;
+  loaderIds?: number[];
+  loaderNames?: string[];
 };
 
-const GARBAGE_VEHICLE_CATEGORY_NAMES = ["Хог ачилт"];
+export type GarbagePointOption = {
+  id: number;
+  label: string;
+  name: string;
+  subdistrictId: number | null;
+  subdistrictName: string;
+};
 
-function normalizeGarbageVehicleCategory(value: string) {
-  return value.trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
-}
-
-function isGarbageCollectionVehicle(vehicle: GarbageVehicleRecord) {
-  const categoryName = relationName(vehicle.category_id ?? false, "");
-  const normalizedCategory = normalizeGarbageVehicleCategory(categoryName);
-
-  return GARBAGE_VEHICLE_CATEGORY_NAMES.some((name) => {
-    const normalizedName = normalizeGarbageVehicleCategory(name);
-    return normalizedCategory === normalizedName || normalizedCategory.includes(normalizedName);
-  });
-}
+export type GarbageSubdistrictOption = {
+  id: number;
+  label: string;
+  name: string;
+};
 
 export type GarbageRouteOption = {
   id: number;
@@ -422,6 +439,7 @@ export type SeasonalPlanLineInput = {
   sequence: number;
   khorooLabel: string;
   locationName: string;
+  vehicleIds?: number[];
   plannedVehicleCount: number;
   plannedTonnage: number;
   workDate?: string | null;
@@ -521,11 +539,20 @@ export type ProjectTaskCard = {
   deadlineValue: string;
   teamLeaderName: string;
   teamLeaderJobTitle: string;
+  assignees: string[];
+  assigneeUserIds: number[];
+  vehicleId: number | null;
+  vehicleName: string;
+  driverEmployeeId: number | null;
+  driverName: string;
+  collectorEmployeeIds: number[];
+  collectorNames: string[];
   plannedQuantity: number;
   completedQuantity: number;
   measurementUnit: string;
   quantitySummary: string;
   quantitySummaryLines: string[];
+  reportCount: number;
 };
 
 export type WorkspaceAttachmentItem = {
@@ -571,6 +598,10 @@ export type TaskReportFeedItem = {
   reporterId: number | null;
   reporter: string;
   submittedAt: string;
+  state: string;
+  stateLabel: string;
+  stateBucket: StageBucket;
+  rejectionReason: string;
   summary: string;
   text: string;
   quantity: number;
@@ -624,6 +655,7 @@ export type TaskDetail = {
   stageBucket: StageBucket;
   state: string;
   deadline: string;
+  scheduledDate: string;
   measurementUnit: string;
   quantityLines: TaskQuantityLine[];
   plannedQuantity: number;
@@ -657,9 +689,10 @@ const WEEKDAY_KEYS = [
 
 type WeekdayKey = (typeof WEEKDAY_KEYS)[number];
 
-type StageBucket = "todo" | "progress" | "review" | "done" | "unknown";
+type StageBucket = "todo" | "progress" | "review" | "done" | "problem" | "unknown";
 
 const STAGE_ALIASES: Array<[StageBucket, string[]]> = [
+  ["problem", ["returned", "rejected", "changes_requested", "return", "буцаасан", "буцаагдсан", "засвар"]],
   ["todo", ["төлөвлөгдсөн", "хийгдэх ажил", "хуваарилсан", "draft", "dispatched", "planned", "hiigdeh ajil", "todo", "task"]],
   [
     "progress",
@@ -681,25 +714,34 @@ function resolveEffectiveTaskStage(
     reportStates?: Array<string | false | undefined>;
     mfoState?: string | false;
     taskState?: string | false;
+    reportsLocked?: boolean;
   } = {},
 ) {
   const stateBucket = normalizeStageBucket(String(context.taskState || ""));
   const mfoBucket = normalizeStageBucket(String(context.mfoState || ""));
+  const stageBucket = normalizeStageBucket(stageName);
   const reportBuckets = (context.reportStates ?? []).map((state) =>
     normalizeStageBucket(String(state || "")),
   );
-  const bucket =
-    stateBucket === "done"
-      ? stateBucket
-      : mfoBucket !== "unknown"
-        ? mfoBucket
-        : reportBuckets.includes("review")
-          ? "review"
-          : normalizeStageBucket(stageName);
   const normalizedProgress = Math.max(0, Math.min(100, Math.round(progress)));
+  const bucket =
+    stateBucket === "done" || mfoBucket === "done" || stageBucket === "done"
+      ? "done"
+      : context.reportsLocked && normalizedProgress >= 100
+        ? "done"
+        : stateBucket === "problem" || mfoBucket === "problem" || reportBuckets.includes("problem")
+          ? "problem"
+          : mfoBucket !== "unknown"
+          ? mfoBucket
+          : reportBuckets.includes("review")
+            ? "review"
+            : stageBucket;
 
   if (bucket === "done") {
     return { bucket: "done" as const, label: "Дууссан" };
+  }
+  if (bucket === "problem") {
+    return { bucket: "problem" as const, label: "Засвар шаардсан" };
   }
   if (bucket === "review") {
     return { bucket: "review" as const, label: "Хянагдаж буй" };
@@ -892,6 +934,7 @@ function getProjectTaskQuantitySnapshot(task: TaskRecord, reports: ReportRecord[
   const stageBucket = normalizeStageBucket(relationName(task.stage_id, ""));
   const measurementUnit = formatMeasurementUnit(task.ops_measurement_unit_id, task.ops_measurement_unit);
   const plannedLines = extractTaskQuantityLines(htmlToPlainText(task.description));
+  let hasExplicitQuantityLines = plannedLines.length > 0;
 
   if (!plannedLines.length) {
     const reportLinesByUnit = new Map<string, TaskQuantityLine>();
@@ -906,6 +949,7 @@ function getProjectTaskQuantitySnapshot(task: TaskRecord, reports: ReportRecord[
       }
     }
     plannedLines.push(...reportLinesByUnit.values());
+    hasExplicitQuantityLines = plannedLines.length > 0;
   }
 
   if (!plannedLines.length && (task.ops_planned_quantity ?? 0) > 0) {
@@ -944,8 +988,16 @@ function getProjectTaskQuantitySnapshot(task: TaskRecord, reports: ReportRecord[
     : plannedQuantity > 0 && measurementUnit
       ? `${completedQuantity}/${plannedQuantity} ${measurementUnit}`.trim()
       : "";
-  const quantitySummaryLines = quantitySummary
-    ? quantitySummary.split(",").map((line) => line.trim()).filter(Boolean)
+  const isPlaceholderQuantity =
+    !hasExplicitQuantityLines &&
+    quantityLines.length <= 1 &&
+    plannedQuantity <= 1 &&
+    ["нэгж", "unit"].includes(normalizeQuantityUnit(measurementUnit)) &&
+    task.mfo_operation_type !== "garbage" &&
+    task.mfo_operation_type !== "garbage_seasonal";
+  const displayQuantitySummary = isPlaceholderQuantity ? "" : quantitySummary;
+  const quantitySummaryLines = displayQuantitySummary
+    ? displayQuantitySummary.split(",").map((line) => line.trim()).filter(Boolean)
     : [];
 
   return {
@@ -953,7 +1005,7 @@ function getProjectTaskQuantitySnapshot(task: TaskRecord, reports: ReportRecord[
     completedQuantity,
     progress,
     measurementUnit,
-    quantitySummary,
+    quantitySummary: displayQuantitySummary,
     quantitySummaryLines,
   };
 }
@@ -1003,12 +1055,26 @@ function isMasterLikeJobTitle(value: string) {
 }
 
 function getEmployeeJobTitle(employee: Pick<EmployeeUserRecord, "job_id" | "job_title">) {
-  return [
+  const parts = [
     Array.isArray(employee.job_id) ? employee.job_id[1] : "",
     employee.job_title || "",
   ]
+    .map((part) => String(part).replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  const uniqueParts = parts.filter(
+    (part, index) =>
+      parts.findIndex((candidate) => candidate.toLowerCase() === part.toLowerCase()) === index,
+  );
+  const words = uniqueParts.join(" ").split(" ");
+
+  return words
+    .filter((word, index) => index === 0 || word.toLowerCase() !== words[index - 1].toLowerCase())
     .join(" ")
     .trim();
+}
+
+function roleFromMasterJobTitle(jobTitle: string): "senior_master" | "team_leader" {
+  return jobTitle.toLowerCase().includes("ахлах мастер") ? "senior_master" : "team_leader";
 }
 
 function relationId(relation: Relation) {
@@ -1072,6 +1138,38 @@ function normalizeStageBucket(name: string) {
     }
   }
   return "unknown";
+}
+
+function reportStateLabel(state?: string | false) {
+  switch (String(state || "").toLowerCase()) {
+    case "submitted":
+    case "under_review":
+      return "Тайлан илгээсэн";
+    case "returned":
+    case "rejected":
+      return "Буцаагдсан";
+    case "approved":
+      return "Баталгаажсан";
+    case "draft":
+      return "Ноорог";
+    default:
+      return state ? String(state) : "Тайлан";
+  }
+}
+
+function reportStateBucket(state?: string | false): StageBucket {
+  switch (String(state || "").toLowerCase()) {
+    case "submitted":
+    case "under_review":
+      return "review";
+    case "returned":
+    case "rejected":
+      return "problem";
+    case "approved":
+      return "done";
+    default:
+      return "progress";
+  }
 }
 
 function isPastDueDate(value?: string | false | null) {
@@ -1218,7 +1316,7 @@ function seasonalDayStatusLabel(value?: string | false) {
 function operationTypeLabel(value?: string | false) {
   switch (value) {
     case "garbage_seasonal":
-      return "Улирлын хог ачилт";
+      return "Гэнэтийн ажил";
     case "garbage":
       return "Хог тээвэрлэлт";
     case "street_cleaning":
@@ -1407,14 +1505,15 @@ async function loadMasterEmployeeUserOptions(
       }
 
       const phone = employee.mobile_phone || employee.work_phone || "";
+      const jobTitle = getEmployeeJobTitle(employee);
       items.push({
         id: userId,
         name: relationName(employee.user_id, employee.name),
         login: phone || employee.work_email || "",
         phone: phone || "",
-        role: "senior_master",
+        role: roleFromMasterJobTitle(jobTitle),
         departmentName: relationName(employee.department_id, ""),
-        jobTitle: getEmployeeJobTitle(employee),
+        jobTitle,
       });
       return items;
     }, []);
@@ -1558,7 +1657,21 @@ export async function loadTeamLeaderOptions(
     new Map(
       [...roleOptions, ...inferredMasterOptions].map((option) => [option.id, option]),
     ).values(),
-  ).sort((left, right) => left.name.localeCompare(right.name, "mn"));
+  ).sort((left, right) => {
+    const roleRank = (role: string) => (role === "senior_master" ? 0 : 1);
+    const rankDiff = roleRank(left.role) - roleRank(right.role);
+    if (rankDiff !== 0) {
+      return rankDiff;
+    }
+    const departmentDiff = (left.departmentName ?? "").localeCompare(
+      right.departmentName ?? "",
+      "mn",
+    );
+    if (departmentDiff !== 0) {
+      return departmentDiff;
+    }
+    return left.name.localeCompare(right.name, "mn");
+  });
 }
 
 export async function loadCrewTeamOptions(
@@ -1918,41 +2031,451 @@ export async function loadWorkTypeOptions(
   }
 }
 
+async function loadCurrentUserId(connectionOverrides: Partial<OdooConnection> = {}) {
+  if (!connectionOverrides.login) {
+    return null;
+  }
+
+  const users = await executeOdooKw<Array<{ id: number }>>(
+    "res.users",
+    "search_read",
+    [[["login", "=", connectionOverrides.login]]],
+    {
+      fields: ["id"],
+      limit: 1,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+
+  return users[0]?.id ?? null;
+}
+
+async function loadCurrentEmployeeId(
+  connectionOverrides: Partial<OdooConnection> = {},
+  userId?: number | null,
+) {
+  const resolvedUserId = userId ?? (await loadCurrentUserId(connectionOverrides));
+  if (!resolvedUserId) {
+    return null;
+  }
+
+  const employeesByUser = await executeOdooKw<Array<{ id: number }>>(
+    "hr.employee",
+    "search_read",
+    [[["user_id", "=", resolvedUserId]]],
+    {
+      fields: ["id"],
+      limit: 1,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+
+  return employeesByUser[0]?.id ?? null;
+}
+
+async function loadCurrentInspectorVehicleScope(
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  if (!connectionOverrides.login) {
+    return [];
+  }
+
+  const userId = await loadCurrentUserId(connectionOverrides);
+  const employeeId = await loadCurrentEmployeeId(connectionOverrides, userId);
+
+  if (employeeId) {
+    const localScope = await findLocalInspectorScope(employeeId);
+    if (localScope?.vehicleIds.length) {
+      return localScope.vehicleIds;
+    }
+
+    const employees = await executeOdooKw<Array<{ mfo_inspected_vehicle_ids?: number[] }>>(
+      "hr.employee",
+      "search_read",
+      [[["id", "=", employeeId]]],
+      {
+        fields: ["mfo_inspected_vehicle_ids"],
+        limit: 1,
+      },
+      connectionOverrides,
+    ).catch(() => []);
+
+    if (employees[0]?.mfo_inspected_vehicle_ids?.length) {
+      return employees[0].mfo_inspected_vehicle_ids;
+    }
+  }
+
+  if (!userId) {
+    return [];
+  }
+
+  const vehiclesByInspector = await executeOdooKw<Array<{ id: number }>>(
+    "fleet.vehicle",
+    "search_read",
+    [[["mfo_inspector_employee_ids.user_id", "=", userId]]],
+    {
+      fields: ["id"],
+      limit: 500,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+
+  return vehiclesByInspector.map((vehicle) => vehicle.id);
+}
+
+async function loadCurrentEmployeeScope(
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  if (!connectionOverrides.login) {
+    return { employeeId: null as number | null, subdistrictIds: [] as number[], pointIds: [] as number[] };
+  }
+
+  const userId = await loadCurrentUserId(connectionOverrides);
+  const employeeId = await loadCurrentEmployeeId(connectionOverrides, userId);
+
+  if (employeeId) {
+    const localScope = await findLocalInspectorScope(employeeId);
+    if (localScope && (localScope.subdistrictIds.length || localScope.pointIds.length)) {
+      return {
+        employeeId,
+        subdistrictIds: localScope.subdistrictIds,
+        pointIds: localScope.pointIds,
+      };
+    }
+
+    const employees = await executeOdooKw<Array<{
+      mfo_inspected_subdistrict_ids?: number[];
+      mfo_inspected_point_ids?: number[];
+    }>>(
+      "hr.employee",
+      "search_read",
+      [[["id", "=", employeeId]]],
+      {
+        fields: ["mfo_inspected_subdistrict_ids", "mfo_inspected_point_ids"],
+        limit: 1,
+      },
+      connectionOverrides,
+    ).catch(() => []);
+
+    const scopedEmployee = employees[0];
+    if (
+      (scopedEmployee?.mfo_inspected_subdistrict_ids?.length ?? 0) > 0 ||
+      (scopedEmployee?.mfo_inspected_point_ids?.length ?? 0) > 0
+    ) {
+      return {
+        employeeId,
+        subdistrictIds: scopedEmployee?.mfo_inspected_subdistrict_ids ?? [],
+        pointIds: scopedEmployee?.mfo_inspected_point_ids ?? [],
+      };
+    }
+  }
+
+  if (!userId) {
+    return { employeeId, subdistrictIds: [], pointIds: [] };
+  }
+
+  const assignedPoints = await executeOdooKw<Array<{ id: number; subdistrict_id?: Relation }>>(
+    "mfo.collection.point",
+    "search_read",
+    [[["inspector_employee_ids.user_id", "=", userId]]],
+    {
+      fields: ["id", "subdistrict_id"],
+      limit: 1000,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+
+  return {
+    employeeId,
+    subdistrictIds: Array.from(
+      new Set(
+        assignedPoints
+          .map((point) => relationId(point.subdistrict_id ?? false))
+          .filter((value): value is number => Boolean(value)),
+      ),
+    ),
+    pointIds: assignedPoints.map((point) => point.id),
+  };
+}
+
+export async function loadGarbagePointOptions(
+  connectionOverrides: Partial<OdooConnection> = {},
+  options: { requireCurrentEmployeeScope?: boolean } = {},
+): Promise<GarbagePointOption[]> {
+  const [employeeScope, fieldMap] = await Promise.all([
+    loadCurrentEmployeeScope(connectionOverrides),
+    executeOdooKw<Record<string, unknown>>(
+      "mfo.collection.point",
+      "fields_get",
+      [],
+      { attributes: ["type"] },
+      connectionOverrides,
+    ).catch(() => null),
+  ]);
+  const domain: unknown[] = [["active", "=", true]];
+  if (fieldMap?.operation_type) {
+    domain.push(["operation_type", "=", "garbage"]);
+  }
+  if (employeeScope.pointIds.length && employeeScope.subdistrictIds.length) {
+    domain.push("|", ["id", "in", employeeScope.pointIds], ["subdistrict_id", "in", employeeScope.subdistrictIds]);
+  } else if (employeeScope.pointIds.length) {
+    domain.push(["id", "in", employeeScope.pointIds]);
+  } else if (employeeScope.subdistrictIds.length) {
+    domain.push(["subdistrict_id", "in", employeeScope.subdistrictIds]);
+  } else if (options.requireCurrentEmployeeScope) {
+    return [];
+  }
+  const fields = ["name", "subdistrict_id"];
+  if (fieldMap?.inspector_employee_ids) {
+    fields.push("inspector_employee_ids");
+  }
+
+  const points = await executeOdooKw<GarbagePointRecord[]>(
+    "mfo.collection.point",
+    "search_read",
+    [domain],
+    {
+      fields,
+      order: "subdistrict_id asc, name asc",
+      limit: 800,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+
+  return points.map((point) => {
+    const subdistrictName = relationName(point.subdistrict_id ?? false);
+    return {
+      id: point.id,
+      name: point.name,
+      label: subdistrictName ? `${subdistrictName} · ${point.name}` : point.name,
+      subdistrictId: relationId(point.subdistrict_id ?? false),
+      subdistrictName,
+    };
+  });
+}
+
+export async function loadGarbageSubdistrictOptions(
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<GarbageSubdistrictOption[]> {
+  const subdistricts = await readFirstAvailable<{
+    id: number;
+    name: string;
+    district_id?: Relation;
+  }>(
+    [
+      {
+        model: "mfo.subdistrict",
+        domain: [["active", "=", true]],
+        fields: ["name", "district_id"],
+        order: "district_id asc, name asc",
+        limit: 500,
+      },
+      {
+        model: "mfo.subdistrict",
+        domain: [],
+        fields: ["name", "district_id"],
+        order: "district_id asc, name asc",
+        limit: 500,
+      },
+    ],
+    connectionOverrides,
+  );
+
+  return subdistricts.map((subdistrict) => {
+    const districtName = relationName(subdistrict.district_id ?? false, "");
+    return {
+      id: subdistrict.id,
+      name: subdistrict.name,
+      label: districtName ? `${districtName} · ${subdistrict.name}` : subdistrict.name,
+    };
+  });
+}
+
 export async function loadGarbageVehicleOptions(
   connectionOverrides: Partial<OdooConnection> = {},
+  options: { requireCurrentEmployeeScope?: boolean } = {},
 ): Promise<GarbageVehicleOption[]> {
-  const categoryDomain = [
-    "|",
-    ["category_id.name", "in", GARBAGE_VEHICLE_CATEGORY_NAMES],
-    ["category_id.name", "ilike", "Хог ачилт"],
-  ];
+  const inspectorVehicleScopeIds = await loadCurrentInspectorVehicleScope(connectionOverrides);
+  if (inspectorVehicleScopeIds.length) {
+    const fleetBoard = await loadFleetVehicleBoard().catch(() => null);
+    if (fleetBoard?.allVehicles.length) {
+      const vehiclesById = new Map(fleetBoard.allVehicles.map((vehicle) => [vehicle.id, vehicle]));
+      const scopedBoardVehicles = inspectorVehicleScopeIds
+        .map((vehicleId) => vehiclesById.get(vehicleId))
+        .filter((vehicle): vehicle is NonNullable<typeof vehicle> => Boolean(vehicle));
+
+      if (scopedBoardVehicles.length) {
+        return scopedBoardVehicles.map((vehicle) => ({
+          id: vehicle.id,
+          label: vehicle.plate,
+          plate: vehicle.plate,
+          driverId: vehicle.responsibleDriverId,
+          driverName: vehicle.responsibleDriverName || vehicle.fleetDriverName || "",
+          loaderIds: [vehicle.loader1Id, vehicle.loader2Id].filter((id): id is number => Boolean(id)),
+          loaderNames: [vehicle.loader1Name, vehicle.loader2Name].filter((name): name is string => Boolean(name)),
+        }));
+      }
+    }
+
+    const scopedVehicles = await readFirstAvailable<GarbageVehicleRecord>(
+      [
+        {
+          model: "fleet.vehicle",
+          domain: [["id", "in", inspectorVehicleScopeIds], ["mfo_garbage_work_create_allowed", "=", true]],
+          fields: ["name", "license_plate", "mfo_garbage_work_create_allowed"],
+          order: "license_plate asc, name asc",
+          limit: inspectorVehicleScopeIds.length,
+        },
+        {
+          model: "fleet.vehicle",
+          domain: [["id", "in", inspectorVehicleScopeIds]],
+          fields: ["name", "license_plate"],
+          order: "license_plate asc, name asc",
+          limit: inspectorVehicleScopeIds.length,
+        },
+      ],
+      connectionOverrides,
+    );
+
+    return scopedVehicles
+      .filter((vehicle) => vehicle.mfo_garbage_work_create_allowed !== false)
+      .map((vehicle) => {
+        const plate = vehicle.license_plate || vehicle.name || `Ð¢ÐµÑ…Ð½Ð¸Ðº #${vehicle.id}`;
+        return {
+          id: vehicle.id,
+          label: plate,
+          plate,
+        };
+      });
+  }
+
+  if (options.requireCurrentEmployeeScope) {
+    return [];
+  }
+
+  const crewTeams = await readFirstAvailable<{ vehicle_id: Relation }>(
+    [
+      {
+        model: "mfo.crew.team",
+        domain: [["active", "=", true], ["operation_type", "=", "garbage"], ["vehicle_id", "!=", false]],
+        fields: ["vehicle_id"],
+        order: "name asc",
+      },
+      {
+        model: "mfo.crew.team",
+        domain: [["operation_type", "=", "garbage"], ["vehicle_id", "!=", false]],
+        fields: ["vehicle_id"],
+        order: "name asc",
+      },
+      {
+        model: "mfo.crew.team",
+        domain: [["vehicle_id", "!=", false]],
+        fields: ["vehicle_id"],
+        order: "name asc",
+      },
+    ],
+    connectionOverrides,
+  );
+
+  const vehicleIds = Array.from(
+    new Set(
+      crewTeams
+        .map((team) => relationId(team.vehicle_id))
+        .filter((value): value is number => Boolean(value)),
+    ),
+  );
+
+  const vehicles = vehicleIds.length
+    ? await readFirstAvailable<GarbageVehicleRecord>(
+        [
+          {
+            model: "fleet.vehicle",
+            domain: [["id", "in", vehicleIds], ["mfo_active_for_ops", "=", true]],
+            fields: ["name", "license_plate"],
+            order: "license_plate asc, name asc",
+            limit: vehicleIds.length,
+          },
+          {
+            model: "fleet.vehicle",
+            domain: [["id", "in", vehicleIds]],
+            fields: ["name", "license_plate"],
+            order: "license_plate asc, name asc",
+            limit: vehicleIds.length,
+          },
+        ],
+        connectionOverrides,
+      )
+    : [];
+
+  const fallbackVehicles = vehicles.length
+    ? vehicles
+    : await readFirstAvailable<GarbageVehicleRecord>(
+        [
+          {
+            model: "fleet.vehicle",
+            domain: [["mfo_active_for_ops", "=", true]],
+            fields: ["name", "license_plate"],
+            order: "license_plate asc, name asc",
+          },
+          {
+            model: "fleet.vehicle",
+            domain: [["active", "=", true]],
+            fields: ["name", "license_plate"],
+            order: "license_plate asc, name asc",
+          },
+          {
+            model: "fleet.vehicle",
+            domain: [],
+            fields: ["name", "license_plate"],
+            order: "license_plate asc, name asc",
+          },
+        ],
+        connectionOverrides,
+      );
+
+  const fleetBoard = await loadFleetVehicleBoard().catch(() => null);
+  const boardVehicleById = new Map((fleetBoard?.allVehicles ?? []).map((vehicle) => [vehicle.id, vehicle]));
+
+  return fallbackVehicles.map((vehicle) => {
+    const boardVehicle = boardVehicleById.get(vehicle.id);
+    const plate = vehicle.license_plate || vehicle.name || `Техник #${vehicle.id}`;
+    return {
+      id: vehicle.id,
+      label: boardVehicle?.plate || plate,
+      plate: boardVehicle?.plate || plate,
+      driverId: boardVehicle?.responsibleDriverId ?? null,
+      driverName: boardVehicle?.responsibleDriverName || boardVehicle?.fleetDriverName || "",
+      loaderIds: [boardVehicle?.loader1Id, boardVehicle?.loader2Id].filter((id): id is number => Boolean(id)),
+      loaderNames: [boardVehicle?.loader1Name, boardVehicle?.loader2Name].filter(
+        (name): name is string => Boolean(name),
+      ),
+    };
+  });
+}
+
+export async function loadActiveGarbageVehicleOptions(
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<GarbageVehicleOption[]> {
   const vehicles = await readFirstAvailable<GarbageVehicleRecord>(
     [
       {
         model: "fleet.vehicle",
-        domain: ["&", ["active", "=", true], ...categoryDomain],
-        fields: ["name", "license_plate", "category_id"],
-        order: "license_plate asc, name asc",
-        limit: 500,
-      },
-      {
-        model: "fleet.vehicle",
-        domain: categoryDomain,
-        fields: ["name", "license_plate", "category_id"],
+        domain: [["mfo_active_for_ops", "=", true]],
+        fields: ["name", "license_plate"],
         order: "license_plate asc, name asc",
         limit: 500,
       },
       {
         model: "fleet.vehicle",
         domain: [["active", "=", true]],
-        fields: ["name", "license_plate", "category_id"],
+        fields: ["name", "license_plate"],
         order: "license_plate asc, name asc",
         limit: 500,
       },
       {
         model: "fleet.vehicle",
         domain: [],
-        fields: ["name", "license_plate", "category_id"],
+        fields: ["name", "license_plate"],
         order: "license_plate asc, name asc",
         limit: 500,
       },
@@ -1960,12 +2483,22 @@ export async function loadGarbageVehicleOptions(
     connectionOverrides,
   );
 
-  return vehicles.filter(isGarbageCollectionVehicle).map((vehicle) => {
+  const fleetBoard = await loadFleetVehicleBoard().catch(() => null);
+  const boardVehicleById = new Map((fleetBoard?.allVehicles ?? []).map((vehicle) => [vehicle.id, vehicle]));
+
+  return vehicles.map((vehicle) => {
+    const boardVehicle = boardVehicleById.get(vehicle.id);
     const plate = vehicle.license_plate || vehicle.name || `Техник #${vehicle.id}`;
     return {
       id: vehicle.id,
-      label: plate,
-      plate,
+      label: boardVehicle?.plate || plate,
+      plate: boardVehicle?.plate || plate,
+      driverId: boardVehicle?.responsibleDriverId ?? null,
+      driverName: boardVehicle?.responsibleDriverName || boardVehicle?.fleetDriverName || "",
+      loaderIds: [boardVehicle?.loader1Id, boardVehicle?.loader2Id].filter((id): id is number => Boolean(id)),
+      loaderNames: [boardVehicle?.loader1Name, boardVehicle?.loader2Name].filter(
+        (name): name is string => Boolean(name),
+      ),
     };
   });
 }
@@ -2141,19 +2674,19 @@ export async function createSeasonalWorkspacePlan(
     return {
       planId: result,
       created: true,
-      message: "Улирлын хог ачилтын төлөвлөгөө амжилттай үүслээ.",
+      message: "Гэнэтийн ажил амжилттай үүслээ.",
     };
   }
 
   const planId = result.plan_id || result.id;
   if (!planId) {
-    throw new Error("Улирлын төлөвлөгөөний дугаар буцаагдсангүй.");
+    throw new Error("Гэнэтийн ажлын дугаар буцаагдсангүй.");
   }
 
   return {
     planId,
     created: result.created ?? true,
-    message: result.message || "Улирлын хог ачилтын төлөвлөгөө амжилттай үүслээ.",
+    message: result.message || "Гэнэтийн ажил амжилттай үүслээ.",
   };
 }
 
@@ -2246,7 +2779,7 @@ export async function loadSeasonalPlanDetail(
 
   const plan = plans[0];
   if (!plan) {
-    throw new Error("Улирлын төлөвлөгөө олдсонгүй.");
+    throw new Error("Гэнэтийн ажил олдсонгүй.");
   }
 
   const daysByLineId = new Map<number, SeasonalPlanDay[]>();
@@ -2295,7 +2828,7 @@ export async function loadSeasonalPlanDetail(
       plannedTonnage: line.planned_tonnage ?? 0,
       plannedTonnageLabel: formatTonnage(line.planned_tonnage ?? 0),
       routeId: relationId(line.route_id ?? false),
-      routeName: relationName(line.route_id ?? false, "Маршрутгүй"),
+      routeName: relationName(line.route_id ?? false, "Гараар оруулсан байршил"),
       remarks: line.remarks || "",
       days: lineDays,
     };
@@ -2393,14 +2926,21 @@ export async function loadProjectDetail(
         "sequence",
         "stage_id",
         "ops_team_leader_id",
+        "user_ids",
         "ops_planned_quantity",
         "ops_completed_quantity",
         "ops_progress_percent",
         "ops_measurement_unit",
         "ops_measurement_unit_id",
+        "mfo_operation_type",
         "date_deadline",
         "state",
         "mfo_state",
+        "ops_reports_locked",
+        "mfo_shift_date",
+        "mfo_vehicle_id",
+        "mfo_driver_employee_id",
+        "mfo_collector_employee_ids",
         "description",
       ],
       {
@@ -2438,6 +2978,7 @@ export async function loadProjectDetail(
         "image_attachment_ids",
         "audio_attachment_ids",
         "state",
+        "rejection_reason",
         "task_measurement_unit_id",
         "task_measurement_unit_code",
       ],
@@ -2496,11 +3037,61 @@ export async function loadProjectDetail(
     taskReports.push(report);
     reportsByTaskId.set(reportTaskId, taskReports);
   }
+
+  const taskAssigneeUserIds = Array.from(new Set(tasks.flatMap((task) => task.user_ids ?? [])));
+  const taskAssigneeUsers = taskAssigneeUserIds.length
+    ? await executeOdooKw<UserRecord[]>(
+        "res.users",
+        "search_read",
+        [[["id", "in", taskAssigneeUserIds]]],
+        {
+          fields: ["name", "login", "ops_user_type"],
+          order: "name asc",
+          limit: taskAssigneeUserIds.length,
+        },
+        connectionOverrides,
+      ).catch(() => [])
+    : [];
+  const taskAssigneeUserById = new Map(taskAssigneeUsers.map((user) => [user.id, user]));
+  const taskCrewEmployeeIds = Array.from(
+    new Set(
+      tasks.flatMap((task) => [
+        relationId(task.mfo_driver_employee_id ?? false),
+        ...(task.mfo_collector_employee_ids ?? []),
+      ]).filter((id): id is number => Boolean(id)),
+    ),
+  );
+  const taskCrewEmployees = taskCrewEmployeeIds.length
+    ? await executeOdooKw<EmployeeUserRecord[]>(
+        "hr.employee",
+        "search_read",
+        [[["id", "in", taskCrewEmployeeIds]]],
+        {
+          fields: ["name", "user_id", "department_id", "job_id", "job_title"],
+          order: "name asc",
+          limit: taskCrewEmployeeIds.length,
+        },
+        connectionOverrides,
+      ).catch(() => [])
+    : [];
+  const taskCrewEmployeeById = new Map(taskCrewEmployees.map((employee) => [employee.id, employee]));
+
   const taskCards = tasks
     .filter((task) => !isRoadCleaningPhotoPlaceholderLine(task.name))
     .map((task) => {
     const taskReports = reportsByTaskId.get(task.id) ?? [];
     const quantitySnapshot = getProjectTaskQuantitySnapshot(task, taskReports);
+    const assigneeUserIds = task.user_ids ?? [];
+    const assigneeNames = assigneeUserIds.map(
+      (userId) => taskAssigneeUserById.get(userId)?.name || `Хэрэглэгч #${userId}`,
+    );
+    const vehicleId = relationId(task.mfo_vehicle_id ?? false);
+    const driverEmployeeId = relationId(task.mfo_driver_employee_id ?? false);
+    const driverName = relationName(task.mfo_driver_employee_id ?? false, "");
+    const collectorEmployeeIds = task.mfo_collector_employee_ids ?? [];
+    const collectorNames = collectorEmployeeIds
+      .map((employeeId) => taskCrewEmployeeById.get(employeeId)?.name || "")
+      .filter(Boolean);
     const effectiveStage = resolveEffectiveTaskStage(
       relationName(task.stage_id, ""),
       quantitySnapshot.progress,
@@ -2509,6 +3100,7 @@ export async function loadProjectDetail(
         reportStates: taskReports.map((report) => report.state),
         mfoState: task.mfo_state,
         taskState: task.state,
+        reportsLocked: Boolean(task.ops_reports_locked),
       },
     );
 
@@ -2527,11 +3119,20 @@ export async function loadProjectDetail(
       teamLeaderName: relationName(task.ops_team_leader_id, "Сонгоогүй"),
       teamLeaderJobTitle:
         departmentUserById.get(relationId(task.ops_team_leader_id) ?? 0)?.jobTitle ?? "",
+      assignees: assigneeNames,
+      assigneeUserIds,
+      vehicleId,
+      vehicleName: relationName(task.mfo_vehicle_id ?? false, ""),
+      driverEmployeeId,
+      driverName,
+      collectorEmployeeIds,
+      collectorNames,
       plannedQuantity: quantitySnapshot.plannedQuantity,
       completedQuantity: quantitySnapshot.completedQuantity,
       measurementUnit: quantitySnapshot.measurementUnit,
       quantitySummary: quantitySnapshot.quantitySummary,
       quantitySummaryLines: quantitySnapshot.quantitySummaryLines,
+      reportCount: taskReports.length,
     };
   }).sort((left, right) => {
     const leftSequence = getRoadCleaningDefaultLineSequence(left.name);
@@ -2586,38 +3187,60 @@ export async function loadTaskDetail(
   taskId: number,
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<TaskDetail> {
-  const taskPromise = searchReadWithFieldFallback<TaskRecord>(
-    "project.task",
-    [["id", "=", taskId]],
-    [
-      "name",
-      "project_id",
-      "stage_id",
-      "ops_team_leader_id",
-      "user_ids",
-      "mfo_crew_team_id",
-      "mfo_operation_type",
-      "ops_planned_quantity",
-      "ops_completed_quantity",
-      "ops_remaining_quantity",
-      "ops_progress_percent",
-      "ops_measurement_unit",
-      "ops_measurement_unit_id",
-      "ops_measurement_unit_code",
-      "priority",
-      "date_deadline",
-      "state",
-      "description",
-      "ops_can_submit_for_review",
-      "ops_can_mark_done",
-      "ops_can_return_for_changes",
-      "ops_reports_locked",
-    ],
-    {
-      limit: 1,
-    },
-    connectionOverrides,
-  );
+  const taskQuery = (overrides: Partial<OdooConnection>) =>
+    searchReadWithFieldFallback<TaskRecord>(
+      "project.task",
+      [["id", "=", taskId]],
+      [
+        "name",
+        "project_id",
+        "stage_id",
+        "ops_team_leader_id",
+        "user_ids",
+        "mfo_crew_team_id",
+        "mfo_operation_type",
+        "ops_planned_quantity",
+        "ops_completed_quantity",
+        "ops_remaining_quantity",
+        "ops_progress_percent",
+        "ops_measurement_unit",
+        "ops_measurement_unit_id",
+        "ops_measurement_unit_code",
+        "priority",
+        "date_deadline",
+        "mfo_shift_date",
+        "mfo_vehicle_id",
+        "mfo_driver_employee_id",
+        "mfo_collector_employee_ids",
+        "state",
+        "description",
+        "ops_can_submit_for_review",
+        "ops_can_mark_done",
+        "ops_can_return_for_changes",
+        "ops_reports_locked",
+      ],
+      {
+        limit: 1,
+      },
+      overrides,
+    );
+
+  const primaryConnection = createOdooConnection(connectionOverrides);
+  const fallbackConnection = createOdooConnection();
+  const sameConnection =
+    primaryConnection.url === fallbackConnection.url &&
+    primaryConnection.db === fallbackConnection.db &&
+    primaryConnection.login === fallbackConnection.login &&
+    primaryConnection.password === fallbackConnection.password;
+
+  const taskPromise = taskQuery(connectionOverrides).catch((error) => {
+    if (sameConnection) {
+      throw error;
+    }
+
+    console.warn("Task detail could not be loaded with user credentials, retrying as system:", error);
+    return taskQuery({});
+  });
 
   const reportQuery = (overrides: Partial<OdooConnection>) =>
     searchReadWithFieldFallback<ReportRecord>(
@@ -2670,14 +3293,6 @@ export async function loadTaskDetail(
 
   let reports = primaryReports;
   let messages = primaryMessages;
-  const primaryConnection = createOdooConnection(connectionOverrides);
-  const fallbackConnection = createOdooConnection();
-  const sameConnection =
-    primaryConnection.url === fallbackConnection.url &&
-    primaryConnection.db === fallbackConnection.db &&
-    primaryConnection.login === fallbackConnection.login &&
-    primaryConnection.password === fallbackConnection.password;
-
   if (!sameConnection) {
     if (!reports.length) {
       reports = await reportQuery({}).catch(() => [] as ReportRecord[]);
@@ -2712,6 +3327,59 @@ export async function loadTaskDetail(
       },
     ]),
   );
+  const reportIds = reports.map((report) => report.id).filter((id) => id > 0);
+  const fallbackReportAttachments = reportIds.length
+    ? await executeOdooKw<OdooAttachmentRecord[]>(
+        "ir.attachment",
+        "search_read",
+        [[["res_model", "=", "ops.task.report"], ["res_id", "in", reportIds]]],
+        {
+          fields: ["name", "mimetype", "res_id"],
+          order: "create_date asc, id asc",
+          limit: Math.max(reportIds.length * 20, 100),
+        },
+        connectionOverrides,
+      ).catch(() => [])
+    : [];
+  const fallbackReportAttachmentsByReportId = new Map<number, OdooAttachmentRecord[]>();
+  for (const attachment of fallbackReportAttachments) {
+    if (!attachment.res_id) {
+      continue;
+    }
+    const existing = fallbackReportAttachmentsByReportId.get(attachment.res_id) ?? [];
+    existing.push(attachment);
+    fallbackReportAttachmentsByReportId.set(attachment.res_id, existing);
+  }
+  const reportAttachmentItem = (
+    attachmentId: number,
+    fallbackAttachments: OdooAttachmentRecord[],
+    fallbackName: string,
+  ) => {
+    const fallbackAttachment = fallbackAttachments.find((attachment) => attachment.id === attachmentId);
+    return {
+      id: attachmentId,
+      name: fallbackAttachment?.name || `${fallbackName}-${attachmentId}`,
+      url: `/api/odoo/attachments/${attachmentId}`,
+    };
+  };
+  const reportAttachmentIds = (
+    primaryIds: number[] | undefined,
+    fallbackAttachments: OdooAttachmentRecord[],
+    mimePrefix: string,
+  ) => {
+    const ids = new Set<number>();
+    for (const id of primaryIds ?? []) {
+      if (Number.isFinite(id) && id > 0) {
+        ids.add(id);
+      }
+    }
+    for (const attachment of fallbackAttachments) {
+      if ((attachment.mimetype || "").startsWith(mimePrefix)) {
+        ids.add(attachment.id);
+      }
+    }
+    return Array.from(ids);
+  };
 
   let assigneeNames: string[] = [];
   let assigneeUserIds: number[] = [...(task.user_ids ?? [])];
@@ -2802,6 +3470,7 @@ export async function loadTaskDetail(
       reportStates: reports.map((report) => report.state),
       mfoState: task.mfo_state,
       taskState: task.state,
+      reportsLocked: Boolean(task.ops_reports_locked),
     },
   );
 
@@ -2818,6 +3487,7 @@ export async function loadTaskDetail(
     stageBucket: effectiveStage.bucket,
     state: task.state,
     deadline: formatDateLabel(task.date_deadline),
+    scheduledDate: formatDateInput(task.mfo_shift_date || task.date_deadline),
     measurementUnit: formatMeasurementUnit(
       task.ops_measurement_unit_id,
       task.ops_measurement_unit,
@@ -2841,11 +3511,20 @@ export async function loadTaskDetail(
     canMarkDone: Boolean(task.ops_can_mark_done),
     canReturnForChanges: Boolean(task.ops_can_return_for_changes),
     reportsLocked: Boolean(task.ops_reports_locked),
-    reports: reports.map((report) => ({
+    reports: reports.map((report) => {
+      const fallbackAttachments = fallbackReportAttachmentsByReportId.get(report.id) ?? [];
+      const imageIds = reportAttachmentIds(report.image_attachment_ids, fallbackAttachments, "image/");
+      const audioIds = reportAttachmentIds(report.audio_attachment_ids, fallbackAttachments, "audio/");
+
+      return {
       id: report.id,
       reporterId: relationId(report.reporter_id),
       reporter: relationName(report.reporter_id),
       submittedAt: formatDateLabel(report.report_datetime),
+      state: String(report.state || ""),
+      stateLabel: reportStateLabel(report.state),
+      stateBucket: reportStateBucket(report.state),
+      rejectionReason: htmlToPlainText(report.rejection_reason),
       summary: report.report_summary || "Тайлбар оруулаагүй",
       text: report.report_text || "",
       quantity: report.reported_quantity ?? 0,
@@ -2855,19 +3534,16 @@ export async function loadTaskDetail(
       ),
       measurementUnitCode:
         report.task_measurement_unit_code || task.ops_measurement_unit_code || "",
-      imageCount: report.image_count ?? 0,
-      audioCount: report.audio_count ?? 0,
-      images: (report.image_attachment_ids ?? []).map((attachmentId) => ({
-        id: attachmentId,
-        name: `image-${attachmentId}`,
-        url: `/api/odoo/attachments/${attachmentId}`,
-      })),
-      audios: (report.audio_attachment_ids ?? []).map((attachmentId) => ({
-        id: attachmentId,
-        name: `audio-${attachmentId}`,
-        url: `/api/odoo/attachments/${attachmentId}`,
-      })),
-    })),
+      imageCount: Math.max(report.image_count ?? 0, imageIds.length),
+      audioCount: Math.max(report.audio_count ?? 0, audioIds.length),
+      images: imageIds.map((attachmentId) =>
+        reportAttachmentItem(attachmentId, fallbackAttachments, "image"),
+      ),
+      audios: audioIds.map((attachmentId) =>
+        reportAttachmentItem(attachmentId, fallbackAttachments, "audio"),
+      ),
+      };
+    }),
     messages: messages
       .map((message) => ({
         id: message.id,
@@ -3414,7 +4090,7 @@ export async function assignGarbageProjectTasksFromRouteTeam(
 ) {
   const crewTeam = await loadCrewTeamForRoute(input.routeId, connectionOverrides);
   if (!crewTeam) {
-    return { assignedTaskCount: 0, hasCrewTeam: false };
+    return { assignedTaskCount: 0, hasCrewTeam: false, assignedUserIds: [] };
   }
 
   const tasks = await executeOdooKw<Array<{ id: number }>>(
@@ -3428,7 +4104,7 @@ export async function assignGarbageProjectTasksFromRouteTeam(
     connectionOverrides,
   );
   if (!tasks.length) {
-    return { assignedTaskCount: 0, hasCrewTeam: true };
+    return { assignedTaskCount: 0, hasCrewTeam: true, assignedUserIds: [] };
   }
 
   const values: Record<string, unknown> = {
@@ -3464,7 +4140,7 @@ export async function assignGarbageProjectTasksFromRouteTeam(
     connectionOverrides,
   );
 
-  return { assignedTaskCount: tasks.length, hasCrewTeam: true };
+  return { assignedTaskCount: tasks.length, hasCrewTeam: true, assignedUserIds: memberUserIds };
 }
 
 export async function createWorkspaceTask(
@@ -3480,6 +4156,12 @@ export async function createWorkspaceTask(
     plannedQuantity?: number | null;
     description?: string;
     sequence?: number | null;
+    operationType?: string;
+    shiftDate?: string;
+    vehicleId?: number | null;
+    driverEmployeeId?: number | null;
+    collectorEmployeeIds?: number[];
+    inspectorEmployeeId?: number | null;
   },
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
@@ -3518,6 +4200,29 @@ export async function createWorkspaceTask(
   }
   if (typeof input.sequence === "number" && Number.isFinite(input.sequence)) {
     optionalValues.sequence = input.sequence;
+  }
+  if (input.operationType) {
+    optionalValues.mfo_operation_type = input.operationType;
+  }
+  if (input.shiftDate) {
+    optionalValues.mfo_shift_date = input.shiftDate;
+  }
+  if (input.vehicleId) {
+    optionalValues.mfo_vehicle_id = input.vehicleId;
+  }
+  if (input.driverEmployeeId) {
+    optionalValues.mfo_driver_employee_id = input.driverEmployeeId;
+  }
+  if (input.collectorEmployeeIds?.length) {
+    optionalValues.mfo_collector_employee_ids = [
+      [6, 0, Array.from(new Set(input.collectorEmployeeIds))],
+    ];
+  }
+  if (input.inspectorEmployeeId) {
+    optionalValues.mfo_inspector_employee_id = input.inspectorEmployeeId;
+  }
+  if (assigneeUserIds.length) {
+    baseValues.user_ids = [[6, 0, assigneeUserIds]];
   }
 
   const taskId = await executeOdooKw<number>(
@@ -3691,6 +4396,24 @@ export async function createRoadCleaningWorkAttachments(
   );
 }
 
+async function runWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+) {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await worker(items[index], index);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 export async function createWorkspaceTaskReport(
   input: {
     taskId: number;
@@ -3720,10 +4443,8 @@ export async function createWorkspaceTaskReport(
   const createReportAttachments = async (
     attachments: WorkspaceReportAttachmentInput[] | undefined,
   ) => {
-    const attachmentIds: number[] = [];
-
-    for (const attachment of attachments ?? []) {
-      const attachmentId = await executeOdooKw<number>(
+    return runWithConcurrency(attachments ?? [], 3, (attachment) =>
+      executeOdooKw<number>(
         "ir.attachment",
         "create",
         [
@@ -3733,15 +4454,12 @@ export async function createWorkspaceTaskReport(
             mimetype: attachment.mimeType || "application/octet-stream",
             res_model: "ops.task.report",
             res_id: reportId,
-          },
+        },
         ],
         {},
         connectionOverrides,
-      );
-      attachmentIds.push(attachmentId);
-    }
-
-    return attachmentIds;
+      ),
+    );
   };
 
   const [imageAttachmentIds, audioAttachmentIds] = await Promise.all([
@@ -3815,10 +4533,8 @@ export async function updateWorkspaceTaskReport(
   const createReportAttachments = async (
     attachments: WorkspaceReportAttachmentInput[] | undefined,
   ) => {
-    const attachmentIds: number[] = [];
-
-    for (const attachment of attachments ?? []) {
-      const attachmentId = await executeOdooKw<number>(
+    return runWithConcurrency(attachments ?? [], 3, (attachment) =>
+      executeOdooKw<number>(
         "ir.attachment",
         "create",
         [
@@ -3828,15 +4544,12 @@ export async function updateWorkspaceTaskReport(
             mimetype: attachment.mimeType || "application/octet-stream",
             res_model: "ops.task.report",
             res_id: reportId,
-          },
+        },
         ],
         {},
         connectionOverrides,
-      );
-      attachmentIds.push(attachmentId);
-    }
-
-    return attachmentIds;
+      ),
+    );
   };
 
   const [newImageIds, newAudioIds] = await Promise.all([
@@ -4082,7 +4795,7 @@ export async function notifyWorkspaceTaskReportReviewers(
     );
     const task = tasks[0];
     if (!task) {
-      return;
+      return [];
     }
 
     const projectId = relationId(task.project_id);
@@ -4165,25 +4878,19 @@ export async function notifyWorkspaceTaskReportReviewers(
       const isExecutiveReviewer = role === "director" || role === "general_manager";
       const isDepartmentReviewer =
         role === "project_manager" && (!departmentId || departmentUserIds.has(user.id));
+      const isSeniorMasterReviewer =
+        role === "senior_master" && (!departmentId || departmentUserIds.has(user.id));
       const isMasterReviewer =
-        (role === "senior_master" || role === "team_leader") &&
-        (user.id === teamLeaderId || assignedUserIds.has(user.id));
+        role === "team_leader" && (user.id === teamLeaderId || assignedUserIds.has(user.id));
 
-      if (isExecutiveReviewer || isDepartmentReviewer || isMasterReviewer) {
+      if (isExecutiveReviewer || isDepartmentReviewer || isSeniorMasterReviewer || isMasterReviewer) {
         recipientIds.add(user.id);
-      }
-    }
-
-    for (const employee of departmentEmployees) {
-      const employeeUserId = relationId(employee.user_id);
-      if (employeeUserId && isMasterLikeJobTitle(getEmployeeJobTitle(employee))) {
-        recipientIds.add(employeeUserId);
       }
     }
 
     const finalRecipientIds = Array.from(recipientIds).filter((id) => id > 0);
     if (!finalRecipientIds.length) {
-      return;
+      return [];
     }
 
     const [activityTypeId, modelId, recipientUsers] = await Promise.all([
@@ -4252,8 +4959,10 @@ export async function notifyWorkspaceTaskReportReviewers(
         connectionOverrides,
       ).catch(() => 0);
     }
+    return finalRecipientIds;
   } catch (error) {
     console.error("Failed to notify task report reviewers:", error);
+    return [];
   }
 }
 
@@ -4261,35 +4970,56 @@ export async function markWorkspaceTaskDone(
   taskId: number,
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
-  return executeOdooKw<boolean>(
-    "project.task",
-    "action_ops_mark_done",
-    [[taskId]],
-    {},
-    connectionOverrides,
-  );
+  try {
+    return await executeOdooKw<boolean>(
+      "project.task",
+      "action_ops_mark_done",
+      [[taskId]],
+      {},
+      connectionOverrides,
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes("action_ops_mark_done") && !message.toLowerCase().includes("does not exist")) {
+      throw error;
+    }
+
+    return forceWorkspaceTaskDone(taskId, connectionOverrides);
+  }
 }
 
 async function loadDoneTaskStageId(connectionOverrides: Partial<OdooConnection>) {
-  const stages = await executeOdooKw<Array<{ id: number; name: string }>>(
-    "project.task.type",
-    "search_read",
-    [
-      [
-        "|",
-        ["name", "ilike", "Дууссан"],
-        ["name", "ilike", "Done"],
-      ],
-    ],
-    {
-      fields: ["name"],
-      order: "sequence desc, id desc",
-      limit: 1,
-    },
-    connectionOverrides,
-  ).catch(() => []);
+  const readStages = (domain: unknown[]) =>
+    executeOdooKw<Array<{ id: number; name: string }>>(
+      "project.task.type",
+      "search_read",
+      [domain],
+      {
+        fields: ["name"],
+        order: "sequence desc, id desc",
+        limit: 1,
+      },
+      connectionOverrides,
+    ).catch(() => []);
 
-  return stages[0]?.id ?? null;
+  const nameDomains = [
+    [["name", "ilike", "Дууссан ажил"]],
+    [["name", "ilike", "Дууссан"]],
+    [["name", "ilike", "Done"]],
+    [["name", "ilike", "Completed"]],
+    [["name", "ilike", "Approved"]],
+    [["name", "ilike", "Verified"]],
+  ];
+
+  for (const domain of nameDomains) {
+    const stages = await readStages(domain);
+    if (stages[0]?.id) {
+      return stages[0].id;
+    }
+  }
+
+  const foldedStages = await readStages([["fold", "=", true]]);
+  return foldedStages[0]?.id ?? null;
 }
 
 export async function forceWorkspaceTaskDone(
@@ -4297,32 +5027,87 @@ export async function forceWorkspaceTaskDone(
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
   const doneStageId = await loadDoneTaskStageId(connectionOverrides);
-  const values: Record<string, unknown> = {
+  const taskFields = await loadModelFieldNames("project.task", connectionOverrides).catch(() => null);
+  let values: Record<string, unknown> = {
     ops_progress_percent: 100,
+    ops_reports_locked: true,
+    mfo_state: "done",
+    state: "1_done",
   };
 
   if (doneStageId) {
     values.stage_id = doneStageId;
   }
 
-  try {
-    values.state = "1_done";
-    return await executeOdooKw<boolean>(
+  if (taskFields) {
+    values = keepSupportedValues(values, taskFields);
+  }
+
+  const writeDoneValues = async (nextValues: Record<string, unknown>) =>
+    executeOdooKw<boolean>(
       "project.task",
       "write",
-      [[taskId], values],
+      [[taskId], nextValues],
       {},
       connectionOverrides,
     );
+
+  try {
+    const result = await writeDoneValues(values);
+    await markWorkspaceTaskReportsApproved(taskId, connectionOverrides);
+    return result;
   } catch {
     delete values.state;
-    return executeOdooKw<boolean>(
-      "project.task",
-      "write",
-      [[taskId], values],
+    try {
+      const result = await writeDoneValues(values);
+      await markWorkspaceTaskReportsApproved(taskId, connectionOverrides);
+      return result;
+    } catch {
+      delete values.mfo_state;
+      const result = await writeDoneValues(values);
+      await markWorkspaceTaskReportsApproved(taskId, connectionOverrides);
+      return result;
+    }
+  }
+}
+
+async function markWorkspaceTaskReportsApproved(
+  taskId: number,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  try {
+    const reportIds = await executeOdooKw<number[]>(
+      "ops.task.report",
+      "search",
+      [[["task_id", "=", taskId]]],
       {},
       connectionOverrides,
     );
+
+    if (!reportIds.length) {
+      return;
+    }
+
+    const reportFields = await loadModelFieldNames("ops.task.report", connectionOverrides);
+    const approvedValues = keepSupportedValues(
+      {
+        state: "approved",
+        rejection_reason: "",
+      },
+      reportFields,
+    );
+
+    if (Object.keys(approvedValues).length) {
+      await executeOdooKw<boolean>(
+        "ops.task.report",
+        "write",
+        [reportIds, approvedValues],
+        {},
+        connectionOverrides,
+      );
+    }
+  } catch (error) {
+    console.warn("Task reports could not be marked as approved.", error);
   }
 }
 
@@ -4466,26 +5251,40 @@ export async function returnWorkspaceTaskForChanges(
     const reportIds = await executeOdooKw<number[]>(
       "ops.task.report",
       "search",
-      [[["task_id", "=", taskId], ["state", "in", ["draft", "submitted", "under_review"]]]],
+      [[["task_id", "=", taskId], ["state", "in", ["draft", "submitted", "under_review", "approved"]]]],
       {},
       connectionOverrides,
     );
 
     if (reportIds.length) {
-      await executeOdooKw<boolean>(
-        "ops.task.report",
-        "write",
-        [reportIds, { rejection_reason: returnReason }],
-        {},
-        connectionOverrides,
+      const reportFields = await loadModelFieldNames("ops.task.report", connectionOverrides);
+      const returnValues = keepSupportedValues(
+        {
+          rejection_reason: returnReason,
+          state: "returned",
+        },
+        reportFields,
       );
-      await executeOdooKw<boolean>(
-        "ops.task.report",
-        "action_return",
-        [reportIds],
-        {},
-        connectionOverrides,
-      );
+      if (Object.keys(returnValues).length) {
+        await executeOdooKw<boolean>(
+          "ops.task.report",
+          "write",
+          [reportIds, returnValues],
+          {},
+          connectionOverrides,
+        );
+      }
+      try {
+        await executeOdooKw<boolean>(
+          "ops.task.report",
+          "action_return",
+          [reportIds],
+          {},
+          connectionOverrides,
+        );
+      } catch (actionReturnError) {
+        console.warn("Task reports were written as returned but action_return failed.", actionReturnError);
+      }
     }
   } catch (reportError) {
     console.warn("Task reports could not be marked as returned.", reportError);

@@ -25,6 +25,15 @@ const ULAANBAATAR_COORDS = {
 const ULAANBAATAR_TIME_ZONE = "Asia/Ulaanb\x61\x61t\x61r";
 const WEATHER_REQUEST_TIMEOUT_MS = 10_000;
 const AIR_QUALITY_REQUEST_TIMEOUT_MS = 5_000;
+const WEATHER_CACHE_TTL_MS = 10 * 60_000;
+
+let cachedWeather:
+  | {
+      expiresAt: number;
+      value: WeatherSnapshot;
+    }
+  | null = null;
+let pendingWeather: Promise<WeatherSnapshot> | null = null;
 
 function weatherCodeLabel(code: number | null | undefined) {
   if (code === 0) {
@@ -65,6 +74,20 @@ function aqiLabel(value: number | null | undefined) {
 }
 
 export async function loadUlaanbaatarWeather(): Promise<WeatherSnapshot> {
+  if (cachedWeather && cachedWeather.expiresAt > Date.now()) {
+    return cachedWeather.value;
+  }
+  if (pendingWeather) {
+    return pendingWeather;
+  }
+
+  pendingWeather = fetchLiveUlaanbaatarWeather().finally(() => {
+    pendingWeather = null;
+  });
+  return pendingWeather;
+}
+
+async function fetchLiveUlaanbaatarWeather(): Promise<WeatherSnapshot> {
   const weatherUrl = new URL("https://api.open-meteo.com/v1/forecast");
   weatherUrl.searchParams.set("latitude", String(ULAANBAATAR_COORDS.latitude));
   weatherUrl.searchParams.set("longitude", String(ULAANBAATAR_COORDS.longitude));
@@ -150,7 +173,7 @@ export async function loadUlaanbaatarWeather(): Promise<WeatherSnapshot> {
             : null,
       })) ?? [];
 
-    return {
+    const snapshot = {
       city: "Улаанбаатар",
       temperature:
         typeof currentWeather?.temperature_2m === "number"
@@ -166,6 +189,11 @@ export async function loadUlaanbaatarWeather(): Promise<WeatherSnapshot> {
       observedAt: currentWeather?.time ?? null,
       weeklyForecast,
     };
+    cachedWeather = {
+      value: snapshot,
+      expiresAt: Date.now() + WEATHER_CACHE_TTL_MS,
+    };
+    return snapshot;
   } catch (error) {
     console.warn("Live weather could not be loaded:", error);
     return fallback;

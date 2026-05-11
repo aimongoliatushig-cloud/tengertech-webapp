@@ -61,6 +61,13 @@ class MfoCrewTeam(models.Model):
     vehicle_id = fields.Many2one("fleet.vehicle", string="Машин", tracking=True)
     driver_employee_id = fields.Many2one("hr.employee", string="Жолооч", tracking=True)
     inspector_employee_id = fields.Many2one("hr.employee", string="Хяналтын ажилтан", tracking=True)
+    inspector_employee_ids = fields.Many2many(
+        "hr.employee",
+        "mfo_inspector_team_rel",
+        "team_id",
+        "employee_id",
+        string="Хянах байцаагчид",
+    )
     collector_employee_ids = fields.Many2many(
         "hr.employee",
         "mfo_crew_team_collector_rel",
@@ -227,6 +234,13 @@ class MfoCollectionPoint(models.Model):
     gps_latitude = fields.Float(string="Байршлын өргөрөг", digits=(10, 7))
     gps_longitude = fields.Float(string="Байршлын уртраг", digits=(10, 7))
     route_id = fields.Many2one("mfo.route", string="Үндсэн маршрут")
+    inspector_employee_ids = fields.Many2many(
+        "hr.employee",
+        "mfo_inspector_point_rel",
+        "point_id",
+        "employee_id",
+        string="Хянах байцаагчид",
+    )
     frequency = fields.Selection(
         [
             ("daily", "Өдөр бүр"),
@@ -586,6 +600,55 @@ class MfoDailyWeightTotal(models.Model):
     external_reference = fields.Char(string="Гаднын дугаар")
     note = fields.Text(string="Тэмдэглэл")
     company_id = fields.Many2one("res.company", string="Компани", default=lambda self: self.env.company, required=True)
+
+
+class FleetVehicle(models.Model):
+    _inherit = "fleet.vehicle"
+
+    mfo_inspector_employee_ids = fields.Many2many(
+        "hr.employee",
+        "mfo_inspector_vehicle_rel",
+        "vehicle_id",
+        "employee_id",
+        string="Хог тээврийн хянах байцаагчид",
+    )
+    mfo_garbage_work_create_allowed = fields.Boolean(
+        string="Хог тээврийн ажил үүсгэх боломжтой",
+        default=True,
+    )
+
+
+class HrEmployee(models.Model):
+    _inherit = "hr.employee"
+
+    mfo_inspected_team_ids = fields.Many2many(
+        "mfo.crew.team",
+        "mfo_inspector_team_rel",
+        "employee_id",
+        "team_id",
+        string="Хянах багууд",
+    )
+    mfo_inspected_subdistrict_ids = fields.Many2many(
+        "mfo.subdistrict",
+        "mfo_inspector_subdistrict_rel",
+        "employee_id",
+        "subdistrict_id",
+        string="Хянах хороод",
+    )
+    mfo_inspected_point_ids = fields.Many2many(
+        "mfo.collection.point",
+        "mfo_inspector_point_rel",
+        "employee_id",
+        "point_id",
+        string="Хянах хогийн цэгүүд",
+    )
+    mfo_inspected_vehicle_ids = fields.Many2many(
+        "fleet.vehicle",
+        "mfo_inspector_vehicle_rel",
+        "employee_id",
+        "vehicle_id",
+        string="Хянах машинууд",
+    )
 
 
 class MfoPlanningTemplate(models.Model):

@@ -67,6 +67,10 @@ export type RouteManagementData = {
     id: number;
     label: string;
   }>;
+  districts: Array<{
+    id: number;
+    label: string;
+  }>;
   vehicles: Array<{
     id: number;
     label: string;
@@ -88,7 +92,7 @@ function relationId(value: Relation | undefined) {
 export async function loadRouteManagementData(
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<RouteManagementData> {
-  const [routes, points, subdistricts, vehicles, teams] = await Promise.all([
+  const [routes, points, subdistricts, districts, vehicles, teams] = await Promise.all([
     executeOdooKw<RouteRecord[]>(
       "mfo.route",
       "search_read",
@@ -119,6 +123,17 @@ export async function loadRouteManagementData(
         fields: ["name", "district_id"],
         order: "district_id asc, name asc",
         limit: 120,
+      },
+      connectionOverrides,
+    ).catch(() => []),
+    executeOdooKw<Array<{ id: number; name: string }>>(
+      "mfo.district",
+      "search_read",
+      [[["active", "=", true]]],
+      {
+        fields: ["name"],
+        order: "name asc",
+        limit: 80,
       },
       connectionOverrides,
     ).catch(() => []),
@@ -218,6 +233,10 @@ export async function loadRouteManagementData(
     subdistricts: uniqueSubdistricts.map((subdistrict) => ({
       id: subdistrict.id,
       label: `${relationName(subdistrict.district_id)} ${subdistrict.name}`.trim(),
+    })),
+    districts: Array.from(new Map(districts.map((district) => [district.id, district])).values()).map((district) => ({
+      id: district.id,
+      label: district.name,
     })),
     vehicles: vehicles.map((vehicle) => ({
       id: vehicle.id,

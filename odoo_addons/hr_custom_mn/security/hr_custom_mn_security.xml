@@ -206,6 +206,35 @@
             <field name="groups" eval="[(4, ref('group_hr_custom_mn_officer')), (4, ref('group_hr_custom_mn_admin'))]"/>
         </record>
 
+        <record id="rule_municipal_hr_clearance_sheet_employee_own" model="ir.rule">
+            <field name="name">HR MN clearance employee own</field>
+            <field name="model_id" ref="model_municipal_hr_clearance_sheet"/>
+            <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_hr_custom_mn_employee'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_municipal_hr_clearance_sheet_manager_department" model="ir.rule">
+            <field name="name">HR MN clearance manager department</field>
+            <field name="model_id" ref="model_municipal_hr_clearance_sheet"/>
+            <field name="domain_force">['|', ('employee_id.parent_id.user_id', '=', user.id), ('department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_hr_custom_mn_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_municipal_hr_clearance_sheet_officer_all" model="ir.rule">
+            <field name="name">HR MN clearance officer all</field>
+            <field name="model_id" ref="model_municipal_hr_clearance_sheet"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_hr_custom_mn_officer')), (4, ref('group_hr_custom_mn_admin'))]"/>
+        </record>
+
         <record id="rule_municipal_discipline_hr_custom_all" model="ir.rule">
             <field name="name">HR MN municipal discipline all</field>
             <field name="model_id" ref="municipal_core.model_municipal_discipline"/>

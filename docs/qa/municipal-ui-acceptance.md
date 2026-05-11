@@ -24,8 +24,6 @@ This guide is for UI reviewers validating the municipal ERP web app and mobile-f
 | `docs/qa-assets/inspector-master-desktop.png` | Inspector/master desktop evidence |
 | `docs/qa-assets/hr-dashboard-desktop.png` | HR desktop evidence |
 | `docs/qa-assets/hr-dashboard-mobile.png` | HR mobile evidence |
-| `docs/qa-assets/garbage-route-today-desktop.png` | Garbage route today-view evidence |
-| `docs/qa-assets/garbage-route-weekly-plan-mobile.png` | Garbage route weekly-plan mobile evidence |
 | `docs/qa-assets/repair-requests-list.png` | Repair request list evidence |
 | `docs/qa-assets/repair-request-detail.png` | Repair request detail evidence |
 | `docs/qa-assets/role-ui-summary.json` | Role UI smoke summary |
@@ -142,34 +140,6 @@ Fail conditions:
 - Worker users can browse HR discipline records for other employees.
 - Mongolian labels are broken or unreadable.
 
-## Garbage Route Flow
-
-Expected audience: dispatcher, transport inspector, driver, loader team, route manager.
-
-Acceptance checklist:
-
-- [ ] Garbage route dashboard opens and shows daily/weekly route context.
-- [ ] Weekly plan/template screen shows Monday-Sunday planning clearly.
-- [ ] Daily route screen shows route, vehicle, driver, inspector, crew/team, and stop count.
-- [ ] Driver/mobile user can start route or shift where allowed.
-- [ ] Stop list shows arrival/done/skipped states.
-- [ ] Each stop supports proof photo upload from mobile.
-- [ ] Issue report can be created from a stop with type, severity, title, and description.
-- [ ] Route can be submitted for inspector review.
-- [ ] Inspector review can verify/return route execution.
-- [ ] Missing proof photo or skipped-without-reason state is visible as a quality warning.
-
-Evidence:
-
-- `docs/qa-assets/garbage-route-today-desktop.png`
-- `docs/qa-assets/garbage-route-weekly-plan-mobile.png`
-
-Fail conditions:
-
-- Route screen hides assigned route from the assigned mobile user.
-- Weekly board is unreadable on mobile.
-- Vehicle/driver/team details are missing from route context.
-
 ## Repair Flow
 
 Expected audience: mechanic, repair team lead, storekeeper, finance, director/approver.
@@ -208,7 +178,6 @@ Use this table in the PR or QA note after running the checks.
 | Department manager | Pending | Pending |  |  |
 | Inspector | Pending | Pending |  |  |
 | HR | Pending | Pending |  |  |
-| Garbage route | Pending | Pending |  |  |
 | Repair | Pending | Pending |  |  |
 
 ## Branch PR Checklist

@@ -2,13 +2,13 @@ import "server-only";
 
 import { chromium, type Browser, type Page } from "playwright";
 
-const WRS_REPORT_URL =
-  process.env.WRS_REPORT_URL ??
+const DEFAULT_WRS_REPORT_URL =
   "http://wrs.ubservice.mn/ReportViewer_DetailView/66683522-e7a2-41ec-bce4-f5123a09485c";
-const WRS_REPORT_LOGIN = process.env.WRS_REPORT_LOGIN ?? "5673461";
-const WRS_REPORT_PASSWORD = process.env.WRS_REPORT_PASSWORD ?? WRS_REPORT_LOGIN;
+const WRS_REPORT_URL = process.env.WRS_REPORT_URL?.trim() || DEFAULT_WRS_REPORT_URL;
+const WRS_REPORT_LOGIN = process.env.WRS_REPORT_LOGIN?.trim() || "5673461";
+const WRS_REPORT_PASSWORD = process.env.WRS_REPORT_PASSWORD?.trim() || WRS_REPORT_LOGIN;
 const WRS_DEFAULT_BRANCH_NAME =
-  "\u041c\u043e\u0440\u0438\u043d\u0433\u0438\u0439\u043d \u044d\u043d\u0433\u044d\u0440\u0438\u0439\u043d \u0442\u04e9\u0432\u043b\u04e9\u0440\u0441\u04e9\u043d \u0445\u043e\u0433\u0438\u0439\u043d \u0446\u044d\u0433";
+  "\u041d\u0430\u0440\u0430\u043d\u0433\u0438\u0439\u043d \u044d\u043d\u0433\u044d\u0440\u0438\u0439\u043d \u0442\u04e9\u0432\u043b\u04e9\u0440\u0441\u04e9\u043d \u0445\u043e\u0433\u0438\u0439\u043d \u0446\u044d\u0433";
 const WRS_REQUIRED_BRANCH_NAME =
   process.env.WRS_REPORT_BRANCH_NAME?.trim() || WRS_DEFAULT_BRANCH_NAME;
 const PARAMETER_CAPTION_SELECTOR = "label.dxbrv-params-caption[for]";
@@ -36,6 +36,22 @@ type AggregatedVehicleTotal = {
   rowCount: number;
   samples: string[];
   vehicleLabel: string;
+};
+
+export type WrsWeightReportRow = {
+  sequence: number;
+  ticketNumber: string;
+  vehicleCode: string;
+  carrierName: string;
+  fromLocation: string;
+  district: string;
+  wasteType: string;
+  sourceName: string;
+  reportDate: string;
+  reportTime: string;
+  vehicleWeightKg: number;
+  garbageWeightKg: number;
+  totalWeightKg: number;
 };
 
 export type WrsReportResult = {
@@ -69,6 +85,22 @@ export type WrsNormalizedTotalsResult = {
   extractedLineCount: number;
   totals: WrsNormalizedVehicleTotal[];
   ignoredSamples: string[];
+};
+
+export type WrsWeightRowsResult = {
+  startDate: string;
+  endDate: string;
+  branchName: string;
+  title: string;
+  pageLabel: string | null;
+  totalPages: number | null;
+  rows: WrsWeightReportRow[];
+  tripCount: number;
+  vehicleCount: number;
+  totalVehicleWeightKg: number;
+  totalGarbageWeightKg: number;
+  totalCombinedWeightKg: number;
+  generatedAt: string;
 };
 
 function isValidDateValue(value: string) {
@@ -172,11 +204,11 @@ async function fillReportDate(page: Page, inputId: string, value: string) {
 async function selectBranch(page: Page, branchId: string) {
   const currentBranchId =
     (await page.evaluate((selector) => {
-      const ids = Array.from(document.querySelectorAll(selector))
-        .map((label) => label.getAttribute("for") ?? "")
-        .filter(Boolean);
-
-      return ids[2] ?? null;
+      const labels = Array.from(document.querySelectorAll(selector));
+      const branchLabel = labels.find((label) =>
+        (label.textContent ?? "").toLowerCase().includes("салбар"),
+      );
+      return branchLabel?.getAttribute("for") ?? labels[2]?.getAttribute("for") ?? null;
     }, PARAMETER_CAPTION_SELECTOR)) ?? branchId;
 
   const branchInput = page.locator(`input#${currentBranchId}`);
@@ -192,12 +224,21 @@ async function selectBranch(page: Page, branchId: string) {
 
   await waitForSubmitButtonEnabled(page);
 
-  const comboBoxId = (await branchInput.getAttribute("parent-id"))?.trim() ?? "";
+  const comboBoxId =
+    (await branchInput.evaluate((input) => {
+      const parentId = input.getAttribute("parent-id")?.trim();
+      const parent = parentId ? document.getElementById(parentId) : null;
+      const combo = parent || input.closest("dxbl-combo-box, dxbl-date-edit");
+      return combo?.id || parentId || "";
+    })) ?? "";
   const dropdownButton = comboBoxId
     ? page
         .locator(`[id="${comboBoxId}"] button[aria-label="Open or close the drop-down window"]`)
         .first()
-    : page.locator('button[aria-label="Open or close the drop-down window"]').last();
+    : branchInput
+        .locator("xpath=ancestor::*[self::dxbl-combo-box or self::dxbl-date-edit][1]")
+        .locator('button[aria-label="Open or close the drop-down window"]')
+        .first();
 
   await dropdownButton.waitFor({
     state: "attached",
@@ -301,8 +342,11 @@ async function readReportHeader(page: Page): Promise<ReportHeader> {
   });
 }
 
-async function prepareWrsReportPage(requestedDate: string): Promise<PreparedReportPage> {
-  if (!isValidDateValue(requestedDate)) {
+async function prepareWrsReportPage(
+  requestedDate: string,
+  endDate = requestedDate,
+): Promise<PreparedReportPage> {
+  if (!isValidDateValue(requestedDate) || !isValidDateValue(endDate)) {
     throw new Error("Invalid date value. Use YYYY-MM-DD.");
   }
 
@@ -329,7 +373,7 @@ async function prepareWrsReportPage(requestedDate: string): Promise<PreparedRepo
     const { startDateId, endDateId, branchId } = await getParameterMap(page);
 
     await fillReportDate(page, startDateId, requestedDate);
-    await fillReportDate(page, endDateId, requestedDate);
+    await fillReportDate(page, endDateId, endDate);
 
     const branchName = await selectBranch(page, branchId);
 
@@ -393,6 +437,123 @@ function splitCells(line: string) {
     .split(/\t+| {2,}| \| /)
     .map((item) => normalizeLine(item))
     .filter(Boolean);
+}
+
+function normalizeReportTime(value: string) {
+  const match = /^(\d{1,2}):(\d{2})/.exec(normalizeLine(value));
+  if (!match) {
+    return normalizeLine(value);
+  }
+
+  return `${match[1]?.padStart(2, "0")}:${match[2]}`;
+}
+
+function normalizeReportDate(value: string, fallbackDate: string) {
+  const normalized = normalizeLine(value);
+  const fullDate = normalized.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+  if (fullDate) {
+    return fullDate;
+  }
+
+  return normalized || fallbackDate;
+}
+
+function parseWrsWeightRowsFromCells(rows: string[][], fallbackDate: string) {
+  const parsedRows: WrsWeightReportRow[] = [];
+
+  for (const cells of rows) {
+    if (cells.length < 13 || !/^\d+$/.test(cells[0] ?? "")) {
+      continue;
+    }
+
+    const ticketNumber = cells[1] ?? "";
+    const vehicleCode = normalizeVehicleCode(cells[2] ?? "");
+    const vehicleWeightKg = parseNumericToken(cells[10] ?? "") ?? 0;
+    const garbageWeightKg = parseNumericToken(cells[11] ?? "") ?? 0;
+    const totalWeightKg = parseNumericToken(cells[12] ?? "") ?? 0;
+
+    if (!ticketNumber || !vehicleCode || garbageWeightKg <= 0) {
+      continue;
+    }
+
+    parsedRows.push({
+      sequence: Number(cells[0]),
+      ticketNumber,
+      vehicleCode,
+      carrierName: cells[3] ?? "",
+      fromLocation: cells[4] ?? "",
+      district: cells[5] ?? "",
+      wasteType: cells[6] ?? "",
+      sourceName: cells[7] ?? "",
+      reportDate: normalizeReportDate(cells[8] ?? "", fallbackDate),
+      reportTime: normalizeReportTime(cells[9] ?? ""),
+      vehicleWeightKg,
+      garbageWeightKg,
+      totalWeightKg,
+    });
+  }
+
+  return parsedRows;
+}
+
+async function extractWeightReportRows(page: Page, fallbackDate: string) {
+  const tableRows = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("tr"))
+      .map((row) =>
+        Array.from(row.querySelectorAll("td"))
+          .map((cell) =>
+            (cell.textContent ?? "")
+              .replace(/\u00a0/g, " ")
+              .replace(/\s+/g, " ")
+              .trim(),
+          )
+          .filter(Boolean),
+      )
+      .filter((cells) => cells.length > 0),
+  );
+
+  return parseWrsWeightRowsFromCells(tableRows, fallbackDate);
+}
+
+function aggregateWeightRows(
+  rows: WrsWeightReportRow[],
+  requestedDate: string,
+  branchName: string,
+) {
+  const totals = new Map<string, AggregatedVehicleTotal>();
+
+  for (const row of rows) {
+    const current = totals.get(row.vehicleCode) ?? {
+      netWeightTotal: 0,
+      rowCount: 0,
+      samples: [],
+      vehicleLabel: row.vehicleCode,
+    };
+
+    current.netWeightTotal += row.garbageWeightKg;
+    current.rowCount += 1;
+    if (current.samples.length < 3) {
+      current.samples.push(
+        `${row.sequence}. ${row.ticketNumber} ${row.vehicleCode} ${row.garbageWeightKg} кг`,
+      );
+    }
+
+    totals.set(row.vehicleCode, current);
+  }
+
+  return Array.from(totals.entries())
+    .map(([vehicleCode, total]) => ({
+      vehicleCode,
+      vehicleLabel: total.vehicleLabel || vehicleCode,
+      branchName,
+      requestedDate,
+      netWeightTotal: Math.round(total.netWeightTotal * 100) / 100,
+      source: "wrs_normalized" as const,
+      externalReference: `${requestedDate}:${vehicleCode}`,
+      rowCount: total.rowCount,
+      sampleRows: total.samples,
+    }))
+    .sort((left, right) => left.vehicleCode.localeCompare(right.vehicleCode));
 }
 
 function findVehicleCode(cells: string[]) {
@@ -597,6 +758,20 @@ export async function fetchWrsDailyVehicleTotals(
 
   try {
     const header = await readReportHeader(page);
+    const weightRows = await extractWeightReportRows(page, requestedDate);
+    if (weightRows.length) {
+      return {
+        requestedDate,
+        branchName,
+        title: header.title,
+        pageLabel: header.pageLabel,
+        totalPages: parseTotalPages(header.pageLabel),
+        extractedLineCount: weightRows.length,
+        totals: aggregateWeightRows(weightRows, requestedDate, branchName),
+        ignoredSamples: [],
+      };
+    }
+
     const textLines = await extractReportTextLines(page);
     const aggregated = aggregateVehicleTotals(textLines, requestedDate, branchName);
 
@@ -609,6 +784,41 @@ export async function fetchWrsDailyVehicleTotals(
       extractedLineCount: textLines.length,
       totals: aggregated.totals,
       ignoredSamples: aggregated.ignoredSamples,
+    };
+  } finally {
+    await browser.close();
+  }
+}
+
+export async function fetchWrsWeightRows(
+  startDate: string,
+  endDate = startDate,
+): Promise<WrsWeightRowsResult> {
+  if (!isValidDateValue(startDate) || !isValidDateValue(endDate) || startDate > endDate) {
+    throw new Error("Invalid date range. Use YYYY-MM-DD.");
+  }
+
+  const { browser, branchName, page } = await prepareWrsReportPage(startDate, endDate);
+
+  try {
+    const header = await readReportHeader(page);
+    const rows = await extractWeightReportRows(page, startDate === endDate ? startDate : "");
+    const vehicleCodes = new Set(rows.map((row) => row.vehicleCode));
+
+    return {
+      startDate,
+      endDate,
+      branchName,
+      title: header.title,
+      pageLabel: header.pageLabel,
+      totalPages: parseTotalPages(header.pageLabel),
+      rows,
+      tripCount: rows.length,
+      vehicleCount: vehicleCodes.size,
+      totalVehicleWeightKg: rows.reduce((sum, row) => sum + row.vehicleWeightKg, 0),
+      totalGarbageWeightKg: rows.reduce((sum, row) => sum + row.garbageWeightKg, 0),
+      totalCombinedWeightKg: rows.reduce((sum, row) => sum + row.totalWeightKg, 0),
+      generatedAt: new Date().toISOString(),
     };
   } finally {
     await browser.close();

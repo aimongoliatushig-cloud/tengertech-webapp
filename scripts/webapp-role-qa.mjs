@@ -29,8 +29,6 @@ const PAGES = [
   "/hr",
   "/fleet-repair/requests",
   "/fleet-repair/dashboard",
-  "/garbage-routes/today",
-  "/garbage-routes/weekly-plan",
   "/procurement/dashboard",
   "/profile",
 ];

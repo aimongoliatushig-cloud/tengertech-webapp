@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import styles from "@/app/workspace.module.css";
-import type { SelectOption, WorkUnitOption } from "@/lib/workspace";
+import type { FleetVehicleDriverOption } from "@/lib/odoo";
+import type { GarbagePointOption, SelectOption, WorkUnitOption } from "@/lib/workspace";
 
 import { ProjectTaskCreateForm } from "./project-task-create-form";
 
@@ -24,6 +25,17 @@ type Props = {
   allUnitOptions: WorkUnitOption[];
   defaultUnitId: number | null;
   allowedUnitSummary?: string;
+  operationType?: string;
+  garbagePointOptions?: GarbagePointOption[];
+  garbageLoaderOptions?: FleetVehicleDriverOption[];
+  garbageVehicleContext?: {
+    vehicleId: number | null;
+    vehicleName: string;
+    driverEmployeeId: number | null;
+    driverName: string;
+    collectorEmployeeIds: number[];
+    collectorNames: string[];
+  } | null;
   defaultOpen?: boolean;
 };
 
@@ -40,6 +52,10 @@ export function ProjectTaskCreateModal({
   allUnitOptions,
   defaultUnitId,
   allowedUnitSummary,
+  operationType = "",
+  garbagePointOptions = [],
+  garbageLoaderOptions = [],
+  garbageVehicleContext = null,
   defaultOpen = false,
 }: Props) {
   const [isMounted, setIsMounted] = useState(false);
@@ -133,6 +149,10 @@ export function ProjectTaskCreateModal({
                 allUnitOptions={allUnitOptions}
                 defaultUnitId={defaultUnitId}
                 allowedUnitSummary={allowedUnitSummary}
+                operationType={operationType}
+                garbagePointOptions={garbagePointOptions}
+                garbageLoaderOptions={garbageLoaderOptions}
+                garbageVehicleContext={garbageVehicleContext}
               />
             </div>
           </div>,

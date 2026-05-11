@@ -347,17 +347,27 @@
   box-shadow: 0 18px 42px rgba(27, 73, 38, 0.14);
 }
 
+.profileMenu form {
+  margin: 0;
+}
+
 .profileMenuLink {
   display: grid;
+  width: 100%;
   grid-template-columns: 22px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   min-height: 40px;
   padding: 0 10px;
   border-radius: 8px;
+  border: 0;
+  background: transparent;
   color: #35443b;
+  cursor: pointer;
+  font: inherit;
   font-size: 0.86rem;
   font-weight: 750;
+  text-align: left;
   text-decoration: none;
 }
 
@@ -374,6 +384,11 @@
 }
 
 @media (max-width: 1080px) {
+  .menuShell {
+    position: relative;
+    z-index: 1300;
+  }
+
   .menuBar {
     display: none;
   }
@@ -383,17 +398,19 @@
   }
 
   .mobileTopBar {
-    position: sticky;
-    top: 8px;
+    position: relative;
+    top: auto;
     z-index: 60;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
-    padding: 10px 12px;
+    margin: 0;
+    padding: 10px 12px 8px;
     border: 1px solid rgba(46, 125, 50, 0.12);
-    border-radius: 22px;
-    background: rgba(255, 255, 255, 0.78);
-    box-shadow: 0 18px 44px rgba(27, 73, 38, 0.1);
+    border-bottom: 0;
+    border-radius: 20px 20px 0 0;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: none;
     backdrop-filter: blur(20px);
   }
 
@@ -436,26 +453,30 @@
   .mobileBackdrop {
     position: fixed;
     inset: 0;
-    z-index: 1200;
+    z-index: 1190;
     display: block;
     border: 0;
-    background: rgba(12, 28, 17, 0.42);
-    backdrop-filter: blur(10px);
+    background: rgba(12, 28, 17, 0.26);
+    backdrop-filter: blur(8px);
   }
 
   .mobileSheet {
     position: fixed;
     inset: 0 auto 0 0;
-    z-index: 1210;
+    z-index: 1200;
     display: grid;
     width: min(360px, calc(100vw - 18px));
+    height: 100dvh;
+    max-height: 100dvh;
     grid-template-rows: auto minmax(0, 1fr);
     gap: 16px;
     overflow-y: auto;
-    padding: 20px 14px;
+    padding: calc(18px + env(safe-area-inset-top, 0px)) 14px calc(18px + env(safe-area-inset-bottom, 0px));
     border-radius: 0 28px 28px 0;
-    background: #ffffff;
+    background: #fff;
     box-shadow: 22px 0 56px rgba(12, 28, 17, 0.18);
+    backdrop-filter: blur(24px);
+    overscroll-behavior: contain;
   }
 
   .mobileSheetHeader {

@@ -122,11 +122,16 @@ export default async function ProfilePage({ searchParams }: PageProps) {
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const departmentScopeName = await loadSessionDepartmentName(session);
   const groupFlags: Partial<RoleGroupFlags> = session.groupFlags || {};
+  const isMasterOrOperationalLeader = Boolean(
+    masterMode ||
+      groupFlags.municipalMaster ||
+      groupFlags.greenMaster ||
+      groupFlags.fleetRepairTeamLeader
+  );
   const canViewHrDirectory = Boolean(
     new Set(["system_admin", "director", "general_manager"]).has(String(session.role)) ||
-      groupFlags.hrUser ||
-      groupFlags.hrManager ||
-      groupFlags.municipalHr,
+      (!isMasterOrOperationalLeader &&
+        (groupFlags.hrUser || groupFlags.hrManager || groupFlags.municipalHr)),
   );
   const canUseProcurement = Boolean(
     new Set(["system_admin", "director", "general_manager"]).has(String(session.role)) ||
@@ -159,15 +164,17 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     password: session.password,
   };
   const showFullProfile = !workerMode;
-  const routeManagementData = showFullProfile && canCreateRoute
-    ? await loadRouteManagementData(connectionOverrides)
-    : null;
-  const teamMemberOptions = showFullProfile && canCreateTeam
-    ? await loadTeamMemberOptions(departmentScopeName, connectionOverrides)
-    : [];
-  const teamManagementData = showFullProfile && canCreateTeam
-    ? await loadTeamManagementData(departmentScopeName, connectionOverrides)
-    : { teams: [], totalTeams: 0 };
+  const [routeManagementData, teamMemberOptions, teamManagementData] = await Promise.all([
+    showFullProfile && canCreateRoute
+      ? loadRouteManagementData(connectionOverrides)
+      : Promise.resolve(null),
+    showFullProfile && canCreateTeam
+      ? loadTeamMemberOptions(departmentScopeName, connectionOverrides)
+      : Promise.resolve([]),
+    showFullProfile && canCreateTeam
+      ? loadTeamManagementData(departmentScopeName, connectionOverrides)
+      : Promise.resolve({ teams: [], totalTeams: 0 }),
+  ]);
 
   const appRoleLabel = getAppRoleLabel(
     getPrimaryAppRole({
@@ -308,6 +315,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
               canWriteReports={canWriteReports}
               canViewQualityCenter={canViewQualityCenter}
               canUseFieldConsole={canUseFieldConsole}
+              canViewHr={canViewHrDirectory}
               userName={session.name}
               roleLabel={roleLabel}
               groupFlags={session.groupFlags}

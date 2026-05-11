@@ -17,14 +17,21 @@ type SubdistrictRecord = {
   label: string;
 };
 
+type DistrictRecord = {
+  id: number;
+  label: string;
+};
+
 type PointAction = (formData: FormData) => void | Promise<void>;
 
 type PointManagementPanelProps = {
   createAction: PointAction;
+  createSubdistrictAction: PointAction;
   updateAction: PointAction;
   archiveAction: PointAction;
   points: PointRecord[];
   subdistricts: SubdistrictRecord[];
+  districts: DistrictRecord[];
 };
 
 function normalizeSearchText(value: string) {
@@ -33,10 +40,12 @@ function normalizeSearchText(value: string) {
 
 export function PointManagementPanel({
   createAction,
+  createSubdistrictAction,
   updateAction,
   archiveAction,
   points,
   subdistricts,
+  districts,
 }: PointManagementPanelProps) {
   const [activeSubdistrictId, setActiveSubdistrictId] = useState<number | "all">("all");
   const [query, setQuery] = useState("");
@@ -47,6 +56,10 @@ export function PointManagementPanel({
   const uniqueSubdistricts = useMemo(
     () => Array.from(new Map(subdistricts.map((subdistrict) => [subdistrict.id, subdistrict])).values()),
     [subdistricts],
+  );
+  const uniqueDistricts = useMemo(
+    () => Array.from(new Map(districts.map((district) => [district.id, district])).values()),
+    [districts],
   );
 
   const pointCountsBySubdistrict = useMemo(() => {
@@ -84,23 +97,47 @@ export function PointManagementPanel({
 
   return (
     <div className={styles.pointLayout}>
-      <form action={createAction} className={styles.formPanel}>
-        <span className={styles.eyebrow}>Хогийн цэг нэмэх</span>
-        <label className={styles.field}>
-          <span>Цэгийн нэр</span>
-          <input name="point_name" placeholder="Жишээ: 8-р хороо 20-р цэг" required />
-        </label>
-        <label className={styles.field}>
-          <span>Хороо</span>
-          <select name="subdistrict_id" required defaultValue="">
-            <option value="" disabled>Хороо сонгох</option>
-            {uniqueSubdistricts.map((subdistrict) => (
-              <option key={`create-subdistrict-${subdistrict.id}`} value={subdistrict.id}>{subdistrict.label}</option>
-            ))}
-          </select>
-        </label>
-        <button type="submit" className={styles.primaryButton}>Хогийн цэг нэмэх</button>
-      </form>
+      <div className={styles.pointCreateStack}>
+        <form action={createSubdistrictAction} className={styles.formPanel}>
+          <span className={styles.eyebrow}>Хороо нэмэх</span>
+          <label className={styles.field}>
+            <span>Дүүрэг</span>
+            <select name="district_id" defaultValue="">
+              <option value="">Шинэ дүүрэг үүсгэх</option>
+              {uniqueDistricts.map((district) => (
+                <option key={`create-district-${district.id}`} value={district.id}>{district.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.field}>
+            <span>Шинэ дүүргийн нэр</span>
+            <input name="district_name" placeholder="Жишээ: Сонгинохайрхан" />
+          </label>
+          <label className={styles.field}>
+            <span>Хороо</span>
+            <input name="subdistrict_name" placeholder="Жишээ: 9-р хороо" required />
+          </label>
+          <button type="submit" className={styles.primaryButton}>Хороо нэмэх</button>
+        </form>
+
+        <form action={createAction} className={styles.formPanel}>
+          <span className={styles.eyebrow}>Хогийн цэг нэмэх</span>
+          <label className={styles.field}>
+            <span>Цэгийн нэр</span>
+            <input name="point_name" placeholder="Жишээ: 8-р хороо 20-р цэг" required />
+          </label>
+          <label className={styles.field}>
+            <span>Хороо</span>
+            <select name="subdistrict_id" required defaultValue="">
+              <option value="" disabled>Хороо сонгох</option>
+              {uniqueSubdistricts.map((subdistrict) => (
+                <option key={`create-subdistrict-${subdistrict.id}`} value={subdistrict.id}>{subdistrict.label}</option>
+              ))}
+            </select>
+          </label>
+          <button type="submit" className={styles.primaryButton}>Хогийн цэг нэмэх</button>
+        </form>
+      </div>
 
       <div className={styles.pointManager}>
         <div className={styles.pointTools}>

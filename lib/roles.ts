@@ -5,6 +5,7 @@ export type UserRole =
   | "project_manager"
   | "senior_master"
   | "team_leader"
+  | "transport_inspector"
   | "hse_officer"
   | "public_relations"
   | "worker"
@@ -135,7 +136,11 @@ export function getPrimaryAppRole(context: RoleContext): AppRole {
   if (groupFlags.mfoDispatcher) {
     return "dispatcher";
   }
-  if (groupFlags.mfoInspector || groupFlags.municipalInspector) {
+  if (
+    context.role === "transport_inspector" ||
+    groupFlags.mfoInspector ||
+    groupFlags.municipalInspector
+  ) {
     return "inspector";
   }
   if (context.role === "hse_officer" || groupFlags.municipalHse) {
@@ -182,6 +187,8 @@ export function getRoleLabel(role: UserRole) {
       return "Ахлах мастер";
     case "team_leader":
       return "Мастер";
+    case "transport_inspector":
+      return "Тээвэрлэлтийн хяналтын ажилтан";
     case "hse_officer":
       return "ХАБЭА хяналтын ажилтан";
     case "public_relations":
@@ -207,14 +214,16 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         context.role === "director" ||
         context.role === "general_manager" ||
         context.role === "project_manager" ||
+        context.role === "public_relations" ||
         groupFlags.complaintManager ||
+        groupFlags.municipalPublicRelations ||
         groupFlags.municipalDepartmentHead ||
+        context.role === "transport_inspector" ||
+        groupFlags.mfoInspector ||
         groupFlags.environmentManager ||
         groupFlags.improvementManager ||
         groupFlags.greenMaster ||
         groupFlags.improvementEngineer ||
-        context.role === "public_relations" ||
-        groupFlags.municipalPublicRelations ||
         context.role === "senior_master" ||
         context.role === "team_leader"
       );
@@ -224,16 +233,18 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         context.role === "director" ||
         context.role === "general_manager" ||
         context.role === "project_manager" ||
+        context.role === "public_relations" ||
         groupFlags.complaintManager ||
+        groupFlags.municipalPublicRelations ||
         groupFlags.municipalDepartmentHead ||
+        context.role === "transport_inspector" ||
+        groupFlags.mfoInspector ||
         groupFlags.environmentManager ||
         groupFlags.improvementManager ||
         groupFlags.greenMaster ||
         groupFlags.greenEngineer ||
         groupFlags.improvementEngineer ||
         groupFlags.improvementFieldEngineer ||
-        context.role === "public_relations" ||
-        groupFlags.municipalPublicRelations ||
         context.role === "senior_master" ||
         context.role === "team_leader"
       );
@@ -242,7 +253,9 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         context.role === "system_admin" ||
         context.role === "general_manager" ||
         context.role === "project_manager" ||
+        context.role === "public_relations" ||
         groupFlags.complaintManager ||
+        groupFlags.municipalPublicRelations ||
         groupFlags.mfoMobile ||
         groupFlags.mfoDriver ||
         groupFlags.mfoLoader ||
@@ -252,8 +265,6 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         groupFlags.improvementWelder ||
         groupFlags.improvementFieldEngineer ||
         groupFlags.improvementEngineer ||
-        context.role === "public_relations" ||
-        groupFlags.municipalPublicRelations ||
         context.role === "senior_master" ||
         context.role === "team_leader" ||
         context.role === "worker"
@@ -264,12 +275,13 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         context.role === "director" ||
         context.role === "general_manager" ||
         context.role === "project_manager" ||
-        groupFlags.municipalInspector ||
-        groupFlags.municipalDepartmentHead ||
         context.role === "hse_officer" ||
+        groupFlags.municipalInspector ||
         groupFlags.municipalHse ||
+        groupFlags.municipalDepartmentHead ||
         groupFlags.mfoManager ||
         groupFlags.mfoDispatcher ||
+        context.role === "transport_inspector" ||
         groupFlags.mfoInspector ||
         groupFlags.environmentManager ||
         groupFlags.greenMaster ||
@@ -286,8 +298,9 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         context.role === "senior_master" ||
         context.role === "team_leader" ||
         context.role === "worker" ||
-        groupFlags.complaintManager ||
         context.role === "public_relations" ||
+        context.role === "transport_inspector" ||
+        groupFlags.complaintManager ||
         groupFlags.municipalPublicRelations ||
         groupFlags.mfoManager ||
         groupFlags.mfoDispatcher ||
@@ -335,6 +348,8 @@ export function isWorkerOnly(context: RoleContext) {
     !groupFlags.mfoManager &&
     !groupFlags.mfoDispatcher &&
     !groupFlags.mfoInspector &&
+    !groupFlags.municipalHse &&
+    !groupFlags.municipalPublicRelations &&
     !groupFlags.municipalDepartmentHead &&
     !groupFlags.municipalManager &&
     !groupFlags.environmentManager &&
@@ -343,14 +358,23 @@ export function isWorkerOnly(context: RoleContext) {
     !groupFlags.fleetRepairManager &&
     !groupFlags.fleetRepairTeamLeader &&
     !groupFlags.hrManager &&
-    !groupFlags.municipalHr &&
-    !groupFlags.municipalHse &&
-    !groupFlags.municipalPublicRelations
+    !groupFlags.municipalHr
   );
 }
 
 export function isHrOnlyRole(context: RoleContext) {
+  if (context.role === "worker") {
+    return false;
+  }
+
   const groupFlags = normalizeGroupFlags(context.groupFlags);
+  if (
+    context.role === "transport_inspector" ||
+    (groupFlags.mfoInspector && !groupFlags.mfoManager && !groupFlags.mfoDispatcher)
+  ) {
+    return false;
+  }
+
   const explicitHrRole = context.role === "hr_specialist" || context.role === "hr_manager";
   const hasHrAccess = Boolean(
     explicitHrRole ||
@@ -367,7 +391,11 @@ export function isHrOnlyRole(context: RoleContext) {
   );
   const hasDepartmentHeadAccess = Boolean(
     context.role === "project_manager" ||
+      context.role === "senior_master" ||
+      context.role === "team_leader" ||
       groupFlags.municipalDepartmentHead ||
+      groupFlags.municipalMaster ||
+      groupFlags.greenMaster ||
       groupFlags.municipalManager ||
       groupFlags.mfoManager ||
       groupFlags.environmentManager ||

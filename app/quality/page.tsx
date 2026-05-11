@@ -46,6 +46,9 @@ export default async function QualityPage() {
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  if (!canViewQualityCenter) {
+    redirect("/");
+  }
   const snapshot = await loadMunicipalSnapshot({
     login: session.login,
     password: session.password,

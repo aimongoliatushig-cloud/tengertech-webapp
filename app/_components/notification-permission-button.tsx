@@ -2,33 +2,75 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-const LABEL_ENABLE = "\u041c\u044d\u0434\u044d\u0433\u0434\u044d\u043b \u0438\u0434\u044d\u0432\u0445\u0436\u04af\u04af\u043b\u044d\u0445";
-const LABEL_ENABLING =
-  "\u041c\u044d\u0434\u044d\u0433\u0434\u044d\u043b \u0438\u0434\u044d\u0432\u0445\u0436\u04af\u04af\u043b\u0436 \u0431\u0430\u0439\u043d\u0430...";
-const LABEL_TITLE =
-  "\u041c\u044d\u0434\u044d\u0433\u0434\u044d\u043b \u0430\u0432\u0430\u0445\u044b\u0433 \u0437\u04e9\u0432\u0448\u04e9\u04e9\u0440\u04e9\u0445 \u04af\u04af?";
-const LABEL_SECURE_TITLE =
-  "\u041c\u044d\u0434\u044d\u0433\u0434\u044d\u043b\u0434 HTTPS \u0448\u0430\u0430\u0440\u0434\u043b\u0430\u0433\u0430\u0442\u0430\u0439";
+const LABEL_ENABLE = "Мэдэгдэл идэвхжүүлэх";
+const LABEL_ENABLING = "Мэдэгдэл идэвхжүүлж байна...";
+const LABEL_TITLE = "Мэдэгдэл авахыг зөвшөөрөх үү?";
+const LABEL_SECURE_TITLE = "Мэдэгдэлд HTTPS шаардлагатай";
 const LABEL_BODY =
-  "\u0428\u0438\u043d\u044d \u0430\u0436\u0438\u043b, \u0442\u0430\u0439\u043b\u0430\u043d, \u0445\u0443\u0433\u0430\u0446\u0430\u0430\u043d\u044b \u0430\u043d\u0445\u0430\u0430\u0440\u0443\u0443\u043b\u0433\u044b\u0433 \u044d\u043d\u044d \u0442\u04e9\u0445\u04e9\u04e9\u0440\u04e9\u043c\u0436 \u0434\u044d\u044d\u0440 \u0430\u0432\u043d\u0430.";
-const LABEL_DISABLED =
-  "Push \u0442\u04af\u043b\u0445\u04af\u04af\u0440 \u0430\u0447\u0430\u0430\u043b\u0430\u0433\u0434\u0430\u0430\u0433\u04af\u0439. Dev server-\u044d\u044d \u0434\u0430\u0445\u0438\u043d \u0430\u0441\u0430\u0430\u0433\u0430\u0430\u0434 \u0434\u0430\u0445\u0438\u043d \u043e\u0440\u043e\u043b\u0434\u043e\u043e\u0440\u043e\u0439.";
+  "Шинэ ажил, тайлан, хугацааны анхааруулгыг энэ төхөөрөмж дээр авна.";
+const LABEL_CONFIG_MISSING =
+  "Мэдэгдлийн түлхүүр ачаалагдаагүй байна. Серверийн мэдэгдлийн тохиргоог шалгана уу.";
+const LABEL_CONFIG_SESSION =
+  "Мэдэгдлийн тохиргоо ачаалахад алдаа гарлаа. Нэвтрэлт болон серверийн тохиргоог шалгана уу.";
+const LABEL_DENIED =
+  "Browser дээр мэдэгдэл хориглогдсон байна. Сайтын тохиргооноос зөвшөөрнө үү.";
+const LABEL_PROMPT_HELP =
+  "Browser зөвшөөрлийн цонх харуулсангүй. Хаягийн мөрний зүүн талын сайтын тохиргооноос Notifications зөвшөөрнө үү.";
+const LABEL_ERROR =
+  "Мэдэгдэл идэвхжүүлэх үед алдаа гарлаа. Дахин оролдоно уу.";
 const LABEL_INSECURE =
-  "\u041e\u0434\u043e\u043e\u0433\u0438\u0439\u043d \u0445\u0430\u044f\u0433 HTTP \u0442\u0443\u043b browser \u043c\u044d\u0434\u044d\u0433\u0434\u043b\u0438\u0439\u043d \u0437\u04e9\u0432\u0448\u04e9\u04e9\u0440\u04e9\u043b \u0430\u0441\u0443\u0443\u0445\u0433\u04af\u0439. HTTPS \u0434\u043e\u043c\u044d\u0439\u043d\u044d\u044d\u0440 \u043d\u044d\u044d\u0445\u044d\u0434 \u0438\u0434\u044d\u0432\u0445\u0436\u04af\u04af\u043b\u044d\u0445 \u0431\u043e\u043b\u043e\u043c\u0436\u0442\u043e\u0439.";
-const LABEL_OPEN_SECURE =
-  "HTTPS \u0445\u0430\u044f\u0433\u0430\u0430\u0440 \u043d\u044d\u044d\u0445";
-const LABEL_SECURE_REQUIRED =
-  "HTTPS \u0442\u043e\u0445\u0438\u0440\u0433\u043e\u043e \u0448\u0430\u0430\u0440\u0434\u043b\u0430\u0433\u0430\u0442\u0430\u0439";
+  "Одоогийн хаяг HTTP тул browser мэдэгдлийн зөвшөөрөл асуухгүй. HTTPS домэйнээр нээхэд идэвхжүүлэх боломжтой.";
+const LABEL_OPEN_SECURE = "HTTPS хаягаар нээх";
+const LABEL_SECURE_REQUIRED = "HTTPS тохиргоо шаардлагатай";
+const LABEL_RETRY = "Дахин оролдох";
+
+const STEP_TIMEOUT_MS = 8000;
+const PERMISSION_TIMEOUT_MS = 12000;
 
 type PushStatus =
   | "checking"
   | "unsupported"
   | "insecure"
-  | "disabled"
+  | "config-missing"
+  | "config-error"
   | "ready"
   | "granted"
   | "denied"
+  | "prompt-help"
   | "error";
+
+type PublicKeyFailureReason = "missing" | "session" | "error";
+
+type PublicKeyResult =
+  | { ok: true; publicKey: string }
+  | { ok: false; reason: PublicKeyFailureReason };
+
+function logPushStep(message: string, details?: Record<string, unknown>) {
+  if (details) {
+    console.info(`[push] ${message}`, details);
+    return;
+  }
+  console.info(`[push] ${message}`);
+}
+
+function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = STEP_TIMEOUT_MS) {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      reject(new Error(`${label} timed out.`));
+    }, timeoutMs);
+
+    promise.then(
+      (value) => {
+        window.clearTimeout(timeout);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timeout);
+        reject(error);
+      },
+    );
+  });
+}
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -43,45 +85,106 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
+async function loadPublicKey(): Promise<PublicKeyResult> {
+  try {
+    const response = await withTimeout(
+      fetch("/api/push/public-key", { cache: "no-store" }),
+      "public key request",
+    );
+    const contentType = response.headers.get("content-type") ?? "";
+
+    if (!contentType.includes("application/json")) {
+      return { ok: false, reason: "session" };
+    }
+
+    const payload = (await response.json().catch(() => null)) as {
+      enabled?: boolean;
+      publicKey?: string | null;
+    } | null;
+
+    if (!response.ok) {
+      return { ok: false, reason: "error" };
+    }
+
+    if (!payload?.enabled || !payload.publicKey) {
+      return { ok: false, reason: "missing" };
+    }
+
+    return { ok: true, publicKey: payload.publicKey };
+  } catch (error) {
+    console.warn("[push] public key request failed:", error);
+    return { ok: false, reason: "error" };
+  }
+}
+
+async function resolveNotificationPermission() {
+  logPushStep("current permission before click", {
+    permission: Notification.permission,
+  });
+
+  if (Notification.permission !== "default") {
+    logPushStep("permission result", { permission: Notification.permission });
+    return Notification.permission;
+  }
+
+  const permission = await withTimeout(
+    Notification.requestPermission(),
+    "notification permission request",
+    PERMISSION_TIMEOUT_MS,
+  ).catch(() => "default" as NotificationPermission);
+  logPushStep("permission result", { permission });
+  return permission;
+}
+
 async function registerPushSubscription(publicKey: string) {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
     throw new Error("Push notification is not supported in this browser.");
   }
 
-  const registration = await navigator.serviceWorker.register("/sw.js", {
-    scope: "/",
-    updateViaCache: "none",
+  logPushStep("public key present", { present: Boolean(publicKey) });
+  const registration = await withTimeout(
+    navigator.serviceWorker.register("/sw.js", {
+      scope: "/",
+      updateViaCache: "none",
+    }),
+    "service worker registration",
+  );
+  logPushStep("service worker registered", { scope: registration.scope });
+
+  const existingSubscription = await withTimeout(
+    registration.pushManager.getSubscription(),
+    "existing subscription lookup",
+  );
+  logPushStep("existing subscription lookup", {
+    found: Boolean(existingSubscription),
   });
 
-  const existingSubscription = await registration.pushManager.getSubscription();
   const subscription =
     existingSubscription ??
-    (await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
-    }));
+    (await withTimeout(
+      registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      }),
+      "push subscription",
+    ));
+  logPushStep(existingSubscription ? "existing subscription reused" : "new subscription created");
 
-  const response = await fetch("/api/push/subscription", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ subscription: subscription.toJSON() }),
-  });
+  const response = await withTimeout(
+    fetch("/api/push/subscription", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ subscription: subscription.toJSON() }),
+    }),
+    "subscription save",
+  );
+  logPushStep("subscription save response", { status: response.status });
 
   if (!response.ok) {
     throw new Error("Push subscription could not be saved.");
   }
-}
-
-async function loadPublicKey() {
-  const response = await fetch("/api/push/public-key", { cache: "no-store" });
-  const payload = (await response.json().catch(() => null)) as {
-    enabled?: boolean;
-    publicKey?: string | null;
-  } | null;
-
-  return payload?.enabled ? (payload.publicKey ?? null) : null;
 }
 
 function getConfiguredSecureUrl() {
@@ -111,6 +214,12 @@ export function NotificationPermissionButton() {
   const [status, setStatus] = useState<PushStatus>("checking");
   const [busy, setBusy] = useState(false);
   const [secureUrl, setSecureUrl] = useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const setPublicKeyFailure = useCallback((reason: PublicKeyFailureReason) => {
+    setPublicKey(null);
+    setStatus(reason === "missing" ? "config-missing" : "config-error");
+  }, []);
 
   const requestAndSubscribe = useCallback(async () => {
     if (typeof window === "undefined" || !("Notification" in window)) {
@@ -126,21 +235,10 @@ export function NotificationPermissionButton() {
 
     setBusy(true);
     try {
-      const resolvedKey = publicKey ?? (await loadPublicKey());
-      setPublicKey(resolvedKey);
-
-      if (!resolvedKey) {
-        setStatus("disabled");
-        return;
-      }
-
-      const permission =
-        Notification.permission === "default"
-          ? await Notification.requestPermission()
-          : Notification.permission;
+      const permission = await resolveNotificationPermission();
 
       if (permission === "default") {
-        setStatus("ready");
+        setStatus("prompt-help");
         return;
       }
 
@@ -149,52 +247,90 @@ export function NotificationPermissionButton() {
         return;
       }
 
-      await registerPushSubscription(resolvedKey);
+      let resolvedPublicKey = publicKey;
+      if (!resolvedPublicKey) {
+        const publicKeyResult = await loadPublicKey();
+        if (!publicKeyResult.ok) {
+          setPublicKeyFailure(publicKeyResult.reason);
+          return;
+        }
+        resolvedPublicKey = publicKeyResult.publicKey;
+        setPublicKey(publicKeyResult.publicKey);
+      }
+
+      await registerPushSubscription(resolvedPublicKey);
       setStatus("granted");
     } catch (error) {
-      console.warn("Push subscription failed:", error);
+      console.warn("[push] subscription failed:", error);
       setStatus("error");
     } finally {
       setBusy(false);
     }
-  }, [publicKey]);
+  }, [publicKey, setPublicKeyFailure]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      setStatus("unsupported");
-      return;
-    }
+    const syncMobileMenuState = () => {
+      setIsMobileMenuOpen(document.body.dataset.mobileMenuOpen === "true");
+    };
 
-    if (!window.isSecureContext) {
-      console.warn("Notification permission requires HTTPS or localhost.");
-      setSecureUrl(getConfiguredSecureUrl());
-      setStatus("insecure");
-      return;
-    }
+    syncMobileMenuState();
 
+    const observer = new MutationObserver(syncMobileMenuState);
+    observer.observe(document.body, {
+      attributeFilter: ["data-mobile-menu-open"],
+      attributes: true,
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function setupPushNotifications() {
-      const resolvedKey = await loadPublicKey().catch(() => null);
+      await Promise.resolve();
+
+      if (typeof window === "undefined" || !("Notification" in window)) {
+        if (!cancelled) {
+          setStatus("unsupported");
+        }
+        return;
+      }
+
+      if (!window.isSecureContext) {
+        console.warn("[push] Notification permission requires HTTPS or localhost.");
+        if (!cancelled) {
+          setSecureUrl(getConfiguredSecureUrl());
+          setStatus("insecure");
+        }
+        return;
+      }
+
+      if (Notification.permission === "denied") {
+        if (!cancelled) {
+          setStatus("denied");
+        }
+        return;
+      }
+
+      const publicKeyResult = await loadPublicKey();
       if (cancelled) {
         return;
       }
-      setPublicKey(resolvedKey);
 
-      if (Notification.permission === "denied") {
-        setStatus("denied");
+      if (!publicKeyResult.ok) {
+        setPublicKeyFailure(publicKeyResult.reason);
         return;
       }
 
-      if (Notification.permission === "default") {
-        setStatus(resolvedKey ? "ready" : "disabled");
-        return;
-      }
+      setPublicKey(publicKeyResult.publicKey);
 
-      if (Notification.permission === "granted" && resolvedKey) {
-        await registerPushSubscription(resolvedKey).catch((error) => {
-          console.warn("Push subscription failed:", error);
-          setStatus("error");
+      if (Notification.permission === "granted") {
+        await registerPushSubscription(publicKeyResult.publicKey).catch((error) => {
+          console.warn("[push] subscription failed:", error);
+          if (!cancelled) {
+            setStatus("error");
+          }
         });
         if (!cancelled) {
           setStatus("granted");
@@ -202,7 +338,7 @@ export function NotificationPermissionButton() {
         return;
       }
 
-      setStatus(resolvedKey ? "ready" : "disabled");
+      setStatus("ready");
     }
 
     void setupPushNotifications();
@@ -210,17 +346,44 @@ export function NotificationPermissionButton() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setPublicKeyFailure]);
 
-  if (status === "checking" || status === "unsupported" || status === "granted" || status === "denied") {
+  if (isMobileMenuOpen || status === "checking" || status === "unsupported" || status === "granted") {
     return null;
   }
 
+  const titleText =
+    status === "insecure"
+      ? LABEL_SECURE_TITLE
+      : status === "ready"
+        ? LABEL_TITLE
+        : "Мэдэгдэл идэвхжээгүй";
   const bodyText =
-    status === "insecure" ? LABEL_INSECURE : status === "disabled" ? LABEL_DISABLED : LABEL_BODY;
-  const titleText = status === "insecure" ? LABEL_SECURE_TITLE : LABEL_TITLE;
+    status === "insecure"
+      ? LABEL_INSECURE
+      : status === "config-missing"
+        ? LABEL_CONFIG_MISSING
+        : status === "config-error"
+          ? LABEL_CONFIG_SESSION
+          : status === "denied"
+            ? LABEL_DENIED
+            : status === "prompt-help"
+              ? LABEL_PROMPT_HELP
+              : status === "error"
+                ? LABEL_ERROR
+                : LABEL_BODY;
   const buttonText =
-    status === "insecure" ? (secureUrl ? LABEL_OPEN_SECURE : LABEL_SECURE_REQUIRED) : busy ? LABEL_ENABLING : LABEL_ENABLE;
+    status === "insecure"
+      ? secureUrl
+        ? LABEL_OPEN_SECURE
+        : LABEL_SECURE_REQUIRED
+      : busy
+        ? LABEL_ENABLING
+        : status === "ready"
+          ? LABEL_ENABLE
+          : LABEL_RETRY;
+  const showRetryButton = status === "prompt-help" || status === "error";
+  const showActionButton = status === "ready" || status === "insecure" || showRetryButton;
   const buttonDisabled = busy || (status === "insecure" && !secureUrl);
   const buttonStyle = {
     display: "block",
@@ -240,6 +403,7 @@ export function NotificationPermissionButton() {
 
   return (
     <div
+      data-notification-permission-card
       style={{
         position: "fixed",
         right: 20,
@@ -260,25 +424,25 @@ export function NotificationPermissionButton() {
       <span style={{ display: "block", color: "#526157", fontSize: 13, lineHeight: 1.45 }}>
         {bodyText}
       </span>
-      {status === "insecure" && secureUrl ? (
+      {showActionButton && status === "insecure" && secureUrl ? (
         <a href={secureUrl} style={buttonStyle}>
           {buttonText}
         </a>
       ) : null}
-      {status === "insecure" && !secureUrl ? (
+      {showActionButton && status === "insecure" && !secureUrl ? (
         <button type="button" disabled style={buttonStyle}>
           {buttonText}
         </button>
       ) : null}
-      {status !== "insecure" ? (
-      <button
-        type="button"
-        onClick={() => void requestAndSubscribe()}
-        disabled={buttonDisabled}
-        style={buttonStyle}
-      >
-        {buttonText}
-      </button>
+      {showActionButton && status !== "insecure" ? (
+        <button
+          type="button"
+          onClick={() => void requestAndSubscribe()}
+          disabled={buttonDisabled}
+          style={buttonStyle}
+        >
+          {buttonText}
+        </button>
       ) : null}
     </div>
   );

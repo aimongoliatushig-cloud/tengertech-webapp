@@ -7,6 +7,8 @@ import { SESSION_COOKIE_NAME } from "@/lib/session";
 const PUBLIC_PATHS = new Set([
   "/login",
   "/design-board",
+  "/api/push/public-key",
+  "/api/push/subscription",
   "/api/wrs-report/normalized",
 ]);
 const AUTH_ACTION_PATHS = new Set([
@@ -51,10 +53,29 @@ async function unsealProxySession(token: string) {
 function hasHrAccess(session: ProxySession) {
   const flags = session.groupFlags ?? {};
   const role = session.role;
+  const transportInspectorOnly = Boolean(
+    role === "transport_inspector" ||
+      (flags.mfoInspector && !flags.mfoManager && !flags.mfoDispatcher),
+  );
+  if (transportInspectorOnly) {
+    return false;
+  }
+
+  const masterOrOperationalLeader = Boolean(
+    role === "senior_master" ||
+      role === "team_leader" ||
+      role === "transport_inspector" ||
+      flags.municipalMaster ||
+      flags.mfoInspector ||
+      flags.greenMaster ||
+      flags.fleetRepairTeamLeader,
+  );
   return Boolean(
     role === "hr_specialist" ||
       role === "hr_manager" ||
-      (role !== "worker" && (flags.hrUser || flags.hrManager || flags.municipalHr)),
+      (role !== "worker" &&
+        !masterOrOperationalLeader &&
+        (flags.hrUser || flags.hrManager || flags.municipalHr)),
   );
 }
 
@@ -62,7 +83,10 @@ function hasDepartmentHeadAccess(session: ProxySession) {
   const flags = session.groupFlags ?? {};
   return Boolean(
     session.role === "project_manager" ||
+      session.role === "senior_master" ||
+      session.role === "team_leader" ||
       flags.municipalDepartmentHead ||
+      flags.municipalMaster ||
       flags.municipalManager ||
       flags.mfoManager ||
       flags.environmentManager ||
@@ -82,6 +106,10 @@ function hasExecutiveOrAdminAccess(session: ProxySession) {
 }
 
 function isHrOnlySession(session: ProxySession) {
+  if (session.role === "worker") {
+    return false;
+  }
+
   const explicitHrRole = session.role === "hr_specialist" || session.role === "hr_manager";
   return (
     hasHrAccess(session) &&

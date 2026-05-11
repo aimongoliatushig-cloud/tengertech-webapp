@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import requests
@@ -146,16 +146,27 @@ class MunicipalGarbageSyncLog(models.Model):
     def _configured_time_due(self, sync_type):
         params = self.env["ir.config_parameter"].sudo()
         time_key = "municipal_repair_workflow.garbage_%s_sync_time" % sync_type
-        configured_time = params.get_param(time_key, "20:00" if sync_type == "weight" else "20:30")
+        default_time = "00:00" if sync_type == "weight" else "00:15"
+        legacy_default_time = "20:00" if sync_type == "weight" else "20:30"
+        configured_time = params.get_param(time_key, default_time)
+        if configured_time == legacy_default_time:
+            configured_time = default_time
         try:
             hour, minute = [int(part) for part in configured_time.split(":", 1)]
         except Exception:
-            hour, minute = (20, 0) if sync_type == "weight" else (20, 30)
+            hour, minute = (0, 0) if sync_type == "weight" else (0, 15)
 
-        now = datetime.now(ZoneInfo(os.getenv("APP_TIME_ZONE", "Asia/Ulaanbaatar")))
+        now = self._local_now()
         configured_minutes = hour * 60 + minute
         current_minutes = now.hour * 60 + now.minute
         if current_minutes < configured_minutes:
+            return False
+
+        last_success_date = params.get_param(
+            "municipal_repair_workflow.garbage_%s_last_success_date" % sync_type,
+            "",
+        )
+        if last_success_date == now.date().isoformat():
             return False
 
         last_success = params.get_param(
@@ -163,6 +174,14 @@ class MunicipalGarbageSyncLog(models.Model):
             "",
         )
         return not last_success.startswith(now.date().isoformat())
+
+    @api.model
+    def _local_now(self):
+        return datetime.now(ZoneInfo(os.getenv("APP_TIME_ZONE", "Asia/Ulaanbaatar")))
+
+    @api.model
+    def _target_report_date(self):
+        return (self._local_now().date() - timedelta(days=1)).isoformat()
 
     @api.model
     def _fetch_external_reports(self, sync_type):
@@ -175,18 +194,24 @@ class MunicipalGarbageSyncLog(models.Model):
             return self._create_failure(sync_type, "%s тохируулаагүй байна." % url_key)
 
         try:
+            target_date = self._target_report_date()
             response = requests.get(
                 url,
                 auth=(username, password) if username or password else None,
+                params={"date": target_date},
                 timeout=30,
             )
             response.raise_for_status()
             payload = response.json()
             rows = self._payload_rows(payload)
-            count = self._upsert_report_rows(sync_type, rows)
+            count = self._upsert_report_rows(sync_type, rows, target_date)
             self.env["ir.config_parameter"].sudo().set_param(
                 "municipal_repair_workflow.garbage_%s_last_success_at" % sync_type,
                 fields.Datetime.to_string(fields.Datetime.now()),
+            )
+            self.env["ir.config_parameter"].sudo().set_param(
+                "municipal_repair_workflow.garbage_%s_last_success_date" % sync_type,
+                self._local_now().date().isoformat(),
             )
             self.create({"sync_type": sync_type, "state": "success", "record_count": count})
             return True
@@ -212,7 +237,7 @@ class MunicipalGarbageSyncLog(models.Model):
             return payload
         if not isinstance(payload, dict):
             return []
-        for key in ("records", "data", "items", "results", "rows"):
+        for key in ("records", "data", "items", "results", "rows", "totals"):
             value = payload.get(key)
             if isinstance(value, list):
                 return value
@@ -246,26 +271,46 @@ class MunicipalGarbageSyncLog(models.Model):
         return "kg"
 
     @api.model
-    def _date_value(self, row):
-        value = self._text_value(row, ["date", "report_date", "ognoo"])
-        return value[:10] if value else fields.Date.context_today(self)
+    def _date_value(self, row, fallback_date=None):
+        value = self._text_value(row, ["date", "report_date", "requestedDate", "requested_date", "shift_date", "ognoo"])
+        return value[:10] if value else (fallback_date or fields.Date.context_today(self))
+
+    @api.model
+    def _normalized_vehicle_code(self, value):
+        return "".join(str(value or "").upper().split())
 
     @api.model
     def _garbage_vehicle_by_plate(self, plate):
         if not plate:
             return self.env["fleet.vehicle"]
-        return self.env["fleet.vehicle"].search(
-            [
-                ("license_plate", "=", plate),
-                "|",
-                ("municipal_vehicle_type_id.is_garbage_truck", "=", True),
-                ("category_id.name", "ilike", "хог"),
-            ],
+
+        garbage_vehicle_domain = [
+            "|",
+            ("municipal_vehicle_type_id.is_garbage_truck", "=", True),
+            ("category_id.name", "ilike", "хог"),
+        ]
+        exact = self.env["fleet.vehicle"].search(
+            [("license_plate", "=", plate)] + garbage_vehicle_domain,
             limit=1,
         )
+        if exact:
+            return exact
+
+        normalized_plate = self._normalized_vehicle_code(plate)
+        candidates = self.env["fleet.vehicle"].search(
+            garbage_vehicle_domain,
+            limit=300,
+        )
+        for vehicle in candidates:
+            if normalized_plate in (
+                self._normalized_vehicle_code(vehicle.license_plate),
+                self._normalized_vehicle_code(vehicle.name),
+            ):
+                return vehicle
+        return self.env["fleet.vehicle"]
 
     @api.model
-    def _upsert_report_rows(self, sync_type, rows):
+    def _upsert_report_rows(self, sync_type, rows, fallback_date=None):
         report_model = self.env[
             "municipal.garbage.weight.report"
             if sync_type == "weight"
@@ -276,9 +321,12 @@ class MunicipalGarbageSyncLog(models.Model):
             if not isinstance(row, dict):
                 continue
 
-            plate = self._text_value(row, ["license_plate", "plate", "vehicle_plate", "car_number", "ulsiin_dugaar"])
+            plate = self._text_value(
+                row,
+                ["license_plate", "plate", "vehicle_plate", "vehicleCode", "vehicle_code", "car_number", "ulsiin_dugaar"],
+            )
             vehicle = self._garbage_vehicle_by_plate(plate)
-            report_date = self._date_value(row)
+            report_date = self._date_value(row, fallback_date)
             source = self._text_value(row, ["source", "system", "provider"]) or "Гадны систем"
             values = {
                 "report_date": report_date,
@@ -292,7 +340,7 @@ class MunicipalGarbageSyncLog(models.Model):
             if sync_type == "weight":
                 values.update(
                     {
-                        "weight": self._float_value(row, ["weight", "kg", "ton", "net_weight", "net_weight_total"]),
+                        "weight": self._float_value(row, ["weight", "kg", "ton", "net_weight", "net_weight_total", "netWeightTotal"]),
                         "unit": self._unit_value(row),
                     }
                 )

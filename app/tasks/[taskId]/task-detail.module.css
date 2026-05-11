@@ -119,11 +119,183 @@
 .reportBody {
   display: grid;
   gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid rgba(74, 154, 93, 0.1);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.reportReturnReason {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid rgba(185, 72, 44, 0.2);
+  border-radius: var(--ds-radius-card);
+  background: rgba(185, 72, 44, 0.08);
+  color: #7f2f1c;
+}
+
+.reportReturnReason strong {
+  font-size: 0.9rem;
+}
+
+.reportReturnReason p {
+  margin: 0;
+  color: #5f291b;
+}
+
+.existingReportView {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 18px;
+  min-height: 0;
+}
+
+.existingReportPanel {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  padding: 18px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(248, 253, 249, 0.94), rgba(255, 255, 255, 0.96));
+}
+
+.existingReportTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.existingReportTop div,
+.existingReportText {
+  display: grid;
+  gap: 5px;
+}
+
+.existingReportTop strong,
+.existingReportText strong {
+  color: var(--ink-900);
+  font-weight: 900;
+}
+
+.existingReportTop small,
+.existingReportText p,
+.existingReportMeta span {
+  color: var(--ink-600);
+  font-weight: 700;
+}
+
+.existingReportTop > span {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(226, 238, 255, 0.9);
+  color: #245283;
+  font-size: 0.8rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.existingReportTop > span[data-state="done"] {
+  background: rgba(222, 244, 225, 0.95);
+  color: #21753a;
+}
+
+.existingReportTop > span[data-state="problem"] {
+  background: rgba(250, 231, 226, 0.95);
+  color: #9a3412;
+}
+
+.existingReportText p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.65;
+}
+
+.existingReportMeta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.existingReportMeta span {
+  display: grid;
+  gap: 4px;
+  min-height: 70px;
+  align-content: center;
+  padding: 12px;
+  border: 1px solid rgba(74, 154, 93, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.existingReportMeta strong {
+  color: var(--ink-900);
+  font-size: 1.15rem;
+}
+
+.existingReportImageGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.existingReportImageGrid a {
+  overflow: hidden;
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--ink-700);
+  text-decoration: none;
+}
+
+.existingReportImageGrid img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border-radius: 9px;
+  object-fit: cover;
+}
+
+.existingReportImageGrid span {
+  overflow: hidden;
+  color: var(--ink-600);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.existingReportAudioList {
+  display: grid;
+  gap: 10px;
+}
+
+.existingReportAudioCard {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.existingReportAudioCard audio {
+  width: 100%;
 }
 
 .reportBody p {
   margin: 0;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .reportActions {
@@ -514,7 +686,8 @@
 
 .actionLead {
   color: var(--ink-700);
-  line-height: 1.65;
+  margin: 0;
+  line-height: 1.55;
 }
 
 .actionButton,
@@ -530,6 +703,32 @@
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+
+.actionButton[data-pending="true"],
+.secondaryButton[data-pending="true"],
+.warningButton[data-pending="true"],
+.actionButton:disabled,
+.secondaryButton:disabled,
+.warningButton:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.submitSpinner {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 999px;
+  animation: submitSpin 0.7s linear infinite;
+}
+
+@keyframes submitSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .actionButton {
@@ -799,6 +998,163 @@
   gap: 14px;
 }
 
+.reviewSummaryCard {
+  gap: 14px;
+}
+
+.reviewStats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.reviewPageGrid {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.42fr);
+}
+
+.reviewPageGrid .teamCard {
+  display: none;
+}
+
+.reviewActionCard {
+  gap: 14px;
+  border-color: rgba(46, 125, 50, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 251, 245, 0.94)),
+    #fff;
+}
+
+.reviewActionCard .actionTitle {
+  font-size: clamp(1.35rem, 2vw, 1.8rem);
+}
+
+.reviewActionStack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.reviewDoneButton {
+  gap: 10px;
+  min-height: 64px;
+  border: 1px solid rgba(226, 255, 232, 0.62);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 42%),
+    linear-gradient(135deg, #14652a, #2f9346);
+  color: #fff;
+  font-size: 1.02rem;
+  font-weight: 900;
+  box-shadow:
+    0 16px 34px rgba(28, 111, 50, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
+}
+
+.reviewDoneButton:hover {
+  transform: translateY(-1px);
+  filter: saturate(1.05);
+  box-shadow:
+    0 20px 40px rgba(28, 111, 50, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.reviewDoneButton:active {
+  transform: translateY(1px);
+  box-shadow:
+    0 10px 22px rgba(28, 111, 50, 0.24),
+    inset 0 2px 8px rgba(8, 52, 22, 0.22);
+}
+
+.reviewDoneButton[data-pending="true"],
+.reviewDoneButton:disabled {
+  opacity: 1;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent 42%),
+    linear-gradient(135deg, #0f5121, #23773a);
+  box-shadow:
+    0 12px 26px rgba(28, 111, 50, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.reviewResultBar {
+  display: grid;
+  gap: 5px;
+  padding: 12px 14px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: 12px;
+  background: rgba(240, 248, 239, 0.72);
+}
+
+.reviewResultBar span,
+.reviewReportMeta span {
+  color: var(--ink-600);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.reviewResultBar strong,
+.reviewReportMeta strong {
+  color: var(--ink-900);
+  font-size: 1.08rem;
+  line-height: 1.2;
+}
+
+.reviewActionCard .returnBox {
+  padding: 14px;
+  background: rgba(255, 248, 245, 0.86);
+  border-color: rgba(185, 72, 44, 0.16);
+}
+
+.reviewActionCard .returnBox textarea {
+  min-height: 96px;
+}
+
+.reviewChatCard {
+  position: sticky;
+  top: 16px;
+  gap: 14px;
+}
+
+.reviewChatCard .messageTimeline {
+  max-height: 420px;
+}
+
+.reviewChatCard .chatterComposer {
+  padding: 12px;
+}
+
+.reviewReportCard {
+  gap: 14px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.reviewReportCard .reportCardTop {
+  align-items: center;
+}
+
+.reviewReportMeta {
+  display: grid;
+  gap: 4px;
+}
+
+.reviewReportNote {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid rgba(74, 154, 93, 0.1);
+  border-radius: 12px;
+  background: rgba(240, 248, 239, 0.65);
+}
+
+.reviewReportNote p {
+  margin: 0;
+  color: var(--ink-800);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
 .reportQuantityLines {
   display: grid;
   gap: 10px;
@@ -932,6 +1288,13 @@
   color: #8f2a19;
   font-size: 0.86rem;
   font-weight: 700;
+}
+
+.uploadProgressText {
+  margin: 0;
+  color: var(--brand-900);
+  font-size: 0.86rem;
+  font-weight: 800;
 }
 
 .reportComposer {
@@ -1453,11 +1816,6 @@
   padding: 18px;
 }
 
-.reportCard > .reportCardTop,
-.reportCard > .reportMediaMeta {
-  display: none;
-}
-
 .reportCardTop strong {
   font-size: 1.12rem;
   color: var(--ink-900);
@@ -1925,6 +2283,61 @@
 
   .chatterCard {
     display: none;
+  }
+
+  .reviewPageGrid .chatterCard,
+  .reviewChatCard {
+    display: grid;
+  }
+
+  .reviewPageGrid .teamCard {
+    display: none;
+  }
+
+  .reviewPageGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .reviewActionCard {
+    order: 0;
+    padding: 16px;
+  }
+
+  .reviewActionStack,
+  .chatterActions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .reviewActionCard .actionButton,
+  .reviewActionCard .warningButton,
+  .reviewChatCard .actionButton,
+  .reviewChatCard .secondaryButton {
+    min-height: 48px;
+    border-radius: 12px;
+  }
+
+  .reviewActionCard .reviewDoneButton {
+    min-height: 58px;
+    border-radius: 14px;
+    font-size: 0.96rem;
+  }
+
+  .reviewChatCard {
+    position: static;
+    order: -1;
+  }
+
+  .reviewStats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .reviewStats .heroStatCard {
+    border-right: 0;
+  }
+
+  .reportBody {
+    padding: 12px;
   }
 }
 
@@ -2498,6 +2911,31 @@
     padding: 0 0 10px;
   }
 
+  .existingReportView {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    overflow-y: auto;
+    padding-bottom: 10px;
+  }
+
+  .existingReportPanel {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .existingReportTop {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .existingReportMeta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .existingReportImageGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .modalSectionCard {
     padding: 14px;
     border-radius: 12px;
@@ -2627,6 +3065,16 @@
   .modalActions {
     margin-inline: -14px;
     padding-inline: 14px;
+  }
+}
+
+@media (max-width: 720px) {
+  .reviewPageGrid .reviewChatCard {
+    display: grid;
+  }
+
+  .reviewPageGrid .teamCard {
+    display: none;
   }
 }
 

@@ -61,6 +61,17 @@ function relationName(value: Relation | undefined) {
   return Array.isArray(value) ? value[1] : "";
 }
 
+function formatTransportRole(jobTitle: string | false | undefined) {
+  const normalized = normalizeDepartmentText(jobTitle || "");
+  if (normalized.includes("ачигч")) {
+    return "Хог тээврийн ачигч";
+  }
+  if (normalized.includes("жолооч")) {
+    return "Хог тээврийн жолооч";
+  }
+  return "";
+}
+
 async function loadScopedDepartmentId(
   departmentName: string | null,
   connectionOverrides: Partial<OdooConnection>,
@@ -141,16 +152,17 @@ export async function loadTeamMemberOptions(
         normalizeDepartmentText(relationName(employee.department_id)).includes(normalizedScope),
       );
 
-  return visibleEmployees.map((employee) => {
-    const jobTitle = employee.job_title || "";
-    const department = relationName(employee.department_id);
-    const meta = [jobTitle, department].filter(Boolean).join(" · ");
-
-    return {
+  return visibleEmployees
+    .map((employee) => ({
       id: employee.id,
-      label: meta ? `${employee.name} (${meta})` : employee.name,
-    };
-  });
+      name: employee.name,
+      roleLabel: formatTransportRole(employee.job_title),
+    }))
+    .filter((employee) => employee.roleLabel)
+    .map((employee) => ({
+      id: employee.id,
+      label: `${employee.name} (${employee.roleLabel})`,
+    }));
 }
 
 export async function loadTeamManagementData(

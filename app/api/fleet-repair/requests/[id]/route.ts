@@ -2,6 +2,7 @@ import { getSession } from "@/lib/auth";
 import {
   FLEET_REPAIR_SAFE_ERROR,
   assertFleetRepairModelConfig,
+  canAccessFleetRepair,
   getFleetRepairPermissions,
   loadFleetRepairRequest,
 } from "@/lib/fleet-repair";
@@ -22,6 +23,9 @@ export async function GET(_request: Request, context: RequestContext) {
   const session = await getSession();
   if (!session) {
     return jsonError("Нэвтрэх шаардлагатай.", 401);
+  }
+  if (!canAccessFleetRepair(session)) {
+    return jsonError("Засварын workflow харах эрхгүй байна.", 403);
   }
 
   const { id } = await context.params;

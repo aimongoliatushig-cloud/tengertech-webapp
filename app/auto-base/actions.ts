@@ -6,37 +6,16 @@ import { redirect } from "next/navigation";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { hasCapability, requireSession, type AppSession } from "@/lib/auth";
 import { isAutoGarbageDepartment } from "@/lib/department-permissions";
+import {
+  buildFleetVehicleAttachmentName,
+  FLEET_VEHICLE_ATTACHMENT_KINDS,
+  type FleetVehicleAttachmentConfig,
+} from "@/lib/fleet-vehicle-attachments";
 import { executeOdooKw } from "@/lib/odoo";
 
 const AUTO_BASE_ALLOWED_ROLES = new Set(["system_admin", "director", "general_manager"]);
 
-const VEHICLE_ATTACHMENT_FIELD_BY_KIND = {
-  photo_front: {
-    field: "municipal_photo_front_attachment_ids",
-    label: "Урд талаас авсан зураг",
-    inputName: "photo_front_files",
-  },
-  photo_left: {
-    field: "municipal_photo_left_attachment_ids",
-    label: "Зүүн талаас авсан зураг",
-    inputName: "photo_left_files",
-  },
-  photo_right: {
-    field: "municipal_photo_right_attachment_ids",
-    label: "Баруун талаас авсан зураг",
-    inputName: "photo_right_files",
-  },
-  certificate: {
-    field: "municipal_certificate_attachment_ids",
-    label: "Гэрчилгээний баримт",
-    inputName: "certificate_files",
-  },
-  other_document: {
-    field: "municipal_other_document_attachment_ids",
-    label: "Бусад бичиг баримт",
-    inputName: "other_document_files",
-  },
-} as const;
+const VEHICLE_ATTACHMENT_FIELD_BY_KIND = FLEET_VEHICLE_ATTACHMENT_KINDS;
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -126,14 +105,18 @@ function getUploadFiles(formData: FormData, key: string) {
     .filter((value): value is File => value instanceof File && value.size > 0);
 }
 
-async function createVehicleAttachment(vehicleId: number, file: File) {
+async function createVehicleAttachment(
+  vehicleId: number,
+  file: File,
+  config: FleetVehicleAttachmentConfig,
+) {
   const buffer = Buffer.from(await file.arrayBuffer());
   return executeOdooKw<number>(
     "ir.attachment",
     "create",
     [
       {
-        name: file.name || "vehicle-attachment",
+        name: buildFleetVehicleAttachmentName(config, file.name),
         datas: buffer.toString("base64"),
         mimetype: file.type || "application/octet-stream",
         res_model: "fleet.vehicle",
@@ -469,7 +452,7 @@ export async function uploadFleetVehicleAttachmentAction(formData: FormData) {
     for (const group of uploadGroups) {
       const attachmentIds = [];
       for (const file of group.files) {
-        attachmentIds.push(await createVehicleAttachment(vehicleId, file));
+        attachmentIds.push(await createVehicleAttachment(vehicleId, file, group.config));
       }
       values[group.config.field] = attachmentIds.map((id) => [4, id]);
     }

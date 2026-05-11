@@ -43,8 +43,8 @@ export function OfficialReportExportModal({ taskId, items }: Props) {
   const selectedCount = selectedIds.length;
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
-  const openModal = (type: ExportType) => {
-    setActiveExportType(type);
+  const openModal = () => {
+    setActiveExportType("word");
     setMessage("");
     setIsOpen(true);
   };
@@ -95,11 +95,8 @@ export function OfficialReportExportModal({ taskId, items }: Props) {
 
   return (
     <>
-      <button type="button" className={styles.anchorLink} onClick={() => openModal("word")}>
-        Word татах
-      </button>
-      <button type="button" className={styles.anchorLink} onClick={() => openModal("pdf")}>
-        PDF хэвлэх
+      <button type="button" className={styles.anchorLink} onClick={openModal}>
+        Тайлан татах
       </button>
 
       {isOpen ? (

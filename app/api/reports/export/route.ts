@@ -1,6 +1,10 @@
-import { getSession } from "@/lib/auth";
+import { getSession, isMasterRole } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
+import {
+  filterProjectsForResponsibleMaster,
+  filterTasksForResponsibleMaster,
+} from "@/lib/master-scope";
 import {
   findDepartmentGroupByName,
   findDepartmentGroupByUnit,
@@ -124,7 +128,12 @@ function toExcelHtml(title: string, payload: ExportPayload) {
 </html>`;
 }
 
-function buildExportPayload(snapshot: MunicipalSnapshot, request: Request, scopedDepartmentName: string | null) {
+function buildExportPayload(
+  snapshot: MunicipalSnapshot,
+  request: Request,
+  scopedDepartmentName: string | null,
+  session: NonNullable<Awaited<ReturnType<typeof getSession>>>,
+) {
   const searchParams = new URL(request.url).searchParams;
   const requestedDepartment = getParam(searchParams, "department");
   const requestedUnit = getParam(searchParams, "unit");
@@ -147,15 +156,33 @@ function buildExportPayload(snapshot: MunicipalSnapshot, request: Request, scope
         ? matchesDepartmentGroup(selectedGroup, departmentName)
         : true;
 
-  const reports = scopedDepartmentName
+  let reports = scopedDepartmentName
     ? filterByDepartment(snapshot.reports, scopedDepartmentName)
     : snapshot.reports.filter((report) => matchesSelectedDepartment(report.departmentName));
-  const tasks = scopedDepartmentName
+  let tasks = scopedDepartmentName
     ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
     : snapshot.taskDirectory.filter((task) => matchesSelectedDepartment(task.departmentName));
-  const reviewQueue = scopedDepartmentName
+  let reviewQueue = scopedDepartmentName
     ? filterByDepartment(snapshot.reviewQueue, scopedDepartmentName)
     : snapshot.reviewQueue.filter((item) => matchesSelectedDepartment(item.departmentName));
+
+  if (isMasterRole(session.role)) {
+    const candidateProjects = scopedDepartmentName
+      ? filterByDepartment(snapshot.projects, scopedDepartmentName)
+      : snapshot.projects.filter((project) => matchesSelectedDepartment(project.departmentName));
+    const masterTasks = filterTasksForResponsibleMaster(tasks, candidateProjects, session);
+    const masterProjects = filterProjectsForResponsibleMaster(candidateProjects, masterTasks, session);
+    const masterProjectIds = new Set(masterProjects.map((project) => project.id));
+    const masterTaskIds = new Set(masterTasks.map((task) => task.id));
+
+    tasks = masterTasks;
+    reviewQueue = filterTasksForResponsibleMaster(reviewQueue, masterProjects, session);
+    reports = reports.filter((report) =>
+      session.role === "senior_master"
+        ? masterProjectIds.has(report.projectId ?? -1)
+        : masterTaskIds.has(report.taskId ?? -1),
+    );
+  }
 
   return {
     generatedAt: snapshot.generatedAt,
@@ -216,7 +243,7 @@ export async function GET(request: Request) {
     password: session.password,
   });
   const scopedDepartmentName = await loadSessionDepartmentName(session);
-  const payload = buildExportPayload(snapshot, request, scopedDepartmentName);
+  const payload = buildExportPayload(snapshot, request, scopedDepartmentName, session);
   const format = getParam(new URL(request.url).searchParams, "format") || "csv";
   const dateKey = new Date().toISOString().slice(0, 10);
 

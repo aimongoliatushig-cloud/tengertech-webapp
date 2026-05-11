@@ -123,7 +123,7 @@ export function DataDownloadClient() {
             </div>
             <div>
               <span>Салбар</span>
-              <strong>{report?.branchName ?? "Морингийн энгэрийн төвлөрсөн хогийн цэг"}</strong>
+              <strong>{report?.branchName ?? "Нарангийн энгэрийн төвлөрсөн хогийн цэг"}</strong>
             </div>
             <div>
               <span>Урьдчилан харах</span>

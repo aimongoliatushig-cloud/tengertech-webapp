@@ -3,6 +3,7 @@ import {
   FLEET_REPAIR_SAFE_ERROR,
   FleetRepairPermissionError,
   assertFleetRepairModelConfig,
+  canAccessFleetRepair,
   createFleetRepairRequest,
   getFleetRepairPermissions,
   loadFleetRepairRequests,
@@ -23,6 +24,9 @@ export async function GET() {
   const session = await getSession();
   if (!session) {
     return jsonError("Нэвтрэх шаардлагатай.", 401);
+  }
+  if (!canAccessFleetRepair(session)) {
+    return jsonError("Засварын workflow харах эрхгүй байна.", 403);
   }
 
   try {

@@ -5,3 +5,9 @@ access_push_subscription_admin,tengertech.push.subscription.admin,model_tengerte
 access_push_event_manager,tengertech.push.event.manager,model_tengertech_push_event,municipal_core.group_municipal_manager,1,1,1,0
 access_push_event_director,tengertech.push.event.director,model_tengertech_push_event,municipal_core.group_municipal_director,1,0,0,0
 access_push_event_admin,tengertech.push.event.admin,model_tengertech_push_event,municipal_core.group_municipal_admin,1,1,1,1
+access_push_delivery_manager,tengertech.push.delivery.manager,model_tengertech_push_delivery,municipal_core.group_municipal_manager,1,0,0,0
+access_push_delivery_director,tengertech.push.delivery.director,model_tengertech_push_delivery,municipal_core.group_municipal_director,1,0,0,0
+access_push_delivery_admin,tengertech.push.delivery.admin,model_tengertech_push_delivery,municipal_core.group_municipal_admin,1,1,1,1
+access_notification_state_user,tengertech.notification.state.user,model_tengertech_notification_state,base.group_user,1,1,1,0
+access_notification_state_manager,tengertech.notification.state.manager,model_tengertech_notification_state,municipal_core.group_municipal_manager,1,1,1,0
+access_notification_state_admin,tengertech.notification.state.admin,model_tengertech_notification_state,municipal_core.group_municipal_admin,1,1,1,1

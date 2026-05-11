@@ -13,7 +13,7 @@ import {
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
-import styles from "./global-loading.module.css";
+import { LoadingShell } from "./loading-shell";
 
 const DEFAULT_LOADING_MESSAGE = "Уншиж байна...";
 const DEFAULT_SAVING_MESSAGE = "Хадгалж байна...";
@@ -268,20 +268,7 @@ export function GlobalLoadingProvider({ children }: { children: ReactNode }) {
         <SearchParamLoadingReset onChange={hideAllLoading} />
       </Suspense>
       {children}
-      {isVisible ? (
-        <div
-          className={styles.overlay}
-          role="status"
-          aria-live="assertive"
-          aria-busy="true"
-          data-testid="global-loading-overlay"
-        >
-          <div className={styles.loaderPanel}>
-            <span className={styles.spinner} aria-hidden="true" />
-            <strong>{message}</strong>
-          </div>
-        </div>
-      ) : null}
+      {isVisible ? <LoadingShell mode="overlay" message={message} /> : null}
     </GlobalLoadingContext.Provider>
   );
 }

@@ -3,6 +3,7 @@ import "server-only";
 import type { AppSession } from "@/lib/auth";
 import { isMasterRole, isWorkerOnly } from "@/lib/auth";
 import { filterByDepartment, pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
+import { filterTasksForResponsibleMaster } from "@/lib/master-scope";
 import { loadMunicipalSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
 
 type Snapshot = Awaited<ReturnType<typeof loadMunicipalSnapshot>>;
@@ -25,18 +26,27 @@ export type ReportProjectSummary = {
 export function getScopedActiveReportTasks(snapshot: Snapshot, session: AppSession) {
   const workerMode = isWorkerOnly(session);
   const masterMode = isMasterRole(session.role);
+  const masterDepartmentName = masterMode
+    ? pickPrimaryDepartmentName({
+        taskDirectory: snapshot.taskDirectory,
+        reports: snapshot.reports,
+        projects: snapshot.projects,
+        departments: snapshot.departments,
+      })
+    : null;
+  const masterDepartmentProjects = masterDepartmentName
+    ? filterByDepartment(snapshot.projects, masterDepartmentName)
+    : snapshot.projects;
 
   const scopedTasks = workerMode
     ? snapshot.taskDirectory.filter((task) => task.assigneeIds?.includes(session.uid))
     : masterMode
-      ? filterByDepartment(
-          snapshot.taskDirectory,
-          pickPrimaryDepartmentName({
-            taskDirectory: snapshot.taskDirectory,
-            reports: snapshot.reports,
-            projects: snapshot.projects,
-            departments: snapshot.departments,
-          }),
+      ? filterTasksForResponsibleMaster(
+          masterDepartmentName
+            ? filterByDepartment(snapshot.taskDirectory, masterDepartmentName)
+            : snapshot.taskDirectory,
+          masterDepartmentProjects,
+          session,
         )
       : snapshot.taskDirectory;
 

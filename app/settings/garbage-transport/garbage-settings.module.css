@@ -6,6 +6,127 @@
   box-shadow: var(--ds-shadow-panel);
 }
 
+.inspectorScopeLayout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.inspectorList {
+  display: grid;
+  gap: 8px;
+}
+
+.inspectorList button {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  text-align: left;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--surface-panel);
+  color: var(--ink-900);
+  cursor: pointer;
+}
+
+.inspectorList button:hover,
+.inspectorList button:focus-visible,
+.inspectorListActive {
+  border-color: rgba(74, 154, 93, 0.42);
+  background: rgba(237, 248, 235, 0.96);
+}
+
+.inspectorList small,
+.inspectorScopeForm small {
+  color: var(--ink-700);
+}
+
+.inspectorScopeForm {
+  display: grid;
+  gap: 16px;
+}
+
+.scopeColumns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.scopeColumns section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.scopeColumns h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.scopeChecklist {
+  display: grid;
+  gap: 10px;
+}
+
+.scopeChecklist input[type="search"] {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--surface-panel);
+  color: var(--ink-900);
+}
+
+.scopeChecklist > div {
+  display: grid;
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.scopeOption {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding: 9px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--surface-panel);
+}
+
+.scopeOption input {
+  margin-top: 2px;
+}
+
+.scopeOption span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+}
+
+.helperText {
+  margin: 0;
+  color: var(--ink-700);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 980px) {
+  .inspectorScopeLayout,
+  .scopeColumns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pointCreateStack {
+  display: grid;
+  gap: 14px;
+}
+
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 0.8fr);
@@ -155,13 +276,9 @@
   color: var(--brand-900);
 }
 
-.settingsTabs:not(:has(.tabPanel:target)) .tabBar a[href="#general"],
-.settingsTabs:has(:global(#general:target)) .tabBar a[href="#general"],
-.settingsTabs:has(:global(#teams:target)) .tabBar a[href="#teams"],
-.settingsTabs:has(:global(#vehicles:target)) .tabBar a[href="#vehicles"],
-.settingsTabs:has(:global(#routes:target)) .tabBar a[href="#routes"],
+.settingsTabs:not(:has(.tabPanel:target)) .tabBar a[href="#inspectors"],
 .settingsTabs:has(:global(#points:target)) .tabBar a[href="#points"],
-.settingsTabs:has(:global(#work-types:target)) .tabBar a[href="#work-types"],
+.settingsTabs:has(:global(#inspectors:target)) .tabBar a[href="#inspectors"],
 .settingsTabs:has(:global(#notifications:target)) .tabBar a[href="#notifications"] {
   background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
   color: #fff;
@@ -185,7 +302,7 @@
   scroll-margin-top: 92px;
 }
 
-.tabPanels:not(:has(.tabPanel:target)) .tabPanel:not(:global(#general)),
+.tabPanels:not(:has(.tabPanel:target)) .tabPanel:not(:global(#inspectors)),
 .tabPanels:has(.tabPanel:target) .tabPanel:not(:target) {
   display: none;
 }

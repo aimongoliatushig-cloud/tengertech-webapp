@@ -25,7 +25,7 @@ import { SESSION_COOKIE_NAME } from "@/lib/session";
 
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 const WORKER_ROLE_REFRESH_INTERVAL_MS = 5 * 60_000;
-const CURRENT_SESSION_ROLE_INFERENCE_VERSION = 4;
+const CURRENT_SESSION_ROLE_INFERENCE_VERSION = 6;
 
 export type AppSession = {
   uid: number;
@@ -179,16 +179,20 @@ async function readSession(): Promise<SessionReadResult> {
   try {
     const session = unsealSession(token);
     const currentConnection = getCurrentSessionConnection();
-    if (
+    const hasConnectionMismatch =
       !session.odooUrl ||
       !session.odooDb ||
       normalizeSessionUrl(session.odooUrl) !== currentConnection.odooUrl ||
-      session.odooDb.trim() !== currentConnection.odooDb
-    ) {
-      return { session: null, hasInvalidToken: true };
-    }
+      session.odooDb.trim() !== currentConnection.odooDb;
+    const normalizedSession = hasConnectionMismatch
+      ? {
+          ...session,
+          ...currentConnection,
+        }
+      : session;
+
     return {
-      session: await refreshSessionRole(session),
+      session: await refreshSessionRole(normalizedSession),
       hasInvalidToken: false,
     };
   } catch {
@@ -269,7 +273,7 @@ export async function requireSession() {
   const { session, hasInvalidToken } = await readSession();
   if (!session) {
     if (hasInvalidToken) {
-      redirect("/auth/logout");
+      redirect("/login");
     }
     redirect("/login");
   }

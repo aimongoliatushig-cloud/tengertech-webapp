@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   BarChart3,
   Bell,
@@ -11,16 +12,16 @@ import {
   ChevronDown,
   FileText,
   Flag,
+  CircleHelp,
   LayoutDashboard,
   Leaf,
   ListChecks,
   LogOut,
-  MapPin,
   Menu,
   MessageSquare,
   PlusCircle,
-  Route,
   Settings,
+  ShoppingCart,
   Truck,
   Users,
   Wrench,
@@ -42,13 +43,13 @@ import { cn } from "@/lib/utils";
 import { PendingLinkIndicator } from "./pending-link-indicator";
 import styles from "./app-menu.module.css";
 
+const AUTO_GARBAGE_DEPARTMENT_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
+
 type MenuKey =
-  | "general-dashboard"
   | "dashboard"
   | "tasks"
   | "auto-base"
   | "fleet-repair"
-  | "garbage-routes"
   | "hr"
   | "field"
   | "projects"
@@ -59,6 +60,7 @@ type MenuKey =
   | "notifications"
   | "quality"
   | "chat"
+  | "help"
   | "new-project"
   | "reports"
   | "data-download";
@@ -89,14 +91,52 @@ type MenuItem = {
   icon: LucideIcon;
   badge?: number;
   departmentName?: string;
+  hardNavigate?: boolean;
 };
 
+let warmedWorkspaceRoutes = false;
+
+function MenuLink({
+  item,
+  className,
+  ariaCurrent,
+  onClick,
+  children,
+}: {
+  item: MenuItem;
+  className: string;
+  ariaCurrent?: "page";
+  onClick?: () => void;
+  children: ReactNode;
+}) {
+  if (item.hardNavigate) {
+    return (
+      <a
+        href={item.href}
+        className={className}
+        aria-current={ariaCurrent}
+        onClick={onClick}
+      >
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <Link
+      href={item.href}
+      className={className}
+      aria-current={ariaCurrent}
+      onClick={onClick}
+    >
+      {children}
+    </Link>
+  );
+}
+
 const HIDDEN_GLOBAL_MENU_KEYS = new Set([
-  "fleet-repair",
   "complaints",
   "garbage-complaints",
-  "data-download",
-  "procurement",
 ]);
 
 const HIDDEN_DEPARTMENT_MENU_NAMES = new Set([
@@ -169,7 +209,6 @@ export function AppMenu({
   canViewQualityCenter = false,
   canUseFieldConsole = false,
   canViewHr = false,
-  canViewGeneralDashboard = false,
   variant = "default",
   userName = "Хэрэглэгч",
   roleLabel = "Систем",
@@ -180,19 +219,56 @@ export function AppMenu({
   groupFlags = null,
 }: AppMenuProps) {
   void getDockLabel;
+  void canUseFieldConsole;
   void canViewQualityCenter;
   void variant;
 
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (warmedWorkspaceRoutes) {
+      return;
+    }
+    warmedWorkspaceRoutes = true;
+    void fetch("/api/workspace/warm", {
+      cache: "no-store",
+      credentials: "same-origin",
+    }).catch(() => null);
+
+    const routes = [
+      "/projects",
+      "/tasks?view=today",
+      "/profile",
+      "/reports",
+      "/review",
+      "/notifications",
+    ];
+    const timers = routes.map((route, index) =>
+      window.setTimeout(() => {
+        router.prefetch(route);
+      }, 500 + index * 250),
+    );
+
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [router]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      delete document.body.dataset.mobileMenuOpen;
+      return;
+    }
+
+    document.body.dataset.mobileMenuOpen = "true";
+
+    return () => {
+      delete document.body.dataset.mobileMenuOpen;
+    };
+  }, [isOpen]);
+
   const flags = groupFlags || {};
   const roleLabelLower = roleLabel.toLocaleLowerCase("mn-MN");
-  const showGeneralDashboard = Boolean(
-    canViewGeneralDashboard ||
-      flags.municipalDirector ||
-      flags.fleetRepairCeo ||
-      flags.fleetRepairGeneralManager,
-  );
   const executiveMode =
     Boolean(flags.municipalDirector || flags.municipalManager || flags.fleetRepairCeo) ||
     roleLabelLower.includes("\u0437\u0430\u0445\u0438\u0440\u0430\u043B") ||
@@ -233,8 +309,12 @@ export function AppMenu({
       flags.fleetRepairCeo,
   );
   const complaintMode = Boolean(flags.complaintManager);
+  const isTransportInspectorRole =
+    roleLabelLower.includes("тээвэрлэлтийн хяналтын ажилтан") ||
+    roleLabelLower.includes("тээврийн хяналтын ажилтан") ||
+    roleLabelLower.includes("хог тээврийн хяналтын ажилтан");
   const inspectorMode = Boolean(
-    flags.mfoInspector || flags.municipalInspector || flags.greenMaster,
+    isTransportInspectorRole || flags.mfoInspector || flags.municipalInspector || flags.greenMaster,
   );
   const departmentManagerMode = Boolean(
     flags.municipalDepartmentHead || environmentManagerMode || mfoManagerMode,
@@ -244,19 +324,54 @@ export function AppMenu({
   const showReports =
     canWriteReports || executiveMode || departmentManagerMode || inspectorMode || canViewQualityCenter;
   const baseCanCreate = !workerMode && (canCreateProject || canCreateTasks || canWriteReports);
-  const reviewHref = workerMode && canUseFieldConsole ? "/field" : "/notifications";
+  const reviewHref = "/notifications";
   const roleLooksHr = roleLabelLower.includes("\u0445\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446");
   const roleLooksDepartmentHead = roleLabelLower.includes("\u0445\u044D\u043B\u0442\u0441\u0438\u0439\u043D \u0434\u0430\u0440\u0433\u0430");
+  const roleLooksSystemAdmin =
+    roleLabelLower.includes("\u0441\u0438\u0441\u0442\u0435\u043c\u0438\u0439\u043d \u0430\u0434\u043c\u0438\u043d") ||
+    roleLabelLower.includes("system admin");
+  const transportInspectorMode =
+    !workerMode &&
+    !executiveMode &&
+    Boolean(isTransportInspectorRole || flags.mfoInspector) &&
+    !flags.mfoManager &&
+    !flags.mfoDispatcher &&
+    !flags.municipalDepartmentHead &&
+    !roleLooksDepartmentHead;
   const hasHrGroupAccess = Boolean(flags.hrUser || flags.hrManager || flags.municipalHr);
+  const hasDepartmentHeadHrAccess =
+    !masterMode &&
+    !workerMode &&
+    Boolean(
+      roleLooksDepartmentHead ||
+        flags.municipalDepartmentHead ||
+        flags.municipalManager ||
+        flags.mfoManager ||
+        flags.environmentManager ||
+        flags.improvementManager,
+    );
+  const canShowHrMenu = Boolean(
+    !transportInspectorMode &&
+      (canViewHr ||
+        hasDepartmentHeadHrAccess ||
+        (!masterMode && !workerMode && (roleLooksHr || hasHrGroupAccess || roleLooksSystemAdmin))),
+  );
   const hrFocusedMode =
-    roleLooksHr || Boolean(hasHrGroupAccess && canViewHr && !departmentManagerMode && !roleLooksDepartmentHead);
+    !workerMode &&
+    canShowHrMenu &&
+    (roleLooksHr || Boolean(hasHrGroupAccess && canViewHr && !departmentManagerMode && !roleLooksDepartmentHead));
   const isGarbageDepartmentHead =
     !workerMode &&
     !masterMode &&
     Boolean(departmentScopeName) &&
     isAutoGarbageDepartment(departmentScopeName) &&
-    canCreateProject &&
-    canCreateTasks;
+    !roleLooksSystemAdmin &&
+    Boolean(
+      flags.mfoManager ||
+        flags.mfoDispatcher ||
+        roleLooksDepartmentHead ||
+        (flags.municipalDepartmentHead && !executiveMode),
+    );
   const canCreate = baseCanCreate && !isGarbageDepartmentHead && !hrFocusedMode;
 
   const visibleDepartmentGroups = hrFocusedMode
@@ -282,7 +397,7 @@ export function AppMenu({
       departmentName: group.name,
     }));
 
-  const hrItems: MenuItem[] = canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr || roleLooksHr
+  const hrItems: MenuItem[] = canShowHrMenu
     ? [
         { key: "hr", href: "/hr", label: "\u0425\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446", icon: Users },
       ]
@@ -299,14 +414,21 @@ export function AppMenu({
           },
         ]
       : []),
-    ...(environmentMode
+    ...(environmentMode && !(workerMode && mfoFieldMode)
       ? [
-          {
-            key: "environment-work",
-            href: "/projects?department=%D0%9D%D0%BE%D0%B3%D0%BE%D0%BE%D0%BD%20%D0%B1%D0%B0%D0%B9%D0%B3%D1%83%D1%83%D0%BB%D0%B0%D0%BC%D0%B6%2C%20%D1%86%D1%8D%D0%B2%D1%8D%D1%80%D0%BB%D1%8D%D0%B3%D1%8D%D1%8D%20%D2%AF%D0%B9%D0%BB%D1%87%D0%B8%D0%BB%D0%B3%D1%8D%D1%8D%D0%BD%D0%B8%D0%B9%20%D1%85%D1%8D%D0%BB%D1%82%D1%8D%D1%81",
-            label: "\u041D\u043E\u0433\u043E\u043E\u043D \u0431\u0430\u0439\u0433\u0443\u0443\u043B\u0430\u043C\u0436, \u0442\u043E\u0445\u0438\u0436\u0438\u043B\u0442",
-            icon: Leaf,
-          },
+          workerMode
+            ? {
+                key: "tasks",
+                href: "/tasks",
+                label: "\u04E8\u043D\u04E9\u04E9\u0434\u0440\u0438\u0439\u043D \u0430\u0436\u0438\u043B",
+                icon: ListChecks,
+              }
+            : {
+                key: "environment-work",
+                href: "/projects?department=%D0%9D%D0%BE%D0%B3%D0%BE%D0%BE%D0%BD%20%D0%B1%D0%B0%D0%B9%D0%B3%D1%83%D1%83%D0%BB%D0%B0%D0%BC%D0%B6%2C%20%D1%86%D1%8D%D0%B2%D1%8D%D1%80%D0%BB%D1%8D%D0%B3%D1%8D%D1%8D%20%D2%AF%D0%B9%D0%BB%D1%87%D0%B8%D0%BB%D0%B3%D1%8D%D1%8D%D0%BD%D0%B8%D0%B9%20%D1%85%D1%8D%D0%BB%D1%82%D1%8D%D1%81",
+                label: "\u041D\u043E\u0433\u043E\u043E\u043D \u0431\u0430\u0439\u0433\u0443\u0443\u043B\u0430\u043C\u0436, \u0442\u043E\u0445\u0438\u0436\u0438\u043B\u0442",
+                icon: Leaf,
+              },
         ]
       : []),
     ...(repairMode
@@ -332,21 +454,12 @@ export function AppMenu({
   ];
 
   const defaultItems: MenuItem[] = [
-    ...(showGeneralDashboard
-      ? [
-          {
-            key: "general-dashboard",
-            href: "/general-dashboard",
-            label: "Ерөнхий хяналт",
-            icon: BarChart3,
-          },
-        ]
-      : []),
     {
       key: "dashboard",
       href: "/",
-      label: "\u0410\u0436\u043B\u044B\u043D \u0441\u0430\u043C\u0431\u0430\u0440",
+      label: workerMode ? "Нүүр" : "Хяналтын самбар",
       icon: LayoutDashboard,
+      hardNavigate: workerMode,
     },
     ...hrItems,
     ...roleFocusedItems,
@@ -393,7 +506,7 @@ export function AppMenu({
             key: "procurement",
             href: "/procurement/dashboard",
             label: "\u0425\u0443\u0434\u0430\u043B\u0434\u0430\u043D \u0430\u0432\u0430\u043B\u0442",
-            icon: FileText,
+            icon: ShoppingCart,
           },
         ]
       : []),
@@ -402,6 +515,12 @@ export function AppMenu({
       href: "/chat",
       label: "\u0427\u0430\u0442",
       icon: MessageSquare,
+    },
+    {
+      key: "help",
+      href: "/help",
+      label: "\u0422\u0443\u0441\u043B\u0430\u043C\u0436",
+      icon: CircleHelp,
     },
     {
       key: "review",
@@ -427,35 +546,25 @@ export function AppMenu({
       return false;
     }
     if (mfoFieldMode) {
-      return ["dashboard", "tasks", "chat", "review", "notifications"].includes(item.key);
+      return ["dashboard", "tasks", "chat", "help", "review", "notifications"].includes(item.key);
     }
     if (environmentFieldMode) {
-      return ["dashboard", "environment-work", "chat", "review", "notifications"].includes(item.key);
+      return ["dashboard", "tasks", "chat", "help", "review", "notifications"].includes(item.key);
     }
     if (repairFieldMode) {
-      return ["dashboard", "fleet-repair", "chat", "review", "notifications"].includes(item.key);
+      return ["dashboard", "fleet-repair", "chat", "help", "review", "notifications"].includes(item.key);
     }
     return !["data-download", "reports", "procurement", "fleet-repair"].includes(item.key);
   });
 
   const garbageDepartmentItems: MenuItem[] = [
-    ...(showGeneralDashboard
-      ? [
-          {
-            key: "general-dashboard",
-            href: "/general-dashboard",
-            label: "Ерөнхий хяналт",
-            icon: BarChart3,
-          },
-        ]
-      : []),
     {
       key: "dashboard",
       href: "/",
       label: "Хяналтын самбар",
       icon: LayoutDashboard,
     },
-    ...(canViewHr || flags.hrUser || flags.hrManager || flags.municipalHr
+    ...(canShowHrMenu
       ? [
           {
             key: "hr",
@@ -472,40 +581,10 @@ export function AppMenu({
       icon: ListChecks,
     },
     {
-      key: "tasks",
-      href: "/tasks?view=today",
-      label: "Ажлын даалгавар",
-      icon: CalendarDays,
-    },
-    {
-      key: "garbage-teams",
-      href: "/settings/garbage-transport#teams",
-      label: "Багууд",
-      icon: Users,
-    },
-    {
       key: "auto-base",
       href: "/auto-base",
       label: "Машин техник",
       icon: Truck,
-    },
-    {
-      key: "garbage-routes",
-      href: "/garbage-routes",
-      label: "Хог тээврийн маршрут",
-      icon: Route,
-    },
-    {
-      key: "garbage-route-settings",
-      href: "/settings/garbage-transport#routes",
-      label: "Маршрут",
-      icon: Flag,
-    },
-    {
-      key: "garbage-points",
-      href: "/settings/garbage-transport#points",
-      label: "Хогийн цэгүүд",
-      icon: MapPin,
     },
     {
       key: "reports",
@@ -527,9 +606,42 @@ export function AppMenu({
     },
   ];
 
-  const items = (isGarbageDepartmentHead ? garbageDepartmentItems : defaultItems).filter(
-    (item) => !isHiddenMenuItem(item),
-  );
+  const inspectorWorkHref = `/projects?department=${encodeURIComponent(AUTO_GARBAGE_DEPARTMENT_NAME)}`;
+  const inspectorNewWorkHref = `/projects/new?department=${encodeURIComponent(AUTO_GARBAGE_DEPARTMENT_NAME)}`;
+  const transportInspectorItems: MenuItem[] = [
+    {
+      key: "dashboard",
+      href: "/",
+      label: "Ажлын самбар",
+      icon: LayoutDashboard,
+    },
+    {
+      key: "projects",
+      href: inspectorWorkHref,
+      label: "Миний ажил",
+      icon: ListChecks,
+    },
+    {
+      key: "new-project",
+      href: inspectorNewWorkHref,
+      label: "Ажил нэмэх",
+      icon: PlusCircle,
+    },
+    {
+      key: "review",
+      href: reviewHref,
+      label: "Мэдэгдэл",
+      icon: Bell,
+      badge: notificationCount,
+    },
+  ];
+
+  const items = (transportInspectorMode
+    ? transportInspectorItems
+    : isGarbageDepartmentHead
+      ? garbageDepartmentItems
+      : defaultItems
+  ).filter((item) => !isHiddenMenuItem(item));
 
   function isItemActive(item: MenuItem) {
     if (item.key === active) {
@@ -541,21 +653,38 @@ export function AppMenu({
     if (item.key === "review" && active === "notifications") {
       return true;
     }
+    if (item.key === "projects" && active === "tasks") {
+      return true;
+    }
     if (active === "auto-base" && item.departmentName?.includes("Авто")) {
       return true;
     }
-    if (
-      active === "garbage-routes" &&
-      item.departmentName &&
-      isAutoGarbageDepartment(item.departmentName)
-    ) {
+    if (active === "fleet-repair" && item.key === "auto-base") {
       return true;
     }
     return false;
   }
 
   const activeItem = items.find(isItemActive) ?? items[0];
-  const mobileDockItems: MenuItem[] = (isGarbageDepartmentHead
+  const mobileDockItems: MenuItem[] = (transportInspectorMode
+    ? [
+        { key: "dashboard", href: "/", label: "Самбар", icon: LayoutDashboard },
+        {
+          key: "projects",
+          href: inspectorWorkHref,
+          label: "Ажил",
+          icon: ListChecks,
+        },
+        {
+          key: "new-project",
+          href: inspectorNewWorkHref,
+          label: "Нэмэх",
+          icon: PlusCircle,
+        },
+        { key: "review", href: reviewHref, label: "Мэдэгдэл", icon: Bell, badge: notificationCount },
+        { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
+      ]
+    : isGarbageDepartmentHead
     ? [
         { key: "dashboard", href: "/", label: "Самбар", icon: LayoutDashboard },
         {
@@ -564,8 +693,6 @@ export function AppMenu({
           label: "Ажил",
           icon: ListChecks,
         },
-        { key: "tasks", href: "/tasks?view=today", label: "Даалгавар", icon: CalendarDays },
-        { key: "garbage-routes", href: "/garbage-routes/today", label: "Маршрут", icon: Route },
         { key: "reports", href: "/reports", label: "Тайлан", icon: BarChart3 },
         {
           key: "garbage-settings",
@@ -582,53 +709,44 @@ export function AppMenu({
       : workerMode
       ? mfoFieldMode
         ? [
-            { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard },
+            { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard, hardNavigate: true },
             { key: "tasks", href: "/tasks", label: "Ажил", icon: ListChecks },
             { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
             { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
-            { key: "profile", href: "/profile", label: "\u041F\u0440\u043E\u0444\u0430\u0439\u043B", icon: Settings },
+            { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
           ]
         : environmentFieldMode
           ? [
-              { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard },
-              {
-                key: "environment-work",
-                href: "/projects?department=%D0%9D%D0%BE%D0%B3%D0%BE%D0%BE%D0%BD%20%D0%B1%D0%B0%D0%B9%D0%B3%D1%83%D1%83%D0%BB%D0%B0%D0%BC%D0%B6%2C%20%D1%86%D1%8D%D0%B2%D1%8D%D1%80%D0%BB%D1%8D%D0%B3%D1%8D%D1%8D%20%D2%AF%D0%B9%D0%BB%D1%87%D0%B8%D0%BB%D0%B3%D1%8D%D1%8D%D0%BD%D0%B8%D0%B9%20%D1%85%D1%8D%D0%BB%D1%82%D1%8D%D1%81",
-                label: "\u0410\u0436\u0438\u043B",
-                icon: Leaf,
-              },
+              { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard, hardNavigate: true },
+              { key: "tasks", href: "/tasks", label: "\u0410\u0436\u0438\u043B", icon: ListChecks },
               { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
               { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
-              { key: "profile", href: "/profile", label: "\u041F\u0440\u043E\u0444\u0430\u0439\u043B", icon: Settings },
+              { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
             ]
           : repairFieldMode
             ? [
-                { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard },
+                { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard, hardNavigate: true },
                 { key: "fleet-repair", href: "/fleet-repair/requests", label: "\u0417\u0430\u0441\u0432\u0430\u0440", icon: Wrench },
                 { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
                 { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
-                { key: "profile", href: "/profile", label: "\u041F\u0440\u043E\u0444\u0430\u0439\u043B", icon: Settings },
+                { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
               ]
             : [
-                { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard },
-                {
-                  key: "projects",
-                  href: departmentItems[0]?.href ?? "/projects",
-                  label: "\u0410\u0436\u043B\u0443\u0443\u0434",
-                  icon: ListChecks,
-                },
+                { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard, hardNavigate: true },
+                { key: "tasks", href: "/tasks", label: "\u0410\u0436\u0438\u043B", icon: ListChecks },
                 { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
                 { key: "review", href: reviewHref, label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
+                { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
               ]
       : [
-          ...(showGeneralDashboard
-            ? [{ key: "general-dashboard", href: "/general-dashboard", label: "Ерөнхий", icon: BarChart3 }]
-            : []),
           { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
           { key: "projects", href: "/projects", label: "Ажлууд", icon: ListChecks },
           { key: "new-project", href: "/create", label: "Шинэ ажил", icon: PlusCircle },
+          ...(showProcurement
+            ? [{ key: "procurement", href: "/procurement/dashboard", label: "Худалдан", icon: ShoppingCart }]
+            : []),
           { key: "reports", href: canWriteReports ? "/reports" : "/review", label: "Тайлан", icon: BarChart3 },
-          canViewHr
+          canShowHrMenu
             ? { key: "hr", href: "/hr", label: "Хүний нөөц", icon: Users }
             : { key: "chat", href: "/chat", label: "Чат", icon: MessageSquare },
         ]).filter((item) => !isHiddenMenuItem(item));
@@ -640,11 +758,11 @@ export function AppMenu({
         const isActive = isItemActive(item);
 
         return (
-          <Link
+          <MenuLink
             key={item.key}
-            href={item.href}
+            item={item}
             className={cn(styles.menuLink, isActive && styles.menuLinkActive)}
-            aria-current={isActive ? "page" : undefined}
+            ariaCurrent={isActive ? "page" : undefined}
             onClick={() => setIsOpen(false)}
           >
             <span className={styles.menuIcon} aria-hidden>
@@ -656,7 +774,7 @@ export function AppMenu({
               overlayClassName={styles.linkLoadingOverlay}
             />
             {item.badge ? <span className={styles.menuBadge}>{item.badge}</span> : null}
-          </Link>
+          </MenuLink>
         );
       })}
     </nav>
@@ -668,7 +786,7 @@ export function AppMenu({
       aria-label="Ажлын орчны цэс"
     >
       <aside className={styles.menuBar}>
-        <Link href={hrFocusedMode ? "/hr" : showGeneralDashboard ? "/general-dashboard" : "/"} className={styles.brandBlock}>
+        <Link href={hrFocusedMode ? "/hr" : "/"} className={styles.brandBlock}>
           <Image
             src="/logo.png"
             alt="Хот тохижилт үйлчилгээний төв"
@@ -717,10 +835,12 @@ export function AppMenu({
                 <Settings aria-hidden />
                 <span>Тохиргоо</span>
               </Link>
-              <Link href="/auth/logout" role="menuitem" className={styles.profileMenuLink}>
-                <LogOut aria-hidden />
-                <span>Гарах</span>
-              </Link>
+              <form action="/auth/logout" method="post">
+                <button type="submit" role="menuitem" className={styles.profileMenuLink}>
+                  <LogOut aria-hidden />
+                  <span>Гарах</span>
+                </button>
+              </form>
             </div>
           ) : null}
         </div>
@@ -774,15 +894,15 @@ export function AppMenu({
           const isActive = isItemActive(item);
 
           return (
-            <Link
+            <MenuLink
               key={`dock-${item.key}`}
-              href={item.href}
+              item={item}
               className={cn(
                 styles.dockLink,
                 item.key === "new-project" && styles.dockLinkCreate,
                 isActive && styles.dockLinkActive,
               )}
-              aria-current={isActive ? "page" : undefined}
+              ariaCurrent={isActive ? "page" : undefined}
             >
               <Icon aria-hidden />
               <span>{item.label}</span>
@@ -791,7 +911,7 @@ export function AppMenu({
                 overlayClassName={styles.linkLoadingOverlay}
                 label="..."
               />
-            </Link>
+            </MenuLink>
           );
         })}
       </div>

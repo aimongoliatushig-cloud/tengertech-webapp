@@ -11,6 +11,10 @@ function jsonError(message: string, status = 500) {
   return Response.json({ error: message }, { status });
 }
 
+export async function GET() {
+  return jsonError("Push subscription зөвхөн POST хүсэлтээр хадгалагдана.", 405);
+}
+
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) {

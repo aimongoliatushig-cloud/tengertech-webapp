@@ -1,9 +1,13 @@
+import { Suspense } from "react";
+
 import { DashboardView } from "@/app/dashboard-view";
+import { LoadingShell } from "@/app/_components/loading-shell";
 import { redirect } from "next/navigation";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
   hasCapability,
   isHrOnlyRole,
+  isMasterRole,
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
@@ -19,10 +23,12 @@ import {
   type HrDailyAttendanceSummary,
 } from "@/lib/odoo";
 import { loadUlaanbaatarWeather } from "@/lib/weather";
+import { loadWorkspaceNotificationSummary } from "@/lib/workspace-notifications";
 
 export const dynamic = "force-dynamic";
 
 type ConnectionOverrides = NonNullable<Parameters<typeof loadMunicipalSnapshot>[0]>;
+type DashboardSession = Awaited<ReturnType<typeof requireSession>>;
 
 const EMPTY_FLEET_BOARD: Awaited<ReturnType<typeof loadFleetVehicleBoard>> = {
   allVehicles: [],
@@ -56,6 +62,35 @@ const EMPTY_HR_ATTENDANCE_SUMMARY: HrDailyAttendanceSummary = {
   source: "empty",
 };
 
+const EMPTY_MUNICIPAL_SNAPSHOT: Awaited<ReturnType<typeof loadMunicipalSnapshot>> = {
+  source: "live",
+  generatedAt: "",
+  metrics: [],
+  qualityMetrics: [],
+  departments: [],
+  projects: [],
+  taskDirectory: [],
+  liveTasks: [],
+  reviewQueue: [],
+  qualityAlerts: [],
+  reports: [],
+  teamLeaders: [],
+  odooBaseUrl: "",
+  totalTasks: 0,
+};
+
+const AUTO_BASE_GARBAGE_DEPARTMENT_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
+
+function isTransportInspectorSession(session: DashboardSession) {
+  return Boolean(
+    session.role === "transport_inspector" ||
+      (session.groupFlags?.mfoInspector &&
+        !session.groupFlags?.mfoManager &&
+        !session.groupFlags?.mfoDispatcher &&
+        !session.groupFlags?.municipalDepartmentHead),
+  );
+}
+
 async function loadScopedHrAttendanceSummary(
   scopedDepartmentName: string,
   connectionOverrides: ConnectionOverrides,
@@ -87,23 +122,49 @@ async function loadScopedHrAttendanceSummary(
 
 export default async function Home() {
   const session = await requireSession();
-  if (isHrOnlyRole(session)) {
+  const workerMode = isWorkerOnly(session);
+  const masterMode = isMasterRole(session.role);
+  if (!workerMode && isHrOnlyRole(session)) {
     redirect("/hr");
   }
+
+  return (
+    <Suspense fallback={<LoadingShell />}>
+      <DashboardPageContent session={session} workerMode={workerMode} masterMode={masterMode} />
+    </Suspense>
+  );
+}
+
+async function DashboardPageContent({
+  session,
+  workerMode,
+  masterMode,
+}: {
+  session: DashboardSession;
+  workerMode: boolean;
+  masterMode: boolean;
+}) {
 
   const connectionOverrides = {
     login: session.login,
     password: session.password,
   };
-  const workerMode = isWorkerOnly(session);
-  const canViewGeneralDashboard = canAccessGeneralDashboard(session);
+  const transportInspectorMode = isTransportInspectorSession(session);
+  const canViewGeneralDashboard = !transportInspectorMode && canAccessGeneralDashboard(session);
+  const generalDashboardMode = canViewGeneralDashboard;
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const canViewHrPromise = canAccessHr(session).catch((error) => {
     console.warn("HR access could not be resolved for dashboard menu:", error);
     return false;
   });
 
-  const snapshotPromise = loadMunicipalSnapshot(connectionOverrides);
+  const snapshotPromise = loadMunicipalSnapshot(
+    connectionOverrides,
+    generalDashboardMode ? { allowFallback: false } : {},
+  ).catch((error) => {
+    console.warn("Municipal snapshot could not be loaded for dashboard:", error);
+    return EMPTY_MUNICIPAL_SNAPSHOT;
+  });
   const departmentScopeNamePromise = loadSessionDepartmentName(session);
   const weatherPromise = loadUlaanbaatarWeather();
   const todayAssignmentsPromise =
@@ -121,7 +182,6 @@ export default async function Home() {
           })
       : Promise.resolve([]);
 
-  let scopedDepartmentName = await departmentScopeNamePromise;
   const fleetBoardPromise = workerMode
     ? Promise.resolve({
         fleetBoard: EMPTY_FLEET_BOARD,
@@ -139,6 +199,12 @@ export default async function Home() {
             fleetLoadError: "Авто баазын техникийн мэдээллийг уншиж чадсангүй.",
           };
         });
+  let scopedDepartmentName = await departmentScopeNamePromise;
+  if (transportInspectorMode) {
+    scopedDepartmentName = AUTO_BASE_GARBAGE_DEPARTMENT_NAME;
+  } else if (generalDashboardMode) {
+    scopedDepartmentName = null;
+  }
   const hrAttendanceSummaryPromise = workerMode
     ? Promise.resolve(EMPTY_HR_ATTENDANCE_SUMMARY)
     : scopedDepartmentName
@@ -165,6 +231,10 @@ export default async function Home() {
         (task.assigneeIds ?? []).some((assigneeId) => String(assigneeId) === currentUserId),
       )?.departmentName ?? null;
   }
+  const notificationSummaryPromise = loadWorkspaceNotificationSummary(session, {
+    snapshot,
+    scopedDepartmentName,
+  });
 
   const scopedDepartments = scopedDepartmentName
     ? snapshot.departments.filter(
@@ -172,19 +242,43 @@ export default async function Home() {
           filterByDepartment([{ departmentName: department.name }], scopedDepartmentName).length > 0,
       )
     : snapshot.departments;
-  const visibleSnapshot = scopedDepartmentName
-    ? {
-        ...snapshot,
-        departments: scopedDepartments,
-        projects: filterByDepartment(snapshot.projects, scopedDepartmentName),
-        taskDirectory: filterByDepartment(snapshot.taskDirectory, scopedDepartmentName),
-        liveTasks: filterByDepartment(snapshot.liveTasks, scopedDepartmentName),
-        reviewQueue: filterByDepartment(snapshot.reviewQueue, scopedDepartmentName),
-        qualityAlerts: filterByDepartment(snapshot.qualityAlerts, scopedDepartmentName),
-        reports: filterByDepartment(snapshot.reports, scopedDepartmentName),
-        totalTasks: filterByDepartment(snapshot.taskDirectory, scopedDepartmentName).length,
-      }
-    : snapshot;
+  const departmentScopedProjects = scopedDepartmentName
+    ? filterByDepartment(snapshot.projects, scopedDepartmentName)
+    : snapshot.projects;
+  const departmentScopedTasks = scopedDepartmentName
+    ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
+    : snapshot.taskDirectory;
+  const departmentScopedProjectIds = new Set(departmentScopedProjects.map((project) => project.id));
+  const departmentScopedProjectNames = new Set(departmentScopedProjects.map((project) => project.name));
+  const departmentScopedReviewQueue = scopedDepartmentName
+    ? filterByDepartment(snapshot.reviewQueue, scopedDepartmentName)
+    : snapshot.reviewQueue;
+  const visibleSnapshot = {
+    ...snapshot,
+    departments: scopedDepartments,
+    projects: departmentScopedProjects,
+    taskDirectory: departmentScopedTasks,
+    liveTasks: scopedDepartmentName ? filterByDepartment(snapshot.liveTasks, scopedDepartmentName) : snapshot.liveTasks,
+    reviewQueue: departmentScopedReviewQueue,
+    qualityAlerts: (scopedDepartmentName
+      ? filterByDepartment(snapshot.qualityAlerts, scopedDepartmentName)
+      : snapshot.qualityAlerts
+    ).filter((alert) =>
+      masterMode && scopedDepartmentName ? departmentScopedProjectNames.has(alert.projectName) : true,
+    ),
+    reports: (scopedDepartmentName
+      ? filterByDepartment(snapshot.reports, scopedDepartmentName)
+      : snapshot.reports
+    ).filter((report) =>
+      masterMode && scopedDepartmentName ? departmentScopedProjectIds.has(report.projectId ?? -1) : true,
+    ),
+    totalTasks: departmentScopedTasks.length,
+  };
+  const notificationSummary = await notificationSummaryPromise;
+  const notificationNote =
+    notificationSummary.unreadCount > 0
+      ? `${notificationSummary.newCount} шинэ ажил, ${notificationSummary.reviewCount} хянах, ${notificationSummary.overdueCount} хугацаа хэтэрсэн`
+      : "Шинэ ажил, хянах зүйл алга";
 
   return (
     <DashboardView
@@ -198,6 +292,8 @@ export default async function Home() {
       weather={weather}
       canViewHr={canViewHr}
       canViewGeneralDashboard={canViewGeneralDashboard}
+      notificationCount={notificationSummary.unreadCount}
+      notificationNote={notificationNote}
     />
   );
 }

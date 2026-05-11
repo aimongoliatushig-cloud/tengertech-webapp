@@ -15,8 +15,10 @@ import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 import {
+  loadActiveGarbageVehicleOptions,
   loadDepartmentOptions,
-  loadGarbageRouteOptions,
+  loadGarbagePointOptions,
+  loadGarbageSubdistrictOptions,
   loadGarbageVehicleOptions,
   loadProjectManagerOptions,
   loadRoadCleaningAreaOptions,
@@ -48,7 +50,17 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
   }
 
   const masterMode = isMasterRole(session.role);
-  const shouldLockDepartment = session.role === "project_manager" || masterMode;
+  const transportInspectorMode = Boolean(
+    session.role === "transport_inspector" ||
+      (session.groupFlags?.mfoInspector &&
+        !session.groupFlags?.mfoManager &&
+        !session.groupFlags?.mfoDispatcher),
+  );
+  const shouldLockDepartment =
+    session.role === "project_manager" ||
+    transportInspectorMode ||
+    masterMode ||
+    Boolean(session.groupFlags?.mfoInspector);
   const params = (await searchParams) ?? {};
   const errorMessage = getMessage(params.error);
   const noticeMessage = getMessage(params.notice);
@@ -58,7 +70,9 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
     managerOptions,
     departmentOptions,
     garbageVehicleOptions,
-    garbageRouteOptions,
+    activeGarbageVehicleOptions,
+    garbagePointOptions,
+    garbageSubdistrictOptions,
     roadCleaningAreaOptions,
     roadCleaningEmployeeOptions,
     masterSnapshot,
@@ -75,8 +89,16 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
     loadGarbageVehicleOptions({
       login: session.login,
       password: session.password,
+    }, { requireCurrentEmployeeScope: transportInspectorMode }),
+    loadActiveGarbageVehicleOptions({
+      login: session.login,
+      password: session.password,
     }),
-    loadGarbageRouteOptions({
+    loadGarbagePointOptions({
+      login: session.login,
+      password: session.password,
+    }, { requireCurrentEmployeeScope: transportInspectorMode }),
+    loadGarbageSubdistrictOptions({
       login: session.login,
       password: session.password,
     }),
@@ -163,7 +185,9 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
               <h1>{masterMode ? "Шинэ ажил үүсгэх" : "Шинэ ажил нэмэх"}</h1>
               <p>
                 {masterMode
-                  ? "Мастер хэрэглэгч зөвхөн өөрийн харьяалах алба нэгж дээр шинэ ажил үүсгэнэ. Хэлтэс автоматаар сонгогдсон тул нэр, хугацаа, шаардлагатай мэдээллээ оруулахад хангалттай."
+                  ? session.role === "senior_master"
+                    ? "Ахлах мастер өөрийн харьяалах алба нэгж дээр ажил үүсгэж, бүх мастерийн ажлын урсгалыг хянана. Хэлтэс автоматаар сонгогдсон тул нэр, хугацаа, шаардлагатай мэдээллээ оруулахад хангалттай."
+                    : "Мастер өөрт хариуцах ажил үүсгэнэ. Хэлтэс автоматаар сонгогдсон тул нэр, хугацаа, шаардлагатай мэдээллээ оруулахад хангалттай."
                   : "Энгийн ажил дээр нэрээ гараар оруулна. Харин хог тээвэрлэлтийн үед машин, маршрут, огноо сонгоход нэг ажил автоматаар үүсэж, тухайн маршрутын хог ачих цэг бүр тусдаа даалгавар болж нэмэгдэнэ."}
               </p>
             </section>
@@ -191,7 +215,9 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
                   departmentOptions={departmentOptions}
                   managerOptions={managerOptions}
                   garbageVehicleOptions={garbageVehicleOptions}
-                  garbageRouteOptions={garbageRouteOptions}
+                  activeGarbageVehicleOptions={activeGarbageVehicleOptions}
+                  garbagePointOptions={garbagePointOptions}
+                  garbageSubdistrictOptions={garbageSubdistrictOptions}
                   roadCleaningAreaOptions={roadCleaningAreaOptions}
                   roadCleaningEmployeeOptions={roadCleaningEmployeeOptions}
                   lockedDepartmentId={

@@ -231,6 +231,22 @@ class MunicipalProcurementRequest(models.Model):
         if not self._has_any_group(keys):
             raise AccessError(message)
 
+    def _department_head_allowed_department_ids(self):
+        employee_departments = self.env["hr.employee"].sudo().search(
+            [("user_id", "=", self.env.user.id)]
+        ).mapped("department_id")
+        managed_departments = self.env["hr.department"].sudo().search(
+            [("manager_id.user_id", "=", self.env.user.id)]
+        )
+        return set((employee_departments | managed_departments).ids)
+
+    def _ensure_department_head_can_create_for_department(self, department_id):
+        if self._has_group_key("admin"):
+            return
+        allowed_department_ids = self._department_head_allowed_department_ids()
+        if department_id and department_id not in allowed_department_ids:
+            raise AccessError("Department heads can create procurement requests only for their own department.")
+
     def _record_audit(self, action_code, old_state=False, new_state=False, note=False):
         Audit = self.env["municipal.procurement.audit"].sudo()
         for request in self:
@@ -634,6 +650,15 @@ class MunicipalProcurementRequest(models.Model):
         search = filters.get("search")
         state = filters.get("state")
         flow = filters.get("flow_type") or filters.get("flow")
+        def filter_int(key):
+            try:
+                return int(filters.get(key) or 0)
+            except (TypeError, ValueError):
+                return 0
+
+        project_id = filter_int("project_id")
+        task_id = filter_int("task_id")
+        department_id = filter_int("department_id")
         user = self.env.user
         flags = self._api_current_user_payload(user)["flags"]
         if scope == "mine":
@@ -655,6 +680,12 @@ class MunicipalProcurementRequest(models.Model):
             domain.append(("state", "=", state))
         if flow:
             domain.append(("flow_type", "=", flow))
+        if project_id:
+            domain.append(("related_project_id", "=", project_id))
+        if task_id:
+            domain.append(("related_task_id", "=", task_id))
+        if department_id:
+            domain.append(("department_id", "=", department_id))
         if search:
             domain += [
                 "|",
@@ -705,6 +736,7 @@ class MunicipalProcurementRequest(models.Model):
                 "generated_on": fields.Datetime.now(),
             },
             "storekeeper_load": self._api_group_counts(records, "purchase_manager_id"),
+            "department_counts": self._api_group_counts(records, "department_id"),
             "project_progress": self._api_group_counts(records, "related_project_id"),
             "supplier_counts": self._api_supplier_counts(records),
             "items": [record._api_summary_payload() for record in records[:10]],
@@ -764,6 +796,12 @@ class MunicipalProcurementRequest(models.Model):
         line_payloads = payload.get("lines") or []
         if not line_payloads:
             raise UserError("At least one purchase item is required.")
+        def payload_int(key):
+            try:
+                return int(payload.get(key) or 0) or False
+            except (TypeError, ValueError):
+                return False
+
         vals = {
             "title": payload.get("title"),
             "description": payload.get("description"),
@@ -771,17 +809,25 @@ class MunicipalProcurementRequest(models.Model):
             "urgency": payload.get("urgency") or "medium",
             "priority": payload.get("urgency") or "medium",
             "required_date": payload.get("required_date") or False,
-            "related_project_id": int(payload.get("project_id") or 0) or False,
-            "related_task_id": int(payload.get("task_id") or 0) or False,
-            "department_id": int(payload.get("department_id") or 0) or False,
-            "purchase_manager_id": int(payload.get("responsible_storekeeper_user_id") or 0) or False,
+            "related_project_id": payload_int("project_id"),
+            "related_task_id": payload_int("task_id"),
+            "department_id": payload_int("department_id"),
+            "purchase_manager_id": payload_int("responsible_storekeeper_user_id"),
             "line_ids": [],
         }
         if vals["request_type"] == "goods":
             vals["request_type"] = "material"
+        if vals["related_task_id"] and not vals["related_project_id"]:
+            task = self.env["project.task"].sudo().browse(vals["related_task_id"]).exists()
+            vals["related_project_id"] = task.project_id.id or False
+        if vals["related_project_id"] and not vals["department_id"]:
+            project = self.env["project.project"].sudo().browse(vals["related_project_id"]).exists()
+            if project and "ops_department_id" in project._fields:
+                vals["department_id"] = project.ops_department_id.id or False
         if not vals["department_id"]:
             employee = self.env["hr.employee"].sudo().search([("user_id", "=", self.env.user.id)], limit=1)
             vals["department_id"] = employee.department_id.id or False
+        self._ensure_department_head_can_create_for_department(vals["department_id"])
         for line in line_payloads:
             vals["line_ids"].append(
                 (

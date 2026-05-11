@@ -7,13 +7,17 @@ import {
   ClipboardCheck,
   Clock3,
   Leaf,
-  Send,
+  Plus,
   Sun,
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { createTaskReportAction } from "@/app/actions";
+import {
+  createTaskReportAction,
+  deleteTaskReportAction,
+  updateTaskReportAction,
+} from "@/app/actions";
 import shellStyles from "@/app/workspace.module.css";
 import {
   getRoleLabel,
@@ -34,15 +38,19 @@ import {
   findDepartmentGroupByUnit,
   matchesDepartmentGroup,
 } from "@/lib/department-groups";
-import { loadGarbageWeeklyTemplates } from "@/lib/garbage-weekly-template-store";
-import { expandGarbageWeeklyTemplatesToTasks } from "@/lib/garbage-weekly-template-tasks";
-import { loadMunicipalSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
+import { loadMunicipalSnapshot, type DashboardSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
+import {
+  filterProjectsForResponsibleMaster,
+  filterTasksForResponsibleMaster,
+} from "@/lib/master-scope";
+import { loadWorkspaceNotificationSummary } from "@/lib/workspace-notifications";
 
 import styles from "./tasks.module.css";
 import { TaskReportModal } from "./[taskId]/task-report-modal";
 
 type FilterKey = "all" | "working" | "review" | "problem" | "verified";
 type QuickActionMode = "none" | "report";
+type CalendarViewMode = "day" | "week" | "month" | "year";
 
 type PageProps = {
   searchParams?: Promise<{
@@ -50,6 +58,8 @@ type PageProps = {
     filter?: string | string[];
     quickAction?: string | string[];
     work?: string | string[];
+    workId?: string | string[];
+    view?: string | string[];
   }>;
 };
 
@@ -95,6 +105,84 @@ function normalizeFilter(value: string): FilterKey {
 
 function normalizeQuickAction(value: string): QuickActionMode {
   return value === "report" ? "report" : "none";
+}
+
+function normalizeWorkName(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("mn-MN");
+}
+
+function normalizeIdParam(value: string) {
+  const parsed = Number.parseInt(value.trim(), 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function workerTaskActionLabel(task: TaskDirectoryItem) {
+  if (task.statusKey === "verified") {
+    return "Баталгаажсан";
+  }
+  if (task.statusKey === "review") {
+    return "Илгээсэн";
+  }
+  if (task.statusKey === "problem") {
+    return "Засах";
+  }
+  return "Тайлан";
+}
+
+function workerTaskReturnReason(task: TaskDirectoryItem) {
+  if (task.statusKey !== "problem") {
+    return "";
+  }
+  return task.latestReport?.rejectionReason?.trim() || "Засвар нэхэж буцаасан байна.";
+}
+
+function isFutureWorkerTask(task: TaskDirectoryItem, todayDateKey: string) {
+  return Boolean(task.scheduledDate && task.scheduledDate > todayDateKey);
+}
+
+function workerTaskBlockedReportReason(task: TaskDirectoryItem, todayDateKey: string) {
+  if (!isFutureWorkerTask(task, todayDateKey)) {
+    return "";
+  }
+  return "Тайланг төлөвлөсөн өдөр оруулна.";
+}
+
+function workerTaskVisibleNote(task: TaskDirectoryItem, todayDateKey: string) {
+  return workerTaskReturnReason(task) || workerTaskBlockedReportReason(task, todayDateKey);
+}
+
+function workerTaskVisibleActionLabel(task: TaskDirectoryItem, todayDateKey: string) {
+  if (isFutureWorkerTask(task, todayDateKey)) {
+    return "Хүлээгдэж байна";
+  }
+  return workerTaskActionLabel(task);
+}
+
+function getWorkerExistingReport(task: TaskDirectoryItem) {
+  if (!task.latestReport) {
+    return undefined;
+  }
+  if (task.statusKey !== "problem") {
+    return task.latestReport;
+  }
+  return {
+    ...task.latestReport,
+    stateBucket: "problem" as const,
+    rejectionReason: task.latestReport.rejectionReason?.trim() || "",
+  };
+}
+
+function normalizeCalendarView(value: string): CalendarViewMode {
+  if (value === "today" || value === "day") {
+    return "day";
+  }
+  if (value === "week") {
+    return "week";
+  }
+  if (value === "year") {
+    return "year";
+  }
+  return "month";
 }
 
 function formatWeekdayLabel(dateKey: string) {
@@ -156,6 +244,30 @@ function getCalendarMonthLabel(dateKey: string) {
     year: "numeric",
     month: "long",
   }).format(parsed);
+}
+
+function getCalendarDayLabel(dateKey: string) {
+  const parsed = parseDateKey(dateKey);
+  if (!parsed) {
+    return dateKey;
+  }
+
+  return new Intl.DateTimeFormat("mn-MN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  }).format(parsed);
+}
+
+function getCalendarYear(dateKey: string) {
+  return (parseDateKey(dateKey) ?? new Date()).getFullYear();
+}
+
+function getCalendarMonthName(date: Date) {
+  return new Intl.DateTimeFormat("mn-MN", {
+    month: "long",
+  }).format(date);
 }
 
 function buildMonthCells(anchorDateKey: string) {
@@ -299,26 +411,13 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const requestedDepartment = getParam(params.department);
   const requestedQuickAction = normalizeQuickAction(getParam(params.quickAction));
   const requestedWorkName = getParam(params.work).trim();
-  const calendarAnchorDateKey = getTodayDateKey();
+  const requestedWorkId = normalizeIdParam(getParam(params.workId));
+  const requestedWorkNameKey = normalizeWorkName(requestedWorkName);
+  const hasRequestedWorkerWork = Boolean(requestedWorkId || requestedWorkNameKey);
+  const todayDateKey = getTodayDateKey();
+  const activeCalendarView = normalizeCalendarView(getParam(params.view));
+  const calendarAnchorDateKey = todayDateKey;
   const calendarBaseCells = buildMonthCells(calendarAnchorDateKey);
-  const calendarRangeStart = calendarBaseCells[0]?.dateKey ?? calendarAnchorDateKey;
-  const calendarRangeEnd = calendarBaseCells[calendarBaseCells.length - 1]?.dateKey ?? calendarAnchorDateKey;
-
-  const [snapshot, garbageWeeklyTemplates] = await Promise.all([
-    loadMunicipalSnapshot(
-      {
-        login: session.login,
-        password: session.password,
-      },
-      { allowFallback: false },
-    ),
-    loadGarbageWeeklyTemplates(),
-  ]);
-  const sourceTaskDirectory = [
-    ...snapshot.taskDirectory,
-    ...expandGarbageWeeklyTemplatesToTasks(garbageWeeklyTemplates, calendarRangeStart, calendarRangeEnd),
-  ];
-
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
   const canWriteReports = hasCapability(session, "write_workspace_reports");
@@ -328,32 +427,126 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const calendarCreateHref = canCreateProject ? "/projects/new" : "/create";
   const workerMode = isWorkerOnly(session);
   const masterMode = isMasterRole(session.role);
+  const seniorMasterMode = session.role === "senior_master";
+
+  let snapshot: DashboardSnapshot;
+  let scopedDepartmentName: Awaited<ReturnType<typeof loadSessionDepartmentName>>;
+  const scopedDepartmentNamePromise = loadSessionDepartmentName(session);
+
+  try {
+    [snapshot, scopedDepartmentName] = await Promise.all([
+      loadMunicipalSnapshot(
+        {
+          login: session.login,
+          password: session.password,
+        },
+        { allowFallback: false },
+      ),
+      scopedDepartmentNamePromise,
+    ]);
+  } catch (error) {
+    console.error("Tasks page data load failed:", error);
+
+    return (
+      <main className={shellStyles.shell}>
+        <div className={shellStyles.container}>
+          <div className={shellStyles.contentWithMenu}>
+            <aside className={shellStyles.menuColumn}>
+              <AppMenu
+                active="tasks"
+                canCreateProject={canCreateProject}
+                canCreateTasks={canCreateTasks}
+                canWriteReports={canWriteReports}
+                canViewQualityCenter={canViewQualityCenter}
+                canUseFieldConsole={canUseFieldConsole}
+                userName={session.name}
+                roleLabel={getRoleLabel(session.role)}
+                groupFlags={session.groupFlags}
+                masterMode={masterMode}
+                workerMode={workerMode}
+                notificationCount={0}
+              />
+            </aside>
+
+            <div className={shellStyles.pageContent}>
+              <WorkspaceHeader
+                title="Даалгавар"
+                subtitle="Танд оноогдсон даалгаврын жагсаалт"
+                userName={session.name}
+                roleLabel={getRoleLabel(session.role)}
+                notificationCount={0}
+                notificationNote="Мэдээлэл түр ачаалсангүй"
+              />
+
+              <section className={styles.taskSection}>
+                <div className={styles.emptyState}>
+                  <h3>Ажлын мэдээлэл түр ачаалсангүй</h3>
+                  <p>Odoo серверээс мэдээлэл авахад хугацаа хэтэрлээ. Дахин ачаалаад үзнэ үү.</p>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+  const notificationSummaryPromise = loadWorkspaceNotificationSummary(session, {
+    snapshot,
+    scopedDepartmentName,
+  });
+  const sourceTaskDirectory = snapshot.taskDirectory;
+
   const selectedFilter: FilterKey = workerMode || masterMode ? "all" : activeFilter;
-  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  const notificationSummary = await notificationSummaryPromise;
+  const taskNotificationNote =
+    notificationSummary.unreadCount > 0
+      ? `${notificationSummary.newCount} шинэ ажил, ${notificationSummary.reviewCount} хянах, ${notificationSummary.overdueCount} хугацаа хэтэрсэн`
+      : "Шинэ мэдэгдэл алга";
   const departmentScopedMode = Boolean(scopedDepartmentName);
   const quickActionMode: QuickActionMode =
     workerMode && canWriteReports ? requestedQuickAction : "none";
+  const assignedWorkerTasks = workerMode
+    ? sourceTaskDirectory.filter((task) => task.assigneeIds?.includes(session.uid))
+    : [];
   const workerTasks = workerMode
-    ? filterTasksToDate(
-        sourceTaskDirectory.filter((task) => task.assigneeIds?.includes(session.uid)),
-        getTodayDateKey(),
-      )
+    ? hasRequestedWorkerWork
+      ? assignedWorkerTasks
+      : filterTasksToDate(assignedWorkerTasks, todayDateKey)
     : [];
   const visibleWorkerTasks =
-    workerMode && requestedWorkName
-      ? workerTasks.filter((task) => task.projectName === requestedWorkName)
+    workerMode && hasRequestedWorkerWork
+      ? workerTasks.filter(
+          (task) =>
+            (requestedWorkId !== null && task.projectId === requestedWorkId) ||
+            (requestedWorkNameKey && normalizeWorkName(task.projectName) === requestedWorkNameKey),
+        )
       : workerTasks;
+  const masterDepartmentProjects = masterMode
+    ? filterByDepartment(snapshot.projects, scopedDepartmentName)
+    : [];
   const masterDepartmentTasks = masterMode
     ? filterByDepartment(sourceTaskDirectory, scopedDepartmentName)
     : [];
+  const personalMasterTasks = masterMode
+    ? filterTasksForResponsibleMaster(masterDepartmentTasks, masterDepartmentProjects, session)
+    : [];
+  const personalMasterProjects = masterMode
+    ? filterProjectsForResponsibleMaster(masterDepartmentProjects, masterDepartmentTasks, session)
+    : [];
   const masterTodayTasks = masterMode
-    ? filterTasksToDate(masterDepartmentTasks, getTodayDateKey())
+    ? filterTasksToDate(masterDepartmentTasks, todayDateKey)
+    : [];
+  const personalMasterTodayTasks = masterMode
+    ? filterTasksToDate(personalMasterTasks, todayDateKey)
     : [];
   const masterTodayProjects = masterMode
     ? buildTodayProjectSummaries(
         masterTodayTasks,
-        filterByDepartment(snapshot.projects, scopedDepartmentName),
+        masterDepartmentProjects,
       )
+    : [];
+  const personalMasterTodayProjects = masterMode
+    ? buildTodayProjectSummaries(personalMasterTodayTasks, personalMasterProjects)
     : [];
 
   const selectedDepartment =
@@ -380,7 +573,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const scopedProjects = workerMode
     ? Array.from(new Set(visibleWorkerTasks.map((task) => task.projectName)))
     : masterMode
-      ? filterByDepartment(snapshot.projects, scopedDepartmentName)
+      ? masterDepartmentProjects
       : departmentScopedMode
         ? filterByDepartment(snapshot.projects, scopedDepartmentName)
       : snapshot.projects.filter((project) => {
@@ -455,6 +648,13 @@ export default async function TasksPage({ searchParams }: PageProps) {
     : masterMode
       ? scopedDepartmentName ?? "Миний алба нэгж"
       : scopedDepartmentName || selectedDepartmentUnit || selectedDepartmentGroup?.name || selectedDepartment?.name || "Бүх алба хэлтэс";
+  const masterFlowKicker = seniorMasterMode ? "Ахлах мастерын хяналт" : "Мастерын ажил";
+  const masterFlowDescription = seniorMasterMode
+    ? "Ахлах мастер өөрийн алба нэгжийн өнөөдөр явах бүх ажил, бүх мастерийн тайланг нэг дор хянана."
+    : "Мастер зөвхөн өөрт хариуцуулсан өнөөдрийн ажил, багийн тайлангаа хянана.";
+  const masterScopeSummary = seniorMasterMode
+    ? "Ахлах мастерийн нэгжийн өнөөдрийн нийт ажил харагдаж байна"
+    : "Зөвхөн танд хариуцуулсан өнөөдрийн ажил харагдаж байна";
   const calendarPlanItems = Array.from(
     scopedTasks
       .filter((task) => task.scheduledDate)
@@ -513,6 +713,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
     verified: 0,
     tasks: [] as TaskDirectoryItem[],
   });
+  const dayCalendarItem = calendarPlanByDate.get(calendarAnchorDateKey) ?? emptyCalendarItem(calendarAnchorDateKey);
   const monthCalendarCells = calendarBaseCells.map((cell) => ({
     ...cell,
     plan: calendarPlanByDate.get(cell.dateKey) ?? emptyCalendarItem(cell.dateKey),
@@ -520,6 +721,23 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const weekCalendarItems = buildWeekDateKeys(calendarAnchorDateKey).map(
     (dateKey) => calendarPlanByDate.get(dateKey) ?? emptyCalendarItem(dateKey),
   );
+  const calendarYear = getCalendarYear(calendarAnchorDateKey);
+  const yearCalendarItems = Array.from({ length: 12 }, (_, monthIndex) => {
+    const monthDate = new Date(calendarYear, monthIndex, 1);
+    const monthKey = `${calendarYear}-${String(monthIndex + 1).padStart(2, "0")}`;
+    const monthPlans = calendarPlanItems.filter((item) => item.dateKey.startsWith(monthKey));
+    const monthTasks = monthPlans.flatMap((item) => item.tasks);
+
+    return {
+      monthKey,
+      label: getCalendarMonthName(monthDate),
+      total: monthPlans.reduce((total, item) => total + item.total, 0),
+      working: monthPlans.reduce((total, item) => total + item.working, 0),
+      review: monthPlans.reduce((total, item) => total + item.review, 0),
+      verified: monthPlans.reduce((total, item) => total + item.verified, 0),
+      tasks: monthTasks.slice(0, 3),
+    };
+  });
 
   const taskListParams = new URLSearchParams();
   if (!workerMode && selectedDepartmentParam) {
@@ -533,6 +751,9 @@ export default async function TasksPage({ searchParams }: PageProps) {
   }
   if (workerMode && requestedWorkName) {
     taskListParams.set("work", requestedWorkName);
+  }
+  if (workerMode && requestedWorkId !== null) {
+    taskListParams.set("workId", String(requestedWorkId));
   }
   const taskListHref = taskListParams.toString() ? `/tasks?${taskListParams.toString()}` : "/tasks";
   const buildTaskHref = (taskHref: string) => {
@@ -620,6 +841,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
               groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
+              notificationCount={notificationSummary.unreadCount}
               departmentScopeName={scopedDepartmentName}
             />
           </aside>
@@ -637,12 +859,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 }
                 userName={session.name}
                 roleLabel={getRoleLabel(session.role)}
-                notificationCount={masterMode ? visibleProjects.length : visibleTasks.length}
-                notificationNote={
-                  masterMode
-                    ? `${visibleProjects.length} ажил, төсөл өнөөдөр харагдаж байна`
-                    : `${visibleTasks.length} даалгавар одоогоор харагдаж байна`
-                }
+                notificationCount={notificationSummary.unreadCount}
+                notificationNote={taskNotificationNote}
               />
             </div>
 
@@ -660,10 +878,12 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   <Link
                     href="/notifications"
                     className={styles.workerMobileNotice}
-                    aria-label={`${visibleTasks.length} мэдэгдэл харах`}
+                    aria-label={`${notificationSummary.unreadCount} мэдэгдэл харах`}
                   >
                     <Bell size={21} strokeWidth={2.35} aria-hidden="true" />
-                    {visibleTasks.length ? <span>{visibleTasks.length}</span> : null}
+                    {notificationSummary.unreadCount ? (
+                      <span>{notificationSummary.unreadCount}</span>
+                    ) : null}
                   </Link>
                 </div>
 
@@ -725,31 +945,80 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 {calendarPlanItems.length ? (
                   <div className={styles.calendarTimelineBoard}>
                     <input
-                      className={`${styles.calendarViewInput} ${styles.calendarMonthToggle}`}
+                      className={`${styles.calendarViewInput} ${styles.calendarDayToggle}`}
                       type="radio"
                       name="calendar-view"
-                      id="calendar-view-month"
-                      defaultChecked
+                      id="calendar-view-day"
+                      defaultChecked={activeCalendarView === "day"}
                     />
                     <input
                       className={`${styles.calendarViewInput} ${styles.calendarWeekToggle}`}
                       type="radio"
                       name="calendar-view"
                       id="calendar-view-week"
+                      defaultChecked={activeCalendarView === "week"}
+                    />
+                    <input
+                      className={`${styles.calendarViewInput} ${styles.calendarMonthToggle}`}
+                      type="radio"
+                      name="calendar-view"
+                      id="calendar-view-month"
+                      defaultChecked={activeCalendarView === "month"}
+                    />
+                    <input
+                      className={`${styles.calendarViewInput} ${styles.calendarYearToggle}`}
+                      type="radio"
+                      name="calendar-view"
+                      id="calendar-view-year"
+                      defaultChecked={activeCalendarView === "year"}
                     />
                     <div className={styles.calendarToolbar}>
                       <div className={styles.calendarViewControls} aria-label="Календарын харагдац">
-                        <label htmlFor="calendar-view-month">Сар</label>
+                        <label htmlFor="calendar-view-day">Өдөр</label>
                         <label htmlFor="calendar-view-week">7 хоног</label>
+                        <label htmlFor="calendar-view-month">Сар</label>
+                        <label htmlFor="calendar-view-year">Жил</label>
                       </div>
                       {canCreateFromCalendar ? (
                         <Link href={calendarCreateHref} className={styles.calendarCreateButton}>
+                          <Plus size={16} aria-hidden="true" />
                           Ажил нэмэх
                         </Link>
                       ) : null}
                     </div>
 
                     <div className={styles.calendarViewPanels}>
+                    <section className={`${styles.dayCalendar} ${styles.calendarViewPanel} ${styles.calendarDayPanel}`}>
+                      <div className={styles.weekCalendarTop}>
+                        <div className={styles.weekCalendarTitle}>
+                          <span className={styles.filterKicker}>Өдрийн календарь</span>
+                          <h3>{getCalendarDayLabel(calendarAnchorDateKey)}</h3>
+                        </div>
+                        <p>{dayCalendarItem.total} даалгавар төлөвлөгдсөн байна.</p>
+                      </div>
+
+                      <div className={styles.dayAgenda} aria-label="Өдрийн ажлын календарь">
+                        {dayCalendarItem.tasks.length ? (
+                          dayCalendarItem.tasks.map((task) => (
+                            <Link
+                              key={`day-${dayCalendarItem.dateKey}-${task.id}`}
+                              href={buildTaskHref(task.href)}
+                              className={`${styles.weekTask} ${styles[`monthTask${task.statusKey}`]}`}
+                            >
+                              <span>{task.name}</span>
+                              <small>{formatTimelineTime(task.deadlineDateTime)} - {task.projectName} - Явц {task.progress}%</small>
+                            </Link>
+                          ))
+                        ) : canCreateFromCalendar ? (
+                          <Link href={calendarCreateHref} className={styles.weekEmptyCreate}>
+                            Ажил нэмэх
+                          </Link>
+                        ) : (
+                          <span className={styles.weekEmpty}>Даалгавар алга</span>
+                        )}
+                      </div>
+                    </section>
+
                     <section className={`${styles.workCalendar} ${styles.calendarViewPanel} ${styles.calendarMonthPanel}`}>
                       <div className={styles.workCalendarTop}>
                         <div className={styles.workCalendarBrand}>
@@ -779,7 +1048,18 @@ export default async function TasksPage({ searchParams }: PageProps) {
                           >
                             <div className={styles.monthDayHeader}>
                               <span>{cell.dayNumber}</span>
-                              {cell.plan.total > 0 ? <strong>{cell.plan.total}</strong> : null}
+                              {cell.plan.total > 0 ? (
+                                <strong>{cell.plan.total}</strong>
+                              ) : canCreateFromCalendar ? (
+                                <Link
+                                  href={calendarCreateHref}
+                                  className={styles.calendarDayQuickCreate}
+                                  aria-label={`${cell.dateKey} өдөр ажил нэмэх`}
+                                  title="Ажил нэмэх"
+                                >
+                                  <Plus size={15} aria-hidden="true" />
+                                </Link>
+                              ) : null}
                             </div>
                             <div className={styles.monthDayTasks}>
                               {cell.plan.tasks.slice(0, 2).map((task) => (
@@ -796,10 +1076,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
                                 <a href={`#calendar-day-${cell.dateKey}`} className={styles.monthMore}>
                                   +{cell.plan.tasks.length - 2} даалгавар
                                 </a>
-                              ) : cell.plan.tasks.length === 0 && canCreateFromCalendar ? (
-                                <Link href={calendarCreateHref} className={styles.calendarEmptyCreate}>
-                                  Ажил нэмэх
-                                </Link>
                               ) : null}
                             </div>
                           </article>
@@ -827,7 +1103,18 @@ export default async function TasksPage({ searchParams }: PageProps) {
                                     <strong>{label.day}</strong>
                                     <span>{label.weekday}</span>
                                   </div>
-                                  {item.total > 0 ? <em>{item.total}</em> : null}
+                                  {item.total > 0 ? (
+                                    <em>{item.total}</em>
+                                  ) : canCreateFromCalendar ? (
+                                    <Link
+                                      href={calendarCreateHref}
+                                      className={styles.calendarDayQuickCreate}
+                                      aria-label={`${item.dateKey} өдөр ажил нэмэх`}
+                                      title="Ажил нэмэх"
+                                    >
+                                      <Plus size={15} aria-hidden="true" />
+                                    </Link>
+                                  ) : null}
                                 </div>
                               );
                             })()}
@@ -844,14 +1131,47 @@ export default async function TasksPage({ searchParams }: PageProps) {
                                     <small>{formatTimelineTime(task.deadlineDateTime)} • Явц {task.progress}%</small>
                                   </Link>
                                 ))
-                              ) : canCreateFromCalendar ? (
-                                <Link href={calendarCreateHref} className={styles.weekEmptyCreate}>
-                                  Ажил нэмэх
-                                </Link>
                               ) : (
                                 <span className={styles.weekEmpty}>Даалгавар алга</span>
                               )}
                             </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className={`${styles.yearCalendar} ${styles.calendarViewPanel} ${styles.calendarYearPanel}`}>
+                      <div className={styles.weekCalendarTop}>
+                        <div className={styles.weekCalendarTitle}>
+                          <span className={styles.filterKicker}>Жилийн календарь</span>
+                          <h3>{calendarYear} он</h3>
+                        </div>
+                        <p>Сараар даалгаврын тоо, явц болон хяналтын төлөвийг харуулна.</p>
+                      </div>
+
+                      <div className={styles.yearGrid} aria-label="Жилийн ажлын календарь">
+                        {yearCalendarItems.map((month) => (
+                          <article key={month.monthKey} className={styles.yearMonthCard}>
+                            <div className={styles.yearMonthHeader}>
+                              <span>{month.label}</span>
+                              {month.total > 0 ? <strong>{month.total}</strong> : null}
+                            </div>
+                            <div className={styles.calendarStatsRow}>
+                              <span>Явж байгаа {month.working}</span>
+                              <span>Хянах {month.review}</span>
+                              <span>Дууссан {month.verified}</span>
+                            </div>
+                            {month.tasks.length ? (
+                              <div className={styles.yearTaskPreview}>
+                                {month.tasks.map((task) => (
+                                  <Link key={`${month.monthKey}-${task.id}`} href={buildTaskHref(task.href)}>
+                                    {task.name}
+                                  </Link>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className={styles.weekEmpty}>Төлөвлөгөө алга</span>
+                            )}
                           </article>
                         ))}
                       </div>
@@ -871,7 +1191,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
               <div className={styles.pageHeaderMain}>
                 <div className={styles.titleBlock}>
                   <span className={styles.pageKicker}>
-                    {workerMode ? "Миний урсгал" : masterMode ? "Мастерын урсгал" : "Бүх урсгал"}
+                    {workerMode ? "Миний урсгал" : masterMode ? masterFlowKicker : "Бүх урсгал"}
                   </span>
                    <h1>
                      {workerMode
@@ -884,9 +1204,9 @@ export default async function TasksPage({ searchParams }: PageProps) {
                      {workerMode
                        ? "Зөвхөн танд хамаарах даалгавруудыг эндээс харна. Төлөвөөр нь хурдан шүүж, дэлгэрэнгүй рүү шууд орж ажлаа үргэлжлүүлнэ."
                        : masterMode
-                        ? "Мастер хэрэглэгчид зөвхөн өөрийн алба нэгжийн өнөөдөр явах ажил, төслүүд харагдана. Ажил дээр дарахад тухайн ажлын доторх даалгавар руу орно."
+                         ? masterFlowDescription
                         : "Odoo ERP дээр бүртгэгдсэн бүх даалгаврыг алба нэгж, ажил, төлөвөөр нь нэг дороос харуулна. Асуудалтай болон хяналт хүлээж буй даалгавруудыг эхэнд нь ялгаж, дэлгэрэнгүй рүү шууд нээнэ."}
-                   </p>
+                  </p>
                 </div>
 
                 <div className={styles.userBlock}>
@@ -969,7 +1289,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   {workerMode
                     ? "Зөвхөн танд оноогдсон даалгавруудыг харуулж байна"
                     : masterMode
-                      ? "Мастер хэрэглэгчид зөвхөн өөрийн нэгжийн өнөөдөр явах ажил харагдана"
+                      ? masterScopeSummary
                     : `${snapshot.departments.length} алба нэгжээс шүүж байна`}
                 </small>
               </article>
@@ -1069,7 +1389,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
                       const reviewCount = work.tasks.filter((task) => task.statusKey === "review").length;
                       const doneCount = work.tasks.filter((task) => task.statusKey === "verified").length;
                       const openCount = Math.max(work.tasks.length - doneCount, 0);
-                      const nextTask = work.tasks.find((task) => task.statusKey !== "verified") ?? work.tasks[0];
                       const progress = work.tasks.length
                         ? Math.round(
                             work.tasks.reduce((total, task) => total + task.progress, 0) /
@@ -1106,59 +1425,58 @@ export default async function TasksPage({ searchParams }: PageProps) {
                             </span>
                           </div>
 
-                          {nextTask ? (
-                            <TaskReportModal
-                              action={createTaskReportAction}
-                              taskId={Number(nextTask.id)}
-                              simpleMobile
-                              workItemName={nextTask.name}
-                              triggerClassName={styles.workerPrimaryTask}
-                              triggerContent={
-                                <>
-                                  <span className={styles.workerPrimaryIcon} aria-hidden="true">
-                                    <Send size={18} strokeWidth={2.5} />
-                                  </span>
-                                  <span>
-                                    <small>Дараагийн даалгавар</small>
-                                    <strong>{nextTask.name}</strong>
-                                  </span>
-                                  <ChevronRight size={20} strokeWidth={2.4} aria-hidden="true" />
-                                </>
-                              }
-                            />
-                          ) : null}
-
                           <div className={styles.workerLineListHeader}>
                             <span>{work.tasks.length} даалгавар</span>
-                            <small>Тайлан хүлээж буй даалгавар</small>
+                            <small>Даалгаврын төлөв</small>
                           </div>
                           <div className={styles.workerLineList}>
-                            {work.tasks.map((task, index) => (
-                              <TaskReportModal
-                                key={task.id}
-                                action={createTaskReportAction}
-                                taskId={Number(task.id)}
-                                simpleMobile
-                                workItemName={task.name}
-                                triggerClassName={styles.workerLineItem}
-                                triggerContent={
-                                  <>
-                                    <span className={styles.workerTaskNumber}>{index + 1}</span>
-                                    <div>
-                                      <strong>{task.name}</strong>
-                                      <small>
-                                        <Clock3 size={14} strokeWidth={2.3} aria-hidden="true" />
-                                        {task.deadline} · {task.statusLabel}
-                                      </small>
-                                    </div>
-                                    <span className={styles.workerLineAction}>
-                                      <CheckCircle2 size={16} strokeWidth={2.4} aria-hidden="true" />
-                                      Тайлан
-                                    </span>
-                                  </>
-                                }
-                              />
-                            ))}
+                            {work.tasks.map((task, index) => {
+                              const blockedReportReason = workerTaskBlockedReportReason(task, todayDateKey);
+                              const visibleNote = workerTaskVisibleNote(task, todayDateKey);
+
+                              return (
+                                <TaskReportModal
+                                  key={task.id}
+                                  action={createTaskReportAction}
+                                  updateAction={updateTaskReportAction}
+                                  deleteAction={deleteTaskReportAction}
+                                  taskId={Number(task.id)}
+                                  simpleMobile
+                                  workItemName={task.name}
+                                  existingReport={getWorkerExistingReport(task)}
+                                  triggerClassName={styles.workerLineItem}
+                                  triggerDisabled={Boolean(blockedReportReason)}
+                                  triggerDisabledReason={blockedReportReason}
+                                  triggerContent={
+                                    <>
+                                      <span className={styles.workerTaskNumber}>{index + 1}</span>
+                                      <div>
+                                        <strong>{task.name}</strong>
+                                        <small>
+                                          <Clock3 size={14} strokeWidth={2.3} aria-hidden="true" />
+                                          {task.deadline} · {task.statusLabel}
+                                        </small>
+                                        {visibleNote ? (
+                                          <em
+                                            className={
+                                              blockedReportReason
+                                                ? styles.workerFutureReportReason
+                                                : styles.workerReturnReason
+                                            }
+                                          >
+                                            {visibleNote}
+                                          </em>
+                                        ) : null}
+                                      </div>
+                                      <span className={styles.workerLineAction}>
+                                        <CheckCircle2 size={16} strokeWidth={2.4} aria-hidden="true" />
+                                        {workerTaskVisibleActionLabel(task, todayDateKey)}
+                                      </span>
+                                    </>
+                                  }
+                                />
+                              );
+                            })}
                           </div>
                         </article>
                       );
@@ -1172,50 +1490,101 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 )}
               </section>
             ) : masterMode ? (
-              <section className={styles.taskSection}>
-                <div className={styles.sectionHeader}>
-                  <div>
-                    <span className={styles.filterKicker}>Мастерын урсгал</span>
-                    <h2>Өнөөдрийн ажлууд</h2>
+              <>
+                <section className={styles.taskSection}>
+                  <div className={styles.sectionHeader}>
+                    <div>
+                      <span className={styles.filterKicker}>Миний урсгал</span>
+                      <h2>Миний хариуцсан ажил</h2>
+                    </div>
                   </div>
-                </div>
 
-                {visibleProjects.length ? (
-                  <div className={styles.projectList}>
-                    {visibleProjects.map((project) => (
-                      <Link key={project.id} href={project.href} className={`${styles.taskCard} ${styles.projectCardLink}`}>
-                        <div className={styles.taskCardTop}>
-                          <div className={styles.taskIdentity}>
-                            <span>{project.departmentName}</span>
-                            <strong>{project.name}</strong>
+                  {personalMasterTodayProjects.length ? (
+                    <div className={styles.projectList}>
+                      {personalMasterTodayProjects.map((project) => (
+                        <Link key={`mine-${project.id}`} href={project.href} className={`${styles.taskCard} ${styles.projectCardLink}`}>
+                          <div className={styles.taskCardTop}>
+                            <div className={styles.taskIdentity}>
+                              <span>{project.departmentName}</span>
+                              <strong>{project.name}</strong>
+                            </div>
+                            <span className={styles.statusChip}>{project.stageLabel}</span>
                           </div>
-                          <span className={styles.statusChip}>{project.stageLabel}</span>
-                        </div>
-                        <div className={styles.taskInfoGrid}>
-                          <span className={styles.taskInfoItem}>
-                            <span>Даалгавар</span>
-                            <strong>{project.todayTaskCount}</strong>
-                          </span>
-                          <span className={styles.taskInfoItem}>
-                            <span>Нээлттэй</span>
-                            <strong>{project.openTasks}</strong>
-                          </span>
-                          <span className={styles.taskInfoItem}>
-                            <span>Гүйцэтгэл</span>
-                            <strong>{project.completion}%</strong>
-                          </span>
-                        </div>
-                        <span className={styles.projectOpenLabel}>Даалгаврууд харах</span>
-                      </Link>
-                    ))}
+                          <div className={styles.taskInfoGrid}>
+                            <span className={styles.taskInfoItem}>
+                              <span>Даалгавар</span>
+                              <strong>{project.todayTaskCount}</strong>
+                            </span>
+                            <span className={styles.taskInfoItem}>
+                              <span>Нээлттэй</span>
+                              <strong>{project.openTasks}</strong>
+                            </span>
+                            <span className={styles.taskInfoItem}>
+                              <span>Гүйцэтгэл</span>
+                              <strong>{project.completion}%</strong>
+                            </span>
+                          </div>
+                          <span className={styles.projectOpenLabel}>Даалгаврууд харах</span>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.emptyState}>
+                      <h3>{seniorMasterMode ? "Өнөөдрийн нэгжийн ажил алга" : "Өнөөдөр танд хариуцсан ажил алга"}</h3>
+                      <p>
+                        {seniorMasterMode
+                          ? "Энэ нэгж дээр өнөөдөр эхлэх эсвэл үргэлжлэх ажил бүртгэгдээгүй байна."
+                          : "Нийт ажлын хэсгээс алба нэгжийн ажлуудыг хянаж болно."}
+                      </p>
+                    </div>
+                  )}
+                </section>
+
+                <section className={styles.taskSection}>
+                  <div className={styles.sectionHeader}>
+                    <div>
+                      <span className={styles.filterKicker}>{masterFlowKicker}</span>
+                      <h2>{seniorMasterMode ? "Нэгжийн бүх ажил" : "Миний хариуцсан ажил"}</h2>
+                    </div>
                   </div>
-                ) : (
-                  <div className={styles.emptyState}>
-                    <h3>Өнөөдөр ажил алга</h3>
-                    <p>Сонгосон шүүлтэд таарах ажил одоогоор харагдахгүй байна.</p>
-                  </div>
-                )}
-              </section>
+
+                  {visibleProjects.length ? (
+                    <div className={styles.projectList}>
+                      {visibleProjects.map((project) => (
+                        <Link key={project.id} href={project.href} className={`${styles.taskCard} ${styles.projectCardLink}`}>
+                          <div className={styles.taskCardTop}>
+                            <div className={styles.taskIdentity}>
+                              <span>{project.departmentName}</span>
+                              <strong>{project.name}</strong>
+                            </div>
+                            <span className={styles.statusChip}>{project.stageLabel}</span>
+                          </div>
+                          <div className={styles.taskInfoGrid}>
+                            <span className={styles.taskInfoItem}>
+                              <span>Даалгавар</span>
+                              <strong>{project.todayTaskCount}</strong>
+                            </span>
+                            <span className={styles.taskInfoItem}>
+                              <span>Нээлттэй</span>
+                              <strong>{project.openTasks}</strong>
+                            </span>
+                            <span className={styles.taskInfoItem}>
+                              <span>Гүйцэтгэл</span>
+                              <strong>{project.completion}%</strong>
+                            </span>
+                          </div>
+                          <span className={styles.projectOpenLabel}>Даалгаврууд харах</span>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.emptyState}>
+                      <h3>Өнөөдөр ажил алга</h3>
+                      <p>Сонгосон шүүлтэд таарах ажил одоогоор харагдахгүй байна.</p>
+                    </div>
+                  )}
+                </section>
+              </>
             ) : (
               <section className={styles.taskSection}>
                 <div className={styles.sectionHeader}>

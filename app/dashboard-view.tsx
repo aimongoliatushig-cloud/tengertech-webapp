@@ -2,7 +2,6 @@ import type { CSSProperties } from "react";
 
 import Link from "next/link";
 import {
-  AlertTriangle,
   BarChart3,
   CalendarDays,
   CheckCircle2,
@@ -20,6 +19,7 @@ import {
   UserCheck,
   UsersRound,
   Wind,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -34,7 +34,7 @@ import {
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import dashboardStyles from "@/app/dashboard-view.module.css";
 import shellStyles from "@/app/workspace.module.css";
-import { getRoleLabel, hasCapability, isWorkerOnly, type AppSession } from "@/lib/auth";
+import { getRoleLabel, hasCapability, isMasterRole, isWorkerOnly, type AppSession } from "@/lib/auth";
 import { buildDashboardModel, type StatusTone } from "@/lib/dashboard-model";
 import { type FieldAssignment } from "@/lib/field-ops";
 import {
@@ -43,6 +43,7 @@ import {
   type HrDailyAttendanceSummary,
 } from "@/lib/odoo";
 import { cn } from "@/lib/utils";
+import { fixMojibakeText } from "@/lib/text-normalize";
 import { type WeatherSnapshot } from "@/lib/weather";
 
 type DashboardViewProps = {
@@ -56,17 +57,8 @@ type DashboardViewProps = {
   weather: WeatherSnapshot;
   canViewHr?: boolean;
   canViewGeneralDashboard?: boolean;
-};
-
-type DashboardStat = {
-  label: string;
-  value: string;
-  helper: string;
-  progress: number;
-  href: string;
-  icon: LucideIcon;
-  tone: StatusTone;
-  short: string;
+  notificationCount?: number;
+  notificationNote?: string;
 };
 
 const DASHBOARD_IMAGES = {
@@ -74,13 +66,6 @@ const DASHBOARD_IMAGES = {
   overview: "/illustrations/green-park-banner.svg",
   seedling: "/illustrations/seedling-card.svg",
   landscape: "/illustrations/green-landscape-card.svg",
-};
-
-const STAT_TONE: Record<StatusTone, string> = {
-  good: "bg-emerald-50 text-[#2E7D32]",
-  attention: "bg-amber-50 text-amber-700",
-  urgent: "bg-red-50 text-red-600",
-  muted: "bg-slate-100 text-slate-600",
 };
 
 function clampPercent(value: number) {
@@ -115,6 +100,13 @@ function normalizeTaskAssigneeId(value: unknown) {
   }
 
   return null;
+}
+
+function isSameDashboardUser(
+  left: number | string | null | undefined,
+  right: number | string,
+) {
+  return left !== null && left !== undefined && String(left) === String(right);
 }
 
 function isOverdue(task: DashboardSnapshot["taskDirectory"][number], currentDateKey: string) {
@@ -222,8 +214,9 @@ function projectTone(project: DashboardSnapshot["projects"][number]): StatusTone
 }
 
 function projectDisplayStageLabel(project: DashboardSnapshot["projects"][number]) {
-  if (project.stageLabel && project.stageLabel !== "Тодорхойгүй") {
-    return project.stageLabel;
+  const stageLabel = fixMojibakeText(project.stageLabel || "");
+  if (stageLabel && stageLabel !== "Тодорхойгүй") {
+    return stageLabel;
   }
 
   if (project.stageBucket === "done" || project.completion >= 100) {
@@ -239,7 +232,9 @@ function projectDisplayStageLabel(project: DashboardSnapshot["projects"][number]
 }
 
 function projectListIcon(project: DashboardSnapshot["projects"][number]): LucideIcon {
-  const text = `${project.name} ${project.departmentName} ${project.operationTypeLabel ?? ""}`.toLowerCase();
+  const text = fixMojibakeText(
+    `${project.name} ${project.departmentName} ${project.operationTypeLabel ?? ""}`,
+  ).toLowerCase();
 
   if (text.includes("хог") || text.includes("тээвэр")) {
     return Truck;
@@ -403,56 +398,6 @@ function buildWorkerWorkSummaries(
     );
 }
 
-function StatCard({ metric }: { metric: DashboardStat }) {
-  const Icon = metric.icon;
-
-  return (
-    <Link href={metric.href} className="group block">
-      <Card className={dashboardStyles.statCard}>
-        <div className={dashboardStyles.statCardTop}>
-          <div className={dashboardStyles.statCardText}>
-            <span className={dashboardStyles.statCardLabel}>
-              {metric.label}
-            </span>
-            <strong className={dashboardStyles.statCardNumber}>
-              {metric.value}
-            </strong>
-          </div>
-          <span
-            className={cn(
-              dashboardStyles.statCardIcon,
-              STAT_TONE[metric.tone],
-            )}
-          >
-            <Icon />
-          </span>
-        </div>
-        <div className={dashboardStyles.statCardBottom}>
-          <div className={dashboardStyles.statCardHelper}>
-            <strong
-              className={cn(
-                dashboardStyles.statCardPercent,
-                metric.tone === "urgent" ? "text-red-600" : "text-[#2E7D32]",
-              )}
-            >
-              {metric.progress}%
-            </strong>
-          </div>
-          <div className={dashboardStyles.statCardProgress}>
-            <span
-              className={cn(
-                dashboardStyles.statCardProgressFill,
-                metric.tone === "urgent" ? "bg-red-500" : "bg-[#2E7D32]",
-              )}
-              style={{ width: `${metric.progress}%` }}
-            />
-          </div>
-        </div>
-      </Card>
-    </Link>
-  );
-}
-
 function ProgressRing({ value, size = "sm" }: { value: number; size?: "sm" | "lg" }) {
   return (
     <div
@@ -475,11 +420,9 @@ function ProgressRing({ value, size = "sm" }: { value: number; size?: "sm" | "lg
 
 function DepartmentOverview({
   snapshot,
-  tasks,
   departmentScopeName,
 }: {
   snapshot: DashboardSnapshot;
-  tasks: DashboardSnapshot["taskDirectory"];
   departmentScopeName?: string | null;
 }) {
   const autoDepartment =
@@ -490,20 +433,7 @@ function DepartmentOverview({
     snapshot.departments[0];
   const departmentName =
     departmentScopeName ?? autoDepartment?.name ?? "Авто бааз, хог тээвэрлэлтийн хэлтэс";
-  const autoBaseCount = tasks.filter((task) => task.departmentName.includes("Авто бааз")).length;
-  const wasteCount = tasks.filter(
-    (task) => task.departmentName.includes("Хог") || task.departmentName.includes("хог"),
-  ).length;
-  const total = tasks.length || autoDepartment?.openTasks || 0;
-  const isAutoWasteDepartment =
-    departmentName.includes("Авто") || departmentName.includes("Хог") || departmentName.includes("хог");
-  const departmentChips: Array<[string, number, boolean]> = isAutoWasteDepartment
-    ? [
-        ["Бүгд", total, true],
-        ["Авто бааз", autoBaseCount, false],
-        ["Хог тээвэрлэлт", wasteCount || total, false],
-      ]
-    : [["Бүгд", total, true]];
+  const fixedDepartmentName = fixMojibakeText(departmentName);
 
   return (
     <Card className={cn(dashboardStyles.softPanel, dashboardStyles.departmentCard)}>
@@ -513,36 +443,13 @@ function DepartmentOverview({
           backgroundImage: `linear-gradient(90deg, rgba(246,251,246,.96) 0%, rgba(246,251,246,.78) 44%, rgba(246,251,246,.24) 100%), linear-gradient(180deg, rgba(246,251,246,.18), rgba(46,125,50,.06)), url(${DASHBOARD_IMAGES.overview})`,
         }}
       >
-        <Badge className={dashboardStyles.departmentBadge}>Доторх нэгж</Badge>
+        <Badge className={dashboardStyles.departmentBadge}>Хэлтэс</Badge>
         <h2 className={dashboardStyles.departmentTitle}>
-          {departmentName}
+          {fixedDepartmentName}
         </h2>
         <p className={dashboardStyles.departmentDescription}>
-          Энэ хэлтэс доторх ажлыг нэгжээр харуулна.
+          Цэвэр цэмцгэр, ногоон орчны ажлыг нэг дор харуулна.
         </p>
-        <div className={dashboardStyles.departmentChips}>
-          {departmentChips.map(([label, value, active]) => (
-            <span
-              key={String(label)}
-              className={cn(
-                dashboardStyles.departmentChip,
-                active
-                  ? "bg-[#2E7D32] text-white"
-                  : "border border-[#DCEFDA] bg-white/86 text-[#1B1B1B]",
-              )}
-            >
-              {label}
-              <small
-                className={cn(
-                  dashboardStyles.departmentChipCount,
-                  active ? "bg-white/24 text-white" : "bg-[#E8F4E8] text-[#2E7D32]",
-                )}
-              >
-                {value}
-              </small>
-            </span>
-          ))}
-        </div>
       </div>
     </Card>
   );
@@ -551,6 +458,9 @@ function DepartmentOverview({
 function WorkerWorkCard({ work }: { work: WorkerWorkSummary }) {
   const badgeTone =
     work.tone === "urgent" ? "red" : work.tone === "attention" ? "amber" : work.tone === "good" ? "green" : "slate";
+  const workName = fixMojibakeText(work.name);
+  const departmentName = fixMojibakeText(work.departmentName);
+  const managerName = fixMojibakeText(work.manager || "Бүртгэлгүй");
 
   return (
     <Link href={work.href} className={dashboardStyles.projectListLink}>
@@ -563,9 +473,9 @@ function WorkerWorkCard({ work }: { work: WorkerWorkSummary }) {
         </div>
 
         <div className={dashboardStyles.projectListContent}>
-          <h3 className={dashboardStyles.projectListTitle}>{work.name}</h3>
+          <h3 className={dashboardStyles.projectListTitle}>{workName}</h3>
           <p className={dashboardStyles.projectListMeta}>
-            Алба нэгж: {work.departmentName} · Менежер: {work.manager || "Бүртгэлгүй"}
+            Алба нэгж: {departmentName} · Менежер: {managerName}
           </p>
         </div>
 
@@ -590,6 +500,9 @@ function WorkerWorkCard({ work }: { work: WorkerWorkSummary }) {
 function ProjectCard({ project }: { project: DashboardSnapshot["projects"][number] }) {
   const tone = projectTone(project);
   const badgeTone = tone === "urgent" ? "red" : tone === "attention" ? "amber" : tone === "good" ? "green" : "slate";
+  const projectName = fixMojibakeText(project.name);
+  const departmentName = fixMojibakeText(project.departmentName);
+  const managerName = fixMojibakeText(project.manager || "Бүртгэлгүй");
 
   return (
     <Link href={project.href} className={dashboardStyles.projectListLink}>
@@ -608,9 +521,9 @@ function ProjectCard({ project }: { project: DashboardSnapshot["projects"][numbe
         </div>
 
         <div className={dashboardStyles.projectListContent}>
-          <h3 className={dashboardStyles.projectListTitle}>{project.name}</h3>
+          <h3 className={dashboardStyles.projectListTitle}>{projectName}</h3>
           <p className={dashboardStyles.projectListMeta}>
-            Алба нэгж: {project.departmentName} · Менежер: {project.manager || "Бүртгэлгүй"}
+            Алба нэгж: {departmentName} · Менежер: {managerName}
           </p>
         </div>
 
@@ -900,7 +813,9 @@ function DepartmentPerformanceCard({ departments }: { departments: DashboardSnap
       </div>
       <div className={dashboardStyles.departmentPerformanceList}>
         {rows.map((department) => {
-          const Icon = departmentIcon(department.name);
+          const fixedDepartmentName = fixMojibakeText(department.name);
+          const fixedDepartmentLabel = fixMojibakeText(department.label || department.name);
+          const Icon = departmentIcon(fixedDepartmentName);
           const value = clampPercent(department.completion);
 
           return (
@@ -908,7 +823,7 @@ function DepartmentPerformanceCard({ departments }: { departments: DashboardSnap
               <span className={dashboardStyles.departmentPerformanceIcon}>
                 <Icon />
               </span>
-              <span className={dashboardStyles.departmentPerformanceName}>{department.label || department.name}</span>
+              <span className={dashboardStyles.departmentPerformanceName}>{fixedDepartmentLabel}</span>
               <span className={dashboardStyles.departmentPerformanceTrack}>
                 <span style={{ width: `${value}%` }} />
               </span>
@@ -1009,6 +924,7 @@ function RightPanel({
   hrAttendanceSummary,
   departmentScopeName,
   showFleetSummary,
+  showHrSummary,
   workerMode,
   weather,
 }: {
@@ -1021,6 +937,7 @@ function RightPanel({
   hrAttendanceSummary: HrDailyAttendanceSummary;
   departmentScopeName?: string | null;
   showFleetSummary: boolean;
+  showHrSummary: boolean;
   workerMode: boolean;
   weather: WeatherSnapshot;
 }) {
@@ -1040,6 +957,9 @@ function RightPanel({
         ["Дууссан ажил", completedTasks],
         ["Анхаарах", alertCount],
       ];
+  const visibleSystemInfoRows = showHrSummary
+    ? systemInfoRows
+    : systemInfoRows.filter((_, index) => index !== 0);
   const quickActions = [
     { label: "Шинэ ажил үүсгэх", href: "/create", icon: Plus },
     { label: "Ажлын жагсаалт", href: "/projects", icon: ListChecks },
@@ -1094,7 +1014,7 @@ function RightPanel({
           <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
             <CardTitle className={dashboardStyles.sideCardTitle}>{systemInfoTitle}</CardTitle>
             <div className={dashboardStyles.systemList}>
-              {systemInfoRows.map(([label, value]) => (
+              {visibleSystemInfoRows.map(([label, value]) => (
                 <div key={String(label)} className={dashboardStyles.systemRow}>
                   <span>{label}</span>
                   <strong>{value}</strong>
@@ -1103,7 +1023,32 @@ function RightPanel({
             </div>
           </Card>
 
-          <HrAttendanceCard summary={hrAttendanceSummary} />
+          {showFleetSummary ? (
+            <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
+              <CardTitle className={dashboardStyles.sideCardTitle}>Өнөөдрийн ачсан хог</CardTitle>
+              <p className={dashboardStyles.sideCardDescription}>
+                Машинаар татагдсан жингийн бүртгэлээс нэгтгэн харуулна.
+              </p>
+              <div className={cn(dashboardStyles.sideMiniGrid, dashboardStyles.sideMiniGridTwo)}>
+                <div className={dashboardStyles.sideMiniItem}>
+                  <span className={cn(dashboardStyles.sideMiniIcon, "bg-[#E7F5E7] text-[#2E7D32]")}>
+                    <Recycle />
+                  </span>
+                  <strong className={dashboardStyles.sideMiniValue}>{fleetBoard.todayWeightLabel}</strong>
+                  <span className={dashboardStyles.sideMiniLabel}>Ачсан жин</span>
+                </div>
+                <div className={dashboardStyles.sideMiniItem}>
+                  <span className={cn(dashboardStyles.sideMiniIcon, "bg-[#E7F5E7] text-[#2E7D32]")}>
+                    <Truck />
+                  </span>
+                  <strong className={dashboardStyles.sideMiniValue}>{fleetBoard.activeCount}</strong>
+                  <span className={dashboardStyles.sideMiniLabel}>Ажиллаж буй машин</span>
+                </div>
+              </div>
+            </Card>
+          ) : null}
+
+          {showHrSummary ? <HrAttendanceCard summary={hrAttendanceSummary} /> : null}
         </>
       ) : null}
 
@@ -1166,6 +1111,416 @@ function RightPanel({
   );
 }
 
+type ExecutiveMetric = {
+  label: string;
+  value: string;
+  progress: number;
+  icon: LucideIcon;
+  tone: "green" | "orange" | "blue" | "purple" | "red";
+};
+
+type ExecutiveDepartmentMetric = {
+  name: string;
+  progress: number;
+  total: number;
+  working: number;
+  review: number;
+  risky: number;
+  icon: LucideIcon;
+  tone: ExecutiveMetric["tone"];
+};
+
+const EXECUTIVE_TONE_COLORS: Record<ExecutiveMetric["tone"], string> = {
+  green: "#078251",
+  orange: "#f58a07",
+  blue: "#1677d2",
+  purple: "#453f99",
+  red: "#ef4444",
+};
+
+function ExecutiveRing({
+  value,
+  tone,
+  size = "sm",
+}: {
+  value: number;
+  tone: ExecutiveMetric["tone"];
+  size?: "sm" | "lg";
+}) {
+  const color = EXECUTIVE_TONE_COLORS[tone];
+  return (
+    <span
+      className={cn(
+        dashboardStyles.executiveRing,
+        size === "lg" && dashboardStyles.executiveRingLarge,
+      )}
+      style={{
+        background: `conic-gradient(${color} ${clampPercent(value) * 3.6}deg, #e5e7eb 0deg)`,
+      }}
+    >
+      <span>
+        {size === "lg" ? (
+          <>
+            <strong>{clampPercent(value)}%</strong>
+            <small>Гүйцэтгэл</small>
+          </>
+        ) : null}
+      </span>
+    </span>
+  );
+}
+
+function ExecutiveMetricCard({ metric }: { metric: ExecutiveMetric }) {
+  const Icon = metric.icon;
+  const color = EXECUTIVE_TONE_COLORS[metric.tone];
+
+  return (
+    <Card className={dashboardStyles.executiveMetricCard}>
+      <div className={dashboardStyles.executiveMetricHeader}>
+        <span
+          className={dashboardStyles.executiveMetricIcon}
+          style={{ color, backgroundColor: `${color}16` }}
+        >
+          <Icon />
+        </span>
+        <strong>{metric.label}</strong>
+      </div>
+      <div className={dashboardStyles.executiveMetricBody}>
+        <div>
+          <span className={dashboardStyles.executiveMetricValue}>{metric.value}</span>
+        </div>
+        {metric.progress > 0 && metric.progress < 100 ? (
+          <ExecutiveRing value={metric.progress} tone={metric.tone} />
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
+function ExecutiveDepartmentCard({ department }: { department: ExecutiveDepartmentMetric }) {
+  const Icon = department.icon;
+  const color = EXECUTIVE_TONE_COLORS[department.tone];
+
+  return (
+    <Card className={dashboardStyles.executiveDepartmentCard} style={{ borderColor: `${color}2e` }}>
+      <div className={dashboardStyles.executiveDepartmentHeader}>
+        <span className={dashboardStyles.executiveDepartmentIcon} style={{ color }}>
+          <Icon />
+        </span>
+        <strong>{department.name}</strong>
+      </div>
+      <ExecutiveRing value={department.progress} tone={department.tone} size="lg" />
+      <div className={dashboardStyles.executiveDepartmentStats}>
+        <div>
+          <span>Нийт ажил</span>
+          <strong>{department.total}</strong>
+        </div>
+        <div>
+          <span>Ажиллаж буй</span>
+          <strong>{department.working}</strong>
+        </div>
+        <div>
+          <span>Хянах ажил</span>
+          <strong>{department.review}</strong>
+        </div>
+      </div>
+      <div className={dashboardStyles.executiveDepartmentFooter}>
+        <span>Эрсдэлтэй болон хугацаа хэтэрсэн ажил</span>
+        <strong>{department.risky}</strong>
+      </div>
+    </Card>
+  );
+}
+
+function ExecutiveWeatherPanel({ weather }: { weather: WeatherSnapshot }) {
+  const forecast = weather.weeklyForecast.length
+    ? weather.weeklyForecast
+    : Array.from({ length: 7 }, (_, index) => {
+        const date = new Date();
+        date.setDate(date.getDate() + index);
+        return {
+          date: date.toISOString().slice(0, 10),
+          weekday: new Intl.DateTimeFormat("mn-MN", {
+            timeZone: "Asia/Ulaanbaatar",
+            weekday: "short",
+          }).format(date),
+          condition: weather.condition,
+          temperatureMax: weather.temperature,
+          temperatureMin: weather.temperature,
+          precipitationChance: null,
+        };
+      });
+
+  return (
+    <Card className={dashboardStyles.executiveWeatherPanel}>
+      <div className={dashboardStyles.executiveSectionHeader}>
+        <div>
+          <h2>7 хоногийн цаг агаар</h2>
+          <p>{weather.city} хотын ажлын төлөвлөлтөд ашиглах урьдчилсан мэдээ</p>
+        </div>
+        <div className={dashboardStyles.executiveWeatherNow}>
+          <Sun />
+          <strong>{weather.temperature === null ? "--" : weather.temperature}°C</strong>
+          <span>{weather.condition}</span>
+        </div>
+      </div>
+      <div className={dashboardStyles.executiveWeatherGrid}>
+        {forecast.map((day) => (
+          <div key={day.date} className={dashboardStyles.executiveWeatherDay}>
+            <span>{day.weekday}</span>
+            <Sun />
+            <strong>
+              {day.temperatureMax === null ? "--" : day.temperatureMax}° / {day.temperatureMin === null ? "--" : day.temperatureMin}°
+            </strong>
+            <small>{day.condition}</small>
+            <small>{day.precipitationChance === null ? "Тунадас --" : `Тунадас ${day.precipitationChance}%`}</small>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function buildExecutiveDepartmentMetrics({
+  snapshot,
+  tasks,
+  currentDateKey,
+}: {
+  snapshot: DashboardSnapshot;
+  tasks: DashboardSnapshot["taskDirectory"];
+  currentDateKey: string;
+}): ExecutiveDepartmentMetric[] {
+  const matchedDepartment = (keywords: string[]) =>
+    snapshot.departments.find((department) =>
+      keywords.some((keyword) => department.name.includes(keyword) || department.label.includes(keyword)),
+    );
+  const matchedTasks = (keywords: string[]) =>
+    tasks.filter((task) =>
+      keywords.some((keyword) => task.departmentName.includes(keyword) || task.operationTypeLabel.includes(keyword)),
+    );
+  const departmentProgress = (keywords: string[], departmentTasks: DashboardSnapshot["taskDirectory"]) => {
+    const matchedDepartment = snapshot.departments.find((department) =>
+      keywords.some((keyword) => department.name.includes(keyword) || department.label.includes(keyword)),
+    );
+    if (matchedDepartment) {
+      return clampPercent(matchedDepartment.completion);
+    }
+    return departmentTasks.length
+      ? Math.round(departmentTasks.reduce((sum, task) => sum + clampPercent(task.progress), 0) / departmentTasks.length)
+      : 0;
+  };
+  const buildDepartment = (
+    name: string,
+    keywords: string[],
+    icon: LucideIcon,
+    tone: ExecutiveMetric["tone"],
+  ) => {
+    const departmentTasks = matchedTasks(keywords);
+    const department = matchedDepartment(keywords);
+    const total = departmentTasks.length || department?.openTasks || 0;
+    const working = departmentTasks.filter((task) => task.statusKey === "working").length;
+    const review = departmentTasks.filter((task) => task.statusKey === "review").length;
+    const risky = departmentTasks.filter((task) => task.issueFlag || isOverdue(task, currentDateKey)).length;
+
+    return {
+      name,
+      progress: departmentProgress(keywords, departmentTasks),
+      total,
+      working,
+      review: review || department?.reviewTasks || 0,
+      risky,
+      icon,
+      tone,
+    };
+  };
+
+  return [
+    buildDepartment(
+      "Авто бааз, хог тээвэрлэлт",
+      ["Авто", "Хог", "хог", "тээвэр"],
+      Truck,
+      "blue",
+    ),
+    buildDepartment(
+      "Гудамж цэвэрлэгээ",
+      ["Гудамж", "цэвэр"],
+      Recycle,
+      "orange",
+    ),
+    buildDepartment(
+      "Ногоон байгууламж",
+      ["Ногоон", "мод", "зүлэг"],
+      Leaf,
+      "green",
+    ),
+    buildDepartment(
+      "Тохижилт үйлчилгээ",
+      ["Тохижилт", "үйлчилгээ"],
+      Wrench,
+      "purple",
+    ),
+  ];
+}
+
+function ExecutiveDashboardView({
+  session,
+  roleLabel,
+  canCreateProject,
+  canCreateTasks,
+  canWriteReports,
+  canViewQualityCenter,
+  canUseFieldConsole,
+  canViewHr,
+  notificationCount,
+  notificationNote,
+  totalTasks,
+  completedTasks,
+  workingTasks,
+  reviewTasks,
+  overdueTasks,
+  currentDateKey,
+  workItemStats,
+  dashboardTasks,
+  snapshot,
+  fleetBoard,
+  hrAttendanceSummary,
+  weather,
+}: {
+  session: AppSession;
+  roleLabel: string;
+  canCreateProject: boolean;
+  canCreateTasks: boolean;
+  canWriteReports: boolean;
+  canViewQualityCenter: boolean;
+  canUseFieldConsole: boolean;
+  canViewHr: boolean;
+  notificationCount: number;
+  notificationNote: string;
+  totalTasks: number;
+  completedTasks: number;
+  workingTasks: number;
+  reviewTasks: number;
+  overdueTasks: number;
+  currentDateKey: string;
+  workItemStats: ReturnType<typeof dashboardTaskStats>;
+  dashboardTasks: DashboardSnapshot["taskDirectory"];
+  snapshot: DashboardSnapshot;
+  fleetBoard: FleetVehicleBoard;
+  hrAttendanceSummary: HrDailyAttendanceSummary;
+  weather: WeatherSnapshot;
+}) {
+  const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
+  const hrUsage = percent(hrAttendanceSummary.workingToday, hrAttendanceSummary.totalEmployees);
+  const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
+  const overdueRate = percent(overdueTasks, totalTasks);
+  const activeTasks = Math.max(totalTasks - completedTasks, workingTasks + reviewTasks);
+  const metrics: ExecutiveMetric[] = [
+    {
+      label: "нийт гүйцэтгэл",
+      value: `${overallProgress}%`,
+      progress: overallProgress,
+      icon: CheckCircle2,
+      tone: "green",
+    },
+    {
+      label: "хянах ажил",
+      value: String(reviewTasks),
+      progress: percent(reviewTasks, totalTasks),
+      icon: ShieldCheck,
+      tone: "blue",
+    },
+    {
+      label: "хүний нөөцийн ашиглалт",
+      value: `${hrUsage}%`,
+      progress: hrUsage,
+      icon: UsersRound,
+      tone: "green",
+    },
+    {
+      label: "техникийн ашиглалт",
+      value: `${fleetUsage}%`,
+      progress: fleetUsage,
+      icon: Truck,
+      tone: "purple",
+    },
+    {
+      label: "хугацаа хэтэрсэн ажил",
+      value: `${overdueRate}%`,
+      progress: overdueRate,
+      icon: Clock3,
+      tone: "orange",
+    },
+    {
+      label: "идэвхтэй ажил",
+      value: String(activeTasks),
+      progress: 100,
+      icon: ClipboardList,
+      tone: "green",
+    },
+  ];
+  const departmentMetrics = buildExecutiveDepartmentMetrics({
+    snapshot,
+    tasks: dashboardTasks,
+    currentDateKey,
+  });
+
+  return (
+    <main className={cn(shellStyles.shell, dashboardStyles.executiveShell)}>
+      <div className={shellStyles.contentWithMenu}>
+        <aside className={shellStyles.menuColumn}>
+          <AppMenu
+            active="dashboard"
+            canCreateProject={canCreateProject}
+            canCreateTasks={canCreateTasks}
+            canWriteReports={canWriteReports}
+            canViewQualityCenter={canViewQualityCenter}
+            canUseFieldConsole={canUseFieldConsole}
+            canViewHr={canViewHr}
+            userName={session.name}
+            roleLabel={roleLabel}
+            groupFlags={session.groupFlags}
+            workerMode={false}
+            notificationCount={notificationCount}
+          />
+        </aside>
+
+        <div className={shellStyles.pageContent}>
+          <WorkspaceHeader
+            title="Ерөнхий хяналтын самбар"
+            subtitle="Бүх хэлтсийн ажлын нэгдсэн тойм"
+            userName={session.name}
+            roleLabel={roleLabel}
+            notificationCount={notificationCount}
+            notificationNote={notificationNote}
+          />
+
+          <section className={dashboardStyles.executiveMetricGrid}>
+            {metrics.map((metric) => (
+              <ExecutiveMetricCard key={metric.label} metric={metric} />
+            ))}
+          </section>
+
+          <section className={dashboardStyles.executiveSection}>
+            <div className={dashboardStyles.executiveSectionHeader}>
+              <div>
+                <h2>Хэлтсүүдийн ажлын нөхцөл байдал</h2>
+                <p>{notificationNote}</p>
+              </div>
+            </div>
+            <div className={dashboardStyles.executiveDepartmentGrid}>
+              {departmentMetrics.map((department) => (
+                <ExecutiveDepartmentCard key={department.name} department={department} />
+              ))}
+            </div>
+          </section>
+
+          <ExecutiveWeatherPanel weather={weather} />
+        </div>
+      </div>
+    </main>
+  );
+}
+
 export function DashboardView({
   session,
   snapshot,
@@ -1177,6 +1532,8 @@ export function DashboardView({
   weather,
   canViewHr = false,
   canViewGeneralDashboard = false,
+  notificationCount,
+  notificationNote,
 }: DashboardViewProps) {
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -1184,6 +1541,8 @@ export function DashboardView({
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const workerMode = isWorkerOnly(session);
+  const masterMode = isMasterRole(session.role);
+  const showHrSummary = Boolean(canViewHr && !workerMode);
   const roleLabel = getRoleLabel(session.role);
   const currentDateKey = todayKey();
   const model = buildDashboardModel({
@@ -1231,29 +1590,53 @@ export function DashboardView({
   const reviewTasks = workerMode
     ? dashboardTasks.filter((task) => task.statusKey === "review").length
     : dashboardProjects.filter((project) => project.stageBucket === "review").length;
-  const plannedTasks = workerMode
-    ? dashboardTasks.filter((task) => task.statusKey === "planned").length
-    : dashboardProjects.filter((project) => project.stageBucket === "todo" || project.stageBucket === "unknown").length;
   const overdueTasks = workerMode
     ? dashboardTasks.filter((task) => isOverdue(task, currentDateKey)).length
     : 0;
   const newIncomingTasks = dashboardTasks.filter((task) => isNewIncomingTask(task, currentDateKey)).length;
-  const attentionCount = countNotificationTasks(dashboardTasks, currentDateKey);
-  const notificationNote =
-    attentionCount > 0
+  const computedAttentionCount = countNotificationTasks(dashboardTasks, currentDateKey);
+  const attentionCount = notificationCount ?? computedAttentionCount;
+  const effectiveNotificationNote =
+    notificationNote ??
+    (attentionCount > 0
       ? `${newIncomingTasks} шинэ ажил, ${reviewTasks} хянах, ${overdueTasks} хугацаа хэтэрсэн`
-      : "Шинэ ажил, хянах зүйл алга";
+      : "Шинэ ажил, хянах зүйл алга");
   const sortedProjects = [...dashboardProjects].sort((left, right) => {
     const leftTone = projectTone(left);
     const rightTone = projectTone(right);
     const score = { urgent: 4, attention: 3, good: 2, muted: 1 };
     return score[rightTone] - score[leftTone] || right.completion - left.completion;
   });
+  const currentUserId = String(session.uid);
+  const currentMasterProjectIds = new Set(
+    dashboardProjects
+      .filter((project) => isSameDashboardUser(project.managerId, currentUserId))
+      .map((project) => project.id),
+  );
+  const currentMasterTasks = masterMode
+    ? dashboardTasks.filter(
+        (task) =>
+          isSameDashboardUser(task.leaderId, currentUserId) ||
+          (typeof task.projectId === "number" && currentMasterProjectIds.has(task.projectId)),
+      )
+    : [];
+  const currentMasterTaskProjectIds = new Set(
+    currentMasterTasks
+      .map((task) => task.projectId)
+      .filter((projectId): projectId is number => typeof projectId === "number"),
+  );
+  const currentMasterProjects = masterMode
+    ? sortedProjects.filter(
+        (project) =>
+          isSameDashboardUser(project.managerId, currentUserId) ||
+          currentMasterTaskProjectIds.has(project.id),
+      )
+    : [];
   const workerWorkSummaries = workerMode
     ? buildWorkerWorkSummaries(dashboardTasks, snapshot.projects, currentDateKey)
     : [];
-  const visibleWorkerWorks = workerWorkSummaries.slice(0, 4);
-  const visibleProjects = sortedProjects.slice(0, 3);
+  const visibleWorkerWorks = workerWorkSummaries;
+  const visibleProjects = masterMode ? sortedProjects : sortedProjects.slice(0, 3);
   const visibleWorkItems = workerMode ? visibleWorkerWorks.length : visibleProjects.length;
   const projectStatusChips = projectStatusFilterChips(sortedProjects);
   const projectStatusSections = projectStatusChips.map((chip) => ({
@@ -1265,69 +1648,39 @@ export function DashboardView({
     workerMode && visibleWorkItems > 1 && "xl:grid-cols-2",
     !workerMode && visibleWorkItems > 1 && "lg:grid-cols-2 2xl:grid-cols-3",
   );
+  const currentMasterGridClassName = cn(
+    dashboardStyles.taskListBody,
+    currentMasterProjects.length > 1 && "lg:grid-cols-2 2xl:grid-cols-3",
+  );
 
-  const statCards: DashboardStat[] = [
-    {
-      label: "Нийт ажил",
-      value: String(totalTasks),
-      helper: "Энэ нэгж дээр бүртгэсэн",
-      progress: 100,
-      href: "/projects",
-      icon: ClipboardList,
-      tone: "good",
-      short: "A",
-    },
-    {
-      label: "Төлөвлөсөн",
-      value: String(plannedTasks),
-      helper: "Эхлээгүй эсвэл хүлээгдэж буй",
-      progress: percent(plannedTasks, totalTasks),
-      href: workerMode ? "/tasks?filter=planned" : "/projects",
-      icon: CalendarDays,
-      tone: "good",
-      short: "T",
-    },
-    {
-      label: "Гүйцэтгэж байгаа",
-      value: String(workingTasks),
-      helper: "Яг одоо явагдаж буй",
-      progress: percent(workingTasks, totalTasks),
-      href: workerMode ? "/tasks?filter=working" : "/projects",
-      icon: Clock3,
-      tone: "good",
-      short: "G",
-    },
-    {
-      label: "Хянаж байгаа",
-      value: String(reviewTasks),
-      helper: "Баталгаажуулалт хүлээж буй",
-      progress: percent(reviewTasks, totalTasks),
-      href: workerMode ? "/review" : "/projects",
-      icon: ShieldCheck,
-      tone: "attention",
-      short: "H",
-    },
-    {
-      label: "Хугацаа хэтэрсэн",
-      value: String(overdueTasks),
-      helper: workerMode ? "Хугацаа өнгөрсөн даалгавар" : "Хугацаа өнгөрсөн ажил",
-      progress: percent(overdueTasks, totalTasks),
-      href: workerMode ? "/tasks?filter=overdue" : "/projects",
-      icon: AlertTriangle,
-      tone: overdueTasks ? "urgent" : "muted",
-      short: "!",
-    },
-    {
-      label: "Дууссан",
-      value: String(completedTasks),
-      helper: "Бүрэн дууссан ажил",
-      progress: percent(completedTasks, totalTasks),
-      href: workerMode ? "/reports" : "/projects",
-      icon: CheckCircle2,
-      tone: "good",
-      short: "D",
-    },
-  ];
+  if (canViewGeneralDashboard && !workerMode) {
+    return (
+      <ExecutiveDashboardView
+        session={session}
+        roleLabel={roleLabel}
+        canCreateProject={canCreateProject}
+        canCreateTasks={canCreateTasks}
+        canWriteReports={canWriteReports}
+        canViewQualityCenter={canViewQualityCenter}
+        canUseFieldConsole={canUseFieldConsole}
+        canViewHr={canViewHr}
+        notificationCount={attentionCount}
+        notificationNote={effectiveNotificationNote}
+        totalTasks={totalTasks}
+        completedTasks={completedTasks}
+        workingTasks={workingTasks}
+        reviewTasks={reviewTasks}
+        overdueTasks={overdueTasks}
+        currentDateKey={currentDateKey}
+        workItemStats={workItemStats}
+        dashboardTasks={dashboardTasks}
+        snapshot={snapshot}
+        fleetBoard={fleetBoard}
+        hrAttendanceSummary={hrAttendanceSummary}
+        weather={weather}
+      />
+    );
+  }
 
   return (
     <main className={shellStyles.shell}>
@@ -1358,20 +1711,12 @@ export function DashboardView({
             userName={session.name}
             roleLabel={roleLabel}
             notificationCount={attentionCount}
-            notificationNote={notificationNote}
+            notificationNote={effectiveNotificationNote}
             backgroundImage={DASHBOARD_IMAGES.header}
           />
 
           <div className="relative z-20 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
             <div className="grid min-w-0 gap-4">
-              {!workerMode ? (
-                <section className={cn("grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6", dashboardStyles.statGrid)}>
-                  {statCards.map((metric) => (
-                    <StatCard key={metric.label} metric={metric} />
-                  ))}
-                </section>
-              ) : null}
-
               {!workerMode ? <MobilePriorityPanel canWriteReports={canWriteReports} /> : null}
 
               {fleetLoadError ? (
@@ -1383,15 +1728,50 @@ export function DashboardView({
               <div className={dashboardStyles.departmentPanel}>
                 <DepartmentOverview
                   snapshot={snapshot}
-                  tasks={dashboardTasks}
                   departmentScopeName={departmentScopeName}
                 />
               </div>
 
+              {masterMode ? (
+                <Card className={dashboardStyles.taskListCard}>
+                  <CardHeader className={dashboardStyles.taskListHeader}>
+                    <div className={dashboardStyles.taskListHeaderText}>
+                      <CardTitle>Миний хариуцсан ажил</CardTitle>
+                      <CardDescription>
+                        Таны нэр дээр хариуцагчаар бүртгэгдсэн ажил, даалгаврууд.
+                      </CardDescription>
+                    </div>
+                    <Badge tone={currentMasterProjects.length ? "green" : "slate"}>
+                      {currentMasterProjects.length} ажил
+                    </Badge>
+                  </CardHeader>
+
+                  <div className={currentMasterGridClassName}>
+                    {currentMasterProjects.map((project) => (
+                      <ProjectCard key={`mine-${project.id}`} project={project} />
+                    ))}
+                    {!currentMasterProjects.length ? (
+                      <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>
+                        <span className={dashboardStyles.taskListEmptyIcon}>
+                          <UserCheck />
+                        </span>
+                        <span className="mt-2 block text-[#1F2B24]">Танд хариуцсан ажил бүртгэгдээгүй байна.</span>
+                        <small className="mt-1 block font-medium text-[#8A978E]">Нийт ажлын жагсаалтаас алба нэгжийн ажлуудаа харж болно.</small>
+                      </div>
+                    ) : null}
+                  </div>
+                </Card>
+              ) : null}
+
               <Card className={dashboardStyles.taskListCard}>
                 <CardHeader className={dashboardStyles.taskListHeader}>
                   <div className={dashboardStyles.taskListHeaderText}>
-                    <CardTitle>Ажлын жагсаалт</CardTitle>
+                    <CardTitle>{masterMode ? "Алба нэгжийн бүх ажил" : "Ажлын жагсаалт"}</CardTitle>
+                    {masterMode ? (
+                      <CardDescription>
+                        Энэ хэсэгт нэгжийн нийт ажил харагдана. Мастер бүр нэг нэгнийхээ ажлын явцыг хянаж болно.
+                      </CardDescription>
+                    ) : null}
                   </div>
                 </CardHeader>
 
@@ -1562,6 +1942,7 @@ export function DashboardView({
               hrAttendanceSummary={hrAttendanceSummary}
               departmentScopeName={departmentScopeName}
               showFleetSummary={showFleetSummary}
+              showHrSummary={showHrSummary}
               workerMode={workerMode}
               weather={weather}
             />

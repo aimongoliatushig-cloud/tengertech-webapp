@@ -43,8 +43,80 @@
                 <field name="create_date"/>
                 <field name="event_type"/>
                 <field name="name"/>
+                <field name="target_user_count"/>
                 <field name="sent_count"/>
                 <field name="failed_count"/>
+                <field name="skipped_count"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_push_event_form" model="ir.ui.view">
+        <field name="name">tengertech.push.event.form</field>
+        <field name="model">tengertech.push.event</field>
+        <field name="arch" type="xml">
+            <form string="Push мэдэгдлийн бүртгэл">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="event_type"/>
+                        <field name="target_url"/>
+                        <field name="failure_reason"/>
+                    </group>
+                    <group>
+                        <field name="target_user_count"/>
+                        <field name="sent_count"/>
+                        <field name="failed_count"/>
+                        <field name="skipped_count"/>
+                    </group>
+                    <group>
+                        <field name="target_user_ids" widget="many2many_tags"/>
+                    </group>
+                    <group>
+                        <field name="body"/>
+                    </group>
+                    <notebook>
+                        <page string="Төхөөрөмжийн аудит">
+                            <field name="delivery_ids" readonly="1">
+                                <list>
+                                    <field name="delivered_at"/>
+                                    <field name="user_id"/>
+                                    <field name="status"/>
+                                    <field name="endpoint_tail"/>
+                                    <field name="error_message"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_push_delivery_list" model="ir.ui.view">
+        <field name="name">tengertech.push.delivery.list</field>
+        <field name="model">tengertech.push.delivery</field>
+        <field name="arch" type="xml">
+            <list string="Push төхөөрөмжийн аудит">
+                <field name="delivered_at"/>
+                <field name="event_id"/>
+                <field name="user_id"/>
+                <field name="status"/>
+                <field name="endpoint_tail"/>
+                <field name="error_message"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_notification_state_list" model="ir.ui.view">
+        <field name="name">tengertech.notification.state.list</field>
+        <field name="model">tengertech.notification.state</field>
+        <field name="arch" type="xml">
+            <list string="Мэдэгдлийн уншсан төлөв">
+                <field name="user_id"/>
+                <field name="notification_key"/>
+                <field name="read_at"/>
+                <field name="last_seen_at"/>
             </list>
         </field>
     </record>
@@ -58,6 +130,18 @@
     <record id="action_push_event" model="ir.actions.act_window">
         <field name="name">Push мэдэгдлийн бүртгэл</field>
         <field name="res_model">tengertech.push.event</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_push_delivery" model="ir.actions.act_window">
+        <field name="name">Төхөөрөмжийн аудит</field>
+        <field name="res_model">tengertech.push.delivery</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="action_notification_state" model="ir.actions.act_window">
+        <field name="name">Уншсан төлөв</field>
+        <field name="res_model">tengertech.notification.state</field>
         <field name="view_mode">list</field>
     </record>
 
@@ -78,4 +162,16 @@
               parent="menu_push_notifications_root"
               action="action_push_event"
               sequence="20"/>
+
+    <menuitem id="menu_push_delivery"
+              name="Төхөөрөмжийн аудит"
+              parent="menu_push_notifications_root"
+              action="action_push_delivery"
+              sequence="30"/>
+
+    <menuitem id="menu_notification_state"
+              name="Уншсан төлөв"
+              parent="menu_push_notifications_root"
+              action="action_notification_state"
+              sequence="40"/>
 </odoo>

@@ -16,7 +16,10 @@ import {
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
-import { loadProjectDetail } from "@/lib/workspace";
+import { filterProjectsForResponsibleMaster } from "@/lib/master-scope";
+import { loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
+import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurement";
+import { loadGarbagePointOptions, loadProjectDetail } from "@/lib/workspace";
 
 import { ProjectTaskCreateModal } from "./project-task-create-modal";
 import { ProjectTaskEditModal } from "./project-task-edit-modal";
@@ -125,6 +128,21 @@ function StagePill({ label, bucket }: { label: string; bucket: string }) {
   );
 }
 
+function taskCardToneClass(bucket: string) {
+  switch (bucket) {
+    case "problem":
+      return styles.projectTaskFlowItemProblem;
+    case "done":
+      return styles.projectTaskFlowItemDone;
+    case "review":
+      return styles.projectTaskFlowItemReview;
+    case "progress":
+      return styles.projectTaskFlowItemProgress;
+    default:
+      return styles.projectTaskFlowItemTodo;
+  }
+}
+
 export default async function ProjectDetailPage({ params, searchParams }: PageProps) {
   const session = await requireSession();
   if (isWorkerOnly(session)) {
@@ -159,13 +177,14 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     : masterMode
       ? "Нэгжийн самбар руу буцах"
       : "Ажлууд руу буцах";
+  const connectionOverrides = {
+    login: session.login,
+    password: session.password,
+  };
 
   let project;
   try {
-    project = await loadProjectDetail(projectId, {
-      login: session.login,
-      password: session.password,
-    });
+    project = await loadProjectDetail(projectId, connectionOverrides);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Ажлыг уншихад алдаа гарлаа.";
@@ -188,12 +207,48 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   ) {
     redirect("/projects");
   }
+  if (masterMode) {
+    const snapshot = await loadMunicipalSnapshot(connectionOverrides);
+    const snapshotProject = snapshot.projects.find((item) => item.id === project.id);
+    if (
+      !snapshotProject ||
+      filterProjectsForResponsibleMaster([snapshotProject], snapshot.taskDirectory, session).length === 0
+    ) {
+      redirect("/projects");
+    }
+  }
 
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const isGarbageRouteProject = project.operationType === "garbage";
+  const garbageSourceTask =
+    project.tasks.find((task) => task.vehicleId) ??
+    project.tasks.find((task) => task.driverEmployeeId || task.collectorEmployeeIds.length) ??
+    null;
+  const [garbagePointOptions, garbageLoaderOptions] = isGarbageRouteProject
+    ? await Promise.all([
+        loadGarbagePointOptions(connectionOverrides, {
+          requireCurrentEmployeeScope: session.role === "transport_inspector",
+        }).catch(() => []),
+        loadFleetVehicleBoard(connectionOverrides)
+          .then((board) => board.loaderOptions)
+          .catch(() => []),
+      ])
+    : [[], []];
+  const procurementBundle = await loadProcurementRequests(
+    { project_id: project.id, limit: 5 },
+    connectionOverrides,
+  ).catch((error) => {
+    if (!isProcurementSetupError(error)) {
+      console.warn("Project procurement links could not be loaded:", error);
+    }
+    return { items: [], pagination: { page: 1, limit: 5, total: 0, pages: 1 } };
+  });
+  const procurementItems = procurementBundle.items;
+  const procurementCreateHref = `/procurement/new?project_id=${project.id}`;
   const taskCounts = {
     all: project.tasks.length,
     todo: project.tasks.filter(
@@ -221,6 +276,15 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   });
   const stageSummary = resolveProjectStage(taskCounts);
   const activeTaskCount = taskCounts.progress + taskCounts.review;
+  const projectVehicleNames = Array.from(
+    new Set(project.tasks.map((task) => task.vehicleName).filter(Boolean)),
+  );
+  const projectDriverNames = Array.from(
+    new Set(project.tasks.map((task) => task.driverName).filter(Boolean)),
+  );
+  const projectCollectorNames = Array.from(
+    new Set(project.tasks.flatMap((task) => task.collectorNames).filter(Boolean)),
+  );
   const completionDegrees = Math.round((project.completion / 100) * 360);
   const taskBreakdown = [
     {
@@ -382,6 +446,24 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                         <span>Дуусах огноо</span>
                         <strong>{project.deadline}</strong>
                       </div>
+                      {projectVehicleNames.length ? (
+                        <div>
+                          <span>Машин</span>
+                          <strong>{projectVehicleNames.join(", ")}</strong>
+                        </div>
+                      ) : null}
+                      {projectDriverNames.length ? (
+                        <div>
+                          <span>Жолооч</span>
+                          <strong>{projectDriverNames.join(", ")}</strong>
+                        </div>
+                      ) : null}
+                      {projectCollectorNames.length ? (
+                        <div>
+                          <span>Ачигч</span>
+                          <strong>{projectCollectorNames.join(", ")}</strong>
+                        </div>
+                      ) : null}
                     </div>
                   </article>
 
@@ -428,6 +510,37 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                   PDF хэвлэх
                 </a>
               </div>
+            </section>
+
+            <section className={`${styles.sectionCard} ${styles.projectDetailCompact}`}>
+              <div className={styles.compactSectionHeader}>
+                <div>
+                  <span className={styles.eyebrow}>Худалдан авалт</span>
+                  <h2>Энэ ажилтай холбоотой худалдан авалт</h2>
+                </div>
+                <Link href={procurementCreateHref} className={styles.secondaryButton}>
+                  Хүсэлт үүсгэх
+                </Link>
+              </div>
+
+              {procurementItems.length ? (
+                <div className={styles.projectDetailCompactGrid}>
+                  {procurementItems.map((item) => (
+                    <Link key={item.id} href={`/procurement/${item.id}`} className={styles.descriptionCard}>
+                      <span className={styles.compactLabel}>{item.name}</span>
+                      <strong>{item.title}</strong>
+                      <p>
+                        {item.state.label} · {item.payment_status.label} · {item.receipt_status.label}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.descriptionCard}>
+                  <span className={styles.compactLabel}>Одоогоор хүсэлт алга</span>
+                  <p>Энэ ажлаас материал, сэлбэг, үйлчилгээ авах шаардлагатай бол эндээс шууд хүсэлт үүсгэнэ.</p>
+                </div>
+              )}
             </section>
 
             {project.description || project.attachments.length ? (
@@ -562,6 +675,21 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                       allUnitOptions={project.allUnitOptions}
                       defaultUnitId={project.defaultUnitId}
                       allowedUnitSummary={project.allowedUnitSummary}
+                      operationType={project.operationType}
+                      garbagePointOptions={garbagePointOptions}
+                      garbageLoaderOptions={garbageLoaderOptions}
+                      garbageVehicleContext={
+                        garbageSourceTask
+                          ? {
+                              vehicleId: garbageSourceTask.vehicleId,
+                              vehicleName: garbageSourceTask.vehicleName,
+                              driverEmployeeId: garbageSourceTask.driverEmployeeId,
+                              driverName: garbageSourceTask.driverName,
+                              collectorEmployeeIds: garbageSourceTask.collectorEmployeeIds,
+                              collectorNames: garbageSourceTask.collectorNames,
+                            }
+                          : null
+                      }
                       defaultOpen={Boolean(errorMessage) || quickActionMode === "task"}
                     />
                   ) : (
@@ -607,38 +735,64 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                 </div>
 
                 {visibleTasks.length ? (
-                  <div className={styles.taskGrid}>
-                    {visibleTasks.map((task) => (
-                      <article
-                        key={task.id}
-                        className={styles.taskItem}
-                      >
-                        <Link
-                          href={
-                            quickActionMode === "report"
-                              ? `${task.href}?composer=report&returnTo=${encodeURIComponent(
-                                  `/projects/${project.id}?quickAction=report&returnTo=${encodeURIComponent(
-                                    backHref,
-                                  )}`,
-                                )}`
-                              : task.href
-                          }
-                          className={styles.taskItemLink}
+                  <div className={styles.projectTaskFlowList}>
+                    {visibleTasks.map((task, index) => {
+                      const taskHref =
+                        quickActionMode === "report"
+                          ? `${task.href}?composer=report&returnTo=${encodeURIComponent(
+                              `/projects/${project.id}?quickAction=report&returnTo=${encodeURIComponent(
+                                backHref,
+                              )}`,
+                            )}`
+                          : task.href;
+                      const reviewHref = `${task.href}?returnTo=${encodeURIComponent(
+                        `/projects/${project.id}`,
+                      )}#task-reports`;
+                      const canReviewTaskFromBoard =
+                        masterMode && task.reportCount > 0 && task.stageBucket !== "done";
+
+                      return (
+                        <article
+                          key={task.id}
+                          className={`${styles.projectTaskFlowItem} ${taskCardToneClass(task.stageBucket)}`}
                         >
-                          <div className={styles.taskItemTop}>
+                          <Link href={taskHref} className={styles.projectTaskFlowLink}>
+                          <span className={styles.projectTaskNumber}>{index + 1}</span>
+                          <div className={styles.projectTaskMain}>
+                            <div className={styles.projectTaskTitleRow}>
                             <div>
                               <h3>{task.name}</h3>
                               <p>
                                 Хариуцсан ажилтан: {task.teamLeaderName}
                                 {task.teamLeaderJobTitle ? ` · ${task.teamLeaderJobTitle}` : ""}
                               </p>
+                              {task.assignees.length || task.vehicleName || task.driverName || task.collectorNames.length ? (
+                                <p>
+                                  {task.assignees.length ? `Оноосон: ${task.assignees.join(", ")}` : ""}
+                                  {task.vehicleName ? `${task.assignees.length ? " · " : ""}Машин: ${task.vehicleName}` : ""}
+                                  {task.driverName ? `${task.assignees.length || task.vehicleName ? " · " : ""}Жолооч: ${task.driverName}` : ""}
+                                  {task.collectorNames.length
+                                    ? `${task.assignees.length || task.vehicleName || task.driverName ? " · " : ""}Ачигч: ${task.collectorNames.join(", ")}`
+                                    : ""}
+                                </p>
+                              ) : null}
                             </div>
-                            <StagePill label={task.stageLabel} bucket={task.stageBucket} />
                           </div>
 
-                          <div className={styles.metaRow}>
+                          <div className={styles.projectTaskMetaGrid}>
+                            <div className={styles.projectTaskStateCell}>
+                              <small>Төлөв</small>
+                              <div className={styles.projectTaskStateRow}>
+                                <StagePill label={task.stageLabel} bucket={task.stageBucket} />
+                                {task.reportCount ? (
+                                  <span className={styles.projectTaskReportCount}>
+                                    {task.reportCount} тайлан
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
                             {task.quantitySummary ? (
-                              <div className={styles.taskQuantityLines}>
+                              <div className={styles.projectTaskQuantityCell}>
                                 <strong>Хэмжээ:</strong>
                                 {task.quantitySummaryLines.map((line) => (
                                   <span key={line}>{line}</span>
@@ -648,31 +802,42 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                             <span>Хугацаа: {task.deadline}</span>
                           </div>
 
-                          <div className={styles.progressTrack}>
-                            <span style={{ width: `${task.progress}%` }} />
+                          <div className={styles.projectTaskProgressTrack}>
+                            <span style={{ width: getProgressWidth(task.progress) }} />
+                          </div>
                           </div>
                         </Link>
 
-                        {canCreateTasks ? (
-                          <div className={styles.taskItemActions}>
-                            <ProjectTaskEditModal
-                              action={updateTaskAction}
-                              projectId={project.id}
-                              taskId={task.id}
-                              taskName={task.name}
-                              deadlineValue={task.deadlineValue}
-                            />
-                            <form action={deleteTaskAction}>
-                              <input type="hidden" name="project_id" value={project.id} />
-                              <input type="hidden" name="task_id" value={task.id} />
-                              <button type="submit" className={styles.dangerButton}>
-                                Устгах
-                              </button>
-                            </form>
+                        {canReviewTaskFromBoard || canCreateTasks ? (
+                          <div className={styles.projectTaskFlowActions}>
+                            {canReviewTaskFromBoard ? (
+                              <Link href={reviewHref} className={styles.projectTaskReviewButton}>
+                                Шалгах
+                              </Link>
+                            ) : null}
+                            {canCreateTasks ? (
+                              <ProjectTaskEditModal
+                                action={updateTaskAction}
+                                projectId={project.id}
+                                taskId={task.id}
+                                taskName={task.name}
+                                deadlineValue={task.deadlineValue}
+                              />
+                            ) : null}
+                            {canCreateTasks ? (
+                              <form action={deleteTaskAction}>
+                                <input type="hidden" name="project_id" value={project.id} />
+                                <input type="hidden" name="task_id" value={task.id} />
+                                <button type="submit" className={styles.dangerButton}>
+                                  Устгах
+                                </button>
+                              </form>
+                            ) : null}
                           </div>
                         ) : null}
-                      </article>
-                    ))}
+                        </article>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className={styles.emptyState}>

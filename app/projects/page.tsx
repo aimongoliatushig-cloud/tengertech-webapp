@@ -1,6 +1,10 @@
+import { Suspense } from "react";
+
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
+import { LoadingShell } from "@/app/_components/loading-shell";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import styles from "@/app/workspace.module.css";
 import {
@@ -18,7 +22,11 @@ import {
   getAvailableUnits,
   matchesDepartmentGroup,
 } from "@/lib/department-groups";
-import { type DashboardSnapshot, loadMunicipalSnapshot } from "@/lib/odoo";
+import { type DashboardSnapshot, loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
+import {
+  filterProjectsForResponsibleMaster,
+  filterTasksForResponsibleMaster,
+} from "@/lib/master-scope";
 import { loadWorkspaceNotificationCount } from "@/lib/workspace-notifications";
 
 type PageProps = {
@@ -33,6 +41,16 @@ type PageProps = {
 type ProjectFilterKey = "all" | "progress" | "planned";
 type QuickActionMode = "task" | "report" | "none";
 type ProjectCardItem = DashboardSnapshot["projects"][number];
+type ProjectsSession = Awaited<ReturnType<typeof requireSession>>;
+type AutoBaseProcurementItem = {
+  id: number;
+  name: string;
+  vehiclePlate: string;
+  vehicleModel: string;
+  repairName: string;
+  amountLabel: string;
+  stateLabel: string;
+};
 
 const AUTO_BASE_GROUP_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
 const AUTO_BASE_UNIT_NAME = "Авто бааз";
@@ -208,7 +226,7 @@ function ProjectCardLink({
 
       <h3>{project.name}</h3>
       <p>
-        Алба нэгж: {project.departmentName} · Менежер: {project.manager}
+        Алба нэгж: {project.departmentName} · Үйл ажиллагаа хариуцсан менежер: {project.manager}
         {project.operationTypeLabel ? ` · ${project.operationTypeLabel}` : ""}
       </p>
 
@@ -235,15 +253,65 @@ function ProjectCardLink({
   );
 }
 
+function AutoBaseProcurementCard({ item }: { item: AutoBaseProcurementItem }) {
+  return (
+    <Link href={`/procurement/${item.id}`} className={styles.projectCard}>
+      <div className={styles.projectCardTop}>
+        <span>{item.vehiclePlate}</span>
+        <span className={styles.stagePill}>{item.stateLabel}</span>
+      </div>
+
+      <h3>{item.name}</h3>
+      <p>
+        Машин: {item.vehicleModel || item.vehiclePlate}
+        {item.repairName ? ` · Засвар: ${item.repairName}` : ""}
+      </p>
+
+      <div className={styles.projectMeta}>
+        <div>
+          <span>Нийт дүн</span>
+          <strong>{item.amountLabel || "0 ₮"}</strong>
+        </div>
+        <div>
+          <span>Төлөв</span>
+          <strong>{item.stateLabel}</strong>
+        </div>
+      </div>
+
+      <div className={styles.cardFooter}>
+        <span className={styles.cardLinkLabel}>Хүсэлт харах</span>
+        <strong aria-hidden>→</strong>
+      </div>
+    </Link>
+  );
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage({ searchParams }: PageProps) {
   const session = await requireSession();
+
+  return (
+    <Suspense fallback={<LoadingShell />}>
+      <ProjectsPageContent searchParams={searchParams} session={session} />
+    </Suspense>
+  );
+}
+
+async function ProjectsPageContent({
+  searchParams,
+  session,
+}: PageProps & {
+  session: ProjectsSession;
+}) {
   const workerMode = isWorkerOnly(session);
-  const snapshot = await loadMunicipalSnapshot({
+  const connectionOverrides = {
     login: session.login,
     password: session.password,
-  });
+  };
+  const snapshotPromise = loadMunicipalSnapshot(connectionOverrides);
+  const scopedDepartmentNamePromise = loadSessionDepartmentName(session);
+  const paramsPromise: NonNullable<PageProps["searchParams"]> = searchParams ?? Promise.resolve({});
 
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -251,19 +319,38 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const masterMode = isMasterRole(session.role);
-  let scopedDepartmentName = await loadSessionDepartmentName(session);
+  const seniorMasterMode = session.role === "senior_master";
+  let scopedDepartmentName = await scopedDepartmentNamePromise;
+  let snapshot: DashboardSnapshot | null = null;
   if (!scopedDepartmentName && workerMode) {
+    snapshot = await snapshotPromise;
     const currentUserId = String(session.uid);
     scopedDepartmentName =
       snapshot.taskDirectory.find((task) =>
         (task.assigneeIds ?? []).some((assigneeId) => String(assigneeId) === currentUserId),
       )?.departmentName ?? null;
   }
+  const transportInspectorMode =
+    (session.role === "transport_inspector" || Boolean(session.groupFlags?.mfoInspector)) &&
+    !session.groupFlags?.mfoManager &&
+    !session.groupFlags?.mfoDispatcher &&
+    !session.groupFlags?.municipalDepartmentHead;
+  if (transportInspectorMode) {
+    scopedDepartmentName = AUTO_BASE_GROUP_NAME;
+  }
   const departmentScopedMode = Boolean(scopedDepartmentName);
 
-  const params = (await searchParams) ?? {};
+  const params = (await paramsPromise) ?? {};
   const requestedDepartment = getDepartmentParam(params.department);
   const requestedUnit = getDepartmentParam(params.unit);
+  if (
+    transportInspectorMode &&
+    requestedDepartment &&
+    requestedDepartment !== AUTO_BASE_GROUP_NAME &&
+    requestedDepartment !== AUTO_BASE_UNIT_NAME
+  ) {
+    redirect(`/projects?department=${encodeURIComponent(AUTO_BASE_GROUP_NAME)}`);
+  }
   const activeFilter = normalizeProjectFilter(getDepartmentParam(params.category));
   const quickActionMode = normalizeQuickAction(getDepartmentParam(params.quickAction));
 
@@ -286,6 +373,39 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
         ? requestedDepartment
         : "";
   const isAutoBaseView = selectedGroup?.name === AUTO_BASE_GROUP_NAME;
+  const showAutoBaseFleet = isAutoBaseView && selectedUnit === AUTO_BASE_UNIT_NAME;
+  let fleetBoard: Awaited<ReturnType<typeof loadFleetVehicleBoard>> | null = null;
+  let fleetLoadError = "";
+
+  if (showAutoBaseFleet) {
+    try {
+      fleetBoard = await loadFleetVehicleBoard();
+    } catch (error) {
+      console.error("Fleet vehicle board could not be loaded for projects auto-base view:", error);
+      fleetLoadError =
+        "Авто баазын худалдан авалтын хүсэлтүүдийг уншиж чадсангүй. Холболт болон эрхийн тохиргоог шалгана уу.";
+    }
+  }
+  const autoBaseProcurementItems: AutoBaseProcurementItem[] =
+    fleetBoard?.allVehicles.flatMap((vehicle) =>
+      vehicle.procurementLinks.map((request) => ({
+        id: request.id,
+        name: request.name,
+        vehiclePlate: vehicle.plate,
+        vehicleModel: vehicle.modelName || vehicle.name,
+        repairName: request.repairName,
+        amountLabel: request.amountLabel,
+        stateLabel: request.stateLabel,
+      })),
+    ) ?? [];
+
+  if (!snapshot) {
+    snapshot = await snapshotPromise;
+  }
+  const notificationCountPromise = loadWorkspaceNotificationCount(session, {
+    snapshot,
+    scopedDepartmentName,
+  });
 
   const projectTaskSearchByName = new Map<string, string>();
   for (const task of snapshot.taskDirectory) {
@@ -341,6 +461,25 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
         return true;
       });
 
+  if (masterMode) {
+    scopedTasks = filterTasksForResponsibleMaster(scopedTasks, scopedProjects, session);
+    scopedProjects = filterProjectsForResponsibleMaster(scopedProjects, scopedTasks, session);
+  }
+
+  if (transportInspectorMode) {
+    const currentUserId = String(session.uid);
+    scopedTasks = scopedTasks.filter(
+      (task) =>
+        String(task.leaderId ?? "") === currentUserId ||
+        (task.assigneeIds ?? []).some((assigneeId) => String(assigneeId) === currentUserId),
+    );
+    const inspectorProjectNames = new Set(scopedTasks.map((task) => task.projectName));
+    scopedProjects = scopedProjects.filter(
+      (project) =>
+        String(project.managerId ?? "") === currentUserId || inspectorProjectNames.has(project.name),
+    );
+  }
+
   if (workerMode) {
     const currentUserId = String(session.uid);
     scopedTasks = scopedTasks.filter((task) =>
@@ -367,6 +506,10 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   const selectedDepartmentName = masterMode
     ? scopedDepartmentName ?? "Миний алба нэгж"
     : selectedUnit || selectedGroup?.name || "Бүх хэлтэс";
+  const masterProjectSectionLabel = seniorMasterMode ? "Нэгжийн бүх ажил" : "Миний хариуцсан ажил";
+  const masterProjectSectionNote = seniorMasterMode
+    ? "Ахлах мастер нэгжийн бүх мастер, бүх ажлын явцыг харна"
+    : "Мастер зөвхөн өөрт хариуцуулсан ажил, тайланг харна";
 
   const projectCounts = {
     all: scopedProjects.length,
@@ -601,14 +744,6 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
       : quickActionMode === "report"
         ? "Эхлээд ажил сонгоод, дараа нь даалгавар дээрээс тайлан оруулна."
         : "";
-  const sectionNote =
-    quickActionMode === "task"
-      ? "Ажил сонгоод дармагц даалгавар нэмэх цонх руу орно."
-      : quickActionMode === "report"
-        ? "Ажил сонгоод доторх даалгавраас тайлан оруулах урсгал руу орно."
-        : masterMode
-          ? "Ажил дээр дарахад тухайн ажлаас шинэ даалгавар нээх болон өнөөдрийн урсгал руу орно."
-          : "Ажил дээр дарахад тухайн ажлын даалгаврууд нээгдэнэ";
   const projectCardLabel =
     quickActionMode === "task"
       ? "Энэ ажил дээр даалгавар нэмэх"
@@ -641,6 +776,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
   }`;
   const shouldShowGreenServiceSections =
     !masterMode &&
+    !showAutoBaseFleet &&
     !selectedUnit &&
     selectedGroup?.name === GREEN_SERVICE_GROUP_NAME;
   const greenServiceProjectSections = GREEN_SERVICE_UNITS.map((unit) => ({
@@ -668,10 +804,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
     }
   }
 
-  const notificationCount = await loadWorkspaceNotificationCount(session, {
-    snapshot,
-    scopedDepartmentName,
-  });
+  const notificationCount = await notificationCountPromise;
 
   return (
     <main className={styles.shell}>
@@ -679,7 +812,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
         <div className={styles.contentWithMenu}>
           <aside className={styles.menuColumn}>
             <AppMenu
-              active={masterMode ? "dashboard" : "projects"}
+              active={transportInspectorMode ? "projects" : masterMode ? "dashboard" : "projects"}
               canCreateProject={canCreateProject}
               canCreateTasks={canCreateTasks}
               canWriteReports={canWriteReports}
@@ -783,16 +916,11 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                     if (quickActionMode !== "none") {
                       hrefParams.set("quickAction", quickActionMode);
                     }
-                    const isGarbageTransportRouteUnit =
-                      isAutoBaseView && unit !== AUTO_BASE_UNIT_NAME;
-                    const unitHref = isGarbageTransportRouteUnit
-                      ? "/garbage-routes/weekly-plan"
-                      : `/projects?${hrefParams.toString()}`;
 
                     return (
                       <Link
                         key={unit}
-                        href={unitHref}
+                        href={`/projects?${hrefParams.toString()}`}
                         className={`${styles.taskFilterChip} ${
                           selectedUnit === unit
                             ? styles.taskFilterChipActive
@@ -801,15 +929,17 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                       >
                         <span>{unit}</span>
                         <strong>
-                          {snapshot.projects.filter((project) =>
-                            matchesDepartmentGroup(selectedGroup, project.departmentName) &&
-                            matchesUnitScope(
-                              unit,
-                              project.departmentName,
-                              project.name,
-                              `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`,
-                            ),
-                          ).length}
+                          {unit === AUTO_BASE_UNIT_NAME && fleetBoard
+                            ? autoBaseProcurementItems.length
+                            : snapshot.projects.filter((project) =>
+                                matchesDepartmentGroup(selectedGroup, project.departmentName) &&
+                                matchesUnitScope(
+                                  unit,
+                                  project.departmentName,
+                                  project.name,
+                                  `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`,
+                                ),
+                              ).length}
                         </strong>
                       </Link>
                     );
@@ -822,14 +952,18 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
               <div className={styles.sectionHeader}>
                 <div>
                   <span className={styles.sectionKicker}>
-                    {masterMode ? "Нэгжийн ажил" : "Ажлын жагсаалт"}
+                    {showAutoBaseFleet ? "Худалдан авалтын хүсэлт" : masterMode ? masterProjectSectionLabel : "Ажлын жагсаалт"}
                   </span>
-                  <h2>{masterMode ? selectedDepartmentName : filterTitle}</h2>
+                  <h2>{showAutoBaseFleet ? "Машинтай холбоотой худалдан авалт" : masterMode ? selectedDepartmentName : filterTitle}</h2>
                   <small className={styles.sectionNote}>
-                    {masterMode ? sectionNote : `${selectedDepartmentName} · ${filterNote}`}
+                    {showAutoBaseFleet
+                      ? "Авто баазын машин дээр үүссэн сэлбэг, засварын худалдан авалтын хүсэлтүүдийг харуулна."
+                      : masterMode
+                        ? masterProjectSectionNote
+                        : `${selectedDepartmentName} · ${filterNote}`}
                   </small>
                 </div>
-                {!masterMode ? (
+                {!masterMode && !showAutoBaseFleet ? (
                   <div className={styles.buttonRow}>
                     {canCreateProject ? (
                       <Link href={newWorkHref} className={styles.primaryButton}>
@@ -843,7 +977,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                 ) : null}
               </div>
 
-              {masterMode ? (
+              {!showAutoBaseFleet && masterMode ? (
                 <div className={styles.masterInsightsGrid}>
                   <article className={styles.masterInsightsChart}>
                     <div className={styles.masterInsightsHeader}>
@@ -999,7 +1133,21 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                 </div>
               ) : null}
 
-              {shouldShowGreenServiceSections ? (
+              {showAutoBaseFleet ? (
+                fleetLoadError ? (
+                  <div className={styles.emptyColumnState}>{fleetLoadError}</div>
+                ) : autoBaseProcurementItems.length ? (
+                  <div className={styles.projectRail}>
+                    {autoBaseProcurementItems.map((item) => (
+                      <AutoBaseProcurementCard key={`${item.vehiclePlate}-${item.id}`} item={item} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className={styles.emptyColumnState}>
+                    Авто баазын машин дээр холбогдсон худалдан авалтын хүсэлт одоогоор алга.
+                  </div>
+                )
+              ) : shouldShowGreenServiceSections ? (
                 <div className={styles.unitProjectSections}>
                   {greenServiceProjectSections.map((section) => (
                     <section key={section.label} className={styles.unitProjectSection}>
@@ -1074,7 +1222,7 @@ export default async function ProjectsPage({ searchParams }: PageProps) {
                               />
                             </div>
                             <p>
-                              Алба нэгж: {project.departmentName} · Менежер:{" "}
+                              Алба нэгж: {project.departmentName} · Үйл ажиллагаа хариуцсан менежер:{" "}
                               {project.manager}
                               {project.operationTypeLabel
                                 ? ` · ${project.operationTypeLabel}`

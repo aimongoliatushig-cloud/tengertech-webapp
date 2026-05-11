@@ -251,12 +251,11 @@
   box-shadow: 0 14px 34px rgba(27, 73, 38, 0.08);
 }
 
-.calendarCreateButton,
-.calendarEmptyCreate,
-.weekEmptyCreate {
+.calendarCreateButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   color: #fff;
   text-decoration: none;
   font-weight: 900;
@@ -272,9 +271,7 @@
   font-size: 0.88rem;
 }
 
-.calendarCreateButton:hover,
-.calendarEmptyCreate:hover,
-.weekEmptyCreate:hover {
+.calendarCreateButton:hover {
   transform: translateY(-1px);
   box-shadow: 0 16px 28px rgba(31, 95, 49, 0.16);
 }
@@ -306,20 +303,26 @@
   display: none;
 }
 
-.calendarMonthToggle:checked ~ .calendarViewControls label[for="calendar-view-month"],
-.calendarWeekToggle:checked ~ .calendarViewControls label[for="calendar-view-week"] {
+.calendarDayToggle:checked ~ .calendarToolbar .calendarViewControls label[for="calendar-view-day"],
+.calendarMonthToggle:checked ~ .calendarToolbar .calendarViewControls label[for="calendar-view-month"],
+.calendarWeekToggle:checked ~ .calendarToolbar .calendarViewControls label[for="calendar-view-week"],
+.calendarYearToggle:checked ~ .calendarToolbar .calendarViewControls label[for="calendar-view-year"] {
   background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
   color: #fff;
   box-shadow: 0 10px 22px rgba(31, 95, 49, 0.18);
 }
 
+.calendarDayToggle:checked ~ .calendarViewPanels .calendarDayPanel,
 .calendarMonthToggle:checked ~ .calendarViewPanels .calendarMonthPanel,
-.calendarWeekToggle:checked ~ .calendarViewPanels .calendarWeekPanel {
+.calendarWeekToggle:checked ~ .calendarViewPanels .calendarWeekPanel,
+.calendarYearToggle:checked ~ .calendarViewPanels .calendarYearPanel {
   display: grid;
 }
 
 .workCalendar,
-.weekCalendar {
+.weekCalendar,
+.dayCalendar,
+.yearCalendar {
   overflow: hidden;
   border: 1px solid rgba(74, 154, 93, 0.12);
   border-radius: 22px;
@@ -480,6 +483,34 @@
   font-size: 0.76rem;
 }
 
+.calendarDayQuickCreate {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid rgba(46, 125, 50, 0.16);
+  border-radius: 999px;
+  background: rgba(46, 125, 50, 0.07);
+  color: var(--brand-800);
+  opacity: 0.58;
+  text-decoration: none;
+  transition: opacity 160ms ease, transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.monthDayMuted .calendarDayQuickCreate {
+  opacity: 0.36;
+}
+
+.monthDay:hover .calendarDayQuickCreate,
+.weekDayCard:hover .calendarDayQuickCreate,
+.calendarDayQuickCreate:focus-visible {
+  background: var(--brand-700);
+  color: #fff;
+  opacity: 1;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(31, 95, 49, 0.16);
+}
+
 .monthDayTasks {
   display: grid;
   gap: 6px;
@@ -550,14 +581,6 @@
   color: var(--brand-800);
   font-size: 0.7rem;
   font-weight: 900;
-}
-
-.calendarEmptyCreate {
-  min-height: 42px;
-  border-radius: 10px;
-  border: 1px dashed rgba(46, 125, 50, 0.24);
-  background: rgba(46, 125, 50, 0.88);
-  font-size: 0.72rem;
 }
 
 .weekCalendar {
@@ -696,8 +719,7 @@
   font-weight: 800;
 }
 
-.weekEmpty,
-.weekEmptyCreate {
+.weekEmpty {
   display: grid;
   min-height: 64px;
   place-items: center;
@@ -713,6 +735,75 @@
   background: rgba(46, 125, 50, 0.9);
   color: #fff;
   text-decoration: none;
+}
+
+.dayAgenda,
+.yearGrid {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  background:
+    radial-gradient(circle at top right, rgba(166, 211, 157, 0.14), transparent 28%),
+    rgba(247, 252, 247, 0.9);
+}
+
+.yearGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.yearMonthCard {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 150px;
+  padding: 13px;
+  border: 1px solid rgba(74, 154, 93, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 28px rgba(27, 73, 38, 0.06);
+}
+
+.yearMonthHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(74, 154, 93, 0.1);
+}
+
+.yearMonthHeader span {
+  color: var(--ink-900);
+  font-size: 0.92rem;
+  font-weight: 900;
+  text-transform: capitalize;
+}
+
+.yearMonthHeader strong {
+  display: grid;
+  min-width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--brand-700);
+  color: #fff;
+  font-size: 0.76rem;
+}
+
+.yearTaskPreview {
+  display: grid;
+  gap: 6px;
+}
+
+.yearTaskPreview a {
+  overflow: hidden;
+  color: var(--brand-900);
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.3;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .calendarMonthGrid {
@@ -1378,56 +1469,6 @@
   line-height: 1;
 }
 
-.workerPrimaryTask {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  min-height: 72px;
-  padding: 12px 14px;
-  width: 100%;
-  border: 0;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
-  color: #fff;
-  font: inherit;
-  text-align: left;
-  text-decoration: none;
-  box-shadow: 0 16px 30px rgba(29, 112, 51, 0.18);
-  cursor: pointer;
-}
-
-.workerPrimaryTask small,
-.workerPrimaryTask strong {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.workerPrimaryTask small {
-  margin-bottom: 4px;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
-.workerPrimaryTask strong {
-  color: #fff;
-  font-size: 0.94rem;
-  line-height: 1.25;
-}
-
-.workerPrimaryIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.16);
-}
-
 .workerLineListHeader {
   display: flex;
   align-items: flex-end;
@@ -1476,6 +1517,17 @@
   box-shadow: 0 12px 22px rgba(29, 64, 40, 0.08);
 }
 
+.workerLineItem:disabled {
+  cursor: not-allowed;
+  opacity: 0.78;
+}
+
+.workerLineItem:disabled:hover {
+  transform: none;
+  border-color: rgba(74, 154, 93, 0.12);
+  box-shadow: none;
+}
+
 .workerTaskNumber {
   display: inline-flex;
   align-items: center;
@@ -1513,6 +1565,32 @@
   font-weight: 700;
 }
 
+.workerReturnReason {
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  color: #9a3412;
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workerFutureReportReason {
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  color: #607083;
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .workerLineAction {
   display: inline-flex;
   align-items: center;
@@ -1526,6 +1604,11 @@
   font-size: 0.78rem;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.workerLineItem:disabled .workerLineAction {
+  background: rgba(235, 241, 247, 0.9);
+  color: #607083;
 }
 
 .taskCard {
@@ -1752,8 +1835,10 @@
     grid-auto-columns: minmax(210px, 82vw);
   }
 
-  .workCalendar {
-    overflow-x: auto;
+  .workCalendar,
+  .dayCalendar,
+  .yearCalendar {
+    overflow: hidden;
   }
 
   .workCalendarTop,
@@ -1767,19 +1852,39 @@
   }
 
   .monthCalendar {
-    min-width: 720px;
+    grid-template-columns: 1fr;
+    min-width: 0;
+    gap: 8px;
+    padding: 10px;
+    background: rgba(247, 252, 247, 0.9);
+  }
+
+  .monthWeekday {
+    display: none;
   }
 
   .weekCalendar {
-    overflow-x: auto;
+    overflow: hidden;
   }
 
   .weekGridCalendar {
-    min-width: 760px;
+    grid-template-columns: 1fr;
+    min-width: 0;
+    overflow: visible;
   }
 
   .monthDay {
-    min-height: 118px;
+    min-height: 0;
+    border: 1px solid rgba(74, 154, 93, 0.1);
+    border-radius: 14px;
+  }
+
+  .monthDayMuted {
+    display: none;
+  }
+
+  .yearGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .weekCalendarTop p {
@@ -1921,11 +2026,6 @@
     font-size: 1.48rem;
   }
 
-  .workerPrimaryTask {
-    min-height: 62px;
-    border-radius: 8px;
-  }
-
   .workerLineListHeader {
     display: flex;
     padding: 0 2px;
@@ -1969,6 +2069,11 @@
   .workerLineItem strong {
     font-size: 0.96rem;
     line-height: 1.32;
+    white-space: normal;
+  }
+
+  .workerReturnReason,
+  .workerFutureReportReason {
     white-space: normal;
   }
 
@@ -2060,6 +2165,62 @@
     width: 100%;
   }
 
+  .calendarViewControls {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-radius: 12px;
+  }
+
+  .calendarViewControls label {
+    min-width: 0;
+    min-height: 34px;
+    padding: 0 6px;
+    font-size: 0.76rem;
+  }
+
+  .workCalendar,
+  .weekCalendar,
+  .dayCalendar,
+  .yearCalendar {
+    border-radius: 16px;
+    box-shadow: none;
+  }
+
+  .workCalendarBrand {
+    gap: 10px;
+  }
+
+  .workCalendarBrand h3,
+  .weekCalendarTitle h3 {
+    font-size: 1.18rem;
+    line-height: 1.16;
+  }
+
+  .calendarLegend span {
+    min-height: 26px;
+    font-size: 0.68rem;
+  }
+
+  .dayAgenda,
+  .yearGrid,
+  .weekGridCalendar {
+    padding: 10px;
+  }
+
+  .yearGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .weekDayCard,
+  .yearMonthCard {
+    min-height: 0;
+    border-radius: 14px;
+  }
+
+  .calendarEmptyCreate {
+    display: none;
+  }
+
   .weekCalendar {
     padding: 14px;
   }
@@ -2100,10 +2261,6 @@
   .workerProgressBadge {
     width: 50px;
     height: 50px;
-  }
-
-  .workerPrimaryTask {
-    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
   .workerLineListHeader {
@@ -2699,11 +2856,6 @@
     font-size: 1.48rem;
   }
 
-  .workerPrimaryTask {
-    min-height: 62px;
-    border-radius: 8px;
-  }
-
   .workerLineListHeader {
     display: flex;
     padding: 0 2px;
@@ -2747,6 +2899,11 @@
   .workerLineItem strong {
     font-size: 0.96rem;
     line-height: 1.32;
+    white-space: normal;
+  }
+
+  .workerReturnReason,
+  .workerFutureReportReason {
     white-space: normal;
   }
 

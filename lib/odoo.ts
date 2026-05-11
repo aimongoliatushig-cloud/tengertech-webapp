@@ -1,4 +1,4 @@
-import "server-only";
+﻿import "server-only";
 
 import { getDateKeyFromValue, getTodayDateKey } from "@/lib/dashboard-scope";
 import {
@@ -7,7 +7,9 @@ import {
   matchesDepartmentGroup,
   normalizeOrganizationUnitName,
 } from "@/lib/department-groups";
+import { parseFleetVehicleAttachmentName } from "@/lib/fleet-vehicle-attachments";
 import type { RoleGroupFlags } from "@/lib/roles";
+import { fixMojibakeText } from "@/lib/text-normalize";
 
 type OdooRelation = [number, string] | false;
 
@@ -18,6 +20,7 @@ const ODOO_RPC_TIMEOUT_MS =
     ? configuredOdooRpcTimeoutMs
     : DEFAULT_ODOO_RPC_TIMEOUT_MS;
 const ODOO_AUTH_CACHE_TTL_MS = 5 * 60_000;
+const ODOO_READ_RPC_CACHE_TTL_MS = 2 * 60_000;
 
 function isRoadCleaningPhotoPlaceholderTaskName(value: string) {
   const normalized = value.trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
@@ -41,6 +44,9 @@ type OdooTaskRecord = {
   project_id: OdooRelation;
   ops_department_id?: OdooRelation;
   stage_id: OdooRelation;
+  state?: string | false;
+  mfo_state?: string | false;
+  municipal_work_id?: OdooRelation;
   description?: string | false;
   create_date?: string | false;
   ops_team_leader_id?: OdooRelation;
@@ -55,10 +61,12 @@ type OdooTaskRecord = {
   priority?: string;
   date_deadline?: string | false;
   mfo_shift_date?: string | false;
-  state?: string;
   mfo_is_operation_project?: boolean;
   mfo_operation_type?: string | false;
   mfo_route_id?: OdooRelation;
+  mfo_vehicle_id?: OdooRelation;
+  mfo_driver_employee_id?: OdooRelation;
+  mfo_collector_employee_ids?: number[];
   mfo_unresolved_stop_count?: number;
   mfo_missing_proof_stop_count?: number;
   mfo_route_deviation_stop_count?: number;
@@ -75,6 +83,8 @@ type OdooReportRecord = {
   report_text?: string | false;
   report_summary: string | false;
   reported_quantity: number;
+  state?: string | false;
+  rejection_reason?: string | false;
   task_measurement_unit_id?: OdooRelation;
   task_measurement_unit_code?: string | false;
   image_count?: number;
@@ -87,6 +97,20 @@ type OdooAttachmentRecord = {
   id: number;
   name: string | false;
   mimetype: string | false;
+  res_id?: number | false;
+};
+
+type OdooWorkReturnRecord = {
+  id: number;
+  state?: string | false;
+  rejection_reason?: string | false;
+};
+
+type OdooTaskMessageRecord = {
+  id: number;
+  res_id?: number | false;
+  body?: string | false;
+  date?: string | false;
 };
 
 type OdooAttachmentBinaryRecord = OdooAttachmentRecord & {
@@ -98,6 +122,7 @@ type OdooUserRecord = {
   name: string;
   login: string;
   ops_user_type?: string | false;
+  groups_id?: number[];
 };
 
 type OdooAuthEmployeeRecord = {
@@ -106,6 +131,18 @@ type OdooAuthEmployeeRecord = {
   job_id?: OdooRelation;
   job_title?: string | false;
   department_id?: OdooRelation;
+};
+
+type OdooGroupMembershipRecord = {
+  id: number;
+  implied_ids?: number[];
+  trans_implied_ids?: number[];
+};
+
+type OdooExternalIdRecord = {
+  module?: string | false;
+  name?: string | false;
+  res_id?: number | false;
 };
 
 type OdooEmployeeRecord = {
@@ -168,6 +205,7 @@ type DepartmentCard = {
 type ProjectCard = {
   id: number;
   name: string;
+  managerId?: number | null;
   manager: string;
   departmentName: string;
   operationTypeLabel?: string;
@@ -185,7 +223,9 @@ type ReviewItem = {
   departmentName: string;
   stageLabel: string;
   deadline: string;
+  projectId?: number | null;
   projectName: string;
+  leaderId?: number | null;
   leaderName: string;
   progress: number;
   href: string;
@@ -195,6 +235,7 @@ type LiveTask = {
   id: number;
   name: string;
   departmentName: string;
+  projectId?: number | null;
   projectName: string;
   stageLabel: string;
   stageBucket: StageBucket;
@@ -204,6 +245,7 @@ type LiveTask = {
   completedQuantity: number;
   remainingQuantity: number;
   measurementUnit: string;
+  leaderId?: number | null;
   leaderName: string;
   priorityLabel: string;
   progress: number;
@@ -212,19 +254,50 @@ type LiveTask = {
 
 export type TaskStatusKey = "planned" | "working" | "review" | "verified" | "problem";
 
+export type TaskDirectoryReportSummary = {
+  id: number;
+  reporter: string;
+  submittedAt: string;
+  state: string;
+  stateLabel: string;
+  stateBucket: "review" | "done" | "problem" | "progress";
+  summary: string;
+  text: string;
+  reportedQuantity: number;
+  measurementUnit: string;
+  rejectionReason: string;
+  imageCount: number;
+  audioCount: number;
+  images: {
+    id: number;
+    name: string;
+    mimetype: string;
+    url: string;
+  }[];
+  audios: {
+    id: number;
+    name: string;
+    mimetype: string;
+    url: string;
+  }[];
+};
+
 export type TaskDirectoryItem = {
   id: number;
   name: string;
   departmentName: string;
+  projectId?: number | null;
   projectName: string;
   stageLabel: string;
   stageBucket: StageBucket;
   createdDate?: string | null;
+  createdAt?: string | null;
   statusKey: TaskStatusKey;
   statusLabel: string;
   deadline: string;
   deadlineDateTime?: string | null;
   scheduledDate?: string | null;
+  leaderId?: number | null;
   leaderName: string;
   priorityLabel: string;
   progress: number;
@@ -235,16 +308,25 @@ export type TaskDirectoryItem = {
   operationTypeLabel: string;
   issueFlag: boolean;
   assigneeIds?: number[];
+  latestReport?: TaskDirectoryReportSummary;
   href: string;
 };
 
 type ReportFeedItem = {
   id: number;
+  taskId?: number | null;
+  reporterId?: number | null;
   reporter: string;
   taskName: string;
   departmentName: string;
+  projectId?: number | null;
   projectName: string;
   summary: string;
+  text: string;
+  state: string;
+  stateLabel: string;
+  stateBucket: "review" | "done" | "problem" | "progress";
+  rejectionReason: string;
   reportedQuantity: number;
   measurementUnit: string;
   measurementUnitCode: string;
@@ -373,7 +455,7 @@ function inferRoleFromEmployeeTitle(employee?: OdooAuthEmployeeRecord | null) {
     (title.includes("хяналтын ажилтан") &&
       (titleWithDepartment.includes("хог тээвэр") || titleWithDepartment.includes("авто бааз")))
   ) {
-    return "team_leader";
+    return "transport_inspector";
   }
 
   if (
@@ -394,12 +476,98 @@ function resolveAuthenticatedRole(
   explicitRole: string | false,
   employee?: OdooAuthEmployeeRecord | null,
 ) {
+  const inferredRole = inferRoleFromEmployeeTitle(employee);
+  if (inferredRole === "transport_inspector") {
+    return inferredRole;
+  }
+
   const role = explicitRole || "worker";
   if (role && role !== "worker") {
     return role;
   }
 
-  return inferRoleFromEmployeeTitle(employee) ?? role;
+  return inferredRole ?? role;
+}
+
+async function expandUserGroupIds(
+  uid: number,
+  groupIds: number[],
+  connection: OdooConnection,
+) {
+  const allGroupIds = new Set(groupIds);
+  let frontier = groupIds;
+
+  while (frontier.length) {
+    const groups = await executeKw<OdooGroupMembershipRecord[]>(
+      uid,
+      "res.groups",
+      "search_read",
+      [[["id", "in", frontier]]],
+      {
+        fields: ["implied_ids", "trans_implied_ids"],
+        limit: frontier.length,
+      },
+      connection,
+    );
+    const next: number[] = [];
+
+    for (const group of groups) {
+      for (const impliedId of [
+        ...(group.implied_ids ?? []),
+        ...(group.trans_implied_ids ?? []),
+      ]) {
+        if (!allGroupIds.has(impliedId)) {
+          allGroupIds.add(impliedId);
+          next.push(impliedId);
+        }
+      }
+    }
+
+    frontier = next;
+  }
+
+  return Array.from(allGroupIds);
+}
+
+async function readUserGroupXmlIds(
+  uid: number,
+  user: OdooUserRecord,
+  connection: OdooConnection,
+) {
+  if (!Array.isArray(user.groups_id)) {
+    return null;
+  }
+
+  const directGroupIds = user.groups_id;
+  if (!directGroupIds.length) {
+    return new Set<string>();
+  }
+
+  try {
+    const groupIds = await expandUserGroupIds(uid, directGroupIds, connection);
+    const externalIds = await executeKw<OdooExternalIdRecord[]>(
+      uid,
+      "ir.model.data",
+      "search_read",
+      [[["model", "=", "res.groups"], ["res_id", "in", groupIds]]],
+      {
+        fields: ["module", "name", "res_id"],
+        limit: Math.max(groupIds.length * 3, 1),
+      },
+      connection,
+    );
+
+    return new Set(
+      externalIds
+        .map((record) =>
+          record.module && record.name ? `${record.module}.${record.name}` : "",
+        )
+        .filter(Boolean),
+    );
+  } catch (error) {
+    console.warn("Fast group membership lookup failed; falling back to has_group:", error);
+    return null;
+  }
 }
 
 export type DashboardSnapshot = {
@@ -462,6 +630,9 @@ type OdooFleetVehicleRecord = {
   id: number;
   name: string;
   license_plate?: string | false;
+  image_128?: string | false;
+  avatar_128?: string | false;
+  image_1920?: string | false;
   model_id?: OdooRelation;
   category_id?: OdooRelation;
   municipal_vehicle_type_id?: OdooRelation;
@@ -505,6 +676,7 @@ type OdooAttachmentMetaRecord = {
   name?: string | false;
   mimetype?: string | false;
   create_date?: string | false;
+  res_id?: number | false;
 };
 
 type OdooCrewTeamRecord = {
@@ -678,6 +850,8 @@ export type FleetVehicleAttachmentItem = {
   mimetype: string;
   url: string;
   isImage: boolean;
+  vehicleId?: number;
+  attachmentField?: string;
 };
 
 export type FleetVehicleAttachmentGroups = {
@@ -702,6 +876,7 @@ export type FleetVehicleBoardItem = {
   id: number;
   plate: string;
   name: string;
+  imageUrl: string;
   modelId: number | null;
   modelName: string;
   categoryId: number | null;
@@ -761,7 +936,7 @@ export type FleetVehicleBoard = {
   failedImportCount: number;
 };
 
-type StageBucket = "todo" | "progress" | "review" | "done" | "unknown";
+type StageBucket = "todo" | "progress" | "review" | "done" | "problem" | "unknown";
 
 const DEFAULT_CONNECTION: OdooConnection = {
   url: process.env.ODOO_URL ?? "http://localhost:8069",
@@ -834,6 +1009,37 @@ type CachedOdooAuthSession = OdooAuthSession & {
 
 const odooAuthCache = new Map<string, CachedOdooAuthSession>();
 
+type CachedMunicipalSnapshot = {
+  expiresAt: number;
+  value: DashboardSnapshot;
+};
+
+type CachedFleetVehicleBoard = {
+  expiresAt: number;
+  value: FleetVehicleBoard;
+};
+
+type CachedOdooReadRpc = {
+  expiresAt: number;
+  value: unknown;
+};
+
+type CachedHrDailyAttendanceSummary = {
+  expiresAt: number;
+  value: HrDailyAttendanceSummary;
+};
+
+const MUNICIPAL_SNAPSHOT_CACHE_TTL_MS = 2 * 60_000;
+const FLEET_VEHICLE_BOARD_CACHE_TTL_MS = 60_000;
+const municipalSnapshotCache = new Map<string, CachedMunicipalSnapshot>();
+const fleetVehicleBoardCache = new Map<string, CachedFleetVehicleBoard>();
+const municipalSnapshotPendingCache = new Map<string, Promise<DashboardSnapshot>>();
+const fleetVehicleBoardPendingCache = new Map<string, Promise<FleetVehicleBoard>>();
+const odooReadRpcCache = new Map<string, CachedOdooReadRpc>();
+const odooReadRpcPendingCache = new Map<string, Promise<unknown>>();
+const hrDailyAttendanceSummaryCache = new Map<string, CachedHrDailyAttendanceSummary>();
+const hrDailyAttendanceSummaryPendingCache = new Map<string, Promise<HrDailyAttendanceSummary>>();
+
 export function createOdooConnection(
   overrides: Partial<OdooConnection> = {},
 ): OdooConnection {
@@ -854,6 +1060,147 @@ function getOdooAuthCacheKey(connection: OdooConnection) {
     connection.login,
     connection.password,
   ].join("\u0000");
+}
+
+function getMunicipalSnapshotCacheKey(connection: OdooConnection) {
+  return getOdooAuthCacheKey(connection);
+}
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableSerialize).join(",")}]`;
+  }
+
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableSerialize(record[key])}`)
+      .join(",")}}`;
+  }
+
+  return JSON.stringify(value);
+}
+
+function isOdooReadMethod(method: string) {
+  return (
+    method === "search" ||
+    method === "read" ||
+    method === "search_read" ||
+    method === "search_count" ||
+    method === "name_search" ||
+    method === "fields_get"
+  );
+}
+
+function isCacheableOdooReadRequest(
+  model: string,
+  method: string,
+  kwargs: Record<string, unknown>,
+) {
+  const fields = Array.isArray(kwargs.fields) ? kwargs.fields : [];
+  if (model === "ir.attachment" && fields.includes("datas")) {
+    return false;
+  }
+
+  return isOdooReadMethod(method);
+}
+
+function getOdooReadRpcCacheKey(
+  uid: number,
+  model: string,
+  method: string,
+  methodArgs: unknown[],
+  kwargs: Record<string, unknown>,
+  connection: OdooConnection,
+) {
+  return stableSerialize({
+    connection: getOdooAuthCacheKey(connection),
+    uid,
+    model,
+    method,
+    methodArgs,
+    kwargs,
+  });
+}
+
+function clearOdooReadCaches(connection?: OdooConnection) {
+  const authKey = connection ? getOdooAuthCacheKey(connection) : "";
+
+  if (!authKey) {
+    odooReadRpcCache.clear();
+    odooReadRpcPendingCache.clear();
+    municipalSnapshotCache.clear();
+    municipalSnapshotPendingCache.clear();
+    fleetVehicleBoardCache.clear();
+    fleetVehicleBoardPendingCache.clear();
+    hrDailyAttendanceSummaryCache.clear();
+    hrDailyAttendanceSummaryPendingCache.clear();
+    return;
+  }
+
+  for (const key of odooReadRpcCache.keys()) {
+    if (key.includes(authKey)) {
+      odooReadRpcCache.delete(key);
+    }
+  }
+  for (const key of odooReadRpcPendingCache.keys()) {
+    if (key.includes(authKey)) {
+      odooReadRpcPendingCache.delete(key);
+    }
+  }
+  municipalSnapshotCache.delete(authKey);
+  municipalSnapshotPendingCache.delete(authKey);
+  fleetVehicleBoardCache.delete(authKey);
+  fleetVehicleBoardPendingCache.delete(authKey);
+  hrDailyAttendanceSummaryCache.delete(authKey);
+  hrDailyAttendanceSummaryPendingCache.delete(authKey);
+}
+
+function readCachedMunicipalSnapshot(connection: OdooConnection) {
+  const cacheKey = getMunicipalSnapshotCacheKey(connection);
+  const cached = municipalSnapshotCache.get(cacheKey);
+
+  if (!cached) {
+    return null;
+  }
+
+  if (cached.expiresAt <= Date.now()) {
+    municipalSnapshotCache.delete(cacheKey);
+    return null;
+  }
+
+  return cleanSnapshotText(cached.value);
+}
+
+function writeCachedMunicipalSnapshot(connection: OdooConnection, value: DashboardSnapshot) {
+  municipalSnapshotCache.set(getMunicipalSnapshotCacheKey(connection), {
+    value,
+    expiresAt: Date.now() + MUNICIPAL_SNAPSHOT_CACHE_TTL_MS,
+  });
+}
+
+function readCachedFleetVehicleBoard(connection: OdooConnection) {
+  const cacheKey = getMunicipalSnapshotCacheKey(connection);
+  const cached = fleetVehicleBoardCache.get(cacheKey);
+
+  if (!cached) {
+    return null;
+  }
+
+  if (cached.expiresAt <= Date.now()) {
+    fleetVehicleBoardCache.delete(cacheKey);
+    return null;
+  }
+
+  return cached.value;
+}
+
+function writeCachedFleetVehicleBoard(connection: OdooConnection, value: FleetVehicleBoard) {
+  fleetVehicleBoardCache.set(getMunicipalSnapshotCacheKey(connection), {
+    value,
+    expiresAt: Date.now() + FLEET_VEHICLE_BOARD_CACHE_TTL_MS,
+  });
 }
 
 function readCachedOdooAuth(connection: OdooConnection): OdooAuthSession | null {
@@ -934,7 +1281,7 @@ const DEPARTMENT_ACCENTS: Record<string, string> = {
 
 const OPERATION_TYPE_LABELS: Record<string, string> = {
   garbage: "Хог цуглуулалт",
-  garbage_seasonal: "Улирлын хог ачилт",
+  garbage_seasonal: "Гэнэтийн ажил",
   street_cleaning: "Гудамж цэвэрлэгээ",
   green_maintenance: "Ногоон байгууламж",
 };
@@ -944,6 +1291,7 @@ const STAGE_LABELS: Record<StageBucket, string> = {
   progress: "Явагдаж буй ажил",
   review: "Хянагдаж буй ажил",
   done: "Дууссан ажил",
+  problem: "Засвар шаардсан ажил",
   unknown: "Тодорхойгүй",
 };
 
@@ -952,7 +1300,7 @@ const TASK_STATUS_LABELS: Record<TaskStatusKey, string> = {
   working: "Ажиллаж байна",
   review: "Хянагдаж байна",
   verified: "Баталгаажсан",
-  problem: "Асуудалтай",
+  problem: "Засвар шаардсан",
 };
 
 const UNKNOWN_DEPARTMENT = "Тодорхойгүй";
@@ -1043,6 +1391,23 @@ function htmlToPlainText(value?: string | false) {
     .trim();
 }
 
+function extractTaskReturnReason(value?: string | false) {
+  const text = htmlToPlainText(value);
+  if (!text) {
+    return "";
+  }
+
+  const markerMatch = text.match(/Засвар\s+нэхэж\s+буцаасан\s+шалтгаан\s*:?\s*/i);
+  if (!markerMatch || markerMatch.index === undefined) {
+    return "";
+  }
+
+  return text
+    .slice(markerMatch.index + markerMatch[0].length)
+    .split(/\n{2,}/)[0]
+    .trim();
+}
+
 function normalizeQuantityUnit(value: string) {
   return value
     .toLowerCase()
@@ -1107,6 +1472,10 @@ function extractReportQuantityLines(reportText: string): QuantityLine[] {
 
 function buildTaskQuantitySnapshot(task: OdooTaskRecord, reports: OdooReportRecord[]): TaskQuantitySnapshot {
   const rawStageBucket = getStageBucket(relationName(task.stage_id, ""));
+  const taskStateBucket = reportStateBucket(task.state);
+  const mfoStateBucket = reportStateBucket(task.mfo_state);
+  const hasReturnedReport = reports.some((report) => reportStateBucket(report.state) === "problem");
+  const forcedProblem = taskStateBucket === "problem" || mfoStateBucket === "problem" || hasReturnedReport;
   const plannedLines = extractTaskQuantityLines(htmlToPlainText(task.description));
   if (!plannedLines.length && (task.ops_planned_quantity ?? 0) > 0) {
     plannedLines.push({
@@ -1167,7 +1536,9 @@ function buildTaskQuantitySnapshot(task: OdooTaskRecord, reports: OdooReportReco
       ? 100
       : Math.max(parsedProgress, rawProgress);
   const stageBucket =
-    rawStageBucket === "review"
+    forcedProblem
+      ? "problem"
+      : rawStageBucket === "review"
       ? "review"
       : rawStageBucket === "done" || progress >= 100
         ? "done"
@@ -1176,7 +1547,7 @@ function buildTaskQuantitySnapshot(task: OdooTaskRecord, reports: OdooReportReco
           : rawStageBucket;
   const rawStatusKey = getTaskStatusKey(task);
   const statusKey =
-    rawStatusKey === "problem"
+    forcedProblem || rawStatusKey === "problem"
       ? "problem"
       : stageBucket === "done"
       ? "verified"
@@ -1214,6 +1585,9 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "name",
     "project_id",
     "stage_id",
+    "state",
+    "mfo_state",
+    "municipal_work_id",
     "description",
     "create_date",
     "ops_team_leader_id",
@@ -1232,6 +1606,9 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "mfo_is_operation_project",
     "mfo_operation_type",
     "mfo_route_id",
+    "mfo_vehicle_id",
+    "mfo_driver_employee_id",
+    "mfo_collector_employee_ids",
     "mfo_unresolved_stop_count",
     "mfo_missing_proof_stop_count",
     "mfo_route_deviation_stop_count",
@@ -1243,6 +1620,9 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "name",
     "project_id",
     "stage_id",
+    "state",
+    "mfo_state",
+    "municipal_work_id",
     "description",
     "create_date",
     "ops_team_leader_id",
@@ -1261,11 +1641,17 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "mfo_is_operation_project",
     "mfo_operation_type",
     "mfo_route_id",
+    "mfo_vehicle_id",
+    "mfo_driver_employee_id",
+    "mfo_collector_employee_ids",
   ],
   [
     "name",
     "project_id",
     "stage_id",
+    "state",
+    "mfo_state",
+    "municipal_work_id",
     "description",
     "create_date",
     "ops_team_leader_id",
@@ -1286,6 +1672,9 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "name",
     "project_id",
     "stage_id",
+    "state",
+    "mfo_state",
+    "municipal_work_id",
     "description",
     "create_date",
     "ops_team_leader_id",
@@ -1310,6 +1699,8 @@ const REPORT_FIELD_VARIANTS: string[][] = [
     "report_text",
     "report_summary",
     "reported_quantity",
+    "state",
+    "rejection_reason",
     "task_measurement_unit_id",
     "task_measurement_unit_code",
     "image_count",
@@ -1324,6 +1715,8 @@ const REPORT_FIELD_VARIANTS: string[][] = [
     "report_text",
     "report_summary",
     "reported_quantity",
+    "state",
+    "rejection_reason",
     "task_measurement_unit_id",
     "task_measurement_unit_code",
     "image_count",
@@ -1336,10 +1729,21 @@ const REPORT_FIELD_VARIANTS: string[][] = [
     "report_text",
     "report_summary",
     "reported_quantity",
+    "state",
+    "rejection_reason",
     "task_measurement_unit_id",
     "task_measurement_unit_code",
   ],
-  ["task_id", "reporter_id", "report_datetime", "report_text", "report_summary", "reported_quantity"],
+  [
+    "task_id",
+    "reporter_id",
+    "report_datetime",
+    "report_text",
+    "report_summary",
+    "reported_quantity",
+    "state",
+    "rejection_reason",
+  ],
   ["task_id", "reporter_id", "report_datetime", "report_summary", "reported_quantity"],
 ];
 
@@ -1440,6 +1844,7 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
   [
     "name",
     "license_plate",
+    "image_128",
     "model_id",
     "category_id",
     "municipal_vehicle_type_id",
@@ -1515,6 +1920,7 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
   [
     "name",
     "license_plate",
+    "avatar_128",
     "model_id",
     "category_id",
     "municipal_vehicle_type_id",
@@ -1547,6 +1953,7 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
   [
     "name",
     "license_plate",
+    "image_1920",
     "model_id",
     "category_id",
     "municipal_vehicle_type_id",
@@ -1776,8 +2183,12 @@ type OdooNameOptionRecord = {
   parent_id?: OdooRelation;
 };
 
+function cleanDisplayText(value: string) {
+  return fixMojibakeText(value);
+}
+
 function relationName(relation: OdooRelation, fallback = "Оноогоогүй") {
-  return Array.isArray(relation) ? relation[1] : fallback;
+  return cleanDisplayText(Array.isArray(relation) ? relation[1] : fallback);
 }
 
 function relationId(relation: OdooRelation) {
@@ -1911,6 +2322,12 @@ function getNextDateKey(dateKey: string) {
   const nextDate = ulaanbaatarDayStart(dateKey);
   nextDate.setUTCDate(nextDate.getUTCDate() + 1);
   return getTodayDateKey(nextDate);
+}
+
+function getPreviousDateKey(dateKey: string) {
+  const previousDate = ulaanbaatarDayStart(dateKey);
+  previousDate.setUTCDate(previousDate.getUTCDate() - 1);
+  return getTodayDateKey(previousDate);
 }
 
 function resolveHrGenderLabel(value?: string | false) {
@@ -2321,6 +2738,40 @@ function getTaskStatusLabel(statusKey: TaskStatusKey) {
   return TASK_STATUS_LABELS[statusKey];
 }
 
+function reportStateLabel(state?: string | false) {
+  switch (String(state || "").toLowerCase()) {
+    case "submitted":
+    case "under_review":
+      return "Тайлан илгээсэн";
+    case "returned":
+    case "rejected":
+      return "Буцаагдсан";
+    case "approved":
+      return "Баталгаажсан";
+    case "draft":
+      return "Ноорог";
+    default:
+      return state ? String(state) : "Тайлан";
+  }
+}
+
+function reportStateBucket(
+  state?: string | false,
+): TaskDirectoryReportSummary["stateBucket"] {
+  switch (String(state || "").toLowerCase()) {
+    case "submitted":
+    case "under_review":
+      return "review";
+    case "returned":
+    case "rejected":
+      return "problem";
+    case "approved":
+      return "done";
+    default:
+      return "progress";
+  }
+}
+
 function imageDataUrl(value?: string | false) {
   if (!value) {
     return "";
@@ -2351,34 +2802,34 @@ function resolveDepartmentIcon(name: string) {
   const normalized = name.trim().toLowerCase();
 
   if (normalized.includes("санхүү")) {
-    return "₮";
+    return "â‚®";
   }
 
   if (normalized.includes("захиргаа") || normalized.includes("удирдлага")) {
-    return "🏢";
+    return "ðŸ¢";
   }
 
   if (normalized.includes("авто") || normalized.includes("машин") || normalized.includes("техник")) {
-    return "🚚";
+    return "ðŸšš";
   }
 
   if (normalized.includes("хог") || normalized.includes("ачилт") || normalized.includes("маршрут")) {
-    return "♻️";
+    return "â™»ï¸";
   }
 
   if (normalized.includes("ногоон") || normalized.includes("мод") || normalized.includes("зүлэг")) {
-    return "🌿";
+    return "ðŸŒ¿";
   }
 
   if (normalized.includes("зам") || normalized.includes("цэвэрлэгээ") || normalized.includes("гудамж")) {
-    return "🧹";
+    return "ðŸ§¹";
   }
 
   if (normalized.includes("тохижилт") || normalized.includes("үйлчилгээ") || normalized.includes("засвар")) {
-    return "🏙️";
+    return "ðŸ™ï¸";
   }
 
-  return "🏢";
+  return "ðŸ¢";
 }
 
 function buildTaskHref(taskId: number, returnTo = "/tasks") {
@@ -2492,62 +2943,56 @@ export async function authenticateOdooUser(
   }
   const { uid, connection } = auth;
 
-  const users = await executeKw<OdooUserRecord[]>(
-    uid,
-    "res.users",
-    "search_read",
-    [[["id", "=", uid]]],
-    {
-      fields: ["name", "login", "ops_user_type"],
-      limit: 1,
-    },
-    connection,
-  ).catch((error) => {
-    if (!String(error).includes("ops_user_type")) {
-      throw error;
-    }
-
-    return executeKw<OdooUserRecord[]>(
+  const readAuthenticatedUser = async (fields: string[]) =>
+    executeKw<OdooUserRecord[]>(
       uid,
       "res.users",
       "search_read",
       [[["id", "=", uid]]],
       {
-        fields: ["name", "login"],
+        fields,
         limit: 1,
       },
       connection,
     );
-  });
+  const users = await readAuthenticatedUser(["name", "login", "ops_user_type", "groups_id"])
+    .catch(() => readAuthenticatedUser(["name", "login", "ops_user_type"]))
+    .catch(() => readAuthenticatedUser(["name", "login", "groups_id"]))
+    .catch(() => readAuthenticatedUser(["name", "login"]));
 
   const user = users[0];
   if (!user) {
     return null;
   }
 
-  const employee = await executeKw<OdooAuthEmployeeRecord[]>(
-    uid,
-    "hr.employee",
-    "search_read",
-    [[["user_id", "=", uid]]],
-    {
-      fields: ["name", "job_id", "job_title", "department_id"],
-      limit: 1,
-    },
-    connection,
-  )
-    .then((employees) => employees[0] ?? null)
-    .catch(() => null);
+  const [userGroupXmlIds, employee] = await Promise.all([
+    readUserGroupXmlIds(uid, user, connection),
+    executeKw<OdooAuthEmployeeRecord[]>(
+      uid,
+      "hr.employee",
+      "search_read",
+      [[["user_id", "=", uid]]],
+      {
+        fields: ["name", "job_id", "job_title", "department_id"],
+        limit: 1,
+      },
+      connection,
+    )
+      .then((employees) => employees[0] ?? null)
+      .catch(() => null),
+  ]);
 
   const hasGroup = (xmlId: string) =>
-    executeKw<boolean>(
-      uid,
-      "res.users",
-      "has_group",
-      [[uid], xmlId],
-      {},
-      connection,
-    ).catch(() => false);
+    userGroupXmlIds
+      ? userGroupXmlIds.has(xmlId)
+      : executeKw<boolean>(
+          uid,
+          "res.users",
+          "has_group",
+          [[uid], xmlId],
+          {},
+          connection,
+        ).catch(() => false);
 
   const [
     systemAdmin,
@@ -2647,11 +3092,9 @@ export async function authenticateOdooUser(
   const role =
     inferredRole === "worker" && hrManager
       ? "hr_manager"
-      : inferredRole === "worker" && municipalHse
-        ? "hse_officer"
-      : inferredRole === "worker" && municipalPublicRelations
-        ? "public_relations"
-      : inferredRole;
+      : inferredRole === "team_leader" && mfoInspector && !mfoManager && !mfoDispatcher
+        ? "transport_inspector"
+        : inferredRole;
 
   return {
     uid,
@@ -2704,6 +3147,62 @@ export async function authenticateOdooUser(
 }
 
 async function executeKw<T>(
+  uid: number,
+  model: string,
+  method: string,
+  methodArgs: unknown[],
+  kwargs: Record<string, unknown>,
+  connection: OdooConnection,
+) {
+  const readRequest = isOdooReadMethod(method);
+  const cacheableRead = isCacheableOdooReadRequest(model, method, kwargs);
+  const cacheKey = cacheableRead
+    ? getOdooReadRpcCacheKey(uid, model, method, methodArgs, kwargs, connection)
+    : "";
+
+  if (cacheKey) {
+    const cached = odooReadRpcCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value as T;
+    }
+    if (cached) {
+      odooReadRpcCache.delete(cacheKey);
+    }
+
+    const pending = odooReadRpcPendingCache.get(cacheKey);
+    if (pending) {
+      return pending as Promise<T>;
+    }
+  }
+
+  const requestPromise = executeKwUncached<T>(uid, model, method, methodArgs, kwargs, connection)
+    .then((result) => {
+      if (cacheKey) {
+        odooReadRpcCache.set(cacheKey, {
+          value: result,
+          expiresAt: Date.now() + ODOO_READ_RPC_CACHE_TTL_MS,
+        });
+      } else {
+        if (!readRequest) {
+          clearOdooReadCaches(connection);
+        }
+      }
+      return result;
+    })
+    .finally(() => {
+      if (cacheKey) {
+        odooReadRpcPendingCache.delete(cacheKey);
+      }
+    });
+
+  if (cacheKey) {
+    odooReadRpcPendingCache.set(cacheKey, requestPromise);
+  }
+
+  return requestPromise;
+}
+
+async function executeKwUncached<T>(
   uid: number,
   model: string,
   method: string,
@@ -2970,7 +3469,32 @@ async function loadTodayHrLeaveRecords(
 export async function loadHrDailyAttendanceSummary(
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<HrDailyAttendanceSummary> {
-  const auth = await authenticateWithFallback(createOdooConnection(connectionOverrides));
+  const requestedConnection = createOdooConnection(connectionOverrides);
+  const cacheKey = getMunicipalSnapshotCacheKey(requestedConnection);
+  const cached = hrDailyAttendanceSummaryCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+  if (cached) {
+    hrDailyAttendanceSummaryCache.delete(cacheKey);
+  }
+
+  const pending = hrDailyAttendanceSummaryPendingCache.get(cacheKey);
+  if (pending) {
+    return pending;
+  }
+
+  const summaryPromise = fetchLiveHrDailyAttendanceSummary(requestedConnection).finally(() => {
+    hrDailyAttendanceSummaryPendingCache.delete(cacheKey);
+  });
+  hrDailyAttendanceSummaryPendingCache.set(cacheKey, summaryPromise);
+  return summaryPromise;
+}
+
+async function fetchLiveHrDailyAttendanceSummary(
+  requestedConnection: OdooConnection,
+): Promise<HrDailyAttendanceSummary> {
+  const auth = await authenticateWithFallback(requestedConnection);
   if (!auth) {
     throw new Error("Odoo authentication failed");
   }
@@ -3047,7 +3571,7 @@ export async function loadHrDailyAttendanceSummary(
       ...leaveEmployeeIds,
     ]);
 
-    return {
+    const summary: HrDailyAttendanceSummary = {
       totalEmployees,
       workingToday: workingEmployeeIds.size,
       absentToday: Math.max(totalEmployees - accountedEmployeeIds.size, 0),
@@ -3056,13 +3580,18 @@ export async function loadHrDailyAttendanceSummary(
       generatedAt: new Date().toISOString(),
       source: "attendance",
     };
+    hrDailyAttendanceSummaryCache.set(getMunicipalSnapshotCacheKey(connection), {
+      value: summary,
+      expiresAt: Date.now() + ODOO_READ_RPC_CACHE_TTL_MS,
+    });
+    return summary;
   }
 
   const fallbackWorking = employees.filter(isWorkingHrStatus).length;
   const fallbackSick = employees.filter((employee) => isSickHrText(employee.x_mn_employment_status)).length;
   const fallbackAbsent = employees.filter((employee) => isAbsentHrText(employee.x_mn_employment_status)).length;
 
-  return {
+  const summary: HrDailyAttendanceSummary = {
     totalEmployees,
     workingToday: fallbackWorking,
     absentToday: fallbackAbsent,
@@ -3071,6 +3600,11 @@ export async function loadHrDailyAttendanceSummary(
     generatedAt: new Date().toISOString(),
     source: employees.length ? "employee_status" : "empty",
   };
+  hrDailyAttendanceSummaryCache.set(getMunicipalSnapshotCacheKey(connection), {
+    value: summary,
+    expiresAt: Date.now() + ODOO_READ_RPC_CACHE_TTL_MS,
+  });
+  return summary;
 }
 
 function resolveFleetFuelTypeLabel(value: string) {
@@ -3304,6 +3838,60 @@ function attachmentItems(ids: number[] | undefined, byId: Map<number, FleetVehic
   return (ids ?? []).map((id) => byId.get(id)).filter((item): item is FleetVehicleAttachmentItem => Boolean(item));
 }
 
+const FLEET_VEHICLE_ATTACHMENT_BUCKET_BY_FIELD: Record<
+  string,
+  keyof FleetVehicleAttachmentGroups
+> = {
+  municipal_photo_front_attachment_ids: "frontPhotos",
+  municipal_photo_left_attachment_ids: "leftPhotos",
+  municipal_photo_right_attachment_ids: "rightPhotos",
+  municipal_certificate_attachment_ids: "certificates",
+  municipal_other_document_attachment_ids: "otherDocuments",
+};
+
+function makeFleetVehicleAttachmentItem(record: OdooAttachmentMetaRecord) {
+  const mimetype = record.mimetype || "application/octet-stream";
+  const parsedName = parseFleetVehicleAttachmentName(record.name);
+
+  return {
+    id: record.id,
+    name: parsedName.displayName || `attachment-${record.id}`,
+    mimetype,
+    url: `/api/odoo/attachments/${record.id}`,
+    isImage: mimetype.startsWith("image/"),
+    vehicleId: typeof record.res_id === "number" ? record.res_id : undefined,
+    attachmentField: parsedName.field || undefined,
+  } satisfies FleetVehicleAttachmentItem;
+}
+
+function directVehicleAttachmentBucket(item: FleetVehicleAttachmentItem) {
+  if (item.attachmentField && FLEET_VEHICLE_ATTACHMENT_BUCKET_BY_FIELD[item.attachmentField]) {
+    return FLEET_VEHICLE_ATTACHMENT_BUCKET_BY_FIELD[item.attachmentField];
+  }
+
+  return item.isImage ? "frontPhotos" : "otherDocuments";
+}
+
+function directVehicleAttachmentItems(
+  items: FleetVehicleAttachmentItem[] | undefined,
+  bucket: keyof FleetVehicleAttachmentGroups,
+) {
+  return (items ?? []).filter((item) => directVehicleAttachmentBucket(item) === bucket);
+}
+
+function mergeAttachmentItems(...groups: FleetVehicleAttachmentItem[][]) {
+  const seen = new Set<number>();
+  const merged: FleetVehicleAttachmentItem[] = [];
+  for (const item of groups.flat()) {
+    if (seen.has(item.id)) {
+      continue;
+    }
+    seen.add(item.id);
+    merged.push(item);
+  }
+  return merged;
+}
+
 function appendMapItem<T>(map: Map<number, T[]>, key: number | null, item: T) {
   if (!key) {
     return;
@@ -3357,21 +3945,43 @@ async function loadAttachmentItemsById(
     connection,
   );
 
-  return new Map(
-    records.map((record) => {
-      const mimetype = record.mimetype || "application/octet-stream";
-      return [
-        record.id,
-        {
-          id: record.id,
-          name: record.name || `attachment-${record.id}`,
-          mimetype,
-          url: `/api/odoo/attachments/${record.id}`,
-          isImage: mimetype.startsWith("image/"),
-        },
-      ];
-    }),
+  return new Map(records.map((record) => [record.id, makeFleetVehicleAttachmentItem(record)]));
+}
+
+async function loadVehicleAttachmentItemsByVehicleId(
+  uid: number,
+  vehicleIds: number[],
+  connection: OdooConnection,
+) {
+  const ids = [...new Set(vehicleIds)].filter((id) => Number.isFinite(id) && id > 0);
+  if (!ids.length) {
+    return new Map<number, FleetVehicleAttachmentItem[]>();
+  }
+
+  const records = await safeSearchReadFleetModel<OdooAttachmentMetaRecord>(
+    uid,
+    "ir.attachment",
+    [
+      ["res_model", "=", "fleet.vehicle"],
+      ["res_id", "in", ids],
+    ],
+    ["name", "mimetype", "create_date", "res_id"],
+    { order: "create_date desc, id desc" },
+    connection,
   );
+
+  const byVehicle = new Map<number, FleetVehicleAttachmentItem[]>();
+  for (const record of records) {
+    const item = makeFleetVehicleAttachmentItem(record);
+    if (!item.vehicleId) {
+      continue;
+    }
+    const current = byVehicle.get(item.vehicleId) ?? [];
+    current.push(item);
+    byVehicle.set(item.vehicleId, current);
+  }
+
+  return byVehicle;
 }
 
 async function loadDriverHistoryByVehicle(
@@ -3442,7 +4052,7 @@ async function loadWeightReportsByVehicle(
   const records = await safeSearchReadFleetModel<OdooGarbageWeightReportRecord>(
     uid,
     "municipal.garbage.weight.report",
-    [["vehicle_id", "in", vehicleIds]],
+    ["|", ["vehicle_id", "in", vehicleIds], ["vehicle_id", "=", false]],
     VEHICLE_WEIGHT_REPORT_FIELDS,
     { order: "report_date desc, id desc" },
     connection,
@@ -3663,7 +4273,27 @@ async function loadFleetLoaderOptions(
 export async function loadFleetVehicleBoard(
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<FleetVehicleBoard> {
-  const auth = await authenticateWithFallback(createOdooConnection(connectionOverrides));
+  const requestedConnection = createOdooConnection(connectionOverrides);
+  const cachedBoard = readCachedFleetVehicleBoard(requestedConnection);
+  if (cachedBoard) {
+    return cachedBoard;
+  }
+
+  const cacheKey = getMunicipalSnapshotCacheKey(requestedConnection);
+  const pendingBoard = fleetVehicleBoardPendingCache.get(cacheKey);
+  if (pendingBoard) {
+    return pendingBoard;
+  }
+
+  const boardPromise = fetchLiveFleetVehicleBoard(requestedConnection).finally(() => {
+    fleetVehicleBoardPendingCache.delete(cacheKey);
+  });
+  fleetVehicleBoardPendingCache.set(cacheKey, boardPromise);
+  return boardPromise;
+}
+
+async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
+  const auth = await authenticateWithFallback(requestedConnection);
   if (!auth) {
     throw new Error("Odoo authentication failed");
   }
@@ -3709,6 +4339,7 @@ export async function loadFleetVehicleBoard(
     vehicleTypeOptions,
     categoryOptions,
     attachmentItemsById,
+    directAttachmentsByVehicle,
   ] = await Promise.all([
     loadCrewAssignmentsByVehicle(uid, connection),
     loadDriverHistoryByVehicle(uid, vehicleIds, connection),
@@ -3723,6 +4354,7 @@ export async function loadFleetVehicleBoard(
     loadFleetVehicleRelationOptions(uid, connection, "municipal_vehicle_type_id"),
     loadFleetVehicleRelationOptions(uid, connection, "category_id"),
     loadAttachmentItemsById(uid, vehicleAttachmentIds, connection),
+    loadVehicleAttachmentItemsByVehicleId(uid, vehicleIds, connection),
   ]);
 
   const allVehicles = vehicles
@@ -3744,11 +4376,21 @@ export async function loadFleetVehicleBoard(
         (Boolean(vehicle.mfo_active_for_ops) ||
           operationalStatusKey === "available" ||
           operationalStatusKey === "assigned");
+      const deadlineAttachmentIds = new Set(
+        [
+          ...(vehicle.municipal_insurance_attachment_ids ?? []),
+          ...(vehicle.municipal_inspection_attachment_ids ?? []),
+        ].filter((id) => Number.isFinite(id)),
+      );
+      const directAttachments = (directAttachmentsByVehicle.get(vehicle.id) ?? []).filter(
+        (item) => item.attachmentField || !deadlineAttachmentIds.has(item.id),
+      );
 
       return {
         id: vehicle.id,
         plate: vehicle.license_plate || vehicle.name || `Машин #${vehicle.id}`,
         name: vehicle.name || vehicle.license_plate || `Машин #${vehicle.id}`,
+        imageUrl: imageDataUrl(vehicle.image_128 || vehicle.avatar_128 || vehicle.image_1920),
         modelId: relationId(vehicle.model_id ?? false),
         modelName: relationName(vehicle.model_id ?? false, ""),
         categoryId: relationId(vehicle.category_id ?? false),
@@ -3823,11 +4465,26 @@ export async function loadFleetVehicleBoard(
         fuelReports: latestItems(fuelReportResult.byVehicle.get(vehicle.id), 10),
         procurementLinks: latestItems(procurementLinksByVehicle.get(vehicle.id), 8),
         attachments: {
-          frontPhotos: attachmentItems(vehicle.municipal_photo_front_attachment_ids, attachmentItemsById),
-          leftPhotos: attachmentItems(vehicle.municipal_photo_left_attachment_ids, attachmentItemsById),
-          rightPhotos: attachmentItems(vehicle.municipal_photo_right_attachment_ids, attachmentItemsById),
-          certificates: attachmentItems(vehicle.municipal_certificate_attachment_ids, attachmentItemsById),
-          otherDocuments: attachmentItems(vehicle.municipal_other_document_attachment_ids, attachmentItemsById),
+          frontPhotos: mergeAttachmentItems(
+            attachmentItems(vehicle.municipal_photo_front_attachment_ids, attachmentItemsById),
+            directVehicleAttachmentItems(directAttachments, "frontPhotos"),
+          ),
+          leftPhotos: mergeAttachmentItems(
+            attachmentItems(vehicle.municipal_photo_left_attachment_ids, attachmentItemsById),
+            directVehicleAttachmentItems(directAttachments, "leftPhotos"),
+          ),
+          rightPhotos: mergeAttachmentItems(
+            attachmentItems(vehicle.municipal_photo_right_attachment_ids, attachmentItemsById),
+            directVehicleAttachmentItems(directAttachments, "rightPhotos"),
+          ),
+          certificates: mergeAttachmentItems(
+            attachmentItems(vehicle.municipal_certificate_attachment_ids, attachmentItemsById),
+            directVehicleAttachmentItems(directAttachments, "certificates"),
+          ),
+          otherDocuments: mergeAttachmentItems(
+            attachmentItems(vehicle.municipal_other_document_attachment_ids, attachmentItemsById),
+            directVehicleAttachmentItems(directAttachments, "otherDocuments"),
+          ),
         },
         crewAssignments: crewAssignmentsByVehicle.get(vehicle.id) ?? [],
       } satisfies FleetVehicleBoardItem;
@@ -3838,9 +4495,16 @@ export async function loadFleetVehicleBoard(
   const activeVehicles = allVehicles.filter((vehicle) => vehicle.isOperational && !vehicle.isRepair);
   const repairVehicles = allVehicles.filter((vehicle) => vehicle.isRepair);
   const todayKey = getTodayDateKey();
-  const todayWeightKg = weightReportResult.records
-    .filter((record) => record.report_date === todayKey && record.state !== "failed")
-    .reduce((sum, record) => {
+  const previousDateKey = getPreviousDateKey(todayKey);
+  const todayWeightRecords = weightReportResult.records.filter(
+    (record) => record.report_date === todayKey && record.state !== "failed",
+  );
+  const displayedWeightRecords = todayWeightRecords.length
+    ? todayWeightRecords
+    : weightReportResult.records.filter(
+        (record) => record.report_date === previousDateKey && record.state !== "failed",
+      );
+  const todayWeightKg = displayedWeightRecords.reduce((sum, record) => {
       const value = record.weight || 0;
       return sum + (record.unit === "ton" ? value * 1000 : value);
     }, 0);
@@ -3865,7 +4529,7 @@ export async function loadFleetVehicleBoard(
     weightReportResult.records.filter((record) => record.state === "failed").length +
     fuelReportResult.records.filter((record) => record.state === "failed").length;
 
-  return {
+  const board = {
     allVehicles,
     activeVehicles,
     repairVehicles,
@@ -3886,6 +4550,8 @@ export async function loadFleetVehicleBoard(
     mostRepairedVehicle: mostRepairedVehicleId ? vehicleById.get(mostRepairedVehicleId)?.plate ?? "" : "",
     failedImportCount,
   };
+  writeCachedFleetVehicleBoard(connection, board);
+  return board;
 }
 
 export async function executeOdooKw<T>(
@@ -4118,6 +4784,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     return {
       id: project.id,
       name: project.name,
+      managerId: relationId(project.user_id),
       manager: relationName(project.user_id),
       departmentName:
         projectTaskDepartments[0] ??
@@ -4138,59 +4805,11 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     } satisfies ProjectCard;
   });
 
-  const taskDirectory = tasks
-    .map((task) => {
-      const quantitySnapshot = taskQuantitySnapshot(task);
-      const stageBucket = quantitySnapshot.stageBucket;
-      const statusKey = quantitySnapshot.statusKey;
-
-      return {
-        id: task.id,
-        name: task.name,
-        departmentName: resolveTaskDepartmentName(task, projectDepartmentById),
-        projectName: relationName(task.project_id, "Ажилгүй"),
-        stageLabel: STAGE_LABELS[stageBucket],
-        stageBucket,
-        createdDate: getDateKeyFromValue(task.create_date || null),
-        statusKey,
-        statusLabel: getTaskStatusLabel(statusKey),
-        deadline: formatCompactDate(task.date_deadline),
-        deadlineDateTime: task.date_deadline || null,
-        scheduledDate: getDateKeyFromValue(task.mfo_shift_date || task.date_deadline || null),
-        leaderName: relationName(task.ops_team_leader_id ?? false),
-        priorityLabel: priorityLabel(task.priority || ""),
-        progress: quantitySnapshot.progress,
-        plannedQuantity: quantitySnapshot.plannedQuantity,
-        completedQuantity: quantitySnapshot.completedQuantity,
-        remainingQuantity: quantitySnapshot.remainingQuantity,
-        measurementUnit: resolveTaskMeasurementUnit(task),
-        operationTypeLabel: operationTypeLabel(task.mfo_operation_type),
-        issueFlag: statusKey === "problem",
-        assigneeIds: task.user_ids ?? [],
-        href: buildTaskHref(task.id, "/tasks"),
-      } satisfies TaskDirectoryItem;
-    })
-    .sort((left, right) => {
-      const statusPriority: Record<TaskStatusKey, number> = {
-        problem: 0,
-        review: 1,
-        working: 2,
-        planned: 3,
-        verified: 4,
-      };
-
-      const statusDiff = statusPriority[left.statusKey] - statusPriority[right.statusKey];
-      if (statusDiff !== 0) {
-        return statusDiff;
-      }
-
-      return left.name.localeCompare(right.name, "mn");
-    });
-
   const liveTasks = activeTasks.map((task) => ({
     id: task.id,
     name: task.name,
     departmentName: resolveTaskDepartmentName(task, projectDepartmentById),
+    projectId: Array.isArray(task.project_id) ? task.project_id[0] : null,
     projectName: relationName(task.project_id),
     stageLabel: STAGE_LABELS[taskQuantitySnapshot(task).stageBucket],
     stageBucket: taskQuantitySnapshot(task).stageBucket,
@@ -4200,6 +4819,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     completedQuantity: taskQuantitySnapshot(task).completedQuantity,
     remainingQuantity: taskQuantitySnapshot(task).remainingQuantity,
     measurementUnit: resolveTaskMeasurementUnit(task),
+    leaderId: relationId(task.ops_team_leader_id ?? false),
     leaderName: relationName(task.ops_team_leader_id ?? false),
     priorityLabel: priorityLabel(task.priority || ""),
     progress: taskQuantitySnapshot(task).progress,
@@ -4212,11 +4832,21 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     departmentName: resolveTaskDepartmentName(task, projectDepartmentById),
     stageLabel: relationName(task.stage_id, STAGE_LABELS.review),
     deadline: formatCompactDate(task.date_deadline),
+    projectId: Array.isArray(task.project_id) ? task.project_id[0] : null,
     projectName: relationName(task.project_id),
+    leaderId: relationId(task.ops_team_leader_id ?? false),
     leaderName: relationName(task.ops_team_leader_id ?? false),
     progress: taskQuantitySnapshot(task).progress,
     href: buildTaskHref(task.id, "/review"),
   }));
+
+  const reportAttachmentIdsByReportId = new Map<number, { imageIds: number[]; audioIds: number[] }>();
+  for (const report of reports) {
+    reportAttachmentIdsByReportId.set(report.id, {
+      imageIds: [...(report.image_attachment_ids ?? [])],
+      audioIds: [...(report.audio_attachment_ids ?? [])],
+    });
+  }
 
   const attachmentIds = [
     ...new Set(
@@ -4250,10 +4880,49 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     }
   }
 
-  const reportTaskMap = new Map(tasks.map((task) => [task.id, task]));
-  const reportsFeed = reports.map((report) => {
-    const task = Array.isArray(report.task_id) ? reportTaskMap.get(report.task_id[0]) : undefined;
-    const images = (report.image_attachment_ids ?? []).map((attachmentId) => {
+  const reportIds = reports.map((report) => report.id);
+  if (reportIds.length) {
+    try {
+      const fallbackAttachments = await searchReadAll<OdooAttachmentRecord>(
+        uid,
+        "ir.attachment",
+        [["res_model", "=", "ops.task.report"], ["res_id", "in", reportIds]],
+        {
+          fields: ["name", "mimetype", "res_id"],
+          order: "create_date asc, id asc",
+        },
+        connection,
+        400,
+      );
+
+      for (const attachment of fallbackAttachments) {
+        const reportId = typeof attachment.res_id === "number" ? attachment.res_id : 0;
+        if (!reportId) {
+          continue;
+        }
+        attachmentMap.set(attachment.id, attachment);
+        const entry =
+          reportAttachmentIdsByReportId.get(reportId) ?? { imageIds: [], audioIds: [] };
+        const mimetype = String(attachment.mimetype || "").toLowerCase();
+        if (mimetype.startsWith("image/") && !entry.imageIds.includes(attachment.id)) {
+          entry.imageIds.push(attachment.id);
+        }
+        if (mimetype.startsWith("audio/") && !entry.audioIds.includes(attachment.id)) {
+          entry.audioIds.push(attachment.id);
+        }
+        reportAttachmentIdsByReportId.set(reportId, entry);
+      }
+    } catch (error) {
+      console.warn("ops.task.report хавсралтын fallback уншихад алдаа гарлаа:", error);
+    }
+  }
+
+  const getReportImageIds = (report: OdooReportRecord) =>
+    reportAttachmentIdsByReportId.get(report.id)?.imageIds ?? report.image_attachment_ids ?? [];
+  const getReportAudioIds = (report: OdooReportRecord) =>
+    reportAttachmentIdsByReportId.get(report.id)?.audioIds ?? report.audio_attachment_ids ?? [];
+  const buildReportImages = (report: OdooReportRecord) =>
+    getReportImageIds(report).map((attachmentId) => {
       const attachment = attachmentMap.get(attachmentId);
       return {
         id: attachmentId,
@@ -4262,7 +4931,8 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         url: `/api/odoo/attachments/${attachmentId}`,
       };
     });
-    const audios = (report.audio_attachment_ids ?? []).map((attachmentId) => {
+  const buildReportAudios = (report: OdooReportRecord) =>
+    getReportAudioIds(report).map((attachmentId) => {
       const attachment = attachmentMap.get(attachmentId);
       return {
         id: attachmentId,
@@ -4271,15 +4941,30 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         url: `/api/odoo/attachments/${attachmentId}`,
       };
     });
+
+  const reportTaskMap = new Map(tasks.map((task) => [task.id, task]));
+  const reportsFeed = reports.map((report) => {
+    const taskId = Array.isArray(report.task_id) ? report.task_id[0] : null;
+    const task = taskId ? reportTaskMap.get(taskId) : undefined;
+    const images = buildReportImages(report);
+    const audios = buildReportAudios(report);
     return {
       id: report.id,
+      taskId,
+      reporterId: relationId(report.reporter_id),
       reporter: relationName(report.reporter_id),
       taskName: relationName(report.task_id),
       departmentName: task
         ? resolveTaskDepartmentName(task, projectDepartmentById)
         : "Тодорхойгүй",
+      projectId: task && Array.isArray(task.project_id) ? task.project_id[0] : null,
       projectName: task ? relationName(task.project_id) : "Ажилгүй",
-      summary: report.report_summary || "Тайлбар оруулаагүй",
+      summary: htmlToPlainText(report.report_summary) || "Тайлбар оруулаагүй",
+      text: htmlToPlainText(report.report_text),
+      state: String(report.state || ""),
+      stateLabel: reportStateLabel(report.state),
+      stateBucket: reportStateBucket(report.state),
+      rejectionReason: htmlToPlainText(report.rejection_reason),
       reportedQuantity: report.reported_quantity ?? 0,
       measurementUnit: resolveUnitLabel(
         report.task_measurement_unit_id,
@@ -4288,13 +4973,155 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       ),
       measurementUnitCode:
         report.task_measurement_unit_code || (task ? resolveTaskMeasurementCode(task) : ""),
-      imageCount: report.image_count ?? 0,
-      audioCount: report.audio_count ?? 0,
+      imageCount: Math.max(report.image_count ?? 0, images.length),
+      audioCount: Math.max(report.audio_count ?? 0, audios.length),
       submittedAt: formatCompactDate(report.report_datetime),
       images,
       audios,
     } satisfies ReportFeedItem;
   });
+
+  const workIdsByTaskId = new Map<number, number>();
+  for (const task of tasks) {
+    const workId = relationId(task.municipal_work_id ?? false);
+    if (workId) {
+      workIdsByTaskId.set(task.id, workId);
+    }
+  }
+  const returnedWorkById = new Map<number, OdooWorkReturnRecord>();
+  const workIds = Array.from(new Set(workIdsByTaskId.values()));
+  if (workIds.length) {
+    const workRecords = await searchReadAll<OdooWorkReturnRecord>(
+      uid,
+      "municipal.work",
+      [["id", "in", workIds]],
+      {
+        fields: ["state", "rejection_reason"],
+      },
+      resolvedConnection,
+      200,
+    ).catch(() => [] as OdooWorkReturnRecord[]);
+    for (const work of workRecords) {
+      returnedWorkById.set(work.id, work);
+    }
+  }
+
+  const returnReasonByTaskId = new Map<number, string>();
+  const taskIds = tasks.map((task) => task.id).filter((id) => id > 0);
+  if (taskIds.length) {
+    const taskMessages = await searchReadAll<OdooTaskMessageRecord>(
+      uid,
+      "mail.message",
+      [
+        ["model", "=", "project.task"],
+        ["res_id", "in", taskIds],
+      ],
+      {
+        fields: ["res_id", "body", "date"],
+        order: "date desc, id desc",
+      },
+      resolvedConnection,
+      300,
+    ).catch(() => [] as OdooTaskMessageRecord[]);
+
+    for (const message of taskMessages) {
+      const taskId = typeof message.res_id === "number" ? message.res_id : 0;
+      if (!taskId || returnReasonByTaskId.has(taskId)) {
+        continue;
+      }
+      const reason = extractTaskReturnReason(message.body);
+      if (reason) {
+        returnReasonByTaskId.set(taskId, reason);
+      }
+    }
+  }
+
+  const latestReportByTaskId = new Map<number, TaskDirectoryReportSummary>();
+  for (const report of reportsFeed) {
+    const taskId = reports.find((item) => item.id === report.id)?.task_id;
+    const resolvedTaskId = Array.isArray(taskId) ? taskId[0] : null;
+    if (!resolvedTaskId || latestReportByTaskId.has(resolvedTaskId)) {
+      continue;
+    }
+    const workId = workIdsByTaskId.get(resolvedTaskId);
+    const workReturn = workId ? returnedWorkById.get(workId) : undefined;
+    const workReturnReason = htmlToPlainText(workReturn?.rejection_reason);
+    const messageReturnReason = returnReasonByTaskId.get(resolvedTaskId) || "";
+    const effectiveStateBucket =
+      report.stateBucket === "problem" || reportStateBucket(workReturn?.state) === "problem"
+        ? "problem"
+        : report.stateBucket;
+    latestReportByTaskId.set(resolvedTaskId, {
+      id: report.id,
+      reporter: report.reporter,
+      submittedAt: report.submittedAt,
+      state: report.state,
+      stateLabel: report.stateLabel,
+      stateBucket: effectiveStateBucket,
+      summary: report.summary,
+      text: report.text,
+      reportedQuantity: report.reportedQuantity,
+      measurementUnit: report.measurementUnit,
+      rejectionReason: report.rejectionReason || workReturnReason || messageReturnReason,
+      imageCount: report.imageCount,
+      audioCount: report.audioCount,
+      images: report.images,
+      audios: report.audios,
+    });
+  }
+
+  const taskDirectory = tasks
+    .map((task) => {
+      const quantitySnapshot = taskQuantitySnapshot(task);
+      const stageBucket = quantitySnapshot.stageBucket;
+      const statusKey = quantitySnapshot.statusKey;
+
+      return {
+        id: task.id,
+        name: task.name,
+        departmentName: resolveTaskDepartmentName(task, projectDepartmentById),
+        projectId: Array.isArray(task.project_id) ? task.project_id[0] : null,
+        projectName: relationName(task.project_id, "Ажилгүй"),
+        stageLabel: STAGE_LABELS[stageBucket],
+        stageBucket,
+        createdDate: getDateKeyFromValue(task.create_date || null),
+        createdAt: task.create_date || null,
+        statusKey,
+        statusLabel: getTaskStatusLabel(statusKey),
+        deadline: formatCompactDate(task.date_deadline),
+        deadlineDateTime: task.date_deadline || null,
+        scheduledDate: getDateKeyFromValue(task.mfo_shift_date || task.date_deadline || null),
+        leaderId: relationId(task.ops_team_leader_id ?? false),
+        leaderName: relationName(task.ops_team_leader_id ?? false),
+        priorityLabel: priorityLabel(task.priority || ""),
+        progress: quantitySnapshot.progress,
+        plannedQuantity: quantitySnapshot.plannedQuantity,
+        completedQuantity: quantitySnapshot.completedQuantity,
+        remainingQuantity: quantitySnapshot.remainingQuantity,
+        measurementUnit: resolveTaskMeasurementUnit(task),
+        operationTypeLabel: operationTypeLabel(task.mfo_operation_type),
+        issueFlag: statusKey === "problem",
+        assigneeIds: task.user_ids ?? [],
+        latestReport: latestReportByTaskId.get(task.id),
+        href: buildTaskHref(task.id, "/tasks"),
+      } satisfies TaskDirectoryItem;
+    })
+    .sort((left, right) => {
+      const statusPriority: Record<TaskStatusKey, number> = {
+        problem: 0,
+        review: 1,
+        working: 2,
+        planned: 3,
+        verified: 4,
+      };
+
+      const statusDiff = statusPriority[left.statusKey] - statusPriority[right.statusKey];
+      if (statusDiff !== 0) {
+        return statusDiff;
+      }
+
+      return left.name.localeCompare(right.name, "mn");
+    });
 
   const teamLeaderMap = new Map<string, TeamLeaderCard>();
   for (const task of tasks) {
@@ -4761,6 +5588,11 @@ function fallbackSnapshot(): DashboardSnapshot {
         taskName: "1-р хороо - 20-р байрны ар тал",
         projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
         summary: "21 мод хэлбэржүүлж, 1 зураг, 1 аудио тайлан хавсаргасан.",
+        text: "21 мод хэлбэржүүлж, 1 зураг, 1 аудио тайлан хавсаргасан.",
+        state: "submitted",
+        stateLabel: "Тайлан илгээсэн",
+        stateBucket: "review",
+        rejectionReason: "",
         reportedQuantity: 21,
         measurementUnit: "мод",
         measurementUnitCode: "tree",
@@ -4777,6 +5609,11 @@ function fallbackSnapshot(): DashboardSnapshot {
         taskName: "Хог тээврийн 2-р маршрут",
         projectName: "Хог тээвэрлэлтийн өглөөний маршрут",
         summary: "Маршрут дууссан, дахин ачилт 18:00-д эхэлнэ.",
+        text: "Маршрут дууссан, дахин ачилт 18:00-д эхэлнэ.",
+        state: "submitted",
+        stateLabel: "Тайлан илгээсэн",
+        stateBucket: "review",
+        rejectionReason: "",
         reportedQuantity: 4,
         measurementUnit: "удаа",
         measurementUnitCode: "times",
@@ -4817,19 +5654,60 @@ function buildFallbackSnapshot(): DashboardSnapshot {
   return fallbackSnapshot();
 }
 
+function cleanSnapshotText<T>(value: T): T {
+  if (typeof value === "string") {
+    return cleanDisplayText(value) as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => cleanSnapshotText(item)) as T;
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, cleanSnapshotText(item)]),
+    ) as T;
+  }
+  return value;
+}
+
 export async function loadMunicipalSnapshot(
   connectionOverrides: Partial<OdooConnection> = {},
   options: { allowFallback?: boolean } = {},
 ) {
   const connection = createOdooConnection(connectionOverrides);
-
-  try {
-    return await fetchLiveSnapshot(connection);
-  } catch (error) {
-    if (options.allowFallback === false) {
-      throw error;
-    }
-    console.warn("Falling back to demo dashboard snapshot:", error);
-    return buildFallbackSnapshot();
+  const cachedSnapshot = readCachedMunicipalSnapshot(connection);
+  if (cachedSnapshot) {
+    return cachedSnapshot;
   }
+
+  const cacheKey = getMunicipalSnapshotCacheKey(connection);
+  const canUsePendingSnapshot = options.allowFallback !== false;
+  if (canUsePendingSnapshot) {
+    const pendingSnapshot = municipalSnapshotPendingCache.get(cacheKey);
+    if (pendingSnapshot) {
+      return pendingSnapshot;
+    }
+  }
+
+  const snapshotPromise = (async () => {
+    try {
+      const snapshot = cleanSnapshotText(await fetchLiveSnapshot(connection));
+      writeCachedMunicipalSnapshot(connection, snapshot);
+      return snapshot;
+    } catch (error) {
+      if (options.allowFallback === false) {
+        throw error;
+      }
+      console.warn("Falling back to demo dashboard snapshot:", error);
+      const fallback = cleanSnapshotText(buildFallbackSnapshot());
+      writeCachedMunicipalSnapshot(connection, fallback);
+      return fallback;
+    }
+  })().finally(() => {
+    municipalSnapshotPendingCache.delete(cacheKey);
+  });
+
+  if (canUsePendingSnapshot) {
+    municipalSnapshotPendingCache.set(cacheKey, snapshotPromise);
+  }
+  return snapshotPromise;
 }

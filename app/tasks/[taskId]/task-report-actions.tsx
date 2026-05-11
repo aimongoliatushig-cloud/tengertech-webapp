@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useId, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { MediaUploadField } from "./media-upload-field";
+import { PendingSubmitButton } from "./pending-submit-button";
 import styles from "./task-detail.module.css";
 
 type ReportAttachment = {
@@ -88,9 +89,11 @@ export function TaskReportActions({
   deleteAction,
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [removedImageIds, setRemovedImageIds] = useState<number[]>([]);
   const [removedAudioIds, setRemovedAudioIds] = useState<number[]>([]);
   const idPrefix = useId();
+  const submitToken = `${idPrefix}-${reportId}`;
   const draft = useMemo(
     () => parseReportDraft(reportText, reportedQuantity),
     [reportText, reportedQuantity],
@@ -98,9 +101,25 @@ export function TaskReportActions({
   const visibleImages = images.filter((image) => !removedImageIds.includes(image.id));
   const visibleAudios = audios.filter((audio) => !removedAudioIds.includes(audio.id));
 
+  const handleEditSubmit = (event: FormEvent<HTMLFormElement>) => {
+    if (isSubmitting) {
+      event.preventDefault();
+      return;
+    }
+
+    setIsSubmitting(true);
+    console.info("[report-submit] client submit start", {
+      taskId,
+      reportId,
+      mode: "update",
+      hasToken: Boolean(submitToken),
+    });
+  };
+
   const openEditModal = () => {
     setRemovedImageIds([]);
     setRemovedAudioIds([]);
+    setIsSubmitting(false);
     setIsEditing(true);
   };
 
@@ -156,9 +175,10 @@ export function TaskReportActions({
                 </button>
               </div>
 
-              <form action={updateAction} className={styles.modalForm}>
+              <form action={updateAction} className={styles.modalForm} onSubmit={handleEditSubmit}>
                 <input type="hidden" name="task_id" value={taskId} />
                 <input type="hidden" name="report_id" value={reportId} />
+                <input type="hidden" name="report_submit_token" value={submitToken} />
                 {removedImageIds.map((id) => (
                   <input key={`remove-image-${id}`} type="hidden" name="remove_image_attachment_ids" value={id} />
                 ))}
@@ -303,13 +323,18 @@ export function TaskReportActions({
                   <button
                     type="button"
                     className={styles.modalSecondaryButton}
+                    disabled={isSubmitting}
                     onClick={() => setIsEditing(false)}
                   >
                     Болих
                   </button>
-                  <button type="submit" className={styles.actionButton}>
+                  <PendingSubmitButton
+                    className={styles.actionButton}
+                    pendingLabel="Хадгалж байна..."
+                    forcePending={isSubmitting}
+                  >
                     Хадгалах
-                  </button>
+                  </PendingSubmitButton>
                 </div>
               </form>
             </div>
@@ -333,9 +358,9 @@ export function TaskReportActions({
       >
         <input type="hidden" name="task_id" value={taskId} />
         <input type="hidden" name="report_id" value={reportId} />
-        <button type="submit" className={styles.warningButton}>
+        <PendingSubmitButton className={styles.warningButton} pendingLabel="Устгаж байна...">
           Устгах
-        </button>
+        </PendingSubmitButton>
       </form>
       {editModal}
     </div>

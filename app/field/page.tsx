@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
@@ -343,6 +344,13 @@ export default async function FieldPage({ searchParams }: PageProps) {
                   </div>
                 </div>
 
+                {assignment.returnedReason ? (
+                  <div className={fieldStyles.returnedNotice}>
+                    <strong>Буцаасан шалтгаан</strong>
+                    <p>{assignment.returnedReason}</p>
+                  </div>
+                ) : null}
+
                 {assignment.canStart ? (
                   <form action={startFieldShiftAction} className={workspaceStyles.form}>
                     <input type="hidden" name="task_id" value={assignment.id} />
@@ -524,6 +532,16 @@ export default async function FieldPage({ searchParams }: PageProps) {
                         <div className={fieldStyles.historyList}>
                           {stop.proofs.map((proof) => (
                             <article key={proof.id} className={fieldStyles.historyCard}>
+                              <a href={proof.imageUrl} target="_blank" rel="noreferrer">
+                                <Image
+                                  src={proof.imageUrl}
+                                  alt={`${proof.proofTypeLabel} зураг`}
+                                  className={fieldStyles.historyImage}
+                                  width={320}
+                                  height={240}
+                                  unoptimized
+                                />
+                              </a>
                               <strong>{proof.proofTypeLabel}</strong>
                               <span>{proof.capturedAt}</span>
                               <small>{proof.uploader}</small>
