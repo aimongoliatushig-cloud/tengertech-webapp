@@ -1,14 +1,7 @@
-import { GarbageRoutePage } from "../_components/garbage-route-page";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default function TodayRoutesPage() {
-  return (
-    <GarbageRoutePage
-      title="Өнөөдрийн маршрут"
-      eyebrow="Өнөөдөр"
-      description="Өнөөдрийн хог тээврийн маршрут, явц, хуваарилалтыг харах хэсэг."
-      isAllowed={(permissions) => permissions.today_view}
-    />
-  );
+  redirect("/settings/garbage-transport#vehicles");
 }

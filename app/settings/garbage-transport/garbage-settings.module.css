@@ -276,10 +276,7 @@
   color: var(--brand-900);
 }
 
-.settingsTabs:not(:has(.tabPanel:target)) .tabBar a[href="#teams"],
-.settingsTabs:has(:global(#teams:target)) .tabBar a[href="#teams"],
-.settingsTabs:has(:global(#vehicles:target)) .tabBar a[href="#vehicles"],
-.settingsTabs:has(:global(#routes:target)) .tabBar a[href="#routes"],
+.settingsTabs:not(:has(.tabPanel:target)) .tabBar a[href="#inspectors"],
 .settingsTabs:has(:global(#points:target)) .tabBar a[href="#points"],
 .settingsTabs:has(:global(#inspectors:target)) .tabBar a[href="#inspectors"],
 .settingsTabs:has(:global(#notifications:target)) .tabBar a[href="#notifications"] {
@@ -305,7 +302,7 @@
   scroll-margin-top: 92px;
 }
 
-.tabPanels:not(:has(.tabPanel:target)) .tabPanel:not(:global(#teams)),
+.tabPanels:not(:has(.tabPanel:target)) .tabPanel:not(:global(#inspectors)),
 .tabPanels:has(.tabPanel:target) .tabPanel:not(:target) {
   display: none;
 }
@@ -357,6 +354,36 @@
   color: var(--brand-900);
   font-weight: 800;
   white-space: nowrap;
+}
+
+.scopeCountGrid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.scopeCountPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-900);
+  white-space: nowrap;
+}
+
+.scopeCountPill b {
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.scopeCountPill small {
+  color: var(--brand-900);
+  font-size: 0.76rem;
+  font-weight: 800;
 }
 
 .formGrid,
@@ -488,6 +515,26 @@
 .listCard {
   display: grid;
   gap: 12px;
+}
+
+.vehicleCardButton {
+  width: 100%;
+  min-height: 94px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vehicleCardButton:hover,
+.vehicleCardButton:focus-visible {
+  border-color: rgba(31, 95, 49, 0.36);
+  box-shadow: 0 12px 24px rgba(31, 95, 49, 0.1);
+  outline: none;
+}
+
+.vehicleCrewLine {
+  color: var(--ink-700);
+  font-size: 0.8rem;
+  font-weight: 750;
 }
 
 .listCard strong,
@@ -669,6 +716,96 @@
 .field textarea:focus {
   border-color: rgba(31, 95, 49, 0.42);
   box-shadow: 0 0 0 4px rgba(74, 154, 93, 0.12);
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.34);
+}
+
+.vehicleModal {
+  display: grid;
+  gap: 18px;
+  width: min(760px, 100%);
+  max-height: min(86vh, 760px);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid rgba(74, 154, 93, 0.16);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.2);
+}
+
+.vehicleModalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.vehicleModalHeader h3 {
+  margin: 8px 0 4px;
+  color: var(--ink-900);
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  line-height: 1.05;
+}
+
+.vehicleModalHeader p {
+  margin: 0;
+  color: var(--ink-700);
+  font-weight: 750;
+}
+
+.modalCloseButton {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgba(74, 154, 93, 0.2);
+  border-radius: 999px;
+  background: rgba(237, 248, 235, 0.92);
+  color: var(--brand-900);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.vehicleCurrentGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.vehicleCurrentGrid div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(74, 154, 93, 0.12);
+  border-radius: 8px;
+  background: rgba(247, 252, 247, 0.94);
+}
+
+.vehicleCurrentGrid span {
+  color: var(--ink-700);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.vehicleCurrentGrid strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink-900);
+  font-size: 0.9rem;
+}
+
+.vehicleModalForm {
+  display: grid;
+  gap: 14px;
 }
 
 .checkField {
@@ -1189,6 +1326,7 @@
   }
 
   .formPanelHeader,
+  .vehicleModalHeader,
   .teamListHeader,
   .routeListHeader,
   .pointListHeader {
@@ -1196,7 +1334,16 @@
     flex-direction: column;
   }
 
+  .scopeCountGrid {
+    justify-content: flex-start;
+  }
+
   .pointCardHeader {
+    grid-template-columns: 1fr;
+  }
+
+  .vehicleCurrentGrid,
+  .twoColumn {
     grid-template-columns: 1fr;
   }
 

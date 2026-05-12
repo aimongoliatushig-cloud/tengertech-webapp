@@ -56,6 +56,7 @@ type TaskRecord = {
   mfo_vehicle_id?: Relation;
   mfo_driver_employee_id?: Relation;
   mfo_collector_employee_ids?: number[];
+  mfo_inspector_employee_id?: Relation;
   state: string;
   mfo_state?: string | false;
   description?: string | false;
@@ -451,6 +452,8 @@ export type SeasonalPlanCreateResult = {
   planId: number;
   created: boolean;
   message: string;
+  redirectHref?: string;
+  fallbackProjectId?: number;
 };
 
 export type SeasonalPlanDay = {
@@ -638,6 +641,12 @@ export type TaskQuantityLine = {
   progress?: number;
 };
 
+export type TaskCrewMember = {
+  id: string;
+  name: string;
+  roleLabel: string;
+};
+
 type WorkspaceReportAttachmentInput = {
   name: string;
   mimeType?: string;
@@ -664,6 +673,7 @@ export type TaskDetail = {
   progress: number;
   teamLeaderName: string;
   crewTeamName: string;
+  crewMembers: TaskCrewMember[];
   assignees: string[];
   assigneeUserIds: number[];
   priorityLabel: string;
@@ -2660,15 +2670,23 @@ export async function createSeasonalWorkspacePlan(
     })),
   };
 
-  const result = await executeOdooKw<
-    number | { plan_id?: number; id?: number; created?: boolean; message?: string }
-  >(
-    "mfo.seasonal.plan",
-    "action_mfo_create_seasonal_plan",
-    [payload],
-    {},
-    connectionOverrides,
-  );
+  let result: number | { plan_id?: number; id?: number; created?: boolean; message?: string };
+  try {
+    result = await executeOdooKw<
+      number | { plan_id?: number; id?: number; created?: boolean; message?: string }
+    >(
+      "mfo.seasonal.plan",
+      "action_mfo_create_seasonal_plan",
+      [payload],
+      {},
+      connectionOverrides,
+    );
+  } catch (error) {
+    if (!isMissingMunicipalModelError(error)) {
+      throw error;
+    }
+    return createSeasonalWorkspaceProjectFallback(input, connectionOverrides);
+  }
 
   if (typeof result === "number") {
     return {
@@ -2687,6 +2705,89 @@ export async function createSeasonalWorkspacePlan(
     planId,
     created: result.created ?? true,
     message: result.message || "Гэнэтийн ажил амжилттай үүслээ.",
+  };
+}
+
+async function createSeasonalWorkspaceProjectFallback(
+  input: {
+    name: string;
+    departmentId: number;
+    startDate: string;
+    endDate: string;
+    workDays: WeekdayKey[];
+    notes?: string;
+    lines: SeasonalPlanLineInput[];
+  },
+  connectionOverrides: Partial<OdooConnection>,
+): Promise<SeasonalPlanCreateResult> {
+  const totalPlannedTonnage = input.lines.reduce(
+    (sum, line) => sum + (Number.isFinite(line.plannedTonnage) ? line.plannedTonnage : 0),
+    0,
+  );
+  const projectId = await createWorkspaceProject(
+    {
+      name: input.name,
+      departmentId: input.departmentId,
+      operationType: "garbage_seasonal",
+      trackQuantity: totalPlannedTonnage > 0,
+      plannedQuantity: totalPlannedTonnage > 0 ? totalPlannedTonnage : null,
+      startDate: input.startDate,
+      deadline: input.endDate,
+      description: input.notes,
+    },
+    connectionOverrides,
+  );
+
+  for (const [lineIndex, line] of input.lines.entries()) {
+    const vehicleIds = line.vehicleIds?.length
+      ? Array.from(new Set(line.vehicleIds))
+      : Array.from({ length: Math.max(1, Math.floor(line.plannedVehicleCount || 1)) }, () => null);
+    const effectiveDate = line.workDate || input.startDate;
+    const baseDescription = [
+      line.khorooLabel ? `Хороо: ${line.khorooLabel}` : "",
+      line.locationName ? `Байршил: ${line.locationName}` : "",
+      Number.isFinite(line.plannedTonnage) && line.plannedTonnage > 0
+        ? `Төлөвлөсөн хэмжээ: ${line.plannedTonnage} тн`
+        : "",
+      line.remarks ? `Тайлбар: ${line.remarks}` : "",
+      input.notes ? `Нэмэлт тэмдэглэл: ${input.notes}` : "",
+    ].filter(Boolean).join("\n");
+
+    for (const [vehicleIndex, vehicleId] of vehicleIds.entries()) {
+      const taskName = [
+        input.name.trim(),
+        line.khorooLabel.trim(),
+        line.locationName.trim(),
+        vehicleIds.length > 1 ? `машин ${vehicleIndex + 1}` : "",
+      ].filter(Boolean).join(" - ");
+
+      await createWorkspaceTask(
+        {
+          projectId,
+          name: taskName || `${input.name.trim()} - ${lineIndex + 1}`,
+          deadline: effectiveDate,
+          startDate: effectiveDate,
+          plannedQuantity:
+            Number.isFinite(line.plannedTonnage) && line.plannedTonnage > 0
+              ? line.plannedTonnage
+              : null,
+          description: baseDescription,
+          sequence: (line.sequence || lineIndex + 1) * 10 + vehicleIndex,
+          operationType: "garbage_seasonal",
+          shiftDate: effectiveDate,
+          vehicleId: vehicleId || null,
+        },
+        connectionOverrides,
+      );
+    }
+  }
+
+  return {
+    planId: projectId,
+    fallbackProjectId: projectId,
+    redirectHref: `/projects/${projectId}`,
+    created: true,
+    message: "Гэнэтийн ажил амжилттай үүслээ.",
   };
 }
 
@@ -3212,6 +3313,7 @@ export async function loadTaskDetail(
         "mfo_vehicle_id",
         "mfo_driver_employee_id",
         "mfo_collector_employee_ids",
+        "mfo_inspector_employee_id",
         "state",
         "description",
         "ops_can_submit_for_review",
@@ -3382,6 +3484,7 @@ export async function loadTaskDetail(
   };
 
   let assigneeNames: string[] = [];
+  let assigneeUsers: UserRecord[] = [];
   let assigneeUserIds: number[] = [...(task.user_ids ?? [])];
   if (task.user_ids?.length) {
     try {
@@ -3396,6 +3499,7 @@ export async function loadTaskDetail(
         },
         connectionOverrides,
       );
+      assigneeUsers = assignees;
       assigneeNames = assignees.map((user) => user.name);
     } catch {
       assigneeNames = task.user_ids.map((id) => `Хэрэглэгч #${id}`);
@@ -3429,6 +3533,11 @@ export async function loadTaskDetail(
           },
           connectionOverrides,
         );
+        const assigneeUserById = new Map(assigneeUsers.map((user) => [user.id, user]));
+        for (const user of crewUsers) {
+          assigneeUserById.set(user.id, user);
+        }
+        assigneeUsers = Array.from(assigneeUserById.values());
         assigneeNames = Array.from(
           new Set([...assigneeNames, ...crewUsers.map((user) => user.name)]),
         );
@@ -3436,6 +3545,102 @@ export async function loadTaskDetail(
       }
     } catch (error) {
       console.warn("Даалгаврын багийн гишүүдийг уншиж чадсангүй.", error);
+    }
+  }
+
+  const driverEmployeeId = relationId(task.mfo_driver_employee_id ?? false);
+  const collectorEmployeeIds = task.mfo_collector_employee_ids ?? [];
+  const inspectorEmployeeId = relationId(task.mfo_inspector_employee_id ?? false);
+  const crewEmployeeIds = Array.from(
+    new Set(
+      [driverEmployeeId, inspectorEmployeeId, ...collectorEmployeeIds].filter(
+        (id): id is number => Boolean(id),
+      ),
+    ),
+  );
+  const crewEmployees = crewEmployeeIds.length
+    ? await executeOdooKw<EmployeeUserRecord[]>(
+        "hr.employee",
+        "search_read",
+        [[["id", "in", crewEmployeeIds]]],
+        {
+          fields: ["name", "user_id", "department_id", "job_id", "job_title"],
+          order: "name asc",
+          limit: crewEmployeeIds.length,
+        },
+        connectionOverrides,
+      ).catch(() => [] as EmployeeUserRecord[])
+    : [];
+  const crewEmployeeById = new Map(crewEmployees.map((employee) => [employee.id, employee]));
+  const crewMembers: TaskCrewMember[] = [];
+  const crewMemberKeys = new Set<string>();
+  const addCrewMember = (id: string, name: string, roleLabel: string) => {
+    const normalizedName = name.trim().toLocaleLowerCase("mn-MN");
+    if (!normalizedName) {
+      return;
+    }
+
+    const key = `${roleLabel}:${normalizedName}`;
+    if (crewMemberKeys.has(key)) {
+      return;
+    }
+
+    crewMemberKeys.add(key);
+    crewMembers.push({
+      id,
+      name: name.trim(),
+      roleLabel,
+    });
+  };
+  const userRoleLabel = (role: string | false) => {
+    const normalizedRole = String(role || "").toLocaleLowerCase("mn-MN");
+
+    if (normalizedRole.includes("driver")) {
+      return "Жолооч";
+    }
+    if (
+      normalizedRole.includes("loader") ||
+      normalizedRole.includes("collector") ||
+      normalizedRole.includes("ачигч")
+    ) {
+      return "Ачигч";
+    }
+    if (normalizedRole.includes("inspector") || normalizedRole.includes("хяналт")) {
+      return "Хяналтын ажилтан";
+    }
+
+    return "Хариуцсан ажилтан";
+  };
+
+  if (inspectorEmployeeId) {
+    addCrewMember(
+      `inspector-${inspectorEmployeeId}`,
+      crewEmployeeById.get(inspectorEmployeeId)?.name ||
+        relationName(task.mfo_inspector_employee_id ?? false, ""),
+      "Хяналтын ажилтан",
+    );
+  }
+  if (driverEmployeeId) {
+    addCrewMember(
+      `driver-${driverEmployeeId}`,
+      crewEmployeeById.get(driverEmployeeId)?.name ||
+        relationName(task.mfo_driver_employee_id ?? false, ""),
+      "Жолооч",
+    );
+  }
+  for (const collectorEmployeeId of collectorEmployeeIds) {
+    addCrewMember(
+      `collector-${collectorEmployeeId}`,
+      crewEmployeeById.get(collectorEmployeeId)?.name || "",
+      "Ачигч",
+    );
+  }
+  for (const user of assigneeUsers) {
+    addCrewMember(`user-${user.id}`, user.name, userRoleLabel(user.ops_user_type));
+  }
+  if (!assigneeUsers.length) {
+    for (const assigneeName of assigneeNames) {
+      addCrewMember(`assignee-${assigneeName}`, assigneeName, "Хариуцсан ажилтан");
     }
   }
 
@@ -3503,6 +3708,7 @@ export async function loadTaskDetail(
     progress: effectiveProgress,
     teamLeaderName: relationName(task.ops_team_leader_id),
     crewTeamName,
+    crewMembers,
     assignees: assigneeNames,
     assigneeUserIds,
     priorityLabel: priorityLabel(task.priority),

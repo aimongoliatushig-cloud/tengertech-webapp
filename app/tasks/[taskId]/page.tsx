@@ -287,6 +287,8 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const isAssignedToCurrentUser = task.assigneeUserIds.includes(session.uid);
   const hasOwnSubmittedReport = task.reports.some((report) => report.reporterId === session.uid);
   const canInspectAssignedTransportTask = session.role === "transport_inspector";
+  const isGarbageTransportTask =
+    task.operationType === "garbage" || task.operationType === "garbage_seasonal";
   const canManageReview =
     !workerMode &&
     !hasOwnSubmittedReport &&
@@ -298,7 +300,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const canMarkDone =
     canManageReview && !["done"].includes(task.stageBucket) && (task.canMarkDone || hasSubmittedReport);
   const canSubmitForReview =
-    canManageReview && task.canSubmitForReview && !hasSubmittedReport;
+    canManageReview && task.canSubmitForReview && !hasSubmittedReport && !isGarbageTransportTask;
   const canReturnForChanges =
     canManageReview &&
     !["done"].includes(task.stageBucket) &&
@@ -940,7 +942,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                       <span className={styles.kicker}>Хариуцсан бүрэлдэхүүн</span>
                       <strong className={styles.actionTitle}>Баг ба ажилчид</strong>
                     </div>
-                    <span className={styles.chatterCount}>{task.assignees.length}</span>
+                    <span className={styles.chatterCount}>{task.crewMembers.length}</span>
                   </div>
 
                   <div className={styles.helperPanel}>
@@ -948,18 +950,18 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                     {task.crewTeamName ? <small>Баг: {task.crewTeamName}</small> : null}
                   </div>
 
-                  {task.assignees.length ? (
+                  {task.crewMembers.length ? (
                     <div className={styles.messageTimeline}>
-                      {task.assignees.map((assignee) => (
-                        <article key={assignee} className={styles.messageItem}>
+                      {task.crewMembers.map((member) => (
+                        <article key={member.id} className={styles.messageItem}>
                           <div className={styles.messageAvatar} aria-hidden="true">
-                            {assignee.slice(0, 1)}
+                            {member.name.slice(0, 1)}
                           </div>
                           <div className={styles.messageContent}>
                             <div className={styles.messageMeta}>
-                              <strong>{assignee}</strong>
+                              <strong>{member.name}</strong>
                             </div>
-                            <span className={styles.messageKind}>Гүйцэтгэгч</span>
+                            <span className={styles.messageKind}>{member.roleLabel}</span>
                           </div>
                         </article>
                       ))}

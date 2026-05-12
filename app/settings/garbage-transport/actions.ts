@@ -653,6 +653,44 @@ export async function createGarbageTransportVehicleAction(formData: FormData) {
   redirectToSettings("notice", "Машин нэмэгдлээ.", "vehicles");
 }
 
+export async function updateGarbageTransportVehicleCrewAction(formData: FormData) {
+  const { connection } = await requireGarbageTransportHead();
+  const vehicleId = parsePositiveId(formData.get("vehicle_id"));
+  const responsibleDriverId = parsePositiveId(formData.get("responsible_driver_id"));
+  const loader1Id = parsePositiveId(formData.get("loader_1_id"));
+  const loader2Id = parsePositiveId(formData.get("loader_2_id"));
+
+  if (!vehicleId) {
+    redirectToSettings("error", "Машин сонгоно уу.", "vehicles");
+  }
+
+  try {
+    await writeOdooRecord(
+      "fleet.vehicle",
+      vehicleId,
+      {
+        municipal_responsible_driver_id: responsibleDriverId || false,
+        driver_employee_id: responsibleDriverId || false,
+        mfo_driver_employee_id: responsibleDriverId || false,
+        municipal_loader_1_id: loader1Id || false,
+        municipal_loader_2_id: loader2Id || false,
+        loader_employee_id: loader1Id || false,
+        helper_employee_id: loader1Id || false,
+      },
+      connection,
+    );
+  } catch (error) {
+    redirectToSettings(
+      "error",
+      getErrorMessage(error, "Машины хариуцсан жолооч, ачигчийг хадгалах үед Odoo дээр алдаа гарлаа."),
+      "vehicles",
+    );
+  }
+
+  revalidatePath(SETTINGS_PATH);
+  redirectToSettings("notice", "Машины хариуцсан жолооч, ачигч хадгалагдлаа.", "vehicles");
+}
+
 export async function createGarbageTransportSubdistrictAction(formData: FormData) {
   const { connection } = await requireGarbageTransportSystemAdmin();
   const subdistrictName = cleanInput(formData.get("subdistrict_name"));

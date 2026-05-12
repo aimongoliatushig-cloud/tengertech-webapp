@@ -39,7 +39,6 @@ import {
 } from "@/lib/department-groups";
 import { isAutoGarbageDepartment } from "@/lib/department-permissions";
 import {
-  canAccessAutoBaseOverview,
   canAccessGarbageTransportSettings,
   canAccessProcurementModule,
   isGarbageDepartmentHead as isGarbageDepartmentHeadRole,
@@ -63,11 +62,7 @@ type MenuKey =
   | "projects"
   | "procurement"
   | "profile"
-  | "garbage-routes"
-  | "garbage-teams"
-  | "garbage-route-settings"
   | "garbage-points"
-  | "garbage-vehicles"
   | "garbage-settings"
   | "settings"
   | "review"
@@ -327,7 +322,6 @@ export function AppMenu({
   const repairMode = Boolean(flags.fleetRepairAny);
   const repairFieldMode =
     workerMode && Boolean(flags.fleetRepairMechanic || flags.fleetRepairTeamLeader);
-  const canOpenAutoBase = canAccessAutoBaseOverview(roleContext);
   const canOpenGarbageSettings = canAccessGarbageTransportSettings(roleContext, departmentScopeName);
   const canOpenGeneralSettings = roleContext.role === "system_admin";
   const canOpenProcurement = canAccessProcurementModule(roleContext);
@@ -481,16 +475,6 @@ export function AppMenu({
     ...hrItems,
     ...roleFocusedItems,
     ...departmentItems,
-    ...(canOpenAutoBase
-      ? [
-          {
-            key: "auto-base",
-            href: "/auto-base",
-            label: "Авто бааз",
-            icon: Truck,
-          },
-        ]
-      : []),
     ...(showFleetRepair && !roleFocusedItems.some((item) => item.key === "fleet-repair")
       ? [
           {
@@ -634,28 +618,10 @@ export function AppMenu({
       icon: CalendarDays,
     },
     {
-      key: "garbage-teams",
-      href: "/settings/garbage-transport#teams",
-      label: "Багууд",
-      icon: Users,
-    },
-    {
-      key: "garbage-vehicles",
-      href: "/settings/garbage-transport#vehicles",
-      label: "Машин",
+      key: "auto-base",
+      href: "/auto-base",
+      label: "Авто бааз",
       icon: Truck,
-    },
-    {
-      key: "garbage-routes",
-      href: "/garbage-routes/weekly-plan",
-      label: "Хог тээврийн маршрут",
-      icon: Flag,
-    },
-    {
-      key: "garbage-route-settings",
-      href: "/settings/garbage-transport#routes",
-      label: "Маршрут",
-      icon: Flag,
     },
     {
       key: "garbage-points",
@@ -737,12 +703,6 @@ export function AppMenu({
       return true;
     }
     if (active === "garbage-settings" && item.key === "garbage-settings") {
-      return true;
-    }
-    if (active === "garbage-routes" && item.key === "garbage-routes") {
-      return true;
-    }
-    if (active === "garbage-vehicles" && item.href.startsWith("/settings/garbage-transport#vehicles")) {
       return true;
     }
     if (active === "field" && item.href === "/field") {

@@ -1129,6 +1129,7 @@ function RightPanel({
 type ExecutiveMetric = {
   label: string;
   value: string;
+  note?: string;
   progress: number;
   icon: LucideIcon;
   tone: "green" | "orange" | "blue" | "purple" | "red";
@@ -1203,6 +1204,9 @@ function ExecutiveMetricCard({ metric }: { metric: ExecutiveMetric }) {
       <div className={dashboardStyles.executiveMetricBody}>
         <div>
           <span className={dashboardStyles.executiveMetricValue}>{metric.value}</span>
+          {metric.note ? (
+            <small className={dashboardStyles.executiveMetricNote}>{metric.note}</small>
+          ) : null}
         </div>
         {metric.progress > 0 && metric.progress < 100 ? (
           <ExecutiveRing value={metric.progress} tone={metric.tone} />
@@ -1425,7 +1429,7 @@ function ExecutiveDashboardView({
   weather: WeatherSnapshot;
 }) {
   const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
-  const hrUsage = percent(hrAttendanceSummary.workingToday, hrAttendanceSummary.totalEmployees);
+  const unavailableHrEmployees = hrAttendanceSummary.sickToday + hrAttendanceSummary.leaveToday;
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
   const overdueRate = percent(overdueTasks, totalTasks);
   const activeTasks = Math.max(totalTasks - completedTasks, workingTasks + reviewTasks);
@@ -1445,9 +1449,10 @@ function ExecutiveDashboardView({
       tone: "blue",
     },
     {
-      label: "хүний нөөцийн ашиглалт",
-      value: `${hrUsage}%`,
-      progress: hrUsage,
+      label: "хүний нөөц",
+      value: String(unavailableHrEmployees),
+      note: `Өвчтэй ${hrAttendanceSummary.sickToday} / Чөлөөтэй ${hrAttendanceSummary.leaveToday}`,
+      progress: 0,
       icon: UsersRound,
       tone: "green",
     },

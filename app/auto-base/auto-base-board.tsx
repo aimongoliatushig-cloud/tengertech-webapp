@@ -1,14 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useMemo, useState, type CSSProperties } from "react";
 
 import { updateFleetVehicleAction } from "./actions";
 
 import styles from "./page.module.css";
-
-const AUTO_GARBAGE_DEPARTMENT_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
 
 type FleetVehicleCrewAssignment = {
   teamId: number;
@@ -247,20 +244,6 @@ function VehicleThumbnail({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
   );
 }
 
-function getTodayValue() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function buildGarbageTaskHref(vehicle: FleetVehicleBoardItem) {
-  const params = new URLSearchParams({
-    department: AUTO_GARBAGE_DEPARTMENT_NAME,
-    vehicle: String(vehicle.id),
-    date: getTodayValue(),
-  });
-
-  return `/projects/new?${params.toString()}`;
-}
-
 function VehicleList({
   vehicles,
   emptyLabel,
@@ -306,13 +289,6 @@ function VehicleList({
                 : "Хуваарилсан хүнгүй"}
             </span>
           </button>
-          {vehicle.isRepair ? (
-            <span className={styles.vehicleTaskLinkDisabled}>Засвартай машин</span>
-          ) : (
-            <Link className={styles.vehicleTaskLink} href={buildGarbageTaskHref(vehicle)} prefetch={false}>
-              Даалгавар нэмэх
-            </Link>
-          )}
         </article>
       ))}
     </div>
@@ -773,13 +749,6 @@ function VehicleDetailModal({
             <p>{vehicle.name}</p>
           </div>
           <div className={styles.vehicleModalHeaderActions}>
-            {vehicle.isRepair ? (
-              <span className={styles.vehicleTaskLinkDisabled}>Засвартай машин</span>
-            ) : (
-              <Link className={styles.vehicleTaskLink} href={buildGarbageTaskHref(vehicle)} prefetch={false}>
-                Даалгавар нэмэх
-              </Link>
-            )}
             <button type="button" className={styles.vehicleModalClose} onClick={onClose}>
               Хаах
             </button>

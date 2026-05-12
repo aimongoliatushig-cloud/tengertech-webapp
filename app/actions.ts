@@ -181,6 +181,12 @@ async function assertCanReviewTaskAction(
       "Өөрт оноогдсон ажил эсвэл өөрийн илгээсэн тайланг өөрөө хянах боломжгүй.",
     );
   }
+
+  return task;
+}
+
+function isGarbageTransportTaskOperation(operationType: string) {
+  return operationType === "garbage" || operationType === "garbage_seasonal";
 }
 
 function getConnectionOverrides() {
@@ -1326,17 +1332,20 @@ export async function createProjectAction(formData: FormData) {
         },
         connectionOverrides,
       );
-      await assignSeasonalPlanVehicles(result.planId, normalizedLines, connectionOverrides).catch((error) => {
-        console.warn("Ad hoc work vehicle assignment failed:", error);
-      });
+      if (!result.fallbackProjectId) {
+        await assignSeasonalPlanVehicles(result.planId, normalizedLines, connectionOverrides).catch((error) => {
+          console.warn("Ad hoc work vehicle assignment failed:", error);
+        });
+      }
 
       revalidatePath("/");
       revalidatePath("/projects");
       revalidatePath("/tasks");
       revalidatePath("/projects/new");
-      revalidatePath(`/projects/seasonal/${result.planId}`);
+      const redirectHref = result.redirectHref || `/projects/seasonal/${result.planId}`;
+      revalidatePath(redirectHref);
       redirect(
-        `/projects/seasonal/${result.planId}?notice=${encodeURIComponent(
+        `${redirectHref}?notice=${encodeURIComponent(
           result.message || "Гэнэтийн ажил амжилттай үүслээ.",
         )}`,
       );
@@ -2362,7 +2371,14 @@ export async function submitTaskForReviewAction(formData: FormData) {
       login: session.login,
       password: session.password,
     };
-    await assertCanReviewTaskAction(taskId, session, connectionOverrides);
+    const task = await assertCanReviewTaskAction(taskId, session, connectionOverrides);
+    if (isGarbageTransportTaskOperation(task.operationType)) {
+      redirectWithMessage(
+        `/tasks/${taskId}`,
+        "error",
+        "Хог тээвэрлэлтийн даалгаврыг зөвхөн жолооч эсвэл ачигч тайлан оруулж хяналт руу илгээнэ.",
+      );
+    }
     const reviewConnectionOverrides = await sendTaskToReviewWithSystemFallback(
       taskId,
       {},

@@ -151,8 +151,12 @@ export function isGarbageDepartmentHead(context: RoleContext, departmentName?: s
   );
 }
 
-export function canAccessAutoBaseOverview(context: RoleContext) {
-  return Boolean(isSystemAdmin(context) || isExecutiveContext(context));
+export function canAccessAutoBaseOverview(context: RoleContext, departmentName?: string | null) {
+  return Boolean(
+    isSystemAdmin(context) ||
+      isExecutiveContext(context) ||
+      isGarbageDepartmentHead(context, departmentName)
+  );
 }
 
 export function canAccessGarbageTransportSettings(
@@ -162,6 +166,7 @@ export function canAccessGarbageTransportSettings(
   const groupFlags = normalizeGroupFlags(context.groupFlags);
   return Boolean(
     isSystemAdmin(context) ||
+      context.role === "general_manager" ||
       groupFlags.mfoManager ||
       groupFlags.mfoDispatcher ||
       ((context.role === "project_manager" || groupFlags.municipalDepartmentHead) &&

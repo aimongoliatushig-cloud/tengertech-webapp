@@ -2,10 +2,7 @@ import { redirect } from "next/navigation";
 import {
   Bell,
   MapPin,
-  Route,
   ShieldCheck,
-  Truck,
-  Users,
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
@@ -43,9 +40,6 @@ type DepartmentRecord = {
 };
 
 const SETTING_TABS = [
-  { href: "#teams", label: "Баг", icon: Users },
-  { href: "#vehicles", label: "Машин", icon: Truck },
-  { href: "#routes", label: "Маршрут", icon: Route },
   { href: "#inspectors", label: "Тээвэрлэлтийн хяналтын ажилтан", icon: ShieldCheck },
   { href: "#points", label: "Хороо / хогийн цэг", icon: MapPin },
   { href: "#notifications", label: "Мэдэгдэл", icon: Bell },
@@ -194,7 +188,6 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
   const statCards = [
     { label: "Хяналтын ажилтан", value: inspectorScopeData.inspectors.length, detail: "Scope оноох ажилтан" },
     { label: "Хогийн цэг", value: routeData.points.length, detail: "Бүртгэлтэй цэг" },
-    { label: "Машин", value: inspectorScopeData.vehicles.length, detail: "Жолооч, ачигчтай техник" },
   ];
 
   return (
@@ -265,72 +258,6 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
               </nav>
 
               <div className={styles.tabPanels}>
-            <section id="teams" className={`${styles.sectionCard} ${styles.tabPanel}`}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <span className={styles.eyebrow}>Багийн тохиргоо</span>
-                  <h2>Багууд</h2>
-                </div>
-                <span className={styles.countPill}>{routeData.teams.length} баг</span>
-              </div>
-              <div className={styles.cardList}>
-                {routeData.teams.length ? (
-                  routeData.teams.map((team) => (
-                    <article key={team.id} className={styles.listCard}>
-                      <strong>{team.label}</strong>
-                      <small>Хог тээвэрлэлтийн баг</small>
-                    </article>
-                  ))
-                ) : (
-                  <p className={styles.emptyState}>Одоогоор бүртгэлтэй баг алга.</p>
-                )}
-              </div>
-            </section>
-
-            <section id="vehicles" className={`${styles.sectionCard} ${styles.tabPanel}`}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <span className={styles.eyebrow}>Машины тохиргоо</span>
-                  <h2>Машин</h2>
-                </div>
-                <span className={styles.countPill}>{routeData.vehicles.length} машин</span>
-              </div>
-              <div className={styles.cardList}>
-                {routeData.vehicles.length ? (
-                  routeData.vehicles.map((vehicle) => (
-                    <article key={vehicle.id} className={styles.listCard}>
-                      <strong>{vehicle.label}</strong>
-                      <small>Хог тээвэрлэлтийн машин</small>
-                    </article>
-                  ))
-                ) : (
-                  <p className={styles.emptyState}>Одоогоор бүртгэлтэй машин алга.</p>
-                )}
-              </div>
-            </section>
-
-            <section id="routes" className={`${styles.sectionCard} ${styles.tabPanel}`}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <span className={styles.eyebrow}>Маршрутын тохиргоо</span>
-                  <h2>Маршрут</h2>
-                </div>
-                <span className={styles.countPill}>{routeData.routes.length} маршрут</span>
-              </div>
-              <div className={styles.cardList}>
-                {routeData.routes.length ? (
-                  routeData.routes.map((route) => (
-                    <article key={route.id} className={styles.listCard}>
-                      <strong>{route.name || route.code}</strong>
-                      <small>{route.pointCount} цэг · {route.subdistrictNames || "Хороо оноогоогүй"}</small>
-                    </article>
-                  ))
-                ) : (
-                  <p className={styles.emptyState}>Одоогоор бүртгэлтэй маршрут алга.</p>
-                )}
-              </div>
-            </section>
-
             <section id="inspectors" className={`${styles.sectionCard} ${styles.tabPanel}`}>
               <div className={styles.sectionHeader}>
                 <div>

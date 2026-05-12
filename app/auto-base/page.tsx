@@ -44,7 +44,7 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const scopedDepartmentName = await loadSessionDepartmentName(session);
 
-  if (!canAccessAutoBaseOverview(session)) {
+  if (!canAccessAutoBaseOverview(session, scopedDepartmentName)) {
     redirect("/");
   }
 
@@ -130,10 +130,6 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
                   <span className={styles.eyebrow}>Машины төлөв</span>
                   <h1>Авто баазын самбар</h1>
                 </div>
-                <p>
-                  Гар утсан дээр эхлээд ангиллаа сонгож, дараа нь тухайн төлөвт
-                  байгаа машины жагсаалтыг төвлөрүүлж харна.
-                </p>
               </div>
 
               <AutoBaseBoard

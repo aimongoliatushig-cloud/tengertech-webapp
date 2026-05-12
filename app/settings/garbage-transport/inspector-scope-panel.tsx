@@ -120,10 +120,32 @@ export function InspectorScopePanel({
     inspectorId: activeInspector?.id ?? 0,
     ids: selectedSubdistrictIds,
   });
+  const [pointSelection, setPointSelection] = useState<{
+    inspectorId: number;
+    ids: Set<number>;
+  }>({
+    inspectorId: activeInspector?.id ?? 0,
+    ids: selectedPointIds,
+  });
+  const [vehicleSelection, setVehicleSelection] = useState<{
+    inspectorId: number;
+    ids: Set<number>;
+  }>({
+    inspectorId: activeInspector?.id ?? 0,
+    ids: selectedVehicleIds,
+  });
   const checkedSubdistrictIds =
     subdistrictSelection.inspectorId === activeInspector?.id
       ? subdistrictSelection.ids
       : selectedSubdistrictIds;
+  const checkedPointIds =
+    pointSelection.inspectorId === activeInspector?.id
+      ? pointSelection.ids
+      : selectedPointIds;
+  const checkedVehicleIds =
+    vehicleSelection.inspectorId === activeInspector?.id
+      ? vehicleSelection.ids
+      : selectedVehicleIds;
 
   const visiblePoints = useMemo(() => {
     if (!checkedSubdistrictIds.size) {
@@ -131,6 +153,11 @@ export function InspectorScopePanel({
     }
     return points.filter((point) => point.subdistrictId && checkedSubdistrictIds.has(point.subdistrictId));
   }, [checkedSubdistrictIds, points]);
+  const visiblePointIds = useMemo(() => new Set(visiblePoints.map((point) => point.id)), [visiblePoints]);
+  const checkedVisiblePointIds = useMemo(
+    () => new Set(Array.from(checkedPointIds).filter((pointId) => visiblePointIds.has(pointId))),
+    [checkedPointIds, visiblePointIds],
+  );
 
   if (!inspectors.length) {
     return (
@@ -165,9 +192,20 @@ export function InspectorScopePanel({
               <strong>{activeInspector.name}</strong>
               {activeInspector.meta ? <small>{activeInspector.meta}</small> : null}
             </div>
-            <span className={styles.countPill}>
-              {selectedSubdistrictIds.size + selectedPointIds.size + selectedVehicleIds.size} оноолт
-            </span>
+            <div className={styles.scopeCountGrid} aria-label="Оноосон scope-ийн тоо">
+              <span className={styles.scopeCountPill}>
+                <b>{checkedSubdistrictIds.size}</b>
+                <small>хороо</small>
+              </span>
+              <span className={styles.scopeCountPill}>
+                <b>{checkedVisiblePointIds.size}</b>
+                <small>хогийн цэг</small>
+              </span>
+              <span className={styles.scopeCountPill}>
+                <b>{checkedVehicleIds.size}</b>
+                <small>машин</small>
+              </span>
+            </div>
           </div>
 
           <div className={styles.scopeColumns}>
@@ -191,11 +229,17 @@ export function InspectorScopePanel({
               <ScopeChecklist
                 name="scope_point_ids"
                 options={visiblePoints}
-                selectedIds={selectedPointIds}
+                selectedIds={checkedVisiblePointIds}
                 emptyLabel={
                   checkedSubdistrictIds.size
                     ? "Сонгосон хороонд хогийн цэг бүртгэгдээгүй байна."
                     : "Эхлээд хянах хороогоо сонгоно уу."
+                }
+                onSelectionChange={(nextIds) =>
+                  setPointSelection({
+                    inspectorId: activeInspector.id,
+                    ids: nextIds,
+                  })
                 }
               />
             </section>
@@ -204,8 +248,14 @@ export function InspectorScopePanel({
               <ScopeChecklist
                 name="scope_vehicle_ids"
                 options={vehicles}
-                selectedIds={selectedVehicleIds}
+                selectedIds={checkedVehicleIds}
                 emptyLabel="Машин бүртгэгдээгүй байна. Жолооч, ачигчийн мэдээлэл машин дээр хадгалагдана."
+                onSelectionChange={(nextIds) =>
+                  setVehicleSelection({
+                    inspectorId: activeInspector.id,
+                    ids: nextIds,
+                  })
+                }
               />
             </section>
           </div>

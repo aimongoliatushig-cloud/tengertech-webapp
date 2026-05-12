@@ -1,14 +1,7 @@
-import { GarbageRoutePage } from "../_components/garbage-route-page";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default function WeeklyPlanPage() {
-  return (
-    <GarbageRoutePage
-      title="Долоо хоногийн төлөвлөгөө"
-      eyebrow="Төлөвлөлт"
-      description="Хог тээврийн баг, машин, маршрутын долоо хоногийн төлөвлөгөөг удирдах хэсэг."
-      isAllowed={(permissions) => permissions.weekly_create || permissions.weekly_edit}
-    />
-  );
+  redirect("/settings/garbage-transport#vehicles");
 }
