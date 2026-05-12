@@ -22,6 +22,9 @@ type OdooFieldInfo = {
 
 type OdooFieldMap = Record<string, OdooFieldInfo>;
 
+const MAX_PROFILE_PHOTO_SIZE = 5 * 1024 * 1024;
+const ALLOWED_PROFILE_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 function cleanInput(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -126,6 +129,46 @@ function parsePositiveIds(values: FormDataEntryValue[]) {
     .filter((value) => Number.isInteger(value) && value > 0);
 }
 
+function getOptionalImageFile(formData: FormData, key: string) {
+  const value = formData.get(key);
+  if (!(value instanceof File) || value.size === 0) {
+    return null;
+  }
+
+  return value;
+}
+
+async function findCurrentEmployeeId(
+  uid: number,
+  connection: Partial<OdooConnection>,
+) {
+  const employees = await executeOdooKw<Array<{ id: number }>>(
+    "hr.employee",
+    "search_read",
+    [[["user_id", "=", uid]]],
+    { fields: ["id"], limit: 1 },
+    connection,
+  ).catch(() => []);
+
+  return employees[0]?.id ?? null;
+}
+
+async function writeProfilePhoto(
+  model: "hr.employee" | "res.users",
+  id: number,
+  imageBase64: string,
+  connection: Partial<OdooConnection>,
+) {
+  const fields = await getModelFields(model, connection);
+  const values = pickSupportedValues({ image_1920: imageBase64 }, fields);
+
+  if (!values.image_1920) {
+    throw new Error(`${model} image_1920 field is not writable`);
+  }
+
+  return executeOdooKw<boolean>(model, "write", [[id], values], {}, connection);
+}
+
 function pickTeamOperationType(fields: OdooFieldMap | null, departmentName: string | null) {
   const normalizedDepartment = normalizeDepartmentText(departmentName);
   const preferredValues = isAutoGarbageDepartment(departmentName)
@@ -185,6 +228,63 @@ async function changeOdooPassword(
     {},
     connection,
   );
+}
+
+export async function updateProfilePhotoAction(formData: FormData) {
+  const session = await requireSession();
+  const photo = getOptionalImageFile(formData, "profile_photo");
+
+  if (!photo) {
+    redirectToProfile("error", "Профайл зураг сонгоно уу.", "profile-photo");
+  }
+
+  if (!ALLOWED_PROFILE_PHOTO_TYPES.has(photo.type)) {
+    redirectToProfile(
+      "error",
+      "Зөвхөн JPG, PNG эсвэл WebP зураг оруулна уу.",
+      "profile-photo",
+    );
+  }
+
+  if (photo.size > MAX_PROFILE_PHOTO_SIZE) {
+    redirectToProfile("error", "Профайл зураг 5MB-аас бага байх ёстой.", "profile-photo");
+  }
+
+  const connection = getSessionConnection(session);
+  const imageBase64 = Buffer.from(await photo.arrayBuffer()).toString("base64");
+  const employeeId = await findCurrentEmployeeId(session.uid, connection);
+  let employeeWriteError: unknown = null;
+
+  if (employeeId) {
+    try {
+      await writeProfilePhoto("hr.employee", employeeId, imageBase64, connection);
+      revalidatePath("/");
+      revalidatePath("/profile");
+      revalidatePath("/hr");
+      redirectToProfile("notice", "Профайл зураг амжилттай шинэчлэгдлээ.", "profile-photo");
+    } catch (error) {
+      employeeWriteError = error;
+      console.warn("Failed to update current employee photo, retrying res.users", error);
+    }
+  }
+
+  try {
+    await writeProfilePhoto("res.users", session.uid, imageBase64, connection);
+  } catch (error) {
+    console.error("Failed to update current user's profile photo", {
+      employeeWriteError,
+      userWriteError: error,
+    });
+    redirectToProfile(
+      "error",
+      "Профайл зураг хадгалах үед Odoo дээр алдаа гарлаа.",
+      "profile-photo",
+    );
+  }
+
+  revalidatePath("/");
+  revalidatePath("/profile");
+  redirectToProfile("notice", "Профайл зураг амжилттай шинэчлэгдлээ.", "profile-photo");
 }
 
 export async function changeProfilePasswordAction(formData: FormData) {

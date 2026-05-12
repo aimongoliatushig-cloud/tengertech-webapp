@@ -1,8 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { createPortal, useFormStatus } from "react-dom";
-import { CheckCircle2, ChevronRight, Clock3, Plus, Truck, X } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  Info,
+  Plus,
+  Truck,
+  X,
+} from "lucide-react";
 
 import { createProjectAction } from "@/app/actions";
 import dashboardStyles from "@/app/dashboard-view.module.css";
@@ -84,6 +92,51 @@ function taskStatusLabel(task: DashboardSnapshot["taskDirectory"][number]) {
   return "Хүлээгдэж буй";
 }
 
+function VehicleLogo({ src }: { src?: string }) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const failed = Boolean(src && failedSrc === src);
+
+  useEffect(() => {
+    if (!src) {
+      return;
+    }
+
+    let active = true;
+    const probe = new window.Image();
+    probe.onload = () => {
+      if (active && probe.naturalWidth <= 0) {
+        setFailedSrc(src);
+      }
+    };
+    probe.onerror = () => {
+      if (active) {
+        setFailedSrc(src);
+      }
+    };
+    probe.src = src;
+
+    return () => {
+      active = false;
+    };
+  }, [src]);
+
+  if (!src || failed) {
+    return <Truck aria-hidden />;
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      onError={(event) => {
+        event.currentTarget.style.display = "none";
+        setFailedSrc(src);
+      }}
+    />
+  );
+}
+
 function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
 
@@ -161,6 +214,10 @@ export function DashboardInspectorVehiclePanel({
       const progress = total
         ? Math.round(todayTasks.reduce((sum, task) => sum + Math.max(0, Math.min(100, task.progress)), 0) / total)
         : 0;
+      const isStopped =
+        boardVehicle?.isRepair || boardVehicle?.isArchived || boardVehicle?.isOperational === false;
+      const statusTone = total ? "green" : isStopped ? "red" : "amber";
+      const statusLabel = total ? "Ажиллаж байна" : isStopped ? "Зогсолттой" : "Ачаалалтай";
       const todayWeight =
         boardVehicle?.weightReports.find((report) => report.reportDate === workDate)?.weightLabel ??
         "0 кг";
@@ -175,6 +232,8 @@ export function DashboardInspectorVehiclePanel({
         pending: Math.max(total - done, 0),
         progress,
         weightLabel: todayWeight,
+        statusTone,
+        statusLabel,
       };
     });
   }, [fleetBoard.allVehicles, tasks, vehicles, workDate]);
@@ -217,6 +276,60 @@ export function DashboardInspectorVehiclePanel({
     setSelectedPointIds([]);
   }
 
+  function renderVehicleDetail(className?: string) {
+    if (!activeSummary) {
+      return null;
+    }
+
+    return (
+      <section className={cn(dashboardStyles.inspectorVehicleDetail, className)}>
+        <div className={dashboardStyles.inspectorVehicleDetailHeader}>
+          <div>
+            <span>Сонгосон өдрийн ажил</span>
+            <h3>{activeSummary.plate} / {workDate}</h3>
+          </div>
+          <button type="button" onClick={() => openTaskModal(activeSummary.vehicle.id)}>
+            <Plus aria-hidden />
+            Даалгавар нэмэх
+          </button>
+        </div>
+
+        <div className={dashboardStyles.inspectorVehicleSummaryRow}>
+          <span><strong>{activeSummary.total}</strong> даалгавар</span>
+          <span><strong>{activeSummary.done}</strong> дууссан</span>
+          <span><strong>{activeSummary.pending}</strong> гүйцэтгээгүй</span>
+          <span><strong>{activeSummary.weightLabel}</strong> ачаа</span>
+        </div>
+
+        <div className={dashboardStyles.inspectorTaskRows}>
+          {activeSummary.tasks.slice(0, 8).map((task) => {
+            const done = isDoneTask(task);
+            return (
+              <a key={task.id} href={task.href} className={dashboardStyles.inspectorTaskRow}>
+                <span className={cn(
+                  dashboardStyles.inspectorTaskStatusIcon,
+                  done && dashboardStyles.inspectorTaskStatusIconDone,
+                )}>
+                  {done ? <CheckCircle2 /> : <Clock3 />}
+                </span>
+                <span>
+                  <strong>{fixMojibakeText(task.name)}</strong>
+                  <small>{taskStatusLabel(task)}</small>
+                </span>
+                <ChevronRight />
+              </a>
+            );
+          })}
+          {!activeSummary.tasks.length ? (
+            <p className={dashboardStyles.inspectorEmptyNote}>
+              Энэ машин дээр сонгосон өдөр даалгавар нэмэгдээгүй байна.
+            </p>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <>
       <Card id="my-vehicles" className={dashboardStyles.taskListCard}>
@@ -242,12 +355,18 @@ export function DashboardInspectorVehiclePanel({
 
         {vehicles.length ? (
           <>
+            {activeSummary && !activeSummary.total ? (
+              <div className={dashboardStyles.inspectorVehicleNotice}>
+                <Info aria-hidden />
+                <span>Энэ машин дээр сонгосон өдөр даалгавар нэмэгдээгүй байна.</span>
+              </div>
+            ) : null}
             <div className={dashboardStyles.assignedVehicleGrid}>
               {vehicleSummaries.map((summary) => {
                 const isActive = activeSummary?.vehicle.id === summary.vehicle.id;
                 return (
+                  <Fragment key={summary.vehicle.id}>
                   <button
-                    key={summary.vehicle.id}
                     type="button"
                     className={cn(
                       dashboardStyles.assignedVehicleCard,
@@ -256,17 +375,24 @@ export function DashboardInspectorVehiclePanel({
                     onClick={() => setActiveVehicleId(summary.vehicle.id)}
                   >
                     <span className={dashboardStyles.assignedVehicleIcon}>
-                      {summary.boardVehicle?.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={summary.boardVehicle.imageUrl} alt="" />
-                      ) : (
-                        <Truck />
-                      )}
+                      <VehicleLogo src={summary.boardVehicle?.imageUrl} />
                     </span>
                     <span className={dashboardStyles.assignedVehicleContent}>
                       <strong>{summary.plate}</strong>
                       <small>{workDate}</small>
                     </span>
+                    <span
+                      className={cn(
+                        dashboardStyles.assignedVehicleStatus,
+                        summary.statusTone === "green" && dashboardStyles.assignedVehicleStatusGreen,
+                        summary.statusTone === "amber" && dashboardStyles.assignedVehicleStatusAmber,
+                        summary.statusTone === "red" && dashboardStyles.assignedVehicleStatusRed,
+                      )}
+                    >
+                      <i aria-hidden />
+                      {summary.statusLabel}
+                    </span>
+                    <ChevronRight className={dashboardStyles.assignedVehicleChevron} aria-hidden />
                     <span className={dashboardStyles.assignedVehicleStats}>
                       <span>
                         <small>Даалгавар</small>
@@ -289,57 +415,13 @@ export function DashboardInspectorVehiclePanel({
                       <i style={{ inlineSize: `${summary.progress}%` }} />
                     </span>
                   </button>
+                  {isActive ? renderVehicleDetail(dashboardStyles.inspectorVehicleDetailMobile) : null}
+                  </Fragment>
                 );
               })}
             </div>
 
-            {activeSummary ? (
-              <section className={dashboardStyles.inspectorVehicleDetail}>
-                <div className={dashboardStyles.inspectorVehicleDetailHeader}>
-                  <div>
-                    <span>Сонгосон өдрийн ажил</span>
-                    <h3>{activeSummary.plate} / {workDate}</h3>
-                  </div>
-                  <button type="button" onClick={() => openTaskModal(activeSummary.vehicle.id)}>
-                    <Plus aria-hidden />
-                    Даалгавар нэмэх
-                  </button>
-                </div>
-
-                <div className={dashboardStyles.inspectorVehicleSummaryRow}>
-                  <span><strong>{activeSummary.total}</strong> даалгавар</span>
-                  <span><strong>{activeSummary.done}</strong> дууссан</span>
-                  <span><strong>{activeSummary.pending}</strong> хүлээгдэж буй</span>
-                  <span><strong>{activeSummary.weightLabel}</strong> ачаа</span>
-                </div>
-
-                <div className={dashboardStyles.inspectorTaskRows}>
-                  {activeSummary.tasks.slice(0, 8).map((task) => {
-                    const done = isDoneTask(task);
-                    return (
-                      <a key={task.id} href={task.href} className={dashboardStyles.inspectorTaskRow}>
-                        <span className={cn(
-                          dashboardStyles.inspectorTaskStatusIcon,
-                          done && dashboardStyles.inspectorTaskStatusIconDone,
-                        )}>
-                          {done ? <CheckCircle2 /> : <Clock3 />}
-                        </span>
-                        <span>
-                          <strong>{fixMojibakeText(task.name)}</strong>
-                          <small>{taskStatusLabel(task)}</small>
-                        </span>
-                        <ChevronRight />
-                      </a>
-                    );
-                  })}
-                  {!activeSummary.tasks.length ? (
-                    <p className={dashboardStyles.inspectorEmptyNote}>
-                      Энэ машин дээр өнөөдөр даалгавар нэмэгдээгүй байна.
-                    </p>
-                  ) : null}
-                </div>
-              </section>
-            ) : null}
+            {renderVehicleDetail(dashboardStyles.inspectorVehicleDetailDesktop)}
           </>
         ) : (
           <div className={dashboardStyles.taskListEmpty}>

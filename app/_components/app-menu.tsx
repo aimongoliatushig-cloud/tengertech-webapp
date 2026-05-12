@@ -195,7 +195,7 @@ function getDockLabel(key: string) {
     case "field":
       return "Мэдэгдэл";
     case "profile":
-      return "Тохиргоо";
+      return "Профайл";
     default:
       return "Цэс";
   }
@@ -719,7 +719,7 @@ export function AppMenu({
             { key: "tasks", href: "/tasks", label: "Ажил", icon: ListChecks },
             { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
             { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
-            { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
+            { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
           ]
         : environmentFieldMode
           ? [
@@ -727,7 +727,7 @@ export function AppMenu({
               { key: "tasks", href: "/tasks", label: "\u0410\u0436\u0438\u043B", icon: ListChecks },
               { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
               { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
-              { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
+              { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
             ]
           : repairFieldMode
             ? [
@@ -735,14 +735,14 @@ export function AppMenu({
                 { key: "fleet-repair", href: "/fleet-repair/requests", label: "\u0417\u0430\u0441\u0432\u0430\u0440", icon: Wrench },
                 { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
                 { key: "review", href: "/notifications", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
-                { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
+                { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
               ]
             : [
                 { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard, hardNavigate: true },
                 { key: "tasks", href: "/tasks", label: "\u0410\u0436\u0438\u043B", icon: ListChecks },
                 { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
                 { key: "review", href: reviewHref, label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
-                { key: "profile", href: "/profile", label: "\u0422\u043E\u0445\u0438\u0440\u0433\u043E\u043E", icon: Settings },
+                { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
               ]
       : [
           { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
@@ -865,6 +865,15 @@ export function AppMenu({
         </button>
 
         <Link
+          href="/notifications"
+          className={styles.mobileNotification}
+          aria-label={`${notificationCount} мэдэгдэл харах`}
+        >
+          <Bell aria-hidden />
+          {notificationCount > 0 ? <span>{notificationCount}</span> : null}
+        </Link>
+
+        <Link
           href="/profile"
           className={styles.mobileProfile}
         >
@@ -891,6 +900,29 @@ export function AppMenu({
               </button>
             </div>
             {menuList}
+            <div className={styles.mobileSheetFooter}>
+              <Link href="/profile" className={styles.mobileSheetProfile} onClick={() => setIsOpen(false)}>
+                <span className={styles.profileAvatar} aria-hidden>
+                  {getInitials(userName)}
+                </span>
+                <span>
+                  <strong>{userName}</strong>
+                  <small>{roleLabel}</small>
+                </span>
+              </Link>
+              <div className={styles.mobileSheetActions}>
+                <Link href="/profile" className={styles.mobileSheetAction} onClick={() => setIsOpen(false)}>
+                  <Settings aria-hidden />
+                  <span>Тохиргоо</span>
+                </Link>
+                <form action="/auth/logout" method="post">
+                  <button type="submit" className={styles.mobileSheetAction}>
+                    <LogOut aria-hidden />
+                    <span>Гарах</span>
+                  </button>
+                </form>
+              </div>
+            </div>
           </aside>
         </>
       ) : null}

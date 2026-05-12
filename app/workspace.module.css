@@ -4004,11 +4004,15 @@
 
 @media (max-width: 720px) {
   .shell {
-    padding: 0 0 calc(88px + env(safe-area-inset-bottom, 0px));
+    overflow-x: clip;
+    padding: 0;
   }
 
   .pageContent {
-    padding-bottom: 112px;
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+    padding: 0 10px calc(120px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -4375,7 +4379,7 @@
   .workspaceMain,
   .pageContent,
   .mainColumn {
-    padding: 0 12px 96px;
+    padding: 0 10px calc(120px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -4697,15 +4701,41 @@
   .pageContent,
   .workspaceMain,
   .mainColumn {
-    padding: 0 18px 104px;
+    padding: 0 10px calc(120px + env(safe-area-inset-bottom, 0px));
   }
 }
 
 @media (max-width: 720px) {
+  .shell {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .contentWithMenu {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .menuColumn {
+    width: 100%;
+    max-width: 100vw;
+    min-width: 0;
+  }
+
   .pageContent,
   .workspaceMain,
   .mainColumn {
-    padding: 0 12px 112px;
+    width: 100%;
+    max-width: 100vw;
+    min-width: 0;
+    overflow-x: clip;
+    overflow-y: visible;
+    padding: 0 10px calc(120px + env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
   }
 
   .workspaceSection,
@@ -5133,7 +5163,7 @@
   .pageContent,
   .workspaceMain,
   .mainColumn {
-    padding: 0 18px 104px;
+    padding: 0 18px calc(120px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -5141,7 +5171,7 @@
   .pageContent,
   .workspaceMain,
   .mainColumn {
-    padding: 0 12px 112px;
+    padding: 0 10px calc(120px + env(safe-area-inset-bottom, 0px));
   }
 
   .workspaceSection,

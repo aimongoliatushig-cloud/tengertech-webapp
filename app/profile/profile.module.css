@@ -27,6 +27,35 @@
   font-weight: 700;
 }
 
+.avatarFrame {
+  display: inline-grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  overflow: hidden;
+  border: 1px solid rgba(74, 154, 93, 0.16);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 22px rgba(28, 71, 39, 0.08);
+}
+
+.avatarFrameCompact {
+  width: 56px;
+  height: 56px;
+}
+
+.avatarFrame .avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .identityCopy {
   display: grid;
   gap: 6px;
@@ -86,6 +115,411 @@
   font-size: 0.88rem;
   font-weight: 700;
   text-align: center;
+}
+
+.profilePhotoForm {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.photoField {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: var(--ink-800);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.photoField input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid rgba(74, 154, 93, 0.18);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--ink-900);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.photoField input::file-selector-button {
+  min-height: 30px;
+  margin-right: 10px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.14);
+  color: var(--brand-900);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.profilePhotoForm small {
+  grid-column: 1 / -1;
+  color: var(--ink-700);
+  line-height: 1.45;
+}
+
+.profilePhotoPanel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.profilePhotoCopy {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.profilePhotoCopy h2 {
+  margin: 0;
+  color: var(--ink-900);
+  font-size: 1.35rem;
+  line-height: 1.05;
+}
+
+.profilePhotoCopy p {
+  margin: 0;
+  color: var(--ink-700);
+  line-height: 1.55;
+}
+
+.mobileProfileScreen {
+  display: none;
+}
+
+.mobileAvatarForm {
+  position: relative;
+  display: inline-grid;
+  width: 104px;
+  height: 104px;
+  flex: 0 0 auto;
+  place-items: center;
+}
+
+.mobileProfileAvatar {
+  display: grid;
+  width: 104px;
+  height: 104px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #1f8b3a, #2e7d32);
+  color: #fff;
+  font-size: 3.4rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.mobileProfileAvatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mobileCameraButton {
+  position: absolute;
+  right: -2px;
+  bottom: 2px;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: #eef6ef;
+  color: #111b15;
+  box-shadow: 0 8px 18px rgba(27, 73, 38, 0.14);
+  cursor: pointer;
+}
+
+.mobileCameraButton svg {
+  width: 21px;
+  height: 21px;
+  stroke-width: 2.35;
+}
+
+.mobilePhotoInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.mobileProfileTopbar,
+.mobileTopbarActions,
+.mobileSettingsRow,
+.mobileLogoutRow {
+  display: flex;
+  align-items: center;
+}
+
+.mobileProfileTopbar {
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 72px;
+  margin-bottom: 12px;
+}
+
+.mobileProfileTopbar h1 {
+  margin: 0;
+  flex: 1 1 auto;
+  color: #111b15;
+  font-size: 1.82rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.mobileIconButton,
+.mobileBellButton,
+.mobileUserBadge {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 0;
+  text-decoration: none;
+}
+
+.mobileIconButton {
+  width: 38px;
+  height: 38px;
+  background: transparent;
+  color: #111b15;
+  cursor: pointer;
+}
+
+.mobileIconButton svg,
+.mobileBellButton svg {
+  width: 27px;
+  height: 27px;
+  stroke-width: 2.2;
+}
+
+.mobileTopbarActions {
+  gap: 12px;
+}
+
+.mobileBellButton {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  color: #111b15;
+}
+
+.mobileBellButton span {
+  position: absolute;
+  top: -3px;
+  right: 0;
+  display: inline-grid;
+  min-width: 24px;
+  height: 24px;
+  place-items: center;
+  padding: 0 6px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.mobileUserBadge {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #2f8d3b, #137a2c);
+  color: #fff;
+  font-size: 1.34rem;
+  font-weight: 900;
+}
+
+.mobileProfileCard,
+.mobileSettingsCard,
+.mobileLogoutForm {
+  border: 1px solid rgba(17, 27, 21, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 34px rgba(27, 73, 38, 0.06);
+}
+
+.mobileProfileCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  min-width: 0;
+  padding: 28px 22px;
+}
+
+.mobileProfileIdentity {
+  display: grid;
+  min-width: 0;
+  gap: 9px;
+}
+
+.mobileProfileIdentity h2 {
+  margin: 0;
+  color: #111b15;
+  font-size: 1.45rem;
+  font-weight: 900;
+  line-height: 1.08;
+}
+
+.mobileProfileIdentity p {
+  margin: 0 0 4px;
+  color: #697381;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.mobileProfileIdentity span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  color: #5d6673;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.mobileProfileIdentity svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  stroke-width: 2.2;
+}
+
+.mobileProfileChevron {
+  width: 28px;
+  height: 28px;
+  color: #111;
+  stroke-width: 2.25;
+}
+
+.mobileSettingsGroup {
+  display: grid;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.mobileSettingsGroup h2 {
+  margin: 0;
+  color: #6b7280;
+  font-size: 1.14rem;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+.mobileSettingsCard {
+  overflow: hidden;
+}
+
+.mobileSettingsRow,
+.mobileLogoutRow {
+  width: 100%;
+  min-height: 78px;
+  gap: 20px;
+  padding: 0 24px;
+  border: 0;
+  border-bottom: 1px solid rgba(17, 27, 21, 0.08);
+  background: transparent;
+  color: #111b15;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+
+.mobileSettingsRow:last-child,
+.mobileLogoutRow:last-child {
+  border-bottom: 0;
+}
+
+.mobileSettingsRow > svg:first-child,
+.mobileLogoutRow > svg:first-child {
+  width: 27px;
+  height: 27px;
+  flex: 0 0 auto;
+  color: #168532;
+  stroke-width: 2.1;
+}
+
+.mobileSettingsRow span,
+.mobileLogoutRow span {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 1.08rem;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.mobileSettingsRow strong {
+  color: #14822f;
+  font-size: 1rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.mobileSettingsRow > svg:last-child,
+.mobileLogoutRow > svg:last-child {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  color: #111;
+  stroke-width: 2.2;
+}
+
+.mobileToggle {
+  position: relative;
+  width: 50px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+
+.mobileToggle::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 7px rgba(17, 27, 21, 0.14);
+}
+
+.mobileLogoutForm {
+  margin: 0;
+  overflow: hidden;
+}
+
+.mobileLogoutRow {
+  cursor: pointer;
+}
+
+.mobileLogoutRow,
+.mobileLogoutRow > svg:first-child {
+  color: #ef1f1f;
 }
 
 .summaryGrid,
@@ -743,6 +1177,7 @@
   }
 
   .formGrid,
+  .profilePhotoForm,
   .settingsHero,
   .teamBoard,
   .sessionCard {
@@ -779,7 +1214,26 @@
 }
 
 @media (max-width: 720px) {
+  .desktopProfileHeader,
+  .desktopProfileContent {
+    display: none;
+  }
+
+  .mobileProfileScreen {
+    display: grid;
+    gap: 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 6px 0 calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobileProfileTopbar {
+    display: none;
+  }
+
   .identityBlock,
+  .profilePhotoPanel,
   .summaryGrid,
   .linkGrid,
   .capabilityCard,
@@ -797,6 +1251,61 @@
 
   .rolePill {
     justify-self: start;
+  }
+
+  .mobileProfileCard {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 14px;
+    padding: 22px 16px;
+    border-radius: 16px;
+  }
+
+  .mobileAvatarForm,
+  .mobileProfileAvatar {
+    width: 88px;
+    height: 88px;
+  }
+
+  .mobileProfileAvatar {
+    font-size: 2.9rem;
+  }
+
+  .mobileCameraButton {
+    width: 34px;
+    height: 34px;
+  }
+
+  .mobileProfileIdentity h2 {
+    font-size: 1.3rem;
+  }
+
+  .mobileProfileIdentity p {
+    font-size: 0.94rem;
+  }
+
+  .mobileProfileIdentity span {
+    gap: 10px;
+    font-size: 0.88rem;
+  }
+
+  .mobileSettingsRow,
+  .mobileLogoutRow {
+    min-height: 66px;
+    gap: 14px;
+    padding: 0 18px;
+  }
+
+  .mobileSettingsRow span,
+  .mobileLogoutRow span {
+    font-size: 1rem;
+  }
+
+  .profilePhotoForm {
+    padding: 12px;
+  }
+
+  .profilePhotoForm .primaryMiniButton {
+    width: 100%;
   }
 
   .summaryGrid {
@@ -822,6 +1331,20 @@
 
   .capabilityState {
     justify-self: start;
+  }
+}
+
+@media (max-width: 380px) {
+  .mobileProfileCard {
+    grid-template-columns: 1fr auto;
+  }
+
+  .mobileAvatarForm {
+    grid-row: span 2;
+  }
+
+  .mobileProfileIdentity {
+    grid-column: 1 / -1;
   }
 }
 

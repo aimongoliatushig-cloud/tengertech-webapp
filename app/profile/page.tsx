@@ -1,4 +1,20 @@
 import Link from "next/link";
+import Image from "next/image";
+import {
+  Bell,
+  ChevronRight,
+  Download,
+  Globe2,
+  Info,
+  LockKeyhole,
+  LogOut,
+  Mail,
+  Menu,
+  Moon,
+  Phone,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
@@ -13,6 +29,7 @@ import {
   requireSession,
 } from "@/lib/auth";
 import { isAutoGarbageDepartment } from "@/lib/department-permissions";
+import { executeOdooKw, type OdooConnection } from "@/lib/odoo";
 import { getPrimaryAppRole, type RoleGroupFlags } from "@/lib/roles";
 import { loadRouteManagementData } from "@/lib/route-management";
 import { loadTeamManagementData, loadTeamMemberOptions } from "@/lib/team-management";
@@ -23,7 +40,9 @@ import {
   createProfileCollectionPointAction,
   createProfileRouteAction,
   createProfileTeamAction,
+  updateProfilePhotoAction,
 } from "./actions";
+import { ProfilePhotoUpload } from "./profile-photo-upload";
 import styles from "./profile.module.css";
 
 type PageProps = {
@@ -104,6 +123,81 @@ function maskIpAddress(value?: string | null) {
   return value;
 }
 
+type ProfileImageRecord = {
+  id: number;
+  image_128?: string | false;
+  avatar_128?: string | false;
+  image_1920?: string | false;
+  work_email?: string | false;
+  mobile_phone?: string | false;
+  work_phone?: string | false;
+  email?: string | false;
+  phone?: string | false;
+  mobile?: string | false;
+};
+
+function imageDataUrl(value?: string | false) {
+  if (!value) {
+    return "";
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  return trimmed.startsWith("data:") ? trimmed : `data:image/png;base64,${trimmed}`;
+}
+
+async function loadCurrentProfileInfo(
+  session: Awaited<ReturnType<typeof requireSession>>,
+  connection: Partial<OdooConnection>,
+) {
+  const fields = [
+    "id",
+    "image_128",
+    "avatar_128",
+    "image_1920",
+    "work_email",
+    "mobile_phone",
+    "work_phone",
+  ];
+  const employees = await executeOdooKw<ProfileImageRecord[]>(
+    "hr.employee",
+    "search_read",
+    [[["user_id", "=", session.uid]]],
+    { fields, limit: 1 },
+    connection,
+  ).catch(() => []);
+  const employeeImage = imageDataUrl(
+    employees[0]?.image_128 || employees[0]?.avatar_128 || employees[0]?.image_1920,
+  );
+  const employeeEmail = employees[0]?.work_email || "";
+  const employeePhone = employees[0]?.mobile_phone || employees[0]?.work_phone || "";
+
+  if (employeeImage || employeeEmail || employeePhone) {
+    return {
+      imageUrl: employeeImage,
+      email: employeeEmail,
+      phone: employeePhone,
+    };
+  }
+
+  const users = await executeOdooKw<ProfileImageRecord[]>(
+    "res.users",
+    "search_read",
+    [[["id", "=", session.uid]]],
+    { fields: ["id", "image_128", "avatar_128", "image_1920", "email", "phone", "mobile"], limit: 1 },
+    connection,
+  ).catch(() => []);
+
+  return {
+    imageUrl: imageDataUrl(users[0]?.image_128 || users[0]?.avatar_128 || users[0]?.image_1920),
+    email: users[0]?.email || session.login || "",
+    phone: users[0]?.mobile || users[0]?.phone || "",
+  };
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function ProfilePage({ searchParams }: PageProps) {
@@ -164,7 +258,8 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     password: session.password,
   };
   const showFullProfile = !workerMode;
-  const [routeManagementData, teamMemberOptions, teamManagementData] = await Promise.all([
+  const [routeManagementData, teamMemberOptions, teamManagementData, profileInfo] =
+    await Promise.all([
     showFullProfile && canCreateRoute
       ? loadRouteManagementData(connectionOverrides)
       : Promise.resolve(null),
@@ -174,13 +269,43 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     showFullProfile && canCreateTeam
       ? loadTeamManagementData(departmentScopeName, connectionOverrides)
       : Promise.resolve({ teams: [], totalTeams: 0 }),
+    loadCurrentProfileInfo(session, connectionOverrides),
   ]);
+  const profileImageUrl = profileInfo.imageUrl;
 
   const appRoleLabel = getAppRoleLabel(
     getPrimaryAppRole({
       role: session.role,
       groupFlags: session.groupFlags,
     }),
+  );
+  const renderProfileAvatar = (compact = false) => (
+    <span className={`${styles.avatarFrame} ${compact ? styles.avatarFrameCompact : ""}`}>
+      {profileImageUrl ? (
+        <Image
+          src={profileImageUrl}
+          alt={`${session.name} профайл зураг`}
+          width={compact ? 56 : 68}
+          height={compact ? 56 : 68}
+          className={styles.avatarImage}
+          unoptimized
+        />
+      ) : (
+        <span className={styles.avatar}>{getInitials(session.name)}</span>
+      )}
+    </span>
+  );
+  const profilePhotoForm = (
+    <form id="profile-photo" action={updateProfilePhotoAction} className={styles.profilePhotoForm}>
+      <label className={styles.photoField}>
+        <span>Профайл зураг</span>
+        <input name="profile_photo" type="file" accept="image/jpeg,image/png,image/webp" required />
+      </label>
+      <button type="submit" className={styles.primaryMiniButton}>
+        Зураг хадгалах
+      </button>
+      <small>JPG, PNG, WebP зураг 5MB хүртэл оруулна.</small>
+    </form>
   );
 
   const quickLinks: QuickLink[] = [
@@ -302,6 +427,20 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     session.groupFlags?.mfoInspector ? "Хяналтын нэмэлт эрх" : null,
     session.groupFlags?.mfoMobile ? "Гар утасны нэмэлт урсгал" : null,
   ].filter((item): item is string => Boolean(item));
+  const profileEmail = profileInfo.email || session.login;
+  const profilePhone = profileInfo.phone || "Утас бүртгээгүй";
+  const mobileAccountRows = [
+    { href: "#profile-photo", label: "Хувийн мэдээлэл", icon: UserRound },
+    { href: "#password-settings", label: "Нууц үг өөрчлөх", icon: LockKeyhole },
+    { href: "#session-security", label: "Аюулгүй байдал", icon: ShieldCheck },
+  ];
+  const mobileSettingRows = [
+    { href: "/notifications", label: "Мэдэгдлийн тохиргоо", icon: Bell },
+    { href: "#language", label: "Хэл сонгох", value: "Монгол", icon: Globe2 },
+    { href: "#dark-mode", label: "Харанхуй горим", icon: Moon, toggle: true },
+    { href: "#cache", label: "Кэш цэвэрлэх", value: "15.6 MB", icon: Download },
+    { href: "#about", label: "Апп-н тухай", icon: Info },
+  ];
 
   return (
     <main className={shellStyles.shell}>
@@ -326,6 +465,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
           </aside>
 
           <div className={shellStyles.pageContent}>
+            <div className={styles.desktopProfileHeader}>
             <WorkspaceHeader
               title={workerMode ? "Тохиргоо" : "Профайл"}
               subtitle={
@@ -342,11 +482,114 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                   : `${enabledCapabilityCount} боломж одоо нээлттэй байна`
               }
             />
+            </div>
 
+            <section className={styles.mobileProfileScreen}>
+              <div className={styles.mobileProfileTopbar}>
+                <button type="button" className={styles.mobileIconButton} aria-label="Цэс нээх">
+                  <Menu aria-hidden />
+                </button>
+                <h1>Профайл</h1>
+                <div className={styles.mobileTopbarActions}>
+                  <Link className={styles.mobileBellButton} href="/notifications" aria-label="Мэдэгдэл харах">
+                    <Bell aria-hidden />
+                    {enabledCapabilityCount > 0 ? <span>{enabledCapabilityCount}</span> : null}
+                  </Link>
+                  <span className={styles.mobileUserBadge}>{getInitials(session.name).slice(0, 1)}</span>
+                </div>
+              </div>
+
+              {notice ? <p className={styles.noticeMessage}>{notice}</p> : null}
+              {error ? <p className={styles.errorMessage}>{error}</p> : null}
+
+              <article className={styles.mobileProfileCard}>
+                <ProfilePhotoUpload
+                  action={updateProfilePhotoAction}
+                  imageUrl={profileImageUrl}
+                  initials={getInitials(session.name).slice(0, 1)}
+                  userName={session.name}
+                />
+                <div className={styles.mobileProfileIdentity}>
+                  <h2>{session.name}</h2>
+                  <p>{roleLabel}</p>
+                  <span>
+                    <Mail aria-hidden />
+                    {profileEmail}
+                  </span>
+                  <span>
+                    <Phone aria-hidden />
+                    {profilePhone}
+                  </span>
+                </div>
+                <ChevronRight className={styles.mobileProfileChevron} aria-hidden />
+              </article>
+
+              <div className={styles.mobileSettingsGroup}>
+                <h2>Хувийн мэдээлэл</h2>
+                <div className={styles.mobileSettingsCard}>
+                  {mobileAccountRows.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link key={item.label} href={item.href} className={styles.mobileSettingsRow}>
+                        <Icon aria-hidden />
+                        <span>{item.label}</span>
+                        <ChevronRight aria-hidden />
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className={styles.mobileSettingsGroup}>
+                <h2>Апп тохиргоо</h2>
+                <div className={styles.mobileSettingsCard}>
+                  {mobileSettingRows.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link key={item.label} href={item.href} className={styles.mobileSettingsRow}>
+                        <Icon aria-hidden />
+                        <span>{item.label}</span>
+                        {item.toggle ? (
+                          <i className={styles.mobileToggle} aria-hidden />
+                        ) : item.value ? (
+                          <strong>{item.value}</strong>
+                        ) : null}
+                        <ChevronRight aria-hidden />
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className={styles.mobileSettingsGroup}>
+                <h2>Бусад</h2>
+                <form action="/auth/logout" method="post" className={styles.mobileLogoutForm}>
+                  <button type="submit" className={styles.mobileLogoutRow}>
+                    <LogOut aria-hidden />
+                    <span>Гарах</span>
+                    <ChevronRight aria-hidden />
+                  </button>
+                </form>
+              </div>
+            </section>
+
+            <div className={styles.desktopProfileContent}>
             {workerMode ? (
               <>
                 {notice ? <p className={styles.noticeMessage}>{notice}</p> : null}
                 {error ? <p className={styles.errorMessage}>{error}</p> : null}
+
+                <section className={`${styles.sectionCard} ${styles.workerSettingsCard}`}>
+                  <div className={styles.profilePhotoPanel}>
+                    {renderProfileAvatar(true)}
+                    <div className={styles.profilePhotoCopy}>
+                      <span className={styles.eyebrow}>Хувийн зураг</span>
+                      <h2>{session.name}</h2>
+                      <p>Өөрийн профайл дээр харагдах зураг шинэчилнэ.</p>
+                      {profilePhotoForm}
+                    </div>
+                  </div>
+                </section>
 
                 <section id="password-settings" className={`${styles.sectionCard} ${styles.workerSettingsCard}`}>
                   <div className={styles.sectionHeader}>
@@ -446,7 +689,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
             <>
             <section className={`${shellStyles.heroCard} ${styles.heroCard}`}>
               <div className={styles.identityBlock}>
-                <span className={styles.avatar}>{getInitials(session.name)}</span>
+                {renderProfileAvatar()}
                 <div className={styles.identityCopy}>
                   <span className={styles.eyebrow}>Хувийн бүртгэл</span>
                   <h1>{session.name}</h1>
@@ -454,6 +697,8 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                 </div>
                 <span className={styles.rolePill}>{appRoleLabel}</span>
               </div>
+
+              {profilePhotoForm}
 
               <div className={styles.summaryGrid}>
                 <article className={styles.summaryCard}>
@@ -918,6 +1163,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
             </section>
             </>
             )}
+            </div>
           </div>
         </div>
       </div>

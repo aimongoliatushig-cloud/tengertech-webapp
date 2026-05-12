@@ -109,7 +109,16 @@
 
 .dashboardMainGrid,
 .dashboardPrimaryColumn {
+  width: 100%;
   min-width: 0;
+  max-width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.dashboardMainGrid > *,
+.dashboardPrimaryColumn > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .departmentPanel {
@@ -862,8 +871,12 @@
 }
 
 .taskListCard {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
   padding: 28px 32px 32px;
   border: 1px solid rgba(46, 125, 50, 0.1);
   background:
@@ -912,6 +925,7 @@
 
 .inspectorHeaderTools {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
@@ -920,7 +934,8 @@
 .inspectorHeaderTools label {
   display: grid;
   gap: 5px;
-  min-width: 154px;
+  min-width: 0;
+  width: min(170px, 100%);
 }
 
 .inspectorHeaderTools span {
@@ -1129,6 +1144,8 @@
 
 .assignedVehicleGrid {
   display: grid;
+  width: 100%;
+  min-width: 0;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 14px;
   margin-top: 22px;
@@ -1136,11 +1153,14 @@
 
 .assignedVehicleCard {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   appearance: none;
   display: grid;
   align-items: start;
   gap: 12px;
-  min-height: 218px;
+  min-height: 0;
   padding: 18px;
   border: 1px solid rgba(46, 125, 50, 0.13);
   border-radius: var(--ds-radius-card);
@@ -1152,6 +1172,7 @@
   font: inherit;
   text-align: left;
   text-decoration: none;
+  overflow: visible;
   box-shadow: 0 14px 34px rgba(27, 73, 38, 0.08);
   transition:
     transform 160ms ease,
@@ -1227,6 +1248,7 @@
 
 .assignedVehicleStats {
   display: grid;
+  min-width: 0;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
@@ -1253,9 +1275,20 @@
   line-height: 1.1;
 }
 
+.assignedVehicleStatus,
+.assignedVehicleChevron {
+  display: none;
+}
+
+.inspectorVehicleNotice {
+  display: none;
+}
+
 .assignedVehicleProgress {
   display: grid;
+  min-width: 0;
   gap: 8px;
+  position: relative;
 }
 
 .assignedVehicleProgress > span {
@@ -1302,6 +1335,10 @@
 
 .inspectorVehicleDetail {
   display: grid;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   gap: 14px;
   margin-top: 18px;
   padding: 18px;
@@ -1309,6 +1346,14 @@
   border-radius: var(--ds-radius-card);
   background: #fff;
   box-shadow: 0 14px 34px rgba(27, 73, 38, 0.07);
+}
+
+.inspectorVehicleDetailMobile {
+  display: none;
+}
+
+.inspectorVehicleDetailDesktop {
+  display: grid;
 }
 
 .inspectorVehicleDetailHeader {
@@ -1362,6 +1407,7 @@
 
 .inspectorVehicleSummaryRow {
   display: grid;
+  min-width: 0;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
@@ -1734,47 +1780,268 @@
 }
 
 @media (max-width: 720px) {
-  .assignedVehicleGrid {
+  .taskListCard,
+  .taskListBody,
+  .taskListBodyScrollable,
+  .assignedVehicleGrid,
+  .inspectorVehicleDetail,
+  .inspectorTaskRows {
+    max-height: none;
+    max-width: 100%;
+    overflow: visible;
+  }
+
+  .taskListCard {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .taskListHeader {
     grid-template-columns: 1fr;
     gap: 12px;
   }
 
-  .assignedVehicleCard {
-    min-height: 172px;
-    grid-template-columns: 96px minmax(0, 1fr);
+  .taskListHeaderText :global(h3) {
+    font-size: 1.24rem;
+  }
+
+  .taskListHeaderText :global(p) {
+    font-size: 0.84rem;
+    line-height: 1.4;
+    white-space: normal;
+  }
+
+  .inspectorVehicleNotice {
+    display: flex;
     align-items: center;
-    padding: 14px;
+    gap: 12px;
+    min-width: 0;
+    margin-top: 14px;
+    padding: 16px 18px;
+    border: 1px solid rgba(46, 125, 50, 0.1);
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(237, 248, 235, 0.96), rgba(255, 255, 255, 0.94));
+    color: #53605a;
+    font-size: 0.94rem;
+    font-weight: 800;
+    line-height: 1.45;
+  }
+
+  .inspectorVehicleNotice svg {
+    width: 26px;
+    height: 26px;
+    flex: 0 0 auto;
+    color: #15803d;
+    stroke-width: 2.2;
+  }
+
+  .assignedVehicleGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 0;
+    overflow: visible;
+  }
+
+  .assignedVehicleCard {
+    inline-size: 100%;
+    max-inline-size: 100%;
+    justify-self: stretch;
+    min-height: 0;
+    grid-template-columns: minmax(78px, 92px) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-color: rgba(17, 27, 21, 0.08);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 12px 34px rgba(27, 73, 38, 0.07);
+    contain: none;
   }
 
   .assignedVehicleIcon {
-    grid-row: span 2;
-    height: 76px;
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    width: 100%;
+    min-height: 64px;
+    height: auto;
+    aspect-ratio: 1.25;
+    border-radius: 14px;
+    background: #fff;
+    overflow: visible;
   }
 
   .assignedVehicleContent {
+    grid-column: 2 / -1;
+    grid-row: 1;
     justify-items: start;
+    gap: 4px;
+  }
+
+  .assignedVehicleContent strong {
+    font-size: clamp(1.35rem, 7vw, 1.72rem);
+    line-height: 1;
+  }
+
+  .assignedVehicleContent small {
+    color: #667085;
+    font-size: 0.98rem;
+    font-weight: 800;
+  }
+
+  .assignedVehicleStatus {
+    grid-column: 2 / 3;
+    grid-row: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-self: end;
+    gap: 8px;
+    min-height: 38px;
+    padding: 0 13px;
+    border-radius: 12px;
+    font-size: 0.86rem;
+    font-weight: 900;
+    line-height: 1.15;
+    white-space: normal;
+  }
+
+  .assignedVehicleStatus i {
+    display: block;
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .assignedVehicleStatusGreen {
+    background: rgba(34, 197, 94, 0.1);
+    color: #15803d;
+  }
+
+  .assignedVehicleStatusAmber {
+    background: rgba(245, 158, 11, 0.13);
+    color: #c26a05;
+  }
+
+  .assignedVehicleStatusRed {
+    background: rgba(239, 68, 68, 0.11);
+    color: #dc2626;
+  }
+
+  .assignedVehicleChevron {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+    display: block;
+    width: 26px;
+    height: 26px;
+    color: #111b15;
+    stroke-width: 2.3;
   }
 
   .assignedVehicleStats {
     grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(17, 27, 21, 0.07);
+  }
+
+  .assignedVehicleStats span {
+    grid-template-columns: 1fr;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    text-align: center;
+  }
+
+  .assignedVehicleStats span::before {
+    content: none;
+  }
+
+  .assignedVehicleStats small,
+  .assignedVehicleProgress small {
+    color: #667085;
+    font-size: 0.72rem;
+    font-weight: 850;
+  }
+
+  .assignedVehicleStats strong {
+    font-size: 1.05rem;
+    line-height: 1;
   }
 
   .assignedVehicleProgress {
     grid-column: 1 / -1;
+    gap: 10px;
+    padding-bottom: 10px;
+  }
+
+  .assignedVehicleProgress > span {
+    gap: 10px;
+  }
+
+  .assignedVehicleProgress strong {
+    font-size: 0.96rem;
+  }
+
+  .assignedVehicleProgress::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 7px;
+    border-radius: 999px;
+    background: #e5e7eb;
+  }
+
+  .assignedVehicleProgress i {
+    position: absolute;
+    inset-inline-start: 0;
+    bottom: 0;
+    z-index: 1;
+    height: 7px;
+    min-width: 0;
+    background: #9be3a6;
+  }
+
+  .inspectorVehicleDetailDesktop {
+    display: none;
+  }
+
+  .inspectorVehicleDetailMobile {
+    display: grid;
+    grid-column: 1 / -1;
+    margin-top: 0;
   }
 
   .inspectorVehicleDetail {
-    padding: 14px;
+    gap: 14px;
+    margin-top: 0;
+    padding: 16px;
+    border-radius: 18px;
+    overflow: visible;
   }
 
   .inspectorHeaderTools {
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
     justify-content: stretch;
+    gap: 8px;
   }
 
   .inspectorHeaderTools label {
+    width: 100%;
     min-width: 0;
-    flex: 1 1 auto;
+  }
+
+  .inspectorHeaderTools input {
+    min-height: 40px;
+    font-size: 0.84rem;
   }
 
   .inspectorVehicleDetailHeader {
@@ -1784,11 +2051,25 @@
 
   .inspectorVehicleDetailHeader button {
     width: 100%;
-    min-height: 46px;
+    min-height: 50px;
   }
 
   .inspectorVehicleSummaryRow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .inspectorVehicleSummaryRow span {
+    min-height: 0;
+    padding: 12px 8px;
+    border-radius: 14px;
+    font-size: 0.68rem;
+    line-height: 1.2;
+    text-align: center;
+  }
+
+  .inspectorVehicleSummaryRow strong {
+    font-size: 1.15rem;
   }
 
   .inspectorTaskRow strong {
@@ -1900,6 +2181,57 @@
     min-height: 50px;
     padding: 0 10px;
     font-size: 0.84rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .assignedVehicleCard {
+    grid-template-columns: 76px minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .assignedVehicleIcon {
+    min-height: 58px;
+  }
+
+  .assignedVehicleContent strong {
+    font-size: 1.22rem;
+  }
+
+  .assignedVehicleContent small,
+  .assignedVehicleStatus {
+    font-size: 0.78rem;
+  }
+
+  .assignedVehicleStatus {
+    min-height: 34px;
+    padding: 0 10px;
+  }
+
+  .assignedVehicleStats {
+    gap: 6px;
+  }
+
+  .assignedVehicleStats small {
+    font-size: 0.64rem;
+  }
+
+  .assignedVehicleStats strong {
+    font-size: 0.94rem;
+  }
+
+  .inspectorVehicleSummaryRow {
+    gap: 6px;
+  }
+
+  .inspectorVehicleSummaryRow span {
+    padding: 10px 5px;
+    font-size: 0.6rem;
+  }
+
+  .inspectorVehicleSummaryRow strong {
+    font-size: 1rem;
   }
 }
 
@@ -2115,7 +2447,7 @@
   }
 
   .statCard {
-    min-height: 172px !important;
+    min-height: 0 !important;
     padding: 14px 10px 10px !important;
     border-radius: 12px;
   }
@@ -2200,7 +2532,7 @@
   }
 
   .metricsCard {
-    min-height: 260px;
+    min-height: 0;
     padding: 14px;
   }
 
@@ -2258,7 +2590,7 @@
 
   .quickStatsCard,
   .fleetSummaryCard {
-    min-height: 168px;
+    min-height: 0;
     padding: 14px;
   }
 
@@ -2288,8 +2620,9 @@
 
   .taskListCard {
     height: auto;
-    min-height: 252px;
-    padding: 16px 14px;
+    min-height: 0;
+    padding: 16px;
+    overflow: visible;
   }
 
   .taskListHeader {

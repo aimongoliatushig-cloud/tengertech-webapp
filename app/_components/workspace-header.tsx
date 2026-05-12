@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
 import Link from "next/link";
-import { Bell, CalendarDays, Leaf } from "lucide-react";
+import { Bell, CalendarDays, Leaf, MapPin } from "lucide-react";
 
 import { WorkspaceHeaderUserMenu } from "./workspace-header-user-menu";
 import styles from "./workspace-header.module.css";
@@ -62,6 +62,9 @@ export function WorkspaceHeader({
       <Leaf className={styles.leafThree} aria-hidden />
 
       <div className={styles.titleArea}>
+        <span className={styles.mobileGreetingIcon} aria-hidden>
+          <MapPin />
+        </span>
         <div className={styles.titleBlock}>
           <h1>
             {title}
