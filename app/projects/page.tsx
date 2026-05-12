@@ -493,7 +493,7 @@ async function ProjectsPageContent({
     ? scopedProjects
     : scopedProjects.filter((project) => {
         if (activeFilter === "all") {
-          return true;
+          return ["progress", "review", "done"].includes(project.stageBucket);
         }
 
         if (activeFilter === "progress") {
@@ -709,21 +709,21 @@ async function ProjectsPageContent({
       href: buildScopedListHref("all"),
     },
   ] as const;
-  const visibleSummaryCards = summaryCards;
+  void summaryCards;
 
   const filterTitle =
     activeFilter === "progress"
       ? "Гүйцэтгэж байгаа"
       : activeFilter === "planned"
         ? "Төлөвлөсөн"
-        : "Нийт ажил";
+        : "Идэвхтэй болон дууссан ажил";
 
   const filterNote =
     activeFilter === "progress"
       ? "Одоо хэрэгжиж байгаа болон хяналтын шатанд явж буй ажлуудыг харуулна"
       : activeFilter === "planned"
         ? "Одоогоор эхлээгүй, төлөвлөсөн шатанд байгаа ажлуудыг харуулна"
-        : "Сонгосон алба нэгжийн бүх ажлыг нэг дор харуулна";
+        : "Сонгосон алба нэгжийн идэвхтэй болон дууссан ажлууд харагдана";
   const selectionParams = new URLSearchParams();
   if (selectedGroup?.name) {
     selectionParams.set("department", selectedGroup.name);
@@ -819,6 +819,7 @@ async function ProjectsPageContent({
               canViewQualityCenter={canViewQualityCenter}
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
+              userRole={session.role}
               roleLabel={getRoleLabel(session.role)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
@@ -837,27 +838,18 @@ async function ProjectsPageContent({
               notificationCount={notificationCount}
             />
 
-            <section className={styles.summaryShowcaseGrid} aria-label="Нийт үзүүлэлт">
-              {visibleSummaryCards.map((card) => (
-                <Link
-                  key={card.label}
-                  href={card.href}
-                  className={`${styles.summaryShowcaseCard} ${card.tone}`}
-                >
-                  <div className={styles.summaryShowcaseCopy}>
-                    <span className={styles.summaryShowcaseLabel}>{card.label}</span>
-                    <strong className={styles.summaryShowcaseValue}>{card.value}</strong>
-                  </div>
-                  <span className={styles.summaryShowcaseIcon} aria-hidden>
-                    {card.icon}
-                  </span>
-                  <div className={styles.summaryShowcaseMeta}>
-                    <b>{card.delta}</b>
-                    <small>{card.note}</small>
-                  </div>
+            {!masterMode && !showAutoBaseFleet ? (
+              <div className={styles.buttonRow}>
+                {canCreateProject ? (
+                  <Link href={newWorkHref} className={styles.primaryButton}>
+                    Ажил нэмэх
+                  </Link>
+                ) : null}
+                <Link href={calendarPlanHref} className={styles.secondaryButton}>
+                  Календарь төлөвлөгөө
                 </Link>
-              ))}
-            </section>
+              </div>
+            ) : null}
 
             {quickActionMessage ? (
               <div className={`${styles.message} ${styles.noticeMessage}`}>
@@ -963,7 +955,7 @@ async function ProjectsPageContent({
                         : `${selectedDepartmentName} · ${filterNote}`}
                   </small>
                 </div>
-                {!masterMode && !showAutoBaseFleet ? (
+                {false && !masterMode && !showAutoBaseFleet ? (
                   <div className={styles.buttonRow}>
                     {canCreateProject ? (
                       <Link href={newWorkHref} className={styles.primaryButton}>

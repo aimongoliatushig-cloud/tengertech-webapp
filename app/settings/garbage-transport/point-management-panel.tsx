@@ -27,11 +27,13 @@ type PointAction = (formData: FormData) => void | Promise<void>;
 type PointManagementPanelProps = {
   createAction: PointAction;
   createSubdistrictAction: PointAction;
+  archiveSubdistrictAction: PointAction;
   updateAction: PointAction;
   archiveAction: PointAction;
   points: PointRecord[];
   subdistricts: SubdistrictRecord[];
   districts: DistrictRecord[];
+  canManageSubdistricts: boolean;
 };
 
 function normalizeSearchText(value: string) {
@@ -41,11 +43,13 @@ function normalizeSearchText(value: string) {
 export function PointManagementPanel({
   createAction,
   createSubdistrictAction,
+  archiveSubdistrictAction,
   updateAction,
   archiveAction,
   points,
   subdistricts,
   districts,
+  canManageSubdistricts,
 }: PointManagementPanelProps) {
   const [activeSubdistrictId, setActiveSubdistrictId] = useState<number | "all">("all");
   const [query, setQuery] = useState("");
@@ -74,8 +78,8 @@ export function PointManagementPanel({
   }, [uniquePoints]);
 
   const visibleSubdistricts = useMemo(
-    () => uniqueSubdistricts.filter((subdistrict) => pointCountsBySubdistrict.has(subdistrict.id)),
-    [pointCountsBySubdistrict, uniqueSubdistricts],
+    () => uniqueSubdistricts,
+    [uniqueSubdistricts],
   );
 
   const filteredPoints = useMemo(() => {
@@ -98,27 +102,29 @@ export function PointManagementPanel({
   return (
     <div className={styles.pointLayout}>
       <div className={styles.pointCreateStack}>
-        <form action={createSubdistrictAction} className={styles.formPanel}>
-          <span className={styles.eyebrow}>Хороо нэмэх</span>
-          <label className={styles.field}>
-            <span>Дүүрэг</span>
-            <select name="district_id" defaultValue="">
-              <option value="">Шинэ дүүрэг үүсгэх</option>
-              {uniqueDistricts.map((district) => (
-                <option key={`create-district-${district.id}`} value={district.id}>{district.label}</option>
-              ))}
-            </select>
-          </label>
-          <label className={styles.field}>
-            <span>Шинэ дүүргийн нэр</span>
-            <input name="district_name" placeholder="Жишээ: Сонгинохайрхан" />
-          </label>
-          <label className={styles.field}>
-            <span>Хороо</span>
-            <input name="subdistrict_name" placeholder="Жишээ: 9-р хороо" required />
-          </label>
-          <button type="submit" className={styles.primaryButton}>Хороо нэмэх</button>
-        </form>
+        {canManageSubdistricts ? (
+          <form action={createSubdistrictAction} className={styles.formPanel}>
+            <span className={styles.eyebrow}>Хороо нэмэх</span>
+            <label className={styles.field}>
+              <span>Дүүрэг</span>
+              <select name="district_id" defaultValue="">
+                <option value="">Шинэ дүүрэг үүсгэх</option>
+                {uniqueDistricts.map((district) => (
+                  <option key={`create-district-${district.id}`} value={district.id}>{district.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.field}>
+              <span>Шинэ дүүргийн нэр</span>
+              <input name="district_name" placeholder="Жишээ: Сонгинохайрхан" />
+            </label>
+            <label className={styles.field}>
+              <span>Хороо</span>
+              <input name="subdistrict_name" placeholder="Жишээ: 9-р хороо" required />
+            </label>
+            <button type="submit" className={styles.primaryButton}>Хороо нэмэх</button>
+          </form>
+        ) : null}
 
         <form action={createAction} className={styles.formPanel}>
           <span className={styles.eyebrow}>Хогийн цэг нэмэх</span>
@@ -137,6 +143,44 @@ export function PointManagementPanel({
           </label>
           <button type="submit" className={styles.primaryButton}>Хогийн цэг нэмэх</button>
         </form>
+
+        <section className={styles.formPanel}>
+          <div className={styles.subdistrictListHeader}>
+            <span className={styles.eyebrow}>Хороод</span>
+            <strong>{uniqueSubdistricts.length} хороо</strong>
+          </div>
+          {uniqueSubdistricts.length ? (
+            <div className={styles.subdistrictCards}>
+              {uniqueSubdistricts.map((subdistrict) => {
+                const pointCount = pointCountsBySubdistrict.get(subdistrict.id) ?? 0;
+                const hasPoints = pointCount > 0;
+                return (
+                  <article key={`subdistrict-card-${subdistrict.id}`} className={styles.subdistrictCard}>
+                    <div>
+                      <strong>{subdistrict.label}</strong>
+                      <small>{pointCount} хогийн цэг</small>
+                    </div>
+                    {canManageSubdistricts ? (
+                      <form action={archiveSubdistrictAction} className={styles.pointArchiveForm}>
+                        <input type="hidden" name="subdistrict_id" value={subdistrict.id} />
+                        <button
+                          type="submit"
+                          className={styles.ghostDanger}
+                          disabled={hasPoints}
+                          title={hasPoints ? "Эхлээд энэ хорооны хогийн цэгүүдийг шилжүүлэх эсвэл устгана уу." : "Хороо устгах"}
+                        >
+                          Устгах
+                        </button>
+                      </form>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <p className={styles.emptyState}>Бүртгэлтэй хороо алга.</p>
+          )}
+        </section>
       </div>
 
       <div className={styles.pointManager}>

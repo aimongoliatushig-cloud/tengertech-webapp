@@ -6,7 +6,7 @@ import { FileText, Paperclip, PlusCircle } from "lucide-react";
 import { SearchableSelect, type SearchableSelectOption } from "@/app/_components/searchable-select";
 import styles from "@/app/workspace.module.css";
 import type { FleetVehicleDriverOption } from "@/lib/odoo";
-import type { GarbagePointOption, SelectOption, WorkUnitOption } from "@/lib/workspace";
+import type { GarbagePointOption, GarbageSubdistrictOption, SelectOption, WorkUnitOption } from "@/lib/workspace";
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
@@ -27,6 +27,7 @@ type Props = {
   allowedUnitSummary?: string;
   operationType?: string;
   garbagePointOptions?: GarbagePointOption[];
+  subdistrictOptions?: GarbageSubdistrictOption[];
   garbageLoaderOptions?: FleetVehicleDriverOption[];
   garbageVehicleContext?: {
     vehicleId: number | null;
@@ -51,7 +52,6 @@ type QuantityRow = {
   isUnitConfirmed: boolean;
 };
 
-const KHOROO_OPTIONS = Array.from({ length: 25 }, (_, index) => `${index + 1}-р хороо`);
 const LOCATION_OPTIONS = [
   "Нийтийн эзэмшлийн гудамж",
   "Орон сууцны хороолол",
@@ -131,6 +131,7 @@ export function ProjectTaskCreateForm({
   allowedUnitSummary,
   operationType = "",
   garbagePointOptions = [],
+  subdistrictOptions = [],
   garbageLoaderOptions = [],
   garbageVehicleContext = null,
 }: Props) {
@@ -440,12 +441,15 @@ export function ProjectTaskCreateForm({
           <label htmlFor="task-khoroo">Хороо</label>
           <select id="task-khoroo" name="task_khoroo" defaultValue="">
             <option value="">Хороо сонгох</option>
-            {KHOROO_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
+            {subdistrictOptions.map((option) => (
+              <option key={option.id} value={option.name}>
+                {option.label}
               </option>
             ))}
           </select>
+          {!subdistrictOptions.length ? (
+            <small className={styles.fieldHint}>Ерөнхий тохиргоонд хороо бүртгэгдээгүй байна.</small>
+          ) : null}
         </div>
 
         <div className={styles.field}>

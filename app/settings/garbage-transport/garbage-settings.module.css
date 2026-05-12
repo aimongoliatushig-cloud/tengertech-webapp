@@ -276,7 +276,10 @@
   color: var(--brand-900);
 }
 
-.settingsTabs:not(:has(.tabPanel:target)) .tabBar a[href="#inspectors"],
+.settingsTabs:not(:has(.tabPanel:target)) .tabBar a[href="#teams"],
+.settingsTabs:has(:global(#teams:target)) .tabBar a[href="#teams"],
+.settingsTabs:has(:global(#vehicles:target)) .tabBar a[href="#vehicles"],
+.settingsTabs:has(:global(#routes:target)) .tabBar a[href="#routes"],
 .settingsTabs:has(:global(#points:target)) .tabBar a[href="#points"],
 .settingsTabs:has(:global(#inspectors:target)) .tabBar a[href="#inspectors"],
 .settingsTabs:has(:global(#notifications:target)) .tabBar a[href="#notifications"] {
@@ -302,7 +305,7 @@
   scroll-margin-top: 92px;
 }
 
-.tabPanels:not(:has(.tabPanel:target)) .tabPanel:not(:global(#inspectors)),
+.tabPanels:not(:has(.tabPanel:target)) .tabPanel:not(:global(#teams)),
 .tabPanels:has(.tabPanel:target) .tabPanel:not(:target) {
   display: none;
 }
@@ -853,6 +856,13 @@
   font-size: 0.78rem;
 }
 
+.ghostDanger:disabled {
+  border-color: rgba(148, 163, 154, 0.16);
+  background: rgba(148, 163, 154, 0.12);
+  color: var(--ink-700);
+  cursor: not-allowed;
+}
+
 .lightButton {
   min-height: 34px;
   border: 1px solid rgba(74, 154, 93, 0.18);
@@ -1045,6 +1055,55 @@
 .pointArchiveForm {
   display: flex;
   justify-content: flex-end;
+}
+
+.subdistrictListHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.subdistrictListHeader strong {
+  color: var(--ink-900);
+  font-size: 0.92rem;
+}
+
+.subdistrictCards {
+  display: grid;
+  gap: 10px;
+  max-height: 360px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.subdistrictCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(74, 154, 93, 0.13);
+  border-radius: var(--ds-radius-control);
+  background: rgba(248, 252, 247, 0.82);
+}
+
+.subdistrictCard strong,
+.subdistrictCard small {
+  display: block;
+}
+
+.subdistrictCard strong {
+  color: var(--ink-900);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.subdistrictCard small {
+  margin-top: 4px;
+  color: var(--ink-700);
+  font-size: 0.78rem;
+  font-weight: 750;
 }
 
 .pointEditDetails {

@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { ProcurementShell } from "@/app/procurement/_components/procurement-shell";
 import {
   runProcurementWorkflowAction,
   submitProcurementQuotationsAction,
 } from "@/app/procurement/actions";
-import { requireSession } from "@/lib/auth";
+import { canAccessProcurementModule, requireSession } from "@/lib/auth";
 import {
   loadProcurementMe,
   loadProcurementMeta,
@@ -78,6 +79,9 @@ export const dynamic = "force-dynamic";
 
 export default async function ProcurementDetailPage({ params, searchParams }: PageProps) {
   const session = await requireSession();
+  if (!canAccessProcurementModule(session)) {
+    redirect("/");
+  }
   const resolvedParams = await params;
   const requestId = Number(resolvedParams.requestId);
   const query = (await searchParams) || {};

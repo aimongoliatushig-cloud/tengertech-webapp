@@ -303,6 +303,7 @@ export function GeneralDashboardView({
             canViewHr={canViewHr}
             canViewGeneralDashboard
             userName={session.name}
+            userRole={session.role}
             roleLabel={roleLabel}
             groupFlags={session.groupFlags}
             workerMode={false}

@@ -118,7 +118,7 @@ export async function loadRouteManagementData(
     executeOdooKw<SubdistrictRecord[]>(
       "mfo.subdistrict",
       "search_read",
-      [[]],
+      [[["active", "=", true]]],
       {
         fields: ["name", "district_id"],
         order: "district_id asc, name asc",

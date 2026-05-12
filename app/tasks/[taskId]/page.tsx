@@ -227,6 +227,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 canViewQualityCenter={canViewQualityCenter}
                 canUseFieldConsole={canUseFieldConsole}
                 userName={session.name}
+                userRole={session.role}
                 roleLabel={getRoleLabel(session.role)}
                 groupFlags={session.groupFlags}
                 masterMode={masterMode}
@@ -463,6 +464,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
               canViewQualityCenter={canViewQualityCenter}
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
+              userRole={session.role}
               roleLabel={getRoleLabel(session.role)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}

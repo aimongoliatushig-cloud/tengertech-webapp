@@ -345,6 +345,7 @@ export default async function NotificationsPage() {
               canViewQualityCenter={canViewQualityCenter}
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
+              userRole={session.role}
               roleLabel={getRoleLabel(session.role)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}

@@ -349,6 +349,7 @@ export default async function ReviewPage({ searchParams }: PageProps) {
               canViewQualityCenter={canViewQualityCenter}
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
+              userRole={session.role}
               roleLabel={getRoleLabel(session.role)}
               groupFlags={session.groupFlags}
               departmentScopeName={scopedDepartmentName}

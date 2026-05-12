@@ -13,8 +13,12 @@ import { redirect } from "next/navigation";
 import { authenticateOdooUser, createOdooConnection } from "@/lib/odoo";
 import {
   canSubmitWorkspaceReport,
+  canAccessAutoBaseOverview,
+  canAccessGarbageTransportSettings,
+  canAccessProcurementModule,
   getRoleLabel,
   hasCapability,
+  isGarbageDepartmentHead,
   isHrOnlyRole,
   isMasterRole,
   isWorkerOnly,
@@ -310,8 +314,12 @@ export async function signInWithOdooCredentials(
 
 export {
   canSubmitWorkspaceReport,
+  canAccessAutoBaseOverview,
+  canAccessGarbageTransportSettings,
+  canAccessProcurementModule,
   getRoleLabel,
   hasCapability,
+  isGarbageDepartmentHead,
   isHrOnlyRole,
   isMasterRole,
   isWorkerOnly,

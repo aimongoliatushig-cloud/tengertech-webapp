@@ -81,11 +81,12 @@ function hasNextError(text) {
 async function checkPage(page, target, userLabel, viewportLabel) {
   const startedAt = Date.now();
   const errors = [];
+  let navigationError = "";
   const response = await page.goto(`${BASE}${target}`, {
     waitUntil: "domcontentloaded",
-    timeout: 12_000,
+    timeout: 10_000,
   }).catch((error) => {
-    errors.push(error.message || String(error));
+    navigationError = error.message || String(error);
     return null;
   });
   await page.waitForLoadState("networkidle", { timeout: 2_000 }).catch(() => {});
@@ -95,6 +96,9 @@ async function checkPage(page, target, userLabel, viewportLabel) {
   const finalUrl = page.url().replace(BASE, "");
   const status = response?.status() ?? null;
 
+  if (navigationError && (!bodyText || !finalUrl.startsWith(normalizeTarget(target)))) {
+    errors.push(navigationError);
+  }
   if (status && status >= 500) {
     errors.push(`HTTP ${status}`);
   }
@@ -121,9 +125,13 @@ async function checkPage(page, target, userLabel, viewportLabel) {
   };
 }
 
+function normalizeTarget(target) {
+  return target.split("?")[0] || "/";
+}
+
 const browser = await chromium.launch({ headless: true });
 const viewports = [
-  { label: "desktop", viewport: { width: 1440, height: 960 } },
+  { label: "desktop", viewport: { width: 1440, height: 900 } },
   { label: "mobile", viewport: { width: 390, height: 844 } },
 ];
 

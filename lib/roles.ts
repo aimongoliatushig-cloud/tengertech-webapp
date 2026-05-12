@@ -1,3 +1,5 @@
+import { isAutoGarbageDepartment } from "@/lib/department-permissions";
+
 export type UserRole =
   | "system_admin"
   | "director"
@@ -119,6 +121,66 @@ function normalizeGroupFlags(groupFlags?: Partial<RoleGroupFlags> | null): RoleG
     ...EMPTY_GROUP_FLAGS,
     ...(groupFlags || {}),
   };
+}
+
+function isSystemAdmin(context: RoleContext) {
+  return context.role === "system_admin";
+}
+
+function isExecutiveContext(context: RoleContext) {
+  const groupFlags = normalizeGroupFlags(context.groupFlags);
+  return Boolean(
+    context.role === "director" ||
+      context.role === "general_manager" ||
+      groupFlags.municipalDirector ||
+      groupFlags.fleetRepairCeo ||
+      groupFlags.fleetRepairGeneralManager
+  );
+}
+
+export function isGarbageDepartmentHead(context: RoleContext, departmentName?: string | null) {
+  const groupFlags = normalizeGroupFlags(context.groupFlags);
+  return Boolean(
+    isAutoGarbageDepartment(departmentName) &&
+      !isSystemAdmin(context) &&
+      !isExecutiveContext(context) &&
+      (context.role === "project_manager" ||
+        groupFlags.municipalDepartmentHead ||
+        groupFlags.mfoManager ||
+        groupFlags.mfoDispatcher)
+  );
+}
+
+export function canAccessAutoBaseOverview(context: RoleContext) {
+  return Boolean(isSystemAdmin(context) || isExecutiveContext(context));
+}
+
+export function canAccessGarbageTransportSettings(
+  context: RoleContext,
+  departmentName?: string | null,
+) {
+  const groupFlags = normalizeGroupFlags(context.groupFlags);
+  return Boolean(
+    isSystemAdmin(context) ||
+      groupFlags.mfoManager ||
+      groupFlags.mfoDispatcher ||
+      ((context.role === "project_manager" || groupFlags.municipalDepartmentHead) &&
+        isAutoGarbageDepartment(departmentName))
+  );
+}
+
+export function canAccessProcurementModule(context: RoleContext) {
+  const groupFlags = normalizeGroupFlags(context.groupFlags);
+  return Boolean(
+    isSystemAdmin(context) ||
+      isExecutiveContext(context) ||
+      groupFlags.opsStorekeeper ||
+      groupFlags.fleetRepairPurchaser ||
+      groupFlags.fleetRepairFinance ||
+      groupFlags.fleetRepairAccounting ||
+      groupFlags.fleetRepairManager ||
+      groupFlags.fleetRepairCeo
+  );
 }
 
 export function getPrimaryAppRole(context: RoleContext): AppRole {
@@ -297,14 +359,6 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         context.role === "system_admin" ||
         context.role === "senior_master" ||
         context.role === "team_leader" ||
-        context.role === "worker" ||
-        context.role === "public_relations" ||
-        context.role === "transport_inspector" ||
-        groupFlags.complaintManager ||
-        groupFlags.municipalPublicRelations ||
-        groupFlags.mfoManager ||
-        groupFlags.mfoDispatcher ||
-        groupFlags.mfoInspector ||
         groupFlags.mfoMobile ||
         groupFlags.mfoDriver ||
         groupFlags.mfoLoader ||

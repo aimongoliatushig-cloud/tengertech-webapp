@@ -42,6 +42,7 @@ export default async function ChatPage() {
               canViewQualityCenter={canViewQualityCenter}
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
+              userRole={session.role}
               roleLabel={roleLabel}
               groupFlags={session.groupFlags}
               masterMode={masterMode}

@@ -19,7 +19,7 @@ import { filterByDepartment } from "@/lib/dashboard-scope";
 import { filterProjectsForResponsibleMaster } from "@/lib/master-scope";
 import { loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
 import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurement";
-import { loadGarbagePointOptions, loadProjectDetail } from "@/lib/workspace";
+import { loadGarbagePointOptions, loadGarbageSubdistrictOptions, loadProjectDetail } from "@/lib/workspace";
 
 import { ProjectTaskCreateModal } from "./project-task-create-modal";
 import { ProjectTaskEditModal } from "./project-task-edit-modal";
@@ -228,16 +228,19 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     project.tasks.find((task) => task.vehicleId) ??
     project.tasks.find((task) => task.driverEmployeeId || task.collectorEmployeeIds.length) ??
     null;
-  const [garbagePointOptions, garbageLoaderOptions] = isGarbageRouteProject
-    ? await Promise.all([
-        loadGarbagePointOptions(connectionOverrides, {
+  const [subdistrictOptions, garbagePointOptions, garbageLoaderOptions] = await Promise.all([
+    loadGarbageSubdistrictOptions(connectionOverrides).catch(() => []),
+    isGarbageRouteProject
+      ? loadGarbagePointOptions(connectionOverrides, {
           requireCurrentEmployeeScope: session.role === "transport_inspector",
-        }).catch(() => []),
-        loadFleetVehicleBoard(connectionOverrides)
+        }).catch(() => [])
+      : Promise.resolve([]),
+    isGarbageRouteProject
+      ? loadFleetVehicleBoard(connectionOverrides)
           .then((board) => board.loaderOptions)
-          .catch(() => []),
-      ])
-    : [[], []];
+          .catch(() => [])
+      : Promise.resolve([]),
+  ]);
   const procurementBundle = await loadProcurementRequests(
     { project_id: project.id, limit: 5 },
     connectionOverrides,
@@ -337,6 +340,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
               canViewQualityCenter={canViewQualityCenter}
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
+              userRole={session.role}
               roleLabel={getRoleLabel(session.role)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
@@ -677,6 +681,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                       allowedUnitSummary={project.allowedUnitSummary}
                       operationType={project.operationType}
                       garbagePointOptions={garbagePointOptions}
+                      subdistrictOptions={subdistrictOptions}
                       garbageLoaderOptions={garbageLoaderOptions}
                       garbageVehicleContext={
                         garbageSourceTask

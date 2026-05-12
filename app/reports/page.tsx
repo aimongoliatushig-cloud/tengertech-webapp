@@ -8,6 +8,7 @@ import { markTaskDoneAction } from "@/app/actions";
 import dashboardStyles from "@/app/page.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import {
+  canAccessProcurementModule,
   getRoleLabel,
   hasCapability,
   isMasterRole,
@@ -347,8 +348,12 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       hint: "Сарын эхнээс өнөөдрийг хүртэл",
     },
   ] as const;
+  const canViewProcurementReport = canAccessProcurementModule(session);
+  const availableReportTypes = canViewProcurementReport
+    ? ["garbage", "procurement", "work"]
+    : ["garbage", "work"];
   const defaultReportType = isGarbageTransportView ? "garbage" : "work";
-  const selectedReportType = ["garbage", "procurement", "work"].includes(requestedReport)
+  const selectedReportType = availableReportTypes.includes(requestedReport)
     ? requestedReport
     : defaultReportType;
   const selectedPeriodOption = reportPeriodOptions.find((option) => option.key === requestedPeriod);
@@ -378,6 +383,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
   let procurementDashboard = createEmptyProcurementDashboard();
   let procurementReportError = "";
+  if (canViewProcurementReport) {
   try {
     procurementDashboard = await loadProcurementDashboard(
       { limit: 100 },
@@ -391,6 +397,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     procurementReportError = isProcurementSetupError(error)
       ? "Худалдан авалтын модуль Odoo дээр идэвхгүй байна."
       : "Худалдан авалтын тайлангийн мэдээллийг Odoo-оос уншиж чадсангүй.";
+  }
   }
 
   const garbageSummaryCards = [
@@ -556,6 +563,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               canViewQualityCenter={canViewQualityCenter}
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
+              userRole={session.role}
               roleLabel={getRoleLabel(session.role)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
@@ -822,6 +830,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   <strong>{formatKgLabel(selectedGarbageTotalKg)}</strong>
                   <small>{selectedGarbageVehicleKeys.size} машин, {selectedGarbageRecordCount} мөр</small>
                 </Link>
+                {canViewProcurementReport ? (
                 <Link
                   href={getReportHref({
                     report: "procurement",
@@ -837,6 +846,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   <strong>{selectedProcurementItems.length} хүсэлт</strong>
                   <small>{formatMoneyLabel(procurementTotalAmount)} дүнтэй</small>
                 </Link>
+                ) : null}
                 <Link
                   href={getReportHref({
                     report: "work",
@@ -1011,6 +1021,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               </section>
             ) : null}
 
+            {canViewProcurementReport ? (
             <section className={styles.sectionCard}>
               <div className={styles.weightSectionHeader}>
                 <div>
@@ -1076,6 +1087,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 </div>
               )}
             </section>
+            ) : null}
 
             <section className={styles.sectionCard}>
               <div className={styles.workflowHeader}>

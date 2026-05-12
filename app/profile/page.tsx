@@ -3,14 +3,10 @@ import Image from "next/image";
 import {
   Bell,
   ChevronRight,
-  Download,
-  Globe2,
-  Info,
   LockKeyhole,
   LogOut,
   Mail,
   Menu,
-  Moon,
   Phone,
   ShieldCheck,
   UserRound,
@@ -434,14 +430,6 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     { href: "#password-settings", label: "Нууц үг өөрчлөх", icon: LockKeyhole },
     { href: "#session-security", label: "Аюулгүй байдал", icon: ShieldCheck },
   ];
-  const mobileSettingRows = [
-    { href: "/notifications", label: "Мэдэгдлийн тохиргоо", icon: Bell },
-    { href: "#language", label: "Хэл сонгох", value: "Монгол", icon: Globe2 },
-    { href: "#dark-mode", label: "Харанхуй горим", icon: Moon, toggle: true },
-    { href: "#cache", label: "Кэш цэвэрлэх", value: "15.6 MB", icon: Download },
-    { href: "#about", label: "Апп-н тухай", icon: Info },
-  ];
-
   return (
     <main className={shellStyles.shell}>
       <div className={shellStyles.container}>
@@ -456,6 +444,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               canViewHr={canViewHrDirectory}
               userName={session.name}
+              userRole={session.role}
               roleLabel={roleLabel}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
@@ -533,27 +522,6 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                       <Link key={item.label} href={item.href} className={styles.mobileSettingsRow}>
                         <Icon aria-hidden />
                         <span>{item.label}</span>
-                        <ChevronRight aria-hidden />
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className={styles.mobileSettingsGroup}>
-                <h2>Апп тохиргоо</h2>
-                <div className={styles.mobileSettingsCard}>
-                  {mobileSettingRows.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Link key={item.label} href={item.href} className={styles.mobileSettingsRow}>
-                        <Icon aria-hidden />
-                        <span>{item.label}</span>
-                        {item.toggle ? (
-                          <i className={styles.mobileToggle} aria-hidden />
-                        ) : item.value ? (
-                          <strong>{item.value}</strong>
-                        ) : null}
                         <ChevronRight aria-hidden />
                       </Link>
                     );

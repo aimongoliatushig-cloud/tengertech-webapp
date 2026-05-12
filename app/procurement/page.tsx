@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { ProcurementShell } from "@/app/procurement/_components/procurement-shell";
-import { requireSession } from "@/lib/auth";
+import { canAccessProcurementModule, requireSession } from "@/lib/auth";
 import {
   loadProcurementDashboard,
   loadProcurementMeta,
@@ -27,6 +28,9 @@ export const dynamic = "force-dynamic";
 
 export default async function ProcurementPage({ searchParams }: PageProps) {
   const session = await requireSession();
+  if (!canAccessProcurementModule(session)) {
+    redirect("/");
+  }
   const params = (await searchParams) || {};
   const search = getValue(params.search);
   const state = getValue(params.state);

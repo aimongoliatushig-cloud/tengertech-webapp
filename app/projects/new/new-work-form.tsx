@@ -305,6 +305,7 @@ export function NewWorkForm({
     emptySeasonalLine(0),
   ]);
   const [autoBaseImagePreviews, setAutoBaseImagePreviews] = useState<FilePreview[]>([]);
+  const [projectFilePreviews, setProjectFilePreviews] = useState<FilePreview[]>([]);
 
   const selectedDepartment = useMemo(
     () => departmentOptions.find((option) => String(option.id) === departmentId) ?? null,
@@ -327,6 +328,12 @@ export function NewWorkForm({
       autoBaseImagePreviews.forEach((file) => URL.revokeObjectURL(file.url));
     },
     [autoBaseImagePreviews],
+  );
+  useEffect(
+    () => () => {
+      projectFilePreviews.forEach((file) => URL.revokeObjectURL(file.url));
+    },
+    [projectFilePreviews],
   );
   const selectedDepartmentHead = useMemo(() => {
     const departmentHeadOptions = managerOptions.filter(
@@ -802,6 +809,7 @@ export function NewWorkForm({
       : isRoadAreaCleaning
         ? "Зам талбайн цэвэрлэгээ"
       : "Ерөнхий ажил";
+  const showProjectDetails = !isGarbageTransport && !isAutoBase;
   const formModeDescription = isGarbageTransport
     ? "Машин, маршрут, огноо сонгоход ажил болон маршрутын цэгүүдийн даалгавар автоматаар үүснэ."
     : isSeasonalGarbage
@@ -1942,6 +1950,54 @@ export function NewWorkForm({
           </div>
         </>
       )}
+
+      {showProjectDetails ? (
+        <div className={styles.optionalSection}>
+          <span className={styles.formBadge}>Нэмэлт мэдээлэл</span>
+          <div className={styles.field}>
+            <label htmlFor="project_description">Ажлын тайлбар</label>
+            <textarea
+              id="project_description"
+              name="project_description"
+              placeholder="Ажлын зорилго, хамрах хүрээ, анхаарах зүйлсийг бичнэ үү."
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="project_files">Файл хавсаргах</label>
+            <label className={styles.fileDropZone} htmlFor="project_files">
+              <Paperclip aria-hidden />
+              <span>Зураг, баримт, төлөвлөгөө зэрэг файл хавсаргаж болно.</span>
+            </label>
+            <input
+              id="project_files"
+              name="project_files"
+              type="file"
+              multiple
+              className={styles.hiddenFileInput}
+              onChange={(event) => {
+                const nextPreviews = Array.from(event.target.files ?? []).map((file) => ({
+                  name: file.name,
+                  type: file.type,
+                  url: URL.createObjectURL(file),
+                }));
+                projectFilePreviews.forEach((file) => URL.revokeObjectURL(file.url));
+                setProjectFilePreviews(nextPreviews);
+              }}
+            />
+            {projectFilePreviews.length ? (
+              <div className={styles.attachmentPreviewGrid}>
+                {projectFilePreviews.map((file) => (
+                  <div className={styles.attachmentPreviewItem} key={`${file.name}-${file.url}`}>
+                    <FileText aria-hidden />
+                    <span>{file.name}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <div className={styles.buttonRow}>
         <SubmitWorkButton label={submitLabel} />

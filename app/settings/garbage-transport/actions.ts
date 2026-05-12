@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { loadSessionDepartmentName } from "@/lib/access-scope";
-import { requireSession } from "@/lib/auth";
-import { isAutoGarbageDepartment, normalizeDepartmentText } from "@/lib/department-permissions";
+import { canAccessGarbageTransportSettings, requireSession } from "@/lib/auth";
+import { normalizeDepartmentText } from "@/lib/department-permissions";
 import { saveLocalInspectorScope } from "@/lib/inspector-scope-store";
 import { executeOdooKw, type OdooConnection } from "@/lib/odoo";
 import { loadDepartmentOptions } from "@/lib/workspace";
@@ -270,9 +270,7 @@ async function loadTeamInspectorEmployeeId(
 async function requireGarbageTransportHead() {
   const session = await requireSession();
   const departmentName = await loadSessionDepartmentName(session);
-  const canAccess =
-    String(session.role) === "system_admin" ||
-    (String(session.role) === "project_manager" && isAutoGarbageDepartment(departmentName));
+  const canAccess = canAccessGarbageTransportSettings(session, departmentName);
 
   if (!canAccess) {
     redirect("/");
@@ -287,6 +285,16 @@ async function requireGarbageTransportHead() {
     departmentName,
     departmentId,
   };
+}
+
+async function requireGarbageTransportSystemAdmin() {
+  const context = await requireGarbageTransportHead();
+
+  if (context.session.role !== "system_admin") {
+    redirectToSettings("error", "Зөвхөн системийн админ хороо нэмэх, устгах эрхтэй.", "points");
+  }
+
+  return context;
 }
 
 export async function saveGarbageTransportPreferencesAction(formData: FormData) {
@@ -646,7 +654,7 @@ export async function createGarbageTransportVehicleAction(formData: FormData) {
 }
 
 export async function createGarbageTransportSubdistrictAction(formData: FormData) {
-  const { connection } = await requireGarbageTransportHead();
+  const { connection } = await requireGarbageTransportSystemAdmin();
   const subdistrictName = cleanInput(formData.get("subdistrict_name"));
   const districtId = parsePositiveId(formData.get("district_id"));
   const districtName = cleanInput(formData.get("district_name"));
@@ -697,6 +705,67 @@ export async function createGarbageTransportSubdistrictAction(formData: FormData
 
   revalidatePath(SETTINGS_PATH);
   redirectToSettings("notice", "Хороо нэмэгдлээ.", "points");
+}
+
+export async function archiveGarbageTransportSubdistrictAction(formData: FormData) {
+  const { connection } = await requireGarbageTransportSystemAdmin();
+  const subdistrictId = parsePositiveId(formData.get("subdistrict_id"));
+
+  if (!subdistrictId) {
+    redirectToSettings("error", "Хороо сонгоно уу.", "points");
+  }
+
+  let linkedPointCount = 0;
+  let pointCountError: unknown = null;
+  try {
+    linkedPointCount = await executeOdooKw<number>(
+      "mfo.collection.point",
+      "search_count",
+      [[["subdistrict_id", "=", subdistrictId], ["active", "=", true]]],
+      {},
+      connection,
+    );
+  } catch (error) {
+    try {
+      linkedPointCount = await executeOdooKw<number>(
+        "mfo.collection.point",
+        "search_count",
+        [[["subdistrict_id", "=", subdistrictId], ["active", "=", true]]],
+        {},
+      );
+    } catch {
+      pointCountError = error;
+    }
+  }
+
+  if (pointCountError) {
+    redirectToSettings(
+      "error",
+      getErrorMessage(pointCountError, "Хороонд бүртгэлтэй хогийн цэг байгаа эсэхийг шалгах үед Odoo дээр алдаа гарлаа."),
+      "points",
+    );
+  }
+
+  if (linkedPointCount > 0) {
+    redirectToSettings(
+      "error",
+      "Энэ хороонд бүртгэлтэй хогийн цэг байна. Эхлээд цэгүүдийг өөр хороо руу шилжүүлэх эсвэл устгана уу.",
+      "points",
+    );
+  }
+
+  try {
+    await writeOdooRecord("mfo.subdistrict", subdistrictId, { active: false }, connection);
+  } catch (error) {
+    redirectToSettings(
+      "error",
+      getErrorMessage(error, "Хороо устгах үед Odoo дээр алдаа гарлаа."),
+      "points",
+    );
+  }
+
+  revalidatePath(SETTINGS_PATH);
+  redirectToSettings("notice", "Хороо устгагдлаа.", "points");
 }
 
 export async function createGarbageTransportPointAction(formData: FormData) {

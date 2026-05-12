@@ -25,6 +25,7 @@ export default async function FleetRepairLayout({ children }: { children: React.
               canViewQualityCenter={hasCapability(session, "view_quality_center")}
               canUseFieldConsole={hasCapability(session, "use_field_console")}
               userName={session.name}
+              userRole={session.role}
               roleLabel={getRoleLabel(session.role)}
               groupFlags={session.groupFlags}
               departmentScopeName="Авто бааз, хог тээвэрлэлтийн хэлтэс"

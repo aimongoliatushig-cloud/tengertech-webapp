@@ -45,6 +45,7 @@ export default async function HrLayout({ children }: { children: React.ReactNode
             canUseFieldConsole={hasCapability(session, "use_field_console")}
             canViewHr={hrProfile.canAccessHr}
             userName={session.name}
+            userRole={session.role}
             roleLabel={roleLabel}
             groupFlags={session.groupFlags}
             departmentScopeName={scopedDepartmentName}

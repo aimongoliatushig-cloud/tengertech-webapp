@@ -40,6 +40,10 @@ export default async function CreateHubPage() {
       ? await loadSessionDepartmentName(session)
       : null;
 
+  if (workerMode) {
+    redirect("/tasks");
+  }
+
   const actionCards: ActionCard[] = [
     ...(canCreateProject
       ? [
@@ -102,6 +106,7 @@ export default async function CreateHubPage() {
               canViewQualityCenter={canViewQualityCenter}
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
+              userRole={session.role}
               roleLabel={getRoleLabel(session.role)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}

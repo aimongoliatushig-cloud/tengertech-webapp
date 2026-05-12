@@ -58,6 +58,7 @@ export default async function HelpPage() {
               canViewHr={canViewHr}
               canViewGeneralDashboard={canViewGeneralDashboard}
               userName={session.name}
+              userRole={session.role}
               roleLabel={getRoleLabel(session.role)}
               groupFlags={session.groupFlags}
               workerMode={workerMode}

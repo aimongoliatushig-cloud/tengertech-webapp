@@ -5,13 +5,13 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
+  canAccessAutoBaseOverview,
   getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
-import { isAutoGarbageDepartment } from "@/lib/department-permissions";
 import { loadFleetVehicleBoard } from "@/lib/odoo";
 import { loadWorkspaceNotificationCount } from "@/lib/workspace-notifications";
 
@@ -34,9 +34,7 @@ function firstParam(value?: string | string[]) {
 
 export default async function AutoBasePage({ searchParams }: AutoBasePageProps) {
   const session = await requireSession();
-  const allowedRoles = new Set(["system_admin", "director", "general_manager"]);
   const roleLabel = getRoleLabel(session.role);
-  const roleLabelLower = roleLabel.toLocaleLowerCase("mn-MN");
   const masterMode = isMasterRole(session.role);
   const workerMode = isWorkerOnly(session);
   const canCreateProject = hasCapability(session, "create_projects");
@@ -45,21 +43,8 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const scopedDepartmentName = await loadSessionDepartmentName(session);
-  const flags: Partial<NonNullable<typeof session.groupFlags>> = session.groupFlags ?? {};
-  const isGarbageDepartmentHead =
-    !workerMode &&
-    !masterMode &&
-    Boolean(scopedDepartmentName) &&
-    isAutoGarbageDepartment(scopedDepartmentName) &&
-    Boolean(
-      flags.mfoManager ||
-        flags.mfoDispatcher ||
-        flags.municipalDepartmentHead ||
-        roleLabelLower.includes("\u0445\u044D\u043B\u0442\u0441\u0438\u0439\u043D \u0434\u0430\u0440\u0433\u0430") ||
-        (canCreateProject && canCreateTasks),
-    );
 
-  if (!allowedRoles.has(String(session.role)) && !isGarbageDepartmentHead) {
+  if (!canAccessAutoBaseOverview(session)) {
     redirect("/");
   }
 
@@ -113,6 +98,7 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
               canViewQualityCenter={canViewQualityCenter}
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
+              userRole={session.role}
               roleLabel={roleLabel}
               groupFlags={session.groupFlags}
               notificationCount={notificationCount}

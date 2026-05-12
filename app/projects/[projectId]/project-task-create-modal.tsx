@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 
 import styles from "@/app/workspace.module.css";
 import type { FleetVehicleDriverOption } from "@/lib/odoo";
-import type { GarbagePointOption, SelectOption, WorkUnitOption } from "@/lib/workspace";
+import type { GarbagePointOption, GarbageSubdistrictOption, SelectOption, WorkUnitOption } from "@/lib/workspace";
 
 import { ProjectTaskCreateForm } from "./project-task-create-form";
 
@@ -27,6 +27,7 @@ type Props = {
   allowedUnitSummary?: string;
   operationType?: string;
   garbagePointOptions?: GarbagePointOption[];
+  subdistrictOptions?: GarbageSubdistrictOption[];
   garbageLoaderOptions?: FleetVehicleDriverOption[];
   garbageVehicleContext?: {
     vehicleId: number | null;
@@ -54,6 +55,7 @@ export function ProjectTaskCreateModal({
   allowedUnitSummary,
   operationType = "",
   garbagePointOptions = [],
+  subdistrictOptions = [],
   garbageLoaderOptions = [],
   garbageVehicleContext = null,
   defaultOpen = false,
@@ -151,6 +153,7 @@ export function ProjectTaskCreateModal({
                 allowedUnitSummary={allowedUnitSummary}
                 operationType={operationType}
                 garbagePointOptions={garbagePointOptions}
+                subdistrictOptions={subdistrictOptions}
                 garbageLoaderOptions={garbageLoaderOptions}
                 garbageVehicleContext={garbageVehicleContext}
               />

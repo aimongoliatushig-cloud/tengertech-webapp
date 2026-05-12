@@ -1492,6 +1492,7 @@ function ExecutiveDashboardView({
             canUseFieldConsole={canUseFieldConsole}
             canViewHr={canViewHr}
             userName={session.name}
+            userRole={session.role}
             roleLabel={roleLabel}
             groupFlags={session.groupFlags}
             workerMode={false}
@@ -1715,6 +1716,7 @@ export function DashboardView({
             canViewHr={canViewHr}
             canViewGeneralDashboard={canViewGeneralDashboard}
             userName={session.name}
+            userRole={session.role}
             roleLabel={roleLabel}
             groupFlags={session.groupFlags}
             workerMode={workerMode}

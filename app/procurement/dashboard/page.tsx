@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { ProcurementShell } from "@/app/procurement/_components/procurement-shell";
-import { requireSession } from "@/lib/auth";
+import { canAccessProcurementModule, requireSession } from "@/lib/auth";
 import {
   createEmptyProcurementDashboard,
   createFallbackProcurementUser,
@@ -31,6 +32,9 @@ export const dynamic = "force-dynamic";
 
 export default async function ProcurementDashboardPage() {
   const session = await requireSession();
+  if (!canAccessProcurementModule(session)) {
+    redirect("/");
+  }
   const connectionOverrides = {
     login: session.login,
     password: session.password,
