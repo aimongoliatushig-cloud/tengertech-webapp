@@ -941,6 +941,11 @@ const MUNICIPAL_CORE_GROUP_XML_IDS = {
   publicRelations: "municipal_core.group_municipal_public_relations",
 } as const;
 
+const HR_CUSTOM_MN_GROUP_XML_IDS = {
+  officer: "hr_custom_mn.group_hr_custom_mn_officer",
+  admin: "hr_custom_mn.group_hr_custom_mn_admin",
+} as const;
+
 const MFO_GROUP_XML_IDS = {
   manager: "municipal_field_ops.group_mfo_manager",
   dispatcher: "municipal_field_ops.group_mfo_dispatcher",
@@ -2910,6 +2915,8 @@ export async function authenticateOdooUser(
     fleetRepairCeo,
     fleetRepairManager,
     opsStorekeeper,
+    hrCustomOfficer,
+    hrCustomAdmin,
     hrUser,
     hrManager,
     municipalHse,
@@ -2949,6 +2956,8 @@ export async function authenticateOdooUser(
     hasGroup(FLEET_REPAIR_GROUP_XML_IDS.ceo),
     hasGroup(FLEET_REPAIR_GROUP_XML_IDS.manager),
     hasGroup(OPS_PROFILE_GROUP_XML_IDS.storekeeper),
+    hasGroup(HR_CUSTOM_MN_GROUP_XML_IDS.officer),
+    hasGroup(HR_CUSTOM_MN_GROUP_XML_IDS.admin),
     hasGroup("hr.group_hr_user"),
     hasGroup("hr.group_hr_manager"),
     hasGroup(MUNICIPAL_CORE_GROUP_XML_IDS.hse),
@@ -2976,29 +2985,36 @@ export async function authenticateOdooUser(
     fleetRepairCeo ||
     fleetRepairManager;
 
-  const inferredRole = resolveAuthenticatedRole(user.ops_user_type ?? false, employee);
-  const groupRole = systemAdmin
+  const explicitRole = typeof user.ops_user_type === "string" ? user.ops_user_type : "";
+  const hasExplicitOperationalRole = Boolean(explicitRole && explicitRole !== "worker");
+  const inferredRole = systemAdmin
     ? "system_admin"
+    : resolveAuthenticatedRole(user.ops_user_type ?? false, employee);
+  const groupFallbackRole = hasExplicitOperationalRole
+    ? null
     : municipalDirector || fleetRepairCeo
       ? "director"
-      : municipalManager || fleetRepairGeneralManager
-        ? "general_manager"
-        : hrManager
-          ? "hr_manager"
-          : municipalHr || hrUser
-            ? "hr_specialist"
-            : municipalDepartmentHead || mfoManager || mfoDispatcher || environmentManager || improvementManager || fleetRepairManager
-              ? "project_manager"
-              : municipalHse
-                ? "hse_officer"
-                : municipalPublicRelations
-                  ? "public_relations"
-                  : municipalInspector || (mfoInspector && !mfoManager && !mfoDispatcher)
-                    ? "transport_inspector"
-                    : municipalMaster || greenMaster || fleetRepairTeamLeader
-                      ? "team_leader"
-                      : null;
-  const role = groupRole ?? inferredRole;
+      : hrCustomAdmin
+        ? "hr_manager"
+        : municipalHr || hrCustomOfficer
+          ? "hr_specialist"
+          : municipalDepartmentHead ||
+              mfoManager ||
+              mfoDispatcher ||
+              environmentManager ||
+              improvementManager ||
+              fleetRepairManager
+            ? "project_manager"
+            : municipalHse
+              ? "hse_officer"
+              : municipalPublicRelations
+                ? "public_relations"
+                : municipalInspector || (mfoInspector && !mfoManager && !mfoDispatcher)
+                  ? "transport_inspector"
+                  : municipalMaster || greenMaster || fleetRepairTeamLeader
+                    ? "team_leader"
+                    : null;
+  const role = systemAdmin ? "system_admin" : (groupFallbackRole ?? inferredRole);
 
   return {
     uid,
