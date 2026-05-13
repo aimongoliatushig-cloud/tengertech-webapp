@@ -223,7 +223,7 @@ function projectDisplayStageLabel(project: DashboardSnapshot["projects"][number]
     return "Дууссан";
   }
   if (project.stageBucket === "progress" || project.completion > 0) {
-    return "Явагдаж буй";
+    return "Гүйцэтгэж байгаа";
   }
   if (project.stageBucket === "review") {
     return "Хянаж байгаа";
@@ -302,10 +302,10 @@ function projectStatusFilterChips(projects: DashboardSnapshot["projects"]) {
   ).length;
 
   return [
-    { key: "progress" as const, label: "Явагдаж буй", count: active, tone: "green" },
+    { key: "planned" as const, label: "Төлөвлөгдсөн", count: planned, tone: "muted" },
+    { key: "progress" as const, label: "Гүйцэтгэж байгаа", count: active, tone: "green" },
     { key: "pending" as const, label: "Хүлээгдэж буй", count: pending, tone: "amber" },
     { key: "done" as const, label: "Дууссан", count: done, tone: "green" },
-    { key: "planned" as const, label: "Төлөвлөгдсөн", count: planned, tone: "muted" },
   ];
 }
 

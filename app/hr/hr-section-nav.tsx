@@ -26,7 +26,7 @@ const hrItems = [
 
 const departmentItems = [
   { href: "/hr", label: "Самбар", icon: LayoutDashboard },
-  { href: "/hr/employees", label: "Миний хэлтсийн ажилтнууд", icon: Users },
+  { href: "/hr/employees", label: "Манай хэлтсийн ажилтнууд", icon: Users },
   { href: "/hr/leaves", label: "Миний илгээсэн хүсэлтүүд", icon: CalendarDays },
   { href: "/hr/sick", label: "Чөлөө / өвчтэй хүсэлт", icon: HeartPulse },
 ];

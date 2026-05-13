@@ -36,6 +36,16 @@ type ChartSlice = {
 
 const STATUS_COLORS = ["#2e7d32", "#3f7ee8", "#f2ad13", "#7c6de8", "#9aa4b2", "#ef4d84", "#39b6c8"];
 
+const STAT_CARD_TONE_CLASS: Record<DetailKind, string> = {
+  total: styles.statCardTotal,
+  active: styles.statCardActive,
+  timeoff: styles.statCardTimeoff,
+  sick: styles.statCardSick,
+  pending: styles.statCardPending,
+  approved: styles.statCardApproved,
+  rejected: styles.statCardRejected,
+};
+
 function todayKey() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Ulaanbaatar",
@@ -421,7 +431,7 @@ export function HrDashboardClient({
           }
         />
         <AnimatedPie
-          title="Хэлтсийн ажлын тоо"
+          title="Хэлтсийн ажилтаны тоо"
           slices={departmentSlices}
           centerLabel="Ажилтан"
           centerValue={`${cards[0].value}`}
@@ -443,7 +453,7 @@ export function HrDashboardClient({
             <button
               key={card.kind}
               type="button"
-              className={`${styles.statCard} ${isActive ? styles.statCardSelected : ""}`}
+              className={`${styles.statCard} ${STAT_CARD_TONE_CLASS[card.kind]} ${isActive ? styles.statCardSelected : ""}`}
               onClick={() => setDetailKind(card.kind)}
             >
               <span className={styles.statIcon}>
