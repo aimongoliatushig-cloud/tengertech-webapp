@@ -56,6 +56,13 @@
   object-fit: cover;
 }
 
+.avatarIcon {
+  width: 34px;
+  height: 34px;
+  color: var(--brand-800);
+  stroke-width: 2.1;
+}
+
 .identityCopy {
   display: grid;
   gap: 6px;
@@ -229,6 +236,12 @@
   object-fit: cover;
 }
 
+.mobileProfileAvatarIcon {
+  width: 52px;
+  height: 52px;
+  stroke-width: 1.9;
+}
+
 .mobileCameraButton {
   position: absolute;
   right: -2px;
@@ -354,6 +367,13 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.mobileUserBadgeIcon {
+  width: 28px;
+  height: 28px;
+  color: #fff;
+  stroke-width: 2.2;
 }
 
 .mobileProfileCard,

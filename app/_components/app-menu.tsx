@@ -38,6 +38,7 @@ import {
   type DepartmentGroupDefinition,
 } from "@/lib/department-groups";
 import { isAutoGarbageDepartment } from "@/lib/department-permissions";
+import { ProfileAvatar } from "@/app/_components/profile-avatar";
 import {
   canAccessGarbageTransportSettings,
   canAccessProcurementModule,
@@ -161,20 +162,6 @@ function isHiddenMenuItem(item: MenuItem) {
   return false;
 }
 
-function getInitials(userName: string) {
-  const parts = userName
-    .split(/\s+/)
-    .map((part) => part.replace(/[^\p{L}\p{N}]/gu, ""))
-    .filter(Boolean)
-    .slice(0, 2);
-
-  if (!parts.length) {
-    return "HT";
-  }
-
-  return parts.map((part) => part[0]).join("").toLocaleUpperCase("mn-MN");
-}
-
 function getDepartmentMenuIcon(group: DepartmentGroupDefinition): LucideIcon {
   if (group.name.includes("Санхүү")) {
     return BarChart3;
@@ -230,6 +217,7 @@ export function AppMenu({
 }: AppMenuProps) {
   void getDockLabel;
   void canViewQualityCenter;
+  void canUseFieldConsole;
   void variant;
 
   const router = useRouter();
@@ -266,11 +254,14 @@ export function AppMenu({
     };
   }, [userImageUrl]);
 
-  const profileAvatarContent = resolvedUserImageUrl ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={resolvedUserImageUrl} alt="" className={styles.profileAvatarImage} />
-  ) : (
-    getInitials(userName)
+  const profileAvatarContent = (
+    <ProfileAvatar
+      src={resolvedUserImageUrl}
+      className={styles.profileAvatar}
+      imageClassName={styles.profileAvatarImage}
+      iconClassName={styles.profileAvatarIcon}
+      aria-hidden
+    />
   );
 
   useEffect(() => {
@@ -458,22 +449,6 @@ export function AppMenu({
             label: "Өнөөдрийн ажил",
             icon: ListChecks,
           },
-          {
-            key: "field",
-            href: "/field",
-            label: "Талбарын маршрут",
-            icon: Truck,
-          },
-        ]
-      : []),
-    ...(workerMode && canUseFieldConsole && !mfoFieldMode && !environmentMode && !repairMode
-      ? [
-          {
-            key: "field",
-            href: "/field",
-            label: "Талбарын маршрут",
-            icon: Truck,
-          },
         ]
       : []),
     ...(environmentMode && !(workerMode && mfoFieldMode)
@@ -638,7 +613,7 @@ export function AppMenu({
       return false;
     }
     if (mfoFieldMode) {
-      return ["dashboard", "tasks", "field", "chat", "help", "review", "notifications"].includes(item.key);
+      return ["dashboard", "tasks", "chat", "help", "review", "notifications"].includes(item.key);
     }
     if (environmentFieldMode) {
       return ["dashboard", "tasks", "chat", "help", "review", "notifications"].includes(item.key);
@@ -864,9 +839,7 @@ export function AppMenu({
             : [
                 { key: "dashboard", href: "/", label: "\u041D\u04AF\u04AF\u0440", icon: LayoutDashboard, hardNavigate: true },
                 { key: "tasks", href: "/tasks", label: "\u0410\u0436\u0438\u043B", icon: ListChecks },
-                ...(canUseFieldConsole
-                  ? [{ key: "field", href: "/field", label: "\u041C\u0430\u0440\u0448\u0440\u0443\u0442", icon: Truck }]
-                  : [{ key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare }]),
+                { key: "chat", href: "/chat", label: "\u0427\u0430\u0442", icon: MessageSquare },
                 { key: "review", href: reviewHref, label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
                 { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
               ]
@@ -956,9 +929,7 @@ export function AppMenu({
             aria-controls="account-menu"
             onClick={() => setIsProfileMenuOpen((open) => !open)}
           >
-            <span className={styles.profileAvatar} aria-hidden>
-              {profileAvatarContent}
-            </span>
+            {profileAvatarContent}
             <span className={styles.profileText}>
               <strong>{userName}</strong>
               <small>{roleLabel}</small>
@@ -1032,9 +1003,7 @@ export function AppMenu({
             {menuList}
             <div className={styles.mobileSheetFooter}>
               <Link href="/profile" className={styles.mobileSheetProfile} onClick={() => setIsOpen(false)}>
-                <span className={styles.profileAvatar} aria-hidden>
-                  {profileAvatarContent}
-                </span>
+                {profileAvatarContent}
                 <span>
                   <strong>{userName}</strong>
                   <small>{roleLabel}</small>

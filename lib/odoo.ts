@@ -390,6 +390,7 @@ export type AuthenticatedOdooUser = {
     name: string;
     login: string;
     role: string;
+    employeeJobTitle?: string;
     groupFlags: RoleGroupFlags;
   };
 };
@@ -469,6 +470,15 @@ function inferRoleFromEmployeeTitle(employee?: OdooAuthEmployeeRecord | null) {
   }
 
   return null;
+}
+
+function getEmployeeJobTitle(employee?: OdooAuthEmployeeRecord | null) {
+  if (!employee) {
+    return "";
+  }
+
+  const jobName = Array.isArray(employee.job_id) ? employee.job_id[1] : "";
+  return (jobName || employee.job_title || "").trim();
 }
 
 function resolveAuthenticatedRole(
@@ -3022,6 +3032,7 @@ export async function authenticateOdooUser(
       name: user.name,
       login: user.login,
       role,
+      employeeJobTitle: getEmployeeJobTitle(employee),
       groupFlags: {
         municipalWorker,
         municipalMaster,

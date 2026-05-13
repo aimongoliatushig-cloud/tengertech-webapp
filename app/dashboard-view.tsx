@@ -35,7 +35,7 @@ import { DashboardInspectorVehiclePanel } from "@/app/dashboard-inspector-vehicl
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import dashboardStyles from "@/app/dashboard-view.module.css";
 import shellStyles from "@/app/workspace.module.css";
-import { getRoleLabel, hasCapability, isMasterRole, isWorkerOnly, type AppSession } from "@/lib/auth";
+import { getSessionRoleLabel, hasCapability, isMasterRole, isWorkerOnly, type AppSession } from "@/lib/auth";
 import { buildDashboardModel, type StatusTone } from "@/lib/dashboard-model";
 import { type FieldAssignment } from "@/lib/field-ops";
 import {
@@ -1568,7 +1568,7 @@ export function DashboardView({
   const masterMode = isMasterRole(session.role);
   const transportInspectorMode = isTransportInspectorDashboard(session);
   const showHrSummary = Boolean(canViewHr && !workerMode);
-  const roleLabel = getRoleLabel(session.role);
+  const roleLabel = getSessionRoleLabel(session);
   const currentDateKey = todayKey();
   const model = buildDashboardModel({
     session,

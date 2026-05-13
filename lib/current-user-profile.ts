@@ -12,13 +12,19 @@ type ProfileImageRecord = {
   image_1920?: string | false;
 };
 
+const MIN_REAL_PROFILE_IMAGE_BYTES = 1000;
+
 function imageDataUrl(value?: string | false) {
   if (!value) {
     return "";
   }
 
   const trimmed = value.trim();
-  if (!trimmed) {
+  if (
+    !trimmed ||
+    trimmed.toLowerCase() === "false" ||
+    (!trimmed.startsWith("data:") && trimmed.length < MIN_REAL_PROFILE_IMAGE_BYTES)
+  ) {
     return "";
   }
 

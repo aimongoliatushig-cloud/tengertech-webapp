@@ -307,6 +307,13 @@
   object-fit: cover;
 }
 
+.profileAvatarIcon {
+  width: 22px;
+  height: 22px;
+  color: #1f7a35;
+  stroke-width: 2.2;
+}
+
 .profileText {
   display: grid;
   gap: 2px;

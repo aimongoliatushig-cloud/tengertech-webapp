@@ -1,22 +1,21 @@
 "use client";
 
 import { useRef } from "react";
-import Image from "next/image";
 import { Camera } from "lucide-react";
+
+import { ProfileAvatar } from "@/app/_components/profile-avatar";
 
 import styles from "./profile.module.css";
 
 type ProfilePhotoUploadProps = {
   action: (formData: FormData) => void | Promise<void>;
   imageUrl: string;
-  initials: string;
   userName: string;
 };
 
 export function ProfilePhotoUpload({
   action,
   imageUrl,
-  initials,
   userName,
 }: ProfilePhotoUploadProps) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -24,20 +23,14 @@ export function ProfilePhotoUpload({
 
   return (
     <form ref={formRef} action={action} className={styles.mobileAvatarForm}>
-      <span className={styles.mobileProfileAvatar} aria-hidden={!imageUrl}>
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={`${userName} профайл зураг`}
-            width={104}
-            height={104}
-            className={styles.mobileProfileAvatarImage}
-            unoptimized
-          />
-        ) : (
-          initials
-        )}
-      </span>
+      <ProfileAvatar
+        src={imageUrl}
+        alt={`${userName} профайл зураг`}
+        className={styles.mobileProfileAvatar}
+        imageClassName={styles.mobileProfileAvatarImage}
+        iconClassName={styles.mobileProfileAvatarIcon}
+        aria-hidden={!imageUrl}
+      />
       <button
         type="button"
         className={styles.mobileCameraButton}

@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, LogOut, Settings } from "lucide-react";
 
+import { ProfileAvatar } from "@/app/_components/profile-avatar";
+
 import styles from "./workspace-header.module.css";
 
 type WorkspaceHeaderUserMenuProps = {
@@ -12,16 +14,6 @@ type WorkspaceHeaderUserMenuProps = {
   roleLabel: string;
   userImageUrl?: string;
 };
-
-function getInitials(userName: string) {
-  const parts = userName
-    .split(/\s+/)
-    .map((part) => part.replace(/[^\p{L}\p{N}]/gu, ""))
-    .filter(Boolean)
-    .slice(0, 2);
-
-  return (parts.length ? parts.map((part) => part[0]).join("") : "Х").toLocaleUpperCase("mn-MN");
-}
 
 export function WorkspaceHeaderUserMenu({
   userName,
@@ -65,14 +57,13 @@ export function WorkspaceHeaderUserMenu({
         aria-controls="workspace-header-account-menu"
         onClick={() => setIsOpen((open) => !open)}
       >
-        <span className={styles.headerUserAvatar} aria-hidden>
-          {userImageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={userImageUrl} alt="" />
-          ) : (
-            getInitials(userName)
-          )}
-        </span>
+        <ProfileAvatar
+          src={userImageUrl}
+          className={styles.headerUserAvatar}
+          imageClassName={styles.headerUserAvatarImage}
+          iconClassName={styles.headerUserAvatarIcon}
+          aria-hidden
+        />
         <span className={styles.headerUserText}>
           <strong>{userName}</strong>
           <small>{roleLabel}</small>

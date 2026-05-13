@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import {
   Bell,
   ChevronRight,
@@ -13,12 +12,13 @@ import {
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
+import { ProfileAvatar } from "@/app/_components/profile-avatar";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
   getDeviceLabel,
-  getRoleLabel,
+  getSessionRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
@@ -55,23 +55,6 @@ type CapabilityCard = {
 
 function getValue(value?: string | string[]) {
   return Array.isArray(value) ? value[0] || "" : value || "";
-}
-
-function getInitials(userName: string) {
-  const parts = userName
-    .split(/\s+/)
-    .map((part) => part.replace(/[^\p{L}\p{N}]/gu, ""))
-    .filter(Boolean)
-    .slice(0, 2);
-
-  if (!parts.length) {
-    return "ХТ";
-  }
-
-  return parts
-    .map((part) => part[0])
-    .join("")
-    .toLocaleUpperCase("mn-MN");
 }
 
 function getAppRoleLabel(appRole: ReturnType<typeof getPrimaryAppRole>) {
@@ -128,13 +111,19 @@ type ProfileImageRecord = {
   mobile?: string | false;
 };
 
+const MIN_REAL_PROFILE_IMAGE_BYTES = 1000;
+
 function imageDataUrl(value?: string | false) {
   if (!value) {
     return "";
   }
 
   const trimmed = value.trim();
-  if (!trimmed) {
+  if (
+    !trimmed ||
+    trimmed.toLowerCase() === "false" ||
+    (!trimmed.startsWith("data:") && trimmed.length < MIN_REAL_PROFILE_IMAGE_BYTES)
+  ) {
     return "";
   }
 
@@ -198,7 +187,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
   const notice = getValue(params.notice);
   const error = getValue(params.error);
 
-  const roleLabel = getRoleLabel(session.role);
+  const roleLabel = getSessionRoleLabel(session);
   const masterMode = isMasterRole(session.role);
   const workerMode = isWorkerOnly(session);
   const canCreateProject = hasCapability(session, "create_projects");
@@ -255,20 +244,13 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     }),
   );
   const renderProfileAvatar = (compact = false) => (
-    <span className={`${styles.avatarFrame} ${compact ? styles.avatarFrameCompact : ""}`}>
-      {profileImageUrl ? (
-        <Image
-          src={profileImageUrl}
-          alt={`${session.name} профайл зураг`}
-          width={compact ? 56 : 68}
-          height={compact ? 56 : 68}
-          className={styles.avatarImage}
-          unoptimized
-        />
-      ) : (
-        <span className={styles.avatar}>{getInitials(session.name)}</span>
-      )}
-    </span>
+    <ProfileAvatar
+      src={profileImageUrl}
+      alt={`${session.name} профайл зураг`}
+      className={`${styles.avatarFrame} ${compact ? styles.avatarFrameCompact : ""}`}
+      imageClassName={styles.avatarImage}
+      iconClassName={styles.avatarIcon}
+    />
   );
   const profilePhotoForm = (
     <form id="profile-photo" action={updateProfilePhotoAction} className={styles.profilePhotoForm}>
@@ -450,20 +432,13 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                     <Bell aria-hidden />
                     {enabledCapabilityCount > 0 ? <span>{enabledCapabilityCount}</span> : null}
                   </Link>
-                  <span className={styles.mobileUserBadge} aria-hidden>
-                    {profileImageUrl ? (
-                      <Image
-                        src={profileImageUrl}
-                        alt=""
-                        width={54}
-                        height={54}
-                        className={styles.mobileUserBadgeImage}
-                        unoptimized
-                      />
-                    ) : (
-                      getInitials(session.name).slice(0, 1)
-                    )}
-                  </span>
+                  <ProfileAvatar
+                    src={profileImageUrl}
+                    className={styles.mobileUserBadge}
+                    imageClassName={styles.mobileUserBadgeImage}
+                    iconClassName={styles.mobileUserBadgeIcon}
+                    aria-hidden
+                  />
                 </div>
               </div>
 
@@ -474,7 +449,6 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                 <ProfilePhotoUpload
                   action={updateProfilePhotoAction}
                   imageUrl={profileImageUrl}
-                  initials={getInitials(session.name).slice(0, 1)}
                   userName={session.name}
                 />
                 <div className={styles.mobileProfileIdentity}>

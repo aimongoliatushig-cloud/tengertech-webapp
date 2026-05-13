@@ -37,6 +37,8 @@ export type AppSession = {
   password: string;
   name: string;
   role: UserRole;
+  employeeJobTitle?: string;
+  displayRoleLabel?: string;
   groupFlags?: RoleGroupFlags;
   odooUrl: string;
   odooDb: string;
@@ -130,6 +132,7 @@ async function refreshSessionRole(session: AppSession) {
     session.roleInferenceVersion === CURRENT_SESSION_ROLE_INFERENCE_VERSION &&
     session.role === "worker" &&
     !needsRepairGroupRefresh &&
+    session.displayRoleLabel &&
     Date.now() - lastRoleCheckAt < WORKER_ROLE_REFRESH_INTERVAL_MS
   ) {
     return session;
@@ -147,7 +150,16 @@ async function refreshSessionRole(session: AppSession) {
 
     const groupFlagsChanged =
       JSON.stringify(refreshed.user.groupFlags) !== JSON.stringify(session.groupFlags);
-    if (refreshed.user.role === session.role && !groupFlagsChanged) {
+    const nextDisplayRoleLabel = resolveDisplayRoleLabel(
+      refreshed.user.role,
+      refreshed.user.employeeJobTitle,
+    );
+    if (
+      refreshed.user.role === session.role &&
+      !groupFlagsChanged &&
+      refreshed.user.employeeJobTitle === session.employeeJobTitle &&
+      nextDisplayRoleLabel === session.displayRoleLabel
+    ) {
       return {
         ...session,
         roleCheckedAt: Date.now(),
@@ -160,6 +172,8 @@ async function refreshSessionRole(session: AppSession) {
       name: refreshed.user.name,
       login: refreshed.user.login,
       role: refreshed.user.role,
+      employeeJobTitle: refreshed.user.employeeJobTitle,
+      displayRoleLabel: nextDisplayRoleLabel,
       groupFlags: refreshed.user.groupFlags,
       roleCheckedAt: Date.now(),
       roleInferenceVersion: CURRENT_SESSION_ROLE_INFERENCE_VERSION,
@@ -300,6 +314,8 @@ export async function signInWithOdooCredentials(
     password,
     name: result.user.name,
     role: result.user.role,
+    employeeJobTitle: result.user.employeeJobTitle,
+    displayRoleLabel: resolveDisplayRoleLabel(result.user.role, result.user.employeeJobTitle),
     groupFlags: result.user.groupFlags,
     ...getCurrentSessionConnection(),
     issuedAt: Date.now(),
@@ -324,3 +340,18 @@ export {
   isMasterRole,
   isWorkerOnly,
 };
+
+function resolveDisplayRoleLabel(role: UserRole, employeeJobTitle?: string) {
+  const trimmedJobTitle = employeeJobTitle?.trim();
+  if (role === "worker" && trimmedJobTitle) {
+    return trimmedJobTitle;
+  }
+
+  return getRoleLabel(role);
+}
+
+export function getSessionRoleLabel(
+  session: Pick<AppSession, "role" | "employeeJobTitle" | "displayRoleLabel">,
+) {
+  return session.displayRoleLabel || resolveDisplayRoleLabel(session.role, session.employeeJobTitle);
+}
