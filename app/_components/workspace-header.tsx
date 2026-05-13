@@ -15,6 +15,7 @@ type WorkspaceHeaderProps = {
   notificationNote?: string;
   notificationHref?: string;
   backgroundImage?: string;
+  showUserMenu?: boolean;
 };
 
 const DEFAULT_HEADER_IMAGE =
@@ -44,6 +45,7 @@ export function WorkspaceHeader({
   notificationNote,
   notificationHref = "/notifications",
   backgroundImage = DEFAULT_HEADER_IMAGE,
+  showUserMenu = true,
 }: WorkspaceHeaderProps) {
   const safeNotificationCount = Math.max(0, Math.round(notificationCount));
   const noticeText =
@@ -90,7 +92,7 @@ export function WorkspaceHeader({
           {safeNotificationCount > 0 ? <span>{safeNotificationCount}</span> : null}
         </Link>
 
-        <WorkspaceHeaderUserMenu userName={userName} roleLabel={roleLabel} />
+        {showUserMenu ? <WorkspaceHeaderUserMenu userName={userName} roleLabel={roleLabel} /> : null}
       </div>
     </header>
   );

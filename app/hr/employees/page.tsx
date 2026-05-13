@@ -22,8 +22,8 @@ export default async function HrEmployeesPage() {
   return (
     <>
       <WorkspaceHeader
-        title={access.isHr ? "Бүх ажилтнууд" : "Миний хэлтсийн ажилтнууд"}
-        subtitle={access.isHr ? "Odoo hr.employee бүртгэлээс бүх ажилтны жагсаалт, хайлт, төлөвийн шүүлт" : "Өөрийн хэлтсийн ажилтнуудыг хайж чөлөө / өвчтэй хүсэлт үүсгэнэ"}
+        title={access.isHr ? "Бүх ажилтнууд" : "Манай хэлтсийн ажилтнууд"}
+        subtitle={access.isHr ? "Бүх ажилтны жагсаалт, хайлт, төлөвийн шүүлт" : "Өөрийн хэлтсийн ажилтнуудыг хайж чөлөө / өвчтэй хүсэлт үүсгэнэ"}
         userName={session.name}
         roleLabel={getRoleLabel(session.role)}
         notificationCount={employees.length}

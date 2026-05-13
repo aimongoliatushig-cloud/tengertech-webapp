@@ -1,8 +1,8 @@
 .statGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
-  margin-bottom: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
 .chartGrid {
@@ -28,9 +28,12 @@
 
 .statCard {
   display: grid;
-  gap: 12px;
-  min-height: 148px;
-  padding: 16px;
+  gap: 8px;
+  min-height: 108px;
+  padding: 12px;
+  border-color: var(--stat-border, rgba(46, 125, 50, 0.1));
+  background: var(--stat-bg, rgba(255, 255, 255, 0.78));
+  box-shadow: var(--stat-shadow, var(--ds-shadow-panel));
   color: inherit;
   cursor: pointer;
   font: inherit;
@@ -43,23 +46,23 @@
 
 .statCard:hover,
 .statCardSelected {
-  border-color: rgba(46, 125, 50, 0.38);
-  box-shadow: 0 16px 34px rgba(46, 125, 50, 0.14);
+  border-color: var(--stat-hover-border, rgba(46, 125, 50, 0.38));
+  box-shadow: var(--stat-hover-shadow, 0 16px 34px rgba(46, 125, 50, 0.14));
   transform: translateY(-1px);
 }
 
 .statCardSelected {
-  outline: 2px solid rgba(46, 125, 50, 0.18);
+  outline: 2px solid var(--stat-outline, rgba(46, 125, 50, 0.18));
 }
 
 .statIcon {
   display: inline-grid;
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   place-items: center;
   border-radius: 8px;
-  background: rgba(218, 238, 219, 0.92);
-  color: #2e7d32;
+  background: var(--stat-icon-bg, rgba(218, 238, 219, 0.92));
+  color: var(--stat-accent, #2e7d32);
 }
 
 .statIcon svg,
@@ -69,33 +72,96 @@
 .dangerButton svg,
 .checklist svg,
 .searchBox svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .statCard small,
 .eyebrow,
 .field span,
 .infoCard span {
-  color: #637568;
+  color: var(--stat-label-color, #637568);
   font-size: 0.76rem;
   font-weight: 800;
 }
 
 .statCard strong {
   display: block;
-  margin-top: 4px;
-  color: #142017;
-  font-size: 2rem;
+  margin-top: 2px;
+  color: var(--stat-value-color, #142017);
+  font-size: 1.6rem;
   line-height: 1;
 }
 
 .statCard p,
 .mutedText {
-  margin: 6px 0 0;
-  color: #66766b;
-  font-size: 0.82rem;
-  line-height: 1.5;
+  margin: 2px 0 0;
+  color: var(--stat-note-color, #66766b);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.statCardTotal {
+  --stat-bg: linear-gradient(135deg, rgba(232, 244, 235, 0.9), rgba(255, 255, 255, 0.82));
+  --stat-border: rgba(46, 125, 50, 0.15);
+  --stat-icon-bg: rgba(218, 238, 219, 0.96);
+  --stat-accent: #2e7d32;
+  --stat-hover-border: rgba(46, 125, 50, 0.34);
+  --stat-outline: rgba(46, 125, 50, 0.16);
+}
+
+.statCardActive {
+  --stat-bg: linear-gradient(135deg, rgba(224, 243, 230, 0.9), rgba(250, 255, 251, 0.84));
+  --stat-border: rgba(31, 122, 53, 0.16);
+  --stat-icon-bg: rgba(209, 235, 214, 0.95);
+  --stat-accent: #1f7a35;
+  --stat-hover-border: rgba(31, 122, 53, 0.34);
+  --stat-outline: rgba(31, 122, 53, 0.16);
+}
+
+.statCardTimeoff {
+  --stat-bg: linear-gradient(135deg, rgba(228, 239, 252, 0.92), rgba(255, 255, 255, 0.84));
+  --stat-border: rgba(63, 126, 232, 0.18);
+  --stat-icon-bg: rgba(214, 229, 249, 0.94);
+  --stat-accent: #3f7ee8;
+  --stat-hover-border: rgba(63, 126, 232, 0.34);
+  --stat-outline: rgba(63, 126, 232, 0.15);
+}
+
+.statCardSick {
+  --stat-bg: linear-gradient(135deg, rgba(253, 235, 244, 0.9), rgba(255, 255, 255, 0.84));
+  --stat-border: rgba(213, 91, 138, 0.18);
+  --stat-icon-bg: rgba(248, 222, 234, 0.94);
+  --stat-accent: #b65b84;
+  --stat-hover-border: rgba(213, 91, 138, 0.33);
+  --stat-outline: rgba(213, 91, 138, 0.15);
+}
+
+.statCardPending {
+  --stat-bg: linear-gradient(135deg, rgba(254, 246, 226, 0.92), rgba(255, 255, 255, 0.84));
+  --stat-border: rgba(214, 158, 46, 0.2);
+  --stat-icon-bg: rgba(250, 236, 199, 0.96);
+  --stat-accent: #b7791f;
+  --stat-hover-border: rgba(214, 158, 46, 0.36);
+  --stat-outline: rgba(214, 158, 46, 0.15);
+}
+
+.statCardApproved {
+  --stat-bg: linear-gradient(135deg, rgba(232, 246, 239, 0.92), rgba(255, 255, 255, 0.84));
+  --stat-border: rgba(11, 128, 92, 0.18);
+  --stat-icon-bg: rgba(210, 238, 226, 0.94);
+  --stat-accent: #0b805c;
+  --stat-hover-border: rgba(11, 128, 92, 0.34);
+  --stat-outline: rgba(11, 128, 92, 0.15);
+}
+
+.statCardRejected {
+  --stat-bg: linear-gradient(135deg, rgba(253, 237, 232, 0.92), rgba(255, 255, 255, 0.84));
+  --stat-border: rgba(184, 62, 36, 0.18);
+  --stat-icon-bg: rgba(250, 224, 216, 0.95);
+  --stat-accent: #b43f24;
+  --stat-hover-border: rgba(184, 62, 36, 0.34);
+  --stat-outline: rgba(184, 62, 36, 0.15);
 }
 
 .actionPanel,
@@ -726,7 +792,7 @@
 
 .manpowerGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
   gap: 12px;
 }
 
@@ -782,12 +848,66 @@
   background: #2e7d32;
 }
 
-.manpowerEmployees {
+.manpowerRoleGrid {
   display: grid;
-  gap: 6px;
-  max-height: 360px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 10px;
+  max-height: 560px;
   overflow: auto;
   padding-right: 2px;
+}
+
+.manpowerRoleGroup {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 8px;
+  background: rgba(244, 250, 245, 0.68);
+}
+
+.manpowerRoleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(46, 125, 50, 0.1);
+}
+
+.manpowerRoleHeader strong {
+  color: #1f2b25;
+  font-size: 0.86rem;
+}
+
+.manpowerRoleHeader span {
+  display: inline-grid;
+  min-width: 28px;
+  min-height: 28px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(218, 238, 219, 0.92);
+  color: #1f7a35;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.manpowerEmployees {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 6px;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.manpowerRoleGroup .manpowerEmployees {
+  grid-template-columns: 1fr;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
 }
 
 .employeeRowLink {
