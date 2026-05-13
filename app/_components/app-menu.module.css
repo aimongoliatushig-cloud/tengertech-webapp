@@ -296,6 +296,15 @@
   color: #2e7d32;
   font-size: 0.9rem;
   font-weight: 800;
+  overflow: hidden;
+}
+
+.profileAvatarImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
 }
 
 .profileText {
@@ -483,6 +492,7 @@
     width: 38px;
     height: 38px;
     place-items: center;
+    overflow: hidden;
     border-radius: 14px;
     background: #2e7d32;
     color: #fff;
@@ -671,7 +681,7 @@
     left: 10px;
     z-index: 70;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--mobile-dock-count, 5), minmax(0, 1fr));
     gap: 5px;
     padding: 8px;
     border: 1px solid rgba(46, 125, 50, 0.12);

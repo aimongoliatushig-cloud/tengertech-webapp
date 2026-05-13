@@ -378,7 +378,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     } catch (error) {
       console.error("Garbage transport weight ledger could not be loaded:", error);
       garbageWeightError =
-        "Хог тээвэрлэлтийн жингийн мэдээллийг Odoo-оос уншиж чадсангүй.";
+        "Хог тээвэрлэлтийн жингийн мэдээллийг уншиж чадсангүй.";
     }
 
   let procurementDashboard = createEmptyProcurementDashboard();
@@ -395,8 +395,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   } catch (error) {
     console.error("Procurement report summary could not be loaded:", error);
     procurementReportError = isProcurementSetupError(error)
-      ? "Худалдан авалтын модуль Odoo дээр идэвхгүй байна."
-      : "Худалдан авалтын тайлангийн мэдээллийг Odoo-оос уншиж чадсангүй.";
+      ? "Худалдан авалтын модуль идэвхгүй байна."
+      : "Худалдан авалтын тайлангийн мэдээллийг уншиж чадсангүй.";
   }
   }
 
@@ -900,7 +900,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                     <span className={styles.kicker}>Жингийн тайлан</span>
                     <h2>Машин, өдрийн тээвэрлэлтийн жин</h2>
                     <p>
-                      Odoo дээр орсон хог тээвэрлэлтийн жинг машиныг өдөр өдрөөр нь
+                      Хог тээвэрлэлтийн жинг машиныг өдөр өдрөөр нь
                       нэгтгэн харуулна.
                     </p>
                   </div>
@@ -1015,7 +1015,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   </div>
                 ) : (
                   <div className={styles.weightEmpty}>
-                    Odoo дээр одоогоор хог тээвэрлэлтийн жингийн бүртгэл алга байна.
+                    Одоогоор хог тээвэрлэлтийн жингийн бүртгэл алга байна.
                   </div>
                 )}
               </section>

@@ -583,6 +583,7 @@ export function TimeoffRequestsClient({
   const searchParams = useSearchParams();
   const router = useRouter();
   const defaultType = searchParams.get("type") === "sick" ? "sick" : "time_off";
+  const defaultFilter = searchParams.get("state") || searchParams.get("requestType") || ALL;
   const defaultEmployeeId = searchParams.get("employeeId") || "";
   const selectedEmployee = useMemo(
     () => employees.find((employee) => String(employee.id) === defaultEmployeeId) ?? null,
@@ -590,7 +591,7 @@ export function TimeoffRequestsClient({
   );
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
-  const [filter, setFilter] = useState(ALL);
+  const [filter, setFilter] = useState(defaultFilter);
   const [editingRequest, setEditingRequest] = useState<HrTimeoffRequest | null>(null);
 
   const visibleRequests = useMemo(() => {
@@ -682,7 +683,7 @@ export function TimeoffRequestsClient({
         {message ? <p className={message.includes("алдаа") || message.includes("эрх") ? styles.errorText : styles.successText}>{message}</p> : null}
 
         <div className={styles.tableWrap}>
-          <table className={styles.table}>
+          <table className={`${styles.table} ${styles.requestTable}`}>
             <thead>
               <tr>
                 <th>Ажилтан</th>
@@ -701,17 +702,17 @@ export function TimeoffRequestsClient({
                   <td>
                     <Link href={`/hr/employees/${request.employeeId}`}>{request.employeeName}</Link>
                   </td>
-                  <td>{request.departmentName}</td>
-                  <td>{request.requestTypeLabel}</td>
-                  <td>
+                  <td data-label="Хэлтэс">{request.departmentName}</td>
+                  <td data-label="Төрөл">{request.requestTypeLabel}</td>
+                  <td data-label="Хугацаа">
                     {request.dateFrom} - {request.dateTo}
                   </td>
                   <td>{request.submittedBy || "Бүртгээгүй"}</td>
-                  <td>
+                  <td data-label="Төлөв">
                     <span className={styles.statusPill}>{request.stateLabel}</span>
                   </td>
                   <td>{request.hasAttachment ? "Байгаа" : "Байхгүй"}</td>
-                  <td>
+                  <td data-label="Үйлдэл">
                     <div className={styles.checklist}>
                       {mode === "hr" && request.state === "submitted" ? (
                         <button type="button" onClick={() => runAction(request.id, "hr_review")} disabled={pending}>

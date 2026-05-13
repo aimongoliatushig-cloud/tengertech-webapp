@@ -46,14 +46,14 @@ export default async function DataDownloadPage() {
 
           <div className={styles.pageContent}>
             <WorkspaceHeader
-              title="Өгөгдөл татах"
-              subtitle="WRS болон Odoo хоорондын өдрийн тайлангийн таталт"
+              title="Тайлан татах"
+              subtitle="WRS өдрийн тайлан"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
             />
 
             <section className={styles.heroCard}>
-              <span className={styles.eyebrow}>Өгөгдөл татах</span>
+              <span className={styles.eyebrow}>Тайлан татах</span>
               <h1>WRS-ээс өдрийн тайлан татах</h1>
               <p>
                 Огноо сонгоод таталтын урсгалыг шууд энэ дэлгэц дээр ажиллуулна. Дээд талд тайлбар,

@@ -2,6 +2,7 @@ import "server-only";
 
 import type { AppSession } from "@/lib/auth";
 import { executeOdooKw, type HrEmployeeDirectoryItem, loadHrEmployeeDirectory } from "@/lib/odoo";
+import { fixMojibakeText } from "@/lib/text-normalize";
 
 type OdooRelation = [number, string] | false;
 
@@ -439,17 +440,17 @@ function getRelationName(relation?: OdooRelation, fallback = "") {
 }
 
 function normalizeText(value: unknown) {
-  return String(value ?? "").trim().toLocaleLowerCase("mn-MN");
+  return fixMojibakeText(String(value ?? "")).trim().toLocaleLowerCase("mn-MN");
 }
 
 function containsHrText(value: unknown) {
   const normalized = normalizeText(value);
-  return HR_TEXT_TOKENS.some((token) => normalized.includes(token));
+  return HR_TEXT_TOKENS.some((token) => normalized.includes(normalizeText(token)));
 }
 
 function containsAnyText(value: unknown, tokens: string[]) {
   const normalized = normalizeText(value);
-  return tokens.some((token) => normalized.includes(token));
+  return tokens.some((token) => normalized.includes(normalizeText(token)));
 }
 
 function isHrRoleKey(value: unknown) {
@@ -462,6 +463,9 @@ function isDepartmentHeadRoleKey(value: unknown) {
 
 function isDepartmentHeadGroupName(value: unknown) {
   const normalized = normalizeText(value);
+  if (DEPARTMENT_HEAD_TEXT_TOKENS.some((token) => normalized.includes(normalizeText(token)))) {
+    return true;
+  }
   return (
     normalized.includes("department manager") ||
     normalized.includes("department head") ||
@@ -751,6 +755,9 @@ export async function getHrAccessProfile(session: AppSession) {
   if (containsHrText(departmentName)) {
     reasons.push("department");
   }
+  if (groupNames.some((groupName) => containsHrText(groupName))) {
+    reasons.push("HR group name");
+  }
   if (
     groupNames.some((groupName) => {
       const normalized = normalizeText(groupName);
@@ -794,6 +801,7 @@ export async function getHrAccessProfile(session: AppSession) {
   const isHr = Boolean(
     ADMIN_ROLES.has(String(session.role)) ||
       HR_ROLE_KEYS.has(sessionRole) ||
+      reasons.length > 0 ||
       (sessionRole !== "worker" &&
         !isMasterOrOperationalLeader &&
         !isExplicitDepartmentHead &&
@@ -1218,7 +1226,7 @@ export async function createLeave(session: AppSession, data: HrLeaveCreateInput)
   const leaveTypes = data.leaveTypeId ? [] : await getLeaveTypes(session);
   const holidayStatusId = data.leaveTypeId ?? leaveTypes[0]?.id;
   if (!holidayStatusId && !data.leaveTypeName) {
-    throw new Error("Чөлөөний төрөл Odoo дээр олдсонгүй.");
+    throw new Error("Чөлөөний төрөл олдсонгүй.");
   }
   const attachments: HrLeaveAttachmentInput[] = [];
   if (data.files?.length) {
@@ -1270,7 +1278,7 @@ export async function createLeave(session: AppSession, data: HrLeaveCreateInput)
     ),
   );
   if (!holidayStatusId) {
-    throw new Error("Чөлөөний төрөл Odoo дээр олдсонгүй.");
+    throw new Error("Чөлөөний төрөл олдсонгүй.");
   }
   const values: Record<string, unknown> = {};
   if (fields.has("employee_id")) values.employee_id = data.employeeId;
@@ -1591,7 +1599,7 @@ export async function terminateEmployee(session: AppSession, data: HrEmployeeTer
   }
 
   if (!Object.keys(values).length) {
-    throw new Error("Odoo дээр ажилтныг архивлах талбар олдсонгүй.");
+    throw new Error("Ажилтныг архивлах талбар олдсонгүй.");
   }
 
   await executeOdooKw<boolean>("hr.employee", "write", [[data.employeeId], values], {}, getConnection(session));
@@ -1893,7 +1901,7 @@ function disciplineStateLabel(state: string) {
     case "hr_review":
       return "Хүний нөөцийн хяналт";
     case "manager_review":
-      return "Менежерийн хяналт";
+      return "Шууд удирдлагын хяналт";
     case "employee_explanation":
       return "Ажилтны тайлбар";
     case "admin_review":

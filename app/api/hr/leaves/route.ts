@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { createTimeoffRequest, getLeaves, requireHrAccess, type HrTimeoffRequestCreateInput } from "@/lib/hr";
+import { notifyHrTimeoffRequestSubmitted } from "@/lib/hr-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -36,15 +37,15 @@ function translateHrLeaveError(error: unknown) {
   if (isMongolianMessage(message)) return message;
 
   if (normalized.includes("do not have any allocation") || normalized.includes("request an allocation")) {
-    return "Энэ төрлийн чөлөөнд тухайн ажилтанд ашиглах эрх олгогдоогүй байна. Odoo дээр тухайн ажилтанд энэ чөлөөний эрхийг олгох эсвэл эрх шаарддаггүй чөлөөний төрөл сонгоно уу.";
+    return "Энэ төрлийн чөлөөнд тухайн ажилтанд ашиглах эрх олгогдоогүй байна. Тухайн ажилтанд энэ чөлөөний эрхийг олгох эсвэл эрх шаарддаггүй чөлөөний төрөл сонгоно уу.";
   }
 
   if (normalized.includes("doesn't have 'create' access") || normalized.includes("have create access")) {
-    return "Odoo дээр энэ хэрэглэгчид чөлөөний бүртгэл үүсгэх эрх хүрэлцэхгүй байна. HR custom module шинэчлэгдсэн эсэх болон хэрэглэгчийн HR эрхийг шалгана уу.";
+    return "Энэ хэрэглэгчид чөлөөний бүртгэл үүсгэх эрх хүрэлцэхгүй байна. Хэрэглэгчийн HR эрхийг шалгана уу.";
   }
 
   if (normalized.includes("access denied") || normalized.includes("access error") || normalized.includes("not allowed")) {
-    return "Odoo дээр энэ үйлдлийг хийх эрх хүрэлцэхгүй байна. Хэрэглэгчийн HR эрхийг шалгана уу.";
+    return "Энэ үйлдлийг хийх эрх хүрэлцэхгүй байна. Хэрэглэгчийн HR эрхийг шалгана уу.";
   }
 
   if (normalized.includes("missing required") || normalized.includes("required field")) {
@@ -52,11 +53,11 @@ function translateHrLeaveError(error: unknown) {
   }
 
   if (normalized.includes("validation error") || normalized.includes("user error")) {
-    return "Odoo дээр чөлөөний бүртгэлийн шалгалт амжилтгүй боллоо. Чөлөөний төрөл, огноо, ажилтны тохиргоог шалгана уу.";
+    return "Чөлөөний бүртгэлийн шалгалт амжилтгүй боллоо. Чөлөөний төрөл, огноо, ажилтны тохиргоог шалгана уу.";
   }
 
   if (message) {
-    return "Чөлөөний бүртгэл үүсгэхэд Odoo дээр алдаа гарлаа. Дэлгэрэнгүй мэдээлэл серверийн логт хадгалагдсан.";
+    return "Чөлөөний бүртгэл үүсгэхэд алдаа гарлаа. Дэлгэрэнгүй мэдээлэл серверийн логт хадгалагдсан.";
   }
 
   return "Чөлөө бүртгэхэд алдаа гарлаа.";
@@ -107,7 +108,14 @@ export async function POST(request: Request) {
       return jsonError("Хүсэлт илгээхийн тулд хавсралтын зураг заавал оруулна уу.", 400);
     }
 
-    return Response.json({ request: await createTimeoffRequest(session, input) }, { status: 201 });
+    const createdRequest = await createTimeoffRequest(session, input);
+    if (input.submit) {
+      await notifyHrTimeoffRequestSubmitted(createdRequest, session).catch((error) => {
+        console.warn("HR leave request push failed:", error);
+      });
+    }
+
+    return Response.json({ request: createdRequest }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "HR_ACCESS_DENIED") {
       return jsonError("Танд хүний нөөцийн хэсэгт хандах эрх байхгүй байна.", 403);

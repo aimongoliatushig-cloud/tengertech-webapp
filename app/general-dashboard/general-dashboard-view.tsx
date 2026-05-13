@@ -195,7 +195,7 @@ function WeatherPanel({ weather }: { weather: WeatherSnapshot }) {
         ))}
       </div>
       {!weather.weeklyForecast.length ? (
-        <div className={styles.noticeCard}>Цаг агаарын 7 хоногийн дата ачаалагдсангүй.</div>
+        <div className={styles.noticeCard}>Цаг агаарын 7 хоногийн мэдээлэл ачаалагдсангүй.</div>
       ) : null}
     </Card>
   );
@@ -328,7 +328,7 @@ export function GeneralDashboardView({
           </section>
 
           {!snapshot.generatedAt ? (
-            <div className={styles.noticeCard}>Дата ачаалагдсангүй. Demo тоо харуулахгүйгээр хоосон төлөв үзүүлж байна.</div>
+            <div className={styles.noticeCard}>Мэдээлэл ачаалагдсангүй. Хоосон төлөв үзүүлж байна.</div>
           ) : null}
 
           <section className={styles.section}>

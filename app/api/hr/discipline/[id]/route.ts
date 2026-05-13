@@ -43,7 +43,7 @@ function translateDisciplineError(error: unknown) {
   const normalized = message.toLocaleLowerCase("en-US");
 
   if (normalized.includes("access denied") || normalized.includes("access error") || normalized.includes("not allowed")) {
-    return "Сахилгын бүртгэл засах/устгах эрх Odoo дээр хараахан идэвхжээгүй байна. Хэрэв устгах үйлдэл амжилтгүй хэвээр байвал hr_custom_mn module upgrade хийнэ үү.";
+    return "Сахилгын бүртгэл засах/устгах эрх хараахан идэвхжээгүй байна.";
   }
 
   if (isMongolianMessage(message)) return message;
@@ -53,12 +53,12 @@ function translateDisciplineError(error: unknown) {
   }
 
   if (normalized.includes("wrong value") || normalized.includes("invalid")) {
-    return "Odoo дээр сонгосон зөрчлийн төрөл эсвэл арга хэмжээний утга тохирохгүй байна. Module шинэчлэгдсэн эсэхийг шалгана уу.";
+    return "Сонгосон зөрчлийн төрөл эсвэл арга хэмжээний утга тохирохгүй байна.";
   }
 
   if (message) {
     console.error("HR discipline update/delete failed:", error);
-    return "Сахилгын бүртгэл засах/устгахад Odoo дээр алдаа гарлаа. Дэлгэрэнгүй мэдээлэл серверийн логт хадгалагдсан.";
+    return "Сахилгын бүртгэл засах/устгахад алдаа гарлаа. Дэлгэрэнгүй мэдээлэл серверийн логт хадгалагдсан.";
   }
 
   return "Сахилгын бүртгэл засах/устгахад алдаа гарлаа.";

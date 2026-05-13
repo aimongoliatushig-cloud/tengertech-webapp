@@ -3,6 +3,8 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { Bell, CalendarDays, Leaf, MapPin } from "lucide-react";
 
+import { loadCurrentUserProfileImageUrl } from "@/lib/current-user-profile";
+
 import { WorkspaceHeaderUserMenu } from "./workspace-header-user-menu";
 import styles from "./workspace-header.module.css";
 
@@ -16,10 +18,33 @@ type WorkspaceHeaderProps = {
   notificationHref?: string;
   backgroundImage?: string;
   showUserMenu?: boolean;
+  userImageUrl?: string;
 };
 
 const DEFAULT_HEADER_IMAGE =
   "/illustrations/green-city-hero.svg";
+
+type WorkspaceHeaderAccountMenuProps = {
+  userName: string;
+  roleLabel: string;
+  userImageUrl?: string;
+};
+
+async function WorkspaceHeaderAccountMenu({
+  userName,
+  roleLabel,
+  userImageUrl = "",
+}: WorkspaceHeaderAccountMenuProps) {
+  const resolvedUserImageUrl = userImageUrl || await loadCurrentUserProfileImageUrl();
+
+  return (
+    <WorkspaceHeaderUserMenu
+      userName={userName}
+      roleLabel={roleLabel}
+      userImageUrl={resolvedUserImageUrl}
+    />
+  );
+}
 
 function formatHeaderDate() {
   const parts = new Intl.DateTimeFormat("mn-MN", {
@@ -38,7 +63,7 @@ function formatHeaderDate() {
 
 export function WorkspaceHeader({
   title = "Ажлын орчин",
-  subtitle = "Odoo-той холбогдсон ажлын урсгал",
+  subtitle = "",
   userName,
   roleLabel,
   notificationCount = 0,
@@ -46,6 +71,7 @@ export function WorkspaceHeader({
   notificationHref = "/notifications",
   backgroundImage = DEFAULT_HEADER_IMAGE,
   showUserMenu = true,
+  userImageUrl = "",
 }: WorkspaceHeaderProps) {
   const safeNotificationCount = Math.max(0, Math.round(notificationCount));
   const noticeText =
@@ -72,7 +98,7 @@ export function WorkspaceHeader({
             {title}
             <Leaf className={styles.titleLeaf} aria-hidden />
           </h1>
-          <span>{subtitle}</span>
+          {subtitle ? <span>{subtitle}</span> : null}
         </div>
       </div>
 
@@ -92,7 +118,9 @@ export function WorkspaceHeader({
           {safeNotificationCount > 0 ? <span>{safeNotificationCount}</span> : null}
         </Link>
 
-        {showUserMenu ? <WorkspaceHeaderUserMenu userName={userName} roleLabel={roleLabel} /> : null}
+        {showUserMenu ? (
+          <WorkspaceHeaderAccountMenu userName={userName} roleLabel={roleLabel} userImageUrl={userImageUrl} />
+        ) : null}
       </div>
     </header>
   );

@@ -29,7 +29,7 @@ import { SESSION_COOKIE_NAME } from "@/lib/session";
 
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 const WORKER_ROLE_REFRESH_INTERVAL_MS = 5 * 60_000;
-const CURRENT_SESSION_ROLE_INFERENCE_VERSION = 6;
+const CURRENT_SESSION_ROLE_INFERENCE_VERSION = 7;
 
 export type AppSession = {
   uid: number;

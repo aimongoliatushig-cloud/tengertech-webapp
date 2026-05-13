@@ -2976,15 +2976,29 @@ export async function authenticateOdooUser(
     fleetRepairCeo ||
     fleetRepairManager;
 
-  const inferredRole = systemAdmin
+  const inferredRole = resolveAuthenticatedRole(user.ops_user_type ?? false, employee);
+  const groupRole = systemAdmin
     ? "system_admin"
-    : resolveAuthenticatedRole(user.ops_user_type ?? false, employee);
-  const role =
-    inferredRole === "worker" && hrManager
-      ? "hr_manager"
-      : inferredRole === "team_leader" && mfoInspector && !mfoManager && !mfoDispatcher
-        ? "transport_inspector"
-        : inferredRole;
+    : municipalDirector || fleetRepairCeo
+      ? "director"
+      : municipalManager || fleetRepairGeneralManager
+        ? "general_manager"
+        : hrManager
+          ? "hr_manager"
+          : municipalHr || hrUser
+            ? "hr_specialist"
+            : municipalDepartmentHead || mfoManager || mfoDispatcher || environmentManager || improvementManager || fleetRepairManager
+              ? "project_manager"
+              : municipalHse
+                ? "hse_officer"
+                : municipalPublicRelations
+                  ? "public_relations"
+                  : municipalInspector || (mfoInspector && !mfoManager && !mfoDispatcher)
+                    ? "transport_inspector"
+                    : municipalMaster || greenMaster || fleetRepairTeamLeader
+                      ? "team_leader"
+                      : null;
+  const role = groupRole ?? inferredRole;
 
   return {
     uid,
@@ -3221,7 +3235,7 @@ async function searchReadAllWithFieldFallback<T>(
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error(`${model} өгөгдөл уншихад алдаа гарлаа.`);
+  throw lastError instanceof Error ? lastError : new Error(`${model} мэдээлэл уншихад алдаа гарлаа.`);
 }
 
 export async function loadHrEmployeeDirectory(
@@ -4375,7 +4389,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     resolvedConnection,
     200,
   ).catch((error) => {
-    console.warn("ops.task.report өгөгдөл уншихад алдаа гарлаа:", error);
+    console.warn("ops.task.report мэдээлэл уншихад алдаа гарлаа:", error);
     return [] as OdooReportRecord[];
   });
 
@@ -4583,7 +4597,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         attachmentMap.set(attachment.id, attachment);
       }
     } catch (error) {
-      console.warn("ir.attachment өгөгдөл уншихад алдаа гарлаа:", error);
+      console.warn("ir.attachment мэдээлэл уншихад алдаа гарлаа:", error);
     }
   }
 
@@ -4953,7 +4967,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       {
         label: "Синк анхааруулга",
         value: String(syncWarningTasks.length),
-        note: "WRS эсвэл жингийн өгөгдөл бүрэн биш",
+        note: "WRS эсвэл жингийн мэдээлэл бүрэн биш",
         tone: syncWarningTasks.length ? "red" : "slate",
       },
       {

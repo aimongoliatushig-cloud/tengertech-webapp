@@ -23,7 +23,7 @@ export default async function NewHrEmployeePage() {
     <>
       <WorkspaceHeader
         title="Шинэ ажилтан бүртгэх"
-        subtitle="Ажилтны үндсэн мэдээлэл, алба нэгж, албан тушаал, холбоо барих мэдээллийг Odoo дээр үүсгэнэ"
+        subtitle="Ажилтны үндсэн мэдээлэл, алба нэгж, албан тушаал, холбоо барих мэдээлэл"
         userName={session.name}
         roleLabel={getRoleLabel(session.role)}
         notificationNote="Шинэ HR бүртгэл"

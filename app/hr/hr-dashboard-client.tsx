@@ -192,6 +192,68 @@ function RequestRow({ request }: { request: HrTimeoffRequest }) {
   );
 }
 
+function PendingRequestQueue({ requests }: { requests: HrTimeoffRequest[] }) {
+  const submittedCount = requests.filter((request) => request.state === "submitted").length;
+  const reviewCount = requests.filter((request) => request.state === "hr_review").length;
+  const visibleRequests = requests.slice(0, 4);
+
+  return (
+    <section className={styles.pendingQueuePanel}>
+      <div className={styles.pendingQueueHeader}>
+        <div>
+          <span className={styles.eyebrow}>Хяналт хүлээж буй</span>
+          <h2>Хүлээгдэж буй хүсэлтүүд</h2>
+          <p>Шинээр ирсэн болон HR шалгалтад орсон чөлөө, өвчтэй хүсэлтүүдийг түрүүлж хянана.</p>
+        </div>
+        <div className={styles.pendingQueueStats}>
+          <span>
+            <strong>{requests.length}</strong>
+            <small>нийт</small>
+          </span>
+          <span>
+            <strong>{submittedCount}</strong>
+            <small>шинэ</small>
+          </span>
+          <span>
+            <strong>{reviewCount}</strong>
+            <small>шалгаж байна</small>
+          </span>
+        </div>
+      </div>
+
+      {visibleRequests.length ? (
+        <div className={styles.pendingRequestGrid}>
+          {visibleRequests.map((request) => (
+            <Link key={request.id} href={`/hr/leaves?state=${request.state}`} className={styles.pendingRequestCard}>
+              <div>
+                <strong>{request.employeeName}</strong>
+                <span>{request.departmentName || "Хэлтэс бүртгээгүй"}</span>
+              </div>
+              <p>
+                {request.requestTypeLabel} · {request.dateFrom} - {request.dateTo} · {dayLabel(request)}
+              </p>
+              <footer>
+                <em>{request.stateLabel}</em>
+                <small>{request.hasAttachment ? "Хавсралттай" : "Хавсралтгүй"}</small>
+              </footer>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className={styles.pendingQueueEmpty}>
+          <strong>Одоогоор хүлээгдэж буй хүсэлт алга.</strong>
+          <span>Шинэ хүсэлт ирэхэд энэ хэсэгт шууд харагдана.</span>
+        </div>
+      )}
+
+      <div className={styles.pendingQueueActions}>
+        <Link href="/hr/leaves?state=submitted">Шинэ хүсэлтүүдийг хянах</Link>
+        <Link href="/hr/leaves">Бүх хүсэлт харах</Link>
+      </div>
+    </section>
+  );
+}
+
 export function HrDashboardClient({
   accessMode,
   employees,
@@ -380,6 +442,8 @@ export function HrDashboardClient({
 
   return (
     <>
+      <PendingRequestQueue requests={pendingRequests} />
+
       <div className={styles.chartGrid}>
         <AnimatedPie
           title="Сахилгын бүртгэлийн төрөл"
@@ -450,26 +514,47 @@ export function HrDashboardClient({
           const Icon = card.icon;
           const isActive = detailKind === card.kind;
           return (
-            <button
+            <div
               key={card.kind}
-              type="button"
-              className={`${styles.statCard} ${STAT_CARD_TONE_CLASS[card.kind]} ${isActive ? styles.statCardSelected : ""}`}
-              onClick={() => setDetailKind(card.kind)}
+              className={`${styles.statCardWrap} ${isActive ? styles.statCardWrapActive : ""}`}
             >
-              <span className={styles.statIcon}>
-                <Icon aria-hidden />
-              </span>
-              <div>
-                <small>{card.label}</small>
-                <strong>{card.value}</strong>
-                <p>{card.note}</p>
+              <button
+                type="button"
+                className={`${styles.statCard} ${STAT_CARD_TONE_CLASS[card.kind]} ${isActive ? styles.statCardSelected : ""}`}
+                onClick={() => setDetailKind(card.kind)}
+                aria-expanded={isActive}
+              >
+                <span className={styles.statIcon}>
+                  <Icon aria-hidden />
+                </span>
+                <div>
+                  <small>{card.label}</small>
+                  <strong>{card.value}</strong>
+                  <p>{card.note}</p>
+                </div>
+              </button>
+              <div className={styles.mobileInlineDetail}>
+                <div className={styles.mobileInlineDetailHeader}>
+                  <strong>{selectedCard.label}</strong>
+                  <span>{selectedCard.value}</span>
+                </div>
+                <div className={styles.detailList}>
+                  {detailContent.length ? (
+                    detailContent
+                  ) : (
+                    <div className={styles.emptyState}>
+                      <strong>Одоогоор бүртгэл алга.</strong>
+                      <span>Сонгосон үзүүлэлтэд хамаарах ажилтан эсвэл хүсэлт байхгүй байна.</span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </button>
+            </div>
           );
         })}
       </section>
 
-      <section className={styles.detailPanel}>
+      <section className={`${styles.detailPanel} ${styles.desktopDetailPanel}`}>
         <div className={styles.sectionHeader}>
           <div>
             <span className={styles.eyebrow}>Дэлгэрэнгүй жагсаалт</span>

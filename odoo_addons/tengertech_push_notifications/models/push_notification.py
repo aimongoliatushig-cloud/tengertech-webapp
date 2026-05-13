@@ -144,6 +144,8 @@ class TengertechPushEvent(models.Model):
             ("deadline_overdue", "Хугацаа хэтэрсэн"),
             ("route_changed", "Маршрут өөрчлөгдсөн"),
             ("vehicle_broken", "Машин эвдэрсэн"),
+            ("hr_timeoff_request", "HR хүсэлт ирсэн"),
+            ("hr_timeoff_status", "HR хүсэлтийн төлөв"),
             ("attendance_issue", "Ирцийн асуудал"),
             ("discipline_issue", "Сахилгын асуудал"),
             ("test", "Туршилтын мэдэгдэл"),

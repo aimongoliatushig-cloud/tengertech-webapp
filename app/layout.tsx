@@ -33,7 +33,6 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Хот тохижилтын удирдлагын төв",
-  description: "Odoo ERP дээр суурилсан хотын ажиллагааны хяналтын самбар",
 };
 
 export default function RootLayout({

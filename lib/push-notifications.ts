@@ -24,6 +24,8 @@ export type PushEventType =
   | "deadline_overdue"
   | "route_changed"
   | "vehicle_broken"
+  | "hr_timeoff_request"
+  | "hr_timeoff_status"
   | "attendance_issue"
   | "discipline_issue"
   | "test";
@@ -95,6 +97,16 @@ const EVENT_DEFAULTS: Record<PushEventType, { title: string; body: string; targe
     title: "Машины эвдрэл бүртгэгдлээ",
     body: "Засварын хүсэлт дээр шинэ өөрчлөлт гарлаа.",
     targetUrl: "/fleet-repair",
+  },
+  hr_timeoff_request: {
+    title: "HR хүсэлт ирлээ",
+    body: "Хүний нөөцөд шинэ чөлөө / өвчтэй хүсэлт ирсэн байна.",
+    targetUrl: "/hr/leaves",
+  },
+  hr_timeoff_status: {
+    title: "HR хүсэлтийн төлөв өөрчлөгдлөө",
+    body: "Таны чөлөө / өвчтэй хүсэлтийн төлөв шинэчлэгдлээ.",
+    targetUrl: "/hr/leaves",
   },
   attendance_issue: {
     title: "Ирцийн асуудал бүртгэгдлээ",

@@ -1986,7 +1986,6 @@ export function DashboardView({
 
           <footer className="mt-6 flex flex-wrap items-center justify-between gap-3 pb-2 text-xs font-semibold text-[#7A897E]">
             <span>© 2026 Хот тохижилт үйлчилгээний төв ОНӨААТҮГ. Бүх эрх хуулиар хамгаалагдсан.</span>
-            <span>ERP System v2.0.0</span>
           </footer>
         </div>
       </div>

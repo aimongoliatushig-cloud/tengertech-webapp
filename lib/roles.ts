@@ -261,7 +261,7 @@ export function getRoleLabel(role: UserRole) {
     case "public_relations":
       return "Олон нийттэй харилцах ажилтан";
     case "hr_specialist":
-      return "Хүний нөөцийн мэргэжилтэн";
+      return "Хүний нөөцийн ажилтан";
     case "hr_manager":
       return "Хүний нөөцийн менежер";
     case "worker":

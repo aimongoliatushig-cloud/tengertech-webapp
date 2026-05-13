@@ -1263,7 +1263,6 @@ export function AutoBaseBoard({
             <span className={styles.mobileDetailEyebrow}>Машин техникийн ангилал</span>
             <h2>Ангиллаар харах</h2>
           </div>
-          <p>Odoo Fleet-ийн ангиллын талбараар хог ачилт, усалгаа, өргөгч, ковш болон бусад машиныг шүүнэ.</p>
         </div>
         <div className={styles.vehicleCategoryPills} role="tablist" aria-label="Машины ангиллаар шүүх">
           {categoryFilters.map((category) => (

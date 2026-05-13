@@ -54,11 +54,7 @@ export default async function ProcurementDashboardPage() {
     }),
     loadProcurementMe(connectionOverrides)
       .then(() => "")
-      .catch((error) =>
-        isProcurementSetupError(error)
-          ? "Худалдан авалтын backend API хараахан идэвхжээгүй байна. Үндсэн самбар уншигдаж байгаа бөгөөд API идэвхжсэний дараа бодит хүсэлтүүд энд харагдана."
-          : "",
-      ),
+      .catch(() => ""),
   ]);
 
   const highlightedItems = dashboard.items.slice(0, 3);

@@ -79,7 +79,7 @@ export function DataDownloadClient() {
           <div className={styles.sectionHeader}>
             <div>
               <span className={styles.eyebrow}>WRS татах</span>
-              <h2>Нэг өдрийн өгөгдөл татах</h2>
+              <h2>Нэг өдрийн тайлан татах</h2>
             </div>
             <p>Сонгосон өдрөөр WRS-ээс тайлангийн HTML дүрслэлийг шууд татна.</p>
           </div>
@@ -98,7 +98,7 @@ export function DataDownloadClient() {
 
             <div className={styles.buttonRow}>
               <button type="submit" className={styles.primaryButton} disabled={isPending}>
-                {isPending ? "Татаж байна..." : "Өгөгдөл татах"}
+                {isPending ? "Татаж байна..." : "Тайлан татах"}
               </button>
             </div>
           </form>
@@ -142,7 +142,7 @@ export function DataDownloadClient() {
           <p>
             {report
               ? `${report.requestedDate} огнооны тайлан HTML байдлаар доор харагдана.`
-              : "Огноо сонгоод Өгөгдөл татах товч дармагц тайлан энд гарна."}
+              : "Огноо сонгоод тайлан татах товч дармагц тайлан энд гарна."}
           </p>
         </div>
 
@@ -174,7 +174,7 @@ export function DataDownloadClient() {
         ) : (
           <div className={styles.emptyState}>
             <h2>Тайлан хараахан татаагүй байна</h2>
-            <p>Огноогоо сонгоод Өгөгдөл татах товч дармагц WRS дүрслэл энд ачааллана.</p>
+            <p>Огноогоо сонгоод тайлан татах товч дармагц WRS дүрслэл энд ачааллана.</p>
           </div>
         )}
       </section>

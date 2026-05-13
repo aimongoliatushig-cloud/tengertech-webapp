@@ -133,7 +133,7 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("push", (event) => {
   const fallbackPayload = {
-    title: "Хот тохижилтын ERP",
+    title: "Хот тохижилтын систем",
     body: "Шинэ мэдэгдэл ирлээ.",
     icon: "/icon.png",
     badge: "/apple-icon.png",

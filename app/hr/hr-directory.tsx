@@ -416,7 +416,6 @@ export function HrDirectory({ departments, initialEmployeeId }: Props) {
               <input type="hidden" name="employee_id" value={selectedEmployee.id} />
               <div className={styles.formHeader}>
                 <h3>Холбоо барих мэдээлэл</h3>
-                <p>Ажилтны зураг, ажлын утас, гар утас, и-мэйл мэдээллийг Odoo дээр хадгална.</p>
               </div>
 
               <label className={styles.photoUploadField}>

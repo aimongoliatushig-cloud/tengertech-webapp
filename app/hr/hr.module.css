@@ -5,6 +5,206 @@
   margin-bottom: 14px;
 }
 
+.statCardWrap {
+  min-width: 0;
+}
+
+.mobileInlineDetail {
+  display: none;
+}
+
+.pendingQueuePanel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid rgba(214, 158, 46, 0.22);
+  border-radius: var(--ds-radius-card);
+  background:
+    linear-gradient(135deg, rgba(255, 250, 236, 0.96), rgba(255, 255, 255, 0.9)),
+    rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 42px rgba(89, 58, 10, 0.08);
+}
+
+.pendingQueueHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+}
+
+.pendingQueueHeader h2 {
+  margin: 4px 0 0;
+  color: #1f2b25;
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  line-height: 1.1;
+}
+
+.pendingQueueHeader p {
+  max-width: 680px;
+  margin: 8px 0 0;
+  color: #66766b;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.pendingQueueStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(72px, 1fr));
+  gap: 8px;
+}
+
+.pendingQueueStats span {
+  display: grid;
+  min-height: 72px;
+  align-content: center;
+  justify-items: center;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid rgba(214, 158, 46, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.pendingQueueStats strong {
+  color: #9a6517;
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.pendingQueueStats small {
+  color: #66766b;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.pendingRequestGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pendingRequestCard {
+  display: grid;
+  gap: 10px;
+  min-height: 138px;
+  padding: 13px;
+  border: 1px solid rgba(214, 158, 46, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #1f2b25;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.pendingRequestCard:hover,
+.pendingRequestCard:focus-visible {
+  border-color: rgba(214, 158, 46, 0.38);
+  box-shadow: 0 14px 28px rgba(89, 58, 10, 0.1);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.pendingRequestCard strong,
+.pendingRequestCard span,
+.pendingRequestCard p {
+  overflow-wrap: anywhere;
+}
+
+.pendingRequestCard strong {
+  display: block;
+  font-size: 0.96rem;
+  line-height: 1.2;
+}
+
+.pendingRequestCard span,
+.pendingRequestCard p {
+  color: #66766b;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.pendingRequestCard p {
+  margin: 0;
+}
+
+.pendingRequestCard footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.pendingRequestCard em,
+.pendingRequestCard small {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.pendingRequestCard em {
+  background: rgba(250, 236, 199, 0.96);
+  color: #9a6517;
+}
+
+.pendingRequestCard small {
+  background: rgba(218, 238, 219, 0.84);
+  color: #256b37;
+}
+
+.pendingQueueEmpty {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px dashed rgba(46, 125, 50, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.pendingQueueEmpty strong {
+  color: #1f2b25;
+}
+
+.pendingQueueEmpty span {
+  color: #66766b;
+  font-size: 0.84rem;
+}
+
+.pendingQueueActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pendingQueueActions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 13px;
+  border-radius: 8px;
+  background: #2e7d32;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.pendingQueueActions a + a {
+  background: rgba(255, 255, 255, 0.82);
+  color: #256b37;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+}
+
 .chartGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -38,6 +238,7 @@
   cursor: pointer;
   font: inherit;
   text-align: left;
+  width: 100%;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -517,10 +718,18 @@
   text-decoration: none;
 }
 
+.requestTable {
+  min-width: 860px;
+}
+
 .detailPanel {
   display: grid;
   gap: 14px;
   margin-bottom: 16px;
+}
+
+.mobileInlineDetailHeader {
+  display: none;
 }
 
 .detailList {
@@ -1212,7 +1421,6 @@
 }
 
 @media (max-width: 760px) {
-  .statGrid,
   .chartGrid,
   .actionGrid,
   .toolbar,
@@ -1224,6 +1432,63 @@
   .hrTabs,
   .departmentGrid {
     grid-template-columns: 1fr;
+  }
+
+  .statGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .pendingQueuePanel {
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 12px;
+  }
+
+  .pendingQueueHeader {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .pendingQueueHeader h2 {
+    font-size: 1.18rem;
+  }
+
+  .pendingQueueHeader p {
+    font-size: 0.8rem;
+  }
+
+  .pendingQueueStats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .pendingQueueStats span {
+    min-height: 58px;
+    padding: 8px 6px;
+  }
+
+  .pendingQueueStats strong {
+    font-size: 1.28rem;
+  }
+
+  .pendingRequestGrid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .pendingRequestCard {
+    min-height: 0;
+    padding: 11px;
+  }
+
+  .pendingQueueActions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .statCardWrapActive {
+    grid-column: 1 / -1;
   }
 
   .sectionHeader {
@@ -1240,7 +1505,97 @@
   }
 
   .statCard {
-    min-height: 0;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    min-height: 72px;
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .statCardSelected {
+    transform: none;
+  }
+
+  .statIcon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
+
+  .statCard small {
+    display: block;
+    color: #334139;
+    font-size: 0.72rem;
+    line-height: 1.2;
+  }
+
+  .statCard strong {
+    margin-top: 4px;
+    font-size: 1.25rem;
+  }
+
+  .statCard p {
+    display: none;
+  }
+
+  .desktopDetailPanel {
+    display: none;
+  }
+
+  .statCardWrapActive .mobileInlineDetail {
+    display: grid;
+    gap: 10px;
+    margin-top: 8px;
+    padding: 12px;
+    border: 1px solid rgba(46, 125, 50, 0.13);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 12px 28px rgba(24, 71, 36, 0.08);
+  }
+
+  .mobileInlineDetailHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .mobileInlineDetailHeader strong {
+    color: #1f2b25;
+    font-size: 0.96rem;
+    line-height: 1.25;
+  }
+
+  .mobileInlineDetailHeader span {
+    display: inline-grid;
+    min-width: 36px;
+    height: 32px;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(218, 238, 219, 0.92);
+    color: #1f7a35;
+    font-weight: 900;
+  }
+
+  .mobileInlineDetail .detailList {
+    max-height: 340px;
+    border-radius: 8px;
+  }
+
+  .mobileInlineDetail .detailRow {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 11px 12px;
+  }
+
+  .mobileInlineDetail .detailRow strong,
+  .mobileInlineDetail .detailRow small,
+  .mobileInlineDetail .detailRow em {
+    white-space: normal;
+  }
+
+  .mobileInlineDetail .emptyState {
+    padding: 12px;
   }
 
   .chartBody,
@@ -1276,5 +1631,117 @@
   .chartTopRow em {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .tableWrap {
+    overflow: visible;
+  }
+
+  .requestTable {
+    display: block;
+    min-width: 0;
+    border-collapse: separate;
+    font-size: 0.86rem;
+  }
+
+  .requestTable thead {
+    display: none;
+  }
+
+  .requestTable tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .requestTable tr {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid rgba(46, 125, 50, 0.14);
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(240, 249, 242, 0.92));
+    box-shadow: 0 10px 26px rgba(24, 71, 36, 0.08);
+  }
+
+  .requestTable td {
+    display: grid;
+    grid-template-columns: minmax(76px, 32%) minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+    min-width: 0;
+    padding: 0;
+    border-bottom: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .requestTable td::before {
+    color: #66766b;
+    content: attr(data-label);
+    font-size: 0.7rem;
+    font-weight: 850;
+    line-height: 1.4;
+  }
+
+  .requestTable td:nth-child(1)::before {
+    content: "Ажилтан";
+  }
+
+  .requestTable td:nth-child(2)::before {
+    content: "Хэлтэс";
+  }
+
+  .requestTable td:nth-child(3)::before {
+    content: "Төрөл";
+  }
+
+  .requestTable td:nth-child(4)::before {
+    content: "Хугацаа";
+  }
+
+  .requestTable td:nth-child(5)::before {
+    content: "Илгээсэн";
+  }
+
+  .requestTable td:nth-child(6)::before {
+    content: "Төлөв";
+  }
+
+  .requestTable td:nth-child(7)::before {
+    content: "Хавсралт";
+  }
+
+  .requestTable td:nth-child(8)::before {
+    content: "Үйлдэл";
+  }
+
+  .requestTable td:first-child {
+    grid-template-columns: 1fr;
+    padding-bottom: 4px;
+  }
+
+  .requestTable td:first-child::before {
+    display: none;
+  }
+
+  .requestTable td:first-child a {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    font-size: 1rem;
+    line-height: 1.25;
+  }
+
+  .requestTable .statusPill {
+    width: fit-content;
+  }
+
+  .requestTable .checklist {
+    grid-template-columns: 1fr;
+    margin-top: 0;
+  }
+
+  .requestTable .checklist button {
+    width: 100%;
+    min-height: 40px;
   }
 }

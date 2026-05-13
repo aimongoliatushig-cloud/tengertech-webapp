@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Bell,
   CalendarDays,
   FileText,
   HeartPulse,
@@ -21,6 +22,7 @@ const hrItems = [
   { href: "/hr/leaves", label: "Ирсэн хүсэлтүүд", icon: CalendarDays },
   { href: "/hr/sick", label: "Чөлөө / өвчтэй хүсэлтүүд", icon: HeartPulse },
   { href: "/hr/discipline", label: "Сахилгын бүртгэл", icon: ShieldAlert },
+  { href: "/notifications", label: "Мэдэгдэл", icon: Bell },
   { href: "/hr/reports", label: "Тайлан", icon: FileText },
 ];
 
@@ -29,6 +31,7 @@ const departmentItems = [
   { href: "/hr/employees", label: "Манай хэлтсийн ажилтнууд", icon: Users },
   { href: "/hr/leaves", label: "Миний илгээсэн хүсэлтүүд", icon: CalendarDays },
   { href: "/hr/sick", label: "Чөлөө / өвчтэй хүсэлт", icon: HeartPulse },
+  { href: "/notifications", label: "Мэдэгдэл", icon: Bell },
 ];
 
 export function HrSectionNav({ mode = "hr" }: { mode?: "hr" | "department" }) {

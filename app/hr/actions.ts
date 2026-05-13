@@ -27,7 +27,7 @@ function getErrorMessage(error: unknown) {
   }
 
   if (normalized.includes("access denied") || normalized.includes("access error") || normalized.includes("not allowed")) {
-    return "Odoo дээр энэ үйлдлийг хийх эрх хүрэлцэхгүй байна. Хэрэглэгчийн HR эрхийг шалгана уу.";
+    return "Энэ үйлдлийг хийх эрх хүрэлцэхгүй байна. Хэрэглэгчийн HR эрхийг шалгана уу.";
   }
 
   if (normalized.includes("missing required") || normalized.includes("required field")) {
@@ -36,7 +36,7 @@ function getErrorMessage(error: unknown) {
 
   if (message) {
     console.error("HR employee action failed:", error);
-    return "Ажилтны бүртгэл хадгалах үед Odoo дээр алдаа гарлаа. Дэлгэрэнгүй мэдээлэл серверийн логт хадгалагдсан.";
+    return "Ажилтны бүртгэл хадгалах үед алдаа гарлаа. Дэлгэрэнгүй мэдээлэл серверийн логт хадгалагдсан.";
   }
 
   return "Ажилтны бүртгэл хадгалах үед алдаа гарлаа.";

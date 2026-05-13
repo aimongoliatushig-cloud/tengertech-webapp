@@ -256,7 +256,7 @@ export async function updateFleetVehicleAction(formData: FormData) {
       if (submittedCrewFields) {
         redirectWithMessage(
           "error",
-          "Odoo дээр авто баазын жолооч, ачигчийн талбарууд суулгагдаагүй байна. municipal_repair_workflow module-ийг update хийнэ үү.",
+          "Авто баазын жолооч, ачигчийн талбарууд суулгагдаагүй байна.",
         );
       }
       redirectWithMessage("error", "Засах боломжтой талбар олдсонгүй.");

@@ -38,7 +38,7 @@ export default async function HrReportsPage() {
             <div>
               <small>{label}</small>
               <strong>{value}</strong>
-              <p>Odoo болон HR бүртгэлээс тооцсон үзүүлэлт</p>
+              <p>HR бүртгэлээс тооцсон үзүүлэлт</p>
             </div>
           </article>
         ))}

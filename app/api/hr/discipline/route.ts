@@ -31,7 +31,7 @@ function translateDisciplineError(error: unknown) {
   if (isMongolianMessage(message)) return message;
 
   if (normalized.includes("access denied") || normalized.includes("access error") || normalized.includes("not allowed")) {
-    return "Odoo дээр сахилгын бүртгэл үүсгэх эрх хүрэлцэхгүй байна. HR эрх болон municipal_core эрхийг шалгана уу.";
+    return "Сахилгын бүртгэл үүсгэх эрх хүрэлцэхгүй байна. HR эрхийг шалгана уу.";
   }
 
   if (normalized.includes("missing required") || normalized.includes("required field")) {
@@ -39,12 +39,12 @@ function translateDisciplineError(error: unknown) {
   }
 
   if (normalized.includes("wrong value") || normalized.includes("invalid")) {
-    return "Odoo дээр сонгосон зөрчлийн төрөл эсвэл арга хэмжээний утга тохирохгүй байна. Module шинэчлэгдсэн эсэхийг шалгана уу.";
+    return "Сонгосон зөрчлийн төрөл эсвэл арга хэмжээний утга тохирохгүй байна.";
   }
 
   if (message) {
     console.error("HR discipline create failed:", error);
-    return "Сахилгын бүртгэл үүсгэхэд Odoo дээр алдаа гарлаа. Дэлгэрэнгүй мэдээлэл серверийн логт хадгалагдсан.";
+    return "Сахилгын бүртгэл үүсгэхэд алдаа гарлаа. Дэлгэрэнгүй мэдээлэл серверийн логт хадгалагдсан.";
   }
 
   return "Сахилгын бүртгэл үүсгэхэд алдаа гарлаа.";

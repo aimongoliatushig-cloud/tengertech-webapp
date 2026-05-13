@@ -1059,10 +1059,10 @@ export function buildDashboardModel(input: {
     sourceNotice:
       snapshot.source === "demo"
         ? {
-            title: "Системийн бодит өгөгдөл бүрэн ирээгүй байж магадгүй.",
+            title: "Системийн мэдээлэл бүрэн ирээгүй байж магадгүй.",
             body: "Түр нөөц мэдээлэл ашиглаж байгаа тул өнөөдрийн ажил, шалгалт, тайлангийн мөрийг давхар нягтална уу.",
             href: "/data-download",
-            actionLabel: "Өгөгдөл шалгах",
+            actionLabel: "Мэдээлэл шалгах",
           }
         : undefined,
   } satisfies DashboardModel;

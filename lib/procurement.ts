@@ -204,7 +204,7 @@ type ApiEnvelope<T> = {
 type ConnectionOverrides = Partial<OdooConnection>;
 
 const PROCUREMENT_API_SETUP_ERROR =
-  "Худалдан авалтын API олдсонгүй. Odoo дээр municipal_procurement_workflow модуль суусан эсэх болон addons_path-д энэ repo-ийн custom_addons орсон эсэхийг шалгана уу.";
+  "Худалдан авалтын API олдсонгүй.";
 
 export function isProcurementSetupError(error: unknown) {
   const message = String(error);
@@ -268,7 +268,7 @@ export function createFallbackProcurementMeta(taskId?: string, projectId?: strin
     projects: projectId ? [{ id: Number(projectId), name: `Төсөл #${projectId}` }] : [],
     tasks: taskId ? [{ id: Number(taskId), name: `Ажилбар #${taskId}`, project_id: Number(projectId || 0) }] : [],
     departments: [],
-    storekeepers: [{ id: 0, name: "Odoo backend идэвхжсэний дараа сонгоно" }],
+    storekeepers: [{ id: 0, name: "Идэвхжсэний дараа сонгоно" }],
     suppliers: [],
     uoms: [],
   };
@@ -276,7 +276,7 @@ export function createFallbackProcurementMeta(taskId?: string, projectId?: strin
 
 function getCookieHeaderValue(setCookieHeader: string | null) {
   if (!setCookieHeader) {
-    throw new Error("Odoo session cookie олдсонгүй.");
+    throw new Error("Нэвтрэлтийн мэдээлэл олдсонгүй.");
   }
 
   return setCookieHeader.split(",").map((part) => part.split(";")[0].trim()).join("; ");

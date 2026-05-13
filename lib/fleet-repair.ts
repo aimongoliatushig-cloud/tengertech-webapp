@@ -104,7 +104,7 @@ export const FLEET_REPAIR_SAFE_ERROR = "Мэдээлэл ачаалж чадса
 export const FLEET_REPAIR_REQUEST_READ_NOTICE =
   "Засварын хүсэлтийн жагсаалт одоогоор харагдахгүй байна. Машины жагсаалт болон шинэ хүсэлтийн маягт хэвийн ажиллана.";
 export const FLEET_REPAIR_CREATE_DENIED_MESSAGE =
-  "Засварын хүсэлт үүсгэх Odoo эрх хүрэхгүй байна. Системийн администратор хэрэглэгчийг Засварын workflow менежер, Засварын багийн ахлагч эсвэл Механик бүлэгт нэмэх шаардлагатай.";
+  "Засварын хүсэлт үүсгэх эрх хүрэхгүй байна. Системийн администратор хэрэглэгчийг Засварын workflow менежер, Засварын багийн ахлагч эсвэл Механик бүлэгт нэмэх шаардлагатай.";
 
 export class FleetRepairPermissionError extends Error {
   constructor(message: string) {
@@ -641,7 +641,7 @@ async function callFirstAvailableMethod(
   }
   throw lastError instanceof Error
     ? lastError
-    : new Error("Odoo action method ажилласангүй.");
+    : new Error("Үйлдэл амжилттай хийгдсэнгүй.");
 }
 
 export async function createFleetRepairRequest(session: AppSession, input: FleetRepairCreateInput) {

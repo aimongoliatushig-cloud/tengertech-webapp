@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { actionTimeoffRequest } from "@/lib/hr";
+import { notifyHrTimeoffRequestStatusChanged } from "@/lib/hr-notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,10 @@ export async function POST(
         rejectionReason: String(payload.rejectionReason || ""),
       },
     );
+    await notifyHrTimeoffRequestStatusChanged(result, session).catch((error) => {
+      console.warn("HR time off status push failed:", error);
+    });
+
     return Response.json({ request: result });
   } catch (error) {
     if (error instanceof Error && error.message === "HR_ACCESS_DENIED") {

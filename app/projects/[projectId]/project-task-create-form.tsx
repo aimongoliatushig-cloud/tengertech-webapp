@@ -532,7 +532,7 @@ export function ProjectTaskCreateForm({
           </select>
           {!crewTeamOptions.length ? (
             <small className={styles.fieldHint}>
-              Сонгосон хэлтэст хамаарах баг Odoo дээр олдсонгүй.
+              Сонгосон хэлтэст хамаарах баг олдсонгүй.
             </small>
           ) : null}
           <button

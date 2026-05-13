@@ -277,7 +277,7 @@ export async function updateProfilePhotoAction(formData: FormData) {
     });
     redirectToProfile(
       "error",
-      "Профайл зураг хадгалах үед Odoo дээр алдаа гарлаа.",
+      "Профайл зураг хадгалах үед алдаа гарлаа.",
       "profile-photo",
     );
   }
@@ -318,7 +318,7 @@ export async function changeProfilePasswordAction(formData: FormData) {
     });
   } catch (error) {
     console.error("Failed to change current user's password", error);
-    redirectToProfile("error", "Нууц үг солих үед Odoo дээр алдаа гарлаа.", "password-settings");
+    redirectToProfile("error", "Нууц үг солих үед алдаа гарлаа.", "password-settings");
   }
 
   const cookieStore = await cookies();
@@ -375,7 +375,7 @@ export async function createProfileTeamAction(formData: FormData) {
     );
   } catch (error) {
     console.error("Failed to create crew team", error);
-    redirectToProfile("error", "Баг үүсгэхэд Odoo дээр алдаа гарлаа. Заавал бөглөх талбар үлдсэн байж магадгүй.");
+    redirectToProfile("error", "Баг үүсгэхэд алдаа гарлаа. Заавал бөглөх талбар үлдсэн байж магадгүй.");
   }
 
   revalidatePath("/profile");
@@ -412,7 +412,7 @@ export async function archiveProfileTeamAction(formData: FormData) {
     );
   } catch (error) {
     console.error("Failed to archive crew team", error);
-    redirectToProfile("error", "Баг хасах үед Odoo дээр алдаа гарлаа.");
+    redirectToProfile("error", "Баг хасах үед алдаа гарлаа.");
   }
 
   revalidatePath("/profile");
@@ -497,7 +497,7 @@ export async function createProfileRouteAction(formData: FormData) {
     );
   } catch (error) {
     console.error("Failed to create garbage route", error);
-    redirectToProfile("error", "??????? ???????? Odoo ???? ????? ??????. ???????? ????????? ?????? ????????.");
+    redirectToProfile("error", "Маршрут үүсгэх үед алдаа гарлаа.");
   }
 
   revalidatePath("/profile");
@@ -544,7 +544,7 @@ export async function createProfileCollectionPointAction(formData: FormData) {
     );
   } catch (error) {
     console.error("Failed to create collection point", error);
-    redirectToProfile("error", "?????? ??? ??????? Odoo ???? ????? ??????.");
+    redirectToProfile("error", "Хогийн цэг нэмэх үед алдаа гарлаа.");
   }
 
   revalidatePath("/profile");

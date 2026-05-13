@@ -140,11 +140,11 @@ function taskDetailErrorMessage(error: unknown) {
     normalized.includes("etimedout") ||
     normalized.includes("network")
   ) {
-    return "Odoo сервертэй холбогдож чадсангүй. Түр хүлээгээд дахин оролдоно уу.";
+    return "Түр хүлээгээд дахин оролдоно уу.";
   }
 
   if (message.includes("Odoo authentication failed")) {
-    return "Odoo нэвтрэлт баталгаажсангүй. Дахин нэвтэрч оролдоно уу.";
+    return "Нэвтрэлт баталгаажсангүй. Дахин нэвтэрч оролдоно уу.";
   }
 
   return message;
@@ -977,7 +977,6 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 <aside className={styles.chatterCard}>
                   <div className={styles.chatterTop}>
                     <div>
-                      <span className={styles.kicker}>Odoo chatter</span>
                       <strong className={styles.actionTitle}>Зурвас ба тэмдэглэл</strong>
                     </div>
                     <span className={styles.chatterCount}>{task.messages.length}</span>

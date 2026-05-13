@@ -1578,7 +1578,7 @@ export async function createTaskAction(formData: FormData) {
         redirectWithMessage(
           `/projects/${projectId}`,
           "error",
-          "Сонгосон хогийн цэгүүд Odoo дээр олдсонгүй.",
+          "Сонгосон хогийн цэгүүд олдсонгүй.",
           "#task-create-form",
         );
       }
@@ -1751,7 +1751,7 @@ export async function createTaskAction(formData: FormData) {
         redirectWithMessage(
           `/projects/${projectId}`,
           "error",
-          "Сонгосон хэмжих нэгж Odoo дээр олдсонгүй.",
+          "Сонгосон хэмжих нэгж олдсонгүй.",
           "#task-create-form",
         );
       }

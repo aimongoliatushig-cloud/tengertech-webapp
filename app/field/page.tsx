@@ -116,7 +116,7 @@ export default async function FieldPage({ searchParams }: PageProps) {
       fieldLoadError =
         error instanceof Error && error.message
           ? error.message
-          : "Талбарын маршрутын мэдээллийг Odoo-оос уншиж чадсангүй.";
+          : "Талбарын маршрутын мэдээллийг уншиж чадсангүй.";
     }
   }
 
@@ -238,10 +238,7 @@ export default async function FieldPage({ searchParams }: PageProps) {
         ) : fieldLoadError ? (
           <section className={workspaceStyles.emptyState}>
             <h2>Маршрутын мэдээлэл түр уншигдсангүй</h2>
-            <p>
-              Odoo серверээс талбарын өгөгдөл авах үед алдаа гарлаа. Дахин сэргээж
-              үзээд, алдаа хэвээр байвал Odoo талын эрх болон model field-үүдийг нягтална уу.
-            </p>
+            <p>Дахин сэргээж үзнэ үү.</p>
           </section>
         ) : !assignment ? (
           <section className={workspaceStyles.emptyState}>

@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Хот тохижилтын ERP",
-    short_name: "Хот ERP",
+    name: "Хот тохижилт",
+    short_name: "Хот",
     description: "Хот тохижилт, хог тээвэр, засвар, HR ажлын PWA систем",
     start_url: "/",
     scope: "/",

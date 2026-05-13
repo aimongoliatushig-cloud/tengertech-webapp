@@ -442,7 +442,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
               <section className={styles.taskSection}>
                 <div className={styles.emptyState}>
                   <h3>Ажлын мэдээлэл түр ачаалсангүй</h3>
-                  <p>Odoo серверээс мэдээлэл авахад хугацаа хэтэрлээ. Дахин ачаалаад үзнэ үү.</p>
+                  <p>Мэдээлэл авахад хугацаа хэтэрлээ. Дахин ачаалаад үзнэ үү.</p>
                 </div>
               </section>
             </div>
@@ -1064,7 +1064,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                        ? "Зөвхөн танд хамаарах даалгавруудыг эндээс харна. Төлөвөөр нь хурдан шүүж, дэлгэрэнгүй рүү шууд орж ажлаа үргэлжлүүлнэ."
                        : masterMode
                          ? masterFlowDescription
-                        : "Odoo ERP дээр бүртгэгдсэн бүх даалгаврыг алба нэгж, ажил, төлөвөөр нь нэг дороос харуулна. Асуудалтай болон хяналт хүлээж буй даалгавруудыг эхэнд нь ялгаж, дэлгэрэнгүй рүү шууд нээнэ."}
+                        : "Бүх даалгаврыг алба нэгж, ажил, төлөвөөр нь нэг дороос харуулна. Асуудалтай болон хяналт хүлээж буй даалгавруудыг эхэнд нь ялгаж, дэлгэрэнгүй рүү шууд нээнэ."}
                   </p>
                 </div>
 
@@ -1166,7 +1166,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                     ? "Тухайн хэрэглэгчид оноогдсон нийт даалгавар"
                     : masterMode
                       ? "Өнөөдөр эхлэх эсвэл үргэлжлэх ажил, төслийн тоо"
-                    : "Odoo ERP-ээс орж ирсэн бүх даалгавар"}
+                    : "Бүх даалгавар"}
                 </small>
               </article>
               <article className={styles.summaryCard}>

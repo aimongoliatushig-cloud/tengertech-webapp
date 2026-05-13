@@ -10,11 +10,23 @@ import styles from "./workspace-header.module.css";
 type WorkspaceHeaderUserMenuProps = {
   userName: string;
   roleLabel: string;
+  userImageUrl?: string;
 };
+
+function getInitials(userName: string) {
+  const parts = userName
+    .split(/\s+/)
+    .map((part) => part.replace(/[^\p{L}\p{N}]/gu, ""))
+    .filter(Boolean)
+    .slice(0, 2);
+
+  return (parts.length ? parts.map((part) => part[0]).join("") : "Х").toLocaleUpperCase("mn-MN");
+}
 
 export function WorkspaceHeaderUserMenu({
   userName,
   roleLabel,
+  userImageUrl = "",
 }: WorkspaceHeaderUserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -53,6 +65,14 @@ export function WorkspaceHeaderUserMenu({
         aria-controls="workspace-header-account-menu"
         onClick={() => setIsOpen((open) => !open)}
       >
+        <span className={styles.headerUserAvatar} aria-hidden>
+          {userImageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={userImageUrl} alt="" />
+          ) : (
+            getInitials(userName)
+          )}
+        </span>
         <span className={styles.headerUserText}>
           <strong>{userName}</strong>
           <small>{roleLabel}</small>

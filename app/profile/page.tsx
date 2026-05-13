@@ -28,14 +28,10 @@ import { isAutoGarbageDepartment } from "@/lib/department-permissions";
 import { executeOdooKw, type OdooConnection } from "@/lib/odoo";
 import { getPrimaryAppRole, type RoleGroupFlags } from "@/lib/roles";
 import { loadRouteManagementData } from "@/lib/route-management";
-import { loadTeamManagementData, loadTeamMemberOptions } from "@/lib/team-management";
 
 import {
-  archiveProfileTeamAction,
   changeProfilePasswordAction,
   createProfileCollectionPointAction,
-  createProfileRouteAction,
-  createProfileTeamAction,
   updateProfilePhotoAction,
 } from "./actions";
 import { ProfilePhotoUpload } from "./profile-photo-upload";
@@ -85,13 +81,13 @@ function getAppRoleLabel(appRole: ReturnType<typeof getPrimaryAppRole>) {
     case "executive":
       return "Удирдлагын хяналт";
     case "manager":
-      return "Менежерийн урсгал";
+      return "Удирдлагын урсгал";
     case "dispatcher":
       return "Диспетчерийн урсгал";
     case "inspector":
       return "Хяналтын урсгал";
     case "leader":
-      return "Багийн удирдлагын урсгал";
+      return "Удирдлагын урсгал";
     default:
       return "Талбарын урсгал";
   }
@@ -232,17 +228,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
       groupFlags.fleetRepairManager ||
       groupFlags.fleetRepairCeo,
   );
-  const canCreateTeam = Boolean(
-    new Set(["system_admin", "project_manager", "senior_master", "team_leader"]).has(
-      String(session.role),
-    ) ||
-      groupFlags.mfoManager ||
-      groupFlags.mfoDispatcher ||
-      groupFlags.municipalDepartmentHead ||
-      groupFlags.environmentManager ||
-      groupFlags.improvementManager,
-  );
-  const canCreateRoute = Boolean(
+  const canManageCollectionPoints = Boolean(
     isAutoGarbageDepartment(departmentScopeName) &&
       (String(session.role) === "project_manager" ||
         groupFlags.mfoManager ||
@@ -254,17 +240,10 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     password: session.password,
   };
   const showFullProfile = !workerMode;
-  const [routeManagementData, teamMemberOptions, teamManagementData, profileInfo] =
-    await Promise.all([
-    showFullProfile && canCreateRoute
+  const [routeManagementData, profileInfo] = await Promise.all([
+    showFullProfile && canManageCollectionPoints
       ? loadRouteManagementData(connectionOverrides)
       : Promise.resolve(null),
-    showFullProfile && canCreateTeam
-      ? loadTeamMemberOptions(departmentScopeName, connectionOverrides)
-      : Promise.resolve([]),
-    showFullProfile && canCreateTeam
-      ? loadTeamManagementData(departmentScopeName, connectionOverrides)
-      : Promise.resolve({ teams: [], totalTeams: 0 }),
     loadCurrentProfileInfo(session, connectionOverrides),
   ]);
   const profileImageUrl = profileInfo.imageUrl;
@@ -327,25 +306,18 @@ export default async function ProfilePage({ searchParams }: PageProps) {
             label: "Ажлын жагсаалт",
             note: "Ажил, төслийн ерөнхий урсгал",
           },
-    canCreateTeam
+    canManageCollectionPoints
       ? {
-          href: "#team-route-settings",
-          label: "Баг үүсгэх",
-          note: "Өөрийн алба нэгжийн багийг нэмнэ",
-        }
-      : null,
-    canCreateRoute
-      ? {
-          href: "#team-route-settings",
-          label: "Маршрут үүсгэх",
-          note: "Хог ачилт, авто баазын маршрутыг нэмнэ",
+          href: "#collection-point-settings",
+          label: "Хогийн цэг нэмэх",
+          note: "Бүртгэлтэй хогийн цэгийг харж, шинээр нэмнэ",
         }
       : null,
     canUseFieldConsole
       ? {
           href: "/field",
           label: "Талбарын ажил",
-          note: "Маршрут ба талбайн ажлаа нээнэ",
+          note: "Талбайн ажлаа нээнэ",
         }
       : null,
     canUseProcurement
@@ -390,14 +362,9 @@ export default async function ProfilePage({ searchParams }: PageProps) {
       enabled: canCreateTasks,
     },
     {
-      label: "Баг үүсгэх",
-      note: "Өөрийн алба нэгжид гүйцэтгэлийн баг нэмэх",
-      enabled: canCreateTeam,
-    },
-    {
-      label: "Маршрут үүсгэх",
-      note: "Зөвхөн Авто бааз, хог тээвэрлэлтийн хэлтсийн даргад нээлттэй",
-      enabled: canCreateRoute,
+      label: "Хогийн цэг нэмэх",
+      note: "Авто бааз, хог тээвэрлэлтийн хэлтсийн даргад нээлттэй",
+      enabled: canManageCollectionPoints,
     },
     {
       label: "Тайлан оруулах",
@@ -410,7 +377,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
       enabled: canViewQualityCenter,
     },
     {
-      label: "Талбарын маршрут ашиглах",
+      label: "Талбарын ажил ашиглах",
       note: "Гар утасны талбарын горимоор ажиллах",
       enabled: canUseFieldConsole,
     },
@@ -427,8 +394,6 @@ export default async function ProfilePage({ searchParams }: PageProps) {
   const profilePhone = profileInfo.phone || "Утас бүртгээгүй";
   const mobileAccountRows = [
     { href: "#profile-photo", label: "Хувийн мэдээлэл", icon: UserRound },
-    { href: "#password-settings", label: "Нууц үг өөрчлөх", icon: LockKeyhole },
-    { href: "#session-security", label: "Аюулгүй байдал", icon: ShieldCheck },
   ];
   return (
     <main className={shellStyles.shell}>
@@ -464,6 +429,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
               }
               userName={session.name}
               roleLabel={roleLabel}
+              userImageUrl={profileImageUrl}
               notificationCount={workerMode ? 0 : enabledCapabilityCount}
               notificationNote={
                 workerMode
@@ -484,7 +450,20 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                     <Bell aria-hidden />
                     {enabledCapabilityCount > 0 ? <span>{enabledCapabilityCount}</span> : null}
                   </Link>
-                  <span className={styles.mobileUserBadge}>{getInitials(session.name).slice(0, 1)}</span>
+                  <span className={styles.mobileUserBadge} aria-hidden>
+                    {profileImageUrl ? (
+                      <Image
+                        src={profileImageUrl}
+                        alt=""
+                        width={54}
+                        height={54}
+                        className={styles.mobileUserBadgeImage}
+                        unoptimized
+                      />
+                    ) : (
+                      getInitials(session.name).slice(0, 1)
+                    )}
+                  </span>
                 </div>
               </div>
 
@@ -526,6 +505,69 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                       </Link>
                     );
                   })}
+                  <details className={styles.mobileSettingsDisclosure}>
+                    <summary className={styles.mobileSettingsRow}>
+                      <LockKeyhole aria-hidden />
+                      <span>Нууц үг өөрчлөх</span>
+                      <ChevronRight className={styles.mobileDisclosureChevron} aria-hidden />
+                    </summary>
+                    <div className={styles.mobileSettingsPanel}>
+                      <div className={styles.mobilePanelHeader}>
+                        <LockKeyhole aria-hidden />
+                        <div>
+                          <h2>Нууц үг солих</h2>
+                          <p>Шинэ нууц үг хамгийн багадаа 8 тэмдэгттэй байна.</p>
+                        </div>
+                      </div>
+                      <form action={changeProfilePasswordAction} className={styles.mobilePasswordForm}>
+                        <label className={styles.mobileField}>
+                          <span>Одоогийн нууц үг</span>
+                          <input name="current_password" type="password" autoComplete="current-password" required />
+                        </label>
+                        <label className={styles.mobileField}>
+                          <span>Шинэ нууц үг</span>
+                          <input name="new_password" type="password" autoComplete="new-password" minLength={8} required />
+                        </label>
+                        <label className={styles.mobileField}>
+                          <span>Шинэ нууц үг давтах</span>
+                          <input name="confirm_password" type="password" autoComplete="new-password" minLength={8} required />
+                        </label>
+                        <button type="submit" className={styles.mobilePrimaryButton}>
+                          Нууц үг солих
+                        </button>
+                      </form>
+                    </div>
+                  </details>
+                  <details className={styles.mobileSettingsDisclosure}>
+                    <summary className={styles.mobileSettingsRow}>
+                      <ShieldCheck aria-hidden />
+                      <span>Бүртгэлтэй төхөөрөмж</span>
+                      <ChevronRight className={styles.mobileDisclosureChevron} aria-hidden />
+                    </summary>
+                    <div className={styles.mobileSettingsPanel}>
+                      <div className={styles.mobilePanelHeader}>
+                        <ShieldCheck aria-hidden />
+                        <div>
+                          <h2>Бүртгэлтэй төхөөрөмж</h2>
+                          <p>Одоогийн нэвтрэлтийн төхөөрөмж болон IP мэдээлэл.</p>
+                        </div>
+                      </div>
+                      <div className={styles.mobileSecurityList}>
+                        <span>
+                          <small>Төхөөрөмж</small>
+                          <strong>{session.deviceLabel || getDeviceLabel(session.userAgent)}</strong>
+                        </span>
+                        <span>
+                          <small>IP хаяг</small>
+                          <strong>{maskIpAddress(session.loginIp)}</strong>
+                        </span>
+                        <span>
+                          <small>Төлөв</small>
+                          <strong>Идэвхтэй</strong>
+                        </span>
+                      </div>
+                    </div>
+                  </details>
                 </div>
               </div>
 
@@ -672,7 +714,6 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                 <article className={styles.summaryCard}>
                   <span>Нэвтрэх нэр</span>
                   <strong>{session.login}</strong>
-                  <small>Odoo-той холбогдож буй хэрэглэгчийн нэр</small>
                 </article>
 
                 <article className={styles.summaryCard}>
@@ -719,20 +760,18 @@ export default async function ProfilePage({ searchParams }: PageProps) {
               </div>
             </section>
 
-            <section id="team-route-settings" className={styles.sectionCard}>
+            <section id="collection-point-settings" className={styles.sectionCard}>
               <div className={styles.settingsHero}>
                 <div>
                   <span className={styles.eyebrow}>Тохиргооны үйлдэл</span>
-                  <h2>Баг, хогийн цэг, маршрут</h2>
+                  <h2>Хогийн цэг</h2>
                   <p>
-                    Алба нэгжийн багийг шууд жагсаалтаар харж, шинээр нэмэх болон идэвхгүй болгох боломжтой.
-                    Хогийн цэг, маршрут нь зөвхөн Авто бааз, хог тээвэрлэлтийн хэлтсийн эрхтэй хэрэглэгч дээр нээгдэнэ.
+                    Авто бааз, хог тээвэрлэлтийн хэлтсийн эрхтэй хэрэглэгч хогийн цэгийн
+                    бүртгэлийг харж, шинээр нэмэх боломжтой.
                   </p>
                 </div>
                 <div className={styles.settingsStats}>
-                  <span><strong>{teamManagementData.totalTeams}</strong> баг</span>
                   <span><strong>{routeManagementData?.points.length ?? 0}</strong> хогийн цэг</span>
-                  <span><strong>{routeManagementData?.routes.length ?? 0}</strong> маршрут</span>
                 </div>
               </div>
 
@@ -740,97 +779,10 @@ export default async function ProfilePage({ searchParams }: PageProps) {
               {error ? <p className={styles.errorMessage}>{error}</p> : null}
 
               <div className={styles.settingsNav} aria-label="Тохиргооны хэсгүүд">
-                <a href="#settings-teams">
-                  <strong>Баг</strong>
-                  <span>Жагсаалт, гишүүд, нэмэх</span>
-                </a>
-                <a href="#settings-points" aria-disabled={!canCreateRoute}>
+                <a href="#settings-points" aria-disabled={!canManageCollectionPoints}>
                   <strong>Хогийн цэг</strong>
                   <span>Цэгийн бүртгэл</span>
                 </a>
-                <a href="#settings-routes" aria-disabled={!canCreateRoute}>
-                  <strong>Маршрут</strong>
-                  <span>Машин, баг, цэг холбох</span>
-                </a>
-              </div>
-
-              <div id="settings-teams" className={styles.managementPanel}>
-                <div className={styles.managementHeader}>
-                  <div>
-                    <span className={styles.formBadge}>Баг</span>
-                    <h3>Багийн жагсаалт</h3>
-                    <p>Таны алба нэгжид холбоотой идэвхтэй багууд болон гишүүдийг харуулна.</p>
-                  </div>
-                  <span className={styles.routeCount}>{teamManagementData.totalTeams} баг</span>
-                </div>
-
-                {canCreateTeam ? (
-                  <div className={styles.teamBoard}>
-                    <div className={styles.teamList}>
-                      {teamManagementData.teams.length ? (
-                        teamManagementData.teams.map((team) => (
-                          <article key={team.id} className={styles.teamCard}>
-                            <div>
-                              <strong>{team.name}</strong>
-                              <small>{team.departmentName || departmentScopeName || "Алба нэгж тодорхойгүй"}</small>
-                            </div>
-                            <div className={styles.teamMetaGrid}>
-                              <span>{team.memberIds.length} гишүүн</span>
-                              <span>{team.vehicleName || "Машин холбоогүй"}</span>
-                            </div>
-                            <p>
-                              {team.memberNames.length
-                                ? team.memberNames.slice(0, 4).join(", ")
-                                : "Гишүүн сонгоогүй байна."}
-                            </p>
-                            <form action={archiveProfileTeamAction}>
-                              <input type="hidden" name="team_id" value={team.id} />
-                              <button type="submit" className={styles.subtleDangerButton}>
-                                Жагсаалтаас хасах
-                              </button>
-                            </form>
-                          </article>
-                        ))
-                      ) : (
-                        <p className={styles.emptyNote}>Одоогоор баг бүртгэгдээгүй байна. Баруун талын form-оор шинэ баг нэмээрэй.</p>
-                      )}
-                    </div>
-
-                    <form action={createProfileTeamAction} className={styles.miniForm}>
-                      <div>
-                        <span className={styles.formBadge}>Нэмэх</span>
-                        <h3>Шинэ баг үүсгэх</h3>
-                        <p>Баг таны одоогийн алба нэгжтэй автоматаар холбогдоно.</p>
-                      </div>
-                      <label className={styles.field}>
-                        <span>Багийн нэр</span>
-                        <input name="team_name" type="text" placeholder="Жишээ: Өглөөний ээлжийн баг" required />
-                      </label>
-                      <label className={styles.field}>
-                        <span>Багийн гишүүд</span>
-                        <select
-                          name="member_ids"
-                          multiple
-                          size={Math.min(Math.max(teamMemberOptions.length, 4), 8)}
-                        >
-                          {teamMemberOptions.map((employee) => (
-                            <option key={employee.id} value={employee.id}>
-                              {employee.label}
-                            </option>
-                          ))}
-                        </select>
-                        <small>Ctrl дарж олон ажилтан сонгоно.</small>
-                      </label>
-                      <button type="submit" className={styles.primaryMiniButton}>Баг үүсгэх</button>
-                    </form>
-                  </div>
-                ) : (
-                  <article className={styles.lockedCard}>
-                    <span className={styles.formBadge}>Баг</span>
-                    <h3>Баг удирдах эрх хаалттай</h3>
-                    <p>Энэ хэсэг хэлтсийн дарга, мастер болон системийн админд нээлттэй.</p>
-                  </article>
-                )}
               </div>
 
               <div id="settings-points" className={styles.managementPanel}>
@@ -838,12 +790,12 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                   <div>
                     <span className={styles.formBadge}>Хогийн цэг</span>
                     <h3>Хогийн цэгийн бүртгэл</h3>
-                    <p>Маршрут үүсгэхдээ сонгох хогийн цэгүүдийг эндээс харж, нэмнэ.</p>
+                    <p>Бүртгэлтэй хогийн цэгүүдийг эндээс харж, шинээр нэмнэ.</p>
                   </div>
                   <span className={styles.routeCount}>{routeManagementData?.points.length ?? 0} цэг</span>
                 </div>
 
-                {canCreateRoute && routeManagementData ? (
+                {canManageCollectionPoints && routeManagementData ? (
                   <div className={styles.teamBoard}>
                     <div className={styles.teamList}>
                       {routeManagementData.points.length ? (
@@ -865,7 +817,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                       <div>
                         <span className={styles.formBadge}>Нэмэх</span>
                         <h3>Хогийн цэг нэмэх</h3>
-                        <p>Цэг нэмээд дараа нь маршрутад сонгож холбоно.</p>
+                        <p>Хогийн цэгийн нэр, хороо, хаягийн мэдээллийг бүртгэнэ.</p>
                       </div>
                       <label className={styles.field}>
                         <span>Цэгийн нэр</span>
@@ -896,92 +848,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                 )}
               </div>
 
-              <div id="settings-routes" className={styles.managementPanel}>
-                <div className={styles.managementHeader}>
-                  <div>
-                    <span className={styles.formBadge}>Маршрут</span>
-                    <h3>Маршрутын жагсаалт</h3>
-                    <p>Odoo дээр бүртгэлтэй маршрутуудыг жагсаалтаар харуулж байна.</p>
-                  </div>
-                  <span className={styles.routeCount}>{routeManagementData?.routes.length ?? 0} маршрут</span>
-                </div>
 
-                {canCreateRoute && routeManagementData ? (
-                  <div className={styles.routeManager}>
-                    <div className={styles.routeTable}>
-                      <div className={styles.routeTableHead}>
-                        <span>Маршрут</span>
-                        <span>Төсөл</span>
-                        <span>Хогийн цэг</span>
-                      </div>
-                      {routeManagementData.routes.length ? (
-                        routeManagementData.routes.map((route) => (
-                          <article key={route.id} className={styles.routeRow}>
-                            <strong>{route.name}</strong>
-                            <span>{route.projectName || "-"}</span>
-                            <small>
-                              {route.pointCount} цэг
-                              {route.pointNames.length ? [" · ", route.pointNames.slice(0, 3).join(", ")].join("") : ""}
-                            </small>
-                          </article>
-                        ))
-                      ) : (
-                        <p className={styles.emptyNote}>Одоогоор маршрут бүртгэгдээгүй байна.</p>
-                      )}
-                    </div>
-
-                    <form action={createProfileRouteAction} className={styles.routeCreateForm}>
-                      <div className={styles.routeListHeader}>
-                        <div>
-                          <span className={styles.formBadge}>Нэмэх</span>
-                          <h3>Маршрут нэмэх</h3>
-                          <p>Машин, баг болон хогийн цэгүүдийг сонгоход маршрут Odoo дээр үүснэ.</p>
-                        </div>
-                      </div>
-                      <div className={styles.formGrid}>
-                        <label className={styles.field}>
-                          <span>Маршрутын нэр</span>
-                          <input name="route_name" type="text" placeholder="Жишээ: Хог тээвэрлэлт - 8 хороо" required />
-                        </label>
-                        <label className={styles.field}>
-                          <span>Машин</span>
-                          <select name="vehicle_id" required defaultValue="">
-                            <option value="" disabled>Машин сонгох</option>
-                            {routeManagementData.vehicles.map((vehicle) => (
-                              <option key={vehicle.id} value={vehicle.id}>{vehicle.label}</option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className={styles.field}>
-                          <span>Баг</span>
-                          <select name="team_id" required defaultValue="">
-                            <option value="" disabled>Баг сонгох</option>
-                            {routeManagementData.teams.map((team) => (
-                              <option key={team.id} value={team.id}>{team.label}</option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className={styles.field}>
-                          <span>Хогийн цэгүүд</span>
-                          <select name="point_ids" multiple required size={Math.min(Math.max(routeManagementData.points.length, 4), 8)}>
-                            {routeManagementData.points.map((point) => (
-                              <option key={point.id} value={point.id}>{point.name}</option>
-                            ))}
-                          </select>
-                          <small>Ctrl дарж хэд хэдэн цэг сонгоно.</small>
-                        </label>
-                      </div>
-                      <button type="submit" className={styles.primaryMiniButton}>Маршрут нэмэх</button>
-                    </form>
-                  </div>
-                ) : (
-                  <article className={styles.lockedCard}>
-                    <span className={styles.formBadge}>Маршрут</span>
-                    <h3>Маршрут үүсгэх эрх хязгаартай</h3>
-                    <p>Энэ хэсэг зөвхөн Авто бааз, хог тээвэрлэлтийн хэлтсийн даргаар нэвтрэхэд идэвхжинэ.</p>
-                  </article>
-                )}
-              </div>
             </section>
 
             <section className={styles.sectionCard}>

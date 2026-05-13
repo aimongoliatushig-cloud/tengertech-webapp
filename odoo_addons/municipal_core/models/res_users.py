@@ -39,11 +39,17 @@ class ResUsersMunicipalRoleCoverage(models.Model):
 
     ops_user_type = fields.Selection(
         selection_add=[
+            ("transport_inspector", "Тээвэрлэлтийн хяналтын ажилтан"),
             ("hse_officer", "ХАБЭА хяналтын ажилтан"),
             ("public_relations", "Олон нийттэй харилцах ажилтан"),
+            ("hr_specialist", "Хүний нөөцийн ажилтан"),
+            ("hr_manager", "Хүний нөөцийн менежер"),
         ],
         ondelete={
+            "transport_inspector": "set default",
             "hse_officer": "set default",
             "public_relations": "set default",
+            "hr_specialist": "set default",
+            "hr_manager": "set default",
         },
     )

@@ -26,7 +26,7 @@
             <form string="Ирцийн асуудал">
                 <header>
                     <button name="action_hr_review" string="Хүний нөөцийн хяналт" type="object" invisible="state != 'draft'"/>
-                    <button name="action_manager_review" string="Менежерийн хяналт" type="object" invisible="state != 'hr_review'"/>
+                    <button name="action_manager_review" string="Шууд удирдлагын хяналт" type="object" invisible="state != 'hr_review'"/>
                     <button name="action_employee_explanation" string="Тайлбар авах" type="object" invisible="state not in ('hr_review', 'manager_review')"/>
                     <button name="action_submit_employee_explanation" string="Тайлбар илгээх" type="object" class="btn-primary" invisible="state != 'employee_explanation'"/>
                     <button name="action_approve" string="Батлах" type="object" class="btn-primary" invisible="state not in ('manager_review', 'employee_explanation')"/>

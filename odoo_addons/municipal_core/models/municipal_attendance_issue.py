@@ -125,7 +125,7 @@ class MunicipalAttendanceIssue(models.Model):
         [
             ("draft", "Ноорог"),
             ("hr_review", "Хүний нөөцийн хяналт"),
-            ("manager_review", "Менежерийн хяналт"),
+            ("manager_review", "Шууд удирдлагын хяналт"),
             ("employee_explanation", "Ажилтны тайлбар"),
             ("approved", "Баталгаажсан"),
             ("archived", "Архивласан"),

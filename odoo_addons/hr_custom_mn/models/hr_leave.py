@@ -8,7 +8,7 @@ class HrLeave(models.Model):
     x_mn_approval_step = fields.Selection(
         [
             ("employee", "Ажилтан илгээсэн"),
-            ("manager", "Менежерийн баталгаажуулалт"),
+            ("manager", "Хэлтсийн даргын баталгаажуулалт"),
             ("hr", "HR баталгаажуулалт"),
             ("final", "Эцсийн баталгаа"),
             ("refused", "Татгалзсан"),
@@ -113,7 +113,7 @@ class HrCustomMnLeaveHistory(models.Model):
     action_type = fields.Selection(
         [
             ("request", "Хүсэлт"),
-            ("approve", "Менежер баталсан"),
+            ("approve", "Хэлтсийн дарга баталсан"),
             ("validate", "HR/эцсийн баталгаа"),
             ("refuse", "Татгалзсан"),
             ("cancel", "Цуцалсан"),

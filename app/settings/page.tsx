@@ -113,7 +113,6 @@ export default async function GeneralSettingsPage({ searchParams }: PageProps) {
           <div className={styles.pageContent}>
             <WorkspaceHeader
               title="Ерөнхий тохиргоо"
-              subtitle="Бүх хэлтэст ашиглагдах мастер дата"
               userName={session.name}
               roleLabel={roleLabel}
               notificationCount={subdistricts.length}
@@ -124,12 +123,7 @@ export default async function GeneralSettingsPage({ searchParams }: PageProps) {
             {error ? <div className={`${styles.message} ${styles.errorMessage}`}>{error}</div> : null}
 
             <section id="subdistricts" className={styles.heroCard}>
-              <span className={styles.eyebrow}>Мастер дата</span>
               <h1>Хорооны бүртгэл</h1>
-              <p>
-                Энд нэмсэн хороо нь бүх хэлтсийн ажил, даалгавар үүсгэх үеийн “Хороо” сонголтод
-                Odoo database-оос шууд орж ирнэ.
-              </p>
             </section>
 
             <section className={styles.workspaceSection}>

@@ -346,7 +346,7 @@ export async function saveGarbageTransportPreferencesAction(formData: FormData) 
   } catch (error) {
     redirectToSettings(
       "error",
-      getErrorMessage(error, "Тохиргоо хадгалах үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(error, "Тохиргоо хадгалах үед алдаа гарлаа."),
       "general",
     );
   }
@@ -402,7 +402,7 @@ export async function createGarbageTransportTeamAction(formData: FormData) {
   } catch (error) {
     redirectToSettings(
       "error",
-      getErrorMessage(error, "Хог тээврийн баг үүсгэх үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(error, "Хог тээврийн баг үүсгэх үед алдаа гарлаа."),
       "teams",
     );
   }
@@ -423,7 +423,7 @@ export async function archiveGarbageTransportTeamAction(formData: FormData) {
   } catch (error) {
     redirectToSettings(
       "error",
-      getErrorMessage(error, "Баг идэвхгүй болгох үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(error, "Баг идэвхгүй болгох үед алдаа гарлаа."),
       "teams",
     );
   }
@@ -484,7 +484,7 @@ export async function saveGarbageTransportInspectorScopeAction(formData: FormDat
       await writeOdooRecord("fleet.vehicle", vehicleId, { mfo_garbage_work_create_allowed: true }, connection);
     }
   } catch (error) {
-    const message = getErrorMessage(error, "Хяналтын байцаагчийн scope хадгалах үед Odoo дээр алдаа гарлаа.");
+    const message = getErrorMessage(error, "Хяналтын байцаагчийн scope хадгалах үед алдаа гарлаа.");
     if (message.includes("Invalid field")) {
       console.warn("Inspector scope saved locally because Odoo scope fields are not available yet.", message);
     } else {
@@ -543,7 +543,7 @@ export async function createGarbageTransportWorkTypeAction(formData: FormData) {
   } catch (error) {
     redirectToSettings(
       "error",
-      getErrorMessage(error, "Ажлын төрөл нэмэх үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(error, "Ажлын төрөл нэмэх үед алдаа гарлаа."),
       "work-types",
     );
   }
@@ -565,7 +565,7 @@ export async function archiveGarbageTransportWorkTypeAction(formData: FormData) 
   } catch (error) {
     redirectToSettings(
       "error",
-      getErrorMessage(error, "Ажлын төрөл хасах үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(error, "Ажлын төрөл хасах үед алдаа гарлаа."),
       "work-types",
     );
   }
@@ -644,7 +644,7 @@ export async function createGarbageTransportVehicleAction(formData: FormData) {
   } catch (error) {
     redirectToSettings(
       "error",
-      getErrorMessage(error, "Машин нэмэх үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(error, "Машин нэмэх үед алдаа гарлаа."),
       "vehicles",
     );
   }
@@ -682,7 +682,7 @@ export async function updateGarbageTransportVehicleCrewAction(formData: FormData
   } catch (error) {
     redirectToSettings(
       "error",
-      getErrorMessage(error, "Машины хариуцсан жолооч, ачигчийг хадгалах үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(error, "Машины хариуцсан жолооч, ачигчийг хадгалах үед алдаа гарлаа."),
       "vehicles",
     );
   }
@@ -736,7 +736,7 @@ export async function createGarbageTransportSubdistrictAction(formData: FormData
   } catch (error) {
     redirectToSettings(
       "error",
-      getErrorMessage(error, "Хороо нэмэх үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(error, "Хороо нэмэх үед алдаа гарлаа."),
       "points",
     );
   }
@@ -779,7 +779,7 @@ export async function archiveGarbageTransportSubdistrictAction(formData: FormDat
   if (pointCountError) {
     redirectToSettings(
       "error",
-      getErrorMessage(pointCountError, "Хороонд бүртгэлтэй хогийн цэг байгаа эсэхийг шалгах үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(pointCountError, "Хороонд бүртгэлтэй хогийн цэг байгаа эсэхийг шалгах үед алдаа гарлаа."),
       "points",
     );
   }
@@ -797,7 +797,7 @@ export async function archiveGarbageTransportSubdistrictAction(formData: FormDat
   } catch (error) {
     redirectToSettings(
       "error",
-      getErrorMessage(error, "Хороо устгах үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(error, "Хороо устгах үед алдаа гарлаа."),
       "points",
     );
   }
@@ -850,7 +850,7 @@ export async function createGarbageTransportPointAction(formData: FormData) {
   } catch (error) {
     redirectToSettings(
       "error",
-      getErrorMessage(error, "Хогийн цэг нэмэх үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(error, "Хогийн цэг нэмэх үед алдаа гарлаа."),
       "points",
     );
   }
@@ -888,7 +888,7 @@ export async function updateGarbageTransportPointAction(formData: FormData) {
   } catch (error) {
     redirectToSettings(
       "error",
-      getErrorMessage(error, "Хогийн цэг засах үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(error, "Хогийн цэг засах үед алдаа гарлаа."),
       "points",
     );
   }
@@ -910,7 +910,7 @@ export async function archiveGarbageTransportPointAction(formData: FormData) {
   } catch (error) {
     redirectToSettings(
       "error",
-      getErrorMessage(error, "Хогийн цэг устгах үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(error, "Хогийн цэг устгах үед алдаа гарлаа."),
       "points",
     );
   }
@@ -973,7 +973,7 @@ export async function createGarbageTransportRouteAction(formData: FormData) {
   } catch (error) {
     redirectToSettings(
       "error",
-      getErrorMessage(error, "Маршрут нэмэх үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(error, "Маршрут нэмэх үед алдаа гарлаа."),
       "routes",
     );
   }
@@ -1015,7 +1015,7 @@ export async function updateGarbageTransportRouteAction(formData: FormData) {
   } catch (error) {
     redirectToSettings(
       "error",
-      getErrorMessage(error, "Маршрут засах үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(error, "Маршрут засах үед алдаа гарлаа."),
       "routes",
     );
   }
@@ -1037,7 +1037,7 @@ export async function archiveGarbageTransportRouteAction(formData: FormData) {
   } catch (error) {
     redirectToSettings(
       "error",
-      getErrorMessage(error, "Маршрут устгах үед Odoo дээр алдаа гарлаа."),
+      getErrorMessage(error, "Маршрут устгах үед алдаа гарлаа."),
       "routes",
     );
   }

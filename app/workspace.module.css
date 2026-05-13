@@ -2131,6 +2131,8 @@
   display: grid;
   gap: 10px;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .projectTaskFlowItem {
@@ -2138,6 +2140,8 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
+  min-width: 0;
+  max-width: 100%;
   min-height: 104px;
   padding: 14px;
   border: 1px solid rgba(47, 127, 70, 0.14);
@@ -2173,6 +2177,8 @@
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
   gap: 14px;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
   color: inherit;
   text-decoration: none;
@@ -2206,6 +2212,7 @@
 
 .projectTaskTitleRow > div {
   min-width: 0;
+  max-width: 100%;
 }
 
 .projectTaskTitleRow h3 {
@@ -2214,6 +2221,8 @@
   font-family: var(--font-body);
   font-size: clamp(1rem, 1.4vw, 1.18rem);
   line-height: 1.25;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .projectTaskTitleRow p {
@@ -2221,6 +2230,8 @@
   color: var(--ink-700);
   font-size: 0.9rem;
   line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .projectTaskStatusStack {
@@ -2279,6 +2290,7 @@
   display: grid;
   gap: 3px;
   min-width: 0;
+  max-width: 100%;
   padding: 9px 10px;
   border-radius: 10px;
   background: rgba(238, 247, 237, 0.75);
@@ -2298,6 +2310,8 @@
   font-size: 0.9rem;
   font-weight: 800;
   line-height: 1.3;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .projectTaskQuantityCell {
@@ -5360,6 +5374,187 @@
   .modalDialog,
   .requestCard {
     padding: 16px;
+  }
+}
+
+@media (max-width: 720px) {
+  .panel:has(.projectTaskFlowList) {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 14px;
+  }
+
+  .panel:has(.projectTaskFlowList) .sectionHeader {
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .panel:has(.projectTaskFlowList) .sectionHeader h2 {
+    font-size: 1.12rem;
+    line-height: 1.18;
+  }
+
+  .panel:has(.projectTaskFlowList) .sectionHeader p {
+    display: none;
+  }
+
+  .taskFilterRail {
+    grid-auto-flow: row;
+    grid-auto-columns: unset;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    overflow: visible;
+    padding-bottom: 0;
+    margin-bottom: 12px;
+  }
+
+  .taskFilterChip {
+    width: 100%;
+    min-width: 0;
+    min-height: 46px;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    white-space: normal;
+  }
+
+  .taskFilterChip span {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.78rem;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+  }
+
+  .taskFilterChip strong {
+    min-width: 28px;
+    min-height: 28px;
+    flex: 0 0 auto;
+  }
+
+  .projectTaskFlowList {
+    gap: 10px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .projectTaskFlowItem {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    min-height: 0;
+    padding: 12px;
+    overflow: hidden;
+    border-left-width: 4px;
+    border-radius: 14px;
+    box-sizing: border-box;
+  }
+
+  .projectTaskFlowLink {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding-left: 46px;
+    box-sizing: border-box;
+  }
+
+  .projectTaskNumber {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    font-size: 0.86rem;
+  }
+
+  .projectTaskMain {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .projectTaskTitleRow,
+  .projectTaskTitleRow > div {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .projectTaskTitleRow h3 {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.98rem;
+    line-height: 1.28;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .projectTaskTitleRow p {
+    display: -webkit-box;
+    overflow: hidden;
+    margin-top: 4px;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .projectTaskMetaGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+    margin-top: 10px;
+  }
+
+  .projectTaskStateCell,
+  .projectTaskMetaGrid > span,
+  .projectTaskQuantityCell {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 8px 9px;
+    border-radius: 9px;
+    box-sizing: border-box;
+  }
+
+  .projectTaskStateRow {
+    gap: 6px;
+  }
+
+  .projectTaskMetaGrid strong,
+  .projectTaskMetaGrid > span,
+  .projectTaskQuantityCell span {
+    font-size: 0.82rem;
+    line-height: 1.28;
+  }
+
+  .projectTaskProgressTrack {
+    height: 7px;
+    margin-top: 10px;
+  }
+
+  .projectTaskFlowActions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  .projectTaskFlowActions > *,
+  .projectTaskFlowActions form,
+  .projectTaskFlowActions button,
+  .projectTaskFlowActions a {
+    width: 100%;
+    min-width: 0;
   }
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -88,6 +88,7 @@ type AppMenuProps = {
   userName?: string;
   userRole?: UserRole;
   roleLabel?: string;
+  userImageUrl?: string;
   masterMode?: boolean;
   workerMode?: boolean;
   notificationCount?: number;
@@ -220,6 +221,7 @@ export function AppMenu({
   userRole,
   userName = "Хэрэглэгч",
   roleLabel = "Систем",
+  userImageUrl = "",
   masterMode = false,
   workerMode = false,
   notificationCount = 0,
@@ -233,6 +235,43 @@ export function AppMenu({
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [fetchedUserImageUrl, setFetchedUserImageUrl] = useState("");
+  const resolvedUserImageUrl = userImageUrl || fetchedUserImageUrl;
+
+  useEffect(() => {
+    if (userImageUrl) {
+      return;
+    }
+
+    const controller = new AbortController();
+    let isCancelled = false;
+
+    fetch("/api/profile-image", {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { imageUrl?: string } | null) => {
+        if (!isCancelled && payload?.imageUrl) {
+          setFetchedUserImageUrl(payload.imageUrl);
+        }
+      })
+      .catch(() => {
+        // The initials fallback is enough when the image endpoint is unavailable.
+      });
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+    };
+  }, [userImageUrl]);
+
+  const profileAvatarContent = resolvedUserImageUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={resolvedUserImageUrl} alt="" className={styles.profileAvatarImage} />
+  ) : (
+    getInitials(userName)
+  );
 
   useEffect(() => {
     if (warmedWorkspaceRoutes) {
@@ -734,7 +773,29 @@ export function AppMenu({
   }
 
   const activeItem = items.find(isItemActive) ?? items[0];
-  const mobileDockItems: MenuItem[] = (transportInspectorMode
+  const canUseMobilePrimaryAction = Boolean(canCreateProject || canCreateTasks || canWriteReports);
+  const mobilePrimaryAction: MenuItem | null = canUseMobilePrimaryAction
+    ? {
+        key: "new-project",
+        href: canCreateProject || canCreateTasks ? "/create" : "/create/report",
+        label: canCreateProject || canCreateTasks ? "Шинэ ажил" : "Тайлан",
+        icon: PlusCircle,
+      }
+    : null;
+  const withMobilePrimaryAction = (dockItems: MenuItem[]) => {
+    if (!mobilePrimaryAction || dockItems.some((item) => item.key === mobilePrimaryAction.key)) {
+      return dockItems;
+    }
+
+    const preferredItems = dockItems.filter((item) => !["chat", "field"].includes(item.key));
+    const baseItems = preferredItems.length >= 4 ? preferredItems : dockItems;
+    return [
+      ...baseItems.slice(0, 2),
+      mobilePrimaryAction,
+      ...baseItems.slice(2),
+    ];
+  };
+  const rawMobileDockItems: MenuItem[] = transportInspectorMode
     ? [
         { key: "dashboard", href: "/", label: "Самбар", icon: LayoutDashboard },
         {
@@ -771,7 +832,8 @@ export function AppMenu({
       ]
     : hrFocusedMode
       ? [
-          { key: "hr", href: "/hr", label: "HR", icon: Users },
+          { key: "hr", href: "/hr", label: "Хүний нөөц", icon: Users },
+          ...(mobilePrimaryAction ? [mobilePrimaryAction] : []),
           { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
         ]
       : workerMode
@@ -811,7 +873,7 @@ export function AppMenu({
       : [
           { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
           { key: "projects", href: "/projects", label: "Ажлууд", icon: ListChecks },
-          { key: "new-project", href: "/create", label: "Шинэ ажил", icon: PlusCircle },
+          ...(mobilePrimaryAction ? [mobilePrimaryAction] : []),
           ...(showProcurement
             ? [{ key: "procurement", href: "/procurement/dashboard", label: "Худалдан", icon: ShoppingCart }]
             : []),
@@ -819,7 +881,10 @@ export function AppMenu({
           canShowHrMenu
             ? { key: "hr", href: "/hr", label: "HR", icon: Users }
             : { key: "chat", href: "/chat", label: "Чат", icon: MessageSquare },
-        ]).filter((item) => !isHiddenMenuItem(item));
+        ];
+  const mobileDockItems: MenuItem[] = withMobilePrimaryAction(rawMobileDockItems).filter(
+    (item) => !isHiddenMenuItem(item),
+  );
   const visibleMobileDockItems = mobileDockItems.slice(0, 5);
 
   const menuList = (
@@ -892,7 +957,7 @@ export function AppMenu({
             onClick={() => setIsProfileMenuOpen((open) => !open)}
           >
             <span className={styles.profileAvatar} aria-hidden>
-              {getInitials(userName)}
+              {profileAvatarContent}
             </span>
             <span className={styles.profileText}>
               <strong>{userName}</strong>
@@ -940,8 +1005,9 @@ export function AppMenu({
         <Link
           href="/profile"
           className={styles.mobileProfile}
+          aria-label="Профайл харах"
         >
-          {getInitials(userName)}
+          {profileAvatarContent}
         </Link>
       </div>
 
@@ -967,7 +1033,7 @@ export function AppMenu({
             <div className={styles.mobileSheetFooter}>
               <Link href="/profile" className={styles.mobileSheetProfile} onClick={() => setIsOpen(false)}>
                 <span className={styles.profileAvatar} aria-hidden>
-                  {getInitials(userName)}
+                  {profileAvatarContent}
                 </span>
                 <span>
                   <strong>{userName}</strong>
@@ -991,7 +1057,11 @@ export function AppMenu({
         </>
       ) : null}
 
-      <div className={styles.mobileDock} aria-label="Хурдан цэс">
+      <div
+        className={styles.mobileDock}
+        style={{ "--mobile-dock-count": visibleMobileDockItems.length } as CSSProperties}
+        aria-label="Хурдан цэс"
+      >
         {visibleMobileDockItems.map((item) => {
           const Icon = item.icon;
           const isActive = isItemActive(item);

@@ -82,7 +82,7 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
   } catch (error) {
     console.error("Fleet vehicle board could not be loaded:", error);
     loadError =
-      "Авто баазын машины төлөвийг Odoo-оос уншиж чадсангүй. Fleet эрх болон холболтын тохиргоог шалгана уу.";
+      "Авто баазын машины төлөвийг уншиж чадсангүй. Fleet эрх болон холболтын тохиргоог шалгана уу.";
   }
 
   return (

@@ -49,7 +49,7 @@ async function loadKhanUulDistrictId(connection: Partial<OdooConnection>) {
   ).catch(() => []);
 
   if (!districts[0]?.id) {
-    redirectToSettings("error", "Хан-Уул дүүрэг Odoo дээр олдсонгүй.");
+    redirectToSettings("error", "Хан-Уул дүүрэг олдсонгүй.");
   }
 
   return districts[0].id;
@@ -130,7 +130,7 @@ export async function createGeneralSubdistrictAction(formData: FormData) {
       connection,
     );
   } catch (error) {
-    redirectToSettings("error", getErrorMessage(error, "Хороо нэмэх үед Odoo дээр алдаа гарлаа."));
+    redirectToSettings("error", getErrorMessage(error, "Хороо нэмэх үед алдаа гарлаа."));
   }
 
   revalidatePath(SETTINGS_PATH);
@@ -159,7 +159,7 @@ export async function updateGeneralSubdistrictAction(formData: FormData) {
       connection,
     );
   } catch (error) {
-    redirectToSettings("error", getErrorMessage(error, "Хороо засах үед Odoo дээр алдаа гарлаа."));
+    redirectToSettings("error", getErrorMessage(error, "Хороо засах үед алдаа гарлаа."));
   }
 
   revalidatePath(SETTINGS_PATH);
@@ -188,7 +188,7 @@ export async function archiveGeneralSubdistrictAction(formData: FormData) {
       connection,
     );
   } catch (error) {
-    redirectToSettings("error", getErrorMessage(error, "Хороо устгах үед Odoo дээр алдаа гарлаа."));
+    redirectToSettings("error", getErrorMessage(error, "Хороо устгах үед алдаа гарлаа."));
   }
 
   revalidatePath(SETTINGS_PATH);
@@ -206,7 +206,7 @@ export async function archiveAllGeneralCollectionPointsAction() {
     );
     await deleteCollectionPoints(pointIds, connection);
   } catch (error) {
-    redirectToSettings("error", getErrorMessage(error, "Бүх хогийн цэг устгах үед Odoo дээр алдаа гарлаа."));
+    redirectToSettings("error", getErrorMessage(error, "Бүх хогийн цэг устгах үед алдаа гарлаа."));
   }
 
   revalidatePath(SETTINGS_PATH);

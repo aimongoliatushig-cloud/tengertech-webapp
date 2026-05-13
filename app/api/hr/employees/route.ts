@@ -93,6 +93,6 @@ export async function POST(request: Request) {
       return jsonError("Танд хүний нөөцийн хэсэгт хандах эрх байхгүй байна.", 403);
     }
     console.error("POST /api/hr/employees failed:", error);
-    return jsonError("Ажилтан бүртгэхэд алдаа гарлаа. Odoo холболт болон эрхийн тохиргоог шалгана уу.");
+    return jsonError("Ажилтан бүртгэхэд алдаа гарлаа. Эрхийн тохиргоог шалгана уу.");
   }
 }
