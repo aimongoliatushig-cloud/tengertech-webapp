@@ -6,6 +6,7 @@ import { createOdooConnection, executeOdooKw, loadFleetVehicleBoard, type OdooCo
 import {
   findLocalRoadCleaningAreaOption,
   loadLocalRoadCleaningAreaOptions,
+  updateLocalRoadCleaningAreaMasterAssignments,
 } from "@/lib/road-cleaning-area-store";
 
 type Relation = [number, string] | false;
@@ -124,6 +125,8 @@ type EmployeeUserRecord = {
 type CleaningAreaRecord = {
   id: number;
   name: string;
+  khoroo_name?: string | false;
+  working_day_keys?: string | false;
   street_name?: string | false;
   start_point?: string | false;
   end_point?: string | false;
@@ -234,6 +237,8 @@ export type WorkUnitOption = {
 export type RoadCleaningAreaOption = {
   id: number;
   name: string;
+  khorooName: string;
+  workingDayKeys: string[];
   streetName: string;
   startPoint: string;
   endPoint: string;
@@ -258,6 +263,35 @@ export type RoadCleaningEmployeeOption = {
   phone: string;
   userId: number | null;
 };
+
+const ROAD_CLEANING_WORKING_DAY_KEYS = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
+
+const ROAD_CLEANING_WORKING_DAY_KEY_SET = new Set<string>(ROAD_CLEANING_WORKING_DAY_KEYS);
+
+function normalizeRoadCleaningWorkingDayKeys(value?: string | string[] | false | null) {
+  const source = Array.isArray(value) ? value : String(value || "").split(",");
+  const keys = source
+    .map((item) => item.trim())
+    .filter((item) => ROAD_CLEANING_WORKING_DAY_KEY_SET.has(item));
+  return keys.length ? Array.from(new Set(keys)) : [...ROAD_CLEANING_WORKING_DAY_KEYS];
+}
+
+function getRoadCleaningDayKey(dateValue: string) {
+  const date = new Date(`${dateValue}T00:00:00+08:00`);
+  return ROAD_CLEANING_WORKING_DAY_KEYS[(date.getUTCDay() + 6) % 7] ?? "monday";
+}
+
+function isRoadCleaningWorkingDate(area: Pick<RoadCleaningAreaOption, "workingDayKeys">, dateValue: string) {
+  return area.workingDayKeys.includes(getRoadCleaningDayKey(dateValue));
+}
 
 export type WorkTypeOption = {
   id: number;
@@ -1554,23 +1588,27 @@ export async function loadRoadCleaningAreaOptions(
 ) {
   const localAreas = await loadLocalRoadCleaningAreaOptions();
   try {
+    const fieldNames = await loadModelFieldNames("municipal.cleaning.area", connectionOverrides);
+    const fields = [
+      "name",
+      fieldNames.has("khoroo_name") ? "khoroo_name" : "",
+      fieldNames.has("working_day_keys") ? "working_day_keys" : "",
+      "street_name",
+      "start_point",
+      "end_point",
+      "area_m2",
+      "department_id",
+      "master_id",
+      "employee_id",
+      "frequency",
+      "note",
+    ].filter(Boolean);
     const areas = await executeOdooKw<CleaningAreaRecord[]>(
       "municipal.cleaning.area",
       "search_read",
       [[["active", "=", true]]],
       {
-        fields: [
-          "name",
-          "street_name",
-          "start_point",
-          "end_point",
-          "area_m2",
-          "department_id",
-          "master_id",
-          "employee_id",
-          "frequency",
-          "note",
-        ],
+        fields,
         order: "street_name asc, name asc",
         limit: 300,
       },
@@ -1580,6 +1618,8 @@ export async function loadRoadCleaningAreaOptions(
     const odooAreas = areas.map<RoadCleaningAreaOption>((area) => ({
       id: area.id,
       name: area.name,
+      khorooName: String(area.khoroo_name || ""),
+      workingDayKeys: normalizeRoadCleaningWorkingDayKeys(area.working_day_keys),
       streetName: String(area.street_name || ""),
       startPoint: String(area.start_point || ""),
       endPoint: String(area.end_point || ""),
@@ -4024,9 +4064,24 @@ async function createRoadCleaningWorkspaceProjectFallback(
   const masterUserId = relationId(input.masterEmployee?.user_id ?? false) || null;
   const departmentId =
     input.departmentId || relationId(input.employee.department_id ?? false) || null;
+  const projectName = `${input.areaName} - ${input.employee.name} - ${input.workDate}`;
+  const existing = await executeOdooKw<Array<{ id: number }>>(
+    "project.project",
+    "search_read",
+    [[["name", "=", projectName]]],
+    {
+      fields: ["id"],
+      limit: 1,
+    },
+    connectionOverrides,
+  );
+  if (existing[0]?.id) {
+    throw new Error("Энэ талбай дээр энэ ажилтанд тухайн өдрийн ажил аль хэдийн үүссэн байна.");
+  }
+
   const projectId = await createWorkspaceProject(
     {
-      name: `${input.areaName} - ${input.employee.name} - ${input.workDate}`,
+      name: projectName,
       managerId: masterUserId,
       departmentId,
       startDate: input.workDate,
@@ -4064,9 +4119,16 @@ async function createRoadCleaningWorkspaceProjectFallback(
 export async function createRoadCleaningArea(
   input: {
     name: string;
+    khorooName?: string;
+    streetName?: string;
+    startPoint?: string;
+    endPoint?: string;
+    areaM2?: number | null;
+    workingDayKeys?: string[];
     departmentId?: number | null;
     employeeId?: number | null;
     masterId?: number | null;
+    note?: string;
   },
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
@@ -4082,19 +4144,51 @@ export async function createRoadCleaningArea(
     await loadAndValidateRoadCleaningMasterEmployee(input.masterId, connectionOverrides);
   }
 
+  const fieldNames = await loadModelFieldNames("municipal.cleaning.area", connectionOverrides);
+  const values = keepSupportedValues(
+    {
+      name,
+      khoroo_name: input.khorooName?.trim() || false,
+      street_name: input.streetName?.trim() || input.khorooName?.trim() || false,
+      start_point: input.startPoint?.trim() || false,
+      end_point: input.endPoint?.trim() || false,
+      area_m2:
+        typeof input.areaM2 === "number" && Number.isFinite(input.areaM2) ? input.areaM2 : 0,
+      working_day_keys: normalizeRoadCleaningWorkingDayKeys(input.workingDayKeys).join(","),
+      department_id: input.departmentId || false,
+      employee_id: input.employeeId || false,
+      master_id: input.masterId || false,
+      frequency: "daily",
+      active: true,
+      note: input.note?.trim() || false,
+    },
+    fieldNames,
+  );
+  const existing = await executeOdooKw<Array<{ id: number }>>(
+    "municipal.cleaning.area",
+    "search_read",
+    [[["name", "=", name]]],
+    {
+      fields: ["id"],
+      limit: 1,
+    },
+    connectionOverrides,
+  );
+  if (existing[0]?.id) {
+    await executeOdooKw<boolean>(
+      "municipal.cleaning.area",
+      "write",
+      [[existing[0].id], values],
+      {},
+      connectionOverrides,
+    );
+    return existing[0].id;
+  }
+
   return executeOdooKw<number>(
     "municipal.cleaning.area",
     "create",
-    [
-      {
-        name,
-        department_id: input.departmentId || false,
-        employee_id: input.employeeId || false,
-        master_id: input.masterId || false,
-        frequency: "daily",
-        active: true,
-      },
-    ],
+    [values],
     {},
     connectionOverrides,
   );
@@ -4124,22 +4218,29 @@ export async function createRoadCleaningWork(
   let area: CleaningAreaRecord | null = null;
   if (input.cleaningAreaId && input.cleaningAreaId > 0) {
     try {
+      const areaFieldNames = await loadModelFieldNames(
+        "municipal.cleaning.area",
+        connectionOverrides,
+      );
+      const areaFields = [
+        "name",
+        areaFieldNames.has("khoroo_name") ? "khoroo_name" : "",
+        areaFieldNames.has("working_day_keys") ? "working_day_keys" : "",
+        "street_name",
+        "start_point",
+        "end_point",
+        "area_m2",
+        "department_id",
+        "master_id",
+        "employee_id",
+        "note",
+      ].filter(Boolean);
       const [odooArea] = await executeOdooKw<CleaningAreaRecord[]>(
         "municipal.cleaning.area",
         "read",
         [[input.cleaningAreaId]],
         {
-          fields: [
-            "name",
-            "street_name",
-            "start_point",
-            "end_point",
-            "area_m2",
-            "department_id",
-            "master_id",
-            "employee_id",
-            "note",
-          ],
+          fields: areaFields,
         },
         connectionOverrides,
       );
@@ -4154,6 +4255,12 @@ export async function createRoadCleaningWork(
   const areaName = area?.name || localArea?.name || input.areaName?.trim() || "";
   if (!areaName) {
     throw new Error("Цэвэрлэх талбай сонгоно уу.");
+  }
+  const workingDayKeys = area
+    ? normalizeRoadCleaningWorkingDayKeys(area.working_day_keys)
+    : (localArea?.workingDayKeys ?? normalizeRoadCleaningWorkingDayKeys(null));
+  if (!workingDayKeys.includes(getRoadCleaningDayKey(input.workDate))) {
+    throw new Error("Энэ талбай тухайн өдөр амрах хуваарьтай байна.");
   }
 
   const masterEmployeeId = input.masterId || relationId(area?.master_id ?? false);
@@ -4185,10 +4292,13 @@ export async function createRoadCleaningWork(
   const routeText = [area?.start_point || "", area?.end_point || ""].filter(Boolean).join(" → ");
   const description = [
     input.note?.trim() || area?.note || localArea?.note || "",
+    area?.khoroo_name ? `Хороо: ${area.khoroo_name}` : "",
+    localArea?.khorooName ? `Хороо: ${localArea.khorooName}` : "",
     area?.street_name ? `Гудамж / замын нэр: ${area.street_name}` : "",
     area?.start_point ? `Эхлэх цэг: ${area.start_point}` : "",
     area?.end_point ? `Дуусах цэг: ${area.end_point}` : "",
     area?.area_m2 ? `Талбай /мкв/: ${area.area_m2}` : "",
+    localArea?.areaM2 ? `Талбай /мкв/: ${localArea.areaM2}` : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -4284,6 +4394,178 @@ export async function createRoadCleaningWork(
     ].filter((userId): userId is number => Boolean(userId)),
     message: "Зам талбайн цэвэрлэгээний ажил амжилттай үүслээ.",
   };
+}
+
+export async function assignRoadCleaningMasterToEmployees(
+  input: {
+    masterId: number;
+    employeeIds: number[];
+    allEmployeeIds?: number[];
+    workDate: string;
+  },
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const masterEmployee = await loadAndValidateRoadCleaningMasterEmployee(
+    input.masterId,
+    connectionOverrides,
+  );
+  const employeeIds = Array.from(
+    new Set(input.employeeIds.filter((id) => Number.isFinite(id) && id > 0)),
+  );
+  if (!employeeIds.length) {
+    throw new Error("Мастерт хариуцуулах ажилтан сонгоно уу.");
+  }
+  for (const employeeId of employeeIds) {
+    await loadAndValidateRoadCleaningServiceEmployee(employeeId, connectionOverrides);
+  }
+
+  try {
+    const allEmployeeIds = Array.from(
+      new Set((input.allEmployeeIds ?? []).filter((id) => Number.isFinite(id) && id > 0)),
+    );
+    if (allEmployeeIds.length) {
+      const unassignedEmployeeIds = allEmployeeIds.filter((id) => !employeeIds.includes(id));
+      if (unassignedEmployeeIds.length) {
+        const oldAreas = await executeOdooKw<Array<{ id: number }>>(
+          "municipal.cleaning.area",
+          "search_read",
+          [[["master_id", "=", input.masterId], ["employee_id", "in", unassignedEmployeeIds], ["active", "=", true]]],
+          {
+            fields: ["id"],
+            limit: 1000,
+          },
+          connectionOverrides,
+        );
+        const oldAreaIds = oldAreas.map((area) => area.id);
+        if (oldAreaIds.length) {
+          await executeOdooKw<boolean>(
+            "municipal.cleaning.area",
+            "write",
+            [oldAreaIds, { master_id: false }],
+            {},
+            connectionOverrides,
+          );
+        }
+      }
+    }
+
+    const areas = await executeOdooKw<Array<{ id: number }>>(
+      "municipal.cleaning.area",
+      "search_read",
+      [[["employee_id", "in", employeeIds], ["active", "=", true]]],
+      {
+        fields: ["id"],
+        limit: 1000,
+      },
+      connectionOverrides,
+    );
+    const areaIds = areas.map((area) => area.id);
+    if (!areaIds.length) {
+      return { updatedAreaCount: 0, updatedWorkCount: 0 };
+    }
+
+    await executeOdooKw<boolean>(
+      "municipal.cleaning.area",
+      "write",
+      [areaIds, { master_id: input.masterId }],
+      {},
+      connectionOverrides,
+    );
+
+    const works = await executeOdooKw<Array<{ id: number }>>(
+      "municipal.work",
+      "search_read",
+      [
+        [
+          ["cleaning_area_id", "in", areaIds],
+          ["work_date", "=", input.workDate],
+          ["active", "=", true],
+        ],
+      ],
+      {
+        fields: ["id"],
+        limit: 1000,
+      },
+      connectionOverrides,
+    );
+    const workIds = works.map((work) => work.id);
+    if (workIds.length) {
+      const workFields = await loadModelFieldNames("municipal.work", connectionOverrides);
+      const values = keepSupportedValues(
+        {
+          master_id: input.masterId,
+          manager_id: relationId(masterEmployee.user_id) || false,
+        },
+        workFields,
+      );
+      await executeOdooKw<boolean>(
+        "municipal.work",
+        "write",
+        [workIds, values],
+        {},
+        connectionOverrides,
+      );
+    }
+
+    return { updatedAreaCount: areaIds.length, updatedWorkCount: workIds.length };
+  } catch (error) {
+    if (!isMissingMunicipalModelError(error)) {
+      throw error;
+    }
+    const result = await updateLocalRoadCleaningAreaMasterAssignments({
+      masterId: input.masterId,
+      masterName: masterEmployee.name,
+      employeeIds,
+      allEmployeeIds: input.allEmployeeIds,
+    });
+    return { updatedAreaCount: result.updatedCount, updatedWorkCount: 0 };
+  }
+}
+
+export async function createTodayRoadCleaningWorks(
+  input: {
+    workDate: string;
+  },
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const areas = await loadRoadCleaningAreaOptions(connectionOverrides);
+  let createdCount = 0;
+  let skippedCount = 0;
+
+  for (const area of areas) {
+    if (!area.employeeId || !isRoadCleaningWorkingDate(area, input.workDate)) {
+      skippedCount += 1;
+      continue;
+    }
+
+    try {
+      await createRoadCleaningWork(
+        {
+          cleaningAreaId: area.id,
+          areaName: area.name,
+          departmentId: area.departmentId,
+          employeeId: area.employeeId,
+          masterId: area.masterId,
+          workDate: input.workDate,
+          note: area.note,
+        },
+        connectionOverrides,
+      );
+      createdCount += 1;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error ?? "");
+      if (
+        message.includes("аль хэдийн үүссэн") ||
+        message.includes("тухайн өдөр амрах")
+      ) {
+        skippedCount += 1;
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  return { createdCount, skippedCount };
 }
 
 export async function assignGarbageProjectTasksFromRouteTeam(

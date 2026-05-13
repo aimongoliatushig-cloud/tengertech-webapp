@@ -9,24 +9,30 @@ export async function POST(request: Request) {
 
   const payload = await request.json().catch(() => null) as {
     name?: unknown;
+    khorooName?: unknown;
+    areaM2?: unknown;
     departmentId?: unknown;
     departmentName?: unknown;
     masterId?: unknown;
     masterName?: unknown;
     employeeId?: unknown;
     employeeName?: unknown;
+    note?: unknown;
   } | null;
 
   const name = typeof payload?.name === "string" ? payload.name : "";
   try {
     const area = await createLocalRoadCleaningArea({
       name,
+      khorooName: typeof payload?.khorooName === "string" ? payload.khorooName : "",
+      areaM2: Number(payload?.areaM2) || null,
       departmentId: Number(payload?.departmentId) || null,
       departmentName: typeof payload?.departmentName === "string" ? payload.departmentName : "",
       masterId: Number(payload?.masterId) || null,
       masterName: typeof payload?.masterName === "string" ? payload.masterName : "",
       employeeId: Number(payload?.employeeId) || null,
       employeeName: typeof payload?.employeeName === "string" ? payload.employeeName : "",
+      note: typeof payload?.note === "string" ? payload.note : "",
     });
     return Response.json({ area });
   } catch (error) {

@@ -13,6 +13,17 @@ CLEANING_DEFAULT_LINES = [
     "Жижиг хог / шарилж / зарын хуудас цэвэрлэх",
 ]
 
+WORKING_DAY_KEYS = {
+    0: "monday",
+    1: "tuesday",
+    2: "wednesday",
+    3: "thursday",
+    4: "friday",
+    5: "saturday",
+    6: "sunday",
+}
+DEFAULT_WORKING_DAY_KEYS = ",".join(WORKING_DAY_KEYS.values())
+
 
 class MunicipalCleaningArea(models.Model):
     _name = "municipal.cleaning.area"
@@ -21,6 +32,7 @@ class MunicipalCleaningArea(models.Model):
     _order = "street_name, name"
 
     name = fields.Char(string="Цэвэрлэх талбайн нэр", required=True, tracking=True)
+    khoroo_name = fields.Char(string="Хороо", tracking=True)
     street_name = fields.Char(string="Гудамж / замын нэр", tracking=True)
     start_point = fields.Char(string="Эхлэх цэг", tracking=True)
     end_point = fields.Char(string="Дуусах цэг", tracking=True)
@@ -53,6 +65,12 @@ class MunicipalCleaningArea(models.Model):
         required=True,
         tracking=True,
     )
+    working_day_keys = fields.Char(
+        string="Ажиллах өдрүүд",
+        default=DEFAULT_WORKING_DAY_KEYS,
+        tracking=True,
+        help="Даваа-Ням хүртэл ажиллах өдрүүдийг comma-separated key хэлбэрээр хадгална.",
+    )
     active = fields.Boolean(string="Идэвхтэй", default=True, tracking=True)
     note = fields.Text(string="Тайлбар")
     last_work_date = fields.Date(string="Сүүлд ажил үүссэн огноо", readonly=True)
@@ -80,7 +98,7 @@ class MunicipalCleaningArea(models.Model):
 
     def write(self, vals):
         result = super().write(vals)
-        if {"employee_id", "master_id", "department_id", "area_m2", "active", "frequency", "name"} & set(vals):
+        if {"employee_id", "master_id", "department_id", "area_m2", "active", "frequency", "name", "working_day_keys"} & set(vals):
             self._ensure_today_work()
         return result
 
@@ -112,6 +130,8 @@ class MunicipalCleaningArea(models.Model):
         work_model = self.env["municipal.work"].sudo()
         work_type = self._get_cleaning_work_type()
         for area in self.filtered(lambda item: item.active and item.employee_id):
+            if not area._is_working_day(today):
+                continue
             if not area.department_id:
                 raise ValidationError("Өнөөдрийн ажил үүсгэхийн тулд хэлтэс сонгоно уу.")
 
@@ -130,6 +150,11 @@ class MunicipalCleaningArea(models.Model):
             work = work_model.create(area._prepare_today_work_values(today, work_type))
             work._create_default_cleaning_lines()
             area.sudo().last_work_date = today
+
+    def _is_working_day(self, work_date):
+        self.ensure_one()
+        selected_days = set((self.working_day_keys or DEFAULT_WORKING_DAY_KEYS).split(","))
+        return WORKING_DAY_KEYS.get(work_date.weekday()) in selected_days
 
     def _get_cleaning_work_type(self):
         work_type = self.env["municipal.work.type"].sudo().search(
@@ -160,8 +185,10 @@ class MunicipalCleaningArea(models.Model):
         location_text = " · ".join(part for part in location_parts if part)
         description_parts = [
             self.note or "",
+            f"Хороо: {self.khoroo_name}" if self.khoroo_name else "",
             f"Гудамж / зам: {self.street_name}" if self.street_name else "",
             f"Чиглэл: {route_text}" if route_text else "",
+            f"Талбай /мкв/: {self.area_m2:g}" if self.area_m2 else "",
         ]
 
         return {

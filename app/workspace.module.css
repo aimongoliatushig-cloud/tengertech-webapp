@@ -3188,8 +3188,177 @@
   overflow-wrap: anywhere;
 }
 
+.masterAssignmentShell {
+  display: grid;
+  gap: 18px;
+}
+
+.masterButtonGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.masterButton {
+  display: grid;
+  gap: 4px;
+  min-height: 72px;
+  padding: 14px 16px;
+  border: 1px solid rgba(74, 154, 93, 0.22);
+  border-radius: var(--ds-radius-card);
+  background: #fff;
+  color: var(--ink-900);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.masterButton strong {
+  font-size: 1rem;
+}
+
+.masterButton span {
+  color: var(--ink-700);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.masterButtonActive {
+  border-color: rgba(43, 127, 59, 0.48);
+  background: linear-gradient(135deg, rgba(43, 127, 59, 0.14), rgba(255, 255, 255, 0.96));
+  box-shadow: 0 12px 28px rgba(43, 127, 59, 0.12);
+}
+
+.masterWorkerPanel {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(74, 154, 93, 0.18);
+  border-radius: var(--ds-radius-card);
+  background: rgba(250, 253, 249, 0.98);
+}
+
+.masterWorkerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.masterWorkerHeader h3 {
+  margin: 8px 0 0;
+  color: var(--ink-900);
+  font-size: 1.1rem;
+}
+
+.masterWorkerHeader > strong {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(43, 127, 59, 0.12);
+  color: var(--brand-900);
+}
+
+.masterWorkerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.masterWorkerItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 12px 14px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: var(--ds-radius-card);
+  background: #fff;
+  color: var(--ink-900);
+  font-weight: 700;
+}
+
+.masterWorkerItem input {
+  flex: 0 0 auto;
+}
+
+.masterWorkerItem span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.masterWorkerItem small {
+  color: var(--ink-700);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.weekdayToggleGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.weekdayToggle {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.weekdayToggle input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.weekdayToggle span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid rgba(74, 154, 93, 0.2);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink-800);
+  font-weight: 800;
+  text-align: center;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.weekdayToggle input:checked + span {
+  border-color: rgba(43, 127, 59, 0.7);
+  background: var(--brand-800);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(43, 127, 59, 0.16);
+}
+
+.weekdayToggle input:focus-visible + span {
+  outline: 3px solid rgba(43, 127, 59, 0.22);
+  outline-offset: 2px;
+}
+
 @media (max-width: 640px) {
   .lockedFieldValue {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .masterButtonGrid,
+  .masterWorkerGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .weekdayToggleGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .masterWorkerHeader {
     align-items: flex-start;
     flex-direction: column;
   }

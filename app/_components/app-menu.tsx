@@ -64,6 +64,7 @@ type MenuKey =
   | "profile"
   | "garbage-points"
   | "garbage-settings"
+  | "cleaning-areas"
   | "settings"
   | "review"
   | "notifications"
@@ -355,6 +356,17 @@ export function AppMenu({
     !flags.mfoDispatcher &&
     !flags.municipalDepartmentHead &&
     !roleLooksDepartmentHead;
+  const departmentScopeLower = (departmentScopeName ?? "").toLocaleLowerCase("mn-MN");
+  const canOpenCleaningAreas = Boolean(
+    !workerMode &&
+      !transportInspectorMode &&
+      (executiveMode ||
+        environmentManagerMode ||
+        (flags.municipalDepartmentHead &&
+          (departmentScopeLower.includes("ногоон") ||
+            departmentScopeLower.includes("цэвэрлэгээ") ||
+            departmentScopeLower.includes("зам талбай")))),
+  );
   const hasHrGroupAccess = Boolean(flags.hrUser || flags.hrManager || flags.municipalHr);
   const canShowHrMenu = Boolean(!transportInspectorMode && canViewHr);
   const hrFocusedMode =
@@ -492,6 +504,16 @@ export function AppMenu({
             href: "/tasks?view=today",
             label: "\u041A\u0430\u043B\u0435\u043D\u0434\u0430\u0440\u044C",
             icon: CalendarDays,
+          },
+        ]
+      : []),
+    ...(canOpenCleaningAreas
+      ? [
+          {
+            key: "cleaning-areas",
+            href: "/cleaning-areas",
+            label: "Цэвэрлэх талбай",
+            icon: MapPin,
           },
         ]
       : []),

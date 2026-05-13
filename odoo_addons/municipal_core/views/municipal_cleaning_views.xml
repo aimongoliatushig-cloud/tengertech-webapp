@@ -6,6 +6,7 @@
         <field name="arch" type="xml">
             <list string="Цэвэрлэх талбай">
                 <field name="name"/>
+                <field name="khoroo_name"/>
                 <field name="street_name"/>
                 <field name="start_point"/>
                 <field name="end_point"/>
@@ -14,6 +15,7 @@
                 <field name="master_id"/>
                 <field name="employee_id"/>
                 <field name="frequency"/>
+                <field name="working_day_keys"/>
                 <field name="last_work_date"/>
                 <field name="active"/>
             </list>
@@ -37,6 +39,7 @@
                     <group string="Үндсэн мэдээлэл">
                         <group>
                             <field name="name"/>
+                            <field name="khoroo_name"/>
                             <field name="street_name"/>
                             <field name="start_point"/>
                         </group>
@@ -44,6 +47,7 @@
                             <field name="end_point"/>
                             <field name="area_m2"/>
                             <field name="last_work_date" readonly="1"/>
+                            <field name="working_day_keys"/>
                         </group>
                     </group>
                     <group string="Хариуцлага">
@@ -72,6 +76,7 @@
         <field name="arch" type="xml">
             <search string="Цэвэрлэх талбай">
                 <field name="name"/>
+                <field name="khoroo_name"/>
                 <field name="street_name"/>
                 <field name="department_id"/>
                 <field name="master_id"/>
