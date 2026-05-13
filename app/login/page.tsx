@@ -65,7 +65,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </div>
 
         <div className={styles.heroCard}>
-          <h1>Тохижилт үйлчилгээний төвийн систем</h1>
+          <h1>Тохижилт үйлчилгээний төвийн ERP систем</h1>
           <p>Хянах самбар, ажил төлөвлөлт, гүйцэтгэл, хүний нөөц, техникийн хуваарилалт зэргийг нэг дороос удирдана.</p>
         </div>
       </section>
