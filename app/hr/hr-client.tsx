@@ -27,6 +27,34 @@ function isErrorMessage(message: string) {
   );
 }
 
+function AttachmentLinks({ hasAttachment, attachmentIds }: { hasAttachment: boolean; attachmentIds?: number[] }) {
+  const validAttachmentIds = (attachmentIds || []).filter((attachmentId) => Number.isFinite(attachmentId) && attachmentId > 0);
+
+  if (!hasAttachment) {
+    return <span className={styles.attachmentEmpty}>Байхгүй</span>;
+  }
+
+  if (!validAttachmentIds.length) {
+    return <span className={styles.attachmentMissing}>Файл олдсонгүй</span>;
+  }
+
+  return (
+    <div className={styles.attachmentLinks}>
+      {validAttachmentIds.map((attachmentId, index) => (
+        <a
+          key={attachmentId}
+          className={styles.attachmentLink}
+          href={`/api/odoo/attachments/${attachmentId}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {validAttachmentIds.length > 1 ? `Файл ${index + 1}` : "Нээх"}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 type RegistryOption = HrSelectionOption | { id: number | string; name: string };
 
 export type RegistryField =
@@ -715,30 +743,57 @@ export function TimeoffRequestsClient({
                   <td data-label="Төлөв">
                     <span className={styles.statusPill}>{request.stateLabel}</span>
                   </td>
-                  <td>{request.hasAttachment ? "Байгаа" : "Байхгүй"}</td>
+                  <td data-label="Хавсралт">
+                    <AttachmentLinks hasAttachment={request.hasAttachment} attachmentIds={request.attachmentIds} />
+                  </td>
                   <td data-label="Үйлдэл">
                     <div className={styles.checklist}>
                       {mode === "hr" && request.state === "submitted" ? (
-                        <button type="button" onClick={() => runAction(request.id, "hr_review")} disabled={pending}>
+                        <button
+                          type="button"
+                          className={`${styles.actionButton} ${styles.actionButtonReview}`}
+                          onClick={() => runAction(request.id, "hr_review")}
+                          disabled={pending}
+                        >
                           HR шалгах
                         </button>
                       ) : null}
                       {mode === "hr" && ["submitted", "hr_review"].includes(request.state) ? (
                         <>
-                          <button type="button" onClick={() => runAction(request.id, "approve")} disabled={pending}>
+                          <button
+                            type="button"
+                            className={`${styles.actionButton} ${styles.actionButtonApprove}`}
+                            onClick={() => runAction(request.id, "approve")}
+                            disabled={pending}
+                          >
                             Батлах
                           </button>
-                          <button type="button" onClick={() => runAction(request.id, "reject")} disabled={pending}>
+                          <button
+                            type="button"
+                            className={`${styles.actionButton} ${styles.actionButtonReject}`}
+                            onClick={() => runAction(request.id, "reject")}
+                            disabled={pending}
+                          >
                             Татгалзах
                           </button>
                         </>
                       ) : null}
                       {mode === "department" && !["approved", "rejected", "cancelled"].includes(request.state) ? (
                         <>
-                          <button type="button" onClick={() => setEditingRequest(request)} disabled={pending}>
+                          <button
+                            type="button"
+                            className={`${styles.actionButton} ${styles.actionButtonReview}`}
+                            onClick={() => setEditingRequest(request)}
+                            disabled={pending}
+                          >
                             Засах
                           </button>
-                          <button type="button" onClick={() => runAction(request.id, "cancel")} disabled={pending}>
+                          <button
+                            type="button"
+                            className={`${styles.actionButton} ${styles.actionButtonReject}`}
+                            onClick={() => runAction(request.id, "cancel")}
+                            disabled={pending}
+                          >
                             Цуцлах
                           </button>
                         </>
