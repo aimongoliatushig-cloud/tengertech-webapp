@@ -37,11 +37,7 @@ export function shouldScopeToOwnDepartment(session: Pick<AppSession, "role">) {
   );
 }
 
-export async function loadSessionDepartmentName(session: AppSession) {
-  if (!shouldScopeToOwnDepartment(session)) {
-    return null;
-  }
-
+export async function loadSessionEmployeeDepartmentName(session: AppSession) {
   const cacheKey = getSessionDepartmentNameCacheKey(session);
   const cached = sessionDepartmentNameCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
@@ -80,4 +76,12 @@ export async function loadSessionDepartmentName(session: AppSession) {
     console.warn("Session department scope could not be loaded:", error);
     return getFallbackDepartmentName(session);
   }
+}
+
+export async function loadSessionDepartmentName(session: AppSession) {
+  if (!shouldScopeToOwnDepartment(session)) {
+    return null;
+  }
+
+  return loadSessionEmployeeDepartmentName(session);
 }

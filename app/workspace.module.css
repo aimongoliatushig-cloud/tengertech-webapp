@@ -2922,6 +2922,43 @@
   overflow-wrap: anywhere;
 }
 
+.pointCheckboxDisabled {
+  border-color: rgba(159, 74, 60, 0.22);
+  background: rgba(143, 83, 72, 0.06);
+  color: #7c4a42;
+  cursor: not-allowed;
+  opacity: 0.76;
+}
+
+.pointCheckboxDisabled input {
+  cursor: not-allowed;
+}
+
+.vehicleChoiceText {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vehicleChoiceText strong {
+  font-size: 0.94rem;
+  line-height: 1.2;
+}
+
+.vehicleRepairBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(159, 74, 60, 0.26);
+  background: rgba(159, 74, 60, 0.1);
+  color: #96392d;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
 .attachmentPreviewGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

@@ -44,6 +44,14 @@ const WEEKDAY_OPTIONS = [
   { key: "sunday", label: "Ням" },
 ] as const;
 
+const SEASONAL_MEASUREMENT_UNITS = [
+  { value: "тонн", label: "Тонн" },
+  { value: "ширхэг", label: "Ширхэг" },
+  { value: "м3", label: "м³" },
+  { value: "рейс", label: "Рейс" },
+  { value: "нэгж", label: "Нэгж" },
+] as const;
+
 type SeasonalLineDraft = {
   id: string;
   khorooLabel: string;
@@ -51,6 +59,7 @@ type SeasonalLineDraft = {
   vehicleIds: string[];
   plannedVehicleCount: string;
   plannedTonnage: string;
+  plannedUnit: string;
 };
 
 type RoadCleaningLineDraft = {
@@ -90,6 +99,7 @@ type Props = {
   managerOptions: SelectOption[];
   garbageVehicleOptions: GarbageVehicleOption[];
   activeGarbageVehicleOptions?: GarbageVehicleOption[];
+  seasonalGarbageVehicleOptions?: GarbageVehicleOption[];
   garbagePointOptions: GarbagePointOption[];
   garbageSubdistrictOptions?: GarbageSubdistrictOption[];
   roadCleaningAreaOptions: RoadCleaningAreaOption[];
@@ -223,6 +233,7 @@ function emptySeasonalLine(index: number): SeasonalLineDraft {
     vehicleIds: [],
     plannedVehicleCount: "",
     plannedTonnage: "",
+    plannedUnit: "тонн",
   };
 }
 
@@ -253,6 +264,7 @@ export function NewWorkForm({
   managerOptions,
   garbageVehicleOptions,
   activeGarbageVehicleOptions = [],
+  seasonalGarbageVehicleOptions = [],
   garbagePointOptions,
   garbageSubdistrictOptions: activeSubdistrictOptions = [],
   roadCleaningAreaOptions,
@@ -394,9 +406,24 @@ export function NewWorkForm({
     () => garbageVehicleOptions.find((option) => String(option.id) === autoBaseVehicleId) ?? null,
     [autoBaseVehicleId, garbageVehicleOptions],
   );
-  const seasonalVehicleOptions = activeGarbageVehicleOptions.length
-    ? activeGarbageVehicleOptions
-    : garbageVehicleOptions;
+  const seasonalVehicleOptions = seasonalGarbageVehicleOptions.length
+    ? seasonalGarbageVehicleOptions
+    : garbageVehicleOptions.length
+      ? garbageVehicleOptions
+      : activeGarbageVehicleOptions;
+  const seasonalSelectableVehicleIdSet = useMemo(
+    () =>
+      new Set(
+        seasonalVehicleOptions
+          .filter((option) => !option.isRepair)
+          .map((option) => String(option.id)),
+      ),
+    [seasonalVehicleOptions],
+  );
+  const seasonalUnitByValue = useMemo(
+    () => new Map<string, string>(SEASONAL_MEASUREMENT_UNITS.map((unit) => [unit.value, unit.label])),
+    [],
+  );
   const garbageSubdistrictOptions = useMemo(() => {
     const optionMap = new Map<string, { id: string; label: string }>();
     for (const point of garbagePointOptions) {
@@ -499,22 +526,44 @@ export function NewWorkForm({
     return `${vehicleLabel} - ${itemLabel}`;
   }, [autoBaseItemName, autoBaseLines, selectedAutoBaseVehicle]);
   const activeSeasonalLines = seasonalLines.filter(
-    (line) =>
+    (line) => {
+      const selectableVehicleIds = line.vehicleIds.filter((vehicleId) =>
+        seasonalSelectableVehicleIdSet.has(vehicleId),
+      );
+      return (
       line.khorooLabel ||
       line.locationName ||
-      line.vehicleIds.length ||
+      selectableVehicleIds.length ||
       line.plannedVehicleCount ||
-      line.plannedTonnage,
+      line.plannedTonnage
+      );
+    },
   );
   const seasonalTotals = activeSeasonalLines.reduce(
-    (summary, line) => ({
-      vehicleCount:
-        summary.vehicleCount +
-        (line.vehicleIds.length || (!seasonalVehicleOptions.length ? Number(line.plannedVehicleCount) : 0) || 0),
-      tonnage: summary.tonnage + (Number(line.plannedTonnage) || 0),
-    }),
+    (summary, line) => {
+      const selectableVehicleCount = line.vehicleIds.filter((vehicleId) =>
+        seasonalSelectableVehicleIdSet.has(vehicleId),
+      ).length;
+      return {
+        vehicleCount:
+          summary.vehicleCount +
+          (selectableVehicleCount || (!seasonalVehicleOptions.length ? Number(line.plannedVehicleCount) : 0) || 0),
+        tonnage: summary.tonnage + (Number(line.plannedTonnage) || 0),
+      };
+    },
     { vehicleCount: 0, tonnage: 0 },
   );
+  const seasonalQuantitySummary = activeSeasonalLines.length
+    ? activeSeasonalLines
+        .reduce((unitMap, line) => {
+          const unit = seasonalUnitByValue.get(line.plannedUnit) ?? line.plannedUnit ?? "тонн";
+          unitMap.set(unit, (unitMap.get(unit) ?? 0) + (Number(line.plannedTonnage) || 0));
+          return unitMap;
+        }, new Map<string, number>())
+    : new Map<string, number>([["тонн", 0]]);
+  const seasonalQuantitySummaryLabel = Array.from(seasonalQuantitySummary.entries())
+    .map(([unit, value]) => `${Math.round(value * 100) / 100} ${unit}`)
+    .join(", ");
 
   const handleDepartmentChange = (nextDepartmentId: string) => {
     setDepartmentId(nextDepartmentId);
@@ -613,6 +662,9 @@ export function NewWorkForm({
 
   const toggleSeasonalLineVehicle = (targetId: string, vehicleIdValue: number) => {
     const value = String(vehicleIdValue);
+    if (!seasonalSelectableVehicleIdSet.has(value)) {
+      return;
+    }
     setSeasonalLines((current) =>
       current.map((line) => {
         if (line.id !== targetId) {
@@ -1504,8 +1556,8 @@ export function NewWorkForm({
                 <strong>{seasonalTotals.vehicleCount} машин</strong>
               </div>
               <div className={styles.previewMeta}>
-                <span>Нийт тонн</span>
-                <strong>{Math.round(seasonalTotals.tonnage * 100) / 100} тн</strong>
+                <span>Нийт хэмжээ</span>
+                <strong>{seasonalQuantitySummaryLabel}</strong>
               </div>
             </div>
 
@@ -1586,16 +1638,32 @@ export function NewWorkForm({
                 <div className={styles.field}>
                   <label>Машинууд</label>
                   <div className={styles.pointCheckboxGrid}>
-                    {seasonalVehicleOptions.map((option) => (
-                      <label key={option.id} className={styles.pointCheckbox}>
-                        <input
-                          type="checkbox"
-                          checked={line.vehicleIds.includes(String(option.id))}
-                          onChange={() => toggleSeasonalLineVehicle(line.id, option.id)}
-                        />
-                        <span>{option.label}</span>
-                      </label>
-                    ))}
+                    {seasonalVehicleOptions.map((option) => {
+                      const isRepairVehicle = Boolean(option.isRepair);
+                      const vehicleId = String(option.id);
+                      return (
+                        <label
+                          key={option.id}
+                          className={`${styles.pointCheckbox} ${
+                            isRepairVehicle ? styles.pointCheckboxDisabled : ""
+                          }`}
+                          title={isRepairVehicle ? "Засвартай машин тул сонгох боломжгүй" : undefined}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={!isRepairVehicle && line.vehicleIds.includes(vehicleId)}
+                            disabled={isRepairVehicle}
+                            onChange={() => toggleSeasonalLineVehicle(line.id, option.id)}
+                          />
+                          <span className={styles.vehicleChoiceText}>
+                            <strong>{option.label}</strong>
+                            {isRepairVehicle ? (
+                              <small className={styles.vehicleRepairBadge}>Засвартай</small>
+                            ) : null}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
                   <small className={styles.fieldHint}>Нэгээс олон машин сонгож болно.</small>
                 </div>
@@ -1619,7 +1687,7 @@ export function NewWorkForm({
                 ) : null}
 
                 <div className={styles.field}>
-                  <label>Тонн</label>
+                  <label>Хэмжээ</label>
                   <input
                     type="number"
                     min="0.1"
@@ -1630,6 +1698,21 @@ export function NewWorkForm({
                     }
                     placeholder="12.5"
                   />
+                </div>
+                <div className={styles.field}>
+                  <label>Хэмжих нэгж</label>
+                  <select
+                    value={line.plannedUnit}
+                    onChange={(event) =>
+                      updateSeasonalLine(line.id, "plannedUnit", event.target.value)
+                    }
+                  >
+                    {SEASONAL_MEASUREMENT_UNITS.map((unit) => (
+                      <option key={unit.value} value={unit.value}>
+                        {unit.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -1643,10 +1726,14 @@ export function NewWorkForm({
                 sequence: index + 1,
                 khorooLabel: line.khorooLabel,
                 locationName: line.locationName,
-                vehicleIds: line.vehicleIds.map(Number),
+                vehicleIds: line.vehicleIds
+                  .filter((vehicleId) => seasonalSelectableVehicleIdSet.has(vehicleId))
+                  .map(Number),
                 plannedVehicleCount:
-                  line.vehicleIds.length || (!seasonalVehicleOptions.length ? line.plannedVehicleCount : ""),
+                  line.vehicleIds.filter((vehicleId) => seasonalSelectableVehicleIdSet.has(vehicleId)).length ||
+                  (!seasonalVehicleOptions.length ? line.plannedVehicleCount : ""),
                 plannedTonnage: line.plannedTonnage,
+                plannedUnit: line.plannedUnit,
                 workDate: null,
                 routeId: null,
                 remarks: "",

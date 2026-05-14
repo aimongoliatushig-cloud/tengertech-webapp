@@ -306,6 +306,9 @@ type GarbageVehicleRecord = {
   id: number;
   name: string;
   license_plate: string | false;
+  departmentName?: string;
+  isRepair?: boolean;
+  statusLabel?: string;
   mfo_garbage_work_create_allowed?: boolean;
 };
 
@@ -331,6 +334,9 @@ export type GarbageVehicleOption = {
   id: number;
   label: string;
   plate: string;
+  departmentName?: string;
+  isRepair?: boolean;
+  statusLabel?: string;
   driverId?: number | null;
   driverName?: string;
   loaderIds?: number[];
@@ -477,6 +483,7 @@ export type SeasonalPlanLineInput = {
   vehicleIds?: number[];
   plannedVehicleCount: number;
   plannedTonnage: number;
+  plannedUnit?: string;
   workDate?: string | null;
   routeId?: number | null;
   remarks?: string;
@@ -2348,9 +2355,11 @@ export async function loadGarbageSubdistrictOptions(
 
 export async function loadGarbageVehicleOptions(
   connectionOverrides: Partial<OdooConnection> = {},
-  options: { requireCurrentEmployeeScope?: boolean } = {},
+  options: { requireCurrentEmployeeScope?: boolean; ignoreCurrentEmployeeScope?: boolean } = {},
 ): Promise<GarbageVehicleOption[]> {
-  const inspectorVehicleScopeIds = await loadCurrentInspectorVehicleScope(connectionOverrides);
+  const inspectorVehicleScopeIds = options.ignoreCurrentEmployeeScope
+    ? []
+    : await loadCurrentInspectorVehicleScope(connectionOverrides);
   if (inspectorVehicleScopeIds.length) {
     const fleetBoard = await loadFleetVehicleBoard().catch(() => null);
     if (fleetBoard?.allVehicles.length) {
@@ -2364,6 +2373,9 @@ export async function loadGarbageVehicleOptions(
           id: vehicle.id,
           label: vehicle.plate,
           plate: vehicle.plate,
+          departmentName: vehicle.departmentName,
+          isRepair: vehicle.isRepair,
+          statusLabel: vehicle.stateLabel,
           driverId: vehicle.responsibleDriverId,
           driverName: vehicle.responsibleDriverName || vehicle.fleetDriverName || "",
           loaderIds: [vehicle.loader1Id, vehicle.loader2Id].filter((id): id is number => Boolean(id)),
@@ -2462,42 +2474,62 @@ export async function loadGarbageVehicleOptions(
       )
     : [];
 
-  const fallbackVehicles = vehicles.length
-    ? vehicles
-    : await readFirstAvailable<GarbageVehicleRecord>(
-        [
-          {
-            model: "fleet.vehicle",
-            domain: [["mfo_active_for_ops", "=", true]],
-            fields: ["name", "license_plate"],
-            order: "license_plate asc, name asc",
-          },
-          {
-            model: "fleet.vehicle",
-            domain: [["active", "=", true]],
-            fields: ["name", "license_plate"],
-            order: "license_plate asc, name asc",
-          },
-          {
-            model: "fleet.vehicle",
-            domain: [],
-            fields: ["name", "license_plate"],
-            order: "license_plate asc, name asc",
-          },
-        ],
+  const fallbackVehiclesById = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
+  for (const attempt of [
+    [["mfo_active_for_ops", "=", true]],
+    [["active", "=", true]],
+    [],
+  ] as unknown[][]) {
+    try {
+      const records = await executeOdooKw<GarbageVehicleRecord[]>(
+        "fleet.vehicle",
+        "search_read",
+        [attempt],
+        {
+          fields: ["name", "license_plate"],
+          order: "license_plate asc, name asc",
+          limit: 500,
+        },
         connectionOverrides,
       );
-
+      for (const vehicle of records) {
+        fallbackVehiclesById.set(vehicle.id, vehicle);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes("Invalid field")) {
+        console.warn("Fleet vehicle option fallback could not be loaded:", error);
+      }
+    }
+  }
   const fleetBoard = await loadFleetVehicleBoard().catch(() => null);
+  if (options.ignoreCurrentEmployeeScope && fleetBoard?.allVehicles.length) {
+    for (const vehicle of fleetBoard.allVehicles) {
+      fallbackVehiclesById.set(vehicle.id, {
+        id: vehicle.id,
+        name: vehicle.name,
+        license_plate: vehicle.plate,
+        departmentName: vehicle.departmentName,
+        isRepair: vehicle.isRepair,
+        statusLabel: vehicle.stateLabel,
+      });
+    }
+  }
+  const optionVehicles = Array.from(
+    fallbackVehiclesById.values(),
+  );
   const boardVehicleById = new Map((fleetBoard?.allVehicles ?? []).map((vehicle) => [vehicle.id, vehicle]));
 
-  return fallbackVehicles.map((vehicle) => {
+  return optionVehicles.map((vehicle) => {
     const boardVehicle = boardVehicleById.get(vehicle.id);
     const plate = vehicle.license_plate || vehicle.name || `Техник #${vehicle.id}`;
     return {
       id: vehicle.id,
       label: boardVehicle?.plate || plate,
       plate: boardVehicle?.plate || plate,
+      departmentName: boardVehicle?.departmentName || vehicle.departmentName,
+      isRepair: Boolean(boardVehicle?.isRepair),
+      statusLabel: boardVehicle?.stateLabel,
       driverId: boardVehicle?.responsibleDriverId ?? null,
       driverName: boardVehicle?.responsibleDriverName || boardVehicle?.fleetDriverName || "",
       loaderIds: [boardVehicle?.loader1Id, boardVehicle?.loader2Id].filter((id): id is number => Boolean(id)),
@@ -2711,7 +2743,12 @@ export async function createSeasonalWorkspacePlan(
       planned_tonnage: line.plannedTonnage,
       work_date: line.workDate || false,
       route_id: line.routeId || false,
-      remarks: line.remarks?.trim() || false,
+      remarks: [
+        line.remarks?.trim() || "",
+        line.plannedUnit && line.plannedUnit !== "тонн"
+          ? `Хэмжих нэгж: ${line.plannedUnit}`
+          : "",
+      ].filter(Boolean).join("\n") || false,
     })),
   };
 
@@ -2788,11 +2825,12 @@ async function createSeasonalWorkspaceProjectFallback(
       ? Array.from(new Set(line.vehicleIds))
       : Array.from({ length: Math.max(1, Math.floor(line.plannedVehicleCount || 1)) }, () => null);
     const effectiveDate = line.workDate || input.startDate;
+    const plannedUnit = line.plannedUnit?.trim() || "тонн";
     const baseDescription = [
       line.khorooLabel ? `Хороо: ${line.khorooLabel}` : "",
       line.locationName ? `Байршил: ${line.locationName}` : "",
       Number.isFinite(line.plannedTonnage) && line.plannedTonnage > 0
-        ? `Төлөвлөсөн хэмжээ: ${line.plannedTonnage} тн`
+        ? `Төлөвлөсөн хэмжээ: ${line.plannedTonnage} ${plannedUnit}`
         : "",
       line.remarks ? `Тайлбар: ${line.remarks}` : "",
       input.notes ? `Нэмэлт тэмдэглэл: ${input.notes}` : "",

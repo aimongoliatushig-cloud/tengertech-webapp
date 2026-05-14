@@ -2688,6 +2688,22 @@
   min-height: 230px;
   align-content: space-between;
   padding: 24px 22px;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.executiveMetricCard:hover,
+.executiveMetricCard:focus-visible,
+.executiveDepartmentCard:hover,
+.executiveDepartmentCard:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(31, 95, 49, 0.32);
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.11);
+  outline: none;
 }
 
 .executiveMetricHeader {
@@ -2752,6 +2768,27 @@
   margin-top: 8px;
   color: #263b63;
   font-weight: 700;
+}
+
+.executiveCardAction {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 30px;
+  margin-top: 12px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(7, 130, 81, 0.09);
+  color: #078251;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.executiveCardAction::after {
+  content: "›";
+  margin-left: 6px;
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .executiveRing {
@@ -2838,6 +2875,12 @@
   display: grid;
   min-height: 386px;
   padding: 26px 22px 24px;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .executiveDepartmentHeader {

@@ -208,6 +208,7 @@ export function AppMenu({
   canViewQualityCenter = false,
   canUseFieldConsole = false,
   canViewHr = false,
+  canViewGeneralDashboard = false,
   variant = "default",
   userRole,
   userName = "Хэрэглэгч",
@@ -328,10 +329,22 @@ export function AppMenu({
     role: resolvedRole,
     groupFlags,
   };
+  const roleLooksDepartmentHead = roleLabelLower.includes("\u0445\u044D\u043B\u0442\u0441\u0438\u0439\u043D \u0434\u0430\u0440\u0433\u0430");
+  const roleLooksSystemAdmin =
+    roleLabelLower.includes("\u0441\u0438\u0441\u0442\u0435\u043C\u0438\u0439\u043D \u0430\u0434\u043C\u0438\u043D") ||
+    roleLabelLower.includes("system admin");
   const executiveMode =
-    Boolean(flags.municipalDirector || flags.municipalManager || flags.fleetRepairCeo) ||
-    roleLabelLower.includes("\u0437\u0430\u0445\u0438\u0440\u0430\u043B") ||
-    roleLabelLower.includes("\u043C\u0435\u043D\u0435\u0436\u0435\u0440");
+    Boolean(
+      canViewGeneralDashboard ||
+        flags.municipalDirector ||
+        flags.fleetRepairCeo ||
+        flags.fleetRepairGeneralManager ||
+        resolvedRole === "director" ||
+        resolvedRole === "general_manager",
+    ) ||
+    (!roleLooksDepartmentHead &&
+      (roleLabelLower.includes("\u0437\u0430\u0445\u0438\u0440\u0430\u043B") ||
+        roleLabelLower.includes("\u043C\u0435\u043D\u0435\u0436\u0435\u0440")));
   const mfoFieldMode = Boolean(flags.mfoDriver || flags.mfoLoader || flags.mfoMobile);
   const mfoManagerMode = Boolean(flags.mfoManager || flags.mfoDispatcher || flags.mfoInspector);
   const environmentMode = Boolean(
@@ -380,10 +393,6 @@ export function AppMenu({
   const baseCanCreate = !workerMode && (canCreateProject || canCreateTasks || canWriteReports);
   const reviewHref = "/notifications";
   const roleLooksHr = roleLabelLower.includes("\u0445\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446");
-  const roleLooksDepartmentHead = roleLabelLower.includes("\u0445\u044D\u043B\u0442\u0441\u0438\u0439\u043D \u0434\u0430\u0440\u0433\u0430");
-  const roleLooksSystemAdmin =
-    roleLabelLower.includes("\u0441\u0438\u0441\u0442\u0435\u043c\u0438\u0439\u043d \u0430\u0434\u043c\u0438\u043d") ||
-    roleLabelLower.includes("system admin");
   const transportInspectorMode =
     !workerMode &&
     !executiveMode &&
@@ -415,6 +424,17 @@ export function AppMenu({
     !roleLooksSystemAdmin &&
     (isGarbageDepartmentHeadRole(roleContext, departmentScopeName) ||
       Boolean(isAutoGarbageDepartment(departmentScopeName) && roleLooksDepartmentHead && !executiveMode));
+  const scopedDepartmentHeadMode = Boolean(
+    !workerMode &&
+      !transportInspectorMode &&
+      !hrFocusedMode &&
+      departmentScopeName &&
+      !roleLooksSystemAdmin &&
+      (roleLooksDepartmentHead ||
+        resolvedRole === "project_manager" ||
+        flags.municipalDepartmentHead ||
+        departmentManagerMode),
+  );
   const canCreate = baseCanCreate && !isGarbageDepartmentHead && !hrFocusedMode;
 
   const visibleDepartmentGroups = hrFocusedMode
@@ -661,22 +681,10 @@ export function AppMenu({
       icon: ListChecks,
     },
     {
-      key: "tasks",
-      href: "/tasks?view=today",
-      label: "Ажлын даалгавар",
-      icon: CalendarDays,
-    },
-    {
       key: "auto-base",
       href: "/auto-base",
       label: "Авто бааз",
       icon: Truck,
-    },
-    {
-      key: "garbage-points",
-      href: "/settings/garbage-transport#points",
-      label: "Хогийн цэгүүд",
-      icon: MapPin,
     },
     {
       key: "reports",
@@ -689,6 +697,72 @@ export function AppMenu({
       href: "/settings/garbage-transport",
       label: "Хог тээвэрлэлтийн тохиргоо",
       icon: Settings,
+    },
+  ];
+
+  const scopedDepartmentWorkHref =
+    departmentItems[0]?.href ??
+    (departmentScopeName ? `/projects?department=${encodeURIComponent(departmentScopeName)}` : "/projects");
+  const scopedDepartmentIsAutoGarbage = Boolean(isAutoGarbageDepartment(departmentScopeName));
+  const scopedDepartmentHeadItems: MenuItem[] = [
+    {
+      key: "dashboard",
+      href: "/",
+      label: "Хяналтын самбар",
+      icon: LayoutDashboard,
+    },
+    {
+      key: "projects",
+      href: scopedDepartmentWorkHref,
+      label: "Ажил",
+      icon: ListChecks,
+    },
+    ...(scopedDepartmentIsAutoGarbage
+      ? [
+          {
+            key: "auto-base",
+            href: "/auto-base",
+            label: "Авто бааз",
+            icon: Truck,
+          },
+        ]
+      : []),
+    ...(canOpenCleaningAreas
+      ? [
+          {
+            key: "cleaning-areas",
+            href: "/cleaning-areas",
+            label: "Цэвэрлэх талбай",
+            icon: MapPin,
+          },
+        ]
+      : []),
+    ...(showReports
+      ? [
+          {
+            key: "reports",
+            href: "/reports",
+            label: "Тайлан, статистик",
+            icon: BarChart3,
+          },
+        ]
+      : []),
+    ...(canOpenGarbageSettings && scopedDepartmentIsAutoGarbage
+      ? [
+          {
+            key: "garbage-settings",
+            href: "/settings/garbage-transport",
+            label: "Хог тээвэрлэлтийн тохиргоо",
+            icon: Settings,
+          },
+        ]
+      : []),
+    {
+      key: "review",
+      href: reviewHref,
+      label: "Мэдэгдэл",
+      icon: Bell,
+      badge: notificationCount,
     },
   ];
 
@@ -730,7 +804,9 @@ export function AppMenu({
 
   const items = (transportInspectorMode
     ? transportInspectorItems
-    : isGarbageDepartmentHead
+    : scopedDepartmentHeadMode
+      ? scopedDepartmentHeadItems
+      : isGarbageDepartmentHead
       ? garbageDepartmentItems
       : defaultItems
   ).filter((item) => !isHiddenMenuItem(item));

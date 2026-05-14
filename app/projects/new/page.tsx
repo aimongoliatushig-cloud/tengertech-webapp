@@ -76,6 +76,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
     managerOptions,
     departmentOptions,
     garbageVehicleOptions,
+    seasonalGarbageVehicleOptions,
     activeGarbageVehicleOptions,
     garbagePointOptions,
     garbageSubdistrictOptions,
@@ -96,6 +97,10 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
       login: session.login,
       password: session.password,
     }, { requireCurrentEmployeeScope: transportInspectorMode }),
+    loadGarbageVehicleOptions({
+      login: session.login,
+      password: session.password,
+    }, { ignoreCurrentEmployeeScope: true }),
     loadActiveGarbageVehicleOptions({
       login: session.login,
       password: session.password,
@@ -232,6 +237,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
                   departmentOptions={departmentOptions}
                   managerOptions={managerOptions}
                   garbageVehicleOptions={garbageVehicleOptions}
+                  seasonalGarbageVehicleOptions={seasonalGarbageVehicleOptions}
                   activeGarbageVehicleOptions={activeGarbageVehicleOptions}
                   garbagePointOptions={garbagePointOptions}
                   garbageSubdistrictOptions={garbageSubdistrictOptions}

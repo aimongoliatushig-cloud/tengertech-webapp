@@ -1,5 +1,10 @@
 import { getSession } from "@/lib/auth";
+import { loadSessionEmployeeDepartmentName } from "@/lib/access-scope";
+import { filterByDepartment } from "@/lib/dashboard-scope";
+import { normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { canAccessFleetRepair } from "@/lib/fleet-repair";
+import { executeOdooKw } from "@/lib/odoo";
+import type { RoleGroupFlags } from "@/lib/roles";
 import { fetchWrsWeightRows, type WrsWeightReportRow } from "@/lib/wrs-report";
 
 export const dynamic = "force-dynamic";
@@ -100,6 +105,99 @@ function periodLabel(startDate: string, endDate: string) {
   return startDate === endDate ? startDate : `${startDate} - ${endDate}`;
 }
 
+type FleetVehicleDepartmentRecord = {
+  id: number;
+  name?: string | false;
+  license_plate?: string | false;
+  municipal_department_id?: [number, string] | false;
+};
+
+type AppSession = NonNullable<Awaited<ReturnType<typeof getSession>>>;
+
+function normalizeVehicleCode(value?: string | null) {
+  return String(value ?? "").toLocaleUpperCase("mn-MN").replace(/\s+/g, "");
+}
+
+function canViewAllGarbageWeightReports(session: AppSession) {
+  const flags: Partial<RoleGroupFlags> = session.groupFlags || {};
+  return Boolean(
+    session.role === "system_admin" ||
+      session.role === "director" ||
+      session.role === "general_manager" ||
+      flags.municipalDirector ||
+      flags.municipalManager ||
+      flags.mfoManager ||
+      flags.mfoDispatcher ||
+      flags.fleetRepairManager ||
+      flags.fleetRepairGeneralManager ||
+      flags.fleetRepairCeo
+  );
+}
+
+function relationName(value?: [number, string] | false) {
+  return Array.isArray(value) ? value[1] : "";
+}
+
+async function loadVehicleDepartmentByCode(rows: WrsWeightReportRow[]) {
+  const requestedCodes = new Set(rows.map((row) => normalizeVehicleCode(row.vehicleCode)).filter(Boolean));
+  const departmentByCode = new Map<string, string>();
+  if (!requestedCodes.size) {
+    return departmentByCode;
+  }
+
+  const vehicles = await executeOdooKw<FleetVehicleDepartmentRecord[]>(
+    "fleet.vehicle",
+    "search_read",
+    [[["id", "!=", 0]]],
+    {
+      fields: ["name", "license_plate", "municipal_department_id"],
+      limit: 5000,
+    },
+  );
+
+  for (const vehicle of vehicles) {
+    const rawDepartmentName = relationName(vehicle.municipal_department_id);
+    const departmentName = normalizeOrganizationUnitName(rawDepartmentName) || rawDepartmentName.trim();
+    if (!departmentName) {
+      continue;
+    }
+
+    for (const code of [vehicle.license_plate, vehicle.name]) {
+      const normalizedCode = normalizeVehicleCode(code || "");
+      if (requestedCodes.has(normalizedCode)) {
+        departmentByCode.set(normalizedCode, departmentName);
+      }
+    }
+  }
+
+  return departmentByCode;
+}
+
+async function scopeReportRows(rows: WrsWeightReportRow[], scopedDepartmentName: string | null) {
+  if (!scopedDepartmentName) {
+    return rows;
+  }
+
+  const departmentByCode = await loadVehicleDepartmentByCode(rows);
+  return rows.filter((row) => {
+    const departmentName = departmentByCode.get(normalizeVehicleCode(row.vehicleCode));
+    return Boolean(departmentName && filterByDepartment([{ departmentName }], scopedDepartmentName).length);
+  });
+}
+
+function recalculateReportTotals<T extends { rows: WrsWeightReportRow[] }>(report: T, rows: WrsWeightReportRow[]) {
+  const vehicleCodes = new Set(rows.map((row) => row.vehicleCode));
+  return {
+    ...report,
+    rows,
+    tripCount: rows.length,
+    vehicleCount: vehicleCodes.size,
+    totalVehicleWeightKg: rows.reduce((sum, row) => sum + row.vehicleWeightKg, 0),
+    totalGarbageWeightKg: rows.reduce((sum, row) => sum + row.garbageWeightKg, 0),
+    totalCombinedWeightKg: rows.reduce((sum, row) => sum + row.totalWeightKg, 0),
+  };
+}
+
 function rowHtml(row: WrsWeightReportRow, index: number) {
   return `<tr>
     <td>${index + 1}</td>
@@ -128,6 +226,7 @@ function buildReportHtml(input: {
   totalGarbageWeightKg: number;
   totalVehicleWeightKg: number;
   totalCombinedWeightKg: number;
+  scopedDepartmentName?: string | null;
 }) {
   const title = input.startDate === input.endDate ? "ӨДРИЙН ТАЙЛАН" : "ХУГАЦААНЫ ТАЙЛАН";
   const emptyRow = `<tr><td colspan="13" class="empty">Сонгосон хугацаанд WRS жингийн мөр олдсонгүй.</td></tr>`;
@@ -174,6 +273,7 @@ function buildReportHtml(input: {
       <div>
         <strong>Хугацаа:</strong> ${escapeHtml(periodLabel(input.startDate, input.endDate))}<br />
         <strong>Салбар:</strong> ${escapeHtml(input.branchName)}
+        ${input.scopedDepartmentName ? `<br /><strong>Хэлтэс:</strong> ${escapeHtml(input.scopedDepartmentName)}` : ""}
       </div>
       <div><strong>Хэмжих нэгж: кг</strong></div>
     </div>
@@ -235,7 +335,23 @@ export async function GET(request: Request) {
 
   try {
     const report = await fetchWrsWeightRows(startDate, endDate);
-    const html = buildReportHtml(report);
+    const canViewAllReports = canViewAllGarbageWeightReports(session);
+    const scopedDepartmentName = canViewAllReports
+      ? null
+      : await loadSessionEmployeeDepartmentName(session);
+
+    if (!canViewAllReports && !scopedDepartmentName) {
+      return Response.json(
+        { error: "Хэрэглэгчийн хэлтсийг тодорхойлж чадсангүй." },
+        { status: 403 },
+      );
+    }
+
+    const scopedRows = await scopeReportRows(report.rows, scopedDepartmentName);
+    const html = buildReportHtml({
+      ...recalculateReportTotals(report, scopedRows),
+      scopedDepartmentName,
+    });
 
     return new Response(html, {
       headers: {

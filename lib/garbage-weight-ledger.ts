@@ -1,5 +1,7 @@
 import "server-only";
 
+import { filterByDepartment } from "@/lib/dashboard-scope";
+import { normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { executeOdooKw, type OdooConnection } from "@/lib/odoo";
 
 type Relation = [number, string] | false;
@@ -19,6 +21,8 @@ type GarbageTaskRecord = {
   mfo_shift_date: string | false;
   mfo_vehicle_id: Relation;
   mfo_route_id: Relation;
+  mfo_driver_employee_id?: Relation;
+  ops_department_id?: Relation;
   mfo_operation_type: string | false;
 };
 
@@ -26,15 +30,36 @@ type FleetVehicleRecord = {
   id: number;
   name: string;
   license_plate?: string | false;
+  municipal_department_id?: Relation;
 };
 
 type DayWeightAggregate = {
   vehicleName: string;
   plate: string;
   primaryLabel: string;
-  routeNames: Set<string>;
+  departmentName: string;
+  driverNames: Set<string>;
   kg: number;
   taskIds: Set<number>;
+  proofImages: GarbageWeightProofImage[];
+};
+
+type ProofImageRecord = {
+  id: number;
+  name?: string | false;
+  task_id: Relation;
+  proof_type?: string | false;
+  capture_datetime?: string | false;
+  uploader_user_id?: Relation;
+};
+
+export type GarbageWeightProofImage = {
+  id: number;
+  name: string;
+  url: string;
+  proofType: string;
+  capturedAt: string;
+  uploaderName: string;
 };
 
 export type GarbageWeightLedgerRow = {
@@ -42,7 +67,9 @@ export type GarbageWeightLedgerRow = {
   vehicleName: string;
   plate: string;
   primaryLabel: string;
-  routeName: string;
+  departmentName: string;
+  driverNames: string[];
+  proofImages: GarbageWeightProofImage[];
   kg: number;
   kgLabel: string;
   taskCount: number;
@@ -88,6 +115,11 @@ function relationId(relation: Relation) {
 
 function relationName(relation: Relation, fallback = "Тодорхойгүй") {
   return Array.isArray(relation) ? relation[1] : fallback;
+}
+
+function normalizedDepartmentName(relation: Relation) {
+  const rawName = relationName(relation, "");
+  return normalizeOrganizationUnitName(rawName) || rawName.trim();
 }
 
 function currentDateKey() {
@@ -196,6 +228,7 @@ export async function loadGarbageWeightLedger(
   options: {
     dayWindow?: number;
     maxDays?: number;
+    scopedDepartmentName?: string | null;
   } = {},
 ): Promise<GarbageWeightLedgerSnapshot> {
   const dayWindow = Math.max(options.dayWindow ?? DEFAULT_DAY_WINDOW, 1);
@@ -283,7 +316,15 @@ export async function loadGarbageWeightLedger(
       ],
     ],
     {
-      fields: ["name", "mfo_shift_date", "mfo_vehicle_id", "mfo_route_id", "mfo_operation_type"],
+      fields: [
+        "name",
+        "mfo_shift_date",
+        "mfo_vehicle_id",
+        "mfo_route_id",
+        "mfo_driver_employee_id",
+        "ops_department_id",
+        "mfo_operation_type",
+      ],
       order: "mfo_shift_date desc, id desc",
       limit: Math.max(taskIds.length, 500),
     },
@@ -318,7 +359,7 @@ export async function loadGarbageWeightLedger(
         "search_read",
         [[["id", "in", vehicleIds]]],
         {
-          fields: ["name", "license_plate"],
+          fields: ["name", "license_plate", "municipal_department_id"],
           limit: vehicleIds.length,
         },
         connectionOverrides,
@@ -326,6 +367,35 @@ export async function loadGarbageWeightLedger(
     : [];
 
   const vehicleById = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
+  const scopedDepartmentName = options.scopedDepartmentName?.trim() || null;
+  const proofImages = await executeOdooKw<ProofImageRecord[]>(
+    "mfo.proof.image",
+    "search_read",
+    [[["task_id", "in", Array.from(taskById.keys())]]],
+    {
+      fields: ["name", "task_id", "proof_type", "capture_datetime", "uploader_user_id"],
+      order: "capture_datetime desc, id desc",
+      limit: 500,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+  const proofImagesByTaskId = new Map<number, GarbageWeightProofImage[]>();
+  for (const image of proofImages) {
+    const taskId = relationId(image.task_id);
+    if (!taskId) {
+      continue;
+    }
+    const images = proofImagesByTaskId.get(taskId) ?? [];
+    images.push({
+      id: image.id,
+      name: image.name || `proof-${image.id}.jpg`,
+      url: `/api/field/proofs/${image.id}/image`,
+      proofType: String(image.proof_type || ""),
+      capturedAt: String(image.capture_datetime || ""),
+      uploaderName: relationName(image.uploader_user_id ?? false, ""),
+    });
+    proofImagesByTaskId.set(taskId, images);
+  }
   const dayMap = new Map<string, Map<string, DayWeightAggregate>>();
 
   for (const weight of garbageWeights) {
@@ -339,12 +409,21 @@ export async function loadGarbageWeightLedger(
     const vehicleId = relationId(weight.vehicle_id) ?? relationId(task.mfo_vehicle_id);
     const vehicleKey = vehicleId ? String(vehicleId) : relationName(weight.vehicle_id, task.name);
     const vehicle = vehicleId ? vehicleById.get(vehicleId) : undefined;
+    const departmentName =
+      normalizedDepartmentName(vehicle?.municipal_department_id ?? false) ||
+      normalizedDepartmentName(task.ops_department_id ?? false);
+    if (
+      scopedDepartmentName &&
+      (!departmentName || !filterByDepartment([{ departmentName }], scopedDepartmentName).length)
+    ) {
+      continue;
+    }
     const vehicleName =
       vehicle?.name ||
       relationName(weight.vehicle_id, relationName(task.mfo_vehicle_id, "Тодорхойгүй машин"));
     const plate = vehicle?.license_plate || "";
     const primaryLabel = plate || vehicleName;
-    const routeName = relationName(weight.route_id, relationName(task.mfo_route_id, ""));
+    const driverName = relationName(task.mfo_driver_employee_id ?? false, "");
 
     const dayEntry = dayMap.get(dateKey) ?? new Map<string, DayWeightAggregate>();
     const row: DayWeightAggregate =
@@ -353,17 +432,25 @@ export async function loadGarbageWeightLedger(
         vehicleName,
         plate,
         primaryLabel,
-        routeNames: new Set<string>(),
+        departmentName,
+        driverNames: new Set<string>(),
         kg: 0,
         taskIds: new Set<number>(),
+        proofImages: [],
       };
 
     row.kg += weight.net_weight_total ?? 0;
-    if (routeName) {
-      row.routeNames.add(routeName);
+    if (driverName) {
+      row.driverNames.add(driverName);
     }
     if (taskId) {
       row.taskIds.add(taskId);
+      const images = proofImagesByTaskId.get(taskId) ?? [];
+      for (const image of images) {
+        if (!row.proofImages.some((item) => item.id === image.id) && row.proofImages.length < 6) {
+          row.proofImages.push(image);
+        }
+      }
     }
 
     dayEntry.set(vehicleKey, row);
@@ -388,10 +475,9 @@ export async function loadGarbageWeightLedger(
           vehicleName: row.vehicleName,
           plate: row.plate,
           primaryLabel: row.primaryLabel,
-          routeName:
-            row.routeNames.size > 1
-              ? `${row.routeNames.size} маршрут`
-              : Array.from(row.routeNames)[0] || "Маршрутгүй",
+          departmentName: row.departmentName,
+          driverNames: Array.from(row.driverNames),
+          proofImages: row.proofImages,
           kg: row.kg,
           kgLabel: formatKg(row.kg),
           taskCount: row.taskIds.size,

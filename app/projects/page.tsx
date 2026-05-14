@@ -38,7 +38,7 @@ type PageProps = {
   }>;
 };
 
-type ProjectFilterKey = "all" | "progress" | "planned";
+type ProjectFilterKey = "all" | "progress" | "planned" | "overdue";
 type QuickActionMode = "task" | "report" | "none";
 type ProjectCardItem = DashboardSnapshot["projects"][number];
 type ProjectsSession = Awaited<ReturnType<typeof requireSession>>;
@@ -71,6 +71,7 @@ const PROJECT_FILTERS: Array<{ key: ProjectFilterKey; label: string }> = [
   { key: "all", label: "Нийт ажил" },
   { key: "progress", label: "Гүйцэтгэж байгаа" },
   { key: "planned", label: "Төлөвлөсөн" },
+  { key: "overdue", label: "Хугацаа хэтэрсэн" },
 ];
 
 /* legacy department groups kept commented during shared helper migration
@@ -489,15 +490,31 @@ async function ProjectsPageContent({
     scopedProjects = scopedProjects.filter((project) => workerProjectNames.has(project.name));
   }
 
+  const currentDateKey = getTodayDateKey();
+  const overdueProjectNames = new Set(
+    scopedTasks
+      .filter(
+        (task) =>
+          task.scheduledDate &&
+          task.scheduledDate < currentDateKey &&
+          task.statusKey !== "verified",
+      )
+      .map((task) => task.projectName),
+  );
+
   const activeProjects = masterMode
     ? scopedProjects
     : scopedProjects.filter((project) => {
         if (activeFilter === "all") {
-          return ["progress", "review", "done"].includes(project.stageBucket);
+          return true;
         }
 
         if (activeFilter === "progress") {
           return project.stageBucket === "progress" || project.stageBucket === "review";
+        }
+
+        if (activeFilter === "overdue") {
+          return overdueProjectNames.has(project.name);
         }
 
         return project.stageBucket === "todo" || project.stageBucket === "unknown";
@@ -519,6 +536,7 @@ async function ProjectsPageContent({
     planned: scopedProjects.filter(
       (project) => project.stageBucket === "todo" || project.stageBucket === "unknown",
     ).length,
+    overdue: scopedProjects.filter((project) => overdueProjectNames.has(project.name)).length,
   } satisfies Record<ProjectFilterKey, number>;
 
   const reviewProjectsCount = scopedProjects.filter(
@@ -530,17 +548,6 @@ async function ProjectsPageContent({
   const doneProjectsCount = scopedProjects.filter(
     (project) => project.stageBucket === "done",
   ).length;
-  const currentDateKey = getTodayDateKey();
-  const overdueProjectNames = new Set(
-    scopedTasks
-      .filter(
-        (task) =>
-          task.scheduledDate &&
-          task.scheduledDate < currentDateKey &&
-          task.statusKey !== "verified",
-      )
-      .map((task) => task.projectName),
-  );
   const overdueProjectsCount = scopedProjects.filter((project) =>
     overdueProjectNames.has(project.name),
   ).length;
@@ -697,7 +704,7 @@ async function ProjectsPageContent({
       note: "Хугацаа өнгөрсөн даалгавартай ажил",
       icon: "!",
       tone: styles.summaryCardUrgent,
-      href: buildScopedListHref("all"),
+      href: buildScopedListHref("overdue"),
     },
     {
       label: "Дууссан",
@@ -714,16 +721,20 @@ async function ProjectsPageContent({
   const filterTitle =
     activeFilter === "progress"
       ? "Гүйцэтгэж байгаа"
+      : activeFilter === "overdue"
+        ? "Хугацаа хэтэрсэн"
       : activeFilter === "planned"
         ? "Төлөвлөсөн"
-        : "Идэвхтэй болон дууссан ажил";
+        : "Бүх ажил";
 
   const filterNote =
     activeFilter === "progress"
       ? "Одоо хэрэгжиж байгаа болон хяналтын шатанд явж буй ажлуудыг харуулна"
+      : activeFilter === "overdue"
+        ? "Хугацаа өнгөрсөн даалгавартай ажлуудыг харуулна"
       : activeFilter === "planned"
         ? "Одоогоор эхлээгүй, төлөвлөсөн шатанд байгаа ажлуудыг харуулна"
-        : "Сонгосон алба нэгжийн идэвхтэй болон дууссан ажлууд харагдана";
+        : "Сонгосон алба нэгжийн шинээр үүссэн, төлөвлөсөн, идэвхтэй болон дууссан бүх ажил харагдана";
   const selectionParams = new URLSearchParams();
   if (selectedGroup?.name) {
     selectionParams.set("department", selectedGroup.name);

@@ -17,6 +17,7 @@ import {
   uploadFieldStopProof,
 } from "@/lib/field-ops";
 import { executeOdooKw, loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
+import { loadDepartmentHeadUserIds } from "@/lib/notification-recipients";
 import { createProcurementRequest, uploadProcurementAttachment } from "@/lib/procurement";
 import { notifyPushEvent, type PushEventType } from "@/lib/push-notifications";
 import { createLocalRoadCleaningArea } from "@/lib/road-cleaning-area-store";
@@ -439,6 +440,30 @@ async function notifyPushQuietly(input: {
   }
 }
 
+async function notifyDepartmentHeadsOfWork(input: {
+  departmentId?: number | null;
+  actorUserId: number;
+  connectionOverrides: Record<string, never> | { login: string; password: string };
+  title?: string;
+  workName: string;
+  targetUrl: string;
+}) {
+  const userIds = (await loadDepartmentHeadUserIds(input.departmentId, input.connectionOverrides)).filter(
+    (userId) => userId !== input.actorUserId,
+  );
+  if (!userIds.length) {
+    return;
+  }
+
+  await notifyPushQuietly({
+    eventType: "new_work_assigned",
+    title: input.title || "Шинэ ажил бүртгэгдлээ",
+    body: input.workName,
+    targetUrl: input.targetUrl,
+    userIds,
+  });
+}
+
 function uniquePositiveUserIds(values: Array<number | null | undefined>) {
   return Array.from(
     new Set(
@@ -751,6 +776,17 @@ export async function createProjectAction(formData: FormData) {
           userIds: Array.from(assignedRoadCleaningUserIds),
         });
       }
+      await notifyDepartmentHeadsOfWork({
+        departmentId: Number(effectiveDepartmentIdRaw),
+        actorUserId: session.uid,
+        connectionOverrides,
+        title: "Шинэ зам талбайн ажил бүртгэгдлээ",
+        workName:
+          createdCount > 1
+            ? `${createdCount} зам талбайн цэвэрлэгээний ажил үүслээ.`
+            : "Зам талбайн цэвэрлэгээний ажил үүслээ.",
+        targetUrl: "/projects",
+      });
 
       revalidatePath("/");
       revalidatePath("/projects");
@@ -1197,6 +1233,14 @@ export async function createProjectAction(formData: FormData) {
           userIds: assignedGarbageUserIds,
         });
       }
+      await notifyDepartmentHeadsOfWork({
+        departmentId: Number(effectiveDepartmentIdRaw),
+        actorUserId: session.uid,
+        connectionOverrides: garbageWorkConnection,
+        title: "Шинэ хог тээврийн ажил бүртгэгдлээ",
+        workName: `${resolvedVehicleName} дээр ${pointsToCreate.length} хогийн цэгийн ажил нэмэгдлээ.`,
+        targetUrl: `/projects/${createdProjectId}`,
+      });
 
       revalidatePath("/");
       revalidatePath("/projects");
@@ -1252,6 +1296,7 @@ export async function createProjectAction(formData: FormData) {
       locationName?: string;
       plannedVehicleCount?: number;
       plannedTonnage?: number;
+      plannedUnit?: string;
       workDate?: string | null;
       routeId?: number | string | null;
       vehicleIds?: Array<number | string>;
@@ -1288,6 +1333,7 @@ export async function createProjectAction(formData: FormData) {
           vehicleIds,
           plannedVehicleCount: vehicleIds.length || Number(line.plannedVehicleCount ?? 0),
           plannedTonnage: Number(line.plannedTonnage ?? 0),
+          plannedUnit: String(line.plannedUnit ?? "тонн").trim() || "тонн",
           workDate: String(line.workDate ?? "").trim(),
           routeId:
             line.routeId === null || line.routeId === undefined || line.routeId === ""
@@ -1313,6 +1359,7 @@ export async function createProjectAction(formData: FormData) {
         line.plannedVehicleCount <= 0 ||
         !Number.isFinite(line.plannedTonnage) ||
         line.plannedTonnage <= 0 ||
+        !line.plannedUnit ||
         (Boolean(line.workDate) && (line.workDate < startDate || line.workDate > deadline)),
     );
 
@@ -1320,7 +1367,7 @@ export async function createProjectAction(formData: FormData) {
       redirectWithMessage(
         "/projects/new",
         "error",
-        "Мөр бүр дээр байршил, машин, тонн талбаруудыг зөв бөглөнө үү.",
+        "Мөр бүр дээр байршил, машин, хэмжээ, хэмжих нэгж талбаруудыг зөв бөглөнө үү.",
       );
     }
 
@@ -1344,12 +1391,20 @@ export async function createProjectAction(formData: FormData) {
           console.warn("Ad hoc work vehicle assignment failed:", error);
         });
       }
+      const redirectHref = result.redirectHref || `/projects/seasonal/${result.planId}`;
+      await notifyDepartmentHeadsOfWork({
+        departmentId: Number(effectiveDepartmentIdRaw),
+        actorUserId: session.uid,
+        connectionOverrides,
+        title: "Шинэ гэнэтийн ажил бүртгэгдлээ",
+        workName: name,
+        targetUrl: redirectHref,
+      });
 
       revalidatePath("/");
       revalidatePath("/projects");
       revalidatePath("/tasks");
       revalidatePath("/projects/new");
-      const redirectHref = result.redirectHref || `/projects/seasonal/${result.planId}`;
       revalidatePath(redirectHref);
       redirect(
         `${redirectHref}?notice=${encodeURIComponent(
@@ -1457,6 +1512,14 @@ export async function createProjectAction(formData: FormData) {
     if (projectDescription) {
       await updateWorkspaceProjectDescription(projectId, projectDescription, connectionOverrides);
     }
+    await notifyDepartmentHeadsOfWork({
+      departmentId: effectiveDepartmentIdRaw ? Number(effectiveDepartmentIdRaw) : null,
+      actorUserId: session.uid,
+      connectionOverrides,
+      title: "Шинэ ажил бүртгэгдлээ",
+      workName: name,
+      targetUrl: `/projects/${projectId}`,
+    });
 
     revalidatePath("/");
     revalidatePath("/projects");
@@ -1669,6 +1732,14 @@ export async function createTaskAction(formData: FormData) {
         targetUrl: `/projects/${projectId}`,
         userIds: assignedUserIds,
       });
+      await notifyDepartmentHeadsOfWork({
+        departmentId: project.departmentId,
+        actorUserId: session.uid,
+        connectionOverrides,
+        title: "Шинэ хог тээврийн даалгавар бүртгэгдлээ",
+        workName: `${vehicleName} дээр ${createdTaskIds.length} хогийн цэг нэмэгдлээ.`,
+        targetUrl: `/projects/${projectId}`,
+      });
 
       revalidatePath("/");
       revalidatePath("/projects");
@@ -1857,6 +1928,14 @@ export async function createTaskAction(formData: FormData) {
           ].filter((value): value is number => Number.isFinite(value ?? NaN) && Number(value) > 0),
         ),
       ),
+    });
+    await notifyDepartmentHeadsOfWork({
+      departmentId: project.departmentId,
+      actorUserId: session.uid,
+      connectionOverrides,
+      title: "Шинэ даалгавар бүртгэгдлээ",
+      workName: name,
+      targetUrl: `/tasks/${taskId}`,
     });
 
     revalidatePath("/");

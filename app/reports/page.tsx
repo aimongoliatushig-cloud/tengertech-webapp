@@ -15,7 +15,7 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
-import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { loadSessionDepartmentName, loadSessionEmployeeDepartmentName } from "@/lib/access-scope";
 import {
   filterByDepartment,
   filterTasksToDate,
@@ -28,7 +28,7 @@ import {
   getAvailableUnits,
   matchesDepartmentGroup,
 } from "@/lib/department-groups";
-import { loadGarbageWeightLedger } from "@/lib/garbage-weight-ledger";
+import { loadGarbageWeightLedger, type GarbageWeightProofImage } from "@/lib/garbage-weight-ledger";
 import {
   filterProjectsForResponsibleMaster,
   filterTasksForResponsibleMaster,
@@ -39,8 +39,27 @@ import {
   isProcurementSetupError,
   loadProcurementDashboard,
 } from "@/lib/procurement";
+import type { RoleGroupFlags } from "@/lib/roles";
+import { loadGarbageVehicleOptions } from "@/lib/workspace";
 
+import { GarbageVehicleSelect } from "./garbage-vehicle-select";
 import styles from "./reports.module.css";
+
+function canViewAllGarbageWeightReports(session: Awaited<ReturnType<typeof requireSession>>) {
+  const flags: Partial<RoleGroupFlags> = session.groupFlags || {};
+  return Boolean(
+    session.role === "system_admin" ||
+      session.role === "director" ||
+      session.role === "general_manager" ||
+      flags.municipalDirector ||
+      flags.municipalManager ||
+      flags.mfoManager ||
+      flags.mfoDispatcher ||
+      flags.fleetRepairManager ||
+      flags.fleetRepairGeneralManager ||
+      flags.fleetRepairCeo
+  );
+}
 
 type PageProps = {
   searchParams?: Promise<{
@@ -50,6 +69,7 @@ type PageProps = {
     period?: string | string[];
     startDate?: string | string[];
     endDate?: string | string[];
+    vehicle?: string | string[];
   }>;
 };
 
@@ -163,10 +183,63 @@ function formatKgLabel(value: number) {
   }).format(Math.round(value))} кг`;
 }
 
+function formatTonLabel(value: number) {
+  return `${new Intl.NumberFormat("mn-MN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value / 1000)} тонн`;
+}
+
 function formatMoneyLabel(value: number) {
   return `${new Intl.NumberFormat("mn-MN", {
     maximumFractionDigits: 0,
   }).format(Math.round(value))} ₮`;
+}
+
+function normalizeVehicleLookup(value: string) {
+  return value.toLocaleUpperCase("mn-MN").replace(/\s+/g, "");
+}
+
+function normalizeScopeLookup(value: string) {
+  return value.toLocaleLowerCase("mn-MN").replace(/[,\s]+/g, " ").trim();
+}
+
+function extractReportVehicleLabel(report: Pick<FeedReport, "taskName" | "projectName">) {
+  const source = report.taskName || report.projectName;
+  const firstPart = source.split(" - ")[0]?.split("/")[0]?.trim();
+  return firstPart || "Машин тодорхойгүй";
+}
+
+function extractReportPointName(report: Pick<FeedReport, "taskName" | "summary">) {
+  const parts = report.taskName.split(" - ").map((part) => part.trim()).filter(Boolean);
+  if (parts.length > 1) {
+    const pointParts = parts.slice(1).filter((part) => !/^\d{4}-\d{2}-\d{2}$/.test(part));
+    return pointParts.join(" - ") || report.summary || report.taskName;
+  }
+
+  return report.summary || report.taskName;
+}
+
+function extractReportDateKey(report: Pick<FeedReport, "submittedAt" | "taskName">) {
+  return (
+    report.submittedAt.match(/\d{4}-\d{2}-\d{2}/)?.[0] ??
+    report.taskName.match(/\d{4}-\d{2}-\d{2}/)?.[0] ??
+    ""
+  );
+}
+
+function formatSubmittedTime(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value || "Цаг бүртгэгдээгүй";
+  }
+
+  return new Intl.DateTimeFormat("mn-MN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
 }
 
 function reportStatusLabel(report: Pick<FeedReport, "stateBucket" | "stateLabel">) {
@@ -216,6 +289,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const requestedPeriod = getDepartmentParam(params.period);
   const requestedStartDate = getDepartmentParam(params.startDate);
   const requestedEndDate = getDepartmentParam(params.endDate);
+  const requestedVehicle = getDepartmentParam(params.vehicle);
 
   const selectedGroup =
     departmentScopedMode
@@ -369,17 +443,43 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
   let garbageWeightLedger = null as Awaited<ReturnType<typeof loadGarbageWeightLedger>> | null;
   let garbageWeightError = "";
+  let garbageFleetVehicleOptions = [] as Awaited<ReturnType<typeof loadGarbageVehicleOptions>>;
+  const canViewAllGarbageWeight = canViewAllGarbageWeightReports(session);
+  const garbageWeightScopeName = canViewAllGarbageWeight
+    ? null
+    : await loadSessionEmployeeDepartmentName(session);
 
   try {
-    garbageWeightLedger = await loadGarbageWeightLedger({
-        login: session.login,
-        password: session.password,
-      }, { maxDays: 90 });
-    } catch (error) {
-      console.error("Garbage transport weight ledger could not be loaded:", error);
-      garbageWeightError =
-        "Хог тээвэрлэлтийн жингийн мэдээллийг уншиж чадсангүй.";
+    if (!canViewAllGarbageWeight && !garbageWeightScopeName) {
+      garbageWeightError = "Хэрэглэгчийн хэлтсийг тодорхойлж чадсангүй.";
+    } else {
+      garbageWeightLedger = await loadGarbageWeightLedger(
+        {
+          login: session.login,
+          password: session.password,
+        },
+        { maxDays: 90, scopedDepartmentName: garbageWeightScopeName },
+      );
     }
+  } catch (error) {
+    console.error("Garbage transport weight ledger could not be loaded:", error);
+    garbageWeightError =
+      "Хог тээвэрлэлтийн жингийн мэдээллийг уншиж чадсангүй.";
+  }
+
+  try {
+    garbageFleetVehicleOptions = isGarbageTransportView
+      ? await loadGarbageVehicleOptions(
+          {
+            login: session.login,
+            password: session.password,
+          },
+          { ignoreCurrentEmployeeScope: true },
+        )
+      : [];
+  } catch (error) {
+    console.warn("Garbage vehicle options for report could not be loaded:", error);
+  }
 
   let procurementDashboard = createEmptyProcurementDashboard();
   let procurementReportError = "";
@@ -468,7 +568,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     {
       vehicleName: string;
       primaryLabel: string;
-      routeName: string;
+      departmentName: string;
+      driverNames: Set<string>;
+      proofImages: GarbageWeightProofImage[];
       kg: number;
       taskCount: number;
       dates: Set<string>;
@@ -485,14 +587,24 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         existing.kg += row.kg;
         existing.taskCount += row.taskCount;
         existing.dates.add(day.dateKey);
-        if (!existing.routeName && row.routeName) {
-          existing.routeName = row.routeName;
+        for (const driverName of row.driverNames) {
+          existing.driverNames.add(driverName);
+        }
+        for (const image of row.proofImages) {
+          if (
+            !existing.proofImages.some((existingImage) => existingImage.id === image.id) &&
+            existing.proofImages.length < 6
+          ) {
+            existing.proofImages.push(image);
+          }
         }
       } else {
         selectedGarbageVehicleTotals.set(row.vehicleKey, {
           vehicleName: row.vehicleName,
           primaryLabel: row.primaryLabel,
-          routeName: row.routeName,
+          departmentName: row.departmentName,
+          driverNames: new Set(row.driverNames),
+          proofImages: [...row.proofImages],
           kg: row.kg,
           taskCount: row.taskCount,
           dates: new Set([day.dateKey]),
@@ -501,9 +613,178 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     }
   }
 
-  const selectedGarbageVehicleRows = Array.from(selectedGarbageVehicleTotals.values())
-    .sort((left, right) => right.kg - left.kg)
-    .slice(0, 8);
+  const selectedGarbageVehicleRows = Array.from(selectedGarbageVehicleTotals.entries())
+    .map(([vehicleKey, row]) => ({ vehicleKey, ...row }))
+    .sort((left, right) => right.kg - left.kg);
+  const topGarbageVehicleOverall = selectedGarbageVehicleRows[0] ?? null;
+  const garbageReportVehicleOptions = new Map<
+    string,
+    {
+      key: string;
+      label: string;
+      detail: string;
+      lookup: string;
+      driverName?: string;
+      loaderNames?: string[];
+    }
+  >();
+  const garbageFleetScopeLookup = garbageWeightScopeName ? normalizeScopeLookup(garbageWeightScopeName) : "";
+  const visibleGarbageFleetVehicleOptions = garbageFleetVehicleOptions.filter((vehicle) => {
+    if (!garbageFleetScopeLookup || !vehicle.departmentName) {
+      return true;
+    }
+    return normalizeScopeLookup(vehicle.departmentName) === garbageFleetScopeLookup;
+  });
+  for (const row of selectedGarbageVehicleRows) {
+    garbageReportVehicleOptions.set(row.vehicleKey, {
+      key: row.vehicleKey,
+      label: row.primaryLabel,
+      detail: row.vehicleName,
+      lookup: normalizeVehicleLookup(`${row.primaryLabel} ${row.vehicleName}`),
+    });
+  }
+  for (const vehicle of visibleGarbageFleetVehicleOptions) {
+    const key = String(vehicle.id);
+    const label = vehicle.plate || vehicle.label || `Машин #${vehicle.id}`;
+    if (!garbageReportVehicleOptions.has(key)) {
+      garbageReportVehicleOptions.set(key, {
+      key,
+      label,
+      detail: vehicle.departmentName || "Авто баазын бүртгэлтэй машин",
+      lookup: normalizeVehicleLookup(`${label} ${vehicle.label}`),
+      driverName: vehicle.driverName,
+      loaderNames: vehicle.loaderNames,
+    });
+  }
+  }
+  for (const report of filteredReports) {
+    const label = extractReportVehicleLabel(report);
+    const key = `report-${normalizeVehicleLookup(label)}`;
+    if (!garbageReportVehicleOptions.has(key)) {
+      garbageReportVehicleOptions.set(key, {
+        key,
+        label,
+        detail: "Тайлангаас илэрсэн машин",
+        lookup: normalizeVehicleLookup(label),
+      });
+    }
+  }
+  const garbageReportVehicleList = Array.from(garbageReportVehicleOptions.values());
+  const selectedGarbageVehicleKey =
+    requestedVehicle && garbageReportVehicleOptions.has(requestedVehicle)
+      ? requestedVehicle
+      : (garbageReportVehicleList[0]?.key ?? "");
+  const selectedGarbageVehicleOption =
+    garbageReportVehicleOptions.get(selectedGarbageVehicleKey) ?? garbageReportVehicleList[0] ?? null;
+  const selectedGarbageFleetVehicle =
+    visibleGarbageFleetVehicleOptions.find((vehicle) => String(vehicle.id) === selectedGarbageVehicleKey) ??
+    visibleGarbageFleetVehicleOptions.find((vehicle) =>
+      selectedGarbageVehicleOption
+        ? normalizeVehicleLookup(`${vehicle.plate} ${vehicle.label}`).includes(selectedGarbageVehicleOption.lookup) ||
+          selectedGarbageVehicleOption.lookup.includes(normalizeVehicleLookup(vehicle.plate || vehicle.label))
+        : false,
+    ) ??
+    null;
+  const selectedGarbageVehicleRow =
+    selectedGarbageVehicleRows.find((row) => row.vehicleKey === selectedGarbageVehicleKey) ??
+    selectedGarbageVehicleRows.find((row) =>
+      selectedGarbageVehicleOption
+        ? normalizeVehicleLookup(`${row.primaryLabel} ${row.vehicleName}`).includes(selectedGarbageVehicleOption.lookup)
+        : false,
+    ) ??
+    null;
+  const selectedGarbageVehicleDayItems = selectedGarbageDayItems
+    .map((day) => ({
+      ...day,
+      rows: day.rows.filter((row) =>
+        selectedGarbageVehicleRow
+          ? row.vehicleKey === selectedGarbageVehicleRow.vehicleKey
+          : selectedGarbageVehicleOption
+            ? normalizeVehicleLookup(`${row.primaryLabel} ${row.vehicleName}`).includes(selectedGarbageVehicleOption.lookup)
+            : false,
+      ),
+    }))
+    .filter((day) => day.rows.length);
+  const selectedGarbageVehicleTotalKg = selectedGarbageVehicleDayItems.reduce(
+    (sum, day) => sum + day.rows.reduce((daySum, row) => daySum + row.kg, 0),
+    0,
+  );
+  const selectedGarbageVehicleRecordCount = selectedGarbageVehicleDayItems.reduce(
+    (sum, day) => sum + day.rows.reduce((daySum, row) => daySum + row.taskCount, 0),
+    0,
+  );
+  const selectedGarbageTripReports = filteredReports
+    .filter((report) => {
+      if (!selectedGarbageVehicleOption) {
+        return false;
+      }
+      const reportVehicleLookup = normalizeVehicleLookup(extractReportVehicleLabel(report));
+      return (
+        reportVehicleLookup === selectedGarbageVehicleOption.lookup ||
+        selectedGarbageVehicleOption.lookup.includes(reportVehicleLookup) ||
+        normalizeVehicleLookup(report.taskName).includes(selectedGarbageVehicleOption.lookup)
+      );
+    })
+    .filter((report) => {
+      const dateKey = extractReportDateKey(report);
+      return !dateKey || (dateKey >= selectedStartDate && dateKey <= selectedEndDate);
+    })
+    .sort((left, right) => right.submittedAt.localeCompare(left.submittedAt))
+    .slice(0, 12);
+  const selectedGarbageTopVehicle = selectedGarbageVehicleRow;
+  const selectedGarbageProofImages = (
+    selectedGarbageTripReports.length
+      ? selectedGarbageTripReports.flatMap((report) =>
+          report.images.map((image) => ({
+            id: image.id,
+            name: image.name,
+            url: image.url,
+            proofType: "",
+            capturedAt: report.submittedAt,
+            uploaderName: report.reporter,
+          })),
+        )
+      : (selectedGarbageVehicleRow?.proofImages ?? [])
+  )
+    .filter(
+      (image, index, images) => images.findIndex((candidate) => candidate.id === image.id) === index,
+    )
+    .slice(0, 6);
+  const classifiedBeforeProofImages = selectedGarbageProofImages.filter((image) => {
+    const type = image.proofType.toLocaleLowerCase("mn-MN");
+    return type.includes("before") || type.includes("start") || type.includes("өмнө");
+  });
+  const classifiedAfterProofImages = selectedGarbageProofImages.filter((image) => {
+    const type = image.proofType.toLocaleLowerCase("mn-MN");
+    return type.includes("after") || type.includes("done") || type.includes("дараа");
+  });
+  const selectedGarbageBeforeProofImages = (
+    classifiedBeforeProofImages.length ? classifiedBeforeProofImages : selectedGarbageProofImages.slice(0, 3)
+  ).slice(0, 3);
+  const selectedGarbageAfterProofImages = (
+    classifiedAfterProofImages.length ? classifiedAfterProofImages : selectedGarbageProofImages.slice(3, 6)
+  ).slice(0, 3);
+  const selectedGarbageDriverLabel =
+    (selectedGarbageVehicleRow ? Array.from(selectedGarbageVehicleRow.driverNames) : [])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join(", ") ||
+    selectedGarbageVehicleOption?.driverName ||
+    selectedGarbageFleetVehicle?.driverName ||
+    "Бүртгэгдээгүй";
+  const selectedGarbageLoaderLabel =
+    (
+      selectedGarbageVehicleOption?.loaderNames?.filter(Boolean).join(", ") ||
+      selectedGarbageFleetVehicle?.loaderNames?.filter(Boolean).join(", ")
+    ) || "Бүртгэгдээгүй";
+  const selectedGarbageVehicleLabel =
+    selectedGarbageTopVehicle?.primaryLabel ||
+    selectedGarbageVehicleOption?.label ||
+    selectedGarbageFleetVehicle?.plate ||
+    "Бүртгэлгүй";
+  const selectedGarbageTripCount =
+    selectedGarbageTripReports.length || selectedGarbageVehicleRecordCount;
+  const selectedGarbagePointCount = selectedGarbageTripReports.length;
   const selectedProcurementItems = procurementDashboard.items.filter((item) => {
     const candidateDates = [
       item.required_date,
@@ -581,6 +862,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               notificationNote={`${filteredReviewQueue.length} даалгавар хяналт хүлээж байна`}
             />
 
+            {!isGarbageTransportView ? (
+              <>
             <header className={styles.pageHeader}>
               <div className={styles.titleBlock}>
                 <span className={styles.kicker}>Тайлан</span>
@@ -893,135 +1176,438 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               </section>
             ) : null}
 
-            {isGarbageTransportView ? (
-              <section className={styles.sectionCard}>
-                <div className={styles.weightSectionHeader}>
-                  <div>
-                    <span className={styles.kicker}>Жингийн тайлан</span>
-                    <h2>Машин, өдрийн тээвэрлэлтийн жин</h2>
-                    <p>
-                      Хог тээвэрлэлтийн жинг машиныг өдөр өдрөөр нь
-                      нэгтгэн харуулна.
-                    </p>
-                  </div>
-                  <div className={styles.weightMetaCard}>
-                    <span>Хамрах хугацаа</span>
-                    <strong>{garbageWeightLedger?.rangeLabel || "Мэдээлэл алга"}</strong>
-                    <small>{garbageWeightLedger?.generatedAtLabel || snapshot.generatedAt}</small>
-                  </div>
-                </div>
-
-                <div className={styles.weightReportToolbar}>
-                  <div className={styles.weightToolbarText}>
-                    <strong>Сонгосон хугацааны тайлан</strong>
-                    <span>{selectedRangeLabel}</span>
-                  </div>
-                  <div className={styles.exportActions} aria-label="Хог тээврийн жингийн тайлан">
-                    <a
-                      className={styles.exportButton}
-                      href={getGarbageWeightReportHref(selectedStartDate, selectedEndDate)}
-                      target="_blank"
-                    >
-                      Excel татах
-                    </a>
-                    <a
-                      className={styles.exportButton}
-                      href={getReportHref({ report: "garbage", period: "today" })}
-                    >
-                      Өнөөдөр
-                    </a>
-                    <a
-                      className={styles.exportButton}
-                      href={getReportHref({ report: "garbage", period: "month" })}
-                    >
-                      Энэ сар
-                    </a>
-                  </div>
-                </div>
-
-                {garbageWeightError ? (
-                  <div className={styles.weightError}>{garbageWeightError}</div>
-                ) : null}
-
-                <div className={styles.weightSummaryGrid}>
-                  <article className={styles.weightSummaryCard}>
-                    <span>Нийт жин</span>
-                    <strong>{formatKgLabel(selectedGarbageTotalKg)}</strong>
-                    <small>{selectedRangeLabel}</small>
-                  </article>
-                  <article className={styles.weightSummaryCard}>
-                    <span>Огноо</span>
-                    <strong>{selectedGarbageDayItems.length}</strong>
-                    <small>Жин бүртгэгдсэн өдөр</small>
-                  </article>
-                  <article className={styles.weightSummaryCard}>
-                    <span>Машин</span>
-                    <strong>{selectedGarbageVehicleKeys.size}</strong>
-                    <small>Жин орсон техник</small>
-                  </article>
-                  <article className={styles.weightSummaryCard}>
-                    <span>Мөр</span>
-                    <strong>{selectedGarbageRecordCount}</strong>
-                    <small>Өдөр-машины нэгтгэсэн бичлэг</small>
-                  </article>
-                </div>
-
-                {selectedGarbageVehicleRows.length ? (
-                  <div className={styles.vehicleAggregateGrid}>
-                    {selectedGarbageVehicleRows.map((row) => (
-                      <article key={row.primaryLabel} className={styles.vehicleAggregateCard}>
-                        <span>{row.primaryLabel}</span>
-                        <strong>{formatKgLabel(row.kg)}</strong>
-                        <small>
-                          {row.dates.size} өдөр, {row.taskCount} ажил
-                        </small>
-                      </article>
-                    ))}
-                  </div>
-                ) : null}
-
-                {selectedGarbageDayItems.length ? (
-                  <div className={styles.weightDayStack}>
-                    {selectedGarbageDayItems.map((day) => (
-                      <article key={day.dateKey} className={styles.weightDayCard}>
-                        <div className={styles.weightDayHeader}>
-                          <div>
-                            <span className={styles.kicker}>Огноо</span>
-                            <h3>{day.dateLabel}</h3>
-                          </div>
-                          <strong>{day.totalLabel}</strong>
-                        </div>
-
-                        <div className={styles.weightVehicleList}>
-                          {day.rows.map((row) => (
-                            <article key={`${day.dateKey}-${row.vehicleKey}`} className={styles.weightVehicleRow}>
-                              <div className={styles.weightVehicleMeta}>
-                                <strong>{row.primaryLabel}</strong>
-                                <span>
-                                  {row.plate && row.vehicleName !== row.plate
-                                    ? row.vehicleName
-                                    : row.routeName}
-                                </span>
-                              </div>
-                              <div className={styles.weightVehicleValue}>
-                                <strong>{row.kgLabel}</strong>
-                                <span>{row.taskCount} ажил</span>
-                              </div>
-                            </article>
-                          ))}
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <div className={styles.weightEmpty}>
-                    Одоогоор хог тээвэрлэлтийн жингийн бүртгэл алга байна.
-                  </div>
-                )}
-              </section>
+              </>
             ) : null}
 
-            {canViewProcurementReport ? (
+            {isGarbageTransportView ? (
+              <div className={styles.garbageReportShell}>
+                <section className={`${styles.reportPanel} ${styles.autoBasePanel}`}>
+                  <div className={styles.reportPanelHeader}>
+                    <div className={styles.reportPanelTitle}>
+                      <span className={styles.reportPanelIcon}>АБ</span>
+                      <div>
+                        <h2>Авто баазын тайлан</h2>
+                        <p>Машин, техникийн өдөр тутмын жин, рейс, зурагт нотолгооны нэгтгэл</p>
+                      </div>
+                    </div>
+                    <div className={styles.reportPanelActions} aria-label="Авто баазын тайлангийн үйлдэл">
+                      <a
+                        className={styles.exportButton}
+                        href={getGarbageWeightReportHref(selectedStartDate, selectedEndDate)}
+                        target="_blank"
+                      >
+                        Excel татах
+                      </a>
+                      <a
+                        className={styles.exportButton}
+                        href={getReportHref({ report: "garbage", period: "today" })}
+                      >
+                        Өнөөдөр
+                      </a>
+                      <a
+                        className={styles.exportButton}
+                        href={getReportHref({ report: "garbage", period: "month" })}
+                      >
+                        Энэ сар
+                      </a>
+                    </div>
+                  </div>
+
+                  {garbageWeightError ? (
+                    <div className={styles.weightError}>{garbageWeightError}</div>
+                  ) : null}
+
+                  <div className={styles.autoBaseFormGrid}>
+                    <div className={styles.formMetric}>
+                      <span>Тайлангийн хугацаа</span>
+                      <strong>{selectedRangeLabel}</strong>
+                    </div>
+                    <div className={styles.formMetric}>
+                      <span>Машины тоо</span>
+                      <strong>{selectedGarbageVehicleKeys.size}</strong>
+                    </div>
+                    <div className={styles.formMetric}>
+                      <span>Нийт жин</span>
+                      <strong>{formatKgLabel(selectedGarbageTotalKg)}</strong>
+                    </div>
+                    <div className={styles.formMetric}>
+                      <span>Нийт рейс / ажил</span>
+                      <strong>{selectedGarbageRecordCount}</strong>
+                    </div>
+                    <div className={styles.formMetric}>
+                      <span>Хамгийн их жинтэй машин</span>
+                      <strong>{topGarbageVehicleOverall?.primaryLabel || "Мэдээлэл алга"}</strong>
+                    </div>
+                    <div className={styles.formMetric}>
+                      <span>Жолоочоос ирсэн зураг</span>
+                      <strong>{selectedGarbageProofImages.length}</strong>
+                    </div>
+                  </div>
+
+                  <div className={styles.vehicleAggregateGrid}>
+                    {selectedGarbageVehicleRows.length ? (
+                      selectedGarbageVehicleRows.slice(0, 6).map((row) => (
+                        <article key={row.primaryLabel} className={styles.vehicleAggregateCard}>
+                          <div className={styles.vehicleAggregateTop}>
+                            <div>
+                              <span>Машин</span>
+                              <strong>{row.primaryLabel}</strong>
+                            </div>
+                            <strong className={styles.vehicleAggregateWeight}>
+                              {formatKgLabel(row.kg)}
+                            </strong>
+                          </div>
+                          <div className={styles.vehicleAggregateMeta}>
+                            <span>{row.vehicleName}</span>
+                            <span>{row.departmentName || "Хэлтэс тодорхойгүй"}</span>
+                            <span>{row.dates.size} өдөр</span>
+                            <span>{row.taskCount} рейс/ажил</span>
+                          </div>
+                          <div className={styles.driverLine}>
+                            <span>Жолооч</span>
+                            <strong>
+                              {Array.from(row.driverNames).join(", ") || "Бүртгэгдээгүй"}
+                            </strong>
+                          </div>
+                        </article>
+                      ))
+                    ) : (
+                      <div className={styles.weightEmpty}>
+                        Сонгосон хугацаанд машин бүрийн жингийн бүртгэл алга байна.
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                <section className={`${styles.reportPanel} ${styles.transportPanel}`}>
+                  <div className={styles.reportPanelHeader}>
+                    <div className={styles.reportPanelTitle}>
+                      <span className={styles.reportPanelIcon}>ХТ</span>
+                      <div>
+                        <h2>Хог тээвэрлэлтийн тайлан</h2>
+                        <p>Машин сонгон өдөр / 7 хоногийн тайланг цаг, цэг, жолоочийн зурагтай нь харна</p>
+                      </div>
+                    </div>
+                    <div className={styles.reportPanelBadge}>
+                      <span>Хамрах хугацаа</span>
+                      <strong>{selectedRangeLabel}</strong>
+                    </div>
+                  </div>
+
+                  <form className={styles.transportControlBar} action="/reports" method="get">
+                    {exportParams.get("department") ? (
+                      <input type="hidden" name="department" value={exportParams.get("department") ?? ""} />
+                    ) : null}
+                    {exportParams.get("unit") ? (
+                      <input type="hidden" name="unit" value={exportParams.get("unit") ?? ""} />
+                    ) : null}
+                    <input type="hidden" name="report" value="garbage" />
+                    <input type="hidden" name="period" value={activePeriodKey} />
+                    {activePeriodKey === "custom" ? (
+                      <>
+                        <input type="hidden" name="startDate" value={selectedStartDate} />
+                        <input type="hidden" name="endDate" value={selectedEndDate} />
+                      </>
+                    ) : null}
+                    <label className={styles.transportControlField}>
+                      <span>Машин сонгох</span>
+                      <GarbageVehicleSelect
+                        name="vehicle"
+                        value={selectedGarbageVehicleKey}
+                        options={garbageReportVehicleList.map((vehicle) => ({
+                          key: vehicle.key,
+                          label: vehicle.label,
+                          detail: vehicle.detail,
+                        }))}
+                        emptyLabel="Машин бүртгэлгүй"
+                      />
+                      <select aria-hidden="true" disabled hidden defaultValue={selectedGarbageVehicleKey}>
+                        {garbageReportVehicleList.length ? (
+                          garbageReportVehicleList.map((vehicle) => (
+                            <option key={vehicle.key} value={vehicle.key}>
+                              {vehicle.label} {vehicle.detail ? `(${vehicle.detail})` : ""}
+                            </option>
+                          ))
+                        ) : (
+                          <option value="">Машин бүртгэлгүй</option>
+                        )}
+                      </select>
+                    </label>
+                    <div className={styles.transportTypeControl}>
+                      <span>Тайлангийн төрөл</span>
+                      <div className={styles.transportTypeButtons}>
+                        <Link
+                          href={getReportHref({
+                            report: "garbage",
+                            period: "today",
+                            vehicle: selectedGarbageVehicleKey,
+                          })}
+                          className={`${styles.transportTypeButton} ${
+                            activePeriodKey === "today" ? styles.transportTypeButtonActive : ""
+                          }`}
+                        >
+                          Өдрийн тайлан
+                        </Link>
+                        <Link
+                          href={getReportHref({
+                            report: "garbage",
+                            period: "week",
+                            vehicle: selectedGarbageVehicleKey,
+                          })}
+                          className={`${styles.transportTypeButton} ${
+                            activePeriodKey === "week" ? styles.transportTypeButtonActive : ""
+                          }`}
+                        >
+                          7 хоногийн тайлан
+                        </Link>
+                      </div>
+                    </div>
+                    <label className={styles.transportControlField}>
+                      <span>Огноо</span>
+                      <input type="date" value={selectedStartDate} readOnly />
+                    </label>
+                    <div className={styles.transportDateActions}>
+                      <button type="submit">Харах</button>
+                      <a
+                        className={styles.transportDownloadButton}
+                        href={getGarbageWeightReportHref(selectedStartDate, selectedEndDate)}
+                        target="_blank"
+                      >
+                        Тайлан татах
+                      </a>
+                    </div>
+                  </form>
+
+                  <div className={styles.transportKpiGrid}>
+                    <article className={styles.transportKpiCard}>
+                      <span>Нийт аялал (рейс)</span>
+                      <strong>{selectedGarbageTripCount}</strong>
+                      <small>Тайлан орсон мөр</small>
+                    </article>
+                    <article className={styles.transportKpiCard}>
+                      <span>Тайлан орсон цэг</span>
+                      <strong>{selectedGarbagePointCount}</strong>
+                      <small>Сонгосон машины цэгийн тоо</small>
+                    </article>
+                    <article className={styles.transportKpiCard}>
+                      <span>Нийт тээвэрлэсэн жин</span>
+                      <strong>{formatTonLabel(selectedGarbageVehicleTotalKg)}</strong>
+                      <small>{formatKgLabel(selectedGarbageVehicleTotalKg)}</small>
+                    </article>
+                  </div>
+
+                  <div className={styles.transportReportGrid}>
+                    <article className={styles.transportInfoCard}>
+                      <span className={styles.kicker}>Тээвэрлэлтийн мэдээлэл</span>
+                      <div className={styles.transportFieldGrid}>
+                        <div className={styles.transportField}>
+                          <span>Огноо</span>
+                          <strong>{selectedRangeLabel}</strong>
+                        </div>
+                        <div className={styles.transportField}>
+                          <span>Жолооч</span>
+                          <strong>{selectedGarbageDriverLabel}</strong>
+                        </div>
+                        <div className={styles.transportField}>
+                          <span>Машин / техник</span>
+                          <strong>{selectedGarbageVehicleLabel}</strong>
+                        </div>
+                        <div className={styles.transportField}>
+                          <span>Ачигч</span>
+                          <strong>{selectedGarbageLoaderLabel}</strong>
+                        </div>
+                        <div className={styles.transportField}>
+                          <span>Нийт жин</span>
+                          <strong>{formatTonLabel(selectedGarbageVehicleTotalKg)}</strong>
+                        </div>
+                        <div className={styles.transportField}>
+                          <span>Нийт рейс / ажил</span>
+                          <strong>{selectedGarbageTripCount}</strong>
+                        </div>
+                        <div className={styles.transportField}>
+                          <span>Тайлбар</span>
+                          <strong>{selectedGarbageVehicleOption?.label || "Машин сонгоогүй"}</strong>
+                        </div>
+                      </div>
+                    </article>
+
+                    <article className={styles.transportMachineCard}>
+                      <span className={styles.kicker}>Тээвэрлэсэн машинууд</span>
+                      {selectedGarbageVehicleRows.length ? (
+                        <div className={styles.machineTable}>
+                          <div className={styles.machineTableHead}>
+                            <span>№</span>
+                            <span>Машины дугаар</span>
+                            <span>Жолооч</span>
+                            <span>Жин</span>
+                          </div>
+                          {selectedGarbageVehicleRows.slice(0, 6).map((row, index) => (
+                            <div key={row.primaryLabel} className={styles.machineTableRow}>
+                              <span>{index + 1}</span>
+                              <strong>{row.primaryLabel}</strong>
+                              <span>{Array.from(row.driverNames).join(", ") || "Бүртгэлгүй"}</span>
+                              <strong>{formatKgLabel(row.kg)}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className={styles.noProofText}>Машины жин бүртгэгдээгүй байна.</div>
+                      )}
+                      <div className={styles.transportTotalGrid}>
+                        <div>
+                          <span>Нийт рейс</span>
+                          <strong>{selectedGarbageTripCount}</strong>
+                        </div>
+                        <div>
+                          <span>Сонгосон машин</span>
+                          <strong>{selectedGarbageVehicleOption ? 1 : 0}</strong>
+                        </div>
+                        <div>
+                          <span>Нийт жин</span>
+                          <strong>{formatTonLabel(selectedGarbageVehicleTotalKg)}</strong>
+                        </div>
+                      </div>
+                    </article>
+
+                    <article className={styles.transportProofCard}>
+                      <span className={styles.kicker}>Жолоочоос ирсэн гэрэл зураг</span>
+                      {selectedGarbageProofImages.length ? (
+                        <div className={styles.transportProofGroups}>
+                          <div>
+                            <strong>Ачаа ачихаас өмнө</strong>
+                            <div className={styles.transportProofGrid}>
+                              {selectedGarbageBeforeProofImages.map((image) => (
+                                <a
+                                  key={image.id}
+                                  href={image.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className={styles.transportProofLink}
+                                >
+                                  <Image
+                                    src={image.url}
+                                    alt={image.name}
+                                    width={180}
+                                    height={120}
+                                    unoptimized
+                                  />
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <strong>Ачаа ачсаны дараа</strong>
+                            {selectedGarbageAfterProofImages.length ? (
+                              <div className={styles.transportProofGrid}>
+                                {selectedGarbageAfterProofImages.map((image) => (
+                                  <a
+                                    key={image.id}
+                                    href={image.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={styles.transportProofLink}
+                                  >
+                                    <Image
+                                      src={image.url}
+                                      alt={image.name}
+                                      width={180}
+                                      height={120}
+                                      unoptimized
+                                    />
+                                  </a>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className={styles.proofEmptyBox}>Дараах зураг бүртгэгдээгүй.</div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={styles.proofEmptyBox}>Одоогоор зураг ирээгүй байна.</div>
+                      )}
+                    </article>
+                  </div>
+
+                  <div className={styles.dailyWeightPanel}>
+                    <div className={styles.dailyWeightHeader}>
+                      <div>
+                        <span className={styles.kicker}>Аялал (рейс)-ын тойм</span>
+                        <h3>Тайлан орсон цаг, цэгийн нэр, зураг</h3>
+                      </div>
+                      <strong>{formatTonLabel(selectedGarbageVehicleTotalKg)}</strong>
+                    </div>
+
+                    {selectedGarbageTripReports.length ? (
+                      <div className={styles.dailyWeightTable}>
+                        <div className={styles.dailyWeightTableHead}>
+                          <span>№</span>
+                          <span>Тайлан орсон цаг</span>
+                          <span>Цэгийн нэр</span>
+                          <span>Тайлбар</span>
+                          <span>Өмнөх зураг</span>
+                          <span>Дараах зураг</span>
+                        </div>
+                        {selectedGarbageTripReports.map((report, index) => {
+                          const beforeImage = report.images[0] ?? null;
+                          const afterImage = report.images[1] ?? null;
+
+                          return (
+                            <div key={report.id} className={styles.dailyWeightTableRow}>
+                              <span>{index + 1}</span>
+                              <span>{formatSubmittedTime(report.submittedAt)}</span>
+                              <strong>{extractReportPointName(report)}</strong>
+                              <span>{report.summary || reportStatusLabel(report)}</span>
+                              {beforeImage ? (
+                                <a
+                                  href={beforeImage.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className={styles.tripPhotoLink}
+                                >
+                                  <Image
+                                    src={beforeImage.url}
+                                    alt={beforeImage.name}
+                                    width={180}
+                                    height={86}
+                                    unoptimized
+                                  />
+                                </a>
+                              ) : (
+                                <span className={styles.tripPhotoPlaceholder}>Зураггүй</span>
+                              )}
+                              {afterImage ? (
+                                <a
+                                  href={afterImage.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className={styles.tripPhotoLink}
+                                >
+                                  <Image
+                                    src={afterImage.url}
+                                    alt={afterImage.name}
+                                    width={180}
+                                    height={86}
+                                    unoptimized
+                                  />
+                                </a>
+                              ) : (
+                                <span className={styles.tripPhotoPlaceholder}>Зураггүй</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className={styles.weightEmpty}>
+                        Сонгосон машин дээр тайлан орсон цэг одоогоор алга байна.
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </div>
+            ) : null}
+
+            {!isGarbageTransportView && canViewProcurementReport ? (
             <section className={styles.sectionCard}>
               <div className={styles.weightSectionHeader}>
                 <div>
@@ -1089,6 +1675,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             </section>
             ) : null}
 
+            {!isGarbageTransportView ? (
+              <>
             <section className={styles.sectionCard}>
               <div className={styles.workflowHeader}>
                 <div>
@@ -1367,6 +1955,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 <p>Өөр хэлтэс эсвэл доторх нэгж сонгож үзнэ үү.</p>
               </section>
             )}
+              </>
+            ) : null}
           </div>
         </div>
       </div>

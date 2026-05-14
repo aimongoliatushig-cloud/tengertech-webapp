@@ -37,6 +37,8 @@
 .kicker {
   display: inline-flex;
   align-items: center;
+  align-self: start;
+  justify-self: start;
   width: fit-content;
   min-height: 32px;
   padding: 0 12px;
@@ -541,8 +543,75 @@
 }
 
 .vehicleAggregateGrid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 18px;
+}
+
+.vehicleAggregateTop,
+.vehicleAggregateMeta,
+.driverLine {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vehicleAggregateTop {
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(31, 95, 49, 0.08);
+}
+
+.vehicleAggregateTop > div,
+.driverLine {
+  display: grid;
+  gap: 4px;
+}
+
+.vehicleAggregateWeight {
+  color: var(--brand-900);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.vehicleAggregateMeta {
+  flex-wrap: wrap;
+}
+
+.vehicleAggregateMeta span,
+.driverLine span,
+.noProofText,
+.weightVehicleMeta small,
+.weightVehicleProofs span {
+  color: var(--ink-600);
+  font-size: 0.82rem;
+}
+
+.driverLine strong {
+  font-size: 0.96rem;
+}
+
+.proofThumbGrid,
+.weightVehicleProofs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.proofThumbLink {
+  display: block;
+  width: 74px;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid rgba(31, 95, 49, 0.12);
+  background: rgba(31, 95, 49, 0.06);
+}
+
+.proofThumbLink img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .procurementList {
@@ -620,6 +689,492 @@
 
 .weightMetaCard {
   background: rgba(74, 154, 93, 0.08);
+}
+
+.garbageReportShell {
+  display: grid;
+  gap: 16px;
+}
+
+.reportPanel {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.autoBasePanel {
+  border-color: rgba(31, 95, 49, 0.12);
+}
+
+.garbageReportShell .autoBasePanel {
+  display: none;
+}
+
+.transportPanel {
+  border-color: rgba(74, 154, 93, 0.18);
+}
+
+.reportPanelHeader,
+.dailyWeightHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(31, 95, 49, 0.08);
+}
+
+.reportPanelTitle {
+  display: flex;
+  align-items: start;
+  gap: 14px;
+}
+
+.reportPanelIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-900);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.reportPanelTitle h2,
+.dailyWeightHeader h3 {
+  margin: 0;
+  font-family: var(--font-body);
+  letter-spacing: 0;
+}
+
+.reportPanelTitle p {
+  margin: 4px 0 0;
+  color: var(--ink-700);
+  line-height: 1.55;
+}
+
+.reportPanelActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.reportPanelBadge {
+  display: grid;
+  gap: 5px;
+  min-width: 220px;
+  padding: 12px 14px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: var(--ds-radius-control);
+  background: rgba(74, 154, 93, 0.07);
+  text-align: right;
+}
+
+.reportPanelBadge span,
+.formMetric span,
+.transportInfoCard dt {
+  color: var(--ink-600);
+  font-size: 0.82rem;
+}
+
+.reportPanelBadge strong,
+.formMetric strong,
+.transportInfoCard dd {
+  color: var(--ink-900);
+}
+
+.transportControlBar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.35fr) minmax(260px, 1fr) minmax(180px, 0.7fr) auto;
+  align-items: end;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(31, 95, 49, 0.1);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 249, 0.98));
+}
+
+.transportControlField,
+.transportTypeControl {
+  display: grid;
+  gap: 7px;
+}
+
+.transportControlField span,
+.transportTypeControl > span {
+  color: var(--ink-600);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.transportControlField select,
+.transportControlField input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid rgba(31, 95, 49, 0.14);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink-900);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.transportControlField select {
+  padding: 0 12px;
+}
+
+.transportControlField input {
+  padding: 0 10px;
+}
+
+.transportTypeButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.transportTypeButton,
+.transportDateActions button,
+.transportDownloadButton {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 1px solid rgba(31, 95, 49, 0.16);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--brand-900);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 900;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.transportTypeButtonActive,
+.transportDateActions button {
+  border-color: rgba(31, 95, 49, 0.65);
+  background: var(--brand-800);
+  color: #fff;
+}
+
+.transportDateActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.transportDateActions button {
+  cursor: pointer;
+}
+
+.transportDownloadButton {
+  background: rgba(74, 154, 93, 0.08);
+}
+
+.transportKpiGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.transportKpiCard {
+  display: grid;
+  gap: 6px;
+  min-height: 76px;
+  padding: 16px 18px;
+  border: 1px solid rgba(31, 95, 49, 0.1);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.transportKpiCard span {
+  color: var(--ink-600);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.transportKpiCard strong {
+  color: var(--brand-900);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.transportKpiCard small {
+  color: var(--ink-600);
+}
+
+.autoBaseFormGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.formMetric {
+  display: grid;
+  gap: 8px;
+  min-height: 78px;
+  padding: 14px;
+  border: 1px solid rgba(31, 95, 49, 0.1);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(247, 252, 248, 0.95));
+}
+
+.formMetric strong {
+  font-size: 1.04rem;
+  line-height: 1.2;
+}
+
+.transportReportGrid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(320px, 1.25fr) minmax(260px, 1fr);
+  gap: 12px;
+}
+
+.transportInfoCard,
+.transportMachineCard,
+.transportProofCard,
+.dailyWeightPanel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(31, 95, 49, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.transportInfoCard dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.transportInfoCard dl div {
+  display: grid;
+  gap: 4px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(31, 95, 49, 0.08);
+}
+
+.transportInfoCard dl div:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.transportInfoCard dt,
+.transportInfoCard dd {
+  margin: 0;
+}
+
+.transportInfoCard dd {
+  font-weight: 800;
+}
+
+.transportFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.transportField {
+  display: grid;
+  gap: 7px;
+}
+
+.transportField span {
+  color: var(--ink-600);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.transportField strong {
+  min-height: 38px;
+  padding: 10px 12px;
+  border: 1px solid rgba(31, 95, 49, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--ink-900);
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.machineTable,
+.dailyWeightTable {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(31, 95, 49, 0.08);
+  border-radius: 8px;
+}
+
+.machineTableHead,
+.machineTableRow,
+.dailyWeightTableHead,
+.dailyWeightTableRow {
+  display: grid;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(31, 95, 49, 0.08);
+}
+
+.machineTableHead,
+.dailyWeightTableHead {
+  background: rgba(31, 95, 49, 0.04);
+  color: var(--ink-600);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.machineTableRow,
+.dailyWeightTableRow {
+  color: var(--ink-800);
+  font-size: 0.86rem;
+}
+
+.machineTableRow:last-child,
+.dailyWeightTableRow:last-child {
+  border-bottom: 0;
+}
+
+.machineTableHead,
+.machineTableRow {
+  grid-template-columns: 32px minmax(90px, 1fr) minmax(120px, 1.2fr) minmax(84px, 0.8fr);
+}
+
+.dailyWeightTableHead,
+.dailyWeightTableRow {
+  grid-template-columns: 42px minmax(130px, 0.75fr) minmax(260px, 1.35fr) minmax(140px, 0.85fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr);
+}
+
+.tripPhotoLink,
+.tripPhotoPlaceholder {
+  display: grid;
+  min-height: 64px;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid rgba(31, 95, 49, 0.12);
+  border-radius: 7px;
+  background: rgba(31, 95, 49, 0.04);
+}
+
+.tripPhotoLink img {
+  width: 100%;
+  height: 72px;
+  object-fit: cover;
+  display: block;
+}
+
+.tripPhotoPlaceholder {
+  color: var(--ink-500);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.transportTotalGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.transportTotalGrid div {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid rgba(31, 95, 49, 0.1);
+  border-radius: 8px;
+  background: rgba(247, 252, 248, 0.92);
+}
+
+.transportTotalGrid span {
+  color: var(--ink-600);
+  font-size: 0.8rem;
+}
+
+.transportTotalGrid strong {
+  color: var(--brand-900);
+  font-size: 1.25rem;
+}
+
+.transportProofGroups {
+  display: grid;
+  gap: 14px;
+}
+
+.transportProofGroups > div {
+  display: grid;
+  gap: 8px;
+}
+
+.transportProofGroups strong {
+  color: var(--ink-800);
+  font-size: 0.84rem;
+}
+
+.transportProofGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.transportProofLink {
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  border: 1px solid rgba(31, 95, 49, 0.12);
+  border-radius: 8px;
+  background: rgba(31, 95, 49, 0.05);
+}
+
+.transportProofLink img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.proofEmptyBox {
+  display: grid;
+  min-height: 150px;
+  place-items: center;
+  border: 1px dashed rgba(31, 95, 49, 0.18);
+  border-radius: 8px;
+  background: rgba(31, 95, 49, 0.03);
+  color: var(--ink-600);
+  text-align: center;
+}
+
+.dailyWeightPanel {
+  margin-top: 2px;
+  overflow-x: auto;
+}
+
+.dailyWeightHeader strong {
+  color: var(--brand-900);
+  font-size: 1.45rem;
+  white-space: nowrap;
+}
+
+.addMeasureButton {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid rgba(31, 95, 49, 0.22);
+  border-radius: 6px;
+  background: rgba(74, 154, 93, 0.08);
+  color: var(--brand-900);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 800;
 }
 
 .weightReportToolbar {
@@ -761,6 +1316,7 @@
 .weightVehicleMeta {
   display: grid;
   gap: 4px;
+  min-width: 180px;
 }
 
 .weightVehicleMeta strong {
@@ -773,6 +1329,7 @@
   gap: 4px;
   justify-items: end;
   text-align: right;
+  min-width: 120px;
 }
 
 .weightVehicleValue strong {
@@ -933,6 +1490,10 @@
   .reportTypeGrid,
   .procurementReportGrid,
   .vehicleAggregateGrid,
+  .autoBaseFormGrid,
+  .transportReportGrid,
+  .transportControlBar,
+  .transportKpiGrid,
   .rangeForm,
   .departmentFilterInner,
   .weightSectionHeader,
@@ -945,6 +1506,8 @@
 
   .projectHeader,
   .reportTop,
+  .reportPanelHeader,
+  .dailyWeightHeader,
   .weightReportToolbar,
   .weightDayHeader,
   .weightVehicleRow,
@@ -957,6 +1520,15 @@
 
   .projectMeta {
     min-width: 0;
+  }
+
+  .reportPanelBadge {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .reportPanelActions {
+    justify-content: flex-start;
   }
 }
 
@@ -1005,6 +1577,27 @@
   .weightReportForm {
     grid-template-columns: 1fr;
     width: 100%;
+  }
+
+  .transportMachineCard {
+    overflow-x: auto;
+  }
+
+  .machineTable {
+    min-width: 560px;
+  }
+
+  .dailyWeightTable {
+    min-width: 980px;
+  }
+
+  .transportProofGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .transportFieldGrid,
+  .transportTotalGrid {
+    grid-template-columns: 1fr;
   }
 
   .reportHub {

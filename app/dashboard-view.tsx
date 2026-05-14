@@ -104,6 +104,20 @@ function isTransportInspectorDashboard(session: AppSession) {
   );
 }
 
+function isDepartmentHeadDashboard(session: AppSession) {
+  const flags = session.groupFlags;
+
+  return Boolean(
+    session.role === "project_manager" ||
+      flags?.municipalDepartmentHead ||
+      flags?.municipalManager ||
+      flags?.mfoManager ||
+      flags?.environmentManager ||
+      flags?.improvementManager ||
+      flags?.fleetRepairManager,
+  );
+}
+
 function normalizeTaskAssigneeId(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -1131,6 +1145,7 @@ type ExecutiveMetric = {
   value: string;
   note?: string;
   progress: number;
+  href: string;
   icon: LucideIcon;
   tone: "green" | "orange" | "blue" | "purple" | "red";
 };
@@ -1142,6 +1157,7 @@ type ExecutiveDepartmentMetric = {
   working: number;
   review: number;
   risky: number;
+  href: string;
   icon: LucideIcon;
   tone: ExecutiveMetric["tone"];
 };
@@ -1191,7 +1207,11 @@ function ExecutiveMetricCard({ metric }: { metric: ExecutiveMetric }) {
   const color = EXECUTIVE_TONE_COLORS[metric.tone];
 
   return (
-    <Card className={dashboardStyles.executiveMetricCard}>
+    <Link
+      href={metric.href}
+      className={dashboardStyles.executiveMetricCard}
+      aria-label={`${metric.label} дэлгэрэнгүй харах`}
+    >
       <div className={dashboardStyles.executiveMetricHeader}>
         <span
           className={dashboardStyles.executiveMetricIcon}
@@ -1212,7 +1232,8 @@ function ExecutiveMetricCard({ metric }: { metric: ExecutiveMetric }) {
           <ExecutiveRing value={metric.progress} tone={metric.tone} />
         ) : null}
       </div>
-    </Card>
+      <span className={dashboardStyles.executiveCardAction}>Дэлгэрэнгүй</span>
+    </Link>
   );
 }
 
@@ -1221,7 +1242,12 @@ function ExecutiveDepartmentCard({ department }: { department: ExecutiveDepartme
   const color = EXECUTIVE_TONE_COLORS[department.tone];
 
   return (
-    <Card className={dashboardStyles.executiveDepartmentCard} style={{ borderColor: `${color}2e` }}>
+    <Link
+      href={department.href}
+      className={dashboardStyles.executiveDepartmentCard}
+      style={{ borderColor: `${color}2e` }}
+      aria-label={`${department.name} ажлуудыг харах`}
+    >
       <div className={dashboardStyles.executiveDepartmentHeader}>
         <span className={dashboardStyles.executiveDepartmentIcon} style={{ color }}>
           <Icon />
@@ -1247,7 +1273,8 @@ function ExecutiveDepartmentCard({ department }: { department: ExecutiveDepartme
         <span>Эрсдэлтэй болон хугацаа хэтэрсэн ажил</span>
         <strong>{department.risky}</strong>
       </div>
-    </Card>
+      <span className={dashboardStyles.executiveCardAction}>Хэлтсийн ажил харах</span>
+    </Link>
   );
 }
 
@@ -1348,6 +1375,7 @@ function buildExecutiveDepartmentMetrics({
       working,
       review: review || department?.reviewTasks || 0,
       risky,
+      href: `/projects?department=${encodeURIComponent(department?.name || name)}&category=progress`,
       icon,
       tone,
     };
@@ -1404,6 +1432,11 @@ function ExecutiveDashboardView({
   fleetBoard,
   hrAttendanceSummary,
   weather,
+  title = "Ерөнхий хяналтын самбар",
+  subtitle = "Бүх хэлтсийн ажлын нэгдсэн тойм",
+  departmentSectionTitle = "Хэлтсүүдийн ажлын нөхцөл байдал",
+  departmentScopeName = null,
+  showDepartmentPerformance = true,
 }: {
   session: AppSession;
   roleLabel: string;
@@ -1427,9 +1460,23 @@ function ExecutiveDashboardView({
   fleetBoard: FleetVehicleBoard;
   hrAttendanceSummary: HrDailyAttendanceSummary;
   weather: WeatherSnapshot;
+  title?: string;
+  subtitle?: string;
+  departmentSectionTitle?: string;
+  departmentScopeName?: string | null;
+  showDepartmentPerformance?: boolean;
 }) {
   const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
-  const unavailableHrEmployees = hrAttendanceSummary.sickToday + hrAttendanceSummary.leaveToday;
+  const activeHrEmployees =
+    hrAttendanceSummary.workingToday ||
+    Math.max(
+      0,
+      hrAttendanceSummary.totalEmployees -
+        hrAttendanceSummary.sickToday -
+        hrAttendanceSummary.leaveToday -
+        hrAttendanceSummary.absentToday,
+    );
+  const hrActiveRate = percent(activeHrEmployees, hrAttendanceSummary.totalEmployees);
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
   const overdueRate = percent(overdueTasks, totalTasks);
   const activeTasks = Math.max(totalTasks - completedTasks, workingTasks + reviewTasks);
@@ -1438,6 +1485,7 @@ function ExecutiveDashboardView({
       label: "нийт гүйцэтгэл",
       value: `${overallProgress}%`,
       progress: overallProgress,
+      href: showDepartmentPerformance ? "#department-performance" : "/projects",
       icon: CheckCircle2,
       tone: "green",
     },
@@ -1445,14 +1493,16 @@ function ExecutiveDashboardView({
       label: "хянах ажил",
       value: String(reviewTasks),
       progress: percent(reviewTasks, totalTasks),
+      href: "/review",
       icon: ShieldCheck,
       tone: "blue",
     },
     {
       label: "хүний нөөц",
-      value: String(unavailableHrEmployees),
-      note: `Өвчтэй ${hrAttendanceSummary.sickToday} / Чөлөөтэй ${hrAttendanceSummary.leaveToday}`,
-      progress: 0,
+      value: String(hrAttendanceSummary.totalEmployees),
+      note: `Идэвхтэй ${activeHrEmployees} / Өвчтэй ${hrAttendanceSummary.sickToday} / Чөлөөтэй ${hrAttendanceSummary.leaveToday}`,
+      progress: hrActiveRate,
+      href: canViewHr ? "/hr/employees" : "/hr",
       icon: UsersRound,
       tone: "green",
     },
@@ -1460,6 +1510,7 @@ function ExecutiveDashboardView({
       label: "техникийн ашиглалт",
       value: `${fleetUsage}%`,
       progress: fleetUsage,
+      href: "/auto-base",
       icon: Truck,
       tone: "purple",
     },
@@ -1467,6 +1518,7 @@ function ExecutiveDashboardView({
       label: "хугацаа хэтэрсэн ажил",
       value: `${overdueRate}%`,
       progress: overdueRate,
+      href: "/projects?category=overdue",
       icon: Clock3,
       tone: "orange",
     },
@@ -1474,6 +1526,7 @@ function ExecutiveDashboardView({
       label: "идэвхтэй ажил",
       value: String(activeTasks),
       progress: 100,
+      href: "/projects?category=progress",
       icon: ClipboardList,
       tone: "green",
     },
@@ -1496,19 +1549,21 @@ function ExecutiveDashboardView({
             canViewQualityCenter={canViewQualityCenter}
             canUseFieldConsole={canUseFieldConsole}
             canViewHr={canViewHr}
+            canViewGeneralDashboard={showDepartmentPerformance && !departmentScopeName}
             userName={session.name}
             userRole={session.role}
             roleLabel={roleLabel}
             groupFlags={session.groupFlags}
             workerMode={false}
             notificationCount={notificationCount}
+            departmentScopeName={departmentScopeName}
           />
         </aside>
 
         <div className={shellStyles.pageContent}>
           <WorkspaceHeader
-            title="Ерөнхий хяналтын самбар"
-            subtitle="Бүх хэлтсийн ажлын нэгдсэн тойм"
+            title={title}
+            subtitle={subtitle}
             userName={session.name}
             roleLabel={roleLabel}
             notificationCount={notificationCount}
@@ -1521,19 +1576,21 @@ function ExecutiveDashboardView({
             ))}
           </section>
 
-          <section className={dashboardStyles.executiveSection}>
-            <div className={dashboardStyles.executiveSectionHeader}>
-              <div>
-                <h2>Хэлтсүүдийн ажлын нөхцөл байдал</h2>
-                <p>{notificationNote}</p>
+          {showDepartmentPerformance ? (
+            <section id="department-performance" className={dashboardStyles.executiveSection}>
+              <div className={dashboardStyles.executiveSectionHeader}>
+                <div>
+                  <h2>{departmentSectionTitle}</h2>
+                  <p>{notificationNote}</p>
+                </div>
               </div>
-            </div>
-            <div className={dashboardStyles.executiveDepartmentGrid}>
-              {departmentMetrics.map((department) => (
-                <ExecutiveDepartmentCard key={department.name} department={department} />
-              ))}
-            </div>
-          </section>
+              <div className={dashboardStyles.executiveDepartmentGrid}>
+                {departmentMetrics.map((department) => (
+                  <ExecutiveDepartmentCard key={department.name} department={department} />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <ExecutiveWeatherPanel weather={weather} />
         </div>
@@ -1678,7 +1735,24 @@ export function DashboardView({
     currentMasterProjects.length > 1 && "lg:grid-cols-2 2xl:grid-cols-3",
   );
 
-  if (canViewGeneralDashboard && !workerMode) {
+  const executiveDashboardMode = canViewGeneralDashboard && !workerMode;
+  const departmentHeadDashboardMode =
+    !executiveDashboardMode &&
+    !workerMode &&
+    !transportInspectorMode &&
+    isDepartmentHeadDashboard(session);
+
+  if (executiveDashboardMode || departmentHeadDashboardMode) {
+    const scopedDashboardTitle = departmentHeadDashboardMode
+      ? "Хяналтын самбар"
+      : undefined;
+    const scopedDashboardSubtitle = departmentHeadDashboardMode
+      ? `${scopeLabel} · Ажил, хүний нөөц, машин техникийн нэгтгэсэн тойм`
+      : undefined;
+    const scopedDepartmentSectionTitle = departmentHeadDashboardMode
+      ? "Хэлтсийн ажлын нөхцөл байдал"
+      : undefined;
+
     return (
       <ExecutiveDashboardView
         session={session}
@@ -1703,6 +1777,11 @@ export function DashboardView({
         fleetBoard={fleetBoard}
         hrAttendanceSummary={hrAttendanceSummary}
         weather={weather}
+        title={scopedDashboardTitle}
+        subtitle={scopedDashboardSubtitle}
+        departmentSectionTitle={scopedDepartmentSectionTitle}
+        departmentScopeName={departmentScopeName}
+        showDepartmentPerformance={!departmentHeadDashboardMode}
       />
     );
   }

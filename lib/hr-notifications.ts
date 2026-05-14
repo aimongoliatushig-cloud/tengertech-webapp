@@ -2,6 +2,11 @@ import "server-only";
 
 import type { AppSession } from "@/lib/auth";
 import type { HrTimeoffRequest } from "@/lib/hr";
+import {
+  loadDepartmentHeadUserIds,
+  loadEmployeeDepartmentId,
+  loadEmployeeUserId,
+} from "@/lib/notification-recipients";
 import { executeOdooKw } from "@/lib/odoo";
 import { notifyPushEvent } from "@/lib/push-notifications";
 import { fixMojibakeText } from "@/lib/text-normalize";
@@ -21,10 +26,6 @@ type HrEmployeeRecipientRecord = {
   job_title?: string | false;
   x_hr_role?: string | false;
   x_role_key?: string | false;
-};
-
-type HrEmployeeUserRecord = {
-  user_id?: [number, string] | false;
 };
 
 const HR_REVIEWER_GROUPS = [
@@ -156,27 +157,6 @@ async function loadHrReviewerUserIds(excludeUserId?: number | null) {
   return uniqueUserIds([...groupUsers, ...employeeUsers]).filter((userId) => userId !== excludeUserId);
 }
 
-async function loadEmployeeUserId(employeeId: number) {
-  if (!Number.isFinite(employeeId) || employeeId <= 0) return null;
-
-  const records = await executeOdooKw<HrEmployeeUserRecord[]>(
-    "hr.employee",
-    "search_read",
-    [[["id", "=", employeeId]]],
-    {
-      fields: ["user_id"],
-      limit: 1,
-      context: { active_test: false },
-    },
-  ).catch((error) => {
-    console.warn("HR request employee user lookup failed:", error);
-    return [];
-  });
-
-  const userId = records[0]?.user_id;
-  return Array.isArray(userId) ? userId[0] : null;
-}
-
 function buildTimeoffNotificationBody(request: HrTimeoffRequest) {
   const employee = request.employeeName || "Ажилтан";
   const type = request.requestTypeLabel || (request.requestType === "sick" ? "Өвчтэй" : "Чөлөө");
@@ -222,9 +202,25 @@ function timeoffStatusBody(request: HrTimeoffRequest) {
 }
 
 export async function notifyHrTimeoffRequestStatusChanged(request: HrTimeoffRequest, session?: AppSession | null) {
-  const employeeUserId = await loadEmployeeUserId(request.employeeId);
-  if (!employeeUserId || employeeUserId === session?.uid) {
-    return { sent: 0, failed: 0, skipped: "no_employee_recipient" as const };
+  const connectionOverrides = session
+    ? {
+        login: session.login,
+        password: session.password,
+      }
+    : {};
+  const [employeeUserId, fallbackDepartmentId] = await Promise.all([
+    loadEmployeeUserId(request.employeeId, connectionOverrides),
+    request.departmentId ? Promise.resolve(request.departmentId) : loadEmployeeDepartmentId(request.employeeId, connectionOverrides),
+  ]);
+  const departmentHeadUserIds = await loadDepartmentHeadUserIds(
+    request.departmentId || fallbackDepartmentId,
+    connectionOverrides,
+  );
+  const userIds = uniqueUserIds([employeeUserId, ...departmentHeadUserIds]).filter(
+    (userId) => userId !== session?.uid,
+  );
+  if (!userIds.length) {
+    return { sent: 0, failed: 0, skipped: "no_status_recipients" as const };
   }
 
   return notifyPushEvent({
@@ -232,6 +228,6 @@ export async function notifyHrTimeoffRequestStatusChanged(request: HrTimeoffRequ
     title: timeoffStatusTitle(request),
     body: timeoffStatusBody(request),
     targetUrl: "/hr/leaves",
-    userIds: [employeeUserId],
+    userIds,
   });
 }
