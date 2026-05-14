@@ -4,7 +4,7 @@ import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   BarChart3,
   Bell,
@@ -110,8 +110,6 @@ type MenuItem = {
   departmentName?: string;
   hardNavigate?: boolean;
 };
-
-let warmedWorkspaceRoutes = false;
 
 function MenuLink({
   item,
@@ -225,7 +223,6 @@ export function AppMenu({
   void canUseFieldConsole;
   void variant;
 
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
@@ -270,33 +267,6 @@ export function AppMenu({
       aria-hidden
     />
   );
-
-  useEffect(() => {
-    if (warmedWorkspaceRoutes) {
-      return;
-    }
-    warmedWorkspaceRoutes = true;
-    void fetch("/api/workspace/warm", {
-      cache: "no-store",
-      credentials: "same-origin",
-    }).catch(() => null);
-
-    const routes = [
-      "/projects",
-      "/tasks?view=today",
-      "/profile",
-      "/reports",
-      "/review",
-      "/notifications",
-    ];
-    const timers = routes.map((route, index) =>
-      window.setTimeout(() => {
-        router.prefetch(route);
-      }, 500 + index * 250),
-    );
-
-    return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [router]);
 
   useEffect(() => {
     if (!isOpen) {

@@ -230,6 +230,7 @@ export default async function NotificationsPage() {
   const visibleTasks = workerMode
     ? departmentScopedTasks.filter(isAssignedToCurrentUser)
     : departmentScopedTasks;
+  const visibleTaskById = new Map(visibleTasks.map((task) => [task.id, task]));
   const visibleReviewQueue = workerMode
     ? []
     : scopedDepartmentName
@@ -304,7 +305,7 @@ export default async function NotificationsPage() {
   }
 
   for (const reviewTask of visibleReviewQueue) {
-    const existingTask = visibleTasks.find((task) => task.id === reviewTask.id);
+    const existingTask = visibleTaskById.get(reviewTask.id);
     const reviewItemKey = groupedByWorkMode
       ? `work:${reviewTask.projectId ?? reviewTask.projectName}`
       : `review:${reviewTask.id}`;

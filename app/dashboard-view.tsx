@@ -954,6 +954,7 @@ function RightPanel({
   departmentScopeName,
   showFleetSummary,
   showHrSummary,
+  showWeatherSummary,
   workerMode,
   weather,
 }: {
@@ -967,6 +968,7 @@ function RightPanel({
   departmentScopeName?: string | null;
   showFleetSummary: boolean;
   showHrSummary: boolean;
+  showWeatherSummary: boolean;
   workerMode: boolean;
   weather: WeatherSnapshot;
 }) {
@@ -1081,27 +1083,29 @@ function RightPanel({
         </>
       ) : null}
 
-      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
-        <CardTitle className={dashboardStyles.sideCardTitle}>Цаг агаар</CardTitle>
-        <div className={dashboardStyles.weatherContent}>
-          <Sun className={dashboardStyles.weatherIcon} />
-          <div>
-            <span className={dashboardStyles.weatherCity}>{weather.city}</span>
-            <strong className={dashboardStyles.weatherTemp}>
-              {weather.temperature === null ? "--" : weather.temperature}°C
-            </strong>
-            <small className={dashboardStyles.weatherNote}>
-              {weather.condition}
-              {weather.windSpeed !== null ? ` · Салхи ${weather.windSpeed} км/ц` : ""}
-            </small>
+      {showWeatherSummary ? (
+        <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
+          <CardTitle className={dashboardStyles.sideCardTitle}>Цаг агаар</CardTitle>
+          <div className={dashboardStyles.weatherContent}>
+            <Sun className={dashboardStyles.weatherIcon} />
+            <div>
+              <span className={dashboardStyles.weatherCity}>{weather.city}</span>
+              <strong className={dashboardStyles.weatherTemp}>
+                {weather.temperature === null ? "--" : weather.temperature}°C
+              </strong>
+              <small className={dashboardStyles.weatherNote}>
+                {weather.condition}
+                {weather.windSpeed !== null ? ` · Салхи ${weather.windSpeed} км/ц` : ""}
+              </small>
+            </div>
+            <div className={dashboardStyles.weatherBadge}>
+              {weather.aqiLabel}
+              <br />
+              AQI {weather.aqi ?? "--"}
+            </div>
           </div>
-          <div className={dashboardStyles.weatherBadge}>
-            {weather.aqiLabel}
-            <br />
-            AQI {weather.aqi ?? "--"}
-          </div>
-        </div>
-      </Card>
+        </Card>
+      ) : null}
 
       <Card className={cn(dashboardStyles.softPanel, dashboardStyles.landscapeCard)}>
         <div
@@ -1625,6 +1629,7 @@ export function DashboardView({
   const masterMode = isMasterRole(session.role);
   const transportInspectorMode = isTransportInspectorDashboard(session);
   const showHrSummary = Boolean(canViewHr && !workerMode);
+  const showWeatherSummary = Boolean(!workerMode && !transportInspectorMode);
   const roleLabel = getSessionRoleLabel(session);
   const currentDateKey = todayKey();
   const model = buildDashboardModel({
@@ -2058,6 +2063,7 @@ export function DashboardView({
               departmentScopeName={departmentScopeName}
               showFleetSummary={showFleetSummary}
               showHrSummary={showHrSummary}
+              showWeatherSummary={showWeatherSummary}
               workerMode={workerMode}
               weather={weather}
             />

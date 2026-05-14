@@ -9,6 +9,9 @@ function destroySession(request: Request) {
     status: 303,
   });
   response.headers.append("Set-Cookie", buildDestroyedSessionCookieHeader());
+  response.headers.set("Cache-Control", "no-store, max-age=0");
+  response.headers.set("Pragma", "no-cache");
+  response.headers.set("Clear-Site-Data", '"cache"');
   return response;
 }
 

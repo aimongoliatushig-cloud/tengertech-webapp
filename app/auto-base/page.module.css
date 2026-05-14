@@ -1828,7 +1828,7 @@
   background: rgba(244, 250, 245, 0.58);
 }
 
-.vehicleFileField span {
+.vehicleFileField > label {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -1867,6 +1867,80 @@
   color: var(--ink-900);
   font: inherit;
   box-shadow: none;
+}
+
+.vehicleFileField .vehicleFilePreview {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid rgba(74, 154, 93, 0.16);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink-800);
+  text-decoration: none;
+}
+
+.vehicleFileField .vehicleFilePreview img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: calc(var(--ds-radius-control) - 2px);
+  object-fit: cover;
+  background: rgba(232, 245, 236, 0.9);
+}
+
+.vehicleFileField .vehicleFilePreview small {
+  overflow: hidden;
+  color: var(--ink-700);
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vehicleFilePreview .vehicleDocumentIcon {
+  display: grid;
+  place-items: center;
+}
+
+.vehicleFileExisting {
+  display: grid;
+  gap: 8px;
+}
+
+.vehicleFileClear,
+.vehicleFileClearPending {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.vehicleFileClear {
+  border: 1px solid rgba(177, 94, 56, 0.18);
+  background: rgba(255, 245, 239, 0.92);
+  color: #9c3f24;
+}
+
+.vehicleFileClearPending {
+  border: 1px solid rgba(177, 94, 56, 0.24);
+  background: rgba(255, 245, 239, 0.98);
+  color: #8a3f24;
+}
+
+.vehicleFileClear input,
+.vehicleFileClearPending input {
+  width: 14px;
+  min-height: 14px;
+  padding: 0;
 }
 
 .vehicleFormField textarea {

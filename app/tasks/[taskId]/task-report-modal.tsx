@@ -1,7 +1,7 @@
 "use client";
 
 import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import Image from "next/image";
 import { Camera, ImagePlus, Mic, Plus, RotateCcw, Square, X } from "lucide-react";
 
@@ -883,7 +883,9 @@ export function TaskReportModal({
       return;
     }
 
-    setIsSubmitting(true);
+    flushSync(() => {
+      setIsSubmitting(true);
+    });
     console.info("[report-submit] client submit start", {
       taskId,
       mode: canEditExistingReport ? "update" : "create",
@@ -942,7 +944,12 @@ export function TaskReportModal({
                   </div>
                 </div>
               ) : (
-              <form action={formAction} className={styles.modalForm} onSubmit={handleReportSubmit}>
+              <form
+                action={formAction}
+                className={styles.modalForm}
+                data-loading-label={canEditExistingReport ? "Тайлан хадгалж байна..." : "Тайлан илгээж байна..."}
+                onSubmit={handleReportSubmit}
+              >
                 <input type="hidden" name="task_id" value={taskId} />
                 {existingReport ? <input type="hidden" name="report_id" value={existingReport.id} /> : null}
                 <input type="hidden" name="report_submit_token" value={submitToken} />

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { type FormEvent, useEffect, useId, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 
 import { MediaUploadField } from "./media-upload-field";
 import { PendingSubmitButton } from "./pending-submit-button";
@@ -107,7 +107,9 @@ export function TaskReportActions({
       return;
     }
 
-    setIsSubmitting(true);
+    flushSync(() => {
+      setIsSubmitting(true);
+    });
     console.info("[report-submit] client submit start", {
       taskId,
       reportId,
@@ -175,7 +177,12 @@ export function TaskReportActions({
                 </button>
               </div>
 
-              <form action={updateAction} className={styles.modalForm} onSubmit={handleEditSubmit}>
+              <form
+                action={updateAction}
+                className={styles.modalForm}
+                data-loading-label="Тайлан хадгалж байна..."
+                onSubmit={handleEditSubmit}
+              >
                 <input type="hidden" name="task_id" value={taskId} />
                 <input type="hidden" name="report_id" value={reportId} />
                 <input type="hidden" name="report_submit_token" value={submitToken} />

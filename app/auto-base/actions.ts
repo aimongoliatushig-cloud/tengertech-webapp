@@ -3,10 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireSession } from "@/lib/auth";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { canAccessAutoBaseOverview, requireSession } from "@/lib/auth";
 import { executeOdooKw } from "@/lib/odoo";
 
-const AUTO_BASE_ALLOWED_ROLES = new Set(["system_admin", "director", "general_manager"]);
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
 type OdooFieldInfo = {
@@ -41,6 +41,15 @@ function optionalOdooId(value: string) {
   return Number.isFinite(id) && id > 0 ? Math.trunc(id) : false;
 }
 
+async function requireAutoBaseWriteAccess() {
+  const session = await requireSession();
+  const departmentName = await loadSessionDepartmentName(session);
+  if (!canAccessAutoBaseOverview(session, departmentName)) {
+    redirect("/");
+  }
+  return session;
+}
+
 function optionalOdooNumber(value: string, label: string) {
   if (!value) {
     return false;
@@ -70,10 +79,23 @@ function pickSupportedValues(
   );
 }
 
+function isUploadedFile(value: FormDataEntryValue): value is File {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as {
+    arrayBuffer?: unknown;
+    size?: unknown;
+  };
+
+  return typeof candidate.arrayBuffer === "function" && typeof candidate.size === "number" && candidate.size > 0;
+}
+
 function getFiles(formData: FormData, key: string) {
   return formData
     .getAll(key)
-    .filter((value): value is File => value instanceof File && value.size > 0);
+    .filter(isUploadedFile);
 }
 
 async function fileToBase64(file: File, label: string) {
@@ -83,6 +105,11 @@ async function fileToBase64(file: File, label: string) {
   const buffer = Buffer.from(await file.arrayBuffer());
   return buffer.toString("base64");
 }
+
+type CreatedVehicleAttachment = {
+  id: number;
+  base64: string;
+};
 
 async function createVehicleAttachments(
   vehicleId: number,
@@ -95,8 +122,9 @@ async function createVehicleAttachments(
     return [];
   }
 
-  const attachmentIds: number[] = [];
+  const attachments: CreatedVehicleAttachment[] = [];
   for (const file of files) {
+    const base64 = await fileToBase64(file, label);
     const id = await executeOdooKw<number>(
       "ir.attachment",
       "create",
@@ -104,17 +132,17 @@ async function createVehicleAttachments(
         {
           name: file.name || label,
           mimetype: file.type || "application/octet-stream",
-          datas: await fileToBase64(file, label),
+          datas: base64,
           res_model: "fleet.vehicle",
           res_id: vehicleId,
         },
       ],
       {},
     );
-    attachmentIds.push(id);
+    attachments.push({ id, base64 });
   }
 
-  return attachmentIds;
+  return attachments;
 }
 
 async function appendVehicleAttachmentFields(
@@ -134,16 +162,32 @@ async function appendVehicleAttachmentFields(
   const values: Record<string, unknown> = {};
 
   for (const uploadField of uploadFields) {
-    const files = getFiles(formData, uploadField.fieldName);
-    const attachmentIds = await createVehicleAttachments(
+    const files = getFiles(formData, uploadField.fieldName).slice(0, 1);
+    const attachments = await createVehicleAttachments(
       vehicleId,
       uploadField.fieldName,
       uploadField.label,
       files,
       fields,
     );
-    if (attachmentIds.length) {
-      values[uploadField.fieldName] = attachmentIds.map((id) => [4, id]);
+    if (attachments.length) {
+      values[uploadField.fieldName] = [[6, 0, attachments.map((attachment) => attachment.id)]];
+      if (
+        uploadField.fieldName === "municipal_front_photo_ids" &&
+        fields.image_1920 &&
+        !fields.image_1920.readonly
+      ) {
+        values.image_1920 = attachments[0].base64;
+      }
+    } else if (formData.get(`${uploadField.fieldName}_clear`) === "on" && fields[uploadField.fieldName]) {
+      values[uploadField.fieldName] = [[6, 0, []]];
+      if (
+        uploadField.fieldName === "municipal_front_photo_ids" &&
+        fields.image_1920 &&
+        !fields.image_1920.readonly
+      ) {
+        values.image_1920 = false;
+      }
     }
   }
 
@@ -198,10 +242,7 @@ function rethrowIfRedirectError(error: unknown) {
 }
 
 export async function updateFleetVehicleAction(formData: FormData) {
-  const session = await requireSession();
-  if (!AUTO_BASE_ALLOWED_ROLES.has(String(session.role))) {
-    redirect("/");
-  }
+  await requireAutoBaseWriteAccess();
 
   const vehicleId = Number(getString(formData, "vehicle_id"));
   if (!Number.isFinite(vehicleId) || vehicleId <= 0) {
@@ -244,6 +285,7 @@ export async function updateFleetVehicleAction(formData: FormData) {
           "municipal_rear_photo_ids",
           "municipal_side_photo_ids",
           "municipal_certificate_photo_ids",
+          "image_1920",
         ],
       ],
       {
@@ -423,10 +465,7 @@ export async function updateFleetVehicleAction(formData: FormData) {
 }
 
 export async function createFleetVehicleAction(formData: FormData) {
-  const session = await requireSession();
-  if (!AUTO_BASE_ALLOWED_ROLES.has(String(session.role))) {
-    redirect("/");
-  }
+  await requireAutoBaseWriteAccess();
 
   const plate = getString(formData, "license_plate");
   const name = getString(formData, "name") || plate;
@@ -475,10 +514,7 @@ export async function createFleetVehicleAction(formData: FormData) {
 }
 
 export async function archiveFleetVehicleAction(formData: FormData) {
-  const session = await requireSession();
-  if (!AUTO_BASE_ALLOWED_ROLES.has(String(session.role))) {
-    redirect("/");
-  }
+  await requireAutoBaseWriteAccess();
 
   const vehicleId = Number(getString(formData, "vehicle_id"));
   if (!Number.isFinite(vehicleId) || vehicleId <= 0) {

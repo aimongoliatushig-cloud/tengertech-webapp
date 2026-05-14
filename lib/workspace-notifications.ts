@@ -28,6 +28,7 @@ type CachedWorkspaceNotificationSummary = {
 
 const WORKSPACE_NOTIFICATION_SUMMARY_CACHE_TTL_MS = 15_000;
 const workspaceNotificationSummaryCache = new Map<string, CachedWorkspaceNotificationSummary>();
+const workspaceNotificationSummaryPendingCache = new Map<string, Promise<WorkspaceNotificationSummary>>();
 
 function getWorkspaceNotificationSummaryCacheKey(
   session: AppSession,
@@ -282,23 +283,35 @@ export async function loadWorkspaceNotificationSummary(
     workspaceNotificationSummaryCache.delete(cacheKey);
   }
 
-  const notifications = buildWorkspaceNotificationRecords(snapshot, session, scopedDepartmentName);
-  const readKeys = await loadReadNotificationKeys(
-    session,
-    notifications.map((item) => item.key),
-  );
-  const unreadNotifications = notifications.filter((item) => !readKeys.has(item.key));
+  const pending = workspaceNotificationSummaryPendingCache.get(cacheKey);
+  if (pending) {
+    return pending;
+  }
 
-  const summary = {
-    unreadCount: unreadNotifications.length,
-    newCount: unreadNotifications.filter((item) => item.reasons.includes("new")).length,
-    reviewCount: unreadNotifications.filter((item) => item.reasons.includes("review")).length,
-    overdueCount: unreadNotifications.filter((item) => item.reasons.includes("overdue")).length,
-    issueCount: unreadNotifications.filter((item) => item.reasons.includes("issue")).length,
-  };
-  workspaceNotificationSummaryCache.set(cacheKey, {
-    value: summary,
-    expiresAt: Date.now() + WORKSPACE_NOTIFICATION_SUMMARY_CACHE_TTL_MS,
+  const summaryPromise = (async () => {
+    const notifications = buildWorkspaceNotificationRecords(snapshot, session, scopedDepartmentName);
+    const readKeys = await loadReadNotificationKeys(
+      session,
+      notifications.map((item) => item.key),
+    );
+    const unreadNotifications = notifications.filter((item) => !readKeys.has(item.key));
+
+    const summary = {
+      unreadCount: unreadNotifications.length,
+      newCount: unreadNotifications.filter((item) => item.reasons.includes("new")).length,
+      reviewCount: unreadNotifications.filter((item) => item.reasons.includes("review")).length,
+      overdueCount: unreadNotifications.filter((item) => item.reasons.includes("overdue")).length,
+      issueCount: unreadNotifications.filter((item) => item.reasons.includes("issue")).length,
+    };
+    workspaceNotificationSummaryCache.set(cacheKey, {
+      value: summary,
+      expiresAt: Date.now() + WORKSPACE_NOTIFICATION_SUMMARY_CACHE_TTL_MS,
+    });
+    return summary;
+  })().finally(() => {
+    workspaceNotificationSummaryPendingCache.delete(cacheKey);
   });
-  return summary;
+
+  workspaceNotificationSummaryPendingCache.set(cacheKey, summaryPromise);
+  return summaryPromise;
 }

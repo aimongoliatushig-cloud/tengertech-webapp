@@ -229,7 +229,9 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     project.tasks.find((task) => task.driverEmployeeId || task.collectorEmployeeIds.length) ??
     null;
   const [subdistrictOptions, garbagePointOptions, garbageLoaderOptions] = await Promise.all([
-    loadGarbageSubdistrictOptions(connectionOverrides).catch(() => []),
+    isGarbageRouteProject
+      ? loadGarbageSubdistrictOptions(connectionOverrides).catch(() => [])
+      : Promise.resolve([]),
     isGarbageRouteProject
       ? loadGarbagePointOptions(connectionOverrides, {
           requireCurrentEmployeeScope: session.role === "transport_inspector",

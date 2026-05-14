@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { type ComponentProps, Suspense } from "react";
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -42,6 +42,8 @@ type ProjectFilterKey = "all" | "progress" | "planned" | "overdue";
 type QuickActionMode = "task" | "report" | "none";
 type ProjectCardItem = DashboardSnapshot["projects"][number];
 type ProjectsSession = Awaited<ReturnType<typeof requireSession>>;
+type ProjectsAppMenuProps = ComponentProps<typeof AppMenu>;
+type ProjectsWorkspaceHeaderProps = ComponentProps<typeof WorkspaceHeader>;
 type AutoBaseProcurementItem = {
   id: number;
   name: string;
@@ -285,6 +287,26 @@ function AutoBaseProcurementCard({ item }: { item: AutoBaseProcurementItem }) {
       </div>
     </Link>
   );
+}
+
+async function AppMenuWithNotificationCount({
+  notificationCountPromise,
+  ...props
+}: ProjectsAppMenuProps & {
+  notificationCountPromise: Promise<number>;
+}) {
+  const notificationCount = await notificationCountPromise;
+  return <AppMenu {...props} notificationCount={notificationCount} />;
+}
+
+async function WorkspaceHeaderWithNotificationCount({
+  notificationCountPromise,
+  ...props
+}: ProjectsWorkspaceHeaderProps & {
+  notificationCountPromise: Promise<number>;
+}) {
+  const notificationCount = await notificationCountPromise;
+  return <WorkspaceHeader {...props} notificationCount={notificationCount} />;
 }
 
 export const dynamic = "force-dynamic";
@@ -815,39 +837,49 @@ async function ProjectsPageContent({
     }
   }
 
-  const notificationCount = await notificationCountPromise;
+  const roleLabel = getRoleLabel(session.role);
+  const appMenuProps: ProjectsAppMenuProps = {
+    active: transportInspectorMode ? "projects" : masterMode ? "dashboard" : "projects",
+    canCreateProject,
+    canCreateTasks,
+    canWriteReports,
+    canViewQualityCenter,
+    canUseFieldConsole,
+    userName: session.name,
+    userRole: session.role,
+    roleLabel,
+    groupFlags: session.groupFlags,
+    masterMode,
+    workerMode,
+    departmentScopeName: scopedDepartmentName,
+  };
+  const workspaceHeaderProps: ProjectsWorkspaceHeaderProps = {
+    title: masterMode ? "Хяналтын самбар" : "Ажлын самбар",
+    subtitle: selectedDepartmentName,
+    userName: session.name,
+    roleLabel,
+  };
 
   return (
     <main className={styles.shell}>
       <div className={styles.container} id="projects-top">
         <div className={styles.contentWithMenu}>
           <aside className={styles.menuColumn}>
-            <AppMenu
-              active={transportInspectorMode ? "projects" : masterMode ? "dashboard" : "projects"}
-              canCreateProject={canCreateProject}
-              canCreateTasks={canCreateTasks}
-              canWriteReports={canWriteReports}
-              canViewQualityCenter={canViewQualityCenter}
-              canUseFieldConsole={canUseFieldConsole}
-              userName={session.name}
-              userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
-              groupFlags={session.groupFlags}
-              masterMode={masterMode}
-              workerMode={workerMode}
-              notificationCount={notificationCount}
-              departmentScopeName={scopedDepartmentName}
-            />
+            <Suspense fallback={<AppMenu {...appMenuProps} notificationCount={0} />}>
+              <AppMenuWithNotificationCount
+                {...appMenuProps}
+                notificationCountPromise={notificationCountPromise}
+              />
+            </Suspense>
           </aside>
 
           <div className={styles.pageContent}>
-            <WorkspaceHeader
-              title={masterMode ? "Хяналтын самбар" : "Ажлын самбар"}
-              subtitle={selectedDepartmentName}
-              userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
-              notificationCount={notificationCount}
-            />
+            <Suspense fallback={<WorkspaceHeader {...workspaceHeaderProps} notificationCount={0} />}>
+              <WorkspaceHeaderWithNotificationCount
+                {...workspaceHeaderProps}
+                notificationCountPromise={notificationCountPromise}
+              />
+            </Suspense>
 
             {!masterMode && !showAutoBaseFleet ? (
               <div className={styles.buttonRow}>

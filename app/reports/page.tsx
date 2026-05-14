@@ -445,45 +445,48 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   let garbageWeightError = "";
   let garbageFleetVehicleOptions = [] as Awaited<ReturnType<typeof loadGarbageVehicleOptions>>;
   const canViewAllGarbageWeight = canViewAllGarbageWeightReports(session);
-  const garbageWeightScopeName = canViewAllGarbageWeight
-    ? null
-    : await loadSessionEmployeeDepartmentName(session);
+  let garbageWeightScopeName: string | null = null;
+  if (selectedReportType === "garbage") {
+    garbageWeightScopeName = canViewAllGarbageWeight
+      ? null
+      : await loadSessionEmployeeDepartmentName(session);
 
-  try {
-    if (!canViewAllGarbageWeight && !garbageWeightScopeName) {
-      garbageWeightError = "Хэрэглэгчийн хэлтсийг тодорхойлж чадсангүй.";
-    } else {
-      garbageWeightLedger = await loadGarbageWeightLedger(
-        {
-          login: session.login,
-          password: session.password,
-        },
-        { maxDays: 90, scopedDepartmentName: garbageWeightScopeName },
-      );
-    }
-  } catch (error) {
-    console.error("Garbage transport weight ledger could not be loaded:", error);
-    garbageWeightError =
-      "Хог тээвэрлэлтийн жингийн мэдээллийг уншиж чадсангүй.";
-  }
-
-  try {
-    garbageFleetVehicleOptions = isGarbageTransportView
-      ? await loadGarbageVehicleOptions(
+    try {
+      if (!canViewAllGarbageWeight && !garbageWeightScopeName) {
+        garbageWeightError = "Хэрэглэгчийн хэлтсийг тодорхойлж чадсангүй.";
+      } else {
+        garbageWeightLedger = await loadGarbageWeightLedger(
           {
             login: session.login,
             password: session.password,
           },
-          { ignoreCurrentEmployeeScope: true },
-        )
-      : [];
-  } catch (error) {
-    console.warn("Garbage vehicle options for report could not be loaded:", error);
+          { maxDays: 90, scopedDepartmentName: garbageWeightScopeName },
+        );
+      }
+    } catch (error) {
+      console.error("Garbage transport weight ledger could not be loaded:", error);
+      garbageWeightError =
+        "Хог тээвэрлэлтийн жингийн мэдээллийг уншиж чадсангүй.";
+    }
+
+    try {
+      garbageFleetVehicleOptions = isGarbageTransportView
+        ? await loadGarbageVehicleOptions(
+            {
+              login: session.login,
+              password: session.password,
+            },
+            { ignoreCurrentEmployeeScope: true },
+          )
+        : [];
+    } catch (error) {
+      console.warn("Garbage vehicle options for report could not be loaded:", error);
+    }
   }
 
   let procurementDashboard = createEmptyProcurementDashboard();
   let procurementReportError = "";
-  if (canViewProcurementReport) {
+  if (canViewProcurementReport && selectedReportType === "procurement") {
   try {
     procurementDashboard = await loadProcurementDashboard(
       { limit: 100 },

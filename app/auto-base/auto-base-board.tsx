@@ -2,7 +2,15 @@
 
 import Image from "next/image";
 import { Plus, Trash2, UploadCloud } from "lucide-react";
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 
 import {
   archiveFleetVehicleAction,
@@ -242,8 +250,9 @@ function primaryVehicleImageUrl(vehicle: FleetVehicleBoardItem) {
 }
 
 function VehicleThumbnail({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
-  const [failed, setFailed] = useState(false);
+  const [failedUrl, setFailedUrl] = useState("");
   const imageUrl = primaryVehicleImageUrl(vehicle);
+  const failed = Boolean(imageUrl && failedUrl === imageUrl);
 
   if (!imageUrl || failed) {
     return (
@@ -261,7 +270,7 @@ function VehicleThumbnail({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
       width={320}
       height={180}
       unoptimized
-      onError={() => setFailed(true)}
+      onError={() => setFailedUrl(imageUrl)}
     />
   );
 }
@@ -279,7 +288,8 @@ function AttachmentTile({
   label: string;
   previewImages: boolean;
 }) {
-  const [failed, setFailed] = useState(false);
+  const [failedId, setFailedId] = useState<number | null>(null);
+  const failed = failedId === id;
 
   return (
     <a href={attachmentUrl(id)} target="_blank" rel="noreferrer">
@@ -290,7 +300,7 @@ function AttachmentTile({
           width={220}
           height={140}
           unoptimized
-          onError={() => setFailed(true)}
+          onError={() => setFailedId(id)}
         />
       ) : (
         <span className={styles.vehicleDocumentIcon} aria-hidden>
@@ -314,21 +324,108 @@ function FileUploadField({
   name,
   label,
   accept,
-  multiple = true,
+  existingId,
 }: {
   name: string;
   label: string;
   accept: string;
-  multiple?: boolean;
+  existingId?: number;
 }) {
+  const inputId = useId();
+  const clearInputId = useId();
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [previewName, setPreviewName] = useState("");
+  const [selectedIsImage, setSelectedIsImage] = useState(false);
+  const [existingFailed, setExistingFailed] = useState(false);
+  const [clearExisting, setClearExisting] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    setPreviewName(file?.name || "");
+    setSelectedIsImage(Boolean(file?.type.startsWith("image/")));
+    if (file) {
+      setClearExisting(false);
+    }
+    setPreviewUrl((currentUrl) => {
+      if (currentUrl) {
+        URL.revokeObjectURL(currentUrl);
+      }
+      return file && file.type.startsWith("image/") ? URL.createObjectURL(file) : "";
+    });
+  }
+
+  const existingUrl = existingId ? attachmentUrl(existingId) : "";
+
   return (
-    <label className={styles.vehicleFileField}>
-      <span>
+    <div className={styles.vehicleFileField}>
+      <label htmlFor={inputId}>
         <UploadCloud size={16} aria-hidden />
         {label}
-      </span>
-      <input name={name} type="file" accept={accept} multiple={multiple} />
-    </label>
+      </label>
+      <input id={inputId} name={name} type="file" accept={accept} onChange={handleFileChange} />
+      {previewUrl && selectedIsImage ? (
+        <span className={styles.vehicleFilePreview}>
+          <Image src={previewUrl} alt={`${label} preview`} width={220} height={132} unoptimized />
+          <small>{previewName}</small>
+        </span>
+      ) : previewName ? (
+        <span className={styles.vehicleFilePreview}>
+          <span className={styles.vehicleDocumentIcon} aria-hidden>
+            Файл
+          </span>
+          <small>{previewName}</small>
+        </span>
+      ) : existingUrl && !clearExisting ? (
+        <div className={styles.vehicleFileExisting}>
+          <a className={styles.vehicleFilePreview} href={existingUrl} target="_blank" rel="noreferrer">
+            {!existingFailed ? (
+              <Image
+                src={existingUrl}
+                alt={label}
+                width={220}
+                height={132}
+                unoptimized
+                onError={() => setExistingFailed(true)}
+              />
+            ) : (
+              <span className={styles.vehicleDocumentIcon} aria-hidden>
+                Файл
+              </span>
+            )}
+            <small>Одоо бүртгэлтэй файл #{existingId}</small>
+          </a>
+          <label className={styles.vehicleFileClear} htmlFor={clearInputId}>
+            <input
+              id={clearInputId}
+              name={`${name}_clear`}
+              type="checkbox"
+              checked={clearExisting}
+              onChange={(event) => setClearExisting(event.target.checked)}
+            />
+            <span>Устгах</span>
+          </label>
+        </div>
+      ) : existingUrl && clearExisting ? (
+        <label className={styles.vehicleFileClearPending} htmlFor={clearInputId}>
+          <input
+            id={clearInputId}
+            name={`${name}_clear`}
+            type="checkbox"
+            checked={clearExisting}
+            onChange={(event) => setClearExisting(event.target.checked)}
+          />
+          <span>Хадгалах үед энэ файл устгагдана</span>
+        </label>
+      ) : null}
+    </div>
   );
 }
 
@@ -366,21 +463,56 @@ function AttachmentGallery({
   );
 }
 
-function VehicleUploadFields() {
+function firstAttachmentId(groups: FleetVehicleAttachmentGroup[], key: string) {
+  return groups.find((group) => group.key === key)?.ids[0];
+}
+
+function VehicleUploadFields({ vehicle }: { vehicle?: FleetVehicleBoardItem }) {
   return (
     <div className={styles.vehicleUploadSection}>
       <span className={styles.mobileDetailEyebrow}>Зураг, баримт хавсаргах</span>
-      <FileUploadField name="municipal_front_photo_ids" label="Урд талаас авсан зураг" accept="image/*" />
-      <FileUploadField name="municipal_rear_photo_ids" label="Ард талаас авсан зураг" accept="image/*" />
-      <FileUploadField name="municipal_side_photo_ids" label="Хажуу талаас авсан зураг" accept="image/*" />
-      <FileUploadField name="municipal_certificate_photo_ids" label="Гэрчилгээний зураг" accept="image/*" />
-      <FileUploadField name="municipal_insurance_attachment_ids" label="Даатгалын баримт" accept="image/*,.pdf" />
+      <FileUploadField
+        name="municipal_front_photo_ids"
+        label="Урд талаас авсан зураг"
+        accept="image/*"
+        existingId={vehicle ? firstAttachmentId(vehicle.photoGroups, "front") : undefined}
+      />
+      <FileUploadField
+        name="municipal_rear_photo_ids"
+        label="Ард талаас авсан зураг"
+        accept="image/*"
+        existingId={vehicle ? firstAttachmentId(vehicle.photoGroups, "rear") : undefined}
+      />
+      <FileUploadField
+        name="municipal_side_photo_ids"
+        label="Хажуу талаас авсан зураг"
+        accept="image/*"
+        existingId={vehicle ? firstAttachmentId(vehicle.photoGroups, "side") : undefined}
+      />
+      <FileUploadField
+        name="municipal_certificate_photo_ids"
+        label="Гэрчилгээний зураг"
+        accept="image/*"
+        existingId={vehicle ? firstAttachmentId(vehicle.photoGroups, "certificate") : undefined}
+      />
+      <FileUploadField
+        name="municipal_insurance_attachment_ids"
+        label="Даатгалын баримт"
+        accept="image/*,.pdf"
+        existingId={vehicle ? firstAttachmentId(vehicle.documentGroups, "insurance") : undefined}
+      />
       <FileUploadField
         name="municipal_insurance_contract_attachment_ids"
         label="Даатгалын гэрээ"
         accept="image/*,.pdf"
+        existingId={vehicle ? firstAttachmentId(vehicle.documentGroups, "insurance-contract") : undefined}
       />
-      <FileUploadField name="municipal_inspection_attachment_ids" label="Улсын үзлэгийн баримт" accept="image/*,.pdf" />
+      <FileUploadField
+        name="municipal_inspection_attachment_ids"
+        label="Улсын үзлэгийн баримт"
+        accept="image/*,.pdf"
+        existingId={vehicle ? firstAttachmentId(vehicle.documentGroups, "inspection") : undefined}
+      />
     </div>
   );
 }
@@ -820,7 +952,7 @@ function NewVehicleForm({
         </button>
       </div>
 
-      <form action={createFleetVehicleAction} className={styles.vehicleEditForm} encType="multipart/form-data">
+      <form action={createFleetVehicleAction} className={styles.vehicleEditForm}>
         <label className={styles.vehicleFormField}>
           <span>Улсын дугаар</span>
           <input name="license_plate" required placeholder="Жишээ: 1234УБА" />
@@ -1171,7 +1303,6 @@ function VehicleDetailModal({
             key={vehicle.id}
             action={updateFleetVehicleAction}
             className={styles.vehicleEditForm}
-            encType="multipart/form-data"
           >
           <input type="hidden" name="vehicle_id" value={vehicle.id} />
 
@@ -1328,7 +1459,7 @@ function VehicleDetailModal({
             <textarea name="municipal_inspection_note" defaultValue={vehicle.inspection.note || ""} />
           </label>
 
-          <VehicleUploadFields />
+          <VehicleUploadFields vehicle={vehicle} />
 
           <input type="hidden" name="mfo_active_for_ops_present" value="1" />
           <label className={styles.vehicleCheckbox}>

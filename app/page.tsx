@@ -69,6 +69,17 @@ const EMPTY_HR_ATTENDANCE_SUMMARY: HrDailyAttendanceSummary = {
   source: "empty",
 };
 
+const EMPTY_WEATHER_SNAPSHOT: Awaited<ReturnType<typeof loadUlaanbaatarWeather>> = {
+  city: "Улаанбаатар",
+  temperature: null,
+  condition: "Шинэчилж байна",
+  aqi: null,
+  aqiLabel: "AQI",
+  windSpeed: null,
+  observedAt: null,
+  weeklyForecast: [],
+};
+
 const EMPTY_MUNICIPAL_SNAPSHOT: Awaited<ReturnType<typeof loadMunicipalSnapshot>> = {
   source: "live",
   generatedAt: "",
@@ -88,6 +99,15 @@ const EMPTY_MUNICIPAL_SNAPSHOT: Awaited<ReturnType<typeof loadMunicipalSnapshot>
 
 const AUTO_BASE_GARBAGE_DEPARTMENT_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
 
+function departmentNeedsFleetSummary(departmentName?: string | null) {
+  const value = departmentName ?? "";
+  return (
+    value.includes("Авто") ||
+    value.includes("Хог") ||
+    value.includes("хог")
+  );
+}
+
 function isTransportInspectorSession(session: DashboardSession) {
   return Boolean(
     session.role === "transport_inspector" ||
@@ -95,6 +115,51 @@ function isTransportInspectorSession(session: DashboardSession) {
         !session.groupFlags?.mfoManager &&
         !session.groupFlags?.mfoDispatcher &&
         !session.groupFlags?.municipalDepartmentHead),
+  );
+}
+
+function shouldResolveDashboardHrAccess(
+  session: DashboardSession,
+  options: {
+    workerMode: boolean;
+    generalDashboardMode: boolean;
+  },
+) {
+  const flags = session.groupFlags;
+  return Boolean(
+    !options.workerMode &&
+      (options.generalDashboardMode ||
+        session.role === "project_manager" ||
+        session.role === "hr_specialist" ||
+        session.role === "hr_manager" ||
+        flags?.municipalDepartmentHead ||
+        flags?.municipalManager ||
+        flags?.municipalHr ||
+        flags?.hrUser ||
+        flags?.hrManager),
+  );
+}
+
+function shouldLoadDashboardFleetBoard(
+  session: DashboardSession,
+  options: {
+    workerMode: boolean;
+    generalDashboardMode: boolean;
+    transportInspectorMode: boolean;
+    scopedDepartmentName: string | null;
+  },
+) {
+  const flags = session.groupFlags;
+  return Boolean(
+    !options.workerMode &&
+      (options.generalDashboardMode ||
+        options.transportInspectorMode ||
+        departmentNeedsFleetSummary(options.scopedDepartmentName) ||
+        flags?.mfoManager ||
+        flags?.mfoDispatcher ||
+        flags?.mfoInspector ||
+        flags?.mfoDriver ||
+        flags?.fleetRepairAny),
   );
 }
 
@@ -160,10 +225,15 @@ async function DashboardPageContent({
   const canViewGeneralDashboard = !transportInspectorMode && canAccessGeneralDashboard(session);
   const generalDashboardMode = canViewGeneralDashboard;
   const canUseFieldConsole = hasCapability(session, "use_field_console");
-  const canViewHrPromise = canAccessHr(session).catch((error) => {
-    console.warn("HR access could not be resolved for dashboard menu:", error);
-    return false;
-  });
+  const canViewHrPromise = shouldResolveDashboardHrAccess(session, {
+    workerMode,
+    generalDashboardMode,
+  })
+    ? canAccessHr(session).catch((error) => {
+        console.warn("HR access could not be resolved for dashboard menu:", error);
+        return false;
+      })
+    : Promise.resolve(false);
 
   const snapshotPromise = loadMunicipalSnapshot(
     connectionOverrides,
@@ -173,7 +243,10 @@ async function DashboardPageContent({
     return EMPTY_MUNICIPAL_SNAPSHOT;
   });
   const departmentScopeNamePromise = loadSessionDepartmentName(session);
-  const weatherPromise = loadUlaanbaatarWeather();
+  const weatherPromise =
+    workerMode || transportInspectorMode
+      ? Promise.resolve(EMPTY_WEATHER_SNAPSHOT)
+      : loadUlaanbaatarWeather();
   const todayAssignmentsPromise =
     workerMode && canUseFieldConsole
       ? loadAssignedGarbageTasks(
@@ -218,12 +291,19 @@ async function DashboardPageContent({
         })
     : Promise.resolve(null);
 
-  const fleetBoardPromise = workerMode
-    ? Promise.resolve({
-        fleetBoard: EMPTY_FLEET_BOARD,
-        fleetLoadError: "",
-      })
-    : loadFleetVehicleBoard()
+  let scopedDepartmentName = await departmentScopeNamePromise;
+  if (transportInspectorMode) {
+    scopedDepartmentName = AUTO_BASE_GARBAGE_DEPARTMENT_NAME;
+  } else if (generalDashboardMode) {
+    scopedDepartmentName = null;
+  }
+  const fleetBoardPromise = shouldLoadDashboardFleetBoard(session, {
+    workerMode,
+    generalDashboardMode,
+    transportInspectorMode,
+    scopedDepartmentName,
+  })
+    ? loadFleetVehicleBoard()
         .then((fleetBoard) => ({
           fleetBoard,
           fleetLoadError: "",
@@ -234,13 +314,11 @@ async function DashboardPageContent({
             fleetBoard: EMPTY_FLEET_BOARD,
             fleetLoadError: "Авто баазын техникийн мэдээллийг уншиж чадсангүй.",
           };
-        });
-  let scopedDepartmentName = await departmentScopeNamePromise;
-  if (transportInspectorMode) {
-    scopedDepartmentName = AUTO_BASE_GARBAGE_DEPARTMENT_NAME;
-  } else if (generalDashboardMode) {
-    scopedDepartmentName = null;
-  }
+        })
+    : Promise.resolve({
+        fleetBoard: EMPTY_FLEET_BOARD,
+        fleetLoadError: "",
+      });
   const hrAttendanceSummaryPromise = workerMode
     ? Promise.resolve(EMPTY_HR_ATTENDANCE_SUMMARY)
     : scopedDepartmentName
