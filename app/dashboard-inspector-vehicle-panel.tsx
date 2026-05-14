@@ -92,6 +92,19 @@ function taskStatusLabel(task: DashboardSnapshot["taskDirectory"][number]) {
   return "Хүлээгдэж буй";
 }
 
+function blockedVehicleStatusLabel(boardVehicle: FleetVehicleBoard["allVehicles"][number] | undefined) {
+  if (!boardVehicle) {
+    return "";
+  }
+  if (boardVehicle.isRepair) {
+    return boardVehicle.operationalStatusKey === "broken" ? "Эвдэрсэн" : "Засвартай";
+  }
+  if (boardVehicle.isArchived || boardVehicle.isOperational === false) {
+    return "Зогсолттой";
+  }
+  return "";
+}
+
 function VehicleLogo({ src }: { src?: string }) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const failed = Boolean(src && failedSrc === src);
@@ -209,15 +222,17 @@ export function DashboardInspectorVehiclePanel({
         const text = normalizeText(`${task.name} ${task.projectName} ${task.departmentName} ${task.operationTypeLabel}`);
         return task.scheduledDate === workDate && text.includes(searchablePlate);
       });
-      const done = todayTasks.filter(isDoneTask).length;
+      const blockedStatusLabel = blockedVehicleStatusLabel(boardVehicle);
+      const done = blockedStatusLabel ? todayTasks.length : todayTasks.filter(isDoneTask).length;
       const total = todayTasks.length;
       const progress = total
-        ? Math.round(todayTasks.reduce((sum, task) => sum + Math.max(0, Math.min(100, task.progress)), 0) / total)
+        ? blockedStatusLabel
+          ? 100
+          : Math.round(todayTasks.reduce((sum, task) => sum + Math.max(0, Math.min(100, task.progress)), 0) / total)
         : 0;
-      const isStopped =
-        boardVehicle?.isRepair || boardVehicle?.isArchived || boardVehicle?.isOperational === false;
-      const statusTone = total ? "green" : isStopped ? "red" : "amber";
-      const statusLabel = total ? "Ажиллаж байна" : isStopped ? "Зогсолттой" : "Ачаалалтай";
+      const isStopped = Boolean(blockedStatusLabel);
+      const statusTone = isStopped ? "red" : total ? "green" : "amber";
+      const statusLabel = blockedStatusLabel || (total ? "Ажиллаж байна" : "Ачаалалтай");
       const todayWeight =
         boardVehicle?.weightReports.find((report) => report.reportDate === workDate)?.weightLabel ??
         "0 кг";
@@ -234,6 +249,7 @@ export function DashboardInspectorVehiclePanel({
         weightLabel: todayWeight,
         statusTone,
         statusLabel,
+        isStopped,
       };
     });
   }, [fleetBoard.allVehicles, tasks, vehicles, workDate]);
@@ -250,6 +266,10 @@ export function DashboardInspectorVehiclePanel({
     : "";
 
   function openTaskModal(vehicleId: number) {
+    const summary = vehicleSummaries.find((item) => item.vehicle.id === vehicleId);
+    if (summary?.isStopped) {
+      return;
+    }
     setModalVehicleId(vehicleId);
     setSubdistrictId("");
     setSelectedPointIds([]);
@@ -288,11 +308,20 @@ export function DashboardInspectorVehiclePanel({
             <span>Сонгосон өдрийн ажил</span>
             <h3>{activeSummary.plate} / {workDate}</h3>
           </div>
-          <button type="button" onClick={() => openTaskModal(activeSummary.vehicle.id)}>
+          <button type="button" onClick={() => openTaskModal(activeSummary.vehicle.id)} disabled={activeSummary.isStopped}>
             <Plus aria-hidden />
-            Даалгавар нэмэх
+            {activeSummary.isStopped ? activeSummary.statusLabel : "Даалгавар нэмэх"}
           </button>
         </div>
+
+        {activeSummary.isStopped ? (
+          <div className={dashboardStyles.inspectorVehicleNotice}>
+            <Info aria-hidden />
+            <span>
+              Энэ машин {activeSummary.statusLabel.toLowerCase()} тул хяналтын ажил нэмэх боломжгүй. Нээлттэй ажил байвал систем хаасан төлөвт оруулна.
+            </span>
+          </div>
+        ) : null}
 
         <div className={dashboardStyles.inspectorVehicleSummaryRow}>
           <span><strong>{activeSummary.total}</strong> даалгавар</span>
@@ -355,7 +384,7 @@ export function DashboardInspectorVehiclePanel({
 
         {vehicles.length ? (
           <>
-            {activeSummary && !activeSummary.total ? (
+            {activeSummary && !activeSummary.total && !activeSummary.isStopped ? (
               <div className={dashboardStyles.inspectorVehicleNotice}>
                 <Info aria-hidden />
                 <span>Энэ машин дээр сонгосон өдөр даалгавар нэмэгдээгүй байна.</span>
@@ -371,6 +400,7 @@ export function DashboardInspectorVehiclePanel({
                     className={cn(
                       dashboardStyles.assignedVehicleCard,
                       isActive && dashboardStyles.assignedVehicleCardActive,
+                      summary.isStopped && dashboardStyles.assignedVehicleCardBlocked,
                     )}
                     onClick={() => setActiveVehicleId(summary.vehicle.id)}
                   >

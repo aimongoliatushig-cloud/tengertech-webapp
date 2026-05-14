@@ -2664,6 +2664,11 @@ function reportStateBucket(
   state?: string | false,
 ): TaskDirectoryReportSummary["stateBucket"] {
   switch (String(state || "").toLowerCase()) {
+    case "verified":
+    case "done":
+    case "cancelled":
+    case "canceled":
+      return "done";
     case "submitted":
     case "under_review":
       return "review";

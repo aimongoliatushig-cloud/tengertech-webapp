@@ -1188,6 +1188,17 @@
   outline: none;
 }
 
+.assignedVehicleCard:disabled {
+  cursor: pointer;
+}
+
+.assignedVehicleCardBlocked {
+  border-color: rgba(190, 65, 47, 0.2);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(190, 65, 47, 0.09), transparent 42%),
+    #fff;
+}
+
 .assignedVehicleCardActive {
   border-color: rgba(46, 125, 50, 0.48);
   box-shadow:
@@ -1398,6 +1409,12 @@
   font: inherit;
   font-size: 0.82rem;
   font-weight: 900;
+}
+
+.inspectorVehicleDetailHeader button:disabled {
+  background: rgba(190, 65, 47, 0.1);
+  color: #9c2d1f;
+  cursor: not-allowed;
 }
 
 .inspectorVehicleDetailHeader button svg {

@@ -4,7 +4,7 @@ import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BarChart3,
   Bell,
@@ -13,6 +13,7 @@ import {
   FileText,
   Flag,
   CircleHelp,
+  HeartPulse,
   LayoutDashboard,
   Leaf,
   ListChecks,
@@ -22,8 +23,10 @@ import {
   MessageSquare,
   PlusCircle,
   Settings,
+  ShieldAlert,
   ShoppingCart,
   Truck,
+  UserPlus,
   Users,
   Wrench,
   X,
@@ -50,6 +53,7 @@ import { cn } from "@/lib/utils";
 
 import { PendingLinkIndicator } from "./pending-link-indicator";
 import styles from "./app-menu.module.css";
+import { HR_NOTIFICATION_HREF } from "@/app/hr/constants";
 
 const AUTO_GARBAGE_DEPARTMENT_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
 
@@ -221,6 +225,8 @@ export function AppMenu({
   void variant;
 
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [fetchedUserImageUrl, setFetchedUserImageUrl] = useState("");
@@ -436,7 +442,14 @@ export function AppMenu({
 
   const hrItems: MenuItem[] = canShowHrMenu
     ? [
-        { key: "hr", href: "/hr", label: "\u0425\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446", icon: Users },
+        { key: "hr-dashboard", href: "/hr", label: "Самбар", icon: LayoutDashboard },
+        { key: "hr-employees", href: "/hr/employees", label: "Бүх ажилтнууд", icon: Users },
+        { key: "hr-new-employee", href: "/hr/employees/new", label: "Шинэ ажилтан", icon: UserPlus },
+        { key: "hr-requests", href: "/hr/leaves", label: "Ирсэн хүсэлтүүд", icon: CalendarDays },
+        { key: "hr-sick", href: "/hr/sick", label: "Чөлөө / өвчтэй", icon: HeartPulse },
+        { key: "hr-discipline", href: "/hr/discipline", label: "Сахилгын бүртгэл", icon: ShieldAlert },
+        { key: "hr-notifications", href: HR_NOTIFICATION_HREF, label: "Мэдэгдэл", icon: Bell },
+        { key: "hr-reports", href: "/hr/reports", label: "Тайлан", icon: FileText },
       ]
     : [];
 
@@ -601,7 +614,7 @@ export function AppMenu({
       return false;
     }
     if (hrFocusedMode) {
-      return ["hr", "profile"].includes(item.key);
+      return item.key.startsWith("hr") || item.key === "profile";
     }
     if (item.key === "data-download" && masterMode) {
       return false;
@@ -723,6 +736,25 @@ export function AppMenu({
   ).filter((item) => !isHiddenMenuItem(item));
 
   function isItemActive(item: MenuItem) {
+    if (item.key === "hr-dashboard") {
+      return pathname === "/hr";
+    }
+    if (item.key === "hr-new-employee") {
+      return pathname === "/hr/employees/new";
+    }
+    if (item.key === "hr-employees") {
+      return pathname.startsWith("/hr/employees") && pathname !== "/hr/employees/new";
+    }
+    if (item.key === "hr-notifications") {
+      return pathname === "/hr/leaves" && searchParams.get("state") === "pending";
+    }
+    if (item.key === "hr-requests") {
+      return pathname === "/hr/leaves" && searchParams.get("state") !== "pending";
+    }
+    if (item.key.startsWith("hr-")) {
+      const itemPath = item.href.split("?")[0];
+      return itemPath === "/hr" ? pathname === "/hr" : pathname.startsWith(itemPath);
+    }
     if (item.key === active) {
       return true;
     }

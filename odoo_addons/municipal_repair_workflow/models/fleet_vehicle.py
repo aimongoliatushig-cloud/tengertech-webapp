@@ -136,7 +136,72 @@ class FleetVehicle(models.Model):
         result = super().write(vals)
         if tracked_driver:
             self._sync_driver_assignment_history(previous_driver_by_vehicle)
+        if vals.get("x_municipal_operational_status") in ("in_repair", "broken"):
+            self._municipal_close_open_ops_tasks(
+                "Машин засвартай болсон тул хяналтын ажил автоматаар хаагдлаа."
+            )
         return result
+
+    def _municipal_close_open_ops_tasks(self, reason):
+        task_model = self.env["project.task"].sudo()
+        if "mfo_vehicle_id" not in task_model._fields:
+            return True
+
+        domain = [("mfo_vehicle_id", "in", self.ids)]
+        if "mfo_operation_type" in task_model._fields:
+            domain.append(("mfo_operation_type", "=", "garbage"))
+        if "mfo_state" in task_model._fields:
+            domain.append(("mfo_state", "in", ["draft", "dispatched", "in_progress", "submitted", "returned"]))
+
+        tasks = task_model.search(domain)
+        if not tasks:
+            return True
+
+        now = fields.Datetime.now()
+        for task in tasks:
+            values = {}
+            if "mfo_state" in task._fields:
+                values["mfo_state"] = "cancelled"
+            if "mfo_end_datetime" in task._fields:
+                values["mfo_end_datetime"] = now
+            if "ops_reports_locked" in task._fields:
+                values["ops_reports_locked"] = True
+            if values:
+                task.write(values)
+            if "municipal_work_id" in task._fields and task.municipal_work_id:
+                work = task.municipal_work_id.sudo()
+                if hasattr(work, "action_cancel") and work.state not in ("done", "cancelled"):
+                    work.action_cancel()
+            if hasattr(task, "message_post"):
+                task.message_post(body="<p>%s</p>" % reason)
+
+        if self.env.registry.get("mfo.stop.execution.line"):
+            stop_model = self.env["mfo.stop.execution.line"].sudo()
+            stop_values = {"state": "skipped"}
+            if "skip_reason" in stop_model._fields:
+                stop_values["skip_reason"] = reason
+            if "departure_datetime" in stop_model._fields:
+                stop_values["departure_datetime"] = now
+            stop_model.search(
+                [
+                    ("task_id", "in", tasks.ids),
+                    ("state", "not in", ["done", "skipped"]),
+                ]
+            ).write(stop_values)
+
+        if self.env.registry.get("mfo.route.execution"):
+            execution_model = self.env["mfo.route.execution"].sudo()
+            execution_values = {"state": "cancelled"}
+            if "end_datetime" in execution_model._fields:
+                execution_values["end_datetime"] = now
+            execution_model.search(
+                [
+                    ("vehicle_id", "in", self.ids),
+                    ("state", "in", ["draft", "planned", "dispatched", "in_progress", "submitted", "delayed"]),
+                ]
+            ).write(execution_values)
+
+        return True
 
     def _compute_municipal_repair_counts(self):
         repair_model = self.env["municipal.repair.request"]

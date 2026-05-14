@@ -1203,6 +1203,11 @@ function reportStateLabel(state?: string | false) {
 
 function reportStateBucket(state?: string | false): StageBucket {
   switch (String(state || "").toLowerCase()) {
+    case "verified":
+    case "done":
+    case "cancelled":
+    case "canceled":
+      return "done";
     case "submitted":
     case "under_review":
       return "review";

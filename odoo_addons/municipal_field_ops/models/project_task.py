@@ -33,6 +33,9 @@ class ProjectProject(models.Model):
             raise UserError("Маршрут сонгоно уу.")
         shift_date = values.get("shift_date") or fields.Date.context_today(self)
         vehicle_id = values.get("vehicle_id") or route.vehicle_id.id
+        vehicle = self.env["fleet.vehicle"].browse(vehicle_id).exists() if vehicle_id else self.env["fleet.vehicle"]
+        if vehicle and "x_municipal_operational_status" in vehicle._fields and vehicle.x_municipal_operational_status in ("in_repair", "broken"):
+            raise UserError("Засвартай эсвэл эвдэрсэн машиныг хяналтын ажилд оноох боломжгүй.")
         department = route.department_id or self.env.user.employee_id.department_id or self.env["hr.department"].search([], limit=1)
         if not department:
             raise UserError("Маршрут үүсгэхийн өмнө хэлтэс тохируулна уу.")

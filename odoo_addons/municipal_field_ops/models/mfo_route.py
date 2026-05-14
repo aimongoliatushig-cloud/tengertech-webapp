@@ -356,8 +356,8 @@ class MfoRouteExecution(models.Model):
                 if self.search_count(domain + [("vehicle_id", "=", execution.vehicle_id.id)]):
                     raise ValidationError("Нэг машин давхардсан цагт хоёр маршрутанд оноогдож болохгүй.")
                 status = execution.vehicle_id._fields.get("x_municipal_operational_status")
-                if status and execution.vehicle_id.x_municipal_operational_status == "in_repair":
-                    raise ValidationError("Засварт байгаа машиныг маршрутанд оноох боломжгүй.")
+                if status and execution.vehicle_id.x_municipal_operational_status in ("in_repair", "broken"):
+                    raise ValidationError("Засвартай эсвэл эвдэрсэн машиныг маршрутанд оноох боломжгүй.")
             if execution.driver_id and self.search_count(domain + [("driver_id", "=", execution.driver_id.id)]):
                 raise ValidationError("Нэг жолооч давхардсан цагт хоёр маршрутанд оноогдож болохгүй.")
 

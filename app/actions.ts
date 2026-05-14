@@ -987,6 +987,13 @@ export async function createProjectAction(formData: FormData) {
       const boardVehicle = fleetBoard?.allVehicles.find((vehicle) => vehicle.id === Number(garbageVehicleIdRaw)) ?? null;
       const vehicleName = selectedVehicle?.license_plate || selectedVehicle?.name || `Машин #${garbageVehicleIdRaw}`;
       const resolvedVehicleName = boardVehicle?.plate || vehicleName;
+      if (boardVehicle?.isRepair || boardVehicle?.isArchived || boardVehicle?.isOperational === false) {
+        redirectWithMessage(
+          "/projects/new",
+          "error",
+          `${resolvedVehicleName} машин засвартай эсвэл ашиглалтаас хаагдсан тул хяналтын ажил үүсгэх боломжгүй.`,
+        );
+      }
       const vehicleDriverId =
         relationIdValue(selectedVehicle?.municipal_responsible_driver_id) ??
         relationIdValue(selectedVehicle?.driver_employee_id) ??
