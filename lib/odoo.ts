@@ -667,12 +667,17 @@ type OdooFleetVehicleRecord = {
   municipal_insurance_reminder_due?: boolean;
   municipal_insurance_note?: string | false;
   municipal_insurance_attachment_ids?: number[];
+  municipal_insurance_contract_attachment_ids?: number[];
   municipal_inspection_date?: string | false;
   municipal_next_inspection_date?: string | false;
   municipal_inspection_days_remaining?: number;
   municipal_inspection_reminder_due?: boolean;
   municipal_inspection_note?: string | false;
   municipal_inspection_attachment_ids?: number[];
+  municipal_front_photo_ids?: number[];
+  municipal_rear_photo_ids?: number[];
+  municipal_side_photo_ids?: number[];
+  municipal_certificate_photo_ids?: number[];
 };
 
 type OdooCrewTeamRecord = {
@@ -785,7 +790,18 @@ export type FleetVehicleDeadlineInfo = {
   reminderDue: boolean;
   note?: string;
   attachmentCount: number;
+  attachmentIds: number[];
+  contractAttachmentCount?: number;
+  contractAttachmentIds?: number[];
 };
+
+export type FleetVehicleAttachmentGroup = {
+  key: string;
+  label: string;
+  ids: number[];
+};
+
+export type FleetVehiclePhotoGroup = FleetVehicleAttachmentGroup;
 
 export type FleetVehicleDriverHistoryItem = {
   id: number;
@@ -883,6 +899,8 @@ export type FleetVehicleBoardItem = {
   isArchived: boolean;
   insurance: FleetVehicleDeadlineInfo;
   inspection: FleetVehicleDeadlineInfo;
+  photoGroups: FleetVehiclePhotoGroup[];
+  documentGroups: FleetVehicleAttachmentGroup[];
   driverHistory: FleetVehicleDriverHistoryItem[];
   repairHistory: FleetVehicleRepairHistoryItem[];
   weightReports: FleetVehicleDailyWeightItem[];
@@ -1851,12 +1869,17 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
     "municipal_insurance_reminder_due",
     "municipal_insurance_note",
     "municipal_insurance_attachment_ids",
+    "municipal_insurance_contract_attachment_ids",
     "municipal_inspection_date",
     "municipal_next_inspection_date",
     "municipal_inspection_days_remaining",
     "municipal_inspection_reminder_due",
     "municipal_inspection_note",
     "municipal_inspection_attachment_ids",
+    "municipal_front_photo_ids",
+    "municipal_rear_photo_ids",
+    "municipal_side_photo_ids",
+    "municipal_certificate_photo_ids",
     "active",
   ],
   [
@@ -4161,7 +4184,10 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
         id: vehicle.id,
         plate: vehicle.license_plate || vehicle.name || `Машин #${vehicle.id}`,
         name: vehicle.name || vehicle.license_plate || `Машин #${vehicle.id}`,
-        imageUrl: imageDataUrl(vehicle.image_128 || vehicle.avatar_128 || vehicle.image_1920),
+        imageUrl:
+          vehicle.municipal_front_photo_ids?.[0]
+            ? `/api/odoo/attachments/${vehicle.municipal_front_photo_ids[0]}`
+            : imageDataUrl(vehicle.image_128 || vehicle.avatar_128 || vehicle.image_1920),
         modelId: relationId(vehicle.model_id ?? false),
         modelName: relationName(vehicle.model_id ?? false, ""),
         categoryId: relationId(vehicle.category_id ?? false),
@@ -4216,6 +4242,9 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
           reminderDue: Boolean(vehicle.municipal_insurance_reminder_due),
           note: vehicle.municipal_insurance_note || "",
           attachmentCount: vehicle.municipal_insurance_attachment_ids?.length ?? 0,
+          attachmentIds: vehicle.municipal_insurance_attachment_ids ?? [],
+          contractAttachmentCount: vehicle.municipal_insurance_contract_attachment_ids?.length ?? 0,
+          contractAttachmentIds: vehicle.municipal_insurance_contract_attachment_ids ?? [],
         },
         inspection: {
           startDate: formatOptionalCompactDate(vehicle.municipal_inspection_date),
@@ -4229,7 +4258,23 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
           reminderDue: Boolean(vehicle.municipal_inspection_reminder_due),
           note: vehicle.municipal_inspection_note || "",
           attachmentCount: vehicle.municipal_inspection_attachment_ids?.length ?? 0,
+          attachmentIds: vehicle.municipal_inspection_attachment_ids ?? [],
         },
+        photoGroups: [
+          { key: "front", label: "Урд талаас", ids: vehicle.municipal_front_photo_ids ?? [] },
+          { key: "rear", label: "Ард талаас", ids: vehicle.municipal_rear_photo_ids ?? [] },
+          { key: "side", label: "Хажуу талаас", ids: vehicle.municipal_side_photo_ids ?? [] },
+          { key: "certificate", label: "Гэрчилгээ", ids: vehicle.municipal_certificate_photo_ids ?? [] },
+        ],
+        documentGroups: [
+          { key: "insurance", label: "Даатгалын баримт", ids: vehicle.municipal_insurance_attachment_ids ?? [] },
+          {
+            key: "insurance-contract",
+            label: "Даатгалын гэрээ",
+            ids: vehicle.municipal_insurance_contract_attachment_ids ?? [],
+          },
+          { key: "inspection", label: "Улсын үзлэгийн баримт", ids: vehicle.municipal_inspection_attachment_ids ?? [] },
+        ],
         driverHistory: latestItems(driverHistoryByVehicle.get(vehicle.id)),
         repairHistory: latestItems(repairHistoryByVehicle.get(vehicle.id), 10),
         weightReports: latestItems(weightReportResult.byVehicle.get(vehicle.id), 10),

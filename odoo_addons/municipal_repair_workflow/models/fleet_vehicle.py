@@ -65,6 +65,13 @@ class FleetVehicle(models.Model):
         "attachment_id",
         string="Даатгалын баримт",
     )
+    municipal_insurance_contract_attachment_ids = fields.Many2many(
+        "ir.attachment",
+        "municipal_vehicle_insurance_contract_attachment_rel",
+        "vehicle_id",
+        "attachment_id",
+        string="Даатгалын гэрээ",
+    )
     municipal_insurance_note = fields.Text(string="Даатгалын тайлбар")
     municipal_insurance_days_remaining = fields.Integer(
         string="Даатгалын үлдсэн хоног",
@@ -85,6 +92,34 @@ class FleetVehicle(models.Model):
         string="Үзлэгийн баримт",
     )
     municipal_inspection_note = fields.Text(string="Улсын үзлэгийн тайлбар")
+    municipal_front_photo_ids = fields.Many2many(
+        "ir.attachment",
+        "municipal_vehicle_front_photo_rel",
+        "vehicle_id",
+        "attachment_id",
+        string="Урд талаас авсан зураг",
+    )
+    municipal_rear_photo_ids = fields.Many2many(
+        "ir.attachment",
+        "municipal_vehicle_rear_photo_rel",
+        "vehicle_id",
+        "attachment_id",
+        string="Ард талаас авсан зураг",
+    )
+    municipal_side_photo_ids = fields.Many2many(
+        "ir.attachment",
+        "municipal_vehicle_side_photo_rel",
+        "vehicle_id",
+        "attachment_id",
+        string="Хажуу талаас авсан зураг",
+    )
+    municipal_certificate_photo_ids = fields.Many2many(
+        "ir.attachment",
+        "municipal_vehicle_certificate_photo_rel",
+        "vehicle_id",
+        "attachment_id",
+        string="Гэрчилгээний зураг",
+    )
     municipal_inspection_days_remaining = fields.Integer(
         string="Үзлэгийн үлдсэн хоног",
         compute="_compute_municipal_deadline_status",

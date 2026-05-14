@@ -7,6 +7,15 @@ import { requireSession } from "@/lib/auth";
 import { executeOdooKw } from "@/lib/odoo";
 
 const AUTO_BASE_ALLOWED_ROLES = new Set(["system_admin", "director", "general_manager"]);
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+
+type OdooFieldInfo = {
+  type?: string;
+  required?: boolean;
+  readonly?: boolean;
+};
+
+type OdooFieldMap = Record<string, OdooFieldInfo>;
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -42,6 +51,118 @@ function optionalOdooNumber(value: string, label: string) {
     redirectWithMessage("error", `${label} зөв тоон утгатай байх ёстой.`);
   }
   return numericValue;
+}
+
+function pickSupportedValues(
+  candidateValues: Record<string, unknown>,
+  fields: OdooFieldMap,
+) {
+  return Object.fromEntries(
+    Object.entries(candidateValues).filter(([fieldName, value]) => {
+      if (!fields[fieldName] || fields[fieldName].readonly) {
+        return false;
+      }
+      if (value === undefined || value === null || value === "") {
+        return false;
+      }
+      return true;
+    }),
+  );
+}
+
+function getFiles(formData: FormData, key: string) {
+  return formData
+    .getAll(key)
+    .filter((value): value is File => value instanceof File && value.size > 0);
+}
+
+async function fileToBase64(file: File, label: string) {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    redirectWithMessage("error", `${label} файл 8MB-аас ихгүй байх ёстой.`);
+  }
+  const buffer = Buffer.from(await file.arrayBuffer());
+  return buffer.toString("base64");
+}
+
+async function createVehicleAttachments(
+  vehicleId: number,
+  fieldName: string,
+  label: string,
+  files: File[],
+  fields: OdooFieldMap,
+) {
+  if (!fields[fieldName] || !files.length) {
+    return [];
+  }
+
+  const attachmentIds: number[] = [];
+  for (const file of files) {
+    const id = await executeOdooKw<number>(
+      "ir.attachment",
+      "create",
+      [
+        {
+          name: file.name || label,
+          mimetype: file.type || "application/octet-stream",
+          datas: await fileToBase64(file, label),
+          res_model: "fleet.vehicle",
+          res_id: vehicleId,
+        },
+      ],
+      {},
+    );
+    attachmentIds.push(id);
+  }
+
+  return attachmentIds;
+}
+
+async function appendVehicleAttachmentFields(
+  vehicleId: number,
+  formData: FormData,
+  fields: OdooFieldMap,
+) {
+  const uploadFields = [
+    { fieldName: "municipal_front_photo_ids", label: "Урд талаас авсан зураг" },
+    { fieldName: "municipal_rear_photo_ids", label: "Ард талаас авсан зураг" },
+    { fieldName: "municipal_side_photo_ids", label: "Хажуу талаас авсан зураг" },
+    { fieldName: "municipal_certificate_photo_ids", label: "Гэрчилгээний зураг" },
+    { fieldName: "municipal_insurance_attachment_ids", label: "Даатгалын баримт" },
+    { fieldName: "municipal_insurance_contract_attachment_ids", label: "Даатгалын гэрээ" },
+    { fieldName: "municipal_inspection_attachment_ids", label: "Улсын үзлэгийн баримт" },
+  ];
+  const values: Record<string, unknown> = {};
+
+  for (const uploadField of uploadFields) {
+    const files = getFiles(formData, uploadField.fieldName);
+    const attachmentIds = await createVehicleAttachments(
+      vehicleId,
+      uploadField.fieldName,
+      uploadField.label,
+      files,
+      fields,
+    );
+    if (attachmentIds.length) {
+      values[uploadField.fieldName] = attachmentIds.map((id) => [4, id]);
+    }
+  }
+
+  if (Object.keys(values).length) {
+    await executeOdooKw<boolean>("fleet.vehicle", "write", [[vehicleId], values], {});
+  }
+
+  return Object.keys(values);
+}
+
+async function findDefaultVehicleModel() {
+  const models = await executeOdooKw<Array<{ id: number }>>(
+    "fleet.vehicle.model",
+    "search_read",
+    [[]],
+    { fields: ["id"], order: "id asc", limit: 1 },
+  ).catch(() => []);
+
+  return models[0]?.id ?? false;
 }
 
 function optionalStaffId(formData: FormData, key: string, label: string) {
@@ -88,7 +209,7 @@ export async function updateFleetVehicleAction(formData: FormData) {
   }
 
   try {
-    const editableFields = await executeOdooKw<Record<string, unknown>>(
+    const editableFields = await executeOdooKw<OdooFieldMap>(
       "fleet.vehicle",
       "fields_get",
       [
@@ -113,13 +234,20 @@ export async function updateFleetVehicleAction(formData: FormData) {
           "municipal_insurance_date_start",
           "municipal_insurance_date_end",
           "municipal_insurance_note",
+          "municipal_insurance_attachment_ids",
+          "municipal_insurance_contract_attachment_ids",
           "municipal_inspection_date",
           "municipal_next_inspection_date",
           "municipal_inspection_note",
+          "municipal_inspection_attachment_ids",
+          "municipal_front_photo_ids",
+          "municipal_rear_photo_ids",
+          "municipal_side_photo_ids",
+          "municipal_certificate_photo_ids",
         ],
       ],
       {
-        attributes: ["string"],
+        attributes: ["string", "type", "required", "readonly"],
       },
     );
     const values: Record<string, string | number | boolean | false> = {};
@@ -247,7 +375,9 @@ export async function updateFleetVehicleAction(formData: FormData) {
       );
     }
 
-    if (!Object.keys(values).length) {
+    const uploadedFieldNames = await appendVehicleAttachmentFields(vehicleId, formData, editableFields);
+
+    if (!Object.keys(values).length && !uploadedFieldNames.length) {
       const submittedCrewFields = [
         "municipal_responsible_driver_id",
         "municipal_loader_1_id",
@@ -262,12 +392,14 @@ export async function updateFleetVehicleAction(formData: FormData) {
       redirectWithMessage("error", "Засах боломжтой талбар олдсонгүй.");
     }
 
-    await executeOdooKw<boolean>(
-      "fleet.vehicle",
-      "write",
-      [[vehicleId], values],
-      {},
-    );
+    if (Object.keys(values).length) {
+      await executeOdooKw<boolean>(
+        "fleet.vehicle",
+        "write",
+        [[vehicleId], values],
+        {},
+      );
+    }
 
     revalidatePath("/auto-base");
     revalidatePath("/projects");
@@ -284,6 +416,91 @@ export async function updateFleetVehicleAction(formData: FormData) {
         ? "Жолооч, ачигчийн мэдээлэл шинэчлэгдлээ."
         : "Машины мэдээлэл шинэчлэгдлээ.",
     );
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirectWithMessage("error", getErrorMessage(error));
+  }
+}
+
+export async function createFleetVehicleAction(formData: FormData) {
+  const session = await requireSession();
+  if (!AUTO_BASE_ALLOWED_ROLES.has(String(session.role))) {
+    redirect("/");
+  }
+
+  const plate = getString(formData, "license_plate");
+  const name = getString(formData, "name") || plate;
+  if (!plate) {
+    redirectWithMessage("error", "Машины улсын дугаар оруулна уу.");
+  }
+
+  try {
+    const fields = await executeOdooKw<OdooFieldMap>(
+      "fleet.vehicle",
+      "fields_get",
+      [],
+      { attributes: ["string", "type", "required", "readonly"] },
+    );
+    const modelId =
+      optionalOdooId(getString(formData, "model_id")) ||
+      (fields.model_id?.required ? await findDefaultVehicleModel() : false);
+    const values = pickSupportedValues(
+      {
+        name,
+        license_plate: plate,
+        active: true,
+        model_id: modelId,
+        category_id: optionalOdooId(getString(formData, "category_id")),
+        municipal_vehicle_type_id: optionalOdooId(getString(formData, "municipal_vehicle_type_id")),
+        municipal_department_id: optionalOdooId(getString(formData, "municipal_department_id")),
+        x_municipal_operational_status:
+          optionalOdooValue(getString(formData, "x_municipal_operational_status")) || "available",
+        fuel_type: optionalOdooValue(getString(formData, "fuel_type")),
+        mfo_active_for_ops: true,
+      },
+      fields,
+    );
+
+    const vehicleId = await executeOdooKw<number>("fleet.vehicle", "create", [values], {});
+    await appendVehicleAttachmentFields(vehicleId, formData, fields);
+
+    revalidatePath("/auto-base");
+    revalidatePath("/projects");
+    revalidatePath("/");
+    redirectWithMessage("notice", "Машин техник нэмэгдлээ.");
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirectWithMessage("error", getErrorMessage(error));
+  }
+}
+
+export async function archiveFleetVehicleAction(formData: FormData) {
+  const session = await requireSession();
+  if (!AUTO_BASE_ALLOWED_ROLES.has(String(session.role))) {
+    redirect("/");
+  }
+
+  const vehicleId = Number(getString(formData, "vehicle_id"));
+  if (!Number.isFinite(vehicleId) || vehicleId <= 0) {
+    redirectWithMessage("error", "Машин сонгоно уу.");
+  }
+
+  try {
+    const fields = await executeOdooKw<OdooFieldMap>(
+      "fleet.vehicle",
+      "fields_get",
+      [["active"]],
+      { attributes: ["string", "readonly"] },
+    );
+    if (!fields.active || fields.active.readonly) {
+      redirectWithMessage("error", "Машин хасах талбар суулгагдаагүй байна.");
+    }
+
+    await executeOdooKw<boolean>("fleet.vehicle", "write", [[vehicleId], { active: false }], {});
+    revalidatePath("/auto-base");
+    revalidatePath("/projects");
+    revalidatePath("/");
+    redirectWithMessage("notice", "Машин техник жагсаалтаас хасагдлаа.");
   } catch (error) {
     rethrowIfRedirectError(error);
     redirectWithMessage("error", getErrorMessage(error));

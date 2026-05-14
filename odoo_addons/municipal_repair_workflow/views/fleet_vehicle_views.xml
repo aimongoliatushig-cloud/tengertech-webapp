@@ -95,6 +95,7 @@
                             </group>
                             <field name="municipal_insurance_note"/>
                             <field name="municipal_insurance_attachment_ids" widget="many2many_binary"/>
+                            <field name="municipal_insurance_contract_attachment_ids" widget="many2many_binary"/>
                         </page>
 
                         <page string="Улсын үзлэг">
@@ -110,6 +111,12 @@
                             </group>
                             <field name="municipal_inspection_note"/>
                             <field name="municipal_inspection_attachment_ids" widget="many2many_binary"/>
+                            <group string="Машины зураг">
+                                <field name="municipal_front_photo_ids" widget="many2many_binary"/>
+                                <field name="municipal_rear_photo_ids" widget="many2many_binary"/>
+                                <field name="municipal_side_photo_ids" widget="many2many_binary"/>
+                                <field name="municipal_certificate_photo_ids" widget="many2many_binary"/>
+                            </group>
                         </page>
 
                         <page string="Засварын түүх">
@@ -169,7 +176,12 @@
                         <page string="Баримт / хавсралт">
                             <group>
                                 <field name="municipal_insurance_attachment_ids" widget="many2many_binary"/>
+                                <field name="municipal_insurance_contract_attachment_ids" widget="many2many_binary"/>
                                 <field name="municipal_inspection_attachment_ids" widget="many2many_binary"/>
+                                <field name="municipal_front_photo_ids" widget="many2many_binary"/>
+                                <field name="municipal_rear_photo_ids" widget="many2many_binary"/>
+                                <field name="municipal_side_photo_ids" widget="many2many_binary"/>
+                                <field name="municipal_certificate_photo_ids" widget="many2many_binary"/>
                             </group>
                         </page>
                     </notebook>

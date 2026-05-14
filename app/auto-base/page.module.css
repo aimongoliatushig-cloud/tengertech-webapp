@@ -89,6 +89,43 @@
   margin-bottom: 18px;
 }
 
+.vehicleBoardActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.vehicleBoardActions svg,
+.vehicleModalActions svg,
+.dangerButton svg {
+  flex: 0 0 auto;
+}
+
+.vehicleCreatePanel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid rgba(74, 154, 93, 0.18);
+  border-radius: var(--ds-radius-card);
+  background: rgba(244, 250, 245, 0.78);
+}
+
+.vehicleCreateHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vehicleCreateHeader h2 {
+  margin: 8px 0 0;
+  color: var(--ink-900);
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
 .metricTile {
   display: grid;
   gap: 8px;
@@ -1058,6 +1095,7 @@
   text-align: center;
   text-decoration: none;
   box-shadow: none;
+  gap: 7px;
 }
 
 .primaryButton,
@@ -1427,6 +1465,99 @@
   margin-top: 12px;
 }
 
+.vehicleHeroImage {
+  margin-bottom: 14px;
+}
+
+.vehicleHeroImage .vehicleThumb,
+.vehicleHeroImage .vehicleThumbPlaceholder {
+  max-height: 300px;
+}
+
+.vehicleAttachmentPanel {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.vehicleAttachmentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vehicleAttachmentGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.vehicleAttachmentGroup > strong {
+  color: var(--ink-900);
+  font-size: 0.9rem;
+}
+
+.vehicleAttachmentGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.vehicleAttachmentGrid a {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--ink-900);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.vehicleAttachmentGrid img {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: calc(var(--ds-radius-control) - 2px);
+  object-fit: cover;
+  background: rgba(232, 245, 236, 0.9);
+}
+
+.vehicleDocumentIcon {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  place-items: center;
+  border-radius: calc(var(--ds-radius-control) - 2px);
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-900);
+  font-weight: 800;
+}
+
+.vehicleDocumentLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vehicleDocumentLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--brand-900);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .driverAssignmentPanel {
   display: grid;
   gap: 14px;
@@ -1687,9 +1818,46 @@
   min-width: 0;
 }
 
+.vehicleFileField {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px dashed rgba(74, 154, 93, 0.24);
+  border-radius: var(--ds-radius-control);
+  background: rgba(244, 250, 245, 0.58);
+}
+
+.vehicleFileField span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-700);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.vehicleUploadSection {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(74, 154, 93, 0.18);
+  border-radius: var(--ds-radius-card);
+  background: rgba(244, 250, 245, 0.68);
+}
+
+.vehicleUploadSection > .mobileDetailEyebrow {
+  grid-column: 1 / -1;
+  width: fit-content;
+}
+
 .vehicleFormField input,
 .vehicleFormField select,
-.vehicleFormField textarea {
+.vehicleFormField textarea,
+.vehicleFileField input {
   width: 100%;
   min-height: var(--ds-control-height);
   padding: 0 12px;
@@ -1744,6 +1912,46 @@
   padding-top: 2px;
 }
 
+.vehicleDeleteForm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid rgba(177, 94, 56, 0.22);
+  border-radius: var(--ds-radius-card);
+  background: rgba(255, 245, 239, 0.86);
+}
+
+.vehicleDeleteForm strong {
+  color: #7e321f;
+}
+
+.vehicleDeleteForm p {
+  margin: 5px 0 0;
+  color: var(--ink-700);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.dangerButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: var(--ds-control-height);
+  padding: 0 12px;
+  border: 1px solid rgba(177, 94, 56, 0.28);
+  border-radius: var(--ds-radius-control);
+  background: rgba(177, 94, 56, 0.12);
+  color: #7e321f;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 @media (max-width: 720px) {
   .vehicleModalBackdrop {
     place-items: end stretch;
@@ -1775,11 +1983,19 @@
   .vehicleDetailGrid,
   .vehicleCrewCard,
   .driverAssignmentForm,
-  .vehicleEditForm {
+  .vehicleEditForm,
+  .vehicleUploadSection {
     grid-template-columns: 1fr;
   }
 
   .driverAssignmentIntro {
+    flex-direction: column;
+  }
+
+  .vehicleBoardActions,
+  .vehicleCreateHeader,
+  .vehicleDeleteForm {
+    align-items: stretch;
     flex-direction: column;
   }
 

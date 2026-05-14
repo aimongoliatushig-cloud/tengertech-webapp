@@ -1,9 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState, type CSSProperties } from "react";
+import { Plus, Trash2, UploadCloud } from "lucide-react";
+import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 
-import { updateFleetVehicleAction } from "./actions";
+import {
+  archiveFleetVehicleAction,
+  createFleetVehicleAction,
+  updateFleetVehicleAction,
+} from "./actions";
 
 import styles from "./page.module.css";
 
@@ -49,6 +54,8 @@ type FleetVehicleBoardItem = {
   isArchived: boolean;
   insurance: FleetVehicleDeadlineInfo;
   inspection: FleetVehicleDeadlineInfo;
+  photoGroups: FleetVehicleAttachmentGroup[];
+  documentGroups: FleetVehicleAttachmentGroup[];
   driverHistory: FleetVehicleDriverHistoryItem[];
   repairHistory: FleetVehicleRepairHistoryItem[];
   weightReports: FleetVehicleDailyWeightItem[];
@@ -86,6 +93,15 @@ type FleetVehicleDeadlineInfo = {
   reminderDue: boolean;
   note?: string;
   attachmentCount: number;
+  attachmentIds: number[];
+  contractAttachmentCount?: number;
+  contractAttachmentIds?: number[];
+};
+
+type FleetVehicleAttachmentGroup = {
+  key: string;
+  label: string;
+  ids: number[];
 };
 
 type FleetVehicleDriverHistoryItem = {
@@ -220,10 +236,16 @@ function preferredCategoryRank(name: string) {
   return index === -1 ? PREFERRED_CATEGORY_NAMES.length + 1 : index;
 }
 
+function primaryVehicleImageUrl(vehicle: FleetVehicleBoardItem) {
+  const frontPhotoId = vehicle.photoGroups.find((group) => group.key === "front")?.ids[0];
+  return frontPhotoId ? attachmentUrl(frontPhotoId) : vehicle.imageUrl;
+}
+
 function VehicleThumbnail({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
   const [failed, setFailed] = useState(false);
+  const imageUrl = primaryVehicleImageUrl(vehicle);
 
-  if (!vehicle.imageUrl || failed) {
+  if (!imageUrl || failed) {
     return (
       <span className={styles.vehicleThumbPlaceholder} aria-hidden>
         {vehicle.plate.slice(0, 1)}
@@ -234,13 +256,132 @@ function VehicleThumbnail({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
   return (
     <Image
       className={styles.vehicleThumb}
-      src={vehicle.imageUrl}
+      src={imageUrl}
       alt=""
       width={320}
       height={180}
       unoptimized
       onError={() => setFailed(true)}
     />
+  );
+}
+
+function attachmentUrl(id: number) {
+  return `/api/odoo/attachments/${id}`;
+}
+
+function AttachmentTile({
+  id,
+  label,
+  previewImages,
+}: {
+  id: number;
+  label: string;
+  previewImages: boolean;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <a href={attachmentUrl(id)} target="_blank" rel="noreferrer">
+      {previewImages && !failed ? (
+        <Image
+          src={attachmentUrl(id)}
+          alt={`${label} #${id}`}
+          width={220}
+          height={140}
+          unoptimized
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span className={styles.vehicleDocumentIcon} aria-hidden>
+          Файл
+        </span>
+      )}
+      <span>Файл #{id}</span>
+    </a>
+  );
+}
+
+function VehicleHeroImage({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
+  return (
+    <div className={styles.vehicleHeroImage}>
+      <VehicleThumbnail vehicle={vehicle} />
+    </div>
+  );
+}
+
+function FileUploadField({
+  name,
+  label,
+  accept,
+  multiple = true,
+}: {
+  name: string;
+  label: string;
+  accept: string;
+  multiple?: boolean;
+}) {
+  return (
+    <label className={styles.vehicleFileField}>
+      <span>
+        <UploadCloud size={16} aria-hidden />
+        {label}
+      </span>
+      <input name={name} type="file" accept={accept} multiple={multiple} />
+    </label>
+  );
+}
+
+function AttachmentGallery({
+  title,
+  groups,
+  previewImages = true,
+}: {
+  title: string;
+  groups: FleetVehicleAttachmentGroup[];
+  previewImages?: boolean;
+}) {
+  const visibleGroups = groups.filter((group) => group.ids.length);
+
+  if (!visibleGroups.length) {
+    return <EmptyPanel>{`${title} бүртгэгдээгүй байна.`}</EmptyPanel>;
+  }
+
+  return (
+    <div className={styles.vehicleAttachmentPanel}>
+      <div className={styles.vehicleAttachmentHeader}>
+        <span className={styles.mobileDetailEyebrow}>{title}</span>
+      </div>
+      {visibleGroups.map((group) => (
+        <section key={group.key} className={styles.vehicleAttachmentGroup}>
+          <strong>{group.label}</strong>
+          <div className={styles.vehicleAttachmentGrid}>
+            {group.ids.map((id) => (
+              <AttachmentTile key={id} id={id} label={group.label} previewImages={previewImages} />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function VehicleUploadFields() {
+  return (
+    <div className={styles.vehicleUploadSection}>
+      <span className={styles.mobileDetailEyebrow}>Зураг, баримт хавсаргах</span>
+      <FileUploadField name="municipal_front_photo_ids" label="Урд талаас авсан зураг" accept="image/*" />
+      <FileUploadField name="municipal_rear_photo_ids" label="Ард талаас авсан зураг" accept="image/*" />
+      <FileUploadField name="municipal_side_photo_ids" label="Хажуу талаас авсан зураг" accept="image/*" />
+      <FileUploadField name="municipal_certificate_photo_ids" label="Гэрчилгээний зураг" accept="image/*" />
+      <FileUploadField name="municipal_insurance_attachment_ids" label="Даатгалын баримт" accept="image/*,.pdf" />
+      <FileUploadField
+        name="municipal_insurance_contract_attachment_ids"
+        label="Даатгалын гэрээ"
+        accept="image/*,.pdf"
+      />
+      <FileUploadField name="municipal_inspection_attachment_ids" label="Улсын үзлэгийн баримт" accept="image/*,.pdf" />
+    </div>
   );
 }
 
@@ -461,13 +602,30 @@ function DeadlinePanel({
         <DetailItem label="Дуусах / дараагийн огноо" value={info.endDate || ""} />
         <DetailItem label="Үлдсэн хоног" value={String(info.daysRemaining || 0)} />
         <DetailItem label="Баримт" value={`${info.attachmentCount || 0} файл`} />
+        {"contractAttachmentCount" in info ? (
+          <DetailItem label="Даатгалын гэрээ" value={`${info.contractAttachmentCount || 0} файл`} />
+        ) : null}
       </div>
+      {info.attachmentIds.length || info.contractAttachmentIds?.length ? (
+        <div className={styles.vehicleDocumentLinks}>
+          {info.attachmentIds.map((id) => (
+            <a key={`attachment-${id}`} href={attachmentUrl(id)} target="_blank" rel="noreferrer">
+              Баримт #{id}
+            </a>
+          ))}
+          {info.contractAttachmentIds?.map((id) => (
+            <a key={`contract-${id}`} href={attachmentUrl(id)} target="_blank" rel="noreferrer">
+              Даатгалын гэрээ #{id}
+            </a>
+          ))}
+        </div>
+      ) : null}
       {info.note ? <p className={styles.inlineNote}>{info.note}</p> : null}
     </div>
   );
 }
 
-function EmptyPanel({ children }: { children: string }) {
+function EmptyPanel({ children }: { children: ReactNode }) {
   return <div className={styles.emptyState}>{children}</div>;
 }
 
@@ -637,6 +795,114 @@ function RepairHistoryList({ items }: { items: FleetVehicleRepairHistoryItem[] }
   );
 }
 
+function NewVehicleForm({
+  modelOptions,
+  vehicleTypeOptions,
+  categoryOptions,
+  departmentOptions,
+  onCancel,
+}: {
+  modelOptions: FleetVehicleSelectOption[];
+  vehicleTypeOptions: FleetVehicleSelectOption[];
+  categoryOptions: FleetVehicleSelectOption[];
+  departmentOptions: FleetVehicleDepartmentOption[];
+  onCancel: () => void;
+}) {
+  return (
+    <section className={styles.vehicleCreatePanel}>
+      <div className={styles.vehicleCreateHeader}>
+        <div>
+          <span className={styles.mobileDetailEyebrow}>Шинэ бүртгэл</span>
+          <h2>Машин техник нэмэх</h2>
+        </div>
+        <button type="button" className={styles.secondaryButton} onClick={onCancel}>
+          Болих
+        </button>
+      </div>
+
+      <form action={createFleetVehicleAction} className={styles.vehicleEditForm} encType="multipart/form-data">
+        <label className={styles.vehicleFormField}>
+          <span>Улсын дугаар</span>
+          <input name="license_plate" required placeholder="Жишээ: 1234УБА" />
+        </label>
+
+        <label className={styles.vehicleFormField}>
+          <span>Машины нэр</span>
+          <input name="name" placeholder="Жишээ: Хог тээврийн машин 01" />
+        </label>
+
+        <label className={styles.vehicleFormField}>
+          <span>Марка / модель</span>
+          <select name="model_id" defaultValue="">
+            <option value="">Сонгоогүй</option>
+            {modelOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className={styles.vehicleFormField}>
+          <span>Төрөл</span>
+          <select name={vehicleTypeOptions.length ? "municipal_vehicle_type_id" : "category_id"} defaultValue="">
+            <option value="">Сонгоогүй</option>
+            {(vehicleTypeOptions.length ? vehicleTypeOptions : categoryOptions).map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className={styles.vehicleFormField}>
+          <span>Хэлтэс</span>
+          <select name="municipal_department_id" defaultValue="">
+            <option value="">Сонгоогүй</option>
+            {departmentOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className={styles.vehicleFormField}>
+          <span>Төлөв</span>
+          <select name="x_municipal_operational_status" defaultValue="available">
+            {vehicleStatusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className={styles.vehicleFormField}>
+          <span>Түлшний төрөл</span>
+          <select name="fuel_type" defaultValue="">
+            <option value="">Сонгоогүй</option>
+            {fuelTypeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <VehicleUploadFields />
+
+        <div className={styles.vehicleModalActions}>
+          <button type="submit" className={styles.primaryButton}>
+            <Plus size={16} aria-hidden />
+            Нэмэх
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
 function WeightReportList({ items }: { items: FleetVehicleDailyWeightItem[] }) {
   if (!items.length) {
     return <EmptyPanel>Жингийн тайлан бүртгэгдээгүй байна.</EmptyPanel>;
@@ -772,6 +1038,7 @@ function VehicleDetailModal({
 
         {activeTab === "main" ? (
           <section className={styles.vehicleTabPanel}>
+            <VehicleHeroImage vehicle={vehicle} />
             <div className={styles.vehicleDetailGrid}>
               <DetailItem label="Марка / модель" value={vehicle.modelName || vehicle.name} />
               <DetailItem label="Төрөл" value={vehicle.vehicleTypeName || vehicle.categoryName} />
@@ -837,6 +1104,9 @@ function VehicleDetailModal({
                 </p>
               )}
             </section>
+
+            <AttachmentGallery title="Машины зураг" groups={vehicle.photoGroups} />
+            <AttachmentGallery title="Баримт бичиг" groups={vehicle.documentGroups} />
           </section>
         ) : null}
 
@@ -897,7 +1167,12 @@ function VehicleDetailModal({
 
         {activeTab === "edit" ? (
         <section className={styles.vehicleTabPanel}>
-          <form key={vehicle.id} action={updateFleetVehicleAction} className={styles.vehicleEditForm}>
+          <form
+            key={vehicle.id}
+            action={updateFleetVehicleAction}
+            className={styles.vehicleEditForm}
+            encType="multipart/form-data"
+          >
           <input type="hidden" name="vehicle_id" value={vehicle.id} />
 
           <label className={styles.vehicleFormField}>
@@ -1053,6 +1328,8 @@ function VehicleDetailModal({
             <textarea name="municipal_inspection_note" defaultValue={vehicle.inspection.note || ""} />
           </label>
 
+          <VehicleUploadFields />
+
           <input type="hidden" name="mfo_active_for_ops_present" value="1" />
           <label className={styles.vehicleCheckbox}>
             <input
@@ -1072,6 +1349,18 @@ function VehicleDetailModal({
             </button>
           </div>
           </form>
+
+          <form action={archiveFleetVehicleAction} className={styles.vehicleDeleteForm}>
+            <input type="hidden" name="vehicle_id" value={vehicle.id} />
+            <div>
+              <strong>Машин хасах</strong>
+              <p>Жагсаалтаас нууж архивлана. Засварын түүх, хавсралт устахгүй.</p>
+            </div>
+            <button type="submit" className={styles.dangerButton}>
+              <Trash2 size={16} aria-hidden />
+              Хасах
+            </button>
+          </form>
         </section>
         ) : null}
       </section>
@@ -1081,6 +1370,7 @@ function VehicleDetailModal({
 
 export function AutoBaseBoard({
   board,
+  initialVehicleId,
   notice,
   error,
 }: {
@@ -1093,7 +1383,10 @@ export function AutoBaseBoard({
     () => new Map(board.allVehicles.map((vehicle) => [vehicle.id, vehicle])),
     [board.allVehicles],
   );
-  const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(
+    initialVehicleId && vehiclesById.has(initialVehicleId) ? initialVehicleId : null,
+  );
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [activeFilter, setActiveFilter] = useState<VehicleFilterKey>("all");
   const [activeCategoryKey, setActiveCategoryKey] = useState(ALL_CATEGORY_KEY);
   const selectedVehicle = selectedVehicleId ? vehiclesById.get(selectedVehicleId) ?? null : null;
@@ -1214,6 +1507,27 @@ export function AutoBaseBoard({
         </div>
       ) : null}
 
+      <div className={styles.vehicleBoardActions}>
+        <button
+          type="button"
+          className={styles.primaryButton}
+          onClick={() => setShowCreateForm((value) => !value)}
+        >
+          <Plus size={16} aria-hidden />
+          Машин нэмэх
+        </button>
+      </div>
+
+      {showCreateForm ? (
+        <NewVehicleForm
+          modelOptions={board.modelOptions}
+          vehicleTypeOptions={board.vehicleTypeOptions}
+          categoryOptions={board.categoryOptions}
+          departmentOptions={board.departmentOptions}
+          onCancel={() => setShowCreateForm(false)}
+        />
+      ) : null}
+
       <div className={styles.metricGrid}>
         <div className={styles.metricTile}>
           <span>Нийт машин техник</span>
@@ -1234,26 +1548,6 @@ export function AutoBaseBoard({
         <div className={styles.metricTile}>
           <span>Үзлэг сануулах</span>
           <strong>{board.inspectionDueCount}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Өнөөдрийн жин</span>
-          <strong>{board.todayWeightLabel}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Өнөөдрийн шатахуун</span>
-          <strong>{board.todayFuelLabel}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Алдаатай таталт</span>
-          <strong>{board.failedImportCount}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Их шатахуун</span>
-          <strong>{board.highestFuelVehicle || "Байхгүй"}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Их засварт орсон</span>
-          <strong>{board.mostRepairedVehicle || "Байхгүй"}</strong>
         </div>
       </div>
 
