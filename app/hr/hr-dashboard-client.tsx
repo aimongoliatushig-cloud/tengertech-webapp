@@ -16,6 +16,7 @@ import {
 import type { HrDisciplineRecord, HrTimeoffDashboardData, HrTimeoffRequest } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
+import { HR_NOTIFICATION_HREF } from "./constants";
 import styles from "./hr.module.css";
 
 type DetailKind = "total" | "active" | "timeoff" | "sick" | "pending" | "approved" | "rejected";
@@ -247,7 +248,7 @@ function PendingRequestQueue({ requests }: { requests: HrTimeoffRequest[] }) {
       )}
 
       <div className={styles.pendingQueueActions}>
-        <Link href="/hr/leaves?state=submitted">Шинэ хүсэлтүүдийг хянах</Link>
+        <Link href={HR_NOTIFICATION_HREF}>Шинэ хүсэлтүүдийг хянах</Link>
         <Link href="/hr/leaves">Бүх хүсэлт харах</Link>
       </div>
     </section>

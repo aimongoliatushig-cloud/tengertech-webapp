@@ -596,6 +596,9 @@ export function TimeoffRequestsClient({
 
   const visibleRequests = useMemo(() => {
     if (filter === ALL) return requests;
+    if (filter === "pending") {
+      return requests.filter((request) => request.state === "submitted" || request.state === "hr_review");
+    }
     return requests.filter((request) => request.state === filter || request.requestType === filter);
   }, [filter, requests]);
 
@@ -671,6 +674,7 @@ export function TimeoffRequestsClient({
         <div className={styles.toolbar}>
           <select value={filter} onChange={(event) => setFilter(event.target.value)}>
             <option value={ALL}>Бүх хүсэлт</option>
+            <option value="pending">Хяналт хүлээж буй</option>
             <option value="submitted">Хүлээгдэж буй</option>
             <option value="hr_review">HR шалгаж байна</option>
             <option value="approved">Батлагдсан</option>

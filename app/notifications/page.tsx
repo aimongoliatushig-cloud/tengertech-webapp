@@ -12,6 +12,7 @@ import {
   requireSession,
 } from "@/lib/auth";
 import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
+import { getHrAccessProfile, getTimeoffRequests, type HrTimeoffRequest } from "@/lib/hr";
 import { loadReadNotificationKeys } from "@/lib/notification-state";
 import { loadMunicipalSnapshot, type DashboardSnapshot } from "@/lib/odoo";
 import { fixMojibakeText } from "@/lib/text-normalize";
@@ -88,6 +89,14 @@ function taskNotificationTimeMs(task: DashboardSnapshot["taskDirectory"][number]
   );
 }
 
+function timeoffRequestNotificationTimeMs(request: HrTimeoffRequest) {
+  return (
+    parseNotificationTimeMs(request.submittedDate) ||
+    parseNotificationTimeMs(request.dateFrom) ||
+    parseNotificationTimeMs(request.dateTo)
+  );
+}
+
 function formatNotificationTime(sortTimeMs: number, nowMs: number) {
   if (!sortTimeMs) {
     return "Огноо тодорхойгүй";
@@ -149,6 +158,12 @@ function buildWorkNotificationHref(
   return buildWorkerNotificationHref(task);
 }
 
+function buildHrTimeoffNotificationHref(request: HrTimeoffRequest) {
+  const params = new URLSearchParams();
+  params.set("state", request.state === "submitted" || request.state === "hr_review" ? "pending" : request.state);
+  return `/hr/leaves?${params.toString()}`;
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function NotificationsPage() {
@@ -158,6 +173,18 @@ export default async function NotificationsPage() {
     password: session.password,
   });
   const scopedDepartmentNamePromise = loadSessionDepartmentName(session);
+  const hrAccessProfilePromise = getHrAccessProfile(session).catch((error) => {
+    console.warn("HR notification access profile could not be loaded:", error);
+    return null;
+  });
+  const hrRequestsPromise = hrAccessProfilePromise.then((profile) =>
+    profile?.canAccessHr
+      ? getTimeoffRequests(session).catch((error) => {
+          console.warn("HR notifications could not be loaded:", error);
+          return [];
+        })
+      : [],
+  );
 
   const snapshot = await snapshotPromise;
   let scopedDepartmentName = await scopedDepartmentNamePromise;
@@ -303,6 +330,30 @@ export default async function NotificationsPage() {
         };
     notificationsById.set(reviewItemKey, item);
     addReason(item, "review");
+  }
+
+  const hrRequests = await hrRequestsPromise;
+  for (const request of hrRequests) {
+    if (request.state !== "submitted" && request.state !== "hr_review") {
+      continue;
+    }
+
+    const itemKey = `hr-timeoff:${request.id}`;
+    const sortTimeMs = timeoffRequestNotificationTimeMs(request);
+    const notificationKey = `${itemKey}:${sortTimeMs || request.state}`;
+    notificationsById.set(itemKey, {
+      key: notificationKey,
+      name: fixMojibakeText(`${request.employeeName} · ${request.requestTypeLabel}`),
+      departmentName: fixMojibakeText(request.departmentName),
+      projectName: "Хүний нөөц",
+      stageLabel: fixMojibakeText(request.stateLabel),
+      href: buildHrTimeoffNotificationHref(request),
+      progress: request.state === "hr_review" ? 50 : 20,
+      taskCount: 1,
+      sortTimeMs,
+      timeLabel: formatNotificationTime(sortTimeMs, nowMs),
+      reasons: ["review"],
+    });
   }
 
   const notifications = Array.from(notificationsById.values()).sort((left, right) => {

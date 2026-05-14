@@ -21,7 +21,28 @@ type WeightReportRecord = {
   id: number;
 };
 
+const TIME_ZONE = process.env.APP_TIME_ZONE ?? "Asia/Ulaanbaatar";
 const WRS_WEIGHT_SOURCE = "WRS жингийн систем";
+
+function currentDateKey() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function shiftDateKey(dateKey: string, days: number) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function defaultImportDateKey() {
+  return shiftDateKey(currentDateKey(), -1);
+}
 
 function isLocalDevelopmentRequest(request: Request) {
   if (process.env.NODE_ENV === "production") {
@@ -51,8 +72,26 @@ function hasBearerAccess(request: Request) {
   return timingSafeEqual(configuredBuffer, providedBuffer);
 }
 
+function hasQueryTokenAccess(request: Request) {
+  const configuredToken = process.env.WRS_SYNC_TOKEN?.trim();
+  const providedToken = new URL(request.url).searchParams.get("token")?.trim() ?? "";
+
+  if (!configuredToken || !providedToken) {
+    return false;
+  }
+
+  const configuredBuffer = Buffer.from(configuredToken);
+  const providedBuffer = Buffer.from(providedToken);
+
+  if (configuredBuffer.length !== providedBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(configuredBuffer, providedBuffer);
+}
+
 async function authorizeRequest(request: Request) {
-  if (hasBearerAccess(request) || isLocalDevelopmentRequest(request)) {
+  if (hasBearerAccess(request) || hasQueryTokenAccess(request) || isLocalDevelopmentRequest(request)) {
     return true;
   }
 
@@ -62,14 +101,14 @@ async function authorizeRequest(request: Request) {
 
 async function getRequestedDate(request: Request) {
   if (request.method === "GET") {
-    return new URL(request.url).searchParams.get("date")?.trim() ?? "";
+    return new URL(request.url).searchParams.get("date")?.trim() || defaultImportDateKey();
   }
 
   try {
     const body = (await request.json()) as { date?: string };
-    return String(body.date ?? "").trim();
+    return String(body.date ?? "").trim() || defaultImportDateKey();
   } catch {
-    return "";
+    return defaultImportDateKey();
   }
 }
 
@@ -139,8 +178,8 @@ async function upsertWeightReport(input: {
     unit: "kg",
     source: WRS_WEIGHT_SOURCE,
     fetched_at: new Date().toISOString().replace("T", " ").slice(0, 19),
-    state: "success",
-    error_message: "",
+    state: input.vehicle ? "success" : "failed",
+    error_message: input.vehicle ? "" : "Авто баазад таарах машин олдсонгүй.",
   };
 
   if (existing[0]?.id) {
@@ -158,6 +197,29 @@ async function upsertWeightReport(input: {
     [values],
   );
   return "created" as const;
+}
+
+async function createSyncLog(input: {
+  state: "success" | "failed";
+  recordCount?: number;
+  errorMessage?: string;
+}) {
+  try {
+    await executeOdooKw<number>(
+      "municipal.garbage.sync.log",
+      "create",
+      [
+        {
+          sync_type: "weight",
+          state: input.state,
+          record_count: input.recordCount ?? 0,
+          error_message: input.errorMessage ?? "",
+        },
+      ],
+    );
+  } catch (error) {
+    console.warn("WRS import sync log could not be saved:", error);
+  }
 }
 
 async function handleRequest(request: Request) {
@@ -181,6 +243,7 @@ async function handleRequest(request: Request) {
     ]);
     let created = 0;
     let updated = 0;
+    let imported = 0;
     const unmatched: Array<{ vehicleCode: string; vehicleLabel: string; weightKg: number }> = [];
 
     for (const total of totals.totals) {
@@ -200,6 +263,9 @@ async function handleRequest(request: Request) {
         vehicleCode: total.vehicleCode,
         weightKg: total.netWeightTotal,
       });
+      if (vehicle) {
+        imported += 1;
+      }
       if (result === "created") {
         created += 1;
       } else {
@@ -213,11 +279,20 @@ async function handleRequest(request: Request) {
       revalidatePath("/reports");
     }
 
+    await createSyncLog({
+      state: unmatched.length === totals.totals.length && totals.totals.length > 0 ? "failed" : "success",
+      recordCount: imported,
+      errorMessage: unmatched.length
+        ? `${unmatched.length} машины улсын дугаар авто баазтай таарсангүй.`
+        : "",
+    });
+
     return NextResponse.json({
       ok: true,
       requestedDate,
       branchName: totals.branchName,
       totalRows: totals.totals.length,
+      imported,
       created,
       updated,
       unmatched,
@@ -227,6 +302,11 @@ async function handleRequest(request: Request) {
       error instanceof Error && error.message
         ? error.message
         : "Failed to import the WRS report.";
+
+    await createSyncLog({
+      state: "failed",
+      errorMessage: message,
+    });
 
     return NextResponse.json({ error: message }, { status: 500 });
   }

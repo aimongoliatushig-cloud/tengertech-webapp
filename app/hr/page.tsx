@@ -7,6 +7,7 @@ import { getDisciplineRecords, getEmployees, getTimeoffDashboard, getTimeoffRequ
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
 import { HrDashboardClient } from "./hr-dashboard-client";
+import { HR_NOTIFICATION_HREF } from "./constants";
 import { HrSectionNav } from "./hr-section-nav";
 import styles from "./hr.module.css";
 
@@ -153,7 +154,7 @@ export default async function HrDashboardPage() {
         roleLabel={getRoleLabel(session.role)}
         notificationCount={requestCards?.pendingRequests ?? 0}
         notificationNote="Хүлээгдэж буй хүсэлт"
-        showUserMenu={false}
+        notificationHref={HR_NOTIFICATION_HREF}
       />
       <HrSectionNav mode={mode} />
 

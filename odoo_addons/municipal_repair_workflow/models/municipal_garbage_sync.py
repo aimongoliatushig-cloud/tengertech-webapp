@@ -189,22 +189,40 @@ class MunicipalGarbageSyncLog(models.Model):
         url = os.getenv(url_key)
         username = os.getenv("GARBAGE_API_USERNAME")
         password = os.getenv("GARBAGE_API_PASSWORD")
+        delegated_wrs_import = False
+
+        if sync_type == "weight" and not url:
+            app_base_url = (
+                os.getenv("APP_BASE_URL")
+                or os.getenv("NEXT_PUBLIC_APP_URL")
+                or os.getenv("NEXT_PUBLIC_SITE_URL")
+            )
+            if app_base_url:
+                url = "%s/api/wrs-report/import" % app_base_url.rstrip("/")
+                delegated_wrs_import = True
 
         if not url:
             return self._create_failure(sync_type, "%s тохируулаагүй байна." % url_key)
 
         try:
             target_date = self._target_report_date()
+            headers = {}
+            if delegated_wrs_import and os.getenv("WRS_SYNC_TOKEN"):
+                headers["Authorization"] = "Bearer %s" % os.getenv("WRS_SYNC_TOKEN")
             response = requests.get(
                 url,
-                auth=(username, password) if username or password else None,
+                auth=(username, password) if (username or password) and not delegated_wrs_import else None,
                 params={"date": target_date},
+                headers=headers,
                 timeout=30,
             )
             response.raise_for_status()
             payload = response.json()
-            rows = self._payload_rows(payload)
-            count = self._upsert_report_rows(sync_type, rows, target_date)
+            if delegated_wrs_import and isinstance(payload, dict) and payload.get("ok"):
+                count = int(payload.get("imported") or payload.get("totalRows") or 0)
+            else:
+                rows = self._payload_rows(payload)
+                count = self._upsert_report_rows(sync_type, rows, target_date)
             self.env["ir.config_parameter"].sudo().set_param(
                 "municipal_repair_workflow.garbage_%s_last_success_at" % sync_type,
                 fields.Datetime.to_string(fields.Datetime.now()),

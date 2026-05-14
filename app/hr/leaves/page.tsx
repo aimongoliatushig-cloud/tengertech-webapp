@@ -4,6 +4,7 @@ import { getEmployees, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
 
 import { HrSectionNav } from "../hr-section-nav";
 import { TimeoffRequestsClient } from "../hr-client";
+import { HR_NOTIFICATION_HREF } from "../constants";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export default async function HrLeavesPage() {
         roleLabel={getRoleLabel(session.role)}
         notificationCount={requests.length}
         notificationNote="Чөлөө / өвчтэй хүсэлт"
+        notificationHref={HR_NOTIFICATION_HREF}
       />
       <HrSectionNav mode={mode} />
       <TimeoffRequestsClient employees={employees} requests={requests} mode={mode} />

@@ -14,6 +14,16 @@ type WrsReportResponse = {
   pages: string[];
 };
 
+type WrsImportResponse = {
+  requestedDate: string;
+  branchName: string;
+  totalRows: number;
+  imported: number;
+  created: number;
+  updated: number;
+  unmatched: Array<{ vehicleCode: string; vehicleLabel: string; weightKg: number }>;
+};
+
 function getTodayDateValue() {
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -23,7 +33,9 @@ function getTodayDateValue() {
 export function DataDownloadClient() {
   const [date, setDate] = useState(getTodayDateValue);
   const [report, setReport] = useState<WrsReportResponse | null>(null);
+  const [importSummary, setImportSummary] = useState<WrsImportResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const previewMinHeight = report ? Math.max(980, report.renderHeight) : 980;
@@ -37,6 +49,8 @@ export function DataDownloadClient() {
     }
 
     setErrorMessage("");
+    setImportSummary(null);
+    setIsLoading(true);
 
     try {
       const response = await fetch("/api/wrs-report", {
@@ -55,16 +69,35 @@ export function DataDownloadClient() {
         throw new Error(payload.error ?? "WRS тайлан татаж чадсангүй.");
       }
 
+      const importResponse = await fetch("/api/wrs-report/import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ date }),
+      });
+      const importPayload = (await importResponse.json()) as WrsImportResponse & {
+        error?: string;
+      };
+
+      if (!importResponse.ok) {
+        throw new Error(importPayload.error ?? "WRS тайланг авто баазын бүртгэлд оруулж чадсангүй.");
+      }
+
       startTransition(() => {
         setReport(payload);
+        setImportSummary(importPayload);
       });
     } catch (error) {
       setReport(null);
+      setImportSummary(null);
       setErrorMessage(
         error instanceof Error && error.message
           ? error.message
           : "WRS тайлан татаж чадсангүй.",
       );
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -72,6 +105,14 @@ export function DataDownloadClient() {
     <>
       {errorMessage ? (
         <div className={`${styles.message} ${styles.errorMessage}`}>{errorMessage}</div>
+      ) : null}
+      {importSummary ? (
+        <div className={`${styles.message} ${styles.noticeMessage}`}>
+          {`${importSummary.requestedDate} өдрийн WRS дата авто баазад орлоо: ${importSummary.imported} машин, ${importSummary.created} шинэ, ${importSummary.updated} шинэчилсэн.`}
+          {importSummary.unmatched.length
+            ? ` ${importSummary.unmatched.length} улсын дугаар авто баазтай таарсангүй.`
+            : ""}
+        </div>
       ) : null}
 
       <section className={styles.panelGrid}>
@@ -97,8 +138,8 @@ export function DataDownloadClient() {
             </div>
 
             <div className={styles.buttonRow}>
-              <button type="submit" className={styles.primaryButton} disabled={isPending}>
-                {isPending ? "Татаж байна..." : "Тайлан татах"}
+              <button type="submit" className={styles.primaryButton} disabled={isPending || isLoading}>
+                {isPending || isLoading ? "Татаж байна..." : "Тайлан татах"}
               </button>
             </div>
           </form>
