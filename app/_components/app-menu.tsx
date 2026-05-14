@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   BarChart3,
   Bell,
@@ -12,6 +13,7 @@ import {
   FileText,
   Flag,
   CircleHelp,
+  HeartPulse,
   LayoutDashboard,
   Leaf,
   ListChecks,
@@ -22,8 +24,10 @@ import {
   PlusCircle,
   Route,
   Settings,
+  ShieldAlert,
   ShoppingCart,
   Truck,
+  UserPlus,
   Users,
   Wrench,
   X,
@@ -186,6 +190,8 @@ export function AppMenu({
 
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const flags = groupFlags || {};
   const roleLabelLower = roleLabel.toLocaleLowerCase("mn-MN");
   const executiveMode =
@@ -281,7 +287,14 @@ export function AppMenu({
 
   const hrItems: MenuItem[] = canShowHrMenu
     ? [
-        { key: "hr", href: "/hr", label: "\u0425\u04AF\u043D\u0438\u0439 \u043D\u04E9\u04E9\u0446", icon: Users },
+        { key: "hr-dashboard", href: "/hr", label: "\u0421\u0430\u043C\u0431\u0430\u0440", icon: LayoutDashboard },
+        { key: "hr-employees", href: "/hr/employees", label: "\u0411\u04AF\u0445 \u0430\u0436\u0438\u043B\u0442\u043D\u0443\u0443\u0434", icon: Users },
+        { key: "hr-new-employee", href: "/hr/employees/new", label: "\u0428\u0438\u043D\u044D \u0430\u0436\u0438\u043B\u0442\u0430\u043D", icon: UserPlus },
+        { key: "hr-requests", href: "/hr/leaves", label: "\u0418\u0440\u0441\u044D\u043D \u0445\u04AF\u0441\u044D\u043B\u0442\u04AF\u04AF\u0434", icon: CalendarDays },
+        { key: "hr-timeoff", href: "/hr/sick", label: "\u0427\u04E9\u043B\u04E9\u04E9 / \u04E9\u0432\u0447\u0442\u044D\u0439", icon: HeartPulse },
+        { key: "hr-discipline", href: "/hr/discipline", label: "\u0421\u0430\u0445\u0438\u043B\u0433\u044B\u043D \u0431\u04AF\u0440\u0442\u0433\u044D\u043B", icon: ShieldAlert },
+        { key: "hr-notifications", href: "/hr/leaves?state=pending", label: "\u041C\u044D\u0434\u044D\u0433\u0434\u044D\u043B", icon: Bell, badge: notificationCount },
+        { key: "hr-reports", href: "/hr/reports", label: "\u0422\u0430\u0439\u043B\u0430\u043D", icon: FileText },
       ]
     : [];
 
@@ -408,7 +421,7 @@ export function AppMenu({
       return false;
     }
     if (hrFocusedMode) {
-      return ["hr", "profile"].includes(item.key);
+      return item.key.startsWith("hr") || item.key === "profile";
     }
     if (!workerMode) {
       return true;
@@ -521,6 +534,25 @@ export function AppMenu({
   );
 
   function isItemActive(item: MenuItem) {
+    if (item.key === "hr-dashboard") {
+      return pathname === "/hr";
+    }
+    if (item.key === "hr-new-employee") {
+      return pathname === "/hr/employees/new";
+    }
+    if (item.key === "hr-employees") {
+      return pathname.startsWith("/hr/employees") && pathname !== "/hr/employees/new";
+    }
+    if (item.key === "hr-notifications") {
+      return pathname === "/hr/leaves" && searchParams.get("state") === "pending";
+    }
+    if (item.key === "hr-requests") {
+      return pathname === "/hr/leaves" && searchParams.get("state") !== "pending";
+    }
+    if (item.key.startsWith("hr-")) {
+      const itemPath = item.href.split("?")[0];
+      return itemPath === "/hr" ? pathname === "/hr" : pathname.startsWith(itemPath);
+    }
     if (item.key === active) {
       return true;
     }
@@ -562,8 +594,11 @@ export function AppMenu({
       ]
     : hrFocusedMode
       ? [
-          { key: "hr", href: "/hr", label: "HR", icon: Users },
-          { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
+          { key: "hr-dashboard", href: "/hr", label: "\u0421\u0430\u043C\u0431\u0430\u0440", icon: LayoutDashboard },
+          { key: "hr-employees", href: "/hr/employees", label: "\u0410\u0436\u0438\u043B\u0442\u0430\u043D", icon: Users },
+          { key: "hr-requests", href: "/hr/leaves", label: "\u0425\u04AF\u0441\u044D\u043B\u0442", icon: CalendarDays },
+          { key: "hr-reports", href: "/hr/reports", label: "\u0422\u0430\u0439\u043B\u0430\u043D", icon: FileText },
+          { key: "profile", href: "/profile", label: "\u041F\u0440\u043E\u0444\u0430\u0439\u043B", icon: Settings },
         ]
       : workerMode
       ? mfoFieldMode
@@ -615,7 +650,7 @@ export function AppMenu({
             : []),
           { key: "reports", href: canWriteReports ? "/reports" : "/review", label: "Тайлан", icon: BarChart3 },
           canShowHrMenu
-            ? { key: "hr", href: "/hr", label: "HR", icon: Users }
+            ? { key: "hr-dashboard", href: "/hr", label: "HR", icon: Users }
             : { key: "chat", href: "/chat", label: "Чат", icon: MessageSquare },
         ]).filter((item) => !isHiddenMenuItem(item));
 
