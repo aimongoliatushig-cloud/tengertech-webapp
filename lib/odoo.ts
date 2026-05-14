@@ -816,12 +816,17 @@ export type FleetVehicleRepairHistoryItem = {
   id: number;
   name: string;
   requestDate: string;
+  requestDateValue: string;
   dateRange: string;
+  repairStartedAtValue: string;
+  repairDoneAtValue: string;
   damageType: string;
   description: string;
   partsNote: string;
+  amount: number;
   amountLabel: string;
   mechanicName: string;
+  stateKey: string;
   stateLabel: string;
   procurementName: string;
   attachmentCount: number;
@@ -3864,17 +3869,24 @@ async function loadRepairHistoryByVehicle(
   );
   const byVehicle = new Map<number, FleetVehicleRepairHistoryItem[]>();
   for (const record of records) {
+    const amount = record.amount_total || record.actual_cost || 0;
+    const stateKey = String(record.state || "");
     appendMapItem(byVehicle, relationId(record.vehicle_id), {
       id: record.id,
       name: record.name || `Засвар #${record.id}`,
       requestDate: formatOptionalCompactDate(record.request_date),
+      requestDateValue: record.request_date || "",
       dateRange: formatDateRange(record.repair_started_at, record.repair_done_at),
+      repairStartedAtValue: record.repair_started_at || "",
+      repairDoneAtValue: record.repair_done_at || "",
       damageType: record.damage_type || "",
       description: record.issue_summary || record.issue_description || record.description || "",
       partsNote: record.parts_note || "",
-      amountLabel: formatMoneyLabel(record.amount_total || record.actual_cost || 0),
+      amount,
+      amountLabel: formatMoneyLabel(amount),
       mechanicName: relationName(record.mechanic_id ?? false, ""),
-      stateLabel: FLEET_REPAIR_STATE_LABELS[String(record.state || "")] || String(record.state || ""),
+      stateKey,
+      stateLabel: FLEET_REPAIR_STATE_LABELS[stateKey] || stateKey,
       procurementName: relationName(record.procurement_request_id ?? false, ""),
       attachmentCount: attachmentCount(record.attachment_ids, record.photo_ids),
     });

@@ -33,7 +33,7 @@ import {
   filterProjectsForResponsibleMaster,
   filterTasksForResponsibleMaster,
 } from "@/lib/master-scope";
-import { loadMunicipalSnapshot } from "@/lib/odoo";
+import { loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
 import {
   createEmptyProcurementDashboard,
   isProcurementSetupError,
@@ -109,6 +109,32 @@ type ReportGroup = {
   reports: FeedReport[];
   latestSubmittedAt: string;
 };
+
+function groupReportsByProject(reports: FeedReport[]) {
+  return Array.from(
+    reports.reduce<Map<string, ReportGroup>>((accumulator, report) => {
+      const groupKey = `${report.departmentName}::${report.projectName}`;
+      const existing = accumulator.get(groupKey);
+      if (existing) {
+        existing.reports.push(report);
+        return accumulator;
+      }
+
+      accumulator.set(groupKey, {
+        projectName: report.projectName,
+        departmentName: report.departmentName,
+        reports: [report],
+        latestSubmittedAt: report.submittedAt,
+      });
+      return accumulator;
+    }, new Map()),
+  )
+    .map(([, group]) => ({
+      ...group,
+      reports: group.reports.sort((left, right) => right.id - left.id),
+    }))
+    .sort((left, right) => right.reports[0].id - left.reports[0].id);
+}
 
 function getDepartmentParam(value?: string | string[]) {
   if (Array.isArray(value)) {
@@ -194,6 +220,38 @@ function formatMoneyLabel(value: number) {
   return `${new Intl.NumberFormat("mn-MN", {
     maximumFractionDigits: 0,
   }).format(Math.round(value))} ₮`;
+}
+
+function dateKeyFromValue(value?: string | null) {
+  const candidate = value?.slice(0, 10) ?? "";
+  return isDateKey(candidate) ? candidate : "";
+}
+
+function repairDateKey(
+  repair: Awaited<ReturnType<typeof loadFleetVehicleBoard>>["allVehicles"][number]["repairHistory"][number],
+) {
+  return (
+    dateKeyFromValue(repair.requestDateValue) ||
+    dateKeyFromValue(repair.repairStartedAtValue) ||
+    dateKeyFromValue(repair.repairDoneAtValue)
+  );
+}
+
+function isOpenRepairState(stateKey: string, stateLabel: string) {
+  const normalized = `${stateKey} ${stateLabel}`.toLocaleLowerCase("mn-MN");
+  return ![
+    "done",
+    "vehicle_returned",
+    "cancelled",
+    "дууссан",
+    "буцаасан",
+    "цуцлагдсан",
+  ].some((token) => normalized.includes(token));
+}
+
+function isEmergencyWorkText(value: string) {
+  const normalized = value.toLocaleLowerCase("mn-MN");
+  return normalized.includes("гэнэтийн") || normalized.includes("garbage_seasonal");
 }
 
 function normalizeVehicleLookup(value: string) {
@@ -360,30 +418,19 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       )
     : 0;
 
-  const groupedReports = Array.from(
-    filteredReports.reduce<Map<string, ReportGroup>>((accumulator, report) => {
-      const groupKey = `${report.departmentName}::${report.projectName}`;
-      const existing = accumulator.get(groupKey);
-      if (existing) {
-        existing.reports.push(report);
-        return accumulator;
-      }
-
-      accumulator.set(groupKey, {
-        projectName: report.projectName,
-        departmentName: report.departmentName,
-        reports: [report],
-        latestSubmittedAt: report.submittedAt,
-      });
-      return accumulator;
-    }, new Map()),
-  )
-    .map(([, group]) => ({
-      ...group,
-      reports: group.reports.sort((left, right) => right.id - left.id),
-    }))
-    .sort((left, right) => right.reports[0].id - left.reports[0].id);
+  const groupedReports = groupReportsByProject(filteredReports);
   const taskDirectoryById = new Map(filteredTaskDirectory.map((task) => [task.id, task]));
+  const emergencyTasks = filteredTaskDirectory.filter((task) =>
+    isEmergencyWorkText(`${task.operationTypeLabel} ${task.projectName} ${task.name}`),
+  );
+  const emergencyTaskIds = new Set(emergencyTasks.map((task) => task.id));
+  const emergencyReports = filteredReports.filter((report) => {
+    if (report.taskId && emergencyTaskIds.has(report.taskId)) {
+      return true;
+    }
+    return isEmergencyWorkText(`${report.projectName} ${report.taskName} ${report.summary}`);
+  });
+  const emergencyGroupedReports = groupReportsByProject(emergencyReports);
   const canReviewReports = !workerMode && (canViewQualityCenter || canCreateTasks || masterMode);
 
   const selectedDepartmentName = masterMode
@@ -423,9 +470,24 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     },
   ] as const;
   const canViewProcurementReport = canAccessProcurementModule(session);
-  const availableReportTypes = canViewProcurementReport
-    ? ["garbage", "procurement", "work"]
-    : ["garbage", "work"];
+  const canViewFleetRepairReport = Boolean(
+    isGarbageTransportView ||
+      session.groupFlags?.fleetRepairAny ||
+      session.groupFlags?.fleetRepairManager ||
+      session.groupFlags?.fleetRepairGeneralManager ||
+      session.groupFlags?.fleetRepairCeo ||
+      session.role === "system_admin" ||
+      session.role === "director" ||
+      session.role === "general_manager",
+  );
+  const showFleetRepairReportType = isGarbageTransportView && canViewFleetRepairReport;
+  const availableReportTypes = [
+    "garbage",
+    ...(showFleetRepairReportType ? ["repair"] : []),
+    "emergency",
+    ...(canViewProcurementReport ? ["procurement"] : []),
+    "work",
+  ];
   const defaultReportType = isGarbageTransportView ? "garbage" : "work";
   const selectedReportType = availableReportTypes.includes(requestedReport)
     ? requestedReport
@@ -440,6 +502,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const selectedEndDate = selectedDateRange.endDate;
   const selectedRangeLabel = formatRangeLabel(selectedStartDate, selectedEndDate);
   const activePeriodKey = customRange ? "custom" : selectedPeriodOption?.key ?? "today";
+  const displayedGroupedReports =
+    selectedReportType === "emergency" ? emergencyGroupedReports : groupedReports;
 
   let garbageWeightLedger = null as Awaited<ReturnType<typeof loadGarbageWeightLedger>> | null;
   let garbageWeightError = "";
@@ -501,6 +565,17 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       ? "Худалдан авалтын модуль идэвхгүй байна."
       : "Худалдан авалтын тайлангийн мэдээллийг уншиж чадсангүй.";
   }
+  }
+
+  let fleetRepairBoard = null as Awaited<ReturnType<typeof loadFleetVehicleBoard>> | null;
+  let fleetRepairReportError = "";
+  if (showFleetRepairReportType && selectedReportType === "repair") {
+    try {
+      fleetRepairBoard = await loadFleetVehicleBoard();
+    } catch (error) {
+      console.error("Fleet repair report could not be loaded:", error);
+      fleetRepairReportError = "Авто баазын засварын тайланг уншиж чадсангүй.";
+    }
   }
 
   const garbageSummaryCards = [
@@ -619,7 +694,6 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const selectedGarbageVehicleRows = Array.from(selectedGarbageVehicleTotals.entries())
     .map(([vehicleKey, row]) => ({ vehicleKey, ...row }))
     .sort((left, right) => right.kg - left.kg);
-  const topGarbageVehicleOverall = selectedGarbageVehicleRows[0] ?? null;
   const garbageReportVehicleOptions = new Map<
     string,
     {
@@ -814,6 +888,82 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const procurementHighValueCount = selectedProcurementItems.filter(
     (item) => item.is_over_threshold,
   ).length;
+  const repairVehicleOptions = fleetRepairBoard?.allVehicles ?? [];
+  const selectedRepairVehicleId =
+    requestedVehicle && requestedVehicle !== "all" && Number.isFinite(Number(requestedVehicle))
+      ? Number(requestedVehicle)
+      : 0;
+  const selectedRepairVehicle =
+    selectedRepairVehicleId > 0
+      ? repairVehicleOptions.find((vehicle) => vehicle.id === selectedRepairVehicleId) ?? null
+      : null;
+  const allRepairReportRows = repairVehicleOptions
+    .flatMap((vehicle) =>
+      vehicle.repairHistory.map((repair) => ({
+        ...repair,
+        vehicleId: vehicle.id,
+        vehiclePlate: vehicle.plate,
+        vehicleName: vehicle.name,
+        vehicleModel: vehicle.modelName || vehicle.vehicleTypeName || vehicle.categoryName,
+        vehicleStateLabel: vehicle.stateLabel,
+        dateKey: repairDateKey(repair),
+      })),
+    )
+    .sort((left, right) => {
+      const leftDate = left.dateKey || left.requestDateValue || "";
+      const rightDate = right.dateKey || right.requestDateValue || "";
+      return rightDate.localeCompare(leftDate) || right.id - left.id;
+    });
+  const selectedRepairReportRows = allRepairReportRows.filter((repair) => {
+    if (selectedRepairVehicleId > 0 && repair.vehicleId !== selectedRepairVehicleId) {
+      return false;
+    }
+    return repair.dateKey ? repair.dateKey >= selectedStartDate && repair.dateKey <= selectedEndDate : true;
+  });
+  const activeRepairRows = selectedRepairReportRows.filter((repair) =>
+    isOpenRepairState(repair.stateKey, repair.stateLabel),
+  );
+  const doneRepairRows = selectedRepairReportRows.filter(
+    (repair) => !isOpenRepairState(repair.stateKey, repair.stateLabel),
+  );
+  const repairReportVehicleCount = new Set(selectedRepairReportRows.map((repair) => repair.vehicleId)).size;
+  const repairReportAmount = selectedRepairReportRows.reduce((sum, repair) => sum + repair.amount, 0);
+  const repairReportAttachmentCount = selectedRepairReportRows.reduce(
+    (sum, repair) => sum + repair.attachmentCount,
+    0,
+  );
+  const repairSummaryCards = [
+    {
+      title: "Сонгосон машин",
+      value: selectedRepairVehicle?.plate || "Бүх машин",
+      note: selectedRepairVehicle?.name || "Авто баазын бүх засварын бүртгэл",
+    },
+    {
+      title: "Засварын мөр",
+      value: String(selectedRepairReportRows.length),
+      note: selectedRangeLabel,
+    },
+    {
+      title: "Засвартай машин",
+      value: String(fleetRepairBoard?.repairCount ?? activeRepairRows.length),
+      note: "Одоо засварын төлөвтэй",
+    },
+    {
+      title: "Нийт зардал",
+      value: formatMoneyLabel(repairReportAmount),
+      note: "Сонгосон хугацааны дүн",
+    },
+    {
+      title: "Дууссан засвар",
+      value: String(doneRepairRows.length),
+      note: "Хаагдсан / буцаасан төлөв",
+    },
+    {
+      title: "Хавсралт",
+      value: String(repairReportAttachmentCount),
+      note: "Зураг, баримтын тоо",
+    },
+  ] as const;
   const exportParams = new URLSearchParams();
   if (!departmentScopedMode && selectedGroup) {
     exportParams.set("department", selectedGroup.name);
@@ -998,7 +1148,33 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             ) : null}
 
             <section className={styles.summaryStrip}>
-              {isGarbageTransportView ? (
+              {isGarbageTransportView && selectedReportType === "repair" ? (
+                repairSummaryCards.map((card) => (
+                  <article key={card.title} className={styles.summaryCard}>
+                    <span>{card.title}</span>
+                    <strong>{card.value}</strong>
+                    <small>{card.note}</small>
+                  </article>
+                ))
+              ) : isGarbageTransportView && selectedReportType === "emergency" ? (
+                <>
+                  <article className={styles.summaryCard}>
+                    <span>Гэнэтийн ажил</span>
+                    <strong>{emergencyTasks.length}</strong>
+                    <small>Сонгосон хүрээнд бүртгэлтэй</small>
+                  </article>
+                  <article className={styles.summaryCard}>
+                    <span>Гэнэтийн тайлан</span>
+                    <strong>{emergencyReports.length}</strong>
+                    <small>{emergencyGroupedReports.length} ажлын багц</small>
+                  </article>
+                  <article className={styles.summaryCard}>
+                    <span>Хяналт</span>
+                    <strong>{emergencyTasks.filter((task) => task.stageBucket === "review").length}</strong>
+                    <small>Шалгалт хүлээж буй ажил</small>
+                  </article>
+                </>
+              ) : isGarbageTransportView ? (
                 garbageSummaryCards.map((card) => (
                   <article key={card.title} className={styles.summaryCard}>
                     <span>{card.title}</span>
@@ -1017,33 +1193,60 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                     : "Одоо харагдаж буй тайлангийн багц"}
                 </small>
               </article>
-              <article className={styles.summaryCard}>
-                <span>Ажил</span>
-                <strong>{groupedReports.length}</strong>
-                <small>Тайлан орсон ажлууд</small>
-              </article>
-              <article className={styles.summaryCard}>
-                <span>Орсон тайлан</span>
-                <strong>{filteredReports.length}</strong>
-                <small>Бүртгэгдсэн нийт тайлан</small>
-              </article>
-              {!masterMode ? (
-                <article className={styles.summaryCard}>
-                  <span>Хянах даалгавар</span>
-                  <strong>{filteredReviewQueue.length}</strong>
-                  <small>Хяналт хүлээж буй даалгавар</small>
-                </article>
-              ) : null}
-              <article className={styles.summaryCard}>
-                <span>Зураг</span>
-                <strong>{totalImages}</strong>
-                <small>Хавсаргасан зураг</small>
-              </article>
-              <article className={styles.summaryCard}>
-                <span>Аудио</span>
-                <strong>{totalAudios}</strong>
-                <small>Хавсаргасан аудио</small>
-              </article>
+              {selectedReportType === "emergency" ? (
+                <>
+                  <article className={styles.summaryCard}>
+                    <span>Гэнэтийн ажил</span>
+                    <strong>{emergencyTasks.length}</strong>
+                    <small>Сонгосон хүрээнд бүртгэлтэй</small>
+                  </article>
+                  <article className={styles.summaryCard}>
+                    <span>Гэнэтийн тайлан</span>
+                    <strong>{emergencyReports.length}</strong>
+                    <small>{emergencyGroupedReports.length} ажлын багц</small>
+                  </article>
+                  <article className={styles.summaryCard}>
+                    <span>Хяналт</span>
+                    <strong>{emergencyTasks.filter((task) => task.stageBucket === "review").length}</strong>
+                    <small>Шалгалт хүлээж буй ажил</small>
+                  </article>
+                  <article className={styles.summaryCard}>
+                    <span>Зураг</span>
+                    <strong>{emergencyReports.reduce((sum, report) => sum + report.imageCount, 0)}</strong>
+                    <small>Гэнэтийн ажлын хавсралт</small>
+                  </article>
+                </>
+              ) : (
+                <>
+                  <article className={styles.summaryCard}>
+                    <span>Ажил</span>
+                    <strong>{groupedReports.length}</strong>
+                    <small>Тайлан орсон ажлууд</small>
+                  </article>
+                  <article className={styles.summaryCard}>
+                    <span>Орсон тайлан</span>
+                    <strong>{filteredReports.length}</strong>
+                    <small>Бүртгэгдсэн нийт тайлан</small>
+                  </article>
+                  {!masterMode ? (
+                    <article className={styles.summaryCard}>
+                      <span>Хянах даалгавар</span>
+                      <strong>{filteredReviewQueue.length}</strong>
+                      <small>Хяналт хүлээж буй даалгавар</small>
+                    </article>
+                  ) : null}
+                  <article className={styles.summaryCard}>
+                    <span>Зураг</span>
+                    <strong>{totalImages}</strong>
+                    <small>Хавсаргасан зураг</small>
+                  </article>
+                  <article className={styles.summaryCard}>
+                    <span>Аудио</span>
+                    <strong>{totalAudios}</strong>
+                    <small>Хавсаргасан аудио</small>
+                  </article>
+                </>
+              )}
                 </>
               )}
             </section>
@@ -1116,6 +1319,42 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   <strong>{formatKgLabel(selectedGarbageTotalKg)}</strong>
                   <small>{selectedGarbageVehicleKeys.size} машин, {selectedGarbageRecordCount} мөр</small>
                 </Link>
+                <Link
+                  href={getReportHref({
+                    report: "emergency",
+                    period: activePeriodKey,
+                    startDate: selectedStartDate,
+                    endDate: selectedEndDate,
+                  })}
+                  className={`${styles.reportTypeCard} ${
+                    selectedReportType === "emergency" ? styles.reportTypeCardActive : ""
+                  }`}
+                >
+                  <span>Гэнэтийн ажлын тайлан</span>
+                  <strong>{emergencyReports.length} тайлан</strong>
+                  <small>{emergencyTasks.length} гэнэтийн ажил дээр бүртгэгдсэн</small>
+                </Link>
+                {showFleetRepairReportType ? (
+                  <Link
+                    href={getReportHref({
+                      report: "repair",
+                      period: activePeriodKey,
+                      startDate: selectedStartDate,
+                      endDate: selectedEndDate,
+                    })}
+                    className={`${styles.reportTypeCard} ${
+                      selectedReportType === "repair" ? styles.reportTypeCardActive : ""
+                    }`}
+                  >
+                    <span>Авто баазын засвар</span>
+                    <strong>
+                      {selectedReportType === "repair"
+                        ? `${selectedRepairReportRows.length} засвар`
+                        : "Засварын тайлан"}
+                    </strong>
+                    <small>Машин, механик, сэлбэг, зардлын нэгтгэл</small>
+                  </Link>
+                ) : null}
                 {canViewProcurementReport ? (
                 <Link
                   href={getReportHref({
@@ -1184,104 +1423,370 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
             {isGarbageTransportView ? (
               <div className={styles.garbageReportShell}>
-                <section className={`${styles.reportPanel} ${styles.autoBasePanel}`}>
-                  <div className={styles.reportPanelHeader}>
-                    <div className={styles.reportPanelTitle}>
-                      <span className={styles.reportPanelIcon}>АБ</span>
-                      <div>
-                        <h2>Авто баазын тайлан</h2>
-                        <p>Машин, техникийн өдөр тутмын жин, рейс, зурагт нотолгооны нэгтгэл</p>
+                <div className={styles.reportTypeGrid}>
+                  <Link
+                    href={getReportHref({
+                      report: "garbage",
+                      period: activePeriodKey,
+                      startDate: selectedStartDate,
+                      endDate: selectedEndDate,
+                    })}
+                    className={`${styles.reportTypeCard} ${
+                      selectedReportType === "garbage" ? styles.reportTypeCardActive : ""
+                    }`}
+                  >
+                    <span>Хог тээврийн тайлан</span>
+                    <strong>{formatKgLabel(selectedGarbageVehicleTotalKg || selectedGarbageTotalKg)}</strong>
+                    <small>Машин, цэг, жолоочийн зурагтай жингийн тайлан</small>
+                  </Link>
+                  {showFleetRepairReportType ? (
+                    <Link
+                      href={getReportHref({
+                        report: "repair",
+                        period: activePeriodKey,
+                        startDate: selectedStartDate,
+                        endDate: selectedEndDate,
+                        vehicle: selectedRepairVehicleId ? String(selectedRepairVehicleId) : "all",
+                      })}
+                      className={`${styles.reportTypeCard} ${
+                        selectedReportType === "repair" ? styles.reportTypeCardActive : ""
+                      }`}
+                    >
+                      <span>Авто баазын засвар</span>
+                      <strong>
+                        {selectedReportType === "repair"
+                          ? `${selectedRepairReportRows.length} засвар`
+                          : "Засварын тайлан"}
+                    </strong>
+                    <small>Машин, механик, сэлбэг, зардлын тайлан</small>
+                  </Link>
+                ) : null}
+                  <Link
+                    href={getReportHref({
+                      report: "emergency",
+                      period: activePeriodKey,
+                      startDate: selectedStartDate,
+                      endDate: selectedEndDate,
+                    })}
+                    className={`${styles.reportTypeCard} ${
+                      selectedReportType === "emergency" ? styles.reportTypeCardActive : ""
+                    }`}
+                  >
+                    <span>Гэнэтийн ажлын тайлан</span>
+                    <strong>{emergencyReports.length} тайлан</strong>
+                    <small>{emergencyTasks.length} ажил, шуурхай үүссэн тайлан</small>
+                  </Link>
+                </div>
+
+                {selectedReportType === "repair" ? (
+                  <section className={`${styles.reportPanel} ${styles.autoBasePanel}`}>
+                    <div className={styles.reportPanelHeader}>
+                      <div className={styles.reportPanelTitle}>
+                        <span className={styles.reportPanelIcon}>АБ</span>
+                        <div>
+                          <h2>Авто баазын засварын тайлан</h2>
+                          <p>Машин, засварын ажил, механик, сэлбэг болон зардлыг нэг дор харуулна</p>
+                        </div>
+                      </div>
+                      <div className={styles.reportPanelBadge}>
+                        <span>Хамрах хугацаа</span>
+                        <strong>{selectedRangeLabel}</strong>
                       </div>
                     </div>
-                    <div className={styles.reportPanelActions} aria-label="Авто баазын тайлангийн үйлдэл">
-                      <a
-                        className={styles.exportButton}
-                        href={getGarbageWeightReportHref(selectedStartDate, selectedEndDate)}
-                        target="_blank"
-                      >
-                        Excel татах
-                      </a>
-                      <a
-                        className={styles.exportButton}
-                        href={getReportHref({ report: "garbage", period: "today" })}
-                      >
-                        Өнөөдөр
-                      </a>
-                      <a
-                        className={styles.exportButton}
-                        href={getReportHref({ report: "garbage", period: "month" })}
-                      >
-                        Энэ сар
-                      </a>
-                    </div>
-                  </div>
 
-                  {garbageWeightError ? (
-                    <div className={styles.weightError}>{garbageWeightError}</div>
-                  ) : null}
+                    {fleetRepairReportError ? (
+                      <div className={styles.weightError}>{fleetRepairReportError}</div>
+                    ) : null}
 
-                  <div className={styles.autoBaseFormGrid}>
-                    <div className={styles.formMetric}>
-                      <span>Тайлангийн хугацаа</span>
-                      <strong>{selectedRangeLabel}</strong>
-                    </div>
-                    <div className={styles.formMetric}>
-                      <span>Машины тоо</span>
-                      <strong>{selectedGarbageVehicleKeys.size}</strong>
-                    </div>
-                    <div className={styles.formMetric}>
-                      <span>Нийт жин</span>
-                      <strong>{formatKgLabel(selectedGarbageTotalKg)}</strong>
-                    </div>
-                    <div className={styles.formMetric}>
-                      <span>Нийт рейс / ажил</span>
-                      <strong>{selectedGarbageRecordCount}</strong>
-                    </div>
-                    <div className={styles.formMetric}>
-                      <span>Хамгийн их жинтэй машин</span>
-                      <strong>{topGarbageVehicleOverall?.primaryLabel || "Мэдээлэл алга"}</strong>
-                    </div>
-                    <div className={styles.formMetric}>
-                      <span>Жолоочоос ирсэн зураг</span>
-                      <strong>{selectedGarbageProofImages.length}</strong>
-                    </div>
-                  </div>
+                    <form className={styles.repairControlBar} action="/reports" method="get">
+                      {exportParams.get("department") ? (
+                        <input type="hidden" name="department" value={exportParams.get("department") ?? ""} />
+                      ) : null}
+                      {exportParams.get("unit") ? (
+                        <input type="hidden" name="unit" value={exportParams.get("unit") ?? ""} />
+                      ) : null}
+                      <input type="hidden" name="report" value="repair" />
+                      <input type="hidden" name="period" value="custom" />
+                      <label className={styles.transportControlField}>
+                        <span>Машин сонгох</span>
+                        <select name="vehicle" defaultValue={selectedRepairVehicleId || "all"}>
+                          <option value="all">Бүх машин</option>
+                          {repairVehicleOptions.map((vehicle) => (
+                            <option key={vehicle.id} value={vehicle.id}>
+                              {vehicle.plate} {vehicle.name !== vehicle.plate ? `- ${vehicle.name}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className={styles.transportControlField}>
+                        <span>Эхлэх огноо</span>
+                        <input type="date" name="startDate" defaultValue={selectedStartDate} />
+                      </label>
+                      <label className={styles.transportControlField}>
+                        <span>Дуусах огноо</span>
+                        <input type="date" name="endDate" defaultValue={selectedEndDate} />
+                      </label>
+                      <div className={styles.transportTypeControl}>
+                        <span>Хурдан сонголт</span>
+                        <div className={styles.transportTypeButtons}>
+                          <Link
+                            href={getReportHref({
+                              report: "repair",
+                              period: "today",
+                              vehicle: selectedRepairVehicleId ? String(selectedRepairVehicleId) : "all",
+                            })}
+                            className={`${styles.transportTypeButton} ${
+                              activePeriodKey === "today" ? styles.transportTypeButtonActive : ""
+                            }`}
+                          >
+                            Өдөр
+                          </Link>
+                          <Link
+                            href={getReportHref({
+                              report: "repair",
+                              period: "week",
+                              vehicle: selectedRepairVehicleId ? String(selectedRepairVehicleId) : "all",
+                            })}
+                            className={`${styles.transportTypeButton} ${
+                              activePeriodKey === "week" ? styles.transportTypeButtonActive : ""
+                            }`}
+                          >
+                            7 хоног
+                          </Link>
+                          <Link
+                            href={getReportHref({
+                              report: "repair",
+                              period: "month",
+                              vehicle: selectedRepairVehicleId ? String(selectedRepairVehicleId) : "all",
+                            })}
+                            className={`${styles.transportTypeButton} ${
+                              activePeriodKey === "month" ? styles.transportTypeButtonActive : ""
+                            }`}
+                          >
+                            Энэ сар
+                          </Link>
+                        </div>
+                      </div>
+                      <div className={styles.transportDateActions}>
+                        <button type="submit">Харах</button>
+                        <Link className={styles.transportDownloadButton} href="/auto-base">
+                          Машины бүртгэл
+                        </Link>
+                      </div>
+                    </form>
 
-                  <div className={styles.vehicleAggregateGrid}>
-                    {selectedGarbageVehicleRows.length ? (
-                      selectedGarbageVehicleRows.slice(0, 6).map((row) => (
-                        <article key={row.primaryLabel} className={styles.vehicleAggregateCard}>
-                          <div className={styles.vehicleAggregateTop}>
-                            <div>
-                              <span>Машин</span>
-                              <strong>{row.primaryLabel}</strong>
-                            </div>
-                            <strong className={styles.vehicleAggregateWeight}>
-                              {formatKgLabel(row.kg)}
+                    <div className={styles.transportKpiGrid}>
+                      <article className={styles.transportKpiCard}>
+                        <span>Нийт засвар</span>
+                        <strong>{selectedRepairReportRows.length}</strong>
+                        <small>{repairReportVehicleCount} машин хамрагдсан</small>
+                      </article>
+                      <article className={styles.transportKpiCard}>
+                        <span>Нээлттэй засвар</span>
+                        <strong>{activeRepairRows.length}</strong>
+                        <small>{fleetRepairBoard?.repairCount ?? 0} машин засвартай</small>
+                      </article>
+                      <article className={styles.transportKpiCard}>
+                        <span>Нийт зардал</span>
+                        <strong>{formatMoneyLabel(repairReportAmount)}</strong>
+                        <small>{repairReportAttachmentCount} хавсралттай</small>
+                      </article>
+                    </div>
+
+                    <div className={styles.repairReportGrid}>
+                      <article className={styles.transportInfoCard}>
+                        <span className={styles.kicker}>Сонгосон машин</span>
+                        <div className={styles.transportFieldGrid}>
+                          <div className={styles.transportField}>
+                            <span>Машин</span>
+                            <strong>{selectedRepairVehicle?.plate || "Бүх машин"}</strong>
+                          </div>
+                          <div className={styles.transportField}>
+                            <span>Загвар / төрөл</span>
+                            <strong>
+                              {selectedRepairVehicle?.modelName ||
+                                selectedRepairVehicle?.vehicleTypeName ||
+                                "Бүх төрлийн машин"}
                             </strong>
                           </div>
-                          <div className={styles.vehicleAggregateMeta}>
-                            <span>{row.vehicleName}</span>
-                            <span>{row.departmentName || "Хэлтэс тодорхойгүй"}</span>
-                            <span>{row.dates.size} өдөр</span>
-                            <span>{row.taskCount} рейс/ажил</span>
-                          </div>
-                          <div className={styles.driverLine}>
+                          <div className={styles.transportField}>
                             <span>Жолооч</span>
                             <strong>
-                              {Array.from(row.driverNames).join(", ") || "Бүртгэгдээгүй"}
+                              {selectedRepairVehicle?.responsibleDriverName ||
+                                selectedRepairVehicle?.fleetDriverName ||
+                                "Бүртгэгдээгүй"}
                             </strong>
                           </div>
-                        </article>
-                      ))
+                          <div className={styles.transportField}>
+                            <span>Одоогийн төлөв</span>
+                            <strong>{selectedRepairVehicle?.stateLabel || "Нэгдсэн тайлан"}</strong>
+                          </div>
+                        </div>
+                      </article>
+
+                      <article className={styles.transportMachineCard}>
+                        <span className={styles.kicker}>Засвартай машинууд</span>
+                        {fleetRepairBoard?.repairVehicles.length ? (
+                          <div className={styles.repairVehicleList}>
+                            {fleetRepairBoard.repairVehicles.slice(0, 8).map((vehicle) => (
+                              <Link
+                                key={vehicle.id}
+                                href={getReportHref({
+                                  report: "repair",
+                                  period: activePeriodKey,
+                                  startDate: selectedStartDate,
+                                  endDate: selectedEndDate,
+                                  vehicle: String(vehicle.id),
+                                })}
+                                className={styles.repairVehicleItem}
+                              >
+                                <strong>{vehicle.plate}</strong>
+                                <span>{vehicle.stateLabel}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className={styles.noProofText}>Одоогоор засвартай машин алга байна.</div>
+                        )}
+                      </article>
+                    </div>
+
+                    <div className={styles.dailyWeightPanel}>
+                      <div className={styles.dailyWeightHeader}>
+                        <div>
+                          <span className={styles.kicker}>Засварын мөрүүд</span>
+                          <h3>Огноо, машин, засварын ажил, механик, зардал</h3>
+                        </div>
+                        <strong>{formatMoneyLabel(repairReportAmount)}</strong>
+                      </div>
+
+                      {selectedRepairReportRows.length ? (
+                        <div className={styles.repairTable}>
+                          <div className={styles.repairTableHead}>
+                            <span>№</span>
+                            <span>Огноо</span>
+                            <span>Машин</span>
+                            <span>Засварын ажил</span>
+                            <span>Механик</span>
+                            <span>Төлөв</span>
+                            <span>Зардал</span>
+                          </div>
+                          {selectedRepairReportRows.map((repair, index) => (
+                            <Link
+                              key={`${repair.vehicleId}-${repair.id}`}
+                              href={`/fleet-repair/requests/${repair.id}`}
+                              className={styles.repairTableRow}
+                            >
+                              <span>{index + 1}</span>
+                              <span>
+                                {repair.dateKey ? formatDateLabel(repair.dateKey) : repair.requestDate || "Огноогүй"}
+                              </span>
+                              <strong>{repair.vehiclePlate}</strong>
+                              <span>
+                                <strong>{repair.name}</strong>
+                                <small>
+                                  {repair.description ||
+                                    repair.damageType ||
+                                    repair.partsNote ||
+                                    "Засварын тайлбар бүртгэгдээгүй"}
+                                </small>
+                              </span>
+                              <span>{repair.mechanicName || "Оноогоогүй"}</span>
+                              <span className={styles.repairStatusPill}>{repair.stateLabel || "Төлөвгүй"}</span>
+                              <strong>{repair.amountLabel}</strong>
+                            </Link>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className={styles.weightEmpty}>
+                          Сонгосон хугацаа, машин дээр засварын бүртгэл алга байна.
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                ) : null}
+
+                {selectedReportType === "emergency" ? (
+                  <section className={`${styles.reportPanel} ${styles.transportPanel}`}>
+                    <div className={styles.reportPanelHeader}>
+                      <div className={styles.reportPanelTitle}>
+                        <span className={styles.reportPanelIcon}>ГА</span>
+                        <div>
+                          <h2>Гэнэтийн ажлын тайлан</h2>
+                          <p>Шуурхай үүсгэсэн ажил, орсон тайлан, зураг болон хяналтын төлөвийг нэг дор харуулна</p>
+                        </div>
+                      </div>
+                      <div className={styles.reportPanelBadge}>
+                        <span>Нийт тайлан</span>
+                        <strong>{emergencyReports.length}</strong>
+                      </div>
+                    </div>
+
+                    <div className={styles.transportKpiGrid}>
+                      <article className={styles.transportKpiCard}>
+                        <span>Гэнэтийн ажил</span>
+                        <strong>{emergencyTasks.length}</strong>
+                        <small>Сонгосон хүрээнд бүртгэлтэй</small>
+                      </article>
+                      <article className={styles.transportKpiCard}>
+                        <span>Орсон тайлан</span>
+                        <strong>{emergencyReports.length}</strong>
+                        <small>{emergencyGroupedReports.length} ажлын багц</small>
+                      </article>
+                      <article className={styles.transportKpiCard}>
+                        <span>Хяналт хүлээж буй</span>
+                        <strong>
+                          {emergencyTasks.filter((task) => task.stageBucket === "review").length}
+                        </strong>
+                        <small>Менежерийн шийдвэр хүлээж буй ажил</small>
+                      </article>
+                    </div>
+
+                    {emergencyGroupedReports.length ? (
+                      <div className={styles.emergencyReportStack}>
+                        {emergencyGroupedReports.map((group) => (
+                          <article key={`${group.departmentName}-${group.projectName}`} className={styles.emergencyGroupCard}>
+                            <div className={styles.emergencyGroupHeader}>
+                              <div>
+                                <span className={styles.kicker}>{group.departmentName}</span>
+                                <h3>{group.projectName}</h3>
+                              </div>
+                              <strong>{group.reports.length} тайлан</strong>
+                            </div>
+                            <div className={styles.workflowList}>
+                              {group.reports.slice(0, 5).map((report) => (
+                                <article key={report.id} className={styles.workflowItem}>
+                                  <div className={styles.workflowItemTop}>
+                                    <div>
+                                      <strong>{report.taskName}</strong>
+                                      <p>{report.submittedAt}</p>
+                                    </div>
+                                    <span className={styles.workflowItemBadge}>{reportStatusLabel(report)}</span>
+                                  </div>
+                                  <div className={styles.workflowItemMeta}>
+                                    <span>Илгээгч: {report.reporter}</span>
+                                    <span>Зураг: {report.imageCount}</span>
+                                    {report.taskId ? (
+                                      <Link href={`/tasks/${report.taskId}`} className={styles.reportActionLink}>
+                                        Дэлгэрэнгүй
+                                      </Link>
+                                    ) : null}
+                                  </div>
+                                </article>
+                              ))}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
                     ) : (
                       <div className={styles.weightEmpty}>
-                        Сонгосон хугацаанд машин бүрийн жингийн бүртгэл алга байна.
+                        Энэ хүрээнд гэнэтийн ажлын тайлан одоогоор бүртгэгдээгүй байна.
                       </div>
                     )}
-                  </div>
-                </section>
+                  </section>
+                ) : null}
 
+                {selectedReportType === "garbage" ? (
                 <section className={`${styles.reportPanel} ${styles.transportPanel}`}>
                   <div className={styles.reportPanelHeader}>
                     <div className={styles.reportPanelTitle}>
@@ -1607,6 +2112,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                     )}
                   </div>
                 </section>
+                ) : null}
               </div>
             ) : null}
 
@@ -1833,9 +2339,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               </div>
             </section>
 
-            {groupedReports.length ? (
+            {displayedGroupedReports.length ? (
               <section className={styles.projectStack}>
-                {groupedReports.map((group) => (
+                {displayedGroupedReports.map((group) => (
                   <article key={`${group.departmentName}-${group.projectName}`} className={styles.projectSection}>
                     <div className={styles.projectHeader}>
                       <div>
@@ -1954,8 +2460,16 @@ export default async function ReportsPage({ searchParams }: PageProps) {
             ) : (
               <section className={styles.emptyState}>
                 <span className={styles.kicker}>Хоосон төлөв</span>
-                <h2>Энэ хүрээнд тайлан алга</h2>
-                <p>Өөр хэлтэс эсвэл доторх нэгж сонгож үзнэ үү.</p>
+                <h2>
+                  {selectedReportType === "emergency"
+                    ? "Гэнэтийн ажлын тайлан алга"
+                    : "Энэ хүрээнд тайлан алга"}
+                </h2>
+                <p>
+                  {selectedReportType === "emergency"
+                    ? "Гэнэтийн ажил үүсч тайлан илгээгдэхэд энд гарч ирнэ."
+                    : "Өөр хэлтэс эсвэл доторх нэгж сонгож үзнэ үү."}
+                </p>
               </section>
             )}
               </>
