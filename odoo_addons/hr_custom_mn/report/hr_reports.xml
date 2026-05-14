@@ -18,6 +18,12 @@
                 <t t-call="web.external_layout">
                     <div class="page">
                         <h2 t-esc="doc._report_title()"/>
+                        <p>
+                            <strong>Хугацаа:</strong>
+                            <span t-esc="doc.date_from"/>
+                            <span> - </span>
+                            <span t-esc="doc.date_to"/>
+                        </p>
                         <table class="table table-sm o_main_table">
                             <thead>
                                 <tr>
