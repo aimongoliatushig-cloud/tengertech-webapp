@@ -1199,13 +1199,7 @@ class MunicipalProcurementRequest(models.Model):
                         "procurement_id": request.id,
                         "sequence": index,
                         "supplier_id": supplier_id,
-                        "quotation_ref": quote_payload.get("quotation_ref"),
-                        "quotation_date": quote_payload.get("quotation_date") or False,
                         "amount_total": float(quote_payload.get("amount_total") or 0),
-                        "expected_delivery_date": quote_payload.get("expected_delivery_date") or False,
-                        "payment_terms_text": quote_payload.get("payment_terms_text"),
-                        "delivery_terms_text": quote_payload.get("delivery_terms_text"),
-                        "notes": quote_payload.get("notes"),
                         "is_selected": bool(quote_payload.get("is_selected")),
                         "attachment_ids": [(6, 0, attachment_ids)],
                     }
@@ -1263,11 +1257,14 @@ class MunicipalProcurementRequest(models.Model):
 
     @api.model
     def _api_supplier_payload(self, partner):
+        phone = partner.phone or ""
+        if not phone and "mobile" in partner._fields:
+            phone = partner.mobile or ""
         return {
             "id": partner.id,
             "name": partner.display_name,
             "vat": partner.vat or "",
-            "phone": partner.phone or partner.mobile or "",
+            "phone": phone,
             "email": partner.email or "",
             "street": partner.street or "",
             "active": bool(partner.active),
@@ -1574,13 +1571,7 @@ class MunicipalProcurementPackage(models.Model):
                     "package_id": self.id,
                     "sequence": index,
                     "supplier_id": supplier_id,
-                    "quotation_ref": quote_payload.get("quotation_ref"),
-                    "quotation_date": quote_payload.get("quotation_date") or False,
                     "amount_total": float(quote_payload.get("amount_total") or 0),
-                    "expected_delivery_date": quote_payload.get("expected_delivery_date") or False,
-                    "payment_terms_text": quote_payload.get("payment_terms_text"),
-                    "delivery_terms_text": quote_payload.get("delivery_terms_text"),
-                    "notes": quote_payload.get("notes"),
                     "attachment_ids": [(6, 0, attachment_ids)],
                 }
             )
@@ -1721,15 +1712,9 @@ class MunicipalProcurementQuote(models.Model):
             "sequence": self.sequence,
             "package_id": self.package_id.id or None,
             "supplier": _relation_payload(self.supplier_id),
-            "quotation_ref": self.quotation_ref,
-            "quotation_date": self.quotation_date.isoformat() if self.quotation_date else None,
             "amount_total": self.amount_total,
             "currency": _relation_payload(self.currency_id),
-            "payment_terms_text": self.payment_terms_text,
-            "delivery_terms_text": self.delivery_terms_text,
-            "expected_delivery_date": self.expected_delivery_date.isoformat() if self.expected_delivery_date else None,
             "is_selected": self.is_selected,
-            "notes": self.notes,
             "attachments": [self.procurement_id._api_attachment_payload(attachment) for attachment in self.attachment_ids],
             "bank_account_text": self.bank_account_text,
         }

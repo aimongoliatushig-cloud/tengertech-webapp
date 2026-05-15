@@ -71,15 +71,9 @@ export type ProcurementQuotation = {
   sequence: number;
   package_id?: number | null;
   supplier: ProcurementParty;
-  quotation_ref?: string | null;
-  quotation_date?: string | null;
   amount_total: number;
   currency: ProcurementParty;
-  payment_terms_text?: string | null;
-  delivery_terms_text?: string | null;
-  expected_delivery_date?: string | null;
   is_selected: boolean;
-  notes?: string | null;
   attachments: ProcurementAttachment[];
 };
 

@@ -24,6 +24,7 @@ import {
   submitProcurementForQuotation,
   submitProcurementQuotations,
   loadProcurementMeta,
+  loadProcurementSuppliers,
   updateProcurementSupplier,
   uploadProcurementAttachment,
 } from "@/lib/procurement";
@@ -46,6 +47,15 @@ function getNumber(formData: FormData, key: string) {
 function redirectWithMessage(path: string, kind: "error" | "notice", message: string) {
   const separator = path.includes("?") ? "&" : "?";
   redirect(`${path}${separator}${kind}=${encodeURIComponent(message)}`);
+}
+
+function isRedirectException(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    String((error as { digest: string }).digest).startsWith("NEXT_REDIRECT")
+  );
 }
 
 function isDepartmentHeadSession(session: Awaited<ReturnType<typeof requireSession>>) {
@@ -219,6 +229,10 @@ export async function createProcurementRequestAction(formData: FormData) {
     await submitProcurementForQuotation(createdRequest.id, connectionOverrides);
     revalidateProcurementPaths(createdRequest.id);
   } catch (error) {
+    if (isRedirectException(error)) {
+      throw error;
+    }
+
     redirectWithMessage(
       "/procurement/new",
       "error",
@@ -251,13 +265,7 @@ export async function submitProcurementQuotationsAction(formData: FormData) {
 
         return {
           supplier_id: getNumber(formData, `supplier_id_${index}`),
-          quotation_ref: getString(formData, `quotation_ref_${index}`) || undefined,
-          quotation_date: getString(formData, `quotation_date_${index}`) || undefined,
           amount_total: getNumber(formData, `amount_total_${index}`),
-          expected_delivery_date: getString(formData, `expected_delivery_date_${index}`) || undefined,
-          payment_terms_text: getString(formData, `payment_terms_${index}`) || undefined,
-          delivery_terms_text: getString(formData, `delivery_terms_${index}`) || undefined,
-          notes: getString(formData, `quote_note_${index}`) || undefined,
           attachment_ids: attachmentIds,
         };
       }),
@@ -275,6 +283,10 @@ export async function submitProcurementQuotationsAction(formData: FormData) {
     revalidateProcurementPaths(requestId);
     redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Үнийн саналууд амжилттай хадгалагдлаа.")}`);
   } catch (error) {
+    if (isRedirectException(error)) {
+      throw error;
+    }
+
     redirectWithMessage(
       `/procurement/${requestId}`,
       "error",
@@ -311,6 +323,10 @@ export async function saveProcurementPackageAction(formData: FormData) {
     revalidateProcurementPaths(requestId);
     redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Багц амжилттай хадгалагдлаа.")}`);
   } catch (error) {
+    if (isRedirectException(error)) {
+      throw error;
+    }
+
     redirectWithMessage(
       `/procurement/${requestId}`,
       "error",
@@ -332,6 +348,10 @@ export async function deleteProcurementPackageAction(formData: FormData) {
     revalidateProcurementPaths(requestId);
     redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Багц устгагдлаа.")}`);
   } catch (error) {
+    if (isRedirectException(error)) {
+      throw error;
+    }
+
     redirectWithMessage(
       `/procurement/${requestId}`,
       "error",
@@ -361,11 +381,47 @@ export async function createProcurementSupplierAction(formData: FormData) {
     revalidateProcurementPaths(requestId);
     redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Нийлүүлэгч нэмэгдлээ. Жагсаалтаас сонгож саналаа хадгална уу.")}`);
   } catch (error) {
+    if (isRedirectException(error)) {
+      throw error;
+    }
+
     redirectWithMessage(
       `/procurement/${requestId}`,
       "error",
       error instanceof Error ? error.message : "Нийлүүлэгч нэмэх үед алдаа гарлаа.",
     );
+  }
+}
+
+export async function createProcurementSupplierInlineAction(payload: { name?: string }) {
+  const connectionOverrides = await getConnectionOverrides();
+  const name = String(payload.name || "").trim();
+
+  if (!name) {
+    return { ok: false, error: "Нийлүүлэгчийн нэр оруулна уу." };
+  }
+
+  try {
+    const existingSuppliers = await loadProcurementSuppliers({ search: name }, connectionOverrides);
+    const duplicate = existingSuppliers.find((supplier) => normalizeName(supplier.name) === normalizeName(name));
+    if (duplicate) {
+      return { ok: false, error: "Ийм нэртэй нийлүүлэгч байна.", supplier: duplicate };
+    }
+
+    const supplier = await createProcurementSupplier({ name }, connectionOverrides);
+    revalidatePath("/procurement");
+    revalidatePath("/procurement/assigned");
+    revalidatePath("/procurement/suppliers");
+    return { ok: true, supplier };
+  } catch (error) {
+    if (isRedirectException(error)) {
+      throw error;
+    }
+
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Нийлүүлэгч нэмэх үед алдаа гарлаа.",
+    };
   }
 }
 
@@ -385,6 +441,10 @@ export async function createProcurementSupplierDirectoryAction(formData: FormDat
     );
     revalidatePath("/procurement/suppliers");
   } catch (error) {
+    if (isRedirectException(error)) {
+      throw error;
+    }
+
     redirectWithMessage(
       "/procurement/suppliers",
       "error",
@@ -416,6 +476,10 @@ export async function updateProcurementSupplierAction(formData: FormData) {
     );
     revalidatePath("/procurement/suppliers");
   } catch (error) {
+    if (isRedirectException(error)) {
+      throw error;
+    }
+
     redirectWithMessage(
       "/procurement/suppliers",
       "error",
@@ -437,6 +501,10 @@ export async function deleteProcurementSupplierAction(formData: FormData) {
     await deleteProcurementSupplier(supplierId, connectionOverrides);
     revalidatePath("/procurement/suppliers");
   } catch (error) {
+    if (isRedirectException(error)) {
+      throw error;
+    }
+
     redirectWithMessage(
       "/procurement/suppliers",
       "error",
@@ -541,6 +609,10 @@ export async function runProcurementWorkflowAction(formData: FormData) {
     revalidateProcurementPaths(requestId);
     redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Үйлдэл амжилттай хадгалагдлаа.")}`);
   } catch (error) {
+    if (isRedirectException(error)) {
+      throw error;
+    }
+
     redirectWithMessage(
       `/procurement/${requestId}`,
       "error",

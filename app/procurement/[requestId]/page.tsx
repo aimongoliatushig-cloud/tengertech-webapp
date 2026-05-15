@@ -3,12 +3,12 @@ import { redirect } from "next/navigation";
 import { CheckCircle2, FileText, PackagePlus, Trash2 } from "lucide-react";
 
 import { ProcurementShell } from "@/app/procurement/_components/procurement-shell";
+import { ProcurementQuoteForm } from "@/app/procurement/_components/procurement-quote-form";
 import {
   createProcurementSupplierAction,
   deleteProcurementPackageAction,
   runProcurementWorkflowAction,
   saveProcurementPackageAction,
-  submitProcurementQuotationsAction,
 } from "@/app/procurement/actions";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { canAccessProcurementModule, requireSession } from "@/lib/auth";
@@ -658,37 +658,7 @@ function PackageCard({
       {canManage ? (
         <details className={styles.inlineDetails} open={!pack.is_complete}>
           <summary>3 нийлүүлэгчийн санал оруулах</summary>
-          <form action={submitProcurementQuotationsAction} className={styles.quoteForm}>
-            <input type="hidden" name="request_id" value={requestId} />
-            <input type="hidden" name="package_id" value={pack.id} />
-            <div className={styles.quoteGrid}>
-              {[1, 2, 3].map((index) => {
-                const existing = pack.quotations[index - 1];
-                return (
-                  <article key={index} className={styles.quoteCard}>
-                    <h3>{index}-р нийлүүлэгч</h3>
-                    <label className={styles.fieldLabel}>
-                      Нийлүүлэгч
-                      <select name={`supplier_id_${index}`} defaultValue={existing?.supplier.id || ""} required>
-                        <option value="">Сонгох</option>
-                        {suppliers.map((supplier) => (
-                          <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className={styles.fieldLabel}>Invoice дугаар<input name={`quotation_ref_${index}`} defaultValue={existing?.quotation_ref || ""} /></label>
-                    <label className={styles.fieldLabel}>Огноо<input type="date" name={`quotation_date_${index}`} defaultValue={existing?.quotation_date || ""} /></label>
-                    <label className={styles.fieldLabel}>Нийт үнийн дүн<input type="number" name={`amount_total_${index}`} defaultValue={existing?.amount_total || ""} required /></label>
-                    <label className={styles.fieldLabel}>Хүргэлтийн огноо<input type="date" name={`expected_delivery_date_${index}`} defaultValue={existing?.expected_delivery_date || ""} /></label>
-                    <label className={styles.fieldLabel}>Төлбөрийн нөхцөл<input name={`payment_terms_${index}`} defaultValue={existing?.payment_terms_text || ""} /></label>
-                    <label className={styles.fieldLabel}>Invoice файл<input type="file" name={`quote_file_${index}`} required /></label>
-                  </article>
-                );
-              })}
-            </div>
-            <p className={styles.helperText}>Хамгийн бага үнийн санал автоматаар сонгогдоно.</p>
-            <button type="submit" className={styles.primaryButton}>Санал хадгалах</button>
-          </form>
+          <ProcurementQuoteForm requestId={requestId} packageId={pack.id} suppliers={suppliers} quotations={pack.quotations} />
         </details>
       ) : null}
     </article>
