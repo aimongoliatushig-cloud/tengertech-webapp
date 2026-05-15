@@ -3,20 +3,25 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { requireSession } from "@/lib/auth";
 import {
   approveProcurementDirectorDecision,
   attachProcurementFinalOrder,
   cancelProcurementRequest,
+  createProcurementSupplier,
   createProcurementRequest,
+  deleteProcurementPackage,
   markProcurementContractSigned,
   markProcurementDone,
   markProcurementPaid,
   markProcurementReceived,
   moveProcurementToFinanceReview,
   prepareProcurementOrder,
+  saveProcurementPackage,
   submitProcurementForQuotation,
   submitProcurementQuotations,
+  loadProcurementMeta,
   uploadProcurementAttachment,
 } from "@/lib/procurement";
 
@@ -38,6 +43,14 @@ function getNumber(formData: FormData, key: string) {
 function redirectWithMessage(path: string, kind: "error" | "notice", message: string) {
   const separator = path.includes("?") ? "&" : "?";
   redirect(`${path}${separator}${kind}=${encodeURIComponent(message)}`);
+}
+
+function isDepartmentHeadSession(session: Awaited<ReturnType<typeof requireSession>>) {
+  return session.role === "project_manager" || Boolean(session.groupFlags?.municipalDepartmentHead);
+}
+
+function normalizeName(value?: string | null) {
+  return (value || "").trim().toLocaleLowerCase("mn-MN");
 }
 
 async function encodeFile(file: File) {
@@ -88,20 +101,57 @@ function revalidateProcurementPaths(requestId?: number) {
 }
 
 export async function createProcurementRequestAction(formData: FormData) {
-  const connectionOverrides = await getConnectionOverrides();
+  const session = await requireSession();
+  const connectionOverrides = {
+    login: session.login,
+    password: session.password,
+  };
   const title = getString(formData, "title");
   const projectId = getString(formData, "project_id");
   const taskId = getString(formData, "task_id");
-  const departmentId = getString(formData, "department_id");
+  const vehicleId = getString(formData, "vehicle_id");
+  let departmentId = getString(formData, "department_id");
   const storekeeperId = getString(formData, "responsible_storekeeper_user_id");
+  const relationType = getString(formData, "relation_type");
+  const repairNeed = getString(formData, "repair_need");
   const lineNames = formData.getAll("line_name").map((item) => String(item).trim());
   const lineSpecs = formData.getAll("line_specification").map((item) => String(item).trim());
   const lineQuantities = formData.getAll("line_quantity").map((item) => Number(String(item || "0")));
   const lineUoms = formData.getAll("line_uom_id").map((item) => Number(String(item || "0")));
+  const lineUomNames = formData.getAll("line_uom_name").map((item) => String(item).trim());
   const linePrices = formData.getAll("line_approx_unit_price").map((item) => Number(String(item || "0")));
 
-  if (!title || !storekeeperId) {
-    redirectWithMessage("/procurement/new", "error", "Гарчиг болон хариуцсан няравыг заавал сонгоно уу.");
+  if (!title) {
+    redirectWithMessage("/procurement/new", "error", "Гарчиг заавал оруулна уу.");
+  }
+
+  if (relationType !== "project" && relationType !== "vehicle") {
+    redirectWithMessage("/procurement/new", "error", "Худалдан авалтын төрлөө сонгоно уу.");
+  }
+
+  if (relationType === "project" && !projectId && !taskId) {
+    redirectWithMessage("/procurement/new", "error", "Төсөлтэй холбоотой хүсэлтэд төсөл эсвэл даалгавар сонгоно уу.");
+  }
+
+  if (relationType === "vehicle" && !vehicleId) {
+    redirectWithMessage("/procurement/new", "error", "Машин / засвартай холбоотой хүсэлтэд авто тээвэр сонгоно уу.");
+  }
+
+  if (relationType === "project" && vehicleId) {
+    redirectWithMessage("/procurement/new", "error", "Нэг хүсэлтийг төсөл болон машинтай зэрэг холбох боломжгүй.");
+  }
+
+  if (relationType === "vehicle" && (projectId || taskId)) {
+    redirectWithMessage("/procurement/new", "error", "Нэг хүсэлтийг төсөл болон машинтай зэрэг холбох боломжгүй.");
+  }
+
+  if (isDepartmentHeadSession(session)) {
+    const departmentScopeName = await loadSessionDepartmentName(session);
+    const meta = await loadProcurementMeta(connectionOverrides).catch(() => null);
+    const scopedDepartment = departmentScopeName
+      ? meta?.departments.find((department) => normalizeName(department.name) === normalizeName(departmentScopeName))
+      : null;
+    departmentId = scopedDepartment?.id ? String(scopedDepartment.id) : "";
   }
 
   const lines = lineNames
@@ -110,6 +160,7 @@ export async function createProcurementRequestAction(formData: FormData) {
       specification: lineSpecs[index] || "",
       quantity: lineQuantities[index] || 0,
       uom_id: lineUoms[index] || undefined,
+      unit_of_measure: lineUomNames[index] || undefined,
       approx_unit_price: linePrices[index] || 0,
       form_index: index + 1,
     }))
@@ -119,23 +170,28 @@ export async function createProcurementRequestAction(formData: FormData) {
     redirectWithMessage("/procurement/new", "error", "Хамгийн багадаа нэг мөр оруулна уу.");
   }
 
+  let createdRequestId = 0;
   try {
     const createdRequest = await createProcurementRequest(
       {
         title,
-        project_id: projectId || undefined,
-        task_id: taskId || undefined,
+        project_id: relationType === "project" ? projectId || undefined : undefined,
+        task_id: relationType === "project" ? taskId || undefined : undefined,
+        vehicle_id: relationType === "vehicle" ? vehicleId || undefined : undefined,
         department_id: departmentId || undefined,
-        description: getString(formData, "description"),
-        procurement_type: getString(formData, "procurement_type") || "goods",
+        description: [getString(formData, "description"), repairNeed ? `Засварын хэрэгцээ: ${repairNeed}` : ""]
+          .filter(Boolean)
+          .join("\n\n"),
+        procurement_type: relationType === "vehicle" ? "repair_part" : getString(formData, "procurement_type") || "goods",
         urgency: getString(formData, "urgency") || "medium",
         required_date: getString(formData, "required_date") || undefined,
-        responsible_storekeeper_user_id: Number(storekeeperId),
-        notes_user: getString(formData, "notes_user") || undefined,
+        responsible_storekeeper_user_id: storekeeperId ? Number(storekeeperId) : undefined,
+        notes_user: getString(formData, "notes_user") || repairNeed || undefined,
         lines,
       },
       connectionOverrides,
     );
+    createdRequestId = createdRequest.id;
 
     const requestFiles = getFiles(formData, "request_files");
     if (requestFiles.length) {
@@ -157,8 +213,8 @@ export async function createProcurementRequestAction(formData: FormData) {
       }
     }
 
+    await submitProcurementForQuotation(createdRequest.id, connectionOverrides);
     revalidateProcurementPaths(createdRequest.id);
-    redirect(`/procurement/${createdRequest.id}?notice=${encodeURIComponent("Хүсэлт амжилттай үүслээ.")}`);
   } catch (error) {
     redirectWithMessage(
       "/procurement/new",
@@ -166,11 +222,14 @@ export async function createProcurementRequestAction(formData: FormData) {
       error instanceof Error ? error.message : "Хүсэлт үүсгэх үед алдаа гарлаа.",
     );
   }
+
+  redirect(`/procurement/${createdRequestId}?notice=${encodeURIComponent("Хүсэлт амжилттай үүслээ.")}`);
 }
 
 export async function submitProcurementQuotationsAction(formData: FormData) {
   const connectionOverrides = await getConnectionOverrides();
   const requestId = getNumber(formData, "request_id");
+  const packageId = getNumber(formData, "package_id");
   if (!requestId) {
     redirectWithMessage("/procurement", "error", "Хүсэлтийн дугаар буруу байна.");
   }
@@ -181,7 +240,10 @@ export async function submitProcurementQuotationsAction(formData: FormData) {
         const file = getFiles(formData, `quote_file_${index}`)[0];
         const attachmentIds =
           file
-            ? await uploadFilesToRequest(requestId, [file], "request", connectionOverrides)
+            ? await uploadFilesToRequest(requestId, [file], "quotation", connectionOverrides, {
+                document_type: "quote",
+                package_id: packageId || undefined,
+              })
             : [];
 
         return {
@@ -193,7 +255,6 @@ export async function submitProcurementQuotationsAction(formData: FormData) {
           payment_terms_text: getString(formData, `payment_terms_${index}`) || undefined,
           delivery_terms_text: getString(formData, `delivery_terms_${index}`) || undefined,
           notes: getString(formData, `quote_note_${index}`) || undefined,
-          is_selected: getString(formData, "selected_quote_index") === String(index),
           attachment_ids: attachmentIds,
         };
       }),
@@ -202,6 +263,7 @@ export async function submitProcurementQuotationsAction(formData: FormData) {
     await submitProcurementQuotations(
       requestId,
       {
+        package_id: packageId || undefined,
         quotations,
       },
       connectionOverrides,
@@ -214,6 +276,92 @@ export async function submitProcurementQuotationsAction(formData: FormData) {
       `/procurement/${requestId}`,
       "error",
       error instanceof Error ? error.message : "Үнийн санал хадгалах үед алдаа гарлаа.",
+    );
+  }
+}
+
+export async function saveProcurementPackageAction(formData: FormData) {
+  const connectionOverrides = await getConnectionOverrides();
+  const requestId = getNumber(formData, "request_id");
+  const packageId = getNumber(formData, "package_id");
+  if (!requestId) {
+    redirectWithMessage("/procurement", "error", "Хүсэлтийн дугаар буруу байна.");
+  }
+
+  const lineIds = formData
+    .getAll("line_ids")
+    .map((value) => Number(String(value || "0")))
+    .filter(Boolean);
+
+  try {
+    await saveProcurementPackage(
+      requestId,
+      {
+        package_id: packageId || undefined,
+        name: getString(formData, "package_name"),
+        note: getString(formData, "package_note") || undefined,
+        line_ids: lineIds,
+      },
+      connectionOverrides,
+    );
+
+    revalidateProcurementPaths(requestId);
+    redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Багц амжилттай хадгалагдлаа.")}`);
+  } catch (error) {
+    redirectWithMessage(
+      `/procurement/${requestId}`,
+      "error",
+      error instanceof Error ? error.message : "Багц хадгалах үед алдаа гарлаа.",
+    );
+  }
+}
+
+export async function deleteProcurementPackageAction(formData: FormData) {
+  const connectionOverrides = await getConnectionOverrides();
+  const requestId = getNumber(formData, "request_id");
+  const packageId = getNumber(formData, "package_id");
+  if (!requestId || !packageId) {
+    redirectWithMessage("/procurement", "error", "Багцын мэдээлэл буруу байна.");
+  }
+
+  try {
+    await deleteProcurementPackage(requestId, { package_id: packageId }, connectionOverrides);
+    revalidateProcurementPaths(requestId);
+    redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Багц устгагдлаа.")}`);
+  } catch (error) {
+    redirectWithMessage(
+      `/procurement/${requestId}`,
+      "error",
+      error instanceof Error ? error.message : "Багц устгах үед алдаа гарлаа.",
+    );
+  }
+}
+
+export async function createProcurementSupplierAction(formData: FormData) {
+  const connectionOverrides = await getConnectionOverrides();
+  const requestId = getNumber(formData, "request_id");
+  if (!requestId) {
+    redirectWithMessage("/procurement", "error", "Хүсэлтийн дугаар буруу байна.");
+  }
+
+  try {
+    await createProcurementSupplier(
+      {
+        name: getString(formData, "supplier_name"),
+        vat: getString(formData, "supplier_vat") || undefined,
+        phone: getString(formData, "supplier_phone") || undefined,
+        email: getString(formData, "supplier_email") || undefined,
+        street: getString(formData, "supplier_street") || undefined,
+      },
+      connectionOverrides,
+    );
+    revalidateProcurementPaths(requestId);
+    redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Нийлүүлэгч нэмэгдлээ. Жагсаалтаас сонгож саналаа хадгална уу.")}`);
+  } catch (error) {
+    redirectWithMessage(
+      `/procurement/${requestId}`,
+      "error",
+      error instanceof Error ? error.message : "Нийлүүлэгч нэмэх үед алдаа гарлаа.",
     );
   }
 }

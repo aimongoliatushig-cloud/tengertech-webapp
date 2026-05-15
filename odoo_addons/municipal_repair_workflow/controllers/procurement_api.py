@@ -84,6 +84,14 @@ class MunicipalProcurementApiController(http.Controller):
         except Exception as error:
             return _error_response(error)
 
+    @http.route("/mpw/api/suppliers", type="http", auth="user", methods=["POST"], csrf=False)
+    def create_supplier(self):
+        try:
+            supplier = request.env["municipal.procurement.request"]._api_create_supplier(_json_body())
+            return _json_response({"ok": True, "supplier": supplier})
+        except Exception as error:
+            return _error_response(error)
+
     @http.route("/mpw/api/requests", type="http", auth="user", methods=["GET"], csrf=False)
     def requests(self):
         try:
@@ -136,6 +144,8 @@ class MunicipalProcurementApiController(http.Controller):
             "/mpw/api/requests/<int:request_id>/mark_received",
             "/mpw/api/requests/<int:request_id>/mark_done",
             "/mpw/api/requests/<int:request_id>/cancel",
+            "/mpw/api/requests/<int:request_id>/save_package",
+            "/mpw/api/requests/<int:request_id>/delete_package",
         ],
         type="http",
         auth="user",

@@ -176,6 +176,7 @@ class MunicipalProcurementRequest(models.Model):
     rejection_reason = fields.Text(string="Return / rejection reason")
     document_ids = fields.One2many("municipal.procurement.document", "request_id", string="Documents")
     audit_ids = fields.One2many("municipal.procurement.audit", "request_id", string="Audit")
+    package_ids = fields.One2many("municipal.procurement.package", "request_id", string="Packages")
     receipt_ids = fields.One2many("municipal.procurement.receipt", "request_id", string="Receipts")
     purchase_order_id = fields.Many2one("purchase.order", string="Purchase order", ondelete="set null")
     vendor_bill_id = fields.Many2one("account.move", string="Vendor bill", ondelete="set null")
@@ -200,10 +201,11 @@ class MunicipalProcurementRequest(models.Model):
     @api.depends("quote_line_ids.is_selected", "quote_line_ids.amount_total", "quote_line_ids.supplier_id")
     def _compute_quote_summary(self):
         for request in self:
-            selected = request.quote_line_ids.filtered("is_selected")[:1]
+            selected_quotes = request.quote_line_ids.filtered("is_selected")
+            selected = selected_quotes[:1]
             request.selected_quote_id = selected.id if selected else False
             request.selected_supplier_id = selected.supplier_id.id if selected else False
-            request.selected_supplier_total = selected.amount_total if selected else 0
+            request.selected_supplier_total = sum(selected_quotes.mapped("amount_total")) if selected_quotes else 0
 
     @api.depends("amount_total", "selected_supplier_total")
     def _compute_is_over_threshold(self):
@@ -272,6 +274,25 @@ class MunicipalProcurementRequest(models.Model):
         self.ensure_one()
         return self.quote_line_ids.filtered(lambda quote: quote.supplier_id and quote.amount_total > 0)
 
+    def _complete_packages(self):
+        self.ensure_one()
+        return self.package_ids.filtered("is_complete")
+
+    def _ensure_all_lines_packaged(self):
+        for request in self:
+            missing = request.line_ids.filtered(lambda line: not line.package_id)
+            if missing:
+                raise UserError("All purchase items must be assigned to a package before sending to the next stage.")
+
+    def _ensure_complete_packages(self):
+        for request in self:
+            if not request.package_ids:
+                raise UserError("At least one package is required before sending to the next stage.")
+            request._ensure_all_lines_packaged()
+            incomplete = request.package_ids.filtered(lambda package: not package.is_complete)
+            if incomplete:
+                raise UserError("Every package must have three supplier quotes with invoice attachments.")
+
     def _ensure_procurement_lines(self):
         for request in self:
             if not request.line_ids:
@@ -279,20 +300,31 @@ class MunicipalProcurementRequest(models.Model):
 
     def _ensure_three_quotes(self):
         for request in self:
+            if request.package_ids:
+                request._ensure_complete_packages()
+                continue
             if len(request._valid_quote_lines()) < 3:
                 raise UserError("At least three supplier quotes are required before supplier selection.")
 
     def _ensure_quote_evidence(self):
         for request in self:
+            if request.package_ids:
+                for package in request.package_ids:
+                    package._ensure_three_quotes()
+                    package._ensure_quote_evidence()
+                continue
             supplier_ids = [quote.supplier_id.id for quote in request._valid_quote_lines()]
             if len(supplier_ids) != len(set(supplier_ids)):
                 raise UserError("Supplier quotes must be from three different suppliers.")
             missing = request._valid_quote_lines().filtered(lambda quote: not quote.attachment_ids)
-            if missing and not request.quote_attachment_ids:
+            if missing:
                 raise UserError("Quote attachments or evidence are required.")
 
     def _ensure_selected_quote(self):
         for request in self:
+            if request.package_ids:
+                request._ensure_complete_packages()
+                continue
             selected = request.quote_line_ids.filtered("is_selected")
             if not selected:
                 raise UserError("A selected supplier quote is required.")
@@ -329,8 +361,10 @@ class MunicipalProcurementRequest(models.Model):
         self._ensure_three_quotes()
         self._ensure_quote_evidence()
         self._ensure_selected_quote()
-        self.write({"amount_total": self.selected_supplier_total})
         for request in self:
+            if request.package_ids:
+                request._sync_package_quote_selection()
+            request.write({"amount_total": request.selected_supplier_total})
             if request.requires_high_value_approval:
                 request._change_state("admin_review", "move_to_finance_review")
             else:
@@ -507,7 +541,9 @@ class MunicipalProcurementRequest(models.Model):
             add("submit_for_quotation")
         if self.state in ("submitted", "quote_collection") and (flags["storekeeper"] or flags["admin"]):
             add("submit_quotations")
-            if len(self._valid_quote_lines()) >= 3 and self.selected_quote_id:
+            if (self.package_ids and not self.package_ids.filtered(lambda package: not package.is_complete)) or (
+                not self.package_ids and len(self._valid_quote_lines()) >= 3 and self.selected_quote_id
+            ):
                 add("move_to_finance_review")
         if self.state == "finance_review" and (flags["finance"] or flags["admin"]):
             add("mark_paid")
@@ -554,7 +590,8 @@ class MunicipalProcurementRequest(models.Model):
     def _api_summary_payload(self):
         self.ensure_one()
         selected = self.selected_quote_id or self.ceo_selected_quote_id
-        amount = self.selected_supplier_total or selected.amount_total or self.amount_total or 0
+        package_amount = sum(self.package_ids.mapped("amount_total")) if self.package_ids else 0
+        amount = package_amount or self.selected_supplier_total or selected.amount_total or self.amount_total or 0
         paid = self.payment_status == "payment_recorded"
         received = self.receipt_status in ("received", "partially_received") or self.is_service_finalized
         today = fields.Date.context_today(self)
@@ -567,6 +604,7 @@ class MunicipalProcurementRequest(models.Model):
             "title": self.title or self.description or self.name,
             "project": _relation_payload(self.related_project_id),
             "task": _relation_payload(self.related_task_id),
+            "vehicle": _relation_payload(self.vehicle_id),
             "department": _relation_payload(self.department_id),
             "requester": _relation_payload(self.requested_by),
             "storekeeper": _relation_payload(self.purchase_manager_id),
@@ -580,6 +618,8 @@ class MunicipalProcurementRequest(models.Model):
             "selected_quotation_id": selected.id if selected else None,
             "selected_supplier_total": amount,
             "amount_approx_total": sum(self.line_ids.mapped("subtotal")) or self.amount_total or 0,
+            "package_count": len(self.package_ids),
+            "packages_complete": bool(self.package_ids) and not self.package_ids.filtered(lambda package: not package.is_complete),
             "payment_status": self._state_payload("payment_status", self.payment_status),
             "receipt_status": self._state_payload("receipt_status", self.receipt_status),
             "is_over_threshold": self.requires_high_value_approval,
@@ -607,10 +647,16 @@ class MunicipalProcurementRequest(models.Model):
     def _api_detail_payload(self):
         self.ensure_one()
         payload = self._api_summary_payload()
+        packaged_line_ids = set(self.package_ids.mapped("line_ids").ids)
         payload.update(
             {
                 "lines": [line._api_payload(index + 1) for index, line in enumerate(self.line_ids)],
                 "quotations": [quote._api_payload() for quote in self.quote_line_ids],
+                "packages": [package._api_payload(index + 1) for index, package in enumerate(self.package_ids)],
+                "unassigned_lines": [
+                    line._api_payload(index + 1)
+                    for index, line in enumerate(self.line_ids.filtered(lambda item: item.id not in packaged_line_ids))
+                ],
                 "documents": [document._api_payload() for document in self.document_ids],
                 "audit": [audit._api_payload() for audit in self.audit_ids.sorted("changed_at", reverse=True)],
                 "attachments": [self._api_attachment_payload(attachment) for attachment in self.quote_attachment_ids],
@@ -620,6 +666,13 @@ class MunicipalProcurementRequest(models.Model):
             }
         )
         return payload
+
+    def _sync_package_quote_selection(self):
+        for request in self:
+            request.quote_line_ids.write({"is_selected": False})
+            for package in request.package_ids:
+                package._select_lowest_quote()
+            request.amount_total = sum(request.package_ids.mapped("amount_total"))
 
     def _api_attachment_payload(self, attachment):
         return {"id": attachment.id, "name": attachment.name, "mimetype": attachment.mimetype or ""}
@@ -649,6 +702,7 @@ class MunicipalProcurementRequest(models.Model):
         scope = filters.get("scope")
         search = filters.get("search")
         state = filters.get("state")
+        relation = filters.get("relation")
         flow = filters.get("flow_type") or filters.get("flow")
         def filter_int(key):
             try:
@@ -658,6 +712,7 @@ class MunicipalProcurementRequest(models.Model):
 
         project_id = filter_int("project_id")
         task_id = filter_int("task_id")
+        vehicle_id = filter_int("vehicle_id")
         department_id = filter_int("department_id")
         user = self.env.user
         flags = self._api_current_user_payload(user)["flags"]
@@ -678,12 +733,18 @@ class MunicipalProcurementRequest(models.Model):
             ]
         if state:
             domain.append(("state", "=", state))
+        if relation == "vehicle":
+            domain += ["|", ("vehicle_id", "!=", False), ("request_type", "=", "repair_part")]
+        elif relation == "project":
+            domain += ["&", ("vehicle_id", "=", False), ("request_type", "!=", "repair_part")]
         if flow:
             domain.append(("flow_type", "=", flow))
         if project_id:
             domain.append(("related_project_id", "=", project_id))
         if task_id:
             domain.append(("related_task_id", "=", task_id))
+        if vehicle_id:
+            domain.append(("vehicle_id", "=", vehicle_id))
         if department_id:
             domain.append(("department_id", "=", department_id))
         if search:
@@ -767,6 +828,7 @@ class MunicipalProcurementRequest(models.Model):
         Project = self.env["project.project"].sudo()
         Task = self.env["project.task"].sudo()
         Department = self.env["hr.department"].sudo()
+        Vehicle = self.env["fleet.vehicle"].sudo()
         Partner = self.env["res.partner"].sudo()
         Uom = self.env["uom.uom"].sudo()
         Users = self.env["res.users"].sudo()
@@ -784,6 +846,7 @@ class MunicipalProcurementRequest(models.Model):
                 {"id": task.id, "name": task.display_name, "project_id": task.project_id.id or 0}
                 for task in tasks
             ],
+            "vehicles": [_relation_payload(vehicle) for vehicle in Vehicle.search([], limit=200, order="license_plate, name")],
             "departments": [_relation_payload(dept) for dept in Department.search([], limit=100, order="name")],
             "storekeepers": [_relation_payload(user) for user in Users.search(storekeeper_domain, limit=100, order="name")],
             "suppliers": [_relation_payload(partner) for partner in Partner.search([("supplier_rank", ">", 0)], limit=200, order="name")],
@@ -811,12 +874,15 @@ class MunicipalProcurementRequest(models.Model):
             "required_date": payload.get("required_date") or False,
             "related_project_id": payload_int("project_id"),
             "related_task_id": payload_int("task_id"),
+            "vehicle_id": payload_int("vehicle_id"),
             "department_id": payload_int("department_id"),
             "purchase_manager_id": payload_int("responsible_storekeeper_user_id"),
             "line_ids": [],
         }
         if vals["request_type"] == "goods":
             vals["request_type"] = "material"
+        if vals["vehicle_id"] and vals["request_type"] == "material":
+            vals["request_type"] = "repair_part"
         if vals["related_task_id"] and not vals["related_project_id"]:
             task = self.env["project.task"].sudo().browse(vals["related_task_id"]).exists()
             vals["related_project_id"] = task.project_id.id or False
@@ -838,6 +904,7 @@ class MunicipalProcurementRequest(models.Model):
                         "specification_text": line.get("specification"),
                         "requested_quantity": float(line.get("quantity") or 0),
                         "uom_id": int(line.get("uom_id") or 0) or False,
+                        "unit_of_measure": line.get("unit_of_measure") or False,
                         "estimated_unit_cost": float(line.get("approx_unit_price") or 0),
                     },
                 )
@@ -847,6 +914,18 @@ class MunicipalProcurementRequest(models.Model):
 
     def _api_submit_quotations(self, payload):
         self._ensure_role(["purchase_manager", "storekeeper", "admin"], "Only purchase manager can save supplier quotes.")
+        package_id = int(payload.get("package_id") or 0)
+        if package_id:
+            package = self.env["municipal.procurement.package"].browse(package_id).exists()
+            if not package or package.request_id not in self:
+                raise UserError("A valid package is required.")
+            package._api_submit_quotations(payload)
+            for request in self:
+                request._sync_package_quote_selection()
+                if request.state in ("draft", "submitted"):
+                    request._change_state("quote_collection", "submit_for_quotation")
+            return True
+
         quotations = payload.get("quotations") or []
         if len(quotations) < 3:
             raise UserError("Three supplier quotes are required.")
@@ -877,11 +956,78 @@ class MunicipalProcurementRequest(models.Model):
             request._ensure_selected_quote()
             request._ensure_quote_evidence()
             request.write({"date_quotation_submitted": fields.Datetime.now(), "amount_total": request.selected_supplier_total})
-            request._change_state("finance_review" if not request.requires_high_value_approval else "admin_review", "submit_quotations")
+            request._change_state("quote_collection", "submit_quotations")
         return True
+
+    def _api_save_package(self, payload):
+        self.ensure_one()
+        self._api_check_write()
+        self._ensure_role(["purchase_manager", "storekeeper", "admin"], "Only purchase manager can save packages.")
+        name = (payload.get("name") or "").strip()
+        if not name:
+            raise UserError("Package name is required.")
+        line_ids = [int(line_id) for line_id in (payload.get("line_ids") or []) if int(line_id or 0)]
+        if not line_ids:
+            raise UserError("Select at least one item for the package.")
+        lines = self.line_ids.filtered(lambda line: line.id in line_ids)
+        if len(lines) != len(set(line_ids)):
+            raise UserError("Selected package items must belong to this request.")
+        package_id = int(payload.get("package_id") or 0)
+        package = self.env["municipal.procurement.package"].browse(package_id).exists() if package_id else False
+        if package and package.request_id != self:
+            raise UserError("A valid package is required.")
+        vals = {
+            "request_id": self.id,
+            "name": name,
+            "note": payload.get("note") or False,
+        }
+        package = package or self.env["municipal.procurement.package"].create(vals)
+        if package and package.id:
+            package.write(vals)
+        package.line_ids.filtered(lambda line: line.id not in line_ids).write({"package_id": False})
+        lines.write({"package_id": package.id})
+        if self.state in ("draft", "submitted"):
+            self._change_state("quote_collection", "submit_for_quotation")
+        return package
+
+    def _api_delete_package(self, payload):
+        self.ensure_one()
+        self._api_check_write()
+        self._ensure_role(["purchase_manager", "storekeeper", "admin"], "Only purchase manager can delete packages.")
+        package_id = int(payload.get("package_id") or 0)
+        package = self.package_ids.filtered(lambda item: item.id == package_id)[:1]
+        if not package:
+            raise UserError("A valid package is required.")
+        package.line_ids.write({"package_id": False})
+        package.unlink()
+        self._sync_package_quote_selection()
+        return True
+
+    @api.model
+    def _api_create_supplier(self, payload):
+        self._ensure_role(["purchase_manager", "storekeeper", "admin"], "Only purchase manager can create suppliers.")
+        name = (payload.get("name") or "").strip()
+        if not name:
+            raise UserError("Supplier name is required.")
+        partner = self.env["res.partner"].sudo().create(
+            {
+                "name": name,
+                "company_type": "company",
+                "supplier_rank": 1,
+                "vat": payload.get("vat") or False,
+                "phone": payload.get("phone") or False,
+                "email": payload.get("email") or False,
+                "street": payload.get("street") or False,
+            }
+        )
+        return _relation_payload(partner)
 
     def _api_run_action(self, action, payload):
         self._api_check_write()
+        if action == "save_package":
+            return self._api_save_package(payload)
+        if action == "delete_package":
+            return self._api_delete_package(payload)
         if action == "submit":
             return self.action_submit()
         if action == "move_to_finance_review":
@@ -969,9 +1115,153 @@ class MunicipalProcurementRequest(models.Model):
         return self._api_attachment_payload(attachment)
 
 
+class MunicipalProcurementPackage(models.Model):
+    _name = "municipal.procurement.package"
+    _description = "Municipal Procurement Package"
+    _order = "request_id, sequence, id"
+    _inherit = ["mail.thread"]
+
+    request_id = fields.Many2one(
+        "municipal.procurement.request",
+        string="Request",
+        required=True,
+        ondelete="cascade",
+        index=True,
+    )
+    sequence = fields.Integer(default=10)
+    name = fields.Char(required=True, tracking=True)
+    note = fields.Text()
+    line_ids = fields.One2many("municipal.procurement.line", "package_id", string="Items")
+    quotation_ids = fields.One2many("municipal.procurement.quote", "package_id", string="Supplier quotes")
+    quote_count = fields.Integer(compute="_compute_package_totals", store=True)
+    total_quantity = fields.Float(compute="_compute_package_totals", store=True)
+    amount_total = fields.Float(compute="_compute_package_totals", store=True)
+    lowest_quote_id = fields.Many2one(
+        "municipal.procurement.quote",
+        string="Lowest quote",
+        compute="_compute_package_totals",
+        store=True,
+    )
+    is_complete = fields.Boolean(compute="_compute_package_totals", store=True)
+    company_id = fields.Many2one(
+        "res.company",
+        related="request_id.company_id",
+        store=True,
+        readonly=True,
+    )
+    department_id = fields.Many2one(
+        "hr.department",
+        related="request_id.department_id",
+        store=True,
+        readonly=True,
+        index=True,
+    )
+
+    @api.depends(
+        "line_ids.requested_quantity",
+        "quotation_ids.supplier_id",
+        "quotation_ids.amount_total",
+        "quotation_ids.attachment_ids",
+    )
+    def _compute_package_totals(self):
+        for package in self:
+            valid_quotes = package.quotation_ids.filtered(lambda quote: quote.supplier_id and quote.amount_total > 0)
+            lowest = valid_quotes.sorted(lambda quote: (quote.amount_total, quote.id))[:1]
+            supplier_ids = valid_quotes.mapped("supplier_id").ids
+            package.quote_count = len(valid_quotes)
+            package.total_quantity = sum(package.line_ids.mapped("requested_quantity"))
+            package.lowest_quote_id = lowest.id if lowest else False
+            package.amount_total = lowest.amount_total if lowest else 0
+            package.is_complete = (
+                bool(package.line_ids)
+                and len(valid_quotes) >= 3
+                and len(supplier_ids) == len(set(supplier_ids))
+                and not valid_quotes.filtered(lambda quote: not quote.attachment_ids)
+            )
+
+    def _ensure_three_quotes(self):
+        for package in self:
+            valid_quotes = package.quotation_ids.filtered(lambda quote: quote.supplier_id and quote.amount_total > 0)
+            if len(valid_quotes) < 3:
+                raise UserError("Every package must have three supplier quotes.")
+            supplier_ids = valid_quotes.mapped("supplier_id").ids
+            if len(supplier_ids) != len(set(supplier_ids)):
+                raise UserError("Package supplier quotes must be from three different suppliers.")
+
+    def _ensure_quote_evidence(self):
+        for package in self:
+            missing = package.quotation_ids.filtered(lambda quote: quote.supplier_id and quote.amount_total > 0 and not quote.attachment_ids)
+            if missing:
+                raise UserError("Every supplier quote must include an invoice attachment.")
+
+    def _select_lowest_quote(self):
+        for package in self:
+            package.quotation_ids.write({"is_selected": False})
+            if package.lowest_quote_id:
+                package.lowest_quote_id.is_selected = True
+
+    def _api_submit_quotations(self, payload):
+        self.ensure_one()
+        quotations = payload.get("quotations") or []
+        if len(quotations) < 3:
+            raise UserError("Three supplier quotes are required.")
+        self.quotation_ids.unlink()
+        for index, quote_payload in enumerate(quotations, start=1):
+            supplier_id = int(quote_payload.get("supplier_id") or 0)
+            if not supplier_id:
+                raise UserError("Supplier is required for every quote.")
+            attachment_ids = quote_payload.get("attachment_ids") or []
+            if not attachment_ids:
+                raise UserError("Invoice attachment is required for every supplier quote.")
+            self.env["municipal.procurement.quote"].create(
+                {
+                    "procurement_id": self.request_id.id,
+                    "package_id": self.id,
+                    "sequence": index,
+                    "supplier_id": supplier_id,
+                    "quotation_ref": quote_payload.get("quotation_ref"),
+                    "quotation_date": quote_payload.get("quotation_date") or False,
+                    "amount_total": float(quote_payload.get("amount_total") or 0),
+                    "expected_delivery_date": quote_payload.get("expected_delivery_date") or False,
+                    "payment_terms_text": quote_payload.get("payment_terms_text"),
+                    "delivery_terms_text": quote_payload.get("delivery_terms_text"),
+                    "notes": quote_payload.get("notes"),
+                    "attachment_ids": [(6, 0, attachment_ids)],
+                }
+            )
+        self._ensure_three_quotes()
+        self._ensure_quote_evidence()
+        self._select_lowest_quote()
+        self.request_id.write(
+            {
+                "date_quotation_submitted": fields.Datetime.now(),
+                "amount_total": sum(self.request_id.package_ids.mapped("amount_total")),
+            }
+        )
+        self.request_id._record_audit("submit_quotations", self.request_id.state, self.request_id.state, self.name)
+        return True
+
+    def _api_payload(self, sequence):
+        self.ensure_one()
+        return {
+            "id": self.id,
+            "sequence": sequence,
+            "name": self.name,
+            "note": self.note,
+            "lines": [line._api_payload(index + 1) for index, line in enumerate(self.line_ids)],
+            "quotations": [quote._api_payload() for quote in self.quotation_ids],
+            "quote_count": self.quote_count,
+            "total_quantity": self.total_quantity,
+            "amount_total": self.amount_total,
+            "lowest_quotation": self.lowest_quote_id._api_payload() if self.lowest_quote_id else None,
+            "is_complete": self.is_complete,
+        }
+
+
 class MunicipalProcurementLine(models.Model):
     _inherit = "municipal.procurement.line"
 
+    package_id = fields.Many2one("municipal.procurement.package", string="Package", ondelete="set null", index=True)
     name = fields.Char(string="Item name")
     specification_text = fields.Text(string="Specification")
     uom_id = fields.Many2one("uom.uom", string="Unit of measure")
@@ -997,6 +1287,7 @@ class MunicipalProcurementLine(models.Model):
             "id": self.id,
             "sequence": sequence,
             "product_id": self.product_id.id or None,
+            "package_id": self.package_id.id or None,
             "product_name": self.name or self.product_id.display_name or self.description,
             "specification": self.specification_text,
             "quantity": self.requested_quantity,
@@ -1006,13 +1297,14 @@ class MunicipalProcurementLine(models.Model):
             "final_unit_price": self.estimated_unit_cost,
             "final_subtotal": self.subtotal,
             "remark": self.note,
-            "images": [self.request_id._api_attachment_payload(attachment) for attachment in self.image_ids],
+            "images": [self.procurement_id._api_attachment_payload(attachment) for attachment in self.image_ids],
         }
 
 
 class MunicipalProcurementQuote(models.Model):
     _inherit = "municipal.procurement.quote"
 
+    package_id = fields.Many2one("municipal.procurement.package", string="Package", ondelete="cascade", index=True)
     currency_id = fields.Many2one("res.currency", string="Currency", default=lambda self: self.env.company.currency_id)
     bank_account_text = fields.Char(string="Supplier bank account")
     payment_terms_text = fields.Char(string="Payment terms")
@@ -1041,11 +1333,27 @@ class MunicipalProcurementQuote(models.Model):
         for quote in self:
             quote.contract_required = quote.amount_total > AMOUNT_THRESHOLD
 
+    @api.constrains("is_selected", "procurement_id", "package_id")
+    def _check_single_selected_quote(self):
+        for quote in self.filtered("is_selected"):
+            domain = [
+                ("id", "!=", quote.id),
+                ("procurement_id", "=", quote.procurement_id.id),
+                ("is_selected", "=", True),
+            ]
+            if quote.package_id:
+                domain.append(("package_id", "=", quote.package_id.id))
+            else:
+                domain.append(("package_id", "=", False))
+            if self.search_count(domain):
+                raise ValidationError("Only one supplier quote can be selected for the same package.")
+
     def _api_payload(self):
         self.ensure_one()
         return {
             "id": self.id,
             "sequence": self.sequence,
+            "package_id": self.package_id.id or None,
             "supplier": _relation_payload(self.supplier_id),
             "quotation_ref": self.quotation_ref,
             "quotation_date": self.quotation_date.isoformat() if self.quotation_date else None,

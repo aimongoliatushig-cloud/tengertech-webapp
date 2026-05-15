@@ -3,106 +3,206 @@ import { redirect } from "next/navigation";
 
 import { ProcurementShell } from "@/app/procurement/_components/procurement-shell";
 import { canAccessProcurementModule, requireSession } from "@/lib/auth";
-import { loadProcurementMe, loadProcurementRequests } from "@/lib/procurement";
+import {
+  createFallbackProcurementUser,
+  isProcurementSetupError,
+  loadProcurementMe,
+  loadProcurementRequests,
+  type ProcurementRequestSummary,
+} from "@/lib/procurement";
 
 import styles from "../procurement.module.css";
 
 export const dynamic = "force-dynamic";
+
+function createEmptyRequestBundle() {
+  return {
+    items: [],
+    pagination: {
+      page: 1,
+      limit: 20,
+      total: 0,
+      pages: 1,
+    },
+  };
+}
+
+function getProcurementLoadWarning(error: unknown) {
+  return isProcurementSetupError(error)
+    ? "Худалдан авалтын backend API хараахан идэвхжээгүй байна. Хариуцсан хүсэлт түр хоосон харагдана."
+    : "Худалдан авалтын backend мэдээлэл дуудагдсангүй. Хариуцсан хүсэлт түр хоосон горимоор нээгдэнэ.";
+}
+
+function statusClass(item: ProcurementRequestSummary) {
+  if (item.is_delayed) return styles.badgeDanger;
+  if (item.state.code === "submitted" || item.state.code === "quote_collection") return styles.badgeWarning;
+  if (item.state.code.includes("admin") || item.state.code.includes("ceo")) return styles.badgeBlue;
+  if (item.state.code.includes("payment") || item.state.code.includes("received")) return styles.badgeBlue;
+  return styles.badge;
+}
+
+function belongsToLane(item: ProcurementRequestSummary, lane: "packages" | "decision" | "payment" | "receiving") {
+  const text = `${item.state.code} ${item.payment_status.code} ${item.receipt_status.code}`.toLowerCase();
+  if (lane === "packages") return item.state.code === "submitted" || item.state.code === "quote_collection";
+  if (lane === "decision") return item.is_over_threshold || text.includes("admin") || text.includes("ceo") || text.includes("contract");
+  if (lane === "payment") return !item.paid || text.includes("payment");
+  return !item.received || text.includes("receipt") || text.includes("received");
+}
+
+function formatMoney(value: number) {
+  return `${new Intl.NumberFormat("mn-MN").format(value || 0)}₮`;
+}
+
+function packageStatus(item: ProcurementRequestSummary) {
+  if (!item.package_count) return "Багц үүсгээгүй";
+  return item.packages_complete ? `${item.package_count} багц дууссан` : `${item.package_count} багц дутуу`;
+}
 
 export default async function AssignedProcurementPage() {
   const session = await requireSession();
   if (!canAccessProcurementModule(session)) {
     redirect("/");
   }
+
   const connectionOverrides = {
     login: session.login,
     password: session.password,
   };
-  const [procurementUser, requestBundle] = await Promise.all([
-    loadProcurementMe(connectionOverrides),
-    loadProcurementRequests({ scope: "assigned", limit: 20 }, connectionOverrides),
+  const [procurementUser, requestBundle, setupWarning] = await Promise.all([
+    loadProcurementMe(connectionOverrides).catch(() => createFallbackProcurementUser(session)),
+    loadProcurementRequests({ scope: "assigned", limit: 40 }, connectionOverrides).catch(() =>
+      createEmptyRequestBundle(),
+    ),
+    loadProcurementMe(connectionOverrides)
+      .then(() => "")
+      .catch((loadError) => getProcurementLoadWarning(loadError)),
   ]);
 
-  const delayedCount = requestBundle.items.filter((item) => item.is_delayed).length;
-  const stageCount = requestBundle.items.filter((item) => item.current_stage_age_days >= 3).length;
-  const unresolvedCount = requestBundle.items.filter((item) => !item.paid || !item.received).length;
+  const items = requestBundle.items;
+  const packageCount = items.filter((item) => belongsToLane(item, "packages")).length;
+  const delayedCount = items.filter((item) => item.is_delayed).length;
+  const readyPackageCount = items.filter((item) => item.packages_complete).length;
+  const unresolvedCount = items.filter((item) => !item.paid || !item.received).length;
+  const lanes = [
+    { key: "packages" as const, title: "Багц, 3 үнийн санал", badge: "Нярав", items: items.filter((item) => belongsToLane(item, "packages")) },
+    { key: "decision" as const, title: "Шийдвэр / гэрээ", badge: "Захиргаа", items: items.filter((item) => belongsToLane(item, "decision")) },
+    { key: "payment" as const, title: "Төлбөр", badge: "Санхүү", items: items.filter((item) => belongsToLane(item, "payment")) },
+    { key: "receiving" as const, title: "Хүлээн авалт", badge: "Нярав", items: items.filter((item) => belongsToLane(item, "receiving")) },
+  ];
 
   return (
     <ProcurementShell
       session={session}
       procurementUser={procurementUser}
-      title="Хариуцсан хүсэлтүүд"
-      description="Нярав, санхүү, бичиг хэрэг, гэрээний ажилтан, удирдлагад оноогдсон ажлуудыг нэг хэмнэлтэйгээр харуулна."
+      title="Миний худалдан авалтын ажил"
+      description="Нярав өөрт ирсэн хүсэлтүүдийг багц, нийлүүлэгчийн санал, төлбөр, хүлээн авалтын шатаар хянана."
       activeTab="assigned"
     >
-      <section className={styles.overviewPanel}>
-        <div className={styles.overviewCopy}>
-          <p className={styles.overviewEyebrow}>Гүйцэтгэлийн урсгал</p>
-          <h2>Таны хариуцаж буй ажлууд нэг дарааллаар харагдана</h2>
-          <p>Шат бүрт хэчнээн өдөр болсон, аль хүсэлт хоцорсон, аль нь дараагийн шийдвэр хүлээж байгааг энэ харагдац төвлөрүүлнэ.</p>
-        </div>
-        <div className={styles.pillGrid}>
-          <article className={styles.pillCard}>
-            <span>Нийт даалгавар</span>
-            <strong>{requestBundle.items.length} хүсэлт</strong>
-            <small>Танд шууд харагдах хариуцсан урсгал</small>
-          </article>
-          <article className={styles.pillCard}>
-            <span>Хугацаа анхаарах</span>
-            <strong>{delayedCount} хоцролттой</strong>
-            <small>Хугацаа хэтэрсэн эсвэл саатсан хүсэлт</small>
-          </article>
-          <article className={styles.pillCard}>
-            <span>Шатанд удааширсан</span>
-            <strong>{stageCount} хүсэлт</strong>
-            <small>3 ба түүнээс дээш өдөр нэг шатанд байна</small>
-          </article>
-          <article className={styles.pillCard}>
-            <span>Дуусаагүй ажил</span>
-            <strong>{unresolvedCount} үргэлжилж байна</strong>
-            <small>Төлбөр эсвэл хүлээн авалт хүлээж буй урсгал</small>
-          </article>
-        </div>
+      {setupWarning ? <section className={`${styles.statusBanner} ${styles.noticeBanner}`}>{setupWarning}</section> : null}
+
+      <section className={styles.kpiGrid} aria-label="Хариуцсан ажлын үзүүлэлт">
+        <article className={styles.kpiCard}>
+          <span className={`${styles.metricIcon} ${styles.metricSuccess}`}>{items.length}</span>
+          <div>
+            <span>Нийт ажил</span>
+            <strong>{items.length}</strong>
+            <small>Танд хамаарах худалдан авалт</small>
+          </div>
+        </article>
+        <article className={styles.kpiCard}>
+          <span className={`${styles.metricIcon} ${styles.metricWarning}`}>{packageCount}</span>
+          <div>
+            <span>Багц хийх</span>
+            <strong>{packageCount}</strong>
+            <small>Бараа ангилах, 3 санал оруулах шат</small>
+          </div>
+        </article>
+        <article className={styles.kpiCard}>
+          <span className={`${styles.metricIcon} ${styles.metricSuccess}`}>{readyPackageCount}</span>
+          <div>
+            <span>Багц бэлэн</span>
+            <strong>{readyPackageCount}</strong>
+            <small>Дараагийн шат руу илгээхэд ойр</small>
+          </div>
+        </article>
+        <article className={styles.kpiCard}>
+          <span className={`${styles.metricIcon} ${styles.metricDanger}`}>{delayedCount}</span>
+          <div>
+            <span>Анхаарах</span>
+            <strong>{delayedCount}</strong>
+            <small>Хугацаа хэтэрсэн эсвэл саатсан</small>
+          </div>
+        </article>
+        <article className={styles.kpiCard}>
+          <span className={`${styles.metricIcon} ${styles.metricBlue}`}>{unresolvedCount}</span>
+          <div>
+            <span>Дуусаагүй</span>
+            <strong>{unresolvedCount}</strong>
+            <small>Төлбөр эсвэл хүлээн авалт хүлээгдэж байна</small>
+          </div>
+        </article>
       </section>
 
-      <section className={styles.cardSection}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <h2>Миний хариуцсан урсгал</h2>
-            <p>Эндээс жагсаалт, төлөв, одоогийн хариуцагч болон шатны насжилтыг нэг мөрөөр хянаарай.</p>
-          </div>
-          <Link href="/procurement/dashboard" className={styles.secondaryButton}>
-            Самбар харах
-          </Link>
-        </div>
-        {requestBundle.items.length ? (
-          <div className={styles.requestGrid}>
-            {requestBundle.items.map((item) => (
-              <Link key={item.id} href={`/procurement/${item.id}`} className={styles.requestCard}>
-                <div className={styles.requestCardTop}>
-                  <div>
-                    <strong>{item.name}</strong>
-                    <p>{item.title}</p>
+      <section className={styles.assignedLayout}>
+        <div className={styles.mainStack}>
+          <article className={styles.cardSection}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <h2>Ажлын самбар</h2>
+                <p>Багц үүсгэхээс хүлээн авалт хүртэлх ажлыг нэг дор харуулна.</p>
+              </div>
+              <Link href="/procurement/dashboard" className={styles.secondaryButton}>Самбар харах</Link>
+            </div>
+
+            <div className={styles.workBoard}>
+              {lanes.map((lane) => (
+                <section key={lane.key} className={styles.workLane}>
+                  <div className={styles.tableRowHeader}>
+                    <h3>{lane.title}</h3>
+                    <span className={styles.badgeOutline}>{lane.items.length}</span>
                   </div>
-                  <span className={item.is_delayed ? styles.badgeDanger : styles.badge}>{item.state.label}</span>
-                </div>
-                <div className={styles.badgeRow}>
-                  {item.flow_type ? <span className={styles.badgeOutline}>{item.flow_type.label}</span> : null}
-                  <span className={styles.badgeOutline}>{item.current_stage_age_days} өдөр</span>
-                  <span className={styles.badgeOutline}>{item.payment_status.label}</span>
-                </div>
-                <div className={styles.metaList}>
-                  <span><strong>Төсөл:</strong> {item.project?.name || "Сонгоогүй"}</span>
-                  <span><strong>Хариуцагч:</strong> {item.current_responsible?.name || "Тодорхойгүй"}</span>
-                  <span><strong>Нярав:</strong> {item.storekeeper?.name || "Сонгоогүй"}</span>
-                  <span><strong>Хүлээн авалт:</strong> {item.receipt_status.label}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className={styles.emptyState}>Одоогоор танд оноогдсон худалдан авалтын хүсэлт алга байна.</div>
-        )}
+                  {lane.items.length ? (
+                    lane.items.map((item) => (
+                      <Link key={`${lane.key}-${item.id}`} href={`/procurement/${item.id}`} className={styles.requestCard}>
+                        <div className={styles.requestCardTop}>
+                          <div>
+                            <strong>{item.name}</strong>
+                            <p>{item.title}</p>
+                          </div>
+                          <span className={statusClass(item)}>{item.state.label}</span>
+                        </div>
+                        <div className={styles.metaList}>
+                          <span><strong>Хэлтэс:</strong> {item.department?.name || "-"}</span>
+                          <span><strong>Төрөл:</strong> {item.vehicle?.name ? "Авто сэлбэг / засвар" : "Төслийн худалдан авалт"}</span>
+                          <span><strong>Багц:</strong> {packageStatus(item)}</span>
+                          <span><strong>Дүн:</strong> {formatMoney(item.selected_supplier_total || item.amount_approx_total)}</span>
+                          <span><strong>Хариуцагч:</strong> {item.current_responsible?.name || "-"}</span>
+                        </div>
+                      </Link>
+                    ))
+                  ) : (
+                    <div className={styles.emptyState}>
+                      <strong>{lane.badge} шатанд ажил алга</strong>
+                    </div>
+                  )}
+                </section>
+              ))}
+            </div>
+          </article>
+        </div>
+
+        <aside className={styles.sideStack}>
+          <section className={styles.sidePanel}>
+            <h3>Няравын үндсэн дараалал</h3>
+            <div className={styles.statusGuide}>
+              <div className={styles.statusGuideItem}><span><span className={styles.statusDot} /> Хүсэлт сонгох</span><span className={styles.badge}>1</span></div>
+              <div className={styles.statusGuideItem}><span><span className={styles.statusDot} /> Багц үүсгэх</span><span className={styles.badge}>2</span></div>
+              <div className={styles.statusGuideItem}><span><span className={`${styles.statusDot} ${styles.dotWarning}`} /> 3 санал + invoice</span><span className={styles.badgeWarning}>3</span></div>
+              <div className={styles.statusGuideItem}><span><span className={`${styles.statusDot} ${styles.dotBlue}`} /> Дүгнэлт илгээх</span><span className={styles.badgeBlue}>4</span></div>
+              <div className={styles.statusGuideItem}><span><span className={styles.statusDot} /> Хүлээн авах</span><span className={styles.badge}>5</span></div>
+            </div>
+          </section>
+        </aside>
       </section>
     </ProcurementShell>
   );

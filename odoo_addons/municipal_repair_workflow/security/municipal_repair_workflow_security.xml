@@ -165,6 +165,41 @@
             <field name="groups" eval="[(4, ref('group_repair_team_lead')), (4, ref('group_repair_mechanic'))]"/>
         </record>
 
+        <record id="rule_procurement_request_department_head" model="ir.rule">
+            <field name="name">Procurement department head own department</field>
+            <field name="model_id" ref="model_municipal_procurement_request"/>
+            <field name="domain_force">['|', ('requested_by', '=', user.id), ('department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_department_head'))]"/>
+        </record>
+
+        <record id="rule_procurement_request_municipal_manager_all" model="ir.rule">
+            <field name="name">Procurement municipal managers all</field>
+            <field name="model_id" ref="model_municipal_procurement_request"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_manager'))]"/>
+        </record>
+
+        <record id="rule_procurement_package_privileged" model="ir.rule">
+            <field name="name">Procurement packages privileged roles</field>
+            <field name="model_id" ref="model_municipal_procurement_package"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('group_repair_storekeeper')), (4, ref('group_repair_finance')), (4, ref('group_repair_director')), (4, ref('group_procurement_purchase_manager')), (4, ref('group_procurement_storekeeper')), (4, ref('group_procurement_finance_user')), (4, ref('group_procurement_administration_user')), (4, ref('group_procurement_legal_user')), (4, ref('group_procurement_ceo')), (4, ref('group_procurement_general_manager')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_procurement_package_department_head" model="ir.rule">
+            <field name="name">Procurement packages department head own department</field>
+            <field name="model_id" ref="model_municipal_procurement_package"/>
+            <field name="domain_force">['|', ('request_id.requested_by', '=', user.id), ('request_id.department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_department_head'))]"/>
+        </record>
+
+        <record id="rule_procurement_package_municipal_manager_all" model="ir.rule">
+            <field name="name">Procurement packages municipal managers all</field>
+            <field name="model_id" ref="model_municipal_procurement_package"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_manager'))]"/>
+        </record>
+
         <record id="rule_procurement_line_privileged" model="ir.rule">
             <field name="name">Procurement lines privileged roles</field>
             <field name="model_id" ref="model_municipal_procurement_line"/>
@@ -190,6 +225,20 @@
             <field name="groups" eval="[(4, ref('group_repair_team_lead')), (4, ref('group_repair_mechanic'))]"/>
         </record>
 
+        <record id="rule_procurement_line_department_head" model="ir.rule">
+            <field name="name">Procurement lines department head own department</field>
+            <field name="model_id" ref="model_municipal_procurement_line"/>
+            <field name="domain_force">['|', ('procurement_id.requested_by', '=', user.id), ('department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_department_head'))]"/>
+        </record>
+
+        <record id="rule_procurement_line_municipal_manager_all" model="ir.rule">
+            <field name="name">Procurement lines municipal managers all</field>
+            <field name="model_id" ref="model_municipal_procurement_line"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_manager'))]"/>
+        </record>
+
         <record id="rule_procurement_quote_privileged" model="ir.rule">
             <field name="name">Procurement quotes privileged roles</field>
             <field name="model_id" ref="model_municipal_procurement_quote"/>
@@ -213,6 +262,20 @@
             <field name="model_id" ref="model_municipal_procurement_quote"/>
             <field name="domain_force">['|', '|', ('repair_id.mechanic_id.user_id', '=', user.id), ('repair_id.supervisor_id', '=', user.id), ('repair_id.department_id.manager_id.user_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('group_repair_team_lead')), (4, ref('group_repair_mechanic'))]"/>
+        </record>
+
+        <record id="rule_procurement_quote_department_head" model="ir.rule">
+            <field name="name">Procurement quotes department head own department</field>
+            <field name="model_id" ref="model_municipal_procurement_quote"/>
+            <field name="domain_force">['|', ('procurement_id.requested_by', '=', user.id), ('procurement_id.department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_department_head'))]"/>
+        </record>
+
+        <record id="rule_procurement_quote_municipal_manager_all" model="ir.rule">
+            <field name="name">Procurement quotes municipal managers all</field>
+            <field name="model_id" ref="model_municipal_procurement_quote"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_manager'))]"/>
         </record>
 
         <record id="rule_warehouse_move_privileged" model="ir.rule">
@@ -269,6 +332,20 @@
             <field name="model_id" ref="model_municipal_garbage_fuel_report"/>
             <field name="domain_force">[(1, '=', 1)]</field>
             <field name="groups" eval="[(4, ref('group_repair_manager')), (4, ref('municipal_core.group_municipal_admin'))]"/>
+        </record>
+
+        <record id="rule_warehouse_move_department_head" model="ir.rule">
+            <field name="name">Warehouse moves department head own department</field>
+            <field name="model_id" ref="model_municipal_warehouse_move"/>
+            <field name="domain_force">['|', ('procurement_id.requested_by', '=', user.id), ('department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_department_head'))]"/>
+        </record>
+
+        <record id="rule_warehouse_move_municipal_manager_all" model="ir.rule">
+            <field name="name">Warehouse moves municipal managers all</field>
+            <field name="model_id" ref="model_municipal_warehouse_move"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('municipal_core.group_municipal_manager'))]"/>
         </record>
     </data>
 </odoo>

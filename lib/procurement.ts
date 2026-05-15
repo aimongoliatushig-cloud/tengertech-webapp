@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createOdooConnection, type OdooConnection } from "@/lib/odoo";
+import type { RoleGroupFlags } from "@/lib/roles";
 
 export type ProcurementUser = {
   id: number;
@@ -44,6 +45,7 @@ export type ProcurementLine = {
   id: number;
   sequence: number;
   product_id?: number | null;
+  package_id?: number | null;
   product_name?: string | null;
   specification?: string | null;
   quantity: number;
@@ -59,6 +61,7 @@ export type ProcurementLine = {
 export type ProcurementQuotation = {
   id: number;
   sequence: number;
+  package_id?: number | null;
   supplier: ProcurementParty;
   quotation_ref?: string | null;
   quotation_date?: string | null;
@@ -70,6 +73,20 @@ export type ProcurementQuotation = {
   is_selected: boolean;
   notes?: string | null;
   attachments: ProcurementAttachment[];
+};
+
+export type ProcurementPackage = {
+  id: number;
+  sequence: number;
+  name: string;
+  note?: string | null;
+  lines: ProcurementLine[];
+  quotations: ProcurementQuotation[];
+  quote_count: number;
+  total_quantity: number;
+  amount_total: number;
+  lowest_quotation?: ProcurementQuotation | null;
+  is_complete: boolean;
 };
 
 export type ProcurementDocument = {
@@ -97,6 +114,7 @@ export type ProcurementRequestSummary = {
   title: string;
   project?: ProcurementParty | null;
   task?: ProcurementParty | null;
+  vehicle?: ProcurementParty | null;
   department?: ProcurementParty | null;
   requester?: ProcurementParty | null;
   storekeeper?: ProcurementParty | null;
@@ -134,12 +152,16 @@ export type ProcurementRequestSummary = {
   vendor_bill_id?: number | null;
   stock_receipt_required: boolean;
   service_confirmation_only: boolean;
+  package_count?: number;
+  packages_complete?: boolean;
   available_actions: ProcurementAction[];
 };
 
 export type ProcurementRequestDetail = ProcurementRequestSummary & {
   lines: ProcurementLine[];
   quotations: ProcurementQuotation[];
+  packages: ProcurementPackage[];
+  unassigned_lines: ProcurementLine[];
   documents: ProcurementDocument[];
   audit: ProcurementAudit[];
   attachments: ProcurementAttachment[];
@@ -148,6 +170,7 @@ export type ProcurementRequestDetail = ProcurementRequestSummary & {
 export type ProcurementMeta = {
   projects: ProcurementParty[];
   tasks: Array<ProcurementParty & { project_id: number }>;
+  vehicles: ProcurementParty[];
   departments: ProcurementParty[];
   storekeepers: ProcurementParty[];
   suppliers: ProcurementParty[];
@@ -190,11 +213,13 @@ type ApiEnvelope<T> = {
   };
   projects?: ProcurementMeta["projects"];
   tasks?: ProcurementMeta["tasks"];
+  vehicles?: ProcurementMeta["vehicles"];
   departments?: ProcurementMeta["departments"];
   storekeepers?: ProcurementMeta["storekeepers"];
   suppliers?: ProcurementMeta["suppliers"];
   uoms?: ProcurementMeta["uoms"];
   attachment?: ProcurementAttachment;
+  supplier?: ProcurementParty;
   error?: {
     code: string;
     message: string;
@@ -220,10 +245,12 @@ export function createFallbackProcurementUser(session: {
   name: string;
   login: string;
   role: string;
+  groupFlags?: Partial<RoleGroupFlags> | null;
 }): ProcurementUser {
   const isAdmin = session.role === "system_admin";
   const isDirector = session.role === "director";
   const isGeneralManager = session.role === "general_manager";
+  const isDepartmentHead = session.role === "project_manager" || Boolean(session.groupFlags?.municipalDepartmentHead);
 
   return {
     id: session.uid,
@@ -231,7 +258,7 @@ export function createFallbackProcurementUser(session: {
     login: session.login,
     company: "Тохижилт үйлчилгээний төв",
     flags: {
-      requester: true,
+      requester: isDepartmentHead || isGeneralManager,
       storekeeper: false,
       finance: false,
       office_clerk: false,
@@ -267,6 +294,7 @@ export function createFallbackProcurementMeta(taskId?: string, projectId?: strin
   return {
     projects: projectId ? [{ id: Number(projectId), name: `Төсөл #${projectId}` }] : [],
     tasks: taskId ? [{ id: Number(taskId), name: `Ажилбар #${taskId}`, project_id: Number(projectId || 0) }] : [],
+    vehicles: [],
     departments: [],
     storekeepers: [{ id: 0, name: "Идэвхжсэний дараа сонгоно" }],
     suppliers: [],
@@ -413,6 +441,7 @@ export async function loadProcurementMeta(connectionOverrides: ConnectionOverrid
   return {
     projects: response.projects || [],
     tasks: response.tasks || [],
+    vehicles: response.vehicles || [],
     departments: response.departments || [],
     storekeepers: response.storekeepers || [],
     suppliers: response.suppliers || [],
@@ -508,6 +537,50 @@ export async function submitProcurementQuotations(
     },
   );
   return response.item!;
+}
+
+export async function saveProcurementPackage(
+  requestId: number,
+  payload: Record<string, unknown>,
+  connectionOverrides: ConnectionOverrides = {},
+) {
+  const response = await procurementFetch<ProcurementRequestDetail>(
+    `/mpw/api/requests/${requestId}/save_package`,
+    {
+      method: "POST",
+      body: payload,
+      connectionOverrides,
+    },
+  );
+  return response.item!;
+}
+
+export async function deleteProcurementPackage(
+  requestId: number,
+  payload: Record<string, unknown>,
+  connectionOverrides: ConnectionOverrides = {},
+) {
+  const response = await procurementFetch<ProcurementRequestDetail>(
+    `/mpw/api/requests/${requestId}/delete_package`,
+    {
+      method: "POST",
+      body: payload,
+      connectionOverrides,
+    },
+  );
+  return response.item!;
+}
+
+export async function createProcurementSupplier(
+  payload: Record<string, unknown>,
+  connectionOverrides: ConnectionOverrides = {},
+) {
+  const response = await procurementFetch<never>("/mpw/api/suppliers", {
+    method: "POST",
+    body: payload,
+    connectionOverrides,
+  });
+  return response.supplier!;
 }
 
 export async function moveProcurementToFinanceReview(
