@@ -39,6 +39,13 @@ export type RoleGroupFlags = {
   fleetRepairCeo?: boolean;
   fleetRepairManager?: boolean;
   opsStorekeeper?: boolean;
+  procurementPurchaseManager?: boolean;
+  procurementStorekeeper?: boolean;
+  procurementFinance?: boolean;
+  procurementAdministration?: boolean;
+  procurementLegal?: boolean;
+  procurementCeo?: boolean;
+  procurementGeneralManager?: boolean;
   hrUser?: boolean;
   hrManager?: boolean;
   municipalHse?: boolean;
@@ -101,6 +108,13 @@ const EMPTY_GROUP_FLAGS: RoleGroupFlags = {
   fleetRepairCeo: false,
   fleetRepairManager: false,
   opsStorekeeper: false,
+  procurementPurchaseManager: false,
+  procurementStorekeeper: false,
+  procurementFinance: false,
+  procurementAdministration: false,
+  procurementLegal: false,
+  procurementCeo: false,
+  procurementGeneralManager: false,
   hrUser: false,
   hrManager: false,
   municipalHse: false,
@@ -179,12 +193,24 @@ export function canAccessProcurementModule(context: RoleContext) {
   return Boolean(
     isSystemAdmin(context) ||
       isExecutiveContext(context) ||
+      context.role === "project_manager" ||
+      groupFlags.municipalDepartmentHead ||
+      groupFlags.municipalManager ||
       groupFlags.opsStorekeeper ||
       groupFlags.fleetRepairPurchaser ||
       groupFlags.fleetRepairFinance ||
       groupFlags.fleetRepairAccounting ||
+      groupFlags.fleetRepairAdministration ||
       groupFlags.fleetRepairManager ||
-      groupFlags.fleetRepairCeo
+      groupFlags.fleetRepairGeneralManager ||
+      groupFlags.fleetRepairCeo ||
+      groupFlags.procurementPurchaseManager ||
+      groupFlags.procurementStorekeeper ||
+      groupFlags.procurementFinance ||
+      groupFlags.procurementAdministration ||
+      groupFlags.procurementLegal ||
+      groupFlags.procurementCeo ||
+      groupFlags.procurementGeneralManager
   );
 }
 

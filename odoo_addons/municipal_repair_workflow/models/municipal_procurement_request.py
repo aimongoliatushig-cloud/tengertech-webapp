@@ -50,6 +50,7 @@ class MunicipalProcurementRequest(models.Model):
         tracking=True,
     )
     department_id = fields.Many2one("hr.department", string="Хэлтэс", tracking=True)
+    vehicle_id = fields.Many2one("fleet.vehicle", string="Машин", tracking=True, index=True)
     repair_id = fields.Many2one("municipal.repair.request", string="Засварын хүсэлт", ondelete="set null")
     vehicle_id = fields.Many2one("fleet.vehicle", string="Машин техник", tracking=True)
     line_ids = fields.One2many(
@@ -134,7 +135,43 @@ class MunicipalProcurementRequest(models.Model):
         for vals in vals_list:
             if vals.get("name", "Шинэ") in ("Шинэ", "Ð¨Ð¸Ð½Ñ"):
                 vals["name"] = sequence.next_by_code("municipal.procurement.request") or "Шинэ"
-        return super().create(vals_list)
+        requests = super().create(vals_list)
+        requests._link_vehicle_repair()
+        return requests
+
+    def write(self, vals):
+        result = super().write(vals)
+        if "vehicle_id" in vals or "repair_id" in vals:
+            self._link_vehicle_repair()
+        return result
+
+    def _active_repair_domain(self, vehicle):
+        return [
+            ("vehicle_id", "=", vehicle.id),
+            ("state", "in", ["new", "diagnosed", "waiting_parts", "waiting_approval", "approved", "in_repair"]),
+        ]
+
+    def _link_vehicle_repair(self):
+        repair_model = self.env["municipal.repair.request"].sudo()
+        for request in self:
+            if request.repair_id or not request.vehicle_id:
+                continue
+            repair = repair_model.search(request._active_repair_domain(request.vehicle_id), limit=1)
+            if not repair:
+                repair = repair_model.create(
+                    {
+                        "issue_summary": "Худалдан авалтын хүсэлт - %s" % request.name,
+                        "vehicle_id": request.vehicle_id.id,
+                        "requested_by": request.requested_by.id,
+                        "department_id": request.department_id.id or False,
+                        "parts_note": "Машин дээр үүсгэсэн худалдан авалтын хүсэлт: %s" % request.name,
+                        "state": "waiting_parts",
+                        "company_id": request.company_id.id,
+                    }
+                )
+            request.sudo().repair_id = repair.id
+            if not repair.procurement_request_id:
+                repair.sudo().procurement_request_id = request.id
 
     @api.depends("quote_line_ids.is_selected", "quote_line_ids.amount_total", "quote_line_ids.supplier_id")
     def _compute_quote_summary(self):
@@ -361,6 +398,14 @@ class MunicipalProcurementLine(models.Model):
         readonly=True,
         index=True,
     )
+    vehicle_id = fields.Many2one(
+        "fleet.vehicle",
+        string="Машин",
+        related="procurement_id.vehicle_id",
+        store=True,
+        readonly=True,
+        index=True,
+    )
     repair_part_line_id = fields.Many2one("municipal.repair.part.line", string="Засварын сэлбэгийн мөр")
     product_id = fields.Many2one("product.product", string="Бараа / сэлбэг")
     description = fields.Char(string="Тайлбар", required=True)
@@ -433,6 +478,14 @@ class MunicipalProcurementQuote(models.Model):
         readonly=True,
         index=True,
     )
+    vehicle_id = fields.Many2one(
+        "fleet.vehicle",
+        string="Машин",
+        related="procurement_id.vehicle_id",
+        store=True,
+        readonly=True,
+        index=True,
+    )
     sequence = fields.Integer(string="Дараалал", default=10)
     supplier_id = fields.Many2one("res.partner", string="Нийлүүлэгч", required=True)
     supplier_name = fields.Char(string="Нийлүүлэгчийн нэр", related="supplier_id.name", store=True, readonly=True)
@@ -497,6 +550,7 @@ class MunicipalWarehouseMove(models.Model):
     )
     procurement_id = fields.Many2one("municipal.procurement.request", string="Худалдан авалт", ondelete="set null")
     procurement_line_id = fields.Many2one("municipal.procurement.line", string="Худалдан авалтын мөр", ondelete="set null")
+    vehicle_id = fields.Many2one("fleet.vehicle", string="Машин", related="procurement_id.vehicle_id", store=True, readonly=True, index=True)
     repair_id = fields.Many2one("municipal.repair.request", string="Засварын хүсэлт", ondelete="set null")
     repair_part_line_id = fields.Many2one("municipal.repair.part.line", string="Засварын сэлбэгийн мөр", ondelete="set null")
     product_id = fields.Many2one("product.product", string="Бараа / сэлбэг")

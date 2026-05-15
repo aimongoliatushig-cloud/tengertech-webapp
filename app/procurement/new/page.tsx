@@ -1,8 +1,21 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import { ProcurementLineEditor } from "@/app/procurement/_components/procurement-line-editor";
+import { ProcurementRelationFields } from "@/app/procurement/_components/procurement-relation-fields";
 import { ProcurementShell } from "@/app/procurement/_components/procurement-shell";
 import { createProcurementRequestAction } from "@/app/procurement/actions";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { canAccessProcurementModule, requireSession } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import { loadProcurementMe, loadProcurementMeta } from "@/lib/procurement";
+import { loadFleetVehicleBoard } from "@/lib/odoo";
+import {
+  createFallbackProcurementUser,
+  isProcurementSetupError,
+  loadProcurementMe,
+  loadProcurementMeta,
+  type ProcurementMeta,
+  type ProcurementUser,
+} from "@/lib/procurement";
 
 import styles from "../procurement.module.css";
 
@@ -14,6 +27,36 @@ function getValue(value?: string | string[]) {
   return Array.isArray(value) ? value[0] || "" : value || "";
 }
 
+function createEmptyProcurementMeta(): ProcurementMeta {
+  return {
+    projects: [],
+    tasks: [],
+    vehicles: [],
+    departments: [],
+    storekeepers: [],
+    suppliers: [],
+    uoms: [],
+  };
+}
+
+function getSetupWarning(loadError: unknown) {
+  return isProcurementSetupError(loadError)
+    ? "Худалдан авалтын backend API хараахан идэвхжээгүй байна. Хуудас туршилтын горимоор нээгдэнэ, харин хүсэлт хадгалах бол Odoo дээр procurement API/module update шаардлагатай."
+    : "Худалдан авалтын backend мэдээлэл дуудагдсангүй. Хүсэлт хадгалах болон сонголтын өгөгдөл Odoo холболтоос хамаарна.";
+}
+
+function isDepartmentHeadSession(session: Awaited<ReturnType<typeof requireSession>>) {
+  return session.role === "project_manager" || Boolean(session.groupFlags?.municipalDepartmentHead);
+}
+
+function isExecutiveProcurementUser(procurementUser: ProcurementUser) {
+  return procurementUser.flags.admin || procurementUser.flags.director || procurementUser.flags.general_manager;
+}
+
+function normalizeName(value?: string | null) {
+  return (value || "").trim().toLocaleLowerCase("mn-MN");
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function NewProcurementPage({ searchParams }: PageProps) {
@@ -21,233 +64,174 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
   if (!canAccessProcurementModule(session)) {
     redirect("/");
   }
+
   const params = (await searchParams) || {};
   const notice = getValue(params.notice);
   const error = getValue(params.error);
   const selectedTaskId = getValue(params.task_id);
   const selectedProjectId = getValue(params.project_id);
+  const selectedVehicleId = getValue(params.vehicle_id);
+  const relationType = selectedVehicleId ? "vehicle" : "project";
   const connectionOverrides = {
     login: session.login,
     password: session.password,
   };
-  const [procurementUser, meta] = await Promise.all([
-    loadProcurementMe(connectionOverrides),
-    loadProcurementMeta(connectionOverrides),
+  const [procurementUser, meta, vehicleBoard, departmentScopeName, setupWarning] = await Promise.all([
+    loadProcurementMe(connectionOverrides).catch(() => createFallbackProcurementUser(session)),
+    loadProcurementMeta(connectionOverrides).catch(() => createEmptyProcurementMeta()),
+    loadFleetVehicleBoard(connectionOverrides).catch(() => null),
+    loadSessionDepartmentName(session),
+    loadProcurementMe(connectionOverrides)
+      .then(() => "")
+      .catch((loadError) => getSetupWarning(loadError)),
   ]);
+  const isDepartmentHeadView =
+    isDepartmentHeadSession(session) && !isExecutiveProcurementUser(procurementUser);
+  const scopedDepartment = departmentScopeName
+    ? meta.departments.find((department) => normalizeName(department.name) === normalizeName(departmentScopeName))
+    : null;
+  const departmentLabel = scopedDepartment?.name || departmentScopeName || "Хэлтэс тодорхойгүй";
+  const defaultStorekeeperId = meta.storekeepers[0]?.id ? String(meta.storekeepers[0].id) : "";
+  const vehicleOptions = meta.vehicles.length
+    ? meta.vehicles
+    : (vehicleBoard?.allVehicles || []).map((vehicle) => ({
+        id: vehicle.id,
+        name: `${vehicle.plate}${vehicle.modelName ? ` - ${vehicle.modelName}` : ""}`,
+      }));
 
   return (
     <ProcurementShell
       session={session}
       procurementUser={procurementUser}
-      title="Шинэ худалдан авалтын хүсэлт"
-      description="Төсөл эсвэл даалгавартай шууд холбож, шаардлагатай бараа, үйлчилгээ, сэлбэгийн хэрэгцээг хурдан бүртгэнэ."
+      title="Шинэ худалдан авах хүсэлт"
+      description="Хэлтсийн хэрэгцээг төсөлтэй эсвэл машин/засвартай холбоотойгоор тусад нь бүртгэнэ."
       activeTab="new"
     >
-      <section className={styles.overviewPanel}>
-        <div className={styles.overviewCopy}>
-          <p className={styles.overviewEyebrow}>Хүсэлт бэлтгэх</p>
-          <h2>Нэг маягийн урсгалаар хүсэлтээ оруулна</h2>
-          <p>Суурь мэдээлэл, мөрийн хэрэгцээ, тайлбар, хавсралтыг нэг дарааллаар бөглөснөөр дараагийн шатанд шууд шилжинэ.</p>
-        </div>
-        <div className={styles.pillGrid}>
-          <article className={styles.pillCard}>
-            <span>Заавал бөглөх</span>
-            <strong>Гарчиг, нярав</strong>
-            <small>Хүсэлтийн эзэн болон хариуцсан урсгал заавал тодорхой байна</small>
-          </article>
-          <article className={styles.pillCard}>
-            <span>Хэрэгцээний мөр</span>
-            <strong>Дор хаяж 1 мөр</strong>
-            <small>Тоон хэмжээтэй мөрүүд л хадгалагдана</small>
-          </article>
-          <article className={styles.pillCard}>
-            <span>Хавсралт</span>
-            <strong>Нэмэлтээр оруулна</strong>
-            <small>Зураг, тодорхойлолт, файл байвал хамтад нь хавсаргана</small>
-          </article>
-        </div>
-      </section>
-
+      {setupWarning ? <section className={`${styles.statusBanner} ${styles.noticeBanner}`}>{setupWarning}</section> : null}
       {notice ? <section className={`${styles.statusBanner} ${styles.noticeBanner}`}>{notice}</section> : null}
       {error ? <section className={`${styles.statusBanner} ${styles.errorBanner}`}>{error}</section> : null}
 
       {!procurementUser.flags.requester && !procurementUser.flags.admin ? (
         <section className={styles.cardSection}>
-          <div className={styles.emptyState}>Танд шинэ худалдан авалтын хүсэлт үүсгэх эрх алга.</div>
+          <div className={styles.emptyState}>
+            <strong>Танд шинэ худалдан авах хүсэлт үүсгэх эрх алга.</strong>
+            <p>Хэлтсийн дарга эсвэл эрх бүхий хэрэглэгчээр нэвтэрнэ үү.</p>
+          </div>
         </section>
       ) : (
-        <form action={createProcurementRequestAction} className={styles.quoteForm}>
-          <section className={styles.cardSection}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <h2>Суурь мэдээлэл</h2>
-                <p>Гарчиг, төсөл, даалгавар, алба нэгж, хариуцсан нярав, огноо зэрэг анхны мэдээллээ оруулна.</p>
+        <form action={createProcurementRequestAction} className={styles.formLayout}>
+          <div className={styles.mainStack}>
+            <section className={styles.cardSection}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <h2>Ерөнхий мэдээлэл</h2>
+                  <p>Хэлтсийн дарга зөвхөн хэрэгцээ, холбоотой объект, тооцоолсон барааны мөрүүдийг бүртгэнэ.</p>
+                </div>
               </div>
-            </div>
-            <div className={styles.formGrid}>
-              <label className={styles.fieldLabel}>
-                Гарчиг
-                <input name="title" placeholder="Жишээ: Замын материалын худалдан авалт" required />
-              </label>
-              <label className={styles.fieldLabel}>
-                Төсөл
-                <select name="project_id" defaultValue={selectedProjectId}>
-                  <option value="">Сонгох</option>
-                  {meta.projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.fieldLabel}>
-                Даалгавар
-                <select name="task_id" defaultValue={selectedTaskId}>
-                  <option value="">Сонгох</option>
-                  {meta.tasks.map((task) => (
-                    <option key={task.id} value={task.id}>
-                      {task.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.fieldLabel}>
-                Алба нэгж
-                <select name="department_id" defaultValue="">
-                  <option value="">Сонгох</option>
-                  {meta.departments.map((department) => (
-                    <option key={department.id} value={department.id}>
-                      {department.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.fieldLabel}>
-                Хариуцсан нярав
-                <select name="responsible_storekeeper_user_id" required defaultValue="">
-                  <option value="">Сонгох</option>
-                  {meta.storekeepers.map((storekeeper) => (
-                    <option key={storekeeper.id} value={storekeeper.id}>
-                      {storekeeper.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.fieldLabel}>
-                Хэрэгцээний төрөл
-                <select name="procurement_type" defaultValue="goods">
-                  <option value="goods">Бараа</option>
-                  <option value="service">Үйлчилгээ</option>
-                  <option value="spare_part">Сэлбэг</option>
-                  <option value="other">Бусад</option>
-                </select>
-              </label>
-              <label className={styles.fieldLabel}>
-                Яаралтай түвшин
-                <select name="urgency" defaultValue="medium">
-                  <option value="low">Бага</option>
-                  <option value="medium">Дунд</option>
-                  <option value="high">Өндөр</option>
-                  <option value="critical">Яаралтай</option>
-                </select>
-              </label>
-              <label className={styles.fieldLabel}>
-                Шаардлагатай огноо
-                <input type="date" name="required_date" />
-              </label>
-            </div>
-          </section>
+              <div className={styles.formGrid}>
+                <label className={styles.fieldLabel}>
+                  Гарчиг
+                  <input name="title" placeholder="Жишээ: Камаз - шүүрдэх сойз" required />
+                </label>
 
-          <section className={styles.cardSection}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <h2>Тайлбар ба нөхцөл</h2>
-                <p>Хэрэгцээний зорилго, ажлын онцлог, нэмэлт тайлбараа нэг дор оруулна.</p>
-              </div>
-            </div>
-            <div className={styles.formGrid}>
-              <label className={`${styles.fieldLabel} ${styles.fieldSpanFull}`}>
-                Тайлбар / зорилго
-                <textarea
-                  name="description"
-                  placeholder="Юунд зориулах, ямар хэрэгцээтэй байгааг дэлгэрэнгүй бичнэ үү."
-                />
-              </label>
-              <label className={`${styles.fieldLabel} ${styles.fieldSpanFull}`}>
-                Хэрэглэгчийн тэмдэглэл
-                <textarea name="notes_user" placeholder="Нэмэлт нөхцөл, ажлын онцлог" />
-              </label>
-            </div>
-          </section>
+                {isDepartmentHeadView ? (
+                  <>
+                    <label className={styles.fieldLabel}>
+                      Хэлтэс
+                      <input value={departmentLabel} readOnly />
+                    </label>
+                    <input type="hidden" name="department_id" value={scopedDepartment?.id || ""} />
+                    {defaultStorekeeperId ? (
+                      <input type="hidden" name="responsible_storekeeper_user_id" value={defaultStorekeeperId} />
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <label className={styles.fieldLabel}>
+                      Хэлтэс
+                      <select name="department_id" defaultValue="">
+                        <option value="">Сонгох</option>
+                        {meta.departments.map((department) => (
+                          <option key={department.id} value={department.id}>{department.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className={styles.fieldLabel}>
+                      Агуулах хариуцагч / Нярав
+                      <select name="responsible_storekeeper_user_id" defaultValue="">
+                        <option value="">Сонгох</option>
+                        {meta.storekeepers.map((storekeeper) => (
+                          <option key={storekeeper.id} value={storekeeper.id}>{storekeeper.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </>
+                )}
 
-          <section className={styles.cardSection}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <h2>Хүсэлтийн мөрүүд</h2>
-                <p>Доорх мөрүүдээс хэрэгтэй хэсгээ бөглөнө. Хоосон мөрүүд автоматаар алгасагдана.</p>
+                <label className={styles.fieldLabel}>
+                  Шаардлагатай огноо
+                  <input type="date" name="required_date" />
+                </label>
+                <label className={`${styles.fieldLabel} ${styles.fieldSpanFull}`}>
+                  Тайлбар
+                  <textarea name="description" placeholder="Яагаад хэрэгтэй, хаана ашиглах, ямар нөхцөлтэйг товч бичнэ үү." />
+                </label>
               </div>
-            </div>
-            <div className={styles.quoteGrid}>
-              {[1, 2, 3, 4].map((index) => (
-                <article key={index} className={styles.quoteCard}>
-                  <h3>Мөр {index}</h3>
-                  <label>
-                    Нэр
-                    <input name="line_name" placeholder="Бараа / үйлчилгээний нэр" />
-                  </label>
-                  <label>
-                    Тодорхойлолт
-                    <textarea name="line_specification" placeholder="Техникийн шаардлага, тайлбар" />
-                  </label>
-                  <label>
-                    Тоо хэмжээ
-                    <input type="number" step="0.01" min="0" name="line_quantity" />
-                  </label>
-                  <label>
-                    Хэмжих нэгж
-                    <select name="line_uom_id" defaultValue="">
-                      <option value="">Сонгох</option>
-                      {meta.uoms.map((uom) => (
-                        <option key={uom.id} value={uom.id}>
-                          {uom.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Ойролцоох нэгж үнэ
-                    <input type="number" step="0.01" min="0" name="line_approx_unit_price" />
-                  </label>
-                </article>
-              ))}
-            </div>
-          </section>
+            </section>
 
-          <section className={styles.cardSection}>
-            <div className={styles.sectionHeader}>
-              <div>
-                <h2>Хавсралт ба илгээх</h2>
-                <p>Файл хавсаргах бол энд оруулж, хүсэлтээ ноорог байдлаар үүсгэнэ.</p>
+            <section className={styles.cardSection}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <h2>Холбоотой объект</h2>
+                  <p>Нэг хүсэлт зөвхөн төсөл/даалгавартай эсвэл машин/засвартай холбоотой байна.</p>
+                </div>
               </div>
-            </div>
-            <div className={styles.formGrid}>
-              <label className={`${styles.fieldLabel} ${styles.fieldSpanFull}`}>
-                Хавсралт
-                <input type="file" name="request_files" multiple />
-              </label>
-            </div>
-            <div className={styles.formActionsCard}>
+              <ProcurementRelationFields
+                projects={meta.projects}
+                tasks={meta.tasks}
+                vehicles={vehicleOptions}
+                selectedProjectId={selectedProjectId}
+                selectedTaskId={selectedTaskId}
+                selectedVehicleId={selectedVehicleId}
+                defaultType={relationType}
+              />
+            </section>
+
+            <section className={styles.cardSection}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <h2>Барааны мөрүүд</h2>
+                  <p>Нярав дараагийн шатанд 3 нийлүүлэгчийн саналыг бүртгэнэ. Энд зөвхөн тооцоолсон үнийг оруулна.</p>
+                </div>
+              </div>
+              <ProcurementLineEditor uoms={meta.uoms} />
+            </section>
+          </div>
+
+          <aside className={styles.sideStack}>
+            <section className={styles.sidePanel}>
+              <h3>Хэлтсийн даргын урсгал</h3>
+              <div className={styles.statusGuide}>
+                <div className={styles.statusGuideItem}><span><span className={styles.statusDot} /> Хүсэлт үүсгэх</span><span className={styles.badge}>Таны алхам</span></div>
+                <div className={styles.statusGuideItem}><span><span className={`${styles.statusDot} ${styles.dotWarning}`} /> Үнийн санал цуглуулах</span><span className={styles.badgeWarning}>Нярав</span></div>
+                <div className={styles.statusGuideItem}><span><span className={`${styles.statusDot} ${styles.dotPurple}`} /> Шийдвэр, гэрээ, төлбөр</span><span className={styles.badgePurple}>Хариуцсан нэгж</span></div>
+                <div className={styles.statusGuideItem}><span><span className={`${styles.statusDot} ${styles.dotBlue}`} /> Хүлээн авалт</span><span className={styles.badgeBlue}>Нярав</span></div>
+              </div>
+              <input type="hidden" name="procurement_type" value="goods" />
+              <input type="hidden" name="urgency" value="medium" />
+            </section>
+
+            <section className={styles.formActionsCard}>
               <div className={styles.formActionsCopy}>
-                <strong>Хүсэлт үүсгэхэд бэлэн боллоо</strong>
-                <span>Хадгалсны дараа дэлгэрэнгүй хуудсанд шилжиж, дараагийн шатны ажлууд харагдана.</span>
+                <strong>Хүсэлт илгээхэд бэлэн үү?</strong>
+                <span>Илгээсний дараа нярав 3 нийлүүлэгчийн санал цуглуулах шат эхэлнэ.</span>
               </div>
               <div className={styles.buttonRow}>
-                <button type="submit" className={styles.primaryButton}>
-                  Хүсэлт үүсгэх
-                </button>
+                <Link href="/procurement" className={styles.secondaryButton}>Буцах</Link>
+                <button type="submit" className={styles.primaryButton}>Илгээх</button>
               </div>
-            </div>
-          </section>
+            </section>
+          </aside>
         </form>
       )}
     </ProcurementShell>

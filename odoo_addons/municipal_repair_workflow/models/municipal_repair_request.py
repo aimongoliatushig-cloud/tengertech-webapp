@@ -123,6 +123,11 @@ class MunicipalRepairRequest(models.Model):
         readonly=True,
         copy=False,
     )
+    procurement_request_ids = fields.One2many(
+        "municipal.procurement.request",
+        "repair_id",
+        string="Худалдан авалтын хүсэлтүүд",
+    )
     quote_line_ids = fields.One2many(
         "municipal.procurement.quote",
         "repair_id",
@@ -284,6 +289,7 @@ class MunicipalRepairRequest(models.Model):
                     "name": "Сэлбэг - %s" % request.name,
                     "request_type": "repair_part",
                     "department_id": request.department_id.id or False,
+                    "vehicle_id": request.vehicle_id.id,
                     "repair_id": request.id,
                     "vehicle_id": request.vehicle_id.id,
                     "amount_total": request.amount_total,

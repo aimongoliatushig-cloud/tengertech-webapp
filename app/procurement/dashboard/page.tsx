@@ -34,8 +34,9 @@ type RelationFilter = "all" | "project" | "vehicle";
 
 const STATE_LABELS: Record<string, string> = {
   draft: "Ноорог",
-  submitted: "Илгээсэн",
+  submitted: "Санал цуглуулж байна",
   quote: "Санал цуглуулж байна",
+  quote_collection: "Санал цуглуулж байна",
   quotation_waiting: "Санал цуглуулж байна",
   quotations_ready: "Шийдвэр хүлээгдэж байна",
   finance_review: "Шийдвэр хүлээгдэж байна",

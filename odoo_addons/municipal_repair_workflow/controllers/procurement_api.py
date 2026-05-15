@@ -84,10 +84,32 @@ class MunicipalProcurementApiController(http.Controller):
         except Exception as error:
             return _error_response(error)
 
+    @http.route("/mpw/api/suppliers", type="http", auth="user", methods=["GET"], csrf=False)
+    def suppliers(self):
+        try:
+            payload = request.env["municipal.procurement.request"]._api_list_suppliers(
+                dict(request.httprequest.args)
+            )
+            return _json_response(payload)
+        except Exception as error:
+            return _error_response(error)
+
     @http.route("/mpw/api/suppliers", type="http", auth="user", methods=["POST"], csrf=False)
     def create_supplier(self):
         try:
             supplier = request.env["municipal.procurement.request"]._api_create_supplier(_json_body())
+            return _json_response({"ok": True, "supplier": supplier})
+        except Exception as error:
+            return _error_response(error)
+
+    @http.route("/mpw/api/suppliers/<int:supplier_id>", type="http", auth="user", methods=["PATCH", "DELETE"], csrf=False)
+    def supplier_detail(self, supplier_id):
+        try:
+            procurement = request.env["municipal.procurement.request"]
+            if request.httprequest.method == "DELETE":
+                supplier = procurement._api_delete_supplier(supplier_id)
+            else:
+                supplier = procurement._api_update_supplier(supplier_id, _json_body())
             return _json_response({"ok": True, "supplier": supplier})
         except Exception as error:
             return _error_response(error)
@@ -137,6 +159,7 @@ class MunicipalProcurementApiController(http.Controller):
             "/mpw/api/requests/<int:request_id>/submit",
             "/mpw/api/requests/<int:request_id>/move_to_finance_review",
             "/mpw/api/requests/<int:request_id>/prepare_order",
+            "/mpw/api/requests/<int:request_id>/record_package_ceo_order",
             "/mpw/api/requests/<int:request_id>/director_decision",
             "/mpw/api/requests/<int:request_id>/attach_final_order",
             "/mpw/api/requests/<int:request_id>/mark_contract_signed",

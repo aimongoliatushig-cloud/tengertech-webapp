@@ -125,6 +125,13 @@ async function refreshSessionRole(session: AppSession) {
   const needsRepairGroupRefresh =
     session.groupFlags?.fleetRepairAny === undefined ||
     session.groupFlags?.opsStorekeeper === undefined ||
+    session.groupFlags?.procurementPurchaseManager === undefined ||
+    session.groupFlags?.procurementStorekeeper === undefined ||
+    session.groupFlags?.procurementFinance === undefined ||
+    session.groupFlags?.procurementAdministration === undefined ||
+    session.groupFlags?.procurementLegal === undefined ||
+    session.groupFlags?.procurementCeo === undefined ||
+    session.groupFlags?.procurementGeneralManager === undefined ||
     session.groupFlags?.mfoDriver === undefined ||
     session.groupFlags?.environmentManager === undefined ||
     session.groupFlags?.complaintManager === undefined;

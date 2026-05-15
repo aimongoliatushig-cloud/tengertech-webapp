@@ -1,13 +1,21 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ProcurementStateFilterSelect } from "@/app/procurement/_components/procurement-state-filter-select";
 import { ProcurementShell } from "@/app/procurement/_components/procurement-shell";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { canAccessProcurementModule, requireSession } from "@/lib/auth";
 import {
+  createEmptyProcurementDashboard,
+  createFallbackProcurementUser,
+  isProcurementSetupError,
   loadProcurementDashboard,
   loadProcurementMeta,
   loadProcurementMe,
   loadProcurementRequests,
+  type ProcurementMeta,
+  type ProcurementRequestSummary,
+  type ProcurementUser,
 } from "@/lib/procurement";
 
 import styles from "./procurement.module.css";
@@ -16,12 +24,146 @@ type PageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
+type RelationFilter = "all" | "project" | "vehicle";
+
+const STATE_LABELS: Record<string, string> = {
+  draft: "Ноорог",
+  submitted: "Санал цуглуулж байна",
+  quote: "Санал цуглуулж байна",
+  quote_collection: "Санал цуглуулж байна",
+  quotation_waiting: "Санал цуглуулж байна",
+  quotations_ready: "Шийдвэр хүлээгдэж байна",
+  admin_review: "Шийдвэр хүлээгдэж байна",
+  ceo_decision: "Шийдвэр хүлээгдэж байна",
+  ceo_order_uploaded: "Шийдвэр хүлээгдэж байна",
+  finance_review: "Шийдвэр хүлээгдэж байна",
+  director_approval: "Шийдвэр хүлээгдэж байна",
+  order_waiting: "Гэрээ боловсруулж байна",
+  contract_waiting: "Гэрээ боловсруулж байна",
+  contract_review: "Гэрээ боловсруулж байна",
+  legal_contract_draft: "Гэрээ боловсруулж байна",
+  legal_final_contract: "Гэрээ боловсруулж байна",
+  payment: "Төлбөр хүлээгдэж байна",
+  payment_pending: "Төлбөр хүлээгдэж байна",
+  payment_waiting: "Төлбөр хүлээгдэж байна",
+  paid: "Хүлээн авалт хүлээгдэж байна",
+  payment_recorded: "Хүлээн авалт хүлээгдэж байна",
+  received: "Хүлээн авалт хүлээгдэж байна",
+  done: "Дууссан",
+  returned: "Буцаасан",
+  rejected: "Татгалзсан",
+  cancelled: "Татгалзсан",
+};
+
 function getValue(value?: string | string[]) {
   return Array.isArray(value) ? value[0] || "" : value || "";
 }
 
 function formatMoney(value: number) {
-  return new Intl.NumberFormat("mn-MN").format(value || 0);
+  return `₮ ${new Intl.NumberFormat("mn-MN").format(value || 0)}`;
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("mn-MN", { year: "numeric", month: "2-digit", day: "2-digit" }).format(parsed);
+}
+
+function createEmptyRequestBundle() {
+  return {
+    items: [],
+    pagination: {
+      page: 1,
+      limit: 20,
+      total: 0,
+      pages: 1,
+    },
+  };
+}
+
+function createEmptyProcurementMeta(): ProcurementMeta {
+  return {
+    projects: [],
+    tasks: [],
+    vehicles: [],
+    departments: [],
+    storekeepers: [],
+    suppliers: [],
+    uoms: [],
+  };
+}
+
+function getProcurementLoadWarning(error: unknown) {
+  return isProcurementSetupError(error)
+    ? "Худалдан авалтын backend API хараахан идэвхжээгүй байна. Жагсаалт түр хоосон харагдана."
+    : "Худалдан авалтын backend мэдээлэл дуудагдсангүй. Жагсаалт түр хоосон горимоор нээгдэнэ.";
+}
+
+function isDepartmentHeadSession(session: Awaited<ReturnType<typeof requireSession>>) {
+  return session.role === "project_manager" || Boolean(session.groupFlags?.municipalDepartmentHead);
+}
+
+function isExecutiveProcurementUser(procurementUser: ProcurementUser) {
+  return procurementUser.flags.admin || procurementUser.flags.director || procurementUser.flags.general_manager;
+}
+
+function normalizeName(value?: string | null) {
+  return (value || "").trim().toLocaleLowerCase("mn-MN");
+}
+
+function getStatusLabel(item: ProcurementRequestSummary) {
+  return STATE_LABELS[item.state.code] || item.state.label || "Илгээсэн";
+}
+
+function getRelationType(item: ProcurementRequestSummary) {
+  return item.vehicle || item.procurement_type.code === "repair_part" ? "vehicle" : "project";
+}
+
+function getRelationLabel(item: ProcurementRequestSummary) {
+  return getRelationType(item) === "vehicle" ? "Машин" : "Төсөл";
+}
+
+function getRelatedObject(item: ProcurementRequestSummary) {
+  return item.vehicle?.name || item.task?.name || item.project?.name || "-";
+}
+
+function getNextStep(item: ProcurementRequestSummary) {
+  const code = item.state.code;
+  if (code === "draft") return "Илгээх";
+  if (code.includes("quote") || code.includes("quotation")) return "Нярав: 3 санал оруулах";
+  if (code.includes("director") || code.includes("finance_review")) return "Шийдвэр хүлээж байна";
+  if (code.includes("contract") || code.includes("order")) return "Гэрээ, баримт бичиг";
+  if (code.includes("payment") || code === "payment") return "Санхүү: төлбөр хийх";
+  if (code.includes("received") || code === "paid") return "Агуулах: хүлээн авах";
+  if (code === "done") return "Дууссан";
+  if (code === "returned") return "Засварлах";
+  if (code === "rejected" || code === "cancelled") return "Хаагдсан";
+  return item.current_responsible?.name || "Дараагийн шат хүлээгдэж байна";
+}
+
+function statusClass(item: ProcurementRequestSummary) {
+  const label = getStatusLabel(item);
+  if (item.is_delayed || label === "Буцаасан" || label === "Татгалзсан") return styles.badgeDanger;
+  if (label === "Санал цуглуулж байна") return styles.badgeWarning;
+  if (label === "Шийдвэр хүлээгдэж байна" || label === "Гэрээ боловсруулж байна") return styles.badgePurple;
+  if (label === "Төлбөр хүлээгдэж байна" || label === "Хүлээн авалт хүлээгдэж байна") return styles.badgeBlue;
+  return styles.badge;
+}
+
+function filterByRelation(items: ProcurementRequestSummary[], relation: RelationFilter) {
+  if (relation === "all") return items;
+  return items.filter((item) => getRelationType(item) === relation);
+}
+
+function filterByDepartment(items: ProcurementRequestSummary[], departmentName?: string | null) {
+  if (!departmentName) return items;
+  const scoped = normalizeName(departmentName);
+  return items.filter((item) => normalizeName(item.department?.name) === scoped);
+}
+
+function countStatus(items: ProcurementRequestSummary[], status: string) {
+  return items.filter((item) => getStatusLabel(item) === status).length;
 }
 
 export const dynamic = "force-dynamic";
@@ -31,11 +173,12 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
   if (!canAccessProcurementModule(session)) {
     redirect("/");
   }
+
   const params = (await searchParams) || {};
   const search = getValue(params.search);
   const state = getValue(params.state);
-  const flow = getValue(params.flow);
-  const departmentId = getValue(params.department_id);
+  const relation = (getValue(params.relation) || "all") as RelationFilter;
+  const requestedDepartmentId = getValue(params.department_id);
   const notice = getValue(params.notice);
   const error = getValue(params.error);
   const connectionOverrides = {
@@ -43,193 +186,235 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
     password: session.password,
   };
 
-  const [procurementUser, requestBundle, dashboard, meta] = await Promise.all([
-    loadProcurementMe(connectionOverrides),
+  const [procurementUser, meta, departmentScopeName, setupWarning] = await Promise.all([
+    loadProcurementMe(connectionOverrides).catch(() => createFallbackProcurementUser(session)),
+    loadProcurementMeta(connectionOverrides).catch(() => createEmptyProcurementMeta()),
+    loadSessionDepartmentName(session),
+    loadProcurementMe(connectionOverrides)
+      .then(() => "")
+      .catch((loadError) => getProcurementLoadWarning(loadError)),
+  ]);
+
+  const isDepartmentHeadView =
+    isDepartmentHeadSession(session) && !isExecutiveProcurementUser(procurementUser);
+  const isExecutiveView = isExecutiveProcurementUser(procurementUser);
+  const isStorekeeperView =
+    !isExecutiveView &&
+    !isDepartmentHeadView &&
+    (procurementUser.flags.storekeeper ||
+      Boolean(session.groupFlags?.procurementStorekeeper) ||
+      Boolean(session.groupFlags?.procurementPurchaseManager) ||
+      Boolean(session.groupFlags?.fleetRepairPurchaser) ||
+      Boolean(session.groupFlags?.opsStorekeeper));
+  const requestScope = isExecutiveView ? "all" : isStorekeeperView ? "assigned" : "mine";
+  const scopedDepartment = departmentScopeName
+    ? meta.departments.find((department) => normalizeName(department.name) === normalizeName(departmentScopeName))
+    : null;
+  const departmentId = isDepartmentHeadView ? String(scopedDepartment?.id || "") : isStorekeeperView ? "" : requestedDepartmentId;
+
+  const [requestBundle, dashboard] = await Promise.all([
     loadProcurementRequests(
       {
-        scope: "mine",
+        scope: requestScope,
         search,
         state,
-        flow_type: flow,
+        relation: relation === "all" ? "" : relation,
         department_id: departmentId,
         limit: 20,
       },
       connectionOverrides,
-    ),
-    loadProcurementDashboard({ department_id: departmentId }, connectionOverrides),
-    loadProcurementMeta(connectionOverrides),
+    ).catch(() => createEmptyRequestBundle()),
+    loadProcurementDashboard(
+      {
+        department_id: departmentId,
+        relation: relation === "all" ? "" : relation,
+      },
+      connectionOverrides,
+    ).catch(() => createEmptyProcurementDashboard()),
   ]);
 
-  const isExecutiveView = procurementUser.flags.director || procurementUser.flags.general_manager || procurementUser.flags.admin;
-  const filteredTotal = requestBundle.items.length;
-  const delayedCount = requestBundle.items.filter((item) => item.is_delayed).length;
-  const pendingCount = requestBundle.items.filter((item) => !item.paid || !item.received).length;
-  const filterSummary = state || flow || search || departmentId ? "Шүүлтүүр идэвхтэй" : "Бүх хүсэлт харагдаж байна";
+  const departmentFilteredItems = isDepartmentHeadView
+    ? filterByDepartment(requestBundle.items, departmentScopeName)
+    : requestBundle.items;
+  const items = filterByRelation(departmentFilteredItems, relation);
+  const dashboardItems = filterByRelation(
+    isDepartmentHeadView ? filterByDepartment(dashboard.items, departmentScopeName) : dashboard.items,
+    relation,
+  );
+  const kpiItems = dashboardItems.length ? dashboardItems : items;
+  const activeFilterCount = [search, state, relation !== "all" ? relation : "", departmentId].filter(Boolean).length;
+  const relationTabs = [
+    { href: "/procurement", label: "Бүгд", active: relation === "all" },
+    { href: "/procurement?relation=project", label: "Төслийн худалдан авалт", active: relation === "project" },
+    { href: "/procurement?relation=vehicle", label: "Машин / засварын худалдан авалт", active: relation === "vehicle" },
+  ];
 
   return (
     <ProcurementShell
       session={session}
       procurementUser={procurementUser}
-      title={isExecutiveView ? "Бүх хэлтсийн худалдан авалт" : "Миний худалдан авалт"}
+      title={
+        isExecutiveView
+          ? "Бүх хэлтсийн худалдан авалт"
+          : isStorekeeperView
+            ? "Хариуцсан худалдан авалтууд"
+            : "Өөрийн хэлтсийн худалдан авалт"
+      }
       description={
         isExecutiveView
-          ? "CEO болон удирдлага бүх хэлтсийн худалдан авалтын хүсэлтийг жагсаалтаар харж, хэлтэс, төлөв, дүнгээр шүүнэ."
-          : "Төсөл, даалгавартай холбоотой худалдан авалтын хүсэлтүүдээ нэг дэлгэцээс хянаж, шат бүрийн явцыг шууд харна."
+          ? "Хүсэлтүүдийг хэлтэс, төрөл, төлөв, дүнгээр хянана."
+          : isStorekeeperView
+            ? "Танд хуваарилагдсан болон няравын шатанд хүлээгдэж буй худалдан авалтын хүсэлтүүд."
+          : "Зөвхөн өөрийн хэлтсийн төсөл болон машин/засвартай холбоотой худалдан авалтын хүсэлтүүд."
       }
       activeTab="list"
     >
-      <section className={styles.overviewPanel}>
-        <div className={styles.overviewCopy}>
-          <p className={styles.overviewEyebrow}>Өнөөдрийн төлөв</p>
-          <h2>Хүсэлтүүдээ нэг урсгалаар хянаарай</h2>
-          <p>Шүүлтүүр, төлөв, төсөв, гүйцэтгэлийн мэдээллийг нэг хэмнэлтэй харуулж, хамгийн түрүүнд анхаарах хүсэлтүүдийг шууд ялгаж өгнө.</p>
-        </div>
-        <div className={styles.pillGrid}>
-          <article className={styles.pillCard}>
-            <span>Энэ хуудсанд</span>
-            <strong>{filteredTotal} хүсэлт</strong>
-            <small>Таны сонгосон шүүлтүүрээр гарсан дүн</small>
-          </article>
-          <article className={styles.pillCard}>
-            <span>Анхаарах хүсэлт</span>
-            <strong>{delayedCount} хоцролттой</strong>
-            <small>Хугацаа хэтэрсэн эсвэл гацсан урсгал</small>
-          </article>
-          <article className={styles.pillCard}>
-            <span>Үргэлжилж буй ажил</span>
-            <strong>{pendingCount} нээлттэй</strong>
-            <small>{filterSummary}</small>
-          </article>
-        </div>
-      </section>
-
-      <section className={styles.metricsGrid}>
-        <article className={styles.metricCard}>
-          <span>Нийт хүсэлт</span>
-          <strong>{dashboard.metrics.total}</strong>
-          <small>Систем дэх бүх урсгал</small>
-        </article>
-        <article className={styles.metricCard}>
-          <span>1 саяас доош</span>
-          <strong>{dashboard.metrics.low_flow}</strong>
-          <small>Шуурхай санхүүгийн урсгал</small>
-        </article>
-        <article className={styles.metricCard}>
-          <span>1 саяас дээш</span>
-          <strong>{dashboard.metrics.high_flow}</strong>
-          <small>Тушаал, гэрээтэй урсгал</small>
-        </article>
-        <article className={styles.metricCard}>
-          <span>Хоцорсон</span>
-          <strong>{dashboard.metrics.delayed}</strong>
-          <small>Хугацаа хэтэрсэн хүсэлт</small>
-        </article>
-      </section>
-
+      {setupWarning ? <section className={`${styles.statusBanner} ${styles.noticeBanner}`}>{setupWarning}</section> : null}
       {notice ? <section className={`${styles.statusBanner} ${styles.noticeBanner}`}>{notice}</section> : null}
       {error ? <section className={`${styles.statusBanner} ${styles.errorBanner}`}>{error}</section> : null}
 
-      <section className={styles.cardSection}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <h2>Шүүлтүүр</h2>
-            <p>Хүсэлтийн дугаар, төсөл, нийлүүлэгч, төлөв, урсгалын төрлөөр хайна.</p>
-          </div>
-          {procurementUser.flags.requester || procurementUser.flags.admin ? (
-            <Link href="/procurement/new" className={styles.primaryButton}>
-              Шинэ хүсэлт
-            </Link>
-          ) : null}
-        </div>
-        <form className={styles.filterRow}>
-          <label className={styles.fieldLabel}>
-            Хайх үг
-            <input
-              type="search"
-              name="search"
-              defaultValue={search}
-              placeholder="Дугаар, төсөл, нийлүүлэгч"
-            />
-          </label>
-          <label className={styles.fieldLabel}>
-            Төлөв
-            <select name="state" defaultValue={state}>
-              <option value="">Бүгд</option>
-              <option value="draft">Ноорог</option>
-              <option value="quotation_waiting">Үнийн санал хүлээж байна</option>
-              <option value="quotations_ready">3 үнийн санал оруулсан</option>
-              <option value="paid">Төлбөр хийсэн</option>
-              <option value="received">Хүлээн авсан</option>
-            </select>
-          </label>
-          <label className={styles.fieldLabel}>
-            Урсгал
-            <select name="flow" defaultValue={flow}>
-              <option value="">Бүгд</option>
-              <option value="low">1 саяас доош</option>
-              <option value="high">1 саяас дээш</option>
-            </select>
-          </label>
-          <label className={styles.fieldLabel}>
-            Хэлтэс
-            <select name="department_id" defaultValue={departmentId}>
-              <option value="">Бүгд</option>
-              {meta.departments.map((department) => (
-                <option key={department.id} value={department.id}>
-                  {department.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className={styles.buttonRow}>
-            <button type="submit" className={styles.primaryButton}>
-              Шүүх
-            </button>
-            <Link href="/procurement" className={styles.secondaryButton}>
-              Цэвэрлэх
-            </Link>
-          </div>
-        </form>
+      <div className={styles.tabs} aria-label="Худалдан авалтын төрөл">
+        {relationTabs.map((tab) => (
+          <Link key={tab.label} href={tab.href} className={`${styles.tab} ${tab.active ? styles.tabActive : ""}`}>
+            {tab.label}
+          </Link>
+        ))}
+      </div>
+
+      <section className={styles.kpiGrid} aria-label="Худалдан авалтын төлөв">
+        {[
+          ["Нийт хүсэлт", kpiItems.length, styles.metricSuccess],
+          ["Санал цуглуулж байна", countStatus(kpiItems, "Санал цуглуулж байна"), styles.metricWarning],
+          ["Шийдвэр хүлээгдэж байна", countStatus(kpiItems, "Шийдвэр хүлээгдэж байна"), styles.metricPurple],
+          ["Төлбөр хүлээгдэж байна", countStatus(kpiItems, "Төлбөр хүлээгдэж байна"), styles.metricWarning],
+          ["Хүлээн авалт хүлээгдэж байна", countStatus(kpiItems, "Хүлээн авалт хүлээгдэж байна"), styles.metricBlue],
+          ["Дууссан", countStatus(kpiItems, "Дууссан"), styles.metricSuccess],
+        ].map(([label, value, iconClass]) => (
+          <article key={String(label)} className={styles.kpiCard}>
+            <span className={`${styles.metricIcon} ${iconClass}`}>№</span>
+            <div>
+              <span>{label}</span>
+              <strong>{value}</strong>
+              <small>{isDepartmentHeadView ? "Манай хэлтэс" : "Идэвхтэй харагдац"}</small>
+            </div>
+          </article>
+        ))}
       </section>
 
-      <section className={styles.cardSection}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <h2>Хүсэлтийн жагсаалт</h2>
-            <p>
-              {requestBundle.pagination.total} хүсэлтээс энэ хуудсанд {requestBundle.items.length} хүсэлт харагдаж байна.
-            </p>
-          </div>
+      <section className={styles.listLayout}>
+        <div className={styles.mainStack}>
+          <section className={styles.cardSection}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <h2>Сүүлийн хүсэлтүүд</h2>
+                <p>{requestBundle.pagination.total} хүсэлтээс энэ хуудас дээр {items.length} мөр харагдаж байна.</p>
+              </div>
+              {procurementUser.flags.requester || procurementUser.flags.admin ? (
+                <Link href="/procurement/new" className={styles.primaryButton}>Шинэ хүсэлт үүсгэх</Link>
+              ) : null}
+            </div>
+
+            <form className={styles.filterRow}>
+              <label className={styles.fieldLabel}>
+                Хайх
+                <input type="search" name="search" defaultValue={search} placeholder="Дугаар, гарчиг, объект" />
+              </label>
+              {!isDepartmentHeadView && !isStorekeeperView ? (
+                <label className={styles.fieldLabel}>
+                  Хэлтэс
+                  <select name="department_id" defaultValue={departmentId}>
+                    <option value="">Бүгд</option>
+                    {meta.departments.map((department) => (
+                      <option key={department.id} value={department.id}>{department.name}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <label className={styles.fieldLabel}>
+                Статус
+                <ProcurementStateFilterSelect defaultValue={state} />
+              </label>
+              <input type="hidden" name="relation" value={relation === "all" ? "" : relation} />
+              <div className={styles.buttonRow}>
+                <button type="submit" className={styles.primaryButton}>Шүүлтүүр</button>
+                <Link href="/procurement" className={styles.secondaryButton}>Цэвэрлэх</Link>
+              </div>
+            </form>
+
+            <div className={styles.tableShell}>
+              <table className={styles.dataTable}>
+                <thead>
+                  <tr>
+                    <th>№</th>
+                    <th>Хүсэлтийн дугаар</th>
+                    <th>Гарчиг</th>
+                    <th>Төрөл</th>
+                    <th>Холбогдсон объект</th>
+                    <th>Тооцоолсон дүн</th>
+                    <th>Одоогийн төлөв</th>
+                    <th>Дараагийн алхам</th>
+                    <th>Огноо</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.length ? (
+                    items.map((item, index) => (
+                      <tr key={item.id}>
+                        <td>{index + 1}</td>
+                        <td>
+                          <Link href={`/procurement/${item.id}`} className={styles.rowTitle}>
+                            {item.name}
+                            <small>{item.requester?.name || "Хүсэлт гаргагч тодорхойгүй"}</small>
+                          </Link>
+                        </td>
+                        <td>{item.title}</td>
+                        <td><span className={getRelationType(item) === "vehicle" ? styles.badgeBlue : styles.badge}>{getRelationLabel(item)}</span></td>
+                        <td>{getRelatedObject(item)}</td>
+                        <td>{formatMoney(item.amount_approx_total || item.selected_supplier_total)}</td>
+                        <td><span className={statusClass(item)}>{getStatusLabel(item)}</span></td>
+                        <td>{getNextStep(item)}</td>
+                        <td>{formatDate(item.required_date)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={9}>Одоогоор хүсэлт олдсонгүй. Шүүлтүүрээ өөрчлөх эсвэл шинэ хүсэлт үүсгэнэ үү.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className={styles.pagination}>
+              <span className={styles.badgeOutline}>Хуудас {requestBundle.pagination.page}</span>
+              <span className={styles.badgeOutline}>Нийт {requestBundle.pagination.pages} хуудас</span>
+              <span className={styles.badgeOutline}>{activeFilterCount} шүүлтүүр</span>
+            </div>
+          </section>
         </div>
-        {requestBundle.items.length ? (
-          <div className={styles.requestGrid}>
-            {requestBundle.items.map((item) => (
-              <Link key={item.id} href={`/procurement/${item.id}`} className={styles.requestCard}>
-                <div className={styles.requestCardTop}>
-                  <div>
-                    <strong>{item.name}</strong>
-                    <p>{item.title}</p>
-                  </div>
-                  <span className={item.is_delayed ? styles.badgeDanger : styles.badge}>{item.state.label}</span>
+
+        <aside className={styles.sideStack}>
+          <section className={styles.sidePanel}>
+            <h3>Төлөвийн тойм</h3>
+            <div className={styles.statusGuide}>
+              {["Ноорог", "Илгээсэн", "Санал цуглуулж байна", "Шийдвэр хүлээгдэж байна", "Гэрээ боловсруулж байна", "Төлбөр хүлээгдэж байна", "Хүлээн авалт хүлээгдэж байна", "Дууссан", "Буцаасан", "Татгалзсан"].map((label) => (
+                <div key={label} className={styles.statusGuideItem}>
+                  <span><span className={styles.statusDot} /> {label}</span>
+                  <span className={styles.badgeOutline}>{countStatus(kpiItems, label)}</span>
                 </div>
-                <div className={styles.badgeRow}>
-                  {item.flow_type ? <span className={styles.badgeOutline}>{item.flow_type.label}</span> : null}
-                  <span className={styles.badgeOutline}>{item.payment_status.label}</span>
-                  <span className={styles.badgeOutline}>{item.receipt_status.label}</span>
-                </div>
-                <div className={styles.metaList}>
-                  <span><strong>Төсөл:</strong> {item.project?.name || "Сонгоогүй"}</span>
-                  <span><strong>Хэлтэс:</strong> {item.department?.name || "Сонгоогүй"}</span>
-                  <span><strong>Нярав:</strong> {item.storekeeper?.name || "Сонгоогүй"}</span>
-                  <span><strong>Огноо:</strong> {item.required_date || "Товлоогүй"}</span>
-                  <span><strong>Дүн:</strong> {formatMoney(item.selected_supplier_total || item.amount_approx_total)} төг</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className={styles.emptyState}>Одоогоор таны хүсэлтийн жагсаалт хоосон байна.</div>
-        )}
+              ))}
+            </div>
+          </section>
+
+          {isDepartmentHeadView ? (
+            <section className={styles.sidePanel}>
+              <h3>Миний хэлтэс</h3>
+              <div className={styles.infoCard}>
+                <span>Харагдаж буй хэлтэс</span>
+                <strong>{departmentScopeName || "Тодорхойгүй"}</strong>
+              </div>
+            </section>
+          ) : null}
+        </aside>
       </section>
     </ProcurementShell>
   );

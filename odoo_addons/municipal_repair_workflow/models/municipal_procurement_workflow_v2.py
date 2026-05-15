@@ -7,10 +7,19 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 AMOUNT_THRESHOLD = 1000000
+ROLE_PREFERRED_LOGINS = {
+    "administration_user": ("95406816",),
+    "finance_user": ("99032458",),
+}
+ROLE_PREFERRED_NAMES = {
+    "storekeeper": ("Сумъяадорж", "Sumyaadorj", "Sumiyadorj"),
+    "repair_storekeeper": ("Сүхнаран", "Сухнаран", "Sukhnaran", "Sukh-Naran"),
+}
 
 PROCUREMENT_STATES_V2 = [
     ("draft", "Draft"),
     ("submitted", "Submitted"),
+    ("quote", "Collecting Quotes"),
     ("quote_collection", "Collecting Quotes"),
     ("finance_review", "Finance Review"),
     ("finance_selected_supplier", "Supplier Selected"),
@@ -35,6 +44,7 @@ PROCUREMENT_ACTION_LABELS = {
     "prepare_order": "Send to administration / CEO",
     "director_decision": "Record CEO decision",
     "attach_final_order": "Upload CEO order",
+    "record_package_ceo_order": "Record package CEO order",
     "mark_contract_signed": "Upload contract draft/final",
     "mark_paid": "Record payment",
     "mark_received": "Record receiving",
@@ -188,14 +198,20 @@ class MunicipalProcurementRequest(models.Model):
         for request in self:
             request.requested_employee_id = employees.search([("user_id", "=", request.requested_by.id)], limit=1)
 
-    @api.depends("selected_supplier_total", "selected_quote_id.amount_total")
+    @api.depends(
+        "selected_supplier_total",
+        "selected_quote_id.amount_total",
+        "quote_line_ids.is_selected",
+        "quote_line_ids.amount_total",
+        "package_ids.amount_total",
+    )
     def _compute_flow_type(self):
         for request in self:
-            amount = request.selected_supplier_total or request.selected_quote_id.amount_total or 0
+            amount = request._threshold_quote_amount()
             high = amount > AMOUNT_THRESHOLD
             request.requires_high_value_approval = high
             request.contract_required = high
-            request.flow_type = "high" if high else ("low" if amount else False)
+            request.flow_type = "high" if high else ("low" if (amount or request.selected_supplier_total) else False)
             request.is_over_threshold = high
 
     @api.depends("quote_line_ids.is_selected", "quote_line_ids.amount_total", "quote_line_ids.supplier_id")
@@ -207,10 +223,17 @@ class MunicipalProcurementRequest(models.Model):
             request.selected_supplier_id = selected.supplier_id.id if selected else False
             request.selected_supplier_total = sum(selected_quotes.mapped("amount_total")) if selected_quotes else 0
 
-    @api.depends("amount_total", "selected_supplier_total")
+    @api.depends(
+        "amount_total",
+        "selected_supplier_total",
+        "selected_quote_id.amount_total",
+        "quote_line_ids.is_selected",
+        "quote_line_ids.amount_total",
+        "package_ids.amount_total",
+    )
     def _compute_is_over_threshold(self):
         for request in self:
-            request.is_over_threshold = (request.selected_supplier_total or request.amount_total or 0) > AMOUNT_THRESHOLD
+            request.is_over_threshold = request._threshold_quote_amount() > AMOUNT_THRESHOLD
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -223,6 +246,8 @@ class MunicipalProcurementRequest(models.Model):
         return records
 
     def _has_group_key(self, key):
+        if key == "storekeeper":
+            return self.env.user.has_group(GROUPS["storekeeper"]) or self.env.user.has_group(GROUPS["repair_storekeeper"])
         xml_id = GROUPS[key]
         return self.env.user.has_group(xml_id)
 
@@ -344,6 +369,111 @@ class MunicipalProcurementRequest(models.Model):
             if not request.contract_draft_attachment_ids:
                 raise UserError("Contract draft is required before high-value payment.")
 
+    def _threshold_quote_amount(self):
+        self.ensure_one()
+        selected_quotes = self.quote_line_ids.filtered("is_selected")
+        if selected_quotes:
+            return max(selected_quotes.mapped("amount_total") or [0])
+        if self.package_ids:
+            return max(self.package_ids.mapped("amount_total") or [0])
+        return self.selected_quote_id.amount_total or self.selected_supplier_total or self.amount_total or 0
+
+    def _high_value_packages(self):
+        self.ensure_one()
+        return self.package_ids.filtered(lambda package: package.amount_total > AMOUNT_THRESHOLD)
+
+    def _missing_ceo_order_packages(self):
+        self.ensure_one()
+        return self._high_value_packages().filtered(lambda package: not package._ceo_order_ready())
+
+    def _default_role_user(self, group_key):
+        group_keys = [group_key]
+        if group_key == "purchase_manager":
+            group_keys = ["purchase_manager", "storekeeper", "repair_storekeeper"]
+        groups = self.env["res.groups"]
+        for key in group_keys:
+            group = self.env.ref(GROUPS[key], raise_if_not_found=False)
+            if group:
+                groups |= group
+        if not groups:
+            return self.env["res.users"]
+        users = groups.sudo().mapped("all_user_ids").filtered(lambda user: user.active and not user.share)
+        preferred_logins = ROLE_PREFERRED_LOGINS.get(group_key, ())
+        if preferred_logins:
+            preferred_users = users.filtered(lambda user: user.login in preferred_logins)
+            if preferred_users:
+                return preferred_users.sorted(lambda user: preferred_logins.index(user.login))[:1]
+        for preferred_name in ROLE_PREFERRED_NAMES.get(group_key, ()):
+            preferred_name_normalized = preferred_name.casefold()
+            preferred_users = users.filtered(
+                lambda user: preferred_name_normalized in (user.name or "").casefold()
+                or preferred_name_normalized in (user.login or "").casefold()
+            )
+            if preferred_users:
+                return preferred_users.sorted(lambda user: user.id)[:1]
+        non_smoke_users = users.filtered(lambda user: not (user.name or "").upper().startswith("SMOKE "))
+        return (non_smoke_users or users).sorted(lambda user: user.id)[:1]
+
+    def _default_storekeeper_user_for_request(self, request_type=False, vehicle_id=False):
+        role_key = "repair_storekeeper" if request_type == "repair_part" or vehicle_id else "storekeeper"
+        default_user = self._default_role_user(role_key)
+        if default_user:
+            return default_user
+        if role_key == "storekeeper":
+            return self._default_role_user("purchase_manager")
+        return self.env["res.users"]
+
+    def _normalize_storekeeper_assignment(self, vals):
+        selected_user = self.env["res.users"].sudo()
+        if vals.get("purchase_manager_id"):
+            selected_user = selected_user.browse(vals["purchase_manager_id"]).exists()
+        is_repair_request = vals.get("request_type") == "repair_part" or bool(vals.get("vehicle_id"))
+        default_user = self._default_storekeeper_user_for_request(vals.get("request_type"), vals.get("vehicle_id"))
+        if default_user:
+            vals["purchase_manager_id"] = default_user.id
+            return vals
+        if is_repair_request:
+            if not selected_user or not selected_user.has_group(GROUPS["repair_storekeeper"]):
+                vals["purchase_manager_id"] = False
+            return vals
+
+        is_repair_only_user = (
+            selected_user
+            and selected_user.has_group(GROUPS["repair_storekeeper"])
+            and not selected_user.has_group(GROUPS["storekeeper"])
+            and not selected_user.has_group(GROUPS["purchase_manager"])
+        )
+        if not selected_user or is_repair_only_user:
+            vals["purchase_manager_id"] = False
+        return vals
+
+    def _ensure_stage_assignees(self, *role_keys):
+        role_fields = {
+            "purchase_manager": "purchase_manager_id",
+            "finance_user": "finance_user_id",
+            "administration_user": "administration_user_id",
+            "legal_user": "legal_user_id",
+        }
+        role_labels = {
+            "purchase_manager": "purchase manager",
+            "finance_user": "finance user",
+            "administration_user": "administration / office clerk user",
+            "legal_user": "legal user",
+        }
+        for request in self:
+            vals = {}
+            for role_key in role_keys:
+                field_name = role_fields[role_key]
+                current_user = request[field_name]
+                if current_user and current_user.active:
+                    continue
+                default_user = request._default_role_user(role_key)
+                if not default_user:
+                    raise UserError("No active %s is configured for procurement routing." % role_labels[role_key])
+                vals[field_name] = default_user.id
+            if vals:
+                request.write(vals)
+
     def action_submit(self):
         self._ensure_role(["department_head", "admin"], "Only department head can submit procurement requests.")
         self._ensure_procurement_lines()
@@ -364,10 +494,13 @@ class MunicipalProcurementRequest(models.Model):
         for request in self:
             if request.package_ids:
                 request._sync_package_quote_selection()
-            request.write({"amount_total": request.selected_supplier_total})
-            if request.requires_high_value_approval:
+            selected_total = sum(request.quote_line_ids.filtered("is_selected").mapped("amount_total"))
+            request.write({"amount_total": selected_total or request.selected_supplier_total})
+            if request._threshold_quote_amount() > AMOUNT_THRESHOLD:
+                request._ensure_stage_assignees("administration_user")
                 request._change_state("admin_review", "move_to_finance_review")
             else:
+                request._ensure_stage_assignees("finance_user")
                 request._change_state("finance_review", "move_to_finance_review")
         return True
 
@@ -392,6 +525,17 @@ class MunicipalProcurementRequest(models.Model):
     def action_record_ceo_decision(self, selected_quotation_id=False, note=False):
         self._ensure_role(["administration_user", "ceo", "general_manager", "admin"], "Only administration or CEO can record CEO decision.")
         for request in self:
+            high_value_packages = request._high_value_packages()
+            if high_value_packages:
+                package = high_value_packages.filtered(lambda item: not item._ceo_order_ready())[:1] or high_value_packages[:1]
+                if not package:
+                    raise UserError("A high-value package is required.")
+                return request.action_record_package_ceo_order(
+                    package.id,
+                    selected_quotation_id,
+                    note=note,
+                    require_order_fields=False,
+                )
             quote = self.env["municipal.procurement.quote"].browse(selected_quotation_id).exists() if selected_quotation_id else request.selected_quote_id
             if not quote or quote.procurement_id != request:
                 raise UserError("A valid CEO-selected quote is required.")
@@ -412,11 +556,87 @@ class MunicipalProcurementRequest(models.Model):
     def action_upload_ceo_order(self, note=False):
         self._ensure_role(["administration_user", "admin"], "Only administration can upload CEO order.")
         for request in self:
+            missing_packages = request._missing_ceo_order_packages()
+            if missing_packages:
+                if len(missing_packages) == 1:
+                    return request.action_record_package_ceo_order(
+                        missing_packages.id,
+                        missing_packages.ceo_selected_quote_id.id or False,
+                        note=note,
+                    )
+                package_names = ", ".join(missing_packages.mapped("name"))
+                raise UserError("CEO order is missing for these packages: %s" % package_names)
             if request.requires_high_value_approval and not request.ceo_selected_quote_id:
                 raise UserError("Record CEO-selected quote before uploading order.")
             request.ceo_order_note = note or request.ceo_order_note
+            request._ensure_stage_assignees("legal_user")
             request._change_state("legal_contract_draft", "attach_final_order", note)
             request.legal_state = "draft_needed"
+        return True
+
+    def action_record_package_ceo_order(
+        self,
+        package_id=False,
+        selected_quotation_id=False,
+        order_number=False,
+        order_date=False,
+        note=False,
+        attachment_ids=None,
+        require_order_fields=True,
+    ):
+        self._ensure_role(
+            ["administration_user", "ceo", "general_manager", "admin"],
+            "Only administration or CEO can record package CEO order.",
+        )
+        attachment_ids = attachment_ids or []
+        for request in self:
+            package = request.package_ids.filtered(lambda item: item.id == int(package_id or 0))[:1]
+            if not package:
+                raise UserError("A valid high-value package is required.")
+            if package.amount_total <= AMOUNT_THRESHOLD:
+                raise UserError("CEO order is required only for packages above 1,000,000 MNT.")
+            quote = package.quotation_ids.filtered(lambda item: item.id == int(selected_quotation_id or 0))[:1]
+            if not quote:
+                quote = package.lowest_quote_id
+            if not quote or quote.package_id != package:
+                raise UserError("A valid CEO-selected supplier quote is required for this package.")
+            vals = {
+                "ceo_selected_quote_id": quote.id,
+                "ceo_decision_note": note or package.ceo_decision_note,
+                "ceo_order_note": note or package.ceo_order_note,
+                "ceo_decision_recorded_by": self.env.user.id,
+                "ceo_decision_date": fields.Datetime.now(),
+            }
+            if order_number:
+                vals["ceo_order_number"] = order_number
+            if order_date:
+                vals["ceo_order_date"] = order_date
+            if attachment_ids:
+                vals["ceo_order_attachment_ids"] = [(4, int(attachment_id)) for attachment_id in attachment_ids]
+            package.write(vals)
+            package.quotation_ids.write({"is_selected": False})
+            quote.is_selected = True
+            request.write(
+                {
+                    "ceo_selected_quote_id": quote.id,
+                    "ceo_decision_date": fields.Datetime.now(),
+                    "ceo_decision_recorded_by": self.env.user.id,
+                    "date_director_decision": fields.Datetime.now(),
+                    "director_approved_by": self.env.user.id,
+                    "ceo_order_note": note or request.ceo_order_note,
+                }
+            )
+            if package.ceo_order_attachment_ids:
+                request.ceo_order_attachment_ids = [(4, attachment.id) for attachment in package.ceo_order_attachment_ids]
+            if require_order_fields and not package._ceo_order_ready():
+                raise UserError("Supplier, order number, order date, and order attachment are required for this package.")
+            missing_packages = request._missing_ceo_order_packages()
+            if missing_packages:
+                request._change_state("admin_review", "record_package_ceo_order", note or package.name)
+            else:
+                request._ensure_stage_assignees("legal_user")
+                request.legal_state = "draft_needed"
+                request._change_state("legal_contract_draft", "record_package_ceo_order", note or package.name)
         return True
 
     def action_upload_contract_draft(self, note=False):
@@ -433,6 +653,7 @@ class MunicipalProcurementRequest(models.Model):
                     "legal_state": "draft_uploaded",
                 }
             )
+            request._ensure_stage_assignees("finance_user")
             request._change_state("payment_pending", "mark_contract_signed", note)
         return True
 
@@ -470,6 +691,7 @@ class MunicipalProcurementRequest(models.Model):
                     "paid_date": request.paid_date or fields.Date.context_today(request),
                 }
             )
+            request._ensure_stage_assignees("purchase_manager")
             request._record_audit("mark_paid", "payment_pending", "payment_recorded", request.payment_note)
         return True
 
@@ -539,7 +761,7 @@ class MunicipalProcurementRequest(models.Model):
 
         if self.state == "draft" and (flags["requester"] or flags["admin"]):
             add("submit_for_quotation")
-        if self.state in ("submitted", "quote_collection") and (flags["storekeeper"] or flags["admin"]):
+        if self.state in ("submitted", "quote", "quote_collection") and (flags["storekeeper"] or flags["admin"]):
             add("submit_quotations")
             if (self.package_ids and not self.package_ids.filtered(lambda package: not package.is_complete)) or (
                 not self.package_ids and len(self._valid_quote_lines()) >= 3 and self.selected_quote_id
@@ -549,8 +771,10 @@ class MunicipalProcurementRequest(models.Model):
             add("mark_paid")
         if self.state == "admin_review" and (flags["office_clerk"] or flags["admin"]):
             add("prepare_order")
+            add("record_package_ceo_order")
         if self.state == "ceo_decision" and (flags["office_clerk"] or flags["director"] or flags["general_manager"] or flags["admin"]):
             add("director_decision")
+            add("record_package_ceo_order")
         if self.state in ("ceo_decision", "ceo_order_uploaded") and (flags["office_clerk"] or flags["admin"]):
             add("attach_final_order")
         if self.state == "legal_contract_draft" and (flags["contract_officer"] or flags["admin"]):
@@ -620,6 +844,10 @@ class MunicipalProcurementRequest(models.Model):
             "amount_approx_total": sum(self.line_ids.mapped("subtotal")) or self.amount_total or 0,
             "package_count": len(self.package_ids),
             "packages_complete": bool(self.package_ids) and not self.package_ids.filtered(lambda package: not package.is_complete),
+            "high_value_packages": [
+                package._api_payload(index + 1)
+                for index, package in enumerate(self.package_ids.filtered(lambda item: item.amount_total > AMOUNT_THRESHOLD))
+            ],
             "payment_status": self._state_payload("payment_status", self.payment_status),
             "receipt_status": self._state_payload("receipt_status", self.receipt_status),
             "is_over_threshold": self.requires_high_value_approval,
@@ -679,14 +907,14 @@ class MunicipalProcurementRequest(models.Model):
 
     def _api_current_responsible(self):
         self.ensure_one()
-        if self.state in ("submitted", "quote_collection", "payment_recorded", "receiving"):
-            return self.purchase_manager_id
+        if self.state in ("submitted", "quote", "quote_collection", "payment_recorded", "receiving"):
+            return self.purchase_manager_id or self._default_role_user("purchase_manager")
         if self.state in ("finance_review", "payment_pending"):
-            return self.finance_user_id
+            return self.finance_user_id or self._default_role_user("finance_user")
         if self.state in ("admin_review", "ceo_decision", "ceo_order_uploaded"):
-            return self.administration_user_id
+            return self.administration_user_id or self._default_role_user("administration_user")
         if self.state in ("legal_contract_draft", "legal_final_contract"):
-            return self.legal_user_id
+            return self.legal_user_id or self._default_role_user("legal_user")
         return False
 
     def _api_stage_age_days(self):
@@ -722,7 +950,7 @@ class MunicipalProcurementRequest(models.Model):
             else:
                 domain += ["|", ("requested_by", "=", user.id), ("department_id.manager_id.user_id", "=", user.id)]
         elif scope == "assigned":
-            domain += [
+            assigned_domain = [
                 "|",
                 "|",
                 "|",
@@ -731,8 +959,37 @@ class MunicipalProcurementRequest(models.Model):
                 ("administration_user_id", "=", user.id),
                 ("legal_user_id", "=", user.id),
             ]
+            has_procurement_storekeeper = user.has_group(GROUPS["storekeeper"]) or user.has_group(GROUPS["purchase_manager"])
+            has_repair_storekeeper = user.has_group(GROUPS["repair_storekeeper"])
+            if flags["storekeeper"]:
+                storekeeper_stage_domain = [
+                    "|",
+                    ("state", "in", ["draft", "submitted", "quote", "quote_collection"]),
+                    "&",
+                    ("payment_status", "=", "payment_recorded"),
+                    ("receipt_status", "!=", "received"),
+                ]
+                unassigned_storekeeper_stage_domain = [
+                    "&",
+                    ("purchase_manager_id", "=", False),
+                ] + storekeeper_stage_domain
+                if has_repair_storekeeper and not has_procurement_storekeeper:
+                    storekeeper_type_domain = ["|", ("vehicle_id", "!=", False), ("request_type", "=", "repair_part")]
+                    typed_storekeeper_stage_domain = ["&"] + storekeeper_stage_domain + storekeeper_type_domain
+                    domain += ["|", "|"] + assigned_domain + typed_storekeeper_stage_domain + unassigned_storekeeper_stage_domain
+                elif has_procurement_storekeeper and not has_repair_storekeeper:
+                    storekeeper_type_domain = ["&", ("vehicle_id", "=", False), ("request_type", "!=", "repair_part")]
+                    typed_storekeeper_stage_domain = ["&"] + storekeeper_stage_domain + storekeeper_type_domain
+                    domain += ["|", "|"] + assigned_domain + typed_storekeeper_stage_domain + unassigned_storekeeper_stage_domain
+                else:
+                    domain += ["|"] + assigned_domain + storekeeper_stage_domain
+            else:
+                domain += assigned_domain
         if state:
-            domain.append(("state", "=", state))
+            if scope == "assigned" and flags["storekeeper"] and state in ("submitted", "quote", "quote_collection"):
+                domain.append(("state", "in", ["draft", "submitted", "quote", "quote_collection"]))
+            else:
+                domain.append(("state", "=", state))
         if relation == "vehicle":
             domain += ["|", ("vehicle_id", "!=", False), ("request_type", "=", "repair_part")]
         elif relation == "project":
@@ -849,7 +1106,7 @@ class MunicipalProcurementRequest(models.Model):
             "vehicles": [_relation_payload(vehicle) for vehicle in Vehicle.search([], limit=200, order="license_plate, name")],
             "departments": [_relation_payload(dept) for dept in Department.search([], limit=100, order="name")],
             "storekeepers": [_relation_payload(user) for user in Users.search(storekeeper_domain, limit=100, order="name")],
-            "suppliers": [_relation_payload(partner) for partner in Partner.search([("supplier_rank", ">", 0)], limit=200, order="name")],
+            "suppliers": [self._api_supplier_payload(partner) for partner in Partner.search([("supplier_rank", ">", 0)], limit=200, order="name")],
             "uoms": [_relation_payload(uom) for uom in Uom.search([], limit=100, order="name")],
         }
 
@@ -883,6 +1140,7 @@ class MunicipalProcurementRequest(models.Model):
             vals["request_type"] = "material"
         if vals["vehicle_id"] and vals["request_type"] == "material":
             vals["request_type"] = "repair_part"
+        self._normalize_storekeeper_assignment(vals)
         if vals["related_task_id"] and not vals["related_project_id"]:
             task = self.env["project.task"].sudo().browse(vals["related_task_id"]).exists()
             vals["related_project_id"] = task.project_id.id or False
@@ -922,7 +1180,7 @@ class MunicipalProcurementRequest(models.Model):
             package._api_submit_quotations(payload)
             for request in self:
                 request._sync_package_quote_selection()
-                if request.state in ("draft", "submitted"):
+                if request.state in ("draft", "submitted", "quote"):
                     request._change_state("quote_collection", "submit_for_quotation")
             return True
 
@@ -986,7 +1244,7 @@ class MunicipalProcurementRequest(models.Model):
             package.write(vals)
         package.line_ids.filtered(lambda line: line.id not in line_ids).write({"package_id": False})
         lines.write({"package_id": package.id})
-        if self.state in ("draft", "submitted"):
+        if self.state in ("draft", "submitted", "quote"):
             self._change_state("quote_collection", "submit_for_quotation")
         return package
 
@@ -1002,6 +1260,37 @@ class MunicipalProcurementRequest(models.Model):
         package.unlink()
         self._sync_package_quote_selection()
         return True
+
+    @api.model
+    def _api_supplier_payload(self, partner):
+        return {
+            "id": partner.id,
+            "name": partner.display_name,
+            "vat": partner.vat or "",
+            "phone": partner.phone or partner.mobile or "",
+            "email": partner.email or "",
+            "street": partner.street or "",
+            "active": bool(partner.active),
+        }
+
+    @api.model
+    def _api_list_suppliers(self, filters=None):
+        self._ensure_role(["purchase_manager", "storekeeper", "admin"], "Only purchase manager can view suppliers.")
+        filters = filters or {}
+        domain = [("supplier_rank", ">", 0)]
+        search = filters.get("search")
+        if search:
+            domain += [
+                "|",
+                "|",
+                "|",
+                ("name", "ilike", search),
+                ("vat", "ilike", search),
+                ("phone", "ilike", search),
+                ("email", "ilike", search),
+            ]
+        partners = self.env["res.partner"].sudo().search(domain, limit=300, order="name")
+        return {"ok": True, "suppliers": [self._api_supplier_payload(partner) for partner in partners]}
 
     @api.model
     def _api_create_supplier(self, payload):
@@ -1020,7 +1309,37 @@ class MunicipalProcurementRequest(models.Model):
                 "street": payload.get("street") or False,
             }
         )
-        return _relation_payload(partner)
+        return self._api_supplier_payload(partner)
+
+    @api.model
+    def _api_update_supplier(self, supplier_id, payload):
+        self._ensure_role(["purchase_manager", "storekeeper", "admin"], "Only purchase manager can update suppliers.")
+        partner = self.env["res.partner"].sudo().browse(int(supplier_id or 0)).exists()
+        if not partner or partner.supplier_rank <= 0:
+            raise UserError("A valid supplier is required.")
+        name = (payload.get("name") or "").strip()
+        if not name:
+            raise UserError("Supplier name is required.")
+        partner.write(
+            {
+                "name": name,
+                "vat": payload.get("vat") or False,
+                "phone": payload.get("phone") or False,
+                "email": payload.get("email") or False,
+                "street": payload.get("street") or False,
+                "supplier_rank": max(partner.supplier_rank, 1),
+            }
+        )
+        return self._api_supplier_payload(partner)
+
+    @api.model
+    def _api_delete_supplier(self, supplier_id):
+        self._ensure_role(["purchase_manager", "storekeeper", "admin"], "Only purchase manager can delete suppliers.")
+        partner = self.env["res.partner"].sudo().browse(int(supplier_id or 0)).exists()
+        if not partner or partner.supplier_rank <= 0:
+            raise UserError("A valid supplier is required.")
+        partner.write({"active": False})
+        return self._api_supplier_payload(partner)
 
     def _api_run_action(self, action, payload):
         self._api_check_write()
@@ -1034,6 +1353,15 @@ class MunicipalProcurementRequest(models.Model):
             return self.action_finance_review()
         if action == "prepare_order":
             return self.action_prepare_order()
+        if action == "record_package_ceo_order":
+            return self.action_record_package_ceo_order(
+                payload.get("package_id"),
+                payload.get("selected_quotation_id"),
+                order_number=payload.get("order_number"),
+                order_date=payload.get("order_date"),
+                note=payload.get("note"),
+                attachment_ids=payload.get("attachment_ids") or [],
+            )
         if action == "director_decision":
             return self.action_record_ceo_decision(payload.get("selected_quotation_id"), payload.get("note"))
         if action == "attach_final_order":
@@ -1083,6 +1411,10 @@ class MunicipalProcurementRequest(models.Model):
         document_type = payload.get("document_type") or "other"
         note = payload.get("note")
         if document_type == "director_order_final":
+            package = self.package_ids.filtered(lambda item: item.id == int(payload.get("package_id") or 0))[:1]
+            if package:
+                attachment.write({"res_model": "municipal.procurement.package", "res_id": package.id})
+                package.ceo_order_attachment_ids = [(4, attachment.id)]
             self.ceo_order_attachment_ids = [(4, attachment.id)]
         elif target == "line":
             line = self.line_ids.filtered(lambda item: item.id == int(payload.get("line_id") or 0))[:1]
@@ -1142,6 +1474,20 @@ class MunicipalProcurementPackage(models.Model):
         compute="_compute_package_totals",
         store=True,
     )
+    ceo_selected_quote_id = fields.Many2one("municipal.procurement.quote", string="CEO selected quote")
+    ceo_decision_note = fields.Text(string="CEO decision note")
+    ceo_order_number = fields.Char(string="CEO order number")
+    ceo_order_date = fields.Date(string="CEO order date")
+    ceo_order_note = fields.Text(string="CEO order note")
+    ceo_order_attachment_ids = fields.Many2many(
+        "ir.attachment",
+        "municipal_procurement_package_ceo_order_attachment_rel",
+        "package_id",
+        "attachment_id",
+        string="CEO order attachments",
+    )
+    ceo_decision_recorded_by = fields.Many2one("res.users", string="CEO decision recorded by", readonly=True)
+    ceo_decision_date = fields.Datetime(string="CEO decision date", readonly=True)
     is_complete = fields.Boolean(compute="_compute_package_totals", store=True)
     company_id = fields.Many2one(
         "res.company",
@@ -1200,6 +1546,15 @@ class MunicipalProcurementPackage(models.Model):
             if package.lowest_quote_id:
                 package.lowest_quote_id.is_selected = True
 
+    def _ceo_order_ready(self):
+        self.ensure_one()
+        return bool(
+            self.ceo_selected_quote_id
+            and self.ceo_order_number
+            and self.ceo_order_date
+            and self.ceo_order_attachment_ids
+        )
+
     def _api_submit_quotations(self, payload):
         self.ensure_one()
         quotations = payload.get("quotations") or []
@@ -1255,6 +1610,17 @@ class MunicipalProcurementPackage(models.Model):
             "amount_total": self.amount_total,
             "lowest_quotation": self.lowest_quote_id._api_payload() if self.lowest_quote_id else None,
             "is_complete": self.is_complete,
+            "is_over_threshold": self.amount_total > AMOUNT_THRESHOLD,
+            "ceo_selected_quotation_id": self.ceo_selected_quote_id.id or None,
+            "ceo_selected_quotation": self.ceo_selected_quote_id._api_payload() if self.ceo_selected_quote_id else None,
+            "ceo_decision_note": self.ceo_decision_note,
+            "ceo_order_number": self.ceo_order_number,
+            "ceo_order_date": self.ceo_order_date.isoformat() if self.ceo_order_date else None,
+            "ceo_order_note": self.ceo_order_note,
+            "ceo_order_attachments": [self.request_id._api_attachment_payload(attachment) for attachment in self.ceo_order_attachment_ids],
+            "ceo_decision_recorded_by": _relation_payload(self.ceo_decision_recorded_by),
+            "ceo_decision_date": self.ceo_decision_date,
+            "ceo_order_ready": self._ceo_order_ready(),
         }
 
 

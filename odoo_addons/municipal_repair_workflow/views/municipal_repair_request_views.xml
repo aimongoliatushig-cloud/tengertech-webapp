@@ -97,6 +97,16 @@
                                 <field name="contract_state"/>
                                 <field name="order_state"/>
                             </group>
+                            <field name="procurement_request_ids">
+                                <list>
+                                    <field name="name"/>
+                                    <field name="request_type"/>
+                                    <field name="department_id"/>
+                                    <field name="amount_total"/>
+                                    <field name="selected_supplier_total"/>
+                                    <field name="state"/>
+                                </list>
+                            </field>
                             <field name="quote_line_ids">
                                 <list>
                                     <field name="supplier_id"/>

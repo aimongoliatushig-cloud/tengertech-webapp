@@ -50,6 +50,11 @@ class FleetVehicle(models.Model):
         "vehicle_id",
         string="Засварын хүсэлт",
     )
+    municipal_procurement_request_ids = fields.One2many(
+        "municipal.procurement.request",
+        "vehicle_id",
+        string="Худалдан авалтын хүсэлт",
+    )
     municipal_active_repair_count = fields.Integer(
         string="Идэвхтэй засвар",
         compute="_compute_municipal_repair_counts",

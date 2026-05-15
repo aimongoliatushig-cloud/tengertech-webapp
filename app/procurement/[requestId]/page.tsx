@@ -34,6 +34,7 @@ type PageProps = {
 const STATE_LABELS: Record<string, string> = {
   draft: "Ноорог",
   submitted: "Илгээсэн",
+  quote: "Багц, үнийн санал бүртгэж байна",
   quote_collection: "Багц, үнийн санал бүртгэж байна",
   finance_review: "Санхүүгийн хяналт",
   admin_review: "Захиргааны хяналт",
@@ -89,7 +90,7 @@ function emptyMeta(): ProcurementMeta {
 
 function statusClass(item: ProcurementRequestDetail) {
   if (item.is_delayed) return styles.badgeDanger;
-  if (item.state.code === "quote_collection" || item.state.code === "submitted") return styles.badgeWarning;
+  if (item.state.code === "quote_collection" || item.state.code === "quote" || item.state.code === "submitted") return styles.badgeWarning;
   if (item.state.code.includes("admin") || item.state.code.includes("ceo")) return styles.badgePurple;
   if (item.state.code.includes("payment") || item.state.code.includes("received")) return styles.badgeBlue;
   return styles.badge;
@@ -155,6 +156,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
   const submitQuotesAction = findAction(item.available_actions, "submit_quotations");
   const moveToFinanceAction = findAction(item.available_actions, "move_to_finance_review");
   const prepareOrderAction = findAction(item.available_actions, "prepare_order");
+  const recordPackageCeoOrderAction = findAction(item.available_actions, "record_package_ceo_order");
   const directorDecisionAction = findAction(item.available_actions, "director_decision");
   const attachFinalOrderAction = findAction(item.available_actions, "attach_final_order");
   const markContractAction = findAction(item.available_actions, "mark_contract_signed");
@@ -164,6 +166,8 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
   const cancelAction = findAction(item.available_actions, "cancel");
   const selectedQuotation = item.quotations.find((quotation) => quotation.is_selected);
   const packages = item.packages || [];
+  const highValuePackages = packages.filter((pack) => pack.is_over_threshold);
+  const missingCeoOrderPackages = highValuePackages.filter((pack) => !pack.ceo_order_ready);
   const unassignedLines = item.unassigned_lines || item.lines.filter((line) => !line.package_id);
   const totals = packageRows(packages);
   const isDepartmentHeadView = isDepartmentHeadSession(session) && !isExecutiveProcurementUser(procurementUser);
@@ -184,7 +188,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
     { label: "Багц үүсгэх", active: packages.length > 0, note: `${packages.length} багц` },
     { label: "Бараа ангилах", active: item.lines.length > 0 && unassignedLines.length === 0, note: `${unassignedLines.length} үлдсэн` },
     { label: "3 санал", active: packages.length > 0 && packages.every((pack) => pack.is_complete), note: "Багц бүрээр" },
-    { label: "Дараагийн шат", active: item.state.code !== "submitted" && item.state.code !== "quote_collection", note: getStatusLabel(item) },
+    { label: "Дараагийн шат", active: item.state.code !== "submitted" && item.state.code !== "quote" && item.state.code !== "quote_collection", note: getStatusLabel(item) },
   ];
 
   return (
@@ -449,10 +453,23 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
           {moveToFinanceAction && canManageWorkflow ? (
             <WorkflowButton requestId={item.id} action="move_to_finance_review" label="Дараагийн шат руу илгээх" />
           ) : null}
-          {prepareOrderAction && canManageWorkflow ? (
+          {prepareOrderAction && canManageWorkflow && !highValuePackages.length ? (
             <WorkflowButton requestId={item.id} action="prepare_order" label="Захиргааны шийдвэр бэлтгэх" />
           ) : null}
-          {directorDecisionAction && canManageWorkflow ? (
+          {recordPackageCeoOrderAction && canManageWorkflow && highValuePackages.length ? (
+            <section className={styles.actionCard}>
+              <h3>Захирлын тушаал оруулах</h3>
+              <p className={styles.subtleText}>
+                {missingCeoOrderPackages.length
+                  ? `${missingCeoOrderPackages.length} багцын тушаал дутуу байна.`
+                  : "Бүх 1 саяас дээш багцын тушаал бүртгэгдсэн байна."}
+              </p>
+              {highValuePackages.map((pack) => (
+                <PackageCeoOrderForm key={pack.id} requestId={item.id} pack={pack} />
+              ))}
+            </section>
+          ) : null}
+          {directorDecisionAction && canManageWorkflow && !recordPackageCeoOrderAction ? (
             <form action={runProcurementWorkflowAction} className={styles.actionCard}>
               <input type="hidden" name="request_id" value={item.id} />
               <input type="hidden" name="workflow_action" value="director_decision" />
@@ -467,7 +484,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
               <button type="submit" className={styles.primaryButton}>CEO шийдвэр бүртгэх</button>
             </form>
           ) : null}
-          {attachFinalOrderAction && canManageWorkflow ? (
+          {attachFinalOrderAction && canManageWorkflow && !recordPackageCeoOrderAction ? (
             <DocumentActionForm requestId={item.id} action="attach_final_order" label="Гарын үсэгтэй тушаал оруулах" />
           ) : null}
           {markContractAction && canManageWorkflow ? (
@@ -675,6 +692,50 @@ function PackageCard({
         </details>
       ) : null}
     </article>
+  );
+}
+
+function PackageCeoOrderForm({ requestId, pack }: { requestId: number; pack: ProcurementPackage }) {
+  const defaultQuotationId = pack.ceo_selected_quotation_id || pack.lowest_quotation?.id || pack.quotations[0]?.id || "";
+
+  return (
+    <form action={runProcurementWorkflowAction} className={styles.inlineForm}>
+      <input type="hidden" name="request_id" value={requestId} />
+      <input type="hidden" name="workflow_action" value="record_package_ceo_order" />
+      <input type="hidden" name="package_id" value={pack.id} />
+      <div className={styles.tableRowHeader}>
+        <div>
+          <strong>{pack.name}</strong>
+          <p className={styles.subtleText}>{formatMoney(pack.amount_total)} · {pack.lines.length} бараа</p>
+        </div>
+        <span className={pack.ceo_order_ready ? styles.badge : styles.badgeWarning}>
+          {pack.ceo_order_ready ? "Илгээгдсэн" : "Хүлээгдэж буй"}
+        </span>
+      </div>
+      <label className={styles.fieldLabel}>
+        Захирлын сонгосон нийлүүлэгч
+        <select name="selected_quotation_id" defaultValue={defaultQuotationId} required>
+          <option value="">Сонгох</option>
+          {pack.quotations.map((quotation) => (
+            <option key={quotation.id} value={quotation.id}>
+              {quotation.supplier.name} - {formatMoney(quotation.amount_total)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className={styles.fieldLabel}>Тушаалын дугаар<input name="order_number" defaultValue={pack.ceo_order_number || ""} required /></label>
+      <label className={styles.fieldLabel}>Тушаалын огноо<input type="date" name="order_date" defaultValue={pack.ceo_order_date || ""} required /></label>
+      <label className={styles.fieldLabel}>Товч утга<textarea name="note" defaultValue={pack.ceo_order_note || pack.ceo_decision_note || ""} /></label>
+      <label className={styles.fieldLabel}>Тушаалын файл<input type="file" name="document_files" multiple required={!pack.ceo_order_attachments?.length} /></label>
+      {pack.ceo_order_attachments?.length ? (
+        <ul className={styles.attachmentList}>
+          {pack.ceo_order_attachments.map((attachment) => (
+            <li key={attachment.id}><FileText aria-hidden /> {attachment.name}</li>
+          ))}
+        </ul>
+      ) : null}
+      <button type="submit" className={styles.primaryButton}>Тушаал хадгалах</button>
+    </form>
   );
 }
 

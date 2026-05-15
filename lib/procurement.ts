@@ -25,6 +25,14 @@ export type ProcurementParty = {
   name: string;
 };
 
+export type ProcurementSupplier = ProcurementParty & {
+  vat?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  street?: string | null;
+  active?: boolean;
+};
+
 export type ProcurementCodeLabel = {
   code: string;
   label: string;
@@ -87,6 +95,17 @@ export type ProcurementPackage = {
   amount_total: number;
   lowest_quotation?: ProcurementQuotation | null;
   is_complete: boolean;
+  is_over_threshold?: boolean;
+  ceo_selected_quotation_id?: number | null;
+  ceo_selected_quotation?: ProcurementQuotation | null;
+  ceo_decision_note?: string | null;
+  ceo_order_number?: string | null;
+  ceo_order_date?: string | null;
+  ceo_order_note?: string | null;
+  ceo_order_attachments?: ProcurementAttachment[];
+  ceo_decision_recorded_by?: ProcurementParty | null;
+  ceo_decision_date?: string | null;
+  ceo_order_ready?: boolean;
 };
 
 export type ProcurementDocument = {
@@ -154,6 +173,7 @@ export type ProcurementRequestSummary = {
   service_confirmation_only: boolean;
   package_count?: number;
   packages_complete?: boolean;
+  high_value_packages?: ProcurementPackage[];
   available_actions: ProcurementAction[];
 };
 
@@ -173,7 +193,7 @@ export type ProcurementMeta = {
   vehicles: ProcurementParty[];
   departments: ProcurementParty[];
   storekeepers: ProcurementParty[];
-  suppliers: ProcurementParty[];
+  suppliers: ProcurementSupplier[];
   uoms: ProcurementParty[];
 };
 
@@ -219,7 +239,7 @@ type ApiEnvelope<T> = {
   suppliers?: ProcurementMeta["suppliers"];
   uoms?: ProcurementMeta["uoms"];
   attachment?: ProcurementAttachment;
-  supplier?: ProcurementParty;
+  supplier?: ProcurementSupplier;
   error?: {
     code: string;
     message: string;
@@ -394,7 +414,7 @@ async function loginToProcurementApi(connectionOverrides: ConnectionOverrides = 
 async function procurementFetch<T>(
   path: string,
   options: {
-    method?: "GET" | "POST";
+    method?: "GET" | "POST" | "PATCH" | "DELETE";
     body?: unknown;
     connectionOverrides?: ConnectionOverrides;
   } = {},
@@ -583,6 +603,41 @@ export async function createProcurementSupplier(
   return response.supplier!;
 }
 
+export async function loadProcurementSuppliers(
+  filters: Record<string, string | number | undefined | null> = {},
+  connectionOverrides: ConnectionOverrides = {},
+) {
+  const response = await procurementFetch<never>(
+    `/mpw/api/suppliers${buildQuery(filters)}`,
+    { connectionOverrides },
+  );
+  return response.suppliers || [];
+}
+
+export async function updateProcurementSupplier(
+  supplierId: number,
+  payload: Record<string, unknown>,
+  connectionOverrides: ConnectionOverrides = {},
+) {
+  const response = await procurementFetch<never>(`/mpw/api/suppliers/${supplierId}`, {
+    method: "PATCH",
+    body: payload,
+    connectionOverrides,
+  });
+  return response.supplier!;
+}
+
+export async function deleteProcurementSupplier(
+  supplierId: number,
+  connectionOverrides: ConnectionOverrides = {},
+) {
+  const response = await procurementFetch<never>(`/mpw/api/suppliers/${supplierId}`, {
+    method: "DELETE",
+    connectionOverrides,
+  });
+  return response.supplier!;
+}
+
 export async function moveProcurementToFinanceReview(
   requestId: number,
   connectionOverrides: ConnectionOverrides = {},
@@ -634,6 +689,22 @@ export async function attachProcurementFinalOrder(
 ) {
   const response = await procurementFetch<ProcurementRequestDetail>(
     `/mpw/api/requests/${requestId}/attach_final_order`,
+    {
+      method: "POST",
+      body: payload,
+      connectionOverrides,
+    },
+  );
+  return response.item!;
+}
+
+export async function recordProcurementPackageCeoOrder(
+  requestId: number,
+  payload: Record<string, unknown>,
+  connectionOverrides: ConnectionOverrides = {},
+) {
+  const response = await procurementFetch<ProcurementRequestDetail>(
+    `/mpw/api/requests/${requestId}/record_package_ceo_order`,
     {
       method: "POST",
       body: payload,

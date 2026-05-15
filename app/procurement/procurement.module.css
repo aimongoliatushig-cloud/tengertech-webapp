@@ -252,6 +252,20 @@
   align-items: start;
 }
 
+.dashboardLayout > *,
+.listLayout > *,
+.detailLayout > *,
+.formLayout > *,
+.assignedLayout > *,
+.mainStack,
+.sideStack,
+.cardSection,
+.summaryCard,
+.sidePanel,
+.tableShell {
+  min-width: 0;
+}
+
 .detailLayout {
   grid-template-columns: minmax(0, 1fr) 300px;
 }
@@ -704,6 +718,33 @@
   grid-template-columns: 1fr;
 }
 
+@media (min-width: 761px) {
+  .dashboardLayout,
+  .listLayout,
+  .assignedLayout {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 280px);
+  }
+
+  .dashboardLayout .summaryGrid {
+    grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+  }
+
+  .dashboardLayout .donutSummary {
+    grid-template-columns: minmax(116px, 136px) minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .dashboardLayout .dataTable,
+  .listLayout .dataTable {
+    min-width: 920px;
+  }
+
+  .sideStack {
+    position: relative;
+    z-index: 0;
+  }
+}
+
 .fieldLabel {
   display: grid;
   gap: 6px;
@@ -825,6 +866,44 @@
 .packageGrid {
   display: grid;
   gap: 16px;
+}
+
+.supplierGrid {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.supplierCard {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line-soft, var(--proc-line));
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+  box-shadow: 0 10px 30px rgba(24, 63, 36, 0.04);
+}
+
+.supplierForm {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.emptyPanel {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  min-height: 150px;
+  border: 1px dashed rgba(46, 125, 50, 0.22);
+  border-radius: 8px;
+  background: var(--surface-panel-soft, #f7fcf6);
+  color: var(--proc-muted);
+  text-align: center;
+}
+
+.emptyPanel strong {
+  color: var(--proc-ink);
 }
 
 .packageCard {
@@ -1145,6 +1224,8 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .legendItem i {
@@ -1199,6 +1280,7 @@
   color: var(--proc-ink);
   font-size: 0.82rem;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .activityItem small {
@@ -1225,6 +1307,7 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .statusDot {
@@ -1503,6 +1586,15 @@
   background: #fff;
 }
 
+.inlineForm {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--proc-line);
+  border-radius: 8px;
+  background: #f8fbf8;
+}
+
 .workBoard {
   display: grid;
   grid-template-columns: repeat(4, minmax(180px, 1fr));
@@ -1613,6 +1705,7 @@
   .summaryGrid,
   .metricsGrid,
   .formGrid,
+  .supplierForm,
   .twoColumnGrid,
   .filterRow {
     grid-template-columns: 1fr;

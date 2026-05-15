@@ -952,6 +952,16 @@ const FLEET_REPAIR_GROUP_XML_IDS = {
   manager: "municipal_repair_workflow.group_repair_manager",
 } as const;
 
+const PROCUREMENT_GROUP_XML_IDS = {
+  purchaseManager: "municipal_repair_workflow.group_procurement_purchase_manager",
+  storekeeper: "municipal_repair_workflow.group_procurement_storekeeper",
+  finance: "municipal_repair_workflow.group_procurement_finance_user",
+  administration: "municipal_repair_workflow.group_procurement_administration_user",
+  legal: "municipal_repair_workflow.group_procurement_legal_user",
+  ceo: "municipal_repair_workflow.group_procurement_ceo",
+  generalManager: "municipal_repair_workflow.group_procurement_general_manager",
+} as const;
+
 const OPS_PROFILE_GROUP_XML_IDS = {
   storekeeper: "ops_people_registry.group_ops_profile_storekeeper",
 } as const;
@@ -2973,6 +2983,13 @@ export async function authenticateOdooUser(
     fleetRepairCeo,
     fleetRepairManager,
     opsStorekeeper,
+    procurementPurchaseManager,
+    procurementStorekeeper,
+    procurementFinance,
+    procurementAdministration,
+    procurementLegal,
+    procurementCeo,
+    procurementGeneralManager,
     hrCustomOfficer,
     hrCustomAdmin,
     hrUser,
@@ -3014,6 +3031,13 @@ export async function authenticateOdooUser(
     hasGroup(FLEET_REPAIR_GROUP_XML_IDS.ceo),
     hasGroup(FLEET_REPAIR_GROUP_XML_IDS.manager),
     hasGroup(OPS_PROFILE_GROUP_XML_IDS.storekeeper),
+    hasGroup(PROCUREMENT_GROUP_XML_IDS.purchaseManager),
+    hasGroup(PROCUREMENT_GROUP_XML_IDS.storekeeper),
+    hasGroup(PROCUREMENT_GROUP_XML_IDS.finance),
+    hasGroup(PROCUREMENT_GROUP_XML_IDS.administration),
+    hasGroup(PROCUREMENT_GROUP_XML_IDS.legal),
+    hasGroup(PROCUREMENT_GROUP_XML_IDS.ceo),
+    hasGroup(PROCUREMENT_GROUP_XML_IDS.generalManager),
     hasGroup(HR_CUSTOM_MN_GROUP_XML_IDS.officer),
     hasGroup(HR_CUSTOM_MN_GROUP_XML_IDS.admin),
     hasGroup("hr.group_hr_user"),
@@ -3107,6 +3131,13 @@ export async function authenticateOdooUser(
         fleetRepairCeo,
         fleetRepairManager,
         opsStorekeeper,
+        procurementPurchaseManager,
+        procurementStorekeeper,
+        procurementFinance,
+        procurementAdministration,
+        procurementLegal,
+        procurementCeo,
+        procurementGeneralManager,
         hrUser,
         hrManager,
         municipalHse,

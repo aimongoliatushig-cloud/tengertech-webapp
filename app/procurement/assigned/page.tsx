@@ -35,18 +35,44 @@ function getProcurementLoadWarning(error: unknown) {
 
 function statusClass(item: ProcurementRequestSummary) {
   if (item.is_delayed) return styles.badgeDanger;
-  if (item.state.code === "submitted" || item.state.code === "quote_collection") return styles.badgeWarning;
+  if (item.state.code === "draft" || item.state.code === "submitted" || item.state.code === "quote" || item.state.code === "quote_collection") return styles.badgeWarning;
   if (item.state.code.includes("admin") || item.state.code.includes("ceo")) return styles.badgeBlue;
   if (item.state.code.includes("payment") || item.state.code.includes("received")) return styles.badgeBlue;
   return styles.badge;
 }
 
-function belongsToLane(item: ProcurementRequestSummary, lane: "packages" | "decision" | "payment" | "receiving") {
+function getAssignedStatusLabel(item: ProcurementRequestSummary) {
+  if (item.state.code === "draft" || item.state.code === "submitted" || item.state.code === "quote" || item.state.code === "quote_collection") {
+    return "Санал цуглуулж байна";
+  }
+  if (item.state.code.includes("admin") || item.state.code.includes("ceo") || item.state.code === "finance_review") {
+    return "Шийдвэр хүлээгдэж байна";
+  }
+  if (item.state.code.includes("contract") || item.state.code.includes("order")) {
+    return "Гэрээ боловсруулж байна";
+  }
+  if (item.state.code.includes("payment")) {
+    return "Төлбөр хүлээгдэж байна";
+  }
+  if (item.state.code === "receiving" || item.state.code === "received" || item.payment_status.code === "payment_recorded") {
+    return "Хүлээн авалт хүлээгдэж байна";
+  }
+  if (item.state.code === "done") return "Дууссан";
+  if (item.state.code === "returned") return "Буцаасан";
+  if (item.state.code === "cancelled") return "Цуцалсан";
+  return item.state.label;
+}
+
+function belongsToLane(item: ProcurementRequestSummary, lane: "packages" | "decision" | "payment" | "receiving"): boolean {
   const text = `${item.state.code} ${item.payment_status.code} ${item.receipt_status.code}`.toLowerCase();
-  if (lane === "packages") return item.state.code === "submitted" || item.state.code === "quote_collection";
-  if (lane === "decision") return item.is_over_threshold || text.includes("admin") || text.includes("ceo") || text.includes("contract");
-  if (lane === "payment") return !item.paid || text.includes("payment");
-  return !item.received || text.includes("receipt") || text.includes("received");
+  const inPackageStage = item.state.code === "draft" || item.state.code === "submitted" || item.state.code === "quote" || item.state.code === "quote_collection";
+  if (lane === "packages") return inPackageStage;
+  if (lane === "decision") return !inPackageStage && (text.includes("admin") || text.includes("ceo") || text.includes("contract"));
+  if (lane === "payment") {
+    const inPaymentStage = item.state.code === "finance_review" || item.state.code === "payment_pending" || text.includes("payment");
+    return !inPackageStage && !belongsToLane(item, "decision") && !item.paid && inPaymentStage;
+  }
+  return item.payment_status.code === "payment_recorded" && item.receipt_status.code !== "received";
 }
 
 function formatMoney(value: number) {
@@ -79,6 +105,12 @@ export default async function AssignedProcurementPage() {
   ]);
 
   const items = requestBundle.items;
+  const officeClerkMode = procurementUser.flags.office_clerk && !procurementUser.flags.admin;
+  const officeClerkPackages = items.flatMap((item) =>
+    (item.high_value_packages || [])
+      .filter((pack) => pack.is_over_threshold)
+      .map((pack) => ({ item, pack })),
+  );
   const packageCount = items.filter((item) => belongsToLane(item, "packages")).length;
   const delayedCount = items.filter((item) => item.is_delayed).length;
   const readyPackageCount = items.filter((item) => item.packages_complete).length;
@@ -94,8 +126,8 @@ export default async function AssignedProcurementPage() {
     <ProcurementShell
       session={session}
       procurementUser={procurementUser}
-      title="Миний худалдан авалтын ажил"
-      description="Нярав өөрт ирсэн хүсэлтүүдийг багц, нийлүүлэгчийн санал, төлбөр, хүлээн авалтын шатаар хянана."
+      title="Х.Авалтууд"
+      description="Танд хамаарах болон няравын шатанд хүлээгдэж байгаа худалдан авалтууд."
       activeTab="assigned"
     >
       {setupWarning ? <section className={`${styles.statusBanner} ${styles.noticeBanner}`}>{setupWarning}</section> : null}
@@ -154,6 +186,35 @@ export default async function AssignedProcurementPage() {
               <Link href="/procurement/dashboard" className={styles.secondaryButton}>Самбар харах</Link>
             </div>
 
+            {officeClerkMode ? (
+              <div className={styles.requestGrid}>
+                {officeClerkPackages.length ? (
+                  officeClerkPackages.map(({ item, pack }) => (
+                    <Link key={`${item.id}-${pack.id}`} href={`/procurement/${item.id}#actions`} className={styles.requestCard}>
+                      <div className={styles.requestCardTop}>
+                        <div>
+                          <strong>{pack.name}</strong>
+                          <p>{item.name} · {item.title}</p>
+                        </div>
+                        <span className={pack.ceo_order_ready ? styles.badge : styles.badgeWarning}>
+                          {pack.ceo_order_ready ? "Илгээгдсэн" : "Хүлээгдэж буй"}
+                        </span>
+                      </div>
+                      <div className={styles.metaList}>
+                        <span><strong>Дүн:</strong> {formatMoney(pack.amount_total)}</span>
+                        <span><strong>Бараа:</strong> {pack.lines.length}</span>
+                        <span><strong>Ирсэн:</strong> {item.date_quotation_submitted || "-"}</span>
+                        <span><strong>Захиалагч:</strong> {item.requester?.name || "-"}</span>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <div className={styles.emptyState}>
+                    <strong>1 саяас дээш тушаал хүлээж буй багц алга</strong>
+                  </div>
+                )}
+              </div>
+            ) : (
             <div className={styles.workBoard}>
               {lanes.map((lane) => (
                 <section key={lane.key} className={styles.workLane}>
@@ -169,7 +230,7 @@ export default async function AssignedProcurementPage() {
                             <strong>{item.name}</strong>
                             <p>{item.title}</p>
                           </div>
-                          <span className={statusClass(item)}>{item.state.label}</span>
+                          <span className={statusClass(item)}>{getAssignedStatusLabel(item)}</span>
                         </div>
                         <div className={styles.metaList}>
                           <span><strong>Хэлтэс:</strong> {item.department?.name || "-"}</span>
@@ -188,6 +249,7 @@ export default async function AssignedProcurementPage() {
                 </section>
               ))}
             </div>
+            )}
           </article>
         </div>
 

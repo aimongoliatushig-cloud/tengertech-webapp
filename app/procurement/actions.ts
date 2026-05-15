@@ -11,6 +11,7 @@ import {
   cancelProcurementRequest,
   createProcurementSupplier,
   createProcurementRequest,
+  deleteProcurementSupplier,
   deleteProcurementPackage,
   markProcurementContractSigned,
   markProcurementDone,
@@ -18,10 +19,12 @@ import {
   markProcurementReceived,
   moveProcurementToFinanceReview,
   prepareProcurementOrder,
+  recordProcurementPackageCeoOrder,
   saveProcurementPackage,
   submitProcurementForQuotation,
   submitProcurementQuotations,
   loadProcurementMeta,
+  updateProcurementSupplier,
   uploadProcurementAttachment,
 } from "@/lib/procurement";
 
@@ -366,6 +369,84 @@ export async function createProcurementSupplierAction(formData: FormData) {
   }
 }
 
+export async function createProcurementSupplierDirectoryAction(formData: FormData) {
+  const connectionOverrides = await getConnectionOverrides();
+
+  try {
+    await createProcurementSupplier(
+      {
+        name: getString(formData, "supplier_name"),
+        vat: getString(formData, "supplier_vat") || undefined,
+        phone: getString(formData, "supplier_phone") || undefined,
+        email: getString(formData, "supplier_email") || undefined,
+        street: getString(formData, "supplier_street") || undefined,
+      },
+      connectionOverrides,
+    );
+    revalidatePath("/procurement/suppliers");
+  } catch (error) {
+    redirectWithMessage(
+      "/procurement/suppliers",
+      "error",
+      error instanceof Error ? error.message : "Нийлүүлэгч нэмэх үед алдаа гарлаа.",
+    );
+  }
+
+  redirect(`/procurement/suppliers?notice=${encodeURIComponent("Нийлүүлэгч нэмэгдлээ.")}`);
+}
+
+export async function updateProcurementSupplierAction(formData: FormData) {
+  const connectionOverrides = await getConnectionOverrides();
+  const supplierId = getNumber(formData, "supplier_id");
+  if (!supplierId) {
+    redirectWithMessage("/procurement/suppliers", "error", "Нийлүүлэгчийн мэдээлэл буруу байна.");
+  }
+
+  try {
+    await updateProcurementSupplier(
+      supplierId,
+      {
+        name: getString(formData, "supplier_name"),
+        vat: getString(formData, "supplier_vat") || undefined,
+        phone: getString(formData, "supplier_phone") || undefined,
+        email: getString(formData, "supplier_email") || undefined,
+        street: getString(formData, "supplier_street") || undefined,
+      },
+      connectionOverrides,
+    );
+    revalidatePath("/procurement/suppliers");
+  } catch (error) {
+    redirectWithMessage(
+      "/procurement/suppliers",
+      "error",
+      error instanceof Error ? error.message : "Нийлүүлэгч засах үед алдаа гарлаа.",
+    );
+  }
+
+  redirect(`/procurement/suppliers?notice=${encodeURIComponent("Нийлүүлэгч шинэчлэгдлээ.")}`);
+}
+
+export async function deleteProcurementSupplierAction(formData: FormData) {
+  const connectionOverrides = await getConnectionOverrides();
+  const supplierId = getNumber(formData, "supplier_id");
+  if (!supplierId) {
+    redirectWithMessage("/procurement/suppliers", "error", "Нийлүүлэгчийн мэдээлэл буруу байна.");
+  }
+
+  try {
+    await deleteProcurementSupplier(supplierId, connectionOverrides);
+    revalidatePath("/procurement/suppliers");
+  } catch (error) {
+    redirectWithMessage(
+      "/procurement/suppliers",
+      "error",
+      error instanceof Error ? error.message : "Нийлүүлэгч устгах үед алдаа гарлаа.",
+    );
+  }
+
+  redirect(`/procurement/suppliers?notice=${encodeURIComponent("Нийлүүлэгч идэвхгүй боллоо.")}`);
+}
+
 export async function runProcurementWorkflowAction(formData: FormData) {
   const connectionOverrides = await getConnectionOverrides();
   const requestId = getNumber(formData, "request_id");
@@ -398,6 +479,26 @@ export async function runProcurementWorkflowAction(formData: FormData) {
         note,
       });
       await attachProcurementFinalOrder(requestId, { note }, connectionOverrides);
+    } else if (action === "record_package_ceo_order") {
+      const packageId = getNumber(formData, "package_id");
+      const files = getFiles(formData, "document_files");
+      const attachmentIds = await uploadFilesToRequest(requestId, files, "document", connectionOverrides, {
+        document_type: "director_order_final",
+        package_id: packageId || undefined,
+        note,
+      });
+      await recordProcurementPackageCeoOrder(
+        requestId,
+        {
+          package_id: packageId || undefined,
+          selected_quotation_id: getNumber(formData, "selected_quotation_id") || undefined,
+          order_number: getString(formData, "order_number") || undefined,
+          order_date: getString(formData, "order_date") || undefined,
+          note,
+          attachment_ids: attachmentIds,
+        },
+        connectionOverrides,
+      );
     } else if (action === "mark_contract_signed") {
       const files = getFiles(formData, "document_files");
       await uploadFilesToRequest(requestId, files, "document", connectionOverrides, {
