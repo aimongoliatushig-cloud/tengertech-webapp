@@ -6,7 +6,7 @@ import { AppMenu } from "@/app/_components/app-menu";
 import shellStyles from "@/app/workspace.module.css";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
-  getRoleLabel,
+  getSessionRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
@@ -44,7 +44,7 @@ export async function ProcurementShell({
   activeTab,
   children,
 }: ProcurementShellProps) {
-  const roleLabel = getRoleLabel(session.role);
+  const roleLabel = getSessionRoleLabel(session);
   const [departmentScopeName, notificationCount] = await Promise.all([
     loadSessionDepartmentName(session),
     loadWorkspaceNotificationCount(session).catch(() => 0),

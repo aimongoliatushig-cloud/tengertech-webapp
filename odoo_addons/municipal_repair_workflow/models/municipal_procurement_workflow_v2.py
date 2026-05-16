@@ -17,39 +17,45 @@ ROLE_PREFERRED_NAMES = {
 }
 
 PROCUREMENT_STATES_V2 = [
-    ("draft", "Draft"),
-    ("submitted", "Submitted"),
-    ("quote", "Collecting Quotes"),
-    ("quote_collection", "Collecting Quotes"),
-    ("finance_review", "Finance Review"),
-    ("finance_selected_supplier", "Supplier Selected"),
-    ("admin_review", "Administration Review"),
-    ("ceo_decision", "CEO Decision"),
-    ("ceo_order_uploaded", "CEO Order Uploaded"),
-    ("legal_contract_draft", "Legal Contract Draft"),
-    ("payment_pending", "Payment Pending"),
-    ("payment_recorded", "Payment Recorded"),
-    ("receiving", "Receiving"),
-    ("received", "Received"),
-    ("legal_final_contract", "Final Contract Pending"),
-    ("done", "Done"),
-    ("returned", "Returned"),
-    ("cancelled", "Cancelled"),
+    ("draft", "Эхлэл"),
+    ("submitted", "Илгээсэн"),
+    ("quote", "Санал цуглуулж байна"),
+    ("quote_collection", "Санал цуглуулж байна"),
+    ("finance_review", "Санхүүгийн хяналт"),
+    ("finance_selected_supplier", "Нийлүүлэгч сонгосон"),
+    ("admin_review", "Захиргааны хяналт"),
+    ("ceo_decision", "Захирлын шийдвэр"),
+    ("ceo_order_uploaded", "Захирлын тушаал хавсаргасан"),
+    ("legal_contract_draft", "Гэрээ боловсруулах"),
+    ("payment_pending", "Төлбөр хүлээгдэж байна"),
+    ("payment_recorded", "Төлбөр бүртгэгдсэн"),
+    ("receiving", "Хүлээн авч байна"),
+    ("received", "Хүлээн авсан"),
+    ("legal_final_contract", "Эцсийн гэрээ хүлээгдэж байна"),
+    ("done", "Дууссан"),
+    ("returned", "Буцаасан"),
+    ("cancelled", "Цуцалсан"),
 ]
 
 PROCUREMENT_ACTION_LABELS = {
-    "submit_for_quotation": "Submit for quotation",
-    "submit_quotations": "Save supplier quotes",
-    "move_to_finance_review": "Send to finance review",
-    "prepare_order": "Send to administration / CEO",
-    "director_decision": "Record CEO decision",
-    "attach_final_order": "Upload CEO order",
-    "record_package_ceo_order": "Record package CEO order",
-    "mark_contract_signed": "Upload contract draft/final",
-    "mark_paid": "Record payment",
-    "mark_received": "Record receiving",
-    "mark_done": "Complete request",
-    "cancel": "Cancel",
+    "create": "Хүсэлт үүсгэсэн",
+    "submit_for_quotation": "Санал авах руу илгээсэн",
+    "submit_quotations": "Нийлүүлэгчийн саналууд хадгалсан",
+    "move_to_finance_review": "Санхүүгийн хяналт руу илгээсэн",
+    "prepare_order": "Захиргаа/захирлын шийдвэр рүү илгээсэн",
+    "director_decision": "Захирлын шийдвэр бүртгэсэн",
+    "attach_final_order": "Захирлын тушаал хавсаргасан",
+    "record_package_ceo_order": "Багцын захирлын тушаал бүртгэсэн",
+    "mark_contract_signed": "Гэрээний файл хавсаргасан",
+    "mark_paid": "Төлбөр бүртгэсэн",
+    "mark_received": "Хүлээн авалт бүртгэсэн",
+    "mark_done": "Дуусгасан",
+    "cancel": "Цуцалсан",
+}
+
+PROCUREMENT_AUDIT_NOTE_LABELS = {
+    "Request created": "Хүсэлт үүсгэсэн",
+    "Final contract uploaded": "Эцсийн гэрээ хавсаргасан",
 }
 
 GROUPS = {
@@ -1889,12 +1895,12 @@ class MunicipalProcurementAudit(models.Model):
         return {
             "id": self.id,
             "action_code": self.action_code,
-            "action_label": self.action_label,
+            "action_label": PROCUREMENT_ACTION_LABELS.get(self.action_code, self.action_label),
             "old_state": _code_label(self.old_state, request._fields["state"].selection) if self.old_state else None,
             "new_state": _code_label(self.new_state, request._fields["state"].selection) if self.new_state else None,
             "user": _relation_payload(self.user_id),
             "changed_at": self.changed_at,
-            "note": self.note,
+            "note": PROCUREMENT_AUDIT_NOTE_LABELS.get(self.note, self.note),
         }
 
 

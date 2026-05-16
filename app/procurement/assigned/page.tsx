@@ -94,16 +94,24 @@ export default async function AssignedProcurementPage() {
     login: session.login,
     password: session.password,
   };
-  const [procurementUser, requestBundle, setupWarning] = await Promise.all([
-    loadProcurementMe(connectionOverrides).catch(() => createFallbackProcurementUser(session)),
-    loadProcurementRequests({ scope: "assigned", limit: 40 }, connectionOverrides).catch(() =>
-      createEmptyRequestBundle(),
-    ),
+  const [procurementUserResult, requestBundleResult] = await Promise.all([
     loadProcurementMe(connectionOverrides)
-      .then(() => "")
-      .catch((loadError) => getProcurementLoadWarning(loadError)),
+      .then((user) => ({ user, warning: "" }))
+      .catch((loadError) => ({
+        user: createFallbackProcurementUser(session),
+        warning: getProcurementLoadWarning(loadError),
+      })),
+    loadProcurementRequests({ scope: "assigned", limit: 40 }, connectionOverrides)
+      .then((bundle) => ({ bundle, warning: "" }))
+      .catch((loadError) => ({
+        bundle: createEmptyRequestBundle(),
+        warning: getProcurementLoadWarning(loadError),
+      })),
   ]);
 
+  const procurementUser = procurementUserResult.user;
+  const requestBundle = requestBundleResult.bundle;
+  const setupWarning = procurementUserResult.warning || requestBundleResult.warning;
   const items = requestBundle.items;
   const officeClerkMode = procurementUser.flags.office_clerk && !procurementUser.flags.admin;
   const officeClerkPackages = items.flatMap((item) =>

@@ -35,6 +35,17 @@ def _error_response(error, status=400):
     )
 
 
+def _procurement_model():
+    user_id = request.env.user.id
+    before_group_ids = set(request.env.user.sudo().groups_id.ids)
+    procurement = request.env["municipal.procurement.request"]
+    procurement._ensure_user_job_title_groups(request.env.user)
+    after_group_ids = set(request.env.user.sudo().groups_id.ids)
+    if after_group_ids != before_group_ids:
+        request.update_env(user=user_id)
+    return request.env["municipal.procurement.request"]
+
+
 class MunicipalProcurementApiController(http.Controller):
     @http.route("/mpw/api/login", type="http", auth="none", methods=["POST"], csrf=False)
     def login(self):
@@ -55,11 +66,11 @@ class MunicipalProcurementApiController(http.Controller):
                 )
             if uid:
                 request.update_env(user=uid)
-            user = request.env.user
+            procurement = _procurement_model()
             return _json_response(
                 {
                     "ok": True,
-                    "user": request.env["municipal.procurement.request"]._api_current_user_payload(user),
+                    "user": procurement._api_current_user_payload(request.env.user),
                 }
             )
         except Exception as error:
@@ -68,10 +79,11 @@ class MunicipalProcurementApiController(http.Controller):
     @http.route("/mpw/api/me", type="http", auth="user", methods=["GET"], csrf=False)
     def me(self):
         try:
+            procurement = _procurement_model()
             return _json_response(
                 {
                     "ok": True,
-                    "user": request.env["municipal.procurement.request"]._api_current_user_payload(request.env.user),
+                    "user": procurement._api_current_user_payload(request.env.user),
                 }
             )
         except Exception as error:
@@ -80,14 +92,14 @@ class MunicipalProcurementApiController(http.Controller):
     @http.route("/mpw/api/meta", type="http", auth="user", methods=["GET"], csrf=False)
     def meta(self):
         try:
-            return _json_response(request.env["municipal.procurement.request"]._api_meta_payload())
+            return _json_response(_procurement_model()._api_meta_payload())
         except Exception as error:
             return _error_response(error)
 
     @http.route("/mpw/api/suppliers", type="http", auth="user", methods=["GET"], csrf=False)
     def suppliers(self):
         try:
-            payload = request.env["municipal.procurement.request"]._api_list_suppliers(
+            payload = _procurement_model()._api_list_suppliers(
                 dict(request.httprequest.args)
             )
             return _json_response(payload)
@@ -97,7 +109,7 @@ class MunicipalProcurementApiController(http.Controller):
     @http.route("/mpw/api/suppliers", type="http", auth="user", methods=["POST"], csrf=False)
     def create_supplier(self):
         try:
-            supplier = request.env["municipal.procurement.request"]._api_create_supplier(_json_body())
+            supplier = _procurement_model()._api_create_supplier(_json_body())
             return _json_response({"ok": True, "supplier": supplier})
         except Exception as error:
             return _error_response(error)
@@ -105,7 +117,7 @@ class MunicipalProcurementApiController(http.Controller):
     @http.route("/mpw/api/suppliers/<int:supplier_id>", type="http", auth="user", methods=["PATCH", "DELETE"], csrf=False)
     def supplier_detail(self, supplier_id):
         try:
-            procurement = request.env["municipal.procurement.request"]
+            procurement = _procurement_model()
             if request.httprequest.method == "DELETE":
                 supplier = procurement._api_delete_supplier(supplier_id)
             else:
@@ -117,7 +129,7 @@ class MunicipalProcurementApiController(http.Controller):
     @http.route("/mpw/api/requests", type="http", auth="user", methods=["GET"], csrf=False)
     def requests(self):
         try:
-            payload = request.env["municipal.procurement.request"]._api_list_payload(
+            payload = _procurement_model()._api_list_payload(
                 dict(request.httprequest.args)
             )
             return _json_response(payload)
@@ -127,7 +139,7 @@ class MunicipalProcurementApiController(http.Controller):
     @http.route("/mpw/api/requests", type="http", auth="user", methods=["POST"], csrf=False)
     def create_request(self):
         try:
-            item = request.env["municipal.procurement.request"]._api_create_request(_json_body())
+            item = _procurement_model()._api_create_request(_json_body())
             return _json_response({"ok": True, "item": item._api_detail_payload()})
         except Exception as error:
             return _error_response(error)
@@ -135,7 +147,7 @@ class MunicipalProcurementApiController(http.Controller):
     @http.route("/mpw/api/requests/<int:request_id>", type="http", auth="user", methods=["GET"], csrf=False)
     def request_detail(self, request_id):
         try:
-            item = request.env["municipal.procurement.request"].browse(request_id).exists()
+            item = _procurement_model().browse(request_id).exists()
             if not item:
                 return _error_response(Exception("Purchase request not found."), 404)
             item.check_access_rights("read")
@@ -147,7 +159,7 @@ class MunicipalProcurementApiController(http.Controller):
     @http.route("/mpw/api/dashboard", type="http", auth="user", methods=["GET"], csrf=False)
     def dashboard(self):
         try:
-            payload = request.env["municipal.procurement.request"]._api_dashboard_payload(
+            payload = _procurement_model()._api_dashboard_payload(
                 dict(request.httprequest.args)
             )
             return _json_response(payload)
@@ -177,7 +189,7 @@ class MunicipalProcurementApiController(http.Controller):
     )
     def workflow_action(self, request_id):
         try:
-            item = request.env["municipal.procurement.request"].browse(request_id).exists()
+            item = _procurement_model().browse(request_id).exists()
             if not item:
                 return _error_response(Exception("Purchase request not found."), 404)
             path = request.httprequest.path.rsplit("/", 1)[-1]
@@ -195,7 +207,7 @@ class MunicipalProcurementApiController(http.Controller):
     )
     def submit_quotations(self, request_id):
         try:
-            item = request.env["municipal.procurement.request"].browse(request_id).exists()
+            item = _procurement_model().browse(request_id).exists()
             if not item:
                 return _error_response(Exception("Purchase request not found."), 404)
             item._api_submit_quotations(_json_body())
@@ -212,7 +224,7 @@ class MunicipalProcurementApiController(http.Controller):
     )
     def upload_attachment(self, request_id):
         try:
-            item = request.env["municipal.procurement.request"].browse(request_id).exists()
+            item = _procurement_model().browse(request_id).exists()
             if not item:
                 return _error_response(Exception("Purchase request not found."), 404)
             attachment = item._api_upload_attachment(_json_body())
