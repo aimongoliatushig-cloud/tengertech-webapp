@@ -90,6 +90,19 @@ export type ProcurementPackage = {
   lowest_quotation?: ProcurementQuotation | null;
   is_complete: boolean;
   is_over_threshold?: boolean;
+  route_state?: ProcurementCodeLabel;
+  payment_status?: ProcurementCodeLabel;
+  receipt_status?: ProcurementCodeLabel;
+  paid_amount?: number;
+  payment_reference?: string | null;
+  payment_note?: string | null;
+  payment_date?: string | null;
+  paid_by?: ProcurementParty | null;
+  date_paid?: string | null;
+  received_note?: string | null;
+  received_date?: string | null;
+  received_by?: ProcurementParty | null;
+  date_received?: string | null;
   ceo_selected_quotation_id?: number | null;
   ceo_selected_quotation?: ProcurementQuotation | null;
   ceo_decision_note?: string | null;
@@ -168,6 +181,7 @@ export type ProcurementRequestSummary = {
   package_count?: number;
   packages_complete?: boolean;
   high_value_packages?: ProcurementPackage[];
+  low_value_packages?: ProcurementPackage[];
   available_actions: ProcurementAction[];
 };
 

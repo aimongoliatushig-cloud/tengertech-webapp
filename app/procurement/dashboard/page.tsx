@@ -20,6 +20,7 @@ import {
   loadProcurementDashboard,
   loadProcurementMeta,
   loadProcurementMe,
+  type ProcurementPackage,
   type ProcurementRequestSummary,
   type ProcurementUser,
 } from "@/lib/procurement";
@@ -168,6 +169,25 @@ function countStatus(items: ProcurementRequestSummary[], status: string) {
   return items.filter((item) => getStatusLabel(item) === status).length;
 }
 
+function getFinanceReadyPackages(items: ProcurementRequestSummary[]) {
+  return items.flatMap((item) => {
+    const lowPackages = (item.low_value_packages || []).filter(
+      (pack) =>
+        pack.payment_status?.code !== "payment_recorded" &&
+        (pack.route_state?.code === "finance_review" ||
+          (pack.is_complete && !pack.is_over_threshold && item.state.code !== "draft" && item.state.code !== "submitted")),
+    );
+    const highPackages = (item.high_value_packages || []).filter(
+      (pack) => pack.route_state?.code === "payment_pending" && pack.payment_status?.code !== "payment_recorded",
+    );
+    return [...lowPackages, ...highPackages].map((pack) => ({ item, pack }));
+  });
+}
+
+function getPackagePaymentMode(pack: ProcurementPackage) {
+  return pack.is_over_threshold ? "Захирлын сонгосон нэхэмжлэх" : "3 нэхэмжлэхээс сонгоно";
+}
+
 function getTotalAmount(item: ProcurementRequestSummary) {
   return item.amount_approx_total || item.selected_supplier_total || 0;
 }
@@ -277,6 +297,8 @@ export default async function ProcurementDashboardPage({ searchParams }: PagePro
     ? filterByDepartment(dashboard.items, departmentScopeName)
     : dashboard.items;
   const items = filterByRelation(scopedItems, relation);
+  const financePackageMode = procurementUser.flags.finance && !procurementUser.flags.admin;
+  const financeReadyPackages = getFinanceReadyPackages(items);
   const projectItems = scopedItems.filter((item) => getRelationType(item) === "project");
   const vehicleItems = scopedItems.filter((item) => getRelationType(item) === "vehicle");
   const totalAmount = items.reduce((sum, item) => sum + getTotalAmount(item), 0);
@@ -313,8 +335,10 @@ export default async function ProcurementDashboardPage({ searchParams }: PagePro
     },
     {
       label: "Төлбөр хүлээгдэж байна",
-      value: countStatus(items, "Төлбөр хүлээгдэж байна"),
-      helper: formatMoney(totalAmount),
+      value: financePackageMode ? financeReadyPackages.length : countStatus(items, "Төлбөр хүлээгдэж байна"),
+      helper: financePackageMode
+        ? formatMoney(financeReadyPackages.reduce((sum, entry) => sum + entry.pack.amount_total, 0))
+        : formatMoney(totalAmount),
       icon: Banknote,
       className: styles.metricWarning,
     },
@@ -376,6 +400,42 @@ export default async function ProcurementDashboardPage({ searchParams }: PagePro
 
       <section className={styles.dashboardLayout}>
         <div className={styles.mainStack}>
+          {financePackageMode ? (
+            <article className={styles.cardSection}>
+              <div className={styles.tableCardHeader}>
+                <h2>Төлөх багцууд</h2>
+                <span className={styles.badgeWarning}>{financeReadyPackages.length} багц</span>
+              </div>
+              <div className={styles.requestGrid}>
+                {financeReadyPackages.length ? (
+                  financeReadyPackages.map(({ item, pack }) => (
+                    <Link key={`${item.id}-${pack.id}`} href={`/procurement/${item.id}#actions`} className={styles.requestCard}>
+                      <div className={styles.requestCardTop}>
+                        <div>
+                          <strong>{pack.name}</strong>
+                          <p>{item.name} · {item.title}</p>
+                        </div>
+                        <span className={pack.is_over_threshold ? styles.badgeWarning : styles.badge}>
+                          {pack.is_over_threshold ? "1 саяас дээш" : "1 саяас доош"}
+                        </span>
+                      </div>
+                      <div className={styles.metaList}>
+                        <span><strong>Дүн:</strong> {formatMoney(pack.amount_total)}</span>
+                        <span><strong>Сонголт:</strong> {getPackagePaymentMode(pack)}</span>
+                        <span><strong>Төлөв:</strong> {pack.route_state?.label || "-"}</span>
+                        <span><strong>Хүсэлт гаргагч:</strong> {item.requester?.name || "-"}</span>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <div className={styles.emptyState}>
+                    <strong>Төлөхөд бэлэн багц алга.</strong>
+                  </div>
+                )}
+              </div>
+            </article>
+          ) : null}
+
           <article className={styles.cardSection}>
             <div className={styles.tableCardHeader}>
               <h2>Сүүлийн хүсэлтүүд</h2>

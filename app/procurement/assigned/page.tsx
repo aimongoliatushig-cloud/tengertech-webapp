@@ -114,10 +114,27 @@ export default async function AssignedProcurementPage() {
   const setupWarning = procurementUserResult.warning || requestBundleResult.warning;
   const items = requestBundle.items;
   const officeClerkMode = procurementUser.flags.office_clerk && !procurementUser.flags.admin;
+  const financePackageMode = procurementUser.flags.finance && !procurementUser.flags.admin;
   const officeClerkPackages = items.flatMap((item) =>
     (item.high_value_packages || [])
-      .filter((pack) => pack.is_over_threshold)
+      .filter((pack) => pack.is_over_threshold && pack.payment_status?.code !== "payment_recorded")
       .map((pack) => ({ item, pack })),
+  );
+  const financePackages = items.flatMap((item) =>
+    (item.high_value_packages || [])
+      .filter((pack) => pack.route_state?.code === "payment_pending" && pack.payment_status?.code !== "payment_recorded")
+      .map((pack) => ({ item, pack }))
+      .concat(
+        (item.low_value_packages || [])
+          .filter(
+            (pack) =>
+              !pack.is_over_threshold &&
+              (pack.route_state?.code === "finance_review" ||
+                (pack.is_complete && item.state.code !== "draft" && item.state.code !== "submitted")) &&
+              pack.payment_status?.code !== "payment_recorded",
+          )
+          .map((pack) => ({ item, pack })),
+      ),
   );
   const packageCount = items.filter((item) => belongsToLane(item, "packages")).length;
   const delayedCount = items.filter((item) => item.is_delayed).length;
@@ -219,6 +236,34 @@ export default async function AssignedProcurementPage() {
                 ) : (
                   <div className={styles.emptyState}>
                     <strong>1 саяас дээш тушаал хүлээж буй багц алга</strong>
+                  </div>
+                )}
+              </div>
+            ) : financePackageMode ? (
+              <div className={styles.requestGrid}>
+                {financePackages.length ? (
+                  financePackages.map(({ item, pack }) => (
+                    <Link key={`${item.id}-${pack.id}`} href={`/procurement/${item.id}#actions`} className={styles.requestCard}>
+                      <div className={styles.requestCardTop}>
+                        <div>
+                          <strong>{pack.name}</strong>
+                          <p>{item.name} · {item.title}</p>
+                        </div>
+                        <span className={pack.is_over_threshold ? styles.badgeWarning : styles.badge}>
+                          {pack.is_over_threshold ? "Гэрээний дараах төлбөр" : "Шууд төлбөр"}
+                        </span>
+                      </div>
+                      <div className={styles.metaList}>
+                        <span><strong>Дүн:</strong> {formatMoney(pack.amount_total)}</span>
+                        <span><strong>Төлөв:</strong> {pack.route_state?.label || "-"}</span>
+                        <span><strong>Бараа:</strong> {pack.lines.length}</span>
+                        <span><strong>Захиалагч:</strong> {item.requester?.name || "-"}</span>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <div className={styles.emptyState}>
+                    <strong>Төлөхөд бэлэн багц алга</strong>
                   </div>
                 )}
               </div>

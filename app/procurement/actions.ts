@@ -580,12 +580,14 @@ export async function runProcurementWorkflowAction(formData: FormData) {
         connectionOverrides,
       );
     } else if (action === "mark_contract_signed") {
+      const packageId = getNumber(formData, "package_id");
       const files = getFiles(formData, "document_files");
       await uploadFilesToRequest(requestId, files, "document", connectionOverrides, {
         document_type: "contract_final",
+        package_id: packageId || undefined,
         note,
       });
-      await markProcurementContractSigned(requestId, { note }, connectionOverrides);
+      await markProcurementContractSigned(requestId, { package_id: packageId || undefined, note }, connectionOverrides);
     } else if (action === "mark_paid") {
       const files = getFiles(formData, "document_files");
       await uploadFilesToRequest(requestId, files, "document", connectionOverrides, {
@@ -595,6 +597,7 @@ export async function runProcurementWorkflowAction(formData: FormData) {
       await markProcurementPaid(
         requestId,
         {
+          package_id: getNumber(formData, "package_id") || undefined,
           selected_quotation_id: getNumber(formData, "selected_quotation_id") || undefined,
           paid_amount: getNumber(formData, "paid_amount") || undefined,
           payment_reference: getString(formData, "payment_reference") || undefined,
@@ -604,12 +607,14 @@ export async function runProcurementWorkflowAction(formData: FormData) {
         connectionOverrides,
       );
     } else if (action === "mark_received") {
+      const packageId = getNumber(formData, "package_id");
       const files = getFiles(formData, "document_files");
       await uploadFilesToRequest(requestId, files, "document", connectionOverrides, {
         document_type: "receipt_proof",
+        package_id: packageId || undefined,
         note,
       });
-      await markProcurementReceived(requestId, { note }, connectionOverrides);
+      await markProcurementReceived(requestId, { package_id: packageId || undefined, note }, connectionOverrides);
     } else if (action === "mark_done") {
       await markProcurementDone(requestId, connectionOverrides);
     } else if (action === "cancel") {
