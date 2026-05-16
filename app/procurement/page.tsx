@@ -206,11 +206,22 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
       Boolean(session.groupFlags?.procurementPurchaseManager) ||
       Boolean(session.groupFlags?.fleetRepairPurchaser) ||
       Boolean(session.groupFlags?.opsStorekeeper));
-  const requestScope = isExecutiveView ? "all" : isStorekeeperView ? "assigned" : "mine";
+  const isProcurementWorkerView =
+    !isExecutiveView &&
+    !isDepartmentHeadView &&
+    (isStorekeeperView ||
+      procurementUser.flags.finance ||
+      procurementUser.flags.office_clerk ||
+      procurementUser.flags.contract_officer);
+  const requestScope = isExecutiveView ? "all" : isProcurementWorkerView ? "assigned" : "mine";
   const scopedDepartment = departmentScopeName
     ? meta.departments.find((department) => normalizeName(department.name) === normalizeName(departmentScopeName))
     : null;
-  const departmentId = isDepartmentHeadView ? String(scopedDepartment?.id || "") : isStorekeeperView ? "" : requestedDepartmentId;
+  const departmentId = isDepartmentHeadView
+    ? String(scopedDepartment?.id || "")
+    : isProcurementWorkerView
+      ? ""
+      : requestedDepartmentId;
 
   const [requestBundle, dashboard] = await Promise.all([
     loadProcurementRequests(
@@ -226,6 +237,7 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
     ).catch(() => createEmptyRequestBundle()),
     loadProcurementDashboard(
       {
+        scope: requestScope,
         department_id: departmentId,
         relation: relation === "all" ? "" : relation,
       },
@@ -256,16 +268,16 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
       title={
         isExecutiveView
           ? "Бүх хэлтсийн худалдан авалт"
-          : isStorekeeperView
+          : isProcurementWorkerView
             ? "Хариуцсан худалдан авалтууд"
             : "Өөрийн хэлтсийн худалдан авалт"
       }
       description={
         isExecutiveView
           ? "Хүсэлтүүдийг хэлтэс, төрөл, төлөв, дүнгээр хянана."
-          : isStorekeeperView
-            ? "Танд хуваарилагдсан болон няравын шатанд хүлээгдэж буй худалдан авалтын хүсэлтүүд."
-          : "Зөвхөн өөрийн хэлтсийн төсөл болон машин/засвартай холбоотой худалдан авалтын хүсэлтүүд."
+          : isProcurementWorkerView
+            ? "Танд хуваарилагдсан болон таны үүргийн шатанд хүлээгдэж буй худалдан авалтын хүсэлтүүд."
+            : "Зөвхөн өөрийн хэлтсийн төсөл болон машин/засвартай холбоотой худалдан авалтын хүсэлтүүд."
       }
       activeTab="list"
     >
@@ -319,7 +331,7 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
                 Хайх
                 <input type="search" name="search" defaultValue={search} placeholder="Дугаар, гарчиг, объект" />
               </label>
-              {!isDepartmentHeadView && !isStorekeeperView ? (
+              {!isDepartmentHeadView && !isProcurementWorkerView ? (
                 <label className={styles.fieldLabel}>
                   Хэлтэс
                   <select name="department_id" defaultValue={departmentId}>

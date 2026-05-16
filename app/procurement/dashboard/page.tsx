@@ -255,11 +255,19 @@ export default async function ProcurementDashboardPage({ searchParams }: PagePro
   const isDepartmentHeadView =
     isDepartmentHeadSession(session) && !isExecutiveProcurementUser(procurementUser);
   const isExecutiveView = isExecutiveProcurementUser(procurementUser);
+  const isProcurementWorkerView =
+    !isExecutiveView &&
+    !isDepartmentHeadView &&
+    (procurementUser.flags.storekeeper ||
+      procurementUser.flags.finance ||
+      procurementUser.flags.office_clerk ||
+      procurementUser.flags.contract_officer);
   const scopedDepartment = departmentScopeName
     ? meta.departments.find((department) => normalizeName(department.name) === normalizeName(departmentScopeName))
     : null;
   const dashboard = await loadProcurementDashboard(
     {
+      scope: isProcurementWorkerView ? "assigned" : "",
       department_id: isDepartmentHeadView ? scopedDepartment?.id || "" : "",
       relation: relation === "all" ? "" : relation,
     },

@@ -16,8 +16,9 @@ export function ProcurementStateFilterSelect({ defaultValue }: ProcurementStateF
       <option value="">Бүгд</option>
       <option value="draft">Ноорог</option>
       <option value="submitted">Илгээсэн</option>
-      <option value="quote_collection">Санал цуглуулж байна</option>
-      <option value="finance_review">Шийдвэр хүлээгдэж байна</option>
+      <option value="quotation_waiting">Санал цуглуулж байна</option>
+      <option value="decision_waiting">Шийдвэр хүлээгдэж байна</option>
+      <option value="finance_review">Санхүүгийн хяналт</option>
       <option value="admin_review">Захиргааны хяналт</option>
       <option value="ceo_decision">Захирлын шийдвэр</option>
       <option value="legal_contract_draft">Гэрээ боловсруулж байна</option>

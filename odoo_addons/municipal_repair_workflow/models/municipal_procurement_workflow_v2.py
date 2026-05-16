@@ -983,10 +983,28 @@ class MunicipalProcurementRequest(models.Model):
                     domain += ["|", "|"] + assigned_domain + typed_storekeeper_stage_domain + unassigned_storekeeper_stage_domain
                 else:
                     domain += ["|"] + assigned_domain + storekeeper_stage_domain
+            elif flags["office_clerk"]:
+                office_clerk_stage_domain = [
+                    ("state", "in", ["admin_review", "ceo_decision", "ceo_order_uploaded"]),
+                ]
+                domain += ["|"] + assigned_domain + office_clerk_stage_domain
             else:
                 domain += assigned_domain
         if state:
-            if scope == "assigned" and flags["storekeeper"] and state in ("submitted", "quote", "quote_collection"):
+            state_groups = {
+                "quotation_waiting": ["submitted", "quote", "quote_collection"],
+                "quotations_ready": ["finance_review", "admin_review", "ceo_decision", "ceo_order_uploaded"],
+                "decision_waiting": ["finance_review", "admin_review", "ceo_decision", "ceo_order_uploaded"],
+                "contract_waiting": ["legal_contract_draft", "legal_final_contract"],
+                "order_waiting": ["legal_contract_draft", "legal_final_contract"],
+                "payment_waiting": ["payment_pending"],
+                "receiving_waiting": ["payment_recorded", "receiving", "received"],
+            }
+            if state in state_groups:
+                domain.append(("state", "in", state_groups[state]))
+            elif state == "finance_review" and flags["office_clerk"]:
+                domain.append(("state", "in", ["finance_review", "admin_review", "ceo_decision", "ceo_order_uploaded"]))
+            elif scope == "assigned" and flags["storekeeper"] and state in ("submitted", "quote", "quote_collection"):
                 domain.append(("state", "in", ["draft", "submitted", "quote", "quote_collection"]))
             else:
                 domain.append(("state", "=", state))
