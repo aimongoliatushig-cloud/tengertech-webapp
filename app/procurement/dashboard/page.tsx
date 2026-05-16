@@ -411,7 +411,7 @@ export default async function ProcurementDashboardPage({ searchParams }: PagePro
               <div className={styles.requestGrid}>
                 {financeReadyPackages.length ? (
                   financeReadyPackages.map(({ item, pack }) => (
-                    <Link key={`${item.id}-${pack.id}`} href={`/procurement/${item.id}#actions`} className={styles.requestCard}>
+                    <Link key={`${item.id}-${pack.id}`} href={`/procurement/${item.id}?package_id=${pack.id}#packages`} className={styles.requestCard}>
                       <div className={styles.requestCardTop}>
                         <div>
                           <strong>{pack.name}</strong>

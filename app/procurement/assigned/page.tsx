@@ -215,7 +215,7 @@ export default async function AssignedProcurementPage() {
               <div className={styles.requestGrid}>
                 {officeClerkPackages.length ? (
                   officeClerkPackages.map(({ item, pack }) => (
-                    <Link key={`${item.id}-${pack.id}`} href={`/procurement/${item.id}#actions`} className={styles.requestCard}>
+                    <Link key={`${item.id}-${pack.id}`} href={`/procurement/${item.id}?package_id=${pack.id}#actions`} className={styles.requestCard}>
                       <div className={styles.requestCardTop}>
                         <div>
                           <strong>{pack.name}</strong>
@@ -243,7 +243,7 @@ export default async function AssignedProcurementPage() {
               <div className={styles.requestGrid}>
                 {financePackages.length ? (
                   financePackages.map(({ item, pack }) => (
-                    <Link key={`${item.id}-${pack.id}`} href={`/procurement/${item.id}#actions`} className={styles.requestCard}>
+                    <Link key={`${item.id}-${pack.id}`} href={`/procurement/${item.id}?package_id=${pack.id}#packages`} className={styles.requestCard}>
                       <div className={styles.requestCardTop}>
                         <div>
                           <strong>{pack.name}</strong>

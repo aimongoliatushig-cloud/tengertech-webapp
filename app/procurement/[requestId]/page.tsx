@@ -212,16 +212,21 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
   const cancelAction = findAction(item.available_actions, "cancel");
   const selectedQuotation = item.quotations.find((quotation) => quotation.is_selected);
   const packages = item.packages || [];
-  const highValuePackages = packages.filter((pack) => pack.is_over_threshold);
-  const lowValuePackages = packages.filter((pack) => !pack.is_over_threshold);
+  const requestedPackageId = Number(getValue(query.package_id));
+  const focusedPackage = Number.isFinite(requestedPackageId) && requestedPackageId > 0
+    ? packages.find((pack) => pack.id === requestedPackageId)
+    : undefined;
+  const visiblePackages = focusedPackage ? [focusedPackage] : packages;
+  const highValuePackages = visiblePackages.filter((pack) => pack.is_over_threshold);
+  const lowValuePackages = visiblePackages.filter((pack) => !pack.is_over_threshold);
   const missingCeoOrderPackages = highValuePackages.filter((pack) => !pack.ceo_order_ready);
   const contractDraftPackages = highValuePackages.filter((pack) => pack.route_state?.code === "legal_contract_draft");
-  const payablePackages = packages.filter((pack) => isPackagePayable(pack, item));
-  const receivablePackages = packages.filter(
+  const payablePackages = visiblePackages.filter((pack) => isPackagePayable(pack, item));
+  const receivablePackages = visiblePackages.filter(
     (pack) => pack.payment_status?.code === "payment_recorded" && pack.receipt_status?.code !== "received",
   );
   const unassignedLines = item.unassigned_lines || item.lines.filter((line) => !line.package_id);
-  const totals = packageRows(packages);
+  const totals = packageRows(visiblePackages);
   const invoiceLinks = supplierInvoiceLinks(item);
   const invoiceAttachmentIds = new Set(invoiceLinks.map((invoice) => invoice.attachment.id));
   const visibleDocuments = item.documents.filter(
@@ -243,12 +248,18 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
   const canManageWorkflow = !isDepartmentHeadView;
   const canManagePackages = canManageWorkflow && Boolean(submitQuotesAction || procurementUser.flags.storekeeper || procurementUser.flags.admin);
   const canRecordPackagePayment = canManageWorkflow && (procurementUser.flags.finance || procurementUser.flags.admin || Boolean(markPaidAction));
-  const flowLabel = item.flow_type?.label || (item.is_over_threshold ? "1,000,000₮-өөс дээш" : "Урсгал тодорхойгүй");
+  const headerAmount = focusedPackage ? focusedPackage.amount_total : totals.amount || item.selected_supplier_total || item.amount_approx_total;
+  const isHighValueFlow = focusedPackage ? focusedPackage.is_over_threshold : item.is_over_threshold;
+  const flowLabel = focusedPackage
+    ? focusedPackage.is_over_threshold
+      ? "1,000,000₮-өөс дээш"
+      : "1,000,000₮ буюу түүнээс доош"
+    : item.flow_type?.label || (item.is_over_threshold ? "1,000,000₮-өөс дээш" : "Урсгал тодорхойгүй");
   const timeline = [
     { label: "Хүсэлт", active: true, note: formatDate(item.required_date) },
-    { label: "Багц үүсгэх", active: packages.length > 0, note: `${packages.length} багц` },
+    { label: "Багц үүсгэх", active: visiblePackages.length > 0, note: focusedPackage ? "Сонгосон багц" : `${packages.length} багц` },
     { label: "Бараа ангилах", active: item.lines.length > 0 && unassignedLines.length === 0, note: `${unassignedLines.length} үлдсэн` },
-    { label: "3 санал", active: packages.length > 0 && packages.every((pack) => pack.is_complete), note: "Багц бүрээр" },
+    { label: "3 санал", active: visiblePackages.length > 0 && visiblePackages.every((pack) => pack.is_complete), note: focusedPackage ? focusedPackage.name : "Багц бүрээр" },
     { label: "Дараагийн шат", active: item.state.code !== "submitted" && item.state.code !== "quote" && item.state.code !== "quote_collection", note: getStatusLabel(item) },
   ];
 
@@ -270,19 +281,21 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
               <div>
                 <div className={styles.badgeRow}>
                   <span className={statusClass(item)}>{getStatusLabel(item)}</span>
-                  <span className={item.is_over_threshold ? styles.badgeWarning : styles.badge}>{flowLabel}</span>
-                  <span className={packages.every((pack) => pack.is_complete) && packages.length ? styles.badge : styles.badgeOutline}>
-                    {packages.filter((pack) => pack.is_complete).length}/{packages.length} багц бэлэн
+                  <span className={isHighValueFlow ? styles.badgeWarning : styles.badge}>{flowLabel}</span>
+                  <span className={visiblePackages.every((pack) => pack.is_complete) && visiblePackages.length ? styles.badge : styles.badgeOutline}>
+                    {visiblePackages.filter((pack) => pack.is_complete).length}/{visiblePackages.length} багц бэлэн
                   </span>
-                  {packages.length ? <span className={styles.badgeOutline}>{lowValuePackages.length} бага дүн</span> : null}
-                  {packages.length ? <span className={styles.badgeWarning}>{highValuePackages.length} өндөр дүн</span> : null}
+                  {visiblePackages.length ? <span className={styles.badgeOutline}>{lowValuePackages.length} бага дүн</span> : null}
+                  {visiblePackages.length ? <span className={styles.badgeWarning}>{highValuePackages.length} өндөр дүн</span> : null}
                 </div>
-                <h2>{item.title}</h2>
-                <p className={styles.subtleText}>{item.description || "Тайлбар оруулаагүй байна."}</p>
+                <h2>{focusedPackage?.name || item.title}</h2>
+                <p className={styles.subtleText}>
+                  {focusedPackage ? focusedPackage.note || `${item.name} · ${item.title}` : item.description || "Тайлбар оруулаагүй байна."}
+                </p>
               </div>
               <div className={styles.amountBlock}>
-                <strong>{formatMoney(totals.amount || item.selected_supplier_total || item.amount_approx_total)}</strong>
-                <span>Багцуудын хамгийн бага саналын нийлбэр</span>
+                <strong>{formatMoney(headerAmount)}</strong>
+                <span>{focusedPackage ? "Тухайн багцын хамгийн бага санал" : "Багцуудын хамгийн бага саналын нийлбэр"}</span>
               </div>
             </div>
             <div className={styles.flowTimeline}>
@@ -309,8 +322,8 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
               <Info label="Хүсэлт гаргагч" value={item.requester?.name || "Тодорхойгүй"} />
               <Info label="Холбогдох объект" value={item.vehicle?.name || item.project?.name || item.task?.name || "Сонгоогүй"} />
               <Info label="Нярав" value={item.storekeeper?.name || "Сонгоогүй"} />
-              <Info label="Төлбөр" value={item.payment_status.label} />
-              <Info label="Хүлээн авалт" value={item.receipt_status.label} />
+              <Info label="Төлбөр" value={focusedPackage?.payment_status?.label || item.payment_status.label} />
+              <Info label="Хүлээн авалт" value={focusedPackage?.receipt_status?.label || item.receipt_status.label} />
             </div>
           </section>
 
@@ -360,13 +373,13 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
             <div className={styles.sectionHeader}>
               <div>
                 <h2>Багцууд</h2>
-                <p>Багц бүрийн бараа, 3 нийлүүлэгчийн санал, хамгийн бага үнийн дүн.</p>
+                <p>{focusedPackage ? "Сонгосон багцын санал, нэхэмжлэх, төлбөрийн мэдээлэл." : "Багц бүрийн бараа, 3 нийлүүлэгчийн санал, хамгийн бага үнийн дүн."}</p>
               </div>
-              <span className={styles.badge}>{packages.length} багц</span>
+              <span className={styles.badge}>{visiblePackages.length} багц</span>
             </div>
-            {packages.length ? (
+            {visiblePackages.length ? (
               <div className={styles.packageGrid}>
-                {packages.map((pack) => (
+                {visiblePackages.map((pack) => (
                   <PackageCard
                     key={pack.id}
                     requestId={item.id}
@@ -384,7 +397,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
             )}
           </section>
 
-          <section className={styles.cardSection} id="package-summary">
+          {!focusedPackage ? <section className={styles.cardSection} id="package-summary">
             <div className={styles.sectionHeader}>
               <div>
                 <h2>Бүх багцууд - дүгнэлт</h2>
@@ -430,7 +443,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
                 </tfoot>
               </table>
             </div>
-          </section>
+          </section> : null}
 
           <section className={styles.cardSection} id="documents">
             <div className={styles.sectionHeader}><div><h2>Баримт бичиг</h2><p>Invoice, төлбөр, гэрээ болон хүлээн авалтын хавсралтууд.</p></div></div>
@@ -572,7 +585,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
               <DocumentActionForm requestId={item.id} action="mark_contract_signed" label="Гэрээ баталгаажуулах" />
             )
           ) : null}
-          {canRecordPackagePayment && packages.length && payablePackages.length ? (
+          {canRecordPackagePayment && visiblePackages.length && payablePackages.length ? (
             <section className={styles.actionCard}>
               <h3>Төлбөр бүртгэх</h3>
               <p className={styles.subtleText}>Төлөх багцын доорх 3 нэхэмжлэхээс сонгоод төлбөр бүртгэнэ.</p>
@@ -583,7 +596,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
             <RequestPaymentForm requestId={item.id} item={item} selectedQuotation={selectedQuotation} />
           ) : null}
           {markReceivedAction && canManageWorkflow ? (
-            packages.length ? (
+            visiblePackages.length ? (
               <section className={styles.actionCard}>
                 <h3>Багц хүлээн авах</h3>
                 {receivablePackages.length ? (
@@ -619,7 +632,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
             <a href="#summary" className={styles.stickyActionLink}>Мэдээлэл</a>
             {canManagePackages ? <a href="#lines" className={styles.stickyActionLink}>Бараа</a> : null}
             <a href="#packages" className={styles.stickyActionLink}>Багц</a>
-            <a href="#package-summary" className={styles.stickyActionLink}>Дүгнэлт</a>
+            {!focusedPackage ? <a href="#package-summary" className={styles.stickyActionLink}>Дүгнэлт</a> : null}
           </nav>
         </aside>
       </section>
