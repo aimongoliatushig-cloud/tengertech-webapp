@@ -740,25 +740,27 @@ function PackageCard({
         </details>
       ) : null}
 
-      <div className={styles.quoteList}>
-        {visibleQuotes.map((quote) => (
-          <div key={quote.id} className={`${styles.quoteMiniCard} ${quote.is_selected ? styles.quoteMiniCardSelected : ""}`}>
-            <strong>{quote.supplier.name}</strong>
-            <span>{formatMoney(quote.amount_total)}</span>
-            {quote.attachments.length ? (
-              <span className={styles.invoiceLinkList}>
-                {quote.attachments.map((attachment, index) => (
-                  <a key={attachment.id} href={attachmentUrl(attachment.id)} target="_blank" rel="noreferrer" className={styles.invoiceLink}>
-                    Нэхэмжлэх {quote.attachments.length > 1 ? index + 1 : ""}
-                  </a>
-                ))}
-              </span>
-            ) : (
-              <small>Нэхэмжлэх байхгүй</small>
-            )}
-          </div>
-        ))}
-      </div>
+      {!canPay ? (
+        <div className={styles.quoteList}>
+          {visibleQuotes.map((quote) => (
+            <div key={quote.id} className={`${styles.quoteMiniCard} ${quote.is_selected ? styles.quoteMiniCardSelected : ""}`}>
+              <strong>{quote.supplier.name}</strong>
+              <span>{formatMoney(quote.amount_total)}</span>
+              {quote.attachments.length ? (
+                <span className={styles.invoiceLinkList}>
+                  {quote.attachments.map((attachment, index) => (
+                    <a key={attachment.id} href={attachmentUrl(attachment.id)} target="_blank" rel="noreferrer" className={styles.invoiceLink}>
+                      Нэхэмжлэх {quote.attachments.length > 1 ? index + 1 : ""}
+                    </a>
+                  ))}
+                </span>
+              ) : (
+                <small>Нэхэмжлэх байхгүй</small>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {canPay ? <PackagePaymentForm requestId={requestId} pack={pack} /> : null}
 
