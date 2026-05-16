@@ -282,10 +282,27 @@ class MunicipalProcurementRequest(models.Model):
     def _user_has_job_title_role(self, user, key):
         return _job_title_matches_role(self._user_job_title_text(user), key)
 
+    def _user_group_field_name(self, user):
+        user_fields = user.sudo()._fields
+        if "groups_id" in user_fields:
+            return "groups_id"
+        if "group_ids" in user_fields:
+            return "group_ids"
+        return False
+
+    def _user_group_ids(self, user):
+        field_name = self._user_group_field_name(user)
+        return set(user.sudo()[field_name].ids) if field_name else set()
+
+    def _add_user_to_group(self, user, group_id):
+        field_name = self._user_group_field_name(user)
+        if field_name:
+            user.sudo().write({field_name: [(4, group_id)]})
+
     def _ensure_user_group_for_role(self, user, role_key):
         group = self.env.ref(GROUPS[role_key], raise_if_not_found=False)
-        if group and group.id not in set(user.sudo().groups_id.ids):
-            user.sudo().write({"groups_id": [(4, group.id)]})
+        if group and group.id not in self._user_group_ids(user):
+            self._add_user_to_group(user, group.id)
 
     def _user_has_group_key(self, user, key):
         if key == "storekeeper":
@@ -326,15 +343,16 @@ class MunicipalProcurementRequest(models.Model):
         if not user or not user.id:
             return
         commands = []
-        current_group_ids = set(user.sudo().groups_id.ids)
+        current_group_ids = self._user_group_ids(user)
         for role_key in ("department_head", "finance_user", "legal_user"):
             if not self._user_has_job_title_role(user, role_key):
                 continue
             group = self.env.ref(GROUPS[role_key], raise_if_not_found=False)
             if group and group.id not in current_group_ids:
                 commands.append((4, group.id))
-        if commands:
-            user.sudo().write({"groups_id": commands})
+        field_name = self._user_group_field_name(user)
+        if commands and field_name:
+            user.sudo().write({field_name: commands})
 
     def _record_audit(self, action_code, old_state=False, new_state=False, note=False):
         Audit = self.env["municipal.procurement.audit"].sudo()
@@ -1204,7 +1222,12 @@ class MunicipalProcurementRequest(models.Model):
             group = self.env.ref(GROUPS[group_key], raise_if_not_found=False)
             if group:
                 storekeeper_group_ids.append(group.id)
-        storekeeper_domain = [("groups_id", "in", storekeeper_group_ids)] if storekeeper_group_ids else []
+        user_group_field_name = "groups_id" if "groups_id" in Users._fields else "group_ids" if "group_ids" in Users._fields else ""
+        storekeeper_domain = (
+            [(user_group_field_name, "in", storekeeper_group_ids)]
+            if storekeeper_group_ids and user_group_field_name
+            else []
+        )
         tasks = Task.search([], limit=200, order="write_date desc")
         return {
             "ok": True,

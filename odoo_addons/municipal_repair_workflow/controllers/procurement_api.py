@@ -37,10 +37,10 @@ def _error_response(error, status=400):
 
 def _procurement_model():
     user_id = request.env.user.id
-    before_group_ids = set(request.env.user.sudo().groups_id.ids)
     procurement = request.env["municipal.procurement.request"]
+    before_group_ids = procurement._user_group_ids(request.env.user)
     procurement._ensure_user_job_title_groups(request.env.user)
-    after_group_ids = set(request.env.user.sudo().groups_id.ids)
+    after_group_ids = procurement._user_group_ids(request.env.user)
     if after_group_ids != before_group_ids:
         request.update_env(user=user_id)
     return request.env["municipal.procurement.request"]
