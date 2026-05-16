@@ -46,24 +46,33 @@ def _procurement_model():
     return request.env["municipal.procurement.request"]
 
 
+def _authenticate_session(db_name, login, password):
+    credential = {
+        "login": login,
+        "password": password,
+        "type": "password",
+    }
+    type_errors = []
+    for args in ((db_name, credential), (credential,), (db_name, login, password)):
+        try:
+            return request.session.authenticate(*args)
+        except TypeError as error:
+            type_errors.append(error)
+    if type_errors:
+        raise type_errors[-1]
+    return False
+
+
 class MunicipalProcurementApiController(http.Controller):
     @http.route("/mpw/api/login", type="http", auth="none", methods=["POST"], csrf=False)
     def login(self):
         payload = _json_body()
         try:
-            credential = {
-                "login": payload.get("login"),
-                "password": payload.get("password"),
-                "type": "password",
-            }
-            try:
-                uid = request.session.authenticate(payload.get("db") or request.env.cr.dbname, credential)
-            except TypeError:
-                uid = request.session.authenticate(
-                    payload.get("db") or request.env.cr.dbname,
-                    payload.get("login"),
-                    payload.get("password"),
-                )
+            uid = _authenticate_session(
+                payload.get("db") or request.env.cr.dbname,
+                payload.get("login"),
+                payload.get("password"),
+            )
             if uid:
                 request.update_env(user=uid)
             procurement = _procurement_model()
