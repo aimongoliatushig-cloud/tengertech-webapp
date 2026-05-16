@@ -1341,6 +1341,19 @@ class MunicipalProcurementRequest(models.Model):
                     ("package_ids.amount_total", ">=", AMOUNT_THRESHOLD),
                 ]
                 domain += ["|"] + assigned_domain + office_clerk_stage_domain
+            elif flags["finance"]:
+                package_finance_stage_domain = [
+                    "&",
+                    ("package_ids.route_state", "in", ["finance_review", "payment_pending"]),
+                    ("package_ids.payment_status", "!=", "payment_recorded"),
+                ]
+                request_finance_stage_domain = [
+                    "&",
+                    ("package_ids", "=", False),
+                    ("state", "in", ["finance_review", "payment_pending"]),
+                ]
+                finance_stage_domain = ["|"] + package_finance_stage_domain + request_finance_stage_domain
+                domain += ["|"] + assigned_domain + finance_stage_domain
             elif flags["contract_officer"]:
                 legal_stage_domain = [
                     ("state", "in", ["legal_contract_draft", "legal_final_contract"]),
