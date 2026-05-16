@@ -28,6 +28,7 @@ export type PushEventType =
   | "hr_timeoff_status"
   | "attendance_issue"
   | "discipline_issue"
+  | "procurement_stage_changed"
   | "test";
 
 type StoredPushSubscription = BrowserPushSubscription & {
@@ -117,6 +118,11 @@ const EVENT_DEFAULTS: Record<PushEventType, { title: string; body: string; targe
     title: "Сахилгын асуудал бүртгэгдлээ",
     body: "Сахилгын бүртгэлд анхаарах зүйл байна.",
     targetUrl: "/hr/discipline",
+  },
+  procurement_stage_changed: {
+    title: "Худалдан авалтын шат өөрчлөгдлөө",
+    body: "Танд хамаарах худалдан авалтын хүсэлт дараагийн шатанд ирлээ.",
+    targetUrl: "/procurement/dashboard",
   },
   test: {
     title: "Туршилтын мэдэгдэл",

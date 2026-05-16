@@ -6,6 +6,10 @@ import { redirect } from "next/navigation";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { requireSession } from "@/lib/auth";
 import {
+  notifyProcurementStageChanged,
+  type ProcurementNotificationAction,
+} from "@/lib/procurement-notifications";
+import {
   approveProcurementDirectorDecision,
   attachProcurementFinalOrder,
   cancelProcurementRequest,
@@ -238,8 +242,10 @@ export async function createProcurementRequestAction(formData: FormData) {
       }
     }
 
-    await submitProcurementForQuotation(createdRequest.id, connectionOverrides);
+    const submittedRequest = await submitProcurementForQuotation(createdRequest.id, connectionOverrides);
+    await notifyProcurementStageChanged("request_created", submittedRequest);
     revalidateProcurementPaths(createdRequest.id);
+    revalidatePath("/notifications");
   } catch (error) {
     if (isRedirectException(error)) {
       throw error;
@@ -532,6 +538,8 @@ export async function runProcurementWorkflowAction(formData: FormData) {
   const requestId = getNumber(formData, "request_id");
   const action = getString(formData, "workflow_action");
   const note = getString(formData, "note") || undefined;
+  let notificationAction: ProcurementNotificationAction | null = null;
+  let notificationPackageId = getNumber(formData, "package_id") || undefined;
 
   if (!requestId || !action) {
     redirectWithMessage("/procurement", "error", "Үйлдлийн мэдээлэл дутуу байна.");
@@ -541,7 +549,8 @@ export async function runProcurementWorkflowAction(formData: FormData) {
     if (action === "submit_for_quotation") {
       await submitProcurementForQuotation(requestId, connectionOverrides);
     } else if (action === "move_to_finance_review") {
-      await moveProcurementToFinanceReview(requestId, connectionOverrides);
+      const updatedRequest = await moveProcurementToFinanceReview(requestId, connectionOverrides);
+      await notifyProcurementStageChanged("move_to_finance_review", updatedRequest);
     } else if (action === "prepare_order") {
       await prepareProcurementOrder(requestId, connectionOverrides);
     } else if (action === "director_decision") {
@@ -567,7 +576,7 @@ export async function runProcurementWorkflowAction(formData: FormData) {
         package_id: packageId || undefined,
         note,
       });
-      await recordProcurementPackageCeoOrder(
+      const updatedRequest = await recordProcurementPackageCeoOrder(
         requestId,
         {
           package_id: packageId || undefined,
@@ -579,6 +588,9 @@ export async function runProcurementWorkflowAction(formData: FormData) {
         },
         connectionOverrides,
       );
+      notificationAction = "record_package_ceo_order";
+      notificationPackageId = packageId || undefined;
+      await notifyProcurementStageChanged(notificationAction, updatedRequest, notificationPackageId);
     } else if (action === "mark_contract_signed") {
       const packageId = getNumber(formData, "package_id");
       const files = getFiles(formData, "document_files");
@@ -587,17 +599,21 @@ export async function runProcurementWorkflowAction(formData: FormData) {
         package_id: packageId || undefined,
         note,
       });
-      await markProcurementContractSigned(requestId, { package_id: packageId || undefined, note }, connectionOverrides);
+      const updatedRequest = await markProcurementContractSigned(requestId, { package_id: packageId || undefined, note }, connectionOverrides);
+      notificationAction = "mark_contract_signed";
+      notificationPackageId = packageId || undefined;
+      await notifyProcurementStageChanged(notificationAction, updatedRequest, notificationPackageId);
     } else if (action === "mark_paid") {
+      const packageId = getNumber(formData, "package_id");
       const files = getFiles(formData, "document_files");
       await uploadFilesToRequest(requestId, files, "document", connectionOverrides, {
         document_type: "payment_proof",
         note,
       });
-      await markProcurementPaid(
+      const updatedRequest = await markProcurementPaid(
         requestId,
         {
-          package_id: getNumber(formData, "package_id") || undefined,
+          package_id: packageId || undefined,
           selected_quotation_id: getNumber(formData, "selected_quotation_id") || undefined,
           paid_amount: getNumber(formData, "paid_amount") || undefined,
           payment_reference: getString(formData, "payment_reference") || undefined,
@@ -606,6 +622,9 @@ export async function runProcurementWorkflowAction(formData: FormData) {
         },
         connectionOverrides,
       );
+      notificationAction = "mark_paid";
+      notificationPackageId = packageId || undefined;
+      await notifyProcurementStageChanged(notificationAction, updatedRequest, notificationPackageId);
     } else if (action === "mark_received") {
       const packageId = getNumber(formData, "package_id");
       const files = getFiles(formData, "document_files");
@@ -614,16 +633,24 @@ export async function runProcurementWorkflowAction(formData: FormData) {
         package_id: packageId || undefined,
         note,
       });
-      await markProcurementReceived(requestId, { package_id: packageId || undefined, note }, connectionOverrides);
+      const updatedRequest = await markProcurementReceived(requestId, { package_id: packageId || undefined, note }, connectionOverrides);
+      notificationAction = "mark_received";
+      notificationPackageId = packageId || undefined;
+      await notifyProcurementStageChanged(notificationAction, updatedRequest, notificationPackageId);
     } else if (action === "mark_done") {
-      await markProcurementDone(requestId, connectionOverrides);
+      const updatedRequest = await markProcurementDone(requestId, connectionOverrides);
+      notificationAction = "mark_done";
+      await notifyProcurementStageChanged(notificationAction, updatedRequest, notificationPackageId);
     } else if (action === "cancel") {
-      await cancelProcurementRequest(requestId, connectionOverrides);
+      const updatedRequest = await cancelProcurementRequest(requestId, connectionOverrides);
+      notificationAction = "cancel";
+      await notifyProcurementStageChanged(notificationAction, updatedRequest, notificationPackageId);
     } else {
       redirectWithMessage(`/procurement/${requestId}`, "error", "Танигдаагүй үйлдэл байна.");
     }
 
     revalidateProcurementPaths(requestId);
+    revalidatePath("/notifications");
     redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Үйлдэл амжилттай хадгалагдлаа.")}`);
   } catch (error) {
     if (isRedirectException(error)) {

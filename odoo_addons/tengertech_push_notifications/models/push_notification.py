@@ -148,6 +148,7 @@ class TengertechPushEvent(models.Model):
             ("hr_timeoff_status", "HR хүсэлтийн төлөв"),
             ("attendance_issue", "Ирцийн асуудал"),
             ("discipline_issue", "Сахилгын асуудал"),
+            ("procurement_stage_changed", "Худалдан авалтын шат өөрчлөгдсөн"),
             ("test", "Туршилтын мэдэгдэл"),
         ],
         string="Төрөл",
