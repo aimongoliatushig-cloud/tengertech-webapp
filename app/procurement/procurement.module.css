@@ -468,7 +468,13 @@
   margin: 0 0 4px;
   color: var(--proc-ink);
   font-size: 1rem;
+  font-weight: 800;
   line-height: 1.25;
+}
+
+.requestSummaryHeader h2 {
+  font-size: calc(1rem + 2px);
+  font-weight: 900;
 }
 
 .sectionHeader p,
@@ -1515,6 +1521,13 @@
 
 .infoCard {
   padding: 12px;
+}
+
+.infoGrid .infoCard strong {
+  font-size: 1.18rem;
+  line-height: 1.14;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .quoteCard {

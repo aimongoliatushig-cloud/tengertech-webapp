@@ -279,7 +279,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
           </section>
 
           <section className={styles.cardSection} id="summary">
-            <div className={styles.sectionHeader}>
+            <div className={`${styles.sectionHeader} ${styles.requestSummaryHeader}`}>
               <div>
                 <h2>Хүсэлтийн мэдээлэл</h2>
                 <p>Эх үүсвэр, хариуцсан нярав, төлөв болон дараагийн шатны мэдээлэл.</p>

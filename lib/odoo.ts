@@ -399,6 +399,26 @@ function normalizeRoleTitle(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+function inferProcurementGroupFlagsFromTitle(value: string): Partial<RoleGroupFlags> {
+  const title = normalizeRoleTitle(value);
+  const isDepartmentHead =
+    title.includes("хэлтсийн дарга") ||
+    title.includes("хэлтэсийн дарга") ||
+    title.includes("албаны дарга");
+  const isGeneralAccountant =
+    title.includes("ерөнхий ня-бо") ||
+    title.includes("ерөнхий нябо") ||
+    title.includes("ерөнхий ня бо") ||
+    title.includes("ерөнхий нягтлан");
+  const isLegalSpecialist = title.includes("хуулийн мэргэжилтэн") || title.includes("хуульч");
+
+  return {
+    municipalDepartmentHead: isDepartmentHead,
+    procurementFinance: isGeneralAccountant,
+    procurementLegal: isLegalSpecialist,
+  };
+}
+
 function inferRoleFromEmployeeTitle(employee?: OdooAuthEmployeeRecord | null) {
   if (!employee) {
     return null;
@@ -442,7 +462,7 @@ function inferRoleFromEmployeeTitle(employee?: OdooAuthEmployeeRecord | null) {
     return "general_manager";
   }
 
-  if (title.includes("хэлтсийн дарга") || title.includes("албаны дарга")) {
+  if (title.includes("хэлтсийн дарга") || title.includes("хэлтэсийн дарга") || title.includes("албаны дарга")) {
     return "project_manager";
   }
 
@@ -3097,6 +3117,16 @@ export async function authenticateOdooUser(
                     ? "team_leader"
                     : null;
   const role = systemAdmin ? "system_admin" : (groupFallbackRole ?? inferredRole);
+  const titleGroupFlags = inferProcurementGroupFlagsFromTitle(
+    [
+      Array.isArray(employee?.job_id) ? employee.job_id[1] : "",
+      employee?.job_title || "",
+    ].join(" "),
+  );
+  const effectiveMunicipalDepartmentHead =
+    municipalDepartmentHead || Boolean(titleGroupFlags.municipalDepartmentHead);
+  const effectiveProcurementFinance = procurementFinance || Boolean(titleGroupFlags.procurementFinance);
+  const effectiveProcurementLegal = procurementLegal || Boolean(titleGroupFlags.procurementLegal);
 
   return {
     uid,
@@ -3109,7 +3139,7 @@ export async function authenticateOdooUser(
         municipalWorker,
         municipalMaster,
         municipalInspector,
-        municipalDepartmentHead,
+        municipalDepartmentHead: effectiveMunicipalDepartmentHead,
         municipalManager,
         municipalDirector,
         municipalHr,
@@ -3133,9 +3163,9 @@ export async function authenticateOdooUser(
         opsStorekeeper,
         procurementPurchaseManager,
         procurementStorekeeper,
-        procurementFinance,
+        procurementFinance: effectiveProcurementFinance,
         procurementAdministration,
-        procurementLegal,
+        procurementLegal: effectiveProcurementLegal,
         procurementCeo,
         procurementGeneralManager,
         hrUser,

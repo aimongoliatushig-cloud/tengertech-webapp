@@ -265,6 +265,8 @@ export function createFallbackProcurementUser(session: {
   const isDirector = session.role === "director";
   const isGeneralManager = session.role === "general_manager";
   const isDepartmentHead = session.role === "project_manager" || Boolean(session.groupFlags?.municipalDepartmentHead);
+  const isFinance = Boolean(session.groupFlags?.procurementFinance);
+  const isLegal = Boolean(session.groupFlags?.procurementLegal);
 
   return {
     id: session.uid,
@@ -274,9 +276,9 @@ export function createFallbackProcurementUser(session: {
     flags: {
       requester: isDepartmentHead || isGeneralManager,
       storekeeper: false,
-      finance: false,
+      finance: isFinance,
       office_clerk: false,
-      contract_officer: false,
+      contract_officer: isLegal,
       director: isDirector,
       general_manager: isGeneralManager,
       admin: isAdmin,

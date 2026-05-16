@@ -65,6 +65,21 @@ GROUPS = {
     "admin": "municipal_core.group_municipal_admin",
 }
 
+JOB_TITLE_ROLE_PATTERNS = {
+    "department_head": ("хэлтсийн дарга", "хэлтэсийн дарга", "албаны дарга"),
+    "finance_user": ("ерөнхий ня-бо", "ерөнхий нябо", "ерөнхий ня бо", "ерөнхий нягтлан"),
+    "legal_user": ("хуулийн мэргэжилтэн", "хуульч"),
+}
+
+
+def _normalize_job_title(value):
+    return " ".join((value or "").casefold().split())
+
+
+def _job_title_matches_role(value, role_key):
+    normalized = _normalize_job_title(value)
+    return bool(normalized and any(pattern in normalized for pattern in JOB_TITLE_ROLE_PATTERNS.get(role_key, ())))
+
 
 def _relation_payload(record):
     return {"id": record.id, "name": record.display_name} if record else None
@@ -245,11 +260,35 @@ class MunicipalProcurementRequest(models.Model):
             record._record_audit("create", False, record.state, "Request created")
         return records
 
-    def _has_group_key(self, key):
+    def _user_job_title_text(self, user):
+        employees = self.env["hr.employee"].sudo().search([("user_id", "=", user.id)], limit=1)
+        if not employees:
+            return ""
+        employee = employees[0]
+        parts = [employee.job_id.name if employee.job_id else ""]
+        if "job_title" in employee._fields:
+            parts.append(employee.job_title or "")
+        return " ".join(part for part in parts if part)
+
+    def _user_has_job_title_role(self, user, key):
+        return _job_title_matches_role(self._user_job_title_text(user), key)
+
+    def _ensure_user_group_for_role(self, user, role_key):
+        group = self.env.ref(GROUPS[role_key], raise_if_not_found=False)
+        if group and group.id not in set(user.sudo().groups_id.ids):
+            user.sudo().write({"groups_id": [(4, group.id)]})
+
+    def _user_has_group_key(self, user, key):
         if key == "storekeeper":
-            return self.env.user.has_group(GROUPS["storekeeper"]) or self.env.user.has_group(GROUPS["repair_storekeeper"])
+            return user.has_group(GROUPS["storekeeper"]) or user.has_group(GROUPS["repair_storekeeper"])
         xml_id = GROUPS[key]
-        return self.env.user.has_group(xml_id)
+        has_title_role = self._user_has_job_title_role(user, key)
+        if has_title_role:
+            self._ensure_user_group_for_role(user, key)
+        return user.has_group(xml_id) or has_title_role
+
+    def _has_group_key(self, key):
+        return self._user_has_group_key(self.env.user, key)
 
     def _has_any_group(self, keys):
         return any(self._has_group_key(key) for key in keys)
@@ -273,6 +312,20 @@ class MunicipalProcurementRequest(models.Model):
         allowed_department_ids = self._department_head_allowed_department_ids()
         if department_id and department_id not in allowed_department_ids:
             raise AccessError("Department heads can create procurement requests only for their own department.")
+
+    def _ensure_user_job_title_groups(self, user):
+        if not user or not user.id:
+            return
+        commands = []
+        current_group_ids = set(user.sudo().groups_id.ids)
+        for role_key in ("department_head", "finance_user", "legal_user"):
+            if not self._user_has_job_title_role(user, role_key):
+                continue
+            group = self.env.ref(GROUPS[role_key], raise_if_not_found=False)
+            if group and group.id not in current_group_ids:
+                commands.append((4, group.id))
+        if commands:
+            user.sudo().write({"groups_id": commands})
 
     def _record_audit(self, action_code, old_state=False, new_state=False, note=False):
         Audit = self.env["municipal.procurement.audit"].sudo()
@@ -398,6 +451,9 @@ class MunicipalProcurementRequest(models.Model):
         if not groups:
             return self.env["res.users"]
         users = groups.sudo().mapped("all_user_ids").filtered(lambda user: user.active and not user.share)
+        title_users = self._job_title_role_users(group_key)
+        if title_users:
+            users |= title_users
         preferred_logins = ROLE_PREFERRED_LOGINS.get(group_key, ())
         if preferred_logins:
             preferred_users = users.filtered(lambda user: user.login in preferred_logins)
@@ -413,6 +469,19 @@ class MunicipalProcurementRequest(models.Model):
                 return preferred_users.sorted(lambda user: user.id)[:1]
         non_smoke_users = users.filtered(lambda user: not (user.name or "").upper().startswith("SMOKE "))
         return (non_smoke_users or users).sorted(lambda user: user.id)[:1]
+
+    def _job_title_role_users(self, group_key):
+        if group_key not in JOB_TITLE_ROLE_PATTERNS:
+            return self.env["res.users"]
+        employees = self.env["hr.employee"].sudo().search([("user_id", "!=", False)])
+        user_ids = []
+        for employee in employees:
+            parts = [employee.job_id.name if employee.job_id else ""]
+            if "job_title" in employee._fields:
+                parts.append(employee.job_title or "")
+            if _job_title_matches_role(" ".join(part for part in parts if part), group_key):
+                user_ids.append(employee.user_id.id)
+        return self.env["res.users"].sudo().browse(user_ids).filtered(lambda user: user.active and not user.share)
 
     def _default_storekeeper_user_for_request(self, request_type=False, vehicle_id=False):
         role_key = "repair_storekeeper" if request_type == "repair_part" or vehicle_id else "storekeeper"
@@ -791,8 +860,10 @@ class MunicipalProcurementRequest(models.Model):
 
     @api.model
     def _api_current_user_payload(self, user):
+        self._ensure_user_job_title_groups(user)
+
         def has(key):
-            return user.has_group(GROUPS[key])
+            return self._user_has_group_key(user, key)
 
         return {
             "id": user.id,
