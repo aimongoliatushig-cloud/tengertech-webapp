@@ -7,6 +7,12 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 AMOUNT_THRESHOLD = 1000000
+
+
+def _is_high_value_amount(amount):
+    return (amount or 0) >= AMOUNT_THRESHOLD
+
+
 ROLE_PREFERRED_LOGINS = {
     "administration_user": ("95406816",),
     "finance_user": ("99032458",),
@@ -232,7 +238,7 @@ class MunicipalProcurementRequest(models.Model):
     def _compute_flow_type(self):
         for request in self:
             amount = request._threshold_quote_amount()
-            high = amount > AMOUNT_THRESHOLD
+            high = _is_high_value_amount(amount)
             request.requires_high_value_approval = high
             request.contract_required = high
             request.flow_type = "high" if high else ("low" if (amount or request.selected_supplier_total) else False)
@@ -257,7 +263,7 @@ class MunicipalProcurementRequest(models.Model):
     )
     def _compute_is_over_threshold(self):
         for request in self:
-            request.is_over_threshold = request._threshold_quote_amount() > AMOUNT_THRESHOLD
+            request.is_over_threshold = _is_high_value_amount(request._threshold_quote_amount())
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -440,14 +446,31 @@ class MunicipalProcurementRequest(models.Model):
 
     def _ensure_high_value_payment_ready(self):
         for request in self:
-            if not request.requires_high_value_approval:
+            high_value_packages = request._high_value_packages()
+            if request.package_ids and not high_value_packages:
                 continue
-            if not request.ceo_selected_quote_id:
+            if not request.package_ids and not request.requires_high_value_approval:
+                continue
+            if request.package_ids:
+                missing_packages = request._missing_ceo_order_packages()
+                if missing_packages:
+                    package_names = ", ".join(missing_packages.mapped("name"))
+                    raise UserError("CEO order is missing for high-value packages: %s" % package_names)
+            elif not request.ceo_selected_quote_id:
                 raise UserError("CEO-selected supplier quote is required before high-value payment.")
             if not request.ceo_order_attachment_ids:
                 raise UserError("CEO approval/order attachment is required before high-value payment.")
             if not request.contract_draft_attachment_ids:
                 raise UserError("Contract draft is required before high-value payment.")
+
+    def _package_threshold_amount(self, package):
+        self.ensure_one()
+        if package.lowest_quote_id:
+            return package.lowest_quote_id.amount_total
+        valid_quotes = package.quotation_ids.filtered(lambda quote: quote.supplier_id and quote.amount_total > 0)
+        if valid_quotes:
+            return min(valid_quotes.mapped("amount_total") or [0])
+        return package.amount_total or 0
 
     def _threshold_quote_amount(self):
         self.ensure_one()
@@ -455,12 +478,12 @@ class MunicipalProcurementRequest(models.Model):
         if selected_quotes:
             return max(selected_quotes.mapped("amount_total") or [0])
         if self.package_ids:
-            return max(self.package_ids.mapped("amount_total") or [0])
+            return max([self._package_threshold_amount(package) for package in self.package_ids] or [0])
         return self.selected_quote_id.amount_total or self.selected_supplier_total or self.amount_total or 0
 
     def _high_value_packages(self):
         self.ensure_one()
-        return self.package_ids.filtered(lambda package: package.amount_total > AMOUNT_THRESHOLD)
+        return self.package_ids.filtered(lambda package: _is_high_value_amount(self._package_threshold_amount(package)))
 
     def _missing_ceo_order_packages(self):
         self.ensure_one()
@@ -592,7 +615,7 @@ class MunicipalProcurementRequest(models.Model):
                 request._sync_package_quote_selection()
             selected_total = sum(request.quote_line_ids.filtered("is_selected").mapped("amount_total"))
             request.write({"amount_total": selected_total or request.selected_supplier_total})
-            if request._threshold_quote_amount() > AMOUNT_THRESHOLD:
+            if _is_high_value_amount(request._threshold_quote_amount()):
                 request._ensure_stage_assignees("administration_user")
                 request._change_state("admin_review", "move_to_finance_review")
             else:
@@ -604,6 +627,10 @@ class MunicipalProcurementRequest(models.Model):
         self._ensure_role(["finance_user", "admin"], "Only finance can select supplier/payment flow.")
         self._ensure_selected_quote()
         for request in self:
+            if request._high_value_packages() or (
+                not request.package_ids and _is_high_value_amount(request._threshold_quote_amount())
+            ):
+                raise UserError("High-value packages must go through administration before payment.")
             request.finance_approved_by = self.env.user.id
             request.date_finance_approved = fields.Datetime.now()
             request._change_state("payment_pending", "finance_selected_supplier")
@@ -613,7 +640,9 @@ class MunicipalProcurementRequest(models.Model):
         self._ensure_role(["administration_user", "admin"], "Only administration can prepare CEO paperwork.")
         self._ensure_selected_quote()
         for request in self:
-            if not request.requires_high_value_approval:
+            if not request._high_value_packages() and not (
+                not request.package_ids and _is_high_value_amount(request._threshold_quote_amount())
+            ):
                 raise UserError("CEO paperwork is only required for high-value purchases.")
             request._change_state("ceo_decision", "prepare_order")
         return True
@@ -662,7 +691,10 @@ class MunicipalProcurementRequest(models.Model):
                     )
                 package_names = ", ".join(missing_packages.mapped("name"))
                 raise UserError("CEO order is missing for these packages: %s" % package_names)
-            if request.requires_high_value_approval and not request.ceo_selected_quote_id:
+            if (
+                (not request.package_ids and request.requires_high_value_approval)
+                or bool(request._missing_ceo_order_packages())
+            ) and not request.ceo_selected_quote_id:
                 raise UserError("Record CEO-selected quote before uploading order.")
             request.ceo_order_note = note or request.ceo_order_note
             request._ensure_stage_assignees("legal_user")
@@ -689,8 +721,8 @@ class MunicipalProcurementRequest(models.Model):
             package = request.package_ids.filtered(lambda item: item.id == int(package_id or 0))[:1]
             if not package:
                 raise UserError("A valid high-value package is required.")
-            if package.amount_total <= AMOUNT_THRESHOLD:
-                raise UserError("CEO order is required only for packages above 1,000,000 MNT.")
+            if not _is_high_value_amount(request._package_threshold_amount(package)):
+                raise UserError("CEO order is required only for packages at or above 1,000,000 MNT.")
             quote = package.quotation_ids.filtered(lambda item: item.id == int(selected_quotation_id or 0))[:1]
             if not quote:
                 quote = package.lowest_quote_id
@@ -864,7 +896,16 @@ class MunicipalProcurementRequest(models.Model):
                 not self.package_ids and len(self._valid_quote_lines()) >= 3 and self.selected_quote_id
             ):
                 add("move_to_finance_review")
-        if self.state == "finance_review" and (flags["finance"] or flags["admin"]):
+        high_value_required = bool(self._high_value_packages()) or (
+            not self.package_ids and _is_high_value_amount(self._threshold_quote_amount())
+        )
+        high_value_waiting_admin = high_value_required and not (
+            self.ceo_order_attachment_ids and self.contract_draft_attachment_ids
+        )
+        if self.state == "finance_review" and high_value_waiting_admin and (flags["office_clerk"] or flags["admin"]):
+            add("prepare_order")
+            add("record_package_ceo_order")
+        if self.state == "finance_review" and not high_value_waiting_admin and (flags["finance"] or flags["admin"]):
             add("mark_paid")
         if self.state == "admin_review" and (flags["office_clerk"] or flags["admin"]):
             add("prepare_order")
@@ -915,6 +956,9 @@ class MunicipalProcurementRequest(models.Model):
         selected = self.selected_quote_id or self.ceo_selected_quote_id
         package_amount = sum(self.package_ids.mapped("amount_total")) if self.package_ids else 0
         amount = package_amount or self.selected_supplier_total or selected.amount_total or self.amount_total or 0
+        threshold_amount = self._threshold_quote_amount()
+        is_high_value = _is_high_value_amount(threshold_amount)
+        flow_type = "high" if is_high_value else ("low" if (threshold_amount or amount) else self.flow_type)
         paid = self.payment_status == "payment_recorded"
         received = self.receipt_status in ("received", "partially_received") or self.is_service_finalized
         today = fields.Date.context_today(self)
@@ -936,7 +980,7 @@ class MunicipalProcurementRequest(models.Model):
             "description": self.description,
             "required_date": self.required_date.isoformat() if self.required_date else None,
             "state": self._state_payload("state", self.state),
-            "flow_type": self._state_payload("flow_type", self.flow_type),
+            "flow_type": self._state_payload("flow_type", flow_type),
             "selected_supplier": {
                 "id": selected.supplier_id.id,
                 "name": selected.supplier_id.sudo().display_name,
@@ -949,11 +993,11 @@ class MunicipalProcurementRequest(models.Model):
             "packages_complete": bool(self.package_ids) and not self.package_ids.filtered(lambda package: not package.is_complete),
             "high_value_packages": [
                 package._api_payload(index + 1)
-                for index, package in enumerate(self.package_ids.filtered(lambda item: item.amount_total > AMOUNT_THRESHOLD))
+                for index, package in enumerate(self._high_value_packages())
             ],
             "payment_status": self._state_payload("payment_status", self.payment_status),
             "receipt_status": self._state_payload("receipt_status", self.receipt_status),
-            "is_over_threshold": self.requires_high_value_approval,
+            "is_over_threshold": is_high_value,
             "payment_reference": self.payment_reference,
             "payment_date": self.paid_date.isoformat() if self.paid_date else None,
             "date_quotation_submitted": self.date_quotation_submitted,
@@ -1088,7 +1132,11 @@ class MunicipalProcurementRequest(models.Model):
                     domain += ["|"] + assigned_domain + storekeeper_stage_domain
             elif flags["office_clerk"]:
                 office_clerk_stage_domain = [
+                    "|",
                     ("state", "in", ["admin_review", "ceo_decision", "ceo_order_uploaded"]),
+                    "&",
+                    ("state", "=", "finance_review"),
+                    ("package_ids.amount_total", ">=", AMOUNT_THRESHOLD),
                 ]
                 domain += ["|"] + assigned_domain + office_clerk_stage_domain
             elif flags["contract_officer"]:
@@ -1734,7 +1782,7 @@ class MunicipalProcurementPackage(models.Model):
             "amount_total": self.amount_total,
             "lowest_quotation": self.lowest_quote_id._api_payload() if self.lowest_quote_id else None,
             "is_complete": self.is_complete,
-            "is_over_threshold": self.amount_total > AMOUNT_THRESHOLD,
+            "is_over_threshold": _is_high_value_amount(self.request_id._package_threshold_amount(self)),
             "ceo_selected_quotation_id": self.ceo_selected_quote_id.id or None,
             "ceo_selected_quotation": self.ceo_selected_quote_id._api_payload() if self.ceo_selected_quote_id else None,
             "ceo_decision_note": self.ceo_decision_note,
@@ -1821,7 +1869,7 @@ class MunicipalProcurementQuote(models.Model):
     @api.depends("amount_total")
     def _compute_contract_required(self):
         for quote in self:
-            quote.contract_required = quote.amount_total > AMOUNT_THRESHOLD
+            quote.contract_required = _is_high_value_amount(quote.amount_total)
 
     @api.constrains("is_selected", "procurement_id", "package_id")
     def _check_single_selected_quote(self):
