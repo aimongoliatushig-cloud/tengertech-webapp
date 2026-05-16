@@ -160,6 +160,15 @@ function supplierInvoiceLinks(item: ProcurementRequestDetail) {
   return links;
 }
 
+function isPackagePayable(pack: ProcurementPackage, item: ProcurementRequestDetail) {
+  return (
+    (pack.route_state?.code === "finance_review" ||
+      pack.route_state?.code === "payment_pending" ||
+      (pack.is_complete && !pack.is_over_threshold && item.state.code !== "draft" && item.state.code !== "submitted")) &&
+    pack.payment_status?.code !== "payment_recorded"
+  );
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function ProcurementDetailPage({ params, searchParams }: PageProps) {
@@ -207,13 +216,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
   const lowValuePackages = packages.filter((pack) => !pack.is_over_threshold);
   const missingCeoOrderPackages = highValuePackages.filter((pack) => !pack.ceo_order_ready);
   const contractDraftPackages = highValuePackages.filter((pack) => pack.route_state?.code === "legal_contract_draft");
-  const payablePackages = packages.filter(
-    (pack) =>
-      (pack.route_state?.code === "finance_review" ||
-        pack.route_state?.code === "payment_pending" ||
-        (pack.is_complete && !pack.is_over_threshold && item.state.code !== "draft" && item.state.code !== "submitted")) &&
-      pack.payment_status?.code !== "payment_recorded",
-  );
+  const payablePackages = packages.filter((pack) => isPackagePayable(pack, item));
   const receivablePackages = packages.filter(
     (pack) => pack.payment_status?.code === "payment_recorded" && pack.receipt_status?.code !== "received",
   );
@@ -239,6 +242,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
 
   const canManageWorkflow = !isDepartmentHeadView;
   const canManagePackages = canManageWorkflow && Boolean(submitQuotesAction || procurementUser.flags.storekeeper || procurementUser.flags.admin);
+  const canRecordPackagePayment = canManageWorkflow && (procurementUser.flags.finance || procurementUser.flags.admin || Boolean(markPaidAction));
   const flowLabel = item.flow_type?.label || (item.is_over_threshold ? "1,000,000₮-өөс дээш" : "Урсгал тодорхойгүй");
   const timeline = [
     { label: "Хүсэлт", active: true, note: formatDate(item.required_date) },
@@ -370,6 +374,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
                     unassignedLines={unassignedLines}
                     suppliers={meta.suppliers}
                     canManage={canManagePackages}
+                    canPay={canRecordPackagePayment && isPackagePayable(pack, item)}
                     quoteMode={procurementUser.flags.finance && !procurementUser.flags.admin && pack.is_over_threshold ? "selected" : "all"}
                   />
                 ))}
@@ -429,29 +434,8 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
 
           <section className={styles.cardSection} id="documents">
             <div className={styles.sectionHeader}><div><h2>Баримт бичиг</h2><p>Invoice, төлбөр, гэрээ болон хүлээн авалтын хавсралтууд.</p></div></div>
-            {invoiceLinks.length || visibleDocuments.length || visibleAttachments.length ? (
+            {visibleDocuments.length || visibleAttachments.length ? (
               <div className={styles.documentList}>
-                {invoiceLinks.length ? (
-                  <article className={`${styles.documentCard} ${styles.invoiceSummaryCard}`}>
-                    <div className={styles.documentHeader}>
-                      <strong>Нийлүүлэгчийн нэхэмжлэхүүд</strong>
-                      <span className={styles.badgeOutline}>{invoiceLinks.length}</span>
-                    </div>
-                    <div className={styles.invoiceLinkList}>
-                      {invoiceLinks.map((invoice) => (
-                        <a
-                          key={invoice.key}
-                          href={attachmentUrl(invoice.attachment.id)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={styles.invoiceLink}
-                        >
-                          {invoice.label}
-                        </a>
-                      ))}
-                    </div>
-                  </article>
-                ) : null}
                 {visibleDocuments.map((document) => (
                   <article key={document.id} className={styles.documentCard}>
                     <div className={styles.documentHeader}>
@@ -588,22 +572,15 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
               <DocumentActionForm requestId={item.id} action="mark_contract_signed" label="Гэрээ баталгаажуулах" />
             )
           ) : null}
-          {markPaidAction && canManageWorkflow ? (
-            packages.length ? (
-              <section className={styles.actionCard}>
-                <h3>Багцын төлбөр бүртгэх</h3>
-                <p className={styles.subtleText}>
-                  1 саяас доош багц шууд төлөгдөнө. 1 саяас дээш багц тушаал, гэрээний дараа энэ хэсэгт орж ирнэ.
-                </p>
-                {payablePackages.length ? (
-                  payablePackages.map((pack) => <PackagePaymentForm key={pack.id} requestId={item.id} pack={pack} />)
-                ) : (
-                  <div className={styles.emptyState}><strong>Төлөхөд бэлэн багц алга.</strong></div>
-                )}
-              </section>
-            ) : (
-              <RequestPaymentForm requestId={item.id} item={item} selectedQuotation={selectedQuotation} />
-            )
+          {canRecordPackagePayment && packages.length && payablePackages.length ? (
+            <section className={styles.actionCard}>
+              <h3>Төлбөр бүртгэх</h3>
+              <p className={styles.subtleText}>Төлөх багцын доорх 3 нэхэмжлэхээс сонгоод төлбөр бүртгэнэ.</p>
+              <a href="#packages" className={styles.secondaryButton}>Багц руу очих</a>
+            </section>
+          ) : null}
+          {markPaidAction && canManageWorkflow && !packages.length ? (
+            <RequestPaymentForm requestId={item.id} item={item} selectedQuotation={selectedQuotation} />
           ) : null}
           {markReceivedAction && canManageWorkflow ? (
             packages.length ? (
@@ -711,6 +688,7 @@ function PackageCard({
   unassignedLines,
   suppliers,
   canManage,
+  canPay,
   quoteMode,
 }: {
   requestId: number;
@@ -718,6 +696,7 @@ function PackageCard({
   unassignedLines: ProcurementLine[];
   suppliers: ProcurementMeta["suppliers"];
   canManage: boolean;
+  canPay: boolean;
   quoteMode: "all" | "selected";
 }) {
   const editableLines = [...pack.lines, ...unassignedLines];
@@ -780,6 +759,8 @@ function PackageCard({
           </div>
         ))}
       </div>
+
+      {canPay ? <PackagePaymentForm requestId={requestId} pack={pack} /> : null}
 
       {canManage ? (
         <details className={styles.inlineDetails} open={!pack.is_complete}>
