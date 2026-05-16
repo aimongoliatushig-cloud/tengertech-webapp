@@ -1065,6 +1065,11 @@ class MunicipalProcurementRequest(models.Model):
                     ("state", "in", ["admin_review", "ceo_decision", "ceo_order_uploaded"]),
                 ]
                 domain += ["|"] + assigned_domain + office_clerk_stage_domain
+            elif flags["contract_officer"]:
+                legal_stage_domain = [
+                    ("state", "in", ["legal_contract_draft", "legal_final_contract"]),
+                ]
+                domain += ["|"] + assigned_domain + legal_stage_domain
             else:
                 domain += assigned_domain
         if state:
