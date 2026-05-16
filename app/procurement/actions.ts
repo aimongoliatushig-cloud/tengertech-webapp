@@ -58,6 +58,18 @@ function isRedirectException(error: unknown) {
   );
 }
 
+function getCreateRequestErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  if (
+    message.includes("top-secret records") ||
+    message.includes("'read' access") ||
+    message.includes("fleet.vehicle")
+  ) {
+    return "Холбоотой машины мэдээлэл унших эрхийн зөрчил гарлаа. Хуудсаа шинэчлээд дахин оролдоно уу. Алдаа хэвээр байвал municipal_repair_workflow module upgrade хийнэ.";
+  }
+  return message || "Хүсэлт үүсгэх үед алдаа гарлаа.";
+}
+
 function isDepartmentHeadSession(session: Awaited<ReturnType<typeof requireSession>>) {
   return session.role === "project_manager" || Boolean(session.groupFlags?.municipalDepartmentHead);
 }
@@ -236,7 +248,7 @@ export async function createProcurementRequestAction(formData: FormData) {
     redirectWithMessage(
       "/procurement/new",
       "error",
-      error instanceof Error ? error.message : "Хүсэлт үүсгэх үед алдаа гарлаа.",
+      getCreateRequestErrorMessage(error),
     );
   }
 

@@ -88,7 +88,10 @@ def _job_title_matches_role(value, role_key):
 
 
 def _relation_payload(record):
-    return {"id": record.id, "name": record.display_name} if record else None
+    if not record:
+        return None
+    record = record.sudo()
+    return {"id": record.id, "name": record.display_name}
 
 
 def _code_label(code, selection):
@@ -773,6 +776,7 @@ class MunicipalProcurementRequest(models.Model):
     def action_receive(self):
         self._ensure_role(["purchase_manager", "storekeeper", "admin"], "Only purchase manager can mark receiving.")
         for request in self:
+            old_state = request.state
             if request.payment_status != "payment_recorded":
                 raise UserError("Payment must be recorded before receiving/finalization.")
             if not request.received_note and not request.is_service_finalized:
@@ -789,14 +793,14 @@ class MunicipalProcurementRequest(models.Model):
                 line.state = "received" if line.received_quantity >= line.requested_quantity else "requested"
             request.write(
                 {
-                    "state": "received",
+                    "state": "done",
                     "receipt_status": "received" if all_received or request.is_service_finalized else "partially_received",
                     "received_by": self.env.user.id,
                     "date_received": fields.Datetime.now(),
                     "received_date": request.received_date or fields.Date.context_today(request),
                 }
             )
-            request._record_audit("mark_received", "receiving", "received", request.received_note)
+            request._record_audit("mark_received", old_state, "done", request.received_note)
         return True
 
     def action_done(self):
@@ -875,7 +879,7 @@ class MunicipalProcurementRequest(models.Model):
             "id": user.id,
             "name": user.name,
             "login": user.login,
-            "company": user.company_id.display_name,
+            "company": user.company_id.sudo().display_name,
             "flags": {
                 "requester": has("department_head") or has("admin"),
                 "storekeeper": has("purchase_manager") or has("storekeeper") or user.has_group("municipal_repair_workflow.group_repair_storekeeper"),
@@ -915,7 +919,11 @@ class MunicipalProcurementRequest(models.Model):
             "required_date": self.required_date.isoformat() if self.required_date else None,
             "state": self._state_payload("state", self.state),
             "flow_type": self._state_payload("flow_type", self.flow_type),
-            "selected_supplier": {"id": selected.supplier_id.id, "name": selected.supplier_id.display_name, "total": selected.amount_total} if selected else None,
+            "selected_supplier": {
+                "id": selected.supplier_id.id,
+                "name": selected.supplier_id.sudo().display_name,
+                "total": selected.amount_total,
+            } if selected else None,
             "selected_quotation_id": selected.id if selected else None,
             "selected_supplier_total": amount,
             "amount_approx_total": sum(self.line_ids.mapped("subtotal")) or self.amount_total or 0,
@@ -1166,7 +1174,8 @@ class MunicipalProcurementRequest(models.Model):
         for record in records:
             related = record[field_name]
             if related:
-                counts.setdefault(related.id, {"id": related.id, "name": related.display_name, "count": 0})
+                related_sudo = related.sudo()
+                counts.setdefault(related_sudo.id, {"id": related_sudo.id, "name": related_sudo.display_name, "count": 0})
                 counts[related.id]["count"] += 1
         return sorted(counts.values(), key=lambda item: item["count"], reverse=True)[:10]
 
@@ -1176,7 +1185,8 @@ class MunicipalProcurementRequest(models.Model):
         for record in records:
             supplier = record.selected_supplier_id
             if supplier:
-                counts.setdefault(supplier.id, {"id": supplier.id, "name": supplier.display_name, "count": 0})
+                supplier_sudo = supplier.sudo()
+                counts.setdefault(supplier_sudo.id, {"id": supplier_sudo.id, "name": supplier_sudo.display_name, "count": 0})
                 counts[supplier.id]["count"] += 1
         return sorted(counts.values(), key=lambda item: item["count"], reverse=True)[:10]
 
@@ -1362,7 +1372,7 @@ class MunicipalProcurementRequest(models.Model):
             phone = partner.mobile or ""
         return {
             "id": partner.id,
-            "name": partner.display_name,
+            "name": partner.sudo().display_name,
             "vat": partner.vat or "",
             "phone": phone,
             "email": partner.email or "",
@@ -1745,7 +1755,7 @@ class MunicipalProcurementLine(models.Model):
             "sequence": sequence,
             "product_id": self.product_id.id or None,
             "package_id": self.package_id.id or None,
-            "product_name": self.name or self.product_id.display_name or self.description,
+            "product_name": self.name or self.product_id.sudo().display_name or self.description,
             "specification": self.specification_text,
             "quantity": self.requested_quantity,
             "uom": _relation_payload(self.uom_id) or ({"id": 0, "name": self.unit_of_measure} if self.unit_of_measure else None),

@@ -405,16 +405,31 @@ function inferProcurementGroupFlagsFromTitle(value: string): Partial<RoleGroupFl
     title.includes("хэлтсийн дарга") ||
     title.includes("хэлтэсийн дарга") ||
     title.includes("албаны дарга");
+  const isPurchaseManager =
+    title.includes("худалдан авалт") ||
+    title.includes("худалдан авах") ||
+    title.includes("хангамж");
+  const isStorekeeper =
+    title.includes("нярав") ||
+    title.includes("агуулахын ажилтан") ||
+    title.includes("storekeeper");
   const isGeneralAccountant =
     title.includes("ерөнхий ня-бо") ||
     title.includes("ерөнхий нябо") ||
     title.includes("ерөнхий ня бо") ||
     title.includes("ерөнхий нягтлан");
+  const isAdministration =
+    title.includes("бичиг хэргийн ажилтан") ||
+    title.includes("бичиг хэрэг") ||
+    title.includes("захиргааны ажилтан");
   const isLegalSpecialist = title.includes("хуулийн мэргэжилтэн") || title.includes("хуульч");
 
   return {
     municipalDepartmentHead: isDepartmentHead,
+    procurementPurchaseManager: isPurchaseManager,
+    procurementStorekeeper: isStorekeeper,
     procurementFinance: isGeneralAccountant,
+    procurementAdministration: isAdministration,
     procurementLegal: isLegalSpecialist,
   };
 }
@@ -3125,7 +3140,13 @@ export async function authenticateOdooUser(
   );
   const effectiveMunicipalDepartmentHead =
     municipalDepartmentHead || Boolean(titleGroupFlags.municipalDepartmentHead);
+  const effectiveProcurementPurchaseManager =
+    procurementPurchaseManager || Boolean(titleGroupFlags.procurementPurchaseManager);
+  const effectiveProcurementStorekeeper =
+    procurementStorekeeper || Boolean(titleGroupFlags.procurementStorekeeper);
   const effectiveProcurementFinance = procurementFinance || Boolean(titleGroupFlags.procurementFinance);
+  const effectiveProcurementAdministration =
+    procurementAdministration || Boolean(titleGroupFlags.procurementAdministration);
   const effectiveProcurementLegal = procurementLegal || Boolean(titleGroupFlags.procurementLegal);
 
   return {
@@ -3161,10 +3182,10 @@ export async function authenticateOdooUser(
         fleetRepairCeo,
         fleetRepairManager,
         opsStorekeeper,
-        procurementPurchaseManager,
-        procurementStorekeeper,
+        procurementPurchaseManager: effectiveProcurementPurchaseManager,
+        procurementStorekeeper: effectiveProcurementStorekeeper,
         procurementFinance: effectiveProcurementFinance,
-        procurementAdministration,
+        procurementAdministration: effectiveProcurementAdministration,
         procurementLegal: effectiveProcurementLegal,
         procurementCeo,
         procurementGeneralManager,

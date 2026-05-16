@@ -265,7 +265,14 @@ export function createFallbackProcurementUser(session: {
   const isDirector = session.role === "director";
   const isGeneralManager = session.role === "general_manager";
   const isDepartmentHead = session.role === "project_manager" || Boolean(session.groupFlags?.municipalDepartmentHead);
+  const isStorekeeper = Boolean(
+    session.groupFlags?.procurementStorekeeper ||
+      session.groupFlags?.procurementPurchaseManager ||
+      session.groupFlags?.fleetRepairPurchaser ||
+      session.groupFlags?.opsStorekeeper,
+  );
   const isFinance = Boolean(session.groupFlags?.procurementFinance);
+  const isAdministration = Boolean(session.groupFlags?.procurementAdministration);
   const isLegal = Boolean(session.groupFlags?.procurementLegal);
 
   return {
@@ -275,9 +282,9 @@ export function createFallbackProcurementUser(session: {
     company: "Тохижилт үйлчилгээний төв",
     flags: {
       requester: isDepartmentHead || isGeneralManager,
-      storekeeper: false,
+      storekeeper: isStorekeeper,
       finance: isFinance,
-      office_clerk: false,
+      office_clerk: isAdministration,
       contract_officer: isLegal,
       director: isDirector,
       general_manager: isGeneralManager,

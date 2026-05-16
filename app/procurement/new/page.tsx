@@ -7,7 +7,6 @@ import { ProcurementShell } from "@/app/procurement/_components/procurement-shel
 import { createProcurementRequestAction } from "@/app/procurement/actions";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { canAccessProcurementModule, requireSession } from "@/lib/auth";
-import { loadFleetVehicleBoard } from "@/lib/odoo";
 import {
   createFallbackProcurementUser,
   isProcurementSetupError,
@@ -76,10 +75,9 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
     login: session.login,
     password: session.password,
   };
-  const [procurementUser, meta, vehicleBoard, departmentScopeName, setupWarning] = await Promise.all([
+  const [procurementUser, meta, departmentScopeName, setupWarning] = await Promise.all([
     loadProcurementMe(connectionOverrides).catch(() => createFallbackProcurementUser(session)),
     loadProcurementMeta(connectionOverrides).catch(() => createEmptyProcurementMeta()),
-    loadFleetVehicleBoard(connectionOverrides).catch(() => null),
     loadSessionDepartmentName(session),
     loadProcurementMe(connectionOverrides)
       .then(() => "")
@@ -92,12 +90,7 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
     : null;
   const departmentLabel = scopedDepartment?.name || departmentScopeName || "Хэлтэс тодорхойгүй";
   const defaultStorekeeperId = meta.storekeepers[0]?.id ? String(meta.storekeepers[0].id) : "";
-  const vehicleOptions = meta.vehicles.length
-    ? meta.vehicles
-    : (vehicleBoard?.allVehicles || []).map((vehicle) => ({
-        id: vehicle.id,
-        name: `${vehicle.plate}${vehicle.modelName ? ` - ${vehicle.modelName}` : ""}`,
-      }));
+  const vehicleOptions = meta.vehicles;
 
   return (
     <ProcurementShell

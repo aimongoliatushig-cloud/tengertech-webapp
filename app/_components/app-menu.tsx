@@ -305,7 +305,25 @@ export function AppMenu({
     role: resolvedRole,
     groupFlags,
   };
-  const roleLooksDepartmentHead = roleLabelLower.includes("хэлтсийн дарга");
+  const roleLooksDepartmentHead =
+    roleLabelLower.includes("хэлтсийн дарга") ||
+    roleLabelLower.includes("хэлтэсийн дарга") ||
+    roleLabelLower.includes("албаны дарга");
+  const roleLooksProcurementParticipant =
+    roleLooksDepartmentHead ||
+    roleLabelLower.includes("худалдан авалт") ||
+    roleLabelLower.includes("худалдан авах") ||
+    roleLabelLower.includes("хангамж") ||
+    roleLabelLower.includes("нярав") ||
+    roleLabelLower.includes("бичиг хэргийн ажилтан") ||
+    roleLabelLower.includes("бичиг хэрэг") ||
+    roleLabelLower.includes("захиргааны ажилтан") ||
+    roleLabelLower.includes("ерөнхий ня-бо") ||
+    roleLabelLower.includes("ерөнхий нябо") ||
+    roleLabelLower.includes("ерөнхий ня бо") ||
+    roleLabelLower.includes("ерөнхий нягтлан") ||
+    roleLabelLower.includes("хуулийн мэргэжилтэн") ||
+    roleLabelLower.includes("хуульч");
   const roleLooksSystemAdmin =
     roleLabelLower.includes("системийн админ") ||
     roleLabelLower.includes("system admin");
@@ -352,7 +370,8 @@ export function AppMenu({
   const canOpenGeneralSettings = roleContext.role === "system_admin";
   const canOpenProcurement = canAccessProcurementModule(roleContext);
   const procurementMode = Boolean(
-    flags.opsStorekeeper ||
+    roleLooksProcurementParticipant ||
+      flags.opsStorekeeper ||
       flags.fleetRepairPurchaser ||
       flags.fleetRepairFinance ||
       flags.fleetRepairAccounting ||
@@ -380,12 +399,18 @@ export function AppMenu({
     flags.municipalDepartmentHead || environmentManagerMode || mfoManagerMode,
   );
   const showFleetRepair = repairMode || mfoManagerMode || executiveMode;
+  const isProcurementDepartmentHeadLike = Boolean(
+    roleLooksDepartmentHead || resolvedRole === "project_manager" || flags.municipalDepartmentHead,
+  );
   const showProcurement =
     canOpenProcurement ||
     procurementMode ||
+    roleLooksProcurementParticipant ||
     executiveMode ||
     Boolean(flags.municipalDepartmentHead || flags.municipalManager || flags.municipalDirector);
-  const procurementWorkerMode = Boolean(workerMode && showProcurement && procurementMode);
+  const procurementWorkerMode = Boolean(
+    workerMode && showProcurement && procurementMode && !isProcurementDepartmentHeadLike,
+  );
   const showReports =
     canWriteReports || executiveMode || departmentManagerMode || inspectorMode || canViewQualityCenter;
   const baseCanCreate = !workerMode && (canCreateProject || canCreateTasks || canWriteReports);
@@ -489,7 +514,17 @@ export function AppMenu({
     : [];
 
   const roleFocusedItems: MenuItem[] = [
-    ...(workerMode && mfoFieldMode
+    ...(procurementWorkerMode
+      ? [
+          {
+            key: "procurement",
+            href: "/procurement/dashboard",
+            label: "Худалдан авалт",
+            icon: ShoppingCart,
+          },
+        ]
+      : []),
+    ...(workerMode && mfoFieldMode && !procurementWorkerMode
       ? [
           {
             key: "tasks",
@@ -499,7 +534,7 @@ export function AppMenu({
           },
         ]
       : []),
-    ...(environmentMode && !(workerMode && mfoFieldMode)
+    ...(environmentMode && !(workerMode && mfoFieldMode) && !procurementWorkerMode
       ? [
           workerMode
             ? {
@@ -542,7 +577,7 @@ export function AppMenu({
     !workerMode &&
       !executiveMode &&
       !roleLooksSystemAdmin &&
-      (roleLooksDepartmentHead || resolvedRole === "project_manager" || flags.municipalDepartmentHead),
+      isProcurementDepartmentHeadLike,
   );
 
   const departmentHeadProcurementSubmenuItems: MenuItem[] = [
@@ -726,7 +761,7 @@ export function AppMenu({
           },
         ]
       : []),
-    ...(showProcurement
+    ...(showProcurement && !roleFocusedItems.some((item) => item.key === "procurement")
       ? [procurementMenuItem]
       : []),
     {
@@ -764,6 +799,9 @@ export function AppMenu({
     if (item.key.startsWith("hr")) {
       return false;
     }
+    if (item.key === "procurement") {
+      return showProcurement;
+    }
     if (mfoFieldMode) {
       return ["dashboard", "tasks", "chat", "help", "review", "notifications"].includes(item.key);
     }
@@ -772,9 +810,6 @@ export function AppMenu({
     }
     if (repairFieldMode) {
       return ["dashboard", "fleet-repair", "chat", "help", "review", "notifications"].includes(item.key);
-    }
-    if (item.key === "procurement") {
-      return showProcurement;
     }
     return !["data-download", "reports", "fleet-repair"].includes(item.key);
   });
