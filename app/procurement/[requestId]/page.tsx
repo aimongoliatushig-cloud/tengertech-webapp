@@ -123,6 +123,43 @@ function packageRows(packages: ProcurementPackage[]) {
   );
 }
 
+function attachmentUrl(attachmentId: number) {
+  return `/api/odoo/attachments/${attachmentId}`;
+}
+
+function supplierInvoiceLinks(item: ProcurementRequestDetail) {
+  const links = item.packages.flatMap((pack) =>
+    pack.quotations.flatMap((quote) =>
+      quote.attachments.map((attachment, attachmentIndex) => ({
+        key: `${pack.id}-${quote.id}-${attachment.id}`,
+        attachment,
+        label:
+          quote.attachments.length > 1
+            ? `${quote.supplier.name} ${attachmentIndex + 1}`
+            : quote.supplier.name,
+      })),
+    ),
+  );
+
+  for (const quote of item.quotations) {
+    for (const [attachmentIndex, attachment] of quote.attachments.entries()) {
+      if (links.some((link) => link.attachment.id === attachment.id)) {
+        continue;
+      }
+      links.push({
+        key: `request-${quote.id}-${attachment.id}`,
+        attachment,
+        label:
+          quote.attachments.length > 1
+            ? `${quote.supplier.name} ${attachmentIndex + 1}`
+            : quote.supplier.name,
+      });
+    }
+  }
+
+  return links;
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function ProcurementDetailPage({ params, searchParams }: PageProps) {
@@ -170,6 +207,14 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
   const missingCeoOrderPackages = highValuePackages.filter((pack) => !pack.ceo_order_ready);
   const unassignedLines = item.unassigned_lines || item.lines.filter((line) => !line.package_id);
   const totals = packageRows(packages);
+  const invoiceLinks = supplierInvoiceLinks(item);
+  const invoiceAttachmentIds = new Set(invoiceLinks.map((invoice) => invoice.attachment.id));
+  const visibleDocuments = item.documents.filter(
+    (document) =>
+      document.document_type.code !== "quote" &&
+      (!document.attachments.length || document.attachments.some((attachment) => !invoiceAttachmentIds.has(attachment.id))),
+  );
+  const visibleAttachments = item.attachments.filter((attachment) => !invoiceAttachmentIds.has(attachment.id));
   const isDepartmentHeadView = isDepartmentHeadSession(session) && !isExecutiveProcurementUser(procurementUser);
 
   if (
@@ -367,25 +412,46 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
 
           <section className={styles.cardSection} id="documents">
             <div className={styles.sectionHeader}><div><h2>Баримт бичиг</h2><p>Invoice, төлбөр, гэрээ болон хүлээн авалтын хавсралтууд.</p></div></div>
-            {item.documents.length || item.attachments.length ? (
+            {invoiceLinks.length || visibleDocuments.length || visibleAttachments.length ? (
               <div className={styles.documentList}>
-                {item.documents.map((document) => (
+                {invoiceLinks.length ? (
+                  <article className={`${styles.documentCard} ${styles.invoiceSummaryCard}`}>
+                    <div className={styles.documentHeader}>
+                      <strong>Нийлүүлэгчийн нэхэмжлэхүүд</strong>
+                      <span className={styles.badgeOutline}>{invoiceLinks.length}</span>
+                    </div>
+                    <div className={styles.invoiceLinkList}>
+                      {invoiceLinks.map((invoice) => (
+                        <a
+                          key={invoice.key}
+                          href={attachmentUrl(invoice.attachment.id)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={styles.invoiceLink}
+                        >
+                          {invoice.label}
+                        </a>
+                      ))}
+                    </div>
+                  </article>
+                ) : null}
+                {visibleDocuments.map((document) => (
                   <article key={document.id} className={styles.documentCard}>
                     <div className={styles.documentHeader}>
                       <strong>{document.document_type.label}</strong>
                       {document.is_required ? <span className={styles.badgeWarning}>Шаардлагатай</span> : null}
                     </div>
                     <p className={styles.subtleText}>{document.note || "Тайлбаргүй"}</p>
-                    {document.attachments.length ? (
+                    {document.attachments.some((attachment) => !invoiceAttachmentIds.has(attachment.id)) ? (
                       <ul className={styles.attachmentList}>
-                        {document.attachments.map((attachment) => (
+                        {document.attachments.filter((attachment) => !invoiceAttachmentIds.has(attachment.id)).map((attachment) => (
                           <li key={attachment.id}><FileText aria-hidden /> {attachment.name}</li>
                         ))}
                       </ul>
                     ) : null}
                   </article>
                 ))}
-                {item.attachments.map((attachment) => (
+                {visibleAttachments.map((attachment) => (
                   <article key={attachment.id} className={styles.documentCard}>
                     <div className={styles.documentHeader}>
                       <strong>{attachment.name}</strong>

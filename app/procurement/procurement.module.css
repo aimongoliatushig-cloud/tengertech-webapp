@@ -1666,6 +1666,36 @@
   padding: 12px;
 }
 
+.invoiceSummaryCard {
+  display: grid;
+  gap: 8px;
+}
+
+.invoiceLinkList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.invoiceLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid #cfe4d6;
+  border-radius: 999px;
+  background: #f7fbf8;
+  color: var(--proc-green-700);
+  font-size: 0.82rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.invoiceLink:hover {
+  border-color: var(--proc-green);
+  background: #eef7f1;
+}
+
 .attachmentList {
   margin: 8px 0 0;
   padding-left: 18px;
