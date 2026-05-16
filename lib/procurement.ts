@@ -180,6 +180,7 @@ export type ProcurementRequestSummary = {
   service_confirmation_only: boolean;
   package_count?: number;
   packages_complete?: boolean;
+  packages?: ProcurementPackage[];
   high_value_packages?: ProcurementPackage[];
   low_value_packages?: ProcurementPackage[];
   available_actions: ProcurementAction[];

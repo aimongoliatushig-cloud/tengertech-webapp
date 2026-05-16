@@ -1185,6 +1185,10 @@ class MunicipalProcurementRequest(models.Model):
             "amount_approx_total": sum(self.line_ids.mapped("subtotal")) or self.amount_total or 0,
             "package_count": len(self.package_ids),
             "packages_complete": bool(self.package_ids) and not self.package_ids.filtered(lambda package: not package.is_complete),
+            "packages": [
+                package._api_payload(index + 1)
+                for index, package in enumerate(self.package_ids)
+            ],
             "high_value_packages": [
                 package._api_payload(index + 1)
                 for index, package in enumerate(self._high_value_packages())

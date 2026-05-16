@@ -171,14 +171,16 @@ function countStatus(items: ProcurementRequestSummary[], status: string) {
 
 function getFinanceReadyPackages(items: ProcurementRequestSummary[]) {
   return items.flatMap((item) => {
-    const lowPackages = (item.low_value_packages || []).filter(
+    const packages = item.packages || [...(item.low_value_packages || []), ...(item.high_value_packages || [])];
+    const lowPackages = packages.filter(
       (pack) =>
+        !pack.is_over_threshold &&
         pack.payment_status?.code !== "payment_recorded" &&
         (pack.route_state?.code === "finance_review" ||
           (pack.is_complete && !pack.is_over_threshold && item.state.code !== "draft" && item.state.code !== "submitted")),
     );
-    const highPackages = (item.high_value_packages || []).filter(
-      (pack) => pack.route_state?.code === "payment_pending" && pack.payment_status?.code !== "payment_recorded",
+    const highPackages = packages.filter(
+      (pack) => pack.is_over_threshold && pack.route_state?.code === "payment_pending" && pack.payment_status?.code !== "payment_recorded",
     );
     return [...lowPackages, ...highPackages].map((pack) => ({ item, pack }));
   });

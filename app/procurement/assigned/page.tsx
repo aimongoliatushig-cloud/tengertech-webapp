@@ -125,7 +125,7 @@ export default async function AssignedProcurementPage() {
       .filter((pack) => pack.route_state?.code === "payment_pending" && pack.payment_status?.code !== "payment_recorded")
       .map((pack) => ({ item, pack }))
       .concat(
-        (item.low_value_packages || [])
+        (item.packages || item.low_value_packages || [])
           .filter(
             (pack) =>
               !pack.is_over_threshold &&
