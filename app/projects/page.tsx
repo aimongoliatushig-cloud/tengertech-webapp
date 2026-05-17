@@ -211,6 +211,21 @@ function matchesUnitScope(
   return greenServiceUnit.aliases.some((alias) => unitSearchText.includes(normalizeUnitText(alias)));
 }
 
+function matchesGroupOrUnitScope(
+  group: NonNullable<ReturnType<typeof findDepartmentGroupByName>>,
+  departmentName?: string | null,
+  projectName?: string | null,
+  extraSearchText?: string | null,
+) {
+  if (matchesDepartmentGroup(group, departmentName)) {
+    return true;
+  }
+
+  return getAvailableUnits(group).some((unit) =>
+    matchesUnitScope(unit, departmentName, projectName, extraSearchText),
+  );
+}
+
 function ProjectCardLink({
   project,
   href,
@@ -443,23 +458,31 @@ async function ProjectsPageContent({
     );
   }
 
-  let scopedProjects = (departmentScopedMode
-    ? filterByDepartment(snapshot.projects, scopedDepartmentName)
-    : snapshot.projects.filter((project) => {
-        if (selectedUnit) {
-          return matchesUnitScope(
-            selectedUnit,
-            project.departmentName,
-            project.name,
-            `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`,
-          );
-        }
-        if (selectedGroup) {
-          return matchesDepartmentGroup(selectedGroup, project.departmentName);
-        }
-        return true;
-      })
-  ).sort((left, right) => {
+  let scopedProjects = snapshot.projects.filter((project) => {
+    const projectSearchText =
+      `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`;
+
+    if (selectedUnit) {
+      return matchesUnitScope(
+        selectedUnit,
+        project.departmentName,
+        project.name,
+        projectSearchText,
+      );
+    }
+    if (selectedGroup) {
+      return matchesGroupOrUnitScope(
+        selectedGroup,
+        project.departmentName,
+        project.name,
+        projectSearchText,
+      );
+    }
+    if (departmentScopedMode) {
+      return filterByDepartment([project], scopedDepartmentName).length > 0;
+    }
+    return true;
+  }).sort((left, right) => {
     if (masterMode) {
       const stageRankDiff =
         getProjectStageRank(left.stageBucket) - getProjectStageRank(right.stageBucket);
@@ -476,17 +499,28 @@ async function ProjectsPageContent({
 
     return right.completion - left.completion;
   });
-  let scopedTasks = departmentScopedMode
-    ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
-    : snapshot.taskDirectory.filter((task) => {
-        if (selectedUnit) {
-          return matchesUnitScope(selectedUnit, task.departmentName, task.projectName);
-        }
-        if (selectedGroup) {
-          return matchesDepartmentGroup(selectedGroup, task.departmentName);
-        }
-        return true;
-      });
+  let scopedTasks = snapshot.taskDirectory.filter((task) => {
+    if (selectedUnit) {
+      return matchesUnitScope(
+        selectedUnit,
+        task.departmentName,
+        task.projectName,
+        task.operationTypeLabel,
+      );
+    }
+    if (selectedGroup) {
+      return matchesGroupOrUnitScope(
+        selectedGroup,
+        task.departmentName,
+        task.projectName,
+        task.operationTypeLabel,
+      );
+    }
+    if (departmentScopedMode) {
+      return filterByDepartment([task], scopedDepartmentName).length > 0;
+    }
+    return true;
+  });
 
   if (masterMode) {
     scopedTasks = filterTasksForResponsibleMaster(scopedTasks, scopedProjects, session);
@@ -935,7 +969,12 @@ async function ProjectsPageContent({
                         <strong>
                           {
                             snapshot.projects.filter((project) =>
-                              matchesDepartmentGroup(selectedGroup, project.departmentName),
+                              matchesGroupOrUnitScope(
+                                selectedGroup,
+                                project.departmentName,
+                                project.name,
+                                `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`,
+                              ),
                             ).length +
                               (selectedGroup.name === AUTO_BASE_GROUP_NAME
                                 ? autoBaseProcurementItems.length
@@ -968,7 +1007,6 @@ async function ProjectsPageContent({
                           {unit === AUTO_BASE_UNIT_NAME && fleetBoard
                             ? autoBaseProcurementItems.length
                             : snapshot.projects.filter((project) =>
-                                matchesDepartmentGroup(selectedGroup, project.departmentName) &&
                                 matchesUnitScope(
                                   unit,
                                   project.departmentName,

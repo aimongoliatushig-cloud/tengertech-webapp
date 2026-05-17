@@ -4,6 +4,7 @@ import { filterByDepartment } from "@/lib/dashboard-scope";
 import { normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { canAccessFleetRepair } from "@/lib/fleet-repair";
 import { executeOdooKw } from "@/lib/odoo";
+import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 import type { RoleGroupFlags } from "@/lib/roles";
 import { fetchWrsWeightRows, type WrsWeightReportRow } from "@/lib/wrs-report";
 
@@ -121,6 +122,7 @@ function normalizeVehicleCode(value?: string | null) {
 function canViewAllGarbageWeightReports(session: AppSession) {
   const flags: Partial<RoleGroupFlags> = session.groupFlags || {};
   return Boolean(
+    canViewAllWorkspaceReports(session) ||
     session.role === "system_admin" ||
       session.role === "director" ||
       session.role === "general_manager" ||
@@ -324,7 +326,8 @@ export async function GET(request: Request) {
   if (!session) {
     return Response.json({ error: "Нэвтрэх шаардлагатай." }, { status: 401 });
   }
-  if (!canAccessFleetRepair(session)) {
+  const canViewAllReports = canViewAllWorkspaceReports(session);
+  if (!canAccessFleetRepair(session) && !canViewAllReports) {
     return Response.json({ error: "Хог тээврийн жингийн тайлан харах эрхгүй байна." }, { status: 403 });
   }
 

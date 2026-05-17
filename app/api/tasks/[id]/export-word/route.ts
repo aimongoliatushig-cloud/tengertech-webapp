@@ -7,6 +7,7 @@ import {
   generateOfficialTaskDocx,
   officialReportFileName,
 } from "@/lib/official-task-report";
+import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 import { loadTaskDetail } from "@/lib/workspace";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +36,10 @@ async function loadScopeMeta(
   taskId: number,
   session: NonNullable<Awaited<ReturnType<typeof getSession>>>,
 ) {
-  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  const canViewAllReports = canViewAllWorkspaceReports(session);
+  const scopedDepartmentName = canViewAllReports
+    ? null
+    : await loadSessionDepartmentName(session);
   const snapshot = await loadMunicipalSnapshot({
     login: session.login,
     password: session.password,
@@ -44,6 +48,10 @@ async function loadScopeMeta(
 
   if (!directoryTask) {
     throw new Error("Даалгавар олдсонгүй эсвэл танд харах эрх алга.");
+  }
+
+  if (canViewAllReports) {
+    return directoryTask;
   }
 
   const isAssigned = directoryTask.assigneeIds?.includes(session.uid) ?? false;

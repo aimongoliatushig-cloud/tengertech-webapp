@@ -64,6 +64,9 @@ export type RoleGroupFlags = {
 export type RoleContext = {
   role: UserRole;
   groupFlags?: Partial<RoleGroupFlags> | null;
+  employeeJobTitle?: string | null;
+  login?: string | null;
+  name?: string | null;
 };
 
 export type AppRole =
@@ -135,6 +138,33 @@ function normalizeGroupFlags(groupFlags?: Partial<RoleGroupFlags> | null): RoleG
     ...EMPTY_GROUP_FLAGS,
     ...(groupFlags || {}),
   };
+}
+
+function normalizePermissionText(value?: string | null) {
+  return String(value ?? "")
+    .toLocaleLowerCase("mn-MN")
+    .replace(/[.,/\\]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function compactPermissionText(value?: string | null) {
+  return normalizePermissionText(value).replace(/\s+/g, "");
+}
+
+export function isReportPlanningSpecialist(context: RoleContext) {
+  const jobTitle = normalizePermissionText(context.employeeJobTitle);
+  const hasReportPlanningTitle =
+    jobTitle.includes("тайлан") &&
+    jobTitle.includes("төлөвлөгөө") &&
+    jobTitle.includes("хариуцсан") &&
+    jobTitle.includes("мэргэжилтэн");
+
+  return Boolean(
+    hasReportPlanningTitle ||
+      String(context.login ?? "").trim() === "90858504" ||
+      compactPermissionText(context.name) === "бболормаа"
+  );
 }
 
 function isSystemAdmin(context: RoleContext) {
@@ -360,7 +390,8 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         groupFlags.improvementEngineer ||
         context.role === "senior_master" ||
         context.role === "team_leader" ||
-        context.role === "worker"
+        context.role === "worker" ||
+        isReportPlanningSpecialist(context)
       );
     case "view_quality_center":
       return Boolean(

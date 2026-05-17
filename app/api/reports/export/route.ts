@@ -12,6 +12,7 @@ import {
   matchesDepartmentGroup,
 } from "@/lib/department-groups";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
+import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -242,7 +243,9 @@ export async function GET(request: Request) {
     login: session.login,
     password: session.password,
   });
-  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  const scopedDepartmentName = canViewAllWorkspaceReports(session)
+    ? null
+    : await loadSessionDepartmentName(session);
   const payload = buildExportPayload(snapshot, request, scopedDepartmentName, session);
   const format = getParam(new URL(request.url).searchParams, "format") || "csv";
   const dateKey = new Date().toISOString().slice(0, 10);

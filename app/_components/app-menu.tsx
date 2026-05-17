@@ -91,6 +91,7 @@ type AppMenuProps = {
   canWriteReports?: boolean;
   canViewQualityCenter?: boolean;
   canUseFieldConsole?: boolean;
+  canViewAllReports?: boolean;
   canViewHr?: boolean;
   canViewGeneralDashboard?: boolean;
   variant?: "default" | "executive";
@@ -297,6 +298,7 @@ export function AppMenu({
   canWriteReports = false,
   canViewQualityCenter = false,
   canUseFieldConsole = false,
+  canViewAllReports = false,
   canViewHr = false,
   canViewGeneralDashboard = false,
   variant = "default",
@@ -881,6 +883,9 @@ export function AppMenu({
       return false;
     }
     if (!workerMode) {
+      return true;
+    }
+    if (canViewAllReports && ["data-download", "reports"].includes(item.key)) {
       return true;
     }
     if (item.key.startsWith("hr")) {

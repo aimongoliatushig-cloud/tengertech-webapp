@@ -41,6 +41,7 @@ import shellStyles from "@/app/workspace.module.css";
 import { getSessionRoleLabel, hasCapability, isMasterRole, isWorkerOnly, type AppSession } from "@/lib/auth";
 import { buildDashboardModel, type StatusTone } from "@/lib/dashboard-model";
 import { type FieldAssignment } from "@/lib/field-ops";
+import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 import {
   type DashboardSnapshot,
   type FleetVehicleBoard,
@@ -1364,7 +1365,12 @@ function buildExecutiveDepartmentMetrics({
     );
   const matchedTasks = (keywords: string[]) =>
     tasks.filter((task) =>
-      keywords.some((keyword) => task.departmentName.includes(keyword) || task.operationTypeLabel.includes(keyword)),
+      keywords.some((keyword) =>
+        task.departmentName.includes(keyword) ||
+        task.operationTypeLabel.includes(keyword) ||
+        task.projectName.includes(keyword) ||
+        task.name.includes(keyword),
+      ),
     );
   const departmentProgress = (keywords: string[], departmentTasks: DashboardSnapshot["taskDirectory"]) => {
     const matchedDepartment = snapshot.departments.find((department) =>
@@ -1426,7 +1432,7 @@ function buildExecutiveDepartmentMetrics({
     ),
     buildDepartment(
       "Ногоон байгууламж",
-      ["Ногоон", "мод", "зүлэг"],
+      ["Ногоон", "мод", "зүлэг", "ургамал", "усалгаа", "цэцэрлэг"],
       Leaf,
       "green",
       DASHBOARD_IMAGES.landscapingWorker,
@@ -1685,6 +1691,7 @@ function ExecutiveDashboardView({
   departmentScopeName?: string | null;
   showDepartmentPerformance?: boolean;
 }) {
+  const canViewAllReports = canViewAllWorkspaceReports(session);
   const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
   const overdueRate = percent(overdueTasks, totalTasks);
@@ -1760,6 +1767,7 @@ function ExecutiveDashboardView({
             canWriteReports={canWriteReports}
             canViewQualityCenter={canViewQualityCenter}
             canUseFieldConsole={canUseFieldConsole}
+            canViewAllReports={canViewAllReports}
             canViewHr={canViewHr}
             canViewGeneralDashboard={showDepartmentPerformance && !departmentScopeName}
             userName={session.name}
@@ -1841,6 +1849,7 @@ export function DashboardView({
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
   const canWriteReports = hasCapability(session, "write_workspace_reports");
+  const canViewAllReports = canViewAllWorkspaceReports(session);
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const workerMode = isWorkerOnly(session);
@@ -2020,6 +2029,7 @@ export function DashboardView({
             canWriteReports={canWriteReports}
             canViewQualityCenter={canViewQualityCenter}
             canUseFieldConsole={canUseFieldConsole}
+            canViewAllReports={canViewAllReports}
             canViewHr={canViewHr}
             canViewGeneralDashboard={canViewGeneralDashboard}
             userName={session.name}

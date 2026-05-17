@@ -6,6 +6,7 @@ import {
   filterTasksForResponsibleMaster,
 } from "@/lib/master-scope";
 import { executeOdooKw, loadMunicipalSnapshot } from "@/lib/odoo";
+import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 import { loadProjectDetail, loadTaskDetail, type ProjectDetail, type TaskDetail } from "@/lib/workspace";
 
 export const dynamic = "force-dynamic";
@@ -235,6 +236,10 @@ function renderProjectReport(project: ProjectDetail) {
 }
 
 async function assertCanAccessTask(taskId: number, session: NonNullable<Awaited<ReturnType<typeof getSession>>>) {
+  if (canViewAllWorkspaceReports(session)) {
+    return;
+  }
+
   const scopedDepartmentName = await loadSessionDepartmentName(session);
   if (!isWorkerOnly(session) && !isMasterRole(session.role) && !scopedDepartmentName) {
     return;
@@ -271,6 +276,10 @@ async function assertCanAccessProject(
   projectId: number,
   session: NonNullable<Awaited<ReturnType<typeof getSession>>>,
 ) {
+  if (canViewAllWorkspaceReports(session)) {
+    return;
+  }
+
   const scopedDepartmentName = await loadSessionDepartmentName(session);
   if (!isMasterRole(session.role) && !scopedDepartmentName) {
     return;

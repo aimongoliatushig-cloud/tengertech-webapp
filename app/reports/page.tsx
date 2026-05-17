@@ -34,6 +34,7 @@ import {
   filterTasksForResponsibleMaster,
 } from "@/lib/master-scope";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
+import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 import {
   createEmptyProcurementDashboard,
   isProcurementSetupError,
@@ -48,6 +49,7 @@ import styles from "./reports.module.css";
 function canViewAllGarbageWeightReports(session: Awaited<ReturnType<typeof requireSession>>) {
   const flags: Partial<RoleGroupFlags> = session.groupFlags || {};
   return Boolean(
+    canViewAllWorkspaceReports(session) ||
     session.role === "system_admin" ||
       session.role === "director" ||
       session.role === "general_manager" ||
@@ -259,15 +261,18 @@ export const dynamic = "force-dynamic";
 
 export default async function ReportsPage({ searchParams }: PageProps) {
   const session = await requireSession();
+  const canViewAllReports = canViewAllWorkspaceReports(session);
   const workerMode = isWorkerOnly(session);
-  if (workerMode) {
+  if (workerMode && !canViewAllReports) {
     redirect("/");
   }
   const snapshotPromise = loadMunicipalSnapshot({
     login: session.login,
     password: session.password,
   });
-  const scopedDepartmentNamePromise = loadSessionDepartmentName(session);
+  const scopedDepartmentNamePromise = canViewAllReports
+    ? Promise.resolve(null)
+    : loadSessionDepartmentName(session);
 
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -846,6 +851,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               canWriteReports={canWriteReports}
               canViewQualityCenter={canViewQualityCenter}
               canUseFieldConsole={canUseFieldConsole}
+              canViewAllReports={canViewAllReports}
               userName={session.name}
               userRole={session.role}
               roleLabel={getRoleLabel(session.role)}
