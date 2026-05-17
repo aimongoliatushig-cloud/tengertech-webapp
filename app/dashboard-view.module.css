@@ -2664,30 +2664,169 @@
 
 .executiveShell.executiveShell {
   background:
-    radial-gradient(circle at 76% 0%, rgba(15, 118, 110, 0.08), transparent 28%),
-    linear-gradient(180deg, #f8fafc 0%, #f3f7fb 100%);
+    radial-gradient(circle at 82% 0%, rgba(46, 125, 50, 0.08), transparent 28%),
+    linear-gradient(180deg, #fbfdfb 0%, #f4faf6 100%);
+}
+
+.executiveHero {
+  position: relative;
+  display: grid;
+  min-height: 236px;
+  align-content: start;
+  gap: 18px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  padding: 38px 488px 34px 30px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 8px;
+  background-color: #eef7ed;
+  background-position: center right;
+  background-size: cover;
+  box-shadow: 0 20px 48px rgba(27, 73, 38, 0.08);
+}
+
+.executiveHeroContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  max-width: 600px;
+}
+
+.executiveHeroStatusIcon {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  background: #18a24d;
+  color: #fff;
+  box-shadow: 0 14px 30px rgba(7, 130, 81, 0.22);
+}
+
+.executiveHeroStatusIconWarn {
+  background: #f58a07;
+  color: #fff;
+}
+
+.executiveHeroStatusIcon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.executiveHero h2 {
+  margin: 0;
+  color: #07130d;
+  font-size: 1.62rem;
+  font-weight: 950;
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.executiveHero p {
+  max-width: 548px;
+  margin: 12px 0 0;
+  color: #263b35;
+  font-size: 0.9rem;
+  font-weight: 760;
+  line-height: 1.62;
+}
+
+.executiveHeroForecast {
+  position: absolute;
+  top: 22px;
+  right: 24px;
+  z-index: 1;
+  display: grid;
+  width: min(430px, 40vw);
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
+  backdrop-filter: blur(16px);
+}
+
+.executiveHeroForecastHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #263b35;
+}
+
+.executiveHeroForecastHeader span {
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.executiveHeroForecastHeader strong {
+  color: #07130d;
+  font-size: 1.05rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.executiveHeroForecastDays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.executiveHeroForecastDay {
+  display: grid;
+  min-width: 0;
+  min-height: 70px;
+  align-content: center;
+  justify-items: center;
+  gap: 5px;
+  border-radius: 7px;
+  background: rgba(246, 251, 247, 0.86);
+  color: #078251;
+}
+
+.executiveHeroForecastDay svg {
+  width: 17px;
+  height: 17px;
+}
+
+.executiveHeroForecastDay small {
+  color: #526179;
+  font-size: 0.62rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.executiveHeroForecastDay strong {
+  color: #07130d;
+  font-size: 0.82rem;
+  font-weight: 950;
+  line-height: 1;
 }
 
 .executiveMetricGrid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
+  margin-bottom: 20px;
 }
 
 .executiveMetricCard,
 .executiveDepartmentCard,
-.executiveWeatherPanel {
+.executiveWeatherPanel,
+.executiveSidePanel {
   border-radius: 8px;
   border: 1px solid rgba(15, 23, 42, 0.06);
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 14px 38px rgba(15, 23, 42, 0.06);
 }
 
 .executiveMetricCard {
   display: grid;
-  min-height: 230px;
+  min-height: 174px;
   align-content: space-between;
-  padding: 24px 22px;
+  padding: 18px 18px 16px;
   color: inherit;
   text-decoration: none;
   transition:
@@ -2709,13 +2848,13 @@
 .executiveMetricHeader {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
 .executiveMetricHeader strong {
   color: #101827;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 900;
   line-height: 1.25;
 }
@@ -2744,10 +2883,19 @@
 .executiveMetricValue {
   display: block;
   color: #030712;
-  font-size: 2.35rem;
+  font-size: 2rem;
   font-weight: 950;
   line-height: 1;
   letter-spacing: 0;
+}
+
+.executiveMetricValueLabel {
+  display: block;
+  margin-top: 5px;
+  color: #526179;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.15;
 }
 
 .executiveMetricDelta,
@@ -2767,28 +2915,33 @@
 .executiveMetricNote {
   margin-top: 8px;
   color: #263b63;
-  font-weight: 700;
+  font-weight: 760;
+  line-height: 1.28;
 }
 
 .executiveCardAction {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: 6px;
   width: fit-content;
-  min-height: 30px;
+  min-height: 34px;
   margin-top: 12px;
-  padding: 0 10px;
+  padding: 0 12px;
   border-radius: 999px;
-  background: rgba(7, 130, 81, 0.09);
-  color: #078251;
-  font-size: 0.72rem;
+  background: color-mix(in srgb, var(--department-accent, #078251) 11%, #ffffff);
+  color: var(--department-accent, #078251);
+  font-size: 0.74rem;
   font-weight: 900;
+  transition:
+    transform 160ms ease,
+    background 160ms ease;
 }
 
-.executiveCardAction::after {
-  content: "›";
-  margin-left: 6px;
-  font-size: 1rem;
-  line-height: 1;
+.executiveCardAction svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 160ms ease;
 }
 
 .executiveRing {
@@ -2836,7 +2989,7 @@
 }
 
 .executiveSection {
-  margin-top: 42px;
+  margin: 0;
 }
 
 .executiveSectionHeader {
@@ -2867,100 +3020,508 @@
 .executiveDepartmentGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 22px;
+  gap: 16px;
   margin-top: 22px;
 }
 
 .executiveDepartmentCard {
+  --department-accent: #078251;
+  --department-accent-soft: #e8f6ed;
+  position: relative;
   display: grid;
-  min-height: 386px;
-  padding: 26px 22px 24px;
+  min-height: 392px;
+  align-content: space-between;
+  gap: 13px;
+  overflow: hidden;
+  padding: 0 0 16px;
   color: inherit;
   text-decoration: none;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--department-accent-soft) 88%, #ffffff) 0%, rgba(255, 255, 255, 0.99) 46%),
+    #fff;
   transition:
-    transform 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease;
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
-.executiveDepartmentHeader {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+.executiveDepartmentCard::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    radial-gradient(circle at 18% -6%, color-mix(in srgb, var(--department-accent) 18%, transparent), transparent 36%),
+    linear-gradient(180deg, color-mix(in srgb, var(--department-accent) 8%, transparent), transparent 42%);
+  opacity: 0.95;
+}
+
+.executiveDepartmentTop {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
   min-width: 0;
 }
 
+.executiveDepartmentHeader {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 17px 17px 0;
+}
+
 .executiveDepartmentHeader strong {
+  display: block;
   color: #101827;
-  font-size: 1rem;
-  font-weight: 900;
-  line-height: 1.25;
+  font-size: 1.05rem;
+  font-weight: 950;
+  line-height: 1.15;
+}
+
+.executiveDepartmentTitleBlock {
+  display: grid;
+  min-width: 0;
+  gap: 9px;
 }
 
 .executiveDepartmentIcon {
   display: grid;
-  width: 46px;
-  height: 46px;
+  width: 52px;
+  height: 52px;
   flex: 0 0 auto;
   place-items: center;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.92), transparent 38%),
+    color-mix(in srgb, var(--department-accent) 16%, #ffffff);
+  color: var(--department-accent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--department-accent) 16%, transparent),
+    0 12px 26px color-mix(in srgb, var(--department-accent) 16%, transparent);
 }
 
 .executiveDepartmentIcon svg {
-  width: 32px;
-  height: 32px;
+  width: 27px;
+  height: 27px;
+  transition: transform 200ms ease;
+}
+
+.executiveDepartmentBadge {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 26px;
+  align-items: center;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: #e6f5eb;
+  color: #078251;
+  font-size: 0.7rem;
+  font-weight: 900;
+  box-shadow: inset 0 0 0 1px rgba(7, 130, 81, 0.08);
+}
+
+.executiveDepartmentBadgeWarn {
+  background: #fff3e6;
+  color: #f58a07;
+}
+
+.executiveDepartmentVisual {
+  position: relative;
+  min-height: 154px;
+  margin: 15px 13px 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background-repeat: no-repeat;
+  background-size: cover;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.68),
+    0 16px 32px rgba(15, 23, 42, 0.08);
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.executiveDepartmentVisual::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 42%),
+    linear-gradient(180deg, transparent 58%, rgba(255, 255, 255, 0.2));
 }
 
 .executiveDepartmentStats {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
-  margin-top: 10px;
-  border-bottom: 1px solid #d8deea;
-  padding-bottom: 20px;
+  margin: 0 16px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 12px 0;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
+  backdrop-filter: blur(12px);
 }
 
 .executiveDepartmentStats div {
+  display: grid;
+  min-height: 56px;
   min-width: 0;
-  padding: 0 10px;
+  align-content: center;
+  grid-template-rows: 16px 28px;
+  gap: 3px;
+  padding: 0 9px;
   text-align: center;
 }
 
 .executiveDepartmentStats div + div {
-  border-left: 1px solid #d8deea;
+  border-left: 1px solid rgba(15, 23, 42, 0.08);
 }
 
 .executiveDepartmentStats span {
   display: block;
-  color: #31405a;
-  font-size: 0.68rem;
-  font-weight: 750;
-  line-height: 1.2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #526179;
+  font-size: 0.62rem;
+  font-weight: 850;
+  line-height: 16px;
 }
 
 .executiveDepartmentStats strong {
   display: block;
-  margin-top: 10px;
   color: #030712;
-  font-size: 1.05rem;
+  font-size: 1.42rem;
   font-weight: 950;
-  line-height: 1;
+  line-height: 28px;
+}
+
+.executiveDepartmentProgress {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 10px;
+  margin: 0 17px;
+}
+
+.executiveDepartmentProgress span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #526179;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.executiveDepartmentProgress strong {
+  color: var(--department-accent);
+  font-size: 0.86rem;
+  font-weight: 950;
+}
+
+.executiveDepartmentProgress i {
+  position: relative;
+  display: block;
+  block-size: 12px;
+  max-inline-size: 100%;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--department-accent) 12%, #eef3ef);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--department-accent) 8%, transparent);
+}
+
+.executiveDepartmentProgress b {
+  display: block;
+  block-size: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--department-accent), color-mix(in srgb, var(--department-accent) 76%, #ffffff));
+  animation: executiveProgressGrow 520ms ease both;
 }
 
 .executiveDepartmentFooter {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 22px;
-  margin-top: 20px;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 17px;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--department-accent) 10%, rgba(15, 23, 42, 0.06));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--department-accent) 7%, #ffffff);
   color: #0f172a;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 750;
 }
 
+.executiveDepartmentFooter span {
+  display: grid;
+  gap: 2px;
+  color: #526179;
+  font-size: 0.7rem;
+  font-weight: 850;
+}
+
 .executiveDepartmentFooter strong {
-  color: #ef3124;
-  font-size: 1.05rem;
+  color: #101827;
+  font-size: 1.18rem;
   font-weight: 950;
+}
+
+.executiveDepartmentFooter em {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--department-accent);
+  font-style: normal;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.executiveDepartmentAction {
+  position: relative;
+  z-index: 1;
+  min-height: 38px;
+  margin: 0 17px;
+  padding: 0 13px;
+  border: 1px solid color-mix(in srgb, var(--department-accent) 12%, transparent);
+  background: color-mix(in srgb, var(--department-accent) 9%, #ffffff);
+  color: color-mix(in srgb, var(--department-accent) 82%, #0f172a);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.62);
+}
+
+.executiveDepartmentCard:hover .executiveDepartmentVisual,
+.executiveDepartmentCard:focus-visible .executiveDepartmentVisual {
+  transform: scale(1.02);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.72),
+    0 20px 38px rgba(15, 23, 42, 0.1);
+}
+
+.executiveDepartmentCard:hover .executiveDepartmentIcon svg,
+.executiveDepartmentCard:focus-visible .executiveDepartmentIcon svg {
+  transform: translateY(-1px) rotate(-4deg) scale(1.08);
+}
+
+.executiveDepartmentCard:hover .executiveCardAction svg,
+.executiveDepartmentCard:focus-visible .executiveCardAction svg {
+  transform: translateX(3px);
+}
+
+@keyframes executiveProgressGrow {
+  from {
+    inline-size: 0;
+  }
+}
+
+.executiveOperationsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.36fr);
+  align-items: start;
+  gap: 22px;
+}
+
+.executiveSideColumn {
+  display: grid;
+  gap: 18px;
+}
+
+.executiveSidePanel {
+  padding: 18px;
+}
+
+.executiveSideHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.executiveSideHeader h2 {
+  margin: 0;
+  color: #101827;
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.executiveSideHeader a {
+  color: #526179;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.executiveSideList {
+  display: grid;
+  gap: 8px;
+}
+
+.executiveSideRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 8px;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.executiveSideRow:hover,
+.executiveSideRow:focus-visible {
+  background: #f6fbf7;
+  outline: none;
+}
+
+.executiveSideIcon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 8px;
+}
+
+.executiveSideIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.executiveSideRow strong,
+.executiveSideRow small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.executiveSideRow strong {
+  color: #101827;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.executiveSideRow small {
+  margin-top: 4px;
+  color: #526179;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.executiveSideRow em,
+.executiveSideRow time {
+  font-style: normal;
+  font-weight: 950;
+}
+
+.executiveSideRow em {
+  display: grid;
+  min-width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.72rem;
+}
+
+.executiveSideRow time {
+  color: #526179;
+  font-size: 0.72rem;
+}
+
+.executiveSideEmpty {
+  margin: 0;
+  padding: 14px;
+  border-radius: 8px;
+  background: #f6fbf7;
+  color: #526179;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.executiveSloganPanel {
+  position: relative;
+  display: grid;
+  min-height: 240px;
+  align-content: end;
+  gap: 10px;
+  overflow: hidden;
+  padding: 24px;
+  border: 1px solid rgba(7, 130, 81, 0.16);
+  border-radius: 8px;
+  background-color: #dff1df;
+  background-position: center;
+  background-size: cover;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+  color: #fff;
+}
+
+.executiveSloganPanel::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.38), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(7, 64, 36, 0.26));
+}
+
+.executiveSloganPanel span,
+.executiveSloganPanel h2,
+.executiveSloganPanel p {
+  position: relative;
+  z-index: 1;
+}
+
+.executiveSloganPanel span {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+.executiveSloganPanel svg {
+  width: 22px;
+  height: 22px;
+}
+
+.executiveSloganPanel h2 {
+  max-width: 300px;
+  margin: 0;
+  font-size: 1.22rem;
+  font-weight: 950;
+  line-height: 1.16;
+  letter-spacing: 0;
+  text-shadow: 0 2px 12px rgba(12, 42, 24, 0.28);
+}
+
+.executiveSloganPanel p {
+  max-width: 320px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.78rem;
+  font-weight: 760;
+  line-height: 1.45;
 }
 
 .executiveWeatherPanel {
@@ -3040,8 +3601,24 @@
 }
 
 @media (max-width: 1320px) {
+  .executiveHero {
+    padding-right: 30px;
+  }
+
+  .executiveHeroForecast {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: min(640px, 100%);
+    margin-top: 4px;
+  }
+
   .executiveMetricGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .executiveOperationsGrid {
+    grid-template-columns: 1fr;
   }
 
   .executiveDepartmentGrid {
@@ -3054,6 +3631,66 @@
 }
 
 @media (max-width: 720px) {
+  .executiveHero {
+    min-height: 0;
+    padding: 20px 16px 16px;
+    background-position: 64% center;
+  }
+
+  .executiveHeroContent {
+    gap: 12px;
+  }
+
+  .executiveHeroStatusIcon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .executiveHeroStatusIcon svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .executiveHero h2 {
+    font-size: 1.26rem;
+  }
+
+  .executiveHero p {
+    font-size: 0.84rem;
+  }
+
+  .executiveHeroForecast {
+    width: 100%;
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .executiveHeroForecastHeader span {
+    font-size: 0.68rem;
+  }
+
+  .executiveHeroForecastDays {
+    gap: 4px;
+  }
+
+  .executiveHeroForecastDay {
+    min-height: 58px;
+    gap: 4px;
+  }
+
+  .executiveHeroForecastDay svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .executiveHeroForecastDay small {
+    font-size: 0.56rem;
+  }
+
+  .executiveHeroForecastDay strong {
+    font-size: 0.72rem;
+  }
+
   .executiveMetricGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
@@ -3102,7 +3739,37 @@
     margin-top: 18px;
   }
 
-  .executiveDepartmentCard,
+  .executiveDepartmentTop {
+    grid-template-columns: 1fr;
+  }
+
+  .executiveDepartmentVisual {
+    min-height: 112px;
+  }
+
+  .executiveOperationsGrid {
+    gap: 14px;
+  }
+
+  .executiveSidePanel {
+    padding: 14px;
+  }
+
+  .executiveSideRow {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .executiveSideRow em,
+  .executiveSideRow time {
+    justify-self: start;
+    grid-column: 2;
+  }
+
+  .executiveDepartmentCard {
+    min-height: 0;
+    padding: 0 0 16px;
+  }
+
   .executiveWeatherPanel {
     padding: 16px;
   }

@@ -32,7 +32,6 @@ const HR_REVIEWER_GROUPS = [
   "hr.group_hr_manager",
   "hr_custom_mn.group_hr_custom_mn_officer",
   "hr_custom_mn.group_hr_custom_mn_admin",
-  "municipal_core.group_municipal_hr",
 ];
 
 const HR_TEXT_TOKENS = [
@@ -44,6 +43,26 @@ const HR_TEXT_TOKENS = [
   "hr specialist",
   "hr_user",
   "hr_manager",
+];
+
+const NON_HR_RECIPIENT_TEXT_TOKENS = [
+  "нягтлан",
+  "ня-бо",
+  "нябо",
+  "санхүү",
+  "ерөнхий нягтлан",
+  "accountant",
+  "finance",
+  "гэрээ",
+  "contract",
+  "хууль",
+  "legal",
+  "худалдан",
+  "procurement",
+  "нярав",
+  "storekeeper",
+  "агуулах",
+  "warehouse",
 ];
 
 function uniqueUserIds(values: Array<number | null | undefined>) {
@@ -63,6 +82,26 @@ function relationName(value?: [number, string] | false) {
 function containsHrText(value: unknown) {
   const normalized = normalizeText(value);
   return HR_TEXT_TOKENS.some((token) => normalized.includes(normalizeText(token)));
+}
+
+function containsNonHrRecipientText(value: unknown) {
+  const normalized = normalizeText(value);
+  return NON_HR_RECIPIENT_TEXT_TOKENS.some((token) => normalized.includes(normalizeText(token)));
+}
+
+function hrEmployeeRecipientText(employee: HrEmployeeRecipientRecord) {
+  return [
+    relationName(employee.department_id),
+    relationName(employee.job_id),
+    employee.job_title || "",
+    employee.x_hr_role || "",
+    employee.x_role_key || "",
+  ].join(" ");
+}
+
+function isHrEmployeeRecipient(employee: HrEmployeeRecipientRecord) {
+  const text = hrEmployeeRecipientText(employee);
+  return containsHrText(text) && !containsNonHrRecipientText(text);
 }
 
 async function getAvailableFields(model: string, desiredFields: string[]) {
@@ -117,6 +156,40 @@ async function loadUsersFromGroups(groupIds: number[]) {
   return users.map((user) => user.id);
 }
 
+async function filterNonHrEmployeeUsers(userIds: number[]) {
+  const uniqueIds = uniqueUserIds(userIds);
+  if (!uniqueIds.length) return [];
+
+  const desiredFields = ["user_id", "department_id", "job_id", "job_title", "x_hr_role", "x_role_key"];
+  const fields = await getAvailableFields("hr.employee", desiredFields);
+  const employees = await executeOdooKw<HrEmployeeRecipientRecord[]>(
+    "hr.employee",
+    "search_read",
+    [[["user_id", "in", uniqueIds]]],
+    {
+      fields,
+      limit: Math.max(uniqueIds.length * 2, 300),
+      context: { active_test: false },
+    },
+  ).catch((error) => {
+    console.warn("HR reviewer employee role filter failed:", error);
+    return [];
+  });
+
+  const blockedUserIds = new Set<number>();
+  for (const employee of employees) {
+    const userId = Array.isArray(employee.user_id) ? employee.user_id[0] : null;
+    if (!userId) continue;
+
+    const text = hrEmployeeRecipientText(employee);
+    if (containsNonHrRecipientText(text)) {
+      blockedUserIds.add(userId);
+    }
+  }
+
+  return uniqueIds.filter((userId) => !blockedUserIds.has(userId));
+}
+
 async function loadUsersFromHrEmployees() {
   const desiredFields = ["user_id", "department_id", "job_id", "job_title", "x_hr_role", "x_role_key"];
   const fields = await getAvailableFields("hr.employee", desiredFields);
@@ -135,26 +208,19 @@ async function loadUsersFromHrEmployees() {
   });
 
   return employees
-    .filter((employee) => {
-      return (
-        containsHrText(relationName(employee.department_id)) ||
-        containsHrText(relationName(employee.job_id)) ||
-        containsHrText(employee.job_title) ||
-        containsHrText(employee.x_hr_role) ||
-        containsHrText(employee.x_role_key)
-      );
-    })
+    .filter(isHrEmployeeRecipient)
     .map((employee) => (Array.isArray(employee.user_id) ? employee.user_id[0] : null));
 }
 
 async function loadHrReviewerUserIds(excludeUserId?: number | null) {
   const groupIds = await loadHrReviewerGroupIds();
-  const [groupUsers, employeeUsers] = await Promise.all([
-    loadUsersFromGroups(groupIds),
+  const groupUsers = await loadUsersFromGroups(groupIds);
+  const [filteredGroupUsers, employeeUsers] = await Promise.all([
+    filterNonHrEmployeeUsers(groupUsers),
     loadUsersFromHrEmployees(),
   ]);
 
-  return uniqueUserIds([...groupUsers, ...employeeUsers]).filter((userId) => userId !== excludeUserId);
+  return uniqueUserIds([...filteredGroupUsers, ...employeeUsers]).filter((userId) => userId !== excludeUserId);
 }
 
 function buildTimeoffNotificationBody(request: HrTimeoffRequest) {

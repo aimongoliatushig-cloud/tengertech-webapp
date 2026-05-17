@@ -8,6 +8,9 @@ import {
   ChevronRight,
   ClipboardList,
   Clock3,
+  CloudRain,
+  CloudSnow,
+  CloudSun,
   HeartPulse,
   Leaf,
   ListChecks,
@@ -68,6 +71,11 @@ type DashboardViewProps = {
 
 const DASHBOARD_IMAGES = {
   header: "/illustrations/green-city-hero.svg",
+  operationsHero: "/illustrations/municipal-ops-hero.png",
+  fleetTruck: "/illustrations/department-fleet-premium.webp",
+  cleaningTruck: "/illustrations/department-street-cleaning-premium.webp",
+  landscapingWorker: "/illustrations/department-landscaping-premium.webp",
+  maintenanceWorker: "/illustrations/department-maintenance-premium.webp",
   overview: "/illustrations/green-park-banner.svg",
   seedling: "/illustrations/seedling-card.svg",
   landscape: "/illustrations/green-landscape-card.svg",
@@ -1147,11 +1155,12 @@ function RightPanel({
 type ExecutiveMetric = {
   label: string;
   value: string;
+  valueLabel?: string;
   note?: string;
   progress: number;
   href: string;
   icon: LucideIcon;
-  tone: "green" | "orange" | "blue" | "purple" | "red";
+  tone: "green" | "orange" | "blue" | "purple" | "red" | "teal";
 };
 
 type ExecutiveDepartmentMetric = {
@@ -1164,6 +1173,18 @@ type ExecutiveDepartmentMetric = {
   href: string;
   icon: LucideIcon;
   tone: ExecutiveMetric["tone"];
+  image: string;
+  imagePosition: string;
+};
+
+type ExecutiveActivityRow = {
+  id: string;
+  title: string;
+  detail: string;
+  time: string;
+  href: string;
+  icon: LucideIcon;
+  tone: ExecutiveMetric["tone"];
 };
 
 const EXECUTIVE_TONE_COLORS: Record<ExecutiveMetric["tone"], string> = {
@@ -1172,6 +1193,16 @@ const EXECUTIVE_TONE_COLORS: Record<ExecutiveMetric["tone"], string> = {
   blue: "#1677d2",
   purple: "#453f99",
   red: "#ef4444",
+  teal: "#0f8f78",
+};
+
+const EXECUTIVE_TONE_SOFT_COLORS: Record<ExecutiveMetric["tone"], string> = {
+  green: "#e8f6ed",
+  orange: "#fff3e6",
+  blue: "#eaf4ff",
+  purple: "#f0efff",
+  red: "#feeceb",
+  teal: "#e5f7f3",
 };
 
 function ExecutiveRing({
@@ -1228,6 +1259,9 @@ function ExecutiveMetricCard({ metric }: { metric: ExecutiveMetric }) {
       <div className={dashboardStyles.executiveMetricBody}>
         <div>
           <span className={dashboardStyles.executiveMetricValue}>{metric.value}</span>
+          {metric.valueLabel ? (
+            <small className={dashboardStyles.executiveMetricValueLabel}>{metric.valueLabel}</small>
+          ) : null}
           {metric.note ? (
             <small className={dashboardStyles.executiveMetricNote}>{metric.note}</small>
           ) : null}
@@ -1244,21 +1278,48 @@ function ExecutiveMetricCard({ metric }: { metric: ExecutiveMetric }) {
 function ExecutiveDepartmentCard({ department }: { department: ExecutiveDepartmentMetric }) {
   const Icon = department.icon;
   const color = EXECUTIVE_TONE_COLORS[department.tone];
+  const softColor = EXECUTIVE_TONE_SOFT_COLORS[department.tone];
+  const statusLabel = department.risky > 0 ? "Анхаарах" : "Хэвийн";
+  const style = {
+    "--department-accent": color,
+    "--department-accent-soft": softColor,
+    borderColor: `${color}2e`,
+  } as CSSProperties;
 
   return (
     <Link
       href={department.href}
       className={dashboardStyles.executiveDepartmentCard}
-      style={{ borderColor: `${color}2e` }}
+      style={style}
       aria-label={`${department.name} ажлуудыг харах`}
     >
-      <div className={dashboardStyles.executiveDepartmentHeader}>
-        <span className={dashboardStyles.executiveDepartmentIcon} style={{ color }}>
-          <Icon />
-        </span>
-        <strong>{department.name}</strong>
+      <div className={dashboardStyles.executiveDepartmentTop}>
+        <div className={dashboardStyles.executiveDepartmentHeader}>
+          <span className={dashboardStyles.executiveDepartmentIcon}>
+            <Icon />
+          </span>
+          <div className={dashboardStyles.executiveDepartmentTitleBlock}>
+            <strong>{department.name}</strong>
+            <span
+              className={cn(
+                dashboardStyles.executiveDepartmentBadge,
+                department.risky > 0 && dashboardStyles.executiveDepartmentBadgeWarn,
+              )}
+            >
+              {statusLabel}
+            </span>
+          </div>
+        </div>
+        <div
+          className={dashboardStyles.executiveDepartmentVisual}
+          style={{
+            backgroundImage:
+              `linear-gradient(115deg, rgba(255,255,255,.32) 0%, rgba(255,255,255,.08) 48%, rgba(255,255,255,0) 100%), url(${department.image})`,
+            backgroundPosition: department.imagePosition,
+          }}
+          aria-hidden
+        />
       </div>
-      <ExecutiveRing value={department.progress} tone={department.tone} size="lg" />
       <div className={dashboardStyles.executiveDepartmentStats}>
         <div>
           <span>Нийт ажил</span>
@@ -1273,61 +1334,27 @@ function ExecutiveDepartmentCard({ department }: { department: ExecutiveDepartme
           <strong>{department.review}</strong>
         </div>
       </div>
+      <div className={dashboardStyles.executiveDepartmentProgress}>
+        <span>
+          Ажлын гүйцэтгэл
+          <strong>{department.progress}%</strong>
+        </span>
+        <i>
+          <b style={{ inlineSize: `${clampPercent(department.progress)}%` }} />
+        </i>
+      </div>
       <div className={dashboardStyles.executiveDepartmentFooter}>
-        <span>Эрсдэлтэй болон хугацаа хэтэрсэн ажил</span>
-        <strong>{department.risky}</strong>
+        <span>
+          Өнөөдрийн ажил
+          <strong>{department.working} / {department.total}</strong>
+        </span>
+        <em>{department.risky} анхаарах</em>
       </div>
-      <span className={dashboardStyles.executiveCardAction}>Хэлтсийн ажил харах</span>
+      <span className={cn(dashboardStyles.executiveCardAction, dashboardStyles.executiveDepartmentAction)}>
+        Дэлгэрэнгүй
+        <ChevronRight aria-hidden />
+      </span>
     </Link>
-  );
-}
-
-function ExecutiveWeatherPanel({ weather }: { weather: WeatherSnapshot }) {
-  const forecast = weather.weeklyForecast.length
-    ? weather.weeklyForecast
-    : Array.from({ length: 7 }, (_, index) => {
-        const date = new Date();
-        date.setDate(date.getDate() + index);
-        return {
-          date: date.toISOString().slice(0, 10),
-          weekday: new Intl.DateTimeFormat("mn-MN", {
-            timeZone: "Asia/Ulaanbaatar",
-            weekday: "short",
-          }).format(date),
-          condition: weather.condition,
-          temperatureMax: weather.temperature,
-          temperatureMin: weather.temperature,
-          precipitationChance: null,
-        };
-      });
-
-  return (
-    <Card className={dashboardStyles.executiveWeatherPanel}>
-      <div className={dashboardStyles.executiveSectionHeader}>
-        <div>
-          <h2>7 хоногийн цаг агаар</h2>
-          <p>{weather.city} хотын ажлын төлөвлөлтөд ашиглах урьдчилсан мэдээ</p>
-        </div>
-        <div className={dashboardStyles.executiveWeatherNow}>
-          <Sun />
-          <strong>{weather.temperature === null ? "--" : weather.temperature}°C</strong>
-          <span>{weather.condition}</span>
-        </div>
-      </div>
-      <div className={dashboardStyles.executiveWeatherGrid}>
-        {forecast.map((day) => (
-          <div key={day.date} className={dashboardStyles.executiveWeatherDay}>
-            <span>{day.weekday}</span>
-            <Sun />
-            <strong>
-              {day.temperatureMax === null ? "--" : day.temperatureMax}° / {day.temperatureMin === null ? "--" : day.temperatureMin}°
-            </strong>
-            <small>{day.condition}</small>
-            <small>{day.precipitationChance === null ? "Тунадас --" : `Тунадас ${day.precipitationChance}%`}</small>
-          </div>
-        ))}
-      </div>
-    </Card>
   );
 }
 
@@ -1364,6 +1391,8 @@ function buildExecutiveDepartmentMetrics({
     keywords: string[],
     icon: LucideIcon,
     tone: ExecutiveMetric["tone"],
+    image: string,
+    imagePosition = "center",
   ) => {
     const departmentTasks = matchedTasks(keywords);
     const department = matchedDepartment(keywords);
@@ -1382,6 +1411,8 @@ function buildExecutiveDepartmentMetrics({
       href: `/projects?department=${encodeURIComponent(department?.name || name)}&category=progress`,
       icon,
       tone,
+      image,
+      imagePosition,
     };
   };
 
@@ -1391,26 +1422,219 @@ function buildExecutiveDepartmentMetrics({
       ["Авто", "Хог", "хог", "тээвэр"],
       Truck,
       "blue",
+      DASHBOARD_IMAGES.fleetTruck,
+      "center",
     ),
     buildDepartment(
-      "Гудамж цэвэрлэгээ",
-      ["Гудамж", "цэвэр"],
+      "Зам талбай цэвэрлэгээ",
+      ["Зам", "талбай", "Гудамж", "цэвэр"],
       Recycle,
       "orange",
+      DASHBOARD_IMAGES.cleaningTruck,
+      "center",
     ),
     buildDepartment(
       "Ногоон байгууламж",
       ["Ногоон", "мод", "зүлэг"],
       Leaf,
       "green",
+      DASHBOARD_IMAGES.landscapingWorker,
+      "center",
     ),
     buildDepartment(
       "Тохижилт үйлчилгээ",
       ["Тохижилт", "үйлчилгээ"],
       Wrench,
-      "purple",
+      "teal",
+      DASHBOARD_IMAGES.maintenanceWorker,
+      "center",
     ),
   ];
+}
+
+function formatExecutiveActivityTime(value: string) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("mn-MN", {
+    timeZone: "Asia/Ulaanbaatar",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function getExecutiveWeatherIcon(condition: string): LucideIcon {
+  if (condition.includes("Бороо")) {
+    return CloudRain;
+  }
+  if (condition.includes("Цас")) {
+    return CloudSnow;
+  }
+  if (condition.includes("үүл") || condition.includes("Манан")) {
+    return CloudSun;
+  }
+  return Sun;
+}
+
+function buildExecutiveActivityRows(
+  snapshot: DashboardSnapshot,
+  tasks: DashboardSnapshot["taskDirectory"],
+): ExecutiveActivityRow[] {
+  const reportRows = snapshot.reports
+    .slice(0, 5)
+    .map((report) => ({
+      id: `report-${report.id}`,
+      title: `${fixMojibakeText(report.reporter || "Ажилтан")} тайлан илгээлээ`,
+      detail: fixMojibakeText(report.taskName || report.projectName || report.summary || "Ажлын тайлан"),
+      time: formatExecutiveActivityTime(report.submittedAt),
+      href: report.taskId ? `/tasks/${report.taskId}` : "/reports",
+      icon: ClipboardList,
+      tone: report.stateBucket === "problem" ? "red" : report.stateBucket === "review" ? "blue" : "green",
+    } satisfies ExecutiveActivityRow));
+
+  if (reportRows.length) {
+    return reportRows;
+  }
+
+  return tasks
+    .slice()
+    .sort((left, right) => String(right.createdAt || right.createdDate || "").localeCompare(String(left.createdAt || left.createdDate || "")))
+    .slice(0, 5)
+    .map((task) => ({
+      id: `task-${task.id}`,
+      title: fixMojibakeText(task.name),
+      detail: fixMojibakeText(task.departmentName || task.projectName),
+      time: formatExecutiveActivityTime(task.createdAt || task.createdDate || ""),
+      href: task.href,
+      icon: ClipboardList,
+      tone: task.issueFlag ? "red" : task.statusKey === "review" ? "blue" : "green",
+    } satisfies ExecutiveActivityRow));
+}
+
+function ExecutiveHeroBanner({
+  alertCount,
+  weather,
+}: {
+  alertCount: number;
+  weather: WeatherSnapshot;
+}) {
+  const normalDay = alertCount === 0;
+  const forecastDays = weather.weeklyForecast.length
+    ? weather.weeklyForecast.slice(0, 7)
+    : [
+        {
+          date: weather.observedAt || "",
+          weekday: "Өнөө",
+          condition: weather.condition,
+          temperatureMax: weather.temperature,
+          temperatureMin: null,
+          precipitationChance: null,
+        },
+      ];
+
+  return (
+    <section
+      className={dashboardStyles.executiveHero}
+      style={{
+        backgroundImage:
+          `linear-gradient(90deg, rgba(236,248,238,.98) 0%, rgba(236,248,238,.9) 32%, rgba(236,248,238,.24) 54%, rgba(236,248,238,0) 78%), url(${DASHBOARD_IMAGES.operationsHero})`,
+      }}
+    >
+      <div className={dashboardStyles.executiveHeroContent}>
+        <span
+          className={cn(
+            dashboardStyles.executiveHeroStatusIcon,
+            !normalDay && dashboardStyles.executiveHeroStatusIconWarn,
+          )}
+          aria-hidden
+        >
+          {normalDay ? <CheckCircle2 /> : <Clock3 />}
+        </span>
+        <div>
+          <h2>{normalDay ? "Өнөөдрийн үйл ажиллагаа хэвийн" : "Өнөөдрийн үйл ажиллагаанд анхаарах зүйл байна"}</h2>
+          <p>Хотын өнгө үзэмж, цэвэр цэмцгэр байдал, ногоон байгууламж, хог тээвэрлэлтийн явцыг нэг дор хянаж байна.</p>
+        </div>
+      </div>
+
+      <div className={dashboardStyles.executiveHeroForecast} aria-label="7 хоногийн цаг агаар">
+        <div className={dashboardStyles.executiveHeroForecastHeader}>
+          <span>7 хоногийн цаг агаар</span>
+          <strong>{weather.temperature === null ? "--" : weather.temperature}°C</strong>
+        </div>
+        <div className={dashboardStyles.executiveHeroForecastDays}>
+          {forecastDays.map((day) => {
+            const Icon = getExecutiveWeatherIcon(day.condition);
+            return (
+              <span key={`${day.date}-${day.weekday}`} className={dashboardStyles.executiveHeroForecastDay}>
+                <small>{day.weekday}</small>
+                <Icon aria-hidden />
+                <strong>
+                  {day.temperatureMax === null ? "--" : day.temperatureMax}°
+                </strong>
+              </span>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ExecutiveActivityPanel({ rows }: { rows: ExecutiveActivityRow[] }) {
+  return (
+    <Card className={dashboardStyles.executiveSidePanel}>
+      <div className={dashboardStyles.executiveSideHeader}>
+        <h2>Сүүлийн үйл ажиллагаа</h2>
+        <Link href="/notifications">Бүгдийг харах</Link>
+      </div>
+      <div className={dashboardStyles.executiveSideList}>
+        {rows.length ? rows.map((row) => {
+          const Icon = row.icon;
+          const color = EXECUTIVE_TONE_COLORS[row.tone];
+
+          return (
+            <Link key={row.id} href={row.href} className={dashboardStyles.executiveSideRow}>
+              <span className={dashboardStyles.executiveSideIcon} style={{ color, backgroundColor: `${color}14` }}>
+                <Icon />
+              </span>
+              <span>
+                <strong>{row.title}</strong>
+                <small>{row.detail}</small>
+              </span>
+              <time>{row.time}</time>
+            </Link>
+          );
+        }) : (
+          <p className={dashboardStyles.executiveSideEmpty}>Сүүлийн үйл ажиллагаа бүртгэгдээгүй байна.</p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function ExecutiveSloganPanel() {
+  return (
+    <section
+      className={dashboardStyles.executiveSloganPanel}
+      style={{
+        backgroundImage:
+          `linear-gradient(180deg, rgba(8,64,38,.08), rgba(8,64,38,.72)), url(${DASHBOARD_IMAGES.landscape})`,
+      }}
+      aria-label="Байгаль хамгаалах уриа"
+    >
+      <span>
+        <Leaf aria-hidden />
+      </span>
+      <h2>Байгалиа хайрлая, ирээдүйгээ хамгаалъя</h2>
+      <p>Ногоон хотын өдөр бүрийн үйл ажиллагаа ирээдүйн амьдрах орчны төлөө.</p>
+    </section>
+  );
 }
 
 function ExecutiveDashboardView({
@@ -1471,16 +1695,6 @@ function ExecutiveDashboardView({
   showDepartmentPerformance?: boolean;
 }) {
   const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
-  const activeHrEmployees =
-    hrAttendanceSummary.workingToday ||
-    Math.max(
-      0,
-      hrAttendanceSummary.totalEmployees -
-        hrAttendanceSummary.sickToday -
-        hrAttendanceSummary.leaveToday -
-        hrAttendanceSummary.absentToday,
-    );
-  const hrActiveRate = percent(activeHrEmployees, hrAttendanceSummary.totalEmployees);
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
   const overdueRate = percent(overdueTasks, totalTasks);
   const activeTasks = Math.max(totalTasks - completedTasks, workingTasks + reviewTasks);
@@ -1504,8 +1718,9 @@ function ExecutiveDashboardView({
     {
       label: "хүний нөөц",
       value: String(hrAttendanceSummary.totalEmployees),
-      note: `Идэвхтэй ${activeHrEmployees} / Өвчтэй ${hrAttendanceSummary.sickToday} / Чөлөөтэй ${hrAttendanceSummary.leaveToday}`,
-      progress: hrActiveRate,
+      valueLabel: "Идэвхтэй ажилтан",
+      note: `Өвчтэй: ${hrAttendanceSummary.sickToday} · Чөлөөтэй: ${hrAttendanceSummary.leaveToday}`,
+      progress: percent(hrAttendanceSummary.totalEmployees, hrAttendanceSummary.totalEmployees),
       href: canViewHr ? "/hr/employees" : "/hr",
       icon: UsersRound,
       tone: "green",
@@ -1540,6 +1755,8 @@ function ExecutiveDashboardView({
     tasks: dashboardTasks,
     currentDateKey,
   });
+  const activityRows = buildExecutiveActivityRows(snapshot, dashboardTasks);
+  const alertCount = reviewTasks + overdueTasks + fleetBoard.repairCount;
 
   return (
     <main className={cn(shellStyles.shell, dashboardStyles.executiveShell)}>
@@ -1574,29 +1791,39 @@ function ExecutiveDashboardView({
             notificationNote={notificationNote}
           />
 
+          <ExecutiveHeroBanner
+            alertCount={alertCount}
+            weather={weather}
+          />
+
           <section className={dashboardStyles.executiveMetricGrid}>
             {metrics.map((metric) => (
               <ExecutiveMetricCard key={metric.label} metric={metric} />
             ))}
           </section>
 
-          {showDepartmentPerformance ? (
-            <section id="department-performance" className={dashboardStyles.executiveSection}>
-              <div className={dashboardStyles.executiveSectionHeader}>
-                <div>
-                  <h2>{departmentSectionTitle}</h2>
-                  <p>{notificationNote}</p>
+          <div className={dashboardStyles.executiveOperationsGrid}>
+            {showDepartmentPerformance ? (
+              <section id="department-performance" className={dashboardStyles.executiveSection}>
+                <div className={dashboardStyles.executiveSectionHeader}>
+                  <div>
+                    <h2>{departmentSectionTitle}</h2>
+                    <p>{notificationNote}</p>
+                  </div>
                 </div>
-              </div>
-              <div className={dashboardStyles.executiveDepartmentGrid}>
-                {departmentMetrics.map((department) => (
-                  <ExecutiveDepartmentCard key={department.name} department={department} />
-                ))}
-              </div>
-            </section>
-          ) : null}
+                <div className={dashboardStyles.executiveDepartmentGrid}>
+                  {departmentMetrics.map((department) => (
+                    <ExecutiveDepartmentCard key={department.name} department={department} />
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
-          <ExecutiveWeatherPanel weather={weather} />
+            <aside className={dashboardStyles.executiveSideColumn}>
+              <ExecutiveSloganPanel />
+              <ExecutiveActivityPanel rows={activityRows} />
+            </aside>
+          </div>
         </div>
       </div>
     </main>
@@ -1786,7 +2013,7 @@ export function DashboardView({
         subtitle={scopedDashboardSubtitle}
         departmentSectionTitle={scopedDepartmentSectionTitle}
         departmentScopeName={departmentScopeName}
-        showDepartmentPerformance={!departmentHeadDashboardMode}
+        showDepartmentPerformance
       />
     );
   }
