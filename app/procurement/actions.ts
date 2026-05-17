@@ -48,6 +48,11 @@ function getNumber(formData: FormData, key: string) {
   return Number(getString(formData, key) || 0);
 }
 
+function getOptionalNumber(formData: FormData, key: string) {
+  const value = getNumber(formData, key);
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
 function redirectWithMessage(path: string, kind: "error" | "notice", message: string) {
   const separator = path.includes("?") ? "&" : "?";
   redirect(`${path}${separator}${kind}=${encodeURIComponent(message)}`);
@@ -269,8 +274,13 @@ export async function submitProcurementQuotationsAction(formData: FormData) {
     redirectWithMessage("/procurement", "error", "Хүсэлтийн дугаар буруу байна.");
   }
 
+  let submittedPayload: { package_id?: number; quotations: Array<Record<string, unknown>> } = {
+    package_id: packageId || undefined,
+    quotations: [],
+  };
+
   try {
-    const quotations = await Promise.all(
+    const quoteInputs = await Promise.all(
       [1, 2, 3].map(async (index) => {
         const file = getFiles(formData, `quote_file_${index}`)[0];
         const attachmentIds =
@@ -282,35 +292,69 @@ export async function submitProcurementQuotationsAction(formData: FormData) {
             : [];
 
         return {
-          supplier_id: getNumber(formData, `supplier_id_${index}`),
-          amount_total: getNumber(formData, `amount_total_${index}`),
+          id: getOptionalNumber(formData, `quotation_id_${index}`),
+          sequence: index,
+          supplier_id: getOptionalNumber(formData, `supplier_id_${index}`),
+          amount_total: getOptionalNumber(formData, `amount_total_${index}`),
           attachment_ids: attachmentIds,
         };
       }),
     );
+    const quotations = quoteInputs.filter((quote) =>
+      Boolean(
+        quote.id ||
+          quote.supplier_id ||
+          quote.amount_total ||
+          (Array.isArray(quote.attachment_ids) && quote.attachment_ids.length),
+      ),
+    );
+
+    if (!quotations.length) {
+      throw new Error("Хадгалах саналын мэдээлэл оруулна уу.");
+    }
+
+    submittedPayload = {
+      package_id: packageId || undefined,
+      quotations,
+    };
+    console.info("Submitting procurement quotation payload", {
+      requestId,
+      packageId: packageId || null,
+      quotations: quotations.map((quote) => ({
+        id: quote.id,
+        sequence: quote.sequence,
+        supplier_id: quote.supplier_id,
+        amount_total: quote.amount_total,
+        attachment_ids: quote.attachment_ids,
+      })),
+    });
 
     await submitProcurementQuotations(
       requestId,
-      {
-        package_id: packageId || undefined,
-        quotations,
-      },
+      submittedPayload,
       connectionOverrides,
     );
 
     revalidateProcurementPaths(requestId);
-    redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Үнийн саналууд амжилттай хадгалагдлаа.")}`);
   } catch (error) {
     if (isRedirectException(error)) {
       throw error;
     }
 
+    console.error("Procurement quotation save failed", {
+      requestId,
+      packageId: packageId || null,
+      payload: submittedPayload,
+      error,
+    });
     redirectWithMessage(
       `/procurement/${requestId}`,
       "error",
       error instanceof Error ? error.message : "Үнийн санал хадгалах үед алдаа гарлаа.",
     );
   }
+
+  redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Үнийн саналууд амжилттай хадгалагдлаа.")}`);
 }
 
 export async function saveProcurementPackageAction(formData: FormData) {
@@ -327,14 +371,21 @@ export async function saveProcurementPackageAction(formData: FormData) {
     .filter(Boolean);
 
   try {
+    const payload = {
+      package_id: packageId || undefined,
+      name: getString(formData, "package_name"),
+      note: getString(formData, "package_note") || undefined,
+      line_ids: lineIds,
+    };
+    console.info("Saving procurement package payload", {
+      requestId,
+      packageId: packageId || null,
+      lineIds,
+      name: payload.name,
+    });
     await saveProcurementPackage(
       requestId,
-      {
-        package_id: packageId || undefined,
-        name: getString(formData, "package_name"),
-        note: getString(formData, "package_note") || undefined,
-        line_ids: lineIds,
-      },
+      payload,
       connectionOverrides,
     );
 
@@ -345,6 +396,12 @@ export async function saveProcurementPackageAction(formData: FormData) {
       throw error;
     }
 
+    console.error("Procurement package save failed", {
+      requestId,
+      packageId: packageId || null,
+      lineIds,
+      error,
+    });
     redirectWithMessage(
       `/procurement/${requestId}`,
       "error",

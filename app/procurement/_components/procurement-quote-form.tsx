@@ -15,8 +15,10 @@ type SupplierOption = {
 };
 
 type QuoteValue = {
+  id?: number;
   supplier: SupplierOption;
   amount_total: number;
+  attachments?: Array<{ id: number; name: string; mimetype: string }>;
 };
 
 type AddModalState = {
@@ -218,6 +220,27 @@ export function ProcurementQuoteForm({
     if (new Set(selected).size !== selected.length) {
       event.preventDefault();
       setFormError("3 өөр нийлүүлэгч сонгоно уу.");
+      return;
+    }
+
+    const formData = new FormData(event.currentTarget);
+    const missingAmounts = [1, 2, 3].some((index) => Number(String(formData.get(`amount_total_${index}`) || "0")) <= 0);
+    if (missingAmounts) {
+      event.preventDefault();
+      setFormError("Санал бүрийн үнийн дүн 0-ээс их байх ёстой.");
+      return;
+    }
+
+    const missingInvoices = [1, 2, 3].some((index) => {
+      const existing = quotations[index - 1];
+      const hasExistingAttachment = Boolean(existing?.attachments?.length);
+      const file = formData.get(`quote_file_${index}`);
+      const hasNewFile = file instanceof File && file.size > 0;
+      return !hasExistingAttachment && !hasNewFile;
+    });
+    if (missingInvoices) {
+      event.preventDefault();
+      setFormError("Санал бүрийн invoice файлыг хавсаргана уу.");
     }
   }
 
@@ -264,6 +287,7 @@ export function ProcurementQuoteForm({
             const existing = quotations[index - 1];
             return (
               <article key={index} className={styles.quoteCard}>
+                <input type="hidden" name={`quotation_id_${index}`} value={existing?.id || ""} />
                 <h3>{index}-р нийлүүлэгч</h3>
                 <SupplierCombobox
                   key={`${index}-${selectedSupplierIds[index - 1] || "empty"}`}
@@ -279,8 +303,11 @@ export function ProcurementQuoteForm({
                 </label>
                 <label className={styles.fieldLabel}>
                   Invoice файл
-                  <input type="file" name={`quote_file_${index}`} required />
+                  <input type="file" name={`quote_file_${index}`} required={!existing?.attachments?.length} />
                 </label>
+                {existing?.attachments?.length ? (
+                  <p className={styles.helperText}>{existing.attachments.length} invoice хадгалагдсан.</p>
+                ) : null}
               </article>
             );
           })}

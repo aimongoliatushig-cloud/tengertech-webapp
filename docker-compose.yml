@@ -1,0 +1,26 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tengertech-web-app
+    restart: unless-stopped
+    env_file:
+      - .env.compose
+    environment:
+      - NODE_ENV=production
+      - PUSH_SUBSCRIPTIONS_FILE=/app/data/push-subscriptions.json
+    expose:
+      - "3000"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    networks:
+      - default
+      - odoo
+
+networks:
+  odoo:
+    external: true
+    name: odoo19-test_default

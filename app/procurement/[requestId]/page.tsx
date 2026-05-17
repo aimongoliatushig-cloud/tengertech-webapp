@@ -128,31 +128,31 @@ function attachmentUrl(attachmentId: number) {
 }
 
 function supplierInvoiceLinks(item: ProcurementRequestDetail) {
-  const links = item.packages.flatMap((pack) =>
-    pack.quotations.flatMap((quote) =>
-      quote.attachments.map((attachment, attachmentIndex) => ({
+  const packages = Array.isArray(item.packages) ? item.packages : [];
+  const requestQuotations = Array.isArray(item.quotations) ? item.quotations : [];
+  const links = packages.flatMap((pack) =>
+    (Array.isArray(pack.quotations) ? pack.quotations : []).flatMap((quote) => {
+      const attachments = Array.isArray(quote.attachments) ? quote.attachments : [];
+      const supplierName = quote.supplier?.name || "Нийлүүлэгч тодорхойгүй";
+      return attachments.map((attachment, attachmentIndex) => ({
         key: `${pack.id}-${quote.id}-${attachment.id}`,
         attachment,
-        label:
-          quote.attachments.length > 1
-            ? `${quote.supplier.name} ${attachmentIndex + 1}`
-            : quote.supplier.name,
-      })),
-    ),
+        label: attachments.length > 1 ? `${supplierName} ${attachmentIndex + 1}` : supplierName,
+      }));
+    }),
   );
 
-  for (const quote of item.quotations) {
-    for (const [attachmentIndex, attachment] of quote.attachments.entries()) {
+  for (const quote of requestQuotations) {
+    const attachments = Array.isArray(quote.attachments) ? quote.attachments : [];
+    const supplierName = quote.supplier?.name || "Нийлүүлэгч тодорхойгүй";
+    for (const [attachmentIndex, attachment] of attachments.entries()) {
       if (links.some((link) => link.attachment.id === attachment.id)) {
         continue;
       }
       links.push({
         key: `request-${quote.id}-${attachment.id}`,
         attachment,
-        label:
-          quote.attachments.length > 1
-            ? `${quote.supplier.name} ${attachmentIndex + 1}`
-            : quote.supplier.name,
+        label: attachments.length > 1 ? `${supplierName} ${attachmentIndex + 1}` : supplierName,
       });
     }
   }
@@ -191,10 +191,40 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
     password: session.password,
   };
 
-  const [procurementUser, item, meta, departmentScopeName] = await Promise.all([
-    loadProcurementMe(connectionOverrides),
-    loadProcurementRequestDetail(parsedRequestId, connectionOverrides),
-    loadProcurementMeta(connectionOverrides).catch(() => emptyMeta()),
+  const procurementUser = await loadProcurementMe(connectionOverrides);
+  let item: ProcurementRequestDetail;
+  try {
+    item = await loadProcurementRequestDetail(parsedRequestId, connectionOverrides);
+  } catch (loadError) {
+    console.error("Procurement detail could not be loaded after refresh.", {
+      requestId: parsedRequestId,
+      error: loadError,
+    });
+    return (
+      <ProcurementShell
+        session={session}
+        procurementUser={procurementUser}
+        title="Худалдан авалтын дэлгэрэнгүй"
+        description="Худалдан авалтын мэдээллийг ачаалах үед алдаа гарлаа."
+        activeTab="list"
+      >
+        {notice ? <section className={`${styles.statusBanner} ${styles.noticeBanner}`}>{notice}</section> : null}
+        <section className={`${styles.statusBanner} ${styles.errorBanner}`}>
+          {loadError instanceof Error ? loadError.message : "Худалдан авалтын мэдээлэл ачаалж чадсангүй."}
+        </section>
+        <Link href="/procurement" className={styles.secondaryButton}>Буцах</Link>
+      </ProcurementShell>
+    );
+  }
+
+  const [meta, departmentScopeName] = await Promise.all([
+    loadProcurementMeta(connectionOverrides).catch((metaError) => {
+      console.error("Procurement metadata could not be loaded.", {
+        requestId: parsedRequestId,
+        error: metaError,
+      });
+      return emptyMeta();
+    }),
     loadSessionDepartmentName(session),
   ]);
 
@@ -211,7 +241,12 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
   const markDoneAction = findAction(item.available_actions, "mark_done");
   const cancelAction = findAction(item.available_actions, "cancel");
   const selectedQuotation = item.quotations.find((quotation) => quotation.is_selected);
-  const packages = item.packages || [];
+  const packages = (item.packages || []).map((pack) => ({
+    ...pack,
+    lines: Array.isArray(pack.lines) ? pack.lines : [],
+    quotations: Array.isArray(pack.quotations) ? pack.quotations : [],
+    ceo_order_attachments: Array.isArray(pack.ceo_order_attachments) ? pack.ceo_order_attachments : [],
+  }));
   const requestedPackageId = Number(getValue(query.package_id));
   const focusedPackage = Number.isFinite(requestedPackageId) && requestedPackageId > 0
     ? packages.find((pack) => pack.id === requestedPackageId)
@@ -557,7 +592,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
                 Сонгох нийлүүлэгч
                 <select name="selected_quotation_id" defaultValue={selectedQuotation?.id || ""}>
                   {item.quotations.map((quotation) => (
-                    <option key={quotation.id} value={quotation.id}>{quotation.supplier.name} - {formatMoney(quotation.amount_total)}</option>
+                    <option key={quotation.id} value={quotation.id}>{quotation.supplier?.name || "Нийлүүлэгч тодорхойгүй"} - {formatMoney(quotation.amount_total)}</option>
                   ))}
                 </select>
               </label>
@@ -757,13 +792,13 @@ function PackageCard({
         <div className={styles.quoteList}>
           {visibleQuotes.map((quote) => (
             <div key={quote.id} className={`${styles.quoteMiniCard} ${quote.is_selected ? styles.quoteMiniCardSelected : ""}`}>
-              <strong>{quote.supplier.name}</strong>
+              <strong>{quote.supplier?.name || "Нийлүүлэгч тодорхойгүй"}</strong>
               <span>{formatMoney(quote.amount_total)}</span>
-              {quote.attachments.length ? (
+              {quote.attachments?.length ? (
                 <span className={styles.invoiceLinkList}>
                   {quote.attachments.map((attachment, index) => (
                     <a key={attachment.id} href={attachmentUrl(attachment.id)} target="_blank" rel="noreferrer" className={styles.invoiceLink}>
-                      Нэхэмжлэх {quote.attachments.length > 1 ? index + 1 : ""}
+                      Нэхэмжлэх {(quote.attachments?.length || 0) > 1 ? index + 1 : ""}
                     </a>
                   ))}
                 </span>
@@ -810,7 +845,7 @@ function PackageCeoOrderForm({ requestId, pack }: { requestId: number; pack: Pro
           <option value="">Сонгох</option>
           {pack.quotations.map((quotation) => (
             <option key={quotation.id} value={quotation.id}>
-              {quotation.supplier.name} - {formatMoney(quotation.amount_total)}
+              {quotation.supplier?.name || "Нийлүүлэгч тодорхойгүй"} - {formatMoney(quotation.amount_total)}
             </option>
           ))}
         </select>
@@ -849,7 +884,7 @@ function RequestPaymentForm({
           Төлөх санал
           <select name="selected_quotation_id" defaultValue={selectedQuotation?.id || ""}>
             {item.quotations.map((quotation) => (
-              <option key={quotation.id} value={quotation.id}>{quotation.supplier.name} - {formatMoney(quotation.amount_total)}</option>
+              <option key={quotation.id} value={quotation.id}>{quotation.supplier?.name || "Нийлүүлэгч тодорхойгүй"} - {formatMoney(quotation.amount_total)}</option>
             ))}
           </select>
         </label>
@@ -892,13 +927,13 @@ function PackagePaymentForm({ requestId, pack }: { requestId: number; pack: Proc
               {!pack.is_over_threshold ? (
                 <input type="radio" name="selected_quotation_id" value={quote.id} defaultChecked={quote.id === defaultQuotationId} />
               ) : null}
-              <strong>{quote.supplier.name}</strong>
+              <strong>{quote.supplier?.name || "Нийлүүлэгч тодорхойгүй"}</strong>
               <span>{formatMoney(quote.amount_total)}</span>
-              {quote.attachments.length ? (
+              {quote.attachments?.length ? (
                 <span className={styles.invoiceLinkList}>
                   {quote.attachments.map((attachment, index) => (
                     <a key={attachment.id} href={attachmentUrl(attachment.id)} target="_blank" rel="noreferrer" className={styles.invoiceLink}>
-                      Нэхэмжлэх {quote.attachments.length > 1 ? index + 1 : ""}
+                      Нэхэмжлэх {(quote.attachments?.length || 0) > 1 ? index + 1 : ""}
                     </a>
                   ))}
                 </span>

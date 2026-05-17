@@ -451,6 +451,12 @@ async function procurementFetch<T>(
 
   const payload = await readApiEnvelope<T>(response, path);
   if (!response.ok || !payload.ok) {
+    console.error("Procurement API request failed.", {
+      path,
+      status: response.status,
+      requestBody: options.body,
+      responseError: payload.error,
+    });
     throw new Error(payload.error?.message || "Procurement API хүсэлт амжилтгүй боллоо.");
   }
 
@@ -514,6 +520,26 @@ export async function loadProcurementRequestDetail(
     `/mpw/api/requests/${requestId}`,
     { connectionOverrides },
   );
+  if (!response.item) {
+    console.error("Procurement detail response did not include an item.", {
+      requestId,
+      response,
+    });
+    throw new Error("Худалдан авалтын дэлгэрэнгүй мэдээлэл бүрэн ирсэнгүй.");
+  }
+  response.item.lines = Array.isArray(response.item.lines) ? response.item.lines : [];
+  response.item.quotations = Array.isArray(response.item.quotations) ? response.item.quotations : [];
+  response.item.packages = Array.isArray(response.item.packages) ? response.item.packages : [];
+  response.item.unassigned_lines = Array.isArray(response.item.unassigned_lines) ? response.item.unassigned_lines : [];
+  response.item.documents = Array.isArray(response.item.documents) ? response.item.documents : [];
+  response.item.audit = Array.isArray(response.item.audit) ? response.item.audit : [];
+  response.item.attachments = Array.isArray(response.item.attachments) ? response.item.attachments : [];
+  response.item.high_value_packages = Array.isArray(response.item.high_value_packages)
+    ? response.item.high_value_packages
+    : [];
+  response.item.low_value_packages = Array.isArray(response.item.low_value_packages)
+    ? response.item.low_value_packages
+    : [];
   return response.item!;
 }
 
