@@ -118,7 +118,7 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
               <div className={styles.sectionHeader}>
                 <div>
                   <h2>Ерөнхий мэдээлэл</h2>
-                  <p>Хэлтсийн дарга зөвхөн хэрэгцээ, холбоотой объект, тооцоолсон барааны мөрүүдийг бүртгэнэ.</p>
+                  <p>Хэлтсийн дарга зөвхөн хэрэгцээ, холбоотой объект, барааны мөрүүдийг бүртгэнэ.</p>
                 </div>
               </div>
               <div className={styles.formGrid}>
@@ -194,7 +194,7 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
               <div className={styles.sectionHeader}>
                 <div>
                   <h2>Барааны мөрүүд</h2>
-                  <p>Нярав дараагийн шатанд 3 нийлүүлэгчийн саналыг бүртгэнэ. Энд зөвхөн тооцоолсон үнийг оруулна.</p>
+                  <p>Нярав дараагийн шатанд нийлүүлэгчийн нэр болон нэхэмжлэхийн зургийг бүртгэнэ.</p>
                 </div>
               </div>
               <ProcurementLineEditor uoms={meta.uoms} />
@@ -206,7 +206,7 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
               <h3>Хэлтсийн даргын урсгал</h3>
               <div className={styles.statusGuide}>
                 <div className={styles.statusGuideItem}><span><span className={styles.statusDot} /> Хүсэлт үүсгэх</span><span className={styles.badge}>Таны алхам</span></div>
-                <div className={styles.statusGuideItem}><span><span className={`${styles.statusDot} ${styles.dotWarning}`} /> Үнийн санал цуглуулах</span><span className={styles.badgeWarning}>Нярав</span></div>
+                <div className={styles.statusGuideItem}><span><span className={`${styles.statusDot} ${styles.dotWarning}`} /> Нэхэмжлэх бүртгэх</span><span className={styles.badgeWarning}>Нярав</span></div>
                 <div className={styles.statusGuideItem}><span><span className={`${styles.statusDot} ${styles.dotPurple}`} /> Шийдвэр, гэрээ, төлбөр</span><span className={styles.badgePurple}>Хариуцсан нэгж</span></div>
                 <div className={styles.statusGuideItem}><span><span className={`${styles.statusDot} ${styles.dotBlue}`} /> Хүлээн авалт</span><span className={styles.badgeBlue}>Нярав</span></div>
               </div>
@@ -217,7 +217,7 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
             <section className={styles.formActionsCard}>
               <div className={styles.formActionsCopy}>
                 <strong>Хүсэлт илгээхэд бэлэн үү?</strong>
-                <span>Илгээсний дараа нярав 3 нийлүүлэгчийн санал цуглуулах шат эхэлнэ.</span>
+                <span>Илгээсний дараа нярав нийлүүлэгчийн нэр, нэхэмжлэхийн зургийг бүртгэнэ.</span>
               </div>
               <div className={styles.buttonRow}>
                 <Link href="/procurement" className={styles.secondaryButton}>Буцах</Link>

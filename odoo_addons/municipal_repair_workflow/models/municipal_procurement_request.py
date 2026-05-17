@@ -6,7 +6,7 @@ from odoo.exceptions import UserError, ValidationError
 
 PROCUREMENT_STATES = [
     ("draft", "Ноорог"),
-    ("quote", "3 үнийн санал"),
+    ("quote", "Нэхэмжлэх"),
     ("finance_review", "Санхүүгийн хяналт"),
     ("director_approval", "Захирлын баталгаа"),
     ("contract_review", "Гэрээний хяналт"),
@@ -91,7 +91,7 @@ class MunicipalProcurementRequest(models.Model):
         "municipal_procurement_quote_attachment_rel",
         "procurement_id",
         "attachment_id",
-        string="3 үнийн саналын хавсралт",
+        string="Нэхэмжлэхийн хавсралт",
     )
     state = fields.Selection(
         PROCUREMENT_STATES,
@@ -194,21 +194,18 @@ class MunicipalProcurementRequest(models.Model):
 
     def _valid_quote_lines(self):
         self.ensure_one()
-        return self.quote_line_ids.filtered(lambda quote: quote.supplier_id and quote.amount_total > 0)
+        return self.quote_line_ids.filtered(lambda quote: quote.supplier_id)
 
     def _ensure_three_quotes(self):
         for request in self:
-            if len(request._valid_quote_lines()) < 3:
-                raise UserError("Санхүүгийн хяналтад илгээхийн өмнө 3 нийлүүлэгчийн үнийн санал бүрэн оруулна уу.")
+            if len(request._valid_quote_lines()) < 1:
+                raise UserError("Санхүүгийн хяналтад илгээхийн өмнө нийлүүлэгчийн нэхэмжлэх оруулна уу.")
 
     def _ensure_quote_evidence(self):
         for request in self:
-            supplier_ids = [quote.supplier_id.id for quote in request._valid_quote_lines()]
-            if len(supplier_ids) != len(set(supplier_ids)):
-                raise UserError("3 үнийн саналыг давхардаагүй 3 нийлүүлэгчээс авсан байх ёстой.")
             missing = request._valid_quote_lines().filtered(lambda quote: not quote.attachment_ids)
             if missing and not request.quote_attachment_ids:
-                raise UserError("3 үнийн саналын хавсралт / баримтыг оруулна уу.")
+                raise UserError("Нэхэмжлэхийн хавсралт / баримтыг оруулна уу.")
 
     def _ensure_selected_quote(self):
         for request in self:
@@ -217,8 +214,6 @@ class MunicipalProcurementRequest(models.Model):
                 raise UserError("Сонгосон нийлүүлэгчийн үнийн саналыг тэмдэглэнэ үү.")
             if len(selected) > 1:
                 raise UserError("Зөвхөн нэг үнийн саналыг сонгоно уу.")
-            if selected.amount_total <= 0:
-                raise UserError("Сонгосон үнийн саналын дүн 0-ээс их байх ёстой.")
 
     def _sync_amount_from_selected_quote(self):
         for request in self:
@@ -518,8 +513,8 @@ class MunicipalProcurementQuote(models.Model):
     @api.constrains("amount_total")
     def _check_amount_total(self):
         for quote in self:
-            if quote.amount_total <= 0:
-                raise ValidationError("Үнийн саналын дүн 0-ээс их байх ёстой.")
+            if quote.amount_total < 0:
+                raise ValidationError("Үнийн саналын дүн сөрөг байж болохгүй.")
 
     @api.constrains("is_selected", "procurement_id")
     def _check_single_selected_quote(self):

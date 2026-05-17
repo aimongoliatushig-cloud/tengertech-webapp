@@ -2,6 +2,7 @@ import "server-only";
 
 import { notifyPushEvent } from "@/lib/push-notifications";
 import { executeOdooKw } from "@/lib/odoo";
+import { loadDepartmentHeadUserIds } from "@/lib/notification-recipients";
 import type { ProcurementPackage, ProcurementRequestDetail } from "@/lib/procurement";
 
 export type ProcurementNotificationAction =
@@ -155,11 +156,12 @@ async function buildTargets(
   }
 
   if (action === "mark_received" || action === "mark_done") {
+    const departmentHeadIds = await loadDepartmentHeadUserIds(request.department?.id);
     return [
       {
-        userIds: uniqueIds([request.requester?.id]),
+        userIds: uniqueIds([request.requester?.id, ...departmentHeadIds]),
         title: "Худалдан авалтын хүсэлт дууслаа",
-        body: `${titleBase}: хүлээн авалт бүртгэгдлээ.`,
+        body: `${titleBase}: хүлээлгэн өгч дууссан төлөвт орлоо.`,
         targetUrl: packageTargetUrl(request.id, packageId),
       },
     ];

@@ -33,7 +33,6 @@ function normalizeUnitName(value: string) {
 
 export function ProcurementLineEditor({ uoms }: ProcurementLineEditorProps) {
   const [rows, setRows] = useState<LineRow[]>([{ key: 1 }, { key: 2 }, { key: 3 }]);
-  const [totals, setTotals] = useState<Record<number, { quantity: number; price: number }>>({});
   const [selectedUnits, setSelectedUnits] = useState<Record<number, string>>({});
   const [customUnits, setCustomUnits] = useState<UnitOption[]>([]);
   const [newUnitName, setNewUnitName] = useState("");
@@ -56,21 +55,6 @@ export function ProcurementLineEditor({ uoms }: ProcurementLineEditorProps) {
 
     return options;
   }, [customUnits, uoms]);
-  const totalAmount = useMemo(
-    () => Object.values(totals).reduce((sum, item) => sum + item.quantity * item.price, 0),
-    [totals],
-  );
-
-  function updateTotal(rowKey: number, field: "quantity" | "price", value: string) {
-    setTotals((current) => ({
-      ...current,
-      [rowKey]: {
-        quantity: field === "quantity" ? Number(value || 0) : current[rowKey]?.quantity || 0,
-        price: field === "price" ? Number(value || 0) : current[rowKey]?.price || 0,
-      },
-    }));
-  }
-
   function addRow() {
     setRows((current) => [...current, { key: Math.max(...current.map((row) => row.key), 0) + 1 }]);
   }
@@ -96,11 +80,6 @@ export function ProcurementLineEditor({ uoms }: ProcurementLineEditorProps) {
 
   function removeRow(rowKey: number) {
     setRows((current) => (current.length > 1 ? current.filter((row) => row.key !== rowKey) : current));
-    setTotals((current) => {
-      const next = { ...current };
-      delete next[rowKey];
-      return next;
-    });
     setSelectedUnits((current) => {
       const next = { ...current };
       delete next[rowKey];
@@ -120,15 +99,11 @@ export function ProcurementLineEditor({ uoms }: ProcurementLineEditorProps) {
               <th>Тоо хэмжээ</th>
               <th>Нэгж</th>
               <th>Зураг</th>
-              <th>Тооцоот нэгж үнэ</th>
-              <th>Нийт дүн</th>
               <th>Үйлдэл</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row, index) => {
-              const quantity = totals[row.key]?.quantity || 0;
-              const price = totals[row.key]?.price || 0;
               const selectedUnitKey = selectedUnits[row.key] || unitOptions[0]?.key || "";
               const selectedUnit = unitOptions.find((option) => option.key === selectedUnitKey);
 
@@ -147,7 +122,6 @@ export function ProcurementLineEditor({ uoms }: ProcurementLineEditorProps) {
                       step="0.01"
                       min="0"
                       name="line_quantity"
-                      onChange={(event) => updateTotal(row.key, "quantity", event.currentTarget.value)}
                     />
                   </td>
                   <td>
@@ -178,16 +152,6 @@ export function ProcurementLineEditor({ uoms }: ProcurementLineEditorProps) {
                     </label>
                   </td>
                   <td>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      name="line_approx_unit_price"
-                      onChange={(event) => updateTotal(row.key, "price", event.currentTarget.value)}
-                    />
-                  </td>
-                  <td>{new Intl.NumberFormat("mn-MN").format(quantity * price)} ₮</td>
-                  <td>
                     <button className={styles.iconButton} type="button" onClick={() => removeRow(row.key)} aria-label="Мөр устгах">
                       <Trash2 aria-hidden />
                     </button>
@@ -200,8 +164,8 @@ export function ProcurementLineEditor({ uoms }: ProcurementLineEditorProps) {
       </div>
       <div className={styles.formActionsCard}>
         <div className={styles.formActionsCopy}>
-          <strong>Нийт дүн: {new Intl.NumberFormat("mn-MN").format(totalAmount)} ₮</strong>
-          <span>Дүн нь оруулсан мөрүүдийн тоо хэмжээ, нэгж үнээр урьдчилан тооцоологдоно.</span>
+          <strong>Барааны мөрүүд</strong>
+          <span>Хэлтсийн дарга зөвхөн хэрэгцээтэй бараа, тоо хэмжээ, зураг/тайлбарыг оруулна.</span>
         </div>
         <button className={styles.secondaryButton} type="button" onClick={addRow}>
           <PlusCircle aria-hidden />

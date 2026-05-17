@@ -28,6 +28,7 @@ import {
   submitProcurementForQuotation,
   submitProcurementQuotations,
   loadProcurementMeta,
+  loadProcurementRequestDetail,
   loadProcurementSuppliers,
   updateProcurementSupplier,
   uploadProcurementAttachment,
@@ -46,6 +47,11 @@ function getString(formData: FormData, key: string) {
 
 function getNumber(formData: FormData, key: string) {
   return Number(getString(formData, key) || 0);
+}
+
+function getRedirectPath(formData: FormData, fallback: string) {
+  const redirectPath = getString(formData, "redirect_path");
+  return redirectPath.startsWith("/procurement") ? redirectPath : fallback;
 }
 
 function redirectWithMessage(path: string, kind: "error" | "notice", message: string) {
@@ -264,14 +270,40 @@ export async function createProcurementRequestAction(formData: FormData) {
 export async function submitProcurementQuotationsAction(formData: FormData) {
   const connectionOverrides = await getConnectionOverrides();
   const requestId = getNumber(formData, "request_id");
-  const packageId = getNumber(formData, "package_id");
+  let packageId = getNumber(formData, "package_id");
+  const redirectPath = getRedirectPath(formData, requestId ? `/procurement/${requestId}` : "/procurement");
   if (!requestId) {
     redirectWithMessage("/procurement", "error", "Хүсэлтийн дугаар буруу байна.");
   }
 
   try {
+    const lineIds = formData
+      .getAll("line_ids")
+      .map((value) => Number(String(value || "0")))
+      .filter(Boolean);
+    if (lineIds.length) {
+      await saveProcurementPackage(
+        requestId,
+        {
+          package_id: packageId || undefined,
+          name: getString(formData, "package_name") || "Нэг багц",
+          note: getString(formData, "package_note") || undefined,
+          line_ids: lineIds,
+        },
+        connectionOverrides,
+      );
+      if (!packageId) {
+        const detail = await loadProcurementRequestDetail(requestId, connectionOverrides);
+        const selectedLineIds = new Set(lineIds);
+        const createdPackage = detail.packages.find((pack) =>
+          pack.lines.some((line) => selectedLineIds.has(line.id)),
+        );
+        packageId = createdPackage?.id || 0;
+      }
+    }
+
     const quotations = await Promise.all(
-      [1, 2, 3].map(async (index) => {
+      [1].map(async (index) => {
         const file = getFiles(formData, `quote_file_${index}`)[0];
         const attachmentIds =
           file
@@ -283,7 +315,8 @@ export async function submitProcurementQuotationsAction(formData: FormData) {
 
         return {
           supplier_id: getNumber(formData, `supplier_id_${index}`),
-          amount_total: getNumber(formData, `amount_total_${index}`),
+          amount_total: Math.max(1, getNumber(formData, `amount_total_${index}`)),
+          is_selected: index === 1,
           attachment_ids: attachmentIds,
         };
       }),
@@ -299,16 +332,16 @@ export async function submitProcurementQuotationsAction(formData: FormData) {
     );
 
     revalidateProcurementPaths(requestId);
-    redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Үнийн саналууд амжилттай хадгалагдлаа.")}`);
+    redirectWithMessage(redirectPath, "notice", "Нэхэмжлэх амжилттай хадгалагдлаа.");
   } catch (error) {
     if (isRedirectException(error)) {
       throw error;
     }
 
     redirectWithMessage(
-      `/procurement/${requestId}`,
+      redirectPath,
       "error",
-      error instanceof Error ? error.message : "Үнийн санал хадгалах үед алдаа гарлаа.",
+      error instanceof Error ? error.message : "Нэхэмжлэх хадгалах үед алдаа гарлаа.",
     );
   }
 }
@@ -537,6 +570,7 @@ export async function runProcurementWorkflowAction(formData: FormData) {
   const connectionOverrides = await getConnectionOverrides();
   const requestId = getNumber(formData, "request_id");
   const action = getString(formData, "workflow_action");
+  const redirectPath = getRedirectPath(formData, requestId ? `/procurement/${requestId}` : "/procurement");
   const note = getString(formData, "note") || undefined;
   let notificationAction: ProcurementNotificationAction | null = null;
   let notificationPackageId = getNumber(formData, "package_id") || undefined;
@@ -633,7 +667,8 @@ export async function runProcurementWorkflowAction(formData: FormData) {
         package_id: packageId || undefined,
         note,
       });
-      const updatedRequest = await markProcurementReceived(requestId, { package_id: packageId || undefined, note }, connectionOverrides);
+      await markProcurementReceived(requestId, { package_id: packageId || undefined, note }, connectionOverrides);
+      const updatedRequest = await markProcurementDone(requestId, connectionOverrides);
       notificationAction = "mark_received";
       notificationPackageId = packageId || undefined;
       await notifyProcurementStageChanged(notificationAction, updatedRequest, notificationPackageId);
@@ -646,19 +681,19 @@ export async function runProcurementWorkflowAction(formData: FormData) {
       notificationAction = "cancel";
       await notifyProcurementStageChanged(notificationAction, updatedRequest, notificationPackageId);
     } else {
-      redirectWithMessage(`/procurement/${requestId}`, "error", "Танигдаагүй үйлдэл байна.");
+      redirectWithMessage(redirectPath, "error", "Танигдаагүй үйлдэл байна.");
     }
 
     revalidateProcurementPaths(requestId);
     revalidatePath("/notifications");
-    redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Үйлдэл амжилттай хадгалагдлаа.")}`);
+    redirectWithMessage(redirectPath, "notice", "Үйлдэл амжилттай хадгалагдлаа.");
   } catch (error) {
     if (isRedirectException(error)) {
       throw error;
     }
 
     redirectWithMessage(
-      `/procurement/${requestId}`,
+      redirectPath,
       "error",
       error instanceof Error ? error.message : "Үйлдэл гүйцэтгэх үед алдаа гарлаа.",
     );

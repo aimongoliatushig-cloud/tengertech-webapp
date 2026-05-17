@@ -59,10 +59,6 @@ function getValue(value?: string | string[]) {
   return Array.isArray(value) ? value[0] || "" : value || "";
 }
 
-function formatMoney(value: number) {
-  return `₮ ${new Intl.NumberFormat("mn-MN").format(value || 0)}`;
-}
-
 function formatDate(value?: string | null) {
   if (!value) return "-";
   const parsed = new Date(value);
@@ -131,7 +127,7 @@ function getRelatedObject(item: ProcurementRequestSummary) {
 function getNextStep(item: ProcurementRequestSummary) {
   const code = item.state.code;
   if (code === "draft") return "Илгээх";
-  if (code.includes("quote") || code.includes("quotation")) return "Нярав: 3 санал оруулах";
+  if (code.includes("quote") || code.includes("quotation")) return "Нярав: нэхэмжлэх оруулах";
   if (code.includes("director") || code.includes("finance_review")) return "Шийдвэр хүлээж байна";
   if (code.includes("contract") || code.includes("order")) return "Гэрээ, баримт бичиг";
   if (code.includes("payment") || code === "payment") return "Санхүү: төлбөр хийх";
@@ -274,7 +270,7 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
       }
       description={
         isExecutiveView
-          ? "Хүсэлтүүдийг хэлтэс, төрөл, төлөв, дүнгээр хянана."
+          ? "Хүсэлтүүдийг хэлтэс, төрөл, төлөвөөр хянана."
           : isProcurementWorkerView
             ? "Танд хуваарилагдсан болон таны үүргийн шатанд хүлээгдэж буй худалдан авалтын хүсэлтүүд."
             : "Зөвхөн өөрийн хэлтсийн төсөл болон машин/засвартай холбоотой худалдан авалтын хүсэлтүүд."
@@ -362,7 +358,6 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
                     <th>Гарчиг</th>
                     <th>Төрөл</th>
                     <th>Холбогдсон объект</th>
-                    <th>Тооцоолсон дүн</th>
                     <th>Одоогийн төлөв</th>
                     <th>Дараагийн алхам</th>
                     <th>Огноо</th>
@@ -382,7 +377,6 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
                         <td>{item.title}</td>
                         <td><span className={getRelationType(item) === "vehicle" ? styles.badgeBlue : styles.badge}>{getRelationLabel(item)}</span></td>
                         <td>{getRelatedObject(item)}</td>
-                        <td>{formatMoney(item.amount_approx_total || item.selected_supplier_total)}</td>
                         <td><span className={statusClass(item)}>{getStatusLabel(item)}</span></td>
                         <td>{getNextStep(item)}</td>
                         <td>{formatDate(item.required_date)}</td>
@@ -390,7 +384,7 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={9}>Одоогоор хүсэлт олдсонгүй. Шүүлтүүрээ өөрчлөх эсвэл шинэ хүсэлт үүсгэнэ үү.</td>
+                      <td colSpan={8}>Одоогоор хүсэлт олдсонгүй. Шүүлтүүрээ өөрчлөх эсвэл шинэ хүсэлт үүсгэнэ үү.</td>
                     </tr>
                   )}
                 </tbody>

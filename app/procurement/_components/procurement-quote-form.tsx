@@ -19,6 +19,13 @@ type QuoteValue = {
   amount_total: number;
 };
 
+type RequestLineOption = {
+  id: number;
+  product_name?: string | null;
+  specification?: string | null;
+  quantity: number;
+};
+
 type AddModalState = {
   quoteIndex: number;
   suggestedName: string;
@@ -178,17 +185,25 @@ function SupplierCombobox({
 export function ProcurementQuoteForm({
   requestId,
   packageId,
+  packageName,
+  lines = [],
+  editableLines = [],
   suppliers,
   quotations,
+  redirectPath,
 }: {
   requestId: number;
-  packageId: number;
+  packageId?: number;
+  packageName?: string;
+  lines?: RequestLineOption[];
+  editableLines?: RequestLineOption[];
   suppliers: SupplierOption[];
   quotations: QuoteValue[];
+  redirectPath?: string;
 }) {
   const [supplierOptions, setSupplierOptions] = useState(() => sortSuppliers(uniqueSuppliers(suppliers)));
   const [selectedSupplierIds, setSelectedSupplierIds] = useState<Array<number | "">>(() =>
-    [0, 1, 2].map((index) => quotations[index]?.supplier.id || ""),
+    [quotations[0]?.supplier.id || ""],
   );
   const [formError, setFormError] = useState("");
   const [modalState, setModalState] = useState<AddModalState>(null);
@@ -209,15 +224,18 @@ export function ProcurementQuoteForm({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     const selected = selectedSupplierIds.filter((id): id is number => typeof id === "number" && id > 0);
-    if (selected.length !== 3) {
+    if (selected.length !== 1) {
       event.preventDefault();
-      setFormError("3 нийлүүлэгчийг бүгдийг нь сонгоно уу.");
+      setFormError("Нийлүүлэгчийн нэрийг сонгоно уу.");
       return;
     }
-
-    if (new Set(selected).size !== selected.length) {
-      event.preventDefault();
-      setFormError("3 өөр нийлүүлэгч сонгоно уу.");
+    if ((!packageId && lines.length > 1) || editableLines.length > 1) {
+      const selectedLineIds = new FormData(event.currentTarget).getAll("line_ids").filter(Boolean);
+      if (!selectedLineIds.length) {
+        event.preventDefault();
+        setFormError("Энэ багцад оруулах бараагаа сонгоно уу.");
+        return;
+      }
     }
   }
 
@@ -258,13 +276,71 @@ export function ProcurementQuoteForm({
     <>
       <form action={submitProcurementQuotationsAction} className={styles.quoteForm} onSubmit={handleSubmit}>
         <input type="hidden" name="request_id" value={requestId} />
-        <input type="hidden" name="package_id" value={packageId} />
+        {packageId ? <input type="hidden" name="package_id" value={packageId} /> : null}
+        {redirectPath ? <input type="hidden" name="redirect_path" value={redirectPath} /> : null}
+        {packageId && editableLines.length ? (
+          <section className={styles.inlineDetails}>
+            <h4>Энэ багцад оруулах бараа</h4>
+            <label className={styles.fieldLabel}>
+              Багцын нэр
+              <input name="package_name" defaultValue={packageName || "Нэг багц"} required />
+            </label>
+            <div className={styles.selectableList}>
+              {editableLines.map((line) => (
+                <label key={line.id} className={styles.selectableItem}>
+                  <input type="checkbox" name="line_ids" value={line.id} defaultChecked />
+                  <span>
+                    <strong>{line.product_name || line.specification || `Бараа #${line.id}`}</strong>
+                    <small>Тоо хэмжээ: {line.quantity}</small>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </section>
+        ) : null}
+        {!packageId ? (
+          <section className={styles.inlineDetails}>
+            <h4>Багцлах бараа</h4>
+            {lines.length === 1 ? (
+              <>
+                <input type="hidden" name="package_name" value={lines[0].product_name || "Нэг багц"} />
+                <input type="hidden" name="line_ids" value={lines[0].id} />
+                <div className={styles.selectableList}>
+                  <div className={styles.selectableItem}>
+                    <span>
+                      <strong>{lines[0].product_name || lines[0].specification || `Бараа #${lines[0].id}`}</strong>
+                      <small>Тоо хэмжээ: {lines[0].quantity}</small>
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <label className={styles.fieldLabel}>
+                Багцын нэр
+                <input name="package_name" placeholder="Жишээ: Сэлбэгийн багц 1" required />
+              </label>
+            )}
+            {lines.length > 1 ? (
+              <div className={styles.selectableList}>
+                {lines.map((line) => (
+                  <label key={line.id} className={styles.selectableItem}>
+                    <input type="checkbox" name="line_ids" value={line.id} defaultChecked />
+                    <span>
+                      <strong>{line.product_name || line.specification || `Бараа #${line.id}`}</strong>
+                      <small>Тоо хэмжээ: {line.quantity}</small>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
         <div className={styles.quoteGrid}>
-          {[1, 2, 3].map((index) => {
+          {[1].map((index) => {
             const existing = quotations[index - 1];
             return (
               <article key={index} className={styles.quoteCard}>
-                <h3>{index}-р нийлүүлэгч</h3>
+                <h3>Нийлүүлэгчийн нэхэмжлэх</h3>
                 <SupplierCombobox
                   key={`${index}-${selectedSupplierIds[index - 1] || "empty"}`}
                   index={index}
@@ -273,12 +349,9 @@ export function ProcurementQuoteForm({
                   onSelect={(supplierId) => updateSelectedSupplier(index, supplierId)}
                   onRequestAdd={(suggestedName) => openSupplierModal(index, suggestedName)}
                 />
+                <input type="hidden" name={`amount_total_${index}`} value={Math.max(1, Math.round(existing?.amount_total || 0))} />
                 <label className={styles.fieldLabel}>
-                  Нийт үнийн дүн
-                  <input type="number" name={`amount_total_${index}`} defaultValue={existing?.amount_total || ""} min="0" required />
-                </label>
-                <label className={styles.fieldLabel}>
-                  Invoice файл
+                  Нэхэмжлэхийн зураг
                   <input type="file" name={`quote_file_${index}`} required />
                 </label>
               </article>
@@ -286,8 +359,8 @@ export function ProcurementQuoteForm({
           })}
         </div>
         {formError ? <p className={styles.formError}>{formError}</p> : null}
-        <p className={styles.helperText}>Хамгийн бага үнийн санал автоматаар сонгогдоно.</p>
-        <button type="submit" className={styles.primaryButton}>Санал хадгалах</button>
+        <p className={styles.helperText}>Урьдчилан сонгосон нийлүүлэгчийн нэр болон нэхэмжлэхийн зургийг оруулна.</p>
+        <button type="submit" className={styles.primaryButton}>Нэхэмжлэх хадгалах</button>
       </form>
 
       {modalState ? (

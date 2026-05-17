@@ -4,6 +4,7 @@ import { CheckCircle2, FileText, PackagePlus, Trash2 } from "lucide-react";
 
 import { ProcurementShell } from "@/app/procurement/_components/procurement-shell";
 import { ProcurementQuoteForm } from "@/app/procurement/_components/procurement-quote-form";
+import { ProcurementAttachmentPreview } from "@/app/procurement/_components/procurement-attachment-preview";
 import {
   createProcurementSupplierAction,
   deleteProcurementPackageAction,
@@ -34,8 +35,8 @@ type PageProps = {
 const STATE_LABELS: Record<string, string> = {
   draft: "Ноорог",
   submitted: "Илгээсэн",
-  quote: "Багц, үнийн санал бүртгэж байна",
-  quote_collection: "Багц, үнийн санал бүртгэж байна",
+  quote: "Багц, нэхэмжлэх бүртгэж байна",
+  quote_collection: "Багц, нэхэмжлэх бүртгэж байна",
   finance_review: "Санхүүгийн хяналт",
   admin_review: "Захиргааны хяналт",
   ceo_decision: "CEO шийдвэр",
@@ -50,10 +51,6 @@ const STATE_LABELS: Record<string, string> = {
 
 function getValue(value?: string | string[]) {
   return Array.isArray(value) ? value[0] || "" : value || "";
-}
-
-function formatMoney(value: number) {
-  return `${new Intl.NumberFormat("mn-MN").format(value || 0)}₮`;
 }
 
 function formatDate(value?: string | null) {
@@ -117,14 +114,9 @@ function packageRows(packages: ProcurementPackage[]) {
     (summary, item) => ({
       items: summary.items + item.lines.length,
       quantity: summary.quantity + item.total_quantity,
-      amount: summary.amount + item.amount_total,
     }),
-    { items: 0, quantity: 0, amount: 0 },
+    { items: 0, quantity: 0 },
   );
-}
-
-function attachmentUrl(attachmentId: number) {
-  return `/api/odoo/attachments/${attachmentId}`;
 }
 
 function supplierInvoiceLinks(item: ProcurementRequestDetail) {
@@ -208,7 +200,6 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
   const markContractAction = findAction(item.available_actions, "mark_contract_signed");
   const markPaidAction = findAction(item.available_actions, "mark_paid");
   const markReceivedAction = findAction(item.available_actions, "mark_received");
-  const markDoneAction = findAction(item.available_actions, "mark_done");
   const cancelAction = findAction(item.available_actions, "cancel");
   const selectedQuotation = item.quotations.find((quotation) => quotation.is_selected);
   const packages = item.packages || [];
@@ -248,18 +239,17 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
   const canManageWorkflow = !isDepartmentHeadView;
   const canManagePackages = canManageWorkflow && Boolean(submitQuotesAction || procurementUser.flags.storekeeper || procurementUser.flags.admin);
   const canRecordPackagePayment = canManageWorkflow && (procurementUser.flags.finance || procurementUser.flags.admin || Boolean(markPaidAction));
-  const headerAmount = focusedPackage ? focusedPackage.amount_total : totals.amount || item.selected_supplier_total || item.amount_approx_total;
   const isHighValueFlow = focusedPackage ? focusedPackage.is_over_threshold : item.is_over_threshold;
   const flowLabel = focusedPackage
     ? focusedPackage.is_over_threshold
-      ? "1,000,000₮-өөс дээш"
-      : "1,000,000₮ буюу түүнээс доош"
-    : item.flow_type?.label || (item.is_over_threshold ? "1,000,000₮-өөс дээш" : "Урсгал тодорхойгүй");
+      ? "Гэрээтэй процесс"
+      : "Энгийн процесс"
+    : item.flow_type?.label || (item.is_over_threshold ? "Гэрээтэй процесс" : "Урсгал тодорхойгүй");
   const timeline = [
     { label: "Хүсэлт", active: true, note: formatDate(item.required_date) },
     { label: "Багц үүсгэх", active: visiblePackages.length > 0, note: focusedPackage ? "Сонгосон багц" : `${packages.length} багц` },
     { label: "Бараа ангилах", active: item.lines.length > 0 && unassignedLines.length === 0, note: `${unassignedLines.length} үлдсэн` },
-    { label: "3 санал", active: visiblePackages.length > 0 && visiblePackages.every((pack) => pack.is_complete), note: focusedPackage ? focusedPackage.name : "Багц бүрээр" },
+    { label: "Нэхэмжлэх", active: visiblePackages.length > 0 && visiblePackages.every((pack) => pack.is_complete), note: focusedPackage ? focusedPackage.name : "Багц бүрээр" },
     { label: "Дараагийн шат", active: item.state.code !== "submitted" && item.state.code !== "quote" && item.state.code !== "quote_collection", note: getStatusLabel(item) },
   ];
 
@@ -285,17 +275,13 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
                   <span className={visiblePackages.every((pack) => pack.is_complete) && visiblePackages.length ? styles.badge : styles.badgeOutline}>
                     {visiblePackages.filter((pack) => pack.is_complete).length}/{visiblePackages.length} багц бэлэн
                   </span>
-                  {visiblePackages.length ? <span className={styles.badgeOutline}>{lowValuePackages.length} бага дүн</span> : null}
-                  {visiblePackages.length ? <span className={styles.badgeWarning}>{highValuePackages.length} өндөр дүн</span> : null}
+                  {visiblePackages.length ? <span className={styles.badgeOutline}>{lowValuePackages.length} энгийн багц</span> : null}
+                  {visiblePackages.length ? <span className={styles.badgeWarning}>{highValuePackages.length} гэрээтэй багц</span> : null}
                 </div>
                 <h2>{focusedPackage?.name || item.title}</h2>
                 <p className={styles.subtleText}>
                   {focusedPackage ? focusedPackage.note || `${item.name} · ${item.title}` : item.description || "Тайлбар оруулаагүй байна."}
                 </p>
-              </div>
-              <div className={styles.amountBlock}>
-                <strong>{formatMoney(headerAmount)}</strong>
-                <span>{focusedPackage ? "Тухайн багцын хамгийн бага санал" : "Багцуудын хамгийн бага саналын нийлбэр"}</span>
               </div>
             </div>
             <div className={styles.flowTimeline}>
@@ -373,7 +359,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
             <div className={styles.sectionHeader}>
               <div>
                 <h2>Багцууд</h2>
-                <p>{focusedPackage ? "Сонгосон багцын санал, нэхэмжлэх, төлбөрийн мэдээлэл." : "Багц бүрийн бараа, 3 нийлүүлэгчийн санал, хамгийн бага үнийн дүн."}</p>
+                <p>{focusedPackage ? "Сонгосон багцын нэхэмжлэх, төлбөрийн мэдээлэл." : "Багц бүрийн бараа болон нийлүүлэгчийн нэхэмжлэх."}</p>
               </div>
               <span className={styles.badge}>{visiblePackages.length} багц</span>
             </div>
@@ -401,7 +387,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
             <div className={styles.sectionHeader}>
               <div>
                 <h2>Бүх багцууд - дүгнэлт</h2>
-                <p>Дараагийн шат руу илгээх нийт дүн нь багц бүрийн хамгийн бага саналаар тооцогдоно.</p>
+                <p>Багц бүрийн бараа болон нэхэмжлэх бүртгэлийн төлөв.</p>
               </div>
             </div>
             <div className={styles.tableShell}>
@@ -412,8 +398,6 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
                     <th>Багц</th>
                     <th>Бараа</th>
                     <th>Нийт тоо</th>
-                    <th>Саналын дүн</th>
-                    <th>Хамгийн бага</th>
                     <th>Төлөв</th>
                   </tr>
                 </thead>
@@ -424,20 +408,16 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
                       <td>{pack.name}</td>
                       <td>{pack.lines.length}</td>
                       <td>{pack.total_quantity}</td>
-                      <td>{pack.quotations.map((quote) => formatMoney(quote.amount_total)).join(" / ") || "-"}</td>
-                      <td><strong>{formatMoney(pack.amount_total)}</strong></td>
                       <td><span className={pack.is_complete ? styles.badge : styles.badgeWarning}>{pack.is_complete ? "Дууссан" : "Дутуу"}</span></td>
                     </tr>
                   ))}
-                  {!packages.length ? <tr><td colSpan={7}>Багцын мэдээлэл алга.</td></tr> : null}
+                  {!packages.length ? <tr><td colSpan={5}>Багцын мэдээлэл алга.</td></tr> : null}
                 </tbody>
                 <tfoot>
                   <tr>
                     <td colSpan={2}>Нийт</td>
                     <td>{totals.items}</td>
                     <td>{totals.quantity}</td>
-                    <td />
-                    <td><strong>{formatMoney(totals.amount)}</strong></td>
                     <td />
                   </tr>
                 </tfoot>
@@ -457,22 +437,29 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
                     </div>
                     <p className={styles.subtleText}>{document.note || "Тайлбаргүй"}</p>
                     {document.attachments.some((attachment) => !invoiceAttachmentIds.has(attachment.id)) ? (
-                      <ul className={styles.attachmentList}>
+                      <div className={styles.documentLinkGrid}>
                         {document.attachments.filter((attachment) => !invoiceAttachmentIds.has(attachment.id)).map((attachment) => (
-                          <li key={attachment.id}><FileText aria-hidden /> {attachment.name}</li>
+                          <ProcurementAttachmentPreview
+                            key={attachment.id}
+                            attachment={attachment}
+                            title={document.document_type.label}
+                            note={document.note}
+                          />
                         ))}
-                      </ul>
+                      </div>
                     ) : null}
                   </article>
                 ))}
-                {visibleAttachments.map((attachment) => (
-                  <article key={attachment.id} className={styles.documentCard}>
-                    <div className={styles.documentHeader}>
-                      <strong>{attachment.name}</strong>
-                      <span className={styles.badgeOutline}>{attachment.mimetype || "Файл"}</span>
-                    </div>
-                  </article>
-                ))}
+                <div className={styles.documentLinkGrid}>
+                  {visibleAttachments.map((attachment) => (
+                    <ProcurementAttachmentPreview
+                      key={attachment.id}
+                      attachment={attachment}
+                      title={attachment.name}
+                      note={attachment.mimetype || "Файл"}
+                    />
+                  ))}
+                </div>
               </div>
             ) : (
               <div className={styles.emptyState}><strong>Баримт бичиг хавсаргаагүй байна.</strong></div>
@@ -542,7 +529,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
               <p className={styles.subtleText}>
                 {missingCeoOrderPackages.length
                   ? `${missingCeoOrderPackages.length} багцын тушаал дутуу байна.`
-                  : "Бүх 1 саяас дээш багцын тушаал бүртгэгдсэн байна."}
+                  : "Бүх гэрээтэй багцын тушаал бүртгэгдсэн байна."}
               </p>
               {highValuePackages.map((pack) => (
                 <PackageCeoOrderForm key={pack.id} requestId={item.id} pack={pack} />
@@ -557,7 +544,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
                 Сонгох нийлүүлэгч
                 <select name="selected_quotation_id" defaultValue={selectedQuotation?.id || ""}>
                   {item.quotations.map((quotation) => (
-                    <option key={quotation.id} value={quotation.id}>{quotation.supplier.name} - {formatMoney(quotation.amount_total)}</option>
+                    <option key={quotation.id} value={quotation.id}>{quotation.supplier.name}</option>
                   ))}
                 </select>
               </label>
@@ -588,24 +575,24 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
           {canRecordPackagePayment && visiblePackages.length && payablePackages.length ? (
             <section className={styles.actionCard}>
               <h3>Төлбөр бүртгэх</h3>
-              <p className={styles.subtleText}>Төлөх багцын доорх 3 нэхэмжлэхээс сонгоод төлбөр бүртгэнэ.</p>
+              <p className={styles.subtleText}>Төлөх багцын нэхэмжлэхийг сонгоод төлбөр бүртгэнэ.</p>
               <a href="#packages" className={styles.secondaryButton}>Багц руу очих</a>
             </section>
           ) : null}
-          {markPaidAction && canManageWorkflow && !packages.length ? (
+          {markPaidAction && canManageWorkflow && procurementUser.flags.finance && item.payment_status.code !== "payment_recorded" && !packages.length ? (
             <RequestPaymentForm requestId={item.id} item={item} selectedQuotation={selectedQuotation} />
           ) : null}
-          {markReceivedAction && canManageWorkflow ? (
+          {(markReceivedAction || item.payment_status.code === "payment_recorded" || receivablePackages.length) && canManageWorkflow && procurementUser.flags.storekeeper ? (
             visiblePackages.length ? (
               <section className={styles.actionCard}>
-                <h3>Багц хүлээн авах</h3>
+                <h3>Хүлээлгэн өгөх</h3>
                 {receivablePackages.length ? (
                   receivablePackages.map((pack) => (
                     <DocumentActionForm
                       key={pack.id}
                       requestId={item.id}
                       action="mark_received"
-                      label={`${pack.name} хүлээн авах`}
+                      label={`${pack.name} хүлээлгэн өгсөн`}
                       packageId={pack.id}
                     />
                   ))
@@ -614,11 +601,8 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
                 )}
               </section>
             ) : (
-              <DocumentActionForm requestId={item.id} action="mark_received" label="Хүлээн авалт батлах" />
+              <DocumentActionForm requestId={item.id} action="mark_received" label="Хүлээлгэн өгсөн" />
             )
-          ) : null}
-          {markDoneAction && canManageWorkflow ? (
-            <WorkflowButton requestId={item.id} action="mark_done" label="Дуусгах" />
           ) : null}
           {cancelAction && canManageWorkflow ? (
             <form action={runProcurementWorkflowAction} className={styles.actionCard}>
@@ -654,7 +638,6 @@ function LineTable({ lines }: { lines: ProcurementLine[] }) {
             <th>Нэр</th>
             <th>Тодорхойлолт</th>
             <th>Тоо</th>
-            <th>Нэгж үнэ</th>
             <th>Багц</th>
           </tr>
         </thead>
@@ -665,10 +648,9 @@ function LineTable({ lines }: { lines: ProcurementLine[] }) {
               <td>{line.product_name || "Нэргүй мөр"}</td>
               <td>{line.specification || "-"}</td>
               <td>{line.quantity} {line.uom?.name || ""}</td>
-              <td>{formatMoney(line.approx_unit_price)}</td>
               <td>{line.package_id ? "Багцад орсон" : "Багцгүй"}</td>
             </tr>
-          )) : <tr><td colSpan={6}>Хүсэлтийн мөр бүртгэгдээгүй байна.</td></tr>}
+          )) : <tr><td colSpan={5}>Хүсэлтийн мөр бүртгэгдээгүй байна.</td></tr>}
         </tbody>
       </table>
     </div>
@@ -723,13 +705,12 @@ function PackageCard({
           <h3>{pack.name}</h3>
           {pack.note ? <p className={styles.subtleText}>{pack.note}</p> : null}
         </div>
-        <strong>{formatMoney(pack.amount_total)}</strong>
       </div>
 
       <div className={styles.packageMetaGrid}>
         <Info label="Сонгосон бараа" value={`${pack.lines.length}`} />
         <Info label="Нийт тоо" value={`${pack.total_quantity}`} />
-        <Info label="Санал" value={`${pack.quote_count}/3`} />
+        <Info label="Нэхэмжлэх" value={`${pack.quote_count}`} />
       </div>
 
       {canManage ? (
@@ -758,13 +739,15 @@ function PackageCard({
           {visibleQuotes.map((quote) => (
             <div key={quote.id} className={`${styles.quoteMiniCard} ${quote.is_selected ? styles.quoteMiniCardSelected : ""}`}>
               <strong>{quote.supplier.name}</strong>
-              <span>{formatMoney(quote.amount_total)}</span>
               {quote.attachments.length ? (
-                <span className={styles.invoiceLinkList}>
+                <span className={styles.invoicePreviewList}>
                   {quote.attachments.map((attachment, index) => (
-                    <a key={attachment.id} href={attachmentUrl(attachment.id)} target="_blank" rel="noreferrer" className={styles.invoiceLink}>
-                      Нэхэмжлэх {quote.attachments.length > 1 ? index + 1 : ""}
-                    </a>
+                    <ProcurementAttachmentPreview
+                      key={attachment.id}
+                      attachment={attachment}
+                      title={`Нэхэмжлэх${quote.attachments.length > 1 ? ` ${index + 1}` : ""}`}
+                      note={quote.supplier.name}
+                    />
                   ))}
                 </span>
               ) : (
@@ -779,8 +762,15 @@ function PackageCard({
 
       {canManage ? (
         <details className={styles.inlineDetails} open={!pack.is_complete}>
-          <summary>3 нийлүүлэгчийн санал оруулах</summary>
-          <ProcurementQuoteForm requestId={requestId} packageId={pack.id} suppliers={suppliers} quotations={pack.quotations} />
+          <summary>Нэхэмжлэх оруулах</summary>
+          <ProcurementQuoteForm
+            requestId={requestId}
+            packageId={pack.id}
+            packageName={pack.name}
+            editableLines={!pack.is_complete ? editableLines : []}
+            suppliers={suppliers}
+            quotations={pack.quotations}
+          />
         </details>
       ) : null}
     </article>
@@ -798,7 +788,7 @@ function PackageCeoOrderForm({ requestId, pack }: { requestId: number; pack: Pro
       <div className={styles.tableRowHeader}>
         <div>
           <strong>{pack.name}</strong>
-          <p className={styles.subtleText}>{formatMoney(pack.amount_total)} · {pack.lines.length} бараа</p>
+          <p className={styles.subtleText}>{pack.lines.length} бараа</p>
         </div>
         <span className={pack.ceo_order_ready ? styles.badge : styles.badgeWarning}>
           {pack.ceo_order_ready ? "Илгээгдсэн" : "Хүлээгдэж буй"}
@@ -810,7 +800,7 @@ function PackageCeoOrderForm({ requestId, pack }: { requestId: number; pack: Pro
           <option value="">Сонгох</option>
           {pack.quotations.map((quotation) => (
             <option key={quotation.id} value={quotation.id}>
-              {quotation.supplier.name} - {formatMoney(quotation.amount_total)}
+              {quotation.supplier.name}
             </option>
           ))}
         </select>
@@ -849,12 +839,12 @@ function RequestPaymentForm({
           Төлөх санал
           <select name="selected_quotation_id" defaultValue={selectedQuotation?.id || ""}>
             {item.quotations.map((quotation) => (
-              <option key={quotation.id} value={quotation.id}>{quotation.supplier.name} - {formatMoney(quotation.amount_total)}</option>
+              <option key={quotation.id} value={quotation.id}>{quotation.supplier.name}</option>
             ))}
           </select>
         </label>
       ) : null}
-      <label className={styles.fieldLabel}>Төлсөн дүн<input type="number" name="paid_amount" defaultValue={item.paid_amount || ""} /></label>
+      <input type="hidden" name="paid_amount" value={Math.max(1, Math.round(item.paid_amount || item.selected_supplier_total || item.amount_approx_total || 0))} />
       <label className={styles.fieldLabel}>Гүйлгээний дугаар<input name="payment_reference" defaultValue={item.payment_reference || ""} /></label>
       <label className={styles.fieldLabel}>Төлсөн огноо<input type="date" name="payment_date" defaultValue={item.payment_date || ""} /></label>
       <label className={styles.fieldLabel}>Тайлбар<textarea name="note" defaultValue={item.payment_note || ""} /></label>
@@ -866,7 +856,7 @@ function RequestPaymentForm({
 
 function PackagePaymentForm({ requestId, pack }: { requestId: number; pack: ProcurementPackage }) {
   const selectedQuote = pack.ceo_selected_quotation || pack.lowest_quotation;
-  const routeLabel = pack.is_over_threshold ? "1 саяас дээш процесс" : "1 саяас доош процесс";
+  const routeLabel = pack.is_over_threshold ? "Гэрээтэй процесс" : "Энгийн процесс";
   const paymentQuotes = pack.is_over_threshold ? (selectedQuote ? [selectedQuote] : []) : pack.quotations;
   const defaultQuotationId = selectedQuote?.id || pack.lowest_quotation?.id || pack.quotations[0]?.id || "";
 
@@ -880,10 +870,10 @@ function PackagePaymentForm({ requestId, pack }: { requestId: number; pack: Proc
         <div>
           <strong>{pack.name}</strong>
           <p className={styles.subtleText}>
-            {routeLabel} · {pack.is_over_threshold ? "Захирлын сонгосон нэхэмжлэх" : "3 нэхэмжлэхээс сонгоно"}
+            {routeLabel} · {pack.is_over_threshold ? "Захирлын сонгосон нэхэмжлэх" : "Нэхэмжлэх сонгоно"}
           </p>
         </div>
-        <span className={pack.is_over_threshold ? styles.badgeWarning : styles.badge}>{formatMoney(pack.amount_total)}</span>
+        <span className={pack.is_over_threshold ? styles.badgeWarning : styles.badge}>{routeLabel}</span>
       </div>
       {paymentQuotes.length ? (
         <div className={styles.quoteList}>
@@ -893,13 +883,15 @@ function PackagePaymentForm({ requestId, pack }: { requestId: number; pack: Proc
                 <input type="radio" name="selected_quotation_id" value={quote.id} defaultChecked={quote.id === defaultQuotationId} />
               ) : null}
               <strong>{quote.supplier.name}</strong>
-              <span>{formatMoney(quote.amount_total)}</span>
               {quote.attachments.length ? (
-                <span className={styles.invoiceLinkList}>
+                <span className={styles.invoicePreviewList}>
                   {quote.attachments.map((attachment, index) => (
-                    <a key={attachment.id} href={attachmentUrl(attachment.id)} target="_blank" rel="noreferrer" className={styles.invoiceLink}>
-                      Нэхэмжлэх {quote.attachments.length > 1 ? index + 1 : ""}
-                    </a>
+                    <ProcurementAttachmentPreview
+                      key={attachment.id}
+                      attachment={attachment}
+                      title={`Нэхэмжлэх${quote.attachments.length > 1 ? ` ${index + 1}` : ""}`}
+                      note={quote.supplier.name}
+                    />
                   ))}
                 </span>
               ) : (
@@ -911,7 +903,7 @@ function PackagePaymentForm({ requestId, pack }: { requestId: number; pack: Proc
       ) : (
         <div className={styles.emptyState}><strong>Төлөх нэхэмжлэх олдсонгүй.</strong></div>
       )}
-      <label className={styles.fieldLabel}>Төлсөн дүн<input type="number" name="paid_amount" defaultValue={pack.paid_amount || pack.amount_total || ""} /></label>
+      <input type="hidden" name="paid_amount" value={Math.max(1, Math.round(pack.paid_amount || pack.amount_total || 0))} />
       <label className={styles.fieldLabel}>Гүйлгээний дугаар<input name="payment_reference" defaultValue={pack.payment_reference || ""} /></label>
       <label className={styles.fieldLabel}>Төлсөн огноо<input type="date" name="payment_date" defaultValue={pack.payment_date || ""} /></label>
       <label className={styles.fieldLabel}>Тайлбар<textarea name="note" defaultValue={pack.payment_note || ""} /></label>

@@ -75,10 +75,6 @@ function belongsToLane(item: ProcurementRequestSummary, lane: "packages" | "deci
   return item.payment_status.code === "payment_recorded" && item.receipt_status.code !== "received";
 }
 
-function formatMoney(value: number) {
-  return `${new Intl.NumberFormat("mn-MN").format(value || 0)}₮`;
-}
-
 function packageStatus(item: ProcurementRequestSummary) {
   if (!item.package_count) return "Багц үүсгээгүй";
   return item.packages_complete ? `${item.package_count} багц дууссан` : `${item.package_count} багц дутуу`;
@@ -141,7 +137,7 @@ export default async function AssignedProcurementPage() {
   const readyPackageCount = items.filter((item) => item.packages_complete).length;
   const unresolvedCount = items.filter((item) => !item.paid || !item.received).length;
   const lanes = [
-    { key: "packages" as const, title: "Багц, 3 үнийн санал", badge: "Нярав", items: items.filter((item) => belongsToLane(item, "packages")) },
+    { key: "packages" as const, title: "Багц, нэхэмжлэх", badge: "Нярав", items: items.filter((item) => belongsToLane(item, "packages")) },
     { key: "decision" as const, title: "Шийдвэр / гэрээ", badge: "Захиргаа", items: items.filter((item) => belongsToLane(item, "decision")) },
     { key: "payment" as const, title: "Төлбөр", badge: "Санхүү", items: items.filter((item) => belongsToLane(item, "payment")) },
     { key: "receiving" as const, title: "Хүлээн авалт", badge: "Нярав", items: items.filter((item) => belongsToLane(item, "receiving")) },
@@ -171,7 +167,7 @@ export default async function AssignedProcurementPage() {
           <div>
             <span>Багц хийх</span>
             <strong>{packageCount}</strong>
-            <small>Бараа ангилах, 3 санал оруулах шат</small>
+            <small>Бараа ангилах, нэхэмжлэх оруулах шат</small>
           </div>
         </article>
         <article className={styles.kpiCard}>
@@ -226,7 +222,6 @@ export default async function AssignedProcurementPage() {
                         </span>
                       </div>
                       <div className={styles.metaList}>
-                        <span><strong>Дүн:</strong> {formatMoney(pack.amount_total)}</span>
                         <span><strong>Бараа:</strong> {pack.lines.length}</span>
                         <span><strong>Ирсэн:</strong> {item.date_quotation_submitted || "-"}</span>
                         <span><strong>Захиалагч:</strong> {item.requester?.name || "-"}</span>
@@ -235,7 +230,7 @@ export default async function AssignedProcurementPage() {
                   ))
                 ) : (
                   <div className={styles.emptyState}>
-                    <strong>1 саяас дээш тушаал хүлээж буй багц алга</strong>
+                    <strong>Тушаал хүлээж буй гэрээтэй багц алга</strong>
                   </div>
                 )}
               </div>
@@ -254,7 +249,6 @@ export default async function AssignedProcurementPage() {
                         </span>
                       </div>
                       <div className={styles.metaList}>
-                        <span><strong>Дүн:</strong> {formatMoney(pack.amount_total)}</span>
                         <span><strong>Төлөв:</strong> {pack.route_state?.label || "-"}</span>
                         <span><strong>Бараа:</strong> {pack.lines.length}</span>
                         <span><strong>Захиалагч:</strong> {item.requester?.name || "-"}</span>
@@ -289,7 +283,6 @@ export default async function AssignedProcurementPage() {
                           <span><strong>Хэлтэс:</strong> {item.department?.name || "-"}</span>
                           <span><strong>Төрөл:</strong> {item.vehicle?.name ? "Авто сэлбэг / засвар" : "Төслийн худалдан авалт"}</span>
                           <span><strong>Багц:</strong> {packageStatus(item)}</span>
-                          <span><strong>Дүн:</strong> {formatMoney(item.selected_supplier_total || item.amount_approx_total)}</span>
                           <span><strong>Хариуцагч:</strong> {item.current_responsible?.name || "-"}</span>
                         </div>
                       </Link>
@@ -312,7 +305,7 @@ export default async function AssignedProcurementPage() {
             <div className={styles.statusGuide}>
               <div className={styles.statusGuideItem}><span><span className={styles.statusDot} /> Хүсэлт сонгох</span><span className={styles.badge}>1</span></div>
               <div className={styles.statusGuideItem}><span><span className={styles.statusDot} /> Багц үүсгэх</span><span className={styles.badge}>2</span></div>
-              <div className={styles.statusGuideItem}><span><span className={`${styles.statusDot} ${styles.dotWarning}`} /> 3 санал + invoice</span><span className={styles.badgeWarning}>3</span></div>
+              <div className={styles.statusGuideItem}><span><span className={`${styles.statusDot} ${styles.dotWarning}`} /> Нэхэмжлэх + зураг</span><span className={styles.badgeWarning}>3</span></div>
               <div className={styles.statusGuideItem}><span><span className={`${styles.statusDot} ${styles.dotBlue}`} /> Дүгнэлт илгээх</span><span className={styles.badgeBlue}>4</span></div>
               <div className={styles.statusGuideItem}><span><span className={styles.statusDot} /> Хүлээн авах</span><span className={styles.badge}>5</span></div>
             </div>

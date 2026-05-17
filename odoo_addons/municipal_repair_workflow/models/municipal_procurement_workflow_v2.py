@@ -397,7 +397,7 @@ class MunicipalProcurementRequest(models.Model):
 
     def _valid_quote_lines(self):
         self.ensure_one()
-        return self.quote_line_ids.filtered(lambda quote: quote.supplier_id and quote.amount_total > 0)
+        return self.quote_line_ids.filtered(lambda quote: quote.supplier_id)
 
     def _complete_packages(self):
         self.ensure_one()
@@ -416,7 +416,7 @@ class MunicipalProcurementRequest(models.Model):
             request._ensure_all_lines_packaged()
             incomplete = request.package_ids.filtered(lambda package: not package.is_complete)
             if incomplete:
-                raise UserError("Every package must have three supplier quotes with invoice attachments.")
+                raise UserError("Every package must have one supplier invoice with an attachment.")
 
     def _ensure_procurement_lines(self):
         for request in self:
@@ -428,8 +428,8 @@ class MunicipalProcurementRequest(models.Model):
             if request.package_ids:
                 request._ensure_complete_packages()
                 continue
-            if len(request._valid_quote_lines()) < 3:
-                raise UserError("At least three supplier quotes are required before supplier selection.")
+            if len(request._valid_quote_lines()) < 1:
+                raise UserError("At least one supplier invoice is required before supplier selection.")
 
     def _ensure_quote_evidence(self):
         for request in self:
@@ -438,12 +438,9 @@ class MunicipalProcurementRequest(models.Model):
                     package._ensure_three_quotes()
                     package._ensure_quote_evidence()
                 continue
-            supplier_ids = [quote.supplier_id.id for quote in request._valid_quote_lines()]
-            if len(supplier_ids) != len(set(supplier_ids)):
-                raise UserError("Supplier quotes must be from three different suppliers.")
             missing = request._valid_quote_lines().filtered(lambda quote: not quote.attachment_ids)
             if missing:
-                raise UserError("Quote attachments or evidence are required.")
+                raise UserError("Invoice attachment or evidence is required.")
 
     def _ensure_selected_quote(self):
         for request in self:
@@ -455,8 +452,6 @@ class MunicipalProcurementRequest(models.Model):
                 raise UserError("A selected supplier quote is required.")
             if len(selected) > 1:
                 raise UserError("Only one supplier quote can be selected.")
-            if selected.amount_total <= 0:
-                raise UserError("Selected quote amount must be greater than zero.")
 
     def _ensure_high_value_payment_ready(self):
         for request in self:
@@ -481,7 +476,7 @@ class MunicipalProcurementRequest(models.Model):
         self.ensure_one()
         if package.lowest_quote_id:
             return package.lowest_quote_id.amount_total
-        valid_quotes = package.quotation_ids.filtered(lambda quote: quote.supplier_id and quote.amount_total > 0)
+        valid_quotes = package.quotation_ids.filtered(lambda quote: quote.supplier_id)
         if valid_quotes:
             return min(valid_quotes.mapped("amount_total") or [0])
         return package.amount_total or 0
@@ -1070,7 +1065,7 @@ class MunicipalProcurementRequest(models.Model):
         if self.state in ("submitted", "quote", "quote_collection") and (flags["storekeeper"] or flags["admin"]):
             add("submit_quotations")
             if (self.package_ids and not self.package_ids.filtered(lambda package: not package.is_complete)) or (
-                not self.package_ids and len(self._valid_quote_lines()) >= 3 and self.selected_quote_id
+                not self.package_ids and len(self._valid_quote_lines()) >= 1 and self.selected_quote_id
             ):
                 add("move_to_finance_review")
         if self.package_ids:
@@ -1564,6 +1559,15 @@ class MunicipalProcurementRequest(models.Model):
                 )
             )
         request = self.create(vals)
+        if len(request.line_ids) == 1 and not request.package_ids:
+            package = self.env["municipal.procurement.package"].sudo().create(
+                {
+                    "request_id": request.id,
+                    "name": request.line_ids[0].description or request.name or "Нэг багц",
+                    "note": "Нэг бараатай хүсэлтээс автоматаар үүссэн багц",
+                }
+            )
+            request.line_ids.write({"package_id": package.id})
         return request
 
     def _api_submit_quotations(self, payload):
@@ -1581,15 +1585,17 @@ class MunicipalProcurementRequest(models.Model):
             return True
 
         quotations = payload.get("quotations") or []
-        if len(quotations) < 3:
-            raise UserError("Three supplier quotes are required.")
+        if len(quotations) < 1:
+            raise UserError("Supplier invoice is required.")
         for request in self:
             request.quote_line_ids.unlink()
             for index, quote_payload in enumerate(quotations, start=1):
                 supplier_id = int(quote_payload.get("supplier_id") or 0)
                 if not supplier_id:
-                    raise UserError("Supplier is required for every quote.")
+                    raise UserError("Supplier is required for the invoice.")
                 attachment_ids = quote_payload.get("attachment_ids") or []
+                if not attachment_ids:
+                    raise UserError("Invoice attachment is required.")
                 self.env["municipal.procurement.quote"].create(
                     {
                         "procurement_id": request.id,
@@ -1933,34 +1939,29 @@ class MunicipalProcurementPackage(models.Model):
     )
     def _compute_package_totals(self):
         for package in self:
-            valid_quotes = package.quotation_ids.filtered(lambda quote: quote.supplier_id and quote.amount_total > 0)
+            valid_quotes = package.quotation_ids.filtered(lambda quote: quote.supplier_id)
             lowest = valid_quotes.sorted(lambda quote: (quote.amount_total, quote.id))[:1]
-            supplier_ids = valid_quotes.mapped("supplier_id").ids
             package.quote_count = len(valid_quotes)
             package.total_quantity = sum(package.line_ids.mapped("requested_quantity"))
             package.lowest_quote_id = lowest.id if lowest else False
             package.amount_total = lowest.amount_total if lowest else 0
             package.is_complete = (
                 bool(package.line_ids)
-                and len(valid_quotes) >= 3
-                and len(supplier_ids) == len(set(supplier_ids))
+                and bool(valid_quotes)
                 and not valid_quotes.filtered(lambda quote: not quote.attachment_ids)
             )
 
     def _ensure_three_quotes(self):
         for package in self:
-            valid_quotes = package.quotation_ids.filtered(lambda quote: quote.supplier_id and quote.amount_total > 0)
-            if len(valid_quotes) < 3:
-                raise UserError("Every package must have three supplier quotes.")
-            supplier_ids = valid_quotes.mapped("supplier_id").ids
-            if len(supplier_ids) != len(set(supplier_ids)):
-                raise UserError("Package supplier quotes must be from three different suppliers.")
+            valid_quotes = package.quotation_ids.filtered(lambda quote: quote.supplier_id)
+            if len(valid_quotes) < 1:
+                raise UserError("Every package must have a supplier invoice.")
 
     def _ensure_quote_evidence(self):
         for package in self:
-            missing = package.quotation_ids.filtered(lambda quote: quote.supplier_id and quote.amount_total > 0 and not quote.attachment_ids)
+            missing = package.quotation_ids.filtered(lambda quote: quote.supplier_id and not quote.attachment_ids)
             if missing:
-                raise UserError("Every supplier quote must include an invoice attachment.")
+                raise UserError("Every supplier invoice must include an attachment.")
 
     def _select_lowest_quote(self):
         for package in self:
@@ -1980,16 +1981,16 @@ class MunicipalProcurementPackage(models.Model):
     def _api_submit_quotations(self, payload):
         self.ensure_one()
         quotations = payload.get("quotations") or []
-        if len(quotations) < 3:
-            raise UserError("Three supplier quotes are required.")
+        if len(quotations) < 1:
+            raise UserError("Supplier invoice is required.")
         self.quotation_ids.unlink()
         for index, quote_payload in enumerate(quotations, start=1):
             supplier_id = int(quote_payload.get("supplier_id") or 0)
             if not supplier_id:
-                raise UserError("Supplier is required for every quote.")
+                raise UserError("Supplier is required for the invoice.")
             attachment_ids = quote_payload.get("attachment_ids") or []
             if not attachment_ids:
-                raise UserError("Invoice attachment is required for every supplier quote.")
+                raise UserError("Invoice attachment is required.")
             self.env["municipal.procurement.quote"].create(
                 {
                     "procurement_id": self.request_id.id,
@@ -1997,6 +1998,7 @@ class MunicipalProcurementPackage(models.Model):
                     "sequence": index,
                     "supplier_id": supplier_id,
                     "amount_total": float(quote_payload.get("amount_total") or 0),
+                    "is_selected": index == 1,
                     "attachment_ids": [(6, 0, attachment_ids)],
                 }
             )
