@@ -202,7 +202,11 @@ export default async function Home() {
 
   return (
     <Suspense fallback={<LoadingShell />}>
-      <DashboardPageContent session={session} workerMode={workerMode} masterMode={masterMode} />
+      <DashboardPageContent
+        session={session}
+        workerMode={workerMode}
+        masterMode={masterMode}
+      />
     </Suspense>
   );
 }

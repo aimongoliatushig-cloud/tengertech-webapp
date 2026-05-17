@@ -1793,6 +1793,13 @@
   line-height: 1.45;
 }
 
+.projectHeroInfoGrid small {
+  color: var(--ink-700);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .projectHeroSignalCard {
   background: linear-gradient(160deg, rgba(31, 95, 49, 0.96), rgba(74, 154, 93, 0.92));
   color: #f7fcf6;

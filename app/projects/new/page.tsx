@@ -200,6 +200,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
               subtitle="Шинэ ажлын мэдээлэл, хугацаа, хавсралтыг бүртгэх урсгал"
               userName={session.name}
               roleLabel={getRoleLabel(session.role)}
+              departmentScopeName={masterDepartmentName || requestedDepartment}
             />
 
             <section className={styles.heroCard}>

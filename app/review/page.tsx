@@ -365,6 +365,7 @@ export default async function ReviewPage({ searchParams }: PageProps) {
               roleLabel={getRoleLabel(session.role)}
               notificationCount={notificationCount}
               notificationNote={`${newIncomingTasks.length} шинэ ажил, ${visibleReviewTasks.length} хянах ажил байна`}
+              departmentScopeName={scopedDepartmentName}
             />
 
             <section className={shellStyles.heroCard}>

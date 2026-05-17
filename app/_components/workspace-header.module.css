@@ -20,6 +20,26 @@
   display: none;
 }
 
+.headerWithVisual {
+  min-height: 132px;
+  overflow: hidden;
+  padding: 0 24px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 8px;
+  background: #f8fcf8;
+}
+
+.headerWithVisual::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  background:
+    linear-gradient(90deg, rgba(248, 252, 248, 0.98) 0%, rgba(248, 252, 248, 0.86) 44%, rgba(248, 252, 248, 0.28) 100%),
+    var(--workspace-header-image) center right / cover no-repeat;
+  pointer-events: none;
+}
+
 .titleArea {
   position: relative;
   z-index: 1;

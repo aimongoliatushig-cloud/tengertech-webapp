@@ -12,6 +12,7 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
+import { formatManagerDisplayName } from "@/lib/manager-job-titles";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 
 import { buildReportProjectSummaries, getScopedActiveReportTasks } from "./report-flow";
@@ -176,7 +177,7 @@ export default async function ReportProjectPickerPage() {
                           <div className={styles.pickerIdentity}>
                             <strong>{project.name}</strong>
                             <span>{project.departmentName}</span>
-                            <small>Менежер: {project.manager}</small>
+                            <small>{formatManagerDisplayName(project.manager, project.managerJobTitle)}</small>
                           </div>
                           <StagePill label={stage.label} bucket={stage.bucket} />
                         </div>

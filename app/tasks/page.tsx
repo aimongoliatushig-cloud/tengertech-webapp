@@ -43,6 +43,10 @@ import {
   filterProjectsForResponsibleMaster,
   filterTasksForResponsibleMaster,
 } from "@/lib/master-scope";
+import {
+  formatManagerDisplayName,
+  resolveManagerJobTitle,
+} from "@/lib/manager-job-titles";
 import { loadWorkspaceNotificationSummary } from "@/lib/workspace-notifications";
 
 import styles from "./tasks.module.css";
@@ -67,6 +71,7 @@ type TodayProjectSummary = {
   id: number | string;
   name: string;
   manager: string;
+  managerJobTitle?: string;
   departmentName: string;
   deadline: string;
   completion: number;
@@ -295,6 +300,10 @@ function buildTodayProjectSummaries(
         id: linkedProject?.id ?? `today-project-${task.projectName}`,
         name: task.projectName,
         manager: linkedProject?.manager ?? task.leaderName,
+        managerJobTitle: resolveManagerJobTitle(
+          linkedProject?.manager ?? task.leaderName,
+          linkedProject?.managerJobTitle,
+        ),
         departmentName: linkedProject?.departmentName ?? task.departmentName,
         deadline: linkedProject?.deadline ?? task.deadline,
         completion: linkedProject?.completion ?? 0,
@@ -437,6 +446,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 roleLabel={getRoleLabel(session.role)}
                 notificationCount={0}
                 notificationNote="Мэдээлэл түр ачаалсангүй"
+                departmentScopeName={null}
               />
 
               <section className={styles.taskSection}>
@@ -720,6 +730,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 name: string;
                 departmentName: string;
                 manager: string;
+                managerJobTitle: string;
                 href: string;
                 tasks: TaskDirectoryItem[];
               }
@@ -730,6 +741,10 @@ export default async function TasksPage({ searchParams }: PageProps) {
               name: task.projectName,
               departmentName: project?.departmentName ?? task.departmentName,
               manager: project?.manager ?? task.leaderName,
+              managerJobTitle: resolveManagerJobTitle(
+                project?.manager ?? task.leaderName,
+                project?.managerJobTitle,
+              ),
               href: project?.href ?? task.href,
               tasks: [],
             };
@@ -805,6 +820,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 roleLabel={getRoleLabel(session.role)}
                 notificationCount={notificationSummary.unreadCount}
                 notificationNote={taskNotificationNote}
+                departmentScopeName={scopedDepartmentName}
               />
             </div>
 
@@ -1264,7 +1280,12 @@ export default async function TasksPage({ searchParams }: PageProps) {
                             <div className={styles.taskIdentity}>
                               <span>Ажил</span>
                               <strong>{work.name}</strong>
-                              <small>{work.departmentName}</small>
+                              <small>
+                                {work.departmentName}
+                                {work.managerJobTitle
+                                  ? ` · ${formatManagerDisplayName(work.manager, work.managerJobTitle)}`
+                                  : ""}
+                              </small>
                             </div>
                             <span className={styles.workerProgressBadge}>{progress}%</span>
                           </div>

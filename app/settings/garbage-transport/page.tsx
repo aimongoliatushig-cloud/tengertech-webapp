@@ -218,6 +218,7 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
               roleLabel={roleLabel}
               notificationCount={routeData.points.length}
               notificationNote="Хяналтын ажилтан, хогийн цэгийн тохиргоо"
+              departmentScopeName={departmentName}
             />
 
             <section className={styles.hero}>

@@ -17,6 +17,7 @@ import {
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import { filterProjectsForResponsibleMaster } from "@/lib/master-scope";
+import { formatManagerDisplayName } from "@/lib/manager-job-titles";
 import { loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
 import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurement";
 import { loadGarbagePointOptions, loadGarbageSubdistrictOptions, loadProjectDetail } from "@/lib/workspace";
@@ -290,6 +291,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   const projectCollectorNames = Array.from(
     new Set(project.tasks.flatMap((task) => task.collectorNames).filter(Boolean)),
   );
+  const projectManagerDisplayName = formatManagerDisplayName(project.managerName);
   const completionDegrees = Math.round((project.completion / 100) * 360);
   const taskBreakdown = [
     {
@@ -358,6 +360,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
               roleLabel={getRoleLabel(session.role)}
               notificationCount={activeTaskCount}
               notificationNote={`${activeTaskCount} идэвхтэй даалгавар одоогоор явж байна`}
+              departmentScopeName={scopedDepartmentName || project.departmentName}
             />
 
             {errorMessage ? (
@@ -441,8 +444,8 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                         <strong>{project.departmentName}</strong>
                       </div>
                       <div>
-                        <span>Менежер</span>
-                        <strong>{project.managerName || "Тодорхойгүй"}</strong>
+                        <span>Хариуцсан</span>
+                        <strong>{projectManagerDisplayName}</strong>
                       </div>
                       <div>
                         <span>Эхлэх огноо</span>

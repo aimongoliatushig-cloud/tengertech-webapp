@@ -484,6 +484,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 roleLabel={getRoleLabel(session.role)}
                 notificationCount={task.reports.length}
                 notificationNote="Тайлан"
+                departmentScopeName={scopedDepartmentName}
               />
             </div>
 

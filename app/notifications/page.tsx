@@ -415,6 +415,7 @@ export default async function NotificationsPage() {
               roleLabel={getRoleLabel(session.role)}
               notificationCount={unreadCount}
               notificationNote={notificationNote}
+              departmentScopeName={scopedDepartmentName}
             />
 
             <section className={styles.notificationGrid}>

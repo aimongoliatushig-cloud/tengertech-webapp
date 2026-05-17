@@ -7,6 +7,7 @@ import {
   matchesDepartmentGroup,
   normalizeOrganizationUnitName,
 } from "@/lib/department-groups";
+import { resolveManagerJobTitle } from "@/lib/manager-job-titles";
 import type { RoleGroupFlags } from "@/lib/roles";
 import { fixMojibakeText } from "@/lib/text-normalize";
 
@@ -206,6 +207,7 @@ type ProjectCard = {
   name: string;
   managerId?: number | null;
   manager: string;
+  managerJobTitle?: string;
   departmentName: string;
   operationTypeLabel?: string;
   stageLabel: string;
@@ -4587,6 +4589,41 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     return [] as OdooReportRecord[];
   });
 
+  const projectManagerUserIds = Array.from(
+    new Set(
+      projects
+        .map((project) => relationId(project.user_id))
+        .filter((managerId): managerId is number => typeof managerId === "number"),
+    ),
+  );
+  const projectManagerEmployees = projectManagerUserIds.length
+    ? await searchReadAllWithFieldFallback<OdooEmployeeRecord>(
+        uid,
+        "hr.employee",
+        [["user_id", "in", projectManagerUserIds]],
+        [
+          ["user_id", "job_id", "job_title", "active"],
+          ["user_id", "job_id", "job_title"],
+          ["user_id", "job_id"],
+        ],
+        {
+          order: "active desc, id asc",
+        },
+        resolvedConnection,
+      ).catch((error) => {
+        console.warn("Төслийн менежерийн HR албан тушаал уншихад алдаа гарлаа:", error);
+        return [] as OdooEmployeeRecord[];
+      })
+    : [];
+  const managerJobTitleByUserId = new Map<number, string>();
+  for (const employee of projectManagerEmployees) {
+    const userId = relationId(employee.user_id ?? false);
+    const jobTitle = cleanDisplayText(getEmployeeJobTitle(employee));
+    if (userId && jobTitle && !managerJobTitleByUserId.has(userId)) {
+      managerJobTitleByUserId.set(userId, jobTitle);
+    }
+  }
+
   const reportsByTaskId = new Map<number, OdooReportRecord[]>();
   for (const report of reports) {
     const taskId = Array.isArray(report.task_id) ? report.task_id[0] : null;
@@ -4701,6 +4738,10 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       name: project.name,
       managerId: relationId(project.user_id),
       manager: relationName(project.user_id),
+      managerJobTitle: resolveManagerJobTitle(
+        relationName(project.user_id),
+        managerJobTitleByUserId.get(relationId(project.user_id) ?? 0) ?? "",
+      ),
       departmentName:
         projectTaskDepartments[0] ??
         projectDepartmentById.get(project.id) ??

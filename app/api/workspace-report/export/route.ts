@@ -5,6 +5,7 @@ import {
   filterProjectsForResponsibleMaster,
   filterTasksForResponsibleMaster,
 } from "@/lib/master-scope";
+import { formatManagerDisplayName } from "@/lib/manager-job-titles";
 import { executeOdooKw, loadMunicipalSnapshot } from "@/lib/odoo";
 import { loadProjectDetail, loadTaskDetail, type ProjectDetail, type TaskDetail } from "@/lib/workspace";
 
@@ -205,7 +206,7 @@ function renderProjectReport(project: ProjectDetail) {
     <div class="meta">
       <div><strong>Ажил:</strong> ${escapeHtml(project.name)}</div>
       <div><strong>Хэлтэс:</strong> ${escapeHtml(project.departmentName)}</div>
-      <div><strong>Менежер:</strong> ${escapeHtml(project.managerName)}</div>
+      <div><strong>Хариуцсан:</strong> ${escapeHtml(formatManagerDisplayName(project.managerName))}</div>
       <div><strong>Явц:</strong> ${project.completion}%</div>
       <div><strong>Эхлэх огноо:</strong> ${escapeHtml(project.startDate)}</div>
       <div><strong>Дуусах огноо:</strong> ${escapeHtml(project.deadline)}</div>

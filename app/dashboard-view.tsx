@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   BarChart3,
@@ -11,14 +12,15 @@ import {
   HeartPulse,
   Leaf,
   ListChecks,
+  MoreHorizontal,
   Plus,
   Recycle,
+  Search,
   ShieldCheck,
   Sun,
   Truck,
   UserCheck,
   UsersRound,
-  Wind,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -37,7 +39,12 @@ import dashboardStyles from "@/app/dashboard-view.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import { getSessionRoleLabel, hasCapability, isMasterRole, isWorkerOnly, type AppSession } from "@/lib/auth";
 import { buildDashboardModel, type StatusTone } from "@/lib/dashboard-model";
+import {
+  AUTO_GARBAGE_TRUCK_HERO_IMAGE,
+  isAutoGarbageDepartmentScope,
+} from "@/lib/department-visuals";
 import { type FieldAssignment } from "@/lib/field-ops";
+import { formatManagerDisplayName } from "@/lib/manager-job-titles";
 import {
   type DashboardSnapshot,
   type FleetVehicleBoard,
@@ -354,6 +361,7 @@ type WorkerWorkSummary = {
   name: string;
   departmentName: string;
   manager: string;
+  managerJobTitle?: string;
   href: string;
   taskCount: number;
   reviewCount: number;
@@ -379,6 +387,7 @@ function buildWorkerWorkSummaries(
             name: string;
             departmentName: string;
             manager: string;
+            managerJobTitle?: string;
             tasks: DashboardSnapshot["taskDirectory"];
           }
         >
@@ -388,6 +397,7 @@ function buildWorkerWorkSummaries(
           name: task.projectName,
           departmentName: project?.departmentName ?? task.departmentName,
           manager: project?.manager ?? task.leaderName,
+          managerJobTitle: project?.managerJobTitle ?? "",
           tasks: [],
         };
 
@@ -409,6 +419,7 @@ function buildWorkerWorkSummaries(
         name: work.name,
         departmentName: work.departmentName,
         manager: work.manager,
+        managerJobTitle: work.managerJobTitle,
         href: `/tasks?work=${encodeURIComponent(work.name)}`,
         taskCount,
         reviewCount: work.tasks.filter((task) => task.statusKey === "review").length,
@@ -430,19 +441,81 @@ function buildWorkerWorkSummaries(
 function ProgressRing({ value, size = "sm" }: { value: number; size?: "sm" | "lg" }) {
   return (
     <div
-      className={cn("grid shrink-0 place-items-center rounded-full p-1", size === "lg" ? "h-[132px] w-[132px]" : "h-14 w-14")}
+      className={cn(
+        "grid shrink-0 place-items-center rounded-full",
+        size === "lg" ? "h-[132px] w-[132px] p-1" : "h-11 w-11 p-[3px]",
+      )}
       style={ringStyle(value)}
     >
       <div className="grid h-full w-full place-items-center rounded-full bg-white/92 text-center shadow-inner">
         <strong
           className={cn(
             "font-extrabold leading-none tracking-normal text-[#111B15]",
-            size === "lg" ? "text-2xl" : "text-sm",
+            size === "lg" ? "text-2xl" : "text-xs",
           )}
         >
           {clampPercent(value)}%
         </strong>
       </div>
+    </div>
+  );
+}
+
+function progressToneClass(value: number) {
+  const percent = clampPercent(value);
+  if (percent >= 100) return dashboardStyles.projectProgressGreen;
+  if (percent >= 50) return dashboardStyles.projectProgressOrange;
+  if (percent > 0) return dashboardStyles.projectProgressBlue;
+  return dashboardStyles.projectProgressGray;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function TaskListToolbar() {
+  return (
+    <div className={dashboardStyles.taskListToolbar}>
+      <label className={dashboardStyles.taskListControl}>
+        <span>Огноо</span>
+        <div>
+          <CalendarDays />
+          <strong>2026.05.17</strong>
+        </div>
+      </label>
+      <label className={dashboardStyles.taskListControl}>
+        <span>Төлөв</span>
+        <div>
+          <ListChecks />
+          <strong>Бүгд</strong>
+        </div>
+      </label>
+      <label className={cn(dashboardStyles.taskListControl, dashboardStyles.taskListSearch)}>
+        <span>Хайлт</span>
+        <div>
+          <Search />
+          <input aria-label="Ажлын жагсаалтаас хайх" placeholder="Код, ажилтан, хэлтэс хайх" />
+        </div>
+      </label>
+    </div>
+  );
+}
+
+function TaskListFooter({ totalCount }: { totalCount: number }) {
+  return (
+    <div className={dashboardStyles.taskListFooter}>
+      <span>Нийт {totalCount} ажил</span>
+      <div className={dashboardStyles.taskListPagination} aria-label="Хуудаслалт">
+        <button type="button">‹</button>
+        <button type="button" className={dashboardStyles.taskListPageActive}>1</button>
+        <button type="button">2</button>
+        <button type="button">›</button>
+      </div>
+      <label className={dashboardStyles.taskListRows}>
+        Мөрөөр
+        <select aria-label="Нэг хуудсанд харагдах мөр">
+          <option>10</option>
+          <option>20</option>
+          <option>50</option>
+        </select>
+      </label>
     </div>
   );
 }
@@ -463,33 +536,58 @@ function DepartmentOverview({
   const departmentName =
     departmentScopeName ?? autoDepartment?.name ?? "Авто бааз, хог тээвэрлэлтийн хэлтэс";
   const fixedDepartmentName = fixMojibakeText(departmentName);
+  const isAutoGarbageDepartment = isAutoGarbageDepartmentScope(fixedDepartmentName);
+  const departmentHeroImage = isAutoGarbageDepartment
+    ? AUTO_GARBAGE_TRUCK_HERO_IMAGE
+    : DASHBOARD_IMAGES.overview;
+  const departmentHeroBackground = isAutoGarbageDepartment
+    ? "linear-gradient(90deg, rgba(246,251,246,.96) 0%, rgba(246,251,246,.9) 45%, rgba(246,251,246,.58) 72%, rgba(246,251,246,.22) 100%)"
+    : `linear-gradient(90deg, rgba(246,251,246,.92) 0%, rgba(246,251,246,.62) 34%, rgba(246,251,246,.08) 66%), url(${departmentHeroImage})`;
+  const departmentDescription = isAutoGarbageDepartment
+    ? "Хог тээврийн машин, маршрут, жингийн мэдээллийг нэг дор харуулна."
+    : "Цэвэр цэмцгэр, ногоон орчны ажлыг нэг дор харуулна.";
 
   return (
     <Card className={cn(dashboardStyles.softPanel, dashboardStyles.departmentCard)}>
       <div
         className={dashboardStyles.departmentHero}
         style={{
-          backgroundImage: `linear-gradient(90deg, rgba(246,251,246,.96) 0%, rgba(246,251,246,.78) 44%, rgba(246,251,246,.24) 100%), linear-gradient(180deg, rgba(246,251,246,.18), rgba(46,125,50,.06)), url(${DASHBOARD_IMAGES.overview})`,
+          backgroundImage: departmentHeroBackground,
         }}
       >
-        <Badge className={dashboardStyles.departmentBadge}>Хэлтэс</Badge>
+        {isAutoGarbageDepartment ? (
+          <Image
+            src={departmentHeroImage}
+            alt=""
+            aria-hidden="true"
+            width={1774}
+            height={887}
+            className={dashboardStyles.departmentHeroImage}
+          />
+        ) : null}
+        <Badge className={dashboardStyles.departmentBadge}>
+          <Truck />
+          Хэлтэс
+        </Badge>
         <h2 className={dashboardStyles.departmentTitle}>
           {fixedDepartmentName}
         </h2>
         <p className={dashboardStyles.departmentDescription}>
-          Цэвэр цэмцгэр, ногоон орчны ажлыг нэг дор харуулна.
+          {departmentDescription}
         </p>
       </div>
     </Card>
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function WorkerWorkCard({ work }: { work: WorkerWorkSummary }) {
   const badgeTone =
     work.tone === "urgent" ? "red" : work.tone === "attention" ? "amber" : work.tone === "good" ? "green" : "slate";
   const workName = fixMojibakeText(work.name);
   const departmentName = fixMojibakeText(work.departmentName);
   const managerName = fixMojibakeText(work.manager || "Бүртгэлгүй");
+  const managerDisplayName = fixMojibakeText(formatManagerDisplayName(managerName, work.managerJobTitle));
 
   return (
     <Link href={work.href} className={dashboardStyles.projectListLink}>
@@ -504,7 +602,7 @@ function WorkerWorkCard({ work }: { work: WorkerWorkSummary }) {
         <div className={dashboardStyles.projectListContent}>
           <h3 className={dashboardStyles.projectListTitle}>{workName}</h3>
           <p className={dashboardStyles.projectListMeta}>
-            Алба нэгж: {departmentName} · Менежер: {managerName}
+            Алба нэгж: {departmentName} · {managerDisplayName}
           </p>
         </div>
 
@@ -526,12 +624,14 @@ function WorkerWorkCard({ work }: { work: WorkerWorkSummary }) {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function ProjectCard({ project }: { project: DashboardSnapshot["projects"][number] }) {
   const tone = projectTone(project);
   const badgeTone = tone === "urgent" ? "red" : tone === "attention" ? "amber" : tone === "good" ? "green" : "slate";
   const projectName = fixMojibakeText(project.name);
   const departmentName = fixMojibakeText(project.departmentName);
   const managerName = fixMojibakeText(project.manager || "Бүртгэлгүй");
+  const managerDisplayName = fixMojibakeText(formatManagerDisplayName(managerName, project.managerJobTitle));
 
   return (
     <Link href={project.href} className={dashboardStyles.projectListLink}>
@@ -552,7 +652,7 @@ function ProjectCard({ project }: { project: DashboardSnapshot["projects"][numbe
         <div className={dashboardStyles.projectListContent}>
           <h3 className={dashboardStyles.projectListTitle}>{projectName}</h3>
           <p className={dashboardStyles.projectListMeta}>
-            Алба нэгж: {departmentName} · Менежер: {managerName}
+            Алба нэгж: {departmentName} · {managerDisplayName}
           </p>
         </div>
 
@@ -568,6 +668,100 @@ function ProjectCard({ project }: { project: DashboardSnapshot["projects"][numbe
             <strong>{clampPercent(project.completion)}%</strong>
           </div>
           <ProgressRing value={project.completion} />
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
+function EnterpriseWorkerWorkCard({ work }: { work: WorkerWorkSummary }) {
+  const badgeTone =
+    work.tone === "urgent" ? "red" : work.tone === "attention" ? "amber" : work.tone === "good" ? "green" : "slate";
+  const workName = fixMojibakeText(work.name);
+  const departmentName = fixMojibakeText(work.departmentName);
+  const managerName = fixMojibakeText(work.manager || "Бүртгэлгүй");
+  const managerDisplayName = fixMojibakeText(formatManagerDisplayName(managerName, work.managerJobTitle));
+  const progress = clampPercent(work.progress);
+
+  return (
+    <Link href={work.href} className={dashboardStyles.projectListLink}>
+      <Card className={dashboardStyles.enterpriseTaskCard}>
+        <span className={dashboardStyles.enterpriseTaskIcon}>
+          <ClipboardList />
+        </span>
+
+        <div className={dashboardStyles.enterpriseTaskMain}>
+          <div className={dashboardStyles.enterpriseTaskTitleRow}>
+            <h3>{workName}</h3>
+            <Badge tone={badgeTone}>{work.taskCount} даалгавар</Badge>
+          </div>
+          <p>Алба нэгж: {departmentName} · {managerDisplayName}</p>
+          <div className={dashboardStyles.enterpriseTaskMeta}>
+            <span><small>Эхлэх огноо</small><strong>2026.05.17</strong></span>
+            <span><small>Ажлын төрөл</small><strong>Хог тээвэр</strong></span>
+            <span><small>Хариуцагч</small><strong>{managerDisplayName}</strong></span>
+          </div>
+        </div>
+
+        <div className={dashboardStyles.enterpriseProgressPanel}>
+          <div className={dashboardStyles.enterpriseProgressTop}>
+            <strong>{progress}%</strong>
+            <MoreHorizontal />
+          </div>
+          <div className={dashboardStyles.enterpriseProgressTrack}>
+            <span className={progressToneClass(progress)} style={{ width: `${progress}%` }} />
+          </div>
+          <ProgressRing value={progress} />
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
+function EnterpriseProjectCard({ project }: { project: DashboardSnapshot["projects"][number] }) {
+  const tone = projectTone(project);
+  const badgeTone = tone === "urgent" ? "red" : tone === "attention" ? "amber" : tone === "good" ? "green" : "slate";
+  const projectName = fixMojibakeText(project.name);
+  const departmentName = fixMojibakeText(project.departmentName);
+  const managerName = fixMojibakeText(project.manager || "Бүртгэлгүй");
+  const managerDisplayName = fixMojibakeText(formatManagerDisplayName(managerName, project.managerJobTitle));
+  const progress = clampPercent(project.completion);
+
+  return (
+    <Link href={project.href} className={dashboardStyles.projectListLink}>
+      <Card className={dashboardStyles.enterpriseTaskCard}>
+        <span
+          className={cn(
+            dashboardStyles.enterpriseTaskIcon,
+            tone === "attention" && dashboardStyles.enterpriseTaskIconAmber,
+            tone === "muted" && dashboardStyles.enterpriseTaskIconMuted,
+          )}
+        >
+          <ProjectListIcon project={project} />
+        </span>
+
+        <div className={dashboardStyles.enterpriseTaskMain}>
+          <div className={dashboardStyles.enterpriseTaskTitleRow}>
+            <h3>{projectName}</h3>
+            <Badge tone={badgeTone}>{project.openTasks || 0} даалгавар</Badge>
+          </div>
+          <p>Алба нэгж: {departmentName} · {managerDisplayName}</p>
+          <div className={dashboardStyles.enterpriseTaskMeta}>
+            <span><small>Эхлэх огноо</small><strong>{project.deadline || "Төлөвлөөгүй"}</strong></span>
+            <span><small>Ажлын төрөл</small><strong>{projectDisplayStageLabel(project)}</strong></span>
+            <span><small>Хариуцагч</small><strong>{managerDisplayName}</strong></span>
+          </div>
+        </div>
+
+        <div className={dashboardStyles.enterpriseProgressPanel}>
+          <div className={dashboardStyles.enterpriseProgressTop}>
+            <strong>{progress}%</strong>
+            <MoreHorizontal />
+          </div>
+          <div className={dashboardStyles.enterpriseProgressTrack}>
+            <span className={progressToneClass(progress)} style={{ width: `${progress}%` }} />
+          </div>
+          <ProgressRing value={progress} />
         </div>
       </Card>
     </Link>
@@ -972,6 +1166,10 @@ function RightPanel({
   workerMode: boolean;
   weather: WeatherSnapshot;
 }) {
+  if (workerMode) {
+    return null;
+  }
+
   const systemInfoTitle = departmentScopeName ? "Алба нэгжийн мэдээлэл" : "Системийн мэдээлэл";
   const systemInfoRows: Array<[string, number]> = departmentScopeName
     ? [
@@ -1000,6 +1198,23 @@ function RightPanel({
 
   return (
     <aside className={dashboardStyles.rightRail}>
+      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.quoteCard)}>
+        <div
+          className={dashboardStyles.quotePanel}
+          style={{
+            backgroundImage:
+              `linear-gradient(90deg, rgba(246,251,246,.9), rgba(246,251,246,.54)), url(${DASHBOARD_IMAGES.seedling})`,
+          }}
+        >
+          <Leaf className={dashboardStyles.quoteLeaf} />
+          <p className={dashboardStyles.quoteText}>
+            Өнөөдрийн уриа
+            <br />
+            “Байгалиа хайрлая, ирээдүйгээ хамгаалъя.”
+          </p>
+        </div>
+      </Card>
+
       {!workerMode ? (
         <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
         <CardTitle className={dashboardStyles.sideCardTitle}>Түргэн холбоосууд</CardTitle>
@@ -1022,23 +1237,6 @@ function RightPanel({
         </div>
         </Card>
       ) : null}
-
-      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.quoteCard)}>
-        <div
-          className={dashboardStyles.quotePanel}
-          style={{
-            backgroundImage:
-              `linear-gradient(90deg, rgba(246,251,246,.9), rgba(246,251,246,.54)), url(${DASHBOARD_IMAGES.seedling})`,
-          }}
-        >
-          <Leaf className={dashboardStyles.quoteLeaf} />
-          <p className={dashboardStyles.quoteText}>
-            Өнөөдрийн уриа
-            <br />
-            “Байгалиа хайрлая, ирээдүйгээ хамгаалъя.”
-          </p>
-        </div>
-      </Card>
 
       {!workerMode ? (
         <>
@@ -1119,27 +1317,6 @@ function RightPanel({
         </div>
       </Card>
 
-      {showFleetSummary ? (
-        <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
-          <CardTitle className={dashboardStyles.sideCardTitle}>Техник</CardTitle>
-          <div className={cn(dashboardStyles.sideMiniGrid, dashboardStyles.sideMiniGridTwo)}>
-            <div className={dashboardStyles.sideMiniItem}>
-              <span className={cn(dashboardStyles.sideMiniIcon, "bg-[#E7F5E7] text-[#2E7D32]")}>
-                <Truck />
-              </span>
-              <strong className={dashboardStyles.sideMiniValue}>{fleetBoard.totalVehicles}</strong>
-              <span className={dashboardStyles.sideMiniLabel}>Нийт</span>
-            </div>
-            <div className={dashboardStyles.sideMiniItem}>
-              <span className={cn(dashboardStyles.sideMiniIcon, "bg-[#E7F5E7] text-[#2E7D32]")}>
-                <Wind />
-              </span>
-              <strong className={dashboardStyles.sideMiniValue}>{fleetBoard.activeCount}</strong>
-              <span className={dashboardStyles.sideMiniLabel}>Ажиллаж буй</span>
-            </div>
-          </div>
-        </Card>
-      ) : null}
     </aside>
   );
 }
@@ -1572,6 +1749,7 @@ function ExecutiveDashboardView({
             roleLabel={roleLabel}
             notificationCount={notificationCount}
             notificationNote={notificationNote}
+            departmentScopeName={departmentScopeName}
           />
 
           <section className={dashboardStyles.executiveMetricGrid}>
@@ -1725,20 +1903,14 @@ export function DashboardView({
   const visibleWorkerWorks = workerWorkSummaries;
   const visibleProjects = masterMode ? sortedProjects : sortedProjects.slice(0, 3);
   const visibleWorkItems = workerMode ? visibleWorkerWorks.length : visibleProjects.length;
+  const taskListTotalCount = workerMode ? visibleWorkerWorks.length : sortedProjects.length;
   const projectStatusChips = projectStatusFilterChips(sortedProjects);
   const projectStatusSections = projectStatusChips.map((chip) => ({
     ...chip,
     projects: sortedProjects.filter((project) => projectMatchesStatusFilter(project, chip.key)),
   }));
-  const taskGridClassName = cn(
-    dashboardStyles.taskListBody,
-    workerMode && visibleWorkItems > 1 && "xl:grid-cols-2",
-    !workerMode && visibleWorkItems > 1 && "lg:grid-cols-2 2xl:grid-cols-3",
-  );
-  const currentMasterGridClassName = cn(
-    dashboardStyles.taskListBody,
-    currentMasterProjects.length > 1 && "lg:grid-cols-2 2xl:grid-cols-3",
-  );
+  const taskGridClassName = dashboardStyles.taskListBody;
+  const currentMasterGridClassName = dashboardStyles.taskListBody;
 
   const executiveDashboardMode = canViewGeneralDashboard && !workerMode;
   const departmentHeadDashboardMode =
@@ -1823,22 +1995,24 @@ export function DashboardView({
             notificationCount={attentionCount}
             notificationNote={effectiveNotificationNote}
             backgroundImage={DASHBOARD_IMAGES.header}
+            departmentScopeName={departmentScopeName}
+            disableDepartmentVisual
           />
 
           <div className={cn("relative z-20 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]", dashboardStyles.dashboardMainGrid)}>
-            <div className={cn("grid min-w-0 gap-4", dashboardStyles.dashboardPrimaryColumn)}>
+            <div className={dashboardStyles.departmentPanel}>
+              <DepartmentOverview
+                snapshot={snapshot}
+                departmentScopeName={departmentScopeName}
+              />
+            </div>
+
+            <div className={cn("grid min-w-0 gap-4", dashboardStyles.dashboardPrimaryColumn, workerMode && dashboardStyles.dashboardPrimaryColumnFull)}>
               {fleetLoadError ? (
                 <Card className="border-amber-200 bg-amber-50/85 p-4 text-sm font-semibold text-amber-800">
                   {fleetLoadError}
                 </Card>
               ) : null}
-
-              <div className={dashboardStyles.departmentPanel}>
-                <DepartmentOverview
-                  snapshot={snapshot}
-                  departmentScopeName={departmentScopeName}
-                />
-              </div>
 
               {transportInspectorMode ? (
                 <DashboardInspectorVehiclePanel
@@ -1866,7 +2040,7 @@ export function DashboardView({
 
                   <div className={currentMasterGridClassName}>
                     {currentMasterProjects.map((project) => (
-                      <ProjectCard key={`mine-${project.id}`} project={project} />
+                      <EnterpriseProjectCard key={`mine-${project.id}`} project={project} />
                     ))}
                     {!currentMasterProjects.length ? (
                       <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>
@@ -1896,7 +2070,7 @@ export function DashboardView({
                 {workerMode ? (
                   <div className={taskGridClassName}>
                     {visibleWorkerWorks.map((work) => (
-                      <WorkerWorkCard key={work.name} work={work} />
+                      <EnterpriseWorkerWorkCard key={work.name} work={work} />
                     ))}
                     {!visibleWorkItems ? (
                       <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>
@@ -1945,7 +2119,7 @@ export function DashboardView({
                         )}
                       >
                         {visibleProjects.map((project) => (
-                          <ProjectCard key={project.id} project={project} />
+                          <EnterpriseProjectCard key={project.id} project={project} />
                         ))}
                         {!visibleProjects.length ? (
                           <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>
@@ -1972,7 +2146,7 @@ export function DashboardView({
                           )}
                         >
                           {section.projects.map((project) => (
-                            <ProjectCard key={project.id} project={project} />
+                            <EnterpriseProjectCard key={project.id} project={project} />
                           ))}
                           {!section.projects.length ? (
                             <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>
@@ -1988,6 +2162,7 @@ export function DashboardView({
                     </div>
                   </div>
                 )}
+                <TaskListFooter totalCount={taskListTotalCount} />
               </Card>
 
               {!workerMode ? <MobilePriorityPanel canWriteReports={canWriteReports} /> : null}

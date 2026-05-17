@@ -123,6 +123,7 @@ export default async function CreateHubPage() {
               roleLabel={getRoleLabel(session.role)}
               notificationCount={actionCards.length}
               notificationNote={`${actionCards.length} боломжит үйлдэл нээлттэй байна`}
+              departmentScopeName={departmentScopeName}
             />
 
             <section className={`${shellStyles.heroCard} ${styles.heroCard}`}>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Bell, CalendarDays, Leaf, MapPin } from "lucide-react";
 
 import { loadCurrentUserProfileImageUrl } from "@/lib/current-user-profile";
+import { resolveDepartmentHeaderImage } from "@/lib/department-visuals";
 
 import { WorkspaceHeaderUserMenu } from "./workspace-header-user-menu";
 import styles from "./workspace-header.module.css";
@@ -17,6 +18,8 @@ type WorkspaceHeaderProps = {
   notificationNote?: string;
   notificationHref?: string;
   backgroundImage?: string;
+  departmentScopeName?: string | null;
+  disableDepartmentVisual?: boolean;
   showUserMenu?: boolean;
   userImageUrl?: string;
 };
@@ -70,6 +73,8 @@ export function WorkspaceHeader({
   notificationNote,
   notificationHref = "/notifications",
   backgroundImage = DEFAULT_HEADER_IMAGE,
+  departmentScopeName = null,
+  disableDepartmentVisual = false,
   showUserMenu = true,
   userImageUrl = "",
 }: WorkspaceHeaderProps) {
@@ -79,11 +84,20 @@ export function WorkspaceHeader({
     (safeNotificationCount > 0
       ? `${safeNotificationCount} анхаарах зүйл байна`
       : "Шинэ анхаарах зүйл алга");
+  const contextImage = disableDepartmentVisual
+    ? ""
+    : resolveDepartmentHeaderImage(departmentScopeName) ||
+      resolveDepartmentHeaderImage(`${title} ${subtitle}`);
+  const resolvedBackgroundImage =
+    backgroundImage === DEFAULT_HEADER_IMAGE && contextImage
+      ? contextImage
+      : backgroundImage;
+  const usesDepartmentVisual = Boolean(contextImage);
 
   return (
     <header
-      className={styles.header}
-      style={{ "--workspace-header-image": `url("${backgroundImage}")` } as CSSProperties}
+      className={`${styles.header} ${usesDepartmentVisual ? styles.headerWithVisual : ""}`}
+      style={{ "--workspace-header-image": `url("${resolvedBackgroundImage}")` } as CSSProperties}
     >
       <Leaf className={styles.leafOne} aria-hidden />
       <Leaf className={styles.leafTwo} aria-hidden />

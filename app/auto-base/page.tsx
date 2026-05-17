@@ -115,6 +115,7 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
               userName={session.name}
               roleLabel={roleLabel}
               notificationCount={notificationCount}
+              departmentScopeName={scopedDepartmentName || "Авто бааз, хог тээвэрлэлтийн хэлтэс"}
             />
 
             {loadError ? (

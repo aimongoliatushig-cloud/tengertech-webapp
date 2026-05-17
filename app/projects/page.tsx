@@ -27,6 +27,7 @@ import {
   filterProjectsForResponsibleMaster,
   filterTasksForResponsibleMaster,
 } from "@/lib/master-scope";
+import { formatManagerDisplayName } from "@/lib/manager-job-titles";
 import { loadWorkspaceNotificationCount } from "@/lib/workspace-notifications";
 
 type PageProps = {
@@ -220,6 +221,8 @@ function ProjectCardLink({
   href: string;
   actionLabel: string;
 }) {
+  const managerDisplayName = formatManagerDisplayName(project.manager, project.managerJobTitle);
+
   return (
     <Link href={href} className={styles.projectCard}>
       <div className={styles.projectCardTop}>
@@ -229,7 +232,7 @@ function ProjectCardLink({
 
       <h3>{project.name}</h3>
       <p>
-        Алба нэгж: {project.departmentName} · Менежер: {project.manager}
+        Алба нэгж: {project.departmentName} · {managerDisplayName}
         {project.operationTypeLabel ? ` · ${project.operationTypeLabel}` : ""}
       </p>
 
@@ -858,6 +861,7 @@ async function ProjectsPageContent({
     subtitle: selectedDepartmentName,
     userName: session.name,
     roleLabel,
+    departmentScopeName: scopedDepartmentName,
   };
 
   return (
@@ -1257,8 +1261,8 @@ async function ProjectsPageContent({
                               />
                             </div>
                             <p>
-                              Алба нэгж: {project.departmentName} · Менежер:{" "}
-                              {project.manager}
+                              Алба нэгж: {project.departmentName} ·{" "}
+                              {formatManagerDisplayName(project.manager, project.managerJobTitle)}
                               {project.operationTypeLabel
                                 ? ` · ${project.operationTypeLabel}`
                                 : ""}

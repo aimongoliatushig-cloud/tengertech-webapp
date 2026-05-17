@@ -6,6 +6,7 @@ import {
   pickPrimaryDepartmentName,
 } from "@/lib/dashboard-scope";
 import type { FieldAssignment } from "@/lib/field-ops";
+import { formatManagerDisplayName } from "@/lib/manager-job-titles";
 import type { DashboardSnapshot } from "@/lib/odoo";
 import { getPrimaryAppRole } from "@/lib/roles";
 
@@ -566,7 +567,7 @@ function buildProjectItem(item: SnapshotProject): DashboardItem {
   return {
     id: `project-${item.id}`,
     title: item.name,
-    subtitle: `${item.departmentName} · Менежер: ${item.manager}`,
+    subtitle: `${item.departmentName} · ${formatManagerDisplayName(item.manager, item.managerJobTitle)}`,
     meta: [
       item.deadline,
       `Нээлттэй: ${item.openTasks}`,

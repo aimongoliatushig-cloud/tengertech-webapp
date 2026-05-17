@@ -863,6 +863,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               roleLabel={getRoleLabel(session.role)}
               notificationCount={filteredReviewQueue.length}
               notificationNote={`${filteredReviewQueue.length} даалгавар хяналт хүлээж байна`}
+              departmentScopeName={scopedDepartmentName}
             />
 
             {!isGarbageTransportView ? (
