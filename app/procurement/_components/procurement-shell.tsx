@@ -1,6 +1,19 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
-import { Bell, CalendarDays, ChevronDown, PlusCircle, UserCircle } from "lucide-react";
+import {
+  BarChart3,
+  Bell,
+  CalendarDays,
+  ChevronDown,
+  ClipboardList,
+  FileText,
+  Home,
+  Menu,
+  PlusCircle,
+  UserCircle,
+  WalletCards,
+} from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import shellStyles from "@/app/workspace.module.css";
@@ -76,6 +89,16 @@ export async function ProcurementShell({
 
           <div className={`${shellStyles.pageContent} ${styles.procurementPageContent}`}>
             <header className={styles.procurementTopbar}>
+              <div className={styles.topbarStart}>
+                <span className={styles.mobileMenuButton}>
+                  <Menu aria-hidden />
+                </span>
+                <Image src="/logo.png" alt="" width={42} height={42} className={styles.procurementTopbarLogo} />
+                <div>
+                  <span className={styles.topbarKicker}>ХУДАЛДАН АВАЛТ</span>
+                  <h1>{title}</h1>
+                </div>
+              </div>
               <div className={styles.topbarActions}>
                 <span className={styles.dateChip}>
                   <CalendarDays aria-hidden />
@@ -120,6 +143,28 @@ export async function ProcurementShell({
           </div>
         </div>
       </div>
+      <nav className={styles.mobileDock} aria-label="Худалдан авалтын доод цэс">
+        <Link href="/procurement/dashboard" className={`${styles.mobileDockLink} ${activeTab === "dashboard" ? styles.mobileDockLinkActive : ""}`}>
+          <Home aria-hidden />
+          Самбар
+        </Link>
+        <Link href="/procurement" className={`${styles.mobileDockLink} ${activeTab === "list" ? styles.mobileDockLinkActive : ""}`}>
+          <ClipboardList aria-hidden />
+          Хүсэлт
+        </Link>
+        <Link href="/procurement?state=contract_review" className={styles.mobileDockLink}>
+          <FileText aria-hidden />
+          Гэрээ
+        </Link>
+        <Link href="/procurement?state=payment" className={styles.mobileDockLink}>
+          <WalletCards aria-hidden />
+          Төлбөр
+        </Link>
+        <Link href="/procurement/dashboard" className={styles.mobileDockLink}>
+          <BarChart3 aria-hidden />
+          Тайлан
+        </Link>
+      </nav>
     </main>
   );
 }
