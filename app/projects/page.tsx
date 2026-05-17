@@ -374,7 +374,7 @@ async function ProjectsPageContent({
   ) {
     redirect(`/projects?department=${encodeURIComponent(AUTO_BASE_GROUP_NAME)}`);
   }
-  const activeFilter = normalizeProjectFilter(getDepartmentParam(params.category));
+  let activeFilter = normalizeProjectFilter(getDepartmentParam(params.category));
   const quickActionMode = normalizeQuickAction(getDepartmentParam(params.quickAction));
 
   const detectedGroup =
@@ -387,6 +387,9 @@ async function ProjectsPageContent({
         : null;
 
   const selectedGroup = detectedGroup;
+  if (selectedGroup) {
+    activeFilter = "all";
+  }
   const availableUnits = selectedGroup ? getAvailableUnits(selectedGroup) : [];
 
   const selectedUnit =
@@ -397,10 +400,11 @@ async function ProjectsPageContent({
         : "";
   const isAutoBaseView = selectedGroup?.name === AUTO_BASE_GROUP_NAME;
   const showAutoBaseFleet = isAutoBaseView && selectedUnit === AUTO_BASE_UNIT_NAME;
+  const showAutoBaseCombined = isAutoBaseView && !selectedUnit;
   let fleetBoard: Awaited<ReturnType<typeof loadFleetVehicleBoard>> | null = null;
   let fleetLoadError = "";
 
-  if (showAutoBaseFleet) {
+  if (isAutoBaseView) {
     try {
       fleetBoard = await loadFleetVehicleBoard();
     } catch (error) {
@@ -916,9 +920,6 @@ async function ProjectsPageContent({
                   {(() => {
                     const hrefParams = new URLSearchParams();
                     hrefParams.set("department", selectedGroup.name);
-                    if (activeFilter !== "all") {
-                      hrefParams.set("category", activeFilter);
-                    }
                     if (quickActionMode !== "none") {
                       hrefParams.set("quickAction", quickActionMode);
                     }
@@ -935,7 +936,10 @@ async function ProjectsPageContent({
                           {
                             snapshot.projects.filter((project) =>
                               matchesDepartmentGroup(selectedGroup, project.departmentName),
-                            ).length
+                            ).length +
+                              (selectedGroup.name === AUTO_BASE_GROUP_NAME
+                                ? autoBaseProcurementItems.length
+                                : 0)
                           }
                         </strong>
                       </Link>
@@ -945,9 +949,6 @@ async function ProjectsPageContent({
                     const hrefParams = new URLSearchParams();
                     hrefParams.set("department", selectedGroup.name);
                     hrefParams.set("unit", unit);
-                    if (activeFilter !== "all") {
-                      hrefParams.set("category", activeFilter);
-                    }
                     if (quickActionMode !== "none") {
                       hrefParams.set("quickAction", quickActionMode);
                     }
@@ -1182,6 +1183,61 @@ async function ProjectsPageContent({
                     Авто баазын машин дээр холбогдсон худалдан авалтын хүсэлт одоогоор алга.
                   </div>
                 )
+              ) : showAutoBaseCombined ? (
+                <div className={styles.unitProjectSections}>
+                  <section className={styles.unitProjectSection}>
+                    <div className={styles.unitProjectSectionHeader}>
+                      <div>
+                        <span className={styles.unitProjectSectionKicker}>Ажлын жагсаалт</span>
+                        <h3>Хог тээвэрлэлт болон бүртгэлтэй ажил</h3>
+                        <p>Энэ хэлтэст бүртгэлтэй project ажлууд.</p>
+                      </div>
+                      <strong>{activeProjects.length}</strong>
+                    </div>
+
+                    {activeProjects.length ? (
+                      <div className={styles.projectRail}>
+                        {activeProjects.map((project) => (
+                          <ProjectCardLink
+                            key={project.id}
+                            project={project}
+                            href={buildProjectHref(project.href)}
+                            actionLabel={projectCardLabel}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className={styles.emptyColumnState}>
+                        Одоогоор энэ хэлтэс дээр бүртгэлтэй ажил алга байна.
+                      </div>
+                    )}
+                  </section>
+
+                  <section className={styles.unitProjectSection}>
+                    <div className={styles.unitProjectSectionHeader}>
+                      <div>
+                        <span className={styles.unitProjectSectionKicker}>Худалдан авалтын хүсэлт</span>
+                        <h3>Авто баазын худалдан авалт</h3>
+                        <p>Машин дээр үүссэн сэлбэг, засварын худалдан авалтын хүсэлтүүд.</p>
+                      </div>
+                      <strong>{autoBaseProcurementItems.length}</strong>
+                    </div>
+
+                    {fleetLoadError ? (
+                      <div className={styles.emptyColumnState}>{fleetLoadError}</div>
+                    ) : autoBaseProcurementItems.length ? (
+                      <div className={styles.projectRail}>
+                        {autoBaseProcurementItems.map((item) => (
+                          <AutoBaseProcurementCard key={`${item.vehiclePlate}-${item.id}`} item={item} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className={styles.emptyColumnState}>
+                        Авто баазын машин дээр холбогдсон худалдан авалтын хүсэлт одоогоор алга.
+                      </div>
+                    )}
+                  </section>
+                </div>
               ) : shouldShowGreenServiceSections ? (
                 <div className={styles.unitProjectSections}>
                   {greenServiceProjectSections.map((section) => (

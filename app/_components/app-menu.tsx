@@ -203,6 +203,93 @@ function getDockLabel(key: string) {
   }
 }
 
+function createMenuGroup(
+  key: string,
+  label: string,
+  icon: LucideIcon,
+  children: MenuItem[],
+): MenuItem | null {
+  if (!children.length) {
+    return null;
+  }
+
+  return {
+    key,
+    href: children[0].href,
+    label,
+    icon,
+    children,
+  };
+}
+
+function isOperationalDepartmentItem(item: MenuItem) {
+  return (
+    item.key.startsWith("department-") &&
+    (item.label.includes("Ногоон") ||
+      item.label.includes("Авто") ||
+      item.label.includes("хог") ||
+      item.label.includes("Тохижилт"))
+  );
+}
+
+function dedupeMenuItems(items: MenuItem[]) {
+  const seen = new Set<string>();
+
+  return items.filter((item) => {
+    const dedupeKey = item.href || item.key;
+    if (seen.has(dedupeKey)) {
+      return false;
+    }
+    seen.add(dedupeKey);
+    return true;
+  });
+}
+
+function compactManagerMenuItems(items: MenuItem[]) {
+  const dashboardItem = items.find((item) => item.key === "dashboard");
+  const hrChildren = items.filter((item) => item.key.startsWith("hr-"));
+  const operationalDepartmentChildren = items.filter(isOperationalDepartmentItem);
+  const departmentChildren = items.filter(
+    (item) => item.key.startsWith("department-") && !isOperationalDepartmentItem(item),
+  );
+  const operationChildren = dedupeMenuItems([
+    ...items.filter((item) =>
+      ["tasks", "environment-work", "fleet-repair", "cleaning-areas", "garbage-settings", "complaints"].includes(
+        item.key,
+      ),
+    ),
+    ...operationalDepartmentChildren,
+  ]);
+  const reportChildren = items.filter((item) => ["reports", "data-download"].includes(item.key));
+  const communicationChildren = items.filter((item) => ["chat", "help", "review", "notifications"].includes(item.key));
+  const settingChildren = items.filter((item) => item.key === "settings");
+  const procurementItem = items.find((item) => item.key === "procurement");
+  const groupedKeys = new Set([
+    "dashboard",
+    "procurement",
+    ...hrChildren.map((item) => item.key),
+    ...operationChildren.map((item) => item.key),
+    ...operationalDepartmentChildren.map((item) => item.key),
+    ...departmentChildren.map((item) => item.key),
+    ...reportChildren.map((item) => item.key),
+    ...communicationChildren.map((item) => item.key),
+    ...settingChildren.map((item) => item.key),
+  ]);
+  const leftovers = items.filter((item) => !groupedKeys.has(item.key));
+
+  return [
+    dashboardItem,
+    createMenuGroup("manager-operations", "Үйл ажиллагаа", Leaf, operationChildren),
+    createMenuGroup("manager-hr", "Хүний нөөц", Users, hrChildren),
+    createMenuGroup("manager-departments", "Хэлтэс, нэгжүүд", Flag, departmentChildren),
+    procurementItem ? { ...procurementItem, label: "Санхүү, худалдан авалт" } : null,
+    createMenuGroup("manager-reports", "Тайлан, баримт", BarChart3, reportChildren),
+    createMenuGroup("manager-communication", "Харилцаа холбоо", MessageSquare, communicationChildren),
+    createMenuGroup("manager-settings", "Тохиргоо", Settings, settingChildren),
+    ...leftovers,
+  ].filter((item): item is MenuItem => Boolean(item));
+}
+
 export function AppMenu({
   active,
   canCreateProject = false,
@@ -814,6 +901,14 @@ export function AppMenu({
     return !["data-download", "reports", "fleet-repair"].includes(item.key);
   });
 
+  const shouldUseCompactManagerMenu = Boolean(
+    !workerMode &&
+      (executiveMode || departmentManagerMode || resolvedRole === "director" || resolvedRole === "general_manager"),
+  );
+  const compactDefaultItems: MenuItem[] = shouldUseCompactManagerMenu
+    ? compactManagerMenuItems(defaultItems)
+    : defaultItems;
+
   const garbageDepartmentItems: MenuItem[] = [
     {
       key: "dashboard",
@@ -979,7 +1074,7 @@ export function AppMenu({
       ? scopedDepartmentHeadItems
       : isGarbageDepartmentHead
       ? garbageDepartmentItems
-      : defaultItems
+      : compactDefaultItems
   ).filter((item) => !isHiddenMenuItem(item));
 
   function isProcurementChildActive(item: MenuItem) {
@@ -1202,16 +1297,32 @@ export function AppMenu({
                 { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
               ]
       : [
-          { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
-          { key: "projects", href: "/projects", label: "Ажлууд", icon: ListChecks },
-          ...(mobilePrimaryAction ? [mobilePrimaryAction] : []),
-          ...(showProcurement
-            ? [{ key: "procurement", href: "/procurement/dashboard", label: "Худалдан", icon: ShoppingCart }]
-            : []),
-          { key: "reports", href: canWriteReports ? "/reports" : "/review", label: "Тайлан", icon: BarChart3 },
-          canShowHrMenu
-            ? { key: "hr", href: "/hr", label: "HR", icon: Users }
-            : { key: "chat", href: "/chat", label: "Чат", icon: MessageSquare },
+          ...(shouldUseCompactManagerMenu
+            ? [
+                { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
+                { key: "projects", href: "/projects", label: "Ажлууд", icon: ListChecks },
+                ...(mobilePrimaryAction ? [mobilePrimaryAction] : []),
+                {
+                  key: "review",
+                  href: "/notifications",
+                  label: "Хүсэлтүүд",
+                  icon: ClipboardCheck,
+                  badge: notificationCount,
+                },
+                { key: "reports", href: canWriteReports ? "/reports" : "/review", label: "Тайлан", icon: BarChart3 },
+              ]
+            : [
+                { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
+                { key: "projects", href: "/projects", label: "Ажлууд", icon: ListChecks },
+                ...(mobilePrimaryAction ? [mobilePrimaryAction] : []),
+                ...(showProcurement
+                  ? [{ key: "procurement", href: "/procurement/dashboard", label: "Худалдан", icon: ShoppingCart }]
+                  : []),
+                { key: "reports", href: canWriteReports ? "/reports" : "/review", label: "Тайлан", icon: BarChart3 },
+                canShowHrMenu
+                  ? { key: "hr", href: "/hr", label: "HR", icon: Users }
+                  : { key: "chat", href: "/chat", label: "Чат", icon: MessageSquare },
+              ]),
         ];
   const mobileDockItems: MenuItem[] = (
     isDepartmentHeadProcurementContext || procurementWorkerMode ? rawMobileDockItems : withMobilePrimaryAction(rawMobileDockItems)
