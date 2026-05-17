@@ -1279,7 +1279,6 @@ function ExecutiveDepartmentCard({ department }: { department: ExecutiveDepartme
   const Icon = department.icon;
   const color = EXECUTIVE_TONE_COLORS[department.tone];
   const softColor = EXECUTIVE_TONE_SOFT_COLORS[department.tone];
-  const statusLabel = department.risky > 0 ? "Анхаарах" : "Хэвийн";
   const style = {
     "--department-accent": color,
     "--department-accent-soft": softColor,
@@ -1300,14 +1299,6 @@ function ExecutiveDepartmentCard({ department }: { department: ExecutiveDepartme
           </span>
           <div className={dashboardStyles.executiveDepartmentTitleBlock}>
             <strong>{department.name}</strong>
-            <span
-              className={cn(
-                dashboardStyles.executiveDepartmentBadge,
-                department.risky > 0 && dashboardStyles.executiveDepartmentBadgeWarn,
-              )}
-            >
-              {statusLabel}
-            </span>
           </div>
         </div>
         <div
