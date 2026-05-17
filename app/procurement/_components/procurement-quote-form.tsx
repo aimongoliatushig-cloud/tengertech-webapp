@@ -223,14 +223,21 @@ export function ProcurementQuoteForm({
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    const formData = new FormData(event.currentTarget);
     const selected = selectedSupplierIds.filter((id): id is number => typeof id === "number" && id > 0);
     if (selected.length !== 1) {
       event.preventDefault();
       setFormError("Нийлүүлэгчийн нэрийг сонгоно уу.");
       return;
     }
+    const invoiceAmount = Number(String(formData.get("amount_total_1") || "0"));
+    if (!Number.isFinite(invoiceAmount) || invoiceAmount <= 0) {
+      event.preventDefault();
+      setFormError("Багц бүрийн нэхэмжлэхийн дүнг 0-ээс ихээр оруулна уу.");
+      return;
+    }
     if ((!packageId && lines.length > 1) || editableLines.length > 1) {
-      const selectedLineIds = new FormData(event.currentTarget).getAll("line_ids").filter(Boolean);
+      const selectedLineIds = formData.getAll("line_ids").filter(Boolean);
       if (!selectedLineIds.length) {
         event.preventDefault();
         setFormError("Энэ багцад оруулах бараагаа сонгоно уу.");
@@ -349,7 +356,19 @@ export function ProcurementQuoteForm({
                   onSelect={(supplierId) => updateSelectedSupplier(index, supplierId)}
                   onRequestAdd={(suggestedName) => openSupplierModal(index, suggestedName)}
                 />
-                <input type="hidden" name={`amount_total_${index}`} value={Math.max(1, Math.round(existing?.amount_total || 0))} />
+                <label className={styles.fieldLabel}>
+                  Багцын нэхэмжлэхийн дүн
+                  <input
+                    type="number"
+                    name={`amount_total_${index}`}
+                    min="1"
+                    step="1"
+                    defaultValue={existing?.amount_total ? Math.round(existing.amount_total) : ""}
+                    placeholder="Жишээ: 1200000"
+                    required
+                  />
+                </label>
+                <p className={styles.helperText}>1,000,000₮-өөс их бол тушаал болон гэрээний шат руу орно.</p>
                 <label className={styles.fieldLabel}>
                   Нэхэмжлэхийн зураг
                   <input type="file" name={`quote_file_${index}`} required />

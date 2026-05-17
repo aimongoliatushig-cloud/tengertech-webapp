@@ -332,6 +332,19 @@ function isPaymentActionAvailable(item: ProcurementRequestDetail) {
   return item.payment_status.code !== "payment_recorded";
 }
 
+function getUnassignedProcurementLines(item: ProcurementRequestDetail) {
+  const packagedLineIds = new Set(item.packages.flatMap((pack) => pack.lines.map((line) => line.id)));
+  if (item.unassigned_lines?.length) {
+    return item.unassigned_lines.filter((line) => !packagedLineIds.has(line.id));
+  }
+  return item.lines.filter((line) => !line.package_id && !packagedLineIds.has(line.id));
+}
+
+function hasInvoiceEntryTarget(item: ProcurementRequestDetail) {
+  if (getUnassignedProcurementLines(item).length > 0) return true;
+  return item.packages.some((pack) => pack.lines.length > 0 && !pack.is_complete);
+}
+
 function isRoleAllowedAction(action: ProcurementAction, userFlags: ProcurementUser["flags"]) {
   if (userFlags.admin) return true;
   if (action.code === "mark_paid") return userFlags.finance;
@@ -347,6 +360,7 @@ function isRoleAllowedAction(action: ProcurementAction, userFlags: ProcurementUs
 }
 
 function isStateAllowedAction(action: ProcurementAction, item: ProcurementRequestDetail) {
+  if (action.code === "submit_quotations") return hasInvoiceEntryTarget(item);
   if (action.code === "mark_paid") return isPaymentActionAvailable(item);
   if (action.code === "mark_received") return isReceivableRequest(item);
   return true;
@@ -773,10 +787,7 @@ function ActionForm({
 }) {
   if (action.code === "submit_quotations") {
     const targetPackages = item.packages.filter((pack) => !pack.is_complete && pack.lines.length > 0);
-    const packagedLineIds = new Set(item.packages.flatMap((pack) => pack.lines.map((line) => line.id)));
-    const unassignedLines = item.unassigned_lines?.length
-      ? item.unassigned_lines.filter((line) => !packagedLineIds.has(line.id))
-      : item.lines.filter((line) => !line.package_id && !packagedLineIds.has(line.id));
+    const unassignedLines = getUnassignedProcurementLines(item);
     const canCreatePackage = unassignedLines.length > 0;
     if (canCreatePackage) {
       return (

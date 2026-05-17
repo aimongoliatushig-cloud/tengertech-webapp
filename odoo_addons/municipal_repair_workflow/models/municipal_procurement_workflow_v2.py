@@ -10,7 +10,7 @@ AMOUNT_THRESHOLD = 1000000
 
 
 def _is_high_value_amount(amount):
-    return (amount or 0) >= AMOUNT_THRESHOLD
+    return (amount or 0) > AMOUNT_THRESHOLD
 
 
 ROLE_PREFERRED_LOGINS = {
@@ -1593,6 +1593,9 @@ class MunicipalProcurementRequest(models.Model):
                 supplier_id = int(quote_payload.get("supplier_id") or 0)
                 if not supplier_id:
                     raise UserError("Supplier is required for the invoice.")
+                amount_total = float(quote_payload.get("amount_total") or 0)
+                if amount_total <= 0:
+                    raise UserError("Нэхэмжлэхийн дүн 0-ээс их байх ёстой.")
                 attachment_ids = quote_payload.get("attachment_ids") or []
                 if not attachment_ids:
                     raise UserError("Invoice attachment is required.")
@@ -1601,7 +1604,7 @@ class MunicipalProcurementRequest(models.Model):
                         "procurement_id": request.id,
                         "sequence": index,
                         "supplier_id": supplier_id,
-                        "amount_total": float(quote_payload.get("amount_total") or 0),
+                        "amount_total": amount_total,
                         "is_selected": bool(quote_payload.get("is_selected")),
                         "attachment_ids": [(6, 0, attachment_ids)],
                     }
@@ -1988,6 +1991,9 @@ class MunicipalProcurementPackage(models.Model):
             supplier_id = int(quote_payload.get("supplier_id") or 0)
             if not supplier_id:
                 raise UserError("Supplier is required for the invoice.")
+            amount_total = float(quote_payload.get("amount_total") or 0)
+            if amount_total <= 0:
+                raise UserError("Нэхэмжлэхийн дүн 0-ээс их байх ёстой.")
             attachment_ids = quote_payload.get("attachment_ids") or []
             if not attachment_ids:
                 raise UserError("Invoice attachment is required.")
@@ -1997,7 +2003,7 @@ class MunicipalProcurementPackage(models.Model):
                     "package_id": self.id,
                     "sequence": index,
                     "supplier_id": supplier_id,
-                    "amount_total": float(quote_payload.get("amount_total") or 0),
+                    "amount_total": amount_total,
                     "is_selected": index == 1,
                     "attachment_ids": [(6, 0, attachment_ids)],
                 }

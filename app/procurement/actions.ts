@@ -304,6 +304,10 @@ export async function submitProcurementQuotationsAction(formData: FormData) {
 
     const quotations = await Promise.all(
       [1].map(async (index) => {
+        const amountTotal = getNumber(formData, `amount_total_${index}`);
+        if (amountTotal <= 0) {
+          throw new Error("Багц бүрийн нэхэмжлэхийн дүнг 0-ээс ихээр оруулна уу.");
+        }
         const file = getFiles(formData, `quote_file_${index}`)[0];
         const attachmentIds =
           file
@@ -315,7 +319,7 @@ export async function submitProcurementQuotationsAction(formData: FormData) {
 
         return {
           supplier_id: getNumber(formData, `supplier_id_${index}`),
-          amount_total: Math.max(1, getNumber(formData, `amount_total_${index}`)),
+          amount_total: amountTotal,
           is_selected: index === 1,
           attachment_ids: attachmentIds,
         };
