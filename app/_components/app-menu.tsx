@@ -496,7 +496,7 @@ export function AppMenu({
         { key: "hr-requests", href: "/hr/leaves", label: "Ирсэн хүсэлтүүд", icon: CalendarDays },
         { key: "hr-sick", href: "/hr/sick", label: "Чөлөө / өвчтэй", icon: HeartPulse },
         { key: "hr-discipline", href: "/hr/discipline", label: "Сахилгын бүртгэл", icon: ShieldAlert },
-        { key: "hr-notifications", href: HR_NOTIFICATION_HREF, label: "Мэдэгдэл", icon: Bell },
+        { key: "hr-notifications", href: HR_NOTIFICATION_HREF, label: "Мэдэгдэл", icon: Bell, badge: notificationCount },
         { key: "hr-reports", href: "/hr/reports", label: "Тайлан", icon: FileText },
       ]
     : [];
@@ -508,7 +508,7 @@ export function AppMenu({
         { key: "hr-requests", href: "/hr/leaves", label: "Ирсэн хүсэлтүүд", icon: CalendarDays },
         { key: "hr-sick", href: "/hr/sick", label: "Чөлөө / өвчтэй", icon: HeartPulse },
         { key: "hr-discipline", href: "/hr/discipline", label: "Сахилгын бүртгэл", icon: ShieldAlert },
-        { key: "hr-notifications", href: HR_NOTIFICATION_HREF, label: "Мэдэгдэл", icon: Bell },
+        { key: "hr-notifications", href: HR_NOTIFICATION_HREF, label: "Мэдэгдэл", icon: Bell, badge: notificationCount },
         { key: "hr-reports", href: "/hr/reports", label: "Тайлан", icon: FileText },
       ]
     : [];
@@ -1151,6 +1151,7 @@ export function AppMenu({
       ? [
           { key: "hr-dashboard", href: "/hr", label: "HR", icon: Users },
           { key: "hr-employees", href: "/hr/employees", label: "Ажилтнууд", icon: Users },
+          { key: "hr-requests", href: "/hr/leaves", label: "Хүсэлт", icon: CalendarDays },
           { key: "hr-sick", href: "/hr/sick", label: "Чөлөө", icon: HeartPulse },
           { key: "hr-reports", href: "/hr/reports", label: "Тайлан", icon: FileText },
           { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
@@ -1210,7 +1211,7 @@ export function AppMenu({
             : []),
           { key: "reports", href: canWriteReports ? "/reports" : "/review", label: "Тайлан", icon: BarChart3 },
           canShowHrMenu
-            ? { key: "hr", href: "/hr", label: "HR", icon: Users }
+            ? { key: "hr-dashboard", href: "/hr", label: "HR", icon: Users }
             : { key: "chat", href: "/chat", label: "Чат", icon: MessageSquare },
         ];
   const mobileDockItems: MenuItem[] = (
