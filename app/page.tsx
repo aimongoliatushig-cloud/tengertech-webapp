@@ -138,6 +138,19 @@ function isTransportInspectorSession(session: DashboardSession) {
   );
 }
 
+function isProcurementActionHomeSession(session: DashboardSession) {
+  const flags = session.groupFlags;
+  return Boolean(
+    flags?.procurementStorekeeper ||
+      flags?.procurementPurchaseManager ||
+      flags?.fleetRepairPurchaser ||
+      flags?.opsStorekeeper ||
+      flags?.procurementFinance ||
+      flags?.procurementAdministration ||
+      flags?.procurementLegal,
+  );
+}
+
 function isHomeProcurementWorker(procurementUser: ProcurementUser) {
   return Boolean(
     procurementUser.flags.storekeeper ||
@@ -371,6 +384,7 @@ async function DashboardPageContent({
     password: session.password,
   };
   const transportInspectorMode = isTransportInspectorSession(session);
+  const procurementHomeMode = isProcurementActionHomeSession(session);
   const canViewGeneralDashboard = !transportInspectorMode && canAccessGeneralDashboard(session);
   const generalDashboardMode = canViewGeneralDashboard;
   const canUseFieldConsole = hasCapability(session, "use_field_console");
@@ -393,7 +407,7 @@ async function DashboardPageContent({
   });
   const departmentScopeNamePromise = loadSessionDepartmentName(session);
   const weatherPromise =
-    workerMode || transportInspectorMode
+    (workerMode && !procurementHomeMode) || transportInspectorMode
       ? Promise.resolve(EMPTY_WEATHER_SNAPSHOT)
       : loadUlaanbaatarWeather();
   const todayAssignmentsPromise =
@@ -578,6 +592,7 @@ async function DashboardPageContent({
       canViewGeneralDashboard={canViewGeneralDashboard}
       notificationCount={notificationSummary.unreadCount}
       notificationNote={notificationNote}
+      showProcurementHomePanels={Boolean(procurementActions)}
       procurementActionPanel={
         procurementActions ? (
           <ProcurementActionRequiredList

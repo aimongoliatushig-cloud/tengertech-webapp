@@ -138,6 +138,8 @@ export type ProcurementRequestSummary = {
   id: number;
   name: string;
   title: string;
+  create_date?: string | null;
+  write_date?: string | null;
   project?: ProcurementParty | null;
   task?: ProcurementParty | null;
   vehicle?: ProcurementParty | null;

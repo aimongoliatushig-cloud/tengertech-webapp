@@ -1166,6 +1166,8 @@ class MunicipalProcurementRequest(models.Model):
             "id": self.id,
             "name": self.name,
             "title": self.title or self.description or self.name,
+            "create_date": self.create_date.isoformat() if self.create_date else None,
+            "write_date": self.write_date.isoformat() if self.write_date else None,
             "project": _relation_payload(self.related_project_id),
             "task": _relation_payload(self.related_task_id),
             "vehicle": _relation_payload(self.vehicle_id),
@@ -1424,7 +1426,7 @@ class MunicipalProcurementRequest(models.Model):
         page = max(int(filters.get("page") or 1), 1)
         domain = self._api_domain_for_filters(filters)
         total = self.search_count(domain)
-        records = self.search(domain, limit=limit, offset=(page - 1) * limit, order="write_date desc, id desc")
+        records = self.search(domain, limit=limit, offset=(page - 1) * limit, order="create_date desc, id desc")
         return {
             "ok": True,
             "items": [record._api_summary_payload() for record in records],
@@ -1434,7 +1436,7 @@ class MunicipalProcurementRequest(models.Model):
     @api.model
     def _api_dashboard_payload(self, filters):
         domain = self._api_domain_for_filters(filters)
-        records = self.search(domain, order="write_date desc, id desc")
+        records = self.search(domain, order="create_date desc, id desc")
         total = len(records)
         payment_pending = len(records.filtered(lambda r: r.payment_status != "payment_recorded" and r.state not in ("done", "cancelled")))
         receipt_pending = len(records.filtered(lambda r: r.payment_status == "payment_recorded" and r.receipt_status == "not_received"))
@@ -1459,7 +1461,7 @@ class MunicipalProcurementRequest(models.Model):
             "department_counts": self._api_group_counts(records, "department_id"),
             "project_progress": self._api_group_counts(records, "related_project_id"),
             "supplier_counts": self._api_supplier_counts(records),
-            "items": [record._api_summary_payload() for record in records[:10]],
+            "items": [record._api_summary_payload() for record in records],
         }
 
     @api.model

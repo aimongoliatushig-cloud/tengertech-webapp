@@ -1027,6 +1027,12 @@ export function AppMenu({
       : []),
     ...(showProcurement ? [procurementMenuItem] : []),
     {
+      key: "chat",
+      href: "/chat",
+      label: "Чат",
+      icon: MessageSquare,
+    },
+    {
       key: "review",
       href: reviewHref,
       label: "Мэдэгдэл",
@@ -1307,6 +1313,12 @@ export function AppMenu({
                 { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
                 { key: "projects", href: "/projects", label: "Ажлууд", icon: ListChecks },
                 ...(mobilePrimaryAction ? [mobilePrimaryAction] : []),
+                {
+                  key: "chat",
+                  href: "/chat",
+                  label: "Чат",
+                  icon: MessageSquare,
+                },
                 {
                   key: "review",
                   href: "/notifications",

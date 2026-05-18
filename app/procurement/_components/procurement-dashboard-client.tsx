@@ -42,6 +42,8 @@ type ModalState = {
   action: ProcurementAction;
 } | null;
 
+const DASHBOARD_PAGE_SIZE = 10;
+
 const STATE_LABELS: Record<string, string> = {
   draft: "Ноорог",
   submitted: "Илгээсэн",
@@ -434,6 +436,46 @@ function filterItems(items: ProcurementRequestDetail[], filter: DashboardFilter)
   return items;
 }
 
+function timestamp(value?: string | null) {
+  if (!value) return 0;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function sortNewestFirst(items: ProcurementRequestDetail[]) {
+  return [...items].sort((left, right) => {
+    const rightTime = timestamp(right.create_date) || timestamp(right.write_date) || timestamp(right.required_date);
+    const leftTime = timestamp(left.create_date) || timestamp(left.write_date) || timestamp(left.required_date);
+    return rightTime - leftTime || right.id - left.id;
+  });
+}
+
+function dateKey(value?: string | null) {
+  if (!value) return "";
+  return value.slice(0, 10);
+}
+
+function getSubmittedDateKey(item: ProcurementRequestDetail) {
+  return dateKey(item.create_date) || dateKey(item.required_date);
+}
+
+function itemMatchesSearch(item: ProcurementRequestDetail, rawQuery: string) {
+  const query = rawQuery.trim().toLocaleLowerCase("mn-MN");
+  if (!query) return true;
+  return `${item.name} ${item.title}`.toLocaleLowerCase("mn-MN").includes(query);
+}
+
+function itemMatchesDateRange(item: ProcurementRequestDetail, startDate: string, endDate: string) {
+  if (!startDate && !endDate) return true;
+  const itemDate = getSubmittedDateKey(item);
+  if (!itemDate) return false;
+  const from = startDate && endDate && startDate > endDate ? endDate : startDate;
+  const to = startDate && endDate && startDate > endDate ? startDate : endDate;
+  if (from && itemDate < from) return false;
+  if (to && itemDate > to) return false;
+  return true;
+}
+
 function StageRail({ item }: { item: ProcurementRequestDetail }) {
   return (
     <div className={styles.stageRail}>
@@ -473,20 +515,44 @@ export function ProcurementDashboardClient({
   const [filter, setFilter] = useState<DashboardFilter>("active");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [modal, setModal] = useState<ModalState>(null);
-  const activeItems = useMemo(() => items.filter((item) => item.state.code !== "done"), [items]);
-  const doneItems = useMemo(() => items.filter((item) => item.state.code === "done"), [items]);
-  const visibleItems = useMemo(() => filterItems(items, filter), [filter, items]);
-  const lowItems = useMemo(() => items.filter((item) => getThreshold(item) === "low"), [items]);
-  const highItems = useMemo(() => items.filter((item) => getThreshold(item) === "high"), [items]);
-  const projectItems = useMemo(() => items.filter((item) => getRelationType(item) === "project"), [items]);
-  const vehicleItems = useMemo(() => items.filter((item) => getRelationType(item) === "vehicle"), [items]);
-  const modalItem = modal ? items.find((item) => item.id === modal.requestId) : undefined;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [page, setPage] = useState(1);
+  const sortedItems = useMemo(() => sortNewestFirst(items), [items]);
+  const activeItems = useMemo(() => sortedItems.filter((item) => item.state.code !== "done"), [sortedItems]);
+  const doneItems = useMemo(() => sortedItems.filter((item) => item.state.code === "done"), [sortedItems]);
+  const filteredItems = useMemo(() => filterItems(sortedItems, filter), [filter, sortedItems]);
+  const visibleItems = useMemo(
+    () =>
+      filteredItems.filter(
+        (item) => itemMatchesSearch(item, searchQuery) && itemMatchesDateRange(item, dateFrom, dateTo),
+      ),
+    [dateFrom, dateTo, filteredItems, searchQuery],
+  );
+  const totalPages = Math.max(1, Math.ceil(visibleItems.length / DASHBOARD_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems = useMemo(
+    () => visibleItems.slice((currentPage - 1) * DASHBOARD_PAGE_SIZE, currentPage * DASHBOARD_PAGE_SIZE),
+    [currentPage, visibleItems],
+  );
+  const lowItems = useMemo(() => sortedItems.filter((item) => getThreshold(item) === "low"), [sortedItems]);
+  const highItems = useMemo(() => sortedItems.filter((item) => getThreshold(item) === "high"), [sortedItems]);
+  const projectItems = useMemo(() => sortedItems.filter((item) => getRelationType(item) === "project"), [sortedItems]);
+  const vehicleItems = useMemo(() => sortedItems.filter((item) => getRelationType(item) === "vehicle"), [sortedItems]);
+  const modalItem = modal ? sortedItems.find((item) => item.id === modal.requestId) : undefined;
   const modalActionAllowed = modalItem && modal
     ? getDashboardActions(modalItem, userFlags, hideActions).some((action) => action.code === modal.action.code)
     : false;
 
+  function resetDashboardPaging() {
+    setPage(1);
+    setExpandedId(null);
+  }
+
   const stats = [
-    { key: "all" as const, label: "Нийт хүсэлт", value: items.length, helper: "Бүгд харагдана", icon: ClipboardList, items },
+    { key: "all" as const, label: "Нийт хүсэлт", value: sortedItems.length, helper: "Бүгд харагдана", icon: ClipboardList, items: sortedItems },
     { key: "active" as const, label: "Идэвхтэй", value: activeItems.length, helper: "Явагдаж буй", icon: PlayCircle, items: activeItems },
     { key: "done" as const, label: "Дууссан", value: doneItems.length, helper: "Дууссан", icon: CheckCircle2, items: doneItems },
     { key: "low" as const, label: "Энгийн багц", value: lowItems.length, helper: statAmount(lowItems), icon: Banknote, items: lowItems },
@@ -501,12 +567,65 @@ export function ProcurementDashboardClient({
       <section className={styles.dashboardCommandBar}>
         <div className={styles.dashboardSearch}>
           <Search aria-hidden />
-          <input type="search" placeholder="Хайх..." aria-label="Хайх" />
+          <input
+            type="search"
+            placeholder="Хайх..."
+            aria-label="Худалдан авалтын хүсэлтийн нэрээр хайх"
+            value={searchQuery}
+            onChange={(event) => {
+              setSearchQuery(event.target.value);
+              resetDashboardPaging();
+            }}
+          />
         </div>
-        <button className={styles.filterIconButton} type="button" aria-label="Дэлгэрэнгүй шүүлтүүр">
+        <button
+          className={`${styles.filterIconButton} ${showDateFilter || dateFrom || dateTo ? styles.filterIconButtonActive : ""}`}
+          type="button"
+          aria-label="Огнооны шүүлтүүр"
+          aria-expanded={showDateFilter}
+          onClick={() => setShowDateFilter((current) => !current)}
+        >
           <SlidersHorizontal aria-hidden />
         </button>
       </section>
+
+      {showDateFilter ? (
+        <section className={styles.dateFilterPanel} aria-label="Илгээсэн огнооны шүүлтүүр">
+          <label>
+            Эхлэх огноо
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(event) => {
+                setDateFrom(event.target.value);
+                resetDashboardPaging();
+              }}
+            />
+          </label>
+          <label>
+            Дуусах огноо
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(event) => {
+                setDateTo(event.target.value);
+                resetDashboardPaging();
+              }}
+            />
+          </label>
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            onClick={() => {
+              setDateFrom("");
+              setDateTo("");
+              resetDashboardPaging();
+            }}
+          >
+            Цэвэрлэх
+          </button>
+        </section>
+      ) : null}
 
       <section className={styles.dashboardKpiGrid} aria-label="Худалдан авалтын KPI">
         {stats.map((stat) => {
@@ -518,7 +637,7 @@ export function ProcurementDashboardClient({
               className={`${styles.dashboardKpiCard} ${filter === stat.key ? styles.dashboardKpiCardActive : ""}`}
               onClick={() => {
                 setFilter(stat.key);
-                setExpandedId(null);
+                resetDashboardPaging();
               }}
             >
               <span className={`${styles.metricIcon} ${stat.key === "high" ? styles.metricWarning : styles.metricSuccess}`}>
@@ -545,7 +664,7 @@ export function ProcurementDashboardClient({
             className={`${styles.dashboardFilterTab} ${filter === key ? styles.dashboardFilterTabActive : ""}`}
             onClick={() => {
               setFilter(key as DashboardFilter);
-              setExpandedId(null);
+              resetDashboardPaging();
             }}
           >
             {label}
@@ -557,12 +676,12 @@ export function ProcurementDashboardClient({
         <div className={styles.dashboardSectionHeader}>
           <div>
             <h2>{title} худалдан авалт ({visibleItems.length})</h2>
-            <p>Шүүлтүүрүүд хуудас дахин ачаалахгүйгээр суман явцын самбарыг шинэчилнэ.</p>
+            <p>Хайлт, огноо, хуудаслалт нь хуудас дахин ачаалалгүйгээр самбарыг шинэчилнэ.</p>
           </div>
         </div>
         <div className={styles.dashboardPanelList}>
-          {visibleItems.length ? (
-            visibleItems.map((item) => (
+          {pageItems.length ? (
+            pageItems.map((item) => (
               <ProgressiveProcurementCard
                 key={item.id}
                 item={item}
@@ -579,6 +698,41 @@ export function ProcurementDashboardClient({
             </div>
           )}
         </div>
+        {visibleItems.length > DASHBOARD_PAGE_SIZE ? (
+          <div className={styles.dashboardPagination} aria-label="Худалдан авалтын хуудаслалт">
+            <span>
+              {(currentPage - 1) * DASHBOARD_PAGE_SIZE + 1}-{Math.min(currentPage * DASHBOARD_PAGE_SIZE, visibleItems.length)} / {visibleItems.length}
+            </span>
+            <div>
+              <button
+                type="button"
+                className={styles.pagerButton}
+                disabled={currentPage <= 1}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+              >
+                Өмнөх
+              </button>
+              {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  className={`${styles.pagerButton} ${pageNumber === currentPage ? styles.pagerButtonActive : ""}`}
+                  onClick={() => setPage(pageNumber)}
+                >
+                  {pageNumber}
+                </button>
+              ))}
+              <button
+                type="button"
+                className={styles.pagerButton}
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+              >
+                Дараах
+              </button>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       {modal && modalItem && modalActionAllowed ? (
@@ -610,7 +764,7 @@ export function ProcurementActionRequiredList({
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [modal, setModal] = useState<ModalState>(null);
   const actionItems = useMemo(
-    () => items.filter((item) => getDashboardActions(item, userFlags, false).length > 0),
+    () => sortNewestFirst(items).filter((item) => getDashboardActions(item, userFlags, false).length > 0),
     [items, userFlags],
   );
   const modalItem = modal ? actionItems.find((item) => item.id === modal.requestId) : undefined;

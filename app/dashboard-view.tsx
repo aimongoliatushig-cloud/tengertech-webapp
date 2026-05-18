@@ -68,6 +68,7 @@ type DashboardViewProps = {
   canViewGeneralDashboard?: boolean;
   notificationCount?: number;
   notificationNote?: string;
+  showProcurementHomePanels?: boolean;
   procurementActionPanel?: ReactNode;
 };
 
@@ -965,6 +966,7 @@ function RightPanel({
   showFleetSummary,
   showHrSummary,
   showWeatherSummary,
+  showExecutiveSloganPanel,
   workerMode,
   weather,
 }: {
@@ -979,6 +981,7 @@ function RightPanel({
   showFleetSummary: boolean;
   showHrSummary: boolean;
   showWeatherSummary: boolean;
+  showExecutiveSloganPanel: boolean;
   workerMode: boolean;
   weather: WeatherSnapshot;
 }) {
@@ -1033,7 +1036,10 @@ function RightPanel({
         </Card>
       ) : null}
 
-      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.quoteCard)}>
+      {showExecutiveSloganPanel ? (
+        <ExecutiveSloganPanel />
+      ) : (
+        <Card className={cn(dashboardStyles.softPanel, dashboardStyles.quoteCard)}>
         <div
           className={dashboardStyles.quotePanel}
           style={{
@@ -1048,7 +1054,8 @@ function RightPanel({
             “Байгалиа хайрлая, ирээдүйгээ хамгаалъя.”
           </p>
         </div>
-      </Card>
+        </Card>
+      )}
 
       {!workerMode ? (
         <>
@@ -1846,6 +1853,7 @@ export function DashboardView({
   canViewGeneralDashboard = false,
   notificationCount,
   notificationNote,
+  showProcurementHomePanels = false,
   procurementActionPanel,
 }: DashboardViewProps) {
   const canCreateProject = hasCapability(session, "create_projects");
@@ -1858,7 +1866,7 @@ export function DashboardView({
   const masterMode = isMasterRole(session.role);
   const transportInspectorMode = isTransportInspectorDashboard(session);
   const showHrSummary = Boolean(canViewHr && !workerMode);
-  const showWeatherSummary = Boolean(!workerMode && !transportInspectorMode);
+  const showWeatherSummary = Boolean((!workerMode || showProcurementHomePanels) && !transportInspectorMode);
   const roleLabel = getSessionRoleLabel(session);
   const currentDateKey = todayKey();
   const model = buildDashboardModel({
@@ -2055,6 +2063,10 @@ export function DashboardView({
             notificationNote={effectiveNotificationNote}
             backgroundImage={DASHBOARD_IMAGES.header}
           />
+
+          {showProcurementHomePanels ? (
+            <ExecutiveHeroBanner alertCount={attentionCount} weather={weather} />
+          ) : null}
 
           <div className={cn("relative z-20 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]", dashboardStyles.dashboardMainGrid)}>
             <div className={cn("grid min-w-0 gap-4", dashboardStyles.dashboardPrimaryColumn)}>
@@ -2301,6 +2313,7 @@ export function DashboardView({
               showFleetSummary={showFleetSummary}
               showHrSummary={showHrSummary}
               showWeatherSummary={showWeatherSummary}
+              showExecutiveSloganPanel={showProcurementHomePanels}
               workerMode={workerMode}
               weather={weather}
             />
