@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { DashboardView } from "@/app/dashboard-view";
 import { LoadingShell } from "@/app/_components/loading-shell";
+import { ProcurementActionRequiredList } from "@/app/procurement/_components/procurement-dashboard-client";
 import { redirect } from "next/navigation";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
@@ -22,6 +23,19 @@ import {
   loadMunicipalSnapshot,
   type HrDailyAttendanceSummary,
 } from "@/lib/odoo";
+import {
+  createEmptyProcurementDashboard,
+  createFallbackProcurementUser,
+  loadProcurementDashboard,
+  loadProcurementMe,
+  loadProcurementMeta,
+  loadProcurementRequests,
+  loadProcurementRequestDetail,
+  type ProcurementMeta,
+  type ProcurementRequestDetail,
+  type ProcurementRequestSummary,
+  type ProcurementUser,
+} from "@/lib/procurement";
 import { loadUlaanbaatarWeather } from "@/lib/weather";
 import {
   loadDepartmentOptions,
@@ -36,6 +50,12 @@ export const dynamic = "force-dynamic";
 
 type ConnectionOverrides = NonNullable<Parameters<typeof loadMunicipalSnapshot>[0]>;
 type DashboardSession = Awaited<ReturnType<typeof requireSession>>;
+
+type HomeProcurementActions = {
+  items: ProcurementRequestDetail[];
+  suppliers: ProcurementMeta["suppliers"];
+  userFlags: ProcurementUser["flags"];
+} | null;
 
 const EMPTY_FLEET_BOARD: Awaited<ReturnType<typeof loadFleetVehicleBoard>> = {
   allVehicles: [],
@@ -116,6 +136,135 @@ function isTransportInspectorSession(session: DashboardSession) {
         !session.groupFlags?.mfoDispatcher &&
         !session.groupFlags?.municipalDepartmentHead),
   );
+}
+
+function isHomeProcurementWorker(procurementUser: ProcurementUser) {
+  return Boolean(
+    procurementUser.flags.storekeeper ||
+      procurementUser.flags.finance ||
+      procurementUser.flags.office_clerk ||
+      procurementUser.flags.contract_officer,
+  );
+}
+
+function emptyProcurementMeta(): ProcurementMeta {
+  return {
+    projects: [],
+    tasks: [],
+    vehicles: [],
+    departments: [],
+    storekeepers: [],
+    suppliers: [],
+    uoms: [],
+  };
+}
+
+function createProcurementDetailFallback(item: ProcurementRequestSummary): ProcurementRequestDetail {
+  return {
+    ...item,
+    lines: [],
+    quotations: [],
+    packages: item.packages || [...(item.low_value_packages || []), ...(item.high_value_packages || [])],
+    unassigned_lines: [],
+    documents: [],
+    audit: [],
+    attachments: [],
+  };
+}
+
+function uniqueProcurementsById(items: ProcurementRequestSummary[]) {
+  const seen = new Set<number>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function shouldShowOfficeClerkProcurementBacklog(item: ProcurementRequestDetail) {
+  if (!["quote_collection", "quotations_ready", "legal_contract_draft"].includes(item.state.code)) return false;
+  if (item.state.code === "legal_contract_draft") {
+    return item.packages.some((pack) => pack.is_over_threshold || pack.amount_total > 1000000);
+  }
+  const unassignedCount =
+    item.unassigned_lines?.length ??
+    item.lines.filter((line) => !line.package_id).length;
+  if (unassignedCount > 0) return false;
+  return item.packages.some(
+    (pack) =>
+      pack.is_complete &&
+      !pack.ceo_order_ready &&
+      (pack.is_over_threshold || pack.amount_total > 1000000),
+  );
+}
+
+function getHomeProcurementBacklogStates(procurementUser: ProcurementUser) {
+  const states = new Set<string>();
+  if (procurementUser.flags.storekeeper) {
+    ["payment_recorded", "paid"].forEach((state) => states.add(state));
+  }
+  if (procurementUser.flags.finance) {
+    ["finance_review", "payment_pending", "payment_waiting", "payment"].forEach((state) => states.add(state));
+  }
+  if (procurementUser.flags.office_clerk) {
+    ["quote_collection", "quotations_ready", "legal_contract_draft"].forEach((state) => states.add(state));
+  }
+  if (procurementUser.flags.contract_officer) {
+    ["legal_contract_draft", "contract_review"].forEach((state) => states.add(state));
+  }
+  return [...states];
+}
+
+async function loadHomeProcurementActions(
+  session: DashboardSession,
+  connectionOverrides: ConnectionOverrides,
+): Promise<HomeProcurementActions> {
+  const procurementUser = await loadProcurementMe(connectionOverrides).catch(() => createFallbackProcurementUser(session));
+  if (!isHomeProcurementWorker(procurementUser)) {
+    return null;
+  }
+
+  const [meta, dashboard] = await Promise.all([
+    loadProcurementMeta(connectionOverrides).catch(() => emptyProcurementMeta()),
+    loadProcurementDashboard({ scope: "assigned" }, connectionOverrides).catch(() => createEmptyProcurementDashboard()),
+  ]);
+  const backlogStates = getHomeProcurementBacklogStates(procurementUser);
+  const roleBacklogItems =
+    backlogStates.length
+      ? await Promise.all(
+          backlogStates.map((state) =>
+            loadProcurementRequests(
+              {
+                state,
+                limit: 50,
+              },
+              connectionOverrides,
+            )
+              .then((bundle) => bundle.items)
+              .catch(() => []),
+          ),
+        ).then((groups) => groups.flat())
+      : [];
+  const scopedItems = uniqueProcurementsById([...dashboard.items, ...roleBacklogItems]);
+  const backlogIds = new Set(roleBacklogItems.map((item) => item.id));
+  const loadedDetails = await Promise.all(
+    scopedItems.map((item) =>
+      loadProcurementRequestDetail(item.id, connectionOverrides).catch(() => createProcurementDetailFallback(item)),
+    ),
+  );
+  const items = loadedDetails.filter(
+    (item) =>
+      !backlogIds.has(item.id) ||
+      !procurementUser.flags.office_clerk ||
+      !["quote_collection", "quotations_ready"].includes(item.state.code) ||
+      shouldShowOfficeClerkProcurementBacklog(item),
+  );
+
+  return {
+    items,
+    suppliers: meta.suppliers,
+    userFlags: procurementUser.flags,
+  };
 }
 
 function shouldResolveDashboardHrAccess(
@@ -290,6 +439,10 @@ async function DashboardPageContent({
           return null;
         })
     : Promise.resolve(null);
+  const procurementActionsPromise = loadHomeProcurementActions(session, connectionOverrides).catch((error) => {
+    console.warn("Procurement action list could not be loaded for dashboard:", error);
+    return null;
+  });
 
   let scopedDepartmentName = await departmentScopeNamePromise;
   if (transportInspectorMode) {
@@ -338,6 +491,7 @@ async function DashboardPageContent({
     assignedGarbageVehicles,
     assignedGarbagePointOptions,
     garbageDepartmentId,
+    procurementActions,
   ] = await Promise.all([
     snapshotPromise,
     weatherPromise,
@@ -348,6 +502,7 @@ async function DashboardPageContent({
     assignedGarbageVehiclesPromise,
     assignedGarbagePointOptionsPromise,
     garbageDepartmentIdPromise,
+    procurementActionsPromise,
   ]);
 
   if (!scopedDepartmentName && workerMode) {
@@ -423,6 +578,16 @@ async function DashboardPageContent({
       canViewGeneralDashboard={canViewGeneralDashboard}
       notificationCount={notificationSummary.unreadCount}
       notificationNote={notificationNote}
+      procurementActionPanel={
+        procurementActions ? (
+          <ProcurementActionRequiredList
+            items={procurementActions.items}
+            suppliers={procurementActions.suppliers}
+            returnPath="/"
+            userFlags={procurementActions.userFlags}
+          />
+        ) : null
+      }
     />
   );
 }

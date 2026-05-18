@@ -94,6 +94,18 @@ function statusClass(item: ProcurementRequestDetail) {
 }
 
 function getStatusLabel(item: ProcurementRequestDetail) {
+  const packages = item.packages || [];
+  const allReceived =
+    item.receipt_status.code === "received" ||
+    item.state.code === "done" ||
+    Boolean(packages.length && packages.every((pack) => pack.receipt_status?.code === "received" || pack.route_state?.code === "done"));
+  if (allReceived) return "Дууссан";
+  const paidAwaitingReceipt =
+    item.payment_status.code === "payment_recorded" ||
+    item.state.code === "payment_recorded" ||
+    item.state.code === "paid" ||
+    packages.some((pack) => pack.payment_status?.code === "payment_recorded" || pack.route_state?.code === "payment_recorded");
+  if (paidAwaitingReceipt) return "Хүлээн авалт";
   return STATE_LABELS[item.state.code] || item.state.label || "Илгээсэн";
 }
 
@@ -103,6 +115,15 @@ function isDepartmentHeadSession(session: Awaited<ReturnType<typeof requireSessi
 
 function isExecutiveProcurementUser(procurementUser: Awaited<ReturnType<typeof loadProcurementMe>>) {
   return procurementUser.flags.admin || procurementUser.flags.director || procurementUser.flags.general_manager;
+}
+
+function isProcurementWorkerUser(procurementUser: Awaited<ReturnType<typeof loadProcurementMe>>) {
+  return Boolean(
+    procurementUser.flags.storekeeper ||
+      procurementUser.flags.finance ||
+      procurementUser.flags.office_clerk ||
+      procurementUser.flags.contract_officer,
+  );
 }
 
 function normalizeName(value?: string | null) {
@@ -192,7 +213,6 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
 
   const submitForQuotationAction = findAction(item.available_actions, "submit_for_quotation");
   const submitQuotesAction = findAction(item.available_actions, "submit_quotations");
-  const moveToFinanceAction = findAction(item.available_actions, "move_to_finance_review");
   const prepareOrderAction = findAction(item.available_actions, "prepare_order");
   const recordPackageCeoOrderAction = findAction(item.available_actions, "record_package_ceo_order");
   const directorDecisionAction = findAction(item.available_actions, "director_decision");
@@ -201,6 +221,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
   const markPaidAction = findAction(item.available_actions, "mark_paid");
   const markReceivedAction = findAction(item.available_actions, "mark_received");
   const cancelAction = findAction(item.available_actions, "cancel");
+  const visibleActions = item.available_actions.filter((action) => action.code !== "move_to_finance_review");
   const selectedQuotation = item.quotations.find((quotation) => quotation.is_selected);
   const packages = item.packages || [];
   const requestedPackageId = Number(getValue(query.package_id));
@@ -226,7 +247,10 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
       (!document.attachments.length || document.attachments.some((attachment) => !invoiceAttachmentIds.has(attachment.id))),
   );
   const visibleAttachments = item.attachments.filter((attachment) => !invoiceAttachmentIds.has(attachment.id));
-  const isDepartmentHeadView = isDepartmentHeadSession(session) && !isExecutiveProcurementUser(procurementUser);
+  const isDepartmentHeadView =
+    isDepartmentHeadSession(session) &&
+    !isExecutiveProcurementUser(procurementUser) &&
+    !isProcurementWorkerUser(procurementUser);
 
   if (
     isDepartmentHeadView &&
@@ -490,9 +514,9 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
         <aside className={styles.sideStack} id="actions">
           <section className={styles.sidePanel}>
             <h3>Дараагийн үйлдэл</h3>
-            {item.available_actions.length ? (
+            {visibleActions.length ? (
               <div className={styles.badgeRow}>
-                {item.available_actions.map((action) => (
+                {visibleActions.map((action) => (
                   <span key={action.code} className={styles.badgeOutline}>{action.label}</span>
                 ))}
               </div>
@@ -516,9 +540,6 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
 
           {submitForQuotationAction && canManageWorkflow ? (
             <WorkflowButton requestId={item.id} action="submit_for_quotation" label="Багц үүсгэх шат эхлүүлэх" />
-          ) : null}
-          {moveToFinanceAction && canManageWorkflow ? (
-            <WorkflowButton requestId={item.id} action="move_to_finance_review" label="Дараагийн шат руу илгээх" />
           ) : null}
           {prepareOrderAction && canManageWorkflow && !highValuePackages.length ? (
             <WorkflowButton requestId={item.id} action="prepare_order" label="Захиргааны шийдвэр бэлтгэх" />
@@ -779,12 +800,18 @@ function PackageCard({
 
 function PackageCeoOrderForm({ requestId, pack }: { requestId: number; pack: ProcurementPackage }) {
   const defaultQuotationId = pack.ceo_selected_quotation_id || pack.lowest_quotation?.id || pack.quotations[0]?.id || "";
+  const selectedSupplierName =
+    pack.ceo_selected_quotation?.supplier.name ||
+    pack.lowest_quotation?.supplier.name ||
+    pack.quotations[0]?.supplier.name ||
+    "Нийлүүлэгч тодорхойгүй";
 
   return (
     <form action={runProcurementWorkflowAction} className={styles.inlineForm}>
       <input type="hidden" name="request_id" value={requestId} />
       <input type="hidden" name="workflow_action" value="record_package_ceo_order" />
       <input type="hidden" name="package_id" value={pack.id} />
+      {defaultQuotationId ? <input type="hidden" name="selected_quotation_id" value={defaultQuotationId} /> : null}
       <div className={styles.tableRowHeader}>
         <div>
           <strong>{pack.name}</strong>
@@ -794,18 +821,7 @@ function PackageCeoOrderForm({ requestId, pack }: { requestId: number; pack: Pro
           {pack.ceo_order_ready ? "Илгээгдсэн" : "Хүлээгдэж буй"}
         </span>
       </div>
-      <label className={styles.fieldLabel}>
-        Захирлын сонгосон нийлүүлэгч
-        <select name="selected_quotation_id" defaultValue={defaultQuotationId} required>
-          <option value="">Сонгох</option>
-          {pack.quotations.map((quotation) => (
-            <option key={quotation.id} value={quotation.id}>
-              {quotation.supplier.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className={styles.fieldLabel}>Тушаалын дугаар<input name="order_number" defaultValue={pack.ceo_order_number || ""} required /></label>
+      <p className={styles.subtleText}>Нийлүүлэгч: {selectedSupplierName}. Дахин сонгох шаардлагагүй.</p>
       <label className={styles.fieldLabel}>Тушаалын огноо<input type="date" name="order_date" defaultValue={pack.ceo_order_date || ""} required /></label>
       <label className={styles.fieldLabel}>Товч утга<textarea name="note" defaultValue={pack.ceo_order_note || pack.ceo_decision_note || ""} /></label>
       <label className={styles.fieldLabel}>Тушаалын файл<input type="file" name="document_files" multiple required={!pack.ceo_order_attachments?.length} /></label>
@@ -924,13 +940,20 @@ function WorkflowButton({ requestId, action, label }: { requestId: number; actio
 }
 
 function DocumentActionForm({ requestId, action, label, packageId }: { requestId: number; action: string; label: string; packageId?: number }) {
+  const isReceivedAction = action === "mark_received";
   return (
     <form action={runProcurementWorkflowAction} className={packageId ? styles.inlineForm : styles.actionCard}>
       <input type="hidden" name="request_id" value={requestId} />
       <input type="hidden" name="workflow_action" value={action} />
       {packageId ? <input type="hidden" name="package_id" value={packageId} /> : null}
-      <label className={styles.fieldLabel}>Тайлбар<textarea name="note" /></label>
-      <label className={styles.fieldLabel}>Файл<input type="file" name="document_files" multiple /></label>
+      {isReceivedAction ? (
+        <input type="hidden" name="note" value="Хүлээлгэн өгсөн төлөв баталгаажуулав." />
+      ) : (
+        <>
+          <label className={styles.fieldLabel}>Тайлбар<textarea name="note" /></label>
+          <label className={styles.fieldLabel}>Файл<input type="file" name="document_files" multiple /></label>
+        </>
+      )}
       <button type="submit" className={styles.primaryButton}>{label}</button>
     </form>
   );

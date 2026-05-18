@@ -104,11 +104,32 @@ function isExecutiveProcurementUser(procurementUser: ProcurementUser) {
   return procurementUser.flags.admin || procurementUser.flags.director || procurementUser.flags.general_manager;
 }
 
+function isProcurementWorkerUser(procurementUser: ProcurementUser) {
+  return Boolean(
+    procurementUser.flags.storekeeper ||
+      procurementUser.flags.finance ||
+      procurementUser.flags.office_clerk ||
+      procurementUser.flags.contract_officer,
+  );
+}
+
 function normalizeName(value?: string | null) {
   return (value || "").trim().toLocaleLowerCase("mn-MN");
 }
 
 function getStatusLabel(item: ProcurementRequestSummary) {
+  const packages = item.packages || [...(item.low_value_packages || []), ...(item.high_value_packages || [])];
+  const allReceived =
+    item.receipt_status.code === "received" ||
+    item.state.code === "done" ||
+    Boolean(packages.length && packages.every((pack) => pack.receipt_status?.code === "received" || pack.route_state?.code === "done"));
+  if (allReceived) return "Дууссан";
+  const paidAwaitingReceipt =
+    item.payment_status.code === "payment_recorded" ||
+    item.state.code === "payment_recorded" ||
+    item.state.code === "paid" ||
+    packages.some((pack) => pack.payment_status?.code === "payment_recorded" || pack.route_state?.code === "payment_recorded");
+  if (paidAwaitingReceipt) return "Хүлээн авалт хүлээгдэж байна";
   return STATE_LABELS[item.state.code] || item.state.label || "Илгээсэн";
 }
 
@@ -192,7 +213,9 @@ export default async function ProcurementPage({ searchParams }: PageProps) {
   ]);
 
   const isDepartmentHeadView =
-    isDepartmentHeadSession(session) && !isExecutiveProcurementUser(procurementUser);
+    isDepartmentHeadSession(session) &&
+    !isExecutiveProcurementUser(procurementUser) &&
+    !isProcurementWorkerUser(procurementUser);
   const isExecutiveView = isExecutiveProcurementUser(procurementUser);
   const isStorekeeperView =
     !isExecutiveView &&

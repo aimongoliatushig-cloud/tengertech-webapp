@@ -507,12 +507,14 @@ class MunicipalProcurementRequest(models.Model):
 
     def _effective_package_route_state(self, package):
         self.ensure_one()
+        if package.receipt_status == "received":
+            return "done"
+        if package.payment_status == "payment_recorded" or self.payment_status == "payment_recorded":
+            return "payment_recorded"
         if package.route_state and package.route_state != "draft":
             return package.route_state
         if not package.is_complete:
             return package.route_state or "draft"
-        if package.payment_status == "payment_recorded" or self.payment_status == "payment_recorded":
-            return "payment_recorded"
         if _is_high_value_amount(self._package_threshold_amount(package)):
             if package._ceo_order_ready() and self.contract_draft_attachment_ids:
                 return "payment_pending"
@@ -539,6 +541,11 @@ class MunicipalProcurementRequest(models.Model):
                 request.payment_status = "payment_recorded"
             if active_packages and all(package.receipt_status == "received" for package in active_packages):
                 request.receipt_status = "received"
+                request.write({"state": "done", "payment_status": "payment_recorded", "receipt_status": "received"})
+                continue
+            if active_packages and all(package.payment_status == "payment_recorded" for package in active_packages):
+                request.state = "payment_recorded"
+                continue
 
             if packages.filtered(lambda package: package.route_state in ("admin_review", "ceo_order_uploaded")):
                 request.state = "admin_review"
@@ -744,6 +751,7 @@ class MunicipalProcurementRequest(models.Model):
             quote.is_selected = True
             request.write(
                 {
+                    "administration_user_id": self.env.user.id,
                     "ceo_selected_quote_id": quote.id,
                     "ceo_decision_date": fields.Datetime.now(),
                     "ceo_decision_recorded_by": self.env.user.id,
@@ -835,7 +843,7 @@ class MunicipalProcurementRequest(models.Model):
             if package.ceo_order_attachment_ids:
                 request.ceo_order_attachment_ids = [(4, attachment.id) for attachment in package.ceo_order_attachment_ids]
             if require_order_fields and not package._ceo_order_ready():
-                raise UserError("Supplier, order number, order date, and order attachment are required for this package.")
+                raise UserError("Supplier, order date, and order attachment are required for this package.")
             missing_packages = request._missing_ceo_order_packages()
             if missing_packages:
                 package.route_state = "ceo_order_uploaded"
@@ -1330,10 +1338,20 @@ class MunicipalProcurementRequest(models.Model):
             elif flags["office_clerk"]:
                 office_clerk_stage_domain = [
                     "|",
+                    "|",
+                    "|",
                     ("state", "in", ["admin_review", "ceo_decision", "ceo_order_uploaded"]),
                     "&",
+                    ("state", "in", ["legal_contract_draft"]),
+                    ("package_ids.amount_total", ">", AMOUNT_THRESHOLD),
+                    "&",
                     ("state", "=", "finance_review"),
-                    ("package_ids.amount_total", ">=", AMOUNT_THRESHOLD),
+                    ("package_ids.amount_total", ">", AMOUNT_THRESHOLD),
+                    "&",
+                    ("state", "in", ["quote_collection", "quotations_ready"]),
+                    "&",
+                    ("package_ids.is_complete", "=", True),
+                    ("package_ids.amount_total", ">", AMOUNT_THRESHOLD),
                 ]
                 domain += ["|"] + assigned_domain + office_clerk_stage_domain
             elif flags["finance"]:
@@ -1582,6 +1600,10 @@ class MunicipalProcurementRequest(models.Model):
                 request._sync_package_quote_selection()
                 if request.state in ("draft", "submitted", "quote"):
                     request._change_state("quote_collection", "submit_for_quotation")
+                unassigned_lines = request.line_ids.filtered(lambda line: not line.package_id)
+                incomplete_packages = request.package_ids.filtered(lambda package: not package.is_complete)
+                if request.package_ids and not unassigned_lines and not incomplete_packages:
+                    request.action_finance_review()
             return True
 
         quotations = payload.get("quotations") or []
@@ -1614,6 +1636,7 @@ class MunicipalProcurementRequest(models.Model):
             request._ensure_quote_evidence()
             request.write({"date_quotation_submitted": fields.Datetime.now(), "amount_total": request.selected_supplier_total})
             request._change_state("quote_collection", "submit_quotations")
+            request.action_finance_review()
         return True
 
     def _api_save_package(self, payload):
@@ -1793,7 +1816,12 @@ class MunicipalProcurementRequest(models.Model):
             self.write(vals)
             return self.action_mark_paid(package_id)
         if action == "mark_received":
-            self.write({"received_note": payload.get("note"), "is_service_finalized": self.request_type == "service"})
+            self.write(
+                {
+                    "received_note": payload.get("note") or "Хүлээлгэн өгсөн төлөв баталгаажуулав.",
+                    "is_service_finalized": self.request_type == "service",
+                }
+            )
             return self.action_receive(payload.get("package_id"))
         if action == "mark_done":
             return self.action_done()
@@ -1976,7 +2004,6 @@ class MunicipalProcurementPackage(models.Model):
         self.ensure_one()
         return bool(
             self.ceo_selected_quote_id
-            and self.ceo_order_number
             and self.ceo_order_date
             and self.ceo_order_attachment_ids
         )

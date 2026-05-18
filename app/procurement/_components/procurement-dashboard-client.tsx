@@ -22,7 +22,6 @@ import type {
   ProcurementAction,
   ProcurementMeta,
   ProcurementPackage,
-  ProcurementQuotation,
   ProcurementRequestDetail,
   ProcurementUser,
 } from "@/lib/procurement";
@@ -92,7 +91,8 @@ function formatDate(value?: string | null) {
 }
 
 function getStatusLabel(item: ProcurementRequestDetail) {
-  return STATE_LABELS[item.state.code] || item.state.label || "Илгээсэн";
+  const code = getDerivedStageCode(item);
+  return STATE_LABELS[code] || item.state.label || "Илгээсэн";
 }
 
 function getCalculatedTotal(item: ProcurementRequestDetail) {
@@ -152,14 +152,39 @@ function getRelationLabel(item: ProcurementRequestDetail) {
   return item.task?.name || item.project?.name || "Төсөл";
 }
 
+function hasReceivedAllPackages(item: ProcurementRequestDetail) {
+  if (item.receipt_status.code === "received" || item.state.code === "done") return true;
+  return Boolean(item.packages.length && item.packages.every((pack) => pack.receipt_status?.code === "received" || pack.route_state?.code === "done"));
+}
+
+function hasPaidAwaitingReceipt(item: ProcurementRequestDetail) {
+  if (hasReceivedAllPackages(item)) return false;
+  if (item.payment_status.code === "payment_recorded" || item.state.code === "payment_recorded" || item.state.code === "paid") {
+    return true;
+  }
+  return item.packages.some((pack) => pack.payment_status?.code === "payment_recorded" || pack.route_state?.code === "payment_recorded");
+}
+
+function getDerivedStageCode(item: ProcurementRequestDetail) {
+  if (hasReceivedAllPackages(item)) return "done";
+  if (hasPaidAwaitingReceipt(item)) return "payment_recorded";
+  return item.state.code;
+}
+
+function getPackageStageCode(pack: ProcurementPackage) {
+  if (pack.receipt_status?.code === "received" || pack.route_state?.code === "done") return "done";
+  if (pack.payment_status?.code === "payment_recorded" || pack.route_state?.code === "payment_recorded") return "payment_recorded";
+  return pack.route_state?.code || "";
+}
+
 function stageIndexFromCode(code: string, highValue: boolean) {
   const paymentIndex = highValue ? 5 : 3;
   const receiveIndex = highValue ? 6 : 4;
   const doneIndex = highValue ? 7 : 5;
   if (code === "done") return doneIndex;
   if (code === "received") return receiveIndex;
-  if (code === "paid" || code === "payment_recorded") return paymentIndex;
-  if (code.includes("payment")) return paymentIndex;
+  if (code === "paid" || code === "payment_recorded") return receiveIndex;
+  if (code === "payment_pending" || code === "payment" || code === "payment_waiting") return paymentIndex;
   if (highValue && (code.includes("contract") || code.includes("legal"))) return 4;
   if (code.includes("order")) return 3;
   if (
@@ -176,9 +201,9 @@ function stageIndexFromCode(code: string, highValue: boolean) {
 
 function getCurrentStageIndex(item: ProcurementRequestDetail) {
   const highValue = hasHighValueFlow(item);
-  const code = item.state.code;
+  const code = getDerivedStageCode(item);
   const packageIndexes = item.packages
-    .map((pack) => stageIndexFromCode(pack.route_state?.code || "", highValue))
+    .map((pack) => stageIndexFromCode(getPackageStageCode(pack), highValue))
     .filter((index) => index > 0);
   const stateIndex = stageIndexFromCode(code, highValue);
   if (stateIndex > 0 || packageIndexes.length) {
@@ -373,7 +398,7 @@ function getDashboardActions(
 ) {
   if (hideActions) return [];
   const actions = item.available_actions
-    .filter((action) => action.code !== "mark_done")
+    .filter((action) => action.code !== "mark_done" && action.code !== "move_to_finance_review")
     .filter((action) => isRoleAllowedAction(action, userFlags))
     .filter((action) => isStateAllowedAction(action, item));
   if (
@@ -456,6 +481,10 @@ export function ProcurementDashboardClient({
   const projectItems = useMemo(() => items.filter((item) => getRelationType(item) === "project"), [items]);
   const vehicleItems = useMemo(() => items.filter((item) => getRelationType(item) === "vehicle"), [items]);
   const modalItem = modal ? items.find((item) => item.id === modal.requestId) : undefined;
+  const modalActionAllowed = modalItem && modal
+    ? getDashboardActions(modalItem, userFlags, hideActions).some((action) => action.code === modal.action.code)
+    : false;
+
   const stats = [
     { key: "all" as const, label: "Нийт хүсэлт", value: items.length, helper: "Бүгд харагдана", icon: ClipboardList, items },
     { key: "active" as const, label: "Идэвхтэй", value: activeItems.length, helper: "Явагдаж буй", icon: PlayCircle, items: activeItems },
@@ -552,7 +581,7 @@ export function ProcurementDashboardClient({
         </div>
       </section>
 
-      {modal && modalItem ? (
+      {modal && modalItem && modalActionAllowed ? (
         <ActionModal
           item={modalItem}
           action={modal.action}
@@ -562,6 +591,71 @@ export function ProcurementDashboardClient({
         />
       ) : null}
     </>
+  );
+}
+
+export function ProcurementActionRequiredList({
+  items,
+  suppliers,
+  returnPath,
+  userFlags,
+  title = "Үйлдэл шаардсан худалдан авалт",
+}: {
+  items: ProcurementRequestDetail[];
+  suppliers: ProcurementMeta["suppliers"];
+  returnPath: string;
+  userFlags: ProcurementUser["flags"];
+  title?: string;
+}) {
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [modal, setModal] = useState<ModalState>(null);
+  const actionItems = useMemo(
+    () => items.filter((item) => getDashboardActions(item, userFlags, false).length > 0),
+    [items, userFlags],
+  );
+  const modalItem = modal ? actionItems.find((item) => item.id === modal.requestId) : undefined;
+  const modalActionAllowed = modalItem && modal
+    ? getDashboardActions(modalItem, userFlags, false).some((action) => action.code === modal.action.code)
+    : false;
+
+  return (
+    <section className={styles.procurementBoard}>
+      <div className={styles.dashboardSectionHeader}>
+        <div>
+          <h2>{title} ({actionItems.length})</h2>
+          <p>Танд хийх шаардлагатай худалдан авалтын хүсэлтүүдийг суман явцаар харуулна.</p>
+        </div>
+      </div>
+      <div className={styles.dashboardPanelList}>
+        {actionItems.length ? (
+          actionItems.map((item) => (
+            <ProgressiveProcurementCard
+              key={item.id}
+              item={item}
+              userFlags={userFlags}
+              hideActions={false}
+              expanded={expandedId === item.id}
+              onToggle={() => setExpandedId((current) => (current === item.id ? null : item.id))}
+              onAction={(action) => setModal({ requestId: item.id, action })}
+            />
+          ))
+        ) : (
+          <div className={styles.emptyState}>
+            <strong>Одоогоор хийх шаардлагатай худалдан авалт алга.</strong>
+          </div>
+        )}
+      </div>
+
+      {modal && modalItem && modalActionAllowed ? (
+        <ActionModal
+          item={modalItem}
+          action={modal.action}
+          suppliers={suppliers}
+          returnPath={returnPath}
+          onClose={() => setModal(null)}
+        />
+      ) : null}
+    </section>
   );
 }
 
@@ -785,6 +879,8 @@ function ActionForm({
   returnPath: string;
   onClose: () => void;
 }) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   if (action.code === "submit_quotations") {
     const targetPackages = item.packages.filter((pack) => !pack.is_complete && pack.lines.length > 0);
     const unassignedLines = getUnassignedProcurementLines(item);
@@ -857,8 +953,7 @@ function ActionForm({
       <form action={runProcurementWorkflowAction} className={styles.formStack}>
         <WorkflowHidden item={item} action={action.code} returnPath={returnPath} />
         <PackageSelect packages={highPackages} />
-        <QuotationSelect packages={highPackages} />
-        <label className={styles.fieldLabel}>Тушаалын дугаар<input name="order_number" required /></label>
+        <p className={styles.subtleText}>Нэхэмжлэх оруулсан нийлүүлэгчээр үргэлжилнэ. Нийлүүлэгч дахин сонгох шаардлагагүй.</p>
         <label className={styles.fieldLabel}>Тушаалын огноо<input type="date" name="order_date" required /></label>
         <label className={styles.fieldLabel}>Тайлбар<textarea name="note" /></label>
         <label className={styles.fieldLabel}>Тушаалын файл<input type="file" name="document_files" multiple required /></label>
@@ -871,18 +966,20 @@ function ActionForm({
     const payablePackages = item.packages.filter((pack) => isPackagePayable(pack, item));
     const selectedQuotationId = getPaymentQuotationId(item);
     return (
-      <form action={runProcurementWorkflowAction} className={styles.formStack}>
+      <form action={runProcurementWorkflowAction} className={styles.formStack} onSubmit={() => setIsSubmitting(true)}>
         <WorkflowHidden item={item} action={action.code} returnPath={returnPath} />
         {payablePackages.length === 1 ? <input type="hidden" name="package_id" value={payablePackages[0].id} /> : null}
         {selectedQuotationId ? <input type="hidden" name="selected_quotation_id" value={selectedQuotationId} /> : null}
         <input type="hidden" name="paid_amount" value={Math.max(1, Math.round(getDisplayTotal(item) || 0))} />
         <input type="hidden" name="note" value="Dashboard дээр төлсөн төлөв баталгаажуулав. Нийлүүлэгчийн банкны дансны мэдээлэл дутуу бол энэ тэмдэглэл exception note болно." />
         <p className={styles.subtleText}>
-          {item.name} хүсэлтийг төлсөн төлөвт оруулах уу?
+          {isSubmitting ? "Төлсөн төлөв баталгаажуулж байна..." : `${item.name} хүсэлтийг төлсөн төлөвт оруулах уу?`}
         </p>
         <div className={styles.buttonRow}>
-          <button type="submit" className={styles.primaryButton}>Тийм</button>
-          <button type="button" className={styles.secondaryButton} onClick={onClose}>Үгүй</button>
+          <button type="submit" className={styles.primaryButton} disabled={isSubmitting}>
+            {isSubmitting ? "Илгээж байна..." : "Тийм"}
+          </button>
+          <button type="button" className={styles.secondaryButton} onClick={onClose} disabled={isSubmitting}>Үгүй</button>
         </div>
       </form>
     );
@@ -895,13 +992,34 @@ function ActionForm({
         ? receivablePackages
         : item.packages;
     return (
-      <form action={runProcurementWorkflowAction} className={styles.formStack}>
+      <form
+        action={runProcurementWorkflowAction}
+        className={styles.formStack}
+        onSubmit={action.code === "mark_received" ? () => setIsSubmitting(true) : undefined}
+      >
         <WorkflowHidden item={item} action={action.code} returnPath={returnPath} />
         {actionPackages.length === 1 ? <input type="hidden" name="package_id" value={actionPackages[0].id} /> : null}
         {actionPackages.length > 1 ? <PackageSelect packages={actionPackages} optional={action.code !== "mark_received"} /> : null}
-        <label className={styles.fieldLabel}>Тайлбар<textarea name="note" /></label>
-        {action.code === "mark_received" ? null : <label className={styles.fieldLabel}>Файл<input type="file" name="document_files" multiple /></label>}
-        <button type="submit" className={styles.primaryButton}>{ACTION_LABELS[action.code] || action.label}</button>
+        {action.code === "mark_received" ? (
+          <>
+            <input type="hidden" name="note" value="Dashboard дээр хүлээлгэн өгсөн төлөв баталгаажуулав." />
+            <p className={styles.subtleText}>
+              {isSubmitting ? "Хүлээлгэн өгсөн төлөв баталгаажуулж байна..." : `${item.name} хүсэлтийг хүлээлгэн өгсөн болгох уу?`}
+            </p>
+            <div className={styles.buttonRow}>
+              <button type="submit" className={styles.primaryButton} disabled={isSubmitting}>
+                {isSubmitting ? "Илгээж байна..." : "Тийм"}
+              </button>
+              <button type="button" className={styles.secondaryButton} onClick={onClose} disabled={isSubmitting}>Үгүй</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <label className={styles.fieldLabel}>Тайлбар<textarea name="note" /></label>
+            <label className={styles.fieldLabel}>Файл<input type="file" name="document_files" multiple /></label>
+            <button type="submit" className={styles.primaryButton}>{ACTION_LABELS[action.code] || action.label}</button>
+          </>
+        )}
       </form>
     );
   }
@@ -944,33 +1062,6 @@ function PackageSelect({ packages, optional = false }: { packages: ProcurementPa
         {optional ? <option value="">Бүх хүсэлт</option> : null}
         {packages.map((pack) => (
           <option key={pack.id} value={pack.id}>{pack.name}</option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function QuotationSelect({
-  packages,
-  requestQuotes = [],
-}: {
-  packages: ProcurementPackage[];
-  requestQuotes?: ProcurementQuotation[];
-}) {
-  const quotes = [
-    ...packages.flatMap((pack) => pack.quotations.map((quote) => ({ ...quote, packageName: pack.name }))),
-    ...requestQuotes.map((quote) => ({ ...quote, packageName: "Хүсэлт" })),
-  ];
-  if (!quotes.length) return null;
-  return (
-    <label className={styles.fieldLabel}>
-      Нийлүүлэгчийн санал
-      <select name="selected_quotation_id">
-        <option value="">Сонгох</option>
-        {quotes.map((quote) => (
-          <option key={`${quote.packageName}-${quote.id}`} value={quote.id}>
-            {quote.supplier.name}
-          </option>
         ))}
       </select>
     </label>

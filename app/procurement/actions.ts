@@ -68,6 +68,44 @@ function isRedirectException(error: unknown) {
   );
 }
 
+function isFinanceReviewAutoAdvanced(stateCode?: string) {
+  return [
+    "finance_review",
+    "admin_review",
+    "ceo_decision",
+    "ceo_order_uploaded",
+    "legal_contract_draft",
+    "payment_pending",
+  ].includes(stateCode || "");
+}
+
+function hasCompleteInvoicePackages(request: {
+  packages?: Array<{ is_complete?: boolean; lines?: unknown[] }>;
+  unassigned_lines?: unknown[];
+  lines?: Array<{ package_id?: number | null }>;
+  quotations?: Array<{ is_selected?: boolean }>;
+}) {
+  const packages = request.packages || [];
+  if (packages.length) {
+    const unassignedCount =
+      request.unassigned_lines?.length ??
+      request.lines?.filter((line) => !line.package_id).length ??
+      0;
+    return unassignedCount === 0 && packages.every((pack) => pack.lines?.length && pack.is_complete);
+  }
+  return Boolean(request.quotations?.some((quotation) => quotation.is_selected));
+}
+
+function shouldMoveToFinanceReviewAfterInvoice(request: Parameters<typeof hasCompleteInvoicePackages>[0] & {
+  state?: { code?: string };
+}) {
+  return (
+    !isFinanceReviewAutoAdvanced(request.state?.code) &&
+    ["submitted", "quote", "quote_collection", "quotations_ready"].includes(request.state?.code || "") &&
+    hasCompleteInvoicePackages(request)
+  );
+}
+
 function getCreateRequestErrorMessage(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   if (
@@ -326,7 +364,7 @@ export async function submitProcurementQuotationsAction(formData: FormData) {
       }),
     );
 
-    await submitProcurementQuotations(
+    let updatedRequest = await submitProcurementQuotations(
       requestId,
       {
         package_id: packageId || undefined,
@@ -334,9 +372,22 @@ export async function submitProcurementQuotationsAction(formData: FormData) {
       },
       connectionOverrides,
     );
+    if (shouldMoveToFinanceReviewAfterInvoice(updatedRequest)) {
+      updatedRequest = await moveProcurementToFinanceReview(requestId, connectionOverrides);
+    }
+    const autoAdvanced = isFinanceReviewAutoAdvanced(updatedRequest.state?.code);
+    if (autoAdvanced) {
+      await notifyProcurementStageChanged("move_to_finance_review", updatedRequest);
+    }
 
     revalidateProcurementPaths(requestId);
-    redirectWithMessage(redirectPath, "notice", "Нэхэмжлэх амжилттай хадгалагдлаа.");
+    redirectWithMessage(
+      redirectPath,
+      "notice",
+      autoAdvanced
+        ? "Нэхэмжлэх хадгалагдаж дараагийн санхүүгийн шат руу шилжлээ."
+        : "Нэхэмжлэх амжилттай хадгалагдлаа.",
+    );
   } catch (error) {
     if (isRedirectException(error)) {
       throw error;
@@ -665,13 +716,14 @@ export async function runProcurementWorkflowAction(formData: FormData) {
       await notifyProcurementStageChanged(notificationAction, updatedRequest, notificationPackageId);
     } else if (action === "mark_received") {
       const packageId = getNumber(formData, "package_id");
+      const receivedNote = note || "Dashboard дээр хүлээлгэн өгсөн төлөв баталгаажуулав.";
       const files = getFiles(formData, "document_files");
       await uploadFilesToRequest(requestId, files, "document", connectionOverrides, {
         document_type: "receipt_proof",
         package_id: packageId || undefined,
-        note,
+        note: receivedNote,
       });
-      await markProcurementReceived(requestId, { package_id: packageId || undefined, note }, connectionOverrides);
+      await markProcurementReceived(requestId, { package_id: packageId || undefined, note: receivedNote }, connectionOverrides);
       const updatedRequest = await markProcurementDone(requestId, connectionOverrides);
       notificationAction = "mark_received";
       notificationPackageId = packageId || undefined;

@@ -11,6 +11,7 @@ import {
   loadProcurementDashboard,
   loadProcurementMe,
   loadProcurementMeta,
+  loadProcurementRequests,
   loadProcurementRequestDetail,
   type ProcurementMeta,
   type ProcurementRequestDetail,
@@ -40,6 +41,15 @@ function isDepartmentHeadSession(session: Awaited<ReturnType<typeof requireSessi
 
 function isExecutiveProcurementUser(procurementUser: ProcurementUser) {
   return procurementUser.flags.admin || procurementUser.flags.director || procurementUser.flags.general_manager;
+}
+
+function isProcurementWorkerUser(procurementUser: ProcurementUser) {
+  return Boolean(
+    procurementUser.flags.storekeeper ||
+      procurementUser.flags.finance ||
+      procurementUser.flags.office_clerk ||
+      procurementUser.flags.contract_officer,
+  );
 }
 
 function normalizeName(value?: string | null) {
@@ -77,6 +87,32 @@ function createDetailFallback(item: ProcurementRequestSummary): ProcurementReque
   };
 }
 
+function uniqueById(items: ProcurementRequestSummary[]) {
+  const seen = new Set<number>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function shouldShowOfficeClerkBacklog(item: ProcurementRequestDetail) {
+  if (!["quote_collection", "quotations_ready", "legal_contract_draft"].includes(item.state.code)) return false;
+  if (item.state.code === "legal_contract_draft") {
+    return item.packages.some((pack) => pack.is_over_threshold || pack.amount_total > 1000000);
+  }
+  const unassignedCount =
+    item.unassigned_lines?.length ??
+    item.lines.filter((line) => !line.package_id).length;
+  if (unassignedCount > 0) return false;
+  return item.packages.some(
+    (pack) =>
+      pack.is_complete &&
+      !pack.ceo_order_ready &&
+      (pack.is_over_threshold || pack.amount_total > 1000000),
+  );
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function ProcurementDashboardPage({ searchParams }: PageProps) {
@@ -103,7 +139,9 @@ export default async function ProcurementDashboardPage({ searchParams }: PagePro
   ]);
 
   const isDepartmentHeadView =
-    isDepartmentHeadSession(session) && !isExecutiveProcurementUser(procurementUser);
+    isDepartmentHeadSession(session) &&
+    !isExecutiveProcurementUser(procurementUser) &&
+    !isProcurementWorkerUser(procurementUser);
   const isExecutiveView = isExecutiveProcurementUser(procurementUser);
   const isProcurementWorkerView =
     !isExecutiveView &&
@@ -122,14 +160,32 @@ export default async function ProcurementDashboardPage({ searchParams }: PagePro
     },
     connectionOverrides,
   ).catch(() => createEmptyProcurementDashboard());
+  const officeClerkBacklogItems =
+    procurementUser.flags.office_clerk && isProcurementWorkerView
+      ? await Promise.all(
+          ["quote_collection", "legal_contract_draft"].map((state) =>
+            loadProcurementRequests(
+              {
+                state,
+                limit: 50,
+              },
+              connectionOverrides,
+            )
+              .then((bundle) => bundle.items)
+              .catch(() => []),
+          ),
+        ).then((groups) => groups.flat())
+      : [];
   const scopedItems = isDepartmentHeadView
     ? filterByDepartment(dashboard.items, departmentScopeName)
-    : dashboard.items;
-  const details = await Promise.all(
+    : uniqueById([...dashboard.items, ...officeClerkBacklogItems]);
+  const backlogIds = new Set(officeClerkBacklogItems.map((item) => item.id));
+  const loadedDetails = await Promise.all(
     scopedItems.map((item) =>
       loadProcurementRequestDetail(item.id, connectionOverrides).catch(() => createDetailFallback(item)),
     ),
   );
+  const details = loadedDetails.filter((item) => !backlogIds.has(item.id) || shouldShowOfficeClerkBacklog(item));
 
   return (
     <ProcurementShell
@@ -139,6 +195,8 @@ export default async function ProcurementDashboardPage({ searchParams }: PagePro
       description={
         isExecutiveView
           ? "Бүх хэлтсийн худалдан авалтын хүсэлтүүд"
+          : isProcurementWorkerView
+            ? "Танд оноогдсон худалдан авалтын хүсэлтүүд"
           : "Өөрийн хэлтсийн худалдан авалтын хүсэлтүүд"
       }
       activeTab="dashboard"

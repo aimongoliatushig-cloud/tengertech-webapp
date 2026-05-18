@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import Link from "next/link";
 import {
@@ -68,6 +68,7 @@ type DashboardViewProps = {
   canViewGeneralDashboard?: boolean;
   notificationCount?: number;
   notificationNote?: string;
+  procurementActionPanel?: ReactNode;
 };
 
 const DASHBOARD_IMAGES = {
@@ -1845,6 +1846,7 @@ export function DashboardView({
   canViewGeneralDashboard = false,
   notificationCount,
   notificationNote,
+  procurementActionPanel,
 }: DashboardViewProps) {
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -1952,6 +1954,7 @@ export function DashboardView({
   const visibleWorkerWorks = workerWorkSummaries;
   const visibleProjects = masterMode ? sortedProjects : sortedProjects.slice(0, 3);
   const visibleWorkItems = workerMode ? visibleWorkerWorks.length : visibleProjects.length;
+  const hasProcurementActionPanel = Boolean(procurementActionPanel);
   const projectStatusChips = projectStatusFilterChips(sortedProjects);
   const projectStatusSections = projectStatusChips.map((chip) => ({
     ...chip,
@@ -2121,12 +2124,18 @@ export function DashboardView({
                   </div>
                 </CardHeader>
 
+                {procurementActionPanel ? (
+                  <div className={dashboardStyles.procurementTaskPanel}>
+                    {procurementActionPanel}
+                  </div>
+                ) : null}
+
                 {workerMode ? (
                   <div className={taskGridClassName}>
                     {visibleWorkerWorks.map((work) => (
                       <WorkerWorkCard key={work.name} work={work} />
                     ))}
-                    {!visibleWorkItems ? (
+                    {!visibleWorkItems && !hasProcurementActionPanel ? (
                       <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>
                         <span className={dashboardStyles.taskListEmptyIcon}>
                           <ClipboardList />
@@ -2175,7 +2184,7 @@ export function DashboardView({
                         {visibleProjects.map((project) => (
                           <ProjectCard key={project.id} project={project} />
                         ))}
-                        {!visibleProjects.length ? (
+                        {!visibleProjects.length && !hasProcurementActionPanel ? (
                           <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>
                             <span className={dashboardStyles.taskListEmptyIcon}>
                               <ClipboardList />
