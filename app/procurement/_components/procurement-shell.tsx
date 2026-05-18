@@ -1,21 +1,16 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { ReactNode } from "react";
 import {
   BarChart3,
-  Bell,
-  CalendarDays,
-  ChevronDown,
   ClipboardList,
   FileText,
   Home,
-  Menu,
   PlusCircle,
-  UserCircle,
   WalletCards,
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
+import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
@@ -38,16 +33,6 @@ type ProcurementShellProps = {
   activeTab: "list" | "assigned" | "dashboard" | "new";
   children: ReactNode;
 };
-
-function getTodayLabel() {
-  return new Intl.DateTimeFormat("mn-MN", {
-    timeZone: "Asia/Ulaanbaatar",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "long",
-  }).format(new Date());
-}
 
 export async function ProcurementShell({
   session,
@@ -88,56 +73,34 @@ export async function ProcurementShell({
           </aside>
 
           <div className={`${shellStyles.pageContent} ${styles.procurementPageContent}`}>
-            <header className={styles.procurementTopbar}>
-              <div className={styles.topbarStart}>
-                <span className={styles.mobileMenuButton}>
-                  <Menu aria-hidden />
-                </span>
-                <Image src="/logo.png" alt="" width={42} height={42} className={styles.procurementTopbarLogo} />
-                <div>
-                  <span className={styles.topbarKicker}>ХУДАЛДАН АВАЛТ</span>
-                  <h1>{title}</h1>
-                </div>
-              </div>
-              <div className={styles.topbarActions}>
-                <span className={styles.dateChip}>
-                  <CalendarDays aria-hidden />
-                  {getTodayLabel()}
-                </span>
-                <Link href="/notifications" className={styles.iconButton} aria-label="Мэдэгдэл">
-                  <Bell aria-hidden />
-                  {notificationCount > 0 ? <span className={styles.notificationBadge}>{notificationCount}</span> : null}
-                </Link>
-                <div className={styles.userChip}>
-                  <UserCircle aria-hidden />
-                  <div>
-                    <strong>{session.name}</strong>
-                    <small>{roleLabel}</small>
-                  </div>
-                  <ChevronDown aria-hidden />
-                </div>
-              </div>
-            </header>
+            <WorkspaceHeader
+              title={title}
+              subtitle={description}
+              userName={session.name}
+              roleLabel={roleLabel}
+              notificationCount={notificationCount}
+              notificationHref="/notifications"
+            />
 
-            <section className={styles.pageTitleBar} data-view={activeTab}>
-              <div>
-                <h1>{title}</h1>
-                <p>{description}</p>
-              </div>
-              <div className={styles.titleActions}>
-                {activeTab !== "dashboard" ? (
+            {activeTab !== "dashboard" ? (
+              <section className={styles.pageTitleBar} data-view={activeTab}>
+                <div>
+                  <h1>{title}</h1>
+                  <p>{description}</p>
+                </div>
+                <div className={styles.titleActions}>
                   <Link href="/procurement/dashboard" className={styles.secondaryButton}>
                     Хяналтын самбар
                   </Link>
-                ) : null}
-                {showCreate ? (
-                  <Link href="/procurement/new" className={styles.primaryButton}>
-                    <PlusCircle aria-hidden />
-                    Шинэ хүсэлт үүсгэх
-                  </Link>
-                ) : null}
-              </div>
-            </section>
+                  {showCreate ? (
+                    <Link href="/procurement/new" className={styles.primaryButton}>
+                      <PlusCircle aria-hidden />
+                      Шинэ хүсэлт үүсгэх
+                    </Link>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
 
             <div className={styles.pageStack}>{children}</div>
           </div>

@@ -21,7 +21,6 @@ import {
   Truck,
   UserCheck,
   UsersRound,
-  Wind,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -79,7 +78,6 @@ const DASHBOARD_IMAGES = {
   cleaningTruck: "/illustrations/department-street-cleaning-premium.webp",
   landscapingWorker: "/illustrations/department-landscaping-premium.webp",
   maintenanceWorker: "/illustrations/department-maintenance-premium.webp",
-  overview: "/illustrations/green-park-banner.svg",
   seedling: "/illustrations/seedling-card.svg",
   landscape: "/illustrations/green-landscape-card.svg",
 };
@@ -455,43 +453,6 @@ function ProgressRing({ value, size = "sm" }: { value: number; size?: "sm" | "lg
         </strong>
       </div>
     </div>
-  );
-}
-
-function DepartmentOverview({
-  snapshot,
-  departmentScopeName,
-}: {
-  snapshot: DashboardSnapshot;
-  departmentScopeName?: string | null;
-}) {
-  const autoDepartment =
-    (departmentScopeName
-      ? snapshot.departments.find((department) => department.name === departmentScopeName)
-      : null) ??
-    snapshot.departments.find((department) => department.name.includes("Авто")) ??
-    snapshot.departments[0];
-  const departmentName =
-    departmentScopeName ?? autoDepartment?.name ?? "Авто бааз, хог тээвэрлэлтийн хэлтэс";
-  const fixedDepartmentName = fixMojibakeText(departmentName);
-
-  return (
-    <Card className={cn(dashboardStyles.softPanel, dashboardStyles.departmentCard)}>
-      <div
-        className={dashboardStyles.departmentHero}
-        style={{
-          backgroundImage: `linear-gradient(90deg, rgba(246,251,246,.96) 0%, rgba(246,251,246,.78) 44%, rgba(246,251,246,.24) 100%), linear-gradient(180deg, rgba(246,251,246,.18), rgba(46,125,50,.06)), url(${DASHBOARD_IMAGES.overview})`,
-        }}
-      >
-        <Badge className={dashboardStyles.departmentBadge}>Хэлтэс</Badge>
-        <h2 className={dashboardStyles.departmentTitle}>
-          {fixedDepartmentName}
-        </h2>
-        <p className={dashboardStyles.departmentDescription}>
-          Цэвэр цэмцгэр, ногоон орчны ажлыг нэг дор харуулна.
-        </p>
-      </div>
-    </Card>
   );
 }
 
@@ -1124,39 +1085,6 @@ function RightPanel({
         </Card>
       ) : null}
 
-      <Card className={cn(dashboardStyles.softPanel, dashboardStyles.landscapeCard)}>
-        <div
-          className={dashboardStyles.landscapePanel}
-          style={{
-            backgroundImage: `linear-gradient(180deg, rgba(27,73,38,.1), rgba(17,42,26,.72)), url(${DASHBOARD_IMAGES.landscape})`,
-          }}
-        >
-          <Recycle className={dashboardStyles.landscapeIcon} />
-          <h3 className={dashboardStyles.landscapeTitle}>Ногоон хот - ирээдүйн үнэ цэнэ</h3>
-        </div>
-      </Card>
-
-      {showFleetSummary ? (
-        <Card className={cn(dashboardStyles.softPanel, dashboardStyles.sideCard)}>
-          <CardTitle className={dashboardStyles.sideCardTitle}>Техник</CardTitle>
-          <div className={cn(dashboardStyles.sideMiniGrid, dashboardStyles.sideMiniGridTwo)}>
-            <div className={dashboardStyles.sideMiniItem}>
-              <span className={cn(dashboardStyles.sideMiniIcon, "bg-[#E7F5E7] text-[#2E7D32]")}>
-                <Truck />
-              </span>
-              <strong className={dashboardStyles.sideMiniValue}>{fleetBoard.totalVehicles}</strong>
-              <span className={dashboardStyles.sideMiniLabel}>Нийт</span>
-            </div>
-            <div className={dashboardStyles.sideMiniItem}>
-              <span className={cn(dashboardStyles.sideMiniIcon, "bg-[#E7F5E7] text-[#2E7D32]")}>
-                <Wind />
-              </span>
-              <strong className={dashboardStyles.sideMiniValue}>{fleetBoard.activeCount}</strong>
-              <span className={dashboardStyles.sideMiniLabel}>Ажиллаж буй</span>
-            </div>
-          </div>
-        </Card>
-      ) : null}
     </aside>
   );
 }
@@ -2075,13 +2003,6 @@ export function DashboardView({
                   {fleetLoadError}
                 </Card>
               ) : null}
-
-              <div className={dashboardStyles.departmentPanel}>
-                <DepartmentOverview
-                  snapshot={snapshot}
-                  departmentScopeName={departmentScopeName}
-                />
-              </div>
 
               {transportInspectorMode ? (
                 <DashboardInspectorVehiclePanel

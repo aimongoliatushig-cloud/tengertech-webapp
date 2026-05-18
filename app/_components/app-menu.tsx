@@ -6,7 +6,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  Banknote,
   BarChart3,
   Bell,
   CalendarDays,
@@ -23,9 +22,7 @@ import {
   MapPin,
   Menu,
   MessageSquare,
-  PackageCheck,
   PlusCircle,
-  ReceiptText,
   Settings,
   ShieldAlert,
   ShoppingCart,
@@ -662,115 +659,11 @@ export function AppMenu({
       : []),
   ];
 
-  const isProcurementDepartmentHeadMenu = Boolean(
-    !workerMode &&
-      !executiveMode &&
-      !roleLooksSystemAdmin &&
-      isProcurementDepartmentHeadLike,
-  );
-
-  const departmentHeadProcurementSubmenuItems: MenuItem[] = [
-    {
-      key: "procurement-dashboard",
-      href: "/procurement/dashboard",
-      label: "Хяналтын самбар",
-      icon: LayoutDashboard,
-    },
-    {
-      key: "procurement-projects",
-      href: "/procurement?relation=project",
-      label: "Төслийн худалдан авалт",
-      icon: ListChecks,
-    },
-    {
-      key: "procurement-vehicles",
-      href: "/procurement?relation=vehicle",
-      label: "Машин / засварын худалдан авалт",
-      icon: Truck,
-    },
-    {
-      key: "procurement-new",
-      href: "/procurement/new",
-      label: "Шинэ хүсэлт үүсгэх",
-      icon: PlusCircle,
-    },
-    {
-      key: "procurement-quotes",
-      href: "/procurement?state=quotation_waiting",
-      label: "Нийлүүлэгчийн саналууд",
-      icon: Users,
-    },
-    {
-      key: "procurement-contracts",
-      href: "/procurement?state=contract_waiting",
-      label: "Гэрээ, баримт бичиг",
-      icon: FileText,
-    },
-  ];
-
-  const fullProcurementSubmenuItems: MenuItem[] = [
-    {
-      key: "procurement-dashboard",
-      href: "/procurement/dashboard",
-      label: "Хяналтын самбар",
-      icon: LayoutDashboard,
-    },
-    {
-      key: "procurement-list",
-      href: "/procurement",
-      label: "Худалдан авах хүсэлт",
-      icon: ShoppingCart,
-    },
-    {
-      key: "procurement-new",
-      href: "/procurement/new",
-      label: "Шинэ хүсэлт үүсгэх",
-      icon: PlusCircle,
-    },
-    {
-      key: "procurement-suppliers",
-      href: "/procurement/suppliers",
-      label: "Нийлүүлэгчид",
-      icon: Users,
-    },
-    {
-      key: "procurement-orders",
-      href: "/procurement?state=order_waiting",
-      label: "Захиалга (PO)",
-      icon: ReceiptText,
-    },
-    {
-      key: "procurement-contracts",
-      href: "/procurement?state=contract_waiting",
-      label: "Гэрээ, баримт бичиг",
-      icon: FileText,
-    },
-    {
-      key: "procurement-receiving",
-      href: "/procurement?state=received",
-      label: "Агуулах хүлээн авалт",
-      icon: PackageCheck,
-    },
-    {
-      key: "procurement-finance",
-      href: "/procurement?state=payment_waiting",
-      label: "Төлбөр, санхүү",
-      icon: Banknote,
-    },
-    {
-      key: "procurement-assigned",
-      href: "/procurement/assigned",
-      label: "Х.Авалтууд",
-      icon: ClipboardCheck,
-    },
-  ];
-
   const procurementMenuItem: MenuItem = {
     key: "procurement",
     href: "/procurement/dashboard",
     label: "Худалдан авалт",
     icon: FileText,
-    children: isProcurementDepartmentHeadMenu ? departmentHeadProcurementSubmenuItems : fullProcurementSubmenuItems,
   };
 
   const defaultItems: MenuItem[] = [
@@ -1185,9 +1078,6 @@ export function AppMenu({
   }
 
   const activeItem = items.find(isItemActive) ?? items[0];
-  const isDepartmentHeadProcurementContext = Boolean(
-    isProcurementDepartmentHeadMenu && (pathname === "/procurement" || pathname.startsWith("/procurement/")),
-  );
   const canUseMobilePrimaryAction = Boolean(canCreateProject || canCreateTasks || canWriteReports);
   const mobilePrimaryAction: MenuItem | null = canUseMobilePrimaryAction
     ? {
@@ -1210,15 +1100,7 @@ export function AppMenu({
       ...baseItems.slice(2),
     ];
   };
-  const rawMobileDockItems: MenuItem[] = isDepartmentHeadProcurementContext
-    ? [
-        { key: "procurement-dashboard", href: "/procurement/dashboard", label: "Самбар", icon: LayoutDashboard },
-        { key: "procurement-list", href: "/procurement", label: "Бүх хүсэлт", icon: ShoppingCart },
-        { key: "procurement-new", href: "/procurement/new", label: "Шинэ хүсэлт", icon: PlusCircle },
-        { key: "procurement-projects", href: "/procurement?relation=project", label: "Төслийн", icon: ListChecks },
-        { key: "procurement-vehicles", href: "/procurement?relation=vehicle", label: "Авто/засвар", icon: Truck },
-      ]
-    : transportInspectorMode
+  const rawMobileDockItems: MenuItem[] = transportInspectorMode
     ? [
         { key: "dashboard", href: "/", label: "Самбар", icon: LayoutDashboard },
         {
@@ -1342,7 +1224,7 @@ export function AppMenu({
               ]),
         ];
   const mobileDockItems: MenuItem[] = (
-    isDepartmentHeadProcurementContext || procurementWorkerMode ? rawMobileDockItems : withMobilePrimaryAction(rawMobileDockItems)
+    procurementWorkerMode ? rawMobileDockItems : withMobilePrimaryAction(rawMobileDockItems)
   ).filter((item) => !isHiddenMenuItem(item));
   const visibleMobileDockItems = mobileDockItems.slice(0, 5);
 
