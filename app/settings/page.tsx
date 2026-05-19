@@ -4,8 +4,16 @@ import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import styles from "@/app/workspace.module.css";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
-import { getRoleLabel, hasCapability, requireSession } from "@/lib/auth";
+import {
+  getSessionRoleLabel,
+  hasCapability,
+  requireSession,
+} from "@/lib/auth";
 import { executeOdooKw, type OdooConnection } from "@/lib/odoo";
+import {
+  loadProcurementNotificationCount,
+  loadWorkspaceNotificationCount,
+} from "@/lib/workspace-notifications";
 
 import {
   archiveAllGeneralCollectionPointsAction,
@@ -82,13 +90,22 @@ export default async function GeneralSettingsPage({ searchParams }: PageProps) {
     login: session.login,
     password: session.password,
   };
-  const { subdistricts, pointCount, pointCountsBySubdistrict } = await loadGeneralSettingsData(connection);
+  const [
+    { subdistricts, pointCount, pointCountsBySubdistrict },
+    workspaceNotificationCount,
+    procurementNotificationCount,
+  ] = await Promise.all([
+    loadGeneralSettingsData(connection),
+    loadWorkspaceNotificationCount(session, { scopedDepartmentName: departmentScopeName }).catch(() => 0),
+    loadProcurementNotificationCount(session).catch(() => 0),
+  ]);
+  const notificationCount = workspaceNotificationCount + procurementNotificationCount;
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
-  const roleLabel = getRoleLabel(session.role);
+  const roleLabel = getSessionRoleLabel(session);
 
   return (
     <main className={styles.shell}>
@@ -106,6 +123,7 @@ export default async function GeneralSettingsPage({ searchParams }: PageProps) {
               userRole={session.role}
               roleLabel={roleLabel}
               groupFlags={session.groupFlags}
+              notificationCount={notificationCount}
               departmentScopeName={departmentScopeName}
             />
           </aside>
@@ -115,8 +133,12 @@ export default async function GeneralSettingsPage({ searchParams }: PageProps) {
               title="Ерөнхий тохиргоо"
               userName={session.name}
               roleLabel={roleLabel}
-              notificationCount={subdistricts.length}
-              notificationNote="Бүртгэлтэй хороо"
+              notificationCount={notificationCount}
+              notificationNote={
+                notificationCount > 0
+                  ? `${notificationCount} уншаагүй мэдэгдэл`
+                  : "Шинэ мэдэгдэл алга"
+              }
             />
 
             {notice ? <div className={`${styles.message} ${styles.noticeMessage}`}>{notice}</div> : null}

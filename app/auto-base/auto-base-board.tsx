@@ -1,14 +1,30 @@
 "use client";
 
 import Image from "next/image";
-import { Plus, Trash2, UploadCloud } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarCheck2,
+  Car,
+  Grid3X3,
+  List,
+  MoreHorizontal,
+  Plus,
+  Search,
+  ShieldAlert,
+  Trash2,
+  Truck,
+  UploadCloud,
+  User,
+  Wrench,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import {
   useEffect,
   useId,
   useMemo,
   useState,
   type ChangeEvent,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 
@@ -187,7 +203,9 @@ type FleetVehicleBoard = {
   failedImportCount: number;
 };
 
-type VehicleFilterKey = "all" | "active" | "repair";
+type VehicleFilterKey = "all" | "active" | "repair" | "insurance" | "inspection" | "inactive";
+type VehicleStatusFilter = "all" | "active" | "warning" | "repair" | "inactive";
+type VehicleViewMode = "grid" | "list";
 type VehicleCategoryFilter = {
   key: string;
   id: number | null;
@@ -203,17 +221,25 @@ type BucketConfig = {
   hint: string;
   emptyLabel: string;
   vehicles: FleetVehicleBoardItem[];
-  tone: "active" | "repair";
+  tone: "active" | "repair" | "warning" | "danger";
+};
+
+type VehicleStatusMeta = {
+  label: string;
+  tone: "active" | "warning" | "repair" | "inactive";
+};
+
+type SummaryStat = {
+  key: VehicleFilterKey;
+  label: string;
+  value: number;
+  helper: string;
+  icon: LucideIcon;
+  tone: "default" | "active" | "repair" | "warning" | "danger";
 };
 
 function cx(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
-}
-
-function meterStyle(count: number, total: number): CSSProperties {
-  return {
-    "--vehicle-share": total > 0 ? count / total : 0,
-  } as CSSProperties;
 }
 
 const ALL_CATEGORY_KEY = "all";
@@ -244,6 +270,61 @@ function preferredCategoryRank(name: string) {
   return index === -1 ? PREFERRED_CATEGORY_NAMES.length + 1 : index;
 }
 
+function vehicleStatusMeta(vehicle: FleetVehicleBoardItem): VehicleStatusMeta {
+  if (vehicle.isRepair) {
+    return {
+      label: vehicle.latestRepairState || vehicle.stateLabel || "Засвартай",
+      tone: "repair",
+    };
+  }
+
+  if (!vehicle.isOperational || vehicle.isArchived) {
+    return {
+      label: vehicle.stateLabel || "Идэвхгүй",
+      tone: "inactive",
+    };
+  }
+
+  if (vehicle.insurance.reminderDue || vehicle.inspection.reminderDue) {
+    return {
+      label: "Сануулгатай",
+      tone: "warning",
+    };
+  }
+
+  return {
+    label: vehicle.stateLabel || "Ажиллаж байна",
+    tone: "active",
+  };
+}
+
+function vehicleMatchesStatus(vehicle: FleetVehicleBoardItem, status: VehicleStatusFilter) {
+  if (status === "all") {
+    return true;
+  }
+  return vehicleStatusMeta(vehicle).tone === status;
+}
+
+function vehicleSearchText(vehicle: FleetVehicleBoardItem) {
+  return [
+    vehicle.plate,
+    vehicle.name,
+    vehicle.modelName,
+    vehicle.categoryName,
+    vehicle.vehicleTypeName,
+    vehicle.responsibleDriverName,
+    vehicle.loader1Name,
+    vehicle.loader2Name,
+    vehicle.departmentName,
+  ]
+    .join(" ")
+    .toLocaleLowerCase("mn-MN");
+}
+
+function shortDeadlineLabel(info: FleetVehicleDeadlineInfo) {
+  return info.endDate || "Бүртгээгүй";
+}
+
 function primaryVehicleImageUrl(vehicle: FleetVehicleBoardItem) {
   const frontPhotoId = vehicle.photoGroups.find((group) => group.key === "front")?.ids[0];
   return frontPhotoId ? attachmentUrl(frontPhotoId) : vehicle.imageUrl;
@@ -257,7 +338,7 @@ function VehicleThumbnail({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
   if (!imageUrl || failed) {
     return (
       <span className={styles.vehicleThumbPlaceholder} aria-hidden>
-        {vehicle.plate.slice(0, 1)}
+        <Truck size={58} strokeWidth={1.7} />
       </span>
     );
   }
@@ -521,49 +602,71 @@ function VehicleList({
   vehicles,
   emptyLabel,
   onSelectVehicle,
+  viewMode,
 }: {
   vehicles: FleetVehicleBoardItem[];
   emptyLabel: string;
   onSelectVehicle: (vehicle: FleetVehicleBoardItem) => void;
+  viewMode: VehicleViewMode;
 }) {
   if (!vehicles.length) {
     return <div className={styles.emptyState}>{emptyLabel}</div>;
   }
 
   return (
-    <div className={styles.vehicleList}>
-      {vehicles.map((vehicle) => (
-        <article key={vehicle.id} className={styles.vehicleCard}>
-          <button
-            type="button"
-            className={styles.vehicleCardMain}
-            onClick={() => onSelectVehicle(vehicle)}
-          >
-            <VehicleThumbnail vehicle={vehicle} />
-            <div className={styles.vehicleTop}>
-              <strong className={styles.vehiclePlate}>{vehicle.plate}</strong>
-              <span
-                className={cx(
-                  styles.vehicleState,
-                  vehicle.isRepair ? styles.vehicleStateRepair : styles.vehicleStateActive,
-                )}
-              >
-                {vehicle.isRepair
-                  ? vehicle.latestRepairState || vehicle.stateLabel || "Засварт"
-                  : vehicle.stateLabel || (vehicle.isOperational ? "Идэвхтэй" : "Бүртгэлтэй")}
+    <div className={cx(styles.vehicleList, viewMode === "list" && styles.vehicleListRows)}>
+      {vehicles.map((vehicle) => {
+        const status = vehicleStatusMeta(vehicle);
+
+        return (
+          <article key={vehicle.id} className={cx(styles.vehicleCard, styles[`vehicleCard_${status.tone}`])}>
+            <button
+              type="button"
+              className={styles.vehicleCardMain}
+              onClick={() => onSelectVehicle(vehicle)}
+            >
+              <div className={styles.vehicleMedia}>
+                <VehicleThumbnail vehicle={vehicle} />
+                <span className={cx(styles.vehicleState, styles[`vehicleState_${status.tone}`])}>
+                  {status.label}
+                </span>
+              </div>
+
+              <div className={styles.vehicleCardBody}>
+                <div className={styles.vehicleTop}>
+                  <div>
+                    <strong className={styles.vehiclePlate}>{vehicle.plate}</strong>
+                    <p className={styles.vehicleName}>{vehicle.modelName || vehicle.name}</p>
+                  </div>
+                  <span className={styles.vehicleTypeLine}>{vehicle.vehicleTypeName || vehicle.categoryName || "Төрөлгүй"}</span>
+                </div>
+
+                <div className={styles.vehicleInfoGrid}>
+                  <span>
+                    <User size={15} aria-hidden />
+                    <small>Жолооч</small>
+                    <strong>{vehicle.responsibleDriverName || vehicle.fleetDriverName || "Оноогоогүй"}</strong>
+                  </span>
+                  <span>
+                    <ShieldAlert size={15} aria-hidden />
+                    <small>Даатгал</small>
+                    <strong>{shortDeadlineLabel(vehicle.insurance)}</strong>
+                  </span>
+                  <span>
+                    <CalendarCheck2 size={15} aria-hidden />
+                    <small>Үзлэг</small>
+                    <strong>{shortDeadlineLabel(vehicle.inspection)}</strong>
+                  </span>
+                </div>
+              </div>
+
+              <span className={styles.vehicleMore} aria-hidden>
+                <MoreHorizontal size={18} />
               </span>
-            </div>
-            <p className={styles.vehicleName}>{vehicle.name}</p>
-            <span className={styles.vehicleTypeLine}>{vehicle.vehicleTypeName || "Төрөлгүй"}</span>
-            <span className={styles.vehicleMetaLine}>{vehicleCrewRoleSummary(vehicle)}</span>
-            <span className={styles.vehicleCrewPreview}>
-              {assignedCrewCount(vehicle)
-                ? `${assignedCrewCount(vehicle)} хүн · ${assignedLoaderCount(vehicle)} ачигч`
-                : "Хуваарилсан хүнгүй"}
-            </span>
-          </button>
-        </article>
-      ))}
+            </button>
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -577,18 +680,54 @@ function DetailItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function namesLabel(names: string[]) {
-  return names.length ? names.join(", ") : "Оноогоогүй";
+function VehicleQuickFact({
+  icon: Icon,
+  label,
+  value,
+  tone = "green",
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  tone?: "green" | "blue" | "orange" | "neutral";
+}) {
+  return (
+    <div className={cx(styles.vehicleQuickFact, styles[`vehicleQuickFact_${tone}`])}>
+      <span className={styles.vehicleQuickFactIcon}>
+        <Icon size={21} aria-hidden />
+      </span>
+      <div>
+        <small>{label}</small>
+        <strong>{value || "Бүртгээгүй"}</strong>
+      </div>
+    </div>
+  );
 }
 
-function vehicleCrewRoleSummary(vehicle: FleetVehicleBoardItem) {
-  const loaders = [vehicle.loader1Name, vehicle.loader2Name].filter(Boolean);
-  const parts = [
-    vehicle.responsibleDriverName ? `Жолооч: ${vehicle.responsibleDriverName}` : "",
-    loaders.length ? `Ачигч: ${loaders.join(", ")}` : "",
-  ].filter(Boolean);
+function VehicleInfoPanel({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: LucideIcon;
+  children: ReactNode;
+}) {
+  return (
+    <section className={styles.vehicleInfoPanel}>
+      <div className={styles.vehicleInfoPanelHeader}>
+        <span>
+          <Icon size={18} aria-hidden />
+        </span>
+        <h3>{title}</h3>
+      </div>
+      {children}
+    </section>
+  );
+}
 
-  return parts.length ? parts.join(" · ") : "Жолооч, ачигч оноогоогүй";
+function namesLabel(names: string[]) {
+  return names.length ? names.join(", ") : "Оноогоогүй";
 }
 
 function directCrewMembers(vehicle: FleetVehicleBoardItem) {
@@ -1115,21 +1254,25 @@ function VehicleDetailModal({
   onClose: () => void;
 }) {
   const [activeTab, setActiveTab] = useState("main");
+  const hasOperationsData =
+    vehicle.weightReports.length > 0 ||
+    vehicle.fuelReports.length > 0 ||
+    vehicle.procurementLinks.length > 0;
   const tabs = [
     { key: "main", label: "Үндсэн мэдээлэл" },
     { key: "edit", label: "Мэдээлэл засах" },
-    { key: "driver", label: "Хариуцсан жолооч" },
-    { key: "insurance", label: "Даатгал" },
-    { key: "inspection", label: "Улсын үзлэг" },
+    { key: "driver", label: "Хариуцсан хүмүүс" },
+    { key: "compliance", label: "Даатгал ба үзлэг" },
     { key: "repair", label: "Засварын түүх" },
-    { key: "weight", label: "Жингийн тайлан" },
-    { key: "fuel", label: "Шатахуун" },
-    { key: "procurement", label: "Худалдан авалт" },
+    ...(hasOperationsData ? [{ key: "operations", label: "Тайлан ба худалдан авалт" }] : []),
   ];
   const directCrew = directCrewMembers(vehicle);
   const crewCount = assignedCrewCount(vehicle);
   const driverCount = assignedDriverCount(vehicle);
   const loaderCount = assignedLoaderCount(vehicle);
+  const status = vehicleStatusMeta(vehicle);
+  const modelSummary = [vehicle.modelName || vehicle.name, vehicle.plate].filter(Boolean).join("/");
+  const typeSummary = vehicle.vehicleTypeName || vehicle.categoryName || "Төрөлгүй";
 
   return (
     <div className={styles.vehicleModalBackdrop} role="presentation" onClick={onClose}>
@@ -1141,14 +1284,64 @@ function VehicleDetailModal({
         onClick={(event) => event.stopPropagation()}
       >
         <div className={styles.vehicleModalHeader}>
-          <div>
-            <span className={styles.mobileDetailEyebrow}>Машины дэлгэрэнгүй</span>
+          <div className={styles.vehicleModalTitleBlock}>
+            <div className={styles.vehicleModalKickerRow}>
+              <span className={styles.mobileDetailEyebrow}>Машины дэлгэрэнгүй</span>
+              <span className={cx(styles.vehicleState, styles[`vehicleState_${status.tone}`])}>
+                {status.label}
+              </span>
+            </div>
             <h2 id={`vehicle-detail-${vehicle.id}`}>{vehicle.plate}</h2>
-            <p>{vehicle.name}</p>
+            <p>
+              {modelSummary || vehicle.name}
+              {typeSummary ? <span aria-hidden> · </span> : null}
+              {typeSummary}
+            </p>
+            <div className={styles.vehicleModalMetaLine}>
+              <span>Арлын дугаар: {displayValue(vehicle.vin)}</span>
+              <span>Хэлтэс: {displayValue(vehicle.departmentName)}</span>
+            </div>
           </div>
           <div className={styles.vehicleModalHeaderActions}>
-            <button type="button" className={styles.vehicleModalClose} onClick={onClose}>
-              Хаах
+            <form action={updateFleetVehicleAction} className={styles.vehicleRepairToggleForm}>
+              <input type="hidden" name="vehicle_id" value={vehicle.id} />
+              <input type="hidden" name="vehicle_repair_toggle" value={vehicle.isRepair ? "done" : "start"} />
+              <input
+                type="hidden"
+                name="x_municipal_operational_status"
+                value={vehicle.isRepair ? "available" : "in_repair"}
+              />
+              <input
+                type="hidden"
+                name="latest_repair_state"
+                value={vehicle.isRepair ? "Засвар дууссан" : "Засварт шилжүүлсэн"}
+              />
+              <input type="hidden" name="mfo_active_for_ops_present" value="1" />
+              {vehicle.isRepair ? <input type="hidden" name="mfo_active_for_ops" value="on" /> : null}
+              <button
+                type="submit"
+                className={cx(
+                  styles.vehicleModalActionButton,
+                  styles.vehicleRepairToggleButton,
+                  vehicle.isRepair
+                    ? styles.vehicleRepairToggleButtonDone
+                    : styles.vehicleRepairToggleButtonStart,
+                )}
+              >
+                <Wrench size={17} aria-hidden />
+                {vehicle.isRepair ? "Засвар дууссан" : "Засварт шилжүүлэх"}
+              </button>
+            </form>
+            <button type="button" className={styles.vehicleModalActionButton} onClick={() => setActiveTab("compliance")}>
+              <ShieldAlert size={17} aria-hidden />
+              Даатгал
+            </button>
+            <button type="button" className={styles.vehicleModalActionButton} onClick={() => setActiveTab("repair")}>
+              <CalendarCheck2 size={17} aria-hidden />
+              Түүх
+            </button>
+            <button type="button" className={styles.vehicleModalIconButton} aria-label="Хаах" onClick={onClose}>
+              <X size={20} aria-hidden />
             </button>
           </div>
         </div>
@@ -1170,18 +1363,90 @@ function VehicleDetailModal({
 
         {activeTab === "main" ? (
           <section className={styles.vehicleTabPanel}>
-            <VehicleHeroImage vehicle={vehicle} />
-            <div className={styles.vehicleDetailGrid}>
-              <DetailItem label="Марка / модель" value={vehicle.modelName || vehicle.name} />
-              <DetailItem label="Төрөл" value={vehicle.vehicleTypeName || vehicle.categoryName} />
-              <DetailItem label="Хэлтэс" value={vehicle.departmentName} />
-              <DetailItem label="Төлөв" value={vehicle.stateLabel} />
-              <DetailItem label="Арлын дугаар" value={vehicle.vin} />
-              <DetailItem label="Туулсан зам" value={vehicle.odometerLabel} />
-              <DetailItem label="Хариуцсан жолооч" value={vehicle.responsibleDriverName} />
-              <DetailItem label="Ачигч 1" value={vehicle.loader1Name} />
-              <DetailItem label="Ачигч 2" value={vehicle.loader2Name} />
-              <DetailItem label="Түлшний төрөл" value={vehicle.fuelTypeLabel} />
+            <div className={styles.vehicleOverviewGrid}>
+              <div className={styles.vehicleGalleryPanel}>
+                <VehicleHeroImage vehicle={vehicle} />
+                <AttachmentGallery title="Машины зураг" groups={vehicle.photoGroups} />
+              </div>
+
+              <section className={styles.vehicleQuickPanel}>
+                <div className={styles.vehicleQuickPanelHeader}>
+                  <h3>Товч мэдээлэл</h3>
+                  <span>{typeSummary}</span>
+                </div>
+                <div className={styles.vehicleQuickGrid}>
+                  <VehicleQuickFact
+                    icon={Car}
+                    label="Төлөв"
+                    value={vehicle.stateLabel}
+                    tone={status.tone === "warning" || status.tone === "repair" ? "orange" : "green"}
+                  />
+                  <VehicleQuickFact
+                    icon={Wrench}
+                    label="Сүүлийн засвар"
+                    value={vehicle.repairHistory[0]?.requestDate || vehicle.latestRepairState || ""}
+                    tone="neutral"
+                  />
+                  <VehicleQuickFact
+                    icon={CalendarCheck2}
+                    label="Үзлэг дуусах"
+                    value={vehicle.inspection.endDate || ""}
+                    tone="blue"
+                  />
+                  <VehicleQuickFact
+                    icon={ShieldAlert}
+                    label="Даатгал дуусах"
+                    value={vehicle.insurance.endDate || ""}
+                    tone={vehicle.insurance.reminderDue ? "orange" : "green"}
+                  />
+                  <VehicleQuickFact
+                    icon={Truck}
+                    label="Ашиглалт"
+                    value={vehicle.isOperational ? "Идэвхтэй ашиглаж байна" : "Идэвхгүй"}
+                    tone={vehicle.isOperational ? "green" : "neutral"}
+                  />
+                  <VehicleQuickFact
+                    icon={CalendarCheck2}
+                    label="Явсан зам"
+                    value={vehicle.odometerLabel}
+                    tone="neutral"
+                  />
+                </div>
+              </section>
+            </div>
+
+            <div className={styles.vehicleInfoPanelGrid}>
+              <VehicleInfoPanel title="Ерөнхий мэдээлэл" icon={Car}>
+                <div className={styles.vehicleDetailGrid}>
+                  <DetailItem label="Марка / модель" value={vehicle.modelName || vehicle.name} />
+                  <DetailItem label="Төрөл" value={vehicle.vehicleTypeName || vehicle.categoryName} />
+                  <DetailItem label="Төлөв" value={vehicle.stateLabel} />
+                  <DetailItem label="Арлын дугаар" value={vehicle.vin} />
+                  <DetailItem label="Туулсан зам" value={vehicle.odometerLabel} />
+                  <DetailItem label="Хэлтэс" value={vehicle.departmentName} />
+                  <DetailItem label="Түлшний төрөл" value={vehicle.fuelTypeLabel} />
+                </div>
+              </VehicleInfoPanel>
+
+              <VehicleInfoPanel title="Хариуцсан хүмүүс" icon={User}>
+                <div className={styles.vehicleDetailGrid}>
+                  <DetailItem label="Хариуцсан жолооч" value={vehicle.responsibleDriverName} />
+                  <DetailItem label="Ачигч 1" value={vehicle.loader1Name} />
+                  <DetailItem label="Ачигч 2" value={vehicle.loader2Name} />
+                  <DetailItem label="Хуваарилсан хүмүүс" value={`${crewCount} хүн · ${loaderCount} ачигч`} />
+                  <DetailItem label="Жолоочийн тоо" value={`${driverCount}`} />
+                </div>
+              </VehicleInfoPanel>
+
+              <VehicleInfoPanel title="Техникийн мэдээлэл" icon={Wrench}>
+                <div className={styles.vehicleDetailGrid}>
+                  <DetailItem label="Түлшний төрөл" value={vehicle.fuelTypeLabel} />
+                  <DetailItem label="Туулсан зам" value={vehicle.odometerLabel} />
+                  <DetailItem label="Төрөл" value={typeSummary} />
+                  <DetailItem label="Үйл ажиллагаа" value={vehicle.isOperational ? "Ашиглаж байгаа" : "Идэвхгүй"} />
+                  <DetailItem label="Засварын төлөв" value={vehicle.latestRepairState} />
+                </div>
+              </VehicleInfoPanel>
             </div>
 
             <section className={styles.vehicleCrewPanel}>
@@ -1237,7 +1502,6 @@ function VehicleDetailModal({
               )}
             </section>
 
-            <AttachmentGallery title="Машины зураг" groups={vehicle.photoGroups} />
             <AttachmentGallery title="Баримт бичиг" groups={vehicle.documentGroups} />
           </section>
         ) : null}
@@ -1261,14 +1525,9 @@ function VehicleDetailModal({
           </section>
         ) : null}
 
-        {activeTab === "insurance" ? (
-          <section className={styles.vehicleTabPanel}>
+        {activeTab === "compliance" ? (
+          <section className={cx(styles.vehicleTabPanel, styles.vehicleComplianceGrid)}>
             <DeadlinePanel title="Даатгалын мэдээлэл" info={vehicle.insurance} />
-          </section>
-        ) : null}
-
-        {activeTab === "inspection" ? (
-          <section className={styles.vehicleTabPanel}>
             <DeadlinePanel title="Улсын үзлэгийн мэдээлэл" info={vehicle.inspection} />
           </section>
         ) : null}
@@ -1279,21 +1538,23 @@ function VehicleDetailModal({
           </section>
         ) : null}
 
-        {activeTab === "weight" ? (
-          <section className={styles.vehicleTabPanel}>
-            <WeightReportList items={vehicle.weightReports} />
-          </section>
-        ) : null}
-
-        {activeTab === "fuel" ? (
-          <section className={styles.vehicleTabPanel}>
-            <FuelReportList items={vehicle.fuelReports} />
-          </section>
-        ) : null}
-
-        {activeTab === "procurement" ? (
-          <section className={styles.vehicleTabPanel}>
-            <ProcurementList items={vehicle.procurementLinks} />
+        {activeTab === "operations" ? (
+          <section className={cx(styles.vehicleTabPanel, styles.vehicleOperationsGrid)}>
+            {vehicle.weightReports.length ? (
+              <VehicleInfoPanel title="Жингийн тайлан" icon={Truck}>
+                <WeightReportList items={vehicle.weightReports} />
+              </VehicleInfoPanel>
+            ) : null}
+            {vehicle.fuelReports.length ? (
+              <VehicleInfoPanel title="Шатахуун" icon={Car}>
+                <FuelReportList items={vehicle.fuelReports} />
+              </VehicleInfoPanel>
+            ) : null}
+            {vehicle.procurementLinks.length ? (
+              <VehicleInfoPanel title="Худалдан авалт" icon={ShieldAlert}>
+                <ProcurementList items={vehicle.procurementLinks} />
+              </VehicleInfoPanel>
+            ) : null}
           </section>
         ) : null}
 
@@ -1520,6 +1781,10 @@ export function AutoBaseBoard({
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [activeFilter, setActiveFilter] = useState<VehicleFilterKey>("all");
   const [activeCategoryKey, setActiveCategoryKey] = useState(ALL_CATEGORY_KEY);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<VehicleStatusFilter>("all");
+  const [typeFilter, setTypeFilter] = useState(ALL_CATEGORY_KEY);
+  const [viewMode, setViewMode] = useState<VehicleViewMode>("grid");
   const selectedVehicle = selectedVehicleId ? vehiclesById.get(selectedVehicleId) ?? null : null;
   const categoryFilters = useMemo<VehicleCategoryFilter[]>(() => {
     const counts = new Map<string, number>();
@@ -1581,51 +1846,150 @@ export function AutoBaseBoard({
   }, [board.allVehicles, board.categoryOptions, board.totalVehicles]);
   const selectedCategory =
     categoryFilters.find((category) => category.key === activeCategoryKey) ?? categoryFilters[0];
+  const selectedType =
+    categoryFilters.find((category) => category.key === typeFilter) ?? categoryFilters[0];
   const categoryVehicles =
     selectedCategory.key === ALL_CATEGORY_KEY
       ? board.allVehicles
       : board.allVehicles.filter((vehicle) => vehicleCategoryKey(vehicle) === selectedCategory.key);
-  const categoryActiveVehicles = categoryVehicles.filter((vehicle) => !vehicle.isRepair);
-  const categoryRepairVehicles = categoryVehicles.filter((vehicle) => vehicle.isRepair);
+  const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase("mn-MN");
+  const searchedVehicles = categoryVehicles.filter((vehicle) => {
+    const typeMatches =
+      selectedType.key === ALL_CATEGORY_KEY || vehicleCategoryKey(vehicle) === selectedType.key;
+    const statusMatches = vehicleMatchesStatus(vehicle, statusFilter);
+    const searchMatches =
+      !normalizedSearchQuery || vehicleSearchText(vehicle).includes(normalizedSearchQuery);
+    return typeMatches && statusMatches && searchMatches;
+  });
+  const categoryActiveVehicles = searchedVehicles.filter(
+    (vehicle) => !vehicle.isRepair && vehicle.isOperational && !vehicle.isArchived,
+  );
+  const categoryRepairVehicles = searchedVehicles.filter((vehicle) => vehicle.isRepair);
+  const categoryInsuranceDueVehicles = searchedVehicles.filter((vehicle) => vehicle.insurance.reminderDue);
+  const categoryInspectionDueVehicles = searchedVehicles.filter((vehicle) => vehicle.inspection.reminderDue);
+  const categoryInactiveVehicles = searchedVehicles.filter((vehicle) => !vehicle.isOperational || vehicle.isArchived);
   const buckets: BucketConfig[] = [
     {
       key: "all",
       title:
         selectedCategory.key === ALL_CATEGORY_KEY
-          ? "Бүх машин техник"
-          : `${selectedCategory.name} машин техник`,
-      count: categoryVehicles.length,
-      description:
-        selectedCategory.key === ALL_CATEGORY_KEY
-          ? "Авто баазад бүртгэлтэй бүх машин техникийг харуулна."
-          : `${selectedCategory.name} ангилалд бүртгэлтэй машин техникийг харуулна.`,
-      hint: "Нийт жагсаалт",
-      emptyLabel: "Энэ ангилалд бүртгэлтэй машин техник алга.",
-      vehicles: categoryVehicles,
+          ? `Бүх машин техник (${searchedVehicles.length})`
+          : `${selectedCategory.name} (${searchedVehicles.length})`,
+      count: searchedVehicles.length,
+      description: "",
+      hint: "",
+      emptyLabel: "Тохирох машин олдсонгүй.",
+      vehicles: searchedVehicles,
       tone: "active",
     },
     {
       key: "active",
       title: "Ажиллаж байгаа машин",
       count: categoryActiveVehicles.length,
-      description: "Ажилд гарах боломжтой болон хуваарилагдсан машинууд.",
-      hint: "Ажиллаж байгаа жагсаалт",
+      description: "Бүрэн хүчин чадлаар ажиллаж байна",
+      hint: "",
       emptyLabel: "Одоогоор ажиллаж байгаа машин алга.",
       vehicles: categoryActiveVehicles,
       tone: "active",
     },
     {
       key: "repair",
-      title: "Засагдаж буй машин",
+      title: "Засварт байгаа машин",
       count: categoryRepairVehicles.length,
-      description: "Засвар, саатал, техникийн хүлээлттэй машинууд.",
-      hint: "Засвартай жагсаалт",
+      description: "Засвар үйлчилгээ хийгдэж байна",
+      hint: "",
       emptyLabel: "Одоогоор засагдаж буй машин алга.",
       vehicles: categoryRepairVehicles,
       tone: "repair",
     },
+    {
+      key: "insurance",
+      title: "Даатгал сануулах машин",
+      count: categoryInsuranceDueVehicles.length,
+      description: "Даатгалын хугацаа дуусах дөхсөн",
+      hint: "",
+      emptyLabel: "Одоогоор даатгал сануулах машин алга.",
+      vehicles: categoryInsuranceDueVehicles,
+      tone: "warning",
+    },
+    {
+      key: "inspection",
+      title: "Үзлэг сануулах машин",
+      count: categoryInspectionDueVehicles.length,
+      description: "Үзлэгийн хугацаа дуусах дөхсөн",
+      hint: "",
+      emptyLabel: "Одоогоор үзлэг сануулах машин алга.",
+      vehicles: categoryInspectionDueVehicles,
+      tone: "danger",
+    },
+    {
+      key: "inactive",
+      title: "Засвартай, ажиллах боломжгүй",
+      count: categoryInactiveVehicles.length,
+      description: "Ажиллах боломжгүй машин",
+      hint: "",
+      emptyLabel: "Одоогоор ажиллах боломжгүй машин алга.",
+      vehicles: categoryInactiveVehicles,
+      tone: "danger",
+    },
   ];
   const selectedBucket = buckets.find((bucket) => bucket.key === activeFilter) ?? buckets[0];
+  const applyMetricFilter = (filter: VehicleFilterKey) => {
+    setActiveFilter(filter);
+    setActiveCategoryKey(ALL_CATEGORY_KEY);
+    setTypeFilter(ALL_CATEGORY_KEY);
+    setStatusFilter("all");
+    setSearchQuery("");
+  };
+  const summaryStats: SummaryStat[] = [
+    {
+      key: "all",
+      label: "Нийт машин техник",
+      value: board.totalVehicles,
+      helper: "Бүртгэлтэй",
+      icon: Car,
+      tone: "default",
+    },
+    {
+      key: "active",
+      label: "Ажиллаж байгаа",
+      value: board.activeCount,
+      helper: "Ажиллаж байна",
+      icon: Truck,
+      tone: "active",
+    },
+    {
+      key: "repair",
+      label: "Засвартай",
+      value: board.repairCount,
+      helper: "Засварт байгаа",
+      icon: Wrench,
+      tone: "repair",
+    },
+    {
+      key: "insurance",
+      label: "Даатгал сануулах",
+      value: board.insuranceDueCount,
+      helper: "Хугацаа дуусах дөхсөн",
+      icon: AlertTriangle,
+      tone: board.insuranceDueCount > 0 ? "warning" : "default",
+    },
+    {
+      key: "inspection",
+      label: "Үзлэг сануулах",
+      value: board.inspectionDueCount,
+      helper: "Хугацаа дуусах дөхсөн",
+      icon: ShieldAlert,
+      tone: board.inspectionDueCount > 0 ? "danger" : "default",
+    },
+  ];
+  const statusOptions: Array<{ value: VehicleStatusFilter; label: string }> = [
+    { value: "all", label: "Бүх төлөв" },
+    { value: "active", label: "Ажиллаж байгаа" },
+    { value: "warning", label: "Сануулгатай" },
+    { value: "repair", label: "Засвартай" },
+    { value: "inactive", label: "Идэвхгүй" },
+  ];
 
   return (
     <>
@@ -1660,103 +2024,145 @@ export function AutoBaseBoard({
       ) : null}
 
       <div className={styles.metricGrid}>
-        <div className={styles.metricTile}>
-          <span>Нийт машин техник</span>
-          <strong>{board.totalVehicles}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Ажиллаж байгаа</span>
-          <strong>{board.activeCount}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Засвартай</span>
-          <strong>{board.repairCount}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Даатгал сануулах</span>
-          <strong>{board.insuranceDueCount}</strong>
-        </div>
-        <div className={styles.metricTile}>
-          <span>Үзлэг сануулах</span>
-          <strong>{board.inspectionDueCount}</strong>
-        </div>
+        {summaryStats.map((item) => {
+          const Icon = item.icon;
+          const isSelected = selectedBucket.key === item.key;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              className={cx(
+                styles.metricTile,
+                styles[`metricTile_${item.tone}`],
+                isSelected && styles.metricTileSelected,
+              )}
+              aria-pressed={isSelected}
+              onClick={() => applyMetricFilter(item.key)}
+            >
+              <span className={styles.summaryIcon}>
+                <Icon size={22} aria-hidden />
+              </span>
+              <div>
+                <strong>{item.value}</strong>
+                <span>{item.label}</span>
+                <small>{item.helper}</small>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       <section className={styles.vehicleFilterBoard} data-testid="vehicle-filter-board">
-        <div className={styles.vehicleCategoryHeader}>
-          <div>
-            <span className={styles.mobileDetailEyebrow}>Машин техникийн ангилал</span>
-            <h2>Ангиллаар харах</h2>
+        <h2 className={styles.vehicleCategoryTitle}>Ангиллаар харах</h2>
+        <div className={styles.vehicleControlsRow}>
+          <div className={styles.vehicleCategoryPills} role="tablist" aria-label="Машины ангиллаар шүүх">
+            {categoryFilters.map((category) => (
+              <button
+                key={category.key}
+                type="button"
+                role="tab"
+                aria-selected={selectedCategory.key === category.key}
+                className={cx(
+                  styles.vehicleCategoryPill,
+                  selectedCategory.key === category.key && styles.vehicleCategoryPillSelected,
+                )}
+                onClick={() => {
+                  setActiveCategoryKey(category.key);
+                  setActiveFilter("all");
+                  setTypeFilter(ALL_CATEGORY_KEY);
+                }}
+              >
+                <span>{category.name}</span>
+                <strong>{category.count}</strong>
+              </button>
+            ))}
           </div>
-        </div>
-        <div className={styles.vehicleCategoryPills} role="tablist" aria-label="Машины ангиллаар шүүх">
-          {categoryFilters.map((category) => (
-            <button
-              key={category.key}
-              type="button"
-              role="tab"
-              aria-selected={selectedCategory.key === category.key}
-              className={cx(
-                styles.vehicleCategoryPill,
-                selectedCategory.key === category.key && styles.vehicleCategoryPillSelected,
-              )}
-              onClick={() => {
-                setActiveCategoryKey(category.key);
-                setActiveFilter("all");
-              }}
-            >
-              <span>{category.name}</span>
-              <strong>{category.count}</strong>
-            </button>
-          ))}
-        </div>
 
-        <div className={styles.vehicleFilterTabs} role="tablist" aria-label="Машины төлөвөөр шүүх">
-          {buckets.map((bucket) => (
-            <button
-              key={bucket.key}
-              type="button"
-              role="tab"
-              aria-selected={selectedBucket.key === bucket.key}
-              className={cx(
-                styles.vehicleFilterTab,
-                bucket.tone === "repair" ? styles.vehicleFilterTabRepair : styles.vehicleFilterTabActive,
-                selectedBucket.key === bucket.key && styles.vehicleFilterTabSelected,
-              )}
-              style={meterStyle(bucket.count, Math.max(board.totalVehicles, 1))}
-              onClick={() => setActiveFilter(bucket.key)}
-            >
-              <span className={styles.vehicleFilterTabText}>
-                <strong>{bucket.title}</strong>
-                <small>{bucket.hint}</small>
-              </span>
-              <span className={styles.vehicleFilterCount}>{bucket.count}</span>
-              <span className={styles.vehicleFilterMeter} aria-hidden>
-                <span />
-              </span>
-            </button>
-          ))}
+          <div className={styles.vehicleFilterToolbar}>
+            <label className={styles.vehicleSearchField}>
+              <Search size={18} aria-hidden />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Хайх (улсын дугаар, загвар, жолооч...)"
+                aria-label="Машин хайх"
+              />
+            </label>
+            <label className={styles.vehicleSelectField}>
+              <span>Төрөл</span>
+              <select
+                value={typeFilter}
+                onChange={(event) => {
+                  setTypeFilter(event.target.value);
+                  setActiveFilter("all");
+                }}
+              >
+                {categoryFilters.map((category) => (
+                  <option key={category.key} value={category.key}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.vehicleSelectField}>
+              <span>Төлөв</span>
+              <select
+                value={statusFilter}
+                onChange={(event) => {
+                  setStatusFilter(event.target.value as VehicleStatusFilter);
+                  setActiveFilter("all");
+                }}
+              >
+                {statusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className={styles.vehicleViewToggle} aria-label="Харагдац сонгох">
+              <button
+                type="button"
+                className={cx(styles.vehicleViewButton, viewMode === "grid" && styles.vehicleViewButtonActive)}
+                onClick={() => setViewMode("grid")}
+                aria-pressed={viewMode === "grid"}
+              >
+                <Grid3X3 size={18} aria-hidden />
+              </button>
+              <button
+                type="button"
+                className={cx(styles.vehicleViewButton, viewMode === "list" && styles.vehicleViewButtonActive)}
+                onClick={() => setViewMode("list")}
+                aria-pressed={viewMode === "list"}
+              >
+                <List size={18} aria-hidden />
+              </button>
+            </div>
+          </div>
         </div>
 
         <section
           className={cx(
             styles.vehicleFilterPanel,
-            selectedBucket.tone === "repair" ? styles.vehicleFilterPanelRepair : styles.vehicleFilterPanelActive,
+            selectedBucket.tone === "repair"
+              ? styles.vehicleFilterPanelRepair
+              : selectedBucket.tone === "warning"
+                ? styles.vehicleFilterPanelWarning
+                : selectedBucket.tone === "danger"
+                  ? styles.vehicleFilterPanelDanger
+                  : styles.vehicleFilterPanelActive,
           )}
           role="tabpanel"
         >
           <div className={styles.vehicleFilterPanelHeader}>
-            <div>
-              <span className={styles.mobileDetailEyebrow}>Сонгосон төлөв</span>
-              <h2>{selectedBucket.title}</h2>
-              <p>{selectedBucket.description}</p>
-            </div>
-            <span className={styles.countBadge}>{selectedBucket.count}</span>
+            <h2>{selectedBucket.title}</h2>
           </div>
 
           <VehicleList
             vehicles={selectedBucket.vehicles}
             emptyLabel={selectedBucket.emptyLabel}
+            viewMode={viewMode}
             onSelectVehicle={(vehicle) => {
               setSelectedVehicleId(vehicle.id);
             }}

@@ -9,11 +9,20 @@ import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
-import { canAccessGarbageTransportSettings, getRoleLabel, hasCapability, requireSession } from "@/lib/auth";
+import {
+  canAccessGarbageTransportSettings,
+  getSessionRoleLabel,
+  hasCapability,
+  requireSession,
+} from "@/lib/auth";
 import { isAutoGarbageDepartment, normalizeDepartmentText } from "@/lib/department-permissions";
 import { loadInspectorScopeData } from "@/lib/inspector-scope";
 import { executeOdooKw, type OdooConnection } from "@/lib/odoo";
 import { loadRouteManagementData } from "@/lib/route-management";
+import {
+  loadProcurementNotificationCount,
+  loadWorkspaceNotificationCount,
+} from "@/lib/workspace-notifications";
 
 import {
   archiveGarbageTransportPointAction,
@@ -163,12 +172,17 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
     departmentRecord,
     settings,
     inspectorScopeData,
+    workspaceNotificationCount,
+    procurementNotificationCount,
   ] = await Promise.all([
     loadRouteManagementData(connectionOverrides),
     loadDepartmentRecord(departmentScopeName, connectionOverrides),
     loadConfigValues(connectionOverrides),
     loadInspectorScopeData(departmentScopeName, connectionOverrides),
+    loadWorkspaceNotificationCount(session, { scopedDepartmentName: departmentScopeName }).catch(() => 0),
+    loadProcurementNotificationCount(session).catch(() => 0),
   ]);
+  const notificationCount = workspaceNotificationCount + procurementNotificationCount;
   const {
     notify_assign: notifyAssign,
     notify_due_soon: notifyDueSoon,
@@ -177,7 +191,7 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
     notify_complaint: notifyComplaint,
   } = settings;
 
-  const roleLabel = getRoleLabel(session.role);
+  const roleLabel = getSessionRoleLabel(session);
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
   const canWriteReports = hasCapability(session, "write_workspace_reports");
@@ -206,6 +220,7 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
               userRole={session.role}
               roleLabel={roleLabel}
               groupFlags={session.groupFlags}
+              notificationCount={notificationCount}
               departmentScopeName={departmentScopeName}
             />
           </aside>
@@ -216,8 +231,12 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
               subtitle={`${departmentName} · зөвхөн энэ хэлтсийн тохиргоо`}
               userName={session.name}
               roleLabel={roleLabel}
-              notificationCount={routeData.points.length}
-              notificationNote="Хяналтын ажилтан, хогийн цэгийн тохиргоо"
+              notificationCount={notificationCount}
+              notificationNote={
+                notificationCount > 0
+                  ? `${notificationCount} уншаагүй мэдэгдэл`
+                  : "Шинэ мэдэгдэл алга"
+              }
             />
 
             <section className={styles.hero}>

@@ -5,17 +5,18 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import { getHrAccessProfile, getTimeoffRequests, type HrTimeoffRequest } from "@/lib/hr";
 import { loadReadNotificationKeys } from "@/lib/notification-state";
 import { loadMunicipalSnapshot, type DashboardSnapshot } from "@/lib/odoo";
 import { fixMojibakeText } from "@/lib/text-normalize";
+import { loadProcurementNotificationRecords } from "@/lib/workspace-notifications";
 
 import { NotificationList, type NotificationListItem } from "./notification-list";
 import styles from "./notifications.module.css";
@@ -230,6 +231,9 @@ export default async function NotificationsPage() {
   const visibleTasks = workerMode
     ? departmentScopedTasks.filter(isAssignedToCurrentUser)
     : departmentScopedTasks;
+  const procurementNotifications = await loadProcurementNotificationRecords(session, {
+    scopedDepartmentName,
+  }).catch(() => []);
   const visibleTaskById = new Map(visibleTasks.map((task) => [task.id, task]));
   const visibleReviewQueue = workerMode
     ? []
@@ -360,6 +364,22 @@ export default async function NotificationsPage() {
     });
   }
 
+  for (const request of procurementNotifications) {
+    notificationsById.set(request.key, {
+      key: request.key,
+      name: fixMojibakeText(request.name),
+      departmentName: fixMojibakeText(request.departmentName),
+      projectName: fixMojibakeText(request.projectName),
+      stageLabel: fixMojibakeText(request.stageLabel),
+      href: request.href,
+      progress: request.progress,
+      taskCount: request.taskCount,
+      sortTimeMs: request.sortTimeMs,
+      timeLabel: formatNotificationTime(request.sortTimeMs, nowMs),
+      reasons: request.reasons,
+    });
+  }
+
   const notifications = Array.from(notificationsById.values()).sort((left, right) => {
     const leftScore = notificationPriority(left);
     const rightScore = notificationPriority(right);
@@ -401,7 +421,7 @@ export default async function NotificationsPage() {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
@@ -415,7 +435,7 @@ export default async function NotificationsPage() {
               title="Мэдэгдэл"
               subtitle="Танд ирсэн шинэ ажил, хянах болон анхаарах зүйлс"
               userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               notificationCount={unreadCount}
               notificationNote={notificationNote}
             />

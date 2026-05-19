@@ -6,11 +6,11 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import dashboardStyles from "@/app/page.module.css";
 import styles from "@/app/workspace.module.css";
 import {
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 
@@ -68,7 +68,7 @@ export default async function QualityPage() {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
             />
           </aside>
@@ -78,7 +78,7 @@ export default async function QualityPage() {
               title="Чанарын төв"
               subtitle="Талбарын зөрчил, анхааруулгын нэгдсэн хяналт"
               userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               notificationCount={snapshot.qualityAlerts.length}
               notificationNote={`${snapshot.qualityAlerts.length} чанарын анхааруулга бүртгэгдсэн`}
             />

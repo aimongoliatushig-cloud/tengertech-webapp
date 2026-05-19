@@ -1,5 +1,7 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { getRoleLabel, requireSession } from "@/lib/auth";
+import { requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { requireHrSpecialistAccess } from "@/lib/hr";
 
 import styles from "../../../hr.module.css";
@@ -28,7 +30,7 @@ export default async function HrReportViewPage({ params, searchParams }: PagePro
         title="HR PDF тайлан"
         subtitle="PDF тайлан app дотор нээгдэж, архивт хадгалагдсан хэвээр байна."
         userName={session.name}
-        roleLabel={getRoleLabel(session.role)}
+        roleLabel={getSessionRoleLabel(session)}
         notificationNote="HR тайлан"
       />
       <section className={styles.panel}>

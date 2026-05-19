@@ -295,15 +295,20 @@ class ProjectTask(models.Model):
 
     def action_ops_create_mobile_report(self, values):
         self.ensure_one()
-        report = self.env["ops.task.report"].create(
-            {
-                "task_id": self.id,
-                "reporter_id": self.env.user.id,
-                "reporter_employee_id": self.env.user.employee_id.id or False,
-                "report_summary": values.get("report_text") or values.get("report_summary") or "",
-                "reported_quantity": values.get("reported_quantity") or 0,
-            }
-        )
+        report_values = {
+            "task_id": self.id,
+            "reporter_id": self.env.user.id,
+            "reporter_employee_id": self.env.user.employee_id.id or False,
+            "report_summary": values.get("report_text") or values.get("report_summary") or "",
+            "reported_quantity": values.get("reported_quantity") or 0,
+        }
+        if "ops_measurement_unit_code" in self._fields and self.ops_measurement_unit_code:
+            report_values["task_measurement_unit_code"] = self.ops_measurement_unit_code
+        elif "ops_measurement_unit" in self._fields and self.ops_measurement_unit:
+            report_values["task_measurement_unit_code"] = self.ops_measurement_unit
+        elif self.municipal_work_id and self.municipal_work_id.unit_of_measure:
+            report_values["task_measurement_unit_code"] = self.municipal_work_id.unit_of_measure
+        report = self.env["ops.task.report"].create(report_values)
         if self.municipal_work_id:
             municipal_report = self.env["municipal.work.report"].create(
                 {

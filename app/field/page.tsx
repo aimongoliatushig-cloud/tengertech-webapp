@@ -16,7 +16,9 @@ import {
 import { BestEffortGpsFields } from "@/app/field/best-effort-gps-fields";
 import fieldStyles from "@/app/field/field.module.css";
 import workspaceStyles from "@/app/workspace.module.css";
-import { getRoleLabel, hasCapability, isWorkerOnly, requireSession } from "@/lib/auth";
+import { hasCapability, isWorkerOnly, requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { loadAssignedGarbageTasks, type FieldStop } from "@/lib/field-ops";
 
 export const dynamic = "force-dynamic";
@@ -129,7 +131,7 @@ export default async function FieldPage({ searchParams }: PageProps) {
           title="Талбарын маршрут"
           subtitle="Өнөөдрийн маршрут, талбарын хяналтын урсгал"
           userName={session.name}
-          roleLabel={getRoleLabel(session.role)}
+          roleLabel={getSessionRoleLabel(session)}
           notificationCount={bundle.assignments.length}
           notificationNote={`${bundle.assignments.length} маршрут өнөөдөр оноогдсон байна`}
         />
@@ -139,7 +141,7 @@ export default async function FieldPage({ searchParams }: PageProps) {
             <Link href="/" className={workspaceStyles.backLink}>
               {workerMode ? "Миний ажил" : "Хяналтын самбар"}
             </Link>
-            <span>{getRoleLabel(session.role)}</span>
+            <span>{getSessionRoleLabel(session)}</span>
             <span>{session.name}</span>
           </div>
 
@@ -161,7 +163,7 @@ export default async function FieldPage({ searchParams }: PageProps) {
           canUseFieldConsole={canUseFieldConsole}
           userName={session.name}
           userRole={session.role}
-          roleLabel={getRoleLabel(session.role)}
+          roleLabel={getSessionRoleLabel(session)}
           groupFlags={session.groupFlags}
           workerMode={workerMode}
         />
@@ -186,7 +188,7 @@ export default async function FieldPage({ searchParams }: PageProps) {
             </article>
             <article className={workspaceStyles.statCard}>
               <span>Эрх</span>
-              <strong>{getRoleLabel(session.role)}</strong>
+              <strong>{getSessionRoleLabel(session)}</strong>
             </article>
           </div>
         </section>

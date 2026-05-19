@@ -60,6 +60,7 @@
 .primaryButton svg,
 .secondaryButton svg,
 .iconButton svg,
+.profileButton svg,
 .dateChip svg,
 .userChip svg,
 .timelineDot svg {
@@ -180,6 +181,19 @@
   background: #fff;
   color: #31513e;
 }
+
+.profileButton {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--proc-line);
+  border-radius: 8px;
+  background: #fff;
+  color: #31513e;
+}
+
 
 .notificationBadge {
   position: absolute;

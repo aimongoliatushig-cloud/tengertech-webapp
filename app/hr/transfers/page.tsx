@@ -1,5 +1,7 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { getRoleLabel, requireSession } from "@/lib/auth";
+import { requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import {
   getDepartments,
   getEmployee,
@@ -41,7 +43,7 @@ export default async function HrTransfersPage({ searchParams }: PageProps) {
         title="Шилжилт хөдөлгөөн"
         subtitle="Хэлтэс, албан тушаал, шууд удирдлага өөрчлөх бүртгэл"
         userName={session.name}
-        roleLabel={getRoleLabel(session.role)}
+        roleLabel={getSessionRoleLabel(session)}
         notificationNote="Шилжилт хөдөлгөөний бүртгэл"
       />
       <HrSectionNav />

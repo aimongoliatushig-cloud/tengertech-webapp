@@ -84,16 +84,17 @@
 
 .metricGrid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(5, minmax(150px, 1fr));
+  gap: 12px;
   margin-bottom: 18px;
 }
 
 .vehicleBoardActions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 16px;
+  margin-bottom: 12px;
 }
 
 .vehicleBoardActions svg,
@@ -127,31 +128,127 @@
 }
 
 .metricTile {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
   min-width: 0;
-  padding: 14px;
+  min-height: 104px;
+  padding: 18px 22px;
   border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-card);
-  background: rgba(255, 255, 255, 0.78);
+  border-radius: 12px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  box-shadow: 0 10px 26px rgba(28, 71, 45, 0.035);
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
 }
 
-.metricTile span {
+.metricTile:hover,
+.metricTile:focus-visible {
+  border-color: rgba(31, 95, 49, 0.24);
+  outline: none;
+  box-shadow: 0 18px 36px rgba(28, 71, 45, 0.09);
+  transform: translateY(-2px);
+}
+
+.metricTileSelected {
+  border-color: rgba(31, 95, 49, 0.34);
+  background: linear-gradient(180deg, rgba(238, 247, 237, 0.96), rgba(255, 255, 255, 0.98));
+  box-shadow:
+    inset 0 4px 0 rgba(47, 127, 70, 0.42),
+    0 18px 38px rgba(31, 95, 49, 0.12);
+}
+
+.metricTile span,
+.metricTile small {
+  display: block;
   color: var(--ink-700);
   font-size: 0.78rem;
   line-height: 1.35;
 }
 
 .metricTile strong {
+  display: block;
+  margin-bottom: 3px;
   overflow-wrap: anywhere;
   color: var(--ink-900);
-  font-size: 1.14rem;
+  font-size: clamp(1.55rem, 2.2vw, 2rem);
   line-height: 1.2;
+}
+
+.metricTile_default .summaryIcon {
+  background: rgba(47, 127, 70, 0.1);
+  color: #2f7f46;
+}
+
+.metricTile_active .summaryIcon {
+  background: rgba(47, 127, 70, 0.14);
+  color: #1f6d34;
+}
+
+.metricTile_repair .summaryIcon {
+  background: rgba(217, 119, 6, 0.12);
+  color: #d97706;
+}
+
+.metricTile_warning .summaryIcon {
+  background: rgba(217, 119, 6, 0.12);
+  color: #d97706;
+}
+
+.metricTile_danger .summaryIcon {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+
+.metricTile_warning.metricTileSelected {
+  border-color: rgba(217, 119, 6, 0.28);
+  background: linear-gradient(180deg, rgba(255, 251, 235, 0.92), rgba(255, 255, 255, 0.98));
+  box-shadow:
+    inset 0 4px 0 rgba(217, 119, 6, 0.42),
+    0 18px 38px rgba(217, 119, 6, 0.12);
+}
+
+.metricTile_danger.metricTileSelected {
+  border-color: rgba(220, 38, 38, 0.24);
+  background: linear-gradient(180deg, rgba(254, 242, 242, 0.9), rgba(255, 255, 255, 0.98));
+  box-shadow:
+    inset 0 4px 0 rgba(220, 38, 38, 0.36),
+    0 18px 38px rgba(220, 38, 38, 0.1);
+}
+
+.summaryIcon {
+  display: inline-grid;
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 14px;
 }
 
 .vehicleFilterBoard {
   display: grid;
   gap: 14px;
+}
+
+.vehicleCategoryTitle {
+  margin: 0;
+  color: var(--ink-900);
+  font-size: 1.08rem;
+  line-height: 1.2;
+}
+
+.vehicleControlsRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 0.9fr);
+  gap: 14px;
+  align-items: center;
 }
 
 .vehicleCategoryHeader {
@@ -180,7 +277,7 @@
 .vehicleCategoryPills {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .vehicleCategoryPill {
@@ -188,15 +285,14 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  min-width: 112px;
-  min-height: 58px;
-  padding: 10px 14px;
+  min-height: 42px;
+  padding: 0 14px;
   border: 1px solid rgba(74, 154, 93, 0.16);
-  border-radius: var(--ds-radius-control);
-  background: rgba(255, 255, 255, 0.84);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
   color: var(--ink-900);
   font: inherit;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   font-weight: 700;
   cursor: pointer;
   transition:
@@ -217,19 +313,105 @@
 
 .vehicleCategoryPill strong {
   display: inline-grid;
-  min-width: 34px;
-  height: 34px;
+  min-width: 26px;
+  height: 26px;
   place-items: center;
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-900);
+  font-size: 0.78rem;
+}
+
+.vehicleFilterToolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.vehicleSearchField,
+.vehicleSelectField,
+.vehicleViewToggle {
+  min-height: 46px;
+  border: 1px solid rgba(28, 71, 45, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 26px rgba(28, 71, 45, 0.04);
+}
+
+.vehicleSearchField {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  color: var(--ink-700);
+}
+
+.vehicleSearchField input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-900);
+  font: inherit;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.vehicleSearchField input::placeholder {
+  color: rgba(93, 112, 101, 0.72);
+}
+
+.vehicleSelectField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  color: var(--ink-700);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.vehicleSelectField select {
+  min-width: 118px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-900);
+  font: inherit;
   font-size: 0.86rem;
+  outline: none;
+}
+
+.vehicleViewToggle {
+  display: inline-flex;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.vehicleViewButton {
+  display: inline-grid;
+  width: 38px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-700);
+  cursor: pointer;
+}
+
+.vehicleViewButton:hover,
+.vehicleViewButton:focus-visible,
+.vehicleViewButtonActive {
+  background: rgba(232, 246, 233, 0.96);
+  color: var(--brand-900);
+  outline: none;
 }
 
 .vehicleFilterTabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .vehicleTypeFilterBar {
@@ -283,11 +465,11 @@
   gap: 12px;
   align-items: start;
   min-width: 0;
-  min-height: 88px;
-  padding: 16px;
+  min-height: 102px;
+  padding: 16px 18px;
   border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-card);
-  background: rgba(255, 255, 255, 0.82);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
   color: var(--ink-900);
   font: inherit;
   text-align: left;
@@ -308,11 +490,19 @@
 }
 
 .vehicleFilterTabActive {
-  box-shadow: inset 0 5px 0 rgba(74, 154, 93, 0.32);
+  box-shadow: inset 0 4px 0 rgba(74, 154, 93, 0.34);
 }
 
 .vehicleFilterTabRepair {
-  box-shadow: inset 0 5px 0 rgba(200, 138, 44, 0.32);
+  box-shadow: inset 0 4px 0 rgba(200, 138, 44, 0.34);
+}
+
+.vehicleFilterTabWarning {
+  box-shadow: inset 0 4px 0 rgba(217, 119, 6, 0.34);
+}
+
+.vehicleFilterTabDanger {
+  box-shadow: inset 0 4px 0 rgba(220, 38, 38, 0.28);
 }
 
 .vehicleFilterTabText {
@@ -351,6 +541,16 @@
   color: #8b5a13;
 }
 
+.vehicleFilterTabWarning .vehicleFilterCount {
+  background: rgba(217, 119, 6, 0.12);
+  color: #a05200;
+}
+
+.vehicleFilterTabDanger .vehicleFilterCount {
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+
 .vehicleFilterMeter {
   grid-column: 1 / -1;
   display: block;
@@ -376,20 +576,45 @@
   background: linear-gradient(90deg, rgba(200, 138, 44, 0.88), rgba(224, 177, 96, 0.7));
 }
 
+.vehicleFilterTabWarning .vehicleFilterMeter {
+  background: rgba(217, 119, 6, 0.1);
+}
+
+.vehicleFilterTabWarning .vehicleFilterMeter span {
+  background: linear-gradient(90deg, rgba(217, 119, 6, 0.82), rgba(251, 146, 60, 0.62));
+}
+
+.vehicleFilterTabDanger .vehicleFilterMeter {
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.vehicleFilterTabDanger .vehicleFilterMeter span {
+  background: linear-gradient(90deg, rgba(220, 38, 38, 0.72), rgba(244, 114, 182, 0.45));
+}
+
 .vehicleFilterPanel {
   min-width: 0;
-  padding: 20px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--ds-radius-card);
-  background: var(--surface-panel);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .vehicleFilterPanelActive {
-  box-shadow: inset 0 6px 0 rgba(74, 154, 93, 0.34);
+  box-shadow: none;
 }
 
 .vehicleFilterPanelRepair {
-  box-shadow: inset 0 6px 0 rgba(200, 138, 44, 0.34);
+  box-shadow: none;
+}
+
+.vehicleFilterPanelWarning {
+  box-shadow: none;
+}
+
+.vehicleFilterPanelDanger {
+  box-shadow: none;
 }
 
 .vehicleFilterPanelHeader {
@@ -397,14 +622,14 @@
   align-items: start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+  margin: 2px 0 12px;
 }
 
 .vehicleFilterPanelHeader h2 {
-  margin: 8px 0 0;
+  margin: 0;
   color: var(--ink-900);
-  font-size: clamp(1.35rem, 2.4vw, 2rem);
-  line-height: 1.05;
+  font-size: 1.08rem;
+  line-height: 1.2;
 }
 
 .vehicleFilterPanelHeader p {
@@ -414,7 +639,11 @@
 }
 
 .vehicleFilterPanel .vehicleList {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 255px), 1fr));
+}
+
+.vehicleFilterPanel .vehicleListRows {
+  grid-template-columns: 1fr;
 }
 
 .mobileBoard {
@@ -672,27 +901,31 @@
 
 .vehicleList {
   display: grid;
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 255px), 1fr));
+  gap: 14px;
+}
+
+.vehicleListRows {
+  grid-template-columns: 1fr;
 }
 
 .vehicleCard {
-  padding: 16px;
-  border-radius: var(--ds-radius-card);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.98),
-    rgba(244, 250, 245, 0.92)
-  );
+  overflow: hidden;
+  padding: 0;
+  border-radius: 12px;
+  background: #fff;
   border: 1px solid rgba(74, 154, 93, 0.14);
+  box-shadow: 0 10px 24px rgba(28, 71, 45, 0.045);
 }
 
 .vehicleThumb,
 .vehicleThumbPlaceholder {
   width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--ds-radius-control);
-  border: 1px solid rgba(74, 154, 93, 0.12);
-  background: rgba(232, 245, 236, 0.9);
+  height: 108px;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(135deg, rgba(232, 245, 236, 0.92), rgba(255, 255, 255, 0.85));
 }
 
 .vehicleThumb {
@@ -703,8 +936,13 @@
   display: grid;
   place-items: center;
   color: var(--brand-800);
-  font-size: 1.8rem;
-  font-weight: 800;
+}
+
+.vehicleThumbPlaceholder svg {
+  width: clamp(58px, 42%, 92px);
+  height: auto;
+  color: rgba(31, 109, 52, 0.64);
+  filter: drop-shadow(0 12px 20px rgba(31, 95, 49, 0.12));
 }
 
 .vehicleTop {
@@ -715,13 +953,17 @@
 }
 
 .vehiclePlate {
-  font-size: 1.05rem;
+  color: var(--ink-900);
+  font-size: 0.94rem;
+  font-weight: 800;
+  line-height: 1.25;
 }
 
 .vehicleName {
-  margin: 10px 0 0;
+  margin: 4px 0 0;
   color: var(--ink-700);
-  line-height: 1.55;
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 .vehicleTypeLine {
@@ -733,8 +975,105 @@
   border-radius: 999px;
   background: rgba(40, 92, 62, 0.08);
   color: var(--brand-900);
-  font-size: 0.76rem;
+  font-size: 0.68rem;
   font-weight: 700;
+}
+
+.vehicleMedia {
+  position: relative;
+  overflow: hidden;
+  height: 108px;
+  min-height: 0;
+  background: linear-gradient(135deg, rgba(232, 245, 236, 0.94), rgba(255, 255, 255, 0.84));
+}
+
+.vehicleCardBody {
+  display: grid;
+  gap: 10px;
+  padding: 11px 12px 12px;
+}
+
+.vehicleCrewLine {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.vehicleCrewLine span {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-700);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.vehicleCrewLine svg,
+.vehicleInfoGrid svg {
+  flex: 0 0 auto;
+  color: var(--brand-800);
+}
+
+.vehicleInfoGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 7px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.vehicleInfoGrid span {
+  display: grid;
+  grid-template-columns: 16px 54px minmax(0, 1fr);
+  min-width: 0;
+  gap: 7px;
+  align-items: center;
+  padding: 0;
+  border-right: 0;
+}
+
+.vehicleInfoGrid span:last-child {
+  border-right: 0;
+}
+
+.vehicleInfoGrid small {
+  color: var(--ink-700);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.vehicleInfoGrid strong {
+  min-width: 0;
+  color: var(--ink-900);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.vehicleMore {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--ink-700);
+  box-shadow: 0 8px 18px rgba(28, 71, 45, 0.08);
+  opacity: 1;
+  transition: opacity 160ms ease;
+}
+
+.vehicleCard:hover .vehicleMore,
+.vehicleCard:focus-within .vehicleMore {
+  opacity: 1;
 }
 
 .vehicleMetaLine {
@@ -744,24 +1083,63 @@
 }
 
 .vehicleState {
+  position: absolute;
+  top: 10px;
+  right: 10px;
   display: inline-flex;
   align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 20px);
   min-height: 28px;
-  padding: 0 10px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
   border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  box-shadow:
+    0 10px 22px rgba(17, 38, 25, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(6px);
+  z-index: 2;
 }
 
+.vehicleState::before {
+  content: "";
+  flex: 0 0 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.vehicleState_active,
 .vehicleStateActive {
-  background: rgba(74, 154, 93, 0.12);
+  background: rgba(238, 247, 237, 0.96);
+  border-color: rgba(74, 154, 93, 0.24);
   color: var(--brand-900);
 }
 
+.vehicleState_warning {
+  background: rgba(255, 247, 237, 0.96);
+  border-color: rgba(217, 119, 6, 0.24);
+  color: #a05200;
+}
+
+.vehicleState_repair,
 .vehicleStateRepair {
-  background: rgba(200, 138, 44, 0.16);
+  background: rgba(255, 247, 237, 0.96);
+  border-color: rgba(200, 138, 44, 0.26);
   color: #8b5a13;
+}
+
+.vehicleState_inactive {
+  background: rgba(249, 250, 251, 0.96);
+  border-color: rgba(107, 114, 128, 0.22);
+  color: #4b5563;
 }
 
 .emptyState {
@@ -784,6 +1162,18 @@
 
   .metricGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .vehicleControlsRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vehicleFilterToolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .vehicleSearchField {
+    grid-column: 1 / -1;
   }
 
   .vehicleFilterTabs {
@@ -819,6 +1209,14 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .vehicleFilterToolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vehicleViewToggle {
+    width: fit-content;
+  }
+
   .vehicleCategoryPills {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -848,6 +1246,12 @@
   .vehicleTop {
     flex-direction: column;
     align-items: start;
+  }
+
+  .vehicleCrewLine,
+  .vehicleInfoGrid,
+  .vehicleListRows .vehicleCardMain {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1274,8 +1678,10 @@
 }
 
 .vehicleCardMain {
+  position: relative;
   display: grid;
-  gap: 8px;
+  grid-template-rows: auto 1fr;
+  gap: 0;
   width: 100%;
   padding: 0;
   border: 0;
@@ -1284,6 +1690,34 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.vehicleListRows .vehicleCardMain {
+  grid-template-columns: minmax(220px, 32%) minmax(0, 1fr);
+  grid-template-rows: 1fr;
+}
+
+.vehicleListRows .vehicleMedia {
+  min-height: 100%;
+}
+
+.vehicleCard_active {
+  border-color: rgba(47, 127, 70, 0.16);
+}
+
+.vehicleCard_warning {
+  border-color: rgba(217, 119, 6, 0.2);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(255, 251, 235, 0.74));
+}
+
+.vehicleCard_repair {
+  border-color: rgba(217, 119, 6, 0.24);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(255, 247, 237, 0.82));
+}
+
+.vehicleCard_inactive {
+  border-color: rgba(107, 114, 128, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(249, 250, 251, 0.86));
 }
 
 .vehicleCardMain:focus-visible,
@@ -1353,23 +1787,24 @@
 .vehicleModalBackdrop {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 2500;
   display: grid;
   place-items: start center;
-  overflow-y: auto;
-  padding: clamp(16px, 4vh, 40px) 18px 18px;
-  background: rgba(20, 33, 27, 0.36);
-  backdrop-filter: blur(8px);
+  overflow: hidden;
+  padding: clamp(18px, 4vh, 36px) 18px;
+  background: rgba(15, 23, 18, 0.5);
+  backdrop-filter: blur(10px);
 }
 
 .vehicleModal {
-  width: min(780px, 100%);
-  max-height: calc(100dvh - 36px);
+  width: min(1120px, 100%);
+  max-height: calc(100dvh - clamp(36px, 8vh, 72px));
   overflow: auto;
-  padding: 20px;
+  overscroll-behavior: contain;
+  padding: 0;
   border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-card);
-  background: var(--ds-panel-bg);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 252, 249, 0.96));
   box-shadow: 0 26px 70px rgba(20, 33, 27, 0.24);
 }
 
@@ -1377,15 +1812,35 @@
   display: flex;
   align-items: start;
   justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 14px;
+  gap: 18px;
+  padding: 22px 24px 18px;
   border-bottom: 1px solid var(--ds-border);
 }
 
+.vehicleModalTitleBlock {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.vehicleModalKickerRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vehicleModalKickerRow .vehicleState {
+  position: static;
+  min-height: 28px;
+  padding: 0 12px;
+  box-shadow: none;
+}
+
 .vehicleModalHeader h2 {
-  margin: 8px 0 4px;
+  margin: 0;
   font-family: var(--font-body);
-  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-size: clamp(2rem, 4vw, 2.7rem);
   line-height: 1;
   letter-spacing: 0;
 }
@@ -1396,6 +1851,15 @@
   line-height: 1.55;
 }
 
+.vehicleModalMetaLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  color: var(--ink-700);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
 .vehicleModalHeaderActions {
   display: flex;
   align-items: center;
@@ -1404,20 +1868,70 @@
   justify-content: flex-end;
 }
 
+.vehicleRepairToggleForm {
+  display: contents;
+}
+
+.vehicleModalActionButton,
+.vehicleModalIconButton,
 .vehicleModalClose {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   min-height: var(--ds-control-height);
   padding: 0 12px;
   border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-control);
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.84);
   color: var(--ink-900);
   font: inherit;
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.vehicleModalIconButton {
+  width: var(--ds-control-height);
+  padding: 0;
+}
+
+.vehicleModalActionButton:hover,
+.vehicleModalActionButton:focus-visible,
+.vehicleModalIconButton:hover,
+.vehicleModalIconButton:focus-visible {
+  border-color: rgba(31, 95, 49, 0.24);
+  outline: none;
+  box-shadow: 0 10px 24px rgba(28, 71, 45, 0.08);
+  transform: translateY(-1px);
+}
+
+.vehicleRepairToggleButtonStart {
+  border-color: rgba(220, 38, 38, 0.22);
+  background: rgba(254, 242, 242, 0.94);
+  color: #b91c1c;
+}
+
+.vehicleRepairToggleButtonStart:hover,
+.vehicleRepairToggleButtonStart:focus-visible {
+  border-color: rgba(220, 38, 38, 0.36);
+  box-shadow: 0 10px 24px rgba(220, 38, 38, 0.12);
+}
+
+.vehicleRepairToggleButtonDone {
+  border-color: rgba(47, 127, 70, 0.24);
+  background: rgba(238, 247, 237, 0.96);
+  color: var(--brand-900);
+}
+
+.vehicleRepairToggleButtonDone:hover,
+.vehicleRepairToggleButtonDone:focus-visible {
+  border-color: rgba(47, 127, 70, 0.4);
+  box-shadow: 0 10px 24px rgba(31, 95, 49, 0.12);
 }
 
 .vehicleModalClose:hover,
@@ -1428,50 +1942,252 @@
 
 .vehicleDetailGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  margin-top: 14px;
 }
 
 .vehicleTabBar {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
-  padding: 14px 0 2px;
-  scrollbar-width: thin;
+  overflow: visible;
+  padding: 12px 24px 0;
+  border-bottom: 1px solid rgba(74, 154, 93, 0.12);
+  scrollbar-width: none;
 }
 
 .vehicleTabButton {
-  flex: 0 0 auto;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-control);
-  background: rgba(255, 255, 255, 0.82);
+  flex: 0 1 auto;
+  min-height: 40px;
+  padding: 0 10px 8px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
   color: var(--ink-900);
   font: inherit;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .vehicleTabButtonActive {
-  border-color: rgba(31, 95, 49, 0.24);
-  background: rgba(74, 154, 93, 0.12);
+  border-color: #2f7f46;
+  background: transparent;
   color: var(--brand-900);
 }
 
 .vehicleTabPanel {
-  margin-top: 12px;
+  display: grid;
+  gap: 16px;
+  padding: 18px 24px 24px;
+}
+
+.vehicleComplianceGrid,
+.vehicleOperationsGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.vehicleOperationsGrid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
 }
 
 .vehicleHeroImage {
-  margin-bottom: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(232, 245, 236, 0.92), rgba(255, 255, 255, 0.84));
 }
 
 .vehicleHeroImage .vehicleThumb,
 .vehicleHeroImage .vehicleThumbPlaceholder {
-  max-height: 300px;
+  height: clamp(230px, 31vw, 330px);
+  max-height: none;
+  border-radius: 0;
+}
+
+.vehicleHeroImage .vehicleThumbPlaceholder svg {
+  width: clamp(110px, 30%, 180px);
+}
+
+.vehicleOverviewGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.vehicleGalleryPanel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.vehicleGalleryPanel .vehicleAttachmentPanel {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.vehicleGalleryPanel .vehicleAttachmentHeader {
+  display: none;
+}
+
+.vehicleGalleryPanel .vehicleAttachmentGroup {
+  gap: 10px;
+}
+
+.vehicleGalleryPanel .vehicleAttachmentGroup > strong {
+  display: none;
+}
+
+.vehicleGalleryPanel .vehicleAttachmentGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.vehicleGalleryPanel .vehicleAttachmentGrid a {
+  min-height: 70px;
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.vehicleGalleryPanel .vehicleAttachmentGrid span:last-child {
+  display: none;
+}
+
+.vehicleQuickPanel,
+.vehicleInfoPanel {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--ds-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 14px 32px rgba(28, 71, 45, 0.045);
+}
+
+.vehicleQuickPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.vehicleQuickPanelHeader h3,
+.vehicleInfoPanelHeader h3 {
+  margin: 0;
+  color: var(--ink-900);
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.vehicleQuickPanelHeader span {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-900);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.vehicleQuickGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.vehicleQuickFact {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  align-items: center;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(248, 251, 248, 0.9);
+}
+
+.vehicleQuickFactIcon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-900);
+}
+
+.vehicleQuickFact_blue .vehicleQuickFactIcon {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}
+
+.vehicleQuickFact_orange .vehicleQuickFactIcon {
+  background: rgba(217, 119, 6, 0.12);
+  color: #d97706;
+}
+
+.vehicleQuickFact_neutral .vehicleQuickFactIcon {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--ink-700);
+}
+
+.vehicleQuickFact small,
+.vehicleQuickFact strong {
+  display: block;
+}
+
+.vehicleQuickFact small {
+  color: var(--ink-700);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.vehicleQuickFact strong {
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+  color: var(--ink-900);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.vehicleInfoPanelGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.vehicleInfoPanel {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.vehicleInfoPanel .vehicleDetailGrid {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.vehicleInfoPanelHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vehicleInfoPanelHeader span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-900);
 }
 
 .vehicleAttachmentPanel {
@@ -2029,29 +2745,140 @@
 @media (max-width: 720px) {
   .vehicleModalBackdrop {
     place-items: end stretch;
-    padding: 10px;
+    padding: 0;
+    background: rgba(248, 251, 248, 0.98);
+    backdrop-filter: none;
   }
 
   .vehicleModal {
-    max-height: calc(100dvh - 20px);
-    padding: 16px;
+    width: 100%;
+    max-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .vehicleModalHeader {
-    flex-direction: column;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 16px 20px 14px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(10px);
+  }
+
+  .vehicleModalHeader h2 {
+    font-size: clamp(1.95rem, 10vw, 2.6rem);
+  }
+
+  .vehicleModalMetaLine {
+    display: grid;
+    gap: 4px;
+    font-size: 0.82rem;
   }
 
   .vehicleModalHeaderActions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-self: start;
     width: 100%;
+    margin-top: 12px;
   }
 
-  .vehicleModalHeaderActions .vehicleTaskLink,
-  .vehicleModalHeaderActions .vehicleTaskLinkDisabled {
-    flex: 1 1 160px;
+  .vehicleModalActionButton,
+  .vehicleModalIconButton {
+    width: 100%;
+    min-height: 66px;
+    padding: 0;
+    border-radius: 16px;
+    flex-direction: column;
+    font-size: 0.74rem;
+    line-height: 1.1;
   }
 
-  .vehicleModalClose {
-    flex: 1 1 120px;
+  .vehicleRepairToggleForm {
+    display: block;
+  }
+
+  .vehicleModalActionButton svg,
+  .vehicleModalIconButton svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .vehicleTabBar {
+    position: sticky;
+    top: 188px;
+    z-index: 2;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 0 20px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(10px);
+    scrollbar-width: none;
+  }
+
+  .vehicleTabButton {
+    min-height: 48px;
+    padding-bottom: 10px;
+    font-size: 0.82rem;
+  }
+
+  .vehicleTabPanel {
+    gap: 18px;
+    padding: 16px 20px 28px;
+  }
+
+  .vehicleOverviewGrid,
+  .vehicleInfoPanelGrid,
+  .vehicleComplianceGrid,
+  .vehicleOperationsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .vehicleHeroImage .vehicleThumb,
+  .vehicleHeroImage .vehicleThumbPlaceholder {
+    height: clamp(210px, 58vw, 310px);
+  }
+
+  .vehicleGalleryPanel .vehicleAttachmentGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .vehicleGalleryPanel .vehicleAttachmentGrid a {
+    min-height: 62px;
+  }
+
+  .vehicleQuickPanel,
+  .vehicleInfoPanel,
+  .vehicleCrewPanel,
+  .vehicleAttachmentPanel,
+  .deadlinePanel,
+  .vehicleEditForm,
+  .vehicleDeleteForm {
+    border-radius: 16px;
+  }
+
+  .vehicleQuickGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .vehicleQuickFact {
+    grid-template-columns: 42px minmax(0, 1fr);
+    padding: 11px;
+  }
+
+  .vehicleQuickFactIcon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .vehicleInfoPanel .vehicleDetailGrid {
+    grid-template-columns: 1fr;
   }
 
   .vehicleDetailGrid,

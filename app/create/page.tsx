@@ -6,11 +6,11 @@ import { ActionCardLink } from "@/app/create/action-card-link";
 import styles from "@/app/create/create.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import {
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 
@@ -107,7 +107,7 @@ export default async function CreateHubPage() {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
@@ -120,7 +120,7 @@ export default async function CreateHubPage() {
               title="Нэмэх төв"
               subtitle="Шинэ ажил, даалгавар, тайлангийн эхлэлийг эндээс сонгоно"
               userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               notificationCount={actionCards.length}
               notificationNote={`${actionCards.length} боломжит үйлдэл нээлттэй байна`}
             />
@@ -144,7 +144,7 @@ export default async function CreateHubPage() {
                 </article>
                 <article className={styles.heroMetaCard}>
                   <span>Таны түвшин</span>
-                  <strong>{getRoleLabel(session.role)}</strong>
+                  <strong>{getSessionRoleLabel(session)}</strong>
                   <small>{session.name}</small>
                 </article>
               </div>

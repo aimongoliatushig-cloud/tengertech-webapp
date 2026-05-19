@@ -24,6 +24,26 @@ type GarbageTaskRecord = {
   mfo_driver_employee_id?: Relation;
   ops_department_id?: Relation;
   mfo_operation_type: string | false;
+  ops_measurement_unit?: string | false;
+  ops_measurement_unit_code?: string | false;
+};
+
+type OpsTaskReportRecord = {
+  id: number;
+  task_id: Relation;
+  reported_quantity: number;
+  state?: string | false;
+  task_measurement_unit_code?: string | false;
+};
+
+type GarbageWeightReportRecord = {
+  id: number;
+  report_date: string;
+  vehicle_id: Relation;
+  vehicle_license_plate?: string | false;
+  weight: number;
+  unit?: string | false;
+  state?: string | false;
 };
 
 type FleetVehicleRecord = {
@@ -122,6 +142,10 @@ function normalizedDepartmentName(relation: Relation) {
   return normalizeOrganizationUnitName(rawName) || rawName.trim();
 }
 
+function normalizeVehicleCode(value?: string | false | null) {
+  return String(value ?? "").toLocaleUpperCase("mn-MN").replace(/\s+/g, "");
+}
+
 function currentDateKey() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TIME_ZONE,
@@ -169,6 +193,45 @@ function formatKg(value: number) {
   return `${new Intl.NumberFormat("mn-MN", {
     maximumFractionDigits: 0,
   }).format(Math.round(value))} кг`;
+}
+
+function normalizeWeightUnit(value?: string | false | null) {
+  return String(value ?? "").toLocaleLowerCase("mn-MN").replace(/\s+/g, "");
+}
+
+function reportQuantityToKg(
+  quantity: number,
+  ...unitCandidates: Array<string | false | null | undefined>
+) {
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    return 0;
+  }
+
+  const unitText = unitCandidates.map(normalizeWeightUnit).filter(Boolean).join(" ");
+  if (!unitText) {
+    return 0;
+  }
+
+  if (["тонн", "тон", "тн", "ton", "tn"].some((token) => unitText.includes(token))) {
+    return quantity * 1000;
+  }
+  if (["кг", "kg", "килограмм", "kilogram"].some((token) => unitText.includes(token))) {
+    return quantity;
+  }
+
+  return 0;
+}
+
+function weightReportToKg(record: GarbageWeightReportRecord) {
+  const weight = Number(record.weight ?? 0);
+  if (!Number.isFinite(weight) || weight <= 0) {
+    return 0;
+  }
+  return normalizeWeightUnit(record.unit).includes("ton") ? weight * 1000 : weight;
+}
+
+function vehicleDateKey(dateKey: string, vehicleId: number | null, fallbackCode: string) {
+  return `${dateKey}:${vehicleId ? `vehicle:${vehicleId}` : `code:${normalizeVehicleCode(fallbackCode)}`}`;
 }
 
 function formatCompactDateLabel(dateKey: string) {
@@ -273,82 +336,161 @@ export async function loadGarbageWeightLedger(
     dayItems: [],
   };
 
-  const weightTotals = await executeOdooKw<DailyWeightTotalRecord[]>(
-    "mfo.daily.weight.total",
-    "search_read",
-    [
+  const [weightTotals, tasks, standaloneWeightReports] = await Promise.all([
+    executeOdooKw<DailyWeightTotalRecord[]>(
+      "mfo.daily.weight.total",
+      "search_read",
       [
-        ["shift_date", ">=", startDate],
-        ["shift_date", "<=", endDate],
+        [
+          ["shift_date", ">=", startDate],
+          ["shift_date", "<=", endDate],
+        ],
       ],
-    ],
-    {
-      fields: ["task_id", "shift_date", "vehicle_id", "route_id", "net_weight_total"],
-      order: "shift_date desc, id desc",
-      limit: 5000,
-    },
-    connectionOverrides,
-  );
-
-  if (!weightTotals.length) {
-    return emptySnapshot;
-  }
-
-  const taskIds = Array.from(
-    new Set(
-      weightTotals
-        .map((weight) => relationId(weight.task_id))
-        .filter((taskId): taskId is number => Boolean(taskId)),
+      {
+        fields: ["task_id", "shift_date", "vehicle_id", "route_id", "net_weight_total"],
+        order: "shift_date desc, id desc",
+        limit: 5000,
+      },
+      connectionOverrides,
+    ).catch(() =>
+      executeOdooKw<DailyWeightTotalRecord[]>(
+        "mfo.daily.weight.total",
+        "search_read",
+        [
+          [
+            ["shift_date", ">=", startDate],
+            ["shift_date", "<=", endDate],
+          ],
+        ],
+        {
+          fields: ["task_id", "shift_date", "net_weight_total"],
+          order: "shift_date desc, id desc",
+          limit: 5000,
+        },
+        connectionOverrides,
+      ),
     ),
-  );
-
-  if (!taskIds.length) {
-    return emptySnapshot;
-  }
-
-  const tasks = await executeOdooKw<GarbageTaskRecord[]>(
-    "project.task",
-    "search_read",
-    [
+    executeOdooKw<GarbageTaskRecord[]>(
+      "project.task",
+      "search_read",
       [
-        ["id", "in", taskIds],
-        ["mfo_operation_type", "=", "garbage"],
+        [
+          ["mfo_shift_date", ">=", startDate],
+          ["mfo_shift_date", "<=", endDate],
+          ["mfo_operation_type", "=", "garbage"],
+        ],
       ],
-    ],
-    {
-      fields: [
-        "name",
-        "mfo_shift_date",
-        "mfo_vehicle_id",
-        "mfo_route_id",
-        "mfo_driver_employee_id",
-        "ops_department_id",
-        "mfo_operation_type",
+      {
+        fields: [
+          "name",
+          "mfo_shift_date",
+          "mfo_vehicle_id",
+          "mfo_route_id",
+          "mfo_driver_employee_id",
+          "ops_department_id",
+          "mfo_operation_type",
+          "ops_measurement_unit",
+          "ops_measurement_unit_code",
+        ],
+        order: "mfo_shift_date desc, id desc",
+        limit: 5000,
+      },
+      connectionOverrides,
+    ),
+    executeOdooKw<GarbageWeightReportRecord[]>(
+      "municipal.garbage.weight.report",
+      "search_read",
+      [
+        [
+          ["report_date", ">=", startDate],
+          ["report_date", "<=", endDate],
+          ["state", "!=", "failed"],
+          ["weight", ">", 0],
+        ],
       ],
-      order: "mfo_shift_date desc, id desc",
-      limit: Math.max(taskIds.length, 500),
-    },
-    connectionOverrides,
-  );
+      {
+        fields: ["report_date", "vehicle_id", "vehicle_license_plate", "weight", "unit", "state"],
+        order: "report_date desc, id desc",
+        limit: 5000,
+      },
+      connectionOverrides,
+    ).catch(() => []),
+  ]);
 
-  if (!tasks.length) {
+  if (!tasks.length && !standaloneWeightReports.length) {
     return emptySnapshot;
   }
 
   const taskById = new Map(tasks.map((task) => [task.id, task]));
-  const garbageWeights = weightTotals.filter((weight) => {
+  const garbageWeights: DailyWeightTotalRecord[] = weightTotals.filter((weight) => {
     const taskId = relationId(weight.task_id);
     return taskId ? taskById.has(taskId) : false;
   });
 
-  if (!garbageWeights.length) {
+  const taskIdsWithWeight = new Set(
+    garbageWeights
+      .map((weight) => relationId(weight.task_id))
+      .filter((taskId): taskId is number => Boolean(taskId)),
+  );
+  const fallbackTaskIds = tasks
+    .map((task) => task.id)
+    .filter((taskId) => !taskIdsWithWeight.has(taskId));
+
+  if (fallbackTaskIds.length) {
+    const reportRows = await executeOdooKw<OpsTaskReportRecord[]>(
+      "ops.task.report",
+      "search_read",
+      [
+        [
+          ["task_id", "in", fallbackTaskIds],
+          ["state", "in", ["draft", "submitted", "under_review", "approved"]],
+          ["reported_quantity", ">", 0],
+        ],
+      ],
+      {
+        fields: ["task_id", "reported_quantity", "state", "task_measurement_unit_code"],
+        order: "report_datetime desc, id desc",
+        limit: 5000,
+      },
+      connectionOverrides,
+    ).catch(() => []);
+
+    for (const report of reportRows) {
+      const taskId = relationId(report.task_id);
+      const task = taskId ? taskById.get(taskId) : undefined;
+      if (!task) {
+        continue;
+      }
+      const netWeightKg = reportQuantityToKg(
+        report.reported_quantity ?? 0,
+        report.task_measurement_unit_code,
+        task.ops_measurement_unit_code,
+        task.ops_measurement_unit,
+      );
+      if (netWeightKg <= 0) {
+        continue;
+      }
+      garbageWeights.push({
+        id: -report.id,
+        task_id: [task.id, task.name],
+        shift_date: task.mfo_shift_date || startDate,
+        vehicle_id: task.mfo_vehicle_id,
+        route_id: task.mfo_route_id,
+        net_weight_total: netWeightKg,
+      });
+    }
+  }
+
+  if (!garbageWeights.length && !standaloneWeightReports.length) {
     return emptySnapshot;
   }
 
   const vehicleIds = Array.from(
     new Set(
-      garbageWeights
-        .map((weight) => relationId(weight.vehicle_id))
+      [
+        ...garbageWeights.map((weight) => relationId(weight.vehicle_id)),
+        ...standaloneWeightReports.map((report) => relationId(report.vehicle_id)),
+      ]
         .filter((vehicleId): vehicleId is number => Boolean(vehicleId)),
     ),
   );
@@ -397,6 +539,7 @@ export async function loadGarbageWeightLedger(
     proofImagesByTaskId.set(taskId, images);
   }
   const dayMap = new Map<string, Map<string, DayWeightAggregate>>();
+  const representedVehicleDates = new Set<string>();
 
   for (const weight of garbageWeights) {
     const taskId = relationId(weight.task_id);
@@ -408,6 +551,7 @@ export async function loadGarbageWeightLedger(
     const dateKey = weight.shift_date || task.mfo_shift_date || startDate;
     const vehicleId = relationId(weight.vehicle_id) ?? relationId(task.mfo_vehicle_id);
     const vehicleKey = vehicleId ? String(vehicleId) : relationName(weight.vehicle_id, task.name);
+    representedVehicleDates.add(vehicleDateKey(dateKey, vehicleId, vehicleKey));
     const vehicle = vehicleId ? vehicleById.get(vehicleId) : undefined;
     const departmentName =
       normalizedDepartmentName(vehicle?.municipal_department_id ?? false) ||
@@ -455,6 +599,54 @@ export async function loadGarbageWeightLedger(
 
     dayEntry.set(vehicleKey, row);
     dayMap.set(dateKey, dayEntry);
+  }
+
+  for (const report of standaloneWeightReports) {
+    const dateKey = report.report_date || startDate;
+    const vehicleId = relationId(report.vehicle_id);
+    const plateFromReport = report.vehicle_license_plate || relationName(report.vehicle_id, "");
+    const fallbackKey = plateFromReport || `report-${report.id}`;
+    const dayVehicleMarker = vehicleDateKey(dateKey, vehicleId, fallbackKey);
+    if (representedVehicleDates.has(dayVehicleMarker)) {
+      continue;
+    }
+
+    const kg = weightReportToKg(report);
+    if (kg <= 0) {
+      continue;
+    }
+
+    const vehicleKey = vehicleId ? String(vehicleId) : `report-${normalizeVehicleCode(fallbackKey) || report.id}`;
+    const vehicle = vehicleId ? vehicleById.get(vehicleId) : undefined;
+    const departmentName = normalizedDepartmentName(vehicle?.municipal_department_id ?? false);
+    if (
+      scopedDepartmentName &&
+      (!departmentName || !filterByDepartment([{ departmentName }], scopedDepartmentName).length)
+    ) {
+      continue;
+    }
+
+    const vehicleName = vehicle?.name || plateFromReport || "Тодорхойгүй машин";
+    const plate = vehicle?.license_plate || report.vehicle_license_plate || "";
+    const primaryLabel = plate || vehicleName;
+    const dayEntry = dayMap.get(dateKey) ?? new Map<string, DayWeightAggregate>();
+    const row: DayWeightAggregate =
+      dayEntry.get(vehicleKey) ??
+      {
+        vehicleName,
+        plate,
+        primaryLabel,
+        departmentName,
+        driverNames: new Set<string>(),
+        kg: 0,
+        taskIds: new Set<number>(),
+        proofImages: [],
+      };
+
+    row.kg += kg;
+    dayEntry.set(vehicleKey, row);
+    dayMap.set(dateKey, dayEntry);
+    representedVehicleDates.add(dayVehicleMarker);
   }
 
   const dateTotals = new Map(

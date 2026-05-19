@@ -5,11 +5,11 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { createProjectAction } from "@/app/actions";
 import styles from "@/app/workspace.module.css";
 import {
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
@@ -187,7 +187,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
               departmentScopeName={masterDepartmentName}
@@ -199,7 +199,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
               title={masterMode ? "Шинэ ажил" : "Ажил нэмэх"}
               subtitle="Шинэ ажлын мэдээлэл, хугацаа, хавсралтыг бүртгэх урсгал"
               userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
             />
 
             <section className={styles.heroCard}>

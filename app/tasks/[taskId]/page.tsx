@@ -18,11 +18,11 @@ import dashboardStyles from "@/app/page.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import {
   canSubmitWorkspaceReport,
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
@@ -228,7 +228,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 canUseFieldConsole={canUseFieldConsole}
                 userName={session.name}
                 userRole={session.role}
-                roleLabel={getRoleLabel(session.role)}
+                roleLabel={getSessionRoleLabel(session)}
                 groupFlags={session.groupFlags}
                 masterMode={masterMode}
                 workerMode={workerMode}
@@ -467,7 +467,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
@@ -481,7 +481,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 title={task.name}
                 subtitle={task.projectName}
                 userName={session.name}
-                roleLabel={getRoleLabel(session.role)}
+                roleLabel={getSessionRoleLabel(session)}
                 notificationCount={task.reports.length}
                 notificationNote="Тайлан"
               />

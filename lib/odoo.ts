@@ -1519,8 +1519,15 @@ function buildTaskQuantitySnapshot(task: OdooTaskRecord, reports: OdooReportReco
   const rawStageBucket = getStageBucket(relationName(task.stage_id, ""));
   const taskStateBucket = reportStateBucket(task.state);
   const mfoStateBucket = reportStateBucket(task.mfo_state);
-  const hasReturnedReport = reports.some((report) => reportStateBucket(report.state) === "problem");
+  const reportBuckets = reports.map((report) => reportStateBucket(report.state));
+  const hasReturnedReport = reportBuckets.includes("problem");
   const forcedProblem = taskStateBucket === "problem" || mfoStateBucket === "problem" || hasReturnedReport;
+  const forcedReview =
+    !forcedProblem &&
+    (mfoStateBucket === "review" ||
+      taskStateBucket === "review" ||
+      rawStageBucket === "review" ||
+      reportBuckets.includes("review"));
   const plannedLines = extractTaskQuantityLines(htmlToPlainText(task.description));
   if (!plannedLines.length && (task.ops_planned_quantity ?? 0) > 0) {
     plannedLines.push({
@@ -1583,7 +1590,7 @@ function buildTaskQuantitySnapshot(task: OdooTaskRecord, reports: OdooReportReco
   const stageBucket =
     forcedProblem
       ? "problem"
-      : rawStageBucket === "review"
+      : forcedReview
       ? "review"
       : rawStageBucket === "done" || progress >= 100
         ? "done"
@@ -4322,10 +4329,11 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
         stateLabel:
           vehicle.active === false
             ? "Архивласан"
-            :
-          operationalStatusLabel ||
-          stateLabel ||
-          (isRepair ? "Засвартай" : isOperational ? "Ажиллаж байгаа" : "Бүртгэлтэй"),
+            : isRepair
+              ? latestRepairState || stateLabel || operationalStatusLabel || "Засвартай"
+              : operationalStatusLabel ||
+                stateLabel ||
+                (isOperational ? "Ажиллаж байгаа" : "Бүртгэлтэй"),
         operationalStatusKey,
         latestRepairState,
         isOperational,

@@ -8,11 +8,11 @@ import { LoadingShell } from "@/app/_components/loading-shell";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import styles from "@/app/workspace.module.css";
 import {
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
@@ -875,7 +875,7 @@ async function ProjectsPageContent({
     }
   }
 
-  const roleLabel = getRoleLabel(session.role);
+  const roleLabel = getSessionRoleLabel(session);
   const appMenuProps: ProjectsAppMenuProps = {
     active: transportInspectorMode ? "projects" : masterMode ? "dashboard" : "projects",
     canCreateProject,

@@ -56,8 +56,6 @@ import { PendingLinkIndicator } from "./pending-link-indicator";
 import styles from "./app-menu.module.css";
 import { HR_NOTIFICATION_HREF } from "@/app/hr/constants";
 
-const AUTO_GARBAGE_DEPARTMENT_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
-
 type MenuKey =
   | "dashboard"
   | "tasks"
@@ -934,8 +932,6 @@ export function AppMenu({
     },
   ];
 
-  const inspectorWorkHref = `/projects?department=${encodeURIComponent(AUTO_GARBAGE_DEPARTMENT_NAME)}`;
-  const inspectorNewWorkHref = `/projects/new?department=${encodeURIComponent(AUTO_GARBAGE_DEPARTMENT_NAME)}`;
   const transportInspectorItems: MenuItem[] = [
     {
       key: "dashboard",
@@ -944,25 +940,13 @@ export function AppMenu({
       icon: LayoutDashboard,
     },
     {
-      key: "auto-base",
-      href: "/#my-vehicles",
-      label: "Миний машин",
-      icon: Truck,
-    },
-    {
-      key: "projects",
-      href: inspectorWorkHref,
-      label: "Миний ажил",
-      icon: ListChecks,
-    },
-    {
-      key: "new-project",
-      href: inspectorNewWorkHref,
-      label: "Ажил нэмэх",
-      icon: PlusCircle,
-    },
-    {
       key: "review",
+      href: "/review",
+      label: "Тайлан хянах",
+      icon: ClipboardCheck,
+    },
+    {
+      key: "notifications",
       href: reviewHref,
       label: "Мэдэгдэл",
       icon: Bell,
@@ -1059,7 +1043,7 @@ export function AppMenu({
     if (item.key === "review" && active === "field") {
       return true;
     }
-    if (item.key === "review" && active === "notifications") {
+    if (item.key === "review" && item.href === "/notifications" && active === "notifications") {
       return true;
     }
     if (item.key === "projects" && active === "tasks") {
@@ -1104,18 +1088,12 @@ export function AppMenu({
     ? [
         { key: "dashboard", href: "/", label: "Самбар", icon: LayoutDashboard },
         {
-          key: "projects",
-          href: inspectorWorkHref,
-          label: "Ажил",
-          icon: ListChecks,
+          key: "review",
+          href: "/review",
+          label: "Тайлан",
+          icon: ClipboardCheck,
         },
-        {
-          key: "new-project",
-          href: inspectorNewWorkHref,
-          label: "Нэмэх",
-          icon: PlusCircle,
-        },
-        { key: "review", href: reviewHref, label: "Мэдэгдэл", icon: Bell, badge: notificationCount },
+        { key: "notifications", href: reviewHref, label: "Мэдэгдэл", icon: Bell, badge: notificationCount },
         { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
       ]
     : isGarbageDepartmentHead

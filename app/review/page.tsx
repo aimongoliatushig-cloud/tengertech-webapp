@@ -6,11 +6,11 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import dashboardStyles from "@/app/page.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import {
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
@@ -350,7 +350,7 @@ export default async function ReviewPage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
               departmentScopeName={scopedDepartmentName}
               notificationCount={notificationCount}
@@ -362,7 +362,7 @@ export default async function ReviewPage({ searchParams }: PageProps) {
               title="Хяналт"
               subtitle="Шалгах, батлах урсгалын нэгтгэсэн самбар"
               userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               notificationCount={notificationCount}
               notificationNote={`${newIncomingTasks.length} шинэ ажил, ${visibleReviewTasks.length} хянах ажил байна`}
             />

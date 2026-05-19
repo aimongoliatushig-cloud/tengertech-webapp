@@ -1,5 +1,7 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { getRoleLabel, requireSession } from "@/lib/auth";
+import { requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { getEmployees, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
 
 import { TimeoffRequestsClient } from "../hr-client";
@@ -26,7 +28,7 @@ export default async function HrSickPage() {
         title="Чөлөө / өвчтэй хүсэлт"
         subtitle="Хэлтсийн дарга ажилтанд чөлөө эсвэл өвчтэй хүсэлт үүсгэж HR-д илгээнэ"
         userName={session.name}
-        roleLabel={getRoleLabel(session.role)}
+        roleLabel={getSessionRoleLabel(session)}
         notificationCount={requests.filter((item) => item.requestType === "sick").length}
         notificationNote="Өвчтэй хүсэлт"
         notificationHref={HR_NOTIFICATION_HREF}

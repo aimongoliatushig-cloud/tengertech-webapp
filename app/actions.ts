@@ -945,9 +945,11 @@ export async function createProjectAction(formData: FormData) {
   }
 
   if (operationUnit === "garbage_transport") {
+    const garbageTransportReturnPath = transportInspectorMode ? "/" : "/projects/new";
+
     if (!effectiveDepartmentIdRaw || !garbageVehicleIdRaw || !garbageSubdistrictIdRaw || !garbagePointIds.length || !startDate) {
       redirectWithMessage(
-        "/projects/new",
+        garbageTransportReturnPath,
         "error",
         "Хог тээвэрлэлтийн ажилд машин, хороо, хогийн цэг, огноог заавал сонгоно уу.",
       );
@@ -967,7 +969,7 @@ export async function createProjectAction(formData: FormData) {
 
         if (!allowedVehicleIds.has(selectedVehicleId) || hasOutOfScopePoint) {
           redirectWithMessage(
-            "/projects/new",
+            garbageTransportReturnPath,
             "error",
             "Танд оноогдоогүй машин, хороо болон хогийн цэгээр ажил үүсгэх боломжгүй.",
           );
@@ -1025,7 +1027,7 @@ export async function createProjectAction(formData: FormData) {
       const resolvedVehicleName = boardVehicle?.plate || vehicleName;
       if (boardVehicle?.isRepair || boardVehicle?.isArchived || boardVehicle?.isOperational === false) {
         redirectWithMessage(
-          "/projects/new",
+          garbageTransportReturnPath,
           "error",
           `${resolvedVehicleName} машин засвартай эсвэл ашиглалтаас хаагдсан тул хяналтын ажил үүсгэх боломжгүй.`,
         );
@@ -1090,7 +1092,7 @@ export async function createProjectAction(formData: FormData) {
       const subdistrictName = Array.isArray(subdistrict) ? subdistrict[1] : "Сонгосон хороо";
       if (!points.length) {
         redirectWithMessage(
-          "/projects/new",
+          garbageTransportReturnPath,
           "error",
           "Сонгосон хогийн цэг олдсонгүй. Хороо болон цэгээ дахин сонгоно уу.",
         );
@@ -1151,6 +1153,13 @@ export async function createProjectAction(formData: FormData) {
         revalidatePath("/tasks");
         revalidatePath("/projects/new");
         revalidatePath(`/projects/${createdProjectId}`);
+        if (transportInspectorMode) {
+          redirect(
+            `/?notice=${encodeURIComponent(
+              "Сонгосон хогийн цэгүүд энэ машины өнөөдрийн ажил дээр аль хэдийн нэмэгдсэн байна.",
+            )}`,
+          );
+        }
         redirect(
           `/projects/${createdProjectId}?notice=${encodeURIComponent(
             "Сонгосон хогийн цэгүүд энэ машины өнөөдрийн ажил дээр аль хэдийн нэмэгдсэн байна.",
@@ -1250,6 +1259,15 @@ export async function createProjectAction(formData: FormData) {
       revalidatePath("/reports");
       revalidatePath("/projects/new");
       revalidatePath(`/projects/${createdProjectId}`);
+      if (transportInspectorMode) {
+        redirect(
+          `/?notice=${encodeURIComponent(
+            existingProjectId
+              ? `${resolvedVehicleName} машины өнөөдрийн ажил дээр ${pointsToCreate.length} хогийн цэг нэмэгдлээ.`
+              : `Хог тээвэрлэлтийн ажил амжилттай үүслээ. ${pointsToCreate.length} хогийн цэг нэмэгдлээ.`,
+          )}`,
+        );
+      }
       redirect(
         `/projects/${createdProjectId}?notice=${encodeURIComponent(
           existingProjectId
@@ -1259,7 +1277,7 @@ export async function createProjectAction(formData: FormData) {
       );
     } catch (error) {
       rethrowIfRedirectError(error);
-      redirectWithMessage("/projects/new", "error", getErrorMessage(error));
+      redirectWithMessage(garbageTransportReturnPath, "error", getErrorMessage(error));
     }
   }
 

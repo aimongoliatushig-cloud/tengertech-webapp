@@ -1,5 +1,7 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { getRoleLabel, requireSession } from "@/lib/auth";
+import { requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import {
   getDisciplineActionOptions,
   getDisciplineRecords,
@@ -61,7 +63,7 @@ export default async function HrDisciplinePage({ searchParams }: PageProps) {
         title="Сахилгын бүртгэл"
         subtitle="Ажил үүрэг, чанар, тайлан, хариуцлага, аюулгүй ажиллагаа болон бусад HR сахилгын бүртгэл"
         userName={session.name}
-        roleLabel={getRoleLabel(session.role)}
+        roleLabel={getSessionRoleLabel(session)}
         notificationCount={disciplineRecords.length}
         notificationNote="Сахилгын бүртгэл"
       />

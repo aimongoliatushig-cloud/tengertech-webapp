@@ -2,7 +2,9 @@ import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import shellStyles from "@/app/workspace.module.css";
-import { getRoleLabel, hasCapability, isWorkerOnly, requireSession } from "@/lib/auth";
+import { hasCapability, isWorkerOnly, requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { getHrAccessProfile } from "@/lib/hr";
 
@@ -30,7 +32,7 @@ export default async function HrLayout({ children }: { children: React.ReactNode
     redirect(isWorkerOnly(session) ? "/tasks" : "/");
   }
 
-  const roleLabel = getRoleLabel(session.role);
+  const roleLabel = getSessionRoleLabel(session);
 
   return (
     <main className={shellStyles.shell}>

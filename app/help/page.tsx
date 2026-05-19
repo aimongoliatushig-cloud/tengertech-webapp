@@ -7,7 +7,9 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
 import { HelpSearch } from "@/app/help/help-search";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
-import { getRoleLabel, hasCapability, isMasterRole, isWorkerOnly, requireSession } from "@/lib/auth";
+import { hasCapability, isMasterRole, isWorkerOnly, requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { canAccessGeneralDashboard } from "@/lib/general-dashboard-access";
 import { getHelpAudienceLabel, getVisibleHelpTopics } from "@/lib/help-content";
 import { canAccessHr } from "@/lib/hr";
@@ -59,7 +61,7 @@ export default async function HelpPage() {
               canViewGeneralDashboard={canViewGeneralDashboard}
               userName={session.name}
               userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
               workerMode={workerMode}
               masterMode={masterMode}
@@ -72,7 +74,7 @@ export default async function HelpPage() {
               title="Тусламж"
               subtitle="Таны эрхийн хүрээнд харагдах дэлгэц бүрийн зурагтай заавар"
               userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               notificationCount={0}
               notificationNote="Тусламжийн сэдэв"
             />

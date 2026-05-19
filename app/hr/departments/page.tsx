@@ -2,7 +2,9 @@ import Link from "next/link";
 import { Building2, Users } from "lucide-react";
 
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { getRoleLabel, requireSession } from "@/lib/auth";
+import { requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { getDepartments, getEmployees, requireHrAccess } from "@/lib/hr";
 
 import { HrSectionNav } from "../hr-section-nav";
@@ -47,7 +49,7 @@ export default async function HrDepartmentsPage() {
         title="Алба нэгжүүд"
         subtitle="Хүний нөөцийн бүртгэл дотор алба нэгжээр ажилтнуудаа хурдан харна"
         userName={session.name}
-        roleLabel={getRoleLabel(session.role)}
+        roleLabel={getSessionRoleLabel(session)}
         notificationCount={cards.length}
         notificationNote={`${cards.length} алба нэгж`}
       />

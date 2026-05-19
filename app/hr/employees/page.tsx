@@ -1,5 +1,7 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { getRoleLabel, requireSession } from "@/lib/auth";
+import { requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { getEmployees, requireHrAccess } from "@/lib/hr";
 
 import { HrSectionNav } from "../hr-section-nav";
@@ -25,7 +27,7 @@ export default async function HrEmployeesPage() {
         title={access.isHr ? "Бүх ажилтнууд" : "Манай хэлтсийн ажилтнууд"}
         subtitle={access.isHr ? "Бүх ажилтны жагсаалт, хайлт, төлөвийн шүүлт" : "Өөрийн хэлтсийн ажилтнуудыг хайж чөлөө / өвчтэй хүсэлт үүсгэнэ"}
         userName={session.name}
-        roleLabel={getRoleLabel(session.role)}
+        roleLabel={getSessionRoleLabel(session)}
         notificationCount={employees.length}
         notificationNote={`${employees.length} ажилтны бүртгэл`}
       />

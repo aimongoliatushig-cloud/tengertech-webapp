@@ -20,11 +20,11 @@ import {
 } from "@/app/actions";
 import shellStyles from "@/app/workspace.module.css";
 import {
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
@@ -421,7 +421,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 canUseFieldConsole={canUseFieldConsole}
                 userName={session.name}
                 userRole={session.role}
-                roleLabel={getRoleLabel(session.role)}
+                roleLabel={getSessionRoleLabel(session)}
                 groupFlags={session.groupFlags}
                 masterMode={masterMode}
                 workerMode={workerMode}
@@ -434,7 +434,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 title="Даалгавар"
                 subtitle="Танд оноогдсон даалгаврын жагсаалт"
                 userName={session.name}
-                roleLabel={getRoleLabel(session.role)}
+                roleLabel={getSessionRoleLabel(session)}
                 notificationCount={0}
                 notificationNote="Мэдээлэл түр ачаалсангүй"
               />
@@ -781,7 +781,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
@@ -802,7 +802,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                       : "Хэлтсийн даалгаврын өдөр тутмын урсгал"
                 }
                 userName={session.name}
-                roleLabel={getRoleLabel(session.role)}
+                roleLabel={getSessionRoleLabel(session)}
                 notificationCount={notificationSummary.unreadCount}
                 notificationNote={taskNotificationNote}
               />
@@ -840,7 +840,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   <p>
                     {scopedDepartmentName ||
                       primaryWorkerWork?.departmentName ||
-                      getRoleLabel(session.role)}
+                      getSessionRoleLabel(session)}
                   </p>
                 </div>
 

@@ -8,11 +8,11 @@ import { createTaskAction, deleteTaskAction, updateTaskAction } from "@/app/acti
 import dashboardStyles from "@/app/page.module.css";
 import styles from "@/app/workspace.module.css";
 import {
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
@@ -343,7 +343,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
               departmentScopeName={scopedDepartmentName}
@@ -355,7 +355,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
               title="Ажлын дэлгэрэнгүй"
               subtitle="Сонгосон ажлын гол хяналт ба даалгаврын урсгал"
               userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               notificationCount={activeTaskCount}
               notificationNote={`${activeTaskCount} идэвхтэй даалгавар одоогоор явж байна`}
             />

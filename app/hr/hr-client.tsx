@@ -200,6 +200,7 @@ export function EmployeeTable({
                 {mode === "department" ? (
                   <td>
                     <div className={styles.checklist}>
+                      <Link href={`/hr/employees/${employee.id}?edit=profile#profile-info`}>Засах</Link>
                       <Link href={`/hr/sick?employeeId=${employee.id}&type=time_off`}>Чөлөө хүсэх</Link>
                       <Link href={`/hr/sick?employeeId=${employee.id}&type=sick`}>Өвчтэй бүртгэх</Link>
                     </div>
@@ -412,6 +413,7 @@ export function EmployeeDetailTabs({
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [messageIsError, setMessageIsError] = useState(false);
+  const [photoErrorUrl, setPhotoErrorUrl] = useState("");
   const initials = employee.name
     .split(/\s+/)
     .filter(Boolean)
@@ -419,6 +421,7 @@ export function EmployeeDetailTabs({
     .map((part) => part[0])
     .join("")
     .toLocaleUpperCase("mn-MN");
+  const showPhoto = Boolean(employee.photoUrl && photoErrorUrl !== employee.photoUrl);
 
   async function submitProfileEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -431,16 +434,7 @@ export function EmployeeDetailTabs({
     try {
       const response = await fetch(`/api/hr/employees/${employee.id}`, {
         method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          name: String(formData.get("name") || ""),
-          employeeCode: String(formData.get("employeeCode") || ""),
-          genderKey: String(formData.get("genderKey") || ""),
-          birthDate: String(formData.get("birthDate") || ""),
-          workPhone: String(formData.get("workPhone") || ""),
-          mobilePhone: String(formData.get("mobilePhone") || ""),
-          workEmail: String(formData.get("workEmail") || ""),
-        }),
+        body: formData,
       });
       const payload = (await response.json().catch(() => ({}))) as { error?: string };
       if (!response.ok) {
@@ -506,13 +500,14 @@ export function EmployeeDetailTabs({
     <section id="profile-info" className={styles.panel}>
       <div className={styles.employeeProfileSummary}>
         <div className={styles.employeePhotoFrame}>
-          {employee.photoUrl ? (
+          {showPhoto && employee.photoUrl ? (
             <Image
               src={employee.photoUrl}
               alt={`${employee.name} зураг`}
               width={112}
               height={112}
               className={styles.employeePhoto}
+              onError={() => setPhotoErrorUrl(employee.photoUrl)}
               unoptimized
             />
           ) : (
@@ -569,6 +564,11 @@ export function EmployeeDetailTabs({
             <Field name="workPhone" label="Ажлын утас" defaultValue={employee.workPhone} />
             <Field name="mobilePhone" label="Гар утас" defaultValue={employee.mobilePhone} />
             <Field name="workEmail" label="И-мэйл" type="email" defaultValue={employee.workEmail} />
+            <label className={styles.field}>
+              <span>Профайл зураг солих</span>
+              <input name="profilePhoto" type="file" accept="image/jpeg,image/png,image/webp" />
+              <small>JPG, PNG, WebP зураг 5MB хүртэл.</small>
+            </label>
           </div>
           <div className={styles.profileEditActions}>
             <button className={styles.primaryButton} disabled={pending}>

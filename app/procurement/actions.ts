@@ -7,7 +7,6 @@ import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { requireSession } from "@/lib/auth";
 import {
   notifyProcurementStageChanged,
-  type ProcurementNotificationAction,
 } from "@/lib/procurement-notifications";
 import {
   approveProcurementDirectorDecision,
@@ -372,13 +371,13 @@ export async function submitProcurementQuotationsAction(formData: FormData) {
       },
       connectionOverrides,
     );
+    let notificationAction: Parameters<typeof notifyProcurementStageChanged>[0] = "submit_quotations";
     if (shouldMoveToFinanceReviewAfterInvoice(updatedRequest)) {
       updatedRequest = await moveProcurementToFinanceReview(requestId, connectionOverrides);
+      notificationAction = "move_to_finance_review";
     }
     const autoAdvanced = isFinanceReviewAutoAdvanced(updatedRequest.state?.code);
-    if (autoAdvanced) {
-      await notifyProcurementStageChanged("move_to_finance_review", updatedRequest);
-    }
+    await notifyProcurementStageChanged(notificationAction, updatedRequest, packageId || undefined);
 
     revalidateProcurementPaths(requestId);
     redirectWithMessage(
@@ -627,7 +626,6 @@ export async function runProcurementWorkflowAction(formData: FormData) {
   const action = getString(formData, "workflow_action");
   const redirectPath = getRedirectPath(formData, requestId ? `/procurement/${requestId}` : "/procurement");
   const note = getString(formData, "note") || undefined;
-  let notificationAction: ProcurementNotificationAction | null = null;
   let notificationPackageId = getNumber(formData, "package_id") || undefined;
 
   if (!requestId || !action) {
@@ -639,24 +637,27 @@ export async function runProcurementWorkflowAction(formData: FormData) {
       await submitProcurementForQuotation(requestId, connectionOverrides);
     } else if (action === "move_to_finance_review") {
       const updatedRequest = await moveProcurementToFinanceReview(requestId, connectionOverrides);
-      await notifyProcurementStageChanged("move_to_finance_review", updatedRequest);
+      await notifyProcurementStageChanged("move_to_finance_review", updatedRequest, notificationPackageId);
     } else if (action === "prepare_order") {
-      await prepareProcurementOrder(requestId, connectionOverrides);
+      const updatedRequest = await prepareProcurementOrder(requestId, connectionOverrides);
+      await notifyProcurementStageChanged("prepare_order", updatedRequest, notificationPackageId);
     } else if (action === "director_decision") {
-      await approveProcurementDirectorDecision(
+      const updatedRequest = await approveProcurementDirectorDecision(
         requestId,
         {
           selected_quotation_id: getNumber(formData, "selected_quotation_id") || undefined,
         },
         connectionOverrides,
       );
+      await notifyProcurementStageChanged("director_decision", updatedRequest, notificationPackageId);
     } else if (action === "attach_final_order") {
       const files = getFiles(formData, "document_files");
       await uploadFilesToRequest(requestId, files, "document", connectionOverrides, {
         document_type: "director_order_final",
         note,
       });
-      await attachProcurementFinalOrder(requestId, { note }, connectionOverrides);
+      const updatedRequest = await attachProcurementFinalOrder(requestId, { note }, connectionOverrides);
+      await notifyProcurementStageChanged("attach_final_order", updatedRequest, notificationPackageId);
     } else if (action === "record_package_ceo_order") {
       const packageId = getNumber(formData, "package_id");
       const files = getFiles(formData, "document_files");
@@ -677,9 +678,8 @@ export async function runProcurementWorkflowAction(formData: FormData) {
         },
         connectionOverrides,
       );
-      notificationAction = "record_package_ceo_order";
       notificationPackageId = packageId || undefined;
-      await notifyProcurementStageChanged(notificationAction, updatedRequest, notificationPackageId);
+      await notifyProcurementStageChanged("record_package_ceo_order", updatedRequest, notificationPackageId);
     } else if (action === "mark_contract_signed") {
       const packageId = getNumber(formData, "package_id");
       const files = getFiles(formData, "document_files");
@@ -689,9 +689,8 @@ export async function runProcurementWorkflowAction(formData: FormData) {
         note,
       });
       const updatedRequest = await markProcurementContractSigned(requestId, { package_id: packageId || undefined, note }, connectionOverrides);
-      notificationAction = "mark_contract_signed";
       notificationPackageId = packageId || undefined;
-      await notifyProcurementStageChanged(notificationAction, updatedRequest, notificationPackageId);
+      await notifyProcurementStageChanged("mark_contract_signed", updatedRequest, notificationPackageId);
     } else if (action === "mark_paid") {
       const packageId = getNumber(formData, "package_id");
       const files = getFiles(formData, "document_files");
@@ -711,9 +710,8 @@ export async function runProcurementWorkflowAction(formData: FormData) {
         },
         connectionOverrides,
       );
-      notificationAction = "mark_paid";
       notificationPackageId = packageId || undefined;
-      await notifyProcurementStageChanged(notificationAction, updatedRequest, notificationPackageId);
+      await notifyProcurementStageChanged("mark_paid", updatedRequest, notificationPackageId);
     } else if (action === "mark_received") {
       const packageId = getNumber(formData, "package_id");
       const receivedNote = note || "Dashboard дээр хүлээлгэн өгсөн төлөв баталгаажуулав.";
@@ -725,17 +723,14 @@ export async function runProcurementWorkflowAction(formData: FormData) {
       });
       await markProcurementReceived(requestId, { package_id: packageId || undefined, note: receivedNote }, connectionOverrides);
       const updatedRequest = await markProcurementDone(requestId, connectionOverrides);
-      notificationAction = "mark_received";
       notificationPackageId = packageId || undefined;
-      await notifyProcurementStageChanged(notificationAction, updatedRequest, notificationPackageId);
+      await notifyProcurementStageChanged("mark_received", updatedRequest, notificationPackageId);
     } else if (action === "mark_done") {
       const updatedRequest = await markProcurementDone(requestId, connectionOverrides);
-      notificationAction = "mark_done";
-      await notifyProcurementStageChanged(notificationAction, updatedRequest, notificationPackageId);
+      await notifyProcurementStageChanged("mark_done", updatedRequest, notificationPackageId);
     } else if (action === "cancel") {
       const updatedRequest = await cancelProcurementRequest(requestId, connectionOverrides);
-      notificationAction = "cancel";
-      await notifyProcurementStageChanged(notificationAction, updatedRequest, notificationPackageId);
+      await notifyProcurementStageChanged("cancel", updatedRequest, notificationPackageId);
     } else {
       redirectWithMessage(redirectPath, "error", "Танигдаагүй үйлдэл байна.");
     }

@@ -1172,6 +1172,9 @@ export async function updateEmployee(
         HrEmployeeDirectoryItem,
         "name" | "employeeCode" | "workPhone" | "mobilePhone" | "workEmail" | "birthDate" | "genderKey"
       >
+      & {
+        profilePhotoBase64?: string;
+      }
   >,
 ) {
   const desiredFields = [
@@ -1186,6 +1189,7 @@ export async function updateEmployee(
     "x_mn_employee_code",
     "birthday",
     "sex",
+    "image_1920",
     "active",
   ];
   const fields = new Set(await getAvailableFields("hr.employee", desiredFields, session));
@@ -1201,6 +1205,9 @@ export async function updateEmployee(
   if (fields.has("birthday") && data.birthDate !== undefined) values.birthday = data.birthDate || false;
   if (fields.has("sex") && (data.genderKey !== undefined || data.gender !== undefined)) {
     values.sex = data.genderKey || data.gender || false;
+  }
+  if (fields.has("image_1920") && data.profilePhotoBase64 !== undefined) {
+    values.image_1920 = data.profilePhotoBase64 || false;
   }
   if (fields.has("department_id") && data.departmentId) values.department_id = data.departmentId;
   if (fields.has("job_id") && data.jobId) values.job_id = data.jobId;

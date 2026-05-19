@@ -209,6 +209,33 @@ async function findDefaultVehicleModel() {
   return models[0]?.id ?? false;
 }
 
+async function findFleetVehicleStateId(candidateNames: string[], fallbackName: string) {
+  const normalizedNames = candidateNames
+    .map((name) => name.trim())
+    .filter(Boolean);
+  if (!normalizedNames.length) {
+    return false;
+  }
+
+  const states = await executeOdooKw<Array<{ id: number; name?: string | false }>>(
+    "fleet.vehicle.state",
+    "search_read",
+    [[["name", "in", normalizedNames]]],
+    { fields: ["id", "name"], limit: 1 },
+  ).catch(() => []);
+
+  if (states[0]?.id) {
+    return states[0].id;
+  }
+
+  return executeOdooKw<number>(
+    "fleet.vehicle.state",
+    "create",
+    [{ name: fallbackName }],
+    {},
+  ).catch(() => false);
+}
+
 function optionalStaffId(formData: FormData, key: string, label: string) {
   const selectedId = optionalOdooId(getString(formData, key));
   const typedLabel = getString(formData, `${key}_label`);
@@ -258,6 +285,7 @@ export async function updateFleetVehicleAction(formData: FormData) {
           "name",
           "license_plate",
           "model_id",
+          "state_id",
           "category_id",
           "municipal_vehicle_type_id",
           "mfo_active_for_ops",
@@ -293,6 +321,35 @@ export async function updateFleetVehicleAction(formData: FormData) {
       },
     );
     const values: Record<string, string | number | boolean | false> = {};
+    const repairToggle = getString(formData, "vehicle_repair_toggle");
+    const isRepairToggle = repairToggle === "start" || repairToggle === "done";
+
+    if (isRepairToggle) {
+      const sendToRepair = repairToggle === "start";
+      if ("x_municipal_operational_status" in editableFields) {
+        values.x_municipal_operational_status = sendToRepair ? "in_repair" : "available";
+      }
+      if ("latest_repair_state" in editableFields) {
+        values.latest_repair_state = sendToRepair ? "Засвартай" : "Засвар дууссан";
+      }
+      if ("mfo_active_for_ops" in editableFields) {
+        values.mfo_active_for_ops = !sendToRepair;
+      }
+      if ("state_id" in editableFields) {
+        const stateId = sendToRepair
+          ? await findFleetVehicleStateId(
+              ["Засвартай", "Засварт байгаа", "In Repair", "Under Repair"],
+              "Засвартай",
+            )
+          : await findFleetVehicleStateId(
+              ["Ажиллаж байгаа", "Ашиглах боломжтой", "Available", "Running"],
+              "Ажиллаж байгаа",
+            );
+        if (stateId) {
+          values.state_id = stateId;
+        }
+      }
+    }
 
     if ("name" in editableFields && formData.has("name")) {
       values.name = optionalOdooValue(getString(formData, "name"));
@@ -452,11 +509,16 @@ export async function updateFleetVehicleAction(formData: FormData) {
       "municipal_loader_1_id",
       "municipal_loader_2_id",
     ]);
+    const noticeMessage = isRepairToggle
+      ? repairToggle === "start"
+        ? "Машин засвартай төлөвт шилжлээ."
+        : "Машин ажиллах төлөвт шилжлээ."
+      : updatedFields.length > 0 && updatedFields.every((field) => crewFields.has(field))
+        ? "Жолооч, ачигчийн мэдээлэл шинэчлэгдлээ."
+        : "Машины мэдээлэл шинэчлэгдлээ.";
     redirectWithMessage(
       "notice",
-      updatedFields.length > 0 && updatedFields.every((field) => crewFields.has(field))
-        ? "Жолооч, ачигчийн мэдээлэл шинэчлэгдлээ."
-        : "Машины мэдээлэл шинэчлэгдлээ.",
+      noticeMessage,
     );
   } catch (error) {
     rethrowIfRedirectError(error);

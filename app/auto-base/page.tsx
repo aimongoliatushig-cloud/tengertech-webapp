@@ -6,11 +6,11 @@ import shellStyles from "@/app/workspace.module.css";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
   canAccessAutoBaseOverview,
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadFleetVehicleBoard } from "@/lib/odoo";
 import { loadWorkspaceNotificationCount } from "@/lib/workspace-notifications";
@@ -34,7 +34,7 @@ function firstParam(value?: string | string[]) {
 
 export default async function AutoBasePage({ searchParams }: AutoBasePageProps) {
   const session = await requireSession();
-  const roleLabel = getRoleLabel(session.role);
+  const roleLabel = getSessionRoleLabel(session);
   const masterMode = isMasterRole(session.role);
   const workerMode = isWorkerOnly(session);
   const canCreateProject = hasCapability(session, "create_projects");
@@ -110,8 +110,8 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
 
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
-              title="Машин техник"
-              subtitle="Авто баазын машин техникийг төрөл, төлөв, хариуцсан ажилтнаар удирдах самбар"
+              title="Авто баазын самбар"
+              subtitle="Машины төлөв, засвар, даатгал, үзлэгийн нэгдсэн хяналт"
               userName={session.name}
               roleLabel={roleLabel}
               notificationCount={notificationCount}
@@ -125,13 +125,6 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
             ) : null}
 
             <section className={styles.boardCard}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <span className={styles.eyebrow}>Машины төлөв</span>
-                  <h1>Авто баазын самбар</h1>
-                </div>
-              </div>
-
               <AutoBaseBoard
                 board={board}
                 initialVehicleId={

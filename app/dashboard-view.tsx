@@ -39,6 +39,7 @@ import dashboardStyles from "@/app/dashboard-view.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import { getSessionRoleLabel, hasCapability, isMasterRole, isWorkerOnly, type AppSession } from "@/lib/auth";
 import { buildDashboardModel, type StatusTone } from "@/lib/dashboard-model";
+import { filterByDepartment } from "@/lib/dashboard-scope";
 import { type FieldAssignment } from "@/lib/field-ops";
 import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 import {
@@ -183,11 +184,11 @@ function dashboardTaskBucket(
   task: DashboardSnapshot["taskDirectory"][number],
   currentDateKey: string,
 ): "done" | "working" | "review" | "overdue" | "planned" {
-  if (task.statusKey === "verified" || task.progress >= 100) {
-    return "done";
-  }
   if (task.statusKey === "review") {
     return "review";
+  }
+  if (task.statusKey === "verified") {
+    return "done";
   }
   if (isOverdue(task, currentDateKey)) {
     return "overdue";
@@ -245,7 +246,7 @@ function projectTone(project: DashboardSnapshot["projects"][number]): StatusTone
   if (project.stageBucket === "review") {
     return "attention";
   }
-  if (project.stageBucket === "progress" || project.stageBucket === "done" || project.completion >= 100) {
+  if (project.stageBucket === "progress" || project.stageBucket === "done") {
     return "good";
   }
   return "muted";
@@ -257,7 +258,7 @@ function projectDisplayStageLabel(project: DashboardSnapshot["projects"][number]
     return stageLabel;
   }
 
-  if (project.stageBucket === "done" || project.completion >= 100) {
+  if (project.stageBucket === "done") {
     return "Дууссан";
   }
   if (project.stageBucket === "progress" || project.completion > 0) {
@@ -316,7 +317,7 @@ function projectMatchesStatusFilter(
     return project.stageBucket === "review" || project.stageBucket === "todo";
   }
   if (filter === "done") {
-    return project.stageBucket === "done" || project.completion >= 100;
+    return project.stageBucket === "done";
   }
 
   return (
@@ -330,7 +331,7 @@ function projectMatchesStatusFilter(
 function projectStatusFilterChips(projects: DashboardSnapshot["projects"]) {
   const active = projects.filter((project) => project.stageBucket === "progress").length;
   const pending = projects.filter((project) => project.stageBucket === "review" || project.stageBucket === "todo").length;
-  const done = projects.filter((project) => project.stageBucket === "done" || project.completion >= 100).length;
+  const done = projects.filter((project) => project.stageBucket === "done").length;
   const planned = projects.filter(
     (project) =>
       project.stageBucket !== "progress" &&
@@ -1290,10 +1291,12 @@ function buildExecutiveDepartmentMetrics({
   snapshot,
   tasks,
   currentDateKey,
+  departmentScopeName = null,
 }: {
   snapshot: DashboardSnapshot;
   tasks: DashboardSnapshot["taskDirectory"];
   currentDateKey: string;
+  departmentScopeName?: string | null;
 }): ExecutiveDepartmentMetric[] {
   const matchedDepartment = (keywords: string[]) =>
     snapshot.departments.find((department) =>
@@ -1349,7 +1352,7 @@ function buildExecutiveDepartmentMetrics({
     };
   };
 
-  return [
+  const metrics = [
     buildDepartment(
       "Авто бааз, хог тээвэрлэлт",
       ["Авто", "Хог", "хог", "тээвэр"],
@@ -1383,6 +1386,54 @@ function buildExecutiveDepartmentMetrics({
       "center",
     ),
   ];
+
+  if (!departmentScopeName) {
+    return metrics;
+  }
+
+  const scopedMetrics = metrics.filter((metric) => {
+    const metricMatchesScope =
+      filterByDepartment([{ departmentName: metric.name }], departmentScopeName).length > 0;
+    const departmentMatchesScope = snapshot.departments.some(
+      (department) =>
+        filterByDepartment([{ departmentName: department.name }], departmentScopeName).length > 0 &&
+        filterByDepartment([{ departmentName: department.name }], metric.name).length > 0,
+    );
+
+    return metricMatchesScope || departmentMatchesScope;
+  });
+
+  if (scopedMetrics.length) {
+    return scopedMetrics;
+  }
+
+  return snapshot.departments.map((department) => {
+    const departmentTasks = filterByDepartment(tasks, department.name);
+    const working = departmentTasks.filter((task) => task.statusKey === "working").length;
+    const review = departmentTasks.filter((task) => task.statusKey === "review").length;
+    const risky = departmentTasks.filter((task) => task.issueFlag || isOverdue(task, currentDateKey)).length;
+    const total = departmentTasks.length || department.openTasks || 0;
+
+    return {
+      name: department.label || department.name,
+      progress:
+        department.completion ||
+        (total
+          ? Math.round(
+              departmentTasks.reduce((sum, task) => sum + clampPercent(task.progress), 0) / total,
+            )
+          : 0),
+      total,
+      working,
+      review: review || department.reviewTasks || 0,
+      risky,
+      href: `/projects?department=${encodeURIComponent(department.name)}&category=progress`,
+      icon: departmentIcon(department.name),
+      tone: "green",
+      image: DASHBOARD_IMAGES.landscapingWorker,
+      imagePosition: "center",
+    };
+  });
 }
 
 function formatExecutiveActivityTime(value: string) {
@@ -1632,12 +1683,23 @@ function ExecutiveDashboardView({
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
   const overdueRate = percent(overdueTasks, totalTasks);
   const activeTasks = Math.max(totalTasks - completedTasks, workingTasks + reviewTasks);
+  const scopedProjectsHref = (category?: string) => {
+    const params = new URLSearchParams();
+    if (departmentScopeName) {
+      params.set("department", departmentScopeName);
+    }
+    if (category) {
+      params.set("category", category);
+    }
+    const query = params.toString();
+    return query ? `/projects?${query}` : "/projects";
+  };
   const metrics: ExecutiveMetric[] = [
     {
       label: "нийт гүйцэтгэл",
       value: `${overallProgress}%`,
       progress: overallProgress,
-      href: showDepartmentPerformance ? "#department-performance" : "/projects",
+      href: showDepartmentPerformance ? "#department-performance" : scopedProjectsHref(),
       icon: CheckCircle2,
       tone: "green",
     },
@@ -1671,7 +1733,7 @@ function ExecutiveDashboardView({
       label: "хугацаа хэтэрсэн ажил",
       value: `${overdueRate}%`,
       progress: overdueRate,
-      href: "/projects?category=overdue",
+      href: scopedProjectsHref("overdue"),
       icon: Clock3,
       tone: "orange",
     },
@@ -1679,7 +1741,7 @@ function ExecutiveDashboardView({
       label: "идэвхтэй ажил",
       value: String(activeTasks),
       progress: 100,
-      href: "/projects?category=progress",
+      href: scopedProjectsHref("progress"),
       icon: ClipboardList,
       tone: "green",
     },
@@ -1688,6 +1750,7 @@ function ExecutiveDashboardView({
     snapshot,
     tasks: dashboardTasks,
     currentDateKey,
+    departmentScopeName,
   });
   const activityRows = buildExecutiveActivityRows(snapshot, dashboardTasks);
   const alertCount = reviewTasks + overdueTasks + fleetBoard.repairCount;
@@ -1835,7 +1898,7 @@ export function DashboardView({
     : dashboardProjects.length || snapshot.totalTasks || 0;
   const completedTasks = workerMode
     ? dashboardTasks.filter((task) => task.statusKey === "verified").length
-    : dashboardProjects.filter((project) => project.stageBucket === "done" || project.completion >= 100).length;
+    : dashboardProjects.filter((project) => project.stageBucket === "done").length;
   const workingTasks = workerMode
     ? dashboardTasks.filter((task) => task.statusKey === "working").length
     : dashboardProjects.filter((project) => project.stageBucket === "progress").length;
@@ -1983,8 +2046,8 @@ export function DashboardView({
 
         <div className={shellStyles.pageContent}>
           <WorkspaceHeader
-            title={`Сайн байна уу, ${session.name}`}
-            subtitle={scopeLabel}
+            title={transportInspectorMode ? "Ажлын самбар" : `Сайн байна уу, ${session.name}`}
+            subtitle={transportInspectorMode ? "Авто бааз, хог тээвэрлэлтийн хэлтэс" : scopeLabel}
             userName={session.name}
             roleLabel={roleLabel}
             notificationCount={attentionCount}
@@ -1996,7 +2059,14 @@ export function DashboardView({
             <ExecutiveHeroBanner alertCount={attentionCount} weather={weather} />
           ) : null}
 
-          <div className={cn("relative z-20 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]", dashboardStyles.dashboardMainGrid)}>
+          <div
+            className={cn(
+              "relative z-20 grid gap-4",
+              !transportInspectorMode && "xl:grid-cols-[minmax(0,1fr)_360px]",
+              dashboardStyles.dashboardMainGrid,
+              transportInspectorMode && dashboardStyles.dashboardMainGridInspector,
+            )}
+          >
             <div className={cn("grid min-w-0 gap-4", dashboardStyles.dashboardPrimaryColumn)}>
               {fleetLoadError ? (
                 <Card className="border-amber-200 bg-amber-50/85 p-4 text-sm font-semibold text-amber-800">

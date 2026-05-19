@@ -6,11 +6,11 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import dashboardStyles from "@/app/page.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import {
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 
@@ -86,7 +86,7 @@ export default async function ReportTaskPickerPage({ params }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
@@ -98,7 +98,7 @@ export default async function ReportTaskPickerPage({ params }: PageProps) {
               title="Тайлангийн даалгавар сонгох"
               subtitle="Сонгосон ажлын доторх даалгавруудаас тайлангийн урсгал руу орно"
               userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               notificationCount={projectTasks.length}
               notificationNote={`${projectTasks.length} даалгавар тайлан оруулах боломжтой байна`}
             />

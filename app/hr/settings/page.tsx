@@ -1,5 +1,7 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { getRoleLabel, requireSession } from "@/lib/auth";
+import { requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { requireHrAccess } from "@/lib/hr";
 
 import { RegistryPage } from "../hr-client";
@@ -18,7 +20,7 @@ export default async function HrSettingsPage() {
         title="Тохиргоо"
         subtitle="HR бүртгэлийн төрөл, өвчтэй магадлагааны шаардлага, баримтын бүрдэл, төлөвийн тохиргоог удирдана"
         userName={session.name}
-        roleLabel={getRoleLabel(session.role)}
+        roleLabel={getSessionRoleLabel(session)}
         notificationNote="HR тохиргоо"
       />
       <HrSectionNav />

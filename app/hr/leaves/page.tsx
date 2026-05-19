@@ -1,5 +1,7 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { getRoleLabel, requireSession } from "@/lib/auth";
+import { requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { getEmployees, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
 
 import { HrSectionNav } from "../hr-section-nav";
@@ -26,7 +28,7 @@ export default async function HrLeavesPage() {
         title={access.isHr ? "Ирсэн хүсэлтүүд" : "Миний илгээсэн хүсэлтүүд"}
         subtitle={access.isHr ? "Хэлтсийн даргаас ирсэн чөлөө / өвчтэй хүсэлтийг хянаж батална эсвэл татгалзана" : "Өөрийн хэлтсийн ажилтанд илгээсэн чөлөө / өвчтэй хүсэлтүүд"}
         userName={session.name}
-        roleLabel={getRoleLabel(session.role)}
+        roleLabel={getSessionRoleLabel(session)}
         notificationCount={requests.length}
         notificationNote="Чөлөө / өвчтэй хүсэлт"
         notificationHref={HR_NOTIFICATION_HREF}

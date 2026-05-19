@@ -5,11 +5,11 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { DataDownloadClient } from "@/app/data-download/data-download-client";
 import styles from "@/app/workspace.module.css";
 import {
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 
@@ -42,7 +42,7 @@ export default async function DataDownloadPage() {
               canViewAllReports={canViewAllReports}
               userName={session.name}
               userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
             />
           </aside>
@@ -52,7 +52,7 @@ export default async function DataDownloadPage() {
               title="Тайлан татах"
               subtitle="WRS өдрийн тайлан"
               userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
             />
 
             <section className={styles.heroCard}>

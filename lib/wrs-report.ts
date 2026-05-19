@@ -1,5 +1,7 @@
 import "server-only";
 
+import { readFile } from "node:fs/promises";
+
 import { chromium, type Browser, type Page } from "playwright";
 
 const DEFAULT_WRS_REPORT_URL =
@@ -8,7 +10,7 @@ const WRS_REPORT_URL = process.env.WRS_REPORT_URL?.trim() || DEFAULT_WRS_REPORT_
 const WRS_REPORT_LOGIN = process.env.WRS_REPORT_LOGIN?.trim() || "5673461";
 const WRS_REPORT_PASSWORD = process.env.WRS_REPORT_PASSWORD?.trim() || WRS_REPORT_LOGIN;
 const WRS_DEFAULT_BRANCH_NAME =
-  "\u041d\u0430\u0440\u0430\u043d\u0433\u0438\u0439\u043d \u044d\u043d\u0433\u044d\u0440\u0438\u0439\u043d \u0442\u04e9\u0432\u043b\u04e9\u0440\u0441\u04e9\u043d \u0445\u043e\u0433\u0438\u0439\u043d \u0446\u044d\u0433";
+  "\u041c\u043e\u0440\u0438\u043d\u0433\u0438\u0439\u043d \u044d\u043d\u0433\u044d\u0440\u0438\u0439\u043d \u0442\u04e9\u0432\u043b\u04e9\u0440\u0441\u04e9\u043d \u0445\u043e\u0433\u0438\u0439\u043d \u0446\u044d\u0433";
 const WRS_REQUIRED_BRANCH_NAME =
   process.env.WRS_REPORT_BRANCH_NAME?.trim() || WRS_DEFAULT_BRANCH_NAME;
 const PARAMETER_CAPTION_SELECTOR = "label.dxbrv-params-caption[for]";
@@ -183,7 +185,17 @@ async function waitForSubmitButtonEnabled(page: Page) {
   await page.waitForFunction(
     (buttonLabel) => {
       const submitButton = Array.from(document.querySelectorAll("button")).find(
-        (button) => (button.textContent ?? "").trim() === buttonLabel,
+        (button) => {
+          const style = window.getComputedStyle(button);
+          const rect = button.getBoundingClientRect();
+          return (
+            (button.textContent ?? "").trim() === buttonLabel &&
+            style.display !== "none" &&
+            style.visibility !== "hidden" &&
+            rect.width > 0 &&
+            rect.height > 0
+          );
+        },
       ) as HTMLButtonElement | undefined;
 
       return Boolean(submitButton && !submitButton.disabled);
@@ -193,6 +205,30 @@ async function waitForSubmitButtonEnabled(page: Page) {
       timeout: 30_000,
     },
   );
+}
+
+async function clickSubmitButton(page: Page) {
+  await waitForSubmitButtonEnabled(page);
+  await page.evaluate((buttonLabel) => {
+    const submitButton = Array.from(document.querySelectorAll("button")).find((button) => {
+      const style = window.getComputedStyle(button);
+      const rect = button.getBoundingClientRect();
+      return (
+        (button.textContent ?? "").trim() === buttonLabel &&
+        !button.disabled &&
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        rect.width > 0 &&
+        rect.height > 0
+      );
+    }) as HTMLButtonElement | undefined;
+
+    if (!submitButton) {
+      throw new Error("WRS Submit button is not available.");
+    }
+
+    submitButton.click();
+  }, SUBMIT_BUTTON_LABEL);
 }
 
 async function fillReportDate(page: Page, inputId: string, value: string) {
@@ -231,36 +267,76 @@ async function selectBranch(page: Page, branchId: string) {
       const combo = parent || input.closest("dxbl-combo-box, dxbl-date-edit");
       return combo?.id || parentId || "";
     })) ?? "";
-  const dropdownButton = comboBoxId
-    ? page
-        .locator(`[id="${comboBoxId}"] button[aria-label="Open or close the drop-down window"]`)
-        .first()
-    : branchInput
-        .locator("xpath=ancestor::*[self::dxbl-combo-box or self::dxbl-date-edit][1]")
-        .locator('button[aria-label="Open or close the drop-down window"]')
-        .first();
+  const dropdownButtonCandidates = [
+    comboBoxId
+      ? page
+          .locator(`[id="${comboBoxId}"] button[aria-label="Open or close the drop-down window"]`)
+          .first()
+      : null,
+    comboBoxId ? page.locator(`[id="${comboBoxId}"] button`).last() : null,
+    branchInput
+      .locator("xpath=ancestor::*[self::dxbl-combo-box or self::dxbl-date-edit][1]")
+      .locator('button[aria-label="Open or close the drop-down window"]')
+      .first(),
+    branchInput
+      .locator("xpath=ancestor::*[self::dxbl-combo-box or self::dxbl-date-edit][1]")
+      .locator("button")
+      .last(),
+  ].filter((locator): locator is ReturnType<Page["locator"]> => Boolean(locator));
 
-  await dropdownButton.waitFor({
-    state: "attached",
-    timeout: 15_000,
-  });
-  try {
-    await dropdownButton.click({
-      timeout: 10_000,
-    });
-  } catch {
-    await dropdownButton.evaluate((button) => {
-      (button as HTMLButtonElement).click();
-    });
+  let opened = false;
+  for (const dropdownButton of dropdownButtonCandidates) {
+    try {
+      if (!(await dropdownButton.count())) {
+        continue;
+      }
+      await dropdownButton.click({
+        force: true,
+        timeout: 10_000,
+      });
+      await page.waitForFunction(
+        () => document.querySelectorAll('[role="option"]').length > 0,
+        undefined,
+        {
+          timeout: 8_000,
+        },
+      );
+      opened = true;
+      break;
+    } catch {
+      // Try the next WRS/DevExpress dropdown opening strategy below.
+    }
   }
 
-  await page.waitForFunction(
-    () => document.querySelectorAll('[role="option"]').length > 0,
-    undefined,
-    {
-      timeout: 15_000,
-    },
-  );
+  if (!opened) {
+    const fallbackBranchInput = page.locator(`input#${currentBranchId}`).first();
+    await fallbackBranchInput.scrollIntoViewIfNeeded({ timeout: 5_000 }).catch(() => undefined);
+    await fallbackBranchInput.click({ force: true, timeout: 10_000 }).catch(async () => {
+      await fallbackBranchInput
+        .evaluate((input) => {
+          input.focus();
+          input.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+          input.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true }));
+          input.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+        })
+        .catch(() => undefined);
+    });
+    await page.keyboard.press("Alt+ArrowDown").catch(() => page.keyboard.press("ArrowDown"));
+    const openedByKeyboard = await page
+      .waitForFunction(
+        () => document.querySelectorAll('[role="option"]').length > 0,
+        undefined,
+        {
+          timeout: 15_000,
+        },
+      )
+      .then(() => true)
+      .catch(() => false);
+
+    if (!openedByKeyboard) {
+      throw new Error("WRS branch dropdown could not be opened.");
+    }
+  }
 
   const optionTexts = await page.locator('[role="option"]').evaluateAll((elements) =>
     elements.map((element) => (element.textContent ?? "").trim()).filter(Boolean),
@@ -321,13 +397,42 @@ async function waitForReportRender(page: Page) {
       const pageLabel =
         document.querySelector('[role="status"][aria-label]')?.getAttribute("aria-label") ?? "";
 
-      return /of\s+\d+/i.test(pageLabel);
+      return /of\s+\d+/i.test(pageLabel) && !/^\s*0\s+of\s+0\s*$/i.test(pageLabel);
     },
     SUBMIT_BUTTON_LABEL,
     {
       timeout: 120_000,
     },
   );
+
+  await page
+    .waitForFunction(
+      () => {
+        const visibleLoadingPanels = Array.from(
+          document.querySelectorAll(".dxbrv-page-loading-panel, dxbl-loading-panel"),
+        ).filter((element) => {
+          const text = (element.textContent ?? "").trim();
+          const style = window.getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          const isVisible =
+            style.display !== "none" &&
+            style.visibility !== "hidden" &&
+            rect.width > 0 &&
+            rect.height > 0;
+
+          return isVisible && /waiting for parameter values|loading/i.test(text);
+        });
+
+        return visibleLoadingPanels.length === 0;
+      },
+      undefined,
+      {
+        timeout: 120_000,
+      },
+    )
+    .catch(() => undefined);
+
+  await page.waitForTimeout(2_000);
 }
 
 async function readReportHeader(page: Page): Promise<ReportHeader> {
@@ -354,12 +459,14 @@ async function prepareWrsReportPage(
     headless: true,
   });
 
-  const page = await browser.newPage({
+  const context = await browser.newContext({
+    acceptDownloads: true,
     viewport: {
       width: 1600,
       height: 1200,
     },
   });
+  const page = await context.newPage();
 
   try {
     await page.goto(WRS_REPORT_URL, {
@@ -375,13 +482,22 @@ async function prepareWrsReportPage(
     await fillReportDate(page, startDateId, requestedDate);
     await fillReportDate(page, endDateId, endDate);
 
-    const branchName = await selectBranch(page, branchId);
+    let branchName = "";
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        branchName = await selectBranch(page, branchId);
+        break;
+      } catch (error) {
+        if (attempt >= 2) {
+          throw error;
+        }
+        await page.keyboard.press("Escape").catch(() => undefined);
+        await page.waitForTimeout(1_500);
+      }
+    }
 
-    await waitForSubmitButtonEnabled(page);
-    const submitButton = page.locator("button").filter({ hasText: SUBMIT_BUTTON_LABEL }).first();
-    await submitButton.click({
-      force: true,
-    });
+    await page.keyboard.press("Escape").catch(() => undefined);
+    await clickSubmitButton(page);
     await page.waitForTimeout(2_000);
 
     await waitForReportRender(page);
@@ -496,6 +612,133 @@ function parseWrsWeightRowsFromCells(rows: string[][], fallbackDate: string) {
   return parsedRows;
 }
 
+function decodeExportText(buffer: Buffer) {
+  if (buffer[0] === 0xff && buffer[1] === 0xfe) {
+    return buffer.subarray(2).toString("utf16le");
+  }
+
+  return buffer.toString("utf8").replace(/^\ufeff/, "");
+}
+
+function parseDelimitedLine(line: string, delimiter: string) {
+  const cells: string[] = [];
+  let current = "";
+  let quoted = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index] ?? "";
+    const next = line[index + 1] ?? "";
+
+    if (character === '"' && quoted && next === '"') {
+      current += '"';
+      index += 1;
+      continue;
+    }
+
+    if (character === '"') {
+      quoted = !quoted;
+      continue;
+    }
+
+    if (character === delimiter && !quoted) {
+      cells.push(normalizeLine(current));
+      current = "";
+      continue;
+    }
+
+    current += character;
+  }
+
+  cells.push(normalizeLine(current));
+  return cells.filter(Boolean);
+}
+
+function detectDelimiter(lines: string[]) {
+  const delimiters = ["\t", ";", ","];
+  let bestDelimiter = ",";
+  let bestScore = -1;
+
+  for (const delimiter of delimiters) {
+    const score = lines
+      .slice(0, 20)
+      .reduce((sum, line) => sum + parseDelimitedLine(line, delimiter).length, 0);
+    if (score > bestScore) {
+      bestDelimiter = delimiter;
+      bestScore = score;
+    }
+  }
+
+  return bestDelimiter;
+}
+
+function parseDelimitedRows(content: string) {
+  const lines = content
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const delimiter = detectDelimiter(lines);
+  return lines.map((line) => parseDelimitedLine(line, delimiter)).filter((cells) => cells.length);
+}
+
+async function clickVisibleControl(page: Page, labelPattern: RegExp) {
+  return page.evaluate((patternSource) => {
+    const pattern = new RegExp(patternSource, "i");
+    const control = Array.from(
+      document.querySelectorAll("button, a, [role='button'], [role='menuitem'], [role='option']"),
+    ).find((element) => {
+      const label = [
+        element.getAttribute("aria-label"),
+        element.getAttribute("title"),
+        element.textContent,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return (
+        pattern.test(label) &&
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        rect.width > 0 &&
+        rect.height > 0
+      );
+    }) as HTMLElement | undefined;
+
+    if (!control) {
+      return false;
+    }
+
+    control.click();
+    return true;
+  }, labelPattern.source);
+}
+
+async function extractExportedWeightReportRows(page: Page, fallbackDate: string) {
+  const opened = await clickVisibleControl(page, /Export To/);
+  if (!opened) {
+    return [];
+  }
+
+  await page.waitForTimeout(1_000);
+  const downloadPromise = page.waitForEvent("download", { timeout: 60_000 });
+  const selected = await clickVisibleControl(page, /\bText\b/);
+  if (!selected) {
+    await page.keyboard.press("Escape").catch(() => undefined);
+    return [];
+  }
+
+  const download = await downloadPromise;
+  const filePath = await download.path();
+  if (!filePath) {
+    return [];
+  }
+
+  const content = decodeExportText(await readFile(filePath));
+  return parseWrsWeightRowsFromCells(parseDelimitedRows(content), fallbackDate);
+}
+
 async function extractWeightReportRows(page: Page, fallbackDate: string) {
   const tableRows = await page.evaluate(() =>
     Array.from(document.querySelectorAll("tr"))
@@ -513,6 +756,44 @@ async function extractWeightReportRows(page: Page, fallbackDate: string) {
   );
 
   return parseWrsWeightRowsFromCells(tableRows, fallbackDate);
+}
+
+async function enterDocumentReadingMode(page: Page) {
+  const previewPage = page.locator(".dxbrv-report-preview-content").first();
+  if (!(await previewPage.count().catch(() => 0))) {
+    return;
+  }
+
+  await previewPage.click({ force: true, timeout: 5_000 }).catch(() => undefined);
+  await previewPage.focus().catch(() => undefined);
+  await previewPage.press("Enter").catch(() => page.keyboard.press("Enter"));
+  await page.waitForTimeout(1_000);
+  await previewPage.press("Space").catch(() => page.keyboard.press("Space"));
+  await page.waitForTimeout(2_000);
+}
+
+async function extractAccessibilityTextLines(page: Page) {
+  try {
+    const session = await page.context().newCDPSession(page);
+    const result = (await session.send("Accessibility.getFullAXTree")) as {
+      nodes?: Array<{
+        name?: { value?: string };
+        value?: { value?: string };
+      }>;
+    };
+    await session.detach().catch(() => undefined);
+
+    return Array.from(
+      new Set(
+        (result.nodes ?? [])
+          .flatMap((node) => [node.name?.value, node.value?.value])
+          .map((value) => normalizeLine(String(value ?? "")))
+          .filter(Boolean),
+      ),
+    );
+  } catch {
+    return [];
+  }
 }
 
 function aggregateWeightRows(
@@ -623,12 +904,16 @@ function findNetWeightValue(cells: string[]) {
 }
 
 async function extractReportTextLines(page: Page) {
+  await enterDocumentReadingMode(page);
+
   const lines = await page.evaluate(() => {
     const selectors = [
       "body",
       ".dxbrv-report-preview-content",
       ".dxbrv-document-surface",
       ".dx-scrollview-content",
+      '[role="document"]',
+      '[aria-label*="Document Page"]',
     ];
 
     const rawSegments = selectors.flatMap((selector) =>
@@ -640,7 +925,12 @@ async function extractReportTextLines(page: Page) {
     return rawSegments.flatMap((segment) => segment.split(/\r?\n/));
   });
 
-  return Array.from(new Set(lines.map((line) => normalizeLine(line)).filter(Boolean)));
+  const accessibilityLines = await extractAccessibilityTextLines(page);
+  return Array.from(
+    new Set(
+      [...lines, ...accessibilityLines].map((line) => normalizeLine(line)).filter(Boolean),
+    ),
+  );
 }
 
 function aggregateVehicleTotals(lines: string[], requestedDate: string, branchName: string) {
@@ -650,6 +940,13 @@ function aggregateVehicleTotals(lines: string[], requestedDate: string, branchNa
   for (const line of lines) {
     const cells = splitCells(line);
     if (cells.length < 2) {
+      if (
+        ignoredSamples.length < 10 &&
+        /[A-Z\u0410-\u042f\u04ae\u04e8]/u.test(line) &&
+        /\d/.test(line)
+      ) {
+        ignoredSamples.push(line);
+      }
       continue;
     }
 
@@ -768,6 +1065,20 @@ export async function fetchWrsDailyVehicleTotals(
         totalPages: parseTotalPages(header.pageLabel),
         extractedLineCount: weightRows.length,
         totals: aggregateWeightRows(weightRows, requestedDate, branchName),
+        ignoredSamples: [],
+      };
+    }
+
+    const exportedRows = await extractExportedWeightReportRows(page, requestedDate);
+    if (exportedRows.length) {
+      return {
+        requestedDate,
+        branchName,
+        title: header.title,
+        pageLabel: header.pageLabel,
+        totalPages: parseTotalPages(header.pageLabel),
+        extractedLineCount: exportedRows.length,
+        totals: aggregateWeightRows(exportedRows, requestedDate, branchName),
         ignoredSamples: [],
       };
     }

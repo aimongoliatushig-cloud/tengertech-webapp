@@ -78,6 +78,75 @@ class OpsTaskReport(models.Model):
         for report in self:
             report.reporter_employee_id = report.reporter_id.employee_id if report.reporter_id else False
 
+    def _weight_external_reference(self):
+        self.ensure_one()
+        return "ops-report:%s" % self.id
+
+    def _weight_unit_text(self):
+        self.ensure_one()
+        task = self.task_id
+        values = [
+            self.task_measurement_unit_code,
+        ]
+        if self.task_measurement_unit_id:
+            values.extend([self.task_measurement_unit_id.name, self.task_measurement_unit_id.display_name])
+        if task:
+            for field_name in ("ops_measurement_unit_code", "ops_measurement_unit"):
+                if field_name in task._fields:
+                    values.append(task[field_name])
+            if "ops_measurement_unit_id" in task._fields and task.ops_measurement_unit_id:
+                values.extend(
+                    [
+                        task.ops_measurement_unit_id.name,
+                        task.ops_measurement_unit_id.code,
+                        task.ops_measurement_unit_id.category,
+                    ]
+                )
+            if task.municipal_work_id:
+                values.append(task.municipal_work_id.unit_of_measure)
+        return " ".join(str(value or "") for value in values).lower()
+
+    def _reported_quantity_as_kg(self):
+        self.ensure_one()
+        quantity = self.reported_quantity or 0.0
+        if quantity <= 0:
+            return 0.0
+
+        task = self.task_id
+        if not task or task.mfo_operation_type not in ("garbage", "garbage_seasonal"):
+            return 0.0
+
+        unit_text = self._weight_unit_text()
+        compact_unit = "".join(unit_text.split())
+        if any(token in compact_unit for token in ("тонн", "тон", "тн", "ton", "tn")):
+            return quantity * 1000
+        if any(token in compact_unit for token in ("кг", "kg", "килограмм", "kilogram")):
+            return quantity
+        return 0.0
+
+    def _sync_daily_weight_totals(self):
+        weight_model = self.env["mfo.daily.weight.total"].sudo()
+        for report in self:
+            external_reference = report._weight_external_reference()
+            existing = weight_model.search([("external_reference", "=", external_reference)], limit=1)
+            net_weight_total = report._reported_quantity_as_kg()
+            if not net_weight_total or report.state == "returned":
+                if existing:
+                    existing.unlink()
+                continue
+
+            values = {
+                "task_id": report.task_id.id,
+                "net_weight_total": net_weight_total,
+                "source": "manual",
+                "external_reference": external_reference,
+                "note": (report.report_summary or "")[:500],
+            }
+            if existing:
+                existing.write(values)
+            else:
+                weight_model.create(values)
+
     @api.constrains("state", "report_summary", "rejection_reason", "image_attachment_ids")
     def _check_report_requirements(self):
         for report in self:
@@ -99,11 +168,34 @@ class OpsTaskReport(models.Model):
                 values["attachment_ids"] = [(6, 0, report.image_attachment_ids.ids)]
             report.municipal_report_id.write(values)
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        reports = super().create(vals_list)
+        reports._sync_daily_weight_totals()
+        return reports
+
     def write(self, values):
         result = super().write(values)
         if {"report_summary", "reported_quantity", "image_attachment_ids"}.intersection(values):
             self._sync_municipal_report()
+        if {
+            "report_summary",
+            "reported_quantity",
+            "task_id",
+            "state",
+            "task_measurement_unit_code",
+            "task_measurement_unit_id",
+        }.intersection(values):
+            self._sync_daily_weight_totals()
         return result
+
+    def unlink(self):
+        references = ["ops-report:%s" % report_id for report_id in self.ids]
+        if references:
+            self.env["mfo.daily.weight.total"].sudo().search(
+                [("external_reference", "in", references)]
+            ).unlink()
+        return super().unlink()
 
     def action_submit(self):
         for report in self:

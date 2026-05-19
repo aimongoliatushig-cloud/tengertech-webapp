@@ -19,7 +19,9 @@ import { Card } from "@/app/_components/ui/card";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import styles from "@/app/general-dashboard/general-dashboard.module.css";
 import shellStyles from "@/app/workspace.module.css";
-import { getRoleLabel, hasCapability, type AppSession } from "@/lib/auth";
+import { hasCapability, type AppSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { type DashboardSnapshot, type FleetVehicleBoard, type HrDailyAttendanceSummary } from "@/lib/odoo";
 import { cn } from "@/lib/utils";
 import { type WeatherSnapshot } from "@/lib/weather";
@@ -254,11 +256,11 @@ export function GeneralDashboardView({
   weather,
   canViewHr,
 }: GeneralDashboardViewProps) {
-  const roleLabel = getRoleLabel(session.role);
+  const roleLabel = getSessionRoleLabel(session);
   const currentDateKey = todayKey();
   const tasks = snapshot.taskDirectory;
   const totalTasks = tasks.length || snapshot.totalTasks || 0;
-  const completedTasks = tasks.filter((task) => task.statusKey === "verified" || task.progress >= 100).length;
+  const completedTasks = tasks.filter((task) => task.statusKey === "verified").length;
   const workingTasks = tasks.filter((task) => task.statusKey === "working").length;
   const reviewTasks = tasks.filter((task) => task.statusKey === "review").length;
   const overdueTasks = tasks.filter((task) => isOverdue(task, currentDateKey)).length;

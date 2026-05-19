@@ -11,11 +11,11 @@ import {
 import { CleaningAreaForm } from "@/app/cleaning-areas/cleaning-area-form";
 import { MasterAssignmentPanel } from "@/app/cleaning-areas/master-assignment-panel";
 import {
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
@@ -167,7 +167,7 @@ export default async function CleaningAreasPage({ searchParams }: PageProps) {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
               masterMode={isMasterRole(session.role)}
               departmentScopeName={sessionDepartmentName}
@@ -179,7 +179,7 @@ export default async function CleaningAreasPage({ searchParams }: PageProps) {
               title="Цэвэрлэх талбай"
               subtitle="Зам талбайн өдөр тутмын цэвэрлэгээний талбай, мастер, ажилтны оноолт"
               userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
             />
 
             {errorMessage ? (

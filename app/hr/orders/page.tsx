@@ -1,5 +1,7 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { getRoleLabel, requireSession } from "@/lib/auth";
+import { requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { getEmployee, requireHrAccess } from "@/lib/hr";
 
 import { RegistryPage } from "../hr-client";
@@ -28,7 +30,7 @@ export default async function HrOrdersPage({ searchParams }: PageProps) {
         title="Тушаал"
         subtitle="Ажилд авах, чөлөөлөх, албан тушаал өөрчлөх, чөлөө, сахилгын тушаал болон гэрээг хадгална"
         userName={session.name}
-        roleLabel={getRoleLabel(session.role)}
+        roleLabel={getSessionRoleLabel(session)}
         notificationNote="Тушаал, гэрээ, хавсралт"
       />
       <HrSectionNav />

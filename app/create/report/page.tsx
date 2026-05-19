@@ -6,11 +6,11 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import dashboardStyles from "@/app/page.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import {
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 
@@ -105,7 +105,7 @@ export default async function ReportProjectPickerPage() {
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
@@ -117,7 +117,7 @@ export default async function ReportProjectPickerPage() {
               title="Тайлангийн ажил сонгох"
               subtitle="Зөвхөн идэвхтэй ажлуудаас сонгоод дараагийн алхамд даалгавар руу орно"
               userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               notificationCount={activeProjects.length}
               notificationNote={`${activeProjects.length} идэвхтэй ажил тайлангийн урсгалд нээлттэй байна`}
             />

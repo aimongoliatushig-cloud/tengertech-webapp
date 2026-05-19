@@ -1,5 +1,7 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { getRoleLabel, requireSession } from "@/lib/auth";
+import { requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { getClearanceRecords, getEmployee, getEmployees, requireHrAccess } from "@/lib/hr";
 
 import { HrSectionNav } from "../hr-section-nav";
@@ -58,7 +60,7 @@ export default async function HrClearancePage({ searchParams }: PageProps) {
         title="Тойрох хуудас"
         subtitle="Ажилтан ажлаас гарах үед байгууллагын баталгаажуулах checklist-ийг хянах хэсэг"
         userName={session.name}
-        roleLabel={getRoleLabel(session.role)}
+        roleLabel={getSessionRoleLabel(session)}
         notificationNote="Тойрох хуудасны бүртгэл"
       />
       <HrSectionNav />

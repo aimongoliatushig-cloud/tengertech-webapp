@@ -587,6 +587,22 @@ class MfoDailyWeightTotal(models.Model):
 
     task_id = fields.Many2one("project.task", string="Ажил", required=True, ondelete="cascade")
     shift_date = fields.Date(string="Ээлжийн огноо", related="task_id.mfo_shift_date", store=True, readonly=True)
+    vehicle_id = fields.Many2one(
+        "fleet.vehicle",
+        string="Машин",
+        related="task_id.mfo_vehicle_id",
+        store=True,
+        readonly=True,
+        index=True,
+    )
+    route_id = fields.Many2one(
+        "mfo.route",
+        string="Маршрут",
+        related="task_id.mfo_route_id",
+        store=True,
+        readonly=True,
+        index=True,
+    )
     net_weight_total = fields.Float(string="Цэвэр жин")
     source = fields.Selection(
         [

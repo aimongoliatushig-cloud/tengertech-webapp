@@ -1,5 +1,7 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { getRoleLabel, requireSession } from "@/lib/auth";
+import { requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { getDepartments, getJobs, getManagers, requireHrSpecialistAccess } from "@/lib/hr";
 
 import { HrSectionNav } from "../../hr-section-nav";
@@ -25,7 +27,7 @@ export default async function NewHrEmployeePage() {
         title="Шинэ ажилтан бүртгэх"
         subtitle="Ажилтны үндсэн мэдээлэл, алба нэгж, албан тушаал, холбоо барих мэдээлэл"
         userName={session.name}
-        roleLabel={getRoleLabel(session.role)}
+        roleLabel={getSessionRoleLabel(session)}
         notificationNote="Шинэ HR бүртгэл"
       />
       <HrSectionNav mode={access.isHr ? "hr" : "department"} />

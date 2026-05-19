@@ -2,7 +2,9 @@ import Link from "next/link";
 import { Archive, ClipboardPlus, HeartPulse, Users } from "lucide-react";
 
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { getRoleLabel, requireSession } from "@/lib/auth";
+import { requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { getDisciplineRecords, getEmployees, getTimeoffDashboard, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
@@ -151,7 +153,7 @@ export default async function HrDashboardPage() {
         title={access.isHr ? "Хүний нөөцийн dashboard" : "Миний хэлтсийн хүний нөөц"}
         subtitle={access.isHr ? "Бүх хэлтсийн ажилтан, чөлөө / өвчтэй хүсэлт болон төлөвийг хянана" : "Өөрийн хэлтсийн ажилтны идэвхтэй, чөлөөтэй, өвчтэй төлөв болон илгээсэн хүсэлтүүд"}
         userName={session.name}
-        roleLabel={getRoleLabel(session.role)}
+        roleLabel={getSessionRoleLabel(session)}
         notificationCount={requestCards?.pendingRequests ?? 0}
         notificationNote="Хүлээгдэж буй хүсэлт"
         notificationHref={HR_NOTIFICATION_HREF}

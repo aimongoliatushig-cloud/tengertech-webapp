@@ -13,7 +13,9 @@ import {
 import { notFound } from "next/navigation";
 
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { getRoleLabel, requireSession } from "@/lib/auth";
+import { requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { getEmployee, requireHrAccess } from "@/lib/hr";
 
 import { EmployeeDetailTabs } from "../../hr-client";
@@ -45,6 +47,7 @@ function employeeActions(employeeId: number) {
 function departmentHeadEmployeeActions(employeeId: number) {
   const employeeQuery = `employeeId=${employeeId}`;
   return [
+    { label: "Засах", href: `/hr/employees/${employeeId}?edit=profile#profile-info`, icon: Pencil },
     { label: "Чөлөө хүсэх", href: `/hr/sick?${employeeQuery}&type=time_off`, icon: FileCheck2 },
     { label: "Өвчтэй бүртгэх", href: `/hr/sick?${employeeQuery}&type=sick`, icon: HeartPulse },
   ];
@@ -74,7 +77,7 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
         title={employee.name}
         subtitle={`${employee.departmentName || "Алба нэгж бүртгээгүй"} · ${employee.jobTitle || "Албан тушаал бүртгээгүй"}`}
         userName={session.name}
-        roleLabel={getRoleLabel(session.role)}
+        roleLabel={getSessionRoleLabel(session)}
         notificationNote="Ажилтны дэлгэрэнгүй"
       />
       <HrSectionNav mode={mode} />
@@ -97,7 +100,7 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
         </div>
       </section>
 
-      <EmployeeDetailTabs employee={employee} canEdit={access.isHr} />
+      <EmployeeDetailTabs employee={employee} canEdit={access.isHr || access.isDepartmentHead} />
     </>
   );
 }

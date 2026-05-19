@@ -5,8 +5,24 @@ import { executeOdooKw } from "@/lib/odoo";
 import { loadDepartmentHeadUserIds } from "@/lib/notification-recipients";
 import type { ProcurementPackage, ProcurementRequestDetail } from "@/lib/procurement";
 
+type NotificationTarget = {
+  userIds: number[];
+  title: string;
+  body: string;
+  targetUrl: string;
+};
+
+type NotificationPayload = {
+  title: string;
+  body: string;
+};
+
 export type ProcurementNotificationAction =
   | "request_created"
+  | "submit_quotations"
+  | "prepare_order"
+  | "director_decision"
+  | "attach_final_order"
   | "move_to_finance_review"
   | "record_package_ceo_order"
   | "mark_contract_signed"
@@ -15,11 +31,8 @@ export type ProcurementNotificationAction =
   | "mark_done"
   | "cancel";
 
-type NotificationTarget = {
-  userIds: number[];
-  title: string;
-  body: string;
-  targetUrl: string;
+type NotificationRecord = NotificationPayload & {
+  action: string;
 };
 
 const ROLE_GROUPS = {
@@ -29,18 +42,118 @@ const ROLE_GROUPS = {
   legal: "municipal_repair_workflow.group_procurement_legal_user",
 };
 
+const PROCUREMENT_ACTION_TEMPLATES: Record<ProcurementNotificationAction, NotificationRecord> = {
+  request_created: {
+    action: "request_created",
+    title: "Procurement request created",
+    body: "{request}{package} - request has been sent for review.",
+  },
+  submit_quotations: {
+    action: "submit_quotations",
+    title: "Procurement quotations submitted",
+    body: "{request}{package} - quotations were submitted for review.",
+  },
+  prepare_order: {
+    action: "prepare_order",
+    title: "Procurement order preparation",
+    body: "{request}{package} - order preparation is ready for next review step.",
+  },
+  director_decision: {
+    action: "director_decision",
+    title: "Director decision required",
+    body: "{request}{package} - director decision was confirmed.",
+  },
+  attach_final_order: {
+    action: "attach_final_order",
+    title: "Final order attached",
+    body: "{request}{package} - final order attachment has been uploaded.",
+  },
+  move_to_finance_review: {
+    action: "move_to_finance_review",
+    title: "Finance review required",
+    body: "{request}{package} - moved to finance review.",
+  },
+  record_package_ceo_order: {
+    action: "record_package_ceo_order",
+    title: "CEO order recorded",
+    body: "{request}{package} - CEO contract order recording was completed.",
+  },
+  mark_contract_signed: {
+    action: "mark_contract_signed",
+    title: "Contract signed",
+    body: "{request}{package} - contract is marked as signed.",
+  },
+  mark_paid: {
+    action: "mark_paid",
+    title: "Payment recorded",
+    body: "{request}{package} - payment was marked as received.",
+  },
+  mark_received: {
+    action: "mark_received",
+    title: "Goods received",
+    body: "{request}{package} - goods were marked as received.",
+  },
+  mark_done: {
+    action: "mark_done",
+    title: "Procurement completed",
+    body: "{request}{package} - procurement request was marked as done.",
+  },
+  cancel: {
+    action: "cancel",
+    title: "Procurement request cancelled",
+    body: "{request}{package} - procurement request was cancelled.",
+  },
+};
+
+function normalizeName(value: string) {
+  return (value || "").trim();
+}
+
 function uniqueIds(ids: Array<number | undefined | null>) {
-  return Array.from(new Set(ids.filter((id): id is number => Boolean(id))));
+  return Array.from(new Set(ids.filter((id): id is number => Number.isFinite(id))));
 }
 
-function packageTargetUrl(requestId: number, packageId?: number | null) {
-  return packageId ? `/procurement/${requestId}?package_id=${packageId}#actions` : `/procurement/${requestId}`;
+function replaceTemplate(template: string, request: ProcurementRequestDetail, pack?: ProcurementPackage | null) {
+  const requestTitle = `${request.name} - ${normalizeName(request.title || "")}`;
+  const packageLabel = pack ? ` (${normalizeName(pack.name || "")})` : "";
+  return template.replace("{request}", requestTitle).replace("{package}", packageLabel);
 }
 
-function packageNames(packages: ProcurementPackage[]) {
-  if (!packages.length) return "";
-  if (packages.length === 1) return packages[0].name;
-  return `${packages.length} багц`;
+function buildPackageTargetUrl(requestId: number, packageId?: number | null) {
+  return packageId
+    ? `/procurement/${requestId}?package_id=${packageId}#actions`
+    : `/procurement/${requestId}`;
+}
+
+function createTarget(
+  targetMap: Map<string, NotificationTarget>,
+  targetUrl: string,
+  title: string,
+  body: string,
+  userIds: Array<number | undefined | null>,
+) {
+  const normalized = uniqueIds(userIds);
+  if (!normalized.length) {
+    return;
+  }
+
+  const key = `${targetUrl}|${title}|${body}`;
+  const existing = targetMap.get(key);
+  if (existing) {
+    existing.userIds = uniqueIds([...existing.userIds, ...normalized]);
+    return;
+  }
+
+  targetMap.set(key, {
+    userIds: normalized,
+    title,
+    body,
+    targetUrl,
+  });
+}
+
+function createFallbackTargetUrl(request: ProcurementRequestDetail, packageId?: number | null) {
+  return buildPackageTargetUrl(request.id, packageId);
 }
 
 async function roleUserIds(role: keyof typeof ROLE_GROUPS) {
@@ -48,11 +161,14 @@ async function roleUserIds(role: keyof typeof ROLE_GROUPS) {
   const rows = await executeOdooKw<Array<{ res_id: number }>>(
     "ir.model.data",
     "search_read",
-    [[["module", "=", module], ["name", "=", name]]],
+    [["module", "=", module], ["name", "=", name]],
     { fields: ["res_id"], limit: 1 },
   ).catch(() => []);
   const groupId = rows[0]?.res_id;
-  if (!groupId) return [];
+  if (!groupId) {
+    return [];
+  }
+
   const groups = await executeOdooKw<Array<{ all_user_ids?: number[] }>>(
     "res.groups",
     "read",
@@ -63,12 +179,61 @@ async function roleUserIds(role: keyof typeof ROLE_GROUPS) {
 
 async function requestStorekeeperIds(request: ProcurementRequestDetail) {
   const assigned = uniqueIds([request.storekeeper?.id]);
-  return assigned.length ? assigned : roleUserIds("storekeeper");
+  if (assigned.length) {
+    return assigned;
+  }
+
+  return roleUserIds("storekeeper");
 }
 
 function currentPackage(request: ProcurementRequestDetail, packageId?: number | null) {
-  if (!packageId) return null;
+  if (!packageId) {
+    return null;
+  }
+
   return request.packages.find((pack) => pack.id === packageId) || null;
+}
+
+function currentActors(request: ProcurementRequestDetail) {
+  return uniqueIds([
+    request.current_responsible?.id,
+    request.requester?.id,
+    request.storekeeper?.id,
+  ]);
+}
+
+function normalizePackages(packages: ProcurementPackage[] = []) {
+  return packages.filter((value) => value && value.id);
+}
+
+function createPackageTargets(
+  request: ProcurementRequestDetail,
+  packages: ProcurementPackage[] | [],
+  targetMap: Map<string, NotificationTarget>,
+  template: NotificationRecord,
+  recipients: Array<number | undefined | null>,
+) {
+  const normalizedRecipients = uniqueIds(recipients);
+  if (!packages.length) {
+    createTarget(
+      targetMap,
+      createFallbackTargetUrl(request),
+      template.title,
+      replaceTemplate(template.body, request),
+      normalizedRecipients,
+    );
+    return;
+  }
+
+  for (const targetPackage of packages) {
+    createTarget(
+      targetMap,
+      buildPackageTargetUrl(request.id, targetPackage.id),
+      template.title,
+      replaceTemplate(template.body, request, targetPackage),
+      normalizedRecipients,
+    );
+  }
 }
 
 async function buildTargets(
@@ -76,17 +241,63 @@ async function buildTargets(
   request: ProcurementRequestDetail,
   packageId?: number | null,
 ): Promise<NotificationTarget[]> {
-  const titleBase = `${request.name} - ${request.title}`;
-  const pack = currentPackage(request, packageId);
+  const template = PROCUREMENT_ACTION_TEMPLATES[action];
+  const targetPackage = currentPackage(request, packageId);
+  const packages = normalizePackages(request.packages);
+  const targetPackages = targetPackage ? [targetPackage] : packages;
+  const actorIds = currentActors(request);
+
+  const [financeUsers, adminUsers, legalUsers] = await Promise.all([
+    roleUserIds("finance"),
+    roleUserIds("administration"),
+    roleUserIds("legal"),
+  ]);
+
+  const targetMap = new Map<string, NotificationTarget>();
+
   if (action === "request_created") {
-    return [
-      {
-        userIds: await requestStorekeeperIds(request),
-        title: "Шинэ худалдан авах хүсэлт ирлээ",
-        body: `${titleBase} няравын шатанд ирлээ.`,
-        targetUrl: packageTargetUrl(request.id),
-      },
-    ];
+    const [resolvedStorekeeperIds] = await Promise.all([requestStorekeeperIds(request)]);
+    const recipients = uniqueIds([...actorIds, ...resolvedStorekeeperIds, ...financeUsers]);
+
+    createTarget(
+      targetMap,
+      createFallbackTargetUrl(request),
+      template.title,
+      replaceTemplate(template.body, request),
+      recipients,
+    );
+    return Array.from(targetMap.values());
+  }
+
+  if (action === "submit_quotations") {
+    const recipients = targetPackages.length
+      ? targetPackages.flatMap((targetPackage) =>
+          targetPackage.is_over_threshold
+            ? [...adminUsers, ...actorIds]
+            : [...financeUsers, ...actorIds],
+        )
+      : [...financeUsers, ...actorIds, ...adminUsers];
+
+    createPackageTargets(request, targetPackages, targetMap, template, uniqueIds(recipients));
+    return Array.from(targetMap.values());
+  }
+
+  if (action === "prepare_order") {
+    const recipients = uniqueIds([...financeUsers, ...adminUsers, ...actorIds]);
+    createPackageTargets(request, targetPackages, targetMap, template, recipients);
+    return Array.from(targetMap.values());
+  }
+
+  if (action === "director_decision") {
+    const recipients = uniqueIds([...legalUsers, ...adminUsers, ...actorIds]);
+    createPackageTargets(request, targetPackages, targetMap, template, recipients);
+    return Array.from(targetMap.values());
+  }
+
+  if (action === "attach_final_order") {
+    const recipients = uniqueIds([...financeUsers, ...adminUsers, ...actorIds]);
+    createPackageTargets(request, targetPackages, targetMap, template, recipients);
+    return Array.from(targetMap.values());
   }
 
   if (action === "move_to_finance_review") {
@@ -102,80 +313,100 @@ async function buildTargets(
         item.payment_status?.code !== "payment_recorded" &&
         ["admin_review", "ceo_decision", "ceo_order_uploaded"].includes(item.route_state?.code || ""),
     );
-    const targets: NotificationTarget[] = [];
+
     if (lowPackages.length) {
-      targets.push({
-        userIds: await roleUserIds("finance"),
-        title: "Төлбөрийн хяналтанд багц ирлээ",
-        body: `${titleBase}: ${packageNames(lowPackages)} төлбөрийн шатанд ирлээ.`,
-        targetUrl: packageTargetUrl(request.id, lowPackages[0].id),
-      });
+      for (const targetPackage of lowPackages) {
+        createTarget(
+          targetMap,
+          buildPackageTargetUrl(request.id, targetPackage.id),
+          template.title,
+          replaceTemplate(template.body, request, targetPackage),
+          uniqueIds([...financeUsers, ...actorIds]),
+        );
+      }
     }
     if (highPackages.length) {
-      targets.push({
-        userIds: await roleUserIds("administration"),
-        title: "Захирлын тушаал шаардсан багц ирлээ",
-        body: `${titleBase}: ${packageNames(highPackages)} 1 саяас дээш процесс руу ирлээ.`,
-        targetUrl: packageTargetUrl(request.id, highPackages[0].id),
-      });
+      for (const targetPackage of highPackages) {
+        createTarget(
+          targetMap,
+          buildPackageTargetUrl(request.id, targetPackage.id),
+          "Administration review required",
+          replaceTemplate(
+            "Administration review required: {request} ({package}) is waiting for signature process.",
+            request,
+            targetPackage,
+          ),
+          uniqueIds([...adminUsers, ...actorIds]),
+        );
+      }
     }
-    return targets;
+
+    if (!lowPackages.length && !highPackages.length) {
+      createTarget(
+        targetMap,
+        createFallbackTargetUrl(request),
+        template.title,
+        replaceTemplate(template.body, request),
+        uniqueIds([...financeUsers, ...adminUsers, ...actorIds]),
+      );
+    }
+
+    return Array.from(targetMap.values());
   }
 
   if (action === "record_package_ceo_order") {
-    return [
-      {
-        userIds: await roleUserIds("legal"),
-        title: "Гэрээний төсөл боловсруулах багц ирлээ",
-        body: `${titleBase}: ${pack?.name || "өндөр дүнтэй багц"} дээр захирлын тушаал бүртгэгдлээ.`,
-        targetUrl: packageTargetUrl(request.id, packageId),
-      },
-    ];
+    const recipients = uniqueIds([...legalUsers, ...adminUsers, ...actorIds]);
+    createPackageTargets(request, targetPackages, targetMap, template, recipients);
+    return Array.from(targetMap.values());
   }
 
   if (action === "mark_contract_signed") {
-    return [
-      {
-        userIds: await roleUserIds("finance"),
-        title: "Төлбөр бүртгэх багц ирлээ",
-        body: `${titleBase}: ${pack?.name || "багц"} гэрээний шатнаас санхүү рүү ирлээ.`,
-        targetUrl: packageTargetUrl(request.id, packageId),
-      },
-    ];
+    const recipients = uniqueIds([...financeUsers, ...adminUsers, ...actorIds]);
+    createPackageTargets(request, targetPackages, targetMap, template, recipients);
+    return Array.from(targetMap.values());
   }
 
   if (action === "mark_paid") {
-    return [
-      {
-        userIds: await requestStorekeeperIds(request),
-        title: "Хүлээн авалт хийх багц ирлээ",
-        body: `${titleBase}: ${pack?.name || "багц"} төлбөр бүртгэгдлээ.`,
-        targetUrl: packageTargetUrl(request.id, packageId),
-      },
-    ];
+    const recipients = uniqueIds([
+      ...financeUsers,
+      ...adminUsers,
+      ...(await requestStorekeeperIds(request)),
+      ...actorIds,
+    ]);
+    createPackageTargets(request, targetPackages, targetMap, template, recipients);
+    return Array.from(targetMap.values());
   }
 
-  if (action === "mark_received" || action === "mark_done") {
+  if (action === "mark_received") {
     const departmentHeadIds = await loadDepartmentHeadUserIds(request.department?.id);
-    return [
-      {
-        userIds: uniqueIds([request.requester?.id, ...departmentHeadIds]),
-        title: "Худалдан авалтын хүсэлт дууслаа",
-        body: `${titleBase}: хүлээлгэн өгч дууссан төлөвт орлоо.`,
-        targetUrl: packageTargetUrl(request.id, packageId),
-      },
-    ];
+    const recipients = uniqueIds([
+      ...financeUsers,
+      ...adminUsers,
+      request.requester?.id,
+      ...departmentHeadIds,
+      ...actorIds,
+    ]);
+    createPackageTargets(request, targetPackages, targetMap, template, recipients);
+    return Array.from(targetMap.values());
+  }
+
+  if (action === "mark_done") {
+    const departmentHeadIds = await loadDepartmentHeadUserIds(request.department?.id);
+    const recipients = uniqueIds([
+      ...financeUsers,
+      ...adminUsers,
+      request.requester?.id,
+      ...departmentHeadIds,
+      ...actorIds,
+    ]);
+    createPackageTargets(request, targetPackages, targetMap, template, recipients);
+    return Array.from(targetMap.values());
   }
 
   if (action === "cancel") {
-    return [
-      {
-        userIds: uniqueIds([request.requester?.id, request.storekeeper?.id]),
-        title: "Худалдан авалтын хүсэлт цуцлагдлаа",
-        body: `${titleBase}: хүсэлт цуцлагдсан байна.`,
-        targetUrl: packageTargetUrl(request.id, packageId),
-      },
-    ];
+    const recipients = uniqueIds([...actorIds, ...financeUsers, ...adminUsers, ...legalUsers]);
+    createPackageTargets(request, targetPackages, targetMap, template, recipients);
+    return Array.from(targetMap.values());
   }
 
   return [];
@@ -188,10 +419,46 @@ export async function notifyProcurementStageChanged(
 ) {
   try {
     const targets = await buildTargets(action, request, packageId);
+    if (!targets.length) {
+      console.warn("Procurement notification target resolution returned no entries", {
+        action,
+        requestId: request.id,
+        packageId: packageId || null,
+      });
+      return [];
+    }
+
+    const normalizedTargets = targets.filter((target) => target.userIds.length > 0);
+    if (!normalizedTargets.length) {
+      console.warn("Procurement notification had empty resolved user list", {
+        action,
+        requestId: request.id,
+        packageId: packageId || null,
+      });
+      return [];
+    }
+
     const results = [];
-    for (const target of targets) {
+    for (const target of normalizedTargets) {
       const userIds = uniqueIds(target.userIds);
-      if (!userIds.length) continue;
+      if (!userIds.length) {
+        console.warn("Procurement notification target had no users after dedupe", {
+          action,
+          requestId: request.id,
+          targetUrl: target.targetUrl,
+        });
+        continue;
+      }
+
+      if (!target.targetUrl) {
+        console.warn("Procurement notification target had empty target url", {
+          action,
+          requestId: request.id,
+          packageId: packageId || null,
+        });
+        continue;
+      }
+
       results.push(
         await notifyPushEvent({
           eventType: "procurement_stage_changed",
@@ -202,6 +469,15 @@ export async function notifyProcurementStageChanged(
         }),
       );
     }
+
+    if (!results.length) {
+      console.warn("Procurement notification was blocked due to empty user list", {
+        action,
+        requestId: request.id,
+        packageId: packageId || null,
+      });
+    }
+
     return results;
   } catch (error) {
     console.warn("Procurement stage notification failed:", error);

@@ -7,11 +7,11 @@ import { generateSeasonalExecutionAction } from "@/app/actions";
 import dashboardStyles from "@/app/page.module.css";
 import workspaceStyles from "@/app/workspace.module.css";
 import {
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadSeasonalPlanDetail } from "@/lib/workspace";
 
@@ -125,7 +125,7 @@ export default async function SeasonalPlanDetailPage({ params, searchParams }: P
               canUseFieldConsole={canUseFieldConsole}
               userName={session.name}
               userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
             />
@@ -136,7 +136,7 @@ export default async function SeasonalPlanDetailPage({ params, searchParams }: P
               title="Гэнэтийн ажил"
               subtitle="Гараар оруулсан байршил, машин, өдрөөр гүйцэтгэл үүсгэх самбар"
               userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               notificationCount={plan.conflictWarnings.length}
               notificationNote={
                 plan.conflictWarnings.length

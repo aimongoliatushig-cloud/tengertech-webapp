@@ -140,7 +140,8 @@ class MunicipalGarbageSyncLog(models.Model):
 
     @api.model
     def _config_bool(self, key):
-        return self.env["ir.config_parameter"].sudo().get_param(key, "False") in ("1", "True", "true")
+        default_value = "True" if key == "municipal_repair_workflow.garbage_weight_sync_enabled" else "False"
+        return self.env["ir.config_parameter"].sudo().get_param(key, default_value) in ("1", "True", "true")
 
     @api.model
     def _configured_time_due(self, sync_type):
@@ -162,18 +163,7 @@ class MunicipalGarbageSyncLog(models.Model):
         if current_minutes < configured_minutes:
             return False
 
-        last_success_date = params.get_param(
-            "municipal_repair_workflow.garbage_%s_last_success_date" % sync_type,
-            "",
-        )
-        if last_success_date == now.date().isoformat():
-            return False
-
-        last_success = params.get_param(
-            "municipal_repair_workflow.garbage_%s_last_success_at" % sync_type,
-            "",
-        )
-        return not last_success.startswith(now.date().isoformat())
+        return bool(self._pending_report_dates(sync_type))
 
     @api.model
     def _local_now(self):
@@ -182,6 +172,52 @@ class MunicipalGarbageSyncLog(models.Model):
     @api.model
     def _target_report_date(self):
         return (self._local_now().date() - timedelta(days=1)).isoformat()
+
+    @api.model
+    def _date_from_iso(self, value):
+        try:
+            return datetime.strptime(value or "", "%Y-%m-%d").date()
+        except Exception:
+            return None
+
+    @api.model
+    def _pending_report_dates(self, sync_type):
+        target_date = self._date_from_iso(self._target_report_date())
+        if not target_date:
+            return []
+
+        params = self.env["ir.config_parameter"].sudo()
+        last_target_date = self._date_from_iso(
+            params.get_param(
+                "municipal_repair_workflow.garbage_%s_last_success_target_date" % sync_type,
+                "",
+            )
+        )
+        start_date = target_date
+        if last_target_date and last_target_date < target_date:
+            start_date = last_target_date + timedelta(days=1)
+        elif last_target_date and last_target_date >= target_date:
+            return []
+
+        try:
+            max_backfill_days = int(os.getenv("GARBAGE_SYNC_MAX_BACKFILL_DAYS", "7") or "7")
+        except Exception:
+            max_backfill_days = 7
+        max_backfill_days = max(1, min(max_backfill_days, 31))
+        dates = []
+        current_date = start_date
+        while current_date <= target_date and len(dates) < max_backfill_days:
+            dates.append(current_date.isoformat())
+            current_date += timedelta(days=1)
+        return dates
+
+    @api.model
+    def _external_request_timeout(self, delegated_wrs_import=False):
+        default_timeout = "240" if delegated_wrs_import else "90"
+        try:
+            return max(30, int(os.getenv("GARBAGE_API_TIMEOUT_SECONDS", default_timeout) or default_timeout))
+        except Exception:
+            return int(default_timeout)
 
     @api.model
     def _fetch_external_reports(self, sync_type):
@@ -203,26 +239,45 @@ class MunicipalGarbageSyncLog(models.Model):
 
         if not url:
             return self._create_failure(sync_type, "%s тохируулаагүй байна." % url_key)
+        if delegated_wrs_import and not os.getenv("WRS_SYNC_TOKEN"):
+            return self._create_failure(sync_type, "WRS_SYNC_TOKEN тохируулаагүй байна.")
+
+        pending_dates = self._pending_report_dates(sync_type)
+        if not pending_dates:
+            return True
 
         try:
-            target_date = self._target_report_date()
-            headers = {}
-            if delegated_wrs_import and os.getenv("WRS_SYNC_TOKEN"):
-                headers["Authorization"] = "Bearer %s" % os.getenv("WRS_SYNC_TOKEN")
-            response = requests.get(
-                url,
-                auth=(username, password) if (username or password) and not delegated_wrs_import else None,
-                params={"date": target_date},
-                headers=headers,
-                timeout=30,
-            )
-            response.raise_for_status()
-            payload = response.json()
-            if delegated_wrs_import and isinstance(payload, dict) and payload.get("ok"):
-                count = int(payload.get("imported") or payload.get("totalRows") or 0)
-            else:
-                rows = self._payload_rows(payload)
-                count = self._upsert_report_rows(sync_type, rows, target_date)
+            total_count = 0
+            last_imported_date = ""
+            for target_date in pending_dates:
+                headers = {}
+                if delegated_wrs_import:
+                    headers["Authorization"] = "Bearer %s" % os.getenv("WRS_SYNC_TOKEN")
+                response = requests.get(
+                    url,
+                    auth=(username, password) if (username or password) and not delegated_wrs_import else None,
+                    params={"date": target_date},
+                    headers=headers,
+                    timeout=self._external_request_timeout(delegated_wrs_import),
+                )
+                response.raise_for_status()
+                payload = response.json()
+                if delegated_wrs_import and isinstance(payload, dict) and payload.get("ok"):
+                    total_rows = int(payload.get("totalRows") or 0)
+                    count = int(payload.get("imported") or 0)
+                    if total_rows <= 0:
+                        raise ValueError(
+                            "WRS жингийн тайлан %s өдөр 0 мөр буцаалаа. Дараагийн cron дахин татна." % target_date
+                        )
+                else:
+                    rows = self._payload_rows(payload)
+                    count = self._upsert_report_rows(sync_type, rows, target_date)
+                total_count += count
+                last_imported_date = target_date
+                self.env["ir.config_parameter"].sudo().set_param(
+                    "municipal_repair_workflow.garbage_%s_last_success_target_date" % sync_type,
+                    target_date,
+                )
             self.env["ir.config_parameter"].sudo().set_param(
                 "municipal_repair_workflow.garbage_%s_last_success_at" % sync_type,
                 fields.Datetime.to_string(fields.Datetime.now()),
@@ -231,7 +286,14 @@ class MunicipalGarbageSyncLog(models.Model):
                 "municipal_repair_workflow.garbage_%s_last_success_date" % sync_type,
                 self._local_now().date().isoformat(),
             )
-            self.create({"sync_type": sync_type, "state": "success", "record_count": count})
+            self.create(
+                {
+                    "sync_type": sync_type,
+                    "state": "success",
+                    "record_count": total_count,
+                    "error_message": "Сүүлд татсан тайлангийн огноо: %s" % (last_imported_date or "-"),
+                }
+            )
             return True
         except Exception as error:  # pragma: no cover - external integration guard
             self._create_failure(sync_type, str(error))

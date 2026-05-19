@@ -1,7 +1,10 @@
 import "server-only";
 
+import { canAccessProcurementModule } from "@/lib/roles";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { loadProcurementRequests, type ProcurementRequestSummary } from "@/lib/procurement";
 import { type AppSession, isMasterRole, isWorkerOnly } from "@/lib/auth";
+import type { RoleGroupFlags } from "@/lib/roles";
 import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import { loadReadNotificationKeys } from "@/lib/notification-state";
 import { loadMunicipalSnapshot, type DashboardSnapshot } from "@/lib/odoo";
@@ -26,25 +29,22 @@ type CachedWorkspaceNotificationSummary = {
   value: WorkspaceNotificationSummary;
 };
 
+export type ProcurementNotificationRecord = {
+  key: string;
+  name: string;
+  departmentName: string;
+  projectName: string;
+  stageLabel: string;
+  href: string;
+  progress: number;
+  taskCount: number;
+  sortTimeMs: number;
+  reasons: NotificationReason[];
+};
+
 const WORKSPACE_NOTIFICATION_SUMMARY_CACHE_TTL_MS = 15_000;
 const workspaceNotificationSummaryCache = new Map<string, CachedWorkspaceNotificationSummary>();
 const workspaceNotificationSummaryPendingCache = new Map<string, Promise<WorkspaceNotificationSummary>>();
-
-function getWorkspaceNotificationSummaryCacheKey(
-  session: AppSession,
-  snapshot: DashboardSnapshot,
-  scopedDepartmentName: string | null,
-) {
-  return [
-    session.uid,
-    session.login,
-    session.role,
-    scopedDepartmentName ?? "",
-    snapshot.generatedAt,
-    snapshot.taskDirectory.length,
-    snapshot.reviewQueue.length,
-  ].join(":");
-}
 
 function normalizeTaskAssigneeId(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -59,24 +59,8 @@ function normalizeTaskAssigneeId(value: unknown) {
   return null;
 }
 
-function isOverdue(task: DashboardSnapshot["taskDirectory"][number], todayDateKey: string) {
-  return Boolean(
-    task.scheduledDate &&
-      task.scheduledDate < todayDateKey &&
-      task.statusKey !== "verified",
-  );
-}
-
-function addReason(reasons: NotificationReason[], reason: NotificationReason) {
-  if (!reasons.includes(reason)) {
-    reasons.push(reason);
-  }
-}
-
-function isAssignedToUser(task: DashboardSnapshot["taskDirectory"][number], userId: string) {
-  return (task.assigneeIds ?? [])
-    .map(normalizeTaskAssigneeId)
-    .some((assigneeId) => assigneeId !== null && String(assigneeId) === userId);
+function normalizeName(value?: string | null) {
+  return (value || "").trim().toLocaleLowerCase("mn-MN");
 }
 
 function parseNotificationTimeMs(value?: string | null) {
@@ -94,12 +78,220 @@ function parseNotificationTimeMs(value?: string | null) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function taskNotificationTimeMs(task: DashboardSnapshot["taskDirectory"][number]) {
-  return (
-    parseNotificationTimeMs(task.latestReport?.submittedAt) ||
-    parseNotificationTimeMs(task.createdAt) ||
-    parseNotificationTimeMs(task.createdDate)
+function isOverdue(task: DashboardSnapshot["taskDirectory"][number], todayDateKey: string) {
+  return Boolean(
+    task.scheduledDate &&
+      task.scheduledDate < todayDateKey &&
+      task.statusKey !== "verified",
   );
+}
+
+function isProcurementOverdue(item: ProcurementRequestSummary, todayDateKey: string) {
+  if (!item.required_date) {
+    return false;
+  }
+
+  const requiredDate = item.required_date.includes("T") ? item.required_date : `${item.required_date}T00:00:00`;
+  const parsed = Date.parse(requiredDate);
+  if (!Number.isFinite(parsed)) {
+    return false;
+  }
+
+  return (
+    Number.parseInt(todayDateKey.replace(/-/g, ""), 10) >
+      Number.parseInt(item.required_date.replace(/-/g, ""), 10) &&
+    !isProcurementFinal(item.state.code)
+  );
+}
+
+function isProcurementFinal(stateCode: string) {
+  return ["done", "cancelled", "rejected", "returned"].includes(stateCode);
+}
+
+function procurementProgressPercent(stateCode: string) {
+  const map: Record<string, number> = {
+    draft: 5,
+    submitted: 15,
+    quote: 20,
+    quote_collection: 25,
+    quotation_waiting: 28,
+    quotations_ready: 32,
+    admin_review: 40,
+    ceo_decision: 45,
+    ceo_order_uploaded: 50,
+    finance_review: 55,
+    director_approval: 60,
+    order_waiting: 65,
+    contract_waiting: 70,
+    contract_review: 75,
+    legal_contract_draft: 80,
+    legal_final_contract: 84,
+    payment: 88,
+    payment_pending: 90,
+    payment_waiting: 92,
+    payment_recorded: 94,
+    received: 96,
+    done: 100,
+  };
+
+  return map[stateCode] ?? 50;
+}
+
+function procurementReasons(item: ProcurementRequestSummary, todayDateKey: string) {
+  const reasons: NotificationReason[] = [];
+
+  if (isProcurementOverdue(item, todayDateKey)) {
+    reasons.push("overdue");
+  }
+
+  if (isProcurementFinal(item.state.code)) {
+    return reasons;
+  }
+
+  if (["draft", "submitted", "quote", "quote_collection", "quotation_waiting"].includes(item.state.code)) {
+    reasons.push("new");
+  } else {
+    reasons.push("review");
+  }
+
+  if (reasons.length === 0) {
+    reasons.push("review");
+  }
+
+  return reasons;
+}
+
+function procurementNotificationVersion(item: ProcurementRequestSummary) {
+  const values = [
+    item.date_quotation_submitted,
+    item.date_director_decision,
+    item.date_order_issued,
+    item.date_contract_signed,
+    item.date_paid,
+    item.date_received,
+    item.required_date,
+  ]
+    .map(parseNotificationTimeMs)
+    .filter(Boolean);
+
+  if (!values.length) {
+    return String(item.current_stage_age_days || 0);
+  }
+
+  return String(Math.max(...values));
+}
+
+function buildProcurementNotificationKey(item: ProcurementRequestSummary) {
+  const stateCode = item.state.code || "unknown";
+  const routeCode = pickProcurementNotificationRoute(item);
+  return `procurement:${item.id}:${routeCode}:${stateCode}:${procurementNotificationVersion(item)}`;
+}
+
+function pickProcurementDepartmentName(item: ProcurementRequestSummary) {
+  return item.department?.name || "-";
+}
+
+function pickProcurementProjectName(item: ProcurementRequestSummary) {
+  return item.project?.name || item.task?.name || item.vehicle?.name || "Тодорхойгүй төсөл";
+}
+
+function pickProcurementNotificationRoute(item: ProcurementRequestSummary) {
+  const activeRoute =
+    item.packages?.find((pack) => pack.route_state?.code && pack.route_state.code === item.state.code)?.route_state
+      ?.code || item.state.code || "unknown";
+  return activeRoute || "unknown";
+}
+
+function mapProcurementNotificationItem(item: ProcurementRequestSummary, todayDateKey: string) {
+  const reasons = procurementReasons(item, todayDateKey);
+  if (!reasons.length) {
+    return null;
+  }
+
+  const sortTimeMs = Math.max(
+    parseNotificationTimeMs(item.date_quotation_submitted),
+    parseNotificationTimeMs(item.date_director_decision),
+    parseNotificationTimeMs(item.date_order_issued),
+    parseNotificationTimeMs(item.date_contract_signed),
+    parseNotificationTimeMs(item.date_paid),
+    parseNotificationTimeMs(item.date_received),
+    parseNotificationTimeMs(item.required_date),
+  );
+
+  const targetPackage = item.packages?.find((pack) => pack.route_state?.code === item.state.code);
+  const packageId = targetPackage?.id;
+
+  return {
+    key: buildProcurementNotificationKey(item),
+    name: `${item.name} - ${item.title}`,
+    departmentName: pickProcurementDepartmentName(item),
+    projectName: pickProcurementProjectName(item),
+    stageLabel: item.state.label || item.state.code,
+    href: packageId ? `/procurement/${item.id}?package_id=${packageId}#actions` : `/procurement/${item.id}`,
+    progress: procurementProgressPercent(item.state.code),
+    taskCount: 1,
+    sortTimeMs,
+    reasons,
+  } satisfies ProcurementNotificationRecord;
+}
+
+function getProcurementScopes(session: AppSession) {
+  const flags: Partial<RoleGroupFlags> = session.groupFlags || {};
+  const isExecutive =
+    Boolean(
+      session.role === "director" ||
+        session.role === "general_manager" ||
+        session.groupFlags?.municipalDirector ||
+        session.groupFlags?.fleetRepairCeo ||
+        session.groupFlags?.fleetRepairGeneralManager ||
+        session.groupFlags?.procurementGeneralManager,
+    );
+  const isDepartmentHead =
+    session.role === "project_manager" || Boolean(session.groupFlags?.municipalDepartmentHead);
+  const isWorker = Boolean(
+    flags.procurementStorekeeper ||
+      flags.procurementFinance ||
+      flags.procurementAdministration ||
+      flags.procurementLegal ||
+      flags.procurementCeo ||
+      flags.procurementPurchaseManager ||
+      flags.fleetRepairPurchaser ||
+      flags.fleetRepairFinance ||
+      flags.fleetRepairAccounting ||
+      flags.fleetRepairAdministration ||
+      flags.opsStorekeeper,
+  );
+
+  const scope = isExecutive || isDepartmentHead || session.role === "system_admin" ? "all" : isWorker ? "assigned" : "mine";
+  return { scope };
+}
+
+function getWorkspaceNotificationSummaryCacheKey(
+  session: AppSession,
+  snapshot: DashboardSnapshot,
+  scopedDepartmentName: string | null,
+) {
+  return [
+    session.uid,
+    session.login,
+    session.role,
+    scopedDepartmentName ?? "",
+    snapshot.generatedAt,
+    snapshot.taskDirectory.length,
+    snapshot.reviewQueue.length,
+  ].join(":");
+}
+
+function addReason(reasons: NotificationReason[], reason: NotificationReason) {
+  if (!reasons.includes(reason)) {
+    reasons.push(reason);
+  }
+}
+
+function isAssignedToUser(task: DashboardSnapshot["taskDirectory"][number], userId: string) {
+  return (task.assigneeIds ?? [])
+    .map(normalizeTaskAssigneeId)
+    .some((assigneeId) => assigneeId !== null && String(assigneeId) === userId);
 }
 
 function resolveWorkerDepartmentName(snapshot: DashboardSnapshot, session: AppSession) {
@@ -111,6 +303,14 @@ function resolveWorkerDepartmentName(snapshot: DashboardSnapshot, session: AppSe
   return (
     snapshot.taskDirectory.find((task) => isAssignedToUser(task, currentUserId))
       ?.departmentName ?? null
+  );
+}
+
+function taskNotificationTimeMs(task: DashboardSnapshot["taskDirectory"][number]) {
+  return (
+    parseNotificationTimeMs(task.latestReport?.submittedAt) ||
+    parseNotificationTimeMs(task.createdAt) ||
+    parseNotificationTimeMs(task.createdDate)
   );
 }
 
@@ -158,6 +358,7 @@ export function buildWorkspaceNotificationRecords(
       reasons: NotificationReason[];
     }
   >();
+
   const ensureFromTask = (task: DashboardSnapshot["taskDirectory"][number]) => {
     const itemKey = groupedByWorkMode ? `work:${task.projectId ?? task.projectName}` : `task:${task.id}`;
     const sortTimeMs = taskNotificationTimeMs(task);
@@ -314,4 +515,64 @@ export async function loadWorkspaceNotificationSummary(
 
   workspaceNotificationSummaryPendingCache.set(cacheKey, summaryPromise);
   return summaryPromise;
+}
+
+export async function loadProcurementNotificationRecords(
+  session: AppSession,
+  options: {
+    scopedDepartmentName?: string | null;
+    snapshot?: DashboardSnapshot;
+  } = {},
+): Promise<ProcurementNotificationRecord[]> {
+  if (!canAccessProcurementModule(session)) {
+    return [];
+  }
+
+  const todayDateKey = getTodayDateKey();
+  const scopedDepartmentName =
+    "scopedDepartmentName" in options
+      ? options.scopedDepartmentName ?? null
+      : await loadSessionDepartmentName(session);
+
+  const { scope } = getProcurementScopes(session);
+  const requestBundle = await loadProcurementRequests(
+    {
+      scope,
+      limit: 200,
+    },
+    {
+      login: session.login,
+      password: session.password,
+    },
+  ).catch(() => ({
+    items: [],
+    pagination: { page: 1, limit: 1, total: 0, pages: 1 },
+  }));
+
+  const departmentFilteredItems = scopedDepartmentName
+    ? requestBundle.items.filter((request) =>
+        normalizeName(request.department?.name) === normalizeName(scopedDepartmentName),
+      )
+    : requestBundle.items;
+
+  return departmentFilteredItems
+    .map((item) => mapProcurementNotificationItem(item, todayDateKey))
+    .filter((item): item is ProcurementNotificationRecord => Boolean(item));
+}
+
+export async function loadProcurementNotificationCount(session: AppSession) {
+  if (!canAccessProcurementModule(session)) {
+    return 0;
+  }
+
+  const records = await loadProcurementNotificationRecords(session).catch(() => []);
+  if (!records.length) {
+    return 0;
+  }
+
+  const readKeys = await loadReadNotificationKeys(
+    session,
+    records.map((record) => record.key),
+  );
+  return records.filter((record) => !readKeys.has(record.key)).length;
 }

@@ -2,11 +2,11 @@ import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
 import {
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ChatPage() {
   const session = await requireSession();
-  const roleLabel = getRoleLabel(session.role);
+  const roleLabel = getSessionRoleLabel(session);
   const masterMode = isMasterRole(session.role);
   const workerMode = isWorkerOnly(session);
   const canCreateProject = hasCapability(session, "create_projects");

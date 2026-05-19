@@ -9,11 +9,11 @@ import dashboardStyles from "@/app/page.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import {
   canAccessProcurementModule,
-  getRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
+  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadSessionDepartmentName, loadSessionEmployeeDepartmentName } from "@/lib/access-scope";
 import {
@@ -854,7 +854,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               canViewAllReports={canViewAllReports}
               userName={session.name}
               userRole={session.role}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               groupFlags={session.groupFlags}
               masterMode={masterMode}
               departmentScopeName={scopedDepartmentName}
@@ -866,7 +866,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               title="Тайлан"
               subtitle="Өдрийн тайлан, зураг, аудио урсгал"
               userName={session.name}
-              roleLabel={getRoleLabel(session.role)}
+              roleLabel={getSessionRoleLabel(session)}
               notificationCount={filteredReviewQueue.length}
               notificationNote={`${filteredReviewQueue.length} даалгавар хяналт хүлээж байна`}
             />
@@ -888,7 +888,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 <div className={styles.dateMeta}>
                   <span>Сүүлд шинэчлэгдсэн</span>
                   <strong>{snapshot.generatedAt}</strong>
-                  <small>{masterMode ? selectedDepartmentName : getRoleLabel(session.role)}</small>
+                  <small>{masterMode ? selectedDepartmentName : getSessionRoleLabel(session)}</small>
                 </div>
                 <div className={styles.exportActions} aria-label="Тайлан экспортлох">
                   <a className={styles.exportButton} href={getExportHref("excel")}>

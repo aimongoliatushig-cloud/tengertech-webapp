@@ -775,18 +775,25 @@ function resolveEffectiveTaskStage(
     normalizeStageBucket(String(state || "")),
   );
   const normalizedProgress = Math.max(0, Math.min(100, Math.round(progress)));
+  const hasProblemState =
+    stateBucket === "problem" || mfoBucket === "problem" || reportBuckets.includes("problem");
+  const hasReviewState =
+    mfoBucket === "review" ||
+    stateBucket === "review" ||
+    stageBucket === "review" ||
+    reportBuckets.includes("review");
   const bucket =
-    stateBucket === "done" || mfoBucket === "done" || stageBucket === "done"
-      ? "done"
-      : context.reportsLocked && normalizedProgress >= 100
-        ? "done"
-        : stateBucket === "problem" || mfoBucket === "problem" || reportBuckets.includes("problem")
-          ? "problem"
-          : mfoBucket !== "unknown"
-          ? mfoBucket
-          : reportBuckets.includes("review")
-            ? "review"
-            : stageBucket;
+    hasProblemState
+      ? "problem"
+      : hasReviewState
+        ? "review"
+        : stateBucket === "done" || mfoBucket === "done" || stageBucket === "done"
+          ? "done"
+          : context.reportsLocked && normalizedProgress >= 100
+            ? "done"
+            : mfoBucket !== "unknown"
+              ? mfoBucket
+              : stageBucket;
 
   if (bucket === "done") {
     return { bucket: "done" as const, label: "Дууссан" };
@@ -2362,27 +2369,7 @@ export async function loadGarbageVehicleOptions(
     : await loadCurrentInspectorVehicleScope(connectionOverrides);
   if (inspectorVehicleScopeIds.length) {
     const fleetBoard = await loadFleetVehicleBoard().catch(() => null);
-    if (fleetBoard?.allVehicles.length) {
-      const vehiclesById = new Map(fleetBoard.allVehicles.map((vehicle) => [vehicle.id, vehicle]));
-      const scopedBoardVehicles = inspectorVehicleScopeIds
-        .map((vehicleId) => vehiclesById.get(vehicleId))
-        .filter((vehicle): vehicle is NonNullable<typeof vehicle> => Boolean(vehicle));
-
-      if (scopedBoardVehicles.length) {
-        return scopedBoardVehicles.map((vehicle) => ({
-          id: vehicle.id,
-          label: vehicle.plate,
-          plate: vehicle.plate,
-          departmentName: vehicle.departmentName,
-          isRepair: vehicle.isRepair,
-          statusLabel: vehicle.stateLabel,
-          driverId: vehicle.responsibleDriverId,
-          driverName: vehicle.responsibleDriverName || vehicle.fleetDriverName || "",
-          loaderIds: [vehicle.loader1Id, vehicle.loader2Id].filter((id): id is number => Boolean(id)),
-          loaderNames: [vehicle.loader1Name, vehicle.loader2Name].filter((name): name is string => Boolean(name)),
-        }));
-      }
-    }
+    const vehiclesById = new Map((fleetBoard?.allVehicles ?? []).map((vehicle) => [vehicle.id, vehicle]));
 
     const scopedVehicles = await readFirstAvailable<GarbageVehicleRecord>(
       [
@@ -2404,16 +2391,38 @@ export async function loadGarbageVehicleOptions(
       connectionOverrides,
     );
 
-    return scopedVehicles
-      .filter((vehicle) => vehicle.mfo_garbage_work_create_allowed !== false)
-      .map((vehicle) => {
+    const scopedVehicleRecordsById = new Map(scopedVehicles.map((vehicle) => [vehicle.id, vehicle]));
+    return inspectorVehicleScopeIds
+      .map((vehicleId): GarbageVehicleOption | null => {
+        const boardVehicle = vehiclesById.get(vehicleId);
+        const scopedVehicle = scopedVehicleRecordsById.get(vehicleId);
+        if (!boardVehicle && !scopedVehicle) {
+          return null;
+        }
+        if (scopedVehicle?.mfo_garbage_work_create_allowed === false) {
+          return null;
+        }
+        const vehicle = scopedVehicle ?? {
+          id: vehicleId,
+          name: boardVehicle?.name,
+          license_plate: boardVehicle?.plate,
+        };
         const plate = vehicle.license_plate || vehicle.name || `Ð¢ÐµÑ…Ð½Ð¸Ðº #${vehicle.id}`;
-        return {
+        const vehicleOption: GarbageVehicleOption = {
           id: vehicle.id,
           label: plate,
           plate,
+          departmentName: boardVehicle?.departmentName,
+          isRepair: Boolean(boardVehicle?.isRepair),
+          statusLabel: boardVehicle?.stateLabel,
+          driverId: boardVehicle?.responsibleDriverId ?? null,
+          driverName: boardVehicle?.responsibleDriverName || boardVehicle?.fleetDriverName || "",
+          loaderIds: [boardVehicle?.loader1Id, boardVehicle?.loader2Id].filter((id): id is number => Boolean(id)),
+          loaderNames: [boardVehicle?.loader1Name, boardVehicle?.loader2Name].filter((name): name is string => Boolean(name)),
         };
-      });
+        return vehicleOption;
+      })
+      .filter((vehicle): vehicle is GarbageVehicleOption => vehicle !== null);
   }
 
   if (options.requireCurrentEmployeeScope) {

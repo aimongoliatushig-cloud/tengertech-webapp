@@ -1,5 +1,7 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { getRoleLabel, requireSession } from "@/lib/auth";
+import { requireSession,
+  getSessionRoleLabel,
+} from "@/lib/auth";
 import { getEmployee, getEmployees, requireHrSpecialistAccess } from "@/lib/hr";
 
 import { RegistryPage } from "../hr-client";
@@ -34,7 +36,7 @@ export default async function HrArchivePage({ searchParams }: PageProps) {
         title="Архив / ажлаас гаралт"
         subtitle="Ажлаас гарсан ажилтны шийдвэр, шалтгаан, хавсралтыг бүртгээд ажилтныг active жагсаалтаас архивлана"
         userName={session.name}
-        roleLabel={getRoleLabel(session.role)}
+        roleLabel={getSessionRoleLabel(session)}
         notificationCount={archivedEmployees.length}
         notificationNote="Архивын бүртгэл"
       />

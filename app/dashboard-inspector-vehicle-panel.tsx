@@ -1,26 +1,22 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { createPortal, useFormStatus } from "react-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useFormStatus } from "react-dom";
 import {
-  CheckCircle2,
+  CalendarDays,
+  ChevronLeft,
   ChevronRight,
-  Clock3,
-  Info,
+  Grid3X3,
+  List,
+  MapPin,
+  MoreHorizontal,
   Plus,
+  Search,
   Truck,
-  X,
 } from "lucide-react";
 
 import { createProjectAction } from "@/app/actions";
 import dashboardStyles from "@/app/dashboard-view.module.css";
-import { Badge } from "@/app/_components/ui/badge";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/app/_components/ui/card";
 import { cn } from "@/lib/utils";
 import { fixMojibakeText } from "@/lib/text-normalize";
 import { type DashboardSnapshot, type FleetVehicleBoard } from "@/lib/odoo";
@@ -34,6 +30,9 @@ type InspectorVehiclePanelProps = {
   fleetBoard: FleetVehicleBoard;
 };
 
+type InspectorFilter = "all" | "active" | "review" | "planned" | "done";
+type InspectorViewMode = "grid" | "list";
+
 function todayKey() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Ulaanbaatar",
@@ -43,6 +42,17 @@ function todayKey() {
   }).format(new Date());
 }
 
+function shiftDate(value: string, days: number) {
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(year, (month || 1) - 1, day || 1);
+  parsed.setDate(parsed.getDate() + days);
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(parsed);
+}
+
 function formatDateLabel(value: string) {
   const [year, month, day] = value.split("-").map(Number);
   const parsed = new Date(year, (month || 1) - 1, day || 1);
@@ -50,22 +60,10 @@ function formatDateLabel(value: string) {
     return value;
   }
 
-  const monthNames = [
-    "нэгдүгээр сарын",
-    "хоёрдугаар сарын",
-    "гуравдугаар сарын",
-    "дөрөвдүгээр сарын",
-    "тавдугаар сарын",
-    "зургаадугаар сарын",
-    "долоодугаар сарын",
-    "наймдугаар сарын",
-    "есдүгээр сарын",
-    "аравдугаар сарын",
-    "арван нэгдүгээр сарын",
-    "арван хоёрдугаар сарын",
-  ];
-
-  return `${parsed.getFullYear()} оны ${monthNames[parsed.getMonth()]} ${parsed.getDate()}`;
+  const weekdays = ["Ням", "Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба"];
+  return `${parsed.getFullYear()}.${String(parsed.getMonth() + 1).padStart(2, "0")}.${String(
+    parsed.getDate(),
+  ).padStart(2, "0")}, ${weekdays[parsed.getDay()]}`;
 }
 
 function normalizeText(value: string) {
@@ -73,29 +71,19 @@ function normalizeText(value: string) {
 }
 
 function isDoneTask(task: DashboardSnapshot["taskDirectory"][number]) {
-  return task.statusKey === "verified" || task.progress >= 100;
+  return task.statusKey === "verified";
 }
 
 function taskStatusLabel(task: DashboardSnapshot["taskDirectory"][number]) {
-  if (isDoneTask(task)) {
-    return "Дууссан";
-  }
-  if (task.statusKey === "working" || task.progress > 0) {
-    return "Ажиллаж байна";
-  }
-  if (task.statusKey === "review") {
-    return "Хянагдаж байна";
-  }
-  if (task.statusKey === "problem") {
-    return "Анхаарах";
-  }
-  return "Хүлээгдэж буй";
+  if (isDoneTask(task)) return "Дууссан";
+  if (task.statusKey === "review") return "Хянагдаж байгаа";
+  if (task.statusKey === "working" || task.progress > 0) return "Ажиллаж байна";
+  if (task.statusKey === "problem") return "Анхаарах";
+  return "Төлөвлөгдсөн";
 }
 
 function blockedVehicleStatusLabel(boardVehicle: FleetVehicleBoard["allVehicles"][number] | undefined) {
-  if (!boardVehicle) {
-    return "";
-  }
+  if (!boardVehicle) return "";
   if (boardVehicle.isRepair) {
     return boardVehicle.operationalStatusKey === "broken" ? "Эвдэрсэн" : "Засвартай";
   }
@@ -110,21 +98,15 @@ function VehicleLogo({ src }: { src?: string }) {
   const failed = Boolean(src && failedSrc === src);
 
   useEffect(() => {
-    if (!src) {
-      return;
-    }
+    if (!src) return;
 
     let active = true;
     const probe = new window.Image();
     probe.onload = () => {
-      if (active && probe.naturalWidth <= 0) {
-        setFailedSrc(src);
-      }
+      if (active && probe.naturalWidth <= 0) setFailedSrc(src);
     };
     probe.onerror = () => {
-      if (active) {
-        setFailedSrc(src);
-      }
+      if (active) setFailedSrc(src);
     };
     probe.src = src;
 
@@ -139,14 +121,7 @@ function VehicleLogo({ src }: { src?: string }) {
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt=""
-      onError={(event) => {
-        event.currentTarget.style.display = "none";
-        setFailedSrc(src);
-      }}
-    />
+    <img src={src} alt="" onError={() => setFailedSrc(src)} />
   );
 }
 
@@ -156,10 +131,11 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
   return (
     <button
       type="submit"
-      className={dashboardStyles.inspectorModalPrimary}
+      className={dashboardStyles.inspectorCreateSubmit}
       disabled={pending || disabled}
       aria-busy={pending}
     >
+      <Plus aria-hidden />
       {pending ? "Үүсгэж байна..." : "Даалгавар үүсгэх"}
     </button>
   );
@@ -173,23 +149,13 @@ export function DashboardInspectorVehiclePanel({
   fleetBoard,
 }: InspectorVehiclePanelProps) {
   const [activeVehicleId, setActiveVehicleId] = useState<number | null>(null);
-  const [modalVehicleId, setModalVehicleId] = useState<number | null>(null);
   const [workDate, setWorkDate] = useState(todayKey);
   const [subdistrictId, setSubdistrictId] = useState("");
-  const [selectedPointIds, setSelectedPointIds] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!modalVehicleId) {
-      return;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [modalVehicleId]);
+  const [pointId, setPointId] = useState("");
+  const [selectedPointIds, setSelectedPointIds] = useState<number[]>([]);
+  const [query, setQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<InspectorFilter>("all");
+  const [viewMode, setViewMode] = useState<InspectorViewMode>("grid");
 
   const subdistrictOptions = useMemo(() => {
     const options = new Map<string, string>();
@@ -203,24 +169,33 @@ export function DashboardInspectorVehiclePanel({
   }, [garbagePointOptions]);
 
   const filteredPoints = useMemo(() => {
-    if (!subdistrictId) {
-      return [];
-    }
+    if (!subdistrictId) return [];
     return garbagePointOptions.filter((point) =>
-      subdistrictId === "none"
-        ? !point.subdistrictId
-        : String(point.subdistrictId) === subdistrictId,
+      subdistrictId === "none" ? !point.subdistrictId : String(point.subdistrictId) === subdistrictId,
     );
   }, [garbagePointOptions, subdistrictId]);
 
+  const effectivePointId = filteredPoints.some((point) => String(point.id) === pointId) ? pointId : "";
+
+  const availablePointIds = useMemo(() => new Set(filteredPoints.map((point) => point.id)), [filteredPoints]);
+  const validSelectedPointIds = useMemo(() => {
+    return selectedPointIds.filter((pointId) => availablePointIds.has(pointId));
+  }, [availablePointIds, selectedPointIds]);
+
   const vehicleSummaries = useMemo(() => {
+    const subdistrictLabel = subdistrictOptions.find((option) => option.id === subdistrictId)?.label;
+    const pointLabel = garbagePointOptions.find((point) => String(point.id) === effectivePointId)?.name;
     return vehicles.map((vehicle) => {
       const boardVehicle = fleetBoard.allVehicles.find((item) => item.id === vehicle.id);
       const plate = vehicle.plate || vehicle.label || `Машин #${vehicle.id}`;
+      const modelName = boardVehicle?.modelName || boardVehicle?.name || vehicle.label || "Бүртгэлтэй машин";
       const searchablePlate = normalizeText(plate);
       const todayTasks = tasks.filter((task) => {
         const text = normalizeText(`${task.name} ${task.projectName} ${task.departmentName} ${task.operationTypeLabel}`);
-        return task.scheduledDate === workDate && text.includes(searchablePlate);
+        const matchesVehicle = task.scheduledDate === workDate && text.includes(searchablePlate);
+        const matchesSubdistrict = !subdistrictLabel || text.includes(normalizeText(subdistrictLabel));
+        const matchesPoint = !pointLabel || text.includes(normalizeText(pointLabel));
+        return matchesVehicle && matchesSubdistrict && matchesPoint;
       });
       const blockedStatusLabel = blockedVehicleStatusLabel(boardVehicle);
       const done = blockedStatusLabel ? todayTasks.length : todayTasks.filter(isDoneTask).length;
@@ -230,378 +205,392 @@ export function DashboardInspectorVehiclePanel({
           ? 100
           : Math.round(todayTasks.reduce((sum, task) => sum + Math.max(0, Math.min(100, task.progress)), 0) / total)
         : 0;
-      const isStopped = Boolean(blockedStatusLabel);
-      const statusTone = isStopped ? "red" : total ? "green" : "amber";
-      const statusLabel = blockedStatusLabel || (total ? "Ажиллаж байна" : "Ачаалалтай");
-      const todayWeight =
-        boardVehicle?.weightReports.find((report) => report.reportDate === workDate)?.weightLabel ??
-        "0 кг";
+      const hasReview = todayTasks.some((task) => task.statusKey === "review" || task.statusKey === "problem");
+      const bucket: InspectorFilter = blockedStatusLabel
+        ? "review"
+        : total > 0 && done === total
+          ? "done"
+          : hasReview
+            ? "review"
+            : total > 0
+              ? "active"
+              : "planned";
+      const statusLabel = blockedStatusLabel || (bucket === "done" ? "Дууссан" : bucket === "planned" ? "Төлөвлөгдсөн" : bucket === "review" ? "Хянагдаж байгаа" : "Ажилтай");
 
       return {
         vehicle,
         boardVehicle,
         plate,
+        modelName,
         tasks: todayTasks,
         total,
         done,
         pending: Math.max(total - done, 0),
         progress,
-        weightLabel: todayWeight,
-        statusTone,
+        bucket,
         statusLabel,
-        isStopped,
+        isStopped: Boolean(blockedStatusLabel),
       };
     });
-  }, [fleetBoard.allVehicles, tasks, vehicles, workDate]);
+  }, [effectivePointId, fleetBoard.allVehicles, garbagePointOptions, subdistrictId, subdistrictOptions, tasks, vehicles, workDate]);
+
+  const filteredSummaries = useMemo(() => {
+    const normalizedQuery = normalizeText(query);
+    return vehicleSummaries.filter((summary) => {
+      const matchesFilter = activeFilter === "all" || summary.bucket === activeFilter;
+      const matchesQuery =
+        !normalizedQuery ||
+        normalizeText(`${summary.plate} ${summary.modelName} ${summary.vehicle.driverName ?? ""}`).includes(normalizedQuery);
+      return matchesFilter && matchesQuery;
+    });
+  }, [activeFilter, query, vehicleSummaries]);
 
   const activeSummary =
-    vehicleSummaries.find((summary) => summary.vehicle.id === activeVehicleId) ?? vehicleSummaries[0] ?? null;
-  const modalSummary = vehicleSummaries.find((summary) => summary.vehicle.id === modalVehicleId) ?? null;
-  const modalVehicle = modalSummary?.vehicle ?? null;
-  const selectedSubdistrictLabel =
-    subdistrictOptions.find((option) => option.id === subdistrictId)?.label ?? "";
-  const modalVehicleLabel = modalSummary?.plate ?? "";
-  const generatedName = modalSummary
-    ? `${modalVehicleLabel} / ${workDate}${selectedSubdistrictLabel ? ` - ${selectedSubdistrictLabel}` : ""}`
+    filteredSummaries.find((summary) => summary.vehicle.id === activeVehicleId) ?? filteredSummaries[0] ?? null;
+  const selectedSubdistrictLabel = subdistrictOptions.find((option) => option.id === subdistrictId)?.label ?? "";
+  const selectedPoint = filteredPoints.find((point) => String(point.id) === effectivePointId) ?? null;
+  const selectedPoints = filteredPoints.filter((point) => validSelectedPointIds.includes(point.id));
+  const generatedName = activeSummary
+    ? `${activeSummary.plate} / ${workDate}${
+        selectedPoints.length > 1
+          ? ` - ${selectedPoints.length} цэг`
+          : selectedPoints[0]
+            ? ` - ${selectedPoints[0].name}`
+            : selectedPoint
+              ? ` - ${selectedPoint.name}`
+              : selectedSubdistrictLabel
+                ? ` - ${selectedSubdistrictLabel}`
+                : ""
+      }`
     : "";
-
-  function openTaskModal(vehicleId: number) {
-    const summary = vehicleSummaries.find((item) => item.vehicle.id === vehicleId);
-    if (summary?.isStopped) {
-      return;
-    }
-    setModalVehicleId(vehicleId);
-    setSubdistrictId("");
-    setSelectedPointIds([]);
-  }
-
-  function closeModal() {
-    setModalVehicleId(null);
-    setSubdistrictId("");
-    setSelectedPointIds([]);
-  }
-
-  function togglePoint(pointId: number) {
-    const value = String(pointId);
+  const toggleSelectedPoint = (pointId: number) => {
     setSelectedPointIds((current) =>
-      current.includes(value) ? current.filter((item) => item !== value) : [...current, value],
+      current.includes(pointId) ? current.filter((item) => item !== pointId) : [...current, pointId],
     );
-  }
-
-  function selectAllFilteredPoints() {
-    setSelectedPointIds(filteredPoints.map((point) => String(point.id)));
-  }
-
-  function clearSelectedPoints() {
-    setSelectedPointIds([]);
-  }
-
-  function renderVehicleDetail(className?: string) {
-    if (!activeSummary) {
-      return null;
-    }
-
-    return (
-      <section className={cn(dashboardStyles.inspectorVehicleDetail, className)}>
-        <div className={dashboardStyles.inspectorVehicleDetailHeader}>
-          <div>
-            <span>Сонгосон өдрийн ажил</span>
-            <h3>{activeSummary.plate} / {workDate}</h3>
-          </div>
-          <button type="button" onClick={() => openTaskModal(activeSummary.vehicle.id)} disabled={activeSummary.isStopped}>
-            <Plus aria-hidden />
-            {activeSummary.isStopped ? activeSummary.statusLabel : "Даалгавар нэмэх"}
-          </button>
-        </div>
-
-        {activeSummary.isStopped ? (
-          <div className={dashboardStyles.inspectorVehicleNotice}>
-            <Info aria-hidden />
-            <span>
-              Энэ машин {activeSummary.statusLabel.toLowerCase()} тул хяналтын ажил нэмэх боломжгүй. Нээлттэй ажил байвал систем хаасан төлөвт оруулна.
-            </span>
-          </div>
-        ) : null}
-
-        <div className={dashboardStyles.inspectorVehicleSummaryRow}>
-          <span><strong>{activeSummary.total}</strong> даалгавар</span>
-          <span><strong>{activeSummary.done}</strong> дууссан</span>
-          <span><strong>{activeSummary.pending}</strong> гүйцэтгээгүй</span>
-          <span><strong>{activeSummary.weightLabel}</strong> ачаа</span>
-        </div>
-
-        <div className={dashboardStyles.inspectorTaskRows}>
-          {activeSummary.tasks.slice(0, 8).map((task) => {
-            const done = isDoneTask(task);
-            return (
-              <a key={task.id} href={task.href} className={dashboardStyles.inspectorTaskRow}>
-                <span className={cn(
-                  dashboardStyles.inspectorTaskStatusIcon,
-                  done && dashboardStyles.inspectorTaskStatusIconDone,
-                )}>
-                  {done ? <CheckCircle2 /> : <Clock3 />}
-                </span>
-                <span>
-                  <strong>{fixMojibakeText(task.name)}</strong>
-                  <small>{taskStatusLabel(task)}</small>
-                </span>
-                <ChevronRight />
-              </a>
-            );
-          })}
-          {!activeSummary.tasks.length ? (
-            <p className={dashboardStyles.inspectorEmptyNote}>
-              Энэ машин дээр сонгосон өдөр даалгавар нэмэгдээгүй байна.
-            </p>
-          ) : null}
-        </div>
-      </section>
-    );
-  }
+  };
+  const filterItems: Array<{ key: InspectorFilter; label: string; value: number }> = [
+    { key: "all", label: "Бүгд", value: vehicleSummaries.length },
+    { key: "active", label: "Ажилтай", value: vehicleSummaries.filter((summary) => summary.bucket === "active").length },
+    { key: "review", label: "Хянагдаж байгаа", value: vehicleSummaries.filter((summary) => summary.bucket === "review").length },
+    { key: "planned", label: "Төлөвлөгдсөн", value: vehicleSummaries.filter((summary) => summary.bucket === "planned").length },
+    { key: "done", label: "Дууссан", value: vehicleSummaries.filter((summary) => summary.bucket === "done").length },
+  ];
 
   return (
-    <>
-      <Card id="my-vehicles" className={dashboardStyles.taskListCard}>
-        <CardHeader className={dashboardStyles.taskListHeader}>
-          <div className={dashboardStyles.taskListHeaderText}>
-            <CardTitle>Миний машин</CardTitle>
-            <CardDescription>
-              Танд хариуцуулсан машинууд. Машинаа сонгоод өнөөдрийн даалгавар, гүйцэтгэлээ нэг дор харна.
-            </CardDescription>
-          </div>
-          <div className={dashboardStyles.inspectorHeaderTools}>
-            <label>
-              <span>Огноо</span>
-              <input
-                type="date"
-                value={workDate}
-                onChange={(event) => setWorkDate(event.target.value || todayKey())}
-              />
-            </label>
-            <Badge tone={vehicles.length ? "green" : "slate"}>{vehicles.length} машин</Badge>
-          </div>
-        </CardHeader>
-
-        {vehicles.length ? (
-          <>
-            {activeSummary && !activeSummary.total && !activeSummary.isStopped ? (
-              <div className={dashboardStyles.inspectorVehicleNotice}>
-                <Info aria-hidden />
-                <span>Энэ машин дээр сонгосон өдөр даалгавар нэмэгдээгүй байна.</span>
-              </div>
-            ) : null}
-            <div className={dashboardStyles.assignedVehicleGrid}>
-              {vehicleSummaries.map((summary) => {
-                const isActive = activeSummary?.vehicle.id === summary.vehicle.id;
-                return (
-                  <Fragment key={summary.vehicle.id}>
-                  <button
-                    type="button"
-                    className={cn(
-                      dashboardStyles.assignedVehicleCard,
-                      isActive && dashboardStyles.assignedVehicleCardActive,
-                      summary.isStopped && dashboardStyles.assignedVehicleCardBlocked,
-                    )}
-                    onClick={() => setActiveVehicleId(summary.vehicle.id)}
-                  >
-                    <span className={dashboardStyles.assignedVehicleIcon}>
-                      <VehicleLogo src={summary.boardVehicle?.imageUrl} />
-                    </span>
-                    <span className={dashboardStyles.assignedVehicleContent}>
-                      <strong>{summary.plate}</strong>
-                      <small>{workDate}</small>
-                    </span>
-                    <span
-                      className={cn(
-                        dashboardStyles.assignedVehicleStatus,
-                        summary.statusTone === "green" && dashboardStyles.assignedVehicleStatusGreen,
-                        summary.statusTone === "amber" && dashboardStyles.assignedVehicleStatusAmber,
-                        summary.statusTone === "red" && dashboardStyles.assignedVehicleStatusRed,
-                      )}
-                    >
-                      <i aria-hidden />
-                      {summary.statusLabel}
-                    </span>
-                    <ChevronRight className={dashboardStyles.assignedVehicleChevron} aria-hidden />
-                    <span className={dashboardStyles.assignedVehicleStats}>
-                      <span>
-                        <small>Даалгавар</small>
-                        <strong>{summary.total}</strong>
-                      </span>
-                      <span>
-                        <small>Дууссан</small>
-                        <strong>{summary.done}</strong>
-                      </span>
-                      <span>
-                        <small>Ачаа</small>
-                        <strong>{summary.weightLabel}</strong>
-                      </span>
-                    </span>
-                    <span className={dashboardStyles.assignedVehicleProgress}>
-                      <span>
-                        <small>Гүйцэтгэл</small>
-                        <strong>{summary.progress}%</strong>
-                      </span>
-                      <i style={{ inlineSize: `${summary.progress}%` }} />
-                    </span>
-                  </button>
-                  {isActive ? renderVehicleDetail(dashboardStyles.inspectorVehicleDetailMobile) : null}
-                  </Fragment>
-                );
-              })}
-            </div>
-
-            {renderVehicleDetail(dashboardStyles.inspectorVehicleDetailDesktop)}
-          </>
-        ) : (
-          <div className={dashboardStyles.taskListEmpty}>
-            <span className={dashboardStyles.taskListEmptyIcon}>
-              <Truck />
-            </span>
-            <span className="mt-2 block text-[#1F2B24]">Танд оноогдсон машин бүртгэгдээгүй байна.</span>
-            <small className="mt-1 block font-medium text-[#8A978E]">
-              Хог тээвэрлэлтийн тохиргоонд байцаагч дээр хариуцах машиныг онооно.
-            </small>
-          </div>
-        )}
-      </Card>
-
-      {modalVehicle && modalSummary && typeof document !== "undefined"
-        ? createPortal(
-        <div className={dashboardStyles.inspectorModalBackdrop} role="presentation" onClick={closeModal}>
-          <section
-            className={dashboardStyles.inspectorModal}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="inspector-vehicle-task-title"
-            onClick={(event) => event.stopPropagation()}
+    <section id="my-vehicles" className={dashboardStyles.inspectorVehicleBoard}>
+      <div className={dashboardStyles.inspectorVehicleToolbar}>
+        <div className={dashboardStyles.inspectorFilterPills}>
+          {filterItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={cn(item.key === activeFilter && dashboardStyles.inspectorFilterPillActive)}
+              onClick={() => setActiveFilter(item.key)}
+            >
+              {item.label}
+              <span>{item.value}</span>
+            </button>
+          ))}
+        </div>
+        <label className={dashboardStyles.inspectorSearchField}>
+          <Search aria-hidden />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Хайх (дугаар, машин, хороо...)"
+          />
+        </label>
+        <div className={dashboardStyles.inspectorViewToggle} aria-label="Харагдац">
+          <button
+            type="button"
+            className={viewMode === "grid" ? dashboardStyles.inspectorViewToggleActive : undefined}
+            onClick={() => setViewMode("grid")}
+            aria-label="Картаар харах"
           >
-            <div className={dashboardStyles.inspectorModalHeader}>
-              <div>
-                <span>Шинэ даалгавар</span>
-                <h2 id="inspector-vehicle-task-title">{modalVehicleLabel}</h2>
-                <p>Огноо: {formatDateLabel(workDate)}. Хороо болон хогийн цэгээ сонгоно.</p>
-              </div>
-              <button type="button" className={dashboardStyles.inspectorModalClose} onClick={closeModal}>
-                <X aria-hidden />
-                <span>Хаах</span>
-              </button>
-            </div>
+            <Grid3X3 aria-hidden />
+          </button>
+          <button
+            type="button"
+            className={viewMode === "list" ? dashboardStyles.inspectorViewToggleActive : undefined}
+            onClick={() => setViewMode("list")}
+            aria-label="Жагсаалтаар харах"
+          >
+            <List aria-hidden />
+          </button>
+        </div>
+      </div>
 
-            <form action={createProjectAction} className={dashboardStyles.inspectorTaskForm}>
-              <input type="hidden" name="operation_unit" value="garbage_transport" />
-              <input type="hidden" name="department_id" value={departmentId ?? ""} />
-              <input type="hidden" name="garbage_vehicle_id" value={modalVehicle.id} />
-              <input type="hidden" name="name" value={generatedName} />
-              <input type="hidden" name="garbage_loader_override" value="1" />
-              {(modalVehicle.loaderIds ?? []).map((loaderId) => (
-                <input key={loaderId} type="hidden" name="garbage_loader_employee_ids" value={loaderId} />
-              ))}
-
-              <label className={dashboardStyles.inspectorField}>
-                <span>Огноо</span>
-                <input
-                  type="date"
-                  name="start_date"
-                  value={workDate}
-                  onChange={(event) => setWorkDate(event.target.value || todayKey())}
-                  required
-                />
-              </label>
-
-              <label className={dashboardStyles.inspectorField}>
-                <span>Хороо</span>
-                <select
-                  name="garbage_subdistrict_id"
-                  value={subdistrictId}
-                  onChange={(event) => {
-                    setSubdistrictId(event.target.value);
-                    setSelectedPointIds([]);
-                  }}
-                  required
-                >
-                  <option value="">Хороо сонгох</option>
-                  {subdistrictOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className={dashboardStyles.inspectorPointSection}>
-                <div className={dashboardStyles.inspectorPointHeader}>
-                  <div>
-                    <span>Хогийн цэг</span>
-                    <strong>{selectedPointIds.length} сонгосон</strong>
-                  </div>
-                  <div className={dashboardStyles.inspectorPointTools}>
-                    <button
-                      type="button"
-                      onClick={selectAllFilteredPoints}
-                      disabled={!filteredPoints.length}
-                    >
-                      Бүгд
-                    </button>
-                    <button
-                      type="button"
-                      onClick={clearSelectedPoints}
-                      disabled={!selectedPointIds.length}
-                    >
-                      Цэвэрлэх
-                    </button>
-                  </div>
-                </div>
-                {subdistrictId ? (
-                  filteredPoints.length ? (
-                    <div className={dashboardStyles.inspectorPointGrid}>
-                      {filteredPoints.map((point) => (
-                        <label
-                          key={point.id}
-                          className={cn(
-                            dashboardStyles.inspectorPoint,
-                            selectedPointIds.includes(String(point.id)) && dashboardStyles.inspectorPointSelected,
-                          )}
-                        >
-                          <input
-                            type="checkbox"
-                            name="garbage_point_ids"
-                            value={point.id}
-                            checked={selectedPointIds.includes(String(point.id))}
-                            onChange={() => togglePoint(point.id)}
-                          />
-                          <span>{point.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className={dashboardStyles.inspectorEmptyNote}>
-                      Энэ хороонд танд оноогдсон хогийн цэг алга.
-                    </p>
-                  )
-                ) : (
-                  <p className={dashboardStyles.inspectorEmptyNote}>Эхлээд хороогоо сонгоно уу.</p>
+      {filteredSummaries.length ? (
+        <div
+          className={cn(
+            dashboardStyles.inspectorVehicleScroller,
+            viewMode === "list" && dashboardStyles.inspectorVehicleScrollerList,
+          )}
+        >
+          {filteredSummaries.map((summary) => {
+            const isActive = activeSummary?.vehicle.id === summary.vehicle.id;
+            return (
+              <button
+                key={summary.vehicle.id}
+                type="button"
+                className={cn(
+                  dashboardStyles.inspectorVehicleCard,
+                  isActive && dashboardStyles.inspectorVehicleCardActive,
+                  summary.isStopped && dashboardStyles.inspectorVehicleCardBlocked,
                 )}
-              </div>
+                onClick={() => setActiveVehicleId(summary.vehicle.id)}
+              >
+                <span className={dashboardStyles.inspectorVehicleImage}>
+                  <VehicleLogo src={summary.boardVehicle?.imageUrl} />
+                  <span>{summary.statusLabel}</span>
+                </span>
+                <span className={dashboardStyles.inspectorVehicleCardBody}>
+                  <strong>{summary.plate}</strong>
+                  <small>{summary.modelName}</small>
+                  <span className={dashboardStyles.inspectorVehicleCardStats}>
+                    <span>
+                      <small>Ажил</small>
+                      <b>{summary.total}</b>
+                    </span>
+                    <span>
+                      <small>Дууссан</small>
+                      <b>{summary.done}</b>
+                    </span>
+                  </span>
+                  <span className={dashboardStyles.inspectorVehicleProgress}>
+                    <i style={{ inlineSize: `${summary.progress}%` }} />
+                    <em>{summary.progress}%</em>
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className={dashboardStyles.inspectorEmptyState}>
+          <Truck aria-hidden />
+          <strong>Танд оноогдсон машин олдсонгүй.</strong>
+          <span>Хайлт эсвэл төлөвийн шүүлтүүрээ өөрчлөөд шалгана уу.</span>
+        </div>
+      )}
 
-              {!departmentId ? (
-                <p className={dashboardStyles.inspectorErrorNote}>
-                  Хэлтсийн тохиргоо олдсонгүй. Хог тээвэрлэлтийн хэлтэс бүртгэлтэй эсэхийг шалгана уу.
-                </p>
-              ) : null}
+      <div className={dashboardStyles.inspectorControlBar}>
+        <button type="button" onClick={() => setWorkDate((current) => shiftDate(current, -1))} aria-label="Өмнөх өдөр">
+          <ChevronLeft aria-hidden />
+        </button>
+        <label>
+          <CalendarDays aria-hidden />
+          <input type="date" value={workDate} onChange={(event) => setWorkDate(event.target.value || todayKey())} />
+          <span>{formatDateLabel(workDate)}</span>
+        </label>
+        <button type="button" onClick={() => setWorkDate((current) => shiftDate(current, 1))} aria-label="Дараах өдөр">
+          <ChevronRight aria-hidden />
+        </button>
+        <select
+          value={subdistrictId}
+          onChange={(event) => {
+            setSubdistrictId(event.target.value);
+            setPointId("");
+            setSelectedPointIds([]);
+          }}
+        >
+          <option value="">Хороо: Бүгд</option>
+          {subdistrictOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <select value={effectivePointId} onChange={(event) => setPointId(event.target.value)} disabled={!subdistrictId}>
+          <option value="">Хогийн цэг: Бүгд</option>
+          {filteredPoints.map((point) => (
+            <option key={point.id} value={point.id}>
+              {point.name}
+            </option>
+          ))}
+        </select>
+        <button type="button" className={dashboardStyles.inspectorTodayButton} onClick={() => setWorkDate(todayKey())}>
+          <CalendarDays aria-hidden />
+          Өнөөдөр
+        </button>
+      </div>
 
-              <div className={dashboardStyles.inspectorModalActions}>
-                <button type="button" className={dashboardStyles.inspectorModalSecondary} onClick={closeModal}>
-                  Болих
-                </button>
-                <SubmitButton disabled={!departmentId || !subdistrictId || !selectedPointIds.length} />
+      <div className={dashboardStyles.inspectorWorkspaceGrid}>
+        <section className={dashboardStyles.inspectorSelectedPanel}>
+          {activeSummary ? (
+            <>
+              <header>
+                <h2>
+                  Сонгосон машин: {activeSummary.plate} <span>({activeSummary.modelName})</span>
+                </h2>
+                <p>Өнөөдрийн даалгавар ({activeSummary.total})</p>
+              </header>
+              <div className={dashboardStyles.inspectorTaskTimeline}>
+                {activeSummary.tasks.map((task) => {
+                  const done = isDoneTask(task);
+                  return (
+                    <a key={task.id} href={task.href} className={dashboardStyles.inspectorTimelineTask}>
+                      <span className={cn(dashboardStyles.inspectorTimelineDot, done && dashboardStyles.inspectorTimelineDotDone)} />
+                      <span className={dashboardStyles.inspectorTimelineBody}>
+                        <strong>{fixMojibakeText(task.name)}</strong>
+                        <small>
+                          <MapPin aria-hidden />
+                          {fixMojibakeText(task.projectName || task.operationTypeLabel || "Хог тээвэрлэх")}
+                        </small>
+                      </span>
+                      <span
+                        className={cn(
+                          dashboardStyles.inspectorTimelineBadge,
+                          task.statusKey === "review" && dashboardStyles.inspectorTimelineBadgeReview,
+                          done && dashboardStyles.inspectorTimelineBadgeDone,
+                        )}
+                      >
+                        {taskStatusLabel(task)}
+                      </span>
+                      <span className={dashboardStyles.inspectorTimelineDate}>Огноо: {workDate.replaceAll("-", ".")}</span>
+                      <MoreHorizontal aria-hidden />
+                    </a>
+                  );
+                })}
+                {!activeSummary.tasks.length ? (
+                  <div className={dashboardStyles.inspectorTimelineEmpty}>
+                    <CalendarDays aria-hidden />
+                    <span>Төлөвлөгдсөн даалгавар байхгүй байна.</span>
+                  </div>
+                ) : null}
               </div>
-            </form>
+            </>
+          ) : (
+            <div className={dashboardStyles.inspectorEmptyState}>
+              <Truck aria-hidden />
+              <strong>Машин сонгоно уу.</strong>
+            </div>
+          )}
+        </section>
+
+        <form action={createProjectAction} className={dashboardStyles.inspectorCreatePanel}>
+          <h2>Шинэ даалгавар нэмэх</h2>
+          <input type="hidden" name="operation_unit" value="garbage_transport" />
+          <input type="hidden" name="department_id" value={departmentId ?? ""} />
+          <input type="hidden" name="garbage_vehicle_id" value={activeSummary?.vehicle.id ?? ""} />
+          <input type="hidden" name="name" value={generatedName} />
+          <input type="hidden" name="garbage_loader_override" value="1" />
+          {(activeSummary?.vehicle.loaderIds ?? []).map((loaderId) => (
+            <input key={loaderId} type="hidden" name="garbage_loader_employee_ids" value={loaderId} />
+          ))}
+
+          <label>
+            <span>Машин сонгох *</span>
+            <select
+              value={activeSummary?.vehicle.id ?? ""}
+              onChange={(event) => setActiveVehicleId(Number(event.target.value))}
+              required
+            >
+              {vehicleSummaries.map((summary) => (
+                <option key={summary.vehicle.id} value={summary.vehicle.id}>
+                  {summary.plate} - {summary.modelName}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Хороо сонгох *</span>
+            <select
+              name="garbage_subdistrict_id"
+              value={subdistrictId}
+              onChange={(event) => {
+                setSubdistrictId(event.target.value);
+                setPointId("");
+                setSelectedPointIds([]);
+              }}
+              required
+            >
+              <option value="">Хороо сонгох</option>
+              {subdistrictOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <section className={dashboardStyles.inspectorCreatePointSection}>
+            <div className={dashboardStyles.inspectorCreatePointHeader}>
+              <span>Хогийн цэг сонгох *</span>
+              <strong>{validSelectedPointIds.length} сонгосон</strong>
+            </div>
+            {validSelectedPointIds.map((selectedPointId) => (
+              <input key={selectedPointId} type="hidden" name="garbage_point_ids" value={selectedPointId} />
+            ))}
+            {filteredPoints.length ? (
+              <>
+                <div className={dashboardStyles.inspectorCreatePointTools}>
+                  <button type="button" onClick={() => setSelectedPointIds(filteredPoints.map((point) => point.id))}>
+                    Бүгдийг сонгох
+                  </button>
+                  <button type="button" onClick={() => setSelectedPointIds([])} disabled={!validSelectedPointIds.length}>
+                    Цэвэрлэх
+                  </button>
+                </div>
+                <div className={dashboardStyles.inspectorCreatePointGrid}>
+                  {filteredPoints.map((point) => {
+                    const checked = validSelectedPointIds.includes(point.id);
+                    return (
+                      <label
+                        key={point.id}
+                        className={cn(
+                          dashboardStyles.inspectorCreatePoint,
+                          checked && dashboardStyles.inspectorCreatePointSelected,
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleSelectedPoint(point.id)}
+                        />
+                        <span>{point.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <p className={dashboardStyles.inspectorCreateEmptyNote}>
+                Эхлээд хороо сонгоно уу. Дараа нь тухайн хорооны нэг эсвэл олон хогийн цэгийг сонгоод даалгавар үүсгэнэ.
+              </p>
+            )}
           </section>
-        </div>,
-          document.body,
-        )
-        : null}
-    </>
+
+          <label>
+            <span>Огноо *</span>
+            <input type="date" name="start_date" value={workDate} onChange={(event) => setWorkDate(event.target.value || todayKey())} required />
+          </label>
+
+          <label>
+            <span>Тайлбар</span>
+            <textarea name="project_description" placeholder="Тайлбар (заавал биш)..." rows={3} />
+          </label>
+
+          {!departmentId ? (
+            <p className={dashboardStyles.inspectorCreateError}>Хог тээвэрлэлтийн хэлтэс олдсонгүй. Тохиргоогоо шалгана уу.</p>
+          ) : null}
+
+          <div className={dashboardStyles.inspectorCreateActions}>
+            <button
+              type="reset"
+              onClick={() => {
+                setPointId("");
+                setSelectedPointIds([]);
+              }}
+            >
+              Цуцлах
+            </button>
+            <SubmitButton disabled={!departmentId || !activeSummary || activeSummary.isStopped || !subdistrictId || !validSelectedPointIds.length} />
+          </div>
+        </form>
+      </div>
+    </section>
   );
 }
