@@ -336,6 +336,8 @@ export type GarbageVehicleOption = {
   plate: string;
   departmentName?: string;
   isRepair?: boolean;
+  isOperational?: boolean;
+  isArchived?: boolean;
   statusLabel?: string;
   driverId?: number | null;
   driverName?: string;
@@ -2534,6 +2536,8 @@ export async function loadGarbageVehicleOptions(
           plate,
           departmentName: boardVehicle?.departmentName,
           isRepair: Boolean(boardVehicle?.isRepair),
+          isOperational: boardVehicle?.isOperational,
+          isArchived: boardVehicle?.isArchived,
           statusLabel: boardVehicle?.stateLabel,
           driverId: boardVehicle?.responsibleDriverId ?? null,
           driverName: boardVehicle?.responsibleDriverName || boardVehicle?.fleetDriverName || "",
@@ -2658,6 +2662,8 @@ export async function loadGarbageVehicleOptions(
       plate: boardVehicle?.plate || plate,
       departmentName: boardVehicle?.departmentName || vehicle.departmentName,
       isRepair: Boolean(boardVehicle?.isRepair),
+      isOperational: boardVehicle?.isOperational,
+      isArchived: boardVehicle?.isArchived,
       statusLabel: boardVehicle?.stateLabel,
       driverId: boardVehicle?.responsibleDriverId ?? null,
       driverName: boardVehicle?.responsibleDriverName || boardVehicle?.fleetDriverName || "",

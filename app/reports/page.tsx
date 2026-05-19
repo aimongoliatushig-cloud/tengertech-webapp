@@ -40,7 +40,7 @@ import {
   isProcurementSetupError,
   loadProcurementDashboard,
 } from "@/lib/procurement";
-import type { RoleGroupFlags } from "@/lib/roles";
+import { isReportPlanningSpecialist, type RoleGroupFlags } from "@/lib/roles";
 import { loadGarbageVehicleOptions } from "@/lib/workspace";
 
 import { GarbageVehicleSelect } from "./garbage-vehicle-select";
@@ -110,6 +110,30 @@ type ReportGroup = {
   departmentName: string;
   reports: FeedReport[];
   latestSubmittedAt: string;
+};
+
+const REPORT_OPERATIONS_GROUP_NAMES = new Set([
+  "Авто бааз, хог тээвэрлэлтийн хэлтэс",
+  "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
+  "Тохижилтын хэлтэс",
+]);
+
+const REPORT_DEPARTMENT_HINTS: Record<string, { eyebrow: string; note: string; initials: string }> = {
+  "Авто бааз, хог тээвэрлэлтийн хэлтэс": {
+    eyebrow: "Авто бааз",
+    note: "Хог тээвэр, машин техник, рейс болон жингийн тайлан",
+    initials: "АБ",
+  },
+  "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс": {
+    eyebrow: "Ногоон байгууламж",
+    note: "Ногоон байгууламж, цэвэрлэгээний ажлын гүйцэтгэл",
+    initials: "НБ",
+  },
+  "Тохижилтын хэлтэс": {
+    eyebrow: "Тохижилт",
+    note: "Гудамж, зам талбай, засвар тохижилтын тайлан",
+    initials: "ТХ",
+  },
 };
 
 function getDepartmentParam(value?: string | string[]) {
@@ -262,6 +286,7 @@ export const dynamic = "force-dynamic";
 export default async function ReportsPage({ searchParams }: PageProps) {
   const session = await requireSession();
   const canViewAllReports = canViewAllWorkspaceReports(session);
+  const reportOnlyMode = session.role === "report_specialist" || isReportPlanningSpecialist(session);
   const workerMode = isWorkerOnly(session);
   if (workerMode && !canViewAllReports) {
     redirect("/");
@@ -274,9 +299,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     ? Promise.resolve(null)
     : loadSessionDepartmentName(session);
 
-  const canCreateProject = hasCapability(session, "create_projects");
-  const canCreateTasks = hasCapability(session, "create_tasks");
-  const canWriteReports = hasCapability(session, "write_workspace_reports");
+  const canCreateProject = !reportOnlyMode && hasCapability(session, "create_projects");
+  const canCreateTasks = !reportOnlyMode && hasCapability(session, "create_tasks");
+  const canWriteReports = !reportOnlyMode && hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const masterMode = isMasterRole(session.role);
@@ -400,6 +425,39 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     : "Мастер зөвхөн өөрт хариуцуулсан ажил, багийн илгээсэн тайланг ажлаар нь бүлэглэж хянана.";
   const totalImages = filteredReports.reduce((sum, report) => sum + report.imageCount, 0);
   const totalAudios = filteredReports.reduce((sum, report) => sum + report.audioCount, 0);
+  const operationalReportGroups = DEPARTMENT_GROUPS.filter((group) =>
+    REPORT_OPERATIONS_GROUP_NAMES.has(group.name),
+  );
+  const visibleReportGroups = operationalReportGroups;
+  const selectedGroupReportCount = selectedGroup
+    ? countReportsByGroup(selectedGroup, snapshot.reports)
+    : filteredReports.length;
+  const reportDepartmentCards = visibleReportGroups.map((group) => {
+    const groupUnits = getAvailableUnits(group);
+    const hrefParams = new URLSearchParams();
+    hrefParams.set("department", group.name);
+    if (groupUnits[0]) {
+      hrefParams.set("unit", groupUnits[0]);
+    }
+    const groupReports = snapshot.reports.filter((report) => matchesDepartmentGroup(group, report.departmentName));
+    const groupReviewQueue = snapshot.reviewQueue.filter((item) => matchesDepartmentGroup(group, item.departmentName));
+    const hint = REPORT_DEPARTMENT_HINTS[group.name] ?? {
+      eyebrow: group.name,
+      note: "Хэлтсийн ажлын гүйцэтгэл, хавсралт болон хяналтын тайлан",
+      initials: "Т",
+    };
+
+    return {
+      group,
+      href: `/reports?${hrefParams.toString()}`,
+      reportCount: groupReports.length,
+      reviewCount: groupReviewQueue.length,
+      projectCount: new Set(groupReports.map((report) => report.projectName)).size,
+      imageCount: groupReports.reduce((sum, report) => sum + report.imageCount, 0),
+      isActive: selectedGroup?.name === group.name,
+      ...hint,
+    };
+  });
   const isGarbageTransportView =
     selectedUnit === "Хог тээвэрлэлт" ||
     (!selectedUnit &&
@@ -858,13 +916,18 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               groupFlags={session.groupFlags}
               masterMode={masterMode}
               departmentScopeName={scopedDepartmentName}
+              reportOnlyMode={reportOnlyMode}
             />
           </aside>
 
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
-              title="Тайлан"
-              subtitle="Өдрийн тайлан, зураг, аудио урсгал"
+              title={reportOnlyMode ? "Тайлангийн төв" : "Тайлан"}
+              subtitle={
+                reportOnlyMode
+                  ? "Хэлтэс бүрийн гүйцэтгэл, зурагтай нотолгоо, жингийн тайланг нэг дороос харна"
+                  : "Өдрийн тайлан, зураг, аудио урсгал"
+              }
               userName={session.name}
               roleLabel={getSessionRoleLabel(session)}
               notificationCount={filteredReviewQueue.length}
@@ -875,10 +938,18 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               <>
             <header className={styles.pageHeader}>
               <div className={styles.titleBlock}>
-                <span className={styles.kicker}>Тайлан</span>
-                <h1>{masterMode ? masterReportTitle : "Хэлтсийн тайлан"}</h1>
+                <span className={styles.kicker}>{reportOnlyMode ? "Тайлангийн ажилтан" : "Тайлан"}</span>
+                <h1>
+                  {reportOnlyMode
+                    ? "Хэлтсүүдийн тайлангийн удирдлага"
+                    : masterMode
+                      ? masterReportTitle
+                      : "Хэлтсийн тайлан"}
+                </h1>
                 <p>
-                  {masterMode
+                  {reportOnlyMode
+                    ? "Авто бааз, ногоон байгууламж, тохижилтын хэлтсүүдийн тайланг card-аар сонгож, тухайн хэлтсийн ажлын гүйцэтгэл, хавсралт, хяналтын төлөвийг хурдан шүүнэ."
+                    : masterMode
                     ? masterReportDescription
                     : "Эхлээд хэлтсээ сонгоно. Дараа нь доторх нэгжээ сонгоод, тухайн нэгжийн ажлуудаар тайланг бүлэглэж харуулна."}
                 </p>
@@ -886,9 +957,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
               <div className={styles.pageAside}>
                 <div className={styles.dateMeta}>
-                  <span>Сүүлд шинэчлэгдсэн</span>
-                  <strong>{snapshot.generatedAt}</strong>
-                  <small>{masterMode ? selectedDepartmentName : getSessionRoleLabel(session)}</small>
+                  <span>Одоогийн сонголт</span>
+                  <strong>{selectedGroup ? selectedGroup.name : reportOnlyMode ? "3 хэлтэс" : "Бүх хэлтэс"}</strong>
+                  <small>{selectedGroupReportCount} тайлан · {snapshot.generatedAt}</small>
                 </div>
                 <div className={styles.exportActions} aria-label="Тайлан экспортлох">
                   <a className={styles.exportButton} href={getExportHref("excel")}>
@@ -906,6 +977,62 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
             {!departmentScopedMode ? (
               <section className={styles.sectionCard}>
+                <div className={styles.reportCommandHeader}>
+                  <div>
+                    <span className={styles.kicker}>Хэлтэс сонгох</span>
+                    <h2>Гүйцэтгэлийн тайлан харах 3 үндсэн чиглэл</h2>
+                    <p>
+                      Хэлтэс дээр дарахад тухайн чиглэлийн ажлын тайлан, зурагтай нотолгоо,
+                      хяналт хүлээж буй ажил, экспортын сонголт нэг дор шүүгдэнэ.
+                    </p>
+                  </div>
+                  <div className={styles.reportCommandMeta}>
+                    <span>Нийт тайлан</span>
+                    <strong>{snapshot.reports.length}</strong>
+                    <small>{filteredReviewQueue.length} хяналт хүлээж байна</small>
+                  </div>
+                </div>
+
+                <div className={styles.reportDepartmentGrid}>
+                  {reportDepartmentCards.map((card) => (
+                    <Link
+                      key={card.group.name}
+                      href={card.href}
+                      className={`${styles.reportDepartmentCard} ${
+                        card.isActive ? styles.reportDepartmentCardActive : ""
+                      }`}
+                      aria-current={card.isActive ? "page" : undefined}
+                    >
+                      <span className={styles.reportDepartmentTop}>
+                        <span className={styles.reportDepartmentIcon}>{card.initials}</span>
+                        <span>
+                          <small>{card.eyebrow}</small>
+                          <strong>{card.group.name}</strong>
+                        </span>
+                      </span>
+                      <span className={styles.reportDepartmentNote}>{card.note}</span>
+                      <span className={styles.reportDepartmentStats}>
+                        <span>
+                          <strong>{card.reportCount}</strong>
+                          <small>тайлан</small>
+                        </span>
+                        <span>
+                          <strong>{card.projectCount}</strong>
+                          <small>ажил</small>
+                        </span>
+                        <span>
+                          <strong>{card.imageCount}</strong>
+                          <small>зураг</small>
+                        </span>
+                      </span>
+                      <span className={styles.reportDepartmentFooter}>
+                        <span>{card.reviewCount} хяналт</span>
+                        <strong>Дэлгэрэнгүй</strong>
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+
                 <div className={dashboardStyles.sectionHeader}>
                   <div>
                     <span className={dashboardStyles.kicker}>Хэлтсийн шүүлт</span>
@@ -918,23 +1045,25 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
                 <nav className={styles.departmentFilterGrid} aria-label="Хэлтэс сонгох">
                   <div className={styles.departmentFilterInner}>
-                    <Link
-                      href="/reports"
-                      className={`${styles.departmentFilterCard} ${
-                        !selectedGroup ? styles.departmentFilterCardActive : ""
-                      }`}
-                      aria-current={!selectedGroup ? "page" : undefined}
-                    >
-                      <span className={styles.departmentFilterLabel}>
-                        <span className={styles.departmentFilterIcon} aria-hidden>
-                          🏢
+                    {!reportOnlyMode ? (
+                      <Link
+                        href="/reports"
+                        className={`${styles.departmentFilterCard} ${
+                          !selectedGroup ? styles.departmentFilterCardActive : ""
+                        }`}
+                        aria-current={!selectedGroup ? "page" : undefined}
+                      >
+                        <span className={styles.departmentFilterLabel}>
+                          <span className={styles.departmentFilterIcon} aria-hidden>
+                            БҮ
+                          </span>
+                          <span>Бүгд</span>
                         </span>
-                        <span>Бүгд</span>
-                      </span>
-                      <strong>{snapshot.reports.length}</strong>
-                    </Link>
+                        <strong>{snapshot.reports.length}</strong>
+                      </Link>
+                    ) : null}
 
-                    {DEPARTMENT_GROUPS.map((group) => {
+                    {visibleReportGroups.map((group) => {
                       const isActive = selectedGroup?.name === group.name;
                       const reportCount = countReportsByGroup(group, snapshot.reports);
                       const groupUnits = getAvailableUnits(group);

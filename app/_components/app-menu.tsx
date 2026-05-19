@@ -45,6 +45,7 @@ import {
   canAccessGarbageTransportSettings,
   canAccessProcurementModule,
   isGarbageDepartmentHead as isGarbageDepartmentHeadRole,
+  isReportPlanningSpecialist,
   type RoleGroupFlags,
   type UserRole,
 } from "@/lib/roles";
@@ -96,6 +97,7 @@ type AppMenuProps = {
   notificationCount?: number;
   departmentScopeName?: string | null;
   groupFlags?: Partial<RoleGroupFlags> | null;
+  reportOnlyMode?: boolean;
 };
 
 type MenuItem = {
@@ -290,6 +292,7 @@ export function AppMenu({
   notificationCount = 0,
   departmentScopeName = null,
   groupFlags = null,
+  reportOnlyMode: reportOnlyModeProp = false,
 }: AppMenuProps) {
   void getDockLabel;
   void canViewQualityCenter;
@@ -372,7 +375,10 @@ export function AppMenu({
   const roleContext = {
     role: resolvedRole,
     groupFlags,
+    employeeJobTitle: roleLabel,
+    name: userName,
   };
+  const reportOnlyMode = reportOnlyModeProp || isReportPlanningSpecialist(roleContext);
   const roleLooksDepartmentHead =
     roleLabelLower.includes("хэлтсийн дарга") ||
     roleLabelLower.includes("хэлтэсийн дарга") ||
@@ -561,14 +567,6 @@ export function AppMenu({
     }));
 
   const hrItems: MenuItem[] = canShowHrMenu
-    ? [
-        { key: "hr", href: "/hr", label: "Хүний нөөц", icon: Users },
-      ]
-    : [];
-  const departmentHrFocusedMode = Boolean(
-    active === "hr" && !hasExecutiveMenuAccess && hasDepartmentHrAccess && canShowHrMenu && !hrFocusedMode,
-  );
-  const departmentHrItems: MenuItem[] = departmentHrFocusedMode
     ? [
         { key: "hr", href: "/hr", label: "Хүний нөөц", icon: Users },
       ]
@@ -920,11 +918,19 @@ export function AppMenu({
       badge: notificationCount,
     },
   ];
+  const reportOnlyItems: MenuItem[] = [
+    {
+      key: "reports",
+      href: "/reports",
+      label: "Тайлан",
+      icon: BarChart3,
+    },
+  ];
 
-  const items = (transportInspectorMode
+  const items = (reportOnlyMode
+    ? reportOnlyItems
+    : transportInspectorMode
     ? transportInspectorItems
-    : departmentHrFocusedMode
-      ? departmentHrItems
     : scopedDepartmentHeadMode
       ? scopedDepartmentHeadItems
       : isGarbageDepartmentHead
@@ -1063,6 +1069,8 @@ export function AppMenu({
         { key: "notifications", href: reviewHref, label: "Мэдэгдэл", icon: Bell, badge: notificationCount },
         { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
       ]
+    : reportOnlyMode
+      ? [{ key: "reports", href: "/reports", label: "Тайлан", icon: BarChart3 }]
     : isGarbageDepartmentHead
     ? [
         { key: "dashboard", href: "/", label: "Самбар", icon: LayoutDashboard },
@@ -1080,10 +1088,15 @@ export function AppMenu({
           icon: Settings,
         },
       ]
-    : departmentHrFocusedMode
+    : scopedDepartmentHeadMode
       ? [
-          { key: "hr", href: "/hr", label: "Хүний нөөц", icon: Users },
-          { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
+          { key: "dashboard", href: "/", label: "Самбар", icon: LayoutDashboard },
+          { key: "projects", href: scopedDepartmentWorkHref, label: "Ажил", icon: ListChecks },
+          ...(canShowHrMenu ? [{ key: "hr", href: "/hr", label: "ХН", icon: Users }] : []),
+          ...(showProcurement
+            ? [{ key: "procurement", href: "/procurement/dashboard", label: "Х.Авалт", icon: ShoppingCart }]
+            : []),
+          { key: "review", href: reviewHref, label: "Мэдэгдэл", icon: Bell, badge: notificationCount },
         ]
     : hrFocusedMode
       ? [

@@ -1331,6 +1331,12 @@
 
 .inspectorVehicleCardBlocked {
   border-color: rgba(220, 38, 38, 0.28);
+  background: #fffafa;
+}
+
+.inspectorVehicleCardBlocked .inspectorVehicleImage span {
+  background: rgba(254, 242, 242, 0.96);
+  color: #b91c1c;
 }
 
 .inspectorVehicleImage {

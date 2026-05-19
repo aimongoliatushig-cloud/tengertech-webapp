@@ -981,6 +981,7 @@ export async function createProjectAction(formData: FormData) {
           loadGarbagePointOptions(connectionOverrides, { requireCurrentEmployeeScope: true }),
         ]);
         const selectedVehicleId = Number(garbageVehicleIdRaw);
+        const selectedAllowedVehicle = allowedVehicles.find((vehicle) => vehicle.id === selectedVehicleId);
         const allowedVehicleIds = new Set(allowedVehicles.map((vehicle) => vehicle.id));
         const allowedPointIds = new Set(allowedPoints.map((point) => point.id));
         const hasOutOfScopePoint = garbagePointIds.some((pointId) => !allowedPointIds.has(pointId));
@@ -990,6 +991,18 @@ export async function createProjectAction(formData: FormData) {
             garbageTransportReturnPath,
             "error",
             "Танд оноогдоогүй машин, хороо болон хогийн цэгээр ажил үүсгэх боломжгүй.",
+          );
+        }
+        if (
+          selectedAllowedVehicle?.isRepair ||
+          selectedAllowedVehicle?.isArchived ||
+          selectedAllowedVehicle?.isOperational === false
+        ) {
+          const blockedVehicleName = selectedAllowedVehicle.plate || selectedAllowedVehicle.label;
+          redirectWithMessage(
+            garbageTransportReturnPath,
+            "error",
+            `${blockedVehicleName} машин засвартай эсвэл ашиглалтаас хаагдсан тул хяналтын ажил үүсгэх боломжгүй.`,
           );
         }
       }

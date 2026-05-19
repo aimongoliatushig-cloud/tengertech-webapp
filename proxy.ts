@@ -19,6 +19,9 @@ const AUTH_ACTION_PATHS = new Set([
 
 type ProxySession = {
   role?: string;
+  login?: string;
+  name?: string;
+  employeeJobTitle?: string;
   groupFlags?: Record<string, boolean | undefined>;
 };
 
@@ -106,6 +109,34 @@ function hasExecutiveOrAdminAccess(session: ProxySession) {
   );
 }
 
+function normalizePermissionText(value?: string | null) {
+  return String(value ?? "")
+    .toLocaleLowerCase("mn-MN")
+    .replace(/[.,/\\]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function compactPermissionText(value?: string | null) {
+  return normalizePermissionText(value).replace(/\s+/g, "");
+}
+
+function isReportOnlySession(session: ProxySession) {
+  const jobTitle = normalizePermissionText(session.employeeJobTitle);
+  const hasReportPlanningTitle =
+    jobTitle.includes("тайлан") &&
+    jobTitle.includes("төлөвлөгөө") &&
+    jobTitle.includes("хариуцсан") &&
+    jobTitle.includes("мэргэжилтэн");
+
+  return Boolean(
+    session.role === "report_specialist" ||
+      hasReportPlanningTitle ||
+      String(session.login ?? "").trim() === "90858504" ||
+      compactPermissionText(session.name) === "бболормаа"
+  );
+}
+
 function isHrOnlySession(session: ProxySession) {
   if (session.role === "worker") {
     return false;
@@ -131,6 +162,18 @@ function isHrAllowedPath(pathname: string) {
   );
 }
 
+function isReportAllowedPath(pathname: string) {
+  return (
+    pathname === "/reports" ||
+    pathname.startsWith("/reports/") ||
+    pathname === "/auth/logout" ||
+    pathname === "/api/reports/export" ||
+    pathname === "/api/garbage-transport/weight-report" ||
+    pathname.startsWith("/api/odoo/attachments/") ||
+    pathname === "/api/profile-image"
+  );
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
@@ -149,6 +192,20 @@ export async function proxy(request: NextRequest) {
   if (sessionToken && !isPublicPath) {
     try {
       const session = await unsealProxySession(sessionToken);
+      if (isReportOnlySession(session)) {
+        if (pathname === "/") {
+          return NextResponse.redirect(buildPublicUrl(request, "/reports"));
+        }
+        if (!isReportAllowedPath(pathname)) {
+          if (pathname.startsWith("/api/")) {
+            return NextResponse.json(
+              { error: "Тайлангийн ажилтан зөвхөн тайлангийн хэсэгт хандах эрхтэй." },
+              { status: 403 },
+            );
+          }
+          return NextResponse.redirect(buildPublicUrl(request, "/reports"));
+        }
+      }
       if (isHrOnlySession(session)) {
         if (pathname === "/") {
           return NextResponse.redirect(buildPublicUrl(request, "/hr"));

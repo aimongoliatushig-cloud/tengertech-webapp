@@ -82,12 +82,26 @@ function taskStatusLabel(task: DashboardSnapshot["taskDirectory"][number]) {
   return "Төлөвлөгдсөн";
 }
 
-function blockedVehicleStatusLabel(boardVehicle: FleetVehicleBoard["allVehicles"][number] | undefined) {
-  if (!boardVehicle) return "";
-  if (boardVehicle.isRepair) {
-    return boardVehicle.operationalStatusKey === "broken" ? "Эвдэрсэн" : "Засвартай";
+function blockedVehicleStatusLabel(
+  boardVehicle: FleetVehicleBoard["allVehicles"][number] | undefined,
+  vehicle?: GarbageVehicleOption,
+) {
+  const optionStatusLabel = normalizeText(vehicle?.statusLabel ?? "");
+  const optionIsRepair =
+    Boolean(vehicle?.isRepair) ||
+    optionStatusLabel.includes("засвар") ||
+    optionStatusLabel.includes("эвдэр") ||
+    optionStatusLabel.includes("repair") ||
+    optionStatusLabel.includes("broken");
+  const optionIsInactive = Boolean(vehicle?.isArchived) || vehicle?.isOperational === false;
+
+  if (optionIsRepair && !boardVehicle) {
+    return "Засвартай";
   }
-  if (boardVehicle.isArchived || boardVehicle.isOperational === false) {
+  if (boardVehicle?.isRepair || optionIsRepair) {
+    return boardVehicle?.operationalStatusKey === "broken" ? "Эвдэрсэн" : "Засвартай";
+  }
+  if (boardVehicle?.isArchived || boardVehicle?.isOperational === false || optionIsInactive) {
     return "Зогсолттой";
   }
   return "";
@@ -197,7 +211,7 @@ export function DashboardInspectorVehiclePanel({
         const matchesPoint = !pointLabel || text.includes(normalizeText(pointLabel));
         return matchesVehicle && matchesSubdistrict && matchesPoint;
       });
-      const blockedStatusLabel = blockedVehicleStatusLabel(boardVehicle);
+      const blockedStatusLabel = blockedVehicleStatusLabel(boardVehicle, vehicle);
       const done = blockedStatusLabel ? todayTasks.length : todayTasks.filter(isDoneTask).length;
       const total = todayTasks.length;
       const progress = total
@@ -247,6 +261,7 @@ export function DashboardInspectorVehiclePanel({
 
   const activeSummary =
     filteredSummaries.find((summary) => summary.vehicle.id === activeVehicleId) ?? filteredSummaries[0] ?? null;
+  const activeVehicleBlocked = Boolean(activeSummary?.isStopped);
   const selectedSubdistrictLabel = subdistrictOptions.find((option) => option.id === subdistrictId)?.label ?? "";
   const selectedPoint = filteredPoints.find((point) => String(point.id) === effectivePointId) ?? null;
   const selectedPoints = filteredPoints.filter((point) => validSelectedPointIds.includes(point.id));
@@ -488,12 +503,20 @@ export function DashboardInspectorVehiclePanel({
               required
             >
               {vehicleSummaries.map((summary) => (
-                <option key={summary.vehicle.id} value={summary.vehicle.id}>
+                <option key={summary.vehicle.id} value={summary.vehicle.id} disabled={summary.isStopped}>
                   {summary.plate} - {summary.modelName}
+                  {summary.isStopped ? ` (${summary.statusLabel})` : ""}
                 </option>
               ))}
             </select>
           </label>
+
+          {activeVehicleBlocked && activeSummary ? (
+            <p className={dashboardStyles.inspectorCreateError}>
+              {activeSummary.plate} машин {fixMojibakeText(activeSummary.statusLabel).toLowerCase()} тул шинэ даалгавар
+              нэмэх боломжгүй. Засвар дуусаж ажиллах төлөвтэй болсны дараа идэвхжинэ.
+            </p>
+          ) : null}
 
           <label>
             <span>Хороо сонгох *</span>
@@ -506,6 +529,7 @@ export function DashboardInspectorVehiclePanel({
                 setSelectedPointIds([]);
               }}
               required
+              disabled={activeVehicleBlocked}
             >
               <option value="">Хороо сонгох</option>
               {subdistrictOptions.map((option) => (
@@ -527,10 +551,18 @@ export function DashboardInspectorVehiclePanel({
             {filteredPoints.length ? (
               <>
                 <div className={dashboardStyles.inspectorCreatePointTools}>
-                  <button type="button" onClick={() => setSelectedPointIds(filteredPoints.map((point) => point.id))}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPointIds(filteredPoints.map((point) => point.id))}
+                    disabled={activeVehicleBlocked}
+                  >
                     Бүгдийг сонгох
                   </button>
-                  <button type="button" onClick={() => setSelectedPointIds([])} disabled={!validSelectedPointIds.length}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPointIds([])}
+                    disabled={activeVehicleBlocked || !validSelectedPointIds.length}
+                  >
                     Цэвэрлэх
                   </button>
                 </div>
@@ -548,6 +580,7 @@ export function DashboardInspectorVehiclePanel({
                         <input
                           type="checkbox"
                           checked={checked}
+                          disabled={activeVehicleBlocked}
                           onChange={() => toggleSelectedPoint(point.id)}
                         />
                         <span>{point.name}</span>
@@ -565,12 +598,24 @@ export function DashboardInspectorVehiclePanel({
 
           <label>
             <span>Огноо *</span>
-            <input type="date" name="start_date" value={workDate} onChange={(event) => setWorkDate(event.target.value || todayKey())} required />
+            <input
+              type="date"
+              name="start_date"
+              value={workDate}
+              onChange={(event) => setWorkDate(event.target.value || todayKey())}
+              required
+              disabled={activeVehicleBlocked}
+            />
           </label>
 
           <label>
             <span>Тайлбар</span>
-            <textarea name="project_description" placeholder="Тайлбар (заавал биш)..." rows={3} />
+            <textarea
+              name="project_description"
+              placeholder="Тайлбар (заавал биш)..."
+              rows={3}
+              disabled={activeVehicleBlocked}
+            />
           </label>
 
           {!departmentId ? (
@@ -587,7 +632,7 @@ export function DashboardInspectorVehiclePanel({
             >
               Цуцлах
             </button>
-            <SubmitButton disabled={!departmentId || !activeSummary || activeSummary.isStopped || !subdistrictId || !validSelectedPointIds.length} />
+            <SubmitButton disabled={!departmentId || !activeSummary || activeVehicleBlocked || !subdistrictId || !validSelectedPointIds.length} />
           </div>
         </form>
       </div>

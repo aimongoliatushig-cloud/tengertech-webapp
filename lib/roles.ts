@@ -160,8 +160,15 @@ export function isReportPlanningSpecialist(context: RoleContext) {
     jobTitle.includes("хариуцсан") &&
     jobTitle.includes("мэргэжилтэн");
 
+  const hasCyrillicReportPlanningTitle =
+    jobTitle.includes("тайлан") &&
+    jobTitle.includes("төлөвлөгөө") &&
+    jobTitle.includes("хариуцсан") &&
+    jobTitle.includes("мэргэжилтэн");
+
   return Boolean(
     hasReportPlanningTitle ||
+      hasCyrillicReportPlanningTitle ||
       String(context.login ?? "").trim() === "90858504" ||
       compactPermissionText(context.name) === "бболормаа"
   );
@@ -390,8 +397,7 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         groupFlags.improvementEngineer ||
         context.role === "senior_master" ||
         context.role === "team_leader" ||
-        context.role === "worker" ||
-        isReportPlanningSpecialist(context)
+        context.role === "worker"
       );
     case "view_quality_center":
       return Boolean(
