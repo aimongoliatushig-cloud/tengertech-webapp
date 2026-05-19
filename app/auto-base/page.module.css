@@ -2872,6 +2872,19 @@
   padding-top: 2px;
 }
 
+.vehicleEditActions {
+  position: sticky;
+  bottom: 0;
+  z-index: 6;
+  margin: 2px -14px -14px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--ds-border);
+  border-radius: 0 0 var(--ds-radius-card) var(--ds-radius-card);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 -16px 30px rgba(28, 71, 45, 0.08);
+  backdrop-filter: blur(10px);
+}
+
 .vehicleDeleteForm {
   display: flex;
   align-items: center;

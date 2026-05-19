@@ -1916,7 +1916,7 @@ function VehicleDetailModal({
             <span>Үйл ажиллагаанд идэвхтэй ашиглаж байгаа</span>
           </label>
 
-          <div className={styles.vehicleModalActions}>
+          <div className={cx(styles.vehicleModalActions, styles.vehicleEditActions)}>
             <button type="button" className={styles.secondaryButton} onClick={onClose}>
               Болих
             </button>
