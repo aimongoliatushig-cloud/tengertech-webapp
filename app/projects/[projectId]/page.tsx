@@ -359,15 +359,6 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                       : "Ажлын даалгавар"}
               </span>
               <h1>{project.name}</h1>
-              <p>
-                {quickActionMode === "task"
-                  ? "Энэ ажлыг сонгосон тул одоо шууд шинэ даалгавар нэмж болно."
-                  : quickActionMode === "report"
-                    ? "Энэ ажлын доторх даалгавруудаас нэгийг сонгоод тайлан оруулах цонх руу орно."
-                  : masterMode
-                  ? "Мастер хэрэглэгч энэ ажлын хүрээнд шинэ даалгавар нээж, өнөөдрийн урсгалаа тайлантай нь хамт удирдана."
-                  : "Энэ дэлгэц дээр зөвхөн тухайн ажлын даалгаврууд харагдана. Тухайн даалгавар дээр дарж дараагийн дэлгэрэнгүй рүү орно."}
-              </p>
 
               <div className={styles.projectHeroGrid}>
                 <article className={styles.projectHeroFeatureCard}>
