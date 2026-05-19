@@ -188,7 +188,7 @@ export function InspectorScopePanel({
           <input type="hidden" name="inspector_employee_id" value={activeInspector.id} />
           <div className={styles.formPanelHeader}>
             <div>
-              <span className={styles.eyebrow}>Байцаагчийн scope</span>
+              <span className={styles.eyebrow}>Байцаагчийн хүрээ</span>
               <strong>{activeInspector.name}</strong>
               {activeInspector.meta ? <small>{activeInspector.meta}</small> : null}
             </div>
@@ -264,7 +264,7 @@ export function InspectorScopePanel({
             Хяналтын ажилтанд зөвхөн хороо, хогийн цэг, машин онооно. Жолооч болон ачигчийн бүрэлдэхүүн тухайн машин дээр хадгалагдсан мэдээллээр дагаж ирнэ.
           </p>
 
-          <button type="submit" className={styles.primaryButton}>Scope хадгалах</button>
+          <button type="submit" className={styles.primaryButton}>Хадгалах</button>
         </form>
       ) : null}
     </div>

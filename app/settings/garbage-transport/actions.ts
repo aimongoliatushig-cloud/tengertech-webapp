@@ -484,7 +484,7 @@ export async function saveGarbageTransportInspectorScopeAction(formData: FormDat
       await writeOdooRecord("fleet.vehicle", vehicleId, { mfo_garbage_work_create_allowed: true }, connection);
     }
   } catch (error) {
-    const message = getErrorMessage(error, "Хяналтын байцаагчийн scope хадгалах үед алдаа гарлаа.");
+    const message = getErrorMessage(error, "Хяналтын байцаагчийн хүрээ хадгалах үед алдаа гарлаа.");
     if (message.includes("Invalid field")) {
       console.warn("Inspector scope saved locally because Odoo scope fields are not available yet.", message);
     } else {

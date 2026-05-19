@@ -280,7 +280,7 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
             <section id="inspectors" className={`${styles.sectionCard} ${styles.tabPanel}`}>
               <div className={styles.sectionHeader}>
                 <div>
-                  <span className={styles.eyebrow}>Хяналтын scope</span>
+                  <span className={styles.eyebrow}>Хяналтын хүрээ</span>
                   <h2>Тээвэрлэлтийн хяналтын ажилтан</h2>
                 </div>
                 <span className={styles.countPill}>{inspectorScopeData.inspectors.length} ажилтан</span>

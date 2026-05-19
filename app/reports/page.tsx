@@ -288,6 +288,14 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const canViewAllReports = canViewAllWorkspaceReports(session);
   const reportOnlyMode = session.role === "report_specialist" || isReportPlanningSpecialist(session);
   const workerMode = isWorkerOnly(session);
+  const reportRoleLabel = getSessionRoleLabel(session).toLocaleLowerCase("mn-MN");
+  const reportFlags: Partial<RoleGroupFlags> = session.groupFlags || {};
+  const departmentHeadLike =
+    session.role === "project_manager" ||
+    Boolean(reportFlags.municipalDepartmentHead) ||
+    reportRoleLabel.includes("хэлтсийн дарга") ||
+    reportRoleLabel.includes("хэлтэсийн дарга") ||
+    reportRoleLabel.includes("албаны дарга");
   if (workerMode && !canViewAllReports) {
     redirect("/");
   }
@@ -295,7 +303,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     login: session.login,
     password: session.password,
   });
-  const scopedDepartmentNamePromise = canViewAllReports
+  const scopedDepartmentNamePromise = canViewAllReports && !departmentHeadLike
     ? Promise.resolve(null)
     : loadSessionDepartmentName(session);
 
