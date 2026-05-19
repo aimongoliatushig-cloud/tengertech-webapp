@@ -475,7 +475,9 @@ function WorkerWorkCard({ work }: { work: WorkerWorkSummary }) {
         </div>
 
         <div className={dashboardStyles.projectListContent}>
-          <h3 className={dashboardStyles.projectListTitle}>{workName}</h3>
+          <h3 className={dashboardStyles.projectListTitle} title={workName}>
+            {workName}
+          </h3>
           <p className={dashboardStyles.projectListMeta}>
             Алба нэгж: {departmentName} · Менежер: {managerName}
           </p>
@@ -523,7 +525,9 @@ function ProjectCard({ project }: { project: DashboardSnapshot["projects"][numbe
         </div>
 
         <div className={dashboardStyles.projectListContent}>
-          <h3 className={dashboardStyles.projectListTitle}>{projectName}</h3>
+          <h3 className={dashboardStyles.projectListTitle} title={projectName}>
+            {projectName}
+          </h3>
           <p className={dashboardStyles.projectListMeta}>
             Алба нэгж: {departmentName} · Менежер: {managerName}
           </p>
@@ -1329,6 +1333,7 @@ function buildExecutiveDepartmentMetrics({
     tone: ExecutiveMetric["tone"],
     image: string,
     imagePosition = "center",
+    hrefDepartmentName?: string,
   ) => {
     const departmentTasks = matchedTasks(keywords);
     const department = matchedDepartment(keywords);
@@ -1344,7 +1349,7 @@ function buildExecutiveDepartmentMetrics({
       working,
       review: review || department?.reviewTasks || 0,
       risky,
-      href: `/projects?department=${encodeURIComponent(department?.name || name)}&category=progress`,
+      href: `/projects?department=${encodeURIComponent(hrefDepartmentName || department?.name || name)}&category=progress`,
       icon,
       tone,
       image,
@@ -1384,6 +1389,7 @@ function buildExecutiveDepartmentMetrics({
       "teal",
       DASHBOARD_IMAGES.maintenanceWorker,
       "center",
+      "Тохижилтын хэлтэс",
     ),
   ];
 

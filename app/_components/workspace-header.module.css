@@ -33,6 +33,12 @@
   display: none;
 }
 
+.mobileBackButton {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
 .titleBlock {
   position: relative;
   z-index: 1;
@@ -514,25 +520,45 @@
 
   .titleArea {
     display: grid;
-    grid-template-columns: 42px minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: 10px;
   }
 
   .mobileGreetingIcon {
-    display: inline-grid;
-    width: 40px;
+    display: inline-flex;
+    width: auto;
+    min-width: 40px;
     height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     place-items: center;
+    padding: 0 10px;
     border-radius: 14px;
     background: #e5f5e7;
     color: #2e7d32;
+    text-decoration: none;
   }
 
   .mobileGreetingIcon svg {
     width: 19px;
     height: 19px;
+    flex: 0 0 auto;
     stroke-width: 2.4;
+  }
+
+  .mobileGreetingIcon span {
+    color: #1f6f35;
+    font-size: 0.78rem;
+    font-weight: 900;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .mobileBackButton:focus-visible {
+    outline: 3px solid rgba(46, 125, 50, 0.24);
+    outline-offset: 3px;
   }
 
   .titleBlock {

@@ -35,6 +35,18 @@ type NotificationItem = {
   reasons: Array<"new" | "review" | "overdue" | "issue">;
 };
 
+type HrAccessProfile = Awaited<ReturnType<typeof getHrAccessProfile>>;
+
+const HR_NOTIFICATION_REVIEWER_ROLES = new Set(["system_admin", "hr_specialist", "hr_manager"]);
+const HR_NOTIFICATION_REVIEWER_TEXT = [
+  "хүний нөөц",
+  "human resources",
+  "hr specialist",
+  "hr manager",
+  "hr officer",
+  "hr admin",
+];
+
 function normalizeTaskAssigneeId(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -134,6 +146,35 @@ function getRequestTimeMs() {
   return Date.now();
 }
 
+function normalizeNotificationText(value: unknown) {
+  return fixMojibakeText(String(value ?? "")).trim().toLocaleLowerCase("mn-MN");
+}
+
+function containsHrNotificationReviewerText(value: unknown) {
+  const normalized = normalizeNotificationText(value);
+  return HR_NOTIFICATION_REVIEWER_TEXT.some((token) =>
+    normalized.includes(normalizeNotificationText(token)),
+  );
+}
+
+function canShowHrTimeoffReviewNotifications(
+  profile: HrAccessProfile | null,
+  sessionRole: string,
+) {
+  if (!profile?.isHr) {
+    return false;
+  }
+
+  if (HR_NOTIFICATION_REVIEWER_ROLES.has(sessionRole)) {
+    return true;
+  }
+
+  return (
+    containsHrNotificationReviewerText(profile.employee.departmentName) ||
+    containsHrNotificationReviewerText(profile.employee.jobTitle)
+  );
+}
+
 function buildWorkerNotificationHref(task: DashboardSnapshot["taskDirectory"][number]) {
   const params = new URLSearchParams();
   params.set("work", task.projectName);
@@ -179,7 +220,7 @@ export default async function NotificationsPage() {
     return null;
   });
   const hrRequestsPromise = hrAccessProfilePromise.then((profile) =>
-    profile?.canAccessHr
+    canShowHrTimeoffReviewNotifications(profile, session.role)
       ? getTimeoffRequests(session).catch((error) => {
           console.warn("HR notifications could not be loaded:", error);
           return [];

@@ -854,6 +854,39 @@ function htmlToPlainText(value?: string | false) {
     .trim();
 }
 
+function translateWorkspaceChatterBody(value: string) {
+  const text = value.trim();
+
+  if (!text) {
+    return "";
+  }
+
+  let translated = text
+    .replace(/^Dear\s+(.+?),\s*\n+/i, "$1 танд,\n\n")
+    .replace(
+      /You have been assigned to the Task\s+([\s\S]+?)\s+and you are now responsible for it\.?/gi,
+      (_match, taskName: string) =>
+        `Танд “${taskName.trim()}” даалгавар оноогдлоо. Та энэ даалгаврын хариуцагчаар бүртгэгдсэн байна.`,
+    )
+    .replace(
+      /A new task has been created in the\s+([\s\S]+?)\s+project\.?/gi,
+      (_match, projectName: string) => `“${projectName.trim()}” ажил дээр шинэ даалгавар үүслээ.`,
+    )
+    .replace(
+      /You have been assigned to the Project\s+([\s\S]+?)\s+and you are now responsible for it\.?/gi,
+      (_match, projectName: string) =>
+        `Танд “${projectName.trim()}” ажил оноогдлоо. Та энэ ажлын хариуцагчаар бүртгэгдсэн байна.`,
+    )
+    .replace(
+      /A new project has been created(?:\s*:\s*|\s+)([\s\S]+?)\.?$/gi,
+      (_match, projectName: string) => `“${projectName.trim()}” нэртэй шинэ ажил үүслээ.`,
+    );
+
+  translated = translated.replace(/\n{3,}/g, "\n\n").trim();
+
+  return translated || text;
+}
+
 function plainTextToOdooHtml(value: string) {
   const escaped = value
     .replace(/&/g, "&amp;")
@@ -3847,7 +3880,7 @@ export async function loadTaskDetail(
         id: message.id,
         author: relationName(message.author_id, "Систем"),
         postedAt: formatDateLabel(message.date),
-        body: htmlToPlainText(message.body),
+        body: translateWorkspaceChatterBody(htmlToPlainText(message.body)),
         kind: classifyTaskMessage(message),
         subtype: relationName(message.subtype_id, ""),
         attachments: (message.attachment_ids ?? [])

@@ -1,10 +1,11 @@
 import type { CSSProperties } from "react";
 
 import Link from "next/link";
-import { Bell, CalendarDays, Leaf, MapPin } from "lucide-react";
+import { Bell, CalendarDays, Leaf } from "lucide-react";
 
 import { loadCurrentUserProfileImageUrl } from "@/lib/current-user-profile";
 
+import { WorkspaceMobileBackButton } from "./workspace-mobile-back-button";
 import { WorkspaceHeaderUserMenu } from "./workspace-header-user-menu";
 import styles from "./workspace-header.module.css";
 
@@ -19,6 +20,8 @@ type WorkspaceHeaderProps = {
   backgroundImage?: string;
   showUserMenu?: boolean;
   userImageUrl?: string;
+  mobileBackHref?: string;
+  showMobileBack?: boolean;
 };
 
 const DEFAULT_HEADER_IMAGE =
@@ -72,6 +75,8 @@ export function WorkspaceHeader({
   backgroundImage = DEFAULT_HEADER_IMAGE,
   showUserMenu = true,
   userImageUrl = "",
+  mobileBackHref = "/",
+  showMobileBack = true,
 }: WorkspaceHeaderProps) {
   const safeNotificationCount = Math.max(0, Math.round(notificationCount));
   const noticeText =
@@ -90,9 +95,7 @@ export function WorkspaceHeader({
       <Leaf className={styles.leafThree} aria-hidden />
 
       <div className={styles.titleArea}>
-        <span className={styles.mobileGreetingIcon} aria-hidden>
-          <MapPin />
-        </span>
+        <WorkspaceMobileBackButton fallbackHref={mobileBackHref} showMobileBack={showMobileBack} />
         <div className={styles.titleBlock}>
           <h1>
             {title}

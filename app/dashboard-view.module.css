@@ -3547,6 +3547,21 @@
   .sideMiniGridTwo {
     grid-template-columns: 1fr;
   }
+
+  .projectListCard {
+    min-height: 0;
+    gap: 16px;
+  }
+
+  .projectListTitle {
+    display: block;
+    min-height: 0;
+    overflow: visible;
+    -webkit-line-clamp: unset;
+    overflow-wrap: anywhere;
+    font-size: 1.08rem;
+    line-height: 1.32;
+  }
 }
 
 .executiveShell.executiveShell {
