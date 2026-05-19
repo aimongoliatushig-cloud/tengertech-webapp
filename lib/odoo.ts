@@ -2258,7 +2258,13 @@ async function loadFleetVehicleRelationOptions(
       connection,
     );
 
-  const records = await loadOptions([["active", "=", true]]).catch(() => loadOptions([]));
+  const records = await loadOptions([["active", "=", true]]).catch((activeError) => {
+    console.warn(`Fleet vehicle relation options for ${fieldName} could not be loaded with active filter:`, activeError);
+    return loadOptions([]).catch((fallbackError) => {
+      console.warn(`Fleet vehicle relation options for ${fieldName} could not be loaded:`, fallbackError);
+      return [];
+    });
+  });
   return records
     .map((record) => ({
       id: record.id,
