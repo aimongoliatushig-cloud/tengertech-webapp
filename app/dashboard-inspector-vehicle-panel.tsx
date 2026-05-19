@@ -30,7 +30,7 @@ type InspectorVehiclePanelProps = {
   fleetBoard: FleetVehicleBoard;
 };
 
-type InspectorFilter = "all" | "active" | "review" | "planned" | "done";
+type InspectorFilter = "all" | "review" | "planned" | "done";
 type InspectorViewMode = "grid" | "list";
 
 function todayKey() {
@@ -212,24 +212,18 @@ export function DashboardInspectorVehiclePanel({
         return matchesVehicle && matchesSubdistrict && matchesPoint;
       });
       const blockedStatusLabel = blockedVehicleStatusLabel(boardVehicle, vehicle);
-      const done = blockedStatusLabel ? todayTasks.length : todayTasks.filter(isDoneTask).length;
+      const done = todayTasks.filter(isDoneTask).length;
       const total = todayTasks.length;
       const progress = total
-        ? blockedStatusLabel
-          ? 100
-          : Math.round(todayTasks.reduce((sum, task) => sum + Math.max(0, Math.min(100, task.progress)), 0) / total)
+        ? Math.round(todayTasks.reduce((sum, task) => sum + Math.max(0, Math.min(100, task.progress)), 0) / total)
         : 0;
       const hasReview = todayTasks.some((task) => task.statusKey === "review" || task.statusKey === "problem");
-      const bucket: InspectorFilter = blockedStatusLabel
-        ? "review"
-        : total > 0 && done === total
+      const bucket: InspectorFilter = total > 0 && done === total
           ? "done"
           : hasReview
             ? "review"
-            : total > 0
-              ? "active"
-              : "planned";
-      const statusLabel = blockedStatusLabel || (bucket === "done" ? "Дууссан" : bucket === "planned" ? "Төлөвлөгдсөн" : bucket === "review" ? "Хянагдаж байгаа" : "Ажилтай");
+            : "planned";
+      const statusLabel = bucket === "done" ? "Дууссан" : bucket === "review" ? "Хянагдаж байгаа" : "Төлөвлөгдсөн";
 
       return {
         vehicle,
@@ -243,6 +237,7 @@ export function DashboardInspectorVehiclePanel({
         progress,
         bucket,
         statusLabel,
+        stopStatusLabel: blockedStatusLabel,
         isStopped: Boolean(blockedStatusLabel),
       };
     });
@@ -285,9 +280,8 @@ export function DashboardInspectorVehiclePanel({
   };
   const filterItems: Array<{ key: InspectorFilter; label: string; value: number }> = [
     { key: "all", label: "Бүгд", value: vehicleSummaries.length },
-    { key: "active", label: "Ажилтай", value: vehicleSummaries.filter((summary) => summary.bucket === "active").length },
-    { key: "review", label: "Хянагдаж байгаа", value: vehicleSummaries.filter((summary) => summary.bucket === "review").length },
     { key: "planned", label: "Төлөвлөгдсөн", value: vehicleSummaries.filter((summary) => summary.bucket === "planned").length },
+    { key: "review", label: "Хянагдаж буй", value: vehicleSummaries.filter((summary) => summary.bucket === "review").length },
     { key: "done", label: "Дууссан", value: vehicleSummaries.filter((summary) => summary.bucket === "done").length },
   ];
 
@@ -505,7 +499,7 @@ export function DashboardInspectorVehiclePanel({
               {vehicleSummaries.map((summary) => (
                 <option key={summary.vehicle.id} value={summary.vehicle.id} disabled={summary.isStopped}>
                   {summary.plate} - {summary.modelName}
-                  {summary.isStopped ? ` (${summary.statusLabel})` : ""}
+                  {summary.isStopped ? ` (${summary.stopStatusLabel})` : ""}
                 </option>
               ))}
             </select>
@@ -513,7 +507,7 @@ export function DashboardInspectorVehiclePanel({
 
           {activeVehicleBlocked && activeSummary ? (
             <p className={dashboardStyles.inspectorCreateError}>
-              {activeSummary.plate} машин {fixMojibakeText(activeSummary.statusLabel).toLowerCase()} тул шинэ даалгавар
+              {activeSummary.plate} машин {fixMojibakeText(activeSummary.stopStatusLabel).toLowerCase()} тул шинэ даалгавар
               нэмэх боломжгүй. Засвар дуусаж ажиллах төлөвтэй болсны дараа идэвхжинэ.
             </p>
           ) : null}
