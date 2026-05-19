@@ -441,7 +441,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                         <strong>{project.departmentName}</strong>
                       </div>
                       <div>
-                        <span>Менежер</span>
+                        <span>{project.managerJobTitle || "Хариуцсан ажилтан"}</span>
                         <strong>{project.managerName || "Тодорхойгүй"}</strong>
                       </div>
                       <div>

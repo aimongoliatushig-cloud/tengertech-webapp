@@ -610,6 +610,7 @@ export type ProjectDetail = {
   id: number;
   name: string;
   managerName: string;
+  managerJobTitle: string;
   managerId: number | null;
   departmentName: string;
   departmentId: number | null;
@@ -3222,6 +3223,21 @@ export async function loadProjectDetail(
   }
 
   const projectDepartmentId = relationId(project.ops_department_id);
+  const projectManagerId = relationId(project.user_id);
+  const projectManagerEmployee = projectManagerId
+    ? await executeOdooKw<EmployeeUserRecord[]>(
+        "hr.employee",
+        "search_read",
+        [[["user_id", "=", projectManagerId]]],
+        {
+          fields: ["job_id", "job_title", "user_id", "name", "department_id"],
+          limit: 1,
+        },
+        connectionOverrides,
+      )
+        .then((employees) => employees[0] ?? null)
+        .catch(() => null)
+    : null;
   const departmentUserOptions = await loadDepartmentUserOptions(
     projectDepartmentId,
     connectionOverrides,
@@ -3380,7 +3396,8 @@ export async function loadProjectDetail(
     id: project.id,
     name: project.name,
     managerName: relationName(project.user_id),
-    managerId: relationId(project.user_id),
+    managerJobTitle: projectManagerEmployee ? getEmployeeJobTitle(projectManagerEmployee) : "",
+    managerId: projectManagerId,
     departmentName: relationName(project.ops_department_id),
     departmentId: projectDepartmentId,
     startDate: formatDateInput(project.date_start),

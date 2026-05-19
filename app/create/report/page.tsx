@@ -176,7 +176,9 @@ export default async function ReportProjectPickerPage() {
                           <div className={styles.pickerIdentity}>
                             <strong>{project.name}</strong>
                             <span>{project.departmentName}</span>
-                            <small>Менежер: {project.manager}</small>
+                            <small>
+                              {project.managerJobTitle || "Хариуцсан ажилтан"}: {project.manager}
+                            </small>
                           </div>
                           <StagePill label={stage.label} bucket={stage.bucket} />
                         </div>

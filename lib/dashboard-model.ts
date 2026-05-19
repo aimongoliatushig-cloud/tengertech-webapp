@@ -563,10 +563,12 @@ function buildReportItem(item: SnapshotReport): DashboardItem {
 }
 
 function buildProjectItem(item: SnapshotProject): DashboardItem {
+  const managerTitle = item.managerJobTitle || "Хариуцсан ажилтан";
+
   return {
     id: `project-${item.id}`,
     title: item.name,
-    subtitle: `${item.departmentName} · Менежер: ${item.manager}`,
+    subtitle: `${item.departmentName} · ${managerTitle}: ${item.manager}`,
     meta: [
       item.deadline,
       `Нээлттэй: ${item.openTasks}`,

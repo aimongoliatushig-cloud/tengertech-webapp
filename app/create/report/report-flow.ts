@@ -13,6 +13,7 @@ export type ReportProjectSummary = {
   id: number;
   name: string;
   manager: string;
+  managerJobTitle?: string;
   departmentName: string;
   deadline: string;
   completion: number;
@@ -70,6 +71,7 @@ export function buildReportProjectSummaries(
         id: linkedProject.id,
         name: linkedProject.name,
         manager: linkedProject.manager,
+        managerJobTitle: linkedProject.managerJobTitle,
         departmentName: linkedProject.departmentName,
         deadline: linkedProject.deadline,
         completion: 0,

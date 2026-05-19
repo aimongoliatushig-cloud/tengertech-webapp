@@ -156,6 +156,10 @@ function isOverdue(task: DashboardSnapshot["taskDirectory"][number], currentDate
   );
 }
 
+function isDoneTask(task: DashboardSnapshot["taskDirectory"][number]) {
+  return task.statusKey === "verified" || task.stageBucket === "done" || task.progress >= 100;
+}
+
 function isNewIncomingTask(task: DashboardSnapshot["taskDirectory"][number], currentDateKey: string) {
   return Boolean(task.createdDate === currentDateKey && task.statusKey !== "verified");
 }
@@ -364,6 +368,7 @@ type WorkerWorkSummary = {
   name: string;
   departmentName: string;
   manager: string;
+  managerJobTitle?: string;
   href: string;
   taskCount: number;
   reviewCount: number;
@@ -389,6 +394,7 @@ function buildWorkerWorkSummaries(
             name: string;
             departmentName: string;
             manager: string;
+            managerJobTitle?: string;
             tasks: DashboardSnapshot["taskDirectory"];
           }
         >
@@ -398,6 +404,7 @@ function buildWorkerWorkSummaries(
           name: task.projectName,
           departmentName: project?.departmentName ?? task.departmentName,
           manager: project?.manager ?? task.leaderName,
+          managerJobTitle: project?.managerJobTitle,
           tasks: [],
         };
 
@@ -419,6 +426,7 @@ function buildWorkerWorkSummaries(
         name: work.name,
         departmentName: work.departmentName,
         manager: work.manager,
+        managerJobTitle: work.managerJobTitle,
         href: `/tasks?work=${encodeURIComponent(work.name)}`,
         taskCount,
         reviewCount: work.tasks.filter((task) => task.statusKey === "review").length,
@@ -463,6 +471,7 @@ function WorkerWorkCard({ work }: { work: WorkerWorkSummary }) {
   const workName = fixMojibakeText(work.name);
   const departmentName = fixMojibakeText(work.departmentName);
   const managerName = fixMojibakeText(work.manager || "Бүртгэлгүй");
+  const managerTitle = fixMojibakeText(work.managerJobTitle || "Хариуцсан ажилтан");
 
   return (
     <Link href={work.href} className={dashboardStyles.projectListLink}>
@@ -479,7 +488,7 @@ function WorkerWorkCard({ work }: { work: WorkerWorkSummary }) {
             {workName}
           </h3>
           <p className={dashboardStyles.projectListMeta}>
-            Алба нэгж: {departmentName} · Менежер: {managerName}
+            Алба нэгж: {departmentName} · {managerTitle}: {managerName}
           </p>
         </div>
 
@@ -507,6 +516,7 @@ function ProjectCard({ project }: { project: DashboardSnapshot["projects"][numbe
   const projectName = fixMojibakeText(project.name);
   const departmentName = fixMojibakeText(project.departmentName);
   const managerName = fixMojibakeText(project.manager || "Бүртгэлгүй");
+  const managerTitle = fixMojibakeText(project.managerJobTitle || "Хариуцсан ажилтан");
 
   return (
     <Link href={project.href} className={dashboardStyles.projectListLink}>
@@ -529,7 +539,7 @@ function ProjectCard({ project }: { project: DashboardSnapshot["projects"][numbe
             {projectName}
           </h3>
           <p className={dashboardStyles.projectListMeta}>
-            Алба нэгж: {departmentName} · Менежер: {managerName}
+            Алба нэгж: {departmentName} · {managerTitle}: {managerName}
           </p>
         </div>
 
@@ -1111,6 +1121,8 @@ type ExecutiveDepartmentMetric = {
   total: number;
   working: number;
   review: number;
+  todayDone: number;
+  todayTotal: number;
   risky: number;
   href: string;
   icon: LucideIcon;
@@ -1278,8 +1290,8 @@ function ExecutiveDepartmentCard({ department }: { department: ExecutiveDepartme
       </div>
       <div className={dashboardStyles.executiveDepartmentFooter}>
         <span>
-          Өнөөдрийн ажил
-          <strong>{department.working} / {department.total}</strong>
+          Хийгдсэн ажил
+          <strong>{department.todayDone} / {department.todayTotal}</strong>
         </span>
         <em>{department.risky} анхаарах</em>
       </div>
@@ -1348,6 +1360,8 @@ function buildExecutiveDepartmentMetrics({
       total,
       working,
       review: review || department?.reviewTasks || 0,
+      todayDone: departmentTasks.filter(isDoneTask).length,
+      todayTotal: total,
       risky,
       href: `/projects?department=${encodeURIComponent(hrefDepartmentName || department?.name || name)}&category=progress`,
       icon,
@@ -1384,7 +1398,7 @@ function buildExecutiveDepartmentMetrics({
     ),
     buildDepartment(
       "Тохижилт үйлчилгээ",
-      ["Тохижилт", "үйлчилгээ"],
+      ["Тохижилт"],
       Wrench,
       "teal",
       DASHBOARD_IMAGES.maintenanceWorker,
@@ -1432,6 +1446,8 @@ function buildExecutiveDepartmentMetrics({
       total,
       working,
       review: review || department.reviewTasks || 0,
+      todayDone: departmentTasks.filter(isDoneTask).length,
+      todayTotal: total,
       risky,
       href: `/projects?department=${encodeURIComponent(department.name)}&category=progress`,
       icon: departmentIcon(department.name),

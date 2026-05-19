@@ -232,6 +232,8 @@ function ProjectCardLink({
   href: string;
   actionLabel: string;
 }) {
+  const managerTitle = project.managerJobTitle || "Хариуцсан ажилтан";
+
   return (
     <Link href={href} className={styles.projectCard}>
       <div className={styles.projectCardTop}>
@@ -241,7 +243,7 @@ function ProjectCardLink({
 
       <h3>{project.name}</h3>
       <p>
-        Алба нэгж: {project.departmentName} · Менежер: {project.manager}
+        Алба нэгж: {project.departmentName} · {managerTitle}: {project.manager}
         {project.operationTypeLabel ? ` · ${project.operationTypeLabel}` : ""}
       </p>
 
@@ -1366,7 +1368,8 @@ async function ProjectsPageContent({
                               />
                             </div>
                             <p>
-                              Алба нэгж: {project.departmentName} · Менежер:{" "}
+                              Алба нэгж: {project.departmentName} ·{" "}
+                              {project.managerJobTitle || "Хариуцсан ажилтан"}:{" "}
                               {project.manager}
                               {project.operationTypeLabel
                                 ? ` · ${project.operationTypeLabel}`

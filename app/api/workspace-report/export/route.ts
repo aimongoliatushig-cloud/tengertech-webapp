@@ -185,7 +185,29 @@ async function renderTaskReport(task: TaskDetail, credentials: { login: string; 
   );
 }
 
-function renderProjectReport(project: ProjectDetail) {
+function isImageAttachment(attachment: { mimetype: string }) {
+  return attachment.mimetype.toLowerCase().startsWith("image/");
+}
+
+async function renderProjectReport(project: ProjectDetail, credentials: { login: string; password: string }) {
+  const projectImages = project.attachments.filter(isImageAttachment);
+  const imageById = await loadImageAttachments(
+    projectImages.map((attachment) => attachment.id),
+    credentials,
+  );
+  const projectImagesHtml = projectImages.length
+    ? `<div class="photo-grid">${projectImages
+        .map((image) => {
+          const attachment = imageById.get(image.id);
+          const src = attachment?.datas
+            ? `data:${attachment.mimetype || image.mimetype || "image/jpeg"};base64,${attachment.datas}`
+            : "";
+          return `<div class="photo">${
+            src ? `<img src="${src}" alt="${escapeHtml(image.name)}" />` : ""
+          }<div class="muted">${escapeHtml(attachment?.name || image.name)}</div></div>`;
+        })
+        .join("")}</div>`
+    : '<p class="muted">Ажлын зураг хавсаргаагүй.</p>';
   const rows = project.tasks
     .map(
       (task, index) => `<tr>
@@ -206,13 +228,15 @@ function renderProjectReport(project: ProjectDetail) {
     <div class="meta">
       <div><strong>Ажил:</strong> ${escapeHtml(project.name)}</div>
       <div><strong>Хэлтэс:</strong> ${escapeHtml(project.departmentName)}</div>
-      <div><strong>Менежер:</strong> ${escapeHtml(project.managerName)}</div>
+      <div><strong>${escapeHtml(project.managerJobTitle || "Хариуцсан ажилтан")}:</strong> ${escapeHtml(project.managerName)}</div>
       <div><strong>Явц:</strong> ${project.completion}%</div>
       <div><strong>Эхлэх огноо:</strong> ${escapeHtml(project.startDate)}</div>
       <div><strong>Дуусах огноо:</strong> ${escapeHtml(project.deadline)}</div>
     </div>
     <h2>Ерөнхий тайлбар</h2>
     <div class="box">${nl2br(project.description || "Тайлбар оруулаагүй.")}</div>
+    <h2>Ажлын зураг</h2>
+    <div class="box">${projectImagesHtml}</div>
     <h2>Даалгаврууд</h2>
     <table>
       <thead>
@@ -326,7 +350,7 @@ export async function GET(request: Request) {
     type === "project"
       ? await (async () => {
           await assertCanAccessProject(id, session);
-          return renderProjectReport(await loadProjectDetail(id, credentials));
+          return renderProjectReport(await loadProjectDetail(id, credentials), credentials);
         })()
       : await (async () => {
           await assertCanAccessTask(id, session);

@@ -206,6 +206,7 @@ type ProjectCard = {
   name: string;
   managerId?: number | null;
   manager: string;
+  managerJobTitle?: string;
   departmentName: string;
   operationTypeLabel?: string;
   stageLabel: string;
@@ -4657,6 +4658,34 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       ? matchesDepartmentGroup(bucketGroup, itemDepartmentName)
       : itemDepartmentName === bucketName;
   };
+  const projectManagerUserIds = Array.from(
+    new Set(
+      projects
+        .map((project) => relationId(project.user_id))
+        .filter((userId): userId is number => Boolean(userId)),
+    ),
+  );
+  const projectManagerEmployees = projectManagerUserIds.length
+    ? await executeKw<OdooEmployeeRecord[]>(
+        uid,
+        "hr.employee",
+        "search_read",
+        [[["user_id", "in", projectManagerUserIds]]],
+        {
+          fields: ["user_id", "job_id", "job_title"],
+          limit: projectManagerUserIds.length,
+        },
+        resolvedConnection,
+      ).catch(() => [] as OdooEmployeeRecord[])
+    : [];
+  const managerJobTitleByUserId = new Map<number, string>();
+  for (const employee of projectManagerEmployees) {
+    const userId = relationId(employee.user_id ?? false);
+    const jobTitle = getEmployeeJobTitle(employee);
+    if (userId && jobTitle) {
+      managerJobTitleByUserId.set(userId, jobTitle);
+    }
+  }
 
   const departments = departmentSourceNames.map((department) => {
     const departmentTasks = tasks.filter((task) => {
@@ -4669,6 +4698,10 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     const departmentReview = departmentTasks.filter(
       (task) => taskQuantitySnapshot(task).stageBucket === "review",
     );
+    const departmentProgressTotal = departmentTasks.reduce(
+      (total, task) => total + taskQuantitySnapshot(task).progress,
+      0,
+    );
 
     return {
       name: department,
@@ -4678,7 +4711,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       openTasks: departmentTasks.length - departmentDone.length,
       reviewTasks: departmentReview.length,
       completion: departmentTasks.length
-        ? Math.round((departmentDone.length / departmentTasks.length) * 100)
+        ? Math.round(departmentProgressTotal / departmentTasks.length)
         : 0,
     };
   });
@@ -4709,6 +4742,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       name: project.name,
       managerId: relationId(project.user_id),
       manager: relationName(project.user_id),
+      managerJobTitle: managerJobTitleByUserId.get(relationId(project.user_id) ?? 0) || "",
       departmentName:
         projectTaskDepartments[0] ??
         projectDepartmentById.get(project.id) ??
@@ -5119,7 +5153,12 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     .sort((left, right) => right.exceptionCount - left.exceptionCount)
     .slice(0, 12);
 
-  const completionRate = totalTasks ? Math.round((doneTasks.length / totalTasks) * 100) : 0;
+  const completionRate = totalTasks
+    ? Math.round(
+        tasks.reduce((sum, task) => sum + taskQuantitySnapshot(task).progress, 0) /
+          totalTasks,
+      )
+    : 0;
   const completedQuantitySummary = buildQuantityMetricSummary(tasks);
 
   return {
