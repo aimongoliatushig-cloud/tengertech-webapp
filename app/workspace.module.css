@@ -1583,7 +1583,7 @@
 
 .projectHeroGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin-top: 22px;
 }

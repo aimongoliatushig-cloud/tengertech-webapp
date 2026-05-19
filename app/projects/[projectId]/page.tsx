@@ -278,15 +278,6 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   });
   const stageSummary = resolveProjectStage(taskCounts);
   const activeTaskCount = taskCounts.progress + taskCounts.review;
-  const projectVehicleNames = Array.from(
-    new Set(project.tasks.map((task) => task.vehicleName).filter(Boolean)),
-  );
-  const projectDriverNames = Array.from(
-    new Set(project.tasks.map((task) => task.driverName).filter(Boolean)),
-  );
-  const projectCollectorNames = Array.from(
-    new Set(project.tasks.flatMap((task) => task.collectorNames).filter(Boolean)),
-  );
   const completionDegrees = Math.round((project.completion / 100) * 360);
   const taskBreakdown = [
     {
@@ -424,48 +415,6 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                   </div>
                 </article>
 
-                <div className={styles.projectHeroAside}>
-                  <article className={styles.projectHeroInfoCard}>
-                    <span className={styles.projectHeroCardLabel}>Хариуцсан хүрээ</span>
-                    <div className={styles.projectHeroInfoGrid}>
-                      <div>
-                        <span>Алба нэгж</span>
-                        <strong>{project.departmentName}</strong>
-                      </div>
-                      <div>
-                        <span>{project.managerJobTitle || "Хариуцсан ажилтан"}</span>
-                        <strong>{project.managerName || "Тодорхойгүй"}</strong>
-                      </div>
-                      <div>
-                        <span>Эхлэх огноо</span>
-                        <strong>{project.startDate}</strong>
-                      </div>
-                      <div>
-                        <span>Дуусах огноо</span>
-                        <strong>{project.deadline}</strong>
-                      </div>
-                      {projectVehicleNames.length ? (
-                        <div>
-                          <span>Машин</span>
-                          <strong>{projectVehicleNames.join(", ")}</strong>
-                        </div>
-                      ) : null}
-                      {projectDriverNames.length ? (
-                        <div>
-                          <span>Жолооч</span>
-                          <strong>{projectDriverNames.join(", ")}</strong>
-                        </div>
-                      ) : null}
-                      {projectCollectorNames.length ? (
-                        <div>
-                          <span>Ачигч</span>
-                          <strong>{projectCollectorNames.join(", ")}</strong>
-                        </div>
-                      ) : null}
-                    </div>
-                  </article>
-
-                </div>
               </div>
 
               <div className={styles.buttonRow}>
