@@ -16,7 +16,7 @@ import {
   submitFieldShift,
   uploadFieldStopProof,
 } from "@/lib/field-ops";
-import { executeOdooKw, loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
+import { executeOdooKw, loadFleetVehicleBoard, loadMunicipalSnapshot, type OdooConnection } from "@/lib/odoo";
 import { loadDepartmentHeadUserIds } from "@/lib/notification-recipients";
 import { createProcurementRequest, uploadProcurementAttachment } from "@/lib/procurement";
 import { notifyPushEvent, type PushEventType } from "@/lib/push-notifications";
@@ -630,6 +630,26 @@ function buildFieldPath(taskId: number, stopLineId?: number) {
     path: `/field?taskId=${taskId}`,
     hash: stopLineId ? `#stop-${stopLineId}` : "",
   };
+}
+
+async function resolveDepartmentProjectManagerId(input: {
+  submittedManagerId: number | null;
+  departmentId: number | null;
+  connectionOverrides: Partial<OdooConnection>;
+}) {
+  if (!input.departmentId) {
+    return input.submittedManagerId;
+  }
+
+  const departmentHeadIds = await loadDepartmentHeadUserIds(
+    input.departmentId,
+    input.connectionOverrides,
+  ).catch((error) => {
+    console.warn("Department head could not be resolved for project manager assignment:", error);
+    return [] as number[];
+  });
+
+  return departmentHeadIds[0] ?? input.submittedManagerId;
 }
 
 export async function createProjectAction(formData: FormData) {
@@ -1531,11 +1551,21 @@ export async function createProjectAction(formData: FormData) {
   }
 
   try {
+    const submittedManagerId = managerIdRaw && Number.isFinite(Number(managerIdRaw)) ? Number(managerIdRaw) : null;
+    const selectedDepartmentId =
+      effectiveDepartmentIdRaw && Number.isFinite(Number(effectiveDepartmentIdRaw))
+        ? Number(effectiveDepartmentIdRaw)
+        : null;
+    const resolvedManagerId = await resolveDepartmentProjectManagerId({
+      submittedManagerId,
+      departmentId: selectedDepartmentId,
+      connectionOverrides,
+    });
     const projectId = await createWorkspaceProject(
       {
         name,
-        managerId: managerIdRaw ? Number(managerIdRaw) : null,
-        departmentId: effectiveDepartmentIdRaw ? Number(effectiveDepartmentIdRaw) : null,
+        managerId: resolvedManagerId,
+        departmentId: selectedDepartmentId,
         operationType: normalizedOperationType || undefined,
         trackQuantity,
         plannedQuantity:
