@@ -8,20 +8,6 @@ export type DepartmentGroupDefinition = {
 
 export const DEPARTMENT_GROUPS: DepartmentGroupDefinition[] = [
   {
-    name: "Санхүүгийн алба",
-    units: [],
-    aliases: ["Санхүү", "Санхүүгийн алба"],
-    icon: "₮",
-    accent: "var(--tone-blue)",
-  },
-  {
-    name: "Захиргааны алба",
-    units: [],
-    aliases: ["Захиргаа", "Захиргааны алба", "Удирдлага"],
-    icon: "🏢",
-    accent: "var(--tone-slate)",
-  },
-  {
     name: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
     units: ["Авто бааз", "Хог тээвэрлэлт"],
     aliases: [
@@ -51,6 +37,20 @@ export const DEPARTMENT_GROUPS: DepartmentGroupDefinition[] = [
     aliases: ["Тохижилт", "Тохижилт үйлчилгээ", "Тохижилтын хэлтэс"],
     icon: "🏙️",
     accent: "var(--tone-slate)",
+  },
+  {
+    name: "Захиргааны алба",
+    units: [],
+    aliases: ["Захиргаа", "Захиргааны алба", "Удирдлага"],
+    icon: "🏢",
+    accent: "var(--tone-slate)",
+  },
+  {
+    name: "Санхүүгийн алба",
+    units: [],
+    aliases: ["Санхүү", "Санхүүгийн алба"],
+    icon: "₮",
+    accent: "var(--tone-blue)",
   },
   {
     name: "Хүний нөөц",
