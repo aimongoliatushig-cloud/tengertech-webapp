@@ -227,12 +227,19 @@ function ProjectCardLink({
   project,
   href,
   actionLabel,
+  hideDepartment = false,
 }: {
   project: ProjectCardItem;
   href: string;
   actionLabel: string;
+  hideDepartment?: boolean;
 }) {
   const managerTitle = project.managerJobTitle || "Хариуцсан ажилтан";
+  const metaParts = [
+    hideDepartment ? null : `Алба нэгж: ${project.departmentName}`,
+    `${managerTitle}: ${project.manager}`,
+    project.operationTypeLabel,
+  ].filter(Boolean);
 
   return (
     <Link href={href} className={styles.projectCard}>
@@ -242,10 +249,7 @@ function ProjectCardLink({
       </div>
 
       <h3>{project.name}</h3>
-      <p>
-        Алба нэгж: {project.departmentName} · {managerTitle}: {project.manager}
-        {project.operationTypeLabel ? ` · ${project.operationTypeLabel}` : ""}
-      </p>
+      <p>{metaParts.join(" · ")}</p>
 
       <div className={styles.projectMeta}>
         <div>
@@ -604,6 +608,7 @@ async function ProjectsPageContent({
   const selectedDepartmentName = masterMode
     ? scopedDepartmentName ?? "Миний алба нэгж"
     : selectedUnit || selectedGroup?.name || "Бүх хэлтэс";
+  const hideDepartmentInProjectCards = masterMode || Boolean(selectedUnit || selectedGroup);
   const masterProjectSectionLabel = seniorMasterMode ? "Нэгжийн бүх ажил" : "Миний хариуцсан ажил";
   const masterProjectSectionNote = seniorMasterMode
     ? "Ахлах мастер нэгжийн бүх мастер, бүх ажлын явцыг харна"
@@ -1262,6 +1267,7 @@ async function ProjectsPageContent({
                             project={project}
                             href={buildProjectHref(project.href)}
                             actionLabel={projectCardLabel}
+                            hideDepartment={hideDepartmentInProjectCards}
                           />
                         ))}
                       </div>
@@ -1318,6 +1324,7 @@ async function ProjectsPageContent({
                               project={project}
                               href={buildProjectHref(project.href)}
                               actionLabel={projectCardLabel}
+                              hideDepartment={hideDepartmentInProjectCards}
                             />
                           ))}
                         </div>
@@ -1347,6 +1354,7 @@ async function ProjectsPageContent({
                             project={project}
                             href={buildProjectHref(project.href)}
                             actionLabel={projectCardLabel}
+                            hideDepartment={hideDepartmentInProjectCards}
                           />
                         ))}
                       </div>
@@ -1372,12 +1380,12 @@ async function ProjectsPageContent({
                               />
                             </div>
                             <p>
-                              Алба нэгж: {project.departmentName} ·{" "}
-                              {project.managerJobTitle || "Хариуцсан ажилтан"}:{" "}
-                              {project.manager}
-                              {project.operationTypeLabel
-                                ? ` · ${project.operationTypeLabel}`
-                                : ""}
+                              {[
+                                `${project.managerJobTitle || "Хариуцсан ажилтан"}: ${project.manager}`,
+                                project.operationTypeLabel,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")}
                             </p>
                           </div>
 
@@ -1409,6 +1417,7 @@ async function ProjectsPageContent({
                           project={project}
                           href={buildProjectHref(project.href)}
                           actionLabel={projectCardLabel}
+                          hideDepartment={hideDepartmentInProjectCards}
                         />
                       ))}
                     </div>

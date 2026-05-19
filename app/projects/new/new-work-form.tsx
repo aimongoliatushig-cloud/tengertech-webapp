@@ -921,13 +921,7 @@ export function NewWorkForm({
       </div>
 
       {isDepartmentLocked ? (
-        <div className={styles.field}>
-          <label>Хэлтэс</label>
-          <div className={styles.lockedFieldValue}>
-            {lockedDepartmentLabel ?? selectedDepartment?.label ?? selectedDepartment?.name}
-          </div>
-          <input type="hidden" name="department_id" value={departmentId} />
-        </div>
+        <input type="hidden" name="department_id" value={departmentId} />
       ) : (
         <div className={styles.field}>
           <label htmlFor="department_id">Хэлтэс</label>
