@@ -5697,6 +5697,10 @@
     box-shadow: 0 10px 24px rgba(27, 73, 38, 0.06);
   }
 
+  .projectHeroFeatureCard {
+    display: none;
+  }
+
   .projectHeroFeatureTop {
     display: grid;
     gap: 8px;

@@ -334,7 +334,6 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
           <div className={styles.pageContent}>
             <WorkspaceHeader
               title="Ажлын дэлгэрэнгүй"
-              subtitle="Сонгосон ажлын гол хяналт ба даалгаврын урсгал"
               userName={session.name}
               roleLabel={getSessionRoleLabel(session)}
               notificationCount={activeTaskCount}
