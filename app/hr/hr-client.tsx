@@ -99,9 +99,11 @@ function statusLabel(employee: HrEmployeeDirectoryItem) {
 export function EmployeeTable({
   employees,
   mode = "hr",
+  canCreateEmployee = mode === "hr",
 }: {
   employees: HrEmployeeDirectoryItem[];
   mode?: "hr" | "department";
+  canCreateEmployee?: boolean;
 }) {
   const searchParams = useSearchParams();
   const departments = useMemo(
@@ -162,7 +164,7 @@ export function EmployeeTable({
           <option value="Ажлаас гарсан">Ажлаас гарсан</option>
           <option value="Архивлагдсан">Архивлагдсан</option>
         </select>
-        {mode === "hr" ? (
+        {canCreateEmployee ? (
           <Link href="/hr/employees/new" className={styles.primaryLink}>
             Шинэ ажилтан
           </Link>

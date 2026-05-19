@@ -68,7 +68,7 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
   if (!employee) {
     notFound();
   }
-  const mode = access.isHr ? "hr" : "department";
+  const mode: "hr" | "department" = access.scope === "hr" ? "hr" : "department";
   const actions = access.isHr ? employeeActions(employee.id) : departmentHeadEmployeeActions(employee.id);
 
   return (

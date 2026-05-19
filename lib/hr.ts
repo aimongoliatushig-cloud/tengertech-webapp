@@ -489,6 +489,7 @@ type HrLeaveAttachmentInput = {
 const ADMIN_ROLES = new Set(["system_admin"]);
 const HR_ROLE_KEYS = new Set(["hr_specialist", "hr_manager"]);
 const HR_TEXT_TOKENS = ["хүний нөөц", "human resources", "hr specialist", "hr manager"];
+const EXECUTIVE_HR_SCOPE_ROLES = new Set(["director", "general_manager"]);
 const DEPARTMENT_HEAD_ROLES = new Set(["project_manager"]);
 const DEPARTMENT_HEAD_TEXT_TOKENS = [
   "хэлтсийн дарга",
@@ -815,6 +816,7 @@ export async function getHrAccessProfile(session: AppSession) {
     user?.x_role_key,
     user?.x_hr_role,
   ];
+  const sessionRole = normalizeText(session.role);
 
   if (containsHrText(jobName) || containsHrText(employee?.job_title)) {
     reasons.push("job title");
@@ -842,6 +844,15 @@ export async function getHrAccessProfile(session: AppSession) {
     reasons.push("custom role key");
   }
 
+  const hasExecutiveHrScope = Boolean(
+    EXECUTIVE_HR_SCOPE_ROLES.has(sessionRole) ||
+      session.groupFlags?.municipalDirector ||
+      session.groupFlags?.fleetRepairCeo ||
+      session.groupFlags?.fleetRepairGeneralManager ||
+      session.groupFlags?.procurementCeo ||
+      session.groupFlags?.procurementGeneralManager,
+  );
+
   if (DEPARTMENT_HEAD_ROLES.has(String(session.role))) {
     departmentHeadReasons.push("project manager role");
   }
@@ -864,7 +875,6 @@ export async function getHrAccessProfile(session: AppSession) {
     departmentHeadReasons.push("department manager group name");
   }
 
-  const sessionRole = normalizeText(session.role);
   const isHr = Boolean(
     ADMIN_ROLES.has(String(session.role)) ||
       HR_ROLE_KEYS.has(sessionRole) ||
@@ -877,12 +887,13 @@ export async function getHrAccessProfile(session: AppSession) {
           session.groupFlags?.municipalHr))
   );
   const isDepartmentHead = Boolean(!isHr && !isMasterOrOperationalLeader && departmentHeadReasons.length > 0);
+  const scope = (isHr || hasExecutiveHrScope ? "hr" : "department") as "hr" | "department";
 
   return {
     isHr,
     isDepartmentHead,
-    canAccessHr: isHr || isDepartmentHead,
-    scope: isHr ? "hr" : "department",
+    canAccessHr: isHr || hasExecutiveHrScope || isDepartmentHead,
+    scope,
     reasons,
     departmentHeadReasons,
     employee: {
@@ -927,7 +938,7 @@ export async function requireDepartmentHeadTimeoffRequestAccess(session: AppSess
 }
 
 function scopeEmployeesForProfile(employees: HrEmployeeDirectoryItem[], profile: Awaited<ReturnType<typeof getHrAccessProfile>>) {
-  if (profile.isHr) {
+  if (profile.scope === "hr") {
     return employees;
   }
   const departmentId = profile.employee.departmentId;
@@ -1760,7 +1771,7 @@ async function scopeTimeoffRequestsForProfile(
   requests: HrTimeoffRequest[],
   profile: Awaited<ReturnType<typeof getHrAccessProfile>>,
 ) {
-  if (profile.isHr) {
+  if (profile.scope === "hr") {
     return requests;
   }
   const employees = await getEmployees(session);
@@ -2049,7 +2060,7 @@ export async function getDisciplineRecords(session: AppSession): Promise<HrDisci
           };
         });
 
-        if (profile.isHr) {
+        if (profile.scope === "hr") {
           return mappedRecords;
         }
 
@@ -2294,7 +2305,7 @@ export async function getTimeoffRequests(session: AppSession, filters: Record<st
 
 export async function getTimeoffDashboard(session: AppSession): Promise<HrTimeoffDashboardData> {
   const profile = await requireHrAccess(session);
-  if (!profile.isHr) {
+  if (profile.scope !== "hr") {
     const [employees, requests] = await Promise.all([getEmployees(session), getTimeoffRequests(session)]);
     return buildScopedTimeoffDashboard(employees, requests, "department", profile.employee.departmentName);
   }
@@ -2308,10 +2319,10 @@ export async function getTimeoffDashboard(session: AppSession): Promise<HrTimeof
       getConnection(session),
     );
     return {
-      ...emptyTimeoffDashboard(profile.isHr ? "hr" : "department", profile.employee.departmentName),
+      ...emptyTimeoffDashboard(profile.scope, profile.employee.departmentName),
       ...dashboard,
       cards: {
-        ...emptyTimeoffDashboard(profile.isHr ? "hr" : "department").cards,
+        ...emptyTimeoffDashboard(profile.scope).cards,
         ...(dashboard.cards || {}),
       },
       latestRequests: (dashboard.latestRequests || []).map(normalizeTimeoffRequest),
@@ -2325,9 +2336,9 @@ export async function getTimeoffDashboard(session: AppSession): Promise<HrTimeof
   const employees = await getEmployees(session);
   const activeEmployees = employees.filter((employee) => employee.active && !["archived", "terminated", "resigned"].includes(employee.statusKey));
   return {
-    ...emptyTimeoffDashboard(profile.isHr ? "hr" : "department", profile.employee.departmentName),
+    ...emptyTimeoffDashboard(profile.scope, profile.employee.departmentName),
     cards: {
-      ...emptyTimeoffDashboard(profile.isHr ? "hr" : "department").cards,
+      ...emptyTimeoffDashboard(profile.scope).cards,
       totalEmployees: employees.length,
       activeEmployees: activeEmployees.length,
       archivedEmployees: employees.length - activeEmployees.length,

@@ -440,6 +440,23 @@ async function notifyPushQuietly(input: {
   }
 }
 
+async function notifyTaskApprovedAfterRedirect(
+  taskId: number,
+  connectionOverrides: Record<string, never> | { login: string; password: string },
+) {
+  const task = await loadTaskDetail(taskId, connectionOverrides).catch(() => null);
+  await notifyPushQuietly({
+    eventType: "work_approved",
+    title: "Ажил баталгаажлаа",
+    body: "Ажлын гүйцэтгэл баталгаажсан байна.",
+    targetUrl: `/tasks/${taskId}`,
+    userIds: uniquePositiveUserIds([
+      ...(task?.assigneeUserIds ?? []),
+      ...(task?.reports.map((report) => report.reporterId) ?? []),
+    ]),
+  });
+}
+
 async function notifyDepartmentHeadsOfWork(input: {
   departmentId?: number | null;
   actorUserId: number;
@@ -2529,7 +2546,6 @@ export async function markTaskDoneAction(formData: FormData) {
       password: session.password,
     };
     await assertCanReviewTaskAction(taskId, session, connectionOverrides);
-    const taskBeforeReview = await loadTaskDetail(taskId, connectionOverrides).catch(() => null);
     try {
       await markWorkspaceTaskDone(taskId, connectionOverrides);
     } catch (error) {
@@ -2541,16 +2557,6 @@ export async function markTaskDoneAction(formData: FormData) {
         await forceWorkspaceTaskDone(taskId, {});
       }
     }
-    await notifyPushQuietly({
-      eventType: "work_approved",
-      title: "Ажил баталгаажлаа",
-      body: "Ажлын гүйцэтгэл баталгаажсан байна.",
-      targetUrl: `/tasks/${taskId}`,
-      userIds: uniquePositiveUserIds([
-        ...(taskBeforeReview?.assigneeUserIds ?? []),
-        ...(taskBeforeReview?.reports.map((report) => report.reporterId) ?? []),
-      ]),
-    });
     revalidatePath("/");
     revalidatePath("/projects");
     revalidatePath("/field");
@@ -2558,6 +2564,9 @@ export async function markTaskDoneAction(formData: FormData) {
     revalidatePath("/review");
     revalidatePath("/reports");
     revalidatePath(`/tasks/${taskId}`);
+    void notifyTaskApprovedAfterRedirect(taskId, connectionOverrides).catch((error) => {
+      console.warn("Task approved notification could not be queued:", error);
+    });
     redirect(`/?notice=${encodeURIComponent("Ажил хянаж дууслаа.")}`);
   } catch (error) {
     rethrowIfRedirectError(error);

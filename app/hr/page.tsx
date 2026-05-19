@@ -144,14 +144,14 @@ export default async function HrDashboardPage() {
       return [];
     }),
   ]);
-  const mode = access.isHr ? "hr" : "department";
+  const mode: "hr" | "department" = access.scope === "hr" ? "hr" : "department";
   const requestCards = timeoffDashboard?.cards;
 
   return (
     <>
       <WorkspaceHeader
-        title={access.isHr ? "Хүний нөөцийн dashboard" : "Миний хэлтсийн хүний нөөц"}
-        subtitle={access.isHr ? "Бүх хэлтсийн ажилтан, чөлөө / өвчтэй хүсэлт болон төлөвийг хянана" : "Өөрийн хэлтсийн ажилтны идэвхтэй, чөлөөтэй, өвчтэй төлөв болон илгээсэн хүсэлтүүд"}
+        title={mode === "hr" ? "Хүний нөөцийн dashboard" : "Миний хэлтсийн хүний нөөц"}
+        subtitle={mode === "hr" ? "Бүх хэлтсийн ажилтан, чөлөө / өвчтэй хүсэлт болон төлөвийг хянана" : "Өөрийн хэлтсийн ажилтны идэвхтэй, чөлөөтэй, өвчтэй төлөв болон илгээсэн хүсэлтүүд"}
         userName={session.name}
         roleLabel={getSessionRoleLabel(session)}
         notificationCount={requestCards?.pendingRequests ?? 0}

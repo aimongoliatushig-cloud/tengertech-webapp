@@ -2,10 +2,12 @@ import { type ComponentProps, Suspense } from "react";
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Truck } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { LoadingShell } from "@/app/_components/loading-shell";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
+import dashboardStyles from "@/app/dashboard-view.module.css";
 import styles from "@/app/workspace.module.css";
 import {
   hasCapability,
@@ -22,7 +24,12 @@ import {
   getAvailableUnits,
   matchesDepartmentGroup,
 } from "@/lib/department-groups";
-import { type DashboardSnapshot, loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
+import {
+  type DashboardSnapshot,
+  type FleetVehicleBoardItem,
+  loadFleetVehicleBoard,
+  loadMunicipalSnapshot,
+} from "@/lib/odoo";
 import {
   filterProjectsForResponsibleMaster,
   filterTasksForResponsibleMaster,
@@ -44,16 +51,6 @@ type ProjectCardItem = DashboardSnapshot["projects"][number];
 type ProjectsSession = Awaited<ReturnType<typeof requireSession>>;
 type ProjectsAppMenuProps = ComponentProps<typeof AppMenu>;
 type ProjectsWorkspaceHeaderProps = ComponentProps<typeof WorkspaceHeader>;
-type AutoBaseProcurementItem = {
-  id: number;
-  name: string;
-  vehiclePlate: string;
-  vehicleModel: string;
-  repairName: string;
-  amountLabel: string;
-  stateLabel: string;
-};
-
 const AUTO_BASE_GROUP_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
 const AUTO_BASE_UNIT_NAME = "Авто бааз";
 const GREEN_SERVICE_GROUP_NAME = "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
@@ -271,35 +268,48 @@ function ProjectCardLink({
   );
 }
 
-function AutoBaseProcurementCard({ item }: { item: AutoBaseProcurementItem }) {
+function AutoBaseRepairVehicleCard({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
+  const latestRepair = vehicle.repairHistory[0] ?? null;
+  const href = latestRepair?.id ? `/fleet-repair/requests/${latestRepair.id}` : "/fleet-repair/requests";
+  const driverName = vehicle.responsibleDriverName || vehicle.fleetDriverName || "Оноогоогүй";
+  const modelLabel = vehicle.modelName || vehicle.vehicleTypeName || vehicle.categoryName || vehicle.name;
+  const repairState = vehicle.stateLabel || latestRepair?.stateLabel || "Засвартай";
+
   return (
-    <Link href={`/procurement/${item.id}`} className={styles.projectCard}>
-      <div className={styles.projectCardTop}>
-        <span>{item.vehiclePlate}</span>
-        <span className={styles.stagePill}>{item.stateLabel}</span>
-      </div>
-
-      <h3>{item.name}</h3>
-      <p>
-        Машин: {item.vehicleModel || item.vehiclePlate}
-        {item.repairName ? ` · Засвар: ${item.repairName}` : ""}
-      </p>
-
-      <div className={styles.projectMeta}>
-        <div>
-          <span>Нийт дүн</span>
-          <strong>{item.amountLabel || "0 ₮"}</strong>
-        </div>
-        <div>
-          <span>Төлөв</span>
-          <strong>{item.stateLabel}</strong>
-        </div>
-      </div>
-
-      <div className={styles.cardFooter}>
-        <span className={styles.cardLinkLabel}>Хүсэлт харах</span>
-        <strong aria-hidden>→</strong>
-      </div>
+    <Link href={href} className={dashboardStyles.inspectorVehicleCard}>
+      <span className={dashboardStyles.inspectorVehicleImage}>
+        {vehicle.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={vehicle.imageUrl} alt={`${vehicle.plate} машин`} />
+        ) : (
+          <Truck aria-hidden />
+        )}
+        <span>{repairState}</span>
+      </span>
+      <span className={dashboardStyles.inspectorVehicleCardBody}>
+        <strong>{vehicle.plate}</strong>
+        <small>{modelLabel}</small>
+        <span className={dashboardStyles.inspectorVehicleCardStats}>
+          <span>
+            <small>Жолооч</small>
+            <b>{driverName}</b>
+          </span>
+          <span>
+            <small>Засвар</small>
+            <b>{vehicle.repairHistory.length || 1}</b>
+          </span>
+        </span>
+        <span className={dashboardStyles.inspectorVehicleProgress}>
+          <i style={{ inlineSize: "100%" }} />
+          <em>Засвар</em>
+        </span>
+        <span className={styles.cardFooter}>
+          <span className={styles.cardLinkLabel}>
+            {latestRepair ? "Засварын хүсэлт харах" : "Засварын жагсаалт харах"}
+          </span>
+          <strong aria-hidden>→</strong>
+        </span>
+      </span>
     </Link>
   );
 }
@@ -425,21 +435,26 @@ async function ProjectsPageContent({
     } catch (error) {
       console.error("Fleet vehicle board could not be loaded for projects auto-base view:", error);
       fleetLoadError =
-        "Авто баазын худалдан авалтын хүсэлтүүдийг уншиж чадсангүй. Холболт болон эрхийн тохиргоог шалгана уу.";
+        "Авто баазын засвартай машинуудыг уншиж чадсангүй. Холболт болон эрхийн тохиргоог шалгана уу.";
     }
   }
-  const autoBaseProcurementItems: AutoBaseProcurementItem[] =
-    fleetBoard?.allVehicles.flatMap((vehicle) =>
-      vehicle.procurementLinks.map((request) => ({
-        id: request.id,
-        name: request.name,
-        vehiclePlate: vehicle.plate,
-        vehicleModel: vehicle.modelName || vehicle.name,
-        repairName: request.repairName,
-        amountLabel: request.amountLabel,
-        stateLabel: request.stateLabel,
-      })),
-    ) ?? [];
+  const autoBaseGroupForVehicles =
+    selectedGroup?.name === AUTO_BASE_GROUP_NAME ? selectedGroup : findDepartmentGroupByName(AUTO_BASE_GROUP_NAME);
+  const autoBaseRepairVehicles =
+    fleetBoard?.repairVehicles.filter((vehicle) => {
+      if (!vehicle.departmentName) {
+        return true;
+      }
+
+      return (
+        matchesUnitScope(
+          AUTO_BASE_UNIT_NAME,
+          vehicle.departmentName,
+          vehicle.name,
+          `${vehicle.vehicleTypeName} ${vehicle.categoryName} ${vehicle.latestRepairState}`,
+        ) || Boolean(autoBaseGroupForVehicles && matchesDepartmentGroup(autoBaseGroupForVehicles, vehicle.departmentName))
+      );
+    }) ?? [];
 
   if (!snapshot) {
     snapshot = await snapshotPromise;
@@ -977,7 +992,7 @@ async function ProjectsPageContent({
                               ),
                             ).length +
                               (selectedGroup.name === AUTO_BASE_GROUP_NAME
-                                ? autoBaseProcurementItems.length
+                                ? autoBaseRepairVehicles.length
                                 : 0)
                           }
                         </strong>
@@ -1005,7 +1020,7 @@ async function ProjectsPageContent({
                         <span>{unit}</span>
                         <strong>
                           {unit === AUTO_BASE_UNIT_NAME && fleetBoard
-                            ? autoBaseProcurementItems.length
+                            ? autoBaseRepairVehicles.length
                             : snapshot.projects.filter((project) =>
                                 matchesUnitScope(
                                   unit,
@@ -1026,12 +1041,12 @@ async function ProjectsPageContent({
               <div className={styles.sectionHeader}>
                 <div>
                   <span className={styles.sectionKicker}>
-                    {showAutoBaseFleet ? "Худалдан авалтын хүсэлт" : masterMode ? masterProjectSectionLabel : "Ажлын жагсаалт"}
+                    {showAutoBaseFleet ? "Авто баазын засвар" : masterMode ? masterProjectSectionLabel : "Ажлын жагсаалт"}
                   </span>
-                  <h2>{showAutoBaseFleet ? "Машинтай холбоотой худалдан авалт" : masterMode ? selectedDepartmentName : filterTitle}</h2>
+                  <h2>{showAutoBaseFleet ? "Засвартай машинууд" : masterMode ? selectedDepartmentName : filterTitle}</h2>
                   <small className={styles.sectionNote}>
                     {showAutoBaseFleet
-                      ? "Авто баазын машин дээр үүссэн сэлбэг, засварын худалдан авалтын хүсэлтүүдийг харуулна."
+                      ? "Авто баазын засвартай машинуудыг хяналтын самбарын машин карт шиг харуулна."
                       : masterMode
                         ? masterProjectSectionNote
                         : `${selectedDepartmentName} · ${filterNote}`}
@@ -1210,15 +1225,15 @@ async function ProjectsPageContent({
               {showAutoBaseFleet ? (
                 fleetLoadError ? (
                   <div className={styles.emptyColumnState}>{fleetLoadError}</div>
-                ) : autoBaseProcurementItems.length ? (
-                  <div className={styles.projectRail}>
-                    {autoBaseProcurementItems.map((item) => (
-                      <AutoBaseProcurementCard key={`${item.vehiclePlate}-${item.id}`} item={item} />
+                ) : autoBaseRepairVehicles.length ? (
+                  <div className={dashboardStyles.inspectorVehicleScroller}>
+                    {autoBaseRepairVehicles.map((vehicle) => (
+                      <AutoBaseRepairVehicleCard key={vehicle.id} vehicle={vehicle} />
                     ))}
                   </div>
                 ) : (
                   <div className={styles.emptyColumnState}>
-                    Авто баазын машин дээр холбогдсон худалдан авалтын хүсэлт одоогоор алга.
+                    Авто бааз дээр засвартай машин одоогоор алга.
                   </div>
                 )
               ) : showAutoBaseCombined ? (
@@ -1254,24 +1269,24 @@ async function ProjectsPageContent({
                   <section className={styles.unitProjectSection}>
                     <div className={styles.unitProjectSectionHeader}>
                       <div>
-                        <span className={styles.unitProjectSectionKicker}>Худалдан авалтын хүсэлт</span>
-                        <h3>Авто баазын худалдан авалт</h3>
-                        <p>Машин дээр үүссэн сэлбэг, засварын худалдан авалтын хүсэлтүүд.</p>
+                        <span className={styles.unitProjectSectionKicker}>Авто баазын засвар</span>
+                        <h3>Засвартай машинууд</h3>
+                        <p>Худалдан авалт биш, авто бааз дээр засвартай байгаа машинууд.</p>
                       </div>
-                      <strong>{autoBaseProcurementItems.length}</strong>
+                      <strong>{autoBaseRepairVehicles.length}</strong>
                     </div>
 
                     {fleetLoadError ? (
                       <div className={styles.emptyColumnState}>{fleetLoadError}</div>
-                    ) : autoBaseProcurementItems.length ? (
-                      <div className={styles.projectRail}>
-                        {autoBaseProcurementItems.map((item) => (
-                          <AutoBaseProcurementCard key={`${item.vehiclePlate}-${item.id}`} item={item} />
+                    ) : autoBaseRepairVehicles.length ? (
+                      <div className={dashboardStyles.inspectorVehicleScroller}>
+                        {autoBaseRepairVehicles.map((vehicle) => (
+                          <AutoBaseRepairVehicleCard key={vehicle.id} vehicle={vehicle} />
                         ))}
                       </div>
                     ) : (
                       <div className={styles.emptyColumnState}>
-                        Авто баазын машин дээр холбогдсон худалдан авалтын хүсэлт одоогоор алга.
+                        Авто бааз дээр засвартай машин одоогоор алга.
                       </div>
                     )}
                   </section>

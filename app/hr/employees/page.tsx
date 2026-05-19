@@ -19,20 +19,20 @@ export default async function HrEmployeesPage() {
     console.warn("HR employees page could not load employees:", error);
     return [];
   });
-  const mode = access.isHr ? "hr" : "department";
+  const mode: "hr" | "department" = access.scope === "hr" ? "hr" : "department";
 
   return (
     <>
       <WorkspaceHeader
-        title={access.isHr ? "Бүх ажилтнууд" : "Манай хэлтсийн ажилтнууд"}
-        subtitle={access.isHr ? "Бүх ажилтны жагсаалт, хайлт, төлөвийн шүүлт" : "Өөрийн хэлтсийн ажилтнуудыг хайж чөлөө / өвчтэй хүсэлт үүсгэнэ"}
+        title={mode === "hr" ? "Бүх ажилтнууд" : "Манай хэлтсийн ажилтнууд"}
+        subtitle={mode === "hr" ? "Бүх ажилтны жагсаалт, хайлт, төлөвийн шүүлт" : "Өөрийн хэлтсийн ажилтнуудыг хайж чөлөө / өвчтэй хүсэлт үүсгэнэ"}
         userName={session.name}
         roleLabel={getSessionRoleLabel(session)}
         notificationCount={employees.length}
         notificationNote={`${employees.length} ажилтны бүртгэл`}
       />
       <HrSectionNav mode={mode} />
-      <EmployeeTable employees={employees} mode={mode} />
+      <EmployeeTable employees={employees} mode={mode} canCreateEmployee={access.isHr} />
     </>
   );
 }
