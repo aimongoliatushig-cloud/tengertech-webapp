@@ -94,6 +94,9 @@ function documentShell(title: string, body: string, options: { autoPrint?: boole
     .photo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .photo { border: 1px solid #d1d5db; padding: 6px; break-inside: avoid; }
     .photo img { display: block; max-width: 100%; height: auto; }
+    .task-image-group { margin: 12px 0; break-inside: avoid; }
+    .task-image-group h3 { margin: 0 0 6px; }
+    .report-caption { margin: 4px 0 8px; color: #4b5563; font-size: 10.5pt; }
     .signature { margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
     .signature div { border-top: 1px solid #111827; padding-top: 6px; text-align: center; }
     @media print {
@@ -141,7 +144,7 @@ async function renderTaskReport(task: TaskDetail, credentials: { login: string; 
                     : "";
                   return `<div class="photo">${
                     src ? `<img src="${src}" alt="${escapeHtml(image.name)}" />` : ""
-                  }<div class="muted">${escapeHtml(attachment?.name || image.name)}</div></div>`;
+                  }</div>`;
                 })
                 .join("")}</div>`
             : "<p class=\"muted\">Зураг хавсаргаагүй.</p>";
@@ -189,25 +192,77 @@ function isImageAttachment(attachment: { mimetype: string }) {
   return attachment.mimetype.toLowerCase().startsWith("image/");
 }
 
+function renderPhotoGrid(
+  images: Array<{ id: number; name: string; mimetype?: string }>,
+  imageById: Map<number, OdooAttachmentPayload>,
+) {
+  if (!images.length) {
+    return "";
+  }
+
+  return `<div class="photo-grid">${images
+    .map((image) => {
+      const attachment = imageById.get(image.id);
+      const src = attachment?.datas
+        ? `data:${attachment.mimetype || image.mimetype || "image/jpeg"};base64,${attachment.datas}`
+        : "";
+      return `<div class="photo">${
+        src ? `<img src="${src}" alt="${escapeHtml(image.name)}" />` : ""
+      }</div>`;
+    })
+    .join("")}</div>`;
+}
+
+async function loadProjectTaskReportDetails(
+  project: ProjectDetail,
+  credentials: { login: string; password: string },
+) {
+  const tasksWithReports = project.tasks.filter((task) => task.reportCount > 0);
+  const taskDetails = await Promise.all(
+    tasksWithReports.map((task) =>
+      loadTaskDetail(task.id, credentials).catch((error) => {
+        console.warn(`Task report images could not be loaded for task ${task.id}:`, error);
+        return null;
+      }),
+    ),
+  );
+
+  return taskDetails.filter((task): task is TaskDetail => Boolean(task));
+}
+
 async function renderProjectReport(project: ProjectDetail, credentials: { login: string; password: string }) {
   const projectImages = project.attachments.filter(isImageAttachment);
+  const taskDetails = await loadProjectTaskReportDetails(project, credentials);
+  const taskReportImages = taskDetails.flatMap((task) =>
+    task.reports.flatMap((report) => report.images.map((image) => ({ ...image, taskName: task.name }))),
+  );
   const imageById = await loadImageAttachments(
-    projectImages.map((attachment) => attachment.id),
+    Array.from(new Set([...projectImages.map((attachment) => attachment.id), ...taskReportImages.map((image) => image.id)])),
     credentials,
   );
   const projectImagesHtml = projectImages.length
-    ? `<div class="photo-grid">${projectImages
-        .map((image) => {
-          const attachment = imageById.get(image.id);
-          const src = attachment?.datas
-            ? `data:${attachment.mimetype || image.mimetype || "image/jpeg"};base64,${attachment.datas}`
-            : "";
-          return `<div class="photo">${
-            src ? `<img src="${src}" alt="${escapeHtml(image.name)}" />` : ""
-          }<div class="muted">${escapeHtml(attachment?.name || image.name)}</div></div>`;
-        })
-        .join("")}</div>`
-    : '<p class="muted">Ажлын зураг хавсаргаагүй.</p>';
+    ? `<div class="task-image-group"><h3>Ажлын хавсралт</h3>${renderPhotoGrid(projectImages, imageById)}</div>`
+    : "";
+  const taskReportImagesHtml = taskDetails
+    .map((task) => {
+      const reportSections = task.reports
+        .filter((report) => report.images.length)
+        .map(
+          (report) => `<div class="report-caption">${escapeHtml(report.submittedAt)} · ${escapeHtml(report.reporter)}</div>
+          ${renderPhotoGrid(report.images, imageById)}`,
+        )
+        .join("");
+
+      return reportSections
+        ? `<div class="task-image-group"><h3>${escapeHtml(task.name)}</h3>${reportSections}</div>`
+        : "";
+    })
+    .filter(Boolean)
+    .join("");
+  const allImagesHtml =
+    projectImagesHtml || taskReportImagesHtml
+      ? `${projectImagesHtml}${taskReportImagesHtml}`
+      : '<p class="muted">Ажлын зураг хавсаргаагүй.</p>';
   const rows = project.tasks
     .map(
       (task, index) => `<tr>
@@ -235,8 +290,6 @@ async function renderProjectReport(project: ProjectDetail, credentials: { login:
     </div>
     <h2>Ерөнхий тайлбар</h2>
     <div class="box">${nl2br(project.description || "Тайлбар оруулаагүй.")}</div>
-    <h2>Ажлын зураг</h2>
-    <div class="box">${projectImagesHtml}</div>
     <h2>Даалгаврууд</h2>
     <table>
       <thead>
@@ -252,6 +305,8 @@ async function renderProjectReport(project: ProjectDetail, credentials: { login:
       </thead>
       <tbody>${rows || '<tr><td colspan="7">Даалгавар бүртгэгдээгүй.</td></tr>'}</tbody>
     </table>
+    <h2>Ажлын зураг</h2>
+    <div class="box">${allImagesHtml}</div>
     <div class="signature">
       <div>Бэлтгэсэн</div>
       <div>Хянасан</div>

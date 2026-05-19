@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { canAccessAutoBaseOverview, requireSession } from "@/lib/auth";
-import { executeOdooKw } from "@/lib/odoo";
+import { clearOdooReadCaches, executeOdooKw } from "@/lib/odoo";
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
@@ -26,6 +26,15 @@ function redirectWithMessage(kind: "error" | "notice", message: string) {
     [kind]: message,
   });
   redirect(`/auto-base?${params.toString()}`);
+}
+
+function revalidateFleetViews() {
+  clearOdooReadCaches();
+  revalidatePath("/auto-base");
+  revalidatePath("/fleet-repair");
+  revalidatePath("/fleet-repair/requests");
+  revalidatePath("/projects");
+  revalidatePath("/");
 }
 
 function optionalOdooValue(value: string) {
@@ -236,6 +245,155 @@ async function findFleetVehicleStateId(candidateNames: string[], fallbackName: s
   ).catch(() => false);
 }
 
+const ACTIVE_REPAIR_STATES = [
+  "new",
+  "diagnosed",
+  "waiting_parts",
+  "waiting_approval",
+  "approved",
+  "in_repair",
+];
+
+type RepairRequestRecord = {
+  id: number;
+  state?: string | false;
+};
+
+async function getRepairRequestFields() {
+  const fields = await executeOdooKw<OdooFieldMap>(
+    "municipal.repair.request",
+    "fields_get",
+    [
+      [
+        "vehicle_id",
+        "issue_summary",
+        "issue_description",
+        "damage_type",
+        "description",
+        "parts_note",
+        "repair_note",
+        "state",
+      ],
+    ],
+    { attributes: ["string", "type", "required", "readonly"] },
+  );
+  if (!fields.vehicle_id) {
+    throw new Error("Засварын хүсэлтийн Odoo загвар бүрэн суулгагдаагүй байна.");
+  }
+  return fields;
+}
+
+async function findActiveRepairRequest(vehicleId: number) {
+  const records = await executeOdooKw<RepairRequestRecord[]>(
+    "municipal.repair.request",
+    "search_read",
+    [[["vehicle_id", "=", vehicleId], ["state", "in", ACTIVE_REPAIR_STATES]]],
+    {
+      fields: ["id", "state"],
+      limit: 1,
+      order: "request_date desc, id desc",
+    },
+  ).catch(() => []);
+  return records[0] ?? null;
+}
+
+async function startVehicleRepairRequest(vehicleId: number, description: string, damageType: string) {
+  const fields = await getRepairRequestFields();
+  const summary = description.slice(0, 90);
+  const repairValues = pickSupportedValues(
+    {
+      vehicle_id: vehicleId,
+      issue_summary: summary,
+      issue_description: description,
+      damage_type: optionalOdooValue(damageType),
+      description,
+      state: "new",
+    },
+    fields,
+  );
+  const existing = await findActiveRepairRequest(vehicleId);
+  const repairId = existing?.id ?? await executeOdooKw<number>(
+    "municipal.repair.request",
+    "create",
+    [repairValues],
+    {},
+  );
+
+  if (existing) {
+    await executeOdooKw<boolean>(
+      "municipal.repair.request",
+      "write",
+      [[repairId], repairValues],
+      {},
+    );
+  }
+  await executeOdooKw<boolean>(
+    "municipal.repair.request",
+    "action_start_repair",
+    [[repairId]],
+    {},
+  ).catch(async () => {
+    const fallbackValues = pickSupportedValues({ state: "in_repair" }, fields);
+    if (Object.keys(fallbackValues).length) {
+      await executeOdooKw<boolean>(
+        "municipal.repair.request",
+        "write",
+        [[repairId], fallbackValues],
+        {},
+      );
+    }
+  });
+  return true;
+}
+
+async function completeVehicleRepairRequest(vehicleId: number, repairNote: string) {
+  const fields = await getRepairRequestFields();
+  const existing = await findActiveRepairRequest(vehicleId);
+  const repairId = existing?.id ?? await executeOdooKw<number>(
+    "municipal.repair.request",
+    "create",
+    [
+      pickSupportedValues(
+        {
+          vehicle_id: vehicleId,
+          issue_summary: "Засварын бүртгэл",
+          issue_description: "Засварын мэдээлэл өмнө нь бүртгэгдээгүй.",
+          repair_note: repairNote,
+          state: "new",
+        },
+        fields,
+      ),
+    ],
+    {},
+  );
+  const noteValues = pickSupportedValues({ repair_note: repairNote }, fields);
+  if (Object.keys(noteValues).length) {
+    await executeOdooKw<boolean>(
+      "municipal.repair.request",
+      "write",
+      [[repairId], noteValues],
+      {},
+    );
+  }
+  await executeOdooKw<boolean>(
+    "municipal.repair.request",
+    "action_done",
+    [[repairId]],
+    {},
+  ).catch(async () => {
+    const fallbackValues = pickSupportedValues({ state: "done" }, fields);
+    if (Object.keys(fallbackValues).length) {
+      await executeOdooKw<boolean>(
+        "municipal.repair.request",
+        "write",
+        [[repairId], fallbackValues],
+        {},
+      );
+    }
+  });
+  return true;
+}
+
 function optionalStaffId(formData: FormData, key: string, label: string) {
   const selectedId = optionalOdooId(getString(formData, key));
   const typedLabel = getString(formData, `${key}_label`);
@@ -298,6 +456,10 @@ export async function updateFleetVehicleAction(formData: FormData) {
           "municipal_responsible_driver_id",
           "municipal_loader_1_id",
           "municipal_loader_2_id",
+          "driver_employee_id",
+          "mfo_driver_employee_id",
+          "loader_employee_id",
+          "helper_employee_id",
           "municipal_insurance_company",
           "municipal_insurance_policy_number",
           "municipal_insurance_date_start",
@@ -323,6 +485,24 @@ export async function updateFleetVehicleAction(formData: FormData) {
     const values: Record<string, string | number | boolean | false> = {};
     const repairToggle = getString(formData, "vehicle_repair_toggle");
     const isRepairToggle = repairToggle === "start" || repairToggle === "done";
+    const submittedOperationalStatus = getString(formData, "x_municipal_operational_status");
+    const currentOperationalStatus = getString(formData, "current_operational_status");
+    const repairDamageDescription = getString(formData, "repair_damage_description");
+    const repairDamageType = getString(formData, "repair_damage_type");
+    const repairCompletionNote = getString(formData, "repair_completion_note");
+    const shouldStartRepairRequest =
+      repairToggle === "start" ||
+      (!isRepairToggle &&
+        submittedOperationalStatus === "in_repair" &&
+        currentOperationalStatus !== "in_repair");
+    const shouldCompleteRepairRequest = repairToggle === "done";
+
+    if (shouldStartRepairRequest && !repairDamageDescription) {
+      redirectWithMessage("error", "Засвартай төлөвт оруулахдаа эвдрэл, засварын тайлбар оруулна уу.");
+    }
+    if (shouldCompleteRepairRequest && !repairCompletionNote) {
+      redirectWithMessage("error", "Засвар дуусгахдаа хийсэн засварын тайлбар оруулна уу.");
+    }
 
     if (isRepairToggle) {
       const sendToRepair = repairToggle === "start";
@@ -401,18 +581,32 @@ export async function updateFleetVehicleAction(formData: FormData) {
       "municipal_responsible_driver_id" in editableFields &&
       formData.has("municipal_responsible_driver_id")
     ) {
-      values.municipal_responsible_driver_id = optionalStaffId(
+      const responsibleDriverId = optionalStaffId(
         formData,
         "municipal_responsible_driver_id",
         "Хариуцсан жолооч",
       );
+      values.municipal_responsible_driver_id = responsibleDriverId;
+      if ("driver_employee_id" in editableFields) {
+        values.driver_employee_id = responsibleDriverId;
+      }
+      if ("mfo_driver_employee_id" in editableFields) {
+        values.mfo_driver_employee_id = responsibleDriverId;
+      }
     }
     if ("municipal_loader_1_id" in editableFields && formData.has("municipal_loader_1_id")) {
-      values.municipal_loader_1_id = optionalStaffId(
+      const loader1Id = optionalStaffId(
         formData,
         "municipal_loader_1_id",
         "Ачигч 1",
       );
+      values.municipal_loader_1_id = loader1Id;
+      if ("loader_employee_id" in editableFields) {
+        values.loader_employee_id = loader1Id;
+      }
+      if ("helper_employee_id" in editableFields) {
+        values.helper_employee_id = loader1Id;
+      }
     }
     if ("municipal_loader_2_id" in editableFields && formData.has("municipal_loader_2_id")) {
       values.municipal_loader_2_id = optionalStaffId(
@@ -474,9 +668,20 @@ export async function updateFleetVehicleAction(formData: FormData) {
       );
     }
 
+    let repairRequestChanged = false;
+    if (shouldStartRepairRequest) {
+      repairRequestChanged = await startVehicleRepairRequest(
+        vehicleId,
+        repairDamageDescription,
+        repairDamageType,
+      );
+    } else if (shouldCompleteRepairRequest) {
+      repairRequestChanged = await completeVehicleRepairRequest(vehicleId, repairCompletionNote);
+    }
+
     const uploadedFieldNames = await appendVehicleAttachmentFields(vehicleId, formData, editableFields);
 
-    if (!Object.keys(values).length && !uploadedFieldNames.length) {
+    if (!Object.keys(values).length && !uploadedFieldNames.length && !repairRequestChanged) {
       const submittedCrewFields = [
         "municipal_responsible_driver_id",
         "municipal_loader_1_id",
@@ -500,14 +705,16 @@ export async function updateFleetVehicleAction(formData: FormData) {
       );
     }
 
-    revalidatePath("/auto-base");
-    revalidatePath("/projects");
-    revalidatePath("/");
+    revalidateFleetViews();
     const updatedFields = Object.keys(values);
     const crewFields = new Set([
       "municipal_responsible_driver_id",
       "municipal_loader_1_id",
       "municipal_loader_2_id",
+      "driver_employee_id",
+      "mfo_driver_employee_id",
+      "loader_employee_id",
+      "helper_employee_id",
     ]);
     const noticeMessage = isRepairToggle
       ? repairToggle === "start"
@@ -516,9 +723,16 @@ export async function updateFleetVehicleAction(formData: FormData) {
       : updatedFields.length > 0 && updatedFields.every((field) => crewFields.has(field))
         ? "Жолооч, ачигчийн мэдээлэл шинэчлэгдлээ."
         : "Машины мэдээлэл шинэчлэгдлээ.";
+    const repairNoticeMessage = isRepairToggle
+      ? repairToggle === "start"
+        ? "Машин засвартай төлөвт шилжиж, эвдрэлийн тайлбар хадгалагдлаа."
+        : "Засвар дуусч, тайлбар түүхэнд хадгалагдлаа."
+      : repairRequestChanged
+        ? "Засварын тайлбар хадгалагдлаа."
+        : "";
     redirectWithMessage(
       "notice",
-      noticeMessage,
+      repairNoticeMessage || noticeMessage,
     );
   } catch (error) {
     rethrowIfRedirectError(error);
@@ -565,9 +779,7 @@ export async function createFleetVehicleAction(formData: FormData) {
     const vehicleId = await executeOdooKw<number>("fleet.vehicle", "create", [values], {});
     await appendVehicleAttachmentFields(vehicleId, formData, fields);
 
-    revalidatePath("/auto-base");
-    revalidatePath("/projects");
-    revalidatePath("/");
+    revalidateFleetViews();
     redirectWithMessage("notice", "Машин техник нэмэгдлээ.");
   } catch (error) {
     rethrowIfRedirectError(error);
@@ -595,9 +807,7 @@ export async function archiveFleetVehicleAction(formData: FormData) {
     }
 
     await executeOdooKw<boolean>("fleet.vehicle", "write", [[vehicleId], { active: false }], {});
-    revalidatePath("/auto-base");
-    revalidatePath("/projects");
-    revalidatePath("/");
+    revalidateFleetViews();
     redirectWithMessage("notice", "Машин техник жагсаалтаас хасагдлаа.");
   } catch (error) {
     rethrowIfRedirectError(error);

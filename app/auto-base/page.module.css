@@ -1872,6 +1872,18 @@
   display: contents;
 }
 
+.vehicleRepairAction {
+  position: relative;
+}
+
+.vehicleRepairAction summary {
+  list-style: none;
+}
+
+.vehicleRepairAction summary::-webkit-details-marker {
+  display: none;
+}
+
 .vehicleModalActionButton,
 .vehicleModalIconButton,
 .vehicleModalClose {
@@ -1932,6 +1944,64 @@
 .vehicleRepairToggleButtonDone:focus-visible {
   border-color: rgba(47, 127, 70, 0.4);
   box-shadow: 0 10px 24px rgba(31, 95, 49, 0.12);
+}
+
+.vehicleRepairActionForm {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 8;
+  display: grid;
+  gap: 12px;
+  width: min(370px, calc(100vw - 48px));
+  padding: 14px;
+  border: 1px solid rgba(175, 194, 178, 0.82);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 22px 48px rgba(24, 45, 30, 0.16);
+}
+
+.vehicleRepairActionField {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.vehicleRepairActionField span {
+  color: var(--ink-700);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.vehicleRepairActionField input,
+.vehicleRepairActionField textarea {
+  width: 100%;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink-900);
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.vehicleRepairActionField input {
+  min-height: 42px;
+  padding: 0 11px;
+}
+
+.vehicleRepairActionField textarea {
+  min-height: 108px;
+  resize: vertical;
+  padding: 10px 11px;
+}
+
+.vehicleRepairStartSubmit {
+  background: #b91c1c;
+}
+
+.vehicleRepairCompleteSubmit {
+  background: var(--brand-700);
 }
 
 .vehicleModalClose:hover,
@@ -2026,10 +2096,15 @@
 }
 
 .vehicleGalleryPanel .vehicleAttachmentPanel {
+  display: flex;
+  gap: 10px;
   margin: 0;
-  padding: 0;
+  padding: 2px 2px 6px;
   border: 0;
   background: transparent;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
 }
 
 .vehicleGalleryPanel .vehicleAttachmentHeader {
@@ -2037,7 +2112,8 @@
 }
 
 .vehicleGalleryPanel .vehicleAttachmentGroup {
-  gap: 10px;
+  flex: 0 0 auto;
+  gap: 0;
 }
 
 .vehicleGalleryPanel .vehicleAttachmentGroup > strong {
@@ -2045,10 +2121,12 @@
 }
 
 .vehicleGalleryPanel .vehicleAttachmentGrid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
+  gap: 10px;
 }
 
 .vehicleGalleryPanel .vehicleAttachmentGrid a {
+  width: 86px;
   min-height: 70px;
   padding: 4px;
   border-radius: 12px;
@@ -2389,6 +2467,66 @@
   line-height: 1.6;
 }
 
+.activeRepairPanel {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(220, 38, 38, 0.16);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 247, 247, 0.96), rgba(255, 255, 255, 0.9));
+  box-shadow: 0 18px 40px rgba(118, 29, 29, 0.08);
+}
+
+.activeRepairHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.activeRepairHeader h3,
+.activeRepairFinish h4 {
+  margin: 0;
+  color: var(--ink-900);
+}
+
+.activeRepairGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.activeRepairNotes {
+  display: grid;
+  gap: 10px;
+}
+
+.activeRepairNotes p {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  color: var(--ink-700);
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.activeRepairNotes strong {
+  color: var(--ink-900);
+}
+
+.activeRepairFinish {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(220, 38, 38, 0.13);
+}
+
+.activeRepairFinish .vehicleRepairActionForm {
+  position: static;
+  width: 100%;
+  box-shadow: none;
+}
+
 .historyList {
   display: grid;
   gap: 10px;
@@ -2414,6 +2552,14 @@
   overflow-wrap: anywhere;
   color: var(--ink-700);
   line-height: 1.45;
+}
+
+.historyText {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink-700);
+  line-height: 1.45;
+  white-space: pre-wrap;
 }
 
 .vehicleDetailItem {
@@ -2583,6 +2729,30 @@
   color: var(--ink-900);
   font: inherit;
   box-shadow: none;
+}
+
+.staffPickerControl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.staffPickerControl button {
+  min-height: var(--ds-control-height);
+  padding: 0 12px;
+  border: 1px solid rgba(163, 58, 37, 0.18);
+  border-radius: var(--ds-radius-control);
+  background: rgba(163, 58, 37, 0.08);
+  color: #8f2f1e;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.staffPickerControl button:hover {
+  background: rgba(163, 58, 37, 0.14);
 }
 
 .vehicleFileField .vehicleFilePreview {
@@ -2802,6 +2972,17 @@
     display: block;
   }
 
+  .vehicleRepairAction {
+    width: 100%;
+  }
+
+  .vehicleRepairActionForm {
+    position: static;
+    width: 100%;
+    margin-top: 8px;
+    box-shadow: none;
+  }
+
   .vehicleModalActionButton svg,
   .vehicleModalIconButton svg {
     width: 21px;
@@ -2833,6 +3014,7 @@
 
   .vehicleOverviewGrid,
   .vehicleInfoPanelGrid,
+  .activeRepairGrid,
   .vehicleComplianceGrid,
   .vehicleOperationsGrid {
     grid-template-columns: 1fr;
@@ -2844,11 +3026,12 @@
   }
 
   .vehicleGalleryPanel .vehicleAttachmentGrid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    display: flex;
     gap: 8px;
   }
 
   .vehicleGalleryPanel .vehicleAttachmentGrid a {
+    width: 78px;
     min-height: 62px;
   }
 

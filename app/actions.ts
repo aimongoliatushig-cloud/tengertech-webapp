@@ -33,6 +33,7 @@ import {
   createWorkspaceWorkUnit,
   deleteWorkspaceTaskReport,
   deleteWorkspaceTask,
+  findOrCreateWorkspaceSubdistrictOption,
   forceWorkspaceTaskDone,
   generateSeasonalWorkspaceExecution,
   loadGarbagePointOptions,
@@ -1586,6 +1587,7 @@ export async function createTaskAction(formData: FormData) {
     .map((value) => Number(String(value ?? "")))
     .filter((value) => Number.isFinite(value) && value > 0);
   const taskKhoroo = String(formData.get("task_khoroo") ?? "").trim();
+  const newTaskKhoroo = String(formData.get("new_task_khoroo") ?? "").trim();
   const taskLocation = String(formData.get("task_location") ?? "").trim();
   const newTaskLocation = String(formData.get("new_task_location") ?? "").trim();
   const teamLeaderIdRaw = String(formData.get("team_leader_id") ?? "").trim();
@@ -1606,14 +1608,8 @@ export async function createTaskAction(formData: FormData) {
     .map((value) => String(value).trim());
   const description = String(formData.get("description") ?? "").trim();
   const taskFiles = getUploadedFiles(formData, "task_files");
+  let effectiveTaskKhoroo = newTaskKhoroo || taskKhoroo;
   const effectiveTaskLocation = newTaskLocation || taskLocation;
-  const locationSummary = [
-    taskKhoroo ? `Хороо: ${taskKhoroo}` : "",
-    effectiveTaskLocation ? `Байршил: ${effectiveTaskLocation}` : "",
-  ].filter(Boolean);
-  const taskDescription = [locationSummary.join("\n"), description]
-    .filter(Boolean)
-    .join("\n\n");
 
   if (!projectId || !name) {
     redirectWithMessage(
@@ -1782,6 +1778,8 @@ export async function createTaskAction(formData: FormData) {
       revalidatePath("/notifications");
       revalidatePath("/review");
       revalidatePath("/reports");
+      revalidatePath("/settings");
+      revalidatePath("/settings/garbage-transport");
       revalidatePath(`/projects/${projectId}`);
       redirect(
         `/projects/${projectId}?notice=${encodeURIComponent(
@@ -1790,6 +1788,21 @@ export async function createTaskAction(formData: FormData) {
       );
     }
 
+    if (newTaskKhoroo) {
+      const subdistrict = await findOrCreateWorkspaceSubdistrictOption(
+        newTaskKhoroo,
+        connectionOverrides,
+      );
+      effectiveTaskKhoroo = subdistrict?.name ?? newTaskKhoroo;
+    }
+
+    const locationSummary = [
+      effectiveTaskKhoroo ? `Хороо: ${effectiveTaskKhoroo}` : "",
+      effectiveTaskLocation ? `Байршил: ${effectiveTaskLocation}` : "",
+    ].filter(Boolean);
+    const taskDescription = [locationSummary.join("\n"), description]
+      .filter(Boolean)
+      .join("\n\n");
     const validUnitIds = new Set(project.allUnitOptions.map((unit) => unit.id));
     let selectedCrewTeam = crewTeamIdRaw
       ? project.crewTeamOptions.find((team) => team.id === Number(crewTeamIdRaw)) ?? null
@@ -1979,6 +1992,8 @@ export async function createTaskAction(formData: FormData) {
     revalidatePath("/notifications");
     revalidatePath("/review");
     revalidatePath("/reports");
+    revalidatePath("/settings");
+    revalidatePath("/settings/garbage-transport");
     revalidatePath(`/projects/${projectId}`);
     redirect(`/tasks/${taskId}?notice=${encodeURIComponent("Шинэ ажил амжилттай үүслээ.")}`);
   } catch (error) {

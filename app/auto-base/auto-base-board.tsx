@@ -145,8 +145,10 @@ type FleetVehicleRepairHistoryItem = {
   damageType: string;
   description: string;
   partsNote: string;
+  repairNote: string;
   amountLabel: string;
   mechanicName: string;
+  stateKey: string;
   stateLabel: string;
   procurementName: string;
   attachmentCount: number;
@@ -165,6 +167,7 @@ type FleetVehicleDailyWeightItem = {
 type FleetVehicleDailyFuelItem = {
   id: number;
   reportDate: string;
+  fuelLiters: number;
   fuelLabel: string;
   fuelType: string;
   source: string;
@@ -244,6 +247,14 @@ function cx(...values: Array<string | false | null | undefined>) {
 
 const ALL_CATEGORY_KEY = "all";
 const UNCATEGORIZED_CATEGORY_KEY = "uncategorized";
+const ACTIVE_REPAIR_STATE_KEYS = new Set([
+  "new",
+  "diagnosed",
+  "waiting_parts",
+  "waiting_approval",
+  "approved",
+  "in_repair",
+]);
 const PREFERRED_CATEGORY_NAMES = ["Хог ачилт", "Усалгаа", "Өргөгч", "Ковш"];
 
 function normalizeCategoryName(value: string) {
@@ -296,6 +307,13 @@ function vehicleStatusMeta(vehicle: FleetVehicleBoardItem): VehicleStatusMeta {
     label: vehicle.stateLabel || "Ажиллаж байна",
     tone: "active",
   };
+}
+
+function activeRepairForVehicle(vehicle: FleetVehicleBoardItem) {
+  return (
+    vehicle.repairHistory.find((item) => ACTIVE_REPAIR_STATE_KEYS.has(item.stateKey)) ??
+    (vehicle.isRepair ? vehicle.repairHistory[0] ?? null : null)
+  );
 }
 
 function vehicleMatchesStatus(vehicle: FleetVehicleBoardItem, status: VehicleStatusFilter) {
@@ -648,6 +666,11 @@ function VehicleList({
                     <strong>{vehicle.responsibleDriverName || vehicle.fleetDriverName || "Оноогоогүй"}</strong>
                   </span>
                   <span>
+                    <Truck size={15} aria-hidden />
+                    <small>Хэлтэс</small>
+                    <strong>{vehicle.departmentName || "Бүртгээгүй"}</strong>
+                  </span>
+                  <span>
                     <ShieldAlert size={15} aria-hidden />
                     <small>Даатгал</small>
                     <strong>{shortDeadlineLabel(vehicle.insurance)}</strong>
@@ -810,6 +833,24 @@ function displayValue(value?: string | number) {
   return value === undefined || value === null || value === "" ? "Бүртгээгүй" : String(value);
 }
 
+function formatFuelLiters(value: number) {
+  return `${new Intl.NumberFormat("mn-MN", {
+    maximumFractionDigits: 2,
+  }).format(value)} л`;
+}
+
+function vehicleFuelSummary(vehicle: FleetVehicleBoardItem) {
+  const reports = vehicle.fuelReports;
+  const latestReport = reports[0] ?? null;
+  const totalLiters = reports.reduce((sum, report) => sum + report.fuelLiters, 0);
+
+  return {
+    latestReport,
+    totalLabel: reports.length ? formatFuelLiters(totalLiters) : "",
+    reportCountLabel: reports.length ? `${reports.length} тайлан` : "",
+  };
+}
+
 function normalizeStaffText(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
@@ -944,19 +985,31 @@ function StaffPicker({
     setSelectedId(selected ? String(selected.id) : "");
   }
 
+  function clearSelection() {
+    setQuery("");
+    setSelectedId("");
+  }
+
   return (
     <label className={styles.vehicleFormField}>
       <span>{label}</span>
       <input type="hidden" name={name} value={selectedId} />
-      <input
-        name={`${name}_label`}
-        list={listId}
-        value={query}
-        placeholder={placeholder}
-        autoComplete="off"
-        onChange={(event) => updateSelection(event.target.value)}
-        onBlur={(event) => updateSelection(event.target.value)}
-      />
+      <div className={styles.staffPickerControl}>
+        <input
+          name={`${name}_label`}
+          list={listId}
+          value={query}
+          placeholder={placeholder}
+          autoComplete="off"
+          onChange={(event) => updateSelection(event.target.value)}
+          onBlur={(event) => updateSelection(event.target.value)}
+        />
+        {query || selectedId ? (
+          <button type="button" onClick={clearSelection}>
+            Арилгах
+          </button>
+        ) : null}
+      </div>
       <datalist id={listId}>
         {options.map((option) => (
           <option key={option.id} value={formatStaffOption(option)} />
@@ -1056,6 +1109,13 @@ function RepairHistoryList({ items }: { items: FleetVehicleRepairHistoryItem[] }
             <span className={styles.stateBadge}>{item.stateLabel || "Төлөвгүй"}</span>
           </div>
           <span>{item.damageType || item.description || "Эвдрэлийн мэдээлэлгүй"}</span>
+          {item.damageType && item.description ? (
+            <p className={styles.historyText}>Тайлбар: {item.description}</p>
+          ) : null}
+          {item.partsNote ? <p className={styles.historyText}>Сэлбэг: {item.partsNote}</p> : null}
+          {item.repairNote ? (
+            <p className={styles.historyText}>Засварын тэмдэглэл: {item.repairNote}</p>
+          ) : null}
           <small>
             {displayValue(item.requestDate)} · {displayValue(item.mechanicName)} · {item.amountLabel}
           </small>
@@ -1063,6 +1123,111 @@ function RepairHistoryList({ items }: { items: FleetVehicleRepairHistoryItem[] }
         </article>
       ))}
     </div>
+  );
+}
+
+function VehicleRepairStatusForm({
+  vehicle,
+  activeRepair,
+  mode,
+}: {
+  vehicle: FleetVehicleBoardItem;
+  activeRepair: FleetVehicleRepairHistoryItem | null;
+  mode: "start" | "done";
+}) {
+  const isDone = mode === "done";
+  return (
+    <form action={updateFleetVehicleAction} className={styles.vehicleRepairActionForm}>
+      <input type="hidden" name="vehicle_id" value={vehicle.id} />
+      <input type="hidden" name="vehicle_repair_toggle" value={mode} />
+      <label className={styles.vehicleRepairActionField}>
+        <span>{isDone ? "Хийсэн засварын тайлбар" : "Эвдрэл / засварын тайлбар"}</span>
+        <textarea
+          name={isDone ? "repair_completion_note" : "repair_damage_description"}
+          required
+          rows={4}
+          defaultValue={isDone ? activeRepair?.repairNote || "" : ""}
+          placeholder={
+            isDone
+              ? "Жишээ: Тоормосны наклад сольж, систем шалгав."
+              : "Жишээ: Тоормос дуугарч байна, тос гоожсон, баруун урд дугуй хагарсан."
+          }
+        />
+      </label>
+      {!isDone ? (
+        <label className={styles.vehicleRepairActionField}>
+          <span>Эвдрэлийн төрөл</span>
+          <input
+            name="repair_damage_type"
+            defaultValue={activeRepair?.damageType || ""}
+            placeholder="Жишээ: Хөдөлгүүр, тоормос, дугуй"
+          />
+        </label>
+      ) : null}
+      <button
+        type="submit"
+        className={cx(
+          styles.primaryButton,
+          isDone ? styles.vehicleRepairCompleteSubmit : styles.vehicleRepairStartSubmit,
+        )}
+      >
+        <Wrench size={16} aria-hidden />
+        {isDone ? "Засвар дуусгах" : "Засвартай болгох"}
+      </button>
+    </form>
+  );
+}
+
+function ActiveRepairPanel({
+  vehicle,
+  activeRepair,
+}: {
+  vehicle: FleetVehicleBoardItem;
+  activeRepair: FleetVehicleRepairHistoryItem | null;
+}) {
+  if (!vehicle.isRepair) {
+    return null;
+  }
+  return (
+    <section className={styles.activeRepairPanel}>
+      <div className={styles.activeRepairHeader}>
+        <div>
+          <span className={styles.mobileDetailEyebrow}>Авто баазын засвар</span>
+          <h3>Идэвхтэй засвар</h3>
+        </div>
+        <span className={styles.stateBadge}>{activeRepair?.stateLabel || "Засвартай"}</span>
+      </div>
+      {activeRepair ? (
+        <div className={styles.activeRepairGrid}>
+          <DetailItem label="Эвдрэлийн төрөл" value={activeRepair.damageType} />
+          <DetailItem label="Хүсэлт үүссэн" value={activeRepair.requestDate} />
+          <DetailItem label="Засварчин" value={activeRepair.mechanicName} />
+          <DetailItem label="Зардал" value={activeRepair.amountLabel} />
+        </div>
+      ) : null}
+      <div className={styles.activeRepairNotes}>
+        <p>
+          <strong>Эвдрэлийн тайлбар</strong>
+          <span>{activeRepair?.description || "Эвдрэлийн тайлбар бүртгэгдээгүй байна."}</span>
+        </p>
+        {activeRepair?.partsNote ? (
+          <p>
+            <strong>Сэлбэгийн тэмдэглэл</strong>
+            <span>{activeRepair.partsNote}</span>
+          </p>
+        ) : null}
+        {activeRepair?.repairNote ? (
+          <p>
+            <strong>Засварын тэмдэглэл</strong>
+            <span>{activeRepair.repairNote}</span>
+          </p>
+        ) : null}
+      </div>
+      <div className={styles.activeRepairFinish}>
+        <h4>Засвар дуусгах</h4>
+        <VehicleRepairStatusForm vehicle={vehicle} activeRepair={activeRepair} mode="done" />
+      </div>
+    </section>
   );
 }
 
@@ -1273,6 +1438,8 @@ function VehicleDetailModal({
   const status = vehicleStatusMeta(vehicle);
   const modelSummary = [vehicle.modelName || vehicle.name, vehicle.plate].filter(Boolean).join("/");
   const typeSummary = vehicle.vehicleTypeName || vehicle.categoryName || "Төрөлгүй";
+  const activeRepair = activeRepairForVehicle(vehicle);
+  const fuelSummary = vehicleFuelSummary(vehicle);
 
   return (
     <div className={styles.vehicleModalBackdrop} role="presentation" onClick={onClose}>
@@ -1303,23 +1470,8 @@ function VehicleDetailModal({
             </div>
           </div>
           <div className={styles.vehicleModalHeaderActions}>
-            <form action={updateFleetVehicleAction} className={styles.vehicleRepairToggleForm}>
-              <input type="hidden" name="vehicle_id" value={vehicle.id} />
-              <input type="hidden" name="vehicle_repair_toggle" value={vehicle.isRepair ? "done" : "start"} />
-              <input
-                type="hidden"
-                name="x_municipal_operational_status"
-                value={vehicle.isRepair ? "available" : "in_repair"}
-              />
-              <input
-                type="hidden"
-                name="latest_repair_state"
-                value={vehicle.isRepair ? "Засвар дууссан" : "Засварт шилжүүлсэн"}
-              />
-              <input type="hidden" name="mfo_active_for_ops_present" value="1" />
-              {vehicle.isRepair ? <input type="hidden" name="mfo_active_for_ops" value="on" /> : null}
-              <button
-                type="submit"
+            <details className={styles.vehicleRepairAction}>
+              <summary
                 className={cx(
                   styles.vehicleModalActionButton,
                   styles.vehicleRepairToggleButton,
@@ -1329,9 +1481,14 @@ function VehicleDetailModal({
                 )}
               >
                 <Wrench size={17} aria-hidden />
-                {vehicle.isRepair ? "Засвар дууссан" : "Засварт шилжүүлэх"}
-              </button>
-            </form>
+                {vehicle.isRepair ? "Засвар дуусгах" : "Засварт шилжүүлэх"}
+              </summary>
+              <VehicleRepairStatusForm
+                vehicle={vehicle}
+                activeRepair={activeRepair}
+                mode={vehicle.isRepair ? "done" : "start"}
+              />
+            </details>
             <button type="button" className={styles.vehicleModalActionButton} onClick={() => setActiveTab("compliance")}>
               <ShieldAlert size={17} aria-hidden />
               Даатгал
@@ -1363,6 +1520,7 @@ function VehicleDetailModal({
 
         {activeTab === "main" ? (
           <section className={styles.vehicleTabPanel}>
+            <ActiveRepairPanel vehicle={vehicle} activeRepair={activeRepair} />
             <div className={styles.vehicleOverviewGrid}>
               <div className={styles.vehicleGalleryPanel}>
                 <VehicleHeroImage vehicle={vehicle} />
@@ -1440,11 +1598,21 @@ function VehicleDetailModal({
 
               <VehicleInfoPanel title="Техникийн мэдээлэл" icon={Wrench}>
                 <div className={styles.vehicleDetailGrid}>
-                  <DetailItem label="Түлшний төрөл" value={vehicle.fuelTypeLabel} />
                   <DetailItem label="Туулсан зам" value={vehicle.odometerLabel} />
                   <DetailItem label="Төрөл" value={typeSummary} />
                   <DetailItem label="Үйл ажиллагаа" value={vehicle.isOperational ? "Ашиглаж байгаа" : "Идэвхгүй"} />
                   <DetailItem label="Засварын төлөв" value={vehicle.latestRepairState} />
+                </div>
+              </VehicleInfoPanel>
+
+              <VehicleInfoPanel title="Түлшний мэдээлэл" icon={Truck}>
+                <div className={styles.vehicleDetailGrid}>
+                  <DetailItem label="Түлшний төрөл" value={vehicle.fuelTypeLabel} />
+                  <DetailItem label="Сүүлийн зарцуулалт" value={fuelSummary.latestReport?.fuelLabel} />
+                  <DetailItem label="Тайлангийн огноо" value={fuelSummary.latestReport?.reportDate} />
+                  <DetailItem label="Сүүлийн тайлангуудын нийт" value={fuelSummary.totalLabel} />
+                  <DetailItem label="Тайлангийн тоо" value={fuelSummary.reportCountLabel} />
+                  <DetailItem label="Эх сурвалж" value={fuelSummary.latestReport?.source} />
                 </div>
               </VehicleInfoPanel>
             </div>
@@ -1566,6 +1734,7 @@ function VehicleDetailModal({
             className={styles.vehicleEditForm}
           >
           <input type="hidden" name="vehicle_id" value={vehicle.id} />
+          <input type="hidden" name="current_operational_status" value={vehicle.operationalStatusKey} />
 
           <label className={styles.vehicleFormField}>
             <span>Улсын дугаар</span>
@@ -1618,6 +1787,21 @@ function VehicleDetailModal({
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className={cx(styles.vehicleFormField, styles.vehicleFormFieldWide)}>
+            <span>Засвартай бол эвдрэлийн тайлбар</span>
+            <textarea
+              name="repair_damage_description"
+              rows={3}
+              defaultValue={vehicle.isRepair ? activeRepair?.description || "" : ""}
+              placeholder="Жишээ: Тоормос дуугарч байна, тос гоожсон, баруун урд дугуй хагарсан."
+            />
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Эвдрэлийн төрөл</span>
+            <input name="repair_damage_type" defaultValue={activeRepair?.damageType || ""} />
           </label>
 
           <label className={styles.vehicleFormField}>

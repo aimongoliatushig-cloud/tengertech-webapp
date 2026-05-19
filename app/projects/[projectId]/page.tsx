@@ -229,9 +229,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     project.tasks.find((task) => task.driverEmployeeId || task.collectorEmployeeIds.length) ??
     null;
   const [subdistrictOptions, garbagePointOptions, garbageLoaderOptions] = await Promise.all([
-    isGarbageRouteProject
-      ? loadGarbageSubdistrictOptions(connectionOverrides).catch(() => [])
-      : Promise.resolve([]),
+    loadGarbageSubdistrictOptions(connectionOverrides).catch(() => []),
     isGarbageRouteProject
       ? loadGarbagePointOptions(connectionOverrides, {
           requireCurrentEmployeeScope: session.role === "transport_inspector",
@@ -473,27 +471,6 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                     </div>
                   </article>
 
-                  <article className={styles.projectHeroSignalCard}>
-                    <span className={styles.projectHeroCardLabel}>Өнөөдрийн төвлөрөх зүйл</span>
-                    <div className={styles.projectHeroSignalMain}>
-                      <strong>{activeTaskCount}</strong>
-                      <span>идэвхтэй даалгавар</span>
-                    </div>
-                    <div className={styles.projectHeroSignalRow}>
-                      <div className={styles.projectHeroSignalPill}>
-                        <span>Нийт</span>
-                        <strong>{project.taskCount}</strong>
-                      </div>
-                      <div className={styles.projectHeroSignalPill}>
-                        <span>Шалгах</span>
-                        <strong>{project.reviewCount}</strong>
-                      </div>
-                      <div className={styles.projectHeroSignalPill}>
-                        <span>Дууссан</span>
-                        <strong>{taskCounts.done}</strong>
-                      </div>
-                    </div>
-                  </article>
                 </div>
               </div>
 

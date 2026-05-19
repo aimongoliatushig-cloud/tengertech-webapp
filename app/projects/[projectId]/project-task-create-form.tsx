@@ -163,6 +163,8 @@ export function ProjectTaskCreateForm({
     [filteredDepartmentUsers],
   );
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<number | null>(null);
+  const [newTaskKhoroo, setNewTaskKhoroo] = useState("");
+  const [isKhorooConfirmed, setIsKhorooConfirmed] = useState(false);
   const [newTaskLocation, setNewTaskLocation] = useState("");
   const [isLocationConfirmed, setIsLocationConfirmed] = useState(false);
   const [useTeam, setUseTeam] = useState(false);
@@ -447,8 +449,34 @@ export function ProjectTaskCreateForm({
               </option>
             ))}
           </select>
+          <input
+            name="new_task_khoroo"
+            placeholder="Шинэ хороо шууд нэмэх"
+            className={styles.inlineUnitInput}
+            value={newTaskKhoroo}
+            onChange={(event) => {
+              setNewTaskKhoroo(event.target.value);
+              setIsKhorooConfirmed(false);
+            }}
+          />
+          {newTaskKhoroo.trim() ? (
+            <button
+              type="button"
+              className={styles.inlineConfirmButton}
+              onClick={() => setIsKhorooConfirmed(true)}
+            >
+              Хороо нэмэх
+            </button>
+          ) : null}
+          {isKhorooConfirmed && newTaskKhoroo.trim() ? (
+            <small className={styles.inlineConfirmNote}>
+              “{newTaskKhoroo.trim()}” хороог хадгалж, энэ даалгаварт ашиглана.
+            </small>
+          ) : null}
           {!subdistrictOptions.length ? (
-            <small className={styles.fieldHint}>Ерөнхий тохиргоонд хороо бүртгэгдээгүй байна.</small>
+            <small className={styles.fieldHint}>
+              Хороо бүртгэлгүй бол дээрх талбарт шинэ хорооны нэрийг оруулаад нэмнэ үү.
+            </small>
           ) : null}
         </div>
 

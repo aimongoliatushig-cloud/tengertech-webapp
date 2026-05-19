@@ -2384,14 +2384,100 @@ export async function loadGarbageSubdistrictOptions(
     connectionOverrides,
   );
 
-  return subdistricts.map((subdistrict) => {
-    const districtName = relationName(subdistrict.district_id ?? false, "");
-    return {
-      id: subdistrict.id,
-      name: subdistrict.name,
-      label: districtName ? `${districtName} · ${subdistrict.name}` : subdistrict.name,
-    };
-  });
+  return subdistricts.map(toGarbageSubdistrictOption);
+}
+
+type SubdistrictOptionRecord = {
+  id: number;
+  name: string;
+  district_id?: Relation;
+};
+
+function toGarbageSubdistrictOption(subdistrict: SubdistrictOptionRecord): GarbageSubdistrictOption {
+  const districtName = relationName(subdistrict.district_id ?? false, "");
+  return {
+    id: subdistrict.id,
+    name: subdistrict.name,
+    label: districtName ? `${districtName} · ${subdistrict.name}` : subdistrict.name,
+  };
+}
+
+async function loadDefaultDistrictId(connectionOverrides: Partial<OdooConnection>) {
+  const districts = await executeOdooKw<Array<{ id: number }>>(
+    "mfo.district",
+    "search_read",
+    [[["name", "=", "Хан-Уул дүүрэг"]]],
+    { fields: ["id"], limit: 1 },
+    connectionOverrides,
+  ).catch(() => []);
+
+  return districts[0]?.id ?? null;
+}
+
+export async function findOrCreateWorkspaceSubdistrictOption(
+  name: string,
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<GarbageSubdistrictOption | null> {
+  const cleanName = name.trim().replace(/\s+/g, " ");
+  if (!cleanName) {
+    return null;
+  }
+
+  const candidates = await executeOdooKw<SubdistrictOptionRecord[]>(
+    "mfo.subdistrict",
+    "search_read",
+    [[["name", "ilike", cleanName]]],
+    {
+      fields: ["name", "district_id"],
+      order: "district_id asc, name asc",
+      limit: 50,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+  const normalizedName = cleanName.toLocaleLowerCase("mn-MN");
+  const existing = candidates.find(
+    (subdistrict) => subdistrict.name.trim().toLocaleLowerCase("mn-MN") === normalizedName,
+  );
+
+  if (existing) {
+    return toGarbageSubdistrictOption(existing);
+  }
+
+  try {
+    const fieldNames = await loadModelFieldNames("mfo.subdistrict", connectionOverrides);
+    const districtId = fieldNames.has("district_id")
+      ? await loadDefaultDistrictId(connectionOverrides)
+      : null;
+    const values = keepSupportedValues(
+      {
+        name: cleanName,
+        active: true,
+        district_id: districtId ?? undefined,
+      },
+      fieldNames,
+    );
+
+    if (!values.name) {
+      values.name = cleanName;
+    }
+
+    const createdId = await executeOdooKw<number>(
+      "mfo.subdistrict",
+      "create",
+      [values],
+      {},
+      connectionOverrides,
+    );
+
+    return toGarbageSubdistrictOption({
+      id: createdId,
+      name: cleanName,
+      district_id: false,
+    });
+  } catch (error) {
+    console.warn("Workspace subdistrict create failed:", error);
+    throw new Error("Шинэ хороо хадгалах үед алдаа гарлаа. Ерөнхий тохиргоонд хороо нэмэх эрхтэй эсэхээ шалгана уу.");
+  }
 }
 
 export async function loadGarbageVehicleOptions(

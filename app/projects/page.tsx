@@ -433,7 +433,7 @@ async function ProjectsPageContent({
 
   if (isAutoBaseView) {
     try {
-      fleetBoard = await loadFleetVehicleBoard();
+      fleetBoard = await loadFleetVehicleBoard(connectionOverrides);
     } catch (error) {
       console.error("Fleet vehicle board could not be loaded for projects auto-base view:", error);
       fleetLoadError =
@@ -444,6 +444,10 @@ async function ProjectsPageContent({
     selectedGroup?.name === AUTO_BASE_GROUP_NAME ? selectedGroup : findDepartmentGroupByName(AUTO_BASE_GROUP_NAME);
   const autoBaseRepairVehicles =
     fleetBoard?.repairVehicles.filter((vehicle) => {
+      if (showAutoBaseFleet || showAutoBaseCombined) {
+        return true;
+      }
+
       if (!vehicle.departmentName) {
         return true;
       }

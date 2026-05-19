@@ -2,10 +2,9 @@ import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import shellStyles from "@/app/workspace.module.css";
-import { hasCapability, isWorkerOnly, requireSession,
-  getSessionRoleLabel,
-} from "@/lib/auth";
+import { getSessionRoleLabel, hasCapability, isWorkerOnly, requireSession } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { canAccessGeneralDashboard } from "@/lib/general-dashboard-access";
 import { getHrAccessProfile } from "@/lib/hr";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +18,7 @@ export default async function HrLayout({ children }: { children: React.ReactNode
     loadSessionDepartmentName(session),
     getHrAccessProfile(session),
   ]);
+  const canViewGeneralDashboard = canAccessGeneralDashboard(session);
 
   if (!hrProfile.canAccessHr) {
     const flags = session.groupFlags;
@@ -46,6 +46,7 @@ export default async function HrLayout({ children }: { children: React.ReactNode
             canViewQualityCenter={hasCapability(session, "view_quality_center")}
             canUseFieldConsole={hasCapability(session, "use_field_console")}
             canViewHr={hrProfile.canAccessHr}
+            canViewGeneralDashboard={canViewGeneralDashboard}
             userName={session.name}
             userRole={session.role}
             roleLabel={roleLabel}

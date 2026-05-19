@@ -756,6 +756,7 @@ type OdooRepairHistoryRecord = {
   issue_description?: string | false;
   description?: string | false;
   parts_note?: string | false;
+  repair_note?: string | false;
   amount_total?: number;
   actual_cost?: number;
   mechanic_id?: OdooRelation;
@@ -856,8 +857,10 @@ export type FleetVehicleRepairHistoryItem = {
   damageType: string;
   description: string;
   partsNote: string;
+  repairNote: string;
   amountLabel: string;
   mechanicName: string;
+  stateKey: string;
   stateLabel: string;
   procurementName: string;
   attachmentCount: number;
@@ -876,6 +879,7 @@ export type FleetVehicleDailyWeightItem = {
 export type FleetVehicleDailyFuelItem = {
   id: number;
   reportDate: string;
+  fuelLiters: number;
   fuelLabel: string;
   fuelType: string;
   source: string;
@@ -1170,7 +1174,7 @@ function getOdooReadRpcCacheKey(
   });
 }
 
-function clearOdooReadCaches(connection?: OdooConnection) {
+export function clearOdooReadCaches(connection?: OdooConnection) {
   const authKey = connection ? getOdooAuthCacheKey(connection) : "";
 
   if (!authKey) {
@@ -2135,6 +2139,7 @@ const VEHICLE_REPAIR_HISTORY_FIELDS = [
   "issue_description",
   "description",
   "parts_note",
+  "repair_note",
   "amount_total",
   "actual_cost",
   "mechanic_id",
@@ -3954,6 +3959,7 @@ async function loadRepairHistoryByVehicle(
   );
   const byVehicle = new Map<number, FleetVehicleRepairHistoryItem[]>();
   for (const record of records) {
+    const stateKey = String(record.state || "");
     appendMapItem(byVehicle, relationId(record.vehicle_id), {
       id: record.id,
       name: record.name || `Засвар #${record.id}`,
@@ -3962,9 +3968,11 @@ async function loadRepairHistoryByVehicle(
       damageType: record.damage_type || "",
       description: record.issue_summary || record.issue_description || record.description || "",
       partsNote: record.parts_note || "",
+      repairNote: record.repair_note || "",
       amountLabel: formatMoneyLabel(record.amount_total || record.actual_cost || 0),
       mechanicName: relationName(record.mechanic_id ?? false, ""),
-      stateLabel: FLEET_REPAIR_STATE_LABELS[String(record.state || "")] || String(record.state || ""),
+      stateKey,
+      stateLabel: FLEET_REPAIR_STATE_LABELS[stateKey] || stateKey,
       procurementName: relationName(record.procurement_request_id ?? false, ""),
       attachmentCount: attachmentCount(record.attachment_ids, record.photo_ids),
     });
@@ -4018,6 +4026,7 @@ async function loadFuelReportsByVehicle(
     appendMapItem(byVehicle, relationId(record.vehicle_id), {
       id: record.id,
       reportDate: formatOptionalCompactDate(record.report_date),
+      fuelLiters: record.fuel_liters || 0,
       fuelLabel: formatLiters(record.fuel_liters),
       fuelType: record.fuel_type || "",
       source: record.source || "Гадны систем",
@@ -4059,35 +4068,6 @@ function latestItems<T>(items: T[] | undefined, limit = 8) {
   return (items ?? []).slice(0, limit);
 }
 
-function isDriverEmployeeRecord(employee: OdooEmployeeRecord) {
-  const titleText = normalizeRoleTitle(
-    [
-      relationName(employee.job_id ?? false, ""),
-      employee.job_title || "",
-    ].join(" "),
-  );
-
-  return (
-    titleText.includes("жолооч") ||
-    titleText.includes("driver") ||
-    titleText.includes("chauffeur")
-  );
-}
-
-function isLoaderEmployeeRecord(employee: OdooEmployeeRecord) {
-  const titleText = normalizeRoleTitle(
-    [
-      relationName(employee.job_id ?? false, ""),
-      employee.job_title || "",
-    ].join(" "),
-  );
-
-  return (
-    titleText.includes("ачигч") ||
-    titleText.includes("loader")
-  );
-}
-
 function toFleetStaffOption(employee: OdooEmployeeRecord): FleetVehicleDriverOption {
   return {
     id: employee.id,
@@ -4111,6 +4091,29 @@ function sortFleetStaffOptions(
     return left.active ? -1 : 1;
   }
   return left.name.localeCompare(right.name, "mn");
+}
+
+function sortFleetRoleStaffOptions(
+  left: FleetVehicleDriverOption,
+  right: FleetVehicleDriverOption,
+  isPreferred: (option: FleetVehicleDriverOption) => boolean,
+) {
+  const leftPreferred = isPreferred(left);
+  const rightPreferred = isPreferred(right);
+  if (leftPreferred !== rightPreferred) {
+    return leftPreferred ? -1 : 1;
+  }
+  return sortFleetStaffOptions(left, right);
+}
+
+function isDriverStaffOption(option: FleetVehicleDriverOption) {
+  const titleText = normalizeRoleTitle(option.jobTitle);
+  return titleText.includes("жолооч") || titleText.includes("driver") || titleText.includes("chauffeur");
+}
+
+function isLoaderStaffOption(option: FleetVehicleDriverOption) {
+  const titleText = normalizeRoleTitle(option.jobTitle);
+  return titleText.includes("ачигч") || titleText.includes("loader");
 }
 
 async function loadFleetDriverOptions(
@@ -4145,9 +4148,9 @@ async function loadFleetDriverOptions(
     );
 
     return employees
-      .filter((employee) => isDriverEmployeeRecord(employee) || assignedDriverIds.has(employee.id))
+      .filter((employee) => employee.active !== false || assignedDriverIds.has(employee.id))
       .map(toFleetStaffOption)
-      .sort(sortFleetStaffOptions);
+      .sort((left, right) => sortFleetRoleStaffOptions(left, right, isDriverStaffOption));
   } catch (error) {
     console.warn("HR employee driver options could not be loaded for auto-base board:", error);
     return [];
@@ -4189,9 +4192,9 @@ async function loadFleetLoaderOptions(
     );
 
     return employees
-      .filter((employee) => isLoaderEmployeeRecord(employee) || assignedLoaderIds.has(employee.id))
+      .filter((employee) => employee.active !== false || assignedLoaderIds.has(employee.id))
       .map(toFleetStaffOption)
-      .sort(sortFleetStaffOptions);
+      .sort((left, right) => sortFleetRoleStaffOptions(left, right, isLoaderStaffOption));
   } catch (error) {
     console.warn("HR employee loader options could not be loaded for auto-base board:", error);
     return [];

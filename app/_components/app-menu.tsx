@@ -14,7 +14,6 @@ import {
   FileText,
   Flag,
   CircleHelp,
-  HeartPulse,
   LayoutDashboard,
   Leaf,
   ListChecks,
@@ -24,10 +23,8 @@ import {
   MessageSquare,
   PlusCircle,
   Settings,
-  ShieldAlert,
   ShoppingCart,
   Truck,
-  UserPlus,
   Users,
   Wrench,
   X,
@@ -44,6 +41,7 @@ import {
 import { isAutoGarbageDepartment } from "@/lib/department-permissions";
 import { ProfileAvatar } from "@/app/_components/profile-avatar";
 import {
+  canAccessAutoBaseOverview,
   canAccessGarbageTransportSettings,
   canAccessProcurementModule,
   isGarbageDepartmentHead as isGarbageDepartmentHeadRole,
@@ -54,7 +52,6 @@ import { cn } from "@/lib/utils";
 
 import { PendingLinkIndicator } from "./pending-link-indicator";
 import styles from "./app-menu.module.css";
-import { HR_NOTIFICATION_HREF } from "@/app/hr/constants";
 
 type MenuKey =
   | "dashboard"
@@ -218,16 +215,6 @@ function createMenuGroup(
   };
 }
 
-function isOperationalDepartmentItem(item: MenuItem) {
-  return (
-    item.key.startsWith("department-") &&
-    (item.label.includes("Ногоон") ||
-      item.label.includes("Авто") ||
-      item.label.includes("хог") ||
-      item.label.includes("Тохижилт"))
-  );
-}
-
 function dedupeMenuItems(items: MenuItem[]) {
   const seen = new Set<string>();
 
@@ -243,18 +230,15 @@ function dedupeMenuItems(items: MenuItem[]) {
 
 function compactManagerMenuItems(items: MenuItem[]) {
   const dashboardItem = items.find((item) => item.key === "dashboard");
+  const hrItem = items.find((item) => item.key === "hr");
   const hrChildren = items.filter((item) => item.key.startsWith("hr-"));
-  const operationalDepartmentChildren = items.filter(isOperationalDepartmentItem);
-  const departmentChildren = items.filter(
-    (item) => item.key.startsWith("department-") && !isOperationalDepartmentItem(item),
-  );
+  const departmentChildren = items.filter((item) => item.key.startsWith("department-"));
   const operationChildren = dedupeMenuItems([
     ...items.filter((item) =>
-      ["tasks", "environment-work", "fleet-repair", "cleaning-areas", "garbage-settings", "complaints"].includes(
+      ["tasks", "environment-work", "auto-base", "cleaning-areas", "garbage-settings", "complaints"].includes(
         item.key,
       ),
     ),
-    ...operationalDepartmentChildren,
   ]);
   const reportChildren = items.filter((item) => ["reports", "data-download"].includes(item.key));
   const communicationChildren = items.filter((item) => ["chat", "help", "review", "notifications"].includes(item.key));
@@ -262,10 +246,10 @@ function compactManagerMenuItems(items: MenuItem[]) {
   const procurementItem = items.find((item) => item.key === "procurement");
   const groupedKeys = new Set([
     "dashboard",
+    ...(hrItem ? [hrItem.key] : []),
     "procurement",
     ...hrChildren.map((item) => item.key),
     ...operationChildren.map((item) => item.key),
-    ...operationalDepartmentChildren.map((item) => item.key),
     ...departmentChildren.map((item) => item.key),
     ...reportChildren.map((item) => item.key),
     ...communicationChildren.map((item) => item.key),
@@ -275,10 +259,10 @@ function compactManagerMenuItems(items: MenuItem[]) {
 
   return [
     dashboardItem,
-    createMenuGroup("manager-operations", "Үйл ажиллагаа", Leaf, operationChildren),
-    createMenuGroup("manager-hr", "Хүний нөөц", Users, hrChildren),
+    hrItem ?? createMenuGroup("manager-hr", "Хүний нөөц", Users, hrChildren),
     createMenuGroup("manager-departments", "Хэлтэс, нэгжүүд", Flag, departmentChildren),
-    procurementItem ? { ...procurementItem, label: "Санхүү, худалдан авалт" } : null,
+    createMenuGroup("manager-operations", "Үйл ажиллагаа", Leaf, operationChildren),
+    procurementItem ? { ...procurementItem, label: "Худалдан авалт" } : null,
     createMenuGroup("manager-reports", "Тайлан, баримт", BarChart3, reportChildren),
     createMenuGroup("manager-communication", "Харилцаа холбоо", MessageSquare, communicationChildren),
     createMenuGroup("manager-settings", "Тохиргоо", Settings, settingChildren),
@@ -411,15 +395,16 @@ export function AppMenu({
   const roleLooksSystemAdmin =
     roleLabelLower.includes("системийн админ") ||
     roleLabelLower.includes("system admin");
+  const hasExecutiveMenuAccess = Boolean(
+    canViewGeneralDashboard ||
+      flags.municipalDirector ||
+      flags.fleetRepairCeo ||
+      flags.fleetRepairGeneralManager ||
+      resolvedRole === "director" ||
+      resolvedRole === "general_manager",
+  );
   const executiveMode =
-    Boolean(
-      canViewGeneralDashboard ||
-        flags.municipalDirector ||
-        flags.fleetRepairCeo ||
-        flags.fleetRepairGeneralManager ||
-        resolvedRole === "director" ||
-        resolvedRole === "general_manager",
-    ) ||
+    hasExecutiveMenuAccess ||
     (!roleLooksDepartmentHead &&
       (roleLabelLower.includes("захирал") ||
         roleLabelLower.includes("менежер")));
@@ -447,9 +432,9 @@ export function AppMenu({
   const environmentManagerMode = Boolean(
     flags.greenMaster || flags.improvementManager || flags.environmentManager,
   );
-  const repairMode = Boolean(flags.fleetRepairAny);
   const repairFieldMode =
     workerMode && Boolean(flags.fleetRepairMechanic || flags.fleetRepairTeamLeader);
+  const canOpenAutoBase = canAccessAutoBaseOverview(roleContext, departmentScopeName);
   const canOpenGarbageSettings = canAccessGarbageTransportSettings(roleContext, departmentScopeName);
   const canOpenGeneralSettings = roleContext.role === "system_admin";
   const canOpenProcurement = canAccessProcurementModule(roleContext);
@@ -482,7 +467,6 @@ export function AppMenu({
   const departmentManagerMode = Boolean(
     flags.municipalDepartmentHead || environmentManagerMode || mfoManagerMode,
   );
-  const showFleetRepair = repairMode || mfoManagerMode || executiveMode;
   const isProcurementDepartmentHeadLike = Boolean(
     roleLooksDepartmentHead || resolvedRole === "project_manager" || flags.municipalDepartmentHead,
   );
@@ -528,6 +512,7 @@ export function AppMenu({
   const canShowHrMenu = Boolean(!transportInspectorMode && (canViewHr || hasDepartmentHrAccess));
   const hrFocusedMode =
     !workerMode &&
+    !hasExecutiveMenuAccess &&
     canShowHrMenu &&
     (roleLooksHr || Boolean(hasHrGroupAccess && canViewHr && !departmentManagerMode && !roleLooksDepartmentHead));
   const isGarbageDepartmentHead =
@@ -539,6 +524,7 @@ export function AppMenu({
   const scopedDepartmentHeadMode = Boolean(
     !workerMode &&
       !transportInspectorMode &&
+      !hasExecutiveMenuAccess &&
       !hrFocusedMode &&
       departmentScopeName &&
       !roleLooksSystemAdmin &&
@@ -551,6 +537,8 @@ export function AppMenu({
 
   const visibleDepartmentGroups = hrFocusedMode
     ? []
+    : hasExecutiveMenuAccess
+    ? DEPARTMENT_GROUPS
     : departmentScopeName
     ? DEPARTMENT_GROUPS.filter((group) => {
         const scopedGroup =
@@ -574,26 +562,15 @@ export function AppMenu({
 
   const hrItems: MenuItem[] = canShowHrMenu
     ? [
-        { key: "hr-dashboard", href: "/hr", label: "Самбар", icon: LayoutDashboard },
-        { key: "hr-employees", href: "/hr/employees", label: "Бүх ажилтнууд", icon: Users },
-        { key: "hr-new-employee", href: "/hr/employees/new", label: "Шинэ ажилтан", icon: UserPlus },
-        { key: "hr-requests", href: "/hr/leaves", label: "Ирсэн хүсэлтүүд", icon: CalendarDays },
-        { key: "hr-sick", href: "/hr/sick", label: "Чөлөө / өвчтэй", icon: HeartPulse },
-        { key: "hr-discipline", href: "/hr/discipline", label: "Сахилгын бүртгэл", icon: ShieldAlert },
-        { key: "hr-notifications", href: HR_NOTIFICATION_HREF, label: "Мэдэгдэл", icon: Bell },
-        { key: "hr-reports", href: "/hr/reports", label: "Тайлан", icon: FileText },
+        { key: "hr", href: "/hr", label: "Хүний нөөц", icon: Users },
       ]
     : [];
-  const departmentHrFocusedMode = Boolean(active === "hr" && hasDepartmentHrAccess && canShowHrMenu && !hrFocusedMode);
+  const departmentHrFocusedMode = Boolean(
+    active === "hr" && !hasExecutiveMenuAccess && hasDepartmentHrAccess && canShowHrMenu && !hrFocusedMode,
+  );
   const departmentHrItems: MenuItem[] = departmentHrFocusedMode
     ? [
-        { key: "hr-dashboard", href: "/hr", label: "Хэлтсийн хүний нөөц", icon: LayoutDashboard },
-        { key: "hr-employees", href: "/hr/employees", label: "Манай ажилтнууд", icon: Users },
-        { key: "hr-requests", href: "/hr/leaves", label: "Ирсэн хүсэлтүүд", icon: CalendarDays },
-        { key: "hr-sick", href: "/hr/sick", label: "Чөлөө / өвчтэй", icon: HeartPulse },
-        { key: "hr-discipline", href: "/hr/discipline", label: "Сахилгын бүртгэл", icon: ShieldAlert },
-        { key: "hr-notifications", href: HR_NOTIFICATION_HREF, label: "Мэдэгдэл", icon: Bell },
-        { key: "hr-reports", href: "/hr/reports", label: "Тайлан", icon: FileText },
+        { key: "hr", href: "/hr", label: "Хүний нөөц", icon: Users },
       ]
     : [];
 
@@ -635,16 +612,6 @@ export function AppMenu({
               },
         ]
       : []),
-    ...(repairMode
-      ? [
-          {
-            key: "fleet-repair",
-            href: "/fleet-repair/requests",
-            label: "Засварын хүсэлт",
-            icon: Wrench,
-          },
-        ]
-      : []),
     ...(complaintMode && canOpenGarbageSettings
       ? [
           {
@@ -675,13 +642,13 @@ export function AppMenu({
     ...hrItems,
     ...roleFocusedItems,
     ...departmentItems,
-    ...(showFleetRepair && !roleFocusedItems.some((item) => item.key === "fleet-repair")
+    ...(canOpenAutoBase
       ? [
           {
-            key: "fleet-repair",
-            href: "/fleet-repair/requests",
-            label: "Засварын хүсэлт",
-            icon: Wrench,
+            key: "auto-base",
+            href: "/auto-base",
+            label: "Авто бааз",
+            icon: Truck,
           },
         ]
       : []),
@@ -1037,6 +1004,9 @@ export function AppMenu({
       const itemPath = item.href.split("?")[0];
       return itemPath === "/hr" ? pathname === "/hr" : pathname.startsWith(itemPath);
     }
+    if (item.departmentName) {
+      return pathname === "/projects" && searchParams.get("department") === item.departmentName;
+    }
     if (item.key === active) {
       return true;
     }
@@ -1047,9 +1017,6 @@ export function AppMenu({
       return true;
     }
     if (item.key === "projects" && active === "tasks") {
-      return true;
-    }
-    if (active === "auto-base" && item.departmentName?.includes("Авто")) {
       return true;
     }
     if (active === "garbage-settings" && item.key === "garbage-settings") {
@@ -1115,10 +1082,7 @@ export function AppMenu({
       ]
     : departmentHrFocusedMode
       ? [
-          { key: "hr-dashboard", href: "/hr", label: "HR", icon: Users },
-          { key: "hr-employees", href: "/hr/employees", label: "Ажилтнууд", icon: Users },
-          { key: "hr-sick", href: "/hr/sick", label: "Чөлөө", icon: HeartPulse },
-          { key: "hr-reports", href: "/hr/reports", label: "Тайлан", icon: FileText },
+          { key: "hr", href: "/hr", label: "Хүний нөөц", icon: Users },
           { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
         ]
     : hrFocusedMode
