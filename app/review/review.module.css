@@ -453,6 +453,102 @@
   background: linear-gradient(90deg, rgba(31, 95, 49, 0.96), rgba(74, 154, 93, 0.9));
 }
 
+.reviewNotice,
+.reviewSummaryStrip,
+.reviewActionButton,
+.reviewPrimaryLink,
+.reviewSideStat {
+  border: 1px solid rgba(17, 27, 21, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.reviewNotice {
+  padding: 12px 14px;
+  color: #92400e;
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
+.reviewSummaryStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  color: #334155;
+  font-size: 0.86rem;
+  font-weight: 850;
+  box-shadow: 0 10px 24px rgba(17, 27, 21, 0.04);
+}
+
+.reviewSummaryStrip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reviewSummaryStrip svg {
+  width: 17px;
+  height: 17px;
+  color: #2f7f46;
+}
+
+.reviewActionButton {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  background: #2f7f46;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 950;
+  white-space: nowrap;
+  box-shadow: 0 10px 22px rgba(47, 127, 70, 0.2);
+}
+
+.reviewPrimaryLink {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+  padding: 0 16px;
+  background: #2f7f46;
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 950;
+  text-decoration: none;
+}
+
+.reviewSidePanel {
+  align-content: start;
+}
+
+.reviewSideStat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+  padding: 12px 14px;
+  background: #f8fbf8;
+}
+
+.reviewSideStat span {
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.reviewSideStat strong {
+  color: #111827;
+  font-size: 1.25rem;
+  font-weight: 950;
+}
+
 @media (max-width: 1080px) {
   .heroInsightGrid,
   .reviewBoard {

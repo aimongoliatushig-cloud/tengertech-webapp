@@ -5510,22 +5510,28 @@ export async function markWorkspaceTaskDone(
   taskId: number,
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
-  try {
-    return await executeOdooKw<boolean>(
+  const callTaskAction = (method: string) =>
+    executeOdooKw<boolean>(
       "project.task",
-      "action_ops_mark_done",
+      method,
       [[taskId]],
       {},
       connectionOverrides,
     );
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (!message.includes("action_ops_mark_done") && !message.toLowerCase().includes("does not exist")) {
-      throw error;
-    }
 
-    return forceWorkspaceTaskDone(taskId, connectionOverrides);
+  for (const method of ["action_ops_mark_done", "action_mfo_verify"]) {
+    try {
+      await callTaskAction(method);
+      return forceWorkspaceTaskDone(taskId, connectionOverrides);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes(method) && !message.toLowerCase().includes("does not exist")) {
+        throw error;
+      }
+    }
   }
+
+  return forceWorkspaceTaskDone(taskId, connectionOverrides);
 }
 
 async function loadDoneTaskStageId(connectionOverrides: Partial<OdooConnection>) {
@@ -5571,7 +5577,7 @@ export async function forceWorkspaceTaskDone(
   let values: Record<string, unknown> = {
     ops_progress_percent: 100,
     ops_reports_locked: true,
-    mfo_state: "done",
+    mfo_state: "verified",
     state: "1_done",
   };
 

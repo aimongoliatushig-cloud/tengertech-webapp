@@ -2558,7 +2558,7 @@ export async function markTaskDoneAction(formData: FormData) {
     revalidatePath("/review");
     revalidatePath("/reports");
     revalidatePath(`/tasks/${taskId}`);
-    redirect(`/tasks/${taskId}?notice=${encodeURIComponent("Ажил дууссан төлөвт орлоо.")}`);
+    redirect(`/?notice=${encodeURIComponent("Ажил хянаж дууслаа.")}`);
   } catch (error) {
     rethrowIfRedirectError(error);
     redirectWithMessage(`/tasks/${taskId}`, "error", getErrorMessage(error));

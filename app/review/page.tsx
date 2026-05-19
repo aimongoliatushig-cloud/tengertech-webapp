@@ -1,129 +1,131 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import dashboardStyles from "@/app/page.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import {
+  getSessionRoleLabel,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
   requireSession,
-  getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
-import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
+import { filterByDepartment } from "@/lib/dashboard-scope";
 import {
-  DEPARTMENT_GROUPS,
-  findDepartmentGroupByName,
-  findDepartmentGroupByUnit,
-  getDepartmentGroupLabel,
-  matchesDepartmentGroup,
-} from "@/lib/department-groups";
-import { loadMunicipalSnapshot } from "@/lib/odoo";
+  loadFleetVehicleBoard,
+  loadMunicipalSnapshot,
+  type DashboardSnapshot,
+  type FleetVehicleBoard,
+} from "@/lib/odoo";
+import { fixMojibakeText } from "@/lib/text-normalize";
 
-import reviewStyles from "./review.module.css";
+import { ReviewInspectorBoard, type ReviewInspectorBoardTask } from "./review-inspector-board";
 
-type PageProps = {
-  searchParams?: Promise<{
-    department?: string | string[];
-  }>;
+const AUTO_BASE_GARBAGE_DEPARTMENT_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
+
+const EMPTY_FLEET_BOARD: FleetVehicleBoard = {
+  allVehicles: [],
+  activeVehicles: [],
+  repairVehicles: [],
+  driverOptions: [],
+  loaderOptions: [],
+  departmentOptions: [],
+  modelOptions: [],
+  vehicleTypeOptions: [],
+  categoryOptions: [],
+  totalVehicles: 0,
+  activeCount: 0,
+  repairCount: 0,
+  insuranceDueCount: 0,
+  inspectionDueCount: 0,
+  todayWeightLabel: "0 тн",
+  todayFuelLabel: "0 л",
+  highestFuelVehicle: "-",
+  mostRepairedVehicle: "-",
+  failedImportCount: 0,
 };
 
-type ReviewScope = {
-  name: string;
-  label: string;
-  icon: string;
-  accent: string;
-  kind: "group" | "unit";
-  totalTasks: number;
-  activeTasks: number;
-  reviewTasks: number;
-  doneTasks: number;
-  completion: number;
-};
+type DashboardSession = Awaited<ReturnType<typeof requireSession>>;
+type ReviewQueueItem = DashboardSnapshot["reviewQueue"][number];
+type TaskDirectoryItem = DashboardSnapshot["taskDirectory"][number];
 
-function getDepartmentParam(value?: string | string[]) {
-  if (Array.isArray(value)) {
-    return value[0] ?? "";
-  }
-  return value ?? "";
-}
-
-function StagePill({
-  label,
-  bucket,
-}: {
-  label: string;
-  bucket: "todo" | "progress" | "review" | "done" | "unknown" | "problem";
-}) {
-  const tone =
-    bucket === "problem"
-      ? dashboardStyles.stageProblem
-      : bucket === "done"
-      ? dashboardStyles.stageDone
-      : bucket === "review"
-        ? dashboardStyles.stageReview
-        : bucket === "progress"
-          ? dashboardStyles.stageProgress
-          : dashboardStyles.stageTodo;
-
-  return (
-    <span
-      className={`${dashboardStyles.stagePill} ${tone}`}
-      aria-label={label}
-      title={label}
-    >
-      {label}
-    </span>
+function isTransportInspectorSession(session: DashboardSession) {
+  return Boolean(
+    session.role === "transport_inspector" ||
+      (session.groupFlags?.mfoInspector &&
+        !session.groupFlags?.mfoManager &&
+        !session.groupFlags?.mfoDispatcher &&
+        !session.groupFlags?.municipalDepartmentHead),
   );
 }
 
-function createUnitScope(
-  name: string,
-  fallback?: {
-    label?: string;
-    icon?: string;
-    accent?: string;
-  },
-): ReviewScope {
-  return {
-    name,
-    label: fallback?.label ?? name,
-    icon: fallback?.icon ?? "🏢",
-    accent: fallback?.accent ?? "var(--tone-slate)",
-    kind: "unit",
-    totalTasks: 0,
-    activeTasks: 0,
-    reviewTasks: 0,
-    doneTasks: 0,
-    completion: 0,
-  };
+function normalizeSearchText(value: string) {
+  return fixMojibakeText(value)
+    .toLocaleLowerCase("mn-MN")
+    .replace(/[^\p{L}\p{N}]+/gu, "");
 }
 
-function scopeMatches(scope: ReviewScope, departmentName?: string | null) {
-  const normalized = (departmentName ?? "").trim();
-  if (!normalized) {
-    return false;
-  }
+function resolveReviewVehicle(
+  reviewItem: ReviewQueueItem,
+  directoryTask: TaskDirectoryItem | undefined,
+  fleetBoard: FleetVehicleBoard,
+) {
+  const taskText = normalizeSearchText(
+    [
+      reviewItem.name,
+      reviewItem.projectName,
+      reviewItem.departmentName,
+      directoryTask?.name,
+      directoryTask?.projectName,
+      directoryTask?.operationTypeLabel,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
 
-  if (scope.kind === "group") {
-    const group =
-      findDepartmentGroupByName(scope.name) ?? findDepartmentGroupByUnit(scope.name);
-    return group ? matchesDepartmentGroup(group, normalized) : normalized === scope.name;
-  }
+  return fleetBoard.allVehicles.find((vehicle) => {
+    const plate = normalizeSearchText(vehicle.plate);
+    return plate ? taskText.includes(plate) : false;
+  });
+}
 
-  return normalized === scope.name;
+function mapReviewBoardTask(
+  item: ReviewQueueItem,
+  taskById: Map<number, TaskDirectoryItem>,
+  fleetBoard: FleetVehicleBoard,
+): ReviewInspectorBoardTask {
+  const directoryTask = taskById.get(item.id);
+  const vehicle = resolveReviewVehicle(item, directoryTask, fleetBoard);
+  const vehiclePlate = vehicle?.plate || item.projectName || "Тодорхойгүй машин";
+  const vehicleModel = vehicle?.modelName || vehicle?.name || directoryTask?.operationTypeLabel || item.projectName;
+
+  return {
+    id: item.id,
+    name: fixMojibakeText(item.name),
+    departmentName: fixMojibakeText(item.departmentName),
+    projectName: fixMojibakeText(item.projectName),
+    leaderName: fixMojibakeText(item.leaderName || directoryTask?.leaderName || "Хариуцагчгүй"),
+    href: item.href,
+    progress: item.progress,
+    deadline: fixMojibakeText(item.deadline || directoryTask?.deadline || "Огноо тодорхойгүй"),
+    scheduledDate: directoryTask?.scheduledDate ?? null,
+    operationTypeLabel: fixMojibakeText(directoryTask?.operationTypeLabel || "Тайлан хянах"),
+    vehicleId: vehicle?.id ?? null,
+    vehiclePlate: fixMojibakeText(vehiclePlate),
+    vehicleModel: fixMojibakeText(vehicleModel),
+    vehicleImageUrl: vehicle?.imageUrl || "",
+  };
 }
 
 export const dynamic = "force-dynamic";
 
-export default async function ReviewPage({ searchParams }: PageProps) {
+export default async function ReviewPage() {
   const session = await requireSession();
   if (isWorkerOnly(session) || isMasterRole(session.role)) {
     redirect("/");
   }
+
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
   const canWriteReports = hasCapability(session, "write_workspace_reports");
@@ -133,208 +135,42 @@ export default async function ReviewPage({ searchParams }: PageProps) {
     redirect("/");
   }
 
-  const snapshotPromise = loadMunicipalSnapshot({
+  const connectionOverrides = {
     login: session.login,
     password: session.password,
-  });
-  const scopedDepartmentNamePromise = loadSessionDepartmentName(session);
-  const [snapshot, scopedDepartmentName] = await Promise.all([
-    snapshotPromise,
-    scopedDepartmentNamePromise,
-  ]);
-  const sourceTaskDirectory = filterByDepartment(snapshot.taskDirectory, scopedDepartmentName);
-  const sourceReviewQueue = filterByDepartment(snapshot.reviewQueue, scopedDepartmentName);
-  const sourceProjects = filterByDepartment(snapshot.projects, scopedDepartmentName);
-  const sourceDepartments = scopedDepartmentName
-    ? snapshot.departments.filter(
-        (department) =>
-          filterByDepartment([{ departmentName: department.name }], scopedDepartmentName).length > 0,
-      )
-    : snapshot.departments;
+  };
+  const transportInspectorMode = isTransportInspectorSession(session);
+  const scopedDepartmentName = transportInspectorMode
+    ? AUTO_BASE_GARBAGE_DEPARTMENT_NAME
+    : await loadSessionDepartmentName(session);
 
-  const scopeMap = new Map<string, ReviewScope>();
-  for (const department of sourceDepartments) {
-    scopeMap.set(
-      department.name,
-      createUnitScope(department.name, {
-        label: department.label,
-        icon: department.icon,
-        accent: department.accent,
+  const [snapshot, fleetResult] = await Promise.all([
+    loadMunicipalSnapshot(connectionOverrides),
+    loadFleetVehicleBoard()
+      .then((fleetBoard) => ({
+        fleetBoard,
+        fleetLoadError: "",
+      }))
+      .catch((error) => {
+        console.warn("Fleet vehicle board could not be loaded for review board:", error);
+        return {
+          fleetBoard: EMPTY_FLEET_BOARD,
+          fleetLoadError: "Авто баазын техникийн мэдээллийг уншиж чадсангүй.",
+        };
       }),
-    );
-  }
-
-  const allDepartmentNames = new Set<string>();
-  for (const department of sourceDepartments) {
-    allDepartmentNames.add(department.name);
-  }
-  for (const task of sourceTaskDirectory) {
-    allDepartmentNames.add(task.departmentName);
-  }
-  for (const item of sourceReviewQueue) {
-    allDepartmentNames.add(item.departmentName);
-  }
-  for (const project of sourceProjects) {
-    allDepartmentNames.add(project.departmentName);
-  }
-
-  for (const group of DEPARTMENT_GROUPS) {
-    const hasMatch = Array.from(allDepartmentNames).some((name) =>
-      matchesDepartmentGroup(group, name),
-    );
-    if (!hasMatch) {
-      continue;
-    }
-
-    scopeMap.set(group.name, {
-      name: group.name,
-      label: getDepartmentGroupLabel(group),
-      icon: group.icon,
-      accent: group.accent,
-      kind: "group",
-      totalTasks: 0,
-      activeTasks: 0,
-      reviewTasks: 0,
-      doneTasks: 0,
-      completion: 0,
-    });
-  }
-
-  const scopes = Array.from(scopeMap.values()).map((scope) => {
-    const scopeTasks = sourceTaskDirectory.filter((task) =>
-      scopeMatches(scope, task.departmentName),
-    );
-    const activeTasks = scopeTasks.filter(
-      (task) => task.stageBucket === "todo" || task.stageBucket === "progress",
-    );
-    const reviewTasks = scopeTasks.filter((task) => task.stageBucket === "review");
-    const doneTasks = scopeTasks.filter((task) => task.stageBucket === "done");
-
-    return {
-      ...scope,
-      totalTasks: scopeTasks.length,
-      activeTasks: activeTasks.length,
-      reviewTasks: reviewTasks.length,
-      doneTasks: doneTasks.length,
-      completion: scopeTasks.length
-        ? Math.round((doneTasks.length / scopeTasks.length) * 100)
-        : 0,
-    };
-  });
-
-  const orderedScopes: ReviewScope[] = [];
-  const appended = new Set<string>();
-  for (const department of sourceDepartments) {
-    const groupedScope =
-      findDepartmentGroupByName(department.name) ?? findDepartmentGroupByUnit(department.name);
-    const groupedScopeName = groupedScope?.name ?? null;
-
-    if (groupedScopeName) {
-      const scope = scopes.find((item) => item.name === groupedScopeName);
-      if (scope && !appended.has(scope.name)) {
-        orderedScopes.push(scope);
-        appended.add(scope.name);
-      }
-      continue;
-    }
-
-    const scope = scopes.find((item) => item.name === department.name);
-    if (scope && !appended.has(scope.name)) {
-      orderedScopes.push(scope);
-      appended.add(scope.name);
-    }
-  }
-
-  for (const scope of scopes) {
-    if (!appended.has(scope.name)) {
-      orderedScopes.push(scope);
-      appended.add(scope.name);
-    }
-  }
-
-  const params = (await searchParams) ?? {};
-  const requestedDepartment = getDepartmentParam(params.department);
-  const selectedScope =
-    orderedScopes.find((scope) => scope.name === requestedDepartment) ??
-    (() => {
-      const groupedScope =
-        findDepartmentGroupByName(requestedDepartment) ??
-        findDepartmentGroupByUnit(requestedDepartment);
-      if (!groupedScope) {
-        return null;
-      }
-      return orderedScopes.find((scope) => scope.name === groupedScope.name) ?? null;
-    })() ??
-    orderedScopes.find((scope) => scope.reviewTasks > 0) ??
-    orderedScopes[0];
-
-  const scopedTasks = sourceTaskDirectory.filter((task) =>
-    selectedScope ? scopeMatches(selectedScope, task.departmentName) : false,
-  );
-  const activeTasks = scopedTasks
-    .filter((task) => task.stageBucket === "todo" || task.stageBucket === "progress")
-    .sort((left, right) => right.progress - left.progress || left.name.localeCompare(right.name, "mn"));
-  const visibleReviewTasks = sourceReviewQueue.filter((item) =>
-    selectedScope ? scopeMatches(selectedScope, item.departmentName) : false,
-  );
-  const todayDateKey = getTodayDateKey();
-  const newIncomingTasks = scopedTasks.filter(
-    (task) => task.createdDate === todayDateKey && task.statusKey !== "verified",
-  );
-  const notificationTaskIds = new Set([
-    ...visibleReviewTasks.map((task) => task.id),
-    ...newIncomingTasks.map((task) => task.id),
   ]);
-  const notificationCount = notificationTaskIds.size;
-  const reviewedTasks = scopedTasks
-    .filter((task) => task.stageBucket === "done")
-    .sort((left, right) => right.progress - left.progress || left.name.localeCompare(right.name, "mn"));
-  const scopedProjects = sourceProjects.filter((project) =>
-    selectedScope ? scopeMatches(selectedScope, project.departmentName) : false,
-  );
 
-  const totalWorkflowCount =
-    activeTasks.length + visibleReviewTasks.length + reviewedTasks.length;
-  const decisionRate =
-    visibleReviewTasks.length + reviewedTasks.length
-      ? Math.round(
-          (reviewedTasks.length / (visibleReviewTasks.length + reviewedTasks.length)) * 100,
-        )
-      : 0;
-  const averageProgress = scopedTasks.length
-    ? Math.round(
-        scopedTasks.reduce((sum, task) => sum + task.progress, 0) / scopedTasks.length,
-      )
-    : 0;
-
-  const flowStages = [
-    {
-      key: "active",
-      label: "Хяналтаас өмнө",
-      count: activeTasks.length,
-      share: totalWorkflowCount ? Math.round((activeTasks.length / totalWorkflowCount) * 100) : 0,
-      tone: reviewStyles.flowStageActive,
-      note: "Явж буй болон дуусаагүй ажил",
-    },
-    {
-      key: "review",
-      label: "Хянах",
-      count: visibleReviewTasks.length,
-      share: totalWorkflowCount
-        ? Math.round((visibleReviewTasks.length / totalWorkflowCount) * 100)
-        : 0,
-      tone: reviewStyles.flowStageReview,
-      note: "Үйл ажиллагаа хариуцсан менежерийн шийдвэр хүлээж буй",
-    },
-    {
-      key: "done",
-      label: "Хянасан",
-      count: reviewedTasks.length,
-      share: totalWorkflowCount ? Math.round((reviewedTasks.length / totalWorkflowCount) * 100) : 0,
-      tone: reviewStyles.flowStageDone,
-      note: "Баталгаажиж хаагдсан ажил",
-    },
-  ] as const;
+  const sourceTaskDirectory = scopedDepartmentName
+    ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
+    : snapshot.taskDirectory;
+  const sourceReviewQueue = scopedDepartmentName
+    ? filterByDepartment(snapshot.reviewQueue, scopedDepartmentName)
+    : snapshot.reviewQueue;
+  const taskById = new Map(sourceTaskDirectory.map((task) => [task.id, task]));
+  const reviewBoardTasks = sourceReviewQueue
+    .map((item) => mapReviewBoardTask(item, taskById, fleetResult.fleetBoard))
+    .sort((left, right) => left.vehiclePlate.localeCompare(right.vehiclePlate, "mn") || left.name.localeCompare(right.name, "mn"));
+  const notificationCount = reviewBoardTasks.length;
 
   return (
     <main className={shellStyles.shell}>
@@ -359,345 +195,24 @@ export default async function ReviewPage({ searchParams }: PageProps) {
 
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
-              title="Хяналт"
-              subtitle="Шалгах, батлах урсгалын нэгтгэсэн самбар"
+              title="Тайлан хянах"
+              subtitle={transportInspectorMode ? "Авто бааз, хог тээвэрлэлтийн хэлтэс" : "Шийдвэр хүлээж буй ажлын тайлангууд"}
               userName={session.name}
               roleLabel={getSessionRoleLabel(session)}
               notificationCount={notificationCount}
-              notificationNote={`${newIncomingTasks.length} шинэ ажил, ${visibleReviewTasks.length} хянах ажил байна`}
+              notificationNote={
+                notificationCount
+                  ? `${notificationCount} хянах ажил байна`
+                  : "Хянах тайлан алга"
+              }
             />
 
-            <section className={shellStyles.heroCard}>
-              <span className={shellStyles.eyebrow}>Хяналтын урсгал</span>
-              <h1>Хянах болон хянасан ажлууд</h1>
-              <p>
-                Нэгжээ сонгоод хяналтаас өмнөх ажил, яг одоо шийдвэр хүлээж буй ажил,
-                мөн аль хэдийн баталгаажсан ажлыг нэг дор урсгалаар харна.
-              </p>
-
-              <div className={shellStyles.statsGrid}>
-                <article className={shellStyles.statCard}>
-                  <span>Сонгосон алба нэгж</span>
-                  <strong>{selectedScope?.name ?? "Тодорхойгүй"}</strong>
-                </article>
-                <article className={shellStyles.statCard}>
-                  <span>Хянах ажлууд</span>
-                  <strong>{visibleReviewTasks.length}</strong>
-                </article>
-                <article className={shellStyles.statCard}>
-                  <span>Хянасан ажлууд</span>
-                  <strong>{reviewedTasks.length}</strong>
-                </article>
-                <article className={shellStyles.statCard}>
-                  <span>Явж буй ажлууд</span>
-                  <strong>{activeTasks.length}</strong>
-                </article>
-              </div>
-
-              <div className={reviewStyles.heroInsightGrid}>
-                <article className={reviewStyles.flowCard}>
-                  <div className={reviewStyles.cardHeader}>
-                    <div>
-                      <span className={reviewStyles.kicker}>Хяналтын зураглал</span>
-                      <h2>{selectedScope?.name ?? "Ажлын урсгал"}</h2>
-                    </div>
-                    <strong>{totalWorkflowCount}</strong>
-                  </div>
-
-                  <div className={reviewStyles.flowTrack} aria-hidden>
-                    {flowStages.some((stage) => stage.count > 0) ? (
-                      flowStages.map((stage) =>
-                        stage.count ? (
-                          <span
-                            key={stage.key}
-                            className={`${reviewStyles.flowSegment} ${stage.tone}`}
-                            style={{ flexGrow: stage.count }}
-                          />
-                        ) : null,
-                      )
-                    ) : (
-                      <span className={reviewStyles.flowSegmentEmpty} />
-                    )}
-                  </div>
-
-                  <div className={reviewStyles.flowLegend}>
-                    {flowStages.map((stage) => (
-                      <article key={stage.key} className={reviewStyles.flowLegendItem}>
-                        <span className={`${reviewStyles.flowDot} ${stage.tone}`} aria-hidden />
-                        <div>
-                          <strong>{stage.label}</strong>
-                          <small>{stage.note}</small>
-                        </div>
-                        <div className={reviewStyles.flowLegendMeta}>
-                          <strong>{stage.count}</strong>
-                          <span>{stage.share}%</span>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </article>
-
-                <article className={reviewStyles.decisionCard}>
-                  <div className={reviewStyles.cardHeader}>
-                    <div>
-                      <span className={reviewStyles.kicker}>Шийдвэрийн төлөв</span>
-                      <h2>Хяналтын товч зураг</h2>
-                    </div>
-                  </div>
-
-                  <div className={reviewStyles.decisionStat}>
-                    <span>Баталгаажуулалтын хувь</span>
-                    <strong>{decisionRate}%</strong>
-                    <small>Хянасан болон хүлээгдэж буй ажлын харьцаагаар тооцсон</small>
-                  </div>
-
-                  <div className={reviewStyles.decisionMiniGrid}>
-                    <article className={reviewStyles.miniStat}>
-                      <span>Нийт ажил</span>
-                      <strong>{scopedProjects.length}</strong>
-                    </article>
-                    <article className={reviewStyles.miniStat}>
-                      <span>Дундаж явц</span>
-                      <strong>{averageProgress}%</strong>
-                    </article>
-                    <article className={reviewStyles.miniStat}>
-                      <span>Нээлттэй үлдэгдэл</span>
-                      <strong>{selectedScope?.activeTasks ?? 0}</strong>
-                    </article>
-                    <article className={reviewStyles.miniStat}>
-                      <span>Нийт мөр</span>
-                      <strong>{selectedScope?.totalTasks ?? 0}</strong>
-                    </article>
-                  </div>
-                </article>
-              </div>
-            </section>
-
-            <section className={reviewStyles.scopeSection}>
-              <div className={reviewStyles.scopeHeader}>
-                <div>
-                  <span className={reviewStyles.kicker}>Алба нэгжийн шүүлт</span>
-                  <h2>Ямар нэгжийн хяналтыг харах вэ</h2>
-                  <p>
-                    Нэг нэгж сонгоод тухайн хэлтсийн явж буй, хянах болон хянасан
-                    ажлын урсгалыг нэг дор харна.
-                  </p>
-                </div>
-                <div className={reviewStyles.scopeTotalPill}>
-                  <strong>{orderedScopes.length}</strong>
-                  <small>нэгж</small>
-                </div>
-              </div>
-
-              <nav className={reviewStyles.scopeGrid} aria-label="Алба нэгж сонгох">
-                {orderedScopes.map((scope) => {
-                  const isActive = scope.name === selectedScope?.name;
-
-                  return (
-                    <Link
-                      key={scope.name}
-                      href={`/review?department=${encodeURIComponent(scope.name)}`}
-                      className={`${reviewStyles.scopeCard} ${
-                        isActive ? reviewStyles.scopeCardActive : ""
-                      }`}
-                      aria-current={isActive ? "page" : undefined}
-                    >
-                      <div className={reviewStyles.scopeCardTop}>
-                        <span className={reviewStyles.scopeName}>
-                          <span className={reviewStyles.scopeIcon} aria-hidden>
-                            {scope.icon}
-                          </span>
-                          <span>
-                            <strong>{scope.name}</strong>
-                            <small>{scope.label}</small>
-                          </span>
-                        </span>
-                        <span className={reviewStyles.scopeBadge}>{scope.reviewTasks}</span>
-                      </div>
-
-                      <div className={reviewStyles.scopeStats}>
-                        <span className={reviewStyles.scopeStat}>
-                          <span>Явж буй</span>
-                          <strong>{scope.activeTasks}</strong>
-                        </span>
-                        <span className={reviewStyles.scopeStat}>
-                          <span>Хянах</span>
-                          <strong>{scope.reviewTasks}</strong>
-                        </span>
-                        <span className={reviewStyles.scopeStat}>
-                          <span>Хянасан</span>
-                          <strong>{scope.doneTasks}</strong>
-                        </span>
-                      </div>
-
-                      <span className={reviewStyles.scopeProgress} aria-hidden>
-                        <span style={{ width: `${Math.max(scope.completion, 4)}%` }} />
-                      </span>
-                    </Link>
-                  );
-                })}
-              </nav>
-            </section>
-            {selectedScope ? (
-              <section className={dashboardStyles.projectsSection}>
-                <div className={dashboardStyles.selectedDepartmentHeader}>
-                  <div>
-                    <span
-                      className={dashboardStyles.departmentAccentBadge}
-                      style={{ background: selectedScope.accent }}
-                    />
-                    <h2>{selectedScope.name}</h2>
-                    <p className={dashboardStyles.selectedDepartmentNote}>
-                      {selectedScope.label}
-                    </p>
-                  </div>
-
-                  <div className={dashboardStyles.projectMetaSummary}>
-                    <div>
-                      <span>Хянах</span>
-                      <strong>{visibleReviewTasks.length}</strong>
-                    </div>
-                    <div>
-                      <span>Хянасан</span>
-                      <strong>{reviewedTasks.length}</strong>
-                    </div>
-                    <div>
-                      <span>Явж буй</span>
-                      <strong>{activeTasks.length}</strong>
-                    </div>
-                    <div>
-                      <span>Гүйцэтгэл</span>
-                      <strong>{selectedScope.completion}%</strong>
-                    </div>
-                  </div>
-                </div>
-
-                <div className={reviewStyles.reviewBoard}>
-                  <article className={reviewStyles.reviewLane}>
-                    <div className={reviewStyles.laneHeader}>
-                      <div>
-                        <span className={reviewStyles.kicker}>Хяналтаас өмнө</span>
-                        <h3>Явж буй ажлууд</h3>
-                      </div>
-                      <strong>{activeTasks.length}</strong>
-                    </div>
-
-                    {activeTasks.length ? (
-                      <div className={reviewStyles.laneList}>
-                        {activeTasks.map((task) => (
-                          <Link key={task.id} href={task.href} className={reviewStyles.laneItem}>
-                            <div className={reviewStyles.laneItemTop}>
-                              <div>
-                                <strong>{task.name}</strong>
-                                <p>{task.projectName}</p>
-                              </div>
-                              <StagePill label={task.stageLabel} bucket={task.stageBucket} />
-                            </div>
-                            <div className={reviewStyles.laneMeta}>
-                              <span>{task.leaderName || "Хариуцагчгүй"}</span>
-                              <span>{task.deadline}</span>
-                              <span>{task.progress}%</span>
-                            </div>
-                            <div className={reviewStyles.progressTrack} aria-hidden>
-                              <span
-                                className={reviewStyles.progressFillActive}
-                                style={{ width: `${Math.max(task.progress, 4)}%` }}
-                              />
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className={dashboardStyles.emptyColumnState}>
-                        Одоогоор хяналтаас өмнөх явж буй ажил алга байна.
-                      </div>
-                    )}
-                  </article>
-
-                  <article className={reviewStyles.reviewLane}>
-                    <div className={reviewStyles.laneHeader}>
-                      <div>
-                        <span className={reviewStyles.kicker}>Хянах</span>
-                        <h3>Шийдвэр хүлээж буй</h3>
-                      </div>
-                      <strong>{visibleReviewTasks.length}</strong>
-                    </div>
-
-                    {visibleReviewTasks.length ? (
-                      <div className={reviewStyles.laneList}>
-                        {visibleReviewTasks.map((item) => (
-                          <Link key={item.id} href={item.href} className={reviewStyles.laneItem}>
-                            <div className={reviewStyles.laneItemTop}>
-                              <div>
-                                <strong>{item.name}</strong>
-                                <p>{item.projectName}</p>
-                              </div>
-                              <StagePill label={item.stageLabel} bucket="review" />
-                            </div>
-                            <div className={reviewStyles.laneMeta}>
-                              <span>{item.leaderName || "Хариуцагчгүй"}</span>
-                              <span>{item.deadline}</span>
-                              <span>{item.progress}%</span>
-                            </div>
-                            <div className={reviewStyles.progressTrack} aria-hidden>
-                              <span
-                                className={reviewStyles.progressFillReview}
-                                style={{ width: `${Math.max(item.progress, 4)}%` }}
-                              />
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className={dashboardStyles.emptyColumnState}>
-                        Одоогоор шийдвэр хүлээж буй хяналтын ажил алга байна.
-                      </div>
-                    )}
-                  </article>
-
-                  <article className={reviewStyles.reviewLane}>
-                    <div className={reviewStyles.laneHeader}>
-                      <div>
-                        <span className={reviewStyles.kicker}>Хянасан</span>
-                        <h3>Баталгаажсан ажлууд</h3>
-                      </div>
-                      <strong>{reviewedTasks.length}</strong>
-                    </div>
-
-                    {reviewedTasks.length ? (
-                      <div className={reviewStyles.laneList}>
-                        {reviewedTasks.map((task) => (
-                          <Link key={task.id} href={task.href} className={reviewStyles.laneItem}>
-                            <div className={reviewStyles.laneItemTop}>
-                              <div>
-                                <strong>{task.name}</strong>
-                                <p>{task.projectName}</p>
-                              </div>
-                              <StagePill label={task.stageLabel} bucket="done" />
-                            </div>
-                            <div className={reviewStyles.laneMeta}>
-                              <span>{task.leaderName || "Хариуцагчгүй"}</span>
-                              <span>{task.deadline}</span>
-                              <span>{task.progress}%</span>
-                            </div>
-                            <div className={reviewStyles.progressTrack} aria-hidden>
-                              <span
-                                className={reviewStyles.progressFillDone}
-                                style={{ width: `${Math.max(task.progress, 4)}%` }}
-                              />
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className={dashboardStyles.emptyColumnState}>
-                        Одоогоор баталгаажиж хаагдсан ажил алга байна.
-                      </div>
-                    )}
-                  </article>
-                </div>
-              </section>
-            ) : null}
+            <ReviewInspectorBoard
+              tasks={reviewBoardTasks}
+              totalTaskCount={sourceTaskDirectory.length}
+              scopedDepartmentName={scopedDepartmentName}
+              fleetLoadError={fleetResult.fleetLoadError}
+            />
           </div>
         </div>
       </div>

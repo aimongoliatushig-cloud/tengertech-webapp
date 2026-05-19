@@ -3,7 +3,7 @@
 import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
 import Image from "next/image";
-import { Camera, ImagePlus, Mic, Plus, RotateCcw, Square, X } from "lucide-react";
+import { Camera, ImagePlus, Mic, RotateCcw, Square, X } from "lucide-react";
 
 import { compressInputImages } from "./report-upload-utils";
 import styles from "./task-detail.module.css";
@@ -433,8 +433,14 @@ function PhotoReportField({
             </figure>
           ))}
           {totalSelectedCount < maxFiles ? (
-            <button type="button" className={styles.mediaAddTile} onClick={() => galleryInputRef.current?.click()}>
-              <Plus size={22} strokeWidth={2.3} aria-hidden="true" />
+            <button
+              type="button"
+              className={styles.mediaAddTile}
+              onClick={handleOpenCamera}
+              aria-label={`${label} камераар нэмэх`}
+              title="Камераар зураг нэмэх"
+            >
+              <Camera size={22} strokeWidth={2.3} aria-hidden="true" />
               <span>Нэмэх</span>
             </button>
           ) : null}
