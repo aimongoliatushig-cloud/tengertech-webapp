@@ -406,6 +406,101 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                   </div>
                 </article>
 
+                {project.description || project.attachments.length ? (
+                  <div className={styles.projectHeroAside}>
+                    <article className={`${styles.projectHeroInfoCard} ${styles.projectHeroAttachmentCard}`}>
+                      <div className={styles.projectHeroAttachmentHeader}>
+                        <span className={styles.projectHeroCardLabel}>Хавсралт ба тайлбар</span>
+                        <span className={styles.compactCountPill}>
+                          {project.attachments.length} файл
+                        </span>
+                      </div>
+
+                      <div className={styles.descriptionCard}>
+                        <span className={styles.compactLabel}>Тайлбар</span>
+                        <p>{project.description || "Тайлбар бүртгээгүй байна."}</p>
+                      </div>
+
+                      {project.attachments.length ? (
+                        <details className={styles.attachmentDisclosure}>
+                          <summary className={styles.attachmentDisclosureSummary}>
+                            <span>Хавсралт харах</span>
+                            <small>{project.attachments.length} файл</small>
+                          </summary>
+
+                          <div className={styles.attachmentDetailPanel}>
+                            <div className={styles.attachmentPreviewList}>
+                              {project.attachments.map((attachment) => {
+                                if (isImageAttachment(attachment)) {
+                                  return (
+                                    <a
+                                      key={attachment.id}
+                                      href={attachment.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className={styles.attachmentPreviewCard}
+                                    >
+                                      <div className={styles.attachmentPreviewHeader}>
+                                        <strong>{attachment.name}</strong>
+                                        <small>{attachment.mimetype}</small>
+                                      </div>
+                                      <span className={styles.attachmentImageFrame}>
+                                        <Image
+                                          src={attachment.url}
+                                          alt={attachment.name}
+                                          fill
+                                          unoptimized
+                                          sizes="(max-width: 720px) 100vw, 50vw"
+                                          className={styles.attachmentImagePreview}
+                                        />
+                                      </span>
+                                    </a>
+                                  );
+                                }
+
+                                if (isPdfAttachment(attachment)) {
+                                  return (
+                                    <div key={attachment.id} className={styles.attachmentPreviewCard}>
+                                      <div className={styles.attachmentPreviewHeader}>
+                                        <strong>{attachment.name}</strong>
+                                        <a
+                                          href={attachment.url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className={styles.attachmentOpenLink}
+                                        >
+                                          Нээх
+                                        </a>
+                                      </div>
+                                      <iframe
+                                        src={attachment.url}
+                                        title={attachment.name}
+                                        className={styles.attachmentPdfPreview}
+                                      />
+                                    </div>
+                                  );
+                                }
+
+                                return (
+                                  <a
+                                    key={attachment.id}
+                                    href={attachment.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={styles.documentCard}
+                                  >
+                                    <strong>{attachment.name}</strong>
+                                    <small>{attachment.mimetype}</small>
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </details>
+                      ) : null}
+                    </article>
+                  </div>
+                ) : null}
               </div>
 
               <div className={styles.buttonRow}>
@@ -459,110 +554,6 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                 </div>
               )}
             </section>
-
-            {project.description || project.attachments.length ? (
-              <section className={`${styles.sectionCard} ${styles.projectDetailCompact}`}>
-                <div className={styles.compactSectionHeader}>
-                  <div>
-                    <span className={styles.eyebrow}>Хавсралт ба тайлбар</span>
-                    <h2>Ажлын дэлгэрэнгүй мэдээлэл</h2>
-                  </div>
-                  <span className={styles.compactCountPill}>
-                    {project.attachments.length} файл
-                  </span>
-                </div>
-
-                <div className={styles.projectDetailCompactGrid}>
-                  <div className={styles.descriptionCard}>
-                    <span className={styles.compactLabel}>Тайлбар</span>
-                    <p>{project.description || "Тайлбар бүртгээгүй байна."}</p>
-                  </div>
-
-                  {project.attachments.length ? (
-                    <details className={styles.attachmentDisclosure}>
-                      <summary className={styles.attachmentDisclosureSummary}>
-                        <span>Дэлгэрэнгүй хавсралт харах</span>
-                        <small>{project.attachments.length} файл</small>
-                      </summary>
-
-                      <div className={styles.attachmentDetailPanel}>
-                        <div className={styles.attachmentDetailDescription}>
-                          <span className={styles.compactLabel}>Тайлбар</span>
-                          <p>{project.description || "Тайлбар бүртгээгүй байна."}</p>
-                        </div>
-
-                        <div className={styles.attachmentPreviewList}>
-                          {project.attachments.map((attachment) => {
-                            if (isImageAttachment(attachment)) {
-                              return (
-                                <a
-                                  key={attachment.id}
-                                  href={attachment.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className={styles.attachmentPreviewCard}
-                                >
-                                  <div className={styles.attachmentPreviewHeader}>
-                                    <strong>{attachment.name}</strong>
-                                    <small>{attachment.mimetype}</small>
-                                  </div>
-                                  <span className={styles.attachmentImageFrame}>
-                                    <Image
-                                      src={attachment.url}
-                                      alt={attachment.name}
-                                      fill
-                                      unoptimized
-                                      sizes="(max-width: 720px) 100vw, 50vw"
-                                      className={styles.attachmentImagePreview}
-                                    />
-                                  </span>
-                                </a>
-                              );
-                            }
-
-                            if (isPdfAttachment(attachment)) {
-                              return (
-                                <div key={attachment.id} className={styles.attachmentPreviewCard}>
-                                  <div className={styles.attachmentPreviewHeader}>
-                                    <strong>{attachment.name}</strong>
-                                    <a
-                                      href={attachment.url}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className={styles.attachmentOpenLink}
-                                    >
-                                      Нээх
-                                    </a>
-                                  </div>
-                                  <iframe
-                                    src={attachment.url}
-                                    title={attachment.name}
-                                    className={styles.attachmentPdfPreview}
-                                  />
-                                </div>
-                              );
-                            }
-
-                            return (
-                              <a
-                                key={attachment.id}
-                                href={attachment.url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className={styles.documentCard}
-                              >
-                                <strong>{attachment.name}</strong>
-                                <small>{attachment.mimetype}</small>
-                              </a>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </details>
-                  ) : null}
-                </div>
-              </section>
-            ) : null}
 
             <section className={masterMode ? styles.masterTaskBoard : styles.panelGrid}>
               <section className={styles.panel}>

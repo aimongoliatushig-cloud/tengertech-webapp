@@ -1583,7 +1583,7 @@
 
 .projectHeroGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
   gap: 16px;
   margin-top: 22px;
 }
@@ -1769,6 +1769,35 @@
 
 .projectHeroInfoCard {
   background: rgba(255, 255, 255, 0.96);
+}
+
+.projectHeroAttachmentCard {
+  align-content: start;
+}
+
+.projectHeroAttachmentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.projectHeroAttachmentCard .descriptionCard {
+  max-height: 132px;
+  overflow: hidden;
+  border-radius: 12px;
+  line-height: 1.42;
+}
+
+.projectHeroAttachmentCard .attachmentDisclosureSummary {
+  min-height: 38px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+}
+
+.projectHeroAttachmentCard .attachmentDetailPanel {
+  max-height: 360px;
+  overflow: auto;
 }
 
 .projectHeroInfoGrid {
