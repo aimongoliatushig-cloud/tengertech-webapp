@@ -438,7 +438,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
               </div>
             </section>
 
-            <section className={`${styles.sectionCard} ${styles.projectDetailCompact}`}>
+            <section className={`${styles.sectionCard} ${styles.projectDetailCompact} ${styles.projectProcurementCompact}`}>
               <div className={styles.compactSectionHeader}>
                 <div>
                   <span className={styles.eyebrow}>Худалдан авалт</span>

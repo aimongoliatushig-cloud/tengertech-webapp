@@ -2840,6 +2840,47 @@
   padding: 16px;
 }
 
+.projectProcurementCompact {
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.projectProcurementCompact .compactSectionHeader {
+  align-items: center;
+}
+
+.projectProcurementCompact .eyebrow {
+  min-height: 26px;
+  padding: 0 9px;
+  font-size: 0.68rem;
+}
+
+.projectProcurementCompact .compactSectionHeader h2 {
+  margin-top: 2px;
+  font-size: clamp(1.02rem, 1.6vw, 1.24rem);
+  line-height: 1.12;
+}
+
+.projectProcurementCompact .secondaryButton {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 0.74rem;
+}
+
+.projectProcurementCompact .descriptionCard {
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  line-height: 1.35;
+}
+
+.projectProcurementCompact .descriptionCard p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
 .compactSectionHeader {
   display: flex;
   align-items: center;
