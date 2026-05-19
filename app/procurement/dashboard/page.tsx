@@ -12,7 +12,6 @@ import {
   loadProcurementMe,
   loadProcurementMeta,
   loadProcurementRequests,
-  loadProcurementRequestDetail,
   type ProcurementMeta,
   type ProcurementRequestDetail,
   type ProcurementRequestSummary,
@@ -129,14 +128,18 @@ export default async function ProcurementDashboardPage({ searchParams }: PagePro
     password: session.password,
   };
 
-  const [procurementUser, meta, departmentScopeName, setupWarning] = await Promise.all([
-    loadProcurementMe(connectionOverrides).catch(() => createFallbackProcurementUser(session)),
+  const [procurementUserResult, meta, departmentScopeName] = await Promise.all([
+    loadProcurementMe(connectionOverrides)
+      .then((user) => ({ user, warning: "" }))
+      .catch((loadError) => ({
+        user: createFallbackProcurementUser(session),
+        warning: getProcurementLoadWarning(loadError),
+      })),
     loadProcurementMeta(connectionOverrides).catch(() => emptyMeta()),
     loadSessionDepartmentName(session),
-    loadProcurementMe(connectionOverrides)
-      .then(() => "")
-      .catch((loadError) => getProcurementLoadWarning(loadError)),
   ]);
+  const procurementUser = procurementUserResult.user;
+  const setupWarning = procurementUserResult.warning;
 
   const isDepartmentHeadView =
     isDepartmentHeadSession(session) &&
@@ -180,12 +183,12 @@ export default async function ProcurementDashboardPage({ searchParams }: PagePro
     ? filterByDepartment(dashboard.items, departmentScopeName)
     : uniqueById([...dashboard.items, ...officeClerkBacklogItems]);
   const backlogIds = new Set(officeClerkBacklogItems.map((item) => item.id));
-  const loadedDetails = await Promise.all(
-    scopedItems.map((item) =>
-      loadProcurementRequestDetail(item.id, connectionOverrides).catch(() => createDetailFallback(item)),
-    ),
-  );
-  const details = loadedDetails.filter((item) => !backlogIds.has(item.id) || shouldShowOfficeClerkBacklog(item));
+  const details = scopedItems
+    .map(createDetailFallback)
+    .filter((item) => !backlogIds.has(item.id) || shouldShowOfficeClerkBacklog(item));
+  const dashboardNotificationCount = details.filter(
+    (item) => item.is_delayed || item.available_actions.length > 0,
+  ).length;
 
   return (
     <ProcurementShell
@@ -200,6 +203,8 @@ export default async function ProcurementDashboardPage({ searchParams }: PagePro
           : "Өөрийн хэлтсийн худалдан авалтын хүсэлтүүд"
       }
       activeTab="dashboard"
+      departmentScopeName={departmentScopeName}
+      notificationCount={dashboardNotificationCount}
     >
       {setupWarning ? <section className={`${styles.statusBanner} ${styles.noticeBanner}`}>{setupWarning}</section> : null}
       {notice ? <section className={`${styles.statusBanner} ${styles.noticeBanner}`}>{notice}</section> : null}

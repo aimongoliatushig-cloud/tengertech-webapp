@@ -42,6 +42,12 @@ type ModalState = {
   action: ProcurementAction;
 } | null;
 
+type ProcurementDetailResponse = {
+  ok?: boolean;
+  item?: ProcurementRequestDetail;
+  error?: string;
+};
+
 const DASHBOARD_PAGE_SIZE = 10;
 
 const STATE_LABELS: Record<string, string> = {
@@ -520,7 +526,14 @@ export function ProcurementDashboardClient({
   const [dateTo, setDateTo] = useState("");
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [page, setPage] = useState(1);
-  const sortedItems = useMemo(() => sortNewestFirst(items), [items]);
+  const [detailById, setDetailById] = useState<Record<number, ProcurementRequestDetail>>({});
+  const [loadingDetailIds, setLoadingDetailIds] = useState<Record<number, boolean>>({});
+  const [detailErrorById, setDetailErrorById] = useState<Record<number, string>>({});
+  const baseSortedItems = useMemo(() => sortNewestFirst(items), [items]);
+  const sortedItems = useMemo(
+    () => baseSortedItems.map((item) => detailById[item.id] || item),
+    [baseSortedItems, detailById],
+  );
   const activeItems = useMemo(() => sortedItems.filter((item) => item.state.code !== "done"), [sortedItems]);
   const doneItems = useMemo(() => sortedItems.filter((item) => item.state.code === "done"), [sortedItems]);
   const filteredItems = useMemo(() => filterItems(sortedItems, filter), [filter, sortedItems]);
@@ -549,6 +562,52 @@ export function ProcurementDashboardClient({
   function resetDashboardPaging() {
     setPage(1);
     setExpandedId(null);
+  }
+
+  async function ensureRequestDetail(requestId: number) {
+    if (detailById[requestId] || loadingDetailIds[requestId]) return;
+
+    setLoadingDetailIds((current) => ({ ...current, [requestId]: true }));
+    setDetailErrorById((current) => {
+      const next = { ...current };
+      delete next[requestId];
+      return next;
+    });
+
+    try {
+      const response = await fetch(`/api/procurement/requests/${requestId}`, {
+        headers: { accept: "application/json" },
+      });
+      const payload = (await response.json().catch(() => null)) as ProcurementDetailResponse | null;
+      if (!response.ok || !payload?.item) {
+        throw new Error(payload?.error || "Дэлгэрэнгүй мэдээлэл дуудагдсангүй.");
+      }
+      setDetailById((current) => ({ ...current, [requestId]: payload.item! }));
+    } catch (error) {
+      setDetailErrorById((current) => ({
+        ...current,
+        [requestId]: error instanceof Error ? error.message : "Дэлгэрэнгүй мэдээлэл дуудагдсангүй.",
+      }));
+    } finally {
+      setLoadingDetailIds((current) => {
+        const next = { ...current };
+        delete next[requestId];
+        return next;
+      });
+    }
+  }
+
+  function openDashboardItem(item: ProcurementRequestDetail) {
+    const nextExpandedId = expandedId === item.id ? null : item.id;
+    setExpandedId(nextExpandedId);
+    if (nextExpandedId !== null) {
+      void ensureRequestDetail(item.id);
+    }
+  }
+
+  function openActionModal(item: ProcurementRequestDetail, action: ProcurementAction) {
+    setModal({ requestId: item.id, action });
+    void ensureRequestDetail(item.id);
   }
 
   const stats = [
@@ -688,8 +747,10 @@ export function ProcurementDashboardClient({
                 userFlags={userFlags}
                 hideActions={hideActions}
                 expanded={expandedId === item.id}
-                onToggle={() => setExpandedId((current) => (current === item.id ? null : item.id))}
-                onAction={(action) => setModal({ requestId: item.id, action })}
+                loadingDetails={Boolean(loadingDetailIds[item.id])}
+                detailError={detailErrorById[item.id]}
+                onToggle={() => openDashboardItem(item)}
+                onAction={(action) => openActionModal(item, action)}
               />
             ))
           ) : (
@@ -735,7 +796,9 @@ export function ProcurementDashboardClient({
         ) : null}
       </section>
 
-      {modal && modalItem && modalActionAllowed ? (
+      {modal && modalItem && loadingDetailIds[modal.requestId] && !detailById[modal.requestId] ? (
+        <DetailLoadingModal item={modalItem} onClose={() => setModal(null)} />
+      ) : modal && modalItem && modalActionAllowed ? (
         <ActionModal
           item={modalItem}
           action={modal.action}
@@ -818,6 +881,8 @@ function ProgressiveProcurementCard({
   userFlags,
   hideActions,
   expanded,
+  loadingDetails = false,
+  detailError = "",
   onToggle,
   onAction,
 }: {
@@ -825,6 +890,8 @@ function ProgressiveProcurementCard({
   userFlags: ProcurementUser["flags"];
   hideActions: boolean;
   expanded: boolean;
+  loadingDetails?: boolean;
+  detailError?: string;
   onToggle: () => void;
   onAction: (action: ProcurementAction) => void;
 }) {
@@ -866,7 +933,16 @@ function ProgressiveProcurementCard({
           ))}
         </div>
       ) : null}
-      {expanded ? <AccordionDetails item={item} userFlags={userFlags} hideActions={hideActions} onAction={onAction} /> : null}
+      {expanded ? (
+        <AccordionDetails
+          item={item}
+          userFlags={userFlags}
+          hideActions={hideActions}
+          loadingDetails={loadingDetails}
+          detailError={detailError}
+          onAction={onAction}
+        />
+      ) : null}
     </article>
   );
 }
@@ -875,11 +951,15 @@ function AccordionDetails({
   item,
   userFlags,
   hideActions,
+  loadingDetails,
+  detailError,
   onAction,
 }: {
   item: ProcurementRequestDetail;
   userFlags: ProcurementUser["flags"];
   hideActions: boolean;
+  loadingDetails: boolean;
+  detailError: string;
   onAction: (action: ProcurementAction) => void;
 }) {
   const quotations = flattenQuotations(item);
@@ -887,6 +967,16 @@ function AccordionDetails({
   const actions = getDashboardActions(item, userFlags, hideActions);
   return (
     <div className={styles.progressPanelContent}>
+      {loadingDetails ? (
+        <div className={`${styles.statusBanner} ${styles.noticeBanner}`}>
+          Дэлгэрэнгүй мэдээлэл ачаалж байна...
+        </div>
+      ) : null}
+      {detailError ? (
+        <div className={`${styles.statusBanner} ${styles.errorBanner}`}>
+          {detailError}
+        </div>
+      ) : null}
       <div className={styles.amountSummary}>
         <Info label="Барааны мөр" value={`${item.lines.length || item.packages.reduce((sum, pack) => sum + pack.lines.length, 0)} мөр`} />
         <Info label="Нэхэмжлэх" value={`${quotations.length} бүртгэл`} />
@@ -976,6 +1066,31 @@ function AccordionDetails({
           <p className={styles.subtleText}>Шууд хийх үйлдэл алга.</p>
         )}
       </section>
+    </div>
+  );
+}
+
+function DetailLoadingModal({
+  item,
+  onClose,
+}: {
+  item: ProcurementRequestDetail;
+  onClose: () => void;
+}) {
+  return (
+    <div className={styles.actionModalOverlay} role="presentation">
+      <div className={styles.actionModal} role="dialog" aria-modal="true" aria-labelledby="procurement-detail-loading-title">
+        <div className={styles.modalHeader}>
+          <div>
+            <span className={styles.dashboardEyebrow}>{item.name}</span>
+            <h3 id="procurement-detail-loading-title">Дэлгэрэнгүй мэдээлэл ачаалж байна...</h3>
+          </div>
+          <button type="button" className={styles.iconButton} onClick={onClose} aria-label="Хаах">
+            <X aria-hidden />
+          </button>
+        </div>
+        <p className={styles.subtleText}>Энэ хүсэлтийн бараа, багц, нэхэмжлэхийн мэдээллийг татаж байна.</p>
+      </div>
     </div>
   );
 }

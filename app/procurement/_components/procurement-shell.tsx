@@ -31,6 +31,8 @@ type ProcurementShellProps = {
   title: string;
   description: string;
   activeTab: "list" | "assigned" | "dashboard" | "new";
+  departmentScopeName?: string | null;
+  notificationCount?: number;
   children: ReactNode;
 };
 
@@ -40,15 +42,22 @@ export async function ProcurementShell({
   title,
   description,
   activeTab,
+  departmentScopeName,
+  notificationCount,
   children,
 }: ProcurementShellProps) {
   const roleLabel = getSessionRoleLabel(session);
-  const [departmentScopeName, workspaceNotificationCount, procurementNotificationCount] = await Promise.all([
-    loadSessionDepartmentName(session),
-    loadWorkspaceNotificationCount(session).catch(() => 0),
-    loadProcurementNotificationCount(session).catch(() => 0),
+  const [resolvedDepartmentScopeName, resolvedNotificationCount] = await Promise.all([
+    departmentScopeName !== undefined
+      ? Promise.resolve(departmentScopeName)
+      : loadSessionDepartmentName(session),
+    notificationCount !== undefined
+      ? Promise.resolve(notificationCount)
+      : Promise.all([
+          loadWorkspaceNotificationCount(session).catch(() => 0),
+          loadProcurementNotificationCount(session).catch(() => 0),
+        ]).then(([workspaceCount, procurementCount]) => workspaceCount + procurementCount),
   ]);
-  const notificationCount = workspaceNotificationCount + procurementNotificationCount;
   const showCreate = procurementUser.flags.requester || procurementUser.flags.admin;
 
   return (
@@ -67,10 +76,10 @@ export async function ProcurementShell({
               userRole={session.role}
               roleLabel={roleLabel}
               groupFlags={session.groupFlags}
-              notificationCount={notificationCount}
+              notificationCount={resolvedNotificationCount}
               masterMode={isMasterRole(session.role)}
               workerMode={isWorkerOnly(session)}
-              departmentScopeName={departmentScopeName}
+              departmentScopeName={resolvedDepartmentScopeName}
             />
           </aside>
 
@@ -80,10 +89,10 @@ export async function ProcurementShell({
               subtitle={description}
               userName={session.name}
               roleLabel={roleLabel}
-              notificationCount={notificationCount}
+              notificationCount={resolvedNotificationCount}
               notificationNote={
-                notificationCount > 0
-                  ? `${notificationCount} худалдан авалт болон ажлын мэдэгдэл байна`
+                resolvedNotificationCount > 0
+                  ? `${resolvedNotificationCount} худалдан авалт болон ажлын мэдэгдэл байна`
                   : "Шинэ худалдан авалтын мэдэгдэл алга"
               }
               showMobileBack={activeTab !== "dashboard"}
