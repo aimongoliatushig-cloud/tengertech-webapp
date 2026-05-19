@@ -1613,6 +1613,10 @@
   flex-wrap: wrap;
 }
 
+.projectHeroStagePill {
+  display: inline-flex;
+}
+
 .projectHeroKicker,
 .projectHeroCardLabel {
   display: inline-flex;
@@ -5592,6 +5596,219 @@
   .projectTaskFlowActions a {
     width: 100%;
     min-width: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .heroCard:has(.projectHeroGrid) {
+    padding: 12px;
+  }
+
+  .heroCard:has(.projectHeroGrid) > p {
+    display: none;
+  }
+
+  .heroCard:has(.projectHeroGrid) h1 {
+    margin: 8px 0 0;
+    font-size: clamp(1.35rem, 6.5vw, 1.8rem);
+    line-height: 1.12;
+  }
+
+  .projectHeroGrid {
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .projectHeroFeatureCard,
+  .projectHeroInfoCard {
+    padding: 10px;
+    gap: 8px;
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(27, 73, 38, 0.06);
+  }
+
+  .projectHeroFeatureTop {
+    display: grid;
+    gap: 8px;
+  }
+
+  .projectHeroFeatureTop h2 {
+    margin: 4px 0 0;
+    font-size: 1.04rem;
+    line-height: 1.18;
+  }
+
+  .projectHeroStagePill {
+    display: none;
+  }
+
+  .projectHeroKicker,
+  .projectHeroCardLabel {
+    min-height: 24px;
+    padding: 0 9px;
+    font-size: 0.62rem;
+  }
+
+  .projectHeroRing {
+    display: none;
+  }
+
+  .projectHeroFeatureBody {
+    display: block;
+  }
+
+  .projectHeroBreakdown {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .projectHeroBreakdownItem {
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid rgba(74, 154, 93, 0.12);
+    border-radius: 10px;
+    background: rgba(247, 252, 246, 0.86);
+  }
+
+  .projectHeroBreakdownHead {
+    gap: 4px 8px;
+  }
+
+  .projectHeroBreakdownHead span {
+    flex: 1 1 100%;
+    font-size: 0.75rem;
+    line-height: 1.18;
+  }
+
+  .projectHeroBreakdownHead strong {
+    font-size: 0.98rem;
+  }
+
+  .projectHeroBreakdownHead small {
+    display: none;
+  }
+
+  .projectHeroBreakdownTrack {
+    display: none;
+  }
+
+  .projectHeroAside {
+    display: block;
+  }
+
+  .projectHeroInfoGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .projectHeroInfoGrid div {
+    min-height: 0;
+    padding: 8px;
+    border-radius: 10px;
+  }
+
+  .projectHeroInfoGrid span {
+    font-size: 0.68rem;
+    line-height: 1.2;
+  }
+
+  .projectHeroInfoGrid strong {
+    font-size: 0.82rem;
+    line-height: 1.28;
+  }
+
+  .heroCard:has(.projectHeroGrid) .buttonRow {
+    gap: 7px;
+    margin-top: 8px;
+  }
+
+  .heroCard:has(.projectHeroGrid) .smallLink,
+  .heroCard:has(.projectHeroGrid) .secondaryButton {
+    min-height: 34px;
+    padding: 0 10px;
+    font-size: 0.74rem;
+  }
+
+  .projectDetailCompact {
+    gap: 8px;
+    padding: 10px;
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(27, 73, 38, 0.05);
+  }
+
+  .compactSectionHeader {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .compactSectionHeader h2 {
+    margin-top: 3px;
+    font-size: 1rem;
+    line-height: 1.18;
+  }
+
+  .compactSectionHeader .secondaryButton {
+    min-height: 34px;
+    padding: 0 10px;
+    font-size: 0.74rem;
+  }
+
+  .projectDetailCompactGrid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .projectDetailCompact .descriptionCard {
+    gap: 5px;
+    padding: 8px 9px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  .projectDetailCompact .descriptionCard p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .compactLabel,
+  .compactCountPill {
+    font-size: 0.72rem;
+  }
+
+  .attachmentDisclosureSummary {
+    min-height: 38px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+  }
+
+  .attachmentDetailPanel {
+    padding: 9px;
+    border-radius: 10px;
+  }
+
+  .attachmentImageFrame {
+    min-height: 220px;
+  }
+
+  .attachmentPdfPreview {
+    min-height: 320px;
+  }
+
+  .projectTaskFilterRail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .projectTaskFilterRail .taskFilterChip:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .projectTaskStateCell {
+    display: none;
   }
 }
 

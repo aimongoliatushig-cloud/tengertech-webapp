@@ -43,10 +43,9 @@ type QuickActionMode = "task" | "report" | "none";
 const TASK_FILTERS: Array<{ key: TaskFilterKey; label: string }> = [
   { key: "all", label: "Бүгд" },
   { key: "todo", label: "Төлөвлөсөн" },
-  { key: "progress", label: "Гүйцэтгэж байгаа" },
   { key: "review", label: "Хянаж байгаа" },
-  { key: "overdue", label: "Хугацаа хэтэрсэн" },
   { key: "done", label: "Дууссан" },
+  { key: "overdue", label: "Хугацаа хэтэрсэн" },
 ];
 
 function getParam(value?: string | string[]) {
@@ -298,13 +297,6 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
       toneClass: styles.projectHeroBreakdownTodo,
     },
     {
-      key: "progress",
-      label: "Гүйцэтгэж байгаа",
-      count: taskCounts.progress,
-      share: taskCounts.all ? Math.round((taskCounts.progress / taskCounts.all) * 100) : 0,
-      toneClass: styles.projectHeroBreakdownProgress,
-    },
-    {
       key: "review",
       label: "Хянаж байгаа",
       count: taskCounts.review,
@@ -390,10 +382,12 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                 <article className={styles.projectHeroFeatureCard}>
                   <div className={styles.projectHeroFeatureTop}>
                     <div>
-                      <span className={styles.projectHeroKicker}>Гүйцэтгэлийн диаграм</span>
+                      <span className={styles.projectHeroKicker}>Төлөвийн тойм</span>
                       <h2>Ажлын ерөнхий зураглал</h2>
                     </div>
-                    <StagePill label={stageSummary.label} bucket={stageSummary.bucket} />
+                    <span className={styles.projectHeroStagePill}>
+                      <StagePill label={stageSummary.label} bucket={stageSummary.bucket} />
+                    </span>
                   </div>
 
                   <div className={styles.projectHeroFeatureBody}>
@@ -687,7 +681,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                   )}
                 </div>
 
-                <div className={styles.taskFilterRail}>
+                <div className={`${styles.taskFilterRail} ${styles.projectTaskFilterRail}`}>
                   {TASK_FILTERS.map((filter) => {
                     const hrefParams = new URLSearchParams();
                     if (filter.key !== "all") {
