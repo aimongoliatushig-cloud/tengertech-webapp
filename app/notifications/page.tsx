@@ -310,9 +310,12 @@ export default async function NotificationsPage() {
       ? `work:${reviewTask.projectId ?? reviewTask.projectName}`
       : `review:${reviewTask.id}`;
     const reviewWorkStats = workStats.get(String(reviewTask.projectId ?? reviewTask.projectName));
-    const item = existingTask
-      ? ensureFromTask(existingTask)
-      : notificationsById.get(reviewItemKey) ?? {
+    if (existingTask) {
+      addReason(ensureFromTask(existingTask), "review");
+      continue;
+    }
+
+    const item = notificationsById.get(reviewItemKey) ?? {
           key: groupedByWorkMode ? `${reviewItemKey}:unknown` : reviewItemKey,
           name: fixMojibakeText(groupedByWorkMode ? reviewTask.projectName : reviewTask.name),
           departmentName: fixMojibakeText(reviewTask.departmentName),
@@ -328,7 +331,7 @@ export default async function NotificationsPage() {
           sortTimeMs: 0,
           timeLabel: formatNotificationTime(0, nowMs),
           reasons: [],
-        };
+    };
     notificationsById.set(reviewItemKey, item);
     addReason(item, "review");
   }
