@@ -1357,6 +1357,10 @@ const UNKNOWN_DEPARTMENT = "Тодорхойгүй";
 const AUTO_BASE_DEPARTMENT = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
 const AUTO_BASE_UNIT = "Авто бааз";
 const WASTE_TRANSPORT_UNIT = "Хог тээвэрлэлт";
+const GREEN_SERVICE_DEPARTMENT = "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
+const GREEN_LANDSCAPE_UNIT = "Ногоон байгууламж";
+const CLEANING_SERVICE_UNIT = "Цэвэрлэгээ үйлчилгээ";
+const IMPROVEMENT_DEPARTMENT = "Тохижилтын хэлтэс";
 
 const KNOWN_STAGE_MATCHERS: Array<[StageBucket, string[]]> = [
   ["todo", ["хийгдэх", "todo", "task"]],
@@ -2567,13 +2571,12 @@ function inferDepartmentUnitFromText(text: string) {
     return AUTO_BASE_UNIT;
   }
 
-  const canonicalName = normalizeOrganizationUnitName(text);
-  if (canonicalName) {
-    return canonicalName;
+  if (haystack.includes("тохижилт") || haystack.includes("засвар")) {
+    return IMPROVEMENT_DEPARTMENT;
   }
 
   if (haystack.includes("мод") || haystack.includes("ногоон") || haystack.includes("зүлэг")) {
-    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
+    return GREEN_LANDSCAPE_UNIT;
   }
   if (
     haystack.includes("зам") ||
@@ -2581,11 +2584,14 @@ function inferDepartmentUnitFromText(text: string) {
     haystack.includes("цэвэрлэгээ") ||
     haystack.includes("гудамж")
   ) {
-    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
+    return CLEANING_SERVICE_UNIT;
   }
-  if (haystack.includes("тохижилт") || haystack.includes("засвар")) {
-    return "Тохижилтын хэлтэс";
+
+  const canonicalName = normalizeOrganizationUnitName(text);
+  if (canonicalName) {
+    return canonicalName;
   }
+
   return UNKNOWN_DEPARTMENT;
 }
 
@@ -2594,10 +2600,10 @@ function departmentUnitFromOperationType(operationType?: string | false) {
     return WASTE_TRANSPORT_UNIT;
   }
   if (operationType === "street_cleaning") {
-    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
+    return CLEANING_SERVICE_UNIT;
   }
   if (operationType === "green_maintenance") {
-    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
+    return GREEN_LANDSCAPE_UNIT;
   }
   return null;
 }
@@ -2618,6 +2624,31 @@ function exactAutoBaseUnitFromDepartmentName(departmentName: string) {
   return null;
 }
 
+function exactGreenServiceUnitFromDepartmentName(departmentName: string) {
+  const normalized = departmentName.trim().toLowerCase().replace(/\s+/g, " ");
+
+  if (normalized === GREEN_LANDSCAPE_UNIT.toLowerCase()) {
+    return GREEN_LANDSCAPE_UNIT;
+  }
+  if (
+    normalized === CLEANING_SERVICE_UNIT.toLowerCase() ||
+    normalized === "зам талбайн цэвэрлэгээ" ||
+    normalized === "зам талбайн цэвэрлэгээний хэлтэс"
+  ) {
+    return CLEANING_SERVICE_UNIT;
+  }
+
+  return null;
+}
+
+function isGreenServiceScopedInference(departmentName?: string | null) {
+  return (
+    departmentName === GREEN_LANDSCAPE_UNIT ||
+    departmentName === CLEANING_SERVICE_UNIT ||
+    departmentName === IMPROVEMENT_DEPARTMENT
+  );
+}
+
 function normalizeDepartmentUnitName(
   departmentName?: string | null,
   options: {
@@ -2628,6 +2659,7 @@ function normalizeDepartmentUnitName(
   const normalizedDepartment = (departmentName ?? "").trim();
   const inferredFromOperation = departmentUnitFromOperationType(options.operationType);
   const inferredFromDepartment = exactAutoBaseUnitFromDepartmentName(normalizedDepartment);
+  const inferredGreenServiceUnit = exactGreenServiceUnitFromDepartmentName(normalizedDepartment);
   const inferredFromText = inferDepartmentUnitFromText(options.labelText ?? "");
   const knownInferredFromText =
     inferredFromText !== UNKNOWN_DEPARTMENT ? inferredFromText : null;
@@ -2642,6 +2674,22 @@ function normalizeDepartmentUnitName(
       inferredFromOperation ||
       knownInferredFromText ||
       inferredFromDepartment ||
+      canonicalDepartment
+    );
+  }
+
+  if (canonicalDepartment === GREEN_SERVICE_DEPARTMENT) {
+    const greenServiceOperationInference = isGreenServiceScopedInference(inferredFromOperation)
+      ? inferredFromOperation
+      : null;
+    const greenServiceTextInference = isGreenServiceScopedInference(knownInferredFromText)
+      ? knownInferredFromText
+      : null;
+
+    return (
+      greenServiceOperationInference ||
+      inferredGreenServiceUnit ||
+      greenServiceTextInference ||
       canonicalDepartment
     );
   }

@@ -1703,8 +1703,11 @@ function ExecutiveDashboardView({
   const canViewAllReports = canViewAllWorkspaceReports(session);
   const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
-  const overdueRate = percent(overdueTasks, totalTasks);
-  const activeTasks = Math.max(totalTasks - completedTasks, workingTasks + reviewTasks);
+  const overdueRate = percent(overdueTasks, workItemStats.total || totalTasks);
+  const activeTasks = Math.max(
+    workItemStats.total - workItemStats.completed,
+    workingTasks + reviewTasks,
+  );
   const scopedProjectsHref = (category?: string) => {
     const params = new URLSearchParams();
     if (departmentScopeName) {
@@ -1763,7 +1766,7 @@ function ExecutiveDashboardView({
       label: "идэвхтэй ажил",
       value: String(activeTasks),
       progress: 100,
-      href: scopedProjectsHref("progress"),
+      href: scopedProjectsHref(),
       icon: ClipboardList,
       tone: "green",
     },
@@ -1927,9 +1930,7 @@ export function DashboardView({
   const reviewTasks = workerMode
     ? dashboardTasks.filter((task) => task.statusKey === "review").length
     : dashboardProjects.filter((project) => project.stageBucket === "review").length;
-  const overdueTasks = workerMode
-    ? dashboardTasks.filter((task) => isOverdue(task, currentDateKey)).length
-    : 0;
+  const overdueTasks = dashboardTasks.filter((task) => isOverdue(task, currentDateKey)).length;
   const newIncomingTasks = dashboardTasks.filter((task) => isNewIncomingTask(task, currentDateKey)).length;
   const computedAttentionCount = countNotificationTasks(dashboardTasks, currentDateKey);
   const attentionCount = notificationCount ?? computedAttentionCount;
