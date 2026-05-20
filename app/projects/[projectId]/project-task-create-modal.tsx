@@ -66,7 +66,10 @@ export function ProjectTaskCreateModal({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setIsMounted(true);
-      if (defaultOpen || window.location.hash === "#task-create-form") {
+      if (
+        (defaultOpen || window.location.hash === "#task-create-form") &&
+        window.matchMedia("(max-width: 860px)").matches
+      ) {
         setIsOpen(true);
       }
     }, 0);

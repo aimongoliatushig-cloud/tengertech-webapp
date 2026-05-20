@@ -53,6 +53,7 @@ type TaskRecord = {
   ops_allowed_unit_summary?: string | false;
   priority: string;
   date_deadline: string | false;
+  mfo_planned_start?: string | false;
   mfo_shift_date?: string | false;
   mfo_vehicle_id?: Relation;
   mfo_driver_employee_id?: Relation;
@@ -583,8 +584,11 @@ export type ProjectTaskCard = {
   progress: number;
   deadline: string;
   deadlineValue: string;
+  startDateValue: string;
+  teamLeaderId: number | null;
   teamLeaderName: string;
   teamLeaderJobTitle: string;
+  crewTeamId: number | null;
   assignees: string[];
   assigneeUserIds: number[];
   vehicleId: number | null;
@@ -594,10 +598,12 @@ export type ProjectTaskCard = {
   collectorEmployeeIds: number[];
   collectorNames: string[];
   plannedQuantity: number;
+  measurementUnitId: number | null;
   completedQuantity: number;
   measurementUnit: string;
   quantitySummary: string;
   quantitySummaryLines: string[];
+  description: string;
   reportCount: number;
 };
 
@@ -1299,6 +1305,23 @@ function formatDateLabel(value?: string | false) {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+  }).format(parsed);
+}
+
+function formatDateOnlyLabel(value?: string | false) {
+  if (!value) {
+    return "Товлоогүй";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("mn-MN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
   }).format(parsed);
 }
 
@@ -3246,6 +3269,7 @@ export async function loadProjectDetail(
         "stage_id",
         "ops_team_leader_id",
         "user_ids",
+        "mfo_crew_team_id",
         "ops_planned_quantity",
         "ops_completed_quantity",
         "ops_progress_percent",
@@ -3253,6 +3277,7 @@ export async function loadProjectDetail(
         "ops_measurement_unit_id",
         "mfo_operation_type",
         "date_deadline",
+        "mfo_planned_start",
         "state",
         "mfo_state",
         "ops_reports_locked",
@@ -3448,11 +3473,14 @@ export async function loadProjectDetail(
         effectiveStage.bucket !== "done" &&
         isPastDueDate(task.date_deadline),
       progress: quantitySnapshot.progress,
-      deadline: formatDateLabel(task.date_deadline),
-      deadlineValue: task.date_deadline || "",
+      deadline: formatDateOnlyLabel(task.date_deadline),
+      deadlineValue: formatDateInput(task.date_deadline),
+      startDateValue: formatDateInput(task.mfo_planned_start || false),
+      teamLeaderId: relationId(task.ops_team_leader_id),
       teamLeaderName: relationName(task.ops_team_leader_id, "Сонгоогүй"),
       teamLeaderJobTitle:
         departmentUserById.get(relationId(task.ops_team_leader_id) ?? 0)?.jobTitle ?? "",
+      crewTeamId: relationId(task.mfo_crew_team_id ?? false),
       assignees: assigneeNames,
       assigneeUserIds,
       vehicleId,
@@ -3462,10 +3490,12 @@ export async function loadProjectDetail(
       collectorEmployeeIds,
       collectorNames,
       plannedQuantity: quantitySnapshot.plannedQuantity,
+      measurementUnitId: relationId(task.ops_measurement_unit_id ?? false),
       completedQuantity: quantitySnapshot.completedQuantity,
       measurementUnit: quantitySnapshot.measurementUnit,
       quantitySummary: quantitySnapshot.quantitySummary,
       quantitySummaryLines: quantitySnapshot.quantitySummaryLines,
+      description: htmlToPlainText(task.description),
       reportCount: taskReports.length,
     };
   }).sort((left, right) => {
@@ -3925,7 +3955,7 @@ export async function loadTaskDetail(
     stageLabel: effectiveStage.label,
     stageBucket: effectiveStage.bucket,
     state: task.state,
-    deadline: formatDateLabel(task.date_deadline),
+    deadline: formatDateOnlyLabel(task.date_deadline),
     scheduledDate: formatDateInput(task.mfo_shift_date || task.date_deadline),
     measurementUnit: formatMeasurementUnit(
       task.ops_measurement_unit_id,
@@ -4948,7 +4978,14 @@ export async function updateWorkspaceTask(
   taskId: number,
   input: {
     name?: string;
+    teamLeaderId?: number | null;
+    crewTeamId?: number | null;
+    assigneeUserIds?: number[];
+    startDate?: string;
     deadline?: string;
+    measurementUnitId?: number | null;
+    plannedQuantity?: number | null;
+    description?: string;
   },
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
@@ -4958,31 +4995,124 @@ export async function updateWorkspaceTask(
   if (name) {
     values.name = name;
   }
+  if (input.teamLeaderId !== undefined) {
+    values.ops_team_leader_id = input.teamLeaderId || false;
+  }
+  if (input.crewTeamId !== undefined) {
+    values.mfo_crew_team_id = input.crewTeamId || false;
+  }
+  if (input.startDate !== undefined) {
+    values.mfo_planned_start = input.startDate ? dateInputToOdooDatetime(input.startDate) : false;
+  }
   if (typeof input.deadline === "string") {
     values.date_deadline = input.deadline || false;
+  }
+  if (input.measurementUnitId !== undefined) {
+    values.ops_measurement_unit_id = input.measurementUnitId || false;
+  }
+  if (input.plannedQuantity !== undefined) {
+    values.ops_planned_quantity =
+      typeof input.plannedQuantity === "number" && !Number.isNaN(input.plannedQuantity)
+        ? input.plannedQuantity
+        : false;
+  }
+  if (input.description !== undefined) {
+    values.description = input.description.trim() || false;
+  }
+
+  if (input.assigneeUserIds !== undefined) {
+    const assigneeUserIds = Array.from(
+      new Set([
+        ...(input.teamLeaderId ? [input.teamLeaderId] : []),
+        ...(input.assigneeUserIds ?? []),
+      ]),
+    ).filter((id) => Number.isFinite(id) && id > 0);
+    values.user_ids = [[6, 0, assigneeUserIds]];
   }
 
   if (!Object.keys(values).length) {
     return false;
   }
 
-  return executeOdooKw<boolean>(
-    "project.task",
-    "write",
-    [[taskId], values],
-    {},
-    connectionOverrides,
-  );
+  try {
+    return await executeOdooKw<boolean>(
+      "project.task",
+      "write",
+      [[taskId], values],
+      {},
+      connectionOverrides,
+    );
+  } catch (error) {
+    console.warn("Project task update failed; retrying field by field.", error);
+    let wroteAnyField = false;
+    for (const [fieldName, value] of Object.entries(values)) {
+      try {
+        await executeOdooKw<boolean>(
+          "project.task",
+          "write",
+          [[taskId], { [fieldName]: value }],
+          {},
+          connectionOverrides,
+        );
+        wroteAnyField = true;
+      } catch (fieldError) {
+        console.warn(`Project task update field skipped: ${fieldName}`, fieldError);
+      }
+    }
+    return wroteAnyField;
+  }
 }
 
 export async function deleteWorkspaceTask(
   taskId: number,
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
+  const reports = await executeOdooKw<{ id: number }[]>(
+    "ops.task.report",
+    "search_read",
+    [[["task_id", "=", taskId]]],
+    { fields: ["id"] },
+    connectionOverrides,
+  ).catch(() => []);
+  const reportIds = reports.map((report) => report.id).filter(Boolean);
+  if (reportIds.length) {
+    await executeOdooKw<boolean>(
+      "ops.task.report",
+      "unlink",
+      [reportIds],
+      {},
+      connectionOverrides,
+    );
+  }
+
   return executeOdooKw<boolean>(
     "project.task",
     "unlink",
     [[taskId]],
+    {},
+    connectionOverrides,
+  );
+}
+
+export async function deleteWorkspaceProject(
+  projectId: number,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const tasks = await executeOdooKw<{ id: number }[]>(
+    "project.task",
+    "search_read",
+    [[["project_id", "=", projectId]]],
+    { fields: ["id"] },
+    connectionOverrides,
+  ).catch(() => []);
+  for (const task of tasks) {
+    await deleteWorkspaceTask(task.id, connectionOverrides);
+  }
+
+  return executeOdooKw<boolean>(
+    "project.project",
+    "unlink",
+    [[projectId]],
     {},
     connectionOverrides,
   );

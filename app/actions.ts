@@ -3,7 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { canSubmitWorkspaceReport, hasCapability, isMasterRole, isWorkerOnly, requireSession } from "@/lib/auth";
+import {
+  canDeleteWorkspaceItems,
+  canSubmitWorkspaceReport,
+  hasCapability,
+  isMasterRole,
+  isWorkerOnly,
+  requireSession,
+} from "@/lib/auth";
 import { getTodayDateKey, pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
 import { filterTasksForResponsibleMaster } from "@/lib/master-scope";
 import {
@@ -32,6 +39,7 @@ import {
   createWorkspaceTaskReport,
   createWorkspaceWorkUnit,
   deleteWorkspaceTaskReport,
+  deleteWorkspaceProject,
   deleteWorkspaceTask,
   findOrCreateWorkspaceSubdistrictOption,
   forceWorkspaceTaskDone,
@@ -2049,7 +2057,13 @@ export async function updateTaskAction(formData: FormData) {
   const projectId = Number(String(formData.get("project_id") ?? ""));
   const taskId = Number(String(formData.get("task_id") ?? ""));
   const name = String(formData.get("name") ?? "").trim();
+  const teamLeaderIdRaw = String(formData.get("team_leader_id") ?? "").trim();
+  const crewTeamIdRaw = String(formData.get("crew_team_id") ?? "").trim();
+  const startDate = String(formData.get("start_date") ?? "").trim();
   const deadline = String(formData.get("deadline") ?? "").trim();
+  const plannedQuantityRaw = String(formData.get("planned_quantity") ?? "").trim();
+  const unitIdRaw = String(formData.get("unit_id") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
   const target = projectId ? `/projects/${projectId}` : "/projects";
 
   if (!projectId || !taskId || !name) {
@@ -2070,12 +2084,55 @@ export async function updateTaskAction(formData: FormData) {
       login: session.login,
       password: session.password,
     };
+    const project = await loadProjectDetail(projectId, connectionOverrides);
+    const selectedTeamLeaderId = teamLeaderIdRaw ? Number(teamLeaderIdRaw) : null;
+    const selectedCrewTeam = crewTeamIdRaw
+      ? project.crewTeamOptions.find((team) => team.id === Number(crewTeamIdRaw)) ?? null
+      : null;
+    const measurementUnitId = unitIdRaw ? Number(unitIdRaw) : null;
+    const plannedQuantity = plannedQuantityRaw ? Number(plannedQuantityRaw) : null;
+
+    if (selectedTeamLeaderId) {
+      const allowedUserIds = new Set([
+        project.managerId,
+        ...project.departmentUserOptions.map((user) => user.id),
+        ...project.teamLeaderOptions.map((user) => user.id),
+      ].filter((id): id is number => Boolean(id)));
+      if (!allowedUserIds.has(selectedTeamLeaderId)) {
+        redirectWithMessage(target, "error", "Сонгосон хариуцсан ажилтан энэ ажилд хамаарахгүй байна.");
+      }
+    }
+
+    if (crewTeamIdRaw && !selectedCrewTeam) {
+      redirectWithMessage(target, "error", "Сонгосон баг энэ ажилд хамаарахгүй байна.");
+    }
+
+    if (measurementUnitId) {
+      const validUnitIds = new Set(project.allUnitOptions.map((unit) => unit.id));
+      if (!validUnitIds.has(measurementUnitId)) {
+        redirectWithMessage(target, "error", "Сонгосон хэмжих нэгж олдсонгүй.");
+      }
+    }
+
+    if (
+      plannedQuantityRaw &&
+      (!Number.isFinite(plannedQuantity) || Number(plannedQuantity) <= 0)
+    ) {
+      redirectWithMessage(target, "error", "Төлөвлөсөн хэмжээ 0-ээс их байх ёстой.");
+    }
 
     await updateWorkspaceTask(
       taskId,
       {
         name,
+        teamLeaderId: selectedTeamLeaderId,
+        crewTeamId: selectedCrewTeam?.id ?? null,
+        assigneeUserIds: selectedCrewTeam?.memberUserIds ?? [],
+        startDate,
         deadline,
+        measurementUnitId,
+        plannedQuantity,
+        description,
       },
       connectionOverrides,
     );
@@ -2107,13 +2164,22 @@ export async function deleteTaskAction(formData: FormData) {
 
   try {
     const session = await requireSession();
-    if (!hasCapability(session, "create_tasks")) {
+    if (!canDeleteWorkspaceItems(session)) {
       redirectWithMessage(target, "error", "Танд даалгавар устгах эрх байхгүй байна.");
     }
 
-    await deleteWorkspaceTask(taskId, {
+    const connectionOverrides = {
       login: session.login,
       password: session.password,
+    };
+    const task = await loadTaskDetail(taskId, connectionOverrides);
+    if (task.projectId !== projectId) {
+      redirectWithMessage(target, "error", "Даалгавар энэ ажилд хамаарахгүй байна.");
+    }
+
+    await deleteWorkspaceTask(taskId, {
+      url: session.odooUrl,
+      db: session.odooDb,
     });
 
     revalidatePath("/");
@@ -2121,6 +2187,44 @@ export async function deleteTaskAction(formData: FormData) {
     revalidatePath("/tasks");
     revalidatePath(`/projects/${projectId}`);
     redirect(`${target}?notice=${encodeURIComponent("Даалгавар устгагдлаа.")}`);
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirectWithMessage(target, "error", getErrorMessage(error));
+  }
+}
+
+export async function deleteProjectAction(formData: FormData) {
+  const projectId = Number(String(formData.get("project_id") ?? ""));
+  const target = "/projects";
+
+  if (!projectId) {
+    redirectWithMessage(
+      target,
+      "error",
+      "Ажил устгахад шаардлагатай мэдээлэл дутуу байна.",
+    );
+  }
+
+  try {
+    const session = await requireSession();
+    if (!canDeleteWorkspaceItems(session)) {
+      redirectWithMessage(target, "error", "Танд ажил устгах эрх байхгүй байна.");
+    }
+
+    await loadProjectDetail(projectId, {
+      login: session.login,
+      password: session.password,
+    });
+    await deleteWorkspaceProject(projectId, {
+      url: session.odooUrl,
+      db: session.odooDb,
+    });
+
+    revalidatePath("/");
+    revalidatePath("/projects");
+    revalidatePath("/tasks");
+    revalidatePath(`/projects/${projectId}`);
+    redirect(`${target}?notice=${encodeURIComponent("Ажил устгагдлаа.")}`);
   } catch (error) {
     rethrowIfRedirectError(error);
     redirectWithMessage(target, "error", getErrorMessage(error));

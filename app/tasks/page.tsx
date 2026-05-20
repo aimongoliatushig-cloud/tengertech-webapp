@@ -184,19 +184,18 @@ function formatWeekdayLabel(dateKey: string) {
 
 function formatTimelineTime(value?: string | null) {
   if (!value) {
-    return "Өдөр";
+    return "Огноо";
   }
 
   const normalized = value.includes("T") ? value : value.replace(" ", "T");
   const parsed = new Date(normalized);
   if (Number.isNaN(parsed.getTime())) {
-    return "Өдөр";
+    return "Огноо";
   }
 
   return new Intl.DateTimeFormat("mn-MN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
+    month: "short",
+    day: "numeric",
     timeZone: "Asia/Ulaanbaatar",
   }).format(parsed);
 }

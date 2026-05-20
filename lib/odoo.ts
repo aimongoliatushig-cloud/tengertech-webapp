@@ -2406,6 +2406,23 @@ function formatCompactDate(value?: string | false) {
   }).format(parsed);
 }
 
+function formatCompactDateOnly(value?: string | false) {
+  if (!value) {
+    return "Товлоогүй";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("mn-MN", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(parsed);
+}
+
 function formatSyncDate(value: Date) {
   return new Intl.DateTimeFormat("mn-MN", {
     month: "long",
@@ -4814,7 +4831,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
               taskSnapshots.length,
           )
         : 0,
-      deadline: formatCompactDate(project.date),
+      deadline: formatCompactDateOnly(project.date),
       href: `/projects/${project.id}`,
     } satisfies ProjectCard;
   });
@@ -4827,7 +4844,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     projectName: relationName(task.project_id),
     stageLabel: STAGE_LABELS[taskQuantitySnapshot(task).stageBucket],
     stageBucket: taskQuantitySnapshot(task).stageBucket,
-    deadline: formatCompactDate(task.date_deadline),
+    deadline: formatCompactDateOnly(task.date_deadline),
     scheduledDate: getDateKeyFromValue(task.mfo_shift_date || task.date_deadline || null),
     plannedQuantity: taskQuantitySnapshot(task).plannedQuantity,
     completedQuantity: taskQuantitySnapshot(task).completedQuantity,
@@ -4845,7 +4862,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     name: task.name,
     departmentName: resolveTaskDepartmentName(task, projectDepartmentById),
     stageLabel: relationName(task.stage_id, STAGE_LABELS.review),
-    deadline: formatCompactDate(task.date_deadline),
+    deadline: formatCompactDateOnly(task.date_deadline),
     projectId: Array.isArray(task.project_id) ? task.project_id[0] : null,
     projectName: relationName(task.project_id),
     leaderId: relationId(task.ops_team_leader_id ?? false),
@@ -5102,7 +5119,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         createdAt: task.create_date || null,
         statusKey,
         statusLabel: getTaskStatusLabel(statusKey),
-        deadline: formatCompactDate(task.date_deadline),
+        deadline: formatCompactDateOnly(task.date_deadline),
         deadlineDateTime: task.date_deadline || null,
         scheduledDate: getDateKeyFromValue(task.mfo_shift_date || task.date_deadline || null),
         leaderId: relationId(task.ops_team_leader_id ?? false),

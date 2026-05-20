@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import {
   FileCheck2,
+  Fuel,
   PackageCheck,
   PlusCircle,
   ReceiptText,
@@ -99,7 +100,17 @@ type DetailData = {
 
 type GarbageData = {
   todayTons: number;
-  byVehicle: { vehicle: string; tons: number; trips: number }[];
+  todayFuelLabel: string;
+  byVehicle: {
+    vehicle: string;
+    tons: number;
+    trips: number;
+    fuelLiters: number;
+    fuelLabel: string;
+    fuelType: string;
+    latestFuelDate: string;
+    fuelReportCount: number;
+  }[];
   week: { label: string; tons: number }[];
   monthTons: number;
 };
@@ -127,6 +138,10 @@ function money(value: number) {
 
 function tons(value: number) {
   return `${new Intl.NumberFormat("mn-MN", { maximumFractionDigits: 1 }).format(value || 0)} тн`;
+}
+
+function liters(value: number) {
+  return `${new Intl.NumberFormat("mn-MN", { maximumFractionDigits: 1 }).format(value || 0)} л`;
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -709,17 +724,33 @@ export function FleetRepairGarbageClient() {
           <span>Сарын дүн</span>
           <strong>{tons(data?.monthTons ?? 0)}</strong>
         </article>
+        <article className={styles.metricCard}>
+          <Fuel aria-hidden />
+          <span>Өнөөдрийн түлш</span>
+          <strong>{data?.todayFuelLabel ?? liters(0)}</strong>
+        </article>
       </section>
       <section className={styles.panel}>
         <h2>Машинаар</h2>
         <div className={styles.requestList}>
           {(data?.byVehicle ?? []).map((item) => (
-            <article key={item.vehicle} className={styles.requestCard}>
+            <article key={item.vehicle} className={`${styles.requestCard} ${styles.garbageVehicleCard}`}>
               <div>
                 <strong>{item.vehicle}</strong>
-                <span>{item.trips} рейс</span>
+                <span>
+                  {item.trips} рейс · {item.fuelReportCount} түлшний тайлан
+                </span>
+                {item.latestFuelDate ? (
+                  <small>
+                    Сүүлийн түлш: {item.latestFuelDate}
+                    {item.fuelType ? ` · ${item.fuelType}` : ""}
+                  </small>
+                ) : null}
               </div>
-              <span>{tons(item.tons)}</span>
+              <div className={styles.vehicleReportValues}>
+                <span>{tons(item.tons)}</span>
+                <strong>{item.fuelLabel || liters(item.fuelLiters)}</strong>
+              </div>
             </article>
           ))}
         </div>

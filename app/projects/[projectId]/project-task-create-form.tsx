@@ -163,6 +163,12 @@ export function ProjectTaskCreateForm({
     [filteredDepartmentUsers],
   );
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<number | null>(null);
+  const [localCrewTeamOptions, setLocalCrewTeamOptions] = useState(crewTeamOptions);
+  const [selectedCrewTeamId, setSelectedCrewTeamId] = useState("");
+  const [newTeamName, setNewTeamName] = useState("");
+  const [selectedNewTeamMemberIds, setSelectedNewTeamMemberIds] = useState<string[]>([]);
+  const [isSavingTeam, setIsSavingTeam] = useState(false);
+  const [teamSaveMessage, setTeamSaveMessage] = useState("");
   const [newTaskKhoroo, setNewTaskKhoroo] = useState("");
   const [isKhorooConfirmed, setIsKhorooConfirmed] = useState(false);
   const [newTaskLocation, setNewTaskLocation] = useState("");
@@ -227,6 +233,66 @@ export function ProjectTaskCreateForm({
     const employee = garbageLoaderById.get(collectorId);
     return employee?.name ?? garbageVehicleContext?.collectorNames[index] ?? `Ачигч #${collectorId}`;
   });
+  const canSaveNewTeam = Boolean(newTeamName.trim() && selectedNewTeamMemberIds.length);
+
+  const toggleNewTeamMember = (memberId: string, checked: boolean) => {
+    setSelectedNewTeamMemberIds((current) => {
+      if (checked) {
+        return current.includes(memberId) ? current : [...current, memberId];
+      }
+
+      return current.filter((item) => item !== memberId);
+    });
+    setTeamSaveMessage("");
+  };
+
+  const saveNewTeam = async () => {
+    if (!canSaveNewTeam || isSavingTeam) {
+      return;
+    }
+
+    setIsSavingTeam(true);
+    setTeamSaveMessage("");
+    try {
+      const response = await fetch(`/api/projects/${projectId}/crew-teams`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: newTeamName.trim(),
+          memberUserIds: selectedNewTeamMemberIds.map(Number),
+        }),
+      });
+      const result = (await response.json().catch(() => null)) as
+        | {
+            ok?: boolean;
+            error?: string;
+            team?: { id: number; label: string };
+          }
+        | null;
+
+      if (!response.ok || !result?.ok || !result.team) {
+        throw new Error(result?.error || "Баг хадгалахад алдаа гарлаа.");
+      }
+
+      setLocalCrewTeamOptions((current) =>
+        current.some((option) => option.id === result.team!.id)
+          ? current
+          : [...current, result.team!],
+      );
+      setSelectedCrewTeamId(String(result.team.id));
+      setNewTeamName("");
+      setSelectedNewTeamMemberIds([]);
+      setTeamMemberQuery("");
+      setShowNewTeamFields(false);
+      setTeamSaveMessage("Баг хадгалагдаж, энэ даалгаварт сонгогдлоо.");
+    } catch (error) {
+      setTeamSaveMessage(error instanceof Error ? error.message : "Баг хадгалахад алдаа гарлаа.");
+    } finally {
+      setIsSavingTeam(false);
+    }
+  };
 
   const addGarbageCollector = (collectorId: string) => {
     if (!collectorId) {
@@ -517,67 +583,82 @@ export function ProjectTaskCreateForm({
         </div>
       </div>
 
-      <div className={styles.field}>
-        <label>Хариуцсан ажилтан</label>
-        <SearchableSelect
-          name="team_leader_id"
-          value={selectedAssigneeId}
-          options={assigneeOptions}
-          placeholder="Хариуцсан ажилтан сонгоно уу"
-          disabled={!assigneeOptions.length}
-          searchPlaceholder="Нэр эсвэл утсаар хайна уу"
-          emptyStateLabel="Энэ хэлтэст бүртгэлтэй хэрэглэгч алга."
-          onChange={setSelectedAssigneeId}
-        />
-      </div>
-
-      <label className={styles.checkRow}>
-        <input
-          type="checkbox"
-          checked={useTeam}
-          onChange={(event) => setUseTeam(event.target.checked)}
-        />
-        <span>Багаар хийх</span>
-      </label>
-
-      {useTeam ? (
+      <section className={styles.assignmentPanel}>
+        <input type="hidden" name="task_assignment_mode" value={useTeam ? "team" : "single"} />
         <div className={styles.field}>
-          <label htmlFor="task-crew-team">Баг сонгох</label>
-          <select
-            id="task-crew-team"
-            name="crew_team_id"
-            defaultValue=""
-            disabled={!crewTeamOptions.length}
-          >
-            <option value="">
-              {crewTeamOptions.length ? "Баг сонгохгүй" : "Энэ хэлтэст бүртгэлтэй баг алга"}
-            </option>
-            {crewTeamOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
+          <label>Хариуцсан ажилтан</label>
+          <SearchableSelect
+            name="team_leader_id"
+            value={selectedAssigneeId}
+            options={assigneeOptions}
+            placeholder="Хариуцсан ажилтан сонгоно уу"
+            disabled={!assigneeOptions.length}
+            searchPlaceholder="Нэр эсвэл утсаар хайна уу"
+            emptyStateLabel="Энэ хэлтэст бүртгэлтэй хэрэглэгч алга."
+            onChange={setSelectedAssigneeId}
+          />
+        </div>
+
+        <label className={styles.teamToggleRow}>
+          <input
+            type="checkbox"
+            checked={useTeam}
+            onChange={(event) => setUseTeam(event.target.checked)}
+          />
+          <span>Багаар хийх</span>
+        </label>
+
+        {useTeam ? (
+          <div className={styles.teamAssignmentPanel}>
+          <div className={styles.field}>
+            <label htmlFor="task-crew-team">Баг сонгох</label>
+            <select
+              id="task-crew-team"
+              name="crew_team_id"
+              value={selectedCrewTeamId}
+              onChange={(event) => setSelectedCrewTeamId(event.target.value)}
+              disabled={!localCrewTeamOptions.length}
+            >
+              <option value="">
+                {localCrewTeamOptions.length ? "Баг сонгохгүй" : "Энэ хэлтэст бүртгэлтэй баг алга"}
               </option>
-            ))}
-          </select>
-          {!crewTeamOptions.length ? (
-            <small className={styles.fieldHint}>
-              Сонгосон хэлтэст хамаарах баг олдсонгүй.
-            </small>
-          ) : null}
+              {localCrewTeamOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button
             type="button"
-            className={styles.inlineLink}
+            className={styles.teamCreateButton}
             onClick={() => setShowNewTeamFields((current) => !current)}
+            aria-expanded={showNewTeamFields}
           >
             <PlusCircle aria-hidden />
-            <span>Шинэ баг нэмэх</span>
+            <span>{showNewTeamFields ? "Шинэ багийг хаах" : "Шинэ баг нэмэх"}</span>
           </button>
           {showNewTeamFields ? (
             <div className={styles.inlineTeamPanel}>
+              {selectedNewTeamMemberIds.map((memberId) => (
+                <input
+                  key={memberId}
+                  type="hidden"
+                  name="new_crew_member_user_ids"
+                  value={memberId}
+                />
+              ))}
               <label>
                 <span>Багийн нэр</span>
                 <input
                   name="new_crew_team_name"
                   placeholder="Жишээ: Ногоон байгууламжийн баг 01"
+                  value={newTeamName}
+                  onChange={(event) => {
+                    setNewTeamName(event.target.value);
+                    setTeamSaveMessage("");
+                  }}
                 />
               </label>
               <fieldset>
@@ -595,8 +676,11 @@ export function ProjectTaskCreateForm({
                       <label key={user.id}>
                         <input
                           type="checkbox"
-                          name="new_crew_member_user_ids"
                           value={user.id}
+                          checked={selectedNewTeamMemberIds.includes(String(user.id))}
+                          onChange={(event) =>
+                            toggleNewTeamMember(String(user.id), event.target.checked)
+                          }
                         />
                         <span>
                           <strong>{user.name}</strong>
@@ -613,14 +697,22 @@ export function ProjectTaskCreateForm({
                   )}
                 </div>
               </fieldset>
-              <p className={styles.fieldHint}>
-                Гишүүдээ сонгоод доорх “Даалгавар нэмэх” товчийг дарахад баг хамт үүсэж,
-                даалгаварт оноогдоно.
-              </p>
+              <div className={styles.inlineTeamActionRow}>
+                <button
+                  type="button"
+                  className={styles.teamSaveButton}
+                  onClick={saveNewTeam}
+                  disabled={!canSaveNewTeam || isSavingTeam}
+                >
+                  {isSavingTeam ? "Хадгалж байна..." : "Баг хадгалах"}
+                </button>
+              </div>
             </div>
           ) : null}
-        </div>
-      ) : null}
+          {teamSaveMessage ? <p className={styles.teamSaveMessage}>{teamSaveMessage}</p> : null}
+          </div>
+        ) : null}
+      </section>
 
       <div className={styles.fieldRow}>
         <div className={styles.field}>

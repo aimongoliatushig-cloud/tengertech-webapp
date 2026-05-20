@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 import { authenticateOdooUser, createOdooConnection } from "@/lib/odoo";
 import {
   canSubmitWorkspaceReport,
+  canDeleteWorkspaceItems,
   canAccessAutoBaseOverview,
   canAccessGarbageTransportSettings,
   canAccessProcurementModule,
@@ -337,6 +338,7 @@ export async function signInWithOdooCredentials(
 
 export {
   canSubmitWorkspaceReport,
+  canDeleteWorkspaceItems,
   canAccessAutoBaseOverview,
   canAccessGarbageTransportSettings,
   canAccessProcurementModule,

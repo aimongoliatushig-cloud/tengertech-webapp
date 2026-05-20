@@ -138,6 +138,7 @@ function buildExportPayload(
   const searchParams = new URL(request.url).searchParams;
   const requestedDepartment = getParam(searchParams, "department");
   const requestedUnit = getParam(searchParams, "unit");
+  const requestedReportId = Number(getParam(searchParams, "reportId"));
   const selectedGroup = scopedDepartmentName
     ? findDepartmentGroupByName(scopedDepartmentName) ?? findDepartmentGroupByUnit(scopedDepartmentName)
     : requestedDepartment && requestedDepartment !== "all"
@@ -185,9 +186,36 @@ function buildExportPayload(
     );
   }
 
+  if (Number.isFinite(requestedReportId) && requestedReportId > 0) {
+    reports = reports.filter((report) => report.id === requestedReportId);
+    const selectedTaskIds = new Set(
+      reports
+        .map((report) => report.taskId)
+        .filter((taskId): taskId is number => typeof taskId === "number"),
+    );
+    const selectedProjectIds = new Set(
+      reports
+        .map((report) => report.projectId)
+        .filter((projectId): projectId is number => typeof projectId === "number"),
+    );
+
+    tasks = tasks.filter(
+      (task) =>
+        selectedTaskIds.has(task.id) ||
+        (typeof task.projectId === "number" && selectedProjectIds.has(task.projectId)),
+    );
+    reviewQueue = reviewQueue.filter(
+      (item) =>
+        selectedTaskIds.has(item.id) ||
+        (typeof item.projectId === "number" && selectedProjectIds.has(item.projectId)),
+    );
+  }
+
   return {
     generatedAt: snapshot.generatedAt,
-    scope: scopedDepartmentName || selectedUnit || selectedGroup?.name || "Бүх хэлтэс",
+    scope: reports.length === 1
+      ? reports[0].taskName || reports[0].projectName
+      : scopedDepartmentName || selectedUnit || selectedGroup?.name || "Бүх хэлтэс",
     summary: {
       reports: reports.length,
       tasks: tasks.length,

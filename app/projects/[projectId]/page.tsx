@@ -4,11 +4,12 @@ import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { createTaskAction, deleteTaskAction, updateTaskAction } from "@/app/actions";
+import { createTaskAction, deleteProjectAction, deleteTaskAction, updateTaskAction } from "@/app/actions";
 import dashboardStyles from "@/app/page.module.css";
 import styles from "@/app/workspace.module.css";
 import {
   hasCapability,
+  canDeleteWorkspaceItems,
   isMasterRole,
   isWorkerOnly,
   requireSession,
@@ -22,6 +23,7 @@ import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurem
 import { loadGarbagePointOptions, loadGarbageSubdistrictOptions, loadProjectDetail } from "@/lib/workspace";
 
 import { ProjectTaskCreateModal } from "./project-task-create-modal";
+import { ProjectTaskCreateForm } from "./project-task-create-form";
 import { ProjectTaskEditModal } from "./project-task-edit-modal";
 
 type PageProps = {
@@ -219,6 +221,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
 
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
+  const canDeleteWorkspace = canDeleteWorkspaceItems(session);
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
@@ -309,6 +312,35 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
       toneClass: styles.projectHeroBreakdownDone,
     },
   ] as const;
+  const taskCreateVehicleContext = garbageSourceTask
+    ? {
+        vehicleId: garbageSourceTask.vehicleId,
+        vehicleName: garbageSourceTask.vehicleName,
+        driverEmployeeId: garbageSourceTask.driverEmployeeId,
+        driverName: garbageSourceTask.driverName,
+        collectorEmployeeIds: garbageSourceTask.collectorEmployeeIds,
+        collectorNames: garbageSourceTask.collectorNames,
+      }
+    : null;
+  const taskCreateBaseProps = {
+    action: createTaskAction,
+    projectId: project.id,
+    departmentName: project.departmentName,
+    departmentHeadName: project.managerName,
+    departmentHeadId: project.managerId,
+    deadline: project.deadline,
+    masterMode,
+    departmentUserOptions: project.departmentUserOptions,
+    crewTeamOptions: project.crewTeamOptions,
+    allUnitOptions: project.allUnitOptions,
+    defaultUnitId: project.defaultUnitId,
+    allowedUnitSummary: project.allowedUnitSummary,
+    operationType: project.operationType,
+    garbagePointOptions,
+    subdistrictOptions,
+    garbageLoaderOptions,
+    garbageVehicleContext: taskCreateVehicleContext,
+  };
 
   return (
     <main className={styles.shell}>
@@ -520,6 +552,14 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                 >
                   PDF хэвлэх
                 </a>
+                {canDeleteWorkspace ? (
+                  <form action={deleteProjectAction}>
+                    <input type="hidden" name="project_id" value={project.id} />
+                    <button type="submit" className={styles.dangerButton}>
+                      Ажил устгах
+                    </button>
+                  </form>
+                ) : null}
               </div>
             </section>
 
@@ -554,7 +594,11 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
               )}
             </section>
 
-            <section className={masterMode ? styles.masterTaskBoard : styles.panelGrid}>
+            <section
+              className={`${masterMode ? styles.masterTaskBoard : styles.panelGrid} ${
+                canCreateTasks && quickActionMode !== "report" ? styles.projectTaskBoardWithComposer : ""
+              }`}
+            >
               <section className={styles.panel}>
                 <div className={styles.sectionHeader}>
                   <div>
@@ -569,37 +613,12 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                   </div>
 
                   {canCreateTasks && quickActionMode !== "report" ? (
-                    <ProjectTaskCreateModal
-                      action={createTaskAction}
-                      projectId={project.id}
-                      departmentName={project.departmentName}
-                      departmentHeadName={project.managerName}
-                      departmentHeadId={project.managerId}
-                      deadline={project.deadline}
-                      masterMode={masterMode}
-                      departmentUserOptions={project.departmentUserOptions}
-                      crewTeamOptions={project.crewTeamOptions}
-                      allUnitOptions={project.allUnitOptions}
-                      defaultUnitId={project.defaultUnitId}
-                      allowedUnitSummary={project.allowedUnitSummary}
-                      operationType={project.operationType}
-                      garbagePointOptions={garbagePointOptions}
-                      subdistrictOptions={subdistrictOptions}
-                      garbageLoaderOptions={garbageLoaderOptions}
-                      garbageVehicleContext={
-                        garbageSourceTask
-                          ? {
-                              vehicleId: garbageSourceTask.vehicleId,
-                              vehicleName: garbageSourceTask.vehicleName,
-                              driverEmployeeId: garbageSourceTask.driverEmployeeId,
-                              driverName: garbageSourceTask.driverName,
-                              collectorEmployeeIds: garbageSourceTask.collectorEmployeeIds,
-                              collectorNames: garbageSourceTask.collectorNames,
-                            }
-                          : null
-                      }
+                    <div className={styles.mobileTaskCreateAction}>
+                      <ProjectTaskCreateModal
+                      {...taskCreateBaseProps}
                       defaultOpen={Boolean(errorMessage) || quickActionMode === "task"}
-                    />
+                      />
+                    </div>
                   ) : (
                     <p>
                       {quickActionMode === "report"
@@ -716,7 +735,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                           </div>
                         </Link>
 
-                        {canReviewTaskFromBoard || canCreateTasks ? (
+                        {canReviewTaskFromBoard || canCreateTasks || canDeleteWorkspace ? (
                           <div className={styles.projectTaskFlowActions}>
                             {canReviewTaskFromBoard ? (
                               <Link href={reviewHref} className={styles.projectTaskReviewButton}>
@@ -729,10 +748,34 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                                 projectId={project.id}
                                 taskId={task.id}
                                 taskName={task.name}
+                                teamLeaderId={task.teamLeaderId}
+                                crewTeamId={task.crewTeamId}
+                                startDateValue={task.startDateValue}
                                 deadlineValue={task.deadlineValue}
+                                plannedQuantity={task.plannedQuantity}
+                                measurementUnitId={task.measurementUnitId}
+                                description={task.description}
+                                departmentUserOptions={
+                                  task.teamLeaderId &&
+                                  !project.departmentUserOptions.some((user) => user.id === task.teamLeaderId)
+                                    ? [
+                                        {
+                                          id: task.teamLeaderId,
+                                          name: task.teamLeaderName,
+                                          login: "",
+                                          role: "team_leader",
+                                          departmentName: project.departmentName,
+                                          jobTitle: task.teamLeaderJobTitle,
+                                        },
+                                        ...project.departmentUserOptions,
+                                      ]
+                                    : project.departmentUserOptions
+                                }
+                                crewTeamOptions={project.crewTeamOptions}
+                                unitOptions={project.allUnitOptions}
                               />
                             ) : null}
-                            {canCreateTasks ? (
+                            {canDeleteWorkspace ? (
                               <form action={deleteTaskAction}>
                                 <input type="hidden" name="project_id" value={project.id} />
                                 <input type="hidden" name="task_id" value={task.id} />
@@ -754,6 +797,20 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                   </div>
                 )}
               </section>
+              {canCreateTasks && quickActionMode !== "report" ? (
+                <aside className={styles.projectTaskComposerPanel}>
+                  <div className={styles.projectTaskComposerHeader}>
+                    <span className={styles.eyebrow}>Шинэ даалгавар</span>
+                    <h2>{masterMode ? "Өнөөдрийн даалгавар нэмэх" : "Даалгавар үүсгэх"}</h2>
+                    <p>Баруун талын зайд шууд бөглөөд нэмнэ. Гар утсан дээр энэ хэсэг popup хэлбэрээр нээгдэнэ.</p>
+                  </div>
+                  <ProjectTaskCreateForm
+                    {...taskCreateBaseProps}
+                    className={styles.sideTaskCreateForm}
+                    footerClassName={styles.sideTaskCreateActions}
+                  />
+                </aside>
+              ) : null}
             </section>
           </div>
         </div>

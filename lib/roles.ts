@@ -463,6 +463,15 @@ export function canSubmitWorkspaceReport(context: RoleContext) {
   );
 }
 
+export function canDeleteWorkspaceItems(context: RoleContext) {
+  const groupFlags = normalizeGroupFlags(context.groupFlags);
+  return Boolean(
+    context.role === "director" ||
+      context.role === "general_manager" ||
+      groupFlags.municipalDirector
+  );
+}
+
 export function isWorkerOnly(context: RoleContext) {
   const groupFlags = normalizeGroupFlags(context.groupFlags);
   return (

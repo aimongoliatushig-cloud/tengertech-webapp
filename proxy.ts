@@ -25,6 +25,67 @@ type ProxySession = {
   groupFlags?: Record<string, boolean | undefined>;
 };
 
+function firstHeaderValue(value: string | null) {
+  return value?.split(",")[0]?.trim() || "";
+}
+
+function getCanonicalOrigin() {
+  const configuredUrl =
+    process.env.APP_BASE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "";
+
+  try {
+    return configuredUrl ? new URL(configuredUrl).origin : "";
+  } catch {
+    return "";
+  }
+}
+
+function isLocalHost(host: string) {
+  const normalized = host.toLowerCase().split(":")[0];
+  return (
+    normalized === "0.0.0.0" ||
+    normalized === "::" ||
+    normalized === "[::]" ||
+    normalized === "127.0.0.1" ||
+    normalized === "localhost"
+  );
+}
+
+function getRequestHost(request: NextRequest) {
+  return firstHeaderValue(request.headers.get("x-forwarded-host")) ||
+    firstHeaderValue(request.headers.get("host")) ||
+    request.nextUrl.host;
+}
+
+function getCanonicalRedirectUrl(request: NextRequest) {
+  const canonicalOrigin = getCanonicalOrigin();
+  if (!canonicalOrigin) {
+    return null;
+  }
+
+  const requestHost = getRequestHost(request);
+  const requestHostname = requestHost.split(":")[0]?.toLowerCase() || "";
+  const canonicalUrl = new URL(canonicalOrigin);
+  const canonicalHostname = canonicalUrl.hostname.toLowerCase();
+
+  if (
+    !requestHostname ||
+    requestHostname === canonicalHostname ||
+    isLocalHost(requestHostname) ||
+    isLocalHost(canonicalHostname)
+  ) {
+    return null;
+  }
+
+  const redirectUrl = request.nextUrl.clone();
+  redirectUrl.protocol = canonicalUrl.protocol;
+  redirectUrl.host = canonicalUrl.host;
+  return redirectUrl;
+}
+
 function getSessionKeyMaterial() {
   return process.env.SESSION_SECRET ?? "hot-tohjilt-local-session-secret-change-me";
 }
@@ -155,9 +216,13 @@ function isHrAllowedPath(pathname: string) {
     pathname === "/hr" ||
     pathname.startsWith("/hr/") ||
     pathname === "/profile" ||
+    pathname === "/settings/notifications" ||
     pathname === "/auth/logout" ||
     pathname === "/api/hr" ||
     pathname.startsWith("/api/hr/") ||
+    pathname === "/api/notifications/subscribe" ||
+    pathname === "/api/notifications/test" ||
+    pathname === "/api/push/test" ||
     pathname.startsWith("/api/odoo/attachments/")
   );
 }
@@ -166,8 +231,12 @@ function isReportAllowedPath(pathname: string) {
   return (
     pathname === "/reports" ||
     pathname.startsWith("/reports/") ||
+    pathname === "/settings/notifications" ||
     pathname === "/auth/logout" ||
     pathname === "/api/reports/export" ||
+    pathname === "/api/notifications/subscribe" ||
+    pathname === "/api/notifications/test" ||
+    pathname === "/api/push/test" ||
     pathname === "/api/garbage-transport/weight-report" ||
     pathname.startsWith("/api/odoo/attachments/") ||
     pathname === "/api/profile-image"
@@ -176,6 +245,11 @@ function isReportAllowedPath(pathname: string) {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const canonicalRedirectUrl = getCanonicalRedirectUrl(request);
+  if (canonicalRedirectUrl) {
+    return NextResponse.redirect(canonicalRedirectUrl, 308);
+  }
+
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const hasSession = Boolean(sessionToken);
   const isPublicPath = PUBLIC_PATHS.has(pathname);

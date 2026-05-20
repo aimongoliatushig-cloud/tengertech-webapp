@@ -49,6 +49,7 @@ type PageProps = {
 type ProjectFilterKey = "all" | "progress" | "planned" | "overdue";
 type QuickActionMode = "task" | "report" | "none";
 type ProjectCardItem = DashboardSnapshot["projects"][number];
+type TaskCardItem = DashboardSnapshot["taskDirectory"][number];
 type ProjectsSession = Awaited<ReturnType<typeof requireSession>>;
 type ProjectsAppMenuProps = ComponentProps<typeof AppMenu>;
 type ProjectsWorkspaceHeaderProps = ComponentProps<typeof WorkspaceHeader>;
@@ -285,6 +286,39 @@ function ProjectCardLink({
   );
 }
 
+function OverdueTaskLink({
+  task,
+  hideDepartment = false,
+}: {
+  task: TaskCardItem;
+  hideDepartment?: boolean;
+}) {
+  const metaParts = [
+    hideDepartment ? null : `Алба нэгж: ${task.departmentName}`,
+    `Ажил: ${task.projectName}`,
+    task.leaderName ? `Хариуцсан: ${task.leaderName}` : null,
+    task.operationTypeLabel,
+  ].filter(Boolean);
+
+  return (
+    <Link href={task.href} className={styles.reviewItem}>
+      <div className={styles.projectListRowMain}>
+        <div className={styles.projectListRowTop}>
+          <h3>{task.name}</h3>
+          <StagePill label={task.statusLabel} bucket="problem" />
+        </div>
+        <p>{metaParts.join(" · ")}</p>
+      </div>
+
+      <div className={styles.reviewMeta}>
+        <strong>{task.progress}%</strong>
+        <span>Гүйцэтгэл</span>
+        <span>{task.deadline || task.scheduledDate || "Хугацаа бүртгэлгүй"}</span>
+      </div>
+    </Link>
+  );
+}
+
 function AutoBaseRepairVehicleCard({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
   const latestRepair = vehicle.repairHistory[0] ?? null;
   const href = latestRepair?.id ? `/fleet-repair/requests/${latestRepair.id}` : "/fleet-repair/requests";
@@ -429,7 +463,7 @@ async function ProjectsPageContent({
         : null;
 
   const selectedGroup = detectedGroup;
-  if (selectedGroup) {
+  if (selectedGroup && activeFilter !== "overdue") {
     activeFilter = "all";
   }
   const isOverdueFilter = activeFilter === "overdue";
@@ -598,10 +632,24 @@ async function ProjectsPageContent({
       )
       .map((task) => task.projectName),
   );
+  const overdueTasks = scopedTasks
+    .filter(
+      (task) =>
+        task.scheduledDate &&
+        task.scheduledDate < currentDateKey &&
+        task.statusKey !== "verified",
+    )
+    .sort((left, right) => {
+      const leftDate = left.scheduledDate || left.deadlineDateTime || "";
+      const rightDate = right.scheduledDate || right.deadlineDateTime || "";
+      if (leftDate !== rightDate) {
+        return leftDate.localeCompare(rightDate);
+      }
 
-  const activeProjects = masterMode
-    ? scopedProjects
-    : scopedProjects.filter((project) => {
+      return left.name.localeCompare(right.name, "mn");
+    });
+
+  const activeProjects = scopedProjects.filter((project) => {
         if (activeFilter === "all") {
           return true;
         }
@@ -634,7 +682,7 @@ async function ProjectsPageContent({
     planned: scopedProjects.filter(
       (project) => project.stageBucket === "todo" || project.stageBucket === "unknown",
     ).length,
-    overdue: scopedProjects.filter((project) => overdueProjectNames.has(project.name)).length,
+    overdue: overdueProjectNames.size,
   } satisfies Record<ProjectFilterKey, number>;
 
   const reviewProjectsCount = scopedProjects.filter(
@@ -646,9 +694,7 @@ async function ProjectsPageContent({
   const doneProjectsCount = scopedProjects.filter(
     (project) => project.stageBucket === "done",
   ).length;
-  const overdueProjectsCount = scopedProjects.filter((project) =>
-    overdueProjectNames.has(project.name),
-  ).length;
+  const overdueProjectsCount = overdueProjectNames.size;
   const totalOpenTaskCount = scopedProjects.reduce(
     (sum, project) => sum + project.openTasks,
     0,
@@ -1089,7 +1135,65 @@ async function ProjectsPageContent({
                 ) : null}
               </div>
 
-              {!showAutoBaseFleet && masterMode ? (
+              {isOverdueFilter ? (
+                <div className={styles.unitProjectSections}>
+                  <section className={styles.unitProjectSection}>
+                    <div className={styles.unitProjectSectionHeader}>
+                      <div>
+                        <span className={styles.unitProjectSectionKicker}>Даалгавар</span>
+                        <h3>Хугацаа хэтэрсэн даалгаврууд</h3>
+                        <p>Хугацаа өнгөрсөн боловч бүрэн дуусаагүй даалгавруудыг тусад нь харуулна.</p>
+                      </div>
+                      <strong>{overdueTasks.length}</strong>
+                    </div>
+
+                    {overdueTasks.length ? (
+                      <div className={styles.reviewList}>
+                        {overdueTasks.map((task) => (
+                          <OverdueTaskLink
+                            key={task.id}
+                            task={task}
+                            hideDepartment={hideDepartmentInProjectCards}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className={styles.emptyColumnState}>
+                        Хугацаа хэтэрсэн даалгавар одоогоор алга байна.
+                      </div>
+                    )}
+                  </section>
+
+                  <section className={styles.unitProjectSection}>
+                    <div className={styles.unitProjectSectionHeader}>
+                      <div>
+                        <span className={styles.unitProjectSectionKicker}>Ажил</span>
+                        <h3>Хугацаа хэтэрсэн ажил</h3>
+                        <p>Дотроо хугацаа хэтэрсэн даалгавартай ажлууд.</p>
+                      </div>
+                      <strong>{activeProjects.length}</strong>
+                    </div>
+
+                    {activeProjects.length ? (
+                      <div className={styles.projectRail}>
+                        {activeProjects.map((project) => (
+                          <ProjectCardLink
+                            key={project.id}
+                            project={project}
+                            href={buildProjectHref(project.href)}
+                            actionLabel={projectCardLabel}
+                            hideDepartment={hideDepartmentInProjectCards}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className={styles.emptyColumnState}>
+                        Хугацаа хэтэрсэн даалгавартай ажил одоогоор алга байна.
+                      </div>
+                    )}
+                  </section>
+                </div>
+              ) : !showAutoBaseFleet && masterMode ? (
                 <div className={styles.masterInsightsGrid}>
                   <article className={styles.masterInsightsChart}>
                     <div className={styles.masterInsightsHeader}>

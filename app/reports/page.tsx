@@ -320,7 +320,6 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   if (!departmentScopedMode && selectedUnit) {
     exportParams.set("unit", selectedUnit);
   }
-  const exportQuery = exportParams.toString();
   const allReportBoardParams = new URLSearchParams(exportParams);
   if (reportSearchQuery) {
     allReportBoardParams.set("q", reportSearchQuery);
@@ -356,8 +355,14 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const boardReviewCount = filteredReports.filter((report) => report.stateBucket === "review").length;
   const boardApprovedCount = filteredReports.filter((report) => report.stateBucket === "done").length;
   const boardReturnedCount = filteredReports.filter((report) => report.stateBucket === "problem").length;
-  const getExportHref = (format: "csv" | "excel" | "json") =>
-    `/api/reports/export?format=${format}${exportQuery ? `&${exportQuery}` : ""}`;
+  const getExportHref = (format: "csv" | "excel" | "json", reportId?: number) => {
+    const params = new URLSearchParams(exportParams);
+    params.set("format", format);
+    if (reportId) {
+      params.set("reportId", String(reportId));
+    }
+    return `/api/reports/export?${params.toString()}`;
+  };
 
   return (
     <main className={shellStyles.shell}>
@@ -632,7 +637,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                                   <Eye aria-hidden />
                                   Ажил нээх
                                 </Link>
-                                <a href={getExportHref("excel")}>
+                                <a href={getExportHref("excel", report.id)}>
                                   <Download aria-hidden />
                                   Excel татах
                                 </a>

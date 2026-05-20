@@ -1,191 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-const LABEL_ENABLE = "Мэдэгдэл идэвхжүүлэх";
-const LABEL_ENABLING = "Мэдэгдэл идэвхжүүлж байна...";
-const LABEL_TITLE = "Мэдэгдэл авахыг зөвшөөрөх үү?";
-const LABEL_SECURE_TITLE = "Мэдэгдэлд HTTPS шаардлагатай";
-const LABEL_BODY =
-  "Шинэ ажил, тайлан, хугацааны анхааруулгыг энэ төхөөрөмж дээр авна.";
-const LABEL_CONFIG_MISSING =
-  "Мэдэгдлийн түлхүүр ачаалагдаагүй байна. Серверийн мэдэгдлийн тохиргоог шалгана уу.";
-const LABEL_CONFIG_SESSION =
-  "Мэдэгдлийн тохиргоо ачаалахад алдаа гарлаа. Нэвтрэлт болон серверийн тохиргоог шалгана уу.";
-const LABEL_DENIED =
-  "Browser дээр мэдэгдэл хориглогдсон байна. Сайтын тохиргооноос зөвшөөрнө үү.";
-const LABEL_PROMPT_HELP =
-  "Browser зөвшөөрлийн цонх харуулсангүй. Хаягийн мөрний зүүн талын сайтын тохиргооноос Notifications зөвшөөрнө үү.";
-const LABEL_ERROR =
-  "Мэдэгдэл идэвхжүүлэх үед алдаа гарлаа. Дахин оролдоно уу.";
-const LABEL_INSECURE =
-  "Одоогийн хаяг HTTP тул browser мэдэгдлийн зөвшөөрөл асуухгүй. HTTPS домэйнээр нээхэд идэвхжүүлэх боломжтой.";
-const LABEL_OPEN_SECURE = "HTTPS хаягаар нээх";
-const LABEL_SECURE_REQUIRED = "HTTPS тохиргоо шаардлагатай";
-const LABEL_RETRY = "Дахин оролдох";
+import {
+  connectNotifications,
+  diagnoseNotifications,
+  getNotificationStatusMessage,
+  type NotificationConnectionStatus,
+  type NotificationDiagnostics,
+} from "@/app/_components/notification-push-client";
 
-const STEP_TIMEOUT_MS = 8000;
-const PERMISSION_TIMEOUT_MS = 12000;
-
-type PushStatus =
-  | "checking"
-  | "unsupported"
-  | "insecure"
-  | "config-missing"
-  | "config-error"
-  | "ready"
-  | "granted"
-  | "denied"
-  | "prompt-help"
-  | "error";
-
-type PublicKeyFailureReason = "missing" | "session" | "error";
-
-type PublicKeyResult =
-  | { ok: true; publicKey: string }
-  | { ok: false; reason: PublicKeyFailureReason };
-
-function logPushStep(message: string, details?: Record<string, unknown>) {
-  if (details) {
-    console.info(`[push] ${message}`, details);
-    return;
-  }
-  console.info(`[push] ${message}`);
-}
-
-function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = STEP_TIMEOUT_MS) {
-  return new Promise<T>((resolve, reject) => {
-    const timeout = window.setTimeout(() => {
-      reject(new Error(`${label} timed out.`));
-    }, timeoutMs);
-
-    promise.then(
-      (value) => {
-        window.clearTimeout(timeout);
-        resolve(value);
-      },
-      (error) => {
-        window.clearTimeout(timeout);
-        reject(error);
-      },
-    );
-  });
-}
-
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let index = 0; index < rawData.length; index += 1) {
-    outputArray[index] = rawData.charCodeAt(index);
-  }
-
-  return outputArray;
-}
-
-async function loadPublicKey(): Promise<PublicKeyResult> {
-  try {
-    const response = await withTimeout(
-      fetch("/api/push/public-key", { cache: "no-store" }),
-      "public key request",
-    );
-    const contentType = response.headers.get("content-type") ?? "";
-
-    if (!contentType.includes("application/json")) {
-      return { ok: false, reason: "session" };
-    }
-
-    const payload = (await response.json().catch(() => null)) as {
-      enabled?: boolean;
-      publicKey?: string | null;
-    } | null;
-
-    if (!response.ok) {
-      return { ok: false, reason: "error" };
-    }
-
-    if (!payload?.enabled || !payload.publicKey) {
-      return { ok: false, reason: "missing" };
-    }
-
-    return { ok: true, publicKey: payload.publicKey };
-  } catch (error) {
-    console.warn("[push] public key request failed:", error);
-    return { ok: false, reason: "error" };
-  }
-}
-
-async function resolveNotificationPermission() {
-  logPushStep("current permission before click", {
-    permission: Notification.permission,
-  });
-
-  if (Notification.permission !== "default") {
-    logPushStep("permission result", { permission: Notification.permission });
-    return Notification.permission;
-  }
-
-  const permission = await withTimeout(
-    Notification.requestPermission(),
-    "notification permission request",
-    PERMISSION_TIMEOUT_MS,
-  ).catch(() => "default" as NotificationPermission);
-  logPushStep("permission result", { permission });
-  return permission;
-}
-
-async function registerPushSubscription(publicKey: string) {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    throw new Error("Push notification is not supported in this browser.");
-  }
-
-  logPushStep("public key present", { present: Boolean(publicKey) });
-  const registration = await withTimeout(
-    navigator.serviceWorker.register("/sw.js", {
-      scope: "/",
-      updateViaCache: "none",
-    }),
-    "service worker registration",
-  );
-  logPushStep("service worker registered", { scope: registration.scope });
-
-  const existingSubscription = await withTimeout(
-    registration.pushManager.getSubscription(),
-    "existing subscription lookup",
-  );
-  logPushStep("existing subscription lookup", {
-    found: Boolean(existingSubscription),
-  });
-
-  const subscription =
-    existingSubscription ??
-    (await withTimeout(
-      registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey),
-      }),
-      "push subscription",
-    ));
-  logPushStep(existingSubscription ? "existing subscription reused" : "new subscription created");
-
-  const response = await withTimeout(
-    fetch("/api/push/subscription", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ subscription: subscription.toJSON() }),
-    }),
-    "subscription save",
-  );
-  logPushStep("subscription save response", { status: response.status });
-
-  if (!response.ok) {
-    throw new Error("Push subscription could not be saved.");
-  }
-}
+type PushCardStatus = "checking" | "hidden" | "ready" | "warning" | "error";
 
 function getConfiguredSecureUrl() {
   const candidates = [
@@ -209,64 +34,55 @@ function getConfiguredSecureUrl() {
   return null;
 }
 
+function resolveCardStatus(diagnostics: NotificationDiagnostics | null): PushCardStatus {
+  if (!diagnostics) {
+    return "checking";
+  }
+
+  if (diagnostics.connectionStatus === "connected" && diagnostics.backendSubscriptionSaved) {
+    return "hidden";
+  }
+
+  if (
+    !diagnostics.notificationSupport ||
+    !diagnostics.serviceWorkerSupport ||
+    !diagnostics.pushManagerSupport ||
+    !diagnostics.secureContext ||
+    diagnostics.privateModePossible ||
+    diagnostics.permissionStatus === "denied"
+  ) {
+    return "warning";
+  }
+
+  if (diagnostics.connectionStatus === "failed") {
+    return "error";
+  }
+
+  return "ready";
+}
+
 export function NotificationPermissionButton() {
-  const [publicKey, setPublicKey] = useState<string | null>(null);
-  const [status, setStatus] = useState<PushStatus>("checking");
+  const [diagnostics, setDiagnostics] = useState<NotificationDiagnostics | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<NotificationConnectionStatus>("not_started");
   const [busy, setBusy] = useState(false);
   const [secureUrl, setSecureUrl] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [lastActionError, setLastActionError] = useState<string | null>(null);
 
-  const setPublicKeyFailure = useCallback((reason: PublicKeyFailureReason) => {
-    setPublicKey(null);
-    setStatus(reason === "missing" ? "config-missing" : "config-error");
+  const refreshDiagnostics = useCallback(async () => {
+    const nextDiagnostics = await diagnoseNotifications();
+    setDiagnostics(nextDiagnostics);
+    setConnectionStatus(nextDiagnostics.connectionStatus);
+    setSecureUrl(getConfiguredSecureUrl());
   }, []);
 
-  const requestAndSubscribe = useCallback(async () => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      setStatus("unsupported");
-      return;
-    }
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void refreshDiagnostics();
+    }, 0);
 
-    if (!window.isSecureContext) {
-      setSecureUrl(getConfiguredSecureUrl());
-      setStatus("insecure");
-      return;
-    }
-
-    setBusy(true);
-    try {
-      const permission = await resolveNotificationPermission();
-
-      if (permission === "default") {
-        setStatus("prompt-help");
-        return;
-      }
-
-      if (permission === "denied") {
-        setStatus("denied");
-        return;
-      }
-
-      let resolvedPublicKey = publicKey;
-      if (!resolvedPublicKey) {
-        const publicKeyResult = await loadPublicKey();
-        if (!publicKeyResult.ok) {
-          setPublicKeyFailure(publicKeyResult.reason);
-          return;
-        }
-        resolvedPublicKey = publicKeyResult.publicKey;
-        setPublicKey(publicKeyResult.publicKey);
-      }
-
-      await registerPushSubscription(resolvedPublicKey);
-      setStatus("granted");
-    } catch (error) {
-      console.warn("[push] subscription failed:", error);
-      setStatus("error");
-    } finally {
-      setBusy(false);
-    }
-  }, [publicKey, setPublicKeyFailure]);
+    return () => window.clearTimeout(timeout);
+  }, [refreshDiagnostics]);
 
   useEffect(() => {
     const syncMobileMenuState = () => {
@@ -284,116 +100,80 @@ export function NotificationPermissionButton() {
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function setupPushNotifications() {
-      await Promise.resolve();
-
-      if (typeof window === "undefined" || !("Notification" in window)) {
-        if (!cancelled) {
-          setStatus("unsupported");
-        }
-        return;
-      }
-
-      if (!window.isSecureContext) {
-        console.warn("[push] Notification permission requires HTTPS or localhost.");
-        if (!cancelled) {
-          setSecureUrl(getConfiguredSecureUrl());
-          setStatus("insecure");
-        }
-        return;
-      }
-
-      if (Notification.permission === "denied") {
-        if (!cancelled) {
-          setStatus("denied");
-        }
-        return;
-      }
-
-      const publicKeyResult = await loadPublicKey();
-      if (cancelled) {
-        return;
-      }
-
-      if (!publicKeyResult.ok) {
-        setPublicKeyFailure(publicKeyResult.reason);
-        return;
-      }
-
-      setPublicKey(publicKeyResult.publicKey);
-
-      if (Notification.permission === "granted") {
-        await registerPushSubscription(publicKeyResult.publicKey).catch((error) => {
-          console.warn("[push] subscription failed:", error);
-          if (!cancelled) {
-            setStatus("error");
-          }
-        });
-        if (!cancelled) {
-          setStatus("granted");
-        }
-        return;
-      }
-
-      setStatus("ready");
+  const cardStatus = resolveCardStatus(diagnostics);
+  const statusMessage = useMemo(() => {
+    if (!diagnostics) {
+      return "Мэдэгдлийн төлөв шалгаж байна";
     }
 
-    void setupPushNotifications();
+    return getNotificationStatusMessage({
+      ...diagnostics,
+      connectionStatus,
+    });
+  }, [connectionStatus, diagnostics]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [setPublicKeyFailure]);
+  const handleConnect = useCallback(async () => {
+    setBusy(true);
+    setLastActionError(null);
 
-  if (isMobileMenuOpen || status === "checking" || status === "unsupported" || status === "granted") {
+    const result = await connectNotifications({
+      forceReconnect:
+        diagnostics?.permissionStatus === "granted" &&
+        !diagnostics.backendSubscriptionSaved,
+      onStatusChange: setConnectionStatus,
+    });
+
+    if (result.ok) {
+      setDiagnostics(result.diagnostics);
+    } else {
+      setLastActionError(result.error);
+      if (result.diagnostics) {
+        setDiagnostics(result.diagnostics);
+      }
+    }
+
+    setBusy(false);
+  }, [diagnostics]);
+
+  if (isMobileMenuOpen || cardStatus === "checking" || cardStatus === "hidden") {
     return null;
   }
 
+  const isDenied = diagnostics?.permissionStatus === "denied";
+  const isInsecure = diagnostics ? !diagnostics.secureContext : false;
+  const canConnect =
+    !busy &&
+    !isDenied &&
+    diagnostics?.notificationSupport &&
+    diagnostics.serviceWorkerSupport &&
+    diagnostics.pushManagerSupport &&
+    diagnostics.secureContext;
   const titleText =
-    status === "insecure"
-      ? LABEL_SECURE_TITLE
-      : status === "ready"
-        ? LABEL_TITLE
-        : "Мэдэгдэл идэвхжээгүй";
-  const bodyText =
-    status === "insecure"
-      ? LABEL_INSECURE
-      : status === "config-missing"
-        ? LABEL_CONFIG_MISSING
-        : status === "config-error"
-          ? LABEL_CONFIG_SESSION
-          : status === "denied"
-            ? LABEL_DENIED
-            : status === "prompt-help"
-              ? LABEL_PROMPT_HELP
-              : status === "error"
-                ? LABEL_ERROR
-                : LABEL_BODY;
-  const buttonText =
-    status === "insecure"
-      ? secureUrl
-        ? LABEL_OPEN_SECURE
-        : LABEL_SECURE_REQUIRED
-      : busy
-        ? LABEL_ENABLING
-        : status === "ready"
-          ? LABEL_ENABLE
-          : LABEL_RETRY;
-  const showRetryButton = status === "prompt-help" || status === "error";
-  const showActionButton = status === "ready" || status === "insecure" || showRetryButton;
-  const buttonDisabled = busy || (status === "insecure" && !secureUrl);
+    cardStatus === "ready"
+      ? "Мэдэгдэл авахыг зөвшөөрөх үү?"
+      : "Мэдэгдлийн холболт шалгах шаардлагатай";
+  const bodyText = lastActionError || statusMessage;
+  const buttonText = busy
+    ? connectionStatus === "registering_service_worker"
+      ? "Service worker бүртгэж байна"
+      : connectionStatus === "subscribing_push"
+        ? "Push subscription үүсгэж байна"
+        : connectionStatus === "saving_to_server"
+          ? "Серверт хадгалж байна"
+          : "Мэдэгдэл идэвхжүүлж байна"
+    : diagnostics?.permissionStatus === "granted"
+      ? "Холболт сэргээх"
+      : "Мэдэгдэл идэвхжүүлэх";
+
   const buttonStyle = {
     display: "block",
     width: "100%",
     marginTop: 12,
     border: 0,
     borderRadius: 999,
-    background: status === "insecure" && !secureUrl ? "#9CA3AF" : "#2E7D32",
+    background: canConnect ? "#2E7D32" : "#9CA3AF",
     color: "#fff",
-    cursor: buttonDisabled ? "not-allowed" : "pointer",
+    cursor: canConnect ? "pointer" : "not-allowed",
     fontSize: 14,
     fontWeight: 700,
     padding: "12px 16px",
@@ -424,26 +204,46 @@ export function NotificationPermissionButton() {
       <span style={{ display: "block", color: "#526157", fontSize: 13, lineHeight: 1.45 }}>
         {bodyText}
       </span>
-      {showActionButton && status === "insecure" && secureUrl ? (
-        <a href={secureUrl} style={buttonStyle}>
-          {buttonText}
+      {isDenied ? (
+        <a
+          href="/settings/notifications"
+          style={{
+            ...buttonStyle,
+            background: "#2E7D32",
+            cursor: "pointer",
+          }}
+        >
+          Заавар харах
         </a>
       ) : null}
-      {showActionButton && status === "insecure" && !secureUrl ? (
-        <button type="button" disabled style={buttonStyle}>
-          {buttonText}
-        </button>
+      {isInsecure && secureUrl ? (
+        <a href={secureUrl} style={{ ...buttonStyle, background: "#2E7D32", cursor: "pointer" }}>
+          HTTPS хаягаар нээх
+        </a>
       ) : null}
-      {showActionButton && status !== "insecure" ? (
+      {!isDenied && !isInsecure ? (
         <button
           type="button"
-          onClick={() => void requestAndSubscribe()}
-          disabled={buttonDisabled}
+          onClick={() => void handleConnect()}
+          disabled={!canConnect}
           style={buttonStyle}
         >
           {buttonText}
         </button>
       ) : null}
+      <a
+        href="/settings/notifications"
+        style={{
+          display: "inline-block",
+          marginTop: 10,
+          color: "#1c7c35",
+          fontSize: 13,
+          fontWeight: 700,
+          textDecoration: "none",
+        }}
+      >
+        Дэлгэрэнгүй оношилгоо
+      </a>
     </div>
   );
 }

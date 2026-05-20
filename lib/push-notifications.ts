@@ -14,6 +14,12 @@ export type BrowserPushSubscription = {
   };
 };
 
+export type PushSubscriptionDeviceMetadata = {
+  userAgent?: string | null;
+  browser?: string | null;
+  platform?: string | null;
+};
+
 export type PushEventType =
   | "new_work_assigned"
   | "work_changed"
@@ -34,6 +40,15 @@ export type PushEventType =
 type StoredPushSubscription = BrowserPushSubscription & {
   id: number;
   user_id: number;
+};
+
+type PushSubscriptionStatusRecord = {
+  id: number;
+  endpoint: string;
+  active?: boolean;
+  last_seen_at?: string | false;
+  write_date?: string | false;
+  last_error_message?: string | false;
 };
 
 type PushDeliveryAudit = {
@@ -141,7 +156,11 @@ function getConnectionOverrides(session?: AppSession | null) {
 }
 
 function getVapidConfig() {
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
+  const publicKey = (
+    process.env.VAPID_PUBLIC_KEY ||
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+    ""
+  ).trim();
   const privateKey = process.env.VAPID_PRIVATE_KEY?.trim();
   const subject = process.env.VAPID_SUBJECT?.trim() || "mailto:admin@example.invalid";
 
@@ -174,15 +193,100 @@ export function isPushConfigured() {
 export async function savePushSubscription(
   session: AppSession,
   subscription: BrowserPushSubscription,
-  userAgent?: string | null,
+  metadata: PushSubscriptionDeviceMetadata | string | null = null,
 ) {
-  return executeOdooKw<number>(
+  const resolvedMetadata =
+    typeof metadata === "string"
+      ? { userAgent: metadata }
+      : metadata ?? {};
+  const deviceUserAgent = [
+    resolvedMetadata.browser,
+    resolvedMetadata.platform,
+    resolvedMetadata.userAgent,
+  ]
+    .filter(Boolean)
+    .join(" | ");
+
+  const connection = getConnectionOverrides(session);
+  const kwargs = {
+    user_agent: deviceUserAgent,
+    browser: resolvedMetadata.browser || "",
+    platform: resolvedMetadata.platform || "",
+  };
+
+  try {
+    return await executeOdooKw<number>(
+      "tengertech.push.subscription",
+      "upsert_for_current_user",
+      [subscription],
+      kwargs,
+      connection,
+    );
+  } catch (error) {
+    const message = errorMessage(error);
+    if (!message.includes("browser") && !message.includes("platform")) {
+      throw error;
+    }
+
+    return executeOdooKw<number>(
+      "tengertech.push.subscription",
+      "upsert_for_current_user",
+      [subscription],
+      { user_agent: deviceUserAgent },
+      connection,
+    );
+  }
+}
+
+export async function getCurrentUserPushSubscriptionStatus(
+  session: AppSession,
+  endpoint: string,
+) {
+  const connection = getConnectionOverrides(session);
+  const records = await executeOdooKw<PushSubscriptionStatusRecord[]>(
     "tengertech.push.subscription",
-    "upsert_for_current_user",
-    [subscription],
-    { user_agent: userAgent || "" },
-    getConnectionOverrides(session),
+    "search_read",
+    [[["endpoint", "=", endpoint]]],
+    {
+      fields: ["id", "endpoint", "active", "last_seen_at", "write_date", "last_error_message"],
+      limit: 1,
+    },
+    connection,
+  ).catch(() =>
+    executeOdooKw<PushSubscriptionStatusRecord[]>(
+      "tengertech.push.subscription",
+      "search_read",
+      [[["endpoint", "=", endpoint]]],
+      {
+        fields: ["id", "endpoint", "active", "last_seen_at", "write_date"],
+        limit: 1,
+      },
+      connection,
+    ),
   );
+  const record = records[0];
+
+  if (!record) {
+    return {
+      saved: false,
+      active: false,
+      id: null,
+      lastSuccessfulConnection: null,
+      lastErrorMessage: null,
+    };
+  }
+
+  return {
+    saved: true,
+    active: Boolean(record.active),
+    id: record.id,
+    lastSuccessfulConnection:
+      (typeof record.last_seen_at === "string" && record.last_seen_at) ||
+      (typeof record.write_date === "string" && record.write_date) ||
+      null,
+    lastErrorMessage:
+      typeof record.last_error_message === "string" ? record.last_error_message : null,
+  };
 }
 
 export async function removePushSubscription(session: AppSession, endpoint: string) {
@@ -192,6 +296,32 @@ export async function removePushSubscription(session: AppSession, endpoint: stri
     [endpoint],
     {},
     getConnectionOverrides(session),
+  );
+}
+
+async function markPushSubscriptionInactive(endpoint: string, reason: string) {
+  const records = await executeOdooKw<Array<{ id: number }>>(
+    "tengertech.push.subscription",
+    "search_read",
+    [[["endpoint", "=", endpoint]]],
+    { fields: ["id"], limit: 1 },
+  ).catch(() => []);
+  const record = records[0];
+
+  if (!record) {
+    return false;
+  }
+
+  return executeOdooKw<boolean>(
+    "tengertech.push.subscription",
+    "write",
+    [[record.id], { active: false, last_error_message: reason.slice(0, 500) }],
+  ).catch(() =>
+    executeOdooKw<boolean>(
+      "tengertech.push.subscription",
+      "write",
+      [[record.id], { active: false }],
+    ).catch(() => false),
   );
 }
 
@@ -213,6 +343,15 @@ function errorMessage(error: unknown) {
   }
 
   return String(error ?? "Тодорхойгүй алдаа").slice(0, 500);
+}
+
+function getWebPushStatusCode(error: unknown) {
+  if (typeof error === "object" && error && "statusCode" in error) {
+    const statusCode = Number((error as { statusCode?: unknown }).statusCode);
+    return Number.isFinite(statusCode) ? statusCode : null;
+  }
+
+  return null;
 }
 
 async function logPushEvent(
@@ -305,6 +444,25 @@ export async function notifyPushEvent(input: PushEventInput) {
   });
   const sent = results.filter((result) => result.status === "fulfilled").length;
   const failed = results.length - sent;
+
+  await Promise.all(
+    results.map((result, index) => {
+      if (result.status === "fulfilled") {
+        return Promise.resolve(false);
+      }
+
+      const statusCode = getWebPushStatusCode(result.reason);
+      if (statusCode !== 404 && statusCode !== 410) {
+        return Promise.resolve(false);
+      }
+
+      return markPushSubscriptionInactive(
+        subscriptions[index].endpoint,
+        errorMessage(result.reason),
+      );
+    }),
+  );
+
   await logPushEvent(input, sent, failed, deliveryAudit);
   return { sent, failed };
 }

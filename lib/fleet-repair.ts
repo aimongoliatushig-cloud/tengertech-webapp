@@ -78,7 +78,17 @@ export type FleetRepairVehicleOptions = {
 
 export type FleetRepairGarbageSnapshot = {
   todayTons: number;
-  byVehicle: { vehicle: string; tons: number; trips: number }[];
+  todayFuelLabel: string;
+  byVehicle: {
+    vehicle: string;
+    tons: number;
+    trips: number;
+    fuelLiters: number;
+    fuelLabel: string;
+    fuelType: string;
+    latestFuelDate: string;
+    fuelReportCount: number;
+  }[];
   week: { label: string; tons: number }[];
   monthTons: number;
 };
@@ -260,6 +270,19 @@ function stringValue(record: RepairRecord, names: string[], fallback = "") {
     }
   }
   return fallback;
+}
+
+function formatFuelLiters(value: number) {
+  return `${new Intl.NumberFormat("mn-MN", {
+    maximumFractionDigits: 1,
+  }).format(value || 0)} л`;
+}
+
+function normalizeVehicleAlias(value?: string | null) {
+  return String(value ?? "")
+    .toLocaleUpperCase("mn-MN")
+    .replace(/\s+/g, "")
+    .replace(/[-_]/g, "");
 }
 
 function numberValue(record: RepairRecord, names: string[], fallback = 0) {
@@ -776,25 +799,96 @@ export async function loadFleetRepairDashboard(session: AppSession): Promise<Fle
 
 export async function loadFleetRepairGarbage(session: AppSession): Promise<FleetRepairGarbageSnapshot> {
   assertFleetRepairAccess(session);
-  const ledger = await loadGarbageWeightLedger(connectionFromSession(session));
-  const byVehicleMap = new Map<string, { vehicle: string; tons: number; trips: number }>();
+  const connection = connectionFromSession(session);
+  const [ledger, vehicleBoard] = await Promise.all([
+    loadGarbageWeightLedger(connection),
+    loadFleetVehicleBoard(connection).catch(() => null),
+  ]);
+  const byVehicleMap = new Map<
+    string,
+    {
+      vehicle: string;
+      aliases: Set<string>;
+      tons: number;
+      trips: number;
+      fuelLiters: number;
+      fuelLabel: string;
+      fuelType: string;
+      latestFuelDate: string;
+      fuelReportCount: number;
+    }
+  >();
+  const aliasToVehicleKey = new Map<string, string>();
 
   for (const day of ledger.dayItems.slice(0, 14)) {
     for (const row of day.rows) {
-      const item = byVehicleMap.get(row.vehicleName) ?? {
-        vehicle: row.vehicleName,
+      const key = row.vehicleKey || row.primaryLabel || row.vehicleName;
+      const item = byVehicleMap.get(key) ?? {
+        vehicle: row.primaryLabel || row.vehicleName,
+        aliases: new Set<string>(),
         tons: 0,
         trips: 0,
+        fuelLiters: 0,
+        fuelLabel: formatFuelLiters(0),
+        fuelType: "",
+        latestFuelDate: "",
+        fuelReportCount: 0,
       };
       item.tons += row.kg / 1000;
       item.trips += 1;
-      byVehicleMap.set(row.vehicleName, item);
+      for (const alias of [row.vehicleName, row.plate, row.primaryLabel, row.vehicleKey]) {
+        const normalizedAlias = normalizeVehicleAlias(alias);
+        if (normalizedAlias) {
+          item.aliases.add(normalizedAlias);
+          aliasToVehicleKey.set(normalizedAlias, key);
+        }
+      }
+      byVehicleMap.set(key, item);
     }
+  }
+
+  for (const vehicle of vehicleBoard?.allVehicles ?? []) {
+    const aliases = [vehicle.name, vehicle.plate, `${vehicle.plate} ${vehicle.name}`]
+      .map(normalizeVehicleAlias)
+      .filter(Boolean);
+    const key =
+      aliases.map((alias) => aliasToVehicleKey.get(alias)).find(Boolean) ??
+      [...byVehicleMap.entries()].find(([, item]) =>
+        aliases.some((alias) => item.aliases.has(alias)),
+      )?.[0];
+    if (!key) {
+      continue;
+    }
+    const item = byVehicleMap.get(key);
+    if (!item) {
+      continue;
+    }
+    const reports = vehicle.fuelReports ?? [];
+    const fuelLiters = reports.reduce((sum, report) => sum + report.fuelLiters, 0);
+    const latestFuel = reports[0];
+    item.fuelLiters = fuelLiters;
+    item.fuelLabel = fuelLiters ? formatFuelLiters(fuelLiters) : formatFuelLiters(0);
+    item.fuelType = latestFuel?.fuelType ?? "";
+    item.latestFuelDate = latestFuel?.reportDate ?? "";
+    item.fuelReportCount = reports.length;
   }
 
   return {
     todayTons: ledger.today.kg / 1000,
-    byVehicle: [...byVehicleMap.values()].sort((a, b) => b.tons - a.tons).slice(0, 12),
+    todayFuelLabel: vehicleBoard?.todayFuelLabel ?? formatFuelLiters(0),
+    byVehicle: [...byVehicleMap.values()]
+      .map((item) => ({
+        vehicle: item.vehicle,
+        tons: item.tons,
+        trips: item.trips,
+        fuelLiters: item.fuelLiters,
+        fuelLabel: item.fuelLabel,
+        fuelType: item.fuelType,
+        latestFuelDate: item.latestFuelDate,
+        fuelReportCount: item.fuelReportCount,
+      }))
+      .sort((a, b) => b.tons - a.tons)
+      .slice(0, 12),
     week: ledger.dayItems.slice(0, 7).reverse().map((day) => ({
       label: day.dateLabel,
       tons: day.totalKg / 1000,

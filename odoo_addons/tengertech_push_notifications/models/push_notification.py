@@ -26,6 +26,10 @@ class TengertechPushSubscription(models.Model):
     auth = fields.Char(string="Auth түлхүүр", required=True)
     expiration_time = fields.Float(string="Дуусах хугацаа")
     user_agent = fields.Char(string="Төхөөрөмж")
+    browser = fields.Char(string="Browser")
+    platform = fields.Char(string="Platform")
+    last_error_message = fields.Char(string="Сүүлийн алдаа")
+    last_failed_at = fields.Datetime(string="Сүүлд алдаа гарсан")
     active = fields.Boolean(string="Идэвхтэй", default=True, index=True, tracking=True)
     last_seen_at = fields.Datetime(
         string="Сүүлд бүртгэгдсэн",
@@ -82,7 +86,7 @@ class TengertechPushSubscription(models.Model):
         }
 
     @api.model
-    def upsert_for_current_user(self, subscription, user_agent=None):
+    def upsert_for_current_user(self, subscription, user_agent=None, browser=None, platform=None):
         values = self._parse_subscription(subscription)
         values.update(
             {
@@ -90,6 +94,10 @@ class TengertechPushSubscription(models.Model):
                 "active": True,
                 "last_seen_at": fields.Datetime.now(),
                 "user_agent": user_agent or False,
+                "browser": browser or False,
+                "platform": platform or False,
+                "last_error_message": False,
+                "last_failed_at": False,
                 "company_id": self.env.company.id,
             }
         )
@@ -106,6 +114,37 @@ class TengertechPushSubscription(models.Model):
         records = self.search([("endpoint", "=", endpoint), ("user_id", "=", self.env.user.id)])
         records.write({"active": False})
         return True
+
+    @api.model
+    def deactivate_endpoint(self, endpoint, reason=None):
+        if not endpoint:
+            return False
+        values = {
+            "active": False,
+            "last_error_message": reason or False,
+            "last_failed_at": fields.Datetime.now(),
+        }
+        self.sudo().search([("endpoint", "=", endpoint)]).write(values)
+        return True
+
+    @api.model
+    def cleanup_expired(self):
+        now = fields.Datetime.now()
+        records = self.sudo().search(
+            [
+                ("active", "=", True),
+                ("expiration_time", ">", 0),
+                ("expiration_time", "<", now.timestamp() * 1000),
+            ]
+        )
+        records.write(
+            {
+                "active": False,
+                "last_error_message": "Push subscription expired.",
+                "last_failed_at": now,
+            }
+        )
+        return len(records)
 
     @api.model
     def active_payloads_for_users(self, user_ids=None):

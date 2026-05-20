@@ -193,9 +193,12 @@ self.addEventListener("notificationclick", (event) => {
 });
 
 self.addEventListener("message", (event) => {
-  if (event.data?.type !== "CLEAR_APP_BADGE") {
+  if (event.data?.type === "SKIP_WAITING") {
+    event.waitUntil(self.skipWaiting());
     return;
   }
 
-  event.waitUntil(clearUnreadBadgeCount());
+  if (event.data?.type === "CLEAR_APP_BADGE") {
+    event.waitUntil(clearUnreadBadgeCount());
+  }
 });

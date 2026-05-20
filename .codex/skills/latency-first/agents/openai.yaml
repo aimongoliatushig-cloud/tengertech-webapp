@@ -1,0 +1,3 @@
+display_name: Latency First
+short_description: Keep Odoo + Next.js PWA changes fast by default.
+default_prompt: Use this skill to minimize latency and perceived wait time while preserving permissions, correctness, and build health.
