@@ -23,6 +23,7 @@ import {
   findDepartmentGroupByUnit,
   getAvailableUnits,
   matchesDepartmentGroup,
+  normalizeOrganizationUnitName,
 } from "@/lib/department-groups";
 import {
   type DashboardSnapshot,
@@ -57,7 +58,7 @@ const GREEN_SERVICE_GROUP_NAME = "Ногоон байгууламж, цэвэр�
 const GREEN_SERVICE_UNITS = [
   {
     label: "Ногоон байгууламж",
-    note: "Мод, зүлэг, ногоон байгууламжийн арчилгаа болон тохижилтын ажил",
+    note: "Мод, зүлэг, ногоон байгууламжийн арчилгаа",
     aliases: ["Ногоон байгууламж", "ногоон", "мод", "зүлэг", "ургамал", "усалгаа", "цэцэрлэг"],
   },
   {
@@ -190,6 +191,16 @@ function matchesUnitScope(
 
   if (normalizedDepartment === normalizedUnit) {
     return true;
+  }
+
+  const unitGroup = findDepartmentGroupByUnit(unitName);
+  const normalizedDepartmentGroupName = normalizeOrganizationUnitName(departmentName);
+  if (
+    unitGroup &&
+    normalizedDepartmentGroupName &&
+    normalizedDepartmentGroupName !== unitGroup.name
+  ) {
+    return false;
   }
 
   const greenServiceUnit = GREEN_SERVICE_UNITS.find(

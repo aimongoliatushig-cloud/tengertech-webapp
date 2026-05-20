@@ -33,7 +33,7 @@ export const DEPARTMENT_GROUPS: DepartmentGroupDefinition[] = [
   },
   {
     name: "Тохижилтын хэлтэс",
-    units: [],
+    units: ["Тохижилт үйлчилгээ"],
     aliases: ["Тохижилт", "Тохижилт үйлчилгээ", "Тохижилтын хэлтэс"],
     icon: "🏙️",
     accent: "var(--tone-slate)",

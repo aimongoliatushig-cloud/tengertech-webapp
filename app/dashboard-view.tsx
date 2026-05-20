@@ -40,6 +40,7 @@ import shellStyles from "@/app/workspace.module.css";
 import { getSessionRoleLabel, hasCapability, isMasterRole, isWorkerOnly, type AppSession } from "@/lib/auth";
 import { buildDashboardModel, type StatusTone } from "@/lib/dashboard-model";
 import { filterByDepartment } from "@/lib/dashboard-scope";
+import { normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { type FieldAssignment } from "@/lib/field-ops";
 import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 import {
@@ -1318,15 +1319,24 @@ function buildExecutiveDepartmentMetrics({
     snapshot.departments.find((department) =>
       keywords.some((keyword) => department.name.includes(keyword) || department.label.includes(keyword)),
     );
-  const matchedTasks = (keywords: string[]) =>
-    tasks.filter((task) =>
-      keywords.some((keyword) =>
+  const matchedTasks = (keywords: string[], departmentName?: string) =>
+    tasks.filter((task) => {
+      const normalizedTaskDepartment = normalizeOrganizationUnitName(task.departmentName);
+      if (
+        departmentName &&
+        normalizedTaskDepartment &&
+        normalizedTaskDepartment !== departmentName
+      ) {
+        return false;
+      }
+
+      return keywords.some((keyword) =>
         task.departmentName.includes(keyword) ||
         task.operationTypeLabel.includes(keyword) ||
         task.projectName.includes(keyword) ||
         task.name.includes(keyword),
-      ),
-    );
+      );
+    });
   const departmentProgress = (keywords: string[], departmentTasks: DashboardSnapshot["taskDirectory"]) => {
     const matchedDepartment = snapshot.departments.find((department) =>
       keywords.some((keyword) => department.name.includes(keyword) || department.label.includes(keyword)),
@@ -1347,7 +1357,7 @@ function buildExecutiveDepartmentMetrics({
     imagePosition = "center",
     hrefDepartmentName?: string,
   ) => {
-    const departmentTasks = matchedTasks(keywords);
+    const departmentTasks = matchedTasks(keywords, hrefDepartmentName);
     const department = matchedDepartment(keywords);
     const total = departmentTasks.length || department?.openTasks || 0;
     const working = departmentTasks.filter((task) => task.statusKey === "working").length;
