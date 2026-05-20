@@ -421,6 +421,7 @@ async function ProjectsPageContent({
   if (selectedGroup) {
     activeFilter = "all";
   }
+  const isOverdueFilter = activeFilter === "overdue";
   const availableUnits = selectedGroup ? getAvailableUnits(selectedGroup) : [];
 
   const selectedUnit =
@@ -918,8 +919,8 @@ async function ProjectsPageContent({
     departmentScopeName: scopedDepartmentName,
   };
   const workspaceHeaderProps: ProjectsWorkspaceHeaderProps = {
-    title: masterMode ? "Хяналтын самбар" : "Ажлын самбар",
-    subtitle: selectedDepartmentName,
+    title: isOverdueFilter ? "Хугацаа хэтэрсэн ажил" : masterMode ? "Хяналтын самбар" : "Ажлын самбар",
+    subtitle: isOverdueFilter ? "Хугацаа өнгөрсөн даалгавартай ажлууд" : selectedDepartmentName,
     userName: session.name,
     roleLabel,
   };
@@ -945,7 +946,7 @@ async function ProjectsPageContent({
               />
             </Suspense>
 
-            {!masterMode && !showAutoBaseFleet ? (
+            {!masterMode && !showAutoBaseFleet && !isOverdueFilter ? (
               <div className={styles.buttonRow}>
                 {canCreateProject ? (
                   <Link href={newWorkHref} className={styles.primaryButton}>

@@ -1,650 +1,80 @@
-﻿.pageHeader,
-.sectionCard,
-.summaryCard,
-.projectSection,
-.reportCard,
-.emptyState {
+.reportRegistryBoard {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 16px;
   border: 1px solid var(--line-soft);
   border-radius: var(--ds-radius-card);
-  background: var(--surface-panel-soft);
-  backdrop-filter: blur(14px);
+  background: rgba(255, 255, 255, 0.82);
   box-shadow: var(--ds-shadow-panel);
 }
 
-.pageHeader,
-.sectionCard,
-.projectSection,
-.emptyState {
-  padding: 22px;
-}
-
-.pageHeader {
+.reportRegistryMetrics {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
-  gap: 18px;
-  margin-bottom: 18px;
-}
-
-.titleBlock,
-.summaryCard,
-.projectSection,
-.reportCard,
-.emptyState {
-  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 
-.kicker {
-  display: inline-flex;
-  align-items: center;
-  align-self: start;
-  justify-self: start;
-  width: fit-content;
-  min-height: 32px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: rgba(74, 154, 93, 0.12);
-  color: var(--brand-800);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.titleBlock h1,
-.projectHeader h2,
-.emptyState h2 {
-  margin: 0;
-  font-family: var(--font-body);
-  letter-spacing: 0;
-}
-
-.titleBlock h1 {
-  font-size: clamp(2rem, 4vw, 3.2rem);
-  line-height: 0.96;
-}
-
-.titleBlock p,
-.projectHeader p,
-.emptyState p {
-  color: var(--ink-700);
-  line-height: 1.7;
-}
-
-.pageAside,
-.dateMeta,
-.summaryStrip,
-.workflowSummaryGrid,
-.workflowColumns,
-.workflowList,
-.projectStack,
-.reportList,
-.projectMeta,
-.reportMeta,
-.departmentFilterGrid,
-.departmentFilterInner {
+.reportRegistryMetricCard {
   display: grid;
-  gap: 14px;
-}
-
-.pageAside {
-  align-content: start;
-}
-
-.dateMeta {
-  padding: 18px;
-  border-radius: var(--ds-radius-card);
-  background: rgba(74, 154, 93, 0.08);
-  border: 1px solid rgba(74, 154, 93, 0.16);
-}
-
-.exportActions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.exportButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 38px;
-  padding: 0 10px;
-  border: 1px solid rgba(74, 154, 93, 0.18);
-  border-radius: var(--ds-radius-control);
-  background: rgba(255, 255, 255, 0.82);
-  color: var(--brand-800);
-  font-size: 0.82rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.exportButton:hover {
-  border-color: rgba(74, 154, 93, 0.32);
-  background: rgba(74, 154, 93, 0.1);
-}
-
-.dateMeta span,
-.summaryCard span,
-.projectMeta span,
-.reportMeta span {
-  color: var(--ink-600);
-  font-size: 0.88rem;
-}
-
-.dateMeta strong,
-.summaryCard strong,
-.projectMeta strong {
-  font-family: var(--font-body);
-  line-height: 1;
-}
-
-.dateMeta strong {
-  font-size: 1.5rem;
-}
-
-.departmentFilterGrid {
-  margin-top: 6px;
-}
-
-.departmentFilterInner {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.departmentFilterCard {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  min-height: 72px;
-  padding: 16px 18px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--ds-radius-card);
-  background: rgba(74, 154, 93, 0.08);
-  color: var(--ink-900);
-  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
-}
-
-.departmentFilterCard:hover {
-  transform: translateY(-1px);
-  border-color: rgba(31, 95, 49, 0.2);
-  background: rgba(74, 154, 93, 0.14);
-}
-
-.departmentFilterCard strong {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 36px;
-  min-height: 36px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--brand-900);
-  font-size: 0.92rem;
-}
-
-.departmentFilterCardActive {
-  background: linear-gradient(135deg, rgba(31, 95, 49, 0.98), rgba(74, 154, 93, 0.92));
-  border-color: rgba(31, 95, 49, 0.28);
-  color: #f7fcf6;
-}
-
-.departmentFilterCardActive strong {
-  background: rgba(247, 252, 246, 0.16);
-  color: #f7fcf6;
-}
-
-.departmentFilterLabel {
-  display: inline-flex;
-  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 12px;
-  min-width: 0;
-}
-
-.departmentFilterLabel > span:last-child {
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.departmentFilterIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--ds-radius-card);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: inset 0 0 0 1px rgba(31, 95, 49, 0.08);
-  font-size: 1rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.departmentFilterCardActive .departmentFilterIcon {
-  background: rgba(247, 252, 246, 0.16);
-  box-shadow: inset 0 0 0 1px rgba(247, 252, 246, 0.14);
-}
-
-.summaryStrip {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 18px 0;
-}
-
-.workflowHeader {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(240px, 0.8fr);
-  gap: 18px;
-  align-items: start;
-}
-
-.workflowHeader h2,
-.workflowColumnHeader h3 {
-  margin: 8px 0 0;
-  font-family: var(--font-body);
-  letter-spacing: 0;
-}
-
-.workflowHeader p {
-  margin: 0;
-  color: var(--ink-700);
-  line-height: 1.7;
-}
-
-.workflowMetaCard,
-.workflowSummaryCard,
-.workflowColumn,
-.workflowItem,
-.workflowEmpty {
-  border: 1px solid var(--line-soft);
-  border-radius: var(--ds-radius-card);
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.workflowMetaCard,
-.workflowSummaryCard,
-.workflowColumn,
-.workflowItem,
-.workflowEmpty {
-  display: grid;
-  gap: 12px;
-}
-
-.workflowMetaCard,
-.workflowSummaryCard,
-.workflowColumn,
-.workflowEmpty {
-  padding: 18px;
-}
-
-.workflowMetaCard {
-  background: rgba(74, 154, 93, 0.08);
-}
-
-.workflowMetaCard span,
-.workflowSummaryCard span,
-.workflowItemMeta span {
-  color: var(--ink-600);
-  font-size: 0.88rem;
-}
-
-.workflowMetaCard strong,
-.workflowSummaryCard strong,
-.workflowColumnHeader strong {
-  font-family: var(--font-body);
-  line-height: 1;
-}
-
-.workflowMetaCard strong {
-  font-size: 2.2rem;
-}
-
-.workflowSummaryGrid,
-.workflowColumns {
-  margin-top: 18px;
-}
-
-.workflowSummaryGrid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.workflowSummaryCard strong {
-  font-size: 1.75rem;
-}
-
-.workflowColumns {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.workflowColumn {
-  align-content: start;
-}
-
-.workflowColumnHeader,
-.workflowItemTop,
-.workflowItemMeta {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.workflowColumnHeader strong {
-  font-size: 1.8rem;
-}
-
-.workflowColumnHeader h3 {
-  font-size: 1.3rem;
-  line-height: 1.05;
-}
-
-.workflowItem {
-  padding: 14px 16px;
-}
-
-.workflowItemTop strong {
-  color: var(--ink-900);
-}
-
-.workflowItemTop p {
-  margin: 6px 0 0;
-  color: var(--ink-600);
-  font-size: 0.92rem;
-}
-
-.workflowItemBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 62px;
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: rgba(74, 154, 93, 0.12);
-  color: var(--brand-800);
-  font-size: 0.86rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.workflowTrack {
-  height: 10px;
-  border-radius: 999px;
-  background: rgba(74, 154, 93, 0.1);
-  overflow: hidden;
-}
-
-.workflowTrack span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, rgba(31, 95, 49, 0.94), rgba(74, 154, 93, 0.88));
-}
-
-.workflowEmpty {
-  min-height: 160px;
-  place-items: center;
-  text-align: center;
-  color: var(--ink-600);
-  line-height: 1.7;
-}
-
-.summaryCard {
-  padding: 18px;
-}
-
-.summaryCard strong {
-  font-size: 1.7rem;
-}
-
-.reportCommandHeader {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.55fr);
-  gap: 18px;
-  align-items: start;
-  margin-bottom: 18px;
-}
-
-.reportCommandHeader h2 {
-  margin: 8px 0 6px;
-  font-family: var(--font-body);
-  letter-spacing: 0;
-}
-
-.reportCommandHeader p {
-  margin: 0;
-  color: var(--ink-700);
-  line-height: 1.6;
-}
-
-.reportCommandMeta {
-  display: grid;
-  gap: 6px;
-  min-height: 96px;
+  min-height: 92px;
   padding: 16px;
-  border: 1px solid rgba(31, 95, 49, 0.12);
+  border: 1px solid rgba(31, 95, 49, 0.1);
   border-radius: 8px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 252, 248, 0.96));
-  text-align: right;
+  background: rgba(255, 255, 255, 0.94);
 }
 
-.reportCommandMeta span,
-.reportCommandMeta small {
-  color: var(--ink-600);
-}
-
-.reportCommandMeta strong {
-  color: var(--brand-900);
-  font-size: 2rem;
-  line-height: 1;
-}
-
-.reportDepartmentGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 20px;
-}
-
-.reportDepartmentCard {
-  display: grid;
-  gap: 14px;
-  min-height: 238px;
-  padding: 18px;
-  border: 1px solid rgba(31, 95, 49, 0.12);
-  border-radius: 8px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 252, 249, 0.96)),
-    radial-gradient(circle at 100% 0%, rgba(74, 154, 93, 0.12), transparent 34%);
-  color: var(--ink-900);
-  text-decoration: none;
-  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
-}
-
-.reportDepartmentCard:nth-child(2) {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 252, 250, 0.96)),
-    radial-gradient(circle at 100% 0%, rgba(27, 132, 117, 0.12), transparent 34%);
-}
-
-.reportDepartmentCard:nth-child(3) {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 250, 247, 0.96)),
-    radial-gradient(circle at 100% 0%, rgba(170, 132, 54, 0.12), transparent 34%);
-}
-
-.reportDepartmentCard:hover {
-  transform: translateY(-2px);
-  border-color: rgba(31, 95, 49, 0.26);
-  box-shadow: 0 18px 42px rgba(31, 57, 42, 0.12);
-}
-
-.reportDepartmentCardActive {
-  border-color: rgba(31, 95, 49, 0.42);
-  box-shadow: inset 0 0 0 1px rgba(31, 95, 49, 0.14), 0 18px 42px rgba(31, 57, 42, 0.12);
-}
-
-.reportDepartmentTop,
-.reportDepartmentStats,
-.reportDepartmentFooter {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.reportDepartmentTop {
-  justify-content: flex-start;
-}
-
-.reportDepartmentIcon {
-  display: inline-grid;
-  place-items: center;
-  flex: 0 0 auto;
+.reportRegistryMetricIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 42px;
   height: 42px;
   border-radius: 8px;
   background: rgba(74, 154, 93, 0.12);
-  color: var(--brand-900);
-  font-size: 0.82rem;
-  font-weight: 900;
+  color: var(--brand-800);
 }
 
-.reportDepartmentTop small,
-.reportDepartmentNote,
-.reportDepartmentStats small,
-.reportDepartmentFooter span {
+.reportRegistryMetricIcon svg,
+.reportRegistrySearch svg,
+.reportRegistryFilterButton svg,
+.reportRegistryRefreshButton svg,
+.reportRegistryDetailActions svg {
+  width: 18px;
+  height: 18px;
+}
+
+.reportRegistryMetricCard span:not(.reportRegistryMetricIcon),
+.reportRegistryMetricCard small,
+.reportRegistryTableHeader span,
+.reportRegistryTableHeader small,
+.reportRegistrySidebarHeader span {
   color: var(--ink-600);
 }
 
-.reportDepartmentTop strong {
+.reportRegistryMetricCard strong {
   display: block;
-  margin-top: 3px;
-  line-height: 1.22;
-}
-
-.reportDepartmentNote {
-  min-height: 48px;
-  line-height: 1.55;
-}
-
-.reportDepartmentStats {
-  padding: 12px;
-  border: 1px solid rgba(31, 95, 49, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.78);
-}
-
-.reportDepartmentStats span {
-  display: grid;
-  gap: 3px;
-}
-
-.reportDepartmentStats strong {
+  margin-top: 4px;
   color: var(--ink-900);
-  font-size: 1.2rem;
+  font-size: 1.65rem;
   line-height: 1;
 }
 
-.reportDepartmentFooter {
-  align-items: center;
-  padding-top: 2px;
-}
-
-.reportDepartmentFooter strong {
-  color: var(--brand-900);
-}
-
-.reportHub {
+.reportRegistryToolbar {
   display: grid;
-  gap: 18px;
-  margin-bottom: 18px;
-  padding: 22px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--ds-radius-card);
-  background: var(--surface-panel-soft);
-  box-shadow: var(--ds-shadow-panel);
-}
-
-.reportHubHeader {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.75fr);
-  gap: 18px;
-  align-items: start;
-}
-
-.reportHubHeader h2 {
-  margin: 8px 0;
-  font-family: var(--font-body);
-  letter-spacing: 0;
-}
-
-.reportHubHeader p {
-  margin: 0;
-  color: var(--ink-700);
-  line-height: 1.7;
-}
-
-.periodRail,
-.reportTypeGrid,
-.procurementReportGrid,
-.vehicleAggregateGrid {
-  display: grid;
-  gap: 12px;
-}
-
-.periodRail {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.periodButton,
-.reportTypeCard,
-.procurementMetricCard,
-.vehicleAggregateCard,
-.procurementListItem {
-  border: 1px solid rgba(74, 154, 93, 0.16);
-  border-radius: var(--ds-radius-card);
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.periodButton,
-.reportTypeCard {
-  display: grid;
-  gap: 6px;
-  min-height: 82px;
-  padding: 16px;
-  color: var(--ink-900);
-  text-decoration: none;
-}
-
-.periodButton span,
-.reportTypeCard span,
-.reportTypeCard small,
-.procurementMetricCard span,
-.procurementMetricCard small,
-.vehicleAggregateCard span,
-.vehicleAggregateCard small,
-.procurementListItem span,
-.weightToolbarText span {
-  color: var(--ink-600);
-}
-
-.periodButtonActive,
-.reportTypeCardActive {
-  border-color: rgba(31, 95, 49, 0.34);
-  background: rgba(74, 154, 93, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(74, 154, 93, 0.14);
-}
-
-.rangeForm {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(160px, 1fr)) auto;
+  grid-template-columns: minmax(260px, 1fr) minmax(180px, 0.35fr) auto auto;
   gap: 10px;
   align-items: end;
+  padding: 12px;
+  border: 1px solid rgba(31, 95, 49, 0.08);
+  border-radius: 8px;
+  background: rgba(247, 252, 248, 0.82);
 }
 
-.rangeForm label {
+.reportRegistrySearch,
+.reportRegistrySelect {
   display: grid;
   gap: 6px;
   color: var(--ink-700);
@@ -652,1521 +82,375 @@
   font-weight: 700;
 }
 
-.rangeForm input,
-.rangeForm button {
-  min-height: 42px;
-  border: 1px solid rgba(74, 154, 93, 0.18);
-  border-radius: var(--ds-radius-control);
-  background: rgba(255, 255, 255, 0.92);
+.reportRegistrySearch {
+  position: relative;
+}
+
+.reportRegistrySearch svg {
+  position: absolute;
+  left: 14px;
+  bottom: 12px;
+  color: var(--ink-600);
+}
+
+.reportRegistrySearch input,
+.reportRegistrySelect select {
+  min-height: 44px;
+  border: 1px solid rgba(31, 95, 49, 0.13);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
   color: var(--ink-900);
   font: inherit;
 }
 
-.rangeForm input {
+.reportRegistrySearch input {
+  padding: 0 14px 0 42px;
+}
+
+.reportRegistrySelect select {
   padding: 0 12px;
 }
 
-.rangeForm button {
-  padding: 0 18px;
-  background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
-  color: #f7fcf6;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.reportTypeGrid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.procurementReportGrid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.reportTypeCard {
-  min-height: 110px;
-}
-
-.reportTypeCard strong,
-.procurementMetricCard strong,
-.vehicleAggregateCard strong {
-  font-size: 1.45rem;
-  line-height: 1.1;
-}
-
-.procurementMetricCard,
-.vehicleAggregateCard {
-  display: grid;
-  gap: 8px;
-  padding: 16px;
-}
-
-.vehicleAggregateGrid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-top: 18px;
-}
-
-.vehicleAggregateTop,
-.vehicleAggregateMeta,
-.driverLine {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.vehicleAggregateTop {
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(31, 95, 49, 0.08);
-}
-
-.vehicleAggregateTop > div,
-.driverLine {
-  display: grid;
-  gap: 4px;
-}
-
-.vehicleAggregateWeight {
-  color: var(--brand-900);
-  text-align: right;
-  white-space: nowrap;
-}
-
-.vehicleAggregateMeta {
-  flex-wrap: wrap;
-}
-
-.vehicleAggregateMeta span,
-.driverLine span,
-.noProofText,
-.weightVehicleMeta small,
-.weightVehicleProofs span {
-  color: var(--ink-600);
-  font-size: 0.82rem;
-}
-
-.driverLine strong {
-  font-size: 0.96rem;
-}
-
-.proofThumbGrid,
-.weightVehicleProofs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.proofThumbLink {
-  display: block;
-  width: 74px;
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  border-radius: 6px;
-  border: 1px solid rgba(31, 95, 49, 0.12);
-  background: rgba(31, 95, 49, 0.06);
-}
-
-.proofThumbLink img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.procurementList {
-  display: grid;
-  gap: 10px;
-  margin-top: 18px;
-}
-
-.procurementListItem {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px 16px;
-}
-
-.procurementListItem div {
-  display: grid;
-  gap: 4px;
-}
-
-.procurementListItem div:last-child {
-  justify-items: end;
-  text-align: right;
-}
-
-.weightSectionHeader {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
-  gap: 18px;
-  align-items: start;
-}
-
-.weightSectionHeader h2,
-.weightDayHeader h3 {
-  margin: 8px 0 0;
-  font-family: var(--font-body);
-  letter-spacing: 0;
-}
-
-.weightSectionHeader p {
-  margin: 0;
-  color: var(--ink-700);
-  line-height: 1.7;
-}
-
-.weightMetaCard,
-.weightSummaryCard,
-.weightDayCard,
-.weightVehicleRow,
-.weightEmpty,
-.weightError {
-  border: 1px solid var(--line-soft);
-  border-radius: var(--ds-radius-card);
-  background: rgba(255, 255, 255, 0.92);
-}
-
-.weightMetaCard,
-.weightSummaryCard,
-.weightDayCard,
-.weightVehicleRow,
-.weightEmpty,
-.weightError {
-  display: grid;
-  gap: 12px;
-}
-
-.weightMetaCard,
-.weightSummaryCard,
-.weightDayCard,
-.weightEmpty,
-.weightError {
-  padding: 18px;
-}
-
-.weightMetaCard {
-  background: rgba(74, 154, 93, 0.08);
-}
-
-.garbageReportShell {
-  display: grid;
-  gap: 16px;
-}
-
-.reportPanel {
-  display: grid;
-  gap: 18px;
-  padding: 18px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--ds-radius-card);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: var(--ds-shadow-panel);
-}
-
-.autoBasePanel {
-  border-color: rgba(31, 95, 49, 0.12);
-}
-
-.garbageReportShell .autoBasePanel {
-  display: none;
-}
-
-.transportPanel {
-  border-color: rgba(74, 154, 93, 0.18);
-}
-
-.reportPanelHeader,
-.dailyWeightHeader {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(31, 95, 49, 0.08);
-}
-
-.reportPanelTitle {
-  display: flex;
-  align-items: start;
-  gap: 14px;
-}
-
-.reportPanelIcon {
-  display: inline-grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 8px;
-  background: rgba(74, 154, 93, 0.12);
-  color: var(--brand-900);
-  font-size: 0.82rem;
-  font-weight: 900;
-}
-
-.reportPanelTitle h2,
-.dailyWeightHeader h3 {
-  margin: 0;
-  font-family: var(--font-body);
-  letter-spacing: 0;
-}
-
-.reportPanelTitle p {
-  margin: 4px 0 0;
-  color: var(--ink-700);
-  line-height: 1.55;
-}
-
-.reportPanelActions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.reportPanelBadge {
-  display: grid;
-  gap: 5px;
-  min-width: 220px;
-  padding: 12px 14px;
-  border: 1px solid rgba(74, 154, 93, 0.14);
-  border-radius: var(--ds-radius-control);
-  background: rgba(74, 154, 93, 0.07);
-  text-align: right;
-}
-
-.reportPanelBadge span,
-.formMetric span,
-.transportInfoCard dt {
-  color: var(--ink-600);
-  font-size: 0.82rem;
-}
-
-.reportPanelBadge strong,
-.formMetric strong,
-.transportInfoCard dd {
-  color: var(--ink-900);
-}
-
-.transportControlBar {
-  display: grid;
-  grid-template-columns: minmax(240px, 1.35fr) minmax(260px, 1fr) minmax(180px, 0.7fr) auto;
-  align-items: end;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid rgba(31, 95, 49, 0.1);
-  border-radius: 8px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 249, 0.98));
-}
-
-.transportControlField,
-.transportTypeControl {
-  display: grid;
-  gap: 7px;
-}
-
-.transportControlField span,
-.transportTypeControl > span {
-  color: var(--ink-600);
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-.transportControlField select,
-.transportControlField input {
-  width: 100%;
-  min-height: 40px;
-  border: 1px solid rgba(31, 95, 49, 0.14);
-  border-radius: 6px;
-  background: #fff;
-  color: var(--ink-900);
-  font: inherit;
-  font-size: 0.9rem;
-}
-
-.transportControlField select {
-  padding: 0 12px;
-}
-
-.transportControlField input {
-  padding: 0 10px;
-}
-
-.transportTypeButtons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.transportTypeButton,
-.transportDateActions button,
-.transportDownloadButton {
+.reportRegistryFilterButton,
+.reportRegistryRefreshButton {
   display: inline-flex;
-  min-height: 40px;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-height: 44px;
   padding: 0 16px;
   border: 1px solid rgba(31, 95, 49, 0.16);
-  border-radius: 6px;
-  background: #fff;
-  color: var(--brand-900);
-  font: inherit;
-  font-size: 0.86rem;
-  font-weight: 900;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.transportTypeButtonActive,
-.transportDateActions button {
-  border-color: rgba(31, 95, 49, 0.65);
-  background: var(--brand-800);
-  color: #fff;
-}
-
-.transportDateActions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.transportDateActions button {
-  cursor: pointer;
-}
-
-.transportDownloadButton {
-  background: rgba(74, 154, 93, 0.08);
-}
-
-.transportKpiGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.transportKpiCard {
-  display: grid;
-  gap: 6px;
-  min-height: 76px;
-  padding: 16px 18px;
-  border: 1px solid rgba(31, 95, 49, 0.1);
   border-radius: 8px;
-  background: #fff;
-}
-
-.transportKpiCard span {
-  color: var(--ink-600);
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
-.transportKpiCard strong {
-  color: var(--brand-900);
-  font-size: 1.35rem;
-  line-height: 1;
-}
-
-.transportKpiCard small {
-  color: var(--ink-600);
-}
-
-.autoBaseFormGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.formMetric {
-  display: grid;
-  gap: 8px;
-  min-height: 78px;
-  padding: 14px;
-  border: 1px solid rgba(31, 95, 49, 0.1);
-  border-radius: 8px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(247, 252, 248, 0.95));
-}
-
-.formMetric strong {
-  font-size: 1.04rem;
-  line-height: 1.2;
-}
-
-.transportReportGrid {
-  display: grid;
-  grid-template-columns: minmax(220px, 0.8fr) minmax(320px, 1.25fr) minmax(260px, 1fr);
-  gap: 12px;
-}
-
-.transportInfoCard,
-.transportMachineCard,
-.transportProofCard,
-.dailyWeightPanel {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid rgba(31, 95, 49, 0.1);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.92);
-}
-
-.transportInfoCard dl {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-}
-
-.transportInfoCard dl div {
-  display: grid;
-  gap: 4px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(31, 95, 49, 0.08);
-}
-
-.transportInfoCard dl div:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
-}
-
-.transportInfoCard dt,
-.transportInfoCard dd {
-  margin: 0;
-}
-
-.transportInfoCard dd {
-  font-weight: 800;
-}
-
-.transportFieldGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.transportField {
-  display: grid;
-  gap: 7px;
-}
-
-.transportField span {
-  color: var(--ink-600);
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.transportField strong {
-  min-height: 38px;
-  padding: 10px 12px;
-  border: 1px solid rgba(31, 95, 49, 0.12);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.95);
-  color: var(--ink-900);
-  font-size: 0.9rem;
-  line-height: 1.25;
-}
-
-.machineTable,
-.dailyWeightTable {
-  display: grid;
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid rgba(31, 95, 49, 0.08);
-  border-radius: 8px;
-}
-
-.machineTableHead,
-.machineTableRow,
-.dailyWeightTableHead,
-.dailyWeightTableRow {
-  display: grid;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(31, 95, 49, 0.08);
-}
-
-.machineTableHead,
-.dailyWeightTableHead {
-  background: rgba(31, 95, 49, 0.04);
-  color: var(--ink-600);
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-.machineTableRow,
-.dailyWeightTableRow {
-  color: var(--ink-800);
-  font-size: 0.86rem;
-}
-
-.machineTableRow:last-child,
-.dailyWeightTableRow:last-child {
-  border-bottom: 0;
-}
-
-.machineTableHead,
-.machineTableRow {
-  grid-template-columns: 32px minmax(90px, 1fr) minmax(120px, 1.2fr) minmax(84px, 0.8fr);
-}
-
-.dailyWeightTableHead,
-.dailyWeightTableRow {
-  grid-template-columns: 42px minmax(130px, 0.75fr) minmax(260px, 1.35fr) minmax(140px, 0.85fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr);
-}
-
-.tripPhotoLink,
-.tripPhotoPlaceholder {
-  display: grid;
-  min-height: 64px;
-  overflow: hidden;
-  place-items: center;
-  border: 1px solid rgba(31, 95, 49, 0.12);
-  border-radius: 7px;
-  background: rgba(31, 95, 49, 0.04);
-}
-
-.tripPhotoLink img {
-  width: 100%;
-  height: 72px;
-  object-fit: cover;
-  display: block;
-}
-
-.tripPhotoPlaceholder {
-  color: var(--ink-500);
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-.transportTotalGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.transportTotalGrid div {
-  display: grid;
-  gap: 6px;
-  padding: 12px;
-  border: 1px solid rgba(31, 95, 49, 0.1);
-  border-radius: 8px;
-  background: rgba(247, 252, 248, 0.92);
-}
-
-.transportTotalGrid span {
-  color: var(--ink-600);
-  font-size: 0.8rem;
-}
-
-.transportTotalGrid strong {
-  color: var(--brand-900);
-  font-size: 1.25rem;
-}
-
-.transportProofGroups {
-  display: grid;
-  gap: 14px;
-}
-
-.transportProofGroups > div {
-  display: grid;
-  gap: 8px;
-}
-
-.transportProofGroups strong {
-  color: var(--ink-800);
-  font-size: 0.84rem;
-}
-
-.transportProofGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.transportProofLink {
-  display: block;
-  overflow: hidden;
-  aspect-ratio: 4 / 3;
-  border: 1px solid rgba(31, 95, 49, 0.12);
-  border-radius: 8px;
-  background: rgba(31, 95, 49, 0.05);
-}
-
-.transportProofLink img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.proofEmptyBox {
-  display: grid;
-  min-height: 150px;
-  place-items: center;
-  border: 1px dashed rgba(31, 95, 49, 0.18);
-  border-radius: 8px;
-  background: rgba(31, 95, 49, 0.03);
-  color: var(--ink-600);
-  text-align: center;
-}
-
-.dailyWeightPanel {
-  margin-top: 2px;
-  overflow-x: auto;
-}
-
-.dailyWeightHeader strong {
-  color: var(--brand-900);
-  font-size: 1.45rem;
-  white-space: nowrap;
-}
-
-.addMeasureButton {
-  min-height: 34px;
-  padding: 0 14px;
-  border: 1px solid rgba(31, 95, 49, 0.22);
-  border-radius: 6px;
-  background: rgba(74, 154, 93, 0.08);
-  color: var(--brand-900);
-  font: inherit;
-  font-size: 0.84rem;
-  font-weight: 800;
-}
-
-.weightReportToolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-top: 18px;
-}
-
-.weightReportToolbar .exportActions {
-  min-width: min(360px, 100%);
-  margin-top: 0;
-}
-
-.weightToolbarText {
-  display: grid;
-  gap: 4px;
-}
-
-.weightToolbarText strong {
-  font-size: 1rem;
-}
-
-.weightReportForm {
-  display: grid;
-  grid-template-columns: minmax(130px, 1fr) minmax(130px, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-}
-
-.weightReportForm input,
-.weightReportForm button {
-  min-height: 38px;
-  border: 1px solid rgba(74, 154, 93, 0.18);
-  border-radius: var(--ds-radius-control);
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--ink-900);
-  font: inherit;
-  font-size: 0.86rem;
-}
-
-.weightReportForm input {
-  padding: 0 10px;
-}
-
-.weightReportForm button {
-  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.96);
   color: var(--brand-800);
-  font-weight: 700;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.reportRegistryFilterButton {
+  background: rgba(74, 154, 93, 0.12);
   cursor: pointer;
 }
 
-.weightReportForm button:hover {
-  border-color: rgba(74, 154, 93, 0.32);
-  background: rgba(74, 154, 93, 0.1);
-}
-
-.weightMetaCard span,
-.weightSummaryCard span,
-.weightVehicleMeta span,
-.weightVehicleValue span {
-  color: var(--ink-600);
-  font-size: 0.88rem;
-}
-
-.weightMetaCard strong,
-.weightSummaryCard strong,
-.weightDayHeader strong,
-.weightVehicleValue strong {
-  font-family: var(--font-body);
-  line-height: 1;
-}
-
-.weightMetaCard strong {
-  font-size: 1.4rem;
-}
-
-.weightMetaCard small,
-.weightSummaryCard small {
-  color: var(--ink-600);
-}
-
-.weightError {
-  margin-top: 18px;
-  background: rgba(245, 135, 31, 0.08);
-  border-color: rgba(245, 135, 31, 0.2);
-  color: var(--ink-800);
-}
-
-.weightSummaryGrid,
-.weightDayStack {
+.reportRegistryContent {
   display: grid;
-  gap: 16px;
-  margin-top: 18px;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 14px;
 }
 
-.weightSummaryGrid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.weightSummaryCard strong {
-  font-size: 1.75rem;
-}
-
-.weightDayCard {
+.reportRegistrySidebar,
+.reportRegistryTableCard {
+  border: 1px solid rgba(31, 95, 49, 0.1);
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.94);
 }
 
-.weightDayHeader,
-.weightVehicleRow {
+.reportRegistrySidebar {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 14px;
+}
+
+.reportRegistrySidebarHeader,
+.reportRegistryDepartmentLink,
+.reportRegistryTableHeader {
   display: flex;
-  align-items: start;
+  align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 10px;
 }
 
-.weightDayHeader {
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(31, 95, 49, 0.08);
+.reportRegistryDepartmentLink {
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--ink-800);
+  text-decoration: none;
 }
 
-.weightDayHeader strong {
-  font-size: 1.5rem;
+.reportRegistryDepartmentLink:hover,
+.reportRegistryDepartmentLinkActive {
+  background: rgba(74, 154, 93, 0.12);
   color: var(--brand-900);
 }
 
-.weightVehicleList {
-  display: grid;
-  gap: 12px;
+.reportRegistryDepartmentLink span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
-.weightVehicleRow {
+.reportRegistryDepartmentLink strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  min-height: 28px;
+  border-radius: 999px;
+  background: rgba(31, 95, 49, 0.08);
+  color: var(--brand-900);
+  font-size: 0.82rem;
+}
+
+.reportRegistryTableCard {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.reportRegistryTableHeader {
   padding: 14px 16px;
-  border-radius: var(--ds-radius-card);
-  background: rgba(74, 154, 93, 0.05);
-}
-
-.weightVehicleMeta {
-  display: grid;
-  gap: 4px;
-  min-width: 180px;
-}
-
-.weightVehicleMeta strong {
-  color: var(--ink-900);
-  font-size: 1rem;
-}
-
-.weightVehicleValue {
-  display: grid;
-  gap: 4px;
-  justify-items: end;
-  text-align: right;
-  min-width: 120px;
-}
-
-.weightVehicleValue strong {
-  font-size: 1.35rem;
-  color: var(--brand-900);
-}
-
-.weightEmpty {
-  margin-top: 18px;
-  min-height: 160px;
-  place-items: center;
-  text-align: center;
-  color: var(--ink-600);
-  line-height: 1.7;
-}
-
-.projectStack {
-  margin-top: 18px;
-}
-
-.projectHeader {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 18px;
-  padding-bottom: 18px;
   border-bottom: 1px solid rgba(31, 95, 49, 0.08);
 }
 
-.projectHeader h2 {
-  margin-top: 8px;
-  font-size: clamp(1.45rem, 3vw, 2rem);
-  line-height: 1;
+.reportRegistryTableHeader div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
-.projectHeader p {
-  margin: 0;
-}
-
-.projectMeta {
-  grid-template-columns: repeat(2, minmax(120px, 1fr));
-  min-width: 250px;
-}
-
-.projectMeta div {
-  padding: 16px;
-  border-radius: var(--ds-radius-card);
-  background: rgba(74, 154, 93, 0.08);
-  border: 1px solid rgba(74, 154, 93, 0.12);
-}
-
-.projectMeta strong {
+.reportRegistryTableHeader strong {
+  color: var(--ink-900);
   font-size: 1.15rem;
 }
 
-.reportList {
-  margin-top: 18px;
-}
-
-.reportCard {
-  padding: 18px;
-  border-radius: var(--ds-radius-card);
-  background: rgba(255, 255, 255, 0.94);
-}
-
-.reportTop {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.reportTop strong {
-  color: var(--ink-900);
-}
-
-.reportTop p {
-  margin: 6px 0 0;
-  color: var(--ink-600);
-}
-
-.reportStamp {
+.reportRegistryTypeBadge,
+.reportRegistryStatusBadge {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-height: 34px;
-  padding: 0 12px;
+  min-height: 28px;
+  padding: 0 10px;
   border-radius: 999px;
-  background: rgba(74, 154, 93, 0.12);
-  color: var(--brand-800);
-  font-size: 0.86rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.reportMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.summaryBox {
-  padding: 14px 16px;
-  border-radius: var(--ds-radius-card);
-  background: rgba(74, 154, 93, 0.05);
-  border: 1px solid rgba(74, 154, 93, 0.1);
-  color: var(--ink-800);
-  line-height: 1.65;
-}
-
-.reportActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.reportActions form {
-  display: contents;
-}
-
-.reportActionLink,
-.reportDoneButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 42px;
-  padding: 0 14px;
-  border-radius: var(--ds-radius-control);
-  font: inherit;
-  font-size: 0.86rem;
+  font-size: 0.78rem;
   font-weight: 800;
-  text-decoration: none;
-  cursor: pointer;
 }
 
-.reportActionLink {
-  border: 1px solid rgba(74, 154, 93, 0.18);
-  background: rgba(255, 255, 255, 0.92);
+.reportRegistryTypeBadge {
+  background: rgba(31, 95, 49, 0.08);
+  color: var(--ink-700);
+}
+
+.reportRegistryStatusDone {
+  background: rgba(74, 154, 93, 0.14);
   color: var(--brand-900);
 }
 
-.reportDoneButton {
-  border: 0;
-  background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
-  color: #f7fcf6;
+.reportRegistryStatusProblem {
+  background: rgba(222, 56, 56, 0.12);
+  color: #b42318;
 }
 
-.emptyState {
-  margin-top: 18px;
+.reportRegistryStatusReview {
+  background: rgba(39, 123, 217, 0.12);
+  color: #145da0;
+}
+
+.reportRegistryStatusProgress {
+  background: rgba(223, 137, 37, 0.12);
+  color: #a15c07;
+}
+
+.reportRegistryEmpty {
+  padding: 28px;
+  color: var(--ink-600);
   text-align: center;
 }
 
-@media (max-width: 1080px) {
-  .pageHeader,
-  .summaryStrip,
-  .reportHubHeader,
-  .periodRail,
-  .reportTypeGrid,
-  .procurementReportGrid,
-  .vehicleAggregateGrid,
-  .autoBaseFormGrid,
-  .transportReportGrid,
-  .transportControlBar,
-  .transportKpiGrid,
-  .rangeForm,
-  .departmentFilterInner,
-  .reportCommandHeader,
-  .reportDepartmentGrid,
-  .weightSectionHeader,
-  .weightSummaryGrid,
-  .workflowHeader,
-  .workflowSummaryGrid,
-  .workflowColumns {
-    grid-template-columns: 1fr;
-  }
-
-  .projectHeader,
-  .reportTop,
-  .reportPanelHeader,
-  .dailyWeightHeader,
-  .weightReportToolbar,
-  .weightDayHeader,
-  .weightVehicleRow,
-  .procurementListItem,
-  .workflowColumnHeader,
-  .workflowItemTop,
-  .workflowItemMeta {
-    flex-direction: column;
-  }
-
-  .projectMeta {
-    min-width: 0;
-  }
-
-  .reportPanelBadge {
-    min-width: 0;
-    text-align: left;
-  }
-
-  .reportPanelActions {
-    justify-content: flex-start;
-  }
+.reportRegistryAccordion {
+  display: grid;
+  overflow-x: auto;
 }
 
-@media (max-width: 720px) {
-  .pageHeader,
-  .sectionCard,
-  .projectSection,
-  .emptyState {
-    padding: 18px;
-    border-radius: var(--ds-radius-card);
-  }
-
-  .summaryStrip {
-    margin: 14px 0;
-  }
-
-  .projectMeta {
-    grid-template-columns: 1fr;
-  }
-
-  .reportStamp {
-    align-self: flex-start;
-  }
-
-  .workflowMetaCard,
-  .workflowSummaryCard,
-  .workflowColumn,
-  .weightMetaCard,
-  .weightSummaryCard,
-  .weightDayCard,
-  .weightEmpty,
-  .workflowEmpty {
-    padding: 16px;
-  }
-
-  .departmentFilterCard {
-    min-height: 64px;
-    padding: 14px 16px;
-  }
-
-  .weightVehicleValue {
-    justify-items: start;
-    text-align: left;
-  }
-
-  .weightReportForm {
-    grid-template-columns: 1fr;
-    width: 100%;
-  }
-
-  .transportMachineCard {
-    overflow-x: auto;
-  }
-
-  .machineTable {
-    min-width: 560px;
-  }
-
-  .dailyWeightTable {
-    min-width: 980px;
-  }
-
-  .transportProofGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .transportFieldGrid,
-  .transportTotalGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .reportHub {
-    padding: 18px;
-  }
-
-  .procurementListItem div:last-child {
-    justify-items: start;
-    text-align: left;
-  }
+.reportRegistryAccordionHeader,
+.reportRegistryAccordionSummary {
+  display: grid;
+  grid-template-columns: 48px minmax(260px, 1.55fr) minmax(130px, 0.65fr) minmax(120px, 0.55fr) minmax(120px, 0.55fr) minmax(110px, 0.45fr);
+  gap: 14px;
+  align-items: center;
 }
 
+.reportRegistryAccordionHeader {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(31, 95, 49, 0.08);
+  background: rgba(247, 252, 248, 0.9);
+  color: var(--ink-700);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
 
-/* Unified dashboard design-system migration */
-.shell,
-.workspaceShell,
-.chatShell,
-.errorShell,
-.page,
-.reportPage,
-.reportPreviewShell {
-  background: var(--ds-page-bg);
+.reportRegistryAccordionItem {
+  border-bottom: 1px solid rgba(31, 95, 49, 0.08);
+}
+
+.reportRegistryAccordionItem:last-child {
+  border-bottom: 0;
+}
+
+.reportRegistryAccordionSummary {
+  min-width: 920px;
+  padding: 16px 14px;
   color: var(--ink-900);
+  cursor: pointer;
+  list-style: none;
+  transition: background 0.16s ease, box-shadow 0.16s ease;
 }
 
-.workspaceShell {
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 0;
-  max-width: none;
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-}
-
-.workspaceSidebar,
-.menuColumn,
-.sideRail {
-  position: sticky;
-  top: 0;
-  align-self: start;
-  min-height: 100vh;
-  background: var(--ds-rail-bg);
-  border-right: 1px solid var(--ds-border);
-}
-
-.workspaceMain,
-.pageContent,
-.mainColumn {
-  min-width: 0;
-  padding: 0 20px 64px;
-}
-
-.infoPanel {
-  background: var(--ds-rail-bg);
-  color: var(--ink-900);
-  border-right: 1px solid var(--ds-border);
-}
-
-.formPanel {
-  background: var(--ds-page-bg);
-}
-
-.heroCard,
-.pageHeader,
-.sectionCard,
-.panel,
-.formCard,
-.form,
-.footerHint,
-.signalCard,
-.featureCard,
-.overviewPanel,
-.metricCard,
-.statCard,
-.summaryCard,
-.summaryBox,
-.alertCard,
-.attentionPanel,
-.dashboardCard,
-.dashboardPanel,
-.workspaceSection,
-.reportCard,
-.taskItem,
-.taskCard,
-.taskSection,
-.detailCard,
-.infoCard,
-.noticeCard,
-.noticeBanner,
-.errorCard,
-.emptyState,
-.pickerCard,
-.pickerSection,
-.conversationPanel,
-.conversationList,
-.messagePanel,
-.composer,
-.vehicleCard,
-.inventoryCard,
-.routeCard,
-.employeeCard,
-.employeeModal,
-.modalDialog,
-.modalCard,
-.confirmationSheet,
-.overviewBoard,
-.requestCard,
-.flowCard,
-.flowBarCard,
-.workflowSummaryCard,
-.workflowMetaCard,
-.workflowItem,
-.historyCard,
-.documentCard,
-.filterPanel,
-.calendarPanel,
-.calendarCard,
-.weightCard,
-.weightSummaryCard,
-.weightDayCard,
-.weightMetaCard,
-.mapHintCard,
-.stopCard,
-.mobilePanel,
-.mobileDetailCard,
-.mobileUtilityCard,
-.boardCard,
-.boardInfoCard,
-.rolePanel,
-.roleMetaCard,
-.capabilityCard,
-.logoutCard,
-.tableShell {
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-card);
-  background: var(--ds-panel-bg);
-  box-shadow: var(--ds-shadow-panel);
-}
-
-.heroCard::after,
-.heroCard::before,
-.infoPanel::after,
-.infoPanel::before,
-.canvasGlow {
-  content: none;
+.reportRegistryAccordionSummary::-webkit-details-marker {
   display: none;
 }
 
-.kicker,
-.eyebrow,
-.formBadge,
-.contextTag,
-.sectionEyebrow,
-.sectionKicker,
-.overviewEyebrow,
-.pageKicker,
-.roleEyebrow,
-.masterInsightsKicker,
-.boardEyebrow,
-.mobileDetailEyebrow {
-  min-height: 26px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: rgba(74, 154, 93, 0.1);
-  color: var(--brand-800);
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
+.reportRegistryAccordionSummary:hover,
+.reportRegistryAccordionItem[open] > .reportRegistryAccordionSummary {
+  background: rgba(74, 154, 93, 0.08);
 }
 
-.heroCard h1,
-.pageHeader h1,
-.formHeader h2,
-.titleBlock h1,
-.heroCopy h1,
-.overviewCopy h2,
-.sectionHeader h2,
-.panelHeader h2,
-.pickerHeader h1,
-.modalTitle,
-.introTitle {
-  color: #1f2b25;
-  font-family: var(--font-body);
-  font-size: clamp(1.25rem, 2vw, 1.9rem);
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.12;
+.reportRegistryAccordionItem[open] > .reportRegistryAccordionSummary {
+  box-shadow: inset 3px 0 0 var(--brand-700);
 }
 
-.heroCard p,
-.pageHeader p,
-.formHeader p,
-.heroCopy p,
-.overviewCopy p,
-.sectionNote,
-.helperText,
-.subtleText,
-.emptyNote,
-.noticeMessage {
-  color: var(--ink-700);
-  font-size: 0.88rem;
+.reportRegistryIndex {
+  color: var(--ink-600);
+}
+
+.reportRegistryReportTitle strong,
+.reportRegistryReportTitle small {
+  display: block;
+}
+
+.reportRegistryReportTitle small {
+  margin-top: 4px;
+  color: var(--ink-600);
+}
+
+.reportRegistryDetailPanel {
+  display: grid;
+  gap: 14px;
+  min-width: 920px;
+  padding: 0 16px 18px 76px;
+  background: rgba(247, 252, 248, 0.62);
+}
+
+.reportRegistryDetailGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.reportRegistryDetailGrid article,
+.reportRegistryDetailText {
+  padding: 12px;
+  border: 1px solid rgba(31, 95, 49, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.reportRegistryDetailGrid span,
+.reportRegistryDetailText span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--ink-600);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.reportRegistryDetailText p {
+  margin: 0;
+  color: var(--ink-800);
   line-height: 1.55;
 }
 
-.primaryButton,
-.secondaryButton,
-.dangerButton,
-.submitButton,
-.fullButton,
-.actionButton,
-.actionPrimary,
-.actionSecondary,
-.actionGhost,
-.primaryAction,
-.secondaryAction,
-.primaryLink,
-.secondaryLink,
-.smallLink,
-.backLink,
-.inlineLink,
-.rowButton,
-.dateButton,
-.locationAddButton,
-.createTaskTrigger,
-.closeButton,
-.modalCloseButton,
-.modalActions button,
-.subnavLink,
-.filterChip,
-.taskFilterChip,
-.departmentTab,
-.departmentFilterButton,
-.routeChip,
-.modeChip,
-.pickerCta,
-.cardLinkLabel {
+.reportRegistryAttachmentGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.reportRegistryAttachmentGrid a {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(31, 95, 49, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--ink-800);
+  text-decoration: none;
+}
+
+.reportRegistryAttachmentGrid img {
+  width: 100%;
+  height: 150px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.reportRegistryAttachmentGrid span {
+  color: var(--ink-600);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.reportRegistryAudioList {
+  display: grid;
+  gap: 8px;
+}
+
+.reportRegistryAudioCard {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(31, 95, 49, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.reportRegistryAudioCard audio {
+  width: 100%;
+}
+
+.reportRegistryDetailActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.reportRegistryDetailActions a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
-  min-height: var(--ds-control-height);
-  padding: 0 12px;
-  border-radius: var(--ds-radius-control);
-  border: 1px solid var(--ds-border);
-  background: var(--ds-panel-strong-bg);
-  color: var(--ink-900);
-  font-family: var(--font-body);
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.2;
-  text-align: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(31, 95, 49, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--brand-900);
+  font-weight: 800;
   text-decoration: none;
-  box-shadow: none;
 }
 
-.primaryButton,
-.submitButton,
-.actionPrimary,
-.primaryAction,
-.subnavLinkActive,
-.filterChipActive,
-.taskFilterChipActive,
-.departmentTabActive,
-.departmentFilterButtonActive,
-.routeChipActive,
-.modeChipActive {
-  border-color: rgba(31, 95, 49, 0.22);
-  background: rgba(76, 158, 92, 0.11);
-  color: #256b37;
-}
+@media (max-width: 1180px) {
+  .reportRegistryMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
-.field input,
-.field select,
-.field textarea,
-.form input,
-.form select,
-.form textarea,
-.dateInput,
-.mobileBucketInput,
-.searchableSelectButton,
-.searchableSelectSearch,
-.locationComposer input,
-.quoteForm input,
-.quoteForm textarea,
-.registrationForm input,
-.registrationForm select,
-.registrationForm textarea,
-.modalForm input,
-.modalForm select,
-.modalForm textarea {
-  width: 100%;
-  min-height: var(--ds-control-height);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-control);
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--ink-900);
-  box-shadow: none;
-}
-
-.tableShell,
-.taskTable,
-.tableList,
-.reportList,
-.vehicleList,
-.documentList,
-.historyList,
-.stopList,
-.workflowList {
-  overflow: hidden;
-}
-
-.tableHeader,
-.tableRow,
-.taskItemTop,
-.reportTop,
-.cardHeader,
-.laneHeader,
-.workflowColumnHeader,
-.sectionHeader,
-.panelHeader {
-  border-color: var(--ds-border);
-}
-
-.badge,
-.actionBadge,
-.countBadge,
-.statePill,
-.stagePill,
-.statusChip,
-.flagChip,
-.rolePill,
-.departmentBadge,
-.sidebarBadge,
-.panelCount {
-  border-radius: 999px;
-  background: rgba(74, 154, 93, 0.1);
-  color: var(--brand-800);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0;
-}
-
-.metricIcon,
-.actionIcon,
-.departmentFilterIcon,
-.summaryShowcaseIcon,
-.conversationAvatar,
-.avatar,
-.employeePhoto,
-.employeePhotoLarge,
-.menuLinkIcon,
-.sidebarIcon {
-  border-radius: var(--ds-radius-icon);
-}
-
-@media (max-width: 1080px) {
-  .workspaceShell {
+  .reportRegistryToolbar,
+  .reportRegistryContent {
     grid-template-columns: 1fr;
-  }
-
-  .workspaceSidebar,
-  .menuColumn,
-  .sideRail {
-    position: static;
-    min-height: 0;
-    border-right: 0;
-    background: transparent;
-  }
-
-  .workspaceMain,
-  .pageContent,
-  .mainColumn {
-    padding: 0 12px 96px;
   }
 }
 
 @media (max-width: 720px) {
-  .heroCard,
-  .pageHeader,
-  .sectionCard,
-  .panel,
-  .formCard,
-  .form,
-  .overviewPanel,
-  .metricCard,
-  .reportCard,
-  .taskItem,
-  .detailCard,
-  .employeeCard,
-  .modalDialog,
-  .requestCard {
-    padding: 14px;
+  .reportRegistryBoard {
+    padding: 12px;
   }
 
-  .heroCard,
-  .pageHeader,
-  .heroMeta,
-  .summaryGrid,
-  .metricsGrid,
-  .statsGrid,
-  .detailGrid,
-  .infoGrid,
-  .taskGrid,
-  .workflowColumns {
+  .reportRegistryMetrics,
+  .reportRegistryDetailGrid,
+  .reportRegistryAttachmentGrid {
     grid-template-columns: 1fr;
   }
+
+  .reportRegistryToolbar {
+    padding: 10px;
+  }
 }
-
-

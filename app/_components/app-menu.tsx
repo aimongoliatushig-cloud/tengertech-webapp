@@ -10,6 +10,7 @@ import {
   Bell,
   CalendarDays,
   ChevronDown,
+  Clock3,
   ClipboardCheck,
   FileText,
   Flag,
@@ -237,12 +238,18 @@ function compactManagerMenuItems(items: MenuItem[]) {
   const departmentChildren = items.filter((item) => item.key.startsWith("department-"));
   const operationChildren = dedupeMenuItems([
     ...items.filter((item) =>
-      ["tasks", "environment-work", "auto-base", "cleaning-areas", "garbage-settings", "complaints"].includes(
-        item.key,
-      ),
+      [
+        "tasks",
+        "overdue-projects",
+        "environment-work",
+        "auto-base",
+        "cleaning-areas",
+        "garbage-settings",
+        "complaints",
+      ].includes(item.key),
     ),
   ]);
-  const reportChildren = items.filter((item) => ["reports", "data-download"].includes(item.key));
+  const reportItem = items.find((item) => item.key === "reports");
   const communicationChildren = items.filter((item) => ["chat", "help", "review", "notifications"].includes(item.key));
   const settingChildren = items.filter((item) => item.key === "settings");
   const procurementItem = items.find((item) => item.key === "procurement");
@@ -253,7 +260,8 @@ function compactManagerMenuItems(items: MenuItem[]) {
     ...hrChildren.map((item) => item.key),
     ...operationChildren.map((item) => item.key),
     ...departmentChildren.map((item) => item.key),
-    ...reportChildren.map((item) => item.key),
+    ...(reportItem ? [reportItem.key] : []),
+    "data-download",
     ...communicationChildren.map((item) => item.key),
     ...settingChildren.map((item) => item.key),
   ]);
@@ -265,7 +273,7 @@ function compactManagerMenuItems(items: MenuItem[]) {
     createMenuGroup("manager-departments", "Хэлтэс, нэгжүүд", Flag, departmentChildren),
     createMenuGroup("manager-operations", "Үйл ажиллагаа", Leaf, operationChildren),
     procurementItem ? { ...procurementItem, label: "Худалдан авалт" } : null,
-    createMenuGroup("manager-reports", "Тайлан, баримт", BarChart3, reportChildren),
+    reportItem ? { ...reportItem, label: "Тайлан" } : null,
     createMenuGroup("manager-communication", "Харилцаа холбоо", MessageSquare, communicationChildren),
     createMenuGroup("manager-settings", "Тохиргоо", Settings, settingChildren),
     ...leftovers,
@@ -658,6 +666,12 @@ export function AppMenu({
             label: "Календарь",
             icon: CalendarDays,
           },
+          {
+            key: "overdue-projects",
+            href: "/projects?category=overdue",
+            label: "Хугацаа хэтэрсэн ажил",
+            icon: Clock3,
+          },
         ]
       : []),
     ...(canOpenCleaningAreas
@@ -681,7 +695,7 @@ export function AppMenu({
           {
             key: "reports",
             href: canWriteReports ? "/reports" : "/review",
-            label: "Тайлан, статистик",
+            label: "Тайлан",
             icon: BarChart3,
           },
         ]
@@ -1012,6 +1026,9 @@ export function AppMenu({
     }
     if (item.departmentName) {
       return pathname === "/projects" && searchParams.get("department") === item.departmentName;
+    }
+    if (item.key === "overdue-projects") {
+      return pathname === "/projects" && searchParams.get("category") === "overdue";
     }
     if (item.key === active) {
       return true;

@@ -1381,20 +1381,13 @@ function buildExecutiveDepartmentMetrics({
       "center",
     ),
     buildDepartment(
-      "Зам талбай цэвэрлэгээ",
-      ["Зам", "талбай", "Гудамж", "цэвэр"],
-      Recycle,
-      "orange",
-      DASHBOARD_IMAGES.cleaningTruck,
-      "center",
-    ),
-    buildDepartment(
-      "Ногоон байгууламж",
-      ["Ногоон", "мод", "зүлэг", "ургамал", "усалгаа", "цэцэрлэг"],
+      "Ногоон байгууламж, цэвэрлэгээ",
+      ["Ногоон", "мод", "зүлэг", "ургамал", "усалгаа", "цэцэрлэг", "Зам", "талбай", "Гудамж", "цэвэр"],
       Leaf,
       "green",
       DASHBOARD_IMAGES.landscapingWorker,
       "center",
+      "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
     ),
     buildDepartment(
       "Тохижилт үйлчилгээ",
@@ -1703,7 +1696,6 @@ function ExecutiveDashboardView({
   const canViewAllReports = canViewAllWorkspaceReports(session);
   const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
-  const overdueRate = percent(overdueTasks, workItemStats.total || totalTasks);
   const activeTasks = Math.max(
     workItemStats.total - workItemStats.completed,
     workingTasks + reviewTasks,
@@ -1756,8 +1748,9 @@ function ExecutiveDashboardView({
     },
     {
       label: "хугацаа хэтэрсэн ажил",
-      value: `${overdueRate}%`,
-      progress: overdueRate,
+      value: String(overdueTasks),
+      valueLabel: "Ажил",
+      progress: 0,
       href: scopedProjectsHref("overdue"),
       icon: Clock3,
       tone: "orange",

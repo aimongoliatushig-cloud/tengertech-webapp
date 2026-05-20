@@ -13,6 +13,7 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { Card } from "@/app/_components/ui/card";
@@ -44,6 +45,7 @@ type Metric = {
   progress: number;
   icon: LucideIcon;
   tone: Tone;
+  href?: string;
 };
 
 type DepartmentMetric = {
@@ -116,9 +118,8 @@ function Ring({ value, tone, large = false }: { value: number; tone: Tone; large
 function MetricCard({ metric }: { metric: Metric }) {
   const Icon = metric.icon;
   const color = TONE_COLORS[metric.tone];
-
-  return (
-    <Card className={styles.metricCard}>
+  const content = (
+    <>
       <div className={styles.metricTop}>
         <span className={styles.metricIcon} style={{ color, backgroundColor: `${color}16` }}>
           <Icon />
@@ -132,6 +133,20 @@ function MetricCard({ metric }: { metric: Metric }) {
         </div>
         {metric.progress > 0 && metric.progress < 100 ? <Ring value={metric.progress} tone={metric.tone} /> : null}
       </div>
+    </>
+  );
+
+  if (metric.href) {
+    return (
+      <Link href={metric.href} className={styles.metricCard}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <Card className={styles.metricCard}>
+      {content}
     </Card>
   );
 }
@@ -286,7 +301,15 @@ export function GeneralDashboardView({
       icon: Truck,
       tone: "purple",
     },
-    { label: "хугацаа хэтэрсэн ажил", value: `${percent(overdueTasks, totalTasks)}%`, progress: percent(overdueTasks, totalTasks), icon: Clock3, tone: "orange" },
+    {
+      label: "хугацаа хэтэрсэн ажил",
+      value: String(overdueTasks),
+      note: "Ажил",
+      progress: 0,
+      href: "/projects?category=overdue",
+      icon: Clock3,
+      tone: "orange",
+    },
     { label: "идэвхтэй ажил", value: String(Math.max(totalTasks - completedTasks, workingTasks + reviewTasks)), progress: 100, icon: ClipboardList, tone: "green" },
   ];
   const departmentMetrics = buildDepartmentMetrics(snapshot, currentDateKey);
