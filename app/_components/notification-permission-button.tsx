@@ -68,6 +68,7 @@ export function NotificationPermissionButton() {
   const [secureUrl, setSecureUrl] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [lastActionError, setLastActionError] = useState<string | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
 
   const refreshDiagnostics = useCallback(async () => {
     const nextDiagnostics = await diagnoseNotifications();
@@ -180,6 +181,11 @@ export function NotificationPermissionButton() {
     textAlign: "center" as const,
     textDecoration: "none",
   };
+  const linkButtonStyle = {
+    ...buttonStyle,
+    background: "#2E7D32",
+    cursor: "pointer",
+  };
 
   return (
     <div
@@ -205,19 +211,45 @@ export function NotificationPermissionButton() {
         {bodyText}
       </span>
       {isDenied ? (
-        <a
-          href="/settings/notifications"
+        <button
+          type="button"
+          onClick={() => setShowGuide((current) => !current)}
+          style={linkButtonStyle}
+        >
+          {showGuide ? "Заавар хаах" : "Заавар харах"}
+        </button>
+      ) : null}
+      {showGuide ? (
+        <div
           style={{
-            ...buttonStyle,
-            background: "#2E7D32",
-            cursor: "pointer",
+            marginTop: 12,
+            border: "1px solid rgba(46, 125, 50, 0.16)",
+            borderRadius: 14,
+            background: "rgba(241, 248, 240, 0.95)",
+            padding: 12,
           }}
         >
-          Заавар харах
-        </a>
+          <strong style={{ display: "block", fontSize: 13, marginBottom: 8 }}>
+            Browser дээр мэдэгдэл нээх
+          </strong>
+          <ol
+            style={{
+              margin: 0,
+              paddingLeft: 18,
+              color: "#44524a",
+              fontSize: 12,
+              lineHeight: 1.55,
+            }}
+          >
+            <li>Хаягийн мөрний зүүн талын цоож / site icon дээр дарна.</li>
+            <li>Notifications хэсгийг Allow болгоно.</li>
+            <li>Хуудсаа refresh хийгээд дахин нэвтэрнэ.</li>
+            <li>Private/Incognito цонх ашиглаж байгаа бол энгийн цонхоор орно.</li>
+          </ol>
+        </div>
       ) : null}
       {isInsecure && secureUrl ? (
-        <a href={secureUrl} style={{ ...buttonStyle, background: "#2E7D32", cursor: "pointer" }}>
+        <a href={secureUrl} style={linkButtonStyle}>
           HTTPS хаягаар нээх
         </a>
       ) : null}
