@@ -7,17 +7,20 @@ import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import {
   createTaskReportAction,
+  deleteTaskAction,
   deleteTaskReportAction,
   markTaskDoneAction,
   postTaskMessageAction,
   returnTaskForChangesAction,
   submitTaskForReviewAction,
+  updateTaskAction,
   updateTaskReportAction,
 } from "@/app/actions";
 import dashboardStyles from "@/app/page.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import {
   canSubmitWorkspaceReport,
+  canDeleteWorkspaceItems,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
@@ -29,8 +32,9 @@ import { filterByDepartment } from "@/lib/dashboard-scope";
 import { filterTasksForResponsibleMaster } from "@/lib/master-scope";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurement";
-import { loadTaskDetail } from "@/lib/workspace";
+import { loadProjectTaskEditOptions, loadTaskDetail } from "@/lib/workspace";
 
+import { ProjectTaskEditModal } from "@/app/projects/[projectId]/project-task-edit-modal";
 import styles from "./task-detail.module.css";
 import { OfficialReportExportModal } from "./official-report-export-modal";
 import { PendingSubmitButton } from "./pending-submit-button";
@@ -323,6 +327,38 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
       ? [{ quantity: task.plannedQuantity, unit: task.measurementUnit }]
       : [];
   const canOpenReportComposer = canWriteReport && canSubmitWorkspaceReport(session);
+  const canEditTask = canCreateTasks && Boolean(task.projectId) && !workerMode;
+  const canDeleteTask = canDeleteWorkspaceItems(session) && Boolean(task.projectId);
+  const taskEditOptions =
+    canEditTask && task.projectId
+      ? await loadProjectTaskEditOptions(task.projectId, task.operationType, connectionOverrides)
+      : { departmentUserOptions: [], crewTeamOptions: [], unitOptions: [] };
+  const taskEditDepartmentUserOptions =
+    task.teamLeaderId &&
+    !taskEditOptions.departmentUserOptions.some((user) => user.id === task.teamLeaderId)
+      ? [
+          {
+            id: task.teamLeaderId,
+            name: task.teamLeaderName,
+            login: "",
+            role: "team_leader",
+            departmentName: scopedDepartmentName ?? "",
+            jobTitle: "",
+          },
+          ...taskEditOptions.departmentUserOptions,
+        ]
+      : taskEditOptions.departmentUserOptions;
+  const taskEditCrewTeamOptions =
+    task.crewTeamId && !taskEditOptions.crewTeamOptions.some((team) => team.id === task.crewTeamId)
+      ? [
+          {
+            id: task.crewTeamId,
+            label: task.crewTeamName || `Баг #${task.crewTeamId}`,
+            memberUserIds: [],
+          },
+          ...taskEditOptions.crewTeamOptions,
+        ]
+      : taskEditOptions.crewTeamOptions;
   const primaryActionLabel = reviewFocusedMode
     ? "Шалгалтын үр дүн"
     : canMarkDone
@@ -534,6 +570,33 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 </div>
                 <div className={styles.heroActionGroup}>
                   <StagePill label={task.stageLabel} bucket={task.stageBucket} />
+                  {canEditTask && task.projectId ? (
+                    <ProjectTaskEditModal
+                      action={updateTaskAction}
+                      projectId={task.projectId}
+                      taskId={task.id}
+                      taskName={task.name}
+                      teamLeaderId={task.teamLeaderId}
+                      crewTeamId={task.crewTeamId}
+                      startDateValue={task.startDateValue}
+                      deadlineValue={task.deadlineValue}
+                      plannedQuantity={task.plannedQuantity}
+                      measurementUnitId={task.measurementUnitId}
+                      description={task.description}
+                      departmentUserOptions={taskEditDepartmentUserOptions}
+                      crewTeamOptions={taskEditCrewTeamOptions}
+                      unitOptions={taskEditOptions.unitOptions}
+                    />
+                  ) : null}
+                  {canDeleteTask && task.projectId ? (
+                    <form action={deleteTaskAction} className={styles.inlineTaskDeleteForm}>
+                      <input type="hidden" name="project_id" value={task.projectId} />
+                      <input type="hidden" name="task_id" value={task.id} />
+                      <button type="submit" className={styles.dangerButton}>
+                        Устгах
+                      </button>
+                    </form>
+                  ) : null}
                 </div>
               </div>
 

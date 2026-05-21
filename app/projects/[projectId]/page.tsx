@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { createTaskAction, deleteProjectAction, deleteTaskAction, updateTaskAction } from "@/app/actions";
+import { createTaskAction, deleteProjectAction } from "@/app/actions";
 import dashboardStyles from "@/app/page.module.css";
 import styles from "@/app/workspace.module.css";
 import {
@@ -24,7 +24,6 @@ import { loadGarbagePointOptions, loadGarbageSubdistrictOptions, loadProjectDeta
 
 import { ProjectTaskCreateModal } from "./project-task-create-modal";
 import { ProjectTaskCreateForm } from "./project-task-create-form";
-import { ProjectTaskEditModal } from "./project-task-edit-modal";
 
 type PageProps = {
   params: Promise<{
@@ -38,6 +37,8 @@ type PageProps = {
     quickAction?: string | string[];
   }>;
 };
+
+export const dynamic = "force-dynamic";
 
 type TaskFilterKey = "all" | "todo" | "progress" | "review" | "overdue" | "done";
 type QuickActionMode = "task" | "report" | "none";
@@ -735,55 +736,11 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                           </div>
                         </Link>
 
-                        {canReviewTaskFromBoard || canCreateTasks || canDeleteWorkspace ? (
+                        {canReviewTaskFromBoard ? (
                           <div className={styles.projectTaskFlowActions}>
-                            {canReviewTaskFromBoard ? (
-                              <Link href={reviewHref} className={styles.projectTaskReviewButton}>
-                                Шалгах
-                              </Link>
-                            ) : null}
-                            {canCreateTasks ? (
-                              <ProjectTaskEditModal
-                                action={updateTaskAction}
-                                projectId={project.id}
-                                taskId={task.id}
-                                taskName={task.name}
-                                teamLeaderId={task.teamLeaderId}
-                                crewTeamId={task.crewTeamId}
-                                startDateValue={task.startDateValue}
-                                deadlineValue={task.deadlineValue}
-                                plannedQuantity={task.plannedQuantity}
-                                measurementUnitId={task.measurementUnitId}
-                                description={task.description}
-                                departmentUserOptions={
-                                  task.teamLeaderId &&
-                                  !project.departmentUserOptions.some((user) => user.id === task.teamLeaderId)
-                                    ? [
-                                        {
-                                          id: task.teamLeaderId,
-                                          name: task.teamLeaderName,
-                                          login: "",
-                                          role: "team_leader",
-                                          departmentName: project.departmentName,
-                                          jobTitle: task.teamLeaderJobTitle,
-                                        },
-                                        ...project.departmentUserOptions,
-                                      ]
-                                    : project.departmentUserOptions
-                                }
-                                crewTeamOptions={project.crewTeamOptions}
-                                unitOptions={project.allUnitOptions}
-                              />
-                            ) : null}
-                            {canDeleteWorkspace ? (
-                              <form action={deleteTaskAction}>
-                                <input type="hidden" name="project_id" value={project.id} />
-                                <input type="hidden" name="task_id" value={task.id} />
-                                <button type="submit" className={styles.dangerButton}>
-                                  Устгах
-                                </button>
-                              </form>
-                            ) : null}
+                            <Link href={reviewHref} className={styles.projectTaskReviewButton}>
+                              Шалгах
+                            </Link>
                           </div>
                         ) : null}
                         </article>

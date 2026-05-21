@@ -105,6 +105,11 @@
   gap: 10px;
 }
 
+.inlineTaskDeleteForm {
+  display: inline-flex;
+  margin: 0;
+}
+
 .anchorRow,
 .chipRow,
 .actionStack,

@@ -733,14 +733,19 @@ export type TaskDetail = {
   stageBucket: StageBucket;
   state: string;
   deadline: string;
+  deadlineValue: string;
+  startDateValue: string;
   scheduledDate: string;
   measurementUnit: string;
+  measurementUnitId: number | null;
   quantityLines: TaskQuantityLine[];
   plannedQuantity: number;
   completedQuantity: number;
   remainingQuantity: number;
   progress: number;
+  teamLeaderId: number | null;
   teamLeaderName: string;
+  crewTeamId: number | null;
   crewTeamName: string;
   crewMembers: TaskCrewMember[];
   assignees: string[];
@@ -754,6 +759,16 @@ export type TaskDetail = {
   reportsLocked: boolean;
   reports: TaskReportFeedItem[];
   messages: TaskMessageItem[];
+};
+
+export type ProjectTaskEditOptions = {
+  departmentUserOptions: SelectOption[];
+  crewTeamOptions: Array<{
+    id: number;
+    label: string;
+    memberUserIds: number[];
+  }>;
+  unitOptions: WorkUnitOption[];
 };
 
 const WEEKDAY_KEYS = [
@@ -3718,6 +3733,38 @@ export async function loadProjectDetail(
   };
 }
 
+export async function loadProjectTaskEditOptions(
+  projectId: number,
+  operationType = "",
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<ProjectTaskEditOptions> {
+  const projects = await searchReadWithFieldFallback<ProjectRecord>(
+    "project.project",
+    [["id", "=", projectId]],
+    ["ops_department_id", "mfo_operation_type"],
+    { limit: 1 },
+    connectionOverrides,
+  );
+  const project = projects[0];
+  if (!project) {
+    return { departmentUserOptions: [], crewTeamOptions: [], unitOptions: [] };
+  }
+
+  const departmentId = relationId(project.ops_department_id);
+  const resolvedOperationType = operationType || project.mfo_operation_type || "";
+  const [departmentUserOptions, unitOptions, allCrewTeamOptions] = await Promise.all([
+    loadDepartmentUserOptions(departmentId, connectionOverrides),
+    loadWorkUnitOptions(connectionOverrides),
+    loadCrewTeamOptions(resolvedOperationType, connectionOverrides),
+  ]);
+
+  return {
+    departmentUserOptions,
+    crewTeamOptions: filterCrewTeamsByDepartmentUsers(allCrewTeamOptions, departmentUserOptions),
+    unitOptions,
+  };
+}
+
 export async function loadTaskDetail(
   taskId: number,
   connectionOverrides: Partial<OdooConnection> = {},
@@ -4126,11 +4173,14 @@ export async function loadTaskDetail(
     stageBucket: effectiveStage.bucket,
     state: task.state,
     deadline: formatDateOnlyLabel(task.date_deadline),
+    deadlineValue: formatDateInput(task.date_deadline),
+    startDateValue: formatDateInput(task.mfo_planned_start || false),
     scheduledDate: formatDateInput(task.mfo_shift_date || task.date_deadline),
     measurementUnit: formatMeasurementUnit(
       task.ops_measurement_unit_id,
       task.ops_measurement_unit,
     ),
+    measurementUnitId: relationId(task.ops_measurement_unit_id ?? false),
     quantityLines: effectiveQuantityLines,
     measurementUnitCode: task.ops_measurement_unit_code || "",
     plannedQuantity: effectivePlannedQuantity,
@@ -4140,7 +4190,9 @@ export async function loadTaskDetail(
         ? reportProgress.remainingQuantity
         : (task.ops_remaining_quantity ?? 0),
     progress: effectiveProgress,
+    teamLeaderId: relationId(task.ops_team_leader_id),
     teamLeaderName: relationName(task.ops_team_leader_id),
+    crewTeamId,
     crewTeamName,
     crewMembers,
     assignees: assigneeNames,

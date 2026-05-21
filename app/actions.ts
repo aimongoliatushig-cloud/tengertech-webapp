@@ -23,7 +23,13 @@ import {
   submitFieldShift,
   uploadFieldStopProof,
 } from "@/lib/field-ops";
-import { executeOdooKw, loadFleetVehicleBoard, loadMunicipalSnapshot, type OdooConnection } from "@/lib/odoo";
+import {
+  clearOdooReadCaches,
+  executeOdooKw,
+  loadFleetVehicleBoard,
+  loadMunicipalSnapshot,
+  type OdooConnection,
+} from "@/lib/odoo";
 import { loadDepartmentHeadUserIds } from "@/lib/notification-recipients";
 import { createProcurementRequest, uploadProcurementAttachment } from "@/lib/procurement";
 import { notifyPushEvent, type PushEventType } from "@/lib/push-notifications";
@@ -622,6 +628,7 @@ function getFallbackMimeType(fileName: string, family: "image" | "audio") {
 }
 
 function revalidateFieldPaths(taskId?: number) {
+  clearOdooReadCaches();
   revalidatePath("/");
   revalidatePath("/projects");
   revalidatePath("/review");
@@ -2037,6 +2044,7 @@ export async function createTaskAction(formData: FormData) {
       targetUrl: `/tasks/${taskId}`,
     });
 
+    clearOdooReadCaches();
     revalidatePath("/");
     revalidatePath("/projects");
     revalidatePath("/tasks");
@@ -2137,6 +2145,7 @@ export async function updateTaskAction(formData: FormData) {
       connectionOverrides,
     );
 
+    clearOdooReadCaches();
     revalidatePath("/");
     revalidatePath("/projects");
     revalidatePath("/tasks");
@@ -2182,6 +2191,7 @@ export async function deleteTaskAction(formData: FormData) {
       db: session.odooDb,
     });
 
+    clearOdooReadCaches();
     revalidatePath("/");
     revalidatePath("/projects");
     revalidatePath("/tasks");
@@ -2220,6 +2230,7 @@ export async function deleteProjectAction(formData: FormData) {
       db: session.odooDb,
     });
 
+    clearOdooReadCaches();
     revalidatePath("/");
     revalidatePath("/projects");
     revalidatePath("/tasks");
