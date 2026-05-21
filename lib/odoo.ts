@@ -2262,12 +2262,18 @@ async function loadFleetVehicleRelationOptions(
       connection,
     );
 
-  const records = await loadOptions([["active", "=", true]]).catch((activeError) => {
-    console.warn(`Fleet vehicle relation options for ${fieldName} could not be loaded with active filter:`, activeError);
-    return loadOptions([]).catch((fallbackError) => {
-      console.warn(`Fleet vehicle relation options for ${fieldName} could not be loaded:`, fallbackError);
-      return [];
-    });
+  const relationFields: Record<string, unknown> = await executeKw<Record<string, unknown>>(
+    uid,
+    relationModel,
+    "fields_get",
+    [["active"]],
+    {},
+    connection,
+  ).catch(() => ({}));
+  const domain = relationFields["active"] ? [["active", "=", true]] : [];
+  const records = await loadOptions(domain).catch((error) => {
+    console.warn(`Fleet vehicle relation options for ${fieldName} could not be loaded:`, error);
+    return [];
   });
   return records
     .map((record) => ({

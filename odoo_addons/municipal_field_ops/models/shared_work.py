@@ -351,17 +351,16 @@ class SharedWorkDepartmentTask(models.Model):
         return result
 
     def _notify_department_task_completed(self):
+        Users = self.env["res.users"].sudo()
+        user_group_field = "groups_id" if "groups_id" in Users._fields else "group_ids"
+        manager_group_ids = [
+            self.env.ref("municipal_core.group_municipal_manager").id,
+            self.env.ref("municipal_core.group_municipal_director").id,
+            self.env.ref("municipal_core.group_municipal_admin").id,
+        ]
         for task in self:
             partners = task.shared_work_id.created_by.partner_id
-            manager_partners = self.env["res.users"].search(
-                [
-                    "|",
-                    "|",
-                    ("groups_id", "in", self.env.ref("municipal_core.group_municipal_manager").id),
-                    ("groups_id", "in", self.env.ref("municipal_core.group_municipal_director").id),
-                    ("groups_id", "in", self.env.ref("municipal_core.group_municipal_admin").id),
-                ]
-            ).mapped("partner_id")
+            manager_partners = Users.search([(user_group_field, "in", manager_group_ids)]).mapped("partner_id")
             partners |= manager_partners
             if partners:
                 task.shared_work_id.message_post(

@@ -67,7 +67,7 @@
         <record id="rule_shared_work_department_head_own" model="ir.rule">
             <field name="name">Shared work department head own department</field>
             <field name="model_id" ref="model_shared_work"/>
-            <field name="domain_force">['|', '|', ('created_by', '=', user.id), ('created_department_id.manager_id.user_id', '=', user.id), ('department_task_ids.department_head_id.user_id', '=', user.id)]</field>
+            <field name="domain_force">['|', '|', '|', ('created_by', '=', user.id), ('created_department_id.manager_id.user_id', '=', user.id), ('department_task_ids.department_head_id.user_id', '=', user.id), ('department_task_ids.department_id', '=', user.employee_id.department_id.id)]</field>
             <field name="groups" eval="[(4, ref('municipal_core.group_municipal_department_head'))]"/>
         </record>
 
@@ -99,7 +99,7 @@
         <record id="rule_shared_work_department_task_head_own" model="ir.rule">
             <field name="name">Shared work department task head own</field>
             <field name="model_id" ref="model_shared_work_department_task"/>
-            <field name="domain_force">['|', ('department_id.manager_id.user_id', '=', user.id), ('department_head_id.user_id', '=', user.id)]</field>
+            <field name="domain_force">['|', '|', ('department_id.manager_id.user_id', '=', user.id), ('department_head_id.user_id', '=', user.id), ('department_id', '=', user.employee_id.department_id.id)]</field>
             <field name="groups" eval="[(4, ref('municipal_core.group_municipal_department_head'))]"/>
         </record>
 
@@ -131,7 +131,7 @@
         <record id="rule_shared_work_report_head_own" model="ir.rule">
             <field name="name">Shared work report department head own</field>
             <field name="model_id" ref="model_shared_work_report"/>
-            <field name="domain_force">['|', ('department_task_id.department_id.manager_id.user_id', '=', user.id), ('department_task_id.department_head_id.user_id', '=', user.id)]</field>
+            <field name="domain_force">['|', '|', ('department_task_id.department_id.manager_id.user_id', '=', user.id), ('department_task_id.department_head_id.user_id', '=', user.id), ('department_task_id.department_id', '=', user.employee_id.department_id.id)]</field>
             <field name="groups" eval="[(4, ref('municipal_core.group_municipal_department_head'))]"/>
         </record>
 

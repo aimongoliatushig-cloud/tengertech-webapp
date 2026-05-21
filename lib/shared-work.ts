@@ -638,9 +638,126 @@ export async function loadSharedWorkBoard(
 }
 
 export async function loadSharedWorkDetail(session: AppSession, workId: number) {
-  const board = await loadSharedWorkBoard(session, "all");
+  const connection = getSessionConnection(session);
+  const userDepartmentIdPromise = loadUserDepartmentId(session, connection);
+  const [
+    userDepartmentId,
+    workRecords,
+    departmentRecords,
+    employeeRecords,
+    vehicleRecords,
+    teamRecords,
+    routeRecords,
+    taskRecords,
+    reportRecords,
+  ] = await Promise.all([
+    userDepartmentIdPromise,
+    safeSearchRead<SharedWorkRecord>(
+      "shared.work",
+      [["id", "=", workId]],
+      [
+        "name",
+        "code",
+        "description",
+        "location_text",
+        "priority",
+        "planned_start_date",
+        "planned_end_date",
+        "status",
+        "created_by",
+        "created_department_id",
+        "involved_department_ids",
+        "progress_percent",
+        "attachment_ids",
+      ],
+      connection,
+      { limit: 1 },
+    ),
+    safeSearchRead<DepartmentRecord>("hr.department", [], ["name", "manager_id"], connection, {
+      limit: 300,
+      order: "name asc",
+    }),
+    safeSearchRead<EmployeeRecord>(
+      "hr.employee",
+      [["active", "=", true]],
+      ["name", "department_id", "user_id", "job_id", "job_title"],
+      connection,
+      { limit: 500, order: "name asc" },
+    ),
+    safeSearchRead<VehicleRecord>(
+      "fleet.vehicle",
+      [["active", "=", true]],
+      ["name", "license_plate", "municipal_department_id", "department_id"],
+      connection,
+      { limit: 500, order: "license_plate asc, name asc" },
+    ),
+    safeSearchRead<TeamRecord>(
+      "mfo.crew.team",
+      [["active", "=", true]],
+      ["name", "operation_type"],
+      connection,
+      { limit: 300, order: "name asc" },
+    ),
+    safeSearchRead<RouteRecord>(
+      "mfo.route",
+      [["active", "=", true]],
+      ["name", "department_id"],
+      connection,
+      { limit: 500, order: "name asc" },
+    ),
+    safeSearchRead<SharedDepartmentTaskRecord>(
+      "shared.work.department.task",
+      [["shared_work_id", "=", workId]],
+      [
+        "shared_work_id",
+        "department_id",
+        "department_head_id",
+        "assigned_employee_ids",
+        "assigned_vehicle_ids",
+        "team_ids",
+        "route_ids",
+        "operational_task_ids",
+        "status",
+        "progress_percent",
+        "notes",
+        "started_at",
+        "completed_at",
+      ],
+      connection,
+      { limit: 50, order: "id asc" },
+    ),
+    safeSearchRead<SharedReportRecord>(
+      "shared.work.report",
+      [["shared_work_id", "=", workId]],
+      [
+        "shared_work_id",
+        "department_task_id",
+        "employee_id",
+        "note",
+        "image_ids",
+        "created_at",
+        "latitude",
+        "longitude",
+      ],
+      connection,
+      { limit: 120, order: "created_at desc, id desc" },
+    ),
+  ]);
+
+  const tasks = taskRecords.map(mapTask);
+  const reports = reportRecords.map(mapReport);
+  const work = workRecords[0] ? mapWork(workRecords[0], tasks, reports) : null;
+
   return {
-    ...board,
-    work: board.works.find((work) => work.id === workId) ?? null,
+    works: work ? [work] : [],
+    reports,
+    departments: mapDepartmentOptions(departmentRecords),
+    employees: mapEmployeeOptions(employeeRecords),
+    vehicles: mapVehicleOptions(vehicleRecords),
+    teams: mapTeamOptions(teamRecords),
+    routes: mapRouteOptions(routeRecords),
+    userDepartmentId,
+    source: departmentRecords.length ? "live" : "uninstalled",
+    work,
   };
 }

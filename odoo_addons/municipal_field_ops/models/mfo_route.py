@@ -14,6 +14,12 @@ WEEKDAY_SELECTION = [
     ("6", "Ням"),
 ]
 
+MFO_OPERATION_TYPES = [
+    ("garbage", "Хог тээвэрлэлт"),
+    ("street_cleaning", "Зам талбайн цэвэрлэгээ"),
+    ("green_maintenance", "Ногоон байгууламж"),
+]
+
 ROUTE_STATES = [
     ("draft", "Ноорог"),
     ("planned", "Төлөвлөсөн"),
@@ -53,7 +59,7 @@ class MfoCrewTeam(models.Model):
 
     name = fields.Char(string="Багийн нэр", required=True, tracking=True)
     operation_type = fields.Selection(
-        [("garbage", "Хог тээвэрлэлт")],
+        MFO_OPERATION_TYPES,
         string="Ажиллагааны төрөл",
         default="garbage",
         required=True,
@@ -102,7 +108,7 @@ class MfoRoute(models.Model):
     department_id = fields.Many2one("hr.department", string="Хэлтэс", index=True, tracking=True)
     project_id = fields.Many2one("project.project", string="Төсөл", ondelete="set null")
     operation_type = fields.Selection(
-        [("garbage", "Хог тээвэрлэлт")],
+        MFO_OPERATION_TYPES,
         string="Ажиллагааны төрөл",
         default="garbage",
         required=True,
@@ -251,7 +257,7 @@ class MfoCollectionPoint(models.Model):
         default="daily",
     )
     operation_type = fields.Selection(
-        [("garbage", "Хог тээвэрлэлт")],
+        MFO_OPERATION_TYPES,
         string="Ажиллагааны төрөл",
         default="garbage",
         required=True,

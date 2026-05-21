@@ -1855,7 +1855,7 @@ export async function loadCrewTeamOptions(
   });
 }
 
-const ROAD_CLEANING_TEAM_OPERATION_TYPES = ["street_cleaning", "green_maintenance"];
+const ROAD_CLEANING_TEAM_OPERATION_TYPES = ["street_cleaning", "green_maintenance", "garbage"];
 const CREW_TEAM_MEMBER_EMPLOYEE_FIELDS = [
   "collector_employee_ids",
   "member_employee_ids",
@@ -2012,6 +2012,15 @@ function keepSupportedValues(
   );
 }
 
+async function hasModelField(
+  model: string,
+  fieldName: string,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const fieldNames = await loadModelFieldNames(model, connectionOverrides).catch(() => new Set<string>());
+  return fieldNames.has(fieldName);
+}
+
 export async function createWorkspaceCrewTeam(
   input: {
     name: string;
@@ -2057,6 +2066,7 @@ export async function createWorkspaceCrewTeam(
     {
       name: teamName,
       active: true,
+      operation_type: input.operationType || "street_cleaning",
       department_id: input.departmentId || undefined,
       ops_department_id: input.departmentId || undefined,
       member_user_ids: memberUserCommand,
@@ -2757,17 +2767,22 @@ export async function loadGarbageVehicleOptions(
         .filter((value): value is number => Boolean(value)),
     ),
   );
+  const hasMfoActiveForOps = await hasModelField("fleet.vehicle", "mfo_active_for_ops", connectionOverrides);
 
   const vehicles = vehicleIds.length
     ? await readFirstAvailable<GarbageVehicleRecord>(
         [
-          {
-            model: "fleet.vehicle",
-            domain: [["id", "in", vehicleIds], ["mfo_active_for_ops", "=", true]],
-            fields: ["name", "license_plate"],
-            order: "license_plate asc, name asc",
-            limit: vehicleIds.length,
-          },
+          ...(hasMfoActiveForOps
+            ? [
+                {
+                  model: "fleet.vehicle",
+                  domain: [["id", "in", vehicleIds], ["mfo_active_for_ops", "=", true]],
+                  fields: ["name", "license_plate"],
+                  order: "license_plate asc, name asc",
+                  limit: vehicleIds.length,
+                },
+              ]
+            : []),
           {
             model: "fleet.vehicle",
             domain: [["id", "in", vehicleIds]],
@@ -2782,7 +2797,7 @@ export async function loadGarbageVehicleOptions(
 
   const fallbackVehiclesById = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
   for (const attempt of [
-    [["mfo_active_for_ops", "=", true]],
+    ...(hasMfoActiveForOps ? [[["mfo_active_for_ops", "=", true]]] : []),
     [["active", "=", true]],
     [],
   ] as unknown[][]) {
@@ -2851,15 +2866,20 @@ export async function loadGarbageVehicleOptions(
 export async function loadActiveGarbageVehicleOptions(
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<GarbageVehicleOption[]> {
+  const hasMfoActiveForOps = await hasModelField("fleet.vehicle", "mfo_active_for_ops", connectionOverrides);
   const vehicles = await readFirstAvailable<GarbageVehicleRecord>(
     [
-      {
-        model: "fleet.vehicle",
-        domain: [["mfo_active_for_ops", "=", true]],
-        fields: ["name", "license_plate"],
-        order: "license_plate asc, name asc",
-        limit: 500,
-      },
+      ...(hasMfoActiveForOps
+        ? [
+            {
+              model: "fleet.vehicle",
+              domain: [["mfo_active_for_ops", "=", true]],
+              fields: ["name", "license_plate"],
+              order: "license_plate asc, name asc",
+              limit: 500,
+            },
+          ]
+        : []),
       {
         model: "fleet.vehicle",
         domain: [["active", "=", true]],
