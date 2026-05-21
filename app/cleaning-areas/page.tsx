@@ -1,15 +1,21 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import styles from "@/app/workspace.module.css";
 import {
+  archiveCleaningTeamAction,
   assignCleaningMasterAction,
   createCleaningAreaAction,
+  createCleaningTeamAction,
   createTodayCleaningWorksAction,
+  updateCleaningTeamAction,
 } from "@/app/cleaning-areas/actions";
 import { CleaningAreaForm } from "@/app/cleaning-areas/cleaning-area-form";
 import { MasterAssignmentPanel } from "@/app/cleaning-areas/master-assignment-panel";
+import { TeamMemberPicker } from "@/app/cleaning-areas/team-member-picker";
 import {
   hasCapability,
   isMasterRole,
@@ -22,6 +28,7 @@ import {
   loadGarbageSubdistrictOptions,
   loadRoadCleaningAreaOptions,
   loadRoadCleaningEmployeeOptions,
+  loadRoadCleaningTeamOptions,
   type RoadCleaningEmployeeOption,
 } from "@/lib/workspace";
 
@@ -31,6 +38,9 @@ type PageProps = {
     notice?: string | string[];
   }>;
 };
+
+const GREEN_SERVICE_WORK_DASHBOARD_HREF =
+  "/projects?department=%D0%9D%D0%BE%D0%B3%D0%BE%D0%BE%D0%BD%20%D0%B1%D0%B0%D0%B9%D0%B3%D1%83%D1%83%D0%BB%D0%B0%D0%BC%D0%B6%2C%20%D1%86%D1%8D%D0%B2%D1%8D%D1%80%D0%BB%D1%8D%D0%B3%D1%8D%D1%8D%20%D2%AF%D0%B9%D0%BB%D1%87%D0%B8%D0%BB%D0%B3%D1%8D%D1%8D%D0%BD%D0%B8%D0%B9%20%D1%85%D1%8D%D0%BB%D1%82%D1%8D%D1%81";
 
 function getMessage(value?: string | string[]) {
   if (Array.isArray(value)) {
@@ -106,11 +116,12 @@ export default async function CleaningAreasPage({ searchParams }: PageProps) {
     login: session.login,
     password: session.password,
   };
-  const [areaOptions, employeeOptions, subdistrictOptions, sessionDepartmentName] =
+  const [areaOptions, employeeOptions, subdistrictOptions, teamOptions, sessionDepartmentName] =
     await Promise.all([
       loadRoadCleaningAreaOptions(connectionOverrides),
       loadRoadCleaningEmployeeOptions(connectionOverrides),
       loadGarbageSubdistrictOptions(connectionOverrides).catch(() => []),
+      loadRoadCleaningTeamOptions(connectionOverrides).catch(() => []),
       loadSessionDepartmentName(session),
     ]);
 
@@ -152,6 +163,15 @@ export default async function CleaningAreasPage({ searchParams }: PageProps) {
     jobTitle: employee.jobTitle,
     areaCount: areaCountsByEmployee.get(employee.id) ?? 0,
   }));
+  const teamLeaderOptions = Array.from(
+    new Map([...masterOptions, ...cleanerOptions].map((employee) => [employee.id, employee])).values(),
+  ).sort((left, right) => left.name.localeCompare(right.name, "mn"));
+  const teamMemberOptions = cleanerOptions.map((employee) => ({
+    id: employee.id,
+    name: employee.name,
+    jobTitle: employee.jobTitle,
+    departmentName: employee.departmentName,
+  }));
 
   return (
     <main className={styles.shell}>
@@ -182,6 +202,13 @@ export default async function CleaningAreasPage({ searchParams }: PageProps) {
               roleLabel={getSessionRoleLabel(session)}
             />
 
+            <div className={styles.buttonRow}>
+              <Link href={GREEN_SERVICE_WORK_DASHBOARD_HREF} className={styles.secondaryButton}>
+                <ArrowLeft aria-hidden />
+                Ажлын самбар руу буцах
+              </Link>
+            </div>
+
             {errorMessage ? (
               <div className={`${styles.message} ${styles.errorMessage}`}>{errorMessage}</div>
             ) : null}
@@ -197,6 +224,107 @@ export default async function CleaningAreasPage({ searchParams }: PageProps) {
                   Өнөөдрийн ажил үүсгэх
                 </button>
               </form>
+            </section>
+
+            <section id="teams" className={styles.formCard}>
+              <span className={styles.formBadge}>Баг</span>
+
+              <form action={createCleaningTeamAction} className={styles.createWorkForm}>
+                <div className={styles.fieldRow}>
+                  <div className={styles.field}>
+                    <label htmlFor="team_name">Багийн нэр</label>
+                    <input id="team_name" name="team_name" type="text" placeholder="Жишээ: 2-р баг" required />
+                  </div>
+                  <div className={styles.field}>
+                    <label htmlFor="team_leader_id">Багийн ахлагч / мастер</label>
+                    <select id="team_leader_id" name="team_leader_id">
+                      <option value="">Сонгохгүй</option>
+                      {teamLeaderOptions.map((employee) => (
+                        <option key={employee.id} value={employee.id}>
+                          {[employee.name, employee.jobTitle].filter(Boolean).join(" · ")}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className={styles.field}>
+                    <label htmlFor="service_area">Хариуцах хэсэг</label>
+                    <input id="service_area" name="service_area" type="text" placeholder="Жишээ: 2-3 хороо" />
+                  </div>
+                </div>
+
+                <TeamMemberPicker label="Багийн гишүүд" options={teamMemberOptions} />
+
+                <div className={styles.buttonRow}>
+                  <button type="submit" className={styles.primaryButton}>
+                    Баг нэмэх
+                  </button>
+                </div>
+              </form>
+
+              <div className={styles.settingsList}>
+                {teamOptions.length ? (
+                  teamOptions.map((team) => (
+                    <article key={team.id} className={styles.settingsListItem}>
+                      <div className={styles.settingsListHeader}>
+                        <div>
+                          <strong>{team.name}</strong>
+                          <span>
+                            {[
+                              team.serviceArea ? `Хэсэг: ${team.serviceArea}` : "",
+                              team.leaderName ? `Ахлагч: ${team.leaderName}` : "Ахлагч сонгоогүй",
+                              team.memberNames.length ? `Гишүүд: ${team.memberNames.join(", ")}` : "Гишүүн сонгоогүй",
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        </div>
+                      </div>
+
+                      <form action={updateCleaningTeamAction} className={styles.createWorkForm}>
+                        <input type="hidden" name="team_id" value={team.id} />
+                        <div className={styles.fieldRow}>
+                          <div className={styles.field}>
+                            <label htmlFor={`team_name_${team.id}`}>Багийн нэр</label>
+                            <input id={`team_name_${team.id}`} name="team_name" type="text" defaultValue={team.name} required />
+                          </div>
+                          <div className={styles.field}>
+                            <label htmlFor={`team_leader_id_${team.id}`}>Багийн ахлагч / мастер</label>
+                            <select id={`team_leader_id_${team.id}`} name="team_leader_id" defaultValue={team.leaderId ? String(team.leaderId) : ""}>
+                              <option value="">Сонгохгүй</option>
+                              {teamLeaderOptions.map((employee) => (
+                                <option key={employee.id} value={employee.id}>
+                                  {[employee.name, employee.jobTitle].filter(Boolean).join(" · ")}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className={styles.field}>
+                            <label htmlFor={`service_area_${team.id}`}>Хариуцах хэсэг</label>
+                            <input id={`service_area_${team.id}`} name="service_area" type="text" defaultValue={team.serviceArea} />
+                          </div>
+                        </div>
+
+                        <TeamMemberPicker
+                          label="Багийн гишүүд"
+                          options={teamMemberOptions}
+                          defaultSelectedIds={team.memberIds}
+                        />
+
+                        <div className={styles.buttonRow}>
+                          <button type="submit" className={styles.secondaryButton}>
+                            Баг засах
+                          </button>
+                          <button type="submit" formAction={archiveCleaningTeamAction} className={styles.dangerButton}>
+                            Баг устгах
+                          </button>
+                        </div>
+                      </form>
+                    </article>
+                  ))
+                ) : (
+                  <div className={styles.emptyState}>Бүртгэлтэй баг одоогоор алга.</div>
+                )}
+              </div>
             </section>
 
             <section className={styles.formCard}>

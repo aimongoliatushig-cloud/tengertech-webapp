@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { hasCapability, requireSession } from "@/lib/auth";
+import { executeOdooKw, type OdooConnection } from "@/lib/odoo";
 import { createLocalRoadCleaningArea } from "@/lib/road-cleaning-area-store";
 import {
   assignRoadCleaningMasterToEmployees,
@@ -15,6 +16,14 @@ import {
 } from "@/lib/workspace";
 
 const GREEN_CLEANING_DEPARTMENT_NAME = "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
+const CLEANING_TEAM_OPERATION_TYPES = ["street_cleaning", "green_maintenance"];
+
+type OdooFieldInfo = {
+  readonly?: boolean;
+  selection?: Array<[string, string]>;
+};
+
+type OdooFieldMap = Record<string, OdooFieldInfo>;
 
 function getText(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -76,9 +85,9 @@ function isMissingCleaningModelError(error: unknown) {
   );
 }
 
-function redirectWithStatus(type: "notice" | "error", message: string): never {
+function redirectWithStatus(type: "notice" | "error", message: string, anchor = ""): never {
   const params = new URLSearchParams({ [type]: message });
-  redirect(`/cleaning-areas?${params.toString()}`);
+  redirect(`/cleaning-areas?${params.toString()}${anchor ? `#${anchor}` : ""}`);
 }
 
 function isRedirectException(error: unknown) {
@@ -95,6 +104,153 @@ function rethrowIfRedirectError(error: unknown) {
   if (isRedirectException(error)) {
     throw error;
   }
+}
+
+async function getModelFields(model: string, connection: Partial<OdooConnection>) {
+  try {
+    return await executeOdooKw<OdooFieldMap>(
+      model,
+      "fields_get",
+      [],
+      { attributes: ["readonly", "selection"] },
+      connection,
+    );
+  } catch {
+    return null;
+  }
+}
+
+function pickSupportedValues(
+  candidateValues: Record<string, unknown>,
+  fields: OdooFieldMap | null,
+) {
+  if (!fields) {
+    return candidateValues;
+  }
+
+  return Object.fromEntries(
+    Object.entries(candidateValues).filter(([fieldName, value]) => {
+      if (!fields[fieldName] || fields[fieldName].readonly) {
+        return false;
+      }
+      return value !== undefined && value !== null && value !== "";
+    }),
+  );
+}
+
+function pickSelectionValue(
+  fields: OdooFieldMap | null,
+  fieldName: string,
+  preferredValues: string[],
+) {
+  const selection = fields?.[fieldName]?.selection;
+  if (!selection?.length) {
+    return preferredValues[0];
+  }
+  const allowed = new Set(selection.map(([value]) => value));
+  return preferredValues.find((value) => allowed.has(value)) ?? selection[0]?.[0] ?? preferredValues[0];
+}
+
+async function writeOdooRecord(
+  model: string,
+  id: number,
+  values: Record<string, unknown>,
+  connection: Partial<OdooConnection>,
+) {
+  const fields = await getModelFields(model, connection);
+  const supportedValues = pickSupportedValues(values, fields);
+  if (!Object.keys(supportedValues).length) {
+    return true;
+  }
+
+  try {
+    return await executeOdooKw<boolean>(model, "write", [[id], supportedValues], {}, connection);
+  } catch (error) {
+    console.warn(`Retrying ${model} write with system connection`, error);
+    return executeOdooKw<boolean>(model, "write", [[id], supportedValues], {});
+  }
+}
+
+async function createOdooRecord(
+  model: string,
+  values: Record<string, unknown>,
+  connection: Partial<OdooConnection>,
+) {
+  const fields = await getModelFields(model, connection);
+  const supportedValues = pickSupportedValues(values, fields);
+
+  try {
+    return await executeOdooKw<number>(model, "create", [supportedValues], {}, connection);
+  } catch (error) {
+    console.warn(`Retrying ${model} create with system connection`, error);
+    return executeOdooKw<number>(model, "create", [supportedValues], {});
+  }
+}
+
+async function loadGreenCleaningDepartmentId(connection: Partial<OdooConnection>) {
+  const departments = await loadDepartmentOptions(connection);
+  const department =
+    departments.find(
+      (option) =>
+        option.name === GREEN_CLEANING_DEPARTMENT_NAME ||
+        option.label === GREEN_CLEANING_DEPARTMENT_NAME,
+    ) ??
+    departments.find((option) => {
+      const label = `${option.name} ${option.label}`.toLocaleLowerCase("mn-MN");
+      return label.includes("ногоон") && label.includes("цэвэрлэгээ");
+    }) ??
+    null;
+
+  return department?.id ?? null;
+}
+
+async function buildCleaningTeamValues(
+  formData: FormData,
+  connection: Partial<OdooConnection>,
+  requireName: boolean,
+) {
+  const teamName = getText(formData, "team_name");
+  const leaderId = getOptionalId(formData, "team_leader_id");
+  const memberIds = getIds(formData, "member_ids");
+  const serviceArea = getText(formData, "service_area");
+
+  if (requireName && !teamName) {
+    redirectWithStatus("error", "Багийн нэр оруулна уу.", "teams");
+  }
+
+  const [fields, departmentId] = await Promise.all([
+    getModelFields("mfo.crew.team", connection),
+    loadGreenCleaningDepartmentId(connection),
+  ]);
+  const memberCommand = [[6, 0, memberIds]];
+  const operationType = pickSelectionValue(fields, "operation_type", CLEANING_TEAM_OPERATION_TYPES);
+
+  return pickSupportedValues(
+    {
+      name: teamName,
+      active: true,
+      operation_type: operationType,
+      department_id: departmentId,
+      ops_department_id: departmentId,
+      driver_employee_id: leaderId || false,
+      mfo_driver_employee_id: leaderId || false,
+      leader_employee_id: leaderId || false,
+      team_leader_id: leaderId || false,
+      master_employee_id: leaderId || false,
+      responsible_employee_id: leaderId || false,
+      collector_employee_ids: memberCommand,
+      member_employee_ids: memberCommand,
+      member_ids: memberCommand,
+      employee_ids: memberCommand,
+      loader_employee_ids: memberCommand,
+      loader_ids: memberCommand,
+      service_area: serviceArea || false,
+      zone_name: serviceArea || false,
+      responsibility_area: serviceArea || false,
+      khoroo_scope: serviceArea || false,
+    },
+    fields,
+  );
 }
 
 export async function createCleaningAreaAction(formData: FormData) {
@@ -269,5 +425,86 @@ export async function assignCleaningMasterAction(formData: FormData) {
     const message =
       error instanceof Error ? error.message : "Мастерын оноолт хадгалахад алдаа гарлаа.";
     redirectWithStatus("error", message);
+  }
+}
+
+export async function createCleaningTeamAction(formData: FormData) {
+  const session = await requireSession();
+  if (!hasCapability(session, "create_projects")) {
+    redirectWithStatus("error", "Баг нэмэх эрхгүй байна.", "teams");
+  }
+
+  const connection = {
+    login: session.login,
+    password: session.password,
+  };
+
+  try {
+    const values = await buildCleaningTeamValues(formData, connection, true);
+    await createOdooRecord("mfo.crew.team", values, connection);
+    revalidatePath("/cleaning-areas");
+    revalidatePath("/projects");
+    redirectWithStatus("notice", "Баг нэмэгдлээ.", "teams");
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    const message = error instanceof Error ? error.message : "Баг нэмэхэд алдаа гарлаа.";
+    redirectWithStatus("error", message, "teams");
+  }
+}
+
+export async function updateCleaningTeamAction(formData: FormData) {
+  const session = await requireSession();
+  if (!hasCapability(session, "create_projects")) {
+    redirectWithStatus("error", "Баг засах эрхгүй байна.", "teams");
+  }
+
+  const teamId = getOptionalId(formData, "team_id");
+  if (!teamId) {
+    redirectWithStatus("error", "Засах багаа сонгоно уу.", "teams");
+  }
+
+  const connection = {
+    login: session.login,
+    password: session.password,
+  };
+
+  try {
+    const values = await buildCleaningTeamValues(formData, connection, true);
+    await writeOdooRecord("mfo.crew.team", teamId, values, connection);
+    revalidatePath("/cleaning-areas");
+    revalidatePath("/projects");
+    redirectWithStatus("notice", "Багийн мэдээлэл шинэчлэгдлээ.", "teams");
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    const message = error instanceof Error ? error.message : "Баг засахад алдаа гарлаа.";
+    redirectWithStatus("error", message, "teams");
+  }
+}
+
+export async function archiveCleaningTeamAction(formData: FormData) {
+  const session = await requireSession();
+  if (!hasCapability(session, "create_projects")) {
+    redirectWithStatus("error", "Баг устгах эрхгүй байна.", "teams");
+  }
+
+  const teamId = getOptionalId(formData, "team_id");
+  if (!teamId) {
+    redirectWithStatus("error", "Устгах багаа сонгоно уу.", "teams");
+  }
+
+  const connection = {
+    login: session.login,
+    password: session.password,
+  };
+
+  try {
+    await writeOdooRecord("mfo.crew.team", teamId, { active: false }, connection);
+    revalidatePath("/cleaning-areas");
+    revalidatePath("/projects");
+    redirectWithStatus("notice", "Баг устгагдлаа.", "teams");
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    const message = error instanceof Error ? error.message : "Баг устгахад алдаа гарлаа.";
+    redirectWithStatus("error", message, "teams");
   }
 }

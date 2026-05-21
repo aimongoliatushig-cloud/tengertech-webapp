@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="seq_shared_work" model="ir.sequence">
+        <field name="name">Хамтарсан ажил</field>
+        <field name="code">shared.work</field>
+        <field name="prefix">HA/%(year)s/</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

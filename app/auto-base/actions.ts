@@ -8,6 +8,8 @@ import { canAccessAutoBaseOverview, requireSession } from "@/lib/auth";
 import { clearOdooReadCaches, executeOdooKw } from "@/lib/odoo";
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+const AUTO_BASE_DEPARTMENT_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
+const AUTO_BASE_UNIT_NAME = "Авто бааз";
 
 type OdooFieldInfo = {
   type?: string;
@@ -21,11 +23,19 @@ function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
-function redirectWithMessage(kind: "error" | "notice", message: string) {
+function buildAutoBaseWorkspacePath(extraParams?: Record<string, string>) {
   const params = new URLSearchParams({
-    [kind]: message,
+    department: AUTO_BASE_DEPARTMENT_NAME,
+    unit: AUTO_BASE_UNIT_NAME,
   });
-  redirect(`/auto-base?${params.toString()}`);
+  for (const [key, value] of Object.entries(extraParams ?? {})) {
+    params.set(key, value);
+  }
+  return `/projects?${params.toString()}`;
+}
+
+function redirectWithMessage(kind: "error" | "notice", message: string) {
+  redirect(buildAutoBaseWorkspacePath({ [kind]: message }));
 }
 
 function revalidateFleetViews() {
@@ -431,7 +441,7 @@ export async function updateFleetVehicleAction(formData: FormData) {
 
   const vehicleId = Number(getString(formData, "vehicle_id"));
   if (!Number.isFinite(vehicleId) || vehicleId <= 0) {
-    redirect("/auto-base?error=Машины бүртгэл олдсонгүй.");
+    redirect(buildAutoBaseWorkspacePath({ error: "Машины бүртгэл олдсонгүй." }));
   }
 
   try {

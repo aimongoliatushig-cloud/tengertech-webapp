@@ -16,6 +16,7 @@
         "uom",
     ],
     "data": [
+        "data/shared_work_sequence.xml",
         "security/municipal_field_ops_security.xml",
         "security/ir.model.access.csv",
         "views/mfo_route_views.xml",
@@ -24,6 +25,7 @@
         "views/mfo_route_execution_views.xml",
         "views/mfo_issue_report_views.xml",
         "views/ops_task_report_views.xml",
+        "views/shared_work_views.xml",
         "views/menus.xml",
     ],
     "installable": True,

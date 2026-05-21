@@ -10,7 +10,6 @@ import {
   Bell,
   CalendarDays,
   ChevronDown,
-  Clock3,
   ClipboardCheck,
   FileText,
   Flag,
@@ -19,7 +18,6 @@ import {
   Leaf,
   ListChecks,
   LogOut,
-  MapPin,
   Menu,
   MessageSquare,
   PlusCircle,
@@ -27,6 +25,7 @@ import {
   ShoppingCart,
   Truck,
   Users,
+  UsersRound,
   Wrench,
   X,
   type LucideIcon,
@@ -64,6 +63,7 @@ type MenuKey =
   | "field"
   | "projects"
   | "procurement"
+  | "shared-work"
   | "profile"
   | "garbage-points"
   | "garbage-settings"
@@ -76,7 +76,8 @@ type MenuKey =
   | "help"
   | "new-project"
   | "reports"
-  | "data-download";
+  | "data-download"
+  | "none";
 
 type AppMenuProps = {
   active: MenuKey;
@@ -218,37 +219,11 @@ function createMenuGroup(
   };
 }
 
-function dedupeMenuItems(items: MenuItem[]) {
-  const seen = new Set<string>();
-
-  return items.filter((item) => {
-    const dedupeKey = item.href || item.key;
-    if (seen.has(dedupeKey)) {
-      return false;
-    }
-    seen.add(dedupeKey);
-    return true;
-  });
-}
-
 function compactManagerMenuItems(items: MenuItem[]) {
   const dashboardItem = items.find((item) => item.key === "dashboard");
   const hrItem = items.find((item) => item.key === "hr");
   const hrChildren = items.filter((item) => item.key.startsWith("hr-"));
   const departmentChildren = items.filter((item) => item.key.startsWith("department-"));
-  const operationChildren = dedupeMenuItems([
-    ...items.filter((item) =>
-      [
-        "tasks",
-        "overdue-projects",
-        "environment-work",
-        "auto-base",
-        "cleaning-areas",
-        "garbage-settings",
-        "complaints",
-      ].includes(item.key),
-    ),
-  ]);
   const reportItem = items.find((item) => item.key === "reports");
   const communicationChildren = items.filter((item) => ["chat", "help", "review", "notifications"].includes(item.key));
   const settingChildren = items.filter((item) => item.key === "settings");
@@ -258,20 +233,27 @@ function compactManagerMenuItems(items: MenuItem[]) {
     ...(hrItem ? [hrItem.key] : []),
     "procurement",
     ...hrChildren.map((item) => item.key),
-    ...operationChildren.map((item) => item.key),
     ...departmentChildren.map((item) => item.key),
     ...(reportItem ? [reportItem.key] : []),
     "data-download",
     ...communicationChildren.map((item) => item.key),
     ...settingChildren.map((item) => item.key),
   ]);
-  const leftovers = items.filter((item) => !groupedKeys.has(item.key));
+  const dashboardRoutedKeys = new Set([
+    "auto-base",
+    "garbage-settings",
+    "cleaning-areas",
+    "tasks",
+    "overdue-projects",
+    "environment-work",
+    "complaints",
+  ]);
+  const leftovers = items.filter((item) => !groupedKeys.has(item.key) && !dashboardRoutedKeys.has(item.key));
 
   return [
     dashboardItem,
     hrItem ?? createMenuGroup("manager-hr", "Хүний нөөц", Users, hrChildren),
     createMenuGroup("manager-departments", "Хэлтэс, нэгжүүд", Flag, departmentChildren),
-    createMenuGroup("manager-operations", "Үйл ажиллагаа", Leaf, operationChildren),
     procurementItem ? { ...procurementItem, label: "Худалдан авалт" } : null,
     reportItem ? { ...reportItem, label: "Тайлан" } : null,
     createMenuGroup("manager-communication", "Харилцаа холбоо", MessageSquare, communicationChildren),
@@ -506,17 +488,6 @@ export function AppMenu({
     !flags.mfoDispatcher &&
     !flags.municipalDepartmentHead &&
     !roleLooksDepartmentHead;
-  const departmentScopeLower = (departmentScopeName ?? "").toLocaleLowerCase("mn-MN");
-  const canOpenCleaningAreas = Boolean(
-    !workerMode &&
-      !transportInspectorMode &&
-      (executiveMode ||
-        environmentManagerMode ||
-        (flags.municipalDepartmentHead &&
-          (departmentScopeLower.includes("ногоон") ||
-            departmentScopeLower.includes("цэвэрлэгээ") ||
-            departmentScopeLower.includes("зам талбай")))),
-  );
   const hasHrGroupAccess = Boolean(flags.hrUser || flags.hrManager || flags.municipalHr);
   const hasDepartmentHrAccess = Boolean(
     !workerMode &&
@@ -636,6 +607,19 @@ export function AppMenu({
     label: "Худалдан авалт",
     icon: FileText,
   };
+  const sharedWorkMenuItem: MenuItem = {
+    key: "shared-work",
+    href: "/shared-work",
+    label: "Хамтарсан ажил",
+    icon: UsersRound,
+    children: [
+      { key: "shared-work-all", href: "/shared-work", label: "Бүгд", icon: UsersRound },
+      { key: "shared-work-mine", href: "/shared-work?view=mine", label: "Миний хэлтсийн ажил", icon: ListChecks },
+      { key: "shared-work-progress", href: "/shared-work?view=progress", label: "Явагдаж байгаа", icon: CalendarDays },
+      { key: "shared-work-completed", href: "/shared-work?view=completed", label: "Дууссан", icon: ClipboardCheck },
+      { key: "shared-work-reports", href: "/shared-work?view=reports", label: "Тайлан", icon: BarChart3 },
+    ],
+  };
 
   const defaultItems: MenuItem[] = [
     {
@@ -648,6 +632,7 @@ export function AppMenu({
     ...hrItems,
     ...roleFocusedItems,
     ...departmentItems,
+    ...(hrFocusedMode ? [] : [sharedWorkMenuItem]),
     ...(canOpenAutoBase
       ? [
           {
@@ -665,22 +650,6 @@ export function AppMenu({
             href: "/tasks?view=today",
             label: "Календарь",
             icon: CalendarDays,
-          },
-          {
-            key: "overdue-projects",
-            href: "/projects?category=overdue",
-            label: "Хугацаа хэтэрсэн ажил",
-            icon: Clock3,
-          },
-        ]
-      : []),
-    ...(canOpenCleaningAreas
-      ? [
-          {
-            key: "cleaning-areas",
-            href: "/cleaning-areas",
-            label: "Цэвэрлэх талбай",
-            icon: MapPin,
           },
         ]
       : []),
@@ -765,10 +734,10 @@ export function AppMenu({
       return showProcurement;
     }
     if (mfoFieldMode) {
-      return ["dashboard", "tasks", "chat", "help", "review", "notifications"].includes(item.key);
+      return ["dashboard", "tasks", "shared-work", "chat", "help", "review", "notifications"].includes(item.key);
     }
     if (environmentFieldMode) {
-      return ["dashboard", "tasks", "chat", "help", "review", "notifications"].includes(item.key);
+      return ["dashboard", "tasks", "shared-work", "chat", "help", "review", "notifications"].includes(item.key);
     }
     if (repairFieldMode) {
       return ["dashboard", "fleet-repair", "chat", "help", "review", "notifications"].includes(item.key);
@@ -784,7 +753,7 @@ export function AppMenu({
     ? compactManagerMenuItems(defaultItems)
     : defaultItems;
 
-  const garbageDepartmentItems: MenuItem[] = [
+  const garbageDepartmentItems: MenuItem[] = ([
     {
       key: "dashboard",
       href: "/",
@@ -807,6 +776,7 @@ export function AppMenu({
       label: "Ажил",
       icon: ListChecks,
     },
+    sharedWorkMenuItem,
     {
       key: "auto-base",
       href: "/auto-base",
@@ -826,13 +796,13 @@ export function AppMenu({
       label: "Хог тээвэрлэлтийн тохиргоо",
       icon: Settings,
     },
-  ];
+  ] as MenuItem[]).filter((item) => !["auto-base", "garbage-settings"].includes(item.key));
 
   const scopedDepartmentWorkHref =
     departmentItems[0]?.href ??
     (departmentScopeName ? `/projects?department=${encodeURIComponent(departmentScopeName)}` : "/projects");
   const scopedDepartmentIsAutoGarbage = Boolean(isAutoGarbageDepartment(departmentScopeName));
-  const scopedDepartmentHeadItems: MenuItem[] = [
+  const scopedDepartmentHeadItems: MenuItem[] = ([
     {
       key: "dashboard",
       href: "/",
@@ -845,6 +815,7 @@ export function AppMenu({
       label: "Ажил",
       icon: ListChecks,
     },
+    sharedWorkMenuItem,
     ...(canShowHrMenu
       ? [
           {
@@ -862,16 +833,6 @@ export function AppMenu({
             href: "/auto-base",
             label: "Авто бааз",
             icon: Truck,
-          },
-        ]
-      : []),
-    ...(canOpenCleaningAreas
-      ? [
-          {
-            key: "cleaning-areas",
-            href: "/cleaning-areas",
-            label: "Цэвэрлэх талбай",
-            icon: MapPin,
           },
         ]
       : []),
@@ -909,7 +870,7 @@ export function AppMenu({
       icon: Bell,
       badge: notificationCount,
     },
-  ];
+  ] as MenuItem[]).filter((item) => !["auto-base", "garbage-settings"].includes(item.key));
 
   const transportInspectorItems: MenuItem[] = [
     {
@@ -996,6 +957,26 @@ export function AppMenu({
   }
 
   function isItemActive(item: MenuItem) {
+    if (item.key === "shared-work") {
+      return active === "shared-work" || pathname === "/shared-work" || pathname.startsWith("/shared-work/");
+    }
+    if (item.key.startsWith("shared-work-")) {
+      const view = searchParams.get("view");
+      switch (item.key) {
+        case "shared-work-all":
+          return pathname === "/shared-work" && !view;
+        case "shared-work-mine":
+          return pathname === "/shared-work" && view === "mine";
+        case "shared-work-progress":
+          return pathname === "/shared-work" && view === "progress";
+        case "shared-work-completed":
+          return pathname === "/shared-work" && view === "completed";
+        case "shared-work-reports":
+          return pathname === "/shared-work" && view === "reports";
+        default:
+          return false;
+      }
+    }
     if (item.key === "procurement") {
       return active === "procurement" || pathname === "/procurement" || pathname.startsWith("/procurement/");
     }
@@ -1197,7 +1178,7 @@ export function AppMenu({
         ];
   const mobileDockItems: MenuItem[] = (
     procurementWorkerMode ? rawMobileDockItems : withMobilePrimaryAction(rawMobileDockItems)
-  ).filter((item) => !isHiddenMenuItem(item));
+  ).filter((item) => !isHiddenMenuItem(item) && !(isGarbageDepartmentHead && item.key === "garbage-settings"));
   const visibleMobileDockItems = mobileDockItems.slice(0, 5);
 
   const menuList = (

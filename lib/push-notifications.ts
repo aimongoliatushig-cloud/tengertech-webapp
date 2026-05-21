@@ -35,6 +35,8 @@ export type PushEventType =
   | "attendance_issue"
   | "discipline_issue"
   | "procurement_stage_changed"
+  | "shared_work_created"
+  | "shared_work_task_completed"
   | "test";
 
 type StoredPushSubscription = BrowserPushSubscription & {
@@ -138,6 +140,16 @@ const EVENT_DEFAULTS: Record<PushEventType, { title: string; body: string; targe
     title: "Худалдан авалтын шат өөрчлөгдлөө",
     body: "Танд хамаарах худалдан авалтын хүсэлт дараагийн шатанд ирлээ.",
     targetUrl: "/procurement/dashboard",
+  },
+  shared_work_created: {
+    title: "Хамтарсан ажил үүслээ",
+    body: "Танай хэлтэст хамтарсан ажлын даалгавар үүслээ.",
+    targetUrl: "/shared-work",
+  },
+  shared_work_task_completed: {
+    title: "Хэлтсийн ажил дууслаа",
+    body: "Хамтарсан ажлын нэг хэлтсийн явц дууссан төлөвт орлоо.",
+    targetUrl: "/shared-work",
   },
   test: {
     title: "Туршилтын мэдэгдэл",

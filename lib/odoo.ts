@@ -4483,7 +4483,7 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
         crewAssignments: crewAssignmentsByVehicle.get(vehicle.id) ?? [],
       } satisfies FleetVehicleBoardItem;
     })
-    .filter((vehicle) => !vehicle.isArchived && (vehicle.isOperational || vehicle.isRepair))
+    .filter((vehicle) => !vehicle.isArchived)
     .sort((left, right) => left.plate.localeCompare(right.plate, "mn"));
 
   const activeVehicles = allVehicles.filter(

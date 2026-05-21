@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_shared_work_list" model="ir.ui.view">
+        <field name="name">shared.work.list</field>
+        <field name="model">shared.work</field>
+        <field name="arch" type="xml">
+            <list string="Хамтарсан ажил" decoration-success="status == 'completed'" decoration-warning="status == 'partially_completed'" decoration-danger="status == 'cancelled'">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="location_text"/>
+                <field name="planned_start_date"/>
+                <field name="planned_end_date"/>
+                <field name="priority"/>
+                <field name="progress_percent" widget="progressbar"/>
+                <field name="status"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_shared_work_kanban" model="ir.ui.view">
+        <field name="name">shared.work.kanban</field>
+        <field name="model">shared.work</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="status">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="location_text"/>
+                <field name="progress_percent"/>
+                <field name="status"/>
+                <templates>
+                    <t t-name="card">
+                        <div>
+                            <strong><field name="name"/></strong>
+                            <div><field name="code"/></div>
+                            <div><field name="location_text"/></div>
+                            <field name="progress_percent" widget="progressbar"/>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_shared_work_form" model="ir.ui.view">
+        <field name="name">shared.work.form</field>
+        <field name="model">shared.work</field>
+        <field name="arch" type="xml">
+            <form string="Хамтарсан ажил">
+                <header>
+                    <button name="action_plan" string="Төлөвлөх" type="object" class="btn-primary" invisible="status not in ('draft', 'planned')"/>
+                    <button name="action_cancel" string="Цуцлах" type="object" invisible="status in ('completed', 'cancelled')"/>
+                    <button name="action_reset_to_draft" string="Ноорог болгох" type="object" invisible="status == 'draft'"/>
+                    <field name="status" widget="statusbar" statusbar_visible="draft,planned,in_progress,partially_completed,completed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code" readonly="1"/>
+                            <field name="location_text"/>
+                            <field name="priority"/>
+                            <field name="progress_percent" widget="progressbar" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="created_by" readonly="1"/>
+                            <field name="created_department_id"/>
+                            <field name="planned_start_date"/>
+                            <field name="planned_end_date"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="involved_department_ids" widget="many2many_tags"/>
+                    </group>
+                    <notebook>
+                        <page string="Тайлбар">
+                            <field name="description"/>
+                        </page>
+                        <page string="Хэлтсийн явц">
+                            <field name="department_task_ids" context="{'default_shared_work_id': id}">
+                                <list editable="bottom">
+                                    <field name="department_id"/>
+                                    <field name="department_head_id"/>
+                                    <field name="status"/>
+                                    <field name="progress_percent" widget="progressbar"/>
+                                    <field name="assigned_employee_ids" widget="many2many_tags"/>
+                                    <field name="assigned_vehicle_ids" widget="many2many_tags"/>
+                                    <field name="team_ids" widget="many2many_tags"/>
+                                    <field name="route_ids" widget="many2many_tags"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Тайлан">
+                            <field name="report_ids" readonly="1">
+                                <list>
+                                    <field name="created_at"/>
+                                    <field name="department_task_id"/>
+                                    <field name="employee_id"/>
+                                    <field name="note"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Хавсралт">
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_shared_work_search" model="ir.ui.view">
+        <field name="name">shared.work.search</field>
+        <field name="model">shared.work</field>
+        <field name="arch" type="xml">
+            <search string="Хамтарсан ажил">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="location_text"/>
+                <field name="involved_department_ids"/>
+                <filter name="in_progress" string="Явагдаж байгаа" domain="[('status', 'in', ['planned', 'in_progress', 'partially_completed'])]"/>
+                <filter name="completed" string="Дууссан" domain="[('status', '=', 'completed')]"/>
+                <filter name="active" string="Идэвхтэй" domain="[('active', '=', True)]"/>
+                <group>
+                    <filter name="group_status" string="Төлөв" context="{'group_by': 'status'}"/>
+                    <filter name="group_department" string="Хэлтэс" context="{'group_by': 'involved_department_ids'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_shared_work_department_task_list" model="ir.ui.view">
+        <field name="name">shared.work.department.task.list</field>
+        <field name="model">shared.work.department.task</field>
+        <field name="arch" type="xml">
+            <list string="Миний хэлтсийн хамтарсан ажил" decoration-success="status == 'completed'" decoration-warning="status == 'blocked'">
+                <field name="shared_work_id"/>
+                <field name="department_id"/>
+                <field name="department_head_id"/>
+                <field name="status"/>
+                <field name="progress_percent" widget="progressbar"/>
+                <field name="started_at"/>
+                <field name="completed_at"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_shared_work_department_task_form" model="ir.ui.view">
+        <field name="name">shared.work.department.task.form</field>
+        <field name="model">shared.work.department.task</field>
+        <field name="arch" type="xml">
+            <form string="Хэлтсийн ажил">
+                <header>
+                    <button name="action_plan" string="Төлөвлөх" type="object" class="btn-primary" invisible="status not in ('pending', 'blocked')"/>
+                    <button name="action_start" string="Эхлүүлэх" type="object" class="btn-primary" invisible="status not in ('pending', 'planned', 'blocked')"/>
+                    <button name="action_complete" string="Дуусгах" type="object" class="btn-primary" invisible="status == 'completed'"/>
+                    <button name="action_block" string="Саатсан" type="object" invisible="status in ('completed', 'cancelled')"/>
+                    <button name="action_create_operational_task" string="Дотоод даалгавар үүсгэх" type="object"/>
+                    <field name="status" widget="statusbar" statusbar_visible="pending,planned,in_progress,completed"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="shared_work_id" readonly="1"/>
+                            <field name="department_id" readonly="1"/>
+                            <field name="department_head_id"/>
+                            <field name="progress_percent" widget="progressbar"/>
+                        </group>
+                        <group>
+                            <field name="started_at"/>
+                            <field name="completed_at"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Хуваарилалт">
+                            <group>
+                                <field name="assigned_employee_ids" widget="many2many_tags" domain="[('department_id', '=', department_id)]"/>
+                                <field name="assigned_vehicle_ids" widget="many2many_tags"/>
+                                <field name="team_ids" widget="many2many_tags"/>
+                                <field name="route_ids" widget="many2many_tags"/>
+                            </group>
+                        </page>
+                        <page string="Дотоод даалгавар">
+                            <field name="operational_task_ids" widget="many2many_tags"/>
+                        </page>
+                        <page string="Тайлан">
+                            <field name="report_ids" context="{'default_department_task_id': id, 'default_shared_work_id': shared_work_id}">
+                                <list>
+                                    <field name="created_at"/>
+                                    <field name="employee_id"/>
+                                    <field name="note"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Тэмдэглэл">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_shared_work_report_form" model="ir.ui.view">
+        <field name="name">shared.work.report.form</field>
+        <field name="model">shared.work.report</field>
+        <field name="arch" type="xml">
+            <form string="Хамтарсан ажлын тайлан">
+                <sheet>
+                    <group>
+                        <field name="shared_work_id"/>
+                        <field name="department_task_id"/>
+                        <field name="employee_id"/>
+                        <field name="created_at" readonly="1"/>
+                    </group>
+                    <field name="note"/>
+                    <group>
+                        <field name="latitude"/>
+                        <field name="longitude"/>
+                    </group>
+                    <field name="image_ids" widget="many2many_binary"/>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_shared_work_report_list" model="ir.ui.view">
+        <field name="name">shared.work.report.list</field>
+        <field name="model">shared.work.report</field>
+        <field name="arch" type="xml">
+            <list string="Хамтарсан ажлын тайлан">
+                <field name="created_at"/>
+                <field name="shared_work_id"/>
+                <field name="department_task_id"/>
+                <field name="employee_id"/>
+                <field name="note"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_shared_work_all" model="ir.actions.act_window">
+        <field name="name">Хамтарсан ажил</field>
+        <field name="res_model">shared.work</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_shared_work_search"/>
+    </record>
+
+    <record id="action_shared_work_in_progress" model="ir.actions.act_window">
+        <field name="name">Явагдаж байгаа</field>
+        <field name="res_model">shared.work</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('status', 'in', ['planned', 'in_progress', 'partially_completed'])]</field>
+        <field name="search_view_id" ref="view_shared_work_search"/>
+    </record>
+
+    <record id="action_shared_work_completed" model="ir.actions.act_window">
+        <field name="name">Дууссан</field>
+        <field name="res_model">shared.work</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="domain">[('status', '=', 'completed')]</field>
+        <field name="search_view_id" ref="view_shared_work_search"/>
+    </record>
+
+    <record id="action_shared_work_my_department" model="ir.actions.act_window">
+        <field name="name">Миний хэлтсийн ажил</field>
+        <field name="res_model">shared.work.department.task</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">['|', ('department_id.manager_id.user_id', '=', uid), ('department_head_id.user_id', '=', uid)]</field>
+    </record>
+
+    <record id="action_shared_work_report" model="ir.actions.act_window">
+        <field name="name">Хамтарсан ажлын тайлан</field>
+        <field name="res_model">shared.work.report</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

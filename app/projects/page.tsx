@@ -2,14 +2,16 @@ import { type ComponentProps, Suspense } from "react";
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Truck } from "lucide-react";
+import { ArrowLeft, Settings, Truck } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
+import { AutoBaseBoard } from "@/app/auto-base/auto-base-board";
 import { LoadingShell } from "@/app/_components/loading-shell";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import dashboardStyles from "@/app/dashboard-view.module.css";
 import styles from "@/app/workspace.module.css";
 import {
+  canAccessGarbageTransportSettings,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
@@ -43,6 +45,9 @@ type PageProps = {
     category?: string | string[];
     unit?: string | string[];
     quickAction?: string | string[];
+    vehicle?: string | string[];
+    notice?: string | string[];
+    error?: string | string[];
   }>;
 };
 
@@ -452,6 +457,9 @@ async function ProjectsPageContent({
   }
   let activeFilter = normalizeProjectFilter(getDepartmentParam(params.category));
   const quickActionMode = normalizeQuickAction(getDepartmentParam(params.quickAction));
+  const selectedAutoBaseVehicleId = Number(getDepartmentParam(params.vehicle) ?? "");
+  const autoBaseNotice = getDepartmentParam(params.notice) ?? "";
+  const autoBaseError = getDepartmentParam(params.error) ?? "";
 
   const detectedGroup =
     departmentScopedMode
@@ -478,12 +486,22 @@ async function ProjectsPageContent({
   const isAutoBaseView = selectedGroup?.name === AUTO_BASE_GROUP_NAME;
   const showAutoBaseFleet = isAutoBaseView && selectedUnit === AUTO_BASE_UNIT_NAME;
   const showAutoBaseCombined = isAutoBaseView && !selectedUnit;
+  const garbageTransportSettingsHref = "/settings/garbage-transport";
+  const cleaningAreaSettingsHref = "/cleaning-areas";
+  const canShowGarbageTransportSettings =
+    isAutoBaseView &&
+    canAccessGarbageTransportSettings(
+      session,
+      scopedDepartmentName ?? selectedGroup?.name ?? AUTO_BASE_GROUP_NAME,
+    );
+  const canShowCleaningAreaSettings =
+    selectedGroup?.name === GREEN_SERVICE_GROUP_NAME && !workerMode;
   let fleetBoard: Awaited<ReturnType<typeof loadFleetVehicleBoard>> | null = null;
   let fleetLoadError = "";
 
   if (isAutoBaseView) {
     try {
-      fleetBoard = await loadFleetVehicleBoard(connectionOverrides);
+      fleetBoard = await loadFleetVehicleBoard();
     } catch (error) {
       console.error("Fleet vehicle board could not be loaded for projects auto-base view:", error);
       fleetLoadError =
@@ -961,7 +979,7 @@ async function ProjectsPageContent({
 
   const roleLabel = getSessionRoleLabel(session);
   const appMenuProps: ProjectsAppMenuProps = {
-    active: transportInspectorMode ? "projects" : masterMode ? "dashboard" : "projects",
+    active: isOverdueFilter ? "none" : transportInspectorMode ? "projects" : masterMode ? "dashboard" : "projects",
     canCreateProject,
     canCreateTasks,
     canWriteReports,
@@ -1003,6 +1021,15 @@ async function ProjectsPageContent({
               />
             </Suspense>
 
+            {isOverdueFilter ? (
+              <div className={styles.buttonRow}>
+                <Link href="/" className={styles.secondaryButton}>
+                  <ArrowLeft aria-hidden />
+                  Хяналтын самбар руу буцах
+                </Link>
+              </div>
+            ) : null}
+
             {!masterMode && !showAutoBaseFleet && !isOverdueFilter ? (
               <div className={styles.buttonRow}>
                 {canCreateProject ? (
@@ -1032,6 +1059,15 @@ async function ProjectsPageContent({
                       Энэ хэлтэс доторх ажлыг нэгжээр нь салгаж харуулна.
                     </small>
                   </div>
+                  {canShowGarbageTransportSettings || canShowCleaningAreaSettings ? (
+                    <Link
+                      href={canShowCleaningAreaSettings ? cleaningAreaSettingsHref : garbageTransportSettingsHref}
+                      className={styles.secondaryButton}
+                    >
+                      <Settings aria-hidden />
+                      Тохиргоо
+                    </Link>
+                  ) : null}
                 </div>
 
                 <div className={styles.taskFilterRail}>
@@ -1061,7 +1097,7 @@ async function ProjectsPageContent({
                               ),
                             ).length +
                               (selectedGroup.name === AUTO_BASE_GROUP_NAME
-                                ? autoBaseRepairVehicles.length
+                                ? fleetBoard?.totalVehicles ?? autoBaseRepairVehicles.length
                                 : 0)
                           }
                         </strong>
@@ -1075,7 +1111,6 @@ async function ProjectsPageContent({
                     if (quickActionMode !== "none") {
                       hrefParams.set("quickAction", quickActionMode);
                     }
-
                     return (
                       <Link
                         key={unit}
@@ -1087,18 +1122,18 @@ async function ProjectsPageContent({
                         }`}
                       >
                         <span>{unit}</span>
-                        <strong>
-                          {unit === AUTO_BASE_UNIT_NAME && fleetBoard
-                            ? autoBaseRepairVehicles.length
-                            : snapshot.projects.filter((project) =>
-                                matchesUnitScope(
-                                  unit,
-                                  project.departmentName,
-                                  project.name,
-                                  `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`,
-                                ),
-                              ).length}
-                        </strong>
+                        {unit === AUTO_BASE_UNIT_NAME ? null : (
+                          <strong>
+                            {snapshot.projects.filter((project) =>
+                              matchesUnitScope(
+                                unit,
+                                project.departmentName,
+                                project.name,
+                                `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`,
+                              ),
+                            ).length}
+                          </strong>
+                        )}
                       </Link>
                     );
                   })}
@@ -1110,12 +1145,12 @@ async function ProjectsPageContent({
               <div className={styles.sectionHeader}>
                 <div>
                   <span className={styles.sectionKicker}>
-                    {showAutoBaseFleet ? "Авто баазын засвар" : masterMode ? masterProjectSectionLabel : "Ажлын жагсаалт"}
+                    {showAutoBaseFleet ? "Авто баазын самбар" : masterMode ? masterProjectSectionLabel : "Ажлын жагсаалт"}
                   </span>
-                  <h2>{showAutoBaseFleet ? "Засвартай машинууд" : masterMode ? selectedDepartmentName : filterTitle}</h2>
+                  <h2>{showAutoBaseFleet ? "Машин техникийн бүртгэл" : masterMode ? selectedDepartmentName : filterTitle}</h2>
                   <small className={styles.sectionNote}>
                     {showAutoBaseFleet
-                      ? "Авто баазын засвартай машинуудыг хяналтын самбарын машин карт шиг харуулна."
+                      ? "Машины төлөв, засвар, даатгал, үзлэгийн нэгдсэн хяналт."
                       : masterMode
                         ? masterProjectSectionNote
                         : `${selectedDepartmentName} · ${filterNote}`}
@@ -1352,15 +1387,20 @@ async function ProjectsPageContent({
               {showAutoBaseFleet ? (
                 fleetLoadError ? (
                   <div className={styles.emptyColumnState}>{fleetLoadError}</div>
-                ) : autoBaseRepairVehicles.length ? (
-                  <div className={dashboardStyles.inspectorVehicleScroller}>
-                    {autoBaseRepairVehicles.map((vehicle) => (
-                      <AutoBaseRepairVehicleCard key={vehicle.id} vehicle={vehicle} />
-                    ))}
-                  </div>
+                ) : fleetBoard ? (
+                  <AutoBaseBoard
+                    board={fleetBoard}
+                    initialVehicleId={
+                      Number.isFinite(selectedAutoBaseVehicleId) && selectedAutoBaseVehicleId > 0
+                        ? selectedAutoBaseVehicleId
+                        : null
+                    }
+                    notice={autoBaseNotice}
+                    error={autoBaseError}
+                  />
                 ) : (
                   <div className={styles.emptyColumnState}>
-                    Авто бааз дээр засвартай машин одоогоор алга.
+                    Авто баазын машин техникийн мэдээлэл олдсонгүй.
                   </div>
                 )
               ) : showAutoBaseCombined ? (

@@ -142,11 +142,30 @@ type CleaningAreaRecord = {
 type CrewTeamRecord = {
   id: number;
   name: string;
+  active?: boolean;
+  operation_type?: string | false;
+  department_id?: Relation;
+  ops_department_id?: Relation;
   vehicle_id?: Relation;
   driver_employee_id?: Relation;
+  mfo_driver_employee_id?: Relation;
+  leader_employee_id?: Relation;
+  team_leader_id?: Relation;
+  master_employee_id?: Relation;
+  responsible_employee_id?: Relation;
   collector_employee_ids?: number[];
+  member_employee_ids?: number[];
+  member_ids?: number[];
+  employee_ids?: number[];
+  loader_employee_ids?: number[];
+  loader_ids?: number[];
   inspector_employee_id?: Relation;
   member_user_ids?: number[];
+  user_ids?: number[];
+  service_area?: string | false;
+  zone_name?: string | false;
+  responsibility_area?: string | false;
+  khoroo_scope?: string | false;
 };
 
 type RouteCrewRecord = {
@@ -1832,6 +1851,137 @@ export async function loadCrewTeamOptions(
       id: team.id,
       label: vehicleName ? `${team.name} (${vehicleName})` : team.name,
       memberUserIds: team.member_user_ids ?? [],
+    };
+  });
+}
+
+const ROAD_CLEANING_TEAM_OPERATION_TYPES = ["street_cleaning", "green_maintenance"];
+const CREW_TEAM_MEMBER_EMPLOYEE_FIELDS = [
+  "collector_employee_ids",
+  "member_employee_ids",
+  "member_ids",
+  "employee_ids",
+  "loader_employee_ids",
+  "loader_ids",
+] as const;
+const CREW_TEAM_LEADER_FIELDS = [
+  "driver_employee_id",
+  "mfo_driver_employee_id",
+  "leader_employee_id",
+  "team_leader_id",
+  "master_employee_id",
+  "responsible_employee_id",
+] as const;
+
+function collectCrewTeamEmployeeIds(team: CrewTeamRecord) {
+  const ids = new Set<number>();
+
+  for (const fieldName of CREW_TEAM_MEMBER_EMPLOYEE_FIELDS) {
+    const value = team[fieldName];
+    if (!Array.isArray(value)) {
+      continue;
+    }
+    for (const id of value) {
+      if (Number.isInteger(id) && id > 0) {
+        ids.add(id);
+      }
+    }
+  }
+
+  return Array.from(ids);
+}
+
+function resolveCrewTeamLeaderId(team: CrewTeamRecord) {
+  for (const fieldName of CREW_TEAM_LEADER_FIELDS) {
+    const id = relationId(team[fieldName] ?? false);
+    if (id) {
+      return id;
+    }
+  }
+  return null;
+}
+
+export async function loadRoadCleaningTeamOptions(
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const fieldNames = await loadModelFieldNames("mfo.crew.team", connectionOverrides).catch(
+    () => new Set<string>(),
+  );
+  if (!fieldNames.size) {
+    return [];
+  }
+
+  const domain: unknown[] = [["active", "=", true]];
+  if (fieldNames.has("operation_type")) {
+    domain.push(["operation_type", "in", ROAD_CLEANING_TEAM_OPERATION_TYPES]);
+  }
+
+  const fields = [
+    "name",
+    "operation_type",
+    "department_id",
+    "ops_department_id",
+    "service_area",
+    "zone_name",
+    "responsibility_area",
+    "khoroo_scope",
+    ...CREW_TEAM_LEADER_FIELDS,
+    ...CREW_TEAM_MEMBER_EMPLOYEE_FIELDS,
+  ].filter((fieldName) => fieldNames.has(fieldName));
+
+  const teams = await executeOdooKw<CrewTeamRecord[]>(
+    "mfo.crew.team",
+    "search_read",
+    [domain],
+    {
+      fields,
+      order: "name asc",
+      limit: 300,
+    },
+    connectionOverrides,
+  ).catch(() => []);
+
+  const employeeIds = Array.from(
+    new Set([
+      ...teams.flatMap((team) => collectCrewTeamEmployeeIds(team)),
+      ...teams.map(resolveCrewTeamLeaderId).filter((id): id is number => Boolean(id)),
+    ]),
+  );
+  const employees = employeeIds.length
+    ? await executeOdooKw<Array<{ id: number; name: string }>>(
+        "hr.employee",
+        "search_read",
+        [[["id", "in", employeeIds]]],
+        {
+          fields: ["name"],
+          limit: employeeIds.length,
+        },
+        connectionOverrides,
+      ).catch(() => [])
+    : [];
+  const employeeNames = new Map(employees.map((employee) => [employee.id, employee.name]));
+
+  return teams.map((team) => {
+    const memberIds = collectCrewTeamEmployeeIds(team);
+    const leaderId = resolveCrewTeamLeaderId(team);
+
+    return {
+      id: team.id,
+      name: team.name,
+      operationType: team.operation_type || "",
+      departmentName: relationName(team.department_id ?? false) || relationName(team.ops_department_id ?? false),
+      leaderId,
+      leaderName: leaderId ? employeeNames.get(leaderId) ?? "" : "",
+      memberIds,
+      memberNames: memberIds
+        .map((id) => employeeNames.get(id))
+        .filter((name): name is string => Boolean(name)),
+      serviceArea:
+        team.service_area ||
+        team.zone_name ||
+        team.responsibility_area ||
+        team.khoroo_scope ||
+        "",
     };
   });
 }

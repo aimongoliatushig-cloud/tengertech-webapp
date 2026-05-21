@@ -1,5 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <menuitem id="menu_shared_work_root"
+              name="Хамтарсан ажил"
+              parent="municipal_core.menu_municipal_core_root"
+              sequence="12"
+              groups="municipal_core.group_municipal_worker,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin,municipal_field_ops.group_shared_work_control_inspector"/>
+
+    <menuitem id="menu_shared_work_all"
+              name="Бүгд"
+              parent="menu_shared_work_root"
+              action="action_shared_work_all"
+              sequence="10"
+              groups="municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin,municipal_field_ops.group_shared_work_control_inspector"/>
+
+    <menuitem id="menu_shared_work_my_department"
+              name="Миний хэлтсийн ажил"
+              parent="menu_shared_work_root"
+              action="action_shared_work_my_department"
+              sequence="20"
+              groups="municipal_core.group_municipal_worker,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin"/>
+
+    <menuitem id="menu_shared_work_in_progress"
+              name="Явагдаж байгаа"
+              parent="menu_shared_work_root"
+              action="action_shared_work_in_progress"
+              sequence="30"
+              groups="municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin,municipal_field_ops.group_shared_work_control_inspector"/>
+
+    <menuitem id="menu_shared_work_completed"
+              name="Дууссан"
+              parent="menu_shared_work_root"
+              action="action_shared_work_completed"
+              sequence="40"
+              groups="municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin,municipal_field_ops.group_shared_work_control_inspector"/>
+
+    <menuitem id="menu_shared_work_report"
+              name="Тайлан"
+              parent="menu_shared_work_root"
+              action="action_shared_work_report"
+              sequence="50"
+              groups="municipal_core.group_municipal_worker,municipal_core.group_municipal_department_head,municipal_core.group_municipal_manager,municipal_core.group_municipal_director,municipal_core.group_municipal_admin,municipal_field_ops.group_shared_work_control_inspector"/>
+
     <menuitem id="menu_mfo_root"
               name="Хог тээвэрлэлт"
               parent="municipal_core.menu_municipal_core_root"

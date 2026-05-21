@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
+  ArrowLeft,
   Bell,
   MapPin,
   ShieldCheck,
@@ -53,6 +55,9 @@ const SETTING_TABS = [
   { href: "#points", label: "Хороо / хогийн цэг", icon: MapPin },
   { href: "#notifications", label: "Мэдэгдэл", icon: Bell },
 ];
+
+const WORK_DASHBOARD_HREF =
+  "/projects?department=%D0%90%D0%B2%D1%82%D0%BE%20%D0%B1%D0%B0%D0%B0%D0%B7%2C%20%D1%85%D0%BE%D0%B3%20%D1%82%D1%8D%D1%8D%D0%B2%D1%8D%D1%80%D0%BB%D1%8D%D0%BB%D1%82%D0%B8%D0%B9%D0%BD%20%D1%85%D1%8D%D0%BB%D1%82%D1%8D%D1%81";
 
 function getValue(value?: string | string[]) {
   return Array.isArray(value) ? value[0] || "" : value || "";
@@ -241,6 +246,10 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
 
             <section className={styles.hero}>
               <div>
+                <Link href={WORK_DASHBOARD_HREF} className={styles.backButton}>
+                  <ArrowLeft aria-hidden />
+                  <span>Ажлын самбар руу буцах</span>
+                </Link>
                 <span className={styles.eyebrow}>Department settings</span>
                 <h1>Хог тээвэрлэлтийн тохиргоо</h1>
                 <p>
