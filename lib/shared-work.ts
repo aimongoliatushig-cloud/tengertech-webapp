@@ -206,6 +206,9 @@ function relationName(value?: Relation, fallback = "") {
 }
 
 function clean(value: unknown) {
+  if (value === false || value === null || value === undefined) {
+    return "";
+  }
   return fixMojibakeText(String(value ?? "")).trim();
 }
 

@@ -318,10 +318,16 @@ export function NewWorkForm({
   ]);
   const [autoBaseImagePreviews, setAutoBaseImagePreviews] = useState<FilePreview[]>([]);
   const [projectFilePreviews, setProjectFilePreviews] = useState<FilePreview[]>([]);
+  const [sharedDepartmentIds, setSharedDepartmentIds] = useState<string[]>([]);
 
   const selectedDepartment = useMemo(
     () => departmentOptions.find((option) => String(option.id) === departmentId) ?? null,
     [departmentId, departmentOptions],
+  );
+  const sharedDepartmentOptions = useMemo(
+    () =>
+      departmentOptions.filter((option) => String(option.id) !== departmentId || operationUnit === "shared_work"),
+    [departmentId, departmentOptions, operationUnit],
   );
 
   useEffect(() => {
@@ -466,9 +472,12 @@ export function NewWorkForm({
     supportsGarbageTransport && operationUnit === "garbage_seasonal";
   const isRoadAreaCleaning =
     supportsRoadAreaCleaning && operationUnit === "road_area_cleaning";
+  const isSharedWork = operationUnit === "shared_work";
   const isDepartmentLocked = Boolean(lockedDepartmentId);
 
-  const submitLabel = isGarbageTransport
+  const submitLabel = isSharedWork
+    ? "Хамтарсан ажил үүсгэх"
+    : isGarbageTransport
     ? "Хог тээвэрлэлтийн ажил үүсгэх"
     : isAutoBase
       ? "Худалдан авалтын хүсэлт үүсгэх"
@@ -856,6 +865,8 @@ export function NewWorkForm({
 
   const formModeLabel = isGarbageTransport
     ? "Хог тээвэрлэлтийн маршрут"
+    : isSharedWork
+      ? "Хамтарсан ажил"
     : isSeasonalGarbage
       ? "Гэнэтийн ажил"
       : isRoadAreaCleaning
@@ -864,13 +875,19 @@ export function NewWorkForm({
   const showProjectDetails = !isGarbageTransport && !isAutoBase;
   const formModeDescription = isGarbageTransport
     ? "Машин, маршрут, огноо сонгоход ажил болон маршрутын цэгүүдийн даалгавар автоматаар үүснэ."
+    : isSharedWork
+      ? "Олон хэлтэс сонгоход нэг мастер хамтарсан ажил үүсэж, хэлтэс бүр дээр өөрийн хариуцах ажил автоматаар үүснэ."
     : isSeasonalGarbage
       ? "Сэг зэм, барилгын хог зэрэг бүртгэлгүй байршлыг гараар оруулж, олон машинтай ажил үүсгэнэ."
       : isRoadAreaCleaning
         ? "Цэвэрлэх талбай, ажиллах хугацаа, хариуцах ажилтныг бүртгэж зам талбайн цэвэрлэгээний ажлыг шууд үүсгэнэ."
       : "Ажлын нэр, хариуцсан хэлтсийн дарга, хугацаагаа оруулна.";
   const selectedDepartmentLabel =
-    lockedDepartmentLabel ?? selectedDepartment?.label ?? selectedDepartment?.name ?? "Сонгоогүй";
+    isSharedWork
+      ? sharedDepartmentIds.length
+        ? `${sharedDepartmentIds.length} хэлтэс сонгосон`
+        : "Хэлтсүүд сонгоно"
+      : lockedDepartmentLabel ?? selectedDepartment?.label ?? selectedDepartment?.name ?? "Сонгоогүй";
 
   return (
     <form action={action} className={`${styles.form} ${styles.createWorkForm}`}>
@@ -920,7 +937,73 @@ export function NewWorkForm({
         </div>
       </div>
 
-      {isDepartmentLocked ? (
+      {!isDepartmentLocked ? (
+        <div className={styles.optionalSection}>
+          <div className={styles.field}>
+            <label>Ажлын төрөл</label>
+            <div className={styles.modeRail}>
+              <button
+                type="button"
+                className={`${styles.modeChip} ${!isSharedWork ? styles.modeChipActive : ""}`}
+                onClick={() => {
+                  setOperationUnit(() => {
+                    if (supportsGarbageTransport) return "garbage_transport";
+                    if (supportsRoadAreaCleaning) return "road_area_cleaning";
+                    return "standard";
+                  });
+                }}
+              >
+                <span>Нэг хэлтсийн ажил</span>
+                <small>Нэг хариуцах хэлтэс сонгож ердийн ажил үүсгэнэ.</small>
+              </button>
+              <button
+                type="button"
+                className={`${styles.modeChip} ${isSharedWork ? styles.modeChipActive : ""}`}
+                onClick={() => setOperationUnit("shared_work")}
+              >
+                <span>Хамтарсан ажил</span>
+                <small>Олон хэлтэс сонгоод хэлтэс бүр дээр тусдаа хариуцах ажил үүсгэнэ.</small>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isSharedWork ? (
+        <div className={styles.optionalSection}>
+          <span className={styles.formBadge}>Оролцох хэлтэс</span>
+          <p className={styles.fieldHint}>
+            Хамтрах хэлтсүүдээ сонгоно. Хадгалахад сонгосон хэлтэс бүр дээр нэг хэлтсийн ажил автоматаар үүснэ.
+          </p>
+          <div className={styles.sharedWorkDepartmentPicker}>
+            {sharedDepartmentOptions.map((option) => {
+              const optionId = String(option.id);
+              const checked = sharedDepartmentIds.includes(optionId);
+              return (
+                <label key={option.id} className={styles.sharedWorkDepartmentCard}>
+                  <input
+                    type="checkbox"
+                    name="shared_department_ids"
+                    value={option.id}
+                    checked={checked}
+                    onChange={(event) => {
+                      setSharedDepartmentIds((current) =>
+                        event.target.checked
+                          ? Array.from(new Set([...current, optionId]))
+                          : current.filter((id) => id !== optionId),
+                      );
+                    }}
+                  />
+                  <span>
+                    <strong>{option.label}</strong>
+                    <small>{checked ? "Оролцоно" : "Сонгох"}</small>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ) : isDepartmentLocked ? (
         <input type="hidden" name="department_id" value={departmentId} />
       ) : (
         <div className={styles.field}>
@@ -942,7 +1025,7 @@ export function NewWorkForm({
         </div>
       )}
 
-      {supportsGarbageTransport ? (
+      {supportsGarbageTransport && !isSharedWork ? (
         <div className={styles.optionalSection}>
           <div className={styles.field}>
             <label>Ажлын горим</label>
@@ -986,7 +1069,7 @@ export function NewWorkForm({
         </div>
       ) : null}
 
-      {supportsRoadAreaCleaning ? (
+      {supportsRoadAreaCleaning && !isSharedWork ? (
         <div className={styles.optionalSection}>
           <div className={styles.field}>
             <label>Ажлын горим</label>
@@ -1996,27 +2079,29 @@ export function NewWorkForm({
           </div>
           <input type="hidden" name="operation_type" value={CUSTOM_WORK_TYPE_VALUE} />
 
-          <div className={styles.field}>
-            <label>Хариуцах ажилтан</label>
-            <div className={styles.lockedFieldValue}>
-              {selectedDepartmentHead
-                ? [
-                    selectedDepartmentHead.name,
-                    selectedDepartmentHead.jobTitle,
-                    selectedDepartmentHead.login,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")
-                : selectedDepartment
-                  ? "Хэлтсийн дарга олдсонгүй"
-                  : "Эхлээд хэлтэс сонгоно уу"}
+          {!isSharedWork ? (
+            <div className={styles.field}>
+              <label>Хариуцах ажилтан</label>
+              <div className={styles.lockedFieldValue}>
+                {selectedDepartmentHead
+                  ? [
+                      selectedDepartmentHead.name,
+                      selectedDepartmentHead.jobTitle,
+                      selectedDepartmentHead.login,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : selectedDepartment
+                    ? "Хэлтсийн дарга олдсонгүй"
+                    : "Эхлээд хэлтэс сонгоно уу"}
+              </div>
+              <input
+                type="hidden"
+                name="manager_id"
+                value={selectedDepartmentHead ? String(selectedDepartmentHead.id) : ""}
+              />
             </div>
-            <input
-              type="hidden"
-              name="manager_id"
-              value={selectedDepartmentHead ? String(selectedDepartmentHead.id) : ""}
-            />
-          </div>
+          ) : null}
 
           <div className={styles.fieldRow}>
             <div className={styles.field}>

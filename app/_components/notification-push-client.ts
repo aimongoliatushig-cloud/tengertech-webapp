@@ -584,6 +584,59 @@ export async function connectNotifications(options: ConnectNotificationOptions =
   }
 }
 
+export async function syncExistingNotificationSubscription(options: Pick<ConnectNotificationOptions, "userId" | "onStatusChange"> = {}) {
+  const emitStatus = (status: NotificationConnectionStatus) => {
+    options.onStatusChange?.(status);
+  };
+
+  try {
+    if (
+      typeof window === "undefined" ||
+      !("Notification" in window) ||
+      Notification.permission !== "granted" ||
+      !("serviceWorker" in navigator) ||
+      !("PushManager" in window)
+    ) {
+      return {
+        ok: false as const,
+        skipped: true as const,
+        diagnostics: await diagnoseNotifications().catch(() => null),
+      };
+    }
+
+    const registration = await getExistingRegistration();
+    const subscription = await registration?.pushManager.getSubscription().catch(() => null);
+    if (!subscription) {
+      return {
+        ok: false as const,
+        skipped: true as const,
+        diagnostics: await diagnoseNotifications().catch(() => null),
+      };
+    }
+
+    emitStatus("saving_to_server");
+    await saveSubscriptionToBackend(normalizeSubscription(subscription), options.userId);
+    emitStatus("connected");
+
+    return {
+      ok: true as const,
+      diagnostics: await diagnoseNotifications(),
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    storeLastError(message);
+    emitStatus("failed");
+    logNotificationStep("silent sync failed", { error: message });
+
+    return {
+      ok: false as const,
+      skipped: false as const,
+      error: message,
+      diagnostics: await diagnoseNotifications().catch(() => null),
+    };
+  }
+}
+
 export async function sendTestNotification() {
   const response = await withTimeout(
     fetch("/api/notifications/test", {

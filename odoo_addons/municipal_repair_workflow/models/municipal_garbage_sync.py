@@ -220,9 +220,31 @@ class MunicipalGarbageSyncLog(models.Model):
             return int(default_timeout)
 
     @api.model
+    def _config_or_env(self, param_key, env_key):
+        value = os.getenv(env_key)
+        if value:
+            return value.strip()
+        return (
+            self.env["ir.config_parameter"].sudo().get_param(param_key, "")
+            or ""
+        ).strip()
+
+    @api.model
+    def _wrs_sync_token(self):
+        return self._config_or_env(
+            "municipal_repair_workflow.wrs_sync_token",
+            "WRS_SYNC_TOKEN",
+        )
+
+    @api.model
     def _fetch_external_reports(self, sync_type):
         url_key = "GARBAGE_WEIGHT_API_URL" if sync_type == "weight" else "GARBAGE_FUEL_API_URL"
-        url = os.getenv(url_key)
+        url = self._config_or_env(
+            "municipal_repair_workflow.garbage_weight_api_url"
+            if sync_type == "weight"
+            else "municipal_repair_workflow.garbage_fuel_api_url",
+            url_key,
+        )
         username = os.getenv("GARBAGE_API_USERNAME")
         password = os.getenv("GARBAGE_API_PASSWORD")
         delegated_wrs_import = False
@@ -232,6 +254,10 @@ class MunicipalGarbageSyncLog(models.Model):
                 os.getenv("APP_BASE_URL")
                 or os.getenv("NEXT_PUBLIC_APP_URL")
                 or os.getenv("NEXT_PUBLIC_SITE_URL")
+                or self.env["ir.config_parameter"].sudo().get_param(
+                    "municipal_repair_workflow.wrs_import_app_base_url",
+                    "",
+                )
             )
             if app_base_url:
                 url = "%s/api/wrs-report/import" % app_base_url.rstrip("/")
@@ -239,8 +265,12 @@ class MunicipalGarbageSyncLog(models.Model):
 
         if not url:
             return self._create_failure(sync_type, "%s тохируулаагүй байна." % url_key)
-        if delegated_wrs_import and not os.getenv("WRS_SYNC_TOKEN"):
-            return self._create_failure(sync_type, "WRS_SYNC_TOKEN тохируулаагүй байна.")
+        wrs_sync_token = self._wrs_sync_token()
+        if delegated_wrs_import and not wrs_sync_token:
+            return self._create_failure(
+                sync_type,
+                "WRS_SYNC_TOKEN эсвэл municipal_repair_workflow.wrs_sync_token тохируулаагүй байна.",
+            )
 
         pending_dates = self._pending_report_dates(sync_type)
         if not pending_dates:
@@ -252,7 +282,7 @@ class MunicipalGarbageSyncLog(models.Model):
             for target_date in pending_dates:
                 headers = {}
                 if delegated_wrs_import:
-                    headers["Authorization"] = "Bearer %s" % os.getenv("WRS_SYNC_TOKEN")
+                    headers["Authorization"] = "Bearer %s" % wrs_sync_token
                 response = requests.get(
                     url,
                     auth=(username, password) if (username or password) and not delegated_wrs_import else None,

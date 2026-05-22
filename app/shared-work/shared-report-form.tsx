@@ -67,7 +67,7 @@ export function SharedReportForm({ workId, tasks }: SharedReportFormProps) {
     <form action={createSharedWorkReportAction} className={styles.sharedWorkReportForm}>
       <input type="hidden" name="shared_work_id" value={workId} />
       <label className={styles.field}>
-        <span>Хэлтсийн ажил</span>
+        <span>Хэлтэс</span>
         <select name="department_task_id" required>
           {tasks.map((task) => (
             <option key={task.id} value={task.id}>

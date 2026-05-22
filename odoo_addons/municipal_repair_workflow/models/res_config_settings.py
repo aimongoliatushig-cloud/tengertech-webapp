@@ -29,6 +29,18 @@ class ResConfigSettings(models.TransientModel):
         default="00:00",
         config_parameter="municipal_repair_workflow.garbage_weight_sync_time",
     )
+    garbage_weight_api_url = fields.Char(
+        string="Жингийн мэдээлэл татах API URL",
+        config_parameter="municipal_repair_workflow.garbage_weight_api_url",
+    )
+    wrs_import_app_base_url = fields.Char(
+        string="WRS таталт хийх web app URL",
+        config_parameter="municipal_repair_workflow.wrs_import_app_base_url",
+    )
+    wrs_sync_token = fields.Char(
+        string="WRS таталтын token",
+        config_parameter="municipal_repair_workflow.wrs_sync_token",
+    )
     garbage_fuel_sync_enabled = fields.Boolean(
         string="Шатахууны мэдээлэл автоматаар татах",
         config_parameter="municipal_repair_workflow.garbage_fuel_sync_enabled",
@@ -37,4 +49,8 @@ class ResConfigSettings(models.TransientModel):
         string="Шатахууны мэдээлэл татах цаг",
         default="00:15",
         config_parameter="municipal_repair_workflow.garbage_fuel_sync_time",
+    )
+    garbage_fuel_api_url = fields.Char(
+        string="Шатахууны мэдээлэл татах API URL",
+        config_parameter="municipal_repair_workflow.garbage_fuel_api_url",
     )

@@ -1179,8 +1179,7 @@
 .inspectorControlBar button,
 .inspectorControlBar label,
 .inspectorControlBar select,
-.inspectorSearchField,
-.inspectorViewToggle {
+.inspectorSearchField {
   border: 1px solid rgba(17, 27, 21, 0.12);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.94);
@@ -1251,34 +1250,6 @@
   font-weight: 750;
 }
 
-.inspectorViewToggle {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px;
-}
-
-.inspectorViewToggle button {
-  display: inline-grid;
-  width: 36px;
-  height: 34px;
-  place-items: center;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: #5d6b62;
-  cursor: pointer;
-}
-
-.inspectorViewToggle button svg {
-  width: 18px;
-  height: 18px;
-}
-
-.inspectorViewToggle .inspectorViewToggleActive {
-  background: #2f7f46;
-  color: #fff;
-}
-
 .inspectorVehicleScroller {
   display: grid;
   grid-auto-columns: minmax(220px, 260px);
@@ -1291,14 +1262,9 @@
   scrollbar-width: thin;
 }
 
-.inspectorVehicleScrollerList {
-  grid-auto-flow: row;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  overflow: visible;
-}
-
 .inspectorVehicleCard {
   appearance: none;
+  position: relative;
   display: grid;
   gap: 12px;
   min-width: 0;
@@ -1309,9 +1275,10 @@
   color: inherit;
   cursor: pointer;
   font: inherit;
+  isolation: isolate;
   text-align: left;
   box-shadow: 0 16px 38px rgba(17, 27, 21, 0.07);
-  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 .inspectorVehicleCard:hover,
@@ -1323,20 +1290,30 @@
 }
 
 .inspectorVehicleCardActive {
-  border-color: #2f7f46;
+  border-color: #166534;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fff9 100%);
   box-shadow:
-    0 22px 48px rgba(17, 27, 21, 0.1),
-    inset 0 0 0 1px rgba(47, 127, 70, 0.25);
+    0 24px 54px rgba(17, 27, 21, 0.13),
+    0 0 0 3px rgba(47, 127, 70, 0.18),
+    inset 0 0 0 2px rgba(47, 127, 70, 0.34);
+}
+
+.inspectorVehicleCardActive::before {
+  content: "";
+  position: absolute;
+  inset: 12px auto 12px 8px;
+  width: 4px;
+  border-radius: 999px;
+  background: #2f7f46;
+}
+
+.inspectorVehicleCardActive .inspectorVehicleImage {
+  box-shadow: inset 0 0 0 2px rgba(47, 127, 70, 0.36);
 }
 
 .inspectorVehicleCardBlocked {
   border-color: rgba(220, 38, 38, 0.28);
   background: #fffafa;
-}
-
-.inspectorVehicleCardBlocked .inspectorVehicleImage span {
-  background: rgba(254, 242, 242, 0.96);
-  color: #b91c1c;
 }
 
 .inspectorVehicleImage {
@@ -1360,21 +1337,6 @@
   width: 72px;
   height: 72px;
   stroke-width: 1.6;
-}
-
-.inspectorVehicleImage span {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: inline-flex;
-  min-height: 28px;
-  align-items: center;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: rgba(238, 247, 237, 0.96);
-  color: #188342;
-  font-size: 0.76rem;
-  font-weight: 950;
 }
 
 .inspectorVehicleCardBody {
@@ -1540,6 +1502,7 @@
 .inspectorSelectedPanel {
   display: grid;
   gap: 18px;
+  order: 1;
   padding: 18px;
 }
 
@@ -1701,6 +1664,7 @@
 .inspectorCreatePanel {
   display: grid;
   gap: 12px;
+  order: 2;
   padding: 18px;
 }
 
@@ -1720,6 +1684,82 @@
 .inspectorCreatePanel label span {
   color: #475569;
   font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.inspectorDriverHint {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: #f2faf4;
+  color: #2f7f46;
+  font-size: 0.75rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.inspectorSelectedVehicleField {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+  min-height: 64px;
+  padding: 12px;
+  border: 1px solid rgba(47, 127, 70, 0.16);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f7fcf8 0%, #ffffff 100%);
+}
+
+.inspectorSelectedVehicleField > span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 10px;
+  background: #e5f5e8;
+  color: #2f7f46;
+}
+
+.inspectorSelectedVehicleField svg {
+  width: 20px;
+  height: 20px;
+}
+
+.inspectorSelectedVehicleField div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.inspectorSelectedVehicleField small {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.inspectorSelectedVehicleField strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #111827;
+  font-size: 0.92rem;
+  font-weight: 950;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspectorSelectedVehicleField em {
+  width: fit-content;
+  min-height: 24px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fff4d6;
+  color: #a16207;
+  font-size: 0.7rem;
+  font-style: normal;
   font-weight: 900;
 }
 
@@ -1936,10 +1976,6 @@
     width: 100%;
   }
 
-  .inspectorViewToggle {
-    justify-self: start;
-  }
-
   .inspectorControlBar {
     grid-template-columns: 42px minmax(180px, 1fr) 42px;
   }
@@ -1982,10 +2018,6 @@
     padding-inline: 4px;
   }
 
-  .inspectorVehicleScrollerList {
-    grid-template-columns: 1fr;
-  }
-
   .inspectorVehicleImage {
     height: 118px;
   }
@@ -2002,6 +2034,14 @@
 
   .inspectorWorkspaceGrid {
     gap: 14px;
+  }
+
+  .inspectorCreatePanel {
+    order: 1;
+  }
+
+  .inspectorSelectedPanel {
+    order: 2;
   }
 
   .inspectorSelectedPanel,
@@ -3570,6 +3610,634 @@
   }
 }
 
+.autoGarbageBoard {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 26px;
+  padding: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.06);
+}
+
+.autoGarbageBreadcrumb {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.autoGarbageBreadcrumb svg {
+  width: 13px;
+  height: 13px;
+  color: #94a3b8;
+}
+
+.autoGarbageBreadcrumb strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #0f172a;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autoGarbageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  min-width: 0;
+}
+
+.autoGarbageHeader h2 {
+  margin: 0;
+  color: #07130d;
+  font-size: 1.55rem;
+  font-weight: 950;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.autoGarbageHeader p {
+  margin: 8px 0 0;
+  color: #526179;
+  font-size: 0.82rem;
+  font-weight: 780;
+  line-height: 1.35;
+}
+
+.autoGarbageToolbar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.autoGarbageGhostButton,
+.autoGarbagePrimaryButton {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 7px;
+  padding: 0 13px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.autoGarbageGhostButton {
+  border: 1px solid rgba(15, 23, 42, 0.09);
+  background: #ffffff;
+  color: #101827;
+}
+
+.autoGarbagePrimaryButton {
+  border: 1px solid #16823d;
+  background: #16823d;
+  color: #ffffff;
+  box-shadow: 0 12px 24px rgba(22, 130, 61, 0.16);
+}
+
+.autoGarbageGhostButton svg,
+.autoGarbagePrimaryButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.autoGarbageMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.autoGarbageMetricCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 88px;
+  padding: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.autoGarbageMetricIcon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 8px;
+}
+
+.autoGarbageMetricIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.autoGarbageMetricCard small,
+.autoGarbageMetricCard strong,
+.autoGarbageMetricCard em {
+  display: block;
+  min-width: 0;
+}
+
+.autoGarbageMetricCard small {
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 850;
+  line-height: 1.15;
+}
+
+.autoGarbageMetricCard strong {
+  margin-top: 5px;
+  color: #0f172a;
+  font-size: 1.34rem;
+  font-weight: 950;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.autoGarbageMetricCard em {
+  margin-top: 5px;
+  color: #526179;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 820;
+  line-height: 1.15;
+}
+
+.autoGarbageLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.42fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.autoGarbageTasksColumn {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  min-width: 0;
+}
+
+.autoGarbageTaskCard {
+  display: grid;
+  min-height: 248px;
+  align-content: start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(248, 253, 249, 0.86), #ffffff 42%),
+    #ffffff;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.autoGarbageTaskCard:hover,
+.autoGarbageTaskCard:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(22, 130, 61, 0.32);
+  box-shadow: 0 20px 38px rgba(15, 23, 42, 0.09);
+  outline: none;
+}
+
+.autoGarbageTaskTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.autoGarbageTaskTop time {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: #526179;
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.autoGarbageTaskTop time svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.autoGarbageStatusBadge {
+  display: inline-flex;
+  min-height: 27px;
+  flex: 0 0 auto;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: #eef2f7;
+  color: #475569;
+  font-size: 0.68rem;
+  font-weight: 950;
+}
+
+.autoGarbageStatusBadge[data-tone="green"] {
+  background: #e8f6ed;
+  color: #16823d;
+}
+
+.autoGarbageStatusBadge[data-tone="blue"] {
+  background: #eaf4ff;
+  color: #1677d2;
+}
+
+.autoGarbageStatusBadge[data-tone="orange"] {
+  background: #fff3e6;
+  color: #b45309;
+}
+
+.autoGarbageTaskCard h3 {
+  margin: 0;
+  color: #101827;
+  font-size: 1rem;
+  font-weight: 940;
+  line-height: 1.25;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.autoGarbageTaskCard p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 760;
+  line-height: 1.36;
+  overflow-wrap: anywhere;
+}
+
+.autoGarbageCardStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.autoGarbageCardStats span {
+  display: grid;
+  min-height: 58px;
+  align-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 7px;
+  background: #f8fbf9;
+}
+
+.autoGarbageCardStats small {
+  color: #64748b;
+  font-size: 0.66rem;
+  font-weight: 840;
+  line-height: 1.12;
+}
+
+.autoGarbageCardStats strong {
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.autoGarbageProgressTrack {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e6eaf0;
+}
+
+.autoGarbageProgressTrack i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #16823d, #64b96f);
+}
+
+.autoGarbageTaskFooter {
+  display: grid;
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  font-size: 0.72rem;
+  font-weight: 820;
+}
+
+.autoGarbageTaskFooter span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autoGarbageTaskFooter span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.autoGarbageTaskFooter svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.autoGarbageShowAll {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 7px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.76rem;
+  font-weight: 940;
+  text-decoration: none;
+}
+
+.autoGarbageShowAll svg {
+  width: 15px;
+  height: 15px;
+}
+
+.autoGarbageSidePanels {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.autoGarbageReportTabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.autoGarbageReportTabs a {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  color: #334155;
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: center;
+  text-decoration: none;
+}
+
+.autoGarbageReportTabs a + a {
+  border-left: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.autoGarbageReportTabActive {
+  background: #16823d;
+  color: #ffffff !important;
+}
+
+.autoGarbageLeaderPanel,
+.autoGarbageSummaryPanel,
+.autoGarbageEmptyState {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.autoGarbageLeaderPanel {
+  padding: 16px;
+}
+
+.autoGarbagePanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  margin-bottom: 14px;
+}
+
+.autoGarbagePanelHeader h3 {
+  margin: 0;
+  color: #101827;
+  font-size: 0.92rem;
+  font-weight: 950;
+  line-height: 1.24;
+  letter-spacing: 0;
+}
+
+.autoGarbagePanelHeader p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 780;
+  line-height: 1.25;
+}
+
+.autoGarbagePanelHeader > span {
+  display: inline-flex;
+  min-height: 28px;
+  flex: 0 0 auto;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 7px;
+  padding: 0 9px;
+  color: #64748b;
+  font-size: 0.66rem;
+  font-weight: 880;
+}
+
+.autoGarbageLeaderboard {
+  display: grid;
+  gap: 10px;
+}
+
+.autoGarbageLeaderRow {
+  display: grid;
+  grid-template-columns: 24px minmax(72px, 0.72fr) minmax(70px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.autoGarbageLeaderRank {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 950;
+  text-align: center;
+}
+
+.autoGarbageLeaderInfo {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.autoGarbageLeaderInfo strong,
+.autoGarbageLeaderInfo small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autoGarbageLeaderInfo strong {
+  color: #0f172a;
+  font-size: 0.74rem;
+  font-weight: 940;
+}
+
+.autoGarbageLeaderInfo small {
+  color: #64748b;
+  font-size: 0.64rem;
+  font-weight: 760;
+}
+
+.autoGarbageLeaderBar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7ebef;
+}
+
+.autoGarbageLeaderBar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #16823d, #25a45b);
+}
+
+.autoGarbageLeaderBar[data-tone="fuel"] i {
+  background: linear-gradient(90deg, #f59e0b, #22c55e);
+}
+
+.autoGarbageLeaderValue {
+  color: #0f172a;
+  font-size: 0.72rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.autoGarbagePanelShowAll {
+  display: inline-flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 7px;
+  background: #f8fbf9;
+  color: #16823d;
+  font-size: 0.72rem;
+  font-weight: 920;
+  text-decoration: none;
+}
+
+.autoGarbagePanelShowAll svg {
+  width: 14px;
+  height: 14px;
+}
+
+.autoGarbageSummaryPanel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+  background: #f8fbf9;
+}
+
+.autoGarbageSummaryPanel div {
+  display: grid;
+  min-height: 74px;
+  align-content: center;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.autoGarbageSummaryPanel small {
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 840;
+  line-height: 1.15;
+}
+
+.autoGarbageSummaryPanel strong {
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.autoGarbageEmptyState {
+  grid-column: 1 / -1;
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 24px;
+  color: #64748b;
+  text-align: center;
+}
+
+.autoGarbageEmptyState svg {
+  width: 30px;
+  height: 30px;
+  color: #16823d;
+}
+
+.autoGarbageEmptyState strong {
+  color: #0f172a;
+  font-size: 0.92rem;
+  font-weight: 940;
+}
+
+.autoGarbageEmptyState span,
+.autoGarbageEmptyText {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 780;
+  line-height: 1.35;
+}
+
+.autoGarbageEmptyText {
+  margin: 0;
+  padding: 12px;
+  border-radius: 7px;
+  background: #f8fbf9;
+}
+
 .executiveShell.executiveShell {
   background:
     radial-gradient(circle at 82% 0%, rgba(46, 125, 50, 0.08), transparent 28%),
@@ -4486,6 +5154,14 @@
 }
 
 @media (max-width: 1320px) {
+  .autoGarbageMetricGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .autoGarbageLayout {
+    grid-template-columns: 1fr;
+  }
+
   .executiveHero {
     padding-right: 30px;
   }
@@ -4516,6 +5192,123 @@
 }
 
 @media (max-width: 720px) {
+  .autoGarbageBoard {
+    gap: 14px;
+    margin-bottom: 18px;
+    padding: 12px;
+  }
+
+  .autoGarbageBreadcrumb {
+    overflow-x: auto;
+    padding-bottom: 2px;
+    white-space: nowrap;
+  }
+
+  .autoGarbageHeader {
+    display: grid;
+    gap: 12px;
+  }
+
+  .autoGarbageHeader h2 {
+    font-size: 1.24rem;
+  }
+
+  .autoGarbageToolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .autoGarbagePrimaryButton {
+    grid-column: 1 / -1;
+  }
+
+  .autoGarbageGhostButton,
+  .autoGarbagePrimaryButton {
+    min-width: 0;
+    padding: 0 10px;
+  }
+
+  .autoGarbageMetricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .autoGarbageMetricCard {
+    min-height: 82px;
+    gap: 9px;
+    padding: 11px;
+  }
+
+  .autoGarbageMetricIcon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .autoGarbageMetricCard strong {
+    font-size: 1.08rem;
+  }
+
+  .autoGarbageTasksColumn {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .autoGarbageTaskCard {
+    min-height: 0;
+    padding: 13px;
+  }
+
+  .autoGarbageTaskTop {
+    align-items: flex-start;
+  }
+
+  .autoGarbageTaskTop time {
+    white-space: normal;
+  }
+
+  .autoGarbageCardStats {
+    grid-template-columns: 1fr;
+  }
+
+  .autoGarbageCardStats span {
+    min-height: 52px;
+  }
+
+  .autoGarbageTaskFooter {
+    grid-template-columns: 1fr auto;
+  }
+
+  .autoGarbageTaskFooter span:nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .autoGarbageLeaderPanel {
+    padding: 13px;
+  }
+
+  .autoGarbagePanelHeader {
+    display: grid;
+  }
+
+  .autoGarbagePanelHeader > span {
+    width: fit-content;
+  }
+
+  .autoGarbageLeaderRow {
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+  }
+
+  .autoGarbageLeaderBar {
+    grid-column: 2 / -1;
+  }
+
+  .autoGarbageSummaryPanel {
+    grid-template-columns: 1fr;
+  }
+
   .executiveHero {
     min-height: 0;
     padding: 20px 16px 16px;

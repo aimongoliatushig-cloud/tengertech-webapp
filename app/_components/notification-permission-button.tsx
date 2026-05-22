@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 import {
   connectNotifications,
   diagnoseNotifications,
   getNotificationStatusMessage,
+  syncExistingNotificationSubscription,
   type NotificationConnectionStatus,
   type NotificationDiagnostics,
 } from "@/app/_components/notification-push-client";
@@ -43,6 +45,10 @@ function resolveCardStatus(diagnostics: NotificationDiagnostics | null): PushCar
     return "hidden";
   }
 
+  if (diagnostics.permissionStatus === "granted" && diagnostics.pushSubscriptionCreated) {
+    return "hidden";
+  }
+
   if (
     !diagnostics.notificationSupport ||
     !diagnostics.serviceWorkerSupport ||
@@ -62,6 +68,7 @@ function resolveCardStatus(diagnostics: NotificationDiagnostics | null): PushCar
 }
 
 export function NotificationPermissionButton() {
+  const pathname = usePathname();
   const [diagnostics, setDiagnostics] = useState<NotificationDiagnostics | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<NotificationConnectionStatus>("not_started");
   const [busy, setBusy] = useState(false);
@@ -69,6 +76,9 @@ export function NotificationPermissionButton() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [lastActionError, setLastActionError] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
+  const silentSyncEndpoints = useRef(new Set<string>());
+  const shouldPromptForNotifications =
+    Boolean(pathname) && pathname !== "/login" && !pathname.startsWith("/auth/");
 
   const refreshDiagnostics = useCallback(async () => {
     const nextDiagnostics = await diagnoseNotifications();
@@ -78,14 +88,45 @@ export function NotificationPermissionButton() {
   }, []);
 
   useEffect(() => {
+    if (!shouldPromptForNotifications) {
+      return;
+    }
+
     const timeout = window.setTimeout(() => {
       void refreshDiagnostics();
     }, 0);
 
     return () => window.clearTimeout(timeout);
-  }, [refreshDiagnostics]);
+  }, [refreshDiagnostics, shouldPromptForNotifications]);
 
   useEffect(() => {
+    if (
+      !shouldPromptForNotifications ||
+      !diagnostics?.endpoint ||
+      diagnostics.permissionStatus !== "granted" ||
+      !diagnostics.pushSubscriptionCreated ||
+      diagnostics.backendSubscriptionSaved ||
+      silentSyncEndpoints.current.has(diagnostics.endpoint)
+    ) {
+      return;
+    }
+
+    silentSyncEndpoints.current.add(diagnostics.endpoint);
+    void syncExistingNotificationSubscription({
+      onStatusChange: setConnectionStatus,
+    }).then((result) => {
+      if (result.diagnostics) {
+        setDiagnostics(result.diagnostics);
+        setConnectionStatus(result.diagnostics.connectionStatus);
+      }
+    });
+  }, [diagnostics, shouldPromptForNotifications]);
+
+  useEffect(() => {
+    if (!shouldPromptForNotifications) {
+      return;
+    }
+
     const syncMobileMenuState = () => {
       setIsMobileMenuOpen(document.body.dataset.mobileMenuOpen === "true");
     };
@@ -99,7 +140,7 @@ export function NotificationPermissionButton() {
     });
 
     return () => observer.disconnect();
-  }, []);
+  }, [shouldPromptForNotifications]);
 
   const cardStatus = resolveCardStatus(diagnostics);
   const statusMessage = useMemo(() => {
@@ -136,7 +177,7 @@ export function NotificationPermissionButton() {
     setBusy(false);
   }, [diagnostics]);
 
-  if (isMobileMenuOpen || cardStatus === "checking" || cardStatus === "hidden") {
+  if (!shouldPromptForNotifications || isMobileMenuOpen || cardStatus === "checking" || cardStatus === "hidden") {
     return null;
   }
 

@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   CalendarDays,
-  Grid3X3,
-  List,
   MapPin,
   Search,
   ShieldCheck,
@@ -35,7 +33,6 @@ export type ReviewInspectorBoardTask = {
 };
 
 type ReviewBoardFilter = "all" | "today" | "dated";
-type ReviewBoardViewMode = "grid" | "list";
 
 function todayKey() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -98,7 +95,6 @@ export function ReviewInspectorBoard({
 }) {
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<ReviewBoardFilter>("all");
-  const [viewMode, setViewMode] = useState<ReviewBoardViewMode>("grid");
   const [activeGroupKey, setActiveGroupKey] = useState<string | null>(null);
   const today = todayKey();
 
@@ -199,33 +195,10 @@ export function ReviewInspectorBoard({
           />
         </label>
 
-        <div className={dashboardStyles.inspectorViewToggle} aria-label="Харагдац">
-          <button
-            type="button"
-            className={viewMode === "grid" ? dashboardStyles.inspectorViewToggleActive : undefined}
-            onClick={() => setViewMode("grid")}
-            aria-label="Картаар харах"
-          >
-            <Grid3X3 aria-hidden />
-          </button>
-          <button
-            type="button"
-            className={viewMode === "list" ? dashboardStyles.inspectorViewToggleActive : undefined}
-            onClick={() => setViewMode("list")}
-            aria-label="Жагсаалтаар харах"
-          >
-            <List aria-hidden />
-          </button>
-        </div>
       </div>
 
       {filteredGroups.length ? (
-        <div
-          className={cn(
-            dashboardStyles.inspectorVehicleScroller,
-            viewMode === "list" && dashboardStyles.inspectorVehicleScrollerList,
-          )}
-        >
+        <div className={dashboardStyles.inspectorVehicleScroller}>
           {filteredGroups.map((group) => {
             const isActive = activeGroup?.key === group.key;
             return (
@@ -237,11 +210,10 @@ export function ReviewInspectorBoard({
                   isActive && dashboardStyles.inspectorVehicleCardActive,
                 )}
                 onClick={() => setActiveGroupKey(group.key)}
-              >
-                <span className={dashboardStyles.inspectorVehicleImage}>
-                  <ReviewVehicleImage src={group.vehicleImageUrl} />
-                  <span>Хянах</span>
-                </span>
+                >
+                  <span className={dashboardStyles.inspectorVehicleImage}>
+                    <ReviewVehicleImage src={group.vehicleImageUrl} />
+                  </span>
                 <span className={dashboardStyles.inspectorVehicleCardBody}>
                   <strong>{group.vehiclePlate}</strong>
                   <small>{group.vehicleModel}</small>

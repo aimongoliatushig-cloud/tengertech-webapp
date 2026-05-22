@@ -23,7 +23,7 @@ class OpsTaskReport(models.Model):
     )
     user_id = fields.Many2one("res.users", string="Хэрэглэгч", default=lambda self: self.env.user, index=True)
     report_datetime = fields.Datetime(string="Тайлангийн огноо", default=fields.Datetime.now, required=True)
-    report_summary = fields.Text(string="Тайлбар", required=True)
+    report_summary = fields.Text(string="Тайлбар")
     reported_quantity = fields.Float(string="Гүйцэтгэсэн тоо хэмжээ")
     task_measurement_unit_id = fields.Many2one("uom.uom", string="Хэмжих нэгж")
     task_measurement_unit_code = fields.Char(string="Хэмжих нэгжийн код")
@@ -150,13 +150,21 @@ class OpsTaskReport(models.Model):
     @api.constrains("state", "report_summary", "rejection_reason", "image_attachment_ids")
     def _check_report_requirements(self):
         for report in self:
-            if report.state in ("submitted", "under_review", "approved") and not report.report_summary:
+            if (
+                report.state in ("submitted", "under_review", "approved")
+                and not report.report_summary
+                and report._requires_report_summary()
+            ):
                 raise ValidationError("Тайлан илгээхэд тайлбар заавал оруулна.")
             if report.state == "returned" and not report.rejection_reason:
                 raise ValidationError("Буцаах үед шалтгаан заавал оруулна.")
             work = report.task_id.municipal_work_id
             if report.state in ("submitted", "approved") and work and work.requires_photo and not report.image_attachment_ids:
                 raise ValidationError("Энэ ажилд зураг хавсаргах шаардлагатай.")
+
+    def _requires_report_summary(self):
+        self.ensure_one()
+        return self.task_id.mfo_operation_type not in ("garbage", "garbage_seasonal")
 
     def _sync_municipal_report(self):
         for report in self.filtered("municipal_report_id"):
@@ -199,7 +207,7 @@ class OpsTaskReport(models.Model):
 
     def action_submit(self):
         for report in self:
-            if not report.report_summary:
+            if not report.report_summary and report._requires_report_summary():
                 raise UserError("Тайлан илгээхэд тайлбар заавал оруулна.")
             work = report.task_id.municipal_work_id
             if work and work.requires_photo and not report.image_attachment_ids:

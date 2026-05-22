@@ -2061,20 +2061,36 @@
 }
 
 .createWorkForm .modeRail {
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  padding: 4px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 14px;
+  background: rgba(244, 250, 245, 0.78);
 }
 
 .createWorkForm .modeChip {
+  align-content: center;
   justify-content: flex-start;
-  min-height: 104px;
-  padding: 16px;
-  border-radius: 20px;
+  min-height: 56px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.82);
   text-align: left;
+}
+
+.createWorkForm .modeChip span {
+  font-size: 0.88rem;
+  line-height: 1.15;
+}
+
+.createWorkForm .modeChip small {
+  font-size: 0.72rem;
+  line-height: 1.25;
 }
 
 .createWorkForm .modeChipActive {
   background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 34%),
     linear-gradient(135deg, #2e7d32, #3f9650);
   color: #fff;
 }
@@ -4023,6 +4039,7 @@
 .sharedWorkBadge,
 .sharedWorkTaskStatus {
   display: inline-flex;
+  gap: 7px;
   min-height: 34px;
   align-items: center;
   justify-content: center;
@@ -4043,6 +4060,12 @@
   color: #256b37;
 }
 
+.sharedWorkTaskStatus svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
 .sharedWorkBadge_warning {
   background: rgba(219, 164, 35, 0.16);
   color: #7a5512;
@@ -4061,6 +4084,92 @@
 .sharedWorkRows {
   display: grid;
   gap: 8px;
+}
+
+.sharedWorkDepartmentOverview {
+  display: grid;
+  gap: 10px;
+}
+
+.sharedWorkDepartmentOverviewRow {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.35fr) minmax(120px, auto) minmax(160px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(74, 154, 93, 0.12);
+  border-radius: var(--ds-radius-control);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink-800);
+}
+
+.sharedWorkDepartmentOverviewRow div:first-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sharedWorkDepartmentOverviewRow strong,
+.sharedWorkDepartmentOverviewRow span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sharedWorkDepartmentOverviewRow span {
+  color: var(--ink-700);
+  font-size: 0.8rem;
+}
+
+.sharedWorkDepartmentOverviewRow em {
+  justify-self: start;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: #256b37;
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.sharedWorkDepartmentOverviewRow b {
+  color: #1f2b25;
+  font-size: 0.92rem;
+}
+
+.sharedWorkProgressMini {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(46, 125, 50, 0.1);
+}
+
+.sharedWorkProgressMini span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #2e7d32, #66a66f);
+}
+
+@media (max-width: 760px) {
+  .sharedWorkHero,
+  .sharedWorkDetailHero {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .sharedWorkDetailProgress {
+    width: 100%;
+  }
+
+  .sharedWorkDepartmentOverviewRow {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .sharedWorkDepartmentOverviewRow b {
+    justify-self: start;
+  }
 }
 
 .sharedWorkProgressRow {

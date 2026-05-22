@@ -202,18 +202,6 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
               roleLabel={getSessionRoleLabel(session)}
             />
 
-            <section className={styles.heroCard}>
-              <span className={styles.eyebrow}>Ажил бүртгэх</span>
-              <h1>{masterMode ? "Шинэ ажил үүсгэх" : "Шинэ ажил нэмэх"}</h1>
-              <p>
-                {masterMode
-                  ? session.role === "senior_master"
-                    ? "Ахлах мастер өөрийн харьяалах алба нэгж дээр ажил үүсгэж, бүх мастерийн ажлын урсгалыг хянана. Хэлтэс автоматаар сонгогдсон тул нэр, хугацаа, шаардлагатай мэдээллээ оруулахад хангалттай."
-                    : "Мастер өөрт хариуцах ажил үүсгэнэ. Хэлтэс автоматаар сонгогдсон тул нэр, хугацаа, шаардлагатай мэдээллээ оруулахад хангалттай."
-                  : "Энгийн ажил дээр нэрээ гараар оруулна. Харин хог тээвэрлэлтийн үед машин, маршрут, огноо сонгоход нэг ажил автоматаар үүсэж, тухайн маршрутын хог ачих цэг бүр тусдаа даалгавар болж нэмэгдэнэ."}
-              </p>
-            </section>
-
             {errorMessage ? (
               <div className={`${styles.message} ${styles.errorMessage}`}>{errorMessage}</div>
             ) : null}

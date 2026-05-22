@@ -305,6 +305,7 @@ export type TaskDirectoryItem = {
   completedQuantity: number;
   remainingQuantity: number;
   measurementUnit: string;
+  operationType: string;
   operationTypeLabel: string;
   issueFlag: boolean;
   assigneeIds?: number[];
@@ -869,6 +870,7 @@ export type FleetVehicleRepairHistoryItem = {
 export type FleetVehicleDailyWeightItem = {
   id: number;
   reportDate: string;
+  weightTons: number;
   weightLabel: string;
   source: string;
   fetchedAt: string;
@@ -944,6 +946,8 @@ export type FleetVehicleBoardItem = {
   driverHistory: FleetVehicleDriverHistoryItem[];
   repairHistory: FleetVehicleRepairHistoryItem[];
   weightReports: FleetVehicleDailyWeightItem[];
+  weightMonthTons: number;
+  weightTotalTons: number;
   fuelReports: FleetVehicleDailyFuelItem[];
   procurementLinks: FleetVehicleProcurementLink[];
   crewAssignments: FleetVehicleCrewAssignment[];
@@ -3940,6 +3944,17 @@ function formatWeight(value?: number, unit?: string | false) {
   }).format(value || 0)} ${normalizedUnit}`;
 }
 
+function weightRecordToTons(value?: number, unit?: string | false) {
+  const normalized = Number.isFinite(value) ? Math.max(0, value || 0) : 0;
+  const unitText = String(unit || "").toLocaleLowerCase("mn-MN");
+
+  if (unitText === "ton" || unitText.includes("тон") || unitText.includes("тн")) {
+    return normalized;
+  }
+
+  return normalized / 1000;
+}
+
 function formatOptionalCompactDate(value?: string | false) {
   if (!value) {
     return "";
@@ -4072,9 +4087,13 @@ async function loadWeightReportsByVehicle(
   );
   const byVehicle = new Map<number, FleetVehicleDailyWeightItem[]>();
   for (const record of records) {
+    if (record.state === "failed") {
+      continue;
+    }
     appendMapItem(byVehicle, relationId(record.vehicle_id), {
       id: record.id,
       reportDate: formatOptionalCompactDate(record.report_date),
+      weightTons: weightRecordToTons(record.weight, record.unit),
       weightLabel: formatWeight(record.weight, record.unit),
       source: record.source || "Гадны систем",
       fetchedAt: formatOptionalCompactDate(record.fetched_at),
@@ -4350,8 +4369,17 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
     loadFleetVehicleRelationOptions(uid, connection, "category_id"),
   ]);
 
+  const todayKey = getTodayDateKey();
+  const currentMonthKey = todayKey.slice(0, 7);
+
   const allVehicles = vehicles
     .map((vehicle) => {
+      const vehicleWeightReports = weightReportResult.byVehicle.get(vehicle.id) ?? [];
+      const vehicleWeightMonthTons = vehicleWeightReports
+        .filter((report) => report.reportDate.startsWith(currentMonthKey))
+        .reduce((sum, report) => sum + report.weightTons, 0);
+      const vehicleWeightTotalTons = vehicleWeightReports
+        .reduce((sum, report) => sum + report.weightTons, 0);
       const stateLabel = relationName(vehicle.state_id ?? false, "");
       const latestRepairState = vehicle.latest_repair_state || "";
       const operationalStatusKey = vehicle.x_municipal_operational_status || "";
@@ -4484,6 +4512,8 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
         driverHistory: latestItems(driverHistoryByVehicle.get(vehicle.id)),
         repairHistory: latestItems(repairHistoryByVehicle.get(vehicle.id), 10),
         weightReports: latestItems(weightReportResult.byVehicle.get(vehicle.id), 10),
+        weightMonthTons: vehicleWeightMonthTons,
+        weightTotalTons: vehicleWeightTotalTons,
         fuelReports: latestItems(fuelReportResult.byVehicle.get(vehicle.id), 10),
         procurementLinks: latestItems(procurementLinksByVehicle.get(vehicle.id), 8),
         crewAssignments: crewAssignmentsByVehicle.get(vehicle.id) ?? [],
@@ -4498,7 +4528,6 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
       !vehicle.isRepair,
   );
   const repairVehicles = allVehicles.filter((vehicle) => vehicle.isRepair);
-  const todayKey = getTodayDateKey();
   const previousDateKey = getPreviousDateKey(todayKey);
   const todayWeightRecords = weightReportResult.records.filter(
     (record) => record.report_date === todayKey && record.state !== "failed",
@@ -5136,6 +5165,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         completedQuantity: quantitySnapshot.completedQuantity,
         remainingQuantity: quantitySnapshot.remainingQuantity,
         measurementUnit: resolveTaskMeasurementUnit(task),
+        operationType: task.mfo_operation_type || "",
         operationTypeLabel: operationTypeLabel(task.mfo_operation_type),
         issueFlag: statusKey === "problem",
         assigneeIds: task.user_ids ?? [],
@@ -5439,6 +5469,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         completedQuantity: 32,
         remainingQuantity: 0,
         measurementUnit: "мод",
+        operationType: "green_maintenance",
         operationTypeLabel: "Ерөнхий ажил",
         issueFlag: false,
         href: buildTaskHref(201, "/tasks"),
@@ -5461,6 +5492,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         completedQuantity: 4,
         remainingQuantity: 1,
         measurementUnit: "ачилт",
+        operationType: "garbage",
         operationTypeLabel: "Хог цуглуулалт",
         issueFlag: true,
         href: buildTaskHref(202, "/tasks"),
@@ -5483,6 +5515,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         completedQuantity: 0,
         remainingQuantity: 12,
         measurementUnit: "км²",
+        operationType: "street_cleaning",
         operationTypeLabel: "Гудамж цэвэрлэгээ",
         issueFlag: false,
         href: buildTaskHref(102, "/tasks"),
@@ -5505,6 +5538,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         completedQuantity: 1,
         remainingQuantity: 2,
         measurementUnit: "машин",
+        operationType: "",
         operationTypeLabel: "Ерөнхий ажил",
         issueFlag: false,
         href: buildTaskHref(103, "/tasks"),

@@ -84,10 +84,22 @@ function hasBearerAccess(request: Request) {
   return timingSafeEqual(configuredBuffer, providedBuffer);
 }
 
-function hasQueryTokenAccess(request: Request) {
-  const configuredToken = process.env.WRS_SYNC_TOKEN?.trim();
-  const providedToken = new URL(request.url).searchParams.get("token")?.trim() ?? "";
+async function loadOdooConfiguredSyncToken() {
+  try {
+    const token = await executeOdooKw<string>(
+      "ir.config_parameter",
+      "get_param",
+      ["municipal_repair_workflow.wrs_sync_token", ""],
+    );
 
+    return String(token ?? "").trim();
+  } catch (error) {
+    console.warn("WRS sync token could not be read from Odoo config:", error);
+    return "";
+  }
+}
+
+function hasTokenAccess(configuredToken: string, providedToken: string) {
   if (!configuredToken || !providedToken) {
     return false;
   }
@@ -102,8 +114,23 @@ function hasQueryTokenAccess(request: Request) {
   return timingSafeEqual(configuredBuffer, providedBuffer);
 }
 
+async function hasOdooConfiguredTokenAccess(request: Request) {
+  const authorization = request.headers.get("authorization") ?? "";
+  const bearerToken = authorization.startsWith("Bearer ")
+    ? authorization.slice("Bearer ".length).trim()
+    : "";
+  const queryToken = new URL(request.url).searchParams.get("token")?.trim() ?? "";
+  const providedToken = bearerToken || queryToken;
+
+  if (!providedToken) {
+    return false;
+  }
+
+  return hasTokenAccess(await loadOdooConfiguredSyncToken(), providedToken);
+}
+
 async function authorizeRequest(request: Request) {
-  if (hasBearerAccess(request) || hasQueryTokenAccess(request) || isLocalDevelopmentRequest(request)) {
+  if (hasBearerAccess(request) || (await hasOdooConfiguredTokenAccess(request)) || isLocalDevelopmentRequest(request)) {
     return true;
   }
 

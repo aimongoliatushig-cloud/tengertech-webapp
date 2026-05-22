@@ -1,15 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, ClipboardList, Route, Save, Truck, UsersRound } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ClipboardList } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import {
-  completeSharedDepartmentTaskAction,
-  createSharedOperationalTaskAction,
-  updateSharedDepartmentTaskAction,
-} from "@/app/shared-work/actions";
+import { createSharedOperationalTaskAction } from "@/app/shared-work/actions";
 import { SharedReportForm } from "@/app/shared-work/shared-report-form";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import {
@@ -20,7 +16,6 @@ import {
 import {
   loadSharedWorkDetail,
   type SharedWorkDepartmentTask,
-  type SharedWorkOption,
 } from "@/lib/shared-work";
 import { loadWorkspaceNotificationCount } from "@/lib/workspace-notifications";
 import styles from "@/app/workspace.module.css";
@@ -41,141 +36,62 @@ function formatDate(value: string) {
   return value.replace("T", " ").slice(0, 16);
 }
 
-function selectedOptions(options: SharedWorkOption[], ids: number[]) {
-  const idSet = new Set(ids);
-  return options.filter((option) => idSet.has(option.id));
-}
-
-function SelectMany({
-  label,
-  name,
-  options,
-  selectedIds,
-}: {
-  label: string;
-  name: string;
-  options: SharedWorkOption[];
-  selectedIds: number[];
-}) {
+function DepartmentProgressList({ tasks }: { tasks: SharedWorkDepartmentTask[] }) {
   return (
-    <label className={styles.field}>
-      <span>{label}</span>
-      <select name={name} multiple size={Math.min(6, Math.max(3, options.length))} defaultValue={selectedIds.map(String)}>
-        {options.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.name}{option.note ? ` · ${option.note}` : ""}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div className={styles.sharedWorkDepartmentOverview}>
+      {tasks.map((task) => (
+        <div key={task.id} className={styles.sharedWorkDepartmentOverviewRow}>
+          <div>
+            <strong>{task.departmentName}</strong>
+            <span>{task.departmentHeadName || "Хэлтсийн дарга оноогоогүй"}</span>
+          </div>
+          <em>{task.statusLabel}</em>
+          <div className={styles.sharedWorkProgressMini}>
+            <span style={{ width: `${Math.max(Math.min(task.progress, 100), task.progress ? 8 : 0)}%` }} />
+          </div>
+          <b>{task.progress}%</b>
+        </div>
+      ))}
+    </div>
   );
 }
 
-function DepartmentTaskPanel({
+function CreateOperationalTaskForm({
   workId,
-  task,
-  employees,
-  vehicles,
-  teams,
-  routes,
+  tasks,
 }: {
   workId: number;
-  task: SharedWorkDepartmentTask;
-  employees: SharedWorkOption[];
-  vehicles: SharedWorkOption[];
-  teams: SharedWorkOption[];
-  routes: SharedWorkOption[];
+  tasks: SharedWorkDepartmentTask[];
 }) {
-  const scopedEmployees = employees.filter((employee) => !employee.departmentId || employee.departmentId === task.departmentId);
-  const scopedVehicles = vehicles.filter((vehicle) => !vehicle.departmentId || vehicle.departmentId === task.departmentId);
-  const scopedRoutes = routes.filter((route) => !route.departmentId || route.departmentId === task.departmentId);
-  const selectedEmployees = selectedOptions(employees, task.assignedEmployeeIds);
-  const selectedVehicles = selectedOptions(vehicles, task.assignedVehicleIds);
-  const selectedTeams = selectedOptions(teams, task.teamIds);
-  const selectedRoutes = selectedOptions(routes, task.routeIds);
-
   return (
-    <article className={styles.sharedWorkTaskPanel}>
-      <div className={styles.sharedWorkTaskHeader}>
-        <div>
-          <span className={styles.kicker}>Хэлтсийн ажил</span>
-          <h2>{task.departmentName}</h2>
-          <p>{task.departmentHeadName}</p>
-        </div>
-        <span className={styles.sharedWorkTaskStatus}>{task.statusLabel}</span>
-      </div>
-
-      <div className={styles.sharedWorkProgressHeader}>
-        <span>Явц</span>
-        <strong>{task.progress}%</strong>
-      </div>
-      <div className={styles.progressTrack}>
-        <span style={{ width: `${Math.max(Math.min(task.progress, 100), task.progress ? 8 : 0)}%` }} />
-      </div>
-
-      <div className={styles.sharedWorkAssignmentSummary}>
-        <span>
-          <UsersRound aria-hidden />
-          {selectedEmployees.length ? selectedEmployees.map((item) => item.name).join(", ") : "Ажилтан оноогоогүй"}
-        </span>
-        <span>
-          <Truck aria-hidden />
-          {selectedVehicles.length ? selectedVehicles.map((item) => item.name).join(", ") : "Машин оноогоогүй"}
-        </span>
-        <span>
-          <ClipboardList aria-hidden />
-          {selectedTeams.length ? selectedTeams.map((item) => item.name).join(", ") : "Баг оноогоогүй"}
-        </span>
-        <span>
-          <Route aria-hidden />
-          {selectedRoutes.length ? selectedRoutes.map((item) => item.name).join(", ") : "Маршрут оноогоогүй"}
-        </span>
-      </div>
-
-      <form action={updateSharedDepartmentTaskAction} className={styles.sharedWorkTaskForm}>
-        <input type="hidden" name="shared_work_id" value={workId} />
-        <input type="hidden" name="department_task_id" value={task.id} />
-        <div className={styles.sharedWorkInlineGrid}>
-          <label className={styles.field}>
-            <span>Төлөв</span>
-            <select name="status" defaultValue={task.status}>
-              <option value="pending">Хүлээгдэж байгаа</option>
-              <option value="planned">Төлөвлөсөн</option>
-              <option value="in_progress">Явагдаж байгаа</option>
-              <option value="blocked">Саатсан</option>
-              <option value="completed">Дууссан</option>
-              <option value="cancelled">Цуцлагдсан</option>
-            </select>
-          </label>
-          <label className={styles.field}>
-            <span>Явц /%/</span>
-            <input name="progress_percent" type="number" min="0" max="100" defaultValue={task.progress} />
-          </label>
-        </div>
-        <SelectMany label="Ажилтнууд" name="assigned_employee_ids" options={scopedEmployees} selectedIds={task.assignedEmployeeIds} />
-        <SelectMany label="Машинууд" name="assigned_vehicle_ids" options={scopedVehicles} selectedIds={task.assignedVehicleIds} />
-        <SelectMany label="Багууд" name="team_ids" options={teams} selectedIds={task.teamIds} />
-        <SelectMany label="Маршрут" name="route_ids" options={scopedRoutes} selectedIds={task.routeIds} />
+    <form action={createSharedOperationalTaskAction} className={styles.sharedWorkTaskForm}>
+      <input type="hidden" name="shared_work_id" value={workId} />
+      <div className={styles.sharedWorkInlineGrid}>
         <label className={styles.field}>
-          <span>Тэмдэглэл</span>
-          <textarea name="notes" rows={3} defaultValue={task.notes} />
+          <span>Даалгавар үүсгэх хэлтэс</span>
+          <select name="department_task_id" required defaultValue="">
+            <option value="" disabled>
+              Хэлтэс сонгоно уу
+            </option>
+            {tasks.map((task) => (
+              <option key={task.id} value={task.id}>
+                {task.departmentName}
+              </option>
+            ))}
+          </select>
         </label>
-        <div className={styles.sharedWorkStickyActions}>
-          <button type="submit" className={styles.primaryButton}>
-            <Save aria-hidden />
-            Хадгалах
-          </button>
-          <button formAction={completeSharedDepartmentTaskAction} className={styles.secondaryButton}>
-            <CheckCircle2 aria-hidden />
-            Дуусгах
-          </button>
-          <button formAction={createSharedOperationalTaskAction} className={styles.secondaryButton}>
-            <ClipboardList aria-hidden />
-            Дотоод даалгавар үүсгэх
-          </button>
-        </div>
-      </form>
-    </article>
+      </div>
+      <div className={styles.sharedWorkTaskPreview}>
+        <ClipboardList aria-hidden />
+        Сонгосон хэлтэст энэ хамтарсан ажлын дотоод даалгавар үүснэ.
+      </div>
+      <div className={styles.sharedWorkStickyActions}>
+        <button type="submit" className={styles.primaryButton}>
+          <ClipboardList aria-hidden />
+          Даалгавар нэмэх
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -262,18 +178,28 @@ export default async function SharedWorkDetailPage({ params, searchParams }: Pag
           </div>
         </section>
 
-        <section className={styles.sharedWorkTaskGrid}>
-          {work.tasks.map((task) => (
-            <DepartmentTaskPanel
-              key={task.id}
-              workId={work.id}
-              task={task}
-              employees={detail.employees}
-              vehicles={detail.vehicles}
-              teams={detail.teams}
-              routes={detail.routes}
-            />
-          ))}
+        <section className={styles.formCard}>
+          <div className={styles.sharedWorkSectionHeader}>
+            <div>
+              <span className={styles.kicker}>Хамрах хэлтэс</span>
+              <h2>Энэ нэг ажилд оролцож буй хэлтсүүд</h2>
+            </div>
+            <span className={styles.sharedWorkTaskStatus}>
+              <CheckCircle2 aria-hidden />
+              {work.tasks.length} хэлтэс
+            </span>
+          </div>
+          <DepartmentProgressList tasks={work.tasks} />
+        </section>
+
+        <section className={styles.formCard}>
+          <div className={styles.sharedWorkSectionHeader}>
+            <div>
+              <span className={styles.kicker}>Даалгавар</span>
+              <h2>Оролцогч хэлтэст даалгавар нэмэх</h2>
+            </div>
+          </div>
+          <CreateOperationalTaskForm workId={work.id} tasks={work.tasks} />
         </section>
 
         <section className={styles.formCard}>

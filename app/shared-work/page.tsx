@@ -186,7 +186,7 @@ export default async function SharedWorkPage({ searchParams }: PageProps) {
         </nav>
 
         {canCreate ? (
-          <section className={styles.formCard}>
+          <section className={styles.formCard} id="create-shared-work">
             <div className={styles.sharedWorkSectionHeader}>
               <div>
                 <span className={styles.kicker}>Шинэ хамтарсан ажил</span>

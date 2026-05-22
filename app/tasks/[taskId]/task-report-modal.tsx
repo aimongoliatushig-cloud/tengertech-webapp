@@ -48,6 +48,7 @@ type Props = {
   quantityLines?: TaskQuantityLine[];
   variant?: "default" | "hero";
   requireQuantity?: boolean;
+  reportTextRequired?: boolean;
   simpleMobile?: boolean;
   workItemName?: string;
   existingReport?: ExistingTaskReport;
@@ -808,6 +809,7 @@ export function TaskReportModal({
   quantityLines = [],
   variant = "default",
   requireQuantity,
+  reportTextRequired = true,
   simpleMobile = false,
   workItemName,
   existingReport,
@@ -973,7 +975,7 @@ export function TaskReportModal({
                       <strong>Тайлан</strong>
                     </div>
 
-                    {simpleMobile && workItemName ? (
+                    {workItemName ? (
                       <input type="hidden" name="report_work_item_name" value={workItemName} />
                     ) : null}
 
@@ -1026,7 +1028,7 @@ export function TaskReportModal({
                               ? "Энэ даалгавар дээр юу хийснээ товч бичнэ үү"
                               : "Юу хийсэн, ямар саад гарсан, дараагийн алхам юу болохыг товч бичнэ үү"
                           }
-                          required
+                          required={reportTextRequired}
                         />
                         <small>{reportText.length}/500</small>
                       </span>

@@ -12,13 +12,15 @@ import {
   getSessionRoleLabel,
 } from "@/lib/auth";
 import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
+import { canViewGarbageWeightReports } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 export default async function DataDownloadPage() {
   const session = await requireSession();
   const canViewAllReports = canViewAllWorkspaceReports(session);
-  if ((isWorkerOnly(session) && !canViewAllReports) || isMasterRole(session.role)) {
+  const canViewWeightReports = canViewGarbageWeightReports(session);
+  if ((isWorkerOnly(session) && !canViewAllReports && !canViewWeightReports) || isMasterRole(session.role)) {
     redirect("/");
   }
   const canCreateProject = hasCapability(session, "create_projects");
@@ -40,6 +42,7 @@ export default async function DataDownloadPage() {
               canViewQualityCenter={canViewQualityCenter}
               canUseFieldConsole={canUseFieldConsole}
               canViewAllReports={canViewAllReports}
+              canViewGarbageWeightReports={canViewWeightReports}
               userName={session.name}
               userRole={session.role}
               roleLabel={getSessionRoleLabel(session)}

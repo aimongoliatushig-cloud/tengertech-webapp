@@ -6,8 +6,6 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Grid3X3,
-  List,
   MapPin,
   MoreHorizontal,
   Plus,
@@ -31,7 +29,6 @@ type InspectorVehiclePanelProps = {
 };
 
 type InspectorFilter = "all" | "review" | "planned" | "done";
-type InspectorViewMode = "grid" | "list";
 
 function todayKey() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -68,6 +65,11 @@ function formatDateLabel(value: string) {
 
 function normalizeText(value: string) {
   return fixMojibakeText(value).toLowerCase();
+}
+
+function isDriverOption(jobTitle: string) {
+  const title = normalizeText(jobTitle);
+  return title.includes("жолооч") || title.includes("driver") || title.includes("chauffeur");
 }
 
 function isDoneTask(task: DashboardSnapshot["taskDirectory"][number]) {
@@ -167,9 +169,9 @@ export function DashboardInspectorVehiclePanel({
   const [subdistrictId, setSubdistrictId] = useState("");
   const [pointId, setPointId] = useState("");
   const [selectedPointIds, setSelectedPointIds] = useState<number[]>([]);
+  const [driverOverridesByVehicle, setDriverOverridesByVehicle] = useState<Record<number, string>>({});
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<InspectorFilter>("all");
-  const [viewMode, setViewMode] = useState<InspectorViewMode>("grid");
 
   const subdistrictOptions = useMemo(() => {
     const options = new Map<string, string>();
@@ -257,6 +259,30 @@ export function DashboardInspectorVehiclePanel({
   const activeSummary =
     filteredSummaries.find((summary) => summary.vehicle.id === activeVehicleId) ?? filteredSummaries[0] ?? null;
   const activeVehicleBlocked = Boolean(activeSummary?.isStopped);
+  const activeDefaultDriverId = activeSummary?.vehicle.driverId ? String(activeSummary.vehicle.driverId) : "";
+  const driverOptions = useMemo(() => {
+    const options = new Map<number, { id: number; name: string; detail: string }>();
+    for (const option of fleetBoard.driverOptions) {
+      if (!option.active) continue;
+      if (!isDriverOption(option.jobTitle)) continue;
+      options.set(option.id, {
+        id: option.id,
+        name: option.name,
+        detail: [option.jobTitle, option.departmentName].filter(Boolean).join(" · "),
+      });
+    }
+    if (activeSummary?.vehicle.driverId && !options.has(activeSummary.vehicle.driverId)) {
+      options.set(activeSummary.vehicle.driverId, {
+        id: activeSummary.vehicle.driverId,
+        name: activeSummary.vehicle.driverName || `Жолооч #${activeSummary.vehicle.driverId}`,
+        detail: "Машины үндсэн жолооч",
+      });
+    }
+    return Array.from(options.values()).sort((left, right) => left.name.localeCompare(right.name, "mn"));
+  }, [activeSummary, fleetBoard.driverOptions]);
+  const selectedDriverId = activeSummary
+    ? (driverOverridesByVehicle[activeSummary.vehicle.id] ?? activeDefaultDriverId)
+    : "";
   const selectedSubdistrictLabel = subdistrictOptions.find((option) => option.id === subdistrictId)?.label ?? "";
   const selectedPoint = filteredPoints.find((point) => String(point.id) === effectivePointId) ?? null;
   const selectedPoints = filteredPoints.filter((point) => validSelectedPointIds.includes(point.id));
@@ -310,33 +336,10 @@ export function DashboardInspectorVehiclePanel({
             placeholder="Хайх (дугаар, машин, хороо...)"
           />
         </label>
-        <div className={dashboardStyles.inspectorViewToggle} aria-label="Харагдац">
-          <button
-            type="button"
-            className={viewMode === "grid" ? dashboardStyles.inspectorViewToggleActive : undefined}
-            onClick={() => setViewMode("grid")}
-            aria-label="Картаар харах"
-          >
-            <Grid3X3 aria-hidden />
-          </button>
-          <button
-            type="button"
-            className={viewMode === "list" ? dashboardStyles.inspectorViewToggleActive : undefined}
-            onClick={() => setViewMode("list")}
-            aria-label="Жагсаалтаар харах"
-          >
-            <List aria-hidden />
-          </button>
-        </div>
       </div>
 
       {filteredSummaries.length ? (
-        <div
-          className={cn(
-            dashboardStyles.inspectorVehicleScroller,
-            viewMode === "list" && dashboardStyles.inspectorVehicleScrollerList,
-          )}
-        >
+        <div className={dashboardStyles.inspectorVehicleScroller}>
           {filteredSummaries.map((summary) => {
             const isActive = activeSummary?.vehicle.id === summary.vehicle.id;
             return (
@@ -349,10 +352,11 @@ export function DashboardInspectorVehiclePanel({
                   summary.isStopped && dashboardStyles.inspectorVehicleCardBlocked,
                 )}
                 onClick={() => setActiveVehicleId(summary.vehicle.id)}
+                aria-pressed={isActive}
+                aria-label={`${summary.plate} ${isActive ? "\u0441\u043e\u043d\u0433\u043e\u0433\u0434\u0441\u043e\u043d" : "\u043c\u0430\u0448\u0438\u043d \u0441\u043e\u043d\u0433\u043e\u0445"}`}
               >
                 <span className={dashboardStyles.inspectorVehicleImage}>
                   <VehicleLogo src={summary.boardVehicle?.imageUrl} />
-                  <span>{summary.statusLabel}</span>
                 </span>
                 <span className={dashboardStyles.inspectorVehicleCardBody}>
                   <strong>{summary.plate}</strong>
@@ -489,20 +493,50 @@ export function DashboardInspectorVehiclePanel({
             <input key={loaderId} type="hidden" name="garbage_loader_employee_ids" value={loaderId} />
           ))}
 
+          <div className={dashboardStyles.inspectorSelectedVehicleField}>
+            <span>
+              <Truck aria-hidden />
+            </span>
+            <div>
+              <small>Сонгосон машин</small>
+              <strong>
+                {activeSummary ? `${activeSummary.plate} - ${activeSummary.modelName}` : "Машин сонгоогүй"}
+              </strong>
+              {activeSummary?.stopStatusLabel ? <em>{activeSummary.stopStatusLabel}</em> : null}
+            </div>
+          </div>
+
           <label>
-            <span>Машин сонгох *</span>
+            <span>Жолооч сонгох</span>
             <select
-              value={activeSummary?.vehicle.id ?? ""}
-              onChange={(event) => setActiveVehicleId(Number(event.target.value))}
-              required
+              name="garbage_driver_employee_id"
+              value={selectedDriverId}
+              onChange={(event) => {
+                const vehicleId = activeSummary?.vehicle.id;
+                if (!vehicleId) return;
+                const nextDriverId = event.target.value;
+                setDriverOverridesByVehicle((current) => {
+                  if (nextDriverId === activeDefaultDriverId) {
+                    const next = { ...current };
+                    delete next[vehicleId];
+                    return next;
+                  }
+                  return { ...current, [vehicleId]: nextDriverId };
+                });
+              }}
+              disabled={activeVehicleBlocked || !driverOptions.length}
             >
-              {vehicleSummaries.map((summary) => (
-                <option key={summary.vehicle.id} value={summary.vehicle.id} disabled={summary.isStopped}>
-                  {summary.plate} - {summary.modelName}
-                  {summary.isStopped ? ` (${summary.stopStatusLabel})` : ""}
+              <option value="">Жолооч оноогоогүй</option>
+              {driverOptions.map((driver) => (
+                <option key={driver.id} value={driver.id}>
+                  {driver.name}
+                  {driver.detail ? ` - ${driver.detail}` : ""}
                 </option>
               ))}
             </select>
+            <small className={dashboardStyles.inspectorDriverHint}>
+              Үндсэн: {activeSummary?.vehicle.driverName || "жолооч оноогоогүй"}
+            </small>
           </label>
 
           {activeVehicleBlocked && activeSummary ? (

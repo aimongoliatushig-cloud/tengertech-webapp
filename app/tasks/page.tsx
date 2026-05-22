@@ -200,6 +200,10 @@ function formatTimelineTime(value?: string | null) {
   }).format(parsed);
 }
 
+function isGarbageTransportTask(task: TaskDirectoryItem) {
+  return task.operationType === "garbage" || task.operationType === "garbage_seasonal";
+}
+
 function parseDateKey(dateKey: string) {
   const parsed = new Date(`${dateKey}T00:00:00`);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
@@ -1301,6 +1305,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                                   taskId={Number(task.id)}
                                   simpleMobile
                                   workItemName={task.name}
+                                  reportTextRequired={!isGarbageTransportTask(task)}
                                   existingReport={getWorkerExistingReport(task)}
                                   triggerClassName={styles.workerLineItem}
                                   triggerDisabled={Boolean(blockedReportReason)}

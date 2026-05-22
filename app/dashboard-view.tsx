@@ -11,6 +11,7 @@ import {
   CloudRain,
   CloudSnow,
   CloudSun,
+  Fuel,
   HeartPulse,
   Leaf,
   ListChecks,
@@ -43,6 +44,7 @@ import { filterByDepartment } from "@/lib/dashboard-scope";
 import { normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { type FieldAssignment } from "@/lib/field-ops";
 import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
+import { canViewGarbageWeightReports } from "@/lib/roles";
 import {
   type DashboardSnapshot,
   type FleetVehicleBoard,
@@ -1160,6 +1162,431 @@ const EXECUTIVE_TONE_SOFT_COLORS: Record<ExecutiveMetric["tone"], string> = {
   teal: "#e5f7f3",
 };
 
+type AutoGarbageLeaderboardRow = {
+  key: string;
+  plate: string;
+  modelName: string;
+  driverName: string;
+  taskCount: number;
+  weightTons: number;
+  progress: number;
+};
+
+type AutoGarbageFuelRow = {
+  key: string;
+  plate: string;
+  modelName: string;
+  fuelLiters: number;
+  fuelType: string;
+  progress: number;
+};
+
+type AutoGarbageReportPanelMode = "overview" | "weight" | "fuel";
+
+type AutoGarbageTaskCard = {
+  task: DashboardSnapshot["taskDirectory"][number];
+  vehiclePlate: string;
+  vehicleModel: string;
+  routeLabel: string;
+  weightTons: number;
+  taskCount: number;
+  statusLabel: string;
+  statusTone: "green" | "orange" | "blue" | "muted";
+};
+
+function dashboardCleanText(value: string | null | undefined) {
+  return fixMojibakeText(value ?? "").trim();
+}
+
+function dashboardSearchText(value: string | null | undefined) {
+  return normalizeOrganizationUnitName(dashboardCleanText(value)).toLocaleLowerCase("mn-MN");
+}
+
+function isAutoGarbageDashboardScope(departmentScopeName: string | null | undefined) {
+  const scopeName = dashboardSearchText(departmentScopeName);
+
+  return Boolean(
+    scopeName &&
+      ((scopeName.includes("авто") && scopeName.includes("хог")) ||
+        (scopeName.includes("авто") && scopeName.includes("тээвэр")) ||
+        scopeName.includes("хог тээвэр")),
+  );
+}
+
+function isAutoGarbageTask(
+  task: DashboardSnapshot["taskDirectory"][number],
+  departmentScopeName: string | null | undefined,
+) {
+  if (isAutoGarbageDashboardScope(departmentScopeName)) {
+    const departmentName = dashboardSearchText(task.departmentName);
+    const combinedText = [
+      task.departmentName,
+      task.operationType,
+      task.operationTypeLabel,
+      task.projectName,
+      task.name,
+    ]
+      .map(dashboardSearchText)
+      .join(" ");
+
+    return (
+      !departmentName ||
+      departmentName.includes("авто") ||
+      departmentName.includes("хог") ||
+      combinedText.includes("хог") ||
+      combinedText.includes("ачилт") ||
+      combinedText.includes("цуглуулалт") ||
+      combinedText.includes("тээвэр")
+    );
+  }
+
+  const combinedText = [
+    task.departmentName,
+    task.operationType,
+    task.operationTypeLabel,
+    task.projectName,
+    task.name,
+  ]
+    .map(dashboardSearchText)
+    .join(" ");
+
+  return (
+    combinedText.includes("хог") ||
+    combinedText.includes("ачилт") ||
+    combinedText.includes("цуглуулалт") ||
+    combinedText.includes("тээвэрлэлт")
+  );
+}
+
+function isAutoGarbageVehicle(vehicle: FleetVehicleBoard["allVehicles"][number]) {
+  const text = [
+    vehicle.departmentName,
+    vehicle.name,
+    vehicle.modelName,
+    vehicle.categoryName,
+    vehicle.vehicleTypeName,
+  ]
+    .map(dashboardSearchText)
+    .join(" ");
+
+  return text.includes("хог") || text.includes("тээвэр") || text.includes("авто");
+}
+
+function parseWeightLabelToTons(value: string | null | undefined) {
+  const normalized = dashboardCleanText(value).toLocaleLowerCase("mn-MN");
+  const numericMatch = normalized.replace(/\s+/g, "").match(/-?\d+(?:[,.]\d+)?/);
+  const parsedValue = numericMatch ? Number.parseFloat(numericMatch[0].replace(",", ".")) : 0;
+
+  if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+    return 0;
+  }
+
+  if (normalized.includes("кг") || normalized.includes("kg")) {
+    return parsedValue / 1000;
+  }
+
+  return parsedValue;
+}
+
+function taskWeightToTons(task: DashboardSnapshot["taskDirectory"][number]) {
+  const reportQuantity = task.latestReport?.reportedQuantity ?? 0;
+  const completedQuantity = task.completedQuantity ?? 0;
+  const quantity = reportQuantity > 0 ? reportQuantity : completedQuantity;
+  const unitName = dashboardSearchText(task.latestReport?.measurementUnit || task.measurementUnit);
+
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    return 0;
+  }
+
+  if (unitName.includes("кг") || unitName.includes("kg")) {
+    return quantity / 1000;
+  }
+
+  if (
+    unitName.includes("тн") ||
+    unitName.includes("тон") ||
+    unitName.includes("ton") ||
+    unitName.includes("жин")
+  ) {
+    return quantity;
+  }
+
+  return 0;
+}
+
+function compactVehicleKey(value: string | null | undefined) {
+  return dashboardCleanText(value)
+    .toLocaleUpperCase("mn-MN")
+    .replace(/[^0-9A-ZА-ЯӨҮЁ]/g, "");
+}
+
+function extractVehiclePlateFromText(value: string | null | undefined) {
+  const plateMatch = dashboardCleanText(value)
+    .toLocaleUpperCase("mn-MN")
+    .match(/\d{3,5}\s*[A-ZА-ЯӨҮЁ]{2,4}/u);
+
+  return plateMatch?.[0].replace(/\s+/g, "") ?? "";
+}
+
+function taskVehicleSearchText(task: DashboardSnapshot["taskDirectory"][number]) {
+  return [
+    task.name,
+    task.projectName,
+    task.latestReport?.summary,
+    task.latestReport?.text,
+  ]
+    .map(dashboardCleanText)
+    .join(" ");
+}
+
+function resolveTaskPlate(task: DashboardSnapshot["taskDirectory"][number]) {
+  return extractVehiclePlateFromText(taskVehicleSearchText(task));
+}
+
+function findTaskVehicle(
+  task: DashboardSnapshot["taskDirectory"][number],
+  vehicles: FleetVehicleBoard["allVehicles"],
+) {
+  const taskPlateKey = compactVehicleKey(resolveTaskPlate(task));
+
+  if (!taskPlateKey) {
+    return null;
+  }
+
+  return (
+    vehicles.find((vehicle) => {
+      const vehiclePlateKey = compactVehicleKey(
+        extractVehiclePlateFromText(vehicle.plate) ||
+          extractVehiclePlateFromText(vehicle.name) ||
+          vehicle.plate,
+      );
+      return vehiclePlateKey && (taskPlateKey.includes(vehiclePlateKey) || vehiclePlateKey.includes(taskPlateKey));
+    }) ?? null
+  );
+}
+
+function formatAutoGarbageDate(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  const [year, month, day] = value.split("-");
+  if (!year || !month || !day) {
+    return dashboardCleanText(value);
+  }
+
+  return `${year} оны ${Number(month)}-р сарын ${Number(day)}`;
+}
+
+function formatTons(value: number) {
+  const normalized = Number.isFinite(value) ? Math.max(0, value) : 0;
+  const formatted = new Intl.NumberFormat("mn-MN", {
+    maximumFractionDigits: normalized >= 10 ? 1 : 2,
+  }).format(normalized);
+
+  return `${formatted} тн`;
+}
+
+function formatFuelLiters(value: number) {
+  const normalized = Number.isFinite(value) ? Math.max(0, value) : 0;
+  const formatted = new Intl.NumberFormat("mn-MN", {
+    maximumFractionDigits: normalized >= 100 ? 0 : 1,
+  }).format(normalized);
+
+  return `${formatted} л`;
+}
+
+function buildAutoGarbageBoardModel({
+  tasks,
+  fleetBoard,
+  currentDateKey,
+  departmentScopeName,
+}: {
+  tasks: DashboardSnapshot["taskDirectory"];
+  fleetBoard: FleetVehicleBoard;
+  currentDateKey: string;
+  departmentScopeName: string | null | undefined;
+}) {
+  const matchedTasks = tasks.filter((task) => isAutoGarbageTask(task, departmentScopeName));
+  const boardTasks = matchedTasks.length ? matchedTasks : tasks;
+  const autoVehicles = fleetBoard.allVehicles.filter(isAutoGarbageVehicle);
+  const reportVehicles = fleetBoard.allVehicles.filter(
+    (vehicle) =>
+      vehicle.weightMonthTons > 0 ||
+      vehicle.weightTotalTons > 0 ||
+      vehicle.weightReports.length > 0 ||
+      vehicle.fuelReports.length > 0,
+  );
+  const boardVehicleById = new Map(
+    [...autoVehicles, ...reportVehicles].map((vehicle) => [vehicle.id, vehicle] as const),
+  );
+  const boardVehicles = boardVehicleById.size ? Array.from(boardVehicleById.values()) : fleetBoard.allVehicles;
+  const taskWeightByPlate = new Map<string, number>();
+  const taskCountByPlate = new Map<string, number>();
+
+  for (const task of boardTasks) {
+    const vehicle = findTaskVehicle(task, boardVehicles);
+    const plate =
+      extractVehiclePlateFromText(vehicle?.plate) ||
+      extractVehiclePlateFromText(vehicle?.name) ||
+      resolveTaskPlate(task);
+    const plateKey = compactVehicleKey(plate);
+
+    if (!plateKey) {
+      continue;
+    }
+
+    taskCountByPlate.set(plateKey, (taskCountByPlate.get(plateKey) ?? 0) + 1);
+    taskWeightByPlate.set(plateKey, (taskWeightByPlate.get(plateKey) ?? 0) + taskWeightToTons(task));
+  }
+
+  const initialLeaderboardRows = boardVehicles.map((vehicle) => {
+    const displayPlate =
+      extractVehiclePlateFromText(vehicle.plate) ||
+      extractVehiclePlateFromText(vehicle.name) ||
+      dashboardCleanText(vehicle.plate || vehicle.name);
+    const plateKey = compactVehicleKey(displayPlate);
+    const currentMonthKey = currentDateKey.slice(0, 7);
+    const monthReportTons = vehicle.weightReports
+      .filter((report) => report.reportDate.startsWith(currentMonthKey))
+      .reduce((sum, report) => sum + (report.weightTons || parseWeightLabelToTons(report.weightLabel)), 0);
+    const reportTons =
+      vehicle.weightMonthTons ||
+      monthReportTons ||
+      vehicle.weightTotalTons ||
+      vehicle.weightReports.reduce(
+        (sum, report) => sum + (report.weightTons || parseWeightLabelToTons(report.weightLabel)),
+        0,
+      );
+    const taskTons = taskWeightByPlate.get(plateKey) ?? 0;
+    const weightTons = Math.max(reportTons, taskTons);
+
+    return {
+      key: plateKey || String(vehicle.id),
+      plate: displayPlate,
+      modelName: dashboardCleanText(vehicle.modelName || vehicle.name || "Машин"),
+      driverName: dashboardCleanText(vehicle.responsibleDriverName || vehicle.fleetDriverName || "Жолооч бүртгээгүй"),
+      taskCount: taskCountByPlate.get(plateKey) ?? 0,
+      weightTons,
+      progress: 0,
+    } satisfies AutoGarbageLeaderboardRow;
+  });
+
+  for (const [plateKey, taskTons] of taskWeightByPlate) {
+    if (initialLeaderboardRows.some((row) => row.key === plateKey)) {
+      continue;
+    }
+
+    initialLeaderboardRows.push({
+      key: plateKey,
+      plate: plateKey,
+      modelName: "Бүртгэлтэй машин",
+      driverName: "Жолооч бүртгээгүй",
+      taskCount: taskCountByPlate.get(plateKey) ?? 0,
+      weightTons: taskTons,
+      progress: 0,
+    });
+  }
+
+  const maxWeight = Math.max(...initialLeaderboardRows.map((row) => row.weightTons), 0);
+  const leaderboardRows = initialLeaderboardRows
+    .map((row) => ({
+      ...row,
+      progress: maxWeight > 0 ? clampPercent((row.weightTons / maxWeight) * 100) : 0,
+    }))
+    .sort((left, right) => right.weightTons - left.weightTons || right.taskCount - left.taskCount);
+
+  const initialFuelRows = boardVehicles.map((vehicle) => {
+    const displayPlate =
+      extractVehiclePlateFromText(vehicle.plate) ||
+      extractVehiclePlateFromText(vehicle.name) ||
+      dashboardCleanText(vehicle.plate || vehicle.name);
+    const todayReports = vehicle.fuelReports.filter((report) => report.reportDate === currentDateKey);
+    const reportSource = todayReports.length ? todayReports : vehicle.fuelReports;
+    const fuelLiters = reportSource.reduce((sum, report) => sum + Math.max(0, report.fuelLiters || 0), 0);
+    const fuelTypes = Array.from(
+      new Set(
+        reportSource
+          .map((report) => dashboardCleanText(report.fuelType))
+          .filter(Boolean),
+      ),
+    );
+
+    return {
+      key: compactVehicleKey(displayPlate) || String(vehicle.id),
+      plate: displayPlate,
+      modelName: dashboardCleanText(vehicle.modelName || vehicle.name || "Машин"),
+      fuelLiters,
+      fuelType: fuelTypes.join(", ") || "Төрөл бүртгээгүй",
+      progress: 0,
+    } satisfies AutoGarbageFuelRow;
+  });
+
+  const maxFuelLiters = Math.max(...initialFuelRows.map((row) => row.fuelLiters), 0);
+  const fuelRows = initialFuelRows
+    .map((row) => ({
+      ...row,
+      progress: maxFuelLiters > 0 ? clampPercent((row.fuelLiters / maxFuelLiters) * 100) : 0,
+    }))
+    .sort((left, right) => right.fuelLiters - left.fuelLiters);
+
+  const taskCards = boardTasks
+    .slice()
+    .sort((left, right) => {
+      const leftDate = left.scheduledDate || left.createdDate || "";
+      const rightDate = right.scheduledDate || right.createdDate || "";
+      return rightDate.localeCompare(leftDate) || right.progress - left.progress;
+    })
+    .slice(0, 4)
+    .map((task) => {
+      const vehicle = findTaskVehicle(task, boardVehicles);
+      const taskPlate = resolveTaskPlate(task);
+      const plate =
+        extractVehiclePlateFromText(vehicle?.plate) ||
+        extractVehiclePlateFromText(vehicle?.name) ||
+        taskPlate ||
+        dashboardCleanText(vehicle?.plate || vehicle?.name || "Машин тодорхойгүй");
+      const plateKey = compactVehicleKey(plate);
+      const fallbackWeight =
+        plateKey
+          ? leaderboardRows.find((row) => row.key === plateKey || row.key.includes(plateKey) || plateKey.includes(row.key))
+              ?.weightTons ?? 0
+          : 0;
+      const statusTone: AutoGarbageTaskCard["statusTone"] = isDoneTask(task)
+        ? "green"
+        : task.statusKey === "working"
+          ? "blue"
+          : task.issueFlag || isOverdue(task, currentDateKey)
+            ? "orange"
+            : "muted";
+
+      return {
+        task,
+        vehiclePlate: dashboardCleanText(plate),
+        vehicleModel: dashboardCleanText(vehicle?.modelName || vehicle?.name || task.operationTypeLabel || "Хог тээвэр"),
+        routeLabel: dashboardCleanText(task.projectName || task.operationTypeLabel || "Маршрут бүртгээгүй"),
+        weightTons: taskWeightToTons(task) || fallbackWeight,
+        taskCount: Math.max(1, task.plannedQuantity || task.completedQuantity || 1),
+        statusLabel: dashboardCleanText(task.statusLabel || task.stageLabel || "Тодорхойгүй"),
+        statusTone,
+      } satisfies AutoGarbageTaskCard;
+    });
+
+  const stats = dashboardTaskStats(boardTasks, currentDateKey);
+  const totalTons = leaderboardRows.reduce((sum, row) => sum + row.weightTons, 0);
+  const totalFuelLiters = fuelRows.reduce((sum, row) => sum + row.fuelLiters, 0);
+
+  return {
+    tasks: boardTasks,
+    taskCards,
+    leaderboardRows,
+    fuelRows,
+    stats,
+    totalTons,
+    totalFuelLiters,
+  };
+}
+
 function ExecutiveRing({
   value,
   tone,
@@ -1301,6 +1728,421 @@ function ExecutiveDepartmentCard({ department }: { department: ExecutiveDepartme
         <ChevronRight aria-hidden />
       </span>
     </Link>
+  );
+}
+
+function AutoGarbageMetricCard({
+  label,
+  value,
+  helper,
+  icon: Icon,
+  tone,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+  icon: LucideIcon;
+  tone: ExecutiveMetric["tone"];
+}) {
+  const color = EXECUTIVE_TONE_COLORS[tone];
+
+  return (
+    <div className={dashboardStyles.autoGarbageMetricCard}>
+      <span
+        className={dashboardStyles.autoGarbageMetricIcon}
+        style={{ color, backgroundColor: `${color}16` }}
+      >
+        <Icon aria-hidden />
+      </span>
+      <span>
+        <small>{label}</small>
+        <strong>{value}</strong>
+        <em>{helper}</em>
+      </span>
+    </div>
+  );
+}
+
+function AutoGarbageTaskCardView({ card }: { card: AutoGarbageTaskCard }) {
+  const taskDate = card.task.scheduledDate || card.task.createdDate || "";
+  const progress = clampPercent(card.task.progress);
+
+  return (
+    <Link href={card.task.href} className={dashboardStyles.autoGarbageTaskCard}>
+      <div className={dashboardStyles.autoGarbageTaskTop}>
+        <time>
+          <CalendarDays aria-hidden />
+          {formatAutoGarbageDate(taskDate) || "Огноо бүртгээгүй"}
+        </time>
+        <span
+          className={dashboardStyles.autoGarbageStatusBadge}
+          data-tone={card.statusTone}
+        >
+          {card.statusLabel}
+        </span>
+      </div>
+
+      <h3>{dashboardCleanText(card.task.name)}</h3>
+      <p>
+        Тээвэрлэлтийн хяналтын ажилтан: {dashboardCleanText(card.task.leaderName || "Тодорхойгүй")}
+      </p>
+
+      <div className={dashboardStyles.autoGarbageCardStats}>
+        <span>
+          <small>Нээлттэй ажил</small>
+          <strong>{card.taskCount}</strong>
+        </span>
+        <span>
+          <small>Ачсан тонн</small>
+          <strong>{formatTons(card.weightTons)}</strong>
+        </span>
+        <span>
+          <small>Гүйцэтгэл</small>
+          <strong>{progress}%</strong>
+        </span>
+      </div>
+
+      <div className={dashboardStyles.autoGarbageProgressTrack}>
+        <i style={{ inlineSize: `${progress}%` }} />
+      </div>
+
+      <div className={dashboardStyles.autoGarbageTaskFooter}>
+        <span>
+          <Truck aria-hidden />
+          Машин: {card.vehiclePlate}
+        </span>
+        <span>{card.routeLabel}</span>
+        <ChevronRight aria-hidden />
+      </div>
+    </Link>
+  );
+}
+
+function AutoGarbageReportTabs({
+  mode,
+  overviewHref,
+  weightHref,
+  fuelHref,
+}: {
+  mode: AutoGarbageReportPanelMode;
+  overviewHref: string;
+  weightHref: string;
+  fuelHref: string;
+}) {
+  return (
+    <div className={dashboardStyles.autoGarbageReportTabs} aria-label="Машины тайлангийн таб">
+      <Link
+        href={overviewHref}
+        className={mode === "overview" ? dashboardStyles.autoGarbageReportTabActive : undefined}
+      >
+        Товч
+      </Link>
+      <Link
+        href={weightHref}
+        className={mode === "weight" ? dashboardStyles.autoGarbageReportTabActive : undefined}
+      >
+        Ачсан тонн
+      </Link>
+      <Link
+        href={fuelHref}
+        className={mode === "fuel" ? dashboardStyles.autoGarbageReportTabActive : undefined}
+      >
+        Шатахуун
+      </Link>
+    </div>
+  );
+}
+
+function AutoGarbageWeightRows({
+  rows,
+}: {
+  rows: AutoGarbageLeaderboardRow[];
+}) {
+  return (
+    <div className={dashboardStyles.autoGarbageLeaderboard}>
+      {rows.length ? rows.map((row, index) => (
+        <div key={row.key} className={dashboardStyles.autoGarbageLeaderRow}>
+          <span className={dashboardStyles.autoGarbageLeaderRank}>{index + 1}</span>
+          <span className={dashboardStyles.autoGarbageLeaderInfo}>
+            <strong>{row.plate}</strong>
+            <small>{row.modelName}</small>
+          </span>
+          <span className={dashboardStyles.autoGarbageLeaderBar} aria-hidden>
+            <i style={{ inlineSize: `${row.progress}%` }} />
+          </span>
+          <strong className={dashboardStyles.autoGarbageLeaderValue}>
+            {formatTons(row.weightTons)}
+          </strong>
+        </div>
+      )) : (
+        <p className={dashboardStyles.autoGarbageEmptyText}>Машины жингийн бүртгэл хараахан алга.</p>
+      )}
+    </div>
+  );
+}
+
+function AutoGarbageFuelRows({
+  rows,
+}: {
+  rows: AutoGarbageFuelRow[];
+}) {
+  return (
+    <div className={dashboardStyles.autoGarbageLeaderboard}>
+      {rows.length ? rows.map((row, index) => (
+        <div key={row.key} className={dashboardStyles.autoGarbageLeaderRow}>
+          <span className={dashboardStyles.autoGarbageLeaderRank}>{index + 1}</span>
+          <span className={dashboardStyles.autoGarbageLeaderInfo}>
+            <strong>{row.plate}</strong>
+            <small>{row.modelName} · {row.fuelType}</small>
+          </span>
+          <span className={dashboardStyles.autoGarbageLeaderBar} data-tone="fuel" aria-hidden>
+            <i style={{ inlineSize: `${row.progress}%` }} />
+          </span>
+          <strong className={dashboardStyles.autoGarbageLeaderValue}>
+            {formatFuelLiters(row.fuelLiters)}
+          </strong>
+        </div>
+      )) : (
+        <p className={dashboardStyles.autoGarbageEmptyText}>Машины шатахууны бүртгэл хараахан алга.</p>
+      )}
+    </div>
+  );
+}
+
+function AutoGarbageLeaderboardPanel({
+  weightRows,
+  fuelRows,
+  totalTons,
+  totalFuelLiters,
+  panelMode,
+  overviewHref,
+  weightHref,
+  fuelHref,
+}: {
+  weightRows: AutoGarbageLeaderboardRow[];
+  fuelRows: AutoGarbageFuelRow[];
+  totalTons: number;
+  totalFuelLiters: number;
+  panelMode: AutoGarbageReportPanelMode;
+  overviewHref: string;
+  weightHref: string;
+  fuelHref: string;
+}) {
+  const previewLimit = 5;
+  const shownWeightRows = panelMode === "weight" ? weightRows : weightRows.slice(0, previewLimit);
+  const shownFuelRows = panelMode === "fuel" ? fuelRows : fuelRows.slice(0, previewLimit);
+  const averageTons = weightRows.length ? totalTons / weightRows.length : 0;
+  const averageFuelLiters = fuelRows.length ? totalFuelLiters / fuelRows.length : 0;
+  const showWeightPanel = panelMode !== "fuel";
+  const showFuelPanel = panelMode !== "weight";
+
+  return (
+    <aside className={dashboardStyles.autoGarbageSidePanels}>
+      <AutoGarbageReportTabs
+        mode={panelMode}
+        overviewHref={overviewHref}
+        weightHref={weightHref}
+        fuelHref={fuelHref}
+      />
+      {showWeightPanel ? (
+        <section className={dashboardStyles.autoGarbageLeaderPanel}>
+          <div className={dashboardStyles.autoGarbagePanelHeader}>
+            <div>
+              <h3>Машин тус бүрийн ачсан тонн</h3>
+              <p>Жингийн бүртгэл болон ажлын тайлангаас нэгтгэв.</p>
+            </div>
+            <span>Энэ сар</span>
+          </div>
+
+          <AutoGarbageWeightRows rows={shownWeightRows} />
+          {panelMode !== "weight" && weightRows.length > previewLimit ? (
+            <Link href={weightHref} className={dashboardStyles.autoGarbagePanelShowAll}>
+              Бүгдийг харах
+              <ChevronRight aria-hidden />
+            </Link>
+          ) : null}
+        </section>
+      ) : null}
+
+      {showFuelPanel ? (
+        <section className={dashboardStyles.autoGarbageLeaderPanel}>
+          <div className={dashboardStyles.autoGarbagePanelHeader}>
+            <div>
+              <h3>Машин тус бүрийн шатахуун</h3>
+              <p>Шатахууны бүртгэлээс машинаар нь нэгтгэв.</p>
+            </div>
+            <span>Энэ сар</span>
+          </div>
+
+          <AutoGarbageFuelRows rows={shownFuelRows} />
+          {panelMode !== "fuel" && fuelRows.length > previewLimit ? (
+            <Link href={fuelHref} className={dashboardStyles.autoGarbagePanelShowAll}>
+              Бүгдийг харах
+              <ChevronRight aria-hidden />
+            </Link>
+          ) : null}
+        </section>
+      ) : null}
+
+      <section className={dashboardStyles.autoGarbageSummaryPanel}>
+        <div>
+          <small>Нийт ачсан тонн</small>
+          <strong>{formatTons(totalTons)}</strong>
+        </div>
+        <div>
+          <small>Машины дундаж тонн</small>
+          <strong>{formatTons(averageTons)}</strong>
+        </div>
+        <div>
+          <small>Нийт шатахуун</small>
+          <strong>{formatFuelLiters(totalFuelLiters)}</strong>
+        </div>
+        <div>
+          <small>Дундаж шатахуун</small>
+          <strong>{formatFuelLiters(averageFuelLiters)}</strong>
+        </div>
+      </section>
+    </aside>
+  );
+}
+
+export function AutoGarbageWorkBoard({
+  dashboardTasks,
+  fleetBoard,
+  currentDateKey,
+  departmentScopeName,
+  canCreateWork,
+  reportPanelMode = "overview",
+  boardHref = "/projects",
+  workListHref = "/projects",
+}: {
+  dashboardTasks: DashboardSnapshot["taskDirectory"];
+  fleetBoard: FleetVehicleBoard;
+  currentDateKey: string;
+  departmentScopeName: string | null | undefined;
+  canCreateWork: boolean;
+  reportPanelMode?: AutoGarbageReportPanelMode;
+  boardHref?: string;
+  workListHref?: string;
+}) {
+  const model = buildAutoGarbageBoardModel({
+    tasks: dashboardTasks,
+    fleetBoard,
+    currentDateKey,
+    departmentScopeName,
+  });
+  const attentionCount = model.stats.review + model.stats.overdue + model.stats.planned;
+  const overviewHref = boardHref;
+  const weightHref = `${boardHref}${boardHref.includes("?") ? "&" : "?"}autoPanel=weight`;
+  const fuelHref = `${boardHref}${boardHref.includes("?") ? "&" : "?"}autoPanel=fuel`;
+
+  return (
+    <section className={dashboardStyles.autoGarbageBoard}>
+      <div className={dashboardStyles.autoGarbageBreadcrumb}>
+        <span>Нүүр</span>
+        <ChevronRight aria-hidden />
+        <span>Хог тээвэрлэлт</span>
+        <ChevronRight aria-hidden />
+        <strong>Ажлын жагсаалт</strong>
+      </div>
+
+      <div className={dashboardStyles.autoGarbageHeader}>
+        <div>
+          <h2>Ажлын жагсаалт</h2>
+          <p>Авто бааз, хог тээвэрлэлтийн хэлтэс · Нийт {model.tasks.length} ажил</p>
+        </div>
+        <div className={dashboardStyles.autoGarbageToolbar}>
+          <Link href="/projects" className={dashboardStyles.autoGarbageGhostButton}>
+            <ListChecks aria-hidden />
+            Шүүлтүүр
+          </Link>
+          <Link href="/projects?sort=recent" className={dashboardStyles.autoGarbageGhostButton}>
+            <BarChart3 aria-hidden />
+            Эрэмбэлэх
+          </Link>
+          {canCreateWork ? (
+            <Link href="/create" className={dashboardStyles.autoGarbagePrimaryButton}>
+              <Plus aria-hidden />
+              Шинэ ажил
+            </Link>
+          ) : null}
+        </div>
+      </div>
+
+      <div className={dashboardStyles.autoGarbageMetricGrid}>
+        <AutoGarbageMetricCard
+          label="Нийт ажил"
+          value={String(model.stats.total)}
+          helper="Бүгд"
+          icon={ClipboardList}
+          tone="blue"
+        />
+        <AutoGarbageMetricCard
+          label="Хийгдэж буй ажил"
+          value={String(model.stats.working)}
+          helper={`${percent(model.stats.working, model.stats.total)}%`}
+          icon={Wrench}
+          tone="purple"
+        />
+        <AutoGarbageMetricCard
+          label="Дууссан ажил"
+          value={String(model.stats.completed)}
+          helper={`${percent(model.stats.completed, model.stats.total)}%`}
+          icon={CheckCircle2}
+          tone="green"
+        />
+        <AutoGarbageMetricCard
+          label="Анхаарах ажил"
+          value={String(attentionCount)}
+          helper={`${percent(attentionCount, model.stats.total)}%`}
+          icon={Clock3}
+          tone="orange"
+        />
+        <AutoGarbageMetricCard
+          label="Нийт ачсан тонн"
+          value={formatTons(model.totalTons)}
+          helper="Машинуудаар"
+          icon={Recycle}
+          tone="teal"
+        />
+        <AutoGarbageMetricCard
+          label="Нийт шатахуун"
+          value={formatFuelLiters(model.totalFuelLiters)}
+          helper="Машинуудаар"
+          icon={Fuel}
+          tone="orange"
+        />
+      </div>
+
+      <div className={dashboardStyles.autoGarbageLayout}>
+        <div className={dashboardStyles.autoGarbageTasksColumn}>
+          {model.taskCards.length ? model.taskCards.map((card) => (
+            <AutoGarbageTaskCardView key={card.task.id} card={card} />
+          )) : (
+            <div className={dashboardStyles.autoGarbageEmptyState}>
+              <Recycle aria-hidden />
+              <strong>Хог тээврийн ажил бүртгэгдээгүй байна.</strong>
+              <span>Ажил үүсэх үед энд машинаар нь ангилж харагдана.</span>
+            </div>
+          )}
+          <Link href={workListHref} className={dashboardStyles.autoGarbageShowAll}>
+            Бүгдийг харах
+            <ChevronRight aria-hidden />
+          </Link>
+        </div>
+
+        <AutoGarbageLeaderboardPanel
+          weightRows={model.leaderboardRows}
+          fuelRows={model.fuelRows}
+          totalTons={model.totalTons}
+          totalFuelLiters={model.totalFuelLiters}
+          panelMode={reportPanelMode}
+          overviewHref={overviewHref}
+          weightHref={weightHref}
+          fuelHref={fuelHref}
+        />
+      </div>
+    </section>
   );
 }
 
@@ -1704,6 +2546,7 @@ function ExecutiveDashboardView({
   showDepartmentPerformance?: boolean;
 }) {
   const canViewAllReports = canViewAllWorkspaceReports(session);
+  const canViewWeightReports = canViewGarbageWeightReports(session);
   const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
   const activeTasks = Math.max(
@@ -1795,6 +2638,7 @@ function ExecutiveDashboardView({
             canViewQualityCenter={canViewQualityCenter}
             canUseFieldConsole={canUseFieldConsole}
             canViewAllReports={canViewAllReports}
+            canViewGarbageWeightReports={canViewWeightReports}
             canViewHr={canViewHr}
             canViewGeneralDashboard={showDepartmentPerformance && !departmentScopeName}
             userName={session.name}
@@ -1879,6 +2723,7 @@ export function DashboardView({
   const canCreateTasks = hasCapability(session, "create_tasks");
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewAllReports = canViewAllWorkspaceReports(session);
+  const canViewWeightReports = canViewGarbageWeightReports(session);
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const workerMode = isWorkerOnly(session);
@@ -2058,6 +2903,7 @@ export function DashboardView({
             canViewQualityCenter={canViewQualityCenter}
             canUseFieldConsole={canUseFieldConsole}
             canViewAllReports={canViewAllReports}
+            canViewGarbageWeightReports={canViewWeightReports}
             canViewHr={canViewHr}
             canViewGeneralDashboard={canViewGeneralDashboard}
             userName={session.name}

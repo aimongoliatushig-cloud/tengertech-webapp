@@ -5,8 +5,7 @@ import { clearLoginRateLimit, isAllowedPostOrigin, isLoginRateLimited } from "@/
 import { canAccessGeneralDashboard, GENERAL_DASHBOARD_PATH } from "@/lib/general-dashboard-access";
 import { buildPublicUrl } from "@/lib/request-url";
 
-const TRANSPORT_INSPECTOR_HOME =
-  "/projects?department=%D0%90%D0%B2%D1%82%D0%BE%20%D0%B1%D0%B0%D0%B0%D0%B7%2C%20%D1%85%D0%BE%D0%B3%20%D1%82%D1%8D%D1%8D%D0%B2%D1%8D%D1%80%D0%BB%D1%8D%D0%BB%D1%82%D0%B8%D0%B9%D0%BD%20%D1%85%D1%8D%D0%BB%D1%82%D1%8D%D1%81";
+const WORK_DASHBOARD_HOME = "/";
 
 function redirectTo(request: Request, path: string) {
   const response = NextResponse.redirect(buildPublicUrl(request, path), { status: 303 });
@@ -23,10 +22,10 @@ function getPostLoginPath(session: NonNullable<Awaited<ReturnType<typeof signInW
       (flags.mfoInspector && !flags.mfoManager && !flags.mfoDispatcher),
   );
   if (transportInspectorMode) {
-    return TRANSPORT_INSPECTOR_HOME;
+    return WORK_DASHBOARD_HOME;
   }
 
-  return canAccessGeneralDashboard(session) ? GENERAL_DASHBOARD_PATH : "/";
+  return canAccessGeneralDashboard(session) ? GENERAL_DASHBOARD_PATH : WORK_DASHBOARD_HOME;
 }
 
 export async function POST(request: Request) {

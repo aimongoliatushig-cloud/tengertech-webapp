@@ -16,6 +16,7 @@
 .pendingQueuePanel {
   display: grid;
   gap: 14px;
+  min-width: 0;
   margin-bottom: 16px;
   padding: 18px;
   border: 1px solid rgba(214, 158, 46, 0.22);
@@ -80,13 +81,14 @@
 
 .pendingRequestGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 10px;
 }
 
 .pendingRequestCard {
   display: grid;
   gap: 10px;
+  min-width: 0;
   min-height: 138px;
   padding: 13px;
   border: 1px solid rgba(214, 158, 46, 0.16);
@@ -219,6 +221,7 @@
 .formPanel,
 .actionPanel,
 .accessDenied {
+  min-width: 0;
   border: 1px solid rgba(46, 125, 50, 0.1);
   border-radius: var(--ds-radius-card);
   background: rgba(255, 255, 255, 0.78);
@@ -509,6 +512,7 @@
 }
 
 .chartLegendRow em {
+  min-width: 0;
   overflow: hidden;
   font-style: normal;
   text-overflow: ellipsis;
@@ -582,9 +586,8 @@
 
 .chartTopRow strong,
 .chartTopRow small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .chartTopRow strong {
@@ -688,6 +691,7 @@
 }
 
 .tableWrap {
+  max-width: 100%;
   overflow-x: auto;
 }
 
@@ -938,9 +942,8 @@
 
 .detailRow strong,
 .detailRow small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .detailRow small,
@@ -1290,6 +1293,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
   min-height: 48px;
   padding: 8px 10px;
   border: 1px solid rgba(46, 125, 50, 0.09);
@@ -1408,9 +1412,8 @@
 
 .employeeRowLink strong,
 .employeeRowLink small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .employeeRowLink strong {
@@ -1873,10 +1876,31 @@
   .chartTopRow em {
     grid-column: 2;
     justify-self: start;
+    white-space: normal;
+  }
+
+  .chartLegendRow em {
+    white-space: normal;
+  }
+
+  .employeeRowLink {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .employeeRowLink em {
+    justify-self: start;
   }
 
   .tableWrap {
-    overflow: visible;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+
+  .table {
+    min-width: 720px;
   }
 
   .requestTable {

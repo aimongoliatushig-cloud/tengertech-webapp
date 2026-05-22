@@ -157,6 +157,8 @@ async function assertWorkerTaskReportDateIsOpen(
   if (isAssignedWorker && isFutureDateKey(task.scheduledDate)) {
     redirectWithMessage(reportPath, "error", "Тайланг зөвхөн тухайн ажлын өдөр оруулна уу.");
   }
+
+  return task;
 }
 
 async function assertCanReviewTaskAction(
@@ -258,6 +260,11 @@ function relationIdValue(value: unknown) {
     return value;
   }
   return null;
+}
+
+function isDriverEmployeeOption(option: { jobTitle?: string }) {
+  const title = String(option.jobTitle ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  return title.includes("жолооч") || title.includes("driver") || title.includes("chauffeur");
 }
 
 type GarbageVehicleCrewRecord = {
@@ -496,6 +503,38 @@ async function notifyDepartmentHeadsOfWork(input: {
   });
 }
 
+async function notifySharedWorkDepartmentHeads(input: {
+  departmentIds: number[];
+  actorUserId: number;
+  connectionOverrides: Record<string, never> | { login: string; password: string };
+  workId: number;
+  workName: string;
+}) {
+  const recipientIds = new Set<number>();
+  for (const departmentId of input.departmentIds) {
+    const headIds = await loadDepartmentHeadUserIds(departmentId, input.connectionOverrides).catch(
+      () => [],
+    );
+    for (const headId of headIds) {
+      if (headId !== input.actorUserId) {
+        recipientIds.add(headId);
+      }
+    }
+  }
+
+  if (!recipientIds.size) {
+    return;
+  }
+
+  await notifyPushQuietly({
+    eventType: "shared_work_created",
+    title: "Хамтарсан ажил үүслээ",
+    body: input.workName,
+    targetUrl: `/shared-work/${input.workId}`,
+    userIds: Array.from(recipientIds),
+  });
+}
+
 function uniquePositiveUserIds(values: Array<number | null | undefined>) {
   return Array.from(
     new Set(
@@ -508,6 +547,50 @@ function getUploadedFiles(formData: FormData, key: string) {
   return formData
     .getAll(key)
     .filter((value): value is File => value instanceof File && value.size > 0);
+}
+
+function getPositiveIds(formData: FormData, key: string) {
+  return Array.from(
+    new Set(
+      formData
+        .getAll(key)
+        .map((value) => Number(String(value ?? "")))
+        .filter((value) => Number.isFinite(value) && value > 0),
+    ),
+  );
+}
+
+function normalizeSharedWorkDate(value: string, boundary: "start" | "end") {
+  if (!value) {
+    return false;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return `${value} ${boundary === "end" ? "23:59:59" : "00:00:00"}`;
+  }
+  return value.length === 16 ? `${value}:00` : value;
+}
+
+async function createOdooAttachment(
+  file: File,
+  resModel: string,
+  resId: number,
+  connectionOverrides: Record<string, never> | { login: string; password: string },
+) {
+  return executeOdooKw<number>(
+    "ir.attachment",
+    "create",
+    [
+      {
+        name: file.name || "Хавсралт",
+        datas: Buffer.from(await file.arrayBuffer()).toString("base64"),
+        mimetype: file.type || "application/octet-stream",
+        res_model: resModel,
+        res_id: resId,
+      },
+    ],
+    {},
+    connectionOverrides,
+  );
 }
 
 async function encodeProcurementUpload(file: File) {
@@ -682,6 +765,8 @@ export async function createProjectAction(formData: FormData) {
   const startDate = String(formData.get("start_date") ?? "").trim();
   const deadline = String(formData.get("deadline") ?? "").trim();
   const garbageVehicleIdRaw = String(formData.get("garbage_vehicle_id") ?? "").trim();
+  const hasGarbageDriverField = formData.has("garbage_driver_employee_id");
+  const garbageDriverEmployeeId = Number(String(formData.get("garbage_driver_employee_id") ?? ""));
   const garbageSubdistrictIdRaw = String(formData.get("garbage_subdistrict_id") ?? "").trim();
   const garbagePointIds = formData
     .getAll("garbage_point_ids")
@@ -725,6 +810,75 @@ export async function createProjectAction(formData: FormData) {
       "error",
       "Танд шинэ ажил үүсгэх эрх нээгдээгүй байна.",
     );
+  }
+
+  if (operationUnit === "shared_work") {
+    const sharedDepartmentIds = getPositiveIds(formData, "shared_department_ids");
+    if (!name) {
+      redirectWithMessage("/projects/new", "error", "Хамтарсан ажлын нэр оруулна уу.");
+    }
+    if (sharedDepartmentIds.length < 2) {
+      redirectWithMessage(
+        "/projects/new",
+        "error",
+        "Хамтарсан ажилд дор хаяж хоёр хэлтэс сонгоно уу.",
+      );
+    }
+
+    try {
+      const workId = await executeOdooKw<number>(
+        "shared.work",
+        "create",
+        [
+          {
+            name,
+            description: projectDescription,
+            priority: "1",
+            planned_start_date: normalizeSharedWorkDate(startDate, "start"),
+            planned_end_date: normalizeSharedWorkDate(deadline, "end"),
+            involved_department_ids: [[6, 0, sharedDepartmentIds]],
+          },
+        ],
+        {},
+        connectionOverrides,
+      );
+
+      if (projectFiles.length) {
+        const attachmentIds = await Promise.all(
+          projectFiles.slice(0, 8).map((file) =>
+            createOdooAttachment(file, "shared.work", workId, connectionOverrides),
+          ),
+        );
+        await executeOdooKw<boolean>(
+          "shared.work",
+          "write",
+          [[workId], { attachment_ids: [[6, 0, attachmentIds]] }],
+          {},
+          connectionOverrides,
+        );
+      }
+
+      await notifySharedWorkDepartmentHeads({
+        departmentIds: sharedDepartmentIds,
+        actorUserId: session.uid,
+        connectionOverrides,
+        workId,
+        workName: name,
+      });
+
+      revalidatePath("/projects/new");
+      revalidatePath("/shared-work");
+      revalidatePath(`/shared-work/${workId}`);
+      revalidatePath("/notifications");
+      redirect(
+        `/shared-work/${workId}?notice=${encodeURIComponent(
+          "Хамтарсан ажил үүсэж, сонгосон хэлтэс бүр дээр ажил автоматаар үүслээ.",
+        )}`,
+      );
+    } catch (error) {
+      rethrowIfRedirectError(error);
+      redirectWithMessage("/projects/new", "error", getErrorMessage(error));
+    }
   }
 
   let effectiveDepartmentIdRaw = departmentIdRaw;
@@ -1098,13 +1252,31 @@ export async function createProjectAction(formData: FormData) {
           `${resolvedVehicleName} машин засвартай эсвэл ашиглалтаас хаагдсан тул хяналтын ажил үүсгэх боломжгүй.`,
         );
       }
-      const vehicleDriverId =
+      const defaultVehicleDriverId =
         relationIdValue(selectedVehicle?.municipal_responsible_driver_id) ??
         relationIdValue(selectedVehicle?.driver_employee_id) ??
         relationIdValue(selectedVehicle?.mfo_driver_employee_id) ??
         relationIdValue(selectedVehicle?.driver_id) ??
         boardVehicle?.responsibleDriverId ??
         null;
+      const requestedDriverId =
+        Number.isFinite(garbageDriverEmployeeId) && garbageDriverEmployeeId > 0 ? garbageDriverEmployeeId : null;
+      const allowedDriverIds = new Set(
+        [
+          defaultVehicleDriverId,
+          ...(fleetBoard?.driverOptions ?? [])
+            .filter((driver) => driver.active && isDriverEmployeeOption(driver))
+            .map((driver) => driver.id),
+        ].filter((driverId): driverId is number => Boolean(driverId)),
+      );
+      if (requestedDriverId && !allowedDriverIds.has(requestedDriverId)) {
+        redirectWithMessage(
+          garbageTransportReturnPath,
+          "error",
+          "Сонгосон жолоочийг энэ даалгаварт оноох боломжгүй байна. Жолоочоо дахин сонгоно уу.",
+        );
+      }
+      const vehicleDriverId = hasGarbageDriverField ? requestedDriverId : defaultVehicleDriverId;
       const defaultVehicleCollectorIds = Array.from(
         new Set(
           [
@@ -1123,8 +1295,11 @@ export async function createProjectAction(formData: FormData) {
         [vehicleDriverId, ...vehicleCollectorIds].filter((id): id is number => Boolean(id)),
         garbageWorkConnection,
       );
+      const selectedDriverOption = vehicleDriverId
+        ? fleetBoard?.driverOptions.find((driver) => driver.id === vehicleDriverId)
+        : null;
       const fallbackCrewNames = [
-        boardVehicle?.responsibleDriverName,
+        selectedDriverOption?.name || (vehicleDriverId === defaultVehicleDriverId ? boardVehicle?.responsibleDriverName : ""),
         boardVehicle?.loader1Name,
         boardVehicle?.loader2Name,
       ].filter((value): value is string => Boolean(value));
@@ -2309,7 +2484,7 @@ export async function createTaskReportAction(formData: FormData) {
   const reportPath = taskId ? `/tasks/${taskId}` : "/tasks";
   let submitLockKey = "";
 
-  if (!taskId || !reportText) {
+  if (!taskId) {
     redirect(`${reportPath}?error=${encodeURIComponent("Тайлангийн текстээ оруулна уу.")}`);
   }
 
@@ -2347,9 +2522,13 @@ export async function createTaskReportAction(formData: FormData) {
       login: session.login,
       password: session.password,
     };
-    await timer.step("validation_task_date", () =>
+    const taskForReport = await timer.step("validation_task_date", () =>
       assertWorkerTaskReportDateIsOpen(taskId, session, connectionOverrides, reportPath),
     );
+    const isGarbageReport = isGarbageTransportTaskOperation(taskForReport.operationType);
+    if (!isGarbageReport && !reportText) {
+      redirect(`${reportPath}?error=${encodeURIComponent("Тайлангийн текстээ оруулна уу.")}`);
+    }
     const lock = acquireReportSubmitLock("create", taskId, submitToken);
     submitLockKey = lock.key;
     if (!lock.acquired) {
@@ -2383,12 +2562,16 @@ export async function createTaskReportAction(formData: FormData) {
       .find((value) => Number.isFinite(value) && value > 0);
     const odooReportedQuantity =
       firstLineQuantity ?? (quantityRaw && reportedQuantity > 0 ? reportedQuantity : 1);
+    const effectiveWorkItemName = workItemName || (isGarbageReport ? taskForReport.name : "");
     const effectiveReportText = [
-      workItemName ? `Даалгавар: ${workItemName}` : "",
+      effectiveWorkItemName ? `Даалгавар: ${effectiveWorkItemName}` : "",
       quantityLineSummaries.length
         ? `Гүйцэтгэсэн хэмжээ:\n${quantityLineSummaries.join("\n")}`
         : "",
       reportText,
+      !reportText && isGarbageReport && !effectiveWorkItemName && !quantityLineSummaries.length
+        ? "Хог тээврийн тайлан"
+        : "",
     ]
       .filter(Boolean)
       .join("\n\n");
@@ -2490,7 +2673,7 @@ export async function updateTaskReportAction(formData: FormData) {
   const reportPath = taskId ? `/tasks/${taskId}` : "/tasks";
   let submitLockKey = "";
 
-  if (!taskId || !reportId || !reportText) {
+  if (!taskId || !reportId) {
     redirect(`${reportPath}?error=${encodeURIComponent("Тайлан засахад шаардлагатай мэдээлэл дутуу байна.")}`);
   }
 
@@ -2525,7 +2708,7 @@ export async function updateTaskReportAction(formData: FormData) {
     if (!canMutateReportOwner(session, reportOwnerId)) {
       redirect(`${reportPath}?error=${encodeURIComponent("Та зөвхөн өөрийн илгээсэн тайланг засах боломжтой.")}`);
     }
-    await timer.step("validation_task_date", () => assertWorkerTaskReportDateIsOpen(
+    const taskForReport = await timer.step("validation_task_date", () => assertWorkerTaskReportDateIsOpen(
       taskId,
       session,
       {
@@ -2534,6 +2717,10 @@ export async function updateTaskReportAction(formData: FormData) {
       },
       reportPath,
     ));
+    const isGarbageReport = isGarbageTransportTaskOperation(taskForReport.operationType);
+    if (!isGarbageReport && !reportText) {
+      redirect(`${reportPath}?error=${encodeURIComponent("Тайлан засахад шаардлагатай мэдээлэл дутуу байна.")}`);
+    }
     const lock = acquireReportSubmitLock("update", taskId, submitToken);
     submitLockKey = lock.key;
     if (!lock.acquired) {
@@ -2560,6 +2747,7 @@ export async function updateTaskReportAction(formData: FormData) {
     const effectiveReportedQuantity =
       firstLineQuantity ?? (reportedQuantityRaw ? reportedQuantity : null);
     const effectiveReportText = [
+      !reportText && isGarbageReport ? `Даалгавар: ${taskForReport.name}` : "",
       quantityLineSummaries.length
         ? `Гүйцэтгэсэн хэмжээ:\n${quantityLineSummaries.join("\n")}`
         : "",

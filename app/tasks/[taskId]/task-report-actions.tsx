@@ -23,6 +23,7 @@ type Props = {
   audios: ReportAttachment[];
   updateAction: (formData: FormData) => void | Promise<void>;
   deleteAction: (formData: FormData) => void | Promise<void>;
+  reportTextRequired?: boolean;
 };
 
 type ParsedQuantityLine = {
@@ -87,6 +88,7 @@ export function TaskReportActions({
   audios,
   updateAction,
   deleteAction,
+  reportTextRequired = true,
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -232,7 +234,7 @@ export function TaskReportActions({
 
                     <label className={styles.modalField}>
                       <span>Тайлбар</span>
-                      <textarea name="report_text" defaultValue={draft.body || reportText} required />
+                      <textarea name="report_text" defaultValue={draft.body || reportText} required={reportTextRequired} />
                     </label>
                   </section>
 

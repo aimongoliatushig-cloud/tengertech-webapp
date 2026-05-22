@@ -447,6 +447,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
             measurementUnit={task.measurementUnit}
             quantityLines={quantityLines}
             requireQuantity={Boolean(quantitySummary)}
+            reportTextRequired={!isGarbageTransportTask}
             simpleMobile={workerMode}
             workItemName={task.name}
           />
@@ -807,6 +808,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                               audios={report.audios}
                               updateAction={updateTaskReportAction}
                               deleteAction={deleteTaskReportAction}
+                              reportTextRequired={!isGarbageTransportTask}
                             />
                           ) : null}
 

@@ -5,7 +5,7 @@ import { normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { canAccessFleetRepair } from "@/lib/fleet-repair";
 import { executeOdooKw } from "@/lib/odoo";
 import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
-import type { RoleGroupFlags } from "@/lib/roles";
+import { canViewGarbageWeightReports, type RoleGroupFlags } from "@/lib/roles";
 import { fetchWrsWeightRows, type WrsWeightReportRow } from "@/lib/wrs-report";
 
 export const dynamic = "force-dynamic";
@@ -327,7 +327,7 @@ export async function GET(request: Request) {
     return Response.json({ error: "Нэвтрэх шаардлагатай." }, { status: 401 });
   }
   const canViewAllReports = canViewAllWorkspaceReports(session);
-  if (!canAccessFleetRepair(session) && !canViewAllReports) {
+  if (!canAccessFleetRepair(session) && !canViewAllReports && !canViewGarbageWeightReports(session)) {
     return Response.json({ error: "Хог тээврийн жингийн тайлан харах эрхгүй байна." }, { status: 403 });
   }
 

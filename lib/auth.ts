@@ -362,5 +362,9 @@ function resolveDisplayRoleLabel(role: UserRole, employeeJobTitle?: string) {
 export function getSessionRoleLabel(
   session: Pick<AppSession, "role" | "employeeJobTitle" | "displayRoleLabel">,
 ) {
+  if (session.role === "general_manager") {
+    return getRoleLabel("general_manager");
+  }
+
   return session.displayRoleLabel || resolveDisplayRoleLabel(session.role, session.employeeJobTitle);
 }

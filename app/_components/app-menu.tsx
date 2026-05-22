@@ -25,7 +25,6 @@ import {
   ShoppingCart,
   Truck,
   Users,
-  UsersRound,
   Wrench,
   X,
   type LucideIcon,
@@ -87,6 +86,7 @@ type AppMenuProps = {
   canViewQualityCenter?: boolean;
   canUseFieldConsole?: boolean;
   canViewAllReports?: boolean;
+  canViewGarbageWeightReports?: boolean;
   canViewHr?: boolean;
   canViewGeneralDashboard?: boolean;
   variant?: "default" | "executive";
@@ -162,8 +162,7 @@ function isHiddenDepartmentMenu(group: DepartmentGroupDefinition) {
 }
 
 function isHiddenMenuItem(item: MenuItem) {
-  void item;
-  return false;
+  return item.key === "shared-work" || item.key.startsWith("shared-work-");
 }
 
 function getDepartmentMenuIcon(group: DepartmentGroupDefinition): LucideIcon {
@@ -270,6 +269,7 @@ export function AppMenu({
   canViewQualityCenter = false,
   canUseFieldConsole = false,
   canViewAllReports = false,
+  canViewGarbageWeightReports = false,
   canViewHr = false,
   canViewGeneralDashboard = false,
   variant = "default",
@@ -607,19 +607,6 @@ export function AppMenu({
     label: "Худалдан авалт",
     icon: FileText,
   };
-  const sharedWorkMenuItem: MenuItem = {
-    key: "shared-work",
-    href: "/shared-work",
-    label: "Хамтарсан ажил",
-    icon: UsersRound,
-    children: [
-      { key: "shared-work-all", href: "/shared-work", label: "Бүгд", icon: UsersRound },
-      { key: "shared-work-mine", href: "/shared-work?view=mine", label: "Миний хэлтсийн ажил", icon: ListChecks },
-      { key: "shared-work-progress", href: "/shared-work?view=progress", label: "Явагдаж байгаа", icon: CalendarDays },
-      { key: "shared-work-completed", href: "/shared-work?view=completed", label: "Дууссан", icon: ClipboardCheck },
-      { key: "shared-work-reports", href: "/shared-work?view=reports", label: "Тайлан", icon: BarChart3 },
-    ],
-  };
 
   const defaultItems: MenuItem[] = [
     {
@@ -632,7 +619,6 @@ export function AppMenu({
     ...hrItems,
     ...roleFocusedItems,
     ...departmentItems,
-    ...(hrFocusedMode ? [] : [sharedWorkMenuItem]),
     ...(canOpenAutoBase
       ? [
           {
@@ -727,6 +713,9 @@ export function AppMenu({
     if (canViewAllReports && ["data-download", "reports"].includes(item.key)) {
       return true;
     }
+    if (canViewGarbageWeightReports && item.key === "data-download") {
+      return true;
+    }
     if (item.key.startsWith("hr")) {
       return false;
     }
@@ -776,7 +765,6 @@ export function AppMenu({
       label: "Ажил",
       icon: ListChecks,
     },
-    sharedWorkMenuItem,
     {
       key: "auto-base",
       href: "/auto-base",
@@ -815,7 +803,6 @@ export function AppMenu({
       label: "Ажил",
       icon: ListChecks,
     },
-    sharedWorkMenuItem,
     ...(canShowHrMenu
       ? [
           {
@@ -1176,8 +1163,20 @@ export function AppMenu({
                   : { key: "chat", href: "/chat", label: "Чат", icon: MessageSquare },
               ]),
         ];
+  const weightReportDockItem: MenuItem = {
+    key: "data-download",
+    href: "/data-download",
+    label: "Жин",
+    icon: FileText,
+  };
+  const rawMobileDockItemsWithWeight =
+    canViewGarbageWeightReports && !rawMobileDockItems.some((item) => item.key === "data-download")
+      ? [rawMobileDockItems[0], weightReportDockItem, ...rawMobileDockItems.slice(1)].filter(
+          (item): item is MenuItem => Boolean(item),
+        )
+      : rawMobileDockItems;
   const mobileDockItems: MenuItem[] = (
-    procurementWorkerMode ? rawMobileDockItems : withMobilePrimaryAction(rawMobileDockItems)
+    procurementWorkerMode ? rawMobileDockItemsWithWeight : withMobilePrimaryAction(rawMobileDockItemsWithWeight)
   ).filter((item) => !isHiddenMenuItem(item) && !(isGarbageDepartmentHead && item.key === "garbage-settings"));
   const visibleMobileDockItems = mobileDockItems.slice(0, 5);
 

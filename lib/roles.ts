@@ -174,6 +174,29 @@ export function isReportPlanningSpecialist(context: RoleContext) {
   );
 }
 
+export function canViewGarbageWeightReports(context: RoleContext) {
+  const groupFlags = normalizeGroupFlags(context.groupFlags);
+  const jobTitle = normalizePermissionText(context.employeeJobTitle);
+  const isFeeSpecialist = Boolean(
+    (jobTitle.includes("төлбөр") && jobTitle.includes("хураамж") && jobTitle.includes("мэргэжилтэн")) ||
+      String(context.login ?? "").trim() === "88105116" ||
+      compactPermissionText(context.name) === "бганчимэг",
+  );
+
+  return Boolean(
+    isSystemAdmin(context) ||
+      isExecutiveContext(context) ||
+      isReportPlanningSpecialist(context) ||
+      isFeeSpecialist ||
+      groupFlags.municipalManager ||
+      groupFlags.mfoManager ||
+      groupFlags.mfoDispatcher ||
+      groupFlags.fleetRepairManager ||
+      groupFlags.fleetRepairGeneralManager ||
+      groupFlags.fleetRepairCeo
+  );
+}
+
 function isSystemAdmin(context: RoleContext) {
   return context.role === "system_admin";
 }

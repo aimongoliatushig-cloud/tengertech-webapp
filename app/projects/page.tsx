@@ -6,6 +6,7 @@ import { ArrowLeft, Settings, Truck } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { AutoBaseBoard } from "@/app/auto-base/auto-base-board";
+import { AutoGarbageWorkBoard } from "@/app/dashboard-view";
 import { LoadingShell } from "@/app/_components/loading-shell";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import dashboardStyles from "@/app/dashboard-view.module.css";
@@ -46,6 +47,7 @@ type PageProps = {
     unit?: string | string[];
     quickAction?: string | string[];
     vehicle?: string | string[];
+    autoPanel?: string | string[];
     notice?: string | string[];
     error?: string | string[];
   }>;
@@ -53,6 +55,7 @@ type PageProps = {
 
 type ProjectFilterKey = "all" | "progress" | "planned" | "overdue";
 type QuickActionMode = "task" | "report" | "none";
+type AutoGarbagePanelMode = "overview" | "weight" | "fuel";
 type ProjectCardItem = DashboardSnapshot["projects"][number];
 type TaskCardItem = DashboardSnapshot["taskDirectory"][number];
 type ProjectsSession = Awaited<ReturnType<typeof requireSession>>;
@@ -115,6 +118,14 @@ function normalizeQuickAction(value: string): QuickActionMode {
   }
 
   return "none";
+}
+
+function normalizeAutoGarbagePanel(value: string): AutoGarbagePanelMode {
+  if (value === "weight" || value === "fuel") {
+    return value;
+  }
+
+  return "overview";
 }
 
 function StagePill({
@@ -457,6 +468,7 @@ async function ProjectsPageContent({
   }
   let activeFilter = normalizeProjectFilter(getDepartmentParam(params.category));
   const quickActionMode = normalizeQuickAction(getDepartmentParam(params.quickAction));
+  const autoGarbagePanelMode = normalizeAutoGarbagePanel(getDepartmentParam(params.autoPanel));
   const selectedAutoBaseVehicleId = Number(getDepartmentParam(params.vehicle) ?? "");
   const autoBaseNotice = getDepartmentParam(params.notice) ?? "";
   const autoBaseError = getDepartmentParam(params.error) ?? "";
@@ -1141,6 +1153,20 @@ async function ProjectsPageContent({
               </section>
             ) : null}
 
+            {showAutoBaseCombined && fleetBoard ? (
+              <AutoGarbageWorkBoard
+                dashboardTasks={scopedTasks}
+                fleetBoard={fleetBoard}
+                currentDateKey={currentDateKey}
+                departmentScopeName={selectedGroup?.name ?? AUTO_BASE_GROUP_NAME}
+                canCreateWork={canCreateProject || canCreateTasks}
+                reportPanelMode={autoGarbagePanelMode}
+                boardHref={`/projects?department=${encodeURIComponent(selectedGroup?.name ?? AUTO_BASE_GROUP_NAME)}`}
+                workListHref={`/projects?department=${encodeURIComponent(selectedGroup?.name ?? AUTO_BASE_GROUP_NAME)}&unit=${encodeURIComponent("Хог тээвэрлэлт")}`}
+              />
+            ) : null}
+
+            {!showAutoBaseCombined ? (
             <section className={`${styles.workspaceSection} ${styles.dashboardWorkspaceSection}`}>
               <div className={styles.sectionHeader}>
                 <div>
@@ -1585,6 +1611,7 @@ async function ProjectsPageContent({
                 </div>
               )}
             </section>
+            ) : null}
           </div>
         </div>
       </div>
