@@ -553,8 +553,12 @@ function isSystemAdminEmployee(employee: HrEmployeeDirectoryItem) {
   );
 }
 
+function isHiddenHrEmployee(employee: HrEmployeeDirectoryItem) {
+  return isSystemAdminEmployee(employee) || normalizeSystemAdminText(employee.employeeCode) === "emp2600174";
+}
+
 function excludeSystemAdminEmployees(employees: HrEmployeeDirectoryItem[]) {
-  return employees.filter((employee) => !isSystemAdminEmployee(employee));
+  return employees.filter((employee) => !isHiddenHrEmployee(employee));
 }
 
 function resolveHrDisplayDepartmentName(departmentName: string, jobTitle?: string | false | null) {

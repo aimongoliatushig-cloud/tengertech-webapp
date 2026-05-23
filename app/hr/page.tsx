@@ -16,44 +16,6 @@ import styles from "./hr.module.css";
 
 export const dynamic = "force-dynamic";
 
-const MANPOWER_ROLE_GROUPS = [
-  { key: "department-head", label: "Хэлтсийн дарга", keywords: ["хэлтсийн дарга", "дарга"] },
-  { key: "chief-mechanic", label: "Ерөнхий механик", keywords: ["ерөнхий механик"] },
-  { key: "specialist", label: "Мэргэжилтэн", keywords: ["мэргэжилтэн", "specialist", "хяналтын ажилтан", "хяналт", "хянагч", "байцаагч"] },
-  { key: "repair-team", label: "Засварын бригад", keywords: ["засварчин", "цахилгаанчин", "гагнуурчин"] },
-  { key: "driver", label: "Жолооч", keywords: ["жолооч", "driver"] },
-  { key: "loader", label: "Ачигч", keywords: ["ачигч", "loader"] },
-] as const;
-
-function groupEmployeesByRole(employees: HrEmployeeDirectoryItem[]) {
-  const buckets = MANPOWER_ROLE_GROUPS.map((role) => ({
-    key: role.key,
-    label: role.label,
-    employees: [] as HrEmployeeDirectoryItem[],
-  }));
-  const otherEmployees: HrEmployeeDirectoryItem[] = [];
-
-  for (const employee of employees) {
-    const jobTitle = (employee.jobTitle || "").toLowerCase();
-    const bucketIndex = MANPOWER_ROLE_GROUPS.findIndex((role) =>
-      role.keywords.some((keyword) => jobTitle.includes(keyword)),
-    );
-
-    if (bucketIndex >= 0) {
-      buckets[bucketIndex].employees.push(employee);
-    } else {
-      otherEmployees.push(employee);
-    }
-  }
-
-  return [
-    ...buckets.filter((bucket) => bucket.employees.length > 0),
-    ...(otherEmployees.length > 0
-      ? [{ key: "other", label: "Бусад", employees: otherEmployees }]
-      : []),
-  ];
-}
-
 function buildDepartmentGroups(employees: HrEmployeeDirectoryItem[]) {
   const groups = new Map<string, HrEmployeeDirectoryItem[]>();
   for (const employee of employees) {
@@ -69,7 +31,6 @@ function buildDepartmentGroups(employees: HrEmployeeDirectoryItem[]) {
 
 function DepartmentManpower({ employees }: { employees: HrEmployeeDirectoryItem[] }) {
   const departmentGroups = buildDepartmentGroups(employees);
-  const maxCount = Math.max(...departmentGroups.map((group) => group.employees.length), 1);
 
   return (
     <section className={styles.manpowerPanel}>
@@ -90,28 +51,15 @@ function DepartmentManpower({ employees }: { employees: HrEmployeeDirectoryItem[
               </div>
               <strong>{group.employees.length}</strong>
             </header>
-            <div className={styles.manpowerTrack} aria-hidden="true">
-              <span style={{ width: `${Math.max(4, Math.round((group.employees.length / maxCount) * 100))}%` }} />
-            </div>
-            <div className={styles.manpowerRoleGrid}>
-              {groupEmployeesByRole(group.employees).map((roleGroup) => (
-                <section key={roleGroup.key} className={styles.manpowerRoleGroup}>
-                  <header className={styles.manpowerRoleHeader}>
-                    <strong>{roleGroup.label}</strong>
-                    <span>{roleGroup.employees.length}</span>
-                  </header>
-                  <div className={styles.manpowerEmployees}>
-                    {roleGroup.employees.map((employee) => (
-                      <Link key={employee.id} href={`/hr/employees/${employee.id}`} className={styles.employeeRowLink}>
-                        <span>
-                          <strong>{employee.name}</strong>
-                          <small>{employee.jobTitle || "Албан тушаал бүртгээгүй"}</small>
-                        </span>
-                        <em>{employee.statusLabel}</em>
-                      </Link>
-                    ))}
-                  </div>
-                </section>
+            <div className={styles.manpowerEmployees}>
+              {group.employees.map((employee) => (
+                <Link key={employee.id} href={`/hr/employees/${employee.id}`} className={styles.employeeRowLink}>
+                  <span>
+                    <strong>{employee.name}</strong>
+                    <small>{employee.jobTitle || "Албан тушаал бүртгээгүй"}</small>
+                  </span>
+                  <em>{employee.statusLabel}</em>
+                </Link>
               ))}
             </div>
           </article>

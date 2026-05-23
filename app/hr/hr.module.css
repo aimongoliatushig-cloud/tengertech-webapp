@@ -1357,80 +1357,13 @@
   font-size: 1rem;
 }
 
-.manpowerTrack {
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(46, 125, 50, 0.1);
-}
-
-.manpowerTrack span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: #2e7d32;
-}
-
-.manpowerRoleGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-  gap: 10px;
-  max-height: 560px;
-  overflow: auto;
-  padding-right: 2px;
-}
-
-.manpowerRoleGroup {
-  display: grid;
-  align-content: start;
-  gap: 8px;
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid rgba(46, 125, 50, 0.1);
-  border-radius: 8px;
-  background: rgba(244, 250, 245, 0.68);
-}
-
-.manpowerRoleHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(46, 125, 50, 0.1);
-}
-
-.manpowerRoleHeader strong {
-  color: #1f2b25;
-  font-size: 0.86rem;
-}
-
-.manpowerRoleHeader span {
-  display: inline-grid;
-  min-width: 28px;
-  min-height: 28px;
-  place-items: center;
-  border-radius: 999px;
-  background: rgba(218, 238, 219, 0.92);
-  color: #1f7a35;
-  font-size: 0.76rem;
-  font-weight: 900;
-}
-
 .manpowerEmployees {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   gap: 6px;
-  max-height: 520px;
+  max-height: 560px;
   overflow: auto;
   padding-right: 2px;
-}
-
-.manpowerRoleGroup .manpowerEmployees {
-  grid-template-columns: 1fr;
-  max-height: none;
-  overflow: visible;
-  padding-right: 0;
 }
 
 .employeeRowLink {

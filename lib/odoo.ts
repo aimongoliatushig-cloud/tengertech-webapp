@@ -2360,6 +2360,10 @@ function isSystemAdminEmployeeRecord(employee: OdooEmployeeRecord) {
   );
 }
 
+function isHiddenHrEmployeeRecord(employee: OdooEmployeeRecord) {
+  return isSystemAdminEmployeeRecord(employee) || normalizeHrAdminText(employee.x_mn_employee_code) === "emp2600174";
+}
+
 function resolveHrDisplayDepartmentName(departmentName: string, jobTitle?: string | false | null) {
   return getHrDepartmentDisplayName(departmentName, jobTitle);
 }
@@ -3560,7 +3564,7 @@ export async function loadHrEmployeeDirectory(
   );
 
   return employees
-    .filter((employee) => !isSystemAdminEmployeeRecord(employee))
+    .filter((employee) => !isHiddenHrEmployeeRecord(employee))
     .map((employee) => {
       const status = resolveHrEmploymentStatus(employee);
       const departmentName = normalizeDepartmentUnitName(
@@ -3719,7 +3723,7 @@ async function fetchLiveHrDailyAttendanceSummary(
     connection,
   );
 
-  const hrEmployees = employees.filter((employee) => !isSystemAdminEmployeeRecord(employee));
+  const hrEmployees = employees.filter((employee) => !isHiddenHrEmployeeRecord(employee));
   const activeEmployeeIds = new Set(
     hrEmployees.filter((employee) => employee.active !== false).map((employee) => employee.id),
   );
