@@ -17,6 +17,18 @@ function normalizeHrDepartmentText(value: unknown) {
   return fixMojibakeText(String(value ?? "")).trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
 }
 
+function normalizeHrPersonKey(value: unknown) {
+  return normalizeHrDepartmentText(value).replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+export function getHrJobTitleDisplayName(employeeName: string, jobTitle?: string | false | null) {
+  const normalizedName = normalizeHrPersonKey(employeeName);
+  if (normalizedName === "ганхбаяр" || normalizedName.endsWith("ганхбаяр")) {
+    return "Үйл ажиллагаа хариуцсан менежер";
+  }
+  return fixMojibakeText(String(jobTitle || "Албан тушаал бүртгээгүй")).trim() || "Албан тушаал бүртгээгүй";
+}
+
 export function getHrDepartmentDisplayName(departmentName: string, jobTitle?: string | false | null) {
   const normalizedDepartment = normalizeHrDepartmentText(departmentName);
   const normalizedTitle = normalizeHrDepartmentText(jobTitle);

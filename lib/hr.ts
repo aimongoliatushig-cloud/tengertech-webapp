@@ -5,6 +5,7 @@ import {
   compareHrDepartmentNames,
   compareHrDepartmentThenName,
   getHrDepartmentDisplayName,
+  getHrJobTitleDisplayName,
 } from "@/lib/hr-department-order";
 import {
   createOdooConnection,
@@ -604,7 +605,7 @@ function imageDataUrlFromBase64(value?: string | false) {
 
 function mapHrEmployeeDirectoryApiRecord(record: HrEmployeeDirectoryApiRecord): HrEmployeeDirectoryItem {
   const departmentName = record.departmentName || "Хэлтэсгүй";
-  const jobTitle = record.jobTitle || "Албан тушаал бүртгээгүй";
+  const jobTitle = getHrJobTitleDisplayName(record.name || "", record.jobTitle);
   return {
     id: record.id,
     name: record.name || `Ажилтан #${record.id}`,
@@ -672,7 +673,7 @@ function resolveDirectEmployeeGenderLabel(value?: string | false) {
 function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): HrEmployeeDirectoryItem {
   const status = resolveDirectEmployeeStatus(record);
   const departmentName = getRelationName(record.department_id, "Хэлтэсгүй");
-  const jobTitle = getRelationName(record.job_id) || record.job_title || "Албан тушаал бүртгээгүй";
+  const jobTitle = getHrJobTitleDisplayName(record.name || "", getRelationName(record.job_id) || record.job_title);
 
   return {
     id: record.id,
@@ -862,7 +863,7 @@ export async function getHrAccessProfile(session: AppSession) {
   const [employee, user] = await Promise.all([readCurrentEmployee(session), readCurrentUser(session)]);
   const groupNames = await readGroupNames(user?.groups_id ?? [], session);
 
-  const jobName = getRelationName(employee?.job_id);
+  const jobName = getHrJobTitleDisplayName(employee?.name || session.name, getRelationName(employee?.job_id) || employee?.job_title);
   const departmentName = getRelationName(employee?.department_id);
   const roleKeys = [
     employee?.x_role_key,

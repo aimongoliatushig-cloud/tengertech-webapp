@@ -7,7 +7,11 @@ import {
   matchesDepartmentGroup,
   normalizeOrganizationUnitName,
 } from "@/lib/department-groups";
-import { compareHrDepartmentThenName, getHrDepartmentDisplayName } from "@/lib/hr-department-order";
+import {
+  compareHrDepartmentThenName,
+  getHrDepartmentDisplayName,
+  getHrJobTitleDisplayName,
+} from "@/lib/hr-department-order";
 import type { RoleGroupFlags } from "@/lib/roles";
 import { fixMojibakeText } from "@/lib/text-normalize";
 
@@ -3562,10 +3566,10 @@ export async function loadHrEmployeeDirectory(
       const departmentName = normalizeDepartmentUnitName(
         relationName(employee.department_id ?? false, UNKNOWN_DEPARTMENT),
       );
-      const jobTitle =
-        relationName(employee.job_id ?? false, "") ||
-        employee.job_title ||
-        "Албан тушаал бүртгээгүй";
+      const jobTitle = getHrJobTitleDisplayName(
+        employee.name,
+        relationName(employee.job_id ?? false, "") || employee.job_title,
+      );
 
       return {
         id: employee.id,
