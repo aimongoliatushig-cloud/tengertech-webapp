@@ -445,8 +445,6 @@ export function HrDashboardClient({
 
   return (
     <>
-      {detailKind === "pending" ? <PendingRequestQueue requests={pendingRequests} /> : null}
-
       <div className={styles.chartGrid}>
         <AnimatedPie
           title="Сахилгын бүртгэлийн төрөл"
@@ -557,6 +555,8 @@ export function HrDashboardClient({
           );
         })}
       </section>
+
+      {detailKind === "pending" ? <PendingRequestQueue requests={pendingRequests} /> : null}
 
       <section className={`${styles.detailPanel} ${styles.desktopDetailPanel}`}>
         <div className={styles.sectionHeader}>
