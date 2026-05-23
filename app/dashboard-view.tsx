@@ -2587,7 +2587,7 @@ function ExecutiveDashboardView({
       valueLabel: "Идэвхтэй ажилтан",
       note: `Өвчтэй: ${hrAttendanceSummary.sickToday} · Чөлөөтэй: ${hrAttendanceSummary.leaveToday}`,
       progress: percent(hrAttendanceSummary.totalEmployees, hrAttendanceSummary.totalEmployees),
-      href: canViewHr ? "/hr/employees" : "/hr",
+      href: "/hr",
       icon: UsersRound,
       tone: "green",
     },
