@@ -4,6 +4,7 @@ import type { AppSession } from "@/lib/auth";
 import {
   compareHrDepartmentNames,
   compareHrDepartmentThenName,
+  getHrEmployeeDepartmentDisplayName,
   getHrDepartmentDisplayName,
   getHrJobTitleDisplayName,
 } from "@/lib/hr-department-order";
@@ -561,8 +562,8 @@ function excludeSystemAdminEmployees(employees: HrEmployeeDirectoryItem[]) {
   return employees.filter((employee) => !isHiddenHrEmployee(employee));
 }
 
-function resolveHrDisplayDepartmentName(departmentName: string, jobTitle?: string | false | null) {
-  return getHrDepartmentDisplayName(departmentName, jobTitle);
+function resolveHrDisplayDepartmentName(employeeName: string, departmentName: string, jobTitle?: string | false | null) {
+  return getHrEmployeeDepartmentDisplayName(employeeName, departmentName, jobTitle);
 }
 
 function containsHrText(value: unknown) {
@@ -615,7 +616,7 @@ function mapHrEmployeeDirectoryApiRecord(record: HrEmployeeDirectoryApiRecord): 
     name: record.name || `Ажилтан #${record.id}`,
     active: record.active !== false,
     departmentId: record.departmentId ?? null,
-    departmentName: resolveHrDisplayDepartmentName(departmentName, jobTitle),
+    departmentName: resolveHrDisplayDepartmentName(record.name || "", departmentName, jobTitle),
     jobId: record.jobId ?? null,
     jobTitle,
     workPhone: record.workPhone || "",
@@ -684,7 +685,7 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     name: record.name || `Ажилтан #${record.id}`,
     active: record.active !== false,
     departmentId: getRelationId(record.department_id),
-    departmentName: resolveHrDisplayDepartmentName(departmentName, jobTitle),
+    departmentName: resolveHrDisplayDepartmentName(record.name || "", departmentName, jobTitle),
     jobId: getRelationId(record.job_id),
     jobTitle,
     workPhone: record.work_phone || "",

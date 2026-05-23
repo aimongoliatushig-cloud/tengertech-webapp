@@ -1321,6 +1321,7 @@
 
 .manpowerDepartment {
   display: grid;
+  align-content: start;
   gap: 10px;
   min-width: 0;
   padding: 14px;
@@ -1359,7 +1360,9 @@
 
 .manpowerEmployees {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  align-items: start;
+  grid-auto-rows: min-content;
+  grid-template-columns: 1fr;
   gap: 6px;
   max-height: 560px;
   overflow: auto;
@@ -1368,11 +1371,13 @@
 
 .employeeRowLink {
   display: flex;
+  align-self: start;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   min-width: 0;
   min-height: 48px;
+  width: 100%;
   padding: 8px 10px;
   border: 1px solid rgba(46, 125, 50, 0.09);
   border-radius: 8px;

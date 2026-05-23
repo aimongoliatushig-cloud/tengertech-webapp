@@ -665,6 +665,12 @@ export type ProjectDetail = {
   allowedUnitSummary: string;
 };
 
+export type ProjectAccessSummary = {
+  id: number;
+  managerId: number | null;
+  departmentName: string;
+};
+
 export type TaskReportFeedItem = {
   id: number;
   reporterId: number | null;
@@ -3731,6 +3737,49 @@ export async function loadProjectDetail(
     defaultUnitId,
     allowedUnitSummary,
   };
+}
+
+export async function loadProjectAccessSummary(
+  projectId: number,
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<ProjectAccessSummary> {
+  const projects = await searchReadWithFieldFallback<ProjectRecord>(
+    "project.project",
+    [["id", "=", projectId]],
+    ["user_id", "ops_department_id"],
+    { limit: 1 },
+    connectionOverrides,
+  );
+  const project = projects[0];
+  if (!project) {
+    throw new Error("Ажил олдсонгүй.");
+  }
+
+  return {
+    id: project.id,
+    managerId: relationId(project.user_id),
+    departmentName: relationName(project.ops_department_id, ""),
+  };
+}
+
+export async function hasProjectTaskLeader(
+  projectId: number,
+  userId: number,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  if (!projectId || !userId) {
+    return false;
+  }
+
+  const count = await executeOdooKw<number>(
+    "project.task",
+    "search_count",
+    [[["project_id", "=", projectId], ["ops_team_leader_id", "=", userId]]],
+    {},
+    connectionOverrides,
+  ).catch(() => 0);
+
+  return count > 0;
 }
 
 export async function loadProjectTaskEditOptions(

@@ -29,10 +29,8 @@ import {
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
-import { filterTasksForResponsibleMaster } from "@/lib/master-scope";
-import { loadMunicipalSnapshot } from "@/lib/odoo";
 import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurement";
-import { loadProjectTaskEditOptions, loadTaskDetail } from "@/lib/workspace";
+import { loadProjectAccessSummary, loadProjectTaskEditOptions, loadTaskDetail } from "@/lib/workspace";
 
 import { ProjectTaskEditModal } from "@/app/projects/[projectId]/project-task-edit-modal";
 import styles from "./task-detail.module.css";
@@ -262,26 +260,28 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
       redirect("/tasks");
     }
   } else if (masterMode || scopedDepartmentName) {
-    const snapshot = await loadMunicipalSnapshot({
-      login: session.login,
-      password: session.password,
-    });
-    const directoryTask = snapshot.taskDirectory.find((item) => item.id === task.id);
+    const projectAccess = task.projectId
+      ? await loadProjectAccessSummary(task.projectId, connectionOverrides).catch(() => null)
+      : null;
+    const isAssignedToSession = task.assigneeUserIds.includes(session.uid);
 
-    if (!directoryTask) {
-      redirect("/tasks");
-    }
-    const isAssignedToSession = directoryTask.assigneeIds?.includes(session.uid) ?? false;
-    if (
-      masterMode &&
-      filterTasksForResponsibleMaster([directoryTask], snapshot.projects, session).length === 0
-    ) {
-      redirect("/tasks");
+    if (masterMode && session.role !== "senior_master") {
+      const currentUserId = String(session.uid);
+      const managesProject =
+        projectAccess?.managerId !== null &&
+        projectAccess?.managerId !== undefined &&
+        String(projectAccess.managerId) === currentUserId;
+      const leadsTask = task.teamLeaderId !== null && String(task.teamLeaderId) === currentUserId;
+
+      if (!managesProject && !leadsTask) {
+        redirect("/tasks");
+      }
     }
     if (
       scopedDepartmentName &&
       !isAssignedToSession &&
-      filterByDepartment([directoryTask], scopedDepartmentName).length === 0
+      (!projectAccess ||
+        filterByDepartment([{ departmentName: projectAccess.departmentName }], scopedDepartmentName).length === 0)
     ) {
       redirect("/tasks");
     }

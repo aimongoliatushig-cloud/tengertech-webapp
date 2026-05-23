@@ -17,10 +17,14 @@ import {
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
-import { filterProjectsForResponsibleMaster } from "@/lib/master-scope";
-import { loadFleetVehicleBoard, loadMunicipalSnapshot } from "@/lib/odoo";
+import { loadFleetVehicleBoard } from "@/lib/odoo";
 import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurement";
-import { loadGarbagePointOptions, loadGarbageSubdistrictOptions, loadProjectDetail } from "@/lib/workspace";
+import {
+  hasProjectTaskLeader,
+  loadGarbagePointOptions,
+  loadGarbageSubdistrictOptions,
+  loadProjectDetail,
+} from "@/lib/workspace";
 
 import { ProjectTaskCreateModal } from "./project-task-create-modal";
 import { ProjectTaskCreateForm } from "./project-task-create-form";
@@ -209,13 +213,13 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   ) {
     redirect("/projects");
   }
-  if (masterMode) {
-    const snapshot = await loadMunicipalSnapshot(connectionOverrides);
-    const snapshotProject = snapshot.projects.find((item) => item.id === project.id);
-    if (
-      !snapshotProject ||
-      filterProjectsForResponsibleMaster([snapshotProject], snapshot.taskDirectory, session).length === 0
-    ) {
+  if (masterMode && session.role !== "senior_master") {
+    const currentUserId = String(session.uid);
+    const managesProject = project.managerId !== null && String(project.managerId) === currentUserId;
+    const leadsProjectTask =
+      !managesProject && (await hasProjectTaskLeader(project.id, session.uid, connectionOverrides));
+
+    if (!managesProject && !leadsProjectTask) {
       redirect("/projects");
     }
   }
@@ -227,32 +231,40 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const isGarbageRouteProject = project.operationType === "garbage";
+  const shouldLoadTaskCreateOptions = canCreateTasks && quickActionMode !== "report";
   const garbageSourceTask =
     project.tasks.find((task) => task.vehicleId) ??
     project.tasks.find((task) => task.driverEmployeeId || task.collectorEmployeeIds.length) ??
     null;
-  const [subdistrictOptions, garbagePointOptions, garbageLoaderOptions] = await Promise.all([
-    loadGarbageSubdistrictOptions(connectionOverrides).catch(() => []),
-    isGarbageRouteProject
+  const [
+    subdistrictOptions,
+    garbagePointOptions,
+    garbageLoaderOptions,
+    procurementBundle,
+  ] = await Promise.all([
+    shouldLoadTaskCreateOptions
+      ? loadGarbageSubdistrictOptions(connectionOverrides).catch(() => [])
+      : Promise.resolve([]),
+    shouldLoadTaskCreateOptions && isGarbageRouteProject
       ? loadGarbagePointOptions(connectionOverrides, {
           requireCurrentEmployeeScope: session.role === "transport_inspector",
         }).catch(() => [])
       : Promise.resolve([]),
-    isGarbageRouteProject
+    shouldLoadTaskCreateOptions && isGarbageRouteProject
       ? loadFleetVehicleBoard(connectionOverrides)
           .then((board) => board.loaderOptions)
           .catch(() => [])
       : Promise.resolve([]),
+    loadProcurementRequests(
+      { project_id: project.id, limit: 5 },
+      connectionOverrides,
+    ).catch((error) => {
+      if (!isProcurementSetupError(error)) {
+        console.warn("Project procurement links could not be loaded:", error);
+      }
+      return { items: [], pagination: { page: 1, limit: 5, total: 0, pages: 1 } };
+    }),
   ]);
-  const procurementBundle = await loadProcurementRequests(
-    { project_id: project.id, limit: 5 },
-    connectionOverrides,
-  ).catch((error) => {
-    if (!isProcurementSetupError(error)) {
-      console.warn("Project procurement links could not be loaded:", error);
-    }
-    return { items: [], pagination: { page: 1, limit: 5, total: 0, pages: 1 } };
-  });
   const procurementItems = procurementBundle.items;
   const procurementCreateHref = `/procurement/new?project_id=${project.id}`;
   const taskCounts = {

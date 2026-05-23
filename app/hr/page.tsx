@@ -8,6 +8,7 @@ import { requireSession,
 import { compareHrDepartmentNames } from "@/lib/hr-department-order";
 import { getDisciplineRecords, getEmployees, getTimeoffDashboard, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
+import { fixMojibakeText } from "@/lib/text-normalize";
 
 import { HrDashboardClient } from "./hr-dashboard-client";
 import { HR_NOTIFICATION_HREF } from "./constants";
@@ -15,6 +16,67 @@ import { HrSectionNav } from "./hr-section-nav";
 import styles from "./hr.module.css";
 
 export const dynamic = "force-dynamic";
+
+function normalizeJobTitle(value: string) {
+  return fixMojibakeText(value).trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
+}
+
+function employeePositionRank(employee: HrEmployeeDirectoryItem) {
+  const jobTitle = normalizeJobTitle(employee.jobTitle || "");
+  if (jobTitle === "захирал" || jobTitle.includes("ерөнхий захирал")) {
+    return 0;
+  }
+  if (jobTitle.includes("дэд захирал")) {
+    return 1;
+  }
+  if (jobTitle.includes("үйл ажиллагаа хариуцсан менежер") || jobTitle.includes("operations manager")) {
+    return 2;
+  }
+  if (
+    jobTitle.includes("хэлтсийн дарга") ||
+    jobTitle.includes("хэлтэсийн дарга") ||
+    jobTitle.includes("албаны дарга") ||
+    jobTitle.includes("department head") ||
+    jobTitle.includes("department manager")
+  ) {
+    return 3;
+  }
+  if (jobTitle.includes("дотоод хяналт") || jobTitle.includes("хяналтын ажилтан") || jobTitle.includes("inspector")) {
+    return 4;
+  }
+  if (jobTitle.includes("даамал")) {
+    return 5;
+  }
+  if (jobTitle.includes("талбайн инженер")) {
+    return 6;
+  }
+  if (jobTitle.includes("менежер") || jobTitle.includes("manager")) {
+    return 7;
+  }
+  if (jobTitle.includes("ахлах мастер")) {
+    return 8;
+  }
+  if (jobTitle.includes("мастер")) {
+    return 9;
+  }
+  if (jobTitle.includes("ерөнхий")) {
+    return 10;
+  }
+  if (jobTitle.includes("ахлах")) {
+    return 11;
+  }
+  if (jobTitle.includes("мэргэжилтэн") || jobTitle.includes("нягтлан") || jobTitle.includes("нярав")) {
+    return 12;
+  }
+  return 20;
+}
+
+function compareEmployeesByPosition(left: HrEmployeeDirectoryItem, right: HrEmployeeDirectoryItem) {
+  return (
+    employeePositionRank(left) - employeePositionRank(right) ||
+    left.name.localeCompare(right.name, "mn")
+  );
+}
 
 function buildDepartmentGroups(employees: HrEmployeeDirectoryItem[]) {
   const groups = new Map<string, HrEmployeeDirectoryItem[]>();
@@ -25,7 +87,7 @@ function buildDepartmentGroups(employees: HrEmployeeDirectoryItem[]) {
 
   return Array.from(groups, ([departmentName, departmentEmployees]) => ({
     departmentName,
-    employees: departmentEmployees.sort((left, right) => left.name.localeCompare(right.name, "mn")),
+    employees: departmentEmployees.sort(compareEmployeesByPosition),
   })).sort((left, right) => compareHrDepartmentNames(left.departmentName, right.departmentName));
 }
 

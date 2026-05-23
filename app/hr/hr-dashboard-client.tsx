@@ -416,35 +416,36 @@ export function HrDashboardClient({
     }));
 
   const selectedCard = cards.find((card) => card.kind === detailKind) ?? cards[0];
-  const detailContent = (() => {
-    if (detailKind === "total") {
+  const getDetailContent = (kind: DetailKind) => {
+    if (kind === "total") {
       return employees.map((employee) => <StatusEmployeeRow key={employee.id} employee={employee} />);
     }
-    if (detailKind === "active") {
+    if (kind === "active") {
       return activeEmployees.map((employee) => <StatusEmployeeRow key={employee.id} employee={employee} />);
     }
-    if (detailKind === "timeoff") {
+    if (kind === "timeoff") {
       return timeoffEmployees.map((employee) => (
         <StatusEmployeeRow key={employee.id} employee={employee} request={currentRequestByEmployee.get(employee.id)} />
       ));
     }
-    if (detailKind === "sick") {
+    if (kind === "sick") {
       return sickEmployees.map((employee) => (
         <StatusEmployeeRow key={employee.id} employee={employee} request={currentRequestByEmployee.get(employee.id)} />
       ));
     }
-    if (detailKind === "pending") {
+    if (kind === "pending") {
       return pendingRequests.map((request) => <RequestRow key={request.id} request={request} />);
     }
-    if (detailKind === "approved") {
+    if (kind === "approved") {
       return approvedRequests.map((request) => <RequestRow key={request.id} request={request} />);
     }
     return rejectedRequests.map((request) => <RequestRow key={request.id} request={request} />);
-  })();
+  };
+  const detailContent = getDetailContent(detailKind);
 
   return (
     <>
-      <PendingRequestQueue requests={pendingRequests} />
+      {detailKind === "pending" ? <PendingRequestQueue requests={pendingRequests} /> : null}
 
       <div className={styles.chartGrid}>
         <AnimatedPie
@@ -515,6 +516,7 @@ export function HrDashboardClient({
         {cards.map((card) => {
           const Icon = card.icon;
           const isActive = detailKind === card.kind;
+          const inlineDetailContent = getDetailContent(card.kind);
           return (
             <div
               key={card.kind}
@@ -537,12 +539,12 @@ export function HrDashboardClient({
               </button>
               <div className={styles.mobileInlineDetail}>
                 <div className={styles.mobileInlineDetailHeader}>
-                  <strong>{selectedCard.label}</strong>
-                  <span>{selectedCard.value}</span>
+                  <strong>{card.label}</strong>
+                  <span>{card.value}</span>
                 </div>
                 <div className={styles.detailList}>
-                  {detailContent.length ? (
-                    detailContent
+                  {inlineDetailContent.length ? (
+                    inlineDetailContent
                   ) : (
                     <div className={styles.emptyState}>
                       <strong>Одоогоор бүртгэл алга.</strong>

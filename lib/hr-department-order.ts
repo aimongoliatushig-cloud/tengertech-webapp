@@ -2,8 +2,9 @@ import { fixMojibakeText } from "@/lib/text-normalize";
 
 export const HR_DEPARTMENT_DISPLAY_ORDER = [
   "Удирдлага",
-  "Захиргаа",
+  "Дотоод хяналт",
   "Санхүү",
+  "Захиргаа",
   "Хог тээвэр",
   "Ногоон байгууламж",
   "Тохижилт",
@@ -29,9 +30,42 @@ export function getHrJobTitleDisplayName(employeeName: string, jobTitle?: string
   return fixMojibakeText(String(jobTitle || "Албан тушаал бүртгээгүй")).trim() || "Албан тушаал бүртгээгүй";
 }
 
+export function getHrEmployeeDepartmentDisplayName(
+  employeeName: string,
+  departmentName: string,
+  jobTitle?: string | false | null,
+) {
+  const normalizedName = normalizeHrPersonKey(employeeName);
+  const normalizedTitle = normalizeHrDepartmentText(jobTitle);
+  if (
+    normalizedName === "нарангоо" ||
+    normalizedName.endsWith("нарангоо") ||
+    normalizedName === "narangoo" ||
+    normalizedName.endsWith("narangoo") ||
+    normalizedTitle.includes("дотоод хяналт")
+  ) {
+    return "Дотоод хяналт";
+  }
+  return getHrDepartmentDisplayName(departmentName, jobTitle);
+}
+
 export function getHrDepartmentDisplayName(departmentName: string, jobTitle?: string | false | null) {
   const normalizedDepartment = normalizeHrDepartmentText(departmentName);
   const normalizedTitle = normalizeHrDepartmentText(jobTitle);
+
+  if (
+    normalizedDepartment.includes("дотоод хяналт") ||
+    normalizedTitle.includes("дотоод хяналт")
+  ) {
+    return "Дотоод хяналт";
+  }
+
+  if (
+    (normalizedTitle.includes("тээвэр") && normalizedTitle.includes("хяналт")) ||
+    (normalizedTitle.includes("хог") && normalizedTitle.includes("хяналт"))
+  ) {
+    return "Хог тээвэр";
+  }
 
   if (
     normalizedTitle.includes("захирал") ||

@@ -9,6 +9,7 @@ import {
 } from "@/lib/department-groups";
 import {
   compareHrDepartmentThenName,
+  getHrEmployeeDepartmentDisplayName,
   getHrDepartmentDisplayName,
   getHrJobTitleDisplayName,
 } from "@/lib/hr-department-order";
@@ -2364,8 +2365,8 @@ function isHiddenHrEmployeeRecord(employee: OdooEmployeeRecord) {
   return isSystemAdminEmployeeRecord(employee) || normalizeHrAdminText(employee.x_mn_employee_code) === "emp2600174";
 }
 
-function resolveHrDisplayDepartmentName(departmentName: string, jobTitle?: string | false | null) {
-  return getHrDepartmentDisplayName(departmentName, jobTitle);
+function resolveHrDisplayDepartmentName(employeeName: string, departmentName: string, jobTitle?: string | false | null) {
+  return getHrEmployeeDepartmentDisplayName(employeeName, departmentName, jobTitle);
 }
 
 function isWorkingHrStatus(employee: OdooEmployeeRecord) {
@@ -3580,7 +3581,7 @@ export async function loadHrEmployeeDirectory(
         name: employee.name,
         active: employee.active !== false,
         departmentId: Array.isArray(employee.department_id) ? employee.department_id[0] : null,
-        departmentName: resolveHrDisplayDepartmentName(departmentName, jobTitle),
+        departmentName: resolveHrDisplayDepartmentName(employee.name, departmentName, jobTitle),
         jobTitle,
         workPhone: employee.work_phone || "",
         mobilePhone: employee.mobile_phone || "",
