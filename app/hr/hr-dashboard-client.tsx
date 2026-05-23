@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { compareHrDepartmentNames } from "@/lib/hr-department-order";
 import type { HrDisciplineRecord, HrTimeoffDashboardData, HrTimeoffRequest } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
@@ -406,7 +407,7 @@ export function HrDashboardClient({
 
   const departmentSlices: ChartSlice[] = departmentBreakdown
     .slice()
-    .sort((left, right) => right.totalEmployees - left.totalEmployees)
+    .sort((left, right) => compareHrDepartmentNames(left.departmentName, right.departmentName))
     .slice(0, 7)
     .map((row, index) => ({
       label: row.departmentName,

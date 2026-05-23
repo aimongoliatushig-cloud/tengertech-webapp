@@ -17,6 +17,7 @@ import {
 import Image from "next/image";
 
 import { updateHrEmployeeRegistrationAction } from "@/app/hr/actions";
+import { compareHrDepartmentNames } from "@/lib/hr-department-order";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
 import styles from "./page.module.css";
@@ -133,9 +134,13 @@ function matchesEmployee(employee: HrEmployeeDirectoryItem, query: string) {
 }
 
 export function HrDirectory({ departments, initialEmployeeId }: Props) {
-  const employees = useMemo(
-    () => departments.flatMap((department) => department.employees),
+  const orderedDepartments = useMemo(
+    () => departments.slice().sort((left, right) => compareHrDepartmentNames(left.departmentName, right.departmentName)),
     [departments],
+  );
+  const employees = useMemo(
+    () => orderedDepartments.flatMap((department) => department.employees),
+    [orderedDepartments],
   );
   const initialEmployee =
     employees.find((employee) => employee.id === initialEmployeeId) ?? null;
@@ -152,7 +157,7 @@ export function HrDirectory({ departments, initialEmployeeId }: Props) {
     employees.find((employee) => employee.id === selectedEmployeeId) ?? null;
   const activeDepartmentName =
     selectedDepartmentName === ALL_DEPARTMENTS_KEY ||
-    departments.some((department) => department.departmentName === selectedDepartmentName)
+    orderedDepartments.some((department) => department.departmentName === selectedDepartmentName)
       ? selectedDepartmentName
       : ALL_DEPARTMENTS_KEY;
   const statusOptions = useMemo(() => {
@@ -164,8 +169,8 @@ export function HrDirectory({ departments, initialEmployeeId }: Props) {
   const visibleDepartments = useMemo(
     () =>
       (activeDepartmentName === ALL_DEPARTMENTS_KEY
-        ? departments
-        : departments.filter(
+        ? orderedDepartments
+        : orderedDepartments.filter(
             (department) => department.departmentName === activeDepartmentName,
           )
       )
@@ -178,7 +183,7 @@ export function HrDirectory({ departments, initialEmployeeId }: Props) {
           ),
         }))
         .filter((department) => department.employees.length > 0),
-    [activeDepartmentName, departments, query, selectedStatus],
+    [activeDepartmentName, orderedDepartments, query, selectedStatus],
   );
   const visibleEmployeeCount = visibleDepartments.reduce(
     (total, department) => total + department.employees.length,
@@ -204,7 +209,7 @@ export function HrDirectory({ departments, initialEmployeeId }: Props) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedEmployee]);
 
-  if (!departments.length) {
+  if (!orderedDepartments.length) {
     return <div className={styles.emptyState}>Одоогоор харагдах ажилтны бүртгэл алга.</div>;
   }
 
@@ -260,7 +265,7 @@ export function HrDirectory({ departments, initialEmployeeId }: Props) {
             <span>{employees.length}</span>
           </button>
 
-          {departments.map(({ departmentName, employees: departmentEmployees }) => (
+          {orderedDepartments.map(({ departmentName, employees: departmentEmployees }) => (
             <button
               key={departmentName}
               type="button"

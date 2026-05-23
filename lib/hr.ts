@@ -2,6 +2,11 @@ import "server-only";
 
 import type { AppSession } from "@/lib/auth";
 import {
+  compareHrDepartmentNames,
+  compareHrDepartmentThenName,
+  getHrDepartmentDisplayName,
+} from "@/lib/hr-department-order";
+import {
   createOdooConnection,
   executeOdooKw,
   type HrEmployeeDirectoryItem,
@@ -111,6 +116,7 @@ type HrEmployeeDirectoryApiRecord = {
   workPhone?: string;
   mobilePhone?: string;
   workEmail?: string;
+  userId?: number | null;
   userName?: string;
   photo?: string | false;
   photoUrl?: string;
@@ -513,6 +519,47 @@ function normalizeText(value: unknown) {
   return fixMojibakeText(String(value ?? "")).trim().toLocaleLowerCase("mn-MN");
 }
 
+const SYSTEM_ADMIN_EMPLOYEE_TOKENS = new Set([
+  "admin",
+  "administrator",
+  "system administrator",
+  "odoo admin",
+  "odoo administrator",
+  "админ",
+  "администратор",
+  "систем админ",
+  "системийн админ",
+  "систем администратор",
+  "test",
+  "test test",
+  "dummy",
+  "demo",
+  "demo user",
+  "sample",
+  "bdbdj hdhd",
+]);
+
+function normalizeSystemAdminText(value: unknown) {
+  return normalizeText(value).replace(/\s+/g, " ");
+}
+
+function isSystemAdminEmployee(employee: HrEmployeeDirectoryItem) {
+  const emailLocalPart = String(employee.workEmail || "").split("@")[0];
+  return (
+    SYSTEM_ADMIN_EMPLOYEE_TOKENS.has(normalizeSystemAdminText(employee.userName)) ||
+    SYSTEM_ADMIN_EMPLOYEE_TOKENS.has(normalizeSystemAdminText(employee.name)) ||
+    SYSTEM_ADMIN_EMPLOYEE_TOKENS.has(normalizeSystemAdminText(emailLocalPart))
+  );
+}
+
+function excludeSystemAdminEmployees(employees: HrEmployeeDirectoryItem[]) {
+  return employees.filter((employee) => !isSystemAdminEmployee(employee));
+}
+
+function resolveHrDisplayDepartmentName(departmentName: string, jobTitle?: string | false | null) {
+  return getHrDepartmentDisplayName(departmentName, jobTitle);
+}
+
 function containsHrText(value: unknown) {
   const normalized = normalizeText(value);
   return HR_TEXT_TOKENS.some((token) => normalized.includes(normalizeText(token)));
@@ -556,17 +603,20 @@ function imageDataUrlFromBase64(value?: string | false) {
 }
 
 function mapHrEmployeeDirectoryApiRecord(record: HrEmployeeDirectoryApiRecord): HrEmployeeDirectoryItem {
+  const departmentName = record.departmentName || "Хэлтэсгүй";
+  const jobTitle = record.jobTitle || "Албан тушаал бүртгээгүй";
   return {
     id: record.id,
     name: record.name || `Ажилтан #${record.id}`,
     active: record.active !== false,
     departmentId: record.departmentId ?? null,
-    departmentName: record.departmentName || "Хэлтэсгүй",
+    departmentName: resolveHrDisplayDepartmentName(departmentName, jobTitle),
     jobId: record.jobId ?? null,
-    jobTitle: record.jobTitle || "Албан тушаал бүртгээгүй",
+    jobTitle,
     workPhone: record.workPhone || "",
     mobilePhone: record.mobilePhone || "",
     workEmail: record.workEmail || "",
+    userId: record.userId ?? null,
     userName: record.userName || "",
     photoUrl: record.photoUrl || imageDataUrlFromBase64(record.photo),
     employeeCode: record.employeeCode || `EMP-${String(record.id).padStart(5, "0")}`,
@@ -621,18 +671,21 @@ function resolveDirectEmployeeGenderLabel(value?: string | false) {
 
 function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): HrEmployeeDirectoryItem {
   const status = resolveDirectEmployeeStatus(record);
+  const departmentName = getRelationName(record.department_id, "Хэлтэсгүй");
+  const jobTitle = getRelationName(record.job_id) || record.job_title || "Албан тушаал бүртгээгүй";
 
   return {
     id: record.id,
     name: record.name || `Ажилтан #${record.id}`,
     active: record.active !== false,
     departmentId: getRelationId(record.department_id),
-    departmentName: getRelationName(record.department_id, "Хэлтэсгүй"),
+    departmentName: resolveHrDisplayDepartmentName(departmentName, jobTitle),
     jobId: getRelationId(record.job_id),
-    jobTitle: getRelationName(record.job_id) || record.job_title || "Албан тушаал бүртгээгүй",
+    jobTitle,
     workPhone: record.work_phone || "",
     mobilePhone: record.mobile_phone || "",
     workEmail: record.work_email || "",
+    userId: getRelationId(record.user_id),
     userName: getRelationName(record.user_id),
     photoUrl: imageDataUrlFromBase64(record.image_128 || record.avatar_128 || record.image_1920),
     employeeCode: record.x_mn_employee_code || `EMP-${String(record.id).padStart(5, "0")}`,
@@ -655,10 +708,7 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
 }
 
 function sortHrEmployees(employees: HrEmployeeDirectoryItem[]) {
-  return employees.sort((left, right) => {
-    const departmentOrder = left.departmentName.localeCompare(right.departmentName, "mn");
-    return departmentOrder || left.name.localeCompare(right.name, "mn");
-  });
+  return employees.sort(compareHrDepartmentThenName);
 }
 
 async function getAvailableFields(
@@ -907,7 +957,7 @@ export async function getHrAccessProfile(session: AppSession) {
       name: employee?.name ?? session.name,
       jobTitle: jobName || employee?.job_title || "",
       departmentId: getRelationId(employee?.department_id),
-      departmentName,
+      departmentName: getHrDepartmentDisplayName(departmentName, jobName || employee?.job_title || ""),
       fieldRole: employee?.mfo_field_role || employee?.x_field_role || "",
     },
     groupNames,
@@ -948,12 +998,12 @@ function scopeEmployeesForProfile(employees: HrEmployeeDirectoryItem[], profile:
     return employees;
   }
   const departmentId = profile.employee.departmentId;
-  const departmentName = normalizeText(profile.employee.departmentName);
+  const departmentName = normalizeText(getHrDepartmentDisplayName(profile.employee.departmentName));
   return employees.filter((employee) => {
     if (departmentId && employee.departmentId) {
       return employee.departmentId === departmentId;
     }
-    return departmentName ? normalizeText(employee.departmentName) === departmentName : employee.id === profile.employee.id;
+    return departmentName ? normalizeText(getHrDepartmentDisplayName(employee.departmentName)) === departmentName : employee.id === profile.employee.id;
   });
 }
 
@@ -969,7 +1019,7 @@ export async function getEmployees(session: AppSession) {
       connection,
     );
     if (Array.isArray(records) && records.length > 0) {
-      return sortHrEmployees(scopeEmployeesForProfile(records.map(mapHrEmployeeDirectoryApiRecord), profile));
+      return sortHrEmployees(scopeEmployeesForProfile(excludeSystemAdminEmployees(records.map(mapHrEmployeeDirectoryApiRecord)), profile));
     }
   } catch (error) {
     console.warn("HR custom employee directory API unavailable, falling back to service account search_read:", error);
@@ -978,13 +1028,15 @@ export async function getEmployees(session: AppSession) {
   try {
     const employees = await loadHrEmployeeDirectory();
     if (employees.length > 0) {
-      return sortHrEmployees(scopeEmployeesForProfile(employees, profile));
+      return sortHrEmployees(scopeEmployeesForProfile(excludeSystemAdminEmployees(employees), profile));
     }
   } catch (error) {
     console.warn("HR service account employee directory could not be loaded, falling back to session search_read:", error);
   }
 
-  return loadHrEmployeeDirectory(connection).then((employees) => sortHrEmployees(scopeEmployeesForProfile(employees, profile)));
+  return loadHrEmployeeDirectory(connection).then((employees) =>
+    sortHrEmployees(scopeEmployeesForProfile(excludeSystemAdminEmployees(employees), profile)),
+  );
 }
 
 export async function getEmployee(session: AppSession, id: number) {
@@ -1067,7 +1119,11 @@ export async function getDepartments(session: AppSession): Promise<HrOption[]> {
     { fields: ["name"], order: "name asc", limit: 500 },
     getConnection(session),
   )
-    .then((records) => records.map((record) => ({ id: record.id, name: record.name })))
+    .then((records) =>
+      records
+        .map((record) => ({ id: record.id, name: record.name }))
+        .sort((left, right) => compareHrDepartmentNames(left.name, right.name) || left.name.localeCompare(right.name, "mn")),
+    )
     .catch((error) => {
       console.warn("HR departments could not be loaded:", error);
       return [];
@@ -1738,7 +1794,7 @@ function normalizeTimeoffRequest(record: Partial<HrTimeoffRequest>): HrTimeoffRe
     employeeId: Number(record.employeeId || 0),
     employeeName: record.employeeName || "Ажилтан сонгоогүй",
     departmentId: record.departmentId ?? null,
-    departmentName: record.departmentName || "Хэлтэсгүй",
+    departmentName: getHrDepartmentDisplayName(record.departmentName || "Хэлтэсгүй"),
     requestType: record.requestType === "sick" ? "sick" : "time_off",
     requestTypeLabel: record.requestTypeLabel || (record.requestType === "sick" ? "Өвчтэй" : "Чөлөө"),
     dateFrom: record.dateFrom || "",
@@ -1774,7 +1830,7 @@ function normalizeTimeoffSearchRecord(record: HrTimeoffRequestSearchRecord): HrT
     employeeId: getRelationId(record.employee_id) || 0,
     employeeName: getRelationName(record.employee_id, "Ажилтан сонгоогүй"),
     departmentId: getRelationId(record.department_id),
-    departmentName: getRelationName(record.department_id, "Хэлтэсгүй"),
+    departmentName: getHrDepartmentDisplayName(getRelationName(record.department_id, "Хэлтэсгүй")),
     requestType,
     requestTypeLabel: requestType === "sick" ? "Өвчтэй" : "Чөлөө",
     dateFrom,
@@ -1809,7 +1865,7 @@ async function scopeTimeoffRequestsForProfile(
   const employees = await getEmployees(session);
   const employeeIds = new Set(employees.map((employee) => employee.id));
   const departmentId = profile.employee.departmentId;
-  const departmentName = normalizeText(profile.employee.departmentName);
+  const departmentName = normalizeText(getHrDepartmentDisplayName(profile.employee.departmentName));
 
   return requests.filter((request) => {
     if (employeeIds.has(request.employeeId)) {
@@ -1818,7 +1874,7 @@ async function scopeTimeoffRequestsForProfile(
     if (departmentId && request.departmentId) {
       return request.departmentId === departmentId;
     }
-    return departmentName ? normalizeText(request.departmentName) === departmentName : false;
+    return departmentName ? normalizeText(getHrDepartmentDisplayName(request.departmentName)) === departmentName : false;
   });
 }
 
@@ -1918,7 +1974,7 @@ function buildScopedTimeoffDashboard(
       { label: "Өвчтэй", value: sickEmployees },
     ],
     departmentBreakdown: Array.from(departmentRows.values()).sort((left, right) =>
-      left.departmentName.localeCompare(right.departmentName, "mn"),
+      compareHrDepartmentNames(left.departmentName, right.departmentName),
     ),
     latestRequests: requests.slice(0, 10),
   };
@@ -2076,7 +2132,7 @@ export async function getDisciplineRecords(session: AppSession): Promise<HrDisci
           employeeId: getRelationId(record.employee_id),
           employeeName: getRelationName(record.employee_id, "Ажилтан бүртгээгүй"),
           departmentId: getRelationId(record.department_id),
-          departmentName: getRelationName(record.department_id, "Хэлтэс бүртгээгүй"),
+          departmentName: getHrDepartmentDisplayName(getRelationName(record.department_id, "Хэлтэс бүртгээгүй")),
           violationType,
           violationTypeLabel: violationLabels.get(violationType) || (violationType === "attendance" ? "Ирц" : violationType) || "Тодорхойгүй",
           violationDate: String(record.violation_date || ""),
@@ -2097,12 +2153,12 @@ export async function getDisciplineRecords(session: AppSession): Promise<HrDisci
         }
 
         const departmentId = profile.employee.departmentId;
-        const departmentName = normalizeText(profile.employee.departmentName);
+        const departmentName = normalizeText(getHrDepartmentDisplayName(profile.employee.departmentName));
         return mappedRecords.filter((record) => {
           if (departmentId && record.departmentId) {
             return record.departmentId === departmentId;
           }
-          return departmentName ? normalizeText(record.departmentName) === departmentName : false;
+          return departmentName ? normalizeText(getHrDepartmentDisplayName(record.departmentName)) === departmentName : false;
         });
       })
     .catch((error) => {
@@ -2339,7 +2395,7 @@ export async function getTimeoffDashboard(session: AppSession): Promise<HrTimeof
   const profile = await requireHrAccess(session);
   if (profile.scope !== "hr") {
     const [employees, requests] = await Promise.all([getEmployees(session), getTimeoffRequests(session)]);
-    return buildScopedTimeoffDashboard(employees, requests, "department", profile.employee.departmentName);
+    return buildScopedTimeoffDashboard(employees, requests, "department", getHrDepartmentDisplayName(profile.employee.departmentName));
   }
 
   try {
@@ -2351,7 +2407,7 @@ export async function getTimeoffDashboard(session: AppSession): Promise<HrTimeof
       getConnection(session),
     );
     return {
-      ...emptyTimeoffDashboard(profile.scope, profile.employee.departmentName),
+      ...emptyTimeoffDashboard(profile.scope, getHrDepartmentDisplayName(profile.employee.departmentName)),
       ...dashboard,
       cards: {
         ...emptyTimeoffDashboard(profile.scope).cards,
@@ -2368,7 +2424,7 @@ export async function getTimeoffDashboard(session: AppSession): Promise<HrTimeof
   const employees = await getEmployees(session);
   const activeEmployees = employees.filter((employee) => employee.active && !["archived", "terminated", "resigned"].includes(employee.statusKey));
   return {
-    ...emptyTimeoffDashboard(profile.scope, profile.employee.departmentName),
+    ...emptyTimeoffDashboard(profile.scope, getHrDepartmentDisplayName(profile.employee.departmentName)),
     cards: {
       ...emptyTimeoffDashboard(profile.scope).cards,
       totalEmployees: employees.length,
@@ -2514,7 +2570,7 @@ function normalizeClearanceRecord(record: Partial<HrClearanceRecord>): HrClearan
     employeeId: record.employeeId ?? null,
     employeeName: record.employeeName || "Ажилтан бүртгээгүй",
     departmentId: record.departmentId ?? null,
-    departmentName: record.departmentName || "Хэлтэс бүртгээгүй",
+    departmentName: getHrDepartmentDisplayName(record.departmentName || "Хэлтэс бүртгээгүй"),
     jobTitle: record.jobTitle || "",
     savedDate: record.savedDate || "",
     section,
@@ -2536,7 +2592,7 @@ function normalizeClearanceSearchRecord(record: HrClearanceSearchRecord): HrClea
     employeeId: getRelationId(record.employee_id),
     employeeName: getRelationName(record.employee_id, "Ажилтан бүртгээгүй"),
     departmentId: getRelationId(record.department_id),
-    departmentName: getRelationName(record.department_id, "Хэлтэс бүртгээгүй"),
+    departmentName: getHrDepartmentDisplayName(getRelationName(record.department_id, "Хэлтэс бүртгээгүй")),
     jobTitle: getRelationName(record.job_id),
     savedDate: String(record.saved_date || ""),
     section,
@@ -2658,7 +2714,7 @@ function normalizeGeneratedReport(record: Partial<HrGeneratedReport>): HrGenerat
     dateTo: record.dateTo || "",
     generatedDate: record.generatedDate || "",
     generatedBy: record.generatedBy || "",
-    departmentName: record.departmentName || "",
+    departmentName: record.departmentName ? getHrDepartmentDisplayName(record.departmentName) : "",
     attachmentId: record.attachmentId ?? null,
     downloadUrl: record.downloadUrl || (record.id ? `/api/hr/reports/${record.id}/download` : ""),
   };

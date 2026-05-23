@@ -19,6 +19,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { compareHrDepartmentNames } from "@/lib/hr-department-order";
 import type { HrLeaveItem, HrOption, HrSelectionOption, HrTimeoffRequest } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
@@ -120,7 +121,10 @@ export function EmployeeTable({
 }) {
   const searchParams = useSearchParams();
   const departments = useMemo(
-    () => Array.from(new Set(employees.map((employee) => employee.departmentName).filter(Boolean))).sort(),
+    () =>
+      Array.from(new Set(employees.map((employee) => employee.departmentName).filter(Boolean))).sort(
+        compareHrDepartmentNames,
+      ),
     [employees],
   );
   const [query, setQuery] = useState("");
@@ -361,6 +365,159 @@ function Field({
   );
 }
 
+type SearchableOption = {
+  id: number | string;
+  name: string;
+  description?: string;
+};
+
+function SearchableSelect({
+  label,
+  name,
+  options,
+  required = false,
+  defaultValue = "",
+  placeholder = "Сонгох",
+  disabled = false,
+}: {
+  label: string;
+  name: string;
+  options: SearchableOption[];
+  required?: boolean;
+  defaultValue?: string | number | null;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [selectedValue, setSelectedValue] = useState(String(defaultValue ?? ""));
+  const selectedOption = useMemo(
+    () => options.find((option) => String(option.id) === selectedValue) ?? null,
+    [options, selectedValue],
+  );
+  const visibleOptions = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase("mn-MN");
+    if (!normalizedQuery) {
+      return options;
+    }
+    return options.filter((option) =>
+      [option.name, option.description]
+        .filter(Boolean)
+        .some((value) => String(value).toLocaleLowerCase("mn-MN").includes(normalizedQuery)),
+    );
+  }, [options, query]);
+
+  return (
+    <label className={styles.field}>
+      <span>{label}</span>
+      <input name={name} type="hidden" value={selectedValue} required={required} disabled={disabled} />
+      <div className={styles.searchableSelect}>
+        <button
+          type="button"
+          className={styles.searchableSelectButton}
+          onClick={() => {
+            if (!disabled) {
+              setOpen((current) => !current);
+            }
+          }}
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          disabled={disabled}
+        >
+          <strong>{selectedOption?.name || placeholder}</strong>
+          {selectedOption?.description ? <small>{selectedOption.description}</small> : null}
+        </button>
+        {open ? (
+          <div className={styles.searchableSelectPanel}>
+            <div className={styles.searchableSelectSearch}>
+              <Search aria-hidden />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Нэрээр хайх"
+                autoFocus
+              />
+            </div>
+            <div className={styles.searchableSelectList} role="listbox">
+              {!required ? (
+                <button
+                  type="button"
+                  className={styles.searchableSelectOption}
+                  onClick={() => {
+                    setSelectedValue("");
+                    setQuery("");
+                    setOpen(false);
+                  }}
+                  role="option"
+                  aria-selected={!selectedValue}
+                >
+                  <strong>{placeholder}</strong>
+                </button>
+              ) : null}
+              {visibleOptions.map((option) => {
+                const optionValue = String(option.id);
+                const selected = optionValue === selectedValue;
+                return (
+                  <button
+                    key={optionValue}
+                    type="button"
+                    className={`${styles.searchableSelectOption} ${selected ? styles.searchableSelectOptionSelected : ""}`}
+                    onClick={() => {
+                      setSelectedValue(optionValue);
+                      setQuery("");
+                      setOpen(false);
+                    }}
+                    role="option"
+                    aria-selected={selected}
+                  >
+                    <strong>{option.name}</strong>
+                    {option.description ? <small>{option.description}</small> : null}
+                  </button>
+                );
+              })}
+              {!visibleOptions.length ? (
+                <div className={styles.searchableSelectEmpty}>Сонголт олдсонгүй</div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </label>
+  );
+}
+
+function EmployeeSelect({
+  employees,
+  defaultValue = "",
+  disabled = false,
+}: {
+  employees: HrEmployeeDirectoryItem[];
+  defaultValue?: string | number | null;
+  disabled?: boolean;
+}) {
+  const options = useMemo(
+    () =>
+      employees.map((employee) => ({
+        id: employee.id,
+        name: employee.name,
+        description: [employee.departmentName, employee.jobTitle].filter(Boolean).join(" · "),
+      })),
+    [employees],
+  );
+
+  return (
+    <SearchableSelect
+      name="employeeId"
+      label="Ажилтан"
+      options={options}
+      defaultValue={defaultValue}
+      required
+      disabled={disabled}
+      placeholder="Ажилтан сонгох"
+    />
+  );
+}
+
 function Select({
   label,
   name,
@@ -375,17 +532,13 @@ function Select({
   defaultValue?: string | number | null;
 }) {
   return (
-    <label className={styles.field}>
-      <span>{label}</span>
-      <select name={name} defaultValue={defaultValue ?? ""} required={required}>
-        <option value="">Сонгох</option>
-        {options.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.name}
-          </option>
-        ))}
-      </select>
-    </label>
+    <SearchableSelect
+      label={label}
+      name={name}
+      options={options}
+      required={required}
+      defaultValue={defaultValue}
+    />
   );
 }
 
@@ -967,17 +1120,11 @@ export function TimeoffRequestsClient({
             </small>
           </div>
         ) : null}
-        <label className={styles.field}>
-          <span>Ажилтан</span>
-          <select name="employeeId" defaultValue={editingRequest?.employeeId || defaultEmployeeId} required disabled={Boolean(editingRequest)}>
-            <option value="">Сонгох</option>
-            {employees.map((employee) => (
-              <option key={employee.id} value={employee.id}>
-                {employee.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <EmployeeSelect
+          employees={employees}
+          defaultValue={editingRequest?.employeeId || defaultEmployeeId}
+          disabled={Boolean(editingRequest)}
+        />
         <label className={styles.field}>
           <span>Төрөл</span>
           <select name="requestType" defaultValue={editingRequest?.requestType || defaultType} required>
@@ -1118,17 +1265,7 @@ export function LeavesClient({
           </div>
         ) : null}
         <input name="leaveTypeName" type="hidden" value={defaultSick ? "Өвчтэй" : ""} />
-        <label className={styles.field}>
-          <span>Ажилтан</span>
-          <select name="employeeId" defaultValue={defaultEmployeeId} required>
-            <option value="">Сонгох</option>
-            {employees.map((employee) => (
-              <option key={employee.id} value={employee.id}>
-                {employee.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <EmployeeSelect employees={employees} defaultValue={defaultEmployeeId} />
         <label className={styles.field}>
           <span>Чөлөөний төрөл</span>
           <select name="leaveTypeId" defaultValue="">

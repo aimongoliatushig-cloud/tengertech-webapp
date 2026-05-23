@@ -5,6 +5,7 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
+import { compareHrDepartmentNames, getHrDepartmentDisplayName } from "@/lib/hr-department-order";
 import { getDepartments, getEmployees, requireHrAccess } from "@/lib/hr";
 
 import { HrSectionNav } from "../hr-section-nav";
@@ -25,23 +26,29 @@ export default async function HrDepartmentsPage() {
   ]);
   const employeeCountByDepartment = new Map<string, number>();
   for (const employee of employees) {
+    const departmentName = getHrDepartmentDisplayName(employee.departmentName);
     employeeCountByDepartment.set(
-      employee.departmentName,
-      (employeeCountByDepartment.get(employee.departmentName) ?? 0) + 1,
+      departmentName,
+      (employeeCountByDepartment.get(departmentName) ?? 0) + 1,
     );
   }
 
-  const cards = departments.length
-    ? departments.map((department) => ({
-        id: department.id,
-        name: department.name,
-        count: employeeCountByDepartment.get(department.name) ?? 0,
-      }))
-    : Array.from(employeeCountByDepartment).map(([name, count], index) => ({
-        id: index,
-        name,
-        count,
-      }));
+  const cardMap = new Map<string, { id: number; name: string; count: number }>();
+  for (const department of departments) {
+    const name = getHrDepartmentDisplayName(department.name);
+    cardMap.set(name, {
+      id: department.id,
+      name,
+      count: employeeCountByDepartment.get(name) ?? 0,
+    });
+  }
+  for (const [name, count] of employeeCountByDepartment) {
+    if (!cardMap.has(name)) {
+      cardMap.set(name, { id: cardMap.size, name, count });
+    }
+  }
+  const cards = Array.from(cardMap.values());
+  cards.sort((left, right) => compareHrDepartmentNames(left.name, right.name));
 
   return (
     <>

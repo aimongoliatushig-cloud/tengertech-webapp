@@ -5,6 +5,7 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
+import { compareHrDepartmentNames } from "@/lib/hr-department-order";
 import { getDisciplineRecords, getEmployees, getTimeoffDashboard, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
@@ -63,7 +64,7 @@ function buildDepartmentGroups(employees: HrEmployeeDirectoryItem[]) {
   return Array.from(groups, ([departmentName, departmentEmployees]) => ({
     departmentName,
     employees: departmentEmployees.sort((left, right) => left.name.localeCompare(right.name, "mn")),
-  })).sort((left, right) => right.employees.length - left.employees.length);
+  })).sort((left, right) => compareHrDepartmentNames(left.departmentName, right.departmentName));
 }
 
 function DepartmentManpower({ employees }: { employees: HrEmployeeDirectoryItem[] }) {

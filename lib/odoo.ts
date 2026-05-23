@@ -7,6 +7,7 @@ import {
   matchesDepartmentGroup,
   normalizeOrganizationUnitName,
 } from "@/lib/department-groups";
+import { compareHrDepartmentThenName, getHrDepartmentDisplayName } from "@/lib/hr-department-order";
 import type { RoleGroupFlags } from "@/lib/roles";
 import { fixMojibakeText } from "@/lib/text-normalize";
 
@@ -644,6 +645,7 @@ export type HrEmployeeDirectoryItem = {
   workPhone: string;
   mobilePhone: string;
   workEmail: string;
+  userId?: number | null;
   userName: string;
   photoUrl: string;
   employeeCode: string;
@@ -1883,7 +1885,7 @@ const HR_EMPLOYEE_FIELD_VARIANTS: string[][] = [
 ];
 
 const HR_ATTENDANCE_EMPLOYEE_FIELD_VARIANTS: string[][] = [
-  ["name", "active", "x_mn_employment_status"],
+  ["name", "active", "user_id", "work_email", "x_mn_employment_status"],
   ["name", "active"],
 ];
 
@@ -2317,6 +2319,45 @@ function resolveHrEmploymentStatus(employee: OdooEmployeeRecord) {
 
 function normalizeHrStatusText(value?: string | false | null) {
   return (typeof value === "string" ? value : "").trim().toLowerCase();
+}
+
+const SYSTEM_ADMIN_EMPLOYEE_TOKENS = new Set([
+  "admin",
+  "administrator",
+  "system administrator",
+  "odoo admin",
+  "odoo administrator",
+  "админ",
+  "администратор",
+  "систем админ",
+  "системийн админ",
+  "систем администратор",
+  "test",
+  "test test",
+  "dummy",
+  "demo",
+  "demo user",
+  "sample",
+  "bdbdj hdhd",
+]);
+
+function normalizeHrAdminText(value?: string | false | null) {
+  return fixMojibakeText(String(value ?? "")).trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
+}
+
+function isSystemAdminEmployeeRecord(employee: OdooEmployeeRecord) {
+  const userName = normalizeHrAdminText(relationName(employee.user_id ?? false, ""));
+  const employeeName = normalizeHrAdminText(employee.name);
+  const emailLocalPart = normalizeHrAdminText(String(employee.work_email || "").split("@")[0]);
+  return (
+    SYSTEM_ADMIN_EMPLOYEE_TOKENS.has(userName) ||
+    SYSTEM_ADMIN_EMPLOYEE_TOKENS.has(employeeName) ||
+    SYSTEM_ADMIN_EMPLOYEE_TOKENS.has(emailLocalPart)
+  );
+}
+
+function resolveHrDisplayDepartmentName(departmentName: string, jobTitle?: string | false | null) {
+  return getHrDepartmentDisplayName(departmentName, jobTitle);
 }
 
 function isWorkingHrStatus(employee: OdooEmployeeRecord) {
@@ -3515,24 +3556,28 @@ export async function loadHrEmployeeDirectory(
   );
 
   return employees
+    .filter((employee) => !isSystemAdminEmployeeRecord(employee))
     .map((employee) => {
       const status = resolveHrEmploymentStatus(employee);
+      const departmentName = normalizeDepartmentUnitName(
+        relationName(employee.department_id ?? false, UNKNOWN_DEPARTMENT),
+      );
+      const jobTitle =
+        relationName(employee.job_id ?? false, "") ||
+        employee.job_title ||
+        "Албан тушаал бүртгээгүй";
 
       return {
         id: employee.id,
         name: employee.name,
         active: employee.active !== false,
         departmentId: Array.isArray(employee.department_id) ? employee.department_id[0] : null,
-        departmentName: normalizeDepartmentUnitName(
-          relationName(employee.department_id ?? false, UNKNOWN_DEPARTMENT),
-        ),
-        jobTitle:
-          relationName(employee.job_id ?? false, "") ||
-          employee.job_title ||
-          "Албан тушаал бүртгээгүй",
+        departmentName: resolveHrDisplayDepartmentName(departmentName, jobTitle),
+        jobTitle,
         workPhone: employee.work_phone || "",
         mobilePhone: employee.mobile_phone || "",
         workEmail: employee.work_email || "",
+        userId: Array.isArray(employee.user_id) ? employee.user_id[0] : null,
         userName: relationName(employee.user_id ?? false, ""),
         photoUrl: imageDataUrl(employee.image_128 || employee.avatar_128 || employee.image_1920),
         employeeCode: employee.x_mn_employee_code || `EMP-${String(employee.id).padStart(5, "0")}`,
@@ -3552,13 +3597,7 @@ export async function loadHrEmployeeDirectory(
         disciplineScore: employee.x_mn_discipline_score ?? 0,
       };
     })
-    .sort((left, right) => {
-      const departmentOrder = left.departmentName.localeCompare(right.departmentName, "mn");
-      if (departmentOrder !== 0) {
-        return departmentOrder;
-      }
-      return left.name.localeCompare(right.name, "mn");
-    });
+    .sort(compareHrDepartmentThenName);
 }
 
 async function loadTodayHrAttendanceRecords(
@@ -3676,8 +3715,9 @@ async function fetchLiveHrDailyAttendanceSummary(
     connection,
   );
 
+  const hrEmployees = employees.filter((employee) => !isSystemAdminEmployeeRecord(employee));
   const activeEmployeeIds = new Set(
-    employees.filter((employee) => employee.active !== false).map((employee) => employee.id),
+    hrEmployees.filter((employee) => employee.active !== false).map((employee) => employee.id),
   );
   const totalEmployees = activeEmployeeIds.size;
 
@@ -3744,9 +3784,9 @@ async function fetchLiveHrDailyAttendanceSummary(
     return summary;
   }
 
-  const fallbackWorking = employees.filter(isWorkingHrStatus).length;
-  const fallbackSick = employees.filter((employee) => isSickHrText(employee.x_mn_employment_status)).length;
-  const fallbackAbsent = employees.filter((employee) => isAbsentHrText(employee.x_mn_employment_status)).length;
+  const fallbackWorking = hrEmployees.filter(isWorkingHrStatus).length;
+  const fallbackSick = hrEmployees.filter((employee) => isSickHrText(employee.x_mn_employment_status)).length;
+  const fallbackAbsent = hrEmployees.filter((employee) => isAbsentHrText(employee.x_mn_employment_status)).length;
 
   const summary: HrDailyAttendanceSummary = {
     totalEmployees,
@@ -3755,7 +3795,7 @@ async function fetchLiveHrDailyAttendanceSummary(
     sickToday: fallbackSick,
     leaveToday: 0,
     generatedAt: new Date().toISOString(),
-    source: employees.length ? "employee_status" : "empty",
+    source: hrEmployees.length ? "employee_status" : "empty",
   };
   hrDailyAttendanceSummaryCache.set(getMunicipalSnapshotCacheKey(connection), {
     value: summary,
