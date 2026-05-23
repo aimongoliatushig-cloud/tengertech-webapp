@@ -106,6 +106,7 @@ type HrEmployeeDirectoryApiRecord = {
   active?: boolean;
   departmentId?: number | null;
   departmentName?: string;
+  jobId?: number | null;
   jobTitle?: string;
   workPhone?: string;
   mobilePhone?: string;
@@ -117,6 +118,7 @@ type HrEmployeeDirectoryApiRecord = {
   gradeRank?: string;
   statusKey?: string;
   statusLabel?: string;
+  managerId?: number | null;
   managerName?: string;
   startDate?: string;
   contractEndDate?: string;
@@ -560,6 +562,7 @@ function mapHrEmployeeDirectoryApiRecord(record: HrEmployeeDirectoryApiRecord): 
     active: record.active !== false,
     departmentId: record.departmentId ?? null,
     departmentName: record.departmentName || "Хэлтэсгүй",
+    jobId: record.jobId ?? null,
     jobTitle: record.jobTitle || "Албан тушаал бүртгээгүй",
     workPhone: record.workPhone || "",
     mobilePhone: record.mobilePhone || "",
@@ -570,6 +573,7 @@ function mapHrEmployeeDirectoryApiRecord(record: HrEmployeeDirectoryApiRecord): 
     gradeRank: record.gradeRank || "",
     statusKey: record.statusKey || (record.active === false ? "archived" : "active"),
     statusLabel: record.statusLabel || (record.active === false ? "Архивласан" : "Идэвхтэй"),
+    managerId: record.managerId ?? null,
     managerName: record.managerName || "",
     startDate: record.startDate || "",
     contractEndDate: record.contractEndDate || "",
@@ -624,6 +628,7 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     active: record.active !== false,
     departmentId: getRelationId(record.department_id),
     departmentName: getRelationName(record.department_id, "Хэлтэсгүй"),
+    jobId: getRelationId(record.job_id),
     jobTitle: getRelationName(record.job_id) || record.job_title || "Албан тушаал бүртгээгүй",
     workPhone: record.work_phone || "",
     mobilePhone: record.mobile_phone || "",
@@ -634,6 +639,7 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     gradeRank: record.x_mn_grade_rank || "",
     statusKey: status.key,
     statusLabel: status.label,
+    managerId: getRelationId(record.parent_id),
     managerName: getRelationName(record.parent_id),
     startDate: record.contract_date_start || "",
     contractEndDate: record.contract_date_end || "",
@@ -1045,6 +1051,9 @@ export async function getEmployee(session: AppSession, id: number) {
         birthDate: scopedEmployee.birthDate || listedEmployee.birthDate,
         genderKey: scopedEmployee.genderKey || listedEmployee.genderKey,
         genderLabel: scopedEmployee.genderLabel || listedEmployee.genderLabel,
+        departmentId: scopedEmployee.departmentId ?? listedEmployee.departmentId,
+        jobId: scopedEmployee.jobId ?? listedEmployee.jobId,
+        managerId: scopedEmployee.managerId ?? listedEmployee.managerId,
         photoUrl: scopedEmployee.photoUrl || listedEmployee.photoUrl,
       }
     : scopedEmployee;
@@ -1181,9 +1190,20 @@ export async function updateEmployee(
     HrEmployeeCreateInput &
       Pick<
         HrEmployeeDirectoryItem,
-        "name" | "employeeCode" | "workPhone" | "mobilePhone" | "workEmail" | "birthDate" | "genderKey"
+        | "name"
+        | "employeeCode"
+        | "workPhone"
+        | "mobilePhone"
+        | "workEmail"
+        | "birthDate"
+        | "genderKey"
+        | "contractEndDate"
+        | "gradeRank"
       >
       & {
+        departmentId?: number | null;
+        jobId?: number | null;
+        managerId?: number | null;
         profilePhotoBase64?: string;
       }
   >,
@@ -1197,7 +1217,10 @@ export async function updateEmployee(
     "job_id",
     "job_title",
     "parent_id",
+    "contract_date_start",
+    "contract_date_end",
     "x_mn_employee_code",
+    "x_mn_grade_rank",
     "birthday",
     "sex",
     "image_1920",
@@ -1220,10 +1243,19 @@ export async function updateEmployee(
   if (fields.has("image_1920") && data.profilePhotoBase64 !== undefined) {
     values.image_1920 = data.profilePhotoBase64 || false;
   }
-  if (fields.has("department_id") && data.departmentId) values.department_id = data.departmentId;
-  if (fields.has("job_id") && data.jobId) values.job_id = data.jobId;
+  if (fields.has("department_id") && data.departmentId !== undefined) values.department_id = data.departmentId || false;
+  if (fields.has("job_id") && data.jobId !== undefined) values.job_id = data.jobId || false;
   if (fields.has("job_title") && data.jobTitle !== undefined) values.job_title = data.jobTitle || false;
-  if (fields.has("parent_id") && data.managerId) values.parent_id = data.managerId;
+  if (fields.has("parent_id") && data.managerId !== undefined) values.parent_id = data.managerId || false;
+  if (fields.has("contract_date_start") && data.startDate !== undefined) {
+    values.contract_date_start = data.startDate || false;
+  }
+  if (fields.has("contract_date_end") && data.contractEndDate !== undefined) {
+    values.contract_date_end = data.contractEndDate || false;
+  }
+  if (fields.has("x_mn_grade_rank") && data.gradeRank !== undefined) {
+    values.x_mn_grade_rank = data.gradeRank?.trim() || false;
+  }
   if (fields.has("active") && data.isFieldEmployee === false) values.active = false;
 
   if (!Object.keys(values).length) {

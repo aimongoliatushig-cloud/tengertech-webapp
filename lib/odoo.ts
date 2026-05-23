@@ -639,6 +639,7 @@ export type HrEmployeeDirectoryItem = {
   active: boolean;
   departmentId?: number | null;
   departmentName: string;
+  jobId?: number | null;
   jobTitle: string;
   workPhone: string;
   mobilePhone: string;
@@ -649,6 +650,7 @@ export type HrEmployeeDirectoryItem = {
   gradeRank: string;
   statusKey: string;
   statusLabel: string;
+  managerId?: number | null;
   managerName: string;
   startDate: string;
   contractEndDate: string;

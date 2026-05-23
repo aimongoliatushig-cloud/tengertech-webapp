@@ -14,16 +14,56 @@ function formString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
+function formNumber(formData: FormData, key: string) {
+  if (!formData.has(key)) return undefined;
+  const value = Number(formData.get(key));
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function payloadString(payload: Record<string, unknown>, key: string) {
+  if (!Object.prototype.hasOwnProperty.call(payload, key)) return undefined;
+  return String(payload[key] ?? "").trim();
+}
+
+function payloadNumber(payload: Record<string, unknown>, key: string) {
+  if (!Object.prototype.hasOwnProperty.call(payload, key)) return undefined;
+  const value = Number(payload[key]);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
 function normalizeEmployeeUpdatePayload(payload: Record<string, unknown>) {
   return {
-    name: String(payload.name ?? "").trim(),
-    employeeCode: String(payload.employeeCode ?? "").trim(),
-    genderKey: String(payload.genderKey ?? "").trim(),
-    birthDate: String(payload.birthDate ?? "").trim(),
-    workPhone: String(payload.workPhone ?? "").trim(),
-    mobilePhone: String(payload.mobilePhone ?? "").trim(),
-    workEmail: String(payload.workEmail ?? "").trim(),
+    name: payloadString(payload, "name"),
+    employeeCode: payloadString(payload, "employeeCode"),
+    genderKey: payloadString(payload, "genderKey"),
+    birthDate: payloadString(payload, "birthDate"),
+    workPhone: payloadString(payload, "workPhone"),
+    mobilePhone: payloadString(payload, "mobilePhone"),
+    workEmail: payloadString(payload, "workEmail"),
+    departmentId: payloadNumber(payload, "departmentId"),
+    jobId: payloadNumber(payload, "jobId"),
+    jobTitle: payloadString(payload, "jobTitle"),
+    managerId: payloadNumber(payload, "managerId"),
+    startDate: payloadString(payload, "startDate"),
+    contractEndDate: payloadString(payload, "contractEndDate"),
+    gradeRank: payloadString(payload, "gradeRank"),
   };
+}
+
+function compactUndefinedValues(payload: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
+}
+
+function validateEmployeeUpdatePayload(payload: Record<string, unknown>) {
+  if (Object.prototype.hasOwnProperty.call(payload, "name") && !payload.name) {
+    throw new Error("EMPLOYEE_NAME_REQUIRED");
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, "departmentId") && !payload.departmentId) {
+    throw new Error("EMPLOYEE_DEPARTMENT_REQUIRED");
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, "jobId") && !payload.jobId) {
+    throw new Error("EMPLOYEE_JOB_REQUIRED");
+  }
 }
 
 async function parseEmployeeUpdatePayload(request: Request) {
@@ -31,20 +71,35 @@ async function parseEmployeeUpdatePayload(request: Request) {
 
   if (!contentType.includes("multipart/form-data")) {
     const payload = (await request.json()) as Record<string, unknown>;
-    return normalizeEmployeeUpdatePayload(payload);
+    const normalized = compactUndefinedValues(normalizeEmployeeUpdatePayload(payload));
+    validateEmployeeUpdatePayload(normalized);
+    return normalized;
   }
 
   const formData = await request.formData();
-  const payload: Record<string, unknown> = normalizeEmployeeUpdatePayload({
-    name: formString(formData, "name"),
-    employeeCode: formString(formData, "employeeCode"),
-    genderKey: formString(formData, "genderKey"),
-    birthDate: formString(formData, "birthDate"),
-    workPhone: formString(formData, "workPhone"),
-    mobilePhone: formString(formData, "mobilePhone"),
-    workEmail: formString(formData, "workEmail"),
+  const payload: Record<string, unknown> = {};
+  [
+    "name",
+    "employeeCode",
+    "genderKey",
+    "birthDate",
+    "workPhone",
+    "mobilePhone",
+    "workEmail",
+    "jobTitle",
+    "startDate",
+    "contractEndDate",
+    "gradeRank",
+  ].forEach((key) => {
+    if (formData.has(key)) payload[key] = formString(formData, key);
+  });
+  ["departmentId", "jobId", "managerId"].forEach((key) => {
+    const value = formNumber(formData, key);
+    if (value !== undefined) payload[key] = value;
   });
   const photo = formData.get("profilePhoto");
+
+  validateEmployeeUpdatePayload(payload);
 
   if (photo instanceof File && photo.size > 0) {
     if (!ALLOWED_EMPLOYEE_PHOTO_TYPES.has(photo.type)) {
@@ -105,6 +160,15 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     }
     if (error instanceof Error && error.message === "EMPLOYEE_PHOTO_TOO_LARGE") {
       return jsonError("Профайл зураг 5MB-аас бага байх ёстой.", 400);
+    }
+    if (error instanceof Error && error.message === "EMPLOYEE_NAME_REQUIRED") {
+      return jsonError("Ажилтны нэр заавал оруулна уу.", 400);
+    }
+    if (error instanceof Error && error.message === "EMPLOYEE_DEPARTMENT_REQUIRED") {
+      return jsonError("Хэлтэс / алба заавал сонгоно уу.", 400);
+    }
+    if (error instanceof Error && error.message === "EMPLOYEE_JOB_REQUIRED") {
+      return jsonError("Албан тушаал заавал сонгоно уу.", 400);
     }
     console.error("PATCH /api/hr/employees/[id] failed:", error);
     return jsonError("Ажилтны мэдээлэл шинэчлэхэд алдаа гарлаа.");

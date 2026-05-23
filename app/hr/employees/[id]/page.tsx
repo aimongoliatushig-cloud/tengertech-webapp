@@ -16,7 +16,7 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
-import { getEmployee, requireHrAccess } from "@/lib/hr";
+import { getDepartments, getEmployee, getJobs, getManagers, requireHrAccess } from "@/lib/hr";
 
 import { EmployeeDetailTabs } from "../../hr-client";
 import { HrSectionNav } from "../../hr-section-nav";
@@ -64,7 +64,12 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
   if (!Number.isFinite(employeeId)) {
     notFound();
   }
-  const employee = await getEmployee(session, employeeId);
+  const [employee, departments, jobs, managers] = await Promise.all([
+    getEmployee(session, employeeId),
+    getDepartments(session),
+    getJobs(session),
+    getManagers(session),
+  ]);
   if (!employee) {
     notFound();
   }
@@ -100,7 +105,14 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
         </div>
       </section>
 
-      <EmployeeDetailTabs employee={employee} canEdit={access.isHr || access.isDepartmentHead} />
+      <EmployeeDetailTabs
+        employee={employee}
+        canEdit={access.isHr || access.isDepartmentHead}
+        mode={mode}
+        departments={departments}
+        jobs={jobs}
+        managers={managers}
+      />
     </>
   );
 }

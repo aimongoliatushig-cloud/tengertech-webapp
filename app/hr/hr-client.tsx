@@ -4,7 +4,20 @@ import { useMemo, useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, FilePlus2, Pencil, Search, Trash2 } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  Check,
+  FileCheck2,
+  FilePlus2,
+  HeartPulse,
+  Pencil,
+  Plane,
+  Repeat2,
+  ScrollText,
+  Search,
+  ShieldAlert,
+  Trash2,
+} from "lucide-react";
 
 import type { HrLeaveItem, HrOption, HrSelectionOption, HrTimeoffRequest } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
@@ -353,16 +366,18 @@ function Select({
   name,
   options,
   required = false,
+  defaultValue = "",
 }: {
   label: string;
   name: string;
   options: HrOption[];
   required?: boolean;
+  defaultValue?: string | number | null;
 }) {
   return (
     <label className={styles.field}>
       <span>{label}</span>
-      <select name={name} defaultValue="" required={required}>
+      <select name={name} defaultValue={defaultValue ?? ""} required={required}>
         <option value="">Сонгох</option>
         {options.map((option) => (
           <option key={option.id} value={option.id}>
@@ -385,6 +400,8 @@ const detailTabs = [
   "Түүх / өөрчлөлт",
 ];
 
+const editableDetailTabs = new Set([detailTabs[0], detailTabs[1]]);
+
 function employeeGenderValue(employee: HrEmployeeDirectoryItem) {
   if (employee.genderKey) {
     return employee.genderKey;
@@ -401,12 +418,25 @@ function employeeGenderValue(employee: HrEmployeeDirectoryItem) {
   return "";
 }
 
+function editableTextValue(value?: string) {
+  const normalized = String(value || "").toLocaleLowerCase("mn-MN");
+  return normalized.includes("бүртгээгүй") || normalized.includes("хэлтэсгүй") ? "" : value || "";
+}
+
 export function EmployeeDetailTabs({
   employee,
   canEdit = false,
+  mode = "hr",
+  departments = [],
+  jobs = [],
+  managers = [],
 }: {
   employee: HrEmployeeDirectoryItem;
   canEdit?: boolean;
+  mode?: "hr" | "department";
+  departments?: HrOption[];
+  jobs?: HrOption[];
+  managers?: HrOption[];
 }) {
   const [tab, setTab] = useState(detailTabs[0]);
   const router = useRouter();
@@ -424,6 +454,17 @@ export function EmployeeDetailTabs({
     .join("")
     .toLocaleUpperCase("mn-MN");
   const showPhoto = Boolean(employee.photoUrl && photoErrorUrl !== employee.photoUrl);
+  const employeeQuery = `employeeId=${employee.id}`;
+  const canEditCurrentTab = canEdit && editableDetailTabs.has(tab);
+  const tabActions = getEmployeeDetailTabActions(tab, employeeQuery, mode);
+
+  function selectTab(nextTab: string) {
+    setTab(nextTab);
+    setMessage("");
+    if (!editableDetailTabs.has(nextTab)) {
+      setEditing(false);
+    }
+  }
 
   async function submitProfileEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -498,6 +539,59 @@ export function EmployeeDetailTabs({
     ],
   };
 
+  function renderProfileEditForm() {
+    return (
+      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <div className={styles.formGrid}>
+          <Field name="name" label="Нэр" defaultValue={employee.name} required />
+          <Field name="employeeCode" label="Ажилтны код" defaultValue={employee.employeeCode} />
+          <label className={styles.field}>
+            <span>Хүйс</span>
+            <select name="genderKey" defaultValue={employeeGenderValue(employee)}>
+              <option value="">Сонгох</option>
+              <option value="male">Эрэгтэй</option>
+              <option value="female">Эмэгтэй</option>
+              <option value="other">Бусад</option>
+            </select>
+          </label>
+          <Field name="birthDate" label="Төрсөн огноо" type="date" defaultValue={employee.birthDate} />
+          <Field name="workPhone" label="Ажлын утас" defaultValue={employee.workPhone} />
+          <Field name="mobilePhone" label="Гар утас" defaultValue={employee.mobilePhone} />
+          <Field name="workEmail" label="И-мэйл" type="email" defaultValue={employee.workEmail} />
+          <label className={styles.field}>
+            <span>Профайл зураг солих</span>
+            <input name="profilePhoto" type="file" accept="image/jpeg,image/png,image/webp" />
+            <small>JPG, PNG, WebP зураг 5MB хүртэл.</small>
+          </label>
+        </div>
+        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+      </form>
+    );
+  }
+
+  function renderWorkEditForm() {
+    return (
+      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <div className={styles.formGrid}>
+          <Select
+            name="departmentId"
+            label="Хэлтэс / алба"
+            options={departments}
+            defaultValue={employee.departmentId ?? ""}
+            required
+          />
+          <Select name="jobId" label="Албан тушаал" options={jobs} defaultValue={employee.jobId ?? ""} required />
+          <Field name="jobTitle" label="Ажлын нэр" defaultValue={editableTextValue(employee.jobTitle)} />
+          <Select name="managerId" label="Шууд удирдлага" options={managers} defaultValue={employee.managerId ?? ""} />
+          <Field name="startDate" label="Ажилд орсон огноо" type="date" defaultValue={employee.startDate} />
+          <Field name="contractEndDate" label="Гэрээ дуусах огноо" type="date" defaultValue={employee.contractEndDate} />
+          <Field name="gradeRank" label="Зэрэг / дэв" defaultValue={employee.gradeRank} />
+        </div>
+        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+      </form>
+    );
+  }
+
   return (
     <section id="profile-info" className={styles.panel}>
       <div className={styles.employeeProfileSummary}>
@@ -522,7 +616,7 @@ export function EmployeeDetailTabs({
           <p>
             {employee.departmentName || "Хэлтэс бүртгээгүй"} · {employee.jobTitle || "Албан тушаал бүртгээгүй"}
           </p>
-          {canEdit ? (
+          {canEditCurrentTab ? (
             <div className={styles.profileEditActions}>
               <button type="button" className={styles.secondaryButton} onClick={() => setEditing((value) => !value)}>
                 <Pencil aria-hidden />
@@ -539,7 +633,7 @@ export function EmployeeDetailTabs({
             key={item}
             type="button"
             className={tab === item ? styles.activeTab : ""}
-            onClick={() => setTab(item)}
+            onClick={() => selectTab(item)}
           >
             {item}
           </button>
@@ -549,46 +643,89 @@ export function EmployeeDetailTabs({
       {message ? <p className={messageIsError ? styles.errorText : styles.successText}>{message}</p> : null}
 
       {canEdit && editing && tab === detailTabs[0] ? (
-        <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
-          <div className={styles.formGrid}>
-            <Field name="name" label="Нэр" defaultValue={employee.name} required />
-            <Field name="employeeCode" label="Ажилтны код" defaultValue={employee.employeeCode} />
-            <label className={styles.field}>
-              <span>Хүйс</span>
-              <select name="genderKey" defaultValue={employeeGenderValue(employee)}>
-                <option value="">Сонгох</option>
-                <option value="male">Эрэгтэй</option>
-                <option value="female">Эмэгтэй</option>
-                <option value="other">Бусад</option>
-              </select>
-            </label>
-            <Field name="birthDate" label="Төрсөн огноо" type="date" defaultValue={employee.birthDate} />
-            <Field name="workPhone" label="Ажлын утас" defaultValue={employee.workPhone} />
-            <Field name="mobilePhone" label="Гар утас" defaultValue={employee.mobilePhone} />
-            <Field name="workEmail" label="И-мэйл" type="email" defaultValue={employee.workEmail} />
-            <label className={styles.field}>
-              <span>Профайл зураг солих</span>
-              <input name="profilePhoto" type="file" accept="image/jpeg,image/png,image/webp" />
-              <small>JPG, PNG, WebP зураг 5MB хүртэл.</small>
-            </label>
-          </div>
-          <div className={styles.profileEditActions}>
-            <button className={styles.primaryButton} disabled={pending}>
-              {pending ? "Хадгалж байна..." : "Хадгалах"}
-            </button>
-            <button type="button" className={styles.secondaryButton} onClick={() => setEditing(false)} disabled={pending}>
-              Болих
-            </button>
-          </div>
-        </form>
+        renderProfileEditForm()
+      ) : canEdit && editing && tab === detailTabs[1] ? (
+        renderWorkEditForm()
       ) : (
-        <div className={styles.detailGrid}>
-          {(tabContent[tab] ?? []).map((item) => (
-            <Info key={item.label} label={item.label} value={item.value} />
-          ))}
-        </div>
+        <>
+          {tabActions.length ? (
+            <div className={styles.tabActionBar}>
+              {tabActions.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <Link key={action.href} href={action.href} className={styles.tabActionLink}>
+                    <Icon aria-hidden />
+                    <span>{action.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : null}
+          <div className={styles.detailGrid}>
+            {(tabContent[tab] ?? []).map((item) => (
+              <Info key={item.label} label={item.label} value={item.value} />
+            ))}
+          </div>
+        </>
       )}
     </section>
+  );
+}
+
+type DetailTabAction = {
+  label: string;
+  href: string;
+  icon: typeof FileCheck2;
+};
+
+function getEmployeeDetailTabActions(tab: string, employeeQuery: string, mode: "hr" | "department"): DetailTabAction[] {
+  if (tab === detailTabs[2]) {
+    const actions: DetailTabAction[] = [
+      { label: "Чөлөө бүртгэх", href: `/hr/sick?${employeeQuery}&type=time_off`, icon: FileCheck2 },
+      { label: "Өвчтэй бүртгэх", href: `/hr/sick?${employeeQuery}&type=sick`, icon: HeartPulse },
+    ];
+    if (mode === "hr") {
+      actions.push({ label: "Томилолт бүртгэх", href: `/hr/trips?${employeeQuery}`, icon: Plane });
+    }
+    return actions;
+  }
+
+  if (mode !== "hr") {
+    return [];
+  }
+
+  if (tab === detailTabs[3]) {
+    return [{ label: "Сахилгын бүртгэл", href: `/hr/discipline?${employeeQuery}`, icon: ShieldAlert }];
+  }
+  if (tab === detailTabs[4]) {
+    return [{ label: "Ажлууд харах", href: "/tasks", icon: Check }];
+  }
+  if (tab === detailTabs[5]) {
+    return [{ label: "Тушаал / гэрээ нэмэх", href: `/hr/orders?${employeeQuery}`, icon: ScrollText }];
+  }
+  if (tab === detailTabs[6]) {
+    return [{ label: "Хавсралт нэмэх", href: `/hr/orders?${employeeQuery}`, icon: FilePlus2 }];
+  }
+  if (tab === detailTabs[7]) {
+    return [
+      { label: "Шилжилт бүртгэх", href: `/hr/transfers?${employeeQuery}`, icon: Repeat2 },
+      { label: "Тойрох хуудас", href: `/hr/clearance?${employeeQuery}`, icon: BriefcaseBusiness },
+    ];
+  }
+
+  return [];
+}
+
+function ProfileEditButtons({ pending, onCancel }: { pending: boolean; onCancel: () => void }) {
+  return (
+    <div className={styles.profileEditActions}>
+      <button className={styles.primaryButton} disabled={pending}>
+        {pending ? "Хадгалж байна..." : "Хадгалах"}
+      </button>
+      <button type="button" className={styles.secondaryButton} onClick={onCancel} disabled={pending}>
+        Болих
+      </button>
+    </div>
   );
 }
 

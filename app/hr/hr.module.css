@@ -271,6 +271,7 @@
 
 .statIcon svg,
 .actionButton svg,
+.tabActionLink svg,
 .primaryButton svg,
 .secondaryButton svg,
 .dangerButton svg,
@@ -1050,6 +1051,34 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+}
+
+.tabActionBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tabActionLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid rgba(46, 125, 50, 0.16);
+  border-radius: 8px;
+  background: rgba(238, 247, 239, 0.92);
+  color: #1f7a35;
+  font-size: 0.84rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.tabActionLink:hover {
+  border-color: rgba(46, 125, 50, 0.34);
+  background: #e5f3e7;
 }
 
 .selectedEmployeeContext {
