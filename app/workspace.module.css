@@ -1507,91 +1507,6 @@
   line-height: 1;
 }
 
-.serviceMiniControls {
-  display: grid;
-  gap: 10px;
-}
-
-.serviceMiniFilterRow,
-.serviceMiniUnitRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.serviceMiniFilter {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 38px;
-  padding: 0 14px;
-  border: 1px solid rgba(74, 154, 93, 0.14);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.82);
-  color: #24342a;
-  font-size: 0.82rem;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.serviceMiniFilter strong,
-.serviceMiniUnit b {
-  display: inline-grid;
-  min-width: 26px;
-  height: 26px;
-  place-items: center;
-  border-radius: 999px;
-  background: rgba(74, 154, 93, 0.12);
-  color: var(--brand-900);
-  font-size: 0.78rem;
-}
-
-.serviceMiniFilterActive {
-  border-color: rgba(47, 127, 70, 0.42);
-  background: var(--brand-800);
-  color: #fff;
-}
-
-.serviceMiniFilterActive strong {
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
-}
-
-.serviceMiniUnit {
-  display: inline-grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  min-width: min(100%, 280px);
-  padding: 10px 12px;
-  border: 1px solid rgba(74, 154, 93, 0.14);
-  border-radius: 8px;
-  background: rgba(247, 252, 246, 0.82);
-  color: inherit;
-  text-decoration: none;
-}
-
-.serviceMiniUnit span {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.serviceMiniUnit strong {
-  color: #1e2b24;
-  font-size: 0.88rem;
-}
-
-.serviceMiniUnit small {
-  overflow: hidden;
-  color: #75867b;
-  font-size: 0.74rem;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .projectCard {
   display: grid;
   gap: 14px;
@@ -5292,27 +5207,12 @@
     font-size: 1.28rem;
   }
 
-  .serviceMiniMetricBody em,
-  .serviceMiniUnit small {
+  .serviceMiniMetricBody em {
     display: -webkit-box;
     overflow: hidden;
     white-space: normal;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
-  }
-
-  .serviceMiniFilterRow {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .serviceMiniFilter {
-    justify-content: space-between;
-    padding: 0 12px;
-  }
-
-  .serviceMiniUnit {
-    width: 100%;
   }
 
   .projectCard,

@@ -2038,14 +2038,6 @@ export function AutoGarbageWorkBoard({
 
   return (
     <section className={dashboardStyles.autoGarbageBoard}>
-      <div className={dashboardStyles.autoGarbageBreadcrumb}>
-        <span>Нүүр</span>
-        <ChevronRight aria-hidden />
-        <span>Хог тээвэрлэлт</span>
-        <ChevronRight aria-hidden />
-        <strong>Ажлын жагсаалт</strong>
-      </div>
-
       <div className={dashboardStyles.autoGarbageHeader}>
         <div>
           <h2>Ажлын жагсаалт</h2>
