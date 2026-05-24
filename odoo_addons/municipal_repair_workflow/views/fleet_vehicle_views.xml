@@ -12,6 +12,11 @@
                 <field name="municipal_responsible_driver_id"/>
                 <field name="municipal_loader_1_id"/>
                 <field name="municipal_loader_2_id"/>
+                <field name="municipal_capacity"/>
+                <field name="municipal_import_date"/>
+                <field name="municipal_color"/>
+                <field name="municipal_manufactured_date"/>
+                <field name="municipal_seat_count"/>
                 <field name="x_municipal_operational_status"/>
                 <field name="municipal_insurance_date_end"/>
                 <field name="municipal_next_inspection_date"/>
@@ -27,7 +32,7 @@
             <form string="Машин техникийн мэдээлэл">
                 <header>
                     <button name="action_send_deadline_reminder_activity" string="Сануулга үүсгэх" type="object"/>
-                    <field name="x_municipal_operational_status" widget="statusbar" statusbar_visible="available,assigned,in_repair,broken,retired"/>
+                    <field name="x_municipal_operational_status" widget="statusbar" statusbar_visible="available,in_repair,broken,retired,inactive"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -48,6 +53,8 @@
                                     <field name="category_id"/>
                                     <field name="model_id"/>
                                     <field name="vin_sn"/>
+                                    <field name="municipal_capacity"/>
+                                    <field name="municipal_color"/>
                                 </group>
                                 <group>
                                     <field name="municipal_department_id"/>
@@ -57,6 +64,9 @@
                                     <field name="driver_id"/>
                                     <field name="odometer"/>
                                     <field name="fuel_type"/>
+                                    <field name="municipal_import_date"/>
+                                    <field name="municipal_manufactured_date"/>
+                                    <field name="municipal_seat_count"/>
                                     <field name="state_id"/>
                                 </group>
                             </group>

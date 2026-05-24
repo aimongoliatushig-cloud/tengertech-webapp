@@ -161,7 +161,7 @@ export default async function HrDashboardPage() {
   return (
     <>
       <WorkspaceHeader
-        title={mode === "hr" ? "Хүний нөөцийн dashboard" : "Миний хэлтсийн хүний нөөц"}
+        title={mode === "hr" ? "Хүний нөөцийн хянах самбар" : "Миний хэлтсийн хүний нөөц"}
         subtitle={mode === "hr" ? "Бүх хэлтсийн ажилтан, чөлөө / өвчтэй хүсэлт болон төлөвийг хянана" : "Өөрийн хэлтсийн ажилтны идэвхтэй, чөлөөтэй, өвчтэй төлөв болон илгээсэн хүсэлтүүд"}
         userName={session.name}
         roleLabel={getSessionRoleLabel(session)}

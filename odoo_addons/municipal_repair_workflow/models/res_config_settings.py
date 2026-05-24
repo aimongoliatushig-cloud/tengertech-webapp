@@ -41,13 +41,17 @@ class ResConfigSettings(models.TransientModel):
         string="WRS таталтын token",
         config_parameter="municipal_repair_workflow.wrs_sync_token",
     )
+    gaiham_sync_token = fields.Char(
+        string="Гайхам таталтын token",
+        config_parameter="municipal_repair_workflow.gaiham_sync_token",
+    )
     garbage_fuel_sync_enabled = fields.Boolean(
         string="Шатахууны мэдээлэл автоматаар татах",
         config_parameter="municipal_repair_workflow.garbage_fuel_sync_enabled",
     )
     garbage_fuel_sync_time = fields.Char(
         string="Шатахууны мэдээлэл татах цаг",
-        default="00:15",
+        default="12:00",
         config_parameter="municipal_repair_workflow.garbage_fuel_sync_time",
     )
     garbage_fuel_api_url = fields.Char(

@@ -27,6 +27,11 @@ class FleetVehicle(models.Model):
         string="Ачигч 2",
         tracking=True,
     )
+    municipal_capacity = fields.Char(string="Даац", tracking=True)
+    municipal_import_date = fields.Date(string="Импортлосон огноо", tracking=True)
+    municipal_color = fields.Char(string="Өнгө", tracking=True)
+    municipal_manufactured_date = fields.Date(string="Үйлдвэрлэсэн огноо", tracking=True)
+    municipal_seat_count = fields.Integer(string="Суудлын тоо", tracking=True)
     municipal_driver_history_ids = fields.One2many(
         "municipal.vehicle.driver.history",
         "vehicle_id",
@@ -35,7 +40,6 @@ class FleetVehicle(models.Model):
     x_municipal_operational_status = fields.Selection(
         [
             ("available", "Ашиглах боломжтой"),
-            ("assigned", "Оноогдсон"),
             ("in_repair", "Засварт байгаа"),
             ("broken", "Эвдэрсэн"),
             ("retired", "Ашиглалтаас гарсан"),

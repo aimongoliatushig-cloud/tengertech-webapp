@@ -63,6 +63,14 @@ type FleetVehicleBoardItem = {
   odometerLabel: string;
   fuelTypeKey: string;
   fuelTypeLabel: string;
+  capacity: string;
+  importedDate: string;
+  importedDateValue: string;
+  color: string;
+  manufacturedDate: string;
+  manufacturedDateValue: string;
+  seatCountValue: string;
+  seatCountLabel: string;
   fleetDriverName: string;
   responsibleDriverId: number | null;
   responsibleDriverName: string;
@@ -834,7 +842,6 @@ function operationTypeLabel(value: string) {
 
 const vehicleStatusOptions = [
   { value: "available", label: "Ажиллаж байгаа" },
-  { value: "assigned", label: "Оноогдсон" },
   { value: "in_repair", label: "Засвартай" },
   { value: "broken", label: "Эвдэрсэн" },
   { value: "retired", label: "Ашиглалтаас гарсан" },
@@ -1300,6 +1307,11 @@ function NewVehicleForm({
         </label>
 
         <label className={styles.vehicleFormField}>
+          <span>Шинэ марк / модель</span>
+          <input name="new_model_name" placeholder="Жишээ: Kia Bongo" />
+        </label>
+
+        <label className={styles.vehicleFormField}>
           <span>Төрөл</span>
           <select name={vehicleTypeOptions.length ? "municipal_vehicle_type_id" : "category_id"} defaultValue="">
             <option value="">Сонгоогүй</option>
@@ -1344,6 +1356,31 @@ function NewVehicleForm({
               </option>
             ))}
           </select>
+        </label>
+
+        <label className={styles.vehicleFormField}>
+          <span>Даац</span>
+          <input name="municipal_capacity" placeholder="Жишээ: 8 тн" />
+        </label>
+
+        <label className={styles.vehicleFormField}>
+          <span>Импортлосон огноо</span>
+          <input name="municipal_import_date" type="date" />
+        </label>
+
+        <label className={styles.vehicleFormField}>
+          <span>Өнгө</span>
+          <input name="municipal_color" placeholder="Жишээ: цагаан" />
+        </label>
+
+        <label className={styles.vehicleFormField}>
+          <span>Үйлдвэрлэсэн огноо</span>
+          <input name="municipal_manufactured_date" type="date" />
+        </label>
+
+        <label className={styles.vehicleFormField}>
+          <span>Суудлын тоо</span>
+          <input name="municipal_seat_count" type="number" min="0" step="1" placeholder="0" />
         </label>
 
         <VehicleUploadFields />
@@ -1603,6 +1640,7 @@ function VehicleDetailModal({
                   <DetailItem label="Туулсан зам" value={vehicle.odometerLabel} />
                   <DetailItem label="Хэлтэс" value={vehicle.departmentName} />
                   <DetailItem label="Түлшний төрөл" value={vehicle.fuelTypeLabel} />
+                  <DetailItem label="Өнгө" value={vehicle.color} />
                 </div>
               </VehicleInfoPanel>
 
@@ -1619,6 +1657,10 @@ function VehicleDetailModal({
               <VehicleInfoPanel title="Техникийн мэдээлэл" icon={Wrench}>
                 <div className={styles.vehicleDetailGrid}>
                   <DetailItem label="Туулсан зам" value={vehicle.odometerLabel} />
+                  <DetailItem label="Даац" value={vehicle.capacity} />
+                  <DetailItem label="Импортлосон огноо" value={vehicle.importedDate} />
+                  <DetailItem label="Үйлдвэрлэсэн огноо" value={vehicle.manufacturedDate} />
+                  <DetailItem label="Суудлын тоо" value={vehicle.seatCountLabel} />
                   <DetailItem label="Төрөл" value={typeSummary} />
                   <DetailItem label="Үйл ажиллагаа" value={vehicle.isOperational ? "Ашиглаж байгаа" : "Идэвхгүй"} />
                   <DetailItem label="Засварын төлөв" value={vehicle.latestRepairState} />
@@ -1779,6 +1821,11 @@ function VehicleDetailModal({
           </label>
 
           <label className={styles.vehicleFormField}>
+            <span>Шинэ марк / модель</span>
+            <input name="new_model_name" placeholder="Жишээ: Kia Bongo" />
+          </label>
+
+          <label className={styles.vehicleFormField}>
             <span>Төрөл</span>
             <select
               name={vehicleTypeOptions.length ? "municipal_vehicle_type_id" : "category_id"}
@@ -1837,6 +1884,46 @@ function VehicleDetailModal({
               min="0"
               step="1"
               defaultValue={vehicle.odometerValue}
+              placeholder="0"
+            />
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Даац</span>
+            <input name="municipal_capacity" defaultValue={vehicle.capacity} placeholder="Жишээ: 8 тн" />
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Импортлосон огноо</span>
+            <input
+              name="municipal_import_date"
+              type="date"
+              defaultValue={vehicle.importedDateValue}
+            />
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Өнгө</span>
+            <input name="municipal_color" defaultValue={vehicle.color} placeholder="Жишээ: цагаан" />
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Үйлдвэрлэсэн огноо</span>
+            <input
+              name="municipal_manufactured_date"
+              type="date"
+              defaultValue={vehicle.manufacturedDateValue}
+            />
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Суудлын тоо</span>
+            <input
+              name="municipal_seat_count"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={vehicle.seatCountValue}
               placeholder="0"
             />
           </label>

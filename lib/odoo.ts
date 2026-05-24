@@ -695,6 +695,11 @@ type OdooFleetVehicleRecord = {
   municipal_responsible_driver_id?: OdooRelation;
   municipal_loader_1_id?: OdooRelation;
   municipal_loader_2_id?: OdooRelation;
+  municipal_capacity?: string | false;
+  municipal_import_date?: string | false;
+  municipal_color?: string | false;
+  municipal_manufactured_date?: string | false;
+  municipal_seat_count?: number | false;
   x_municipal_operational_status?: string | false;
   vin_sn?: string | false;
   odometer?: number | false;
@@ -935,6 +940,14 @@ export type FleetVehicleBoardItem = {
   odometerLabel: string;
   fuelTypeKey: string;
   fuelTypeLabel: string;
+  capacity: string;
+  importedDate: string;
+  importedDateValue: string;
+  color: string;
+  manufacturedDate: string;
+  manufacturedDateValue: string;
+  seatCountValue: string;
+  seatCountLabel: string;
   fleetDriverName: string;
   responsibleDriverId: number | null;
   responsibleDriverName: string;
@@ -1927,6 +1940,11 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
     "municipal_responsible_driver_id",
     "municipal_loader_1_id",
     "municipal_loader_2_id",
+    "municipal_capacity",
+    "municipal_import_date",
+    "municipal_color",
+    "municipal_manufactured_date",
+    "municipal_seat_count",
     "x_municipal_operational_status",
     "vin_sn",
     "odometer",
@@ -3938,7 +3956,7 @@ async function loadCrewAssignmentsByVehicle(uid: number, connection: OdooConnect
 
 const FLEET_OPERATIONAL_STATUS_LABELS: Record<string, string> = {
   available: "Ажиллаж байгаа",
-  assigned: "Оноогдсон",
+  assigned: "Ажиллаж байгаа",
   in_repair: "Засвартай",
   broken: "Эвдэрсэн",
   retired: "Ашиглалтаас гарсан",
@@ -4437,6 +4455,10 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
       const operationalStatusLabel = FLEET_OPERATIONAL_STATUS_LABELS[operationalStatusKey] || "";
       const rawDepartmentName = relationName(vehicle.municipal_department_id ?? false, "");
       const firstAttachmentIds = (ids?: number[]) => (ids?.[0] ? [ids[0]] : []);
+      const seatCountValue =
+        typeof vehicle.municipal_seat_count === "number" && vehicle.municipal_seat_count > 0
+          ? String(Math.trunc(vehicle.municipal_seat_count))
+          : "";
       const isRepair =
         Boolean(vehicle.vehicle_downtime_open) ||
         operationalStatusKey === "in_repair" ||
@@ -4479,6 +4501,14 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
             : "",
         fuelTypeKey: vehicle.fuel_type || "",
         fuelTypeLabel: resolveFleetFuelTypeLabel(vehicle.fuel_type || ""),
+        capacity: vehicle.municipal_capacity || "",
+        importedDate: formatOptionalCompactDate(vehicle.municipal_import_date),
+        importedDateValue: vehicle.municipal_import_date || "",
+        color: vehicle.municipal_color || "",
+        manufacturedDate: formatOptionalCompactDate(vehicle.municipal_manufactured_date),
+        manufacturedDateValue: vehicle.municipal_manufactured_date || "",
+        seatCountValue,
+        seatCountLabel: seatCountValue,
         fleetDriverName: relationName(vehicle.driver_id ?? false, ""),
         responsibleDriverId: relationId(vehicle.municipal_responsible_driver_id ?? false),
         responsibleDriverName: relationName(vehicle.municipal_responsible_driver_id ?? false, ""),

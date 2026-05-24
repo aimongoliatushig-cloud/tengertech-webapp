@@ -140,22 +140,25 @@ class MunicipalGarbageSyncLog(models.Model):
 
     @api.model
     def _config_bool(self, key):
-        default_value = "True" if key == "municipal_repair_workflow.garbage_weight_sync_enabled" else "False"
+        default_value = "True" if key in (
+            "municipal_repair_workflow.garbage_weight_sync_enabled",
+            "municipal_repair_workflow.garbage_fuel_sync_enabled",
+        ) else "False"
         return self.env["ir.config_parameter"].sudo().get_param(key, default_value) in ("1", "True", "true")
 
     @api.model
     def _configured_time_due(self, sync_type):
         params = self.env["ir.config_parameter"].sudo()
         time_key = "municipal_repair_workflow.garbage_%s_sync_time" % sync_type
-        default_time = "00:00" if sync_type == "weight" else "00:15"
+        default_time = "00:00" if sync_type == "weight" else "12:00"
         legacy_default_time = "20:00" if sync_type == "weight" else "20:30"
         configured_time = params.get_param(time_key, default_time)
-        if configured_time == legacy_default_time:
+        if configured_time == legacy_default_time or (sync_type == "fuel" and configured_time == "00:15"):
             configured_time = default_time
         try:
             hour, minute = [int(part) for part in configured_time.split(":", 1)]
         except Exception:
-            hour, minute = (0, 0) if sync_type == "weight" else (0, 15)
+            hour, minute = (0, 0) if sync_type == "weight" else (12, 0)
 
         now = self._local_now()
         configured_minutes = hour * 60 + minute
@@ -237,6 +240,15 @@ class MunicipalGarbageSyncLog(models.Model):
         )
 
     @api.model
+    def _app_sync_token(self, sync_type):
+        if sync_type == "fuel":
+            return self._config_or_env(
+                "municipal_repair_workflow.gaiham_sync_token",
+                "GAIHAM_SYNC_TOKEN",
+            ) or self._wrs_sync_token()
+        return self._wrs_sync_token()
+
+    @api.model
     def _fetch_external_reports(self, sync_type):
         url_key = "GARBAGE_WEIGHT_API_URL" if sync_type == "weight" else "GARBAGE_FUEL_API_URL"
         url = self._config_or_env(
@@ -247,9 +259,10 @@ class MunicipalGarbageSyncLog(models.Model):
         )
         username = os.getenv("GARBAGE_API_USERNAME")
         password = os.getenv("GARBAGE_API_PASSWORD")
-        delegated_wrs_import = False
+        delegated_app_import = False
+        delegated_source_label = "WRS" if sync_type == "weight" else "Gaiham"
 
-        if sync_type == "weight" and not url:
+        if sync_type in ("weight", "fuel") and not url:
             app_base_url = (
                 os.getenv("APP_BASE_URL")
                 or os.getenv("NEXT_PUBLIC_APP_URL")
@@ -260,16 +273,17 @@ class MunicipalGarbageSyncLog(models.Model):
                 )
             )
             if app_base_url:
-                url = "%s/api/wrs-report/import" % app_base_url.rstrip("/")
-                delegated_wrs_import = True
+                endpoint = "/api/wrs-report/import" if sync_type == "weight" else "/api/gaiham-fuel/import"
+                url = "%s%s" % (app_base_url.rstrip("/"), endpoint)
+                delegated_app_import = True
 
         if not url:
             return self._create_failure(sync_type, "%s тохируулаагүй байна." % url_key)
-        wrs_sync_token = self._wrs_sync_token()
-        if delegated_wrs_import and not wrs_sync_token:
+        app_sync_token = self._app_sync_token(sync_type)
+        if delegated_app_import and not app_sync_token:
             return self._create_failure(
                 sync_type,
-                "WRS_SYNC_TOKEN эсвэл municipal_repair_workflow.wrs_sync_token тохируулаагүй байна.",
+                "%s sync token тохируулаагүй байна." % delegated_source_label,
             )
 
         pending_dates = self._pending_report_dates(sync_type)
@@ -281,23 +295,23 @@ class MunicipalGarbageSyncLog(models.Model):
             last_imported_date = ""
             for target_date in pending_dates:
                 headers = {}
-                if delegated_wrs_import:
-                    headers["Authorization"] = "Bearer %s" % wrs_sync_token
+                if delegated_app_import:
+                    headers["Authorization"] = "Bearer %s" % app_sync_token
                 response = requests.get(
                     url,
-                    auth=(username, password) if (username or password) and not delegated_wrs_import else None,
+                    auth=(username, password) if (username or password) and not delegated_app_import else None,
                     params={"date": target_date},
                     headers=headers,
-                    timeout=self._external_request_timeout(delegated_wrs_import),
+                    timeout=self._external_request_timeout(delegated_app_import),
                 )
                 response.raise_for_status()
                 payload = response.json()
-                if delegated_wrs_import and isinstance(payload, dict) and payload.get("ok"):
+                if delegated_app_import and isinstance(payload, dict) and payload.get("ok"):
                     total_rows = int(payload.get("totalRows") or 0)
                     count = int(payload.get("imported") or 0)
                     if total_rows <= 0:
                         raise ValueError(
-                            "WRS жингийн тайлан %s өдөр 0 мөр буцаалаа. Дараагийн cron дахин татна." % target_date
+                            "%s тайлан %s өдөр 0 мөр буцаалаа. Дараагийн cron дахин татна." % (delegated_source_label, target_date)
                         )
                 else:
                     rows = self._payload_rows(payload)

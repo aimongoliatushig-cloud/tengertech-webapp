@@ -81,6 +81,11 @@ function optionalOdooNumber(value: string, label: string) {
   return numericValue;
 }
 
+function optionalOdooInteger(value: string, label: string) {
+  const numericValue = optionalOdooNumber(value, label);
+  return numericValue === false ? false : Math.trunc(numericValue);
+}
+
 function pickSupportedValues(
   candidateValues: Record<string, unknown>,
   fields: OdooFieldMap,
@@ -226,6 +231,80 @@ async function findDefaultVehicleModel() {
   ).catch(() => []);
 
   return models[0]?.id ?? false;
+}
+
+async function findOrCreateVehicleModelBrand(name: string) {
+  const normalizedName = name.trim();
+  if (!normalizedName) {
+    return false;
+  }
+
+  const brands = await executeOdooKw<Array<{ id: number }>>(
+    "fleet.vehicle.model.brand",
+    "search_read",
+    [[["name", "=", normalizedName]]],
+    { fields: ["id"], limit: 1 },
+  ).catch(() => []);
+  if (brands[0]?.id) {
+    return brands[0].id;
+  }
+
+  const fields = await executeOdooKw<OdooFieldMap>(
+    "fleet.vehicle.model.brand",
+    "fields_get",
+    [],
+    { attributes: ["string", "type", "required", "readonly"] },
+  ).catch(() => ({}));
+  const values = pickSupportedValues({ name: normalizedName }, fields);
+  if (!Object.keys(values).length) {
+    return false;
+  }
+
+  return executeOdooKw<number>("fleet.vehicle.model.brand", "create", [values], {}).catch(() => false);
+}
+
+async function findOrCreateVehicleModel(name: string) {
+  const normalizedName = name.trim();
+  if (!normalizedName) {
+    return false;
+  }
+
+  const models = await executeOdooKw<Array<{ id: number }>>(
+    "fleet.vehicle.model",
+    "search_read",
+    [[["name", "=", normalizedName]]],
+    { fields: ["id"], limit: 1 },
+  ).catch(() => []);
+  if (models[0]?.id) {
+    return models[0].id;
+  }
+
+  const fields = await executeOdooKw<OdooFieldMap>(
+    "fleet.vehicle.model",
+    "fields_get",
+    [],
+    { attributes: ["string", "type", "required", "readonly"] },
+  );
+  const brandId =
+    fields.brand_id && !fields.brand_id.readonly
+      ? await findOrCreateVehicleModelBrand("Бусад")
+      : false;
+  const values = pickSupportedValues(
+    {
+      name: normalizedName,
+      brand_id: brandId,
+    },
+    fields,
+  );
+
+  if (!values.name) {
+    throw new Error("Машины марк / модель нэмэх боломжтой нэрийн талбар олдсонгүй.");
+  }
+  if (fields.brand_id?.required && !values.brand_id) {
+    throw new Error("Машины марк / модель нэмэхэд шаардлагатай brand талбар үүссэнгүй.");
+  }
+
+  return executeOdooKw<number>("fleet.vehicle.model", "create", [values], {});
 }
 
 async function findFleetVehicleStateId(candidateNames: string[], fallbackName: string) {
@@ -466,6 +545,11 @@ export async function updateFleetVehicleAction(formData: FormData) {
           "municipal_responsible_driver_id",
           "municipal_loader_1_id",
           "municipal_loader_2_id",
+          "municipal_capacity",
+          "municipal_import_date",
+          "municipal_color",
+          "municipal_manufactured_date",
+          "municipal_seat_count",
           "driver_employee_id",
           "mfo_driver_employee_id",
           "loader_employee_id",
@@ -547,8 +631,10 @@ export async function updateFleetVehicleAction(formData: FormData) {
     if ("license_plate" in editableFields && formData.has("license_plate")) {
       values.license_plate = optionalOdooValue(getString(formData, "license_plate"));
     }
-    if ("model_id" in editableFields && formData.has("model_id")) {
-      values.model_id = optionalOdooId(getString(formData, "model_id"));
+    if ("model_id" in editableFields && (formData.has("model_id") || formData.has("new_model_name"))) {
+      values.model_id =
+        await findOrCreateVehicleModel(getString(formData, "new_model_name")) ||
+        optionalOdooId(getString(formData, "model_id"));
     }
     if ("category_id" in editableFields && formData.has("category_id")) {
       values.category_id = optionalOdooId(getString(formData, "category_id"));
@@ -583,6 +669,29 @@ export async function updateFleetVehicleAction(formData: FormData) {
     }
     if ("odometer" in editableFields && formData.has("odometer")) {
       values.odometer = optionalOdooNumber(getString(formData, "odometer"), "Туулсан зам");
+    }
+    if ("municipal_capacity" in editableFields && formData.has("municipal_capacity")) {
+      values.municipal_capacity = optionalOdooValue(getString(formData, "municipal_capacity"));
+    }
+    if ("municipal_import_date" in editableFields && formData.has("municipal_import_date")) {
+      values.municipal_import_date = optionalOdooDate(getString(formData, "municipal_import_date"));
+    }
+    if ("municipal_color" in editableFields && formData.has("municipal_color")) {
+      values.municipal_color = optionalOdooValue(getString(formData, "municipal_color"));
+    }
+    if (
+      "municipal_manufactured_date" in editableFields &&
+      formData.has("municipal_manufactured_date")
+    ) {
+      values.municipal_manufactured_date = optionalOdooDate(
+        getString(formData, "municipal_manufactured_date"),
+      );
+    }
+    if ("municipal_seat_count" in editableFields && formData.has("municipal_seat_count")) {
+      values.municipal_seat_count = optionalOdooInteger(
+        getString(formData, "municipal_seat_count"),
+        "Суудлын тоо",
+      );
     }
     if ("fuel_type" in editableFields && formData.has("fuel_type")) {
       values.fuel_type = optionalOdooValue(getString(formData, "fuel_type"));
@@ -767,6 +876,7 @@ export async function createFleetVehicleAction(formData: FormData) {
       { attributes: ["string", "type", "required", "readonly"] },
     );
     const modelId =
+      await findOrCreateVehicleModel(getString(formData, "new_model_name")) ||
       optionalOdooId(getString(formData, "model_id")) ||
       (fields.model_id?.required ? await findDefaultVehicleModel() : false);
     const values = pickSupportedValues(
@@ -778,6 +888,11 @@ export async function createFleetVehicleAction(formData: FormData) {
         category_id: optionalOdooId(getString(formData, "category_id")),
         municipal_vehicle_type_id: optionalOdooId(getString(formData, "municipal_vehicle_type_id")),
         municipal_department_id: optionalOdooId(getString(formData, "municipal_department_id")),
+        municipal_capacity: optionalOdooValue(getString(formData, "municipal_capacity")),
+        municipal_import_date: optionalOdooDate(getString(formData, "municipal_import_date")),
+        municipal_color: optionalOdooValue(getString(formData, "municipal_color")),
+        municipal_manufactured_date: optionalOdooDate(getString(formData, "municipal_manufactured_date")),
+        municipal_seat_count: optionalOdooInteger(getString(formData, "municipal_seat_count"), "Суудлын тоо"),
         x_municipal_operational_status:
           optionalOdooValue(getString(formData, "x_municipal_operational_status")) || "available",
         fuel_type: optionalOdooValue(getString(formData, "fuel_type")),
