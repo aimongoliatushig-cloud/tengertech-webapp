@@ -64,6 +64,8 @@ type ProjectsWorkspaceHeaderProps = ComponentProps<typeof WorkspaceHeader>;
 const AUTO_BASE_GROUP_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
 const AUTO_BASE_UNIT_NAME = "Авто бааз";
 const GREEN_SERVICE_GROUP_NAME = "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
+const IMPROVEMENT_GROUP_NAME = "Тохижилтын хэлтэс";
+const IMPROVEMENT_UNIT_NAME = "Тохижилт үйлчилгээ";
 const GREEN_SERVICE_UNITS = [
   {
     label: "Ногоон байгууламж",
@@ -248,6 +250,23 @@ function matchesGroupOrUnitScope(
 
   return getAvailableUnits(group).some((unit) =>
     matchesUnitScope(unit, departmentName, projectName, extraSearchText),
+  );
+}
+
+function isGreenOrImprovementScope(groupName?: string | null, unitName?: string | null) {
+  const normalizedGroup = normalizeOrganizationUnitName(groupName);
+  const normalizedRawGroup = normalizeUnitText(groupName);
+  const normalizedUnit = normalizeUnitText(unitName);
+  const normalizedGreenGroup = normalizeUnitText(GREEN_SERVICE_GROUP_NAME);
+  const normalizedImprovementGroup = normalizeUnitText(IMPROVEMENT_GROUP_NAME);
+
+  return (
+    normalizedRawGroup === normalizedGreenGroup ||
+    normalizedRawGroup === normalizedImprovementGroup ||
+    normalizedGroup === GREEN_SERVICE_GROUP_NAME ||
+    normalizedGroup === IMPROVEMENT_GROUP_NAME ||
+    normalizedUnit === normalizeUnitText(GREEN_SERVICE_UNITS[0].label) ||
+    normalizedUnit === normalizeUnitText(IMPROVEMENT_UNIT_NAME)
   );
 }
 
@@ -890,7 +909,54 @@ async function ProjectsPageContent({
       href: buildScopedListHref("all"),
     },
   ] as const;
-  void summaryCards;
+  const showServiceMiniDashboard =
+    !showAutoBaseFleet &&
+    !showAutoBaseCombined &&
+    !masterMode &&
+    !isOverdueFilter &&
+    isGreenOrImprovementScope(selectedGroup?.name, selectedUnit);
+  const serviceMiniSummaryCards = [
+    ...summaryCards.slice(0, 5),
+    {
+      label: "Дундаж явц",
+      value: `${averageProjectCompletion}%`,
+      delta: `${averageTaskProgress}%`,
+      note: "Ажил / даалгаврын дундаж явц",
+      icon: "%",
+      tone: styles.summaryCardPrimary,
+      href: buildScopedListHref("all"),
+    },
+  ] as const;
+  const serviceMiniFilterCards = PROJECT_FILTERS.map((item) => ({
+    ...item,
+    count: projectCounts[item.key],
+    href: buildScopedListHref(item.key),
+  }));
+  const serviceMiniUnitCards =
+    selectedGroup?.name === GREEN_SERVICE_GROUP_NAME && !selectedUnit
+      ? GREEN_SERVICE_UNITS.map((unit) => ({
+          label: unit.label,
+          note: unit.note,
+          href: `/projects?department=${encodeURIComponent(GREEN_SERVICE_GROUP_NAME)}&unit=${encodeURIComponent(unit.label)}`,
+          count: scopedProjects.filter((project) =>
+            matchesUnitScope(
+              unit.label,
+              project.departmentName,
+              project.name,
+              `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`,
+            ),
+          ).length,
+        }))
+      : selectedGroup?.name === IMPROVEMENT_GROUP_NAME && !selectedUnit
+        ? [
+            {
+              label: IMPROVEMENT_UNIT_NAME,
+              note: "Тохижилт, засвар, нийтийн эзэмшлийн объектын ажил",
+              href: `/projects?department=${encodeURIComponent(IMPROVEMENT_GROUP_NAME)}&unit=${encodeURIComponent(IMPROVEMENT_UNIT_NAME)}`,
+              count: scopedProjects.length,
+            },
+          ]
+        : [];
 
   const filterTitle =
     activeFilter === "progress"
@@ -1195,6 +1261,54 @@ async function ProjectsPageContent({
                   </div>
                 ) : null}
               </div>
+
+              {showServiceMiniDashboard ? (
+                <div className={styles.serviceMiniDashboard}>
+                  <div className={styles.serviceMiniMetricGrid}>
+                    {serviceMiniSummaryCards.map((item) => (
+                      <Link key={item.label} href={item.href} className={`${styles.serviceMiniMetric} ${item.tone}`}>
+                        <span className={styles.serviceMiniMetricIcon}>{item.icon}</span>
+                        <span className={styles.serviceMiniMetricBody}>
+                          <small>{item.label}</small>
+                          <strong>{item.value}</strong>
+                          <em>{item.note}</em>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+
+                  <div className={styles.serviceMiniControls}>
+                    <div className={styles.serviceMiniFilterRow} aria-label="Ажлын төлөв">
+                      {serviceMiniFilterCards.map((item) => (
+                        <Link
+                          key={item.key}
+                          href={item.href}
+                          className={`${styles.serviceMiniFilter} ${
+                            activeFilter === item.key ? styles.serviceMiniFilterActive : ""
+                          }`}
+                        >
+                          <span>{item.label}</span>
+                          <strong>{item.count}</strong>
+                        </Link>
+                      ))}
+                    </div>
+
+                    {serviceMiniUnitCards.length ? (
+                      <div className={styles.serviceMiniUnitRow} aria-label="Доторх нэгж">
+                        {serviceMiniUnitCards.map((item) => (
+                          <Link key={item.label} href={item.href} className={styles.serviceMiniUnit}>
+                            <span>
+                              <strong>{item.label}</strong>
+                              <small>{item.note}</small>
+                            </span>
+                            <b>{item.count}</b>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
 
               {isOverdueFilter ? (
                 <div className={styles.unitProjectSections}>

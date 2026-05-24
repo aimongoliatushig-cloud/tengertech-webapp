@@ -2236,6 +2236,67 @@ function relationId(relation: OdooRelation) {
   return Array.isArray(relation) ? relation[0] : null;
 }
 
+function normalizeFleetClassificationText(value?: string | false | null) {
+  return String(value || "").trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
+}
+
+function isHiddenFleetVehicleTypeName(value?: string | false | null) {
+  return normalizeFleetClassificationText(value).startsWith("smoke type");
+}
+
+function isHiddenFleetSmokeText(value?: string | false | null) {
+  return normalizeFleetClassificationText(value).includes("smoke");
+}
+
+function isHiddenFleetTestText(value?: string | false | null) {
+  const normalized = normalizeFleetClassificationText(value);
+  return (
+    normalized.includes("шалгах төрөл") ||
+    normalized.includes("шалгах марк") ||
+    normalized.includes("туршилтын төрөл") ||
+    normalized.startsWith("chk")
+  );
+}
+
+function getFleetVehicleTypeDisplayName(value?: string | false | null) {
+  const name = String(value || "").trim();
+  const normalized = normalizeFleetClassificationText(name);
+
+  if (normalized === "хог ачилт" || normalized === "хог ачит") {
+    return "Хогны машин";
+  }
+
+  return name;
+}
+
+function normalizeFleetVehicleTypeOptions(options: FleetVehicleSelectOption[]) {
+  const seen = new Set<string>();
+  const normalizedOptions: FleetVehicleSelectOption[] = [];
+
+  for (const option of options) {
+    if (isHiddenFleetVehicleTypeName(option.name)) {
+      continue;
+    }
+    if (isHiddenFleetTestText(option.name)) {
+      continue;
+    }
+
+    const name = getFleetVehicleTypeDisplayName(option.name);
+    const key = normalizeFleetClassificationText(name);
+    if (!name || seen.has(key)) {
+      continue;
+    }
+
+    normalizedOptions.push({
+      ...option,
+      name,
+    });
+    seen.add(key);
+  }
+
+  return normalizedOptions;
+}
+
 async function loadFleetVehicleDepartmentOptions(
   uid: number,
   connection: OdooConnection,
@@ -3962,6 +4023,7 @@ const FLEET_OPERATIONAL_STATUS_LABELS: Record<string, string> = {
   retired: "Ашиглалтаас гарсан",
   inactive: "Идэвхгүй",
 };
+const FLEET_NON_OPERATIONAL_STATUS_KEYS = new Set(["inactive", "retired", "broken", "in_repair"]);
 
 const FLEET_IMPORT_STATE_LABELS: Record<string, string> = {
   success: "Амжилттай",
@@ -4421,8 +4483,8 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
     loaderOptions,
     departmentOptions,
     modelOptions,
-    vehicleTypeOptions,
-    categoryOptions,
+    rawVehicleTypeOptions,
+    rawCategoryOptions,
   ] = await Promise.all([
     loadCrewAssignmentsByVehicle(uid, connection),
     loadDriverHistoryByVehicle(uid, vehicleIds, connection),
@@ -4440,6 +4502,8 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
 
   const todayKey = getTodayDateKey();
   const currentMonthKey = todayKey.slice(0, 7);
+  const vehicleTypeOptions = normalizeFleetVehicleTypeOptions(rawVehicleTypeOptions);
+  const categoryOptions = normalizeFleetVehicleTypeOptions(rawCategoryOptions);
 
   const allVehicles = vehicles
     .map((vehicle) => {
@@ -4454,6 +4518,11 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
       const operationalStatusKey = vehicle.x_municipal_operational_status || "";
       const operationalStatusLabel = FLEET_OPERATIONAL_STATUS_LABELS[operationalStatusKey] || "";
       const rawDepartmentName = relationName(vehicle.municipal_department_id ?? false, "");
+      const rawCategoryName = relationName(vehicle.category_id ?? false, "");
+      const rawVehicleTypeName = relationName(vehicle.municipal_vehicle_type_id ?? false, "");
+      const displayCategoryName = getFleetVehicleTypeDisplayName(rawCategoryName);
+      const displayVehicleTypeName =
+        getFleetVehicleTypeDisplayName(rawVehicleTypeName) || displayCategoryName;
       const firstAttachmentIds = (ids?: number[]) => (ids?.[0] ? [ids[0]] : []);
       const seatCountValue =
         typeof vehicle.municipal_seat_count === "number" && vehicle.municipal_seat_count > 0
@@ -4466,8 +4535,10 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
         isRepairStatusLabel(stateLabel) ||
         isRepairStatusLabel(latestRepairState);
       const isArchived = vehicle.active === false;
+      const isExplicitlyNonOperational = FLEET_NON_OPERATIONAL_STATUS_KEYS.has(operationalStatusKey);
       const isOperational =
         !isArchived &&
+        !isExplicitlyNonOperational &&
         (vehicle.mfo_active_for_ops !== false ||
           operationalStatusKey === "available" ||
           operationalStatusKey === "assigned");
@@ -4483,11 +4554,9 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
         modelId: relationId(vehicle.model_id ?? false),
         modelName: relationName(vehicle.model_id ?? false, ""),
         categoryId: relationId(vehicle.category_id ?? false),
-        categoryName: relationName(vehicle.category_id ?? false, ""),
+        categoryName: displayCategoryName,
         vehicleTypeId: relationId(vehicle.municipal_vehicle_type_id ?? false),
-        vehicleTypeName:
-          relationName(vehicle.municipal_vehicle_type_id ?? false, "") ||
-          relationName(vehicle.category_id ?? false, ""),
+        vehicleTypeName: displayVehicleTypeName,
         departmentId: relationId(vehicle.municipal_department_id ?? false),
         departmentName: normalizeOrganizationUnitName(rawDepartmentName) || rawDepartmentName,
         vin: vehicle.vin_sn || "",
@@ -4600,7 +4669,19 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
         crewAssignments: crewAssignmentsByVehicle.get(vehicle.id) ?? [],
       } satisfies FleetVehicleBoardItem;
     })
-    .filter((vehicle) => !vehicle.isArchived)
+    .filter(
+      (vehicle) =>
+        !isHiddenFleetVehicleTypeName(vehicle.categoryName) &&
+        !isHiddenFleetVehicleTypeName(vehicle.vehicleTypeName) &&
+        !isHiddenFleetSmokeText(vehicle.name) &&
+        !isHiddenFleetSmokeText(vehicle.plate) &&
+        !isHiddenFleetSmokeText(vehicle.modelName) &&
+        !isHiddenFleetTestText(vehicle.name) &&
+        !isHiddenFleetTestText(vehicle.plate) &&
+        !isHiddenFleetTestText(vehicle.modelName) &&
+        !isHiddenFleetTestText(vehicle.categoryName) &&
+        !isHiddenFleetTestText(vehicle.vehicleTypeName),
+    )
     .sort((left, right) => left.plate.localeCompare(right.plate, "mn"));
 
   const activeVehicles = allVehicles.filter(

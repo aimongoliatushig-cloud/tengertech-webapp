@@ -1444,6 +1444,154 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.serviceMiniDashboard {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.serviceMiniMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.serviceMiniMetric {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 88px;
+  padding: 12px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 10px 24px rgba(27, 73, 38, 0.045);
+}
+
+.serviceMiniMetricIcon {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--metric-icon-bg, rgba(74, 154, 93, 0.1));
+  color: var(--metric-accent, var(--brand-900));
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.serviceMiniMetricBody {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.serviceMiniMetricBody small,
+.serviceMiniMetricBody em {
+  overflow: hidden;
+  color: #75867b;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.serviceMiniMetricBody strong {
+  color: #17231d;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.serviceMiniControls {
+  display: grid;
+  gap: 10px;
+}
+
+.serviceMiniFilterRow,
+.serviceMiniUnitRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.serviceMiniFilter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #24342a;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.serviceMiniFilter strong,
+.serviceMiniUnit b {
+  display: inline-grid;
+  min-width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-900);
+  font-size: 0.78rem;
+}
+
+.serviceMiniFilterActive {
+  border-color: rgba(47, 127, 70, 0.42);
+  background: var(--brand-800);
+  color: #fff;
+}
+
+.serviceMiniFilterActive strong {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.serviceMiniUnit {
+  display: inline-grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-width: min(100%, 280px);
+  padding: 10px 12px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: 8px;
+  background: rgba(247, 252, 246, 0.82);
+  color: inherit;
+  text-decoration: none;
+}
+
+.serviceMiniUnit span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.serviceMiniUnit strong {
+  color: #1e2b24;
+  font-size: 0.88rem;
+}
+
+.serviceMiniUnit small {
+  overflow: hidden;
+  color: #75867b;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .projectCard {
   display: grid;
   gap: 14px;
@@ -4874,6 +5022,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .serviceMiniMetricGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .masterInsightsGrid {
     grid-template-columns: 1fr;
   }
@@ -5120,6 +5272,47 @@
   .projectRail,
   .projectMeta {
     grid-template-columns: 1fr;
+  }
+
+  .serviceMiniMetricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .serviceMiniMetric {
+    min-height: 78px;
+    padding: 10px;
+  }
+
+  .serviceMiniMetricIcon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .serviceMiniMetricBody strong {
+    font-size: 1.28rem;
+  }
+
+  .serviceMiniMetricBody em,
+  .serviceMiniUnit small {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .serviceMiniFilterRow {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .serviceMiniFilter {
+    justify-content: space-between;
+    padding: 0 12px;
+  }
+
+  .serviceMiniUnit {
+    width: 100%;
   }
 
   .projectCard,

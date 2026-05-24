@@ -265,16 +265,37 @@ const ACTIVE_REPAIR_STATE_KEYS = new Set([
   "approved",
   "in_repair",
 ]);
-const PREFERRED_CATEGORY_NAMES = ["Хог ачилт", "Усалгаа", "Өргөгч", "Ковш"];
+const PREFERRED_CATEGORY_NAMES = ["Хогны машин", "Усалгаа", "Өргөгч", "Ковш"];
 
 function normalizeCategoryName(value: string) {
   return value.trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
 }
 
+function normalizeVehicleCategoryDisplayName(value: string) {
+  const normalized = normalizeCategoryName(value);
+  if (
+    normalized === normalizeCategoryName("Хог ачилт") ||
+    normalized === normalizeCategoryName("Хог ачит")
+  ) {
+    return "Хогны машин";
+  }
+
+  return value.trim();
+}
+
+function isHiddenVehicleCategoryName(value: string) {
+  const normalized = normalizeCategoryName(value);
+  return (
+    normalized.startsWith("smoke type") ||
+    normalized.includes("шалгах төрөл") ||
+    normalized.includes("туршилтын төрөл")
+  );
+}
+
 function vehicleCategoryName(
   vehicle: Pick<FleetVehicleBoardItem, "vehicleTypeName" | "categoryName">,
 ) {
-  return vehicle.vehicleTypeName || vehicle.categoryName;
+  return normalizeVehicleCategoryDisplayName(vehicle.vehicleTypeName || vehicle.categoryName);
 }
 
 function vehicleCategoryKey(
@@ -283,24 +304,20 @@ function vehicleCategoryKey(
     "vehicleTypeId" | "vehicleTypeName" | "categoryId" | "categoryName"
   >,
 ) {
-  if (vehicle.vehicleTypeId) {
-    return `type:${vehicle.vehicleTypeId}`;
-  }
-  const normalizedTypeName = normalizeCategoryName(vehicle.vehicleTypeName);
+  const normalizedTypeName = normalizeCategoryName(
+    normalizeVehicleCategoryDisplayName(vehicle.vehicleTypeName),
+  );
   if (normalizedTypeName) {
     return `type-name:${normalizedTypeName}`;
   }
-  if (vehicle.categoryId) {
-    return `category:${vehicle.categoryId}`;
-  }
-  const normalizedName = normalizeCategoryName(vehicle.categoryName);
+  const normalizedName = normalizeCategoryName(
+    normalizeVehicleCategoryDisplayName(vehicle.categoryName),
+  );
   return normalizedName ? `category-name:${normalizedName}` : UNCATEGORIZED_CATEGORY_KEY;
 }
 
-function categoryOptionKey(option: FleetVehicleSelectOption, source: "type" | "category") {
-  return option.id
-    ? `${source}:${option.id}`
-    : `${source}-name:${normalizeCategoryName(option.name)}`;
+function categoryOptionKey(option: FleetVehicleSelectOption, _source: "type" | "category") {
+  return `type-name:${normalizeCategoryName(normalizeVehicleCategoryDisplayName(option.name))}`;
 }
 
 function preferredCategoryRank(name: string) {
@@ -2110,7 +2127,6 @@ export function AutoBaseBoard({
   const [activeCategoryKey, setActiveCategoryKey] = useState(ALL_CATEGORY_KEY);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<VehicleStatusFilter>("all");
-  const [typeFilter, setTypeFilter] = useState(ALL_CATEGORY_KEY);
   const [viewMode, setViewMode] = useState<VehicleViewMode>("grid");
   const selectedVehicle = selectedVehicleId ? vehiclesById.get(selectedVehicleId) ?? null : null;
   const categoryFilters = useMemo<VehicleCategoryFilter[]>(() => {
@@ -2118,6 +2134,12 @@ export function AutoBaseBoard({
     const options = new Map<string, VehicleCategoryFilter>();
 
     for (const vehicle of board.allVehicles) {
+      if (
+        isHiddenVehicleCategoryName(vehicle.vehicleTypeName) ||
+        isHiddenVehicleCategoryName(vehicle.categoryName)
+      ) {
+        continue;
+      }
       const key = vehicleCategoryKey(vehicle);
       counts.set(key, (counts.get(key) ?? 0) + 1);
       if (key !== UNCATEGORIZED_CATEGORY_KEY && !options.has(key)) {
@@ -2135,6 +2157,9 @@ export function AutoBaseBoard({
       : board.categoryOptions.map((option) => ({ option, source: "category" as const }));
 
     for (const { option, source } of configuredOptions) {
+      if (isHiddenVehicleCategoryName(option.name)) {
+        continue;
+      }
       const key = categoryOptionKey(option, source);
       if (!options.has(key)) {
         options.set(key, {
@@ -2177,20 +2202,16 @@ export function AutoBaseBoard({
   }, [board.allVehicles, board.categoryOptions, board.totalVehicles, board.vehicleTypeOptions]);
   const selectedCategory =
     categoryFilters.find((category) => category.key === activeCategoryKey) ?? categoryFilters[0];
-  const selectedType =
-    categoryFilters.find((category) => category.key === typeFilter) ?? categoryFilters[0];
   const categoryVehicles =
     selectedCategory.key === ALL_CATEGORY_KEY
       ? board.allVehicles
       : board.allVehicles.filter((vehicle) => vehicleCategoryKey(vehicle) === selectedCategory.key);
   const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase("mn-MN");
   const searchedVehicles = categoryVehicles.filter((vehicle) => {
-    const typeMatches =
-      selectedType.key === ALL_CATEGORY_KEY || vehicleCategoryKey(vehicle) === selectedType.key;
     const statusMatches = vehicleMatchesStatus(vehicle, statusFilter);
     const searchMatches =
       !normalizedSearchQuery || vehicleSearchText(vehicle).includes(normalizedSearchQuery);
-    return typeMatches && statusMatches && searchMatches;
+    return statusMatches && searchMatches;
   });
   const categoryActiveVehicles = searchedVehicles.filter(
     (vehicle) => !vehicle.isRepair && vehicle.isOperational && !vehicle.isArchived,
@@ -2268,7 +2289,6 @@ export function AutoBaseBoard({
   const applyMetricFilter = (filter: VehicleFilterKey) => {
     setActiveFilter(filter);
     setActiveCategoryKey(ALL_CATEGORY_KEY);
-    setTypeFilter(ALL_CATEGORY_KEY);
     setStatusFilter("all");
     setSearchQuery("");
   };
@@ -2400,7 +2420,6 @@ export function AutoBaseBoard({
                 onClick={() => {
                   setActiveCategoryKey(category.key);
                   setActiveFilter("all");
-                  setTypeFilter(ALL_CATEGORY_KEY);
                 }}
               >
                 <span>{category.name}</span>
@@ -2419,23 +2438,6 @@ export function AutoBaseBoard({
                 placeholder="Хайх (улсын дугаар, загвар, жолооч...)"
                 aria-label="Машин хайх"
               />
-            </label>
-            <label className={styles.vehicleSelectField}>
-              <span>Төрөл</span>
-              <select
-                value={typeFilter}
-                onChange={(event) => {
-                  setTypeFilter(event.target.value);
-                  setActiveCategoryKey(ALL_CATEGORY_KEY);
-                  setActiveFilter("all");
-                }}
-              >
-                {categoryFilters.map((category) => (
-                  <option key={category.key} value={category.key}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
             </label>
             <label className={styles.vehicleSelectField}>
               <span>Төлөв</span>
