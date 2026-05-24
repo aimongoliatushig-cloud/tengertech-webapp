@@ -261,16 +261,36 @@ function normalizeCategoryName(value: string) {
   return value.trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
 }
 
-function vehicleCategoryKey(vehicle: Pick<FleetVehicleBoardItem, "categoryId" | "categoryName">) {
-  if (vehicle.categoryId) {
-    return `id:${vehicle.categoryId}`;
-  }
-  const normalizedName = normalizeCategoryName(vehicle.categoryName);
-  return normalizedName ? `name:${normalizedName}` : UNCATEGORIZED_CATEGORY_KEY;
+function vehicleCategoryName(
+  vehicle: Pick<FleetVehicleBoardItem, "vehicleTypeName" | "categoryName">,
+) {
+  return vehicle.vehicleTypeName || vehicle.categoryName;
 }
 
-function categoryOptionKey(option: FleetVehicleSelectOption) {
-  return option.id ? `id:${option.id}` : `name:${normalizeCategoryName(option.name)}`;
+function vehicleCategoryKey(
+  vehicle: Pick<
+    FleetVehicleBoardItem,
+    "vehicleTypeId" | "vehicleTypeName" | "categoryId" | "categoryName"
+  >,
+) {
+  if (vehicle.vehicleTypeId) {
+    return `type:${vehicle.vehicleTypeId}`;
+  }
+  const normalizedTypeName = normalizeCategoryName(vehicle.vehicleTypeName);
+  if (normalizedTypeName) {
+    return `type-name:${normalizedTypeName}`;
+  }
+  if (vehicle.categoryId) {
+    return `category:${vehicle.categoryId}`;
+  }
+  const normalizedName = normalizeCategoryName(vehicle.categoryName);
+  return normalizedName ? `category-name:${normalizedName}` : UNCATEGORIZED_CATEGORY_KEY;
+}
+
+function categoryOptionKey(option: FleetVehicleSelectOption, source: "type" | "category") {
+  return option.id
+    ? `${source}:${option.id}`
+    : `${source}-name:${normalizeCategoryName(option.name)}`;
 }
 
 function preferredCategoryRank(name: string) {
@@ -1980,15 +2000,19 @@ export function AutoBaseBoard({
       if (key !== UNCATEGORIZED_CATEGORY_KEY && !options.has(key)) {
         options.set(key, {
           key,
-          id: vehicle.categoryId,
-          name: vehicle.categoryName || "Ангилалгүй",
+          id: vehicle.vehicleTypeId ?? vehicle.categoryId,
+          name: vehicleCategoryName(vehicle) || "Ангилалгүй",
           count: 0,
         });
       }
     }
 
-    for (const option of board.categoryOptions) {
-      const key = categoryOptionKey(option);
+    const configuredOptions = board.vehicleTypeOptions.length
+      ? board.vehicleTypeOptions.map((option) => ({ option, source: "type" as const }))
+      : board.categoryOptions.map((option) => ({ option, source: "category" as const }));
+
+    for (const { option, source } of configuredOptions) {
+      const key = categoryOptionKey(option, source);
       if (!options.has(key)) {
         options.set(key, {
           key,
@@ -2027,7 +2051,7 @@ export function AutoBaseBoard({
       },
       ...categoryItems,
     ];
-  }, [board.allVehicles, board.categoryOptions, board.totalVehicles]);
+  }, [board.allVehicles, board.categoryOptions, board.totalVehicles, board.vehicleTypeOptions]);
   const selectedCategory =
     categoryFilters.find((category) => category.key === activeCategoryKey) ?? categoryFilters[0];
   const selectedType =
@@ -2279,6 +2303,7 @@ export function AutoBaseBoard({
                 value={typeFilter}
                 onChange={(event) => {
                   setTypeFilter(event.target.value);
+                  setActiveCategoryKey(ALL_CATEGORY_KEY);
                   setActiveFilter("all");
                 }}
               >
