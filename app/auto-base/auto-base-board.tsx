@@ -1323,6 +1323,13 @@ function NewVehicleForm({
           </select>
         </label>
 
+        {vehicleTypeOptions.length ? (
+          <label className={styles.vehicleFormField}>
+            <span>Шинэ төрөл</span>
+            <input name="new_vehicle_type_name" placeholder="Жишээ: Усалгааны машин" />
+          </label>
+        ) : null}
+
         <label className={styles.vehicleFormField}>
           <span>Хэлтэс</span>
           <select name="municipal_department_id" defaultValue="">
@@ -1843,6 +1850,13 @@ function VehicleDetailModal({
               ))}
             </select>
           </label>
+
+          {vehicleTypeOptions.length ? (
+            <label className={styles.vehicleFormField}>
+              <span>Шинэ төрөл</span>
+              <input name="new_vehicle_type_name" placeholder="Жишээ: Усалгааны машин" />
+            </label>
+          ) : null}
 
           <label className={styles.vehicleFormField}>
             <span>Төлөв</span>
