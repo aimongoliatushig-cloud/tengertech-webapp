@@ -1789,16 +1789,16 @@
   inset: 0;
   z-index: 2500;
   display: grid;
-  place-items: start center;
+  place-items: center;
   overflow: hidden;
-  padding: clamp(18px, 4vh, 36px) 18px;
+  padding: clamp(12px, 2.5vh, 24px) 18px;
   background: rgba(15, 23, 18, 0.5);
   backdrop-filter: blur(10px);
 }
 
 .vehicleModal {
   width: min(1120px, 100%);
-  max-height: calc(100dvh - clamp(36px, 8vh, 72px));
+  max-height: calc(100dvh - clamp(24px, 5vh, 48px));
   overflow: auto;
   overscroll-behavior: contain;
   padding: 0;

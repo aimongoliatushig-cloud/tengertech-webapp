@@ -23,10 +23,12 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 
 import {
   archiveFleetVehicleAction,
@@ -1271,6 +1273,9 @@ function NewVehicleForm({
   departmentOptions: FleetVehicleDepartmentOption[];
   onCancel: () => void;
 }) {
+  const modelListId = useId();
+  const vehicleTypeListId = useId();
+
   return (
     <section className={styles.vehicleCreatePanel}>
       <div className={styles.vehicleCreateHeader}>
@@ -1296,39 +1301,36 @@ function NewVehicleForm({
 
         <label className={styles.vehicleFormField}>
           <span>Марка / модель</span>
-          <select name="model_id" defaultValue="">
-            <option value="">Сонгоогүй</option>
+          <input name="model_name" list={modelListId} placeholder="Жишээ: Kia Bongo" />
+          <datalist id={modelListId}>
             {modelOptions.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.name}
-              </option>
+              <option key={option.id} value={option.name} />
             ))}
-          </select>
-        </label>
-
-        <label className={styles.vehicleFormField}>
-          <span>Шинэ марк / модель</span>
-          <input name="new_model_name" placeholder="Жишээ: Kia Bongo" />
+          </datalist>
         </label>
 
         <label className={styles.vehicleFormField}>
           <span>Төрөл</span>
-          <select name={vehicleTypeOptions.length ? "municipal_vehicle_type_id" : "category_id"} defaultValue="">
-            <option value="">Сонгоогүй</option>
-            {(vehicleTypeOptions.length ? vehicleTypeOptions : categoryOptions).map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.name}
-              </option>
-            ))}
-          </select>
+          {vehicleTypeOptions.length ? (
+            <>
+              <input name="vehicle_type_name" list={vehicleTypeListId} placeholder="Жишээ: Усалгааны машин" />
+              <datalist id={vehicleTypeListId}>
+                {vehicleTypeOptions.map((option) => (
+                  <option key={option.id} value={option.name} />
+                ))}
+              </datalist>
+            </>
+          ) : (
+            <select name="category_id" defaultValue="">
+              <option value="">Сонгоогүй</option>
+              {categoryOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          )}
         </label>
-
-        {vehicleTypeOptions.length ? (
-          <label className={styles.vehicleFormField}>
-            <span>Шинэ төрөл</span>
-            <input name="new_vehicle_type_name" placeholder="Жишээ: Усалгааны машин" />
-          </label>
-        ) : null}
 
         <label className={styles.vehicleFormField}>
           <span>Хэлтэс</span>
@@ -1483,6 +1485,9 @@ function VehicleDetailModal({
   onClose: () => void;
 }) {
   const [activeTab, setActiveTab] = useState("main");
+  const modelListId = useId();
+  const vehicleTypeListId = useId();
+  const modalRef = useRef<HTMLElement | null>(null);
   const hasOperationsData =
     vehicle.weightReports.length > 0 ||
     vehicle.fuelReports.length > 0 ||
@@ -1505,9 +1510,24 @@ function VehicleDetailModal({
   const activeRepair = activeRepairForVehicle(vehicle);
   const fuelSummary = vehicleFuelSummary(vehicle);
 
-  return (
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    modalRef.current?.scrollTo({ top: 0 });
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [vehicle.id]);
+
+  const modal = (
     <div className={styles.vehicleModalBackdrop} role="presentation" onClick={onClose}>
       <section
+        ref={modalRef}
         className={styles.vehicleModal}
         role="dialog"
         aria-modal="true"
@@ -1817,46 +1837,46 @@ function VehicleDetailModal({
 
           <label className={styles.vehicleFormField}>
             <span>Марка / модель</span>
-            <select name="model_id" defaultValue={vehicle.modelId ?? ""}>
-              <option value="">Сонгоогүй</option>
+            <input
+              name="model_name"
+              list={modelListId}
+              defaultValue={vehicle.modelName}
+              placeholder="Жишээ: Kia Bongo"
+            />
+            <datalist id={modelListId}>
               {modelOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}
-                </option>
+                <option key={option.id} value={option.name} />
               ))}
-            </select>
-          </label>
-
-          <label className={styles.vehicleFormField}>
-            <span>Шинэ марк / модель</span>
-            <input name="new_model_name" placeholder="Жишээ: Kia Bongo" />
+            </datalist>
           </label>
 
           <label className={styles.vehicleFormField}>
             <span>Төрөл</span>
-            <select
-              name={vehicleTypeOptions.length ? "municipal_vehicle_type_id" : "category_id"}
-              defaultValue={
-                vehicleTypeOptions.length
-                  ? vehicle.vehicleTypeId ?? ""
-                  : vehicle.categoryId ?? ""
-              }
-            >
-              <option value="">Сонгоогүй</option>
-              {(vehicleTypeOptions.length ? vehicleTypeOptions : categoryOptions).map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}
-                </option>
-              ))}
-            </select>
+            {vehicleTypeOptions.length ? (
+              <>
+                <input
+                  name="vehicle_type_name"
+                  list={vehicleTypeListId}
+                  defaultValue={vehicle.vehicleTypeName}
+                  placeholder="Жишээ: Усалгааны машин"
+                />
+                <datalist id={vehicleTypeListId}>
+                  {vehicleTypeOptions.map((option) => (
+                    <option key={option.id} value={option.name} />
+                  ))}
+                </datalist>
+              </>
+            ) : (
+              <select name="category_id" defaultValue={vehicle.categoryId ?? ""}>
+                <option value="">Сонгоогүй</option>
+                {categoryOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </label>
-
-          {vehicleTypeOptions.length ? (
-            <label className={styles.vehicleFormField}>
-              <span>Шинэ төрөл</span>
-              <input name="new_vehicle_type_name" placeholder="Жишээ: Усалгааны машин" />
-            </label>
-          ) : null}
 
           <label className={styles.vehicleFormField}>
             <span>Төлөв</span>
@@ -2063,6 +2083,8 @@ function VehicleDetailModal({
       </section>
     </div>
   );
+
+  return typeof document === "undefined" ? null : createPortal(modal, document.body);
 }
 
 export function AutoBaseBoard({
@@ -2474,6 +2496,7 @@ export function AutoBaseBoard({
             emptyLabel={selectedBucket.emptyLabel}
             viewMode={viewMode}
             onSelectVehicle={(vehicle) => {
+              setShowCreateForm(false);
               setSelectedVehicleId(vehicle.id);
             }}
           />

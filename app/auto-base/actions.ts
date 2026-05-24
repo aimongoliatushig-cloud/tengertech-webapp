@@ -668,9 +668,12 @@ export async function updateFleetVehicleAction(formData: FormData) {
     if ("license_plate" in editableFields && formData.has("license_plate")) {
       values.license_plate = optionalOdooValue(getString(formData, "license_plate"));
     }
-    if ("model_id" in editableFields && (formData.has("model_id") || formData.has("new_model_name"))) {
+    if (
+      "model_id" in editableFields &&
+      (formData.has("model_id") || formData.has("model_name") || formData.has("new_model_name"))
+    ) {
       values.model_id =
-        await findOrCreateVehicleModel(getString(formData, "new_model_name")) ||
+        await findOrCreateVehicleModel(getString(formData, "model_name") || getString(formData, "new_model_name")) ||
         optionalOdooId(getString(formData, "model_id"));
     }
     if ("category_id" in editableFields && formData.has("category_id")) {
@@ -678,10 +681,12 @@ export async function updateFleetVehicleAction(formData: FormData) {
     }
     if (
       "municipal_vehicle_type_id" in editableFields &&
-      (formData.has("municipal_vehicle_type_id") || formData.has("new_vehicle_type_name"))
+      (formData.has("municipal_vehicle_type_id") ||
+        formData.has("vehicle_type_name") ||
+        formData.has("new_vehicle_type_name"))
     ) {
       values.municipal_vehicle_type_id =
-        await findOrCreateVehicleType(getString(formData, "new_vehicle_type_name")) ||
+        await findOrCreateVehicleType(getString(formData, "vehicle_type_name") || getString(formData, "new_vehicle_type_name")) ||
         optionalOdooId(getString(formData, "municipal_vehicle_type_id"));
     }
     if (
@@ -916,11 +921,11 @@ export async function createFleetVehicleAction(formData: FormData) {
       { attributes: ["string", "type", "required", "readonly"] },
     );
     const modelId =
-      await findOrCreateVehicleModel(getString(formData, "new_model_name")) ||
+      await findOrCreateVehicleModel(getString(formData, "model_name") || getString(formData, "new_model_name")) ||
       optionalOdooId(getString(formData, "model_id")) ||
       (fields.model_id?.required ? await findDefaultVehicleModel() : false);
     const vehicleTypeId =
-      await findOrCreateVehicleType(getString(formData, "new_vehicle_type_name")) ||
+      await findOrCreateVehicleType(getString(formData, "vehicle_type_name") || getString(formData, "new_vehicle_type_name")) ||
       optionalOdooId(getString(formData, "municipal_vehicle_type_id"));
     const values = pickSupportedValues(
       {
