@@ -1,5 +1,7 @@
 import { getSession, isMasterRole } from "@/lib/auth";
 import { chromium } from "playwright";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import {
@@ -12,7 +14,7 @@ import {
   getAvailableUnits,
   matchesDepartmentGroup,
 } from "@/lib/department-groups";
-import { loadMunicipalSnapshot } from "@/lib/odoo";
+import { executeOdooKw, loadMunicipalSnapshot } from "@/lib/odoo";
 import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +24,13 @@ type MunicipalSnapshot = Awaited<ReturnType<typeof loadMunicipalSnapshot>>;
 type ReportRow = MunicipalSnapshot["reports"][number];
 type TaskRow = MunicipalSnapshot["taskDirectory"][number];
 type ReviewRow = MunicipalSnapshot["reviewQueue"][number];
+
+type AttachmentPayload = {
+  id: number;
+  name?: string | false;
+  mimetype?: string | false;
+  datas?: string | false;
+};
 
 type ExportPayload = {
   generatedAt: string;
@@ -58,6 +67,10 @@ function escapeHtml(value: unknown) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function nl2br(value: string) {
+  return escapeHtml(value).replace(/\n/g, "<br/>");
 }
 
 function toExcelHtml(title: string, payload: ExportPayload) {
@@ -128,6 +141,131 @@ function toExcelHtml(title: string, payload: ExportPayload) {
       `${task.remainingQuantity} ${task.measurementUnit}`,
     ]),
   )}
+</body>
+</html>`;
+}
+
+function reportNarrative(report: ReportRow) {
+  return String(report.text || report.summary || "").trim() || "Ажил хийсэн тайлбар оруулаагүй.";
+}
+
+async function loadLogoDataUrl() {
+  const logo = await readFile(path.join(process.cwd(), "public", "logo.png")).catch(() => null);
+  return logo ? `data:image/png;base64,${logo.toString("base64")}` : "";
+}
+
+async function loadReportImagePayloads(
+  reports: ReportRow[],
+  credentials: { login: string; password: string },
+) {
+  const imageIds = Array.from(
+    new Set(reports.flatMap((report) => report.images.map((image) => image.id))),
+  );
+
+  if (!imageIds.length) {
+    return new Map<number, AttachmentPayload>();
+  }
+
+  const attachments = await executeOdooKw<AttachmentPayload[]>(
+    "ir.attachment",
+    "search_read",
+    [[["id", "in", imageIds]]],
+    {
+      fields: ["name", "mimetype", "datas"],
+      limit: imageIds.length,
+    },
+    credentials,
+  ).catch((error) => {
+    console.warn("Report export images could not be loaded:", error);
+    return [];
+  });
+
+  return new Map(attachments.map((attachment) => [attachment.id, attachment]));
+}
+
+function reportPhotoGrid(report: ReportRow, imagePayloads: Map<number, AttachmentPayload>) {
+  const photos = report.images
+    .map((image) => {
+      const attachment = imagePayloads.get(image.id);
+      if (!attachment?.datas) {
+        return "";
+      }
+
+      return `<figure class="photo"><img src="data:${
+        attachment.mimetype || "image/jpeg"
+      };base64,${attachment.datas}" alt="Тайлангийн зураг" /></figure>`;
+    })
+    .filter(Boolean)
+    .join("");
+
+  return photos ? `<div class="photo-grid">${photos}</div>` : '<p class="muted">Зураг хавсаргаагүй.</p>';
+}
+
+function toOfficialPdfHtml(
+  title: string,
+  payload: ExportPayload,
+  imagePayloads: Map<number, AttachmentPayload>,
+  logoDataUrl: string,
+) {
+  const sections = payload.reports
+    .slice(0, 30)
+    .map(
+      (report, index) => `<section class="detail-block ${index > 0 ? "new-page" : ""}">
+        <h2>Ажил хийсэн тайлбар</h2>
+        <p class="narrative">${nl2br(reportNarrative(report))}</p>
+        <h2>Зураг</h2>
+        ${reportPhotoGrid(report, imagePayloads)}
+      </section>`,
+    )
+    .join("");
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    body {
+      color: #111;
+      font-family: "Times New Roman", Arial, sans-serif;
+      font-size: 12pt;
+      line-height: 1.45;
+      margin: 0;
+    }
+    .cover-header { min-height: 92px; text-align: center; }
+    .logo { display: block; width: 72px; height: 72px; object-fit: contain; margin: 0 auto 10px; }
+    h1 { margin: 0 0 22px; font-size: 18pt; text-align: center; text-transform: uppercase; }
+    h2 { margin: 14px 0 8px; font-size: 13pt; }
+    .detail-block { break-inside: avoid; margin-top: 8px; }
+    .new-page { break-before: page; }
+    .narrative { margin: 0 0 14px; text-align: justify; }
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .photo {
+      margin: 0;
+      break-inside: avoid;
+      border: 1px solid #d6d6d6;
+      padding: 4px;
+    }
+    .photo img {
+      display: block;
+      width: 100%;
+      max-height: 230px;
+      object-fit: contain;
+    }
+    .muted { color: #555; }
+  </style>
+</head>
+<body>
+  <div class="cover-header">
+    ${logoDataUrl ? `<img class="logo" src="${logoDataUrl}" alt="Лого" />` : ""}
+    <h1>${escapeHtml(title)}</h1>
+  </div>
+  ${sections || '<section class="detail-block"><p class="muted">Тайлан олдсонгүй.</p></section>'}
 </body>
 </html>`;
 }
@@ -434,7 +572,16 @@ export async function GET(request: Request) {
   }
 
   if (format === "pdf") {
-    const buffer = await renderPdf(toPdfHtml("Хот тохижилтын тайлан", payload));
+    const [imagePayloads, logoDataUrl] = await Promise.all([
+      loadReportImagePayloads(payload.reports, {
+        login: session.login,
+        password: session.password,
+      }),
+      loadLogoDataUrl(),
+    ]);
+    const buffer = await renderPdf(
+      toOfficialPdfHtml("Ажлын тайлан", payload, imagePayloads, logoDataUrl),
+    );
     return new Response(new Uint8Array(buffer), {
       headers: {
         "Content-Disposition": `attachment; filename="municipal-report-${dateKey}.pdf"`,

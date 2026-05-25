@@ -35,6 +35,10 @@ type WeightTotalRecord = {
   net_weight_total: number;
 };
 
+type OdooFieldMetadata = {
+  string?: string;
+};
+
 type ExecutiveStatusKey =
   | "planned"
   | "working"
@@ -214,7 +218,10 @@ function taskDetailHref(taskId: number, dateString: string, filter?: string) {
 }
 
 function resolveStatusKey(task: GarbageTaskRecord): ExecutiveStatusKey {
-  if ((task.mfo_quality_exception_count ?? 0) > 0 || task.mfo_weight_sync_warning) {
+  if (
+    (task.mfo_quality_exception_count ?? 0) > 0 ||
+    task.mfo_weight_sync_warning
+  ) {
     return "problem";
   }
 
@@ -232,7 +239,9 @@ function resolveStatusKey(task: GarbageTaskRecord): ExecutiveStatusKey {
   }
 }
 
-function buildFallbackSnapshot(selectedDate?: string): GarbageExecutiveSnapshot {
+function buildFallbackSnapshot(
+  selectedDate?: string,
+): GarbageExecutiveSnapshot {
   const parsed = parseDateString(selectedDate);
   const previousDate = shiftDateString(parsed.input, -1);
   const yesterdayWeight = 12840;
@@ -248,12 +257,42 @@ function buildFallbackSnapshot(selectedDate?: string): GarbageExecutiveSnapshot 
     generatedAtLabel: formatDateTime(new Date()),
     notificationCount: 4,
     kpis: [
-      { label: "Өнөөдрийн ажил", value: "12", note: "Өглөөний хуваарь", tone: "normal" },
-      { label: "Ажиллаж буй", value: "7", note: "Маршрут дээр явж байна", tone: "normal" },
-      { label: "Шалгаж буй", value: "3", note: "Хянагчийн мөрөнд байна", tone: "warning" },
-      { label: "Баталгаажсан", value: "1", note: "Өнөөдөр хаагдсан ажил", tone: "normal" },
-      { label: "Асуудалтай", value: "2", note: "Шуурхай анхаарах шаардлагатай", tone: "critical" },
-      { label: "Өчигдрийн жин", value: formatWeightLabel(yesterdayWeight), note: "Шөнийн таталтаар орсон", tone: "weight" },
+      {
+        label: "Өнөөдрийн ажил",
+        value: "12",
+        note: "Өглөөний хуваарь",
+        tone: "normal",
+      },
+      {
+        label: "Ажиллаж буй",
+        value: "7",
+        note: "Маршрут дээр явж байна",
+        tone: "normal",
+      },
+      {
+        label: "Шалгаж буй",
+        value: "3",
+        note: "Хянагчийн мөрөнд байна",
+        tone: "warning",
+      },
+      {
+        label: "Баталгаажсан",
+        value: "1",
+        note: "Өнөөдөр хаагдсан ажил",
+        tone: "normal",
+      },
+      {
+        label: "Асуудалтай",
+        value: "2",
+        note: "Шуурхай анхаарах шаардлагатай",
+        tone: "critical",
+      },
+      {
+        label: "Өчигдрийн жин",
+        value: formatWeightLabel(yesterdayWeight),
+        note: "Шөнийн таталтаар орсон",
+        tone: "weight",
+      },
     ],
     alerts: [
       {
@@ -266,7 +305,7 @@ function buildFallbackSnapshot(selectedDate?: string): GarbageExecutiveSnapshot 
       },
       {
         id: "fallback-2",
-      title: "3 ажил хяналт хүлээж байна",
+        title: "3 ажил хяналт хүлээж байна",
         note: "Баталгаажуулалтын мөр удааширсан байна.",
         severity: "amber",
         severityLabel: "Анхаарах",
@@ -291,9 +330,17 @@ function buildFallbackSnapshot(selectedDate?: string): GarbageExecutiveSnapshot 
     ],
     signals: [
       { label: "Эхлээгүй машин", value: 2, note: "Төлөвлөгдсөн хэвээр байна" },
-    { label: "Хяналт хүлээж буй ажил", value: 3, note: "Хянагчид очсон" },
-      { label: "Асуудалтай тээвэрлэлт", value: 1, note: "Шуурхай үзэх шаардлагатай" },
-      { label: "Жин хүлээгдэж буй ажил", value: 2, note: "Өчигдрийн таталт дутуу" },
+      { label: "Хяналт хүлээж буй ажил", value: 3, note: "Хянагчид очсон" },
+      {
+        label: "Асуудалтай тээвэрлэлт",
+        value: 1,
+        note: "Шуурхай үзэх шаардлагатай",
+      },
+      {
+        label: "Жин хүлээгдэж буй ажил",
+        value: 2,
+        note: "Өчигдрийн таталт дутуу",
+      },
     ],
     todayTasks: [
       {
@@ -368,7 +415,7 @@ function buildFallbackSnapshot(selectedDate?: string): GarbageExecutiveSnapshot 
         href: taskReturnTo(parsed.input, "problem"),
       },
       {
-      label: "Хяналт хүлээж буй ажил",
+        label: "Хяналт хүлээж буй ажил",
         note: "Баталгаажуулалтын мөрийг нээх",
         href: taskReturnTo(parsed.input, "review"),
       },
@@ -386,6 +433,115 @@ function buildFallbackSnapshot(selectedDate?: string): GarbageExecutiveSnapshot 
   };
 }
 
+function buildEmptySnapshot(selectedDate?: string): GarbageExecutiveSnapshot {
+  const parsed = parseDateString(selectedDate);
+  const previousDate = shiftDateString(parsed.input, -1);
+
+  return {
+    selectedDate: parsed.input,
+    selectedDateLabel: formatLongDate(parsed.input),
+    selectedDateInput: parsed.input,
+    previousDate,
+    previousDateLabel: formatLongDate(previousDate),
+    generatedAtLabel: formatDateTime(new Date()),
+    notificationCount: 0,
+    kpis: [
+      {
+        label: "Өнөөдрийн ажил",
+        value: "0",
+        note: "Төлөвлөгдсөн ажил алга",
+        tone: "normal",
+      },
+      {
+        label: "Ажиллаж буй",
+        value: "0",
+        note: "Идэвхтэй ажил алга",
+        tone: "normal",
+      },
+      {
+        label: "Хянагдаж буй",
+        value: "0",
+        note: "Хяналт хүлээсэн ажил алга",
+        tone: "warning",
+      },
+      {
+        label: "Баталгаажсан",
+        value: "0",
+        note: "Өнөөдөр хаагдсан ажил алга",
+        tone: "normal",
+      },
+      {
+        label: "Асуудалтай",
+        value: "0",
+        note: "Анхаарах зөрүү алга",
+        tone: "critical",
+      },
+      {
+        label: "Өчигдрийн жин",
+        value: formatWeightLabel(0),
+        note: "Жингийн мэдээлэл алга",
+        tone: "weight",
+      },
+    ],
+    alerts: [],
+    signals: [
+      { label: "Эхлээгүй машин", value: 0, note: "Мэдээлэл алга" },
+      { label: "Хяналт хүлээж буй ажил", value: 0, note: "Мэдээлэл алга" },
+      { label: "Асуудалтай тээвэрлэлт", value: 0, note: "Мэдээлэл алга" },
+      { label: "Жин хүлээгдэж буй ажил", value: 0, note: "Мэдээлэл алга" },
+    ],
+    todayTasks: [],
+    yesterdayWeight: {
+      totalKg: 0,
+      totalLabel: formatWeightLabel(0),
+      topVehicleName: "Мэдээлэл алга",
+      topVehicleKg: 0,
+      topVehicleLabel: "Мэдээлэл алга",
+      averageKg: 0,
+      averageLabel: "Мэдээлэл алга",
+    },
+    monthlyWeight: {
+      totalKg: 0,
+      totalLabel: formatWeightLabel(0),
+      addedYesterdayKg: 0,
+      addedYesterdayLabel: formatWeightLabel(0),
+      trend: [],
+    },
+    quickLinks: [
+      {
+        label: "Өнөөдрийн ажил",
+        note: "Ажлын жагсаалт",
+        href: taskReturnTo(parsed.input, "all"),
+      },
+      { label: "Тайлан", note: "Тайлангийн урсгал", href: "/reports" },
+    ],
+  };
+}
+
+async function loadModelFieldNames(
+  model: string,
+  fieldNames: string[],
+  connectionOverrides: Partial<OdooConnection>,
+) {
+  const uniqueFieldNames = Array.from(new Set(fieldNames.filter(Boolean)));
+  if (!uniqueFieldNames.length) {
+    return null;
+  }
+
+  const metadata = await executeOdooKw<Record<string, OdooFieldMetadata>>(
+    model,
+    "fields_get",
+    [uniqueFieldNames],
+    { attributes: ["string"] },
+    connectionOverrides,
+  ).catch((error) => {
+    console.warn(`${model} field metadata could not be loaded:`, error);
+    return null;
+  });
+
+  return metadata ? new Set(Object.keys(metadata)) : null;
+}
+
 export async function loadGarbageExecutiveSnapshot(
   connectionOverrides: Partial<OdooConnection> = {},
   requestedDate?: string,
@@ -396,37 +552,63 @@ export async function loadGarbageExecutiveSnapshot(
   const monthStart = `${selectedDate.slice(0, 7)}-01`;
 
   try {
+    const requestedTaskFields = [
+      "name",
+      "project_id",
+      "mfo_shift_date",
+      "mfo_vehicle_id",
+      "mfo_driver_employee_id",
+      "mfo_route_id",
+      "mfo_state",
+      "ops_progress_percent",
+      "mfo_end_shift_summary",
+      "mfo_total_net_weight",
+      "mfo_quality_exception_count",
+      "mfo_weight_sync_warning",
+      "mfo_unresolved_stop_count",
+      "mfo_missing_proof_stop_count",
+      "mfo_route_deviation_stop_count",
+      "mfo_skipped_without_reason_count",
+      "mfo_start_datetime",
+      "mfo_end_datetime",
+      "mfo_is_operation_project",
+      "mfo_operation_type",
+    ];
+    const taskFieldNames = await loadModelFieldNames(
+      "project.task",
+      requestedTaskFields,
+      connectionOverrides,
+    );
+    const requiredGarbageFields = [
+      "mfo_is_operation_project",
+      "mfo_operation_type",
+      "mfo_shift_date",
+    ];
+
+    if (
+      taskFieldNames &&
+      !requiredGarbageFields.every((field) => taskFieldNames.has(field))
+    ) {
+      return buildEmptySnapshot(selectedDate);
+    }
+
+    const taskFields = requestedTaskFields.filter(
+      (field) => !taskFieldNames || taskFieldNames.has(field),
+    );
     const [tasks, weightTotals] = await Promise.all([
       executeOdooKw<GarbageTaskRecord[]>(
         "project.task",
         "search_read",
-        [[
-          ["mfo_is_operation_project", "=", true],
-          ["mfo_operation_type", "=", "garbage"],
-          ["mfo_shift_date", ">=", previousDate],
-          ["mfo_shift_date", "<=", selectedDate],
-        ]],
-        {
-          fields: [
-            "name",
-            "project_id",
-            "mfo_shift_date",
-            "mfo_vehicle_id",
-            "mfo_driver_employee_id",
-            "mfo_route_id",
-            "mfo_state",
-            "ops_progress_percent",
-            "mfo_end_shift_summary",
-            "mfo_total_net_weight",
-            "mfo_quality_exception_count",
-            "mfo_weight_sync_warning",
-            "mfo_unresolved_stop_count",
-            "mfo_missing_proof_stop_count",
-            "mfo_route_deviation_stop_count",
-            "mfo_skipped_without_reason_count",
-            "mfo_start_datetime",
-            "mfo_end_datetime",
+        [
+          [
+            ["mfo_is_operation_project", "=", true],
+            ["mfo_operation_type", "=", "garbage"],
+            ["mfo_shift_date", ">=", previousDate],
+            ["mfo_shift_date", "<=", selectedDate],
           ],
+        ],
+        {
+          fields: taskFields,
           order: "mfo_shift_date desc, create_date desc",
           limit: 400,
         },
@@ -435,12 +617,20 @@ export async function loadGarbageExecutiveSnapshot(
       executeOdooKw<WeightTotalRecord[]>(
         "mfo.daily.weight.total",
         "search_read",
-        [[
-          ["shift_date", ">=", monthStart],
-          ["shift_date", "<=", previousDate],
-        ]],
+        [
+          [
+            ["shift_date", ">=", monthStart],
+            ["shift_date", "<=", previousDate],
+          ],
+        ],
         {
-          fields: ["task_id", "shift_date", "vehicle_id", "route_id", "net_weight_total"],
+          fields: [
+            "task_id",
+            "shift_date",
+            "vehicle_id",
+            "route_id",
+            "net_weight_total",
+          ],
           order: "shift_date asc, create_date asc",
           limit: 2000,
         },
@@ -454,25 +644,37 @@ export async function loadGarbageExecutiveSnapshot(
       return taskId ? garbageTaskIds.has(taskId) : false;
     });
 
-    const todayTasks = tasks.filter((task) => task.mfo_shift_date === selectedDate);
-    const yesterdayTasks = tasks.filter((task) => task.mfo_shift_date === previousDate);
-    const yesterdayWeights = garbageWeightTotals.filter((weight) => weight.shift_date === previousDate);
+    const todayTasks = tasks.filter(
+      (task) => task.mfo_shift_date === selectedDate,
+    );
+    const yesterdayTasks = tasks.filter(
+      (task) => task.mfo_shift_date === previousDate,
+    );
+    const yesterdayWeights = garbageWeightTotals.filter(
+      (weight) => weight.shift_date === previousDate,
+    );
 
     const todayRows = todayTasks
       .map((task) => {
         const statusKey = resolveStatusKey(task);
-        const finalWeightKg = task.mfo_total_net_weight > 0 ? task.mfo_total_net_weight : null;
+        const finalWeightKg =
+          task.mfo_total_net_weight > 0 ? task.mfo_total_net_weight : null;
         return {
           id: task.id,
           name: task.name,
           vehicleName: relationName(task.mfo_vehicle_id, "Машин оноогдоогүй"),
-          driverName: relationName(task.mfo_driver_employee_id, "Жолооч оноогдоогүй"),
+          driverName: relationName(
+            task.mfo_driver_employee_id,
+            "Жолооч оноогдоогүй",
+          ),
           routeName: relationName(task.mfo_route_id, "Маршрут оноогдоогүй"),
           statusKey,
           statusLabel: STATUS_LABELS[statusKey],
           progress: Math.round(task.ops_progress_percent ?? 0),
           finalWeightKg,
-          finalWeightLabel: finalWeightKg ? formatWeightLabel(finalWeightKg) : "Хүлээгдэж байна",
+          finalWeightLabel: finalWeightKg
+            ? formatWeightLabel(finalWeightKg)
+            : "Хүлээгдэж байна",
           issueFlag: statusKey === "problem",
           detailHref: taskDetailHref(task.id, selectedDate),
         } satisfies GarbageTaskRow;
@@ -488,33 +690,49 @@ export async function loadGarbageExecutiveSnapshot(
         return priorityOrder[left.statusKey] - priorityOrder[right.statusKey];
       });
 
-    const workingCount = todayTasks.filter((task) => task.mfo_state === "in_progress").length;
-    const reviewCount = todayTasks.filter((task) => task.mfo_state === "submitted").length;
-    const verifiedCount = todayTasks.filter((task) => task.mfo_state === "verified").length;
+    const workingCount = todayTasks.filter(
+      (task) => task.mfo_state === "in_progress",
+    ).length;
+    const reviewCount = todayTasks.filter(
+      (task) => task.mfo_state === "submitted",
+    ).length;
+    const verifiedCount = todayTasks.filter(
+      (task) => task.mfo_state === "verified",
+    ).length;
     const problemCount = todayTasks.filter(
-      (task) => (task.mfo_quality_exception_count ?? 0) > 0 || task.mfo_weight_sync_warning,
+      (task) =>
+        (task.mfo_quality_exception_count ?? 0) > 0 ||
+        task.mfo_weight_sync_warning,
     ).length;
 
     const notStartedVehicles = new Set(
       todayTasks
-        .filter((task) => task.mfo_state === "draft" || task.mfo_state === "dispatched")
+        .filter(
+          (task) =>
+            task.mfo_state === "draft" || task.mfo_state === "dispatched",
+        )
         .map((task) => relationName(task.mfo_vehicle_id, "Техник тодорхойгүй")),
     );
 
     const yesterdayWeightByTask = new Set(
       yesterdayWeights
-        .map((weight) => (Array.isArray(weight.task_id) ? weight.task_id[0] : null))
+        .map((weight) =>
+          Array.isArray(weight.task_id) ? weight.task_id[0] : null,
+        )
         .filter((value): value is number => Boolean(value)),
     );
 
     const weightPendingTasks = yesterdayTasks.filter(
-      (task) => task.mfo_state === "verified" && !yesterdayWeightByTask.has(task.id),
+      (task) =>
+        task.mfo_state === "verified" && !yesterdayWeightByTask.has(task.id),
     );
 
     const alerts: GarbageAlertItem[] = [];
 
     todayTasks
-      .filter((task) => task.mfo_state === "draft" || task.mfo_state === "dispatched")
+      .filter(
+        (task) => task.mfo_state === "draft" || task.mfo_state === "dispatched",
+      )
       .slice(0, 2)
       .forEach((task) => {
         alerts.push({
@@ -533,7 +751,7 @@ export async function loadGarbageExecutiveSnapshot(
       .forEach((task) => {
         alerts.push({
           id: `review-${task.id}`,
-      title: `${relationName(task.mfo_vehicle_id, "Техник")} хяналт хүлээж байна`,
+          title: `${relationName(task.mfo_vehicle_id, "Техник")} хяналт хүлээж байна`,
           note: `${relationName(task.mfo_route_id, "Маршрут")} / тайлан ирсэн`,
           severity: "amber",
           severityLabel: "Анхаарах",
@@ -542,7 +760,11 @@ export async function loadGarbageExecutiveSnapshot(
       });
 
     todayTasks
-      .filter((task) => (task.mfo_quality_exception_count ?? 0) > 0 || task.mfo_weight_sync_warning)
+      .filter(
+        (task) =>
+          (task.mfo_quality_exception_count ?? 0) > 0 ||
+          task.mfo_weight_sync_warning,
+      )
       .slice(0, 2)
       .forEach((task) => {
         const issues = [
@@ -576,7 +798,11 @@ export async function loadGarbageExecutiveSnapshot(
     const vehicleWeightMap = new Map<string, number>();
     for (const weight of yesterdayWeights) {
       const vehicleName = relationName(weight.vehicle_id, "Тодорхойгүй машин");
-      vehicleWeightMap.set(vehicleName, (vehicleWeightMap.get(vehicleName) ?? 0) + (weight.net_weight_total ?? 0));
+      vehicleWeightMap.set(
+        vehicleName,
+        (vehicleWeightMap.get(vehicleName) ?? 0) +
+          (weight.net_weight_total ?? 0),
+      );
     }
 
     let topVehicleName = "Мэдээлэл алга";
@@ -592,7 +818,9 @@ export async function loadGarbageExecutiveSnapshot(
       (sum, weight) => sum + (weight.net_weight_total ?? 0),
       0,
     );
-    const averageKg = vehicleWeightMap.size ? yesterdayTotalKg / vehicleWeightMap.size : 0;
+    const averageKg = vehicleWeightMap.size
+      ? yesterdayTotalKg / vehicleWeightMap.size
+      : 0;
 
     const trendMap = new Map<string, number>();
     for (const weight of garbageWeightTotals) {
@@ -652,7 +880,7 @@ export async function loadGarbageExecutiveSnapshot(
           tone: "normal",
         },
         {
-      label: "Хянагдаж буй",
+          label: "Хянагдаж буй",
           value: formatNumber(reviewCount),
           note: "Хянагчийн мөрөнд байна",
           tone: "warning",
@@ -684,7 +912,7 @@ export async function loadGarbageExecutiveSnapshot(
           note: "Өглөөний гаралт хийгдээгүй",
         },
         {
-      label: "Хяналт хүлээж буй ажил",
+          label: "Хяналт хүлээж буй ажил",
           value: reviewCount,
           note: "Баталгаажуулалтын мөрөнд байна",
         },
@@ -705,9 +933,13 @@ export async function loadGarbageExecutiveSnapshot(
         totalLabel: formatWeightLabel(yesterdayTotalKg),
         topVehicleName,
         topVehicleKg,
-        topVehicleLabel: topVehicleKg ? formatWeightLabel(topVehicleKg) : "Мэдээлэл алга",
+        topVehicleLabel: topVehicleKg
+          ? formatWeightLabel(topVehicleKg)
+          : "Мэдээлэл алга",
         averageKg,
-        averageLabel: averageKg ? formatWeightLabel(averageKg) : "Мэдээлэл алга",
+        averageLabel: averageKg
+          ? formatWeightLabel(averageKg)
+          : "Мэдээлэл алга",
       },
       monthlyWeight: {
         totalKg: monthlyTotalKg,
@@ -723,7 +955,7 @@ export async function loadGarbageExecutiveSnapshot(
           href: taskReturnTo(selectedDate, "problem"),
         },
         {
-      label: "Хяналт хүлээж буй ажил",
+          label: "Хяналт хүлээж буй ажил",
           note: "Баталгаажуулалтын мөр",
           href: taskReturnTo(selectedDate, "review"),
         },

@@ -725,6 +725,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                                   {reportStatusLabel(report)}
                                 </span>
                               </span>
+                              <span className={styles.reportRegistryTapHint}>Дэлгэрэнгүй харах</span>
                             </summary>
 
                             <div className={styles.reportRegistryDetailPanel}>
