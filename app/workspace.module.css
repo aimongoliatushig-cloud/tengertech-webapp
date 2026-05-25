@@ -2188,6 +2188,15 @@
     padding: 14px;
     border-radius: 20px;
   }
+
+  .pointPickerHeader {
+    display: grid;
+    gap: 10px;
+  }
+
+  .pointPickerHeader > strong {
+    width: fit-content;
+  }
 }
 
 .masterTaskBoard {
@@ -3391,6 +3400,57 @@
   gap: 10px;
 }
 
+.pointPickerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.pointPickerHeader > div {
+  display: grid;
+  gap: 6px;
+}
+
+.pointPickerHeader p {
+  margin: 0;
+}
+
+.pointPickerHeader > strong {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  border-radius: 999px;
+  background: rgba(240, 248, 239, 0.92);
+  color: var(--brand-800);
+  font-size: 0.78rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.pointSelectedSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pointSelectedSummary span {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(46, 125, 50, 0.1);
+  color: var(--brand-800);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
 .pointCheckbox {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
@@ -3403,6 +3463,13 @@
   background: var(--surface-panel);
   color: var(--ink-900);
   font-weight: 800;
+}
+
+.pointCheckboxActive {
+  border-color: rgba(46, 125, 50, 0.34);
+  background:
+    linear-gradient(135deg, rgba(46, 125, 50, 0.09), rgba(255, 255, 255, 0.95));
+  box-shadow: 0 10px 22px rgba(27, 73, 38, 0.08);
 }
 
 .pointCheckbox input {
@@ -7000,6 +7067,21 @@
 
   .projectTaskStateCell {
     display: none;
+  }
+}
+
+@media (max-width: 1080px) {
+  .contentWithMenu,
+  .workspaceShell {
+    align-content: start;
+    grid-auto-rows: max-content;
+    min-height: 0;
+  }
+
+  .menuColumn,
+  .workspaceSidebar,
+  .sideRail {
+    min-height: 0;
   }
 }
 

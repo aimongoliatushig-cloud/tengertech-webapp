@@ -142,9 +142,7 @@ async function renderTaskReport(task: TaskDetail, credentials: { login: string; 
                   const src = attachment?.datas
                     ? `data:${attachment.mimetype || "image/jpeg"};base64,${attachment.datas}`
                     : "";
-                  return `<div class="photo">${
-                    src ? `<img src="${src}" alt="${escapeHtml(image.name)}" />` : ""
-                  }</div>`;
+                  return `<div class="photo">${src ? `<img src="${src}" alt="Тайлангийн зураг" />` : ""}</div>`;
                 })
                 .join("")}</div>`
             : "<p class=\"muted\">Зураг хавсаргаагүй.</p>";
@@ -206,9 +204,7 @@ function renderPhotoGrid(
       const src = attachment?.datas
         ? `data:${attachment.mimetype || image.mimetype || "image/jpeg"};base64,${attachment.datas}`
         : "";
-      return `<div class="photo">${
-        src ? `<img src="${src}" alt="${escapeHtml(image.name)}" />` : ""
-      }</div>`;
+      return `<div class="photo">${src ? `<img src="${src}" alt="Тайлангийн зураг" />` : ""}</div>`;
     })
     .join("")}</div>`;
 }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   CalendarDays,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   MapPin,
@@ -70,6 +71,11 @@ function normalizeText(value: string) {
 function isDriverOption(jobTitle: string) {
   const title = normalizeText(jobTitle);
   return title.includes("жолооч") || title.includes("driver") || title.includes("chauffeur");
+}
+
+function driverDepartmentLabel(value?: string | null) {
+  const label = fixMojibakeText(value || "").trim();
+  return label || "Хэлтэсгүй";
 }
 
 function isDoneTask(task: DashboardSnapshot["taskDirectory"][number]) {
@@ -261,25 +267,41 @@ export function DashboardInspectorVehiclePanel({
   const activeVehicleBlocked = Boolean(activeSummary?.isStopped);
   const activeDefaultDriverId = activeSummary?.vehicle.driverId ? String(activeSummary.vehicle.driverId) : "";
   const driverOptions = useMemo(() => {
-    const options = new Map<number, { id: number; name: string; detail: string }>();
+    const activeDepartment = driverDepartmentLabel(
+      activeSummary?.vehicle.departmentName || activeSummary?.boardVehicle?.departmentName,
+    );
+    const options = new Map<number, { id: number; name: string; departmentName: string; jobTitle: string }>();
     for (const option of fleetBoard.driverOptions) {
       if (!option.active) continue;
       if (!isDriverOption(option.jobTitle)) continue;
+      const departmentName = driverDepartmentLabel(option.departmentName);
       options.set(option.id, {
         id: option.id,
-        name: option.name,
-        detail: [option.jobTitle, option.departmentName].filter(Boolean).join(" · "),
+        name: fixMojibakeText(option.name),
+        departmentName,
+        jobTitle: fixMojibakeText(option.jobTitle || "Жолооч"),
       });
     }
     if (activeSummary?.vehicle.driverId && !options.has(activeSummary.vehicle.driverId)) {
       options.set(activeSummary.vehicle.driverId, {
         id: activeSummary.vehicle.driverId,
-        name: activeSummary.vehicle.driverName || `Жолооч #${activeSummary.vehicle.driverId}`,
-        detail: "Машины үндсэн жолооч",
+        name: fixMojibakeText(activeSummary.vehicle.driverName || `Жолооч #${activeSummary.vehicle.driverId}`),
+        departmentName: activeDepartment,
+        jobTitle: "Машинд бүртгэлтэй жолооч",
       });
     }
     return Array.from(options.values()).sort((left, right) => left.name.localeCompare(right.name, "mn"));
   }, [activeSummary, fleetBoard.driverOptions]);
+  const driverOptionGroups = useMemo(() => {
+    const groups = new Map<string, typeof driverOptions>();
+    for (const driver of driverOptions) {
+      const key = driver.departmentName || "Хэлтэсгүй";
+      groups.set(key, [...(groups.get(key) ?? []), driver]);
+    }
+    return Array.from(groups, ([departmentName, options]) => ({ departmentName, options })).sort((left, right) =>
+      left.departmentName.localeCompare(right.departmentName, "mn"),
+    );
+  }, [driverOptions]);
   const selectedDriverId = activeSummary
     ? (driverOverridesByVehicle[activeSummary.vehicle.id] ?? activeDefaultDriverId)
     : "";
@@ -313,6 +335,16 @@ export function DashboardInspectorVehiclePanel({
 
   return (
     <section id="my-vehicles" className={dashboardStyles.inspectorVehicleBoard}>
+      <header className={dashboardStyles.inspectorMobileFlowHeader}>
+        <span>
+          <Truck aria-hidden />
+        </span>
+        <div>
+          <strong>Машин сонгох</strong>
+          <small>Сонгоод доор нь хороо, хогийн цэгээ тэмдэглээд даалгавар үүсгэнэ.</small>
+        </div>
+      </header>
+
       <div className={dashboardStyles.inspectorVehicleToolbar}>
         <div className={dashboardStyles.inspectorFilterPills}>
           {filterItems.map((item) => (
@@ -333,7 +365,7 @@ export function DashboardInspectorVehiclePanel({
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Хайх (дугаар, машин, хороо...)"
+            placeholder="Дугаар, машин, жолоочоор хайх"
           />
         </label>
       </div>
@@ -358,6 +390,12 @@ export function DashboardInspectorVehiclePanel({
                 <span className={dashboardStyles.inspectorVehicleImage}>
                   <VehicleLogo src={summary.boardVehicle?.imageUrl} />
                 </span>
+                {isActive ? (
+                  <span className={dashboardStyles.inspectorVehicleSelectedBadge}>
+                    <CheckCircle2 aria-hidden />
+                    Сонгосон
+                  </span>
+                ) : null}
                 <span className={dashboardStyles.inspectorVehicleCardBody}>
                   <strong>{summary.plate}</strong>
                   <small>{summary.modelName}</small>
@@ -388,6 +426,7 @@ export function DashboardInspectorVehiclePanel({
         </div>
       )}
 
+      <div className={dashboardStyles.inspectorMobileStepLabel}>Даалгаврын өдөр</div>
       <div className={dashboardStyles.inspectorControlBar}>
         <button type="button" onClick={() => setWorkDate((current) => shiftDate(current, -1))} aria-label="Өмнөх өдөр">
           <ChevronLeft aria-hidden />
@@ -484,6 +523,9 @@ export function DashboardInspectorVehiclePanel({
 
         <form action={createProjectAction} className={dashboardStyles.inspectorCreatePanel}>
           <h2>Шинэ даалгавар нэмэх</h2>
+          <p className={dashboardStyles.inspectorCreateLead}>
+            Сонгосон машинд тухайн өдрийн хогийн цэгийн ажлыг үүсгэнэ.
+          </p>
           <input type="hidden" name="operation_unit" value="garbage_transport" />
           <input type="hidden" name="department_id" value={departmentId ?? ""} />
           <input type="hidden" name="garbage_vehicle_id" value={activeSummary?.vehicle.id ?? ""} />
@@ -527,11 +569,15 @@ export function DashboardInspectorVehiclePanel({
               disabled={activeVehicleBlocked || !driverOptions.length}
             >
               <option value="">Жолооч оноогоогүй</option>
-              {driverOptions.map((driver) => (
-                <option key={driver.id} value={driver.id}>
-                  {driver.name}
-                  {driver.detail ? ` - ${driver.detail}` : ""}
-                </option>
+              {driverOptionGroups.map((group) => (
+                <optgroup key={group.departmentName} label={group.departmentName}>
+                  {group.options.map((driver) => (
+                    <option key={driver.id} value={driver.id}>
+                      {driver.name}
+                      {driver.jobTitle ? ` - ${driver.jobTitle}` : ""}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
             <small className={dashboardStyles.inspectorDriverHint}>

@@ -1,4 +1,5 @@
 import { getSession, isMasterRole } from "@/lib/auth";
+import { chromium } from "playwright";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import {
@@ -51,13 +52,15 @@ function toCsv(rows: unknown[][]) {
   return `\uFEFF${rows.map((row) => row.map(csvCell).join(",")).join("\n")}\n`;
 }
 
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function toExcelHtml(title: string, payload: ExportPayload) {
-  const escapeHtml = (value: unknown) =>
-    String(value ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
   const table = (caption: string, headers: string[], rows: unknown[][]) => `
     <table>
       <caption>${escapeHtml(caption)}</caption>
@@ -127,6 +130,141 @@ function toExcelHtml(title: string, payload: ExportPayload) {
   )}
 </body>
 </html>`;
+}
+
+function toPdfHtml(title: string, payload: ExportPayload) {
+  const reportRows = payload.reports
+    .map(
+      (report, index) => `<tr>
+        <td>${index + 1}</td>
+        <td>${escapeHtml(report.taskName || report.projectName)}</td>
+        <td>${escapeHtml(report.departmentName)}</td>
+        <td>${escapeHtml(report.reporter)}</td>
+        <td>${escapeHtml(`${report.reportedQuantity} ${report.measurementUnit}`.trim())}</td>
+        <td>${escapeHtml(report.submittedAt)}</td>
+        <td>${escapeHtml(report.stateLabel)}</td>
+        <td>${report.imageCount}</td>
+        <td>${report.audioCount}</td>
+      </tr>`,
+    )
+    .join("");
+  const detailBlocks = payload.reports
+    .slice(0, 20)
+    .map(
+      (report, index) => `<section class="detail-block">
+        <h2>${index + 1}. ${escapeHtml(report.taskName || report.projectName)}</h2>
+        <div class="meta-grid">
+          <div><strong>Төсөл:</strong> ${escapeHtml(report.projectName)}</div>
+          <div><strong>Хэлтэс:</strong> ${escapeHtml(report.departmentName)}</div>
+          <div><strong>Илгээгч:</strong> ${escapeHtml(report.reporter)}</div>
+          <div><strong>Огноо:</strong> ${escapeHtml(report.submittedAt)}</div>
+          <div><strong>Хэмжээ:</strong> ${escapeHtml(`${report.reportedQuantity} ${report.measurementUnit}`.trim())}</div>
+          <div><strong>Хавсралт:</strong> ${report.imageCount} зураг, ${report.audioCount} аудио</div>
+        </div>
+        <p>${escapeHtml(report.summary || "Тайлангийн нэмэлт тайлбар ороогүй байна.")}</p>
+      </section>`,
+    )
+    .join("");
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    @page { size: A4 landscape; margin: 12mm; }
+    body {
+      color: #102016;
+      font-family: Arial, "Noto Sans", sans-serif;
+      font-size: 10pt;
+      line-height: 1.35;
+      margin: 0;
+    }
+    h1 { margin: 0 0 8px; font-size: 18pt; text-align: center; }
+    h2 { margin: 12px 0 6px; font-size: 12pt; }
+    .report-meta {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin: 10px 0 14px;
+    }
+    .metric {
+      border: 1px solid #b9c7bd;
+      border-radius: 8px;
+      padding: 8px;
+      background: #f4faf5;
+    }
+    .metric span { display: block; color: #4d5c52; font-size: 8pt; }
+    .metric strong { display: block; margin-top: 2px; font-size: 14pt; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { border: 1px solid #9aa8a0; padding: 5px 6px; text-align: left; vertical-align: top; }
+    th { background: #e8f3ea; font-weight: 700; }
+    .detail-block {
+      break-inside: avoid;
+      border: 1px solid #c6d2ca;
+      border-radius: 8px;
+      margin-top: 10px;
+      padding: 8px 10px;
+    }
+    .detail-block p { margin: 6px 0 0; }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px 12px;
+      color: #25342b;
+      font-size: 9pt;
+    }
+    .muted { color: #5f6f65; }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(title)}</h1>
+  <div class="muted">Хамрах хүрээ: ${escapeHtml(payload.scope)} · Үүсгэсэн: ${escapeHtml(payload.generatedAt)}</div>
+  <div class="report-meta">
+    <div class="metric"><span>Тайлан</span><strong>${payload.summary.reports}</strong></div>
+    <div class="metric"><span>Ажил</span><strong>${payload.summary.tasks}</strong></div>
+    <div class="metric"><span>Хяналт хүлээж буй</span><strong>${payload.summary.reviewItems}</strong></div>
+    <div class="metric"><span>Хавсралт</span><strong>${payload.summary.images} зураг / ${payload.summary.audios} аудио</strong></div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>№</th>
+        <th>Тайлан</th>
+        <th>Хэлтэс</th>
+        <th>Илгээгч</th>
+        <th>Хэмжээ</th>
+        <th>Огноо</th>
+        <th>Төлөв</th>
+        <th>Зураг</th>
+        <th>Аудио</th>
+      </tr>
+    </thead>
+    <tbody>${reportRows || '<tr><td colspan="9">Тайлан олдсонгүй.</td></tr>'}</tbody>
+  </table>
+  ${detailBlocks}
+</body>
+</html>`;
+}
+
+async function renderPdf(html: string) {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle" });
+    return await page.pdf({
+      format: "A4",
+      landscape: true,
+      printBackground: true,
+      margin: {
+        top: "12mm",
+        right: "12mm",
+        bottom: "12mm",
+        left: "12mm",
+      },
+    });
+  } finally {
+    await browser.close();
+  }
 }
 
 function buildExportPayload(
@@ -291,6 +429,16 @@ export async function GET(request: Request) {
       headers: {
         "Content-Disposition": `attachment; filename="municipal-report-${dateKey}.xls"`,
         "Content-Type": "application/vnd.ms-excel; charset=utf-8",
+      },
+    });
+  }
+
+  if (format === "pdf") {
+    const buffer = await renderPdf(toPdfHtml("Хот тохижилтын тайлан", payload));
+    return new Response(new Uint8Array(buffer), {
+      headers: {
+        "Content-Disposition": `attachment; filename="municipal-report-${dateKey}.pdf"`,
+        "Content-Type": "application/pdf",
       },
     });
   }

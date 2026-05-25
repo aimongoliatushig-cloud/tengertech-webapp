@@ -249,8 +249,8 @@ export function TaskReportActions({
                         <div className={styles.editAttachmentList}>
                           {visibleImages.map((image) => (
                             <div key={image.id} className={styles.editAttachmentItem}>
-                              <Image src={image.url} alt={image.name} width={96} height={70} />
-                              <span>{image.name}</span>
+                              <Image src={image.url} alt="Тайлангийн зураг" width={96} height={70} />
+                              <span>Тайлангийн зураг</span>
                               <button
                                 type="button"
                                 className={styles.attachmentRemoveButton}

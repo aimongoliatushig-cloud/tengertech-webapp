@@ -3281,8 +3281,8 @@ export function DashboardView({
 
         <div className={shellStyles.pageContent}>
           <WorkspaceHeader
-            title={transportInspectorMode ? "Ажлын самбар" : `Сайн байна уу, ${session.name}`}
-            subtitle={transportInspectorMode ? "Авто бааз, хог тээвэрлэлтийн хэлтэс" : scopeLabel}
+            title={transportInspectorMode ? "Даалгавар үүсгэх" : `Сайн байна уу, ${session.name}`}
+            subtitle={transportInspectorMode ? "Машин, хороо, хогийн цэг сонгох" : scopeLabel}
             userName={session.name}
             roleLabel={roleLabel}
             notificationCount={attentionCount}

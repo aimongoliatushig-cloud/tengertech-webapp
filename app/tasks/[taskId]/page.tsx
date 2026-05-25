@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, CalendarDays, ClipboardCheck, ClipboardList, MoreVertical } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
+import { ReportImageLightbox } from "@/app/_components/report-image-lightbox";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import {
   createTaskReportAction,
@@ -293,6 +294,22 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const canInspectAssignedTransportTask = session.role === "transport_inspector";
   const isGarbageTransportTask =
     task.operationType === "garbage" || task.operationType === "garbage_seasonal";
+  const garbagePointIssueTotal =
+    task.unresolvedStopCount + task.missingProofStopCount + task.deviationStopCount;
+  const garbagePointCountLabel =
+    task.plannedQuantity > 0 && task.measurementUnit.includes("цэг")
+      ? `${Math.round(task.plannedQuantity)} хогийн цэг`
+      : garbagePointIssueTotal > 0
+        ? `${garbagePointIssueTotal} цэг анхаарах`
+        : "Хогийн цэгүүд";
+  const latestReport = task.reports[0];
+  const garbageProofLabel = latestReport
+    ? [
+        latestReport.imageCount ? `${latestReport.imageCount} зураг` : "",
+        latestReport.audioCount ? `${latestReport.audioCount} аудио` : "",
+        task.completedQuantity > 0 ? `${Math.round(task.completedQuantity * 10) / 10} ${task.measurementUnit}` : "",
+      ].filter(Boolean).join(" · ") || "Тайлан ирсэн"
+    : "Нотолгоо хүлээгдэж байна";
   const canManageReview =
     !workerMode &&
     !hasOwnSubmittedReport &&
@@ -672,6 +689,34 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                   </div>
                 </section>
               ) : null}
+
+              {isGarbageTransportTask ? (
+                <section className={styles.garbagePointOverview} aria-label="Хогийн цэгийн хяналтын товч">
+                  <div>
+                    <span className={styles.kicker}>Хогийн цэгүүд</span>
+                    <strong>{garbagePointCountLabel}</strong>
+                    <p>{task.vehicleName || "Машин сонгоогүй"}{task.driverName ? ` · ${task.driverName}` : ""}</p>
+                  </div>
+                  <div className={styles.garbagePointMetaGrid}>
+                    <span>
+                      <strong>{garbageProofLabel}</strong>
+                      Нотолгоо
+                    </span>
+                    <span>
+                      <strong>{task.missingProofStopCount}</strong>
+                      Зураг дутуу
+                    </span>
+                    <span>
+                      <strong>{task.deviationStopCount}</strong>
+                      Байршил зөрсөн
+                    </span>
+                    <span>
+                      <strong>{task.hasWeightWarning ? "Шалгах" : "Хэвийн"}</strong>
+                      Жин
+                    </span>
+                  </div>
+                </section>
+              ) : null}
             </section>
 
             <section className={`${styles.pageGrid} ${reviewFocusedMode ? styles.reviewPageGrid : ""}`}>
@@ -813,37 +858,25 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                           ) : null}
 
                           {report.images.length ? (
-                            <div
-                              className={`${dashboardStyles.reportImageGrid} ${
+                            <ReportImageLightbox
+                              images={report.images.map((image, imageIndex) => ({
+                                id: image.id,
+                                url: image.url,
+                                name: image.name,
+                                alt: `${task.name} тайлангийн зураг`,
+                                caption: reportImageLabel(imageIndex, report.images.length),
+                              }))}
+                              gridClassName={`${dashboardStyles.reportImageGrid} ${
                                 reviewFocusedMode ? dashboardStyles.reviewReportImageGrid : ""
                               }`}
-                            >
-                              {report.images.map((image, imageIndex) => (
-                                <a
-                                  key={image.id}
-                                  href={image.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className={`${dashboardStyles.reportImageLink} ${
-                                    reviewFocusedMode ? dashboardStyles.reviewReportImageLink : ""
-                                  }`}
-                                >
-                                  <Image
-                                    src={image.url}
-                                    alt={`${task.name} - ${image.name}`}
-                                    className={dashboardStyles.reportImage}
-                                    width={320}
-                                    height={240}
-                                    unoptimized
-                                  />
-                                  {reviewFocusedMode ? (
-                                    <span className={dashboardStyles.reportImageCaption}>
-                                      {reportImageLabel(imageIndex, report.images.length)}
-                                    </span>
-                                  ) : null}
-                                </a>
-                              ))}
-                            </div>
+                              triggerClassName={`${dashboardStyles.reportImageLink} ${
+                                reviewFocusedMode ? dashboardStyles.reviewReportImageLink : ""
+                              }`}
+                              imageClassName={dashboardStyles.reportImage}
+                              captionClassName={dashboardStyles.reportImageCaption}
+                              showCaption={reviewFocusedMode}
+                              viewerTitle="Тайлангийн зураг"
+                            />
                           ) : null}
 
                           {report.audios.length ? (

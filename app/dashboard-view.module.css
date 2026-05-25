@@ -1161,6 +1161,11 @@
   min-width: 0;
 }
 
+.inspectorMobileFlowHeader,
+.inspectorMobileStepLabel {
+  display: none;
+}
+
 .inspectorVehicleToolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 420px) auto;
@@ -1290,25 +1295,20 @@
 }
 
 .inspectorVehicleCardActive {
-  border-color: #166534;
-  background: linear-gradient(180deg, #ffffff 0%, #f7fff9 100%);
+  border-color: rgba(22, 101, 52, 0.5);
+  background:
+    linear-gradient(180deg, rgba(240, 250, 242, 0.96) 0%, #ffffff 42%),
+    #fff;
   box-shadow:
-    0 24px 54px rgba(17, 27, 21, 0.13),
-    0 0 0 3px rgba(47, 127, 70, 0.18),
-    inset 0 0 0 2px rgba(47, 127, 70, 0.34);
-}
-
-.inspectorVehicleCardActive::before {
-  content: "";
-  position: absolute;
-  inset: 12px auto 12px 8px;
-  width: 4px;
-  border-radius: 999px;
-  background: #2f7f46;
+    0 18px 42px rgba(17, 27, 21, 0.1),
+    0 0 0 3px rgba(47, 127, 70, 0.12),
+    inset 0 0 0 1px rgba(47, 127, 70, 0.18);
 }
 
 .inspectorVehicleCardActive .inspectorVehicleImage {
-  box-shadow: inset 0 0 0 2px rgba(47, 127, 70, 0.36);
+  box-shadow:
+    0 10px 22px rgba(17, 27, 21, 0.08),
+    inset 0 0 0 2px rgba(47, 127, 70, 0.22);
 }
 
 .inspectorVehicleCardBlocked {
@@ -1337,6 +1337,30 @@
   width: 72px;
   height: 72px;
   stroke-width: 1.6;
+}
+
+.inspectorVehicleSelectedBadge {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 2;
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgba(22, 101, 52, 0.94);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 950;
+  box-shadow: 0 10px 22px rgba(22, 101, 52, 0.24);
+}
+
+.inspectorVehicleSelectedBadge svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.6;
 }
 
 .inspectorVehicleCardBody {
@@ -1676,6 +1700,14 @@
   letter-spacing: 0;
 }
 
+.inspectorCreateLead {
+  margin: -4px 0 4px;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 760;
+  line-height: 1.45;
+}
+
 .inspectorCreatePanel label {
   display: grid;
   gap: 6px;
@@ -1990,25 +2022,75 @@
   }
 }
 
+@media (max-width: 1080px) {
+  .inspectorFilterPills {
+    display: none;
+  }
+}
+
 @media (max-width: 720px) {
   .inspectorVehicleBoard {
-    gap: 14px;
+    gap: 12px;
+  }
+
+  .inspectorMobileFlowHeader {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid rgba(47, 127, 70, 0.14);
+    border-radius: 14px;
+    background: linear-gradient(180deg, #f4fbf5 0%, #ffffff 100%);
+    box-shadow: 0 12px 26px rgba(17, 27, 21, 0.06);
+  }
+
+  .inspectorMobileFlowHeader > span {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: 12px;
+    background: #e5f5e8;
+    color: #2f7f46;
+  }
+
+  .inspectorMobileFlowHeader svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .inspectorMobileFlowHeader div {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .inspectorMobileFlowHeader strong {
+    color: #111827;
+    font-size: 1.04rem;
+    font-weight: 950;
+    line-height: 1.1;
+  }
+
+  .inspectorMobileFlowHeader small {
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 780;
+    line-height: 1.35;
   }
 
   .inspectorFilterPills {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    display: none;
   }
 
-  .inspectorFilterPills button {
-    min-height: 40px;
-    padding: 0 10px;
-    font-size: 0.78rem;
+  .inspectorVehicleToolbar {
+    gap: 0;
   }
 
   .inspectorSearchField {
     min-height: 44px;
+    border-radius: 12px;
   }
 
   .inspectorVehicleScroller {
@@ -2022,14 +2104,48 @@
     height: 118px;
   }
 
+  .inspectorVehicleCardActive {
+    border-color: rgba(22, 101, 52, 0.52);
+    box-shadow:
+      0 16px 34px rgba(17, 27, 21, 0.1),
+      0 0 0 3px rgba(47, 127, 70, 0.12),
+      inset 0 0 0 1px rgba(47, 127, 70, 0.18);
+  }
+
+  .inspectorVehicleSelectedBadge {
+    top: 16px;
+    right: 16px;
+    min-height: 26px;
+    padding: 0 8px;
+    font-size: 0.66rem;
+  }
+
   .inspectorControlBar {
     grid-template-columns: 42px minmax(0, 1fr) 42px;
     gap: 8px;
+    padding: 8px;
+    border: 1px solid rgba(47, 127, 70, 0.12);
+    border-radius: 14px;
+    background: #f7fbf8;
   }
 
   .inspectorControlBar select,
   .inspectorTodayButton {
-    grid-column: 1 / -1;
+    display: none !important;
+  }
+
+  .inspectorControlBar label {
+    min-height: 46px;
+    justify-content: center;
+    border-radius: 12px;
+  }
+
+  .inspectorMobileStepLabel {
+    display: block;
+    margin: 2px 2px -4px;
+    color: #475569;
+    font-size: 0.78rem;
+    font-weight: 950;
   }
 
   .inspectorWorkspaceGrid {
@@ -2048,6 +2164,20 @@
   .inspectorCreatePanel {
     padding: 14px;
     border-radius: 14px;
+  }
+
+  .inspectorCreatePanel {
+    border-color: rgba(47, 127, 70, 0.16);
+    background: linear-gradient(180deg, #ffffff 0%, #f8fcf8 100%);
+  }
+
+  .inspectorCreatePanel h2 {
+    font-size: 1.18rem;
+  }
+
+  .inspectorCreateLead {
+    margin: -2px 0 4px;
+    font-size: 0.8rem;
   }
 
   .inspectorTimelineTask {

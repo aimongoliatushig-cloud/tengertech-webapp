@@ -863,13 +863,13 @@ export function AppMenu({
     {
       key: "dashboard",
       href: "/",
-      label: "Ажлын самбар",
+      label: "Нүүр",
       icon: LayoutDashboard,
     },
     {
-      key: "review",
-      href: "/review",
-      label: "Тайлан хянах",
+      key: "tasks",
+      href: "/tasks",
+      label: "Хянах",
       icon: ClipboardCheck,
     },
     {
@@ -1036,6 +1036,9 @@ export function AppMenu({
 
     const preferredItems = dockItems.filter((item) => !["chat", "field"].includes(item.key));
     const baseItems = preferredItems.length >= 4 ? preferredItems : dockItems;
+    if (transportInspectorMode && baseItems.length === 2) {
+      return [baseItems[0], mobilePrimaryAction, baseItems[1]];
+    }
     return [
       ...baseItems.slice(0, 2),
       mobilePrimaryAction,
@@ -1044,15 +1047,13 @@ export function AppMenu({
   };
   const rawMobileDockItems: MenuItem[] = transportInspectorMode
     ? [
-        { key: "dashboard", href: "/", label: "Самбар", icon: LayoutDashboard },
+        { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
         {
-          key: "review",
-          href: "/review",
-          label: "Тайлан",
+          key: "tasks",
+          href: "/tasks",
+          label: "Хянах",
           icon: ClipboardCheck,
         },
-        { key: "notifications", href: reviewHref, label: "Мэдэгдэл", icon: Bell, badge: notificationCount },
-        { key: "profile", href: "/profile", label: "Профайл", icon: Settings },
       ]
     : reportOnlyMode
       ? [{ key: "reports", href: "/reports", label: "Тайлан", icon: BarChart3 }]
@@ -1407,7 +1408,7 @@ export function AppMenu({
       ) : null}
 
       <div
-        className={styles.mobileDock}
+        className={cn(styles.mobileDock, visibleMobileDockItems.length === 3 && styles.mobileDockThree)}
         style={{ "--mobile-dock-count": visibleMobileDockItems.length } as CSSProperties}
         aria-label="Хурдан цэс"
       >

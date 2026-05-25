@@ -59,6 +59,10 @@ type TaskRecord = {
   mfo_driver_employee_id?: Relation;
   mfo_collector_employee_ids?: number[];
   mfo_inspector_employee_id?: Relation;
+  mfo_unresolved_stop_count?: number;
+  mfo_missing_proof_stop_count?: number;
+  mfo_route_deviation_stop_count?: number;
+  mfo_weight_sync_warning?: boolean;
   state: string;
   mfo_state?: string | false;
   description?: string | false;
@@ -745,6 +749,12 @@ export type TaskDetail = {
   measurementUnit: string;
   measurementUnitId: number | null;
   quantityLines: TaskQuantityLine[];
+  vehicleName: string;
+  driverName: string;
+  unresolvedStopCount: number;
+  missingProofStopCount: number;
+  deviationStopCount: number;
+  hasWeightWarning: boolean;
   plannedQuantity: number;
   completedQuantity: number;
   remainingQuantity: number;
@@ -3844,6 +3854,10 @@ export async function loadTaskDetail(
         "mfo_driver_employee_id",
         "mfo_collector_employee_ids",
         "mfo_inspector_employee_id",
+        "mfo_unresolved_stop_count",
+        "mfo_missing_proof_stop_count",
+        "mfo_route_deviation_stop_count",
+        "mfo_weight_sync_warning",
         "state",
         "description",
         "ops_can_submit_for_review",
@@ -4232,6 +4246,12 @@ export async function loadTaskDetail(
     measurementUnitId: relationId(task.ops_measurement_unit_id ?? false),
     quantityLines: effectiveQuantityLines,
     measurementUnitCode: task.ops_measurement_unit_code || "",
+    vehicleName: relationName(task.mfo_vehicle_id ?? false, ""),
+    driverName: relationName(task.mfo_driver_employee_id ?? false, ""),
+    unresolvedStopCount: task.mfo_unresolved_stop_count ?? 0,
+    missingProofStopCount: task.mfo_missing_proof_stop_count ?? 0,
+    deviationStopCount: task.mfo_route_deviation_stop_count ?? 0,
+    hasWeightWarning: Boolean(task.mfo_weight_sync_warning),
     plannedQuantity: effectivePlannedQuantity,
     completedQuantity: effectiveCompletedQuantity,
     remainingQuantity:

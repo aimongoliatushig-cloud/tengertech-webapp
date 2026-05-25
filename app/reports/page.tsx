@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -15,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
+import { ReportImageLightbox } from "@/app/_components/report-image-lightbox";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
 import {
@@ -456,7 +456,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     selectedDepartmentHint?.note ??
     "Авто бааз, ногоон байгууламж, тохижилтын бүх ажлын тайланг нэг урсгалаар харуулж байна";
   const reviewQueueRows = filteredReviewQueue.slice(0, 4);
-  const getExportHref = (format: "csv" | "excel" | "json", reportId?: number) => {
+  const getExportHref = (format: "csv" | "excel" | "json" | "pdf", reportId?: number) => {
     const params = new URLSearchParams(exportParams);
     params.set("format", format);
     if (reportId) {
@@ -749,20 +749,18 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                               </div>
 
                               {report.images.length ? (
-                                <div className={styles.reportRegistryAttachmentGrid}>
-                                  {report.images.map((image) => (
-                                    <a key={image.id} href={image.url} target="_blank" rel="noreferrer">
-                                      <Image
-                                        src={image.url}
-                                        alt={`${report.taskName} - ${image.name}`}
-                                        width={260}
-                                        height={180}
-                                        unoptimized
-                                      />
-                                      <span>{image.name}</span>
-                                    </a>
-                                  ))}
-                                </div>
+                                <ReportImageLightbox
+                                  images={report.images.map((image) => ({
+                                    id: image.id,
+                                    url: image.url,
+                                    name: image.name,
+                                    alt: `${report.taskName} тайлангийн зураг`,
+                                  }))}
+                                  gridClassName={styles.reportRegistryAttachmentGrid}
+                                  imageWidth={260}
+                                  imageHeight={180}
+                                  viewerTitle="Тайлангийн зураг"
+                                />
                               ) : null}
 
                               {report.audios.length ? (
@@ -781,9 +779,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                                   <Eye aria-hidden />
                                   Ажил нээх
                                 </Link>
-                                <a href={getExportHref("excel", report.id)}>
+                                <a href={getExportHref("pdf", report.id)}>
                                   <Download aria-hidden />
-                                  Excel татах
+                                  PDF татах
                                 </a>
                               </div>
                             </div>

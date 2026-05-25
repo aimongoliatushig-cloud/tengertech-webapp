@@ -46,7 +46,7 @@ export function MediaUploadField({
 
   const handleChange = async (event: ChangeEvent<HTMLInputElement>) => {
     if (accept.includes("image")) {
-      setUploadMessage("Зураг шахаж бэлдэж байна...");
+      setUploadMessage("Зураг жижигрүүлж бэлдэж байна...");
       const compression = await compressInputImages(event.target);
       if (compression.changed) {
         console.info("[report-upload] image compression", compression);

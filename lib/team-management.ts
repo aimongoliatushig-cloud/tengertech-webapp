@@ -61,13 +61,15 @@ function relationName(value: Relation | undefined) {
   return Array.isArray(value) ? value[1] : "";
 }
 
-function formatTransportRole(jobTitle: string | false | undefined) {
+function formatTransportRole(jobTitle: string | false | undefined, departmentName: string) {
   const normalized = normalizeDepartmentText(jobTitle || "");
+  const departmentLabel = departmentName.trim();
+  const suffix = departmentLabel ? `${departmentLabel} · ` : "";
   if (normalized.includes("ачигч")) {
-    return "Хог тээврийн ачигч";
+    return `${suffix}Ачигч`;
   }
   if (normalized.includes("жолооч")) {
-    return "Хог тээврийн жолооч";
+    return `${suffix}Жолооч`;
   }
   return "";
 }
@@ -156,7 +158,7 @@ export async function loadTeamMemberOptions(
     .map((employee) => ({
       id: employee.id,
       name: employee.name,
-      roleLabel: formatTransportRole(employee.job_title),
+      roleLabel: formatTransportRole(employee.job_title, relationName(employee.department_id)),
     }))
     .filter((employee) => employee.roleLabel)
     .map((employee) => ({

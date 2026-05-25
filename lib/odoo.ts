@@ -56,6 +56,7 @@ type OdooTaskRecord = {
   create_date?: string | false;
   ops_team_leader_id?: OdooRelation;
   user_ids?: number[];
+  mfo_inspector_employee_id?: OdooRelation;
   ops_planned_quantity?: number;
   ops_completed_quantity?: number;
   ops_remaining_quantity?: number;
@@ -253,6 +254,9 @@ type LiveTask = {
   measurementUnit: string;
   leaderId?: number | null;
   leaderName: string;
+  inspectorEmployeeId?: number | null;
+  inspectorName?: string;
+  inspectorUserId?: number | null;
   priorityLabel: string;
   progress: number;
   href: string;
@@ -305,6 +309,9 @@ export type TaskDirectoryItem = {
   scheduledDate?: string | null;
   leaderId?: number | null;
   leaderName: string;
+  inspectorEmployeeId?: number | null;
+  inspectorName?: string;
+  inspectorUserId?: number | null;
   priorityLabel: string;
   progress: number;
   plannedQuantity: number;
@@ -313,6 +320,12 @@ export type TaskDirectoryItem = {
   measurementUnit: string;
   operationType: string;
   operationTypeLabel: string;
+  vehicleName?: string;
+  driverName?: string;
+  unresolvedStopCount?: number;
+  missingProofStopCount?: number;
+  deviationStopCount?: number;
+  hasWeightWarning?: boolean;
   issueFlag: boolean;
   assigneeIds?: number[];
   latestReport?: TaskDirectoryReportSummary;
@@ -1695,6 +1708,7 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "create_date",
     "ops_team_leader_id",
     "user_ids",
+    "mfo_inspector_employee_id",
     "ops_planned_quantity",
     "ops_completed_quantity",
     "ops_remaining_quantity",
@@ -1730,6 +1744,7 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "create_date",
     "ops_team_leader_id",
     "user_ids",
+    "mfo_inspector_employee_id",
     "ops_planned_quantity",
     "ops_completed_quantity",
     "ops_remaining_quantity",
@@ -5058,6 +5073,34 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
     }
   }
 
+  const inspectorEmployeeIds = Array.from(
+    new Set(
+      tasks
+        .map((task) => relationId(task.mfo_inspector_employee_id ?? false))
+        .filter((employeeId): employeeId is number => Boolean(employeeId)),
+    ),
+  );
+  const inspectorEmployees = inspectorEmployeeIds.length
+    ? await executeKw<OdooEmployeeRecord[]>(
+        uid,
+        "hr.employee",
+        "search_read",
+        [[["id", "in", inspectorEmployeeIds]]],
+        {
+          fields: ["name", "user_id"],
+          limit: inspectorEmployeeIds.length,
+        },
+        resolvedConnection,
+      ).catch(() => [] as OdooEmployeeRecord[])
+    : [];
+  const inspectorUserIdByEmployeeId = new Map<number, number>();
+  for (const employee of inspectorEmployees) {
+    const userId = relationId(employee.user_id ?? false);
+    if (userId) {
+      inspectorUserIdByEmployeeId.set(employee.id, userId);
+    }
+  }
+
   const departments = departmentSourceNames.map((department) => {
     const departmentTasks = tasks.filter((task) => {
       const departmentName = resolveNormalizedTaskDepartmentName(task, projectDepartmentById);
@@ -5403,6 +5446,7 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
       const quantitySnapshot = taskQuantitySnapshot(task);
       const stageBucket = quantitySnapshot.stageBucket;
       const statusKey = quantitySnapshot.statusKey;
+      const inspectorEmployeeId = relationId(task.mfo_inspector_employee_id ?? false);
 
       return {
         id: task.id,
@@ -5421,6 +5465,9 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         scheduledDate: getDateKeyFromValue(task.mfo_shift_date || task.date_deadline || null),
         leaderId: relationId(task.ops_team_leader_id ?? false),
         leaderName: relationName(task.ops_team_leader_id ?? false),
+        inspectorEmployeeId,
+        inspectorName: relationName(task.mfo_inspector_employee_id ?? false, ""),
+        inspectorUserId: inspectorEmployeeId ? inspectorUserIdByEmployeeId.get(inspectorEmployeeId) ?? null : null,
         priorityLabel: priorityLabel(task.priority || ""),
         progress: quantitySnapshot.progress,
         plannedQuantity: quantitySnapshot.plannedQuantity,
@@ -5429,6 +5476,12 @@ async function fetchLiveSnapshot(connection: OdooConnection): Promise<DashboardS
         measurementUnit: resolveTaskMeasurementUnit(task),
         operationType: task.mfo_operation_type || "",
         operationTypeLabel: operationTypeLabel(task.mfo_operation_type),
+        vehicleName: relationName(task.mfo_vehicle_id ?? false, ""),
+        driverName: relationName(task.mfo_driver_employee_id ?? false, ""),
+        unresolvedStopCount: task.mfo_unresolved_stop_count ?? 0,
+        missingProofStopCount: task.mfo_missing_proof_stop_count ?? 0,
+        deviationStopCount: task.mfo_route_deviation_stop_count ?? 0,
+        hasWeightWarning: Boolean(task.mfo_weight_sync_warning),
         issueFlag: statusKey === "problem",
         assigneeIds: task.user_ids ?? [],
         latestReport: latestReportByTaskId.get(task.id),

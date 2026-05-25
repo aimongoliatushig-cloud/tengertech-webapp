@@ -2,10 +2,10 @@
 
 import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
-import Image from "next/image";
 import { Camera, ImagePlus, Mic, RotateCcw, Square, X } from "lucide-react";
 
-import { compressInputImages } from "./report-upload-utils";
+import { ReportImageLightbox } from "@/app/_components/report-image-lightbox";
+import { compressInputImages, createCompressedCameraImageFile } from "./report-upload-utils";
 import styles from "./task-detail.module.css";
 import type { TaskQuantityLine } from "@/lib/workspace";
 import { PendingSubmitButton } from "./pending-submit-button";
@@ -215,7 +215,7 @@ function PhotoReportField({
   };
 
   const handleGalleryChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    setUploadMessage("Зураг шахаж бэлдэж байна...");
+    setUploadMessage("Зураг жижигрүүлж бэлдэж байна...");
     const compression = await compressInputImages(event.target);
     if (compression.changed) {
       console.info("[report-upload] image compression", compression);
@@ -230,7 +230,13 @@ function PhotoReportField({
     syncSelectedFiles();
   };
 
-  const handleCameraChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleCameraChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    setUploadMessage("Зураг жижигрүүлж бэлдэж байна...");
+    const compression = await compressInputImages(event.target);
+    if (compression.changed) {
+      console.info("[report-upload] image compression", compression);
+    }
+    setUploadMessage("");
     appendFilesToInput({
       input: event.target,
       currentFiles: cameraFilesRef.current,
@@ -313,18 +319,20 @@ function PhotoReportField({
       return;
     }
 
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.78));
-    if (!blob) {
+    setUploadMessage("Зураг жижигрүүлж бэлдэж байна...");
+    const file = await createCompressedCameraImageFile(
+      video,
+      video.videoWidth,
+      video.videoHeight,
+      `camera-${captureSequenceRef.current + 1}.jpg`,
+    );
+    setUploadMessage("");
+    if (!file) {
       setCameraError("Зураг хадгалах боломжгүй байна.");
       return;
     }
 
     captureSequenceRef.current += 1;
-    const file = new File([blob], `camera-${captureSequenceRef.current}.jpg`, { type: "image/jpeg" });
     assignFilesToInput(input, [...Array.from(input.files ?? []), file]);
     syncSelectedFiles();
     stopCamera();
@@ -716,20 +724,13 @@ function ExistingReportView({ report }: { report: ExistingTaskReport }) {
         </div>
 
         {report.images.length ? (
-          <div className={styles.existingReportImageGrid}>
-            {report.images.map((image) => (
-              <a key={image.id} href={image.url} target="_blank" rel="noreferrer">
-                <Image
-                  src={image.url}
-                  alt={image.name}
-                  width={360}
-                  height={260}
-                  unoptimized
-                />
-                <span>{image.name}</span>
-              </a>
-            ))}
-          </div>
+          <ReportImageLightbox
+            images={report.images}
+            gridClassName={styles.existingReportImageGrid}
+            imageWidth={360}
+            imageHeight={260}
+            viewerTitle="Тайлангийн зураг"
+          />
         ) : (
           <p className={styles.mediaEmptyText}>Зураг хавсаргаагүй байна.</p>
         )}

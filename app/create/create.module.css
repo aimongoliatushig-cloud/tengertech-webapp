@@ -7,6 +7,10 @@
     linear-gradient(180deg, rgba(74, 154, 93, 0.08), rgba(255, 255, 255, 0.98));
 }
 
+.mobileCreateHome {
+  display: none;
+}
+
 .heroMetaGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -223,6 +227,126 @@
 }
 
 @media (max-width: 720px) {
+  .heroCard {
+    display: none;
+  }
+
+  .actionGrid {
+    display: none;
+  }
+
+  .mobileCreateHome {
+    display: grid;
+    gap: 14px;
+    margin: 0 0 14px;
+    padding: 14px;
+    border: 1px solid rgba(46, 125, 50, 0.12);
+    border-radius: 8px;
+    background:
+      linear-gradient(180deg, rgba(240, 248, 239, 0.92), rgba(255, 255, 255, 0.98)),
+      #fff;
+    box-shadow: 0 14px 34px rgba(27, 73, 38, 0.07);
+  }
+
+  .mobileCreateHead {
+    display: grid;
+    gap: 7px;
+  }
+
+  .mobileCreateHead span {
+    width: fit-content;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(46, 125, 50, 0.1);
+    color: var(--brand-800);
+    font-size: 0.76rem;
+    font-weight: 900;
+  }
+
+  .mobileCreateHead h1 {
+    margin: 0;
+    color: #17231c;
+    font-size: 1.45rem;
+    font-weight: 900;
+    line-height: 1.12;
+  }
+
+  .mobileCreateHead p {
+    margin: 0;
+    color: var(--ink-700);
+    font-size: 0.88rem;
+    font-weight: 700;
+    line-height: 1.48;
+  }
+
+  .mobileCreatePrimaryGrid,
+  .mobileCreateUtilityGrid {
+    display: grid;
+    gap: 10px;
+  }
+
+  .mobileCreatePrimary {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 12px;
+    row-gap: 4px;
+    min-height: 86px;
+    align-items: center;
+    padding: 14px;
+    border: 1px solid rgba(46, 125, 50, 0.14);
+    border-radius: 8px;
+    background: #fff;
+    color: inherit;
+    box-shadow: 0 10px 26px rgba(27, 73, 38, 0.06);
+  }
+
+  .mobileCreatePrimary > span {
+    grid-row: span 2;
+    display: inline-grid;
+    width: 48px;
+    height: 48px;
+    place-items: center;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
+    color: #fff;
+  }
+
+  .mobileCreatePrimary strong {
+    color: var(--ink-900);
+    font-size: 1rem;
+    font-weight: 900;
+    line-height: 1.2;
+  }
+
+  .mobileCreatePrimary small {
+    color: var(--ink-600);
+    font-size: 0.78rem;
+    font-weight: 750;
+    line-height: 1.35;
+  }
+
+  .mobileCreateUtilityGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .mobileCreateUtility {
+    display: inline-flex;
+    min-height: 46px;
+    align-items: center;
+    gap: 9px;
+    padding: 0 12px;
+    border: 1px solid rgba(74, 154, 93, 0.12);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--ink-800);
+    font-size: 0.86rem;
+    font-weight: 850;
+  }
+
+  .mobileCreateUtility svg {
+    color: var(--brand-800);
+  }
+
   .heroMetaGrid,
   .actionGrid {
     grid-template-columns: 1fr;
@@ -235,7 +359,19 @@
 
   .actionCard {
     min-height: 0;
-    padding: 18px;
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .actionCardTop,
+  .actionCopy p,
+  .actionFoot {
+    display: none;
+  }
+
+  .actionCopy strong {
+    font-size: 1rem;
+    line-height: 1.2;
   }
 }
 

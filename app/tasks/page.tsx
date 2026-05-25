@@ -7,6 +7,8 @@ import {
   ClipboardCheck,
   Clock3,
   Leaf,
+  ListChecks,
+  MapPin,
   Plus,
   Sun,
 } from "lucide-react";
@@ -103,6 +105,23 @@ function normalizeFilter(value: string): FilterKey {
 
 function normalizeQuickAction(value: string): QuickActionMode {
   return value === "report" ? "report" : "none";
+}
+
+function isTaskAssignedToInspector(task: TaskDirectoryItem, userId: number) {
+  return Boolean(task.assigneeIds?.includes(userId) || task.inspectorUserId === userId);
+}
+
+function isInspectorSubmittedTask(task: TaskDirectoryItem, userId: number) {
+  if (!isTaskAssignedToInspector(task, userId)) {
+    return false;
+  }
+
+  return (
+    task.statusKey === "review" ||
+    task.statusKey === "problem" ||
+    task.statusKey === "verified" ||
+    Boolean(task.latestReport)
+  );
 }
 
 function normalizeWorkName(value: string) {
@@ -202,6 +221,50 @@ function formatTimelineTime(value?: string | null) {
 
 function isGarbageTransportTask(task: TaskDirectoryItem) {
   return task.operationType === "garbage" || task.operationType === "garbage_seasonal";
+}
+
+function garbagePointIssueCount(task: TaskDirectoryItem) {
+  return (
+    (task.unresolvedStopCount ?? 0) +
+    (task.missingProofStopCount ?? 0) +
+    (task.deviationStopCount ?? 0)
+  );
+}
+
+function garbagePointSummary(task: TaskDirectoryItem) {
+  if (!isGarbageTransportTask(task)) {
+    return task.operationTypeLabel || "Даалгавар";
+  }
+
+  const issueCount = garbagePointIssueCount(task);
+  if (issueCount > 0) {
+    return `${issueCount} цэг анхаарах`;
+  }
+
+  const roundedQuantity = Math.round(task.plannedQuantity || 0);
+  if (roundedQuantity > 0 && task.measurementUnit.includes("цэг")) {
+    return `${roundedQuantity} хогийн цэг`;
+  }
+
+  return "Хогийн цэгүүд";
+}
+
+function taskProofSummary(task: TaskDirectoryItem) {
+  const report = task.latestReport;
+  if (!report) {
+    return "Нотолгоо хүлээгдэж байна";
+  }
+
+  const parts = [
+    report.imageCount ? `${report.imageCount} зураг` : "",
+    report.audioCount ? `${report.audioCount} аудио` : "",
+  ].filter(Boolean);
+
+  if (isGarbageTransportTask(task) && task.completedQuantity > 0) {
+    parts.push(`${Math.round(task.completedQuantity * 10) / 10} ${task.measurementUnit}`);
+  }
+
+  return parts.length ? parts.join(" · ") : "Тайлан ирсэн";
 }
 
 function parseDateKey(dateKey: string) {
@@ -391,6 +454,10 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const workerMode = isWorkerOnly(session);
   const masterMode = isMasterRole(session.role);
   const seniorMasterMode = session.role === "senior_master";
+  const inspectorMobileMode =
+    !workerMode &&
+    !masterMode &&
+    Boolean(session.role === "transport_inspector" || session.groupFlags?.mfoInspector);
 
   let snapshot: DashboardSnapshot;
   let scopedDepartmentName: Awaited<ReturnType<typeof loadSessionDepartmentName>>;
@@ -477,6 +544,19 @@ export default async function TasksPage({ searchParams }: PageProps) {
       ? assignedWorkerTasks
       : filterTasksToDate(assignedWorkerTasks, todayDateKey)
     : [];
+  const inspectorSubmittedTasks = inspectorMobileMode
+    ? sourceTaskDirectory.filter((task) => isInspectorSubmittedTask(task, session.uid))
+    : [];
+  const inspectorTodayCreatedTasks = inspectorMobileMode
+    ? sourceTaskDirectory
+        .filter(
+          (task) =>
+            isTaskAssignedToInspector(task, session.uid) &&
+            task.createdDate === todayDateKey &&
+            !isInspectorSubmittedTask(task, session.uid),
+        )
+        .slice(0, 3)
+    : [];
   const visibleWorkerTasks =
     workerMode && hasRequestedWorkerWork
       ? workerTasks.filter(
@@ -538,6 +618,10 @@ export default async function TasksPage({ searchParams }: PageProps) {
     ? Array.from(new Set(visibleWorkerTasks.map((task) => task.projectName)))
     : masterMode
       ? masterDepartmentProjects
+      : inspectorMobileMode
+        ? snapshot.projects.filter((project) =>
+            inspectorSubmittedTasks.some((task) => task.projectId === project.id || task.projectName === project.name),
+          )
       : departmentScopedMode
         ? filterByDepartment(snapshot.projects, scopedDepartmentName)
       : snapshot.projects.filter((project) => {
@@ -553,6 +637,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
     ? visibleWorkerTasks
     : masterMode
       ? masterTodayTasks
+      : inspectorMobileMode
+        ? inspectorSubmittedTasks
       : departmentScopedMode
         ? filterByDepartment(sourceTaskDirectory, scopedDepartmentName)
       : sourceTaskDirectory.filter((task) => {
@@ -587,6 +673,17 @@ export default async function TasksPage({ searchParams }: PageProps) {
     }
     return task.statusKey === selectedFilter;
   });
+  const inspectorFilterHref = (filter: FilterKey) => {
+    const linkParams = new URLSearchParams();
+    if (selectedDepartmentParam) {
+      linkParams.set("department", selectedDepartmentParam);
+    }
+    if (filter !== "all") {
+      linkParams.set("filter", filter);
+    }
+    return linkParams.toString() ? `/tasks?${linkParams.toString()}` : "/tasks";
+  };
+  const inspectorPriorityTasks = inspectorMobileMode ? visibleTasks : scopedTasks.slice(0, 4);
   const visibleProjects = masterTodayProjects.filter((project) => {
     if (selectedFilter === "all") {
       return true;
@@ -611,6 +708,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
     ? requestedWorkName || "Надад оноогдсон даалгавар"
     : masterMode
       ? scopedDepartmentName ?? "Миний алба нэгж"
+      : inspectorMobileMode
+        ? "Миний хянах тайлан"
       : scopedDepartmentName || selectedDepartmentUnit || selectedDepartmentGroup?.name || selectedDepartment?.name || "Бүх алба хэлтэс";
   const masterFlowKicker = seniorMasterMode ? "Ахлах мастерын хяналт" : "Мастерын ажил";
   const masterFlowDescription = seniorMasterMode
@@ -793,8 +892,12 @@ export default async function TasksPage({ searchParams }: PageProps) {
             />
           </aside>
 
-          <div className={shellStyles.pageContent}>
-            <div className={workerMode ? styles.workerDesktopHeader : undefined}>
+          <div
+            className={`${shellStyles.pageContent} ${
+              inspectorMobileMode ? styles.inspectorMobilePage : workerMode ? styles.workerMobilePage : ""
+            }`}
+          >
+            {!workerMode && !inspectorMobileMode ? (
               <WorkspaceHeader
                 title={masterMode ? "Өнөөдрийн ажил" : "Даалгавар"}
                 subtitle={
@@ -809,7 +912,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 notificationCount={notificationSummary.unreadCount}
                 notificationNote={taskNotificationNote}
               />
-            </div>
+            ) : null}
 
             {workerMode ? (
               <section className={styles.workerMobileHome} aria-label="Ажилтны mobile нүүр">
@@ -880,7 +983,70 @@ export default async function TasksPage({ searchParams }: PageProps) {
               </section>
             ) : null}
 
-            {!workerMode ? (
+            {inspectorMobileMode ? (
+              <section className={styles.inspectorMobileHome} aria-label="Хяналтын ажилтны mobile нүүр">
+                <div className={styles.inspectorMobileTop}>
+                  <div>
+                    <span>Хяналтын ажилтан</span>
+                    <h1>Хянах ажил</h1>
+                  </div>
+                </div>
+
+                <div className={styles.inspectorPriorityList}>
+                  <div className={styles.inspectorPriorityHead}>
+                    <span>Жолоочоос ирсэн тайлан</span>
+                    <Link href={inspectorFilterHref("all")}>Бүгд</Link>
+                  </div>
+                  {inspectorPriorityTasks.length ? (
+                    inspectorPriorityTasks.map((task) => (
+                      <Link key={`inspector-mobile-${task.id}`} href={buildTaskHref(task.href)} className={styles.inspectorPriorityCard}>
+                        <div>
+                          <strong>{task.name}</strong>
+                          <small>
+                            {task.vehicleName || "Машин сонгоогүй"}
+                            {task.driverName ? ` · ${task.driverName}` : ""}
+                          </small>
+                        </div>
+                        <span>{task.statusLabel}</span>
+                        <p>
+                          <MapPin size={14} strokeWidth={2.3} aria-hidden="true" />
+                          {garbagePointSummary(task)}
+                        </p>
+                      </Link>
+                    ))
+                  ) : (
+                    <div className={styles.inspectorEmptyMobile}>Өнөөдөр шалгах даалгавар алга.</div>
+                  )}
+                </div>
+
+                {inspectorTodayCreatedTasks.length ? (
+                  <div className={styles.inspectorTodayCreated}>
+                    <div className={styles.inspectorPriorityHead}>
+                      <span>Өнөөдөр үүсгэсэн ажил</span>
+                      <Link href="/">Нүүр</Link>
+                    </div>
+                    {inspectorTodayCreatedTasks.map((task) => (
+                      <Link
+                        key={`inspector-created-${task.id}`}
+                        href={buildTaskHref(task.href)}
+                        className={styles.inspectorTodayCreatedCard}
+                      >
+                        <div>
+                          <strong>{task.name}</strong>
+                          <small>
+                            {task.vehicleName || "Машин сонгоогүй"}
+                            {task.driverName ? ` · ${task.driverName}` : ""}
+                          </small>
+                        </div>
+                        <span>{task.statusLabel}</span>
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
+            {!workerMode && !inspectorMobileMode ? (
               <section className={styles.calendarPanel}>
                 <div className={styles.filterHeader}>
                   <div>
@@ -1048,7 +1214,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
               </section>
             ) : null}
 
-            {!workerMode ? (
+            {!workerMode && !inspectorMobileMode ? (
             <header className={styles.pageHeader}>
               <div className={styles.pageHeaderMain}>
                 <div className={styles.titleBlock}>
@@ -1083,11 +1249,11 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   {workerMode ? (
                     <div className={styles.userBlock}>
                       <span>Өнөөдрийн ажил</span>
-                      <strong>{canUseFieldConsole ? "Маршрут нээх" : "Маршрутгүй"}</strong>
+                      <strong>{canUseFieldConsole ? "Өнөөдрийн ажил нээх" : "Талбайн ажилгүй"}</strong>
                       <small>
                         {canUseFieldConsole
-                          ? "Өнөөдөрт оноогдсон маршрут, талбайн урсгал руу шууд орно."
-                          : "Энэ хэрэглэгч дээр талбайн маршрут харах эрх идэвхгүй байна."}
+                          ? "Өнөөдөрт оноогдсон хогийн цэг, талбайн урсгал руу шууд орно."
+                          : "Энэ хэрэглэгч дээр талбайн ажил харах эрх идэвхгүй байна."}
                       </small>
                       {canUseFieldConsole ? (
                         <Link href="/field" className={styles.dateButton}>
@@ -1136,7 +1302,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
             </header>
             ) : null}
 
-            {!workerMode ? (
+            {!workerMode && !inspectorMobileMode ? (
             <section className={styles.summaryStrip}>
               <article className={styles.summaryCard}>
                 <span>
@@ -1192,7 +1358,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
             </section>
             ) : null}
 
-            {!workerMode ? (
+            {!workerMode && !inspectorMobileMode ? (
             <section className={styles.filterPanel} aria-label="Ажлын төлөвөөр шүүх">
               <div className={styles.filterScroller}>
                 {FILTERS.map((filter) => {
@@ -1452,14 +1618,16 @@ export default async function TasksPage({ searchParams }: PageProps) {
               <section className={styles.taskSection}>
                 <div className={styles.sectionHeader}>
                   <div>
-                    <span className={styles.filterKicker}>Даалгаврын жагсаалт</span>
+                    <span className={styles.filterKicker}>
+                      {inspectorMobileMode ? "Жолоочоос ирсэн тайлан" : "Даалгаврын жагсаалт"}
+                    </span>
                     <h2>{selectedDepartmentLabel}</h2>
                   </div>
                 </div>
 
                 {visibleTasks.length ? (
                   <div className={styles.taskCardList}>
-                    {visibleTasks.map((task) => (
+                  {visibleTasks.map((task) => (
                       <Link key={task.id} href={buildTaskHref(task.href)} className={`${styles.taskCard} ${styles.projectCardLink}`}>
                         <div className={styles.taskCardTop}>
                           <div className={styles.taskIdentity}>
@@ -1482,13 +1650,29 @@ export default async function TasksPage({ searchParams }: PageProps) {
                             <strong>{task.progress}%</strong>
                           </span>
                         </div>
+                        {isGarbageTransportTask(task) ? (
+                          <div className={styles.inspectorTaskMeta}>
+                            <span>
+                              <MapPin size={15} strokeWidth={2.3} aria-hidden="true" />
+                              {garbagePointSummary(task)}
+                            </span>
+                            <span>
+                              <ListChecks size={15} strokeWidth={2.3} aria-hidden="true" />
+                              {taskProofSummary(task)}
+                            </span>
+                          </div>
+                        ) : null}
                       </Link>
                     ))}
                   </div>
                 ) : (
                   <div className={styles.emptyState}>
-                    <h3>Даалгавар алга</h3>
-                    <p>Сонгосон шүүлтэд таарах даалгавар одоогоор харагдахгүй байна.</p>
+                    <h3>{inspectorMobileMode ? "Хянах тайлан алга" : "Даалгавар алга"}</h3>
+                    <p>
+                      {inspectorMobileMode
+                        ? "Танд оноогдсон, жолоочоос ирсэн тайлан одоогоор алга."
+                        : "Сонгосон шүүлтэд таарах даалгавар одоогоор харагдахгүй байна."}
+                    </p>
                   </div>
                 )}
               </section>

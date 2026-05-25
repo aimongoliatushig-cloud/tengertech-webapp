@@ -7,8 +7,8 @@ import {
   CalendarDays,
   FileText,
   Layers3,
+  ListChecks,
   Paperclip,
-  Route,
   Sparkles,
   Trash2,
   Truck,
@@ -864,7 +864,7 @@ export function NewWorkForm({
   };
 
   const formModeLabel = isGarbageTransport
-    ? "Хог тээвэрлэлтийн маршрут"
+    ? "Хог тээвэрлэлтийн цэгүүд"
     : isSharedWork
       ? "Хамтарсан ажил"
     : isSeasonalGarbage
@@ -874,7 +874,7 @@ export function NewWorkForm({
       : "Ерөнхий ажил";
   const showProjectDetails = !isGarbageTransport && !isAutoBase;
   const formModeDescription = isGarbageTransport
-    ? "Машин, маршрут, огноо сонгоход ажил болон маршрутын цэгүүдийн даалгавар автоматаар үүснэ."
+    ? "Машин, хороо, огноо, олон хогийн цэг сонгоход тухайн өдрийн даалгавар автоматаар үүснэ."
     : isSharedWork
       ? "Олон хэлтэс сонгоход нэг мастер хамтарсан ажил үүсэж, хэлтэс бүр дээр өөрийн хариуцах ажил автоматаар үүснэ."
     : isSeasonalGarbage
@@ -915,8 +915,8 @@ export function NewWorkForm({
                 <strong>{selectedVehicle?.plate || "Сонгоогүй"}</strong>
               </div>
               <div>
-                <Route aria-hidden />
-                <span>Хороо / цэг</span>
+                <ListChecks aria-hidden />
+                <span>Хогийн цэгүүд</span>
                 <strong>
                   {garbageSubdistrictOptions.find((option) => option.id === garbageSubdistrictId)?.label ||
                     "Сонгоогүй"}
@@ -1050,8 +1050,8 @@ export function NewWorkForm({
                 }`}
                 onClick={() => setOperationUnit("garbage_transport")}
               >
-                <span>Тогтмол маршрут</span>
-                <small>Машин, маршрут, цэгийн өдөр тутмын ажил</small>
+                <span>Хогийн цэгийн ажил</span>
+                <small>Машин, хороо, олон хогийн цэгийн өдөр тутмын ажил</small>
               </button>
 
               <button
@@ -1166,23 +1166,48 @@ export function NewWorkForm({
           </div>
 
           <div className={styles.optionalSection}>
-            <span className={styles.formBadge}>Хогийн цэг сонгох</span>
+            <div className={styles.pointPickerHeader}>
+              <div>
+                <span className={styles.formBadge}>Хогийн цэг сонгох</span>
+                <p className={styles.fieldHint}>Нэг даалгаварт олон хогийн цэг сонгож болно.</p>
+              </div>
+              <strong>{selectedGarbagePoints.length ? `Сонгосон: ${selectedGarbagePoints.length} цэг` : "Цэг сонгоогүй"}</strong>
+            </div>
             {garbageSubdistrictId ? (
               filteredGarbagePointOptions.length ? (
-                <div className={styles.pointCheckboxGrid}>
-                  {filteredGarbagePointOptions.map((point) => (
-                    <label key={point.id} className={styles.pointCheckbox}>
-                      <input
-                        type="checkbox"
-                        name="garbage_point_ids"
-                        value={point.id}
-                        checked={selectedGarbagePointIds.includes(String(point.id))}
-                        onChange={() => toggleGarbagePoint(point.id)}
-                      />
-                      <span>{point.name}</span>
-                    </label>
-                  ))}
-                </div>
+                <>
+                  {selectedGarbagePoints.length ? (
+                    <div className={styles.pointSelectedSummary}>
+                      {selectedGarbagePoints.slice(0, 4).map((point) => (
+                        <span key={`selected-${point.id}`}>{point.name}</span>
+                      ))}
+                      {selectedGarbagePoints.length > 4 ? (
+                        <span>+{selectedGarbagePoints.length - 4} цэг</span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <div className={styles.pointCheckboxGrid}>
+                    {filteredGarbagePointOptions.map((point) => {
+                      const checked = selectedGarbagePointIds.includes(String(point.id));
+
+                      return (
+                        <label
+                          key={point.id}
+                          className={`${styles.pointCheckbox} ${checked ? styles.pointCheckboxActive : ""}`}
+                        >
+                          <input
+                            type="checkbox"
+                            name="garbage_point_ids"
+                            value={point.id}
+                            checked={checked}
+                            onChange={() => toggleGarbagePoint(point.id)}
+                          />
+                          <span>{point.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </>
               ) : (
                 <p className={styles.helperNote}>Энэ хороонд танд оноогдсон хогийн цэг алга.</p>
               )

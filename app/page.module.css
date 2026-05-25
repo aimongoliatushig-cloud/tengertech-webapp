@@ -2420,6 +2420,7 @@
   position: relative;
   overflow: hidden;
   display: block;
+  padding: 0;
   aspect-ratio: 4 / 3;
   border: 1px solid var(--ds-border);
   border-radius: 8px;

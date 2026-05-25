@@ -250,7 +250,7 @@
   gap: 10px;
 }
 
-.existingReportImageGrid a {
+.existingReportImageGrid button {
   overflow: hidden;
   display: grid;
   gap: 8px;
@@ -1158,6 +1158,62 @@
   color: var(--ink-800);
   line-height: 1.55;
   overflow-wrap: anywhere;
+}
+
+.garbagePointOverview {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  border-radius: 12px;
+  background: rgba(248, 253, 249, 0.9);
+}
+
+.garbagePointOverview > div:first-child {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.garbagePointOverview strong {
+  color: var(--ink-900);
+}
+
+.garbagePointOverview > div:first-child > strong {
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.garbagePointOverview p {
+  margin: 0;
+  color: var(--ink-700);
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.garbagePointMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.garbagePointMetaGrid span {
+  display: grid;
+  gap: 4px;
+  min-height: 62px;
+  padding: 10px;
+  border: 1px solid rgba(74, 154, 93, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--ink-600);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.garbagePointMetaGrid strong {
+  font-size: 0.95rem;
+  line-height: 1.2;
 }
 
 .reportQuantityLines {
@@ -2339,6 +2395,11 @@
 
   .reviewStats .heroStatCard {
     border-right: 0;
+  }
+
+  .garbagePointOverview,
+  .garbagePointMetaGrid {
+    grid-template-columns: 1fr;
   }
 
   .reportBody {
