@@ -3705,6 +3705,20 @@
   background: #ffffff;
 }
 
+.autoGarbageMetricCardLink {
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.autoGarbageMetricCardLink:hover,
+.autoGarbageMetricCardLink:focus-visible {
+  border-color: rgba(22, 130, 61, 0.22);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+  outline: none;
+}
+
 .autoGarbageMetricIcon {
   display: grid;
   width: 40px;
@@ -4120,6 +4134,78 @@
   white-space: nowrap;
 }
 
+.autoGarbageReportList {
+  display: grid;
+  gap: 9px;
+}
+
+.autoGarbageReportRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 7px;
+  background: #fbfdfc;
+}
+
+.autoGarbageReportInfo {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.autoGarbageReportInfo strong,
+.autoGarbageReportInfo small,
+.autoGarbageReportInfo em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autoGarbageReportInfo strong {
+  color: #0f172a;
+  font-size: 0.74rem;
+  font-weight: 940;
+}
+
+.autoGarbageReportInfo small {
+  color: #64748b;
+  font-size: 0.64rem;
+  font-weight: 760;
+}
+
+.autoGarbageReportInfo em {
+  color: #b45309;
+  font-size: 0.63rem;
+  font-style: normal;
+  font-weight: 820;
+}
+
+.autoGarbageReportState {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 8px;
+  background: #edf7f1;
+  color: #16823d;
+  font-size: 0.62rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.autoGarbageReportValue {
+  color: #0f172a;
+  font-size: 0.76rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
 .autoGarbagePanelShowAll {
   display: inline-flex;
   width: 100%;
@@ -4173,6 +4259,14 @@
   font-size: 1rem;
   font-weight: 950;
   line-height: 1;
+}
+
+.autoGarbageSummaryPanel em {
+  color: #526179;
+  font-size: 0.64rem;
+  font-style: normal;
+  font-weight: 780;
+  line-height: 1.25;
 }
 
 .autoGarbageEmptyState {
@@ -5273,6 +5367,15 @@
 
   .autoGarbageLeaderBar {
     grid-column: 2 / -1;
+  }
+
+  .autoGarbageReportRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .autoGarbageReportState {
+    grid-column: 1 / -1;
+    width: fit-content;
   }
 
   .autoGarbageSummaryPanel {

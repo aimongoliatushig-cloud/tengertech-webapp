@@ -9,6 +9,7 @@ const PUBLIC_PATHS = new Set([
   "/design-board",
   "/api/push/public-key",
   "/api/push/subscription",
+  "/api/gaiham-fuel/import",
   "/api/wrs-report/import",
   "/api/wrs-report/normalized",
 ]);

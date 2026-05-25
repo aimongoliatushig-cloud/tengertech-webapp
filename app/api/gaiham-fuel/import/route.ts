@@ -44,6 +44,10 @@ function defaultImportDateKey() {
   return shiftDateKey(currentDateKey(), -1);
 }
 
+function latestAllowedReportDateKey() {
+  return defaultImportDateKey();
+}
+
 function isLocalDevelopmentRequest(request: Request) {
   if (process.env.NODE_ENV === "production") {
     return false;
@@ -245,6 +249,22 @@ function dateKeysBetween(startDate: string, endDate: string) {
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
+}
+
+function validateRequestedWindow(startDate: string, endDate: string) {
+  if (!isDateKey(startDate) || !isDateKey(endDate)) {
+    return "Send the target date using YYYY-MM-DD.";
+  }
+  if (startDate > endDate) {
+    return "startDate must be before or equal to endDate.";
+  }
+
+  const latestAllowed = latestAllowedReportDateKey();
+  if (endDate > latestAllowed) {
+    return `Gaiham тайланг ${latestAllowed}-с хойших огноогоор татахгүй. Өчигдрийн тайлан дараагийн өдөр 12:00-с хойш татагдана.`;
+  }
+
+  return "";
 }
 
 async function upsertFuelReport(input: {
@@ -490,11 +510,9 @@ async function handleRequest(request: Request) {
   }
 
   const requestedWindow = await getRequestedWindow(request);
-  if (!isDateKey(requestedWindow.startDate) || !isDateKey(requestedWindow.endDate)) {
-    return badRequest("Send the target date using YYYY-MM-DD.");
-  }
-  if (requestedWindow.startDate > requestedWindow.endDate) {
-    return badRequest("startDate must be before or equal to endDate.");
+  const validationError = validateRequestedWindow(requestedWindow.startDate, requestedWindow.endDate);
+  if (validationError) {
+    return badRequest(validationError);
   }
 
   try {

@@ -1169,6 +1169,10 @@ type AutoGarbageLeaderboardRow = {
   driverName: string;
   taskCount: number;
   weightTons: number;
+  reportDate: string;
+  fetchedAt: string;
+  fetchedAtValue: string;
+  dataSourceLabel: string;
   progress: number;
 };
 
@@ -1178,7 +1182,39 @@ type AutoGarbageFuelRow = {
   modelName: string;
   fuelLiters: number;
   fuelType: string;
+  reportDate: string;
+  fetchedAt: string;
+  fetchedAtValue: string;
   progress: number;
+};
+
+type AutoGarbageWeightReportRow = {
+  key: string;
+  plate: string;
+  modelName: string;
+  reportDate: string;
+  fetchedAt: string;
+  fetchedAtValue: string;
+  weightTons: number;
+  weightLabel: string;
+  source: string;
+  stateLabel: string;
+  errorMessage: string;
+};
+
+type AutoGarbageFuelReportRow = {
+  key: string;
+  plate: string;
+  modelName: string;
+  reportDate: string;
+  fetchedAt: string;
+  fetchedAtValue: string;
+  fuelLiters: number;
+  fuelLabel: string;
+  fuelType: string;
+  source: string;
+  stateLabel: string;
+  errorMessage: string;
 };
 
 type AutoGarbageReportPanelMode = "overview" | "weight" | "fuel";
@@ -1396,6 +1432,98 @@ function formatFuelLiters(value: number) {
   return `${formatted} л`;
 }
 
+function fetchedTimeValue(value: string | null | undefined) {
+  const cleaned = dashboardCleanText(value);
+  if (!cleaned) {
+    return 0;
+  }
+
+  const normalized = /^\d{4}-\d{2}-\d{2}\s+\d/.test(cleaned)
+    ? cleaned.replace(" ", "T")
+    : cleaned;
+  const parsed = new Date(normalized);
+
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+}
+
+function formatFetchedAt(value: string | null | undefined, fallback = "") {
+  const cleaned = dashboardCleanText(value);
+  if (!cleaned) {
+    return fallback;
+  }
+
+  const normalized = /^\d{4}-\d{2}-\d{2}\s+\d/.test(cleaned)
+    ? cleaned.replace(" ", "T")
+    : cleaned;
+  const parsed = new Date(normalized);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return cleaned;
+  }
+
+  return new Intl.DateTimeFormat("mn-MN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(parsed);
+}
+
+function reportDateKey(report: { reportDateValue?: string; reportDate?: string }) {
+  const rawValue = dashboardCleanText(report.reportDateValue);
+  if (/^\d{4}-\d{2}-\d{2}/.test(rawValue)) {
+    return rawValue.slice(0, 10);
+  }
+
+  return dashboardCleanText(report.reportDate);
+}
+
+function latestFetchedReport<T extends { fetchedAtValue?: string; fetchedAt?: string }>(reports: T[]) {
+  return reports.reduce<T | null>((latest, report) => {
+    if (!latest) {
+      return report;
+    }
+
+    const latestTime = fetchedTimeValue(latest.fetchedAtValue || latest.fetchedAt);
+    const reportTime = fetchedTimeValue(report.fetchedAtValue || report.fetchedAt);
+
+    return reportTime > latestTime ? report : latest;
+  }, null);
+}
+
+function latestFetchedAtLabel(rows: Array<{ fetchedAtValue?: string; fetchedAt?: string }>) {
+  const latest = latestFetchedReport(rows);
+  return latest ? formatFetchedAt(latest.fetchedAtValue || latest.fetchedAt) : "";
+}
+
+function reportFetchedLabel(row: { reportDate?: string; fetchedAt?: string; fetchedAtValue?: string }) {
+  if (!row.fetchedAt) {
+    return "Татсан огноо алга";
+  }
+
+  const reportDate = dashboardCleanText(row.reportDate);
+  const fetchedAt = formatFetchedAt(row.fetchedAtValue || row.fetchedAt);
+
+  return reportDate ? `Тайлан: ${reportDate} · Татсан: ${fetchedAt}` : `Татсан: ${fetchedAt}`;
+}
+
+function sortByFetchedAtDesc<T extends { fetchedAtValue?: string; fetchedAt?: string; reportDate?: string }>(
+  left: T,
+  right: T,
+) {
+  const fetchedDiff =
+    fetchedTimeValue(right.fetchedAtValue || right.fetchedAt) -
+    fetchedTimeValue(left.fetchedAtValue || left.fetchedAt);
+
+  if (fetchedDiff) {
+    return fetchedDiff;
+  }
+
+  return dashboardCleanText(right.reportDate).localeCompare(dashboardCleanText(left.reportDate), "mn-MN");
+}
+
 function buildAutoGarbageBoardModel({
   tasks,
   fleetBoard,
@@ -1421,6 +1549,17 @@ function buildAutoGarbageBoardModel({
     [...autoVehicles, ...reportVehicles].map((vehicle) => [vehicle.id, vehicle] as const),
   );
   const boardVehicles = boardVehicleById.size ? Array.from(boardVehicleById.values()) : fleetBoard.allVehicles;
+  const vehicleDisplayInfo = (vehicle: FleetVehicleBoard["allVehicles"][number]) => {
+    const plate =
+      extractVehiclePlateFromText(vehicle.plate) ||
+      extractVehiclePlateFromText(vehicle.name) ||
+      dashboardCleanText(vehicle.plate || vehicle.name);
+
+    return {
+      plate,
+      modelName: dashboardCleanText(vehicle.modelName || vehicle.name || "Машин"),
+    };
+  };
   const taskWeightByPlate = new Map<string, number>();
   const taskCountByPlate = new Map<string, number>();
 
@@ -1441,14 +1580,15 @@ function buildAutoGarbageBoardModel({
   }
 
   const initialLeaderboardRows = boardVehicles.map((vehicle) => {
-    const displayPlate =
-      extractVehiclePlateFromText(vehicle.plate) ||
-      extractVehiclePlateFromText(vehicle.name) ||
-      dashboardCleanText(vehicle.plate || vehicle.name);
+    const { plate: displayPlate } = vehicleDisplayInfo(vehicle);
     const plateKey = compactVehicleKey(displayPlate);
     const currentMonthKey = currentDateKey.slice(0, 7);
-    const monthReportTons = vehicle.weightReports
-      .filter((report) => report.reportDate.startsWith(currentMonthKey))
+    const monthWeightReports = vehicle.weightReports.filter((report) =>
+      reportDateKey(report).startsWith(currentMonthKey),
+    );
+    const weightReportSource = monthWeightReports.length ? monthWeightReports : vehicle.weightReports;
+    const latestWeightReport = latestFetchedReport(weightReportSource) ?? weightReportSource[0] ?? null;
+    const monthReportTons = monthWeightReports
       .reduce((sum, report) => sum + (report.weightTons || parseWeightLabelToTons(report.weightLabel)), 0);
     const reportTons =
       vehicle.weightMonthTons ||
@@ -1460,6 +1600,12 @@ function buildAutoGarbageBoardModel({
       );
     const taskTons = taskWeightByPlate.get(plateKey) ?? 0;
     const weightTons = Math.max(reportTons, taskTons);
+    const dataSourceLabel =
+      reportTons >= taskTons && reportTons > 0
+        ? "Жингийн бүртгэлээс"
+        : taskTons > 0
+          ? "Ажлын тайлангаас"
+          : "Мэдээлэл алга";
 
     return {
       key: plateKey || String(vehicle.id),
@@ -1468,6 +1614,10 @@ function buildAutoGarbageBoardModel({
       driverName: dashboardCleanText(vehicle.responsibleDriverName || vehicle.fleetDriverName || "Жолооч бүртгээгүй"),
       taskCount: taskCountByPlate.get(plateKey) ?? 0,
       weightTons,
+      reportDate: latestWeightReport?.reportDate ?? "",
+      fetchedAt: latestWeightReport?.fetchedAt ?? "",
+      fetchedAtValue: latestWeightReport?.fetchedAtValue ?? "",
+      dataSourceLabel,
       progress: 0,
     } satisfies AutoGarbageLeaderboardRow;
   });
@@ -1484,6 +1634,10 @@ function buildAutoGarbageBoardModel({
       driverName: "Жолооч бүртгээгүй",
       taskCount: taskCountByPlate.get(plateKey) ?? 0,
       weightTons: taskTons,
+      reportDate: "",
+      fetchedAt: "",
+      fetchedAtValue: "",
+      dataSourceLabel: "Ажлын тайлангаас",
       progress: 0,
     });
   }
@@ -1497,12 +1651,10 @@ function buildAutoGarbageBoardModel({
     .sort((left, right) => right.weightTons - left.weightTons || right.taskCount - left.taskCount);
 
   const initialFuelRows = boardVehicles.map((vehicle) => {
-    const displayPlate =
-      extractVehiclePlateFromText(vehicle.plate) ||
-      extractVehiclePlateFromText(vehicle.name) ||
-      dashboardCleanText(vehicle.plate || vehicle.name);
-    const todayReports = vehicle.fuelReports.filter((report) => report.reportDate === currentDateKey);
+    const { plate: displayPlate, modelName } = vehicleDisplayInfo(vehicle);
+    const todayReports = vehicle.fuelReports.filter((report) => reportDateKey(report) === currentDateKey);
     const reportSource = todayReports.length ? todayReports : vehicle.fuelReports;
+    const latestFuelReport = latestFetchedReport(reportSource) ?? reportSource[0] ?? null;
     const fuelLiters = reportSource.reduce((sum, report) => sum + Math.max(0, report.fuelLiters || 0), 0);
     const fuelTypes = Array.from(
       new Set(
@@ -1515,12 +1667,56 @@ function buildAutoGarbageBoardModel({
     return {
       key: compactVehicleKey(displayPlate) || String(vehicle.id),
       plate: displayPlate,
-      modelName: dashboardCleanText(vehicle.modelName || vehicle.name || "Машин"),
+      modelName,
       fuelLiters,
       fuelType: fuelTypes.join(", ") || "Төрөл бүртгээгүй",
+      reportDate: latestFuelReport?.reportDate ?? "",
+      fetchedAt: latestFuelReport?.fetchedAt ?? "",
+      fetchedAtValue: latestFuelReport?.fetchedAtValue ?? "",
       progress: 0,
     } satisfies AutoGarbageFuelRow;
   });
+
+  const weightReportRows = boardVehicles
+    .flatMap((vehicle) => {
+      const { plate, modelName } = vehicleDisplayInfo(vehicle);
+
+      return vehicle.weightReports.map((report) => ({
+        key: `${vehicle.id}-weight-${report.id}`,
+        plate,
+        modelName,
+        reportDate: report.reportDate,
+        fetchedAt: report.fetchedAt,
+        fetchedAtValue: report.fetchedAtValue ?? "",
+        weightTons: report.weightTons || parseWeightLabelToTons(report.weightLabel),
+        weightLabel: report.weightLabel,
+        source: dashboardCleanText(report.source || "Гадны систем"),
+        stateLabel: dashboardCleanText(report.stateLabel),
+        errorMessage: dashboardCleanText(report.errorMessage),
+      } satisfies AutoGarbageWeightReportRow));
+    })
+    .sort(sortByFetchedAtDesc);
+
+  const fuelReportRows = boardVehicles
+    .flatMap((vehicle) => {
+      const { plate, modelName } = vehicleDisplayInfo(vehicle);
+
+      return vehicle.fuelReports.map((report) => ({
+        key: `${vehicle.id}-fuel-${report.id}`,
+        plate,
+        modelName,
+        reportDate: report.reportDate,
+        fetchedAt: report.fetchedAt,
+        fetchedAtValue: report.fetchedAtValue ?? "",
+        fuelLiters: Math.max(0, report.fuelLiters || 0),
+        fuelLabel: report.fuelLabel,
+        fuelType: dashboardCleanText(report.fuelType || "Төрөл бүртгээгүй"),
+        source: dashboardCleanText(report.source || "Гадны систем"),
+        stateLabel: dashboardCleanText(report.stateLabel),
+        errorMessage: dashboardCleanText(report.errorMessage),
+      } satisfies AutoGarbageFuelReportRow));
+    })
+    .sort(sortByFetchedAtDesc);
 
   const maxFuelLiters = Math.max(...initialFuelRows.map((row) => row.fuelLiters), 0);
   const fuelRows = initialFuelRows
@@ -1575,15 +1771,21 @@ function buildAutoGarbageBoardModel({
   const stats = dashboardTaskStats(boardTasks, currentDateKey);
   const totalTons = leaderboardRows.reduce((sum, row) => sum + row.weightTons, 0);
   const totalFuelLiters = fuelRows.reduce((sum, row) => sum + row.fuelLiters, 0);
+  const latestWeightFetchedAt = latestFetchedAtLabel(weightReportRows);
+  const latestFuelFetchedAt = latestFetchedAtLabel(fuelReportRows);
 
   return {
     tasks: boardTasks,
     taskCards,
     leaderboardRows,
     fuelRows,
+    weightReportRows,
+    fuelReportRows,
     stats,
     totalTons,
     totalFuelLiters,
+    latestWeightFetchedAt,
+    latestFuelFetchedAt,
   };
 }
 
@@ -1737,17 +1939,18 @@ function AutoGarbageMetricCard({
   helper,
   icon: Icon,
   tone,
+  href,
 }: {
   label: string;
   value: string;
   helper: string;
   icon: LucideIcon;
   tone: ExecutiveMetric["tone"];
+  href?: string;
 }) {
   const color = EXECUTIVE_TONE_COLORS[tone];
-
-  return (
-    <div className={dashboardStyles.autoGarbageMetricCard}>
+  const content = (
+    <>
       <span
         className={dashboardStyles.autoGarbageMetricIcon}
         style={{ color, backgroundColor: `${color}16` }}
@@ -1759,6 +1962,24 @@ function AutoGarbageMetricCard({
         <strong>{value}</strong>
         <em>{helper}</em>
       </span>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={cn(dashboardStyles.autoGarbageMetricCard, dashboardStyles.autoGarbageMetricCardLink)}
+        aria-label={`${label} дэлгэрэнгүй харах`}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className={dashboardStyles.autoGarbageMetricCard}>
+      {content}
     </div>
   );
 }
@@ -1865,7 +2086,8 @@ function AutoGarbageWeightRows({
           <span className={dashboardStyles.autoGarbageLeaderRank}>{index + 1}</span>
           <span className={dashboardStyles.autoGarbageLeaderInfo}>
             <strong>{row.plate}</strong>
-            <small>{row.modelName}</small>
+            <small>{row.modelName} · {row.dataSourceLabel}</small>
+            <small>{reportFetchedLabel(row)}</small>
           </span>
           <span className={dashboardStyles.autoGarbageLeaderBar} aria-hidden>
             <i style={{ inlineSize: `${row.progress}%` }} />
@@ -1894,6 +2116,7 @@ function AutoGarbageFuelRows({
           <span className={dashboardStyles.autoGarbageLeaderInfo}>
             <strong>{row.plate}</strong>
             <small>{row.modelName} · {row.fuelType}</small>
+            <small>{reportFetchedLabel(row)}</small>
           </span>
           <span className={dashboardStyles.autoGarbageLeaderBar} data-tone="fuel" aria-hidden>
             <i style={{ inlineSize: `${row.progress}%` }} />
@@ -1909,11 +2132,73 @@ function AutoGarbageFuelRows({
   );
 }
 
+function AutoGarbageWeightReportRows({
+  rows,
+}: {
+  rows: AutoGarbageWeightReportRow[];
+}) {
+  return (
+    <div className={dashboardStyles.autoGarbageReportList}>
+      {rows.length ? rows.map((row) => (
+        <div key={row.key} className={dashboardStyles.autoGarbageReportRow}>
+          <span className={dashboardStyles.autoGarbageReportInfo}>
+            <strong>{row.plate}</strong>
+            <small>{row.modelName} · {row.source}</small>
+            <small>{reportFetchedLabel(row)}</small>
+            {row.errorMessage ? <em>{row.errorMessage}</em> : null}
+          </span>
+          <span className={dashboardStyles.autoGarbageReportState}>
+            {row.stateLabel || "Татагдсан"}
+          </span>
+          <strong className={dashboardStyles.autoGarbageReportValue}>
+            {row.weightLabel || formatTons(row.weightTons)}
+          </strong>
+        </div>
+      )) : (
+        <p className={dashboardStyles.autoGarbageEmptyText}>Татагдсан жингийн тайлан алга.</p>
+      )}
+    </div>
+  );
+}
+
+function AutoGarbageFuelReportRows({
+  rows,
+}: {
+  rows: AutoGarbageFuelReportRow[];
+}) {
+  return (
+    <div className={dashboardStyles.autoGarbageReportList}>
+      {rows.length ? rows.map((row) => (
+        <div key={row.key} className={dashboardStyles.autoGarbageReportRow}>
+          <span className={dashboardStyles.autoGarbageReportInfo}>
+            <strong>{row.plate}</strong>
+            <small>{row.modelName} · {row.fuelType} · {row.source}</small>
+            <small>{reportFetchedLabel(row)}</small>
+            {row.errorMessage ? <em>{row.errorMessage}</em> : null}
+          </span>
+          <span className={dashboardStyles.autoGarbageReportState}>
+            {row.stateLabel || "Татагдсан"}
+          </span>
+          <strong className={dashboardStyles.autoGarbageReportValue}>
+            {row.fuelLabel || formatFuelLiters(row.fuelLiters)}
+          </strong>
+        </div>
+      )) : (
+        <p className={dashboardStyles.autoGarbageEmptyText}>Татагдсан шатахууны тайлан алга.</p>
+      )}
+    </div>
+  );
+}
+
 function AutoGarbageLeaderboardPanel({
   weightRows,
   fuelRows,
+  weightReportRows,
+  fuelReportRows,
   totalTons,
   totalFuelLiters,
+  latestWeightFetchedAt,
+  latestFuelFetchedAt,
   panelMode,
   overviewHref,
   weightHref,
@@ -1921,8 +2206,12 @@ function AutoGarbageLeaderboardPanel({
 }: {
   weightRows: AutoGarbageLeaderboardRow[];
   fuelRows: AutoGarbageFuelRow[];
+  weightReportRows: AutoGarbageWeightReportRow[];
+  fuelReportRows: AutoGarbageFuelReportRow[];
   totalTons: number;
   totalFuelLiters: number;
+  latestWeightFetchedAt: string;
+  latestFuelFetchedAt: string;
   panelMode: AutoGarbageReportPanelMode;
   overviewHref: string;
   weightHref: string;
@@ -1935,6 +2224,8 @@ function AutoGarbageLeaderboardPanel({
   const averageFuelLiters = fuelRows.length ? totalFuelLiters / fuelRows.length : 0;
   const showWeightPanel = panelMode !== "fuel";
   const showFuelPanel = panelMode !== "weight";
+  const showWeightReports = panelMode === "weight";
+  const showFuelReports = panelMode === "fuel";
 
   return (
     <aside className={dashboardStyles.autoGarbageSidePanels}>
@@ -1948,14 +2239,22 @@ function AutoGarbageLeaderboardPanel({
         <section className={dashboardStyles.autoGarbageLeaderPanel}>
           <div className={dashboardStyles.autoGarbagePanelHeader}>
             <div>
-              <h3>Машин тус бүрийн ачсан тонн</h3>
-              <p>Жингийн бүртгэл болон ажлын тайлангаас нэгтгэв.</p>
+              <h3>{showWeightReports ? "Татагдсан жингийн тайлангууд" : "Машин тус бүрийн ачсан тонн"}</h3>
+              <p>
+                {showWeightReports
+                  ? "WRS-ээс татагдсан бүх мөр тайланг татсан цагаар нь харуулав."
+                  : "Жингийн бүртгэл болон ажлын тайлангаас нэгтгэв."}
+              </p>
             </div>
-            <span>Энэ сар</span>
+            <span>{showWeightReports ? `${weightReportRows.length} тайлан` : "Энэ сар"}</span>
           </div>
 
-          <AutoGarbageWeightRows rows={shownWeightRows} />
-          {panelMode !== "weight" && weightRows.length > previewLimit ? (
+          {showWeightReports ? (
+            <AutoGarbageWeightReportRows rows={weightReportRows} />
+          ) : (
+            <AutoGarbageWeightRows rows={shownWeightRows} />
+          )}
+          {!showWeightReports && weightRows.length > previewLimit ? (
             <Link href={weightHref} className={dashboardStyles.autoGarbagePanelShowAll}>
               Бүгдийг харах
               <ChevronRight aria-hidden />
@@ -1968,14 +2267,22 @@ function AutoGarbageLeaderboardPanel({
         <section className={dashboardStyles.autoGarbageLeaderPanel}>
           <div className={dashboardStyles.autoGarbagePanelHeader}>
             <div>
-              <h3>Машин тус бүрийн шатахуун</h3>
-              <p>Шатахууны бүртгэлээс машинаар нь нэгтгэв.</p>
+              <h3>{showFuelReports ? "Татагдсан шатахууны тайлангууд" : "Машин тус бүрийн шатахуун"}</h3>
+              <p>
+                {showFuelReports
+                  ? "Gaiham-аас татагдсан бүх мөр тайланг татсан цагаар нь харуулав."
+                  : "Шатахууны бүртгэлээс машинаар нь нэгтгэв."}
+              </p>
             </div>
-            <span>Энэ сар</span>
+            <span>{showFuelReports ? `${fuelReportRows.length} тайлан` : "Энэ сар"}</span>
           </div>
 
-          <AutoGarbageFuelRows rows={shownFuelRows} />
-          {panelMode !== "fuel" && fuelRows.length > previewLimit ? (
+          {showFuelReports ? (
+            <AutoGarbageFuelReportRows rows={fuelReportRows} />
+          ) : (
+            <AutoGarbageFuelRows rows={shownFuelRows} />
+          )}
+          {!showFuelReports && fuelRows.length > previewLimit ? (
             <Link href={fuelHref} className={dashboardStyles.autoGarbagePanelShowAll}>
               Бүгдийг харах
               <ChevronRight aria-hidden />
@@ -1988,6 +2295,7 @@ function AutoGarbageLeaderboardPanel({
         <div>
           <small>Нийт ачсан тонн</small>
           <strong>{formatTons(totalTons)}</strong>
+          <em>{latestWeightFetchedAt ? `Татсан: ${latestWeightFetchedAt}` : "Татсан огноо алга"}</em>
         </div>
         <div>
           <small>Машины дундаж тонн</small>
@@ -1996,6 +2304,7 @@ function AutoGarbageLeaderboardPanel({
         <div>
           <small>Нийт шатахуун</small>
           <strong>{formatFuelLiters(totalFuelLiters)}</strong>
+          <em>{latestFuelFetchedAt ? `Татсан: ${latestFuelFetchedAt}` : "Татсан огноо алга"}</em>
         </div>
         <div>
           <small>Дундаж шатахуун</small>
@@ -2093,16 +2402,18 @@ export function AutoGarbageWorkBoard({
         <AutoGarbageMetricCard
           label="Нийт ачсан тонн"
           value={formatTons(model.totalTons)}
-          helper="Машинуудаар"
+          helper={model.latestWeightFetchedAt ? `Татсан: ${model.latestWeightFetchedAt}` : "Татсан огноо алга"}
           icon={Recycle}
           tone="teal"
+          href={weightHref}
         />
         <AutoGarbageMetricCard
           label="Нийт шатахуун"
           value={formatFuelLiters(model.totalFuelLiters)}
-          helper="Машинуудаар"
+          helper={model.latestFuelFetchedAt ? `Татсан: ${model.latestFuelFetchedAt}` : "Татсан огноо алга"}
           icon={Fuel}
           tone="orange"
+          href={fuelHref}
         />
       </div>
 
@@ -2126,8 +2437,12 @@ export function AutoGarbageWorkBoard({
         <AutoGarbageLeaderboardPanel
           weightRows={model.leaderboardRows}
           fuelRows={model.fuelRows}
+          weightReportRows={model.weightReportRows}
+          fuelReportRows={model.fuelReportRows}
           totalTons={model.totalTons}
           totalFuelLiters={model.totalFuelLiters}
+          latestWeightFetchedAt={model.latestWeightFetchedAt}
+          latestFuelFetchedAt={model.latestFuelFetchedAt}
           panelMode={reportPanelMode}
           overviewHref={overviewHref}
           weightHref={weightHref}

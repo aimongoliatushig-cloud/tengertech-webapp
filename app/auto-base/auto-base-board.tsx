@@ -167,9 +167,11 @@ type FleetVehicleRepairHistoryItem = {
 type FleetVehicleDailyWeightItem = {
   id: number;
   reportDate: string;
+  reportDateValue?: string;
   weightLabel: string;
   source: string;
   fetchedAt: string;
+  fetchedAtValue?: string;
   stateLabel: string;
   errorMessage: string;
 };
@@ -177,11 +179,13 @@ type FleetVehicleDailyWeightItem = {
 type FleetVehicleDailyFuelItem = {
   id: number;
   reportDate: string;
+  reportDateValue?: string;
   fuelLiters: number;
   fuelLabel: string;
   fuelType: string;
   source: string;
   fetchedAt: string;
+  fetchedAtValue?: string;
   stateLabel: string;
   errorMessage: string;
 };
@@ -893,7 +897,6 @@ function vehicleFuelSummary(vehicle: FleetVehicleBoardItem) {
   return {
     latestReport,
     totalLabel: reports.length ? formatFuelLiters(totalLiters) : "",
-    reportCountLabel: reports.length ? `${reports.length} тайлан` : "",
   };
 }
 
@@ -1717,8 +1720,7 @@ function VehicleDetailModal({
                   <DetailItem label="Сүүлийн зарцуулалт" value={fuelSummary.latestReport?.fuelLabel} />
                   <DetailItem label="Тайлангийн огноо" value={fuelSummary.latestReport?.reportDate} />
                   <DetailItem label="Сүүлийн тайлангуудын нийт" value={fuelSummary.totalLabel} />
-                  <DetailItem label="Тайлангийн тоо" value={fuelSummary.reportCountLabel} />
-                  <DetailItem label="Эх сурвалж" value={fuelSummary.latestReport?.source} />
+                  <DetailItem label="Татсан огноо" value={fuelSummary.latestReport?.fetchedAt} />
                 </div>
               </VehicleInfoPanel>
             </div>

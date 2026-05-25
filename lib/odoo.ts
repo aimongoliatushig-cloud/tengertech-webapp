@@ -884,10 +884,12 @@ export type FleetVehicleRepairHistoryItem = {
 export type FleetVehicleDailyWeightItem = {
   id: number;
   reportDate: string;
+  reportDateValue: string;
   weightTons: number;
   weightLabel: string;
   source: string;
   fetchedAt: string;
+  fetchedAtValue: string;
   stateLabel: string;
   errorMessage: string;
 };
@@ -895,11 +897,13 @@ export type FleetVehicleDailyWeightItem = {
 export type FleetVehicleDailyFuelItem = {
   id: number;
   reportDate: string;
+  reportDateValue: string;
   fuelLiters: number;
   fuelLabel: string;
   fuelType: string;
   source: string;
   fetchedAt: string;
+  fetchedAtValue: string;
   stateLabel: string;
   errorMessage: string;
 };
@@ -4224,10 +4228,12 @@ async function loadWeightReportsByVehicle(
     appendMapItem(byVehicle, relationId(record.vehicle_id), {
       id: record.id,
       reportDate: formatOptionalCompactDate(record.report_date),
+      reportDateValue: typeof record.report_date === "string" ? record.report_date : "",
       weightTons: weightRecordToTons(record.weight, record.unit),
       weightLabel: formatWeight(record.weight, record.unit),
       source: record.source || "Гадны систем",
       fetchedAt: formatOptionalCompactDate(record.fetched_at),
+      fetchedAtValue: typeof record.fetched_at === "string" ? record.fetched_at : "",
       stateLabel: FLEET_IMPORT_STATE_LABELS[String(record.state || "")] || String(record.state || ""),
       errorMessage: record.error_message || "",
     });
@@ -4253,11 +4259,13 @@ async function loadFuelReportsByVehicle(
     appendMapItem(byVehicle, relationId(record.vehicle_id), {
       id: record.id,
       reportDate: formatOptionalCompactDate(record.report_date),
+      reportDateValue: typeof record.report_date === "string" ? record.report_date : "",
       fuelLiters: record.fuel_liters || 0,
       fuelLabel: formatLiters(record.fuel_liters),
       fuelType: record.fuel_type || "",
       source: record.source || "Гадны систем",
       fetchedAt: formatOptionalCompactDate(record.fetched_at),
+      fetchedAtValue: typeof record.fetched_at === "string" ? record.fetched_at : "",
       stateLabel: FLEET_IMPORT_STATE_LABELS[String(record.state || "")] || String(record.state || ""),
       errorMessage: record.error_message || "",
     });
@@ -4661,10 +4669,10 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
         ],
         driverHistory: latestItems(driverHistoryByVehicle.get(vehicle.id)),
         repairHistory: latestItems(repairHistoryByVehicle.get(vehicle.id), 10),
-        weightReports: latestItems(weightReportResult.byVehicle.get(vehicle.id), 10),
+        weightReports: weightReportResult.byVehicle.get(vehicle.id) ?? [],
         weightMonthTons: vehicleWeightMonthTons,
         weightTotalTons: vehicleWeightTotalTons,
-        fuelReports: latestItems(fuelReportResult.byVehicle.get(vehicle.id), 10),
+        fuelReports: fuelReportResult.byVehicle.get(vehicle.id) ?? [],
         procurementLinks: latestItems(procurementLinksByVehicle.get(vehicle.id), 8),
         crewAssignments: crewAssignmentsByVehicle.get(vehicle.id) ?? [],
       } satisfies FleetVehicleBoardItem;
