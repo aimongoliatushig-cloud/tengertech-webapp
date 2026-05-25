@@ -4139,16 +4139,37 @@
   gap: 9px;
 }
 
+.autoGarbageReportHeader {
+  display: grid;
+  grid-template-columns: minmax(112px, 1.1fr) minmax(140px, 1fr) minmax(78px, auto) minmax(70px, auto);
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px 2px;
+  color: #64748b;
+  font-size: 0.6rem;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.autoGarbageReportHeader span:last-child {
+  text-align: right;
+}
+
 .autoGarbageReportRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
+  grid-template-columns: minmax(112px, 1.1fr) minmax(140px, 1fr) minmax(78px, auto) minmax(70px, auto);
+  align-items: start;
   gap: 10px;
   min-width: 0;
   padding: 10px;
   border: 1px solid rgba(15, 23, 42, 0.07);
   border-radius: 7px;
   background: #fbfdfc;
+}
+
+.autoGarbageReportRow[data-state="failed"] {
+  border-color: rgba(217, 119, 6, 0.22);
+  background: #fffaf2;
 }
 
 .autoGarbageReportInfo {
@@ -4159,7 +4180,9 @@
 
 .autoGarbageReportInfo strong,
 .autoGarbageReportInfo small,
-.autoGarbageReportInfo em {
+.autoGarbageReportInfo em,
+.autoGarbageReportTime strong,
+.autoGarbageReportTime small {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4185,6 +4208,24 @@
   font-weight: 820;
 }
 
+.autoGarbageReportTime {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.autoGarbageReportTime small {
+  color: #94a3b8;
+  font-size: 0.58rem;
+  font-weight: 850;
+}
+
+.autoGarbageReportTime strong {
+  color: #334155;
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
 .autoGarbageReportState {
   display: inline-flex;
   min-height: 24px;
@@ -4199,10 +4240,16 @@
   white-space: nowrap;
 }
 
+.autoGarbageReportState[data-state="failed"] {
+  background: #fff1db;
+  color: #b45309;
+}
+
 .autoGarbageReportValue {
   color: #0f172a;
   font-size: 0.76rem;
   font-weight: 950;
+  text-align: right;
   white-space: nowrap;
 }
 
@@ -5373,9 +5420,25 @@
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .autoGarbageReportState {
+  .autoGarbageReportHeader {
+    display: none;
+  }
+
+  .autoGarbageReportTime {
     grid-column: 1 / -1;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: 8px;
+    row-gap: 3px;
+  }
+
+  .autoGarbageReportState {
+    grid-column: 1;
     width: fit-content;
+  }
+
+  .autoGarbageReportValue {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .autoGarbageSummaryPanel {

@@ -15,14 +15,21 @@ type FleetVehicleRecord = {
   id: number;
   license_plate?: string | false;
   name?: string | false;
+  municipal_department_id?: [number, string] | false;
 };
 
 type FuelReportRecord = {
+  id: number;
+  vehicle_license_plate?: string | false;
+};
+
+type DepartmentRecord = {
   id: number;
 };
 
 const TIME_ZONE = process.env.APP_TIME_ZONE ?? "Asia/Ulaanbaatar";
 const GAIHAM_FUEL_SOURCE = "\u0413\u0430\u0439\u0445\u0430\u043c GPS";
+const IMPORT_READY_HOUR = 12;
 
 function currentDateKey() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -40,12 +47,27 @@ function shiftDateKey(dateKey: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
-function defaultImportDateKey() {
-  return shiftDateKey(currentDateKey(), -1);
+function currentLocalTimeParts() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+
+  return {
+    hour: Number(parts.find((part) => part.type === "hour")?.value ?? 0),
+    minute: Number(parts.find((part) => part.type === "minute")?.value ?? 0),
+  };
+}
+
+function isImportReadyNow() {
+  const { hour, minute } = currentLocalTimeParts();
+  return hour * 60 + minute >= IMPORT_READY_HOUR * 60;
 }
 
 function latestAllowedReportDateKey() {
-  return defaultImportDateKey();
+  return shiftDateKey(currentDateKey(), isImportReadyNow() ? -1 : -2);
 }
 
 function isLocalDevelopmentRequest(request: Request) {
@@ -125,7 +147,7 @@ async function authorizeRequest(request: Request) {
 function normalizeVehicleCode(value?: string | false | null) {
   return String(value ?? "")
     .toLocaleUpperCase("mn-MN")
-    .replace(/\s+/g, "")
+    .replace(/[^\p{L}\p{N}]/gu, "")
     .trim();
 }
 
@@ -142,13 +164,53 @@ function vehicleReportCode(vehicle: FleetVehicleRecord | undefined, fallbackCode
   return String(vehicle?.license_plate || vehicle?.name || fallbackCode).trim();
 }
 
+function currentOdooDateTime() {
+  return new Date().toISOString().replace("T", " ").slice(0, 19);
+}
+
+function relationId(value?: [number, string] | false | null) {
+  return Array.isArray(value) ? value[0] : null;
+}
+
+async function loadGarbageDepartmentId() {
+  for (const name of [
+    "Авто бааз, хог тээвэрлэлтийн хэлтэс",
+    "Авто бааз",
+    "Хог тээвэрлэлт",
+  ]) {
+    const departments = await executeOdooKw<DepartmentRecord[]>(
+      "hr.department",
+      "search_read",
+      [[["name", "=", name]]],
+      {
+        fields: ["id"],
+        limit: 1,
+      },
+    );
+    if (departments[0]?.id) {
+      return departments[0].id;
+    }
+  }
+
+  const fallbackDepartments = await executeOdooKw<DepartmentRecord[]>(
+    "hr.department",
+    "search_read",
+    [["|", ["name", "ilike", "авто"], ["name", "ilike", "хог"]]],
+    {
+      fields: ["id"],
+      limit: 1,
+    },
+  );
+  return fallbackDepartments[0]?.id ?? null;
+}
+
 async function loadVehicleByCode() {
   const vehicles = await executeOdooKw<FleetVehicleRecord[]>(
     "fleet.vehicle",
     "search_read",
     [[]],
     {
-      fields: ["id", "license_plate", "name"],
+      fields: ["id", "license_plate", "name", "municipal_department_id"],
       limit: 700,
       order: "license_plate asc, name asc",
       context: { active_test: false },
@@ -186,7 +248,7 @@ async function getRequestedWindow(request: Request) {
     const url = new URL(request.url);
     const startDate = url.searchParams.get("startDate")?.trim() || "";
     const endDate = url.searchParams.get("endDate")?.trim() || "";
-    const date = url.searchParams.get("date")?.trim() || defaultImportDateKey();
+    const date = url.searchParams.get("date")?.trim() || latestAllowedReportDateKey();
 
     if (startDate || endDate) {
       return {
@@ -209,7 +271,7 @@ async function getRequestedWindow(request: Request) {
     };
     const startDate = String(body.startDate ?? "").trim();
     const endDate = String(body.endDate ?? "").trim();
-    const date = String(body.date ?? "").trim() || defaultImportDateKey();
+    const date = String(body.date ?? "").trim() || latestAllowedReportDateKey();
 
     if (startDate || endDate) {
       return {
@@ -223,7 +285,7 @@ async function getRequestedWindow(request: Request) {
       endDate: date,
     };
   } catch {
-    const date = defaultImportDateKey();
+    const date = latestAllowedReportDateKey();
     return {
       startDate: date,
       endDate: date,
@@ -270,47 +332,53 @@ function validateRequestedWindow(startDate: string, endDate: string) {
 async function upsertFuelReport(input: {
   reportDate: string;
   vehicle?: FleetVehicleRecord;
+  departmentId?: number | null;
   vehicleCode: string;
   fuelLiters: number;
   fuelType?: string;
 }) {
-  const existing = await executeOdooKw<FuelReportRecord[]>(
+  const existingCandidates = await executeOdooKw<FuelReportRecord[]>(
     "municipal.garbage.fuel.report",
     "search_read",
     [
       [
         ["report_date", "=", input.reportDate],
-        ["vehicle_license_plate", "=", input.vehicleCode],
         ["source", "=", GAIHAM_FUEL_SOURCE],
       ],
     ],
     {
-      fields: ["id"],
-      limit: 1,
+      fields: ["id", "vehicle_license_plate"],
+      limit: 5000,
       order: "id desc",
     },
+  );
+  const normalizedInputCode = normalizeVehicleCode(input.vehicleCode);
+  const existing = existingCandidates.find(
+    (record) => normalizeVehicleCode(record.vehicle_license_plate) === normalizedInputCode,
   );
 
   const values = {
     report_date: input.reportDate,
     vehicle_id: input.vehicle?.id ?? false,
+    department_id: relationId(input.vehicle?.municipal_department_id ?? false) ?? input.departmentId ?? false,
     vehicle_license_plate: input.vehicleCode,
     fuel_liters: input.fuelLiters,
     fuel_type: input.fuelType || "",
     source: GAIHAM_FUEL_SOURCE,
-    fetched_at: new Date().toISOString().replace("T", " ").slice(0, 19),
     state: input.vehicle ? "success" : "failed",
     error_message: input.vehicle
       ? ""
       : "\u0410\u0432\u0442\u043e \u0431\u0430\u0430\u0437\u0430\u0434 \u0442\u0430\u0430\u0440\u0430\u0445 \u043c\u0430\u0448\u0438\u043d \u043e\u043b\u0434\u0441\u043e\u043d\u0433\u04af\u0439.",
   };
 
-  if (existing[0]?.id) {
-    await executeOdooKw<boolean>("municipal.garbage.fuel.report", "write", [[existing[0].id], values]);
+  if (existing?.id) {
+    await executeOdooKw<boolean>("municipal.garbage.fuel.report", "write", [[existing.id], values]);
     return "updated" as const;
   }
 
-  await executeOdooKw<number>("municipal.garbage.fuel.report", "create", [values]);
+  await executeOdooKw<number>("municipal.garbage.fuel.report", "create", [
+    { ...values, fetched_at: currentOdooDateTime() },
+  ]);
   return "created" as const;
 }
 
@@ -334,7 +402,10 @@ async function createSyncLog(input: {
 }
 
 async function importGaihamDateRange(startDate: string, endDate: string) {
-  const vehicleByCode = await loadVehicleByCode();
+  const [vehicleByCode, garbageDepartmentId] = await Promise.all([
+    loadVehicleByCode(),
+    loadGarbageDepartmentId(),
+  ]);
   const importedDates: string[] = [];
   const emptyDates: Array<{ date: string; ignoredSamples: string[] }> = [];
   const failedDates: Array<{ date: string; error: string }> = [];
@@ -454,6 +525,7 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
     const result = await upsertFuelReport({
       reportDate: total.reportDate,
       vehicle,
+      departmentId: garbageDepartmentId,
       vehicleCode: reportVehicleCode,
       fuelLiters: total.fuelLiters,
       fuelType: total.fuelType,
@@ -483,7 +555,7 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
       : "",
   });
 
-  return NextResponse.json({
+  const responsePayload = {
     ok: true,
     startDate,
     endDate,
@@ -497,7 +569,20 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
     created,
     updated,
     unmatched,
-  });
+  };
+
+  if (unmatched.length) {
+    return NextResponse.json(
+      {
+        ...responsePayload,
+        ok: false,
+        error: `${unmatched.length} машины улсын дугаар авто баазтай таарсангүй. Таараагүй мөрүүд алдаатай тайлан болж хадгалагдсан тул дугаарыг засаад дахин татна уу.`,
+      },
+      { status: 409 },
+    );
+  }
+
+  return NextResponse.json(responsePayload);
 }
 
 async function handleRequest(request: Request) {

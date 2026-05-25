@@ -785,6 +785,7 @@ type OdooGarbageWeightReportRecord = {
   id: number;
   report_date?: string | false;
   vehicle_id: OdooRelation;
+  vehicle_license_plate?: string | false;
   weight?: number;
   unit?: string | false;
   source?: string | false;
@@ -797,6 +798,7 @@ type OdooGarbageFuelReportRecord = {
   id: number;
   report_date?: string | false;
   vehicle_id: OdooRelation;
+  vehicle_license_plate?: string | false;
   fuel_liters?: number;
   fuel_type?: string | false;
   source?: string | false;
@@ -883,6 +885,9 @@ export type FleetVehicleRepairHistoryItem = {
 
 export type FleetVehicleDailyWeightItem = {
   id: number;
+  vehicleId: number | null;
+  vehiclePlate: string;
+  vehicleName: string;
   reportDate: string;
   reportDateValue: string;
   weightTons: number;
@@ -896,6 +901,9 @@ export type FleetVehicleDailyWeightItem = {
 
 export type FleetVehicleDailyFuelItem = {
   id: number;
+  vehicleId: number | null;
+  vehiclePlate: string;
+  vehicleName: string;
   reportDate: string;
   reportDateValue: string;
   fuelLiters: number;
@@ -972,9 +980,11 @@ export type FleetVehicleBoardItem = {
   driverHistory: FleetVehicleDriverHistoryItem[];
   repairHistory: FleetVehicleRepairHistoryItem[];
   weightReports: FleetVehicleDailyWeightItem[];
+  weightReportRows: FleetVehicleDailyWeightItem[];
   weightMonthTons: number;
   weightTotalTons: number;
   fuelReports: FleetVehicleDailyFuelItem[];
+  fuelReportRows: FleetVehicleDailyFuelItem[];
   procurementLinks: FleetVehicleProcurementLink[];
   crewAssignments: FleetVehicleCrewAssignment[];
 };
@@ -996,6 +1006,8 @@ export type FleetVehicleBoard = {
   inspectionDueCount: number;
   todayWeightLabel: string;
   todayFuelLabel: string;
+  weightReportRows: FleetVehicleDailyWeightItem[];
+  fuelReportRows: FleetVehicleDailyFuelItem[];
   highestFuelVehicle: string;
   mostRepairedVehicle: string;
   failedImportCount: number;
@@ -2191,6 +2203,7 @@ const VEHICLE_REPAIR_HISTORY_FIELDS = [
 const VEHICLE_WEIGHT_REPORT_FIELDS = [
   "report_date",
   "vehicle_id",
+  "vehicle_license_plate",
   "weight",
   "unit",
   "source",
@@ -2202,6 +2215,7 @@ const VEHICLE_WEIGHT_REPORT_FIELDS = [
 const VEHICLE_FUEL_REPORT_FIELDS = [
   "report_date",
   "vehicle_id",
+  "vehicle_license_plate",
   "fuel_liters",
   "fuel_type",
   "source",
@@ -2489,6 +2503,12 @@ function getPreviousDateKey(dateKey: string) {
   const previousDate = ulaanbaatarDayStart(dateKey);
   previousDate.setUTCDate(previousDate.getUTCDate() - 1);
   return getTodayDateKey(previousDate);
+}
+
+function getDateKeyDaysAgo(dateKey: string, days: number) {
+  const date = ulaanbaatarDayStart(dateKey);
+  date.setUTCDate(date.getUTCDate() - Math.max(0, days));
+  return getTodayDateKey(date);
 }
 
 function resolveHrGenderLabel(value?: string | false) {
@@ -4119,6 +4139,63 @@ function appendMapItem<T>(map: Map<number, T[]>, key: number | null, item: T) {
   map.set(key, current);
 }
 
+function garbageReportVehiclePlate(record: {
+  vehicle_id?: OdooRelation;
+  vehicle_license_plate?: string | false;
+}) {
+  return (
+    String(record.vehicle_license_plate || "").trim() ||
+    relationName(record.vehicle_id ?? false, "") ||
+    "Улсын дугааргүй"
+  );
+}
+
+function garbageReportVehicleName(record: {
+  vehicle_id?: OdooRelation;
+  vehicle_license_plate?: string | false;
+}) {
+  return relationName(record.vehicle_id ?? false, "") || "Авто баазад таараагүй";
+}
+
+function toFleetWeightReportItem(record: OdooGarbageWeightReportRecord): FleetVehicleDailyWeightItem {
+  const vehicleId = relationId(record.vehicle_id);
+  return {
+    id: record.id,
+    vehicleId,
+    vehiclePlate: garbageReportVehiclePlate(record),
+    vehicleName: garbageReportVehicleName(record),
+    reportDate: formatOptionalCompactDate(record.report_date),
+    reportDateValue: typeof record.report_date === "string" ? record.report_date : "",
+    weightTons: weightRecordToTons(record.weight, record.unit),
+    weightLabel: formatWeight(record.weight, record.unit),
+    source: record.source || "Гадны систем",
+    fetchedAt: formatOptionalCompactDate(record.fetched_at),
+    fetchedAtValue: typeof record.fetched_at === "string" ? record.fetched_at : "",
+    stateLabel: FLEET_IMPORT_STATE_LABELS[String(record.state || "")] || String(record.state || ""),
+    errorMessage: record.error_message || "",
+  };
+}
+
+function toFleetFuelReportItem(record: OdooGarbageFuelReportRecord): FleetVehicleDailyFuelItem {
+  const vehicleId = relationId(record.vehicle_id);
+  return {
+    id: record.id,
+    vehicleId,
+    vehiclePlate: garbageReportVehiclePlate(record),
+    vehicleName: garbageReportVehicleName(record),
+    reportDate: formatOptionalCompactDate(record.report_date),
+    reportDateValue: typeof record.report_date === "string" ? record.report_date : "",
+    fuelLiters: record.fuel_liters || 0,
+    fuelLabel: formatLiters(record.fuel_liters),
+    fuelType: record.fuel_type || "",
+    source: record.source || "Гадны систем",
+    fetchedAt: formatOptionalCompactDate(record.fetched_at),
+    fetchedAtValue: typeof record.fetched_at === "string" ? record.fetched_at : "",
+    stateLabel: FLEET_IMPORT_STATE_LABELS[String(record.state || "")] || String(record.state || ""),
+    errorMessage: record.error_message || "",
+  };
+}
+
 async function safeSearchReadFleetModel<T>(
   uid: number,
   model: string,
@@ -4212,33 +4289,29 @@ async function loadWeightReportsByVehicle(
   vehicleIds: number[],
   connection: OdooConnection,
 ) {
+  const reportSinceDate = getDateKeyDaysAgo(getTodayDateKey(), 370);
   const records = await safeSearchReadFleetModel<OdooGarbageWeightReportRecord>(
     uid,
     "municipal.garbage.weight.report",
-    ["|", ["vehicle_id", "in", vehicleIds], ["vehicle_id", "=", false]],
+    [
+      ["report_date", ">=", reportSinceDate],
+      "|",
+      ["vehicle_id", "in", vehicleIds],
+      ["vehicle_id", "=", false],
+    ],
     VEHICLE_WEIGHT_REPORT_FIELDS,
     { order: "report_date desc, id desc" },
     connection,
   );
   const byVehicle = new Map<number, FleetVehicleDailyWeightItem[]>();
+  const items = records.map(toFleetWeightReportItem);
   for (const record of records) {
     if (record.state === "failed") {
       continue;
     }
-    appendMapItem(byVehicle, relationId(record.vehicle_id), {
-      id: record.id,
-      reportDate: formatOptionalCompactDate(record.report_date),
-      reportDateValue: typeof record.report_date === "string" ? record.report_date : "",
-      weightTons: weightRecordToTons(record.weight, record.unit),
-      weightLabel: formatWeight(record.weight, record.unit),
-      source: record.source || "Гадны систем",
-      fetchedAt: formatOptionalCompactDate(record.fetched_at),
-      fetchedAtValue: typeof record.fetched_at === "string" ? record.fetched_at : "",
-      stateLabel: FLEET_IMPORT_STATE_LABELS[String(record.state || "")] || String(record.state || ""),
-      errorMessage: record.error_message || "",
-    });
+    appendMapItem(byVehicle, relationId(record.vehicle_id), toFleetWeightReportItem(record));
   }
-  return { records, byVehicle };
+  return { records, items, byVehicle };
 }
 
 async function loadFuelReportsByVehicle(
@@ -4246,31 +4319,29 @@ async function loadFuelReportsByVehicle(
   vehicleIds: number[],
   connection: OdooConnection,
 ) {
+  const reportSinceDate = getDateKeyDaysAgo(getTodayDateKey(), 370);
   const records = await safeSearchReadFleetModel<OdooGarbageFuelReportRecord>(
     uid,
     "municipal.garbage.fuel.report",
-    [["vehicle_id", "in", vehicleIds]],
+    [
+      ["report_date", ">=", reportSinceDate],
+      "|",
+      ["vehicle_id", "in", vehicleIds],
+      ["vehicle_id", "=", false],
+    ],
     VEHICLE_FUEL_REPORT_FIELDS,
     { order: "report_date desc, id desc" },
     connection,
   );
   const byVehicle = new Map<number, FleetVehicleDailyFuelItem[]>();
+  const items = records.map(toFleetFuelReportItem);
   for (const record of records) {
-    appendMapItem(byVehicle, relationId(record.vehicle_id), {
-      id: record.id,
-      reportDate: formatOptionalCompactDate(record.report_date),
-      reportDateValue: typeof record.report_date === "string" ? record.report_date : "",
-      fuelLiters: record.fuel_liters || 0,
-      fuelLabel: formatLiters(record.fuel_liters),
-      fuelType: record.fuel_type || "",
-      source: record.source || "Гадны систем",
-      fetchedAt: formatOptionalCompactDate(record.fetched_at),
-      fetchedAtValue: typeof record.fetched_at === "string" ? record.fetched_at : "",
-      stateLabel: FLEET_IMPORT_STATE_LABELS[String(record.state || "")] || String(record.state || ""),
-      errorMessage: record.error_message || "",
-    });
+    if (record.state === "failed") {
+      continue;
+    }
+    appendMapItem(byVehicle, relationId(record.vehicle_id), toFleetFuelReportItem(record));
   }
-  return { records, byVehicle };
+  return { records, items, byVehicle };
 }
 
 async function loadProcurementLinksByVehicle(
@@ -4670,9 +4741,11 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
         driverHistory: latestItems(driverHistoryByVehicle.get(vehicle.id)),
         repairHistory: latestItems(repairHistoryByVehicle.get(vehicle.id), 10),
         weightReports: weightReportResult.byVehicle.get(vehicle.id) ?? [],
+        weightReportRows: [],
         weightMonthTons: vehicleWeightMonthTons,
         weightTotalTons: vehicleWeightTotalTons,
         fuelReports: fuelReportResult.byVehicle.get(vehicle.id) ?? [],
+        fuelReportRows: [],
         procurementLinks: latestItems(procurementLinksByVehicle.get(vehicle.id), 8),
         crewAssignments: crewAssignmentsByVehicle.get(vehicle.id) ?? [],
       } satisfies FleetVehicleBoardItem;
@@ -4697,6 +4770,23 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
       vehicle.isOperational &&
       !vehicle.isRepair,
   );
+  const vehicleByIdForReports = new Map(allVehicles.map((vehicle) => [vehicle.id, vehicle]));
+  const weightReportRows = weightReportResult.items.map((report) => {
+    const vehicle = report.vehicleId ? vehicleByIdForReports.get(report.vehicleId) : null;
+    return {
+      ...report,
+      vehiclePlate: vehicle?.plate || report.vehiclePlate,
+      vehicleName: vehicle?.modelName || vehicle?.name || report.vehicleName,
+    };
+  });
+  const fuelReportRows = fuelReportResult.items.map((report) => {
+    const vehicle = report.vehicleId ? vehicleByIdForReports.get(report.vehicleId) : null;
+    return {
+      ...report,
+      vehiclePlate: vehicle?.plate || report.vehiclePlate,
+      vehicleName: vehicle?.modelName || vehicle?.name || report.vehicleName,
+    };
+  });
   const repairVehicles = allVehicles.filter((vehicle) => vehicle.isRepair);
   const previousDateKey = getPreviousDateKey(todayKey);
   const todayWeightRecords = weightReportResult.records.filter(
@@ -4749,6 +4839,8 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
     inspectionDueCount: allVehicles.filter((vehicle) => vehicle.inspection.reminderDue).length,
     todayWeightLabel: formatWeight(todayWeightKg, "kg"),
     todayFuelLabel: formatLiters(todayFuelLiters),
+    weightReportRows,
+    fuelReportRows,
     highestFuelVehicle: highestFuelVehicleId ? vehicleById.get(highestFuelVehicleId)?.plate ?? "" : "",
     mostRepairedVehicle: mostRepairedVehicleId ? vehicleById.get(mostRepairedVehicleId)?.plate ?? "" : "",
     failedImportCount,

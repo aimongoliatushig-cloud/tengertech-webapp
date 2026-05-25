@@ -31,10 +31,10 @@ import {
 } from "@/lib/dashboard-scope";
 import {
   DEPARTMENT_GROUPS,
+  type DepartmentGroupDefinition,
   findDepartmentGroupByName,
   findDepartmentGroupByUnit,
   getAvailableUnits,
-  matchesDepartmentGroup,
 } from "@/lib/department-groups";
 import {
   filterProjectsForResponsibleMaster,
@@ -117,11 +117,58 @@ const REPORT_STATUS_FILTERS = [
   { key: "problem", label: "Буцаагдсан" },
 ] as const;
 
+function normalizeReportDepartmentName(value?: string | null) {
+  return (value ?? "").trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
+}
+
+function reportDepartmentMatchesGroup(
+  group: DepartmentGroupDefinition,
+  departmentName?: string | null,
+) {
+  const normalized = normalizeReportDepartmentName(departmentName);
+  if (!normalized) {
+    return false;
+  }
+
+  const exactNames = [group.name, ...group.units, ...group.aliases].map((name) =>
+    normalizeReportDepartmentName(name),
+  );
+  if (exactNames.includes(normalized)) {
+    return true;
+  }
+
+  const hasTransportSignal =
+    normalized.includes("авто") ||
+    normalized.includes("хог") ||
+    normalized.includes("тээвэр") ||
+    normalized.includes("машин");
+  const hasCleaningSignal =
+    normalized.includes("ногоон") ||
+    normalized.includes("цэвэрл");
+  const hasImprovementSignal =
+    normalized.includes("тохижилт") ||
+    normalized.includes("засвар") ||
+    normalized.includes("гудамж") ||
+    normalized.includes("зам талбай");
+
+  if (group.name === "Авто бааз, хог тээвэрлэлтийн хэлтэс") {
+    return hasTransportSignal;
+  }
+  if (group.name === "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс") {
+    return !hasTransportSignal && hasCleaningSignal;
+  }
+  if (group.name === "Тохижилтын хэлтэс") {
+    return !hasTransportSignal && !hasCleaningSignal && hasImprovementSignal;
+  }
+
+  return false;
+}
+
 function isOperationalReportDepartment(departmentName: string) {
   return DEPARTMENT_GROUPS.some(
     (group) =>
       REPORT_OPERATIONS_GROUP_NAMES.has(group.name) &&
-      matchesDepartmentGroup(group, departmentName),
+      reportDepartmentMatchesGroup(group, departmentName),
   );
 }
 
@@ -237,14 +284,12 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       ? requestedUnit
       : requestedDepartment && availableUnits.includes(requestedDepartment)
         ? requestedDepartment
-        : availableUnits.length === 1
-          ? (availableUnits[0] ?? "")
-          : "";
+        : "";
   const matchesSelectedDepartment = (departmentName: string) =>
     selectedUnit
       ? departmentName === selectedUnit
       : selectedGroup
-        ? matchesDepartmentGroup(selectedGroup, departmentName)
+        ? reportDepartmentMatchesGroup(selectedGroup, departmentName)
         : true;
   const todayDateKey = getTodayDateKey();
 
@@ -286,16 +331,55 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const operationalReportGroups = DEPARTMENT_GROUPS.filter((group) =>
     REPORT_OPERATIONS_GROUP_NAMES.has(group.name),
   );
-  const visibleReportGroups = operationalReportGroups;
+  const allOperationalReportCount = departmentScopedMode
+    ? filteredReports.length
+    : snapshot.reports.filter((report) => isOperationalReportDepartment(report.departmentName)).length;
+  const visibleReportGroups =
+    departmentScopedMode && selectedGroup
+      ? operationalReportGroups.filter((group) => group.name === selectedGroup.name)
+      : operationalReportGroups;
+  const preservedFilterParams = new URLSearchParams();
+  if (reportSearchQuery) {
+    preservedFilterParams.set("q", reportSearchQuery);
+  }
+  if (selectedStatus !== "all") {
+    preservedFilterParams.set("status", selectedStatus);
+  }
+  const preservedFilterQuery = preservedFilterParams.toString();
+  const allDepartmentsHref = `/reports${preservedFilterQuery ? `?${preservedFilterQuery}` : ""}`;
+  const normalizedReportSearchQuery = reportSearchQuery.toLocaleLowerCase("mn-MN");
+  const reportMatchesCurrentFilters = (report: FeedReport) => {
+    if (selectedStatus !== "all" && report.stateBucket !== selectedStatus) {
+      return false;
+    }
+    if (!normalizedReportSearchQuery) {
+      return true;
+    }
+
+    return [
+      report.taskName,
+      report.projectName,
+      report.departmentName,
+      report.reporter,
+      report.summary,
+      report.stateLabel,
+    ].some((value) => value.toLocaleLowerCase("mn-MN").includes(normalizedReportSearchQuery));
+  };
   const reportDepartmentCards = visibleReportGroups.map((group) => {
-    const groupUnits = getAvailableUnits(group);
     const hrefParams = new URLSearchParams();
     hrefParams.set("department", group.name);
-    if (groupUnits[0]) {
-      hrefParams.set("unit", groupUnits[0]);
+    if (reportSearchQuery) {
+      hrefParams.set("q", reportSearchQuery);
     }
-    const groupReports = snapshot.reports.filter((report) => matchesDepartmentGroup(group, report.departmentName));
-    const groupReviewQueue = snapshot.reviewQueue.filter((item) => matchesDepartmentGroup(group, item.departmentName));
+    if (selectedStatus !== "all") {
+      hrefParams.set("status", selectedStatus);
+    }
+    const groupReports = snapshot.reports.filter((report) =>
+      reportDepartmentMatchesGroup(group, report.departmentName),
+    );
+    const groupReviewQueue = snapshot.reviewQueue.filter((item) =>
+      reportDepartmentMatchesGroup(group, item.departmentName),
+    );
     const hint = REPORT_DEPARTMENT_HINTS[group.name] ?? {
       eyebrow: group.name,
       note: "Хэлтсийн ажлын гүйцэтгэл, хавсралт болон хяналтын тайлан",
@@ -313,6 +397,32 @@ export default async function ReportsPage({ searchParams }: PageProps) {
       ...hint,
     };
   });
+  const unitFilterLinks = selectedGroup
+    ? availableUnits.map((unit) => {
+        const hrefParams = new URLSearchParams();
+        hrefParams.set("department", selectedGroup.name);
+        hrefParams.set("unit", unit);
+        if (reportSearchQuery) {
+          hrefParams.set("q", reportSearchQuery);
+        }
+        if (selectedStatus !== "all") {
+          hrefParams.set("status", selectedStatus);
+        }
+        const reportCount = filteredReports.filter(
+          (report) => report.departmentName === unit && reportMatchesCurrentFilters(report),
+        ).length;
+
+        return {
+          unit,
+          href: `/reports?${hrefParams.toString()}`,
+          reportCount,
+          isActive: selectedUnit === unit,
+        };
+      })
+    : [];
+  const selectedGroupHref = selectedGroup
+    ? (reportDepartmentCards.find((card) => card.group.name === selectedGroup.name)?.href ?? allDepartmentsHref)
+    : allDepartmentsHref;
   const exportParams = new URLSearchParams();
   if (!departmentScopedMode && selectedGroup) {
     exportParams.set("department", selectedGroup.name);
@@ -330,22 +440,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const allReportBoardQuery = allReportBoardParams.toString();
   const allReportBoardBaseHref = `/reports${allReportBoardQuery ? `?${allReportBoardQuery}` : ""}`;
   const visibleReportRows = filteredReports
-    .filter((report) => (selectedStatus === "all" ? true : report.stateBucket === selectedStatus))
-    .filter((report) => {
-      if (!reportSearchQuery) {
-        return true;
-      }
-
-      const query = reportSearchQuery.toLocaleLowerCase("mn-MN");
-      return [
-        report.taskName,
-        report.projectName,
-        report.departmentName,
-        report.reporter,
-        report.summary,
-        report.stateLabel,
-      ].some((value) => value.toLocaleLowerCase("mn-MN").includes(query));
-    })
+    .filter(reportMatchesCurrentFilters)
     .sort((left, right) => right.submittedAt.localeCompare(left.submittedAt) || right.id - left.id);
   const boardReportRows = visibleReportRows.slice(0, 12);
   const boardNewReportCount = filteredReports.filter(
@@ -355,6 +450,12 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const boardReviewCount = filteredReports.filter((report) => report.stateBucket === "review").length;
   const boardApprovedCount = filteredReports.filter((report) => report.stateBucket === "done").length;
   const boardReturnedCount = filteredReports.filter((report) => report.stateBucket === "problem").length;
+  const selectedDepartmentHint = selectedGroup ? REPORT_DEPARTMENT_HINTS[selectedGroup.name] : null;
+  const selectedScopeTitle = selectedUnit || selectedDepartmentHint?.eyebrow || "Бүх ажлын тайлан";
+  const selectedScopeNote =
+    selectedDepartmentHint?.note ??
+    "Авто бааз, ногоон байгууламж, тохижилтын бүх ажлын тайланг нэг урсгалаар харуулж байна";
+  const reviewQueueRows = filteredReviewQueue.slice(0, 4);
   const getExportHref = (format: "csv" | "excel" | "json", reportId?: number) => {
     const params = new URLSearchParams(exportParams);
     params.set("format", format);
@@ -491,53 +592,96 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   </Link>
                 </form>
 
-                <div className={styles.reportRegistryContent}>
-                  <aside className={styles.reportRegistrySidebar}>
-                    <div className={styles.reportRegistrySidebarHeader}>
-                      <strong>Хэлтсээр шүүх</strong>
-                      <span>{filteredReports.length}</span>
+                <section className={styles.reportRegistryScopePanel} aria-label="Тайлангийн хамрах хүрээ">
+                  <div className={styles.reportRegistryScopeHeader}>
+                    <div>
+                      <span>Сонгосон хэсэг</span>
+                      <strong>{selectedScopeTitle}</strong>
+                      <small>{selectedScopeNote}</small>
                     </div>
+                    <strong>{visibleReportRows.length} тайлан</strong>
+                  </div>
+
+                  <div className={styles.reportRegistryDepartmentStrip}>
                     <Link
-                      href="/reports"
-                      className={`${styles.reportRegistryDepartmentLink} ${
-                        !selectedGroup ? styles.reportRegistryDepartmentLinkActive : ""
+                      href={allDepartmentsHref}
+                      className={`${styles.reportRegistryDepartmentTab} ${
+                        !selectedGroup ? styles.reportRegistryDepartmentTabActive : ""
                       }`}
                     >
-                      <span>Бүх хэлтэс</span>
-                      <strong>{filteredReports.length}</strong>
+                      <span>Бүх ажлын тайлан</span>
+                      <strong>{allOperationalReportCount}</strong>
                     </Link>
-                    {reportDepartmentCards.map((card) => {
-                      const hrefParams = new URLSearchParams();
-                      hrefParams.set("department", card.group.name);
-                      if (reportSearchQuery) {
-                        hrefParams.set("q", reportSearchQuery);
-                      }
-                      if (selectedStatus !== "all") {
-                        hrefParams.set("status", selectedStatus);
-                      }
+                    {reportDepartmentCards.map((card) => (
+                      <Link
+                        key={card.group.name}
+                        href={card.href}
+                        className={`${styles.reportRegistryDepartmentTab} ${
+                          card.isActive ? styles.reportRegistryDepartmentTabActive : ""
+                        }`}
+                      >
+                        <span>{card.eyebrow}</span>
+                        <small>{card.note}</small>
+                        <strong>{card.reportCount}</strong>
+                      </Link>
+                    ))}
+                  </div>
 
-                      return (
+                  {unitFilterLinks.length ? (
+                    <div className={styles.reportRegistryUnitStrip} aria-label="Нэгжээр нарийвчлах">
+                      <Link
+                        href={selectedGroupHref}
+                        className={`${styles.reportRegistryUnitChip} ${
+                          !selectedUnit ? styles.reportRegistryUnitChipActive : ""
+                        }`}
+                      >
+                        Бүгд
+                      </Link>
+                      {unitFilterLinks.map((item) => (
                         <Link
-                          key={card.group.name}
-                          href={`/reports?${hrefParams.toString()}`}
-                          className={`${styles.reportRegistryDepartmentLink} ${
-                            card.isActive ? styles.reportRegistryDepartmentLinkActive : ""
+                          key={item.unit}
+                          href={item.href}
+                          className={`${styles.reportRegistryUnitChip} ${
+                            item.isActive ? styles.reportRegistryUnitChipActive : ""
                           }`}
                         >
-                          <span>{card.eyebrow}</span>
-                          <strong>{card.reportCount}</strong>
+                          {item.unit}
+                          <span>{item.reportCount}</span>
                         </Link>
-                      );
-                    })}
-                  </aside>
+                      ))}
+                    </div>
+                  ) : null}
+                </section>
 
+                {reviewQueueRows.length ? (
+                  <section className={styles.reportRegistryReviewQueue} aria-label="Хяналт хүлээж буй ажил">
+                    <div className={styles.reportRegistryReviewHeader}>
+                      <div>
+                        <span>Хяналт хүлээж буй ажил</span>
+                        <strong>{filteredReviewQueue.length}</strong>
+                      </div>
+                      <small>Тайлан орсон боловч баталгаажуулалт дуусаагүй ажлууд</small>
+                    </div>
+                    <div className={styles.reportRegistryReviewList}>
+                      {reviewQueueRows.map((item) => (
+                        <Link key={item.id} href={item.href} className={styles.reportRegistryReviewCard}>
+                          <strong>{item.name}</strong>
+                          <span>{item.departmentName}</span>
+                          <small>{item.projectName} · {item.progress}%</small>
+                        </Link>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+
+                <div className={styles.reportRegistryContent}>
                   <div className={styles.reportRegistryTableCard}>
                     <div className={styles.reportRegistryTableHeader}>
                       <div>
                         <span>Тайлангийн жагсаалт</span>
                         <strong>{visibleReportRows.length}</strong>
                       </div>
-                      <small>Системийн 3 хэлтсийн бодит тайлан</small>
+                      <small>{selectedScopeTitle}</small>
                     </div>
 
                     <div className={styles.reportRegistryAccordion}>

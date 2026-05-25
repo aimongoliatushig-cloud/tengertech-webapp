@@ -71,6 +71,8 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
     inspectionDueCount: 0,
     todayWeightLabel: "0 кг",
     todayFuelLabel: "0 л",
+    weightReportRows: [],
+    fuelReportRows: [],
     highestFuelVehicle: "",
     mostRepairedVehicle: "",
     failedImportCount: 0,

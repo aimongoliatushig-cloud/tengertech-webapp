@@ -15,9 +15,15 @@ type FleetVehicleRecord = {
   id: number;
   license_plate?: string | false;
   name?: string | false;
+  municipal_department_id?: [number, string] | false;
 };
 
 type WeightReportRecord = {
+  id: number;
+  vehicle_license_plate?: string | false;
+};
+
+type DepartmentRecord = {
   id: number;
 };
 
@@ -33,6 +39,7 @@ type DailyWeightTotalRecord = {
 };
 
 const TIME_ZONE = process.env.APP_TIME_ZONE ?? "Asia/Ulaanbaatar";
+const IMPORT_READY_HOUR = 12;
 const WRS_WEIGHT_SOURCE = "WRS жингийн систем";
 const WRS_DAILY_WEIGHT_SOURCE = "wrs_normalized";
 
@@ -52,12 +59,27 @@ function shiftDateKey(dateKey: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
-function defaultImportDateKey() {
-  return shiftDateKey(currentDateKey(), -1);
+function currentLocalTimeParts() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+
+  return {
+    hour: Number(parts.find((part) => part.type === "hour")?.value ?? 0),
+    minute: Number(parts.find((part) => part.type === "minute")?.value ?? 0),
+  };
+}
+
+function isImportReadyNow() {
+  const { hour, minute } = currentLocalTimeParts();
+  return hour * 60 + minute >= IMPORT_READY_HOUR * 60;
 }
 
 function latestAllowedReportDateKey() {
-  return defaultImportDateKey();
+  return shiftDateKey(currentDateKey(), isImportReadyNow() ? -1 : -2);
 }
 
 function isLocalDevelopmentRequest(request: Request) {
@@ -145,7 +167,7 @@ async function authorizeRequest(request: Request) {
 function normalizeVehicleCode(value?: string | false | null) {
   return String(value ?? "")
     .toLocaleUpperCase("mn-MN")
-    .replace(/\s+/g, "")
+    .replace(/[^\p{L}\p{N}]/gu, "")
     .trim();
 }
 
@@ -162,12 +184,48 @@ function vehicleReportCode(vehicle: FleetVehicleRecord | undefined, fallbackCode
   return String(vehicle?.license_plate || vehicle?.name || fallbackCode).trim();
 }
 
+function currentOdooDateTime() {
+  return new Date().toISOString().replace("T", " ").slice(0, 19);
+}
+
+async function loadGarbageDepartmentId() {
+  for (const name of [
+    "Авто бааз, хог тээвэрлэлтийн хэлтэс",
+    "Авто бааз",
+    "Хог тээвэрлэлт",
+  ]) {
+    const departments = await executeOdooKw<DepartmentRecord[]>(
+      "hr.department",
+      "search_read",
+      [[["name", "=", name]]],
+      {
+        fields: ["id"],
+        limit: 1,
+      },
+    );
+    if (departments[0]?.id) {
+      return departments[0].id;
+    }
+  }
+
+  const fallbackDepartments = await executeOdooKw<DepartmentRecord[]>(
+    "hr.department",
+    "search_read",
+    [["|", ["name", "ilike", "авто"], ["name", "ilike", "хог"]]],
+    {
+      fields: ["id"],
+      limit: 1,
+    },
+  );
+  return fallbackDepartments[0]?.id ?? null;
+}
+
 async function getRequestedWindow(request: Request) {
   if (request.method === "GET") {
     const url = new URL(request.url);
     const startDate = url.searchParams.get("startDate")?.trim() || "";
     const endDate = url.searchParams.get("endDate")?.trim() || "";
-    const date = url.searchParams.get("date")?.trim() || defaultImportDateKey();
+    const date = url.searchParams.get("date")?.trim() || latestAllowedReportDateKey();
 
     if (startDate || endDate) {
       return {
@@ -192,7 +250,7 @@ async function getRequestedWindow(request: Request) {
     };
     const startDate = String(body.startDate ?? "").trim();
     const endDate = String(body.endDate ?? "").trim();
-    const date = String(body.date ?? "").trim() || defaultImportDateKey();
+    const date = String(body.date ?? "").trim() || latestAllowedReportDateKey();
 
     if (startDate || endDate) {
       return {
@@ -208,7 +266,7 @@ async function getRequestedWindow(request: Request) {
       isRange: false,
     };
   } catch {
-    const date = defaultImportDateKey();
+    const date = latestAllowedReportDateKey();
     return {
       startDate: date,
       endDate: date,
@@ -247,7 +305,7 @@ async function loadVehicleByCode() {
     "search_read",
     [[]],
     {
-      fields: ["id", "license_plate", "name"],
+      fields: ["id", "license_plate", "name", "municipal_department_id"],
       limit: 500,
       order: "license_plate asc, name asc",
       context: { active_test: false },
@@ -358,41 +416,46 @@ async function loadGarbageTasksByDateAndVehicle(reportDates: string[], vehicleId
 async function upsertWeightReport(input: {
   reportDate: string;
   vehicle?: FleetVehicleRecord;
+  departmentId?: number | null;
   vehicleCode: string;
   weightKg: number;
 }) {
-  const existing = await executeOdooKw<WeightReportRecord[]>(
+  const existingCandidates = await executeOdooKw<WeightReportRecord[]>(
     "municipal.garbage.weight.report",
     "search_read",
     [
       [
         ["report_date", "=", input.reportDate],
-        ["vehicle_license_plate", "=", input.vehicleCode],
+        ["source", "=", WRS_WEIGHT_SOURCE],
       ],
     ],
     {
-      fields: ["id"],
-      limit: 1,
+      fields: ["id", "vehicle_license_plate"],
+      limit: 5000,
       order: "id desc",
     },
+  );
+  const normalizedInputCode = normalizeVehicleCode(input.vehicleCode);
+  const existing = existingCandidates.find(
+    (record) => normalizeVehicleCode(record.vehicle_license_plate) === normalizedInputCode,
   );
   const values = {
     report_date: input.reportDate,
     vehicle_id: input.vehicle?.id ?? false,
+    department_id: relationId(input.vehicle?.municipal_department_id ?? false) ?? input.departmentId ?? false,
     vehicle_license_plate: input.vehicleCode,
     weight: input.weightKg,
     unit: "kg",
     source: WRS_WEIGHT_SOURCE,
-    fetched_at: new Date().toISOString().replace("T", " ").slice(0, 19),
     state: input.vehicle ? "success" : "failed",
     error_message: input.vehicle ? "" : "Авто баазад таарах машин олдсонгүй.",
   };
 
-  if (existing[0]?.id) {
+  if (existing?.id) {
     await executeOdooKw<boolean>(
       "municipal.garbage.weight.report",
       "write",
-      [[existing[0].id], values],
+      [[existing.id], values],
     );
     return "updated" as const;
   }
@@ -400,7 +463,7 @@ async function upsertWeightReport(input: {
   await executeOdooKw<number>(
     "municipal.garbage.weight.report",
     "create",
-    [values],
+    [{ ...values, fetched_at: currentOdooDateTime() }],
   );
   return "created" as const;
 }
@@ -419,10 +482,19 @@ async function upsertDailyWeightTotal(input: {
   const existing = await executeOdooKw<DailyWeightTotalRecord[]>(
     "mfo.daily.weight.total",
     "search_read",
-    [[["external_reference", "=", externalReference]]],
+    [
+      [
+        "|",
+        ["external_reference", "=", externalReference],
+        "&",
+        ["task_id", "=", input.task.id],
+        ["source", "=", WRS_DAILY_WEIGHT_SOURCE],
+      ],
+    ],
     {
       fields: ["id"],
       limit: 1,
+      order: "id desc",
     },
   );
   const values = {
@@ -490,7 +562,10 @@ function dateKeysBetween(startDate: string, endDate: string) {
 }
 
 async function importWrsDateRange(startDate: string, endDate: string) {
-  const vehicleByCode = await loadVehicleByCode();
+  const [vehicleByCode, garbageDepartmentId] = await Promise.all([
+    loadVehicleByCode(),
+    loadGarbageDepartmentId(),
+  ]);
   const importedDates: string[] = [];
   const emptyDates: Array<{ date: string; branchName: string; ignoredSamples: string[] }> = [];
   const failedDates: Array<{ date: string; error: string }> = [];
@@ -625,6 +700,7 @@ async function importWrsDateRange(startDate: string, endDate: string) {
     const result = await upsertWeightReport({
       reportDate: total.reportDate,
       vehicle,
+      departmentId: garbageDepartmentId,
       vehicleCode: reportVehicleCode,
       weightKg: total.weightKg,
     });
@@ -672,7 +748,7 @@ async function importWrsDateRange(startDate: string, endDate: string) {
       : "",
   });
 
-  return NextResponse.json({
+  const responsePayload = {
     ok: true,
     startDate,
     endDate,
@@ -691,7 +767,20 @@ async function importWrsDateRange(startDate: string, endDate: string) {
     dailyWeightUpdated,
     unmatched,
     unmatchedTasks,
-  });
+  };
+
+  if (unmatched.length) {
+    return NextResponse.json(
+      {
+        ...responsePayload,
+        ok: false,
+        error: `${unmatched.length} машины улсын дугаар авто баазтай таарсангүй. Таараагүй мөрүүд алдаатай тайлан болж хадгалагдсан тул дугаарыг засаад дахин татна уу.`,
+      },
+      { status: 409 },
+    );
+  }
+
+  return NextResponse.json(responsePayload);
 }
 
 async function handleRequest(request: Request) {
@@ -720,6 +809,7 @@ async function handleRequest(request: Request) {
       fetchWrsDailyVehicleTotals(requestedDate),
       loadVehicleByCode(),
     ]);
+    const garbageDepartmentId = await loadGarbageDepartmentId();
     const matchedVehicleIds = totals.totals
       .map((total) => findVehicleByCode(vehicleByCode, total.vehicleCode)?.id)
       .filter((id): id is number => Number.isFinite(id ?? NaN) && Number(id) > 0);
@@ -767,6 +857,7 @@ async function handleRequest(request: Request) {
       const result = await upsertWeightReport({
         reportDate: requestedDate,
         vehicle,
+        departmentId: garbageDepartmentId,
         vehicleCode: reportVehicleCode,
         weightKg: total.netWeightTotal,
       });
@@ -812,7 +903,7 @@ async function handleRequest(request: Request) {
         : "",
     });
 
-    return NextResponse.json({
+    const responsePayload = {
       ok: true,
       requestedDate,
       branchName: totals.branchName,
@@ -824,7 +915,20 @@ async function handleRequest(request: Request) {
       dailyWeightUpdated,
       unmatched,
       unmatchedTasks,
-    });
+    };
+
+    if (unmatched.length) {
+      return NextResponse.json(
+        {
+          ...responsePayload,
+          ok: false,
+          error: `${unmatched.length} машины улсын дугаар авто баазтай таарсангүй. Таараагүй мөрүүд алдаатай тайлан болж хадгалагдсан тул дугаарыг засаад дахин татна уу.`,
+        },
+        { status: 409 },
+      );
+    }
+
+    return NextResponse.json(responsePayload);
   } catch (error) {
     const message =
       error instanceof Error && error.message

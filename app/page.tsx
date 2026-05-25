@@ -74,6 +74,8 @@ const EMPTY_FLEET_BOARD: Awaited<ReturnType<typeof loadFleetVehicleBoard>> = {
   inspectionDueCount: 0,
   todayWeightLabel: "0 кг",
   todayFuelLabel: "0 л",
+  weightReportRows: [],
+  fuelReportRows: [],
   highestFuelVehicle: "",
   mostRepairedVehicle: "",
   failedImportCount: 0,

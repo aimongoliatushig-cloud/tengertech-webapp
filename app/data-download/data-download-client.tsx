@@ -24,14 +24,44 @@ type WrsImportResponse = {
   unmatched: Array<{ vehicleCode: string; vehicleLabel: string; weightKg: number }>;
 };
 
-function getTodayDateValue() {
-  const now = new Date();
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-  return now.toISOString().slice(0, 10);
+const DATA_DOWNLOAD_TIME_ZONE = "Asia/Ulaanbaatar";
+
+function getCurrentDateValue() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: DATA_DOWNLOAD_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function shiftDateValue(dateValue: string, days: number) {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function isImportReadyNow() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: DATA_DOWNLOAD_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
+  const minute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
+
+  return hour * 60 + minute >= 12 * 60;
+}
+
+function getLatestImportDateValue() {
+  return shiftDateValue(getCurrentDateValue(), isImportReadyNow() ? -1 : -2);
 }
 
 export function DataDownloadClient() {
-  const [date, setDate] = useState(getTodayDateValue);
+  const latestImportDate = getLatestImportDateValue();
+  const [date, setDate] = useState(getLatestImportDateValue);
   const [report, setReport] = useState<WrsReportResponse | null>(null);
   const [importSummary, setImportSummary] = useState<WrsImportResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
@@ -45,6 +75,11 @@ export function DataDownloadClient() {
 
     if (!date) {
       setErrorMessage("Тайлан татахын өмнө огноогоо сонгоно уу.");
+      return;
+    }
+
+    if (date > latestImportDate) {
+      setErrorMessage("Өчигдрийн тайлан дараагийн өдөр 12:00-с хойш татагдана. Өнөөдрийн эсвэл ирээдүйн огноо сонгох боломжгүй.");
       return;
     }
 
@@ -79,8 +114,26 @@ export function DataDownloadClient() {
       const importPayload = (await importResponse.json()) as WrsImportResponse & {
         error?: string;
       };
+      const hasPartialImportSummary =
+        (importPayload.imported ?? 0) > 0 ||
+        ((importPayload.totalRows ?? 0) > 0 && Array.isArray(importPayload.unmatched));
 
       if (!importResponse.ok) {
+        if (hasPartialImportSummary) {
+          startTransition(() => {
+            setReport(payload);
+            setImportSummary({
+              ...importPayload,
+              unmatched: importPayload.unmatched ?? [],
+            });
+          });
+          setErrorMessage(
+            importPayload.error ??
+              "Зарим мөр хадгалагдсан боловч зарим улсын дугаар авто баазтай таарсангүй.",
+          );
+          return;
+        }
+
         throw new Error(importPayload.error ?? "WRS тайланг авто баазын бүртгэлд оруулж чадсангүй.");
       }
 
@@ -132,6 +185,7 @@ export function DataDownloadClient() {
                 id="wrs-report-date"
                 type="date"
                 value={date}
+                max={latestImportDate}
                 onChange={(event) => setDate(event.target.value)}
                 required
               />

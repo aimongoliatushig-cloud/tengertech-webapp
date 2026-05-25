@@ -18,6 +18,7 @@ class MunicipalGarbageWeightReport(models.Model):
     name = fields.Char(string="Нэр", compute="_compute_name", store=True)
     report_date = fields.Date(string="Огноо", required=True, index=True)
     vehicle_id = fields.Many2one("fleet.vehicle", string="Машин", index=True, ondelete="set null")
+    department_id = fields.Many2one("hr.department", string="Хэлтэс", index=True, ondelete="set null")
     vehicle_license_plate = fields.Char(string="Машины улсын дугаар", index=True)
     vehicle_type_id = fields.Many2one(
         "municipal.vehicle.type",
@@ -60,6 +61,7 @@ class MunicipalGarbageFuelReport(models.Model):
     name = fields.Char(string="Нэр", compute="_compute_name", store=True)
     report_date = fields.Date(string="Огноо", required=True, index=True)
     vehicle_id = fields.Many2one("fleet.vehicle", string="Машин", index=True, ondelete="set null")
+    department_id = fields.Many2one("hr.department", string="Хэлтэс", index=True, ondelete="set null")
     vehicle_license_plate = fields.Char(string="Машины улсын дугаар", index=True)
     vehicle_type_id = fields.Many2one(
         "municipal.vehicle.type",
@@ -150,15 +152,19 @@ class MunicipalGarbageSyncLog(models.Model):
     def _configured_time_due(self, sync_type):
         params = self.env["ir.config_parameter"].sudo()
         time_key = "municipal_repair_workflow.garbage_%s_sync_time" % sync_type
-        default_time = "00:00" if sync_type == "weight" else "12:00"
+        default_time = "12:00"
         legacy_default_time = "20:00" if sync_type == "weight" else "20:30"
         configured_time = params.get_param(time_key, default_time)
-        if configured_time == legacy_default_time or (sync_type == "fuel" and configured_time == "00:15"):
+        if (
+            configured_time == legacy_default_time
+            or (sync_type == "fuel" and configured_time == "00:15")
+            or (sync_type == "weight" and configured_time == "00:00")
+        ):
             configured_time = default_time
         try:
             hour, minute = [int(part) for part in configured_time.split(":", 1)]
         except Exception:
-            hour, minute = (0, 0) if sync_type == "weight" else (12, 0)
+            hour, minute = (12, 0)
 
         now = self._local_now()
         configured_minutes = hour * 60 + minute
@@ -304,14 +310,41 @@ class MunicipalGarbageSyncLog(models.Model):
                     headers=headers,
                     timeout=self._external_request_timeout(delegated_app_import),
                 )
-                response.raise_for_status()
-                payload = response.json()
-                if delegated_app_import and isinstance(payload, dict) and payload.get("ok"):
+                if delegated_app_import:
+                    try:
+                        payload = response.json()
+                    except ValueError:
+                        payload = {}
+                    if response.status_code >= 400:
+                        raise ValueError(
+                            payload.get("error")
+                            if isinstance(payload, dict) and payload.get("error")
+                            else "%s тайлан %s өдөр апп import HTTP %s алдаатай буцлаа. Дараагийн cron дахин татна." % (delegated_source_label, target_date, response.status_code)
+                        )
+                else:
+                    response.raise_for_status()
+                    payload = response.json()
+                if delegated_app_import:
+                    if not isinstance(payload, dict) or not payload.get("ok"):
+                        raise ValueError(
+                            payload.get("error")
+                            if isinstance(payload, dict) and payload.get("error")
+                            else "%s тайлан %s өдөр апп import амжилтгүй буцлаа. Дараагийн cron дахин татна." % (delegated_source_label, target_date)
+                        )
                     total_rows = int(payload.get("totalRows") or 0)
                     count = int(payload.get("imported") or 0)
                     if total_rows <= 0:
                         raise ValueError(
                             "%s тайлан %s өдөр 0 мөр буцаалаа. Дараагийн cron дахин татна." % (delegated_source_label, target_date)
+                        )
+                    if count <= 0:
+                        raise ValueError(
+                            "%s тайлан %s өдөр авто баазтай таарсан мөргүй байна. Дараагийн cron дахин татна." % (delegated_source_label, target_date)
+                        )
+                    unmatched_count = len(payload.get("unmatched") or [])
+                    if unmatched_count:
+                        raise ValueError(
+                            "%s тайлан %s өдөр %s мөр авто баазтай таарсангүй. Дугаарыг засаад дараагийн cron дахин татна." % (delegated_source_label, target_date, unmatched_count)
                         )
                 else:
                     rows = self._payload_rows(payload)
@@ -401,7 +434,24 @@ class MunicipalGarbageSyncLog(models.Model):
 
     @api.model
     def _normalized_vehicle_code(self, value):
-        return "".join(str(value or "").upper().split())
+        return "".join(character for character in str(value or "").upper() if character.isalnum())
+
+    @api.model
+    def _garbage_department(self):
+        department_model = self.env["hr.department"].sudo()
+        for name in (
+            "Авто бааз, хог тээвэрлэлтийн хэлтэс",
+            "Авто бааз",
+            "Хог тээвэрлэлт",
+        ):
+            department = department_model.search([("name", "=", name)], limit=1)
+            if department:
+                return department
+
+        return department_model.search(
+            ["|", ("name", "ilike", "авто"), ("name", "ilike", "хог")],
+            limit=1,
+        )
 
     @api.model
     def _garbage_vehicle_by_plate(self, plate):
@@ -450,11 +500,13 @@ class MunicipalGarbageSyncLog(models.Model):
                 ["license_plate", "plate", "vehicle_plate", "vehicleCode", "vehicle_code", "car_number", "ulsiin_dugaar"],
             )
             vehicle = self._garbage_vehicle_by_plate(plate)
+            department = vehicle.municipal_department_id or self._garbage_department()
             report_date = self._date_value(row, fallback_date)
             source = self._text_value(row, ["source", "system", "provider"]) or "Гадны систем"
             values = {
                 "report_date": report_date,
                 "vehicle_id": vehicle.id or False,
+                "department_id": department.id or False,
                 "vehicle_license_plate": plate,
                 "source": source,
                 "fetched_at": fields.Datetime.now(),
@@ -479,12 +531,16 @@ class MunicipalGarbageSyncLog(models.Model):
             existing = report_model.search(
                 [
                     ("report_date", "=", report_date),
-                    ("vehicle_license_plate", "=", plate),
                     ("source", "=", source),
                 ],
-                limit=1,
+                limit=5000,
             )
+            normalized_plate = self._normalized_vehicle_code(plate)
+            existing = existing.filtered(
+                lambda report: self._normalized_vehicle_code(report.vehicle_license_plate) == normalized_plate
+            )[:1]
             if existing:
+                values.pop("fetched_at", None)
                 existing.write(values)
             else:
                 existing = report_model.create(values)

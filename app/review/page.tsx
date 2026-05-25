@@ -41,6 +41,8 @@ const EMPTY_FLEET_BOARD: FleetVehicleBoard = {
   inspectionDueCount: 0,
   todayWeightLabel: "0 тн",
   todayFuelLabel: "0 л",
+  weightReportRows: [],
+  fuelReportRows: [],
   highestFuelVehicle: "-",
   mostRepairedVehicle: "-",
   failedImportCount: 0,
