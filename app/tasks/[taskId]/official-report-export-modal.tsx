@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 
 import styles from "./task-detail.module.css";
 
-type ExportType = "word" | "pdf";
+type ExportType = "pptx" | "pdf";
 
 type WorkItemOption = {
   id: number;
@@ -36,7 +36,7 @@ function downloadBlob(blob: Blob, fallbackFileName: string, response: Response) 
 export function OfficialReportExportModal({ taskId, items }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>(() => items.map((item) => item.id));
-  const [activeExportType, setActiveExportType] = useState<ExportType>("word");
+  const [activeExportType, setActiveExportType] = useState<ExportType>("pptx");
   const [loadingType, setLoadingType] = useState<ExportType | null>(null);
   const [message, setMessage] = useState("");
   const [, startTransition] = useTransition();
@@ -44,7 +44,7 @@ export function OfficialReportExportModal({ taskId, items }: Props) {
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
   const openModal = () => {
-    setActiveExportType("word");
+    setActiveExportType("pptx");
     setMessage("");
     setIsOpen(true);
   };
@@ -63,6 +63,7 @@ export function OfficialReportExportModal({ taskId, items }: Props) {
     }
 
     setMessage("");
+    setActiveExportType(type);
     setLoadingType(type);
     startTransition(async () => {
       try {
@@ -83,7 +84,7 @@ export function OfficialReportExportModal({ taskId, items }: Props) {
         }
 
         const blob = await response.blob();
-        downloadBlob(blob, `iltgeh_huudas_task_${taskId}.${type === "word" ? "docx" : "pdf"}`, response);
+        downloadBlob(blob, `iltgeh_huudas_task_${taskId}.${type}`, response);
         setIsOpen(false);
       } catch {
         setMessage("Тайлан үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.");
@@ -186,12 +187,12 @@ export function OfficialReportExportModal({ taskId, items }: Props) {
               <button
                 type="button"
                 className={
-                  activeExportType === "word" ? styles.actionButton : styles.secondaryButton
+                  activeExportType === "pptx" ? styles.actionButton : styles.secondaryButton
                 }
                 disabled={loadingType !== null}
-                onClick={() => exportReport("word")}
+                onClick={() => exportReport("pptx")}
               >
-                {loadingType === "word" ? "Бэлтгэж байна..." : "Word татах"}
+                {loadingType === "pptx" ? "Бэлтгэж байна..." : "PPTX татах"}
               </button>
               <button
                 type="button"

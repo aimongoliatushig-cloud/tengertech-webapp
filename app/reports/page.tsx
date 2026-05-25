@@ -456,7 +456,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     selectedDepartmentHint?.note ??
     "Авто бааз, ногоон байгууламж, тохижилтын бүх ажлын тайланг нэг урсгалаар харуулж байна";
   const reviewQueueRows = filteredReviewQueue.slice(0, 4);
-  const getExportHref = (format: "csv" | "excel" | "json" | "pdf", reportId?: number) => {
+  const getExportHref = (format: "csv" | "excel" | "json" | "pdf" | "pptx", reportId?: number) => {
     const params = new URLSearchParams(exportParams);
     params.set("format", format);
     if (reportId) {
@@ -783,6 +783,10 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                                 <a href={getExportHref("pdf", report.id)}>
                                   <Download aria-hidden />
                                   PDF татах
+                                </a>
+                                <a href={getExportHref("pptx", report.id)}>
+                                  <Download aria-hidden />
+                                  PPTX татах
                                 </a>
                               </div>
                             </div>

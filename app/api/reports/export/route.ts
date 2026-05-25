@@ -1,5 +1,6 @@
 import { getSession, isMasterRole } from "@/lib/auth";
 import { chromium } from "playwright";
+import pptxgen from "pptxgenjs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
@@ -24,6 +25,7 @@ type MunicipalSnapshot = Awaited<ReturnType<typeof loadMunicipalSnapshot>>;
 type ReportRow = MunicipalSnapshot["reports"][number];
 type TaskRow = MunicipalSnapshot["taskDirectory"][number];
 type ReviewRow = MunicipalSnapshot["reviewQueue"][number];
+type PptxSlide = ReturnType<InstanceType<typeof pptxgen>["addSlide"]>;
 
 type AttachmentPayload = {
   id: number;
@@ -199,6 +201,191 @@ function reportPhotoGrid(report: ReportRow, imagePayloads: Map<number, Attachmen
     .join("");
 
   return photos ? `<div class="photo-grid">${photos}</div>` : '<p class="muted">Зураг хавсаргаагүй.</p>';
+}
+
+function toPptxText(value: unknown, fallback = "") {
+  return String(value ?? fallback)
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim() || fallback;
+}
+
+function clampPptxText(value: string, maxLength: number) {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
+}
+
+function reportImageDataUrls(report: ReportRow, imagePayloads: Map<number, AttachmentPayload>) {
+  return report.images
+    .map((image) => {
+      const attachment = imagePayloads.get(image.id);
+      if (!attachment?.datas) {
+        return "";
+      }
+
+      return `data:${attachment.mimetype || "image/jpeg"};base64,${attachment.datas}`;
+    })
+    .filter(Boolean);
+}
+
+async function renderPptx(
+  title: string,
+  payload: ExportPayload,
+  imagePayloads: Map<number, AttachmentPayload>,
+  logoDataUrl: string,
+) {
+  const pptx = new pptxgen();
+  pptx.layout = "LAYOUT_WIDE";
+  pptx.author = "TengerTech";
+  pptx.company = "Хот тохижилт";
+  pptx.subject = title;
+  pptx.title = title;
+  pptx.theme = {
+    headFontFace: "Arial",
+    bodyFontFace: "Arial",
+  };
+
+  const addHeader = (slide: PptxSlide) => {
+    if (logoDataUrl) {
+      slide.addImage({ data: logoDataUrl, x: 0.45, y: 0.25, w: 0.48, h: 0.48 });
+    }
+    slide.addText(title, {
+      x: 1.05,
+      y: 0.26,
+      w: 11.7,
+      h: 0.45,
+      fontFace: "Arial",
+      fontSize: 18,
+      bold: true,
+      color: "111111",
+      margin: 0,
+    });
+    slide.addShape(pptx.ShapeType.line, {
+      x: 0.45,
+      y: 0.92,
+      w: 12.4,
+      h: 0,
+      line: { color: "DDE9DF", width: 1 },
+    });
+  };
+
+  const reports = payload.reports.slice(0, 30);
+
+  if (!reports.length) {
+    const slide = pptx.addSlide();
+    slide.background = { color: "FFFFFF" };
+    addHeader(slide);
+    slide.addText("Тайлан олдсонгүй.", {
+      x: 0.55,
+      y: 1.45,
+      w: 12.1,
+      h: 0.5,
+      fontSize: 18,
+      bold: true,
+      color: "25342B",
+    });
+  }
+
+  reports.forEach((report, reportIndex) => {
+    const narrative = clampPptxText(
+      toPptxText(reportNarrative(report), "Ажил хийсэн тайлбар оруулаагүй."),
+      1100,
+    );
+    const slide = pptx.addSlide();
+    slide.background = { color: "FFFFFF" };
+    addHeader(slide);
+    slide.addText(`${reportIndex + 1}. Ажил хийсэн тайлбар`, {
+      x: 0.55,
+      y: 1.18,
+      w: 12.1,
+      h: 0.42,
+      fontSize: 17,
+      bold: true,
+      color: "111111",
+      margin: 0,
+    });
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 0.55,
+      y: 1.78,
+      w: 12.2,
+      h: 2.35,
+      fill: { color: "F6FAF7" },
+      line: { color: "D6E4DA", width: 1 },
+    });
+    slide.addText(narrative, {
+      x: 0.78,
+      y: 2.0,
+      w: 11.74,
+      h: 1.9,
+      fontSize: 15,
+      color: "1F2D24",
+      breakLine: false,
+      fit: "shrink",
+      valign: "top",
+      margin: 0.04,
+    });
+
+    const photos = reportImageDataUrls(report, imagePayloads);
+    if (!photos.length) {
+      slide.addText("Зураг хавсаргаагүй.", {
+        x: 0.62,
+        y: 4.55,
+        w: 11.9,
+        h: 0.42,
+        fontSize: 13,
+        color: "56665C",
+      });
+      return;
+    }
+
+    let imageSlide: PptxSlide | null = null;
+    photos.forEach((photo, photoIndex) => {
+      const position = photoIndex % 4;
+      if (position === 0) {
+        imageSlide = pptx.addSlide();
+        imageSlide.background = { color: "FFFFFF" };
+        addHeader(imageSlide);
+        imageSlide.addText(`${reportIndex + 1}. Зураг`, {
+          x: 0.55,
+          y: 1.18,
+          w: 12.1,
+          h: 0.42,
+          fontSize: 17,
+          bold: true,
+          color: "111111",
+          margin: 0,
+        });
+      }
+
+      if (!imageSlide) {
+        return;
+      }
+
+      const col = position % 2;
+      const row = Math.floor(position / 2);
+      const x = 0.55 + col * 6.15;
+      const y = 1.78 + row * 2.55;
+      imageSlide.addShape(pptx.ShapeType.rect, {
+        x,
+        y,
+        w: 5.82,
+        h: 2.25,
+        fill: { color: "FFFFFF" },
+        line: { color: "D6D6D6", width: 1 },
+      });
+      imageSlide.addImage({
+        data: photo,
+        x: x + 0.08,
+        y: y + 0.08,
+        w: 5.66,
+        h: 2.09,
+        sizing: { type: "contain", x: x + 0.08, y: y + 0.08, w: 5.66, h: 2.09 },
+        altText: "Тайлангийн зураг",
+      });
+    });
+  });
+
+  const output = await pptx.write({ outputType: "nodebuffer", compression: true });
+  return Buffer.from(output as Uint8Array);
 }
 
 function toOfficialPdfHtml(
@@ -586,6 +773,23 @@ export async function GET(request: Request) {
       headers: {
         "Content-Disposition": `attachment; filename="municipal-report-${dateKey}.pdf"`,
         "Content-Type": "application/pdf",
+      },
+    });
+  }
+
+  if (format === "pptx") {
+    const [imagePayloads, logoDataUrl] = await Promise.all([
+      loadReportImagePayloads(payload.reports, {
+        login: session.login,
+        password: session.password,
+      }),
+      loadLogoDataUrl(),
+    ]);
+    const buffer = await renderPptx("Ажлын тайлан", payload, imagePayloads, logoDataUrl);
+    return new Response(new Uint8Array(buffer), {
+      headers: {
+        "Content-Disposition": `attachment; filename="municipal-report-${dateKey}.pptx"`,
+        "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       },
     });
   }

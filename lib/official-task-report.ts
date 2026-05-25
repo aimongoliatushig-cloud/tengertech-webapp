@@ -13,6 +13,7 @@ import {
   WidthType,
 } from "docx";
 import { chromium } from "playwright";
+import pptxgen from "pptxgenjs";
 
 import { executeOdooKw } from "@/lib/odoo";
 import type { TaskDetail, TaskReportFeedItem } from "@/lib/workspace";
@@ -37,6 +38,7 @@ type OfficialReportContext = {
 };
 
 type DocxImageType = "jpg" | "png" | "gif" | "bmp";
+type PptxSlide = ReturnType<InstanceType<typeof pptxgen>["addSlide"]>;
 
 const A4_MARGINS = {
   top: 850,
@@ -63,7 +65,7 @@ function todayIso() {
   }).format(new Date());
 }
 
-export function officialReportFileName(taskId: number, extension: "docx" | "pdf") {
+export function officialReportFileName(taskId: number, extension: "docx" | "pdf" | "pptx") {
   return `ajliin_tailan_task_${taskId}_${todayIso()}.${extension}`;
 }
 
@@ -434,6 +436,182 @@ export async function generateOfficialTaskDocx(context: OfficialReportContext) {
   });
 
   return Packer.toBuffer(document);
+}
+
+function pptxReportImages(
+  report: TaskReportFeedItem,
+  imagePayloads: Map<number, AttachmentPayload>,
+) {
+  return report.images
+    .map((image) => {
+      const attachment = imagePayloads.get(image.id);
+      if (!attachment?.datas) {
+        return "";
+      }
+
+      return `data:${attachment.mimetype || "image/jpeg"};base64,${attachment.datas}`;
+    })
+    .filter(Boolean);
+}
+
+function clampPptxText(value: string, maxLength: number) {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
+}
+
+function addOfficialPptxHeader(
+  slide: PptxSlide,
+  pptx: InstanceType<typeof pptxgen>,
+  title: string,
+) {
+  slide.addText(title, {
+    x: 0.55,
+    y: 0.34,
+    w: 12.2,
+    h: 0.44,
+    fontFace: "Arial",
+    fontSize: 17,
+    bold: true,
+    color: "111111",
+    margin: 0,
+  });
+  slide.addShape(pptx.ShapeType.line, {
+    x: 0.55,
+    y: 0.95,
+    w: 12.2,
+    h: 0,
+    line: { color: "DDE9DF", width: 1 },
+  });
+}
+
+export async function generateOfficialTaskPptx(context: OfficialReportContext) {
+  const imagePayloads = await loadImagePayloads(context.selectedReports, context.credentials);
+  const pptx = new pptxgen();
+  pptx.layout = "LAYOUT_WIDE";
+  pptx.author = "TengerTech";
+  pptx.company = "Хот тохижилт";
+  pptx.subject = "Ажлын тайлан";
+  pptx.title = "Ажлын тайлан";
+  pptx.theme = {
+    headFontFace: "Arial",
+    bodyFontFace: "Arial",
+  };
+
+  const cover = pptx.addSlide();
+  cover.background = { color: "FFFFFF" };
+  cover.addText(clampPptxText(buildCoverTitle(context), 260), {
+    x: 1.0,
+    y: 1.55,
+    w: 11.35,
+    h: 2.25,
+    fontFace: "Arial",
+    fontSize: 22,
+    bold: true,
+    color: "111111",
+    align: "center",
+    valign: "middle",
+    fit: "shrink",
+  });
+  cover.addText("Улаанбаатар хот", {
+    x: 1.0,
+    y: 4.1,
+    w: 11.35,
+    h: 0.42,
+    fontSize: 17,
+    bold: true,
+    align: "center",
+    color: "111111",
+  });
+  cover.addText(coverYear(context), {
+    x: 1.0,
+    y: 6.25,
+    w: 11.35,
+    h: 0.42,
+    fontSize: 17,
+    bold: true,
+    align: "center",
+    color: "111111",
+  });
+
+  context.selectedReports.forEach((report, reportIndex) => {
+    const title = buildWorkTitle(context.task);
+    const narrative = clampPptxText(reportDescription(context.task, report), 1100);
+    const detailSlide = pptx.addSlide();
+    detailSlide.background = { color: "FFFFFF" };
+    addOfficialPptxHeader(detailSlide, pptx, `${reportIndex + 1}. ${title}`);
+    detailSlide.addText("Ажил хийсэн тайлбар", {
+      x: 0.65,
+      y: 1.25,
+      w: 12.0,
+      h: 0.36,
+      fontSize: 16,
+      bold: true,
+      color: "111111",
+      margin: 0,
+    });
+    detailSlide.addShape(pptx.ShapeType.rect, {
+      x: 0.65,
+      y: 1.85,
+      w: 12.0,
+      h: 3.35,
+      fill: { color: "F8FAF8" },
+      line: { color: "D6E4DA", width: 1 },
+    });
+    detailSlide.addText(narrative, {
+      x: 0.9,
+      y: 2.08,
+      w: 11.5,
+      h: 2.85,
+      fontSize: 15,
+      color: "1F2D24",
+      fit: "shrink",
+      valign: "top",
+      margin: 0.04,
+    });
+
+    const images = pptxReportImages(report, imagePayloads);
+    if (!images.length) {
+      return;
+    }
+
+    let imageSlide: PptxSlide | null = null;
+    images.forEach((imageData, imageIndex) => {
+      const position = imageIndex % 4;
+      if (position === 0) {
+        imageSlide = pptx.addSlide();
+        imageSlide.background = { color: "FFFFFF" };
+        addOfficialPptxHeader(imageSlide, pptx, `${reportIndex + 1}. Зураг`);
+      }
+
+      if (!imageSlide) {
+        return;
+      }
+
+      const col = position % 2;
+      const row = Math.floor(position / 2);
+      const x = 0.6 + col * 6.12;
+      const y = 1.3 + row * 2.75;
+      imageSlide.addShape(pptx.ShapeType.rect, {
+        x,
+        y,
+        w: 5.75,
+        h: 2.42,
+        fill: { color: "FFFFFF" },
+        line: { color: "D6D6D6", width: 1 },
+      });
+      imageSlide.addImage({
+        data: imageData,
+        x: x + 0.08,
+        y: y + 0.08,
+        w: 5.59,
+        h: 2.26,
+        sizing: { type: "contain", x: x + 0.08, y: y + 0.08, w: 5.59, h: 2.26 },
+        altText: "Тайлангийн зураг",
+      });
+    });
+  });
+
+  const output = await pptx.write({ outputType: "nodebuffer", compression: true });
+  return Buffer.from(output as Uint8Array);
 }
 
 function htmlReportImages(report: TaskReportFeedItem, imagePayloads: Map<number, AttachmentPayload>) {
