@@ -548,7 +548,7 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
   }
 
   await createSyncLog({
-    state: unmatched.length === totals.length && totals.length > 0 ? "failed" : "success",
+    state: unmatched.length ? "failed" : "success",
     recordCount: imported,
     errorMessage: unmatched.length
       ? `${unmatched.length} \u043c\u0430\u0448\u0438\u043d\u044b \u0443\u043b\u0441\u044b\u043d \u0434\u0443\u0433\u0430\u0430\u0440 \u0430\u0432\u0442\u043e \u0431\u0430\u0430\u0437\u0442\u0430\u0439 \u0442\u0430\u0430\u0440\u0441\u0430\u043d\u0433\u04af\u0439.`

@@ -229,6 +229,59 @@ class MunicipalGarbageSyncLog(models.Model):
             return int(default_timeout)
 
     @api.model
+    def _delegated_payload_unmatched_count(self, payload, total_rows=0, imported_count=0):
+        if not isinstance(payload, dict):
+            return 0
+
+        unmatched_count = 0
+        for key in (
+            "unmatched",
+            "unmatchedVehicles",
+            "unmatched_vehicles",
+            "failedVehicles",
+            "failed_vehicles",
+            "failedDates",
+            "failed_dates",
+        ):
+            value = payload.get(key)
+            if isinstance(value, (list, tuple)):
+                unmatched_count += len(value)
+            elif isinstance(value, dict):
+                unmatched_count += len(value)
+            elif isinstance(value, int):
+                unmatched_count += max(0, value)
+
+        for key in (
+            "unmatchedCount",
+            "unmatched_count",
+            "failedVehicleCount",
+            "failed_vehicle_count",
+            "failedDateCount",
+            "failed_date_count",
+        ):
+            try:
+                unmatched_count += max(0, int(payload.get(key) or 0))
+            except Exception:
+                pass
+
+        if total_rows and imported_count >= 0 and total_rows > imported_count:
+            unmatched_count = max(unmatched_count, total_rows - imported_count)
+
+        message_text = " ".join(
+            str(payload.get(key) or "")
+            for key in ("error", "errorMessage", "message", "warning", "warningMessage")
+        ).lower()
+        if unmatched_count <= 0 and (
+            "таарсангүй" in message_text
+            or "unmatched" in message_text
+            or "олдсонгүй" in message_text
+            or "failed" in message_text
+        ):
+            return -1
+
+        return unmatched_count
+
+    @api.model
     def _config_or_env(self, param_key, env_key):
         value = os.getenv(env_key)
         if value:
@@ -331,8 +384,25 @@ class MunicipalGarbageSyncLog(models.Model):
                             if isinstance(payload, dict) and payload.get("error")
                             else "%s тайлан %s өдөр апп import амжилтгүй буцлаа. Дараагийн cron дахин татна." % (delegated_source_label, target_date)
                         )
-                    total_rows = int(payload.get("totalRows") or 0)
-                    count = int(payload.get("imported") or 0)
+                    try:
+                        total_rows = int(
+                            payload.get("totalRows")
+                            or payload.get("total_rows")
+                            or payload.get("rows")
+                            or 0
+                        )
+                    except Exception:
+                        total_rows = 0
+                    try:
+                        count = int(
+                            payload.get("imported")
+                            or payload.get("recordCount")
+                            or payload.get("record_count")
+                            or payload.get("count")
+                            or 0
+                        )
+                    except Exception:
+                        count = 0
                     if total_rows <= 0:
                         raise ValueError(
                             "%s тайлан %s өдөр 0 мөр буцаалаа. Дараагийн cron дахин татна." % (delegated_source_label, target_date)
@@ -341,10 +411,11 @@ class MunicipalGarbageSyncLog(models.Model):
                         raise ValueError(
                             "%s тайлан %s өдөр авто баазтай таарсан мөргүй байна. Дараагийн cron дахин татна." % (delegated_source_label, target_date)
                         )
-                    unmatched_count = len(payload.get("unmatched") or [])
+                    unmatched_count = self._delegated_payload_unmatched_count(payload, total_rows, count)
                     if unmatched_count:
+                        count_label = str(unmatched_count) if unmatched_count > 0 else "зарим"
                         raise ValueError(
-                            "%s тайлан %s өдөр %s мөр авто баазтай таарсангүй. Дугаарыг засаад дараагийн cron дахин татна." % (delegated_source_label, target_date, unmatched_count)
+                            "%s тайлан %s өдөр %s мөр авто баазтай таарсангүй. Дугаарыг засаад дараагийн cron дахин татна." % (delegated_source_label, target_date, count_label)
                         )
                 else:
                     rows = self._payload_rows(payload)

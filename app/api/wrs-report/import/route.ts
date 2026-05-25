@@ -741,7 +741,7 @@ async function importWrsDateRange(startDate: string, endDate: string) {
   }
 
   await createSyncLog({
-    state: unmatched.length === totals.length && totals.length > 0 ? "failed" : "success",
+    state: unmatched.length ? "failed" : "success",
     recordCount: imported,
     errorMessage: unmatched.length
       ? `${unmatched.length} машины улсын дугаар авто баазтай таарсангүй.`
@@ -896,7 +896,7 @@ async function handleRequest(request: Request) {
     }
 
     await createSyncLog({
-      state: unmatched.length === totals.totals.length && totals.totals.length > 0 ? "failed" : "success",
+      state: unmatched.length ? "failed" : "success",
       recordCount: imported,
       errorMessage: unmatched.length
         ? `${unmatched.length} машины улсын дугаар авто баазтай таарсангүй.`
