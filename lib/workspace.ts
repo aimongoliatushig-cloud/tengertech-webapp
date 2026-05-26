@@ -4572,6 +4572,8 @@ async function createRoadCleaningWorkspaceProjectFallback(
     masterEmployee: EmployeeUserRecord | null;
     workDate: string;
     description: string;
+    municipalWorkId?: number | null;
+    plannedQuantity?: number | null;
   },
   connectionOverrides: Partial<OdooConnection>,
 ) {
@@ -4580,6 +4582,7 @@ async function createRoadCleaningWorkspaceProjectFallback(
   const departmentId =
     input.departmentId || relationId(input.employee.department_id ?? false) || null;
   const projectName = `${input.areaName} - ${input.employee.name} - ${input.workDate}`;
+  const workspaceConnection: Partial<OdooConnection> = {};
   const existing = await executeOdooKw<Array<{ id: number }>>(
     "project.project",
     "search_read",
@@ -4588,7 +4591,7 @@ async function createRoadCleaningWorkspaceProjectFallback(
       fields: ["id"],
       limit: 1,
     },
-    connectionOverrides,
+    workspaceConnection,
   );
   if (existing[0]?.id) {
     throw new Error("Энэ талбай дээр энэ ажилтанд тухайн өдрийн ажил аль хэдийн үүссэн байна.");
@@ -4603,7 +4606,7 @@ async function createRoadCleaningWorkspaceProjectFallback(
       deadline: input.workDate,
       description: input.description,
     },
-    connectionOverrides,
+    workspaceConnection,
   );
 
   for (const [index, lineName] of ROAD_CLEANING_DEFAULT_LINES.entries()) {
@@ -4613,12 +4616,14 @@ async function createRoadCleaningWorkspaceProjectFallback(
         name: lineName,
         teamLeaderId: masterUserId,
         assigneeUserIds: employeeUserId ? [employeeUserId] : [],
-        startDate: input.workDate,
         deadline: input.workDate,
         description: input.description,
         sequence: (index + 1) * 10,
+        shiftDate: input.workDate,
+        plannedQuantity: index === 0 ? input.plannedQuantity : null,
+        municipalWorkId: input.municipalWorkId,
       },
-      connectionOverrides,
+      workspaceConnection,
     );
   }
 
@@ -4771,18 +4776,7 @@ export async function createRoadCleaningWork(
   if (!areaName) {
     throw new Error("Цэвэрлэх талбай сонгоно уу.");
   }
-  const workingDayKeys = area
-    ? normalizeRoadCleaningWorkingDayKeys(area.working_day_keys)
-    : (localArea?.workingDayKeys ?? normalizeRoadCleaningWorkingDayKeys(null));
-  if (!workingDayKeys.includes(getRoadCleaningDayKey(input.workDate))) {
-    throw new Error("Энэ талбай тухайн өдөр амрах хуваарьтай байна.");
-  }
-
-  const masterEmployeeId = input.masterId || relationId(area?.master_id ?? false);
-  const masterEmployee = masterEmployeeId
-    ? await loadAndValidateRoadCleaningMasterEmployee(masterEmployeeId, connectionOverrides)
-    : null;
-
+  let duplicateMunicipalWorkId: number | null = null;
   if (input.cleaningAreaId && input.cleaningAreaId > 0) {
     const duplicate = await executeOdooKw<Array<{ id: number }>>(
       "municipal.work",
@@ -4800,9 +4794,20 @@ export async function createRoadCleaningWork(
     );
 
     if (duplicate[0]?.id) {
-      throw new Error("Энэ талбай дээр энэ ажилтанд тухайн өдрийн ажил аль хэдийн үүссэн байна.");
+      duplicateMunicipalWorkId = duplicate[0].id;
     }
   }
+  const workingDayKeys = area
+    ? normalizeRoadCleaningWorkingDayKeys(area.working_day_keys)
+    : (localArea?.workingDayKeys ?? normalizeRoadCleaningWorkingDayKeys(null));
+  if (!duplicateMunicipalWorkId && !workingDayKeys.includes(getRoadCleaningDayKey(input.workDate))) {
+    throw new Error("Энэ талбай тухайн өдөр амрах хуваарьтай байна.");
+  }
+
+  const masterEmployeeId = input.masterId || relationId(area?.master_id ?? false);
+  const masterEmployee = masterEmployeeId
+    ? await loadAndValidateRoadCleaningMasterEmployee(masterEmployeeId, connectionOverrides)
+    : null;
 
   const routeText = [area?.start_point || "", area?.end_point || ""].filter(Boolean).join(" → ");
   const description = [
@@ -4826,6 +4831,22 @@ export async function createRoadCleaningWork(
     }
   }
 
+  if (duplicateMunicipalWorkId) {
+    return createRoadCleaningWorkspaceProjectFallback(
+      {
+        areaName,
+        departmentId: input.departmentId,
+        employee,
+        masterEmployee,
+        workDate: input.workDate,
+        description,
+        municipalWorkId: duplicateMunicipalWorkId,
+        plannedQuantity: Number(area?.area_m2 || localArea?.areaM2 || 0),
+      },
+      connectionOverrides,
+    );
+  }
+
   if (!area || !input.cleaningAreaId || input.cleaningAreaId < 0 || !workTypeId) {
     return createRoadCleaningWorkspaceProjectFallback(
       {
@@ -4835,6 +4856,7 @@ export async function createRoadCleaningWork(
         masterEmployee,
         workDate: input.workDate,
         description,
+        plannedQuantity: Number(localArea?.areaM2 || 0),
       },
       connectionOverrides,
     );
@@ -4898,6 +4920,20 @@ export async function createRoadCleaningWork(
       })),
     ],
     {},
+    connectionOverrides,
+  );
+
+  await createRoadCleaningWorkspaceProjectFallback(
+    {
+      areaName,
+      departmentId: input.departmentId,
+      employee,
+      masterEmployee,
+      workDate: input.workDate,
+      description,
+      municipalWorkId: workId,
+      plannedQuantity: Number(area.area_m2 || 0),
+    },
     connectionOverrides,
   );
 
@@ -5048,7 +5084,7 @@ export async function createTodayRoadCleaningWorks(
   let skippedCount = 0;
 
   for (const area of areas) {
-    if (!area.employeeId || !isRoadCleaningWorkingDate(area, input.workDate)) {
+    if (!area.employeeId) {
       skippedCount += 1;
       continue;
     }
@@ -5165,6 +5201,7 @@ export async function createWorkspaceTask(
     driverEmployeeId?: number | null;
     collectorEmployeeIds?: number[];
     inspectorEmployeeId?: number | null;
+    municipalWorkId?: number | null;
   },
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
@@ -5223,6 +5260,9 @@ export async function createWorkspaceTask(
   }
   if (input.inspectorEmployeeId) {
     optionalValues.mfo_inspector_employee_id = input.inspectorEmployeeId;
+  }
+  if (input.municipalWorkId) {
+    optionalValues.municipal_work_id = input.municipalWorkId;
   }
   if (assigneeUserIds.length) {
     baseValues.user_ids = [[6, 0, assigneeUserIds]];
