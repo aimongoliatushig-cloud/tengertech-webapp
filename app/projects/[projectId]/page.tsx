@@ -799,6 +799,12 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                               reportTextRequired={!photoFirstReportTask}
                               simpleMobile={photoFirstReportTask}
                               workItemName={task.name}
+                              parentWorkInfo={{
+                                workName: project.name,
+                                areaName: project.name.split(" - ")[0] || project.name,
+                                areaM2: task.plannedQuantity || task.quantitySummary || "",
+                                employeeName: task.assignees[0] || task.teamLeaderName || "",
+                              }}
                               returnTo={`/projects/${project.id}`}
                               triggerClassName={`${styles.projectTaskFlowLink} ${styles.projectTaskFlowButton}`}
                               triggerContent={taskCardContent}

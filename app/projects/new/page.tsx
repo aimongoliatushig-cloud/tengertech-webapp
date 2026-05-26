@@ -196,8 +196,12 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
 
           <div className={styles.pageContent}>
             <WorkspaceHeader
-              title={masterMode ? "Шинэ ажил" : "Ажил нэмэх"}
-              subtitle="Шинэ ажлын мэдээлэл, хугацаа, хавсралтыг бүртгэх урсгал"
+              title={masterMode ? "Зам талбайн цэвэрлэгээний ажил нэмэх" : "Ажил нэмэх"}
+              subtitle={
+                masterMode
+                  ? "Мөр бүрээс нэг ажил үүсэж, стандарт 4 даалгавар автоматаар нэмэгдэнэ"
+                  : "Шинэ ажлын мэдээлэл, хугацаа, хавсралтыг бүртгэх урсгал"
+              }
               userName={session.name}
               roleLabel={getSessionRoleLabel(session)}
             />

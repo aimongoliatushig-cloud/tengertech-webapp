@@ -51,6 +51,12 @@ type Props = {
   reportTextRequired?: boolean;
   simpleMobile?: boolean;
   workItemName?: string;
+  parentWorkInfo?: {
+    workName?: string;
+    areaName?: string;
+    areaM2?: number | string;
+    employeeName?: string;
+  };
   returnTo?: string;
   existingReport?: ExistingTaskReport;
   triggerClassName?: string;
@@ -814,6 +820,7 @@ export function TaskReportModal({
   reportTextRequired = true,
   simpleMobile = false,
   workItemName,
+  parentWorkInfo,
   returnTo,
   existingReport,
   triggerClassName,
@@ -884,6 +891,7 @@ export function TaskReportModal({
   const modalTitle = canEditExistingReport
     ? "Даалгаврын тайлан засах"
     : "Даалгаврын тайлан илгээх";
+  const displayTitle = workItemName || modalTitle;
   const formAction = canEditExistingReport && updateAction ? updateAction : action;
   const returnReasonText = existingReport?.rejectionReason?.trim() || "";
   const handleReportSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -927,9 +935,9 @@ export function TaskReportModal({
                 <div className={styles.modalTitleGroup}>
                   <span className={styles.kicker}>Гүйцэтгэлийн тайлан</span>
                   <strong className={styles.actionTitle} id="task-report-modal-title">
-                    {modalTitle}
+                    {displayTitle}
                   </strong>
-                  {workItemName ? <small className={styles.modalSubtitle}>{workItemName}</small> : null}
+                  <small className={styles.modalSubtitle}>{canEditExistingReport ? "Тайлан засах" : "Тайлан илгээх"}</small>
                 </div>
 
                 <button
@@ -979,6 +987,27 @@ export function TaskReportModal({
 
                     {workItemName ? (
                       <input type="hidden" name="report_work_item_name" value={workItemName} />
+                    ) : null}
+
+                    {parentWorkInfo ? (
+                      <div className={styles.modalWorkInfoGrid}>
+                        <span>
+                          <small>Ажил</small>
+                          <strong>{parentWorkInfo.workName || "—"}</strong>
+                        </span>
+                        <span>
+                          <small>Талбай</small>
+                          <strong>{parentWorkInfo.areaName || "—"}</strong>
+                        </span>
+                        <span>
+                          <small>М²</small>
+                          <strong>{parentWorkInfo.areaM2 || "—"}</strong>
+                        </span>
+                        <span>
+                          <small>Ажилтан</small>
+                          <strong>{parentWorkInfo.employeeName || "—"}</strong>
+                        </span>
+                      </div>
                     ) : null}
 
                     {hasMultipleQuantityLines && !simpleMobile ? (
@@ -1062,6 +1091,14 @@ export function TaskReportModal({
                       removeFieldName="remove_image_attachment_ids"
                     />
 
+                    <PhotoReportField
+                      id="report_images"
+                      name="report_images"
+                      label="Нэмэлт зураг"
+                      maxFiles={5}
+                      emptyStateLabel="Нэмэлт зураг сонгоогүй байна"
+                    />
+
                     <AudioRecorderField
                       existingAudios={existingAudios}
                       removeFieldName="remove_audio_attachment_ids"
@@ -1083,7 +1120,7 @@ export function TaskReportModal({
                     forcePending={isSubmitting}
                     pendingLabel={canEditExistingReport ? "Хадгалж байна..." : "Илгээж байна..."}
                   >
-                    {canEditExistingReport ? "Хадгалах" : "Илгээх"}
+                    {canEditExistingReport ? "Хадгалах" : "Тайлан илгээх"}
                   </PendingSubmitButton>
                   {canEditExistingReport && deleteAction ? (
                     <PendingSubmitButton
@@ -1125,7 +1162,7 @@ export function TaskReportModal({
           }
         }}
       >
-        {triggerContent ?? (simpleMobile ? "Даалгаврын тайлан илгээх" : "Тайлан оруулах")}
+        {triggerContent ?? (simpleMobile ? "Тайлан илгээх" : "Тайлан оруулах")}
       </button>
       {modalContent}
     </>

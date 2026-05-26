@@ -52,6 +52,7 @@ import { TaskReportModal } from "./[taskId]/task-report-modal";
 
 type FilterKey = "all" | "working" | "review" | "problem" | "verified";
 type MasterTabKey = "today" | "review";
+type MasterStatusFilter = "all" | "todo" | "progress" | "review" | "done";
 type QuickActionMode = "none" | "report";
 
 type PageProps = {
@@ -62,10 +63,14 @@ type PageProps = {
     quickAction?: string | string[];
     work?: string | string[];
     workId?: string | string[];
+    q?: string | string[];
+    status?: string | string[];
+    employee?: string | string[];
   }>;
 };
 
 type SnapshotProject = Awaited<ReturnType<typeof loadMunicipalSnapshot>>["projects"][number];
+type ReviewQueueItem = DashboardSnapshot["reviewQueue"][number];
 
 type TodayProjectSummary = {
   id: number | string;
@@ -84,6 +89,10 @@ type TodayProjectSummary = {
   progressTotal: number;
   stageBucket: "todo" | "progress" | "review" | "done" | "unknown" | "problem";
   stageLabel: string;
+  areaName: string;
+  employeeName: string;
+  areaM2: number;
+  workDate: string;
 };
 
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
@@ -109,8 +118,58 @@ function normalizeMasterTab(value: string, seniorMasterMode: boolean): MasterTab
   return seniorMasterMode && value === "review" ? "review" : "today";
 }
 
+function normalizeMasterStatus(value: string): MasterStatusFilter {
+  return value === "todo" || value === "progress" || value === "review" || value === "done"
+    ? value
+    : "all";
+}
+
 function normalizeQuickAction(value: string): QuickActionMode {
   return value === "report" ? "report" : "none";
+}
+
+function parseRoadCleaningProjectName(name: string) {
+  const parts = name.split(" - ").map((part) => part.trim()).filter(Boolean);
+  return {
+    areaName: parts[0] ?? name,
+    employeeName: parts[1] ?? "",
+    workDate: parts[2] ?? "",
+  };
+}
+
+function formatAreaM2(value: number) {
+  if (!value) {
+    return "—";
+  }
+  return `${new Intl.NumberFormat("mn-MN").format(Math.round(value))} м²`;
+}
+
+function getMasterStatusLabel(bucket: TodayProjectSummary["stageBucket"]) {
+  if (bucket === "done") {
+    return "Дууссан";
+  }
+  if (bucket === "review") {
+    return "Хяналтанд";
+  }
+  if (bucket === "progress") {
+    return "Ажиллаж буй";
+  }
+  return "Эхлээгүй";
+}
+
+function getMasterStatusFilter(bucket: TodayProjectSummary["stageBucket"]): MasterStatusFilter {
+  if (bucket === "done" || bucket === "review" || bucket === "progress") {
+    return bucket;
+  }
+  return "todo";
+}
+
+function getReviewTaskArea(task: Pick<ReviewQueueItem, "projectName">) {
+  return parseRoadCleaningProjectName(task.projectName).areaName;
+}
+
+function getReviewTaskEmployee(task: Pick<ReviewQueueItem, "projectName" | "leaderName">) {
+  return task.leaderName || parseRoadCleaningProjectName(task.projectName).employeeName;
 }
 
 function isTaskAssignedToInspector(task: TaskDirectoryItem, userId: number) {
@@ -363,6 +422,7 @@ function buildTodayProjectSummaries(
   return Array.from(
     tasks.reduce<Map<string, TodayProjectSummary>>((accumulator, task) => {
       const linkedProject = projectByName.get(task.projectName);
+      const projectParts = parseRoadCleaningProjectName(task.projectName);
       const existing = accumulator.get(task.projectName) ?? {
         id: linkedProject?.id ?? `today-project-${task.projectName}`,
         name: task.projectName,
@@ -379,11 +439,22 @@ function buildTodayProjectSummaries(
         verifiedTaskCount: 0,
         progressTotal: 0,
         stageBucket: "todo" as const,
+        areaName: projectParts.areaName,
+        employeeName: projectParts.employeeName || task.leaderName,
+        areaM2: 0,
+        workDate: projectParts.workDate || task.scheduledDate || task.deadline,
         stageLabel: "Хийгдэх",
       };
 
       existing.todayTaskCount += 1;
       existing.progressTotal += task.progress;
+      existing.areaM2 = Math.max(existing.areaM2, Number(task.plannedQuantity) || 0);
+      if (!existing.employeeName) {
+        existing.employeeName = task.leaderName;
+      }
+      if (!existing.workDate) {
+        existing.workDate = task.scheduledDate || task.deadline;
+      }
 
       if (task.statusKey === "working") {
         existing.workingTaskCount += 1;
@@ -445,6 +516,9 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const requestedQuickAction = normalizeQuickAction(getParam(params.quickAction));
   const requestedWorkName = getParam(params.work).trim();
   const requestedWorkId = normalizeIdParam(getParam(params.workId));
+  const masterSearchQuery = getParam(params.q).trim();
+  const masterStatusFilter = normalizeMasterStatus(getParam(params.status));
+  const masterEmployeeFilter = getParam(params.employee).trim();
   const requestedWorkNameKey = normalizeWorkName(requestedWorkName);
   const hasRequestedWorkerWork = Boolean(requestedWorkId || requestedWorkNameKey);
   const todayDateKey = getTodayDateKey();
@@ -602,10 +676,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const seniorMasterReviewTasks = seniorMasterMode
     ? filterByDepartment(snapshot.reviewQueue, scopedDepartmentName)
     : [];
-  const seniorMasterReviewProjectCount = new Set(
-    seniorMasterReviewTasks.map((task) => task.projectId ?? task.projectName),
-  ).size;
   const showingMasterReviewTab = seniorMasterMode && masterTab === "review";
+  const masterDashboardProjects = seniorMasterMode ? masterTodayProjects : personalMasterTodayProjects;
 
   const selectedDepartment =
     !workerMode && !masterMode && !departmentScopedMode && requestedDepartment && requestedDepartment !== "all"
@@ -667,11 +739,11 @@ export default async function TasksPage({ searchParams }: PageProps) {
 
   const counts: Record<FilterKey, number> = masterMode
     ? {
-        all: masterTodayProjects.length,
-        working: masterTodayProjects.filter((project) => project.stageBucket === "progress").length,
-        review: masterTodayProjects.filter((project) => project.stageBucket === "review").length,
-        problem: masterTodayProjects.filter((project) => project.stageBucket === "problem").length,
-        verified: masterTodayProjects.filter((project) => project.stageBucket === "done").length,
+        all: masterDashboardProjects.length,
+        working: masterDashboardProjects.filter((project) => project.stageBucket === "progress").length,
+        review: masterDashboardProjects.filter((project) => project.stageBucket === "review").length,
+        problem: masterDashboardProjects.filter((project) => project.stageBucket === "problem").length,
+        verified: masterDashboardProjects.filter((project) => project.stageBucket === "done").length,
       }
     : {
         all: scopedTasks.length,
@@ -698,7 +770,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
     return linkParams.toString() ? `/tasks?${linkParams.toString()}` : "/tasks";
   };
   const inspectorPriorityTasks = inspectorMobileMode ? visibleTasks : scopedTasks.slice(0, 4);
-  const visibleProjects = masterTodayProjects.filter((project) => {
+  const visibleProjects = masterDashboardProjects.filter((project) => {
     if (selectedFilter === "all") {
       return true;
     }
@@ -717,6 +789,47 @@ export default async function TasksPage({ searchParams }: PageProps) {
 
     return project.stageBucket === "done";
   });
+  const normalizedMasterSearch = masterSearchQuery.toLocaleLowerCase("mn-MN");
+  const masterEmployeeOptions = Array.from(
+    new Set(masterDashboardProjects.map((project) => project.employeeName).filter(Boolean)),
+  ).sort((left, right) => left.localeCompare(right, "mn"));
+  const masterFilteredProjects = visibleProjects.filter((project) => {
+    const matchesSearch =
+      !normalizedMasterSearch ||
+      [project.name, project.areaName, project.employeeName, project.departmentName]
+        .join(" ")
+        .toLocaleLowerCase("mn-MN")
+        .includes(normalizedMasterSearch);
+    const matchesStatus =
+      masterStatusFilter === "all" || getMasterStatusFilter(project.stageBucket) === masterStatusFilter;
+    const matchesEmployee = !masterEmployeeFilter || project.employeeName === masterEmployeeFilter;
+    return matchesSearch && matchesStatus && matchesEmployee;
+  });
+  const masterAverageProgress = masterDashboardProjects.length
+    ? Math.round(
+        masterDashboardProjects.reduce((total, project) => total + project.completion, 0) /
+          masterDashboardProjects.length,
+      )
+    : 0;
+  const masterDoneProjectCount = masterDashboardProjects.filter(
+    (project) => project.stageBucket === "done",
+  ).length;
+  const masterReviewCount = seniorMasterMode
+    ? seniorMasterReviewTasks.length
+    : masterDashboardProjects.filter((project) => project.stageBucket === "review").length;
+  const filteredSeniorMasterReviewTasks = seniorMasterReviewTasks.filter((task) => {
+    const parsedProject = parseRoadCleaningProjectName(task.projectName);
+    const taskEmployee = getReviewTaskEmployee(task);
+    const matchesSearch =
+      !normalizedMasterSearch ||
+      [task.projectName, task.name, parsedProject.areaName, taskEmployee]
+        .join(" ")
+        .toLocaleLowerCase("mn-MN")
+        .includes(normalizedMasterSearch);
+    const matchesStatus = masterStatusFilter === "all" || masterStatusFilter === "review";
+    const matchesEmployee = !masterEmployeeFilter || taskEmployee === masterEmployeeFilter;
+    return matchesSearch && matchesStatus && matchesEmployee;
+  });
 
   const selectedDepartmentLabel = workerMode
     ? requestedWorkName || "Надад оноогдсон даалгавар"
@@ -729,9 +842,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const masterFlowDescription = seniorMasterMode
     ? "Ахлах мастер өөрийн алба нэгжийн өнөөдөр явах бүх ажил, бүх мастерийн тайланг нэг дор хянана."
     : "Мастер зөвхөн өөрт хариуцуулсан өнөөдрийн ажил, багийн тайлангаа хянана.";
-  const masterScopeSummary = seniorMasterMode
-    ? "Ахлах мастерийн нэгжийн өнөөдрийн нийт ажил харагдаж байна"
-    : "Зөвхөн танд хариуцуулсан өнөөдрийн ажил харагдаж байна";
   const calendarPlanItems = Array.from(
     scopedTasks
       .filter((task) => task.scheduledDate)
@@ -913,12 +1023,12 @@ export default async function TasksPage({ searchParams }: PageProps) {
           >
             {!workerMode && !inspectorMobileMode ? (
               <WorkspaceHeader
-                title={showingMasterReviewTab ? "Хянах ажил" : masterMode ? "Өнөөдрийн ажил" : "Даалгавар"}
+                title={masterMode ? "Ажил" : "Даалгавар"}
                 subtitle={
                   showingMasterReviewTab
                     ? "Хяналт хүлээж буй тайлантай даалгаврууд"
                     : masterMode
-                    ? "Өнөөдөр явах ажил, төслийн урсгал"
+                    ? "Өнөөдрийн зам талбайн цэвэрлэгээний ажил"
                     : workerMode
                       ? "Танд оноогдсон даалгаврын жагсаалт"
                       : "Хэлтсийн даалгаврын өдөр тутмын урсгал"
@@ -1235,15 +1345,13 @@ export default async function TasksPage({ searchParams }: PageProps) {
               <div className={styles.pageHeaderMain}>
                 <div className={styles.titleBlock}>
                   <span className={styles.pageKicker}>
-                    {workerMode ? "Миний урсгал" : masterMode ? masterFlowKicker : "Бүх урсгал"}
+                    {workerMode ? "Миний урсгал" : masterMode ? "Зам талбайн цэвэрлэгээ" : "Бүх урсгал"}
                   </span>
                    <h1>
                      {workerMode
                        ? "Надад оноогдсон даалгавар"
-                       : showingMasterReviewTab
-                        ? "Хянах ажил"
                        : masterMode
-                        ? "Өнөөдрийн ажил"
+                        ? "Ажил"
                         : "Бүх даалгавар"}
                    </h1>
                    <p>
@@ -1323,73 +1431,68 @@ export default async function TasksPage({ searchParams }: PageProps) {
             ) : null}
 
             {!workerMode && !inspectorMobileMode ? (
-            <section className={styles.summaryStrip}>
-              <article className={styles.summaryCard}>
-                <span>
-                  {workerMode
-                    ? "Харагдах хүрээ"
-                    : masterMode
-                      ? "Алба нэгж"
-                      : "Сонгосон алба нэгж"}
-                </span>
-                <strong>{selectedDepartmentLabel}</strong>
-                <small>
-                  {workerMode
-                    ? "Зөвхөн танд оноогдсон даалгавруудыг харуулж байна"
-                    : masterMode
-                      ? masterScopeSummary
-                    : `${snapshot.departments.length} алба нэгжээс шүүж байна`}
-                </small>
-              </article>
-              <article className={styles.summaryCard}>
-                <span>
-                  {workerMode
-                    ? "Надад оноогдсон даалгавар"
-                    : showingMasterReviewTab
-                      ? "Хянах ажил"
-                    : masterMode
-                      ? "Өнөөдөр явах ажил"
-                      : "Нийт даалгавар"}
-                </span>
-                <strong>{showingMasterReviewTab ? seniorMasterReviewTasks.length : counts.all}</strong>
-                <small>
-                  {workerMode
-                    ? "Тухайн хэрэглэгчид оноогдсон нийт даалгавар"
-                    : showingMasterReviewTab
-                      ? "Хяналт хүлээж буй тайлантай даалгавар"
-                    : masterMode
-                      ? "Өнөөдөр эхлэх эсвэл үргэлжлэх ажил, төслийн тоо"
-                    : "Бүх даалгавар"}
-                </small>
-              </article>
-              <article className={styles.summaryCard}>
-                <span>
-                  {workerMode
-                    ? "Холбогдсон ажил"
-                    : showingMasterReviewTab
-                      ? "Холбогдсон ажил"
-                    : masterMode
-                      ? "Өнөөдрийн даалгавар"
-                      : "Нийт ажил"}
-                </span>
-                <strong>
-                  {showingMasterReviewTab
-                    ? seniorMasterReviewProjectCount
-                    : masterMode
-                      ? masterTodayTasks.length
-                      : scopedProjects.length}
-                </strong>
-                <small>
-                  {workerMode
-                    ? "Эдгээр ажилд таны даалгаврууд багтаж байна"
-                    : showingMasterReviewTab
-                      ? "Хяналт хүлээж буй тайлантай холбогдсон ажил"
-                    : masterMode
-                      ? "Өнөөдөр эдгээр ажилд харагдах нийт даалгавар"
-                      : "Энэ шүүлтэд хамаарах ажлууд"}
-                </small>
-              </article>
-            </section>
+              masterMode ? (
+                <section className={`${styles.summaryStrip} ${styles.masterKpiGrid}`}>
+                  <article className={styles.masterKpiCard}>
+                    <span className={styles.masterKpiIcon} aria-hidden="true">
+                      <ListChecks size={18} strokeWidth={2.4} />
+                    </span>
+                    <div>
+                      <small>Өнөөдрийн ажил</small>
+                      <strong>{masterDashboardProjects.length}</strong>
+                      <em>{seniorMasterMode ? "Нэгжийн бүх ажил" : "Танд хамаарах ажил"}</em>
+                    </div>
+                  </article>
+                  <article className={styles.masterKpiCard}>
+                    <span className={styles.masterKpiIcon} aria-hidden="true">
+                      <CheckCircle2 size={18} strokeWidth={2.4} />
+                    </span>
+                    <div>
+                      <small>Гүйцэтгэл</small>
+                      <strong>{masterAverageProgress}%</strong>
+                      <em>Дундаж явц</em>
+                    </div>
+                  </article>
+                  <article className={styles.masterKpiCard}>
+                    <span className={styles.masterKpiIcon} aria-hidden="true">
+                      <Bell size={18} strokeWidth={2.4} />
+                    </span>
+                    <div>
+                      <small>Хяналт хүлээж буй</small>
+                      <strong>{masterReviewCount}</strong>
+                      <em>{seniorMasterMode ? "Тайлан" : "Ажил"}</em>
+                    </div>
+                  </article>
+                  <article className={styles.masterKpiCard}>
+                    <span className={styles.masterKpiIcon} aria-hidden="true">
+                      <ClipboardCheck size={18} strokeWidth={2.4} />
+                    </span>
+                    <div>
+                      <small>Дууссан</small>
+                      <strong>{masterDoneProjectCount}</strong>
+                      <em>Бүрэн хаагдсан ажил</em>
+                    </div>
+                  </article>
+                </section>
+              ) : (
+                <section className={styles.summaryStrip}>
+                  <article className={styles.summaryCard}>
+                    <span>Сонгосон алба нэгж</span>
+                    <strong>{selectedDepartmentLabel}</strong>
+                    <small>{`${snapshot.departments.length} алба нэгжээс шүүж байна`}</small>
+                  </article>
+                  <article className={styles.summaryCard}>
+                    <span>Нийт даалгавар</span>
+                    <strong>{counts.all}</strong>
+                    <small>Бүх даалгавар</small>
+                  </article>
+                  <article className={styles.summaryCard}>
+                    <span>Нийт ажил</span>
+                    <strong>{scopedProjects.length}</strong>
+                    <small>Энэ шүүлтэд хамаарах ажлууд</small>
+                  </article>
+                </section>
+              )
             ) : null}
 
             {!workerMode && !inspectorMobileMode ? (
@@ -1397,7 +1500,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
               <div className={styles.filterScroller}>
                 {seniorMasterMode ? (
                   ([
-                    { key: "today", label: "Өнөөдрийн ажил", count: masterTodayProjects.length },
+                    { key: "today", label: "Өнөөдрийн ажил", count: masterDashboardProjects.length },
                     { key: "review", label: "Хянах ажил", count: seniorMasterReviewTasks.length },
                   ] satisfies Array<{ key: MasterTabKey; label: string; count: number }>).map((tab) => {
                     const params = new URLSearchParams();
@@ -1449,6 +1552,47 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   );
                 })}
               </div>
+              {masterMode ? (
+                <form className={styles.masterFilterForm} method="get" aria-label="Ажил шүүх">
+                  {selectedDepartmentParam ? (
+                    <input type="hidden" name="department" value={selectedDepartmentParam} />
+                  ) : null}
+                  {showingMasterReviewTab ? <input type="hidden" name="tab" value="review" /> : null}
+                  <label className={styles.masterFilterField}>
+                    <span>Хайх</span>
+                    <input
+                      name="q"
+                      type="search"
+                      defaultValue={masterSearchQuery}
+                      placeholder="Ажил, талбай, ажилтан..."
+                    />
+                  </label>
+                  <label className={styles.masterFilterField}>
+                    <span>Төлөв</span>
+                    <select name="status" defaultValue={masterStatusFilter}>
+                      <option value="all">Бүгд</option>
+                      <option value="todo">Эхлээгүй</option>
+                      <option value="progress">Ажиллаж буй</option>
+                      <option value="review">Хяналтанд</option>
+                      <option value="done">Дууссан</option>
+                    </select>
+                  </label>
+                  <label className={styles.masterFilterField}>
+                    <span>Ажилтан</span>
+                    <select name="employee" defaultValue={masterEmployeeFilter}>
+                      <option value="">Бүгд</option>
+                      {masterEmployeeOptions.map((employee) => (
+                        <option key={employee} value={employee}>
+                          {employee}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button type="submit" className={styles.dateButton}>
+                    Шүүх
+                  </button>
+                </form>
+              ) : null}
             </section>
             ) : null}
 
@@ -1532,6 +1676,12 @@ export default async function TasksPage({ searchParams }: PageProps) {
                                   taskId={Number(task.id)}
                                   simpleMobile
                                   workItemName={task.name}
+                                  parentWorkInfo={{
+                                    workName: task.projectName,
+                                    areaName: parseRoadCleaningProjectName(task.projectName).areaName,
+                                    areaM2: task.plannedQuantity || "",
+                                    employeeName: task.leaderName,
+                                  }}
                                   reportTextRequired={!isGarbageTransportTask(task)}
                                   existingReport={getWorkerExistingReport(task)}
                                   triggerClassName={styles.workerLineItem}
@@ -1580,153 +1730,152 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 )}
               </section>
             ) : masterMode ? (
-              showingMasterReviewTab ? (
-                <section className={styles.taskSection}>
-                  <div className={styles.sectionHeader}>
-                    <div>
-                      <span className={styles.filterKicker}>Ахлах мастерын хяналт</span>
-                      <h2>Хянах ажил</h2>
-                      <p>Тайлан илгээгдэж, хяналт хүлээж буй даалгаврууд.</p>
-                    </div>
+              <section className={styles.taskSection}>
+                <div className={styles.sectionHeader}>
+                  <div>
+                    <span className={styles.filterKicker}>
+                      {showingMasterReviewTab ? "Ахлах мастерын хяналт" : masterFlowKicker}
+                    </span>
+                    <h2>{showingMasterReviewTab ? "Хяналт хүлээж буй тайлан" : "Өнөөдрийн ажил"}</h2>
+                    <p>
+                      {showingMasterReviewTab
+                        ? "Илгээгдсэн тайланг ажил, талбай, ажилтнаар нь хурдан шүүнэ."
+                        : "Ажил бүрийг талбай, ажилтан, хэмжээ, явцаар нь нэг мөрөнд харуулж байна."}
+                    </p>
                   </div>
+                  {canCreateProject && !showingMasterReviewTab ? (
+                    <Link href="/projects/new" className={styles.primaryLink}>
+                      <Plus size={16} strokeWidth={2.4} aria-hidden="true" />
+                      Ажил нэмэх
+                    </Link>
+                  ) : null}
+                </div>
 
-                  {seniorMasterReviewTasks.length ? (
-                    <div className={styles.taskCardList}>
-                      {seniorMasterReviewTasks.map((task) => (
-                        <Link
-                          key={`review-${task.id}`}
-                          href={`/tasks/${task.id}?returnTo=${encodeURIComponent("/tasks?tab=review")}#task-reports`}
-                          className={`${styles.taskCard} ${styles.projectCardLink}`}
-                        >
-                          <div className={styles.taskCardTop}>
-                            <div className={styles.taskIdentity}>
-                              <span>{task.projectName}</span>
+                {showingMasterReviewTab ? (
+                  filteredSeniorMasterReviewTasks.length ? (
+                    <>
+                      <div className={styles.masterTableShell}>
+                        <div className={styles.masterTable}>
+                          <div className={styles.masterTableHeader}>
+                            <span>Ажлын нэр</span>
+                            <span>Талбай</span>
+                            <span>Ажилтан</span>
+                            <span>М²</span>
+                            <span>Огноо</span>
+                            <span>Гүйцэтгэл</span>
+                            <span>Төлөв</span>
+                          </div>
+                          {filteredSeniorMasterReviewTasks.map((task) => (
+                            <Link
+                              key={`review-row-${task.id}`}
+                              href={`/tasks/${task.id}?returnTo=${encodeURIComponent("/tasks?tab=review")}#task-reports`}
+                              className={styles.masterTableRow}
+                            >
                               <strong>{task.name}</strong>
+                              <span>{getReviewTaskArea(task)}</span>
+                              <span>{getReviewTaskEmployee(task) || "—"}</span>
+                              <span>{formatAreaM2(0)}</span>
+                              <span>{task.deadline}</span>
+                              <span className={styles.masterProgressCell}>
+                                <em>{task.progress}%</em>
+                                <b>
+                                  <i style={{ width: `${Math.max(0, Math.min(task.progress, 100))}%` }} />
+                                </b>
+                              </span>
+                              <span className={`${styles.masterStatusBadge} ${styles.masterStatusReview}`}>
+                                Хяналтанд
+                              </span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                      <div className={styles.masterMobileCards}>
+                        {filteredSeniorMasterReviewTasks.map((task) => (
+                          <Link
+                            key={`review-card-${task.id}`}
+                            href={`/tasks/${task.id}?returnTo=${encodeURIComponent("/tasks?tab=review")}#task-reports`}
+                            className={styles.masterWorkCard}
+                          >
+                            <div>
+                              <strong>{task.name}</strong>
+                              <span>{getReviewTaskArea(task)}</span>
                             </div>
-                            <span className={styles.statusChip}>{task.stageLabel || "Хянах"}</span>
+                            <small>{getReviewTaskEmployee(task) || "Ажилтан"} · {task.deadline}</small>
+                            <div className={styles.masterCardProgress}>
+                              <b><i style={{ width: `${Math.max(0, Math.min(task.progress, 100))}%` }} /></b>
+                              <em>{task.progress}%</em>
+                            </div>
+                            <span className={`${styles.masterStatusBadge} ${styles.masterStatusReview}`}>Хяналтанд</span>
+                          </Link>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className={styles.emptyState}>
+                      <h3>Хяналт хүлээж буй тайлан алга</h3>
+                      <p>Одоогоор энэ шүүлтэд таарах илгээгдсэн тайлан байхгүй байна.</p>
+                    </div>
+                  )
+                ) : masterFilteredProjects.length ? (
+                  <>
+                    <div className={styles.masterTableShell}>
+                      <div className={styles.masterTable}>
+                        <div className={styles.masterTableHeader}>
+                          <span>Ажлын нэр</span>
+                          <span>Талбай</span>
+                          <span>Ажилтан</span>
+                          <span>М²</span>
+                          <span>Огноо</span>
+                          <span>Гүйцэтгэл</span>
+                          <span>Төлөв</span>
+                        </div>
+                        {masterFilteredProjects.map((project) => (
+                          <Link key={project.id} href={project.href} className={styles.masterTableRow}>
+                            <strong>{project.name}</strong>
+                            <span>{project.areaName}</span>
+                            <span>{project.employeeName || project.manager || "—"}</span>
+                            <span>{formatAreaM2(project.areaM2)}</span>
+                            <span>{project.workDate || project.deadline}</span>
+                            <span className={styles.masterProgressCell}>
+                              <em>{project.completion}%</em>
+                              <b>
+                                <i style={{ width: `${Math.max(0, Math.min(project.completion, 100))}%` }} />
+                              </b>
+                            </span>
+                            <span className={`${styles.masterStatusBadge} ${styles[`masterStatus${project.stageBucket}`]}`}>
+                              {getMasterStatusLabel(project.stageBucket)}
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                    <div className={styles.masterMobileCards}>
+                      {masterFilteredProjects.map((project) => (
+                        <Link key={`card-${project.id}`} href={project.href} className={styles.masterWorkCard}>
+                          <div>
+                            <strong>{project.name}</strong>
+                            <span>{project.areaName}</span>
                           </div>
-                          <div className={styles.taskInfoGrid}>
-                            <span className={styles.taskInfoItem}>
-                              <span>Хугацаа</span>
-                              <strong>{task.deadline}</strong>
-                            </span>
-                            <span className={styles.taskInfoItem}>
-                              <span>Хариуцагч</span>
-                              <strong>{task.leaderName || "Сонгоогүй"}</strong>
-                            </span>
-                            <span className={styles.taskInfoItem}>
-                              <span>Явц</span>
-                              <strong>{task.progress}%</strong>
-                            </span>
+                          <small>{project.employeeName || project.manager || "Ажилтан"} · {formatAreaM2(project.areaM2)}</small>
+                          <div className={styles.masterCardProgress}>
+                            <b><i style={{ width: `${Math.max(0, Math.min(project.completion, 100))}%` }} /></b>
+                            <em>{project.completion}%</em>
                           </div>
-                          <span className={styles.projectOpenLabel}>Тайлан шалгах</span>
+                          <span className={`${styles.masterStatusBadge} ${styles[`masterStatus${project.stageBucket}`]}`}>
+                            {getMasterStatusLabel(project.stageBucket)}
+                          </span>
+                          <span className={styles.masterCardAction}>Тайлан илгээх</span>
                         </Link>
                       ))}
                     </div>
-                  ) : (
-                    <div className={styles.emptyState}>
-                      <h3>Хянах ажил алга</h3>
-                      <p>Одоогоор танай нэгжид хяналт хүлээж буй тайлантай даалгавар алга.</p>
-                    </div>
-                  )}
-                </section>
-              ) : (
-              <>
-                <section className={styles.taskSection}>
-                  <div className={styles.sectionHeader}>
-                    <div>
-                      <span className={styles.filterKicker}>Миний урсгал</span>
-                      <h2>Миний хариуцсан ажил</h2>
-                    </div>
+                  </>
+                ) : (
+                  <div className={styles.emptyState}>
+                    <h3>Өнөөдөр оноогдсон ажил алга</h3>
+                    <p>Сонгосон шүүлтэд таарах зам талбайн цэвэрлэгээний ажил харагдахгүй байна.</p>
                   </div>
-
-                  {personalMasterTodayProjects.length ? (
-                    <div className={styles.projectList}>
-                      {personalMasterTodayProjects.map((project) => (
-                        <Link key={`mine-${project.id}`} href={project.href} className={`${styles.taskCard} ${styles.projectCardLink}`}>
-                          <div className={styles.taskCardTop}>
-                            <div className={styles.taskIdentity}>
-                              <span>{project.departmentName}</span>
-                              <strong>{project.name}</strong>
-                            </div>
-                            <span className={styles.statusChip}>{project.stageLabel}</span>
-                          </div>
-                          <div className={styles.taskInfoGrid}>
-                            <span className={styles.taskInfoItem}>
-                              <span>Даалгавар</span>
-                              <strong>{project.todayTaskCount}</strong>
-                            </span>
-                            <span className={styles.taskInfoItem}>
-                              <span>Нээлттэй</span>
-                              <strong>{project.openTasks}</strong>
-                            </span>
-                            <span className={styles.taskInfoItem}>
-                              <span>Гүйцэтгэл</span>
-                              <strong>{project.completion}%</strong>
-                            </span>
-                          </div>
-                          <span className={styles.projectOpenLabel}>Даалгаврууд харах</span>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className={styles.emptyState}>
-                      <h3>{seniorMasterMode ? "Өнөөдрийн нэгжийн ажил алга" : "Өнөөдөр танд хариуцсан ажил алга"}</h3>
-                      <p>
-                        {seniorMasterMode
-                          ? "Энэ нэгж дээр өнөөдөр эхлэх эсвэл үргэлжлэх ажил бүртгэгдээгүй байна."
-                          : "Нийт ажлын хэсгээс алба нэгжийн ажлуудыг хянаж болно."}
-                      </p>
-                    </div>
-                  )}
-                </section>
-
-                <section className={styles.taskSection}>
-                  <div className={styles.sectionHeader}>
-                    <div>
-                      <span className={styles.filterKicker}>{masterFlowKicker}</span>
-                      <h2>{seniorMasterMode ? "Нэгжийн бүх ажил" : "Миний хариуцсан ажил"}</h2>
-                    </div>
-                  </div>
-
-                  {visibleProjects.length ? (
-                    <div className={styles.projectList}>
-                      {visibleProjects.map((project) => (
-                        <Link key={project.id} href={project.href} className={`${styles.taskCard} ${styles.projectCardLink}`}>
-                          <div className={styles.taskCardTop}>
-                            <div className={styles.taskIdentity}>
-                              <span>{project.departmentName}</span>
-                              <strong>{project.name}</strong>
-                            </div>
-                            <span className={styles.statusChip}>{project.stageLabel}</span>
-                          </div>
-                          <div className={styles.taskInfoGrid}>
-                            <span className={styles.taskInfoItem}>
-                              <span>Даалгавар</span>
-                              <strong>{project.todayTaskCount}</strong>
-                            </span>
-                            <span className={styles.taskInfoItem}>
-                              <span>Нээлттэй</span>
-                              <strong>{project.openTasks}</strong>
-                            </span>
-                            <span className={styles.taskInfoItem}>
-                              <span>Гүйцэтгэл</span>
-                              <strong>{project.completion}%</strong>
-                            </span>
-                          </div>
-                          <span className={styles.projectOpenLabel}>Даалгаврууд харах</span>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className={styles.emptyState}>
-                      <h3>Өнөөдөр ажил алга</h3>
-                      <p>Сонгосон шүүлтэд таарах ажил одоогоор харагдахгүй байна.</p>
-                    </div>
-                  )}
-                </section>
-              </>
-              )
+                )}
+              </section>
             ) : (
               <section className={styles.taskSection}>
                 <div className={styles.sectionHeader}>

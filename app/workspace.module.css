@@ -2239,12 +2239,89 @@
   background: rgba(222, 244, 225, 0.9) !important;
 }
 
+.roadCleaningStepper {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.roadCleaningStepper span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #516257;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.roadCleaningStepper b {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(46, 125, 50, 0.12);
+  color: #18682d;
+  font-size: 0.75rem;
+}
+
+.roadCleaningStepDone {
+  background: rgba(232, 247, 235, 0.9) !important;
+  color: #18682d !important;
+}
+
+.roadCleaningSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.roadCleaningSummaryCard {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.roadCleaningSummaryCard span,
+.roadCleaningSummaryCard small {
+  overflow: hidden;
+  color: #607066;
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roadCleaningSummaryCard strong {
+  color: #14231a;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.roadCleaningTableHeader {
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.65fr auto;
+  gap: 10px;
+  padding: 0 14px;
+  color: #607066;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
 .roadCleaningLineCard {
   display: grid;
   gap: 14px;
   padding: 14px;
   border: 1px solid rgba(46, 125, 50, 0.14);
-  border-radius: 18px;
+  border-radius: 8px;
   background: #fff;
 }
 
@@ -2309,6 +2386,59 @@
   gap: 10px;
 }
 
+.roadCleaningPreviewPanel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 8px;
+  background: rgba(248, 252, 248, 0.96);
+}
+
+.roadCleaningPreviewPanel strong {
+  display: block;
+  margin-top: 6px;
+  color: #14231a;
+  font-weight: 900;
+}
+
+.roadCleaningPreviewPanel p {
+  margin: 4px 0 0;
+  color: #607066;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.roadCleaningAutoTaskList {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.roadCleaningAutoTaskList span {
+  display: grid;
+  gap: 6px;
+  min-height: 70px;
+  padding: 10px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  color: #14231a;
+  font-size: 0.76rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.roadCleaningAutoTaskList b {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(46, 125, 50, 0.12);
+  color: #18682d;
+}
+
 @media (max-width: 860px) {
   .createWorkIntro {
     grid-template-columns: minmax(0, 1fr);
@@ -2340,6 +2470,16 @@
 
   .roadCleaningProgress {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .roadCleaningStepper,
+  .roadCleaningSummaryGrid,
+  .roadCleaningAutoTaskList {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .roadCleaningTableHeader {
+    display: none;
   }
 
   .roadCleaningLineHeader {

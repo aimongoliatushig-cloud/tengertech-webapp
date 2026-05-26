@@ -70,6 +70,7 @@ type RoadCleaningLineDraft = {
   cleaningAreaId: string;
   employeeId: string;
   newAreaName: string;
+  newAreaM2: string;
   showNewArea: boolean;
 };
 
@@ -241,6 +242,7 @@ function emptyRoadCleaningLine(index: number): RoadCleaningLineDraft {
     cleaningAreaId: "",
     employeeId: "",
     newAreaName: "",
+    newAreaM2: "",
     showNewArea: false,
   };
 }
@@ -791,6 +793,25 @@ export function NewWorkForm({
     const hasArea = Boolean(line.cleaningAreaId || line.newAreaName.trim());
     return hasArea && Boolean(line.employeeId);
   }).length;
+  const getRoadCleaningLineAreaM2 = (line: RoadCleaningLineDraft) => {
+    const lineArea = getRoadCleaningArea(line);
+    return Number(lineArea?.areaM2 ?? line.newAreaM2) || 0;
+  };
+  const roadCleaningTotalAreaM2 = roadCleaningLines.reduce(
+    (total, line) => total + getRoadCleaningLineAreaM2(line),
+    0,
+  );
+  const roadCleaningNotificationPeople = [
+    selectedCleaningMaster?.name,
+    selectedDepartmentHead?.name,
+    "Системийн админ",
+  ].filter(Boolean);
+  const roadCleaningAutoTasks = [
+    "Явган зам цэвэрлэх",
+    "Замын нүх цэвэрлэх",
+    "Хогийн сав шалгах",
+    "Жижиг хог / шарилж / зарын хуудас цэвэрлэх",
+  ];
 
   const getRoadCleaningWorkName = (line: RoadCleaningLineDraft) => {
     const lineArea = getRoadCleaningArea(line);
@@ -831,6 +852,7 @@ export function NewWorkForm({
             ? String(nextArea.employeeId)
             : nextLine.employeeId;
           nextLine.newAreaName = "";
+          nextLine.newAreaM2 = "";
           nextLine.showNewArea = false;
         }
         if (key === "showNewArea" && value) {
@@ -880,6 +902,7 @@ export function NewWorkForm({
           masterName: selectedMaster?.name ?? "",
           employeeId: targetLine.employeeId ? Number(targetLine.employeeId) : null,
           employeeName: selectedEmployee?.name ?? "",
+          areaM2: Number(targetLine.newAreaM2) || null,
         }),
       });
       const payload = await response.json().catch(() => null) as {
@@ -905,6 +928,7 @@ export function NewWorkForm({
                 ...line,
                 cleaningAreaId: String(savedArea.id),
                 newAreaName: "",
+                newAreaM2: "",
                 showNewArea: false,
               }
             : line,
@@ -1935,9 +1959,17 @@ export function NewWorkForm({
         <>
           <div className={styles.roadCleaningQuickPanel}>
             <div className={styles.roadCleaningQuickHeader}>
-              <span className={styles.formBadge}>Өдрийн цэвэрлэгээ</span>
-              <h3>Талбай, ажилтнаа сонгоод шууд ажил үүсгэнэ</h3>
-              <p>Нэг мөр нь нэг талбайн ажил болно. Доторх даалгаврууд систем дээр автоматаар нэмэгдэнэ.</p>
+              <span className={styles.formBadge}>Зам талбайн цэвэрлэгээ</span>
+              <h3>Зам талбайн цэвэрлэгээний ажил нэмэх</h3>
+              <p>Нэг мөр нь нэг ажил болно. Ажил бүр дээр 4 стандарт даалгавар автоматаар үүснэ.</p>
+            </div>
+            <div className={styles.roadCleaningStepper} aria-label="Ажил үүсгэх алхам">
+              {["Хэлтэс", "Огноо", "Талбай ба ажилтан", "Хянах & илгээх"].map((step, index) => (
+                <span key={step} className={index < 3 ? styles.roadCleaningStepDone : ""}>
+                  <b>{index + 1}</b>
+                  {step}
+                </span>
+              ))}
             </div>
             <div className={styles.roadCleaningProgress}>
               <div>
@@ -2012,6 +2044,34 @@ export function NewWorkForm({
           <div className={styles.optionalSection}>
             <span className={styles.formBadge}>Ажилтан ба цэвэрлэх талбай</span>
             <p className={styles.fieldHint}>Нэг өдөр олон талбай дээр ажил үүсгэх бол доороос мөр нэмнэ.</p>
+            <div className={styles.roadCleaningSummaryGrid}>
+              <article className={styles.roadCleaningSummaryCard}>
+                <span>Нийт мөр</span>
+                <strong>{roadCleaningLines.length}</strong>
+                <small>{roadCleaningReadyLineCount} мөр бэлэн</small>
+              </article>
+              <article className={styles.roadCleaningSummaryCard}>
+                <span>Нийт талбай м²</span>
+                <strong>{Math.round(roadCleaningTotalAreaM2).toLocaleString("mn-MN")}</strong>
+                <small>Сонгосон талбайн нийлбэр</small>
+              </article>
+              <article className={styles.roadCleaningSummaryCard}>
+                <span>Үүсэх ажил</span>
+                <strong>{roadCleaningReadyLineCount}</strong>
+                <small>Мөр бүр = нэг ажил</small>
+              </article>
+              <article className={styles.roadCleaningSummaryCard}>
+                <span>Мэдэгдэл очих</span>
+                <strong>{roadCleaningNotificationPeople.length}</strong>
+                <small>{roadCleaningNotificationPeople.join(", ") || "Тодорхойгүй"}</small>
+              </article>
+            </div>
+            <div className={styles.roadCleaningTableHeader}>
+              <span>Цэвэрлэх талбай</span>
+              <span>Хариуцсан ажилтан</span>
+              <span>Талбайн хэмжээ м²</span>
+              <span>Үйлдэл</span>
+            </div>
 
             {roadCleaningLines.map((line, index) => {
               const lineArea = getRoadCleaningArea(line);
@@ -2070,6 +2130,14 @@ export function NewWorkForm({
                         ))}
                       </select>
                     </div>
+                    <div className={styles.field}>
+                      <label>Талбайн хэмжээ м²</label>
+                      <div className={styles.lockedFieldValue}>
+                        {getRoadCleaningLineAreaM2(line)
+                          ? Math.round(getRoadCleaningLineAreaM2(line)).toLocaleString("mn-MN")
+                          : "—"}
+                      </div>
+                    </div>
                   </div>
 
                   <div className={styles.buttonRow}>
@@ -2107,6 +2175,21 @@ export function NewWorkForm({
                             updateRoadCleaningLine(line.id, "newAreaName", event.target.value)
                           }
                           placeholder="Жишээ: Наадамчдын зам — 1-р хэсэг"
+                        />
+                      </div>
+                      <div className={styles.field}>
+                        <label htmlFor={`new_cleaning_area_m2_${line.id}`}>Талбайн хэмжээ м²</label>
+                        <input
+                          id={`new_cleaning_area_m2_${line.id}`}
+                          type="number"
+                          min="0"
+                          step="1"
+                          inputMode="numeric"
+                          value={line.newAreaM2}
+                          onChange={(event) =>
+                            updateRoadCleaningLine(line.id, "newAreaM2", event.target.value)
+                          }
+                          placeholder="1250"
                         />
                       </div>
                       <div className={styles.buttonRow}>
@@ -2180,6 +2263,22 @@ export function NewWorkForm({
             />
             <input type="hidden" name="name" value="Зам талбайн цэвэрлэгээ" />
 
+            <div className={styles.roadCleaningPreviewPanel}>
+              <div>
+                <span className={styles.formBadge}>Хянах & илгээх</span>
+                <strong>Илгээхэд үүсэх бүтэц</strong>
+                <p>Бэлэн мөр бүр нэг ажил болж, ажил бүр дээр дараах 4 даалгавар автоматаар үүснэ.</p>
+              </div>
+              <div className={styles.roadCleaningAutoTaskList}>
+                {roadCleaningAutoTasks.map((taskName, taskIndex) => (
+                  <span key={taskName}>
+                    <b>{taskIndex + 1}</b>
+                    {taskName}
+                  </span>
+                ))}
+              </div>
+            </div>
+
             <div className={styles.buttonRow}>
               <button
                 type="button"
@@ -2191,7 +2290,7 @@ export function NewWorkForm({
                   ])
                 }
               >
-                Мөр нэмэх
+                + Мөр нэмэх
               </button>
             </div>
           </div>
