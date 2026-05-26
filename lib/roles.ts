@@ -359,6 +359,7 @@ export function getRoleLabel(role: UserRole) {
 
 export function hasCapability(context: RoleContext, capability: Capability) {
   const groupFlags = normalizeGroupFlags(context.groupFlags);
+  const jobTitle = context.employeeJobTitle?.toLocaleLowerCase("mn-MN") ?? "";
 
   switch (capability) {
     case "create_projects":
@@ -418,6 +419,7 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         groupFlags.improvementWelder ||
         groupFlags.improvementFieldEngineer ||
         groupFlags.improvementEngineer ||
+        jobTitle.includes("мастер") ||
         context.role === "senior_master" ||
         context.role === "team_leader" ||
         context.role === "worker"
@@ -469,11 +471,13 @@ export function hasCapability(context: RoleContext, capability: Capability) {
 
 export function canSubmitWorkspaceReport(context: RoleContext) {
   const groupFlags = normalizeGroupFlags(context.groupFlags);
+  const jobTitle = context.employeeJobTitle?.toLocaleLowerCase("mn-MN") ?? "";
   return Boolean(
     context.role === "system_admin" ||
     context.role === "senior_master" ||
     context.role === "team_leader" ||
     context.role === "worker" ||
+    jobTitle.includes("мастер") ||
     groupFlags.mfoMobile ||
     groupFlags.mfoDriver ||
     groupFlags.mfoLoader ||

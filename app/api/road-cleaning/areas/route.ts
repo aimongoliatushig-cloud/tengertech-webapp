@@ -1,5 +1,6 @@
-import { hasCapability, requireSession } from "@/lib/auth";
+import { hasCapability, isMasterRole, requireSession } from "@/lib/auth";
 import { createLocalRoadCleaningArea } from "@/lib/road-cleaning-area-store";
+import { loadRoadCleaningMasterEmployeeForUser } from "@/lib/workspace";
 
 export async function POST(request: Request) {
   const session = await requireSession();
@@ -22,14 +23,34 @@ export async function POST(request: Request) {
 
   const name = typeof payload?.name === "string" ? payload.name : "";
   try {
+    const currentRoadCleaningMaster = isMasterRole(session.role)
+      ? await loadRoadCleaningMasterEmployeeForUser(session.uid, {
+          login: session.login,
+          password: session.password,
+        })
+      : null;
+    if (isMasterRole(session.role) && !currentRoadCleaningMaster) {
+      return Response.json(
+        {
+          error:
+            "Таны хэрэглэгчтэй холбогдсон зам талбайн мастер олдсонгүй. Админд хандаж ажилтны бүртгэлээ шалгуулна уу.",
+        },
+        { status: 400 },
+      );
+    }
+    const payloadMasterId = Number(payload?.masterId) || null;
+    const masterId = currentRoadCleaningMaster?.id ?? payloadMasterId;
+    const masterName =
+      currentRoadCleaningMaster?.name ??
+      (typeof payload?.masterName === "string" ? payload.masterName : "");
     const area = await createLocalRoadCleaningArea({
       name,
       khorooName: typeof payload?.khorooName === "string" ? payload.khorooName : "",
       areaM2: Number(payload?.areaM2) || null,
       departmentId: Number(payload?.departmentId) || null,
       departmentName: typeof payload?.departmentName === "string" ? payload.departmentName : "",
-      masterId: Number(payload?.masterId) || null,
-      masterName: typeof payload?.masterName === "string" ? payload.masterName : "",
+      masterId,
+      masterName,
       employeeId: Number(payload?.employeeId) || null,
       employeeName: typeof payload?.employeeName === "string" ? payload.employeeName : "",
       note: typeof payload?.note === "string" ? payload.note : "",

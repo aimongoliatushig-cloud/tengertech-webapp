@@ -240,6 +240,8 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
                   }
                   initialGarbageVehicleId={initialGarbageVehicleId}
                   initialGarbageShiftDate={initialGarbageShiftDate}
+                  currentUserId={session.uid}
+                  lockRoadCleaningMasterToCurrentUser={masterMode}
                 />
               </section>
             )}

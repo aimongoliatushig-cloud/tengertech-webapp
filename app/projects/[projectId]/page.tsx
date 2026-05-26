@@ -4,11 +4,12 @@ import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { createTaskAction, deleteProjectAction } from "@/app/actions";
+import { createTaskAction, createTaskReportAction, deleteProjectAction } from "@/app/actions";
 import dashboardStyles from "@/app/page.module.css";
 import styles from "@/app/workspace.module.css";
 import {
   hasCapability,
+  canSubmitWorkspaceReport,
   canDeleteWorkspaceItems,
   isMasterRole,
   isWorkerOnly,
@@ -19,6 +20,7 @@ import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import { loadFleetVehicleBoard } from "@/lib/odoo";
 import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurement";
+import { isWorkspaceReportReviewerRole } from "@/lib/task-report-review-access";
 import {
   hasProjectTaskLeader,
   loadGarbagePointOptions,
@@ -28,6 +30,7 @@ import {
 
 import { ProjectTaskCreateModal } from "./project-task-create-modal";
 import { ProjectTaskCreateForm } from "./project-task-create-form";
+import { TaskReportModal } from "@/app/tasks/[taskId]/task-report-modal";
 
 type PageProps = {
   params: Promise<{
@@ -149,6 +152,27 @@ function taskCardToneClass(bucket: string) {
   }
 }
 
+function isPhotoFirstReportTask(operationType: string) {
+  return operationType === "garbage" || operationType === "garbage_seasonal" || operationType === "road_area_cleaning";
+}
+
+function isRoadAreaCleaningProject(operationType: string) {
+  return operationType === "road_area_cleaning" || operationType === "street_cleaning";
+}
+
+function isRoadAreaCleaningTask(task: { name: string; operationType: string }) {
+  const normalizedName = task.name.trim().toLowerCase();
+  return (
+    isRoadAreaCleaningProject(task.operationType) ||
+    normalizedName.includes("явган зам") ||
+    normalizedName.includes("замын нүх") ||
+    normalizedName.includes("хогийн сав") ||
+    normalizedName.includes("жижиг хог") ||
+    normalizedName.includes("шарилж") ||
+    normalizedName.includes("зарын хуудас")
+  );
+}
+
 export default async function ProjectDetailPage({ params, searchParams }: PageProps) {
   const session = await requireSession();
   if (isWorkerOnly(session)) {
@@ -230,8 +254,20 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const canOpenQuickReport = canWriteReports && canSubmitWorkspaceReport(session);
+  const canReviewProjectReports = isWorkspaceReportReviewerRole(
+    session,
+    Boolean(
+      scopedDepartmentName &&
+        filterByDepartment([{ departmentName: project.departmentName }], scopedDepartmentName).length,
+    ),
+  );
   const isGarbageRouteProject = project.operationType === "garbage";
-  const shouldLoadTaskCreateOptions = canCreateTasks && quickActionMode !== "report";
+  const isRoadAreaCleaning =
+    isRoadAreaCleaningProject(project.operationType) || project.tasks.some((task) => isRoadAreaCleaningTask(task));
+  const canShowTaskCreateComposer =
+    canCreateTasks && quickActionMode !== "report" && !isRoadAreaCleaning;
+  const shouldLoadTaskCreateOptions = canShowTaskCreateComposer;
   const garbageSourceTask =
     project.tasks.find((task) => task.vehicleId) ??
     project.tasks.find((task) => task.driverEmployeeId || task.collectorEmployeeIds.length) ??
@@ -609,7 +645,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
 
             <section
               className={`${masterMode ? styles.masterTaskBoard : styles.panelGrid} ${
-                canCreateTasks && quickActionMode !== "report" ? styles.projectTaskBoardWithComposer : ""
+                canShowTaskCreateComposer ? styles.projectTaskBoardWithComposer : ""
               }`}
             >
               <section className={styles.panel}>
@@ -625,7 +661,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                     </h2>
                   </div>
 
-                  {canCreateTasks && quickActionMode !== "report" ? (
+                  {canShowTaskCreateComposer ? (
                     <div className={styles.mobileTaskCreateAction}>
                       <ProjectTaskCreateModal
                       {...taskCreateBaseProps}
@@ -636,6 +672,8 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                     <p>
                       {quickActionMode === "report"
                         ? "Доорх даалгаврын аль нэгийг сонгоод тайлангийн цонх руу орно."
+                        : isRoadAreaCleaning
+                          ? "Доорх даалгавар дээр дарахад гүйцэтгэлийн тайлангийн цонх шууд нээгдэнэ."
                         : masterMode
                         ? "Доорх даалгавар бүр дээр дарж тайлангийн урсгал руу орно."
                         : "Доорх даалгавар бүр дээр дарахад тухайн даалгаврын дэлгэрэнгүй нээгдэнэ."}
@@ -677,76 +715,99 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                 {visibleTasks.length ? (
                   <div className={styles.projectTaskFlowList}>
                     {visibleTasks.map((task, index) => {
-                      const taskHref =
-                        quickActionMode === "report"
-                          ? `${task.href}?composer=report&returnTo=${encodeURIComponent(
-                              `/projects/${project.id}?quickAction=report&returnTo=${encodeURIComponent(
-                                backHref,
-                              )}`,
-                            )}`
-                          : task.href;
                       const reviewHref = `${task.href}?returnTo=${encodeURIComponent(
                         `/projects/${project.id}`,
                       )}#task-reports`;
                       const canReviewTaskFromBoard =
-                        masterMode && task.reportCount > 0 && task.stageBucket !== "done";
+                        canReviewProjectReports && task.reportCount > 0 && task.stageBucket !== "done";
+                      const canReportFromBoard =
+                        (quickActionMode === "report" || isRoadAreaCleaning) &&
+                        canOpenQuickReport &&
+                        isRoadAreaCleaningTask(task) &&
+                        !task.reportsLocked &&
+                        task.stageBucket !== "review" &&
+                        task.stageBucket !== "done";
+                      const photoFirstReportTask =
+                        isPhotoFirstReportTask(task.operationType) || isRoadAreaCleaningTask(task);
+                      const taskCardContent = (
+                        <>
+                          <span className={styles.projectTaskNumber}>{index + 1}</span>
+                          <div className={styles.projectTaskMain}>
+                            <div className={styles.projectTaskTitleRow}>
+                              <div>
+                                <h3>{task.name}</h3>
+                                <p>
+                                  Хариуцсан ажилтан: {task.teamLeaderName}
+                                  {task.teamLeaderJobTitle ? ` · ${task.teamLeaderJobTitle}` : ""}
+                                </p>
+                                {task.assignees.length || task.vehicleName || task.driverName || task.collectorNames.length ? (
+                                  <p>
+                                    {task.assignees.length ? `Оноосон: ${task.assignees.join(", ")}` : ""}
+                                    {task.vehicleName ? `${task.assignees.length ? " · " : ""}Машин: ${task.vehicleName}` : ""}
+                                    {task.driverName ? `${task.assignees.length || task.vehicleName ? " · " : ""}Жолооч: ${task.driverName}` : ""}
+                                    {task.collectorNames.length
+                                      ? `${task.assignees.length || task.vehicleName || task.driverName ? " · " : ""}Ачигч: ${task.collectorNames.join(", ")}`
+                                      : ""}
+                                  </p>
+                                ) : null}
+                              </div>
+                            </div>
+
+                            <div className={styles.projectTaskMetaGrid}>
+                              <div className={styles.projectTaskStateCell}>
+                                <small>Төлөв</small>
+                                <div className={styles.projectTaskStateRow}>
+                                  <StagePill label={task.stageLabel} bucket={task.stageBucket} />
+                                  {task.reportCount ? (
+                                    <span className={styles.projectTaskReportCount}>
+                                      {task.reportCount} тайлан
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                              {task.quantitySummary ? (
+                                <div className={styles.projectTaskQuantityCell}>
+                                  <strong>Хэмжээ:</strong>
+                                  {task.quantitySummaryLines.map((line) => (
+                                    <span key={line}>{line}</span>
+                                  ))}
+                                </div>
+                              ) : null}
+                              <span>Хугацаа: {task.deadline}</span>
+                            </div>
+
+                            <div className={styles.projectTaskProgressTrack}>
+                              <span style={{ width: getProgressWidth(task.progress) }} />
+                            </div>
+                          </div>
+                        </>
+                      );
 
                       return (
                         <article
                           key={task.id}
                           className={`${styles.projectTaskFlowItem} ${taskCardToneClass(task.stageBucket)}`}
                         >
-                          <Link href={taskHref} className={styles.projectTaskFlowLink}>
-                          <span className={styles.projectTaskNumber}>{index + 1}</span>
-                          <div className={styles.projectTaskMain}>
-                            <div className={styles.projectTaskTitleRow}>
-                            <div>
-                              <h3>{task.name}</h3>
-                              <p>
-                                Хариуцсан ажилтан: {task.teamLeaderName}
-                                {task.teamLeaderJobTitle ? ` · ${task.teamLeaderJobTitle}` : ""}
-                              </p>
-                              {task.assignees.length || task.vehicleName || task.driverName || task.collectorNames.length ? (
-                                <p>
-                                  {task.assignees.length ? `Оноосон: ${task.assignees.join(", ")}` : ""}
-                                  {task.vehicleName ? `${task.assignees.length ? " · " : ""}Машин: ${task.vehicleName}` : ""}
-                                  {task.driverName ? `${task.assignees.length || task.vehicleName ? " · " : ""}Жолооч: ${task.driverName}` : ""}
-                                  {task.collectorNames.length
-                                    ? `${task.assignees.length || task.vehicleName || task.driverName ? " · " : ""}Ачигч: ${task.collectorNames.join(", ")}`
-                                    : ""}
-                                </p>
-                              ) : null}
-                            </div>
-                          </div>
-
-                          <div className={styles.projectTaskMetaGrid}>
-                            <div className={styles.projectTaskStateCell}>
-                              <small>Төлөв</small>
-                              <div className={styles.projectTaskStateRow}>
-                                <StagePill label={task.stageLabel} bucket={task.stageBucket} />
-                                {task.reportCount ? (
-                                  <span className={styles.projectTaskReportCount}>
-                                    {task.reportCount} тайлан
-                                  </span>
-                                ) : null}
-                              </div>
-                            </div>
-                            {task.quantitySummary ? (
-                              <div className={styles.projectTaskQuantityCell}>
-                                <strong>Хэмжээ:</strong>
-                                {task.quantitySummaryLines.map((line) => (
-                                  <span key={line}>{line}</span>
-                                ))}
-                              </div>
-                            ) : null}
-                            <span>Хугацаа: {task.deadline}</span>
-                          </div>
-
-                          <div className={styles.projectTaskProgressTrack}>
-                            <span style={{ width: getProgressWidth(task.progress) }} />
-                          </div>
-                          </div>
-                        </Link>
+                          {canReportFromBoard ? (
+                            <TaskReportModal
+                              action={createTaskReportAction}
+                              taskId={task.id}
+                              quantityOptional={task.quantityOptional}
+                              measurementUnit={task.measurementUnit}
+                              quantityLines={task.quantityLines}
+                              requireQuantity={Boolean(task.quantitySummary)}
+                              reportTextRequired={!photoFirstReportTask}
+                              simpleMobile={photoFirstReportTask}
+                              workItemName={task.name}
+                              returnTo={`/projects/${project.id}`}
+                              triggerClassName={`${styles.projectTaskFlowLink} ${styles.projectTaskFlowButton}`}
+                              triggerContent={taskCardContent}
+                            />
+                          ) : (
+                            <Link href={task.href} className={styles.projectTaskFlowLink}>
+                              {taskCardContent}
+                            </Link>
+                          )}
 
                         {canReviewTaskFromBoard ? (
                           <div className={styles.projectTaskFlowActions}>
@@ -766,7 +827,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                   </div>
                 )}
               </section>
-              {canCreateTasks && quickActionMode !== "report" ? (
+              {canShowTaskCreateComposer ? (
                 <aside className={styles.projectTaskComposerPanel}>
                   <div className={styles.projectTaskComposerHeader}>
                     <span className={styles.eyebrow}>Шинэ даалгавар</span>

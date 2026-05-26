@@ -12,7 +12,6 @@ import {
   requireSession,
 } from "@/lib/auth";
 import { getTodayDateKey, pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
-import { filterTasksForResponsibleMaster } from "@/lib/master-scope";
 import {
   createFieldStopIssue,
   markFieldStopArrived,
@@ -35,6 +34,10 @@ import { createProcurementRequest, uploadProcurementAttachment } from "@/lib/pro
 import { notifyPushEvent, type PushEventType } from "@/lib/push-notifications";
 import { createLocalRoadCleaningArea } from "@/lib/road-cleaning-area-store";
 import {
+  canReviewWorkspaceTaskReport,
+  loadTaskReportReviewAccess,
+} from "@/lib/task-report-review-access";
+import {
   createRoadCleaningWork,
   createSeasonalWorkspacePlan,
   createWorkspaceCrewTeam,
@@ -52,6 +55,7 @@ import {
   generateSeasonalWorkspaceExecution,
   loadGarbagePointOptions,
   loadGarbageVehicleOptions,
+  loadRoadCleaningMasterEmployeeForUser,
   loadTaskDetail,
   loadProjectDetail,
   loadWorkspaceTaskReportOwner,
@@ -167,36 +171,18 @@ async function assertCanReviewTaskAction(
   connectionOverrides: { login: string; password: string },
 ) {
   const task = await loadTaskDetail(taskId, connectionOverrides);
-  if (isMasterRole(session.role)) {
-    const snapshot = await loadMunicipalSnapshot(connectionOverrides);
-    const directoryTask = snapshot.taskDirectory.find((item) => item.id === taskId);
-    if (
-      !directoryTask ||
-      filterTasksForResponsibleMaster([directoryTask], snapshot.projects, session).length === 0
-    ) {
-      redirectWithMessage(
-        `/tasks/${taskId}`,
-        "error",
-        "Даалгавар олдсонгүй эсвэл танд харах эрх алга.",
-      );
-    }
-  }
-  const isAssignedToCurrentUser = task.assigneeUserIds.includes(session.uid);
   const hasOwnSubmittedReport = task.reports.some((report) => report.reporterId === session.uid);
-  const canInspectAssignedTransportTask = session.role === "transport_inspector";
-  const canReviewTask =
-    !hasOwnSubmittedReport &&
-    (isMasterRole(session.role) ||
-      (canInspectAssignedTransportTask &&
-        (hasCapability(session, "view_quality_center") || hasCapability(session, "create_tasks"))) ||
-      (!isAssignedToCurrentUser &&
-        (hasCapability(session, "view_quality_center") || hasCapability(session, "create_tasks"))));
+  const reviewAccess = await loadTaskReportReviewAccess(taskId, session.uid, connectionOverrides);
+  const canReviewTask = canReviewWorkspaceTaskReport(session, {
+    ...reviewAccess,
+    hasOwnSubmittedReport,
+  });
 
   if (!canReviewTask) {
     redirectWithMessage(
       `/tasks/${taskId}`,
       "error",
-      "Өөрт оноогдсон ажил эсвэл өөрийн илгээсэн тайланг өөрөө хянах боломжгүй.",
+      "Энэ тайланг зөвхөн ахлах мастер, хэлтсийн дарга эсвэл үйл ажиллагаа хариуцсан менежер хянана.",
     );
   }
 
@@ -209,6 +195,18 @@ function isGarbageTransportTaskOperation(operationType: string) {
 
 function isPhotoFirstReportOperation(operationType: string) {
   return isGarbageTransportTaskOperation(operationType) || operationType === "road_area_cleaning";
+}
+
+function isRoadAreaCleaningReportName(name: string) {
+  const normalizedName = name.trim().toLocaleLowerCase("mn-MN");
+  return (
+    normalizedName.includes("явган зам") ||
+    normalizedName.includes("замын нүх") ||
+    normalizedName.includes("хогийн сав") ||
+    normalizedName.includes("жижиг хог") ||
+    normalizedName.includes("шарилж") ||
+    normalizedName.includes("зарын хуудас")
+  );
 }
 
 function photoFirstReportDefaultText(operationType: string) {
@@ -253,6 +251,14 @@ function redirectWithMessage(
 ) {
   const separator = path.includes("?") ? "&" : "?";
   redirect(`${path}${separator}${kind}=${encodeURIComponent(message)}${hash}`);
+}
+
+function getSafeInternalReturnPath(value: FormDataEntryValue | null, fallback: string) {
+  const path = String(value ?? "").trim();
+  if (!path || !path.startsWith("/") || path.startsWith("//")) {
+    return fallback;
+  }
+  return path;
 }
 
 function getNumberValue(formData: FormData, key: string) {
@@ -938,13 +944,26 @@ export async function createProjectAction(formData: FormData) {
       );
     }
 
+    const currentRoadCleaningMaster = isMasterRole(session.role)
+      ? await loadRoadCleaningMasterEmployeeForUser(session.uid, connectionOverrides)
+      : null;
+    if (isMasterRole(session.role) && !currentRoadCleaningMaster) {
+      redirectWithMessage(
+        "/projects/new",
+        "error",
+        "Таны хэрэглэгчтэй холбогдсон зам талбайн мастер олдсонгүй. Админд хандаж ажилтны бүртгэлээ шалгуулна уу.",
+      );
+    }
+    const lockedRoadCleaningMasterId = currentRoadCleaningMaster?.id ?? null;
+
     try {
       let createdCount = 0;
       const assignedRoadCleaningUserIds = new Set<number>();
       for (const line of roadCleaningLines) {
         let cleaningAreaId = line.cleaningAreaId;
+        const effectiveMasterId = lockedRoadCleaningMasterId ?? line.masterId;
 
-        if (!line.masterId) {
+        if (!effectiveMasterId) {
           throw new Error("Хариуцсан мастерийг заавал сонгоно уу.");
         }
 
@@ -953,7 +972,7 @@ export async function createProjectAction(formData: FormData) {
             name: line.newAreaName,
             departmentId: effectiveDepartmentIdRaw ? Number(effectiveDepartmentIdRaw) : null,
             employeeId: line.employeeId,
-            masterId: line.masterId,
+            masterId: effectiveMasterId,
           });
           cleaningAreaId = localArea.id;
         }
@@ -968,7 +987,7 @@ export async function createProjectAction(formData: FormData) {
             areaName: line.areaName || line.newAreaName,
             departmentId: effectiveDepartmentIdRaw ? Number(effectiveDepartmentIdRaw) : null,
             employeeId: line.employeeId,
-            masterId: line.masterId,
+            masterId: effectiveMasterId,
             workDate: cleaningWorkDate,
           },
           connectionOverrides,
@@ -2490,6 +2509,7 @@ export async function createTaskReportAction(formData: FormData) {
   const imageFiles = imageUploads.map((upload) => upload.file);
   const audioFiles = getUploadedFiles(formData, "report_audios");
   const reportPath = taskId ? `/tasks/${taskId}` : "/tasks";
+  const reportReturnPath = getSafeInternalReturnPath(formData.get("report_return_to"), reportPath);
   let submitLockKey = "";
 
   if (!taskId) {
@@ -2497,33 +2517,25 @@ export async function createTaskReportAction(formData: FormData) {
   }
 
   if (!beforeImageFiles.length || !afterImageFiles.length) {
-    redirect(
-      `${reportPath}?error=${encodeURIComponent("Өмнөх зураг болон дараах зургийг заавал оруулна уу.")}`,
-    );
+    redirectWithMessage(reportReturnPath, "error", "Өмнөх зураг болон дараах зургийг заавал оруулна уу.");
   }
 
   if (imageFiles.some((file) => file.type && !file.type.startsWith("image/"))) {
-    redirect(
-      `${reportPath}?error=${encodeURIComponent("Зураг хэсэгт зөвхөн зургийн файл сонгоно уу.")}`,
-    );
+    redirectWithMessage(reportReturnPath, "error", "Зураг хэсэгт зөвхөн зургийн файл сонгоно уу.");
   }
 
   if (imageFiles.length > 10) {
-    redirect(`${reportPath}?error=${encodeURIComponent("Нэг тайланд дээд тал нь 10 зураг оруулна уу.")}`);
+    redirectWithMessage(reportReturnPath, "error", "Нэг тайланд дээд тал нь 10 зураг оруулна уу.");
   }
 
   if (audioFiles.some((file) => file.type && !file.type.startsWith("audio/"))) {
-    redirect(
-      `${reportPath}?error=${encodeURIComponent("Аудио хэсэгт зөвхөн аудио файл сонгоно уу.")}`,
-    );
+    redirectWithMessage(reportReturnPath, "error", "Аудио хэсэгт зөвхөн аудио файл сонгоно уу.");
   }
 
   try {
     const session = await requireSession();
     if (!hasCapability(session, "write_workspace_reports") || !canSubmitWorkspaceReport(session)) {
-      redirect(
-        `${reportPath}?error=${encodeURIComponent("Танд гүйцэтгэлийн тайлан илгээх эрх нээгдээгүй байна.")}`,
-      );
+      redirectWithMessage(reportReturnPath, "error", "Танд гүйцэтгэлийн тайлан илгээх эрх нээгдээгүй байна.");
     }
 
     const connectionOverrides = {
@@ -2531,20 +2543,22 @@ export async function createTaskReportAction(formData: FormData) {
       password: session.password,
     };
     const taskForReport = await timer.step("validation_task_date", () =>
-      assertWorkerTaskReportDateIsOpen(taskId, session, connectionOverrides, reportPath),
+      assertWorkerTaskReportDateIsOpen(taskId, session, connectionOverrides, reportReturnPath),
     );
-    const isPhotoFirstReport = isPhotoFirstReportOperation(taskForReport.operationType);
+    const isPhotoFirstReport =
+      isPhotoFirstReportOperation(taskForReport.operationType) ||
+      isRoadAreaCleaningReportName(workItemName || taskForReport.name);
     if (!isPhotoFirstReport && !reportText) {
-      redirect(`${reportPath}?error=${encodeURIComponent("Тайлангийн текстээ оруулна уу.")}`);
+      redirectWithMessage(reportReturnPath, "error", "Тайлангийн текстээ оруулна уу.");
     }
     const lock = acquireReportSubmitLock("create", taskId, submitToken);
     submitLockKey = lock.key;
     if (!lock.acquired) {
       timer.mark("duplicate_submit_blocked");
-      redirect(`${reportPath}?notice=${encodeURIComponent("Тайлан илгээгдэж байна. Давхар илгээх шаардлагагүй.")}`);
+      redirectWithMessage(reportReturnPath, "notice", "Тайлан илгээгдэж байна. Давхар илгээх шаардлагагүй.");
     }
     if (quantityRaw && (Number.isNaN(reportedQuantity) || reportedQuantity < 0)) {
-      redirect(`${reportPath}?error=${encodeURIComponent("Гүйцэтгэсэн хэмжээ буруу байна.")}`);
+      redirectWithMessage(reportReturnPath, "error", "Гүйцэтгэсэн хэмжээ буруу байна.");
     }
     timer.mark("validation_done", {
       imageCount: imageFiles.length,
@@ -2559,7 +2573,7 @@ export async function createTaskReportAction(formData: FormData) {
         }
         const quantity = Number(value);
         if (Number.isNaN(quantity) || quantity < 0) {
-          redirect(`${reportPath}?error=${encodeURIComponent("Гүйцэтгэсэн хэмжээ буруу байна.")}`);
+          redirectWithMessage(reportReturnPath, "error", "Гүйцэтгэсэн хэмжээ буруу байна.");
         }
         const unit = quantityLineUnits[index] || "нэгж";
         return `${index + 1}. ${unit} ${quantity}`.trim();
@@ -2635,20 +2649,23 @@ export async function createTaskReportAction(formData: FormData) {
     revalidatePath("/tasks");
     revalidatePath("/field");
     revalidatePath("/projects");
+    if (taskForReport.projectId) {
+      revalidatePath(`/projects/${taskForReport.projectId}`);
+    }
     revalidatePath("/notifications");
     revalidatePath("/review");
     revalidatePath("/reports");
     revalidatePath(`/tasks/${taskId}`);
     timer.mark("cache_invalidation_end");
     timer.mark("redirect_start");
-    redirect(`/tasks/${taskId}?notice=${encodeURIComponent("Тайлан илгээгдэж, хяналт руу орлоо.")}`);
+    redirectWithMessage(reportReturnPath, "notice", "Тайлан илгээгдэж, хяналт руу орлоо.");
   } catch (error) {
     if (isRedirectException(error)) {
       throw error;
     }
     releaseReportSubmitLock(submitLockKey);
     timer.mark("submit_error", { message: getErrorMessage(error) });
-    redirect(`${reportPath}?error=${encodeURIComponent(getErrorMessage(error))}`);
+    redirectWithMessage(reportReturnPath, "error", getErrorMessage(error));
   }
 }
 
@@ -2725,7 +2742,9 @@ export async function updateTaskReportAction(formData: FormData) {
       },
       reportPath,
     ));
-    const isPhotoFirstReport = isPhotoFirstReportOperation(taskForReport.operationType);
+    const isPhotoFirstReport =
+      isPhotoFirstReportOperation(taskForReport.operationType) ||
+      isRoadAreaCleaningReportName(taskForReport.name);
     if (!isPhotoFirstReport && !reportText) {
       redirect(`${reportPath}?error=${encodeURIComponent("Тайлан засахад шаардлагатай мэдээлэл дутуу байна.")}`);
     }

@@ -624,9 +624,13 @@ export type ProjectTaskCard = {
   measurementUnitId: number | null;
   completedQuantity: number;
   measurementUnit: string;
+  quantityOptional: boolean;
+  quantityLines: TaskQuantityLine[];
   quantitySummary: string;
   quantitySummaryLines: string[];
   description: string;
+  operationType: string;
+  reportsLocked: boolean;
   reportCount: number;
 };
 
@@ -672,6 +676,7 @@ export type ProjectDetail = {
 export type ProjectAccessSummary = {
   id: number;
   managerId: number | null;
+  departmentId: number | null;
   departmentName: string;
 };
 
@@ -1155,6 +1160,7 @@ function getProjectTaskQuantitySnapshot(task: TaskRecord, reports: ReportRecord[
     completedQuantity,
     progress,
     measurementUnit,
+    quantityLines: isPlaceholderQuantity ? [] : quantityLines,
     quantitySummary: displayQuantitySummary,
     quantitySummaryLines,
   };
@@ -1811,6 +1817,55 @@ export async function loadRoadCleaningEmployeeOptions(
     });
   } catch {
     return [] satisfies RoadCleaningEmployeeOption[];
+  }
+}
+
+export async function loadRoadCleaningMasterEmployeeForUser(
+  userId: number,
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<RoadCleaningEmployeeOption | null> {
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return null;
+  }
+
+  try {
+    const employees = await executeOdooKw<EmployeeUserRecord[]>(
+      "hr.employee",
+      "search_read",
+      [[["user_id", "=", userId], ["active", "=", true]]],
+      {
+        fields: [
+          "name",
+          "department_id",
+          "job_id",
+          "job_title",
+          "user_id",
+          "work_phone",
+          "mobile_phone",
+          "work_email",
+        ],
+        order: "department_id asc, name asc",
+        limit: 20,
+      },
+      connectionOverrides,
+    );
+    const masterEmployee = employees.find(isRoadCleaningMasterEmployeeRecord);
+    if (!masterEmployee) {
+      return null;
+    }
+
+    const phone = masterEmployee.mobile_phone || masterEmployee.work_phone || "";
+    return {
+      id: masterEmployee.id,
+      name: masterEmployee.name,
+      departmentId: relationId(masterEmployee.department_id),
+      departmentName: relationName(masterEmployee.department_id, ""),
+      jobTitle: getEmployeeJobTitle(masterEmployee),
+      phone: phone || masterEmployee.work_email || "",
+      userId: relationId(masterEmployee.user_id),
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -3646,6 +3701,7 @@ export async function loadProjectDetail(
       (userId) => taskAssigneeUserById.get(userId)?.name || `Хэрэглэгч #${userId}`,
     );
     const vehicleId = relationId(task.mfo_vehicle_id ?? false);
+    const taskOperationType = task.mfo_operation_type || project.mfo_operation_type || "";
     const driverEmployeeId = relationId(task.mfo_driver_employee_id ?? false);
     const driverName = relationName(task.mfo_driver_employee_id ?? false, "");
     const collectorEmployeeIds = task.mfo_collector_employee_ids ?? [];
@@ -3694,9 +3750,15 @@ export async function loadProjectDetail(
       measurementUnitId: relationId(task.ops_measurement_unit_id ?? false),
       completedQuantity: quantitySnapshot.completedQuantity,
       measurementUnit: quantitySnapshot.measurementUnit,
+      quantityOptional:
+        taskOperationType === "garbage" ||
+        taskOperationType === "garbage_seasonal",
+      quantityLines: quantitySnapshot.quantityLines,
       quantitySummary: quantitySnapshot.quantitySummary,
       quantitySummaryLines: quantitySnapshot.quantitySummaryLines,
       description: htmlToPlainText(task.description),
+      operationType: taskOperationType,
+      reportsLocked: Boolean(task.ops_reports_locked),
       reportCount: taskReports.length,
     };
   }).sort((left, right) => {
@@ -3768,6 +3830,7 @@ export async function loadProjectAccessSummary(
   return {
     id: project.id,
     managerId: relationId(project.user_id),
+    departmentId: relationId(project.ops_department_id),
     departmentName: relationName(project.ops_department_id, ""),
   };
 }
@@ -5964,15 +6027,6 @@ export async function notifyWorkspaceTaskReportReviewers(
     const project = projects[0] ?? null;
     const departmentId = project ? relationId(project.ops_department_id) : null;
     const recipientIds = new Set<number>();
-    const teamLeaderId = relationId(task.ops_team_leader_id);
-    const projectManagerId = project ? relationId(project.user_id) : null;
-
-    if (teamLeaderId) {
-      recipientIds.add(teamLeaderId);
-    }
-    if (projectManagerId) {
-      recipientIds.add(projectManagerId);
-    }
 
     const roleUsers = await executeOdooKw<UserRecord[]>(
       "res.users",
@@ -5980,7 +6034,7 @@ export async function notifyWorkspaceTaskReportReviewers(
       [
         [
           ["share", "=", false],
-          ["ops_user_type", "in", ["director", "general_manager", "project_manager", "senior_master", "team_leader"]],
+          ["ops_user_type", "in", ["general_manager", "project_manager", "senior_master"]],
         ],
       ],
       {
@@ -6014,19 +6068,16 @@ export async function notifyWorkspaceTaskReportReviewers(
         .map((employee) => relationId(employee.user_id))
         .filter((id): id is number => Boolean(id)),
     );
-    const assignedUserIds = new Set(task.user_ids ?? []);
 
     for (const user of roleUsers) {
       const role = user.ops_user_type || "";
-      const isExecutiveReviewer = role === "director" || role === "general_manager";
+      const isOperationsManagerReviewer = role === "general_manager";
       const isDepartmentReviewer =
         role === "project_manager" && (!departmentId || departmentUserIds.has(user.id));
       const isSeniorMasterReviewer =
         role === "senior_master" && (!departmentId || departmentUserIds.has(user.id));
-      const isMasterReviewer =
-        role === "team_leader" && (user.id === teamLeaderId || assignedUserIds.has(user.id));
 
-      if (isExecutiveReviewer || isDepartmentReviewer || isSeniorMasterReviewer || isMasterReviewer) {
+      if (isOperationsManagerReviewer || isDepartmentReviewer || isSeniorMasterReviewer) {
         recipientIds.add(user.id);
       }
     }

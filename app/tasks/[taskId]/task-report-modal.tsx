@@ -51,6 +51,7 @@ type Props = {
   reportTextRequired?: boolean;
   simpleMobile?: boolean;
   workItemName?: string;
+  returnTo?: string;
   existingReport?: ExistingTaskReport;
   triggerClassName?: string;
   triggerContent?: ReactNode;
@@ -813,6 +814,7 @@ export function TaskReportModal({
   reportTextRequired = true,
   simpleMobile = false,
   workItemName,
+  returnTo,
   existingReport,
   triggerClassName,
   triggerContent,
@@ -881,9 +883,7 @@ export function TaskReportModal({
     : [];
   const modalTitle = canEditExistingReport
     ? "Даалгаврын тайлан засах"
-    : simpleMobile
-      ? "Даалгаврын тайлан илгээх"
-      : "Тайлан оруулах";
+    : "Даалгаврын тайлан илгээх";
   const formAction = canEditExistingReport && updateAction ? updateAction : action;
   const returnReasonText = existingReport?.rejectionReason?.trim() || "";
   const handleReportSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -962,6 +962,7 @@ export function TaskReportModal({
                 <input type="hidden" name="task_id" value={taskId} />
                 {existingReport ? <input type="hidden" name="report_id" value={existingReport.id} /> : null}
                 <input type="hidden" name="report_submit_token" value={submitToken} />
+                {returnTo ? <input type="hidden" name="report_return_to" value={returnTo} /> : null}
 
                 <div className={styles.modalBodyGrid}>
                   <section className={styles.modalSectionCard}>
@@ -1082,7 +1083,7 @@ export function TaskReportModal({
                     forcePending={isSubmitting}
                     pendingLabel={canEditExistingReport ? "Хадгалж байна..." : "Илгээж байна..."}
                   >
-                    {canEditExistingReport ? "Хадгалах" : simpleMobile ? "Илгээх" : "Тайлан илгээх"}
+                    {canEditExistingReport ? "Хадгалах" : "Илгээх"}
                   </PendingSubmitButton>
                   {canEditExistingReport && deleteAction ? (
                     <PendingSubmitButton

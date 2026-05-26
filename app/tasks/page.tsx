@@ -51,12 +51,14 @@ import styles from "./tasks.module.css";
 import { TaskReportModal } from "./[taskId]/task-report-modal";
 
 type FilterKey = "all" | "working" | "review" | "problem" | "verified";
+type MasterTabKey = "today" | "review";
 type QuickActionMode = "none" | "report";
 
 type PageProps = {
   searchParams?: Promise<{
     department?: string | string[];
     filter?: string | string[];
+    tab?: string | string[];
     quickAction?: string | string[];
     work?: string | string[];
     workId?: string | string[];
@@ -101,6 +103,10 @@ function getParam(value?: string | string[]) {
 
 function normalizeFilter(value: string): FilterKey {
   return FILTERS.some((item) => item.key === value) ? (value as FilterKey) : "all";
+}
+
+function normalizeMasterTab(value: string, seniorMasterMode: boolean): MasterTabKey {
+  return seniorMasterMode && value === "review" ? "review" : "today";
 }
 
 function normalizeQuickAction(value: string): QuickActionMode {
@@ -454,6 +460,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const workerMode = isWorkerOnly(session);
   const masterMode = isMasterRole(session.role);
   const seniorMasterMode = session.role === "senior_master";
+  const masterTab = normalizeMasterTab(getParam(params.tab), seniorMasterMode);
   const inspectorMobileMode =
     !workerMode &&
     !masterMode &&
@@ -592,6 +599,13 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const personalMasterTodayProjects = masterMode
     ? buildTodayProjectSummaries(personalMasterTodayTasks, personalMasterProjects)
     : [];
+  const seniorMasterReviewTasks = seniorMasterMode
+    ? filterByDepartment(snapshot.reviewQueue, scopedDepartmentName)
+    : [];
+  const seniorMasterReviewProjectCount = new Set(
+    seniorMasterReviewTasks.map((task) => task.projectId ?? task.projectName),
+  ).size;
+  const showingMasterReviewTab = seniorMasterMode && masterTab === "review";
 
   const selectedDepartment =
     !workerMode && !masterMode && !departmentScopedMode && requestedDepartment && requestedDepartment !== "all"
@@ -899,9 +913,11 @@ export default async function TasksPage({ searchParams }: PageProps) {
           >
             {!workerMode && !inspectorMobileMode ? (
               <WorkspaceHeader
-                title={masterMode ? "Өнөөдрийн ажил" : "Даалгавар"}
+                title={showingMasterReviewTab ? "Хянах ажил" : masterMode ? "Өнөөдрийн ажил" : "Даалгавар"}
                 subtitle={
-                  masterMode
+                  showingMasterReviewTab
+                    ? "Хяналт хүлээж буй тайлантай даалгаврууд"
+                    : masterMode
                     ? "Өнөөдөр явах ажил, төслийн урсгал"
                     : workerMode
                       ? "Танд оноогдсон даалгаврын жагсаалт"
@@ -1224,6 +1240,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
                    <h1>
                      {workerMode
                        ? "Надад оноогдсон даалгавар"
+                       : showingMasterReviewTab
+                        ? "Хянах ажил"
                        : masterMode
                         ? "Өнөөдрийн ажил"
                         : "Бүх даалгавар"}
@@ -1231,6 +1249,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
                    <p>
                      {workerMode
                        ? "Зөвхөн танд хамаарах даалгавруудыг эндээс харна. Төлөвөөр нь хурдан шүүж, дэлгэрэнгүй рүү шууд орж ажлаа үргэлжлүүлнэ."
+                       : showingMasterReviewTab
+                         ? "Ахлах мастерийн нэгжид хяналт хүлээж буй тайлантай ажлууд энд харагдана."
                        : masterMode
                          ? masterFlowDescription
                         : "Бүх даалгаврыг алба нэгж, ажил, төлөвөөр нь нэг дороос харуулна. Асуудалтай болон хяналт хүлээж буй даалгавруудыг эхэнд нь ялгаж, дэлгэрэнгүй рүү шууд нээнэ."}
@@ -1325,14 +1345,18 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 <span>
                   {workerMode
                     ? "Надад оноогдсон даалгавар"
+                    : showingMasterReviewTab
+                      ? "Хянах ажил"
                     : masterMode
                       ? "Өнөөдөр явах ажил"
                       : "Нийт даалгавар"}
                 </span>
-                <strong>{counts.all}</strong>
+                <strong>{showingMasterReviewTab ? seniorMasterReviewTasks.length : counts.all}</strong>
                 <small>
                   {workerMode
                     ? "Тухайн хэрэглэгчид оноогдсон нийт даалгавар"
+                    : showingMasterReviewTab
+                      ? "Хяналт хүлээж буй тайлантай даалгавар"
                     : masterMode
                       ? "Өнөөдөр эхлэх эсвэл үргэлжлэх ажил, төслийн тоо"
                     : "Бүх даалгавар"}
@@ -1342,14 +1366,24 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 <span>
                   {workerMode
                     ? "Холбогдсон ажил"
+                    : showingMasterReviewTab
+                      ? "Холбогдсон ажил"
                     : masterMode
                       ? "Өнөөдрийн даалгавар"
                       : "Нийт ажил"}
                 </span>
-                <strong>{masterMode ? masterTodayTasks.length : scopedProjects.length}</strong>
+                <strong>
+                  {showingMasterReviewTab
+                    ? seniorMasterReviewProjectCount
+                    : masterMode
+                      ? masterTodayTasks.length
+                      : scopedProjects.length}
+                </strong>
                 <small>
                   {workerMode
                     ? "Эдгээр ажилд таны даалгаврууд багтаж байна"
+                    : showingMasterReviewTab
+                      ? "Хяналт хүлээж буй тайлантай холбогдсон ажил"
                     : masterMode
                       ? "Өнөөдөр эдгээр ажилд харагдах нийт даалгавар"
                       : "Энэ шүүлтэд хамаарах ажлууд"}
@@ -1361,7 +1395,34 @@ export default async function TasksPage({ searchParams }: PageProps) {
             {!workerMode && !inspectorMobileMode ? (
             <section className={styles.filterPanel} aria-label="Ажлын төлөвөөр шүүх">
               <div className={styles.filterScroller}>
-                {FILTERS.map((filter) => {
+                {seniorMasterMode ? (
+                  ([
+                    { key: "today", label: "Өнөөдрийн ажил", count: masterTodayProjects.length },
+                    { key: "review", label: "Хянах ажил", count: seniorMasterReviewTasks.length },
+                  ] satisfies Array<{ key: MasterTabKey; label: string; count: number }>).map((tab) => {
+                    const params = new URLSearchParams();
+                    if (selectedDepartmentParam) {
+                      params.set("department", selectedDepartmentParam);
+                    }
+                    if (tab.key === "review") {
+                      params.set("tab", "review");
+                    }
+                    const href = params.toString() ? `/tasks?${params.toString()}` : "/tasks";
+
+                    return (
+                      <Link
+                        key={tab.key}
+                        href={href}
+                        className={`${styles.filterChip} ${
+                          masterTab === tab.key ? styles.filterChipActive : ""
+                        }`}
+                      >
+                        <span>{tab.label}</span>
+                        <strong>{tab.count}</strong>
+                      </Link>
+                    );
+                  })
+                ) : FILTERS.map((filter) => {
                   const params = new URLSearchParams();
                   if (!workerMode && selectedDepartmentParam) {
                     params.set("department", selectedDepartmentParam);
@@ -1519,6 +1580,57 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 )}
               </section>
             ) : masterMode ? (
+              showingMasterReviewTab ? (
+                <section className={styles.taskSection}>
+                  <div className={styles.sectionHeader}>
+                    <div>
+                      <span className={styles.filterKicker}>Ахлах мастерын хяналт</span>
+                      <h2>Хянах ажил</h2>
+                      <p>Тайлан илгээгдэж, хяналт хүлээж буй даалгаврууд.</p>
+                    </div>
+                  </div>
+
+                  {seniorMasterReviewTasks.length ? (
+                    <div className={styles.taskCardList}>
+                      {seniorMasterReviewTasks.map((task) => (
+                        <Link
+                          key={`review-${task.id}`}
+                          href={`/tasks/${task.id}?returnTo=${encodeURIComponent("/tasks?tab=review")}#task-reports`}
+                          className={`${styles.taskCard} ${styles.projectCardLink}`}
+                        >
+                          <div className={styles.taskCardTop}>
+                            <div className={styles.taskIdentity}>
+                              <span>{task.projectName}</span>
+                              <strong>{task.name}</strong>
+                            </div>
+                            <span className={styles.statusChip}>{task.stageLabel || "Хянах"}</span>
+                          </div>
+                          <div className={styles.taskInfoGrid}>
+                            <span className={styles.taskInfoItem}>
+                              <span>Хугацаа</span>
+                              <strong>{task.deadline}</strong>
+                            </span>
+                            <span className={styles.taskInfoItem}>
+                              <span>Хариуцагч</span>
+                              <strong>{task.leaderName || "Сонгоогүй"}</strong>
+                            </span>
+                            <span className={styles.taskInfoItem}>
+                              <span>Явц</span>
+                              <strong>{task.progress}%</strong>
+                            </span>
+                          </div>
+                          <span className={styles.projectOpenLabel}>Тайлан шалгах</span>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.emptyState}>
+                      <h3>Хянах ажил алга</h3>
+                      <p>Одоогоор танай нэгжид хяналт хүлээж буй тайлантай даалгавар алга.</p>
+                    </div>
+                  )}
+                </section>
+              ) : (
               <>
                 <section className={styles.taskSection}>
                   <div className={styles.sectionHeader}>
@@ -1614,6 +1726,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   )}
                 </section>
               </>
+              )
             ) : (
               <section className={styles.taskSection}>
                 <div className={styles.sectionHeader}>

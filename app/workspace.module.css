@@ -2789,6 +2789,19 @@
   text-decoration: none;
 }
 
+.projectTaskFlowButton {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.projectTaskFlowButton:hover h3 {
+  color: var(--brand-800);
+}
+
 .projectTaskNumber {
   display: inline-flex;
   align-items: center;

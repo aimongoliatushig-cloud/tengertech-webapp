@@ -31,7 +31,16 @@ import {
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurement";
-import { loadProjectAccessSummary, loadProjectTaskEditOptions, loadTaskDetail } from "@/lib/workspace";
+import {
+  canReviewWorkspaceTaskReport,
+  loadTaskReportReviewAccess,
+} from "@/lib/task-report-review-access";
+import {
+  loadProjectAccessSummary,
+  loadProjectTaskEditOptions,
+  loadTaskDetail,
+  type ProjectAccessSummary,
+} from "@/lib/workspace";
 
 import { ProjectTaskEditModal } from "@/app/projects/[projectId]/project-task-edit-modal";
 import styles from "./task-detail.module.css";
@@ -260,12 +269,14 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
     );
   }
 
+  let projectAccess: ProjectAccessSummary | null = null;
+
   if (workerMode) {
     if (!task.assigneeUserIds.includes(session.uid)) {
       redirect("/tasks");
     }
   } else if (masterMode || scopedDepartmentName) {
-    const projectAccess = task.projectId
+    projectAccess = task.projectId
       ? await loadProjectAccessSummary(task.projectId, connectionOverrides).catch(() => null)
       : null;
     const isAssignedToSession = task.assigneeUserIds.includes(session.uid);
@@ -295,7 +306,16 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const hasSubmittedReport = task.reports.length > 0;
   const isAssignedToCurrentUser = task.assigneeUserIds.includes(session.uid);
   const hasOwnSubmittedReport = task.reports.some((report) => report.reporterId === session.uid);
-  const canInspectAssignedTransportTask = session.role === "transport_inspector";
+  const reviewAccess = !workerMode
+    ? await loadTaskReportReviewAccess(task.id, session.uid, connectionOverrides).catch(() => ({
+        projectDepartmentId: projectAccess?.departmentId ?? null,
+        userDepartmentId: null,
+      }))
+    : { projectDepartmentId: null, userDepartmentId: null };
+  const canReviewSubmittedReport = canReviewWorkspaceTaskReport(session, {
+    ...reviewAccess,
+    hasOwnSubmittedReport,
+  });
   const isGarbageTransportTask =
     task.operationType === "garbage" || task.operationType === "garbage_seasonal";
   const photoFirstReportTask = isPhotoFirstReportTask(task.operationType);
@@ -317,13 +337,10 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
     : "Нотолгоо хүлээгдэж байна";
   const canManageReview =
     !workerMode &&
-    !hasOwnSubmittedReport &&
     (!photoFirstReportTask || !isAssignedToCurrentUser) &&
-    (masterMode ||
-      (canInspectAssignedTransportTask && (canViewQualityCenter || canCreateTasks)) ||
-      (!isAssignedToCurrentUser && (canViewQualityCenter || canCreateTasks)));
+    canReviewSubmittedReport;
   const reviewFocusedMode =
-    !workerMode && hasSubmittedReport && (masterMode || canViewQualityCenter || canCreateTasks);
+    !workerMode && hasSubmittedReport && canReviewSubmittedReport;
   const canMarkDone =
     canManageReview && !["done"].includes(task.stageBucket) && (task.canMarkDone || hasSubmittedReport);
   const canSubmitForReview =

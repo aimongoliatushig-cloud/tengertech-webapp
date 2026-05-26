@@ -581,7 +581,8 @@ export function AppMenu({
       flags.municipalDepartmentHead ||
       departmentManagerMode),
   );
-  const canCreate = baseCanCreate && !isGarbageDepartmentHead && !hrFocusedMode;
+  const canCreate =
+    baseCanCreate && !masterMode && !isGarbageDepartmentHead && !hrFocusedMode;
 
   const visibleDepartmentGroups = hrFocusedMode
     ? []
@@ -957,6 +958,15 @@ export function AppMenu({
     ] as MenuItem[]
   ).filter((item) => !["auto-base", "garbage-settings"].includes(item.key));
 
+  const masterItems: MenuItem[] = [
+    {
+      key: "projects",
+      href: scopedDepartmentWorkHref,
+      label: "Ажил",
+      icon: ListChecks,
+    },
+  ];
+
   const transportInspectorItems: MenuItem[] = [
     {
       key: "dashboard",
@@ -988,7 +998,9 @@ export function AppMenu({
   ];
 
   const items = (
-    reportOnlyMode
+    masterMode
+      ? masterItems
+      : reportOnlyMode
       ? reportOnlyItems
       : transportInspectorMode
         ? transportInspectorItems
@@ -1128,6 +1140,14 @@ export function AppMenu({
         pathname === "/projects" && searchParams.get("category") === "overdue"
       );
     }
+    if (masterMode && item.key === "projects") {
+      return (
+        active === "dashboard" ||
+        active === "projects" ||
+        pathname === "/projects" ||
+        pathname.startsWith("/projects/")
+      );
+    }
     if (item.key === active) {
       return true;
     }
@@ -1154,7 +1174,8 @@ export function AppMenu({
   }
 
   const activeItem = items.find(isItemActive) ?? items[0];
-  const mobilePrimaryAction: MenuItem | null = canCreateProject || canCreateTasks
+  const mobilePrimaryAction: MenuItem | null =
+    !masterMode && (canCreateProject || canCreateTasks)
     ? {
         key: "new-project",
         href: "/create",
@@ -1175,6 +1196,25 @@ export function AppMenu({
     label: "Профайл",
     icon: Settings,
   };
+  const masterMobileDockItems: MenuItem[] = [
+    {
+      key: "projects",
+      href: scopedDepartmentWorkHref,
+      label: "Ажил",
+      icon: ListChecks,
+    },
+    ...(canCreateProject || canCreateTasks
+      ? [
+          {
+            key: "new-project",
+            href: "/create",
+            label: "Ажил нэмэх",
+            icon: PlusCircle,
+          },
+        ]
+      : []),
+    mobileProfileAction,
+  ];
 
   const normalizeMobilePrimaryItem = (item: MenuItem | undefined) => {
     if (!item) {
@@ -1217,7 +1257,9 @@ export function AppMenu({
       (item): item is MenuItem => Boolean(item),
     );
   };
-  const rawMobileDockItems: MenuItem[] = transportInspectorMode
+  const rawMobileDockItems: MenuItem[] = masterMode
+    ? masterItems
+    : transportInspectorMode
     ? [
         { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },
         {
@@ -1558,7 +1600,9 @@ export function AppMenu({
                               },
                         ]),
                   ];
-  const visibleMobileDockItems = buildMobileDockItems(rawMobileDockItems);
+  const visibleMobileDockItems = masterMode
+    ? masterMobileDockItems
+    : buildMobileDockItems(rawMobileDockItems);
 
   const menuList = (
     <nav className={styles.menuList} aria-label="Үндсэн цэс">

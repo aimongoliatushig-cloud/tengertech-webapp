@@ -1374,35 +1374,45 @@
   z-index: 1000;
   display: grid;
   place-items: center;
-  padding: 24px 16px;
-  background: rgba(17, 24, 24, 0.48);
-  backdrop-filter: blur(8px);
+  padding: 36px 24px;
+  background: rgba(20, 29, 25, 0.42);
+  backdrop-filter: blur(7px);
 }
 
 .modalDialog {
   width: min(1180px, calc(100vw - 32px));
-  height: min(92vh, 920px);
-  max-height: min(92vh, 920px);
+  height: min(86vh, 844px);
+  max-height: min(86vh, 844px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  gap: 0;
+  padding: 22px;
+  border: 1px solid rgba(74, 154, 93, 0.16);
+  border-radius: 8px;
+  background: rgba(243, 247, 243, 0.97);
+  backdrop-filter: none;
+  box-shadow: 0 28px 80px rgba(12, 28, 18, 0.22);
 }
 
 .modalForm {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  gap: 18px;
+  gap: 16px;
   flex: 1;
   min-height: 0;
 }
 
 .modalBodyGrid {
   display: grid;
-  grid-template-columns: minmax(300px, 0.74fr) minmax(560px, 1.26fr);
+  grid-template-columns: minmax(340px, 0.76fr) minmax(580px, 1.24fr);
   gap: 18px;
+  align-items: stretch;
   overflow-y: auto;
   min-height: 0;
-  padding: 0 4px 88px 0;
+  padding: 0 4px 0 0;
+  scrollbar-color: rgba(43, 66, 51, 0.55) transparent;
+  scrollbar-width: thin;
 }
 
 .modalSectionCard,
@@ -1414,14 +1424,16 @@
 
 .modalSectionCard {
   align-content: start;
+  min-height: 100%;
   padding: 20px;
-  border-radius: var(--ds-radius-card);
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.94);
   border: 1px solid rgba(74, 154, 93, 0.12);
 }
 
 .attachmentSectionCard {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .attachmentSectionCard .modalSectionHeading,
@@ -1434,7 +1446,7 @@
   align-items: start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 14px;
+  margin-bottom: 20px;
 }
 
 .modalTitleGroup,
@@ -1487,13 +1499,14 @@
 .modalCloseButton {
   border: 1px solid rgba(74, 154, 93, 0.16);
   background: rgba(255, 255, 255, 0.94);
-  color: var(--brand-900);
+  color: var(--ink-900);
 }
 
 .modalActions {
   display: flex;
   gap: 12px;
-  padding-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(74, 154, 93, 0.1);
 }
 
 .reportMediaField,
@@ -1771,6 +1784,12 @@
 .modalActions .actionButton,
 .modalSecondaryButton {
   flex: 1;
+}
+
+.modalActions .actionButton {
+  border: 1px solid rgba(74, 154, 93, 0.14);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--ink-900);
 }
 
 .modalSecondaryButton {

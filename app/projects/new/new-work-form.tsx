@@ -105,6 +105,8 @@ type Props = {
   initialDepartmentId?: string;
   initialGarbageVehicleId?: string;
   initialGarbageShiftDate?: string;
+  currentUserId?: number;
+  lockRoadCleaningMasterToCurrentUser?: boolean;
 };
 
 function SubmitWorkButton({ label }: { label: string }) {
@@ -270,6 +272,8 @@ export function NewWorkForm({
   initialDepartmentId,
   initialGarbageVehicleId,
   initialGarbageShiftDate,
+  currentUserId,
+  lockRoadCleaningMasterToCurrentUser = false,
 }: Props) {
   const defaultDepartmentId = lockedDepartmentId ?? initialDepartmentId ?? "";
   const [departmentId, setDepartmentId] = useState(defaultDepartmentId);
@@ -748,8 +752,41 @@ export function NewWorkForm({
       return left.name.localeCompare(right.name, "mn");
     });
   }, [roadCleaningEmployeeOptions, selectedDepartment]);
+  const currentRoadCleaningMaster = useMemo(() => {
+    if (!lockRoadCleaningMasterToCurrentUser || !currentUserId) {
+      return null;
+    }
+
+    return (
+      roadCleaningMasterChoices.find((employee) => employee.userId === currentUserId) ??
+      roadCleaningEmployeeOptions.find(
+        (employee) => employee.userId === currentUserId && isRoadCleaningMasterEmployee(employee),
+      ) ??
+      null
+    );
+  }, [
+    currentUserId,
+    lockRoadCleaningMasterToCurrentUser,
+    roadCleaningEmployeeOptions,
+    roadCleaningMasterChoices,
+  ]);
+  const lockedCleaningMasterId = currentRoadCleaningMaster
+    ? String(currentRoadCleaningMaster.id)
+    : "";
+  const effectiveCleaningMasterId = lockedCleaningMasterId || cleaningMasterId;
+
+  useEffect(() => {
+    if (lockedCleaningMasterId && cleaningMasterId !== lockedCleaningMasterId) {
+      setCleaningMasterId(lockedCleaningMasterId);
+    }
+  }, [cleaningMasterId, lockedCleaningMasterId]);
+
   const selectedCleaningMaster =
-    roadCleaningMasterChoices.find((employee) => String(employee.id) === cleaningMasterId) ?? null;
+    roadCleaningMasterChoices.find(
+      (employee) => String(employee.id) === effectiveCleaningMasterId,
+    ) ??
+    currentRoadCleaningMaster ??
+    null;
   const roadCleaningReadyLineCount = roadCleaningLines.filter((line) => {
     const hasArea = Boolean(line.cleaningAreaId || line.newAreaName.trim());
     return hasArea && Boolean(line.employeeId);
@@ -772,7 +809,7 @@ export function NewWorkForm({
     key: keyof Omit<RoadCleaningLineDraft, "id">,
     value: string | boolean,
   ) => {
-    if (key === "cleaningAreaId" && typeof value === "string" && !cleaningMasterId) {
+    if (key === "cleaningAreaId" && typeof value === "string" && !effectiveCleaningMasterId) {
       const nextArea =
         roadCleaningAreaChoices.find((option) => String(option.id) === value) ?? null;
       if (nextArea?.masterId) {
@@ -827,7 +864,7 @@ export function NewWorkForm({
     setSavingRoadCleaningAreaId(targetId);
     try {
       const selectedMaster = roadCleaningEmployeeOptions.find(
-        (employee) => String(employee.id) === cleaningMasterId,
+        (employee) => String(employee.id) === effectiveCleaningMasterId,
       );
       const selectedEmployee = roadCleaningEmployeeOptions.find(
         (employee) => String(employee.id) === targetLine.employeeId,
@@ -839,7 +876,7 @@ export function NewWorkForm({
           name: areaName,
           departmentId: selectedDepartment?.id ?? null,
           departmentName: selectedDepartment?.name ?? selectedDepartment?.label ?? "",
-          masterId: cleaningMasterId ? Number(cleaningMasterId) : null,
+          masterId: effectiveCleaningMasterId ? Number(effectiveCleaningMasterId) : null,
           masterName: selectedMaster?.name ?? "",
           employeeId: targetLine.employeeId ? Number(targetLine.employeeId) : null,
           employeeName: selectedEmployee?.name ?? "",
@@ -1907,7 +1944,7 @@ export function NewWorkForm({
                 <CalendarDays aria-hidden />
                 <span>{formatDateLabel(cleaningWorkDate)}</span>
               </div>
-              <div className={cleaningMasterId ? styles.roadCleaningProgressDone : ""}>
+              <div className={effectiveCleaningMasterId ? styles.roadCleaningProgressDone : ""}>
                 <UserCheck aria-hidden />
                 <span>{selectedCleaningMaster?.name || "Мастер сонгоно"}</span>
               </div>
@@ -1939,22 +1976,36 @@ export function NewWorkForm({
               />
             </div>
             <div className={styles.field}>
-              <label htmlFor="cleaning_master_id">Хариуцсан мастер</label>
-              <select
-                id="cleaning_master_id"
-                value={cleaningMasterId}
-                onChange={(event) => setCleaningMasterId(event.target.value)}
-                required={isRoadAreaCleaning}
-              >
-                <option value="">Мастер сонгоно уу</option>
-                {roadCleaningMasterChoices.map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    {[employee.name, roadCleaningMasterRoleLabel(employee), employee.departmentName]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </option>
-                ))}
-              </select>
+              <label htmlFor={currentRoadCleaningMaster ? undefined : "cleaning_master_id"}>
+                Хариуцсан мастер
+              </label>
+              {currentRoadCleaningMaster ? (
+                <div className={styles.lockedFieldValue}>
+                  {[
+                    currentRoadCleaningMaster.name,
+                    roadCleaningMasterRoleLabel(currentRoadCleaningMaster),
+                    currentRoadCleaningMaster.departmentName,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </div>
+              ) : (
+                <select
+                  id="cleaning_master_id"
+                  value={cleaningMasterId}
+                  onChange={(event) => setCleaningMasterId(event.target.value)}
+                  required={isRoadAreaCleaning}
+                >
+                  <option value="">Мастер сонгоно уу</option>
+                  {roadCleaningMasterChoices.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {[employee.name, roadCleaningMasterRoleLabel(employee), employee.departmentName]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 
@@ -2119,8 +2170,8 @@ export function NewWorkForm({
                   sequence: index + 1,
                   cleaningAreaId: line.cleaningAreaId ? Number(line.cleaningAreaId) : null,
                   employeeId: line.employeeId ? Number(line.employeeId) : null,
-                  masterId: cleaningMasterId
-                    ? Number(cleaningMasterId)
+                  masterId: effectiveCleaningMasterId
+                    ? Number(effectiveCleaningMasterId)
                     : (getRoadCleaningArea(line)?.masterId ?? null),
                   areaName: getRoadCleaningArea(line)?.name || line.newAreaName.trim(),
                   newAreaName: line.newAreaName.trim(),
