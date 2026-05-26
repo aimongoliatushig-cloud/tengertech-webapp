@@ -207,6 +207,14 @@ function isGarbageTransportTaskOperation(operationType: string) {
   return operationType === "garbage" || operationType === "garbage_seasonal";
 }
 
+function isPhotoFirstReportOperation(operationType: string) {
+  return isGarbageTransportTaskOperation(operationType) || operationType === "road_area_cleaning";
+}
+
+function photoFirstReportDefaultText(operationType: string) {
+  return operationType === "road_area_cleaning" ? "Зам талбайн цэвэрлэгээний тайлан" : "Хог тээврийн тайлан";
+}
+
 function getConnectionOverrides() {
   return requireSession().then((session) => ({
     login: session.login,
@@ -2525,8 +2533,8 @@ export async function createTaskReportAction(formData: FormData) {
     const taskForReport = await timer.step("validation_task_date", () =>
       assertWorkerTaskReportDateIsOpen(taskId, session, connectionOverrides, reportPath),
     );
-    const isGarbageReport = isGarbageTransportTaskOperation(taskForReport.operationType);
-    if (!isGarbageReport && !reportText) {
+    const isPhotoFirstReport = isPhotoFirstReportOperation(taskForReport.operationType);
+    if (!isPhotoFirstReport && !reportText) {
       redirect(`${reportPath}?error=${encodeURIComponent("Тайлангийн текстээ оруулна уу.")}`);
     }
     const lock = acquireReportSubmitLock("create", taskId, submitToken);
@@ -2562,15 +2570,15 @@ export async function createTaskReportAction(formData: FormData) {
       .find((value) => Number.isFinite(value) && value > 0);
     const odooReportedQuantity =
       firstLineQuantity ?? (quantityRaw && reportedQuantity > 0 ? reportedQuantity : 1);
-    const effectiveWorkItemName = workItemName || (isGarbageReport ? taskForReport.name : "");
+    const effectiveWorkItemName = workItemName || (isPhotoFirstReport ? taskForReport.name : "");
     const effectiveReportText = [
       effectiveWorkItemName ? `Даалгавар: ${effectiveWorkItemName}` : "",
       quantityLineSummaries.length
         ? `Гүйцэтгэсэн хэмжээ:\n${quantityLineSummaries.join("\n")}`
         : "",
       reportText,
-      !reportText && isGarbageReport && !effectiveWorkItemName && !quantityLineSummaries.length
-        ? "Хог тээврийн тайлан"
+      !reportText && isPhotoFirstReport && !effectiveWorkItemName && !quantityLineSummaries.length
+        ? photoFirstReportDefaultText(taskForReport.operationType)
         : "",
     ]
       .filter(Boolean)
@@ -2717,8 +2725,8 @@ export async function updateTaskReportAction(formData: FormData) {
       },
       reportPath,
     ));
-    const isGarbageReport = isGarbageTransportTaskOperation(taskForReport.operationType);
-    if (!isGarbageReport && !reportText) {
+    const isPhotoFirstReport = isPhotoFirstReportOperation(taskForReport.operationType);
+    if (!isPhotoFirstReport && !reportText) {
       redirect(`${reportPath}?error=${encodeURIComponent("Тайлан засахад шаардлагатай мэдээлэл дутуу байна.")}`);
     }
     const lock = acquireReportSubmitLock("update", taskId, submitToken);
@@ -2747,11 +2755,14 @@ export async function updateTaskReportAction(formData: FormData) {
     const effectiveReportedQuantity =
       firstLineQuantity ?? (reportedQuantityRaw ? reportedQuantity : null);
     const effectiveReportText = [
-      !reportText && isGarbageReport ? `Даалгавар: ${taskForReport.name}` : "",
+      !reportText && isPhotoFirstReport ? `Даалгавар: ${taskForReport.name}` : "",
       quantityLineSummaries.length
         ? `Гүйцэтгэсэн хэмжээ:\n${quantityLineSummaries.join("\n")}`
         : "",
       reportText,
+      !reportText && isPhotoFirstReport && !quantityLineSummaries.length
+        ? photoFirstReportDefaultText(taskForReport.operationType)
+        : "",
     ]
       .filter(Boolean)
       .join("\n\n");
@@ -2854,11 +2865,11 @@ export async function submitTaskForReviewAction(formData: FormData) {
       password: session.password,
     };
     const task = await assertCanReviewTaskAction(taskId, session, connectionOverrides);
-    if (isGarbageTransportTaskOperation(task.operationType)) {
+    if (isPhotoFirstReportOperation(task.operationType)) {
       redirectWithMessage(
         `/tasks/${taskId}`,
         "error",
-        "Хог тээвэрлэлтийн даалгаврыг зөвхөн жолооч эсвэл ачигч тайлан оруулж хяналт руу илгээнэ.",
+        "Энэ төрлийн даалгаврыг өмнөх/дараах зурагтай гүйцэтгэлийн тайлан оруулж хяналт руу илгээнэ.",
       );
     }
     const reviewConnectionOverrides = await sendTaskToReviewWithSystemFallback(

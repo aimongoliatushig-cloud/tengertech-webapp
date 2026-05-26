@@ -163,6 +163,10 @@ function isPlaceholderQuantity(task: Awaited<ReturnType<typeof loadTaskDetail>>)
   return hasOnlyDefaultUnit && task.operationType !== "garbage" && task.operationType !== "garbage_seasonal";
 }
 
+function isPhotoFirstReportTask(operationType: string) {
+  return operationType === "garbage" || operationType === "garbage_seasonal" || operationType === "road_area_cleaning";
+}
+
 export default async function TaskDetailPage({ params, searchParams }: PageProps) {
   const session = await requireSession();
   const resolvedParams = await params;
@@ -294,6 +298,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const canInspectAssignedTransportTask = session.role === "transport_inspector";
   const isGarbageTransportTask =
     task.operationType === "garbage" || task.operationType === "garbage_seasonal";
+  const photoFirstReportTask = isPhotoFirstReportTask(task.operationType);
   const garbagePointIssueTotal =
     task.unresolvedStopCount + task.missingProofStopCount + task.deviationStopCount;
   const garbagePointCountLabel =
@@ -313,6 +318,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const canManageReview =
     !workerMode &&
     !hasOwnSubmittedReport &&
+    (!photoFirstReportTask || !isAssignedToCurrentUser) &&
     (masterMode ||
       (canInspectAssignedTransportTask && (canViewQualityCenter || canCreateTasks)) ||
       (!isAssignedToCurrentUser && (canViewQualityCenter || canCreateTasks)));
@@ -321,7 +327,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const canMarkDone =
     canManageReview && !["done"].includes(task.stageBucket) && (task.canMarkDone || hasSubmittedReport);
   const canSubmitForReview =
-    canManageReview && task.canSubmitForReview && !hasSubmittedReport && !isGarbageTransportTask;
+    canManageReview && task.canSubmitForReview && !hasSubmittedReport && !photoFirstReportTask;
   const canReturnForChanges =
     canManageReview &&
     !["done"].includes(task.stageBucket) &&
@@ -464,8 +470,8 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
             measurementUnit={task.measurementUnit}
             quantityLines={quantityLines}
             requireQuantity={Boolean(quantitySummary)}
-            reportTextRequired={!isGarbageTransportTask}
-            simpleMobile={workerMode}
+            reportTextRequired={!photoFirstReportTask}
+            simpleMobile={workerMode || photoFirstReportTask}
             workItemName={task.name}
           />
         ) : null}
@@ -853,7 +859,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                               audios={report.audios}
                               updateAction={updateTaskReportAction}
                               deleteAction={deleteTaskReportAction}
-                              reportTextRequired={!isGarbageTransportTask}
+                              reportTextRequired={!photoFirstReportTask}
                             />
                           ) : null}
 
