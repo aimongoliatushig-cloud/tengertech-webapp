@@ -5,13 +5,16 @@ import { useFormStatus } from "react-dom";
 
 import {
   CalendarDays,
+  CheckCircle2,
   FileText,
   Layers3,
   ListChecks,
+  MapPin,
   Paperclip,
   Sparkles,
   Trash2,
   Truck,
+  UserCheck,
 } from "lucide-react";
 
 import styles from "@/app/workspace.module.css";
@@ -80,13 +83,6 @@ type AutoBaseLineDraft = {
 };
 
 const CUSTOM_WORK_TYPE_VALUE = "__new_work__";
-const ROAD_CLEANING_DEFAULT_LINES = [
-  "Явган зам цэвэрлэх",
-  "Замын нуух цэвэрлэх",
-  "Хогийн сав шалгах",
-  "Жижиг хог / шарилж / зарын хуудас цэвэрлэх",
-];
-
 type FilePreview = {
   name: string;
   type: string;
@@ -474,6 +470,19 @@ export function NewWorkForm({
     supportsRoadAreaCleaning && operationUnit === "road_area_cleaning";
   const isSharedWork = operationUnit === "shared_work";
   const isDepartmentLocked = Boolean(lockedDepartmentId);
+  const showRoadCleaningModePicker =
+    supportsRoadAreaCleaning && !isSharedWork && !isDepartmentLocked;
+  const visibleRoadCleaningAreaChoices = useMemo(() => {
+    if (!selectedDepartment) {
+      return roadCleaningAreaChoices;
+    }
+
+    const departmentAreaChoices = roadCleaningAreaChoices.filter(
+      (area) => !area.departmentId || area.departmentId === selectedDepartment.id,
+    );
+
+    return departmentAreaChoices.length ? departmentAreaChoices : roadCleaningAreaChoices;
+  }, [roadCleaningAreaChoices, selectedDepartment]);
 
   const submitLabel = isSharedWork
     ? "Хамтарсан ажил үүсгэх"
@@ -703,7 +712,11 @@ export function NewWorkForm({
     );
 
     if (!line.cleaningAreaId) {
-      return roadCleaningEmployees;
+      const departmentEmployees = selectedDepartment
+        ? roadCleaningEmployees.filter((employee) => employee.departmentId === selectedDepartment.id)
+        : [];
+
+      return departmentEmployees.length ? departmentEmployees : roadCleaningEmployees;
     }
 
     const lineArea = getRoadCleaningArea(line);
@@ -735,6 +748,12 @@ export function NewWorkForm({
       return left.name.localeCompare(right.name, "mn");
     });
   }, [roadCleaningEmployeeOptions, selectedDepartment]);
+  const selectedCleaningMaster =
+    roadCleaningMasterChoices.find((employee) => String(employee.id) === cleaningMasterId) ?? null;
+  const roadCleaningReadyLineCount = roadCleaningLines.filter((line) => {
+    const hasArea = Boolean(line.cleaningAreaId || line.newAreaName.trim());
+    return hasArea && Boolean(line.employeeId);
+  }).length;
 
   const getRoadCleaningWorkName = (line: RoadCleaningLineDraft) => {
     const lineArea = getRoadCleaningArea(line);
@@ -872,7 +891,7 @@ export function NewWorkForm({
       : isRoadAreaCleaning
         ? "Зам талбайн цэвэрлэгээ"
       : "Ерөнхий ажил";
-  const showProjectDetails = !isGarbageTransport && !isAutoBase;
+  const showProjectDetails = !isGarbageTransport && !isAutoBase && !isRoadAreaCleaning;
   const formModeDescription = isGarbageTransport
     ? "Машин, хороо, огноо, олон хогийн цэг сонгоход тухайн өдрийн даалгавар автоматаар үүснэ."
     : isSharedWork
@@ -925,12 +944,32 @@ export function NewWorkForm({
               </div>
             </>
           ) : null}
+          {isRoadAreaCleaning ? (
+            <>
+              <div>
+                <MapPin aria-hidden />
+                <span>Талбай</span>
+                <strong>
+                  {roadCleaningReadyLineCount
+                    ? `${roadCleaningReadyLineCount}/${roadCleaningLines.length} бэлэн`
+                    : "Сонгоогүй"}
+                </strong>
+              </div>
+              <div>
+                <UserCheck aria-hidden />
+                <span>Мастер</span>
+                <strong>{selectedCleaningMaster?.name || "Сонгоогүй"}</strong>
+              </div>
+            </>
+          ) : null}
           <div>
             <CalendarDays aria-hidden />
             <span>Огноо</span>
             <strong>
               {isSeasonalGarbage
                 ? `${formatDateLabel(seasonalStartDate)} - ${formatDateLabel(seasonalEndDate)}`
+                : isRoadAreaCleaning
+                  ? formatDateLabel(cleaningWorkDate)
                 : formatDateLabel(shiftDate)}
             </strong>
           </div>
@@ -1069,7 +1108,7 @@ export function NewWorkForm({
         </div>
       ) : null}
 
-      {supportsRoadAreaCleaning && !isSharedWork ? (
+      {showRoadCleaningModePicker ? (
         <div className={styles.optionalSection}>
           <div className={styles.field}>
             <label>Ажлын горим</label>
@@ -1857,6 +1896,36 @@ export function NewWorkForm({
         </>
       ) : isRoadAreaCleaning ? (
         <>
+          <div className={styles.roadCleaningQuickPanel}>
+            <div className={styles.roadCleaningQuickHeader}>
+              <span className={styles.formBadge}>Өдрийн цэвэрлэгээ</span>
+              <h3>Талбай, ажилтнаа сонгоод шууд ажил үүсгэнэ</h3>
+              <p>Нэг мөр нь нэг талбайн ажил болно. Доторх даалгаврууд систем дээр автоматаар нэмэгдэнэ.</p>
+            </div>
+            <div className={styles.roadCleaningProgress}>
+              <div>
+                <CalendarDays aria-hidden />
+                <span>{formatDateLabel(cleaningWorkDate)}</span>
+              </div>
+              <div className={cleaningMasterId ? styles.roadCleaningProgressDone : ""}>
+                <UserCheck aria-hidden />
+                <span>{selectedCleaningMaster?.name || "Мастер сонгоно"}</span>
+              </div>
+              <div
+                className={
+                  roadCleaningReadyLineCount === roadCleaningLines.length
+                    ? styles.roadCleaningProgressDone
+                    : ""
+                }
+              >
+                <CheckCircle2 aria-hidden />
+                <span>
+                  {roadCleaningReadyLineCount}/{roadCleaningLines.length} мөр бэлэн
+                </span>
+              </div>
+            </div>
+          </div>
+
           <div className={styles.fieldRow}>
             <div className={styles.field}>
               <label htmlFor="work_date">Ажлын огноо</label>
@@ -1891,18 +1960,26 @@ export function NewWorkForm({
 
           <div className={styles.optionalSection}>
             <span className={styles.formBadge}>Ажилтан ба цэвэрлэх талбай</span>
-            <p className={styles.fieldHint}>
-              Мөр бүр тусдаа ажил болж үүснэ. Тухайн ажил дотор default даалгаврууд автоматаар нэмэгдэнэ.
-            </p>
+            <p className={styles.fieldHint}>Нэг өдөр олон талбай дээр ажил үүсгэх бол доороос мөр нэмнэ.</p>
 
             {roadCleaningLines.map((line, index) => {
               const lineArea = getRoadCleaningArea(line);
               const employeeChoices = getRoadCleaningEmployeeChoices(line);
               const generatedLineName = getRoadCleaningWorkName(line);
+              const isLineReady = Boolean((line.cleaningAreaId || line.newAreaName.trim()) && line.employeeId);
 
               return (
-                <div className={styles.optionalSection} key={line.id}>
-                  <span className={styles.formBadge}>Мөр {index + 1}</span>
+                <div className={styles.roadCleaningLineCard} key={line.id}>
+                  <div className={styles.roadCleaningLineHeader}>
+                    <span className={styles.roadCleaningLineNumber}>{index + 1}</span>
+                    <div>
+                      <strong>{lineArea?.name || line.newAreaName.trim() || "Цэвэрлэх талбай"}</strong>
+                      <small>{generatedLineName || "Талбай болон ажилтан сонгоно"}</small>
+                    </div>
+                    <em className={isLineReady ? styles.roadCleaningLineReady : ""}>
+                      {isLineReady ? "Бэлэн" : "Дутуу"}
+                    </em>
+                  </div>
                   <div className={styles.fieldRow}>
                     <div className={styles.field}>
                       <label htmlFor={`cleaning_area_${line.id}`}>Цэвэрлэх талбай</label>
@@ -1915,7 +1992,7 @@ export function NewWorkForm({
                         disabled={line.showNewArea}
                       >
                         <option value="">Цэвэрлэх талбай сонгоно уу</option>
-                        {roadCleaningAreaChoices.map((area) => (
+                        {visibleRoadCleaningAreaChoices.map((area) => (
                           <option key={area.id} value={area.id}>
                             {area.name}
                           </option>
@@ -1954,15 +2031,17 @@ export function NewWorkForm({
                     >
                       {line.showNewArea ? "Бэлэн талбай сонгох" : "Талбай нэмэх"}
                     </button>
-                    <button
-                      type="button"
-                      className={styles.dangerButton}
-                      onClick={() => removeRoadCleaningLine(line.id)}
-                      aria-label={`Мөр ${index + 1} устгах`}
-                    >
-                      <Trash2 aria-hidden />
-                      <span>Мөр устгах</span>
-                    </button>
+                    {roadCleaningLines.length > 1 ? (
+                      <button
+                        type="button"
+                        className={styles.dangerButton}
+                        onClick={() => removeRoadCleaningLine(line.id)}
+                        aria-label={`Мөр ${index + 1} устгах`}
+                      >
+                        <Trash2 aria-hidden />
+                        <span>Мөр устгах</span>
+                      </button>
+                    ) : null}
                   </div>
 
                   {line.showNewArea ? (
@@ -2000,7 +2079,7 @@ export function NewWorkForm({
                   ) : null}
 
                   {lineArea ? (
-                    <div className={styles.fieldRow}>
+                    <div className={styles.roadCleaningAreaDetails}>
                       <div className={styles.lockedFieldValue}>
                         <strong>Гудамж / замын нэр</strong>
                         <span>{lineArea.streetName || "—"}</span>
@@ -2028,13 +2107,6 @@ export function NewWorkForm({
                     </div>
                   ) : null}
 
-                  <div className={styles.lockedFieldValue}>
-                    <strong>Ажлын нэр</strong>
-                    <span>
-                      {generatedLineName ||
-                        "Цэвэрлэх талбай, ажилтан, огноо сонгоход автоматаар үүснэ."}
-                    </span>
-                  </div>
                 </div>
               );
             })}
@@ -2073,18 +2145,6 @@ export function NewWorkForm({
             </div>
           </div>
 
-          <div className={styles.optionalSection}>
-            <span className={styles.formBadge}>Автоматаар үүсэх даалгаврууд</span>
-            <p className={styles.fieldHint}>Эдгээр даалгаврууд автоматаар үүснэ.</p>
-            <div className={styles.attachmentPreviewGrid}>
-              {ROAD_CLEANING_DEFAULT_LINES.map((line) => (
-                <div className={styles.attachmentPreviewItem} key={line}>
-                  <FileText aria-hidden />
-                  <span>{line}</span>
-                </div>
-              ))}
-            </div>
-          </div>
         </>
       ) : (
         <>

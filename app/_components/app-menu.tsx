@@ -1154,14 +1154,11 @@ export function AppMenu({
   }
 
   const activeItem = items.find(isItemActive) ?? items[0];
-  const canUseMobilePrimaryAction = Boolean(
-    canCreateProject || canCreateTasks || canWriteReports,
-  );
-  const mobilePrimaryAction: MenuItem | null = canUseMobilePrimaryAction
+  const mobilePrimaryAction: MenuItem | null = canCreateProject || canCreateTasks
     ? {
         key: "new-project",
-        href: canCreateProject || canCreateTasks ? "/create" : "/create/report",
-        label: canCreateProject || canCreateTasks ? "Шинэ ажил" : "Тайлан",
+        href: "/create",
+        label: "Шинэ ажил",
         icon: PlusCircle,
       }
     : null;
@@ -1179,18 +1176,42 @@ export function AppMenu({
     icon: Settings,
   };
 
+  const normalizeMobilePrimaryItem = (item: MenuItem | undefined) => {
+    if (!item) {
+      return null;
+    }
+    if (transportInspectorMode && item.key === "tasks") {
+      return { ...item, label: "Хянах", icon: ClipboardCheck };
+    }
+    if (workerMode && item.key === "tasks") {
+      return { ...item, label: "Ажлууд", icon: ListChecks };
+    }
+    return item;
+  };
+
   const buildMobileDockItems = (dockItems: MenuItem[]) => {
     const visibleItems = dockItems.filter(
       (item) =>
         !isHiddenMenuItem(item) &&
         !(isGarbageDepartmentHead && item.key === "garbage-settings"),
     );
-    const primaryItem =
-      visibleItems.find((item) => item.key === mobilePrimaryAction?.key) ??
-      mobilePrimaryAction ??
-      visibleItems.find((item) =>
-        ["tasks", "projects", "reports", "fleet-repair", "procurement-assigned"].includes(item.key),
-      );
+    const rolePrimaryItem = transportInspectorMode
+      ? visibleItems.find((item) => item.key === "tasks")
+      : workerMode
+        ? visibleItems.find((item) =>
+            ["tasks", "fleet-repair", "procurement-assigned"].includes(item.key),
+          )
+        : reportOnlyMode
+          ? visibleItems.find((item) => item.key === "reports")
+          : hrFocusedMode
+            ? visibleItems.find((item) => item.key === "hr")
+            : mobilePrimaryAction;
+    const fallbackPrimaryItem = visibleItems.find((item) =>
+      ["projects", "tasks", "reports", "fleet-repair", "procurement-assigned"].includes(item.key),
+    );
+    const primaryItem = normalizeMobilePrimaryItem(
+      rolePrimaryItem ?? mobilePrimaryAction ?? fallbackPrimaryItem,
+    );
 
     return [mobileHomeAction, primaryItem, mobileProfileAction].filter(
       (item): item is MenuItem => Boolean(item),

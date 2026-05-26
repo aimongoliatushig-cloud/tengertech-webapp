@@ -2169,6 +2169,146 @@
   font-size: 0.96rem;
 }
 
+.roadCleaningQuickPanel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(232, 247, 235, 0.96), rgba(255, 255, 255, 0.94));
+  box-shadow: 0 14px 36px rgba(27, 73, 38, 0.055);
+}
+
+.roadCleaningQuickHeader {
+  display: grid;
+  gap: 8px;
+}
+
+.roadCleaningQuickHeader h3 {
+  margin: 0;
+  color: #14231a;
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1.18;
+}
+
+.roadCleaningQuickHeader p {
+  margin: 0;
+  color: #5e6d63;
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.55;
+}
+
+.roadCleaningProgress {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.roadCleaningProgress > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #506257;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.roadCleaningProgress svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: #2e7d32;
+}
+
+.roadCleaningProgress span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roadCleaningProgressDone {
+  color: #18682d !important;
+  background: rgba(222, 244, 225, 0.9) !important;
+}
+
+.roadCleaningLineCard {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  border-radius: 18px;
+  background: #fff;
+}
+
+.roadCleaningLineHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.roadCleaningLineNumber {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(46, 125, 50, 0.12);
+  color: #18682d;
+  font-size: 0.88rem;
+  font-weight: 950;
+}
+
+.roadCleaningLineHeader strong,
+.roadCleaningLineHeader small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roadCleaningLineHeader strong {
+  color: #14231a;
+  font-size: 0.96rem;
+  font-weight: 900;
+}
+
+.roadCleaningLineHeader small {
+  margin-top: 2px;
+  color: #64746a;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.roadCleaningLineHeader em {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #9a5b00;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.roadCleaningLineReady {
+  background: rgba(46, 125, 50, 0.12) !important;
+  color: #18682d !important;
+}
+
+.roadCleaningAreaDetails {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
 @media (max-width: 860px) {
   .createWorkIntro {
     grid-template-columns: minmax(0, 1fr);
@@ -2196,6 +2336,23 @@
 
   .pointPickerHeader > strong {
     width: fit-content;
+  }
+
+  .roadCleaningProgress {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .roadCleaningLineHeader {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .roadCleaningLineHeader em {
+    grid-column: 2;
+    width: fit-content;
+  }
+
+  .roadCleaningAreaDetails {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
