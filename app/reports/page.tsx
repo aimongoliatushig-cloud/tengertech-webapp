@@ -187,6 +187,10 @@ function formatQuantity(value: number, unit: string) {
   return `${value} ${unit}`.trim();
 }
 
+function getReportUnitDisplayLabel(unit: string) {
+  return unit === "Цэвэрлэгээ үйлчилгээ" ? "Зам талбайн цэвэрлэгээ" : unit;
+}
+
 function extractReportDateKey(report: Pick<FeedReport, "submittedAt" | "taskName">) {
   return (
     report.submittedAt.match(/\d{4}-\d{2}-\d{2}/)?.[0] ??
@@ -423,6 +427,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const selectedGroupHref = selectedGroup
     ? (reportDepartmentCards.find((card) => card.group.name === selectedGroup.name)?.href ?? allDepartmentsHref)
     : allDepartmentsHref;
+  const showScopedUnitOnlyPicker = Boolean(departmentScopedMode && selectedGroup && unitFilterLinks.length);
   const exportParams = new URLSearchParams();
   if (!departmentScopedMode && selectedGroup) {
     exportParams.set("department", selectedGroup.name);
@@ -593,50 +598,61 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                 </form>
 
                 <section className={styles.reportRegistryScopePanel} aria-label="Тайлангийн хамрах хүрээ">
-                  <div className={styles.reportRegistryScopeHeader}>
-                    <div>
-                      <span>Сонгосон хэсэг</span>
-                      <strong>{selectedScopeTitle}</strong>
-                      <small>{selectedScopeNote}</small>
+                  {!showScopedUnitOnlyPicker ? (
+                    <div className={styles.reportRegistryScopeHeader}>
+                      <div>
+                        <span>Сонгосон хэсэг</span>
+                        <strong>{selectedScopeTitle}</strong>
+                        <small>{selectedScopeNote}</small>
+                      </div>
+                      <strong>{visibleReportRows.length} тайлан</strong>
                     </div>
-                    <strong>{visibleReportRows.length} тайлан</strong>
-                  </div>
+                  ) : null}
 
-                  <div className={styles.reportRegistryDepartmentStrip}>
-                    <Link
-                      href={allDepartmentsHref}
-                      className={`${styles.reportRegistryDepartmentTab} ${
-                        !selectedGroup ? styles.reportRegistryDepartmentTabActive : ""
-                      }`}
-                    >
-                      <span>Бүх ажлын тайлан</span>
-                      <strong>{allOperationalReportCount}</strong>
-                    </Link>
-                    {reportDepartmentCards.map((card) => (
+                  {!departmentScopedMode ? (
+                    <div className={styles.reportRegistryDepartmentStrip}>
                       <Link
-                        key={card.group.name}
-                        href={card.href}
+                        href={allDepartmentsHref}
                         className={`${styles.reportRegistryDepartmentTab} ${
-                          card.isActive ? styles.reportRegistryDepartmentTabActive : ""
+                          !selectedGroup ? styles.reportRegistryDepartmentTabActive : ""
                         }`}
                       >
-                        <span>{card.eyebrow}</span>
-                        <small>{card.note}</small>
-                        <strong>{card.reportCount}</strong>
+                        <span>Бүх ажлын тайлан</span>
+                        <strong>{allOperationalReportCount}</strong>
                       </Link>
-                    ))}
-                  </div>
+                      {reportDepartmentCards.map((card) => (
+                        <Link
+                          key={card.group.name}
+                          href={card.href}
+                          className={`${styles.reportRegistryDepartmentTab} ${
+                            card.isActive ? styles.reportRegistryDepartmentTabActive : ""
+                          }`}
+                        >
+                          <span>{card.eyebrow}</span>
+                          <small>{card.note}</small>
+                          <strong>{card.reportCount}</strong>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : null}
 
                   {unitFilterLinks.length ? (
-                    <div className={styles.reportRegistryUnitStrip} aria-label="Нэгжээр нарийвчлах">
-                      <Link
-                        href={selectedGroupHref}
-                        className={`${styles.reportRegistryUnitChip} ${
-                          !selectedUnit ? styles.reportRegistryUnitChipActive : ""
-                        }`}
-                      >
-                        Бүгд
-                      </Link>
+                    <div
+                      className={`${styles.reportRegistryUnitStrip} ${
+                        showScopedUnitOnlyPicker ? styles.reportRegistryUnitStripScoped : ""
+                      }`}
+                      aria-label="Нэгжээр нарийвчлах"
+                    >
+                      {!showScopedUnitOnlyPicker ? (
+                        <Link
+                          href={selectedGroupHref}
+                          className={`${styles.reportRegistryUnitChip} ${
+                            !selectedUnit ? styles.reportRegistryUnitChipActive : ""
+                          }`}
+                        >
+                          Бүгд
+                        </Link>
+                      ) : null}
                       {unitFilterLinks.map((item) => (
                         <Link
                           key={item.unit}
@@ -645,7 +661,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                             item.isActive ? styles.reportRegistryUnitChipActive : ""
                           }`}
                         >
-                          {item.unit}
+                          {getReportUnitDisplayLabel(item.unit)}
                           <span>{item.reportCount}</span>
                         </Link>
                       ))}

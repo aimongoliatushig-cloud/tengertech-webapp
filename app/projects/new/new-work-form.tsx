@@ -1019,21 +1019,6 @@ export function NewWorkForm({
 
             <button
               type="button"
-              className={`${styles.workflowSelectCard} ${styles.workflowSelectCardPrimary}`}
-              onClick={() => chooseGreenWorkflow("road_area_cleaning")}
-            >
-              <span className={styles.workflowSelectVisual}>
-                <Sparkles aria-hidden />
-              </span>
-              <span className={styles.workflowSelectCopy}>
-                <strong>Зам талбайн цэвэрлэгээ</strong>
-                <small>Өдөр тутмын цэвэрлэгээний ажил автоматаар үүсгэнэ</small>
-              </span>
-              <ChevronRight aria-hidden className={styles.workflowSelectChevron} />
-            </button>
-
-            <button
-              type="button"
               className={styles.workflowSelectCard}
               onClick={() => chooseGreenWorkflow("standard")}
             >
@@ -1043,6 +1028,21 @@ export function NewWorkForm({
               <span className={styles.workflowSelectCopy}>
                 <strong>Ногоон байгууламжийн ажил</strong>
                 <small>Усалгаа, тохижилт, засвар үйлчилгээ</small>
+              </span>
+              <ChevronRight aria-hidden className={styles.workflowSelectChevron} />
+            </button>
+
+            <button
+              type="button"
+              className={styles.workflowSelectCard}
+              onClick={() => chooseGreenWorkflow("road_area_cleaning")}
+            >
+              <span className={styles.workflowSelectVisual}>
+                <Sparkles aria-hidden />
+              </span>
+              <span className={styles.workflowSelectCopy}>
+                <strong>Зам талбайн цэвэрлэгээ</strong>
+                <small>Өдөр тутмын цэвэрлэгээний ажил автоматаар үүсгэнэ</small>
               </span>
               <ChevronRight aria-hidden className={styles.workflowSelectChevron} />
             </button>

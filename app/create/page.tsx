@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Bell, CheckCircle2, ClipboardCheck, FileText, Truck } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, Truck } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
@@ -134,16 +134,6 @@ export default async function CreateHubPage() {
             />
 
             <section className={styles.mobileCreateHome} aria-label="Шинэ ажил үүсгэх mobile урсгал">
-              <div className={styles.mobileCreateHead}>
-                <span>Шинэ ажил</span>
-                <h1>{transportInspectorMode ? "Хяналтын ажил үүсгэх" : "Юу нэмэх вэ?"}</h1>
-                <p>
-                  {transportInspectorMode
-                    ? "Машин, жолооч, хороо, олон хогийн цэг сонгоод даалгавраа хурдан үүсгэнэ."
-                    : "Хамгийн их ашигладаг үйлдлээ шууд сонгоно."}
-                </p>
-              </div>
-
               <div className={styles.mobileCreatePrimaryGrid}>
                 {canCreateProject ? (
                   <Link href="/projects/new" className={styles.mobileCreatePrimary}>
@@ -167,19 +157,9 @@ export default async function CreateHubPage() {
               </div>
 
               <div className={styles.mobileCreateUtilityGrid}>
-                {canWriteReports ? (
-                  <Link href="/create/report" className={styles.mobileCreateUtility}>
-                    <FileText size={18} strokeWidth={2.4} aria-hidden="true" />
-                    <span>Тайлан оруулах</span>
-                  </Link>
-                ) : null}
-                <Link href="/tasks?filter=review" className={styles.mobileCreateUtility}>
+                <Link href="/review" className={styles.mobileCreateUtility}>
                   <CheckCircle2 size={18} strokeWidth={2.4} aria-hidden="true" />
                   <span>Хянах ажил</span>
-                </Link>
-                <Link href="/notifications" className={styles.mobileCreateUtility}>
-                  <Bell size={18} strokeWidth={2.4} aria-hidden="true" />
-                  <span>Мэдэгдэл</span>
                 </Link>
               </div>
             </section>

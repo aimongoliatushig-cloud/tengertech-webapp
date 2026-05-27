@@ -191,6 +191,7 @@ function getDockLabel(key: string) {
     case "chat":
       return "Чат";
     case "review":
+      return "Хянах ажил";
     case "field":
       return "Мэдэгдэл";
     case "profile":
@@ -928,7 +929,7 @@ export function AppMenu({
             {
               key: "reports",
               href: "/reports",
-              label: "Тайлан, статистик",
+              label: "Тайлан",
               icon: BarChart3,
             },
           ]
@@ -952,9 +953,9 @@ export function AppMenu({
       },
       {
         key: "review",
-        href: reviewHref,
-        label: "Мэдэгдэл",
-        icon: Bell,
+        href: "/review",
+        label: "Хянах ажил",
+        icon: ClipboardCheck,
         badge: notificationCount,
       },
     ] as MenuItem[]
@@ -1329,9 +1330,9 @@ export function AppMenu({
                 : []),
               {
                 key: "review",
-                href: reviewHref,
-                label: "Мэдэгдэл",
-                icon: Bell,
+                href: "/review",
+                label: "Хянах ажил",
+                icon: ClipboardCheck,
                 badge: notificationCount,
               },
             ]

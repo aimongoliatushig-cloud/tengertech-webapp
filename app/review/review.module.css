@@ -549,6 +549,10 @@
   font-weight: 950;
 }
 
+.reviewMobileList {
+  display: none;
+}
+
 @media (max-width: 1080px) {
   .heroInsightGrid,
   .reviewBoard {
@@ -580,6 +584,139 @@
   .reviewLane {
     padding: 16px;
     border-radius: var(--ds-radius-card);
+  }
+
+  .reviewDesktopTopControls,
+  .reviewDesktopWorkspace {
+    display: none !important;
+  }
+
+  .reviewMobileList {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    border: 1px solid rgba(31, 95, 49, 0.1);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 12px 28px rgba(31, 95, 49, 0.07);
+  }
+
+  .reviewMobileList header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .reviewMobileList h2,
+  .reviewMobileList p {
+    margin: 0;
+  }
+
+  .reviewMobileList h2 {
+    color: #102015;
+    font-size: 1.35rem;
+    font-weight: 950;
+    line-height: 1.15;
+  }
+
+  .reviewMobileList p {
+    margin-top: 5px;
+    color: #66736a;
+    font-size: 0.86rem;
+    font-weight: 800;
+    line-height: 1.35;
+  }
+
+  .reviewMobileList header > strong {
+    display: inline-flex;
+    min-width: 42px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(47, 127, 70, 0.1);
+    color: #1f6d34;
+    font-size: 1.15rem;
+    font-weight: 950;
+  }
+
+  .reviewMobileTaskList {
+    display: grid;
+    gap: 10px;
+  }
+
+  .reviewMobileTaskCard {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 12px;
+    row-gap: 4px;
+    min-height: 72px;
+    align-items: center;
+    padding: 14px;
+    border: 1px solid rgba(47, 127, 70, 0.13);
+    border-radius: 10px;
+    background: #fff;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .reviewMobileTaskCard > span {
+    grid-row: span 2;
+    display: inline-grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: 10px;
+    background: rgba(47, 127, 70, 0.1);
+    color: #2f7f46;
+  }
+
+  .reviewMobileTaskCard svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .reviewMobileTaskCard strong {
+    color: #111b15;
+    font-size: 0.98rem;
+    font-weight: 950;
+    line-height: 1.2;
+  }
+
+  .reviewMobileTaskCard small {
+    overflow: hidden;
+    color: #66736a;
+    font-size: 0.8rem;
+    font-weight: 800;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .reviewMobileEmpty {
+    display: grid;
+    min-height: 118px;
+    place-items: center;
+    gap: 8px;
+    padding: 18px;
+    border: 1px dashed rgba(31, 95, 49, 0.18);
+    border-radius: 10px;
+    background: #fbfdfb;
+    color: #64748b;
+    text-align: center;
+  }
+
+  .reviewMobileEmpty svg {
+    width: 34px;
+    height: 34px;
+    color: #6b7a8f;
+  }
+
+  .reviewMobileEmpty strong {
+    color: #64748b;
+    font-size: 1rem;
+    font-weight: 950;
   }
 
   .decisionMiniGrid {

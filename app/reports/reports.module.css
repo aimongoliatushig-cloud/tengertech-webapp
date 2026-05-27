@@ -278,6 +278,18 @@
   color: var(--brand-900);
 }
 
+.reportRegistryUnitStripScoped {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reportRegistryUnitStripScoped .reportRegistryUnitChip {
+  min-height: 48px;
+  justify-content: space-between;
+  border-radius: 8px;
+  background: #fff;
+}
+
 .reportRegistryReviewList {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -699,6 +711,16 @@
 
   .reportRegistryDepartmentTab {
     min-height: 82px;
+  }
+
+  .reportRegistryUnitStripScoped {
+    grid-template-columns: 1fr;
+  }
+
+  .reportRegistryUnitStripScoped .reportRegistryUnitChip {
+    min-height: 54px;
+    padding: 0 14px;
+    font-size: 0.95rem;
   }
 
   .reportRegistryTableHeader {

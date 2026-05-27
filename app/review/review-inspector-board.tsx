@@ -170,7 +170,7 @@ export function ReviewInspectorBoard({
         <div className={reviewStyles.reviewNotice}>{fleetLoadError}</div>
       ) : null}
 
-      <div className={dashboardStyles.inspectorVehicleToolbar}>
+      <div className={cn(dashboardStyles.inspectorVehicleToolbar, reviewStyles.reviewDesktopTopControls)}>
         <div className={dashboardStyles.inspectorFilterPills}>
           {filterItems.map((item) => (
             <button
@@ -198,7 +198,7 @@ export function ReviewInspectorBoard({
       </div>
 
       {filteredGroups.length ? (
-        <div className={dashboardStyles.inspectorVehicleScroller}>
+        <div className={cn(dashboardStyles.inspectorVehicleScroller, reviewStyles.reviewDesktopTopControls)}>
           {filteredGroups.map((group) => {
             const isActive = activeGroup?.key === group.key;
             return (
@@ -237,14 +237,14 @@ export function ReviewInspectorBoard({
           })}
         </div>
       ) : (
-        <div className={dashboardStyles.inspectorEmptyState}>
+        <div className={cn(dashboardStyles.inspectorEmptyState, reviewStyles.reviewDesktopTopControls)}>
           <ShieldCheck aria-hidden />
           <strong>Хянах тайлан олдсонгүй.</strong>
           <span>Хайлт эсвэл шүүлтүүрээ өөрчлөөд дахин шалгана уу.</span>
         </div>
       )}
 
-      <div className={reviewStyles.reviewSummaryStrip}>
+      <div className={cn(reviewStyles.reviewSummaryStrip, reviewStyles.reviewDesktopTopControls)}>
         <span>
           <CalendarDays aria-hidden />
           {formatDateLabel(today)}
@@ -253,7 +253,36 @@ export function ReviewInspectorBoard({
         <span>{tasks.length} хянах ажил</span>
       </div>
 
-      <div className={dashboardStyles.inspectorWorkspaceGrid}>
+      <section className={reviewStyles.reviewMobileList} aria-label="Хянах ажлын жагсаалт">
+        <header>
+          <div>
+            <h2>Тайлан хянах</h2>
+            <p>{scopedDepartmentName ?? "Бүх алба хэлтэс"}</p>
+          </div>
+          <strong>{tasks.length}</strong>
+        </header>
+
+        {tasks.length ? (
+          <div className={reviewStyles.reviewMobileTaskList}>
+            {tasks.map((task) => (
+              <Link key={task.id} href={task.href} className={reviewStyles.reviewMobileTaskCard}>
+                <span>
+                  <ShieldCheck aria-hidden />
+                </span>
+                <strong>{task.name}</strong>
+                <small>{task.projectName || task.operationTypeLabel}</small>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className={reviewStyles.reviewMobileEmpty}>
+            <ShieldCheck aria-hidden />
+            <strong>Хянах ажил алга.</strong>
+          </div>
+        )}
+      </section>
+
+      <div className={cn(dashboardStyles.inspectorWorkspaceGrid, reviewStyles.reviewDesktopWorkspace)}>
         <section className={dashboardStyles.inspectorSelectedPanel}>
           {activeGroup ? (
             <>
