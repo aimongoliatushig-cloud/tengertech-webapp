@@ -3214,8 +3214,9 @@ async function createSeasonalWorkspaceProjectFallback(
     notes?: string;
     lines: SeasonalPlanLineInput[];
   },
-  connectionOverrides: Partial<OdooConnection>,
+  _connectionOverrides: Partial<OdooConnection>,
 ): Promise<SeasonalPlanCreateResult> {
+  const workspaceConnection: Partial<OdooConnection> = {};
   const totalPlannedTonnage = input.lines.reduce(
     (sum, line) => sum + (Number.isFinite(line.plannedTonnage) ? line.plannedTonnage : 0),
     0,
@@ -3231,7 +3232,7 @@ async function createSeasonalWorkspaceProjectFallback(
       deadline: input.endDate,
       description: input.notes,
     },
-    connectionOverrides,
+    workspaceConnection,
   );
 
   for (const [lineIndex, line] of input.lines.entries()) {
@@ -3274,7 +3275,7 @@ async function createSeasonalWorkspaceProjectFallback(
           shiftDate: effectiveDate,
           vehicleId: vehicleId || null,
         },
-        connectionOverrides,
+        workspaceConnection,
       );
     }
   }

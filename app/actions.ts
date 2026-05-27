@@ -811,6 +811,7 @@ export async function createProjectAction(formData: FormData) {
     login: session.login,
     password: session.password,
   };
+  const projectMutationConnection: Partial<OdooConnection> = {};
   const transportInspectorMode = Boolean(
     session.role === "transport_inspector" ||
       (session.groupFlags?.mfoInspector &&
@@ -1393,7 +1394,7 @@ export async function createProjectAction(formData: FormData) {
             deadline: startDate,
             description: [projectDescription, vehicleWorkerSummary].filter(Boolean).join("\n") || undefined,
           },
-          garbageWorkConnection,
+          projectMutationConnection,
         ));
       const existingTaskIds = existingVehicleTasks.map((task) => task.id).filter((id) => Number.isFinite(id));
       const existingStopLines = existingTaskIds.length
@@ -1452,7 +1453,7 @@ export async function createProjectAction(formData: FormData) {
             sequence: (existingTaskIds.length + index + 1) * 10,
             assigneeUserIds: assignedGarbageUserIds,
           },
-          garbageWorkConnection,
+          projectMutationConnection,
         );
 
         await executeOdooKw<boolean>(
@@ -1470,7 +1471,7 @@ export async function createProjectAction(formData: FormData) {
             mfo_inspector_employee_id: currentEmployees[0]?.id || false,
           }],
           {},
-          garbageWorkConnection,
+          projectMutationConnection,
         ).catch(() => false);
 
         await executeOdooKw<number>(
@@ -1482,7 +1483,7 @@ export async function createProjectAction(formData: FormData) {
             sequence: 10,
           }],
           {},
-          garbageWorkConnection,
+          projectMutationConnection,
         );
       }
 
@@ -1497,7 +1498,7 @@ export async function createProjectAction(formData: FormData) {
         await createWorkspaceProjectAttachments(
           createdProjectId,
           attachments,
-          garbageWorkConnection,
+          projectMutationConnection,
         );
       }
 
@@ -1792,7 +1793,7 @@ export async function createProjectAction(formData: FormData) {
         deadline: deadline || undefined,
         description: projectDescription || undefined,
       },
-      connectionOverrides,
+      projectMutationConnection,
     );
 
     if (projectFiles.length) {
@@ -1803,10 +1804,10 @@ export async function createProjectAction(formData: FormData) {
           base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
         })),
       );
-      await createWorkspaceProjectAttachments(projectId, attachments, connectionOverrides);
+      await createWorkspaceProjectAttachments(projectId, attachments, projectMutationConnection);
     }
     if (projectDescription) {
-      await updateWorkspaceProjectDescription(projectId, projectDescription, connectionOverrides);
+      await updateWorkspaceProjectDescription(projectId, projectDescription, projectMutationConnection);
     }
     await notifyDepartmentHeadsOfWork({
       departmentId: effectiveDepartmentIdRaw ? Number(effectiveDepartmentIdRaw) : null,
