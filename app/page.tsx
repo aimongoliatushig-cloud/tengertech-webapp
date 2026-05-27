@@ -15,6 +15,7 @@ import {
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import { loadAssignedGarbageTasks } from "@/lib/field-ops";
 import { canAccessGeneralDashboard } from "@/lib/general-dashboard-access";
+import { scopeFleetVehicleBoardByDepartment } from "@/lib/fleet-vehicle-board-scope";
 import { canAccessHr } from "@/lib/hr";
 import {
   loadFleetVehicleBoard,
@@ -122,12 +123,7 @@ const EMPTY_MUNICIPAL_SNAPSHOT: Awaited<ReturnType<typeof loadMunicipalSnapshot>
 const AUTO_BASE_GARBAGE_DEPARTMENT_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
 
 function departmentNeedsFleetSummary(departmentName?: string | null) {
-  const value = departmentName ?? "";
-  return (
-    value.includes("Авто") ||
-    value.includes("Хог") ||
-    value.includes("хог")
-  );
+  return Boolean(departmentName?.trim());
 }
 
 function isTransportInspectorSession(session: DashboardSession) {
@@ -472,9 +468,9 @@ async function DashboardPageContent({
     transportInspectorMode,
     scopedDepartmentName,
   })
-    ? loadFleetVehicleBoard()
+    ? loadFleetVehicleBoard(connectionOverrides)
         .then((fleetBoard) => ({
-          fleetBoard,
+          fleetBoard: scopeFleetVehicleBoardByDepartment(fleetBoard, scopedDepartmentName),
           fleetLoadError: "",
         }))
         .catch((error) => {

@@ -12,6 +12,11 @@ import {
   requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
+import {
+  canUseDepartmentVehicleScope,
+  isGreenOrImprovementVehicleScope,
+  scopeFleetVehicleBoardByDepartment,
+} from "@/lib/fleet-vehicle-board-scope";
 import { loadFleetVehicleBoard } from "@/lib/odoo";
 import { loadWorkspaceNotificationCount } from "@/lib/workspace-notifications";
 
@@ -22,6 +27,7 @@ export const dynamic = "force-dynamic";
 
 type AutoBasePageProps = {
   searchParams?: Promise<{
+    department?: string | string[];
     vehicle?: string | string[];
     notice?: string | string[];
     error?: string | string[];
@@ -44,11 +50,37 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const scopedDepartmentName = await loadSessionDepartmentName(session);
 
-  if (!canAccessAutoBaseOverview(session, scopedDepartmentName)) {
+  const params = (await searchParams) ?? {};
+  const requestedDepartment = firstParam(params.department) ?? "";
+  const requestedScopedVehicleBoard = canUseDepartmentVehicleScope(
+    requestedDepartment,
+    scopedDepartmentName,
+  )
+    ? requestedDepartment
+    : "";
+  const defaultScopedVehicleBoard =
+    !requestedScopedVehicleBoard &&
+    !canAccessAutoBaseOverview(session, scopedDepartmentName) &&
+    isGreenOrImprovementVehicleScope(scopedDepartmentName) &&
+    !workerMode
+      ? scopedDepartmentName
+      : "";
+  const scopedVehicleBoardDepartment =
+    requestedScopedVehicleBoard || defaultScopedVehicleBoard || null;
+  const canViewScopedVehicleBoard = Boolean(
+    scopedVehicleBoardDepartment &&
+      !workerMode &&
+      (session.role === "project_manager" ||
+        session.groupFlags?.municipalDepartmentHead ||
+        session.groupFlags?.municipalManager ||
+        session.groupFlags?.environmentManager ||
+        session.groupFlags?.improvementManager),
+  );
+
+  if (!canAccessAutoBaseOverview(session, scopedDepartmentName) && !canViewScopedVehicleBoard) {
     redirect("/");
   }
 
-  const params = (await searchParams) ?? {};
   const selectedVehicleId = Number(firstParam(params.vehicle) ?? "");
   const notice = firstParam(params.notice) ?? "";
   const error = firstParam(params.error) ?? "";
@@ -80,12 +112,25 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
   let loadError = "";
 
   try {
-    board = await loadFleetVehicleBoard();
+    board = scopeFleetVehicleBoardByDepartment(
+      await loadFleetVehicleBoard({
+        login: session.login,
+        password: session.password,
+      }),
+      scopedVehicleBoardDepartment,
+    );
   } catch (error) {
     console.error("Fleet vehicle board could not be loaded:", error);
     loadError =
       "Авто баазын машины төлөвийг уншиж чадсангүй. Fleet эрх болон холболтын тохиргоог шалгана уу.";
   }
+
+  const headerTitle = scopedVehicleBoardDepartment
+    ? "Машин техникийн самбар"
+    : "Авто баазын самбар";
+  const headerSubtitle = scopedVehicleBoardDepartment
+    ? `${scopedVehicleBoardDepartment} · машин техникийн бүртгэл, төлөв, засварын хяналт`
+    : "Машины төлөв, засвар, даатгал, үзлэгийн нэгдсэн хяналт";
 
   return (
     <main className={shellStyles.shell}>
@@ -112,8 +157,8 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
 
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
-              title="Авто баазын самбар"
-              subtitle="Машины төлөв, засвар, даатгал, үзлэгийн нэгдсэн хяналт"
+              title={headerTitle}
+              subtitle={headerSubtitle}
               userName={session.name}
               roleLabel={roleLabel}
               notificationCount={notificationCount}

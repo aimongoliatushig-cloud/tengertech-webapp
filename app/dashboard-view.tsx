@@ -43,6 +43,7 @@ import { buildDashboardModel, type StatusTone } from "@/lib/dashboard-model";
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import { normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { type FieldAssignment } from "@/lib/field-ops";
+import { isGreenOrImprovementVehicleScope } from "@/lib/fleet-vehicle-board-scope";
 import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 import { canViewGarbageWeightReports } from "@/lib/roles";
 import {
@@ -2927,6 +2928,15 @@ function ExecutiveDashboardView({
     const query = params.toString();
     return query ? `/projects?${query}` : "/projects";
   };
+  const fleetBoardHref = (() => {
+    if (!isGreenOrImprovementVehicleScope(departmentScopeName)) {
+      return "/auto-base";
+    }
+
+    const params = new URLSearchParams();
+    params.set("department", departmentScopeName ?? "");
+    return `/auto-base?${params.toString()}`;
+  })();
   const metrics: ExecutiveMetric[] = [
     {
       label: "нийт гүйцэтгэл",
@@ -2958,7 +2968,7 @@ function ExecutiveDashboardView({
       label: "техникийн ашиглалт",
       value: `${fleetUsage}%`,
       progress: fleetUsage,
-      href: "/auto-base",
+      href: fleetBoardHref,
       icon: Truck,
       tone: "purple",
     },
