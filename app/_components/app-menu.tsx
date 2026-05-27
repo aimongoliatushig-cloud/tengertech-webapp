@@ -100,6 +100,7 @@ type AppMenuProps = {
   departmentScopeName?: string | null;
   groupFlags?: Partial<RoleGroupFlags> | null;
   reportOnlyMode?: boolean;
+  hideMobileTopBar?: boolean;
 };
 
 type MenuItem = {
@@ -299,6 +300,7 @@ export function AppMenu({
   departmentScopeName = null,
   groupFlags = null,
   reportOnlyMode: reportOnlyModeProp = false,
+  hideMobileTopBar = false,
 }: AppMenuProps) {
   void getDockLabel;
   void canViewQualityCenter;
@@ -1786,34 +1788,36 @@ export function AppMenu({
         </div>
       </aside>
 
-      <div className={styles.mobileTopBar}>
-        <button
-          type="button"
-          className={styles.mobileMenuButton}
-          aria-expanded={isOpen}
-          onClick={() => setIsOpen(true)}
-        >
-          <Menu aria-hidden />
-          <span>{activeItem.label}</span>
-        </button>
+      {!hideMobileTopBar ? (
+        <div className={styles.mobileTopBar}>
+          <button
+            type="button"
+            className={styles.mobileMenuButton}
+            aria-expanded={isOpen}
+            onClick={() => setIsOpen(true)}
+          >
+            <Menu aria-hidden />
+            <span>{activeItem.label}</span>
+          </button>
 
-        <Link
-          href="/notifications"
-          className={styles.mobileNotification}
-          aria-label={`${notificationCount} мэдэгдэл харах`}
-        >
-          <Bell aria-hidden />
-          {notificationCount > 0 ? <span>{notificationCount}</span> : null}
-        </Link>
+          <Link
+            href="/notifications"
+            className={styles.mobileNotification}
+            aria-label={`${notificationCount} мэдэгдэл харах`}
+          >
+            <Bell aria-hidden />
+            {notificationCount > 0 ? <span>{notificationCount}</span> : null}
+          </Link>
 
-        <Link
-          href="/profile"
-          className={styles.mobileProfile}
-          aria-label="Профайл харах"
-        >
-          {profileAvatarContent}
-        </Link>
-      </div>
+          <Link
+            href="/profile"
+            className={styles.mobileProfile}
+            aria-label="Профайл харах"
+          >
+            {profileAvatarContent}
+          </Link>
+        </div>
+      ) : null}
 
       {isOpen ? (
         <>

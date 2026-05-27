@@ -2165,7 +2165,7 @@
 .createWorkForm .primaryButton {
   width: 100%;
   min-height: 56px;
-  border-radius: 999px;
+  border-radius: 12px;
   font-size: 0.96rem;
 }
 
@@ -2439,11 +2439,595 @@
   color: #18682d;
 }
 
+.workflowModePicker {
+  display: none !important;
+}
+
+.workflowStoryboard {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #dbe7dc;
+  border-radius: 12px;
+  background: #f6f8f6;
+  box-shadow: 0 12px 28px rgba(31, 109, 52, 0.06);
+}
+
+.workflowStoryboardHeader {
+  display: grid;
+  gap: 6px;
+}
+
+.workflowStoryboardHeader h3,
+.fullTaskHeader h3 {
+  margin: 0;
+  color: #1c241d;
+  font-size: 1.18rem;
+  font-weight: 900;
+  line-height: 1.18;
+}
+
+.workflowStoryboardHeader p,
+.fullTaskHeader p {
+  max-width: 680px;
+  margin: 0;
+  color: #6b756d;
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.workflowChoiceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.workflowChoiceCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 112px;
+  padding: 14px;
+  border: 1px solid #dbe7dc;
+  border-radius: 12px;
+  background: #fff;
+  color: #1c241d;
+  font: inherit;
+  text-align: left;
+  box-shadow: 0 10px 24px rgba(28, 36, 29, 0.04);
+  cursor: pointer;
+}
+
+.workflowChoiceCardActive {
+  border-color: #2f7f46;
+  background: #eef7ed;
+  box-shadow: 0 14px 30px rgba(47, 127, 70, 0.12);
+}
+
+.workflowChoiceIcon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 12px;
+  background: #eef7ed;
+  color: #2f7f46;
+}
+
+.workflowChoiceIcon svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2.5;
+}
+
+.workflowChoiceCopy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.workflowChoiceCopy strong {
+  color: #1c241d;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.workflowChoiceCopy small {
+  color: #6b756d;
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.workflowChoiceBadge {
+  grid-column: 2;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: #fff;
+  color: #1f6d34;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.workflowRecentStrip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #dbe7dc;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.workflowRecentStrip span {
+  color: #6b756d;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.workflowRecentStrip strong {
+  color: #1c241d;
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.fullTaskPanel {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #dbe7dc;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(28, 36, 29, 0.05);
+}
+
+.fullTaskHeader {
+  display: grid;
+  gap: 6px;
+}
+
+.fullTaskSteps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.fullTaskSteps span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #dbe7dc;
+  border-radius: 12px;
+  background: #f6f8f6;
+  color: #6b756d;
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.fullTaskSteps b {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 12px;
+  background: #eef7ed;
+  color: #1f6d34;
+  font-size: 0.76rem;
+}
+
+.fullTaskStepActive {
+  border-color: rgba(47, 127, 70, 0.36) !important;
+  background: #eef7ed !important;
+  color: #1f6d34 !important;
+}
+
+.fullTaskSection {
+  border-color: #dbe7dc;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.fullTaskSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fullTaskSectionTitle span {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 9px;
+  background: #eef7ed;
+  color: #1f6d34;
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+
+.fullTaskSectionTitle strong {
+  color: #1c241d;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.createWorkForm > .buttonRow:last-child {
+  position: sticky;
+  bottom: 14px;
+  z-index: 12;
+  padding: 10px;
+  border: 1px solid rgba(219, 231, 220, 0.92);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 42px rgba(28, 36, 29, 0.14);
+}
+
+.createWorkForm[data-create-flow="quick"] .createWorkIntro,
+.createWorkForm[data-create-flow="quick"] .roadCleaningQuickPanel {
+  border-color: rgba(47, 127, 70, 0.24);
+  background:
+    linear-gradient(135deg, rgba(238, 247, 237, 0.96), rgba(255, 255, 255, 0.98));
+}
+
+.createWorkForm[data-create-flow="full"] .createWorkIntro {
+  border-color: #dbe7dc;
+  background:
+    linear-gradient(135deg, rgba(246, 248, 246, 0.98), rgba(255, 255, 255, 0.98));
+}
+
+.mobileWorkflowTopBar {
+  display: none;
+}
+
+.workflowSelectScreen {
+  display: grid;
+  gap: 18px;
+  padding: 8px;
+}
+
+.workflowSelectHeader h2 {
+  margin: 0;
+  color: #111b15;
+  font-size: 1.45rem;
+  font-weight: 950;
+  line-height: 1.08;
+}
+
+.workflowSelectHeader p {
+  margin: 8px 0 0;
+  color: #6b756d;
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+.workflowSelectCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 112px;
+  padding: 14px;
+  border: 1px solid #dbe7dc;
+  border-radius: 12px;
+  background: #fff;
+  color: #1c241d;
+  font: inherit;
+  text-align: left;
+  box-shadow: 0 10px 26px rgba(28, 36, 29, 0.045);
+  cursor: pointer;
+}
+
+.workflowSelectCardPrimary {
+  border-color: #2f7f46;
+  background:
+    linear-gradient(135deg, rgba(238, 247, 237, 0.98), rgba(255, 255, 255, 0.98));
+}
+
+.workflowSelectVisual {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border-radius: 12px;
+  background: #eef7ed;
+  color: #2f7f46;
+}
+
+.workflowSelectVisual svg {
+  width: 32px;
+  height: 32px;
+  stroke-width: 2.4;
+}
+
+.workflowSelectCopy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.workflowSelectCopy strong {
+  color: #111b15;
+  font-size: 1.05rem;
+  font-weight: 950;
+  line-height: 1.16;
+}
+
+.workflowSelectCopy small {
+  color: #5f6b63;
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.42;
+}
+
+.workflowSelectCopy em {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: #168338;
+  color: #fff;
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.workflowSelectCopy em svg {
+  width: 15px;
+  height: 15px;
+}
+
+.workflowSelectCopy .workflowSelectBadgeMuted {
+  background: #fff5d6;
+  color: #80620c;
+}
+
+.workflowSelectCopy b {
+  color: #6b756d;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.workflowSelectChevron {
+  width: 22px;
+  height: 22px;
+  color: #1c241d;
+}
+
+.workflowRecentList {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.workflowRecentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workflowRecentHeader strong {
+  color: #111b15;
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.workflowRecentHeader span {
+  color: #1f6d34;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.workflowRecentItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 64px;
+  padding: 12px;
+  border: 1px solid #dbe7dc;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.workflowRecentItem > span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 12px;
+  background: #eef7ed;
+  color: #1f6d34;
+}
+
+.workflowRecentItem svg {
+  width: 18px;
+  height: 18px;
+}
+
+.workflowRecentItem strong,
+.workflowRecentItem small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflowRecentItem strong {
+  color: #1c241d;
+  font-size: 0.86rem;
+  font-weight: 950;
+}
+
+.workflowRecentItem small {
+  margin-top: 2px;
+  color: #6b756d;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
 @media (max-width: 860px) {
+  .createProjectShell {
+    padding: 0 10px calc(88px + env(safe-area-inset-bottom, 0px));
+    background: #f6f8f6;
+  }
+
+  .createProjectShell .container {
+    width: min(100%, 430px);
+    padding: 0;
+  }
+
+  .createProjectShell .contentWithMenu {
+    display: block;
+  }
+
+  .createProjectShell .pageContent > header {
+    display: none;
+  }
+
+  .createProjectShell .menuColumn {
+    position: static;
+    display: block;
+    min-height: 0;
+  }
+
+  .createProjectShell .formCard {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .mobileWorkflowTopBar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    padding: 16px 2px 12px;
+    background: rgba(246, 248, 246, 0.96);
+  }
+
+  .mobileWorkflowTopBar strong {
+    justify-self: center;
+    color: #111b15;
+    font-size: 1.08rem;
+    font-weight: 950;
+  }
+
+  .mobileWorkflowTopBar > span {
+    min-width: 42px;
+    padding: 8px 10px;
+    border: 1px solid #dbe7dc;
+    border-radius: 12px;
+    background: #fff;
+    color: #1c241d;
+    font-size: 0.84rem;
+    font-weight: 850;
+    text-align: center;
+  }
+
+  .mobileWorkflowBackButton {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: #1c241d;
+    font: inherit;
+    font-size: 1.35rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .mobileWorkflowProgress {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(var(--mobile-progress-count, 3), minmax(0, 1fr));
+    gap: 6px;
+    padding: 0 8px;
+  }
+
+  .mobileWorkflowProgress i {
+    display: block;
+    height: 5px;
+    border-radius: 12px;
+    background: #e3e9e3;
+  }
+
+  .mobileWorkflowProgressActive {
+    background: #168338 !important;
+  }
+
+  .workflowSelectScreen {
+    display: grid;
+    gap: 18px;
+    padding: 22px 8px 96px;
+  }
+
+  .workflowSelectCard {
+    min-height: 116px;
+    padding: 14px;
+  }
+
+  .workflowSelectVisual {
+    width: 64px;
+    height: 64px;
+  }
+
+  .createWorkForm {
+    gap: 12px;
+  }
+
   .createWorkIntro {
     grid-template-columns: minmax(0, 1fr);
     padding: 14px;
-    border-radius: 22px;
+    border-radius: 12px;
+  }
+
+  .createWorkForm[data-create-flow="full"] .createWorkIntro {
+    display: none;
+  }
+
+  .createWorkForm[data-create-flow="quick"] .createWorkIntro {
+    margin: 4px 8px 0;
+    padding: 16px;
+    border-color: #2f7f46;
+    background:
+      linear-gradient(135deg, rgba(238, 247, 237, 0.98), rgba(255, 255, 255, 0.98));
+  }
+
+  .createWorkForm[data-create-flow="quick"] .createWorkIntroCopy h2 {
+    font-size: 1.24rem;
+    line-height: 1.18;
+  }
+
+  .createWorkForm[data-create-flow="quick"] .createWorkIntroCopy p {
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+
+  .createWorkForm[data-create-flow="quick"] .createWorkSteps,
+  .createWorkForm[data-create-flow="quick"] .createWorkSignalGrid,
+  .roadCleaningQuickPanel {
+    display: none;
   }
 
   .createWorkSignalGrid {
@@ -2455,8 +3039,39 @@
   .createWorkForm > .optionalSection,
   .createWorkForm > .locationComposer,
   .createWorkForm > .previewCard {
+    margin-inline: 8px;
     padding: 14px;
-    border-radius: 20px;
+    border-radius: 12px;
+  }
+
+  .createWorkForm > .fieldRow {
+    display: grid;
+    gap: 12px;
+  }
+
+  .workflowChoiceGrid,
+  .fullTaskSteps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workflowChoiceCard {
+    min-height: 104px;
+  }
+
+  .workflowRecentStrip {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .fullTaskPanel,
+  .roadCleaningQuickPanel {
+    margin-inline: 8px;
+    border-radius: 12px;
+  }
+
+  .fullTaskPanel {
+    margin-top: 4px;
+    padding: 16px;
   }
 
   .pointPickerHeader {

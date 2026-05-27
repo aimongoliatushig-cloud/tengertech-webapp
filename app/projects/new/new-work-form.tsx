@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useFormStatus } from "react-dom";
 
 import {
   CalendarDays,
   CheckCircle2,
+  ChevronRight,
   FileText,
   Layers3,
   ListChecks,
@@ -15,6 +16,7 @@ import {
   Trash2,
   Truck,
   UserCheck,
+  Wrench,
 } from "lucide-react";
 
 import styles from "@/app/workspace.module.css";
@@ -224,9 +226,9 @@ function roadCleaningMasterRoleLabel(employee: RoadCleaningEmployeeOption) {
     : "Мастер";
 }
 
-function emptySeasonalLine(index: number): SeasonalLineDraft {
+function emptySeasonalLine(index: number, stableInitial = false): SeasonalLineDraft {
   return {
-    id: `seasonal-line-${index}-${Date.now()}`,
+    id: `seasonal-line-${index}-${stableInitial ? "initial" : Date.now()}`,
     khorooLabel: "",
     locationName: "",
     vehicleIds: [],
@@ -236,9 +238,9 @@ function emptySeasonalLine(index: number): SeasonalLineDraft {
   };
 }
 
-function emptyRoadCleaningLine(index: number): RoadCleaningLineDraft {
+function emptyRoadCleaningLine(index: number, stableInitial = false): RoadCleaningLineDraft {
   return {
-    id: `road-cleaning-line-${index}-${Date.now()}`,
+    id: `road-cleaning-line-${index}-${stableInitial ? "initial" : Date.now()}`,
     cleaningAreaId: "",
     employeeId: "",
     newAreaName: "",
@@ -307,7 +309,7 @@ export function NewWorkForm({
   const [cleaningWorkDate, setCleaningWorkDate] = useState(getTodayValue());
   const [cleaningMasterId, setCleaningMasterId] = useState("");
   const [roadCleaningLines, setRoadCleaningLines] = useState<RoadCleaningLineDraft[]>([
-    emptyRoadCleaningLine(0),
+    emptyRoadCleaningLine(0, true),
   ]);
   const [roadCleaningAreaChoices, setRoadCleaningAreaChoices] = useState(roadCleaningAreaOptions);
   const [roadCleaningAreaError, setRoadCleaningAreaError] = useState("");
@@ -316,11 +318,12 @@ export function NewWorkForm({
   const [seasonalStartDate, setSeasonalStartDate] = useState(getTodayValue());
   const [seasonalEndDate, setSeasonalEndDate] = useState(getTodayValue());
   const [seasonalLines, setSeasonalLines] = useState<SeasonalLineDraft[]>([
-    emptySeasonalLine(0),
+    emptySeasonalLine(0, true),
   ]);
   const [autoBaseImagePreviews, setAutoBaseImagePreviews] = useState<FilePreview[]>([]);
   const [projectFilePreviews, setProjectFilePreviews] = useState<FilePreview[]>([]);
   const [sharedDepartmentIds, setSharedDepartmentIds] = useState<string[]>([]);
+  const [greenWorkflowStep, setGreenWorkflowStep] = useState<"select" | "form">("select");
 
   const selectedDepartment = useMemo(
     () => departmentOptions.find((option) => String(option.id) === departmentId) ?? null,
@@ -477,7 +480,7 @@ export function NewWorkForm({
   const isSharedWork = operationUnit === "shared_work";
   const isDepartmentLocked = Boolean(lockedDepartmentId);
   const showRoadCleaningModePicker =
-    supportsRoadAreaCleaning && !isSharedWork && !isDepartmentLocked;
+    supportsRoadAreaCleaning && !isSharedWork;
   const visibleRoadCleaningAreaChoices = useMemo(() => {
     if (!selectedDepartment) {
       return roadCleaningAreaChoices;
@@ -953,6 +956,16 @@ export function NewWorkForm({
         ? "Зам талбайн цэвэрлэгээ"
       : "Ерөнхий ажил";
   const showProjectDetails = !isGarbageTransport && !isAutoBase && !isRoadAreaCleaning;
+  const showGreenWorkflowSelector = supportsRoadAreaCleaning && !isSharedWork;
+  const isGreenWorkflowSelectScreen = showGreenWorkflowSelector && greenWorkflowStep === "select";
+  const mobileStepLabel = isGreenWorkflowSelectScreen ? "1/3" : isRoadAreaCleaning ? "2/3" : "1/4";
+  const mobileScreenTitle = isGreenWorkflowSelectScreen
+    ? "Ажил нэмэх"
+    : isRoadAreaCleaning
+      ? "Хурдан үүсгэх"
+      : "Ногоон байгууламжийн ажил";
+  const mobileProgressSegmentCount = isGreenWorkflowSelectScreen ? 3 : isRoadAreaCleaning ? 3 : 4;
+  const mobileProgressActiveCount = isGreenWorkflowSelectScreen ? 1 : isRoadAreaCleaning ? 2 : 1;
   const formModeDescription = isGarbageTransport
     ? "Машин, хороо, огноо, олон хогийн цэг сонгоход тухайн өдрийн даалгавар автоматаар үүснэ."
     : isSharedWork
@@ -968,9 +981,94 @@ export function NewWorkForm({
         ? `${sharedDepartmentIds.length} хэлтэс сонгосон`
         : "Хэлтсүүд сонгоно"
       : lockedDepartmentLabel ?? selectedDepartment?.label ?? selectedDepartment?.name ?? "Сонгоогүй";
+  const chooseGreenWorkflow = (nextOperationUnit: "road_area_cleaning" | "standard") => {
+    setOperationUnit(nextOperationUnit);
+    setGreenWorkflowStep("form");
+  };
 
   return (
-    <form action={action} className={`${styles.form} ${styles.createWorkForm}`}>
+    <form
+      action={action}
+      className={`${styles.form} ${styles.createWorkForm}`}
+      data-create-flow={isRoadAreaCleaning ? "quick" : showProjectDetails ? "full" : "default"}
+    >
+      {showGreenWorkflowSelector ? (
+        <div className={styles.mobileWorkflowTopBar}>
+          <button
+            type="button"
+            className={styles.mobileWorkflowBackButton}
+            onClick={() => {
+              if (greenWorkflowStep === "form") {
+                setGreenWorkflowStep("select");
+                return;
+              }
+              window.history.back();
+            }}
+            aria-label="Буцах"
+          >
+            ←
+          </button>
+          <strong>{mobileScreenTitle}</strong>
+          <span>{mobileStepLabel}</span>
+          <div
+            className={styles.mobileWorkflowProgress}
+            style={{ "--mobile-progress-count": mobileProgressSegmentCount } as CSSProperties}
+            aria-hidden
+          >
+            {Array.from({ length: mobileProgressSegmentCount }).map((_, index) => (
+              <i
+                key={`progress-${index}`}
+                className={index < mobileProgressActiveCount ? styles.mobileWorkflowProgressActive : ""}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {isGreenWorkflowSelectScreen ? (
+        <>
+          <section className={styles.workflowSelectScreen} aria-label="Ажлын төрөл сонгох">
+            <div className={styles.workflowSelectHeader}>
+              <h2>Ажлын төрөл сонгох</h2>
+              <p>Та ямар төрлийн ажил нэмэх вэ?</p>
+            </div>
+
+            <button
+              type="button"
+              className={`${styles.workflowSelectCard} ${styles.workflowSelectCardPrimary}`}
+              onClick={() => chooseGreenWorkflow("road_area_cleaning")}
+            >
+              <span className={styles.workflowSelectVisual}>
+                <Sparkles aria-hidden />
+              </span>
+              <span className={styles.workflowSelectCopy}>
+                <strong>Зам талбайн цэвэрлэгээ</strong>
+                <small>Өдөр тутмын цэвэрлэгээний ажил автоматаар үүсгэнэ</small>
+              </span>
+              <ChevronRight aria-hidden className={styles.workflowSelectChevron} />
+            </button>
+
+            <button
+              type="button"
+              className={styles.workflowSelectCard}
+              onClick={() => chooseGreenWorkflow("standard")}
+            >
+              <span className={styles.workflowSelectVisual}>
+                <Wrench aria-hidden />
+              </span>
+              <span className={styles.workflowSelectCopy}>
+                <strong>Ногоон байгууламжийн ажил</strong>
+                <small>Усалгаа, тохижилт, засвар үйлчилгээ</small>
+              </span>
+              <ChevronRight aria-hidden className={styles.workflowSelectChevron} />
+            </button>
+
+          </section>
+        </>
+      ) : null}
+
+      {!isGreenWorkflowSelectScreen ? (
+        <>
       <div className={styles.createWorkIntro}>
         <div className={styles.createWorkIntroCopy}>
           <span className={styles.formBadge}>Ажил нэмэх урсгал</span>
@@ -1170,7 +1268,7 @@ export function NewWorkForm({
       ) : null}
 
       {showRoadCleaningModePicker ? (
-        <div className={styles.optionalSection}>
+        <div className={`${styles.optionalSection} ${styles.workflowModePicker}`}>
           <div className={styles.field}>
             <label>Ажлын горим</label>
             <div className={styles.modeRail}>
@@ -2298,57 +2396,79 @@ export function NewWorkForm({
         </>
       ) : (
         <>
-          <div className={styles.field}>
-            <label htmlFor="name">Ажлын нэр</label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              placeholder={
-                isRoadAreaCleaning
-                  ? "Жишээ: Наадамчдын замын цэвэрлэгээ"
-                  : "Жишээ: Хаврын тохижилтын ажил"
-              }
-              required
-            />
-          </div>
-          <input type="hidden" name="operation_type" value={CUSTOM_WORK_TYPE_VALUE} />
+          <section className={styles.fullTaskPanel} aria-label="Ногоон байгууламжийн ажлын алхам">
+            <div className={styles.fullTaskHeader}>
+              <span className={styles.formBadge}>Ногоон байгууламжийн ажил</span>
+              <h3>Дэлгэрэнгүй бүртгэл</h3>
+              <p>Тохижилт, урсгалгаа, засвар үйлчилгээ болон тусгай ажлын мэдээллийг хэсэгчилж оруулна.</p>
+            </div>
+            <div className={styles.fullTaskSteps}>
+              {["Үндсэн мэдээлэл", "Байршил", "Хуваарилалт", "Хавсралт"].map((step, index) => (
+                <span key={step} className={index === 0 ? styles.fullTaskStepActive : ""}>
+                  <b>{index + 1}</b>
+                  {step}
+                </span>
+              ))}
+            </div>
+          </section>
 
-          {!isSharedWork ? (
+          <section className={`${styles.optionalSection} ${styles.fullTaskSection}`}>
+            <div className={styles.fullTaskSectionTitle}>
+              <span>1</span>
+              <strong>Үндсэн мэдээлэл</strong>
+            </div>
             <div className={styles.field}>
-              <label>Хариуцах ажилтан</label>
-              <div className={styles.lockedFieldValue}>
-                {selectedDepartmentHead
-                  ? [
-                      selectedDepartmentHead.name,
-                      selectedDepartmentHead.jobTitle,
-                      selectedDepartmentHead.login,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")
-                  : selectedDepartment
-                    ? "Хэлтсийн дарга олдсонгүй"
-                    : "Эхлээд хэлтэс сонгоно уу"}
-              </div>
+              <label htmlFor="name">Ажлын нэр</label>
               <input
-                type="hidden"
-                name="manager_id"
-                value={selectedDepartmentHead ? String(selectedDepartmentHead.id) : ""}
+                id="name"
+                name="name"
+                type="text"
+                placeholder={
+                  isRoadAreaCleaning
+                    ? "Жишээ: Наадамчдын замын цэвэрлэгээ"
+                    : "Жишээ: Хаврын тохижилтын ажил"
+                }
+                required
               />
             </div>
-          ) : null}
+            <input type="hidden" name="operation_type" value={CUSTOM_WORK_TYPE_VALUE} />
 
-          <div className={styles.fieldRow}>
-            <div className={styles.field}>
-              <label htmlFor="start_date">Эхлэх огноо</label>
-              <input id="start_date" name="start_date" type="date" />
-            </div>
+            {!isSharedWork ? (
+              <div className={styles.field}>
+                <label>Хариуцах ажилтан</label>
+                <div className={styles.lockedFieldValue}>
+                  {selectedDepartmentHead
+                    ? [
+                        selectedDepartmentHead.name,
+                        selectedDepartmentHead.jobTitle,
+                        selectedDepartmentHead.login,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")
+                    : selectedDepartment
+                      ? "Хэлтсийн дарга олдсонгүй"
+                      : "Эхлээд хэлтэс сонгоно уу"}
+                </div>
+                <input
+                  type="hidden"
+                  name="manager_id"
+                  value={selectedDepartmentHead ? String(selectedDepartmentHead.id) : ""}
+                />
+              </div>
+            ) : null}
 
-            <div className={styles.field}>
-              <label htmlFor="deadline">Дуусах огноо</label>
-              <input id="deadline" name="deadline" type="date" />
+            <div className={styles.fieldRow}>
+              <div className={styles.field}>
+                <label htmlFor="start_date">Эхлэх огноо</label>
+                <input id="start_date" name="start_date" type="date" />
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="deadline">Дуусах огноо</label>
+                <input id="deadline" name="deadline" type="date" />
+              </div>
             </div>
-          </div>
+          </section>
         </>
       )}
 
@@ -2403,6 +2523,8 @@ export function NewWorkForm({
       <div className={styles.buttonRow}>
         <SubmitWorkButton label={submitLabel} />
       </div>
+        </>
+      ) : null}
     </form>
   );
 }

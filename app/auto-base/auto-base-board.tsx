@@ -3,6 +3,7 @@
 import Image from "next/image";
 import {
   AlertTriangle,
+  ArrowLeft,
   CalendarCheck2,
   Car,
   Grid3X3,
@@ -433,32 +434,104 @@ function AttachmentTile({
   id,
   label,
   previewImages,
+  onOpen,
 }: {
   id: number;
   label: string;
   previewImages: boolean;
+  onOpen: (attachment: { id: number; label: string; url: string }) => void;
 }) {
   const [failedId, setFailedId] = useState<number | null>(null);
   const failed = failedId === id;
+  const url = attachmentUrl(id);
 
-  return (
-    <a href={attachmentUrl(id)} target="_blank" rel="noreferrer">
-      {previewImages && !failed ? (
+  if (previewImages && !failed) {
+    return (
+      <button
+        type="button"
+        className={styles.vehicleAttachmentButton}
+        onClick={() => onOpen({ id, label, url })}
+        aria-label={`${label} зураг томоор харах`}
+      >
         <Image
-          src={attachmentUrl(id)}
+          src={url}
           alt={`${label} #${id}`}
           width={220}
           height={140}
           unoptimized
           onError={() => setFailedId(id)}
         />
-      ) : (
-        <span className={styles.vehicleDocumentIcon} aria-hidden>
-          Файл
-        </span>
-      )}
+        <span>Файл #{id}</span>
+      </button>
+    );
+  }
+
+  return (
+    <a href={url} target="_blank" rel="noreferrer">
+      <span className={styles.vehicleDocumentIcon} aria-hidden>
+        Файл
+      </span>
       <span>Файл #{id}</span>
     </a>
+  );
+}
+
+function VehicleAttachmentViewer({
+  attachment,
+  onClose,
+}: {
+  attachment: { id: number; label: string; url: string };
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div className={styles.vehicleImageViewerOverlay} role="presentation" onClick={onClose}>
+      <div
+        className={styles.vehicleImageViewer}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${attachment.label} зураг`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className={styles.vehicleImageViewerHeader}>
+          <button type="button" onClick={onClose}>
+            <ArrowLeft size={20} strokeWidth={2.4} aria-hidden />
+            Буцах
+          </button>
+          <strong>{attachment.label}</strong>
+        </header>
+        <div className={styles.vehicleImageViewerStage}>
+          <Image
+            src={attachment.url}
+            alt={`${attachment.label} #${attachment.id}`}
+            width={1600}
+            height={1200}
+            unoptimized
+          />
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -582,12 +655,17 @@ function FileUploadField({
 function AttachmentGallery({
   title,
   groups,
-  previewImages = true,
+  previewImages = false,
 }: {
   title: string;
   groups: FleetVehicleAttachmentGroup[];
   previewImages?: boolean;
 }) {
+  const [activeAttachment, setActiveAttachment] = useState<{
+    id: number;
+    label: string;
+    url: string;
+  } | null>(null);
   const visibleGroups = groups.filter((group) => group.ids.length);
 
   if (!visibleGroups.length) {
@@ -604,11 +682,23 @@ function AttachmentGallery({
           <strong>{group.label}</strong>
           <div className={styles.vehicleAttachmentGrid}>
             {group.ids.map((id) => (
-              <AttachmentTile key={id} id={id} label={group.label} previewImages={previewImages} />
+              <AttachmentTile
+                key={id}
+                id={id}
+                label={group.label}
+                previewImages={previewImages}
+                onOpen={setActiveAttachment}
+              />
             ))}
           </div>
         </section>
       ))}
+      {activeAttachment ? (
+        <VehicleAttachmentViewer
+          attachment={activeAttachment}
+          onClose={() => setActiveAttachment(null)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -1628,7 +1718,7 @@ function VehicleDetailModal({
             <div className={styles.vehicleOverviewGrid}>
               <div className={styles.vehicleGalleryPanel}>
                 <VehicleHeroImage vehicle={vehicle} />
-                <AttachmentGallery title="Машины зураг" groups={vehicle.photoGroups} />
+                <AttachmentGallery title="Машины зураг" groups={vehicle.photoGroups} previewImages />
               </div>
 
               <section className={styles.vehicleQuickPanel}>

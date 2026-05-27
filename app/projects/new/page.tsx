@@ -174,7 +174,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
   const canUseFieldConsole = hasCapability(session, "use_field_console");
 
   return (
-    <main className={styles.shell}>
+    <main className={`${styles.shell} ${styles.createProjectShell}`}>
       <div className={styles.container} id="create-project-top">
         <div className={styles.contentWithMenu}>
           <aside className={styles.menuColumn}>
@@ -191,6 +191,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
               groupFlags={session.groupFlags}
               masterMode={masterMode}
               departmentScopeName={masterDepartmentName}
+              hideMobileTopBar
             />
           </aside>
 
