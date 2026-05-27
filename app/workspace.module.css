@@ -2916,11 +2916,18 @@
     top: 0;
     z-index: 30;
     display: grid;
-    grid-template-columns: 42px minmax(0, 1fr) auto;
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
     gap: 8px;
     align-items: center;
-    padding: 16px 2px 12px;
+    padding: 16px 2px 10px;
     background: rgba(246, 248, 246, 0.96);
+  }
+
+  .mobileWorkflowTopBar::after {
+    content: "";
+    display: block;
+    width: 42px;
+    height: 42px;
   }
 
   .mobileWorkflowTopBar strong {
@@ -7193,6 +7200,341 @@
   max-width: 560px;
 }
 
+.taskCreateModalDialog .modalHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.taskCreateModalDialog .modalTitleGroup {
+  align-items: center;
+  text-align: center;
+}
+
+.taskCreateModalDialog .modalCloseButton {
+  display: grid;
+  width: 44px;
+  min-height: 44px;
+  place-items: center;
+  padding: 0;
+  border-radius: 12px;
+  color: #1b231d;
+  font-size: 1.18rem;
+  font-weight: 950;
+}
+
+.taskCreateModalDialog .modalTitle {
+  font-size: clamp(1.28rem, 2.4vw, 1.7rem);
+}
+
+.taskCreateStepper {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 2px 0 4px;
+}
+
+.taskCreateStepper button {
+  display: grid;
+  gap: 7px;
+  justify-items: center;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-500);
+  font: inherit;
+  cursor: pointer;
+}
+
+.taskCreateStepper button::before {
+  content: "";
+  display: block;
+  grid-row: 1;
+  width: 100%;
+  height: 1px;
+  margin-top: 15px;
+  background: #dce8dd;
+}
+
+.taskCreateStepper button:first-child::before {
+  width: 50%;
+  justify-self: end;
+}
+
+.taskCreateStepper button:last-child::before {
+  width: 50%;
+  justify-self: start;
+}
+
+.taskCreateStepper span {
+  display: grid;
+  grid-row: 1;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #a8d4b2;
+  border-radius: 50%;
+  background: #fff;
+  color: #2f7f46;
+  font-size: 0.82rem;
+  font-weight: 900;
+  z-index: 1;
+}
+
+.taskCreateStepper small {
+  color: inherit;
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.taskCreateStepDotActive span {
+  border-color: #1f6d34;
+  background: #168338;
+  color: #fff;
+}
+
+.taskCreateStepDotActive small {
+  color: #1b231d;
+  font-weight: 900;
+}
+
+.taskCreateStepPanel {
+  display: none;
+  gap: 16px;
+  min-width: 0;
+}
+
+.taskCreateStepActive {
+  display: grid;
+}
+
+.taskCreateSectionHeader {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.taskCreateSectionHeader > svg {
+  width: 42px;
+  height: 42px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #eef7ed;
+  color: #2f7f46;
+}
+
+.taskCreateSectionHeader strong {
+  display: block;
+  color: #1b231d;
+  font-size: 1.15rem;
+  font-weight: 950;
+  line-height: 1.18;
+}
+
+.taskCreateSectionHeader p {
+  margin: 5px 0 0;
+  color: #6a746c;
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.taskCreateStepPanel > .field,
+.taskCreateStepPanel > .fieldRow,
+.taskCreateStepPanel > .assignmentPanel,
+.taskCreateStepPanel > .quantityRows,
+.taskCreateStepPanel > .taskCreateSummaryGrid {
+  min-width: 0;
+}
+
+.taskCreateStepPanel > .fieldRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.taskCreateStepPanel .field label {
+  color: #1b231d;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.taskCreateStepPanel .lockedFieldValue,
+.taskCreateStepPanel .searchableSelectButton,
+.taskCreateStepPanel input,
+.taskCreateStepPanel select,
+.taskCreateStepPanel textarea {
+  min-height: 54px;
+  border-color: #dce8dd;
+  border-radius: 12px;
+  background: #fff;
+  color: #1b231d;
+  font-size: 0.95rem;
+}
+
+.taskCreateStepPanel .lockedFieldValue {
+  background: #f2faf2;
+}
+
+.taskCreateStepPanel .lockedFieldValue svg {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  color: #2f7f46;
+}
+
+.taskCreateStepPanel .checkRow,
+.taskCreateHelperCard,
+.taskCreateReadyCard {
+  border: 1px solid #dce8dd;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #eef7ed, #fbfdfb);
+}
+
+.taskCreateStepPanel .quantityRow {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px;
+  border-color: #dce8dd;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.taskCreateStepPanel .fileDropZone {
+  min-height: 112px;
+  border: 1px dashed #9bc9a5;
+  border-radius: 12px;
+  background: #f7faf7;
+}
+
+.taskCreateStepPanel .fileDropZone svg {
+  color: #2f7f46;
+}
+
+.taskCreateHelperCard,
+.taskCreateReadyCard {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 14px;
+  color: #1f6d34;
+  font-size: 0.88rem;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.taskCreateHelperCard svg,
+.taskCreateReadyCard svg {
+  width: 24px;
+  height: 24px;
+}
+
+.taskCreateReadyCard strong {
+  display: block;
+  color: #1f6d34;
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.taskCreateReadyCard span {
+  display: block;
+  margin-top: 3px;
+  color: #526056;
+}
+
+.taskCreateStepActions,
+.taskCreateFinalActions {
+  display: grid;
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+  gap: 10px;
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  margin-top: 2px;
+  padding: 14px 0 0;
+  border-top: 1px solid rgba(46, 125, 50, 0.1);
+  background: rgba(250, 253, 249, 0.97);
+}
+
+.taskCreateStepActions .primaryButton {
+  grid-column: 1 / -1;
+}
+
+.taskCreateStepActions .primaryButton,
+.taskCreateFinalActions .primaryButton {
+  border-color: #168338;
+  background: #168338;
+  color: #fff;
+}
+
+.taskCreateStepActions .secondaryButton,
+.taskCreateFinalActions .secondaryButton {
+  border-color: #dce8dd;
+  background: #fff;
+  color: #1b231d;
+}
+
+.taskCreateSummaryGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.taskCreateSummaryCard {
+  overflow: hidden;
+  border: 1px solid #dce8dd;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.taskCreateSummaryCard > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #eef7ed;
+}
+
+.taskCreateSummaryCard strong {
+  color: #1f6d34;
+  font-size: 0.92rem;
+  font-weight: 950;
+}
+
+.taskCreateSummaryCard button {
+  border: 0;
+  background: transparent;
+  color: #1f6d34;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.taskCreateSummaryCard dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 14px;
+}
+
+.taskCreateSummaryCard dt {
+  color: #6a746c;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.taskCreateSummaryCard dd {
+  margin: -4px 0 6px;
+  color: #1b231d;
+  font-size: 0.94rem;
+  font-weight: 850;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .modalForm {
   gap: 18px;
 }
@@ -7289,6 +7631,49 @@
 @media (max-width: 720px) {
   .modalDialog {
     width: min(100%, calc(100vw - 20px));
+  }
+
+  .taskCreateModalDialog {
+    width: min(100%, calc(100vw - 20px));
+    max-height: calc(100vh - 28px);
+    padding: 18px 16px 12px;
+    border-radius: 12px;
+    background: #f7faf7;
+  }
+
+  .taskCreateModalDialog .modalHeader {
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    margin-bottom: 14px;
+  }
+
+  .taskCreateModalDialog .modalHeader::after {
+    content: "";
+    display: block;
+    width: 44px;
+    height: 44px;
+  }
+
+  .taskCreateModalDialog .modalTitle {
+    font-size: 1.12rem;
+    line-height: 1.18;
+  }
+
+  .taskCreateStepPanel > .fieldRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .taskCreateSectionHeader {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .taskCreateSectionHeader > svg {
+    width: 40px;
+    height: 40px;
+  }
+
+  .taskCreateStepPanel .field label {
+    font-size: 0.84rem;
   }
 
   .modalForm > .fieldRow {

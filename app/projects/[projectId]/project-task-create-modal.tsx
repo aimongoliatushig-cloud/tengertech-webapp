@@ -112,32 +112,26 @@ export function ProjectTaskCreateModal({
             onClick={() => setIsOpen(false)}
           >
             <div
-              className={styles.modalDialog}
+              className={`${styles.modalDialog} ${styles.taskCreateModalDialog}`}
               role="dialog"
               aria-modal="true"
               aria-labelledby="project-task-create-title"
               onClick={(event) => event.stopPropagation()}
             >
               <div className={styles.modalHeader}>
-                <div className={styles.modalTitleGroup}>
-                  <span className={styles.eyebrow}>Шинэ даалгавар</span>
-                  <strong className={styles.modalTitle} id="project-task-create-title">
-                    {masterMode ? "Өнөөдрийн даалгавар нэмэх" : "Даалгавар үүсгэх"}
-                  </strong>
-                  <p className={styles.modalLead}>
-                    Ажлын төрлөөс зөвшөөрөгдсөн хэмжих нэгжүүдээр шүүгдсэн хэлбэрээр шинэ
-                    даалгавар бүртгэнэ.
-                  </p>
-                </div>
-
                 <button
                   type="button"
                   className={styles.modalCloseButton}
                   aria-label="Цонх хаах"
                   onClick={() => setIsOpen(false)}
                 >
-                  Хаах
+                  ←
                 </button>
+                <div className={styles.modalTitleGroup}>
+                  <strong className={styles.modalTitle} id="project-task-create-title">
+                    {masterMode ? "Өнөөдрийн даалгавар" : "Даалгавар нэмэх"}
+                  </strong>
+                </div>
               </div>
 
               <ProjectTaskCreateForm

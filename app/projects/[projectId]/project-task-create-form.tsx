@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FileText, Paperclip, PlusCircle } from "lucide-react";
+import {
+  Building2,
+  CheckCircle2,
+  ClipboardList,
+  FileText,
+  PlusCircle,
+  Ruler,
+  UploadCloud,
+  UserRound,
+} from "lucide-react";
 
 import { SearchableSelect, type SearchableSelectOption } from "@/app/_components/searchable-select";
 import styles from "@/app/workspace.module.css";
@@ -169,10 +178,17 @@ export function ProjectTaskCreateForm({
   const [selectedNewTeamMemberIds, setSelectedNewTeamMemberIds] = useState<string[]>([]);
   const [isSavingTeam, setIsSavingTeam] = useState(false);
   const [teamSaveMessage, setTeamSaveMessage] = useState("");
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [taskName, setTaskName] = useState("");
+  const [selectedTaskKhoroo, setSelectedTaskKhoroo] = useState("");
+  const [selectedTaskLocation, setSelectedTaskLocation] = useState("");
   const [newTaskKhoroo, setNewTaskKhoroo] = useState("");
   const [isKhorooConfirmed, setIsKhorooConfirmed] = useState(false);
   const [newTaskLocation, setNewTaskLocation] = useState("");
   const [isLocationConfirmed, setIsLocationConfirmed] = useState(false);
+  const [startDateValue, setStartDateValue] = useState("");
+  const [deadlineValue, setDeadlineValue] = useState(deadline);
+  const [descriptionValue, setDescriptionValue] = useState("");
   const [useTeam, setUseTeam] = useState(false);
   const [showNewTeamFields, setShowNewTeamFields] = useState(false);
   const [teamMemberQuery, setTeamMemberQuery] = useState("");
@@ -187,6 +203,7 @@ export function ProjectTaskCreateForm({
   const [quantityRows, setQuantityRows] = useState<QuantityRow[]>([
     createQuantityRow(defaultQuantityUnitId),
   ]);
+  const [quantityValues, setQuantityValues] = useState<Record<string, string>>({});
   const [filePreviews, setFilePreviews] = useState<FilePreview[]>([]);
   const filteredTeamMembers = useMemo(() => {
     const normalizedQuery = teamMemberQuery.trim().toLowerCase();
@@ -319,6 +336,23 @@ export function ProjectTaskCreateForm({
         allowedUnitSummary || selectableUnits.map((unit) => unit.name).join(", ")
       }`
     : "Хэмжих нэгжийн сонголт одоогоор алга.";
+  const selectedAssignee = filteredDepartmentUsers.find((user) => user.id === selectedAssigneeId);
+  const primaryQuantityRow = quantityRows[0];
+  const primaryQuantityUnit =
+    primaryQuantityRow?.unitId
+      ? selectableUnits.find((unit) => unit.id === primaryQuantityRow.unitId)
+      : null;
+  const primaryQuantityValue = primaryQuantityRow ? quantityValues[primaryQuantityRow.id] : "";
+  const selectedKhorooLabel = newTaskKhoroo.trim() || selectedTaskKhoroo || "Сонгоогүй";
+  const selectedLocationLabel = newTaskLocation.trim() || selectedTaskLocation || "Сонгоогүй";
+  const assignmentLabel = useTeam
+    ? localCrewTeamOptions.find((team) => String(team.id) === selectedCrewTeamId)?.label || "Баг сонгоогүй"
+    : selectedAssignee?.name || "Ажилтан сонгоогүй";
+  const taskSteps = [
+    { id: 1, label: "Мэдээлэл" },
+    { id: 2, label: "Хэмжээ" },
+    { id: 3, label: "Хянах" },
+  ] as const;
 
   if (isGarbageRouteTask) {
     return (
@@ -481,15 +515,45 @@ export function ProjectTaskCreateForm({
     <form action={action} className={className}>
       <input type="hidden" name="project_id" value={projectId} />
 
+      <div className={styles.taskCreateStepper} aria-label="Даалгавар үүсгэх алхам">
+        {taskSteps.map((step) => (
+          <button
+            key={step.id}
+            type="button"
+            className={currentStep === step.id ? styles.taskCreateStepDotActive : ""}
+            onClick={() => setCurrentStep(step.id)}
+            aria-current={currentStep === step.id ? "step" : undefined}
+          >
+            <span>{step.id}</span>
+            <small>{step.label}</small>
+          </button>
+        ))}
+      </div>
+
+      <section className={`${styles.taskCreateStepPanel} ${currentStep === 1 ? styles.taskCreateStepActive : ""}`}>
+        <div className={styles.taskCreateSectionHeader}>
+          <ClipboardList aria-hidden />
+          <div>
+            <strong>Даалгаврын үндсэн мэдээлэл</strong>
+            <p>Даалгаврын нэр, хороо, байршил, хариуцсан хүнийг оруулна.</p>
+          </div>
+        </div>
+
       <div className={styles.fieldRow}>
         <div className={styles.field}>
           <label>Хэлтэс</label>
-          <div className={styles.lockedFieldValue}>{departmentName}</div>
+          <div className={styles.lockedFieldValue}>
+            <Building2 aria-hidden />
+            <span>{departmentName}</span>
+          </div>
         </div>
 
         <div className={styles.field}>
           <label>Хэлтсийн дарга</label>
-          <div className={styles.lockedFieldValue}>{departmentHeadName || "Тодорхойгүй"}</div>
+          <div className={styles.lockedFieldValue}>
+            <UserRound aria-hidden />
+            <span>{departmentHeadName || "Тодорхойгүй"}</span>
+          </div>
         </div>
       </div>
 
@@ -500,14 +564,20 @@ export function ProjectTaskCreateForm({
           name="name"
           type="text"
           placeholder="Жишээ: Хогийн савны тойргийн цэвэрлэгээ"
-          required
+          value={taskName}
+          onChange={(event) => setTaskName(event.target.value)}
         />
       </div>
 
       <div className={styles.fieldRow}>
         <div className={styles.field}>
           <label htmlFor="task-khoroo">Хороо</label>
-          <select id="task-khoroo" name="task_khoroo" defaultValue="">
+          <select
+            id="task-khoroo"
+            name="task_khoroo"
+            value={selectedTaskKhoroo}
+            onChange={(event) => setSelectedTaskKhoroo(event.target.value)}
+          >
             <option value="">Хороо сонгох</option>
             {subdistrictOptions.map((option) => (
               <option key={option.id} value={option.name}>
@@ -548,7 +618,12 @@ export function ProjectTaskCreateForm({
 
         <div className={styles.field}>
           <label htmlFor="task-location">Байршил</label>
-          <select id="task-location" name="task_location" defaultValue="">
+          <select
+            id="task-location"
+            name="task_location"
+            value={selectedTaskLocation}
+            onChange={(event) => setSelectedTaskLocation(event.target.value)}
+          >
             <option value="">Байршил сонгох</option>
             {LOCATION_OPTIONS.map((option) => (
               <option key={option} value={option}>
@@ -714,15 +789,48 @@ export function ProjectTaskCreateForm({
         ) : null}
       </section>
 
+        <div className={styles.taskCreateHelperCard}>
+          <CheckCircle2 aria-hidden />
+          <span>Даалгаврын нэр нь ажлын зорилгыг товч, тодорхой илэрхийлсэн байвал талбай дээр хурдан ойлгогдоно.</span>
+        </div>
+
+        <div className={styles.taskCreateStepActions}>
+          <button type="button" className={styles.primaryButton} onClick={() => setCurrentStep(2)}>
+            Үргэлжлүүлэх
+          </button>
+        </div>
+      </section>
+
+      <section className={`${styles.taskCreateStepPanel} ${currentStep === 2 ? styles.taskCreateStepActive : ""}`}>
+        <div className={styles.taskCreateSectionHeader}>
+          <Ruler aria-hidden />
+          <div>
+            <strong>Хэмжээ ба хугацаа</strong>
+            <p>Ажлын хугацаа, хэмжих нэгж, файл болон товч тайлбарыг оруулна.</p>
+          </div>
+        </div>
+
       <div className={styles.fieldRow}>
         <div className={styles.field}>
           <label htmlFor="task-start-date">Эхлэх огноо</label>
-          <input id="task-start-date" name="start_date" type="date" />
+          <input
+            id="task-start-date"
+            name="start_date"
+            type="date"
+            value={startDateValue}
+            onChange={(event) => setStartDateValue(event.target.value)}
+          />
         </div>
 
         <div className={styles.field}>
           <label htmlFor="task-deadline">Дуусах огноо</label>
-          <input id="task-deadline" name="deadline" type="date" defaultValue={deadline} />
+          <input
+            id="task-deadline"
+            name="deadline"
+            type="date"
+            value={deadlineValue}
+            onChange={(event) => setDeadlineValue(event.target.value)}
+          />
         </div>
       </div>
 
@@ -750,6 +858,13 @@ export function ProjectTaskCreateForm({
                   min="0.01"
                   step="0.01"
                   placeholder="12"
+                  value={quantityValues[row.id] ?? ""}
+                  onChange={(event) =>
+                    setQuantityValues((current) => ({
+                      ...current,
+                      [row.id]: event.target.value,
+                    }))
+                  }
                 />
               </div>
 
@@ -852,8 +967,8 @@ export function ProjectTaskCreateForm({
       <div className={styles.field}>
         <label htmlFor="task-files">Файл хавсаргах</label>
         <label className={styles.fileDropZone} htmlFor="task-files">
-          <Paperclip aria-hidden />
-          <span>PDF, зураг, бичиг баримт олон файлаар хавсаргана</span>
+          <UploadCloud aria-hidden />
+          <span>PDF, зураг, бичиг баримт хавсаргах</span>
         </label>
         <input
           id="task-files"
@@ -897,14 +1012,100 @@ export function ProjectTaskCreateForm({
           id="task-description"
           name="description"
           placeholder="Өнөөдөр хийх ажлын хүрээ, байршил, онцгой зааврыг товч бичнэ."
+          value={descriptionValue}
+          onChange={(event) => setDescriptionValue(event.target.value)}
         />
       </div>
 
-      <div className={footerClassName}>
-        <button type="submit" className={styles.primaryButton}>
-          Даалгавар нэмэх
-        </button>
-      </div>
+        <div className={styles.taskCreateStepActions}>
+          <button type="button" className={styles.secondaryButton} onClick={() => setCurrentStep(1)}>
+            Буцах
+          </button>
+          <button type="button" className={styles.primaryButton} onClick={() => setCurrentStep(3)}>
+            Үргэлжлүүлэх
+          </button>
+        </div>
+      </section>
+
+      <section className={`${styles.taskCreateStepPanel} ${currentStep === 3 ? styles.taskCreateStepActive : ""}`}>
+        <div className={styles.taskCreateSectionHeader}>
+          <CheckCircle2 aria-hidden />
+          <div>
+            <strong>Хянах ба үүсгэх</strong>
+            <p>Мэдээллээ шалгаад даалгавраа үүсгэнэ үү.</p>
+          </div>
+        </div>
+
+        <div className={styles.taskCreateSummaryGrid}>
+          <article className={styles.taskCreateSummaryCard}>
+            <div>
+              <strong>Үндсэн мэдээлэл</strong>
+              <button type="button" onClick={() => setCurrentStep(1)}>Засах</button>
+            </div>
+            <dl>
+              <dt>Хэлтэс</dt>
+              <dd>{departmentName}</dd>
+              <dt>Хэлтсийн дарга</dt>
+              <dd>{departmentHeadName || "Тодорхойгүй"}</dd>
+              <dt>Даалгаврын нэр</dt>
+              <dd>{taskName.trim() || "Оруулаагүй"}</dd>
+              <dt>Хороо</dt>
+              <dd>{selectedKhorooLabel}</dd>
+              <dt>Байршил</dt>
+              <dd>{selectedLocationLabel}</dd>
+              <dt>Хуваарилалт</dt>
+              <dd>{assignmentLabel}</dd>
+            </dl>
+          </article>
+
+          <article className={styles.taskCreateSummaryCard}>
+            <div>
+              <strong>Хэмжээ ба огноо</strong>
+              <button type="button" onClick={() => setCurrentStep(2)}>Засах</button>
+            </div>
+            <dl>
+              <dt>Эхлэх огноо</dt>
+              <dd>{startDateValue || "Оруулаагүй"}</dd>
+              <dt>Дуусах огноо</dt>
+              <dd>{deadlineValue || "Оруулаагүй"}</dd>
+              <dt>Хэмжих нэгж</dt>
+              <dd>{useQuantity ? (primaryQuantityUnit?.name || primaryQuantityRow?.newUnitName || "Сонгоогүй") : "Ашиглахгүй"}</dd>
+              <dt>Тоо хэмжээ</dt>
+              <dd>{useQuantity ? (primaryQuantityValue || "Оруулаагүй") : "Ашиглахгүй"}</dd>
+            </dl>
+          </article>
+
+          <article className={styles.taskCreateSummaryCard}>
+            <div>
+              <strong>Файл ба тайлбар</strong>
+              <button type="button" onClick={() => setCurrentStep(2)}>Засах</button>
+            </div>
+            <dl>
+              <dt>Файл</dt>
+              <dd>{filePreviews.length ? `${filePreviews.length} файл хавсаргасан` : "Хавсаргаагүй"}</dd>
+              <dt>Товч тайлбар</dt>
+              <dd>{descriptionValue.trim() || "Оруулаагүй"}</dd>
+            </dl>
+          </article>
+        </div>
+
+        <div className={styles.taskCreateReadyCard}>
+          <CheckCircle2 aria-hidden />
+          <div>
+            <strong>Бэлэн боллоо!</strong>
+            <span>Даалгавар үүсгэхэд бэлэн байна.</span>
+          </div>
+        </div>
+
+        <div className={`${footerClassName} ${styles.taskCreateFinalActions}`}>
+          <button type="button" className={styles.secondaryButton} onClick={() => setCurrentStep(2)}>
+            Буцах
+          </button>
+          <button type="submit" className={styles.primaryButton}>
+            Даалгавар үүсгэх
+          </button>
+        </div>
+      </section>
     </form>
   );
 }

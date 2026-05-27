@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import {
@@ -958,14 +958,11 @@ export function NewWorkForm({
   const showProjectDetails = !isGarbageTransport && !isAutoBase && !isRoadAreaCleaning;
   const showGreenWorkflowSelector = supportsRoadAreaCleaning && !isSharedWork;
   const isGreenWorkflowSelectScreen = showGreenWorkflowSelector && greenWorkflowStep === "select";
-  const mobileStepLabel = isGreenWorkflowSelectScreen ? "1/3" : isRoadAreaCleaning ? "2/3" : "1/4";
   const mobileScreenTitle = isGreenWorkflowSelectScreen
     ? "Ажил нэмэх"
     : isRoadAreaCleaning
       ? "Хурдан үүсгэх"
       : "Ногоон байгууламжийн ажил";
-  const mobileProgressSegmentCount = isGreenWorkflowSelectScreen ? 3 : isRoadAreaCleaning ? 3 : 4;
-  const mobileProgressActiveCount = isGreenWorkflowSelectScreen ? 1 : isRoadAreaCleaning ? 2 : 1;
   const formModeDescription = isGarbageTransport
     ? "Машин, хороо, огноо, олон хогийн цэг сонгоход тухайн өдрийн даалгавар автоматаар үүснэ."
     : isSharedWork
@@ -1009,19 +1006,6 @@ export function NewWorkForm({
             ←
           </button>
           <strong>{mobileScreenTitle}</strong>
-          <span>{mobileStepLabel}</span>
-          <div
-            className={styles.mobileWorkflowProgress}
-            style={{ "--mobile-progress-count": mobileProgressSegmentCount } as CSSProperties}
-            aria-hidden
-          >
-            {Array.from({ length: mobileProgressSegmentCount }).map((_, index) => (
-              <i
-                key={`progress-${index}`}
-                className={index < mobileProgressActiveCount ? styles.mobileWorkflowProgressActive : ""}
-              />
-            ))}
-          </div>
         </div>
       ) : null}
 
@@ -2396,22 +2380,6 @@ export function NewWorkForm({
         </>
       ) : (
         <>
-          <section className={styles.fullTaskPanel} aria-label="Ногоон байгууламжийн ажлын алхам">
-            <div className={styles.fullTaskHeader}>
-              <span className={styles.formBadge}>Ногоон байгууламжийн ажил</span>
-              <h3>Дэлгэрэнгүй бүртгэл</h3>
-              <p>Тохижилт, урсгалгаа, засвар үйлчилгээ болон тусгай ажлын мэдээллийг хэсэгчилж оруулна.</p>
-            </div>
-            <div className={styles.fullTaskSteps}>
-              {["Үндсэн мэдээлэл", "Байршил", "Хуваарилалт", "Хавсралт"].map((step, index) => (
-                <span key={step} className={index === 0 ? styles.fullTaskStepActive : ""}>
-                  <b>{index + 1}</b>
-                  {step}
-                </span>
-              ))}
-            </div>
-          </section>
-
           <section className={`${styles.optionalSection} ${styles.fullTaskSection}`}>
             <div className={styles.fullTaskSectionTitle}>
               <span>1</span>
