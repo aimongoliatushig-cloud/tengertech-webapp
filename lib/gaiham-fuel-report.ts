@@ -19,6 +19,16 @@ type GaihamTracker = {
   group_label?: string;
 };
 
+class GaihamApiError extends Error {
+  status: number;
+
+  constructor(path: string, status: number) {
+    super(`Gaiham API ${path} returned HTTP ${status}.`);
+    this.name = "GaihamApiError";
+    this.status = status;
+  }
+}
+
 type AggregatedFuelTotal = {
   fuelLiters: number;
   rowCount: number;
@@ -52,6 +62,8 @@ export type GaihamFuelTotalsResult = {
 const DEFAULT_GAIHAM_API_BASE_URL = "https://gps.gaikham.com/api-v2";
 const DEFAULT_GROUP_LABEL = "\u0425\u0430\u043d-\u0423\u0443\u043b \u0442\u043e\u0445\u0438\u0436\u0438\u043b\u0442";
 const DEFAULT_SOURCE_TITLE = "\u0413\u0430\u0439\u0445\u0430\u043c GPS";
+const DEFAULT_REPORT_RETRIEVE_ATTEMPTS = 10;
+const DEFAULT_REPORT_RETRIEVE_DELAY_MS = 2000;
 
 function apiBaseUrl() {
   return (process.env.GAIHAM_API_BASE_URL?.trim() || DEFAULT_GAIHAM_API_BASE_URL).replace(/\/+$/, "");
@@ -77,6 +89,18 @@ function parseTrackerIds(value: string | undefined) {
     .split(",")
     .map((item) => Number(item.trim()))
     .filter((item) => Number.isFinite(item) && item > 0);
+}
+
+function envPositiveInt(name: string, fallback: number, max: number) {
+  const parsed = Number(process.env[name]);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return Math.min(Math.floor(parsed), max);
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -138,7 +162,7 @@ async function postGaiham<T extends GaihamApiResponse>(path: string, body: Recor
   });
 
   if (!response.ok) {
-    throw new Error(`Gaiham API ${path} returned HTTP ${response.status}.`);
+    throw new GaihamApiError(path, response.status);
   }
 
   const payload = (await response.json()) as T;
@@ -257,14 +281,46 @@ async function generateReport(hash: string, requestedDate: string, trackerIds: n
 }
 
 async function retrieveReport(hash: string, reportId: number) {
-  const payload = await postGaiham<GaihamApiResponse>("report/tracker/retrieve", {
-    hash,
-    report_id: reportId,
-  });
-  if (!payload.report) {
-    throw new Error("Gaiham report/tracker/retrieve тайлан буцаасангүй.");
+  const attempts = envPositiveInt(
+    "GAIHAM_REPORT_RETRIEVE_ATTEMPTS",
+    DEFAULT_REPORT_RETRIEVE_ATTEMPTS,
+    30,
+  );
+  const delayMs = envPositiveInt(
+    "GAIHAM_REPORT_RETRIEVE_DELAY_MS",
+    DEFAULT_REPORT_RETRIEVE_DELAY_MS,
+    10_000,
+  );
+
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const payload = await postGaiham<GaihamApiResponse>("report/tracker/retrieve", {
+        hash,
+        report_id: reportId,
+      });
+      if (payload.report) {
+        return payload.report;
+      }
+      lastError = new Error("Gaiham report/tracker/retrieve тайлан буцаасангүй.");
+    } catch (error) {
+      lastError = error;
+      const status = error instanceof GaihamApiError ? error.status : 0;
+      const retryableStatus = status === 404 || status === 425 || status === 429 || status >= 500;
+      if (!retryableStatus) {
+        throw error;
+      }
+    }
+
+    if (attempt < attempts) {
+      await sleep(delayMs);
+    }
   }
-  return payload.report;
+
+  if (lastError instanceof Error) {
+    throw lastError;
+  }
+  throw new Error("Gaiham report/tracker/retrieve тайлан буцаасангүй.");
 }
 
 async function deleteReport(hash: string, reportId: number) {

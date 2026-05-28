@@ -260,13 +260,20 @@ class MunicipalGarbageSyncLog(models.Model):
                 "",
             )
         )
+        latest_success_date = None
+        for success_date in success_dates:
+            parsed_success_date = self._date_from_iso(success_date)
+            if parsed_success_date and (not latest_success_date or parsed_success_date > latest_success_date):
+                latest_success_date = parsed_success_date
 
-        if success_dates:
-            start_date = window_start_date
-        elif last_target_date and last_target_date < target_date:
-            start_date = max(last_target_date + timedelta(days=1), window_start_date)
-        elif last_target_date and last_target_date >= target_date:
+        latest_known_success_date = max(
+            [date_value for date_value in (last_target_date, latest_success_date) if date_value],
+            default=None,
+        )
+        if latest_known_success_date and latest_known_success_date >= target_date:
             return []
+        if latest_known_success_date and latest_known_success_date < target_date:
+            start_date = max(latest_known_success_date + timedelta(days=1), window_start_date)
         else:
             start_date = target_date
 
@@ -423,7 +430,18 @@ class MunicipalGarbageSyncLog(models.Model):
                 payload = response.json()
             except ValueError:
                 payload = {}
-            if response.status_code >= 400:
+            try:
+                delegated_imported_count = int(
+                    payload.get("imported")
+                    or payload.get("recordCount")
+                    or payload.get("record_count")
+                    or payload.get("count")
+                    or 0
+                ) if isinstance(payload, dict) else 0
+            except Exception:
+                delegated_imported_count = 0
+            partial_success_status = response.status_code == 409 and delegated_imported_count > 0
+            if response.status_code >= 400 and not partial_success_status:
                 raise ValueError(
                     payload.get("error")
                     if isinstance(payload, dict) and payload.get("error")
@@ -435,11 +453,9 @@ class MunicipalGarbageSyncLog(models.Model):
             payload = response.json()
 
         if delegated_app_import:
-            if not isinstance(payload, dict) or not payload.get("ok"):
+            if not isinstance(payload, dict):
                 raise ValueError(
-                    payload.get("error")
-                    if isinstance(payload, dict) and payload.get("error")
-                    else "%s тайлан %s өдөр апп import амжилтгүй буцлаа. Дараагийн cron дахин татна."
+                    "%s тайлан %s өдөр апп import амжилтгүй буцлаа. Дараагийн cron дахин татна."
                     % (delegated_source_label, target_date)
                 )
             try:
@@ -461,6 +477,12 @@ class MunicipalGarbageSyncLog(models.Model):
                 )
             except Exception:
                 count = 0
+            if not payload.get("ok") and count <= 0:
+                raise ValueError(
+                    payload.get("error")
+                    or "%s тайлан %s өдөр апп import амжилтгүй буцлаа. Дараагийн cron дахин татна."
+                    % (delegated_source_label, target_date)
+                )
             if total_rows <= 0:
                 raise ValueError(
                     "%s тайлан %s өдөр 0 мөр буцаалаа. Дараагийн cron дахин татна."
@@ -472,7 +494,7 @@ class MunicipalGarbageSyncLog(models.Model):
                     % (delegated_source_label, target_date)
                 )
             unmatched_count = self._delegated_payload_unmatched_count(payload, total_rows, count)
-            if unmatched_count:
+            if unmatched_count and count <= 0:
                 count_label = str(unmatched_count) if unmatched_count > 0 else "зарим"
                 raise ValueError(
                     "%s тайлан %s өдөр %s мөр авто баазтай таарсангүй. Дугаарыг засаад дараагийн cron дахин татна."
