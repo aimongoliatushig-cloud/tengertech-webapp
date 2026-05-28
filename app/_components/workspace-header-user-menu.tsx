@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ChevronDown, LogOut, Settings } from "lucide-react";
 
 import { ProfileAvatar } from "@/app/_components/profile-avatar";
+import { useProfileImageUrl } from "@/app/_components/profile-image-client";
 
 import styles from "./workspace-header.module.css";
 
@@ -21,35 +22,8 @@ export function WorkspaceHeaderUserMenu({
   userImageUrl = "",
 }: WorkspaceHeaderUserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [fetchedUserImageUrl, setFetchedUserImageUrl] = useState("");
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const resolvedUserImageUrl = userImageUrl || fetchedUserImageUrl;
-
-  useEffect(() => {
-    if (userImageUrl || fetchedUserImageUrl || !isOpen) {
-      return;
-    }
-
-    const controller = new AbortController();
-    let isCancelled = false;
-
-    fetch("/api/profile-image", {
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload: { imageUrl?: string } | null) => {
-        if (!isCancelled && payload?.imageUrl) {
-          setFetchedUserImageUrl(payload.imageUrl);
-        }
-      })
-      .catch(() => {});
-
-    return () => {
-      isCancelled = true;
-      controller.abort();
-    };
-  }, [fetchedUserImageUrl, isOpen, userImageUrl]);
+  const resolvedUserImageUrl = useProfileImageUrl(userImageUrl);
 
   useEffect(() => {
     if (!isOpen) {

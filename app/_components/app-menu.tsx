@@ -39,6 +39,7 @@ import {
 } from "@/lib/department-groups";
 import { isAutoGarbageDepartment } from "@/lib/department-permissions";
 import { ProfileAvatar } from "@/app/_components/profile-avatar";
+import { useProfileImageUrl } from "@/app/_components/profile-image-client";
 import {
   canAccessAutoBaseOverview,
   canAccessGarbageTransportSettings,
@@ -315,36 +316,7 @@ export function AppMenu({
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {},
   );
-  const [fetchedUserImageUrl, setFetchedUserImageUrl] = useState("");
-  const resolvedUserImageUrl = userImageUrl || fetchedUserImageUrl;
-
-  useEffect(() => {
-    if (userImageUrl || fetchedUserImageUrl || !isProfileMenuOpen) {
-      return;
-    }
-
-    const controller = new AbortController();
-    let isCancelled = false;
-
-    fetch("/api/profile-image", {
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload: { imageUrl?: string } | null) => {
-        if (!isCancelled && payload?.imageUrl) {
-          setFetchedUserImageUrl(payload.imageUrl);
-        }
-      })
-      .catch(() => {
-        // The initials fallback is enough when the image endpoint is unavailable.
-      });
-
-    return () => {
-      isCancelled = true;
-      controller.abort();
-    };
-  }, [fetchedUserImageUrl, isProfileMenuOpen, userImageUrl]);
+  const resolvedUserImageUrl = useProfileImageUrl(userImageUrl);
 
   const profileAvatarContent = (
     <ProfileAvatar
