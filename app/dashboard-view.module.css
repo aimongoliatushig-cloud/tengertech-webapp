@@ -4271,9 +4271,9 @@
 
 .autoGarbageReportHeader {
   display: grid;
-  grid-template-columns: minmax(112px, 1.1fr) minmax(140px, 1fr) minmax(78px, auto) minmax(70px, auto);
+  grid-template-columns: minmax(98px, 1fr) minmax(104px, 0.76fr) minmax(72px, auto) minmax(58px, auto);
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 0 10px 2px;
   color: #64748b;
   font-size: 0.6rem;
@@ -4287,9 +4287,9 @@
 
 .autoGarbageReportRow {
   display: grid;
-  grid-template-columns: minmax(112px, 1.1fr) minmax(140px, 1fr) minmax(78px, auto) minmax(70px, auto);
+  grid-template-columns: minmax(98px, 1fr) minmax(104px, 0.76fr) minmax(72px, auto) minmax(58px, auto);
   align-items: start;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
   padding: 10px;
   border: 1px solid rgba(15, 23, 42, 0.07);

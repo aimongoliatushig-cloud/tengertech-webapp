@@ -215,11 +215,18 @@ function reportPlugin() {
     show_seconds: false,
     graph_type: "time",
     detailed_by_dates: true,
+    hide_empty_tabs: false,
     include_summary_sheet_only: false,
     include_summary_sheet: true,
+    use_ignition_data_for_consumption: false,
+    include_mileage_plot: false,
+    include_speed_plot: false,
     filter: true,
     smoothing: false,
     surge_filter: false,
+    surge_filter_threshold: 0.2,
+    speed_filter: false,
+    speed_filter_threshold: 10,
   };
 }
 

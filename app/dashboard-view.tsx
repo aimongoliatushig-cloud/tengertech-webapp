@@ -1196,6 +1196,7 @@ type AutoGarbageWeightReportRow = {
   plate: string;
   modelName: string;
   reportDate: string;
+  reportDateValue: string;
   fetchedAt: string;
   fetchedAtValue: string;
   weightTons: number;
@@ -1210,6 +1211,7 @@ type AutoGarbageFuelReportRow = {
   plate: string;
   modelName: string;
   reportDate: string;
+  reportDateValue: string;
   fetchedAt: string;
   fetchedAtValue: string;
   fuelLiters: number;
@@ -1450,31 +1452,40 @@ function fetchedTimeValue(value: string | null | undefined) {
   return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 }
 
-function formatFetchedAt(value: string | null | undefined, fallback = "") {
+function formatAutoGarbageNumericDate(value: string | null | undefined, fallback = "") {
   const cleaned = dashboardCleanText(value);
   if (!cleaned) {
     return fallback;
   }
 
   const hasExplicitTimezone = /(?:z|[+-]\d{2}:?\d{2})$/i.test(cleaned);
-  const normalized = /^\d{4}-\d{2}-\d{2}\s+\d/.test(cleaned) && !hasExplicitTimezone
-    ? `${cleaned.replace(" ", "T")}Z`
-    : cleaned;
+  const normalized =
+    /^\d{4}-\d{2}-\d{2}$/.test(cleaned)
+      ? `${cleaned}T12:00:00+08:00`
+      : /^\d{4}-\d{2}-\d{2}\s+\d/.test(cleaned) && !hasExplicitTimezone
+        ? `${cleaned.replace(" ", "T")}Z`
+        : cleaned;
   const parsed = new Date(normalized);
 
   if (Number.isNaN(parsed.getTime())) {
     return cleaned;
   }
 
-  return new Intl.DateTimeFormat("mn-MN", {
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: DASHBOARD_TIME_ZONE,
     year: "numeric",
-    month: "long",
+    month: "numeric",
     day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(parsed);
+  }).formatToParts(parsed);
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  const year = parts.find((part) => part.type === "year")?.value;
+
+  return month && day && year ? `${month}.${day}.${year}` : cleaned;
+}
+
+function formatFetchedAt(value: string | null | undefined, fallback = "") {
+  return formatAutoGarbageNumericDate(value, fallback);
 }
 
 function reportDateKey(report: { reportDateValue?: string; reportDate?: string }) {
@@ -1540,12 +1551,14 @@ function AutoGarbageReportStatus({
 function AutoGarbageReportTimeCell({
   row,
 }: {
-  row: { reportDate?: string; fetchedAt?: string; fetchedAtValue?: string };
+  row: { reportDate?: string; reportDateValue?: string; fetchedAt?: string; fetchedAtValue?: string };
 }) {
+  const reportDate = formatAutoGarbageNumericDate(row.reportDateValue || row.reportDate, "-");
+
   return (
     <span className={dashboardStyles.autoGarbageReportTime}>
       <small>Тайлангийн огноо</small>
-      <strong>{dashboardCleanText(row.reportDate) || "-"}</strong>
+      <strong>{reportDate}</strong>
       <small>Татсан огноо</small>
       <strong>{formatFetchedAt(row.fetchedAtValue || row.fetchedAt, "-")}</strong>
     </span>
@@ -1726,6 +1739,7 @@ function buildAutoGarbageBoardModel({
       plate: dashboardCleanText(report.vehiclePlate),
       modelName: dashboardCleanText(report.vehicleName),
       reportDate: report.reportDate,
+      reportDateValue: report.reportDateValue ?? "",
       fetchedAt: report.fetchedAt,
       fetchedAtValue: report.fetchedAtValue ?? "",
       weightTons: report.weightTons || parseWeightLabelToTons(report.weightLabel),
@@ -1742,6 +1756,7 @@ function buildAutoGarbageBoardModel({
       plate: dashboardCleanText(report.vehiclePlate),
       modelName: dashboardCleanText(report.vehicleName),
       reportDate: report.reportDate,
+      reportDateValue: report.reportDateValue ?? "",
       fetchedAt: report.fetchedAt,
       fetchedAtValue: report.fetchedAtValue ?? "",
       fuelLiters: Math.max(0, report.fuelLiters || 0),
@@ -2772,8 +2787,8 @@ function ExecutiveHeroBanner({
           {normalDay ? <CheckCircle2 /> : <Clock3 />}
         </span>
         <div>
-          <h2>{normalDay ? "Өнөөдрийн үйл ажиллагаа хэвийн" : "Өнөөдрийн үйл ажиллагаанд анхаарах зүйл байна"}</h2>
-          <p>Хотын өнгө үзэмж, цэвэр цэмцгэр байдал, ногоон байгууламж, хог тээвэрлэлтийн явцыг нэг дор хянаж байна.</p>
+          <h2>Хот тохижилтын үйл ажиллагааны хяналтын самбар</h2>
+          <p>Хог тээвэр, зам талбайн цэвэрлэгээ, ногоон байгууламж болон техник, ажилтны өдөр тутмын үйл ажиллагааг бодит цагийн мэдээллээр хянаж байна.</p>
         </div>
       </div>
 

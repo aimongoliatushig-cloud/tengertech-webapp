@@ -29,7 +29,6 @@ type DepartmentRecord = {
 
 const TIME_ZONE = process.env.APP_TIME_ZONE ?? "Asia/Ulaanbaatar";
 const GAIHAM_FUEL_SOURCE = "\u0413\u0430\u0439\u0445\u0430\u043c GPS";
-const IMPORT_READY_HOUR = 12;
 
 function currentDateKey() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -47,27 +46,8 @@ function shiftDateKey(dateKey: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
-function currentLocalTimeParts() {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: TIME_ZONE,
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(new Date());
-
-  return {
-    hour: Number(parts.find((part) => part.type === "hour")?.value ?? 0),
-    minute: Number(parts.find((part) => part.type === "minute")?.value ?? 0),
-  };
-}
-
-function isImportReadyNow() {
-  const { hour, minute } = currentLocalTimeParts();
-  return hour * 60 + minute >= IMPORT_READY_HOUR * 60;
-}
-
 function latestAllowedReportDateKey() {
-  return shiftDateKey(currentDateKey(), isImportReadyNow() ? -1 : -2);
+  return shiftDateKey(currentDateKey(), -1);
 }
 
 function isLocalDevelopmentRequest(request: Request) {
@@ -323,7 +303,7 @@ function validateRequestedWindow(startDate: string, endDate: string) {
 
   const latestAllowed = latestAllowedReportDateKey();
   if (endDate > latestAllowed) {
-    return `Gaiham тайланг ${latestAllowed}-с хойших огноогоор татахгүй. Өчигдрийн тайлан дараагийн өдөр 12:00-с хойш татагдана.`;
+    return `Gaiham тайланг ${latestAllowed}-с хойших огноогоор татахгүй. Зөвхөн өмнөх өдөр болон түүнээс өмнөх огноогоор татна.`;
   }
 
   return "";
