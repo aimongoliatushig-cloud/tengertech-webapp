@@ -23,8 +23,8 @@ const ULAANBAATAR_COORDS = {
   longitude: 106.9176,
 };
 const ULAANBAATAR_TIME_ZONE = "Asia/Ulaanb\x61\x61t\x61r";
-const WEATHER_REQUEST_TIMEOUT_MS = 10_000;
-const AIR_QUALITY_REQUEST_TIMEOUT_MS = 5_000;
+const WEATHER_REQUEST_TIMEOUT_MS = 2_500;
+const AIR_QUALITY_REQUEST_TIMEOUT_MS = 1_000;
 const WEATHER_CACHE_TTL_MS = 10 * 60_000;
 
 let cachedWeather:
@@ -114,31 +114,7 @@ async function fetchLiveUlaanbaatarWeather(): Promise<WeatherSnapshot> {
   };
 
   try {
-    const weatherResponse = await fetch(weatherUrl, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(WEATHER_REQUEST_TIMEOUT_MS),
-    });
-
-    if (!weatherResponse.ok) {
-      throw new Error(`Weather request failed: ${weatherResponse.status}`);
-    }
-
-    const weather = (await weatherResponse.json()) as {
-      current?: {
-        temperature_2m?: number;
-        weather_code?: number;
-        wind_speed_10m?: number;
-        time?: string;
-      };
-      daily?: {
-        time?: string[];
-        weather_code?: number[];
-        temperature_2m_max?: number[];
-        temperature_2m_min?: number[];
-        precipitation_probability_max?: number[];
-      };
-    };
-    const air = await fetch(airUrl, {
+    const airPromise = fetch(airUrl, {
       cache: "no-store",
       signal: AbortSignal.timeout(AIR_QUALITY_REQUEST_TIMEOUT_MS),
     })
@@ -148,6 +124,33 @@ async function fetchLiveUlaanbaatarWeather(): Promise<WeatherSnapshot> {
           : null,
       )
       .catch(() => null);
+    const weatherResponse = await fetch(weatherUrl, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(WEATHER_REQUEST_TIMEOUT_MS),
+    });
+
+    if (!weatherResponse.ok) {
+      throw new Error(`Weather request failed: ${weatherResponse.status}`);
+    }
+
+    const [weather, air] = await Promise.all([
+      weatherResponse.json() as Promise<{
+        current?: {
+          temperature_2m?: number;
+          weather_code?: number;
+          wind_speed_10m?: number;
+          time?: string;
+        };
+        daily?: {
+          time?: string[];
+          weather_code?: number[];
+          temperature_2m_max?: number[];
+          temperature_2m_min?: number[];
+          precipitation_probability_max?: number[];
+        };
+      }>,
+      airPromise,
+    ]);
     const currentWeather = weather.current;
     const aqi = air?.current?.us_aqi ?? null;
     const daily = weather.daily;

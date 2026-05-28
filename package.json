@@ -9,7 +9,16 @@
     "start": "next start",
     "lint": "eslint",
     "env:check": "node scripts/check-env.mjs",
-    "qa:roles": "node scripts/webapp-role-qa.mjs"
+    "qa:create-smoke": "node scripts/create-flow-smoke.mjs",
+    "qa:app-write-smoke": "node scripts/app-write-smoke.mjs",
+    "qa:app-ui-write-smoke": "node scripts/app-ui-write-smoke.mjs",
+    "qa:concurrency-smoke": "node scripts/concurrency-smoke.mjs",
+    "qa:latency-smoke": "node scripts/latency-smoke.mjs",
+    "qa:mutation-preflight": "node scripts/workspace-mutation-preflight.mjs",
+    "qa:roles": "node scripts/webapp-role-qa.mjs",
+    "qa:cron-health": "node scripts/cron-health-check.mjs",
+    "odoo:repair-addons-path": "powershell -ExecutionPolicy Bypass -File scripts/repair-odoo-addons-path.ps1 -Restart",
+    "odoo:upgrade-cron-modules": "powershell -ExecutionPolicy Bypass -File scripts/upgrade-odoo-cron-modules.ps1 -RestartAfterUpgrade"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.4",

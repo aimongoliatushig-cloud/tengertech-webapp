@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import { buildSessionCookieHeader, signInWithOdooCredentials } from "@/lib/auth";
 import { clearLoginRateLimit, isAllowedPostOrigin, isLoginRateLimited } from "@/lib/auth-guard";
 import { canAccessGeneralDashboard, GENERAL_DASHBOARD_PATH } from "@/lib/general-dashboard-access";
 import { buildPublicUrl } from "@/lib/request-url";
+import { warmCommonWorkspace } from "@/lib/workspace-warm";
 
 const WORK_DASHBOARD_HOME = "/";
 
@@ -26,6 +27,18 @@ function getPostLoginPath(session: NonNullable<Awaited<ReturnType<typeof signInW
   }
 
   return canAccessGeneralDashboard(session) ? GENERAL_DASHBOARD_PATH : WORK_DASHBOARD_HOME;
+}
+
+function warmPostLoginWorkspace(
+  session: NonNullable<Awaited<ReturnType<typeof signInWithOdooCredentials>>>,
+) {
+  after(async () => {
+    try {
+      await warmCommonWorkspace(session);
+    } catch (error) {
+      console.warn("Post-login workspace warm failed:", error);
+    }
+  });
 }
 
 export async function POST(request: Request) {
@@ -62,6 +75,7 @@ export async function POST(request: Request) {
     }
 
     clearLoginRateLimit(request, login);
+    warmPostLoginWorkspace(session);
 
     const response = redirectTo(request, getPostLoginPath(session));
     response.headers.append("Set-Cookie", buildSessionCookieHeader(session));

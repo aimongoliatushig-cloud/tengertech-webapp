@@ -319,7 +319,7 @@ export function AppMenu({
   const resolvedUserImageUrl = userImageUrl || fetchedUserImageUrl;
 
   useEffect(() => {
-    if (userImageUrl) {
+    if (userImageUrl || fetchedUserImageUrl || !isProfileMenuOpen) {
       return;
     }
 
@@ -344,7 +344,7 @@ export function AppMenu({
       isCancelled = true;
       controller.abort();
     };
-  }, [userImageUrl]);
+  }, [fetchedUserImageUrl, isProfileMenuOpen, userImageUrl]);
 
   const profileAvatarContent = (
     <ProfileAvatar
@@ -1727,6 +1727,7 @@ export function AppMenu({
             width={184}
             height={64}
             className={styles.logo}
+            style={{ width: "178px", height: "auto" }}
             priority
             unoptimized
           />

@@ -33,7 +33,8 @@ type PointManagementPanelProps = {
   points: PointRecord[];
   subdistricts: SubdistrictRecord[];
   districts: DistrictRecord[];
-  canManageSubdistricts: boolean;
+  canCreateSubdistricts: boolean;
+  canArchiveSubdistricts: boolean;
 };
 
 function normalizeSearchText(value: string) {
@@ -49,7 +50,8 @@ export function PointManagementPanel({
   points,
   subdistricts,
   districts,
-  canManageSubdistricts,
+  canCreateSubdistricts,
+  canArchiveSubdistricts,
 }: PointManagementPanelProps) {
   const [activeSubdistrictId, setActiveSubdistrictId] = useState<number | "all">("all");
   const [query, setQuery] = useState("");
@@ -102,7 +104,7 @@ export function PointManagementPanel({
   return (
     <div className={styles.pointLayout}>
       <div className={styles.pointCreateStack}>
-        {canManageSubdistricts ? (
+        {canCreateSubdistricts ? (
           <form action={createSubdistrictAction} className={styles.formPanel}>
             <span className={styles.eyebrow}>Хороо нэмэх</span>
             <label className={styles.field}>
@@ -160,7 +162,7 @@ export function PointManagementPanel({
                       <strong>{subdistrict.label}</strong>
                       <small>{pointCount} хогийн цэг</small>
                     </div>
-                    {canManageSubdistricts ? (
+                    {canArchiveSubdistricts ? (
                       <form action={archiveSubdistrictAction} className={styles.pointArchiveForm}>
                         <input type="hidden" name="subdistrict_id" value={subdistrict.id} />
                         <button

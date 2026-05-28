@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import json
 import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -190,33 +191,91 @@ class MunicipalGarbageSyncLog(models.Model):
             return None
 
     @api.model
+    def _max_backfill_days(self):
+        try:
+            max_backfill_days = int(os.getenv("GARBAGE_SYNC_MAX_BACKFILL_DAYS", "14") or "14")
+        except Exception:
+            max_backfill_days = 14
+        return max(1, min(max_backfill_days, 31))
+
+    @api.model
+    def _success_dates_param_key(self, sync_type):
+        return "municipal_repair_workflow.garbage_%s_success_target_dates" % sync_type
+
+    @api.model
+    def _successful_report_dates(self, sync_type):
+        raw_value = (
+            self.env["ir.config_parameter"].sudo().get_param(
+                self._success_dates_param_key(sync_type),
+                "[]",
+            )
+            or "[]"
+        )
+        try:
+            values = json.loads(raw_value)
+        except Exception:
+            values = [value.strip() for value in raw_value.split(",") if value.strip()]
+        return {
+            value
+            for value in values
+            if isinstance(value, str) and self._date_from_iso(value)
+        }
+
+    @api.model
+    def _mark_report_date_success(self, sync_type, target_date):
+        params = self.env["ir.config_parameter"].sudo()
+        success_dates = self._successful_report_dates(sync_type)
+        success_dates.add(target_date)
+
+        target = self._date_from_iso(self._target_report_date())
+        if target:
+            keep_from = target - timedelta(days=max(self._max_backfill_days(), 45))
+            success_dates = {
+                value
+                for value in success_dates
+                if self._date_from_iso(value) and self._date_from_iso(value) >= keep_from
+            }
+
+        ordered_dates = sorted(success_dates)
+        params.set_param(self._success_dates_param_key(sync_type), json.dumps(ordered_dates))
+        if ordered_dates:
+            params.set_param(
+                "municipal_repair_workflow.garbage_%s_last_success_target_date" % sync_type,
+                ordered_dates[-1],
+            )
+
+    @api.model
     def _pending_report_dates(self, sync_type):
         target_date = self._date_from_iso(self._target_report_date())
         if not target_date:
             return []
 
         params = self.env["ir.config_parameter"].sudo()
+        max_backfill_days = self._max_backfill_days()
+        window_start_date = target_date - timedelta(days=max_backfill_days - 1)
+        success_dates = self._successful_report_dates(sync_type)
         last_target_date = self._date_from_iso(
             params.get_param(
                 "municipal_repair_workflow.garbage_%s_last_success_target_date" % sync_type,
                 "",
             )
         )
-        start_date = target_date
-        if last_target_date and last_target_date < target_date:
-            start_date = last_target_date + timedelta(days=1)
+
+        if success_dates:
+            start_date = window_start_date
+        elif last_target_date and last_target_date < target_date:
+            start_date = max(last_target_date + timedelta(days=1), window_start_date)
         elif last_target_date and last_target_date >= target_date:
             return []
+        else:
+            start_date = target_date
 
-        try:
-            max_backfill_days = int(os.getenv("GARBAGE_SYNC_MAX_BACKFILL_DAYS", "7") or "7")
-        except Exception:
-            max_backfill_days = 7
-        max_backfill_days = max(1, min(max_backfill_days, 31))
         dates = []
         current_date = start_date
-        while current_date <= target_date and len(dates) < max_backfill_days:
-            dates.append(current_date.isoformat())
+        while current_date <= target_date:
+            current_date_key = current_date.isoformat()
+            if current_date_key not in success_dates:
+                dates.append(current_date_key)
             current_date += timedelta(days=1)
         return dates
 
@@ -308,7 +367,222 @@ class MunicipalGarbageSyncLog(models.Model):
         return self._wrs_sync_token()
 
     @api.model
+    def _sync_lock_key(self, sync_type):
+        return "municipal_repair_workflow.garbage_%s_cron_lock_at" % sync_type
+
+    @api.model
+    def _sync_lock_ttl_minutes(self):
+        try:
+            return max(10, int(os.getenv("GARBAGE_SYNC_LOCK_TTL_MINUTES", "55") or "55"))
+        except Exception:
+            return 55
+
+    @api.model
+    def _acquire_sync_lock(self, sync_type):
+        params = self.env["ir.config_parameter"].sudo()
+        key = self._sync_lock_key(sync_type)
+        now = fields.Datetime.now()
+        raw_lock_at = params.get_param(key, "")
+        try:
+            lock_at = fields.Datetime.from_string(raw_lock_at) if raw_lock_at else None
+        except Exception:
+            lock_at = None
+        if lock_at and now - lock_at < timedelta(minutes=self._sync_lock_ttl_minutes()):
+            return False
+        params.set_param(key, fields.Datetime.to_string(now))
+        return True
+
+    @api.model
+    def _release_sync_lock(self, sync_type):
+        self.env["ir.config_parameter"].sudo().set_param(self._sync_lock_key(sync_type), "")
+
+    @api.model
+    def _fetch_external_report_date(
+        self,
+        sync_type,
+        url,
+        target_date,
+        delegated_app_import=False,
+        delegated_source_label="",
+        app_sync_token="",
+        username="",
+        password="",
+    ):
+        headers = {}
+        if delegated_app_import:
+            headers["Authorization"] = "Bearer %s" % app_sync_token
+        response = requests.get(
+            url,
+            auth=(username, password) if (username or password) and not delegated_app_import else None,
+            params={"date": target_date},
+            headers=headers,
+            timeout=self._external_request_timeout(delegated_app_import),
+        )
+        if delegated_app_import:
+            try:
+                payload = response.json()
+            except ValueError:
+                payload = {}
+            if response.status_code >= 400:
+                raise ValueError(
+                    payload.get("error")
+                    if isinstance(payload, dict) and payload.get("error")
+                    else "%s тайлан %s өдөр апп import HTTP %s алдаатай буцлаа. Дараагийн cron дахин татна."
+                    % (delegated_source_label, target_date, response.status_code)
+                )
+        else:
+            response.raise_for_status()
+            payload = response.json()
+
+        if delegated_app_import:
+            if not isinstance(payload, dict) or not payload.get("ok"):
+                raise ValueError(
+                    payload.get("error")
+                    if isinstance(payload, dict) and payload.get("error")
+                    else "%s тайлан %s өдөр апп import амжилтгүй буцлаа. Дараагийн cron дахин татна."
+                    % (delegated_source_label, target_date)
+                )
+            try:
+                total_rows = int(
+                    payload.get("totalRows")
+                    or payload.get("total_rows")
+                    or payload.get("rows")
+                    or 0
+                )
+            except Exception:
+                total_rows = 0
+            try:
+                count = int(
+                    payload.get("imported")
+                    or payload.get("recordCount")
+                    or payload.get("record_count")
+                    or payload.get("count")
+                    or 0
+                )
+            except Exception:
+                count = 0
+            if total_rows <= 0:
+                raise ValueError(
+                    "%s тайлан %s өдөр 0 мөр буцаалаа. Дараагийн cron дахин татна."
+                    % (delegated_source_label, target_date)
+                )
+            if count <= 0:
+                raise ValueError(
+                    "%s тайлан %s өдөр авто баазтай таарсан мөргүй байна. Дараагийн cron дахин татна."
+                    % (delegated_source_label, target_date)
+                )
+            unmatched_count = self._delegated_payload_unmatched_count(payload, total_rows, count)
+            if unmatched_count:
+                count_label = str(unmatched_count) if unmatched_count > 0 else "зарим"
+                raise ValueError(
+                    "%s тайлан %s өдөр %s мөр авто баазтай таарсангүй. Дугаарыг засаад дараагийн cron дахин татна."
+                    % (delegated_source_label, target_date, count_label)
+                )
+            return count
+
+        rows = self._payload_rows(payload)
+        return self._upsert_report_rows(sync_type, rows, target_date)
+
+    @api.model
     def _fetch_external_reports(self, sync_type):
+        url_key = "GARBAGE_WEIGHT_API_URL" if sync_type == "weight" else "GARBAGE_FUEL_API_URL"
+        url = self._config_or_env(
+            "municipal_repair_workflow.garbage_weight_api_url"
+            if sync_type == "weight"
+            else "municipal_repair_workflow.garbage_fuel_api_url",
+            url_key,
+        )
+        username = os.getenv("GARBAGE_API_USERNAME")
+        password = os.getenv("GARBAGE_API_PASSWORD")
+        delegated_app_import = False
+        delegated_source_label = "WRS" if sync_type == "weight" else "Gaiham"
+
+        if sync_type in ("weight", "fuel") and not url:
+            app_base_url = (
+                os.getenv("APP_BASE_URL")
+                or os.getenv("NEXT_PUBLIC_APP_URL")
+                or os.getenv("NEXT_PUBLIC_SITE_URL")
+                or self.env["ir.config_parameter"].sudo().get_param(
+                    "municipal_repair_workflow.wrs_import_app_base_url",
+                    "",
+                )
+            )
+            if app_base_url:
+                endpoint = "/api/wrs-report/import" if sync_type == "weight" else "/api/gaiham-fuel/import"
+                url = "%s%s" % (app_base_url.rstrip("/"), endpoint)
+                delegated_app_import = True
+
+        if not url:
+            return self._create_failure(sync_type, "%s тохируулаагүй байна." % url_key)
+        app_sync_token = self._app_sync_token(sync_type)
+        if delegated_app_import and not app_sync_token:
+            return self._create_failure(
+                sync_type,
+                "%s sync token тохируулаагүй байна." % delegated_source_label,
+            )
+
+        pending_dates = self._pending_report_dates(sync_type)
+        if not pending_dates:
+            return True
+        if not self._acquire_sync_lock(sync_type):
+            return True
+
+        try:
+            total_count = 0
+            imported_dates = []
+            failed_dates = []
+            for target_date in pending_dates:
+                try:
+                    count = self._fetch_external_report_date(
+                        sync_type,
+                        url,
+                        target_date,
+                        delegated_app_import=delegated_app_import,
+                        delegated_source_label=delegated_source_label,
+                        app_sync_token=app_sync_token,
+                        username=username,
+                        password=password,
+                    )
+                    total_count += count
+                    imported_dates.append(target_date)
+                    self._mark_report_date_success(sync_type, target_date)
+                except Exception as error:  # pragma: no cover - external integration guard
+                    failed_dates.append(target_date)
+                    self._create_failure(sync_type, "%s: %s" % (target_date, error))
+
+            if not imported_dates:
+                return False
+
+            params = self.env["ir.config_parameter"].sudo()
+            params.set_param(
+                "municipal_repair_workflow.garbage_%s_last_success_at" % sync_type,
+                fields.Datetime.to_string(fields.Datetime.now()),
+            )
+            params.set_param(
+                "municipal_repair_workflow.garbage_%s_last_success_date" % sync_type,
+                self._local_now().date().isoformat(),
+            )
+            self.create(
+                {
+                    "sync_type": sync_type,
+                    "state": "success",
+                    "record_count": total_count,
+                    "error_message": "Амжилттай өдөр: %s%s"
+                    % (
+                        ", ".join(imported_dates),
+                        "; алдаатай өдөр: %s" % ", ".join(failed_dates) if failed_dates else "",
+                    ),
+                }
+            )
+            return not failed_dates
+        except Exception as error:  # pragma: no cover - external integration guard
+            self._create_failure(sync_type, str(error))
+            return False
+        finally:
+            self._release_sync_lock(sync_type)
+
+    @api.model
+    def _fetch_external_reports_legacy(self, sync_type):
         url_key = "GARBAGE_WEIGHT_API_URL" if sync_type == "weight" else "GARBAGE_FUEL_API_URL"
         url = self._config_or_env(
             "municipal_repair_workflow.garbage_weight_api_url"
@@ -458,6 +732,32 @@ class MunicipalGarbageSyncLog(models.Model):
         )
         log.message_post(body="Гадны системээс мэдээлэл татахад алдаа гарлаа: %s" % message)
         return False
+
+    @api.model
+    def get_garbage_sync_cron_health(self):
+        params = self.env["ir.config_parameter"].sudo()
+        health = {}
+        for sync_type in ("weight", "fuel"):
+            latest_log = self.search([("sync_type", "=", sync_type)], order="run_at desc, id desc", limit=1)
+            health[sync_type] = {
+                "enabled": self._config_bool("municipal_repair_workflow.garbage_%s_sync_enabled" % sync_type),
+                "due": self._configured_time_due(sync_type),
+                "pending_dates": self._pending_report_dates(sync_type),
+                "successful_dates": sorted(self._successful_report_dates(sync_type)),
+                "last_success_target_date": params.get_param(
+                    "municipal_repair_workflow.garbage_%s_last_success_target_date" % sync_type,
+                    "",
+                ),
+                "last_success_at": params.get_param(
+                    "municipal_repair_workflow.garbage_%s_last_success_at" % sync_type,
+                    "",
+                ),
+                "lock_at": params.get_param(self._sync_lock_key(sync_type), "") or "",
+                "latest_log_state": latest_log.state if latest_log else "",
+                "latest_log_run_at": fields.Datetime.to_string(latest_log.run_at) if latest_log else "",
+                "latest_log_message": latest_log.error_message if latest_log else "",
+            }
+        return health
 
     @api.model
     def _payload_rows(self, payload):

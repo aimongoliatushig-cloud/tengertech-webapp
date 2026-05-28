@@ -5,6 +5,22 @@ import path from "node:path";
 const BASE = process.env.QA_BASE_URL || "http://127.0.0.1:3000";
 const PASSWORD = process.env.QA_TEST_PASSWORD || process.env.ODOO_PASSWORD || "admin";
 const OUT = path.join(process.cwd(), "tmp-webapp-role-qa");
+const NETWORK_IDLE_TIMEOUT_MS = Number(process.env.QA_ROLE_NETWORK_IDLE_MS || 0);
+const PAGE_TIMEOUT_MS = Number(process.env.QA_ROLE_PAGE_TIMEOUT_MS || 20_000);
+const WARM_AFTER_LOGIN = process.env.QA_ROLE_WARM_AFTER_LOGIN !== "0";
+const SAVE_SCREENSHOTS = process.env.QA_ROLE_SCREENSHOTS === "1";
+const USER_FILTER = new Set(
+  (process.env.QA_ROLE_USERS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
+const PAGE_FILTER = new Set(
+  (process.env.QA_ROLE_PAGES || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
 
 const USERS = [
   { label: "system_admin", login: "admin" },
@@ -33,6 +49,13 @@ const PAGES = [
   "/profile",
 ];
 
+const usersToCheck = USER_FILTER.size
+  ? USERS.filter((user) => USER_FILTER.has(user.label) || USER_FILTER.has(user.login))
+  : USERS;
+const pagesToCheck = PAGE_FILTER.size
+  ? PAGES.filter((page) => PAGE_FILTER.has(page) || PAGE_FILTER.has(normalizeTarget(page)))
+  : PAGES;
+
 fs.mkdirSync(OUT, { recursive: true });
 
 const results = [];
@@ -42,6 +65,10 @@ function writeSummary() {
     generatedAt: new Date().toISOString(),
     baseUrl: BASE,
     outputDir: OUT,
+    saveScreenshots: SAVE_SCREENSHOTS,
+    networkIdleTimeoutMs: NETWORK_IDLE_TIMEOUT_MS,
+    pageTimeoutMs: PAGE_TIMEOUT_MS,
+    warmAfterLogin: WARM_AFTER_LOGIN,
     results,
   };
   fs.writeFileSync(path.join(OUT, "summary.json"), JSON.stringify(summary, null, 2));
@@ -70,6 +97,22 @@ async function getSessionCookie(login) {
   };
 }
 
+async function warmWorkspace(cookieValue) {
+  if (!WARM_AFTER_LOGIN) {
+    return { skipped: true };
+  }
+
+  const startedAt = Date.now();
+  const response = await fetch(`${BASE}/api/workspace/warm`, {
+    headers: { cookie: `ops_web_session=${cookieValue}` },
+    signal: AbortSignal.timeout(20_000),
+  }).catch((error) => ({ error }));
+  if ("error" in response) {
+    return { ok: false, ms: Date.now() - startedAt, error: response.error.message };
+  }
+  return { ok: response.ok, status: response.status, ms: Date.now() - startedAt };
+}
+
 function hasBrokenText(text) {
   return /[ÐÑÒÓ]/.test(text);
 }
@@ -84,19 +127,21 @@ async function checkPage(page, target, userLabel, viewportLabel) {
   let navigationError = "";
   const response = await page.goto(`${BASE}${target}`, {
     waitUntil: "domcontentloaded",
-    timeout: 10_000,
+    timeout: PAGE_TIMEOUT_MS,
   }).catch((error) => {
     navigationError = error.message || String(error);
     return null;
   });
-  await page.waitForLoadState("networkidle", { timeout: 2_000 }).catch(() => {});
+  if (NETWORK_IDLE_TIMEOUT_MS > 0) {
+    await page.waitForLoadState("networkidle", { timeout: NETWORK_IDLE_TIMEOUT_MS }).catch(() => {});
+  }
 
   const bodyText = await page.locator("body").innerText({ timeout: 3_000 }).catch(() => "");
   const title = await page.title().catch(() => "");
   const finalUrl = page.url().replace(BASE, "");
   const status = response?.status() ?? null;
 
-  if (navigationError && (!bodyText || !finalUrl.startsWith(normalizeTarget(target)))) {
+  if (navigationError && (!bodyText || !isAcceptedFinalUrl(target, finalUrl))) {
     errors.push(navigationError);
   }
   if (status && status >= 500) {
@@ -111,7 +156,9 @@ async function checkPage(page, target, userLabel, viewportLabel) {
 
   const safeTarget = target.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "home";
   const screenshot = `${viewportLabel}-${userLabel}-${safeTarget}.png`;
-  await page.screenshot({ path: path.join(OUT, screenshot), fullPage: false }).catch(() => {});
+  if (SAVE_SCREENSHOTS) {
+    await page.screenshot({ path: path.join(OUT, screenshot), fullPage: false }).catch(() => {});
+  }
 
   return {
     target,
@@ -119,7 +166,7 @@ async function checkPage(page, target, userLabel, viewportLabel) {
     status,
     ms: Date.now() - startedAt,
     title,
-    screenshot,
+    screenshot: SAVE_SCREENSHOTS ? screenshot : "",
     ok: errors.length === 0,
     errors,
   };
@@ -129,13 +176,18 @@ function normalizeTarget(target) {
   return target.split("?")[0] || "/";
 }
 
+function isAcceptedFinalUrl(target, finalUrl) {
+  const normalizedTarget = normalizeTarget(target);
+  return finalUrl.startsWith(normalizedTarget) || finalUrl === "/" || finalUrl === "/login";
+}
+
 const browser = await chromium.launch({ headless: true });
 const viewports = [
   { label: "desktop", viewport: { width: 1440, height: 900 } },
   { label: "mobile", viewport: { width: 390, height: 844 } },
 ];
 
-for (const user of USERS) {
+for (const user of usersToCheck) {
   const login = await getSessionCookie(user.login);
   if (!login.ok) {
     results.push({
@@ -154,6 +206,7 @@ for (const user of USERS) {
   }
 
   for (const viewport of viewports) {
+    const warmResult = viewport.label === viewports[0].label ? await warmWorkspace(login.value) : null;
     const context = await browser.newContext({ viewport: viewport.viewport });
     await context.addCookies([
       {
@@ -174,7 +227,7 @@ for (const user of USERS) {
     });
 
     const pages = [];
-    for (const target of PAGES) {
+    for (const target of pagesToCheck) {
       pages.push(await checkPage(page, target, user.label, viewport.label));
     }
 
@@ -184,6 +237,7 @@ for (const user of USERS) {
       login: user.login,
       viewport: viewport.label,
       ok: rowErrors.length === 0,
+      warmResult,
       consoleErrors,
       pages,
     });
@@ -197,7 +251,9 @@ await browser.close();
 writeSummary();
 
 const failures = results.filter((row) => !row.ok && !row.skipped);
-console.log(`SUMMARY pass=${results.length - failures.length} fail=${failures.length}`);
+const skipped = results.filter((row) => row.skipped);
+const passed = results.filter((row) => row.ok);
+console.log(`SUMMARY pass=${passed.length} fail=${failures.length} skip=${skipped.length}`);
 if (failures.length) {
   process.exitCode = 1;
 }

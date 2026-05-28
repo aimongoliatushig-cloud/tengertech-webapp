@@ -300,6 +300,42 @@ function shouldResolveDashboardHrAccess(
   );
 }
 
+function resolveImmediateDashboardHrAccess(session: DashboardSession) {
+  const flags = session.groupFlags;
+  if (
+    session.role === "system_admin" ||
+    session.role === "director" ||
+    session.role === "general_manager" ||
+    session.role === "hr_specialist" ||
+    session.role === "hr_manager" ||
+    flags?.municipalDirector ||
+    flags?.fleetRepairCeo ||
+    flags?.hrUser ||
+    flags?.hrManager ||
+    flags?.municipalHr ||
+    flags?.municipalDepartmentHead ||
+    flags?.municipalManager ||
+    flags?.mfoManager ||
+    flags?.environmentManager ||
+    flags?.improvementManager
+  ) {
+    return true;
+  }
+
+  if (
+    session.role === "worker" ||
+    session.role === "senior_master" ||
+    session.role === "team_leader" ||
+    flags?.municipalMaster ||
+    flags?.greenMaster ||
+    flags?.fleetRepairTeamLeader
+  ) {
+    return false;
+  }
+
+  return null;
+}
+
 function shouldLoadDashboardFleetBoard(
   session: DashboardSession,
   options: {
@@ -386,15 +422,20 @@ async function DashboardPageContent({
   const canViewGeneralDashboard = !transportInspectorMode && canAccessGeneralDashboard(session);
   const generalDashboardMode = canViewGeneralDashboard;
   const canUseFieldConsole = hasCapability(session, "use_field_console");
-  const canViewHrPromise = shouldResolveDashboardHrAccess(session, {
+  const shouldResolveHrAccess = shouldResolveDashboardHrAccess(session, {
     workerMode,
     generalDashboardMode,
-  })
-    ? canAccessHr(session).catch((error) => {
-        console.warn("HR access could not be resolved for dashboard menu:", error);
-        return false;
-      })
-    : Promise.resolve(false);
+  });
+  const immediateHrAccess = shouldResolveHrAccess
+    ? resolveImmediateDashboardHrAccess(session)
+    : false;
+  const canViewHrPromise =
+    immediateHrAccess !== null
+      ? Promise.resolve(immediateHrAccess)
+      : canAccessHr(session).catch((error) => {
+          console.warn("HR access could not be resolved for dashboard menu:", error);
+          return false;
+        });
 
   const snapshotPromise = loadMunicipalSnapshot(
     connectionOverrides,
@@ -451,10 +492,12 @@ async function DashboardPageContent({
           return null;
         })
     : Promise.resolve(null);
-  const procurementActionsPromise = loadHomeProcurementActions(session, connectionOverrides).catch((error) => {
-    console.warn("Procurement action list could not be loaded for dashboard:", error);
-    return null;
-  });
+  const procurementActionsPromise = procurementHomeMode
+    ? loadHomeProcurementActions(session, connectionOverrides).catch((error) => {
+        console.warn("Procurement action list could not be loaded for dashboard:", error);
+        return null;
+      })
+    : Promise.resolve(null);
 
   let scopedDepartmentName = await departmentScopeNamePromise;
   if (transportInspectorMode) {
@@ -484,7 +527,8 @@ async function DashboardPageContent({
         fleetBoard: EMPTY_FLEET_BOARD,
         fleetLoadError: "",
       });
-  const hrAttendanceSummaryPromise = workerMode
+  const canViewHr = await canViewHrPromise;
+  const hrAttendanceSummaryPromise = !canViewHr || workerMode
     ? Promise.resolve(EMPTY_HR_ATTENDANCE_SUMMARY)
     : scopedDepartmentName
       ? loadScopedHrAttendanceSummary(scopedDepartmentName, connectionOverrides)
@@ -499,7 +543,6 @@ async function DashboardPageContent({
     fleetResult,
     hrAttendanceSummary,
     todayAssignments,
-    canViewHr,
     assignedGarbageVehicles,
     assignedGarbagePointOptions,
     garbageDepartmentId,
@@ -510,7 +553,6 @@ async function DashboardPageContent({
     fleetBoardPromise,
     hrAttendanceSummaryPromise,
     todayAssignmentsPromise,
-    canViewHrPromise,
     assignedGarbageVehiclesPromise,
     assignedGarbagePointOptionsPromise,
     garbageDepartmentIdPromise,

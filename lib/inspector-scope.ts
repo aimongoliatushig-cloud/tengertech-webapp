@@ -2,7 +2,7 @@ import "server-only";
 
 import { normalizeDepartmentText } from "@/lib/department-permissions";
 import { loadLocalInspectorScopes } from "@/lib/inspector-scope-store";
-import { executeOdooKw, loadFleetVehicleBoard, type OdooConnection } from "@/lib/odoo";
+import { createOdooConnection, executeOdooKw, loadFleetVehicleBoard, type OdooConnection } from "@/lib/odoo";
 import { loadDepartmentOptions } from "@/lib/workspace";
 
 type Relation = [number, string] | false;
@@ -110,9 +110,56 @@ async function loadDepartmentId(
   return departments.find((department) => normalizeDepartmentText(department.name) === normalized)?.id ?? null;
 }
 
+type InspectorScopeData = Awaited<ReturnType<typeof loadInspectorScopeDataUncached>>;
+
+const INSPECTOR_SCOPE_CACHE_TTL_MS = 15_000;
+const inspectorScopeCache = new Map<string, { expiresAt: number; value: InspectorScopeData }>();
+const inspectorScopePendingCache = new Map<string, Promise<InspectorScopeData>>();
+
+function getInspectorScopeCacheKey(
+  departmentName: string | null,
+  connectionOverrides: Partial<OdooConnection>,
+) {
+  const connection = createOdooConnection(connectionOverrides);
+  return `${connection.url}|${connection.db}|${connection.login}|${normalizeDepartmentText(departmentName)}`;
+}
+
 export async function loadInspectorScopeData(
   departmentName: string | null,
   connection: Partial<OdooConnection> = {},
+) {
+  const cacheKey = getInspectorScopeCacheKey(departmentName, connection);
+  const cached = inspectorScopeCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+  if (cached) {
+    inspectorScopeCache.delete(cacheKey);
+  }
+
+  const pending = inspectorScopePendingCache.get(cacheKey);
+  if (pending) {
+    return pending;
+  }
+
+  const promise = loadInspectorScopeDataUncached(departmentName, connection)
+    .then((value) => {
+      inspectorScopeCache.set(cacheKey, {
+        value,
+        expiresAt: Date.now() + INSPECTOR_SCOPE_CACHE_TTL_MS,
+      });
+      return value;
+    })
+    .finally(() => {
+      inspectorScopePendingCache.delete(cacheKey);
+    });
+  inspectorScopePendingCache.set(cacheKey, promise);
+  return promise;
+}
+
+async function loadInspectorScopeDataUncached(
+  departmentName: string | null,
+  connection: Partial<OdooConnection>,
 ) {
   const [departmentId, employeeFields, pointFields, subdistrictFields, vehicleFields] = await Promise.all([
     loadDepartmentId(departmentName, connection),

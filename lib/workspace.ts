@@ -9,6 +9,55 @@ import {
   updateLocalRoadCleaningAreaMasterAssignments,
 } from "@/lib/road-cleaning-area-store";
 
+const WORKSPACE_OPTION_CACHE_TTL_MS = 20_000;
+const workspaceOptionCache = new Map<string, { expiresAt: number; value: unknown }>();
+const workspaceOptionPendingCache = new Map<string, Promise<unknown>>();
+
+function getWorkspaceOptionConnectionKey(connectionOverrides: Partial<OdooConnection>) {
+  const connection = createOdooConnection(connectionOverrides);
+  return `${connection.url}|${connection.db}|${connection.login}`;
+}
+
+async function readWorkspaceOptionCache<T>(
+  key: string,
+  loader: () => Promise<T>,
+): Promise<T> {
+  const cached = workspaceOptionCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value as T;
+  }
+  if (cached) {
+    workspaceOptionCache.delete(key);
+  }
+
+  const pending = workspaceOptionPendingCache.get(key);
+  if (pending) {
+    return pending as Promise<T>;
+  }
+
+  const promise = loader()
+    .then((value) => {
+      workspaceOptionCache.set(key, {
+        value,
+        expiresAt: Date.now() + WORKSPACE_OPTION_CACHE_TTL_MS,
+      });
+      return value;
+    })
+    .finally(() => {
+      workspaceOptionPendingCache.delete(key);
+    });
+  workspaceOptionPendingCache.set(key, promise);
+  return promise;
+}
+
+function workspaceOptionCacheKey(
+  name: string,
+  connectionOverrides: Partial<OdooConnection>,
+  variant = "",
+) {
+  return `${name}|${getWorkspaceOptionConnectionKey(connectionOverrides)}|${variant}`;
+}
+
 type Relation = [number, string] | false;
 
 type ProjectRecord = {
@@ -1720,6 +1769,9 @@ function formatCleaningFrequency(value?: string | false) {
 export async function loadRoadCleaningAreaOptions(
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
+  return readWorkspaceOptionCache(
+    workspaceOptionCacheKey("road-cleaning-areas", connectionOverrides),
+    async () => {
   const localAreas = await loadLocalRoadCleaningAreaOptions();
   try {
     const fieldNames = await loadModelFieldNames("municipal.cleaning.area", connectionOverrides);
@@ -1776,11 +1828,16 @@ export async function loadRoadCleaningAreaOptions(
   } catch {
     return localAreas;
   }
+    },
+  );
 }
 
 export async function loadRoadCleaningEmployeeOptions(
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
+  return readWorkspaceOptionCache(
+    workspaceOptionCacheKey("road-cleaning-employees", connectionOverrides),
+    async () => {
   try {
     const employees = await executeOdooKw<EmployeeUserRecord[]>(
       "hr.employee",
@@ -1818,6 +1875,8 @@ export async function loadRoadCleaningEmployeeOptions(
   } catch {
     return [] satisfies RoadCleaningEmployeeOption[];
   }
+    },
+  );
 }
 
 export async function loadRoadCleaningMasterEmployeeForUser(
@@ -1872,9 +1931,13 @@ export async function loadRoadCleaningMasterEmployeeForUser(
 export async function loadProjectManagerOptions(
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
-  return loadUserOptions(
-    ["general_manager", "project_manager", "system_admin"],
-    connectionOverrides,
+  return readWorkspaceOptionCache(
+    workspaceOptionCacheKey("project-managers", connectionOverrides),
+    () =>
+      loadUserOptions(
+        ["general_manager", "project_manager", "system_admin"],
+        connectionOverrides,
+      ),
   );
 }
 
@@ -2098,6 +2161,87 @@ function keepSupportedValues(
   );
 }
 
+function dropUndefinedValues(values: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(values).filter(([, value]) => value !== undefined),
+  );
+}
+
+function getRecoverableOdooFieldName(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return (
+    message.match(/Invalid field '([^']+)'/)?.[1] ??
+    message.match(/Unknown field '([^']+)'/)?.[1] ??
+    message.match(/Wrong value for [\w.]+\.([A-Za-z_][\w]*):/)?.[1] ??
+    message.match(/Wrong value for ([A-Za-z_][\w]*):/)?.[1] ??
+    message.match(/selection field '([^']+)'/)?.[1] ??
+    null
+  );
+}
+
+async function createRecordWithFieldFallback(
+  model: string,
+  values: Record<string, unknown>,
+  requiredFields: string[],
+  connectionOverrides: Partial<OdooConnection>,
+) {
+  const remainingValues = { ...values };
+  const requiredFieldSet = new Set(requiredFields);
+
+  for (;;) {
+    try {
+      return await executeOdooKw<number>(
+        model,
+        "create",
+        [remainingValues],
+        {},
+        connectionOverrides,
+      );
+    } catch (error) {
+      const invalidField = getRecoverableOdooFieldName(error);
+      if (
+        !invalidField ||
+        requiredFieldSet.has(invalidField) ||
+        !(invalidField in remainingValues)
+      ) {
+        throw error;
+      }
+
+      delete remainingValues[invalidField];
+    }
+  }
+}
+
+async function writeRecordWithFieldFallback(
+  model: string,
+  recordIds: number[],
+  values: Record<string, unknown>,
+  connectionOverrides: Partial<OdooConnection>,
+) {
+  const remainingValues = { ...values };
+
+  while (Object.keys(remainingValues).length) {
+    try {
+      return await executeOdooKw<boolean>(
+        model,
+        "write",
+        [recordIds, remainingValues],
+        {},
+        connectionOverrides,
+      );
+    } catch (error) {
+      const invalidField = getRecoverableOdooFieldName(error);
+      if (!invalidField || !(invalidField in remainingValues)) {
+        throw error;
+      }
+
+      delete remainingValues[invalidField];
+    }
+  }
+
+  return true;
+}
+
 async function hasModelField(
   model: string,
   fieldName: string,
@@ -2129,7 +2273,7 @@ export async function createWorkspaceCrewTeam(
   }
 
   const [fieldNames, employees] = await Promise.all([
-    loadModelFieldNames("mfo.crew.team", connectionOverrides),
+    loadModelFieldNames("mfo.crew.team", connectionOverrides).catch(() => null),
     executeOdooKw<Array<{ id: number; user_id: Relation }>>(
       "hr.employee",
       "search_read",
@@ -2148,38 +2292,41 @@ export async function createWorkspaceCrewTeam(
     ? [[6, 0, memberEmployeeIds]]
     : undefined;
 
-  const values = keepSupportedValues(
-    {
-      name: teamName,
-      active: true,
-      operation_type: input.operationType || "street_cleaning",
-      department_id: input.departmentId || undefined,
-      ops_department_id: input.departmentId || undefined,
-      member_user_ids: memberUserCommand,
-      user_ids: memberUserCommand,
-      collector_user_ids: memberUserCommand,
-      member_employee_ids: memberEmployeeCommand,
-      collector_employee_ids: memberEmployeeCommand,
-      employee_ids: memberEmployeeCommand,
-      member_ids: memberEmployeeCommand,
-      loader_employee_ids: memberEmployeeCommand,
-      loader_ids: memberEmployeeCommand,
-      driver_employee_id: leaderEmployeeId || undefined,
-      mfo_driver_employee_id: leaderEmployeeId || undefined,
-      leader_employee_id: leaderEmployeeId || undefined,
-      team_leader_id: leaderEmployeeId || undefined,
-      master_employee_id: leaderEmployeeId || undefined,
-      responsible_employee_id: leaderEmployeeId || undefined,
-    },
-    fieldNames,
-  );
+  const candidateValues = {
+    name: teamName,
+    active: true,
+    operation_type: input.operationType || "street_cleaning",
+    department_id: input.departmentId || undefined,
+    ops_department_id: input.departmentId || undefined,
+    member_user_ids: memberUserCommand,
+    user_ids: memberUserCommand,
+    collector_user_ids: memberUserCommand,
+    member_employee_ids: memberEmployeeCommand,
+    collector_employee_ids: memberEmployeeCommand,
+    employee_ids: memberEmployeeCommand,
+    member_ids: memberEmployeeCommand,
+    loader_employee_ids: memberEmployeeCommand,
+    loader_ids: memberEmployeeCommand,
+    driver_employee_id: leaderEmployeeId || undefined,
+    mfo_driver_employee_id: leaderEmployeeId || undefined,
+    leader_employee_id: leaderEmployeeId || undefined,
+    team_leader_id: leaderEmployeeId || undefined,
+    master_employee_id: leaderEmployeeId || undefined,
+    responsible_employee_id: leaderEmployeeId || undefined,
+  };
+  const values = fieldNames
+    ? keepSupportedValues(candidateValues, fieldNames)
+    : dropUndefinedValues(candidateValues);
+
+  if (!values.name) {
+    values.name = teamName;
+  }
 
   return {
-    id: await executeOdooKw<number>(
+    id: await createRecordWithFieldFallback(
       "mfo.crew.team",
-      "create",
-      [values],
-      {},
+      values,
+      ["name"],
       connectionOverrides,
     ),
     memberUserIds,
@@ -2242,6 +2389,9 @@ async function loadCrewTeamForRoute(
 export async function loadDepartmentOptions(
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<DepartmentOption[]> {
+  return readWorkspaceOptionCache(
+    workspaceOptionCacheKey("departments", connectionOverrides),
+    async () => {
   try {
     const departments = await executeOdooKw<DepartmentRecord[]>(
       "hr.department",
@@ -2282,6 +2432,8 @@ export async function loadDepartmentOptions(
   } catch {
     return [];
   }
+    },
+  );
 }
 
 export async function loadWorkUnitOptions(
@@ -2341,18 +2493,15 @@ export async function createWorkspaceWorkUnit(
   }
 
   const code = `${slugifyUnitCode(unitName)}_${Date.now().toString(36)}`;
-  const unitId = await executeOdooKw<number>(
+  const unitId = await createRecordWithFieldFallback(
     "ops.work.unit",
-    "create",
-    [
-      {
-        name: unitName,
-        code,
-        category: "other",
-        active: true,
-      },
-    ],
-    {},
+    {
+      name: unitName,
+      code,
+      category: "other",
+      active: true,
+    },
+    ["name"],
     connectionOverrides,
   );
 
@@ -2715,28 +2864,27 @@ export async function findOrCreateWorkspaceSubdistrictOption(
   }
 
   try {
-    const fieldNames = await loadModelFieldNames("mfo.subdistrict", connectionOverrides);
-    const districtId = fieldNames.has("district_id")
+    const fieldNames = await loadModelFieldNames("mfo.subdistrict", connectionOverrides).catch(() => null);
+    const districtId = fieldNames?.has("district_id")
       ? await loadDefaultDistrictId(connectionOverrides)
       : null;
-    const values = keepSupportedValues(
-      {
-        name: cleanName,
-        active: true,
-        district_id: districtId ?? undefined,
-      },
-      fieldNames,
-    );
+    const candidateValues = {
+      name: cleanName,
+      active: true,
+      district_id: districtId ?? undefined,
+    };
+    const values = fieldNames
+      ? keepSupportedValues(candidateValues, fieldNames)
+      : dropUndefinedValues(candidateValues);
 
     if (!values.name) {
       values.name = cleanName;
     }
 
-    const createdId = await executeOdooKw<number>(
+    const createdId = await createRecordWithFieldFallback(
       "mfo.subdistrict",
-      "create",
-      [values],
-      {},
+      values,
+      ["name"],
       connectionOverrides,
     );
 
@@ -2755,6 +2903,9 @@ export async function loadGarbageVehicleOptions(
   connectionOverrides: Partial<OdooConnection> = {},
   options: { requireCurrentEmployeeScope?: boolean; ignoreCurrentEmployeeScope?: boolean } = {},
 ): Promise<GarbageVehicleOption[]> {
+  return readWorkspaceOptionCache(
+    workspaceOptionCacheKey("garbage-vehicles", connectionOverrides, JSON.stringify(options)),
+    async () => {
   const inspectorVehicleScopeIds = options.ignoreCurrentEmployeeScope
     ? []
     : await loadCurrentInspectorVehicleScope(connectionOverrides);
@@ -2947,11 +3098,16 @@ export async function loadGarbageVehicleOptions(
       ),
     };
   });
+    },
+  );
 }
 
 export async function loadActiveGarbageVehicleOptions(
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<GarbageVehicleOption[]> {
+  return readWorkspaceOptionCache(
+    workspaceOptionCacheKey("active-garbage-vehicles", connectionOverrides),
+    async () => {
   const hasMfoActiveForOps = await hasModelField("fleet.vehicle", "mfo_active_for_ops", connectionOverrides);
   const vehicles = await readFirstAvailable<GarbageVehicleRecord>(
     [
@@ -3002,6 +3158,8 @@ export async function loadActiveGarbageVehicleOptions(
       ),
     };
   });
+    },
+  );
 }
 
 function buildRouteAttempts(domainVariants: unknown[][]) {
@@ -4433,11 +4591,10 @@ export async function createWorkspaceProject(
     values.date = input.deadline;
   }
 
-  return executeOdooKw<number>(
+  return createRecordWithFieldFallback(
     "project.project",
-    "create",
-    [values],
-    {},
+    values,
+    ["name"],
     connectionOverrides,
   );
 }
@@ -5332,37 +5489,53 @@ export async function createWorkspaceTask(
     baseValues.user_ids = [[6, 0, assigneeUserIds]];
   }
 
-  const taskId = await executeOdooKw<number>(
+  try {
+    return await createRecordWithFieldFallback(
+      "project.task",
+      {
+        ...baseValues,
+        ...optionalValues,
+      },
+      ["project_id", "name"],
+      connectionOverrides,
+    );
+  } catch (error) {
+    if (!Object.keys(optionalValues).length) {
+      throw error;
+    }
+
+    console.warn("Project task full create failed; retrying with base fields.", error);
+  }
+
+  const taskId = await createRecordWithFieldFallback(
     "project.task",
-    "create",
-    [baseValues],
-    {},
+    baseValues,
+    ["project_id", "name"],
     connectionOverrides,
   );
 
-  const writeTaskValues = async (values: Record<string, unknown>) =>
-    executeOdooKw<boolean>("project.task", "write", [[taskId], values], {}, connectionOverrides);
-
   if (Object.keys(optionalValues).length) {
     try {
-      await writeTaskValues(optionalValues);
+      await writeRecordWithFieldFallback(
+        "project.task",
+        [taskId],
+        optionalValues,
+        connectionOverrides,
+      );
     } catch (error) {
       console.warn("Project task optional fields write failed; retrying field by field.", error);
       for (const [fieldName, value] of Object.entries(optionalValues)) {
         try {
-          await writeTaskValues({ [fieldName]: value });
+          await writeRecordWithFieldFallback(
+            "project.task",
+            [taskId],
+            { [fieldName]: value },
+            connectionOverrides,
+          );
         } catch (fieldError) {
           console.warn(`Project task optional field skipped: ${fieldName}`, fieldError);
         }
       }
-    }
-  }
-
-  if (assigneeUserIds.length) {
-    try {
-      await writeTaskValues({ user_ids: [[6, 0, assigneeUserIds]] });
-    } catch (error) {
-      console.warn("Project task assignee write skipped.", error);
     }
   }
 

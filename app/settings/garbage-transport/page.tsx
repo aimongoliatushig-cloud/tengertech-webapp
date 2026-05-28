@@ -180,7 +180,7 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
     workspaceNotificationCount,
     procurementNotificationCount,
   ] = await Promise.all([
-    loadRouteManagementData(connectionOverrides),
+    loadRouteManagementData(connectionOverrides, { bypassCache: Boolean(notice || error) }),
     loadDepartmentRecord(departmentScopeName, connectionOverrides),
     loadConfigValues(connectionOverrides),
     loadInspectorScopeData(departmentScopeName, connectionOverrides),
@@ -202,6 +202,7 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const canArchiveSubdistricts = session.role === "system_admin";
   const departmentName =
     departmentScopeName || departmentRecord?.name || "Авто бааз, хог тээвэрлэлтийн хэлтэс";
   const statCards = [
@@ -322,7 +323,8 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
                 points={routeData.points}
                 subdistricts={routeData.subdistricts}
                 districts={routeData.districts}
-                canManageSubdistricts={false}
+                canCreateSubdistricts={true}
+                canArchiveSubdistricts={canArchiveSubdistricts}
               />
             </section>
 

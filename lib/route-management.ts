@@ -1,6 +1,6 @@
 import "server-only";
 
-import { executeOdooKw, type OdooConnection } from "@/lib/odoo";
+import { createOdooConnection, executeOdooKw, type OdooConnection } from "@/lib/odoo";
 import { loadGarbageVehicleOptions } from "@/lib/workspace";
 
 type Relation = [number, string] | false;
@@ -89,8 +89,59 @@ function relationId(value: Relation | undefined) {
   return Array.isArray(value) ? value[0] : null;
 }
 
+const ROUTE_MANAGEMENT_CACHE_TTL_MS = 15_000;
+const routeManagementCache = new Map<string, { expiresAt: number; value: RouteManagementData }>();
+const routeManagementPendingCache = new Map<string, Promise<RouteManagementData>>();
+
+export function invalidateRouteManagementDataCache() {
+  routeManagementCache.clear();
+  routeManagementPendingCache.clear();
+}
+
+function getConnectionCacheKey(connectionOverrides: Partial<OdooConnection>) {
+  const connection = createOdooConnection(connectionOverrides);
+  return `${connection.url}|${connection.db}|${connection.login}`;
+}
+
 export async function loadRouteManagementData(
   connectionOverrides: Partial<OdooConnection> = {},
+  options: { bypassCache?: boolean } = {},
+): Promise<RouteManagementData> {
+  const cacheKey = getConnectionCacheKey(connectionOverrides);
+  if (options.bypassCache) {
+    routeManagementCache.delete(cacheKey);
+    routeManagementPendingCache.delete(cacheKey);
+  }
+  const cached = routeManagementCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+  if (cached) {
+    routeManagementCache.delete(cacheKey);
+  }
+
+  const pending = routeManagementPendingCache.get(cacheKey);
+  if (pending) {
+    return pending;
+  }
+
+  const promise = loadRouteManagementDataUncached(connectionOverrides)
+    .then((value) => {
+      routeManagementCache.set(cacheKey, {
+        value,
+        expiresAt: Date.now() + ROUTE_MANAGEMENT_CACHE_TTL_MS,
+      });
+      return value;
+    })
+    .finally(() => {
+      routeManagementPendingCache.delete(cacheKey);
+    });
+  routeManagementPendingCache.set(cacheKey, promise);
+  return promise;
+}
+
+async function loadRouteManagementDataUncached(
+  connectionOverrides: Partial<OdooConnection>,
 ): Promise<RouteManagementData> {
   const [routes, points, subdistricts, districts, vehicles, teams] = await Promise.all([
     executeOdooKw<RouteRecord[]>(

@@ -737,6 +737,52 @@ async function getAvailableFields(
   }
 }
 
+function getInvalidOdooFieldName(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return (
+    message.match(/Invalid field '([^']+)'/)?.[1] ??
+    message.match(/Unknown field '([^']+)'/)?.[1] ??
+    null
+  );
+}
+
+async function searchReadFirstWithFieldFallback<T>(
+  model: string,
+  domain: unknown[],
+  desiredFields: string[],
+  session: AppSession,
+  kwargs: Record<string, unknown> = {},
+) {
+  const fields = await getAvailableFields(model, desiredFields, session);
+  const remainingFields = [...fields];
+
+  while (remainingFields.length) {
+    try {
+      const records = await executeOdooKw<T[]>(
+        model,
+        "search_read",
+        [domain],
+        {
+          ...kwargs,
+          fields: remainingFields,
+          limit: 1,
+        },
+        getConnection(session),
+      );
+      return records[0] ?? null;
+    } catch (error) {
+      const invalidField = getInvalidOdooFieldName(error);
+      const fieldIndex = invalidField ? remainingFields.indexOf(invalidField) : -1;
+      if (fieldIndex < 0 || remainingFields.length <= 1) {
+        throw error;
+      }
+      remainingFields.splice(fieldIndex, 1);
+    }
+  }
+
+  return null;
+}
+
 async function readCurrentEmployee(session: AppSession) {
   const desiredFields = [
     "name",
@@ -750,21 +796,15 @@ async function readCurrentEmployee(session: AppSession) {
     "mfo_field_role",
     "x_field_role",
   ];
-  const fields = await getAvailableFields("hr.employee", desiredFields, session);
-
-  return executeOdooKw<CurrentEmployeeRecord[]>(
+  return searchReadFirstWithFieldFallback<CurrentEmployeeRecord>(
     "hr.employee",
-    "search_read",
-    [[["user_id", "=", session.uid]]],
+    [["user_id", "=", session.uid]],
+    desiredFields,
+    session,
     {
-      fields,
-      limit: 1,
       context: { active_test: false },
     },
-    getConnection(session),
-  )
-    .then((records) => records[0] ?? null)
-    .catch((error) => {
+  ).catch((error) => {
       console.warn("Current employee HR access profile could not be loaded:", error);
       return null;
     });
@@ -772,17 +812,12 @@ async function readCurrentEmployee(session: AppSession) {
 
 async function readCurrentUser(session: AppSession) {
   const desiredFields = ["name", "login", "groups_id", "ops_user_type", "x_role_key", "x_hr_role"];
-  const fields = await getAvailableFields("res.users", desiredFields, session);
-
-  return executeOdooKw<CurrentUserRecord[]>(
+  return searchReadFirstWithFieldFallback<CurrentUserRecord>(
     "res.users",
-    "search_read",
-    [[["id", "=", session.uid]]],
-    { fields, limit: 1 },
-    getConnection(session),
-  )
-    .then((records) => records[0] ?? null)
-    .catch((error) => {
+    [["id", "=", session.uid]],
+    desiredFields,
+    session,
+  ).catch((error) => {
       console.warn("Current user HR access profile could not be loaded:", error);
       return null;
     });

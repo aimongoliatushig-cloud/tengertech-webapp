@@ -449,6 +449,10 @@ export async function diagnoseNotifications(): Promise<NotificationDiagnostics> 
     return base;
   }
 
+  if (base.permissionStatus !== "granted") {
+    return base;
+  }
+
   base.publicKeyAvailable = await loadPublicKey()
     .then(() => true)
     .catch((error) => {

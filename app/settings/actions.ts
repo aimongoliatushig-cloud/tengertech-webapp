@@ -26,6 +26,51 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
+function getRecoverableOdooFieldName(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return (
+    message.match(/Invalid field '([^']+)'/)?.[1] ??
+    message.match(/Unknown field '([^']+)'/)?.[1] ??
+    message.match(/Wrong value for [\w.]+\.([A-Za-z_][\w]*):/)?.[1] ??
+    message.match(/Wrong value for ([A-Za-z_][\w]*):/)?.[1] ??
+    message.match(/selection field '([^']+)'/)?.[1] ??
+    null
+  );
+}
+
+async function createRecordWithFieldFallback(
+  model: string,
+  values: Record<string, unknown>,
+  requiredFields: string[],
+  connection: Partial<OdooConnection>,
+) {
+  const remainingValues = { ...values };
+  const requiredFieldSet = new Set(requiredFields);
+
+  for (;;) {
+    try {
+      return await executeOdooKw<number>(
+        model,
+        "create",
+        [remainingValues],
+        {},
+        connection,
+      );
+    } catch (error) {
+      const invalidField = getRecoverableOdooFieldName(error);
+      if (
+        !invalidField ||
+        requiredFieldSet.has(invalidField) ||
+        !(invalidField in remainingValues)
+      ) {
+        throw error;
+      }
+
+      delete remainingValues[invalidField];
+    }
+  }
+}
+
 async function requireSystemAdminConnection() {
   const session = await requireSession();
 
@@ -116,17 +161,14 @@ export async function createGeneralSubdistrictAction(formData: FormData) {
   try {
     const districtId = await loadKhanUulDistrictId(connection);
 
-    await executeOdooKw<number>(
+    await createRecordWithFieldFallback(
       "mfo.subdistrict",
-      "create",
-      [
-        {
-          name: subdistrictName,
-          district_id: districtId,
-          active: true,
-        },
-      ],
-      {},
+      {
+        name: subdistrictName,
+        district_id: districtId,
+        active: true,
+      },
+      ["name"],
       connection,
     );
   } catch (error) {

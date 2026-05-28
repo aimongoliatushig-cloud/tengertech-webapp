@@ -1,26 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { requireSession } from "@/lib/auth";
-import { loadMunicipalSnapshot } from "@/lib/odoo";
-import { loadWorkspaceNotificationSummary } from "@/lib/workspace-notifications";
+import { warmCommonWorkspace } from "@/lib/workspace-warm";
 
 export async function GET() {
   const session = await requireSession();
-  const connectionOverrides = {
-    login: session.login,
-    password: session.password,
-  };
-
-  const [snapshot, scopedDepartmentName] = await Promise.all([
-    loadMunicipalSnapshot(connectionOverrides),
-    loadSessionDepartmentName(session),
-  ]);
-
-  await loadWorkspaceNotificationSummary(session, {
-    snapshot,
-    scopedDepartmentName,
-  });
-
-  return NextResponse.json({ ok: true });
+  const result = await warmCommonWorkspace(session);
+  return NextResponse.json(result);
 }

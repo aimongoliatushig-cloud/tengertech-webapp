@@ -350,7 +350,7 @@ class FleetVehicle(models.Model):
                 vehicle.municipal_next_inspection_date and inspection_remaining <= inspection_days
             )
 
-    def action_send_deadline_reminder_activity(self):
+    def action_send_deadline_reminder_activity_legacy(self):
         for vehicle in self:
             manager_user = vehicle.municipal_department_id.manager_id.user_id
             if not manager_user:
@@ -377,6 +377,52 @@ class FleetVehicle(models.Model):
                     " ".join(parts),
                 ),
             )
+        return True
+
+    def action_send_deadline_reminder_activity(self):
+        warning_type = self.env.ref("mail.mail_activity_data_warning")
+        activity_model = self.env["mail.activity"].sudo()
+        today = fields.Date.context_today(self)
+        for vehicle in self:
+            manager_user = vehicle.municipal_department_id.manager_id.user_id
+            if not manager_user:
+                continue
+            parts = []
+            if vehicle.municipal_insurance_reminder_due:
+                parts.append(
+                    "Даатгал %s өдөр дуусна. Үлдсэн хоног: %s."
+                    % (vehicle.municipal_insurance_date_end, vehicle.municipal_insurance_days_remaining)
+                )
+            if vehicle.municipal_inspection_reminder_due:
+                parts.append(
+                    "Улсын үзлэг %s өдөр болно. Үлдсэн хоног: %s."
+                    % (vehicle.municipal_next_inspection_date, vehicle.municipal_inspection_days_remaining)
+                )
+            if not parts:
+                continue
+            note = "%s улсын дугаартай %s. %s" % (
+                vehicle.license_plate or vehicle.name,
+                vehicle.municipal_vehicle_type_id.name or "машин",
+                " ".join(parts),
+            )
+            existing_activity = activity_model.search(
+                [
+                    ("res_model", "=", vehicle._name),
+                    ("res_id", "=", vehicle.id),
+                    ("activity_type_id", "=", warning_type.id),
+                    ("user_id", "=", manager_user.id),
+                ],
+                limit=1,
+            )
+            if existing_activity:
+                existing_activity.write({"note": note, "date_deadline": today})
+            else:
+                vehicle.activity_schedule(
+                    "mail.mail_activity_data_warning",
+                    user_id=manager_user.id,
+                    note=note,
+                    date_deadline=today,
+                )
         return True
 
     @api.model

@@ -7,10 +7,17 @@ import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { canAccessGarbageTransportSettings, requireSession } from "@/lib/auth";
 import { normalizeDepartmentText } from "@/lib/department-permissions";
 import { saveLocalInspectorScope } from "@/lib/inspector-scope-store";
-import { executeOdooKw, type OdooConnection } from "@/lib/odoo";
+import { clearOdooReadCaches, executeOdooKw, type OdooConnection } from "@/lib/odoo";
+import { invalidateRouteManagementDataCache } from "@/lib/route-management";
 import { loadDepartmentOptions } from "@/lib/workspace";
 
 const SETTINGS_PATH = "/settings/garbage-transport";
+
+function refreshGarbageTransportSettings() {
+  clearOdooReadCaches();
+  invalidateRouteManagementDataCache();
+  revalidatePath(SETTINGS_PATH);
+}
 
 type OdooFieldInfo = {
   type?: string;
@@ -60,6 +67,18 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
+function getRecoverableOdooFieldName(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return (
+    message.match(/Invalid field '([^']+)'/)?.[1] ??
+    message.match(/Unknown field '([^']+)'/)?.[1] ??
+    message.match(/Wrong value for [\w.]+\.([A-Za-z_][\w]*):/)?.[1] ??
+    message.match(/Wrong value for ([A-Za-z_][\w]*):/)?.[1] ??
+    message.match(/selection field '([^']+)'/)?.[1] ??
+    null
+  );
+}
+
 function getSessionConnection(session: Awaited<ReturnType<typeof requireSession>>) {
   return {
     login: session.login,
@@ -99,16 +118,20 @@ function pickSupportedValues(
   candidateValues: Record<string, unknown>,
   fields: OdooFieldMap | null,
 ) {
+  const entries = Object.entries(candidateValues).filter(([, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return false;
+    }
+    return true;
+  });
+
   if (!fields) {
-    return candidateValues;
+    return Object.fromEntries(entries);
   }
 
   return Object.fromEntries(
-    Object.entries(candidateValues).filter(([fieldName, value]) => {
+    entries.filter(([fieldName]) => {
       if (!fields[fieldName] || fields[fieldName].readonly) {
-        return false;
-      }
-      if (value === undefined || value === null || value === "") {
         return false;
       }
       return true;
@@ -129,6 +152,35 @@ function pickSelectionValue(
   return preferredValues.find((value) => allowed.has(value)) ?? selection[0]?.[0] ?? preferredValues[0];
 }
 
+async function executeCreateWithFieldFallback(
+  model: string,
+  values: Record<string, unknown>,
+  requiredFields: string[] = ["name"],
+  connection?: Partial<OdooConnection>,
+) {
+  const remainingValues = { ...values };
+  const requiredFieldSet = new Set(requiredFields);
+
+  for (;;) {
+    try {
+      return connection
+        ? await executeOdooKw<number>(model, "create", [remainingValues], {}, connection)
+        : await executeOdooKw<number>(model, "create", [remainingValues], {});
+    } catch (error) {
+      const invalidField = getRecoverableOdooFieldName(error);
+      if (
+        !invalidField ||
+        requiredFieldSet.has(invalidField) ||
+        !(invalidField in remainingValues)
+      ) {
+        throw error;
+      }
+
+      delete remainingValues[invalidField];
+    }
+  }
+}
+
 async function createOdooRecord(
   model: string,
   values: Record<string, unknown>,
@@ -138,10 +190,10 @@ async function createOdooRecord(
   const supportedValues = pickSupportedValues(values, fields);
 
   try {
-    return await executeOdooKw<number>(model, "create", [supportedValues], {}, connection);
+    return await executeCreateWithFieldFallback(model, supportedValues, ["name"], connection);
   } catch (error) {
     console.warn(`Retrying ${model} create with system connection`, error);
-    return executeOdooKw<number>(model, "create", [supportedValues], {});
+    return executeCreateWithFieldFallback(model, supportedValues, ["name"]);
   }
 }
 
@@ -351,7 +403,7 @@ export async function saveGarbageTransportPreferencesAction(formData: FormData) 
     );
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Хог тээвэрлэлтийн тохиргоо хадгалагдлаа.", "general");
 }
 
@@ -407,7 +459,7 @@ export async function createGarbageTransportTeamAction(formData: FormData) {
     );
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Хог тээврийн баг нэмэгдлээ.", "teams");
 }
 
@@ -428,7 +480,7 @@ export async function archiveGarbageTransportTeamAction(formData: FormData) {
     );
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Баг идэвхгүй боллоо.", "teams");
 }
 
@@ -496,7 +548,7 @@ export async function saveGarbageTransportInspectorScopeAction(formData: FormDat
     }
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Хяналтын байцаагчийн scope хадгалагдлаа.", "inspectors");
 }
 
@@ -548,7 +600,7 @@ export async function createGarbageTransportWorkTypeAction(formData: FormData) {
     );
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Ажлын төрөл нэмэгдлээ.", "work-types");
 }
 
@@ -570,7 +622,7 @@ export async function archiveGarbageTransportWorkTypeAction(formData: FormData) 
     );
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Ажлын төрөл хасагдлаа.", "work-types");
 }
 
@@ -649,7 +701,7 @@ export async function createGarbageTransportVehicleAction(formData: FormData) {
     );
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Машин нэмэгдлээ.", "vehicles");
 }
 
@@ -687,12 +739,13 @@ export async function updateGarbageTransportVehicleCrewAction(formData: FormData
     );
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Машины хариуцсан жолооч, ачигч хадгалагдлаа.", "vehicles");
 }
 
 export async function createGarbageTransportSubdistrictAction(formData: FormData) {
-  const { connection } = await requireGarbageTransportSystemAdmin();
+  await requireGarbageTransportHead();
+  const connection: Partial<OdooConnection> = {};
   const subdistrictName = cleanInput(formData.get("subdistrict_name"));
   const districtId = parsePositiveId(formData.get("district_id"));
   const districtName = cleanInput(formData.get("district_name"));
@@ -741,7 +794,7 @@ export async function createGarbageTransportSubdistrictAction(formData: FormData
     );
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Хороо нэмэгдлээ.", "points");
 }
 
@@ -802,12 +855,13 @@ export async function archiveGarbageTransportSubdistrictAction(formData: FormDat
     );
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Хороо устгагдлаа.", "points");
 }
 
 export async function createGarbageTransportPointAction(formData: FormData) {
-  const { connection } = await requireGarbageTransportHead();
+  await requireGarbageTransportHead();
+  const connection: Partial<OdooConnection> = {};
   const pointName = cleanInput(formData.get("point_name"));
   const address = cleanInput(formData.get("point_address"));
   const subdistrictId = parsePositiveId(formData.get("subdistrict_id"));
@@ -855,7 +909,7 @@ export async function createGarbageTransportPointAction(formData: FormData) {
     );
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Хогийн цэг нэмэгдлээ.", "points");
 }
 
@@ -893,7 +947,7 @@ export async function updateGarbageTransportPointAction(formData: FormData) {
     );
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Хогийн цэг шинэчлэгдлээ.", "points");
 }
 
@@ -915,7 +969,7 @@ export async function archiveGarbageTransportPointAction(formData: FormData) {
     );
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Хогийн цэг устгагдлаа.", "points");
 }
 
@@ -978,7 +1032,7 @@ export async function createGarbageTransportRouteAction(formData: FormData) {
     );
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Маршрут нэмэгдлээ.", "routes");
 }
 
@@ -1020,7 +1074,7 @@ export async function updateGarbageTransportRouteAction(formData: FormData) {
     );
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Маршрут шинэчлэгдлээ.", "routes");
 }
 
@@ -1042,6 +1096,6 @@ export async function archiveGarbageTransportRouteAction(formData: FormData) {
     );
   }
 
-  revalidatePath(SETTINGS_PATH);
+  refreshGarbageTransportSettings();
   redirectToSettings("notice", "Маршрут устгагдлаа.", "routes");
 }

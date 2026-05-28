@@ -21,7 +21,35 @@ export function WorkspaceHeaderUserMenu({
   userImageUrl = "",
 }: WorkspaceHeaderUserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [fetchedUserImageUrl, setFetchedUserImageUrl] = useState("");
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const resolvedUserImageUrl = userImageUrl || fetchedUserImageUrl;
+
+  useEffect(() => {
+    if (userImageUrl || fetchedUserImageUrl || !isOpen) {
+      return;
+    }
+
+    const controller = new AbortController();
+    let isCancelled = false;
+
+    fetch("/api/profile-image", {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { imageUrl?: string } | null) => {
+        if (!isCancelled && payload?.imageUrl) {
+          setFetchedUserImageUrl(payload.imageUrl);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isCancelled = true;
+      controller.abort();
+    };
+  }, [fetchedUserImageUrl, isOpen, userImageUrl]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -58,7 +86,7 @@ export function WorkspaceHeaderUserMenu({
         onClick={() => setIsOpen((open) => !open)}
       >
         <ProfileAvatar
-          src={userImageUrl}
+          src={resolvedUserImageUrl}
           className={styles.headerUserAvatar}
           imageClassName={styles.headerUserAvatarImage}
           iconClassName={styles.headerUserAvatarIcon}

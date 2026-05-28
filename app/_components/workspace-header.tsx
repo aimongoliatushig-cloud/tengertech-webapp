@@ -3,8 +3,6 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { Bell, CalendarDays, Leaf } from "lucide-react";
 
-import { loadCurrentUserProfileImageUrl } from "@/lib/current-user-profile";
-
 import { WorkspaceMobileBackButton } from "./workspace-mobile-back-button";
 import { WorkspaceHeaderUserMenu } from "./workspace-header-user-menu";
 import styles from "./workspace-header.module.css";
@@ -33,18 +31,16 @@ type WorkspaceHeaderAccountMenuProps = {
   userImageUrl?: string;
 };
 
-async function WorkspaceHeaderAccountMenu({
+function WorkspaceHeaderAccountMenu({
   userName,
   roleLabel,
   userImageUrl = "",
 }: WorkspaceHeaderAccountMenuProps) {
-  const resolvedUserImageUrl = userImageUrl || await loadCurrentUserProfileImageUrl();
-
   return (
     <WorkspaceHeaderUserMenu
       userName={userName}
       roleLabel={roleLabel}
-      userImageUrl={resolvedUserImageUrl}
+      userImageUrl={userImageUrl}
     />
   );
 }

@@ -18,7 +18,7 @@ import { fixMojibakeText } from "@/lib/text-normalize";
 
 type OdooRelation = [number, string] | false;
 
-const DEFAULT_ODOO_RPC_TIMEOUT_MS = 30_000;
+const DEFAULT_ODOO_RPC_TIMEOUT_MS = 8_000;
 const configuredOdooRpcTimeoutMs = Number(process.env.ODOO_RPC_TIMEOUT_MS);
 const ODOO_RPC_TIMEOUT_MS =
   Number.isFinite(configuredOdooRpcTimeoutMs) && configuredOdooRpcTimeoutMs > 0
@@ -1159,11 +1159,13 @@ const odooAuthCache = new Map<string, CachedOdooAuthSession>();
 
 type CachedMunicipalSnapshot = {
   expiresAt: number;
+  staleUntil: number;
   value: DashboardSnapshot;
 };
 
 type CachedFleetVehicleBoard = {
   expiresAt: number;
+  staleUntil: number;
   value: FleetVehicleBoard;
 };
 
@@ -1174,11 +1176,18 @@ type CachedOdooReadRpc = {
 
 type CachedHrDailyAttendanceSummary = {
   expiresAt: number;
+  staleUntil: number;
   value: HrDailyAttendanceSummary;
+};
+
+type CachedOdooModelReadAccess = {
+  expiresAt: number;
+  value: boolean;
 };
 
 const MUNICIPAL_SNAPSHOT_CACHE_TTL_MS = 2 * 60_000;
 const FLEET_VEHICLE_BOARD_CACHE_TTL_MS = 60_000;
+const DASHBOARD_STALE_CACHE_TTL_MS = 10 * 60_000;
 const municipalSnapshotCache = new Map<string, CachedMunicipalSnapshot>();
 const fleetVehicleBoardCache = new Map<string, CachedFleetVehicleBoard>();
 const municipalSnapshotPendingCache = new Map<
@@ -1199,6 +1208,7 @@ const hrDailyAttendanceSummaryPendingCache = new Map<
   string,
   Promise<HrDailyAttendanceSummary>
 >();
+const odooModelReadAccessCache = new Map<string, CachedOdooModelReadAccess>();
 
 export function createOdooConnection(
   overrides: Partial<OdooConnection> = {},
@@ -1253,11 +1263,24 @@ function isOdooReadMethod(method: string) {
   );
 }
 
+const VOLATILE_ODOO_READ_MODELS = new Set([
+  "mfo.collection.point",
+  "mfo.crew.team",
+  "mfo.district",
+  "mfo.route",
+  "mfo.route.line",
+  "mfo.subdistrict",
+]);
+
 function isCacheableOdooReadRequest(
   model: string,
   method: string,
   kwargs: Record<string, unknown>,
 ) {
+  if (VOLATILE_ODOO_READ_MODELS.has(model)) {
+    return false;
+  }
+
   const fields = Array.isArray(kwargs.fields) ? kwargs.fields : [];
   if (model === "ir.attachment" && fields.includes("datas")) {
     return false;
@@ -1284,6 +1307,46 @@ function getOdooReadRpcCacheKey(
   });
 }
 
+function getOdooModelReadAccessCacheKey(
+  uid: number,
+  model: string,
+  connection: OdooConnection,
+) {
+  return stableSerialize({
+    connection: getOdooAuthCacheKey(connection),
+    uid,
+    model,
+    access: "read",
+  });
+}
+
+async function hasOdooModelReadAccess(
+  uid: number,
+  model: string,
+  connection: OdooConnection,
+) {
+  const cacheKey = getOdooModelReadAccessCacheKey(uid, model, connection);
+  const cached = odooModelReadAccessCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+
+  const value = await executeKw<boolean>(
+    uid,
+    model,
+    "check_access_rights",
+    ["read"],
+    { raise_exception: false },
+    connection,
+  ).catch(() => false);
+
+  odooModelReadAccessCache.set(cacheKey, {
+    value: Boolean(value),
+    expiresAt: Date.now() + ODOO_READ_RPC_CACHE_TTL_MS,
+  });
+  return Boolean(value);
+}
+
 export function clearOdooReadCaches(connection?: OdooConnection) {
   const authKey = connection ? getOdooAuthCacheKey(connection) : "";
 
@@ -1296,6 +1359,7 @@ export function clearOdooReadCaches(connection?: OdooConnection) {
     fleetVehicleBoardPendingCache.clear();
     hrDailyAttendanceSummaryCache.clear();
     hrDailyAttendanceSummaryPendingCache.clear();
+    odooModelReadAccessCache.clear();
     return;
   }
 
@@ -1315,9 +1379,17 @@ export function clearOdooReadCaches(connection?: OdooConnection) {
   fleetVehicleBoardPendingCache.delete(authKey);
   hrDailyAttendanceSummaryCache.delete(authKey);
   hrDailyAttendanceSummaryPendingCache.delete(authKey);
+  for (const key of odooModelReadAccessCache.keys()) {
+    if (key.includes(authKey)) {
+      odooModelReadAccessCache.delete(key);
+    }
+  }
 }
 
-function readCachedMunicipalSnapshot(connection: OdooConnection) {
+function readCachedMunicipalSnapshot(
+  connection: OdooConnection,
+  options: { allowStale?: boolean } = {},
+) {
   const cacheKey = getMunicipalSnapshotCacheKey(connection);
   const cached = municipalSnapshotCache.get(cacheKey);
 
@@ -1325,7 +1397,18 @@ function readCachedMunicipalSnapshot(connection: OdooConnection) {
     return null;
   }
 
-  if (cached.expiresAt <= Date.now()) {
+  const now = Date.now();
+  if (cached.expiresAt <= now) {
+    if (options.allowStale && cached.staleUntil > now) {
+      return cleanSnapshotText(cached.value);
+    }
+    if (cached.staleUntil <= now) {
+      municipalSnapshotCache.delete(cacheKey);
+    }
+    return null;
+  }
+
+  if (cached.staleUntil <= now) {
     municipalSnapshotCache.delete(cacheKey);
     return null;
   }
@@ -1340,10 +1423,14 @@ function writeCachedMunicipalSnapshot(
   municipalSnapshotCache.set(getMunicipalSnapshotCacheKey(connection), {
     value,
     expiresAt: Date.now() + MUNICIPAL_SNAPSHOT_CACHE_TTL_MS,
+    staleUntil: Date.now() + MUNICIPAL_SNAPSHOT_CACHE_TTL_MS + DASHBOARD_STALE_CACHE_TTL_MS,
   });
 }
 
-function readCachedFleetVehicleBoard(connection: OdooConnection) {
+function readCachedFleetVehicleBoard(
+  connection: OdooConnection,
+  options: { allowStale?: boolean } = {},
+) {
   const cacheKey = getMunicipalSnapshotCacheKey(connection);
   const cached = fleetVehicleBoardCache.get(cacheKey);
 
@@ -1351,7 +1438,18 @@ function readCachedFleetVehicleBoard(connection: OdooConnection) {
     return null;
   }
 
-  if (cached.expiresAt <= Date.now()) {
+  const now = Date.now();
+  if (cached.expiresAt <= now) {
+    if (options.allowStale && cached.staleUntil > now) {
+      return cached.value;
+    }
+    if (cached.staleUntil <= now) {
+      fleetVehicleBoardCache.delete(cacheKey);
+    }
+    return null;
+  }
+
+  if (cached.staleUntil <= now) {
     fleetVehicleBoardCache.delete(cacheKey);
     return null;
   }
@@ -1366,6 +1464,7 @@ function writeCachedFleetVehicleBoard(
   fleetVehicleBoardCache.set(getMunicipalSnapshotCacheKey(connection), {
     value,
     expiresAt: Date.now() + FLEET_VEHICLE_BOARD_CACHE_TTL_MS,
+    staleUntil: Date.now() + FLEET_VEHICLE_BOARD_CACHE_TTL_MS + DASHBOARD_STALE_CACHE_TTL_MS,
   });
 }
 
@@ -2560,6 +2659,9 @@ async function loadFleetVehicleRelationOptions(
   }
 
   if (!relationModel) {
+    return [];
+  }
+  if (!(await hasOdooModelReadAccess(uid, relationModel, connection))) {
     return [];
   }
 
@@ -4208,6 +4310,22 @@ export async function loadHrDailyAttendanceSummary(
   if (cached && cached.expiresAt > Date.now()) {
     return cached.value;
   }
+  if (cached && cached.staleUntil > Date.now()) {
+    if (!hrDailyAttendanceSummaryPendingCache.has(cacheKey)) {
+      const refreshPromise = fetchLiveHrDailyAttendanceSummary(
+        requestedConnection,
+      )
+        .catch((error) => {
+          console.warn("HR attendance stale refresh failed:", error);
+          return cached.value;
+        })
+        .finally(() => {
+          hrDailyAttendanceSummaryPendingCache.delete(cacheKey);
+        });
+      hrDailyAttendanceSummaryPendingCache.set(cacheKey, refreshPromise);
+    }
+    return cached.value;
+  }
   if (cached) {
     hrDailyAttendanceSummaryCache.delete(cacheKey);
   }
@@ -4270,32 +4388,41 @@ async function fetchLiveHrDailyAttendanceSummary(
   let leaveRecords: OdooHrLeaveRecord[] = [];
   let hasAttendanceSource = false;
 
-  try {
-    attendanceRecords = await loadTodayHrAttendanceRecords(
-      uid,
-      connection,
-      todayStartUtc,
-      tomorrowStartUtc,
-    );
-    hasAttendanceSource = true;
-  } catch (error) {
-    console.warn(
-      "HR attendance records could not be loaded for dashboard:",
-      error,
-    );
+  const [canReadAttendance, canReadLeave] = await Promise.all([
+    hasOdooModelReadAccess(uid, "hr.attendance", connection),
+    hasOdooModelReadAccess(uid, "hr.leave", connection),
+  ]);
+
+  if (canReadAttendance) {
+    try {
+      attendanceRecords = await loadTodayHrAttendanceRecords(
+        uid,
+        connection,
+        todayStartUtc,
+        tomorrowStartUtc,
+      );
+      hasAttendanceSource = true;
+    } catch (error) {
+      console.warn(
+        "HR attendance records could not be loaded for dashboard:",
+        error,
+      );
+    }
   }
 
-  try {
-    leaveRecords = await loadTodayHrLeaveRecords(
-      uid,
-      connection,
-      today,
-      todayStartUtc,
-      tomorrowStartUtc,
-    );
-    hasAttendanceSource = true;
-  } catch (error) {
-    console.warn("HR leave records could not be loaded for dashboard:", error);
+  if (canReadLeave) {
+    try {
+      leaveRecords = await loadTodayHrLeaveRecords(
+        uid,
+        connection,
+        today,
+        todayStartUtc,
+        tomorrowStartUtc,
+      );
+      hasAttendanceSource = true;
+    } catch (error) {
+      console.warn("HR leave records could not be loaded for dashboard:", error);
+    }
   }
 
   const workingEmployeeIds = new Set(
@@ -4348,6 +4475,7 @@ async function fetchLiveHrDailyAttendanceSummary(
       {
         value: summary,
         expiresAt: Date.now() + ODOO_READ_RPC_CACHE_TTL_MS,
+        staleUntil: Date.now() + ODOO_READ_RPC_CACHE_TTL_MS + DASHBOARD_STALE_CACHE_TTL_MS,
       },
     );
     return summary;
@@ -4373,6 +4501,7 @@ async function fetchLiveHrDailyAttendanceSummary(
   hrDailyAttendanceSummaryCache.set(getMunicipalSnapshotCacheKey(connection), {
     value: summary,
     expiresAt: Date.now() + ODOO_READ_RPC_CACHE_TTL_MS,
+    staleUntil: Date.now() + ODOO_READ_RPC_CACHE_TTL_MS + DASHBOARD_STALE_CACHE_TTL_MS,
   });
   return summary;
 }
@@ -4705,6 +4834,10 @@ async function safeSearchReadFleetModel<T>(
   kwargs: Record<string, unknown>,
   connection: OdooConnection,
 ) {
+  if (!(await hasOdooModelReadAccess(uid, model, connection))) {
+    return [];
+  }
+
   try {
     return await searchReadAll<T>(
       uid,
@@ -5062,6 +5195,24 @@ export async function loadFleetVehicleBoard(
   }
 
   const cacheKey = getMunicipalSnapshotCacheKey(requestedConnection);
+  const staleBoard = readCachedFleetVehicleBoard(requestedConnection, {
+    allowStale: true,
+  });
+  if (staleBoard) {
+    if (!fleetVehicleBoardPendingCache.has(cacheKey)) {
+      const refreshPromise = fetchLiveFleetVehicleBoard(requestedConnection)
+        .catch((error) => {
+          console.warn("Fleet vehicle board stale refresh failed:", error);
+          return staleBoard;
+        })
+        .finally(() => {
+          fleetVehicleBoardPendingCache.delete(cacheKey);
+        });
+      fleetVehicleBoardPendingCache.set(cacheKey, refreshPromise);
+    }
+    return staleBoard;
+  }
+
   const pendingBoard = fleetVehicleBoardPendingCache.get(cacheKey);
   if (pendingBoard) {
     return pendingBoard;
@@ -6789,6 +6940,28 @@ export async function loadMunicipalSnapshot(
   }
 
   const cacheKey = getMunicipalSnapshotCacheKey(connection);
+  const staleSnapshot = readCachedMunicipalSnapshot(connection, {
+    allowStale: true,
+  });
+  if (staleSnapshot) {
+    if (!municipalSnapshotPendingCache.has(cacheKey)) {
+      const refreshPromise = (async () => {
+        try {
+          const snapshot = cleanSnapshotText(await fetchLiveSnapshot(connection));
+          writeCachedMunicipalSnapshot(connection, snapshot);
+          return snapshot;
+        } catch (error) {
+          console.warn("Municipal snapshot stale refresh failed:", error);
+          return staleSnapshot;
+        }
+      })().finally(() => {
+        municipalSnapshotPendingCache.delete(cacheKey);
+      });
+      municipalSnapshotPendingCache.set(cacheKey, refreshPromise);
+    }
+    return staleSnapshot;
+  }
+
   const canUsePendingSnapshot = options.allowFallback !== false;
   if (canUsePendingSnapshot) {
     const pendingSnapshot = municipalSnapshotPendingCache.get(cacheKey);

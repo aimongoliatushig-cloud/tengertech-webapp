@@ -1049,6 +1049,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                     width={156}
                     height={54}
                     className={styles.workerMobileLogo}
+                    style={{ width: "156px", height: "auto" }}
                     priority
                   />
                   <Link

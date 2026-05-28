@@ -76,6 +76,7 @@ export function NotificationPermissionButton() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [lastActionError, setLastActionError] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const silentSyncEndpoints = useRef(new Set<string>());
   const shouldPromptForNotifications =
     Boolean(pathname) && pathname !== "/login" && !pathname.startsWith("/auth/");
@@ -177,7 +178,13 @@ export function NotificationPermissionButton() {
     setBusy(false);
   }, [diagnostics]);
 
-  if (!shouldPromptForNotifications || isMobileMenuOpen || cardStatus === "checking" || cardStatus === "hidden") {
+  if (
+    !shouldPromptForNotifications ||
+    dismissed ||
+    isMobileMenuOpen ||
+    cardStatus === "checking" ||
+    cardStatus === "hidden"
+  ) {
     return null;
   }
 
@@ -245,6 +252,26 @@ export function NotificationPermissionButton() {
         padding: 16,
       }}
     >
+      <button
+        type="button"
+        onClick={() => setDismissed(true)}
+        aria-label="Мэдэгдлийн сануулгыг хаах"
+        style={{
+          position: "absolute",
+          top: 8,
+          right: 10,
+          border: 0,
+          background: "transparent",
+          color: "#526157",
+          cursor: "pointer",
+          fontSize: 18,
+          fontWeight: 700,
+          lineHeight: 1,
+          padding: 4,
+        }}
+      >
+        ×
+      </button>
       <strong style={{ display: "block", fontSize: 15, marginBottom: 6 }}>
         {titleText}
       </strong>

@@ -141,6 +141,32 @@ function releaseReportSubmitLock(key: string) {
   }
 }
 
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>,
+) {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(Math.max(1, concurrency), items.length);
+
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      for (;;) {
+        const index = nextIndex;
+        nextIndex += 1;
+        if (index >= items.length) {
+          return;
+        }
+
+        results[index] = await mapper(items[index], index);
+      }
+    }),
+  );
+
+  return results;
+}
+
 function canMutateReportOwner(session: { uid: number; role: string }, ownerId: number | null) {
   return session.role === "system_admin" || ownerId === session.uid;
 }
@@ -501,10 +527,16 @@ async function notifyDepartmentHeadsOfWork(input: {
   workName: string;
   targetUrl: string;
 }) {
-  const userIds = (await loadDepartmentHeadUserIds(input.departmentId, input.connectionOverrides)).filter(
-    (userId) => userId !== input.actorUserId,
-  );
-  if (!userIds.length) {
+  let userIds: number[] = [];
+  try {
+    userIds = (await loadDepartmentHeadUserIds(input.departmentId, input.connectionOverrides)).filter(
+      (userId) => userId !== input.actorUserId,
+    );
+    if (!userIds.length) {
+      return;
+    }
+  } catch (error) {
+    console.warn("Department head notification recipients failed:", error);
     return;
   }
 
@@ -1436,7 +1468,7 @@ export async function createProjectAction(formData: FormData) {
         );
       }
 
-      for (const [index, point] of pointsToCreate.entries()) {
+      await mapWithConcurrency(pointsToCreate, 4, async (point, index) => {
         const pointSubdistrictName = Array.isArray(point.subdistrict_id) ? point.subdistrict_id[1] : subdistrictName;
         const taskId = await createWorkspaceTask(
           {
@@ -1452,27 +1484,15 @@ export async function createProjectAction(formData: FormData) {
               .join("\n"),
             sequence: (existingTaskIds.length + index + 1) * 10,
             assigneeUserIds: assignedGarbageUserIds,
+            operationType: "garbage",
+            shiftDate: startDate,
+            vehicleId: Number(garbageVehicleIdRaw),
+            driverEmployeeId: vehicleDriverId || null,
+            collectorEmployeeIds: vehicleCollectorIds,
+            inspectorEmployeeId: currentEmployees[0]?.id || null,
           },
           projectMutationConnection,
         );
-
-        await executeOdooKw<boolean>(
-          "project.task",
-          "write",
-          [[taskId], {
-            mfo_operation_type: "garbage",
-            mfo_state: "dispatched",
-            mfo_shift_date: startDate,
-            mfo_vehicle_id: Number(garbageVehicleIdRaw),
-            ...(vehicleDriverId ? { mfo_driver_employee_id: vehicleDriverId } : {}),
-            ...(vehicleCollectorIds.length
-              ? { mfo_collector_employee_ids: [[6, 0, vehicleCollectorIds]] }
-              : {}),
-            mfo_inspector_employee_id: currentEmployees[0]?.id || false,
-          }],
-          {},
-          projectMutationConnection,
-        ).catch(() => false);
 
         await executeOdooKw<number>(
           "mfo.stop.execution.line",
@@ -1485,7 +1505,7 @@ export async function createProjectAction(formData: FormData) {
           {},
           projectMutationConnection,
         );
-      }
+      });
 
       if (projectFiles.length) {
         const attachments = await Promise.all(
@@ -1502,23 +1522,25 @@ export async function createProjectAction(formData: FormData) {
         );
       }
 
-      if (assignedGarbageUserIds.length) {
-        await notifyPushQuietly({
-          eventType: "new_work_assigned",
-          title: "Шинэ хог тээврийн ажил оноогдлоо",
-          body: `${resolvedVehicleName} дээр ${pointsToCreate.length} хогийн цэгийн даалгавар нэмэгдлээ.`,
+      await Promise.all([
+        assignedGarbageUserIds.length
+          ? notifyPushQuietly({
+              eventType: "new_work_assigned",
+              title: "Шинэ хог тээврийн ажил оноогдлоо",
+              body: `${resolvedVehicleName} дээр ${pointsToCreate.length} хогийн цэгийн даалгавар нэмэгдлээ.`,
+              targetUrl: `/projects/${createdProjectId}`,
+              userIds: assignedGarbageUserIds,
+            })
+          : Promise.resolve(),
+        notifyDepartmentHeadsOfWork({
+          departmentId: Number(effectiveDepartmentIdRaw),
+          actorUserId: session.uid,
+          connectionOverrides: garbageWorkConnection,
+          title: "Шинэ хог тээврийн ажил бүртгэгдлээ",
+          workName: `${resolvedVehicleName} дээр ${pointsToCreate.length} хогийн цэгийн ажил нэмэгдлээ.`,
           targetUrl: `/projects/${createdProjectId}`,
-          userIds: assignedGarbageUserIds,
-        });
-      }
-      await notifyDepartmentHeadsOfWork({
-        departmentId: Number(effectiveDepartmentIdRaw),
-        actorUserId: session.uid,
-        connectionOverrides: garbageWorkConnection,
-        title: "Шинэ хог тээврийн ажил бүртгэгдлээ",
-        workName: `${resolvedVehicleName} дээр ${pointsToCreate.length} хогийн цэгийн ажил нэмэгдлээ.`,
-        targetUrl: `/projects/${createdProjectId}`,
-      });
+        }),
+      ]);
 
       revalidatePath("/");
       revalidatePath("/projects");
@@ -1962,9 +1984,7 @@ export async function createTaskAction(formData: FormData) {
       ]);
       const inspectorEmployeeId = currentEmployees[0]?.id ?? null;
       const effectiveDate = deadline || project.deadline || project.startDate || getTodayDateKey();
-      const createdTaskIds: number[] = [];
-
-      for (const [index, point] of points.entries()) {
+      const createdTaskIds = await mapWithConcurrency(points, 4, async (point, index) => {
         const subdistrictName = Array.isArray(point.subdistrict_id)
           ? point.subdistrict_id[1]
           : taskKhoroo || "Хороо";
@@ -2014,24 +2034,26 @@ export async function createTaskAction(formData: FormData) {
           connectionOverrides,
         ).catch(() => 0);
 
-        createdTaskIds.push(taskId);
-      }
+        return taskId;
+      });
 
-      await notifyPushQuietly({
-        eventType: "new_work_assigned",
-        title: "Шинэ хог тээврийн даалгавар",
-        body: `${vehicleName} дээр ${createdTaskIds.length} хогийн цэг нэмэгдлээ.`,
-        targetUrl: `/projects/${projectId}`,
-        userIds: assignedUserIds,
-      });
-      await notifyDepartmentHeadsOfWork({
-        departmentId: project.departmentId,
-        actorUserId: session.uid,
-        connectionOverrides,
-        title: "Шинэ хог тээврийн даалгавар бүртгэгдлээ",
-        workName: `${vehicleName} дээр ${createdTaskIds.length} хогийн цэг нэмэгдлээ.`,
-        targetUrl: `/projects/${projectId}`,
-      });
+      await Promise.all([
+        notifyPushQuietly({
+          eventType: "new_work_assigned",
+          title: "Шинэ хог тээврийн даалгавар",
+          body: `${vehicleName} дээр ${createdTaskIds.length} хогийн цэг нэмэгдлээ.`,
+          targetUrl: `/projects/${projectId}`,
+          userIds: assignedUserIds,
+        }),
+        notifyDepartmentHeadsOfWork({
+          departmentId: project.departmentId,
+          actorUserId: session.uid,
+          connectionOverrides,
+          title: "Шинэ хог тээврийн даалгавар бүртгэгдлээ",
+          workName: `${vehicleName} дээр ${createdTaskIds.length} хогийн цэг нэмэгдлээ.`,
+          targetUrl: `/projects/${projectId}`,
+        }),
+      ]);
 
       revalidatePath("/");
       revalidatePath("/projects");
@@ -2224,28 +2246,30 @@ export async function createTaskAction(formData: FormData) {
       await createWorkspaceTaskAttachments(taskId, attachments, connectionOverrides);
     }
 
-    await notifyPushQuietly({
-      eventType: "new_work_assigned",
-      title: "Шинэ ажил оноогдлоо",
-      body: name,
-      targetUrl: `/tasks/${taskId}`,
-      userIds: Array.from(
-        new Set(
-          [
-            effectiveTeamLeaderId,
-            ...(selectedCrewTeam?.memberUserIds ?? []),
-          ].filter((value): value is number => Number.isFinite(value ?? NaN) && Number(value) > 0),
+    await Promise.all([
+      notifyPushQuietly({
+        eventType: "new_work_assigned",
+        title: "Шинэ ажил оноогдлоо",
+        body: name,
+        targetUrl: `/tasks/${taskId}`,
+        userIds: Array.from(
+          new Set(
+            [
+              effectiveTeamLeaderId,
+              ...(selectedCrewTeam?.memberUserIds ?? []),
+            ].filter((value): value is number => Number.isFinite(value ?? NaN) && Number(value) > 0),
+          ),
         ),
-      ),
-    });
-    await notifyDepartmentHeadsOfWork({
-      departmentId: project.departmentId,
-      actorUserId: session.uid,
-      connectionOverrides,
-      title: "Шинэ даалгавар бүртгэгдлээ",
-      workName: name,
-      targetUrl: `/tasks/${taskId}`,
-    });
+      }),
+      notifyDepartmentHeadsOfWork({
+        departmentId: project.departmentId,
+        actorUserId: session.uid,
+        connectionOverrides,
+        title: "Шинэ даалгавар бүртгэгдлээ",
+        workName: name,
+        targetUrl: `/tasks/${taskId}`,
+      }),
+    ]);
 
     clearOdooReadCaches();
     revalidatePath("/");
