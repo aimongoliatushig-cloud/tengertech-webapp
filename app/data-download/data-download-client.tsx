@@ -52,11 +52,11 @@ function isImportReadyNow() {
   const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
   const minute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
 
-  return hour * 60 + minute >= 12 * 60;
+  return hour * 60 + minute >= 11 * 60;
 }
 
 function getLatestImportDateValue() {
-  return shiftDateValue(getCurrentDateValue(), isImportReadyNow() ? -1 : -2);
+  return shiftDateValue(getCurrentDateValue(), isImportReadyNow() ? 0 : -1);
 }
 
 export function DataDownloadClient() {
@@ -79,7 +79,7 @@ export function DataDownloadClient() {
     }
 
     if (date > latestImportDate) {
-      setErrorMessage("Өчигдрийн тайлан дараагийн өдөр 12:00-с хойш татагдана. Өнөөдрийн эсвэл ирээдүйн огноо сонгох боломжгүй.");
+      setErrorMessage("Өнөөдрийн тайлан тухайн өдөр 11:00-с хойш татагдана. Ирээдүйн огноо сонгох боломжгүй.");
       return;
     }
 

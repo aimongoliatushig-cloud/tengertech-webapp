@@ -47,7 +47,7 @@ function shiftDateKey(dateKey: string, days: number) {
 }
 
 function latestAllowedReportDateKey() {
-  return shiftDateKey(currentDateKey(), -1);
+  return currentDateKey();
 }
 
 function isLocalDevelopmentRequest(request: Request) {
@@ -303,7 +303,7 @@ function validateRequestedWindow(startDate: string, endDate: string) {
 
   const latestAllowed = latestAllowedReportDateKey();
   if (endDate > latestAllowed) {
-    return `Gaiham тайланг ${latestAllowed}-с хойших огноогоор татахгүй. Зөвхөн өмнөх өдөр болон түүнээс өмнөх огноогоор татна.`;
+    return `Gaiham тайланг ${latestAllowed}-с хойших огноогоор татахгүй. Зөвхөн өнөөдөр болон түүнээс өмнөх огноогоор татна.`;
   }
 
   return "";
