@@ -40,7 +40,7 @@
 .reportRegistryMetricIcon svg,
 .reportRegistrySearch svg,
 .reportRegistryFilterButton svg,
-.reportRegistryRefreshButton svg,
+.reportRegistryExportActions svg,
 .reportRegistryDetailActions svg {
   width: 18px;
   height: 18px;
@@ -68,7 +68,7 @@
 
 .reportRegistryToolbar {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(180px, 0.35fr) auto auto;
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 0.32fr) minmax(140px, 0.24fr) minmax(140px, 0.24fr) auto auto;
   gap: 10px;
   align-items: end;
   padding: 12px;
@@ -78,7 +78,8 @@
 }
 
 .reportRegistrySearch,
-.reportRegistrySelect {
+.reportRegistrySelect,
+.reportRegistryDateField {
   display: grid;
   gap: 6px;
   color: var(--ink-700);
@@ -98,7 +99,8 @@
 }
 
 .reportRegistrySearch input,
-.reportRegistrySelect select {
+.reportRegistrySelect select,
+.reportRegistryDateField input {
   min-height: 44px;
   border: 1px solid rgba(31, 95, 49, 0.13);
   border-radius: 8px;
@@ -111,12 +113,12 @@
   padding: 0 14px 0 42px;
 }
 
-.reportRegistrySelect select {
+.reportRegistrySelect select,
+.reportRegistryDateField input {
   padding: 0 12px;
 }
 
-.reportRegistryFilterButton,
-.reportRegistryRefreshButton {
+.reportRegistryFilterButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -128,12 +130,33 @@
   background: rgba(255, 255, 255, 0.96);
   color: var(--brand-800);
   font-weight: 800;
-  text-decoration: none;
 }
 
 .reportRegistryFilterButton {
   background: rgba(74, 154, 93, 0.12);
   cursor: pointer;
+}
+
+.reportRegistryExportActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.reportRegistryExportActions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(31, 95, 49, 0.14);
+  border-radius: 8px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-800);
+  font-weight: 800;
+  text-decoration: none;
 }
 
 .reportRegistryContent {
@@ -397,6 +420,11 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
+}
+
+.reportRegistryTableHeader .reportRegistryExportActions {
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .reportRegistryTableHeader strong {
@@ -679,9 +707,7 @@
     padding: 10px;
   }
 
-  .reportRegistrySelect,
-  .reportRegistryFilterButton,
-  .reportRegistryRefreshButton {
+  .reportRegistrySelect {
     display: none;
   }
 

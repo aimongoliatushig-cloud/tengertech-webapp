@@ -6,7 +6,6 @@ import {
   Download,
   Eye,
   FileClock,
-  RefreshCw,
   Search,
   ShieldCheck,
   SlidersHorizontal,
@@ -52,6 +51,8 @@ type PageProps = {
     unit?: string | string[];
     q?: string | string[];
     status?: string | string[];
+    startDate?: string | string[];
+    endDate?: string | string[];
   }>;
 };
 
@@ -70,6 +71,7 @@ type FeedReport = {
   audioCount: number;
   stateLabel: string;
   stateBucket: "review" | "done" | "problem" | "progress";
+  submittedDateKey?: string;
   submittedAt: string;
   images: {
     id: number;
@@ -116,6 +118,8 @@ const REPORT_STATUS_FILTERS = [
   { key: "done", label: "Баталгаажсан" },
   { key: "problem", label: "Буцаагдсан" },
 ] as const;
+
+const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function normalizeReportDepartmentName(value?: string | null) {
   return (value ?? "").trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
@@ -179,6 +183,11 @@ function getDepartmentParam(value?: string | string[]) {
   return value ?? "";
 }
 
+function getDateParam(value?: string | string[]) {
+  const date = getDepartmentParam(value).trim();
+  return DATE_PARAM_PATTERN.test(date) ? date : "";
+}
+
 function formatQuantity(value: number, unit: string) {
   if (!value) {
     return `0 ${unit}`;
@@ -191,12 +200,67 @@ function getReportUnitDisplayLabel(unit: string) {
   return unit === "Цэвэрлэгээ үйлчилгээ" ? "Зам талбайн цэвэрлэгээ" : unit;
 }
 
-function extractReportDateKey(report: Pick<FeedReport, "submittedAt" | "taskName">) {
+function extractReportDateKey(report: Pick<FeedReport, "submittedAt" | "submittedDateKey" | "taskName">) {
+  if (report.submittedDateKey && DATE_PARAM_PATTERN.test(report.submittedDateKey)) {
+    return report.submittedDateKey;
+  }
+
+  if (report.submittedAt.startsWith("Өнөөдөр")) {
+    return getTodayDateKey();
+  }
+
   return (
     report.submittedAt.match(/\d{4}-\d{2}-\d{2}/)?.[0] ??
     report.taskName.match(/\d{4}-\d{2}-\d{2}/)?.[0] ??
     ""
   );
+}
+
+function isReportInPeriod(
+  report: Pick<FeedReport, "submittedAt" | "submittedDateKey" | "taskName">,
+  startDate: string,
+  endDate: string,
+) {
+  if (!startDate && !endDate) {
+    return true;
+  }
+
+  const reportDate = extractReportDateKey(report);
+  if (!reportDate) {
+    return false;
+  }
+
+  if (startDate && reportDate < startDate) {
+    return false;
+  }
+
+  if (endDate && reportDate > endDate) {
+    return false;
+  }
+
+  return true;
+}
+
+function getReportPeriodLabel(startDate: string, endDate: string) {
+  if (startDate && endDate) {
+    return startDate === endDate ? `${startDate} өдөр` : `${startDate} - ${endDate}`;
+  }
+  if (startDate) {
+    return `${startDate}-с хойш`;
+  }
+  if (endDate) {
+    return `${endDate} хүртэл`;
+  }
+  return "Бүх хугацаа";
+}
+
+function appendReportPeriodParams(params: URLSearchParams, startDate: string, endDate: string) {
+  if (startDate) {
+    params.set("startDate", startDate);
+  }
+  if (endDate) {
+    params.set("endDate", endDate);
+  }
 }
 
 function formatSubmittedTime(value: string) {
@@ -270,6 +334,17 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const requestedUnit = getDepartmentParam(params.unit);
   const reportSearchQuery = getDepartmentParam(params.q).trim();
   const requestedStatus = getDepartmentParam(params.status);
+  const requestedStartDate = getDateParam(params.startDate);
+  const requestedEndDate = getDateParam(params.endDate);
+  const selectedStartDate =
+    requestedStartDate && requestedEndDate && requestedStartDate > requestedEndDate
+      ? requestedEndDate
+      : requestedStartDate;
+  const selectedEndDate =
+    requestedStartDate && requestedEndDate && requestedStartDate > requestedEndDate
+      ? requestedStartDate
+      : requestedEndDate;
+  const selectedPeriodLabel = getReportPeriodLabel(selectedStartDate, selectedEndDate);
   const selectedStatus = REPORT_STATUS_FILTERS.some((item) => item.key === requestedStatus)
     ? requestedStatus
     : "all";
@@ -331,13 +406,42 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   filteredReports = filteredReports.filter((report) => isOperationalReportDepartment(report.departmentName));
   filteredReviewQueue = filteredReviewQueue.filter((item) => isOperationalReportDepartment(item.departmentName));
   filteredTaskDirectory = filteredTaskDirectory.filter((task) => isOperationalReportDepartment(task.departmentName));
+  filteredReports = filteredReports.filter((report) =>
+    isReportInPeriod(report, selectedStartDate, selectedEndDate),
+  );
+  if (selectedStartDate || selectedEndDate) {
+    const periodTaskIds = new Set(
+      filteredReports
+        .map((report) => report.taskId)
+        .filter((taskId): taskId is number => typeof taskId === "number"),
+    );
+    const periodProjectIds = new Set(
+      filteredReports
+        .map((report) => report.projectId)
+        .filter((projectId): projectId is number => typeof projectId === "number"),
+    );
+    filteredReviewQueue = filteredReviewQueue.filter(
+      (item) =>
+        periodTaskIds.has(item.id) ||
+        (typeof item.projectId === "number" && periodProjectIds.has(item.projectId)),
+    );
+    filteredTaskDirectory = filteredTaskDirectory.filter(
+      (task) =>
+        periodTaskIds.has(task.id) ||
+        (typeof task.projectId === "number" && periodProjectIds.has(task.projectId)),
+    );
+  }
   const taskDirectoryById = new Map(filteredTaskDirectory.map((task) => [task.id, task]));
   const operationalReportGroups = DEPARTMENT_GROUPS.filter((group) =>
     REPORT_OPERATIONS_GROUP_NAMES.has(group.name),
   );
   const allOperationalReportCount = departmentScopedMode
     ? filteredReports.length
-    : snapshot.reports.filter((report) => isOperationalReportDepartment(report.departmentName)).length;
+    : snapshot.reports.filter(
+        (report) =>
+          isOperationalReportDepartment(report.departmentName) &&
+          isReportInPeriod(report, selectedStartDate, selectedEndDate),
+      ).length;
   const visibleReportGroups =
     departmentScopedMode && selectedGroup
       ? operationalReportGroups.filter((group) => group.name === selectedGroup.name)
@@ -349,6 +453,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   if (selectedStatus !== "all") {
     preservedFilterParams.set("status", selectedStatus);
   }
+  appendReportPeriodParams(preservedFilterParams, selectedStartDate, selectedEndDate);
   const preservedFilterQuery = preservedFilterParams.toString();
   const allDepartmentsHref = `/reports${preservedFilterQuery ? `?${preservedFilterQuery}` : ""}`;
   const normalizedReportSearchQuery = reportSearchQuery.toLocaleLowerCase("mn-MN");
@@ -378,8 +483,10 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     if (selectedStatus !== "all") {
       hrefParams.set("status", selectedStatus);
     }
+    appendReportPeriodParams(hrefParams, selectedStartDate, selectedEndDate);
     const groupReports = snapshot.reports.filter((report) =>
-      reportDepartmentMatchesGroup(group, report.departmentName),
+      reportDepartmentMatchesGroup(group, report.departmentName) &&
+      isReportInPeriod(report, selectedStartDate, selectedEndDate),
     );
     const groupReviewQueue = snapshot.reviewQueue.filter((item) =>
       reportDepartmentMatchesGroup(group, item.departmentName),
@@ -412,6 +519,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         if (selectedStatus !== "all") {
           hrefParams.set("status", selectedStatus);
         }
+        appendReportPeriodParams(hrefParams, selectedStartDate, selectedEndDate);
         const reportCount = filteredReports.filter(
           (report) => report.departmentName === unit && reportMatchesCurrentFilters(report),
         ).length;
@@ -435,15 +543,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   if (!departmentScopedMode && selectedUnit) {
     exportParams.set("unit", selectedUnit);
   }
-  const allReportBoardParams = new URLSearchParams(exportParams);
-  if (reportSearchQuery) {
-    allReportBoardParams.set("q", reportSearchQuery);
-  }
-  if (selectedStatus !== "all") {
-    allReportBoardParams.set("status", selectedStatus);
-  }
-  const allReportBoardQuery = allReportBoardParams.toString();
-  const allReportBoardBaseHref = `/reports${allReportBoardQuery ? `?${allReportBoardQuery}` : ""}`;
+  appendReportPeriodParams(exportParams, selectedStartDate, selectedEndDate);
   const visibleReportRows = filteredReports
     .filter(reportMatchesCurrentFilters)
     .sort((left, right) => right.submittedAt.localeCompare(left.submittedAt) || right.id - left.id);
@@ -464,6 +564,12 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const getExportHref = (format: "csv" | "excel" | "json" | "pdf" | "pptx", reportId?: number) => {
     const params = new URLSearchParams(exportParams);
     params.set("format", format);
+    if (reportSearchQuery) {
+      params.set("q", reportSearchQuery);
+    }
+    if (selectedStatus !== "all") {
+      params.set("status", selectedStatus);
+    }
     if (reportId) {
       params.set("reportId", String(reportId));
     }
@@ -587,14 +693,18 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                       ))}
                     </select>
                   </label>
+                  <label className={styles.reportRegistryDateField}>
+                    <span>Эхлэх өдөр</span>
+                    <input type="date" name="startDate" defaultValue={selectedStartDate} />
+                  </label>
+                  <label className={styles.reportRegistryDateField}>
+                    <span>Дуусах өдөр</span>
+                    <input type="date" name="endDate" defaultValue={selectedEndDate} />
+                  </label>
                   <button type="submit" className={styles.reportRegistryFilterButton}>
                     <SlidersHorizontal aria-hidden />
                     Шүүх
                   </button>
-                  <Link href={allReportBoardBaseHref} className={styles.reportRegistryRefreshButton}>
-                    <RefreshCw aria-hidden />
-                    Шинэчлэх
-                  </Link>
                 </form>
 
                 <section className={styles.reportRegistryScopePanel} aria-label="Тайлангийн хамрах хүрээ">
@@ -696,8 +806,22 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                       <div>
                         <span>Тайлангийн жагсаалт</span>
                         <strong>{visibleReportRows.length}</strong>
+                        <small>{selectedPeriodLabel}</small>
                       </div>
-                      <small>{selectedScopeTitle}</small>
+                      {visibleReportRows.length ? (
+                        <div className={styles.reportRegistryExportActions}>
+                          <a href={getExportHref("pdf")}>
+                            <Download aria-hidden />
+                            PDF татах
+                          </a>
+                          <a href={getExportHref("excel")}>
+                            <Download aria-hidden />
+                            Excel татах
+                          </a>
+                        </div>
+                      ) : (
+                        <small>{selectedScopeTitle}</small>
+                      )}
                     </div>
 
                     <div className={styles.reportRegistryAccordion}>

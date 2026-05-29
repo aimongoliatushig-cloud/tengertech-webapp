@@ -4,7 +4,7 @@ import pptxgen from "pptxgenjs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
-import { filterByDepartment } from "@/lib/dashboard-scope";
+import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import {
   filterProjectsForResponsibleMaster,
   filterTasksForResponsibleMaster,
@@ -50,8 +50,70 @@ type ExportPayload = {
   reviewQueue: ReviewRow[];
 };
 
+const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const REPORT_STATUS_FILTER_KEYS = new Set(["progress", "review", "done", "problem"]);
+
 function getParam(searchParams: URLSearchParams, key: string) {
   return searchParams.get(key)?.trim() ?? "";
+}
+
+function getDateParam(searchParams: URLSearchParams, key: string) {
+  const date = getParam(searchParams, key);
+  return DATE_PARAM_PATTERN.test(date) ? date : "";
+}
+
+function extractReportDateKey(report: Pick<ReportRow, "submittedAt" | "submittedDateKey" | "taskName">) {
+  if (report.submittedDateKey && DATE_PARAM_PATTERN.test(report.submittedDateKey)) {
+    return report.submittedDateKey;
+  }
+
+  if (report.submittedAt.startsWith("Өнөөдөр")) {
+    return getTodayDateKey();
+  }
+
+  return (
+    report.submittedAt.match(/\d{4}-\d{2}-\d{2}/)?.[0] ??
+    report.taskName.match(/\d{4}-\d{2}-\d{2}/)?.[0] ??
+    ""
+  );
+}
+
+function isReportInPeriod(
+  report: Pick<ReportRow, "submittedAt" | "submittedDateKey" | "taskName">,
+  startDate: string,
+  endDate: string,
+) {
+  if (!startDate && !endDate) {
+    return true;
+  }
+
+  const reportDate = extractReportDateKey(report);
+  if (!reportDate) {
+    return false;
+  }
+
+  if (startDate && reportDate < startDate) {
+    return false;
+  }
+
+  if (endDate && reportDate > endDate) {
+    return false;
+  }
+
+  return true;
+}
+
+function formatReportPeriodScope(startDate: string, endDate: string) {
+  if (startDate && endDate) {
+    return startDate === endDate ? `${startDate} өдөр` : `${startDate} - ${endDate}`;
+  }
+  if (startDate) {
+    return `${startDate}-с хойш`;
+  }
+  if (endDate) {
+    return `${endDate} хүртэл`;
+  }
+  return "";
 }
 
 function csvCell(value: unknown) {
@@ -602,6 +664,22 @@ function buildExportPayload(
   const requestedDepartment = getParam(searchParams, "department");
   const requestedUnit = getParam(searchParams, "unit");
   const requestedReportId = Number(getParam(searchParams, "reportId"));
+  const requestedStartDate = getDateParam(searchParams, "startDate");
+  const requestedEndDate = getDateParam(searchParams, "endDate");
+  const selectedStartDate =
+    requestedStartDate && requestedEndDate && requestedStartDate > requestedEndDate
+      ? requestedEndDate
+      : requestedStartDate;
+  const selectedEndDate =
+    requestedStartDate && requestedEndDate && requestedStartDate > requestedEndDate
+      ? requestedStartDate
+      : requestedEndDate;
+  const requestedStatus = getParam(searchParams, "status");
+  const selectedStatus = REPORT_STATUS_FILTER_KEYS.has(requestedStatus) ? requestedStatus : "all";
+  const normalizedReportSearchQuery = getParam(searchParams, "q").toLocaleLowerCase("mn-MN");
+  const hasReportContentFilter =
+    Boolean(selectedStartDate || selectedEndDate || normalizedReportSearchQuery) ||
+    selectedStatus !== "all";
   const selectedGroup = scopedDepartmentName
     ? findDepartmentGroupByName(scopedDepartmentName) ?? findDepartmentGroupByUnit(scopedDepartmentName)
     : requestedDepartment && requestedDepartment !== "all"
@@ -649,8 +727,32 @@ function buildExportPayload(
     );
   }
 
+  reports = reports.filter((report) => {
+    if (!isReportInPeriod(report, selectedStartDate, selectedEndDate)) {
+      return false;
+    }
+    if (selectedStatus !== "all" && report.stateBucket !== selectedStatus) {
+      return false;
+    }
+    if (!normalizedReportSearchQuery) {
+      return true;
+    }
+
+    return [
+      report.taskName,
+      report.projectName,
+      report.departmentName,
+      report.reporter,
+      report.summary,
+      report.stateLabel,
+    ].some((value) => value.toLocaleLowerCase("mn-MN").includes(normalizedReportSearchQuery));
+  });
+
   if (Number.isFinite(requestedReportId) && requestedReportId > 0) {
     reports = reports.filter((report) => report.id === requestedReportId);
+  }
+
+  if (hasReportContentFilter || (Number.isFinite(requestedReportId) && requestedReportId > 0)) {
     const selectedTaskIds = new Set(
       reports
         .map((report) => report.taskId)
@@ -674,11 +776,14 @@ function buildExportPayload(
     );
   }
 
+  const baseScope = reports.length === 1
+    ? reports[0].taskName || reports[0].projectName
+    : scopedDepartmentName || selectedUnit || selectedGroup?.name || "Бүх хэлтэс";
+  const periodScope = formatReportPeriodScope(selectedStartDate, selectedEndDate);
+
   return {
     generatedAt: snapshot.generatedAt,
-    scope: reports.length === 1
-      ? reports[0].taskName || reports[0].projectName
-      : scopedDepartmentName || selectedUnit || selectedGroup?.name || "Бүх хэлтэс",
+    scope: periodScope ? `${baseScope} / ${periodScope}` : baseScope,
     summary: {
       reports: reports.length,
       tasks: tasks.length,

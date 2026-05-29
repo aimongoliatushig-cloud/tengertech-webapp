@@ -362,6 +362,7 @@ type ReportFeedItem = {
   measurementUnitCode: string;
   imageCount: number;
   audioCount: number;
+  submittedDateKey?: string;
   submittedAt: string;
   images: {
     id: number;
@@ -6184,6 +6185,7 @@ async function fetchLiveSnapshot(
         (task ? resolveTaskMeasurementCode(task) : ""),
       imageCount: Math.max(report.image_count ?? 0, images.length),
       audioCount: Math.max(report.audio_count ?? 0, audios.length),
+      submittedDateKey: getDateKeyFromValue(report.report_datetime) ?? "",
       submittedAt: formatCompactDate(report.report_datetime),
       images,
       audios,
@@ -6855,6 +6857,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         measurementUnitCode: "tree",
         imageCount: 1,
         audioCount: 1,
+        submittedDateKey: todayDateKey,
         images: [],
         audios: [],
         submittedAt: "Өнөөдөр 15:30",
@@ -6876,6 +6879,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         measurementUnitCode: "times",
         imageCount: 2,
         audioCount: 0,
+        submittedDateKey: todayDateKey,
         images: [],
         audios: [],
         submittedAt: "Өнөөдөр 14:10",
