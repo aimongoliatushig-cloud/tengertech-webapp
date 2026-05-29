@@ -262,6 +262,14 @@
   margin-bottom: 18px;
 }
 
+.sectionHeaderActions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .sectionHeader h2 {
   font-family: var(--font-body);
   font-size: clamp(1.5rem, 3vw, 2.2rem);
@@ -2130,6 +2138,76 @@
   border: 1px solid rgba(46, 125, 50, 0.12);
   border-radius: 14px;
   background: rgba(244, 250, 245, 0.78);
+}
+
+.createWorkForm .operationModeGrid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.78fr) minmax(320px, 1.45fr);
+  gap: 10px;
+  padding: 4px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 14px;
+  background: rgba(244, 250, 245, 0.78);
+}
+
+.createWorkForm .operationModeGroup {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.createWorkForm .operationModeGroupActive {
+  border-color: rgba(46, 125, 50, 0.24);
+  background: rgba(233, 246, 235, 0.92);
+  box-shadow: 0 14px 30px rgba(27, 73, 38, 0.08);
+}
+
+.createWorkForm .operationModeButton {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.createWorkForm .operationModeButton span,
+.createWorkForm .operationModeGroupHeader span {
+  color: inherit;
+  font-size: 0.9rem;
+  font-weight: 850;
+  line-height: 1.15;
+}
+
+.createWorkForm .operationModeButton small,
+.createWorkForm .operationModeGroupHeader small {
+  color: inherit;
+  opacity: 0.78;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.28;
+}
+
+.createWorkForm .operationModeGroupHeader {
+  display: grid;
+  gap: 3px;
+  padding: 4px 6px 0;
+}
+
+.createWorkForm .operationSubModeRail {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .createWorkForm .modeChip {
@@ -5561,19 +5639,24 @@
 .modalOverlay {
   position: fixed;
   inset: 0;
-  z-index: 70;
+  z-index: 2147482500;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
+  overflow: auto;
   background: rgba(21, 34, 25, 0.42);
   backdrop-filter: blur(10px);
+  isolation: isolate;
 }
 
 .modalDialog {
+  position: relative;
+  z-index: 1;
   width: min(680px, 100%);
-  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 24px;
   border: 1px solid var(--line-soft);
   border-radius: var(--ds-radius-card);
@@ -5960,6 +6043,12 @@
     flex-direction: column;
   }
 
+  .sectionHeaderActions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
   .sectionHeader p {
     text-align: left;
   }
@@ -6163,6 +6252,11 @@
 
   .modeRail,
   .previewGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .createWorkForm .operationModeGrid,
+  .createWorkForm .operationSubModeRail {
     grid-template-columns: 1fr;
   }
 
@@ -7178,11 +7272,13 @@
 /* Task create modal polish */
 .modalDialog {
   width: min(760px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
   overflow-x: hidden;
 }
 
 .taskEditModalDialog {
   width: min(760px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
 }
 
 .modalTitle {
@@ -7627,7 +7723,8 @@
     width: min(100%, calc(100vw - 20px));
   }
 
-  .taskCreateModalDialog {
+  .taskCreateModalDialog,
+  .taskEditModalDialog {
     width: min(100%, calc(100vw - 20px));
     max-height: calc(100vh - 28px);
     padding: 18px 16px 12px;
@@ -7635,19 +7732,22 @@
     background: #f7faf7;
   }
 
-  .taskCreateModalDialog .modalHeader {
+  .taskCreateModalDialog .modalHeader,
+  .taskEditModalDialog .modalHeader {
     grid-template-columns: 44px minmax(0, 1fr) 44px;
     margin-bottom: 14px;
   }
 
-  .taskCreateModalDialog .modalHeader::after {
+  .taskCreateModalDialog .modalHeader::after,
+  .taskEditModalDialog .modalHeader::after {
     content: "";
     display: block;
     width: 44px;
     height: 44px;
   }
 
-  .taskCreateModalDialog .modalTitle {
+  .taskCreateModalDialog .modalTitle,
+  .taskEditModalDialog .modalTitle {
     font-size: 1.12rem;
     line-height: 1.18;
   }

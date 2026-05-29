@@ -192,7 +192,7 @@ export function InspectorScopePanel({
               <strong>{activeInspector.name}</strong>
               {activeInspector.meta ? <small>{activeInspector.meta}</small> : null}
             </div>
-            <div className={styles.scopeCountGrid} aria-label="Оноосон scope-ийн тоо">
+            <div className={styles.scopeCountGrid} aria-label="Оноосон хяналтын хүрээний тоо">
               <span className={styles.scopeCountPill}>
                 <b>{checkedSubdistrictIds.size}</b>
                 <small>хороо</small>

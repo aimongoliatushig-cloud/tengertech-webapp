@@ -1,6 +1,7 @@
 import "server-only";
 
-import { normalizeDepartmentText } from "@/lib/department-permissions";
+import { normalizeOrganizationUnitName } from "@/lib/department-groups";
+import { isAutoGarbageDepartment, normalizeDepartmentText } from "@/lib/department-permissions";
 import { loadLocalInspectorScopes } from "@/lib/inspector-scope-store";
 import { createOdooConnection, executeOdooKw, loadFleetVehicleBoard, type OdooConnection } from "@/lib/odoo";
 import { loadDepartmentOptions } from "@/lib/workspace";
@@ -11,6 +12,7 @@ type OdooFieldMap = Record<string, { type?: string }>;
 type InspectorRecord = {
   id: number;
   name: string;
+  job_id?: Relation;
   job_title?: string | false;
   department_id?: Relation;
   mfo_inspected_team_ids?: number[];
@@ -36,6 +38,7 @@ type VehicleRecord = {
   id: number;
   name?: string | false;
   license_plate?: string | false;
+  municipal_department_id?: Relation;
   mfo_inspector_employee_ids?: number[];
   mfo_garbage_work_create_allowed?: boolean;
 };
@@ -61,31 +64,54 @@ function pickExistingFields(fields: OdooFieldMap | null, candidates: string[]) {
   return candidates.filter((fieldName) => fields[fieldName]);
 }
 
+function isTransportInspectorEmployee(employee: InspectorRecord) {
+  const jobTitle = normalizeDepartmentText(
+    `${employee.job_title || ""} ${relationName(employee.job_id)}`,
+  );
+
+  return (
+    jobTitle.includes("тээвэрлэлтийн хяналтын ажилтан") ||
+    jobTitle.includes("тээврийн хяналтын ажилтан") ||
+    jobTitle.includes("хог тээврийн хяналтын ажилтан")
+  );
+}
+
+function isAutoGarbageVehicleDepartment(departmentName?: string | null) {
+  return (
+    isAutoGarbageDepartment(departmentName) ||
+    isAutoGarbageDepartment(normalizeOrganizationUnitName(departmentName))
+  );
+}
+
 async function loadVehicleRecordsForScope(
   connection: Partial<OdooConnection>,
   vehicleFields: OdooFieldMap | null,
 ) {
-  const board = await loadFleetVehicleBoard().catch(() => null);
+  const board = await loadFleetVehicleBoard(connection).catch(() => null);
   if (board?.allVehicles.length) {
-    return board.allVehicles.map((vehicle) => ({
-      id: vehicle.id,
-      name: vehicle.name,
-      license_plate: vehicle.plate,
-      mfo_inspector_employee_ids: [],
-      mfo_garbage_work_create_allowed: true,
-    } satisfies VehicleRecord));
+    return board.allVehicles
+      .filter((vehicle) => isAutoGarbageVehicleDepartment(vehicle.departmentName))
+      .map((vehicle) => ({
+        id: vehicle.id,
+        name: vehicle.name,
+        license_plate: vehicle.plate,
+        municipal_department_id: vehicle.departmentId ? [vehicle.departmentId, vehicle.departmentName] : false,
+        mfo_inspector_employee_ids: [],
+        mfo_garbage_work_create_allowed: true,
+      } satisfies VehicleRecord));
   }
 
   const fields = vehicleFields
     ? pickExistingFields(vehicleFields, [
         "name",
         "license_plate",
+        "municipal_department_id",
         "mfo_inspector_employee_ids",
         "mfo_garbage_work_create_allowed",
       ])
     : ["name", "license_plate"];
 
-  return executeOdooKw<VehicleRecord[]>(
+  const vehicles = await executeOdooKw<VehicleRecord[]>(
     "fleet.vehicle",
     "search_read",
     [[["active", "=", true]]],
@@ -96,6 +122,14 @@ async function loadVehicleRecordsForScope(
     },
     connection,
   ).catch(() => []);
+
+  if (!fields.includes("municipal_department_id")) {
+    return vehicles;
+  }
+
+  return vehicles.filter((vehicle) =>
+    isAutoGarbageVehicleDepartment(relationName(vehicle.municipal_department_id)),
+  );
 }
 
 async function loadDepartmentId(
@@ -181,6 +215,7 @@ async function loadInspectorScopeDataUncached(
     {
       fields: pickExistingFields(employeeFields, [
         "name",
+        "job_id",
         "job_title",
         "department_id",
         "mfo_inspected_team_ids",
@@ -194,18 +229,7 @@ async function loadInspectorScopeDataUncached(
     connection,
   ).catch(() => []);
 
-  const inspectors = employees.filter((employee) => {
-    const text = normalizeDepartmentText(`${employee.name} ${employee.job_title || ""}`);
-    return (
-      text.includes("тээвэрлэлтийн хяналтын ажилтан") ||
-      text.includes("хян") ||
-      text.includes("байцаагч") ||
-      text.includes("inspector") ||
-      (employee.mfo_inspected_subdistrict_ids?.length ?? 0) > 0 ||
-      (employee.mfo_inspected_point_ids?.length ?? 0) > 0 ||
-      (employee.mfo_inspected_vehicle_ids?.length ?? 0) > 0
-    );
-  });
+  const inspectors = employees.filter(isTransportInspectorEmployee);
   const pointDomain = pointFields?.operation_type
     ? [["active", "=", true], ["operation_type", "=", "garbage"]]
     : [["active", "=", true]];

@@ -190,6 +190,14 @@ function countNotificationTasks(
   return taskIds.size;
 }
 
+function countTaskWorkItems(tasks: DashboardSnapshot["taskDirectory"]) {
+  return new Set(
+    tasks
+      .map((task) => task.projectId ?? task.id)
+      .filter((id): id is number => typeof id === "number"),
+  ).size;
+}
+
 function dashboardTaskBucket(
   task: DashboardSnapshot["taskDirectory"][number],
   currentDateKey: string,
@@ -271,13 +279,10 @@ function projectDisplayStageLabel(project: DashboardSnapshot["projects"][number]
   if (project.stageBucket === "done") {
     return "Дууссан";
   }
-  if (project.stageBucket === "progress" || project.completion > 0) {
-    return "Гүйцэтгэж байгаа";
-  }
   if (project.stageBucket === "review") {
     return "Хянаж байгаа";
   }
-  return "Төлөвлөгдсөн";
+  return "Төлөвлөсөн";
 }
 
 function projectListIcon(project: DashboardSnapshot["projects"][number]): LucideIcon {
@@ -314,46 +319,36 @@ function ProjectListIcon({ project }: { project: DashboardSnapshot["projects"][n
   return <ClipboardList />;
 }
 
-type ProjectStatusFilterKey = "progress" | "pending" | "done" | "planned";
+type ProjectStatusFilterKey = "planned" | "review" | "done";
 
 function projectMatchesStatusFilter(
   project: DashboardSnapshot["projects"][number],
   filter: ProjectStatusFilterKey,
 ) {
-  if (filter === "progress") {
-    return project.stageBucket === "progress";
+  if (filter === "planned") {
+    return project.stageBucket === "todo" || project.stageBucket === "progress" || project.stageBucket === "unknown";
   }
-  if (filter === "pending") {
-    return project.stageBucket === "review" || project.stageBucket === "todo";
+  if (filter === "review") {
+    return project.stageBucket === "review" || project.stageBucket === "problem";
   }
   if (filter === "done") {
     return project.stageBucket === "done";
   }
 
-  return (
-    project.stageBucket !== "progress" &&
-    project.stageBucket !== "review" &&
-    project.stageBucket !== "done" &&
-    project.completion < 100
-  );
+  return false;
 }
 
 function projectStatusFilterChips(projects: DashboardSnapshot["projects"]) {
-  const active = projects.filter((project) => project.stageBucket === "progress").length;
-  const pending = projects.filter((project) => project.stageBucket === "review" || project.stageBucket === "todo").length;
-  const done = projects.filter((project) => project.stageBucket === "done").length;
   const planned = projects.filter(
     (project) =>
-      project.stageBucket !== "progress" &&
-      project.stageBucket !== "review" &&
-      project.stageBucket !== "done" &&
-      project.completion < 100,
+      project.stageBucket === "todo" || project.stageBucket === "progress" || project.stageBucket === "unknown",
   ).length;
+  const review = projects.filter((project) => project.stageBucket === "review" || project.stageBucket === "problem").length;
+  const done = projects.filter((project) => project.stageBucket === "done").length;
 
   return [
-    { key: "planned" as const, label: "Төлөвлөгдсөн", count: planned, tone: "muted" },
-    { key: "progress" as const, label: "Гүйцэтгэж байгаа", count: active, tone: "green" },
-    { key: "pending" as const, label: "Хүлээгдэж буй", count: pending, tone: "amber" },
+    { key: "planned" as const, label: "Төлөвлөсөн", count: planned, tone: "muted" },
+    { key: "review" as const, label: "Хянаж байгаа", count: review, tone: "amber" },
     { key: "done" as const, label: "Дууссан", count: done, tone: "green" },
   ];
 }
@@ -589,8 +584,7 @@ function CompletionDonut({
     total - completed - working - review - overdue - planned,
   );
   const performanceRows = [
-    { label: "Төлөвлөгдсөн", value: planned, color: "#9AA7B4" },
-    { label: "Гүйцэтгэж байгаа", value: working, color: "#2F8A96" },
+    { label: "Төлөвлөсөн", value: planned + working, color: "#9AA7B4" },
     { label: "Хянаж байгаа", value: review, color: "#F4B000" },
     { label: "Хугацаа хэтэрсэн", value: overdue, color: "#EF4444" },
     { label: "Дууссан", value: completed, color: "#2E7D32" },
@@ -601,10 +595,9 @@ function CompletionDonut({
   const donutStyle = segmentedDonutStyle(
     [
       { value: completed, color: "#2E7D32" },
-      { value: working, color: "#2F8A96" },
       { value: review, color: "#F4B000" },
       { value: overdue, color: "#EF4444" },
-      { value: planned, color: "#9AA7B4" },
+      { value: planned + working, color: "#9AA7B4" },
       { value: unclassified, color: "#D6DAD7" },
     ],
     total,
@@ -811,7 +804,7 @@ function WeeklyLineChart({ points }: { points: ReturnType<typeof buildDashboardM
         </svg>
       </div>
       <div className={dashboardStyles.weeklyLegend}>
-        <span><i className="bg-[#9AA3A9]" />Төлөвлөгдсөн</span>
+        <span><i className="bg-[#9AA3A9]" />Төлөвлөсөн</span>
         <span><i className="bg-[#2E7D32]" />Гүйцэтгэсэн</span>
       </div>
     </Card>
@@ -972,14 +965,14 @@ function RightPanel({
     ? [
         ["Ажилтан", hrAttendanceSummary.totalEmployees],
         ["Нийт ажил", totalTasks],
-        ["Идэвхтэй ажил", workingTasks],
+        ["Нээлттэй ажил", workingTasks],
         ["Дууссан ажил", completedTasks],
         ["Анхаарах", alertCount],
       ]
     : [
         ["Хэрэглэгч", 128],
         ["Нийт ажил", totalTasks],
-        ["Идэвхтэй ажил", workingTasks],
+        ["Нээлттэй ажил", workingTasks],
         ["Дууссан ажил", completedTasks],
         ["Анхаарах", alertCount],
       ];
@@ -1226,6 +1219,12 @@ type AutoGarbageReportPanelMode = "overview" | "weight" | "fuel";
 
 type AutoGarbageTaskCard = {
   task: DashboardSnapshot["taskDirectory"][number];
+  tasks: DashboardSnapshot["taskDirectory"];
+  title: string;
+  href: string;
+  workDate: string;
+  leaderName: string;
+  progress: number;
   vehiclePlate: string;
   vehicleModel: string;
   routeLabel: string;
@@ -1233,6 +1232,16 @@ type AutoGarbageTaskCard = {
   taskCount: number;
   statusLabel: string;
   statusTone: "green" | "orange" | "blue" | "muted";
+};
+
+type AutoGarbageTaskGroup = {
+  key: string;
+  tasks: DashboardSnapshot["taskDirectory"];
+  primaryTask: DashboardSnapshot["taskDirectory"][number];
+  vehicle: FleetVehicleBoard["allVehicles"][number] | null;
+  plate: string;
+  plateKey: string;
+  workDate: string;
 };
 
 function dashboardCleanText(value: string | null | undefined) {
@@ -1404,6 +1413,132 @@ function findTaskVehicle(
       return vehiclePlateKey && (taskPlateKey.includes(vehiclePlateKey) || vehiclePlateKey.includes(taskPlateKey));
     }) ?? null
   );
+}
+
+function resolveTaskVehicleSummary(
+  task: DashboardSnapshot["taskDirectory"][number],
+  vehicles: FleetVehicleBoard["allVehicles"],
+) {
+  const vehicle = findTaskVehicle(task, vehicles);
+  const taskPlate = resolveTaskPlate(task);
+  const plate =
+    extractVehiclePlateFromText(vehicle?.plate) ||
+    extractVehiclePlateFromText(vehicle?.name) ||
+    taskPlate ||
+    dashboardCleanText(vehicle?.plate || vehicle?.name || "Машин тодорхойгүй");
+
+  return {
+    vehicle,
+    plate,
+    plateKey: compactVehicleKey(plate),
+  };
+}
+
+function groupAutoGarbageTasks(
+  tasks: DashboardSnapshot["taskDirectory"],
+  vehicles: FleetVehicleBoard["allVehicles"],
+) {
+  const groups = new Map<string, AutoGarbageTaskGroup>();
+
+  for (const task of tasks) {
+    const { vehicle, plate, plateKey } = resolveTaskVehicleSummary(task, vehicles);
+    const workDate = task.scheduledDate || task.createdDate || "";
+    const groupKey = plateKey && workDate ? `${plateKey}:${workDate}` : `task:${task.id}`;
+    const currentGroup = groups.get(groupKey);
+
+    if (currentGroup) {
+      currentGroup.tasks.push(task);
+      if (task.progress > currentGroup.primaryTask.progress) {
+        currentGroup.primaryTask = task;
+      }
+      continue;
+    }
+
+    groups.set(groupKey, {
+      key: groupKey,
+      tasks: [task],
+      primaryTask: task,
+      vehicle,
+      plate,
+      plateKey,
+      workDate,
+    });
+  }
+
+  return Array.from(groups.values());
+}
+
+function autoGarbageGroupProgress(tasks: DashboardSnapshot["taskDirectory"]) {
+  const planned = tasks.reduce((sum, task) => sum + Math.max(0, task.plannedQuantity || 0), 0);
+  const completed = tasks.reduce((sum, task) => sum + Math.max(0, task.completedQuantity || 0), 0);
+
+  if (planned > 0) {
+    return clampPercent((completed / planned) * 100);
+  }
+
+  return clampPercent(Math.max(...tasks.map((task) => task.progress), 0));
+}
+
+function autoGarbageGroupStatus(tasks: DashboardSnapshot["taskDirectory"]): Pick<AutoGarbageTaskCard, "statusLabel" | "statusTone"> {
+  if (
+    tasks.some(
+      (task) =>
+        task.issueFlag ||
+        task.statusKey === "problem" ||
+        task.hasWeightWarning ||
+        Boolean(task.unresolvedStopCount || task.missingProofStopCount || task.deviationStopCount),
+    )
+  ) {
+    return { statusLabel: "Анхаарах", statusTone: "orange" };
+  }
+
+  const firstReviewTask = tasks.find((task) => task.statusKey === "review");
+  if (firstReviewTask) {
+    return {
+      statusLabel: dashboardCleanText(firstReviewTask.statusLabel || firstReviewTask.stageLabel || "Хянаж байгаа"),
+      statusTone: "green",
+    };
+  }
+
+  const firstWorkingTask = tasks.find((task) => task.statusKey === "working");
+  if (firstWorkingTask) {
+    return {
+      statusLabel: dashboardCleanText(firstWorkingTask.statusLabel || firstWorkingTask.stageLabel || "Төлөвлөсөн"),
+      statusTone: "green",
+    };
+  }
+
+  if (tasks.every(isDoneTask)) {
+    return {
+      statusLabel: dashboardCleanText(tasks[0]?.statusLabel || tasks[0]?.stageLabel || "Дууссан"),
+      statusTone: "green",
+    };
+  }
+
+  if (autoGarbageGroupProgress(tasks) > 0) {
+    return {
+      statusLabel: "Төлөвлөсөн",
+      statusTone: "green",
+    };
+  }
+
+  const uniqueStatusLabels = Array.from(
+    new Set(tasks.map((task) => dashboardCleanText(task.statusLabel || task.stageLabel)).filter(Boolean)),
+  );
+
+  return {
+    statusLabel: uniqueStatusLabels.length === 1 ? uniqueStatusLabels[0] : "Төлөвлөсөн",
+    statusTone: "muted",
+  };
+}
+
+function autoGarbageGroupTitle(group: AutoGarbageTaskGroup) {
+  if (group.tasks.length <= 1) {
+    return dashboardCleanText(group.primaryTask.name || group.primaryTask.projectName || "Хог тээврийн ажил");
+  }
+
+  const dateLabel = group.workDate || group.primaryTask.scheduledDate || group.primaryTask.createdDate || "";
+  return `${dashboardCleanText(group.plate)} - ${dateLabel} - ${group.tasks.length} цэг`;
 }
 
 function formatAutoGarbageDate(value: string | null | undefined) {
@@ -1776,45 +1911,42 @@ function buildAutoGarbageBoardModel({
     }))
     .sort((left, right) => right.fuelLiters - left.fuelLiters);
 
-  const taskCards = boardTasks
-    .slice()
+  const taskCards = groupAutoGarbageTasks(boardTasks, boardVehicles)
     .sort((left, right) => {
-      const leftDate = left.scheduledDate || left.createdDate || "";
-      const rightDate = right.scheduledDate || right.createdDate || "";
-      return rightDate.localeCompare(leftDate) || right.progress - left.progress;
+      const leftDate = left.workDate || left.primaryTask.scheduledDate || left.primaryTask.createdDate || "";
+      const rightDate = right.workDate || right.primaryTask.scheduledDate || right.primaryTask.createdDate || "";
+      return rightDate.localeCompare(leftDate) || autoGarbageGroupProgress(right.tasks) - autoGarbageGroupProgress(left.tasks);
     })
     .slice(0, 4)
-    .map((task) => {
-      const vehicle = findTaskVehicle(task, boardVehicles);
-      const taskPlate = resolveTaskPlate(task);
-      const plate =
-        extractVehiclePlateFromText(vehicle?.plate) ||
-        extractVehiclePlateFromText(vehicle?.name) ||
-        taskPlate ||
-        dashboardCleanText(vehicle?.plate || vehicle?.name || "Машин тодорхойгүй");
-      const plateKey = compactVehicleKey(plate);
+    .map((group) => {
+      const { primaryTask: task, tasks: groupTasks, vehicle, plate, plateKey } = group;
       const fallbackWeight =
         plateKey
           ? leaderboardRows.find((row) => row.key === plateKey || row.key.includes(plateKey) || plateKey.includes(row.key))
               ?.weightTons ?? 0
           : 0;
-      const statusTone: AutoGarbageTaskCard["statusTone"] = isDoneTask(task)
-        ? "green"
-        : task.statusKey === "working"
-          ? "blue"
-          : task.issueFlag || isOverdue(task, currentDateKey)
-            ? "orange"
-            : "muted";
+      const groupWeight = groupTasks.reduce((sum, item) => sum + taskWeightToTons(item), 0);
+      const openTaskCount = groupTasks.filter((item) => !isDoneTask(item)).length || groupTasks.length;
+      const status = autoGarbageGroupStatus(groupTasks);
+      const groupProgress = autoGarbageGroupProgress(groupTasks);
 
       return {
         task,
+        tasks: groupTasks,
+        title: autoGarbageGroupTitle(group),
+        href: task.projectId ? `/projects/${task.projectId}` : task.href,
+        workDate: group.workDate || task.scheduledDate || task.createdDate || "",
+        leaderName: dashboardCleanText(task.leaderName || "Оноогоогүй"),
+        progress: groupProgress,
         vehiclePlate: dashboardCleanText(plate),
         vehicleModel: dashboardCleanText(vehicle?.modelName || vehicle?.name || task.operationTypeLabel || "Хог тээвэр"),
-        routeLabel: dashboardCleanText(task.projectName || task.operationTypeLabel || "Маршрут бүртгээгүй"),
-        weightTons: taskWeightToTons(task) || fallbackWeight,
-        taskCount: Math.max(1, task.plannedQuantity || task.completedQuantity || 1),
-        statusLabel: dashboardCleanText(task.statusLabel || task.stageLabel || "Тодорхойгүй"),
-        statusTone,
+        routeLabel: groupTasks.length > 1
+          ? `${groupTasks.length} даалгавар нэгтгэсэн`
+          : dashboardCleanText(task.projectName || task.operationTypeLabel || "Маршрут бүртгээгүй"),
+        weightTons: groupWeight || fallbackWeight,
+        taskCount: openTaskCount,
+        statusLabel: status.statusLabel,
+        statusTone: status.statusTone,
       } satisfies AutoGarbageTaskCard;
     });
 
@@ -1951,7 +2083,7 @@ function ExecutiveDepartmentCard({ department }: { department: ExecutiveDepartme
           <strong>{department.total}</strong>
         </div>
         <div>
-          <span>Ажиллаж буй</span>
+          <span>Төлөвлөсөн</span>
           <strong>{department.working}</strong>
         </div>
         <div>
@@ -2035,14 +2167,13 @@ function AutoGarbageMetricCard({
 }
 
 function AutoGarbageTaskCardView({ card }: { card: AutoGarbageTaskCard }) {
-  const taskDate = card.task.scheduledDate || card.task.createdDate || "";
-  const progress = clampPercent(card.task.progress);
+  const taskDate = card.workDate || card.task.scheduledDate || card.task.createdDate || "";
+  const progress = clampPercent(card.progress);
 
   return (
-    <Link href={card.task.href} className={dashboardStyles.autoGarbageTaskCard}>
+    <Link href={card.href} className={dashboardStyles.autoGarbageTaskCard}>
       <div className={dashboardStyles.autoGarbageTaskTop}>
         <time>
-          <CalendarDays aria-hidden />
           {formatAutoGarbageDate(taskDate) || "Огноо бүртгээгүй"}
         </time>
         <span
@@ -2053,19 +2184,15 @@ function AutoGarbageTaskCardView({ card }: { card: AutoGarbageTaskCard }) {
         </span>
       </div>
 
-      <h3>{dashboardCleanText(card.task.name)}</h3>
+      <h3>{dashboardCleanText(card.title)}</h3>
       <p>
-        Тээвэрлэлтийн хяналтын ажилтан: {dashboardCleanText(card.task.leaderName || "Тодорхойгүй")}
+        Тээвэрлэлтийн хяналтын ажилтан: {card.leaderName} · {card.vehicleModel}
       </p>
 
       <div className={dashboardStyles.autoGarbageCardStats}>
         <span>
           <small>Нээлттэй ажил</small>
           <strong>{card.taskCount}</strong>
-        </span>
-        <span>
-          <small>Ачсан тонн</small>
-          <strong>{formatTons(card.weightTons)}</strong>
         </span>
         <span>
           <small>Гүйцэтгэл</small>
@@ -2078,11 +2205,7 @@ function AutoGarbageTaskCardView({ card }: { card: AutoGarbageTaskCard }) {
       </div>
 
       <div className={dashboardStyles.autoGarbageTaskFooter}>
-        <span>
-          <Truck aria-hidden />
-          Машин: {card.vehiclePlate}
-        </span>
-        <span>{card.routeLabel}</span>
+        <span>Ажлын даалгавар харах</span>
         <ChevronRight aria-hidden />
       </div>
     </Link>
@@ -2558,10 +2681,50 @@ function buildExecutiveDepartmentMetrics({
         task.name.includes(keyword),
       );
     });
-  const departmentProgress = (keywords: string[], departmentTasks: DashboardSnapshot["taskDirectory"]) => {
+  const matchedProjects = (keywords: string[], departmentName?: string) =>
+    snapshot.projects.filter((project) => {
+      const normalizedProjectDepartment = normalizeOrganizationUnitName(project.departmentName);
+      if (
+        departmentName &&
+        normalizedProjectDepartment &&
+        normalizedProjectDepartment !== departmentName
+      ) {
+        return false;
+      }
+
+      return keywords.some((keyword) =>
+        project.departmentName.includes(keyword) ||
+        (project.operationTypeLabel ?? "").includes(keyword) ||
+        project.name.includes(keyword),
+      );
+    });
+  const countTaskProjects = (departmentTasks: DashboardSnapshot["taskDirectory"]) =>
+    new Set(
+      departmentTasks
+        .map((task) => task.projectId)
+        .filter((projectId): projectId is number => typeof projectId === "number"),
+    ).size;
+  const countRiskyProjects = (departmentTasks: DashboardSnapshot["taskDirectory"]) =>
+    new Set(
+      departmentTasks
+        .filter((task) => task.issueFlag || isOverdue(task, currentDateKey))
+        .map((task) => task.projectId ?? task.id)
+        .filter((id): id is number => typeof id === "number"),
+    ).size;
+  const departmentProgress = (
+    keywords: string[],
+    departmentTasks: DashboardSnapshot["taskDirectory"],
+    departmentProjects: DashboardSnapshot["projects"],
+  ) => {
     const matchedDepartment = snapshot.departments.find((department) =>
       keywords.some((keyword) => department.name.includes(keyword) || department.label.includes(keyword)),
     );
+    if (departmentProjects.length) {
+      return Math.round(
+        departmentProjects.reduce((sum, project) => sum + clampPercent(project.completion), 0) /
+          departmentProjects.length,
+      );
+    }
     if (matchedDepartment) {
       return clampPercent(matchedDepartment.completion);
     }
@@ -2579,22 +2742,32 @@ function buildExecutiveDepartmentMetrics({
     hrefDepartmentName?: string,
   ) => {
     const departmentTasks = matchedTasks(keywords, hrefDepartmentName);
+    const departmentProjects = matchedProjects(keywords, hrefDepartmentName);
     const department = matchedDepartment(keywords);
-    const total = departmentTasks.length || department?.openTasks || 0;
-    const working = departmentTasks.filter((task) => task.statusKey === "working").length;
-    const review = departmentTasks.filter((task) => task.statusKey === "review").length;
-    const risky = departmentTasks.filter((task) => task.issueFlag || isOverdue(task, currentDateKey)).length;
+    const total = departmentProjects.length || countTaskProjects(departmentTasks);
+    const working = departmentProjects.length
+      ? departmentProjects.filter(
+          (project) => project.stageBucket === "todo" || project.stageBucket === "progress" || project.stageBucket === "unknown",
+        ).length
+      : departmentTasks.filter((task) => task.statusKey === "planned" || task.statusKey === "working").length;
+    const review = departmentProjects.length
+      ? departmentProjects.filter((project) => project.stageBucket === "review" || project.stageBucket === "problem").length
+      : departmentTasks.filter((task) => task.statusKey === "review" || task.statusKey === "problem").length;
+    const done = departmentProjects.length
+      ? departmentProjects.filter((project) => project.stageBucket === "done").length
+      : departmentTasks.filter(isDoneTask).length;
+    const risky = countRiskyProjects(departmentTasks);
 
     return {
       name,
-      progress: departmentProgress(keywords, departmentTasks),
+      progress: departmentProgress(keywords, departmentTasks, departmentProjects),
       total,
       working,
-      review: review || department?.reviewTasks || 0,
-      todayDone: departmentTasks.filter(isDoneTask).length,
+      review: departmentProjects.length ? review : review || department?.reviewTasks || 0,
+      todayDone: done,
       todayTotal: total,
       risky,
-      href: `/projects?department=${encodeURIComponent(hrefDepartmentName || department?.name || name)}&category=progress`,
+      href: `/projects?department=${encodeURIComponent(hrefDepartmentName || department?.name || name)}&category=planned`,
       icon,
       tone,
       image,
@@ -2653,15 +2826,30 @@ function buildExecutiveDepartmentMetrics({
 
   return snapshot.departments.map((department) => {
     const departmentTasks = filterByDepartment(tasks, department.name);
-    const working = departmentTasks.filter((task) => task.statusKey === "working").length;
-    const review = departmentTasks.filter((task) => task.statusKey === "review").length;
-    const risky = departmentTasks.filter((task) => task.issueFlag || isOverdue(task, currentDateKey)).length;
-    const total = departmentTasks.length || department.openTasks || 0;
+    const departmentProjects = filterByDepartment(snapshot.projects, department.name);
+    const total = departmentProjects.length || countTaskProjects(departmentTasks);
+    const working = departmentProjects.length
+      ? departmentProjects.filter(
+          (project) => project.stageBucket === "todo" || project.stageBucket === "progress" || project.stageBucket === "unknown",
+        ).length
+      : departmentTasks.filter((task) => task.statusKey === "planned" || task.statusKey === "working").length;
+    const review = departmentProjects.length
+      ? departmentProjects.filter((project) => project.stageBucket === "review" || project.stageBucket === "problem").length
+      : departmentTasks.filter((task) => task.statusKey === "review" || task.statusKey === "problem").length;
+    const done = departmentProjects.length
+      ? departmentProjects.filter((project) => project.stageBucket === "done").length
+      : departmentTasks.filter(isDoneTask).length;
+    const risky = countRiskyProjects(departmentTasks);
 
     return {
       name: department.label || department.name,
       progress:
-        department.completion ||
+        (departmentProjects.length
+          ? Math.round(
+              departmentProjects.reduce((sum, project) => sum + clampPercent(project.completion), 0) /
+                departmentProjects.length,
+            )
+          : department.completion) ||
         (total
           ? Math.round(
               departmentTasks.reduce((sum, task) => sum + clampPercent(task.progress), 0) / total,
@@ -2669,11 +2857,11 @@ function buildExecutiveDepartmentMetrics({
           : 0),
       total,
       working,
-      review: review || department.reviewTasks || 0,
-      todayDone: departmentTasks.filter(isDoneTask).length,
+      review: departmentProjects.length ? review : review || department.reviewTasks || 0,
+      todayDone: done,
       todayTotal: total,
       risky,
-      href: `/projects?department=${encodeURIComponent(department.name)}&category=progress`,
+      href: `/projects?department=${encodeURIComponent(department.name)}&category=planned`,
       icon: departmentIcon(department.name),
       tone: "green",
       image: DASHBOARD_IMAGES.landscapingWorker,
@@ -2928,10 +3116,7 @@ function ExecutiveDashboardView({
   const canViewWeightReports = canViewGarbageWeightReports(session);
   const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
-  const activeTasks = Math.max(
-    workItemStats.total - workItemStats.completed,
-    workingTasks + reviewTasks,
-  );
+  const activeTasks = Math.max(0, totalTasks - completedTasks);
   const scopedProjectsHref = (category?: string) => {
     const params = new URLSearchParams();
     if (departmentScopeName) {
@@ -2997,7 +3182,7 @@ function ExecutiveDashboardView({
       tone: "orange",
     },
     {
-      label: "идэвхтэй ажил",
+      label: "нээлттэй ажил",
       value: String(activeTasks),
       progress: 100,
       href: scopedProjectsHref(),
@@ -3161,14 +3346,25 @@ export function DashboardView({
     ? dashboardTasks.filter((task) => task.statusKey === "verified").length
     : dashboardProjects.filter((project) => project.stageBucket === "done").length;
   const workingTasks = workerMode
-    ? dashboardTasks.filter((task) => task.statusKey === "working").length
-    : dashboardProjects.filter((project) => project.stageBucket === "progress").length;
+    ? dashboardTasks.filter((task) => task.statusKey !== "verified").length
+    : dashboardProjects.filter((project) => project.stageBucket !== "done").length;
   const reviewTasks = workerMode
-    ? dashboardTasks.filter((task) => task.statusKey === "review").length
-    : dashboardProjects.filter((project) => project.stageBucket === "review").length;
-  const overdueTasks = dashboardTasks.filter((task) => isOverdue(task, currentDateKey)).length;
-  const newIncomingTasks = dashboardTasks.filter((task) => isNewIncomingTask(task, currentDateKey)).length;
-  const computedAttentionCount = countNotificationTasks(dashboardTasks, currentDateKey);
+    ? dashboardTasks.filter((task) => task.statusKey === "review" || task.statusKey === "problem").length
+    : dashboardProjects.filter((project) => project.stageBucket === "review" || project.stageBucket === "problem").length;
+  const overdueTaskItems = dashboardTasks.filter((task) => isOverdue(task, currentDateKey));
+  const overdueTasks = workerMode ? overdueTaskItems.length : countTaskWorkItems(overdueTaskItems);
+  const newIncomingTaskItems = dashboardTasks.filter((task) => isNewIncomingTask(task, currentDateKey));
+  const newIncomingTasks = workerMode ? newIncomingTaskItems.length : countTaskWorkItems(newIncomingTaskItems);
+  const notificationTaskItems = dashboardTasks.filter(
+    (task) =>
+      isNewIncomingTask(task, currentDateKey) ||
+      isOverdue(task, currentDateKey) ||
+      task.statusKey === "review" ||
+      task.issueFlag,
+  );
+  const computedAttentionCount = workerMode
+    ? countNotificationTasks(dashboardTasks, currentDateKey)
+    : countTaskWorkItems(notificationTaskItems);
   const attentionCount = notificationCount ?? computedAttentionCount;
   const effectiveNotificationNote =
     notificationNote ??
@@ -3465,8 +3661,7 @@ export function DashboardView({
                             taskGridClassName,
                             dashboardStyles.taskListBodyScrollable,
                             dashboardStyles.taskListFilterPanel,
-                            section.key === "progress" && dashboardStyles.taskListFilterPanelProgress,
-                            section.key === "pending" && dashboardStyles.taskListFilterPanelPending,
+                            section.key === "review" && dashboardStyles.taskListFilterPanelPending,
                             section.key === "done" && dashboardStyles.taskListFilterPanelDone,
                             section.key === "planned" && dashboardStyles.taskListFilterPanelPlanned,
                           )}

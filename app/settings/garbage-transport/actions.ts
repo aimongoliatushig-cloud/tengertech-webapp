@@ -549,7 +549,7 @@ export async function saveGarbageTransportInspectorScopeAction(formData: FormDat
   }
 
   refreshGarbageTransportSettings();
-  redirectToSettings("notice", "Хяналтын байцаагчийн scope хадгалагдлаа.", "inspectors");
+  redirectToSettings("notice", "Хяналтын байцаагчийн хяналтын хүрээ хадгалагдлаа.", "inspectors");
 }
 
 export async function createGarbageTransportWorkTypeAction(formData: FormData) {

@@ -1554,20 +1554,20 @@ const OPERATION_TYPE_LABELS: Record<string, string> = {
 };
 
 const STAGE_LABELS: Record<StageBucket, string> = {
-  todo: "Хийгдэх ажил",
-  progress: "Явагдаж буй ажил",
-  review: "Хянагдаж буй ажил",
-  done: "Дууссан ажил",
-  problem: "Засвар шаардсан ажил",
-  unknown: "Тодорхойгүй",
+  todo: "Төлөвлөсөн",
+  progress: "Төлөвлөсөн",
+  review: "Хянаж байгаа",
+  done: "Дууссан",
+  problem: "Хянаж байгаа",
+  unknown: "Төлөвлөсөн",
 };
 
 const TASK_STATUS_LABELS: Record<TaskStatusKey, string> = {
-  planned: "Төлөвлөгдсөн",
-  working: "Ажиллаж байна",
-  review: "Хянагдаж байна",
-  verified: "Баталгаажсан",
-  problem: "Засвар шаардсан",
+  planned: "Төлөвлөсөн",
+  working: "Төлөвлөсөн",
+  review: "Хянаж байгаа",
+  verified: "Дууссан",
+  problem: "Хянаж байгаа",
 };
 
 const UNKNOWN_DEPARTMENT = "Тодорхойгүй";
@@ -1891,7 +1891,7 @@ function buildTaskQuantitySnapshot(
         : stageBucket === "review"
           ? "review"
           : stageBucket === "progress"
-            ? "working"
+            ? "planned"
             : rawStatusKey;
 
   return {
@@ -3360,7 +3360,7 @@ function getTaskStatusKey(
 
   switch (getStageBucket(relationName(task.stage_id, ""))) {
     case "progress":
-      return "working";
+      return "planned";
     case "review":
       return "review";
     case "done":
@@ -6599,7 +6599,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         name: "2026 Мод хэлбэржүүлэлтийн хуваарь",
         manager: "BATAA",
         departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
-        stageLabel: "Хянагдаж буй ажил",
+        stageLabel: "Хянаж байгаа",
         stageBucket: "review",
         openTasks: 14,
         completion: 71,
@@ -6611,7 +6611,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         name: "Хог тээвэрлэлтийн өглөөний маршрут",
         manager: "ankhaa",
         departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
-        stageLabel: "Явагдаж буй ажил",
+        stageLabel: "Төлөвлөсөн",
         stageBucket: "progress",
         openTasks: 5,
         completion: 62,
@@ -6623,7 +6623,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         name: "Зам талбайн шөнийн цэвэрлэгээ",
         manager: "ankhaa",
         departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
-        stageLabel: "Хийгдэх ажил",
+        stageLabel: "Төлөвлөсөн",
         stageBucket: "todo",
         openTasks: 6,
         completion: 35,
@@ -6637,7 +6637,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         name: "5-р хороо - 32 модны тайлан",
         departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
-        stageLabel: "Хянагдаж буй ажил",
+        stageLabel: "Хянаж байгаа",
         stageBucket: "review",
         statusKey: "review",
         statusLabel: "Шалгаж байна",
@@ -6660,10 +6660,10 @@ function fallbackSnapshot(): DashboardSnapshot {
         name: "Хог тээврийн 2-р маршрут",
         departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
         projectName: "Хог тээвэрлэлтийн өглөөний маршрут",
-        stageLabel: "Явагдаж буй ажил",
+        stageLabel: "Төлөвлөсөн",
         stageBucket: "progress",
         statusKey: "problem",
-        statusLabel: "Асуудалтай",
+        statusLabel: "Хянаж байгаа",
         deadline: "Өнөөдөр 19:00",
         scheduledDate: todayDateKey,
         leaderName: "sarangerel",
@@ -6683,10 +6683,10 @@ function fallbackSnapshot(): DashboardSnapshot {
         name: "7-р хороо - Төв замын захын цэвэрлэгээ",
         departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         projectName: "Зам талбайн шөнийн цэвэрлэгээ",
-        stageLabel: "Хийгдэх ажил",
+        stageLabel: "Төлөвлөсөн",
         stageBucket: "todo",
         statusKey: "planned",
-        statusLabel: "Төлөвлөгдсөн",
+        statusLabel: "Төлөвлөсөн",
         deadline: "Маргааш 06:00",
         scheduledDate: tomorrowDateKey,
         leaderName: "temuulen",
@@ -6706,10 +6706,10 @@ function fallbackSnapshot(): DashboardSnapshot {
         name: "Авто бааз - 3 машинд урсгал үйлчилгээ",
         departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
         projectName: "Техникийн өдөр тутмын бэлэн байдал",
-        stageLabel: "Явагдаж буй ажил",
+        stageLabel: "Төлөвлөсөн",
         stageBucket: "progress",
-        statusKey: "working",
-        statusLabel: "Ажиллаж байна",
+        statusKey: "planned",
+        statusLabel: "Төлөвлөсөн",
         deadline: "Өнөөдөр 17:30",
         scheduledDate: todayDateKey,
         leaderName: "bold",
@@ -6731,7 +6731,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         name: "1-р хороо - 20-р байрны ар тал",
         projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
-        stageLabel: "Явагдаж буй ажил",
+        stageLabel: "Төлөвлөсөн",
         stageBucket: "progress",
         deadline: "Өнөөдөр 18:00",
         scheduledDate: todayDateKey,
@@ -6749,7 +6749,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
         name: "7-р хороо - Төв замын захын цэвэрлэгээ",
         projectName: "Зам талбайн шөнийн цэвэрлэгээ",
-        stageLabel: "Хийгдэх ажил",
+        stageLabel: "Төлөвлөсөн",
         stageBucket: "todo",
         deadline: "Маргааш 06:00",
         scheduledDate: tomorrowDateKey,
@@ -6767,7 +6767,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
         name: "Авто бааз - 3 машинд урсгал үйлчилгээ",
         projectName: "Техникийн өдөр тутмын бэлэн байдал",
-        stageLabel: "Явагдаж буй ажил",
+        stageLabel: "Төлөвлөсөн",
         stageBucket: "progress",
         deadline: "Өнөөдөр 17:30",
         scheduledDate: todayDateKey,
@@ -6786,7 +6786,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         id: 201,
         name: "5-р хороо - 32 модны тайлан",
         departmentName: "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
-        stageLabel: "Хянагдаж буй ажил",
+        stageLabel: "Хянаж байгаа",
         deadline: "Өнөөдөр 16:30",
         projectName: "2026 Мод хэлбэржүүлэлтийн хуваарь",
         leaderName: "suldee",
@@ -6797,7 +6797,7 @@ function fallbackSnapshot(): DashboardSnapshot {
         id: 202,
         name: "Хог тээврийн 2-р маршрут",
         departmentName: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
-        stageLabel: "Хянагдаж буй ажил",
+        stageLabel: "Хянаж байгаа",
         deadline: "Өнөөдөр 19:00",
         projectName: "Хог тээвэрлэлтийн өглөөний маршрут",
         leaderName: "sarangerel",

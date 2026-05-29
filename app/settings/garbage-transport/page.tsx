@@ -206,7 +206,7 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
   const departmentName =
     departmentScopeName || departmentRecord?.name || "Авто бааз, хог тээвэрлэлтийн хэлтэс";
   const statCards = [
-    { label: "Хяналтын ажилтан", value: inspectorScopeData.inspectors.length, detail: "Scope оноох ажилтан" },
+    { label: "Хяналтын ажилтан", value: inspectorScopeData.inspectors.length, detail: "Хяналтын хүрээ оноох ажилтан" },
     { label: "Хогийн цэг", value: routeData.points.length, detail: "Бүртгэлтэй цэг" },
   ];
 
@@ -251,7 +251,6 @@ export default async function GarbageTransportSettingsPage({ searchParams }: Pag
                   <ArrowLeft aria-hidden />
                   <span>Ажлын самбар руу буцах</span>
                 </Link>
-                <span className={styles.eyebrow}>Department settings</span>
                 <h1>Хог тээвэрлэлтийн тохиргоо</h1>
                 <p>
                   Энэ хэсэг нь зөвхөн хог тээвэрлэлтийн хэлтэст хамаарах хяналтын ажилтан,

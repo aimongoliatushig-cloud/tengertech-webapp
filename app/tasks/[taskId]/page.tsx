@@ -44,7 +44,6 @@ import {
 
 import { ProjectTaskEditModal } from "@/app/projects/[projectId]/project-task-edit-modal";
 import styles from "./task-detail.module.css";
-import { OfficialReportExportModal } from "./official-report-export-modal";
 import { PendingSubmitButton } from "./pending-submit-button";
 import { TaskReportActions } from "./task-report-actions";
 import { TaskReportModal } from "./task-report-modal";
@@ -640,35 +639,6 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                   ) : null}
                 </div>
               </div>
-
-              {!reviewFocusedMode ? (
-                <div className={styles.anchorRow}>
-                  <Link href={backHref} className={styles.anchorLink}>
-                    {backLabel}
-                  </Link>
-                  <>
-                    <a href="#task-actions" className={styles.anchorLink}>
-                      Шийдвэр
-                    </a>
-                    <a href="#task-reports" className={styles.anchorLink}>
-                      Тайлан
-                    </a>
-                  </>
-                  <a href="#task-chatter" className={styles.anchorLink}>
-                    Зурвас
-                  </a>
-                  <OfficialReportExportModal
-                    taskId={task.id}
-                    items={task.reports.map((report) => ({
-                      id: report.id,
-                      title: task.name,
-                      reporter: report.reporter,
-                      submittedAt: report.submittedAt,
-                      summary: report.summary || report.text,
-                    }))}
-                  />
-                </div>
-              ) : null}
 
               <div className={`${styles.heroStats} ${reviewFocusedMode ? styles.reviewStats : ""}`}>
                 <article className={styles.heroStatCard}>

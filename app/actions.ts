@@ -39,7 +39,6 @@ import {
 } from "@/lib/task-report-review-access";
 import {
   createRoadCleaningWork,
-  createSeasonalWorkspacePlan,
   createWorkspaceCrewTeam,
   createWorkspaceProject,
   createWorkspaceProjectAttachments,
@@ -366,82 +365,6 @@ async function loadEmployeeUserAssignments(
       return [employee.name || "", role].filter(Boolean).join(" - ");
     }).filter(Boolean),
   };
-}
-
-async function assignSeasonalPlanVehicles(
-  planId: number,
-  lines: Array<{ sequence: number; vehicleIds?: number[] }>,
-  connectionOverrides: { login: string; password: string },
-) {
-  const scopedLines = lines.filter((line) => line.vehicleIds?.length);
-  if (!scopedLines.length) {
-    return;
-  }
-
-  const sequences = scopedLines.map((line) => line.sequence);
-  const planLines = await executeOdooKw<Array<{ id: number; sequence?: number }>>(
-    "mfo.seasonal.plan.line",
-    "search_read",
-    [[["plan_id", "=", planId], ["sequence", "in", sequences]]],
-    {
-      fields: ["sequence"],
-      order: "sequence asc, id asc",
-      limit: 1000,
-    },
-    connectionOverrides,
-  );
-  const lineIdBySequence = new Map(
-    planLines.map((line) => [Number(line.sequence ?? 0), line.id] as const),
-  );
-  const lineIds = planLines.map((line) => line.id);
-  if (!lineIds.length) {
-    return;
-  }
-
-  const days = await executeOdooKw<
-    Array<{ id: number; plan_line_id?: [number, string] | false; work_date?: string | false }>
-  >(
-    "mfo.seasonal.plan.day",
-    "search_read",
-    [[["plan_line_id", "in", lineIds]]],
-    {
-      fields: ["plan_line_id", "work_date"],
-      order: "plan_line_id asc, work_date asc, id asc",
-      limit: 5000,
-    },
-    connectionOverrides,
-  );
-  const daysByLineId = new Map<number, typeof days>();
-  for (const day of days) {
-    const lineId = relationIdValue(day.plan_line_id ?? false);
-    if (!lineId) {
-      continue;
-    }
-    daysByLineId.set(lineId, [...(daysByLineId.get(lineId) ?? []), day]);
-  }
-
-  for (const line of scopedLines) {
-    const lineId = lineIdBySequence.get(line.sequence);
-    const vehicleIds = line.vehicleIds ?? [];
-    const lineDays = lineId ? daysByLineId.get(lineId) ?? [] : [];
-    if (!lineDays.length || !vehicleIds.length) {
-      continue;
-    }
-
-    const slotIndexByDate = new Map<string, number>();
-    for (const day of lineDays) {
-      const dateKey = day.work_date || "single";
-      const slotIndex = slotIndexByDate.get(dateKey) ?? 0;
-      slotIndexByDate.set(dateKey, slotIndex + 1);
-      await executeOdooKw<boolean>(
-        "mfo.seasonal.plan.day",
-        "write",
-        [[day.id], { assigned_vehicle_id: vehicleIds[slotIndex % vehicleIds.length] }],
-        {},
-        connectionOverrides,
-      );
-    }
-  }
 }
 
 async function sendTaskToReviewWithSystemFallback(
@@ -832,9 +755,6 @@ export async function createProjectAction(formData: FormData) {
   const autoBaseRequiredDate = String(formData.get("auto_base_required_date") ?? "").trim();
   const autoBaseItemImages = getUploadedFiles(formData, "auto_base_item_images");
   const autoBaseExtraLinesJson = String(formData.get("auto_base_extra_lines_json") ?? "").trim();
-  const seasonalWorkDaysJson = String(formData.get("seasonal_work_days_json") ?? "").trim();
-  const seasonalLinesJson = String(formData.get("seasonal_lines_json") ?? "").trim();
-  const seasonalNotes = String(formData.get("seasonal_notes") ?? "").trim();
   const roadCleaningLinesJson = String(formData.get("road_cleaning_lines_json") ?? "").trim();
   const cleaningWorkDate = String(formData.get("work_date") ?? "").trim();
   const projectDescription = String(formData.get("project_description") ?? "").trim();
@@ -1573,11 +1493,11 @@ export async function createProjectAction(formData: FormData) {
   }
 
   if (operationUnit === "garbage_seasonal") {
-    if (!name || !effectiveDepartmentIdRaw || !startDate || !deadline) {
+    if (!name || !effectiveDepartmentIdRaw || !managerIdRaw || !startDate || !deadline) {
       redirectWithMessage(
         "/projects/new",
         "error",
-        "Гэнэтийн ажилд нэр, хэлтэс, эхлэх болон дуусах огноог заавал оруулна уу.",
+        "Гэнэтийн ажилд нэр, хэлтэс, хариуцах хүн, эхлэх болон дуусах огноо заавал оруулна уу.",
       );
     }
 
@@ -1589,135 +1509,48 @@ export async function createProjectAction(formData: FormData) {
       );
     }
 
-    const allWorkDays = [
-      "monday",
-      "tuesday",
-      "wednesday",
-      "thursday",
-      "friday",
-      "saturday",
-      "sunday",
-    ];
-    let selectedWorkDays: string[] = allWorkDays;
-    let seasonalLines: Array<{
-      sequence?: number;
-      khorooLabel?: string;
-      locationName?: string;
-      plannedVehicleCount?: number;
-      plannedTonnage?: number;
-      plannedUnit?: string;
-      workDate?: string | null;
-      routeId?: number | string | null;
-      vehicleIds?: Array<number | string>;
-      remarks?: string;
-    }> = [];
-
     try {
-      selectedWorkDays = seasonalWorkDaysJson ? JSON.parse(seasonalWorkDaysJson) : selectedWorkDays;
-      seasonalLines = seasonalLinesJson ? JSON.parse(seasonalLinesJson) : [];
-    } catch {
-      redirectWithMessage(
-        "/projects/new",
-        "error",
-        "Гэнэтийн ажлын мөрийн мэдээлэл буруу байна.",
-      );
-    }
-
-    if (!selectedWorkDays.length) {
-      selectedWorkDays = allWorkDays;
-    }
-
-    const normalizedLines = seasonalLines
-      .map((line, index) => {
-        const vehicleIds = Array.isArray(line.vehicleIds)
-          ? line.vehicleIds
-              .map((value) => Number(value))
-              .filter((value) => Number.isFinite(value) && value > 0)
-          : [];
-
-        return {
-          sequence: Number(line.sequence ?? index + 1),
-          khorooLabel: String(line.khorooLabel ?? "").trim(),
-          locationName: String(line.locationName ?? "").trim(),
-          vehicleIds,
-          plannedVehicleCount: vehicleIds.length || Number(line.plannedVehicleCount ?? 0),
-          plannedTonnage: Number(line.plannedTonnage ?? 0),
-          plannedUnit: String(line.plannedUnit ?? "тонн").trim() || "тонн",
-          workDate: String(line.workDate ?? "").trim(),
-          routeId:
-            line.routeId === null || line.routeId === undefined || line.routeId === ""
-              ? null
-              : Number(line.routeId),
-          remarks: String(line.remarks ?? "").trim(),
-        };
-      })
-      .filter((line) => line.khorooLabel || line.locationName);
-
-    if (!normalizedLines.length) {
-      redirectWithMessage(
-        "/projects/new",
-        "error",
-        "Гэнэтийн ажлын байршлын мөрөөс дор хаяж нэгийг оруулна уу.",
-      );
-    }
-
-    const invalidLine = normalizedLines.find(
-      (line) =>
-        !line.locationName ||
-        !Number.isFinite(line.plannedVehicleCount) ||
-        line.plannedVehicleCount <= 0 ||
-        !Number.isFinite(line.plannedTonnage) ||
-        line.plannedTonnage <= 0 ||
-        !line.plannedUnit ||
-        (Boolean(line.workDate) && (line.workDate < startDate || line.workDate > deadline)),
-    );
-
-    if (invalidLine) {
-      redirectWithMessage(
-        "/projects/new",
-        "error",
-        "Мөр бүр дээр байршил, машин, хэмжээ, хэмжих нэгж талбаруудыг зөв бөглөнө үү.",
-      );
-    }
-
-    try {
-      const result = await createSeasonalWorkspacePlan(
+      const projectId = await createWorkspaceProject(
         {
           name,
+          managerId: Number(managerIdRaw),
           departmentId: Number(effectiveDepartmentIdRaw),
+          operationType: "garbage_seasonal",
           startDate,
-          endDate: deadline,
-          workDays: selectedWorkDays as Array<
-            "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday"
-          >,
-          notes: seasonalNotes || projectDescription,
-          lines: normalizedLines,
+          deadline,
+          description: projectDescription,
         },
         connectionOverrides,
       );
-      if (!result.fallbackProjectId) {
-        await assignSeasonalPlanVehicles(result.planId, normalizedLines, connectionOverrides).catch((error) => {
-          console.warn("Ad hoc work vehicle assignment failed:", error);
-        });
+
+      if (projectFiles.length) {
+        const attachments = await Promise.all(
+          projectFiles.map(async (file) => ({
+            name: file.name,
+            mimeType: file.type || "application/octet-stream",
+            base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
+          })),
+        );
+        await createWorkspaceProjectAttachments(projectId, attachments, connectionOverrides);
       }
-      const redirectHref = result.redirectHref || `/projects/seasonal/${result.planId}`;
+
       await notifyDepartmentHeadsOfWork({
         departmentId: Number(effectiveDepartmentIdRaw),
         actorUserId: session.uid,
         connectionOverrides,
         title: "Шинэ гэнэтийн ажил бүртгэгдлээ",
         workName: name,
-        targetUrl: redirectHref,
+        targetUrl: `/projects/${projectId}`,
       });
 
       revalidatePath("/");
       revalidatePath("/projects");
       revalidatePath("/tasks");
       revalidatePath("/projects/new");
-      revalidatePath(redirectHref);
+      revalidatePath(`/projects/${projectId}`);
       redirect(
-        `${redirectHref}?notice=${encodeURIComponent(
-          result.message || "Гэнэтийн ажил амжилттай үүслээ.",
+        `/projects/${projectId}?notice=${encodeURIComponent(
+          "Гэнэтийн ажил амжилттай үүслээ. Даалгаврыг энэ ажил дотор нэмж оруулна уу.",
         )}`,
       );
     } catch (error) {

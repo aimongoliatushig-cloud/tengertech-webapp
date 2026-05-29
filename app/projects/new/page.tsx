@@ -15,7 +15,6 @@ import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 import {
-  loadActiveGarbageVehicleOptions,
   loadDepartmentOptions,
   loadGarbagePointOptions,
   loadGarbageSubdistrictOptions,
@@ -76,8 +75,6 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
     managerOptions,
     departmentOptions,
     garbageVehicleOptions,
-    seasonalGarbageVehicleOptions,
-    activeGarbageVehicleOptions,
     garbagePointOptions,
     garbageSubdistrictOptions,
     roadCleaningAreaOptions,
@@ -97,14 +94,6 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
       login: session.login,
       password: session.password,
     }, { requireCurrentEmployeeScope: transportInspectorMode }),
-    loadGarbageVehicleOptions({
-      login: session.login,
-      password: session.password,
-    }, { ignoreCurrentEmployeeScope: true }),
-    loadActiveGarbageVehicleOptions({
-      login: session.login,
-      password: session.password,
-    }),
     loadGarbagePointOptions({
       login: session.login,
       password: session.password,
@@ -230,8 +219,6 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
                   departmentOptions={departmentOptions}
                   managerOptions={managerOptions}
                   garbageVehicleOptions={garbageVehicleOptions}
-                  seasonalGarbageVehicleOptions={seasonalGarbageVehicleOptions}
-                  activeGarbageVehicleOptions={activeGarbageVehicleOptions}
                   garbagePointOptions={garbagePointOptions}
                   garbageSubdistrictOptions={garbageSubdistrictOptions}
                   roadCleaningAreaOptions={roadCleaningAreaOptions}

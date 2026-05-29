@@ -1,6 +1,7 @@
 import "server-only";
 
 import { CANONICAL_DEPARTMENT_NAMES, normalizeOrganizationUnitName } from "@/lib/department-groups";
+import { normalizeDepartmentText } from "@/lib/department-permissions";
 import { findLocalInspectorScope } from "@/lib/inspector-scope-store";
 import { createOdooConnection, executeOdooKw, loadFleetVehicleBoard, type OdooConnection } from "@/lib/odoo";
 import {
@@ -379,6 +380,7 @@ type GarbageVehicleRecord = {
   id: number;
   name: string;
   license_plate: string | false;
+  municipal_department_id?: Relation;
   departmentName?: string;
   isRepair?: boolean;
   statusLabel?: string;
@@ -417,6 +419,39 @@ export type GarbageVehicleOption = {
   loaderIds?: number[];
   loaderNames?: string[];
 };
+
+type GarbageVehicleLoadOptions = {
+  requireCurrentEmployeeScope?: boolean;
+  ignoreCurrentEmployeeScope?: boolean;
+  requireGarbageTransportDepartment?: boolean;
+};
+
+function isGarbageTransportDepartmentName(departmentName?: string | null) {
+  const value = normalizeDepartmentText(departmentName);
+  if (!value) {
+    return false;
+  }
+
+  const hasGarbage = value.includes("\u0445\u043e\u0433") || value.includes("garbage") || value.includes("hog");
+  const hasTransport =
+    value.includes("\u0442\u044d\u044d\u0432") ||
+    value.includes("transport") ||
+    value.includes("teever");
+
+  return hasGarbage && hasTransport;
+}
+
+function isGarbageTransportVehicleRecord(
+  vehicle: Partial<GarbageVehicleRecord>,
+  boardVehicle?: { departmentName?: string },
+) {
+  return (
+    vehicle.mfo_garbage_work_create_allowed === true ||
+    isGarbageTransportDepartmentName(relationName(vehicle.municipal_department_id ?? false)) ||
+    isGarbageTransportDepartmentName(vehicle.departmentName) ||
+    isGarbageTransportDepartmentName(boardVehicle?.departmentName)
+  );
+}
 
 export type GarbagePointOption = {
   id: number;
@@ -912,16 +947,16 @@ function resolveEffectiveTaskStage(
     return { bucket: "done" as const, label: "Дууссан" };
   }
   if (bucket === "problem") {
-    return { bucket: "problem" as const, label: "Засвар шаардсан" };
+    return { bucket: "problem" as const, label: "Хянаж байгаа" };
   }
   if (bucket === "review") {
-    return { bucket: "review" as const, label: "Хянагдаж буй" };
+    return { bucket: "review" as const, label: "Хянаж байгаа" };
   }
   if (bucket === "progress" || normalizedProgress > 0 || (context.reportCount ?? 0) > 0) {
-    return { bucket: "progress" as const, label: "Явагдаж буй" };
+    return { bucket: "progress" as const, label: "Төлөвлөсөн" };
   }
 
-  return { bucket: "todo" as const, label: "Төлөвлөгдсөн" };
+  return { bucket: "todo" as const, label: "Төлөвлөсөн" };
 }
 
 function relationName(relation: Relation, fallback = "Тодорхойгүй") {
@@ -1529,7 +1564,7 @@ function seasonalDayStatusLabel(value?: string | false) {
     case "generated":
       return "Үүсгэсэн";
     case "in_progress":
-      return "Ажиллаж байна";
+      return "Төлөвлөсөн";
     case "done":
       return "Дууссан";
     case "skipped":
@@ -2901,7 +2936,7 @@ export async function findOrCreateWorkspaceSubdistrictOption(
 
 export async function loadGarbageVehicleOptions(
   connectionOverrides: Partial<OdooConnection> = {},
-  options: { requireCurrentEmployeeScope?: boolean; ignoreCurrentEmployeeScope?: boolean } = {},
+  options: GarbageVehicleLoadOptions = {},
 ): Promise<GarbageVehicleOption[]> {
   return readWorkspaceOptionCache(
     workspaceOptionCacheKey("garbage-vehicles", connectionOverrides, JSON.stringify(options)),
@@ -2949,7 +2984,7 @@ export async function loadGarbageVehicleOptions(
           name: boardVehicle?.name,
           license_plate: boardVehicle?.plate,
         };
-        const plate = vehicle.license_plate || vehicle.name || `Ð¢ÐµÑ…Ð½Ð¸Ðº #${vehicle.id}`;
+        const plate = vehicle.license_plate || vehicle.name || `Техник #${vehicle.id}`;
         const vehicleOption: GarbageVehicleOption = {
           id: vehicle.id,
           label: plate,
@@ -2973,27 +3008,32 @@ export async function loadGarbageVehicleOptions(
     return [];
   }
 
+  const crewTeamAttempts = [
+    {
+      model: "mfo.crew.team",
+      domain: [["active", "=", true], ["operation_type", "=", "garbage"], ["vehicle_id", "!=", false]],
+      fields: ["vehicle_id"],
+      order: "name asc",
+    },
+    {
+      model: "mfo.crew.team",
+      domain: [["operation_type", "=", "garbage"], ["vehicle_id", "!=", false]],
+      fields: ["vehicle_id"],
+      order: "name asc",
+    },
+    ...(options.requireGarbageTransportDepartment
+      ? []
+      : [
+          {
+            model: "mfo.crew.team",
+            domain: [["vehicle_id", "!=", false]],
+            fields: ["vehicle_id"],
+            order: "name asc",
+          },
+        ]),
+  ];
   const crewTeams = await readFirstAvailable<{ vehicle_id: Relation }>(
-    [
-      {
-        model: "mfo.crew.team",
-        domain: [["active", "=", true], ["operation_type", "=", "garbage"], ["vehicle_id", "!=", false]],
-        fields: ["vehicle_id"],
-        order: "name asc",
-      },
-      {
-        model: "mfo.crew.team",
-        domain: [["operation_type", "=", "garbage"], ["vehicle_id", "!=", false]],
-        fields: ["vehicle_id"],
-        order: "name asc",
-      },
-      {
-        model: "mfo.crew.team",
-        domain: [["vehicle_id", "!=", false]],
-        fields: ["vehicle_id"],
-        order: "name asc",
-      },
-    ],
+    crewTeamAttempts,
     connectionOverrides,
   );
 
@@ -3004,7 +3044,17 @@ export async function loadGarbageVehicleOptions(
         .filter((value): value is number => Boolean(value)),
     ),
   );
-  const hasMfoActiveForOps = await hasModelField("fleet.vehicle", "mfo_active_for_ops", connectionOverrides);
+  const [hasMfoActiveForOps, hasMunicipalDepartment, hasGarbageWorkCreateAllowed] = await Promise.all([
+    hasModelField("fleet.vehicle", "mfo_active_for_ops", connectionOverrides),
+    hasModelField("fleet.vehicle", "municipal_department_id", connectionOverrides),
+    hasModelField("fleet.vehicle", "mfo_garbage_work_create_allowed", connectionOverrides),
+  ]);
+  const vehicleFields = [
+    "name",
+    "license_plate",
+    ...(hasMunicipalDepartment ? ["municipal_department_id"] : []),
+    ...(hasGarbageWorkCreateAllowed ? ["mfo_garbage_work_create_allowed"] : []),
+  ];
 
   const vehicles = vehicleIds.length
     ? await readFirstAvailable<GarbageVehicleRecord>(
@@ -3014,7 +3064,7 @@ export async function loadGarbageVehicleOptions(
                 {
                   model: "fleet.vehicle",
                   domain: [["id", "in", vehicleIds], ["mfo_active_for_ops", "=", true]],
-                  fields: ["name", "license_plate"],
+                  fields: vehicleFields,
                   order: "license_plate asc, name asc",
                   limit: vehicleIds.length,
                 },
@@ -3023,7 +3073,7 @@ export async function loadGarbageVehicleOptions(
           {
             model: "fleet.vehicle",
             domain: [["id", "in", vehicleIds]],
-            fields: ["name", "license_plate"],
+            fields: vehicleFields,
             order: "license_plate asc, name asc",
             limit: vehicleIds.length,
           },
@@ -3033,6 +3083,22 @@ export async function loadGarbageVehicleOptions(
     : [];
 
   const fallbackVehiclesById = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
+  if (options.requireGarbageTransportDepartment && hasGarbageWorkCreateAllowed) {
+    const allowedVehicles = await executeOdooKw<GarbageVehicleRecord[]>(
+      "fleet.vehicle",
+      "search_read",
+      [[["mfo_garbage_work_create_allowed", "=", true]]],
+      {
+        fields: vehicleFields,
+        order: "license_plate asc, name asc",
+        limit: 500,
+      },
+      connectionOverrides,
+    ).catch(() => []);
+    for (const vehicle of allowedVehicles) {
+      fallbackVehiclesById.set(vehicle.id, vehicle);
+    }
+  }
   for (const attempt of [
     ...(hasMfoActiveForOps ? [[["mfo_active_for_ops", "=", true]]] : []),
     [["active", "=", true]],
@@ -3044,13 +3110,20 @@ export async function loadGarbageVehicleOptions(
         "search_read",
         [attempt],
         {
-          fields: ["name", "license_plate"],
+          fields: vehicleFields,
           order: "license_plate asc, name asc",
           limit: 500,
         },
         connectionOverrides,
       );
       for (const vehicle of records) {
+        if (
+          options.requireGarbageTransportDepartment &&
+          !fallbackVehiclesById.has(vehicle.id) &&
+          !isGarbageTransportVehicleRecord(vehicle)
+        ) {
+          continue;
+        }
         fallbackVehiclesById.set(vehicle.id, vehicle);
       }
     } catch (error) {
@@ -3063,6 +3136,13 @@ export async function loadGarbageVehicleOptions(
   const fleetBoard = await loadFleetVehicleBoard().catch(() => null);
   if (options.ignoreCurrentEmployeeScope && fleetBoard?.allVehicles.length) {
     for (const vehicle of fleetBoard.allVehicles) {
+      if (
+        options.requireGarbageTransportDepartment &&
+        !fallbackVehiclesById.has(vehicle.id) &&
+        !isGarbageTransportVehicleRecord({}, vehicle)
+      ) {
+        continue;
+      }
       fallbackVehiclesById.set(vehicle.id, {
         id: vehicle.id,
         name: vehicle.name,
@@ -3078,8 +3158,14 @@ export async function loadGarbageVehicleOptions(
   );
   const boardVehicleById = new Map((fleetBoard?.allVehicles ?? []).map((vehicle) => [vehicle.id, vehicle]));
 
-  return optionVehicles.map((vehicle) => {
+  return optionVehicles.map((vehicle): GarbageVehicleOption | null => {
     const boardVehicle = boardVehicleById.get(vehicle.id);
+    if (
+      options.requireGarbageTransportDepartment &&
+      !isGarbageTransportVehicleRecord(vehicle, boardVehicle)
+    ) {
+      return null;
+    }
     const plate = vehicle.license_plate || vehicle.name || `Техник #${vehicle.id}`;
     return {
       id: vehicle.id,
@@ -3097,7 +3183,7 @@ export async function loadGarbageVehicleOptions(
         (name): name is string => Boolean(name),
       ),
     };
-  });
+  }).filter((vehicle): vehicle is GarbageVehicleOption => vehicle !== null);
     },
   );
 }
@@ -3108,7 +3194,17 @@ export async function loadActiveGarbageVehicleOptions(
   return readWorkspaceOptionCache(
     workspaceOptionCacheKey("active-garbage-vehicles", connectionOverrides),
     async () => {
-  const hasMfoActiveForOps = await hasModelField("fleet.vehicle", "mfo_active_for_ops", connectionOverrides);
+  const [hasMfoActiveForOps, hasMunicipalDepartment, hasGarbageWorkCreateAllowed] = await Promise.all([
+    hasModelField("fleet.vehicle", "mfo_active_for_ops", connectionOverrides),
+    hasModelField("fleet.vehicle", "municipal_department_id", connectionOverrides),
+    hasModelField("fleet.vehicle", "mfo_garbage_work_create_allowed", connectionOverrides),
+  ]);
+  const vehicleFields = [
+    "name",
+    "license_plate",
+    ...(hasMunicipalDepartment ? ["municipal_department_id"] : []),
+    ...(hasGarbageWorkCreateAllowed ? ["mfo_garbage_work_create_allowed"] : []),
+  ];
   const vehicles = await readFirstAvailable<GarbageVehicleRecord>(
     [
       ...(hasMfoActiveForOps
@@ -3116,7 +3212,7 @@ export async function loadActiveGarbageVehicleOptions(
             {
               model: "fleet.vehicle",
               domain: [["mfo_active_for_ops", "=", true]],
-              fields: ["name", "license_plate"],
+                  fields: vehicleFields,
               order: "license_plate asc, name asc",
               limit: 500,
             },
@@ -3125,7 +3221,7 @@ export async function loadActiveGarbageVehicleOptions(
       {
         model: "fleet.vehicle",
         domain: [["active", "=", true]],
-        fields: ["name", "license_plate"],
+            fields: vehicleFields,
         order: "license_plate asc, name asc",
         limit: 500,
       },
@@ -4589,6 +4685,9 @@ export async function createWorkspaceProject(
   }
   if (input.deadline) {
     values.date = input.deadline;
+  }
+  if (input.description) {
+    values.description = input.description;
   }
 
   return createRecordWithFieldFallback(

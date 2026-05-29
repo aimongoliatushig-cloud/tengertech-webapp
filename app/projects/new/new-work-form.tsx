@@ -49,24 +49,6 @@ const WEEKDAY_OPTIONS = [
   { key: "sunday", label: "Ням" },
 ] as const;
 
-const SEASONAL_MEASUREMENT_UNITS = [
-  { value: "тонн", label: "Тонн" },
-  { value: "ширхэг", label: "Ширхэг" },
-  { value: "м3", label: "м³" },
-  { value: "рейс", label: "Рейс" },
-  { value: "нэгж", label: "Нэгж" },
-] as const;
-
-type SeasonalLineDraft = {
-  id: string;
-  khorooLabel: string;
-  locationName: string;
-  vehicleIds: string[];
-  plannedVehicleCount: string;
-  plannedTonnage: string;
-  plannedUnit: string;
-};
-
 type RoadCleaningLineDraft = {
   id: string;
   cleaningAreaId: string;
@@ -97,8 +79,6 @@ type Props = {
   departmentOptions: DepartmentOption[];
   managerOptions: SelectOption[];
   garbageVehicleOptions: GarbageVehicleOption[];
-  activeGarbageVehicleOptions?: GarbageVehicleOption[];
-  seasonalGarbageVehicleOptions?: GarbageVehicleOption[];
   garbagePointOptions: GarbagePointOption[];
   garbageSubdistrictOptions?: GarbageSubdistrictOption[];
   roadCleaningAreaOptions: RoadCleaningAreaOption[];
@@ -226,18 +206,6 @@ function roadCleaningMasterRoleLabel(employee: RoadCleaningEmployeeOption) {
     : "Мастер";
 }
 
-function emptySeasonalLine(index: number, stableInitial = false): SeasonalLineDraft {
-  return {
-    id: `seasonal-line-${index}-${stableInitial ? "initial" : Date.now()}`,
-    khorooLabel: "",
-    locationName: "",
-    vehicleIds: [],
-    plannedVehicleCount: "",
-    plannedTonnage: "",
-    plannedUnit: "тонн",
-  };
-}
-
 function emptyRoadCleaningLine(index: number, stableInitial = false): RoadCleaningLineDraft {
   return {
     id: `road-cleaning-line-${index}-${stableInitial ? "initial" : Date.now()}`,
@@ -265,8 +233,6 @@ export function NewWorkForm({
   departmentOptions,
   managerOptions,
   garbageVehicleOptions,
-  activeGarbageVehicleOptions = [],
-  seasonalGarbageVehicleOptions = [],
   garbagePointOptions,
   garbageSubdistrictOptions: activeSubdistrictOptions = [],
   roadCleaningAreaOptions,
@@ -316,10 +282,6 @@ export function NewWorkForm({
   const [savingRoadCleaningAreaId, setSavingRoadCleaningAreaId] = useState("");
   const [shiftDate, setShiftDate] = useState(initialGarbageShiftDate ?? getTodayValue());
   const [seasonalStartDate, setSeasonalStartDate] = useState(getTodayValue());
-  const [seasonalEndDate, setSeasonalEndDate] = useState(getTodayValue());
-  const [seasonalLines, setSeasonalLines] = useState<SeasonalLineDraft[]>([
-    emptySeasonalLine(0, true),
-  ]);
   const [autoBaseImagePreviews, setAutoBaseImagePreviews] = useState<FilePreview[]>([]);
   const [projectFilePreviews, setProjectFilePreviews] = useState<FilePreview[]>([]);
   const [sharedDepartmentIds, setSharedDepartmentIds] = useState<string[]>([]);
@@ -417,24 +379,6 @@ export function NewWorkForm({
     () => garbageVehicleOptions.find((option) => String(option.id) === autoBaseVehicleId) ?? null,
     [autoBaseVehicleId, garbageVehicleOptions],
   );
-  const seasonalVehicleOptions = seasonalGarbageVehicleOptions.length
-    ? seasonalGarbageVehicleOptions
-    : garbageVehicleOptions.length
-      ? garbageVehicleOptions
-      : activeGarbageVehicleOptions;
-  const seasonalSelectableVehicleIdSet = useMemo(
-    () =>
-      new Set(
-        seasonalVehicleOptions
-          .filter((option) => !option.isRepair)
-          .map((option) => String(option.id)),
-      ),
-    [seasonalVehicleOptions],
-  );
-  const seasonalUnitByValue = useMemo(
-    () => new Map<string, string>(SEASONAL_MEASUREMENT_UNITS.map((unit) => [unit.value, unit.label])),
-    [],
-  );
   const garbageSubdistrictOptions = useMemo(() => {
     const optionMap = new Map<string, { id: string; label: string }>();
     for (const point of garbagePointOptions) {
@@ -446,12 +390,6 @@ export function NewWorkForm({
     }
     return Array.from(optionMap.values());
   }, [garbagePointOptions]);
-  const seasonalSubdistrictOptions = activeSubdistrictOptions.length
-    ? activeSubdistrictOptions.map((option) => ({
-        id: String(option.id),
-        label: option.label,
-      }))
-    : garbageSubdistrictOptions.filter((option) => option.id !== "none");
   const filteredGarbagePointOptions = useMemo(() => {
     if (!garbageSubdistrictId) {
       return [];
@@ -498,7 +436,7 @@ export function NewWorkForm({
     : isGarbageTransport
     ? "Хог тээвэрлэлтийн ажил үүсгэх"
     : isAutoBase
-      ? "Худалдан авалтын хүсэлт үүсгэх"
+      ? "Авто баазын ажил үүсгэх"
     : isSeasonalGarbage
       ? "Гэнэтийн ажил үүсгэх"
       : isRoadAreaCleaning
@@ -552,46 +490,6 @@ export function NewWorkForm({
         : namedLines[0] || "авах зүйл";
     return `${vehicleLabel} - ${itemLabel}`;
   }, [autoBaseItemName, autoBaseLines, selectedAutoBaseVehicle]);
-  const activeSeasonalLines = seasonalLines.filter(
-    (line) => {
-      const selectableVehicleIds = line.vehicleIds.filter((vehicleId) =>
-        seasonalSelectableVehicleIdSet.has(vehicleId),
-      );
-      return (
-      line.khorooLabel ||
-      line.locationName ||
-      selectableVehicleIds.length ||
-      line.plannedVehicleCount ||
-      line.plannedTonnage
-      );
-    },
-  );
-  const seasonalTotals = activeSeasonalLines.reduce(
-    (summary, line) => {
-      const selectableVehicleCount = line.vehicleIds.filter((vehicleId) =>
-        seasonalSelectableVehicleIdSet.has(vehicleId),
-      ).length;
-      return {
-        vehicleCount:
-          summary.vehicleCount +
-          (selectableVehicleCount || (!seasonalVehicleOptions.length ? Number(line.plannedVehicleCount) : 0) || 0),
-        tonnage: summary.tonnage + (Number(line.plannedTonnage) || 0),
-      };
-    },
-    { vehicleCount: 0, tonnage: 0 },
-  );
-  const seasonalQuantitySummary = activeSeasonalLines.length
-    ? activeSeasonalLines
-        .reduce((unitMap, line) => {
-          const unit = seasonalUnitByValue.get(line.plannedUnit) ?? line.plannedUnit ?? "тонн";
-          unitMap.set(unit, (unitMap.get(unit) ?? 0) + (Number(line.plannedTonnage) || 0));
-          return unitMap;
-        }, new Map<string, number>())
-    : new Map<string, number>([["тонн", 0]]);
-  const seasonalQuantitySummaryLabel = Array.from(seasonalQuantitySummary.entries())
-    .map(([unit, value]) => `${Math.round(value * 100) / 100} ${unit}`)
-    .join(", ");
-
   const handleDepartmentChange = (nextDepartmentId: string) => {
     setDepartmentId(nextDepartmentId);
     const nextDepartment = departmentOptions.find(
@@ -675,40 +573,6 @@ export function NewWorkForm({
       removedLine?.imagePreviews.forEach((file) => URL.revokeObjectURL(file.url));
       return current.filter((line) => line.id !== targetId);
     });
-  };
-
-  const updateSeasonalLine = (
-    targetId: string,
-    key: keyof Omit<SeasonalLineDraft, "id" | "vehicleIds">,
-    value: string,
-  ) => {
-    setSeasonalLines((current) =>
-      current.map((line) => (line.id === targetId ? { ...line, [key]: value } : line)),
-    );
-  };
-
-  const toggleSeasonalLineVehicle = (targetId: string, vehicleIdValue: number) => {
-    const value = String(vehicleIdValue);
-    if (!seasonalSelectableVehicleIdSet.has(value)) {
-      return;
-    }
-    setSeasonalLines((current) =>
-      current.map((line) => {
-        if (line.id !== targetId) {
-          return line;
-        }
-
-        const vehicleIds = line.vehicleIds.includes(value)
-          ? line.vehicleIds.filter((item) => item !== value)
-          : [...line.vehicleIds, value];
-
-        return {
-          ...line,
-          vehicleIds,
-          plannedVehicleCount: vehicleIds.length ? String(vehicleIds.length) : "",
-        };
-      }),
-    );
   };
 
   const getRoadCleaningArea = (line: RoadCleaningLineDraft) =>
@@ -955,7 +819,7 @@ export function NewWorkForm({
       : isRoadAreaCleaning
         ? "Зам талбайн цэвэрлэгээ"
       : "Ерөнхий ажил";
-  const showProjectDetails = !isGarbageTransport && !isAutoBase && !isRoadAreaCleaning;
+  const showProjectDetails = !isGarbageTransport && !isAutoBase && !isSeasonalGarbage && !isRoadAreaCleaning;
   const showGreenWorkflowSelector = supportsRoadAreaCleaning && !isSharedWork;
   const isGreenWorkflowSelectScreen = showGreenWorkflowSelector && greenWorkflowStep === "select";
   const mobileScreenTitle = isGreenWorkflowSelectScreen
@@ -968,7 +832,7 @@ export function NewWorkForm({
     : isSharedWork
       ? "Олон хэлтэс сонгоход нэг мастер хамтарсан ажил үүсэж, хэлтэс бүр дээр өөрийн хариуцах ажил автоматаар үүснэ."
     : isSeasonalGarbage
-      ? "Сэг зэм, барилгын хог зэрэг бүртгэлгүй байршлыг гараар оруулж, олон машинтай ажил үүсгэнэ."
+      ? "Ажлын нэр, хариуцах хүн, эхлэх болон дуусах хугацааг оруулаад энгийн ажил үүсгэнэ."
       : isRoadAreaCleaning
         ? "Цэвэрлэх талбай, ажиллах хугацаа, хариуцах ажилтныг бүртгэж зам талбайн цэвэрлэгээний ажлыг шууд үүсгэнэ."
       : "Ажлын нэр, хариуцсан хэлтсийн дарга, хугацаагаа оруулна.";
@@ -1110,7 +974,7 @@ export function NewWorkForm({
             <span>Огноо</span>
             <strong>
               {isSeasonalGarbage
-                ? `${formatDateLabel(seasonalStartDate)} - ${formatDateLabel(seasonalEndDate)}`
+                ? formatDateLabel(seasonalStartDate)
                 : isRoadAreaCleaning
                   ? formatDateLabel(cleaningWorkDate)
                 : formatDateLabel(shiftDate)}
@@ -1211,41 +1075,59 @@ export function NewWorkForm({
         <div className={styles.optionalSection}>
           <div className={styles.field}>
             <label>Ажлын горим</label>
-            <div className={styles.modeRail}>
+            <div className={styles.operationModeGrid}>
               {isCombinedDepartment ? (
-                <button
-                  type="button"
-                  className={`${styles.modeChip} ${
+                <div
+                  className={`${styles.operationModeGroup} ${
                     operationUnit === "auto_base" ? styles.modeChipActive : ""
                   }`}
-                  onClick={() => setOperationUnit("auto_base")}
                 >
-                  <span>Авто бааз</span>
-                  <small>Техник, засвар, бэлэн байдал</small>
-                </button>
+                  <button
+                    type="button"
+                    className={styles.operationModeButton}
+                    onClick={() => setOperationUnit("auto_base")}
+                  >
+                    <span>Авто баазын ажил</span>
+                    <small>Техник, засвар, бэлэн байдал</small>
+                  </button>
+                </div>
               ) : null}
 
-              <button
-                type="button"
-                className={`${styles.modeChip} ${
-                  operationUnit === "garbage_transport" ? styles.modeChipActive : ""
+              <div
+                className={`${styles.operationModeGroup} ${
+                  operationUnit === "garbage_transport" || operationUnit === "garbage_seasonal"
+                    ? styles.operationModeGroupActive
+                    : ""
                 }`}
-                onClick={() => setOperationUnit("garbage_transport")}
               >
-                <span>Хогийн цэгийн ажил</span>
-                <small>Машин, хороо, олон хогийн цэгийн өдөр тутмын ажил</small>
-              </button>
+                <div className={styles.operationModeGroupHeader}>
+                  <span>Хог тээвэрлэлтийн ажил</span>
+                  <small>Маршрут, хогийн цэг болон гэнэтийн дуудлагын ажил</small>
+                </div>
+                <div className={styles.operationSubModeRail}>
+                  <button
+                    type="button"
+                    className={`${styles.modeChip} ${
+                      operationUnit === "garbage_transport" ? styles.modeChipActive : ""
+                    }`}
+                    onClick={() => setOperationUnit("garbage_transport")}
+                  >
+                    <span>Хогийн цэгийн ажил</span>
+                    <small>Машин, хороо, олон хогийн цэгийн өдөр тутмын ажил</small>
+                  </button>
 
-              <button
-                type="button"
-                className={`${styles.modeChip} ${
-                  operationUnit === "garbage_seasonal" ? styles.modeChipActive : ""
-                }`}
-                onClick={() => setOperationUnit("garbage_seasonal")}
-              >
-                <span>Гэнэтийн ажил</span>
-                <small>Сэг зэм, барилгын хог зэрэг гараар оруулах байршилтай ажил</small>
-              </button>
+                  <button
+                    type="button"
+                    className={`${styles.modeChip} ${
+                      operationUnit === "garbage_seasonal" ? styles.modeChipActive : ""
+                    }`}
+                    onClick={() => setOperationUnit("garbage_seasonal")}
+                  >
+                    <span>Гэнэтийн ажил</span>
+                    <small>Энгийн ажил шиг нэр, хугацаа, хариуцах хүнтэй үүсгэнэ</small>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1781,263 +1663,117 @@ export function NewWorkForm({
         </>
       ) : isSeasonalGarbage ? (
         <>
-          <div className={styles.field}>
-            <label htmlFor="seasonal-name">Ажлын нэр</label>
-            <input
-              id="seasonal-name"
-              name="name"
-              type="text"
-              placeholder="Жишээ: Барилгын хог ачилт"
-              required={isSeasonalGarbage}
-            />
-          </div>
+          <input type="hidden" name="operation_type" value="garbage_seasonal" />
 
-          <div className={styles.fieldRow}>
+          <section className={`${styles.optionalSection} ${styles.fullTaskSection}`}>
+            <div className={styles.fullTaskSectionTitle}>
+              <span>1</span>
+              <strong>Үндсэн мэдээлэл</strong>
+            </div>
             <div className={styles.field}>
-              <label htmlFor="seasonal-start-date">Эхлэх огноо</label>
+              <label htmlFor="seasonal-name">Ажлын нэр</label>
               <input
-                id="seasonal-start-date"
-                name="start_date"
-                type="date"
-                value={seasonalStartDate}
-                onChange={(event) => setSeasonalStartDate(event.target.value)}
+                id="seasonal-name"
+                name="name"
+                type="text"
+                placeholder="Жишээ: Барилгын хог ачилт"
                 required={isSeasonalGarbage}
               />
             </div>
 
             <div className={styles.field}>
-              <label htmlFor="seasonal-end-date">Дуусах огноо</label>
+              <label>Хариуцах хүн</label>
+              <div className={styles.lockedFieldValue}>
+                {selectedDepartmentHead
+                  ? [
+                      selectedDepartmentHead.name,
+                      selectedDepartmentHead.jobTitle,
+                      selectedDepartmentHead.login,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : selectedDepartment
+                    ? "Хариуцах хүн олдсонгүй"
+                    : "Эхлээд хэлтэс сонгоно уу"}
+              </div>
               <input
-                id="seasonal-end-date"
-                name="deadline"
-                type="date"
-                value={seasonalEndDate}
-                onChange={(event) => setSeasonalEndDate(event.target.value)}
-                required={isSeasonalGarbage}
+                type="hidden"
+                name="manager_id"
+                value={selectedDepartmentHead ? String(selectedDepartmentHead.id) : ""}
               />
             </div>
-          </div>
 
-          <input
-            type="hidden"
-            name="seasonal_work_days_json"
-            value={JSON.stringify(WEEKDAY_OPTIONS.map((day) => day.key))}
-          />
-
-          <div className={styles.previewCard}>
-            <div className={styles.previewHeader}>
-              <span className={styles.eyebrow}>Гэнэтийн ажлын мөрүүд</span>
-              <strong>Гараар оруулсан байршил, машин, тонн мэдээллээр ажил үүсгэнэ</strong>
-            </div>
-
-            <div className={styles.previewGrid}>
-              <div className={styles.previewMeta}>
-                <span>Мөрийн тоо</span>
-                <strong>{activeSeasonalLines.length || seasonalLines.length}</strong>
+            <div className={styles.fieldRow}>
+              <div className={styles.field}>
+                <label htmlFor="seasonal-start-date">Эхлэх огноо</label>
+                <input
+                  id="seasonal-start-date"
+                  name="start_date"
+                  type="date"
+                  value={seasonalStartDate}
+                  onChange={(event) => setSeasonalStartDate(event.target.value)}
+                  required={isSeasonalGarbage}
+                />
               </div>
-              <div className={styles.previewMeta}>
-                <span>Нийт машин</span>
-                <strong>{seasonalTotals.vehicleCount} машин</strong>
-              </div>
-              <div className={styles.previewMeta}>
-                <span>Нийт хэмжээ</span>
-                <strong>{seasonalQuantitySummaryLabel}</strong>
+
+              <div className={styles.field}>
+                <label htmlFor="seasonal-deadline">Дуусах огноо</label>
+                <input
+                  id="seasonal-deadline"
+                  name="deadline"
+                  type="date"
+                  required={isSeasonalGarbage}
+                />
               </div>
             </div>
+          </section>
 
-            <p className={styles.helperNote}>
-              Огнооны хүрээ: <strong>{formatDateLabel(seasonalStartDate)}</strong> -
-              <strong> {formatDateLabel(seasonalEndDate)}</strong>
-            </p>
-          </div>
+          <div className={styles.optionalSection}>
+            <span className={styles.formBadge}>Нэмэлт мэдээлэл</span>
+            <div className={styles.field}>
+              <label htmlFor="project_description">Ажлын тайлбар</label>
+              <textarea
+                id="project_description"
+                name="project_description"
+                placeholder="Ажлын зорилго, хамрах хүрээ, анхаарах зүйлсийг бичнэ үү."
+              />
+            </div>
 
-          {seasonalLines.map((line, index) => (
-            <div key={line.id} className={styles.optionalSection}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <span className={styles.sectionKicker}>Мөр {index + 1}</span>
-                  <small className={styles.sectionNote}>
-                    Байршил, машин, тонныг мөрөөр оруулна. Хороо заавал биш.
-                  </small>
-                </div>
-                <button
-                  type="button"
-                  className={styles.secondaryButton}
-                  onClick={() =>
-                    setSeasonalLines((current) =>
-                      current.length > 1
-                        ? current.filter((item) => item.id !== line.id)
-                        : current,
-                    )
-                  }
-                  disabled={seasonalLines.length === 1}
-                >
-                  Мөр хасах
-                </button>
-              </div>
-
-              <div className={styles.fieldRow}>
-                <div className={styles.field}>
-                  <label>Хороо / бүс</label>
-                  {seasonalSubdistrictOptions.length ? (
-                    <select
-                      value={line.khorooLabel}
-                      onChange={(event) =>
-                        updateSeasonalLine(line.id, "khorooLabel", event.target.value)
-                      }
-                    >
-                      <option value="">Хороо сонгоно уу</option>
-                      {seasonalSubdistrictOptions.map((option) => (
-                        <option key={option.id} value={option.label}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      value={line.khorooLabel}
-                      onChange={(event) =>
-                        updateSeasonalLine(line.id, "khorooLabel", event.target.value)
-                      }
-                      placeholder="Жишээ: 9-р хороо"
-                    />
-                  )}
-                </div>
-
-                <div className={styles.field}>
-                  <label>Гараар оруулах байршил</label>
-                  <input
-                    type="text"
-                    value={line.locationName}
-                    onChange={(event) =>
-                      updateSeasonalLine(line.id, "locationName", event.target.value)
-                    }
-                    placeholder="Жишээ: Барилгын хог, сэг зэм байгаа байршил"
-                  />
-                </div>
-              </div>
-
-              {seasonalVehicleOptions.length ? (
-                <div className={styles.field}>
-                  <label>Машинууд</label>
-                  <div className={styles.pointCheckboxGrid}>
-                    {seasonalVehicleOptions.map((option) => {
-                      const isRepairVehicle = Boolean(option.isRepair);
-                      const vehicleId = String(option.id);
-                      return (
-                        <label
-                          key={option.id}
-                          className={`${styles.pointCheckbox} ${
-                            isRepairVehicle ? styles.pointCheckboxDisabled : ""
-                          }`}
-                          title={isRepairVehicle ? "Засвартай машин тул сонгох боломжгүй" : undefined}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={!isRepairVehicle && line.vehicleIds.includes(vehicleId)}
-                            disabled={isRepairVehicle}
-                            onChange={() => toggleSeasonalLineVehicle(line.id, option.id)}
-                          />
-                          <span className={styles.vehicleChoiceText}>
-                            <strong>{option.label}</strong>
-                            {isRepairVehicle ? (
-                              <small className={styles.vehicleRepairBadge}>Засвартай</small>
-                            ) : null}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <small className={styles.fieldHint}>Нэгээс олон машин сонгож болно.</small>
+            <div className={styles.field}>
+              <label htmlFor="project_files">Файл хавсаргах</label>
+              <label className={styles.fileDropZone} htmlFor="project_files">
+                <Paperclip aria-hidden />
+                <span>Зураг, баримт зэрэг файл хавсаргаж болно.</span>
+              </label>
+              <input
+                id="project_files"
+                name="project_files"
+                type="file"
+                multiple
+                className={styles.hiddenFileInput}
+                onChange={(event) => {
+                  const nextPreviews = Array.from(event.target.files ?? []).map((file) => ({
+                    name: file.name,
+                    type: file.type,
+                    url: URL.createObjectURL(file),
+                  }));
+                  projectFilePreviews.forEach((file) => URL.revokeObjectURL(file.url));
+                  setProjectFilePreviews(nextPreviews);
+                }}
+              />
+              {projectFilePreviews.length ? (
+                <div className={styles.attachmentPreviewGrid}>
+                  {projectFilePreviews.map((file) => (
+                    <div className={styles.attachmentPreviewItem} key={`${file.name}-${file.url}`}>
+                      <FileText aria-hidden />
+                      <span>{file.name}</span>
+                    </div>
+                  ))}
                 </div>
               ) : null}
-
-              <div className={styles.fieldRow}>
-                {!seasonalVehicleOptions.length ? (
-                  <div className={styles.field}>
-                    <label>Машин тоо</label>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={line.plannedVehicleCount}
-                      onChange={(event) =>
-                        updateSeasonalLine(line.id, "plannedVehicleCount", event.target.value)
-                      }
-                      placeholder="1"
-                    />
-                  </div>
-                ) : null}
-
-                <div className={styles.field}>
-                  <label>Хэмжээ</label>
-                  <input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    value={line.plannedTonnage}
-                    onChange={(event) =>
-                      updateSeasonalLine(line.id, "plannedTonnage", event.target.value)
-                    }
-                    placeholder="12.5"
-                  />
-                </div>
-                <div className={styles.field}>
-                  <label>Хэмжих нэгж</label>
-                  <select
-                    value={line.plannedUnit}
-                    onChange={(event) =>
-                      updateSeasonalLine(line.id, "plannedUnit", event.target.value)
-                    }
-                  >
-                    {SEASONAL_MEASUREMENT_UNITS.map((unit) => (
-                      <option key={unit.value} value={unit.value}>
-                        {unit.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
             </div>
-          ))}
-
-          <input
-            type="hidden"
-            name="seasonal_lines_json"
-            value={JSON.stringify(
-              seasonalLines.map((line, index) => ({
-                sequence: index + 1,
-                khorooLabel: line.khorooLabel,
-                locationName: line.locationName,
-                vehicleIds: line.vehicleIds
-                  .filter((vehicleId) => seasonalSelectableVehicleIdSet.has(vehicleId))
-                  .map(Number),
-                plannedVehicleCount:
-                  line.vehicleIds.filter((vehicleId) => seasonalSelectableVehicleIdSet.has(vehicleId)).length ||
-                  (!seasonalVehicleOptions.length ? line.plannedVehicleCount : ""),
-                plannedTonnage: line.plannedTonnage,
-                plannedUnit: line.plannedUnit,
-                workDate: null,
-                routeId: null,
-                remarks: "",
-              })),
-            )}
-          />
-
-          <div className={styles.buttonRow}>
-            <button
-              type="button"
-              className={styles.secondaryButton}
-              onClick={() =>
-                setSeasonalLines((current) => [...current, emptySeasonalLine(current.length)])
-              }
-            >
-              Мөр нэмэх
-            </button>
           </div>
-        </>
-      ) : isRoadAreaCleaning ? (
+        </>      ) : isRoadAreaCleaning ? (
         <>
           <div className={styles.roadCleaningQuickPanel}>
             <div className={styles.roadCleaningQuickHeader}>

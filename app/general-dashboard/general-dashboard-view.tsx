@@ -92,6 +92,18 @@ function isOverdue(task: DashboardSnapshot["taskDirectory"][number], currentDate
   );
 }
 
+function hasDashboardWork(project: DashboardSnapshot["projects"][number]) {
+  return project.openTasks > 0 || project.completion > 0 || project.stageBucket === "done";
+}
+
+function countTaskWorkItems(tasks: DashboardSnapshot["taskDirectory"]) {
+  return new Set(
+    tasks
+      .map((task) => task.projectId ?? task.id)
+      .filter((id): id is number => typeof id === "number"),
+  ).size;
+}
+
 function ringStyle(value: number, tone: Tone): CSSProperties {
   const color = TONE_COLORS[tone];
 
@@ -168,7 +180,7 @@ function DepartmentCard({ department }: { department: DepartmentMetric }) {
           <strong>{department.total}</strong>
         </div>
         <div>
-          <span>Ажиллаж буй</span>
+          <span>Төлөвлөсөн</span>
           <strong>{department.working}</strong>
         </div>
         <div>
@@ -228,6 +240,27 @@ function buildDepartmentMetrics(snapshot: DashboardSnapshot, currentDateKey: str
     tasks.filter((task) =>
       keywords.some((keyword) => task.departmentName.includes(keyword) || task.operationTypeLabel.includes(keyword)),
     );
+  const matchedProjects = (keywords: string[]) =>
+    snapshot.projects.filter((project) =>
+      keywords.some((keyword) =>
+        project.departmentName.includes(keyword) ||
+        (project.operationTypeLabel ?? "").includes(keyword) ||
+        project.name.includes(keyword),
+      ),
+    );
+  const countTaskProjects = (departmentTasks: DashboardSnapshot["taskDirectory"]) =>
+    new Set(
+      departmentTasks
+        .map((task) => task.projectId)
+        .filter((projectId): projectId is number => typeof projectId === "number"),
+    ).size;
+  const countRiskyProjects = (departmentTasks: DashboardSnapshot["taskDirectory"]) =>
+    new Set(
+      departmentTasks
+        .filter((task) => task.issueFlag || isOverdue(task, currentDateKey))
+        .map((task) => task.projectId ?? task.id)
+        .filter((id): id is number => typeof id === "number"),
+    ).size;
   const buildDepartment = (
     name: string,
     keywords: string[],
@@ -235,9 +268,15 @@ function buildDepartmentMetrics(snapshot: DashboardSnapshot, currentDateKey: str
     tone: Tone,
   ): DepartmentMetric => {
     const departmentTasks = matchedTasks(keywords);
+    const departmentProjects = matchedProjects(keywords);
     const department = matchedDepartment(keywords);
-    const total = departmentTasks.length || department?.openTasks || 0;
-    const progress = department
+    const total = departmentProjects.length || countTaskProjects(departmentTasks);
+    const progress = departmentProjects.length
+      ? Math.round(
+          departmentProjects.reduce((sum, project) => sum + clampPercent(project.completion), 0) /
+            departmentProjects.length,
+        )
+      : department
       ? clampPercent(department.completion)
       : total
         ? Math.round(departmentTasks.reduce((sum, task) => sum + clampPercent(task.progress), 0) / total)
@@ -247,9 +286,15 @@ function buildDepartmentMetrics(snapshot: DashboardSnapshot, currentDateKey: str
       name,
       progress,
       total,
-      working: departmentTasks.filter((task) => task.statusKey === "working").length,
-      review: departmentTasks.filter((task) => task.statusKey === "review").length || department?.reviewTasks || 0,
-      risky: departmentTasks.filter((task) => task.issueFlag || isOverdue(task, currentDateKey)).length,
+      working: departmentProjects.length
+        ? departmentProjects.filter(
+            (project) => project.stageBucket === "todo" || project.stageBucket === "progress" || project.stageBucket === "unknown",
+          ).length
+        : departmentTasks.filter((task) => task.statusKey === "planned" || task.statusKey === "working").length,
+      review: departmentProjects.length
+        ? departmentProjects.filter((project) => project.stageBucket === "review" || project.stageBucket === "problem").length
+        : departmentTasks.filter((task) => task.statusKey === "review" || task.statusKey === "problem").length || department?.reviewTasks || 0,
+      risky: countRiskyProjects(departmentTasks),
       icon,
       tone,
     };
@@ -274,13 +319,25 @@ export function GeneralDashboardView({
   const roleLabel = getSessionRoleLabel(session);
   const currentDateKey = todayKey();
   const tasks = snapshot.taskDirectory;
-  const totalTasks = tasks.length || snapshot.totalTasks || 0;
-  const completedTasks = tasks.filter((task) => task.statusKey === "verified").length;
-  const workingTasks = tasks.filter((task) => task.statusKey === "working").length;
-  const reviewTasks = tasks.filter((task) => task.statusKey === "review").length;
-  const overdueTasks = tasks.filter((task) => isOverdue(task, currentDateKey)).length;
+  const projects = snapshot.projects.filter(hasDashboardWork);
+  const totalTasks = projects.length || countTaskWorkItems(tasks);
+  const completedTasks = projects.length
+    ? projects.filter((project) => project.stageBucket === "done").length
+    : tasks.filter((task) => task.statusKey === "verified").length;
+  const workingTasks = projects.length
+    ? projects.filter(
+        (project) => project.stageBucket === "todo" || project.stageBucket === "progress" || project.stageBucket === "unknown",
+      ).length
+    : tasks.filter((task) => task.statusKey === "planned" || task.statusKey === "working").length;
+  const reviewTasks = projects.length
+    ? projects.filter((project) => project.stageBucket === "review" || project.stageBucket === "problem").length
+    : tasks.filter((task) => task.statusKey === "review" || task.statusKey === "problem").length;
+  const overdueTaskItems = tasks.filter((task) => isOverdue(task, currentDateKey));
+  const overdueTasks = projects.length ? countTaskWorkItems(overdueTaskItems) : overdueTaskItems.length;
   const progress = totalTasks
-    ? Math.round(tasks.reduce((sum, task) => sum + clampPercent(task.progress), 0) / totalTasks)
+    ? projects.length
+      ? Math.round(projects.reduce((sum, project) => sum + clampPercent(project.completion), 0) / totalTasks)
+      : Math.round(tasks.reduce((sum, task) => sum + clampPercent(task.progress), 0) / totalTasks)
     : snapshot.departments.length
       ? Math.round(snapshot.departments.reduce((sum, department) => sum + clampPercent(department.completion), 0) / snapshot.departments.length)
       : 0;
@@ -310,7 +367,7 @@ export function GeneralDashboardView({
       icon: Clock3,
       tone: "orange",
     },
-    { label: "идэвхтэй ажил", value: String(Math.max(totalTasks - completedTasks, workingTasks + reviewTasks)), progress: 100, icon: ClipboardList, tone: "green" },
+    { label: "нээлттэй ажил", value: String(Math.max(0, totalTasks - completedTasks)), progress: 100, icon: ClipboardList, tone: "green" },
   ];
   const departmentMetrics = buildDepartmentMetrics(snapshot, currentDateKey);
 

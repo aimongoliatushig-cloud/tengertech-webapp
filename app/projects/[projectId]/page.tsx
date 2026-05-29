@@ -47,7 +47,7 @@ type PageProps = {
 
 export const dynamic = "force-dynamic";
 
-type TaskFilterKey = "all" | "todo" | "progress" | "review" | "overdue" | "done";
+type TaskFilterKey = "all" | "todo" | "review" | "overdue" | "done";
 type QuickActionMode = "task" | "report" | "none";
 
 const TASK_FILTERS: Array<{ key: TaskFilterKey; label: string }> = [
@@ -66,6 +66,9 @@ function getParam(value?: string | string[]) {
 }
 
 function normalizeFilter(value: string): TaskFilterKey {
+  if (value === "progress") {
+    return "todo";
+  }
   return TASK_FILTERS.some((item) => item.key === value) ? (value as TaskFilterKey) : "all";
 }
 
@@ -96,22 +99,18 @@ function isPdfAttachment(attachment: { mimetype: string; name: string }) {
 
 function resolveProjectStage(taskCounts: Record<TaskFilterKey, number>) {
   if (taskCounts.all > 0 && taskCounts.done === taskCounts.all) {
-    return { bucket: "done", label: "Дууссан ажил" } as const;
+    return { bucket: "done", label: "Дууссан" } as const;
   }
 
   if (taskCounts.review > 0) {
-    return { bucket: "review", label: "Хянаж байгаа ажил" } as const;
-  }
-
-  if (taskCounts.progress > 0) {
-    return { bucket: "progress", label: "Гүйцэтгэж байгаа ажил" } as const;
+    return { bucket: "review", label: "Хянаж байгаа" } as const;
   }
 
   if (taskCounts.overdue > 0) {
-    return { bucket: "problem", label: "Хугацаа хэтэрсэн ажил" } as const;
+    return { bucket: "problem", label: "Хянаж байгаа" } as const;
   }
 
-  return { bucket: "todo", label: "Төлөвлөсөн ажил" } as const;
+  return { bucket: "todo", label: "Төлөвлөсөн" } as const;
 }
 
 function StagePill({ label, bucket }: { label: string; bucket: string }) {
@@ -306,10 +305,9 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   const taskCounts = {
     all: project.tasks.length,
     todo: project.tasks.filter(
-      (task) => task.stageBucket === "todo" || task.stageBucket === "unknown",
+      (task) => task.stageBucket === "todo" || task.stageBucket === "progress" || task.stageBucket === "unknown",
     ).length,
-    progress: project.tasks.filter((task) => task.stageBucket === "progress").length,
-    review: project.tasks.filter((task) => task.stageBucket === "review").length,
+    review: project.tasks.filter((task) => task.stageBucket === "review" || task.stageBucket === "problem").length,
     overdue: project.tasks.filter((task) => task.isOverdue).length,
     done: project.tasks.filter((task) => task.stageBucket === "done").length,
   } satisfies Record<TaskFilterKey, number>;
@@ -320,7 +318,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     }
 
     if (activeFilter === "todo") {
-      return task.stageBucket === "todo" || task.stageBucket === "unknown";
+      return task.stageBucket === "todo" || task.stageBucket === "progress" || task.stageBucket === "unknown";
     }
     if (activeFilter === "overdue") {
       return task.isOverdue;
@@ -329,7 +327,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     return task.stageBucket === activeFilter;
   });
   const stageSummary = resolveProjectStage(taskCounts);
-  const activeTaskCount = taskCounts.progress + taskCounts.review;
+  const activeTaskCount = taskCounts.todo + taskCounts.review;
   const completionDegrees = Math.round((project.completion / 100) * 360);
   const taskBreakdown = [
     {
@@ -418,7 +416,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
               userName={session.name}
               roleLabel={getSessionRoleLabel(session)}
               notificationCount={activeTaskCount}
-              notificationNote={`${activeTaskCount} идэвхтэй даалгавар одоогоор явж байна`}
+              notificationNote={`${activeTaskCount} нээлттэй даалгавар байна`}
             />
 
             {errorMessage ? (

@@ -50,9 +50,9 @@ import { loadWorkspaceNotificationSummary } from "@/lib/workspace-notifications"
 import styles from "./tasks.module.css";
 import { TaskReportModal } from "./[taskId]/task-report-modal";
 
-type FilterKey = "all" | "working" | "review" | "problem" | "verified";
+type FilterKey = "all" | "planned" | "review" | "verified";
 type MasterTabKey = "today" | "review";
-type MasterStatusFilter = "all" | "todo" | "progress" | "review" | "done";
+type MasterStatusFilter = "all" | "todo" | "review" | "done";
 type QuickActionMode = "none" | "report";
 
 type PageProps = {
@@ -97,10 +97,9 @@ type TodayProjectSummary = {
 
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "all", label: "Бүгд" },
-  { key: "working", label: "Ажиллаж байна" },
-  { key: "review", label: "Хянагдаж байна" },
-  { key: "problem", label: "Асуудалтай" },
-  { key: "verified", label: "Баталгаажсан" },
+  { key: "planned", label: "Төлөвлөсөн" },
+  { key: "review", label: "Хянаж байгаа" },
+  { key: "verified", label: "Дууссан" },
 ];
 
 function getParam(value?: string | string[]) {
@@ -111,6 +110,12 @@ function getParam(value?: string | string[]) {
 }
 
 function normalizeFilter(value: string): FilterKey {
+  if (value === "working") {
+    return "planned";
+  }
+  if (value === "problem") {
+    return "review";
+  }
   return FILTERS.some((item) => item.key === value) ? (value as FilterKey) : "all";
 }
 
@@ -119,9 +124,36 @@ function normalizeMasterTab(value: string, seniorMasterMode: boolean): MasterTab
 }
 
 function normalizeMasterStatus(value: string): MasterStatusFilter {
-  return value === "todo" || value === "progress" || value === "review" || value === "done"
+  if (value === "progress") {
+    return "todo";
+  }
+  return value === "todo" || value === "review" || value === "done"
     ? value
     : "all";
+}
+
+function getVisibleTaskFilterKey(
+  task: Pick<TaskDirectoryItem, "statusKey">,
+): Exclude<FilterKey, "all"> {
+  if (task.statusKey === "verified") {
+    return "verified";
+  }
+  if (task.statusKey === "review" || task.statusKey === "problem") {
+    return "review";
+  }
+  return "planned";
+}
+
+function getVisibleProjectFilterKey(
+  project: Pick<TodayProjectSummary, "stageBucket">,
+): Exclude<FilterKey, "all"> {
+  if (project.stageBucket === "done") {
+    return "verified";
+  }
+  if (project.stageBucket === "review" || project.stageBucket === "problem") {
+    return "review";
+  }
+  return "planned";
 }
 
 function normalizeQuickAction(value: string): QuickActionMode {
@@ -148,18 +180,18 @@ function getMasterStatusLabel(bucket: TodayProjectSummary["stageBucket"]) {
   if (bucket === "done") {
     return "Дууссан";
   }
-  if (bucket === "review") {
-    return "Хяналтанд";
+  if (bucket === "review" || bucket === "problem") {
+    return "Хянаж байгаа";
   }
-  if (bucket === "progress") {
-    return "Ажиллаж буй";
-  }
-  return "Эхлээгүй";
+  return "Төлөвлөсөн";
 }
 
 function getMasterStatusFilter(bucket: TodayProjectSummary["stageBucket"]): MasterStatusFilter {
-  if (bucket === "done" || bucket === "review" || bucket === "progress") {
-    return bucket;
+  if (bucket === "done") {
+    return "done";
+  }
+  if (bucket === "review" || bucket === "problem") {
+    return "review";
   }
   return "todo";
 }
@@ -200,7 +232,7 @@ function normalizeIdParam(value: string) {
 
 function workerTaskActionLabel(task: TaskDirectoryItem) {
   if (task.statusKey === "verified") {
-    return "Баталгаажсан";
+    return "Дууссан";
   }
   if (task.statusKey === "review") {
     return "Илгээсэн";
@@ -395,22 +427,22 @@ function resolveTodayProjectStage(summary: Pick<
   "todayTaskCount" | "workingTaskCount" | "reviewTaskCount" | "problemTaskCount" | "verifiedTaskCount"
 >) {
   if (summary.problemTaskCount > 0) {
-    return { bucket: "problem" as const, label: "Асуудалтай" };
+    return { bucket: "problem" as const, label: "Хянаж байгаа" };
   }
 
   if (summary.reviewTaskCount > 0) {
-    return { bucket: "review" as const, label: "Шалгагдах" };
+    return { bucket: "review" as const, label: "Хянаж байгаа" };
   }
 
   if (summary.workingTaskCount > 0) {
-    return { bucket: "progress" as const, label: "Явж байгаа" };
+    return { bucket: "progress" as const, label: "Төлөвлөсөн" };
   }
 
   if (summary.todayTaskCount > 0 && summary.verifiedTaskCount === summary.todayTaskCount) {
     return { bucket: "done" as const, label: "Дууссан" };
   }
 
-  return { bucket: "todo" as const, label: "Хийгдэх" };
+  return { bucket: "todo" as const, label: "Төлөвлөсөн" };
 }
 
 function buildTodayProjectSummaries(
@@ -443,7 +475,7 @@ function buildTodayProjectSummaries(
         employeeName: projectParts.employeeName || task.leaderName,
         areaM2: 0,
         workDate: projectParts.workDate || task.scheduledDate || task.deadline,
-        stageLabel: "Хийгдэх",
+        stageLabel: "Төлөвлөсөн",
       };
 
       existing.todayTaskCount += 1;
@@ -456,7 +488,7 @@ function buildTodayProjectSummaries(
         existing.workDate = task.scheduledDate || task.deadline;
       }
 
-      if (task.statusKey === "working") {
+      if (task.statusKey === "working" || task.statusKey === "planned") {
         existing.workingTaskCount += 1;
       } else if (task.statusKey === "review") {
         existing.reviewTaskCount += 1;
@@ -740,24 +772,22 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const counts: Record<FilterKey, number> = masterMode
     ? {
         all: masterDashboardProjects.length,
-        working: masterDashboardProjects.filter((project) => project.stageBucket === "progress").length,
-        review: masterDashboardProjects.filter((project) => project.stageBucket === "review").length,
-        problem: masterDashboardProjects.filter((project) => project.stageBucket === "problem").length,
-        verified: masterDashboardProjects.filter((project) => project.stageBucket === "done").length,
+        planned: masterDashboardProjects.filter((project) => getVisibleProjectFilterKey(project) === "planned").length,
+        review: masterDashboardProjects.filter((project) => getVisibleProjectFilterKey(project) === "review").length,
+        verified: masterDashboardProjects.filter((project) => getVisibleProjectFilterKey(project) === "verified").length,
       }
     : {
         all: scopedTasks.length,
-        working: scopedTasks.filter((task) => task.statusKey === "working").length,
-        review: scopedTasks.filter((task) => task.statusKey === "review").length,
-        problem: scopedTasks.filter((task) => task.statusKey === "problem").length,
-        verified: scopedTasks.filter((task) => task.statusKey === "verified").length,
+        planned: scopedTasks.filter((task) => getVisibleTaskFilterKey(task) === "planned").length,
+        review: scopedTasks.filter((task) => getVisibleTaskFilterKey(task) === "review").length,
+        verified: scopedTasks.filter((task) => getVisibleTaskFilterKey(task) === "verified").length,
       };
 
   const visibleTasks = scopedTasks.filter((task) => {
     if (selectedFilter === "all") {
       return true;
     }
-    return task.statusKey === selectedFilter;
+    return getVisibleTaskFilterKey(task) === selectedFilter;
   });
   const inspectorFilterHref = (filter: FilterKey) => {
     const linkParams = new URLSearchParams();
@@ -775,19 +805,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
       return true;
     }
 
-    if (selectedFilter === "working") {
-      return project.stageBucket === "progress";
-    }
-
-    if (selectedFilter === "review") {
-      return project.stageBucket === "review";
-    }
-
-    if (selectedFilter === "problem") {
-      return project.stageBucket === "problem";
-    }
-
-    return project.stageBucket === "done";
+    return getVisibleProjectFilterKey(project) === selectedFilter;
   });
   const normalizedMasterSearch = masterSearchQuery.toLocaleLowerCase("mn-MN");
   const masterEmployeeOptions = Array.from(
@@ -1103,7 +1121,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                       <Sun size={28} strokeWidth={2.3} aria-hidden="true" />
                       {visibleWorkerTasks.length} даалгавар
                     </strong>
-                    <small>Явц {workerAverageProgress}% · Хянагдаж буй {workerReviewTaskCount}</small>
+                    <small>Явц {workerAverageProgress}% · Хянаж байгаа {workerReviewTaskCount}</small>
                   </div>
                   <span className={styles.workerAqiBadge}>Нээлттэй {workerOpenTaskCount}</span>
                 </section>
@@ -1221,7 +1239,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                           </div>
                         </div>
                         <div className={styles.calendarLegend}>
-                          <span><i className={styles.legendWorking} /> Явж байгаа</span>
+                          <span><i className={styles.legendWorking} /> Төлөвлөсөн</span>
                           <span><i className={styles.legendReview} /> Хянах</span>
                           <span><i className={styles.legendDone} /> Дууссан</span>
                         </div>
@@ -1362,7 +1380,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                          ? "Ахлах мастерийн нэгжид хяналт хүлээж буй тайлантай ажлууд энд харагдана."
                        : masterMode
                          ? masterFlowDescription
-                        : "Бүх даалгаврыг алба нэгж, ажил, төлөвөөр нь нэг дороос харуулна. Асуудалтай болон хяналт хүлээж буй даалгавруудыг эхэнд нь ялгаж, дэлгэрэнгүй рүү шууд нээнэ."}
+                        : "Бүх даалгаврыг алба нэгж, ажил, төлөвөөр нь нэг дороос харуулна. Хянаж байгаа даалгавруудыг эхэнд нь ялгаж, дэлгэрэнгүй рүү шууд нээнэ."}
                   </p>
                 </div>
 
@@ -1572,9 +1590,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
                     <span>Төлөв</span>
                     <select name="status" defaultValue={masterStatusFilter}>
                       <option value="all">Бүгд</option>
-                      <option value="todo">Эхлээгүй</option>
-                      <option value="progress">Ажиллаж буй</option>
-                      <option value="review">Хяналтанд</option>
+                      <option value="todo">Төлөвлөсөн</option>
+                      <option value="review">Хянаж байгаа</option>
                       <option value="done">Дууссан</option>
                     </select>
                   </label>
@@ -1651,7 +1668,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                             </span>
                             <span>
                               <strong>{reviewCount}</strong>
-                              Хянагдаж буй
+                              Хянаж байгаа
                             </span>
                             <span>
                               <strong>{doneCount}</strong>
@@ -1784,7 +1801,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                                 </b>
                               </span>
                               <span className={`${styles.masterStatusBadge} ${styles.masterStatusReview}`}>
-                                Хяналтанд
+                                Хянаж байгаа
                               </span>
                             </Link>
                           ))}
@@ -1806,7 +1823,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                               <b><i style={{ width: `${Math.max(0, Math.min(task.progress, 100))}%` }} /></b>
                               <em>{task.progress}%</em>
                             </div>
-                            <span className={`${styles.masterStatusBadge} ${styles.masterStatusReview}`}>Хяналтанд</span>
+                            <span className={`${styles.masterStatusBadge} ${styles.masterStatusReview}`}>Хянаж байгаа</span>
                           </Link>
                         ))}
                       </div>

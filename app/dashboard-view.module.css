@@ -3910,16 +3910,14 @@
 
 .autoGarbageTaskCard {
   display: grid;
-  min-height: 248px;
   align-content: start;
-  gap: 12px;
-  padding: 16px;
+  gap: 14px;
+  padding: 20px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 8px;
-  background:
-    linear-gradient(180deg, rgba(248, 253, 249, 0.86), #ffffff 42%),
-    #ffffff;
+  background: rgba(255, 255, 255, 0.96);
   color: inherit;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.06);
   text-decoration: none;
   transition:
     transform 160ms ease,
@@ -3947,30 +3945,24 @@
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  gap: 6px;
-  color: #526179;
-  font-size: 0.72rem;
-  font-weight: 850;
-  line-height: 1.2;
-}
-
-.autoGarbageTaskTop time svg {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 auto;
+  color: #637668;
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .autoGarbageStatusBadge {
   display: inline-flex;
-  min-height: 27px;
+  min-height: 32px;
   flex: 0 0 auto;
   align-items: center;
+  justify-content: center;
   border-radius: 999px;
-  padding: 0 10px;
+  padding: 0 12px;
   background: #eef2f7;
   color: #475569;
-  font-size: 0.68rem;
-  font-weight: 950;
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
 .autoGarbageStatusBadge[data-tone="green"] {
@@ -3990,78 +3982,79 @@
 
 .autoGarbageTaskCard h3 {
   margin: 0;
-  color: #101827;
-  font-size: 1rem;
+  color: #17231d;
+  font-size: 1.08rem;
   font-weight: 940;
-  line-height: 1.25;
+  line-height: 1.45;
   letter-spacing: 0;
   overflow-wrap: anywhere;
 }
 
 .autoGarbageTaskCard p {
   margin: 0;
-  color: #475569;
-  font-size: 0.78rem;
-  font-weight: 760;
-  line-height: 1.36;
+  color: #5f7563;
+  font-size: 0.92rem;
+  font-weight: 650;
+  line-height: 1.65;
   overflow-wrap: anywhere;
 }
 
 .autoGarbageCardStats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .autoGarbageCardStats span {
   display: grid;
-  min-height: 58px;
+  min-height: 80px;
   align-content: center;
   gap: 6px;
   min-width: 0;
-  padding: 9px 10px;
-  border: 1px solid rgba(15, 23, 42, 0.07);
+  padding: 12px 14px;
+  border: 1px solid rgba(74, 154, 93, 0.1);
   border-radius: 7px;
-  background: #f8fbf9;
+  background: rgba(74, 154, 93, 0.06);
 }
 
 .autoGarbageCardStats small {
-  color: #64748b;
-  font-size: 0.66rem;
-  font-weight: 840;
-  line-height: 1.12;
+  color: #5f7563;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.2;
 }
 
 .autoGarbageCardStats strong {
-  color: #0f172a;
-  font-size: 1rem;
+  color: #17231d;
+  font-size: 1.25rem;
   font-weight: 950;
   line-height: 1;
   overflow-wrap: anywhere;
 }
 
 .autoGarbageProgressTrack {
-  height: 9px;
+  height: 10px;
   overflow: hidden;
   border-radius: 999px;
-  background: #e6eaf0;
+  background: rgba(95, 117, 99, 0.12);
 }
 
 .autoGarbageProgressTrack i {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #16823d, #64b96f);
+  background: linear-gradient(90deg, #16823d, #a6d39d);
 }
 
 .autoGarbageTaskFooter {
-  display: grid;
-  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  color: #334155;
-  font-size: 0.72rem;
-  font-weight: 820;
+  padding-top: 2px;
+  color: #143d22;
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .autoGarbageTaskFooter span {
@@ -4071,15 +4064,9 @@
   white-space: nowrap;
 }
 
-.autoGarbageTaskFooter span:first-child {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .autoGarbageTaskFooter svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   flex: 0 0 auto;
 }
 
@@ -4152,6 +4139,8 @@
 
 .autoGarbageLeaderPanel {
   padding: 16px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .autoGarbagePanelHeader {
@@ -4161,6 +4150,10 @@
   gap: 12px;
   min-width: 0;
   margin-bottom: 14px;
+}
+
+.autoGarbagePanelHeader > div {
+  min-width: 0;
 }
 
 .autoGarbagePanelHeader h3 {
@@ -4270,7 +4263,7 @@
 }
 
 .autoGarbageReportHeader {
-  display: grid;
+  display: none;
   grid-template-columns: minmax(98px, 1fr) minmax(104px, 0.76fr) minmax(72px, auto) minmax(58px, auto);
   align-items: center;
   gap: 8px;
@@ -4287,11 +4280,14 @@
 
 .autoGarbageReportRow {
   display: grid;
-  grid-template-columns: minmax(98px, 1fr) minmax(104px, 0.76fr) minmax(72px, auto) minmax(58px, auto);
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "info value"
+    "time state";
   align-items: start;
-  gap: 8px;
+  gap: 9px 12px;
   min-width: 0;
-  padding: 10px;
+  padding: 12px;
   border: 1px solid rgba(15, 23, 42, 0.07);
   border-radius: 7px;
   background: #fbfdfc;
@@ -4303,6 +4299,7 @@
 }
 
 .autoGarbageReportInfo {
+  grid-area: info;
   display: grid;
   min-width: 0;
   gap: 3px;
@@ -4339,8 +4336,11 @@
 }
 
 .autoGarbageReportTime {
+  grid-area: time;
   display: grid;
   min-width: 0;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 8px;
   gap: 2px;
 }
 
@@ -4357,7 +4357,10 @@
 }
 
 .autoGarbageReportState {
+  grid-area: state;
   display: inline-flex;
+  justify-self: end;
+  max-width: 100%;
   min-height: 24px;
   align-items: center;
   justify-content: center;
@@ -4367,6 +4370,8 @@
   color: #16823d;
   font-size: 0.62rem;
   font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -4376,6 +4381,7 @@
 }
 
 .autoGarbageReportValue {
+  grid-area: value;
   color: #0f172a;
   font-size: 0.76rem;
   font-weight: 950;
@@ -5548,6 +5554,9 @@
 
   .autoGarbageReportRow {
     grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "info value"
+      "time state";
   }
 
   .autoGarbageReportHeader {
@@ -5555,20 +5564,17 @@
   }
 
   .autoGarbageReportTime {
-    grid-column: 1 / -1;
     grid-template-columns: max-content minmax(0, 1fr);
     column-gap: 8px;
     row-gap: 3px;
   }
 
   .autoGarbageReportState {
-    grid-column: 1;
     width: fit-content;
   }
 
   .autoGarbageReportValue {
-    grid-column: 2;
-    grid-row: 1;
+    text-align: right;
   }
 
   .autoGarbageSummaryPanel {

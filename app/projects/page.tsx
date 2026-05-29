@@ -53,7 +53,7 @@ type PageProps = {
   }>;
 };
 
-type ProjectFilterKey = "all" | "progress" | "planned" | "overdue";
+type ProjectFilterKey = "all" | "planned" | "review" | "done" | "overdue";
 type QuickActionMode = "task" | "report" | "none";
 type AutoGarbagePanelMode = "overview" | "weight" | "fuel";
 type ProjectCardItem = DashboardSnapshot["projects"][number];
@@ -80,9 +80,9 @@ const GREEN_SERVICE_UNITS = [
 ] as const;
 const PROJECT_FILTERS: Array<{ key: ProjectFilterKey; label: string }> = [
   { key: "all", label: "Нийт ажил" },
-  { key: "progress", label: "Гүйцэтгэж байгаа" },
   { key: "planned", label: "Төлөвлөсөн" },
-  { key: "overdue", label: "Хугацаа хэтэрсэн" },
+  { key: "review", label: "Хянаж байгаа" },
+  { key: "done", label: "Дууссан" },
 ];
 
 /* legacy department groups kept commented during shared helper migration
@@ -111,6 +111,12 @@ function getDepartmentParam(value?: string | string[]) {
 }
 
 function normalizeProjectFilter(value: string): ProjectFilterKey {
+  if (value === "progress") {
+    return "planned";
+  }
+  if (value === "overdue") {
+    return "overdue";
+  }
   return PROJECT_FILTERS.some((item) => item.key === value) ? (value as ProjectFilterKey) : "all";
 }
 
@@ -703,15 +709,23 @@ async function ProjectsPageContent({
           return true;
         }
 
-        if (activeFilter === "progress") {
-          return project.stageBucket === "progress" || project.stageBucket === "review";
+        if (activeFilter === "planned") {
+          return project.stageBucket === "todo" || project.stageBucket === "progress" || project.stageBucket === "unknown";
+        }
+
+        if (activeFilter === "review") {
+          return project.stageBucket === "review" || project.stageBucket === "problem";
+        }
+
+        if (activeFilter === "done") {
+          return project.stageBucket === "done";
         }
 
         if (activeFilter === "overdue") {
           return overdueProjectNames.has(project.name);
         }
 
-        return project.stageBucket === "todo" || project.stageBucket === "unknown";
+        return true;
       });
 
   const selectedDepartmentName = masterMode
@@ -725,24 +739,19 @@ async function ProjectsPageContent({
 
   const projectCounts = {
     all: scopedProjects.length,
-    progress: scopedProjects.filter(
-      (project) => project.stageBucket === "progress" || project.stageBucket === "review",
-    ).length,
     planned: scopedProjects.filter(
-      (project) => project.stageBucket === "todo" || project.stageBucket === "unknown",
+      (project) => project.stageBucket === "todo" || project.stageBucket === "progress" || project.stageBucket === "unknown",
     ).length,
+    review: scopedProjects.filter(
+      (project) => project.stageBucket === "review" || project.stageBucket === "problem",
+    ).length,
+    done: scopedProjects.filter((project) => project.stageBucket === "done").length,
     overdue: overdueProjectNames.size,
   } satisfies Record<ProjectFilterKey, number>;
 
-  const reviewProjectsCount = scopedProjects.filter(
-    (project) => project.stageBucket === "review",
-  ).length;
-  const activeStageProjectsCount = scopedProjects.filter(
-    (project) => project.stageBucket === "progress",
-  ).length;
-  const doneProjectsCount = scopedProjects.filter(
-    (project) => project.stageBucket === "done",
-  ).length;
+  const reviewProjectsCount = projectCounts.review;
+  const doneProjectsCount = projectCounts.done;
+  const openProjectsCount = projectCounts.planned + projectCounts.review;
   const overdueProjectsCount = overdueProjectNames.size;
   const totalOpenTaskCount = scopedProjects.reduce(
     (sum, project) => sum + project.openTasks,
@@ -759,8 +768,8 @@ async function ProjectsPageContent({
         scopedTasks.reduce((sum, task) => sum + task.progress, 0) / scopedTasks.length,
       )
     : 0;
-  const activeProjectShare = scopedProjects.length
-    ? Math.round((projectCounts.progress / scopedProjects.length) * 100)
+  const openProjectShare = scopedProjects.length
+    ? Math.round((openProjectsCount / scopedProjects.length) * 100)
     : 0;
   const insightProgressCards = [
     {
@@ -782,34 +791,34 @@ async function ProjectsPageContent({
   ] as const;
   const statusDistribution = [
     {
-      key: "progress",
-      label: "Явж буй ажил",
-      count: activeStageProjectsCount,
-      note: "Талбай дээр яваа ажил",
+      key: "planned",
+      label: "Төлөвлөсөн",
+      count: projectCounts.planned,
+      note: "Төлөвлөсөн болон хуваарилагдсан ажил",
       share: scopedProjects.length
-        ? Math.round((activeStageProjectsCount / scopedProjects.length) * 100)
+        ? Math.round((projectCounts.planned / scopedProjects.length) * 100)
         : 0,
-      toneClass: styles.masterInsightsStatusProgress,
+      toneClass: styles.masterInsightsStatusPlanned,
     },
     {
       key: "review",
-      label: "Шалгагдаж буй ажил",
+      label: "Хянаж байгаа",
       count: reviewProjectsCount,
-      note: "Баталгаажуулалт хүлээж буй",
+      note: "Хяналт, баталгаажуулалт хүлээж буй",
       share: scopedProjects.length
         ? Math.round((reviewProjectsCount / scopedProjects.length) * 100)
         : 0,
       toneClass: styles.masterInsightsStatusReview,
     },
     {
-      key: "planned",
-      label: "Төлөвлөсөн ажил",
-      count: projectCounts.planned,
-      note: "Эхлээгүй эсвэл хүлээгдэж буй",
+      key: "done",
+      label: "Дууссан",
+      count: doneProjectsCount,
+      note: "Бүрэн дууссан ажил",
       share: scopedProjects.length
-        ? Math.round((projectCounts.planned / scopedProjects.length) * 100)
+        ? Math.round((doneProjectsCount / scopedProjects.length) * 100)
         : 0,
-      toneClass: styles.masterInsightsStatusPlanned,
+      toneClass: styles.masterInsightsStatusProgress,
     },
   ] as const;
   const insightSummaryCards = [
@@ -867,19 +876,10 @@ async function ProjectsPageContent({
       label: "Төлөвлөсөн",
       value: String(projectCounts.planned),
       delta: formatShare(projectCounts.planned, scopedProjects.length),
-      note: "Эхлээгүй эсвэл хүлээгдэж буй ажил",
+      note: "Төлөвлөсөн болон хуваарилагдсан ажил",
       icon: "Т",
       tone: styles.summaryCardSoft,
       href: buildScopedListHref("planned"),
-    },
-    {
-      label: "Гүйцэтгэж байгаа",
-      value: String(activeStageProjectsCount),
-      delta: formatShare(activeStageProjectsCount, scopedProjects.length),
-      note: "Яг одоо явж байгаа ажил",
-      icon: "Г",
-      tone: styles.summaryCardActive,
-      href: buildScopedListHref("progress"),
     },
     {
       label: "Хянаж байгаа",
@@ -888,7 +888,7 @@ async function ProjectsPageContent({
       note: "Баталгаажуулалт хүлээж буй ажил",
       icon: "Х",
       tone: styles.summaryCardReview,
-      href: buildScopedListHref("progress"),
+      href: buildScopedListHref("review"),
     },
     {
       label: "Хугацаа хэтэрсэн",
@@ -906,7 +906,7 @@ async function ProjectsPageContent({
       note: "Бүрэн дууссан ажил",
       icon: "Д",
       tone: styles.summaryCardPrimary,
-      href: buildScopedListHref("all"),
+      href: buildScopedListHref("done"),
     },
   ] as const;
   const showServiceMiniDashboard =
@@ -929,8 +929,10 @@ async function ProjectsPageContent({
   ] as const;
 
   const filterTitle =
-    activeFilter === "progress"
-      ? "Гүйцэтгэж байгаа"
+    activeFilter === "review"
+      ? "Хянаж байгаа"
+      : activeFilter === "done"
+        ? "Дууссан"
       : activeFilter === "overdue"
         ? "Хугацаа хэтэрсэн"
       : activeFilter === "planned"
@@ -938,13 +940,15 @@ async function ProjectsPageContent({
         : "Бүх ажил";
 
   const filterNote =
-    activeFilter === "progress"
-      ? "Одоо хэрэгжиж байгаа болон хяналтын шатанд явж буй ажлуудыг харуулна"
+    activeFilter === "review"
+      ? "Хяналт, баталгаажуулалт хүлээж буй ажлуудыг харуулна"
+      : activeFilter === "done"
+        ? "Бүрэн дууссан ажлуудыг харуулна"
       : activeFilter === "overdue"
         ? "Хугацаа өнгөрсөн даалгавартай ажлуудыг харуулна"
       : activeFilter === "planned"
-        ? "Одоогоор эхлээгүй, төлөвлөсөн шатанд байгаа ажлуудыг харуулна"
-        : "Сонгосон алба нэгжийн шинээр үүссэн, төлөвлөсөн, идэвхтэй болон дууссан бүх ажил харагдана";
+        ? "Төлөвлөсөн болон хуваарилагдсан ажлуудыг харуулна"
+        : "Сонгосон алба нэгжийн төлөвлөсөн, хянаж байгаа болон дууссан бүх ажил харагдана";
   const selectionParams = new URLSearchParams();
   if (selectedGroup?.name) {
     selectionParams.set("department", selectedGroup.name);
@@ -981,13 +985,6 @@ async function ProjectsPageContent({
     hrefParams.set("returnTo", selectionReturnTo);
     return `${projectHref}?${hrefParams.toString()}`;
   };
-  const calendarPlanParams = new URLSearchParams();
-  if (selectedUnit || selectedGroup?.name) {
-    calendarPlanParams.set("department", selectedUnit || selectedGroup?.name || "");
-  }
-  const calendarPlanHref = `/tasks${
-    calendarPlanParams.toString() ? `?${calendarPlanParams.toString()}` : ""
-  }`;
   const newWorkParams = new URLSearchParams();
   if (selectedUnit || selectedGroup?.name) {
     newWorkParams.set("department", selectedUnit || selectedGroup?.name || "");
@@ -995,6 +992,14 @@ async function ProjectsPageContent({
   const newWorkHref = `/projects/new${
     newWorkParams.toString() ? `?${newWorkParams.toString()}` : ""
   }`;
+  const showCreateWorkButton =
+    !masterMode &&
+    !showAutoBaseFleet &&
+    !isOverdueFilter &&
+    canCreateProject &&
+    !showAutoBaseCombined;
+  const showCreateWorkButtonInUnitSection =
+    showCreateWorkButton && Boolean(selectedGroup && availableUnits.length > 1);
   const shouldShowGreenServiceSections =
     !masterMode &&
     !showAutoBaseFleet &&
@@ -1078,15 +1083,10 @@ async function ProjectsPageContent({
               </div>
             ) : null}
 
-            {!masterMode && !showAutoBaseFleet && !isOverdueFilter ? (
+            {showCreateWorkButton && !showCreateWorkButtonInUnitSection ? (
               <div className={styles.buttonRow}>
-                {canCreateProject && !showAutoBaseCombined ? (
-                  <Link href={newWorkHref} className={styles.primaryButton}>
-                    Ажил нэмэх
-                  </Link>
-                ) : null}
-                <Link href={calendarPlanHref} className={styles.secondaryButton}>
-                  Календарь төлөвлөгөө
+                <Link href={newWorkHref} className={styles.primaryButton}>
+                  Ажил нэмэх
                 </Link>
               </div>
             ) : null}
@@ -1107,14 +1107,23 @@ async function ProjectsPageContent({
                       Энэ хэлтэс доторх ажлыг нэгжээр нь салгаж харуулна.
                     </small>
                   </div>
-                  {canShowGarbageTransportSettings || canShowCleaningAreaSettings ? (
-                    <Link
-                      href={canShowCleaningAreaSettings ? cleaningAreaSettingsHref : garbageTransportSettingsHref}
-                      className={styles.secondaryButton}
-                    >
-                      <Settings aria-hidden />
-                      Тохиргоо
-                    </Link>
+                  {showCreateWorkButtonInUnitSection || canShowGarbageTransportSettings || canShowCleaningAreaSettings ? (
+                    <div className={styles.sectionHeaderActions}>
+                      {showCreateWorkButtonInUnitSection ? (
+                        <Link href={newWorkHref} className={styles.primaryButton}>
+                          Ажил нэмэх
+                        </Link>
+                      ) : null}
+                      {canShowGarbageTransportSettings || canShowCleaningAreaSettings ? (
+                        <Link
+                          href={canShowCleaningAreaSettings ? cleaningAreaSettingsHref : garbageTransportSettingsHref}
+                          className={styles.secondaryButton}
+                        >
+                          <Settings aria-hidden />
+                          Тохиргоо
+                        </Link>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
 
@@ -1218,18 +1227,6 @@ async function ProjectsPageContent({
                         : `${selectedDepartmentName} · ${filterNote}`}
                   </small>
                 </div>
-                {false && !masterMode && !showAutoBaseFleet ? (
-                  <div className={styles.buttonRow}>
-                    {canCreateProject ? (
-                      <Link href={newWorkHref} className={styles.primaryButton}>
-                        Ажил нэмэх
-                      </Link>
-                    ) : null}
-                    <Link href={calendarPlanHref} className={styles.secondaryButton}>
-                      Календар төлөвлөгөө
-                    </Link>
-                  </div>
-                ) : null}
               </div>
 
               {showServiceMiniDashboard ? (
@@ -1321,12 +1318,12 @@ async function ProjectsPageContent({
                       </div>
 
                       <div className={styles.masterInsightsHighlight}>
-                        <span>Идэвхтэй ажил</span>
-                        <strong>{projectCounts.progress}</strong>
-                        <small>{scopedProjects.length} ажлаас яг одоо идэвхтэй нь</small>
+                        <span>Нээлттэй ажил</span>
+                        <strong>{openProjectsCount}</strong>
+                        <small>{scopedProjects.length} ажлаас дуусаагүй нь</small>
                         <div className={styles.masterInsightsHighlightMeta}>
                           <span>Нээлттэй {totalOpenTaskCount}</span>
-                          <span>Идэвхтэй {activeProjectShare}%</span>
+                          <span>Нээлттэй {openProjectShare}%</span>
                         </div>
                       </div>
                     </div>
@@ -1419,9 +1416,9 @@ async function ProjectsPageContent({
 
                       <div className={styles.masterInsightsStoryList}>
                         <div className={styles.masterInsightsStoryItem}>
-                          <strong>Идэвхтэй урсгал</strong>
+                          <strong>Нээлттэй урсгал</strong>
                           <span>
-                            {scopedProjects.length} ажлаас {projectCounts.progress} нь идэвхтэй байна.
+                            {scopedProjects.length} ажлаас {openProjectsCount} нь нээлттэй байна.
                           </span>
                         </div>
                         <div className={styles.masterInsightsStoryItem}>
@@ -1451,7 +1448,7 @@ async function ProjectsPageContent({
                         </div>
                         <div className={styles.masterInsightsStoryStat}>
                           <span>Идэвхтэй хувь</span>
-                          <strong>{activeProjectShare}%</strong>
+                          <strong>{openProjectShare}%</strong>
                         </div>
                       </div>
 
