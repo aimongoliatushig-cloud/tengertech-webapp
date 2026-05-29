@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { getSession } from "@/lib/auth";
+import { notifyGarbageDailySyncSummary } from "@/lib/garbage-sync-notifications";
 import { executeOdooKw } from "@/lib/odoo";
 import { fetchWrsDailyVehicleTotals } from "@/lib/wrs-report";
 
@@ -16,6 +17,7 @@ type FleetVehicleRecord = {
   license_plate?: string | false;
   name?: string | false;
   municipal_department_id?: [number, string] | false;
+  municipal_vehicle_type_id?: [number, string] | false;
 };
 
 type WeightReportRecord = {
@@ -184,6 +186,53 @@ function vehicleReportCode(vehicle: FleetVehicleRecord | undefined, fallbackCode
   return String(vehicle?.license_plate || vehicle?.name || fallbackCode).trim();
 }
 
+function relationName(value?: [number, string] | false | null) {
+  return Array.isArray(value) ? value[1] : "";
+}
+
+function garbageVehicleMatchScore(vehicle: FleetVehicleRecord) {
+  const text = normalizeVehicleCode(
+    [
+      vehicle.license_plate,
+      vehicle.name,
+      relationName(vehicle.municipal_department_id),
+      relationName(vehicle.municipal_vehicle_type_id),
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+  let score = 0;
+
+  if (text.includes("ХОГ")) {
+    score += 4;
+  }
+  if (text.includes("ТЭЭВЭР")) {
+    score += 2;
+  }
+  if (text.includes("ТУСГАЙ")) {
+    score -= 3;
+  }
+
+  return score;
+}
+
+function chooseNumericVehicleMatch(
+  existing: FleetVehicleRecord | null | undefined,
+  candidate: FleetVehicleRecord,
+) {
+  if (!existing || existing.id === candidate.id) {
+    return existing ?? candidate;
+  }
+
+  const existingScore = garbageVehicleMatchScore(existing);
+  const candidateScore = garbageVehicleMatchScore(candidate);
+  if (existingScore === candidateScore) {
+    return null;
+  }
+
+  return candidateScore > existingScore ? candidate : existing;
+}
+
 function currentOdooDateTime() {
   return new Date().toISOString().replace("T", " ").slice(0, 19);
 }
@@ -305,7 +354,7 @@ async function loadVehicleByCode() {
     "search_read",
     [[]],
     {
-      fields: ["id", "license_plate", "name", "municipal_department_id"],
+      fields: ["id", "license_plate", "name", "municipal_department_id", "municipal_vehicle_type_id"],
       limit: 500,
       order: "license_plate asc, name asc",
       context: { active_test: false },
@@ -324,10 +373,7 @@ async function loadVehicleByCode() {
       const numericCode = numericVehicleCode(code);
       if (numericCode.length >= 3) {
         const existing = numericVehicleByCode.get(numericCode);
-        numericVehicleByCode.set(
-          numericCode,
-          existing && existing.id !== vehicle.id ? null : existing ?? vehicle,
-        );
+        numericVehicleByCode.set(numericCode, chooseNumericVehicleMatch(existing, vehicle));
       }
     }
   }
@@ -471,24 +517,21 @@ async function upsertWeightReport(input: {
 async function upsertDailyWeightTotal(input: {
   reportDate: string;
   task?: ProjectTaskRecord;
+  vehicle?: FleetVehicleRecord;
   vehicleCode: string;
   weightKg: number;
 }) {
-  if (!input.task?.id || input.weightKg <= 0) {
+  if (!input.vehicle?.id || input.weightKg <= 0) {
     return null;
   }
 
   const externalReference = `wrs:${input.reportDate}:${normalizeVehicleCode(input.vehicleCode)}`;
-  const existing = await executeOdooKw<DailyWeightTotalRecord[]>(
+  let existing = await executeOdooKw<DailyWeightTotalRecord[]>(
     "mfo.daily.weight.total",
     "search_read",
     [
       [
-        "|",
         ["external_reference", "=", externalReference],
-        "&",
-        ["task_id", "=", input.task.id],
-        ["source", "=", WRS_DAILY_WEIGHT_SOURCE],
       ],
     ],
     {
@@ -497,12 +540,35 @@ async function upsertDailyWeightTotal(input: {
       order: "id desc",
     },
   );
+  if (!existing[0]?.id) {
+    existing = await executeOdooKw<DailyWeightTotalRecord[]>(
+      "mfo.daily.weight.total",
+      "search_read",
+      [
+        [
+          ["shift_date", "=", input.reportDate],
+          ["vehicle_id", "=", input.vehicle.id],
+          ["source", "=", WRS_DAILY_WEIGHT_SOURCE],
+        ],
+      ],
+      {
+        fields: ["id"],
+        limit: 1,
+        order: "id desc",
+      },
+    );
+  }
+
   const values = {
-    task_id: input.task.id,
+    task_id: input.task?.id ?? false,
+    shift_date: input.reportDate,
+    vehicle_id: input.vehicle.id,
     net_weight_total: input.weightKg,
     source: WRS_DAILY_WEIGHT_SOURCE,
     external_reference: externalReference,
-    note: `WRS ${input.reportDate} ${input.vehicleCode}`,
+    note: input.task?.id
+      ? `WRS ${input.reportDate} ${input.vehicleCode}`
+      : `WRS ${input.reportDate} ${input.vehicleCode} - даалгаваргүй машин/огноогоор хадгалсан`,
   };
 
   if (existing[0]?.id) {
@@ -543,6 +609,20 @@ async function createSyncLog(input: {
   } catch (error) {
     console.warn("WRS import sync log could not be saved:", error);
   }
+}
+
+function buildUnmatchedVehicleMessage(unmatched: Array<{ vehicleCode: string; vehicleLabel: string }>) {
+  if (!unmatched.length) {
+    return "";
+  }
+
+  const samples = unmatched
+    .slice(0, 5)
+    .map((item) => item.vehicleLabel || item.vehicleCode)
+    .filter(Boolean)
+    .join(", ");
+  const suffix = unmatched.length > 5 ? "..." : "";
+  return `${unmatched.length} машины улсын дугаар авто баазтай таарсангүй${samples ? `: ${samples}${suffix}` : ""}`;
 }
 
 function isDateKey(value: string) {
@@ -710,6 +790,7 @@ async function importWrsDateRange(startDate: string, endDate: string) {
       const dailyWeightResult = await upsertDailyWeightTotal({
         reportDate: total.reportDate,
         task: taskByDateVehicle.get(`${total.reportDate}:${vehicle.id}`),
+        vehicle,
         vehicleCode: reportVehicleCode,
         weightKg: total.weightKg,
       });
@@ -740,13 +821,18 @@ async function importWrsDateRange(startDate: string, endDate: string) {
     revalidatePath("/reports");
   }
 
+  const unmatchedMessage = buildUnmatchedVehicleMessage(unmatched);
+  const hasPartialImport = imported > 0;
   await createSyncLog({
-    state: unmatched.length ? "failed" : "success",
+    state: unmatched.length && !hasPartialImport ? "failed" : "success",
     recordCount: imported,
-    errorMessage: unmatched.length
-      ? `${unmatched.length} машины улсын дугаар авто баазтай таарсангүй.`
-      : "",
+    errorMessage: unmatchedMessage,
   });
+  if (hasPartialImport) {
+    await notifyGarbageDailySyncSummary(Array.from(new Set(totals.map((total) => total.reportDate)))).catch((error) => {
+      console.warn("Garbage daily summary push failed after WRS import:", error);
+    });
+  }
 
   const responsePayload = {
     ok: true,
@@ -769,18 +855,21 @@ async function importWrsDateRange(startDate: string, endDate: string) {
     unmatchedTasks,
   };
 
-  if (unmatched.length) {
+  if (unmatched.length && !hasPartialImport) {
     return NextResponse.json(
       {
         ...responsePayload,
         ok: false,
-        error: `${unmatched.length} машины улсын дугаар авто баазтай таарсангүй. Таараагүй мөрүүд алдаатай тайлан болж хадгалагдсан тул дугаарыг засаад дахин татна уу.`,
+        error: `${unmatchedMessage}. Таараагүй мөрүүд алдаатай тайлан болж хадгалагдсан тул дугаарыг засаад дахин татна уу.`,
       },
       { status: 409 },
     );
   }
 
-  return NextResponse.json(responsePayload);
+  return NextResponse.json({
+    ...responsePayload,
+    warning: unmatchedMessage || undefined,
+  });
 }
 
 async function handleRequest(request: Request) {
@@ -866,6 +955,7 @@ async function handleRequest(request: Request) {
         const dailyWeightResult = await upsertDailyWeightTotal({
           reportDate: requestedDate,
           task: taskByVehicleId.get(vehicle.id),
+          vehicle,
           vehicleCode: reportVehicleCode,
           weightKg: total.netWeightTotal,
         });
@@ -895,13 +985,18 @@ async function handleRequest(request: Request) {
       revalidatePath("/reports");
     }
 
+    const unmatchedMessage = buildUnmatchedVehicleMessage(unmatched);
+    const hasPartialImport = imported > 0;
     await createSyncLog({
-      state: unmatched.length ? "failed" : "success",
+      state: unmatched.length && !hasPartialImport ? "failed" : "success",
       recordCount: imported,
-      errorMessage: unmatched.length
-        ? `${unmatched.length} машины улсын дугаар авто баазтай таарсангүй.`
-        : "",
+      errorMessage: unmatchedMessage,
     });
+    if (hasPartialImport) {
+      await notifyGarbageDailySyncSummary([requestedDate]).catch((error) => {
+        console.warn("Garbage daily summary push failed after WRS import:", error);
+      });
+    }
 
     const responsePayload = {
       ok: true,
@@ -917,18 +1012,21 @@ async function handleRequest(request: Request) {
       unmatchedTasks,
     };
 
-    if (unmatched.length) {
+    if (unmatched.length && !hasPartialImport) {
       return NextResponse.json(
         {
           ...responsePayload,
           ok: false,
-          error: `${unmatched.length} машины улсын дугаар авто баазтай таарсангүй. Таараагүй мөрүүд алдаатай тайлан болж хадгалагдсан тул дугаарыг засаад дахин татна уу.`,
+          error: `${unmatchedMessage}. Таараагүй мөрүүд алдаатай тайлан болж хадгалагдсан тул дугаарыг засаад дахин татна уу.`,
         },
         { status: 409 },
       );
     }
 
-    return NextResponse.json(responsePayload);
+    return NextResponse.json({
+      ...responsePayload,
+      warning: unmatchedMessage || undefined,
+    });
   } catch (error) {
     const message =
       error instanceof Error && error.message

@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 
 import { getSession } from "@/lib/auth";
 import { fetchGaihamDailyFuelTotals } from "@/lib/gaiham-fuel-report";
+import { notifyGarbageDailySyncSummary } from "@/lib/garbage-sync-notifications";
 import { executeOdooKw } from "@/lib/odoo";
 
 export const dynamic = "force-dynamic";
@@ -534,6 +535,11 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
       ? `${unmatched.length} \u043c\u0430\u0448\u0438\u043d\u044b \u0443\u043b\u0441\u044b\u043d \u0434\u0443\u0433\u0430\u0430\u0440 \u0430\u0432\u0442\u043e \u0431\u0430\u0430\u0437\u0442\u0430\u0439 \u0442\u0430\u0430\u0440\u0441\u0430\u043d\u0433\u04af\u0439.`
       : "",
   });
+  if (!unmatched.length) {
+    await notifyGarbageDailySyncSummary(Array.from(new Set(totals.map((total) => total.reportDate)))).catch((error) => {
+      console.warn("Garbage daily summary push failed after Gaiham import:", error);
+    });
+  }
 
   const responsePayload = {
     ok: true,

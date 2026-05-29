@@ -591,23 +591,19 @@ class MfoDailyWeightTotal(models.Model):
     _description = "Өдрийн жингийн дүн"
     _order = "shift_date desc, id desc"
 
-    task_id = fields.Many2one("project.task", string="Ажил", required=True, ondelete="cascade")
-    shift_date = fields.Date(string="Ээлжийн огноо", related="task_id.mfo_shift_date", store=True, readonly=True)
+    task_id = fields.Many2one("project.task", string="Ажил", ondelete="set null")
+    shift_date = fields.Date(string="Ээлжийн огноо", index=True)
     vehicle_id = fields.Many2one(
         "fleet.vehicle",
         string="Машин",
-        related="task_id.mfo_vehicle_id",
-        store=True,
-        readonly=True,
         index=True,
+        ondelete="set null",
     )
     route_id = fields.Many2one(
         "mfo.route",
         string="Маршрут",
-        related="task_id.mfo_route_id",
-        store=True,
-        readonly=True,
         index=True,
+        ondelete="set null",
     )
     net_weight_total = fields.Float(string="Цэвэр жин")
     source = fields.Selection(
@@ -622,6 +618,30 @@ class MfoDailyWeightTotal(models.Model):
     external_reference = fields.Char(string="Гаднын дугаар")
     note = fields.Text(string="Тэмдэглэл")
     company_id = fields.Many2one("res.company", string="Компани", default=lambda self: self.env.company, required=True)
+
+    def _values_from_task(self, values):
+        task_id = values.get("task_id")
+        if not task_id:
+            return values
+
+        task = self.env["project.task"].browse(task_id)
+        if not task.exists():
+            return values
+
+        values.setdefault("shift_date", task.mfo_shift_date or False)
+        values.setdefault("vehicle_id", task.mfo_vehicle_id.id or False)
+        values.setdefault("route_id", task.mfo_route_id.id or False)
+        return values
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        return super().create([self._values_from_task(dict(values)) for values in vals_list])
+
+    def write(self, values):
+        next_values = dict(values)
+        if "task_id" in next_values:
+            next_values = self._values_from_task(next_values)
+        return super().write(next_values)
 
 
 class FleetVehicle(models.Model):
