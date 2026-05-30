@@ -2,7 +2,10 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { buildPublicUrl } from "@/lib/request-url";
-import { SESSION_COOKIE_NAME } from "@/lib/session";
+import {
+  SESSION_COOKIE_MAX_AGE_SECONDS,
+  SESSION_COOKIE_NAME,
+} from "@/lib/session";
 
 const PUBLIC_PATHS = new Set([
   "/login",
@@ -89,6 +92,33 @@ function getCanonicalRedirectUrl(request: NextRequest) {
 
 function getSessionKeyMaterial() {
   return process.env.SESSION_SECRET ?? "hot-tohjilt-local-session-secret-change-me";
+}
+
+function shouldUseSecureSessionCookie() {
+  return process.env.SESSION_COOKIE_SECURE?.trim().toLowerCase() === "true";
+}
+
+function buildRefreshedSessionCookieHeader(token: string) {
+  const expiresAt = new Date(Date.now() + SESSION_COOKIE_MAX_AGE_SECONDS * 1000).toUTCString();
+  const parts = [
+    `${SESSION_COOKIE_NAME}=${token}`,
+    "Path=/",
+    `Expires=${expiresAt}`,
+    `Max-Age=${SESSION_COOKIE_MAX_AGE_SECONDS}`,
+    "HttpOnly",
+    "SameSite=Lax",
+  ];
+
+  if (shouldUseSecureSessionCookie()) {
+    parts.push("Secure");
+  }
+
+  return parts.join("; ");
+}
+
+function withRefreshedSessionCookie<T extends NextResponse>(response: T, token: string) {
+  response.headers.append("Set-Cookie", buildRefreshedSessionCookieHeader(token));
+  return response;
 }
 
 function base64UrlToBytes(value: string) {
@@ -269,30 +299,48 @@ export async function proxy(request: NextRequest) {
       const session = await unsealProxySession(sessionToken);
       if (isReportOnlySession(session)) {
         if (pathname === "/") {
-          return NextResponse.redirect(buildPublicUrl(request, "/reports"));
+          return withRefreshedSessionCookie(
+            NextResponse.redirect(buildPublicUrl(request, "/reports")),
+            sessionToken,
+          );
         }
         if (!isReportAllowedPath(pathname)) {
           if (pathname.startsWith("/api/")) {
-            return NextResponse.json(
-              { error: "Тайлангийн ажилтан зөвхөн тайлангийн хэсэгт хандах эрхтэй." },
-              { status: 403 },
+            return withRefreshedSessionCookie(
+              NextResponse.json(
+                { error: "Тайлангийн ажилтан зөвхөн тайлангийн хэсэгт хандах эрхтэй." },
+                { status: 403 },
+              ),
+              sessionToken,
             );
           }
-          return NextResponse.redirect(buildPublicUrl(request, "/reports"));
+          return withRefreshedSessionCookie(
+            NextResponse.redirect(buildPublicUrl(request, "/reports")),
+            sessionToken,
+          );
         }
       }
       if (isHrOnlySession(session)) {
         if (pathname === "/") {
-          return NextResponse.redirect(buildPublicUrl(request, "/hr"));
+          return withRefreshedSessionCookie(
+            NextResponse.redirect(buildPublicUrl(request, "/hr")),
+            sessionToken,
+          );
         }
         if (!isHrAllowedPath(pathname)) {
           if (pathname.startsWith("/api/")) {
-            return NextResponse.json(
-              { error: "Хүний нөөцийн мэргэжилтэн зөвхөн хүний нөөцийн хэсэгт хандах эрхтэй." },
-              { status: 403 },
+            return withRefreshedSessionCookie(
+              NextResponse.json(
+                { error: "Хүний нөөцийн мэргэжилтэн зөвхөн хүний нөөцийн хэсэгт хандах эрхтэй." },
+                { status: 403 },
+              ),
+              sessionToken,
             );
           }
-          return NextResponse.redirect(buildPublicUrl(request, "/hr"));
+          return withRefreshedSessionCookie(
+            NextResponse.redirect(buildPublicUrl(request, "/hr")),
+            sessionToken,
+          );
         }
       }
     } catch {
@@ -300,7 +348,10 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  return sessionToken && !isPublicPath
+    ? withRefreshedSessionCookie(response, sessionToken)
+    : response;
 }
 
 export const config = {

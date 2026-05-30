@@ -26,9 +26,11 @@ import {
   type RoleGroupFlags,
   type UserRole,
 } from "@/lib/roles";
-import { SESSION_COOKIE_NAME } from "@/lib/session";
+import {
+  SESSION_COOKIE_MAX_AGE_SECONDS,
+  SESSION_COOKIE_NAME,
+} from "@/lib/session";
 
-const SESSION_TTL_SECONDS = 60 * 60 * 12;
 const WORKER_ROLE_REFRESH_INTERVAL_MS = 5 * 60_000;
 const CURRENT_SESSION_ROLE_INFERENCE_VERSION = 9;
 
@@ -261,12 +263,12 @@ export function getDeviceLabel(userAgent?: string | null) {
 }
 
 export function buildSessionCookieHeader(session: AppSession) {
-  const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000).toUTCString();
+  const expiresAt = new Date(Date.now() + SESSION_COOKIE_MAX_AGE_SECONDS * 1000).toUTCString();
   const parts = [
     `${SESSION_COOKIE_NAME}=${sealSession(session)}`,
     "Path=/",
     `Expires=${expiresAt}`,
-    `Max-Age=${SESSION_TTL_SECONDS}`,
+    `Max-Age=${SESSION_COOKIE_MAX_AGE_SECONDS}`,
     "HttpOnly",
     "SameSite=Lax",
   ];
