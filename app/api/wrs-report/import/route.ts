@@ -44,6 +44,14 @@ const TIME_ZONE = process.env.APP_TIME_ZONE ?? "Asia/Ulaanbaatar";
 const IMPORT_READY_HOUR = 11;
 const WRS_WEIGHT_SOURCE = "WRS жингийн систем";
 const WRS_DAILY_WEIGHT_SOURCE = "wrs_normalized";
+const WRS_SUCCESS_TARGET_DATES_PARAM =
+  "municipal_repair_workflow.garbage_weight_success_target_dates";
+const WRS_LAST_SUCCESS_TARGET_DATE_PARAM =
+  "municipal_repair_workflow.garbage_weight_last_success_target_date";
+const WRS_LAST_SUCCESS_AT_PARAM =
+  "municipal_repair_workflow.garbage_weight_last_success_at";
+const WRS_LAST_SUCCESS_DATE_PARAM =
+  "municipal_repair_workflow.garbage_weight_last_success_date";
 
 function currentDateKey() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -235,6 +243,73 @@ function chooseNumericVehicleMatch(
 
 function currentOdooDateTime() {
   return new Date().toISOString().replace("T", " ").slice(0, 19);
+}
+
+function parseSuccessTargetDates(value: string) {
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((item): item is string => typeof item === "string" && isDateKey(item));
+    }
+  } catch {
+    // Older deployments may have used a plain comma-separated value.
+  }
+
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(isDateKey);
+}
+
+async function markWrsTargetDatesSuccessful(dates: string[]) {
+  const validDates = Array.from(new Set(dates.filter(isDateKey))).sort();
+  if (!validDates.length) {
+    return;
+  }
+
+  try {
+    const rawSuccessDates = await executeOdooKw<string>(
+      "ir.config_parameter",
+      "get_param",
+      [WRS_SUCCESS_TARGET_DATES_PARAM, "[]"],
+    );
+    const successDates = new Set(parseSuccessTargetDates(String(rawSuccessDates ?? "[]")));
+    for (const date of validDates) {
+      successDates.add(date);
+    }
+
+    const targetDate = currentDateKey();
+    const keepFrom = shiftDateKey(targetDate, -45);
+    const orderedDates = Array.from(successDates)
+      .filter((date) => date >= keepFrom)
+      .sort();
+    const latestDate = orderedDates[orderedDates.length - 1] ?? validDates[validDates.length - 1];
+
+    await Promise.all([
+      executeOdooKw<boolean>(
+        "ir.config_parameter",
+        "set_param",
+        [WRS_SUCCESS_TARGET_DATES_PARAM, JSON.stringify(orderedDates)],
+      ),
+      executeOdooKw<boolean>(
+        "ir.config_parameter",
+        "set_param",
+        [WRS_LAST_SUCCESS_TARGET_DATE_PARAM, latestDate],
+      ),
+      executeOdooKw<boolean>(
+        "ir.config_parameter",
+        "set_param",
+        [WRS_LAST_SUCCESS_AT_PARAM, currentOdooDateTime()],
+      ),
+      executeOdooKw<boolean>(
+        "ir.config_parameter",
+        "set_param",
+        [WRS_LAST_SUCCESS_DATE_PARAM, targetDate],
+      ),
+    ]);
+  } catch (error) {
+    console.warn("WRS cron success target date could not be marked:", error);
+  }
 }
 
 async function loadGarbageDepartmentId() {
@@ -829,6 +904,7 @@ async function importWrsDateRange(startDate: string, endDate: string) {
     errorMessage: unmatchedMessage,
   });
   if (hasPartialImport) {
+    await markWrsTargetDatesSuccessful(importedDates);
     await notifyGarbageDailySyncSummary(Array.from(new Set(totals.map((total) => total.reportDate)))).catch((error) => {
       console.warn("Garbage daily summary push failed after WRS import:", error);
     });
@@ -993,6 +1069,7 @@ async function handleRequest(request: Request) {
       errorMessage: unmatchedMessage,
     });
     if (hasPartialImport) {
+      await markWrsTargetDatesSuccessful([requestedDate]);
       await notifyGarbageDailySyncSummary([requestedDate]).catch((error) => {
         console.warn("Garbage daily summary push failed after WRS import:", error);
       });

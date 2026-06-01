@@ -1,6 +1,41 @@
 import fs from "node:fs";
 import path from "node:path";
 
+function loadLocalEnvFile() {
+  const envPath = path.join(process.cwd(), ".env.local");
+  if (!fs.existsSync(envPath)) {
+    return;
+  }
+
+  const lines = fs.readFileSync(envPath, "utf8").split(/\r?\n/);
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+
+    const separatorIndex = line.indexOf("=");
+    if (separatorIndex < 0) {
+      continue;
+    }
+
+    const key = line.slice(0, separatorIndex).trim();
+    let value = line.slice(separatorIndex + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    if (!process.env[key]) {
+      process.env[key] = value;
+    }
+  }
+}
+
+loadLocalEnvFile();
+
 const ODOO_URL = process.env.ODOO_URL || "http://localhost:8069";
 const ODOO_DB = process.env.ODOO_DB || "odoo19_admin";
 const ODOO_LOGIN = process.env.ODOO_LOGIN || "admin";
@@ -9,6 +44,15 @@ const ODOO_CONFIG_PATH =
   process.env.ODOO_CONFIG_PATH || "C:\\Program Files\\Odoo 19.0.20260415\\server\\odoo.conf";
 const REPAIR = process.argv.includes("--repair");
 const TRIGGER = process.argv.includes("--trigger");
+
+function isLocalOdooUrl() {
+  try {
+    const hostname = new URL(ODOO_URL).hostname.toLowerCase();
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return true;
+  }
+}
 
 const HR_EMPLOYEE_CODE_FALLBACK_CODE = [
   "employee_model = env['hr.employee'].sudo()",
@@ -132,7 +176,19 @@ function normalizeFilesystemPath(value) {
 }
 
 function readAddonsPathHealth() {
+  const addonsPathCheckRequired = isLocalOdooUrl();
   const workspaceAddonsPath = normalizeFilesystemPath(path.join(process.cwd(), "odoo_addons"));
+  if (!addonsPathCheckRequired) {
+    return {
+      configPath: ODOO_CONFIG_PATH,
+      configFound: fs.existsSync(ODOO_CONFIG_PATH),
+      workspaceAddonsPath,
+      addonsPaths: [],
+      includesWorkspaceAddons: false,
+      addonsPathCheckRequired,
+    };
+  }
+
   if (!fs.existsSync(ODOO_CONFIG_PATH)) {
     return {
       configPath: ODOO_CONFIG_PATH,
@@ -140,6 +196,7 @@ function readAddonsPathHealth() {
       workspaceAddonsPath,
       addonsPaths: [],
       includesWorkspaceAddons: false,
+      addonsPathCheckRequired,
     };
   }
 
@@ -164,6 +221,7 @@ function readAddonsPathHealth() {
     workspaceAddonsPath,
     addonsPaths,
     includesWorkspaceAddons: normalizedAddonsPaths.includes(workspaceAddonsPath),
+    addonsPathCheckRequired,
   };
 }
 
@@ -226,7 +284,8 @@ async function main() {
     let trigger = null;
 
     if (REPAIR && model) {
-      const canUseWorkspaceCode = addonsPathHealth.includesWorkspaceAddons;
+      const canUseWorkspaceCode =
+        !addonsPathHealth.addonsPathCheckRequired || addonsPathHealth.includesWorkspaceAddons;
       const canUseFallbackCode = Boolean(job.fallbackCode);
       const shouldRepair = canUseWorkspaceCode || canUseFallbackCode;
       if (!shouldRepair) {
@@ -336,7 +395,9 @@ async function main() {
       result.trigger?.ok === false,
   );
 
-  const ok = failing.length === 0 && addonsPathHealth.includesWorkspaceAddons;
+  const ok =
+    failing.length === 0 &&
+    (!addonsPathHealth.addonsPathCheckRequired || addonsPathHealth.includesWorkspaceAddons);
   console.log(JSON.stringify({ ok, repaired: REPAIR, addonsPathHealth, results }, null, 2));
   if (!ok) {
     process.exitCode = 1;
