@@ -162,6 +162,7 @@ type UserRecord = {
   name: string;
   login: string;
   ops_user_type: string | false;
+  active?: boolean;
   partner_id?: Relation;
 };
 
@@ -231,6 +232,7 @@ type DepartmentRecord = {
   id: number;
   name: string;
   parent_id: Relation;
+  manager_id?: Relation;
 };
 
 type WorkUnitRecord = {
@@ -1616,6 +1618,92 @@ function priorityLabel(priority: string) {
   }
 }
 
+const DEPARTMENT_HEAD_TEXT_TOKENS = [
+  "хэлтсийн дарга",
+  "албаны дарга",
+  "тасгийн дарга",
+  "газрын дарга",
+  "department head",
+  "department manager",
+  "project manager",
+];
+
+function normalizeWorkspaceText(value: unknown) {
+  return normalizeDepartmentText(String(value ?? ""));
+}
+
+function containsWorkspaceToken(value: unknown, tokens: string[]) {
+  const normalized = normalizeWorkspaceText(value);
+  return Boolean(
+    normalized &&
+      tokens.some((token) => normalized.includes(normalizeWorkspaceText(token))),
+  );
+}
+
+function getDepartmentRecordName(
+  department: Pick<DepartmentRecord, "name" | "parent_id">,
+  departmentsById: Map<number, DepartmentRecord>,
+) {
+  const parentName = Array.isArray(department.parent_id)
+    ? departmentsById.get(department.parent_id[0])?.name || department.parent_id[1]
+    : "";
+  return [parentName, department.name].filter(Boolean).join(" ");
+}
+
+function getDepartmentRecordCanonicalName(
+  department: DepartmentRecord,
+  departmentsById: Map<number, DepartmentRecord>,
+) {
+  return (
+    normalizeOrganizationUnitName(getDepartmentRecordName(department, departmentsById)) ||
+    normalizeOrganizationUnitName(department.name)
+  );
+}
+
+async function loadRelatedDepartmentIds(
+  departmentId: number,
+  connectionOverrides: Partial<OdooConnection>,
+) {
+  try {
+    const departments = await searchReadWithFieldFallback<DepartmentRecord>(
+      "hr.department",
+      [],
+      ["name", "parent_id"],
+      {
+        order: "parent_id asc, name asc",
+        limit: 500,
+        context: { active_test: false },
+      },
+      connectionOverrides,
+    );
+    const departmentsById = new Map(departments.map((department) => [department.id, department]));
+    const targetDepartment = departmentsById.get(departmentId);
+    if (!targetDepartment) {
+      return [departmentId];
+    }
+
+    const targetCanonicalName = getDepartmentRecordCanonicalName(targetDepartment, departmentsById);
+    const targetParentId = relationId(targetDepartment.parent_id);
+    const relatedIds = departments
+      .filter((department) => {
+        const parentId = relationId(department.parent_id);
+        return (
+          department.id === departmentId ||
+          parentId === departmentId ||
+          (targetParentId !== null && department.id === targetParentId) ||
+          (targetCanonicalName &&
+            getDepartmentRecordCanonicalName(department, departmentsById) === targetCanonicalName)
+        );
+      })
+      .map((department) => department.id);
+
+    return Array.from(new Set([departmentId, ...relatedIds]));
+  } catch (error) {
+    console.warn("Related department scope could not be resolved:", error);
+    return [departmentId];
+  }
+}
+
 async function loadUserOptions(
   roles: string[],
   connectionOverrides: Partial<OdooConnection>,
@@ -1690,10 +1778,11 @@ async function loadDepartmentUserOptions(
   }
 
   try {
+    const departmentIds = await loadRelatedDepartmentIds(departmentId, connectionOverrides);
     const employees = await executeOdooKw<EmployeeUserRecord[]>(
       "hr.employee",
       "search_read",
-      [[["department_id", "=", departmentId], ["user_id", "!=", false]]],
+      [[["department_id", "in", departmentIds], ["user_id", "!=", false]]],
       {
         fields: [
           "name",
@@ -1706,13 +1795,34 @@ async function loadDepartmentUserOptions(
           "work_email",
         ],
         order: "name asc",
-        limit: 120,
+        limit: 300,
       },
       connectionOverrides,
     );
+    const employeeUserIds = Array.from(
+      new Set(
+        employees
+          .map((employee) => relationId(employee.user_id))
+          .filter((userId): userId is number => Boolean(userId)),
+      ),
+    );
+    const activeUserIds = employeeUserIds.length
+      ? await executeOdooKw<Array<{ id: number }>>(
+          "res.users",
+          "search_read",
+          [[["id", "in", employeeUserIds], ["active", "=", true], ["share", "=", false]]],
+          {
+            fields: ["id"],
+            limit: employeeUserIds.length,
+          },
+          connectionOverrides,
+        )
+          .then((users) => new Set(users.map((user) => user.id)))
+          .catch(() => null)
+      : null;
     const options = employees.reduce<SelectOption[]>((items, employee) => {
       const userId = relationId(employee.user_id);
-      if (!userId) {
+      if (!userId || (activeUserIds && !activeUserIds.has(userId))) {
         return items;
       }
 
@@ -1774,6 +1884,82 @@ async function loadMasterEmployeeUserOptions(
         login: phone || employee.work_email || "",
         phone: phone || "",
         role: roleFromMasterJobTitle(jobTitle),
+        departmentName: relationName(employee.department_id, ""),
+        jobTitle,
+      });
+      return items;
+    }, []);
+
+    return Array.from(new Map(options.map((option) => [option.id, option])).values());
+  } catch {
+    return [] satisfies SelectOption[];
+  }
+}
+
+async function loadDepartmentHeadEmployeeUserOptions(
+  connectionOverrides: Partial<OdooConnection>,
+) {
+  try {
+    const [departments, employees] = await Promise.all([
+      searchReadWithFieldFallback<DepartmentRecord>(
+        "hr.department",
+        [],
+        ["name", "parent_id", "manager_id"],
+        {
+          order: "parent_id asc, name asc",
+          limit: 500,
+          context: { active_test: false },
+        },
+        connectionOverrides,
+      ).catch(() => []),
+      executeOdooKw<EmployeeUserRecord[]>(
+        "hr.employee",
+        "search_read",
+        [[["active", "=", true], ["user_id", "!=", false]]],
+        {
+          fields: [
+            "name",
+            "department_id",
+            "job_id",
+            "job_title",
+            "user_id",
+            "work_phone",
+            "mobile_phone",
+            "work_email",
+          ],
+          order: "department_id asc, name asc",
+          limit: 800,
+        },
+        connectionOverrides,
+      ).catch(() => []),
+    ]);
+    const managerEmployeeIds = new Set(
+      departments
+        .map((department) => relationId(department.manager_id ?? false))
+        .filter((id): id is number => Boolean(id)),
+    );
+    const options = employees.reduce<SelectOption[]>((items, employee) => {
+      const userId = relationId(employee.user_id);
+      if (!userId) {
+        return items;
+      }
+
+      const jobTitle = getEmployeeJobTitle(employee);
+      const isDepartmentHead =
+        managerEmployeeIds.has(employee.id) ||
+        containsWorkspaceToken(relationName(employee.job_id ?? false), DEPARTMENT_HEAD_TEXT_TOKENS) ||
+        containsWorkspaceToken(jobTitle, DEPARTMENT_HEAD_TEXT_TOKENS);
+      if (!isDepartmentHead) {
+        return items;
+      }
+
+      const phone = employee.mobile_phone || employee.work_phone || "";
+      items.push({
+        id: userId,
+        name: relationName(employee.user_id, employee.name),
+        login: phone || employee.work_email || "",
+        phone: phone || "",
+        role: "project_manager",
         departmentName: relationName(employee.department_id, ""),
         jobTitle,
       });
@@ -1968,11 +2154,28 @@ export async function loadProjectManagerOptions(
 ) {
   return readWorkspaceOptionCache(
     workspaceOptionCacheKey("project-managers", connectionOverrides),
-    () =>
-      loadUserOptions(
-        ["general_manager", "project_manager", "system_admin"],
-        connectionOverrides,
-      ),
+    async () => {
+      const [roleOptions, departmentHeadOptions] = await Promise.all([
+        loadUserOptions(
+          ["general_manager", "project_manager", "system_admin"],
+          connectionOverrides,
+        ),
+        loadDepartmentHeadEmployeeUserOptions(connectionOverrides),
+      ]);
+
+      return Array.from(
+        new Map([...roleOptions, ...departmentHeadOptions].map((option) => [option.id, option])).values(),
+      ).sort((left, right) => {
+        const departmentDiff = (left.departmentName ?? "").localeCompare(
+          right.departmentName ?? "",
+          "mn",
+        );
+        if (departmentDiff !== 0) {
+          return departmentDiff;
+        }
+        return left.name.localeCompare(right.name, "mn");
+      });
+    },
   );
 }
 
