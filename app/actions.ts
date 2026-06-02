@@ -2134,7 +2134,7 @@ export async function updateTaskAction(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim();
   const target = projectId ? `/projects/${projectId}` : "/projects";
 
-  if (!projectId || !taskId || !name) {
+  if (!projectId || !taskId) {
     redirectWithMessage(
       target,
       "error",
@@ -2152,7 +2152,16 @@ export async function updateTaskAction(formData: FormData) {
       login: session.login,
       password: session.password,
     };
-    const project = await loadProjectDetail(projectId, connectionOverrides);
+    const [project, task] = await Promise.all([
+      loadProjectDetail(projectId, connectionOverrides),
+      loadTaskDetail(taskId, connectionOverrides),
+    ]);
+
+    if (task.projectId !== projectId) {
+      redirectWithMessage(target, "error", "Даалгавар энэ ажилд хамаарахгүй байна.");
+    }
+
+    const canEditTaskContent = task.createdById === session.uid;
     const selectedTeamLeaderId = teamLeaderIdRaw ? Number(teamLeaderIdRaw) : null;
     const selectedCrewTeam = crewTeamIdRaw
       ? project.crewTeamOptions.find((team) => team.id === Number(crewTeamIdRaw)) ?? null
@@ -2175,7 +2184,11 @@ export async function updateTaskAction(formData: FormData) {
       redirectWithMessage(target, "error", "Сонгосон баг энэ ажилд хамаарахгүй байна.");
     }
 
-    if (measurementUnitId) {
+    if (canEditTaskContent && !name) {
+      redirectWithMessage(target, "error", "Даалгаврын нэр хоосон байж болохгүй.");
+    }
+
+    if (canEditTaskContent && measurementUnitId) {
       const validUnitIds = new Set(project.allUnitOptions.map((unit) => unit.id));
       if (!validUnitIds.has(measurementUnitId)) {
         redirectWithMessage(target, "error", "Сонгосон хэмжих нэгж олдсонгүй.");
@@ -2183,25 +2196,32 @@ export async function updateTaskAction(formData: FormData) {
     }
 
     if (
+      canEditTaskContent &&
       plannedQuantityRaw &&
       (!Number.isFinite(plannedQuantity) || Number(plannedQuantity) <= 0)
     ) {
       redirectWithMessage(target, "error", "Төлөвлөсөн хэмжээ 0-ээс их байх ёстой.");
     }
 
+    const assignmentValues = {
+      teamLeaderId: selectedTeamLeaderId,
+      crewTeamId: selectedCrewTeam?.id ?? null,
+      assigneeUserIds: selectedCrewTeam?.memberUserIds ?? [],
+    };
+
     await updateWorkspaceTask(
       taskId,
-      {
-        name,
-        teamLeaderId: selectedTeamLeaderId,
-        crewTeamId: selectedCrewTeam?.id ?? null,
-        assigneeUserIds: selectedCrewTeam?.memberUserIds ?? [],
-        startDate,
-        deadline,
-        measurementUnitId,
-        plannedQuantity,
-        description,
-      },
+      canEditTaskContent
+        ? {
+            name,
+            ...assignmentValues,
+            startDate,
+            deadline,
+            measurementUnitId,
+            plannedQuantity,
+            description,
+          }
+        : assignmentValues,
       connectionOverrides,
     );
 
@@ -2211,7 +2231,13 @@ export async function updateTaskAction(formData: FormData) {
     revalidatePath("/tasks");
     revalidatePath(`/projects/${projectId}`);
     revalidatePath(`/tasks/${taskId}`);
-    redirect(`${target}?notice=${encodeURIComponent("Даалгавар амжилттай шинэчлэгдлээ.")}`);
+    redirect(
+      `${target}?notice=${encodeURIComponent(
+        canEditTaskContent
+          ? "Даалгавар амжилттай шинэчлэгдлээ."
+          : "Баг ба хариуцсан ажилтан амжилттай хуваарилагдлаа.",
+      )}`,
+    );
   } catch (error) {
     rethrowIfRedirectError(error);
     redirectWithMessage(target, "error", getErrorMessage(error));

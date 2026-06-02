@@ -1186,6 +1186,7 @@ type AutoGarbageFuelRow = {
 
 type AutoGarbageWeightReportRow = {
   key: string;
+  vehicleId: number | null;
   plate: string;
   modelName: string;
   reportDate: string;
@@ -1201,6 +1202,7 @@ type AutoGarbageWeightReportRow = {
 
 type AutoGarbageFuelReportRow = {
   key: string;
+  vehicleId: number | null;
   plate: string;
   modelName: string;
   reportDate: string;
@@ -1773,22 +1775,12 @@ function buildAutoGarbageBoardModel({
   const initialLeaderboardRows = boardVehicles.map((vehicle) => {
     const { plate: displayPlate } = vehicleDisplayInfo(vehicle);
     const plateKey = compactVehicleKey(displayPlate);
-    const currentMonthKey = currentDateKey.slice(0, 7);
-    const monthWeightReports = vehicle.weightReports.filter((report) =>
-      reportDateKey(report).startsWith(currentMonthKey),
-    );
-    const weightReportSource = monthWeightReports.length ? monthWeightReports : vehicle.weightReports;
+    const weightReportSource = vehicle.weightReports;
     const latestWeightReport = latestFetchedReport(weightReportSource) ?? weightReportSource[0] ?? null;
-    const monthReportTons = monthWeightReports
-      .reduce((sum, report) => sum + (report.weightTons || parseWeightLabelToTons(report.weightLabel)), 0);
-    const reportTons =
-      vehicle.weightMonthTons ||
-      monthReportTons ||
-      vehicle.weightTotalTons ||
-      vehicle.weightReports.reduce(
-        (sum, report) => sum + (report.weightTons || parseWeightLabelToTons(report.weightLabel)),
-        0,
-      );
+    const reportTons = weightReportSource.reduce(
+      (sum, report) => sum + (report.weightTons || parseWeightLabelToTons(report.weightLabel)),
+      0,
+    );
     const taskTons = taskWeightByPlate.get(plateKey) ?? 0;
     const weightTons = Math.max(reportTons, taskTons);
     const dataSourceLabel =
@@ -1871,6 +1863,7 @@ function buildAutoGarbageBoardModel({
   const weightReportRows = fleetBoard.weightReportRows
     .map((report) => ({
       key: `weight-${report.id}`,
+      vehicleId: report.vehicleId,
       plate: dashboardCleanText(report.vehiclePlate),
       modelName: dashboardCleanText(report.vehicleName),
       reportDate: report.reportDate,
@@ -1888,6 +1881,7 @@ function buildAutoGarbageBoardModel({
   const fuelReportRows = fleetBoard.fuelReportRows
     .map((report) => ({
       key: `fuel-${report.id}`,
+      vehicleId: report.vehicleId,
       plate: dashboardCleanText(report.vehiclePlate),
       modelName: dashboardCleanText(report.vehicleName),
       reportDate: report.reportDate,
@@ -1951,7 +1945,11 @@ function buildAutoGarbageBoardModel({
     });
 
   const stats = dashboardTaskStats(boardTasks, currentDateKey);
-  const totalTons = leaderboardRows.reduce((sum, row) => sum + row.weightTons, 0);
+  const boardVehicleIds = new Set(boardVehicles.map((vehicle) => vehicle.id));
+  const unmatchedWeightReportTons = weightReportRows
+    .filter((row) => !isFailedReport(row) && (!row.vehicleId || !boardVehicleIds.has(row.vehicleId)))
+    .reduce((sum, row) => sum + row.weightTons, 0);
+  const totalTons = leaderboardRows.reduce((sum, row) => sum + row.weightTons, 0) + unmatchedWeightReportTons;
   const totalFuelLiters = fuelRows.reduce((sum, row) => sum + row.fuelLiters, 0);
   const latestWeightFetchedAt = latestFetchedAtLabel(weightReportRows);
   const latestFuelFetchedAt = latestFetchedAtLabel(fuelReportRows);
@@ -2441,7 +2439,7 @@ function AutoGarbageLeaderboardPanel({
                   : "Жингийн бүртгэл болон ажлын тайлангаас нэгтгэв."}
               </p>
             </div>
-            <span>{showWeightReports ? `${weightReportRows.length} тайлан` : "Энэ сар"}</span>
+            <span>{showWeightReports ? `${weightReportRows.length} тайлан` : "12 сар"}</span>
           </div>
 
           {showWeightReports ? (
@@ -2469,7 +2467,7 @@ function AutoGarbageLeaderboardPanel({
                   : "Шатахууны бүртгэлээс машинаар нь нэгтгэв."}
               </p>
             </div>
-            <span>{showFuelReports ? `${fuelReportRows.length} тайлан` : "Энэ сар"}</span>
+            <span>{showFuelReports ? `${fuelReportRows.length} тайлан` : "12 сар"}</span>
           </div>
 
           {showFuelReports ? (

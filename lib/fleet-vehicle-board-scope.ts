@@ -52,10 +52,10 @@ export function scopeFleetVehicleBoardByDepartment(
   const activeVehicles = board.activeVehicles.filter((vehicle) => scopedVehicleIds.has(vehicle.id));
   const repairVehicles = board.repairVehicles.filter((vehicle) => scopedVehicleIds.has(vehicle.id));
   const weightReportRows = board.weightReportRows.filter(
-    (row) => row.vehicleId !== null && scopedVehicleIds.has(row.vehicleId),
+    (row) => row.vehicleId === null || scopedVehicleIds.has(row.vehicleId),
   );
   const fuelReportRows = board.fuelReportRows.filter(
-    (row) => row.vehicleId !== null && scopedVehicleIds.has(row.vehicleId),
+    (row) => row.vehicleId === null || scopedVehicleIds.has(row.vehicleId),
   );
   const highestFuelVehicle =
     [...allVehicles]

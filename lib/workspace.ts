@@ -84,6 +84,7 @@ type ProjectCrewRecord = {
 type TaskRecord = {
   id: number;
   name: string;
+  create_uid?: Relation;
   project_id: Relation;
   sequence?: number;
   stage_id: Relation;
@@ -826,6 +827,7 @@ type WorkspaceReportAttachmentInput = {
 export type TaskDetail = {
   id: number;
   name: string;
+  createdById: number | null;
   projectId: number | null;
   projectName: string;
   operationType: string;
@@ -4355,6 +4357,7 @@ export async function loadTaskDetail(
       [["id", "=", taskId]],
       [
         "name",
+        "create_uid",
         "project_id",
         "stage_id",
         "ops_team_leader_id",
@@ -4747,6 +4750,7 @@ export async function loadTaskDetail(
   return {
     id: task.id,
     name: task.name,
+    createdById: relationId(task.create_uid ?? false),
     projectId: relationId(task.project_id),
     projectName: relationName(task.project_id),
     operationType: task.mfo_operation_type || "",

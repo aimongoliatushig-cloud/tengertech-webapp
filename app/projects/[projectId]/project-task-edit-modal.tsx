@@ -20,6 +20,7 @@ type Props = {
   plannedQuantity: number;
   measurementUnitId: number | null;
   description: string;
+  canEditContent?: boolean;
   departmentUserOptions: SelectOption[];
   crewTeamOptions: Array<{
     id: number;
@@ -67,6 +68,7 @@ export function ProjectTaskEditModal({
   plannedQuantity,
   measurementUnitId,
   description,
+  canEditContent = true,
   departmentUserOptions,
   crewTeamOptions,
   unitOptions,
@@ -101,6 +103,7 @@ export function ProjectTaskEditModal({
     { id: 2, label: "Хэмжээ" },
     { id: 3, label: "Хянах" },
   ] as const;
+  const visibleTaskSteps = canEditContent ? taskSteps : taskSteps.slice(0, 1);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setIsMounted(true), 0);
@@ -173,7 +176,7 @@ export function ProjectTaskEditModal({
                 </button>
                 <div className={styles.modalTitleGroup}>
                   <strong className={styles.modalTitle} id={titleId}>
-                    Даалгавар засах
+                    {canEditContent ? "Даалгавар засах" : "Баг хуваарилах"}
                   </strong>
                 </div>
               </div>
@@ -183,8 +186,9 @@ export function ProjectTaskEditModal({
                 <input type="hidden" name="task_id" value={taskId} />
                 <input type="hidden" name="task_assignment_mode" value={useTeam ? "team" : "single"} />
 
+                {canEditContent ? (
                 <div className={styles.taskCreateStepper} aria-label="Даалгавар засах алхам">
-                  {taskSteps.map((step) => (
+                  {visibleTaskSteps.map((step) => (
                     <button
                       key={step.id}
                       type="button"
@@ -197,13 +201,18 @@ export function ProjectTaskEditModal({
                     </button>
                   ))}
                 </div>
+                ) : null}
 
                 <section className={`${styles.taskCreateStepPanel} ${currentStep === 1 ? styles.taskCreateStepActive : ""}`}>
                   <div className={styles.taskCreateSectionHeader}>
                     <ClipboardList aria-hidden />
                     <div>
                       <strong>Даалгаврын үндсэн мэдээлэл</strong>
-                      <p>Даалгаврын нэр, дугаар болон хариуцсан ажилтан эсвэл багийг шинэчилнэ.</p>
+                      <p>
+                        {canEditContent
+                          ? "Даалгаврын нэр, дугаар болон хариуцсан ажилтан эсвэл багийг шинэчилнэ."
+                          : "Дээрээс ирсэн даалгаврын агуулгыг өөрчлөхгүйгээр зөвхөн хариуцсан ажилтан эсвэл баг хуваарилна."}
+                      </p>
                     </div>
                   </div>
 
@@ -219,6 +228,7 @@ export function ProjectTaskEditModal({
                     </div>
                   </div>
 
+                  {canEditContent ? (
                   <div className={styles.field}>
                     <label htmlFor="edit-task-name">Даалгаврын нэр</label>
                     <input
@@ -229,6 +239,7 @@ export function ProjectTaskEditModal({
                       required
                     />
                   </div>
+                  ) : null}
 
                   <section className={styles.assignmentPanel}>
                     <div className={styles.field}>
@@ -280,12 +291,19 @@ export function ProjectTaskEditModal({
                   </section>
 
                   <div className={styles.taskCreateStepActions}>
-                    <button type="button" className={styles.primaryButton} onClick={() => setCurrentStep(2)}>
-                      Үргэлжлүүлэх
-                    </button>
+                    {canEditContent ? (
+                      <button type="button" className={styles.primaryButton} onClick={() => setCurrentStep(2)}>
+                        Үргэлжлүүлэх
+                      </button>
+                    ) : (
+                      <button type="submit" className={styles.primaryButton}>
+                        Хуваарилах
+                      </button>
+                    )}
                   </div>
                 </section>
 
+                {canEditContent ? (
                 <section className={`${styles.taskCreateStepPanel} ${currentStep === 2 ? styles.taskCreateStepActive : ""}`}>
                   <div className={styles.taskCreateSectionHeader}>
                     <Ruler aria-hidden />
@@ -380,7 +398,9 @@ export function ProjectTaskEditModal({
                     </button>
                   </div>
                 </section>
+                ) : null}
 
+                {canEditContent ? (
                 <section className={`${styles.taskCreateStepPanel} ${currentStep === 3 ? styles.taskCreateStepActive : ""}`}>
                   <div className={styles.taskCreateSectionHeader}>
                     <CheckCircle2 aria-hidden />
@@ -452,6 +472,7 @@ export function ProjectTaskEditModal({
                     </button>
                   </div>
                 </section>
+                ) : null}
               </form>
             </div>
           </div>,
@@ -466,7 +487,7 @@ export function ProjectTaskEditModal({
         className={styles.secondaryButton}
         onClick={openModal}
       >
-        Засах
+        {canEditContent ? "Засах" : "Баг хуваарилах"}
       </button>
       {modalContent}
     </>

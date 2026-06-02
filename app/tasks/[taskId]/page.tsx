@@ -30,7 +30,6 @@ import {
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment } from "@/lib/dashboard-scope";
-import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurement";
 import {
   canReviewWorkspaceTaskReport,
   loadTaskReportReviewAccess,
@@ -366,8 +365,10 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
       ? [{ quantity: task.plannedQuantity, unit: task.measurementUnit }]
       : [];
   const canOpenReportComposer = canWriteReport && canSubmitWorkspaceReport(session);
-  const canEditTask = canCreateTasks && Boolean(task.projectId) && !workerMode;
-  const canDeleteTask = canDeleteWorkspaceItems(session) && Boolean(task.projectId);
+  const canEditTaskContent = task.createdById === session.uid;
+  const canAssignTaskTeam = canCreateTasks && Boolean(task.projectId) && !workerMode;
+  const canEditTask = canAssignTaskTeam;
+  const canDeleteTask = canDeleteWorkspaceItems(session) && Boolean(task.projectId) && canEditTaskContent;
   const taskEditOptions =
     canEditTask && task.projectId
       ? await loadProjectTaskEditOptions(task.projectId, task.operationType, connectionOverrides)
@@ -420,23 +421,17 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
         : "Энэ төлөв дээр хийх үндсэн үйлдэл алга байна.";
 
   const showReportComposer = !canManageReview && !canMarkDone && !canSubmitForReview && canOpenReportComposer;
-  const procurementBundle = reviewFocusedMode
-    ? { items: [], pagination: { page: 1, limit: 5, total: 0, pages: 1 } }
-    : await loadProcurementRequests(
-        { task_id: task.id, limit: 5 },
-        connectionOverrides,
-      ).catch((error) => {
-        if (!isProcurementSetupError(error)) {
-          console.warn("Task procurement links could not be loaded:", error);
-        }
-        return { items: [], pagination: { page: 1, limit: 5, total: 0, pages: 1 } };
-      });
-  const procurementItems = procurementBundle.items;
-  const procurementCreateParams = new URLSearchParams({ task_id: String(task.id) });
-  if (task.projectId) {
-    procurementCreateParams.set("project_id", String(task.projectId));
-  }
-  const procurementCreateHref = `/procurement/new?${procurementCreateParams.toString()}`;
+  const taskAssigneeLabel =
+    task.teamLeaderName ||
+    task.crewTeamName ||
+    task.assignees[0] ||
+    "Хариуцсан хүн сонгоогүй";
+  const taskUnitLabel =
+    quantityLines.length
+      ? quantityLines.map((line) => line.unit).filter(Boolean).join(", ")
+      : hasMeaningfulQuantity && task.measurementUnit
+        ? task.measurementUnit
+        : "";
   const actionPanel = (
     <aside className={`${styles.actionCard} ${reviewFocusedMode ? styles.reviewActionCard : ""}`} id="task-actions">
       <span className={styles.kicker}>{reviewFocusedMode ? "Үр дүн" : "Үндсэн үйлдэл"}</span>
@@ -623,6 +618,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                       plannedQuantity={task.plannedQuantity}
                       measurementUnitId={task.measurementUnitId}
                       description={task.description}
+                      canEditContent={canEditTaskContent}
                       departmentUserOptions={taskEditDepartmentUserOptions}
                       crewTeamOptions={taskEditCrewTeamOptions}
                       unitOptions={taskEditOptions.unitOptions}
@@ -641,6 +637,34 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
               </div>
 
               <div className={`${styles.heroStats} ${reviewFocusedMode ? styles.reviewStats : ""}`}>
+                {!reviewFocusedMode ? (
+                  <>
+                <article className={styles.heroStatCard}>
+                  <span>Даалгаврын нэр</span>
+                  <strong>{task.name}</strong>
+                </article>
+                <article className={styles.heroStatCard}>
+                  <span>Хариуцсан хүн</span>
+                  <strong>{taskAssigneeLabel}</strong>
+                </article>
+                  <article className={styles.heroStatCard}>
+                    <span>Хийгдэх хугацаа</span>
+                    <strong>
+                      {workerMode ? (
+                        <CalendarDays size={18} strokeWidth={2.3} aria-hidden="true" />
+                      ) : null}
+                      {task.deadline || "Огноо оруулаагүй"}
+                    </strong>
+                  </article>
+                  {taskUnitLabel ? (
+                    <article className={styles.heroStatCard}>
+                      <span>Нэгж</span>
+                      <strong>{taskUnitLabel}</strong>
+                    </article>
+                  ) : null}
+                  </>
+                ) : (
+                  <>
                 <article className={styles.heroStatCard}>
                   <span>Төлөв</span>
                   <strong>{task.stageLabel}</strong>
@@ -649,21 +673,12 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                   <span>Явц</span>
                   <strong>{task.progress}%</strong>
                 </article>
-                {!reviewFocusedMode ? (
-                  <article className={styles.heroStatCard}>
-                    <span>Хугацаа</span>
-                    <strong>
-                      {workerMode ? (
-                        <CalendarDays size={18} strokeWidth={2.3} aria-hidden="true" />
-                      ) : null}
-                      {task.deadline}
-                    </strong>
-                  </article>
-                ) : null}
                 <article className={styles.heroStatCard}>
                   <span>Тайлан</span>
                   <strong>{task.reports.length}</strong>
                 </article>
+                  </>
+                )}
               </div>
 
               {quantityLines.length ? (
@@ -715,58 +730,6 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
             <section className={`${styles.pageGrid} ${reviewFocusedMode ? styles.reviewPageGrid : ""}`}>
               <div className={styles.mainColumn}>
                 {!reviewFocusedMode ? actionPanel : null}
-
-                {!reviewFocusedMode ? (
-                <section className={styles.sectionCard}>
-                  <div className={styles.sectionHead}>
-                    <div>
-                      <span className={styles.kicker}>Худалдан авалт</span>
-                      <h2>Энэ даалгавартай холбоотой хүсэлт</h2>
-                    </div>
-                    <Link href={procurementCreateHref} className={styles.secondaryButton}>
-                      Хүсэлт үүсгэх
-                    </Link>
-                  </div>
-
-                  {procurementItems.length ? (
-                    <div className={styles.reportList}>
-                      {procurementItems.map((item) => (
-                        <Link key={item.id} href={`/procurement/${item.id}`} className={styles.reportCard}>
-                          <div className={styles.reportCardTop}>
-                            <div className={styles.metaGroup}>
-                              <strong>{item.title}</strong>
-                              <small>{item.name}</small>
-                            </div>
-                            <StagePill label={item.state.label} bucket={item.is_delayed ? "problem" : "progress"} />
-                          </div>
-                          <div className={styles.reportMediaMeta}>
-                            <span className={styles.chip}>{item.payment_status.label}</span>
-                            <span className={styles.chip}>{item.receipt_status.label}</span>
-                            {item.flow_type ? <span className={styles.chip}>{item.flow_type.label}</span> : null}
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className={styles.descriptionCard}>
-                      Энэ даалгаварт бүртгэлтэй худалдан авалтын хүсэлт алга байна.
-                    </div>
-                  )}
-                </section>
-                ) : null}
-
-                {!reviewFocusedMode && task.description ? (
-                  <section className={styles.sectionCard}>
-                    <div className={styles.sectionHead}>
-                      <div>
-                        <span className={styles.kicker}>Тайлбар</span>
-                        <h2>Даалгаврын тайлбар</h2>
-                      </div>
-                    </div>
-
-                    <div className={styles.descriptionCard}>{task.description}</div>
-                  </section>
-                ) : null}
 
                 <section className={styles.sectionCard} id="task-reports">
                   <div className={styles.sectionHead}>
