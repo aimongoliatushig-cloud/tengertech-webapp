@@ -35,8 +35,22 @@ class HrCustomMnReportWizard(models.TransientModel):
             domain.append((field_name, "<=", self.date_to))
         return domain
 
+    def _current_user_is_hr_reviewer(self):
+        return any(
+            self.env.user.has_group(group)
+            for group in [
+                "hr.group_hr_manager",
+                "hr_custom_mn.group_hr_custom_mn_officer",
+                "hr_custom_mn.group_hr_custom_mn_admin",
+            ]
+        )
+
+    def _employee_model(self):
+        employees = self.env["hr.employee"].with_context(active_test=False)
+        return employees.sudo() if self._current_user_is_hr_reviewer() else employees
+
     def _employees(self):
-        return self.env["hr.employee"].with_context(active_test=False).search(self._employee_domain(), order="department_id, name")
+        return self._employee_model().search(self._employee_domain(), order="department_id, name")
 
     def _status_label(self, employee):
         field = employee._fields["x_mn_employment_status"]
@@ -77,7 +91,7 @@ class HrCustomMnReportWizard(models.TransientModel):
             order="name",
         )
         for department in departments:
-            employees = self.env["hr.employee"].with_context(active_test=False).search([("department_id", "=", department.id)], order="name")
+            employees = self._employee_model().search([("department_id", "=", department.id)], order="name")
             if not employees:
                 rows.append([department.display_name, "-", "-", "-", "-", "-"])
                 continue
@@ -95,7 +109,7 @@ class HrCustomMnReportWizard(models.TransientModel):
         return headers, rows
 
     def _new_employee_rows(self):
-        employees = self.env["hr.employee"].with_context(active_test=False).search(self._employee_domain(), order="contract_date_start desc, name")
+        employees = self._employee_model().search(self._employee_domain(), order="contract_date_start desc, name")
         if self.date_from:
             employees = employees.filtered(lambda employee: (employee.contract_date_start or employee.x_mn_appointment_date) and (employee.contract_date_start or employee.x_mn_appointment_date) >= self.date_from)
         if self.date_to:
@@ -227,7 +241,7 @@ class HrCustomMnReportWizard(models.TransientModel):
         if self.date_to:
             domain.append(("create_date", "<=", "%s 23:59:59" % self.date_to))
         attachments = self.env["ir.attachment"].sudo().search(domain, order="create_date desc, id desc")
-        employees = self.env["hr.employee"].with_context(active_test=False).browse(attachments.mapped("res_id"))
+        employees = self._employee_model().browse(attachments.mapped("res_id"))
         employees_by_id = {employee.id: employee for employee in employees}
         if self.department_id:
             attachments = attachments.filtered(lambda item: employees_by_id.get(item.res_id) and employees_by_id[item.res_id].department_id == self.department_id)
