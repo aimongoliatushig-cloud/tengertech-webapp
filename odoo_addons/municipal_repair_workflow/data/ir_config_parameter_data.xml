@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <function model="ir.config_parameter" name="set_param">
+        <value eval="'municipal_repair_workflow.garbage_weight_sync_time'"/>
+        <value eval="'23:00'"/>
+    </function>
+    <function model="ir.config_parameter" name="set_param">
+        <value eval="'municipal_repair_workflow.garbage_fuel_sync_time'"/>
+        <value eval="'23:00'"/>
+    </function>
+</odoo>

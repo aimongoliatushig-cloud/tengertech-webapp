@@ -25,6 +25,8 @@ type WrsImportResponse = {
 };
 
 const DATA_DOWNLOAD_TIME_ZONE = "Asia/Ulaanbaatar";
+const IMPORT_READY_HOUR = 23;
+const IMPORT_READY_TIME_LABEL = "23:00";
 
 function getCurrentDateValue() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -52,7 +54,7 @@ function isImportReadyNow() {
   const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
   const minute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
 
-  return hour * 60 + minute >= 11 * 60;
+  return hour * 60 + minute >= IMPORT_READY_HOUR * 60;
 }
 
 function getLatestImportDateValue() {
@@ -79,7 +81,7 @@ export function DataDownloadClient() {
     }
 
     if (date > latestImportDate) {
-      setErrorMessage("Өнөөдрийн тайлан тухайн өдөр 11:00-с хойш татагдана. Ирээдүйн огноо сонгох боломжгүй.");
+      setErrorMessage(`Өнөөдрийн тайлан тухайн өдөр ${IMPORT_READY_TIME_LABEL}-с хойш татагдана. Ирээдүйн огноо сонгох боломжгүй.`);
       return;
     }
 

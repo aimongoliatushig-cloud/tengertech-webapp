@@ -41,7 +41,8 @@ type DailyWeightTotalRecord = {
 };
 
 const TIME_ZONE = process.env.APP_TIME_ZONE ?? "Asia/Ulaanbaatar";
-const IMPORT_READY_HOUR = 11;
+const IMPORT_READY_HOUR = 23;
+const IMPORT_READY_TIME_LABEL = "23:00";
 const WRS_WEIGHT_SOURCE = "WRS жингийн систем";
 const WRS_DAILY_WEIGHT_SOURCE = "wrs_normalized";
 const WRS_SUCCESS_TARGET_DATES_PARAM =
@@ -417,7 +418,7 @@ function validateRequestedWindow(startDate: string, endDate: string) {
 
   const latestAllowed = latestAllowedReportDateKey();
   if (endDate > latestAllowed) {
-    return `WRS тайланг ${latestAllowed}-с хойших огноогоор татахгүй. Өнөөдрийн тайлан тухайн өдөр 11:00-с хойш татагдана.`;
+    return `WRS тайланг ${latestAllowed}-с хойших огноогоор татахгүй. Өнөөдрийн тайлан тухайн өдөр ${IMPORT_READY_TIME_LABEL}-с хойш татагдана.`;
   }
 
   return "";

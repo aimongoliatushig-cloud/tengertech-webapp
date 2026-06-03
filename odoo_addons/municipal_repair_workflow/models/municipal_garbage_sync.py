@@ -153,11 +153,12 @@ class MunicipalGarbageSyncLog(models.Model):
     def _configured_time_due(self, sync_type):
         params = self.env["ir.config_parameter"].sudo()
         time_key = "municipal_repair_workflow.garbage_%s_sync_time" % sync_type
-        default_time = "11:00"
+        default_time = "23:00"
         legacy_default_time = "20:00" if sync_type == "weight" else "20:30"
         configured_time = params.get_param(time_key, default_time)
         if (
             configured_time == legacy_default_time
+            or configured_time == "11:00"
             or configured_time == "12:00"
             or (sync_type == "fuel" and configured_time == "00:15")
             or (sync_type == "weight" and configured_time == "00:00")
@@ -166,7 +167,7 @@ class MunicipalGarbageSyncLog(models.Model):
         try:
             hour, minute = [int(part) for part in configured_time.split(":", 1)]
         except Exception:
-            hour, minute = (11, 0)
+            hour, minute = (23, 0)
 
         now = self._local_now()
         configured_minutes = hour * 60 + minute

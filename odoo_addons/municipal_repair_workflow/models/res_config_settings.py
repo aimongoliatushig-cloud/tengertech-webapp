@@ -26,7 +26,7 @@ class ResConfigSettings(models.TransientModel):
     )
     garbage_weight_sync_time = fields.Char(
         string="Жингийн мэдээлэл татах цаг",
-        default="11:00",
+        default="23:00",
         config_parameter="municipal_repair_workflow.garbage_weight_sync_time",
     )
     garbage_weight_api_url = fields.Char(
@@ -51,7 +51,7 @@ class ResConfigSettings(models.TransientModel):
     )
     garbage_fuel_sync_time = fields.Char(
         string="Шатахууны мэдээлэл татах цаг",
-        default="11:00",
+        default="23:00",
         config_parameter="municipal_repair_workflow.garbage_fuel_sync_time",
     )
     garbage_fuel_api_url = fields.Char(
