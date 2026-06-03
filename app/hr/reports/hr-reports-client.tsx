@@ -20,7 +20,7 @@ const reportTypes: Array<{ id: HrReportType; name: string }> = [
   { id: "transfer", name: "Шилжилт хөдөлгөөний тайлан" },
   { id: "order_contract", name: "Тушаал, гэрээний тайлан" },
   { id: "clearance", name: "Тойрох хуудасны тайлан" },
-  { id: "archive", name: "Ажлаас чөлөөлсөн ажилтны тайлан" },
+  { id: "archive", name: "Ажлаас чөлөөлсөн байдлын тайлан" },
 ];
 
 function todayDate() {

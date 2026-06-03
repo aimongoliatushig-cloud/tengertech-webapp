@@ -2776,7 +2776,7 @@ const HR_REPORT_LABELS: Record<HrReportType, string> = {
   transfer: "Шилжилт хөдөлгөөний тайлан",
   order_contract: "Тушаал, гэрээний тайлан",
   clearance: "Тойрох хуудасны тайлан",
-  archive: "Ажлаас чөлөөлсөн ажилтны тайлан",
+  archive: "Ажлаас чөлөөлсөн байдлын тайлан",
 };
 
 const FALLBACK_HR_REPORT_PREFIX = "HR_REPORT_ARCHIVE";
@@ -2915,8 +2915,9 @@ async function renderFallbackPdfWithPlaywright(
   <style>
     @page { size: A4 landscape; margin: 14mm; }
     * { box-sizing: border-box; }
-    body { margin: 0; color: #1f2b25; font-family: Arial, "Segoe UI", sans-serif; font-size: 11px; }
-    header { display: grid; grid-template-columns: 72px 1fr; gap: 14px; align-items: center; margin-bottom: 16px; }
+    html, body, table, th, td, h1, p, div, span { font-family: Arial, sans-serif !important; }
+    body { margin: 0; color: #1f2b25; font-size: 11px; }
+    header { display: block; margin-bottom: 16px; }
     .logo { width: 64px; height: 64px; object-fit: contain; }
     .placeholder { display: grid; width: 64px; height: 64px; place-items: center; border: 1px solid #cfd8d1; color: #2e7d32; font-weight: 700; }
     h1 { margin: 0 0 6px; font-size: 20px; line-height: 1.2; }
@@ -2931,11 +2932,9 @@ async function renderFallbackPdfWithPlaywright(
 <body>
   <header>
     ${logo ? `<img class="logo" src="data:image/png;base64,${logo}" alt="Лого" />` : `<div class="placeholder">Лого</div>`}
-    <div>
-      <h1>${escapeHtml(title)}</h1>
-      <div class="meta">${escapeHtml(company?.name || "Компани")} · ${escapeHtml(dateFrom)} - ${escapeHtml(dateTo)}</div>
-    </div>
   </header>
+  <h1>${escapeHtml(title)}</h1>
+  <div class="meta"><strong>Хугацаа:</strong> ${escapeHtml(dateFrom)} - ${escapeHtml(dateTo)}</div>
   <table>
     <thead>
       <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
