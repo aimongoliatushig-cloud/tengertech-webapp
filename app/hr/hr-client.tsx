@@ -96,14 +96,8 @@ export type RegistryColumn = {
 };
 
 function statusLabel(employee: HrEmployeeDirectoryItem) {
-  if (employee.statusKey === "terminated") {
-    return "Ажлаас чөлөөлөгдсөн";
-  }
-  if (employee.statusKey === "resigned") {
-    return "Ажлаас гарсан";
-  }
-  if (!employee.active || employee.statusKey === "archived") {
-    return "Архивлагдсан";
+  if (!employee.active || ["archived", "terminated", "resigned"].includes(employee.statusKey)) {
+    return "Чөлөөлөгдсөн";
   }
   if (employee.statusKey === "leave") {
     return "Чөлөөтэй";
@@ -185,8 +179,7 @@ export function EmployeeTable({
           <option value="Чөлөөтэй">Чөлөөтэй</option>
           <option value="Өвчтэй">Өвчтэй</option>
           <option value="Томилолттой">Томилолттой</option>
-          <option value="Ажлаас гарсан">Ажлаас гарсан</option>
-          <option value="Архивлагдсан">Архивлагдсан</option>
+          <option value="Чөлөөлөгдсөн">Чөлөөлөгдсөн</option>
         </select>
         {canCreateEmployee ? (
           <Link href="/hr/employees/new" className={styles.primaryLink}>
