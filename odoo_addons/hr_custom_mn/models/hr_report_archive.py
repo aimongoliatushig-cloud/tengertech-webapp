@@ -66,10 +66,10 @@ class MunicipalHrReportArchive(models.Model):
 
     def unlink(self):
         self._require_hr_reviewer()
-        attachments = self.mapped("attachment_id")
-        result = super().unlink()
-        attachments.sudo().unlink()
-        return result
+        attachments = self.mapped("attachment_id").sudo().exists()
+        if attachments:
+            attachments.unlink()
+        return super().unlink()
 
     def _serialize(self):
         self.ensure_one()
