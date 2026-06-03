@@ -970,6 +970,23 @@
   background: #fff;
 }
 
+.pdfFrameStatus {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 72vh;
+  border-radius: 6px;
+  background: #fff;
+  color: #607064;
+  text-align: center;
+}
+
+.pdfFrameStatus p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
 .reportViewer {
   display: grid;
   gap: 14px;
