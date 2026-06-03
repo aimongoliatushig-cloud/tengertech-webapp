@@ -311,6 +311,7 @@ export function AppMenu({
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isHrRoute = pathname === "/hr" || pathname.startsWith("/hr/");
   const [isOpen, setIsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
@@ -584,8 +585,31 @@ export function AppMenu({
       departmentName: group.name,
     }));
 
+  const hrMenuChildren: MenuItem[] = [
+    { key: "hr-dashboard", href: "/hr", label: "Хянах самбар", icon: LayoutDashboard },
+    { key: "hr-employees", href: "/hr/employees", label: "Ажилтнууд", icon: Users },
+    { key: "hr-new-employee", href: "/hr/employees/new", label: "Шинэ ажилтан", icon: PlusCircle },
+    { key: "hr-requests", href: "/hr/leaves", label: "Чөлөө", icon: ClipboardCheck },
+    { key: "hr-sick", href: "/hr/sick", label: "Өвчтэй", icon: CalendarDays },
+    { key: "hr-trips", href: "/hr/trips", label: "Томилолт", icon: Truck },
+    { key: "hr-discipline", href: "/hr/discipline", label: "Сахилга", icon: Flag },
+    { key: "hr-orders", href: "/hr/orders", label: "Тушаал", icon: FileText },
+    { key: "hr-transfers", href: "/hr/transfers", label: "Шилжилт", icon: ListChecks },
+    { key: "hr-clearance", href: "/hr/clearance", label: "Тойрох хуудас", icon: ClipboardCheck },
+    { key: "hr-archive", href: "/hr/archive", label: "Ажлаас чөлөөлөх", icon: FileText },
+    { key: "hr-reports", href: "/hr/reports", label: "Тайлан", icon: BarChart3 },
+    { key: "hr-settings", href: "/hr/settings", label: "Тохиргоо", icon: Settings },
+  ];
+  const hrMenuItem: MenuItem = {
+    key: "hr",
+    href: "/hr",
+    label: "Хүний нөөц",
+    icon: Users,
+    children: hrMenuChildren,
+  };
+
   const hrItems: MenuItem[] = canShowHrMenu
-    ? [{ key: "hr", href: "/hr", label: "Хүний нөөц", icon: Users }]
+    ? [hrMenuItem]
     : [];
 
   const roleFocusedItems: MenuItem[] = [
@@ -817,14 +841,7 @@ export function AppMenu({
         icon: LayoutDashboard,
       },
       ...(canShowHrMenu
-        ? [
-            {
-              key: "hr",
-              href: "/hr",
-              label: "Хүний нөөц",
-              icon: Users,
-            },
-          ]
+        ? [hrMenuItem]
         : []),
       {
         key: "projects",
@@ -877,14 +894,7 @@ export function AppMenu({
         icon: ListChecks,
       },
       ...(canShowHrMenu
-        ? [
-            {
-              key: "hr",
-              href: "/hr",
-              label: "Хэлтсийн хүний нөөц",
-              icon: Users,
-            },
-          ]
+        ? [hrMenuItem]
         : []),
       ...(scopedDepartmentIsAutoGarbage
         ? [
@@ -972,7 +982,7 @@ export function AppMenu({
     },
   ];
 
-  const items = (
+  const baseItems = (
     masterMode
       ? masterItems
       : reportOnlyMode
@@ -982,8 +992,16 @@ export function AppMenu({
         : scopedDepartmentHeadMode
           ? scopedDepartmentHeadItems
           : isGarbageDepartmentHead
-            ? garbageDepartmentItems
-            : compactDefaultItems
+          ? garbageDepartmentItems
+          : compactDefaultItems
+  );
+  const items = (isHrRoute
+    ? baseItems.flatMap((item) =>
+        item.children?.length && item.children.every((child) => child.key.startsWith("hr-"))
+          ? item.children
+          : item,
+      )
+    : baseItems
   ).filter((item) => !isHiddenMenuItem(item));
 
   function isProcurementChildActive(item: MenuItem) {
@@ -1288,7 +1306,7 @@ export function AppMenu({
                 icon: ListChecks,
               },
               ...(canShowHrMenu
-                ? [{ key: "hr", href: "/hr", label: "ХН", icon: Users }]
+                ? [hrMenuItem]
                 : []),
               ...(showProcurement
                 ? [
@@ -1310,7 +1328,7 @@ export function AppMenu({
             ]
           : hrFocusedMode
             ? [
-                { key: "hr", href: "/hr", label: "Хүний нөөц", icon: Users },
+                hrMenuItem,
                 ...(mobilePrimaryAction ? [mobilePrimaryAction] : []),
                 {
                   key: "profile",
@@ -1561,12 +1579,7 @@ export function AppMenu({
                             icon: BarChart3,
                           },
                           canShowHrMenu
-                            ? {
-                                key: "hr",
-                                href: "/hr",
-                                label: "HR",
-                                icon: Users,
-                              }
+                            ? hrMenuItem
                             : {
                                 key: "chat",
                                 href: "/chat",

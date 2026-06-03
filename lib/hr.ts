@@ -645,11 +645,7 @@ function mapHrEmployeeDirectoryApiRecord(record: HrEmployeeDirectoryApiRecord): 
 }
 
 function resolveDirectEmployeeStatus(record: HrEmployeeSingleSearchRecord) {
-  if (record.active === false) {
-    return { key: "archived", label: "Архивласан" };
-  }
-
-  const key = record.x_mn_employment_status || "active";
+  const key = record.x_mn_employment_status || (record.active === false ? "archived" : "active");
   const labels: Record<string, string> = {
     active: "Идэвхтэй",
     probation: "Туршилт",
@@ -1793,27 +1789,29 @@ export async function terminateEmployee(session: AppSession, data: HrEmployeeTer
   if (!data.employeeId) {
     throw new Error("Ажилтан заавал сонгоно уу.");
   }
-  ensureDateOrder(data.terminationDate, "Ажлаас гарсан огноо");
+  ensureDateOrder(data.terminationDate, "Ажлаас чөлөөлсөн огноо");
   if (!data.reason.trim()) {
-    throw new Error("Ажлаас гарах шалтгаан заавал оруулна уу.");
+    throw new Error("Ажлаас чөлөөлөх шалтгаан заавал оруулна уу.");
   }
 
   const fields = new Set(
     await getAvailableFields(
       "hr.employee",
-      ["active", "departure_date", "departure_description"],
+      ["active", "departure_date", "departure_description", "x_mn_employment_status", "contract_date_end"],
       session,
     ),
   );
   const values: Record<string, unknown> = {};
   if (fields.has("active")) values.active = false;
+  if (fields.has("x_mn_employment_status")) values.x_mn_employment_status = "terminated";
   if (fields.has("departure_date")) values.departure_date = data.terminationDate;
+  if (fields.has("contract_date_end")) values.contract_date_end = data.terminationDate;
   if (fields.has("departure_description")) {
     values.departure_description = [data.reason, data.note].filter(Boolean).join("\n");
   }
 
   if (!Object.keys(values).length) {
-    throw new Error("Ажилтныг архивлах талбар олдсонгүй.");
+    throw new Error("Ажилтныг ажлаас чөлөөлөх талбар олдсонгүй.");
   }
 
   await executeOdooKw<boolean>("hr.employee", "write", [[data.employeeId], values], {}, getConnection(session));
@@ -2076,7 +2074,7 @@ export async function getDisciplineActionOptions(session: AppSession): Promise<H
   return [
     { id: "warning", name: "Сануулга" },
     { id: "deduction", name: "20% цалингийн суутгал" },
-    { id: "termination_proposal", name: "Ажлаас халах санал" },
+    { id: "termination_proposal", name: "Ажлаас чөлөөлөх санал" },
   ];
 }
 
@@ -2778,7 +2776,7 @@ const HR_REPORT_LABELS: Record<HrReportType, string> = {
   transfer: "Шилжилт хөдөлгөөний тайлан",
   order_contract: "Тушаал, гэрээний тайлан",
   clearance: "Тойрох хуудасны тайлан",
-  archive: "Архивын тайлан",
+  archive: "Ажлаас чөлөөлсөн ажилтны тайлан",
 };
 
 const FALLBACK_HR_REPORT_PREFIX = "HR_REPORT_ARCHIVE";

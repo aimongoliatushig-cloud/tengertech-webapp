@@ -384,6 +384,97 @@
   gap: 16px;
 }
 
+.quickActionBar {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.28fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin: -6px 0 14px;
+  padding: 12px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 12px 28px rgba(24, 71, 36, 0.07);
+}
+
+.quickActionHeader {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.quickActionHeader strong {
+  color: #1f2b25;
+  font-size: 0.94rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.quickActionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.quickActionLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid rgba(46, 125, 50, 0.15);
+  border-radius: 8px;
+  background: rgba(246, 251, 247, 0.96);
+  color: #203029;
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.quickActionLink svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+
+.quickActionLink span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.quickActionLink:hover,
+.quickActionLink:focus-visible {
+  border-color: rgba(46, 125, 50, 0.34);
+  background: #eef7ef;
+  box-shadow: 0 10px 22px rgba(27, 73, 38, 0.1);
+  color: #1f7a35;
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.quickActionPrimary {
+  border-color: rgba(46, 125, 50, 0.3);
+  background: #2e7d32;
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(46, 125, 50, 0.16);
+}
+
+.quickActionPrimary:hover,
+.quickActionPrimary:focus-visible {
+  background: #256f2c;
+  color: #fff;
+}
+
 .chartPanel {
   align-content: start;
   min-width: 0;
@@ -691,6 +782,11 @@
   resize: vertical;
 }
 
+.registryNoteField textarea {
+  min-height: 128px;
+  line-height: 1.45;
+}
+
 .tableWrap {
   max-width: 100%;
   overflow-x: auto;
@@ -877,6 +973,352 @@
 .reportViewer {
   display: grid;
   gap: 14px;
+}
+
+.reportMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.reportMetricCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 94px;
+  padding: 14px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 12px 28px rgba(24, 71, 36, 0.07);
+}
+
+.reportMetricIcon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(218, 238, 219, 0.9);
+  color: #2e7d32;
+}
+
+.reportMetricIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.reportMetricCard div {
+  min-width: 0;
+}
+
+.reportMetricCard small {
+  display: block;
+  color: #637568;
+  font-size: 0.76rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.reportMetricCard strong {
+  display: block;
+  margin-top: 4px;
+  color: #142017;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.reportMetricCard p {
+  margin: 5px 0 0;
+  color: #66766b;
+  font-size: 0.74rem;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.reportWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 390px);
+  align-items: start;
+  gap: 16px;
+}
+
+.reportListPanel,
+.reportCreateForm,
+.reportSideHint {
+  min-width: 0;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.reportListPanel {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.reportListHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+}
+
+.reportListHeader h2,
+.reportCreateHeader h2 {
+  margin: 3px 0 0;
+  color: #1f2b25;
+  font-size: 1.08rem;
+  line-height: 1.2;
+}
+
+.reportListHeader p,
+.reportCreateHeader p {
+  margin: 6px 0 0;
+  color: #66766b;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.reportListHeader > strong {
+  display: grid;
+  min-width: 42px;
+  height: 36px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(218, 238, 219, 0.92);
+  color: #1f7a35;
+  font-size: 1rem;
+}
+
+.reportTypeTabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.reportTypeTab,
+.reportTypeTabActive {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  max-width: 260px;
+  padding: 0 10px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.reportTypeTab {
+  background: rgba(247, 251, 247, 0.9);
+  color: #304139;
+}
+
+.reportTypeTabActive {
+  border-color: rgba(46, 125, 50, 0.28);
+  background: rgba(218, 238, 219, 0.95);
+  color: #1f7a35;
+}
+
+.reportTypeTab svg,
+.reportTypeTabActive svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.reportTypeTab span,
+.reportTypeTabActive span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reportTypeTab strong,
+.reportTypeTabActive strong {
+  display: inline-grid;
+  min-width: 22px;
+  min-height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: inherit;
+  font-size: 0.7rem;
+}
+
+.reportCardList {
+  display: grid;
+  gap: 10px;
+}
+
+.reportCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(160px, 0.38fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(46, 125, 50, 0.09);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 20px rgba(24, 71, 36, 0.05);
+}
+
+.reportCardIcon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(218, 238, 219, 0.9);
+  color: #2e7d32;
+}
+
+.reportCardIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.reportCardBody,
+.reportCardMeta {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.reportCardBody strong {
+  color: #1f2b25;
+  font-size: 0.92rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.reportCardBody span,
+.reportCardBody p,
+.reportCardMeta span {
+  margin: 0;
+  color: #66766b;
+  font-size: 0.76rem;
+  font-weight: 760;
+  line-height: 1.3;
+}
+
+.reportCardMeta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.reportCardMeta svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.reportCardActions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reportCardActions .secondaryButton,
+.reportCardActions .dangerButton {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 0.76rem;
+}
+
+.reportEmptyState {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  min-height: 210px;
+  padding: 20px;
+  border: 1px dashed rgba(46, 125, 50, 0.18);
+  border-radius: 8px;
+  background: rgba(247, 251, 247, 0.75);
+  color: #66766b;
+  text-align: center;
+}
+
+.reportEmptyState svg {
+  width: 34px;
+  height: 34px;
+  color: #2e7d32;
+}
+
+.reportEmptyState strong {
+  color: #1f2b25;
+}
+
+.reportEmptyState span {
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.reportSidePanel {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.reportCreateForm {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.reportCreateHeader {
+  display: grid;
+  gap: 2px;
+}
+
+.reportCreateForm .primaryButton {
+  width: 100%;
+}
+
+.reportSideHint {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  color: #203029;
+}
+
+.reportSideHint strong {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 999px;
+  background: #2e7d32;
+  color: #fff;
+  font-size: 1.1rem;
+}
+
+.reportSideHint span {
+  color: #66766b;
+  font-size: 0.82rem;
+  font-weight: 850;
 }
 
 .pdfCanvasStack {
@@ -1746,11 +2188,36 @@
   .twoColumn {
     grid-template-columns: 1fr;
   }
+
+  .reportWorkspace {
+    grid-template-columns: 1fr;
+  }
+
+  .reportSidePanel {
+    position: static;
+  }
+
+  .reportCard {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .reportCardMeta,
+  .reportCardActions {
+    grid-column: 2;
+  }
+
+  .reportCardActions {
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 760px) {
   .chartGrid,
   .actionGrid,
+  .quickActionBar,
+  .quickActionGrid,
+  .reportMetricGrid,
+  .reportWorkspace,
   .toolbar,
   .formGrid,
   .formGridTwo,
@@ -1766,6 +2233,87 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     margin-bottom: 12px;
+  }
+
+  .quickActionBar {
+    gap: 10px;
+    margin: -4px 0 12px;
+    padding: 10px;
+  }
+
+  .quickActionHeader strong {
+    font-size: 0.9rem;
+  }
+
+  .quickActionLink {
+    justify-content: flex-start;
+    min-height: 44px;
+    padding: 0 11px;
+    text-align: left;
+  }
+
+  .reportMetricGrid {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .reportMetricCard {
+    min-height: 78px;
+    padding: 11px;
+  }
+
+  .reportMetricIcon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .reportMetricCard strong {
+    font-size: 1.25rem;
+  }
+
+  .reportListPanel,
+  .reportCreateForm {
+    padding: 12px;
+  }
+
+  .reportListHeader {
+    grid-template-columns: 1fr;
+  }
+
+  .reportListHeader > strong {
+    justify-self: start;
+  }
+
+  .reportTypeTabs {
+    margin: 0 -2px;
+  }
+
+  .reportTypeTab,
+  .reportTypeTabActive {
+    max-width: 230px;
+  }
+
+  .reportCard {
+    grid-template-columns: 1fr;
+    align-items: start;
+    padding: 12px;
+  }
+
+  .reportCardIcon,
+  .reportCardMeta,
+  .reportCardActions {
+    grid-column: 1;
+  }
+
+  .reportCardActions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .reportCardActions .secondaryButton,
+  .reportCardActions .dangerButton {
+    width: 100%;
   }
 
   .pendingQueuePanel {

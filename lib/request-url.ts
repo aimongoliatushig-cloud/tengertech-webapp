@@ -20,12 +20,22 @@ function normalizeOrigin(value?: string | null) {
   }
 }
 
+function hostnameFromHost(host: string) {
+  const normalized = host.trim().toLowerCase();
+  if (normalized.startsWith("[")) {
+    return normalized.slice(0, normalized.indexOf("]") + 1);
+  }
+  return normalized.split(":")[0];
+}
+
 function isInternalHost(host: string) {
-  const normalized = host.toLowerCase().split(":")[0];
+  const normalized = hostnameFromHost(host);
   return (
     normalized === "0.0.0.0" ||
     normalized === "::" ||
+    normalized === "::1" ||
     normalized === "[::]" ||
+    normalized === "[::1]" ||
     normalized === "127.0.0.1" ||
     normalized === "localhost"
   );
@@ -40,8 +50,9 @@ export function buildPublicUrl(request: RequestUrlSource, path: string) {
   const forwardedHost = firstHeaderValue(request.headers.get("x-forwarded-host"));
   const host = forwardedHost || firstHeaderValue(request.headers.get("host"));
   const forwardedProto = firstHeaderValue(request.headers.get("x-forwarded-proto"));
+  const configuredIsInternal = configuredOrigin ? isInternalHost(new URL(configuredOrigin).host) : false;
 
-  if (configuredOrigin && (!host || isInternalHost(host))) {
+  if (configuredOrigin && (!host || (isInternalHost(host) && !configuredIsInternal))) {
     return new URL(path, configuredOrigin);
   }
 

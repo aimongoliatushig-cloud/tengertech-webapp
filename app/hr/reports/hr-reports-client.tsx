@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { Download, FileText, Trash2 } from "lucide-react";
+import { CalendarDays, Download, FileText, FolderOpen, Layers3, Trash2, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import type { HrGeneratedReport, HrOption, HrReportType } from "@/lib/hr";
@@ -20,7 +20,7 @@ const reportTypes: Array<{ id: HrReportType; name: string }> = [
   { id: "transfer", name: "Шилжилт хөдөлгөөний тайлан" },
   { id: "order_contract", name: "Тушаал, гэрээний тайлан" },
   { id: "clearance", name: "Тойрох хуудасны тайлан" },
-  { id: "archive", name: "Архивын тайлан" },
+  { id: "archive", name: "Ажлаас чөлөөлсөн ажилтны тайлан" },
 ];
 
 function todayDate() {
@@ -64,11 +64,17 @@ export function HrReportsClient({
   const [deletePendingId, setDeletePendingId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [selectedType, setSelectedType] = useState<HrReportType>(normalizeReportType(initialFilters.reportType));
+  const [selectedArchiveType, setSelectedArchiveType] = useState<HrReportType | "all">("all");
 
   const groupedReports = useMemo(
     () => reportTypes.map((type) => ({ ...type, reports: reports.filter((report) => report.reportType === type.id) })),
     [reports],
   );
+  const visibleReports = useMemo(
+    () => (selectedArchiveType === "all" ? reports : reports.filter((report) => report.reportType === selectedArchiveType)),
+    [reports, selectedArchiveType],
+  );
+  const selectedReportTypeName = reportTypes.find((type) => type.id === selectedType)?.name ?? reportTypes[0].name;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -109,7 +115,7 @@ export function HrReportsClient({
   }
 
   return (
-    <div className={styles.twoColumn}>
+    <div className={styles.reportWorkspace}>
       {pending ? (
         <div className={styles.loadingOverlay} role="status" aria-live="polite">
           <div className={styles.loadingDialog}>
@@ -119,107 +125,144 @@ export function HrReportsClient({
           </div>
         </div>
       ) : null}
-      <section className={styles.panel}>
-        <div className={styles.sectionHeader}>
+
+      <section className={styles.reportListPanel}>
+        <div className={styles.reportListHeader}>
           <div>
+            <span className={styles.eyebrow}>Тайлангийн архив</span>
             <h2>Хадгалсан тайлангууд</h2>
-            <p>Гаргасан PDF бүр тайлангийн төрлөөрөө ангилагдана.</p>
+            <p>Гаргасан PDF бүр тайлангийн төрлөөрөө ангилагдаж, эндээс нээх болон устгах боломжтой.</p>
           </div>
-          <span>{reports.length}</span>
+          <strong>{reports.length}</strong>
         </div>
-        <div className={styles.reportArchiveStack}>
+
+        <div className={styles.reportTypeTabs} role="tablist" aria-label="Тайлангийн төрөл">
+          <button
+            type="button"
+            className={selectedArchiveType === "all" ? styles.reportTypeTabActive : styles.reportTypeTab}
+            onClick={() => setSelectedArchiveType("all")}
+          >
+            <Layers3 aria-hidden />
+            <span>Бүгд</span>
+            <strong>{reports.length}</strong>
+          </button>
           {groupedReports.map((group) => (
-            <article key={group.id} className={styles.reportCategory}>
-              <div className={styles.sectionHeader}>
-                <h3>{group.name}</h3>
-                <span>{group.reports.length}</span>
-              </div>
-              {group.reports.length ? (
-                <div className={styles.tableWrap}>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>Тайлан</th>
-                        <th>Хугацаа</th>
-                        <th>Гаргасан</th>
-                        <th>Үйлдэл</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.reports.map((report) => (
-                        <tr key={report.id}>
-                          <td>{report.name}</td>
-                          <td>
-                            {report.dateFrom} - {report.dateTo}
-                          </td>
-                          <td>{report.generatedBy || report.generatedDate}</td>
-                          <td>
-                            <div className={styles.recordActions}>
-                              <a className={styles.secondaryButton} href={reportViewUrl(report.downloadUrl)}>
-                                <Download aria-hidden />
-                                PDF
-                              </a>
-                              <button className={styles.dangerButton} type="button" disabled={deletePendingId === report.id} onClick={() => deleteReport(report)}>
-                                <Trash2 aria-hidden />
-                                {deletePendingId === report.id ? "Устгаж байна..." : "Устгах"}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className={styles.mutedText}>Энэ ангилалд хадгалсан тайлан алга.</p>
-              )}
-            </article>
+            <button
+              key={group.id}
+              type="button"
+              className={selectedArchiveType === group.id ? styles.reportTypeTabActive : styles.reportTypeTab}
+              onClick={() => setSelectedArchiveType(group.id)}
+            >
+              <FileText aria-hidden />
+              <span>{group.name}</span>
+              <strong>{group.reports.length}</strong>
+            </button>
           ))}
         </div>
+
+        {visibleReports.length ? (
+          <div className={styles.reportCardList}>
+            {visibleReports.map((report) => {
+              const typeName = reportTypes.find((type) => type.id === report.reportType)?.name ?? "HR тайлан";
+              return (
+                <article key={report.id} className={styles.reportCard}>
+                  <div className={styles.reportCardIcon}>
+                    <FileText aria-hidden />
+                  </div>
+                  <div className={styles.reportCardBody}>
+                    <strong>{report.name}</strong>
+                    <span>{typeName}</span>
+                    <p>
+                      {report.dateFrom} - {report.dateTo}
+                    </p>
+                  </div>
+                  <div className={styles.reportCardMeta}>
+                    <span>
+                      <CalendarDays aria-hidden />
+                      {report.generatedDate}
+                    </span>
+                    <span>
+                      <Users aria-hidden />
+                      {report.generatedBy || "HR"}
+                    </span>
+                  </div>
+                  <div className={styles.reportCardActions}>
+                    <a className={styles.secondaryButton} href={reportViewUrl(report.downloadUrl)}>
+                      <Download aria-hidden />
+                      PDF
+                    </a>
+                    <button
+                      className={styles.dangerButton}
+                      type="button"
+                      disabled={deletePendingId === report.id}
+                      onClick={() => deleteReport(report)}
+                    >
+                      <Trash2 aria-hidden />
+                      {deletePendingId === report.id ? "Устгаж байна..." : "Устгах"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className={styles.reportEmptyState}>
+            <FolderOpen aria-hidden />
+            <strong>Энэ ангилалд хадгалсан тайлан алга.</strong>
+            <span>Баруун талын формоор PDF тайлан гаргахад сонгосон төрөлдөө хадгалагдана.</span>
+          </div>
+        )}
       </section>
-      <form className={styles.formPanel} onSubmit={submit}>
-        <h2>Шинэ PDF тайлан гаргах</h2>
-        {message ? <p className={message.includes("алдаа") || message.includes("болохгүй") ? styles.errorText : styles.successText}>{message}</p> : null}
-        <label className={styles.field}>
-          <span>Тайлангийн төрөл</span>
-          <select name="reportType" value={selectedType} onChange={(event) => setSelectedType(event.target.value as HrReportType)} required>
-            {reportTypes.map((type) => (
-              <option key={type.id} value={type.id}>
-                {type.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className={styles.field}>
-          <span>Хэлтэс</span>
-          <select name="departmentId" defaultValue={initialFilters.departmentId || ""}>
-            <option value="">Бүх хэлтэс</option>
-            {departments.map((department) => (
-              <option key={department.id} value={department.id}>
-                {department.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className={styles.formGridTwo}>
+
+      <aside className={styles.reportSidePanel}>
+        <form className={styles.reportCreateForm} onSubmit={submit}>
+          <div className={styles.reportCreateHeader}>
+            <span className={styles.eyebrow}>PDF тайлан</span>
+            <h2>Шинэ PDF тайлан гаргах</h2>
+            <p>{selectedReportTypeName}</p>
+          </div>
+          {message ? <p className={message.includes("алдаа") || message.includes("болохгүй") ? styles.errorText : styles.successText}>{message}</p> : null}
           <label className={styles.field}>
-            <span>Эхлэх огноо</span>
-            <input name="dateFrom" type="date" defaultValue={initialFilters.dateFrom || monthStartDate()} required />
+            <span>Тайлангийн төрөл</span>
+            <select name="reportType" value={selectedType} onChange={(event) => setSelectedType(event.target.value as HrReportType)} required>
+              {reportTypes.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label className={styles.field}>
-            <span>Дуусах огноо</span>
-            <input name="dateTo" type="date" defaultValue={initialFilters.dateTo || todayDate()} required />
+            <span>Хэлтэс</span>
+            <select name="departmentId" defaultValue={initialFilters.departmentId || ""}>
+              <option value="">Бүх хэлтэс</option>
+              {departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
           </label>
+          <div className={styles.formGridTwo}>
+            <label className={styles.field}>
+              <span>Эхлэх огноо</span>
+              <input name="dateFrom" type="date" defaultValue={initialFilters.dateFrom || monthStartDate()} required />
+            </label>
+            <label className={styles.field}>
+              <span>Дуусах огноо</span>
+              <input name="dateTo" type="date" defaultValue={initialFilters.dateTo || todayDate()} required />
+            </label>
+          </div>
+          <button className={styles.primaryButton} type="submit" disabled={pending}>
+            <FileText aria-hidden />
+            {pending ? "PDF гаргаж байна..." : "PDF тайлан гаргах"}
+          </button>
+        </form>
+        <div className={styles.reportSideHint}>
+          <strong>{reports.length}</strong>
+          <span>хадгалсан PDF тайлан</span>
         </div>
-        <button
-          className={styles.primaryButton}
-          type="submit"
-          disabled={pending}
-        >
-          <FileText aria-hidden />
-          {pending ? "PDF гаргаж байна..." : "PDF тайлан гаргах"}
-        </button>
-      </form>
+      </aside>
     </div>
   );
 }

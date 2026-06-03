@@ -157,6 +157,16 @@ export default async function HrDashboardPage() {
   ]);
   const mode: "hr" | "department" = access.scope === "hr" ? "hr" : "department";
   const requestCards = timeoffDashboard?.cards;
+  const quickActions = access.isHr
+    ? [
+        { href: "/hr/leaves", label: "Ирсэн хүсэлтүүд", icon: ClipboardPlus, tone: "primary" },
+        { href: "/hr/employees", label: "Ажилтны жагсаалт", icon: Users },
+        { href: "/hr/archive", label: "Ажлаас чөлөөлөх", icon: Archive },
+      ]
+    : [
+        { href: "/hr/employees", label: "Манай хэлтсийн ажилтнууд", icon: Users, tone: "primary" },
+        { href: "/hr/sick", label: "Чөлөө / өвчтэй хүсэлт", icon: HeartPulse },
+      ];
 
   return (
     <>
@@ -171,6 +181,28 @@ export default async function HrDashboardPage() {
       />
       <HrSectionNav mode={mode} />
 
+      <section className={styles.quickActionBar} aria-label="Хүний нөөцийн шуурхай үйлдэл">
+        <div className={styles.quickActionHeader}>
+          <span className={styles.eyebrow}>Шуурхай үйлдэл</span>
+          <strong>{access.isHr ? "Өдөр тутмын HR ажиллагаа" : "Хэлтсийн HR ажиллагаа"}</strong>
+        </div>
+        <div className={styles.quickActionGrid}>
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <Link
+                key={action.href}
+                href={action.href}
+                className={`${styles.quickActionLink} ${action.tone === "primary" ? styles.quickActionPrimary : ""}`}
+              >
+                <Icon aria-hidden />
+                <span>{action.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
       <HrDashboardClient
         accessMode={mode}
         employees={employees}
@@ -180,47 +212,6 @@ export default async function HrDashboardPage() {
       />
 
       <DepartmentManpower employees={employees} />
-
-      <section className={styles.actionPanel}>
-        <div>
-          <span className={styles.eyebrow}>{access.isHr ? "HR review" : "Department Head"}</span>
-          <h2>{access.isHr ? "Хүсэлт хянах үйлдэл" : "Хүсэлт үүсгэх үйлдэл"}</h2>
-        </div>
-        <div className={styles.actionGrid}>
-          {(access.isHr
-            ? [{ href: "/hr/leaves", label: "Ирсэн хүсэлтүүд", icon: ClipboardPlus }]
-            : [
-                { href: "/hr/employees", label: "Манай хэлтсийн ажилтнууд", icon: Users },
-                { href: "/hr/sick", label: "Чөлөө / өвчтэй хүсэлт", icon: HeartPulse },
-              ]
-          ).map((action) => {
-            const Icon = action.icon;
-            return (
-              <Link key={action.href + action.label} href={action.href} className={styles.actionButton}>
-                <Icon aria-hidden />
-                <span>{action.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className={styles.actionPanel}>
-        <div>
-          <span className={styles.eyebrow}>Алба нэгж</span>
-          <h2>Ажилтнуудыг нэгжээр харах</h2>
-        </div>
-        <div className={styles.actionGrid}>
-          <Link href="/hr/employees" className={styles.actionButton}>
-            <Users aria-hidden />
-            <span>Ажилтны жагсаалт</span>
-          </Link>
-          <Link href="/hr/archive" className={styles.actionButton}>
-            <Archive aria-hidden />
-            <span>Архив</span>
-          </Link>
-        </div>
-      </section>
     </>
   );
 }

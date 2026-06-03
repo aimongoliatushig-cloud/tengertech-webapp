@@ -26,7 +26,7 @@
     "clsx": "^2.1.1",
     "docx": "^9.6.1",
     "lucide-react": "^1.11.0",
-    "next": "16.2.4",
+    "next": "^16.2.7",
     "playwright": "^1.59.1",
     "pptxgenjs": "^4.0.1",
     "react": "19.2.4",
@@ -42,7 +42,10 @@
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
     "eslint": "^9",
-    "eslint-config-next": "16.2.4",
+    "eslint-config-next": "^16.2.7",
     "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": "^8.5.15"
   }
 }

@@ -69,7 +69,10 @@ function AttachmentLinks({ hasAttachment, attachmentIds }: { hasAttachment: bool
   );
 }
 
-type RegistryOption = HrSelectionOption | { id: number | string; name: string };
+type RegistryOption = (HrSelectionOption | { id: number | string; name: string }) & {
+  departmentId?: number | string | null;
+  jobTitle?: string;
+};
 
 export type RegistryField =
   | string
@@ -81,6 +84,7 @@ export type RegistryField =
       readOnly?: boolean;
       required?: boolean;
       options?: RegistryOption[];
+      placeholder?: string;
     };
 
 type RegistryRecord = Record<string, string | number | boolean | null | undefined>;
@@ -92,11 +96,14 @@ export type RegistryColumn = {
 };
 
 function statusLabel(employee: HrEmployeeDirectoryItem) {
+  if (employee.statusKey === "terminated") {
+    return "Ажлаас чөлөөлөгдсөн";
+  }
+  if (employee.statusKey === "resigned") {
+    return "Ажлаас гарсан";
+  }
   if (!employee.active || employee.statusKey === "archived") {
     return "Архивлагдсан";
-  }
-  if (employee.statusKey === "resigned" || employee.statusKey === "terminated") {
-    return "Ажлаас гарсан";
   }
   if (employee.statusKey === "leave") {
     return "Чөлөөтэй";
@@ -1313,6 +1320,7 @@ export function RegistryPage({
   records = [],
   columns = [],
   createAnchorLabel = "Шинэ бүртгэл үүсгэх",
+  hideCreateAnchor = false,
   allowRecordActions = false,
 }: {
   title: string;
@@ -1326,6 +1334,7 @@ export function RegistryPage({
   records?: RegistryRecord[];
   columns?: RegistryColumn[];
   createAnchorLabel?: string;
+  hideCreateAnchor?: boolean;
   allowRecordActions?: boolean;
 }) {
   const router = useRouter();
@@ -1333,6 +1342,7 @@ export function RegistryPage({
   const [deletePendingId, setDeletePendingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [editingRecord, setEditingRecord] = useState<RegistryRecord | null>(null);
+  const [selectValues, setSelectValues] = useState<Record<string, string>>({});
   const selectedContext = editingRecord || selectedEmployee;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -1346,8 +1356,15 @@ export function RegistryPage({
     const form = event.currentTarget;
     const formData = new FormData(form);
     try {
-      const endpoint =
+      let endpoint =
         editingRecord && allowRecordActions ? `${submitEndpoint}/${encodeURIComponent(String(editingRecord.id))}` : submitEndpoint;
+      if (endpoint.includes(":employeeId")) {
+        const employeeId = String(formData.get("employeeId") || "").trim();
+        if (!employeeId) {
+          throw new Error("Ажилтан заавал сонгоно уу.");
+        }
+        endpoint = endpoint.replace(":employeeId", encodeURIComponent(employeeId));
+      }
       const response = await fetch(endpoint, { method: editingRecord && allowRecordActions ? "PATCH" : "POST", body: formData });
       const payload = await response.json();
       if (!response.ok) {
@@ -1355,6 +1372,7 @@ export function RegistryPage({
       }
       setMessage(editingRecord ? "Бүртгэл засагдлаа." : successMessage);
       setEditingRecord(null);
+      setSelectValues({});
       form.reset();
       router.refresh();
     } catch (error) {
@@ -1447,6 +1465,73 @@ export function RegistryPage({
     return null;
   }
 
+  const normalizedFields = fields.map((field) => normalizeField(field));
+  const noteField = normalizedFields.find((field) => field.name === "note" || field.label === "Тайлбар");
+  const gridFields = noteField
+    ? normalizedFields.filter((field) => field !== noteField)
+    : normalizedFields;
+
+  function getSelectValue(field: ReturnType<typeof normalizeField>) {
+    const fieldName = field.name || field.label;
+    return selectValues[fieldName] ?? getRecordValue(field);
+  }
+
+  function getCurrentSelectValue(fieldName: string) {
+    const field = normalizedFields.find((item) => (item.name || item.label) === fieldName);
+    return field ? getSelectValue(field) : "";
+  }
+
+  function getVisibleOptions(field: ReturnType<typeof normalizeField>) {
+    const options = field.options || [];
+    const fieldName = field.name || field.label;
+    const selectedDepartmentId = getCurrentSelectValue("departmentId");
+    const selectedJobTitle = getCurrentSelectValue("jobTitle");
+
+    if (fieldName === "jobTitle" && options.some((option) => option.departmentId !== undefined)) {
+      if (!selectedDepartmentId) {
+        return [];
+      }
+      return options.filter((option) => String(option.departmentId || "") === selectedDepartmentId);
+    }
+
+    if (fieldName === "employeeId" && options.some((option) => option.departmentId !== undefined)) {
+      if (!selectedDepartmentId) {
+        return [];
+      }
+      return options.filter(
+        (option) =>
+          String(option.departmentId || "") === selectedDepartmentId &&
+          (!selectedJobTitle || String(option.jobTitle || "") === selectedJobTitle),
+      );
+    }
+
+    return options;
+  }
+
+  function getSelectPlaceholder(field: ReturnType<typeof normalizeField>) {
+    const fieldName = field.name || field.label;
+    const selectedDepartmentId = getCurrentSelectValue("departmentId");
+    if ((fieldName === "jobTitle" || fieldName === "employeeId") && !selectedDepartmentId) {
+      return "Эхлээд хэлтэс сонгох";
+    }
+    return field.placeholder || "Сонгох";
+  }
+
+  function updateSelectValue(field: ReturnType<typeof normalizeField>, value: string) {
+    const fieldName = field.name || field.label;
+    setSelectValues((current) => {
+      const next = { ...current, [fieldName]: value };
+      if (fieldName === "departmentId") {
+        delete next.jobTitle;
+        delete next.employeeId;
+      }
+      if (fieldName === "jobTitle") {
+        delete next.employeeId;
+      }
+      return next;
+    });
+  }
+
   return (
     <div className={styles.twoColumn}>
       <section className={styles.panel}>
@@ -1454,7 +1539,7 @@ export function RegistryPage({
           <h2>{title}</h2>
           <span>{records.length}</span>
         </div>
-        {submitEndpoint ? (
+        {submitEndpoint && !hideCreateAnchor ? (
           <div className={styles.toolbar}>
             <a
               href="#new-registry-record"
@@ -1462,6 +1547,7 @@ export function RegistryPage({
               onClick={() => {
                 setEditingRecord(null);
                 setMessage("");
+                setSelectValues({});
               }}
             >
               {createAnchorLabel}
@@ -1554,20 +1640,29 @@ export function RegistryPage({
           </div>
         ) : null}
         <div className={styles.formGrid}>
-          {fields.map((field) => {
-            const fieldConfig = normalizeField(field);
-            const selectedField = renderSelectedEmployeeField(fieldConfig);
-            if (selectedField) {
-              return selectedField;
-            }
-
+          {gridFields.map((fieldConfig) => {
             if (fieldConfig.options?.length) {
+              const visibleOptions = getVisibleOptions(fieldConfig);
+              const visibleOptionValues = new Set(visibleOptions.map((option) => String(option.id)));
+              const selectValue = String(getSelectValue(fieldConfig) || "");
+              const normalizedSelectValue =
+                selectValue && visibleOptionValues.has(selectValue) ? selectValue : "";
+              const fieldName = fieldConfig.name || fieldConfig.label;
+              const disabled =
+                (fieldName === "jobTitle" || fieldName === "employeeId") &&
+                !getCurrentSelectValue("departmentId");
               return (
                 <label key={fieldConfig.label} className={styles.field}>
                   <span>{fieldConfig.label}</span>
-                  <select name={fieldConfig.name} defaultValue={getRecordValue(fieldConfig)} required={fieldConfig.required}>
-                    <option value="">Сонгох</option>
-                    {fieldConfig.options.map((option) => (
+                  <select
+                    name={fieldName}
+                    value={normalizedSelectValue}
+                    required={fieldConfig.required}
+                    disabled={disabled}
+                    onChange={(event) => updateSelectValue(fieldConfig, event.target.value)}
+                  >
+                    <option value="">{getSelectPlaceholder(fieldConfig)}</option>
+                    {visibleOptions.map((option) => (
                       <option key={option.id} value={option.id}>
                         {option.name}
                       </option>
@@ -1575,6 +1670,11 @@ export function RegistryPage({
                   </select>
                 </label>
               );
+            }
+
+            const selectedField = renderSelectedEmployeeField(fieldConfig);
+            if (selectedField) {
+              return selectedField;
             }
 
             return (
@@ -1594,6 +1694,18 @@ export function RegistryPage({
           <span>Хавсралт</span>
           <input name="files" type="file" multiple />
         </label>
+        {noteField ? (
+          <label className={`${styles.field} ${styles.registryNoteField}`}>
+            <span>{noteField.label}</span>
+            <textarea
+              name={noteField.name}
+              rows={5}
+              defaultValue={getRecordValue(noteField)}
+              required={noteField.required}
+              placeholder={noteField.placeholder}
+            />
+          </label>
+        ) : null}
         <div className={styles.actionGrid}>
           <button className={styles.primaryButton} type={submitEndpoint ? "submit" : "button"} disabled={pending}>
             <FilePlus2 aria-hidden />

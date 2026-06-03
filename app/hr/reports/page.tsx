@@ -1,4 +1,5 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
+import { Activity, Archive, BriefcaseBusiness, ClipboardCheck, HeartPulse, ShieldAlert, UserCheck, Users } from "lucide-react";
 import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
@@ -33,36 +34,43 @@ export default async function HrReportsPage({ searchParams }: PageProps) {
     getGeneratedHrReports(session),
     getDepartments(session).catch(() => []),
   ]);
+  const metricCards = [
+    { label: "Нийт ажилтан", value: stats.totalEmployees, note: "Бүх бүртгэл", icon: Users },
+    { label: "Идэвхтэй", value: stats.activeEmployees, note: "Идэвхтэй ажилтан", icon: UserCheck },
+    { label: "Чөлөөтэй", value: stats.leaveToday, note: "Өнөөдрийн төлөв", icon: ClipboardCheck },
+    { label: "Өвчтэй", value: stats.sickToday, note: "Өнөөдрийн төлөв", icon: HeartPulse },
+    { label: "Томилолттой", value: stats.businessTripToday, note: "Өнөөдрийн төлөв", icon: BriefcaseBusiness },
+    { label: "Сахилгын идэвхтэй", value: stats.activeDiscipline, note: "Идэвхтэй бүртгэл", icon: ShieldAlert },
+    { label: "Ажлаас чөлөөлсөн", value: stats.archivedEmployees, note: "Чөлөөлөгдсөн бүртгэл", icon: Archive },
+    { label: "Тойрох хуудас", value: stats.pendingClearance, note: "Хүлээгдэж буй", icon: Activity },
+  ];
 
   return (
     <>
       <WorkspaceHeader
         title="HR тайлан"
-        subtitle="Ажилтан, хэлтэс, чөлөө, өвчтэй, томилолт, сахилга, шилжилт, тушаал, тойрох хуудас, архивын PDF тайлан"
+        subtitle="Ажилтан, хэлтэс, чөлөө, өвчтэй, томилолт, сахилга, шилжилт, тушаал, тойрох хуудас, ажлаас чөлөөлсөн ажилтны PDF тайлан"
         userName={session.name}
         roleLabel={getSessionRoleLabel(session)}
         notificationNote="HR тайлан"
       />
       <HrSectionNav />
-      <section className={styles.statGrid}>
-        {[
-          ["Нийт ажилтан", stats.totalEmployees],
-          ["Идэвхтэй", stats.activeEmployees],
-          ["Чөлөөтэй", stats.leaveToday],
-          ["Өвчтэй", stats.sickToday],
-          ["Томилолттой", stats.businessTripToday],
-          ["Сахилгын идэвхтэй", stats.activeDiscipline],
-          ["Архивлагдсан", stats.archivedEmployees],
-          ["Тойрох хуудас", stats.pendingClearance],
-        ].map(([label, value]) => (
-          <article key={label} className={styles.statCard}>
-            <div>
-              <small>{label}</small>
-              <strong>{value}</strong>
-              <p>HR бүртгэлээс тооцсон үзүүлэлт</p>
-            </div>
-          </article>
-        ))}
+      <section className={styles.reportMetricGrid}>
+        {metricCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <article key={card.label} className={styles.reportMetricCard}>
+              <span className={styles.reportMetricIcon}>
+                <Icon aria-hidden />
+              </span>
+              <div>
+                <small>{card.label}</small>
+                <strong>{card.value}</strong>
+                <p>{card.note}</p>
+              </div>
+            </article>
+          );
+        })}
       </section>
       <HrReportsClient
         reports={reports}

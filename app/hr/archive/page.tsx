@@ -26,27 +26,65 @@ export default async function HrArchivePage({ searchParams }: PageProps) {
     ? await getEmployee(session, selectedEmployeeId).catch(() => null)
     : null;
   const employees = await getEmployees(session).catch(() => []);
+  const activeEmployees = employees.filter(
+    (employee) => employee.active && !["archived", "resigned", "terminated"].includes(employee.statusKey),
+  );
   const archivedEmployees = employees.filter(
     (employee) => !employee.active || ["archived", "resigned", "terminated"].includes(employee.statusKey),
   );
+  const getEmployeeDepartmentOptionId = (employee: (typeof activeEmployees)[number]) =>
+    employee.departmentId ? String(employee.departmentId) : employee.departmentName;
+  const departmentOptions = Array.from(
+    new Map(
+      activeEmployees
+        .filter((employee) => employee.departmentName)
+        .map((employee) => [
+          getEmployeeDepartmentOptionId(employee),
+          { id: getEmployeeDepartmentOptionId(employee), name: employee.departmentName },
+        ]),
+    ).values(),
+  ).sort((left, right) => left.name.localeCompare(right.name, "mn-MN"));
+  const jobOptions = Array.from(
+    new Map(
+      activeEmployees
+        .filter((employee) => employee.departmentName && employee.jobTitle)
+        .map((employee) => {
+          const departmentId = getEmployeeDepartmentOptionId(employee);
+          return [
+            `${departmentId}:${employee.jobTitle}`,
+            { id: employee.jobTitle, name: employee.jobTitle, departmentId },
+          ];
+        }),
+    ).values(),
+  ).sort((left, right) => left.name.localeCompare(right.name, "mn-MN"));
+  const employeeOptions = activeEmployees
+    .filter((employee) => employee.departmentName)
+    .map((employee) => ({
+      id: employee.id,
+      name: [employee.name, employee.departmentName, employee.jobTitle].filter(Boolean).join(" · "),
+      departmentId: getEmployeeDepartmentOptionId(employee),
+      jobTitle: employee.jobTitle || "",
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name, "mn-MN"));
 
   return (
     <>
       <WorkspaceHeader
-        title="Архив / ажлаас гаралт"
-        subtitle="Ажлаас гарсан ажилтны шийдвэр, шалтгаан, хавсралтыг бүртгээд ажилтныг active жагсаалтаас архивлана"
+        title="Ажлаас чөлөөлөх"
+        subtitle="Ажилтныг ажлаас чөлөөлөх шийдвэр, шалтгаан, хавсралтыг бүртгээд идэвхтэй жагсаалтаас хасна"
         userName={session.name}
         roleLabel={getSessionRoleLabel(session)}
         notificationCount={archivedEmployees.length}
-        notificationNote="Архивын бүртгэл"
+        notificationNote="Чөлөөлөгдсөн бүртгэл"
       />
       <HrSectionNav />
       <RegistryPage
-        title="Ажлаас гарсан болон архивлагдсан ажилтнууд"
-        description="Ажлаас гарах огноо, шалтгаан, тушаал/шийдвэрийн хавсралтыг бүртгэнэ. Энэ үйлдлийг зөвхөн HR мэргэжилтэн хийнэ."
-        submitEndpoint={selectedEmployee ? `/api/hr/employees/${selectedEmployee.id}/terminate` : undefined}
-        submitLabel="Ажлаас гаргах"
-        successMessage="Ажилтан ажлаас гарсан төлөвтэй архивлагдлаа."
+        title="Ажлаас чөлөөлөгдсөн ажилтнууд"
+        description="Ажлаас чөлөөлөх огноо, шалтгаан, тушаал/шийдвэрийн хавсралтыг бүртгэнэ. Энэ үйлдлийг зөвхөн HR мэргэжилтэн хийнэ."
+        submitEndpoint="/api/hr/employees/:employeeId/terminate"
+        submitLabel="Ажлаас чөлөөлөх"
+        successMessage="Ажилтан ажлаас чөлөөлөгдсөн төлөвтэй боллоо."
+        hideCreateAnchor
         records={archivedEmployees.map((employee) => ({
           id: employee.id,
           employeeName: employee.name,
@@ -62,12 +100,31 @@ export default async function HrArchivePage({ searchParams }: PageProps) {
           { key: "statusLabel", label: "Төлөв" },
         ]}
         fields={[
-          "Ажилтан",
-          "Хэлтэс",
-          "Албан тушаал",
-          { label: "Ажлаас гарсан огноо", name: "terminationDate", type: "date", required: true },
           {
-            label: "Ажлаас гарах шалтгаан",
+            label: "Хэлтэс",
+            name: "departmentId",
+            options: departmentOptions,
+            defaultValue: selectedEmployee?.departmentId ? String(selectedEmployee.departmentId) : "",
+            placeholder: "Хэлтэс сонгох",
+          },
+          {
+            label: "Албан тушаал",
+            name: "jobTitle",
+            options: jobOptions,
+            defaultValue: selectedEmployee?.jobTitle || "",
+            placeholder: "Албан тушаал сонгох",
+          },
+          {
+            label: "Ажилтан",
+            name: "employeeId",
+            options: employeeOptions,
+            defaultValue: selectedEmployee?.id ? String(selectedEmployee.id) : "",
+            required: true,
+            placeholder: "Ажилтан сонгох",
+          },
+          { label: "Ажлаас чөлөөлсөн огноо", name: "terminationDate", type: "date", required: true },
+          {
+            label: "Ажлаас чөлөөлөх шалтгаан",
             name: "reason",
             required: true,
             options: [
@@ -79,7 +136,7 @@ export default async function HrArchivePage({ searchParams }: PageProps) {
               { id: "Бусад", name: "Бусад" },
             ],
           },
-          { label: "Тайлбар", name: "note" },
+          { label: "Тайлбар", name: "note", type: "textarea", placeholder: "Нэмэлт тайлбар бичих" },
         ]}
         selectedEmployee={selectedEmployee}
       />

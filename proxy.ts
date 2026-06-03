@@ -47,12 +47,22 @@ function getCanonicalOrigin() {
   }
 }
 
+function hostnameFromHost(host: string) {
+  const normalized = host.trim().toLowerCase();
+  if (normalized.startsWith("[")) {
+    return normalized.slice(0, normalized.indexOf("]") + 1);
+  }
+  return normalized.split(":")[0];
+}
+
 function isLocalHost(host: string) {
-  const normalized = host.toLowerCase().split(":")[0];
+  const normalized = hostnameFromHost(host);
   return (
     normalized === "0.0.0.0" ||
     normalized === "::" ||
+    normalized === "::1" ||
     normalized === "[::]" ||
+    normalized === "[::1]" ||
     normalized === "127.0.0.1" ||
     normalized === "localhost"
   );
@@ -71,7 +81,7 @@ function getCanonicalRedirectUrl(request: NextRequest) {
   }
 
   const requestHost = getRequestHost(request);
-  const requestHostname = requestHost.split(":")[0]?.toLowerCase() || "";
+  const requestHostname = hostnameFromHost(requestHost);
   const canonicalUrl = new URL(canonicalOrigin);
   const canonicalHostname = canonicalUrl.hostname.toLowerCase();
 

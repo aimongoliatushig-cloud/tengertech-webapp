@@ -40,7 +40,7 @@ function employeeActions(employeeId: number) {
     { label: "Тушаал / гэрээ", href: `/hr/orders?${employeeQuery}`, icon: ScrollText },
     { label: "Шилжилт хөдөлгөөн", href: `/hr/transfers?${employeeQuery}`, icon: Repeat2 },
     { label: "Тойрох хуудас", href: `/hr/clearance?${employeeQuery}`, icon: BriefcaseBusiness },
-    { label: "Архивлах", href: `/hr/archive?${employeeQuery}`, icon: Archive },
+    { label: "Ажлаас чөлөөлөх", href: `/hr/archive?${employeeQuery}`, icon: Archive },
   ];
 }
 
