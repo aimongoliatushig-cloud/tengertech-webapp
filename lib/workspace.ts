@@ -3152,16 +3152,25 @@ export async function loadGarbageVehicleOptions(
   if (inspectorVehicleScopeIds.length) {
     const fleetBoard = await loadFleetVehicleBoard().catch(() => null);
     const vehiclesById = new Map((fleetBoard?.allVehicles ?? []).map((vehicle) => [vehicle.id, vehicle]));
+    const hasGarbageWorkCreateAllowed = await hasModelField(
+      "fleet.vehicle",
+      "mfo_garbage_work_create_allowed",
+      connectionOverrides,
+    );
 
     const scopedVehicles = await readFirstAvailable<GarbageVehicleRecord>(
       [
-        {
-          model: "fleet.vehicle",
-          domain: [["id", "in", inspectorVehicleScopeIds], ["mfo_garbage_work_create_allowed", "=", true]],
-          fields: ["name", "license_plate", "mfo_garbage_work_create_allowed"],
-          order: "license_plate asc, name asc",
-          limit: inspectorVehicleScopeIds.length,
-        },
+        ...(hasGarbageWorkCreateAllowed
+          ? [
+              {
+                model: "fleet.vehicle",
+                domain: [["id", "in", inspectorVehicleScopeIds]],
+                fields: ["name", "license_plate", "mfo_garbage_work_create_allowed"],
+                order: "license_plate asc, name asc",
+                limit: inspectorVehicleScopeIds.length,
+              },
+            ]
+          : []),
         {
           model: "fleet.vehicle",
           domain: [["id", "in", inspectorVehicleScopeIds]],
@@ -3178,18 +3187,12 @@ export async function loadGarbageVehicleOptions(
       .map((vehicleId): GarbageVehicleOption | null => {
         const boardVehicle = vehiclesById.get(vehicleId);
         const scopedVehicle = scopedVehicleRecordsById.get(vehicleId);
-        if (!boardVehicle && !scopedVehicle) {
-          return null;
-        }
-        if (scopedVehicle?.mfo_garbage_work_create_allowed === false) {
-          return null;
-        }
         const vehicle = scopedVehicle ?? {
           id: vehicleId,
           name: boardVehicle?.name,
           license_plate: boardVehicle?.plate,
         };
-        const plate = vehicle.license_plate || vehicle.name || `Техник #${vehicle.id}`;
+        const plate = vehicle.license_plate || vehicle.name || `Машин #${vehicle.id}`;
         const vehicleOption: GarbageVehicleOption = {
           id: vehicle.id,
           label: plate,
