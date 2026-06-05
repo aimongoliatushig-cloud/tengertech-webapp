@@ -16,6 +16,10 @@ import {
 
 import { createProjectAction } from "@/app/actions";
 import dashboardStyles from "@/app/dashboard-view.module.css";
+import {
+  isAutoGarbageDepartment,
+  isGarbageTransportDepartment,
+} from "@/lib/department-permissions";
 import { cn } from "@/lib/utils";
 import { fixMojibakeText } from "@/lib/text-normalize";
 import { type DashboardSnapshot, type FleetVehicleBoard } from "@/lib/odoo";
@@ -73,9 +77,40 @@ function isDriverOption(jobTitle: string) {
   return title.includes("жолооч") || title.includes("driver") || title.includes("chauffeur");
 }
 
+function isClearlyNotDriverOption(jobTitle: string) {
+  const title = normalizeText(jobTitle);
+  return (
+    title.includes("ачигч") ||
+    title.includes("хяналт") ||
+    title.includes("байцаагч") ||
+    title.includes("дарга") ||
+    title.includes("менежер") ||
+    title.includes("диспетчер") ||
+    title.includes("засвар") ||
+    title.includes("loader") ||
+    title.includes("inspector") ||
+    title.includes("manager") ||
+    title.includes("dispatcher") ||
+    title.includes("mechanic")
+  );
+}
+
 function driverDepartmentLabel(value?: string | null) {
   const label = fixMojibakeText(value || "").trim();
   return label || "Хэлтэсгүй";
+}
+
+function isSelectableGarbageDriver(option: { departmentName?: string; jobTitle?: string }, activeDepartment: string) {
+  const departmentName = driverDepartmentLabel(option.departmentName);
+  const sameActiveDepartment = activeDepartment !== "Хэлтэсгүй" && departmentName === activeDepartment;
+  if (
+    !isAutoGarbageDepartment(departmentName) &&
+    !isGarbageTransportDepartment(departmentName) &&
+    !sameActiveDepartment
+  ) {
+    return false;
+  }
+  return isDriverOption(option.jobTitle || "");
 }
 
 function isDoneTask(task: DashboardSnapshot["taskDirectory"][number]) {
@@ -273,8 +308,8 @@ export function DashboardInspectorVehiclePanel({
     const options = new Map<number, { id: number; name: string; departmentName: string; jobTitle: string }>();
     for (const option of fleetBoard.driverOptions) {
       if (!option.active) continue;
-      if (!isDriverOption(option.jobTitle)) continue;
       const departmentName = driverDepartmentLabel(option.departmentName);
+      if (!isSelectableGarbageDriver(option, activeDepartment)) continue;
       options.set(option.id, {
         id: option.id,
         name: fixMojibakeText(option.name),
@@ -321,10 +356,17 @@ export function DashboardInspectorVehiclePanel({
                 : ""
       }`
     : "";
+  const syncSinglePointSelection = (nextPointId: string) => {
+    setPointId(nextPointId);
+    const parsedPointId = Number(nextPointId);
+    setSelectedPointIds(Number.isFinite(parsedPointId) && parsedPointId > 0 ? [parsedPointId] : []);
+  };
   const toggleSelectedPoint = (pointId: number) => {
-    setSelectedPointIds((current) =>
-      current.includes(pointId) ? current.filter((item) => item !== pointId) : [...current, pointId],
-    );
+    const next = selectedPointIds.includes(pointId)
+      ? selectedPointIds.filter((item) => item !== pointId)
+      : [...selectedPointIds, pointId];
+    setSelectedPointIds(next);
+    setPointId(next.length === 1 ? String(next[0]) : "");
   };
   const filterItems: Array<{ key: InspectorFilter; label: string; value: number }> = [
     { key: "all", label: "Бүгд", value: vehicleSummaries.length },
@@ -454,7 +496,7 @@ export function DashboardInspectorVehiclePanel({
             </option>
           ))}
         </select>
-        <select value={effectivePointId} onChange={(event) => setPointId(event.target.value)} disabled={!subdistrictId}>
+        <select value={effectivePointId} onChange={(event) => syncSinglePointSelection(event.target.value)} disabled={!subdistrictId}>
           <option value="">Хогийн цэг: Бүгд</option>
           {filteredPoints.map((point) => (
             <option key={point.id} value={point.id}>
@@ -627,14 +669,20 @@ export function DashboardInspectorVehiclePanel({
                 <div className={dashboardStyles.inspectorCreatePointTools}>
                   <button
                     type="button"
-                    onClick={() => setSelectedPointIds(filteredPoints.map((point) => point.id))}
+                    onClick={() => {
+                      setPointId("");
+                      setSelectedPointIds(filteredPoints.map((point) => point.id));
+                    }}
                     disabled={activeVehicleBlocked}
                   >
                     Бүгдийг сонгох
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedPointIds([])}
+                    onClick={() => {
+                      setPointId("");
+                      setSelectedPointIds([]);
+                    }}
                     disabled={activeVehicleBlocked || !validSelectedPointIds.length}
                   >
                     Цэвэрлэх

@@ -495,7 +495,9 @@ export function canDeleteWorkspaceItems(context: RoleContext) {
   return Boolean(
     context.role === "director" ||
       context.role === "general_manager" ||
-      groupFlags.municipalDirector
+      context.role === "project_manager" ||
+      groupFlags.municipalDirector ||
+      groupFlags.municipalDepartmentHead
   );
 }
 

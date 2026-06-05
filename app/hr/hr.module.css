@@ -1610,6 +1610,12 @@
   min-width: 0;
 }
 
+.field small {
+  color: #647568;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
 .searchableSelect {
   position: relative;
   min-width: 0;

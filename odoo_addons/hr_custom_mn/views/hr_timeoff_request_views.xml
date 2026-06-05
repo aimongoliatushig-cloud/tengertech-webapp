@@ -107,6 +107,7 @@
                 <filter name="approved" string="Батлагдсан" domain="[('state', '=', 'approved')]"/>
                 <filter name="rejected" string="Татгалзсан" domain="[('state', '=', 'rejected')]"/>
                 <filter name="time_off" string="Чөлөө" domain="[('request_type', '=', 'time_off')]"/>
+                <filter name="annual_leave" string="Ээлжийн амралт" domain="[('request_type', '=', 'annual_leave')]"/>
                 <filter name="sick" string="Өвчтэй" domain="[('request_type', '=', 'sick')]"/>
                 <group>
                     <filter name="group_department" string="Хэлтэс" context="{'group_by': 'department_id'}"/>

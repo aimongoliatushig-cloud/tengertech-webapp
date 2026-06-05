@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { canAccessGarbageTransportSettings, requireSession } from "@/lib/auth";
 import { normalizeDepartmentText } from "@/lib/department-permissions";
-import { saveLocalInspectorScope } from "@/lib/inspector-scope-store";
+import { saveLocalInspectorScopeExclusive } from "@/lib/inspector-scope-store";
 import { clearOdooReadCaches, executeOdooKw, type OdooConnection } from "@/lib/odoo";
 import { invalidateRouteManagementDataCache } from "@/lib/route-management";
 import { loadDepartmentOptions } from "@/lib/workspace";
@@ -495,7 +495,7 @@ export async function saveGarbageTransportInspectorScopeAction(formData: FormDat
     redirectToSettings("error", "Хяналтын байцаагч сонгоно уу.", "inspectors");
   }
 
-  await saveLocalInspectorScope({
+  await saveLocalInspectorScopeExclusive({
     inspectorEmployeeId,
     subdistrictIds,
     pointIds,
@@ -503,6 +503,38 @@ export async function saveGarbageTransportInspectorScopeAction(formData: FormDat
   });
 
   try {
+    const employeeFields = await getModelFields("hr.employee", connection);
+    const hasVehicleScopeField = Boolean(employeeFields?.mfo_inspected_vehicle_ids);
+    const selectedVehicleIdSet = new Set(vehicleIds);
+
+    if (hasVehicleScopeField && vehicleIds.length) {
+      const otherInspectors = await executeOdooKw<Array<{
+        id: number;
+        mfo_inspected_vehicle_ids?: number[];
+      }>>(
+        "hr.employee",
+        "search_read",
+        [[["id", "!=", inspectorEmployeeId], ["mfo_inspected_vehicle_ids", "in", vehicleIds]]],
+        {
+          fields: ["mfo_inspected_vehicle_ids"],
+          limit: 500,
+        },
+        connection,
+      ).catch(() => []);
+
+      for (const inspector of otherInspectors) {
+        const remainingVehicleIds = (inspector.mfo_inspected_vehicle_ids ?? []).filter(
+          (vehicleId) => !selectedVehicleIdSet.has(vehicleId),
+        );
+        await writeOdooRecord(
+          "hr.employee",
+          inspector.id,
+          { mfo_inspected_vehicle_ids: [[6, 0, remainingVehicleIds]] },
+          connection,
+        );
+      }
+    }
+
     await writeOdooRecord(
       "hr.employee",
       inspectorEmployeeId,

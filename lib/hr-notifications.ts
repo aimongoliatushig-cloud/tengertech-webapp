@@ -225,9 +225,15 @@ async function loadHrReviewerUserIds(excludeUserId?: number | null) {
 
 function buildTimeoffNotificationBody(request: HrTimeoffRequest) {
   const employee = request.employeeName || "Ажилтан";
-  const type = request.requestTypeLabel || (request.requestType === "sick" ? "Өвчтэй" : "Чөлөө");
+  const type = request.requestTypeLabel || (request.requestType === "sick" ? "Өвчтэй" : request.requestType === "annual_leave" ? "Ээлжийн амралт" : "Чөлөө");
   const dates = request.dateFrom && request.dateTo ? `${request.dateFrom} - ${request.dateTo}` : "";
   return [employee, type, dates].filter(Boolean).join(" · ");
+}
+
+function timeoffRequestTitle(request: HrTimeoffRequest) {
+  if (request.requestType === "sick") return "Өвчтэй хүсэлт ирлээ";
+  if (request.requestType === "annual_leave") return "Ээлжийн амралтын хүсэлт ирлээ";
+  return "Чөлөөний хүсэлт ирлээ";
 }
 
 export async function notifyHrTimeoffRequestSubmitted(request: HrTimeoffRequest, session?: AppSession | null) {
@@ -239,7 +245,7 @@ export async function notifyHrTimeoffRequestSubmitted(request: HrTimeoffRequest,
 
   return notifyPushEvent({
     eventType: "hr_timeoff_request",
-    title: request.requestType === "sick" ? "Өвчтэй хүсэлт ирлээ" : "Чөлөөний хүсэлт ирлээ",
+    title: timeoffRequestTitle(request),
     body: buildTimeoffNotificationBody(request),
     targetUrl: "/hr/leaves",
     userIds,
@@ -262,7 +268,7 @@ function timeoffStatusTitle(request: HrTimeoffRequest) {
 }
 
 function timeoffStatusBody(request: HrTimeoffRequest) {
-  const type = request.requestTypeLabel || (request.requestType === "sick" ? "Өвчтэй" : "Чөлөө");
+  const type = request.requestTypeLabel || (request.requestType === "sick" ? "Өвчтэй" : request.requestType === "annual_leave" ? "Ээлжийн амралт" : "Чөлөө");
   const dates = request.dateFrom && request.dateTo ? ` · ${request.dateFrom} - ${request.dateTo}` : "";
   return `${type} хүсэлтийн төлөв: ${request.stateLabel || request.state}.${dates}`;
 }

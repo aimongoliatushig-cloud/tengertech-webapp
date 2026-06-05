@@ -13,3 +13,17 @@ export function isAutoGarbageDepartment(departmentName: string | null | undefine
 
   return hasAuto && hasGarbageTransport;
 }
+
+export function isGarbageTransportDepartment(departmentName: string | null | undefined) {
+  const value = normalizeDepartmentText(departmentName);
+  const hasGarbage =
+    value.includes("\u0445\u043e\u0433") ||
+    value.includes("garbage") ||
+    value.includes("hog");
+  const hasTransport =
+    value.includes("\u0442\u044d\u044d\u0432\u044d\u0440") ||
+    value.includes("transport") ||
+    value.includes("teever");
+
+  return hasGarbage && hasTransport;
+}

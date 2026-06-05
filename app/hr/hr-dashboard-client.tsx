@@ -4,6 +4,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import {
   Activity,
+  CalendarDays,
   ClipboardPlus,
   FileCheck2,
   FileWarning,
@@ -20,7 +21,7 @@ import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 import { HR_NOTIFICATION_HREF } from "./constants";
 import styles from "./hr.module.css";
 
-type DetailKind = "total" | "active" | "timeoff" | "sick" | "pending" | "approved" | "rejected";
+type DetailKind = "total" | "active" | "timeoff" | "annual_leave" | "sick" | "pending" | "approved" | "rejected";
 
 type StatCard = {
   kind: DetailKind;
@@ -42,6 +43,7 @@ const STAT_CARD_TONE_CLASS: Record<DetailKind, string> = {
   total: styles.statCardTotal,
   active: styles.statCardActive,
   timeoff: styles.statCardTimeoff,
+  annual_leave: styles.statCardTimeoff,
   sick: styles.statCardSick,
   pending: styles.statCardPending,
   approved: styles.statCardApproved,
@@ -150,6 +152,12 @@ function AnimatedPie({
 function dayLabel(request?: HrTimeoffRequest) {
   if (!request) return "0 өдөр";
   return `${Math.max(1, Math.round(request.durationDays || 1))} өдөр`;
+}
+
+function timeoffPriority(request: HrTimeoffRequest) {
+  if (request.requestType === "sick") return 3;
+  if (request.requestType === "annual_leave") return 2;
+  return 1;
 }
 
 function StatusEmployeeRow({
@@ -277,7 +285,7 @@ export function HrDashboardClient({
     for (const request of requests) {
       if (!requestCoversToday(request, today)) continue;
       const previous = current.get(request.employeeId);
-      if (!previous || request.requestType === "sick") {
+      if (!previous || timeoffPriority(request) > timeoffPriority(previous)) {
         current.set(request.employeeId, request);
       }
     }
@@ -286,6 +294,7 @@ export function HrDashboardClient({
 
   const activeEmployees = employees.filter((employee) => !employeeIsInactive(employee) && !currentRequestByEmployee.has(employee.id));
   const timeoffEmployees = employees.filter((employee) => currentRequestByEmployee.get(employee.id)?.requestType === "time_off");
+  const annualLeaveEmployees = employees.filter((employee) => currentRequestByEmployee.get(employee.id)?.requestType === "annual_leave");
   const sickEmployees = employees.filter((employee) => currentRequestByEmployee.get(employee.id)?.requestType === "sick");
   const pendingRequests = requests.filter((request) => ["submitted", "hr_review"].includes(request.state));
   const approvedRequests = requests.filter((request) => request.state === "approved");
@@ -313,6 +322,13 @@ export function HrDashboardClient({
       value: cardsSource?.timeOffEmployees ?? timeoffEmployees.length,
       icon: ClipboardPlus,
       note: "Батлагдсан хүсэлт хүчинтэй",
+    },
+    {
+      kind: "annual_leave",
+      label: "Ээлжийн амралттай",
+      value: cardsSource?.annualLeaveEmployees ?? annualLeaveEmployees.length,
+      icon: CalendarDays,
+      note: "Батлагдсан ээлжийн амралт",
     },
     {
       kind: "sick",
@@ -347,8 +363,9 @@ export function HrDashboardClient({
   const statusSlices: ChartSlice[] = [
     { label: "Идэвхтэй ажилтан", value: cards[1].value, color: STATUS_COLORS[0] },
     { label: "Чөлөөтэй", value: cards[2].value, color: STATUS_COLORS[1] },
-    { label: "Өвчтэй", value: cards[3].value, color: STATUS_COLORS[2] },
-    { label: "Хүлээгдэж буй хүсэлт", value: cards[4].value, color: STATUS_COLORS[3] },
+    { label: "Ээлжийн амралттай", value: cards[3].value, color: STATUS_COLORS[2] },
+    { label: "Өвчтэй", value: cards[4].value, color: STATUS_COLORS[3] },
+    { label: "Хүлээгдэж буй хүсэлт", value: cards[5].value, color: STATUS_COLORS[4] },
   ];
 
   const disciplineTypeSlices: ChartSlice[] = Array.from(
@@ -400,6 +417,7 @@ export function HrDashboardClient({
             totalEmployees,
             activeEmployees: 0,
             timeOffEmployees: 0,
+            annualLeaveEmployees: 0,
             sickEmployees: 0,
             pendingRequests: 0,
           }),
@@ -425,6 +443,11 @@ export function HrDashboardClient({
     }
     if (kind === "timeoff") {
       return timeoffEmployees.map((employee) => (
+        <StatusEmployeeRow key={employee.id} employee={employee} request={currentRequestByEmployee.get(employee.id)} />
+      ));
+    }
+    if (kind === "annual_leave") {
+      return annualLeaveEmployees.map((employee) => (
         <StatusEmployeeRow key={employee.id} employee={employee} request={currentRequestByEmployee.get(employee.id)} />
       ));
     }

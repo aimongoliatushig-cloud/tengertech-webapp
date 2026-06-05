@@ -99,3 +99,29 @@ export async function saveLocalInspectorScope(input: {
   await writeScopes([...withoutCurrent, scope]);
   return scope;
 }
+
+export async function saveLocalInspectorScopeExclusive(input: {
+  inspectorEmployeeId: number;
+  subdistrictIds: number[];
+  pointIds: number[];
+  vehicleIds: number[];
+}) {
+  const selectedVehicleIds = new Set(normalizeIds(input.vehicleIds));
+  const nextScope: LocalInspectorScope = {
+    inspectorEmployeeId: input.inspectorEmployeeId,
+    subdistrictIds: normalizeIds(input.subdistrictIds),
+    pointIds: normalizeIds(input.pointIds),
+    vehicleIds: Array.from(selectedVehicleIds),
+    updatedAt: new Date().toISOString(),
+  };
+  const scopes = await loadLocalInspectorScopes();
+  const nextScopes = scopes
+    .filter((item) => item.inspectorEmployeeId !== input.inspectorEmployeeId)
+    .map((item) => ({
+      ...item,
+      vehicleIds: item.vehicleIds.filter((vehicleId) => !selectedVehicleIds.has(vehicleId)),
+    }));
+
+  await writeScopes([...nextScopes, nextScope]);
+  return nextScope;
+}

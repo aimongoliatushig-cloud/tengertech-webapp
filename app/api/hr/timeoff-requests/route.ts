@@ -28,6 +28,7 @@ function files(formData: FormData, key: string) {
 }
 
 function requestType(value: string): HrTimeoffRequestType {
+  if (value === "annual_leave") return "annual_leave";
   return value === "sick" ? "sick" : "time_off";
 }
 
@@ -80,11 +81,11 @@ export async function POST(request: Request) {
     if (!input.requestType) return jsonError("Хүсэлтийн төрөл заавал сонгоно уу.", 400);
     if (!input.dateFrom || !input.dateTo) return jsonError("Эхлэх болон дуусах огноо заавал оруулна уу.", 400);
     if (input.dateTo < input.dateFrom) return jsonError("Дуусах огноо эхлэх огнооноос өмнө байж болохгүй.", 400);
+    if (!input.reason && input.requestType === "annual_leave") input.reason = "Ээлжийн амралт";
     if (!input.reason) return jsonError("Шалтгаан заавал оруулна уу.", 400);
-    if (input.submit && !input.files?.length) {
-      return jsonError("Хүсэлт илгээхийн тулд хавсралтын зураг заавал оруулна уу.", 400);
+    if (input.submit && input.requestType === "annual_leave" && !input.files?.length) {
+      return jsonError("Ээлжийн амралт бүртгэхэд баримт файл заавал хавсаргана уу.", 400);
     }
-
     const createdRequest = await createTimeoffRequest(session, input);
     if (input.submit) {
       await notifyHrTimeoffRequestSubmitted(createdRequest, session).catch((error) => {

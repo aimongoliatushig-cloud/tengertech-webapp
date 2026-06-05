@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 
 import { compareHrDepartmentNames } from "@/lib/hr-department-order";
-import type { HrLeaveItem, HrOption, HrSelectionOption, HrTimeoffRequest } from "@/lib/hr";
+import type { HrLeaveItem, HrOption, HrSelectionOption, HrTimeoffRequest, HrTimeoffRequestType } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
 import styles from "./hr.module.css";
@@ -117,6 +117,9 @@ function statusLabel(employee: HrEmployeeDirectoryItem) {
   if (employee.statusKey === "leave") {
     return "Чөлөөтэй";
   }
+  if (employee.statusKey === "annual_leave") {
+    return "Ээлжийн амралттай";
+  }
   if (employee.statusKey === "sick") {
     return "Өвчтэй";
   }
@@ -192,6 +195,7 @@ export function EmployeeTable({
           <option value={ALL}>Бүх төлөв</option>
           <option value="Идэвхтэй">Идэвхтэй</option>
           <option value="Чөлөөтэй">Чөлөөтэй</option>
+          <option value="Ээлжийн амралттай">Ээлжийн амралттай</option>
           <option value="Өвчтэй">Өвчтэй</option>
           <option value="Томилолттой">Томилолттой</option>
           <option value="Чөлөөлөгдсөн">Чөлөөлөгдсөн</option>
@@ -236,6 +240,7 @@ export function EmployeeTable({
                     <div className={styles.checklist}>
                       <Link href={`/hr/employees/${employee.id}?edit=profile#profile-info`}>Засах</Link>
                       <Link href={`/hr/sick?employeeId=${employee.id}&type=time_off`}>Чөлөө хүсэх</Link>
+                      <Link href={`/hr/sick?employeeId=${employee.id}&type=annual_leave`}>Ээлжийн амралт</Link>
                       <Link href={`/hr/sick?employeeId=${employee.id}&type=sick`}>Өвчтэй бүртгэх</Link>
                     </div>
                   </td>
@@ -331,21 +336,6 @@ export function EmployeeCreateForm({
             <option>Улирлын</option>
           </select>
         </label>
-        <label className={styles.checkField}>
-          <input name="isFieldEmployee" type="checkbox" />
-          <span>Талбайн ажилтан эсэх</span>
-        </label>
-        <label className={styles.field}>
-          <span>Талбайн үүрэг</span>
-          <select name="fieldRole" defaultValue="">
-            <option value="">Сонгохгүй</option>
-            <option>Жолооч</option>
-            <option>Ачигч</option>
-            <option>Хянагч</option>
-            <option>Мастер</option>
-            <option>Бусад</option>
-          </select>
-        </label>
         <Field name="workLocation" label="Ажиллах байршил" />
         <Field name="emergencyContact" label="Яаралтай холбоо барих хүн" />
         <Field name="emergencyPhone" label="Яаралтай холбоо барих утас" />
@@ -363,20 +353,6 @@ export function EmployeeCreateForm({
           <Field name="addressProvince" label="Аймаг / Хот" />
           <Field name="addressDistrict" label="Сум / Дүүрэг" />
           <Field name="addressSubdistrict" label="Баг / Хороо" />
-          <label className={styles.field}>
-            <span>Гэр бүлийн байдал</span>
-            <select name="familyStatus" defaultValue="">
-              <option value="">Сонгохгүй</option>
-              <option value="single">Ганц бие</option>
-              <option value="married">Гэрлэсэн</option>
-              <option value="cohabitant">Хамтран амьдрагчтай</option>
-              <option value="divorced">Салсан</option>
-              <option value="widower">Бэлэвсэн</option>
-            </select>
-          </label>
-          <Field name="childrenCount" label="Хүүхдийн тоо" type="number" />
-          <Field name="childrenInfo" label="Хүүхдийн нас / нэмэлт мэдээлэл" />
-          <Field name="childrenSchool" label="Хүүхдүүдийн сургууль / цэцэрлэг" />
         </div>
       </section>
 
@@ -391,7 +367,6 @@ export function EmployeeCreateForm({
           <Field name="baseSalary" label="Үндсэн цалин" type="number" />
           <Field name="taxNumber" label="ТТД дугаар" />
           <Field name="socialInsuranceStartDate" label="НД төлж эхэлсэн огноо" type="date" />
-          <Field name="annualLeaveNote" label="Ээлжийн амралтын мэдээлэл" />
         </div>
       </section>
 
@@ -1273,6 +1248,7 @@ export function EmployeeDetailTabs({
             "Чөлөөний хүсэлт",
             <div className={styles.hrProfileActionStack}>
               <Link href={`/hr/sick?${employeeQuery}&type=time_off`} className={styles.primaryButton}>Чөлөө хүсэх</Link>
+              <Link href={`/hr/sick?${employeeQuery}&type=annual_leave`} className={styles.secondaryButton}>Ээлжийн амралт бүртгэх</Link>
               <Link href={`/hr/sick?${employeeQuery}&type=sick`} className={styles.secondaryButton}>Өвчтэй бүртгэх</Link>
               {mode === "hr" ? <Link href={`/hr/trips?${employeeQuery}`} className={styles.secondaryButton}>Томилолт бүртгэх</Link> : null}
             </div>,
@@ -1810,6 +1786,7 @@ function getEmployeeDetailTabActions(tab: string, employeeQuery: string, mode: "
   if (tab === "Чөлөө") {
     const actions: DetailTabAction[] = [
       { label: mode === "hr" ? "Чөлөө бүртгэх" : "Чөлөө хүсэх", href: `/hr/sick?${employeeQuery}&type=time_off`, icon: FileCheck2 },
+      { label: "Ээлжийн амралт бүртгэх", href: `/hr/sick?${employeeQuery}&type=annual_leave`, icon: CalendarDays },
       { label: "Өвчтэй бүртгэх", href: `/hr/sick?${employeeQuery}&type=sick`, icon: HeartPulse },
     ];
     if (mode === "hr") {
@@ -1871,7 +1848,9 @@ export function TimeoffRequestsClient({
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const defaultType = searchParams.get("type") === "sick" ? "sick" : "time_off";
+  const requestedType = searchParams.get("type");
+  const defaultType: HrTimeoffRequestType =
+    requestedType === "sick" ? "sick" : requestedType === "annual_leave" ? "annual_leave" : "time_off";
   const defaultFilter = searchParams.get("state") || searchParams.get("requestType") || ALL;
   const defaultEmployeeId = searchParams.get("employeeId") || "";
   const selectedEmployee = useMemo(
@@ -1882,6 +1861,8 @@ export function TimeoffRequestsClient({
   const [message, setMessage] = useState("");
   const [filter, setFilter] = useState(defaultFilter);
   const [editingRequest, setEditingRequest] = useState<HrTimeoffRequest | null>(null);
+  const [selectedRequestType, setSelectedRequestType] = useState<HrTimeoffRequestType>(defaultType);
+  const annualLeaveOnlyMode = mode === "hr" && defaultType === "annual_leave";
 
   const visibleRequests = useMemo(() => {
     if (filter === ALL) return requests;
@@ -1901,9 +1882,10 @@ export function TimeoffRequestsClient({
     if (submitter?.name && !formData.has(submitter.name)) {
       formData.set(submitter.name, intent);
     }
+    const requestTypeValue = String(formData.get("requestType") || selectedRequestType);
     const hasNewAttachment = formData.getAll("files").some((value) => value instanceof File && value.size > 0);
-    if (intent !== "draft" && !editingRequest?.hasAttachment && !hasNewAttachment) {
-      setMessage("Хүсэлт илгээхийн тулд хавсралтын зураг заавал оруулна уу.");
+    if (intent !== "draft" && requestTypeValue === "annual_leave" && !editingRequest?.hasAttachment && !hasNewAttachment) {
+      setMessage("Ээлжийн амралт бүртгэхэд баримт файл заавал хавсаргана уу.");
       return;
     }
     setPending(true);
@@ -1918,6 +1900,7 @@ export function TimeoffRequestsClient({
       }
       setMessage(editingRequest ? "Хүсэлт шинэчлэгдлээ." : formData.get("intent") === "draft" ? "Ноорог хадгалагдлаа." : "Хүсэлт HR-д илгээгдлээ.");
       setEditingRequest(null);
+      setSelectedRequestType(defaultType);
       router.refresh();
       form.reset();
     } catch (error) {
@@ -1969,6 +1952,7 @@ export function TimeoffRequestsClient({
             <option value="approved">Батлагдсан</option>
             <option value="rejected">Татгалзсан</option>
             <option value="time_off">Чөлөө</option>
+            <option value="annual_leave">Ээлжийн амралт</option>
             <option value="sick">Өвчтэй</option>
           </select>
         </div>
@@ -2044,7 +2028,10 @@ export function TimeoffRequestsClient({
                           <button
                             type="button"
                             className={`${styles.actionButton} ${styles.actionButtonReview}`}
-                            onClick={() => setEditingRequest(request)}
+                            onClick={() => {
+                              setEditingRequest(request);
+                              setSelectedRequestType(request.requestType);
+                            }}
                             disabled={pending}
                           >
                             Засах
@@ -2075,9 +2062,9 @@ export function TimeoffRequestsClient({
         ) : null}
       </section>
 
-      {mode === "department" ? (
+      {mode === "department" || defaultType === "annual_leave" ? (
       <form key={editingRequest?.id ?? "new"} className={styles.formPanel} onSubmit={submit} noValidate>
-        <h2>{editingRequest ? "Хүсэлт засах" : "Чөлөө / өвчтэй хүсэлт"}</h2>
+        <h2>{editingRequest ? "Хүсэлт засах" : selectedRequestType === "annual_leave" ? "Ээлжийн амралт бүртгэх" : "Чөлөө / өвчтэй хүсэлт"}</h2>
         {message ? <p className={isErrorMessage(message) ? styles.errorText : styles.successText}>{message}</p> : null}
         {!editingRequest && selectedEmployee ? (
           <div className={styles.selectedEmployeeContext}>
@@ -2094,29 +2081,51 @@ export function TimeoffRequestsClient({
           defaultValue={editingRequest?.employeeId || defaultEmployeeId}
           disabled={Boolean(editingRequest)}
         />
-        <label className={styles.field}>
-          <span>Төрөл</span>
-          <select name="requestType" defaultValue={editingRequest?.requestType || defaultType} required>
-            <option value="time_off">Чөлөө</option>
-            <option value="sick">Өвчтэй</option>
-          </select>
-        </label>
+        {annualLeaveOnlyMode ? (
+          <input type="hidden" name="requestType" value="annual_leave" />
+        ) : (
+          <label className={styles.field}>
+            <span>Төрөл</span>
+            <select
+              name="requestType"
+              value={selectedRequestType}
+              onChange={(event) => setSelectedRequestType(event.target.value as HrTimeoffRequestType)}
+              required
+            >
+              <option value="time_off">Чөлөө</option>
+              <option value="annual_leave">Ээлжийн амралт</option>
+              <option value="sick">Өвчтэй</option>
+            </select>
+          </label>
+        )}
         <div className={styles.formGridTwo}>
           <Field name="dateFrom" label="Эхлэх огноо" type="date" required defaultValue={editingRequest?.dateFrom} />
           <Field name="dateTo" label="Дуусах огноо" type="date" required defaultValue={editingRequest?.dateTo} />
         </div>
         <label className={styles.field}>
-          <span>Шалтгаан</span>
-          <textarea name="reason" rows={4} defaultValue={editingRequest?.reason || ""} required />
+          <span>{selectedRequestType === "annual_leave" ? "Тайлбар" : "Шалтгаан"}</span>
+          <textarea
+            name="reason"
+            rows={4}
+            defaultValue={editingRequest?.reason || (selectedRequestType === "annual_leave" ? "Ээлжийн амралт" : "")}
+            required={selectedRequestType !== "annual_leave"}
+          />
         </label>
         <label className={styles.field}>
-          <span>Хавсралтын зураг</span>
-          <input name="files" type="file" accept="image/*,.pdf" multiple required={!editingRequest?.hasAttachment} />
+          <span>{selectedRequestType === "annual_leave" ? "Баримт файл" : "Хавсралтын зураг"}</span>
+          <input name="files" type="file" accept="image/*,.pdf,.doc,.docx" multiple />
+          <small>
+            {selectedRequestType === "annual_leave"
+              ? "Ээлжийн амралт бүртгэхэд баримт файл хавсаргана."
+              : "Заавал биш. Баримтыг дараа нь нэмэж болно."}
+          </small>
         </label>
-        <label className={styles.field}>
-          <span>Тайлбар</span>
-          <textarea name="note" rows={3} defaultValue={editingRequest?.note || ""} />
-        </label>
+        {selectedRequestType !== "annual_leave" ? (
+          <label className={styles.field}>
+            <span>Тайлбар</span>
+            <textarea name="note" rows={3} defaultValue={editingRequest?.note || ""} />
+          </label>
+        ) : null}
         <div className={styles.actionGrid}>
           <button className={styles.primaryButton} name="intent" value="submit" disabled={pending}>
             {pending ? "Илгээж байна..." : "Илгээх"}
@@ -2125,7 +2134,15 @@ export function TimeoffRequestsClient({
             Ноорог хадгалах
           </button>
           {editingRequest ? (
-            <button className={styles.primaryButton} type="button" onClick={() => setEditingRequest(null)} disabled={pending}>
+            <button
+              className={styles.primaryButton}
+              type="button"
+              onClick={() => {
+                setEditingRequest(null);
+                setSelectedRequestType(defaultType);
+              }}
+              disabled={pending}
+            >
               Болих
             </button>
           ) : null}
@@ -2257,6 +2274,7 @@ export function LeavesClient({
         <label className={styles.field}>
           <span>Эмнэлгийн магадлагаа / файл</span>
           <input name="files" type="file" multiple />
+          <small>Заавал биш. Тайлбар бичээд илгээж, баримтыг дараа нь нэмэж болно.</small>
         </label>
         <label className={styles.checkField}>
           <input name="confirm" type="checkbox" />

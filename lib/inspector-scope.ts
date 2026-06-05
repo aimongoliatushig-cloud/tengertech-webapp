@@ -4,7 +4,7 @@ import { normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { isAutoGarbageDepartment, normalizeDepartmentText } from "@/lib/department-permissions";
 import { loadLocalInspectorScopes } from "@/lib/inspector-scope-store";
 import { createOdooConnection, executeOdooKw, loadFleetVehicleBoard, type OdooConnection } from "@/lib/odoo";
-import { loadDepartmentOptions } from "@/lib/workspace";
+import { loadDepartmentOptions, loadGarbageVehicleOptions } from "@/lib/workspace";
 
 type Relation = [number, string] | false;
 type OdooFieldMap = Record<string, { type?: string }>;
@@ -87,10 +87,30 @@ async function loadVehicleRecordsForScope(
   connection: Partial<OdooConnection>,
   vehicleFields: OdooFieldMap | null,
 ) {
+  const garbageVehicleOptions = await loadGarbageVehicleOptions(connection, {
+    ignoreCurrentEmployeeScope: true,
+    requireGarbageTransportDepartment: true,
+  }).catch(() => []);
+  if (garbageVehicleOptions.length) {
+    return garbageVehicleOptions.map((vehicle) => ({
+      id: vehicle.id,
+      name: vehicle.label,
+      license_plate: vehicle.plate,
+      municipal_department_id: false,
+      mfo_inspector_employee_ids: [],
+      mfo_garbage_work_create_allowed: true,
+    } satisfies VehicleRecord));
+  }
+
   const board = await loadFleetVehicleBoard(connection).catch(() => null);
   if (board?.allVehicles.length) {
     return board.allVehicles
-      .filter((vehicle) => isAutoGarbageVehicleDepartment(vehicle.departmentName))
+      .filter(
+        (vehicle) =>
+          isAutoGarbageVehicleDepartment(vehicle.departmentName) ||
+          isGarbageTransportVehicleTypeName(vehicle.vehicleTypeName) ||
+          isGarbageTransportVehicleTypeName(vehicle.categoryName),
+      )
       .map((vehicle) => ({
         id: vehicle.id,
         name: vehicle.name,
@@ -130,6 +150,25 @@ async function loadVehicleRecordsForScope(
   return vehicles.filter((vehicle) =>
     isAutoGarbageVehicleDepartment(relationName(vehicle.municipal_department_id)),
   );
+}
+
+function isGarbageTransportVehicleTypeName(typeName?: string | null) {
+  const value = normalizeDepartmentText(typeName);
+  if (!value) {
+    return false;
+  }
+
+  const hasGarbage = value.includes("хог") || value.includes("garbage") || value.includes("hog");
+  const hasVehicle =
+    value.includes("тээв") ||
+    value.includes("машин") ||
+    value.includes("ачил") ||
+    value.includes("ачит") ||
+    value.includes("transport") ||
+    value.includes("vehicle") ||
+    value.includes("truck");
+
+  return hasGarbage && hasVehicle;
 }
 
 async function loadDepartmentId(
@@ -274,8 +313,7 @@ async function loadInspectorScopeDataUncached(
     localScopes.map((scope) => [scope.inspectorEmployeeId, scope]),
   );
 
-  return {
-    inspectors: inspectors.map((inspector) => ({
+  const inspectorOptions = inspectors.map((inspector) => ({
       id: inspector.id,
       name: inspector.name,
       meta: [inspector.job_title || "", relationName(inspector.department_id)].filter(Boolean).join(" · "),
@@ -291,7 +329,20 @@ async function loadInspectorScopeDataUncached(
         localScopeByEmployeeId.get(inspector.id)?.vehicleIds ??
         inspector.mfo_inspected_vehicle_ids ??
         [],
-    })),
+    }));
+  const inspectorIdsByVehicleId = new Map<number, number[]>();
+  for (const inspector of inspectorOptions) {
+    for (const vehicleId of inspector.vehicleIds) {
+      const inspectorIds = inspectorIdsByVehicleId.get(vehicleId) ?? [];
+      if (!inspectorIds.includes(inspector.id)) {
+        inspectorIds.push(inspector.id);
+      }
+      inspectorIdsByVehicleId.set(vehicleId, inspectorIds);
+    }
+  }
+
+  return {
+    inspectors: inspectorOptions,
     subdistricts: subdistricts.map((subdistrict) => ({
       id: subdistrict.id,
       label: relationName(subdistrict.district_id)
@@ -306,10 +357,16 @@ async function loadInspectorScopeDataUncached(
     })),
     vehicles: vehicles.map((vehicle) => {
       const plate = vehicle.license_plate || vehicle.name || `Техник #${vehicle.id}`;
+      const inspectorIds = Array.from(
+        new Set([
+          ...(vehicle.mfo_inspector_employee_ids ?? []),
+          ...(inspectorIdsByVehicleId.get(vehicle.id) ?? []),
+        ]),
+      );
       return {
         id: vehicle.id,
         label: plate,
-        inspectorIds: vehicle.mfo_inspector_employee_ids ?? [],
+        inspectorIds,
         workCreateAllowed: vehicle.mfo_garbage_work_create_allowed ?? true,
       };
     }),

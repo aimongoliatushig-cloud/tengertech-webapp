@@ -2486,7 +2486,7 @@ function AutoGarbageLeaderboardPanel({
 
       <section className={dashboardStyles.autoGarbageSummaryPanel}>
         <div>
-          <small>12 сарын ачсан тонн</small>
+          <small>Ачсан тонн</small>
           <strong>{formatTons(totalTons)}</strong>
           <em>{latestWeightFetchedAt ? `Татсан: ${latestWeightFetchedAt}` : "Татсан огноо алга"}</em>
         </div>
@@ -2495,7 +2495,7 @@ function AutoGarbageLeaderboardPanel({
           <strong>{formatTons(averageTons)}</strong>
         </div>
         <div>
-          <small>12 сарын шатахуун</small>
+          <small>Шатахуун</small>
           <strong>{formatFuelLiters(totalFuelLiters)}</strong>
           <em>{latestFuelFetchedAt ? `Татсан: ${latestFuelFetchedAt}` : "Татсан огноо алга"}</em>
         </div>
@@ -2546,14 +2546,6 @@ export function AutoGarbageWorkBoard({
           <p>Авто бааз, хог тээвэрлэлтийн хэлтэс · Нийт {model.tasks.length} ажил</p>
         </div>
         <div className={dashboardStyles.autoGarbageToolbar}>
-          <Link href="/projects" className={dashboardStyles.autoGarbageGhostButton}>
-            <ListChecks aria-hidden />
-            Шүүлтүүр
-          </Link>
-          <Link href="/projects?sort=recent" className={dashboardStyles.autoGarbageGhostButton}>
-            <BarChart3 aria-hidden />
-            Эрэмбэлэх
-          </Link>
           {canCreateWork ? (
             <Link href="/create" className={dashboardStyles.autoGarbagePrimaryButton}>
               <Plus aria-hidden />
@@ -2593,7 +2585,7 @@ export function AutoGarbageWorkBoard({
           tone="orange"
         />
         <AutoGarbageMetricCard
-          label="12 сарын ачсан тонн"
+          label="Ачсан тонн"
           value={formatTons(model.totalTons)}
           helper={model.latestWeightFetchedAt ? `Татсан: ${model.latestWeightFetchedAt}` : "Татсан огноо алга"}
           icon={Recycle}
@@ -2601,7 +2593,7 @@ export function AutoGarbageWorkBoard({
           href={weightHref}
         />
         <AutoGarbageMetricCard
-          label="12 сарын шатахуун"
+          label="Шатахуун"
           value={formatFuelLiters(model.totalFuelLiters)}
           helper={model.latestFuelFetchedAt ? `Татсан: ${model.latestFuelFetchedAt}` : "Татсан огноо алга"}
           icon={Fuel}

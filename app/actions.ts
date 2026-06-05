@@ -11,7 +11,12 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
+import { loadSessionEmployeeDepartmentName } from "@/lib/access-scope";
 import { getTodayDateKey, pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
+import {
+  isAutoGarbageDepartment,
+  isGarbageTransportDepartment,
+} from "@/lib/department-permissions";
 import {
   createFieldStopIssue,
   markFieldStopArrived,
@@ -306,6 +311,32 @@ function isDriverEmployeeOption(option: { jobTitle?: string }) {
   return title.includes("жолооч") || title.includes("driver") || title.includes("chauffeur");
 }
 
+function isClearlyNotDriverEmployeeOption(option: { jobTitle?: string }) {
+  const title = String(option.jobTitle ?? "").trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
+  return (
+    title.includes("ачигч") ||
+    title.includes("хяналт") ||
+    title.includes("байцаагч") ||
+    title.includes("дарга") ||
+    title.includes("менежер") ||
+    title.includes("диспетчер") ||
+    title.includes("засвар") ||
+    title.includes("loader") ||
+    title.includes("inspector") ||
+    title.includes("manager") ||
+    title.includes("dispatcher") ||
+    title.includes("mechanic")
+  );
+}
+
+function isGarbageTransportDriverOption(option: { departmentName?: string; jobTitle?: string }) {
+  return (
+    (isAutoGarbageDepartment(option.departmentName) ||
+      isGarbageTransportDepartment(option.departmentName)) &&
+    isDriverEmployeeOption(option)
+  );
+}
+
 type GarbageVehicleCrewRecord = {
   id: number;
   name?: string | false;
@@ -539,6 +570,32 @@ function normalizeSharedWorkDate(value: string, boundary: "start" | "end") {
   return value.length === 16 ? `${value}:00` : value;
 }
 
+function findDepartmentOptionByName<
+  T extends {
+    name: string;
+    label: string;
+  },
+>(departmentOptions: T[], departmentName: string | null) {
+  const normalizedDepartmentName = (departmentName ?? "").trim().toLowerCase();
+  if (!normalizedDepartmentName) {
+    return null;
+  }
+
+  return (
+    departmentOptions.find((option) => {
+      const names = [option.name, option.label]
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean);
+      return names.some(
+        (value) =>
+          value === normalizedDepartmentName ||
+          value.includes(normalizedDepartmentName) ||
+          normalizedDepartmentName.includes(value),
+      );
+    }) ?? null
+  );
+}
+
 async function createOdooAttachment(
   file: File,
   resModel: string,
@@ -764,12 +821,19 @@ export async function createProjectAction(formData: FormData) {
     password: session.password,
   };
   const projectMutationConnection: Partial<OdooConnection> = {};
+  const departmentHeadMode = Boolean(
+    session.role === "project_manager" || session.groupFlags?.municipalDepartmentHead,
+  );
   const transportInspectorMode = Boolean(
-    session.role === "transport_inspector" ||
+    (session.role === "transport_inspector" ||
       (session.groupFlags?.mfoInspector &&
         !session.groupFlags?.mfoManager &&
-        !session.groupFlags?.mfoDispatcher),
+        !session.groupFlags?.mfoDispatcher)) &&
+      !departmentHeadMode,
   );
+  const canCreateSharedWork =
+    session.role === "director" || session.role === "general_manager";
+  const shouldForceOwnDepartment = !canCreateSharedWork;
 
   if (!hasCapability(session, "create_projects")) {
     redirectWithMessage(
@@ -780,6 +844,14 @@ export async function createProjectAction(formData: FormData) {
   }
 
   if (operationUnit === "shared_work") {
+    if (!canCreateSharedWork) {
+      redirectWithMessage(
+        "/projects/new",
+        "error",
+        "Хамтарсан ажлыг зөвхөн захирал болон үйл ажиллагаа хариуцсан менежер үүсгэх боломжтой.",
+      );
+    }
+
     const sharedDepartmentIds = getPositiveIds(formData, "shared_department_ids");
     if (!name) {
       redirectWithMessage("/projects/new", "error", "Хамтарсан ажлын нэр оруулна уу.");
@@ -850,7 +922,29 @@ export async function createProjectAction(formData: FormData) {
 
   let effectiveDepartmentIdRaw = departmentIdRaw;
 
-  if (isMasterRole(session.role)) {
+  if (shouldForceOwnDepartment) {
+    const [sessionDepartmentName, departmentOptions] = await Promise.all([
+      loadSessionEmployeeDepartmentName(session),
+      loadDepartmentOptions(connectionOverrides),
+    ]);
+    const lockedDepartmentOption = findDepartmentOptionByName(
+      departmentOptions,
+      sessionDepartmentName,
+    );
+    const lockedDepartmentId = lockedDepartmentOption?.id ?? null;
+
+    if (!lockedDepartmentId) {
+      redirectWithMessage(
+        "/projects/new",
+        "error",
+        "Таны харьяалах хэлтсийг тодорхойлж чадсангүй. Админд хандаж ажилтны хэлтсийн тохиргоогоо шалгуулна уу.",
+      );
+    }
+
+    effectiveDepartmentIdRaw = String(lockedDepartmentId);
+  }
+
+  if (!shouldForceOwnDepartment && isMasterRole(session.role)) {
     const [masterSnapshot, departmentOptions] = await Promise.all([
       loadMunicipalSnapshot(connectionOverrides),
       loadDepartmentOptions(connectionOverrides),
@@ -863,7 +957,7 @@ export async function createProjectAction(formData: FormData) {
       departments: masterSnapshot.departments,
     });
     const lockedDepartmentOption = masterDepartmentName
-      ? departmentOptions.find((option) => option.name === masterDepartmentName) ?? null
+      ? findDepartmentOptionByName(departmentOptions, masterDepartmentName)
       : null;
 
     if (!lockedDepartmentOption) {
@@ -1245,7 +1339,7 @@ export async function createProjectAction(formData: FormData) {
         [
           defaultVehicleDriverId,
           ...(fleetBoard?.driverOptions ?? [])
-            .filter((driver) => driver.active && isDriverEmployeeOption(driver))
+            .filter((driver) => driver.active && isGarbageTransportDriverOption(driver))
             .map((driver) => driver.id),
         ].filter((driverId): driverId is number => Boolean(driverId)),
       );
@@ -2282,7 +2376,7 @@ export async function deleteTaskAction(formData: FormData) {
     revalidatePath("/projects");
     revalidatePath("/tasks");
     revalidatePath(`/projects/${projectId}`);
-    redirect(`${target}?notice=${encodeURIComponent("Даалгавар устгагдлаа.")}`);
+    redirect(`${target}?notice=${encodeURIComponent("Даалгавар архивлагдлаа.")}`);
   } catch (error) {
     rethrowIfRedirectError(error);
     redirectWithMessage(target, "error", getErrorMessage(error));
@@ -2321,7 +2415,7 @@ export async function deleteProjectAction(formData: FormData) {
     revalidatePath("/projects");
     revalidatePath("/tasks");
     revalidatePath(`/projects/${projectId}`);
-    redirect(`${target}?notice=${encodeURIComponent("Ажил устгагдлаа.")}`);
+    redirect(`${target}?notice=${encodeURIComponent("Ажил архивлагдлаа.")}`);
   } catch (error) {
     rethrowIfRedirectError(error);
     redirectWithMessage(target, "error", getErrorMessage(error));

@@ -8,6 +8,7 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 FINAL_STATES = ("approved", "rejected", "cancelled")
 REQUEST_TYPE_LABELS = {
     "time_off": "Чөлөө",
+    "annual_leave": "Ээлжийн амралт",
     "sick": "Өвчтэй",
 }
 STATE_LABELS = {
@@ -21,6 +22,7 @@ STATE_LABELS = {
 STATUS_LABELS = {
     "active": "Идэвхтэй",
     "time_off": "Чөлөөтэй",
+    "annual_leave": "Ээлжийн амралттай",
     "sick": "Өвчтэй",
     "inactive": "Идэвхгүй",
     "archived": "Архивласан",
@@ -37,7 +39,7 @@ class MunicipalHrTimeoffRequest(models.Model):
     employee_id = fields.Many2one("hr.employee", string="Ажилтан", required=True, tracking=True)
     department_id = fields.Many2one("hr.department", string="Хэлтэс", required=True, tracking=True)
     request_type = fields.Selection(
-        [("time_off", "Чөлөө"), ("sick", "Өвчтэй")],
+        [("time_off", "Чөлөө"), ("annual_leave", "Ээлжийн амралт"), ("sick", "Өвчтэй")],
         string="Төрөл",
         required=True,
         default="time_off",
@@ -89,7 +91,7 @@ class MunicipalHrTimeoffRequest(models.Model):
     duration_days = fields.Integer(string="Нийт өдөр", compute="_compute_duration_days", store=True)
     is_current = fields.Boolean(string="Өнөөдөр хүчинтэй", compute="_compute_current_flags")
     current_status_effect = fields.Selection(
-        [("none", "Нөлөөгүй"), ("time_off", "Чөлөөтэй"), ("sick", "Өвчтэй")],
+        [("none", "Нөлөөгүй"), ("time_off", "Чөлөөтэй"), ("annual_leave", "Ээлжийн амралттай"), ("sick", "Өвчтэй")],
         string="Одоогийн төлөвт үзүүлэх нөлөө",
         compute="_compute_current_flags",
     )
@@ -245,7 +247,10 @@ class MunicipalHrTimeoffRequest(models.Model):
             if request.date_to < request.date_from:
                 raise UserError("Дуусах огноо эхлэх огнооноос өмнө байж болохгүй.")
             if not (request.reason or "").strip():
-                raise UserError("Шалтгаан заавал оруулна уу.")
+                if request.request_type == "annual_leave":
+                    request.reason = "Ээлжийн амралт"
+                else:
+                    raise UserError("Шалтгаан заавал оруулна уу.")
             request._require_attachments()
 
     @api.model
@@ -258,13 +263,15 @@ class MunicipalHrTimeoffRequest(models.Model):
             raise UserError("Эхлэх болон дуусах огноо заавал оруулна уу.")
         if vals.get("date_to") < vals.get("date_from"):
             raise UserError("Дуусах огноо эхлэх огнооноос өмнө байж болохгүй.")
+        if not (vals.get("reason") or "").strip() and vals.get("request_type") == "annual_leave":
+            vals["reason"] = "Ээлжийн амралт"
         if not (vals.get("reason") or "").strip():
             raise UserError("Шалтгаан заавал оруулна уу.")
 
     def _require_attachments(self):
         for request in self:
-            if not request.attachment_ids:
-                raise UserError("Хүсэлт илгээхийн тулд хавсралтын зураг заавал оруулна уу.")
+            if request.request_type == "annual_leave" and not request.attachment_ids:
+                raise UserError("Ээлжийн амралт бүртгэхэд баримт файл заавал хавсаргана уу.")
 
     @api.model
     def _current_user_is_hr_reviewer(self):
@@ -377,7 +384,7 @@ class MunicipalHrTimeoffRequest(models.Model):
                 "request_type": payload.get("requestType") or "time_off",
                 "date_from": payload.get("dateFrom"),
                 "date_to": payload.get("dateTo"),
-                "reason": payload.get("reason") or "",
+                "reason": payload.get("reason") or ("Ээлжийн амралт" if payload.get("requestType") == "annual_leave" else ""),
                 "note": payload.get("note") or "",
                 "state": "draft",
             }
@@ -385,6 +392,8 @@ class MunicipalHrTimeoffRequest(models.Model):
         request._create_payload_attachments(payload.get("attachments") or [])
         if payload.get("submit"):
             request.action_submit()
+            if payload.get("autoApprove") and request._current_user_is_hr_reviewer():
+                request.action_approve()
         return request._serialize()
 
     def update_hr_timeoff_request(self, payload):
@@ -468,12 +477,15 @@ class MunicipalHrTimeoffRequest(models.Model):
         current_by_employee = self._current_status_by_employee(employees.ids, today)
         active_count = 0
         time_off_count = 0
+        annual_leave_count = 0
         sick_count = 0
         archived_count = 0
         for employee in employees:
             status = current_by_employee.get(employee.id) or self._base_employee_status(employee)
             if status == "sick":
                 sick_count += 1
+            elif status == "annual_leave":
+                annual_leave_count += 1
             elif status == "time_off":
                 time_off_count += 1
             elif status in ("archived", "inactive"):
@@ -488,6 +500,7 @@ class MunicipalHrTimeoffRequest(models.Model):
                 "totalEmployees": len(employees),
                 "activeEmployees": active_count,
                 "timeOffEmployees": time_off_count,
+                "annualLeaveEmployees": annual_leave_count,
                 "sickEmployees": sick_count,
                 "archivedEmployees": archived_count,
                 "pendingRequests": len(requests.filtered(lambda item: item.state in ("submitted", "hr_review"))),
@@ -497,6 +510,7 @@ class MunicipalHrTimeoffRequest(models.Model):
             "statusPie": [
                 {"label": "Идэвхтэй", "value": active_count},
                 {"label": "Чөлөөтэй", "value": time_off_count},
+                {"label": "Ээлжийн амралттай", "value": annual_leave_count},
                 {"label": "Өвчтэй", "value": sick_count},
             ],
             "departmentBreakdown": self._department_breakdown(employees, requests, today),
@@ -528,7 +542,9 @@ class MunicipalHrTimeoffRequest(models.Model):
         for request in current_requests:
             if request.request_type == "sick":
                 result[request.employee_id.id] = "sick"
-            elif result.get(request.employee_id.id) != "sick":
+            elif request.request_type == "annual_leave" and result.get(request.employee_id.id) != "sick":
+                result[request.employee_id.id] = "annual_leave"
+            elif result.get(request.employee_id.id) not in ("sick", "annual_leave"):
                 result[request.employee_id.id] = "time_off"
         return result
 
@@ -546,6 +562,7 @@ class MunicipalHrTimeoffRequest(models.Model):
                     "totalEmployees": 0,
                     "activeEmployees": 0,
                     "timeOffEmployees": 0,
+                    "annualLeaveEmployees": 0,
                     "sickEmployees": 0,
                     "pendingRequests": 0,
                 }
@@ -553,6 +570,8 @@ class MunicipalHrTimeoffRequest(models.Model):
             status = status_by_employee.get(employee.id) or self._base_employee_status(employee)
             if status == "sick":
                 rows[key]["sickEmployees"] += 1
+            elif status == "annual_leave":
+                rows[key]["annualLeaveEmployees"] += 1
             elif status == "time_off":
                 rows[key]["timeOffEmployees"] += 1
             elif status == "active":

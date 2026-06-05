@@ -1,9 +1,10 @@
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { Activity, Archive, BriefcaseBusiness, ClipboardCheck, HeartPulse, ShieldAlert, UserCheck, Users } from "lucide-react";
+import { redirect } from "next/navigation";
 import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
-import { getDepartments, getGeneratedHrReports, getHrStats, requireHrAccess } from "@/lib/hr";
+import { getDepartments, getGeneratedHrReports, getHrStats, requireHrSpecialistAccess } from "@/lib/hr";
 
 import { HrSectionNav } from "../hr-section-nav";
 import styles from "../hr.module.css";
@@ -24,9 +25,9 @@ function firstParam(value?: string | string[]) {
 
 export default async function HrReportsPage({ searchParams }: PageProps) {
   const session = await requireSession();
-  const access = await requireHrAccess(session).catch(() => null);
+  const access = await requireHrSpecialistAccess(session).catch(() => null);
   if (!access) {
-    return null;
+    redirect("/hr");
   }
   const params = (await searchParams) ?? {};
   const [stats, reports, departments] = await Promise.all([

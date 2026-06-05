@@ -63,6 +63,7 @@ type Relation = [number, string] | false;
 
 type ProjectRecord = {
   id: number;
+  active?: boolean;
   name: string;
   user_id: Relation;
   ops_department_id: Relation;
@@ -83,6 +84,7 @@ type ProjectCrewRecord = {
 
 type TaskRecord = {
   id: number;
+  active?: boolean;
   name: string;
   create_uid?: Relation;
   project_id: Relation;
@@ -384,7 +386,11 @@ type GarbageVehicleRecord = {
   name: string;
   license_plate: string | false;
   municipal_department_id?: Relation;
+  municipal_vehicle_type_id?: Relation;
+  category_id?: Relation;
   departmentName?: string;
+  vehicleTypeName?: string;
+  categoryName?: string;
   isRepair?: boolean;
   statusLabel?: string;
   mfo_garbage_work_create_allowed?: boolean;
@@ -444,15 +450,40 @@ function isGarbageTransportDepartmentName(departmentName?: string | null) {
   return hasGarbage && hasTransport;
 }
 
+function isGarbageTransportVehicleTypeName(typeName?: string | null) {
+  const value = normalizeDepartmentText(typeName);
+  if (!value) {
+    return false;
+  }
+
+  const hasGarbage = value.includes("хог") || value.includes("garbage") || value.includes("hog");
+  const hasVehicle =
+    value.includes("тээв") ||
+    value.includes("машин") ||
+    value.includes("ачил") ||
+    value.includes("ачит") ||
+    value.includes("transport") ||
+    value.includes("vehicle") ||
+    value.includes("truck");
+
+  return hasGarbage && hasVehicle;
+}
+
 function isGarbageTransportVehicleRecord(
   vehicle: Partial<GarbageVehicleRecord>,
-  boardVehicle?: { departmentName?: string },
+  boardVehicle?: { departmentName?: string; vehicleTypeName?: string; categoryName?: string },
 ) {
   return (
     vehicle.mfo_garbage_work_create_allowed === true ||
     isGarbageTransportDepartmentName(relationName(vehicle.municipal_department_id ?? false)) ||
     isGarbageTransportDepartmentName(vehicle.departmentName) ||
-    isGarbageTransportDepartmentName(boardVehicle?.departmentName)
+    isGarbageTransportDepartmentName(boardVehicle?.departmentName) ||
+    isGarbageTransportVehicleTypeName(relationName(vehicle.municipal_vehicle_type_id ?? false)) ||
+    isGarbageTransportVehicleTypeName(relationName(vehicle.category_id ?? false)) ||
+    isGarbageTransportVehicleTypeName(vehicle.vehicleTypeName) ||
+    isGarbageTransportVehicleTypeName(vehicle.categoryName) ||
+    isGarbageTransportVehicleTypeName(boardVehicle?.vehicleTypeName) ||
+    isGarbageTransportVehicleTypeName(boardVehicle?.categoryName)
   );
 }
 
@@ -3252,15 +3283,25 @@ export async function loadGarbageVehicleOptions(
         .filter((value): value is number => Boolean(value)),
     ),
   );
-  const [hasMfoActiveForOps, hasMunicipalDepartment, hasGarbageWorkCreateAllowed] = await Promise.all([
+  const [
+    hasMfoActiveForOps,
+    hasMunicipalDepartment,
+    hasGarbageWorkCreateAllowed,
+    hasMunicipalVehicleType,
+    hasCategory,
+  ] = await Promise.all([
     hasModelField("fleet.vehicle", "mfo_active_for_ops", connectionOverrides),
     hasModelField("fleet.vehicle", "municipal_department_id", connectionOverrides),
     hasModelField("fleet.vehicle", "mfo_garbage_work_create_allowed", connectionOverrides),
+    hasModelField("fleet.vehicle", "municipal_vehicle_type_id", connectionOverrides),
+    hasModelField("fleet.vehicle", "category_id", connectionOverrides),
   ]);
   const vehicleFields = [
     "name",
     "license_plate",
     ...(hasMunicipalDepartment ? ["municipal_department_id"] : []),
+    ...(hasMunicipalVehicleType ? ["municipal_vehicle_type_id"] : []),
+    ...(hasCategory ? ["category_id"] : []),
     ...(hasGarbageWorkCreateAllowed ? ["mfo_garbage_work_create_allowed"] : []),
   ];
 
@@ -3356,6 +3397,8 @@ export async function loadGarbageVehicleOptions(
         name: vehicle.name,
         license_plate: vehicle.plate,
         departmentName: vehicle.departmentName,
+        vehicleTypeName: vehicle.vehicleTypeName,
+        categoryName: vehicle.categoryName,
         isRepair: vehicle.isRepair,
         statusLabel: vehicle.stateLabel,
       });
@@ -5944,52 +5987,46 @@ export async function deleteWorkspaceTask(
   taskId: number,
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
-  const reports = await executeOdooKw<{ id: number }[]>(
-    "ops.task.report",
-    "search_read",
-    [[["task_id", "=", taskId]]],
-    { fields: ["id"] },
-    connectionOverrides,
-  ).catch(() => []);
-  const reportIds = reports.map((report) => report.id).filter(Boolean);
-  if (reportIds.length) {
-    await executeOdooKw<boolean>(
-      "ops.task.report",
-      "unlink",
-      [reportIds],
-      {},
-      connectionOverrides,
-    );
-  }
-
-  return executeOdooKw<boolean>(
-    "project.task",
-    "unlink",
-    [[taskId]],
-    {},
-    connectionOverrides,
-  );
+  return archiveWorkspaceRecords("project.task", [taskId], connectionOverrides);
 }
 
 export async function deleteWorkspaceProject(
   projectId: number,
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
-  const tasks = await executeOdooKw<{ id: number }[]>(
+  const taskIds = await executeOdooKw<number[]>(
     "project.task",
-    "search_read",
+    "search",
     [[["project_id", "=", projectId]]],
-    { fields: ["id"] },
+    { context: { active_test: false } },
     connectionOverrides,
   ).catch(() => []);
-  for (const task of tasks) {
-    await deleteWorkspaceTask(task.id, connectionOverrides);
+  if (taskIds.length) {
+    await archiveWorkspaceRecords("project.task", taskIds, connectionOverrides);
+  }
+
+  return archiveWorkspaceRecords("project.project", [projectId], connectionOverrides);
+}
+
+async function archiveWorkspaceRecords(
+  model: string,
+  ids: number[],
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const recordIds = ids.filter((id) => Number.isFinite(id) && id > 0);
+  if (!recordIds.length) {
+    return true;
+  }
+
+  const fieldNames = await loadModelFieldNames(model, connectionOverrides).catch(() => null);
+  if (fieldNames && !fieldNames.has("active")) {
+    throw new Error(`${model} model дээр архивлах active талбар олдсонгүй.`);
   }
 
   return executeOdooKw<boolean>(
-    "project.project",
-    "unlink",
-    [[projectId]],
+    model,
+    "write",
+    [recordIds, { active: false }],
     {},
     connectionOverrides,
   );

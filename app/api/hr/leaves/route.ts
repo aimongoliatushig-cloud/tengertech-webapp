@@ -89,7 +89,11 @@ export async function POST(request: Request) {
     const leaveTypeName = getString(formData, "leaveTypeName");
     const input: HrTimeoffRequestCreateInput = {
       employeeId: getNumber(formData, "employeeId") ?? 0,
-      requestType: leaveTypeName.toLocaleLowerCase("mn-MN").includes("өвч") ? "sick" : "time_off",
+      requestType: leaveTypeName.toLocaleLowerCase("mn-MN").includes("өвч")
+        ? "sick"
+        : leaveTypeName.toLocaleLowerCase("mn-MN").includes("ээлж")
+          ? "annual_leave"
+          : "time_off",
       dateFrom: getString(formData, "dateFrom"),
       dateTo: getString(formData, "dateTo"),
       reason: getString(formData, "note") || leaveTypeName || "Чөлөө / өвчтэй хүсэлт",
@@ -103,9 +107,9 @@ export async function POST(request: Request) {
     if (input.dateTo < input.dateFrom) {
       return jsonError("Дуусах огноо эхлэх огнооноос өмнө байж болохгүй.", 400);
     }
-
-    if (input.submit && !input.files?.length) {
-      return jsonError("Хүсэлт илгээхийн тулд хавсралтын зураг заавал оруулна уу.", 400);
+    if (!input.reason && input.requestType === "annual_leave") input.reason = "Ээлжийн амралт";
+    if (input.submit && input.requestType === "annual_leave" && !input.files?.length) {
+      return jsonError("Ээлжийн амралт бүртгэхэд баримт файл заавал хавсаргана уу.", 400);
     }
 
     const createdRequest = await createTimeoffRequest(session, input);

@@ -9,6 +9,10 @@ type Option = {
   label: string;
 };
 
+type VehicleOption = Option & {
+  inspectorIds?: number[];
+};
+
 type PointOption = Option & {
   subdistrictId?: number | null;
 };
@@ -27,7 +31,7 @@ type InspectorScopePanelProps = {
   inspectors: Inspector[];
   subdistricts: Option[];
   points: PointOption[];
-  vehicles: Option[];
+  vehicles: VehicleOption[];
 };
 
 function normalizeSearchText(value: string) {
@@ -158,6 +162,20 @@ export function InspectorScopePanel({
     () => new Set(Array.from(checkedPointIds).filter((pointId) => visiblePointIds.has(pointId))),
     [checkedPointIds, visiblePointIds],
   );
+  const visibleVehicles = useMemo(() => {
+    if (!activeInspector) {
+      return [];
+    }
+    return vehicles.filter((vehicle) => {
+      const assignedInspectorIds = vehicle.inspectorIds ?? [];
+      return !assignedInspectorIds.length || assignedInspectorIds.includes(activeInspector.id);
+    });
+  }, [activeInspector, vehicles]);
+  const visibleVehicleIds = useMemo(() => new Set(visibleVehicles.map((vehicle) => vehicle.id)), [visibleVehicles]);
+  const checkedVisibleVehicleIds = useMemo(
+    () => new Set(Array.from(checkedVehicleIds).filter((vehicleId) => visibleVehicleIds.has(vehicleId))),
+    [checkedVehicleIds, visibleVehicleIds],
+  );
 
   if (!inspectors.length) {
     return (
@@ -202,7 +220,7 @@ export function InspectorScopePanel({
                 <small>хогийн цэг</small>
               </span>
               <span className={styles.scopeCountPill}>
-                <b>{checkedVehicleIds.size}</b>
+                <b>{checkedVisibleVehicleIds.size}</b>
                 <small>машин</small>
               </span>
             </div>
@@ -247,8 +265,8 @@ export function InspectorScopePanel({
               <h3>Хянах машин</h3>
               <ScopeChecklist
                 name="scope_vehicle_ids"
-                options={vehicles}
-                selectedIds={checkedVehicleIds}
+                options={visibleVehicles}
+                selectedIds={checkedVisibleVehicleIds}
                 emptyLabel="Машин бүртгэгдээгүй байна. Жолооч, ачигчийн мэдээлэл машин дээр хадгалагдана."
                 onSelectionChange={(nextIds) =>
                   setVehicleSelection({

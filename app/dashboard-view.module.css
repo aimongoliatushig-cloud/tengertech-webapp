@@ -2202,6 +2202,13 @@
 
   .inspectorCreateActions {
     grid-template-columns: 1fr;
+    position: sticky;
+    bottom: calc(74px + env(safe-area-inset-bottom));
+    z-index: 5;
+    margin-inline: -4px;
+    padding: 10px 4px 0;
+    border-top: 1px solid rgba(47, 127, 70, 0.1);
+    background: linear-gradient(180deg, rgba(248, 252, 248, 0), #f8fcf8 24%, #f8fcf8 100%);
   }
 }
 

@@ -29,11 +29,14 @@ function getFallbackDepartmentName(session: Pick<AppSession, "role">) {
   return null;
 }
 
-export function shouldScopeToOwnDepartment(session: Pick<AppSession, "role">) {
+export function shouldScopeToOwnDepartment(
+  session: Pick<AppSession, "role"> & { groupFlags?: AppSession["groupFlags"] },
+) {
   return (
     session.role === "project_manager" ||
     session.role === "worker" ||
-    isMasterRole(session.role)
+    isMasterRole(session.role) ||
+    Boolean(session.groupFlags?.municipalDepartmentHead)
   );
 }
 

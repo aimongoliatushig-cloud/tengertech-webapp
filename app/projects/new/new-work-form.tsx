@@ -90,6 +90,7 @@ type Props = {
   initialGarbageShiftDate?: string;
   currentUserId?: number;
   lockRoadCleaningMasterToCurrentUser?: boolean;
+  disableSharedWork?: boolean;
 };
 
 function SubmitWorkButton({ label }: { label: string }) {
@@ -244,6 +245,7 @@ export function NewWorkForm({
   initialGarbageShiftDate,
   currentUserId,
   lockRoadCleaningMasterToCurrentUser = false,
+  disableSharedWork = false,
 }: Props) {
   const defaultDepartmentId = lockedDepartmentId ?? initialDepartmentId ?? "";
   const [departmentId, setDepartmentId] = useState(defaultDepartmentId);
@@ -417,6 +419,7 @@ export function NewWorkForm({
     supportsRoadAreaCleaning && operationUnit === "road_area_cleaning";
   const isSharedWork = operationUnit === "shared_work";
   const isDepartmentLocked = Boolean(lockedDepartmentId);
+  const canCreateSharedWork = !disableSharedWork;
   const showRoadCleaningModePicker =
     supportsRoadAreaCleaning && !isSharedWork;
   const visibleRoadCleaningAreaChoices = useMemo(() => {
@@ -983,7 +986,7 @@ export function NewWorkForm({
         </div>
       </div>
 
-      {!isDepartmentLocked ? (
+      {!isDepartmentLocked && canCreateSharedWork ? (
         <div className={styles.optionalSection}>
           <div className={styles.field}>
             <label>Ажлын төрөл</label>

@@ -368,7 +368,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const canEditTaskContent = task.createdById === session.uid;
   const canAssignTaskTeam = canCreateTasks && Boolean(task.projectId) && !workerMode;
   const canEditTask = canAssignTaskTeam;
-  const canDeleteTask = canDeleteWorkspaceItems(session) && Boolean(task.projectId) && canEditTaskContent;
+  const canDeleteTask = canDeleteWorkspaceItems(session) && Boolean(task.projectId);
   const taskEditOptions =
     canEditTask && task.projectId
       ? await loadProjectTaskEditOptions(task.projectId, task.operationType, connectionOverrides)

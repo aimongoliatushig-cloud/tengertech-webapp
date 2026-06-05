@@ -37,11 +37,15 @@ export default async function CreateHubPage() {
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const departmentHeadMode = Boolean(
+    session.role === "project_manager" || session.groupFlags?.municipalDepartmentHead,
+  );
   const transportInspectorMode = Boolean(
-    session.role === "transport_inspector" ||
+    (session.role === "transport_inspector" ||
       (session.groupFlags?.mfoInspector &&
         !session.groupFlags?.mfoManager &&
-        !session.groupFlags?.mfoDispatcher),
+        !session.groupFlags?.mfoDispatcher)) &&
+      !departmentHeadMode,
   );
   const departmentScopeName =
     session.role === "project_manager" || masterMode

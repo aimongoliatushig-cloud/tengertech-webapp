@@ -45,6 +45,7 @@ export default async function HrLayout({ children }: { children: React.ReactNode
             canViewQualityCenter={hasCapability(session, "view_quality_center")}
             canUseFieldConsole={hasCapability(session, "use_field_console")}
             canViewHr={hrProfile.canAccessHr}
+            canManageHr={hrProfile.isHr}
             canViewGeneralDashboard={canViewGeneralDashboard}
             userName={session.name}
             userRole={session.role}

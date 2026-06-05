@@ -271,7 +271,7 @@ export type HrStats = {
   pendingClearance: number;
 };
 
-export type HrTimeoffRequestType = "time_off" | "sick";
+export type HrTimeoffRequestType = "time_off" | "sick" | "annual_leave";
 export type HrTimeoffRequestState = "draft" | "submitted" | "hr_review" | "approved" | "rejected" | "cancelled";
 
 export type HrTimeoffRequest = {
@@ -310,6 +310,7 @@ export type HrTimeoffDashboardData = {
     totalEmployees: number;
     activeEmployees: number;
     timeOffEmployees: number;
+    annualLeaveEmployees: number;
     sickEmployees: number;
     archivedEmployees: number;
     pendingRequests: number;
@@ -323,6 +324,7 @@ export type HrTimeoffDashboardData = {
     totalEmployees: number;
     activeEmployees: number;
     timeOffEmployees: number;
+    annualLeaveEmployees: number;
     sickEmployees: number;
     pendingRequests: number;
   }>;
@@ -702,6 +704,7 @@ function resolveDirectEmployeeStatus(record: HrEmployeeSingleSearchRecord) {
     active: "Идэвхтэй",
     probation: "Туршилт",
     leave: "Чөлөөтэй",
+    annual_leave: "Ээлжийн амралттай",
     sick: "Өвчтэй",
     business_trip: "Томилолттой",
     suspended: "Түдгэлзсэн",
@@ -1155,8 +1158,11 @@ export async function requireHrSpecialistAccess(session: AppSession) {
   return profile;
 }
 
-export async function requireDepartmentHeadTimeoffRequestAccess(session: AppSession) {
+export async function requireDepartmentHeadTimeoffRequestAccess(session: AppSession, requestType?: HrTimeoffRequestType) {
   const profile = await getHrAccessProfile(session);
+  if (profile.isHr && requestType === "annual_leave") {
+    return profile;
+  }
   if (profile.isHr || !profile.isDepartmentHead) {
     throw new Error("HR_TIMEOFF_REQUESTER_ONLY");
   }
@@ -1859,6 +1865,7 @@ function emptyTimeoffDashboard(scope: "hr" | "department", departmentName = ""):
       totalEmployees: 0,
       activeEmployees: 0,
       timeOffEmployees: 0,
+      annualLeaveEmployees: 0,
       sickEmployees: 0,
       archivedEmployees: 0,
       pendingRequests: 0,
@@ -1868,11 +1875,30 @@ function emptyTimeoffDashboard(scope: "hr" | "department", departmentName = ""):
     statusPie: [
       { label: "Идэвхтэй", value: 0 },
       { label: "Чөлөөтэй", value: 0 },
+      { label: "Ээлжийн амралттай", value: 0 },
       { label: "Өвчтэй", value: 0 },
     ],
     departmentBreakdown: [],
     latestRequests: [],
   };
+}
+
+function normalizeTimeoffRequestType(value: unknown): HrTimeoffRequestType {
+  if (value === "sick") return "sick";
+  if (value === "annual_leave") return "annual_leave";
+  return "time_off";
+}
+
+function timeoffRequestTypeLabel(type: HrTimeoffRequestType) {
+  if (type === "sick") return "Өвчтэй";
+  if (type === "annual_leave") return "Ээлжийн амралт";
+  return "Чөлөө";
+}
+
+function timeoffStatusPriority(type: HrTimeoffRequestType) {
+  if (type === "sick") return 3;
+  if (type === "annual_leave") return 2;
+  return 1;
 }
 
 async function filesToAttachments(files?: File[]): Promise<HrLeaveAttachmentInput[]> {
@@ -2150,6 +2176,7 @@ export async function terminateEmployee(session: AppSession, data: HrEmployeeTer
 }
 
 function normalizeTimeoffRequest(record: Partial<HrTimeoffRequest>): HrTimeoffRequest {
+  const requestType = normalizeTimeoffRequestType(record.requestType);
   return {
     id: Number(record.id || 0),
     name: record.name || "",
@@ -2157,8 +2184,8 @@ function normalizeTimeoffRequest(record: Partial<HrTimeoffRequest>): HrTimeoffRe
     employeeName: record.employeeName || "Ажилтан сонгоогүй",
     departmentId: record.departmentId ?? null,
     departmentName: getHrDepartmentDisplayName(record.departmentName || "Хэлтэсгүй"),
-    requestType: record.requestType === "sick" ? "sick" : "time_off",
-    requestTypeLabel: record.requestTypeLabel || (record.requestType === "sick" ? "Өвчтэй" : "Чөлөө"),
+    requestType,
+    requestTypeLabel: record.requestTypeLabel || timeoffRequestTypeLabel(requestType),
     dateFrom: record.dateFrom || "",
     dateTo: record.dateTo || "",
     durationDays: Number(record.durationDays || dayCount(record.dateFrom || "", record.dateTo || "")),
@@ -2181,7 +2208,7 @@ function normalizeTimeoffRequest(record: Partial<HrTimeoffRequest>): HrTimeoffRe
 }
 
 function normalizeTimeoffSearchRecord(record: HrTimeoffRequestSearchRecord): HrTimeoffRequest {
-  const requestType = record.request_type === "sick" ? "sick" : "time_off";
+  const requestType = normalizeTimeoffRequestType(record.request_type);
   const state = (record.state || "draft") as HrTimeoffRequestState;
   const dateFrom = String(record.date_from || "");
   const dateTo = String(record.date_to || "");
@@ -2194,7 +2221,7 @@ function normalizeTimeoffSearchRecord(record: HrTimeoffRequestSearchRecord): HrT
     departmentId: getRelationId(record.department_id),
     departmentName: getHrDepartmentDisplayName(getRelationName(record.department_id, "Хэлтэсгүй")),
     requestType,
-    requestTypeLabel: requestType === "sick" ? "Өвчтэй" : "Чөлөө",
+    requestTypeLabel: timeoffRequestTypeLabel(requestType),
     dateFrom,
     dateTo,
     durationDays: Number(record.duration_days || dayCount(dateFrom, dateTo)),
@@ -2260,19 +2287,19 @@ function buildScopedTimeoffDashboard(
   departmentName = "",
 ): HrTimeoffDashboardData {
   const today = getTodayKey();
-  const currentByEmployee = new Map<number, "time_off" | "sick">();
+  const currentByEmployee = new Map<number, HrTimeoffRequestType>();
 
   for (const request of requests) {
     if (!requestCoversToday(request, today)) continue;
-    if (request.requestType === "sick") {
-      currentByEmployee.set(request.employeeId, "sick");
-    } else if (currentByEmployee.get(request.employeeId) !== "sick") {
-      currentByEmployee.set(request.employeeId, "time_off");
+    const previous = currentByEmployee.get(request.employeeId);
+    if (!previous || timeoffStatusPriority(request.requestType) > timeoffStatusPriority(previous)) {
+      currentByEmployee.set(request.employeeId, request.requestType);
     }
   }
 
   let activeEmployees = 0;
   let timeOffEmployees = 0;
+  let annualLeaveEmployees = 0;
   let sickEmployees = 0;
   let archivedEmployees = 0;
   const departmentRows = new Map<string, HrTimeoffDashboardData["departmentBreakdown"][number]>();
@@ -2286,6 +2313,7 @@ function buildScopedTimeoffDashboard(
         totalEmployees: 0,
         activeEmployees: 0,
         timeOffEmployees: 0,
+        annualLeaveEmployees: 0,
         sickEmployees: 0,
         pendingRequests: 0,
       });
@@ -2299,6 +2327,9 @@ function buildScopedTimeoffDashboard(
     } else if (dynamicStatus === "sick") {
       sickEmployees += 1;
       row.sickEmployees += 1;
+    } else if (dynamicStatus === "annual_leave") {
+      annualLeaveEmployees += 1;
+      row.annualLeaveEmployees += 1;
     } else if (dynamicStatus === "time_off") {
       timeOffEmployees += 1;
       row.timeOffEmployees += 1;
@@ -2324,6 +2355,7 @@ function buildScopedTimeoffDashboard(
       totalEmployees: employees.length,
       activeEmployees,
       timeOffEmployees,
+      annualLeaveEmployees,
       sickEmployees,
       archivedEmployees,
       pendingRequests: requests.filter((request) => ["submitted", "hr_review"].includes(request.state)).length,
@@ -2333,6 +2365,7 @@ function buildScopedTimeoffDashboard(
     statusPie: [
       { label: "Идэвхтэй", value: activeEmployees },
       { label: "Чөлөөтэй", value: timeOffEmployees },
+      { label: "Ээлжийн амралттай", value: annualLeaveEmployees },
       { label: "Өвчтэй", value: sickEmployees },
     ],
     departmentBreakdown: Array.from(departmentRows.values()).sort((left, right) =>
@@ -2796,17 +2829,15 @@ export async function getTimeoffDashboard(session: AppSession): Promise<HrTimeof
     statusPie: [
       { label: "Идэвхтэй", value: activeEmployees.length },
       { label: "Чөлөөтэй", value: 0 },
+      { label: "Ээлжийн амралттай", value: 0 },
       { label: "Өвчтэй", value: 0 },
     ],
   };
 }
 
 export async function createTimeoffRequest(session: AppSession, data: HrTimeoffRequestCreateInput) {
-  await requireDepartmentHeadTimeoffRequestAccess(session);
+  const profile = await requireDepartmentHeadTimeoffRequestAccess(session, data.requestType);
   const attachments = await filesToAttachments(data.files);
-  if (data.submit && !attachments.length) {
-    throw new Error("Хүсэлт илгээхийн тулд хавсралтын зураг заавал оруулна уу.");
-  }
   try {
     const result = await executeOdooKw<Partial<HrTimeoffRequest>>(
       "municipal.hr.timeoff.request",
@@ -2820,6 +2851,7 @@ export async function createTimeoffRequest(session: AppSession, data: HrTimeoffR
           reason: data.reason,
           note: data.note,
           submit: data.submit,
+          autoApprove: profile.isHr && data.requestType === "annual_leave",
           attachments,
         },
       ],
@@ -2836,7 +2868,7 @@ export async function createTimeoffRequest(session: AppSession, data: HrTimeoffR
 }
 
 export async function updateTimeoffRequest(session: AppSession, requestId: number, data: HrTimeoffRequestCreateInput) {
-  await requireDepartmentHeadTimeoffRequestAccess(session);
+  await requireDepartmentHeadTimeoffRequestAccess(session, data.requestType);
   const attachments = await filesToAttachments(data.files);
   try {
     const result = await executeOdooKw<Partial<HrTimeoffRequest>>(

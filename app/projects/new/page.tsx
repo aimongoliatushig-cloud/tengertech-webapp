@@ -11,7 +11,7 @@ import {
   requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
-import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { loadSessionEmployeeDepartmentName } from "@/lib/access-scope";
 import { pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 import {
@@ -46,6 +46,30 @@ function getMessage(value?: string | string[]) {
   return value ?? "";
 }
 
+function findDepartmentOptionByName(
+  departmentOptions: Awaited<ReturnType<typeof loadDepartmentOptions>>,
+  departmentName: string | null,
+) {
+  const normalizedDepartmentName = (departmentName ?? "").trim().toLowerCase();
+  if (!normalizedDepartmentName) {
+    return null;
+  }
+
+  return (
+    departmentOptions.find((option) => {
+      const names = [option.name, option.label]
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean);
+      return names.some(
+        (value) =>
+          value === normalizedDepartmentName ||
+          value.includes(normalizedDepartmentName) ||
+          normalizedDepartmentName.includes(value),
+      );
+    }) ?? null
+  );
+}
+
 export default async function NewProjectPage({ searchParams }: PageProps) {
   const session = await requireSession();
   if (isWorkerOnly(session)) {
@@ -53,17 +77,20 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
   }
 
   const masterMode = isMasterRole(session.role);
+  const canCreateProject = hasCapability(session, "create_projects");
+  const canCreateSharedWork =
+    session.role === "director" || session.role === "general_manager";
+  const departmentHeadMode = Boolean(
+    session.role === "project_manager" || session.groupFlags?.municipalDepartmentHead,
+  );
   const transportInspectorMode = Boolean(
-    session.role === "transport_inspector" ||
+    (session.role === "transport_inspector" ||
       (session.groupFlags?.mfoInspector &&
         !session.groupFlags?.mfoManager &&
-        !session.groupFlags?.mfoDispatcher),
+        !session.groupFlags?.mfoDispatcher)) &&
+      !departmentHeadMode,
   );
-  const shouldLockDepartment =
-    session.role === "project_manager" ||
-    transportInspectorMode ||
-    masterMode ||
-    Boolean(session.groupFlags?.mfoInspector);
+  const shouldLockDepartment = canCreateProject && !canCreateSharedWork;
   const params = (await searchParams) ?? {};
   const errorMessage = getMessage(params.error);
   const noticeMessage = getMessage(params.notice);
@@ -93,7 +120,10 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
     loadGarbageVehicleOptions({
       login: session.login,
       password: session.password,
-    }, { requireCurrentEmployeeScope: transportInspectorMode }),
+    }, {
+      requireCurrentEmployeeScope: transportInspectorMode,
+      requireGarbageTransportDepartment: true,
+    }),
     loadGarbagePointOptions({
       login: session.login,
       password: session.password,
@@ -116,7 +146,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
           password: session.password,
         })
       : Promise.resolve(null),
-    shouldLockDepartment ? loadSessionDepartmentName(session) : Promise.resolve(null),
+    shouldLockDepartment ? loadSessionEmployeeDepartmentName(session) : Promise.resolve(null),
   ]);
 
   const masterDepartmentName =
@@ -131,8 +161,10 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
       : null);
   const lockedDepartmentOption =
     shouldLockDepartment && masterDepartmentName
-      ? departmentOptions.find((option) => option.name === masterDepartmentName) ?? null
+      ? findDepartmentOptionByName(departmentOptions, masterDepartmentName)
       : null;
+  const missingLockedDepartment =
+    canCreateProject && shouldLockDepartment && !lockedDepartmentOption;
   const effectiveRequestedDepartment =
     requestedDepartment || (requestedVehicleId ? AUTO_GARBAGE_DEPARTMENT_NAME : "");
   const initialDepartmentOption =
@@ -156,7 +188,6 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
     ? requestedShiftDate
     : undefined;
 
-  const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
@@ -204,7 +235,15 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
               <div className={`${styles.message} ${styles.noticeMessage}`}>{noticeMessage}</div>
             ) : null}
 
-            {!canCreateProject ? (
+            {missingLockedDepartment ? (
+              <section className={styles.emptyState}>
+                <h2>Хэлтэс тодорхойгүй байна</h2>
+                <p>
+                  Таны ажилтны мэдээлэл дээр харьяалах хэлтэс тохируулагдаагүй байна. Админд
+                  хандаж ажилтны хэлтсийн тохиргоогоо шалгуулна уу.
+                </p>
+              </section>
+            ) : !canCreateProject ? (
               <section className={styles.emptyState}>
                 <h2>Ажил бүртгэх эрх алга</h2>
                 <p>
@@ -234,6 +273,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
                   initialGarbageShiftDate={initialGarbageShiftDate}
                   currentUserId={session.uid}
                   lockRoadCleaningMasterToCurrentUser={masterMode}
+                  disableSharedWork={!canCreateSharedWork}
                 />
               </section>
             )}

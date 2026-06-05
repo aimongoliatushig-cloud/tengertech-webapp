@@ -89,6 +89,7 @@ type AppMenuProps = {
   canViewAllReports?: boolean;
   canViewGarbageWeightReports?: boolean;
   canViewHr?: boolean;
+  canManageHr?: boolean;
   canViewGeneralDashboard?: boolean;
   variant?: "default" | "executive";
   userName?: string;
@@ -290,6 +291,7 @@ export function AppMenu({
   canViewAllReports = false,
   canViewGarbageWeightReports = false,
   canViewHr = false,
+  canManageHr,
   canViewGeneralDashboard = false,
   variant = "default",
   userRole,
@@ -493,6 +495,25 @@ export function AppMenu({
     procurementMode &&
     !isProcurementDepartmentHeadLike,
   );
+  const procurementActionParticipantMode = Boolean(
+    !isProcurementDepartmentHeadLike &&
+      !hasExecutiveMenuAccess &&
+      !flags.procurementCeo &&
+      !flags.procurementGeneralManager &&
+      (flags.opsStorekeeper ||
+        flags.fleetRepairPurchaser ||
+        flags.fleetRepairFinance ||
+        flags.fleetRepairAccounting ||
+        flags.fleetRepairAdministration ||
+        flags.procurementPurchaseManager ||
+        flags.procurementStorekeeper ||
+        flags.procurementFinance ||
+        flags.procurementAdministration ||
+        flags.procurementLegal),
+  );
+  const procurementLandingHref = procurementActionParticipantMode
+    ? "/procurement/assigned"
+    : "/procurement";
   const showReports =
     canWriteReports ||
     executiveMode ||
@@ -585,11 +606,21 @@ export function AppMenu({
       departmentName: group.name,
     }));
 
+  const hasHrSpecialistMenuAccess = canManageHr === true;
+  const departmentHrMenuKeys = new Set([
+    "hr-dashboard",
+    "hr-employees",
+    "hr-requests",
+    "hr-sick",
+    "hr-trips",
+    "hr-orders",
+  ]);
   const hrMenuChildren: MenuItem[] = [
     { key: "hr-dashboard", href: "/hr", label: "Хянах самбар", icon: LayoutDashboard },
     { key: "hr-employees", href: "/hr/employees", label: "Ажилтнууд", icon: Users },
     { key: "hr-new-employee", href: "/hr/employees/new", label: "Шинэ ажилтан", icon: PlusCircle },
     { key: "hr-requests", href: "/hr/leaves", label: "Чөлөө", icon: ClipboardCheck },
+    { key: "hr-annual-leave", href: "/hr/sick?type=annual_leave", label: "Ээлжийн амралт", icon: CalendarDays },
     { key: "hr-sick", href: "/hr/sick", label: "Өвчтэй", icon: CalendarDays },
     { key: "hr-trips", href: "/hr/trips", label: "Томилолт", icon: Truck },
     { key: "hr-discipline", href: "/hr/discipline", label: "Сахилга", icon: Flag },
@@ -599,7 +630,7 @@ export function AppMenu({
     { key: "hr-archive", href: "/hr/archive", label: "Ажлаас чөлөөлөх", icon: FileText },
     { key: "hr-reports", href: "/hr/reports", label: "Тайлан", icon: BarChart3 },
     { key: "hr-settings", href: "/hr/settings", label: "Тохиргоо", icon: Settings },
-  ];
+  ].filter((item) => hasHrSpecialistMenuAccess || departmentHrMenuKeys.has(item.key));
   const hrMenuItem: MenuItem = {
     key: "hr",
     href: "/hr",
@@ -617,7 +648,7 @@ export function AppMenu({
       ? [
           {
             key: "procurement",
-            href: "/procurement/dashboard",
+            href: procurementLandingHref,
             label: "Худалдан авалт",
             icon: ShoppingCart,
           },
@@ -666,7 +697,7 @@ export function AppMenu({
 
   const procurementMenuItem: MenuItem = {
     key: "procurement",
-    href: "/procurement/dashboard",
+    href: procurementLandingHref,
     label: "Худалдан авалт",
     icon: FileText,
   };
@@ -1312,7 +1343,7 @@ export function AppMenu({
                 ? [
                     {
                       key: "procurement",
-                      href: "/procurement/dashboard",
+                      href: procurementLandingHref,
                       label: "Х.Авалт",
                       icon: ShoppingCart,
                     },
@@ -1566,7 +1597,7 @@ export function AppMenu({
                             ? [
                                 {
                                   key: "procurement",
-                                  href: "/procurement/dashboard",
+                                  href: procurementLandingHref,
                                   label: "Худалдан",
                                   icon: ShoppingCart,
                                 },

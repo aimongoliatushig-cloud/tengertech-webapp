@@ -696,7 +696,9 @@ class HrEmployee(models.Model):
             for request in requests:
                 if request.request_type == "sick":
                     current_status_by_employee[request.employee_id.id] = ("sick", "Өвчтэй")
-                elif current_status_by_employee.get(request.employee_id.id, ("", ""))[0] != "sick":
+                elif request.request_type == "annual_leave" and current_status_by_employee.get(request.employee_id.id, ("", ""))[0] != "sick":
+                    current_status_by_employee[request.employee_id.id] = ("annual_leave", "Ээлжийн амралттай")
+                elif current_status_by_employee.get(request.employee_id.id, ("", ""))[0] not in ("sick", "annual_leave"):
                     current_status_by_employee[request.employee_id.id] = ("leave", "Чөлөөтэй")
         return [
             {

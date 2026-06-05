@@ -21,6 +21,7 @@ function files(formData: FormData, key: string) {
 }
 
 function requestType(value: string): HrTimeoffRequestType {
+  if (value === "annual_leave") return "annual_leave";
   return value === "sick" ? "sick" : "time_off";
 }
 
@@ -53,6 +54,7 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
 
     if (!input.dateFrom || !input.dateTo) return jsonError("Эхлэх болон дуусах огноо заавал оруулна уу.", 400);
     if (input.dateTo < input.dateFrom) return jsonError("Дуусах огноо эхлэх огнооноос өмнө байж болохгүй.", 400);
+    if (!input.reason && input.requestType === "annual_leave") input.reason = "Ээлжийн амралт";
     if (!input.reason) return jsonError("Шалтгаан заавал оруулна уу.", 400);
 
     return Response.json({ request: await updateTimeoffRequest(session, requestId, input) });
