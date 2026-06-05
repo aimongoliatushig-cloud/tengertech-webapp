@@ -49,35 +49,35 @@
     </record>
 
     <record id="group_procurement_purchase_manager" model="res.groups">
-        <field name="name">Procurement / Purchase Manager</field>
+        <field name="name">Нярав</field>
         <field name="sequence">70</field>
         <field name="privilege_id" ref="res_groups_privilege_municipal_repair"/>
         <field name="implied_ids" eval="[(4, ref('group_repair_storekeeper'))]"/>
     </record>
 
     <record id="group_procurement_storekeeper" model="res.groups">
-        <field name="name">Procurement Storekeeper</field>
+        <field name="name">Нярав</field>
         <field name="sequence">80</field>
         <field name="privilege_id" ref="res_groups_privilege_municipal_repair"/>
         <field name="implied_ids" eval="[(4, ref('group_repair_storekeeper'))]"/>
     </record>
 
     <record id="group_procurement_finance_user" model="res.groups">
-        <field name="name">Procurement Finance User</field>
+        <field name="name">Ерөнхий ня-бо</field>
         <field name="sequence">90</field>
         <field name="privilege_id" ref="res_groups_privilege_municipal_repair"/>
         <field name="implied_ids" eval="[(4, ref('group_repair_finance'))]"/>
     </record>
 
     <record id="group_procurement_administration_user" model="res.groups">
-        <field name="name">Procurement Administration User</field>
+        <field name="name">Архив бичиг хэргийн ажилтан</field>
         <field name="sequence">100</field>
         <field name="privilege_id" ref="res_groups_privilege_municipal_repair"/>
         <field name="implied_ids" eval="[(4, ref('municipal_core.group_municipal_worker'))]"/>
     </record>
 
     <record id="group_procurement_legal_user" model="res.groups">
-        <field name="name">Procurement Legal User</field>
+        <field name="name">Хуулийн мэргэжилтэн</field>
         <field name="sequence">110</field>
         <field name="privilege_id" ref="res_groups_privilege_municipal_repair"/>
         <field name="implied_ids" eval="[(4, ref('municipal_core.group_municipal_worker'))]"/>

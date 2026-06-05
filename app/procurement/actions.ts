@@ -721,8 +721,13 @@ export async function runProcurementWorkflowAction(formData: FormData) {
         package_id: packageId || undefined,
         note: receivedNote,
       });
-      await markProcurementReceived(requestId, { package_id: packageId || undefined, note: receivedNote }, connectionOverrides);
-      const updatedRequest = await markProcurementDone(requestId, connectionOverrides);
+      let updatedRequest = await markProcurementReceived(requestId, { package_id: packageId || undefined, note: receivedNote }, connectionOverrides);
+      const allPackagesDone = updatedRequest.packages.length
+        ? updatedRequest.packages.every((pack) => ["done", "cancelled"].includes(pack.route_state?.code || ""))
+        : updatedRequest.receipt_status.code === "received";
+      if (allPackagesDone) {
+        updatedRequest = await markProcurementDone(requestId, connectionOverrides);
+      }
       notificationPackageId = packageId || undefined;
       await notifyProcurementStageChanged("mark_received", updatedRequest, notificationPackageId);
     } else if (action === "mark_done") {

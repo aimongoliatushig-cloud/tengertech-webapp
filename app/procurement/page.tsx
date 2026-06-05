@@ -28,26 +28,26 @@ type RelationFilter = "all" | "project" | "vehicle";
 
 const STATE_LABELS: Record<string, string> = {
   draft: "Ноорог",
-  submitted: "Санал цуглуулж байна",
-  quote: "Санал цуглуулж байна",
-  quote_collection: "Санал цуглуулж байна",
-  quotation_waiting: "Санал цуглуулж байна",
-  quotations_ready: "Шийдвэр хүлээгдэж байна",
-  admin_review: "Шийдвэр хүлээгдэж байна",
-  ceo_decision: "Шийдвэр хүлээгдэж байна",
-  ceo_order_uploaded: "Шийдвэр хүлээгдэж байна",
-  finance_review: "Шийдвэр хүлээгдэж байна",
-  director_approval: "Шийдвэр хүлээгдэж байна",
-  order_waiting: "Гэрээ боловсруулж байна",
-  contract_waiting: "Гэрээ боловсруулж байна",
-  contract_review: "Гэрээ боловсруулж байна",
-  legal_contract_draft: "Гэрээ боловсруулж байна",
-  legal_final_contract: "Гэрээ боловсруулж байна",
-  payment: "Төлбөр хүлээгдэж байна",
-  payment_pending: "Төлбөр хүлээгдэж байна",
-  payment_waiting: "Төлбөр хүлээгдэж байна",
-  paid: "Хүлээн авалт хүлээгдэж байна",
-  payment_recorded: "Хүлээн авалт хүлээгдэж байна",
+  submitted: "Хүсэлт илгээгдсэн",
+  quote: "Үнийн санал бүртгэгдсэн",
+  quote_collection: "Үнийн санал бүртгэгдсэн",
+  quotation_waiting: "Үнийн санал бүртгэгдсэн",
+  quotations_ready: "Хуулийн мэргэжилтэнд илгээсэн",
+  admin_review: "Хуулийн мэргэжилтэнд илгээсэн",
+  ceo_decision: "Тушаал батлуулах шатанд",
+  ceo_order_uploaded: "Тушаал батлагдсан",
+  finance_review: "Төлбөрийн хяналтанд",
+  director_approval: "Тушаал батлуулах шатанд",
+  order_waiting: "Тушаал батлуулах шатанд",
+  contract_waiting: "Гэрээ, тушаалын төсөл боловсруулж байна",
+  contract_review: "Гэрээ, тушаалын төсөл боловсруулж байна",
+  legal_contract_draft: "Гэрээ, тушаалын төсөл боловсруулж байна",
+  legal_final_contract: "Гэрээ дууссан",
+  payment: "Төлбөрийн хяналтанд",
+  payment_pending: "Төлбөрийн хяналтанд",
+  payment_waiting: "Төлбөрийн хяналтанд",
+  paid: "Төлбөр төлөгдсөн",
+  payment_recorded: "Төлбөр төлөгдсөн",
   received: "Хүлээн авалт хүлээгдэж байна",
   done: "Дууссан",
   returned: "Буцаасан",
@@ -148,11 +148,12 @@ function getRelatedObject(item: ProcurementRequestSummary) {
 function getNextStep(item: ProcurementRequestSummary) {
   const code = item.state.code;
   if (code === "draft") return "Илгээх";
-  if (code.includes("quote") || code.includes("quotation")) return "Нярав: нэхэмжлэх оруулах";
-  if (code.includes("director") || code.includes("finance_review")) return "Шийдвэр хүлээж байна";
-  if (code.includes("contract") || code.includes("order")) return "Гэрээ, баримт бичиг";
-  if (code.includes("payment") || code === "payment") return "Санхүү: төлбөр хийх";
-  if (code.includes("received") || code === "paid") return "Агуулах: хүлээн авах";
+  if (code.includes("quote") || code.includes("quotation")) return "Нярав: үнийн санал бүртгэх";
+  if (code === "legal_contract_draft") return "Хуулийн мэргэжилтэн: гэрээ, тушаалын төсөл";
+  if (code.includes("director") || code === "ceo_decision") return "Архив бичиг хэргийн ажилтан: тушаал батлуулах";
+  if (code === "ceo_order_uploaded" || code === "legal_final_contract") return "Хуулийн мэргэжилтэн: эцсийн гэрээ";
+  if (code.includes("payment") || code === "payment") return "Ерөнхий ня-бо: төлбөр хийх";
+  if (code.includes("received") || code === "paid") return "Нярав: хүлээн авалт";
   if (code === "done") return "Дууссан";
   if (code === "returned") return "Засварлах";
   if (code === "rejected" || code === "cancelled") return "Хаагдсан";
@@ -162,9 +163,9 @@ function getNextStep(item: ProcurementRequestSummary) {
 function statusClass(item: ProcurementRequestSummary) {
   const label = getStatusLabel(item);
   if (item.is_delayed || label === "Буцаасан" || label === "Татгалзсан") return styles.badgeDanger;
-  if (label === "Санал цуглуулж байна") return styles.badgeWarning;
-  if (label === "Шийдвэр хүлээгдэж байна" || label === "Гэрээ боловсруулж байна") return styles.badgePurple;
-  if (label === "Төлбөр хүлээгдэж байна" || label === "Хүлээн авалт хүлээгдэж байна") return styles.badgeBlue;
+  if (label === "Үнийн санал бүртгэгдсэн") return styles.badgeWarning;
+  if (label === "Тушаал батлуулах шатанд" || label === "Гэрээ, тушаалын төсөл боловсруулж байна") return styles.badgePurple;
+  if (label === "Төлбөрийн хяналтанд" || label === "Төлбөр төлөгдсөн" || label === "Хүлээн авалт хүлээгдэж байна") return styles.badgeBlue;
   return styles.badge;
 }
 

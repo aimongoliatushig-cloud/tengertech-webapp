@@ -74,6 +74,7 @@ export type ProcurementQuotation = {
   amount_total: number;
   currency: ProcurementParty;
   is_selected: boolean;
+  bank_account_text?: string | null;
   attachments: ProcurementAttachment[];
 };
 
@@ -130,8 +131,10 @@ export type ProcurementAudit = {
   old_state?: ProcurementCodeLabel | null;
   new_state?: ProcurementCodeLabel | null;
   user: ProcurementParty;
+  action_by_role?: string | null;
   changed_at: string;
   note?: string | null;
+  attached_files?: ProcurementAttachment[];
 };
 
 export type ProcurementRequestSummary = {

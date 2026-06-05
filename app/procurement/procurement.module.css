@@ -1797,6 +1797,26 @@
   background: #f8fbf8;
 }
 
+.paymentConfirm {
+  display: grid;
+  gap: 8px;
+}
+
+.paymentDialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(760px, calc(100dvh - 32px));
+  padding: 16px;
+  border: 1px solid var(--proc-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--proc-ink);
+  box-shadow: 0 24px 70px rgba(17, 32, 25, 0.24);
+}
+
+.paymentDialog::backdrop {
+  background: rgba(17, 32, 25, 0.42);
+}
+
 .workBoard {
   display: grid;
   grid-template-columns: repeat(4, minmax(180px, 1fr));

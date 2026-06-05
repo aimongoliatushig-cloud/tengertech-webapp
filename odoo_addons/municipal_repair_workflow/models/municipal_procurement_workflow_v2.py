@@ -23,54 +23,56 @@ ROLE_PREFERRED_NAMES = {
 }
 
 PROCUREMENT_STATES_V2 = [
-    ("draft", "Эхлэл"),
-    ("submitted", "Илгээсэн"),
-    ("quote", "Санал цуглуулж байна"),
-    ("quote_collection", "Санал цуглуулж байна"),
-    ("finance_review", "Санхүүгийн хяналт"),
-    ("finance_selected_supplier", "Нийлүүлэгч сонгосон"),
-    ("admin_review", "Захиргааны хяналт"),
-    ("ceo_decision", "Захирлын шийдвэр"),
-    ("ceo_order_uploaded", "Захирлын тушаал хавсаргасан"),
-    ("legal_contract_draft", "Гэрээ боловсруулах"),
-    ("payment_pending", "Төлбөр хүлээгдэж байна"),
-    ("payment_recorded", "Төлбөр бүртгэгдсэн"),
-    ("receiving", "Хүлээн авч байна"),
-    ("received", "Хүлээн авсан"),
-    ("legal_final_contract", "Эцсийн гэрээ хүлээгдэж байна"),
+    ("draft", "Ноорог"),
+    ("submitted", "Хүсэлт илгээгдсэн"),
+    ("quote", "Үнийн санал бүртгэгдсэн"),
+    ("quote_collection", "Үнийн санал бүртгэгдсэн"),
+    ("finance_review", "Төлбөрийн хяналтанд"),
+    ("finance_selected_supplier", "Төлбөрийн хяналтанд"),
+    ("admin_review", "Хуулийн мэргэжилтэнд илгээсэн"),
+    ("ceo_decision", "Тушаал батлуулах шатанд"),
+    ("ceo_order_uploaded", "Тушаал батлагдсан"),
+    ("legal_contract_draft", "Гэрээ, тушаалын төсөл боловсруулж байна"),
+    ("legal_final_contract", "Гэрээ дууссан"),
+    ("payment_pending", "Төлбөрийн хяналтанд"),
+    ("payment_recorded", "Төлбөр төлөгдсөн"),
+    ("receiving", "Хүлээн авалт хүлээгдэж байна"),
+    ("received", "Хүлээн авалт хүлээгдэж байна"),
     ("done", "Дууссан"),
-    ("returned", "Буцаасан"),
-    ("cancelled", "Цуцалсан"),
+    ("returned", "Буцаагдсан"),
+    ("cancelled", "Цуцлагдсан"),
 ]
 
 PACKAGE_ROUTE_STATES = [
-    ("draft", "Эхлэл"),
-    ("quote_collection", "Санал цуглуулж байна"),
-    ("finance_review", "Санхүүгийн хяналт"),
-    ("admin_review", "Захиргааны хяналт"),
-    ("ceo_order_uploaded", "Захирлын тушаал хавсаргасан"),
-    ("legal_contract_draft", "Гэрээ боловсруулж байна"),
-    ("payment_pending", "Төлбөр хүлээгдэж байна"),
-    ("payment_recorded", "Төлбөр бүртгэгдсэн"),
-    ("received", "Хүлээн авсан"),
+    ("draft", "Ноорог"),
+    ("quote_collection", "Үнийн санал бүртгэгдсэн"),
+    ("finance_review", "Төлбөрийн хяналтанд"),
+    ("admin_review", "Хуулийн мэргэжилтэнд илгээсэн"),
+    ("legal_contract_draft", "Гэрээ, тушаалын төсөл боловсруулж байна"),
+    ("order_approval", "Тушаал батлуулах шатанд"),
+    ("ceo_order_uploaded", "Тушаал батлагдсан"),
+    ("legal_final_contract", "Гэрээ дууссан"),
+    ("payment_pending", "Төлбөрийн хяналтанд"),
+    ("payment_recorded", "Төлбөр төлөгдсөн"),
+    ("received", "Хүлээн авалт хүлээгдэж байна"),
     ("done", "Дууссан"),
-    ("cancelled", "Цуцалсан"),
+    ("cancelled", "Цуцлагдсан"),
 ]
 
 PROCUREMENT_ACTION_LABELS = {
-    "create": "Хүсэлт үүсгэсэн",
-    "submit_for_quotation": "Санал авах руу илгээсэн",
-    "submit_quotations": "Нийлүүлэгчийн саналууд хадгалсан",
-    "move_to_finance_review": "Санхүүгийн хяналт руу илгээсэн",
-    "prepare_order": "Захиргаа/захирлын шийдвэр рүү илгээсэн",
-    "director_decision": "Захирлын шийдвэр бүртгэсэн",
-    "attach_final_order": "Захирлын тушаал хавсаргасан",
-    "record_package_ceo_order": "Багцын захирлын тушаал бүртгэсэн",
-    "mark_contract_signed": "Гэрээний файл хавсаргасан",
-    "mark_paid": "Төлбөр бүртгэсэн",
-    "mark_received": "Хүлээн авалт бүртгэсэн",
+    "create": "Худалдан авах хүсэлт үүсгэх",
+    "submit_for_quotation": "Хүсэлт илгээх",
+    "submit_quotations": "Үнийн санал бүртгэх",
+    "move_to_finance_review": "Дараагийн шат руу илгээх",
+    "prepare_order": "Тушаалын төсөл хүлээн авах",
+    "director_decision": "Тушаалын шийдвэр бүртгэх",
+    "attach_final_order": "Тушаал батлагдлаа гэж тэмдэглэх",
+    "record_package_ceo_order": "Тушаал бүртгэх",
+    "mark_contract_signed": "Гэрээний баримт бүртгэх",
+    "mark_paid": "Төлбөр төлөгдсөнийг баталгаажуулах",
+    "mark_received": "Хүлээн авалтыг баталгаажуулах",
     "mark_done": "Дуусгасан",
-    "cancel": "Цуцалсан",
+    "cancel": "Цуцлах",
 }
 
 PROCUREMENT_AUDIT_NOTE_LABELS = {
@@ -95,6 +97,19 @@ JOB_TITLE_ROLE_PATTERNS = {
     "department_head": ("хэлтсийн дарга", "хэлтэсийн дарга", "албаны дарга"),
     "finance_user": ("ерөнхий ня-бо", "ерөнхий нябо", "ерөнхий ня бо", "ерөнхий нягтлан"),
     "legal_user": ("хуулийн мэргэжилтэн", "хуульч"),
+}
+
+PROCUREMENT_ROLE_LABELS = {
+    "department_head": "Хэлтсийн дарга",
+    "purchase_manager": "Нярав",
+    "storekeeper": "Нярав",
+    "repair_storekeeper": "Нярав",
+    "legal_user": "Хуулийн мэргэжилтэн",
+    "administration_user": "Архив бичиг хэргийн ажилтан",
+    "finance_user": "Ерөнхий ня-бо",
+    "ceo": "Захирал",
+    "general_manager": "Ерөнхий менежер",
+    "admin": "Админ",
 }
 
 
@@ -374,9 +389,29 @@ class MunicipalProcurementRequest(models.Model):
         if commands and field_name:
             user.sudo().write({field_name: commands})
 
-    def _record_audit(self, action_code, old_state=False, new_state=False, note=False):
+    def _role_label_for_user(self, user):
+        role_order = (
+            "department_head",
+            "storekeeper",
+            "repair_storekeeper",
+            "purchase_manager",
+            "legal_user",
+            "administration_user",
+            "finance_user",
+            "ceo",
+            "general_manager",
+            "admin",
+        )
+        for role_key in role_order:
+            if self._user_has_group_key(user, role_key):
+                return PROCUREMENT_ROLE_LABELS.get(role_key, role_key)
+        return user.name or ""
+
+    def _record_audit(self, action_code, old_state=False, new_state=False, note=False, attachment_ids=None):
         Audit = self.env["municipal.procurement.audit"].sudo()
+        attachment_ids = attachment_ids or []
         for request in self:
+            action_user = self.env.user
             Audit.create(
                 {
                     "request_id": request.id,
@@ -384,8 +419,15 @@ class MunicipalProcurementRequest(models.Model):
                     "action_label": PROCUREMENT_ACTION_LABELS.get(action_code, action_code),
                     "old_state": old_state or False,
                     "new_state": new_state or False,
-                    "user_id": self.env.user.id,
+                    "user_id": action_user.id,
                     "note": note or False,
+                    "previous_status": old_state or False,
+                    "new_status": new_state or False,
+                    "action_by_user_id": action_user.id,
+                    "action_by_role": request._role_label_for_user(action_user),
+                    "action_date": fields.Datetime.now(),
+                    "comment": note or False,
+                    "attached_file_ids": [(6, 0, [int(attachment_id) for attachment_id in attachment_ids])],
                 }
             )
 
@@ -464,13 +506,13 @@ class MunicipalProcurementRequest(models.Model):
                 missing_packages = request._missing_ceo_order_packages()
                 if missing_packages:
                     package_names = ", ".join(missing_packages.mapped("name"))
-                    raise UserError("CEO order is missing for high-value packages: %s" % package_names)
+                    raise UserError("Батлагдсан тушаал дутуу байна: %s" % package_names)
             elif not request.ceo_selected_quote_id:
-                raise UserError("CEO-selected supplier quote is required before high-value payment.")
+                raise UserError("Сонгосон нийлүүлэгчийн үнийн санал төлбөрөөс өмнө шаардлагатай.")
             if not request.ceo_order_attachment_ids:
-                raise UserError("CEO approval/order attachment is required before high-value payment.")
-            if not request.contract_draft_attachment_ids:
-                raise UserError("Contract draft is required before high-value payment.")
+                raise UserError("Батлагдсан тушаалын хавсралт төлбөрөөс өмнө шаардлагатай.")
+            if not request.contract_draft_attachment_ids or not request.final_contract_attachment_ids:
+                raise UserError("Final contract is required before high-value payment.")
 
     def _package_threshold_amount(self, package):
         self.ensure_one()
@@ -501,7 +543,7 @@ class MunicipalProcurementRequest(models.Model):
     def _missing_ceo_order_packages(self):
         self.ensure_one()
         return self._high_value_packages().filtered(
-            lambda package: self._effective_package_route_state(package) not in ("payment_recorded", "received", "done", "cancelled")
+            lambda package: self._effective_package_route_state(package) in ("order_approval", "ceo_order_uploaded")
             and not package._ceo_order_ready()
         )
 
@@ -516,11 +558,13 @@ class MunicipalProcurementRequest(models.Model):
         if not package.is_complete:
             return package.route_state or "draft"
         if _is_high_value_amount(self._package_threshold_amount(package)):
-            if package._ceo_order_ready() and self.contract_draft_attachment_ids:
+            if package._ceo_order_ready() and self.final_contract_attachment_ids:
                 return "payment_pending"
             if package._ceo_order_ready():
-                return "legal_contract_draft"
-            return "admin_review"
+                return "ceo_order_uploaded"
+            if self.contract_draft_attachment_ids:
+                return "order_approval"
+            return "legal_contract_draft"
         return "finance_review"
 
     def _packages_in_route_states(self, states):
@@ -547,10 +591,16 @@ class MunicipalProcurementRequest(models.Model):
                 request.state = "payment_recorded"
                 continue
 
-            if packages.filtered(lambda package: package.route_state in ("admin_review", "ceo_order_uploaded")):
+            if packages.filtered(lambda package: package.route_state in ("admin_review",)):
                 request.state = "admin_review"
+            elif packages.filtered(lambda package: package.route_state == "order_approval"):
+                request.state = "ceo_decision"
+            elif packages.filtered(lambda package: package.route_state == "ceo_order_uploaded"):
+                request.state = "ceo_order_uploaded"
             elif packages.filtered(lambda package: package.route_state == "legal_contract_draft"):
                 request.state = "legal_contract_draft"
+            elif packages.filtered(lambda package: package.route_state == "legal_final_contract"):
+                request.state = "legal_final_contract"
             elif packages.filtered(lambda package: package.route_state == "payment_pending"):
                 request.state = "payment_pending"
             elif packages.filtered(lambda package: package.route_state == "finance_review"):
@@ -690,17 +740,19 @@ class MunicipalProcurementRequest(models.Model):
                     request._ensure_stage_assignees("finance_user")
                     low_packages.write({"route_state": "finance_review", "payment_status": "not_paid"})
                 if high_packages:
-                    request._ensure_stage_assignees("administration_user")
-                    high_packages.write({"route_state": "admin_review", "payment_status": "not_paid"})
+                    request._ensure_stage_assignees("legal_user")
+                    high_packages.write({"route_state": "legal_contract_draft", "payment_status": "not_paid"})
+                    request.legal_state = "draft_needed"
                 request.write({"amount_total": sum(request.package_ids.mapped("amount_total"))})
                 request._sync_request_from_package_routes()
-                request._record_audit("move_to_finance_review", "quote_collection", request.state, "Багцууд дүнгээрээ тусдаа ангилагдсан")
+                request._record_audit("move_to_finance_review", "quote_collection", request.state, "Үнийн санал бүртгэгдэж, өндөр дүнтэй багцыг Хуулийн мэргэжилтэнд илгээсэн")
                 continue
             selected_total = sum(request.quote_line_ids.filtered("is_selected").mapped("amount_total"))
             request.write({"amount_total": selected_total or request.selected_supplier_total})
             if _is_high_value_amount(request._threshold_quote_amount()):
-                request._ensure_stage_assignees("administration_user")
-                request._change_state("admin_review", "move_to_finance_review")
+                request._ensure_stage_assignees("legal_user")
+                request.legal_state = "draft_needed"
+                request._change_state("legal_contract_draft", "move_to_finance_review")
             else:
                 request._ensure_stage_assignees("finance_user")
                 request._change_state("finance_review", "move_to_finance_review")
@@ -720,18 +772,18 @@ class MunicipalProcurementRequest(models.Model):
         return True
 
     def action_prepare_order(self):
-        self._ensure_role(["administration_user", "admin"], "Only administration can prepare CEO paperwork.")
+        self._ensure_role(["administration_user", "admin"], "Only archive/office clerk can receive order paperwork.")
         self._ensure_selected_quote()
         for request in self:
             if not request._high_value_packages() and not (
                 not request.package_ids and _is_high_value_amount(request._threshold_quote_amount())
             ):
-                raise UserError("CEO paperwork is only required for high-value purchases.")
+                raise UserError("Order paperwork is only required for high-value purchases.")
             request._change_state("ceo_decision", "prepare_order")
         return True
 
     def action_record_ceo_decision(self, selected_quotation_id=False, note=False):
-        self._ensure_role(["administration_user", "ceo", "general_manager", "admin"], "Only administration or CEO can record CEO decision.")
+        self._ensure_role(["administration_user", "admin"], "Зөвхөн Архив бичиг хэргийн ажилтан тушаалын шийдвэр бүртгэнэ.")
         for request in self:
             high_value_packages = request._high_value_packages()
             if high_value_packages:
@@ -746,7 +798,7 @@ class MunicipalProcurementRequest(models.Model):
                 )
             quote = self.env["municipal.procurement.quote"].browse(selected_quotation_id).exists() if selected_quotation_id else request.selected_quote_id
             if not quote or quote.procurement_id != request:
-                raise UserError("A valid CEO-selected quote is required.")
+                raise UserError("Сонгосон нийлүүлэгчийн үнийн санал шаардлагатай.")
             request.quote_line_ids.write({"is_selected": False})
             quote.is_selected = True
             request.write(
@@ -763,7 +815,7 @@ class MunicipalProcurementRequest(models.Model):
         return True
 
     def action_upload_ceo_order(self, note=False):
-        self._ensure_role(["administration_user", "admin"], "Only administration can upload CEO order.")
+        self._ensure_role(["administration_user", "admin"], "Зөвхөн Архив бичиг хэргийн ажилтан батлагдсан тушаал upload хийнэ.")
         for request in self:
             missing_packages = request._missing_ceo_order_packages()
             if missing_packages:
@@ -774,12 +826,12 @@ class MunicipalProcurementRequest(models.Model):
                         note=note,
                     )
                 package_names = ", ".join(missing_packages.mapped("name"))
-                raise UserError("CEO order is missing for these packages: %s" % package_names)
+                raise UserError("Батлагдсан тушаал дутуу байна: %s" % package_names)
             if (
                 (not request.package_ids and request.requires_high_value_approval)
                 or bool(request._missing_ceo_order_packages())
             ) and not request.ceo_selected_quote_id:
-                raise UserError("Record CEO-selected quote before uploading order.")
+                raise UserError("Тушаал upload хийхээс өмнө нийлүүлэгчийн үнийн саналыг сонгоно уу.")
             request.ceo_order_note = note or request.ceo_order_note
             request._ensure_stage_assignees("legal_user")
             request._change_state("legal_contract_draft", "attach_final_order", note)
@@ -797,8 +849,8 @@ class MunicipalProcurementRequest(models.Model):
         require_order_fields=True,
     ):
         self._ensure_role(
-            ["administration_user", "ceo", "general_manager", "admin"],
-            "Only administration or CEO can record package CEO order.",
+            ["administration_user", "admin"],
+            "Only archive/office clerk can register the approved order.",
         )
         attachment_ids = attachment_ids or []
         for request in self:
@@ -806,14 +858,14 @@ class MunicipalProcurementRequest(models.Model):
             if not package:
                 raise UserError("A valid high-value package is required.")
             if not _is_high_value_amount(request._package_threshold_amount(package)):
-                raise UserError("CEO order is required only for packages at or above 1,000,000 MNT.")
-            if package.route_state not in ("admin_review", "ceo_order_uploaded", "legal_contract_draft"):
-                package.route_state = "admin_review"
+                raise UserError("Тушаал батлуулах шат зөвхөн 1,000,000 MNT-ээс дээш багцад шаардлагатай.")
+            if package.route_state not in ("order_approval", "ceo_order_uploaded", "legal_contract_draft", "legal_final_contract"):
+                package.route_state = "order_approval"
             quote = package.quotation_ids.filtered(lambda item: item.id == int(selected_quotation_id or 0))[:1]
             if not quote:
                 quote = package.lowest_quote_id
             if not quote or quote.package_id != package:
-                raise UserError("A valid CEO-selected supplier quote is required for this package.")
+                raise UserError("Энэ багцад хүчинтэй сонгосон нийлүүлэгчийн үнийн санал шаардлагатай.")
             vals = {
                 "ceo_selected_quote_id": quote.id,
                 "ceo_decision_note": note or package.ceo_decision_note,
@@ -848,13 +900,13 @@ class MunicipalProcurementRequest(models.Model):
             if missing_packages:
                 package.route_state = "ceo_order_uploaded"
                 request._sync_request_from_package_routes()
-                request._record_audit("record_package_ceo_order", "admin_review", request.state, note or package.name)
+                request._record_audit("record_package_ceo_order", "ceo_decision", request.state, note or package.name, attachment_ids)
             else:
                 request._ensure_stage_assignees("legal_user")
-                request.legal_state = "draft_needed"
-                request._high_value_packages().filtered(lambda item: item._ceo_order_ready()).write({"route_state": "legal_contract_draft"})
+                request.legal_state = "final_pending"
+                request._high_value_packages().filtered(lambda item: item._ceo_order_ready()).write({"route_state": "legal_final_contract"})
                 request._sync_request_from_package_routes()
-                request._record_audit("record_package_ceo_order", "admin_review", request.state, note or package.name)
+                request._record_audit("record_package_ceo_order", "ceo_decision", request.state, note or package.name, attachment_ids)
         return True
 
     def action_upload_contract_draft(self, note=False, package_id=False):
@@ -864,29 +916,50 @@ class MunicipalProcurementRequest(models.Model):
                 packages = (
                     request.package_ids.filtered(lambda package: package.id == int(package_id or 0))
                     if package_id
-                    else request._high_value_packages().filtered(lambda package: request._effective_package_route_state(package) == "legal_contract_draft")
+                    else request._high_value_packages().filtered(
+                        lambda package: request._effective_package_route_state(package) in ("legal_contract_draft", "ceo_order_uploaded", "legal_final_contract")
+                    )
                 )
                 if not packages:
-                    raise UserError("No high-value package is waiting for contract draft.")
-                missing_orders = packages.filtered(lambda package: not package._ceo_order_ready())
+                    raise UserError("No high-value package is waiting for legal action.")
+                draft_packages = packages.filtered(
+                    lambda package: request._effective_package_route_state(package) == "legal_contract_draft"
+                )
+                final_packages = packages - draft_packages
+                if draft_packages:
+                    if not request.contract_draft_attachment_ids:
+                        raise UserError("Upload a contract draft attachment first.")
+                    draft_packages.write({"route_state": "order_approval"})
+                    request.write(
+                        {
+                            "contract_draft_uploaded_by": self.env.user.id,
+                            "contract_draft_uploaded_date": fields.Datetime.now(),
+                            "legal_state": "draft_uploaded",
+                        }
+                    )
+                    request._ensure_stage_assignees("administration_user")
+                    request._sync_request_from_package_routes()
+                    request._record_audit("mark_contract_signed", "legal_contract_draft", request.state, note or "Гэрээний төсөл, тушаалын төсөл боловсруулсан", request.contract_draft_attachment_ids.ids)
+                    continue
+                missing_orders = final_packages.filtered(lambda package: not package._ceo_order_ready())
                 if missing_orders:
-                    raise UserError("CEO order must be uploaded before contract draft.")
-                if not request.contract_draft_attachment_ids:
-                    raise UserError("Upload a contract draft attachment first.")
-                packages.write({"route_state": "payment_pending"})
+                    raise UserError("Approved order must be uploaded before final contract.")
+                if not request.final_contract_attachment_ids:
+                    raise UserError("Upload a final contract attachment first.")
+                final_packages.write({"route_state": "payment_pending"})
                 request.write(
                     {
-                        "contract_draft_uploaded_by": self.env.user.id,
-                        "contract_draft_uploaded_date": fields.Datetime.now(),
-                        "legal_state": "draft_uploaded",
+                        "final_contract_uploaded_by": self.env.user.id,
+                        "final_contract_uploaded_date": fields.Datetime.now(),
+                        "legal_state": "completed",
                     }
                 )
                 request._ensure_stage_assignees("finance_user")
                 request._sync_request_from_package_routes()
-                request._record_audit("mark_contract_signed", "legal_contract_draft", request.state, note)
+                request._record_audit("mark_contract_signed", "legal_final_contract", request.state, note or "Эцсийн гэрээ upload хийсэн", request.final_contract_attachment_ids.ids)
                 continue
             if request.requires_high_value_approval and not request.ceo_order_attachment_ids:
-                raise UserError("CEO order must be uploaded before contract draft.")
+                    raise UserError("Гэрээний төсөл боловсруулахын өмнө батлагдсан тушаал upload хийгдсэн байх шаардлагатай.")
             if not request.contract_draft_attachment_ids:
                 raise UserError("Upload a contract draft attachment first.")
             request.write(
@@ -928,6 +1001,8 @@ class MunicipalProcurementRequest(models.Model):
                     raise UserError("This package is not ready for finance payment.")
                 if _is_high_value_amount(request._package_threshold_amount(package)) and not package._ceo_order_ready():
                     raise UserError("High-value package must complete administration approval before payment.")
+                if _is_high_value_amount(request._package_threshold_amount(package)) and not request.final_contract_attachment_ids:
+                    raise UserError("Final contract must be uploaded before payment.")
                 if request.paid_amount <= 0:
                     raise UserError("Paid amount is required.")
                 selected_quote = package.ceo_selected_quote_id or package.quotation_ids.filtered("is_selected")[:1] or package.lowest_quote_id
@@ -949,7 +1024,7 @@ class MunicipalProcurementRequest(models.Model):
                 )
                 request._ensure_stage_assignees("purchase_manager")
                 request._sync_request_from_package_routes()
-                request._record_audit("mark_paid", "payment_pending", request.state, package.name)
+                request._record_audit("mark_paid", "payment_pending", request.state, package.name, request.payment_attachment_ids.ids)
                 continue
             request._ensure_selected_quote()
             request._ensure_high_value_payment_ready()
@@ -968,7 +1043,7 @@ class MunicipalProcurementRequest(models.Model):
                 }
             )
             request._ensure_stage_assignees("purchase_manager")
-            request._record_audit("mark_paid", "payment_pending", "payment_recorded", request.payment_note)
+            request._record_audit("mark_paid", "payment_pending", "payment_recorded", request.payment_note, request.payment_attachment_ids.ids)
         return True
 
     def action_receive(self, package_id=False):
@@ -997,7 +1072,7 @@ class MunicipalProcurementRequest(models.Model):
                         line.received_quantity = line.requested_quantity
                     line.state = "received"
                 request._sync_request_from_package_routes()
-                request._record_audit("mark_received", "payment_recorded", request.state, package.name)
+                request._record_audit("mark_received", "payment_recorded", request.state, package.name, request.receipt_attachment_ids.ids)
                 continue
             old_state = request.state
             if request.payment_status != "payment_recorded":
@@ -1023,7 +1098,7 @@ class MunicipalProcurementRequest(models.Model):
                     "received_date": request.received_date or fields.Date.context_today(request),
                 }
             )
-            request._record_audit("mark_received", old_state, "done", request.received_note)
+            request._record_audit("mark_received", old_state, "done", request.received_note, request.receipt_attachment_ids.ids)
         return True
 
     def action_done(self):
@@ -1084,7 +1159,7 @@ class MunicipalProcurementRequest(models.Model):
             receivable_packages = self.package_ids.filtered(lambda package: package.payment_status == "payment_recorded" and package.receipt_status != "received")
             if self._missing_ceo_order_packages() and (flags["office_clerk"] or flags["admin"]):
                 add("record_package_ceo_order")
-            if self._packages_in_route_states(("legal_contract_draft",)) and (flags["contract_officer"] or flags["admin"]):
+            if self._packages_in_route_states(("legal_contract_draft", "ceo_order_uploaded", "legal_final_contract")) and (flags["contract_officer"] or flags["admin"]):
                 add("mark_contract_signed")
             if payable_packages and (flags["finance"] or flags["admin"]):
                 add("mark_paid")
@@ -1099,9 +1174,8 @@ class MunicipalProcurementRequest(models.Model):
         high_value_waiting_admin = high_value_required and not (
             self.ceo_order_attachment_ids and self.contract_draft_attachment_ids
         )
-        if self.state == "finance_review" and high_value_waiting_admin and (flags["office_clerk"] or flags["admin"]):
-            add("prepare_order")
-            add("record_package_ceo_order")
+        if self.state == "finance_review" and high_value_waiting_admin and (flags["contract_officer"] or flags["admin"]):
+            add("mark_contract_signed")
         if self.state == "finance_review" and not high_value_waiting_admin and (flags["finance"] or flags["admin"]):
             add("mark_paid")
         if self.state == "admin_review" and (flags["office_clerk"] or flags["admin"]):
@@ -1112,7 +1186,7 @@ class MunicipalProcurementRequest(models.Model):
             add("record_package_ceo_order")
         if self.state in ("ceo_decision", "ceo_order_uploaded") and (flags["office_clerk"] or flags["admin"]):
             add("attach_final_order")
-        if self.state == "legal_contract_draft" and (flags["contract_officer"] or flags["admin"]):
+        if self.state in ("legal_contract_draft", "ceo_order_uploaded", "legal_final_contract") and (flags["contract_officer"] or flags["admin"]):
             add("mark_contract_signed")
         if self.state == "payment_pending" and (flags["finance"] or flags["admin"]):
             add("mark_paid")
@@ -1265,9 +1339,9 @@ class MunicipalProcurementRequest(models.Model):
             return self.purchase_manager_id or self._default_role_user("purchase_manager")
         if self.state in ("finance_review", "payment_pending"):
             return self.finance_user_id or self._default_role_user("finance_user")
-        if self.state in ("admin_review", "ceo_decision", "ceo_order_uploaded"):
+        if self.state in ("admin_review", "ceo_decision"):
             return self.administration_user_id or self._default_role_user("administration_user")
-        if self.state in ("legal_contract_draft", "legal_final_contract"):
+        if self.state in ("legal_contract_draft", "ceo_order_uploaded", "legal_final_contract"):
             return self.legal_user_id or self._default_role_user("legal_user")
         return False
 
@@ -1341,13 +1415,9 @@ class MunicipalProcurementRequest(models.Model):
                 office_clerk_stage_domain = [
                     "|",
                     "|",
-                    "|",
-                    ("state", "in", ["admin_review", "ceo_decision", "ceo_order_uploaded"]),
+                    ("state", "in", ["ceo_decision"]),
                     "&",
-                    ("state", "in", ["legal_contract_draft"]),
-                    ("package_ids.amount_total", ">", AMOUNT_THRESHOLD),
-                    "&",
-                    ("state", "=", "finance_review"),
+                    ("package_ids.route_state", "=", "order_approval"),
                     ("package_ids.amount_total", ">", AMOUNT_THRESHOLD),
                     "&",
                     ("state", "in", ["quote_collection", "quotations_ready"]),
@@ -1371,7 +1441,9 @@ class MunicipalProcurementRequest(models.Model):
                 domain += ["|"] + assigned_domain + finance_stage_domain
             elif flags["contract_officer"]:
                 legal_stage_domain = [
-                    ("state", "in", ["legal_contract_draft", "legal_final_contract"]),
+                    "|",
+                    ("state", "in", ["legal_contract_draft", "ceo_order_uploaded", "legal_final_contract"]),
+                    ("package_ids.route_state", "in", ["legal_contract_draft", "ceo_order_uploaded", "legal_final_contract"]),
                 ]
                 domain += ["|"] + assigned_domain + legal_stage_domain
             else:
@@ -1379,17 +1451,17 @@ class MunicipalProcurementRequest(models.Model):
         if state:
             state_groups = {
                 "quotation_waiting": ["submitted", "quote", "quote_collection"],
-                "quotations_ready": ["finance_review", "admin_review", "ceo_decision", "ceo_order_uploaded"],
-                "decision_waiting": ["finance_review", "admin_review", "ceo_decision", "ceo_order_uploaded"],
-                "contract_waiting": ["legal_contract_draft", "legal_final_contract"],
-                "order_waiting": ["legal_contract_draft", "legal_final_contract"],
+                "quotations_ready": ["finance_review", "legal_contract_draft", "ceo_decision", "ceo_order_uploaded"],
+                "decision_waiting": ["ceo_decision"],
+                "contract_waiting": ["legal_contract_draft", "ceo_order_uploaded", "legal_final_contract"],
+                "order_waiting": ["ceo_decision"],
                 "payment_waiting": ["payment_pending"],
                 "receiving_waiting": ["payment_recorded", "receiving", "received"],
             }
             if state in state_groups:
                 domain.append(("state", "in", state_groups[state]))
             elif state == "finance_review" and flags["office_clerk"]:
-                domain.append(("state", "in", ["finance_review", "admin_review", "ceo_decision", "ceo_order_uploaded"]))
+                domain.append(("state", "in", ["ceo_decision"]))
             elif scope == "assigned" and flags["storekeeper"] and state in ("submitted", "quote", "quote_collection"):
                 domain.append(("state", "in", ["draft", "submitted", "quote", "quote_collection"]))
             else:
@@ -1794,7 +1866,7 @@ class MunicipalProcurementRequest(models.Model):
         if action == "attach_final_order":
             return self.action_upload_ceo_order(payload.get("note"))
         if action == "mark_contract_signed":
-            if self.contract_draft_attachment_ids and self.final_contract_attachment_ids:
+            if not self.package_ids and self.contract_draft_attachment_ids and self.final_contract_attachment_ids:
                 return self.action_upload_final_contract(payload.get("note"))
             return self.action_upload_contract_draft(payload.get("note"), payload.get("package_id"))
         if action == "mark_paid":
@@ -2225,7 +2297,7 @@ class MunicipalProcurementDocument(models.Model):
             ("request_attachment", "Request attachment"),
             ("product_image", "Product image"),
             ("quote", "Supplier quote"),
-            ("director_order_final", "CEO order"),
+            ("director_order_final", "Батлагдсан тушаал"),
             ("contract_final", "Contract"),
             ("payment_proof", "Payment proof"),
             ("receipt_proof", "Receipt proof"),
@@ -2268,6 +2340,19 @@ class MunicipalProcurementAudit(models.Model):
     user_id = fields.Many2one("res.users", required=True, default=lambda self: self.env.user)
     changed_at = fields.Datetime(default=fields.Datetime.now, required=True)
     note = fields.Text()
+    previous_status = fields.Char()
+    new_status = fields.Char()
+    action_by_user_id = fields.Many2one("res.users", string="Action by user")
+    action_by_role = fields.Char(string="Action by role")
+    action_date = fields.Datetime(string="Action date")
+    comment = fields.Text()
+    attached_file_ids = fields.Many2many(
+        "ir.attachment",
+        "municipal_procurement_audit_attachment_rel",
+        "audit_id",
+        "attachment_id",
+        string="Attached files",
+    )
 
     def _api_payload(self):
         self.ensure_one()
@@ -2279,8 +2364,10 @@ class MunicipalProcurementAudit(models.Model):
             "old_state": _code_label(self.old_state, request._fields["state"].selection) if self.old_state else None,
             "new_state": _code_label(self.new_state, request._fields["state"].selection) if self.new_state else None,
             "user": _relation_payload(self.user_id),
+            "action_by_role": self.action_by_role,
             "changed_at": self.changed_at,
-            "note": PROCUREMENT_AUDIT_NOTE_LABELS.get(self.note, self.note),
+            "note": PROCUREMENT_AUDIT_NOTE_LABELS.get(self.comment or self.note, self.comment or self.note),
+            "attached_files": [request._api_attachment_payload(attachment) for attachment in self.attached_file_ids],
         }
 
 

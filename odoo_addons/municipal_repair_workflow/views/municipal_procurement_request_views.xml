@@ -25,16 +25,16 @@
         <field name="arch" type="xml">
             <form string="Худалдан авалтын хүсэлт">
                 <header>
-                    <button name="action_submit_quotes" string="3 үнийн санал авах" type="object" invisible="state != 'draft'"/>
-                    <button name="action_finance_review" string="Санхүүгийн хяналтад илгээх" type="object" invisible="state != 'quote'"/>
-                    <button name="action_finance_approve" string="Санхүү батлах" type="object" class="btn-primary" invisible="state != 'finance_review'"/>
-                    <button name="action_director_approve" string="Захирал батлах" type="object" class="btn-primary" invisible="state != 'director_approval'"/>
-                    <button name="action_mark_paid" string="Төлбөр тэмдэглэх" type="object" invisible="state not in ('payment', 'contract_review')"/>
-                    <button name="action_receive" string="Агуулахад хүлээн авах" type="object" invisible="state not in ('payment', 'contract_review')"/>
+                    <button name="action_submit_quotes" string="Үнийн санал бүртгэх" type="object" invisible="state != 'draft'"/>
+                    <button name="action_finance_review" string="Дараагийн шат руу илгээх" type="object" invisible="state != 'quote'"/>
+                    <button name="action_finance_approve" string="Төлбөрийн хяналт руу шилжүүлэх" type="object" class="btn-primary" invisible="state != 'finance_review'"/>
+                    <button name="action_director_approve" string="Тушаал батлагдлаа гэж тэмдэглэх" type="object" class="btn-primary" invisible="state != 'director_approval'"/>
+                    <button name="action_mark_paid" string="Төлбөр төлөгдсөнийг баталгаажуулах" type="object" invisible="state not in ('payment', 'contract_review', 'payment_pending')"/>
+                    <button name="action_receive" string="Хүлээн авалтыг баталгаажуулах" type="object" invisible="state not in ('payment', 'contract_review', 'payment_recorded')"/>
                     <button name="action_issue_to_repair" string="Засварт олгох" type="object" invisible="state not in ('received', 'done') or not repair_id"/>
                     <button name="action_done" string="Дуусгах" type="object" invisible="state != 'received'"/>
                     <button name="action_cancel" string="Цуцлах" type="object" invisible="state in ('done', 'cancelled')"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,quote,finance_review,director_approval,contract_review,payment,received,done"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,quote_collection,legal_contract_draft,ceo_decision,ceo_order_uploaded,legal_final_contract,payment_pending,payment_recorded,done"/>
                 </header>
                 <sheet>
                     <group>

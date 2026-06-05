@@ -52,20 +52,22 @@ const DASHBOARD_PAGE_SIZE = 10;
 
 const STATE_LABELS: Record<string, string> = {
   draft: "Ноорог",
-  submitted: "Илгээсэн",
-  quote: "Нэхэмжлэх",
-  quote_collection: "Нэхэмжлэх",
-  quotation_waiting: "Нэхэмжлэх",
-  quotations_ready: "Шийдвэр",
-  finance_review: "Санхүү",
-  admin_review: "Захиргаа",
-  ceo_decision: "Тушаал гарсан",
-  legal_contract_draft: "Гэрээ",
-  contract_review: "Гэрээ",
-  payment_pending: "Төлсөн",
-  payment: "Төлсөн",
-  payment_waiting: "Төлсөн",
-  payment_recorded: "Хүлээн авалт",
+  submitted: "Хүсэлт илгээгдсэн",
+  quote: "Үнийн санал бүртгэгдсэн",
+  quote_collection: "Үнийн санал бүртгэгдсэн",
+  quotation_waiting: "Үнийн санал бүртгэгдсэн",
+  quotations_ready: "Хуулийн мэргэжилтэнд илгээсэн",
+  finance_review: "Төлбөрийн хяналтанд",
+  admin_review: "Хуулийн мэргэжилтэнд илгээсэн",
+  ceo_decision: "Тушаал батлуулах шатанд",
+  ceo_order_uploaded: "Тушаал батлагдсан",
+  legal_contract_draft: "Гэрээ, тушаалын төсөл боловсруулж байна",
+  legal_final_contract: "Гэрээ дууссан",
+  contract_review: "Гэрээ, тушаалын төсөл боловсруулж байна",
+  payment_pending: "Төлбөрийн хяналтанд",
+  payment: "Төлбөрийн хяналтанд",
+  payment_waiting: "Төлбөрийн хяналтанд",
+  payment_recorded: "Төлбөр төлөгдсөн",
   paid: "Хүлээн авалт",
   received: "Хүлээн авалт",
   done: "Дууссан",
@@ -75,16 +77,16 @@ const STATE_LABELS: Record<string, string> = {
 };
 
 const ACTION_LABELS: Record<string, string> = {
-  submit_for_quotation: "Нэхэмжлэхийн шат эхлүүлэх",
-  submit_quotations: "Нэхэмжлэх оруулах",
-  move_to_finance_review: "Санхүү рүү илгээх",
-  prepare_order: "Захиргааны шийдвэр бэлтгэх",
+  submit_for_quotation: "Худалдан авах хүсэлт үүсгэх",
+  submit_quotations: "Үнийн санал бүртгэх",
+  move_to_finance_review: "Дараагийн шат руу илгээх",
+  prepare_order: "Тушаалын төсөл хүлээн авах",
   director_decision: "Тушаал бүртгэх",
-  record_package_ceo_order: "Тушаал оруулах",
-  attach_final_order: "Гарын үсэгтэй тушаал оруулах",
-  mark_contract_signed: "Гэрээ оруулах",
-  mark_paid: "Төлсөн",
-  mark_received: "Хүлээлгэн өгсөн",
+  record_package_ceo_order: "Тушаал бүртгэх",
+  attach_final_order: "Тушаал батлагдлаа гэж тэмдэглэх",
+  mark_contract_signed: "Гэрээний баримт бүртгэх",
+  mark_paid: "Төлбөр төлөгдсөнийг баталгаажуулах",
+  mark_received: "Хүлээн авалтыг баталгаажуулах",
   cancel: "Буцаах / цуцлах",
 };
 
@@ -257,19 +259,19 @@ function getWorkflowStages(item: ProcurementRequestDetail) {
   const labels = highValue
     ? [
         "Хүсэлт",
-        "Нэхэмжлэх",
-        "Нэхэмжлэх оруулсан",
-        "Тушаал гарсан",
-        "Гэрээ хийгдсэн",
-        "Төлсөн",
+        "Үнийн санал",
+        "Хуулийн мэргэжилтэнд илгээсэн",
+        "Тушаал батлагдсан",
+        "Гэрээ дууссан",
+        "Төлбөр төлөгдсөн",
         "Хүлээн авалт",
         "Дууссан",
       ]
     : [
         "Хүсэлт",
-        "Нэхэмжлэх",
-        "Нэхэмжлэх оруулсан",
-        "Төлсөн",
+        "Үнийн санал",
+        "Төлбөрийн хяналтанд",
+        "Төлбөр төлөгдсөн",
         "Хүлээн авалт",
         "Дууссан",
       ];
@@ -384,7 +386,7 @@ function isRoleAllowedAction(action: ProcurementAction, userFlags: ProcurementUs
   if (action.code === "mark_received") return userFlags.storekeeper;
   if (action.code === "mark_contract_signed") return userFlags.contract_officer;
   if (["record_package_ceo_order", "attach_final_order", "director_decision", "prepare_order"].includes(action.code)) {
-    return userFlags.office_clerk || userFlags.director || userFlags.general_manager;
+    return userFlags.office_clerk;
   }
   if (["submit_for_quotation", "submit_quotations", "move_to_finance_review"].includes(action.code)) {
     return userFlags.storekeeper;
@@ -1234,19 +1236,32 @@ function ActionForm({
   if (action.code === "mark_paid") {
     const payablePackages = item.packages.filter((pack) => isPackagePayable(pack, item));
     const selectedQuotationId = getPaymentQuotationId(item);
+    const selectedPackage = payablePackages[0];
+    const selectedQuote =
+      selectedPackage?.ceo_selected_quotation ||
+      selectedPackage?.quotations.find((quote) => quote.id === selectedQuotationId) ||
+      selectedPackage?.lowest_quotation ||
+      item.quotations.find((quote) => quote.id === selectedQuotationId) ||
+      item.quotations.find((quote) => quote.is_selected);
     return (
       <form action={runProcurementWorkflowAction} className={styles.formStack} onSubmit={() => setIsSubmitting(true)}>
         <WorkflowHidden item={item} action={action.code} returnPath={returnPath} />
         {payablePackages.length === 1 ? <input type="hidden" name="package_id" value={payablePackages[0].id} /> : null}
         {selectedQuotationId ? <input type="hidden" name="selected_quotation_id" value={selectedQuotationId} /> : null}
         <input type="hidden" name="paid_amount" value={Math.max(1, Math.round(getDisplayTotal(item) || 0))} />
-        <input type="hidden" name="note" value="Dashboard дээр төлсөн төлөв баталгаажуулав. Нийлүүлэгчийн банкны дансны мэдээлэл дутуу бол энэ тэмдэглэл exception note болно." />
+        <label className={styles.fieldLabel}>Нийлүүлэгч<input value={selectedQuote?.supplier.name || item.selected_supplier?.name || "Нийлүүлэгч тодорхойгүй"} readOnly /></label>
+        <label className={styles.fieldLabel}>Дүн<input value={Math.max(1, Math.round(getDisplayTotal(item) || 0))} readOnly /></label>
+        <label className={styles.fieldLabel}>Банкны данс<input value={selectedQuote?.bank_account_text || "Бүртгэлгүй"} readOnly /></label>
+        <label className={styles.fieldLabel}>Гүйлгээний дугаар<input name="payment_reference" required /></label>
+        <label className={styles.fieldLabel}>Төлсөн огноо<input type="date" name="payment_date" required /></label>
+        <label className={styles.fieldLabel}>Тайлбар<textarea name="note" /></label>
+        <label className={styles.fieldLabel}>Төлбөрийн баримт upload<input type="file" name="document_files" multiple required /></label>
         <p className={styles.subtleText}>
-          {isSubmitting ? "Төлсөн төлөв баталгаажуулж байна..." : `${item.name} хүсэлтийг төлсөн төлөвт оруулах уу?`}
+          {isSubmitting ? "Төлбөр төлөгдсөнийг баталгаажуулж байна..." : `${item.name} хүсэлтийн төлбөр төлөгдсөнийг баталгаажуулах уу?`}
         </p>
         <div className={styles.buttonRow}>
           <button type="submit" className={styles.primaryButton} disabled={isSubmitting}>
-            {isSubmitting ? "Илгээж байна..." : "Тийм"}
+            {isSubmitting ? "Илгээж байна..." : "Төлбөр төлөгдсөнийг баталгаажуулах"}
           </button>
           <button type="button" className={styles.secondaryButton} onClick={onClose} disabled={isSubmitting}>Үгүй</button>
         </div>
@@ -1271,7 +1286,8 @@ function ActionForm({
         {actionPackages.length > 1 ? <PackageSelect packages={actionPackages} optional={action.code !== "mark_received"} /> : null}
         {action.code === "mark_received" ? (
           <>
-            <input type="hidden" name="note" value="Dashboard дээр хүлээлгэн өгсөн төлөв баталгаажуулав." />
+            <label className={styles.fieldLabel}>Тайлбар<textarea name="note" defaultValue="Хүлээн авалтыг баталгаажуулав." /></label>
+            <label className={styles.fieldLabel}>Хүлээн авалтын баримт upload<input type="file" name="document_files" multiple /></label>
             <p className={styles.subtleText}>
               {isSubmitting ? "Хүлээлгэн өгсөн төлөв баталгаажуулж байна..." : `${item.name} хүсэлтийг хүлээлгэн өгсөн болгох уу?`}
             </p>

@@ -233,7 +233,7 @@ export function ProcurementQuoteForm({
     const invoiceAmount = Number(String(formData.get("amount_total_1") || "0"));
     if (!Number.isFinite(invoiceAmount) || invoiceAmount <= 0) {
       event.preventDefault();
-      setFormError("Багц бүрийн нэхэмжлэхийн дүнг 0-ээс ихээр оруулна уу.");
+      setFormError("Багц бүрийн үнийн санал / нэхэмжлэхийн дүнг 0-ээс ихээр оруулна уу.");
       return;
     }
     if ((!packageId && lines.length > 1) || editableLines.length > 1) {
@@ -347,7 +347,7 @@ export function ProcurementQuoteForm({
             const existing = quotations[index - 1];
             return (
               <article key={index} className={styles.quoteCard}>
-                <h3>Нийлүүлэгчийн нэхэмжлэх</h3>
+                <h3>Үнийн санал бүртгэх</h3>
                 <SupplierCombobox
                   key={`${index}-${selectedSupplierIds[index - 1] || "empty"}`}
                   index={index}
@@ -357,7 +357,7 @@ export function ProcurementQuoteForm({
                   onRequestAdd={(suggestedName) => openSupplierModal(index, suggestedName)}
                 />
                 <label className={styles.fieldLabel}>
-                  Багцын нэхэмжлэхийн дүн
+                  Үнийн санал / нэхэмжлэхийн дүн
                   <input
                     type="number"
                     name={`amount_total_${index}`}
@@ -370,7 +370,7 @@ export function ProcurementQuoteForm({
                 </label>
                 <p className={styles.helperText}>1,000,000₮-өөс их бол тушаал болон гэрээний шат руу орно.</p>
                 <label className={styles.fieldLabel}>
-                  Нэхэмжлэхийн зураг
+                  Хавсралт файл оруулах
                   <input type="file" name={`quote_file_${index}`} required />
                 </label>
               </article>
@@ -378,8 +378,8 @@ export function ProcurementQuoteForm({
           })}
         </div>
         {formError ? <p className={styles.formError}>{formError}</p> : null}
-        <p className={styles.helperText}>Урьдчилан сонгосон нийлүүлэгчийн нэр болон нэхэмжлэхийн зургийг оруулна.</p>
-        <button type="submit" className={styles.primaryButton}>Нэхэмжлэх хадгалах</button>
+        <p className={styles.helperText}>Нийлүүлэгчийн мэдээлэл болон үнийн санал / нэхэмжлэхийн хавсралтыг оруулна.</p>
+        <button type="submit" className={styles.primaryButton}>Үнийн санал бүртгэх</button>
       </form>
 
       {modalState ? (

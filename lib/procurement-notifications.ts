@@ -70,23 +70,23 @@ const PROCUREMENT_ACTION_TEMPLATES: Record<ProcurementNotificationAction, Notifi
   },
   move_to_finance_review: {
     action: "move_to_finance_review",
-    title: "Finance review required",
-    body: "{request}{package} - moved to finance review.",
+    title: "Дараагийн шатанд илгээгдлээ",
+    body: "{request}{package} - дараагийн хариуцсан ажилтанд илгээгдлээ.",
   },
   record_package_ceo_order: {
     action: "record_package_ceo_order",
-    title: "CEO order recorded",
-    body: "{request}{package} - CEO contract order recording was completed.",
+    title: "Тушаал батлагдсан",
+    body: "{request}{package} - батлагдсан тушаал бүртгэгдлээ.",
   },
   mark_contract_signed: {
     action: "mark_contract_signed",
-    title: "Contract signed",
-    body: "{request}{package} - contract is marked as signed.",
+    title: "Гэрээний шат шинэчлэгдлээ",
+    body: "{request}{package} - гэрээний баримт бүртгэгдлээ.",
   },
   mark_paid: {
     action: "mark_paid",
-    title: "Payment recorded",
-    body: "{request}{package} - payment was marked as received.",
+    title: "Төлбөр төлөгдсөн",
+    body: "{request}{package} - төлбөр төлөгдсөнийг баталгаажууллаа.",
   },
   mark_received: {
     action: "mark_received",
@@ -311,7 +311,7 @@ async function buildTargets(
       (item) =>
         item.is_over_threshold &&
         item.payment_status?.code !== "payment_recorded" &&
-        ["admin_review", "ceo_decision", "ceo_order_uploaded"].includes(item.route_state?.code || ""),
+        ["legal_contract_draft", "legal_final_contract", "ceo_order_uploaded"].includes(item.route_state?.code || ""),
     );
 
     if (lowPackages.length) {
@@ -330,13 +330,13 @@ async function buildTargets(
         createTarget(
           targetMap,
           buildPackageTargetUrl(request.id, targetPackage.id),
-          "Administration review required",
+          "Хуулийн мэргэжилтэнд илгээгдлээ",
           replaceTemplate(
-            "Administration review required: {request} ({package}) is waiting for signature process.",
+            "{request}{package} - гэрээ, тушаалын төсөл боловсруулах шатанд ирлээ.",
             request,
             targetPackage,
           ),
-          uniqueIds([...adminUsers, ...actorIds]),
+          uniqueIds([...legalUsers, ...actorIds]),
         );
       }
     }
@@ -361,8 +361,17 @@ async function buildTargets(
   }
 
   if (action === "mark_contract_signed") {
-    const recipients = uniqueIds([...financeUsers, ...adminUsers, ...actorIds]);
-    createPackageTargets(request, targetPackages, targetMap, template, recipients);
+    const orderPackages = targetPackages.filter((item) => item.route_state?.code === "order_approval");
+    const financePackages = targetPackages.filter((item) => item.route_state?.code === "payment_pending");
+    if (orderPackages.length) {
+      createPackageTargets(request, orderPackages, targetMap, template, uniqueIds([...adminUsers, ...actorIds]));
+    }
+    if (financePackages.length) {
+      createPackageTargets(request, financePackages, targetMap, template, uniqueIds([...financeUsers, ...actorIds]));
+    }
+    if (!orderPackages.length && !financePackages.length) {
+      createPackageTargets(request, targetPackages, targetMap, template, uniqueIds([...legalUsers, ...adminUsers, ...financeUsers, ...actorIds]));
+    }
     return Array.from(targetMap.values());
   }
 
