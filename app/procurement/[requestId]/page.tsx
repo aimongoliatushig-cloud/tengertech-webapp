@@ -41,9 +41,12 @@ const STATE_LABELS: Record<string, string> = {
   finance_review: "Төлбөрийн хяналтанд",
   admin_review: "Хуулийн мэргэжилтэнд илгээсэн",
   ceo_decision: "Тушаал батлуулах шатанд",
-  ceo_order_uploaded: "Тушаал батлагдсан",
-  legal_contract_draft: "Гэрээ, тушаалын төсөл боловсруулж байна",
-  legal_final_contract: "Гэрээ дууссан",
+  ceo_order_uploaded: "Тушаал гарсан",
+  legal_contract_draft: "Хуулийн мэргэжилтэнд илгээсэн",
+  contract_draft_started: "Гэрээний төсөл эхэлсэн",
+  order_draft_started: "Тушаалын төсөл эхэлсэн",
+  order_draft_uploaded: "Тушаалын төсөл гарсан",
+  legal_final_contract: "Гэрээний төсөл батлагдсан",
   payment_pending: "Төлбөрийн хяналтанд",
   payment_recorded: "Төлбөр төлөгдсөн",
   receiving: "Хүлээн авалт хүлээгдэж байна",
@@ -193,10 +196,13 @@ function processBadges(item: ProcurementRequestDetail, packages: ProcurementPack
     ? highValuePackages.every((pack) => pack.ceo_order_ready)
     : Boolean(item.date_order_issued);
   const orderWaiting = highValuePackages.some((pack) =>
-    ["order_approval", "ceo_order_uploaded"].includes(pack.route_state?.code || ""),
+    ["order_draft_started", "order_draft_uploaded", "order_approval", "ceo_order_uploaded"].includes(pack.route_state?.code || ""),
   );
-  const contractDone = item.legal_state?.code === "completed" || item.state.code === "payment_pending";
-  const contractDrafting = ["legal_contract_draft", "ceo_order_uploaded", "legal_final_contract"].includes(item.state.code);
+  const contractDone =
+    item.legal_state?.code === "completed" ||
+    item.state.code === "payment_pending" ||
+    highValuePackages.some((pack) => pack.route_state?.code === "payment_pending");
+  const contractDrafting = ["legal_contract_draft", "contract_draft_started", "order_draft_started", "order_draft_uploaded", "ceo_order_uploaded", "legal_final_contract"].includes(item.state.code);
   const paymentDone =
     item.payment_status.code === "payment_recorded" ||
     Boolean(visiblePackages.length && visiblePackages.every((pack) => pack.payment_status?.code === "payment_recorded"));
@@ -208,12 +214,12 @@ function processBadges(item: ProcurementRequestDetail, packages: ProcurementPack
   return [
     {
       label: "Тушаал",
-      value: orderApproved ? "Тушаал батлагдсан" : orderWaiting ? "Тушаал батлуулах шатанд" : "Хүлээгдэж байна",
+      value: orderApproved ? "Тушаал гарсан" : orderWaiting ? "Тушаалын төсөл / батлуулах шатанд" : "Хүлээгдэж байна",
       className: orderApproved ? styles.badge : orderWaiting ? styles.badgeWarning : styles.badgeOutline,
     },
     {
       label: "Гэрээ",
-      value: contractDone ? "Гэрээ дууссан" : contractDrafting ? "Боловсруулж байна" : "Хүлээгдэж байна",
+      value: contractDone ? "Гэрээний төсөл батлагдсан" : contractDrafting ? "Боловсруулж байна" : "Хүлээгдэж байна",
       className: contractDone ? styles.badge : contractDrafting ? styles.badgeWarning : styles.badgeOutline,
     },
     {
@@ -260,6 +266,9 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
 
   const submitForQuotationAction = findAction(item.available_actions, "submit_for_quotation");
   const submitQuotesAction = findAction(item.available_actions, "submit_quotations");
+  const startContractDraftAction = findAction(item.available_actions, "start_contract_draft");
+  const startOrderDraftAction = findAction(item.available_actions, "start_order_draft");
+  const uploadOrderDraftAction = findAction(item.available_actions, "upload_order_draft");
   const prepareOrderAction = findAction(item.available_actions, "prepare_order");
   const recordPackageCeoOrderAction = findAction(item.available_actions, "record_package_ceo_order");
   const directorDecisionAction = findAction(item.available_actions, "director_decision");
@@ -279,7 +288,9 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
   const highValuePackages = visiblePackages.filter((pack) => pack.is_over_threshold);
   const lowValuePackages = visiblePackages.filter((pack) => !pack.is_over_threshold);
   const missingCeoOrderPackages = highValuePackages.filter((pack) => !pack.ceo_order_ready);
-  const contractDraftPackages = highValuePackages.filter((pack) => pack.route_state?.code === "legal_contract_draft");
+  const contractStartPackages = highValuePackages.filter((pack) => pack.route_state?.code === "legal_contract_draft");
+  const orderStartPackages = highValuePackages.filter((pack) => pack.route_state?.code === "contract_draft_started");
+  const orderDraftUploadPackages = highValuePackages.filter((pack) => pack.route_state?.code === "order_draft_started");
   const finalContractPackages = highValuePackages.filter((pack) =>
     ["ceo_order_uploaded", "legal_final_contract"].includes(pack.route_state?.code || ""),
   );
@@ -608,7 +619,7 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
                   ? `${missingCeoOrderPackages.length} багцын батлагдсан тушаал upload хүлээгдэж байна.`
                   : "Бүх гэрээтэй багцын тушаал батлагдсан байна."}
               </p>
-              {highValuePackages.map((pack) => (
+              {missingCeoOrderPackages.map((pack) => (
                 <PackageCeoOrderForm key={pack.id} requestId={item.id} pack={pack} />
               ))}
             </section>
@@ -625,44 +636,88 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
                   ))}
                 </select>
               </label>
-              <button type="submit" className={styles.primaryButton}>Тушаал бүртгэх</button>
+              <button type="submit" className={styles.primaryButton}>Баталсан тушаал оруулах</button>
             </form>
           ) : null}
           {attachFinalOrderAction && canManageWorkflow && !recordPackageCeoOrderAction ? (
-            <DocumentActionForm requestId={item.id} action="attach_final_order" label="Тушаал батлагдлаа гэж тэмдэглэх" />
+            <DocumentActionForm
+              requestId={item.id}
+              action="attach_final_order"
+              label="Баталсан тушаал оруулах"
+              fileLabel="Баталсан тушаал"
+              accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+            />
           ) : null}
-          {markContractAction && canManageWorkflow ? (
-            packages.length && contractDraftPackages.length ? (
-              <section className={styles.actionCard}>
-                <h3>Хуулийн мэргэжилтэн</h3>
-                {contractDraftPackages.map((pack) => (
-                  <DocumentActionForm
-                    key={pack.id}
-                    requestId={item.id}
-                    action="mark_contract_signed"
-                    label={`${pack.name} - Архив бичиг хэргийн ажилтанд илгээх`}
-                    packageId={pack.id}
-                    fileLabel="Гэрээний төсөл / тушаалын төсөл"
-                  />
-                ))}
-              </section>
-            ) : packages.length && finalContractPackages.length ? (
-              <section className={styles.actionCard}>
-                <h3>Хуулийн мэргэжилтэн</h3>
-                {finalContractPackages.map((pack) => (
-                  <DocumentActionForm
-                    key={pack.id}
-                    requestId={item.id}
-                    action="mark_contract_signed"
-                    label={`${pack.name} - Гэрээ дууссан`}
-                    packageId={pack.id}
-                    fileLabel="Эцсийн гэрээ"
-                  />
-                ))}
-              </section>
-            ) : (
-              <DocumentActionForm requestId={item.id} action="mark_contract_signed" label="Гэрээ дууссан" fileLabel="Эцсийн гэрээ" />
-            )
+          {(startContractDraftAction || startOrderDraftAction || uploadOrderDraftAction || markContractAction) && canManageWorkflow ? (
+            <section className={styles.actionCard}>
+              <h3>Хуулийн мэргэжилтэн</h3>
+              {startContractDraftAction && contractStartPackages.map((pack) => (
+                <WorkflowButton
+                  key={`contract-start-${pack.id}`}
+                  requestId={item.id}
+                  action="start_contract_draft"
+                  packageId={pack.id}
+                  label={`${pack.name} - Гэрээний төсөл эхлүүлэх`}
+                />
+              ))}
+              {startContractDraftAction && !packages.length ? (
+                <WorkflowButton
+                  requestId={item.id}
+                  action="start_contract_draft"
+                  label="Гэрээний төсөл эхлүүлэх"
+                />
+              ) : null}
+              {startOrderDraftAction && orderStartPackages.map((pack) => (
+                <WorkflowButton
+                  key={`order-start-${pack.id}`}
+                  requestId={item.id}
+                  action="start_order_draft"
+                  packageId={pack.id}
+                  label={`${pack.name} - Тушаалын төсөл эхлүүлэх`}
+                />
+              ))}
+              {startOrderDraftAction && !packages.length ? (
+                <WorkflowButton
+                  requestId={item.id}
+                  action="start_order_draft"
+                  label="Тушаалын төсөл эхлүүлэх"
+                />
+              ) : null}
+              {uploadOrderDraftAction && orderDraftUploadPackages.map((pack) => (
+                <DocumentActionForm
+                  key={`order-upload-${pack.id}`}
+                  requestId={item.id}
+                  action="upload_order_draft"
+                  label={`${pack.name} - Тушаалын төсөл оруулах`}
+                  packageId={pack.id}
+                  fileLabel="Тушаалын төсөл docx/pdf"
+                  accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+                />
+              ))}
+              {uploadOrderDraftAction && !packages.length ? (
+                <DocumentActionForm
+                  requestId={item.id}
+                  action="upload_order_draft"
+                  label="Тушаалын төсөл оруулах"
+                  fileLabel="Тушаалын төсөл docx/pdf"
+                  accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+                />
+              ) : null}
+              {markContractAction && finalContractPackages.map((pack) => (
+                <DocumentActionForm
+                  key={`contract-final-${pack.id}`}
+                  requestId={item.id}
+                  action="mark_contract_signed"
+                  label={`${pack.name} - Гэрээ оруулах`}
+                  packageId={pack.id}
+                  fileLabel="Гэрээний файл"
+                  accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+                />
+              ))}
+              {markContractAction && !packages.length ? (
+                <DocumentActionForm requestId={item.id} action="mark_contract_signed" label="Гэрээ оруулах" fileLabel="Гэрээний файл" />
+              ) : null}
+            </section>
           ) : null}
           {canRecordPackagePayment && visiblePackages.length && payablePackages.length ? (
             <section className={styles.actionCard}>
@@ -894,10 +949,20 @@ function PackageCeoOrderForm({ requestId, pack }: { requestId: number; pack: Pro
         </span>
       </div>
       <p className={styles.subtleText}>Нийлүүлэгч: {selectedSupplierName}. Дахин сонгох шаардлагагүй.</p>
+      {pack.order_draft_attachments?.length ? (
+        <div className={styles.inlineDetails}>
+          <h4>Хуулийн мэргэжилтнээс ирсэн тушаалын төсөл</h4>
+          <ul className={styles.attachmentList}>
+            {pack.order_draft_attachments.map((attachment) => (
+              <li key={attachment.id}><FileText aria-hidden /> {attachment.name}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <label className={styles.fieldLabel}>Тушаалын дугаар<input name="order_number" defaultValue={pack.ceo_order_number || ""} /></label>
       <label className={styles.fieldLabel}>Тушаалын огноо<input type="date" name="order_date" defaultValue={pack.ceo_order_date || ""} required /></label>
       <label className={styles.fieldLabel}>Товч утга<textarea name="note" defaultValue={pack.ceo_order_note || pack.ceo_decision_note || ""} /></label>
-      <label className={styles.fieldLabel}>Батлагдсан тушаал upload хийх<input type="file" name="document_files" multiple required={!pack.ceo_order_attachments?.length} /></label>
+      <label className={styles.fieldLabel}>Баталсан тушаал<input type="file" name="document_files" multiple required={!pack.ceo_order_attachments?.length} /></label>
       {pack.ceo_order_attachments?.length ? (
         <ul className={styles.attachmentList}>
           {pack.ceo_order_attachments.map((attachment) => (
@@ -1045,11 +1110,12 @@ function DocumentChecklist() {
   );
 }
 
-function WorkflowButton({ requestId, action, label }: { requestId: number; action: string; label: string }) {
+function WorkflowButton({ requestId, action, label, packageId }: { requestId: number; action: string; label: string; packageId?: number }) {
   return (
-    <form action={runProcurementWorkflowAction} className={styles.actionCard}>
+    <form action={runProcurementWorkflowAction} className={packageId ? styles.inlineForm : styles.actionCard}>
       <input type="hidden" name="request_id" value={requestId} />
       <input type="hidden" name="workflow_action" value={action} />
+      {packageId ? <input type="hidden" name="package_id" value={packageId} /> : null}
       <button type="submit" className={styles.primaryButton}>{label}</button>
     </form>
   );
@@ -1061,12 +1127,14 @@ function DocumentActionForm({
   label,
   packageId,
   fileLabel = "Файл",
+  accept,
 }: {
   requestId: number;
   action: string;
   label: string;
   packageId?: number;
   fileLabel?: string;
+  accept?: string;
 }) {
   const isReceivedAction = action === "mark_received";
   return (
@@ -1077,12 +1145,12 @@ function DocumentActionForm({
       {isReceivedAction ? (
         <>
           <label className={styles.fieldLabel}>Тайлбар<textarea name="note" defaultValue="Хүлээн авалтыг баталгаажуулав." /></label>
-          <label className={styles.fieldLabel}>{fileLabel}<input type="file" name="document_files" multiple /></label>
+          <label className={styles.fieldLabel}>{fileLabel}<input type="file" name="document_files" multiple accept={accept} /></label>
         </>
       ) : (
         <>
           <label className={styles.fieldLabel}>Тайлбар<textarea name="note" /></label>
-          <label className={styles.fieldLabel}>{fileLabel}<input type="file" name="document_files" multiple /></label>
+          <label className={styles.fieldLabel}>{fileLabel}<input type="file" name="document_files" multiple accept={accept} required={!isReceivedAction} /></label>
         </>
       )}
       <button type="submit" className={styles.primaryButton}>{label}</button>

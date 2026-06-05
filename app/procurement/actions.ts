@@ -31,6 +31,9 @@ import {
   loadProcurementSuppliers,
   updateProcurementSupplier,
   uploadProcurementAttachment,
+  startProcurementContractDraft,
+  startProcurementOrderDraft,
+  uploadProcurementOrderDraft,
 } from "@/lib/procurement";
 
 function getConnectionOverrides() {
@@ -641,6 +644,39 @@ export async function runProcurementWorkflowAction(formData: FormData) {
     } else if (action === "prepare_order") {
       const updatedRequest = await prepareProcurementOrder(requestId, connectionOverrides);
       await notifyProcurementStageChanged("prepare_order", updatedRequest, notificationPackageId);
+    } else if (action === "start_contract_draft") {
+      const packageId = getNumber(formData, "package_id");
+      const updatedRequest = await startProcurementContractDraft(
+        requestId,
+        { package_id: packageId || undefined, note },
+        connectionOverrides,
+      );
+      notificationPackageId = packageId || undefined;
+      await notifyProcurementStageChanged("start_contract_draft", updatedRequest, notificationPackageId);
+    } else if (action === "start_order_draft") {
+      const packageId = getNumber(formData, "package_id");
+      const updatedRequest = await startProcurementOrderDraft(
+        requestId,
+        { package_id: packageId || undefined, note },
+        connectionOverrides,
+      );
+      notificationPackageId = packageId || undefined;
+      await notifyProcurementStageChanged("start_order_draft", updatedRequest, notificationPackageId);
+    } else if (action === "upload_order_draft") {
+      const packageId = getNumber(formData, "package_id");
+      const files = getFiles(formData, "document_files");
+      await uploadFilesToRequest(requestId, files, "document", connectionOverrides, {
+        document_type: "order_draft",
+        package_id: packageId || undefined,
+        note,
+      });
+      const updatedRequest = await uploadProcurementOrderDraft(
+        requestId,
+        { package_id: packageId || undefined, note },
+        connectionOverrides,
+      );
+      notificationPackageId = packageId || undefined;
+      await notifyProcurementStageChanged("upload_order_draft", updatedRequest, notificationPackageId);
     } else if (action === "director_decision") {
       const updatedRequest = await approveProcurementDirectorDecision(
         requestId,

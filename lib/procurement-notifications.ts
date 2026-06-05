@@ -21,6 +21,9 @@ export type ProcurementNotificationAction =
   | "request_created"
   | "submit_quotations"
   | "prepare_order"
+  | "start_contract_draft"
+  | "start_order_draft"
+  | "upload_order_draft"
   | "director_decision"
   | "attach_final_order"
   | "move_to_finance_review"
@@ -57,6 +60,21 @@ const PROCUREMENT_ACTION_TEMPLATES: Record<ProcurementNotificationAction, Notifi
     action: "prepare_order",
     title: "Procurement order preparation",
     body: "{request}{package} - order preparation is ready for next review step.",
+  },
+  start_contract_draft: {
+    action: "start_contract_draft",
+    title: "Гэрээний төсөл эхэлсэн",
+    body: "{request}{package} - гэрээний төсөл эхэллээ.",
+  },
+  start_order_draft: {
+    action: "start_order_draft",
+    title: "Тушаалын төсөл эхэлсэн",
+    body: "{request}{package} - тушаалын төсөл эхэллээ.",
+  },
+  upload_order_draft: {
+    action: "upload_order_draft",
+    title: "Тушаалын төсөл гарсан",
+    body: "{request}{package} - тушаалын төсөл хавсаргагдаж бичиг хэрэгт илгээгдлээ.",
   },
   director_decision: {
     action: "director_decision",
@@ -360,17 +378,25 @@ async function buildTargets(
     return Array.from(targetMap.values());
   }
 
+  if (action === "start_contract_draft" || action === "start_order_draft") {
+    const recipients = uniqueIds([...legalUsers, ...actorIds]);
+    createPackageTargets(request, targetPackages, targetMap, template, recipients);
+    return Array.from(targetMap.values());
+  }
+
+  if (action === "upload_order_draft") {
+    const recipients = uniqueIds([...adminUsers, ...actorIds]);
+    createPackageTargets(request, targetPackages, targetMap, template, recipients);
+    return Array.from(targetMap.values());
+  }
+
   if (action === "mark_contract_signed") {
-    const orderPackages = targetPackages.filter((item) => item.route_state?.code === "order_approval");
     const financePackages = targetPackages.filter((item) => item.route_state?.code === "payment_pending");
-    if (orderPackages.length) {
-      createPackageTargets(request, orderPackages, targetMap, template, uniqueIds([...adminUsers, ...actorIds]));
-    }
     if (financePackages.length) {
       createPackageTargets(request, financePackages, targetMap, template, uniqueIds([...financeUsers, ...actorIds]));
     }
-    if (!orderPackages.length && !financePackages.length) {
-      createPackageTargets(request, targetPackages, targetMap, template, uniqueIds([...legalUsers, ...adminUsers, ...financeUsers, ...actorIds]));
+    if (!financePackages.length) {
+      createPackageTargets(request, targetPackages, targetMap, template, uniqueIds([...legalUsers, ...financeUsers, ...actorIds]));
     }
     return Array.from(targetMap.values());
   }

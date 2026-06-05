@@ -104,7 +104,7 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
       {notice ? <section className={`${styles.statusBanner} ${styles.noticeBanner}`}>{notice}</section> : null}
       {error ? <section className={`${styles.statusBanner} ${styles.errorBanner}`}>{error}</section> : null}
 
-      {!procurementUser.flags.requester && !procurementUser.flags.admin ? (
+      {!isDepartmentHeadView && !procurementUser.flags.requester && !procurementUser.flags.admin ? (
         <section className={styles.cardSection}>
           <div className={styles.emptyState}>
             <strong>Танд шинэ худалдан авах хүсэлт үүсгэх эрх алга.</strong>

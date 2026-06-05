@@ -379,7 +379,9 @@ export function ProcurementQuoteForm({
         </div>
         {formError ? <p className={styles.formError}>{formError}</p> : null}
         <p className={styles.helperText}>Нийлүүлэгчийн мэдээлэл болон үнийн санал / нэхэмжлэхийн хавсралтыг оруулна.</p>
-        <button type="submit" className={styles.primaryButton}>Үнийн санал бүртгэх</button>
+        <button type="submit" className={`${styles.primaryButton} ${styles.quoteSubmitButton}`}>
+          Үнийн санал бүртгэх
+        </button>
       </form>
 
       {modalState ? (

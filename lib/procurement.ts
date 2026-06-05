@@ -110,6 +110,7 @@ export type ProcurementPackage = {
   ceo_order_number?: string | null;
   ceo_order_date?: string | null;
   ceo_order_note?: string | null;
+  order_draft_attachments?: ProcurementAttachment[];
   ceo_order_attachments?: ProcurementAttachment[];
   ceo_decision_recorded_by?: ProcurementParty | null;
   ceo_decision_date?: string | null;
@@ -683,6 +684,54 @@ export async function prepareProcurementOrder(
     `/mpw/api/requests/${requestId}/prepare_order`,
     {
       method: "POST",
+      connectionOverrides,
+    },
+  );
+  return response.item!;
+}
+
+export async function startProcurementContractDraft(
+  requestId: number,
+  payload: Record<string, unknown> = {},
+  connectionOverrides: ConnectionOverrides = {},
+) {
+  const response = await procurementFetch<ProcurementRequestDetail>(
+    `/mpw/api/requests/${requestId}/start_contract_draft`,
+    {
+      method: "POST",
+      body: payload,
+      connectionOverrides,
+    },
+  );
+  return response.item!;
+}
+
+export async function startProcurementOrderDraft(
+  requestId: number,
+  payload: Record<string, unknown> = {},
+  connectionOverrides: ConnectionOverrides = {},
+) {
+  const response = await procurementFetch<ProcurementRequestDetail>(
+    `/mpw/api/requests/${requestId}/start_order_draft`,
+    {
+      method: "POST",
+      body: payload,
+      connectionOverrides,
+    },
+  );
+  return response.item!;
+}
+
+export async function uploadProcurementOrderDraft(
+  requestId: number,
+  payload: Record<string, unknown> = {},
+  connectionOverrides: ConnectionOverrides = {},
+) {
+  const response = await procurementFetch<ProcurementRequestDetail>(
+    `/mpw/api/requests/${requestId}/upload_order_draft`,
+    {
+      method: "POST",
+      body: payload,
       connectionOverrides,
     },
   );

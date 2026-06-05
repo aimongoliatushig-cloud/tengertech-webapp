@@ -21,8 +21,12 @@ export function ProcurementStateFilterSelect({ defaultValue }: ProcurementStateF
       <option value="finance_review">Төлбөрийн хяналтанд</option>
       <option value="admin_review">Хуулийн мэргэжилтэнд илгээсэн</option>
       <option value="ceo_decision">Тушаал батлуулах шатанд</option>
-      <option value="legal_contract_draft">Гэрээ, тушаалын төсөл боловсруулж байна</option>
-      <option value="legal_final_contract">Гэрээ дууссан</option>
+      <option value="legal_contract_draft">Хуулийн мэргэжилтэнд илгээсэн</option>
+      <option value="contract_draft_started">Гэрээний төсөл эхэлсэн</option>
+      <option value="order_draft_started">Тушаалын төсөл эхэлсэн</option>
+      <option value="order_draft_uploaded">Тушаалын төсөл гарсан</option>
+      <option value="ceo_order_uploaded">Тушаал гарсан</option>
+      <option value="legal_final_contract">Гэрээний төсөл батлагдсан</option>
       <option value="payment_pending">Төлбөрийн хяналтанд</option>
       <option value="payment_recorded">Төлбөр төлөгдсөн</option>
       <option value="received">Хүлээн авалт хүлээгдэж байна</option>

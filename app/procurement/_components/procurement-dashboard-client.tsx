@@ -60,10 +60,13 @@ const STATE_LABELS: Record<string, string> = {
   finance_review: "Төлбөрийн хяналтанд",
   admin_review: "Хуулийн мэргэжилтэнд илгээсэн",
   ceo_decision: "Тушаал батлуулах шатанд",
-  ceo_order_uploaded: "Тушаал батлагдсан",
-  legal_contract_draft: "Гэрээ, тушаалын төсөл боловсруулж байна",
-  legal_final_contract: "Гэрээ дууссан",
-  contract_review: "Гэрээ, тушаалын төсөл боловсруулж байна",
+  ceo_order_uploaded: "Тушаал гарсан",
+  legal_contract_draft: "Хуулийн мэргэжилтэнд илгээсэн",
+  contract_draft_started: "Гэрээний төсөл эхэлсэн",
+  order_draft_started: "Тушаалын төсөл эхэлсэн",
+  order_draft_uploaded: "Тушаалын төсөл гарсан",
+  legal_final_contract: "Гэрээний төсөл батлагдсан",
+  contract_review: "Гэрээний төсөл эхэлсэн",
   payment_pending: "Төлбөрийн хяналтанд",
   payment: "Төлбөрийн хяналтанд",
   payment_waiting: "Төлбөрийн хяналтанд",
@@ -80,11 +83,14 @@ const ACTION_LABELS: Record<string, string> = {
   submit_for_quotation: "Худалдан авах хүсэлт үүсгэх",
   submit_quotations: "Үнийн санал бүртгэх",
   move_to_finance_review: "Дараагийн шат руу илгээх",
+  start_contract_draft: "Гэрээний төсөл эхлүүлэх",
+  start_order_draft: "Тушаалын төсөл эхлүүлэх",
+  upload_order_draft: "Тушаалын төсөл оруулах",
   prepare_order: "Тушаалын төсөл хүлээн авах",
   director_decision: "Тушаал бүртгэх",
-  record_package_ceo_order: "Тушаал бүртгэх",
+  record_package_ceo_order: "Батлагдсан тушаал хавсаргах",
   attach_final_order: "Тушаал батлагдлаа гэж тэмдэглэх",
-  mark_contract_signed: "Гэрээний баримт бүртгэх",
+  mark_contract_signed: "Гэрээ оруулах",
   mark_paid: "Төлбөр төлөгдсөнийг баталгаажуулах",
   mark_received: "Хүлээн авалтыг баталгаажуулах",
   cancel: "Буцаах / цуцлах",
@@ -188,15 +194,21 @@ function getPackageStageCode(pack: ProcurementPackage) {
 }
 
 function stageIndexFromCode(code: string, highValue: boolean) {
-  const paymentIndex = highValue ? 5 : 3;
-  const receiveIndex = highValue ? 6 : 4;
-  const doneIndex = highValue ? 7 : 5;
+  const paymentIndex = highValue ? 7 : 3;
+  const paidIndex = highValue ? 8 : 4;
+  const receiveIndex = highValue ? 9 : 4;
+  const doneIndex = highValue ? 10 : 5;
   if (code === "done") return doneIndex;
   if (code === "received") return receiveIndex;
-  if (code === "paid" || code === "payment_recorded") return receiveIndex;
+  if (code === "paid" || code === "payment_recorded") return paidIndex;
   if (code === "payment_pending" || code === "payment" || code === "payment_waiting") return paymentIndex;
-  if (highValue && (code.includes("contract") || code.includes("legal"))) return 4;
-  if (code.includes("order")) return 3;
+  if (highValue && code === "legal_final_contract") return 6;
+  if (highValue && code === "ceo_order_uploaded") return 5;
+  if (highValue && code === "order_draft_uploaded") return 4;
+  if (highValue && code === "order_draft_started") return 3;
+  if (highValue && code === "contract_draft_started") return 2;
+  if (highValue && code === "legal_contract_draft") return 1;
+  if (code.includes("order")) return highValue ? 4 : 3;
   if (
     code.includes("director") ||
     code.includes("admin") ||
@@ -237,8 +249,9 @@ function firstPackageDate(
 
 function getStageDate(item: ProcurementRequestDetail, index: number, highValue: boolean) {
   if (index === 0) return item.required_date;
-  if (index === 1 || index === 2) return item.date_quotation_submitted;
-  if (highValue && index === 3) {
+  if (index === 1) return item.date_quotation_submitted;
+  if (highValue && index >= 2 && index <= 4) return firstPackageDate(item, (pack) => pack.ceo_decision_date);
+  if (highValue && index === 5) {
     return firstDate(
       item.date_director_decision,
       item.date_order_issued,
@@ -246,8 +259,8 @@ function getStageDate(item: ProcurementRequestDetail, index: number, highValue: 
       firstPackageDate(item, (pack) => pack.ceo_order_date),
     );
   }
-  if (highValue && index === 4) return item.date_contract_signed;
-  if (index === (highValue ? 5 : 3)) {
+  if (highValue && (index === 6 || index === 7)) return item.date_contract_signed;
+  if (index === (highValue ? 8 : 3)) {
     return firstDate(item.date_paid, item.payment_date, firstPackageDate(item, (pack) => pack.date_paid || pack.payment_date));
   }
   return firstDate(item.date_received, firstPackageDate(item, (pack) => pack.date_received || pack.received_date));
@@ -260,9 +273,12 @@ function getWorkflowStages(item: ProcurementRequestDetail) {
     ? [
         "Хүсэлт",
         "Үнийн санал",
-        "Хуулийн мэргэжилтэнд илгээсэн",
-        "Тушаал батлагдсан",
-        "Гэрээ дууссан",
+        "Гэрээний төсөл эхэлсэн",
+        "Тушаалын төсөл эхэлсэн",
+        "Тушаалын төсөл гарсан",
+        "Тушаал гарсан",
+        "Гэрээний төсөл батлагдсан",
+        "Төлбөрийн хяналтанд",
         "Төлбөр төлөгдсөн",
         "Хүлээн авалт",
         "Дууссан",
@@ -384,7 +400,9 @@ function isRoleAllowedAction(action: ProcurementAction, userFlags: ProcurementUs
   if (userFlags.admin) return true;
   if (action.code === "mark_paid") return userFlags.finance;
   if (action.code === "mark_received") return userFlags.storekeeper;
-  if (action.code === "mark_contract_signed") return userFlags.contract_officer;
+  if (["start_contract_draft", "start_order_draft", "upload_order_draft", "mark_contract_signed"].includes(action.code)) {
+    return userFlags.contract_officer;
+  }
   if (["record_package_ceo_order", "attach_final_order", "director_decision", "prepare_order"].includes(action.code)) {
     return userFlags.office_clerk;
   }
@@ -1218,17 +1236,67 @@ function ActionForm({
     );
   }
 
+  if (action.code === "start_contract_draft" || action.code === "start_order_draft") {
+    const targetState = action.code === "start_contract_draft" ? "legal_contract_draft" : "contract_draft_started";
+    const actionPackages = item.packages.filter((pack) => pack.route_state?.code === targetState);
+    return (
+      <form action={runProcurementWorkflowAction} className={styles.formStack}>
+        <WorkflowHidden item={item} action={action.code} returnPath={returnPath} />
+        {actionPackages.length === 1 ? <input type="hidden" name="package_id" value={actionPackages[0].id} /> : null}
+        {actionPackages.length > 1 ? <PackageSelect packages={actionPackages} /> : null}
+        <label className={styles.fieldLabel}>Тайлбар<textarea name="note" /></label>
+        <button type="submit" className={styles.primaryButton}>{ACTION_LABELS[action.code] || action.label}</button>
+      </form>
+    );
+  }
+
+  if (action.code === "upload_order_draft") {
+    const actionPackages = item.packages.filter((pack) => pack.route_state?.code === "order_draft_started");
+    return (
+      <form action={runProcurementWorkflowAction} className={styles.formStack}>
+        <WorkflowHidden item={item} action={action.code} returnPath={returnPath} />
+        {actionPackages.length === 1 ? <input type="hidden" name="package_id" value={actionPackages[0].id} /> : null}
+        {actionPackages.length > 1 ? <PackageSelect packages={actionPackages} /> : null}
+        <label className={styles.fieldLabel}>Тайлбар<textarea name="note" /></label>
+        <label className={styles.fieldLabel}>
+          Тушаалын төсөл docx/pdf
+          <input
+            type="file"
+            name="document_files"
+            multiple
+            required
+            accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
+          />
+        </label>
+        <button type="submit" className={styles.primaryButton}>{ACTION_LABELS[action.code] || action.label}</button>
+      </form>
+    );
+  }
+
   if (action.code === "record_package_ceo_order") {
-    const highPackages = item.packages.filter((pack) => pack.is_over_threshold);
+    const highPackages = item.packages.filter((pack) => pack.is_over_threshold && ["order_draft_uploaded", "order_approval"].includes(pack.route_state?.code || ""));
     return (
       <form action={runProcurementWorkflowAction} className={styles.formStack}>
         <WorkflowHidden item={item} action={action.code} returnPath={returnPath} />
         <PackageSelect packages={highPackages} />
+        {highPackages.some((pack) => pack.order_draft_attachments?.length) ? (
+          <div className={styles.inlineDetails}>
+            <h4>Хуулийн мэргэжилтнээс ирсэн тушаалын төсөл</h4>
+            <ul className={styles.attachmentList}>
+              {highPackages.flatMap((pack) =>
+                (pack.order_draft_attachments || []).map((attachment) => (
+                  <li key={`${pack.id}-${attachment.id}`}>{pack.name}: {attachment.name}</li>
+                )),
+              )}
+            </ul>
+          </div>
+        ) : null}
         <p className={styles.subtleText}>Нэхэмжлэх оруулсан нийлүүлэгчээр үргэлжилнэ. Нийлүүлэгч дахин сонгох шаардлагагүй.</p>
+        <label className={styles.fieldLabel}>Тушаалын дугаар<input name="order_number" /></label>
         <label className={styles.fieldLabel}>Тушаалын огноо<input type="date" name="order_date" required /></label>
         <label className={styles.fieldLabel}>Тайлбар<textarea name="note" /></label>
         <label className={styles.fieldLabel}>Тушаалын файл<input type="file" name="document_files" multiple required /></label>
-        <button type="submit" className={styles.primaryButton}>Тушаал хадгалах</button>
+        <button type="submit" className={styles.primaryButton}>Баталсан тушаал оруулах</button>
       </form>
     );
   }
@@ -1301,7 +1369,16 @@ function ActionForm({
         ) : (
           <>
             <label className={styles.fieldLabel}>Тайлбар<textarea name="note" /></label>
-            <label className={styles.fieldLabel}>Файл<input type="file" name="document_files" multiple /></label>
+            <label className={styles.fieldLabel}>
+              Файл
+              <input
+                type="file"
+                name="document_files"
+                multiple
+                required={action.code === "mark_contract_signed"}
+                accept={action.code === "mark_contract_signed" ? ".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf" : undefined}
+              />
+            </label>
             <button type="submit" className={styles.primaryButton}>{ACTION_LABELS[action.code] || action.label}</button>
           </>
         )}

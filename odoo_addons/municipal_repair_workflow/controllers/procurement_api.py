@@ -179,6 +179,9 @@ class MunicipalProcurementApiController(http.Controller):
         [
             "/mpw/api/requests/<int:request_id>/submit",
             "/mpw/api/requests/<int:request_id>/move_to_finance_review",
+            "/mpw/api/requests/<int:request_id>/start_contract_draft",
+            "/mpw/api/requests/<int:request_id>/start_order_draft",
+            "/mpw/api/requests/<int:request_id>/upload_order_draft",
             "/mpw/api/requests/<int:request_id>/prepare_order",
             "/mpw/api/requests/<int:request_id>/record_package_ceo_order",
             "/mpw/api/requests/<int:request_id>/director_decision",

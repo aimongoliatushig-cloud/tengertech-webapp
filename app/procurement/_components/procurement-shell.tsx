@@ -58,7 +58,9 @@ export async function ProcurementShell({
           loadProcurementNotificationCount(session).catch(() => 0),
         ]).then(([workspaceCount, procurementCount]) => workspaceCount + procurementCount),
   ]);
-  const showCreate = procurementUser.flags.requester || procurementUser.flags.admin;
+  const isDepartmentHead =
+    session.role === "project_manager" || Boolean(session.groupFlags?.municipalDepartmentHead);
+  const showCreate = procurementUser.flags.requester || procurementUser.flags.admin || isDepartmentHead;
 
   return (
     <main className={`${shellStyles.shell} ${styles.procurementApp}`}>
@@ -99,16 +101,22 @@ export async function ProcurementShell({
               mobileBackHref="/procurement/dashboard"
             />
 
-            {activeTab !== "dashboard" ? (
+            {activeTab !== "dashboard" || showCreate ? (
               <section className={styles.pageTitleBar} data-view={activeTab}>
                 <div>
-                  <h1>{title}</h1>
-                  <p>{description}</p>
+                  {activeTab !== "dashboard" ? (
+                    <>
+                      <h1>{title}</h1>
+                      <p>{description}</p>
+                    </>
+                  ) : null}
                 </div>
                 <div className={styles.titleActions}>
-                  <Link href="/procurement/dashboard" className={styles.secondaryButton}>
+                  {activeTab !== "dashboard" ? (
+                    <Link href="/procurement/dashboard" className={styles.secondaryButton}>
                     Хяналтын самбар
-                  </Link>
+                    </Link>
+                  ) : null}
                   {showCreate ? (
                     <Link href="/procurement/new" className={styles.primaryButton}>
                       <PlusCircle aria-hidden />
@@ -140,10 +148,18 @@ export async function ProcurementShell({
           <WalletCards aria-hidden />
           Төлбөр
         </Link>
+        {showCreate ? (
+          <Link href="/procurement/new" className={`${styles.mobileDockLink} ${activeTab === "new" ? styles.mobileDockLinkActive : ""}`}>
+            <PlusCircle aria-hidden />
+            Шинэ
+          </Link>
+        ) : null}
+        {!showCreate ? (
         <Link href="/procurement/dashboard" className={styles.mobileDockLink}>
           <BarChart3 aria-hidden />
           Тайлан
         </Link>
+        ) : null}
       </nav>
     </main>
   );
