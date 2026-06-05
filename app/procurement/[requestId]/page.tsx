@@ -277,7 +277,9 @@ export default async function ProcurementDetailPage({ params, searchParams }: Pa
   const markPaidAction = findAction(item.available_actions, "mark_paid");
   const markReceivedAction = findAction(item.available_actions, "mark_received");
   const cancelAction = findAction(item.available_actions, "cancel");
-  const visibleActions = item.available_actions.filter((action) => action.code !== "move_to_finance_review");
+  const visibleActions = item.available_actions.filter(
+    (action) => action.code !== "move_to_finance_review" && !(item.state.code === "done" && action.code === "mark_done"),
+  );
   const selectedQuotation = item.quotations.find((quotation) => quotation.is_selected);
   const packages = item.packages || [];
   const requestedPackageId = Number(getValue(query.package_id));

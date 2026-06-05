@@ -1262,7 +1262,11 @@ class MunicipalProcurementRequest(models.Model):
                 add("mark_paid")
             if receivable_packages and (flags["storekeeper"] or flags["admin"]):
                 add("mark_received")
-            if self.package_ids and not self.package_ids.filtered(lambda package: self._effective_package_route_state(package) not in ("done", "cancelled")):
+            if (
+                self.state != "done"
+                and self.package_ids
+                and not self.package_ids.filtered(lambda package: self._effective_package_route_state(package) not in ("done", "cancelled"))
+            ):
                 add("mark_done")
             return actions
         high_value_required = bool(self._high_value_packages()) or (

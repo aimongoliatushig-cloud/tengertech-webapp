@@ -1195,7 +1195,8 @@ export async function getEmployees(session: AppSession) {
       connection,
     );
     if (Array.isArray(records) && records.length > 0) {
-      return sortHrEmployees(scopeEmployeesForProfile(excludeSystemAdminEmployees(records.map(mapHrEmployeeDirectoryApiRecord)), profile));
+      const employees = sortHrEmployees(scopeEmployeesForProfile(excludeSystemAdminEmployees(records.map(mapHrEmployeeDirectoryApiRecord)), profile));
+      return applyCurrentTimeoffStatus(employees);
     }
   } catch (error) {
     console.warn("HR custom employee directory API unavailable, falling back to service account search_read:", error);
@@ -1204,15 +1205,16 @@ export async function getEmployees(session: AppSession) {
   try {
     const employees = await loadHrEmployeeDirectory();
     if (employees.length > 0) {
-      return sortHrEmployees(scopeEmployeesForProfile(excludeSystemAdminEmployees(employees), profile));
+      const scopedEmployees = sortHrEmployees(scopeEmployeesForProfile(excludeSystemAdminEmployees(employees), profile));
+      return applyCurrentTimeoffStatus(scopedEmployees);
     }
   } catch (error) {
     console.warn("HR service account employee directory could not be loaded, falling back to session search_read:", error);
   }
 
-  return loadHrEmployeeDirectory(connection).then((employees) =>
-    sortHrEmployees(scopeEmployeesForProfile(excludeSystemAdminEmployees(employees), profile)),
-  );
+  const employees = await loadHrEmployeeDirectory(connection);
+  const scopedEmployees = sortHrEmployees(scopeEmployeesForProfile(excludeSystemAdminEmployees(employees), profile));
+  return applyCurrentTimeoffStatus(scopedEmployees);
 }
 
 export async function getEmployee(session: AppSession, id: number) {
@@ -1899,6 +1901,104 @@ function timeoffStatusPriority(type: HrTimeoffRequestType) {
   if (type === "sick") return 3;
   if (type === "annual_leave") return 2;
   return 1;
+}
+
+const CURRENT_TIMEOFF_STATUS_LABELS: Record<HrTimeoffRequestType, string> = {
+  time_off: "Чөлөөтэй",
+  annual_leave: "Ээлжийн амралттай",
+  sick: "Өвчтэй",
+};
+
+function employeeCanReceiveDynamicTimeoffStatus(employee: HrEmployeeDirectoryItem) {
+  return employee.active && !["archived", "terminated", "resigned"].includes(employee.statusKey || "");
+}
+
+async function applyCurrentTimeoffStatus(employees: HrEmployeeDirectoryItem[]): Promise<HrEmployeeDirectoryItem[]> {
+  const employeeIds = employees.filter(employeeCanReceiveDynamicTimeoffStatus).map((employee) => employee.id);
+  if (!employeeIds.length) {
+    return employees;
+  }
+
+  const today = getTodayKey();
+  const employeeIdSet = new Set(employeeIds);
+  const statusByEmployee = new Map<number, HrTimeoffRequestType>();
+
+  function rememberStatus(employeeId: number, requestType: HrTimeoffRequestType) {
+    if (!employeeIdSet.has(employeeId)) return;
+    const previous = statusByEmployee.get(employeeId);
+    if (!previous || timeoffStatusPriority(requestType) > timeoffStatusPriority(previous)) {
+      statusByEmployee.set(employeeId, requestType);
+    }
+  }
+
+  function applyStatusOverlay() {
+    if (!statusByEmployee.size) {
+      return employees;
+    }
+    return employees.map((employee) => {
+      const requestType = statusByEmployee.get(employee.id);
+      if (!requestType || !employeeCanReceiveDynamicTimeoffStatus(employee)) {
+        return employee;
+      }
+      return {
+        ...employee,
+        statusKey: requestType === "time_off" ? "leave" : requestType,
+        statusLabel: CURRENT_TIMEOFF_STATUS_LABELS[requestType],
+      };
+    });
+  }
+
+  try {
+    const records = await executeOdooKw<Array<Partial<HrTimeoffRequest>>>(
+      "municipal.hr.timeoff.request",
+      "get_hr_timeoff_request_directory",
+      [{ state: "approved", limit: 500 }],
+      {},
+    );
+    for (const record of records) {
+      const request = normalizeTimeoffRequest(record);
+      if (request.state === "approved" && request.dateFrom <= today && request.dateTo >= today) {
+        rememberStatus(request.employeeId, request.requestType);
+      }
+    }
+    if (statusByEmployee.size) {
+      return applyStatusOverlay();
+    }
+  } catch (error) {
+    if (!isMissingTimeoffModelError(error)) {
+      console.warn("HR current time off status directory overlay failed:", error);
+    }
+  }
+
+  try {
+    const records = await executeOdooKw<HrTimeoffRequestSearchRecord[]>(
+      "municipal.hr.timeoff.request",
+      "search_read",
+      [
+        [
+          ["employee_id", "in", employeeIds],
+          ["state", "=", "approved"],
+          ["date_from", "<=", today],
+          ["date_to", ">=", today],
+        ],
+      ],
+      {
+        fields: ["employee_id", "request_type", "state", "date_from", "date_to"],
+        limit: 500,
+      },
+    );
+    for (const record of records) {
+      const employeeId = getRelationId(record.employee_id);
+      if (!employeeId) continue;
+      rememberStatus(employeeId, normalizeTimeoffRequestType(record.request_type));
+    }
+    return applyStatusOverlay();
+  } catch (error) {
+    if (!isMissingTimeoffModelError(error)) {
+      console.warn("HR current time off status overlay failed:", error);
+    }
+    return employees;
+  }
 }
 
 async function filesToAttachments(files?: File[]): Promise<HrLeaveAttachmentInput[]> {
