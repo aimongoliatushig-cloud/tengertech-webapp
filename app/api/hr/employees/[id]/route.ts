@@ -20,6 +20,12 @@ function formNumber(formData: FormData, key: string) {
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
+function formNumberOrZero(formData: FormData, key: string) {
+  if (!formData.has(key)) return undefined;
+  const value = Number(formData.get(key));
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
+
 function payloadString(payload: Record<string, unknown>, key: string) {
   if (!Object.prototype.hasOwnProperty.call(payload, key)) return undefined;
   return String(payload[key] ?? "").trim();
@@ -31,15 +37,34 @@ function payloadNumber(payload: Record<string, unknown>, key: string) {
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
+function payloadNumberOrZero(payload: Record<string, unknown>, key: string) {
+  if (!Object.prototype.hasOwnProperty.call(payload, key)) return undefined;
+  const value = Number(payload[key]);
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
+
 function normalizeEmployeeUpdatePayload(payload: Record<string, unknown>) {
   return {
     name: payloadString(payload, "name"),
     employeeCode: payloadString(payload, "employeeCode"),
+    registerNumber: payloadString(payload, "registerNumber"),
     genderKey: payloadString(payload, "genderKey"),
     birthDate: payloadString(payload, "birthDate"),
     workPhone: payloadString(payload, "workPhone"),
     mobilePhone: payloadString(payload, "mobilePhone"),
     workEmail: payloadString(payload, "workEmail"),
+    privatePhone: payloadString(payload, "privatePhone"),
+    privateEmail: payloadString(payload, "privateEmail"),
+    homeAddress: payloadString(payload, "homeAddress"),
+    birthPlace: payloadString(payload, "birthPlace"),
+    familyStatus: payloadString(payload, "familyStatus"),
+    spouseName: payloadString(payload, "spouseName"),
+    spouseBirthDate: payloadString(payload, "spouseBirthDate"),
+    childrenCount: payloadNumberOrZero(payload, "childrenCount"),
+    childrenInfo: payloadString(payload, "childrenInfo"),
+    childrenSchool: payloadString(payload, "childrenSchool"),
+    emergencyContact: payloadString(payload, "emergencyContact"),
+    emergencyPhone: payloadString(payload, "emergencyPhone"),
     departmentId: payloadNumber(payload, "departmentId"),
     jobId: payloadNumber(payload, "jobId"),
     jobTitle: payloadString(payload, "jobTitle"),
@@ -47,6 +72,27 @@ function normalizeEmployeeUpdatePayload(payload: Record<string, unknown>) {
     startDate: payloadString(payload, "startDate"),
     contractEndDate: payloadString(payload, "contractEndDate"),
     gradeRank: payloadString(payload, "gradeRank"),
+    annualLeaveNote: payloadString(payload, "annualLeaveNote"),
+    payCategory: payloadString(payload, "payCategory"),
+    bankName: payloadString(payload, "bankName"),
+    bankAccountNumber: payloadString(payload, "bankAccountNumber"),
+    baseSalary: payloadString(payload, "baseSalary"),
+    taxNumber: payloadString(payload, "taxNumber"),
+    socialInsuranceStartDate: payloadString(payload, "socialInsuranceStartDate"),
+    kpiScore: payloadNumberOrZero(payload, "kpiScore"),
+    taskCompletionPercent: payloadNumberOrZero(payload, "taskCompletionPercent"),
+    disciplineScore: payloadNumberOrZero(payload, "disciplineScore"),
+    studyField: payloadString(payload, "studyField"),
+    studySchool: payloadString(payload, "studySchool"),
+    talent: payloadString(payload, "talent"),
+    skillLevel: payloadString(payload, "skillLevel"),
+    previousEmployment: payloadString(payload, "previousEmployment"),
+    additionalDuty: payloadString(payload, "additionalDuty"),
+    trialEndDate: payloadString(payload, "trialEndDate"),
+    missingDocumentCount: payloadNumberOrZero(payload, "missingDocumentCount"),
+    departureDate: payloadString(payload, "departureDate"),
+    departureDescription: payloadString(payload, "departureDescription"),
+    notes: payloadString(payload, "notes"),
   };
 }
 
@@ -81,20 +127,53 @@ async function parseEmployeeUpdatePayload(request: Request) {
   [
     "name",
     "employeeCode",
+    "registerNumber",
     "genderKey",
     "birthDate",
     "workPhone",
     "mobilePhone",
     "workEmail",
+    "privatePhone",
+    "privateEmail",
+    "homeAddress",
+    "birthPlace",
+    "familyStatus",
+    "spouseName",
+    "spouseBirthDate",
+    "childrenInfo",
+    "childrenSchool",
+    "emergencyContact",
+    "emergencyPhone",
     "jobTitle",
     "startDate",
     "contractEndDate",
     "gradeRank",
+    "annualLeaveNote",
+    "payCategory",
+    "bankName",
+    "bankAccountNumber",
+    "baseSalary",
+    "taxNumber",
+    "socialInsuranceStartDate",
+    "studyField",
+    "studySchool",
+    "talent",
+    "skillLevel",
+    "previousEmployment",
+    "additionalDuty",
+    "trialEndDate",
+    "departureDate",
+    "departureDescription",
+    "notes",
   ].forEach((key) => {
     if (formData.has(key)) payload[key] = formString(formData, key);
   });
   ["departmentId", "jobId", "managerId"].forEach((key) => {
     const value = formNumber(formData, key);
+    if (value !== undefined) payload[key] = value;
+  });
+  ["childrenCount", "kpiScore", "taskCompletionPercent", "disciplineScore", "missingDocumentCount"].forEach((key) => {
+    const value = formNumberOrZero(formData, key);
     if (value !== undefined) payload[key] = value;
   });
   const photo = formData.get("profilePhoto");

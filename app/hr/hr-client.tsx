@@ -1,22 +1,37 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  Award,
+  BadgeDollarSign,
   BriefcaseBusiness,
+  Building2,
+  CalendarDays,
   Check,
+  Clock3,
+  FileText,
   FileCheck2,
   FilePlus2,
   HeartPulse,
+  History,
+  IdCard,
+  Mail,
   Pencil,
   Plane,
+  Phone,
+  Plus,
   Repeat2,
   ScrollText,
   Search,
-  ShieldAlert,
+  Sparkles,
+  Star,
   Trash2,
+  User,
+  Users,
+  type LucideIcon,
 } from "lucide-react";
 
 import { compareHrDepartmentNames } from "@/lib/hr-department-order";
@@ -281,6 +296,11 @@ export function EmployeeCreateForm({
   return (
     <form className={styles.formPanel} onSubmit={submit} noValidate>
       {message ? <p className={styles.errorText}>{message}</p> : null}
+      <section className={styles.formSection}>
+        <div className={styles.formSectionHeader}>
+          <h2>Үндсэн мэдээлэл</h2>
+          <p>Овог, нэр, регистр, хэлтэс, албан тушаал нь үндсэн бүртгэлд шаардлагатай.</p>
+        </div>
       <div className={styles.formGrid}>
         <Field name="lastName" label="Овог" required />
         <Field name="firstName" label="Нэр" required />
@@ -331,6 +351,64 @@ export function EmployeeCreateForm({
         <Field name="emergencyPhone" label="Яаралтай холбоо барих утас" />
         <Field name="homeAddress" label="Гэрийн хаяг" />
       </div>
+      </section>
+
+      <section className={styles.formSection}>
+        <div className={styles.formSectionHeader}>
+          <h2>Нэмэлт хувийн мэдээлэл</h2>
+          <p>Эдгээр мэдээлэл заавал биш. Бөглөсөн бол ажилтны profile дээр харагдана.</p>
+        </div>
+        <div className={styles.formGrid}>
+          <Field name="birthPlace" label="Төрсөн аймаг / сум / хот" />
+          <Field name="addressProvince" label="Аймаг / Хот" />
+          <Field name="addressDistrict" label="Сум / Дүүрэг" />
+          <Field name="addressSubdistrict" label="Баг / Хороо" />
+          <label className={styles.field}>
+            <span>Гэр бүлийн байдал</span>
+            <select name="familyStatus" defaultValue="">
+              <option value="">Сонгохгүй</option>
+              <option value="single">Ганц бие</option>
+              <option value="married">Гэрлэсэн</option>
+              <option value="cohabitant">Хамтран амьдрагчтай</option>
+              <option value="divorced">Салсан</option>
+              <option value="widower">Бэлэвсэн</option>
+            </select>
+          </label>
+          <Field name="childrenCount" label="Хүүхдийн тоо" type="number" />
+          <Field name="childrenInfo" label="Хүүхдийн нас / нэмэлт мэдээлэл" />
+          <Field name="childrenSchool" label="Хүүхдүүдийн сургууль / цэцэрлэг" />
+        </div>
+      </section>
+
+      <section className={styles.formSection}>
+        <div className={styles.formSectionHeader}>
+          <h2>Цалин, банк, НД</h2>
+          <p>Санхүүгийн дэлгэрэнгүй мэдээлэл. Заавал бөглөхгүй.</p>
+        </div>
+        <div className={styles.formGrid}>
+          <Field name="bankName" label="Банк" />
+          <Field name="bankAccountNumber" label="Дансны дугаар" />
+          <Field name="baseSalary" label="Үндсэн цалин" type="number" />
+          <Field name="taxNumber" label="ТТД дугаар" />
+          <Field name="socialInsuranceStartDate" label="НД төлж эхэлсэн огноо" type="date" />
+          <Field name="annualLeaveNote" label="Ээлжийн амралтын мэдээлэл" />
+        </div>
+      </section>
+
+      <section className={styles.formSection}>
+        <div className={styles.formSectionHeader}>
+          <h2>Ур чадвар, ажлын түүх</h2>
+          <p>Авьяас, ур чадвар, өмнөх ажил, туршилтын хугацааны мэдээлэл. Заавал бөглөхгүй.</p>
+        </div>
+        <div className={styles.formGrid}>
+          <Field name="talent" label="Авьяас / спорт / урлаг" />
+          <Field name="skillLevel" label="Ур чадвар ба зэрэглэл" />
+          <Field name="previousEmployment" label="Ажиллаж байсан байгууллагууд" />
+          <Field name="additionalDuty" label="Хавсран ажиллаж буй / нэмэлт ажил" />
+          <Field name="trialEndDate" label="Туршилтын хугацаа дуусах" type="date" />
+        </div>
+      </section>
+
       <label className={styles.field}>
         <span>Тэмдэглэл</span>
         <textarea name="note" rows={4} />
@@ -486,6 +564,25 @@ function SearchableSelect({
   );
 }
 
+function TextAreaField({
+  label,
+  name,
+  defaultValue,
+  rows = 3,
+}: {
+  label: string;
+  name: string;
+  defaultValue?: string;
+  rows?: number;
+}) {
+  return (
+    <label className={styles.field}>
+      <span>{label}</span>
+      <textarea name={name} defaultValue={defaultValue || ""} rows={rows} />
+    </label>
+  );
+}
+
 function EmployeeSelect({
   employees,
   defaultValue = "",
@@ -543,17 +640,32 @@ function Select({
 }
 
 const detailTabs = [
-  "Үндсэн мэдээлэл",
+  "Ерөнхий мэдээлэл",
   "Ажлын мэдээлэл",
-  "Чөлөө / өвчтэй / томилолт",
-  "Сахилгын бүртгэл",
-  "Оноогдсон ажил",
-  "Тушаал / гэрээ",
-  "Хавсралт",
-  "Түүх / өөрчлөлт",
+  "Гэр бүл",
+  "Яаралтай холбоо",
+  "Чөлөө",
+  "Цалин",
+  "Шагнал, нэмэгдэл",
+  "Авьяас, чадвар",
+  "Баримт бичиг",
+  "Өөрчлөлтийн түүх",
 ];
 
-const editableDetailTabs = new Set([detailTabs[0], detailTabs[1]]);
+const editableDetailTabs = new Set(detailTabs);
+
+const detailTabIcons: Record<string, LucideIcon> = {
+  "Ерөнхий мэдээлэл": User,
+  "Ажлын мэдээлэл": BriefcaseBusiness,
+  "Гэр бүл": Users,
+  "Яаралтай холбоо": Phone,
+  "Чөлөө": CalendarDays,
+  "Цалин": BadgeDollarSign,
+  "Шагнал, нэмэгдэл": Award,
+  "Авьяас, чадвар": Sparkles,
+  "Баримт бичиг": FileText,
+  "Өөрчлөлтийн түүх": History,
+};
 
 function employeeGenderValue(employee: HrEmployeeDirectoryItem) {
   if (employee.genderKey) {
@@ -571,9 +683,91 @@ function employeeGenderValue(employee: HrEmployeeDirectoryItem) {
   return "";
 }
 
+function employeeMaritalValue(employee: HrEmployeeDirectoryItem) {
+  const labels: Record<string, string> = {
+    "Ганц бие": "single",
+    "Гэрлэсэн": "married",
+    "Хамтран амьдрагчтай": "cohabitant",
+    "Бэлэвсэн": "widower",
+    "Салсан": "divorced",
+  };
+  return labels[employee.maritalStatus || ""] || "";
+}
+
 function editableTextValue(value?: string) {
   const normalized = String(value || "").toLocaleLowerCase("mn-MN");
   return normalized.includes("бүртгээгүй") || normalized.includes("хэлтэсгүй") ? "" : value || "";
+}
+
+function formatMoney(value?: number) {
+  if (!value) {
+    return "";
+  }
+  return `${new Intl.NumberFormat("mn-MN").format(value)} ₮`;
+}
+
+function formatPercent(value?: number) {
+  return `${Math.round(Number(value || 0))}%`;
+}
+
+function countLabel(value?: number) {
+  if (value === undefined || value === null) {
+    return "";
+  }
+  return String(value);
+}
+
+function formatDateValue(value?: string) {
+  if (!value) {
+    return "";
+  }
+  return value;
+}
+
+function compactValue(...values: Array<string | number | null | undefined>) {
+  return values
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+function calculateWorkedDuration(startDate?: string) {
+  if (!startDate || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+    return "";
+  }
+  const start = new Date(`${startDate}T00:00:00`);
+  const now = new Date();
+  if (Number.isNaN(start.getTime()) || start > now) {
+    return "";
+  }
+  let years = now.getFullYear() - start.getFullYear();
+  let months = now.getMonth() - start.getMonth();
+  if (now.getDate() < start.getDate()) {
+    months -= 1;
+  }
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+  return [years > 0 ? `${years} жил` : "", months > 0 ? `${months} сар` : ""]
+    .filter(Boolean)
+    .join(" ") || "1 сараас бага";
+}
+
+type DetailPair = {
+  label: string;
+  value?: string;
+};
+
+type TableColumn = {
+  key: string;
+  label: string;
+};
+
+type TableRow = Record<string, string>;
+
+function compactRows(rows: Array<TableRow | null | false | undefined>) {
+  return rows.filter((row): row is TableRow => Boolean(row));
 }
 
 export function EmployeeDetailTabs({
@@ -595,6 +789,7 @@ export function EmployeeDetailTabs({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [editing, setEditing] = useState(canEdit && searchParams.get("edit") === "profile");
+  const [addingFamilyMember, setAddingFamilyMember] = useState(canEdit && searchParams.get("edit") === "family-member");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [messageIsError, setMessageIsError] = useState(false);
@@ -614,6 +809,9 @@ export function EmployeeDetailTabs({
   function selectTab(nextTab: string) {
     setTab(nextTab);
     setMessage("");
+    if (nextTab !== "Гэр бүл") {
+      setAddingFamilyMember(false);
+    }
     if (!editableDetailTabs.has(nextTab)) {
       setEditing(false);
     }
@@ -638,6 +836,7 @@ export function EmployeeDetailTabs({
       }
       setMessage("Ажилтны мэдээлэл хадгалагдлаа.");
       setEditing(false);
+      setAddingFamilyMember(false);
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Ажилтны мэдээлэл хадгалахад алдаа гарлаа.");
@@ -647,50 +846,568 @@ export function EmployeeDetailTabs({
     }
   }
 
-  const tabContent: Record<string, { label: string; value: string }[]> = {
-    "Үндсэн мэдээлэл": [
-      { label: "Нэр", value: employee.name },
-      { label: "Ажилтны код", value: employee.employeeCode },
-      { label: "Хүйс", value: employee.genderLabel },
-      { label: "Төрсөн огноо", value: employee.birthDate },
-      { label: "Утас", value: employee.workPhone || employee.mobilePhone },
-      { label: "И-мэйл", value: employee.workEmail },
-      { label: "Төлөв", value: employee.statusLabel },
-    ],
-    "Ажлын мэдээлэл": [
-      { label: "Хэлтэс / алба", value: employee.departmentName },
-      { label: "Албан тушаал", value: employee.jobTitle },
-      { label: "Шууд удирдлага", value: employee.managerName },
-      { label: "Ажилд орсон огноо", value: employee.startDate },
-      { label: "Гэрээ дуусах огноо", value: employee.contractEndDate },
-      { label: "Зэрэг / дэв", value: employee.gradeRank },
-    ],
-    "Чөлөө / өвчтэй / томилолт": [
-      { label: "Чөлөө бүртгэх", value: "Дээд талын Чөлөө бүртгэх үйлдлээр энэ ажилтанд бүртгэл үүсгэнэ." },
-      { label: "Өвчтэй бүртгэх", value: "Өвчтэй бүртгэл дээр эмнэлгийн магадлагаа, хавсралт оруулна." },
-      { label: "Томилолт бүртгэх", value: "Томилолтын газар, хугацаа, зорилго, баталсан хүн бүртгэнэ." },
-    ],
-    "Сахилгын бүртгэл": [
-      { label: "Сахилгын оноо", value: `${Math.round(employee.disciplineScore)}%` },
-      { label: "Ажилтны тайлбар", value: "Сахилгын бүртгэл дээр ажилтан web/mobile-оор тайлбар өгнө." },
-    ],
-    "Оноогдсон ажил": [
-      { label: "Даалгаврын биелэлт", value: `${Math.round(employee.taskCompletionPercent)}%` },
-      { label: "Ажлын төлөв", value: "Ажлаас гарсан ажилтанд шинэ ажил оноох үед анхааруулга гаргана." },
-    ],
-    "Тушаал / гэрээ": [
-      { label: "Гэрээ дуусах", value: employee.contractEndDate },
-      { label: "Тушаал / гэрээ", value: "Ажилд авах, чөлөөлөх, шилжилт, сахилга, нэмэлт гэрээний хавсралт хадгална." },
-    ],
-    Хавсралт: [
-      { label: "Дутуу хавсралт", value: `${employee.missingDocumentCount}` },
-      { label: "Хавсралт нэмэх", value: "Иргэний үнэмлэх, диплом, гэрээ, тушаал болон бусад файлыг profile дээр хадгална." },
-    ],
-    "Түүх / өөрчлөлт": [
-      { label: "Ажилтны түүх", value: "Хэлтэс, албан тушаал, удирдлага, төлөвийн өөрчлөлт бүртгэгдэнэ." },
-      { label: "KPI", value: `${Math.round(employee.kpiScore)}%` },
-    ],
-  };
+  const generalInfo: DetailPair[] = [
+    { label: "Нэр", value: employee.name },
+    { label: "Ажилтны код", value: employee.employeeCode },
+    { label: "Регистр / үнэмлэх", value: employee.registerNumber },
+    { label: "Хүйс", value: employee.genderLabel },
+    { label: "Төрсөн огноо", value: employee.birthDate },
+    { label: "Төлөв", value: employee.statusLabel },
+    { label: "Ажлын утас", value: employee.workPhone },
+    { label: "Гар утас", value: employee.mobilePhone },
+    { label: "Ажлын и-мэйл", value: employee.workEmail },
+    { label: "Хувийн утас", value: employee.privatePhone },
+    { label: "Хувийн и-мэйл", value: employee.privateEmail },
+    { label: "Хэрэглэгч", value: employee.userName },
+  ];
+
+  const workInfo: DetailPair[] = [
+    { label: "Хэлтэс / алба", value: employee.departmentName },
+    { label: "Албан тушаал", value: employee.jobTitle },
+    { label: "Шууд удирдлага", value: employee.managerName },
+    { label: "Дасгалжуулагч", value: employee.coachName },
+    { label: "Ажилд орсон огноо", value: employee.startDate },
+    { label: "Гэрээ дуусах огноо", value: employee.contractEndDate },
+    { label: "Ажлын байршил", value: employee.workLocation },
+    { label: "Ажлын хаяг", value: employee.workAddress },
+    { label: "Ажлын цагийн хуваарь", value: employee.workSchedule },
+    { label: "Зэрэг / дэв", value: employee.gradeRank },
+  ];
+
+  const personalInfo: DetailPair[] = [
+    { label: "Гэрийн хаяг", value: employee.homeAddress },
+    { label: "Төрсөн газар", value: employee.placeOfBirth },
+    { label: "Төрсөн улс", value: employee.countryOfBirth },
+    { label: "Иргэншил", value: employee.nationality },
+    { label: "Гэрлэлтийн байдал", value: employee.maritalStatus },
+    { label: "Эхнэр / нөхрийн нэр", value: employee.spouseName },
+    { label: "Эхнэр / нөхрийн төрсөн огноо", value: employee.spouseBirthDate },
+    { label: "Хүүхдийн тоо", value: countLabel(employee.childrenCount) },
+    { label: "Паспорт", value: employee.passportNumber },
+    { label: "Яаралтай холбоо барих хүн", value: employee.emergencyContact },
+    { label: "Яаралтай холбоо барих утас", value: employee.emergencyPhone },
+  ];
+
+  const salaryInfo: DetailPair[] = [
+    { label: "Гэрээ", value: employee.contractName },
+    { label: "Цалин", value: formatMoney(employee.wage) },
+    { label: "Цалингийн ангилал", value: employee.payCategory },
+    { label: "Банкны данс", value: employee.bankAccount },
+    { label: "Ажилд орсон огноо", value: employee.startDate },
+    { label: "Гэрээ дуусах огноо", value: employee.contractEndDate },
+    { label: "Ажилтны төрөл", value: employee.statusLabel },
+  ];
+
+  const familyRows = compactRows([
+    employee.spouseName
+      ? {
+          type: employee.maritalStatus || "Гэр бүл",
+          name: employee.spouseName,
+          register: "",
+          birthDate: employee.spouseBirthDate || "",
+          note: "Эхнэр / нөхөр",
+        }
+      : null,
+    Number(employee.childrenCount || 0) > 0
+      ? {
+          type: "Хүүхэд",
+          name: `${employee.childrenCount} хүүхэд`,
+          register: "",
+          birthDate: "",
+          note: "Дэлгэрэнгүй бүртгэл нэмэх шаардлагатай",
+        }
+      : null,
+  ]);
+
+  const emergencyRows = compactRows([
+    employee.emergencyContact || employee.emergencyPhone
+      ? {
+          name: employee.emergencyContact || "Яаралтай холбоо",
+          relation: "",
+          phone: employee.emergencyPhone || "",
+          address: employee.homeAddress || "",
+          note: "Үндсэн холбоо барих хүн",
+      }
+      : null,
+  ]);
+
+  const leaveCards = [
+    { label: "Жилийн амралт", value: "Бүртгэлгүй", note: "Үлдэгдэл / нийт өдөр" },
+    { label: "Өвчтэй чөлөө", value: "Бүртгэлгүй", note: "Эмнэлгийн магадлагаагаар" },
+    { label: "Цалингүй чөлөө", value: "Бүртгэлгүй", note: "HR хүсэлтээр" },
+    { label: "Ээлжийн амралт", value: "Бүртгэлгүй", note: "Төлөвлөгөөтэй" },
+  ];
+
+  const rewardRows = compactRows([
+    employee.kpiScore
+      ? {
+          date: "",
+          type: "KPI",
+          amount: formatPercent(employee.kpiScore),
+          note: "Гүйцэтгэлийн үнэлгээ",
+        }
+      : null,
+    employee.disciplineScore
+      ? {
+          date: "",
+          type: "Сахилгын оноо",
+          amount: formatPercent(employee.disciplineScore),
+          note: "Сахилгын бүртгэлийн оноо",
+      }
+      : null,
+  ]);
+
+  const skillRows = compactRows([
+    employee.educationLevel
+      ? {
+          name: "Боловсрол",
+          type: employee.educationLevel,
+          level: employee.studyField || "Бүртгэлтэй",
+          note: employee.studySchool || "",
+        }
+      : null,
+    employee.gradeRank
+      ? {
+          name: "Зэрэг / дэв",
+          type: "Ажлын ур чадвар",
+          level: employee.gradeRank,
+          note: employee.jobTitle || "",
+        }
+      : null,
+    employee.biography || employee.notes
+      ? {
+          name: "Нэмэлт тэмдэглэл",
+          type: "Тайлбар",
+          level: "",
+          note: employee.biography || employee.notes || "",
+      }
+      : null,
+  ]);
+
+  const documentRows: TableRow[] = [
+    {
+      name: "Иргэний үнэмлэх / регистр",
+      type: "Хувийн бичиг баримт",
+      status: employee.registerNumber ? "Бүртгэлтэй" : "Дутуу",
+      date: "",
+    },
+    {
+      name: "Хөдөлмөрийн гэрээ",
+      type: "Гэрээ",
+      status: employee.contractName || employee.contractEndDate ? "Бүртгэлтэй" : "Дутуу",
+      date: employee.contractEndDate || "",
+    },
+    {
+      name: "Диплом / боловсрол",
+      type: "Боловсрол",
+      status: employee.educationLevel ? "Бүртгэлтэй" : "Дутуу",
+      date: "",
+    },
+    {
+      name: "Эрүүл мэндийн бичиг",
+      type: "Эрүүл мэнд",
+      status: employee.missingDocumentCount ? `${employee.missingDocumentCount} дутуу` : "Шалгах",
+      date: "",
+    },
+  ];
+
+  const historyRows = compactRows([
+    employee.startDate
+      ? {
+          date: employee.startDate,
+          title: "Ажилд орсон",
+          note: compactValue(employee.jobTitle, employee.departmentName),
+        }
+      : null,
+    employee.contractEndDate
+      ? {
+          date: employee.contractEndDate,
+          title: "Гэрээ дуусах огноо",
+          note: employee.contractName || "Гэрээ",
+        }
+      : null,
+    employee.departureDate
+      ? {
+          date: employee.departureDate,
+          title: "Ажлаас гарах мэдээлэл",
+          note: compactValue(employee.departureReason, employee.departureDescription),
+      }
+      : null,
+  ]);
+
+  const summaryDetails = [
+    { icon: CalendarDays, label: "Ажилд орсон огноо", value: employee.startDate },
+    { icon: Clock3, label: "Ажилласан хугацаа", value: calculateWorkedDuration(employee.startDate) },
+    { icon: CalendarDays, label: "Үлдсэн амралт", value: "Бүртгэлгүй" },
+    { icon: BriefcaseBusiness, label: "Төлөв", value: employee.statusLabel },
+  ];
+
+  const rightSummary: DetailPair[] = [
+    { label: "Ажилтны код", value: employee.employeeCode },
+    { label: "Регистрийн дугаар", value: employee.registerNumber },
+    { label: "Төрсөн огноо", value: employee.birthDate },
+    { label: "Хүйс", value: employee.genderLabel },
+    { label: "Иргэншил", value: employee.nationality },
+    { label: "Гэрийн хаяг", value: employee.homeAddress },
+    { label: "Банкны данс", value: employee.bankAccount },
+  ];
+
+  function renderInfoList(items: DetailPair[], variant: "plain" | "cards" = "plain") {
+    return (
+      <div className={variant === "cards" ? styles.hrProfileInfoCards : styles.hrProfileInfoList}>
+        {items.map((item) => (
+          <div key={item.label} className={variant === "cards" ? styles.hrProfileInfoCard : styles.hrProfileInfoRow}>
+            <span>{item.label}</span>
+            <strong>{item.value || "Бүртгээгүй"}</strong>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  function renderTable(columns: TableColumn[], rows: TableRow[], emptyText: string) {
+    if (!rows.length) {
+      return <div className={styles.hrProfileEmpty}>{emptyText}</div>;
+    }
+
+    return (
+      <div className={styles.hrProfileTableWrap}>
+        <table className={styles.hrProfileTable}>
+          <thead>
+            <tr>
+              {columns.map((column) => (
+                <th key={column.key}>{column.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => (
+              <tr key={`${row.name || row.title || row.type || "row"}-${index}`}>
+                {columns.map((column) => (
+                  <td key={column.key}>{row[column.key] || "Бүртгээгүй"}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  function renderPanel(title: string, children: ReactNode, action?: ReactNode) {
+    return (
+      <section className={styles.hrProfileSubPanel}>
+        <div className={styles.hrProfileSubHeader}>
+          <h3>{title}</h3>
+          {action}
+        </div>
+        {children}
+      </section>
+    );
+  }
+
+  function renderAddLink(label: string, href: string) {
+    return (
+      <Link href={href} className={styles.hrProfileAddLink}>
+        <Plus aria-hidden />
+        <span>{label}</span>
+      </Link>
+    );
+  }
+
+  function renderAddFamilyButton() {
+    return (
+      <button
+        type="button"
+        className={styles.hrProfileAddLink}
+        onClick={() => {
+          setEditing(false);
+          setAddingFamilyMember(true);
+        }}
+      >
+        <Plus aria-hidden />
+        <span>Гэр бүлийн хүн нэмэх</span>
+      </button>
+    );
+  }
+
+  function renderTabContent() {
+    if (tab === "Ерөнхий мэдээлэл") {
+      return (
+        <div className={styles.hrProfileContentGrid}>
+          {renderPanel("Хувийн мэдээлэл", renderInfoList(generalInfo))}
+          {renderPanel("Хувийн дэлгэрэнгүй", renderInfoList(personalInfo))}
+          {renderPanel(
+            "Баримт бичгийн төлөв",
+            renderTable(
+              [
+                { key: "name", label: "Баримт бичиг" },
+                { key: "status", label: "Төлөв" },
+                { key: "date", label: "Огноо" },
+              ],
+              documentRows.slice(0, 4),
+              "Баримт бичгийн бүртгэл алга.",
+            ),
+          )}
+        </div>
+      );
+    }
+
+    if (tab === "Ажлын мэдээлэл") {
+      return (
+        <div className={styles.hrProfileWorkGrid}>
+          {renderPanel("Ажлын үндсэн мэдээлэл", renderInfoList(workInfo))}
+          {renderPanel(
+            "Гэрээний мэдээлэл",
+            renderInfoList([
+              { label: "Гэрээ", value: employee.contractName },
+              { label: "Эхлэх огноо", value: employee.startDate },
+              { label: "Дуусах огноо", value: employee.contractEndDate },
+              { label: "Одоогийн үндсэн цалин", value: formatMoney(employee.wage) },
+              { label: "Ажлын төрөл", value: employee.statusLabel },
+            ]),
+          )}
+          {renderPanel(
+            "Ажил үүрэг, хариуцлага",
+            <ul className={styles.hrProfileBulletList}>
+              <li>{employee.jobTitle || "Албан тушаалын мэдээлэл бүртгэгдээгүй"}</li>
+              <li>{employee.departmentName || "Хэлтэс бүртгэгдээгүй"}</li>
+              <li>{employee.workSchedule || "Ажлын цагийн хуваарь бүртгэгдээгүй"}</li>
+            </ul>,
+          )}
+          {renderPanel(
+            "Ажлын түүх",
+            renderTable(
+              [
+                { key: "date", label: "Огноо" },
+                { key: "title", label: "Үйл явдал" },
+                { key: "note", label: "Тайлбар" },
+              ],
+              historyRows,
+              "Ажлын түүх бүртгэгдээгүй.",
+            ),
+            mode === "hr" ? renderAddLink("Шилжилт нэмэх", `/hr/transfers?${employeeQuery}`) : null,
+          )}
+        </div>
+      );
+    }
+
+    if (tab === "Гэр бүл") {
+      return (
+        <div className={styles.hrProfileTwoColumn}>
+          {renderPanel(
+            "Гэр бүлийн гишүүд",
+            renderTable(
+              [
+                { key: "type", label: "Төрөл" },
+                { key: "name", label: "Нэр" },
+                { key: "register", label: "Регистр" },
+                { key: "birthDate", label: "Төрсөн огноо" },
+                { key: "note", label: "Тайлбар" },
+              ],
+              familyRows,
+              "Гэр бүлийн гишүүний structured бүртгэл алга.",
+            ),
+            renderAddFamilyButton(),
+          )}
+          {renderPanel(
+            "Гэр бүлийн ерөнхий мэдээлэл",
+            renderInfoList([
+              { label: "Гэрлэлтийн байдал", value: employee.maritalStatus },
+              { label: "Хүүхдийн тоо", value: countLabel(employee.childrenCount) },
+              { label: "Гэрийн хаяг", value: employee.homeAddress },
+            ], "cards"),
+          )}
+        </div>
+      );
+    }
+
+    if (tab === "Яаралтай холбоо") {
+      return (
+        <div className={styles.hrProfileTwoColumn}>
+          {renderPanel(
+            "Яаралтай холбоо барих хүмүүс",
+            renderTable(
+              [
+                { key: "name", label: "Нэр" },
+                { key: "relation", label: "Хамаарал" },
+                { key: "phone", label: "Утас" },
+                { key: "address", label: "Хаяг" },
+                { key: "note", label: "Тэмдэглэл" },
+              ],
+              emergencyRows,
+              "Яаралтай холбоо барих хүн бүртгэгдээгүй.",
+            ),
+            renderAddLink("Холбоо барих хүн нэмэх", `/hr/employees/${employee.id}?edit=profile#profile-info`),
+          )}
+          {renderPanel(
+            "Анхаарах зүйлс",
+            renderInfoList([
+              { label: "Эрүүл мэндийн мэдээлэл", value: employee.notes },
+              { label: "Цусны бүлэг", value: "" },
+              { label: "Даатгалын мэдээлэл", value: "" },
+              { label: "Бусад тэмдэглэл", value: employee.biography },
+            ]),
+          )}
+        </div>
+      );
+    }
+
+    if (tab === "Чөлөө") {
+      return (
+        <div className={styles.hrProfileTwoColumn}>
+          {renderPanel(
+            "Чөлөөний үлдэгдэл",
+            <div className={styles.hrProfileMetricGrid}>
+              {leaveCards.map((card) => (
+                <div key={card.label} className={styles.hrProfileMetricCard}>
+                  <CalendarDays aria-hidden />
+                  <strong>{card.value}</strong>
+                  <span>{card.label}</span>
+                  <small>{card.note}</small>
+                </div>
+              ))}
+            </div>,
+          )}
+          {renderPanel(
+            "Чөлөөний хүсэлт",
+            <div className={styles.hrProfileActionStack}>
+              <Link href={`/hr/sick?${employeeQuery}&type=time_off`} className={styles.primaryButton}>Чөлөө хүсэх</Link>
+              <Link href={`/hr/sick?${employeeQuery}&type=sick`} className={styles.secondaryButton}>Өвчтэй бүртгэх</Link>
+              {mode === "hr" ? <Link href={`/hr/trips?${employeeQuery}`} className={styles.secondaryButton}>Томилолт бүртгэх</Link> : null}
+            </div>,
+          )}
+        </div>
+      );
+    }
+
+    if (tab === "Цалин") {
+      return (
+        <div className={styles.hrProfileTwoColumn}>
+          {renderPanel("Цалин, хөлс", renderInfoList(salaryInfo))}
+          {renderPanel(
+            "Цалингийн нэмэгдэл",
+            renderTable(
+              [
+                { key: "date", label: "Огноо" },
+                { key: "type", label: "Төрөл" },
+                { key: "amount", label: "Дүн" },
+                { key: "note", label: "Тайлбар" },
+              ],
+              rewardRows,
+              "Цалингийн нэмэгдэл бүртгэгдээгүй.",
+            ),
+          )}
+        </div>
+      );
+    }
+
+    if (tab === "Шагнал, нэмэгдэл") {
+      return (
+        <div className={styles.hrProfileTwoColumn}>
+          {renderPanel(
+            "Шагналын мэдээлэл",
+            renderTable(
+              [
+                { key: "date", label: "Огноо" },
+                { key: "type", label: "Төрөл" },
+                { key: "amount", label: "Дүн / оноо" },
+                { key: "note", label: "Тайлбар" },
+              ],
+              rewardRows,
+              "Шагнал, нэмэгдэл бүртгэгдээгүй.",
+            ),
+            mode === "hr" ? renderAddLink("Шагнал, нэмэгдэл нэмэх", `/hr/orders?${employeeQuery}`) : null,
+          )}
+          {renderPanel(
+            "Гүйцэтгэлийн үзүүлэлт",
+            renderInfoList([
+              { label: "KPI", value: formatPercent(employee.kpiScore) },
+              { label: "Даалгаврын биелэлт", value: formatPercent(employee.taskCompletionPercent) },
+              { label: "Сахилгын оноо", value: formatPercent(employee.disciplineScore) },
+            ], "cards"),
+          )}
+        </div>
+      );
+    }
+
+    if (tab === "Авьяас, чадвар") {
+      return (
+        <div className={styles.hrProfileTwoColumn}>
+          {renderPanel(
+            "Авьяас, чадварын жагсаалт",
+            renderTable(
+              [
+                { key: "name", label: "Авьяас, чадвар" },
+                { key: "type", label: "Төрөл" },
+                { key: "level", label: "Түвшин" },
+                { key: "note", label: "Тодорхойлолт" },
+              ],
+              skillRows,
+              "Авьяас, ур чадвар бүртгэгдээгүй.",
+            ),
+            renderAddLink("Авьяас, чадвар нэмэх", `/hr/employees/${employee.id}?edit=profile#profile-info`),
+          )}
+          {renderPanel(
+            "Топ чадвар",
+            <div className={styles.hrProfileSkillStack}>
+              {(skillRows.length ? skillRows : [{ name: "Бүртгэлгүй", level: "", note: "" }]).slice(0, 5).map((skill, index) => (
+                <div key={`${skill.name}-${index}`} className={styles.hrProfileSkillRow}>
+                  <span>{skill.name}</span>
+                  <strong>
+                    <Star aria-hidden />
+                    <Star aria-hidden />
+                    <Star aria-hidden />
+                    <Star aria-hidden />
+                    <Star aria-hidden />
+                  </strong>
+                </div>
+              ))}
+            </div>,
+          )}
+        </div>
+      );
+    }
+
+    if (tab === "Баримт бичиг") {
+      return (
+        <div className={styles.hrProfileFullWidth}>
+          {renderPanel(
+            "Баримт бичиг",
+            renderTable(
+              [
+                { key: "name", label: "Баримт бичиг" },
+                { key: "type", label: "Төрөл" },
+                { key: "status", label: "Төлөв" },
+                { key: "date", label: "Огноо" },
+              ],
+              documentRows,
+              "Баримт бичиг бүртгэгдээгүй.",
+            ),
+            mode === "hr" ? renderAddLink("Баримт бичиг нэмэх", `/hr/orders?${employeeQuery}`) : null,
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className={styles.hrProfileContentGrid}>
+        {renderPanel(
+          "Өөрчлөлтийн түүх",
+          renderTable(
+            [
+              { key: "date", label: "Огноо" },
+              { key: "title", label: "Өөрчлөлт" },
+              { key: "note", label: "Тайлбар" },
+            ],
+            historyRows,
+            "Өөрчлөлтийн түүх бүртгэгдээгүй.",
+          ),
+          mode === "hr" ? renderAddLink("Шилжилт хөдөлгөөн", `/hr/transfers?${employeeQuery}`) : null,
+        )}
+      </div>
+    );
+  }
 
   function renderProfileEditForm() {
     return (
@@ -698,6 +1415,7 @@ export function EmployeeDetailTabs({
         <div className={styles.formGrid}>
           <Field name="name" label="Нэр" defaultValue={employee.name} required />
           <Field name="employeeCode" label="Ажилтны код" defaultValue={employee.employeeCode} />
+          <Field name="registerNumber" label="Регистр / үнэмлэх" defaultValue={employee.registerNumber} />
           <label className={styles.field}>
             <span>Хүйс</span>
             <select name="genderKey" defaultValue={employeeGenderValue(employee)}>
@@ -711,11 +1429,210 @@ export function EmployeeDetailTabs({
           <Field name="workPhone" label="Ажлын утас" defaultValue={employee.workPhone} />
           <Field name="mobilePhone" label="Гар утас" defaultValue={employee.mobilePhone} />
           <Field name="workEmail" label="И-мэйл" type="email" defaultValue={employee.workEmail} />
+          <Field name="privatePhone" label="Хувийн утас" defaultValue={employee.privatePhone} />
+          <Field name="privateEmail" label="Хувийн и-мэйл" type="email" defaultValue={employee.privateEmail} />
+          <Field name="birthPlace" label="Төрсөн газар" defaultValue={employee.placeOfBirth} />
+          <TextAreaField name="homeAddress" label="Гэрийн хаяг" defaultValue={employee.homeAddress} />
           <label className={styles.field}>
             <span>Профайл зураг солих</span>
             <input name="profilePhoto" type="file" accept="image/jpeg,image/png,image/webp" />
             <small>JPG, PNG, WebP зураг 5MB хүртэл.</small>
           </label>
+        </div>
+        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+      </form>
+    );
+  }
+
+  function renderFamilyEditForm() {
+    return (
+      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <div className={styles.hrProfileTwoColumn}>
+          {renderPanel(
+            "Гэр бүлийн гишүүд",
+            renderTable(
+              [
+                { key: "type", label: "Төрөл" },
+                { key: "name", label: "Нэр" },
+                { key: "register", label: "Регистр" },
+                { key: "birthDate", label: "Төрсөн огноо" },
+                { key: "note", label: "Тайлбар" },
+              ],
+              familyRows,
+              "Гэр бүлийн гишүүний structured бүртгэл алга.",
+            ),
+            renderAddFamilyButton(),
+          )}
+          {renderPanel(
+            "Гэр бүлийн ерөнхий мэдээлэл",
+            <>
+              <div className={styles.hrProfileInfoCards}>
+                <label className={styles.field}>
+                  <span>Гэрлэлтийн байдал</span>
+                  <select name="familyStatus" defaultValue={employeeMaritalValue(employee)}>
+                    <option value="">Сонгох</option>
+                    <option value="single">Ганц бие</option>
+                    <option value="married">Гэрлэсэн</option>
+                    <option value="cohabitant">Хамтран амьдрагчтай</option>
+                    <option value="widower">Бэлэвсэн</option>
+                    <option value="divorced">Салсан</option>
+                  </select>
+                </label>
+                <Field name="childrenCount" label="Хүүхдийн тоо" type="number" defaultValue={String(employee.childrenCount ?? 0)} />
+                <TextAreaField name="homeAddress" label="Гэрийн хаяг" defaultValue={employee.homeAddress} />
+              </div>
+              <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+            </>,
+          )}
+        </div>
+      </form>
+    );
+  }
+
+  function renderFamilyMemberAddForm() {
+    return (
+      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <div className={styles.hrProfileTwoColumn}>
+          {renderPanel(
+            "Гэр бүлийн хүн нэмэх",
+            <>
+              <div className={styles.hrProfileInfoCards}>
+                <label className={styles.field}>
+                  <span>Төрөл</span>
+                  <select name="familyStatus" defaultValue={employeeMaritalValue(employee) || "married"}>
+                    <option value="married">Эхнэр / нөхөр</option>
+                    <option value="">Хүүхэд / бусад</option>
+                  </select>
+                </label>
+                <Field name="spouseName" label="Нэр" defaultValue={employee.spouseName} />
+                <Field name="spouseBirthDate" label="Төрсөн огноо" type="date" defaultValue={employee.spouseBirthDate} />
+                <Field name="childrenCount" label="Хүүхдийн тоо" type="number" defaultValue={String(employee.childrenCount ?? 0)} />
+                <TextAreaField name="childrenInfo" label="Нэмэлт мэдээлэл" defaultValue="" />
+              </div>
+              <ProfileEditButtons pending={pending} onCancel={() => setAddingFamilyMember(false)} />
+            </>,
+          )}
+          {renderPanel(
+            "Одоогийн бүртгэл",
+            renderTable(
+              [
+                { key: "type", label: "Төрөл" },
+                { key: "name", label: "Нэр" },
+                { key: "register", label: "Регистр" },
+                { key: "birthDate", label: "Төрсөн огноо" },
+                { key: "note", label: "Тайлбар" },
+              ],
+              familyRows,
+              "Гэр бүлийн гишүүний structured бүртгэл алга.",
+            ),
+          )}
+        </div>
+      </form>
+    );
+  }
+
+  function renderEmergencyEditForm() {
+    return (
+      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <div className={styles.formGrid}>
+          <Field name="emergencyContact" label="Яаралтай холбоо барих хүн" defaultValue={employee.emergencyContact} />
+          <Field name="emergencyPhone" label="Яаралтай холбоо барих утас" defaultValue={employee.emergencyPhone} />
+          <TextAreaField name="homeAddress" label="Хаяг" defaultValue={employee.homeAddress} />
+          <TextAreaField name="notes" label="Анхаарах зүйлс / эрүүл мэнд / бусад тэмдэглэл" defaultValue={employee.notes} rows={5} />
+        </div>
+        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+      </form>
+    );
+  }
+
+  function renderLeaveEditForm() {
+    return (
+      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <div className={styles.formGrid}>
+          <TextAreaField name="annualLeaveNote" label="Ээлжийн амралтын тэмдэглэл" defaultValue="" />
+          <TextAreaField name="notes" label="Чөлөө / өвчтэй / томилолтын нэмэлт тэмдэглэл" defaultValue={employee.notes} rows={5} />
+        </div>
+        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+      </form>
+    );
+  }
+
+  function renderSalaryEditForm() {
+    return (
+      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <div className={styles.formGrid}>
+          <Field name="baseSalary" label="Үндсэн цалин" defaultValue={employee.wage ? String(employee.wage) : ""} />
+          <Field name="payCategory" label="Цалингийн ангилал" defaultValue={employee.payCategory} />
+          <Field name="bankName" label="Банк" defaultValue="" />
+          <Field name="bankAccountNumber" label="Дансны дугаар" defaultValue={employee.bankAccount} />
+          <Field name="taxNumber" label="ТТД дугаар" defaultValue="" />
+          <Field name="socialInsuranceStartDate" label="НД төлж эхэлсэн огноо" type="date" defaultValue="" />
+          <Field name="contractEndDate" label="Гэрээ дуусах огноо" type="date" defaultValue={employee.contractEndDate} />
+          <TextAreaField name="notes" label="Цалин, банкны нэмэлт тэмдэглэл" defaultValue={employee.notes} rows={4} />
+        </div>
+        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+      </form>
+    );
+  }
+
+  function renderRewardEditForm() {
+    return (
+      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <div className={styles.formGrid}>
+          <Field name="kpiScore" label="KPI (%)" type="number" defaultValue={String(employee.kpiScore ?? 0)} />
+          <Field name="taskCompletionPercent" label="Даалгаврын биелэлт (%)" type="number" defaultValue={String(employee.taskCompletionPercent ?? 0)} />
+          <Field name="disciplineScore" label="Сахилгын оноо (%)" type="number" defaultValue={String(employee.disciplineScore ?? 0)} />
+          <TextAreaField name="notes" label="Шагнал, нэмэгдлийн тэмдэглэл" defaultValue={employee.notes} rows={5} />
+        </div>
+        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+      </form>
+    );
+  }
+
+  function renderSkillEditForm() {
+    return (
+      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <div className={styles.formGrid}>
+          <Field name="studyField" label="Мэргэжил / боловсролын чиглэл" defaultValue={employee.studyField} />
+          <Field name="studySchool" label="Сургууль" defaultValue={employee.studySchool} />
+          <Field name="gradeRank" label="Зэрэг / дэв" defaultValue={employee.gradeRank} />
+          <TextAreaField name="talent" label="Авьяас / спорт / урлаг" defaultValue="" />
+          <TextAreaField name="skillLevel" label="Ур чадвар ба зэрэглэл" defaultValue="" />
+          <TextAreaField name="previousEmployment" label="Ажиллаж байсан байгууллагууд" defaultValue="" />
+          <TextAreaField name="additionalDuty" label="Хавсран ажиллаж буй / нэмэлт ажил" defaultValue="" />
+          <Field name="trialEndDate" label="Туршилтын хугацаа дуусах" type="date" defaultValue="" />
+          <TextAreaField name="notes" label="Нэмэлт тэмдэглэл" defaultValue={employee.notes} rows={5} />
+        </div>
+        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+      </form>
+    );
+  }
+
+  function renderDocumentEditForm() {
+    return (
+      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <div className={styles.formGrid}>
+          <Field name="registerNumber" label="Регистр / иргэний үнэмлэх" defaultValue={employee.registerNumber} />
+          <Field name="contractEndDate" label="Хөдөлмөрийн гэрээ дуусах огноо" type="date" defaultValue={employee.contractEndDate} />
+          <Field name="missingDocumentCount" label="Дутуу баримтын тоо" type="number" defaultValue={String(employee.missingDocumentCount ?? 0)} />
+          <Field name="studyField" label="Диплом / боловсролын чиглэл" defaultValue={employee.studyField} />
+          <Field name="studySchool" label="Сургууль" defaultValue={employee.studySchool} />
+          <TextAreaField name="notes" label="Баримт бичгийн тэмдэглэл" defaultValue={employee.notes} rows={5} />
+        </div>
+        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+      </form>
+    );
+  }
+
+  function renderHistoryEditForm() {
+    return (
+      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <div className={styles.formGrid}>
+          <Field name="startDate" label="Ажилд орсон огноо" type="date" defaultValue={employee.startDate} />
+          <Field name="contractEndDate" label="Гэрээ дуусах огноо" type="date" defaultValue={employee.contractEndDate} />
+          <Field name="departureDate" label="Ажлаас гарсан огноо" type="date" defaultValue={employee.departureDate} />
+          <Field name="departureDescription" label="Ажлаас гарсан тайлбар" defaultValue={employee.departureDescription} />
+          <TextAreaField name="notes" label="Өөрчлөлтийн түүхийн тэмдэглэл" defaultValue={employee.notes} rows={5} />
         </div>
         <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
       </form>
@@ -745,82 +1662,140 @@ export function EmployeeDetailTabs({
     );
   }
 
+  function renderTabEditForm() {
+    switch (tab) {
+      case "Ерөнхий мэдээлэл":
+        return renderProfileEditForm();
+      case "Ажлын мэдээлэл":
+        return renderWorkEditForm();
+      case "Гэр бүл":
+        return renderFamilyEditForm();
+      case "Яаралтай холбоо":
+        return renderEmergencyEditForm();
+      case "Чөлөө":
+        return renderLeaveEditForm();
+      case "Цалин":
+        return renderSalaryEditForm();
+      case "Шагнал, нэмэгдэл":
+        return renderRewardEditForm();
+      case "Авьяас, чадвар":
+        return renderSkillEditForm();
+      case "Баримт бичиг":
+        return renderDocumentEditForm();
+      default:
+        return renderHistoryEditForm();
+    }
+  }
+
   return (
-    <section id="profile-info" className={styles.panel}>
-      <div className={styles.employeeProfileSummary}>
-        <div className={styles.employeePhotoFrame}>
-          {showPhoto && employee.photoUrl ? (
-            <Image
-              src={employee.photoUrl}
-              alt={`${employee.name} зураг`}
-              width={112}
-              height={112}
-              className={styles.employeePhoto}
-              onError={() => setPhotoErrorUrl(employee.photoUrl)}
-              unoptimized
-            />
-          ) : (
-            <span className={styles.employeePhotoPlaceholder}>{initials || "А"}</span>
-          )}
+    <section id="profile-info" className={styles.hrProfileShell}>
+      <div className={styles.hrProfileBreadcrumb}>
+        <Link href="/hr/employees">Ажилтнууд</Link>
+        <span>/</span>
+        <strong>Ажилтны дэлгэрэнгүй</strong>
+      </div>
+
+      <div className={styles.hrProfileHero}>
+        <div className={styles.hrProfileIdentity}>
+          <div className={styles.hrProfilePhotoFrame}>
+            {showPhoto && employee.photoUrl ? (
+              <Image
+                src={employee.photoUrl}
+                alt={`${employee.name} зураг`}
+                width={156}
+                height={156}
+                className={styles.employeePhoto}
+                onError={() => setPhotoErrorUrl(employee.photoUrl)}
+                unoptimized
+              />
+            ) : (
+              <span className={styles.employeePhotoPlaceholder}>{initials || "А"}</span>
+            )}
+          </div>
+          <div className={styles.hrProfileIdentityText}>
+            <div className={styles.hrProfileNameRow}>
+              <h2>{employee.name}</h2>
+              <span className={styles.hrProfileStatusPill}>{employee.statusLabel || "Идэвхтэй"}</span>
+            </div>
+            <p>{employee.jobTitle || "Албан тушаал бүртгээгүй"}</p>
+            <ul>
+              <li><Phone aria-hidden />{employee.workPhone || employee.mobilePhone || "Утас бүртгээгүй"}</li>
+              <li><Mail aria-hidden />{employee.workEmail || "И-мэйл бүртгээгүй"}</li>
+              <li><Building2 aria-hidden />{employee.departmentName || "Хэлтэс бүртгээгүй"}</li>
+              <li><Users aria-hidden />Шууд удирдлага: {employee.managerName || "Бүртгээгүй"}</li>
+            </ul>
+          </div>
         </div>
-        <div className={styles.employeeProfileText}>
-          <span className={styles.eyebrow}>Ажилтны зураг</span>
-          <h2>{employee.name}</h2>
-          <p>
-            {employee.departmentName || "Хэлтэс бүртгээгүй"} · {employee.jobTitle || "Албан тушаал бүртгээгүй"}
-          </p>
-          {canEditCurrentTab ? (
-            <div className={styles.profileEditActions}>
+
+        <div className={styles.hrProfileHeroMetrics}>
+          {summaryDetails.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label} className={styles.hrProfileHeroMetric}>
+                <Icon aria-hidden />
+                <span>{item.label}</span>
+                <strong>{item.value || "Бүртгээгүй"}</strong>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className={styles.hrProfileHeroFacts}>
+          {rightSummary.map((item) => (
+            <div key={item.label}>
+              <span>{item.label}</span>
+              <strong>{item.value || "Бүртгээгүй"}</strong>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className={styles.hrProfileTabBar}>
+        {detailTabs.map((item) => {
+          const Icon = detailTabIcons[item] ?? IdCard;
+          return (
+            <button
+              key={item}
+              type="button"
+              className={tab === item ? styles.hrProfileTabActive : styles.hrProfileTab}
+              onClick={() => selectTab(item)}
+            >
+              <Icon aria-hidden />
+              <span>{item}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className={styles.hrProfileContentPanel}>
+        <div className={styles.hrProfileContentHeader}>
+          <div>
+            <h2>{tab}</h2>
+            <p>{tab === "Ерөнхий мэдээлэл" ? "Ажилтны үндсэн болон хувийн бүртгэлийн мэдээлэл" : "Ажилтны дэлгэрэнгүй бүртгэлийн мэдээлэл"}</p>
+          </div>
+          <div className={styles.hrProfileHeaderActions}>
+            {canEditCurrentTab && !editing && !addingFamilyMember ? (
               <button type="button" className={styles.secondaryButton} onClick={() => setEditing((value) => !value)}>
                 <Pencil aria-hidden />
-                <span>{editing ? "Болих" : "Засах"}</span>
+                <span>Засах</span>
               </button>
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      <div className={styles.tabList}>
-        {detailTabs.map((item) => (
-          <button
-            key={item}
-            type="button"
-            className={tab === item ? styles.activeTab : ""}
-            onClick={() => selectTab(item)}
-          >
-            {item}
-          </button>
-        ))}
-      </div>
-
-      {message ? <p className={messageIsError ? styles.errorText : styles.successText}>{message}</p> : null}
-
-      {canEdit && editing && tab === detailTabs[0] ? (
-        renderProfileEditForm()
-      ) : canEdit && editing && tab === detailTabs[1] ? (
-        renderWorkEditForm()
-      ) : (
-        <>
-          {tabActions.length ? (
-            <div className={styles.tabActionBar}>
-              {tabActions.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <Link key={action.href} href={action.href} className={styles.tabActionLink}>
-                    <Icon aria-hidden />
-                    <span>{action.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          ) : null}
-          <div className={styles.detailGrid}>
-            {(tabContent[tab] ?? []).map((item) => (
-              <Info key={item.label} label={item.label} value={item.value} />
-            ))}
+            ) : null}
+            {tabActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <Link key={action.href} href={action.href} className={styles.primaryButton}>
+                  <Icon aria-hidden />
+                  <span>{action.label}</span>
+                </Link>
+              );
+            })}
           </div>
-        </>
-      )}
+        </div>
+
+        {message ? <p className={messageIsError ? styles.errorText : styles.successText}>{message}</p> : null}
+
+        {canEdit && addingFamilyMember ? renderFamilyMemberAddForm() : canEdit && editing ? renderTabEditForm() : renderTabContent()}
+      </div>
     </section>
   );
 }
@@ -832,9 +1807,9 @@ type DetailTabAction = {
 };
 
 function getEmployeeDetailTabActions(tab: string, employeeQuery: string, mode: "hr" | "department"): DetailTabAction[] {
-  if (tab === detailTabs[2]) {
+  if (tab === "Чөлөө") {
     const actions: DetailTabAction[] = [
-      { label: "Чөлөө бүртгэх", href: `/hr/sick?${employeeQuery}&type=time_off`, icon: FileCheck2 },
+      { label: mode === "hr" ? "Чөлөө бүртгэх" : "Чөлөө хүсэх", href: `/hr/sick?${employeeQuery}&type=time_off`, icon: FileCheck2 },
       { label: "Өвчтэй бүртгэх", href: `/hr/sick?${employeeQuery}&type=sick`, icon: HeartPulse },
     ];
     if (mode === "hr") {
@@ -847,19 +1822,13 @@ function getEmployeeDetailTabActions(tab: string, employeeQuery: string, mode: "
     return [];
   }
 
-  if (tab === detailTabs[3]) {
-    return [{ label: "Сахилгын бүртгэл", href: `/hr/discipline?${employeeQuery}`, icon: ShieldAlert }];
-  }
-  if (tab === detailTabs[4]) {
-    return [{ label: "Ажлууд харах", href: "/tasks", icon: Check }];
-  }
-  if (tab === detailTabs[5]) {
+  if (tab === "Шагнал, нэмэгдэл") {
     return [{ label: "Тушаал / гэрээ нэмэх", href: `/hr/orders?${employeeQuery}`, icon: ScrollText }];
   }
-  if (tab === detailTabs[6]) {
+  if (tab === "Баримт бичиг") {
     return [{ label: "Хавсралт нэмэх", href: `/hr/orders?${employeeQuery}`, icon: FilePlus2 }];
   }
-  if (tab === detailTabs[7]) {
+  if (tab === "Өөрчлөлтийн түүх" || tab === "Ажлын мэдээлэл") {
     return [
       { label: "Шилжилт бүртгэх", href: `/hr/transfers?${employeeQuery}`, icon: Repeat2 },
       { label: "Тойрох хуудас", href: `/hr/clearance?${employeeQuery}`, icon: BriefcaseBusiness },

@@ -1,15 +1,3 @@
-import Link from "next/link";
-import {
-  Archive,
-  BriefcaseBusiness,
-  FileCheck2,
-  HeartPulse,
-  Pencil,
-  Plane,
-  Repeat2,
-  ScrollText,
-  ShieldAlert,
-} from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
@@ -27,31 +15,6 @@ export const dynamic = "force-dynamic";
 type PageProps = {
   params: Promise<{ id: string }>;
 };
-
-function employeeActions(employeeId: number) {
-  const employeeQuery = `employeeId=${employeeId}`;
-
-  return [
-    { label: "Засах", href: `/hr/employees/${employeeId}?edit=profile#profile-info`, icon: Pencil },
-    { label: "Чөлөө бүртгэх", href: `/hr/sick?${employeeQuery}&type=time_off`, icon: FileCheck2 },
-    { label: "Өвчтэй бүртгэх", href: `/hr/sick?${employeeQuery}&type=sick`, icon: HeartPulse },
-    { label: "Томилолт бүртгэх", href: `/hr/trips?${employeeQuery}`, icon: Plane },
-    { label: "Сахилгын бүртгэл", href: `/hr/discipline?${employeeQuery}`, icon: ShieldAlert },
-    { label: "Тушаал / гэрээ", href: `/hr/orders?${employeeQuery}`, icon: ScrollText },
-    { label: "Шилжилт хөдөлгөөн", href: `/hr/transfers?${employeeQuery}`, icon: Repeat2 },
-    { label: "Тойрох хуудас", href: `/hr/clearance?${employeeQuery}`, icon: BriefcaseBusiness },
-    { label: "Ажлаас чөлөөлөх", href: `/hr/archive?${employeeQuery}`, icon: Archive },
-  ];
-}
-
-function departmentHeadEmployeeActions(employeeId: number) {
-  const employeeQuery = `employeeId=${employeeId}`;
-  return [
-    { label: "Засах", href: `/hr/employees/${employeeId}?edit=profile#profile-info`, icon: Pencil },
-    { label: "Чөлөө хүсэх", href: `/hr/sick?${employeeQuery}&type=time_off`, icon: FileCheck2 },
-    { label: "Өвчтэй бүртгэх", href: `/hr/sick?${employeeQuery}&type=sick`, icon: HeartPulse },
-  ];
-}
 
 export default async function HrEmployeeDetailPage({ params }: PageProps) {
   const session = await requireSession();
@@ -74,7 +37,6 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
     notFound();
   }
   const mode: "hr" | "department" = access.scope === "hr" ? "hr" : "department";
-  const actions = access.isHr ? employeeActions(employee.id) : departmentHeadEmployeeActions(employee.id);
 
   return (
     <>
@@ -86,24 +48,6 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
         notificationNote="Ажилтны дэлгэрэнгүй"
       />
       <HrSectionNav mode={mode} />
-
-      <section className={styles.actionPanel}>
-        <div>
-          <span className={styles.eyebrow}>Ажилтны үйлдэл</span>
-          <h2>{employee.name}</h2>
-        </div>
-        <div className={styles.actionGrid}>
-          {actions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <Link key={action.label} href={action.href} className={styles.actionButton}>
-                <Icon aria-hidden />
-                <span>{action.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
 
       <EmployeeDetailTabs
         employee={employee}

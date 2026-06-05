@@ -709,6 +709,37 @@ export type HrEmployeeDirectoryItem = {
   genderKey: string;
   genderLabel: string;
   educationLevel: string;
+  registerNumber?: string;
+  privatePhone?: string;
+  privateEmail?: string;
+  homeAddress?: string;
+  emergencyContact?: string;
+  emergencyPhone?: string;
+  placeOfBirth?: string;
+  countryOfBirth?: string;
+  nationality?: string;
+  maritalStatus?: string;
+  spouseName?: string;
+  spouseBirthDate?: string;
+  childrenCount?: number;
+  passportNumber?: string;
+  studyField?: string;
+  studySchool?: string;
+  bankAccount?: string;
+  workLocation?: string;
+  workAddress?: string;
+  workSchedule?: string;
+  coachName?: string;
+  categoryNames?: string[];
+  departmentManagerName?: string;
+  contractName?: string;
+  wage?: number;
+  payCategory?: string;
+  departureDate?: string;
+  departureReason?: string;
+  departureDescription?: string;
+  biography?: string;
+  notes?: string;
   missingDocumentCount: number;
   kpiScore: number;
   taskCompletionPercent: number;
@@ -5186,6 +5217,89 @@ async function loadFleetLoaderOptions(
   }
 }
 
+function mergeFleetStaffOptions(
+  primary: FleetVehicleDriverOption[],
+  fallback: FleetVehicleDriverOption[],
+  isPreferred: (option: FleetVehicleDriverOption) => boolean,
+) {
+  const optionsById = new Map<number, FleetVehicleDriverOption>();
+  for (const option of [...primary, ...fallback]) {
+    optionsById.set(option.id, option);
+  }
+  return Array.from(optionsById.values()).sort((left, right) =>
+    sortFleetRoleStaffOptions(left, right, isPreferred),
+  );
+}
+
+async function loadBroaderFleetStaffOptions(
+  requestedUid: number,
+  requestedConnection: OdooConnection,
+  vehicles: OdooFleetVehicleRecord[],
+) {
+  const requestedDriverPromise = loadFleetDriverOptions(
+    requestedUid,
+    requestedConnection,
+    vehicles,
+  );
+  const requestedLoaderPromise = loadFleetLoaderOptions(
+    requestedUid,
+    requestedConnection,
+    vehicles,
+  );
+  const serviceConnection = createOdooConnection();
+
+  if (
+    serviceConnection.url === requestedConnection.url &&
+    serviceConnection.db === requestedConnection.db &&
+    serviceConnection.login === requestedConnection.login &&
+    serviceConnection.password === requestedConnection.password
+  ) {
+    const [driverOptions, loaderOptions] = await Promise.all([
+      requestedDriverPromise,
+      requestedLoaderPromise,
+    ]);
+    return { driverOptions, loaderOptions };
+  }
+
+  const serviceAuthPromise = authenticateWithFallback(serviceConnection).catch(
+    (error) => {
+      console.warn("Fleet staff service connection auth failed:", error);
+      return null;
+    },
+  );
+  const [requestedDriverOptions, requestedLoaderOptions, serviceAuth] =
+    await Promise.all([
+      requestedDriverPromise,
+      requestedLoaderPromise,
+      serviceAuthPromise,
+    ]);
+
+  if (!serviceAuth) {
+    return {
+      driverOptions: requestedDriverOptions,
+      loaderOptions: requestedLoaderOptions,
+    };
+  }
+
+  const [serviceDriverOptions, serviceLoaderOptions] = await Promise.all([
+    loadFleetDriverOptions(serviceAuth.uid, serviceAuth.connection, vehicles),
+    loadFleetLoaderOptions(serviceAuth.uid, serviceAuth.connection, vehicles),
+  ]);
+
+  return {
+    driverOptions: mergeFleetStaffOptions(
+      requestedDriverOptions,
+      serviceDriverOptions,
+      isDriverStaffOption,
+    ),
+    loaderOptions: mergeFleetStaffOptions(
+      requestedLoaderOptions,
+      serviceLoaderOptions,
+      isLoaderStaffOption,
+    ),
+  };
+}
+
 export async function loadFleetVehicleBoard(
   connectionOverrides: Partial<OdooConnection> = {},
 ): Promise<FleetVehicleBoard> {
@@ -5257,8 +5371,7 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
     weightReportResult,
     fuelReportResult,
     procurementLinksByVehicle,
-    driverOptions,
-    loaderOptions,
+    fleetStaffOptions,
     departmentOptions,
     modelOptions,
     rawVehicleTypeOptions,
@@ -5270,8 +5383,7 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
     loadWeightReportsByVehicle(uid, vehicleIds, connection),
     loadFuelReportsByVehicle(uid, vehicleIds, connection),
     loadProcurementLinksByVehicle(uid, vehicleIds, connection),
-    loadFleetDriverOptions(uid, connection, vehicles),
-    loadFleetLoaderOptions(uid, connection, vehicles),
+    loadBroaderFleetStaffOptions(uid, connection, vehicles),
     loadFleetVehicleDepartmentOptions(uid, connection),
     loadFleetVehicleRelationOptions(uid, connection, "model_id"),
     loadFleetVehicleRelationOptions(
@@ -5283,6 +5395,7 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
   ]);
 
   const todayKey = getTodayDateKey();
+  const { driverOptions, loaderOptions } = fleetStaffOptions;
   const currentMonthKey = todayKey.slice(0, 7);
   const vehicleTypeOptions = normalizeFleetVehicleTypeOptions(
     rawVehicleTypeOptions,

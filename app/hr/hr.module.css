@@ -1454,6 +1454,35 @@
   gap: 14px;
 }
 
+.formSection {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 8px;
+  background: rgba(250, 252, 250, 0.78);
+}
+
+.formSectionHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.formSectionHeader h2 {
+  margin: 0;
+  color: #1f2b25;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.formSectionHeader p {
+  margin: 0;
+  color: #66766b;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
 .employeeProfileSummary {
   display: grid;
   grid-template-columns: 112px minmax(0, 1fr);
@@ -2038,6 +2067,493 @@
   color: #1f2b25;
   font-size: 0.9rem;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.hrProfileShell {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.hrProfileBreadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 18px 0;
+  color: #1f2b25;
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+
+.hrProfileBreadcrumb a {
+  color: #1f7a35;
+  text-decoration: none;
+}
+
+.hrProfileBreadcrumb span {
+  color: #9aa79e;
+}
+
+.hrProfileHero {
+  display: grid;
+  grid-template-columns: minmax(360px, 1.05fr) minmax(260px, 0.62fr) minmax(320px, 0.9fr);
+  gap: 28px;
+  align-items: start;
+  padding: 24px 26px 28px;
+  border-bottom: 1px solid rgba(30, 70, 42, 0.11);
+}
+
+.hrProfileIdentity {
+  display: grid;
+  grid-template-columns: 156px minmax(0, 1fr);
+  gap: 22px;
+  min-width: 0;
+}
+
+.hrProfilePhotoFrame {
+  display: grid;
+  width: 156px;
+  aspect-ratio: 1;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  border-radius: 8px;
+  background: rgba(224, 235, 226, 0.88);
+}
+
+.hrProfileIdentityText {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  min-width: 0;
+}
+
+.hrProfileNameRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.hrProfileNameRow h2 {
+  margin: 0;
+  color: #111827;
+  font-size: clamp(1.65rem, 2.2vw, 2.3rem);
+  line-height: 1.05;
+}
+
+.hrProfileStatusPill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(218, 238, 219, 0.96);
+  color: #1f7a35;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.hrProfileIdentityText p {
+  margin: 0;
+  color: #334139;
+  font-size: 1.05rem;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.hrProfileIdentityText ul {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hrProfileIdentityText li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: #1f2b25;
+  font-size: 0.88rem;
+  font-weight: 720;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.hrProfileIdentityText li svg,
+.hrProfileHeroMetric svg,
+.hrProfileTab svg,
+.hrProfileTabActive svg,
+.hrProfileAddLink svg,
+.hrProfileMetricCard svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.hrProfileHeroMetrics {
+  display: grid;
+  gap: 13px;
+  padding-left: 24px;
+  border-left: 1px solid rgba(30, 70, 42, 0.12);
+}
+
+.hrProfileHeroMetric {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: 11px;
+  row-gap: 2px;
+  align-items: center;
+  min-width: 0;
+}
+
+.hrProfileHeroMetric svg {
+  grid-row: span 2;
+  color: #111827;
+}
+
+.hrProfileHeroMetric span,
+.hrProfileHeroFacts span,
+.hrProfileInfoRow span,
+.hrProfileInfoCard span {
+  color: #526157;
+  font-size: 0.78rem;
+  font-weight: 760;
+}
+
+.hrProfileHeroMetric strong,
+.hrProfileHeroFacts strong {
+  color: #111827;
+  font-size: 0.94rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.hrProfileHeroFacts {
+  display: grid;
+  grid-template-columns: minmax(132px, 0.45fr) minmax(0, 1fr);
+  gap: 8px 18px;
+  padding-left: 24px;
+  border-left: 1px solid rgba(30, 70, 42, 0.12);
+}
+
+.hrProfileHeroFacts div {
+  display: contents;
+}
+
+.hrProfileTabBar {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 12px 18px 0;
+  border-bottom: 1px solid rgba(30, 70, 42, 0.11);
+}
+
+.hrProfileTab,
+.hrProfileTabActive {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding: 0 12px 12px;
+  border: 0;
+  background: transparent;
+  color: #26342d;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.hrProfileTabActive {
+  color: #1f7a35;
+}
+
+.hrProfileTabActive::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 3px;
+  border-radius: 999px 999px 0 0;
+  background: #1f7a35;
+  content: "";
+}
+
+.hrProfileContentPanel {
+  display: grid;
+  gap: 16px;
+  padding: 20px 22px 24px;
+  background: rgba(250, 252, 250, 0.72);
+}
+
+.hrProfileContentHeader,
+.hrProfileSubHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hrProfileContentHeader h2,
+.hrProfileSubHeader h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 1.08rem;
+  line-height: 1.25;
+}
+
+.hrProfileContentHeader p {
+  margin: 5px 0 0;
+  color: #66766b;
+  font-size: 0.84rem;
+}
+
+.hrProfileHeaderActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.hrProfileContentGrid,
+.hrProfileTwoColumn,
+.hrProfileWorkGrid,
+.hrProfileFullWidth {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hrProfileFullWidth {
+  grid-template-columns: 1fr;
+}
+
+.hrProfileContentGrid {
+  grid-template-columns: minmax(300px, 0.72fr) minmax(360px, 1.08fr) minmax(300px, 0.82fr);
+}
+
+.hrProfileTwoColumn {
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+}
+
+.hrProfileWorkGrid {
+  grid-template-columns: minmax(280px, 0.8fr) minmax(280px, 0.82fr) minmax(320px, 1fr);
+}
+
+.hrProfileWorkGrid .hrProfileSubPanel:last-child {
+  grid-column: span 2;
+}
+
+.hrProfileSubPanel {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 28px rgba(24, 71, 36, 0.05);
+}
+
+.hrProfileInfoList,
+.hrProfileInfoCards {
+  display: grid;
+  gap: 9px;
+}
+
+.hrProfileInfoCards {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.hrProfileInfoRow,
+.hrProfileInfoCard {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.42fr) minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+}
+
+.hrProfileInfoCard {
+  grid-template-columns: 1fr;
+  min-height: 74px;
+  padding: 12px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 8px;
+  background: rgba(249, 252, 249, 0.92);
+}
+
+.hrProfileInfoRow strong,
+.hrProfileInfoCard strong {
+  color: #111827;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.hrProfileTableWrap {
+  min-width: 0;
+  overflow-x: auto;
+  border: 1px solid rgba(30, 70, 42, 0.1);
+  border-radius: 8px;
+}
+
+.hrProfileTable {
+  width: 100%;
+  min-width: 100%;
+  table-layout: auto;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.hrProfileTable th,
+.hrProfileTable td {
+  padding: 11px 12px;
+  border-bottom: 1px solid rgba(30, 70, 42, 0.08);
+  color: #111827;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.hrProfileTable th {
+  background: rgba(248, 250, 248, 0.96);
+  color: #445048;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.hrProfileTable tr:last-child td {
+  border-bottom: 0;
+}
+
+.hrProfileEmpty {
+  min-height: 84px;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  border: 1px dashed rgba(46, 125, 50, 0.16);
+  border-radius: 8px;
+  background: rgba(248, 252, 248, 0.82);
+  color: #66766b;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.hrProfileAddLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  background: transparent;
+  color: #1f7a35;
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.hrProfileMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.hrProfileMetricCard {
+  display: grid;
+  gap: 5px;
+  min-height: 112px;
+  padding: 13px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 8px;
+  background: rgba(249, 252, 249, 0.96);
+}
+
+.hrProfileMetricCard svg {
+  color: #1f7a35;
+}
+
+.hrProfileMetricCard strong {
+  color: #1f7a35;
+  font-size: 1.05rem;
+}
+
+.hrProfileMetricCard span {
+  color: #111827;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.hrProfileMetricCard small {
+  color: #66766b;
+  font-size: 0.76rem;
+  font-weight: 760;
+}
+
+.hrProfileActionStack {
+  display: grid;
+  gap: 9px;
+}
+
+.hrProfileSkillStack {
+  display: grid;
+  gap: 8px;
+}
+
+.hrProfileSkillRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(30, 70, 42, 0.08);
+}
+
+.hrProfileSkillRow span {
+  color: #111827;
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+
+.hrProfileSkillRow strong {
+  display: inline-flex;
+  gap: 2px;
+  color: #1f7a35;
+}
+
+.hrProfileSkillRow svg {
+  width: 15px;
+  height: 15px;
+}
+
+.hrProfileBulletList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+  color: #111827;
+  font-size: 0.86rem;
+  line-height: 1.45;
 }
 
 .checklist {
@@ -2189,6 +2705,24 @@
     grid-template-columns: 1fr;
   }
 
+  .hrProfileHero,
+  .hrProfileContentGrid,
+  .hrProfileWorkGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .hrProfileHeroMetrics,
+  .hrProfileHeroFacts {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid rgba(30, 70, 42, 0.1);
+    padding-top: 18px;
+  }
+
+  .hrProfileWorkGrid .hrProfileSubPanel:last-child {
+    grid-column: auto;
+  }
+
   .chartBody {
     grid-template-columns: minmax(170px, 240px) minmax(0, 1fr);
   }
@@ -2230,6 +2764,12 @@
 
 @media (max-width: 760px) {
   .chartGrid,
+  .hrProfileHero,
+  .hrProfileIdentity,
+  .hrProfileTwoColumn,
+  .hrProfileContentGrid,
+  .hrProfileWorkGrid,
+  .hrProfileInfoRow,
   .actionGrid,
   .quickActionBar,
   .quickActionGrid,
@@ -2677,5 +3217,77 @@
   .requestTable .checklist button {
     width: 100%;
     min-height: 40px;
+  }
+
+  .hrProfileShell {
+    border-radius: 0;
+  }
+
+  .hrProfileBreadcrumb {
+    padding: 12px 12px 0;
+  }
+
+  .hrProfileHero {
+    gap: 16px;
+    padding: 16px 14px 18px;
+  }
+
+  .hrProfilePhotoFrame {
+    width: 118px;
+  }
+
+  .hrProfileNameRow h2 {
+    font-size: 1.45rem;
+  }
+
+  .hrProfileHeroFacts {
+    grid-template-columns: minmax(96px, 0.42fr) minmax(0, 1fr);
+    gap: 8px 12px;
+  }
+
+  .hrProfileTabBar {
+    padding: 8px 10px 0;
+  }
+
+  .hrProfileTab,
+  .hrProfileTabActive {
+    min-height: 44px;
+    padding: 0 8px 10px;
+    font-size: 0.78rem;
+  }
+
+  .hrProfileContentPanel {
+    padding: 14px 12px 18px;
+  }
+
+  .hrProfileContentHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .hrProfileHeaderActions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .hrProfileHeaderActions a,
+  .hrProfileHeaderActions button,
+  .hrProfileActionStack a {
+    width: 100%;
+  }
+
+  .hrProfileSubPanel {
+    padding: 13px;
+  }
+
+  .hrProfileSubHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .hrProfileMetricGrid,
+  .hrProfileInfoCards {
+    grid-template-columns: 1fr;
   }
 }

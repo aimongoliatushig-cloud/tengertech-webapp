@@ -98,6 +98,39 @@ type HrEmployeeSingleSearchRecord = {
   birthday?: string | false;
   sex?: string | false;
   certificate?: string | false;
+  identification_id?: string | false;
+  x_mn_registration_number?: string | false;
+  private_phone?: string | false;
+  private_email?: string | false;
+  private_street?: string | false;
+  private_street2?: string | false;
+  private_city?: string | false;
+  private_zip?: string | false;
+  private_country_id?: OdooRelation;
+  emergency_contact?: string | false;
+  emergency_phone?: string | false;
+  place_of_birth?: string | false;
+  country_of_birth?: OdooRelation;
+  country_id?: OdooRelation;
+  marital?: string | false;
+  spouse_complete_name?: string | false;
+  spouse_birthdate?: string | false;
+  children?: number | false;
+  passport_id?: string | false;
+  study_field?: string | false;
+  study_school?: string | false;
+  bank_account_id?: OdooRelation;
+  work_location_id?: OdooRelation;
+  address_id?: OdooRelation;
+  resource_calendar_id?: OdooRelation;
+  coach_id?: OdooRelation;
+  contract_id?: OdooRelation;
+  wage?: number | false;
+  pay_category?: string | false;
+  departure_date?: string | false;
+  departure_reason_id?: OdooRelation;
+  departure_description?: string | false;
+  notes?: string | false;
   x_mn_employee_code?: string | false;
   x_mn_grade_rank?: string | false;
   x_mn_employment_status?: string | false;
@@ -350,6 +383,25 @@ export type HrEmployeeCreateInput = {
   emergencyContact?: string;
   emergencyPhone?: string;
   homeAddress?: string;
+  birthPlace?: string;
+  addressProvince?: string;
+  addressDistrict?: string;
+  addressSubdistrict?: string;
+  familyStatus?: string;
+  childrenCount?: number;
+  childrenInfo?: string;
+  childrenSchool?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  baseSalary?: string;
+  taxNumber?: string;
+  socialInsuranceStartDate?: string;
+  annualLeaveNote?: string;
+  talent?: string;
+  skillLevel?: string;
+  previousEmployment?: string;
+  additionalDuty?: string;
+  trialEndDate?: string;
   note?: string;
 };
 
@@ -671,6 +723,52 @@ function resolveDirectEmployeeGenderLabel(value?: string | false) {
   return value ? (labels[value] ?? value) : "";
 }
 
+function cleanOdooLongText(value?: string | false) {
+  return String(value || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>\s*<p>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .trim();
+}
+
+function mergeEmployeeManagedNotes(baseNotes: string, managedParts: Array<[string, string]>) {
+  if (!managedParts.length) {
+    return baseNotes.trim();
+  }
+  const labels = new Set(managedParts.map(([label]) => label));
+  const unmanagedLines = baseNotes
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !Array.from(labels).some((label) => line.startsWith(`${label}:`)));
+  const managedLines = managedParts
+    .map(([label, value]) => [label, value.trim()] as const)
+    .filter(([, value]) => value)
+    .map(([label, value]) => `${label}: ${value}`);
+  return [...unmanagedLines, ...managedLines].join("\n").trim();
+}
+
+function joinAddressParts(...parts: Array<string | false | undefined>) {
+  return parts
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+function resolveMaritalStatusLabel(value?: string | false) {
+  const labels: Record<string, string> = {
+    single: "Ганц бие",
+    married: "Гэрлэсэн",
+    cohabitant: "Хамтран амьдрагчтай",
+    widower: "Бэлэвсэн",
+    divorced: "Салсан",
+  };
+  return value ? (labels[value] ?? value) : "";
+}
+
 function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): HrEmployeeDirectoryItem {
   const status = resolveDirectEmployeeStatus(record);
   const departmentName = getRelationName(record.department_id, "Хэлтэсгүй");
@@ -702,6 +800,41 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     genderKey: record.sex || "",
     genderLabel: resolveDirectEmployeeGenderLabel(record.sex),
     educationLevel: record.certificate || "",
+    registerNumber: record.x_mn_registration_number || record.identification_id || "",
+    privatePhone: record.private_phone || "",
+    privateEmail: record.private_email || "",
+    homeAddress: joinAddressParts(
+      record.private_street,
+      record.private_street2,
+      record.private_city,
+      record.private_zip,
+      getRelationName(record.private_country_id),
+    ),
+    emergencyContact: record.emergency_contact || "",
+    emergencyPhone: record.emergency_phone || "",
+    placeOfBirth: record.place_of_birth || "",
+    countryOfBirth: getRelationName(record.country_of_birth),
+    nationality: getRelationName(record.country_id),
+    maritalStatus: resolveMaritalStatusLabel(record.marital),
+    spouseName: record.spouse_complete_name || "",
+    spouseBirthDate: record.spouse_birthdate || "",
+    childrenCount: Number(record.children || 0),
+    passportNumber: record.passport_id || "",
+    studyField: record.study_field || "",
+    studySchool: record.study_school || "",
+    bankAccount: getRelationName(record.bank_account_id),
+    workLocation: getRelationName(record.work_location_id),
+    workAddress: getRelationName(record.address_id),
+    workSchedule: getRelationName(record.resource_calendar_id),
+    coachName: getRelationName(record.coach_id),
+    contractName: getRelationName(record.contract_id),
+    wage: Number(record.wage || 0),
+    payCategory: record.pay_category || "",
+    departureDate: record.departure_date || "",
+    departureReason: getRelationName(record.departure_reason_id),
+    departureDescription: record.departure_description || "",
+    biography: cleanOdooLongText(record.notes),
+    notes: cleanOdooLongText(record.notes),
     missingDocumentCount: Number(record.x_mn_missing_document_count || 0),
     kpiScore: Number(record.x_mn_performance_score || 0),
     taskCompletionPercent: Number(record.x_mn_task_completion_percent || 0),
@@ -1099,6 +1232,39 @@ export async function getEmployee(session: AppSession, id: number) {
     "birthday",
     "sex",
     "certificate",
+    "identification_id",
+    "x_mn_registration_number",
+    "private_phone",
+    "private_email",
+    "private_street",
+    "private_street2",
+    "private_city",
+    "private_zip",
+    "private_country_id",
+    "emergency_contact",
+    "emergency_phone",
+    "place_of_birth",
+    "country_of_birth",
+    "country_id",
+    "marital",
+    "spouse_complete_name",
+    "spouse_birthdate",
+    "children",
+    "passport_id",
+    "study_field",
+    "study_school",
+    "bank_account_id",
+    "work_location_id",
+    "address_id",
+    "resource_calendar_id",
+    "coach_id",
+    "contract_id",
+    "wage",
+    "pay_category",
+    "departure_date",
+    "departure_reason_id",
+    "departure_description",
+    "notes",
     "x_mn_employee_code",
     "x_mn_grade_rank",
     "x_mn_employment_status",
@@ -1230,6 +1396,11 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
     "active",
     "notes",
     "private_street",
+    "private_street2",
+    "private_city",
+    "place_of_birth",
+    "marital",
+    "children",
     "emergency_contact",
     "emergency_phone",
   ];
@@ -1243,6 +1414,25 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
     data.workLocation ? `Ажиллах байршил: ${data.workLocation}` : "",
     data.emergencyContact ? `Яаралтай холбоо: ${data.emergencyContact}` : "",
     data.emergencyPhone ? `Яаралтай утас: ${data.emergencyPhone}` : "",
+    data.birthPlace ? `Төрсөн аймаг / сум / хот: ${data.birthPlace}` : "",
+    data.addressProvince ? `Аймаг / Хот: ${data.addressProvince}` : "",
+    data.addressDistrict ? `Сум / Дүүрэг: ${data.addressDistrict}` : "",
+    data.addressSubdistrict ? `Баг / Хороо: ${data.addressSubdistrict}` : "",
+    data.familyStatus ? `Гэр бүлийн байдал: ${data.familyStatus}` : "",
+    data.childrenCount ? `Хүүхдийн тоо: ${data.childrenCount}` : "",
+    data.childrenInfo ? `Хүүхдийн нас / мэдээлэл: ${data.childrenInfo}` : "",
+    data.childrenSchool ? `Хүүхдүүдийн сургууль / цэцэрлэг: ${data.childrenSchool}` : "",
+    data.bankName ? `Банк: ${data.bankName}` : "",
+    data.bankAccountNumber ? `Дансны дугаар: ${data.bankAccountNumber}` : "",
+    data.baseSalary ? `Үндсэн цалин: ${data.baseSalary}` : "",
+    data.taxNumber ? `ТТД дугаар: ${data.taxNumber}` : "",
+    data.socialInsuranceStartDate ? `НД төлж эхэлсэн огноо: ${data.socialInsuranceStartDate}` : "",
+    data.annualLeaveNote ? `Ээлжийн амралт: ${data.annualLeaveNote}` : "",
+    data.talent ? `Авьяас / спорт / урлаг: ${data.talent}` : "",
+    data.skillLevel ? `Ур чадвар ба зэрэглэл: ${data.skillLevel}` : "",
+    data.previousEmployment ? `Ажиллаж байсан байгууллагууд: ${data.previousEmployment}` : "",
+    data.additionalDuty ? `Хавсран ажиллаж буй / нэмэлт ажил: ${data.additionalDuty}` : "",
+    data.trialEndDate ? `Туршилтын хугацаа дуусах: ${data.trialEndDate}` : "",
   ].filter(Boolean);
   const values: Record<string, unknown> = {};
 
@@ -1263,6 +1453,16 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
   if (fields.has("active")) values.active = true;
   if (fields.has("notes")) values.notes = noteParts.join("\n") || false;
   if (fields.has("private_street")) values.private_street = data.homeAddress || data.workLocation || false;
+  if (fields.has("private_street2")) {
+    values.private_street2 = [data.addressSubdistrict, data.addressDistrict]
+      .map((value) => value?.trim())
+      .filter(Boolean)
+      .join(", ") || false;
+  }
+  if (fields.has("private_city")) values.private_city = data.addressProvince || data.addressDistrict || false;
+  if (fields.has("place_of_birth")) values.place_of_birth = data.birthPlace || false;
+  if (fields.has("marital")) values.marital = data.familyStatus || false;
+  if (fields.has("children")) values.children = data.childrenCount || 0;
   if (fields.has("emergency_contact")) values.emergency_contact = data.emergencyContact || false;
   if (fields.has("emergency_phone")) values.emergency_phone = data.emergencyPhone || false;
 
@@ -1290,8 +1490,29 @@ export async function updateEmployee(
         | "workEmail"
         | "birthDate"
         | "genderKey"
+        | "registerNumber"
+        | "privatePhone"
+        | "privateEmail"
+        | "homeAddress"
+        | "emergencyContact"
+        | "emergencyPhone"
+        | "placeOfBirth"
+        | "maritalStatus"
+        | "spouseName"
+        | "spouseBirthDate"
+        | "childrenCount"
+        | "studyField"
+        | "studySchool"
+        | "payCategory"
         | "contractEndDate"
         | "gradeRank"
+        | "notes"
+        | "missingDocumentCount"
+        | "kpiScore"
+        | "taskCompletionPercent"
+        | "disciplineScore"
+        | "departureDate"
+        | "departureDescription"
       >
       & {
         departmentId?: number | null;
@@ -1316,22 +1537,117 @@ export async function updateEmployee(
     "x_mn_grade_rank",
     "birthday",
     "sex",
+    "identification_id",
+    "x_mn_registration_number",
+    "private_phone",
+    "private_email",
+    "private_street",
+    "private_street2",
+    "private_city",
+    "place_of_birth",
+    "marital",
+    "spouse_complete_name",
+    "spouse_birthdate",
+    "children",
+    "emergency_contact",
+    "emergency_phone",
+    "study_field",
+    "study_school",
+    "pay_category",
+    "departure_date",
+    "departure_description",
+    "notes",
+    "x_mn_missing_document_count",
+    "x_mn_performance_score",
+    "x_mn_task_completion_percent",
+    "x_mn_discipline_score",
     "image_1920",
     "active",
   ];
   const fields = new Set(await getAvailableFields("hr.employee", desiredFields, session));
   const values: Record<string, unknown> = {};
+  const managedNoteParts = [
+    data.childrenInfo ? ["Хүүхдийн нас / мэдээлэл", data.childrenInfo] : null,
+    data.childrenSchool ? ["Хүүхдүүдийн сургууль / цэцэрлэг", data.childrenSchool] : null,
+    data.annualLeaveNote ? ["Ээлжийн амралт", data.annualLeaveNote] : null,
+    data.bankName ? ["Банк", data.bankName] : null,
+    data.bankAccountNumber ? ["Дансны дугаар", data.bankAccountNumber] : null,
+    data.baseSalary ? ["Үндсэн цалин", data.baseSalary] : null,
+    data.taxNumber ? ["ТТД дугаар", data.taxNumber] : null,
+    data.socialInsuranceStartDate ? ["НД төлж эхэлсэн огноо", data.socialInsuranceStartDate] : null,
+    data.talent ? ["Авьяас / спорт / урлаг", data.talent] : null,
+    data.skillLevel ? ["Ур чадвар ба зэрэглэл", data.skillLevel] : null,
+    data.previousEmployment ? ["Ажиллаж байсан байгууллагууд", data.previousEmployment] : null,
+    data.additionalDuty ? ["Хавсран ажиллаж буй / нэмэлт ажил", data.additionalDuty] : null,
+    data.trialEndDate ? ["Туршилтын хугацаа дуусах", data.trialEndDate] : null,
+  ].filter((item): item is [string, string] => Boolean(item));
 
   if (fields.has("name") && data.name !== undefined) values.name = data.name?.trim() || false;
   if (fields.has("x_mn_employee_code") && data.employeeCode !== undefined) {
     values.x_mn_employee_code = data.employeeCode?.trim() || false;
   }
+  if (fields.has("identification_id") && data.registerNumber !== undefined) {
+    values.identification_id = data.registerNumber?.trim() || false;
+  }
+  if (fields.has("x_mn_registration_number") && data.registerNumber !== undefined) {
+    values.x_mn_registration_number = data.registerNumber?.trim() || false;
+  }
   if (fields.has("work_phone") && data.workPhone !== undefined) values.work_phone = data.workPhone || false;
   if (fields.has("mobile_phone") && data.mobilePhone !== undefined) values.mobile_phone = data.mobilePhone || false;
   if (fields.has("work_email") && data.workEmail !== undefined) values.work_email = data.workEmail || false;
+  if (fields.has("private_phone") && data.privatePhone !== undefined) values.private_phone = data.privatePhone || false;
+  if (fields.has("private_email") && data.privateEmail !== undefined) values.private_email = data.privateEmail || false;
+  if (fields.has("private_street") && data.homeAddress !== undefined) values.private_street = data.homeAddress || false;
+  if (fields.has("private_street2") && (data.addressSubdistrict !== undefined || data.addressDistrict !== undefined)) {
+    values.private_street2 = [data.addressSubdistrict, data.addressDistrict]
+      .map((value) => value?.trim())
+      .filter(Boolean)
+      .join(", ") || false;
+  }
+  if (fields.has("private_city") && (data.addressProvince !== undefined || data.addressDistrict !== undefined)) {
+    values.private_city = data.addressProvince || data.addressDistrict || false;
+  }
+  if (fields.has("place_of_birth") && (data.birthPlace !== undefined || data.placeOfBirth !== undefined)) {
+    values.place_of_birth = data.birthPlace || data.placeOfBirth || false;
+  }
   if (fields.has("birthday") && data.birthDate !== undefined) values.birthday = data.birthDate || false;
   if (fields.has("sex") && (data.genderKey !== undefined || data.gender !== undefined)) {
     values.sex = data.genderKey || data.gender || false;
+  }
+  if (fields.has("marital") && (data.familyStatus !== undefined || data.maritalStatus !== undefined)) {
+    values.marital = data.familyStatus || data.maritalStatus || false;
+  }
+  if (fields.has("spouse_complete_name") && data.spouseName !== undefined) {
+    values.spouse_complete_name = data.spouseName || false;
+  }
+  if (fields.has("spouse_birthdate") && data.spouseBirthDate !== undefined) {
+    values.spouse_birthdate = data.spouseBirthDate || false;
+  }
+  if (fields.has("children") && data.childrenCount !== undefined) values.children = data.childrenCount || 0;
+  if (fields.has("emergency_contact") && data.emergencyContact !== undefined) {
+    values.emergency_contact = data.emergencyContact || false;
+  }
+  if (fields.has("emergency_phone") && data.emergencyPhone !== undefined) {
+    values.emergency_phone = data.emergencyPhone || false;
+  }
+  if (fields.has("study_field") && data.studyField !== undefined) values.study_field = data.studyField || false;
+  if (fields.has("study_school") && data.studySchool !== undefined) values.study_school = data.studySchool || false;
+  if (fields.has("pay_category") && data.payCategory !== undefined) values.pay_category = data.payCategory || false;
+  if (fields.has("departure_date") && data.departureDate !== undefined) values.departure_date = data.departureDate || false;
+  if (fields.has("departure_description") && data.departureDescription !== undefined) {
+    values.departure_description = data.departureDescription || false;
+  }
+  if (fields.has("x_mn_missing_document_count") && data.missingDocumentCount !== undefined) {
+    values.x_mn_missing_document_count = data.missingDocumentCount || 0;
+  }
+  if (fields.has("x_mn_performance_score") && data.kpiScore !== undefined) {
+    values.x_mn_performance_score = data.kpiScore || 0;
+  }
+  if (fields.has("x_mn_task_completion_percent") && data.taskCompletionPercent !== undefined) {
+    values.x_mn_task_completion_percent = data.taskCompletionPercent || 0;
+  }
+  if (fields.has("x_mn_discipline_score") && data.disciplineScore !== undefined) {
+    values.x_mn_discipline_score = data.disciplineScore || 0;
   }
   if (fields.has("image_1920") && data.profilePhotoBase64 !== undefined) {
     values.image_1920 = data.profilePhotoBase64 || false;
@@ -1348,6 +1664,13 @@ export async function updateEmployee(
   }
   if (fields.has("x_mn_grade_rank") && data.gradeRank !== undefined) {
     values.x_mn_grade_rank = data.gradeRank?.trim() || false;
+  }
+  if (fields.has("notes") && (data.notes !== undefined || data.note !== undefined || managedNoteParts.length)) {
+    const baseNotes =
+      data.notes !== undefined || data.note !== undefined
+        ? data.notes ?? data.note ?? ""
+        : (await getEmployee(session, id))?.notes || "";
+    values.notes = mergeEmployeeManagedNotes(baseNotes, managedNoteParts) || false;
   }
   if (fields.has("active") && data.isFieldEmployee === false) values.active = false;
 
