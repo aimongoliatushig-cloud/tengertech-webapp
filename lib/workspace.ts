@@ -6623,7 +6623,13 @@ export async function notifyWorkspaceTaskReportReviewers(
           return [] as number[];
         },
       );
-      for (const userId of departmentHeadIds) {
+      const fallbackDepartmentHeadIds = departmentHeadIds.length
+        ? []
+        : await loadDepartmentHeadUserIds(departmentId, {}).catch((error) => {
+            console.warn("Department head reviewer system fallback lookup failed:", error);
+            return [] as number[];
+          });
+      for (const userId of [...departmentHeadIds, ...fallbackDepartmentHeadIds]) {
         recipientIds.add(userId);
       }
     }
@@ -6633,7 +6639,7 @@ export async function notifyWorkspaceTaskReportReviewers(
       return [];
     }
 
-    const [activityTypeId, modelId, recipientUsers] = await Promise.all([
+    const [scopedActivityTypeId, scopedModelId, recipientUsers] = await Promise.all([
       loadDefaultActivityTypeId(connectionOverrides),
       loadProjectTaskModelId(connectionOverrides),
       executeOdooKw<UserRecord[]>(
@@ -6647,6 +6653,12 @@ export async function notifyWorkspaceTaskReportReviewers(
         connectionOverrides,
       ).catch(() => []),
     ]);
+    const [fallbackActivityTypeId, fallbackModelId] = await Promise.all([
+      scopedActivityTypeId ? Promise.resolve(null) : loadDefaultActivityTypeId({}),
+      scopedModelId ? Promise.resolve(null) : loadProjectTaskModelId({}),
+    ]);
+    const activityTypeId = scopedActivityTypeId ?? fallbackActivityTypeId;
+    const modelId = scopedModelId ?? fallbackModelId;
 
     const title = "Шинэ тайлан хяналт хүлээж байна";
     const projectName = relationName(task.project_id, "Ажил");
@@ -6676,7 +6688,26 @@ export async function notifyWorkspaceTaskReportReviewers(
             ],
             {},
             connectionOverrides,
-          ).catch(() => 0),
+          ).catch(() =>
+            executeOdooKw<number>(
+              "mail.activity",
+              "create",
+              [
+                {
+                  activity_type_id: activityTypeId,
+                  res_model: "project.task",
+                  res_model_id: modelId,
+                  res_id: task.id,
+                  user_id: userId,
+                  summary: title,
+                  note,
+                  date_deadline: new Date().toISOString().slice(0, 10),
+                },
+              ],
+              {},
+              {},
+            ).catch(() => 0),
+          ),
         ),
       );
     }
