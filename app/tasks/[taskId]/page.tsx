@@ -140,6 +140,17 @@ function reportImageLabel(imageName: string, index: number, total: number) {
   return index < Math.ceil(total / 2) ? "Өмнөх зураг" : "Дараах зураг";
 }
 
+function reportImageGroupOrder(imageName: string) {
+  const normalizedName = imageName.toLocaleLowerCase("mn-MN");
+  if (normalizedName.includes("өмнөх") || normalizedName.includes("before")) {
+    return 0;
+  }
+  if (normalizedName.includes("дараах") || normalizedName.includes("after")) {
+    return 1;
+  }
+  return 0;
+}
+
 function taskDetailErrorMessage(error: unknown) {
   const message =
     error instanceof Error ? error.message : "Даалгаврын мэдээлэл уншихад алдаа гарлаа.";
@@ -743,6 +754,14 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                         const showReportText = reviewFocusedMode
                           ? Boolean(reportText)
                           : Boolean(report.text || report.summary);
+                        const sortedReportImages = report.images
+                          .map((image, imageIndex) => ({ image, imageIndex }))
+                          .sort((left, right) => {
+                            const groupDiff =
+                              reportImageGroupOrder(left.image.name) - reportImageGroupOrder(right.image.name);
+                            return groupDiff || left.imageIndex - right.imageIndex;
+                          })
+                          .map((item) => item.image);
 
                         return (
                         <article
@@ -812,12 +831,12 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
 
                           {report.images.length ? (
                             <ReportImageLightbox
-                              images={report.images.map((image, imageIndex) => ({
+                              images={sortedReportImages.map((image, imageIndex) => ({
                                 id: image.id,
                                 url: image.url,
                                 name: image.name,
                                 alt: `${task.name} тайлангийн зураг`,
-                                caption: reportImageLabel(image.name, imageIndex, report.images.length),
+                                caption: reportImageLabel(image.name, imageIndex, sortedReportImages.length),
                               }))}
                               gridClassName={`${dashboardStyles.reportImageGrid} ${
                                 reviewFocusedMode ? dashboardStyles.reviewReportImageGrid : ""
