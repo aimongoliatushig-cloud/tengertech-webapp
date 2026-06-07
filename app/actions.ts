@@ -11,8 +11,8 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
-import { loadSessionEmployeeDepartmentName } from "@/lib/access-scope";
-import { getTodayDateKey, pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
+import { loadSessionDepartmentName, loadSessionEmployeeDepartmentName } from "@/lib/access-scope";
+import { filterByDepartment, getTodayDateKey, pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
 import {
   isAutoGarbageDepartment,
   isGarbageTransportDepartment,
@@ -71,6 +71,7 @@ import {
   returnWorkspaceTaskForChanges,
   sendWorkspaceTaskReportToReview,
   updateWorkspaceProjectDescription,
+  updateWorkspaceProject,
   updateWorkspaceTask,
   updateWorkspaceTaskReport,
 } from "@/lib/workspace";
@@ -2454,6 +2455,70 @@ export async function deleteProjectAction(formData: FormData) {
     revalidatePath("/tasks");
     revalidatePath(`/projects/${projectId}`);
     redirect(`${target}?notice=${encodeURIComponent("Ажил архивлагдлаа.")}`);
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirectWithMessage(target, "error", getErrorMessage(error));
+  }
+}
+
+export async function updateProjectAction(formData: FormData) {
+  const projectId = Number(String(formData.get("project_id") ?? ""));
+  const name = String(formData.get("name") ?? "").trim();
+  const managerId = Number(String(formData.get("manager_id") ?? ""));
+  const departmentId = Number(String(formData.get("department_id") ?? ""));
+  const startDate = String(formData.get("start_date") ?? "").trim();
+  const deadline = String(formData.get("deadline") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
+  const target = projectId ? `/projects/${projectId}` : "/projects";
+
+  if (!projectId || !name) {
+    redirectWithMessage(target, "error", "Ажил засахад нэр болон ажлын дугаар шаардлагатай.");
+  }
+
+  try {
+    const session = await requireSession();
+    if (!hasCapability(session, "create_projects")) {
+      redirectWithMessage(target, "error", "Танд ажил засах эрх байхгүй байна.");
+    }
+
+    const scopedDepartmentName = await loadSessionDepartmentName(session);
+    const project = await loadProjectDetail(projectId, {
+      login: session.login,
+      password: session.password,
+    });
+    if (
+      scopedDepartmentName &&
+      filterByDepartment([{ departmentName: project.departmentName }], scopedDepartmentName).length === 0
+    ) {
+      redirectWithMessage(target, "error", "Танд энэ ажлыг засах эрх байхгүй байна.");
+    }
+
+    await updateWorkspaceProject(
+      projectId,
+      {
+        name,
+        managerId: Number.isFinite(managerId) && managerId > 0 ? managerId : null,
+        departmentId: scopedDepartmentName
+          ? project.departmentId
+          : Number.isFinite(departmentId) && departmentId > 0
+            ? departmentId
+            : null,
+        startDate,
+        deadline,
+        description,
+      },
+      {
+        login: session.login,
+        password: session.password,
+      },
+    );
+
+    clearOdooReadCaches();
+    revalidatePath("/");
+    revalidatePath("/projects");
+    revalidatePath("/tasks");
+    revalidatePath(`/projects/${projectId}`);
+    redirect(`${target}?notice=${encodeURIComponent("Ажлын мэдээлэл шинэчлэгдлээ.")}`);
   } catch (error) {
     rethrowIfRedirectError(error);
     redirectWithMessage(target, "error", getErrorMessage(error));

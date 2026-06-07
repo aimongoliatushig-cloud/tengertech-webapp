@@ -5818,6 +5818,32 @@
   justify-content: flex-start;
 }
 
+.projectActionBar {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+  padding-top: 4px;
+}
+
+.projectActionGroup {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 52px;
+  padding: 8px;
+  border: 1px solid rgba(74, 154, 93, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.inlineProjectActionForm {
+  display: inline-flex;
+  margin: 0;
+}
+
 .primaryButton,
 .secondaryButton,
 .dangerButton {
@@ -8415,8 +8441,28 @@
     margin-top: 8px;
   }
 
+  .heroCard:has(.projectHeroGrid) .projectActionBar,
+  .heroCard:has(.projectHeroGrid) .projectActionGroup {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .heroCard:has(.projectHeroGrid) .projectActionGroup {
+    gap: 7px;
+    padding: 7px;
+  }
+
   .heroCard:has(.projectHeroGrid) .smallLink,
-  .heroCard:has(.projectHeroGrid) .secondaryButton {
+  .heroCard:has(.projectHeroGrid) .secondaryButton,
+  .heroCard:has(.projectHeroGrid) .dangerButton,
+  .heroCard:has(.projectHeroGrid) .inlineProjectActionForm {
+    width: 100%;
+  }
+
+  .heroCard:has(.projectHeroGrid) .smallLink,
+  .heroCard:has(.projectHeroGrid) .secondaryButton,
+  .heroCard:has(.projectHeroGrid) .dangerButton {
     min-height: 34px;
     padding: 0 10px;
     font-size: 0.74rem;

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import { createTaskAction, createTaskReportAction, deleteProjectAction } from "@/app/actions";
+import { createTaskAction, createTaskReportAction, deleteProjectAction, updateProjectAction } from "@/app/actions";
 import dashboardStyles from "@/app/page.module.css";
 import styles from "@/app/workspace.module.css";
 import {
@@ -23,13 +23,16 @@ import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurem
 import { isWorkspaceReportReviewerRole } from "@/lib/task-report-review-access";
 import {
   hasProjectTaskLeader,
+  loadDepartmentOptions,
   loadGarbagePointOptions,
   loadGarbageSubdistrictOptions,
   loadProjectDetail,
+  loadProjectManagerOptions,
 } from "@/lib/workspace";
 
 import { ProjectTaskCreateModal } from "./project-task-create-modal";
 import { ProjectTaskCreateForm } from "./project-task-create-form";
+import { ProjectEditModal } from "./project-edit-modal";
 import { TaskReportModal } from "@/app/tasks/[taskId]/task-report-modal";
 
 type PageProps = {
@@ -254,6 +257,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const canOpenQuickReport = canWriteReports && canSubmitWorkspaceReport(session);
+  const canEditProject = canCreateProject;
   const canReviewProjectReports = isWorkspaceReportReviewerRole(
     session,
     Boolean(
@@ -267,6 +271,37 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   const canShowTaskCreateComposer =
     canCreateTasks && quickActionMode !== "report" && !isRoadAreaCleaning;
   const shouldLoadTaskCreateOptions = canShowTaskCreateComposer;
+  const [projectManagerOptions, projectDepartmentOptions] = canEditProject
+    ? await Promise.all([
+        loadProjectManagerOptions(connectionOverrides),
+        loadDepartmentOptions(connectionOverrides),
+      ])
+    : [[], []];
+  const projectEditManagerOptions =
+    project.managerId && !projectManagerOptions.some((manager) => manager.id === project.managerId)
+      ? [
+          {
+            id: project.managerId,
+            name: project.managerName,
+            login: "",
+            role: "project_manager",
+            departmentName: project.departmentName,
+            jobTitle: project.managerJobTitle,
+          },
+          ...projectManagerOptions,
+        ]
+      : projectManagerOptions;
+  const projectEditDepartmentOptions =
+    project.departmentId && !projectDepartmentOptions.some((department) => department.id === project.departmentId)
+      ? [
+          {
+            id: project.departmentId,
+            name: project.departmentName,
+            label: project.departmentName,
+          },
+          ...projectDepartmentOptions,
+        ]
+      : projectDepartmentOptions;
   const garbageSourceTask =
     project.tasks.find((task) => task.vehicleId) ??
     project.tasks.find((task) => task.driverEmployeeId || task.collectorEmployeeIds.length) ??
@@ -581,32 +616,57 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                 ) : null}
               </div>
 
-              <div className={styles.buttonRow}>
-                <Link href={backHref} className={styles.smallLink}>
-                  {backLabel}
-                </Link>
-                <a
-                  href={`/api/workspace-report/export?type=project&id=${project.id}&format=word`}
-                  className={styles.secondaryButton}
-                >
-                  Word тайлан татах
-                </a>
-                <a
-                  href={`/api/workspace-report/export?type=project&id=${project.id}&format=pdf`}
-                  className={styles.secondaryButton}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  PDF хэвлэх
-                </a>
-                {canDeleteWorkspace ? (
-                  <form action={deleteProjectAction}>
-                    <input type="hidden" name="project_id" value={project.id} />
-                    <button type="submit" className={styles.dangerButton}>
-                      Ажил устгах
-                    </button>
-                  </form>
+              <div className={styles.projectActionBar} aria-label="Ажлын үндсэн үйлдлүүд">
+                <div className={styles.projectActionGroup}>
+                  <Link href={backHref} className={styles.smallLink} title={backLabel}>
+                    Жагсаалт руу буцах
+                  </Link>
+                </div>
+
+                {canEditProject || canDeleteWorkspace ? (
+                  <div className={styles.projectActionGroup}>
+                    {canEditProject ? (
+                      <ProjectEditModal
+                        action={updateProjectAction}
+                        projectId={project.id}
+                        name={project.name}
+                        managerId={project.managerId}
+                        departmentId={project.departmentId}
+                        startDate={project.startDate}
+                        deadline={project.deadline}
+                        description={project.description}
+                        managerOptions={projectEditManagerOptions}
+                        departmentOptions={projectEditDepartmentOptions}
+                        canEditDepartment={!scopedDepartmentName}
+                      />
+                    ) : null}
+                    {canDeleteWorkspace ? (
+                      <form action={deleteProjectAction} className={styles.inlineProjectActionForm}>
+                        <input type="hidden" name="project_id" value={project.id} />
+                        <button type="submit" className={styles.dangerButton}>
+                          Ажил архивлах
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
                 ) : null}
+
+                <div className={styles.projectActionGroup}>
+                  <a
+                    href={`/api/workspace-report/export?type=project&id=${project.id}&format=word`}
+                    className={styles.secondaryButton}
+                  >
+                    Word файл татах
+                  </a>
+                  <a
+                    href={`/api/workspace-report/export?type=project&id=${project.id}&format=pdf`}
+                    className={styles.secondaryButton}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    PDF-ээр нээх
+                  </a>
+                </div>
               </div>
             </section>
 

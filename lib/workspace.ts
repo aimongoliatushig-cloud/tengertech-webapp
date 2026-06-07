@@ -4965,6 +4965,35 @@ export async function createWorkspaceProject(
   );
 }
 
+export async function updateWorkspaceProject(
+  projectId: number,
+  input: {
+    name: string;
+    managerId?: number | null;
+    departmentId?: number | null;
+    startDate?: string;
+    deadline?: string;
+    description?: string;
+  },
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const values: Record<string, unknown> = {
+    name: input.name.trim(),
+    user_id: input.managerId || false,
+    ops_department_id: input.departmentId || false,
+    date_start: input.startDate || false,
+    date: input.deadline || false,
+    description: input.description?.trim() || false,
+  };
+
+  return writeRecordWithFieldFallback(
+    "project.project",
+    [projectId],
+    values,
+    connectionOverrides,
+  );
+}
+
 export async function createGarbageWorkspaceProject(
   input: {
     vehicleId: number;
