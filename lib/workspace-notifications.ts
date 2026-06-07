@@ -241,6 +241,7 @@ function getProcurementScopes(session: AppSession) {
     Boolean(
       session.role === "director" ||
         session.role === "general_manager" ||
+        session.groupFlags?.municipalManager ||
         session.groupFlags?.municipalDirector ||
         session.groupFlags?.fleetRepairCeo ||
         session.groupFlags?.fleetRepairGeneralManager ||

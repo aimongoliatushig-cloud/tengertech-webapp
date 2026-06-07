@@ -771,7 +771,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                               </div>
                               {task.quantitySummary ? (
                                 <div className={styles.projectTaskQuantityCell}>
-                                  <strong>Хэмжээ:</strong>
+                                  <strong>Гүйцэтгэл:</strong>
                                   {task.quantitySummaryLines.map((line) => (
                                     <span key={line}>{line}</span>
                                   ))}
@@ -780,6 +780,10 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                               <span>Хугацаа: {task.deadline}</span>
                             </div>
 
+                            <div className={styles.projectTaskProgressLabel}>
+                              <span>Явц</span>
+                              <strong>{task.progress}%</strong>
+                            </div>
                             <div className={styles.projectTaskProgressTrack}>
                               <span style={{ width: getProgressWidth(task.progress) }} />
                             </div>

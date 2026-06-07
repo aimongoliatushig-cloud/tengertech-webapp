@@ -149,6 +149,43 @@
   color: #5f291b;
 }
 
+.reportImageGroups {
+  display: grid;
+  gap: 14px;
+}
+
+.reportImageGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.reportImageGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 30px;
+}
+
+.reportImageGroupHeader strong {
+  color: var(--ink-900);
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.reportImageGroupHeader span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-800);
+  font-size: 0.78rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .existingReportView {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -530,6 +567,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  max-width: 100%;
   min-height: 38px;
   padding: 0 12px;
   border: 1px solid rgba(74, 154, 93, 0.14);
@@ -537,6 +575,7 @@
   background: rgba(255, 255, 255, 0.86);
   color: var(--ink-800);
   font-weight: 700;
+  white-space: normal;
 }
 
 .quantityChip strong {

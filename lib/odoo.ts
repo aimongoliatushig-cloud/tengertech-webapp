@@ -565,7 +565,7 @@ function resolveAuthenticatedRole(
   employee?: OdooAuthEmployeeRecord | null,
 ) {
   const inferredRole = inferRoleFromEmployeeTitle(employee);
-  if (inferredRole === "transport_inspector") {
+  if (inferredRole === "general_manager" || inferredRole === "transport_inspector") {
     return inferredRole;
   }
 

@@ -126,7 +126,6 @@ function isDepartmentHeadDashboard(session: AppSession) {
   return Boolean(
     session.role === "project_manager" ||
       flags?.municipalDepartmentHead ||
-      flags?.municipalManager ||
       flags?.mfoManager ||
       flags?.environmentManager ||
       flags?.improvementManager ||

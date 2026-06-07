@@ -796,7 +796,7 @@ export function ProjectTaskCreateForm({
 
         <div className={styles.taskCreateStepActions}>
           <button type="button" className={styles.primaryButton} onClick={() => setCurrentStep(2)}>
-            Үргэлжлүүлэх
+            Хэмжээ ба хугацаа оруулах
           </button>
         </div>
       </section>
@@ -1019,10 +1019,10 @@ export function ProjectTaskCreateForm({
 
         <div className={styles.taskCreateStepActions}>
           <button type="button" className={styles.secondaryButton} onClick={() => setCurrentStep(1)}>
-            Буцах
+            Үндсэн мэдээлэл рүү буцах
           </button>
           <button type="button" className={styles.primaryButton} onClick={() => setCurrentStep(3)}>
-            Үргэлжлүүлэх
+            Хянаж үүсгэх рүү шилжих
           </button>
         </div>
       </section>
@@ -1040,7 +1040,7 @@ export function ProjectTaskCreateForm({
           <article className={styles.taskCreateSummaryCard}>
             <div>
               <strong>Үндсэн мэдээлэл</strong>
-              <button type="button" onClick={() => setCurrentStep(1)}>Засах</button>
+              <button type="button" onClick={() => setCurrentStep(1)}>Үндсэн мэдээлэл засах</button>
             </div>
             <dl>
               <dt>Хэлтэс</dt>
@@ -1061,7 +1061,7 @@ export function ProjectTaskCreateForm({
           <article className={styles.taskCreateSummaryCard}>
             <div>
               <strong>Хэмжээ ба огноо</strong>
-              <button type="button" onClick={() => setCurrentStep(2)}>Засах</button>
+              <button type="button" onClick={() => setCurrentStep(2)}>Хэмжээ ба огноо засах</button>
             </div>
             <dl>
               <dt>Эхлэх огноо</dt>
@@ -1078,7 +1078,7 @@ export function ProjectTaskCreateForm({
           <article className={styles.taskCreateSummaryCard}>
             <div>
               <strong>Файл ба тайлбар</strong>
-              <button type="button" onClick={() => setCurrentStep(2)}>Засах</button>
+              <button type="button" onClick={() => setCurrentStep(2)}>Файл ба тайлбар засах</button>
             </div>
             <dl>
               <dt>Файл</dt>
@@ -1099,7 +1099,7 @@ export function ProjectTaskCreateForm({
 
         <div className={`${footerClassName} ${styles.taskCreateFinalActions}`}>
           <button type="button" className={styles.secondaryButton} onClick={() => setCurrentStep(2)}>
-            Буцах
+            Хэмжээ ба хугацаа руу буцах
           </button>
           <button type="submit" className={styles.primaryButton}>
             Даалгавар үүсгэх

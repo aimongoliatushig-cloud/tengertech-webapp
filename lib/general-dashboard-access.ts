@@ -21,6 +21,7 @@ export function canAccessGeneralDashboard(context: GeneralDashboardAccessContext
     GENERAL_DASHBOARD_ALLOWED_LOGINS.has(normalizeLoginDigits(context.login)) ||
       context.role === "director" ||
       context.role === "general_manager" ||
+      flags.municipalManager ||
       flags.municipalDirector ||
       flags.fleetRepairCeo ||
       flags.fleetRepairGeneralManager,

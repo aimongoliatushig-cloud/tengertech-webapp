@@ -3791,6 +3791,21 @@
   overflow-wrap: anywhere;
 }
 
+.projectTaskProgressLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--ink-600);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.projectTaskProgressLabel strong {
+  color: var(--brand-800);
+  font-size: 0.86rem;
+}
+
 .projectTaskProgressTrack {
   width: 100%;
   height: 8px;
@@ -8245,6 +8260,11 @@
   .projectTaskProgressTrack {
     height: 7px;
     margin-top: 10px;
+  }
+
+  .projectTaskProgressLabel {
+    margin-top: 8px;
+    font-size: 0.76rem;
   }
 
   .projectTaskFlowActions {

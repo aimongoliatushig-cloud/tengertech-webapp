@@ -126,29 +126,19 @@ function cleanReviewReportText(value: string) {
     .trim();
 }
 
-function reportImageLabel(imageName: string, index: number, total: number) {
+function reportImageGroupKey(imageName: string, index: number, total: number) {
   const normalizedName = imageName.toLocaleLowerCase("mn-MN");
   if (normalizedName.includes("дараах") || normalizedName.includes("after")) {
-    return "Дараах зураг";
+    return "after";
   }
   if (normalizedName.includes("өмнөх") || normalizedName.includes("before")) {
-    return "Өмнөх зураг";
+    return "before";
   }
-  if (total === 1) {
-    return "Нотлох зураг";
-  }
-  return index < Math.ceil(total / 2) ? "Өмнөх зураг" : "Дараах зураг";
+  return total > 1 && index >= Math.ceil(total / 2) ? "after" : "before";
 }
 
-function reportImageGroupOrder(imageName: string) {
-  const normalizedName = imageName.toLocaleLowerCase("mn-MN");
-  if (normalizedName.includes("өмнөх") || normalizedName.includes("before")) {
-    return 0;
-  }
-  if (normalizedName.includes("дараах") || normalizedName.includes("after")) {
-    return 1;
-  }
-  return 0;
+function reportImageLabel(imageName: string, index: number, total: number) {
+  return reportImageGroupKey(imageName, index, total) === "after" ? "Дараах зураг" : "Өмнөх зураг";
 }
 
 function taskDetailErrorMessage(error: unknown) {
@@ -180,6 +170,12 @@ function isPlaceholderQuantity(task: Awaited<ReturnType<typeof loadTaskDetail>>)
     (unit === "нэгж" || unit === "unit" || !unit);
 
   return hasOnlyDefaultUnit && task.operationType !== "garbage" && task.operationType !== "garbage_seasonal";
+}
+
+function formatQuantityProgressLine(done: number, planned: number, unit: string) {
+  const unitLabel = unit.trim();
+  const amountLabel = `${done}/${planned}${unitLabel ? ` ${unitLabel}` : ""}`;
+  return `Гүйцэтгэл: ${amountLabel}`;
 }
 
 function isPhotoFirstReportTask(operationType: string) {
@@ -444,6 +440,13 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
       : hasMeaningfulQuantity && task.measurementUnit
         ? task.measurementUnit
         : "";
+  const quantityProgressLines = quantityLines.map((line) =>
+    formatQuantityProgressLine(
+      task.stageBucket === "done" ? line.quantity : (line.completedQuantity ?? 0),
+      line.quantity,
+      line.unit,
+    ),
+  );
   const actionPanel = (
     <aside className={`${styles.actionCard} ${reviewFocusedMode ? styles.reviewActionCard : ""}`} id="task-actions">
       <span className={styles.kicker}>{reviewFocusedMode ? "Үр дүн" : "Үндсэн үйлдэл"}</span>
@@ -506,12 +509,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
           <small>Явц: {task.progress}%</small>
           {quantityLines.length ? (
             <small>
-              Хэмжээ:{" "}
-              {quantityLines
-                .map((line) =>
-                  `${line.completedQuantity ?? 0}/${line.quantity} ${line.unit}`.trim(),
-                )
-                .join(", ")}
+              {quantityProgressLines.join(", ")}
             </small>
           ) : null}
         </div>
@@ -698,8 +696,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                   <div className={styles.quantityChipList}>
                     {quantityLines.map((line, index) => (
                       <span key={`${line.unit}-${index}`} className={styles.quantityChip}>
-                        <strong>{line.completedQuantity ?? 0}/{line.quantity}</strong>
-                        {line.unit}
+                        <strong>{quantityProgressLines[index]}</strong>
                       </span>
                     ))}
                   </div>
@@ -754,14 +751,21 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                         const showReportText = reviewFocusedMode
                           ? Boolean(reportText)
                           : Boolean(report.text || report.summary);
-                        const sortedReportImages = report.images
-                          .map((image, imageIndex) => ({ image, imageIndex }))
-                          .sort((left, right) => {
-                            const groupDiff =
-                              reportImageGroupOrder(left.image.name) - reportImageGroupOrder(right.image.name);
-                            return groupDiff || left.imageIndex - right.imageIndex;
-                          })
-                          .map((item) => item.image);
+                        const groupedReportImages = report.images.reduce(
+                          (groups, image, imageIndex) => {
+                            const groupKey = reportImageGroupKey(image.name, imageIndex, report.images.length);
+                            groups[groupKey].push({ image, imageIndex });
+                            return groups;
+                          },
+                          {
+                            before: [] as { image: (typeof report.images)[number]; imageIndex: number }[],
+                            after: [] as { image: (typeof report.images)[number]; imageIndex: number }[],
+                          },
+                        );
+                        const reportImageGroups = [
+                          { key: "before", label: "Өмнөх зураг", images: groupedReportImages.before },
+                          { key: "after", label: "Дараах зураг", images: groupedReportImages.after },
+                        ].filter((group) => group.images.length);
 
                         return (
                         <article
@@ -829,26 +833,36 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                             />
                           ) : null}
 
-                          {report.images.length ? (
-                            <ReportImageLightbox
-                              images={sortedReportImages.map((image, imageIndex) => ({
-                                id: image.id,
-                                url: image.url,
-                                name: image.name,
-                                alt: `${task.name} тайлангийн зураг`,
-                                caption: reportImageLabel(image.name, imageIndex, sortedReportImages.length),
-                              }))}
-                              gridClassName={`${dashboardStyles.reportImageGrid} ${
-                                reviewFocusedMode ? dashboardStyles.reviewReportImageGrid : ""
-                              }`}
-                              triggerClassName={`${dashboardStyles.reportImageLink} ${
-                                reviewFocusedMode ? dashboardStyles.reviewReportImageLink : ""
-                              }`}
-                              imageClassName={dashboardStyles.reportImage}
-                              captionClassName={dashboardStyles.reportImageCaption}
-                              showCaption={reviewFocusedMode}
-                              viewerTitle="Тайлангийн зураг"
-                            />
+                          {reportImageGroups.length ? (
+                            <div className={styles.reportImageGroups}>
+                              {reportImageGroups.map((group) => (
+                                <section key={group.key} className={styles.reportImageGroup}>
+                                  <div className={styles.reportImageGroupHeader}>
+                                    <strong>{group.label}</strong>
+                                    <span>{group.images.length} зураг</span>
+                                  </div>
+                                  <ReportImageLightbox
+                                    images={group.images.map(({ image, imageIndex }) => ({
+                                      id: image.id,
+                                      url: image.url,
+                                      name: image.name,
+                                      alt: `${task.name} тайлангийн ${group.label.toLocaleLowerCase("mn-MN")}`,
+                                      caption: reportImageLabel(image.name, imageIndex, report.images.length),
+                                    }))}
+                                    gridClassName={`${dashboardStyles.reportImageGrid} ${
+                                      reviewFocusedMode ? dashboardStyles.reviewReportImageGrid : ""
+                                    }`}
+                                    triggerClassName={`${dashboardStyles.reportImageLink} ${
+                                      reviewFocusedMode ? dashboardStyles.reviewReportImageLink : ""
+                                    }`}
+                                    imageClassName={dashboardStyles.reportImage}
+                                    captionClassName={dashboardStyles.reportImageCaption}
+                                    showCaption={reviewFocusedMode}
+                                    viewerTitle={group.label}
+                                  />
+                                </section>
+                              ))}
+                            </div>
                           ) : null}
 
                           {report.audios.length ? (

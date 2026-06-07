@@ -403,11 +403,11 @@ export function ProjectTaskEditModal({
                   <div className={styles.taskCreateStepActions}>
                     {canEditContent ? (
                       <button type="button" className={styles.primaryButton} onClick={() => setCurrentStep(2)}>
-                        Үргэлжлүүлэх
+                        Хэмжээ ба огноо руу шилжих
                       </button>
                     ) : (
                       <button type="submit" className={styles.primaryButton}>
-                        Хуваарилах
+                        Баг хуваарилах
                       </button>
                     )}
                   </div>
@@ -501,10 +501,10 @@ export function ProjectTaskEditModal({
 
                   <div className={styles.taskCreateStepActions}>
                     <button type="button" className={styles.secondaryButton} onClick={() => setCurrentStep(1)}>
-                      Буцах
+                      Үндсэн мэдээлэл рүү буцах
                     </button>
                     <button type="button" className={styles.primaryButton} onClick={() => setCurrentStep(3)}>
-                      Үргэлжлүүлэх
+                      Хянаж хадгалах рүү шилжих
                     </button>
                   </div>
                 </section>
@@ -524,7 +524,7 @@ export function ProjectTaskEditModal({
                     <article className={styles.taskCreateSummaryCard}>
                       <div>
                         <strong>Үндсэн мэдээлэл</strong>
-                        <button type="button" onClick={() => setCurrentStep(1)}>Засах</button>
+                        <button type="button" onClick={() => setCurrentStep(1)}>Үндсэн мэдээлэл засах</button>
                       </div>
                       <dl>
                         <dt>Даалгавар</dt>
@@ -539,7 +539,7 @@ export function ProjectTaskEditModal({
                     <article className={styles.taskCreateSummaryCard}>
                       <div>
                         <strong>Хэмжээ ба огноо</strong>
-                        <button type="button" onClick={() => setCurrentStep(2)}>Засах</button>
+                        <button type="button" onClick={() => setCurrentStep(2)}>Хэмжээ ба огноо засах</button>
                       </div>
                       <dl>
                         <dt>Эхлэх огноо</dt>
@@ -556,7 +556,7 @@ export function ProjectTaskEditModal({
                     <article className={styles.taskCreateSummaryCard}>
                       <div>
                         <strong>Тайлбар</strong>
-                        <button type="button" onClick={() => setCurrentStep(2)}>Засах</button>
+                        <button type="button" onClick={() => setCurrentStep(2)}>Тайлбар засах</button>
                       </div>
                       <dl>
                         <dt>Товч тайлбар</dt>
@@ -575,10 +575,10 @@ export function ProjectTaskEditModal({
 
                   <div className={`${styles.modalActions} ${styles.taskCreateFinalActions}`}>
                     <button type="button" className={styles.secondaryButton} onClick={() => setCurrentStep(2)}>
-                      Буцах
+                      Хэмжээ ба огноо руу буцах
                     </button>
                     <button type="submit" className={styles.primaryButton}>
-                      Хадгалах
+                      Даалгаврын өөрчлөлт хадгалах
                     </button>
                   </div>
                 </section>
@@ -597,7 +597,7 @@ export function ProjectTaskEditModal({
         className={styles.secondaryButton}
         onClick={openModal}
       >
-        {canEditContent ? "Засах" : "Баг хуваарилах"}
+        {canEditContent ? "Даалгавар засах" : "Баг хуваарилах"}
       </button>
       {modalContent}
     </>
