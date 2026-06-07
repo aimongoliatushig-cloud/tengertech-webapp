@@ -4,7 +4,7 @@ import { DashboardView } from "@/app/dashboard-view";
 import { LoadingShell } from "@/app/_components/loading-shell";
 import { ProcurementActionRequiredList } from "@/app/procurement/_components/procurement-dashboard-client";
 import { redirect } from "next/navigation";
-import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { loadSessionDepartmentName, shouldScopeToOwnDepartment } from "@/lib/access-scope";
 import {
   hasCapability,
   isHrOnlyRole,
@@ -502,7 +502,7 @@ async function DashboardPageContent({
   let scopedDepartmentName = await departmentScopeNamePromise;
   if (transportInspectorMode) {
     scopedDepartmentName = AUTO_BASE_GARBAGE_DEPARTMENT_NAME;
-  } else if (generalDashboardMode) {
+  } else if (generalDashboardMode && !shouldScopeToOwnDepartment(session)) {
     scopedDepartmentName = null;
   }
   const fleetBoardPromise = shouldLoadDashboardFleetBoard(session, {

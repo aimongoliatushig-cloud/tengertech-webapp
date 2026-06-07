@@ -33,6 +33,10 @@ export function shouldScopeToOwnDepartment(
   session: Pick<AppSession, "role"> & { groupFlags?: AppSession["groupFlags"] },
 ) {
   const flags = session.groupFlags;
+  if (session.role === "project_manager" || Boolean(flags?.municipalDepartmentHead)) {
+    return true;
+  }
+
   if (
     session.role === "system_admin" ||
     session.role === "director" ||
@@ -46,10 +50,8 @@ export function shouldScopeToOwnDepartment(
   }
 
   return (
-    session.role === "project_manager" ||
     session.role === "worker" ||
-    isMasterRole(session.role) ||
-    Boolean(flags?.municipalDepartmentHead)
+    isMasterRole(session.role)
   );
 }
 
