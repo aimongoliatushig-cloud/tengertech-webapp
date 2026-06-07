@@ -8,7 +8,6 @@ import {
   canSubmitWorkspaceReport,
   hasCapability,
   isMasterRole,
-  isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
 import { loadSessionDepartmentName, loadSessionEmployeeDepartmentName } from "@/lib/access-scope";
@@ -176,24 +175,11 @@ function canMutateReportOwner(session: { uid: number; role: string }, ownerId: n
   return session.role === "system_admin" || ownerId === session.uid;
 }
 
-function isFutureDateKey(dateKey: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(dateKey) && dateKey > getTodayDateKey();
-}
-
-async function assertWorkerTaskReportDateIsOpen(
+async function loadTaskForReportSubmission(
   taskId: number,
-  session: Awaited<ReturnType<typeof requireSession>>,
   connectionOverrides: { login: string; password: string },
-  reportPath: string,
 ) {
-  const task = await loadTaskDetail(taskId, connectionOverrides);
-  const isAssignedWorker = isWorkerOnly(session) || task.assigneeUserIds.includes(session.uid);
-
-  if (isAssignedWorker && isFutureDateKey(task.scheduledDate)) {
-    redirectWithMessage(reportPath, "error", "Тайланг зөвхөн тухайн ажлын өдөр оруулна уу.");
-  }
-
-  return task;
+  return loadTaskDetail(taskId, connectionOverrides);
 }
 
 async function assertCanReviewTaskAction(
@@ -2623,8 +2609,8 @@ export async function createTaskReportAction(formData: FormData) {
       login: session.login,
       password: session.password,
     };
-    const taskForReport = await timer.step("validation_task_date", () =>
-      assertWorkerTaskReportDateIsOpen(taskId, session, connectionOverrides, reportReturnPath),
+    const taskForReport = await timer.step("validation_task_load", () =>
+      loadTaskForReportSubmission(taskId, connectionOverrides),
     );
     const isPhotoFirstReport =
       isPhotoFirstReportOperation(taskForReport.operationType) ||
@@ -2814,14 +2800,12 @@ export async function updateTaskReportAction(formData: FormData) {
     if (!canMutateReportOwner(session, reportOwnerId)) {
       redirect(`${reportPath}?error=${encodeURIComponent("Та зөвхөн өөрийн илгээсэн тайланг засах боломжтой.")}`);
     }
-    const taskForReport = await timer.step("validation_task_date", () => assertWorkerTaskReportDateIsOpen(
+    const taskForReport = await timer.step("validation_task_load", () => loadTaskForReportSubmission(
       taskId,
-      session,
       {
         login: session.login,
         password: session.password,
       },
-      reportPath,
     ));
     const isPhotoFirstReport =
       isPhotoFirstReportOperation(taskForReport.operationType) ||
