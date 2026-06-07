@@ -126,17 +126,18 @@ function cleanReviewReportText(value: string) {
     .trim();
 }
 
-function reportImageLabel(index: number, total: number) {
+function reportImageLabel(imageName: string, index: number, total: number) {
+  const normalizedName = imageName.toLocaleLowerCase("mn-MN");
+  if (normalizedName.includes("дараах") || normalizedName.includes("after")) {
+    return "Дараах зураг";
+  }
+  if (normalizedName.includes("өмнөх") || normalizedName.includes("before")) {
+    return "Өмнөх зураг";
+  }
   if (total === 1) {
     return "Нотлох зураг";
   }
-  if (index === 0) {
-    return "Өмнөх зураг";
-  }
-  if (index === 1) {
-    return "Дараах зураг";
-  }
-  return `Нэмэлт зураг ${index + 1}`;
+  return index < Math.ceil(total / 2) ? "Өмнөх зураг" : "Дараах зураг";
 }
 
 function taskDetailErrorMessage(error: unknown) {
@@ -816,7 +817,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                                 url: image.url,
                                 name: image.name,
                                 alt: `${task.name} тайлангийн зураг`,
-                                caption: reportImageLabel(imageIndex, report.images.length),
+                                caption: reportImageLabel(image.name, imageIndex, report.images.length),
                               }))}
                               gridClassName={`${dashboardStyles.reportImageGrid} ${
                                 reviewFocusedMode ? dashboardStyles.reviewReportImageGrid : ""

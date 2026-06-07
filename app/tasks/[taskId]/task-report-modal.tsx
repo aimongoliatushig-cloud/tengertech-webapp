@@ -1091,14 +1091,6 @@ export function TaskReportModal({
                       removeFieldName="remove_image_attachment_ids"
                     />
 
-                    <PhotoReportField
-                      id="report_images"
-                      name="report_images"
-                      label="Нэмэлт зураг"
-                      maxFiles={5}
-                      emptyStateLabel="Нэмэлт зураг сонгоогүй байна"
-                    />
-
                     <AudioRecorderField
                       existingAudios={existingAudios}
                       removeFieldName="remove_audio_attachment_ids"

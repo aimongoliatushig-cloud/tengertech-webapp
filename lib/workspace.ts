@@ -3,6 +3,7 @@ import "server-only";
 import { CANONICAL_DEPARTMENT_NAMES, normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { normalizeDepartmentText } from "@/lib/department-permissions";
 import { findLocalInspectorScope } from "@/lib/inspector-scope-store";
+import { loadDepartmentHeadUserIds } from "@/lib/notification-recipients";
 import { createOdooConnection, executeOdooKw, loadFleetVehicleBoard, type OdooConnection } from "@/lib/odoo";
 import {
   findLocalRoadCleaningAreaOption,
@@ -6599,6 +6600,18 @@ export async function notifyWorkspaceTaskReportReviewers(
 
       if (isOperationsManagerReviewer || isDepartmentReviewer || isSeniorMasterReviewer) {
         recipientIds.add(user.id);
+      }
+    }
+
+    if (departmentId) {
+      const departmentHeadIds = await loadDepartmentHeadUserIds(departmentId, connectionOverrides).catch(
+        (error) => {
+          console.warn("Department head reviewer lookup failed:", error);
+          return [] as number[];
+        },
+      );
+      for (const userId of departmentHeadIds) {
+        recipientIds.add(userId);
       }
     }
 
