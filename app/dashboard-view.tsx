@@ -120,12 +120,28 @@ function isTransportInspectorDashboard(session: AppSession) {
   );
 }
 
+function normalizeDashboardRoleText(value?: string | null) {
+  return (value ?? "").trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
+}
+
+function dashboardRoleLooksDepartmentHead(value?: string | null) {
+  const text = normalizeDashboardRoleText(value);
+  return (
+    text.includes("хэлтсийн дарга") ||
+    text.includes("хэлтэсийн дарга") ||
+    text.includes("албаны дарга")
+  );
+}
+
 function isDepartmentHeadDashboard(session: AppSession) {
   const flags = session.groupFlags;
 
   return Boolean(
     session.role === "project_manager" ||
       flags?.municipalDepartmentHead ||
+      dashboardRoleLooksDepartmentHead(session.employeeJobTitle) ||
+      dashboardRoleLooksDepartmentHead(session.displayRoleLabel) ||
+      dashboardRoleLooksDepartmentHead(getSessionRoleLabel(session)) ||
       flags?.mfoManager ||
       flags?.environmentManager ||
       flags?.improvementManager ||
@@ -3413,12 +3429,14 @@ export function DashboardView({
     currentMasterProjects.length > 1 && "lg:grid-cols-2 2xl:grid-cols-3",
   );
 
-  const executiveDashboardMode = canViewGeneralDashboard && !workerMode;
+  const hasDepartmentScope = Boolean(departmentScopeName);
   const departmentHeadDashboardMode =
-    !executiveDashboardMode &&
+    hasDepartmentScope &&
     !workerMode &&
     !transportInspectorMode &&
     isDepartmentHeadDashboard(session);
+  const executiveDashboardMode =
+    canViewGeneralDashboard && !workerMode && !departmentHeadDashboardMode;
 
   if (executiveDashboardMode || departmentHeadDashboardMode) {
     const scopedDashboardTitle = departmentHeadDashboardMode

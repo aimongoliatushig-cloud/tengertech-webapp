@@ -389,7 +389,7 @@ export function AppMenu({
     roleLabelLower.includes("системийн админ") ||
     roleLabelLower.includes("system admin");
   const hasExecutiveMenuAccess = Boolean(
-    canViewGeneralDashboard ||
+    (canViewGeneralDashboard && !(roleLooksDepartmentHead && departmentScopeName)) ||
     flags.municipalDirector ||
     flags.fleetRepairCeo ||
     flags.fleetRepairGeneralManager ||

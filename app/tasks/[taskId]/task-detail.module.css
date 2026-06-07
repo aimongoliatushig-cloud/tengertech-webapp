@@ -707,6 +707,10 @@
   white-space: pre-wrap;
 }
 
+.descriptionCard p {
+  margin: 0;
+}
+
 .actionCard {
   align-content: start;
 }
@@ -801,6 +805,100 @@
   border-radius: var(--ds-radius-card);
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(74, 154, 93, 0.1);
+}
+
+.managementCard {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(74, 154, 93, 0.16);
+  border-radius: var(--ds-radius-card);
+  background:
+    linear-gradient(180deg, rgba(248, 253, 249, 0.96), rgba(255, 255, 255, 0.92)),
+    #fff;
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.managementHeader,
+.managementList {
+  display: grid;
+  gap: 12px;
+}
+
+.managementItem {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 70px;
+  padding: 12px;
+  border: 1px solid rgba(74, 154, 93, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.managementIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-800);
+}
+
+.managementItem div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.managementItem strong {
+  color: var(--ink-900);
+  font-size: 0.98rem;
+  line-height: 1.25;
+}
+
+.managementItem small {
+  color: var(--ink-600);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.managementButton,
+.managementActionControl button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(74, 154, 93, 0.18);
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.08);
+  color: var(--brand-900);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.managementActionControl button {
+  width: auto;
+  box-shadow: none;
+}
+
+.managementDeleteForm {
+  display: grid;
+  padding-top: 2px;
+}
+
+.managementDeleteForm .dangerButton {
+  min-height: 42px;
+  width: 100%;
 }
 
 .chatterCard {
@@ -2007,6 +2105,10 @@
     order: -1;
   }
 
+  .managementCard {
+    position: static;
+  }
+
   .summaryTop,
   .sectionHead,
   .reportCardTop,
@@ -2073,6 +2175,7 @@
   .summaryCard,
   .sectionCard,
   .actionCard,
+  .managementCard,
   .reportComposer,
   .modalDialog,
   .reportCard,
@@ -2141,6 +2244,23 @@
 
   .summaryCard > .anchorRow {
     display: none;
+  }
+
+  .managementItem {
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .managementButton,
+  .managementActionControl,
+  .managementActionControl button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .managementButton,
+  .managementActionControl button {
+    min-height: 46px;
   }
 
   .titleBlock h1 {

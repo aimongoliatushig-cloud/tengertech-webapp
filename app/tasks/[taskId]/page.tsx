@@ -1,7 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, CalendarDays, ClipboardCheck, ClipboardList, MoreVertical } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  ClipboardCheck,
+  ClipboardList,
+  FileText,
+  Info,
+  MoreVertical,
+  ShieldCheck,
+  UsersRound,
+} from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { ReportImageLightbox } from "@/app/_components/report-image-lightbox";
@@ -449,7 +459,9 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   );
   const actionPanel = (
     <aside className={`${styles.actionCard} ${reviewFocusedMode ? styles.reviewActionCard : ""}`} id="task-actions">
-      <span className={styles.kicker}>{reviewFocusedMode ? "Үр дүн" : "Үндсэн үйлдэл"}</span>
+      <span className={styles.kicker}>
+        {reviewFocusedMode ? "Хяналт" : showReportComposer ? "Тайлан оруулах" : "Үйлдэл"}
+      </span>
       <strong className={styles.actionTitle}>{primaryActionLabel}</strong>
       {reviewFocusedMode ? (
         <div className={styles.reviewResultBar}>
@@ -532,6 +544,109 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
       ) : null}
     </aside>
   );
+  const showTaskManagementPanel = !workerMode;
+  const taskManagementPanel = showTaskManagementPanel ? (
+    <aside className={styles.managementCard} aria-labelledby="task-management-title">
+      <div className={styles.managementHeader}>
+        <span className={styles.kicker}>Удирдлага</span>
+        <strong id="task-management-title" className={styles.actionTitle}>Даалгаврын удирдлага</strong>
+      </div>
+
+      <div className={styles.managementList}>
+        <div className={styles.managementItem}>
+          <span className={styles.managementIcon} aria-hidden="true">
+            <Info size={18} strokeWidth={2.4} />
+          </span>
+          <div>
+            <strong>Даалгаврын мэдээлэл</strong>
+            <small>Нэр, хугацаа, хэмжээ, тайлбар</small>
+          </div>
+          <Link href="#task-overview" className={styles.managementButton}>
+            Харах
+          </Link>
+        </div>
+
+        <div className={styles.managementItem}>
+          <span className={styles.managementIcon} aria-hidden="true">
+            <UsersRound size={18} strokeWidth={2.4} />
+          </span>
+          <div>
+            <strong>Баг ба ажилтан</strong>
+            <small>{canEditTask ? "Хариуцсан хүн эсвэл баг онооно" : "Одоогийн бүрэлдэхүүнийг харна"}</small>
+          </div>
+          {canEditTask && task.projectId ? (
+            <div className={styles.managementActionControl}>
+              <ProjectTaskEditModal
+                action={updateTaskAction}
+                projectId={task.projectId}
+                taskId={task.id}
+                taskName={task.name}
+                teamLeaderId={task.teamLeaderId}
+                crewTeamId={task.crewTeamId}
+                startDateValue={task.startDateValue}
+                deadlineValue={task.deadlineValue}
+                plannedQuantity={task.plannedQuantity}
+                measurementUnitId={task.measurementUnitId}
+                description={task.description}
+                canEditContent={canEditTaskContent}
+                departmentUserOptions={taskEditDepartmentUserOptions}
+                crewTeamOptions={taskEditCrewTeamOptions}
+                unitOptions={taskEditOptions.unitOptions}
+              />
+            </div>
+          ) : (
+            <Link href="#task-team" className={styles.managementButton}>
+              Харах
+            </Link>
+          )}
+        </div>
+
+        <div className={styles.managementItem}>
+          <span className={styles.managementIcon} aria-hidden="true">
+            <FileText size={18} strokeWidth={2.4} />
+          </span>
+          <div>
+            <strong>Гүйцэтгэлийн тайлан</strong>
+            <small>
+              {showReportComposer
+                ? "Тайлан оруулах хэсэг"
+                : task.reports.length
+                  ? `${task.reports.length} тайлан бүртгэлтэй`
+                  : "Тайлан хараахан ирээгүй"}
+            </small>
+          </div>
+          <Link href={showReportComposer ? "#task-actions" : "#task-reports"} className={styles.managementButton}>
+            {showReportComposer ? "Оруулах" : "Харах"}
+          </Link>
+        </div>
+
+        {canManageReview || canMarkDone || canReturnForChanges ? (
+          <div className={styles.managementItem}>
+            <span className={styles.managementIcon} aria-hidden="true">
+              <ShieldCheck size={18} strokeWidth={2.4} />
+            </span>
+            <div>
+              <strong>Тайлан хянах</strong>
+              <small>Зөв бол дуусгах, засвар шаардвал буцаах</small>
+            </div>
+            <Link href="#task-actions" className={styles.managementButton}>
+              Хянах
+            </Link>
+          </div>
+        ) : null}
+      </div>
+
+      {canDeleteTask && task.projectId ? (
+        <form action={deleteTaskAction} className={styles.managementDeleteForm}>
+          <input type="hidden" name="project_id" value={task.projectId} />
+          <input type="hidden" name="task_id" value={task.id} />
+          <button type="submit" className={styles.dangerButton}>
+            Даалгавар устгах
+          </button>
+        </form>
+      ) : null}
+    </aside>
+  ) : null;
 
   return (
     <main className={shellStyles.shell}>
@@ -587,7 +702,10 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
               <div className={`${shellStyles.message} ${shellStyles.noticeMessage}`}>{noticeMessage}</div>
             ) : null}
 
-            <section className={`${styles.summaryCard} ${reviewFocusedMode ? styles.reviewSummaryCard : ""}`}>
+            <section
+              className={`${styles.summaryCard} ${reviewFocusedMode ? styles.reviewSummaryCard : ""}`}
+              id="task-overview"
+            >
               {workerMode ? (
                 <div className={styles.workerDetailMobileHero}>
                   <div className={styles.workerDetailHeroIcon} aria-hidden="true">
@@ -605,8 +723,8 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
               ) : null}
               <div className={styles.summaryTop}>
                 <div className={styles.titleBlock}>
-                  <span className={styles.kicker}>{reviewFocusedMode ? "Шалгалт" : "Даалгавар"}</span>
-                  <h1>{canManageReview ? "Тайлан шалгах" : "Даалгаврын мэдээлэл"}</h1>
+                  <span className={styles.kicker}>{reviewFocusedMode ? "Шалгалттай даалгавар" : "Даалгавар"}</span>
+                  <h1>{reviewFocusedMode ? "Даалгавар ба тайлан" : "Даалгаврын мэдээлэл"}</h1>
                   {!reviewFocusedMode ? (
                     <span className={styles.taskProjectName}>
                       Харьяалах ажил: {task.projectName}
@@ -615,34 +733,6 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 </div>
                 <div className={styles.heroActionGroup}>
                   <StagePill label={task.stageLabel} bucket={task.stageBucket} />
-                  {canEditTask && task.projectId ? (
-                    <ProjectTaskEditModal
-                      action={updateTaskAction}
-                      projectId={task.projectId}
-                      taskId={task.id}
-                      taskName={task.name}
-                      teamLeaderId={task.teamLeaderId}
-                      crewTeamId={task.crewTeamId}
-                      startDateValue={task.startDateValue}
-                      deadlineValue={task.deadlineValue}
-                      plannedQuantity={task.plannedQuantity}
-                      measurementUnitId={task.measurementUnitId}
-                      description={task.description}
-                      canEditContent={canEditTaskContent}
-                      departmentUserOptions={taskEditDepartmentUserOptions}
-                      crewTeamOptions={taskEditCrewTeamOptions}
-                      unitOptions={taskEditOptions.unitOptions}
-                    />
-                  ) : null}
-                  {canDeleteTask && task.projectId ? (
-                    <form action={deleteTaskAction} className={styles.inlineTaskDeleteForm}>
-                      <input type="hidden" name="project_id" value={task.projectId} />
-                      <input type="hidden" name="task_id" value={task.id} />
-                      <button type="submit" className={styles.dangerButton}>
-                        Устгах
-                      </button>
-                    </form>
-                  ) : null}
                 </div>
               </div>
 
@@ -728,6 +818,13 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                       Жин
                     </span>
                   </div>
+                </section>
+              ) : null}
+
+              {task.description ? (
+                <section className={styles.descriptionCard}>
+                  <span className={styles.kicker}>Тайлбар</span>
+                  <p>{task.description}</p>
                 </section>
               ) : null}
             </section>
@@ -895,6 +992,8 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
               </div>
 
               <div className={styles.sideColumn}>
+                {taskManagementPanel}
+
                 {reviewFocusedMode ? (
                 <aside className={`${styles.chatterCard} ${styles.reviewChatCard}`} id="task-chatter">
                   <div className={styles.chatterTop}>
@@ -1020,7 +1119,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 </aside>
                 ) : null}
 
-                <aside className={`${styles.chatterCard} ${styles.teamCard}`}>
+                <aside className={`${styles.chatterCard} ${styles.teamCard}`} id="task-team">
                   <div className={styles.chatterTop}>
                     <div>
                       <span className={styles.kicker}>Хариуцсан бүрэлдэхүүн</span>
