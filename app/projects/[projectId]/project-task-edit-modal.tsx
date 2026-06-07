@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, ClipboardList, Ruler } from "lucide-react";
+import { CheckCircle2, ClipboardList, PlusCircle, Ruler } from "lucide-react";
 
 import { SearchableSelect, type SearchableSelectOption } from "@/app/_components/searchable-select";
 import styles from "@/app/workspace.module.css";
@@ -25,6 +25,7 @@ type Props = {
   crewTeamOptions: Array<{
     id: number;
     label: string;
+    memberUserIds?: number[];
   }>;
   unitOptions: WorkUnitOption[];
 };
@@ -81,6 +82,10 @@ export function ProjectTaskEditModal({
   const [selectedTeamLeaderId, setSelectedTeamLeaderId] = useState<number | null>(teamLeaderId);
   const [useTeam, setUseTeam] = useState(Boolean(crewTeamId));
   const [selectedCrewTeamId, setSelectedCrewTeamId] = useState(crewTeamId ? String(crewTeamId) : "");
+  const [showNewTeamFields, setShowNewTeamFields] = useState(false);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [selectedNewTeamMemberIds, setSelectedNewTeamMemberIds] = useState<string[]>([]);
+  const [teamMemberQuery, setTeamMemberQuery] = useState("");
   const [editedStartDate, setEditedStartDate] = useState(startDateValue);
   const [editedDeadline, setEditedDeadline] = useState(deadlineValue);
   const [useQuantity, setUseQuantity] = useState(plannedQuantity > 0 || Boolean(measurementUnitId));
@@ -92,8 +97,28 @@ export function ProjectTaskEditModal({
 
   const assigneeOptions = useMemo(() => buildUserOptions(departmentUserOptions), [departmentUserOptions]);
   const measurementUnitOptions = useMemo(() => buildUnitOptions(unitOptions), [unitOptions]);
+  const filteredTeamMembers = useMemo(() => {
+    const normalizedQuery = teamMemberQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return departmentUserOptions;
+    }
+
+    return departmentUserOptions.filter((user) =>
+      [
+        user.name,
+        user.jobTitle ?? "",
+        user.phone ?? "",
+        user.login,
+        user.departmentName ?? "",
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [departmentUserOptions, teamMemberQuery]);
   const selectedCrewTeamLabel =
-    crewTeamOptions.find((team) => String(team.id) === selectedCrewTeamId)?.label || "Баг сонгоогүй";
+    crewTeamOptions.find((team) => String(team.id) === selectedCrewTeamId)?.label ||
+    (newTeamName.trim() ? `Шинэ баг: ${newTeamName.trim()}` : "Баг сонгоогүй");
   const selectedUnitLabel =
     measurementUnitOptions.find((unit) => unit.id === selectedUnitId)?.label || "Нэгж сонгоогүй";
   const selectedAssigneeLabel =
@@ -140,6 +165,10 @@ export function ProjectTaskEditModal({
     setSelectedTeamLeaderId(teamLeaderId);
     setUseTeam(Boolean(crewTeamId));
     setSelectedCrewTeamId(crewTeamId ? String(crewTeamId) : "");
+    setShowNewTeamFields(false);
+    setNewTeamName("");
+    setSelectedNewTeamMemberIds([]);
+    setTeamMemberQuery("");
     setEditedStartDate(startDateValue);
     setEditedDeadline(deadlineValue);
     setUseQuantity(plannedQuantity > 0 || Boolean(measurementUnitId));
@@ -147,6 +176,16 @@ export function ProjectTaskEditModal({
     setSelectedUnitId(measurementUnitId);
     setEditedDescription(description);
     setIsOpen(true);
+  };
+
+  const toggleNewTeamMember = (memberId: string, checked: boolean) => {
+    setSelectedNewTeamMemberIds((current) => {
+      if (checked) {
+        return current.includes(memberId) ? current : [...current, memberId];
+      }
+
+      return current.filter((item) => item !== memberId);
+    });
   };
 
   const portalTarget = isMounted ? document.body : null;
@@ -286,6 +325,77 @@ export function ProjectTaskEditModal({
                             ))}
                           </select>
                         </div>
+
+                        <button
+                          type="button"
+                          className={styles.teamCreateButton}
+                          onClick={() => {
+                            setShowNewTeamFields((current) => !current);
+                            setSelectedCrewTeamId("");
+                          }}
+                          aria-expanded={showNewTeamFields}
+                        >
+                          <PlusCircle aria-hidden />
+                          <span>{showNewTeamFields ? "Шинэ багийг хаах" : "Шинэ баг нэмэх"}</span>
+                        </button>
+
+                        {showNewTeamFields ? (
+                          <div className={styles.inlineTeamPanel}>
+                            {selectedNewTeamMemberIds.map((memberId) => (
+                              <input
+                                key={memberId}
+                                type="hidden"
+                                name="new_crew_member_user_ids"
+                                value={memberId}
+                              />
+                            ))}
+                            <label>
+                              <span>Багийн нэр</span>
+                              <input
+                                name="new_crew_team_name"
+                                placeholder="Жишээ: Ногоон байгууламжийн баг 01"
+                                value={newTeamName}
+                                onChange={(event) => setNewTeamName(event.target.value)}
+                              />
+                            </label>
+                            <fieldset>
+                              <legend>Багийн гишүүд</legend>
+                              <input
+                                type="search"
+                                value={teamMemberQuery}
+                                onChange={(event) => setTeamMemberQuery(event.target.value)}
+                                placeholder="Нэр, албан тушаал эсвэл утсаар хайх"
+                                className={styles.inlineMemberSearch}
+                              />
+                              <div className={styles.inlineMemberList}>
+                                {filteredTeamMembers.length ? (
+                                  filteredTeamMembers.map((user) => (
+                                    <label key={user.id}>
+                                      <input
+                                        type="checkbox"
+                                        value={user.id}
+                                        checked={selectedNewTeamMemberIds.includes(String(user.id))}
+                                        onChange={(event) =>
+                                          toggleNewTeamMember(String(user.id), event.target.checked)
+                                        }
+                                      />
+                                      <span>
+                                        <strong>{user.name}</strong>
+                                        <small>
+                                          {[user.jobTitle, user.phone || user.login]
+                                            .filter(Boolean)
+                                            .join(" · ") || "Албан тушаал бүртгэлгүй"}
+                                        </small>
+                                      </span>
+                                    </label>
+                                  ))
+                                ) : (
+                                  <p>Тохирох ажилтан олдсонгүй.</p>
+                                )}
+                              </div>
+                            </fieldset>
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </section>

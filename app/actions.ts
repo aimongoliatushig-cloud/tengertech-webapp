@@ -2221,6 +2221,11 @@ export async function updateTaskAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const teamLeaderIdRaw = String(formData.get("team_leader_id") ?? "").trim();
   const crewTeamIdRaw = String(formData.get("crew_team_id") ?? "").trim();
+  const newCrewTeamName = String(formData.get("new_crew_team_name") ?? "").trim();
+  const newCrewMemberUserIds = formData
+    .getAll("new_crew_member_user_ids")
+    .map((value) => Number(String(value)))
+    .filter((value) => Number.isFinite(value) && value > 0);
   const startDate = String(formData.get("start_date") ?? "").trim();
   const deadline = String(formData.get("deadline") ?? "").trim();
   const plannedQuantityRaw = String(formData.get("planned_quantity") ?? "").trim();
@@ -2257,7 +2262,7 @@ export async function updateTaskAction(formData: FormData) {
 
     const canEditTaskContent = task.createdById === session.uid;
     const selectedTeamLeaderId = teamLeaderIdRaw ? Number(teamLeaderIdRaw) : null;
-    const selectedCrewTeam = crewTeamIdRaw
+    let selectedCrewTeam = crewTeamIdRaw
       ? project.crewTeamOptions.find((team) => team.id === Number(crewTeamIdRaw)) ?? null
       : null;
     const measurementUnitId = unitIdRaw ? Number(unitIdRaw) : null;
@@ -2276,6 +2281,39 @@ export async function updateTaskAction(formData: FormData) {
 
     if (crewTeamIdRaw && !selectedCrewTeam) {
       redirectWithMessage(target, "error", "Сонгосон баг энэ ажилд хамаарахгүй байна.");
+    }
+
+    if (!selectedCrewTeam && newCrewTeamName) {
+      if (!newCrewMemberUserIds.length) {
+        redirectWithMessage(target, "error", "Шинэ баг үүсгэх бол гишүүдээс дор хаяж нэг ажилтан сонгоно уу.");
+      }
+
+      const allowedUserIds = new Set(
+        [
+          project.managerId,
+          ...project.departmentUserOptions.map((user) => user.id),
+          ...project.teamLeaderOptions.map((user) => user.id),
+        ].filter((id): id is number => Boolean(id)),
+      );
+      const invalidMemberIds = newCrewMemberUserIds.filter((userId) => !allowedUserIds.has(userId));
+      if (invalidMemberIds.length) {
+        redirectWithMessage(target, "error", "Шинэ багийн гишүүд энэ ажилд хамаарах хэлтсийн ажилтан байх ёстой.");
+      }
+
+      const createdTeam = await createWorkspaceCrewTeam(
+        {
+          name: newCrewTeamName,
+          departmentId: project.departmentId,
+          operationType: project.operationType || undefined,
+          memberUserIds: newCrewMemberUserIds,
+        },
+        connectionOverrides,
+      );
+      selectedCrewTeam = {
+        id: createdTeam.id,
+        label: newCrewTeamName,
+        memberUserIds: createdTeam.memberUserIds,
+      };
     }
 
     if (canEditTaskContent && !name) {

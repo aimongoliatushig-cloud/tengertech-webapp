@@ -32,11 +32,24 @@ function getFallbackDepartmentName(session: Pick<AppSession, "role">) {
 export function shouldScopeToOwnDepartment(
   session: Pick<AppSession, "role"> & { groupFlags?: AppSession["groupFlags"] },
 ) {
+  const flags = session.groupFlags;
+  if (
+    session.role === "system_admin" ||
+    session.role === "director" ||
+    session.role === "general_manager" ||
+    flags?.municipalManager ||
+    flags?.municipalDirector ||
+    flags?.fleetRepairCeo ||
+    flags?.fleetRepairGeneralManager
+  ) {
+    return false;
+  }
+
   return (
     session.role === "project_manager" ||
     session.role === "worker" ||
     isMasterRole(session.role) ||
-    Boolean(session.groupFlags?.municipalDepartmentHead)
+    Boolean(flags?.municipalDepartmentHead)
   );
 }
 

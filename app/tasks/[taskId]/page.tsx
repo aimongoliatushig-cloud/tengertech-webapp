@@ -599,7 +599,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                   <h1>{canManageReview ? "Тайлан шалгах" : "Даалгаврын мэдээлэл"}</h1>
                   {!reviewFocusedMode ? (
                     <span className={styles.taskProjectName}>
-                      {task.name} · {task.projectName}
+                      Харьяалах ажил: {task.projectName}
                     </span>
                   ) : null}
                 </div>
@@ -639,10 +639,6 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
               <div className={`${styles.heroStats} ${reviewFocusedMode ? styles.reviewStats : ""}`}>
                 {!reviewFocusedMode ? (
                   <>
-                <article className={styles.heroStatCard}>
-                  <span>Даалгаврын нэр</span>
-                  <strong>{task.name}</strong>
-                </article>
                 <article className={styles.heroStatCard}>
                   <span>Хариуцсан хүн</span>
                   <strong>{taskAssigneeLabel}</strong>

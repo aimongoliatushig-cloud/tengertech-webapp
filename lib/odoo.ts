@@ -3828,6 +3828,8 @@ export async function authenticateOdooUser(
     ? null
     : municipalDirector || fleetRepairCeo
       ? "director"
+      : municipalManager
+        ? "general_manager"
       : hrCustomAdmin
         ? "hr_manager"
         : municipalHr || hrCustomOfficer

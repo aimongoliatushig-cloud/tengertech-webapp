@@ -32,7 +32,7 @@ import {
 } from "@/lib/session";
 
 const WORKER_ROLE_REFRESH_INTERVAL_MS = 5 * 60_000;
-const CURRENT_SESSION_ROLE_INFERENCE_VERSION = 9;
+const CURRENT_SESSION_ROLE_INFERENCE_VERSION = 10;
 
 export type AppSession = {
   uid: number;
