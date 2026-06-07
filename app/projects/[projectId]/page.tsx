@@ -727,6 +727,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                         task.stageBucket !== "done";
                       const photoFirstReportTask =
                         isPhotoFirstReportTask(task.operationType) || isRoadAreaCleaningTask(task);
+                      const taskDescription = task.description.trim();
                       const taskCardContent = (
                         <>
                           <span className={styles.projectTaskNumber}>{index + 1}</span>
@@ -734,6 +735,11 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                             <div className={styles.projectTaskTitleRow}>
                               <div>
                                 <h3>{task.name}</h3>
+                                {taskDescription ? (
+                                  <p className={styles.projectTaskDescription}>
+                                    Тайлбар: {taskDescription}
+                                  </p>
+                                ) : null}
                                 <p>
                                   Хариуцсан ажилтан: {task.teamLeaderName}
                                   {task.teamLeaderJobTitle ? ` · ${task.teamLeaderJobTitle}` : ""}

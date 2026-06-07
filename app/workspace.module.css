@@ -3686,6 +3686,17 @@
   word-break: break-word;
 }
 
+.projectTaskDescription {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  color: #4f6256 !important;
+  font-size: 0.84rem !important;
+  font-weight: 700;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .projectTaskStatusStack {
   display: flex;
   align-items: flex-end;

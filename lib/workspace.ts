@@ -4768,23 +4768,23 @@ export async function loadTaskDetail(
     });
   }
   const reportProgress = enrichQuantityLinesWithReportProgress(quantityLines, reports);
-  const effectiveQuantityLines = reportProgress.quantityLines.length
+  const baseQuantityLines = reportProgress.quantityLines.length
     ? reportProgress.quantityLines
     : quantityLines;
-  const effectivePlannedQuantity = effectiveQuantityLines.length
-    ? effectiveQuantityLines.reduce((total, line) => total + line.quantity, 0)
+  const effectivePlannedQuantity = baseQuantityLines.length
+    ? baseQuantityLines.reduce((total, line) => total + line.quantity, 0)
     : (task.ops_planned_quantity ?? 0);
-  const effectiveCompletedQuantity =
+  const baseCompletedQuantity =
     reportProgress.completedQuantity > 0
       ? reportProgress.completedQuantity
       : (task.ops_completed_quantity ?? 0);
-  const effectiveProgress =
+  const baseProgress =
     reportProgress.progress > 0
       ? reportProgress.progress
       : Math.round(task.ops_progress_percent ?? 0);
   const effectiveStage = resolveEffectiveTaskStage(
     relationName(task.stage_id, ""),
-    effectiveProgress,
+    baseProgress,
     {
       reportCount: reports.length,
       reportStates: reports.map((report) => report.state),
@@ -4793,6 +4793,19 @@ export async function loadTaskDetail(
       reportsLocked: Boolean(task.ops_reports_locked),
     },
   );
+  const isCompletedTask = effectiveStage.bucket === "done";
+  const effectiveQuantityLines = isCompletedTask
+    ? baseQuantityLines.map((line) => ({
+        ...line,
+        completedQuantity: line.quantity,
+        progress: 100,
+      }))
+    : baseQuantityLines;
+  const effectiveCompletedQuantity =
+    isCompletedTask && effectivePlannedQuantity > 0
+      ? effectivePlannedQuantity
+      : baseCompletedQuantity;
+  const effectiveProgress = isCompletedTask ? 100 : baseProgress;
 
   return {
     id: task.id,
@@ -6761,12 +6774,25 @@ export async function forceWorkspaceTaskDone(
 ) {
   const doneStageId = await loadDoneTaskStageId(connectionOverrides);
   const taskFields = await loadModelFieldNames("project.task", connectionOverrides).catch(() => null);
+  const taskRecord = taskFields?.has("ops_completed_quantity")
+    ? await searchReadWithFieldFallback<Pick<TaskRecord, "ops_planned_quantity">>(
+        "project.task",
+        [["id", "=", taskId]],
+        ["ops_planned_quantity"],
+        { limit: 1 },
+        connectionOverrides,
+      ).then((tasks) => tasks[0] ?? null).catch(() => null)
+    : null;
   let values: Record<string, unknown> = {
     ops_progress_percent: 100,
     ops_reports_locked: true,
     mfo_state: "verified",
     state: "1_done",
   };
+
+  if ((taskRecord?.ops_planned_quantity ?? 0) > 0) {
+    values.ops_completed_quantity = taskRecord?.ops_planned_quantity ?? 0;
+  }
 
   if (doneStageId) {
     values.stage_id = doneStageId;
