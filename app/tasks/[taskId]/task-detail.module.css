@@ -667,6 +667,35 @@
   line-height: 1;
 }
 
+.inlineReviewSubmitForm {
+  display: inline-flex;
+  justify-content: flex-end;
+}
+
+.inlineReviewSubmitButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
+  color: #f7fcf6;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 12px 24px rgba(31, 95, 49, 0.16);
+  cursor: pointer;
+}
+
+.inlineReviewSubmitButton[data-pending="true"],
+.inlineReviewSubmitButton:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .infoGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -807,100 +836,6 @@
   border: 1px solid rgba(74, 154, 93, 0.1);
 }
 
-.managementCard {
-  display: grid;
-  gap: 14px;
-  padding: 18px;
-  border: 1px solid rgba(74, 154, 93, 0.16);
-  border-radius: var(--ds-radius-card);
-  background:
-    linear-gradient(180deg, rgba(248, 253, 249, 0.96), rgba(255, 255, 255, 0.92)),
-    #fff;
-  box-shadow: var(--ds-shadow-panel);
-}
-
-.managementHeader,
-.managementList {
-  display: grid;
-  gap: 12px;
-}
-
-.managementItem {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  min-height: 70px;
-  padding: 12px;
-  border: 1px solid rgba(74, 154, 93, 0.12);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.88);
-}
-
-.managementIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: rgba(74, 154, 93, 0.12);
-  color: var(--brand-800);
-}
-
-.managementItem div {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.managementItem strong {
-  color: var(--ink-900);
-  font-size: 0.98rem;
-  line-height: 1.25;
-}
-
-.managementItem small {
-  color: var(--ink-600);
-  font-size: 0.82rem;
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.managementButton,
-.managementActionControl button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid rgba(74, 154, 93, 0.18);
-  border-radius: 999px;
-  background: rgba(74, 154, 93, 0.08);
-  color: var(--brand-900);
-  font: inherit;
-  font-size: 0.88rem;
-  font-weight: 800;
-  text-decoration: none;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.managementActionControl button {
-  width: auto;
-  box-shadow: none;
-}
-
-.managementDeleteForm {
-  display: grid;
-  padding-top: 2px;
-}
-
-.managementDeleteForm .dangerButton {
-  min-height: 42px;
-  width: 100%;
-}
-
 .chatterCard {
   display: grid;
   gap: 16px;
@@ -921,6 +856,26 @@
 
 .chatterTop {
   justify-content: space-between;
+}
+
+.chatterTopActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.chatterTopActions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 850;
+  white-space: nowrap;
+  box-shadow: none;
 }
 
 .chatterCount {
@@ -2105,10 +2060,6 @@
     order: -1;
   }
 
-  .managementCard {
-    position: static;
-  }
-
   .summaryTop,
   .sectionHead,
   .reportCardTop,
@@ -2175,7 +2126,6 @@
   .summaryCard,
   .sectionCard,
   .actionCard,
-  .managementCard,
   .reportComposer,
   .modalDialog,
   .reportCard,
@@ -2244,23 +2194,6 @@
 
   .summaryCard > .anchorRow {
     display: none;
-  }
-
-  .managementItem {
-    grid-template-columns: 38px minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .managementButton,
-  .managementActionControl,
-  .managementActionControl button {
-    grid-column: 1 / -1;
-    width: 100%;
-  }
-
-  .managementButton,
-  .managementActionControl button {
-    min-height: 46px;
   }
 
   .titleBlock h1 {
@@ -2350,6 +2283,27 @@
     padding: 10px 12px;
     font-size: 0.84rem;
     line-height: 1.5;
+  }
+
+  .inlineReviewSubmitForm,
+  .inlineReviewSubmitButton {
+    width: 100%;
+  }
+
+  .inlineReviewSubmitButton {
+    min-height: 46px;
+  }
+
+  .chatterTopActions {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: stretch;
+    flex-wrap: wrap;
+  }
+
+  .chatterTopActions button {
+    flex: 1 1 180px;
+    min-height: 44px;
   }
 
   .filePickerHeader,

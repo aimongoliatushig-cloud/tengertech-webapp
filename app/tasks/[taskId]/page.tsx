@@ -6,11 +6,7 @@ import {
   CalendarDays,
   ClipboardCheck,
   ClipboardList,
-  FileText,
-  Info,
   MoreVertical,
-  ShieldCheck,
-  UsersRound,
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
@@ -18,7 +14,6 @@ import { ReportImageLightbox } from "@/app/_components/report-image-lightbox";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import {
   createTaskReportAction,
-  deleteTaskAction,
   deleteTaskReportAction,
   markTaskDoneAction,
   postTaskMessageAction,
@@ -31,7 +26,6 @@ import dashboardStyles from "@/app/page.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import {
   canSubmitWorkspaceReport,
-  canDeleteWorkspaceItems,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
@@ -335,6 +329,14 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const isGarbageTransportTask =
     task.operationType === "garbage" || task.operationType === "garbage_seasonal";
   const photoFirstReportTask = isPhotoFirstReportTask(task.operationType);
+  const canWriteReport =
+    !task.reportsLocked &&
+    task.stageBucket !== "review" &&
+    task.stageBucket !== "done" &&
+    hasCapability(session, "write_workspace_reports");
+  const canOpenReportComposer = canWriteReport && canSubmitWorkspaceReport(session);
+  const preferReportComposerOverReviewAction =
+    Boolean(session.groupFlags?.municipalDepartmentHead) && canOpenReportComposer && !hasSubmittedReport;
   const garbagePointIssueTotal =
     task.unresolvedStopCount + task.missingProofStopCount + task.deviationStopCount;
   const garbagePointCountLabel =
@@ -354,7 +356,8 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const canManageReview =
     !workerMode &&
     (!photoFirstReportTask || !isAssignedToCurrentUser) &&
-    canReviewSubmittedReport;
+    canReviewSubmittedReport &&
+    !preferReportComposerOverReviewAction;
   const reviewFocusedMode =
     !workerMode && hasSubmittedReport && canReviewSubmittedReport;
   const canMarkDone =
@@ -365,11 +368,6 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
     canManageReview &&
     !["done"].includes(task.stageBucket) &&
     (task.canReturnForChanges || hasSubmittedReport);
-  const canWriteReport =
-    !task.reportsLocked &&
-    task.stageBucket !== "review" &&
-    task.stageBucket !== "done" &&
-    hasCapability(session, "write_workspace_reports");
   const hasMeaningfulQuantity = !isPlaceholderQuantity(task);
   const quantitySummary =
     hasMeaningfulQuantity && task.quantityLines.length
@@ -382,11 +380,9 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
     : quantitySummary
       ? [{ quantity: task.plannedQuantity, unit: task.measurementUnit }]
       : [];
-  const canOpenReportComposer = canWriteReport && canSubmitWorkspaceReport(session);
   const canEditTaskContent = task.createdById === session.uid;
   const canAssignTaskTeam = canCreateTasks && Boolean(task.projectId) && !workerMode;
   const canEditTask = canAssignTaskTeam;
-  const canDeleteTask = canDeleteWorkspaceItems(session) && Boolean(task.projectId);
   const taskEditOptions =
     canEditTask && task.projectId
       ? await loadProjectTaskEditOptions(task.projectId, task.operationType, connectionOverrides)
@@ -544,108 +540,45 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
       ) : null}
     </aside>
   );
-  const showTaskManagementPanel = !workerMode;
-  const taskManagementPanel = showTaskManagementPanel ? (
-    <aside className={styles.managementCard} aria-labelledby="task-management-title">
-      <div className={styles.managementHeader}>
-        <span className={styles.kicker}>Удирдлага</span>
-        <strong id="task-management-title" className={styles.actionTitle}>Даалгаврын удирдлага</strong>
-      </div>
-
-      <div className={styles.managementList}>
-        <div className={styles.managementItem}>
-          <span className={styles.managementIcon} aria-hidden="true">
-            <Info size={18} strokeWidth={2.4} />
-          </span>
-          <div>
-            <strong>Даалгаврын мэдээлэл</strong>
-            <small>Нэр, хугацаа, хэмжээ, тайлбар</small>
-          </div>
-          <Link href="#task-overview" className={styles.managementButton}>
-            Харах
-          </Link>
-        </div>
-
-        <div className={styles.managementItem}>
-          <span className={styles.managementIcon} aria-hidden="true">
-            <UsersRound size={18} strokeWidth={2.4} />
-          </span>
-          <div>
-            <strong>Баг ба ажилтан</strong>
-            <small>{canEditTask ? "Хариуцсан хүн эсвэл баг онооно" : "Одоогийн бүрэлдэхүүнийг харна"}</small>
-          </div>
-          {canEditTask && task.projectId ? (
-            <div className={styles.managementActionControl}>
-              <ProjectTaskEditModal
-                action={updateTaskAction}
-                projectId={task.projectId}
-                taskId={task.id}
-                taskName={task.name}
-                teamLeaderId={task.teamLeaderId}
-                crewTeamId={task.crewTeamId}
-                startDateValue={task.startDateValue}
-                deadlineValue={task.deadlineValue}
-                plannedQuantity={task.plannedQuantity}
-                measurementUnitId={task.measurementUnitId}
-                description={task.description}
-                canEditContent={canEditTaskContent}
-                departmentUserOptions={taskEditDepartmentUserOptions}
-                crewTeamOptions={taskEditCrewTeamOptions}
-                unitOptions={taskEditOptions.unitOptions}
-              />
-            </div>
-          ) : (
-            <Link href="#task-team" className={styles.managementButton}>
-              Харах
-            </Link>
-          )}
-        </div>
-
-        <div className={styles.managementItem}>
-          <span className={styles.managementIcon} aria-hidden="true">
-            <FileText size={18} strokeWidth={2.4} />
-          </span>
-          <div>
-            <strong>Гүйцэтгэлийн тайлан</strong>
-            <small>
-              {showReportComposer
-                ? "Тайлан оруулах хэсэг"
-                : task.reports.length
-                  ? `${task.reports.length} тайлан бүртгэлтэй`
-                  : "Тайлан хараахан ирээгүй"}
-            </small>
-          </div>
-          <Link href={showReportComposer ? "#task-actions" : "#task-reports"} className={styles.managementButton}>
-            {showReportComposer ? "Оруулах" : "Харах"}
-          </Link>
-        </div>
-
-        {canManageReview || canMarkDone || canReturnForChanges ? (
-          <div className={styles.managementItem}>
-            <span className={styles.managementIcon} aria-hidden="true">
-              <ShieldCheck size={18} strokeWidth={2.4} />
-            </span>
-            <div>
-              <strong>Тайлан хянах</strong>
-              <small>Зөв бол дуусгах, засвар шаардвал буцаах</small>
-            </div>
-            <Link href="#task-actions" className={styles.managementButton}>
-              Хянах
-            </Link>
-          </div>
-        ) : null}
-      </div>
-
-      {canDeleteTask && task.projectId ? (
-        <form action={deleteTaskAction} className={styles.managementDeleteForm}>
-          <input type="hidden" name="project_id" value={task.projectId} />
-          <input type="hidden" name="task_id" value={task.id} />
-          <button type="submit" className={styles.dangerButton}>
-            Даалгавар устгах
-          </button>
-        </form>
-      ) : null}
-    </aside>
+  const submitForReviewInlineAction = canSubmitForReview ? (
+    <form action={submitTaskForReviewAction} className={styles.inlineReviewSubmitForm}>
+      <input type="hidden" name="task_id" value={task.id} />
+      <PendingSubmitButton
+        className={styles.inlineReviewSubmitButton}
+        pendingLabel={masterMode ? "Илгээж байна..." : "Шалгалтад илгээж байна..."}
+      >
+        {masterMode ? "Тайлан илгээх" : "Шалгалтад илгээх"}
+      </PendingSubmitButton>
+    </form>
+  ) : null;
+  const hasMainAction =
+    showReportComposer || canManageReview || canMarkDone || canReturnForChanges;
+  const showMainActionPanel = !reviewFocusedMode && !canSubmitForReview && hasMainAction;
+  const hasAssignedTeam = Boolean(
+    task.teamLeaderName ||
+      task.crewTeamName ||
+      task.crewMembers.length ||
+      task.assignees.length,
+  );
+  const showTeamAssignButton = canEditTask && Boolean(task.projectId) && !hasAssignedTeam;
+  const teamAssignAction = showTeamAssignButton && task.projectId ? (
+    <ProjectTaskEditModal
+      action={updateTaskAction}
+      projectId={task.projectId}
+      taskId={task.id}
+      taskName={task.name}
+      teamLeaderId={task.teamLeaderId}
+      crewTeamId={task.crewTeamId}
+      startDateValue={task.startDateValue}
+      deadlineValue={task.deadlineValue}
+      plannedQuantity={task.plannedQuantity}
+      measurementUnitId={task.measurementUnitId}
+      description={task.description}
+      canEditContent={canEditTaskContent}
+      departmentUserOptions={taskEditDepartmentUserOptions}
+      crewTeamOptions={taskEditCrewTeamOptions}
+      unitOptions={taskEditOptions.unitOptions}
+    />
   ) : null;
 
   return (
@@ -831,7 +764,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
 
             <section className={`${styles.pageGrid} ${reviewFocusedMode ? styles.reviewPageGrid : ""}`}>
               <div className={styles.mainColumn}>
-                {!reviewFocusedMode ? actionPanel : null}
+                {showMainActionPanel ? actionPanel : null}
 
                 <section className={styles.sectionCard} id="task-reports">
                   <div className={styles.sectionHead}>
@@ -839,6 +772,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                       <span className={styles.kicker}>{reviewFocusedMode ? "Илгээсэн тайлан" : "Гүйцэтгэлийн тайлан"}</span>
                       <h2>{reviewFocusedMode ? "Тайлан" : "Гүйцэтгэлийн тайлангууд"}</h2>
                     </div>
+                    {submitForReviewInlineAction}
                   </div>
 
                   {task.reports.length ? (
@@ -992,8 +926,6 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
               </div>
 
               <div className={styles.sideColumn}>
-                {taskManagementPanel}
-
                 {reviewFocusedMode ? (
                 <aside className={`${styles.chatterCard} ${styles.reviewChatCard}`} id="task-chatter">
                   <div className={styles.chatterTop}>
@@ -1125,7 +1057,10 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                       <span className={styles.kicker}>Хариуцсан бүрэлдэхүүн</span>
                       <strong className={styles.actionTitle}>Баг ба ажилчид</strong>
                     </div>
-                    <span className={styles.chatterCount}>{task.crewMembers.length}</span>
+                    <div className={styles.chatterTopActions}>
+                      {teamAssignAction}
+                      <span className={styles.chatterCount}>{task.crewMembers.length}</span>
+                    </div>
                   </div>
 
                   <div className={styles.helperPanel}>

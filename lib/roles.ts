@@ -410,6 +410,7 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         context.role === "public_relations" ||
         groupFlags.complaintManager ||
         groupFlags.municipalPublicRelations ||
+        groupFlags.municipalDepartmentHead ||
         groupFlags.mfoMobile ||
         groupFlags.mfoDriver ||
         groupFlags.mfoLoader ||
@@ -477,6 +478,7 @@ export function canSubmitWorkspaceReport(context: RoleContext) {
     context.role === "senior_master" ||
     context.role === "team_leader" ||
     context.role === "worker" ||
+    groupFlags.municipalDepartmentHead ||
     jobTitle.includes("мастер") ||
     groupFlags.mfoMobile ||
     groupFlags.mfoDriver ||

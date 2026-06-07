@@ -240,7 +240,7 @@ function workerTaskActionLabel(task: TaskDirectoryItem) {
   if (task.statusKey === "problem") {
     return "Засах";
   }
-  return "Тайлан";
+  return "Тайлан оруулах";
 }
 
 function workerTaskReturnReason(task: TaskDirectoryItem) {
@@ -250,25 +250,15 @@ function workerTaskReturnReason(task: TaskDirectoryItem) {
   return task.latestReport?.rejectionReason?.trim() || "Засвар нэхэж буцаасан байна.";
 }
 
-function isFutureWorkerTask(task: TaskDirectoryItem, todayDateKey: string) {
-  return Boolean(task.scheduledDate && task.scheduledDate > todayDateKey);
+function workerTaskBlockedReportReason() {
+  return "";
 }
 
-function workerTaskBlockedReportReason(task: TaskDirectoryItem, todayDateKey: string) {
-  if (!isFutureWorkerTask(task, todayDateKey)) {
-    return "";
-  }
-  return "Тайланг төлөвлөсөн өдөр оруулна.";
+function workerTaskVisibleNote(task: TaskDirectoryItem) {
+  return workerTaskReturnReason(task) || workerTaskBlockedReportReason();
 }
 
-function workerTaskVisibleNote(task: TaskDirectoryItem, todayDateKey: string) {
-  return workerTaskReturnReason(task) || workerTaskBlockedReportReason(task, todayDateKey);
-}
-
-function workerTaskVisibleActionLabel(task: TaskDirectoryItem, todayDateKey: string) {
-  if (isFutureWorkerTask(task, todayDateKey)) {
-    return "Хүлээгдэж байна";
-  }
+function workerTaskVisibleActionLabel(task: TaskDirectoryItem) {
   return workerTaskActionLabel(task);
 }
 
@@ -1682,8 +1672,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
                           </div>
                           <div className={styles.workerLineList}>
                             {work.tasks.map((task, index) => {
-                              const blockedReportReason = workerTaskBlockedReportReason(task, todayDateKey);
-                              const visibleNote = workerTaskVisibleNote(task, todayDateKey);
+                              const blockedReportReason = workerTaskBlockedReportReason();
+                              const visibleNote = workerTaskVisibleNote(task);
 
                               return (
                                 <TaskReportModal
@@ -1728,7 +1718,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                                       </div>
                                       <span className={styles.workerLineAction}>
                                         <CheckCircle2 size={16} strokeWidth={2.4} aria-hidden="true" />
-                                        {workerTaskVisibleActionLabel(task, todayDateKey)}
+                                        {workerTaskVisibleActionLabel(task)}
                                       </span>
                                     </>
                                   }
