@@ -1,5 +1,5 @@
 import { getSession } from "@/lib/auth";
-import { getEmployee, requireHrAccess, updateEmployee } from "@/lib/hr";
+import { getEmployee, requireHrAccess, requireHrSpecialistAccess, updateEmployee } from "@/lib/hr";
 
 export const dynamic = "force-dynamic";
 
@@ -221,7 +221,7 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
   if (!session) return jsonError("Нэвтрэх шаардлагатай.", 401);
 
   try {
-    await requireHrAccess(session);
+    await requireHrSpecialistAccess(session);
     const { id } = await ctx.params;
     const employeeId = Number(id);
     const visibleEmployee = await getEmployee(session, employeeId);

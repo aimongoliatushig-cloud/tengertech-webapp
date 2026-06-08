@@ -1564,10 +1564,6 @@
   min-width: 0;
 }
 
-.workInfoCardEdit {
-  background: #fff;
-}
-
 .editReadonlyValue {
   display: grid;
   gap: 5px;
@@ -2686,6 +2682,33 @@
   min-width: 0;
 }
 
+.workTransferCta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(46, 125, 50, 0.16);
+  border-radius: 8px;
+  background: rgba(238, 247, 239, 0.9);
+}
+
+.workTransferCta h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 0.94rem;
+  line-height: 1.32;
+}
+
+.workTransferCta p {
+  margin: 4px 0 0;
+  color: #5f7065;
+  font-size: 0.8rem;
+  font-weight: 740;
+  line-height: 1.42;
+}
+
 .workInfoCard {
   display: grid;
   align-content: start;
@@ -3284,6 +3307,7 @@
   }
 
   .actionPanelHeader,
+  .workTransferCta,
   .workHistoryHeader {
     align-items: stretch;
     flex-direction: column;

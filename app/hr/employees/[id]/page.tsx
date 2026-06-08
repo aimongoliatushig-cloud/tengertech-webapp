@@ -4,11 +4,10 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
-import { getDepartments, getEmployee, getEmployees, getJobs, requireHrAccess } from "@/lib/hr";
+import { getEmployee, getEmployees, requireHrAccess } from "@/lib/hr";
 
 import { EmployeeDetailTabs } from "../../hr-client";
 import { HrSectionNav } from "../../hr-section-nav";
-import styles from "../../hr.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -27,15 +26,7 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
   if (!Number.isFinite(employeeId)) {
     notFound();
   }
-  const [employees, departments, jobs] = await Promise.all([
-    getEmployees(session),
-    getDepartments(session),
-    getJobs(session),
-  ]);
-  const managers = employees
-    .filter((record) => record.active)
-    .map((record) => ({ id: record.id, name: record.name }))
-    .sort((left, right) => left.name.localeCompare(right.name, "mn"));
+  const employees = await getEmployees(session);
   const employee = await getEmployee(session, employeeId, employees);
   if (!employee) {
     notFound();
@@ -55,11 +46,8 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
 
       <EmployeeDetailTabs
         employee={employee}
-        canEdit={access.isHr || access.isDepartmentHead}
+        canEdit={access.isHr}
         mode={mode}
-        departments={departments}
-        jobs={jobs}
-        managers={managers}
         familyMemberCandidates={employees}
       />
     </>

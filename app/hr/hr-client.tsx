@@ -630,7 +630,6 @@ const detailTabs = [
 
 const editableDetailTabs = new Set([
   "Ерөнхий мэдээлэл",
-  "Ажлын мэдээлэл",
   "Гэр бүл",
   "Яаралтай холбоо",
 ]);
@@ -673,11 +672,6 @@ function employeeMaritalValue(employee: HrEmployeeDirectoryItem) {
     "Салсан": "divorced",
   };
   return labels[employee.maritalStatus || ""] || "";
-}
-
-function editableTextValue(value?: string) {
-  const normalized = String(value || "").toLocaleLowerCase("mn-MN");
-  return normalized.includes("бүртгээгүй") || normalized.includes("хэлтэсгүй") ? "" : value || "";
 }
 
 function formatMoney(value?: number) {
@@ -761,11 +755,17 @@ function hasUsefulValue(value?: string | number | null) {
   const normalized = String(value ?? "").trim().toLocaleLowerCase("mn-MN");
   if (!normalized) return false;
   const emptyTokens = [
+    "бүртгээгүй",
     "бүртгэлгүй",
     "хэлтэсгүй",
+    "хэлтэс бүртгээгүй",
+    "алба нэгж бүртгээгүй",
     "алба нэгж бүртгэлгүй",
+    "албан тушаал бүртгээгүй",
     "албан тушаал бүртгэлгүй",
+    "утас бүртгээгүй",
     "утас бүртгэлгүй",
+    "и-мэйл бүртгээгүй",
     "и-мэйл бүртгэлгүй",
   ];
   return !emptyTokens.some((token) => normalized.includes(token));
@@ -865,6 +865,19 @@ function WorkInformationPanel({
 
       <div className={styles.workInfoGrid}>{cards.map((card) => <WorkInfoCard key={card.title} card={card} />)}</div>
 
+      {canAddTransfer ? (
+        <section className={styles.workTransferCta}>
+          <div>
+            <h3>Алба, албан тушаал, шууд удирдлага өөрчлөх үү?</h3>
+            <p>Эдгээр өөрчлөлт нь ажилтны түүхэнд бүртгэгдэх тул ажлын шилжилтийн урсгалаар оруулна.</p>
+          </div>
+          <Link href={transferHref} className={styles.primaryActionButton}>
+            <Repeat2 aria-hidden />
+            <span>Ажлын шилжилт бүртгэх</span>
+          </Link>
+        </section>
+      ) : null}
+
       <section className={styles.workHistoryPanel}>
         <div className={styles.workHistoryHeader}>
           <div>
@@ -915,17 +928,11 @@ export function EmployeeDetailTabs({
   employee,
   canEdit = false,
   mode = "hr",
-  departments = [],
-  jobs = [],
-  managers = [],
   familyMemberCandidates = [],
 }: {
   employee: HrEmployeeDirectoryItem;
   canEdit?: boolean;
   mode?: "hr" | "department";
-  departments?: HrOption[];
-  jobs?: HrOption[];
-  managers?: HrOption[];
   familyMemberCandidates?: HrEmployeeDirectoryItem[];
 }) {
   const [tab, setTab] = useState(detailTabs[0]);
@@ -964,7 +971,7 @@ export function EmployeeDetailTabs({
     { label: "Карт хэвлэх", href: `/hr/reports?${employeeQuery}&type=employee_card`, icon: IdCard },
     { label: "Excel экспорт", href: `/hr/reports?${employeeQuery}&format=xlsx`, icon: FileText },
   ];
-  const dangerActions = mode === "hr" ? [{ label: "Ажлаас чөлөөлөх", href: `/hr/archive?${employeeQuery}`, icon: Archive }] : [];
+  const dangerActions = mode === "hr" ? [{ label: "Архивлах", href: `/hr/archive?${employeeQuery}`, icon: Archive }] : [];
   const existingFamilyMemberIds = useMemo(
     () => new Set((employee.familyMembers || []).map((member) => member.relatedEmployeeId)),
     [employee.familyMembers],
@@ -1866,62 +1873,10 @@ export function EmployeeDetailTabs({
     );
   }
 
-  function renderWorkEditForm() {
-    return (
-      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
-        <div className={styles.editInfoBanner}>
-          <strong>Ажлын мэдээлэл засаж байна</strong>
-          <span>Ижил хэсгүүд дотроос шаардлагатай талбараа өөрчилнө.</span>
-        </div>
-        <div className={styles.workInfoGrid}>
-          <section className={`${styles.workInfoCard} ${styles.workInfoCardEdit}`}>
-            <h3 className={styles.workInfoCardTitle}>1. Одоогийн ажлын байр</h3>
-            <div className={styles.editCardFields}>
-              <Select
-                name="departmentId"
-                label="Хэлтэс / алба"
-                options={departments}
-                defaultValue={employee.departmentId ?? ""}
-                required
-              />
-              <Select name="jobId" label="Албан тушаал" options={jobs} defaultValue={employee.jobId ?? ""} required />
-              <Select name="managerId" label="Шууд удирдлага" options={managers} defaultValue={employee.managerId ?? ""} />
-              <Field name="gradeRank" label="Зэрэг / дэв" defaultValue={employee.gradeRank} />
-            </div>
-          </section>
-          <section className={`${styles.workInfoCard} ${styles.workInfoCardEdit}`}>
-            <h3 className={styles.workInfoCardTitle}>2. Гэрээ ба хугацаа</h3>
-            <div className={styles.editCardFields}>
-              <Field name="startDate" label="Ажилд орсон огноо" type="date" defaultValue={employee.startDate} />
-              <Field name="contractEndDate" label="Гэрээ дуусах огноо" type="date" defaultValue={employee.contractEndDate} />
-            </div>
-          </section>
-          <section className={`${styles.workInfoCard} ${styles.workInfoCardEdit}`}>
-            <h3 className={styles.workInfoCardTitle}>3. Байршил ба зэрэглэл</h3>
-            <div className={styles.editCardFields}>
-              <Field name="jobTitle" label="Ажлын нэр / загвар" defaultValue={editableTextValue(employee.jobTitle)} />
-              <div className={styles.editReadonlyValue}>
-                <span>Ажлын байршил</span>
-                <strong>{formatWorkValue(employee.workLocation)}</strong>
-              </div>
-              <div className={styles.editReadonlyValue}>
-                <span>Ажлын хаяг</span>
-                <strong>{formatWorkValue(employee.workAddress)}</strong>
-              </div>
-            </div>
-          </section>
-        </div>
-        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
-      </form>
-    );
-  }
-
   function renderTabEditForm() {
     switch (tab) {
       case "Ерөнхий мэдээлэл":
         return renderProfileEditForm();
-      case "Ажлын мэдээлэл":
-        return renderWorkEditForm();
       case "Гэр бүл":
         return renderFamilyEditForm();
       case "Яаралтай холбоо":
