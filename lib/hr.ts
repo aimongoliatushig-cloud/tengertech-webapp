@@ -890,8 +890,34 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
   };
 }
 
+function getEmployeeDirectoryLeadershipRank(employee: HrEmployeeDirectoryItem) {
+  const jobTitle = normalizeText(employee.jobTitle).replace(/\s+/g, " ");
+
+  if (jobTitle.includes("дэд захирал") || jobTitle.includes("deputy director")) {
+    return 1;
+  }
+  if (
+    jobTitle === "захирал" ||
+    jobTitle.includes("ерөнхий захирал") ||
+    jobTitle.includes("гүйцэтгэх захирал") ||
+    jobTitle.includes("захирал ") ||
+    jobTitle.includes(" захирал") ||
+    jobTitle.includes("director") ||
+    jobTitle.includes("ceo")
+  ) {
+    return 0;
+  }
+
+  return 10;
+}
+
+function compareHrEmployeeDirectoryOrder(left: HrEmployeeDirectoryItem, right: HrEmployeeDirectoryItem) {
+  const leadershipOrder = getEmployeeDirectoryLeadershipRank(left) - getEmployeeDirectoryLeadershipRank(right);
+  return leadershipOrder || compareHrDepartmentThenName(left, right);
+}
+
 function sortHrEmployees(employees: HrEmployeeDirectoryItem[]) {
-  return employees.sort(compareHrDepartmentThenName);
+  return employees.sort(compareHrEmployeeDirectoryOrder);
 }
 
 async function getAvailableFields(
@@ -1380,7 +1406,7 @@ export async function getEmployee(session: AppSession, id: number, listedEmploye
     return listedEmployee ? { ...listedEmployee, familyMembers } : null;
   }
 
-  return listedEmployee
+  const mergedEmployee = listedEmployee
     ? {
         ...scopedEmployee,
         ...listedEmployee,
@@ -1394,6 +1420,15 @@ export async function getEmployee(session: AppSession, id: number, listedEmploye
         familyMembers,
       }
     : { ...scopedEmployee, familyMembers };
+
+  return {
+    ...mergedEmployee,
+    departmentName: resolveHrDisplayDepartmentName(
+      mergedEmployee.name,
+      mergedEmployee.departmentName,
+      mergedEmployee.jobTitle,
+    ),
+  };
 }
 
 export async function createEmployeeFamilyMember(

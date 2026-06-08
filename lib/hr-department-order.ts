@@ -5,8 +5,8 @@ export const HR_DEPARTMENT_DISPLAY_ORDER = [
   "Дотоод хяналт",
   "Санхүү",
   "Захиргаа",
-  "Хог тээвэр",
-  "Ногоон байгууламж",
+  "Авто бааз хог тээвэр",
+  "Зам талбай ногоон байгууламж",
   "Тохижилт",
 ] as const;
 
@@ -64,7 +64,7 @@ export function getHrDepartmentDisplayName(departmentName: string, jobTitle?: st
     (normalizedTitle.includes("тээвэр") && normalizedTitle.includes("хяналт")) ||
     (normalizedTitle.includes("хог") && normalizedTitle.includes("хяналт"))
   ) {
-    return "Хог тээвэр";
+    return "Авто бааз хог тээвэр";
   }
 
   if (
@@ -92,10 +92,14 @@ export function getHrDepartmentDisplayName(departmentName: string, jobTitle?: st
     normalizedDepartment.includes("тээвэр") ||
     normalizedDepartment.includes("авто бааз")
   ) {
-    return "Хог тээвэр";
+    return "Авто бааз хог тээвэр";
   }
-  if (normalizedDepartment.includes("ногоон")) {
-    return "Ногоон байгууламж";
+  if (
+    normalizedDepartment.includes("ногоон") ||
+    normalizedDepartment.includes("зам талбай") ||
+    normalizedDepartment.includes("цэвэрлэгээ")
+  ) {
+    return "Зам талбай ногоон байгууламж";
   }
   if (normalizedDepartment.includes("тохиж")) {
     return "Тохижилт";

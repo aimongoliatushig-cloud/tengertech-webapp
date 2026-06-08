@@ -161,7 +161,7 @@ export default async function HrDashboardPage() {
     ? [
         { href: "/hr/leaves", label: "Ирсэн хүсэлтүүд", icon: ClipboardPlus, tone: "primary" },
         { href: "/hr/employees", label: "Ажилтны жагсаалт", icon: Users },
-        { href: "/hr/archive", label: "Ажлаас чөлөөлөх", icon: Archive },
+        { href: "/hr/archive", label: "Архивлах", icon: Archive },
       ]
     : [
         { href: "/hr/employees", label: "Манай хэлтсийн ажилтнууд", icon: Users, tone: "primary" },

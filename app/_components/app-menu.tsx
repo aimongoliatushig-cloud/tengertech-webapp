@@ -627,7 +627,7 @@ export function AppMenu({
     { key: "hr-orders", href: "/hr/orders", label: "Тушаал", icon: FileText },
     { key: "hr-transfers", href: "/hr/transfers", label: "Шилжилт", icon: ListChecks },
     { key: "hr-clearance", href: "/hr/clearance", label: "Тойрох хуудас", icon: ClipboardCheck },
-    { key: "hr-archive", href: "/hr/archive", label: "Ажлаас чөлөөлөх", icon: FileText },
+    { key: "hr-archive", href: "/hr/archive", label: "Архивлах", icon: FileText },
     { key: "hr-reports", href: "/hr/reports", label: "Тайлан", icon: BarChart3 },
     { key: "hr-settings", href: "/hr/settings", label: "Тохиргоо", icon: Settings },
   ].filter((item) => hasHrSpecialistMenuAccess || departmentHrMenuKeys.has(item.key));
