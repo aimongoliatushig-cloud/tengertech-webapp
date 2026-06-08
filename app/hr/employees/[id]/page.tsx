@@ -4,7 +4,7 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
-import { getDepartments, getEmployee, getJobs, getManagers, requireHrAccess } from "@/lib/hr";
+import { getDepartments, getEmployee, getEmployees, getJobs, requireHrAccess } from "@/lib/hr";
 
 import { EmployeeDetailTabs } from "../../hr-client";
 import { HrSectionNav } from "../../hr-section-nav";
@@ -27,12 +27,16 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
   if (!Number.isFinite(employeeId)) {
     notFound();
   }
-  const [employee, departments, jobs, managers] = await Promise.all([
-    getEmployee(session, employeeId),
+  const [employees, departments, jobs] = await Promise.all([
+    getEmployees(session),
     getDepartments(session),
     getJobs(session),
-    getManagers(session),
   ]);
+  const managers = employees
+    .filter((record) => record.active)
+    .map((record) => ({ id: record.id, name: record.name }))
+    .sort((left, right) => left.name.localeCompare(right.name, "mn"));
+  const employee = await getEmployee(session, employeeId, employees);
   if (!employee) {
     notFound();
   }
@@ -56,6 +60,7 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
         departments={departments}
         jobs={jobs}
         managers={managers}
+        familyMemberCandidates={employees}
       />
     </>
   );

@@ -744,6 +744,19 @@ export type HrEmployeeDirectoryItem = {
   kpiScore: number;
   taskCompletionPercent: number;
   disciplineScore: number;
+  familyMembers?: HrEmployeeFamilyMember[];
+};
+
+export type HrEmployeeFamilyMember = {
+  id: number;
+  employeeId: number;
+  relatedEmployeeId: number;
+  relatedEmployeeName: string;
+  relation: string;
+  relationLabel: string;
+  departmentName: string;
+  jobTitle: string;
+  note: string;
 };
 
 export type HrDailyAttendanceSummary = {

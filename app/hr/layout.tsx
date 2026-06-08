@@ -35,7 +35,7 @@ export default async function HrLayout({ children }: { children: React.ReactNode
 
   return (
     <main className={shellStyles.shell}>
-      <div className={shellStyles.contentWithMenu}>
+      <div className={shellStyles.contentWithMenu} suppressHydrationWarning>
         <aside className={shellStyles.menuColumn}>
           <AppMenu
             active="hr"

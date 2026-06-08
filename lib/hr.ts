@@ -12,6 +12,7 @@ import {
   createOdooConnection,
   executeOdooKw,
   type HrEmployeeDirectoryItem,
+  type HrEmployeeFamilyMember,
   loadHrEmployeeDirectory,
 } from "@/lib/odoo";
 import { fixMojibakeText } from "@/lib/text-normalize";
@@ -138,6 +139,14 @@ type HrEmployeeSingleSearchRecord = {
   x_mn_performance_score?: number | false;
   x_mn_task_completion_percent?: number | false;
   x_mn_discipline_score?: number | false;
+};
+
+type HrEmployeeFamilyMemberSearchRecord = {
+  id: number;
+  employee_id?: OdooRelation;
+  related_employee_id?: OdooRelation;
+  relation?: string | false;
+  note?: string | false;
 };
 
 type HrEmployeeDirectoryApiRecord = {
@@ -772,6 +781,42 @@ function resolveMaritalStatusLabel(value?: string | false) {
   return value ? (labels[value] ?? value) : "";
 }
 
+const HR_FAMILY_RELATION_LABELS = {
+  spouse: "Эхнэр / нөхөр",
+  child: "Хүүхэд",
+  parent: "Эцэг / эх",
+  sibling: "Ах / эгч / дүү",
+  other: "Бусад",
+} as const;
+
+type HrFamilyRelation = keyof typeof HR_FAMILY_RELATION_LABELS;
+
+function normalizeFamilyRelation(value?: string | false): HrFamilyRelation {
+  return value && value in HR_FAMILY_RELATION_LABELS ? (value as HrFamilyRelation) : "other";
+}
+
+function mapHrEmployeeFamilyMemberRecord(
+  record: HrEmployeeFamilyMemberSearchRecord,
+  employeesById: Map<number, HrEmployeeDirectoryItem>,
+): HrEmployeeFamilyMember {
+  const employeeId = getRelationId(record.employee_id) || 0;
+  const relatedEmployeeId = getRelationId(record.related_employee_id) || 0;
+  const relatedEmployee = employeesById.get(relatedEmployeeId);
+  const relation = normalizeFamilyRelation(record.relation);
+
+  return {
+    id: record.id,
+    employeeId,
+    relatedEmployeeId,
+    relatedEmployeeName: relatedEmployee?.name || getRelationName(record.related_employee_id, "Ажилтан бүртгээгүй"),
+    relation,
+    relationLabel: HR_FAMILY_RELATION_LABELS[relation],
+    departmentName: relatedEmployee?.departmentName || "",
+    jobTitle: relatedEmployee?.jobTitle || "",
+    note: cleanOdooLongText(record.note),
+  };
+}
+
 function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): HrEmployeeDirectoryItem {
   const status = resolveDirectEmployeeStatus(record);
   const departmentName = getRelationName(record.department_id, "Хэлтэсгүй");
@@ -1217,8 +1262,35 @@ export async function getEmployees(session: AppSession) {
   return applyCurrentTimeoffStatus(scopedEmployees);
 }
 
-export async function getEmployee(session: AppSession, id: number) {
-  const employees = await getEmployees(session);
+export async function getEmployeeFamilyMembers(
+  session: AppSession,
+  employeeId: number,
+  employeeDirectory?: HrEmployeeDirectoryItem[],
+): Promise<HrEmployeeFamilyMember[]> {
+  const employees = employeeDirectory ?? (await getEmployees(session));
+  const employeesById = new Map(employees.map((employee) => [employee.id, employee]));
+
+  try {
+    const records = await executeOdooKw<HrEmployeeFamilyMemberSearchRecord[]>(
+      "hr.custom.mn.employee.family.member",
+      "search_read",
+      [[["employee_id", "=", employeeId], ["active", "=", true]]],
+      {
+        fields: ["employee_id", "related_employee_id", "relation", "note"],
+        order: "relation asc, id asc",
+      },
+      getConnection(session),
+    );
+
+    return records.map((record) => mapHrEmployeeFamilyMemberRecord(record, employeesById));
+  } catch (error) {
+    console.warn("HR employee family members could not be loaded:", error);
+    return [];
+  }
+}
+
+export async function getEmployee(session: AppSession, id: number, listedEmployees?: HrEmployeeDirectoryItem[]) {
+  const employees = listedEmployees ?? (await getEmployees(session));
   const listedEmployee = employees.find((employee) => employee.id === id);
   const profile = await requireHrAccess(session);
   const desiredFields = [
@@ -1298,13 +1370,14 @@ export async function getEmployee(session: AppSession, id: number) {
     return [];
   });
   const employee = records[0] ? mapHrEmployeeSingleSearchRecord(records[0]) : null;
+  const familyMembers = await getEmployeeFamilyMembers(session, id, employees);
   if (!employee) {
-    return listedEmployee ?? null;
+    return listedEmployee ? { ...listedEmployee, familyMembers } : null;
   }
 
   const scopedEmployee = scopeEmployeesForProfile([employee], profile)[0];
   if (!scopedEmployee) {
-    return listedEmployee ?? null;
+    return listedEmployee ? { ...listedEmployee, familyMembers } : null;
   }
 
   return listedEmployee
@@ -1318,8 +1391,77 @@ export async function getEmployee(session: AppSession, id: number) {
         jobId: scopedEmployee.jobId ?? listedEmployee.jobId,
         managerId: scopedEmployee.managerId ?? listedEmployee.managerId,
         photoUrl: scopedEmployee.photoUrl || listedEmployee.photoUrl,
+        familyMembers,
       }
-    : scopedEmployee;
+    : { ...scopedEmployee, familyMembers };
+}
+
+export async function createEmployeeFamilyMember(
+  session: AppSession,
+  employeeId: number,
+  input: {
+    relatedEmployeeId: number;
+    relation: string;
+    note?: string;
+  },
+): Promise<HrEmployeeFamilyMember> {
+  await requireHrAccess(session);
+  if (!Number.isFinite(employeeId) || employeeId <= 0) {
+    throw new Error("HR_FAMILY_MEMBER_EMPLOYEE_REQUIRED");
+  }
+  if (!Number.isFinite(input.relatedEmployeeId) || input.relatedEmployeeId <= 0) {
+    throw new Error("HR_FAMILY_MEMBER_RELATED_REQUIRED");
+  }
+  if (employeeId === input.relatedEmployeeId) {
+    throw new Error("HR_FAMILY_MEMBER_SELF_NOT_ALLOWED");
+  }
+
+  const employees = await getEmployees(session);
+  const employee = employees.find((record) => record.id === employeeId);
+  const relatedEmployee = employees.find((record) => record.id === input.relatedEmployeeId);
+  if (!employee || !relatedEmployee) {
+    throw new Error("HR_FAMILY_MEMBER_RELATED_NOT_FOUND");
+  }
+
+  const relation = normalizeFamilyRelation(input.relation);
+
+  try {
+    const createdId = await executeOdooKw<number>(
+      "hr.custom.mn.employee.family.member",
+      "create",
+      [
+        {
+          employee_id: employeeId,
+          related_employee_id: input.relatedEmployeeId,
+          relation,
+          note: input.note?.trim() || false,
+        },
+      ],
+      {},
+      getConnection(session),
+    );
+
+    const familyMembers = await getEmployeeFamilyMembers(session, employeeId, employees);
+    return (
+      familyMembers.find((member) => member.id === createdId) || {
+        id: createdId,
+        employeeId,
+        relatedEmployeeId: relatedEmployee.id,
+        relatedEmployeeName: relatedEmployee.name,
+        relation,
+        relationLabel: HR_FAMILY_RELATION_LABELS[relation],
+        departmentName: relatedEmployee.departmentName,
+        jobTitle: relatedEmployee.jobTitle,
+        note: input.note?.trim() || "",
+      }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? normalizeText(error.message) : "";
+    if (message.includes("unique") || message.includes("already") || message.includes("аль хэдийн")) {
+      throw new Error("HR_FAMILY_MEMBER_DUPLICATE");
+    }
+    throw error;
+  }
 }
 
 export async function getDepartments(session: AppSession): Promise<HrOption[]> {

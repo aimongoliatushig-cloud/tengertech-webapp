@@ -231,6 +231,57 @@
     background: #f6faf7;
 }
 
+.o_form_view {
+    .o_hr_mn_primary_action {
+        border-color: rgba(47, 127, 70, 0.34);
+        color: #1f6f34;
+        font-weight: 700;
+    }
+
+    .o_hr_mn_secondary_action {
+        border-color: rgba(31, 41, 55, 0.14);
+        color: #445048;
+    }
+
+    .o_hr_mn_danger_action {
+        border-color: rgba(185, 28, 28, 0.22);
+        color: #9f1239;
+    }
+
+    .o_hr_mn_work_grid {
+        column-gap: 14px;
+        row-gap: 14px;
+        align-items: stretch;
+    }
+
+    .o_hr_mn_work_card {
+        min-width: 0;
+        padding: 12px 14px;
+        border: 1px solid rgba(39, 79, 52, 0.14);
+        border-radius: 8px;
+        background: #fbfdfb;
+        box-shadow: 0 8px 22px rgba(24, 47, 32, 0.05);
+    }
+
+    .o_hr_mn_work_title {
+        color: #14231b;
+        font-weight: 750;
+    }
+
+    .o_hr_mn_empty_value {
+        color: #8b9a91;
+    }
+
+    .o_hr_mn_alert {
+        padding: 10px 12px;
+        border: 1px solid rgba(202, 138, 4, 0.28);
+        border-radius: 8px;
+        background: #fff8e6;
+        color: #7c4a03;
+        font-weight: 700;
+    }
+}
+
 @media (max-width: 1200px) {
     .o_hr_mn_metric_grid,
     .o_hr_mn_org_departments {

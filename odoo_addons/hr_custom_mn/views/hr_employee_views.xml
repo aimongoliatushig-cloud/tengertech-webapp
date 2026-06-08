@@ -8,15 +8,15 @@
         <field name="arch" type="xml">
             <xpath expr="//form/header" position="inside">
                 <button name="action_hr_mn_new_employee" type="object" string="Шинэ ажилтан" class="btn btn-secondary" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
-                <button name="action_hr_mn_edit" type="object" string="Засах" class="btn btn-secondary" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
-                <button name="action_hr_mn_transfer" type="object" string="Хэлтэс шилжүүлэх" class="btn btn-secondary" invisible="not active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
-                <button name="action_hr_mn_promote" type="object" string="Дэвшүүлэх" class="btn btn-secondary" invisible="not active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
-                <button name="action_hr_mn_suspend" type="object" string="Түдгэлзүүлэх" class="btn btn-secondary" invisible="not active or x_mn_employment_status == 'suspended'" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
-                <button name="action_hr_mn_terminate" type="object" string="Чөлөөлөх" class="btn btn-secondary" invisible="not active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
+                <button name="action_hr_mn_edit" type="object" string="Ерөнхий мэдээлэл засах" class="btn btn-secondary o_hr_mn_primary_action" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
+                <button name="action_hr_mn_transfer" type="object" string="Ажлын шилжилт бүртгэх" class="btn btn-secondary o_hr_mn_primary_action" invisible="not active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
+                <button name="action_hr_mn_promote" type="object" string="Дэвшүүлэх" class="btn btn-secondary o_hr_mn_secondary_action" invisible="not active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
+                <button name="action_hr_mn_suspend" type="object" string="Түдгэлзүүлэх" class="btn btn-secondary o_hr_mn_danger_action" invisible="not active or x_mn_employment_status == 'suspended'" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
+                <button name="action_hr_mn_terminate" type="object" string="Чөлөөлөх" class="btn btn-secondary o_hr_mn_danger_action" invisible="not active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
                 <button name="action_hr_mn_rehire" type="object" string="Дахин авах" class="btn btn-secondary" invisible="active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
-                <button name="action_hr_mn_archive" type="object" string="Архивлах" class="btn btn-secondary" invisible="not active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
-                <button name="action_hr_mn_print_employee_card" type="object" string="Карт хэвлэх" class="btn btn-primary"/>
-                <button name="action_hr_mn_export_excel" type="object" string="Excel экспорт"/>
+                <button name="action_hr_mn_archive" type="object" string="Архивлах" class="btn btn-secondary o_hr_mn_danger_action" invisible="not active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
+                <button name="action_hr_mn_print_employee_card" type="object" string="Карт хэвлэх" class="btn btn-secondary o_hr_mn_secondary_action"/>
+                <button name="action_hr_mn_export_excel" type="object" string="Excel экспорт" class="btn btn-secondary o_hr_mn_secondary_action"/>
             </xpath>
 
             <xpath expr="//div[@name='button_box']" position="inside">
@@ -77,23 +77,26 @@
                     </group>
                 </page>
 
-                <page name="hr_custom_mn_work" string="Ажил" groups="hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin">
-                    <group>
-                        <group string="Ажлын мэдээлэл">
-                            <field name="department_id" string="Хэлтэс"/>
+                <page name="hr_custom_mn_work" string="Ажлын мэдээлэл" groups="hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin">
+                    <group class="o_hr_mn_work_grid">
+                        <group string="1. Одоогийн ажлын байр" class="o_hr_mn_work_card">
+                            <field name="department_id" string="Хэлтэс / алба"/>
                             <field name="job_id" string="Албан тушаал"/>
-                            <field name="job_title" string="Ажлын байрны нэр"/>
-                            <field name="x_mn_grade_rank"/>
+                            <field name="parent_id" string="Шууд удирдлага"/>
+                            <field name="x_mn_employment_status" string="Ажил эрхлэлтийн төлөв"/>
                             <field name="employee_type" string="Ажил эрхлэлтийн төрөл"/>
-                            <field name="x_mn_employment_status"/>
-                            <field name="parent_id" string="Удирдлага"/>
+                            <field name="x_mn_grade_rank" string="Зэрэг / дэв"/>
                         </group>
-                        <group string="Огноо ба байршил">
-                            <field name="contract_date_start" string="Эхэлсэн огноо"/>
+                        <group string="2. Гэрээ ба хугацаа" class="o_hr_mn_work_card">
+                            <field name="contract_date_start" string="Ажилд орсон огноо"/>
                             <field name="trial_date_end" string="Туршилтын хугацаа дуусах"/>
-                            <field name="contract_date_end" string="Гэрээ дуусах"/>
+                            <field name="contract_date_end" string="Гэрээ дуусах огноо"/>
+                            <field name="x_mn_service_years" string="Ажилласан жил"/>
+                        </group>
+                        <group string="3. Байршил ба зэрэглэл" class="o_hr_mn_work_card">
                             <field name="work_location_id" string="Ажлын байршил"/>
-                            <field name="x_mn_service_years"/>
+                            <field name="job_title" string="Ажлын загвар / дэв"/>
+                            <field name="employee_type" string="Ажил эрхлэлтийн төрөл"/>
                         </group>
                     </group>
                 </page>
