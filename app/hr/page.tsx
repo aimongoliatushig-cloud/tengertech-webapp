@@ -113,7 +113,7 @@ function DepartmentManpower({ employees }: { employees: HrEmployeeDirectoryItem[
               </div>
               <strong>{group.employees.length}</strong>
             </header>
-            <div className={styles.manpowerEmployees}>
+            <div className={styles.manpowerEmployees} suppressHydrationWarning>
               {group.employees.map((employee) => (
                 <Link key={employee.id} href={`/hr/employees/${employee.id}`} className={styles.employeeRowLink}>
                   <span>

@@ -123,6 +123,64 @@
             <field name="groups" eval="[(4, ref('group_hr_custom_mn_officer')), (4, ref('group_hr_custom_mn_admin'))]"/>
         </record>
 
+        <record id="rule_hr_custom_mn_employee_emergency_contact_employee" model="ir.rule">
+            <field name="name">HR MN emergency contact employee own</field>
+            <field name="model_id" ref="model_hr_custom_mn_employee_emergency_contact"/>
+            <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_hr_custom_mn_employee'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_hr_custom_mn_employee_emergency_contact_manager" model="ir.rule">
+            <field name="name">HR MN emergency contact manager department</field>
+            <field name="model_id" ref="model_hr_custom_mn_employee_emergency_contact"/>
+            <field name="domain_force">['|', ('employee_id.parent_id.user_id', '=', user.id), ('employee_id.department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_hr_custom_mn_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_hr_custom_mn_employee_emergency_contact_officer" model="ir.rule">
+            <field name="name">HR MN emergency contact officer all</field>
+            <field name="model_id" ref="model_hr_custom_mn_employee_emergency_contact"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_hr_custom_mn_officer')), (4, ref('group_hr_custom_mn_admin'))]"/>
+        </record>
+
+        <record id="rule_hr_custom_mn_employee_talent_skill_employee" model="ir.rule">
+            <field name="name">HR MN talent skill employee own</field>
+            <field name="model_id" ref="model_hr_custom_mn_employee_talent_skill"/>
+            <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_hr_custom_mn_employee'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_hr_custom_mn_employee_talent_skill_manager" model="ir.rule">
+            <field name="name">HR MN talent skill manager department</field>
+            <field name="model_id" ref="model_hr_custom_mn_employee_talent_skill"/>
+            <field name="domain_force">['|', ('employee_id.parent_id.user_id', '=', user.id), ('employee_id.department_id.manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('group_hr_custom_mn_manager'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="rule_hr_custom_mn_employee_talent_skill_officer" model="ir.rule">
+            <field name="name">HR MN talent skill officer all</field>
+            <field name="model_id" ref="model_hr_custom_mn_employee_talent_skill"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('group_hr_custom_mn_officer')), (4, ref('group_hr_custom_mn_admin'))]"/>
+        </record>
+
         <record id="rule_hr_custom_mn_reward_employee" model="ir.rule">
             <field name="name">HR MN reward employee own</field>
             <field name="model_id" ref="model_hr_custom_mn_reward"/>

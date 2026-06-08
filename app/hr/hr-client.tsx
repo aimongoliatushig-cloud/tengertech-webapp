@@ -942,6 +942,10 @@ export function EmployeeDetailTabs({
   const [addingFamilyMember, setAddingFamilyMember] = useState(canEdit && searchParams.get("edit") === "family-member");
   const [pending, setPending] = useState(false);
   const [familyMemberPending, setFamilyMemberPending] = useState(false);
+  const [recordAddPending, setRecordAddPending] = useState(false);
+  const [addingEmergencyContact, setAddingEmergencyContact] = useState(false);
+  const [addingReward, setAddingReward] = useState(false);
+  const [addingTalentSkill, setAddingTalentSkill] = useState(false);
   const [message, setMessage] = useState("");
   const [messageIsError, setMessageIsError] = useState(false);
   const [photoErrorUrl, setPhotoErrorUrl] = useState("");
@@ -994,9 +998,28 @@ export function EmployeeDetailTabs({
     if (nextTab !== "Гэр бүл") {
       setAddingFamilyMember(false);
     }
+    if (nextTab !== "Яаралтай холбоо") {
+      setAddingEmergencyContact(false);
+    }
+    if (nextTab !== "Шагнал, нэмэгдэл") {
+      setAddingReward(false);
+    }
+    if (nextTab !== "Авьяас, чадвар") {
+      setAddingTalentSkill(false);
+    }
     if (!editableDetailTabs.has(nextTab)) {
       setEditing(false);
     }
+  }
+
+  function beginAddRecord(kind: "family" | "emergency" | "reward" | "talent") {
+    setEditing(false);
+    setAddingFamilyMember(kind === "family");
+    setAddingEmergencyContact(kind === "emergency");
+    setAddingReward(kind === "reward");
+    setAddingTalentSkill(kind === "talent");
+    setMessage("");
+    setMessageIsError(false);
   }
 
   async function submitProfileEdit(event: FormEvent<HTMLFormElement>) {
@@ -1052,6 +1075,38 @@ export function EmployeeDetailTabs({
       setMessageIsError(true);
     } finally {
       setFamilyMemberPending(false);
+    }
+  }
+
+  async function submitRecordAdd(
+    event: FormEvent<HTMLFormElement>,
+    endpoint: string,
+    successMessage: string,
+    closeForm: () => void,
+  ) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    setRecordAddPending(true);
+    setMessage("");
+    setMessageIsError(false);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        body: formData,
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error || "Бүртгэл хадгалахад алдаа гарлаа.");
+      }
+      setMessage(successMessage);
+      closeForm();
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Бүртгэл хадгалахад алдаа гарлаа.");
+      setMessageIsError(true);
+    } finally {
+      setRecordAddPending(false);
     }
   }
 
@@ -1141,14 +1196,21 @@ export function EmployeeDetailTabs({
   );
 
   const emergencyRows = compactRows([
-    employee.emergencyContact || employee.emergencyPhone
+    ...((employee.emergencyContacts || []).map((contact) => ({
+      name: contact.name,
+      relation: contact.relation,
+      phone: contact.phone,
+      address: contact.address,
+      note: contact.note,
+    }))),
+    !(employee.emergencyContacts || []).length && (employee.emergencyContact || employee.emergencyPhone)
       ? {
           name: employee.emergencyContact || "Яаралтай холбоо",
           relation: "",
           phone: employee.emergencyPhone || "",
           address: employee.homeAddress || "",
           note: "Үндсэн холбоо барих хүн",
-      }
+        }
       : null,
   ]);
 
@@ -1159,43 +1221,39 @@ export function EmployeeDetailTabs({
     { label: "Ээлжийн амралт", value: "Бүртгэлгүй", note: "Төлөвлөгөөтэй" },
   ];
 
-  const rewardRows = compactRows([
-    employee.kpiScore
-      ? {
-          date: "",
-          type: "KPI",
-          amount: formatPercent(employee.kpiScore),
-          note: "Гүйцэтгэлийн үнэлгээ",
-        }
-      : null,
-    employee.disciplineScore
-      ? {
-          date: "",
-          type: "Сахилгын оноо",
-          amount: formatPercent(employee.disciplineScore),
-          note: "Сахилгын бүртгэлийн оноо",
-      }
-      : null,
-  ]);
+  const rewardRows = compactRows(
+    (employee.rewards || []).map((reward) => ({
+      date: reward.date,
+      name: reward.name,
+      orderNo: reward.orderNo,
+      note: reward.note,
+    })),
+  );
 
   const skillRows = compactRows([
-    employee.educationLevel
+    ...((employee.talentSkills || []).map((skill) => ({
+      name: skill.name,
+      type: skill.type,
+      level: skill.level,
+      note: [skill.acquiredDate, skill.note].filter(Boolean).join(" · "),
+    }))),
+    !(employee.talentSkills || []).length && employee.educationLevel
       ? {
           name: "Боловсрол",
           type: employee.educationLevel,
           level: employee.studyField || "Бүртгэлтэй",
           note: employee.studySchool || "",
-        }
+      }
       : null,
-    employee.gradeRank
+    !(employee.talentSkills || []).length && employee.gradeRank
       ? {
           name: "Зэрэг / дэв",
           type: "Ажлын ур чадвар",
           level: employee.gradeRank,
           note: employee.jobTitle || "",
-        }
+      }
       : null,
-    employee.biography || employee.notes
+    !(employee.talentSkills || []).length && (employee.biography || employee.notes)
       ? {
           name: "Нэмэлт тэмдэглэл",
           type: "Тайлбар",
@@ -1342,12 +1400,20 @@ export function EmployeeDetailTabs({
         type="button"
         className={styles.hrProfileAddLink}
         onClick={() => {
-          setEditing(false);
-          setAddingFamilyMember(true);
+          beginAddRecord("family");
         }}
       >
         <Plus aria-hidden />
         <span>Гэр бүлийн гишүүн нэмэх</span>
+      </button>
+    );
+  }
+
+  function renderAddRecordButton(label: string, kind: "emergency" | "reward" | "talent") {
+    return (
+      <button type="button" className={styles.hrProfileAddLink} onClick={() => beginAddRecord(kind)}>
+        <Plus aria-hidden />
+        <span>{label}</span>
       </button>
     );
   }
@@ -1507,7 +1573,7 @@ export function EmployeeDetailTabs({
               emergencyRows,
               "Яаралтай холбоо барих хүн бүртгэгдээгүй.",
             ),
-            renderAddLink("Холбоо барих хүн нэмэх", `/hr/employees/${employee.id}?edit=profile#profile-info`),
+            canEdit ? renderAddRecordButton("Холбоо барих хүн нэмэх", "emergency") : null,
           )}
           {renderPanel(
             "Анхаарах зүйлс",
@@ -1558,8 +1624,8 @@ export function EmployeeDetailTabs({
             renderTable(
               [
                 { key: "date", label: "Огноо" },
-                { key: "type", label: "Төрөл" },
-                { key: "amount", label: "Дүн" },
+                { key: "name", label: "Шагнал" },
+                { key: "orderNo", label: "Тушаал" },
                 { key: "note", label: "Тайлбар" },
               ],
               rewardRows,
@@ -1578,14 +1644,14 @@ export function EmployeeDetailTabs({
             renderTable(
               [
                 { key: "date", label: "Огноо" },
-                { key: "type", label: "Төрөл" },
-                { key: "amount", label: "Дүн / оноо" },
+                { key: "name", label: "Шагнал" },
+                { key: "orderNo", label: "Тушаал" },
                 { key: "note", label: "Тайлбар" },
               ],
               rewardRows,
               "Шагнал, нэмэгдэл бүртгэгдээгүй.",
             ),
-            mode === "hr" ? renderAddLink("Шагнал, нэмэгдэл нэмэх", `/hr/orders?${employeeQuery}`) : null,
+            mode === "hr" ? renderAddRecordButton("Шагнал нэмэх", "reward") : null,
           )}
           {renderPanel(
             "Гүйцэтгэлийн үзүүлэлт",
@@ -1614,7 +1680,7 @@ export function EmployeeDetailTabs({
               skillRows,
               "Авьяас, ур чадвар бүртгэгдээгүй.",
             ),
-            renderAddLink("Авьяас, чадвар нэмэх", `/hr/employees/${employee.id}?edit=profile#profile-info`),
+            canEdit ? renderAddRecordButton("Авьяас, чадвар нэмэх", "talent") : null,
           )}
           {renderPanel(
             "Топ чадвар",
@@ -1860,6 +1926,149 @@ export function EmployeeDetailTabs({
     );
   }
 
+  function renderEmergencyContactAddForm() {
+    return (
+      <form
+        className={styles.profileEditForm}
+        onSubmit={(event) =>
+          submitRecordAdd(
+            event,
+            `/api/hr/employees/${employee.id}/emergency-contacts`,
+            "Яаралтай холбоо барих хүн нэмэгдлээ.",
+            () => setAddingEmergencyContact(false),
+          )
+        }
+        noValidate
+      >
+        <div className={styles.editInfoBanner}>
+          <strong>Яаралтай холбоо барих хүн нэмэх</strong>
+          <span>Ажилтантай яаралтай үед холбогдох хүний нэр, хамаарал, утас болон хаягийг бүртгэнэ.</span>
+        </div>
+        <div className={styles.hrProfileTwoColumn}>
+          {renderPanel(
+            "1. Холбоо барих хүн",
+            <div className={styles.editCardFields}>
+              <Field name="name" label="Нэр" required />
+              <Field name="relation" label="Хамаарал" />
+              <Field name="phone" label="Утас" required />
+              <Field name="address" label="Хаяг" />
+              <TextAreaField name="note" label="Тайлбар" rows={4} />
+            </div>,
+          )}
+          {renderPanel(
+            "2. Одоогийн холбоо",
+            renderTable(
+              [
+                { key: "name", label: "Нэр" },
+                { key: "relation", label: "Хамаарал" },
+                { key: "phone", label: "Утас" },
+                { key: "note", label: "Тэмдэглэл" },
+              ],
+              emergencyRows,
+              "Одоогоор яаралтай холбоо бүртгэгдээгүй.",
+            ),
+          )}
+        </div>
+        <ProfileEditButtons pending={recordAddPending} onCancel={() => setAddingEmergencyContact(false)} />
+      </form>
+    );
+  }
+
+  function renderRewardAddForm() {
+    return (
+      <form
+        className={styles.profileEditForm}
+        onSubmit={(event) =>
+          submitRecordAdd(
+            event,
+            `/api/hr/employees/${employee.id}/rewards`,
+            "Шагналын мэдээлэл нэмэгдлээ.",
+            () => setAddingReward(false),
+          )
+        }
+        noValidate
+      >
+        <div className={styles.editInfoBanner}>
+          <strong>Шагнал нэмэх</strong>
+          <span>Шагналын нэр, огноо, тушаалын дугаар болон тайлбарыг нэг мөрөөр хадгална.</span>
+        </div>
+        <div className={styles.hrProfileTwoColumn}>
+          {renderPanel(
+            "1. Шагналын мэдээлэл",
+            <div className={styles.editCardFields}>
+              <Field name="name" label="Шагналын нэр" required />
+              <Field name="date" label="Огноо" type="date" />
+              <Field name="orderNo" label="Тушаалын дугаар" />
+              <TextAreaField name="note" label="Тайлбар" rows={4} />
+            </div>,
+          )}
+          {renderPanel(
+            "2. Одоогийн шагнал",
+            renderTable(
+              [
+                { key: "date", label: "Огноо" },
+                { key: "name", label: "Шагнал" },
+                { key: "orderNo", label: "Тушаал" },
+                { key: "note", label: "Тайлбар" },
+              ],
+              rewardRows,
+              "Одоогоор шагнал бүртгэгдээгүй.",
+            ),
+          )}
+        </div>
+        <ProfileEditButtons pending={recordAddPending} onCancel={() => setAddingReward(false)} />
+      </form>
+    );
+  }
+
+  function renderTalentSkillAddForm() {
+    return (
+      <form
+        className={styles.profileEditForm}
+        onSubmit={(event) =>
+          submitRecordAdd(
+            event,
+            `/api/hr/employees/${employee.id}/talent-skills`,
+            "Авьяас, чадвар нэмэгдлээ.",
+            () => setAddingTalentSkill(false),
+          )
+        }
+        noValidate
+      >
+        <div className={styles.editInfoBanner}>
+          <strong>Авьяас, чадвар нэмэх</strong>
+          <span>Авьяас, ур чадвар, спорт/урлагийн төрөл, түвшин болон тодорхойлолтыг нэг мөрөөр хадгална.</span>
+        </div>
+        <div className={styles.hrProfileTwoColumn}>
+          {renderPanel(
+            "1. Авьяас, чадвар",
+            <div className={styles.editCardFields}>
+              <Field name="name" label="Авьяас, чадвар" required />
+              <Field name="type" label="Төрөл" />
+              <Field name="level" label="Түвшин" />
+              <Field name="acquiredDate" label="Бүртгэсэн огноо" type="date" />
+              <TextAreaField name="note" label="Тодорхойлолт" rows={4} />
+            </div>,
+          )}
+          {renderPanel(
+            "2. Одоогийн чадвар",
+            renderTable(
+              [
+                { key: "name", label: "Авьяас, чадвар" },
+                { key: "type", label: "Төрөл" },
+                { key: "level", label: "Түвшин" },
+                { key: "note", label: "Тодорхойлолт" },
+              ],
+              skillRows,
+              "Одоогоор авьяас, чадвар бүртгэгдээгүй.",
+            ),
+          )}
+        </div>
+        <ProfileEditButtons pending={recordAddPending} onCancel={() => setAddingTalentSkill(false)} />
+      </form>
+    );
+  }
+
   function renderEmergencyEditForm() {
     return (
       <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
@@ -1886,6 +2095,8 @@ export function EmployeeDetailTabs({
         return renderTabContent();
     }
   }
+
+  const addingAnyRecord = addingFamilyMember || addingEmergencyContact || addingReward || addingTalentSkill;
 
   return (
     <section id="profile-info" className={styles.hrProfileShell}>
@@ -1976,7 +2187,7 @@ export function EmployeeDetailTabs({
             <p>{tab === "Ерөнхий мэдээлэл" ? "Ажилтны үндсэн болон хувийн бүртгэлийн мэдээлэл" : "Ажилтны дэлгэрэнгүй бүртгэлийн мэдээлэл"}</p>
           </div>
           <div className={styles.hrProfileHeaderActions}>
-            {canEditCurrentTab && !editing && !addingFamilyMember ? (
+            {canEditCurrentTab && !editing && !addingAnyRecord ? (
               <button
                 type="button"
                 className={styles.secondaryButton}
@@ -1991,7 +2202,17 @@ export function EmployeeDetailTabs({
 
         {message ? <p className={messageIsError ? styles.errorText : styles.successText}>{message}</p> : null}
 
-        {canEdit && addingFamilyMember ? renderFamilyMemberAddForm() : canEdit && editing ? renderTabEditForm() : renderTabContent()}
+        {canEdit && addingFamilyMember
+          ? renderFamilyMemberAddForm()
+          : canEdit && addingEmergencyContact
+            ? renderEmergencyContactAddForm()
+            : canEdit && addingReward
+              ? renderRewardAddForm()
+              : canEdit && addingTalentSkill
+                ? renderTalentSkillAddForm()
+                : canEdit && editing
+                  ? renderTabEditForm()
+                  : renderTabContent()}
       </div>
     </section>
   );

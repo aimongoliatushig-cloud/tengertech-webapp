@@ -745,6 +745,9 @@ export type HrEmployeeDirectoryItem = {
   taskCompletionPercent: number;
   disciplineScore: number;
   familyMembers?: HrEmployeeFamilyMember[];
+  emergencyContacts?: HrEmployeeEmergencyContact[];
+  rewards?: HrEmployeeReward[];
+  talentSkills?: HrEmployeeTalentSkill[];
 };
 
 export type HrEmployeeFamilyMember = {
@@ -756,6 +759,35 @@ export type HrEmployeeFamilyMember = {
   relationLabel: string;
   departmentName: string;
   jobTitle: string;
+  note: string;
+};
+
+export type HrEmployeeEmergencyContact = {
+  id: number;
+  employeeId: number;
+  name: string;
+  relation: string;
+  phone: string;
+  address: string;
+  note: string;
+};
+
+export type HrEmployeeReward = {
+  id: number;
+  employeeId: number;
+  date: string;
+  name: string;
+  orderNo: string;
+  note: string;
+};
+
+export type HrEmployeeTalentSkill = {
+  id: number;
+  employeeId: number;
+  name: string;
+  type: string;
+  level: string;
+  acquiredDate: string;
   note: string;
 };
 
@@ -4715,15 +4747,34 @@ const FLEET_IMPORT_STATE_LABELS: Record<string, string> = {
 
 const FLEET_REPAIR_STATE_LABELS: Record<string, string> = {
   new: "Үүссэн",
+  new_request: "Шинэ хүсэлт",
+  request: "Хүсэлт",
+  requested: "Хүсэлт",
   diagnosed: "Оношилсон",
   waiting_parts: "Сэлбэг хүлээж байна",
   waiting_approval: "Баталгаа хүлээж байна",
   approved: "Батлагдсан",
-  in_repair: "Хийгдэж байгаа",
+  in_repair: "Засварт байгаа",
+  under_repair: "Засварт байгаа",
+  repair: "Засвар",
   done: "Дууссан",
+  completed: "Дууссан",
   vehicle_returned: "Машин буцаасан",
+  returned: "Буцаасан",
+  rejected: "Буцаасан",
   cancelled: "Цуцлагдсан",
+  cancel: "Цуцлагдсан",
 };
+
+function resolveFleetRepairStateLabel(value?: string | false) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    return "";
+  }
+
+  const normalized = raw.toLowerCase().replace(/[\s-]+/g, "_");
+  return FLEET_REPAIR_STATE_LABELS[normalized] || raw;
+}
 
 const FLEET_PROCUREMENT_STATE_LABELS: Record<string, string> = {
   draft: "Ноорог",
@@ -4945,7 +4996,7 @@ async function loadRepairHistoryByVehicle(
   );
   const byVehicle = new Map<number, FleetVehicleRepairHistoryItem[]>();
   for (const record of records) {
-    const stateKey = String(record.state || "");
+    const stateKey = String(record.state || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
     appendMapItem(byVehicle, relationId(record.vehicle_id), {
       id: record.id,
       name: record.name || `Засвар #${record.id}`,
@@ -4967,7 +5018,7 @@ async function loadRepairHistoryByVehicle(
       ),
       mechanicName: relationName(record.mechanic_id ?? false, ""),
       stateKey,
-      stateLabel: FLEET_REPAIR_STATE_LABELS[stateKey] || stateKey,
+      stateLabel: resolveFleetRepairStateLabel(stateKey),
       procurementName: relationName(record.procurement_request_id ?? false, ""),
       attachmentCount: attachmentCount(record.attachment_ids, record.photo_ids),
     });
@@ -5429,7 +5480,8 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
         0,
       );
       const stateLabel = relationName(vehicle.state_id ?? false, "");
-      const latestRepairState = vehicle.latest_repair_state || "";
+      const rawLatestRepairState = vehicle.latest_repair_state || "";
+      const latestRepairState = resolveFleetRepairStateLabel(rawLatestRepairState);
       const operationalStatusKey = vehicle.x_municipal_operational_status || "";
       const operationalStatusLabel =
         FLEET_OPERATIONAL_STATUS_LABELS[operationalStatusKey] || "";
@@ -5458,6 +5510,7 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
         operationalStatusKey === "in_repair" ||
         operationalStatusKey === "broken" ||
         isRepairStatusLabel(stateLabel) ||
+        isRepairStatusLabel(rawLatestRepairState) ||
         isRepairStatusLabel(latestRepairState);
       const isArchived = vehicle.active === false;
       const isExplicitlyNonOperational =
@@ -5526,9 +5579,9 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
           vehicle.active === false
             ? "Архивласан"
             : isRepair
-              ? latestRepairState ||
+              ? operationalStatusLabel ||
                 stateLabel ||
-                operationalStatusLabel ||
+                latestRepairState ||
                 "Засвартай"
               : operationalStatusLabel ||
                 stateLabel ||

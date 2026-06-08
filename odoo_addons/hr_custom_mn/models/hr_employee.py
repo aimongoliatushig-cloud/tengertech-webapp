@@ -154,6 +154,16 @@ class HrEmployee(models.Model):
         "employee_id",
         string="Гэр бүлийн гишүүд",
     )
+    x_mn_emergency_contact_ids = fields.One2many(
+        "hr.custom.mn.employee.emergency.contact",
+        "employee_id",
+        string="Яаралтай холбоо барих хүмүүс",
+    )
+    x_mn_talent_skill_ids = fields.One2many(
+        "hr.custom.mn.employee.talent.skill",
+        "employee_id",
+        string="Авьяас, чадвар",
+    )
     x_mn_history_count = fields.Integer(string="Түүх", compute="_compute_x_mn_counts")
     x_mn_performance_ids = fields.One2many(
         "hr.custom.mn.performance",

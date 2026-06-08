@@ -1,5 +1,6 @@
 from . import hr_employee
 from . import hr_employee_family_member
+from . import hr_employee_profile_records
 from . import hr_employee_history
 from . import hr_clearance
 from . import hr_leave

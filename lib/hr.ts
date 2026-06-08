@@ -12,7 +12,10 @@ import {
   createOdooConnection,
   executeOdooKw,
   type HrEmployeeDirectoryItem,
+  type HrEmployeeEmergencyContact,
   type HrEmployeeFamilyMember,
+  type HrEmployeeReward,
+  type HrEmployeeTalentSkill,
   loadHrEmployeeDirectory,
 } from "@/lib/odoo";
 import { fixMojibakeText } from "@/lib/text-normalize";
@@ -146,6 +149,35 @@ type HrEmployeeFamilyMemberSearchRecord = {
   employee_id?: OdooRelation;
   related_employee_id?: OdooRelation;
   relation?: string | false;
+  note?: string | false;
+};
+
+type HrEmployeeEmergencyContactSearchRecord = {
+  id: number;
+  employee_id?: OdooRelation;
+  name?: string | false;
+  relation?: string | false;
+  phone?: string | false;
+  address?: string | false;
+  note?: string | false;
+};
+
+type HrEmployeeRewardSearchRecord = {
+  id: number;
+  employee_id?: OdooRelation;
+  date?: string | false;
+  name?: string | false;
+  order_no?: string | false;
+  note?: string | false;
+};
+
+type HrEmployeeTalentSkillSearchRecord = {
+  id: number;
+  employee_id?: OdooRelation;
+  name?: string | false;
+  skill_type?: string | false;
+  level?: string | false;
+  acquired_date?: string | false;
   note?: string | false;
 };
 
@@ -949,6 +981,11 @@ function getInvalidOdooFieldName(error: unknown) {
   );
 }
 
+function isMissingOdooModelError(error: unknown, model: string) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return message.includes(`Object ${model} doesn't exist`) || message.includes(`Model '${model}' does not exist`);
+}
+
 async function searchReadFirstWithFieldFallback<T>(
   model: string,
   domain: unknown[],
@@ -1315,6 +1352,104 @@ export async function getEmployeeFamilyMembers(
   }
 }
 
+function mapHrEmployeeEmergencyContactRecord(record: HrEmployeeEmergencyContactSearchRecord): HrEmployeeEmergencyContact {
+  return {
+    id: record.id,
+    employeeId: getRelationId(record.employee_id) || 0,
+    name: record.name || "",
+    relation: record.relation || "",
+    phone: record.phone || "",
+    address: record.address || "",
+    note: cleanOdooLongText(record.note),
+  };
+}
+
+function mapHrEmployeeRewardRecord(record: HrEmployeeRewardSearchRecord): HrEmployeeReward {
+  return {
+    id: record.id,
+    employeeId: getRelationId(record.employee_id) || 0,
+    date: record.date || "",
+    name: record.name || "",
+    orderNo: record.order_no || "",
+    note: cleanOdooLongText(record.note),
+  };
+}
+
+function mapHrEmployeeTalentSkillRecord(record: HrEmployeeTalentSkillSearchRecord): HrEmployeeTalentSkill {
+  return {
+    id: record.id,
+    employeeId: getRelationId(record.employee_id) || 0,
+    name: record.name || "",
+    type: record.skill_type || "",
+    level: record.level || "",
+    acquiredDate: record.acquired_date || "",
+    note: cleanOdooLongText(record.note),
+  };
+}
+
+export async function getEmployeeEmergencyContacts(
+  session: AppSession,
+  employeeId: number,
+): Promise<HrEmployeeEmergencyContact[]> {
+  try {
+    const records = await executeOdooKw<HrEmployeeEmergencyContactSearchRecord[]>(
+      "hr.custom.mn.employee.emergency.contact",
+      "search_read",
+      [[["employee_id", "=", employeeId], ["active", "=", true]]],
+      {
+        fields: ["employee_id", "name", "relation", "phone", "address", "note"],
+        order: "sequence asc, id asc",
+      },
+      getConnection(session),
+    );
+
+    return records.map(mapHrEmployeeEmergencyContactRecord);
+  } catch (error) {
+    console.warn("HR employee emergency contacts could not be loaded:", error);
+    return [];
+  }
+}
+
+export async function getEmployeeRewards(session: AppSession, employeeId: number): Promise<HrEmployeeReward[]> {
+  try {
+    const records = await executeOdooKw<HrEmployeeRewardSearchRecord[]>(
+      "hr.custom.mn.reward",
+      "search_read",
+      [[["employee_id", "=", employeeId]]],
+      {
+        fields: ["employee_id", "date", "name", "order_no", "note"],
+        order: "date desc, id desc",
+      },
+      getConnection(session),
+    );
+
+    return records.map(mapHrEmployeeRewardRecord);
+  } catch (error) {
+    console.warn("HR employee rewards could not be loaded:", error);
+    return [];
+  }
+}
+
+export async function getEmployeeTalentSkills(session: AppSession, employeeId: number): Promise<HrEmployeeTalentSkill[]> {
+  try {
+    const records = await executeOdooKw<HrEmployeeTalentSkillSearchRecord[]>(
+      "hr.custom.mn.employee.talent.skill",
+      "search_read",
+      [[["employee_id", "=", employeeId], ["active", "=", true]]],
+      {
+        fields: ["employee_id", "name", "skill_type", "level", "acquired_date", "note"],
+        order: "sequence asc, id asc",
+      },
+      getConnection(session),
+    );
+
+    return records.map(mapHrEmployeeTalentSkillRecord);
+  } catch (error) {
+    console.warn("HR employee talent skills could not be loaded:", error);
+    return [];
+  }
+}
+
 export async function getEmployee(session: AppSession, id: number, listedEmployees?: HrEmployeeDirectoryItem[]) {
   const employees = listedEmployees ?? (await getEmployees(session));
   const listedEmployee = employees.find((employee) => employee.id === id);
@@ -1396,14 +1531,19 @@ export async function getEmployee(session: AppSession, id: number, listedEmploye
     return [];
   });
   const employee = records[0] ? mapHrEmployeeSingleSearchRecord(records[0]) : null;
-  const familyMembers = await getEmployeeFamilyMembers(session, id, employees);
+  const [familyMembers, emergencyContacts, rewards, talentSkills] = await Promise.all([
+    getEmployeeFamilyMembers(session, id, employees),
+    getEmployeeEmergencyContacts(session, id),
+    getEmployeeRewards(session, id),
+    getEmployeeTalentSkills(session, id),
+  ]);
   if (!employee) {
-    return listedEmployee ? { ...listedEmployee, familyMembers } : null;
+    return listedEmployee ? { ...listedEmployee, familyMembers, emergencyContacts, rewards, talentSkills } : null;
   }
 
   const scopedEmployee = scopeEmployeesForProfile([employee], profile)[0];
   if (!scopedEmployee) {
-    return listedEmployee ? { ...listedEmployee, familyMembers } : null;
+    return listedEmployee ? { ...listedEmployee, familyMembers, emergencyContacts, rewards, talentSkills } : null;
   }
 
   const mergedEmployee = listedEmployee
@@ -1418,8 +1558,11 @@ export async function getEmployee(session: AppSession, id: number, listedEmploye
         managerId: scopedEmployee.managerId ?? listedEmployee.managerId,
         photoUrl: scopedEmployee.photoUrl || listedEmployee.photoUrl,
         familyMembers,
+        emergencyContacts,
+        rewards,
+        talentSkills,
       }
-    : { ...scopedEmployee, familyMembers };
+    : { ...scopedEmployee, familyMembers, emergencyContacts, rewards, talentSkills };
 
   return {
     ...mergedEmployee,
@@ -1440,7 +1583,7 @@ export async function createEmployeeFamilyMember(
     note?: string;
   },
 ): Promise<HrEmployeeFamilyMember> {
-  await requireHrAccess(session);
+  await requireHrSpecialistAccess(session);
   if (!Number.isFinite(employeeId) || employeeId <= 0) {
     throw new Error("HR_FAMILY_MEMBER_EMPLOYEE_REQUIRED");
   }
@@ -1497,6 +1640,182 @@ export async function createEmployeeFamilyMember(
     }
     throw error;
   }
+}
+
+export async function createEmployeeEmergencyContact(
+  session: AppSession,
+  employeeId: number,
+  input: {
+    name: string;
+    relation?: string;
+    phone: string;
+    address?: string;
+    note?: string;
+  },
+): Promise<HrEmployeeEmergencyContact> {
+  await requireHrSpecialistAccess(session);
+  if (!Number.isFinite(employeeId) || employeeId <= 0) {
+    throw new Error("HR_EMPLOYEE_REQUIRED");
+  }
+  const name = input.name.trim();
+  const phone = input.phone.trim();
+  if (!name) {
+    throw new Error("HR_EMERGENCY_CONTACT_NAME_REQUIRED");
+  }
+  if (!phone) {
+    throw new Error("HR_EMERGENCY_CONTACT_PHONE_REQUIRED");
+  }
+
+  const emergencyContactModel = "hr.custom.mn.employee.emergency.contact";
+  const values = {
+    employee_id: employeeId,
+    name,
+    relation: input.relation?.trim() || false,
+    phone,
+    address: input.address?.trim() || false,
+    note: input.note?.trim() || false,
+  };
+
+  let createdId: number | null = null;
+  try {
+    createdId = await executeOdooKw<number>(
+      emergencyContactModel,
+      "create",
+      [values],
+      {},
+      getConnection(session),
+    );
+  } catch (error) {
+    if (!isMissingOdooModelError(error, emergencyContactModel)) {
+      throw error;
+    }
+
+    const employeeFields = await getAvailableFields("hr.employee", ["emergency_contact", "emergency_phone"], session);
+    const fallbackValues: Record<string, string> = {};
+    if (employeeFields.includes("emergency_contact")) fallbackValues.emergency_contact = name;
+    if (employeeFields.includes("emergency_phone")) fallbackValues.emergency_phone = phone;
+    if (!Object.keys(fallbackValues).length) {
+      throw error;
+    }
+
+    await executeOdooKw<boolean>("hr.employee", "write", [[employeeId], fallbackValues], {}, getConnection(session));
+  }
+
+  const contacts = await getEmployeeEmergencyContacts(session, employeeId);
+  return (
+    contacts.find((contact) => contact.id === createdId) || {
+      id: createdId ?? employeeId,
+      employeeId,
+      name,
+      relation: input.relation?.trim() || "",
+      phone,
+      address: input.address?.trim() || "",
+      note: input.note?.trim() || "",
+    }
+  );
+}
+
+export async function createEmployeeReward(
+  session: AppSession,
+  employeeId: number,
+  input: {
+    name: string;
+    date?: string;
+    orderNo?: string;
+    note?: string;
+  },
+): Promise<HrEmployeeReward> {
+  await requireHrSpecialistAccess(session);
+  if (!Number.isFinite(employeeId) || employeeId <= 0) {
+    throw new Error("HR_EMPLOYEE_REQUIRED");
+  }
+  const name = input.name.trim();
+  if (!name) {
+    throw new Error("HR_REWARD_NAME_REQUIRED");
+  }
+
+  const values: Record<string, string | number | boolean> = {
+    employee_id: employeeId,
+    name,
+    order_no: input.orderNo?.trim() || false,
+    note: input.note?.trim() || false,
+  };
+  if (input.date?.trim()) {
+    values.date = input.date.trim();
+  }
+
+  const createdId = await executeOdooKw<number>(
+    "hr.custom.mn.reward",
+    "create",
+    [values],
+    {},
+    getConnection(session),
+  );
+
+  const rewards = await getEmployeeRewards(session, employeeId);
+  return (
+    rewards.find((reward) => reward.id === createdId) || {
+      id: createdId,
+      employeeId,
+      date: input.date?.trim() || "",
+      name,
+      orderNo: input.orderNo?.trim() || "",
+      note: input.note?.trim() || "",
+    }
+  );
+}
+
+export async function createEmployeeTalentSkill(
+  session: AppSession,
+  employeeId: number,
+  input: {
+    name: string;
+    type?: string;
+    level?: string;
+    acquiredDate?: string;
+    note?: string;
+  },
+): Promise<HrEmployeeTalentSkill> {
+  await requireHrSpecialistAccess(session);
+  if (!Number.isFinite(employeeId) || employeeId <= 0) {
+    throw new Error("HR_EMPLOYEE_REQUIRED");
+  }
+  const name = input.name.trim();
+  if (!name) {
+    throw new Error("HR_TALENT_SKILL_NAME_REQUIRED");
+  }
+
+  const values: Record<string, string | number | boolean> = {
+    employee_id: employeeId,
+    name,
+    skill_type: input.type?.trim() || false,
+    level: input.level?.trim() || false,
+    note: input.note?.trim() || false,
+  };
+  if (input.acquiredDate?.trim()) {
+    values.acquired_date = input.acquiredDate.trim();
+  }
+
+  const createdId = await executeOdooKw<number>(
+    "hr.custom.mn.employee.talent.skill",
+    "create",
+    [values],
+    {},
+    getConnection(session),
+  );
+
+  const talentSkills = await getEmployeeTalentSkills(session, employeeId);
+  return (
+    talentSkills.find((skill) => skill.id === createdId) || {
+      id: createdId,
+      employeeId,
+      name,
+      type: input.type?.trim() || "",
+      level: input.level?.trim() || "",
+      acquiredDate: input.acquiredDate?.trim() || "",
+      note: input.note?.trim() || "",
+    }
+  );
 }
 
 export async function getDepartments(session: AppSession): Promise<HrOption[]> {
