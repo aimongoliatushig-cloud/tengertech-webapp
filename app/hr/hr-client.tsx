@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Award,
+  Archive,
   BadgeDollarSign,
   BriefcaseBusiness,
   Building2,
@@ -741,6 +742,7 @@ type DetailPair = {
 
 type WorkInfoCardData = {
   title: string;
+  help: string;
   rows: DetailPair[];
 };
 
@@ -755,9 +757,22 @@ function compactRows(rows: Array<TableRow | null | false | undefined>) {
   return rows.filter((row): row is TableRow => Boolean(row));
 }
 
-function formatEmpty(value?: string | number | null) {
-  const text = String(value ?? "").trim();
-  return text || "—";
+function hasUsefulValue(value?: string | number | null) {
+  const normalized = String(value ?? "").trim().toLocaleLowerCase("mn-MN");
+  if (!normalized) return false;
+  const emptyTokens = [
+    "бүртгэлгүй",
+    "хэлтэсгүй",
+    "алба нэгж бүртгэлгүй",
+    "албан тушаал бүртгэлгүй",
+    "утас бүртгэлгүй",
+    "и-мэйл бүртгэлгүй",
+  ];
+  return !emptyTokens.some((token) => normalized.includes(token));
+}
+
+function formatWorkValue(value?: string | number | null) {
+  return hasUsefulValue(value) ? String(value).trim() : "—";
 }
 
 function getMissingWorkFields(employee: HrEmployeeDirectoryItem) {
@@ -768,10 +783,132 @@ function getMissingWorkFields(employee: HrEmployeeDirectoryItem) {
     { label: "Ажилд орсон огноо", value: employee.startDate },
     { label: "Гэрээ дуусах огноо", value: employee.contractEndDate },
     { label: "Зэрэг / дэв", value: employee.gradeRank },
-    { label: "Ажлын байршил", value: employee.workLocation },
   ];
 
-  return importantFields.filter((field) => !String(field.value ?? "").trim());
+  return importantFields.filter((field) => !hasUsefulValue(field.value));
+}
+
+function WorkInfoRow({ row }: { row: DetailPair }) {
+  const value = formatWorkValue(row.value);
+
+  return (
+    <div className={styles.workInfoRow}>
+      <span className={styles.workInfoLabel}>{row.label}</span>
+      <strong className={`${styles.workInfoValue} ${value === "—" ? styles.emptyValue : ""}`}>{value}</strong>
+    </div>
+  );
+}
+
+function WorkInfoCard({ card }: { card: WorkInfoCardData }) {
+  return (
+    <section className={styles.workInfoCard}>
+      <div className={styles.workInfoCardHeader}>
+        <h3 className={styles.workInfoCardTitle}>{card.title}</h3>
+        <p className={styles.workInfoCardHelp}>{card.help}</p>
+      </div>
+      <div className={styles.workInfoRows}>{card.rows.map((row) => <WorkInfoRow key={row.label} row={row} />)}</div>
+    </section>
+  );
+}
+
+function WorkInformationPanel({
+  employee,
+  cards,
+  missingFields,
+  historyRows,
+  transferHref,
+  canAddTransfer,
+}: {
+  employee: HrEmployeeDirectoryItem;
+  cards: WorkInfoCardData[];
+  missingFields: DetailPair[];
+  historyRows: TableRow[];
+  transferHref: string;
+  canAddTransfer: boolean;
+}) {
+  return (
+    <div className={styles.workInfoPanel}>
+      {missingFields.length ? (
+        <div className={styles.missingWorkBanner} role="status">
+          <div>
+            <strong>Дутуу мэдээлэл байна: {missingFields.length} талбар</strong>
+            <span>Шаардлагатай ажлын мэдээллийг бүрэн бөглөнө үү.</span>
+          </div>
+          <div className={styles.missingWorkChips}>
+            {missingFields.map((field) => (
+              <span key={field.label}>{field.label}</span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <section className={styles.workSnapshot}>
+        <div className={styles.workSnapshotMain}>
+          <span>Ажлын товч мэдээлэл</span>
+          <strong>{formatWorkValue(employee.departmentName)}</strong>
+          <p>{formatWorkValue(employee.jobTitle)}</p>
+        </div>
+        <div className={styles.workSnapshotMeta}>
+          <div>
+            <span>Шууд удирдлага</span>
+            <strong>{formatWorkValue(employee.managerName)}</strong>
+          </div>
+          <div>
+            <span>Төлөв</span>
+            <strong className={styles.workStatusPill}>{formatWorkValue(employee.statusLabel)}</strong>
+          </div>
+        </div>
+        <p className={styles.workSnapshotHelp}>
+          Алба, албан тушаал, шууд удирдлага өөрчлөгдвөл ажлын шилжилтийн түүхээр бүртгэнэ.
+        </p>
+      </section>
+
+      <div className={styles.workInfoGrid}>{cards.map((card) => <WorkInfoCard key={card.title} card={card} />)}</div>
+
+      <section className={styles.workHistoryPanel}>
+        <div className={styles.workHistoryHeader}>
+          <div>
+            <h3>Ажлын түүх</h3>
+            <p>Хэлтэс, албан тушаал, шууд удирдлага, төлөвийн өөрчлөлт энд бүртгэгдэнэ.</p>
+          </div>
+          {canAddTransfer ? (
+            <Link href={transferHref} className={styles.hrProfileAddLink}>
+              <Plus aria-hidden />
+              <span>Шилжилт нэмэх</span>
+            </Link>
+          ) : null}
+        </div>
+
+        {historyRows.length ? (
+          <div className={styles.hrProfileTableWrap}>
+            <table className={styles.hrProfileTable}>
+              <thead>
+                <tr>
+                  <th>Огноо</th>
+                  <th>Үйл явдал</th>
+                  <th>Тайлбар</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historyRows.map((row, index) => (
+                  <tr key={`${row.title}-${row.date}-${index}`}>
+                    <td>{row.date || "—"}</td>
+                    <td>{row.title || "—"}</td>
+                    <td>{row.note || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className={styles.workHistoryEmpty}>
+            <strong>Ажлын түүх бүртгэгдээгүй.</strong>
+            <span>Шилжилт бүртгэсний дараа түүх автоматаар харагдана.</span>
+          </div>
+        )}
+      </section>
+    </div>
+  );
 }
 
 export function EmployeeDetailTabs({
@@ -811,7 +948,23 @@ export function EmployeeDetailTabs({
   const showPhoto = Boolean(employee.photoUrl && photoErrorUrl !== employee.photoUrl);
   const employeeQuery = `employeeId=${employee.id}`;
   const canEditCurrentTab = canEdit && editableDetailTabs.has(tab);
-  const tabActions = getEmployeeDetailTabActions(tab, employeeQuery, mode);
+  const primaryActions = [
+    ...(canEdit ? [{ label: "Ерөнхий мэдээлэл засах", href: `/hr/employees/${employee.id}?edit=profile#profile-info`, icon: Pencil }] : []),
+    ...(mode === "hr" ? [{ label: "Ажлын шилжилт бүртгэх", href: `/hr/transfers?${employeeQuery}`, icon: Repeat2 }] : []),
+    ...(mode === "hr" ? [{ label: "Тойрох хуудас", href: `/hr/clearance?${employeeQuery}`, icon: BriefcaseBusiness }] : []),
+  ];
+  const recordActions = [
+    { label: mode === "hr" ? "Чөлөө" : "Чөлөө хүсэх", href: `/hr/sick?${employeeQuery}&type=time_off`, icon: FileCheck2 },
+    { label: "Өвчтэй", href: `/hr/sick?${employeeQuery}&type=sick`, icon: HeartPulse },
+    ...(mode === "hr" ? [{ label: "Томилолт", href: `/hr/trips?${employeeQuery}`, icon: Plane }] : []),
+    ...(mode === "hr" ? [{ label: "Сахилга", href: `/hr/discipline?${employeeQuery}`, icon: ScrollText }] : []),
+    ...(mode === "hr" ? [{ label: "Тушаал / гэрээ", href: `/hr/orders?${employeeQuery}`, icon: FilePlus2 }] : []),
+  ];
+  const moreActions = [
+    { label: "Карт хэвлэх", href: `/hr/reports?${employeeQuery}&type=employee_card`, icon: IdCard },
+    { label: "Excel экспорт", href: `/hr/reports?${employeeQuery}&format=xlsx`, icon: FileText },
+  ];
+  const dangerActions = mode === "hr" ? [{ label: "Ажлаас чөлөөлөх", href: `/hr/archive?${employeeQuery}`, icon: Archive }] : [];
   const existingFamilyMemberIds = useMemo(
     () => new Set((employee.familyMembers || []).map((member) => member.relatedEmployeeId)),
     [employee.familyMembers],
@@ -915,32 +1068,33 @@ export function EmployeeDetailTabs({
   const workInfoCards: WorkInfoCardData[] = [
     {
       title: "1. Одоогийн ажлын байр",
+      help: "Одоогоор ажиллаж буй нэгж, албан тушаал, шууд удирдлага.",
       rows: [
         { label: "Хэлтэс / алба", value: employee.departmentName },
         { label: "Албан тушаал", value: employee.jobTitle },
         { label: "Шууд удирдлага", value: employee.managerName },
         { label: "Ажил эрхлэлтийн төлөв", value: employee.statusLabel },
-        { label: "Ажил эрхлэлтийн төрөл", value: "" },
         { label: "Зэрэг / дэв", value: employee.gradeRank },
       ],
     },
     {
       title: "2. Гэрээ ба хугацаа",
+      help: "Гэрээ, эхлэх/дуусах хугацаа, ажилласан хугацааны хяналт.",
       rows: [
         { label: "Ажилд орсон огноо", value: employee.startDate },
-        { label: "Туршилтын хугацаа дуусах", value: "" },
         { label: "Гэрээ дуусах огноо", value: employee.contractEndDate },
-        { label: "Ажилласан жил", value: calculateWorkedDuration(employee.startDate) },
+        { label: "Ажилласан хугацаа", value: calculateWorkedDuration(employee.startDate) },
         { label: "Ажлын цагийн хуваарь", value: employee.workSchedule },
       ],
     },
     {
       title: "3. Байршил ба зэрэглэл",
+      help: "Байршил, зэрэглэл болон нэмэлт ажлын ангилал.",
       rows: [
         { label: "Ажлын байршил", value: employee.workLocation },
         { label: "Ажлын загвар / дэв", value: employee.gradeRank },
         { label: "Ажил эрхлэлтийн төрөл", value: "" },
-        { label: "Ажлын хаяг", value: employee.workAddress },
+        { label: "Нэмэлт тэмдэглэл", value: employee.workAddress },
       ],
     },
   ];
@@ -1191,52 +1345,76 @@ export function EmployeeDetailTabs({
     );
   }
 
-  function renderWorkInfoRow(row: DetailPair) {
-    const value = formatEmpty(row.value);
-
+  function renderEmployeeActionBar() {
     return (
-      <div key={row.label} className={styles.workInfoRow}>
-        <span>{row.label}</span>
-        <strong className={value === "—" ? styles.emptyValue : undefined}>{value}</strong>
-      </div>
-    );
-  }
+      <section className={styles.employeeActionBar} aria-label="Ажилтны үйлдэл">
+        <div className={styles.actionPanelHeader}>
+          <div>
+            <span>Ажилтны үйлдэл</span>
+            <p className={styles.actionPanelHelp}>
+              Ерөнхий мэдээлэл засах нь хувийн/холбоо барих мэдээлэлд зориулагдсан. Алба, албан тушаал, удирдлага
+              өөрчлөх бол ажлын шилжилт бүртгэнэ.
+            </p>
+          </div>
+          {moreActions.length || dangerActions.length ? (
+            <details className={styles.moreActionsMenu}>
+              <summary className={styles.moreActionsSummary}>Бусад үйлдэл</summary>
+              <div className={styles.moreActionsList}>
+                {moreActions.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <Link key={action.href} href={action.href}>
+                      <Icon aria-hidden />
+                      <span>{action.label}</span>
+                    </Link>
+                  );
+                })}
+                {dangerActions.length ? (
+                  <div className={styles.moreActionsDangerGroup}>
+                    {dangerActions.map((action) => {
+                      const Icon = action.icon;
+                      return (
+                        <Link key={action.href} href={action.href} className={styles.dangerAction}>
+                          <Icon aria-hidden />
+                          <span>{action.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            </details>
+          ) : null}
+        </div>
 
-  function renderWorkInfoCard(card: WorkInfoCardData) {
-    return (
-      <section key={card.title} className={styles.workInfoCard}>
-        <h3 className={styles.workInfoCardTitle}>{card.title}</h3>
-        <div className={styles.workInfoRows}>{card.rows.map(renderWorkInfoRow)}</div>
-      </section>
-    );
-  }
-
-  function renderWorkInfoSection() {
-    return (
-      <div className={styles.workInfoSection}>
-        {missingWorkFields.length ? (
-          <div className={styles.missingInfoBanner} role="status">
-            <strong>Дутуу мэдээлэл байна: {missingWorkFields.length} талбар</strong>
-            <span>Шаардлагатай мэдээллийг бүрэн бөглөнө үү.</span>
+        {primaryActions.length ? (
+          <div className={styles.primaryActionGroup}>
+            {primaryActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <Link key={action.href} href={action.href} className={styles.primaryActionButton}>
+                  <Icon aria-hidden />
+                  <span>{action.label}</span>
+                </Link>
+              );
+            })}
           </div>
         ) : null}
 
-        <div className={styles.workInfoGrid}>{workInfoCards.map(renderWorkInfoCard)}</div>
-
-        {renderPanel(
-          "Ажлын түүх",
-          renderTable(
-            [
-              { key: "date", label: "Огноо" },
-              { key: "title", label: "Үйл явдал" },
-              { key: "note", label: "Тайлбар" },
-            ],
-            historyRows,
-            "Ажлын түүх бүртгэгдээгүй.",
-          ),
-          mode === "hr" ? renderAddLink("Шилжилт нэмэх", `/hr/transfers?${employeeQuery}`) : null,
-        )}
-      </div>
+        {recordActions.length ? (
+          <div className={styles.recordActionGroup} aria-label="HR хурдан бүртгэл">
+            {recordActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <Link key={action.href} href={action.href} className={styles.recordActionChip}>
+                  <Icon aria-hidden />
+                  <span>{action.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        ) : null}
+      </section>
     );
   }
 
@@ -1263,7 +1441,16 @@ export function EmployeeDetailTabs({
     }
 
     if (tab === "Ажлын мэдээлэл") {
-      return renderWorkInfoSection();
+      return (
+        <WorkInformationPanel
+          employee={employee}
+          cards={workInfoCards}
+          missingFields={missingWorkFields}
+          historyRows={historyRows}
+          transferHref={`/hr/transfers?${employeeQuery}`}
+          canAddTransfer={mode === "hr"}
+        />
+      );
     }
 
     if (tab === "Гэр бүл") {
@@ -1344,12 +1531,10 @@ export function EmployeeDetailTabs({
             </div>,
           )}
           {renderPanel(
-            "Чөлөөний хүсэлт",
-            <div className={styles.hrProfileActionStack}>
-              <Link href={`/hr/sick?${employeeQuery}&type=time_off`} className={styles.primaryButton}>Чөлөө хүсэх</Link>
-              <Link href={`/hr/sick?${employeeQuery}&type=annual_leave`} className={styles.secondaryButton}>Ээлжийн амралт бүртгэх</Link>
-              <Link href={`/hr/sick?${employeeQuery}&type=sick`} className={styles.secondaryButton}>Өвчтэй бүртгэх</Link>
-              {mode === "hr" ? <Link href={`/hr/trips?${employeeQuery}`} className={styles.secondaryButton}>Томилолт бүртгэх</Link> : null}
+            "Сүүлийн бүртгэл",
+            <div className={styles.workHistoryEmpty}>
+              <strong>Чөлөө, өвчтэй, томилолтын бүртгэл энд нэгтгэгдэнэ.</strong>
+              <span>Шинэ бүртгэл хийх бол дээрх HR хурдан бүртгэл хэсгээс тохирох үйлдлээ сонгоно.</span>
             </div>,
           )}
         </div>
@@ -1489,7 +1674,10 @@ export function EmployeeDetailTabs({
       <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
         <div className={styles.editInfoBanner}>
           <strong>Ерөнхий мэдээлэл засаж байна</strong>
-          <span>Хадгалах хүртэл өөрчлөлт хэрэгжихгүй.</span>
+          <span>
+            Энэ хэсэг нь нэр, код, хүйс, төрсөн огноо, утас, имэйл зэрэг ерөнхий мэдээллийг засна. Алба/албан тушаал
+            өөрчлөх бол «Ажлын шилжилт бүртгэх»-ийг ашиглана.
+          </span>
         </div>
         <div className={styles.hrProfileContentGrid}>
           {renderPanel(
@@ -1543,7 +1731,7 @@ export function EmployeeDetailTabs({
             <div className={styles.editCardFields}>
               <div className={styles.editReadonlyValue}>
                 <span>Иргэний үнэмлэх / регистр</span>
-                <strong>{formatEmpty(employee.registerNumber)}</strong>
+                <strong>{formatWorkValue(employee.registerNumber)}</strong>
               </div>
               <Field name="contractEndDate" label="Хөдөлмөрийн гэрээ дуусах" type="date" defaultValue={employee.contractEndDate} />
               <Field name="studyField" label="Диплом / боловсрол" defaultValue={employee.studyField} />
@@ -1714,11 +1902,11 @@ export function EmployeeDetailTabs({
               <Field name="jobTitle" label="Ажлын нэр / загвар" defaultValue={editableTextValue(employee.jobTitle)} />
               <div className={styles.editReadonlyValue}>
                 <span>Ажлын байршил</span>
-                <strong>{formatEmpty(employee.workLocation)}</strong>
+                <strong>{formatWorkValue(employee.workLocation)}</strong>
               </div>
               <div className={styles.editReadonlyValue}>
                 <span>Ажлын хаяг</span>
-                <strong>{formatEmpty(employee.workAddress)}</strong>
+                <strong>{formatWorkValue(employee.workAddress)}</strong>
               </div>
             </div>
           </section>
@@ -1806,6 +1994,8 @@ export function EmployeeDetailTabs({
         </div>
       </div>
 
+      {renderEmployeeActionBar()}
+
       <div className={styles.hrProfileTabBar}>
         {detailTabs.map((item) => {
           const Icon = detailTabIcons[item] ?? IdCard;
@@ -1833,26 +2023,13 @@ export function EmployeeDetailTabs({
             {canEditCurrentTab && !editing && !addingFamilyMember ? (
               <button
                 type="button"
-                className={tab === "Ажлын мэдээлэл" ? styles.primaryButton : styles.secondaryButton}
+                className={styles.secondaryButton}
                 onClick={() => setEditing((value) => !value)}
               >
                 <Pencil aria-hidden />
-                <span>{tab === "Ажлын мэдээлэл" ? "Ажлын мэдээлэл засах" : "Засах"}</span>
+                <span>{tab === "Ерөнхий мэдээлэл" ? "Ерөнхий мэдээлэл засах" : `${tab} засах`}</span>
               </button>
             ) : null}
-            {tabActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <Link
-                  key={action.href}
-                  href={action.href}
-                  className={action.variant === "secondary" ? styles.secondaryButton : styles.primaryButton}
-                >
-                  <Icon aria-hidden />
-                  <span>{action.label}</span>
-                </Link>
-              );
-            })}
           </div>
         </div>
 
@@ -1862,46 +2039,6 @@ export function EmployeeDetailTabs({
       </div>
     </section>
   );
-}
-
-type DetailTabAction = {
-  label: string;
-  href: string;
-  icon: typeof FileCheck2;
-  variant?: "primary" | "secondary";
-};
-
-function getEmployeeDetailTabActions(tab: string, employeeQuery: string, mode: "hr" | "department"): DetailTabAction[] {
-  if (tab === "Чөлөө") {
-    const actions: DetailTabAction[] = [
-      { label: mode === "hr" ? "Чөлөө бүртгэх" : "Чөлөө хүсэх", href: `/hr/sick?${employeeQuery}&type=time_off`, icon: FileCheck2 },
-      { label: "Ээлжийн амралт бүртгэх", href: `/hr/sick?${employeeQuery}&type=annual_leave`, icon: CalendarDays },
-      { label: "Өвчтэй бүртгэх", href: `/hr/sick?${employeeQuery}&type=sick`, icon: HeartPulse },
-    ];
-    if (mode === "hr") {
-      actions.push({ label: "Томилолт бүртгэх", href: `/hr/trips?${employeeQuery}`, icon: Plane });
-    }
-    return actions;
-  }
-
-  if (mode !== "hr") {
-    return [];
-  }
-
-  if (tab === "Шагнал, нэмэгдэл") {
-    return [{ label: "Тушаал / гэрээ нэмэх", href: `/hr/orders?${employeeQuery}`, icon: ScrollText }];
-  }
-  if (tab === "Баримт бичиг") {
-    return [{ label: "Хавсралт нэмэх", href: `/hr/orders?${employeeQuery}`, icon: FilePlus2 }];
-  }
-  if (tab === "Өөрчлөлтийн түүх" || tab === "Ажлын мэдээлэл") {
-    return [
-      { label: tab === "Ажлын мэдээлэл" ? "Ажлын шилжилт бүртгэх" : "Шилжилт бүртгэх", href: `/hr/transfers?${employeeQuery}`, icon: Repeat2 },
-      { label: "Тойрох хуудас", href: `/hr/clearance?${employeeQuery}`, icon: BriefcaseBusiness, variant: "secondary" },
-    ];
-  }
-
-  return [];
 }
 
 function ProfileEditButtons({ pending, onCancel, disabled = false }: { pending: boolean; onCancel: () => void; disabled?: boolean }) {

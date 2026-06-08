@@ -2315,6 +2315,171 @@
   display: contents;
 }
 
+.employeeActionBar {
+  display: grid;
+  gap: 12px;
+  padding: 16px 22px;
+  border-bottom: 1px solid rgba(30, 70, 42, 0.11);
+  background: linear-gradient(180deg, rgba(248, 252, 249, 0.96), rgba(239, 248, 241, 0.72));
+}
+
+.actionPanelHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+}
+
+.actionPanelHeader span {
+  display: block;
+  color: #1f2b25;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.actionPanelHelp {
+  max-width: 880px;
+  margin: 4px 0 0;
+  color: #627167;
+  font-size: 0.8rem;
+  font-weight: 720;
+  line-height: 1.42;
+}
+
+.primaryActionGroup,
+.recordActionGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.primaryActionButton,
+.recordActionChip,
+.moreActionsList a,
+.dangerAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 860;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.primaryActionButton {
+  min-height: 42px;
+  padding: 10px 13px;
+  border: 1px solid rgba(46, 125, 50, 0.22);
+  background: #1f7a35;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(31, 122, 53, 0.16);
+}
+
+.primaryActionButton:hover {
+  background: #17672b;
+}
+
+.recordActionGroup {
+  padding-top: 2px;
+}
+
+.recordActionChip {
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  color: #2c5f3a;
+}
+
+.recordActionChip:hover {
+  border-color: rgba(46, 125, 50, 0.28);
+  background: #edf7ee;
+}
+
+.moreActionsMenu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.moreActionsSummary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid rgba(46, 125, 50, 0.16);
+  border-radius: 8px;
+  background: #fff;
+  color: #2c5f3a;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 880;
+  list-style: none;
+}
+
+.moreActionsSummary::-webkit-details-marker {
+  display: none;
+}
+
+.moreActionsList {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 7px);
+  right: 0;
+  display: grid;
+  min-width: 220px;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 8px;
+  border: 1px solid rgba(46, 125, 50, 0.16);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 18px 44px rgba(24, 71, 36, 0.16);
+}
+
+.moreActionsList a {
+  justify-content: flex-start;
+  min-height: 38px;
+  padding: 9px 10px;
+  color: #1f2b25;
+}
+
+.moreActionsList a:hover {
+  background: rgba(238, 247, 239, 0.86);
+}
+
+.moreActionsDangerGroup {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(132, 64, 36, 0.14);
+}
+
+.dangerAction {
+  color: #8a3a20 !important;
+}
+
+.dangerAction:hover {
+  background: #fff3ed !important;
+}
+
+.primaryActionButton:focus-visible,
+.recordActionChip:focus-visible,
+.moreActionsSummary:focus-visible,
+.moreActionsList a:focus-visible {
+  outline: 3px solid rgba(46, 125, 50, 0.18);
+  outline-offset: 2px;
+}
+
+.primaryActionButton svg,
+.recordActionChip svg,
+.moreActionsList svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
 .hrProfileTabBar {
   display: flex;
   gap: 10px;
@@ -2424,10 +2589,94 @@
   grid-column: span 2;
 }
 
-.workInfoSection {
+.workInfoPanel {
   display: grid;
   gap: 14px;
   min-width: 0;
+}
+
+.workSnapshot {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(300px, 1fr);
+  gap: 12px 18px;
+  min-width: 0;
+  padding: 15px 16px;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 26px rgba(24, 71, 36, 0.05);
+}
+
+.workSnapshotMain,
+.workSnapshotMeta {
+  min-width: 0;
+}
+
+.workSnapshotMain {
+  display: grid;
+  gap: 4px;
+}
+
+.workSnapshotMain span,
+.workSnapshotMeta span {
+  color: #66766b;
+  font-size: 0.76rem;
+  font-weight: 820;
+}
+
+.workSnapshotMain strong {
+  color: #111827;
+  font-size: 1.1rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.workSnapshotMain p,
+.workSnapshotHelp {
+  margin: 0;
+  color: #526157;
+  font-size: 0.82rem;
+  font-weight: 740;
+  line-height: 1.42;
+}
+
+.workSnapshotMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.workSnapshotMeta div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 8px;
+  background: rgba(248, 252, 249, 0.88);
+}
+
+.workSnapshotMeta strong {
+  color: #111827;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.workStatusPill {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 24px;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(218, 238, 219, 0.98);
+  color: #1f7a35 !important;
+  font-size: 0.78rem !important;
+}
+
+.workSnapshotHelp {
+  grid-column: 1 / -1;
+  padding-top: 2px;
 }
 
 .workInfoGrid {
@@ -2440,7 +2689,7 @@
 .workInfoCard {
   display: grid;
   align-content: start;
-  gap: 13px;
+  gap: 12px;
   min-width: 0;
   padding: 16px;
   border: 1px solid rgba(46, 125, 50, 0.14);
@@ -2449,11 +2698,25 @@
   box-shadow: 0 10px 26px rgba(24, 71, 36, 0.06);
 }
 
+.workInfoCardHeader {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
 .workInfoCardTitle {
   margin: 0;
   color: #111827;
   font-size: 0.98rem;
   line-height: 1.25;
+}
+
+.workInfoCardHelp {
+  margin: 0;
+  color: #66766b;
+  font-size: 0.76rem;
+  font-weight: 730;
+  line-height: 1.38;
 }
 
 .workInfoRows {
@@ -2469,14 +2732,14 @@
   align-items: start;
 }
 
-.workInfoRow span {
+.workInfoLabel {
   color: #66766b;
   font-size: 0.78rem;
   font-weight: 780;
   line-height: 1.35;
 }
 
-.workInfoRow strong {
+.workInfoValue {
   min-width: 0;
   color: #111827;
   font-size: 0.84rem;
@@ -2488,14 +2751,12 @@
 
 .emptyValue {
   color: #9ca3af !important;
-  font-weight: 800 !important;
+  font-weight: 700 !important;
 }
 
-.missingInfoBanner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 12px;
+.missingWorkBanner {
+  display: grid;
+  gap: 10px;
   min-width: 0;
   padding: 12px 14px;
   border: 1px solid rgba(202, 138, 4, 0.26);
@@ -2504,15 +2765,83 @@
   color: #7c4a03;
 }
 
-.missingInfoBanner strong {
+.missingWorkBanner strong {
+  display: block;
   font-size: 0.84rem;
   line-height: 1.35;
 }
 
-.missingInfoBanner span {
+.missingWorkBanner span {
   color: #8a6414;
   font-size: 0.8rem;
   line-height: 1.35;
+}
+
+.missingWorkChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.missingWorkChips span {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid rgba(202, 138, 4, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #7c4a03;
+  font-size: 0.74rem;
+  font-weight: 820;
+}
+
+.workHistoryPanel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(46, 125, 50, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 28px rgba(24, 71, 36, 0.05);
+}
+
+.workHistoryHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workHistoryHeader h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 1rem;
+}
+
+.workHistoryHeader p {
+  margin: 4px 0 0;
+  color: #66766b;
+  font-size: 0.8rem;
+  line-height: 1.38;
+}
+
+.workHistoryEmpty {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px dashed rgba(46, 125, 50, 0.16);
+  border-radius: 8px;
+  background: rgba(248, 252, 249, 0.82);
+  color: #66766b;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.workHistoryEmpty strong {
+  color: #334139;
 }
 
 .hrProfileSubPanel {
@@ -2871,6 +3200,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .workSnapshot {
+    grid-template-columns: 1fr;
+  }
+
   .hrProfileHeroMetrics,
   .hrProfileHeroFacts {
     padding-left: 0;
@@ -2929,6 +3262,8 @@
   .hrProfileTwoColumn,
   .hrProfileContentGrid,
   .hrProfileWorkGrid,
+  .workSnapshot,
+  .workSnapshotMeta,
   .workInfoGrid,
   .hrProfileInfoRow,
   .workInfoRow,
@@ -2946,6 +3281,27 @@
   .hrTabs,
   .departmentGrid {
     grid-template-columns: 1fr;
+  }
+
+  .actionPanelHeader,
+  .workHistoryHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .moreActionsMenu {
+    width: 100%;
+  }
+
+  .moreActionsSummary {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .moreActionsList {
+    right: auto;
+    left: 0;
+    width: 100%;
   }
 
   .statGrid {

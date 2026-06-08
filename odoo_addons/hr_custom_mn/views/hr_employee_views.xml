@@ -77,15 +77,15 @@
                     </group>
                 </page>
 
-                <page name="hr_custom_mn_work" string="Ажлын мэдээлэл" groups="hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin">
+                <page name="hr_custom_mn_work" string="Ажил" groups="hr_custom_mn.group_hr_custom_mn_officer,hr_custom_mn.group_hr_custom_mn_admin">
                     <group class="o_hr_mn_work_grid">
                         <group string="1. Одоогийн ажлын байр" class="o_hr_mn_work_card">
                             <field name="department_id" string="Хэлтэс / алба"/>
                             <field name="job_id" string="Албан тушаал"/>
+                            <field name="job_title" string="Ажлын нэр"/>
                             <field name="parent_id" string="Шууд удирдлага"/>
                             <field name="x_mn_employment_status" string="Ажил эрхлэлтийн төлөв"/>
                             <field name="employee_type" string="Ажил эрхлэлтийн төрөл"/>
-                            <field name="x_mn_grade_rank" string="Зэрэг / дэв"/>
                         </group>
                         <group string="2. Гэрээ ба хугацаа" class="o_hr_mn_work_card">
                             <field name="contract_date_start" string="Ажилд орсон огноо"/>
@@ -95,8 +95,7 @@
                         </group>
                         <group string="3. Байршил ба зэрэглэл" class="o_hr_mn_work_card">
                             <field name="work_location_id" string="Ажлын байршил"/>
-                            <field name="job_title" string="Ажлын загвар / дэв"/>
-                            <field name="employee_type" string="Ажил эрхлэлтийн төрөл"/>
+                            <field name="x_mn_grade_rank" string="Зэрэг / дэв"/>
                         </group>
                     </group>
                 </page>
