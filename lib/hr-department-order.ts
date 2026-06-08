@@ -5,9 +5,9 @@ export const HR_DEPARTMENT_DISPLAY_ORDER = [
   "Дотоод хяналт",
   "Санхүү",
   "Захиргаа",
-  "Авто бааз хог тээвэр",
-  "Зам талбай ногоон байгууламж",
-  "Тохижилт",
+  "Авто бааз, хог тээврийн хэлтэс",
+  "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
+  "Тохижилтын хэлтэс",
 ] as const;
 
 const HR_DEPARTMENT_ORDER_INDEX = new Map<string, number>(
@@ -64,7 +64,7 @@ export function getHrDepartmentDisplayName(departmentName: string, jobTitle?: st
     (normalizedTitle.includes("тээвэр") && normalizedTitle.includes("хяналт")) ||
     (normalizedTitle.includes("хог") && normalizedTitle.includes("хяналт"))
   ) {
-    return "Авто бааз хог тээвэр";
+    return "Авто бааз, хог тээврийн хэлтэс";
   }
 
   if (
@@ -92,17 +92,17 @@ export function getHrDepartmentDisplayName(departmentName: string, jobTitle?: st
     normalizedDepartment.includes("тээвэр") ||
     normalizedDepartment.includes("авто бааз")
   ) {
-    return "Авто бааз хог тээвэр";
+    return "Авто бааз, хог тээврийн хэлтэс";
   }
   if (
     normalizedDepartment.includes("ногоон") ||
     normalizedDepartment.includes("зам талбай") ||
     normalizedDepartment.includes("цэвэрлэгээ")
   ) {
-    return "Зам талбай ногоон байгууламж";
+    return "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
   }
   if (normalizedDepartment.includes("тохиж")) {
-    return "Тохижилт";
+    return "Тохижилтын хэлтэс";
   }
 
   return fixMojibakeText(String(departmentName || "Хэлтэсгүй")).trim() || "Хэлтэсгүй";
