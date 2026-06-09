@@ -10,6 +10,31 @@ function jsonError(message: string, status = 500) {
   return Response.json({ error: message }, { status });
 }
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error && error.message ? error.message : String(error ?? "");
+}
+
+function isOdooAccessError(error: unknown) {
+  const normalized = getErrorMessage(error).toLocaleLowerCase("en-US");
+  return (
+    normalized.includes("access denied") ||
+    normalized.includes("access error") ||
+    normalized.includes("accesserror") ||
+    normalized.includes("not allowed") ||
+    normalized.includes("эрх хүрэлцэхгүй") ||
+    normalized.includes("зөвшөөрөгдөөгүй")
+  );
+}
+
+function extractMongolianErrorMessage(error: unknown) {
+  const message = getErrorMessage(error);
+  const line = message
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .find((item) => /[\u0400-\u04ff]/.test(item) && !item.toLocaleLowerCase("en-US").includes("traceback"));
+  return line?.replace(/^.*?(?=[\u0400-\u04ff])/, "").trim() || "";
+}
+
 function getNumber(formData: FormData, key: string) {
   const value = Number(formData.get(key) ?? "");
   return Number.isFinite(value) && value > 0 ? value : undefined;
@@ -137,6 +162,9 @@ export async function POST(request: Request) {
       return jsonError("Ажилтны зураг 5MB-аас бага байх ёстой.", 400);
     }
     console.error("POST /api/hr/employees failed:", error);
-    return jsonError("Ажилтан бүртгэхэд алдаа гарлаа. Эрхийн тохиргоог шалгана уу.");
+    if (isOdooAccessError(error)) {
+      return jsonError("Ажилтан бүртгэх эрх хүрэлцэхгүй байна. Хэрэглэгчийн HR эрхийг шалгана уу.", 403);
+    }
+    return jsonError(extractMongolianErrorMessage(error) || "Ажилтан бүртгэхэд алдаа гарлаа. Мэдээллээ шалгана уу.", 400);
   }
 }

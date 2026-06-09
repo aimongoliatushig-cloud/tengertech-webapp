@@ -738,6 +738,7 @@ class HrEmployee(models.Model):
         allowed_groups = [
             "hr.group_hr_user",
             "hr.group_hr_manager",
+            "municipal_core.group_municipal_hr",
             "hr_custom_mn.group_hr_custom_mn_officer",
             "hr_custom_mn.group_hr_custom_mn_admin",
         ]
