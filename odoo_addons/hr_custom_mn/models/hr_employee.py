@@ -988,6 +988,21 @@ class HrEmployee(models.Model):
         return {"id": discipline.id}
 
     @api.model
+    def _hr_custom_mn_selection_labels(self, field_name):
+        field = self._fields.get(field_name)
+        if not field:
+            return {}
+        selection = field.selection
+        if isinstance(selection, str):
+            selection = getattr(self, selection)()
+        elif callable(selection):
+            try:
+                selection = selection(self)
+            except TypeError:
+                selection = selection()
+        return dict(selection or [])
+
+    @api.model
     def get_hr_custom_mn_employee_directory(self):
         self._check_hr_custom_mn_api_access()
         domain = []
@@ -1002,8 +1017,8 @@ class HrEmployee(models.Model):
             user_department = self.env.user.employee_id.department_id
             domain = [("department_id", "=", user_department.id)] if user_department else [("user_id", "=", self.env.user.id)]
         employees = self.sudo().with_context(active_test=False).search(domain, order="department_id, name")
-        status_labels = dict(self._fields["x_mn_employment_status"].selection)
-        gender_labels = dict(self._fields["sex"].selection) if "sex" in self._fields else {}
+        status_labels = self._hr_custom_mn_selection_labels("x_mn_employment_status")
+        gender_labels = self._hr_custom_mn_selection_labels("sex")
         today = fields.Date.context_today(self)
         current_status_by_employee = {}
         if self.env.registry.get("municipal.hr.timeoff.request") and employees:
