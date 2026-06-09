@@ -47,6 +47,7 @@ export async function POST(request: Request) {
       newJobId: getNumber(formData, "newJobId"),
       newManagerId: getNumber(formData, "newManagerId"),
       effectiveDate: getString(formData, "effectiveDate"),
+      orderNumber: getString(formData, "orderNumber"),
       reason: getString(formData, "reason"),
       files: getFiles(formData, "files"),
     };

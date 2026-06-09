@@ -731,9 +731,29 @@
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(160px, auto) minmax(150px, auto) auto;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr) minmax(130px, auto) auto;
   gap: 10px;
   margin-bottom: 14px;
+}
+
+.filterSummary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  margin: -2px 0 10px;
+  padding: 0 10px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 8px;
+  background: rgba(238, 247, 239, 0.86);
+  color: #506158;
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+.filterSummary strong {
+  color: #1f7a35;
+  font-weight: 900;
 }
 
 .searchBox {
@@ -1430,6 +1450,11 @@
   font-size: 0.72rem;
   font-weight: 850;
   white-space: nowrap;
+}
+
+.statusPillWarning {
+  background: rgba(250, 236, 199, 0.96);
+  color: #9a6517;
 }
 
 .emptyState {
@@ -2240,6 +2265,10 @@
 .singleColumn {
   display: grid;
   gap: 16px;
+}
+
+.formFirstColumn .formPanel {
+  order: -1;
 }
 
 .tabList {

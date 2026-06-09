@@ -73,6 +73,10 @@ function employeeIsInactive(employee: HrEmployeeDirectoryItem) {
   return !employee.active || ["archived", "terminated", "resigned"].includes(employee.statusKey);
 }
 
+function employeeIsListedActive(employee: HrEmployeeDirectoryItem) {
+  return !employeeIsInactive(employee) && !["probation", "leave", "annual_leave", "sick", "business_trip"].includes(employee.statusKey);
+}
+
 function conicGradient(slices: ChartSlice[]) {
   const total = slices.reduce((sum, slice) => sum + slice.value, 0);
   if (!total) {
@@ -292,10 +296,11 @@ export function HrDashboardClient({
     return current;
   }, [requests, today]);
 
-  const activeEmployees = employees.filter((employee) => !employeeIsInactive(employee) && !currentRequestByEmployee.has(employee.id));
-  const timeoffEmployees = employees.filter((employee) => currentRequestByEmployee.get(employee.id)?.requestType === "time_off");
-  const annualLeaveEmployees = employees.filter((employee) => currentRequestByEmployee.get(employee.id)?.requestType === "annual_leave");
-  const sickEmployees = employees.filter((employee) => currentRequestByEmployee.get(employee.id)?.requestType === "sick");
+  const workforceEmployees = employees.filter((employee) => !employeeIsInactive(employee));
+  const activeEmployees = workforceEmployees.filter((employee) => employeeIsListedActive(employee) && !currentRequestByEmployee.has(employee.id));
+  const timeoffEmployees = workforceEmployees.filter((employee) => currentRequestByEmployee.get(employee.id)?.requestType === "time_off");
+  const annualLeaveEmployees = workforceEmployees.filter((employee) => currentRequestByEmployee.get(employee.id)?.requestType === "annual_leave");
+  const sickEmployees = workforceEmployees.filter((employee) => currentRequestByEmployee.get(employee.id)?.requestType === "sick");
   const pendingRequests = requests.filter((request) => ["submitted", "hr_review"].includes(request.state));
   const approvedRequests = requests.filter((request) => request.state === "approved");
   const rejectedRequests = requests.filter((request) => request.state === "rejected");
@@ -305,35 +310,35 @@ export function HrDashboardClient({
     {
       kind: "total",
       label: "Нийт ажилтан",
-      value: cardsSource?.totalEmployees ?? employees.length,
+      value: workforceEmployees.length,
       icon: Users,
-      note: accessMode === "hr" ? "Бүх хэлтэс" : "Миний хэлтэс",
+      note: accessMode === "hr" ? "Идэвхтэй бүртгэл" : "Миний хэлтэс",
     },
     {
       kind: "active",
       label: "Идэвхтэй",
-      value: cardsSource?.activeEmployees ?? activeEmployees.length,
+      value: activeEmployees.length,
       icon: Activity,
       note: "Өнөөдрийн динамик төлөв",
     },
     {
       kind: "timeoff",
       label: "Чөлөөтэй",
-      value: cardsSource?.timeOffEmployees ?? timeoffEmployees.length,
+      value: timeoffEmployees.length,
       icon: ClipboardPlus,
       note: "Батлагдсан хүсэлт хүчинтэй",
     },
     {
       kind: "annual_leave",
       label: "Ээлжийн амралттай",
-      value: cardsSource?.annualLeaveEmployees ?? annualLeaveEmployees.length,
+      value: annualLeaveEmployees.length,
       icon: CalendarDays,
       note: "Батлагдсан ээлжийн амралт",
     },
     {
       kind: "sick",
       label: "Өвчтэй",
-      value: cardsSource?.sickEmployees ?? sickEmployees.length,
+      value: sickEmployees.length,
       icon: HeartPulse,
       note: "Батлагдсан өвчтэй хүсэлт",
     },
@@ -402,26 +407,42 @@ export function HrDashboardClient({
     .sort((left, right) => right.count - left.count || left.employeeName.localeCompare(right.employeeName, "mn"))
     .slice(0, 5);
 
-  const departmentBreakdown =
-    dashboard?.departmentBreakdown?.length
-      ? dashboard.departmentBreakdown
-      : Array.from(
-          employees.reduce((groups, employee) => {
-            const name = employee.departmentName || "Хэлтэс бүртгээгүй";
-            groups.set(name, (groups.get(name) ?? 0) + 1);
-            return groups;
-          }, new Map<string, number>()),
-          ([departmentName, totalEmployees]) => ({
-            departmentId: 0,
-            departmentName,
-            totalEmployees,
-            activeEmployees: 0,
-            timeOffEmployees: 0,
-            annualLeaveEmployees: 0,
-            sickEmployees: 0,
-            pendingRequests: 0,
-          }),
-        );
+  const departmentBreakdown = (() => {
+    const rows = new Map<string, HrTimeoffDashboardData["departmentBreakdown"][number]>();
+    for (const employee of workforceEmployees) {
+      const key = String(employee.departmentId || employee.departmentName || "Хэлтэс бүртгээгүй");
+      if (!rows.has(key)) {
+        rows.set(key, {
+          departmentId: employee.departmentId || 0,
+          departmentName: employee.departmentName || "Хэлтэс бүртгээгүй",
+          totalEmployees: 0,
+          activeEmployees: 0,
+          timeOffEmployees: 0,
+          annualLeaveEmployees: 0,
+          sickEmployees: 0,
+          pendingRequests: 0,
+        });
+      }
+      const row = rows.get(key)!;
+      const requestType = currentRequestByEmployee.get(employee.id)?.requestType;
+      row.totalEmployees += 1;
+      if (requestType === "sick") {
+        row.sickEmployees += 1;
+      } else if (requestType === "annual_leave") {
+        row.annualLeaveEmployees += 1;
+      } else if (requestType === "time_off") {
+        row.timeOffEmployees += 1;
+      } else if (employeeIsListedActive(employee)) {
+        row.activeEmployees += 1;
+      }
+    }
+    for (const request of pendingRequests) {
+      const key = String(request.departmentId || request.departmentName || "Хэлтэс бүртгээгүй");
+      const row = rows.get(key);
+      if (row) row.pendingRequests += 1;
+    }
+    return Array.from(rows.values());
+  })();
 
   const departmentSlices: ChartSlice[] = departmentBreakdown
     .slice()
@@ -436,7 +457,7 @@ export function HrDashboardClient({
   const selectedCard = cards.find((card) => card.kind === detailKind) ?? cards[0];
   const getDetailContent = (kind: DetailKind) => {
     if (kind === "total") {
-      return employees.map((employee) => <StatusEmployeeRow key={employee.id} employee={employee} />);
+      return workforceEmployees.map((employee) => <StatusEmployeeRow key={employee.id} employee={employee} />);
     }
     if (kind === "active") {
       return activeEmployees.map((employee) => <StatusEmployeeRow key={employee.id} employee={employee} />);

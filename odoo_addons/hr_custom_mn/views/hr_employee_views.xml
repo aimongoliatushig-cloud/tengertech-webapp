@@ -14,7 +14,7 @@
                 <button name="action_hr_mn_suspend" type="object" string="Түдгэлзүүлэх" class="btn btn-secondary o_hr_mn_danger_action" invisible="not active or x_mn_employment_status == 'suspended'" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
                 <button name="action_hr_mn_terminate" type="object" string="Чөлөөлөх" class="btn btn-secondary o_hr_mn_danger_action" invisible="not active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
                 <button name="action_hr_mn_rehire" type="object" string="Дахин авах" class="btn btn-secondary" invisible="active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
-                <button name="action_hr_mn_archive" type="object" string="Архивлах" class="btn btn-secondary o_hr_mn_danger_action" invisible="not active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
+                <button name="action_hr_mn_archive" type="object" string="Ажлаас чөлөөлөх" class="btn btn-secondary o_hr_mn_danger_action" invisible="not active" groups="hr_custom_mn.group_hr_custom_mn_officer"/>
                 <button name="action_hr_mn_print_employee_card" type="object" string="Карт хэвлэх" class="btn btn-secondary o_hr_mn_secondary_action"/>
                 <button name="action_hr_mn_export_excel" type="object" string="Excel экспорт" class="btn btn-secondary o_hr_mn_secondary_action"/>
             </xpath>

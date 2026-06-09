@@ -173,6 +173,7 @@ type OdooEmployeeRecord = {
   parent_id?: OdooRelation;
   contract_date_start?: string | false;
   contract_date_end?: string | false;
+  trial_date_end?: string | false;
   birthday?: string | false;
   sex?: string | false;
   certificate?: string | false;
@@ -738,6 +739,7 @@ export type HrEmployeeDirectoryItem = {
   departureDate?: string;
   departureReason?: string;
   departureDescription?: string;
+  trialEndDate?: string;
   biography?: string;
   notes?: string;
   missingDocumentCount: number;
@@ -2184,6 +2186,7 @@ const HR_EMPLOYEE_FIELD_VARIANTS: string[][] = [
     "parent_id",
     "contract_date_start",
     "contract_date_end",
+    "trial_date_end",
     "birthday",
     "sex",
     "certificate",
@@ -2782,7 +2785,7 @@ async function loadFleetVehicleRelationOptions(
 
 function resolveHrEmploymentStatus(employee: OdooEmployeeRecord) {
   if (employee.active === false) {
-    return { key: "archived", label: "Архивласан" };
+    return { key: "archived", label: "Ажлаас чөлөөлсөн" };
   }
 
   const status = employee.x_mn_employment_status || "active";
@@ -2793,9 +2796,9 @@ function resolveHrEmploymentStatus(employee: OdooEmployeeRecord) {
     sick: "Өвчтэй",
     business_trip: "Томилолттой",
     suspended: "Түдгэлзсэн",
-    terminated: "Чөлөөлөгдсөн",
+    terminated: "Ажлаас чөлөөлсөн",
     resigned: "Ажлаас гарсан",
-    archived: "Архивласан",
+    archived: "Ажлаас чөлөөлсөн",
     rehired: "Дахин авсан",
   };
 
@@ -4304,6 +4307,7 @@ export async function loadHrEmployeeDirectory(
         managerName: relationName(employee.parent_id ?? false, ""),
         startDate: employee.contract_date_start || "",
         contractEndDate: employee.contract_date_end || "",
+        trialEndDate: employee.trial_date_end || "",
         birthDate: employee.birthday || "",
         genderKey: employee.sex || "",
         genderLabel: resolveHrGenderLabel(employee.sex),

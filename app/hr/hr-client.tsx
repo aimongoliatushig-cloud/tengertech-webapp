@@ -43,6 +43,43 @@ import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 import styles from "./hr.module.css";
 
 const ALL = "__all__";
+const DEFAULT_EMPLOYEE_STATUS = "Идэвхтэй";
+
+function parseDateInput(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+}
+
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isRestDay(date: Date) {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
+function calculateAnnualLeaveEndDate(startDate: string, workingDays: string) {
+  const start = parseDateInput(startDate);
+  const days = Number(workingDays);
+  if (!start || !Number.isFinite(days) || days <= 0) return "";
+
+  const cursor = new Date(start);
+  let countedDays = 0;
+  while (countedDays < Math.floor(days)) {
+    cursor.setDate(cursor.getDate() + 1);
+    if (!isRestDay(cursor)) {
+      countedDays += 1;
+    }
+  }
+  return toDateInputValue(cursor);
+}
 
 function isErrorMessage(message: string) {
   const normalized = message.toLocaleLowerCase("mn-MN");
@@ -114,7 +151,10 @@ export type RegistryColumn = {
 
 function statusLabel(employee: HrEmployeeDirectoryItem) {
   if (!employee.active || ["archived", "terminated", "resigned"].includes(employee.statusKey)) {
-    return "Чөлөөлөгдсөн";
+    return "Ажлаас чөлөөлсөн";
+  }
+  if (employee.statusKey === "probation") {
+    return isTrialEndDateExpired(employee.trialEndDate) ? "Туршилт дууссан" : "Туршилт";
   }
   if (employee.statusKey === "leave") {
     return "Чөлөөтэй";
@@ -129,6 +169,19 @@ function statusLabel(employee: HrEmployeeDirectoryItem) {
     return "Томилолттой";
   }
   return "Идэвхтэй";
+}
+
+function todayInUlaanbaatar() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ulaanbaatar",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function isTrialEndDateExpired(value?: string) {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value) && value <= todayInUlaanbaatar());
 }
 
 export function EmployeeTable({
@@ -148,10 +201,18 @@ export function EmployeeTable({
       ),
     [employees],
   );
+  const jobTitles = useMemo(
+    () =>
+      Array.from(new Set(employees.map((employee) => employee.jobTitle).filter(Boolean))).sort((left, right) =>
+        left.localeCompare(right, "mn-MN"),
+      ),
+    [employees],
+  );
   const [query, setQuery] = useState("");
   const initialDepartment = searchParams.get("department") || ALL;
   const [department, setDepartment] = useState(initialDepartment);
-  const [status, setStatus] = useState(ALL);
+  const [jobTitle, setJobTitle] = useState(ALL);
+  const [status, setStatus] = useState(DEFAULT_EMPLOYEE_STATUS);
 
   const visibleEmployees = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("mn-MN");
@@ -169,10 +230,11 @@ export function EmployeeTable({
             .some((value) => value.toLocaleLowerCase("mn-MN").includes(normalizedQuery))
         : true;
       const matchesDepartment = department === ALL || employee.departmentName === department;
+      const matchesJobTitle = jobTitle === ALL || employee.jobTitle === jobTitle;
       const matchesStatus = status === ALL || statusLabel(employee) === status;
-      return matchesQuery && matchesDepartment && matchesStatus;
+      return matchesQuery && matchesDepartment && matchesJobTitle && matchesStatus;
     });
-  }, [department, employees, query, status]);
+  }, [department, employees, jobTitle, query, status]);
 
   return (
     <section className={styles.panel}>
@@ -193,20 +255,34 @@ export function EmployeeTable({
             </option>
           ))}
         </select>
+        <select value={jobTitle} onChange={(event) => setJobTitle(event.target.value)}>
+          <option value={ALL}>Бүх албан тушаал</option>
+          {jobTitles.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
         <select value={status} onChange={(event) => setStatus(event.target.value)}>
           <option value={ALL}>Бүх төлөв</option>
           <option value="Идэвхтэй">Идэвхтэй</option>
+          <option value="Туршилт">Туршилт</option>
+          <option value="Туршилт дууссан">Туршилт дууссан</option>
           <option value="Чөлөөтэй">Чөлөөтэй</option>
           <option value="Ээлжийн амралттай">Ээлжийн амралттай</option>
           <option value="Өвчтэй">Өвчтэй</option>
           <option value="Томилолттой">Томилолттой</option>
-          <option value="Чөлөөлөгдсөн">Чөлөөлөгдсөн</option>
+          <option value="Ажлаас чөлөөлсөн">Ажлаас чөлөөлсөн</option>
         </select>
         {canCreateEmployee ? (
           <Link href="/hr/employees/new" className={styles.primaryLink}>
             Шинэ ажилтан
           </Link>
         ) : null}
+      </div>
+
+      <div className={styles.filterSummary} role="status" aria-live="polite">
+        Одоогийн шүүлтээр <strong>{visibleEmployees.length}</strong> хүн байна
       </div>
 
       <div className={styles.tableWrap}>
@@ -234,7 +310,9 @@ export function EmployeeTable({
                 <td>{employee.gradeRank || employee.jobTitle || "Бүртгээгүй"}</td>
                 <td>{employee.workPhone || employee.mobilePhone || "Бүртгээгүй"}</td>
                 <td>
-                  <span className={styles.statusPill}>{statusLabel(employee)}</span>
+                  <span className={`${styles.statusPill} ${statusLabel(employee) === "Туршилт дууссан" ? styles.statusPillWarning : ""}`}>
+                    {statusLabel(employee)}
+                  </span>
                 </td>
                 <td>{employee.startDate || "Бүртгээгүй"}</td>
                 {mode === "department" ? (
@@ -331,19 +409,17 @@ export function EmployeeCreateForm({
         </label>
         <Select name="departmentId" label="Хэлтэс / алба" options={departments} required />
         <Select name="jobId" label="Албан тушаал" options={jobs} required />
-        <Field name="jobTitle" label="Ажлын нэр" />
         <Select name="managerId" label="Удирдлага" options={managers} />
         <Field name="startDate" label="Ажилд орсон огноо" type="date" />
         <label className={styles.field}>
           <span>Ажиллах төрөл</span>
           <select name="workType" defaultValue="Үндсэн">
             <option>Үндсэн</option>
-            <option>Түр</option>
+            <option>Туршилтаар</option>
             <option>Гэрээт</option>
             <option>Улирлын</option>
           </select>
         </label>
-        <Field name="workLocation" label="Ажиллах байршил" />
         <Field name="emergencyContact" label="Яаралтай холбоо барих хүн" />
         <Field name="emergencyPhone" label="Яаралтай холбоо барих утас" />
         <Field name="homeAddress" label="Гэрийн хаяг" />
@@ -356,10 +432,7 @@ export function EmployeeCreateForm({
           <p>Эдгээр мэдээлэл заавал биш. Бөглөсөн бол ажилтны profile дээр харагдана.</p>
         </div>
         <div className={styles.formGrid}>
-          <Field name="birthPlace" label="Төрсөн аймаг / сум / хот" />
-          <Field name="addressProvince" label="Аймаг / Хот" />
-          <Field name="addressDistrict" label="Сум / Дүүрэг" />
-          <Field name="addressSubdistrict" label="Баг / Хороо" />
+          <Field name="birthPlace" label="Төрсөн хот / аймаг / сум" />
         </div>
       </section>
 
@@ -978,19 +1051,16 @@ export function EmployeeDetailTabs({
   const primaryActions = [
     ...(mode === "hr" ? [{ label: "Ажлын шилжилт бүртгэх", href: `/hr/transfers?${employeeQuery}`, icon: Repeat2 }] : []),
     ...(mode === "hr" ? [{ label: "Тойрох хуудас", href: `/hr/clearance?${employeeQuery}`, icon: BriefcaseBusiness }] : []),
+    ...(mode === "hr" ? [{ label: "Ажлаас чөлөөлөх", href: `/hr/archive?${employeeQuery}`, icon: Archive }] : []),
   ];
   const recordActions = [
     { label: mode === "hr" ? "Чөлөө" : "Чөлөө хүсэх", href: `/hr/sick?${employeeQuery}&type=time_off`, icon: FileCheck2 },
+    { label: "Ээлжийн амралт", href: `/hr/sick?${employeeQuery}&type=annual_leave`, icon: CalendarDays },
     { label: "Өвчтэй", href: `/hr/sick?${employeeQuery}&type=sick`, icon: HeartPulse },
     ...(mode === "hr" ? [{ label: "Томилолт", href: `/hr/trips?${employeeQuery}`, icon: Plane }] : []),
     ...(mode === "hr" ? [{ label: "Сахилга", href: `/hr/discipline?${employeeQuery}`, icon: ScrollText }] : []),
     ...(mode === "hr" ? [{ label: "Тушаал / гэрээ", href: `/hr/orders?${employeeQuery}`, icon: FilePlus2 }] : []),
   ];
-  const moreActions = [
-    { label: "Карт хэвлэх", href: `/hr/reports?${employeeQuery}&type=employee_card`, icon: IdCard },
-    { label: "Excel экспорт", href: `/hr/reports?${employeeQuery}&format=xlsx`, icon: FileText },
-  ];
-  const dangerActions = mode === "hr" ? [{ label: "Архивлах", href: `/hr/archive?${employeeQuery}`, icon: Archive }] : [];
   useEffect(() => {
     return () => {
       if (profilePhotoPreviewUrl) {
@@ -1247,6 +1317,7 @@ export function EmployeeDetailTabs({
       rows: [
         { label: "Ажилд орсон огноо", value: employee.startDate },
         { label: "Гэрээ дуусах огноо", value: employee.contractEndDate },
+        { label: "Туршилтын хугацаа дуусах", value: employee.trialEndDate },
         { label: "Ажилласан хугацаа", value: calculateWorkedDuration(employee.startDate) },
         { label: "Ажлын цагийн хуваарь", value: employee.workSchedule },
       ],
@@ -1284,6 +1355,7 @@ export function EmployeeDetailTabs({
     { label: "Банкны данс", value: employee.bankAccount },
     { label: "Ажилд орсон огноо", value: employee.startDate },
     { label: "Гэрээ дуусах огноо", value: employee.contractEndDate },
+    { label: "Туршилтын хугацаа дуусах", value: employee.trialEndDate },
     { label: "Ажилтны төрөл", value: employee.statusLabel },
   ];
 
@@ -1530,35 +1602,6 @@ export function EmployeeDetailTabs({
                 : "Алба, албан тушаал, удирдлагын өөрчлөлт нь зөвхөн ажлын шилжилтийн урсгалаар бүртгэгдэнэ."}
             </p>
           </div>
-          {moreActions.length || dangerActions.length ? (
-            <details className={styles.moreActionsMenu}>
-              <summary className={styles.moreActionsSummary}>Бусад үйлдэл</summary>
-              <div className={styles.moreActionsList}>
-                {moreActions.map((action) => {
-                  const Icon = action.icon;
-                  return (
-                    <Link key={action.href} href={action.href}>
-                      <Icon aria-hidden />
-                      <span>{action.label}</span>
-                    </Link>
-                  );
-                })}
-                {dangerActions.length ? (
-                  <div className={styles.moreActionsDangerGroup}>
-                    {dangerActions.map((action) => {
-                      const Icon = action.icon;
-                      return (
-                        <Link key={action.href} href={action.href} className={styles.dangerAction}>
-                          <Icon aria-hidden />
-                          <span>{action.label}</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                ) : null}
-              </div>
-            </details>
-          ) : null}
         </div>
 
         {canEdit || primaryActions.length ? (
@@ -2433,16 +2476,32 @@ export function TimeoffRequestsClient({
     requestedType === "sick" ? "sick" : requestedType === "annual_leave" ? "annual_leave" : "time_off";
   const defaultFilter = searchParams.get("state") || searchParams.get("requestType") || ALL;
   const defaultEmployeeId = searchParams.get("employeeId") || "";
-  const selectedEmployee = useMemo(
-    () => employees.find((employee) => String(employee.id) === defaultEmployeeId) ?? null,
-    [defaultEmployeeId, employees],
-  );
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [filter, setFilter] = useState(defaultFilter);
   const [editingRequest, setEditingRequest] = useState<HrTimeoffRequest | null>(null);
   const [selectedRequestType, setSelectedRequestType] = useState<HrTimeoffRequestType>(defaultType);
+  const [annualLeaveDateFrom, setAnnualLeaveDateFrom] = useState("");
+  const [annualLeaveWorkingDays, setAnnualLeaveWorkingDays] = useState("");
+  const [annualLeaveDateTo, setAnnualLeaveDateTo] = useState("");
   const annualLeaveOnlyMode = mode === "hr" && defaultType === "annual_leave";
+
+  useEffect(() => {
+    if (selectedRequestType !== "annual_leave") return;
+    setAnnualLeaveDateFrom(editingRequest?.dateFrom || "");
+    setAnnualLeaveWorkingDays("");
+    setAnnualLeaveDateTo(editingRequest?.dateTo || "");
+  }, [editingRequest, selectedRequestType]);
+
+  useEffect(() => {
+    if (selectedRequestType !== "annual_leave") return;
+    const calculatedDateTo = calculateAnnualLeaveEndDate(annualLeaveDateFrom, annualLeaveWorkingDays);
+    if (calculatedDateTo) {
+      setAnnualLeaveDateTo(calculatedDateTo);
+    } else if (!editingRequest) {
+      setAnnualLeaveDateTo("");
+    }
+  }, [annualLeaveDateFrom, annualLeaveWorkingDays, editingRequest, selectedRequestType]);
 
   const visibleRequests = useMemo(() => {
     if (filter === ALL) return requests;
@@ -2513,7 +2572,7 @@ export function TimeoffRequestsClient({
   }
 
   return (
-    <div className={mode === "hr" ? styles.singleColumn : styles.twoColumn}>
+    <div className={`${mode === "hr" ? styles.singleColumn : styles.twoColumn} ${annualLeaveOnlyMode ? styles.formFirstColumn : ""}`}>
       <section className={styles.panel}>
         <div className={styles.sectionHeader}>
           <div>
@@ -2646,16 +2705,6 @@ export function TimeoffRequestsClient({
       <form key={editingRequest?.id ?? "new"} className={styles.formPanel} onSubmit={submit} noValidate>
         <h2>{editingRequest ? "Хүсэлт засах" : selectedRequestType === "annual_leave" ? "Ээлжийн амралт бүртгэх" : "Чөлөө / өвчтэй хүсэлт"}</h2>
         {message ? <p className={isErrorMessage(message) ? styles.errorText : styles.successText}>{message}</p> : null}
-        {!editingRequest && selectedEmployee ? (
-          <div className={styles.selectedEmployeeContext}>
-            <span>Сонгосон ажилтан</span>
-            <strong>{selectedEmployee.name}</strong>
-            <small>
-              {selectedEmployee.departmentName || "Хэлтэс бүртгээгүй"} ·{" "}
-              {selectedEmployee.jobTitle || "Албан тушаал бүртгээгүй"}
-            </small>
-          </div>
-        ) : null}
         <EmployeeSelect
           employees={employees}
           defaultValue={editingRequest?.employeeId || defaultEmployeeId}
@@ -2678,10 +2727,42 @@ export function TimeoffRequestsClient({
             </select>
           </label>
         )}
-        <div className={styles.formGridTwo}>
-          <Field name="dateFrom" label="Эхлэх огноо" type="date" required defaultValue={editingRequest?.dateFrom} />
-          <Field name="dateTo" label="Дуусах огноо" type="date" required defaultValue={editingRequest?.dateTo} />
-        </div>
+        {selectedRequestType === "annual_leave" ? (
+          <div className={styles.formGrid}>
+            <label className={styles.field}>
+              <span>Эхлэх огноо</span>
+              <input
+                name="dateFrom"
+                type="date"
+                required
+                value={annualLeaveDateFrom}
+                onChange={(event) => setAnnualLeaveDateFrom(event.target.value)}
+              />
+            </label>
+            <label className={styles.field}>
+              <span>Амрах ажлын өдөр</span>
+              <input
+                name="annualLeaveWorkingDays"
+                type="number"
+                min="1"
+                step="1"
+                inputMode="numeric"
+                value={annualLeaveWorkingDays}
+                onChange={(event) => setAnnualLeaveWorkingDays(event.target.value)}
+              />
+            </label>
+            <label className={styles.field}>
+              <span>Дуусах огноо</span>
+              <input name="dateTo" type="date" required value={annualLeaveDateTo} readOnly />
+            </label>
+          </div>
+        ) : (
+          <div className={styles.formGridTwo}>
+            <Field name="dateFrom" label="Эхлэх огноо" type="date" required defaultValue={editingRequest?.dateFrom} />
+            <Field name="dateTo" label="Дуусах огноо" type="date" required defaultValue={editingRequest?.dateTo} />
+          </div>
+        )}
+        <Field name="orderNumber" label="Тушаалын дугаар" defaultValue={editingRequest?.orderNumber || ""} />
         <label className={styles.field}>
           <span>{selectedRequestType === "annual_leave" ? "Тайлбар" : "Шалтгаан"}</span>
           <textarea
@@ -2847,6 +2928,7 @@ export function LeavesClient({
           <Field name="dateFrom" label="Эхлэх огноо" type="date" required />
           <Field name="dateTo" label="Дуусах огноо" type="date" required />
         </div>
+        <Field name="orderNumber" label="Тушаалын дугаар" />
         <label className={styles.field}>
           <span>Тайлбар</span>
           <textarea name="note" rows={4} defaultValue={defaultSick ? "Өвчтэй чөлөө" : ""} />

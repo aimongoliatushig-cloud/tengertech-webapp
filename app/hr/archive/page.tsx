@@ -75,15 +75,15 @@ export default async function HrArchivePage({ searchParams }: PageProps) {
         userName={session.name}
         roleLabel={getSessionRoleLabel(session)}
         notificationCount={archivedEmployees.length}
-        notificationNote="Чөлөөлөгдсөн бүртгэл"
+        notificationNote="Ажлаас чөлөөлсөн бүртгэл"
       />
       <HrSectionNav />
       <RegistryPage
-        title="Ажлаас чөлөөлөгдсөн ажилтнууд"
+        title="Ажлаас чөлөөлсөн ажилтнууд"
         description="Ажлаас чөлөөлөх огноо, шалтгаан, тушаал/шийдвэрийн хавсралтыг бүртгэнэ. Энэ үйлдлийг зөвхөн HR мэргэжилтэн хийнэ."
         submitEndpoint="/api/hr/employees/:employeeId/terminate"
         submitLabel="Ажлаас чөлөөлөх"
-        successMessage="Ажилтан ажлаас чөлөөлөгдсөн төлөвтэй боллоо."
+        successMessage="Ажилтны төлөв Ажлаас чөлөөлсөн боллоо."
         hideCreateAnchor
         records={archivedEmployees.map((employee) => ({
           id: employee.id,
@@ -123,6 +123,7 @@ export default async function HrArchivePage({ searchParams }: PageProps) {
             placeholder: "Ажилтан сонгох",
           },
           { label: "Ажлаас чөлөөлсөн огноо", name: "terminationDate", type: "date", required: true },
+          { label: "Тушаалын дугаар", name: "orderNumber", placeholder: "Заавал биш" },
           {
             label: "Ажлаас чөлөөлөх шалтгаан",
             name: "reason",
@@ -130,12 +131,13 @@ export default async function HrArchivePage({ searchParams }: PageProps) {
             options: [
               { id: "Өөрийн хүсэлтээр", name: "Өөрийн хүсэлтээр" },
               { id: "Гэрээ дууссан", name: "Гэрээ дууссан" },
-              { id: "Сахилгын үндэслэлээр", name: "Сахилгын үндэслэлээр" },
+              { id: "Сахилгын шийтгэл", name: "Сахилгын шийтгэл" },
               { id: "Эрүүл мэндийн шалтгаан", name: "Эрүүл мэндийн шалтгаан" },
               { id: "Тэтгэвэрт гарсан", name: "Тэтгэвэрт гарсан" },
               { id: "Бусад", name: "Бусад" },
             ],
           },
+          { label: "Чөлөөлсөн архивын дугаар", name: "archiveNumber", placeholder: "Заавал биш" },
           { label: "Тайлбар", name: "note", type: "textarea", placeholder: "Нэмэлт тайлбар бичих" },
         ]}
         selectedEmployee={selectedEmployee}

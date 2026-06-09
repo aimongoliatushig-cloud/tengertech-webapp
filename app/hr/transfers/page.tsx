@@ -87,6 +87,7 @@ export default async function HrTransfersPage({ searchParams }: PageProps) {
           { label: "Шинэ албан тушаал", name: "newJobId", options: jobs },
           { label: "Шинэ удирдлага", name: "newManagerId", options: managers },
           { label: "Хүчинтэй огноо", name: "effectiveDate", type: "date", required: true },
+          { label: "Тушаалын дугаар", name: "orderNumber", placeholder: "Заавал биш" },
           { label: "Шалтгаан", name: "reason", required: true },
         ]}
         selectedEmployee={selectedEmployee}

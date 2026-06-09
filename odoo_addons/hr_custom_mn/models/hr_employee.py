@@ -17,6 +17,59 @@ REQUIRED_DOCUMENT_TYPES = [
     "appointment_order",
 ]
 
+HR_CUSTOM_MN_EMPLOYEE_API_FIELDS = {
+    "name",
+    "work_phone",
+    "mobile_phone",
+    "work_email",
+    "department_id",
+    "job_id",
+    "job_title",
+    "parent_id",
+    "contract_date_start",
+    "contract_date_end",
+    "trial_date_end",
+    "identification_id",
+    "x_mn_registration_number",
+    "x_mn_employment_status",
+    "birthday",
+    "sex",
+    "active",
+    "notes",
+    "private_phone",
+    "private_email",
+    "private_street",
+    "private_street2",
+    "private_city",
+    "place_of_birth",
+    "marital",
+    "spouse_complete_name",
+    "spouse_birthdate",
+    "children",
+    "study_field",
+    "study_school",
+    "pay_category",
+    "departure_date",
+    "departure_description",
+    "emergency_contact",
+    "emergency_phone",
+    "image_1920",
+    "x_mn_employee_code",
+    "x_mn_grade_rank",
+}
+
+HR_CUSTOM_MN_DISCIPLINE_API_FIELDS = {
+    "employee_id",
+    "violation_type",
+    "violation_date",
+    "action_type",
+    "state",
+    "approved_by",
+    "explanation",
+    "employee_explanation",
+    "deduction_percent",
+}
+
 
 class HrEmployee(models.Model):
     _inherit = "hr.employee"
@@ -62,9 +115,9 @@ class HrEmployee(models.Model):
             ("sick", "Өвчтэй"),
             ("business_trip", "Томилолттой"),
             ("suspended", "Түр түдгэлзсэн"),
-            ("terminated", "Чөлөөлөгдсөн"),
+            ("terminated", "Ажлаас чөлөөлсөн"),
             ("resigned", "Ажлаас гарсан"),
-            ("archived", "Архивласан"),
+            ("archived", "Ажлаас чөлөөлсөн"),
             ("rehired", "Дахин ажилд орсон"),
         ],
         string="Ажил эрхлэлтийн төлөв",
@@ -471,7 +524,7 @@ class HrEmployee(models.Model):
     def action_hr_mn_archive(self):
         for employee in self:
             employee.write({"active": False})
-            employee._x_mn_log_history("archive", note="Ажилтны бүртгэлийг архивласан.")
+            employee._x_mn_log_history("archive", note="Ажилтныг ажлаас чөлөөлсөн.")
         return True
 
     def action_hr_mn_documents(self):
@@ -681,6 +734,260 @@ class HrEmployee(models.Model):
         return True
 
     @api.model
+    def _current_user_has_hr_custom_mn_write_access(self):
+        allowed_groups = [
+            "hr.group_hr_user",
+            "hr.group_hr_manager",
+            "hr_custom_mn.group_hr_custom_mn_officer",
+            "hr_custom_mn.group_hr_custom_mn_admin",
+        ]
+        current_employee = self.env.user.employee_id
+        hr_text = " ".join(
+            [
+                current_employee.department_id.display_name or "",
+                current_employee.job_id.display_name or "",
+                current_employee.job_title or "",
+            ]
+        ).lower()
+        has_hr_profile = "hr" in hr_text or "human resource" in hr_text or "хүний нөөц" in hr_text
+        return any(self.env.user.has_group(group) for group in allowed_groups) or has_hr_profile
+
+    @api.model
+    def _require_hr_custom_mn_write_access(self):
+        if not self._current_user_has_hr_custom_mn_write_access():
+            raise AccessError("Ажилтны HR мэдээлэл бүртгэх эрх хүрэлцэхгүй байна.")
+        return True
+
+    @api.model
+    def _clean_hr_custom_mn_employee_values(self, payload):
+        payload = payload or {}
+        values = {}
+        for field_name, value in payload.items():
+            if field_name in HR_CUSTOM_MN_EMPLOYEE_API_FIELDS and field_name in self._fields:
+                values[field_name] = value
+        return values
+
+    @api.model
+    def _check_hr_custom_mn_employee_values(self, values, employee=False, create_mode=False):
+        if create_mode:
+            if not values.get("name"):
+                raise UserError("Ажилтны овог нэр заавал оруулна уу.")
+            if not (values.get("x_mn_registration_number") or values.get("identification_id")):
+                raise UserError("Регистрийн дугаар заавал оруулна уу.")
+            if not values.get("department_id"):
+                raise UserError("Хэлтэс / алба заавал сонгоно уу.")
+            if not values.get("job_id"):
+                raise UserError("Албан тушаал заавал сонгоно уу.")
+        if "name" in values and not values.get("name"):
+            raise UserError("Ажилтны овог нэр заавал оруулна уу.")
+        if "department_id" in values and not values.get("department_id"):
+            raise UserError("Хэлтэс / алба заавал сонгоно уу.")
+        if "job_id" in values and not values.get("job_id"):
+            raise UserError("Албан тушаал заавал сонгоно уу.")
+        start_date = values.get("contract_date_start")
+        if start_date:
+            parsed_start = fields.Date.to_date(start_date)
+            if parsed_start and parsed_start > fields.Date.context_today(self):
+                raise UserError("Ажилд орсон огноо ирээдүйн огноо байж болохгүй.")
+        register_number = values.get("x_mn_registration_number") or values.get("identification_id")
+        if register_number:
+            domain = ["|", ("x_mn_registration_number", "=", register_number), ("identification_id", "=", register_number)]
+            if employee:
+                domain.append(("id", "!=", employee.id))
+            if self.sudo().with_context(active_test=False).search_count(domain):
+                raise UserError("Регистрийн дугаар давхардаж байна.")
+
+    @api.model
+    def _create_hr_custom_mn_payload_attachments(self, res_model, res_id, attachments, prefix):
+        attachment_model = self.env["ir.attachment"].sudo()
+        created_ids = []
+        for attachment in attachments or []:
+            datas = attachment.get("datas")
+            if not datas:
+                continue
+            created = attachment_model.create(
+                {
+                    "name": "%s - %s" % (prefix, attachment.get("name") or "Хавсралт"),
+                    "type": "binary",
+                    "datas": datas,
+                    "res_model": res_model,
+                    "res_id": res_id,
+                    "mimetype": attachment.get("mimetype") or "application/octet-stream",
+                }
+            )
+            created_ids.append(created.id)
+        return created_ids
+
+    @api.model
+    def create_hr_custom_mn_employee(self, payload):
+        self._require_hr_custom_mn_write_access()
+        values = self._clean_hr_custom_mn_employee_values(payload)
+        self._check_hr_custom_mn_employee_values(values, create_mode=True)
+        employee = self.sudo().with_context(active_test=False).create(values)
+        return {"id": employee.id}
+
+    @api.model
+    def update_hr_custom_mn_employee(self, employee_id, payload):
+        self._require_hr_custom_mn_write_access()
+        employee = self.sudo().with_context(active_test=False).browse(int(employee_id or 0)).exists()
+        if not employee:
+            raise UserError("Ажилтны бүртгэл олдсонгүй.")
+        values = self._clean_hr_custom_mn_employee_values(payload)
+        self._check_hr_custom_mn_employee_values(values, employee=employee)
+        if values:
+            employee.write(values)
+        return {"id": employee.id}
+
+    @api.model
+    def transfer_hr_custom_mn_employee(self, payload):
+        self._require_hr_custom_mn_write_access()
+        payload = payload or {}
+        employee = self.sudo().with_context(active_test=False).browse(int(payload.get("employeeId") or 0)).exists()
+        if not employee:
+            raise UserError("Ажилтан заавал сонгоно уу.")
+        values = self._clean_hr_custom_mn_employee_values(payload.get("values") or {})
+        values = {key: value for key, value in values.items() if key in {"department_id", "job_id", "parent_id"}}
+        if not values:
+            raise UserError("Шинэ хэлтэс, албан тушаал эсвэл удирдлагаас дор хаяж нэгийг сонгоно уу.")
+        effective_date = payload.get("effectiveDate")
+        if not effective_date:
+            raise UserError("Хүчинтэй огноо заавал оруулна уу.")
+        reason = (payload.get("reason") or "").strip()
+        if not reason:
+            raise UserError("Шалтгаан заавал оруулна уу.")
+        order_number = (payload.get("orderNumber") or "").strip()
+        note = "\n".join(
+            [item for item in [reason, "Тушаалын дугаар: %s" % order_number if order_number else ""] if item]
+        )
+        previous = {
+            "department_id": employee.department_id.id,
+            "job_id": employee.job_id.id,
+            "parent_id": employee.parent_id.id,
+        }
+        employee.write(values)
+        history = self.env["hr.custom.mn.employee.history"].sudo().create(
+            {
+                "employee_id": employee.id,
+                "action_type": "transfer",
+                "date": "%s 00:00:00" % effective_date,
+                "old_department_id": previous["department_id"] or False,
+                "new_department_id": employee.department_id.id or False,
+                "old_job_id": previous["job_id"] or False,
+                "new_job_id": employee.job_id.id or False,
+                "old_manager_id": previous["parent_id"] or False,
+                "new_manager_id": employee.parent_id.id or False,
+                "note": note,
+                "user_id": self.env.user.id,
+            }
+        )
+        attachments = payload.get("attachments") or []
+        self._create_hr_custom_mn_payload_attachments(
+            "hr.custom.mn.employee.history",
+            history.id,
+            attachments,
+            "Шилжилт хөдөлгөөн %s" % effective_date,
+        )
+        self._create_hr_custom_mn_payload_attachments(
+            "hr.employee",
+            employee.id,
+            attachments,
+            "Шилжилт хөдөлгөөн %s" % effective_date,
+        )
+        return {"id": history.id, "employeeId": employee.id}
+
+    @api.model
+    def terminate_hr_custom_mn_employee(self, payload):
+        self._require_hr_custom_mn_write_access()
+        payload = payload or {}
+        employee = self.sudo().with_context(active_test=False).browse(int(payload.get("employeeId") or 0)).exists()
+        if not employee:
+            raise UserError("Ажилтан заавал сонгоно уу.")
+        termination_date = payload.get("terminationDate")
+        if not termination_date:
+            raise UserError("Ажлаас чөлөөлсөн огноо заавал оруулна уу.")
+        reason = (payload.get("reason") or "").strip()
+        if not reason:
+            raise UserError("Ажлаас чөлөөлөх шалтгаан заавал оруулна уу.")
+        values = self._clean_hr_custom_mn_employee_values(payload.get("values") or {})
+        if not values:
+            raise UserError("Ажилтныг ажлаас чөлөөлөх талбар олдсонгүй.")
+        employee.write(values)
+        note = "\n".join([item for item in [reason, payload.get("note")] if item])
+        self.env["hr.custom.mn.employee.history"].sudo().create(
+            {
+                "employee_id": employee.id,
+                "action_type": "terminate",
+                "date": "%s 00:00:00" % termination_date,
+                "note": note,
+                "user_id": self.env.user.id,
+            }
+        )
+        self._create_hr_custom_mn_payload_attachments(
+            "hr.employee",
+            employee.id,
+            payload.get("attachments") or [],
+            "Ажлаас чөлөөлөх %s" % termination_date,
+        )
+        return {"id": employee.id}
+
+    @api.model
+    def _clean_hr_custom_mn_discipline_values(self, payload):
+        payload = payload or {}
+        discipline_model = self.env["municipal.discipline"]
+        values = {}
+        for field_name, value in payload.items():
+            if field_name in HR_CUSTOM_MN_DISCIPLINE_API_FIELDS and field_name in discipline_model._fields:
+                values[field_name] = value
+        return values
+
+    @api.model
+    def _check_hr_custom_mn_discipline_values(self, values):
+        if not values.get("employee_id"):
+            raise UserError("Ажилтан сонгоно уу.")
+        if not values.get("violation_type"):
+            raise UserError("Зөрчлийн төрөл сонгоно уу.")
+        if not values.get("violation_date"):
+            raise UserError("Зөрчлийн огноо заавал оруулна уу.")
+        if not values.get("action_type"):
+            raise UserError("Авсан арга хэмжээ сонгоно уу.")
+
+    @api.model
+    def _create_hr_custom_mn_discipline_attachments(self, discipline, attachments):
+        created_ids = self._create_hr_custom_mn_payload_attachments(
+            "municipal.discipline",
+            discipline.id,
+            attachments,
+            "Сахилгын хавсралт",
+        )
+        if created_ids:
+            discipline.sudo().write({"attachment_ids": [(4, attachment_id) for attachment_id in created_ids]})
+
+    @api.model
+    def create_hr_custom_mn_discipline(self, payload):
+        self._require_hr_custom_mn_write_access()
+        payload = payload or {}
+        values = self._clean_hr_custom_mn_discipline_values(payload.get("values") or {})
+        values.setdefault("state", "approved")
+        values.setdefault("approved_by", self.env.user.id)
+        self._check_hr_custom_mn_discipline_values(values)
+        discipline = self.env["municipal.discipline"].sudo().create(values)
+        self._create_hr_custom_mn_discipline_attachments(discipline, payload.get("attachments") or [])
+        return {"id": discipline.id}
+
+    @api.model
+    def update_hr_custom_mn_discipline(self, discipline_id, payload):
+        self._require_hr_custom_mn_write_access()
+        discipline = self.env["municipal.discipline"].sudo().browse(int(discipline_id or 0)).exists()
+        if not discipline:
+            raise UserError("Сахилгын бүртгэл олдсонгүй.")
+        payload = payload or {}
+        values = self._clean_hr_custom_mn_discipline_values(payload.get("values") or {})
+        self._check_hr_custom_mn_discipline_values(values)
+        discipline.write(values)
+        self._create_hr_custom_mn_discipline_attachments(discipline, payload.get("attachments") or [])
+        return {"id": discipline.id}
+
+    @api.model
     def get_hr_custom_mn_employee_directory(self):
         self._check_hr_custom_mn_api_access()
         domain = []
@@ -733,13 +1040,14 @@ class HrEmployee(models.Model):
                 "statusKey": "archived"
                 if not employee.active
                 else current_status_by_employee.get(employee.id, (employee.x_mn_employment_status or "active", ""))[0],
-                "statusLabel": "Архивласан"
+                "statusLabel": "Ажлаас чөлөөлсөн"
                 if not employee.active
                 else current_status_by_employee.get(employee.id, ("", ""))[1]
                 or status_labels.get(employee.x_mn_employment_status, "Идэвхтэй"),
                 "managerName": employee.parent_id.display_name or "",
                 "startDate": str(employee.contract_date_start or ""),
                 "contractEndDate": str(employee.contract_date_end or ""),
+                "trialEndDate": str(employee.trial_date_end or ""),
                 "birthDate": str(employee.birthday or ""),
                 "genderKey": employee.sex or "",
                 "genderLabel": gender_labels.get(employee.sex, "") if employee.sex else "",

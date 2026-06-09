@@ -96,6 +96,7 @@ export async function POST(request: Request) {
           : "time_off",
       dateFrom: getString(formData, "dateFrom"),
       dateTo: getString(formData, "dateTo"),
+      orderNumber: getString(formData, "orderNumber"),
       reason: getString(formData, "note") || leaveTypeName || "Чөлөө / өвчтэй хүсэлт",
       note: leaveTypeName,
       submit: formData.get("confirm") === "on",

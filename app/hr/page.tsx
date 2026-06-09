@@ -91,6 +91,10 @@ function buildDepartmentGroups(employees: HrEmployeeDirectoryItem[]) {
   })).sort((left, right) => compareHrDepartmentNames(left.departmentName, right.departmentName));
 }
 
+function employeeIsActiveWorkforce(employee: HrEmployeeDirectoryItem) {
+  return employee.active && !["archived", "terminated", "resigned"].includes(employee.statusKey);
+}
+
 function DepartmentManpower({ employees }: { employees: HrEmployeeDirectoryItem[] }) {
   const departmentGroups = buildDepartmentGroups(employees);
 
@@ -156,12 +160,13 @@ export default async function HrDashboardPage() {
     }),
   ]);
   const mode: "hr" | "department" = access.scope === "hr" ? "hr" : "department";
+  const workforceEmployees = employees.filter(employeeIsActiveWorkforce);
   const requestCards = timeoffDashboard?.cards;
   const quickActions = access.isHr
     ? [
         { href: "/hr/leaves", label: "Ирсэн хүсэлтүүд", icon: ClipboardPlus, tone: "primary" },
         { href: "/hr/employees", label: "Ажилтны жагсаалт", icon: Users },
-        { href: "/hr/archive", label: "Архивлах", icon: Archive },
+        { href: "/hr/archive", label: "Ажлаас чөлөөлөх", icon: Archive },
       ]
     : [
         { href: "/hr/employees", label: "Манай хэлтсийн ажилтнууд", icon: Users, tone: "primary" },
@@ -211,7 +216,7 @@ export default async function HrDashboardPage() {
         disciplineRecords={disciplineRecords}
       />
 
-      <DepartmentManpower employees={employees} />
+      <DepartmentManpower employees={workforceEmployees} />
     </>
   );
 }

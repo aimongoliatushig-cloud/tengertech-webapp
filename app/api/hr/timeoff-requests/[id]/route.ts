@@ -46,6 +46,7 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
       requestType: requestType(getString(formData, "requestType")),
       dateFrom: getString(formData, "dateFrom"),
       dateTo: getString(formData, "dateTo"),
+      orderNumber: getString(formData, "orderNumber"),
       reason: getString(formData, "reason"),
       note: getString(formData, "note"),
       submit: formData.get("intent") !== "draft",

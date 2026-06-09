@@ -30,6 +30,8 @@ export async function POST(request: Request, ctx: RouteCtx) {
       employeeId: Number(id),
       terminationDate: getString(formData, "terminationDate"),
       reason: getString(formData, "reason"),
+      orderNumber: getString(formData, "orderNumber"),
+      archiveNumber: getString(formData, "archiveNumber"),
       note: getString(formData, "note"),
       files: getFiles(formData, "files"),
     };

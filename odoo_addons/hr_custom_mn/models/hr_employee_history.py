@@ -24,7 +24,7 @@ class HrCustomMnEmployeeHistory(models.Model):
             ("suspend", "Түр түдгэлзүүлсэн"),
             ("terminate", "Ажлаас чөлөөлсөн"),
             ("rehire", "Дахин ажилд авсан"),
-            ("archive", "Архивласан"),
+            ("archive", "Ажлаас чөлөөлсөн"),
             ("document", "Баримт бичиг"),
             ("other", "Бусад"),
         ],

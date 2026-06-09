@@ -25,7 +25,7 @@ STATUS_LABELS = {
     "annual_leave": "Ээлжийн амралттай",
     "sick": "Өвчтэй",
     "inactive": "Идэвхгүй",
-    "archived": "Архивласан",
+    "archived": "Ажлаас чөлөөлсөн",
 }
 
 
@@ -47,6 +47,7 @@ class MunicipalHrTimeoffRequest(models.Model):
     )
     date_from = fields.Date(string="Эхлэх огноо", required=True, tracking=True)
     date_to = fields.Date(string="Дуусах огноо", required=True, tracking=True)
+    order_no = fields.Char(string="Тушаалын дугаар", tracking=True)
     reason = fields.Text(string="Шалтгаан", required=True)
     attachment_ids = fields.Many2many(
         "ir.attachment",
@@ -337,6 +338,7 @@ class MunicipalHrTimeoffRequest(models.Model):
             "dateFrom": str(self.date_from or ""),
             "dateTo": str(self.date_to or ""),
             "durationDays": self.duration_days,
+            "orderNumber": self.order_no or "",
             "reason": self.reason or "",
             "note": self.note or "",
             "hrNote": self.hr_note or "",
@@ -384,6 +386,7 @@ class MunicipalHrTimeoffRequest(models.Model):
                 "request_type": payload.get("requestType") or "time_off",
                 "date_from": payload.get("dateFrom"),
                 "date_to": payload.get("dateTo"),
+                "order_no": payload.get("orderNumber") or "",
                 "reason": payload.get("reason") or ("Ээлжийн амралт" if payload.get("requestType") == "annual_leave" else ""),
                 "note": payload.get("note") or "",
                 "state": "draft",
@@ -406,6 +409,8 @@ class MunicipalHrTimeoffRequest(models.Model):
             values["date_from"] = payload.get("dateFrom")
         if "dateTo" in payload:
             values["date_to"] = payload.get("dateTo")
+        if "orderNumber" in payload:
+            values["order_no"] = payload.get("orderNumber")
         if "reason" in payload:
             values["reason"] = payload.get("reason")
         if "note" in payload:
@@ -497,7 +502,7 @@ class MunicipalHrTimeoffRequest(models.Model):
             "scope": "hr" if self._current_user_is_hr_reviewer() else "department",
             "departmentName": self._current_user_department().display_name or "",
             "cards": {
-                "totalEmployees": len(employees),
+                "totalEmployees": active_count + time_off_count + annual_leave_count + sick_count,
                 "activeEmployees": active_count,
                 "timeOffEmployees": time_off_count,
                 "annualLeaveEmployees": annual_leave_count,
@@ -553,6 +558,9 @@ class MunicipalHrTimeoffRequest(models.Model):
         status_by_employee = self._current_status_by_employee(employees.ids, today)
         rows = {}
         for employee in employees:
+            status = status_by_employee.get(employee.id) or self._base_employee_status(employee)
+            if status in ("archived", "inactive"):
+                continue
             department = employee.department_id
             key = department.id or 0
             if key not in rows:
@@ -567,7 +575,6 @@ class MunicipalHrTimeoffRequest(models.Model):
                     "pendingRequests": 0,
                 }
             rows[key]["totalEmployees"] += 1
-            status = status_by_employee.get(employee.id) or self._base_employee_status(employee)
             if status == "sick":
                 rows[key]["sickEmployees"] += 1
             elif status == "annual_leave":

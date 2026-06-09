@@ -42,7 +42,7 @@ export default async function HrReportsPage({ searchParams }: PageProps) {
     { label: "Өвчтэй", value: stats.sickToday, note: "Өнөөдрийн төлөв", icon: HeartPulse },
     { label: "Томилолттой", value: stats.businessTripToday, note: "Өнөөдрийн төлөв", icon: BriefcaseBusiness },
     { label: "Сахилгын идэвхтэй", value: stats.activeDiscipline, note: "Идэвхтэй бүртгэл", icon: ShieldAlert },
-    { label: "Ажлаас чөлөөлсөн", value: stats.archivedEmployees, note: "Чөлөөлөгдсөн бүртгэл", icon: Archive },
+    { label: "Ажлаас чөлөөлсөн", value: stats.archivedEmployees, note: "Ажлаас чөлөөлсөн бүртгэл", icon: Archive },
     { label: "Тойрох хуудас", value: stats.pendingClearance, note: "Хүлээгдэж буй", icon: Activity },
   ];
 

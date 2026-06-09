@@ -71,6 +71,7 @@ export async function POST(request: Request) {
       requestType: requestType(getString(formData, "requestType")),
       dateFrom: getString(formData, "dateFrom"),
       dateTo: getString(formData, "dateTo"),
+      orderNumber: getString(formData, "orderNumber"),
       reason: getString(formData, "reason"),
       note: getString(formData, "note"),
       submit: formData.get("intent") !== "draft",
