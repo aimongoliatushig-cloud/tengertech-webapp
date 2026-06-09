@@ -773,6 +773,7 @@
 .field input,
 .field select,
 .field textarea {
+  box-sizing: border-box;
   width: 100%;
   min-height: 40px;
   border: 1px solid rgba(46, 125, 50, 0.12);
@@ -795,6 +796,17 @@
 .field select,
 .field textarea {
   padding: 0 12px;
+}
+
+.field input[type="date"] {
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.field input[type="file"] {
+  min-height: 40px;
+  padding: 8px 12px;
+  line-height: 1.35;
 }
 
 .field textarea {
@@ -1686,11 +1698,32 @@
 
 .selectedEmployeeContext {
   display: grid;
-  gap: 4px;
-  padding: 12px;
-  border: 1px solid rgba(46, 125, 50, 0.14);
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid rgba(46, 125, 50, 0.18);
   border-radius: 8px;
-  background: rgba(218, 238, 219, 0.55);
+  background: linear-gradient(135deg, rgba(229, 244, 231, 0.86), rgba(246, 252, 247, 0.92));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.selectedEmployeeContextLink {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.selectedEmployeeContextLink:hover,
+.selectedEmployeeContextLink:focus-visible {
+  border-color: rgba(31, 122, 53, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 8px 18px rgba(31, 122, 53, 0.12);
+  transform: translateY(-1px);
+  outline: none;
 }
 
 .selectedEmployeeContext span,
@@ -1700,9 +1733,25 @@
   font-weight: 800;
 }
 
+.selectedEmployeeContextHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.selectedEmployeeContextAction {
+  color: #1f7a35;
+  font-size: 0.76rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
 .selectedEmployeeContext strong {
   color: #1f2b25;
-  font-size: 1rem;
+  font-size: 1.04rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .formGrid,
@@ -1712,7 +1761,7 @@
 }
 
 .formGrid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
 }
 
 .formGridTwo {

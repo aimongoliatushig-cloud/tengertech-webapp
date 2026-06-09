@@ -639,8 +639,6 @@ const SYSTEM_ADMIN_EMPLOYEE_TOKENS = new Set([
   "систем админ",
   "системийн админ",
   "систем администратор",
-  "test",
-  "test test",
   "dummy",
   "demo",
   "demo user",
@@ -2253,7 +2251,7 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
   }
   if (fields.has("private_city")) values.private_city = data.addressProvince || data.addressDistrict || false;
   if (fields.has("place_of_birth")) values.place_of_birth = data.birthPlace || false;
-  if (fields.has("marital")) values.marital = data.familyStatus || false;
+  if (fields.has("marital") && data.familyStatus) values.marital = data.familyStatus;
   if (fields.has("children")) values.children = data.childrenCount || 0;
   if (fields.has("emergency_contact")) values.emergency_contact = data.emergencyContact || false;
   if (fields.has("emergency_phone")) values.emergency_phone = data.emergencyPhone || false;

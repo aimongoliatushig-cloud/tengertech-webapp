@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Award,
   Archive,
@@ -2980,6 +2980,8 @@ export function RegistryPage({
   allowRecordActions?: boolean;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [pending, setPending] = useState(false);
   const [deletePendingId, setDeletePendingId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -3107,6 +3109,21 @@ export function RegistryPage({
     return null;
   }
 
+  function isSelectedEmployeeContextField(field: ReturnType<typeof normalizeField>) {
+    if (!selectedContext) {
+      return false;
+    }
+    const fieldName = field.name || field.label;
+    return (
+      fieldName === "employeeId" ||
+      fieldName === "departmentId" ||
+      fieldName === "jobTitle" ||
+      field.label === "Ажилтан" ||
+      field.label === "Хэлтэс" ||
+      field.label === "Албан тушаал"
+    );
+  }
+
   const normalizedFields = fields.map((field) => normalizeField(field));
   const noteField = normalizedFields.find((field) => field.name === "note" || field.label === "Тайлбар");
   const gridFields = noteField
@@ -3172,6 +3189,29 @@ export function RegistryPage({
       }
       return next;
     });
+  }
+
+  function getChangeEmployeeHref() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("employeeId");
+    const query = params.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  }
+
+  function renderSelectedEmployeeContextContent() {
+    return (
+      <>
+        <div className={styles.selectedEmployeeContextHeader}>
+          <span>Сонгосон ажилтан</span>
+          {!editingRecord ? <span className={styles.selectedEmployeeContextAction}>Ажилтан солих</span> : null}
+        </div>
+        <strong>{String(editingRecord?.employeeName || selectedEmployee?.name || "Ажилтан бүртгээгүй")}</strong>
+        <small>
+          {String(editingRecord?.departmentName || selectedEmployee?.departmentName || "Хэлтэс бүртгээгүй")} ·{" "}
+          {String(editingRecord?.jobTitle || selectedEmployee?.jobTitle || "Албан тушаал бүртгээгүй")}
+        </small>
+      </>
+    );
   }
 
   return (
@@ -3272,17 +3312,25 @@ export function RegistryPage({
         <p className={styles.mutedText}>{description}</p>
         {message ? <p className={isErrorMessage(message) ? styles.errorText : styles.successText}>{message}</p> : null}
         {selectedContext ? (
-          <div className={styles.selectedEmployeeContext}>
-            <span>Сонгосон ажилтан</span>
-            <strong>{String(editingRecord?.employeeName || selectedEmployee?.name || "Ажилтан бүртгээгүй")}</strong>
-            <small>
-              {String(editingRecord?.departmentName || selectedEmployee?.departmentName || "Хэлтэс бүртгээгүй")} ·{" "}
-              {String(editingRecord?.jobTitle || selectedEmployee?.jobTitle || "Албан тушаал бүртгээгүй")}
-            </small>
-          </div>
+          <>
+            {editingRecord?.employeeId || selectedEmployee?.id ? (
+              <input name="employeeId" type="hidden" value={String(editingRecord?.employeeId || selectedEmployee?.id)} />
+            ) : null}
+            {!editingRecord ? (
+              <Link className={`${styles.selectedEmployeeContext} ${styles.selectedEmployeeContextLink}`} href={getChangeEmployeeHref()}>
+                {renderSelectedEmployeeContextContent()}
+              </Link>
+            ) : (
+              <div className={styles.selectedEmployeeContext}>{renderSelectedEmployeeContextContent()}</div>
+            )}
+          </>
         ) : null}
         <div className={styles.formGrid}>
           {gridFields.map((fieldConfig) => {
+            if (isSelectedEmployeeContextField(fieldConfig)) {
+              return null;
+            }
+
             if (fieldConfig.options?.length) {
               const visibleOptions = getVisibleOptions(fieldConfig);
               const visibleOptionValues = new Set(visibleOptions.map((option) => String(option.id)));

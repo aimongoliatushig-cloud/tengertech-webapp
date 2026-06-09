@@ -3630,14 +3630,49 @@ async function jsonRpc<T>(
     };
   };
   if (payload.error) {
-    throw new Error(
-      payload.error.data?.message ??
-        payload.error.message ??
-        "Odoo JSON-RPC алдаа тодорхойгүй байна.",
-    );
+    throw new Error(getOdooRpcErrorMessage(payload.error));
   }
 
   return payload.result as T;
+}
+
+function getOdooRpcErrorMessage(error: {
+  message?: string;
+  data?: {
+    message?: string;
+    debug?: string;
+  };
+}) {
+  const debugMessage = extractOdooDebugErrorMessage(error.data?.debug);
+  if (debugMessage) {
+    return debugMessage;
+  }
+  return error.data?.message ?? error.message ?? "Odoo JSON-RPC алдаа тодорхойгүй байна.";
+}
+
+function extractOdooDebugErrorMessage(debug?: string) {
+  if (!debug) return "";
+  const lines = debug
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const exceptionLine = [...lines].reverse().find((line) =>
+    /(?:odoo\.exceptions\.)?(?:UserError|ValidationError|AccessError):/.test(line),
+  );
+  if (exceptionLine) {
+    return exceptionLine
+      .replace(/^.*?(?:UserError|ValidationError|AccessError):\s*/, "")
+      .trim();
+  }
+  const raisedMessageLine = [...lines].reverse().find((line) =>
+    /raise\s+(?:UserError|ValidationError|AccessError)\(["']/.test(line),
+  );
+  const quoted = raisedMessageLine?.match(/["']([^"']+)["']/)?.[1]?.trim();
+  if (quoted) return quoted;
+  const cyrillicLine = [...lines].reverse().find((line) =>
+    /[\u0400-\u04ff]/.test(line) && !line.startsWith("File ") && !line.toLowerCase().includes("traceback"),
+  );
+  return cyrillicLine ?? "";
 }
 
 async function authenticate(connection: OdooConnection) {
