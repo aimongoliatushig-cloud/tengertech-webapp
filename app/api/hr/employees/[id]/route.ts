@@ -177,6 +177,9 @@ async function parseEmployeeUpdatePayload(request: Request) {
     if (value !== undefined) payload[key] = value;
   });
   const photo = formData.get("profilePhoto");
+  if (formData.get("removeProfilePhoto") === "1") {
+    payload.profilePhotoBase64 = "";
+  }
 
   validateEmployeeUpdatePayload(payload);
 

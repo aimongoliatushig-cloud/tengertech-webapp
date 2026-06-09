@@ -7,7 +7,7 @@ from odoo.exceptions import ValidationError
 class HrCustomMnEmployeeFamilyMember(models.Model):
     _name = "hr.custom.mn.employee.family.member"
     _description = "HR MN Employee Family Member"
-    _order = "employee_id, relation, related_employee_id"
+    _order = "employee_id, relation, name, related_employee_id"
 
     employee_id = fields.Many2one(
         "hr.employee",
@@ -19,14 +19,17 @@ class HrCustomMnEmployeeFamilyMember(models.Model):
     related_employee_id = fields.Many2one(
         "hr.employee",
         string="Гэр бүлийн гишүүн",
-        required=True,
         ondelete="cascade",
         index=True,
     )
+    name = fields.Char(string="Нэр")
+    phone = fields.Char(string="Утас")
     relation = fields.Selection(
         [
             ("spouse", "Эхнэр / нөхөр"),
             ("child", "Хүүхэд"),
+            ("father", "Аав"),
+            ("mother", "Ээж"),
             ("parent", "Эцэг / эх"),
             ("sibling", "Ах / эгч / дүү"),
             ("other", "Бусад"),
@@ -58,3 +61,9 @@ class HrCustomMnEmployeeFamilyMember(models.Model):
         for record in self:
             if record.employee_id and record.employee_id == record.related_employee_id:
                 raise ValidationError(_("Ажилтныг өөрийг нь гэр бүлийн гишүүнээр бүртгэх боломжгүй."))
+
+    @api.constrains("related_employee_id", "name")
+    def _check_has_member_identity(self):
+        for record in self:
+            if not record.related_employee_id and not (record.name or "").strip():
+                raise ValidationError(_("Гэр бүлийн гишүүний нэрийг оруулна уу."))

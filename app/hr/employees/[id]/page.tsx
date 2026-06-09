@@ -48,7 +48,6 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
         employee={employee}
         canEdit={access.isHr}
         mode={mode}
-        familyMemberCandidates={employees}
       />
     </>
   );

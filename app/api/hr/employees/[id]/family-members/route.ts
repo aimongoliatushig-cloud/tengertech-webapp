@@ -23,8 +23,8 @@ function familyMemberErrorMessage(error: unknown) {
   if (error.message === "HR_ACCESS_DENIED") {
     return "Танд хүний нөөцийн мэдээлэл засах эрх байхгүй байна.";
   }
-  if (error.message === "HR_FAMILY_MEMBER_RELATED_REQUIRED") {
-    return "Гэр бүлийн гишүүнээр нэмэх ажилтнаа сонгоно уу.";
+  if (error.message === "HR_FAMILY_MEMBER_NAME_REQUIRED") {
+    return "Гэр бүлийн гишүүний нэрийг оруулна уу.";
   }
   if (error.message === "HR_FAMILY_MEMBER_SELF_NOT_ALLOWED") {
     return "Ажилтныг өөрийг нь гэр бүлийн гишүүнээр нэмэх боломжгүй.";
@@ -74,9 +74,10 @@ export async function POST(request: Request, ctx: RouteCtx) {
 
     const formData = await request.formData();
     const familyMember = await createEmployeeFamilyMember(session, employeeId, {
-      relatedEmployeeId: Number(getString(formData, "relatedEmployeeId")),
+      relatedEmployeeId: Number(getString(formData, "relatedEmployeeId")) || null,
+      name: getString(formData, "name"),
+      phone: getString(formData, "phone"),
       relation: getString(formData, "relation"),
-      note: getString(formData, "note"),
     });
 
     return Response.json({ familyMember }, { status: 201 });
@@ -88,7 +89,7 @@ export async function POST(request: Request, ctx: RouteCtx) {
     if (
       error instanceof Error &&
       ![
-        "HR_FAMILY_MEMBER_RELATED_REQUIRED",
+        "HR_FAMILY_MEMBER_NAME_REQUIRED",
         "HR_FAMILY_MEMBER_SELF_NOT_ALLOWED",
         "HR_FAMILY_MEMBER_RELATED_NOT_FOUND",
         "HR_FAMILY_MEMBER_DUPLICATE",

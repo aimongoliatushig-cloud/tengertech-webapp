@@ -757,6 +757,7 @@ export type HrEmployeeFamilyMember = {
   relatedEmployeeName: string;
   relation: string;
   relationLabel: string;
+  phone: string;
   departmentName: string;
   jobTitle: string;
   note: string;

@@ -148,6 +148,8 @@ type HrEmployeeFamilyMemberSearchRecord = {
   id: number;
   employee_id?: OdooRelation;
   related_employee_id?: OdooRelation;
+  name?: string | false;
+  phone?: string | false;
   relation?: string | false;
   note?: string | false;
 };
@@ -446,6 +448,7 @@ export type HrEmployeeCreateInput = {
   additionalDuty?: string;
   trialEndDate?: string;
   note?: string;
+  profilePhotoBase64?: string;
 };
 
 export type HrEmployeeTransferInput = {
@@ -699,8 +702,21 @@ function getConnection(session: AppSession) {
   };
 }
 
+function detectImageMimeTypeFromBase64(value: string) {
+  const prefix = value.slice(0, 24);
+  if (prefix.startsWith("/9j/")) return "image/jpeg";
+  if (prefix.startsWith("iVBORw0KGgo")) return "image/png";
+  if (prefix.startsWith("UklGR")) return "image/webp";
+  if (prefix.startsWith("R0lGOD")) return "image/gif";
+  return "image/png";
+}
+
 function imageDataUrlFromBase64(value?: string | false) {
-  return value ? `data:image/png;base64,${value}` : "";
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.toLowerCase() === "false") return "";
+  if (trimmed.startsWith("data:")) return trimmed;
+  return `data:${detectImageMimeTypeFromBase64(trimmed)};base64,${trimmed}`;
 }
 
 function mapHrEmployeeDirectoryApiRecord(record: HrEmployeeDirectoryApiRecord): HrEmployeeDirectoryItem {
@@ -779,6 +795,10 @@ function cleanOdooLongText(value?: string | false) {
     .trim();
 }
 
+function cleanOdooText(value?: string | false | null) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function mergeEmployeeManagedNotes(baseNotes: string, managedParts: Array<[string, string]>) {
   if (!managedParts.length) {
     return baseNotes.trim();
@@ -816,6 +836,8 @@ function resolveMaritalStatusLabel(value?: string | false) {
 const HR_FAMILY_RELATION_LABELS = {
   spouse: "Эхнэр / нөхөр",
   child: "Хүүхэд",
+  father: "Аав",
+  mother: "Ээж",
   parent: "Эцэг / эх",
   sibling: "Ах / эгч / дүү",
   other: "Бусад",
@@ -835,14 +857,16 @@ function mapHrEmployeeFamilyMemberRecord(
   const relatedEmployeeId = getRelationId(record.related_employee_id) || 0;
   const relatedEmployee = employeesById.get(relatedEmployeeId);
   const relation = normalizeFamilyRelation(record.relation);
+  const directName = cleanOdooText(record.name);
 
   return {
     id: record.id,
     employeeId,
     relatedEmployeeId,
-    relatedEmployeeName: relatedEmployee?.name || getRelationName(record.related_employee_id, "Ажилтан бүртгээгүй"),
+    relatedEmployeeName: directName || relatedEmployee?.name || getRelationName(record.related_employee_id, "Бүртгээгүй"),
     relation,
     relationLabel: HR_FAMILY_RELATION_LABELS[relation],
+    phone: cleanOdooText(record.phone),
     departmentName: relatedEmployee?.departmentName || "",
     jobTitle: relatedEmployee?.jobTitle || "",
     note: cleanOdooLongText(record.note),
@@ -1332,6 +1356,11 @@ export async function getEmployeeFamilyMembers(
 ): Promise<HrEmployeeFamilyMember[]> {
   const employees = employeeDirectory ?? (await getEmployees(session));
   const employeesById = new Map(employees.map((employee) => [employee.id, employee]));
+  const fields = await getAvailableFields(
+    "hr.custom.mn.employee.family.member",
+    ["employee_id", "related_employee_id", "name", "phone", "relation", "note"],
+    session,
+  );
 
   try {
     const records = await executeOdooKw<HrEmployeeFamilyMemberSearchRecord[]>(
@@ -1339,7 +1368,7 @@ export async function getEmployeeFamilyMembers(
       "search_read",
       [[["employee_id", "=", employeeId], ["active", "=", true]]],
       {
-        fields: ["employee_id", "related_employee_id", "relation", "note"],
+        fields,
         order: "relation asc, id asc",
       },
       getConnection(session),
@@ -1578,43 +1607,58 @@ export async function createEmployeeFamilyMember(
   session: AppSession,
   employeeId: number,
   input: {
-    relatedEmployeeId: number;
+    relatedEmployeeId?: number | null;
+    name?: string;
+    phone?: string;
     relation: string;
-    note?: string;
   },
 ): Promise<HrEmployeeFamilyMember> {
   await requireHrSpecialistAccess(session);
   if (!Number.isFinite(employeeId) || employeeId <= 0) {
     throw new Error("HR_FAMILY_MEMBER_EMPLOYEE_REQUIRED");
   }
-  if (!Number.isFinite(input.relatedEmployeeId) || input.relatedEmployeeId <= 0) {
-    throw new Error("HR_FAMILY_MEMBER_RELATED_REQUIRED");
+  const relatedEmployeeId =
+    input.relatedEmployeeId && Number.isFinite(input.relatedEmployeeId) && input.relatedEmployeeId > 0
+      ? input.relatedEmployeeId
+      : null;
+  const name = input.name?.trim() || "";
+  if (!relatedEmployeeId && !name) {
+    throw new Error("HR_FAMILY_MEMBER_NAME_REQUIRED");
   }
-  if (employeeId === input.relatedEmployeeId) {
+  if (relatedEmployeeId && employeeId === relatedEmployeeId) {
     throw new Error("HR_FAMILY_MEMBER_SELF_NOT_ALLOWED");
   }
 
   const employees = await getEmployees(session);
   const employee = employees.find((record) => record.id === employeeId);
-  const relatedEmployee = employees.find((record) => record.id === input.relatedEmployeeId);
-  if (!employee || !relatedEmployee) {
+  const relatedEmployee = relatedEmployeeId ? employees.find((record) => record.id === relatedEmployeeId) : null;
+  if (!employee || (relatedEmployeeId && !relatedEmployee)) {
     throw new Error("HR_FAMILY_MEMBER_RELATED_NOT_FOUND");
   }
 
   const relation = normalizeFamilyRelation(input.relation);
+  const phone = input.phone?.trim() || "";
+  const availableFields = new Set(
+    await getAvailableFields(
+      "hr.custom.mn.employee.family.member",
+      ["employee_id", "related_employee_id", "name", "phone", "relation", "note"],
+      session,
+    ),
+  );
+  const values: Record<string, unknown> = {
+    employee_id: employeeId,
+    relation,
+    note: !availableFields.has("phone") && phone ? `Утас: ${phone}` : false,
+  };
+  if (availableFields.has("related_employee_id")) values.related_employee_id = relatedEmployeeId || false;
+  if (availableFields.has("name")) values.name = name || relatedEmployee?.name || false;
+  if (availableFields.has("phone")) values.phone = phone || false;
 
   try {
     const createdId = await executeOdooKw<number>(
       "hr.custom.mn.employee.family.member",
       "create",
-      [
-        {
-          employee_id: employeeId,
-          related_employee_id: input.relatedEmployeeId,
-          relation,
-          note: input.note?.trim() || false,
-        },
-      ],
+      [values],
       {},
       getConnection(session),
     );
@@ -1624,13 +1668,14 @@ export async function createEmployeeFamilyMember(
       familyMembers.find((member) => member.id === createdId) || {
         id: createdId,
         employeeId,
-        relatedEmployeeId: relatedEmployee.id,
-        relatedEmployeeName: relatedEmployee.name,
+        relatedEmployeeId: relatedEmployee?.id || 0,
+        relatedEmployeeName: name || relatedEmployee?.name || "",
         relation,
         relationLabel: HR_FAMILY_RELATION_LABELS[relation],
-        departmentName: relatedEmployee.departmentName,
-        jobTitle: relatedEmployee.jobTitle,
-        note: input.note?.trim() || "",
+        phone,
+        departmentName: relatedEmployee?.departmentName || "",
+        jobTitle: relatedEmployee?.jobTitle || "",
+        note: "",
       }
     );
   } catch (error) {
@@ -1907,6 +1952,7 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
     "children",
     "emergency_contact",
     "emergency_phone",
+    "image_1920",
   ];
   const fields = new Set(await getAvailableFields("hr.employee", desiredFields, session));
   const name = [data.lastName, data.firstName].map((value) => value?.trim()).filter(Boolean).join(" ");
@@ -1969,6 +2015,7 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
   if (fields.has("children")) values.children = data.childrenCount || 0;
   if (fields.has("emergency_contact")) values.emergency_contact = data.emergencyContact || false;
   if (fields.has("emergency_phone")) values.emergency_phone = data.emergencyPhone || false;
+  if (fields.has("image_1920") && data.profilePhotoBase64) values.image_1920 = data.profilePhotoBase64;
 
   const createdId = await executeOdooKw<number>(
     "hr.employee",

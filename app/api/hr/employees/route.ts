@@ -3,6 +3,9 @@ import { createEmployee, getEmployees, requireHrAccess, requireHrSpecialistAcces
 
 export const dynamic = "force-dynamic";
 
+const MAX_EMPLOYEE_PHOTO_SIZE = 5 * 1024 * 1024;
+const ALLOWED_EMPLOYEE_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 function jsonError(message: string, status = 500) {
   return Response.json({ error: message }, { status });
 }
@@ -14,6 +17,20 @@ function getNumber(formData: FormData, key: string) {
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
+}
+
+async function getOptionalEmployeePhotoBase64(formData: FormData) {
+  const photo = formData.get("profilePhoto");
+  if (!(photo instanceof File) || photo.size <= 0) {
+    return "";
+  }
+  if (!ALLOWED_EMPLOYEE_PHOTO_TYPES.has(photo.type)) {
+    throw new Error("INVALID_EMPLOYEE_PHOTO_TYPE");
+  }
+  if (photo.size > MAX_EMPLOYEE_PHOTO_SIZE) {
+    throw new Error("EMPLOYEE_PHOTO_TOO_LARGE");
+  }
+  return Buffer.from(await photo.arrayBuffer()).toString("base64");
 }
 
 export async function GET() {
@@ -39,6 +56,7 @@ export async function POST(request: Request) {
   try {
     await requireHrSpecialistAccess(session);
     const formData = await request.formData();
+    const profilePhotoBase64 = await getOptionalEmployeePhotoBase64(formData);
     const input: HrEmployeeCreateInput = {
       lastName: getString(formData, "lastName"),
       firstName: getString(formData, "firstName"),
@@ -79,6 +97,7 @@ export async function POST(request: Request) {
       additionalDuty: getString(formData, "additionalDuty"),
       trialEndDate: getString(formData, "trialEndDate"),
       note: getString(formData, "note"),
+      profilePhotoBase64,
     };
 
     if (!input.lastName) {
@@ -110,6 +129,12 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "HR_ACCESS_DENIED") {
       return jsonError("Танд хүний нөөцийн хэсэгт хандах эрх байхгүй байна.", 403);
+    }
+    if (error instanceof Error && error.message === "INVALID_EMPLOYEE_PHOTO_TYPE") {
+      return jsonError("Зөвхөн JPG, PNG эсвэл WebP зураг оруулна уу.", 400);
+    }
+    if (error instanceof Error && error.message === "EMPLOYEE_PHOTO_TOO_LARGE") {
+      return jsonError("Ажилтны зураг 5MB-аас бага байх ёстой.", 400);
     }
     console.error("POST /api/hr/employees failed:", error);
     return jsonError("Ажилтан бүртгэхэд алдаа гарлаа. Эрхийн тохиргоог шалгана уу.");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -32,6 +32,7 @@ import {
   Trash2,
   User,
   Users,
+  X,
   type LucideIcon,
 } from "lucide-react";
 
@@ -323,6 +324,11 @@ export function EmployeeCreateForm({
         <Field name="birthDate" label="Төрсөн огноо" type="date" />
         <Field name="phone" label="Утас" />
         <Field name="email" label="Имэйл" type="email" />
+        <label className={styles.field}>
+          <span>Ажилтны зураг</span>
+          <input name="profilePhoto" type="file" accept="image/jpeg,image/png,image/webp" />
+          <small>JPG, PNG, WebP зураг 5MB хүртэл.</small>
+        </label>
         <Select name="departmentId" label="Хэлтэс / алба" options={departments} required />
         <Select name="jobId" label="Албан тушаал" options={jobs} required />
         <Field name="jobTitle" label="Ажлын нэр" />
@@ -775,6 +781,12 @@ function formatWorkValue(value?: string | number | null) {
   return hasUsefulValue(value) ? String(value).trim() : "—";
 }
 
+function ProfileValue({ value, fallback = "Бүртгээгүй" }: { value?: string | number | null; fallback?: string }) {
+  const displayValue = hasUsefulValue(value) ? String(value).trim() : fallback;
+  const isEmpty = !hasUsefulValue(displayValue);
+  return <strong className={isEmpty ? styles.hrProfileEmptyValue : undefined}>{displayValue}</strong>;
+}
+
 function getMissingWorkFields(employee: HrEmployeeDirectoryItem) {
   const importantFields: DetailPair[] = [
     { label: "Хэлтэс / алба", value: employee.departmentName },
@@ -928,12 +940,10 @@ export function EmployeeDetailTabs({
   employee,
   canEdit = false,
   mode = "hr",
-  familyMemberCandidates = [],
 }: {
   employee: HrEmployeeDirectoryItem;
   canEdit?: boolean;
   mode?: "hr" | "department";
-  familyMemberCandidates?: HrEmployeeDirectoryItem[];
 }) {
   const [tab, setTab] = useState(detailTabs[0]);
   const router = useRouter();
@@ -949,6 +959,9 @@ export function EmployeeDetailTabs({
   const [message, setMessage] = useState("");
   const [messageIsError, setMessageIsError] = useState(false);
   const [photoErrorUrl, setPhotoErrorUrl] = useState("");
+  const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState("");
+  const [removeProfilePhoto, setRemoveProfilePhoto] = useState(false);
+  const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
   const initials = employee.name
     .split(/\s+/)
     .filter(Boolean)
@@ -957,10 +970,11 @@ export function EmployeeDetailTabs({
     .join("")
     .toLocaleUpperCase("mn-MN");
   const showPhoto = Boolean(employee.photoUrl && photoErrorUrl !== employee.photoUrl);
+  const currentProfilePhotoUrl = showPhoto && employee.photoUrl ? employee.photoUrl : "";
+  const profilePhotoEditUrl = removeProfilePhoto ? "" : profilePhotoPreviewUrl || currentProfilePhotoUrl;
   const employeeQuery = `employeeId=${employee.id}`;
   const canEditCurrentTab = canEdit && editableDetailTabs.has(tab);
   const primaryActions = [
-    ...(canEdit ? [{ label: "Ерөнхий мэдээлэл засах", href: `/hr/employees/${employee.id}?edit=profile#profile-info`, icon: Pencil }] : []),
     ...(mode === "hr" ? [{ label: "Ажлын шилжилт бүртгэх", href: `/hr/transfers?${employeeQuery}`, icon: Repeat2 }] : []),
     ...(mode === "hr" ? [{ label: "Тойрох хуудас", href: `/hr/clearance?${employeeQuery}`, icon: BriefcaseBusiness }] : []),
   ];
@@ -976,21 +990,13 @@ export function EmployeeDetailTabs({
     { label: "Excel экспорт", href: `/hr/reports?${employeeQuery}&format=xlsx`, icon: FileText },
   ];
   const dangerActions = mode === "hr" ? [{ label: "Архивлах", href: `/hr/archive?${employeeQuery}`, icon: Archive }] : [];
-  const existingFamilyMemberIds = useMemo(
-    () => new Set((employee.familyMembers || []).map((member) => member.relatedEmployeeId)),
-    [employee.familyMembers],
-  );
-  const familyMemberOptions = useMemo(
-    () =>
-      familyMemberCandidates
-        .filter((candidate) => candidate.id !== employee.id && !existingFamilyMemberIds.has(candidate.id))
-        .map((candidate) => ({
-          id: candidate.id,
-          name: candidate.name,
-          description: [candidate.departmentName, candidate.jobTitle].filter(Boolean).join(" · "),
-        })),
-    [employee.id, existingFamilyMemberIds, familyMemberCandidates],
-  );
+  useEffect(() => {
+    return () => {
+      if (profilePhotoPreviewUrl) {
+        URL.revokeObjectURL(profilePhotoPreviewUrl);
+      }
+    };
+  }, [profilePhotoPreviewUrl]);
 
   function selectTab(nextTab: string) {
     setTab(nextTab);
@@ -1022,6 +1028,46 @@ export function EmployeeDetailTabs({
     setMessageIsError(false);
   }
 
+  function beginProfileEdit() {
+    setTab(detailTabs[0]);
+    setEditing(true);
+    setAddingFamilyMember(false);
+    setAddingEmergencyContact(false);
+    setAddingReward(false);
+    setAddingTalentSkill(false);
+    setMessage("");
+    setMessageIsError(false);
+  }
+
+  function handleProfilePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    setRemoveProfilePhoto(false);
+    setPhotoErrorUrl("");
+    setProfilePhotoPreviewUrl(file ? URL.createObjectURL(file) : "");
+  }
+
+  function removeSelectedProfilePhoto() {
+    if (profilePhotoInputRef.current) {
+      profilePhotoInputRef.current.value = "";
+    }
+    setProfilePhotoPreviewUrl("");
+    setRemoveProfilePhoto(true);
+    setPhotoErrorUrl("");
+  }
+
+  function resetProfilePhotoEditor() {
+    if (profilePhotoInputRef.current) {
+      profilePhotoInputRef.current.value = "";
+    }
+    setProfilePhotoPreviewUrl("");
+    setRemoveProfilePhoto(false);
+  }
+
+  function cancelProfileEdit() {
+    resetProfilePhotoEditor();
+    setEditing(false);
+  }
+
   async function submitProfileEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -1042,6 +1088,7 @@ export function EmployeeDetailTabs({
       setMessage("Ажилтны мэдээлэл хадгалагдлаа.");
       setEditing(false);
       setAddingFamilyMember(false);
+      resetProfilePhotoEditor();
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Ажилтны мэдээлэл хадгалахад алдаа гарлаа.");
@@ -1189,9 +1236,7 @@ export function EmployeeDetailTabs({
     (employee.familyMembers || []).map((member) => ({
       type: member.relationLabel,
       name: member.relatedEmployeeName,
-      register: "",
-      birthDate: "",
-      note: [member.departmentName, member.jobTitle, member.note].filter(Boolean).join(" · "),
+      phone: member.phone,
     })),
   );
 
@@ -1337,7 +1382,7 @@ export function EmployeeDetailTabs({
         {items.map((item) => (
           <div key={item.label} className={variant === "cards" ? styles.hrProfileInfoCard : styles.hrProfileInfoRow}>
             <span>{item.label}</span>
-            <strong>{item.value || "Бүртгээгүй"}</strong>
+            <ProfileValue value={item.value} />
           </div>
         ))}
       </div>
@@ -1461,8 +1506,14 @@ export function EmployeeDetailTabs({
           ) : null}
         </div>
 
-        {primaryActions.length ? (
+        {canEdit || primaryActions.length ? (
           <div className={styles.primaryActionGroup}>
+            {canEdit ? (
+              <button type="button" className={styles.primaryActionButton} onClick={beginProfileEdit}>
+                <Pencil aria-hidden />
+                <span>Ерөнхий мэдээлэл засах</span>
+              </button>
+            ) : null}
             {primaryActions.map((action) => {
               const Icon = action.icon;
               return (
@@ -1536,7 +1587,7 @@ export function EmployeeDetailTabs({
               [
                 { key: "type", label: "Төрөл" },
                 { key: "name", label: "Нэр" },
-                { key: "register", label: "Регистр" },
+                { key: "phone", label: "Утас" },
                 { key: "birthDate", label: "Төрсөн огноо" },
                 { key: "note", label: "Тайлбар" },
               ],
@@ -1743,6 +1794,62 @@ export function EmployeeDetailTabs({
     );
   }
 
+  function renderProfilePhotoEditor() {
+    const inputId = `profile-photo-${employee.id}`;
+    return (
+      <div className={styles.profilePhotoEditor}>
+        <span className={styles.profilePhotoEditorLabel}>Профайл зураг</span>
+        <div className={styles.profilePhotoUploadBox}>
+          <label
+            htmlFor={inputId}
+            className={`${styles.profilePhotoDropCard} ${profilePhotoEditUrl ? styles.profilePhotoDropCardFilled : ""}`}
+          >
+            {profilePhotoEditUrl ? (
+              <img
+                src={profilePhotoEditUrl}
+                alt={`${employee.name} профиль зураг`}
+                onError={() => {
+                  if (profilePhotoPreviewUrl) {
+                    setProfilePhotoPreviewUrl("");
+                  } else {
+                    setPhotoErrorUrl(profilePhotoEditUrl);
+                  }
+                }}
+              />
+            ) : (
+              <span className={styles.profilePhotoEmptyState}>
+                <span className={styles.profilePhotoDefaultAvatar}>{initials || "А"}</span>
+                <strong>Зураг нэмэх</strong>
+              </span>
+            )}
+            <span className={styles.profilePhotoDropOverlay}>{profilePhotoEditUrl ? "Зураг солих" : "Зураг сонгох"}</span>
+          </label>
+          {profilePhotoEditUrl ? (
+            <button
+              type="button"
+              className={styles.profilePhotoRemoveButton}
+              onClick={removeSelectedProfilePhoto}
+              aria-label="Профайл зураг устгах"
+              title="Профайл зураг устгах"
+            >
+              <X aria-hidden />
+            </button>
+          ) : null}
+          <input
+            id={inputId}
+            ref={profilePhotoInputRef}
+            className={styles.profilePhotoFileInput}
+            name="profilePhoto"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleProfilePhotoChange}
+          />
+          {removeProfilePhoto ? <input type="hidden" name="removeProfilePhoto" value="1" /> : null}
+        </div>
+      </div>
+    );
+  }
+
   function renderProfileEditForm() {
     return (
       <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
@@ -1811,15 +1918,11 @@ export function EmployeeDetailTabs({
               <Field name="studyField" label="Диплом / боловсрол" defaultValue={employee.studyField} />
               <Field name="studySchool" label="Сургууль" defaultValue={employee.studySchool} />
               <Field name="missingDocumentCount" label="Дутуу баримтын тоо" type="number" defaultValue={String(employee.missingDocumentCount ?? 0)} />
-              <label className={styles.field}>
-                <span>Профайл зураг солих</span>
-                <input name="profilePhoto" type="file" accept="image/jpeg,image/png,image/webp" />
-                <small>JPG, PNG, WebP зураг 5MB хүртэл.</small>
-              </label>
+              {renderProfilePhotoEditor()}
             </div>,
           )}
         </div>
-        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+        <ProfileEditButtons pending={pending} onCancel={cancelProfileEdit} />
       </form>
     );
   }
@@ -1874,34 +1977,26 @@ export function EmployeeDetailTabs({
       <form className={styles.profileEditForm} onSubmit={submitFamilyMemberAdd} noValidate>
         <div className={styles.editInfoBanner}>
           <strong>Гэр бүлийн гишүүн нэмэх</strong>
-          <span>Ажилтнаас сонгоод энэ ажилтны гэр бүлийн гишүүнээр холбоно.</span>
+          <span>Энэ ажилтны гэр бүлийн хүний нэр, хамаарал болон холбоо барих мэдээллийг бүртгэнэ.</span>
         </div>
         <div className={styles.hrProfileTwoColumn}>
           {renderPanel(
-            "1. Хэнийг нэмэх вэ?",
+            "1. Гэр бүлийн гишүүний мэдээлэл",
             <div className={styles.editCardFields}>
-              <SearchableSelect
-                name="relatedEmployeeId"
-                label="Ажилтан сонгох"
-                options={familyMemberOptions}
-                required
-                placeholder="Нэмэх хүнээ сонгох"
-                disabled={familyMemberPending || familyMemberOptions.length === 0}
-              />
               <label className={styles.field}>
                 <span>Хамаарал</span>
                 <select name="relation" defaultValue="spouse" disabled={familyMemberPending}>
                   <option value="spouse">Эхнэр / нөхөр</option>
                   <option value="child">Хүүхэд</option>
+                  <option value="father">Аав</option>
+                  <option value="mother">Ээж</option>
                   <option value="parent">Эцэг / эх</option>
                   <option value="sibling">Ах / эгч / дүү</option>
                   <option value="other">Бусад</option>
                 </select>
               </label>
-              <TextAreaField name="note" label="Тайлбар" defaultValue="" rows={4} />
-              {familyMemberOptions.length === 0 ? (
-                <div className={styles.hrProfileEmpty}>Нэмэх боломжтой ажилтан олдсонгүй.</div>
-              ) : null}
+              <Field name="name" label="Нэр" required />
+              <Field name="phone" label="Утас" />
             </div>,
           )}
           {renderPanel(
@@ -1910,7 +2005,7 @@ export function EmployeeDetailTabs({
               [
                 { key: "type", label: "Хамаарал" },
                 { key: "name", label: "Нэр" },
-                { key: "note", label: "Тайлбар" },
+                { key: "phone", label: "Утас" },
               ],
               familyRows,
               "Одоогоор гэр бүлийн гишүүн нэмэгдээгүй.",
@@ -1920,7 +2015,6 @@ export function EmployeeDetailTabs({
         <ProfileEditButtons
           pending={familyMemberPending}
           onCancel={() => setAddingFamilyMember(false)}
-          disabled={familyMemberOptions.length === 0}
         />
       </form>
     );
@@ -2128,12 +2222,14 @@ export function EmployeeDetailTabs({
               <h2>{employee.name}</h2>
               <span className={styles.hrProfileStatusPill}>{employee.statusLabel || "Идэвхтэй"}</span>
             </div>
-            <p>{employee.jobTitle || "Албан тушаал бүртгээгүй"}</p>
+            <p className={!hasUsefulValue(employee.jobTitle) ? styles.hrProfileEmptyValue : undefined}>
+              {hasUsefulValue(employee.jobTitle) ? employee.jobTitle : "Албан тушаал бүртгээгүй"}
+            </p>
             <ul>
-              <li><Phone aria-hidden />{employee.workPhone || employee.mobilePhone || "Утас бүртгээгүй"}</li>
-              <li><Mail aria-hidden />{employee.workEmail || "И-мэйл бүртгээгүй"}</li>
-              <li><Building2 aria-hidden />{employee.departmentName || "Хэлтэс бүртгээгүй"}</li>
-              <li><Users aria-hidden />Шууд удирдлага: {employee.managerName || "Бүртгээгүй"}</li>
+              <li><Phone aria-hidden /><ProfileValue value={employee.workPhone || employee.mobilePhone} fallback="Утас бүртгээгүй" /></li>
+              <li><Mail aria-hidden /><ProfileValue value={employee.workEmail} fallback="И-мэйл бүртгээгүй" /></li>
+              <li><Building2 aria-hidden /><ProfileValue value={employee.departmentName} fallback="Хэлтэс бүртгээгүй" /></li>
+              <li><Users aria-hidden /><span>Шууд удирдлага:</span> <ProfileValue value={employee.managerName} /></li>
             </ul>
           </div>
         </div>
@@ -2145,7 +2241,7 @@ export function EmployeeDetailTabs({
               <div key={item.label} className={styles.hrProfileHeroMetric}>
                 <Icon aria-hidden />
                 <span>{item.label}</span>
-                <strong>{item.value || "Бүртгээгүй"}</strong>
+                <ProfileValue value={item.value} />
               </div>
             );
           })}
@@ -2155,7 +2251,7 @@ export function EmployeeDetailTabs({
           {rightSummary.map((item) => (
             <div key={item.label}>
               <span>{item.label}</span>
-              <strong>{item.value || "Бүртгээгүй"}</strong>
+              <ProfileValue value={item.value} />
             </div>
           ))}
         </div>
@@ -2235,7 +2331,7 @@ function Info({ label, value }: { label: string; value?: string }) {
   return (
     <div className={styles.infoCard}>
       <span>{label}</span>
-      <strong>{value || "Бүртгээгүй"}</strong>
+      <ProfileValue value={value} />
     </div>
   );
 }
