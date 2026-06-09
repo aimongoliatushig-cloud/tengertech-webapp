@@ -296,6 +296,9 @@ export type SelectOption = {
   login: string;
   role: string;
   departmentName?: string;
+  departmentId?: number | null;
+  managedDepartmentIds?: number[];
+  managedDepartmentNames?: string[];
   jobTitle?: string;
   phone?: string;
 };
@@ -1661,6 +1664,7 @@ const DEPARTMENT_HEAD_TEXT_TOKENS = [
   "department manager",
   "project manager",
 ];
+const AUTO_BASE_HEAD_NAME_TOKENS = ["ц.эрдэнэбат", "ц эрдэнэбат", "эрдэнэбат"];
 
 function normalizeWorkspaceText(value: unknown) {
   return normalizeDepartmentText(String(value ?? ""));
@@ -1672,6 +1676,21 @@ function containsWorkspaceToken(value: unknown, tokens: string[]) {
     normalized &&
       tokens.some((token) => normalized.includes(normalizeWorkspaceText(token))),
   );
+}
+
+function isAutoBaseGarbageDepartmentName(value: unknown) {
+  const normalized = normalizeWorkspaceText(value);
+  const hasGarbageTransport =
+    normalized.includes("хог") &&
+    (normalized.includes("тээвэр") || normalized.includes("teever"));
+  return (
+    hasGarbageTransport ||
+    (normalized.includes("авто") && normalized.includes("хог"))
+  );
+}
+
+function isPreferredAutoBaseDepartmentHeadName(value: unknown) {
+  return containsWorkspaceToken(value, AUTO_BASE_HEAD_NAME_TOKENS);
 }
 
 function getDepartmentRecordName(
@@ -1972,6 +1991,23 @@ async function loadDepartmentHeadEmployeeUserOptions(
         .map((department) => relationId(department.manager_id ?? false))
         .filter((id): id is number => Boolean(id)),
     );
+    const autoBaseDepartments = departments.filter((department) => isAutoBaseGarbageDepartmentName(department.name));
+    const autoBaseDepartmentIds = autoBaseDepartments.map((department) => department.id);
+    const autoBaseDepartmentNames = autoBaseDepartments.map((department) => department.name);
+    const managedDepartmentIdsByEmployeeId = new Map<number, number[]>();
+    const managedDepartmentNamesByEmployeeId = new Map<number, string[]>();
+    for (const department of departments) {
+      const managerEmployeeId = relationId(department.manager_id ?? false);
+      if (!managerEmployeeId) {
+        continue;
+      }
+      const managedDepartmentIds = managedDepartmentIdsByEmployeeId.get(managerEmployeeId) ?? [];
+      managedDepartmentIds.push(department.id);
+      managedDepartmentIdsByEmployeeId.set(managerEmployeeId, managedDepartmentIds);
+      const managedDepartmentNames = managedDepartmentNamesByEmployeeId.get(managerEmployeeId) ?? [];
+      managedDepartmentNames.push(department.name);
+      managedDepartmentNamesByEmployeeId.set(managerEmployeeId, managedDepartmentNames);
+    }
     const options = employees.reduce<SelectOption[]>((items, employee) => {
       const userId = relationId(employee.user_id);
       if (!userId) {
@@ -1979,8 +2015,14 @@ async function loadDepartmentHeadEmployeeUserOptions(
       }
 
       const jobTitle = getEmployeeJobTitle(employee);
+      const employeeName = `${employee.name} ${relationName(employee.user_id, "")}`;
+      const employeeDepartmentName = relationName(employee.department_id, "");
+      const isPreferredAutoBaseHead =
+        isPreferredAutoBaseDepartmentHeadName(employeeName) &&
+        isAutoBaseGarbageDepartmentName(employeeDepartmentName);
       const isDepartmentHead =
         managerEmployeeIds.has(employee.id) ||
+        isPreferredAutoBaseHead ||
         containsWorkspaceToken(relationName(employee.job_id ?? false), DEPARTMENT_HEAD_TEXT_TOKENS) ||
         containsWorkspaceToken(jobTitle, DEPARTMENT_HEAD_TEXT_TOKENS);
       if (!isDepartmentHead) {
@@ -1988,13 +2030,22 @@ async function loadDepartmentHeadEmployeeUserOptions(
       }
 
       const phone = employee.mobile_phone || employee.work_phone || "";
+      const managedDepartmentIds = managedDepartmentIdsByEmployeeId.get(employee.id) ?? [];
+      const managedDepartmentNames = managedDepartmentNamesByEmployeeId.get(employee.id) ?? [];
       items.push({
         id: userId,
         name: relationName(employee.user_id, employee.name),
         login: phone || employee.work_email || "",
         phone: phone || "",
         role: "project_manager",
-        departmentName: relationName(employee.department_id, ""),
+        departmentName: employeeDepartmentName,
+        departmentId: relationId(employee.department_id),
+        managedDepartmentIds: isPreferredAutoBaseHead
+          ? Array.from(new Set([...managedDepartmentIds, ...autoBaseDepartmentIds]))
+          : managedDepartmentIds,
+        managedDepartmentNames: isPreferredAutoBaseHead
+          ? Array.from(new Set([...managedDepartmentNames, ...autoBaseDepartmentNames]))
+          : managedDepartmentNames,
         jobTitle,
       });
       return items;

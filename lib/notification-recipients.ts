@@ -6,7 +6,9 @@ import { fixMojibakeText } from "@/lib/text-normalize";
 type Relation = [number, string] | false;
 
 type DepartmentHeadEmployeeRecord = {
+  name?: string | false;
   user_id?: Relation;
+  department_id?: Relation;
   job_id?: Relation;
   job_title?: string | false;
   x_hr_role?: string | false;
@@ -15,6 +17,7 @@ type DepartmentHeadEmployeeRecord = {
 };
 
 type DepartmentRecord = {
+  name?: string;
   manager_id?: Relation;
 };
 
@@ -44,6 +47,7 @@ const DEPARTMENT_HEAD_ROLE_TOKENS = [
   "department_manager",
   "municipal_department_head",
 ];
+const AUTO_BASE_HEAD_NAME_TOKENS = ["ц.эрдэнэбат", "ц эрдэнэбат", "эрдэнэбат"];
 
 function uniqueUserIds(values: Array<number | null | undefined>) {
   return Array.from(
@@ -73,6 +77,17 @@ function normalizeText(value: unknown) {
 function containsAnyToken(value: unknown, tokens: string[]) {
   const normalized = normalizeText(value);
   return Boolean(normalized && tokens.some((token) => normalized.includes(normalizeText(token))));
+}
+
+function isAutoBaseGarbageDepartmentName(value: unknown) {
+  const normalized = normalizeText(value);
+  const hasGarbageTransport =
+    normalized.includes("хог") &&
+    (normalized.includes("тээвэр") || normalized.includes("teever"));
+  return (
+    hasGarbageTransport ||
+    (normalized.includes("авто") && normalized.includes("хог"))
+  );
 }
 
 async function getAvailableFields(model: string, desiredFields: string[]) {
@@ -186,7 +201,19 @@ export async function loadDepartmentHeadUserIds(
     return [];
   }
 
-  const desiredFields = ["user_id", "job_id", "job_title", "x_hr_role", "x_role_key", "role_key"];
+  const departmentRecords = await executeOdooKw<DepartmentRecord[]>(
+    "hr.department",
+    "search_read",
+    [[["id", "=", departmentId]]],
+    { fields: ["name"], limit: 1, context: { active_test: false } },
+    connectionOverrides,
+  ).catch((error) => {
+    console.warn("Department name lookup failed:", error);
+    return [];
+  });
+  const isAutoBaseDepartment = isAutoBaseGarbageDepartmentName(departmentRecords[0]?.name);
+
+  const desiredFields = ["name", "department_id", "user_id", "job_id", "job_title", "x_hr_role", "x_role_key", "role_key"];
   const fields = await getAvailableFields("hr.employee", desiredFields);
   const employees = await executeOdooKw<DepartmentHeadEmployeeRecord[]>(
     "hr.employee",
@@ -215,6 +242,16 @@ export async function loadDepartmentHeadUserIds(
       );
     })
     .map((employee) => relationId(employee.user_id));
+  const preferredAutoBaseHeadUserIds = isAutoBaseDepartment
+    ? employees
+        .filter((employee) =>
+          containsAnyToken(
+            `${employee.name || ""} ${relationName(employee.user_id)} ${relationName(employee.department_id)}`,
+            AUTO_BASE_HEAD_NAME_TOKENS,
+          ),
+        )
+        .map((employee) => relationId(employee.user_id))
+    : [];
 
   const roleUsers = departmentUserIds.length
     ? await executeOdooKw<UserRecord[]>(
@@ -233,5 +270,5 @@ export async function loadDepartmentHeadUserIds(
     .map((user) => user.id);
   const managerUserIds = await loadDepartmentManagerUserIds(departmentId, connectionOverrides);
 
-  return uniqueUserIds([...titleMatchedUserIds, ...roleMatchedUserIds, ...managerUserIds]);
+  return uniqueUserIds([...preferredAutoBaseHeadUserIds, ...managerUserIds, ...titleMatchedUserIds, ...roleMatchedUserIds]);
 }

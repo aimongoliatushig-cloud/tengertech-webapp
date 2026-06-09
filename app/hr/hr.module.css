@@ -1564,6 +1564,41 @@
   min-width: 0;
 }
 
+.familyMemberEditCard {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.familyMemberEditList {
+  display: grid;
+  gap: 10px;
+}
+
+.familyMemberEditRow {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.85fr) minmax(180px, 1fr) minmax(140px, 0.8fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 8px;
+  background: rgba(248, 252, 249, 0.82);
+}
+
+.familyMemberRowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.familyMemberRowActions .secondaryButton,
+.familyMemberRowActions .dangerButton {
+  min-width: 108px;
+}
+
 .editReadonlyValue {
   display: grid;
   gap: 5px;
@@ -3434,6 +3469,7 @@
   .toolbar,
   .formGrid,
   .formGridTwo,
+  .familyMemberEditRow,
   .manpowerGrid,
   .detailGrid,
   .checklist,
@@ -3547,8 +3583,16 @@
   }
 
   .reportCardActions .secondaryButton,
-  .reportCardActions .dangerButton {
+  .reportCardActions .dangerButton,
+  .familyMemberRowActions .secondaryButton,
+  .familyMemberRowActions .dangerButton {
     width: 100%;
+  }
+
+  .familyMemberRowActions {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
   }
 
   .pendingQueuePanel {

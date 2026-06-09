@@ -1687,6 +1687,134 @@ export async function createEmployeeFamilyMember(
   }
 }
 
+async function ensureEmployeeFamilyMember(
+  session: AppSession,
+  employeeId: number,
+  memberId: number,
+) {
+  if (!Number.isFinite(employeeId) || employeeId <= 0 || !Number.isFinite(memberId) || memberId <= 0) {
+    throw new Error("HR_FAMILY_MEMBER_NOT_FOUND");
+  }
+
+  const records = await executeOdooKw<Array<{ id: number; employee_id?: OdooRelation }>>(
+    "hr.custom.mn.employee.family.member",
+    "search_read",
+    [[["id", "=", memberId]]],
+    {
+      fields: ["employee_id"],
+      limit: 1,
+      context: { active_test: false },
+    },
+    getConnection(session),
+  );
+  const record = records[0];
+  if (!record || getRelationId(record.employee_id) !== employeeId) {
+    throw new Error("HR_FAMILY_MEMBER_NOT_FOUND");
+  }
+  return record;
+}
+
+export async function updateEmployeeFamilyMember(
+  session: AppSession,
+  employeeId: number,
+  memberId: number,
+  input: {
+    name?: string;
+    phone?: string;
+    relation: string;
+  },
+): Promise<HrEmployeeFamilyMember> {
+  await requireHrSpecialistAccess(session);
+  await ensureEmployeeFamilyMember(session, employeeId, memberId);
+  const name = input.name?.trim() || "";
+  if (!name) {
+    throw new Error("HR_FAMILY_MEMBER_NAME_REQUIRED");
+  }
+
+  const relation = normalizeFamilyRelation(input.relation);
+  const phone = input.phone?.trim() || "";
+  const availableFields = new Set(
+    await getAvailableFields(
+      "hr.custom.mn.employee.family.member",
+      ["name", "phone", "relation", "note"],
+      session,
+    ),
+  );
+  const values: Record<string, unknown> = {
+    relation,
+    note: !availableFields.has("phone") && phone ? `Утас: ${phone}` : false,
+  };
+  if (availableFields.has("name")) values.name = name;
+  if (availableFields.has("phone")) values.phone = phone || false;
+
+  try {
+    const updated = await executeOdooKw<boolean>(
+      "hr.custom.mn.employee.family.member",
+      "write",
+      [[memberId], values],
+      {},
+      getConnection(session),
+    );
+    if (!updated) {
+      throw new Error("HR_FAMILY_MEMBER_NOT_FOUND");
+    }
+
+    const familyMembers = await getEmployeeFamilyMembers(session, employeeId);
+    return (
+      familyMembers.find((member) => member.id === memberId) || {
+        id: memberId,
+        employeeId,
+        relatedEmployeeId: 0,
+        relatedEmployeeName: name,
+        relation,
+        relationLabel: HR_FAMILY_RELATION_LABELS[relation],
+        phone,
+        departmentName: "",
+        jobTitle: "",
+        note: "",
+      }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? normalizeText(error.message) : "";
+    if (message.includes("unique") || message.includes("already") || message.includes("аль хэдийн")) {
+      throw new Error("HR_FAMILY_MEMBER_DUPLICATE");
+    }
+    throw error;
+  }
+}
+
+export async function deleteEmployeeFamilyMember(
+  session: AppSession,
+  employeeId: number,
+  memberId: number,
+) {
+  await requireHrSpecialistAccess(session);
+  await ensureEmployeeFamilyMember(session, employeeId, memberId);
+  const availableFields = new Set(
+    await getAvailableFields("hr.custom.mn.employee.family.member", ["active"], session),
+  );
+  const deleted = availableFields.has("active")
+    ? await executeOdooKw<boolean>(
+        "hr.custom.mn.employee.family.member",
+        "write",
+        [[memberId], { active: false }],
+        {},
+        getConnection(session),
+      )
+    : await executeOdooKw<boolean>(
+        "hr.custom.mn.employee.family.member",
+        "unlink",
+        [[memberId]],
+        {},
+        getConnection(session),
+      );
+
+  if (!deleted) {
+    throw new Error("HR_FAMILY_MEMBER_NOT_FOUND");
+  }
+  return { id: memberId, deleted: true };
+}
+
 export async function createEmployeeEmergencyContact(
   session: AppSession,
   employeeId: number,

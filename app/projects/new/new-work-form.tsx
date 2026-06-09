@@ -32,6 +32,7 @@ import type {
 
 const GARBAGE_TRANSPORT_KEYWORD = "хог тээвэрлэлтийн";
 const AUTO_BASE_KEYWORD = "авто бааз";
+const AUTO_BASE_HEAD_NAME_TOKENS = ["ц.эрдэнэбат", "ц эрдэнэбат", "эрдэнэбат"];
 const GREEN_SERVICE_KEYWORDS = ["ногоон", "цэвэрлэгээ", "зам талбай"];
 const ROAD_CLEANING_EMPLOYEE_DEPARTMENT_KEYWORDS = [
   "ногоон",
@@ -170,9 +171,18 @@ function isGreenServiceDepartment(
 function isCombinedOperationsDepartment(
   department: Pick<DepartmentOption, "name" | "label"> | null | undefined,
 ) {
+  const hasGarbageTransport = isGarbageTransportDepartment(department);
   return (
-    departmentContains(department, GARBAGE_TRANSPORT_KEYWORD) &&
-    departmentContains(department, AUTO_BASE_KEYWORD)
+    hasGarbageTransport ||
+    (departmentContains(department, GARBAGE_TRANSPORT_KEYWORD) &&
+      departmentContains(department, AUTO_BASE_KEYWORD))
+  );
+}
+
+function isPreferredAutoBaseDepartmentHead(option: SelectOption) {
+  const normalizedName = normalizeDepartmentValue(`${option.name} ${option.login}`);
+  return AUTO_BASE_HEAD_NAME_TOKENS.some((token) =>
+    normalizedName.includes(normalizeDepartmentValue(token)),
   );
 }
 
@@ -334,6 +344,35 @@ export function NewWorkForm({
     const selectedDepartmentNames = [selectedDepartment.name, selectedDepartment.label]
       .map(normalizeDepartmentValue)
       .filter(Boolean);
+    if (isCombinedOperationsDepartment(selectedDepartment)) {
+      const preferredAutoBaseHead = departmentHeadOptions.find(isPreferredAutoBaseDepartmentHead);
+      if (preferredAutoBaseHead) {
+        return preferredAutoBaseHead;
+      }
+    }
+
+    const exactDepartmentManager = departmentHeadOptions.find((option) =>
+      (option.managedDepartmentIds ?? []).includes(selectedDepartment.id),
+    );
+    if (exactDepartmentManager) {
+      return exactDepartmentManager;
+    }
+    const namedDepartmentManager = departmentHeadOptions.find((option) => {
+      const managedDepartmentNames = option.managedDepartmentNames ?? [];
+      return managedDepartmentNames.some((managedDepartmentName) => {
+        const normalizedManagedName = normalizeDepartmentValue(managedDepartmentName);
+        return selectedDepartmentNames.some(
+          (departmentName) =>
+            normalizedManagedName === departmentName ||
+            normalizedManagedName.includes(departmentName) ||
+            departmentName.includes(normalizedManagedName),
+        );
+      });
+    });
+    if (namedDepartmentManager) {
+      return namedDepartmentManager;
+    }
+
     const matchingDepartmentHead = departmentHeadOptions.find((option) => {
       const managerDepartmentName = normalizeDepartmentValue(option.departmentName);
       if (!managerDepartmentName) {
@@ -348,7 +387,10 @@ export function NewWorkForm({
       );
     });
 
-    return matchingDepartmentHead ?? (departmentHeadOptions.length === 1 ? departmentHeadOptions[0] : null);
+    return (
+      matchingDepartmentHead ??
+      (departmentHeadOptions.length === 1 ? departmentHeadOptions[0] : null)
+    );
   }, [managerOptions, selectedDepartment]);
   const selectedVehicle = useMemo(
     () => garbageVehicleOptions.find((option) => String(option.id) === vehicleId) ?? null,

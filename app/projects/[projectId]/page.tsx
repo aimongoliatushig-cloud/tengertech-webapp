@@ -60,6 +60,27 @@ const TASK_FILTERS: Array<{ key: TaskFilterKey; label: string }> = [
   { key: "done", label: "Дууссан" },
   { key: "overdue", label: "Хугацаа хэтэрсэн" },
 ];
+const AUTO_BASE_HEAD_NAME_TOKENS = ["ц.эрдэнэбат", "ц эрдэнэбат", "эрдэнэбат"];
+
+function normalizeProjectText(value?: string | null) {
+  return (value ?? "").trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
+}
+
+function isAutoBaseGarbageDepartmentName(value?: string | null) {
+  const normalized = normalizeProjectText(value);
+  const hasGarbageTransport =
+    normalized.includes("хог") &&
+    (normalized.includes("тээвэр") || normalized.includes("teever"));
+  return (
+    hasGarbageTransport ||
+    (normalized.includes("авто") && normalized.includes("хог"))
+  );
+}
+
+function isPreferredAutoBaseHeadName(value?: string | null) {
+  const normalized = normalizeProjectText(value);
+  return AUTO_BASE_HEAD_NAME_TOKENS.some((token) => normalized.includes(normalizeProjectText(token)));
+}
 
 function getParam(value?: string | string[]) {
   if (Array.isArray(value)) {
@@ -271,12 +292,12 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   const canShowTaskCreateComposer =
     canCreateTasks && quickActionMode !== "report" && !isRoadAreaCleaning;
   const shouldLoadTaskCreateOptions = canShowTaskCreateComposer;
-  const [projectManagerOptions, projectDepartmentOptions] = canEditProject
-    ? await Promise.all([
-        loadProjectManagerOptions(connectionOverrides),
-        loadDepartmentOptions(connectionOverrides),
-      ])
-    : [[], []];
+  const [projectManagerOptions, projectDepartmentOptions] = await Promise.all([
+    canEditProject || shouldLoadTaskCreateOptions
+      ? loadProjectManagerOptions(connectionOverrides)
+      : Promise.resolve([]),
+    canEditProject ? loadDepartmentOptions(connectionOverrides) : Promise.resolve([]),
+  ]);
   const projectEditManagerOptions =
     project.managerId && !projectManagerOptions.some((manager) => manager.id === project.managerId)
       ? [
@@ -404,12 +425,19 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
         collectorNames: garbageSourceTask.collectorNames,
       }
     : null;
+  const preferredAutoBaseHead = isAutoBaseGarbageDepartmentName(project.departmentName)
+    ? [...project.departmentUserOptions, ...projectEditManagerOptions].find((manager) =>
+        isPreferredAutoBaseHeadName(`${manager.name} ${manager.login} ${manager.departmentName ?? ""}`),
+      ) ?? null
+    : null;
+  const taskDepartmentHeadName = preferredAutoBaseHead?.name ?? project.managerName;
+  const taskDepartmentHeadId = preferredAutoBaseHead?.id ?? project.managerId;
   const taskCreateBaseProps = {
     action: createTaskAction,
     projectId: project.id,
     departmentName: project.departmentName,
-    departmentHeadName: project.managerName,
-    departmentHeadId: project.managerId,
+    departmentHeadName: taskDepartmentHeadName,
+    departmentHeadId: taskDepartmentHeadId,
     deadline: project.deadline,
     masterMode,
     departmentUserOptions: project.departmentUserOptions,

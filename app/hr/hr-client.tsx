@@ -952,6 +952,7 @@ export function EmployeeDetailTabs({
   const [addingFamilyMember, setAddingFamilyMember] = useState(canEdit && searchParams.get("edit") === "family-member");
   const [pending, setPending] = useState(false);
   const [familyMemberPending, setFamilyMemberPending] = useState(false);
+  const [familyMemberActionPending, setFamilyMemberActionPending] = useState("");
   const [recordAddPending, setRecordAddPending] = useState(false);
   const [addingEmergencyContact, setAddingEmergencyContact] = useState(false);
   const [addingReward, setAddingReward] = useState(false);
@@ -1122,6 +1123,60 @@ export function EmployeeDetailTabs({
       setMessageIsError(true);
     } finally {
       setFamilyMemberPending(false);
+    }
+  }
+
+  async function submitFamilyMemberUpdate(event: FormEvent<HTMLFormElement>, familyMemberId: number) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const pendingKey = `update-${familyMemberId}`;
+    setFamilyMemberActionPending(pendingKey);
+    setMessage("");
+    setMessageIsError(false);
+
+    try {
+      const response = await fetch(`/api/hr/employees/${employee.id}/family-members/${familyMemberId}`, {
+        method: "PATCH",
+        body: formData,
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error || "Гэр бүлийн гишүүний мэдээлэл хадгалахад алдаа гарлаа.");
+      }
+      setMessage("Гэр бүлийн гишүүний мэдээлэл хадгалагдлаа.");
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Гэр бүлийн гишүүний мэдээлэл хадгалахад алдаа гарлаа.");
+      setMessageIsError(true);
+    } finally {
+      setFamilyMemberActionPending("");
+    }
+  }
+
+  async function deleteFamilyMember(familyMemberId: number) {
+    if (!window.confirm("Энэ гэр бүлийн гишүүний бүртгэлийг устгах уу?")) {
+      return;
+    }
+    const pendingKey = `delete-${familyMemberId}`;
+    setFamilyMemberActionPending(pendingKey);
+    setMessage("");
+    setMessageIsError(false);
+
+    try {
+      const response = await fetch(`/api/hr/employees/${employee.id}/family-members/${familyMemberId}`, {
+        method: "DELETE",
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error || "Гэр бүлийн гишүүний бүртгэл устгахад алдаа гарлаа.");
+      }
+      setMessage("Гэр бүлийн гишүүний бүртгэл устгагдлаа.");
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Гэр бүлийн гишүүний бүртгэл устгахад алдаа гарлаа.");
+      setMessageIsError(true);
+    } finally {
+      setFamilyMemberActionPending("");
     }
   }
 
@@ -1927,96 +1982,122 @@ export function EmployeeDetailTabs({
     );
   }
 
-  function renderFamilyEditForm() {
+  function renderFamilyRelationField(defaultValue = "spouse", disabled = false) {
     return (
-      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+      <label className={styles.field}>
+        <span>Хамаарал</span>
+        <select name="relation" defaultValue={defaultValue} disabled={disabled}>
+          <option value="spouse">Эхнэр / нөхөр</option>
+          <option value="child">Хүүхэд</option>
+          <option value="father">Аав</option>
+          <option value="mother">Ээж</option>
+          <option value="parent">Эцэг / эх</option>
+          <option value="sibling">Ах / эгч / дүү</option>
+          <option value="other">Бусад</option>
+        </select>
+      </label>
+    );
+  }
+
+  function closeFamilyEdit() {
+    setEditing(false);
+    setAddingFamilyMember(false);
+  }
+
+  function renderFamilyMemberAddCard() {
+    return (
+      <form className={styles.familyMemberEditCard} onSubmit={submitFamilyMemberAdd} noValidate>
         <div className={styles.editInfoBanner}>
-          <strong>Гэр бүлийн мэдээлэл засаж байна</strong>
-          <span>Одоогоор эхнэр/нөхөр болон хүүхдийн ерөнхий мэдээллийг хадгална.</span>
+          <strong>Гэр бүлийн гишүүн нэмэх</strong>
+          <span>Хамаарал, нэр, утсыг бүртгэнэ.</span>
         </div>
-        <div className={styles.hrProfileTwoColumn}>
-          {renderPanel(
-            "1. Эхнэр / нөхөр",
-            <div className={styles.editCardFields}>
-              <label className={styles.field}>
-                <span>Гэрлэлтийн байдал</span>
-                <select name="familyStatus" defaultValue={employeeMaritalValue(employee)}>
-                  <option value="">Сонгох</option>
-                  <option value="single">Ганц бие</option>
-                  <option value="married">Гэрлэсэн</option>
-                  <option value="cohabitant">Хамтран амьдрагчтай</option>
-                  <option value="widower">Бэлэвсэн</option>
-                  <option value="divorced">Салсан</option>
-                </select>
-              </label>
-              <Field name="spouseName" label="Эхнэр / нөхрийн нэр" defaultValue={employee.spouseName} />
-              <Field name="spouseBirthDate" label="Эхнэр / нөхрийн төрсөн огноо" type="date" defaultValue={employee.spouseBirthDate} />
-            </div>,
-          )}
-          {renderPanel(
-            "2. Хүүхдийн мэдээлэл",
-            <div className={styles.editCardFields}>
-              <Field name="childrenCount" label="Хүүхдийн тоо" type="number" defaultValue={String(employee.childrenCount ?? 0)} />
-              <TextAreaField
-                name="childrenInfo"
-                label="Хүүхдийн нас / нэмэлт мэдээлэл"
-                defaultValue=""
-                rows={4}
-              />
-              <TextAreaField name="homeAddress" label="Гэрийн хаяг" defaultValue={employee.homeAddress} />
-            </div>,
-          )}
+        <div className={styles.editCardFields}>
+          {renderFamilyRelationField("spouse", familyMemberPending)}
+          <Field name="name" label="Нэр" required />
+          <Field name="phone" label="Утас" />
         </div>
-        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+        <ProfileEditButtons pending={familyMemberPending} onCancel={closeFamilyEdit} />
       </form>
     );
   }
 
-  function renderFamilyMemberAddForm() {
+  function renderFamilyMemberEditList() {
+    const members = employee.familyMembers || [];
+    if (!members.length) {
+      return <div className={styles.hrProfileEmpty}>Одоогоор гэр бүлийн гишүүн нэмэгдээгүй.</div>;
+    }
+
     return (
-      <form className={styles.profileEditForm} onSubmit={submitFamilyMemberAdd} noValidate>
+      <div className={styles.familyMemberEditList}>
+        {members.map((member) => {
+          const updatePending = familyMemberActionPending === `update-${member.id}`;
+          const deletePending = familyMemberActionPending === `delete-${member.id}`;
+          const anyPending = Boolean(familyMemberActionPending);
+          return (
+            <form
+              key={member.id}
+              className={styles.familyMemberEditRow}
+              onSubmit={(event) => submitFamilyMemberUpdate(event, member.id)}
+              noValidate
+            >
+              {renderFamilyRelationField(member.relation, updatePending || deletePending)}
+              <Field name="name" label="Нэр" defaultValue={member.relatedEmployeeName} required />
+              <Field name="phone" label="Утас" defaultValue={member.phone} />
+              <div className={styles.familyMemberRowActions}>
+                <button className={styles.secondaryButton} disabled={updatePending || deletePending || (anyPending && !updatePending)}>
+                  <Pencil aria-hidden />
+                  <span>{updatePending ? "Хадгалж байна..." : "Хадгалах"}</span>
+                </button>
+                <button
+                  type="button"
+                  className={styles.dangerButton}
+                  onClick={() => deleteFamilyMember(member.id)}
+                  disabled={deletePending || updatePending || (anyPending && !deletePending)}
+                >
+                  <Trash2 aria-hidden />
+                  <span>{deletePending ? "Устгаж байна..." : "Устгах"}</span>
+                </button>
+              </div>
+            </form>
+          );
+        })}
+      </div>
+    );
+  }
+
+  function renderFamilyEditForm() {
+    return (
+      <div className={styles.profileEditForm}>
         <div className={styles.editInfoBanner}>
-          <strong>Гэр бүлийн гишүүн нэмэх</strong>
-          <span>Энэ ажилтны гэр бүлийн хүний нэр, хамаарал болон холбоо барих мэдээллийг бүртгэнэ.</span>
+          <strong>Гэр бүл засах</strong>
+          <span>Гэр бүлийн ерөнхий мэдээлэл болон бүртгэлтэй гишүүдийг засна.</span>
         </div>
         <div className={styles.hrProfileTwoColumn}>
           {renderPanel(
-            "1. Гэр бүлийн гишүүний мэдээлэл",
-            <div className={styles.editCardFields}>
-              <label className={styles.field}>
-                <span>Хамаарал</span>
-                <select name="relation" defaultValue="spouse" disabled={familyMemberPending}>
-                  <option value="spouse">Эхнэр / нөхөр</option>
-                  <option value="child">Хүүхэд</option>
-                  <option value="father">Аав</option>
-                  <option value="mother">Ээж</option>
-                  <option value="parent">Эцэг / эх</option>
-                  <option value="sibling">Ах / эгч / дүү</option>
-                  <option value="other">Бусад</option>
-                </select>
-              </label>
-              <Field name="name" label="Нэр" required />
-              <Field name="phone" label="Утас" />
-            </div>,
+            "1. Ерөнхий мэдээлэл",
+            <form className={styles.familyMemberEditCard} onSubmit={submitProfileEdit} noValidate>
+              <div className={styles.editCardFields}>
+                <label className={styles.field}>
+                  <span>Гэрлэлтийн байдал</span>
+                  <select name="familyStatus" defaultValue={employeeMaritalValue(employee)}>
+                    <option value="">Сонгох</option>
+                    <option value="single">Ганц бие</option>
+                    <option value="married">Гэрлэсэн</option>
+                    <option value="cohabitant">Хамтран амьдрагчтай</option>
+                    <option value="widower">Бэлэвсэн</option>
+                    <option value="divorced">Салсан</option>
+                  </select>
+                </label>
+                <Field name="childrenCount" label="Хүүхдийн тоо" type="number" defaultValue={String(employee.childrenCount ?? 0)} />
+                <TextAreaField name="homeAddress" label="Гэрийн хаяг" defaultValue={employee.homeAddress} />
+              </div>
+              <ProfileEditButtons pending={pending} onCancel={closeFamilyEdit} />
+            </form>,
           )}
-          {renderPanel(
-            "2. Одоогийн гэр бүл",
-            renderTable(
-              [
-                { key: "type", label: "Хамаарал" },
-                { key: "name", label: "Нэр" },
-                { key: "phone", label: "Утас" },
-              ],
-              familyRows,
-              "Одоогоор гэр бүлийн гишүүн нэмэгдээгүй.",
-            ),
-          )}
+          {renderPanel("2. Шинэ гишүүн", renderFamilyMemberAddCard())}
         </div>
-        <ProfileEditButtons
-          pending={familyMemberPending}
-          onCancel={() => setAddingFamilyMember(false)}
-        />
-      </form>
+        {renderPanel("3. Бүртгэлтэй гишүүд", renderFamilyMemberEditList())}
+      </div>
     );
   }
 
@@ -2299,7 +2380,7 @@ export function EmployeeDetailTabs({
         {message ? <p className={messageIsError ? styles.errorText : styles.successText}>{message}</p> : null}
 
         {canEdit && addingFamilyMember
-          ? renderFamilyMemberAddForm()
+          ? renderFamilyEditForm()
           : canEdit && addingEmergencyContact
             ? renderEmergencyContactAddForm()
             : canEdit && addingReward
