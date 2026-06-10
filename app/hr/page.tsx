@@ -6,6 +6,7 @@ import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
 import { compareHrDepartmentNames } from "@/lib/hr-department-order";
+import { formatEmployeeDisplayName } from "@/lib/hr-name";
 import { getDisciplineRecords, getEmployees, getTimeoffDashboard, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 import { fixMojibakeText } from "@/lib/text-normalize";
@@ -121,7 +122,7 @@ function DepartmentManpower({ employees }: { employees: HrEmployeeDirectoryItem[
               {group.employees.map((employee) => (
                 <Link key={employee.id} href={`/hr/employees/${employee.id}`} className={styles.employeeRowLink}>
                   <span>
-                    <strong>{employee.name}</strong>
+                    <strong>{formatEmployeeDisplayName(employee.name)}</strong>
                     <small>{employee.jobTitle || "Албан тушаал бүртгээгүй"}</small>
                   </span>
                   <em>{employee.statusLabel}</em>

@@ -5,6 +5,7 @@ import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
 import { getEmployee, getEmployees, requireHrAccess } from "@/lib/hr";
+import { formatEmployeeDisplayName } from "@/lib/hr-name";
 
 import { EmployeeDetailTabs } from "../../hr-client";
 import { HrSectionNav } from "../../hr-section-nav";
@@ -36,7 +37,7 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
   return (
     <>
       <WorkspaceHeader
-        title={employee.name}
+        title={formatEmployeeDisplayName(employee.name)}
         subtitle={`${employee.departmentName || "Алба нэгж бүртгээгүй"} · ${employee.jobTitle || "Албан тушаал бүртгээгүй"}`}
         userName={session.name}
         roleLabel={getSessionRoleLabel(session)}

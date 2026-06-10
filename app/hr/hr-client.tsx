@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 
 import { compareHrDepartmentNames } from "@/lib/hr-department-order";
+import { formatEmployeeDisplayName } from "@/lib/hr-name";
 import type { HrLeaveItem, HrOption, HrSelectionOption, HrTimeoffRequest, HrTimeoffRequestType } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
@@ -329,7 +330,7 @@ export function EmployeeTable({
             {visibleEmployees.map((employee) => (
               <tr key={employee.id}>
                 <td>
-                  <Link href={`/hr/employees/${employee.id}`}>{employee.name}</Link>
+                  <Link href={`/hr/employees/${employee.id}`}>{formatEmployeeDisplayName(employee.name)}</Link>
                 </td>
                 <td>{employee.departmentName || "Бүртгээгүй"}</td>
                 <td>{employee.jobTitle || "Бүртгээгүй"}</td>
@@ -708,8 +709,8 @@ function EmployeeSelect({
     () =>
       employees.map((employee) => ({
         id: employee.id,
-        name: employee.name,
-        description: [employee.departmentName, employee.jobTitle].filter(Boolean).join(" · "),
+        name: formatEmployeeDisplayName(employee.name),
+        description: [employee.name, employee.departmentName, employee.jobTitle].filter(Boolean).join(" · "),
       })),
     [employees],
   );
@@ -1336,7 +1337,7 @@ export function EmployeeDetailTabs({
   }
 
   const generalInfo: DetailPair[] = [
-    { label: "Нэр", value: employee.name },
+    { label: "Нэр", value: formatEmployeeDisplayName(employee.name) },
     { label: "Ажилтны код", value: employee.employeeCode },
     { label: "Регистр / үнэмлэх", value: employee.registerNumber },
     { label: "Хүйс", value: employee.genderLabel },
@@ -2553,7 +2554,7 @@ export function EmployeeDetailTabs({
           </div>
           <div className={styles.hrProfileIdentityText}>
             <div className={styles.hrProfileNameRow}>
-              <h2>{employee.name}</h2>
+              <h2>{formatEmployeeDisplayName(employee.name)}</h2>
               <span className={styles.hrProfileStatusPill}>{employee.statusLabel || "Идэвхтэй"}</span>
             </div>
             <p className={!hasUsefulValue(employee.jobTitle) ? styles.hrProfileEmptyValue : undefined}>
@@ -2826,7 +2827,7 @@ export function TimeoffRequestsClient({
               {visibleRequests.map((request) => (
                 <tr key={request.id}>
                   <td>
-                    <Link href={`/hr/employees/${request.employeeId}`}>{request.employeeName}</Link>
+                    <Link href={`/hr/employees/${request.employeeId}`}>{formatEmployeeDisplayName(request.employeeName)}</Link>
                   </td>
                   <td data-label="Хэлтэс">{request.departmentName}</td>
                   <td data-label="Төрөл">{request.requestTypeLabel}</td>
@@ -3088,7 +3089,7 @@ export function LeavesClient({
             <tbody>
               {leaves.map((leave) => (
                 <tr key={leave.id}>
-                  <td>{leave.employeeName}</td>
+                  <td>{formatEmployeeDisplayName(leave.employeeName)}</td>
                   <td>{leave.typeName}</td>
                   <td>{leave.dateFrom}</td>
                   <td>{leave.dateTo}</td>
@@ -3114,7 +3115,7 @@ export function LeavesClient({
         {selectedEmployee ? (
           <div className={styles.selectedEmployeeContext}>
             <span>Сонгосон ажилтан</span>
-            <strong>{selectedEmployee.name}</strong>
+            <strong>{formatEmployeeDisplayName(selectedEmployee.name)}</strong>
             <small>
               {selectedEmployee.departmentName || "Хэлтэс бүртгээгүй"} ·{" "}
               {selectedEmployee.jobTitle || "Албан тушаал бүртгээгүй"}
@@ -3284,7 +3285,7 @@ export function RegistryPage({
 
     if (field.label === "Ажилтан") {
       const employeeId = editingRecord?.employeeId || selectedEmployee?.id;
-      const employeeName = String(editingRecord?.employeeName || selectedEmployee?.name || "Ажилтан бүртгээгүй");
+      const employeeName = formatEmployeeDisplayName(String(editingRecord?.employeeName || selectedEmployee?.name || "Ажилтан бүртгээгүй"));
       return (
         <label key={field.label} className={styles.field}>
           <span>Ажилтан</span>
@@ -3415,7 +3416,7 @@ export function RegistryPage({
           <span>Сонгосон ажилтан</span>
           {!editingRecord ? <span className={styles.selectedEmployeeContextAction}>Ажилтан солих</span> : null}
         </div>
-        <strong>{String(editingRecord?.employeeName || selectedEmployee?.name || "Ажилтан бүртгээгүй")}</strong>
+        <strong>{formatEmployeeDisplayName(String(editingRecord?.employeeName || selectedEmployee?.name || "Ажилтан бүртгээгүй"))}</strong>
         <small>
           {String(editingRecord?.departmentName || selectedEmployee?.departmentName || "Хэлтэс бүртгээгүй")} ·{" "}
           {String(editingRecord?.jobTitle || selectedEmployee?.jobTitle || "Албан тушаал бүртгээгүй")}

@@ -3,6 +3,7 @@ import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
 import { getClearanceRecords, getEmployee, getEmployees, requireHrAccess } from "@/lib/hr";
+import { formatEmployeeDisplayName } from "@/lib/hr-name";
 
 import { HrSectionNav } from "../hr-section-nav";
 import { RegistryPage } from "../hr-client";
@@ -37,12 +38,12 @@ export default async function HrClearancePage({ searchParams }: PageProps) {
     getEmployees(session).catch(() => []),
     getClearanceRecords(session).catch(() => []),
   ]);
-  const employeeOptions = employees.map((employee) => ({ id: employee.id, name: employee.name }));
+  const employeeOptions = employees.map((employee) => ({ id: employee.id, name: formatEmployeeDisplayName(employee.name) }));
   const registryRecords = records.map((record) => ({
     id: record.id,
     name: record.name,
     employeeId: record.employeeId,
-    employeeName: record.employeeName,
+    employeeName: formatEmployeeDisplayName(record.employeeName),
     departmentId: record.departmentId,
     departmentName: record.departmentName,
     jobTitle: record.jobTitle,

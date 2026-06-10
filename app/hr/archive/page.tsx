@@ -3,6 +3,7 @@ import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
 import { getEmployee, getEmployees, requireHrSpecialistAccess } from "@/lib/hr";
+import { formatEmployeeDisplayName } from "@/lib/hr-name";
 
 import { RegistryPage } from "../hr-client";
 import { HrSectionNav } from "../hr-section-nav";
@@ -61,7 +62,7 @@ export default async function HrArchivePage({ searchParams }: PageProps) {
     .filter((employee) => employee.departmentName)
     .map((employee) => ({
       id: employee.id,
-      name: [employee.name, employee.departmentName, employee.jobTitle].filter(Boolean).join(" · "),
+      name: [formatEmployeeDisplayName(employee.name), employee.departmentName, employee.jobTitle].filter(Boolean).join(" · "),
       departmentId: getEmployeeDepartmentOptionId(employee),
       jobTitle: employee.jobTitle || "",
     }))
@@ -87,7 +88,7 @@ export default async function HrArchivePage({ searchParams }: PageProps) {
         hideCreateAnchor
         records={archivedEmployees.map((employee) => ({
           id: employee.id,
-          employeeName: employee.name,
+          employeeName: formatEmployeeDisplayName(employee.name),
           departmentName: employee.departmentName,
           jobTitle: employee.jobTitle,
           statusLabel: employee.statusLabel,

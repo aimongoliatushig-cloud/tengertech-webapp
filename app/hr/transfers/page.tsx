@@ -10,6 +10,7 @@ import {
   getManagers,
   requireHrSpecialistAccess,
 } from "@/lib/hr";
+import { formatEmployeeDisplayName } from "@/lib/hr-name";
 
 import { RegistryPage } from "../hr-client";
 import { HrSectionNav } from "../hr-section-nav";
@@ -55,7 +56,7 @@ export default async function HrTransfersPage({ searchParams }: PageProps) {
         successMessage="Шилжилт хөдөлгөөн бүртгэгдлээ."
         records={transferRecords.map((record) => ({
           id: record.id,
-          employeeName: record.employeeName,
+          employeeName: formatEmployeeDisplayName(record.employeeName),
           date: record.date,
           fromDepartment: record.oldDepartmentName,
           toDepartment: record.newDepartmentName,

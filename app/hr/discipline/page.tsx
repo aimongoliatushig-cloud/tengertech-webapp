@@ -10,6 +10,7 @@ import {
   getEmployee,
   requireHrAccess,
 } from "@/lib/hr";
+import { formatEmployeeDisplayName } from "@/lib/hr-name";
 
 import { HrSectionNav } from "../hr-section-nav";
 import { RegistryPage } from "../hr-client";
@@ -40,7 +41,7 @@ export default async function HrDisciplinePage({ searchParams }: PageProps) {
   const registryRecords = disciplineRecords.map((record) => ({
     id: record.id,
     employeeId: record.employeeId,
-    employeeName: record.employeeName,
+    employeeName: formatEmployeeDisplayName(record.employeeName),
     employeeHref: record.employeeId ? `/hr/employees/${record.employeeId}` : "",
     departmentId: record.departmentId,
     departmentName: record.departmentName,

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { compareHrDepartmentNames } from "@/lib/hr-department-order";
+import { formatEmployeeDisplayName } from "@/lib/hr-name";
 import type { HrDisciplineRecord, HrTimeoffDashboardData, HrTimeoffRequest } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
@@ -137,8 +138,8 @@ function AnimatedPie({
         <div className={styles.chartSideStack}>
           {sideContent}
           <div className={styles.chartLegend}>
-            {slices.map((slice) => (
-              <div key={slice.label} className={styles.chartLegendRow}>
+            {slices.map((slice, index) => (
+              <div key={`${slice.label}-${index}`} className={styles.chartLegendRow}>
                 <span style={{ background: slice.color }} />
                 <em>{slice.label}</em>
                 <strong>
@@ -174,7 +175,7 @@ function StatusEmployeeRow({
   return (
     <Link href={`/hr/employees/${employee.id}`} className={styles.detailRow}>
       <span>
-        <strong>{employee.name}</strong>
+        <strong>{formatEmployeeDisplayName(employee.name)}</strong>
         <small>
           {employee.departmentName || "Хэлтэс бүртгээгүй"} · {employee.jobTitle || "Албан тушаал бүртгээгүй"}
         </small>
@@ -194,7 +195,7 @@ function RequestRow({ request }: { request: HrTimeoffRequest }) {
   return (
     <Link href={`/hr/leaves?employeeId=${request.employeeId}`} className={styles.detailRow}>
       <span>
-        <strong>{request.employeeName}</strong>
+        <strong>{formatEmployeeDisplayName(request.employeeName)}</strong>
         <small>
           {request.departmentName || "Хэлтэс бүртгээгүй"} · {request.requestTypeLabel}
         </small>
@@ -240,7 +241,7 @@ function PendingRequestQueue({ requests }: { requests: HrTimeoffRequest[] }) {
           {visibleRequests.map((request) => (
             <Link key={request.id} href={`/hr/leaves?state=${request.state}`} className={styles.pendingRequestCard}>
               <div>
-                <strong>{request.employeeName}</strong>
+                <strong>{formatEmployeeDisplayName(request.employeeName)}</strong>
                 <span>{request.departmentName || "Хэлтэс бүртгээгүй"}</span>
               </div>
               <p>
@@ -513,7 +514,7 @@ export function HrDashboardClient({
                     <Link key={item.employeeId} href={`/hr/employees/${item.employeeId}`} className={styles.chartTopRow}>
                       <span>{index + 1}</span>
                       <div>
-                        <strong>{item.employeeName}</strong>
+                        <strong>{formatEmployeeDisplayName(item.employeeName)}</strong>
                         <small>{item.departmentName}</small>
                       </div>
                       <em>
@@ -524,7 +525,7 @@ export function HrDashboardClient({
                     <div key={item.employeeName} className={styles.chartTopRow}>
                       <span>{index + 1}</span>
                       <div>
-                        <strong>{item.employeeName}</strong>
+                        <strong>{formatEmployeeDisplayName(item.employeeName)}</strong>
                         <small>{item.departmentName}</small>
                       </div>
                       <em>

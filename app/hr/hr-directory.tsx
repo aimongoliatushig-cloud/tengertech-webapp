@@ -18,6 +18,7 @@ import Image from "next/image";
 
 import { updateHrEmployeeRegistrationAction } from "@/app/hr/actions";
 import { compareHrDepartmentNames } from "@/lib/hr-department-order";
+import { formatEmployeeDisplayName } from "@/lib/hr-name";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
 import styles from "./page.module.css";
@@ -314,7 +315,7 @@ export function HrDirectory({ departments, initialEmployeeId }: Props) {
                     <EmployeePhoto employee={employee} size="card" />
                     <div className={styles.employeeIdentity}>
                       <span className={styles.employeeCode}>{employee.employeeCode}</span>
-                      <h4>{employee.name}</h4>
+                      <h4>{formatEmployeeDisplayName(employee.name)}</h4>
                       <p>{employee.jobTitle}</p>
                     </div>
                     <span className={`${styles.statusBadge} ${styles[`status_${employee.statusKey}`] ?? ""}`}>
@@ -388,7 +389,7 @@ export function HrDirectory({ departments, initialEmployeeId }: Props) {
               <EmployeePhoto employee={selectedEmployee} size="modal" />
               <div>
                 <span className={styles.eyebrow}>Ажилтны дэлгэрэнгүй</span>
-                <h2 id="employee-detail-title">{selectedEmployee.name}</h2>
+                <h2 id="employee-detail-title">{formatEmployeeDisplayName(selectedEmployee.name)}</h2>
                 <p>{selectedEmployee.jobTitle}</p>
               </div>
               <button
