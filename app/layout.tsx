@@ -31,6 +31,42 @@ const inter = Inter({
   weight: ["400", "500", "600", "700", "800"],
 });
 
+const EXTENSION_ATTRIBUTE_CLEANUP_SCRIPT = `
+(() => {
+  const attribute = "bis_skin_checked";
+  const strip = (root) => {
+    if (!root || !("nodeType" in root)) return;
+    if (root.nodeType === Node.ELEMENT_NODE && root.hasAttribute?.(attribute)) {
+      root.removeAttribute(attribute);
+    }
+    if ("querySelectorAll" in root) {
+      root.querySelectorAll?.(\`[\${attribute}]\`).forEach((element) => element.removeAttribute(attribute));
+    }
+  };
+  strip(document);
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === "attributes") {
+        strip(mutation.target);
+      }
+      mutation.addedNodes.forEach(strip);
+    });
+  });
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: [attribute],
+    childList: true,
+    subtree: true,
+  });
+  window.addEventListener("load", () => {
+    window.setTimeout(() => {
+      strip(document);
+      observer.disconnect();
+    }, 3000);
+  });
+})();
+`;
+
 export const metadata: Metadata = {
   title: "Хот тохижилтын удирдлагын төв",
 };
@@ -47,6 +83,7 @@ export default function RootLayout({
       className={`${display.variable} ${body.variable} ${mono.variable} ${inter.variable}`}
     >
       <body suppressHydrationWarning>
+        <script dangerouslySetInnerHTML={{ __html: EXTENSION_ATTRIBUTE_CLEANUP_SCRIPT }} />
         <AppBadgeManager />
         <NotificationPermissionButton />
         <GlobalLoadingProvider>{children}</GlobalLoadingProvider>

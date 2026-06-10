@@ -1750,7 +1750,9 @@ export function AppMenu({
           <p>Хоггүй, эрүүл, аюулгүй эко орчинд, эрүүл ирээдүйн төлөө</p>
         </Link>
 
-        <div className={styles.menuScroll}>{menuList}</div>
+        <div className={styles.menuScroll} suppressHydrationWarning>
+          {menuList}
+        </div>
 
         {canCreate ? (
           <Link href="/create" prefetch={false} className={styles.createButton}>
