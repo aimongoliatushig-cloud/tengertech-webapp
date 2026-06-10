@@ -1353,7 +1353,6 @@ export function EmployeeDetailTabs({
         { label: "Гэрээ дуусах огноо", value: employee.contractEndDate },
         { label: "Туршилтын хугацаа дуусах", value: employee.trialEndDate },
         { label: "Ажилласан хугацаа", value: calculateWorkedDuration(employee.startDate) },
-        { label: "Ажлын цагийн хуваарь", value: employee.workSchedule },
       ],
     },
     {
