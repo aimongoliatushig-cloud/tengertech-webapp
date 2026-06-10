@@ -60,6 +60,8 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     const formData = await request.formData();
     const familyMember = await updateEmployeeFamilyMember(session, ids.employeeId, ids.familyMemberId, {
       name: getString(formData, "name"),
+      birthYear: getString(formData, "birthYear"),
+      school: getString(formData, "school"),
       phone: getString(formData, "phone"),
       relation: getString(formData, "relation"),
     });

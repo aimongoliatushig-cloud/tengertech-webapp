@@ -23,6 +23,8 @@ class HrCustomMnEmployeeFamilyMember(models.Model):
         index=True,
     )
     name = fields.Char(string="Нэр")
+    birth_year = fields.Char(string="Төрсөн он")
+    school = fields.Char(string="Сургууль")
     phone = fields.Char(string="Утас")
     relation = fields.Selection(
         [

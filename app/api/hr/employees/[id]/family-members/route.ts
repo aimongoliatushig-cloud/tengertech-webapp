@@ -76,6 +76,8 @@ export async function POST(request: Request, ctx: RouteCtx) {
     const familyMember = await createEmployeeFamilyMember(session, employeeId, {
       relatedEmployeeId: Number(getString(formData, "relatedEmployeeId")) || null,
       name: getString(formData, "name"),
+      birthYear: getString(formData, "birthYear"),
+      school: getString(formData, "school"),
       phone: getString(formData, "phone"),
       relation: getString(formData, "relation"),
     });

@@ -17,6 +17,7 @@ import {
   FileCheck2,
   FilePlus2,
   HeartPulse,
+  GraduationCap,
   History,
   IdCard,
   Mail,
@@ -44,6 +45,17 @@ import styles from "./hr.module.css";
 
 const ALL = "__all__";
 const DEFAULT_EMPLOYEE_STATUS = "Идэвхтэй";
+
+function splitEmployeeName(fullName?: string) {
+  const parts = String(fullName || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) {
+    return { lastName: "", firstName: parts[0] || "" };
+  }
+  return {
+    lastName: parts[0],
+    firstName: parts.slice(1).join(" "),
+  };
+}
 
 function parseDateInput(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -222,7 +234,6 @@ export function EmployeeTable({
             employee.name,
             employee.departmentName,
             employee.jobTitle,
-            employee.workPhone,
             employee.mobilePhone,
             employee.workEmail,
           ]
@@ -308,7 +319,7 @@ export function EmployeeTable({
                 <td>{employee.departmentName || "Бүртгээгүй"}</td>
                 <td>{employee.jobTitle || "Бүртгээгүй"}</td>
                 <td>{employee.gradeRank || employee.jobTitle || "Бүртгээгүй"}</td>
-                <td>{employee.workPhone || employee.mobilePhone || "Бүртгээгүй"}</td>
+                <td>{employee.mobilePhone || "Бүртгээгүй"}</td>
                 <td>
                   <span className={`${styles.statusPill} ${statusLabel(employee) === "Туршилт дууссан" ? styles.statusPillWarning : ""}`}>
                     {statusLabel(employee)}
@@ -384,12 +395,12 @@ export function EmployeeCreateForm({
       <section className={styles.formSection}>
         <div className={styles.formSectionHeader}>
           <h2>Үндсэн мэдээлэл</h2>
-          <p>Овог, нэр, регистр, хэлтэс, албан тушаал нь үндсэн бүртгэлд шаардлагатай.</p>
+          <p>Овог, нэрийг заавал оруулна. Бусад талбарыг боломжтой үед нөхөж болно.</p>
         </div>
       <div className={styles.formGrid}>
         <Field name="lastName" label="Овог" required />
         <Field name="firstName" label="Нэр" required />
-        <Field name="registerNumber" label="Регистрийн дугаар" required />
+        <Field name="registerNumber" label="Регистрийн дугаар" />
         <label className={styles.field}>
           <span>Хүйс</span>
           <select name="gender" defaultValue="">
@@ -400,15 +411,17 @@ export function EmployeeCreateForm({
           </select>
         </label>
         <Field name="birthDate" label="Төрсөн огноо" type="date" />
-        <Field name="phone" label="Утас" />
+        <Field name="countryOfBirth" label="Төрсөн улс" />
+        <Field name="nationality" label="Иргэншил" />
+        <Field name="phone" label="Гар утас" />
         <Field name="email" label="Имэйл" type="email" />
         <label className={styles.field}>
           <span>Ажилтны зураг</span>
           <input name="profilePhoto" type="file" accept="image/jpeg,image/png,image/webp" />
           <small>JPG, PNG, WebP зураг 5MB хүртэл.</small>
         </label>
-        <Select name="departmentId" label="Хэлтэс / алба" options={departments} required />
-        <Select name="jobId" label="Албан тушаал" options={jobs} required />
+        <Select name="departmentId" label="Хэлтэс / алба" options={departments} />
+        <Select name="jobId" label="Албан тушаал" options={jobs} />
         <Select name="managerId" label="Удирдлага" options={managers} />
         <Field name="startDate" label="Ажилд орсон огноо" type="date" />
         <label className={styles.field}>
@@ -433,6 +446,35 @@ export function EmployeeCreateForm({
         </div>
         <div className={styles.formGrid}>
           <Field name="birthPlace" label="Төрсөн хот / аймаг / сум" />
+        </div>
+      </section>
+
+      <section className={styles.formSection}>
+        <div className={styles.formSectionHeader}>
+          <h2>Боловсрол</h2>
+          <p>Боловсролын түвшин, дипломын чиглэл болон сургууль нь заавал биш.</p>
+        </div>
+        <div className={styles.formGrid}>
+          <label className={styles.field}>
+            <span>Боловсролын түвшин</span>
+            <select name="educationLevel" defaultValue="">
+              <option value="">Сонгох</option>
+              <option value="Бүрэн бус дунд">Бүрэн бус дунд</option>
+              <option value="Бүрэн дунд">Бүрэн дунд</option>
+              <option value="Мэргэжлийн боловсрол">Мэргэжлийн боловсрол</option>
+              <option value="Тусгай дунд">Тусгай дунд</option>
+              <option value="Бакалавр">Бакалавр</option>
+              <option value="Магистр">Магистр</option>
+              <option value="Доктор">Доктор</option>
+            </select>
+          </label>
+          <Field name="studyField" label="Диплом / мэргэжил" />
+          <Field name="studySchool" label="Сургууль" />
+          <label className={styles.field}>
+            <span>Боловсролын зураг / файл</span>
+            <input name="educationDocument" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" />
+            <small>JPG, PNG, WebP зураг эсвэл PDF файл 10MB хүртэл.</small>
+          </label>
         </div>
       </section>
 
@@ -698,6 +740,7 @@ const detailTabs = [
   "Ерөнхий мэдээлэл",
   "Ажлын мэдээлэл",
   "Гэр бүл",
+  "Боловсрол",
   "Яаралтай холбоо",
   "Чөлөө",
   "Цалин",
@@ -709,14 +752,19 @@ const detailTabs = [
 
 const editableDetailTabs = new Set([
   "Ерөнхий мэдээлэл",
+  "Ажлын мэдээлэл",
   "Гэр бүл",
+  "Боловсрол",
   "Яаралтай холбоо",
+  "Цалин",
+  "Баримт бичиг",
 ]);
 
 const detailTabIcons: Record<string, LucideIcon> = {
   "Ерөнхий мэдээлэл": User,
   "Ажлын мэдээлэл": BriefcaseBusiness,
   "Гэр бүл": Users,
+  "Боловсрол": GraduationCap,
   "Яаралтай холбоо": Phone,
   "Чөлөө": CalendarDays,
   "Цалин": BadgeDollarSign,
@@ -1046,6 +1094,7 @@ export function EmployeeDetailTabs({
   const showPhoto = Boolean(employee.photoUrl && photoErrorUrl !== employee.photoUrl);
   const currentProfilePhotoUrl = showPhoto && employee.photoUrl ? employee.photoUrl : "";
   const profilePhotoEditUrl = removeProfilePhoto ? "" : profilePhotoPreviewUrl || currentProfilePhotoUrl;
+  const employeeNameParts = splitEmployeeName(employee.name);
   const employeeQuery = `employeeId=${employee.id}`;
   const canEditCurrentTab = canEdit && editableDetailTabs.has(tab);
   const primaryActions = [
@@ -1095,17 +1144,6 @@ export function EmployeeDetailTabs({
     setAddingEmergencyContact(kind === "emergency");
     setAddingReward(kind === "reward");
     setAddingTalentSkill(kind === "talent");
-    setMessage("");
-    setMessageIsError(false);
-  }
-
-  function beginProfileEdit() {
-    setTab(detailTabs[0]);
-    setEditing(true);
-    setAddingFamilyMember(false);
-    setAddingEmergencyContact(false);
-    setAddingReward(false);
-    setAddingTalentSkill(false);
     setMessage("");
     setMessageIsError(false);
   }
@@ -1288,12 +1326,8 @@ export function EmployeeDetailTabs({
     { label: "Регистр / үнэмлэх", value: employee.registerNumber },
     { label: "Хүйс", value: employee.genderLabel },
     { label: "Төрсөн огноо", value: employee.birthDate },
-    { label: "Төлөв", value: employee.statusLabel },
-    { label: "Ажлын утас", value: employee.workPhone },
     { label: "Гар утас", value: employee.mobilePhone },
     { label: "Ажлын и-мэйл", value: employee.workEmail },
-    { label: "Хувийн утас", value: employee.privatePhone },
-    { label: "Хувийн и-мэйл", value: employee.privateEmail },
     { label: "Хэрэглэгч", value: employee.userName },
   ];
 
@@ -1328,7 +1362,7 @@ export function EmployeeDetailTabs({
       rows: [
         { label: "Ажлын байршил", value: employee.workLocation },
         { label: "Ажлын загвар / дэв", value: employee.gradeRank },
-        { label: "Ажил эрхлэлтийн төрөл", value: "" },
+        { label: "Ажил эрхлэлтийн төрөл", value: employee.workType },
         { label: "Нэмэлт тэмдэглэл", value: employee.workAddress },
       ],
     },
@@ -1343,26 +1377,24 @@ export function EmployeeDetailTabs({
     { label: "Эхнэр / нөхрийн нэр", value: employee.spouseName },
     { label: "Эхнэр / нөхрийн төрсөн огноо", value: employee.spouseBirthDate },
     { label: "Хүүхдийн тоо", value: countLabel(employee.childrenCount) },
-    { label: "Паспорт", value: employee.passportNumber },
     { label: "Яаралтай холбоо барих хүн", value: employee.emergencyContact },
     { label: "Яаралтай холбоо барих утас", value: employee.emergencyPhone },
   ];
 
   const salaryInfo: DetailPair[] = [
-    { label: "Гэрээ", value: employee.contractName },
-    { label: "Цалин", value: formatMoney(employee.wage) },
+    { label: "Цалин", value: formatMoney(employee.wage) || employee.baseSalary },
     { label: "Цалингийн ангилал", value: employee.payCategory },
-    { label: "Банкны данс", value: employee.bankAccount },
-    { label: "Ажилд орсон огноо", value: employee.startDate },
-    { label: "Гэрээ дуусах огноо", value: employee.contractEndDate },
-    { label: "Туршилтын хугацаа дуусах", value: employee.trialEndDate },
-    { label: "Ажилтны төрөл", value: employee.statusLabel },
+    { label: "Банкны данс", value: employee.bankAccount || [employee.bankName, employee.bankAccountNumber].filter(Boolean).join(" - ") },
+    { label: "ТТД дугаар", value: employee.taxNumber },
+    { label: "НД төлж эхэлсэн огноо", value: employee.socialInsuranceStartDate },
   ];
 
   const familyRows = compactRows(
     (employee.familyMembers || []).map((member) => ({
       type: member.relationLabel,
       name: member.relatedEmployeeName,
+      birthYear: member.birthYear,
+      school: member.school,
       phone: member.phone,
     })),
   );
@@ -1451,7 +1483,7 @@ export function EmployeeDetailTabs({
     {
       name: "Диплом / боловсрол",
       type: "Боловсрол",
-      status: employee.educationLevel ? "Бүртгэлтэй" : "Дутуу",
+      status: employee.educationLevel || employee.educationAttachmentIds?.length ? "Бүртгэлтэй" : "Дутуу",
       date: "",
     },
     {
@@ -1597,21 +1629,13 @@ export function EmployeeDetailTabs({
           <div>
             <span>Ажилтны үйлдэл</span>
             <p className={styles.actionPanelHelp}>
-              {canEdit
-                ? "Ерөнхий мэдээлэл засах нь хувийн/холбоо барих мэдээлэлд зориулагдсан. Алба, албан тушаал, удирдлага өөрчлөх бол ажлын шилжилт бүртгэнэ."
-                : "Алба, албан тушаал, удирдлагын өөрчлөлт нь зөвхөн ажлын шилжилтийн урсгалаар бүртгэгдэнэ."}
+              Алба, албан тушаал, удирдлагын өөрчлөлт нь зөвхөн ажлын шилжилтийн урсгалаар бүртгэгдэнэ.
             </p>
           </div>
         </div>
 
-        {canEdit || primaryActions.length ? (
+        {primaryActions.length ? (
           <div className={styles.primaryActionGroup}>
-            {canEdit ? (
-              <button type="button" className={styles.primaryActionButton} onClick={beginProfileEdit}>
-                <Pencil aria-hidden />
-                <span>Ерөнхий мэдээлэл засах</span>
-              </button>
-            ) : null}
             {primaryActions.map((action) => {
               const Icon = action.icon;
               return (
@@ -1647,18 +1671,6 @@ export function EmployeeDetailTabs({
         <div className={styles.hrProfileContentGrid}>
           {renderPanel("Хувийн мэдээлэл", renderInfoList(generalInfo))}
           {renderPanel("Хувийн дэлгэрэнгүй", renderInfoList(personalInfo))}
-          {renderPanel(
-            "Баримт бичгийн төлөв",
-            renderTable(
-              [
-                { key: "name", label: "Баримт бичиг" },
-                { key: "status", label: "Төлөв" },
-                { key: "date", label: "Огноо" },
-              ],
-              documentRows.slice(0, 4),
-              "Баримт бичгийн бүртгэл алга.",
-            ),
-          )}
         </div>
       );
     }
@@ -1685,9 +1697,9 @@ export function EmployeeDetailTabs({
               [
                 { key: "type", label: "Төрөл" },
                 { key: "name", label: "Нэр" },
+                { key: "birthYear", label: "Төрсөн он" },
+                { key: "school", label: "Сургууль" },
                 { key: "phone", label: "Утас" },
-                { key: "birthDate", label: "Төрсөн огноо" },
-                { key: "note", label: "Тайлбар" },
               ],
               familyRows,
               "Гэр бүлийн мэдээлэл бүртгэгдээгүй.",
@@ -1701,6 +1713,28 @@ export function EmployeeDetailTabs({
               { label: "Хүүхдийн тоо", value: countLabel(employee.childrenCount) },
               { label: "Гэрийн хаяг", value: employee.homeAddress },
             ], "cards"),
+          )}
+        </div>
+      );
+    }
+
+    if (tab === "Боловсрол") {
+      return (
+        <div className={styles.hrProfileTwoColumn}>
+          {renderPanel(
+            "Боловсролын мэдээлэл",
+            renderInfoList([
+              { label: "Боловсролын түвшин", value: employee.educationLevel },
+              { label: "Диплом / мэргэжил", value: employee.studyField },
+              { label: "Сургууль", value: employee.studySchool },
+            ]),
+          )}
+          {renderPanel(
+            "Боловсролын зураг / файл",
+            <AttachmentLinks
+              hasAttachment={Boolean(employee.educationAttachmentIds?.length)}
+              attachmentIds={employee.educationAttachmentIds}
+            />,
           )}
         </div>
       );
@@ -1962,7 +1996,8 @@ export function EmployeeDetailTabs({
           {renderPanel(
             "Хувийн мэдээлэл",
             <div className={styles.editCardFields}>
-              <Field name="name" label="Нэр" defaultValue={employee.name} required />
+              <Field name="lastName" label="Овог" defaultValue={employeeNameParts.lastName} />
+              <Field name="firstName" label="Нэр" defaultValue={employeeNameParts.firstName} required />
               <Field name="employeeCode" label="Ажилтны код" defaultValue={employee.employeeCode} />
               <Field name="registerNumber" label="Регистр / үнэмлэх" defaultValue={employee.registerNumber} />
               <label className={styles.field}>
@@ -1975,11 +2010,9 @@ export function EmployeeDetailTabs({
                 </select>
               </label>
               <Field name="birthDate" label="Төрсөн огноо" type="date" defaultValue={employee.birthDate} />
-              <Field name="workPhone" label="Ажлын утас" defaultValue={employee.workPhone} />
               <Field name="mobilePhone" label="Гар утас" defaultValue={employee.mobilePhone} />
               <Field name="workEmail" label="Ажлын и-мэйл" type="email" defaultValue={employee.workEmail} />
-              <Field name="privatePhone" label="Хувийн утас" defaultValue={employee.privatePhone} />
-              <Field name="privateEmail" label="Хувийн и-мэйл" type="email" defaultValue={employee.privateEmail} />
+              {renderProfilePhotoEditor()}
             </div>,
           )}
           {renderPanel(
@@ -1987,6 +2020,8 @@ export function EmployeeDetailTabs({
             <div className={styles.editCardFields}>
               <TextAreaField name="homeAddress" label="Гэрийн хаяг" defaultValue={employee.homeAddress} />
               <Field name="birthPlace" label="Төрсөн газар" defaultValue={employee.placeOfBirth} />
+              <Field name="countryOfBirth" label="Төрсөн улс" defaultValue={employee.countryOfBirth} />
+              <Field name="nationality" label="Иргэншил" defaultValue={employee.nationality} />
               <label className={styles.field}>
                 <span>Гэрлэлтийн байдал</span>
                 <select name="familyStatus" defaultValue={employeeMaritalValue(employee)}>
@@ -2005,22 +2040,61 @@ export function EmployeeDetailTabs({
               <Field name="emergencyPhone" label="Яаралтай холбоо барих утас" defaultValue={employee.emergencyPhone} />
             </div>,
           )}
+        </div>
+        <ProfileEditButtons pending={pending} onCancel={cancelProfileEdit} />
+      </form>
+    );
+  }
+
+  function renderWorkEditForm() {
+    return (
+      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <div className={styles.editInfoBanner}>
+          <strong>Ажлын мэдээлэл засаж байна</strong>
+          <span>
+            Ажилд орсон огноо, гэрээний хугацаа, туршилтын хугацаа, зэрэг / дэв болон ажил эрхлэлтийн төрлийг энд шинэчилнэ. Хэлтэс, албан тушаал,
+            шууд удирдлага өөрчлөх бол ажлын шилжилтийн бүртгэлээр оруулна.
+          </span>
+        </div>
+        <div className={styles.hrProfileTwoColumn}>
           {renderPanel(
-            "Баримт бичгийн төлөв",
+            "Гэрээ ба хугацаа",
             <div className={styles.editCardFields}>
-              <div className={styles.editReadonlyValue}>
-                <span>Иргэний үнэмлэх / регистр</span>
-                <strong>{formatWorkValue(employee.registerNumber)}</strong>
-              </div>
-              <Field name="contractEndDate" label="Хөдөлмөрийн гэрээ дуусах" type="date" defaultValue={employee.contractEndDate} />
-              <Field name="studyField" label="Диплом / боловсрол" defaultValue={employee.studyField} />
-              <Field name="studySchool" label="Сургууль" defaultValue={employee.studySchool} />
-              <Field name="missingDocumentCount" label="Дутуу баримтын тоо" type="number" defaultValue={String(employee.missingDocumentCount ?? 0)} />
-              {renderProfilePhotoEditor()}
+              <Field name="startDate" label="Ажилд орсон огноо" type="date" defaultValue={employee.startDate} />
+              <Field name="contractEndDate" label="Гэрээ дуусах огноо" type="date" defaultValue={employee.contractEndDate} />
+              <Field name="trialEndDate" label="Туршилтын хугацаа дуусах" type="date" defaultValue={employee.trialEndDate} />
+              <Field name="gradeRank" label="Зэрэг / дэв" defaultValue={employee.gradeRank} />
+              <label className={styles.field}>
+                <span>Ажил эрхлэлтийн төрөл</span>
+                <select name="workType" defaultValue={employee.workType || ""}>
+                  <option value="">Сонгох</option>
+                  <option value="Үндсэн">Үндсэн</option>
+                  <option value="Туршилтаар">Туршилтаар</option>
+                  <option value="Гэрээт">Гэрээт</option>
+                  <option value="Улирлын">Улирлын</option>
+                  <option value="Түр">Түр</option>
+                </select>
+              </label>
+            </div>,
+          )}
+          {renderPanel(
+            "Шилжилтээр өөрчлөх мэдээлэл",
+            <div className={styles.editCardFields}>
+              {renderInfoList([
+                { label: "Хэлтэс / алба", value: employee.departmentName },
+                { label: "Албан тушаал", value: employee.jobTitle },
+                { label: "Шууд удирдлага", value: employee.managerName },
+              ])}
+              {mode === "hr" ? (
+                <Link href={`/hr/transfers?${employeeQuery}`} className={styles.secondaryButton}>
+                  <Repeat2 aria-hidden />
+                  <span>Ажлын шилжилт бүртгэх</span>
+                </Link>
+              ) : null}
             </div>,
           )}
         </div>
-        <ProfileEditButtons pending={pending} onCancel={cancelProfileEdit} />
+        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
       </form>
     );
   }
@@ -2052,11 +2126,13 @@ export function EmployeeDetailTabs({
       <form className={styles.familyMemberEditCard} onSubmit={submitFamilyMemberAdd} noValidate>
         <div className={styles.editInfoBanner}>
           <strong>Гэр бүлийн гишүүн нэмэх</strong>
-          <span>Хамаарал, нэр, утсыг бүртгэнэ.</span>
+          <span>Хамаарал, нэрийг бүртгэнэ. Төрсөн он, сургууль, утас нь заавал биш.</span>
         </div>
         <div className={styles.editCardFields}>
           {renderFamilyRelationField("spouse", familyMemberPending)}
           <Field name="name" label="Нэр" required />
+          <Field name="birthYear" label="Төрсөн он" type="number" />
+          <Field name="school" label="Сургууль" />
           <Field name="phone" label="Утас" />
         </div>
         <ProfileEditButtons pending={familyMemberPending} onCancel={closeFamilyEdit} />
@@ -2085,6 +2161,8 @@ export function EmployeeDetailTabs({
             >
               {renderFamilyRelationField(member.relation, updatePending || deletePending)}
               <Field name="name" label="Нэр" defaultValue={member.relatedEmployeeName} required />
+              <Field name="birthYear" label="Төрсөн он" type="number" defaultValue={member.birthYear} />
+              <Field name="school" label="Сургууль" defaultValue={member.school} />
               <Field name="phone" label="Утас" defaultValue={member.phone} />
               <div className={styles.familyMemberRowActions}>
                 <button className={styles.secondaryButton} disabled={updatePending || deletePending || (anyPending && !updatePending)}>
@@ -2301,14 +2379,132 @@ export function EmployeeDetailTabs({
     );
   }
 
+  function renderSalaryEditForm() {
+    return (
+      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <div className={styles.hrProfileTwoColumn}>
+          {renderPanel(
+            "Цалин, хөлс",
+            <div className={styles.editCardFields}>
+              <Field
+                name="baseSalary"
+                label="Үндсэн цалин"
+                type="number"
+                defaultValue={employee.wage ? String(employee.wage) : employee.baseSalary}
+              />
+              <Field name="payCategory" label="Цалингийн ангилал" defaultValue={employee.payCategory} />
+              <Field name="taxNumber" label="ТТД дугаар" defaultValue={employee.taxNumber} />
+              <Field
+                name="socialInsuranceStartDate"
+                label="НД төлж эхэлсэн огноо"
+                type="date"
+                defaultValue={employee.socialInsuranceStartDate}
+              />
+            </div>,
+          )}
+          {renderPanel(
+            "Банкны мэдээлэл",
+            <div className={styles.editCardFields}>
+              <Field name="bankName" label="Банк" defaultValue={employee.bankName} />
+              <Field name="bankAccountNumber" label="Дансны дугаар" defaultValue={employee.bankAccountNumber || employee.bankAccount} />
+            </div>,
+          )}
+        </div>
+        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+      </form>
+    );
+  }
+
+  function renderEducationEditForm() {
+    return (
+      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <div className={styles.hrProfileTwoColumn}>
+          {renderPanel(
+            "Боловсролын мэдээлэл",
+            <div className={styles.editCardFields}>
+              <label className={styles.field}>
+                <span>Боловсролын түвшин</span>
+                <select name="educationLevel" defaultValue={employee.educationLevel || ""}>
+                  <option value="">Сонгох</option>
+                  <option value="Бүрэн бус дунд">Бүрэн бус дунд</option>
+                  <option value="Бүрэн дунд">Бүрэн дунд</option>
+                  <option value="Мэргэжлийн боловсрол">Мэргэжлийн боловсрол</option>
+                  <option value="Тусгай дунд">Тусгай дунд</option>
+                  <option value="Бакалавр">Бакалавр</option>
+                  <option value="Магистр">Магистр</option>
+                  <option value="Доктор">Доктор</option>
+                </select>
+              </label>
+              <Field name="studyField" label="Диплом / мэргэжил" defaultValue={employee.studyField} />
+              <Field name="studySchool" label="Сургууль" defaultValue={employee.studySchool} />
+            </div>,
+          )}
+          {renderPanel(
+            "Боловсролын зураг / файл",
+            <div className={styles.editCardFields}>
+              <AttachmentLinks
+                hasAttachment={Boolean(employee.educationAttachmentIds?.length)}
+                attachmentIds={employee.educationAttachmentIds}
+              />
+              <label className={styles.field}>
+                <span>Шинэ зураг / файл хавсаргах</span>
+                <input name="educationDocument" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" />
+                <small>JPG, PNG, WebP зураг эсвэл PDF файл 10MB хүртэл.</small>
+              </label>
+            </div>,
+          )}
+        </div>
+        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+      </form>
+    );
+  }
+
+  function renderDocumentEditForm() {
+    return (
+      <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <div className={styles.hrProfileTwoColumn}>
+          {renderPanel(
+            "Баримт бичгийн мэдээлэл",
+            <div className={styles.editCardFields}>
+              <Field name="contractEndDate" label="Хөдөлмөрийн гэрээ дуусах" type="date" defaultValue={employee.contractEndDate} />
+              <Field name="missingDocumentCount" label="Дутуу баримтын тоо" type="number" defaultValue={String(employee.missingDocumentCount ?? 0)} />
+            </div>,
+          )}
+          {renderPanel(
+            "Одоогийн төлөв",
+            renderTable(
+              [
+                { key: "name", label: "Баримт бичиг" },
+                { key: "type", label: "Төрөл" },
+                { key: "status", label: "Төлөв" },
+                { key: "date", label: "Огноо" },
+              ],
+              documentRows,
+              "Баримт бичиг бүртгэгдээгүй.",
+            ),
+          )}
+        </div>
+        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+      </form>
+    );
+  }
+
   function renderTabEditForm() {
     switch (tab) {
       case "Ерөнхий мэдээлэл":
         return renderProfileEditForm();
+      case "Ажлын мэдээлэл":
+        return renderWorkEditForm();
       case "Гэр бүл":
         return renderFamilyEditForm();
+      case "Боловсрол":
+        return renderEducationEditForm();
       case "Яаралтай холбоо":
         return renderEmergencyEditForm();
+      case "Цалин":
+        return renderSalaryEditForm();
+      case "Баримт бичиг":
+        return renderDocumentEditForm();
       default:
         return renderTabContent();
     }
@@ -2350,7 +2546,7 @@ export function EmployeeDetailTabs({
               {hasUsefulValue(employee.jobTitle) ? employee.jobTitle : "Албан тушаал бүртгээгүй"}
             </p>
             <ul>
-              <li><Phone aria-hidden /><ProfileValue value={employee.workPhone || employee.mobilePhone} fallback="Утас бүртгээгүй" /></li>
+              <li><Phone aria-hidden /><ProfileValue value={employee.mobilePhone} fallback="Гар утас бүртгээгүй" /></li>
               <li><Mail aria-hidden /><ProfileValue value={employee.workEmail} fallback="И-мэйл бүртгээгүй" /></li>
               <li><Building2 aria-hidden /><ProfileValue value={employee.departmentName} fallback="Хэлтэс бүртгээгүй" /></li>
               <li><Users aria-hidden /><span>Шууд удирдлага:</span> <ProfileValue value={employee.managerName} /></li>

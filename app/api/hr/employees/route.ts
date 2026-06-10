@@ -4,7 +4,9 @@ import { createEmployee, getEmployees, requireHrAccess, requireHrSpecialistAcces
 export const dynamic = "force-dynamic";
 
 const MAX_EMPLOYEE_PHOTO_SIZE = 5 * 1024 * 1024;
+const MAX_EDUCATION_DOCUMENT_SIZE = 10 * 1024 * 1024;
 const ALLOWED_EMPLOYEE_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_EDUCATION_DOCUMENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
 
 function jsonError(message: string, status = 500) {
   return Response.json({ error: message }, { status });
@@ -58,6 +60,24 @@ async function getOptionalEmployeePhotoBase64(formData: FormData) {
   return Buffer.from(await photo.arrayBuffer()).toString("base64");
 }
 
+async function getOptionalEducationDocument(formData: FormData) {
+  const document = formData.get("educationDocument");
+  if (!(document instanceof File) || document.size <= 0) {
+    return {};
+  }
+  if (!ALLOWED_EDUCATION_DOCUMENT_TYPES.has(document.type)) {
+    throw new Error("INVALID_EDUCATION_DOCUMENT_TYPE");
+  }
+  if (document.size > MAX_EDUCATION_DOCUMENT_SIZE) {
+    throw new Error("EDUCATION_DOCUMENT_TOO_LARGE");
+  }
+  return {
+    educationAttachmentBase64: Buffer.from(await document.arrayBuffer()).toString("base64"),
+    educationAttachmentName: document.name || "Боловсролын баримт",
+    educationAttachmentMimeType: document.type || "application/octet-stream",
+  };
+}
+
 export async function GET() {
   const session = await getSession();
   if (!session) return jsonError("Нэвтрэх шаардлагатай.", 401);
@@ -82,12 +102,17 @@ export async function POST(request: Request) {
     await requireHrSpecialistAccess(session);
     const formData = await request.formData();
     const profilePhotoBase64 = await getOptionalEmployeePhotoBase64(formData);
+    const educationDocument = await getOptionalEducationDocument(formData);
     const input: HrEmployeeCreateInput = {
       lastName: getString(formData, "lastName"),
       firstName: getString(formData, "firstName"),
       registerNumber: getString(formData, "registerNumber"),
       gender: getString(formData, "gender"),
       birthDate: getString(formData, "birthDate"),
+      countryOfBirth: getString(formData, "countryOfBirth"),
+      nationality: getString(formData, "nationality"),
+      countryOfBirthId: getNumber(formData, "countryOfBirthId"),
+      nationalityId: getNumber(formData, "nationalityId"),
       phone: getString(formData, "phone"),
       email: getString(formData, "email"),
       departmentId: getNumber(formData, "departmentId"),
@@ -121,8 +146,12 @@ export async function POST(request: Request) {
       previousEmployment: getString(formData, "previousEmployment"),
       additionalDuty: getString(formData, "additionalDuty"),
       trialEndDate: getString(formData, "trialEndDate"),
+      educationLevel: getString(formData, "educationLevel"),
+      studyField: getString(formData, "studyField"),
+      studySchool: getString(formData, "studySchool"),
       note: getString(formData, "note"),
       profilePhotoBase64,
+      ...educationDocument,
     };
 
     if (!input.lastName) {
@@ -130,15 +159,6 @@ export async function POST(request: Request) {
     }
     if (!input.firstName) {
       return jsonError("Ажилтны нэр заавал бөглөнө үү.", 400);
-    }
-    if (!input.registerNumber) {
-      return jsonError("Регистрийн дугаар заавал бөглөнө үү.", 400);
-    }
-    if (!input.departmentId) {
-      return jsonError("Хэлтэс / алба заавал сонгоно уу.", 400);
-    }
-    if (!input.jobId) {
-      return jsonError("Албан тушаал заавал сонгоно уу.", 400);
     }
     if (input.startDate) {
       const startDate = new Date(`${input.startDate}T00:00:00`);
@@ -160,6 +180,12 @@ export async function POST(request: Request) {
     }
     if (error instanceof Error && error.message === "EMPLOYEE_PHOTO_TOO_LARGE") {
       return jsonError("Ажилтны зураг 5MB-аас бага байх ёстой.", 400);
+    }
+    if (error instanceof Error && error.message === "INVALID_EDUCATION_DOCUMENT_TYPE") {
+      return jsonError("Боловсролын баримтад зөвхөн JPG, PNG, WebP зураг эсвэл PDF файл оруулна уу.", 400);
+    }
+    if (error instanceof Error && error.message === "EDUCATION_DOCUMENT_TOO_LARGE") {
+      return jsonError("Боловсролын баримт 10MB-аас бага байх ёстой.", 400);
     }
     console.error("POST /api/hr/employees failed:", error);
     if (isOdooAccessError(error)) {

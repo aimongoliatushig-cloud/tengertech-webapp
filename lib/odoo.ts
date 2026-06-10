@@ -700,6 +700,7 @@ export type HrEmployeeDirectoryItem = {
   photoUrl: string;
   employeeCode: string;
   gradeRank: string;
+  workType?: string;
   statusKey: string;
   statusLabel: string;
   managerId?: number | null;
@@ -710,6 +711,7 @@ export type HrEmployeeDirectoryItem = {
   genderKey: string;
   genderLabel: string;
   educationLevel: string;
+  educationAttachmentIds?: number[];
   registerNumber?: string;
   privatePhone?: string;
   privateEmail?: string;
@@ -717,7 +719,9 @@ export type HrEmployeeDirectoryItem = {
   emergencyContact?: string;
   emergencyPhone?: string;
   placeOfBirth?: string;
+  countryOfBirthId?: number | null;
   countryOfBirth?: string;
+  nationalityId?: number | null;
   nationality?: string;
   maritalStatus?: string;
   spouseName?: string;
@@ -726,7 +730,10 @@ export type HrEmployeeDirectoryItem = {
   passportNumber?: string;
   studyField?: string;
   studySchool?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
   bankAccount?: string;
+  baseSalary?: string;
   workLocation?: string;
   workAddress?: string;
   workSchedule?: string;
@@ -736,6 +743,8 @@ export type HrEmployeeDirectoryItem = {
   contractName?: string;
   wage?: number;
   payCategory?: string;
+  taxNumber?: string;
+  socialInsuranceStartDate?: string;
   departureDate?: string;
   departureReason?: string;
   departureDescription?: string;
@@ -759,6 +768,8 @@ export type HrEmployeeFamilyMember = {
   relatedEmployeeName: string;
   relation: string;
   relationLabel: string;
+  birthYear: string;
+  school: string;
   phone: string;
   departmentName: string;
   jobTitle: string;
@@ -4337,6 +4348,7 @@ export async function loadHrEmployeeDirectory(
           employee.x_mn_employee_code ||
           `EMP-${String(employee.id).padStart(5, "0")}`,
         gradeRank: employee.x_mn_grade_rank || "",
+        workType: "",
         statusKey: status.key,
         statusLabel: status.label,
         managerName: relationName(employee.parent_id ?? false, ""),

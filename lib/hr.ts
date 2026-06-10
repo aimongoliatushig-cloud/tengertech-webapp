@@ -74,6 +74,8 @@ type HrTransferHistorySearchRecord = {
 type HrAttachmentSearchRecord = {
   id: number;
   name?: string | false;
+  mimetype?: string | false;
+  x_mn_document_type?: string | false;
 };
 
 type HrEmployeeTransferSnapshot = {
@@ -150,6 +152,8 @@ type HrEmployeeFamilyMemberSearchRecord = {
   employee_id?: OdooRelation;
   related_employee_id?: OdooRelation;
   name?: string | false;
+  birth_year?: string | false;
+  school?: string | false;
   phone?: string | false;
   relation?: string | false;
   note?: string | false;
@@ -201,6 +205,7 @@ type HrEmployeeDirectoryApiRecord = {
   photoUrl?: string;
   employeeCode?: string;
   gradeRank?: string;
+  workType?: string;
   statusKey?: string;
   statusLabel?: string;
   managerId?: number | null;
@@ -418,6 +423,10 @@ export type HrEmployeeCreateInput = {
   registerNumber?: string;
   gender?: string;
   birthDate?: string;
+  countryOfBirth?: string;
+  nationality?: string;
+  countryOfBirthId?: number;
+  nationalityId?: number;
   phone?: string;
   email?: string;
   departmentId?: number;
@@ -443,6 +452,7 @@ export type HrEmployeeCreateInput = {
   bankName?: string;
   bankAccountNumber?: string;
   baseSalary?: string;
+  payCategory?: string;
   taxNumber?: string;
   socialInsuranceStartDate?: string;
   annualLeaveNote?: string;
@@ -451,6 +461,12 @@ export type HrEmployeeCreateInput = {
   previousEmployment?: string;
   additionalDuty?: string;
   trialEndDate?: string;
+  educationLevel?: string;
+  studyField?: string;
+  studySchool?: string;
+  educationAttachmentBase64?: string;
+  educationAttachmentName?: string;
+  educationAttachmentMimeType?: string;
   note?: string;
   profilePhotoBase64?: string;
 };
@@ -770,6 +786,7 @@ function mapHrEmployeeDirectoryApiRecord(record: HrEmployeeDirectoryApiRecord): 
     photoUrl: record.photoUrl || imageDataUrlFromBase64(record.photo),
     employeeCode: record.employeeCode || `EMP-${String(record.id).padStart(5, "0")}`,
     gradeRank: record.gradeRank || "",
+    workType: record.workType || "",
     statusKey,
     statusLabel: normalizeEmployeeStatusLabel(statusKey, record.statusLabel, record.active, trialEndDate),
     managerId: record.managerId ?? null,
@@ -858,6 +875,11 @@ function getManagedNoteValue(notes: string | undefined, label: string) {
     .trim() || "";
 }
 
+function numberFromManagedNote(value: string) {
+  const amount = Number(value.replace(/[^\d.-]/g, ""));
+  return Number.isFinite(amount) ? amount : 0;
+}
+
 function getUlaanbaatarDateKey() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Ulaanbaatar",
@@ -929,6 +951,8 @@ function mapHrEmployeeFamilyMemberRecord(
     relatedEmployeeName: directName || relatedEmployee?.name || getRelationName(record.related_employee_id, "Бүртгээгүй"),
     relation,
     relationLabel: HR_FAMILY_RELATION_LABELS[relation],
+    birthYear: cleanOdooText(record.birth_year),
+    school: cleanOdooText(record.school),
     phone: cleanOdooText(record.phone),
     departmentName: relatedEmployee?.departmentName || "",
     jobTitle: relatedEmployee?.jobTitle || "",
@@ -942,6 +966,14 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
   const jobTitle = getHrJobTitleDisplayName(record.name || "", getRelationName(record.job_id) || record.job_title);
   const notes = cleanOdooLongText(record.notes);
   const trialEndDate = record.trial_date_end || getManagedNoteValue(notes, "Туршилтын хугацаа дуусах");
+  const workType = getManagedNoteValue(notes, "Ажиллах төрөл");
+  const countryOfBirth = getManagedNoteValue(notes, "Төрсөн улс") || getRelationName(record.country_of_birth);
+  const nationality = getManagedNoteValue(notes, "Иргэншил") || getRelationName(record.country_id);
+  const bankName = getManagedNoteValue(notes, "Банк");
+  const bankAccountNumber = getManagedNoteValue(notes, "Дансны дугаар");
+  const baseSalary = getManagedNoteValue(notes, "Үндсэн цалин");
+  const taxNumber = getManagedNoteValue(notes, "ТТД дугаар");
+  const socialInsuranceStartDate = getManagedNoteValue(notes, "НД төлж эхэлсэн огноо");
   const statusKey = status.key === "active" && trialEndDate ? "probation" : status.key;
 
   return {
@@ -960,6 +992,7 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     photoUrl: imageDataUrlFromBase64(record.image_128 || record.avatar_128 || record.image_1920),
     employeeCode: record.x_mn_employee_code || `EMP-${String(record.id).padStart(5, "0")}`,
     gradeRank: record.x_mn_grade_rank || "",
+    workType,
     statusKey,
     statusLabel: normalizeEmployeeStatusLabel(statusKey, status.label, record.active, trialEndDate),
     managerId: getRelationId(record.parent_id),
@@ -984,8 +1017,10 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     emergencyContact: record.emergency_contact || "",
     emergencyPhone: record.emergency_phone || "",
     placeOfBirth: record.place_of_birth || "",
-    countryOfBirth: getRelationName(record.country_of_birth),
-    nationality: getRelationName(record.country_id),
+    countryOfBirthId: getRelationId(record.country_of_birth),
+    countryOfBirth,
+    nationalityId: getRelationId(record.country_id),
+    nationality,
     maritalStatus: resolveMaritalStatusLabel(record.marital),
     spouseName: record.spouse_complete_name || "",
     spouseBirthDate: record.spouse_birthdate || "",
@@ -993,14 +1028,19 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     passportNumber: record.passport_id || "",
     studyField: record.study_field || "",
     studySchool: record.study_school || "",
-    bankAccount: getRelationName(record.bank_account_id),
+    bankName,
+    bankAccountNumber,
+    bankAccount: getRelationName(record.bank_account_id) || [bankName, bankAccountNumber].filter(Boolean).join(" - "),
+    baseSalary,
     workLocation: getRelationName(record.work_location_id),
     workAddress: getRelationName(record.address_id),
     workSchedule: getRelationName(record.resource_calendar_id),
     coachName: getRelationName(record.coach_id),
     contractName: getRelationName(record.contract_id),
-    wage: Number(record.wage || 0),
+    wage: Number(record.wage || 0) || numberFromManagedNote(baseSalary),
     payCategory: record.pay_category || "",
+    taxNumber,
+    socialInsuranceStartDate,
     departureDate: record.departure_date || "",
     departureReason: getRelationName(record.departure_reason_id),
     departureDescription: record.departure_description || "",
@@ -1448,7 +1488,7 @@ export async function getEmployeeFamilyMembers(
   const employeesById = new Map(employees.map((employee) => [employee.id, employee]));
   const fields = await getAvailableFields(
     "hr.custom.mn.employee.family.member",
-    ["employee_id", "related_employee_id", "name", "phone", "relation", "note"],
+    ["employee_id", "related_employee_id", "name", "birth_year", "school", "phone", "relation", "note"],
     session,
   );
 
@@ -1569,6 +1609,32 @@ export async function getEmployeeTalentSkills(session: AppSession, employeeId: n
   }
 }
 
+async function getEmployeeEducationAttachmentIds(session: AppSession, employeeId: number) {
+  const fields = await getAvailableFields("ir.attachment", ["name", "mimetype", "x_mn_document_type"], session);
+  const records = await executeOdooKw<HrAttachmentSearchRecord[]>(
+    "ir.attachment",
+    "search_read",
+    [[["res_model", "=", "hr.employee"], ["res_id", "=", employeeId]]],
+    { fields, order: "id desc", limit: 50 },
+    getConnection(session),
+  ).catch((error) => {
+    console.warn("HR education attachments could not be loaded:", error);
+    return [];
+  });
+  return records
+    .filter((attachment) => {
+      const name = normalizeText(attachment.name);
+      return (
+        attachment.x_mn_document_type === "diploma" ||
+        name.includes("боловсрол") ||
+        name.includes("диплом") ||
+        name.includes("diploma") ||
+        name.includes("education")
+      );
+    })
+    .map((attachment) => attachment.id);
+}
+
 export async function getEmployee(session: AppSession, id: number, listedEmployees?: HrEmployeeDirectoryItem[]) {
   const employees = listedEmployees ?? (await getEmployees(session));
   const listedEmployee = employees.find((employee) => employee.id === id);
@@ -1579,7 +1645,6 @@ export async function getEmployee(session: AppSession, id: number, listedEmploye
     "department_id",
     "job_id",
     "job_title",
-    "work_phone",
     "mobile_phone",
     "work_email",
     "user_id",
@@ -1651,19 +1716,20 @@ export async function getEmployee(session: AppSession, id: number, listedEmploye
     return [];
   });
   const employee = records[0] ? mapHrEmployeeSingleSearchRecord(records[0]) : null;
-  const [familyMembers, emergencyContacts, rewards, talentSkills] = await Promise.all([
+  const [familyMembers, emergencyContacts, rewards, talentSkills, educationAttachmentIds] = await Promise.all([
     getEmployeeFamilyMembers(session, id, employees),
     getEmployeeEmergencyContacts(session, id),
     getEmployeeRewards(session, id),
     getEmployeeTalentSkills(session, id),
+    getEmployeeEducationAttachmentIds(session, id),
   ]);
   if (!employee) {
-    return listedEmployee ? { ...listedEmployee, familyMembers, emergencyContacts, rewards, talentSkills } : null;
+    return listedEmployee ? { ...listedEmployee, familyMembers, emergencyContacts, rewards, talentSkills, educationAttachmentIds } : null;
   }
 
   const scopedEmployee = scopeEmployeesForProfile([employee], profile)[0];
   if (!scopedEmployee) {
-    return listedEmployee ? { ...listedEmployee, familyMembers, emergencyContacts, rewards, talentSkills } : null;
+    return listedEmployee ? { ...listedEmployee, familyMembers, emergencyContacts, rewards, talentSkills, educationAttachmentIds } : null;
   }
 
   const mergedEmployee = listedEmployee
@@ -1681,8 +1747,9 @@ export async function getEmployee(session: AppSession, id: number, listedEmploye
         emergencyContacts,
         rewards,
         talentSkills,
+        educationAttachmentIds,
       }
-    : { ...scopedEmployee, familyMembers, emergencyContacts, rewards, talentSkills };
+    : { ...scopedEmployee, familyMembers, emergencyContacts, rewards, talentSkills, educationAttachmentIds };
 
   return {
     ...mergedEmployee,
@@ -1700,6 +1767,8 @@ export async function createEmployeeFamilyMember(
   input: {
     relatedEmployeeId?: number | null;
     name?: string;
+    birthYear?: string;
+    school?: string;
     phone?: string;
     relation: string;
   },
@@ -1728,21 +1797,30 @@ export async function createEmployeeFamilyMember(
   }
 
   const relation = normalizeFamilyRelation(input.relation);
+  const birthYear = input.birthYear?.trim() || "";
+  const school = input.school?.trim() || "";
   const phone = input.phone?.trim() || "";
   const availableFields = new Set(
     await getAvailableFields(
       "hr.custom.mn.employee.family.member",
-      ["employee_id", "related_employee_id", "name", "phone", "relation", "note"],
+      ["employee_id", "related_employee_id", "name", "birth_year", "school", "phone", "relation", "note"],
       session,
     ),
   );
+  const fallbackNote = [
+    !availableFields.has("birth_year") && birthYear ? `Төрсөн он: ${birthYear}` : "",
+    !availableFields.has("school") && school ? `Сургууль: ${school}` : "",
+    !availableFields.has("phone") && phone ? `Утас: ${phone}` : "",
+  ].filter(Boolean).join("\n");
   const values: Record<string, unknown> = {
     employee_id: employeeId,
     relation,
-    note: !availableFields.has("phone") && phone ? `Утас: ${phone}` : false,
+    note: fallbackNote || false,
   };
   if (availableFields.has("related_employee_id")) values.related_employee_id = relatedEmployeeId || false;
   if (availableFields.has("name")) values.name = name || relatedEmployee?.name || false;
+  if (availableFields.has("birth_year")) values.birth_year = birthYear || false;
+  if (availableFields.has("school")) values.school = school || false;
   if (availableFields.has("phone")) values.phone = phone || false;
 
   try {
@@ -1763,6 +1841,8 @@ export async function createEmployeeFamilyMember(
         relatedEmployeeName: name || relatedEmployee?.name || "",
         relation,
         relationLabel: HR_FAMILY_RELATION_LABELS[relation],
+        birthYear,
+        school,
         phone,
         departmentName: relatedEmployee?.departmentName || "",
         jobTitle: relatedEmployee?.jobTitle || "",
@@ -1811,6 +1891,8 @@ export async function updateEmployeeFamilyMember(
   memberId: number,
   input: {
     name?: string;
+    birthYear?: string;
+    school?: string;
     phone?: string;
     relation: string;
   },
@@ -1823,19 +1905,28 @@ export async function updateEmployeeFamilyMember(
   }
 
   const relation = normalizeFamilyRelation(input.relation);
+  const birthYear = input.birthYear?.trim() || "";
+  const school = input.school?.trim() || "";
   const phone = input.phone?.trim() || "";
   const availableFields = new Set(
     await getAvailableFields(
       "hr.custom.mn.employee.family.member",
-      ["name", "phone", "relation", "note"],
+      ["name", "birth_year", "school", "phone", "relation", "note"],
       session,
     ),
   );
+  const fallbackNote = [
+    !availableFields.has("birth_year") && birthYear ? `Төрсөн он: ${birthYear}` : "",
+    !availableFields.has("school") && school ? `Сургууль: ${school}` : "",
+    !availableFields.has("phone") && phone ? `Утас: ${phone}` : "",
+  ].filter(Boolean).join("\n");
   const values: Record<string, unknown> = {
     relation,
-    note: !availableFields.has("phone") && phone ? `Утас: ${phone}` : false,
+    note: fallbackNote || false,
   };
   if (availableFields.has("name")) values.name = name;
+  if (availableFields.has("birth_year")) values.birth_year = birthYear || false;
+  if (availableFields.has("school")) values.school = school || false;
   if (availableFields.has("phone")) values.phone = phone || false;
 
   try {
@@ -1859,6 +1950,8 @@ export async function updateEmployeeFamilyMember(
         relatedEmployeeName: name,
         relation,
         relationLabel: HR_FAMILY_RELATION_LABELS[relation],
+        birthYear,
+        school,
         phone,
         departmentName: "",
         jobTitle: "",
@@ -2150,6 +2243,42 @@ export async function getManagers(session: AppSession): Promise<HrOption[]> {
     });
 }
 
+export async function getCountries(session: AppSession): Promise<HrOption[]> {
+  return executeOdooKw<OdooDictionaryRecord[]>(
+    "res.country",
+    "search_read",
+    [[]],
+    { fields: ["name"], order: "name asc", limit: 300 },
+    getConnection(session),
+  )
+    .then((records) => records.map((record) => ({ id: record.id, name: record.name })))
+    .catch((error) => {
+      console.warn("HR countries could not be loaded:", error);
+      return [];
+    });
+}
+
+async function resolveCountryIdByName(session: AppSession, value?: string) {
+  const query = value?.trim();
+  if (!query) return null;
+  const normalizedQuery = normalizeText(query);
+  return executeOdooKw<OdooDictionaryRecord[]>(
+    "res.country",
+    "search_read",
+    [[["name", "ilike", query]]],
+    { fields: ["name"], limit: 20 },
+    getConnection(session),
+  )
+    .then((records) => {
+      const exact = records.find((record) => normalizeText(record.name) === normalizedQuery);
+      return exact?.id ?? null;
+    })
+    .catch((error) => {
+      console.warn("HR country could not be resolved:", error);
+      return null;
+    });
+}
+
 export async function getLeaveTypes(session: AppSession): Promise<HrOption[]> {
   return executeOdooKw<Array<{ id: number; name: string }>>(
     "hr.leave.type",
@@ -2168,7 +2297,6 @@ export async function getLeaveTypes(session: AppSession): Promise<HrOption[]> {
 export async function createEmployee(session: AppSession, data: HrEmployeeCreateInput) {
   const desiredFields = [
     "name",
-    "work_phone",
     "mobile_phone",
     "work_email",
     "department_id",
@@ -2192,10 +2320,21 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
     "children",
     "emergency_contact",
     "emergency_phone",
+    "country_of_birth",
+    "country_id",
+    "certificate",
+    "study_field",
+    "study_school",
+    "wage",
+    "pay_category",
     "image_1920",
   ];
   const fields = new Set(await getAvailableFields("hr.employee", desiredFields, session));
   const name = [data.lastName, data.firstName].map((value) => value?.trim()).filter(Boolean).join(" ");
+  const [countryOfBirthId, nationalityId] = await Promise.all([
+    data.countryOfBirth ? resolveCountryIdByName(session, data.countryOfBirth) : Promise.resolve(data.countryOfBirthId ?? null),
+    data.nationality ? resolveCountryIdByName(session, data.nationality) : Promise.resolve(data.nationalityId ?? null),
+  ]);
   const noteParts = [
     data.note,
     data.workType ? `Ажиллах төрөл: ${data.workType}` : "",
@@ -2204,6 +2343,8 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
     data.emergencyContact ? `Яаралтай холбоо: ${data.emergencyContact}` : "",
     data.emergencyPhone ? `Яаралтай утас: ${data.emergencyPhone}` : "",
     data.birthPlace ? `Төрсөн хот / аймаг / сум: ${data.birthPlace}` : "",
+    data.countryOfBirth ? `Төрсөн улс: ${data.countryOfBirth}` : "",
+    data.nationality ? `Иргэншил: ${data.nationality}` : "",
     data.addressProvince ? `Аймаг / Хот: ${data.addressProvince}` : "",
     data.addressDistrict ? `Сум / Дүүрэг: ${data.addressDistrict}` : "",
     data.addressSubdistrict ? `Баг / Хороо: ${data.addressSubdistrict}` : "",
@@ -2226,7 +2367,6 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
   const values: Record<string, unknown> = {};
 
   if (fields.has("name")) values.name = name || data.firstName;
-  if (fields.has("work_phone")) values.work_phone = data.phone || false;
   if (fields.has("mobile_phone")) values.mobile_phone = data.phone || false;
   if (fields.has("work_email")) values.work_email = data.email || false;
   if (fields.has("department_id") && data.departmentId) values.department_id = data.departmentId;
@@ -2251,10 +2391,17 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
   }
   if (fields.has("private_city")) values.private_city = data.addressProvince || data.addressDistrict || false;
   if (fields.has("place_of_birth")) values.place_of_birth = data.birthPlace || false;
+  if (fields.has("country_of_birth") && countryOfBirthId) values.country_of_birth = countryOfBirthId;
+  if (fields.has("country_id") && nationalityId) values.country_id = nationalityId;
   if (fields.has("marital") && data.familyStatus) values.marital = data.familyStatus;
   if (fields.has("children")) values.children = data.childrenCount || 0;
   if (fields.has("emergency_contact")) values.emergency_contact = data.emergencyContact || false;
   if (fields.has("emergency_phone")) values.emergency_phone = data.emergencyPhone || false;
+  if (fields.has("certificate")) values.certificate = data.educationLevel || false;
+  if (fields.has("study_field")) values.study_field = data.studyField || false;
+  if (fields.has("study_school")) values.study_school = data.studySchool || false;
+  if (fields.has("wage") && data.baseSalary) values.wage = numberFromManagedNote(data.baseSalary);
+  if (fields.has("pay_category")) values.pay_category = data.payCategory || false;
   if (fields.has("image_1920") && data.profilePhotoBase64) values.image_1920 = data.profilePhotoBase64;
 
   let createdId = 0;
@@ -2282,6 +2429,7 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
       getConnection(session),
     );
   }
+  await attachFilesToEmployee(session, createdId, educationAttachmentFromInput(data), "Боловсрол", "diploma");
   return getEmployee(session, createdId);
 }
 
@@ -2294,7 +2442,6 @@ export async function updateEmployee(
         HrEmployeeDirectoryItem,
         | "name"
         | "employeeCode"
-        | "workPhone"
         | "mobilePhone"
         | "workEmail"
         | "birthDate"
@@ -2306,16 +2453,22 @@ export async function updateEmployee(
         | "emergencyContact"
         | "emergencyPhone"
         | "placeOfBirth"
+        | "countryOfBirth"
+        | "countryOfBirthId"
+        | "nationality"
+        | "nationalityId"
         | "maritalStatus"
         | "spouseName"
         | "spouseBirthDate"
         | "childrenCount"
         | "studyField"
         | "studySchool"
+        | "educationLevel"
         | "payCategory"
         | "contractEndDate"
         | "trialEndDate"
         | "gradeRank"
+        | "workType"
         | "notes"
         | "missingDocumentCount"
         | "kpiScore"
@@ -2334,7 +2487,6 @@ export async function updateEmployee(
 ) {
   const desiredFields = [
     "name",
-    "work_phone",
     "mobile_phone",
     "work_email",
     "department_id",
@@ -2346,6 +2498,7 @@ export async function updateEmployee(
     "trial_date_end",
     "x_mn_employee_code",
     "x_mn_grade_rank",
+    "x_mn_employment_status",
     "birthday",
     "sex",
     "identification_id",
@@ -2362,8 +2515,12 @@ export async function updateEmployee(
     "children",
     "emergency_contact",
     "emergency_phone",
+    "country_of_birth",
+    "country_id",
+    "certificate",
     "study_field",
     "study_school",
+    "wage",
     "pay_category",
     "departure_date",
     "departure_description",
@@ -2377,23 +2534,33 @@ export async function updateEmployee(
   ];
   const fields = new Set(await getAvailableFields("hr.employee", desiredFields, session));
   const values: Record<string, unknown> = {};
+  const explicitName = [data.lastName, data.firstName].map((value) => value?.trim()).filter(Boolean).join(" ");
+  const [resolvedCountryOfBirthId, resolvedNationalityId] = await Promise.all([
+    data.countryOfBirth !== undefined ? resolveCountryIdByName(session, data.countryOfBirth) : Promise.resolve(data.countryOfBirthId ?? null),
+    data.nationality !== undefined ? resolveCountryIdByName(session, data.nationality) : Promise.resolve(data.nationalityId ?? null),
+  ]);
   const managedNoteParts = [
     data.childrenInfo ? ["Хүүхдийн нас / мэдээлэл", data.childrenInfo] : null,
     data.childrenSchool ? ["Хүүхдүүдийн сургууль / цэцэрлэг", data.childrenSchool] : null,
     data.annualLeaveNote ? ["Ээлжийн амралт", data.annualLeaveNote] : null,
-    data.bankName ? ["Банк", data.bankName] : null,
-    data.bankAccountNumber ? ["Дансны дугаар", data.bankAccountNumber] : null,
-    data.baseSalary ? ["Үндсэн цалин", data.baseSalary] : null,
-    data.taxNumber ? ["ТТД дугаар", data.taxNumber] : null,
-    data.socialInsuranceStartDate ? ["НД төлж эхэлсэн огноо", data.socialInsuranceStartDate] : null,
+    data.bankName !== undefined ? ["Банк", data.bankName] : null,
+    data.bankAccountNumber !== undefined ? ["Дансны дугаар", data.bankAccountNumber] : null,
+    data.baseSalary !== undefined ? ["Үндсэн цалин", data.baseSalary] : null,
+    data.taxNumber !== undefined ? ["ТТД дугаар", data.taxNumber] : null,
+    data.socialInsuranceStartDate !== undefined ? ["НД төлж эхэлсэн огноо", data.socialInsuranceStartDate] : null,
     data.talent ? ["Авьяас / спорт / урлаг", data.talent] : null,
     data.skillLevel ? ["Ур чадвар ба зэрэглэл", data.skillLevel] : null,
     data.previousEmployment ? ["Ажиллаж байсан байгууллагууд", data.previousEmployment] : null,
     data.additionalDuty ? ["Хавсран ажиллаж буй / нэмэлт ажил", data.additionalDuty] : null,
-    data.trialEndDate ? ["Туршилтын хугацаа дуусах", data.trialEndDate] : null,
+    data.countryOfBirth !== undefined ? ["Төрсөн улс", data.countryOfBirth] : null,
+    data.nationality !== undefined ? ["Иргэншил", data.nationality] : null,
+    data.workType !== undefined ? ["Ажиллах төрөл", data.workType] : null,
+    data.trialEndDate !== undefined ? ["Туршилтын хугацаа дуусах", data.trialEndDate] : null,
   ].filter((item): item is [string, string] => Boolean(item));
 
-  if (fields.has("name") && data.name !== undefined) values.name = data.name?.trim() || false;
+  if (fields.has("name") && (data.name !== undefined || explicitName)) {
+    values.name = explicitName || data.name?.trim() || false;
+  }
   if (fields.has("x_mn_employee_code") && data.employeeCode !== undefined) {
     values.x_mn_employee_code = data.employeeCode?.trim() || false;
   }
@@ -2403,7 +2570,6 @@ export async function updateEmployee(
   if (fields.has("x_mn_registration_number") && data.registerNumber !== undefined) {
     values.x_mn_registration_number = data.registerNumber?.trim() || false;
   }
-  if (fields.has("work_phone") && data.workPhone !== undefined) values.work_phone = data.workPhone || false;
   if (fields.has("mobile_phone") && data.mobilePhone !== undefined) values.mobile_phone = data.mobilePhone || false;
   if (fields.has("work_email") && data.workEmail !== undefined) values.work_email = data.workEmail || false;
   if (fields.has("private_phone") && data.privatePhone !== undefined) values.private_phone = data.privatePhone || false;
@@ -2420,6 +2586,12 @@ export async function updateEmployee(
   }
   if (fields.has("place_of_birth") && (data.birthPlace !== undefined || data.placeOfBirth !== undefined)) {
     values.place_of_birth = data.birthPlace || data.placeOfBirth || false;
+  }
+  if (fields.has("country_of_birth") && (data.countryOfBirth !== undefined || data.countryOfBirthId !== undefined)) {
+    values.country_of_birth = data.countryOfBirth !== undefined ? resolvedCountryOfBirthId || false : data.countryOfBirthId || false;
+  }
+  if (fields.has("country_id") && (data.nationality !== undefined || data.nationalityId !== undefined)) {
+    values.country_id = data.nationality !== undefined ? resolvedNationalityId || false : data.nationalityId || false;
   }
   if (fields.has("birthday") && data.birthDate !== undefined) values.birthday = data.birthDate || false;
   if (fields.has("sex") && (data.genderKey !== undefined || data.gender !== undefined)) {
@@ -2441,8 +2613,10 @@ export async function updateEmployee(
   if (fields.has("emergency_phone") && data.emergencyPhone !== undefined) {
     values.emergency_phone = data.emergencyPhone || false;
   }
+  if (fields.has("certificate") && data.educationLevel !== undefined) values.certificate = data.educationLevel || false;
   if (fields.has("study_field") && data.studyField !== undefined) values.study_field = data.studyField || false;
   if (fields.has("study_school") && data.studySchool !== undefined) values.study_school = data.studySchool || false;
+  if (fields.has("wage") && data.baseSalary !== undefined) values.wage = data.baseSalary ? numberFromManagedNote(data.baseSalary) : 0;
   if (fields.has("pay_category") && data.payCategory !== undefined) values.pay_category = data.payCategory || false;
   if (fields.has("departure_date") && data.departureDate !== undefined) values.departure_date = data.departureDate || false;
   if (fields.has("departure_description") && data.departureDescription !== undefined) {
@@ -2479,6 +2653,9 @@ export async function updateEmployee(
   if (fields.has("x_mn_grade_rank") && data.gradeRank !== undefined) {
     values.x_mn_grade_rank = data.gradeRank?.trim() || false;
   }
+  if (fields.has("x_mn_employment_status") && data.workType !== undefined) {
+    values.x_mn_employment_status = data.workType === "Туршилтаар" || data.workType === "Түр" ? "probation" : "active";
+  }
   if (fields.has("notes") && (data.notes !== undefined || data.note !== undefined || managedNoteParts.length)) {
     const baseNotes =
       data.notes !== undefined || data.note !== undefined
@@ -2489,6 +2666,7 @@ export async function updateEmployee(
   if (fields.has("active") && data.isFieldEmployee === false) values.active = false;
 
   if (!Object.keys(values).length) {
+    await attachFilesToEmployee(session, id, educationAttachmentFromInput(data), "Боловсрол", "diploma");
     return getEmployee(session, id);
   }
 
@@ -2511,6 +2689,7 @@ export async function updateEmployee(
   if (!updatedThroughCustomApi) {
     await executeOdooKw<boolean>("hr.employee", "write", [[id], values], {}, getConnection(session));
   }
+  await attachFilesToEmployee(session, id, educationAttachmentFromInput(data), "Боловсрол", "diploma");
   return getEmployee(session, id);
 }
 
@@ -2839,25 +3018,45 @@ async function filesToAttachments(files?: File[]): Promise<HrLeaveAttachmentInpu
   return attachments;
 }
 
+function educationAttachmentFromInput(data: Pick<HrEmployeeCreateInput, "educationAttachmentBase64" | "educationAttachmentName" | "educationAttachmentMimeType">) {
+  if (!data.educationAttachmentBase64) {
+    return [];
+  }
+  return [
+    {
+      name: data.educationAttachmentName || "Боловсролын баримт",
+      datas: data.educationAttachmentBase64,
+      mimetype: data.educationAttachmentMimeType || "application/octet-stream",
+    },
+  ];
+}
+
 async function attachFilesToEmployee(
   session: AppSession,
   employeeId: number,
   attachments: HrLeaveAttachmentInput[],
   prefix: string,
+  documentType?: string,
 ) {
+  if (!attachments.length) {
+    return;
+  }
+  const attachmentFields = new Set(await getAvailableFields("ir.attachment", ["x_mn_document_type"], session));
   for (const attachment of attachments) {
+    const values: Record<string, unknown> = {
+      name: `${prefix} - ${attachment.name}`,
+      datas: attachment.datas,
+      res_model: "hr.employee",
+      res_id: employeeId,
+      mimetype: attachment.mimetype,
+    };
+    if (documentType && attachmentFields.has("x_mn_document_type")) {
+      values.x_mn_document_type = documentType;
+    }
     await executeOdooKw<number>(
       "ir.attachment",
       "create",
-      [
-        {
-          name: `${prefix} - ${attachment.name}`,
-          datas: attachment.datas,
-          res_model: "hr.employee",
-          res_id: employeeId,
-          mimetype: attachment.mimetype,
-        },
-      ],
+      [values],
       {},
       getConnection(session),
     );
@@ -4386,7 +4585,7 @@ async function buildNextFallbackReportData(session: AppSession, data: HrReportGe
         employee.name,
         employee.departmentName,
         employee.jobTitle,
-        employee.workPhone || employee.mobilePhone,
+        employee.mobilePhone,
         employee.workEmail,
         employee.statusLabel,
       ],

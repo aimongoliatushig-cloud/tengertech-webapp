@@ -4,7 +4,9 @@ import { getEmployee, requireHrAccess, requireHrSpecialistAccess, updateEmployee
 export const dynamic = "force-dynamic";
 
 const MAX_EMPLOYEE_PHOTO_SIZE = 5 * 1024 * 1024;
+const MAX_EDUCATION_DOCUMENT_SIZE = 10 * 1024 * 1024;
 const ALLOWED_EMPLOYEE_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_EDUCATION_DOCUMENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
 
 function jsonError(message: string, status = 500) {
   return Response.json({ error: message }, { status });
@@ -46,11 +48,16 @@ function payloadNumberOrZero(payload: Record<string, unknown>, key: string) {
 function normalizeEmployeeUpdatePayload(payload: Record<string, unknown>) {
   return {
     name: payloadString(payload, "name"),
+    lastName: payloadString(payload, "lastName"),
+    firstName: payloadString(payload, "firstName"),
     employeeCode: payloadString(payload, "employeeCode"),
     registerNumber: payloadString(payload, "registerNumber"),
     genderKey: payloadString(payload, "genderKey"),
     birthDate: payloadString(payload, "birthDate"),
-    workPhone: payloadString(payload, "workPhone"),
+    countryOfBirth: payloadString(payload, "countryOfBirth"),
+    nationality: payloadString(payload, "nationality"),
+    countryOfBirthId: payloadNumber(payload, "countryOfBirthId"),
+    nationalityId: payloadNumber(payload, "nationalityId"),
     mobilePhone: payloadString(payload, "mobilePhone"),
     workEmail: payloadString(payload, "workEmail"),
     privatePhone: payloadString(payload, "privatePhone"),
@@ -72,6 +79,7 @@ function normalizeEmployeeUpdatePayload(payload: Record<string, unknown>) {
     startDate: payloadString(payload, "startDate"),
     contractEndDate: payloadString(payload, "contractEndDate"),
     gradeRank: payloadString(payload, "gradeRank"),
+    workType: payloadString(payload, "workType"),
     annualLeaveNote: payloadString(payload, "annualLeaveNote"),
     payCategory: payloadString(payload, "payCategory"),
     bankName: payloadString(payload, "bankName"),
@@ -82,6 +90,7 @@ function normalizeEmployeeUpdatePayload(payload: Record<string, unknown>) {
     kpiScore: payloadNumberOrZero(payload, "kpiScore"),
     taskCompletionPercent: payloadNumberOrZero(payload, "taskCompletionPercent"),
     disciplineScore: payloadNumberOrZero(payload, "disciplineScore"),
+    educationLevel: payloadString(payload, "educationLevel"),
     studyField: payloadString(payload, "studyField"),
     studySchool: payloadString(payload, "studySchool"),
     talent: payloadString(payload, "talent"),
@@ -128,9 +137,12 @@ async function parseEmployeeUpdatePayload(request: Request) {
     "name",
     "employeeCode",
     "registerNumber",
+    "lastName",
+    "firstName",
     "genderKey",
     "birthDate",
-    "workPhone",
+    "countryOfBirth",
+    "nationality",
     "mobilePhone",
     "workEmail",
     "privatePhone",
@@ -148,6 +160,7 @@ async function parseEmployeeUpdatePayload(request: Request) {
     "startDate",
     "contractEndDate",
     "gradeRank",
+    "workType",
     "annualLeaveNote",
     "payCategory",
     "bankName",
@@ -155,6 +168,7 @@ async function parseEmployeeUpdatePayload(request: Request) {
     "baseSalary",
     "taxNumber",
     "socialInsuranceStartDate",
+    "educationLevel",
     "studyField",
     "studySchool",
     "talent",
@@ -168,7 +182,7 @@ async function parseEmployeeUpdatePayload(request: Request) {
   ].forEach((key) => {
     if (formData.has(key)) payload[key] = formString(formData, key);
   });
-  ["departmentId", "jobId", "managerId"].forEach((key) => {
+  ["departmentId", "jobId", "managerId", "countryOfBirthId", "nationalityId"].forEach((key) => {
     const value = formNumber(formData, key);
     if (value !== undefined) payload[key] = value;
   });
@@ -177,6 +191,7 @@ async function parseEmployeeUpdatePayload(request: Request) {
     if (value !== undefined) payload[key] = value;
   });
   const photo = formData.get("profilePhoto");
+  const educationDocument = formData.get("educationDocument");
   if (formData.get("removeProfilePhoto") === "1") {
     payload.profilePhotoBase64 = "";
   }
@@ -191,6 +206,17 @@ async function parseEmployeeUpdatePayload(request: Request) {
       throw new Error("EMPLOYEE_PHOTO_TOO_LARGE");
     }
     payload.profilePhotoBase64 = Buffer.from(await photo.arrayBuffer()).toString("base64");
+  }
+  if (educationDocument instanceof File && educationDocument.size > 0) {
+    if (!ALLOWED_EDUCATION_DOCUMENT_TYPES.has(educationDocument.type)) {
+      throw new Error("INVALID_EDUCATION_DOCUMENT_TYPE");
+    }
+    if (educationDocument.size > MAX_EDUCATION_DOCUMENT_SIZE) {
+      throw new Error("EDUCATION_DOCUMENT_TOO_LARGE");
+    }
+    payload.educationAttachmentBase64 = Buffer.from(await educationDocument.arrayBuffer()).toString("base64");
+    payload.educationAttachmentName = educationDocument.name || "Боловсролын баримт";
+    payload.educationAttachmentMimeType = educationDocument.type || "application/octet-stream";
   }
 
   return payload;
@@ -242,6 +268,12 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     }
     if (error instanceof Error && error.message === "EMPLOYEE_PHOTO_TOO_LARGE") {
       return jsonError("Профайл зураг 5MB-аас бага байх ёстой.", 400);
+    }
+    if (error instanceof Error && error.message === "INVALID_EDUCATION_DOCUMENT_TYPE") {
+      return jsonError("Боловсролын баримтад зөвхөн JPG, PNG, WebP зураг эсвэл PDF файл оруулна уу.", 400);
+    }
+    if (error instanceof Error && error.message === "EDUCATION_DOCUMENT_TOO_LARGE") {
+      return jsonError("Боловсролын баримт 10MB-аас бага байх ёстой.", 400);
     }
     if (error instanceof Error && error.message === "EMPLOYEE_NAME_REQUIRED") {
       return jsonError("Ажилтны нэр заавал оруулна уу.", 400);

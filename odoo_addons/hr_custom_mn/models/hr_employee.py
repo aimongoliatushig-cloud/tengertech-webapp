@@ -42,12 +42,16 @@ HR_CUSTOM_MN_EMPLOYEE_API_FIELDS = {
     "private_street2",
     "private_city",
     "place_of_birth",
+    "country_of_birth",
+    "country_id",
     "marital",
     "spouse_complete_name",
     "spouse_birthdate",
     "children",
+    "certificate",
     "study_field",
     "study_school",
+    "wage",
     "pay_category",
     "departure_date",
     "departure_description",
@@ -773,12 +777,6 @@ class HrEmployee(models.Model):
         if create_mode:
             if not values.get("name"):
                 raise UserError("Ажилтны овог нэр заавал оруулна уу.")
-            if not (values.get("x_mn_registration_number") or values.get("identification_id")):
-                raise UserError("Регистрийн дугаар заавал оруулна уу.")
-            if not values.get("department_id"):
-                raise UserError("Хэлтэс / алба заавал сонгоно уу.")
-            if not values.get("job_id"):
-                raise UserError("Албан тушаал заавал сонгоно уу.")
         if "name" in values and not values.get("name"):
             raise UserError("Ажилтны овог нэр заавал оруулна уу.")
         if "department_id" in values and not values.get("department_id"):
@@ -1053,6 +1051,7 @@ class HrEmployee(models.Model):
                 "photo": employee.image_128 or employee.avatar_128 or False,
                 "employeeCode": employee.x_mn_employee_code or "EMP-%05d" % employee.id,
                 "gradeRank": employee.x_mn_grade_rank or "",
+                "workType": status_labels.get(employee.x_mn_employment_status, ""),
                 "statusKey": "archived"
                 if not employee.active
                 else current_status_by_employee.get(employee.id, (employee.x_mn_employment_status or "active", ""))[0],
