@@ -1337,7 +1337,8 @@ export function EmployeeDetailTabs({
   }
 
   const generalInfo: DetailPair[] = [
-    { label: "Нэр", value: formatEmployeeDisplayName(employee.name) },
+    { label: "Овог", value: employeeNameParts.lastName },
+    { label: "Нэр", value: employeeNameParts.firstName },
     { label: "Ажилтны код", value: employee.employeeCode },
     { label: "Регистр / үнэмлэх", value: employee.registerNumber },
     { label: "Хүйс", value: employee.genderLabel },
