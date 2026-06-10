@@ -183,6 +183,21 @@ function statusLabel(employee: HrEmployeeDirectoryItem) {
   return "Идэвхтэй";
 }
 
+function matchesEmployeeStatusFilter(employee: HrEmployeeDirectoryItem, filter: string) {
+  if (filter === ALL) {
+    return true;
+  }
+  const label = statusLabel(employee);
+  if (filter === "Идэвхтэй") {
+    return (
+      employee.active &&
+      !["archived", "terminated", "resigned"].includes(employee.statusKey) &&
+      ["Идэвхтэй", "Туршилт", "Туршилт дууссан"].includes(label)
+    );
+  }
+  return label === filter;
+}
+
 function todayInUlaanbaatar() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Ulaanbaatar",
@@ -242,7 +257,7 @@ export function EmployeeTable({
         : true;
       const matchesDepartment = department === ALL || employee.departmentName === department;
       const matchesJobTitle = jobTitle === ALL || employee.jobTitle === jobTitle;
-      const matchesStatus = status === ALL || statusLabel(employee) === status;
+      const matchesStatus = matchesEmployeeStatusFilter(employee, status);
       return matchesQuery && matchesDepartment && matchesJobTitle && matchesStatus;
     });
   }, [department, employees, jobTitle, query, status]);
