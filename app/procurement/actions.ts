@@ -35,6 +35,7 @@ import {
   startProcurementOrderDraft,
   uploadProcurementOrderDraft,
 } from "@/lib/procurement";
+import { pathWithActionMessage } from "@/lib/ui-context";
 
 function getConnectionOverrides() {
   return requireSession().then((session) => ({
@@ -57,8 +58,7 @@ function getRedirectPath(formData: FormData, fallback: string) {
 }
 
 function redirectWithMessage(path: string, kind: "error" | "notice", message: string) {
-  const separator = path.includes("?") ? "&" : "?";
-  redirect(`${path}${separator}${kind}=${encodeURIComponent(message)}`);
+  redirect(pathWithActionMessage(path, kind, message));
 }
 
 function isRedirectException(error: unknown) {
@@ -407,6 +407,7 @@ export async function saveProcurementPackageAction(formData: FormData) {
   const connectionOverrides = await getConnectionOverrides();
   const requestId = getNumber(formData, "request_id");
   const packageId = getNumber(formData, "package_id");
+  const redirectPath = getRedirectPath(formData, requestId ? `/procurement/${requestId}` : "/procurement");
   if (!requestId) {
     redirectWithMessage("/procurement", "error", "Хүсэлтийн дугаар буруу байна.");
   }
@@ -429,14 +430,14 @@ export async function saveProcurementPackageAction(formData: FormData) {
     );
 
     revalidateProcurementPaths(requestId);
-    redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Багц амжилттай хадгалагдлаа.")}`);
+    redirectWithMessage(redirectPath, "notice", "Багц амжилттай хадгалагдлаа.");
   } catch (error) {
     if (isRedirectException(error)) {
       throw error;
     }
 
     redirectWithMessage(
-      `/procurement/${requestId}`,
+      redirectPath,
       "error",
       error instanceof Error ? error.message : "Багц хадгалах үед алдаа гарлаа.",
     );
@@ -447,6 +448,7 @@ export async function deleteProcurementPackageAction(formData: FormData) {
   const connectionOverrides = await getConnectionOverrides();
   const requestId = getNumber(formData, "request_id");
   const packageId = getNumber(formData, "package_id");
+  const redirectPath = getRedirectPath(formData, requestId ? `/procurement/${requestId}` : "/procurement");
   if (!requestId || !packageId) {
     redirectWithMessage("/procurement", "error", "Багцын мэдээлэл буруу байна.");
   }
@@ -454,14 +456,14 @@ export async function deleteProcurementPackageAction(formData: FormData) {
   try {
     await deleteProcurementPackage(requestId, { package_id: packageId }, connectionOverrides);
     revalidateProcurementPaths(requestId);
-    redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Багц устгагдлаа.")}`);
+    redirectWithMessage(redirectPath, "notice", "Багц устгагдлаа.");
   } catch (error) {
     if (isRedirectException(error)) {
       throw error;
     }
 
     redirectWithMessage(
-      `/procurement/${requestId}`,
+      redirectPath,
       "error",
       error instanceof Error ? error.message : "Багц устгах үед алдаа гарлаа.",
     );
@@ -471,6 +473,7 @@ export async function deleteProcurementPackageAction(formData: FormData) {
 export async function createProcurementSupplierAction(formData: FormData) {
   const connectionOverrides = await getConnectionOverrides();
   const requestId = getNumber(formData, "request_id");
+  const redirectPath = getRedirectPath(formData, requestId ? `/procurement/${requestId}` : "/procurement");
   if (!requestId) {
     redirectWithMessage("/procurement", "error", "Хүсэлтийн дугаар буруу байна.");
   }
@@ -487,14 +490,14 @@ export async function createProcurementSupplierAction(formData: FormData) {
       connectionOverrides,
     );
     revalidateProcurementPaths(requestId);
-    redirect(`/procurement/${requestId}?notice=${encodeURIComponent("Нийлүүлэгч нэмэгдлээ. Жагсаалтаас сонгож саналаа хадгална уу.")}`);
+    redirectWithMessage(redirectPath, "notice", "Нийлүүлэгч нэмэгдлээ. Жагсаалтаас сонгож саналаа хадгална уу.");
   } catch (error) {
     if (isRedirectException(error)) {
       throw error;
     }
 
     redirectWithMessage(
-      `/procurement/${requestId}`,
+      redirectPath,
       "error",
       error instanceof Error ? error.message : "Нийлүүлэгч нэмэх үед алдаа гарлаа.",
     );
@@ -535,6 +538,7 @@ export async function createProcurementSupplierInlineAction(payload: { name?: st
 
 export async function createProcurementSupplierDirectoryAction(formData: FormData) {
   const connectionOverrides = await getConnectionOverrides();
+  const redirectPath = getRedirectPath(formData, "/procurement/suppliers");
 
   try {
     await createProcurementSupplier(
@@ -554,20 +558,21 @@ export async function createProcurementSupplierDirectoryAction(formData: FormDat
     }
 
     redirectWithMessage(
-      "/procurement/suppliers",
+      redirectPath,
       "error",
       error instanceof Error ? error.message : "Нийлүүлэгч нэмэх үед алдаа гарлаа.",
     );
   }
 
-  redirect(`/procurement/suppliers?notice=${encodeURIComponent("Нийлүүлэгч нэмэгдлээ.")}`);
+  redirectWithMessage(redirectPath, "notice", "Нийлүүлэгч нэмэгдлээ.");
 }
 
 export async function updateProcurementSupplierAction(formData: FormData) {
   const connectionOverrides = await getConnectionOverrides();
   const supplierId = getNumber(formData, "supplier_id");
+  const redirectPath = getRedirectPath(formData, "/procurement/suppliers");
   if (!supplierId) {
-    redirectWithMessage("/procurement/suppliers", "error", "Нийлүүлэгчийн мэдээлэл буруу байна.");
+    redirectWithMessage(redirectPath, "error", "Нийлүүлэгчийн мэдээлэл буруу байна.");
   }
 
   try {
@@ -589,20 +594,21 @@ export async function updateProcurementSupplierAction(formData: FormData) {
     }
 
     redirectWithMessage(
-      "/procurement/suppliers",
+      redirectPath,
       "error",
       error instanceof Error ? error.message : "Нийлүүлэгч засах үед алдаа гарлаа.",
     );
   }
 
-  redirect(`/procurement/suppliers?notice=${encodeURIComponent("Нийлүүлэгч шинэчлэгдлээ.")}`);
+  redirectWithMessage(redirectPath, "notice", "Нийлүүлэгч шинэчлэгдлээ.");
 }
 
 export async function deleteProcurementSupplierAction(formData: FormData) {
   const connectionOverrides = await getConnectionOverrides();
   const supplierId = getNumber(formData, "supplier_id");
+  const redirectPath = getRedirectPath(formData, "/procurement/suppliers");
   if (!supplierId) {
-    redirectWithMessage("/procurement/suppliers", "error", "Нийлүүлэгчийн мэдээлэл буруу байна.");
+    redirectWithMessage(redirectPath, "error", "Нийлүүлэгчийн мэдээлэл буруу байна.");
   }
 
   try {
@@ -614,13 +620,13 @@ export async function deleteProcurementSupplierAction(formData: FormData) {
     }
 
     redirectWithMessage(
-      "/procurement/suppliers",
+      redirectPath,
       "error",
       error instanceof Error ? error.message : "Нийлүүлэгч устгах үед алдаа гарлаа.",
     );
   }
 
-  redirect(`/procurement/suppliers?notice=${encodeURIComponent("Нийлүүлэгч идэвхгүй боллоо.")}`);
+  redirectWithMessage(redirectPath, "notice", "Нийлүүлэгч идэвхгүй боллоо.");
 }
 
 export async function runProcurementWorkflowAction(formData: FormData) {

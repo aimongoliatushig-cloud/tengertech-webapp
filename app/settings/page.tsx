@@ -18,8 +18,11 @@ import {
 import {
   archiveAllGeneralCollectionPointsAction,
   archiveGeneralSubdistrictAction,
+  createVehicleTypeAction,
   createGeneralSubdistrictAction,
+  toggleVehicleTypeActiveAction,
   updateGeneralSubdistrictAction,
+  updateVehicleTypeAction,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +37,16 @@ type SubdistrictRecord = {
   district_id?: [number, string] | false;
 };
 
+type VehicleTypeRecord = {
+  id: number;
+  name: string;
+  code?: string | false;
+  sequence?: number | false;
+  is_garbage_truck?: boolean;
+  active?: boolean;
+  description?: string | false;
+};
+
 function getValue(value?: string | string[]) {
   return Array.isArray(value) ? value[0] || "" : value || "";
 }
@@ -43,7 +56,7 @@ function relationName(value: [number, string] | false | undefined) {
 }
 
 async function loadGeneralSettingsData(connection: Partial<OdooConnection>) {
-  const [subdistricts, points] = await Promise.all([
+  const [subdistricts, points, vehicleTypes] = await Promise.all([
     executeOdooKw<SubdistrictRecord[]>(
       "mfo.subdistrict",
       "search_read",
@@ -56,6 +69,18 @@ async function loadGeneralSettingsData(connection: Partial<OdooConnection>) {
       "search_read",
       [[["active", "=", true]]],
       { fields: ["subdistrict_id"], limit: 1000 },
+      connection,
+    ).catch(() => []),
+    executeOdooKw<VehicleTypeRecord[]>(
+      "municipal.vehicle.type",
+      "search_read",
+      [[]],
+      {
+        fields: ["name", "code", "sequence", "is_garbage_truck", "active", "description"],
+        order: "active desc, sequence asc, name asc",
+        limit: 200,
+        context: { active_test: false },
+      },
       connection,
     ).catch(() => []),
   ]);
@@ -72,6 +97,7 @@ async function loadGeneralSettingsData(connection: Partial<OdooConnection>) {
     subdistricts,
     pointCount: points.length,
     pointCountsBySubdistrict,
+    vehicleTypes,
   };
 }
 
@@ -91,7 +117,7 @@ export default async function GeneralSettingsPage({ searchParams }: PageProps) {
     password: session.password,
   };
   const [
-    { subdistricts, pointCount, pointCountsBySubdistrict },
+    { subdistricts, pointCount, pointCountsBySubdistrict, vehicleTypes },
     workspaceNotificationCount,
     procurementNotificationCount,
   ] = await Promise.all([
@@ -143,6 +169,151 @@ export default async function GeneralSettingsPage({ searchParams }: PageProps) {
 
             {notice ? <div className={`${styles.message} ${styles.noticeMessage}`}>{notice}</div> : null}
             {error ? <div className={`${styles.message} ${styles.errorMessage}`}>{error}</div> : null}
+
+            <section id="vehicle-types" className={styles.heroCard}>
+              <h1>Машин техникийн төрөл</h1>
+            </section>
+
+            <section className={styles.workspaceSection}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <span className={styles.sectionKicker}>Авто баазын ангилал</span>
+                  <h2>Ангилал нэмэх</h2>
+                </div>
+                <p>Энд нэмсэн идэвхтэй төрлүүд авто баазын “Ангиллаар харах” шүүлтүүр дээр гарна.</p>
+              </div>
+
+              <form action={createVehicleTypeAction} className={styles.formCard}>
+                <div className={styles.fieldRow}>
+                  <label className={styles.field}>
+                    <span>Төрлийн нэр</span>
+                    <input name="vehicle_type_name" placeholder="Жишээ: Усалгааны машин" required />
+                  </label>
+
+                  <label className={styles.field}>
+                    <span>Код</span>
+                    <input name="vehicle_type_code" placeholder="Жишээ: water_truck" />
+                  </label>
+
+                  <label className={styles.field}>
+                    <span>Дараалал</span>
+                    <input name="vehicle_type_sequence" type="number" min="0" step="1" defaultValue="10" />
+                  </label>
+
+                  <label className={styles.field}>
+                    <span>Хогны машин эсэх</span>
+                    <select name="vehicle_type_is_garbage" defaultValue="0">
+                      <option value="0">Үгүй</option>
+                      <option value="1">Тийм</option>
+                    </select>
+                  </label>
+                </div>
+
+                <label className={styles.field}>
+                  <span>Тайлбар</span>
+                  <textarea name="vehicle_type_description" placeholder="Нэмэлт тайлбар" />
+                </label>
+
+                <div className={styles.buttonRow}>
+                  <button type="submit" className={styles.primaryButton}>
+                    Төрөл нэмэх
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            <section className={styles.workspaceSection}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <span className={styles.sectionKicker}>Авто баазын ангиллууд</span>
+                  <h2>Бүртгэлтэй төрлүүд</h2>
+                </div>
+                <p>{vehicleTypes.filter((type) => type.active !== false).length} идэвхтэй төрөл байна.</p>
+              </div>
+
+              {vehicleTypes.length ? (
+                <div className={styles.projectTaskFlowList}>
+                  {vehicleTypes.map((vehicleType) => (
+                    <article key={vehicleType.id} className={styles.projectTaskFlowItem}>
+                      <div>
+                        <strong>{vehicleType.name}</strong>
+                        <p className={styles.fieldHint}>
+                          {(vehicleType.code ? `Код: ${vehicleType.code}` : "Кодгүй")}
+                          {" · "}
+                          Дараалал: {typeof vehicleType.sequence === "number" ? vehicleType.sequence : 10}
+                          {" · "}
+                          {vehicleType.is_garbage_truck ? "Хогны машин" : "Ердийн төрөл"}
+                          {" · "}
+                          {vehicleType.active === false ? "Идэвхгүй" : "Идэвхтэй"}
+                        </p>
+                      </div>
+                      <div className={styles.buttonRow}>
+                        <form action={toggleVehicleTypeActiveAction}>
+                          <input type="hidden" name="vehicle_type_id" value={vehicleType.id} />
+                          <input type="hidden" name="vehicle_type_active" value={vehicleType.active === false ? "1" : "0"} />
+                          <button
+                            type="submit"
+                            className={vehicleType.active === false ? styles.secondaryButton : styles.dangerButton}
+                          >
+                            {vehicleType.active === false ? "Идэвхжүүлэх" : "Хасах"}
+                          </button>
+                        </form>
+                        <details>
+                          <summary className={styles.secondaryButton}>Засах</summary>
+                          <form action={updateVehicleTypeAction} className={styles.field}>
+                            <input type="hidden" name="vehicle_type_id" value={vehicleType.id} />
+                            <label>
+                              <span>Төрлийн нэр</span>
+                              <input name="vehicle_type_name" defaultValue={vehicleType.name} required />
+                            </label>
+                            <label>
+                              <span>Код</span>
+                              <input name="vehicle_type_code" defaultValue={vehicleType.code || ""} />
+                            </label>
+                            <label>
+                              <span>Дараалал</span>
+                              <input
+                                name="vehicle_type_sequence"
+                                type="number"
+                                min="0"
+                                step="1"
+                                defaultValue={typeof vehicleType.sequence === "number" ? vehicleType.sequence : 10}
+                              />
+                            </label>
+                            <label>
+                              <span>Хогны машин эсэх</span>
+                              <select name="vehicle_type_is_garbage" defaultValue={vehicleType.is_garbage_truck ? "1" : "0"}>
+                                <option value="0">Үгүй</option>
+                                <option value="1">Тийм</option>
+                              </select>
+                            </label>
+                            <label>
+                              <span>Төлөв</span>
+                              <select name="vehicle_type_active" defaultValue={vehicleType.active === false ? "0" : "1"}>
+                                <option value="1">Идэвхтэй</option>
+                                <option value="0">Идэвхгүй</option>
+                              </select>
+                            </label>
+                            <label>
+                              <span>Тайлбар</span>
+                              <textarea name="vehicle_type_description" defaultValue={vehicleType.description || ""} />
+                            </label>
+                            <button type="submit" className={styles.primaryButton}>
+                              Хадгалах
+                            </button>
+                          </form>
+                        </details>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.emptyState}>
+                  <h2>Машин техникийн төрөл бүртгэгдээгүй байна</h2>
+                  <p>Дээрх form-оор эхний төрлөө нэмнэ.</p>
+                </div>
+              )}
+            </section>
 
             <section id="subdistricts" className={styles.heroCard}>
               <h1>Хорооны бүртгэл</h1>

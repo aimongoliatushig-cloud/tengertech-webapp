@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth";
 import { requireHrAccess } from "@/lib/hr";
 import { executeOdooKw } from "@/lib/odoo";
+import { pathWithActionMessage, uiContextPathWithMessage } from "@/lib/ui-context";
 
 const MAX_EMPLOYEE_PHOTO_SIZE = 5 * 1024 * 1024;
 const ALLOWED_EMPLOYEE_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -46,12 +47,15 @@ function redirectWithMessage(
   employeeId: number,
   kind: "error" | "notice",
   message: string,
+  formData?: FormData,
 ) {
-  const params = new URLSearchParams({
-    employee: String(employeeId),
-    [kind]: message,
-  });
-  redirect(`/hr?${params.toString()}`);
+  const fallbackParams = new URLSearchParams({ employee: String(employeeId) });
+  const fallback = `/hr?${fallbackParams.toString()}`;
+  redirect(
+    formData
+      ? uiContextPathWithMessage(formData, fallback, kind, message)
+      : pathWithActionMessage(fallback, kind, message),
+  );
 }
 
 function optionalOdooValue(value: string) {
@@ -77,7 +81,7 @@ export async function updateHrEmployeeRegistrationAction(formData: FormData) {
 
   const employeeId = getEmployeeId(formData);
   if (!Number.isFinite(employeeId) || employeeId <= 0) {
-    redirect("/hr?error=Ажилтны бүртгэл олдсонгүй.");
+    redirectWithMessage(0, "error", "Ажилтны бүртгэл олдсонгүй.", formData);
   }
 
   const values: Record<string, string | false> = {
@@ -93,11 +97,12 @@ export async function updateHrEmployeeRegistrationAction(formData: FormData) {
         employeeId,
         "error",
         "Зөвхөн JPG, PNG эсвэл WebP зураг оруулна уу.",
+        formData,
       );
     }
 
     if (employeePhoto.size > MAX_EMPLOYEE_PHOTO_SIZE) {
-      redirectWithMessage(employeeId, "error", "Ажилтны зураг 5MB-аас бага байх ёстой.");
+      redirectWithMessage(employeeId, "error", "Ажилтны зураг 5MB-аас бага байх ёстой.", formData);
     }
 
     const imageBuffer = Buffer.from(await employeePhoto.arrayBuffer());
@@ -123,8 +128,9 @@ export async function updateHrEmployeeRegistrationAction(formData: FormData) {
       employeePhoto
         ? "Ажилтны зураг болон бүртгэл шинэчлэгдлээ."
         : "Ажилтны бүртгэл шинэчлэгдлээ.",
+      formData,
     );
   } catch (error) {
-    redirectWithMessage(employeeId, "error", getErrorMessage(error));
+    redirectWithMessage(employeeId, "error", getErrorMessage(error), formData);
   }
 }

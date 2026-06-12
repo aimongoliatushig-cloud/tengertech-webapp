@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { canAccessAutoBaseOverview, requireSession } from "@/lib/auth";
 import { clearOdooReadCaches, executeOdooKw } from "@/lib/odoo";
+import { pathWithActionMessage, uiContextPathWithMessage } from "@/lib/ui-context";
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 const AUTO_BASE_DEPARTMENT_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
@@ -34,8 +35,13 @@ function buildAutoBaseWorkspacePath(extraParams?: Record<string, string>) {
   return `/projects?${params.toString()}`;
 }
 
-function redirectWithMessage(kind: "error" | "notice", message: string) {
-  redirect(buildAutoBaseWorkspacePath({ [kind]: message }));
+function redirectWithMessage(kind: "error" | "notice", message: string, formData?: FormData) {
+  const fallback = buildAutoBaseWorkspacePath();
+  redirect(
+    formData
+      ? uiContextPathWithMessage(formData, fallback, kind, message)
+      : pathWithActionMessage(fallback, kind, message),
+  );
 }
 
 function revalidateFleetViews() {
@@ -557,7 +563,7 @@ export async function updateFleetVehicleAction(formData: FormData) {
 
   const vehicleId = Number(getString(formData, "vehicle_id"));
   if (!Number.isFinite(vehicleId) || vehicleId <= 0) {
-    redirect(buildAutoBaseWorkspacePath({ error: "Машины бүртгэл олдсонгүй." }));
+    redirectWithMessage("error", "Машины бүртгэл олдсонгүй.", formData);
   }
 
   try {
@@ -629,10 +635,10 @@ export async function updateFleetVehicleAction(formData: FormData) {
     const shouldCompleteRepairRequest = repairToggle === "done";
 
     if (shouldStartRepairRequest && !repairDamageDescription) {
-      redirectWithMessage("error", "Засвартай төлөвт оруулахдаа эвдрэл, засварын тайлбар оруулна уу.");
+      redirectWithMessage("error", "Засвартай төлөвт оруулахдаа эвдрэл, засварын тайлбар оруулна уу.", formData);
     }
     if (shouldCompleteRepairRequest && !repairCompletionNote) {
-      redirectWithMessage("error", "Засвар дуусгахдаа хийсэн засварын тайлбар оруулна уу.");
+      redirectWithMessage("error", "Засвар дуусгахдаа хийсэн засварын тайлбар оруулна уу.", formData);
     }
 
     if (isRepairToggle) {
@@ -855,9 +861,10 @@ export async function updateFleetVehicleAction(formData: FormData) {
         redirectWithMessage(
           "error",
           "Авто баазын жолооч, ачигчийн талбарууд суулгагдаагүй байна.",
+          formData,
         );
       }
-      redirectWithMessage("error", "Засах боломжтой талбар олдсонгүй.");
+      redirectWithMessage("error", "Засах боломжтой талбар олдсонгүй.", formData);
     }
 
     if (Object.keys(values).length) {
@@ -897,10 +904,11 @@ export async function updateFleetVehicleAction(formData: FormData) {
     redirectWithMessage(
       "notice",
       repairNoticeMessage || noticeMessage,
+      formData,
     );
   } catch (error) {
     rethrowIfRedirectError(error);
-    redirectWithMessage("error", getErrorMessage(error));
+    redirectWithMessage("error", getErrorMessage(error), formData);
   }
 }
 
@@ -910,7 +918,7 @@ export async function createFleetVehicleAction(formData: FormData) {
   const plate = getString(formData, "license_plate");
   const name = getString(formData, "name") || plate;
   if (!plate) {
-    redirectWithMessage("error", "Машины улсын дугаар оруулна уу.");
+    redirectWithMessage("error", "Машины улсын дугаар оруулна уу.", formData);
   }
 
   try {
@@ -953,10 +961,10 @@ export async function createFleetVehicleAction(formData: FormData) {
     await appendVehicleAttachmentFields(vehicleId, formData, fields);
 
     revalidateFleetViews();
-    redirectWithMessage("notice", "Машин техник нэмэгдлээ.");
+    redirectWithMessage("notice", "Машин техник нэмэгдлээ.", formData);
   } catch (error) {
     rethrowIfRedirectError(error);
-    redirectWithMessage("error", getErrorMessage(error));
+    redirectWithMessage("error", getErrorMessage(error), formData);
   }
 }
 
@@ -965,7 +973,7 @@ export async function archiveFleetVehicleAction(formData: FormData) {
 
   const vehicleId = Number(getString(formData, "vehicle_id"));
   if (!Number.isFinite(vehicleId) || vehicleId <= 0) {
-    redirectWithMessage("error", "Машин сонгоно уу.");
+    redirectWithMessage("error", "Машин сонгоно уу.", formData);
   }
 
   try {
@@ -976,14 +984,14 @@ export async function archiveFleetVehicleAction(formData: FormData) {
       { attributes: ["string", "readonly"] },
     );
     if (!fields.active || fields.active.readonly) {
-      redirectWithMessage("error", "Машин хасах талбар суулгагдаагүй байна.");
+      redirectWithMessage("error", "Машин хасах талбар суулгагдаагүй байна.", formData);
     }
 
     await executeOdooKw<boolean>("fleet.vehicle", "write", [[vehicleId], { active: false }], {});
     revalidateFleetViews();
-    redirectWithMessage("notice", "Машин техник жагсаалтаас хасагдлаа.");
+    redirectWithMessage("notice", "Машин техник жагсаалтаас хасагдлаа.", formData);
   } catch (error) {
     rethrowIfRedirectError(error);
-    redirectWithMessage("error", getErrorMessage(error));
+    redirectWithMessage("error", getErrorMessage(error), formData);
   }
 }

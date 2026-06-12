@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 
 import { getSession } from "@/lib/auth";
 import { fetchGaihamDailyFuelTotals } from "@/lib/gaiham-fuel-report";
-import { notifyGarbageDailySyncSummary } from "@/lib/garbage-sync-notifications";
+import { notifyGarbageDailySyncSummary, notifyGarbageSyncFailure } from "@/lib/garbage-sync-notifications";
 import { executeOdooKw } from "@/lib/odoo";
 
 export const dynamic = "force-dynamic";
@@ -382,6 +382,17 @@ async function createSyncLog(input: {
   }
 }
 
+async function notifyGaihamFailure(reportDates: string[], message: string) {
+  await notifyGarbageSyncFailure({
+    syncType: "fuel",
+    sourceLabel: "Gaiham",
+    reportDates,
+    message,
+  }).catch((error) => {
+    console.warn("Gaiham failure push failed:", error);
+  });
+}
+
 async function importGaihamDateRange(startDate: string, endDate: string) {
   const [vehicleByCode, garbageDepartmentId] = await Promise.all([
     loadVehicleByCode(),
@@ -471,6 +482,10 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
       recordCount: 0,
       errorMessage: message,
     });
+    await notifyGaihamFailure(
+      Array.from(new Set([...emptyDates.map((item) => item.date), ...failedDates.map((item) => item.date)])),
+      failedDates[0]?.error || message,
+    );
     return NextResponse.json(
       {
         error: message,
@@ -558,6 +573,10 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
   };
 
   if (unmatched.length) {
+    await notifyGaihamFailure(
+      Array.from(new Set(totals.map((total) => total.reportDate))),
+      `${unmatched.length} машины улсын дугаар авто баазтай таарсангүй.`,
+    );
     return NextResponse.json(
       {
         ...responsePayload,
@@ -598,6 +617,10 @@ async function handleRequest(request: Request) {
       state: "failed",
       errorMessage: message,
     });
+    await notifyGaihamFailure(
+      dateKeysBetween(requestedWindow.startDate, requestedWindow.endDate),
+      message,
+    );
 
     return NextResponse.json({ error: message }, { status: 500 });
   }

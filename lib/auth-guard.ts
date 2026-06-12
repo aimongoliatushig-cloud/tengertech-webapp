@@ -8,6 +8,64 @@ type LoginAttempt = {
 
 const loginAttempts = new Map<string, LoginAttempt>();
 
+function firstHeaderValue(value: string | null) {
+  return value?.split(",")[0]?.trim() || "";
+}
+
+function hostnameFromHost(host: string) {
+  const normalized = host.trim().toLowerCase();
+  if (normalized.startsWith("[")) {
+    return normalized.slice(0, normalized.indexOf("]") + 1);
+  }
+  return normalized.split(":")[0];
+}
+
+function isLoopbackHost(host: string) {
+  const normalized = hostnameFromHost(host);
+  return (
+    normalized === "0.0.0.0" ||
+    normalized === "::" ||
+    normalized === "::1" ||
+    normalized === "[::]" ||
+    normalized === "[::1]" ||
+    normalized === "127.0.0.1" ||
+    normalized === "localhost"
+  );
+}
+
+function originsMatch(left: string, right: string) {
+  try {
+    const leftUrl = new URL(left);
+    const rightUrl = new URL(right);
+    if (leftUrl.origin === rightUrl.origin) {
+      return true;
+    }
+
+    return (
+      leftUrl.protocol === rightUrl.protocol &&
+      leftUrl.port === rightUrl.port &&
+      isLoopbackHost(leftUrl.host) &&
+      isLoopbackHost(rightUrl.host)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function getRequestOrigins(request: Request) {
+  const origins = new Set<string>([new URL(request.url).origin]);
+  const forwardedHost = firstHeaderValue(request.headers.get("x-forwarded-host"));
+  const host = forwardedHost || firstHeaderValue(request.headers.get("host"));
+  const forwardedProto = firstHeaderValue(request.headers.get("x-forwarded-proto"));
+
+  if (host) {
+    const fallbackProtocol = new URL(request.url).protocol.replace(":", "") || "https";
+    origins.add(`${forwardedProto || fallbackProtocol}://${host}`);
+  }
+
+  return Array.from(origins);
+}
+
 function getConfiguredOrigins() {
   return [
     process.env.APP_BASE_URL,
@@ -30,8 +88,9 @@ export function isAllowedPostOrigin(request: Request) {
     return true;
   }
 
-  const requestOrigin = new URL(request.url).origin;
-  return origin === requestOrigin || getConfiguredOrigins().includes(origin);
+  return [...getRequestOrigins(request), ...getConfiguredOrigins()].some((allowedOrigin) =>
+    originsMatch(origin, allowedOrigin),
+  );
 }
 
 export function getClientIp(request: Request) {

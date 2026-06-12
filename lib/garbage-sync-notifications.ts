@@ -23,6 +23,7 @@ type DepartmentRecord = {
 
 const TIME_ZONE = process.env.APP_TIME_ZONE ?? "Asia/Ulaanbaatar";
 const NOTIFIED_DATE_KEY = "municipal_repair_workflow.garbage_daily_summary_notified_date";
+const FAILURE_NOTIFIED_DATE_KEY_PREFIX = "municipal_repair_workflow.garbage_failure_notified_dates";
 
 function currentDateKey() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -31,6 +32,17 @@ function currentDateKey() {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+}
+
+function shiftDateKey(dateKey: string, days: number) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function isDateKey(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
 function uniqueUserIds(values: Array<number | null | undefined>) {
@@ -183,6 +195,115 @@ async function markNotified(reportDate: string) {
     console.warn("Garbage summary notification marker failed:", error);
     return false;
   });
+}
+
+function parseDateList(value: string) {
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((item): item is string => typeof item === "string" && isDateKey(item));
+    }
+  } catch {
+    // Older or manually edited deployments may contain comma-separated values.
+  }
+
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(isDateKey);
+}
+
+function failureNotifiedDateKey(syncType: "weight" | "fuel") {
+  return `${FAILURE_NOTIFIED_DATE_KEY_PREFIX}_${syncType}`;
+}
+
+async function loadFailureNotifiedDates(syncType: "weight" | "fuel") {
+  const value = await executeOdooKw<string>(
+    "ir.config_parameter",
+    "get_param",
+    [failureNotifiedDateKey(syncType), "[]"],
+  ).catch(() => "[]");
+
+  return new Set(parseDateList(String(value || "[]")));
+}
+
+async function markFailureNotified(syncType: "weight" | "fuel", reportDates: string[]) {
+  const validDates = reportDates.filter(isDateKey);
+  if (!validDates.length) {
+    return;
+  }
+
+  const notifiedDates = await loadFailureNotifiedDates(syncType);
+  for (const date of validDates) {
+    notifiedDates.add(date);
+  }
+
+  const keepFrom = shiftDateKey(currentDateKey(), -45);
+  const orderedDates = Array.from(notifiedDates)
+    .filter((date) => date >= keepFrom)
+    .sort();
+
+  await executeOdooKw<boolean>(
+    "ir.config_parameter",
+    "set_param",
+    [failureNotifiedDateKey(syncType), JSON.stringify(orderedDates)],
+  ).catch((error) => {
+    console.warn("Garbage failure notification marker failed:", error);
+    return false;
+  });
+}
+
+function compactFailureMessage(message: string) {
+  const normalized = message.replace(/\s+/g, " ").trim();
+  if (normalized.length <= 180) {
+    return normalized;
+  }
+  return `${normalized.slice(0, 177)}...`;
+}
+
+export async function notifyGarbageSyncFailure(input: {
+  syncType: "weight" | "fuel";
+  sourceLabel: "WRS" | "Gaiham" | string;
+  reportDates: string[];
+  message: string;
+}) {
+  const reportDates = Array.from(new Set(input.reportDates.filter(isDateKey))).sort();
+  if (!reportDates.length) {
+    return { sent: 0, skipped: "no_dates" as const };
+  }
+
+  const alreadyNotified = await loadFailureNotifiedDates(input.syncType);
+  const newFailureDates = reportDates.filter((date) => !alreadyNotified.has(date));
+  if (!newFailureDates.length) {
+    return { sent: 0, skipped: "already_notified" as const };
+  }
+
+  const userIds = await loadGarbageSummaryRecipientUserIds();
+  if (!userIds.length) {
+    return { sent: 0, skipped: "no_recipients" as const };
+  }
+
+  const dateLabel =
+    newFailureDates.length === 1
+      ? newFailureDates[0]
+      : `${newFailureDates[0]} - ${newFailureDates[newFailureDates.length - 1]}`;
+  const result = await notifyPushEvent({
+    eventType: "work_changed",
+    title: `${input.sourceLabel} таталт амжилтгүй`,
+    body: `${dateLabel}: ${compactFailureMessage(input.message)}`,
+    targetUrl: "/fleet-repair/garbage-daily",
+    userIds,
+  });
+
+  if (!("skipped" in result)) {
+    await markFailureNotified(input.syncType, newFailureDates);
+  }
+
+  return {
+    ...result,
+    userIds,
+    reportDates: newFailureDates,
+  };
 }
 
 export async function notifyGarbageDailySyncSummary(reportDates: string[]) {

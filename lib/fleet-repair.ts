@@ -207,11 +207,17 @@ const ACTION_METHODS: Record<string, string[]> = {
 };
 
 const STATE_LABELS: Record<string, string> = {
+  new: "Үүссэн",
+  new_request: "Шинэ хүсэлт",
   draft: "Ноорог",
   request: "Хүсэлт",
   requested: "Хүсэлт",
+  diagnosed: "Оношилсон",
   quote: "Санал",
   quotation: "Санал",
+  waiting_parts: "Сэлбэг хүлээж байна",
+  waiting_approval: "Баталгаа хүлээж байна",
+  approved: "Батлагдсан",
   finance: "Санхүү",
   contract: "Гэрээ",
   director: "Захирал",
@@ -219,9 +225,14 @@ const STATE_LABELS: Record<string, string> = {
   payment: "Төлбөр",
   parts: "Сэлбэг",
   repair: "Засвар",
+  in_repair: "Засварт байгаа",
+  under_repair: "Засварт байгаа",
   done: "Дууссан",
   completed: "Дууссан",
+  vehicle_returned: "Машин буцаасан",
+  returned: "Буцаасан",
   cancel: "Цуцлагдсан",
+  cancelled: "Цуцлагдсан",
   rejected: "Буцаасан",
 };
 
@@ -399,7 +410,7 @@ async function checkModelAccess(
 }
 
 function stateLabel(value: string) {
-  const normalized = value.trim().toLowerCase();
+  const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, "_");
   return STATE_LABELS[normalized] ?? (value || "Тодорхойгүй");
 }
 

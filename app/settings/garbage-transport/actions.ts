@@ -9,6 +9,7 @@ import { normalizeDepartmentText } from "@/lib/department-permissions";
 import { saveLocalInspectorScopeExclusive } from "@/lib/inspector-scope-store";
 import { clearOdooReadCaches, executeOdooKw, type OdooConnection } from "@/lib/odoo";
 import { invalidateRouteManagementDataCache } from "@/lib/route-management";
+import { pathWithActionMessage, uiContextPathWithMessage } from "@/lib/ui-context";
 import { loadDepartmentOptions } from "@/lib/workspace";
 
 const SETTINGS_PATH = "/settings/garbage-transport";
@@ -59,8 +60,17 @@ function parsePositiveIds(values: FormDataEntryValue[]) {
     .filter((value) => Number.isInteger(value) && value > 0);
 }
 
-function redirectToSettings(kind: "notice" | "error", message: string, anchor = "general"): never {
-  redirect(`${SETTINGS_PATH}?${kind}=${encodeURIComponent(message)}#${anchor}`);
+function redirectToSettings(
+  kind: "notice" | "error",
+  message: string,
+  anchor = "general",
+  formData?: FormData,
+): never {
+  redirect(
+    formData
+      ? uiContextPathWithMessage(formData, SETTINGS_PATH, kind, message, anchor)
+      : pathWithActionMessage(SETTINGS_PATH, kind, message, anchor),
+  );
 }
 
 function getErrorMessage(error: unknown, fallback: string) {

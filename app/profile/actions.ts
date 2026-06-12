@@ -11,6 +11,7 @@ import {
   normalizeDepartmentText,
 } from "@/lib/department-permissions";
 import { authenticateOdooUser, executeOdooKw, type OdooConnection } from "@/lib/odoo";
+import { pathWithActionMessage, uiContextPathWithMessage } from "@/lib/ui-context";
 import { loadDepartmentOptions } from "@/lib/workspace";
 
 type OdooFieldInfo = {
@@ -55,8 +56,13 @@ function redirectToProfile(
   kind: "notice" | "error",
   message: string,
   anchor = "team-route-settings",
+  formData?: FormData,
 ): never {
-  redirect(`/profile?${kind}=${encodeURIComponent(message)}#${anchor}`);
+  redirect(
+    formData
+      ? uiContextPathWithMessage(formData, "/profile", kind, message, anchor)
+      : pathWithActionMessage("/profile", kind, message, anchor),
+  );
 }
 
 function getSessionConnection(session: Awaited<ReturnType<typeof requireSession>>) {

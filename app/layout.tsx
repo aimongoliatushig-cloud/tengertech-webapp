@@ -4,6 +4,7 @@ import { Exo_2, IBM_Plex_Mono, IBM_Plex_Sans, Inter } from "next/font/google";
 import { AppBadgeManager } from "@/app/_components/app-badge-manager";
 import { GlobalLoadingProvider } from "@/app/_components/global-loading";
 import { NotificationPermissionButton } from "@/app/_components/notification-permission-button";
+import { UiContextPreserver } from "@/app/_components/ui-context-preserver";
 
 import "./globals.css";
 
@@ -86,6 +87,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: EXTENSION_ATTRIBUTE_CLEANUP_SCRIPT }} />
         <AppBadgeManager />
         <NotificationPermissionButton />
+        <UiContextPreserver />
         <GlobalLoadingProvider>{children}</GlobalLoadingProvider>
       </body>
     </html>

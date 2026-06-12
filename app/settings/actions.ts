@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/auth";
-import { executeOdooKw, type OdooConnection } from "@/lib/odoo";
+import { clearOdooReadCaches, executeOdooKw, type OdooConnection } from "@/lib/odoo";
+import { pathWithActionMessage, uiContextPathWithMessage } from "@/lib/ui-context";
 
 const SETTINGS_PATH = "/settings";
 const DEFAULT_DISTRICT_NAME = "Хан-Уул дүүрэг";
@@ -18,8 +19,17 @@ function parsePositiveId(value: FormDataEntryValue | null) {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-function redirectToSettings(kind: "notice" | "error", message: string): never {
-  redirect(`${SETTINGS_PATH}?${kind}=${encodeURIComponent(message)}#subdistricts`);
+function redirectToSettings(
+  kind: "notice" | "error",
+  message: string,
+  anchor = "subdistricts",
+  formData?: FormData,
+): never {
+  redirect(
+    formData
+      ? uiContextPathWithMessage(formData, SETTINGS_PATH, kind, message, anchor)
+      : pathWithActionMessage(SETTINGS_PATH, kind, message, anchor),
+  );
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -71,6 +81,40 @@ async function createRecordWithFieldFallback(
   }
 }
 
+async function writeRecordWithFieldFallback(
+  model: string,
+  id: number,
+  values: Record<string, unknown>,
+  requiredFields: string[],
+  connection: Partial<OdooConnection>,
+) {
+  const remainingValues = { ...values };
+  const requiredFieldSet = new Set(requiredFields);
+
+  for (;;) {
+    try {
+      return await executeOdooKw<boolean>(
+        model,
+        "write",
+        [[id], remainingValues],
+        {},
+        connection,
+      );
+    } catch (error) {
+      const invalidField = getRecoverableOdooFieldName(error);
+      if (
+        !invalidField ||
+        requiredFieldSet.has(invalidField) ||
+        !(invalidField in remainingValues)
+      ) {
+        throw error;
+      }
+
+      delete remainingValues[invalidField];
+    }
+  }
+}
+
 async function requireSystemAdminConnection() {
   const session = await requireSession();
 
@@ -98,6 +142,133 @@ async function loadKhanUulDistrictId(connection: Partial<OdooConnection>) {
   }
 
   return districts[0].id;
+}
+
+function parseOptionalInteger(value: FormDataEntryValue | null, fallback: number) {
+  const parsed = Number(cleanInput(value));
+  return Number.isInteger(parsed) ? parsed : fallback;
+}
+
+function parseBooleanSelect(value: FormDataEntryValue | null) {
+  return cleanInput(value) === "1";
+}
+
+function vehicleTypeValuesFromForm(formData: FormData) {
+  const name = cleanInput(formData.get("vehicle_type_name"));
+  const code = cleanInput(formData.get("vehicle_type_code"));
+  const description = cleanInput(formData.get("vehicle_type_description"));
+
+  if (!name) {
+    redirectToSettings("error", "Машин техникийн төрлийн нэр оруулна уу.", "vehicle-types", formData);
+  }
+
+  return {
+    name,
+    code: code || false,
+    sequence: parseOptionalInteger(formData.get("vehicle_type_sequence"), 10),
+    is_garbage_truck: parseBooleanSelect(formData.get("vehicle_type_is_garbage")),
+    description: description || false,
+  };
+}
+
+function revalidateVehicleTypeSettings() {
+  clearOdooReadCaches();
+  revalidatePath(SETTINGS_PATH);
+  revalidatePath("/auto-base");
+  revalidatePath("/fleet-repair");
+}
+
+export async function createVehicleTypeAction(formData: FormData) {
+  const connection = await requireSystemAdminConnection();
+
+  try {
+    await createRecordWithFieldFallback(
+      "municipal.vehicle.type",
+      {
+        ...vehicleTypeValuesFromForm(formData),
+        active: true,
+      },
+      ["name"],
+      connection,
+    );
+  } catch (error) {
+    redirectToSettings(
+      "error",
+      getErrorMessage(error, "Машин техникийн төрөл нэмэх үед алдаа гарлаа."),
+      "vehicle-types",
+      formData,
+    );
+  }
+
+  revalidateVehicleTypeSettings();
+  redirectToSettings("notice", "Машин техникийн төрөл нэмэгдлээ.", "vehicle-types", formData);
+}
+
+export async function updateVehicleTypeAction(formData: FormData) {
+  const connection = await requireSystemAdminConnection();
+  const vehicleTypeId = parsePositiveId(formData.get("vehicle_type_id"));
+
+  if (!vehicleTypeId) {
+    redirectToSettings("error", "Машин техникийн төрөл сонгоно уу.", "vehicle-types", formData);
+  }
+
+  try {
+    await writeRecordWithFieldFallback(
+      "municipal.vehicle.type",
+      vehicleTypeId,
+      {
+        ...vehicleTypeValuesFromForm(formData),
+        active: parseBooleanSelect(formData.get("vehicle_type_active")),
+      },
+      ["name"],
+      connection,
+    );
+  } catch (error) {
+    redirectToSettings(
+      "error",
+      getErrorMessage(error, "Машин техникийн төрөл засах үед алдаа гарлаа."),
+      "vehicle-types",
+      formData,
+    );
+  }
+
+  revalidateVehicleTypeSettings();
+  redirectToSettings("notice", "Машин техникийн төрөл шинэчлэгдлээ.", "vehicle-types", formData);
+}
+
+export async function toggleVehicleTypeActiveAction(formData: FormData) {
+  const connection = await requireSystemAdminConnection();
+  const vehicleTypeId = parsePositiveId(formData.get("vehicle_type_id"));
+  const active = parseBooleanSelect(formData.get("vehicle_type_active"));
+
+  if (!vehicleTypeId) {
+    redirectToSettings("error", "Машин техникийн төрөл сонгоно уу.", "vehicle-types", formData);
+  }
+
+  try {
+    await writeRecordWithFieldFallback(
+      "municipal.vehicle.type",
+      vehicleTypeId,
+      { active },
+      [],
+      connection,
+    );
+  } catch (error) {
+    redirectToSettings(
+      "error",
+      getErrorMessage(error, "Машин техникийн төрлийн төлөв солих үед алдаа гарлаа."),
+      "vehicle-types",
+      formData,
+    );
+  }
+
+  revalidateVehicleTypeSettings();
+  redirectToSettings(
+    "notice",
+    active ? "Машин техникийн төрөл идэвхжлээ." : "Машин техникийн төрөл идэвхгүй боллоо.",
+    "vehicle-types",
+    formData,
+  );
 }
 
 async function unlinkRecords(
@@ -155,7 +326,7 @@ export async function createGeneralSubdistrictAction(formData: FormData) {
   const subdistrictName = cleanInput(formData.get("subdistrict_name"));
 
   if (!subdistrictName) {
-    redirectToSettings("error", "Хорооны нэр оруулна уу.");
+    redirectToSettings("error", "Хорооны нэр оруулна уу.", "subdistricts", formData);
   }
 
   try {
@@ -172,11 +343,11 @@ export async function createGeneralSubdistrictAction(formData: FormData) {
       connection,
     );
   } catch (error) {
-    redirectToSettings("error", getErrorMessage(error, "Хороо нэмэх үед алдаа гарлаа."));
+    redirectToSettings("error", getErrorMessage(error, "Хороо нэмэх үед алдаа гарлаа."), "subdistricts", formData);
   }
 
   revalidatePath(SETTINGS_PATH);
-  redirectToSettings("notice", "Хороо нэмэгдлээ.");
+  redirectToSettings("notice", "Хороо нэмэгдлээ.", "subdistricts", formData);
 }
 
 export async function updateGeneralSubdistrictAction(formData: FormData) {
@@ -185,10 +356,10 @@ export async function updateGeneralSubdistrictAction(formData: FormData) {
   const subdistrictName = cleanInput(formData.get("subdistrict_name"));
 
   if (!subdistrictId) {
-    redirectToSettings("error", "Хороо сонгоно уу.");
+    redirectToSettings("error", "Хороо сонгоно уу.", "subdistricts", formData);
   }
   if (!subdistrictName) {
-    redirectToSettings("error", "Хорооны нэр оруулна уу.");
+    redirectToSettings("error", "Хорооны нэр оруулна уу.", "subdistricts", formData);
   }
 
   try {
@@ -201,11 +372,11 @@ export async function updateGeneralSubdistrictAction(formData: FormData) {
       connection,
     );
   } catch (error) {
-    redirectToSettings("error", getErrorMessage(error, "Хороо засах үед алдаа гарлаа."));
+    redirectToSettings("error", getErrorMessage(error, "Хороо засах үед алдаа гарлаа."), "subdistricts", formData);
   }
 
   revalidatePath(SETTINGS_PATH);
-  redirectToSettings("notice", "Хороо шинэчлэгдлээ.");
+  redirectToSettings("notice", "Хороо шинэчлэгдлээ.", "subdistricts", formData);
 }
 
 export async function archiveGeneralSubdistrictAction(formData: FormData) {
@@ -213,7 +384,7 @@ export async function archiveGeneralSubdistrictAction(formData: FormData) {
   const subdistrictId = parsePositiveId(formData.get("subdistrict_id"));
 
   if (!subdistrictId) {
-    redirectToSettings("error", "Хороо сонгоно уу.");
+    redirectToSettings("error", "Хороо сонгоно уу.", "subdistricts", formData);
   }
 
   try {
@@ -230,11 +401,11 @@ export async function archiveGeneralSubdistrictAction(formData: FormData) {
       connection,
     );
   } catch (error) {
-    redirectToSettings("error", getErrorMessage(error, "Хороо устгах үед алдаа гарлаа."));
+    redirectToSettings("error", getErrorMessage(error, "Хороо устгах үед алдаа гарлаа."), "subdistricts", formData);
   }
 
   revalidatePath(SETTINGS_PATH);
-  redirectToSettings("notice", "Хороо устгагдлаа.");
+  redirectToSettings("notice", "Хороо устгагдлаа.", "subdistricts", formData);
 }
 
 export async function archiveAllGeneralCollectionPointsAction() {

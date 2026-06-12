@@ -37,6 +37,7 @@ import { loadDepartmentHeadUserIds } from "@/lib/notification-recipients";
 import { createProcurementRequest, uploadProcurementAttachment } from "@/lib/procurement";
 import { notifyPushEvent, type PushEventType } from "@/lib/push-notifications";
 import { createLocalRoadCleaningArea } from "@/lib/road-cleaning-area-store";
+import { pathWithActionMessage, safeInternalPath } from "@/lib/ui-context";
 import {
   canReviewWorkspaceTaskReport,
   loadTaskReportReviewAccess,
@@ -266,16 +267,11 @@ function redirectWithMessage(
   message: string,
   hash = "",
 ) {
-  const separator = path.includes("?") ? "&" : "?";
-  redirect(`${path}${separator}${kind}=${encodeURIComponent(message)}${hash}`);
+  redirect(pathWithActionMessage(path, kind, message, hash));
 }
 
 function getSafeInternalReturnPath(value: FormDataEntryValue | null, fallback: string) {
-  const path = String(value ?? "").trim();
-  if (!path || !path.startsWith("/") || path.startsWith("//")) {
-    return fallback;
-  }
-  return path;
+  return safeInternalPath(String(value ?? ""), fallback);
 }
 
 function getNumberValue(formData: FormData, key: string) {

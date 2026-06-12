@@ -1,11 +1,15 @@
 "use client";
 
 import Image from "next/image";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   ArrowLeft,
+  Building2,
   CalendarCheck2,
   Car,
+  CheckCircle2,
+  ChevronDown,
   Grid3X3,
   List,
   MoreHorizontal,
@@ -224,6 +228,7 @@ type FleetVehicleBoard = {
 type VehicleFilterKey = "all" | "active" | "repair" | "insurance" | "inspection" | "inactive";
 type VehicleStatusFilter = "all" | "active" | "warning" | "repair" | "inactive";
 type VehicleViewMode = "grid" | "list";
+type VehicleSortMode = "status" | "plate" | "deadline";
 type VehicleCategoryFilter = {
   key: string;
   id: number | null;
@@ -262,6 +267,18 @@ function cx(...values: Array<string | false | null | undefined>) {
 
 const ALL_CATEGORY_KEY = "all";
 const UNCATEGORIZED_CATEGORY_KEY = "uncategorized";
+const ALL_DEPARTMENT_KEY = "all";
+const UNCATEGORIZED_DEPARTMENT_KEY = "uncategorized";
+const AUTO_BASE_QUERY_PARAMS = {
+  bucket: "fleetBucket",
+  category: "fleetType",
+  department: "fleetDept",
+  search: "fleetQ",
+  sort: "fleetSort",
+  status: "fleetStatus",
+  vehicle: "vehicle",
+  view: "fleetView",
+} as const;
 const ACTIVE_REPAIR_STATE_KEYS = new Set([
   "new",
   "diagnosed",
@@ -271,6 +288,39 @@ const ACTIVE_REPAIR_STATE_KEYS = new Set([
   "in_repair",
 ]);
 const PREFERRED_CATEGORY_NAMES = ["Хогны машин", "Усалгаа", "Өргөгч", "Ковш"];
+
+function searchParamValue(searchParams: ReturnType<typeof useSearchParams>, key: string) {
+  return searchParams?.get(key)?.trim() ?? "";
+}
+
+function vehicleIdFromParam(value: string) {
+  const id = Number(value);
+  return Number.isFinite(id) && id > 0 ? Math.trunc(id) : null;
+}
+
+function isVehicleFilterKey(value: string): value is VehicleFilterKey {
+  return ["all", "active", "repair", "insurance", "inspection", "inactive"].includes(value);
+}
+
+function isVehicleStatusFilter(value: string): value is VehicleStatusFilter {
+  return ["all", "active", "warning", "repair", "inactive"].includes(value);
+}
+
+function isVehicleViewMode(value: string): value is VehicleViewMode {
+  return value === "grid" || value === "list";
+}
+
+function isVehicleSortMode(value: string): value is VehicleSortMode {
+  return value === "status" || value === "plate" || value === "deadline";
+}
+
+function setQueryParam(params: URLSearchParams, key: string, value: string, defaultValue = "") {
+  if (!value || value === defaultValue) {
+    params.delete(key);
+    return;
+  }
+  params.set(key, value);
+}
 
 function normalizeCategoryName(value: string) {
   return value.trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
@@ -325,6 +375,26 @@ function categoryOptionKey(option: FleetVehicleSelectOption, _source: "type" | "
   return `type-name:${normalizeCategoryName(normalizeVehicleCategoryDisplayName(option.name))}`;
 }
 
+function normalizeDepartmentName(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("mn-MN");
+}
+
+function vehicleDepartmentKey(
+  vehicle: Pick<FleetVehicleBoardItem, "departmentId" | "departmentName">,
+) {
+  const normalizedName = normalizeDepartmentName(vehicle.departmentName);
+  if (normalizedName) {
+    return `department-name:${normalizedName}`;
+  }
+
+  return vehicle.departmentId ? `department-id:${vehicle.departmentId}` : UNCATEGORIZED_DEPARTMENT_KEY;
+}
+
+function departmentOptionKey(option: FleetVehicleDepartmentOption) {
+  const normalizedName = normalizeDepartmentName(option.name);
+  return normalizedName ? `department-name:${normalizedName}` : `department-id:${option.id}`;
+}
+
 function preferredCategoryRank(name: string) {
   const normalizedName = normalizeCategoryName(name);
   const index = PREFERRED_CATEGORY_NAMES.findIndex(
@@ -336,7 +406,7 @@ function preferredCategoryRank(name: string) {
 function vehicleStatusMeta(vehicle: FleetVehicleBoardItem): VehicleStatusMeta {
   if (vehicle.isRepair) {
     return {
-      label: vehicle.latestRepairState || vehicle.stateLabel || "Засвартай",
+      label: "Засвартай",
       tone: "repair",
     };
   }
@@ -395,6 +465,29 @@ function shortDeadlineLabel(info: FleetVehicleDeadlineInfo) {
   return info.endDate || "Бүртгээгүй";
 }
 
+function percentLabel(value: number, total: number) {
+  if (!total) {
+    return "0%";
+  }
+
+  return `${((value / total) * 100).toFixed(1)}%`;
+}
+
+function earliestDeadlineDays(vehicle: FleetVehicleBoardItem) {
+  return Math.min(
+    vehicle.insurance.daysRemaining >= 0 ? vehicle.insurance.daysRemaining : Number.POSITIVE_INFINITY,
+    vehicle.inspection.daysRemaining >= 0 ? vehicle.inspection.daysRemaining : Number.POSITIVE_INFINITY,
+  );
+}
+
+function statusSortRank(vehicle: FleetVehicleBoardItem) {
+  const tone = vehicleStatusMeta(vehicle).tone;
+  if (tone === "repair") return 0;
+  if (tone === "warning") return 1;
+  if (tone === "active") return 2;
+  return 3;
+}
+
 function primaryVehicleImageUrl(vehicle: FleetVehicleBoardItem) {
   const frontPhotoId = vehicle.photoGroups.find((group) => group.key === "front")?.ids[0];
   return frontPhotoId ? attachmentUrl(frontPhotoId) : vehicle.imageUrl;
@@ -435,11 +528,13 @@ function AttachmentTile({
   label,
   previewImages,
   onOpen,
+  isSelected = false,
 }: {
   id: number;
   label: string;
   previewImages: boolean;
   onOpen: (attachment: { id: number; label: string; url: string }) => void;
+  isSelected?: boolean;
 }) {
   const [failedId, setFailedId] = useState<number | null>(null);
   const failed = failedId === id;
@@ -449,8 +544,9 @@ function AttachmentTile({
     return (
       <button
         type="button"
-        className={styles.vehicleAttachmentButton}
+        className={cx(styles.vehicleAttachmentButton, isSelected && styles.vehicleAttachmentButtonActive)}
         onClick={() => onOpen({ id, label, url })}
+        aria-pressed={isSelected}
         aria-label={`${label} зураг томоор харах`}
       >
         <Image
@@ -532,14 +628,6 @@ function VehicleAttachmentViewer({
       </div>
     </div>,
     document.body,
-  );
-}
-
-function VehicleHeroImage({ vehicle }: { vehicle: FleetVehicleBoardItem }) {
-  return (
-    <div className={styles.vehicleHeroImage}>
-      <VehicleThumbnail vehicle={vehicle} />
-    </div>
   );
 }
 
@@ -661,22 +749,53 @@ function AttachmentGallery({
   groups: FleetVehicleAttachmentGroup[];
   previewImages?: boolean;
 }) {
-  const [activeAttachment, setActiveAttachment] = useState<{
+  const [selectedAttachmentId, setSelectedAttachmentId] = useState<number | null>(null);
+  const [viewerAttachment, setViewerAttachment] = useState<{
     id: number;
     label: string;
     url: string;
   } | null>(null);
   const visibleGroups = groups.filter((group) => group.ids.length);
+  const attachmentCount = visibleGroups.reduce((sum, group) => sum + group.ids.length, 0);
+  const previewAttachments = previewImages
+    ? visibleGroups.flatMap((group) =>
+        group.ids.map((id) => ({
+          id,
+          label: `${group.label} зураг`,
+          url: attachmentUrl(id),
+        })),
+      )
+    : [];
+  const selectedAttachment =
+    previewAttachments.find((attachment) => attachment.id === selectedAttachmentId) ?? previewAttachments[0] ?? null;
 
   if (!visibleGroups.length) {
     return <EmptyPanel>{`${title} бүртгэгдээгүй байна.`}</EmptyPanel>;
   }
 
   return (
-    <div className={styles.vehicleAttachmentPanel}>
+    <div className={cx(styles.vehicleAttachmentPanel, previewImages && styles.vehicleAttachmentPanelPreview)}>
       <div className={styles.vehicleAttachmentHeader}>
         <span className={styles.mobileDetailEyebrow}>{title}</span>
+        <strong>{attachmentCount} файл</strong>
       </div>
+      {previewImages && selectedAttachment ? (
+        <button
+          type="button"
+          className={styles.vehicleGalleryHero}
+          onClick={() => setViewerAttachment(selectedAttachment)}
+          aria-label={`${selectedAttachment.label} томоор харах`}
+        >
+          <Image
+            src={selectedAttachment.url}
+            alt={`${selectedAttachment.label} #${selectedAttachment.id}`}
+            width={960}
+            height={580}
+            unoptimized
+          />
+          <span>{selectedAttachment.label}</span>
+        </button>
+      ) : null}
       {visibleGroups.map((group) => (
         <section key={group.key} className={styles.vehicleAttachmentGroup}>
           <strong>{group.label}</strong>
@@ -685,18 +804,23 @@ function AttachmentGallery({
               <AttachmentTile
                 key={id}
                 id={id}
-                label={group.label}
+                label={`${group.label} зураг`}
                 previewImages={previewImages}
-                onOpen={setActiveAttachment}
+                onOpen={
+                  previewImages
+                    ? (attachment) => setSelectedAttachmentId(attachment.id)
+                    : setViewerAttachment
+                }
+                isSelected={previewImages && selectedAttachment?.id === id}
               />
             ))}
           </div>
         </section>
       ))}
-      {activeAttachment ? (
+      {viewerAttachment ? (
         <VehicleAttachmentViewer
-          attachment={activeAttachment}
-          onClose={() => setActiveAttachment(null)}
+          attachment={viewerAttachment}
+          onClose={() => setViewerAttachment(null)}
         />
       ) : null}
     </div>
@@ -1717,7 +1841,6 @@ function VehicleDetailModal({
             <ActiveRepairPanel vehicle={vehicle} activeRepair={activeRepair} />
             <div className={styles.vehicleOverviewGrid}>
               <div className={styles.vehicleGalleryPanel}>
-                <VehicleHeroImage vehicle={vehicle} />
                 <AttachmentGallery title="Машины зураг" groups={vehicle.photoGroups} previewImages />
               </div>
 
@@ -2207,25 +2330,127 @@ export function AutoBaseBoard({
   notice?: string;
   error?: string;
 }) {
+  const pathname = usePathname() ?? "/auto-base";
+  const searchParams = useSearchParams();
   const vehiclesById = useMemo(
     () => new Map(board.allVehicles.map((vehicle) => [vehicle.id, vehicle])),
     [board.allVehicles],
   );
+  const initialVehicleFromQuery = vehicleIdFromParam(
+    searchParamValue(searchParams, AUTO_BASE_QUERY_PARAMS.vehicle),
+  );
+  const initialSelectedVehicleId = initialVehicleFromQuery ?? initialVehicleId ?? null;
+  const initialBucket = searchParamValue(searchParams, AUTO_BASE_QUERY_PARAMS.bucket);
+  const initialStatus = searchParamValue(searchParams, AUTO_BASE_QUERY_PARAMS.status);
+  const initialView = searchParamValue(searchParams, AUTO_BASE_QUERY_PARAMS.view);
+  const initialSort = searchParamValue(searchParams, AUTO_BASE_QUERY_PARAMS.sort);
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(
-    initialVehicleId && vehiclesById.has(initialVehicleId) ? initialVehicleId : null,
+    initialSelectedVehicleId && vehiclesById.has(initialSelectedVehicleId)
+      ? initialSelectedVehicleId
+      : null,
   );
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<VehicleFilterKey>("all");
-  const [activeCategoryKey, setActiveCategoryKey] = useState(ALL_CATEGORY_KEY);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<VehicleStatusFilter>("all");
-  const [viewMode, setViewMode] = useState<VehicleViewMode>("grid");
+  const [activeFilter, setActiveFilter] = useState<VehicleFilterKey>(
+    isVehicleFilterKey(initialBucket) ? initialBucket : "all",
+  );
+  const [activeCategoryKey, setActiveCategoryKey] = useState(
+    searchParamValue(searchParams, AUTO_BASE_QUERY_PARAMS.category) || ALL_CATEGORY_KEY,
+  );
+  const [departmentFilterKey, setDepartmentFilterKey] = useState(
+    searchParamValue(searchParams, AUTO_BASE_QUERY_PARAMS.department) || ALL_DEPARTMENT_KEY,
+  );
+  const [searchQuery, setSearchQuery] = useState(
+    searchParamValue(searchParams, AUTO_BASE_QUERY_PARAMS.search),
+  );
+  const [statusFilter, setStatusFilter] = useState<VehicleStatusFilter>(
+    isVehicleStatusFilter(initialStatus) ? initialStatus : "all",
+  );
+  const [viewMode, setViewMode] = useState<VehicleViewMode>(
+    isVehicleViewMode(initialView) ? initialView : "grid",
+  );
+  const [sortMode, setSortMode] = useState<VehicleSortMode>(
+    isVehicleSortMode(initialSort) ? initialSort : "status",
+  );
+  const [dismissedSystemNotice, setDismissedSystemNotice] = useState(false);
   const selectedVehicle = selectedVehicleId ? vehiclesById.get(selectedVehicleId) ?? null : null;
-  const categoryFilters = useMemo<VehicleCategoryFilter[]>(() => {
+  const departmentFilters: VehicleCategoryFilter[] = (() => {
     const counts = new Map<string, number>();
     const options = new Map<string, VehicleCategoryFilter>();
 
     for (const vehicle of board.allVehicles) {
+      const key = vehicleDepartmentKey(vehicle);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+      if (key !== UNCATEGORIZED_DEPARTMENT_KEY && !options.has(key)) {
+        options.set(key, {
+          key,
+          id: vehicle.departmentId,
+          name: vehicle.departmentName || "Хэлтэсгүй",
+          count: 0,
+        });
+      }
+    }
+
+    for (const option of board.departmentOptions) {
+      const key = departmentOptionKey(option);
+      if (!options.has(key)) {
+        options.set(key, {
+          key,
+          id: option.id,
+          name: option.name,
+          count: 0,
+        });
+      }
+    }
+
+    const departmentItems = Array.from(options.values())
+      .map((option) => ({
+        ...option,
+        count: counts.get(option.key) ?? 0,
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name, "mn-MN"));
+
+    if (counts.has(UNCATEGORIZED_DEPARTMENT_KEY)) {
+      departmentItems.push({
+        key: UNCATEGORIZED_DEPARTMENT_KEY,
+        id: null,
+        name: "Хэлтэсгүй",
+        count: counts.get(UNCATEGORIZED_DEPARTMENT_KEY) ?? 0,
+      });
+    }
+
+    return [
+      {
+        key: ALL_DEPARTMENT_KEY,
+        id: null,
+        name: "Бүх хэлтэс",
+        count: board.allVehicles.length,
+      },
+      ...departmentItems,
+    ];
+  })();
+  const selectedDepartment =
+    departmentFilters.find((department) => department.key === departmentFilterKey) ??
+    departmentFilters[0];
+  const departmentVehicles =
+    selectedDepartment.key === ALL_DEPARTMENT_KEY
+      ? board.allVehicles
+      : board.allVehicles.filter(
+          (vehicle) => vehicleDepartmentKey(vehicle) === selectedDepartment.key,
+        );
+  const categoryFilters: VehicleCategoryFilter[] = (() => {
+    const counts = new Map<string, number>();
+    const options = new Map<string, VehicleCategoryFilter>();
+    const configuredOptions = board.vehicleTypeOptions.length
+      ? board.vehicleTypeOptions.map((option) => ({ option, source: "type" as const }))
+      : board.categoryOptions.map((option) => ({ option, source: "category" as const }));
+    const configuredCategoryKeys = new Set(
+      configuredOptions
+        .filter(({ option }) => !isHiddenVehicleCategoryName(option.name))
+        .map(({ option, source }) => categoryOptionKey(option, source)),
+    );
+    const hasConfiguredCategories = configuredCategoryKeys.size > 0;
+
+    for (const vehicle of departmentVehicles) {
       if (
         isHiddenVehicleCategoryName(vehicle.vehicleTypeName) ||
         isHiddenVehicleCategoryName(vehicle.categoryName)
@@ -2233,6 +2458,13 @@ export function AutoBaseBoard({
         continue;
       }
       const key = vehicleCategoryKey(vehicle);
+      if (
+        hasConfiguredCategories &&
+        key !== UNCATEGORIZED_CATEGORY_KEY &&
+        !configuredCategoryKeys.has(key)
+      ) {
+        continue;
+      }
       counts.set(key, (counts.get(key) ?? 0) + 1);
       if (key !== UNCATEGORIZED_CATEGORY_KEY && !options.has(key)) {
         options.set(key, {
@@ -2243,10 +2475,6 @@ export function AutoBaseBoard({
         });
       }
     }
-
-    const configuredOptions = board.vehicleTypeOptions.length
-      ? board.vehicleTypeOptions.map((option) => ({ option, source: "type" as const }))
-      : board.categoryOptions.map((option) => ({ option, source: "category" as const }));
 
     for (const { option, source } of configuredOptions) {
       if (isHiddenVehicleCategoryName(option.name)) {
@@ -2287,17 +2515,26 @@ export function AutoBaseBoard({
         key: ALL_CATEGORY_KEY,
         id: null,
         name: "Бүгд",
-        count: board.totalVehicles,
+        count: departmentVehicles.length,
       },
       ...categoryItems,
     ];
-  }, [board.allVehicles, board.categoryOptions, board.totalVehicles, board.vehicleTypeOptions]);
+  })();
   const selectedCategory =
     categoryFilters.find((category) => category.key === activeCategoryKey) ?? categoryFilters[0];
   const categoryVehicles =
     selectedCategory.key === ALL_CATEGORY_KEY
-      ? board.allVehicles
-      : board.allVehicles.filter((vehicle) => vehicleCategoryKey(vehicle) === selectedCategory.key);
+      ? departmentVehicles
+      : departmentVehicles.filter((vehicle) => vehicleCategoryKey(vehicle) === selectedCategory.key);
+  const departmentSummary = {
+    total: departmentVehicles.length,
+    active: departmentVehicles.filter(
+      (vehicle) => !vehicle.isRepair && vehicle.isOperational && !vehicle.isArchived,
+    ).length,
+    repair: departmentVehicles.filter((vehicle) => vehicle.isRepair).length,
+    insurance: departmentVehicles.filter((vehicle) => vehicle.insurance.reminderDue).length,
+    inspection: departmentVehicles.filter((vehicle) => vehicle.inspection.reminderDue).length,
+  };
   const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase("mn-MN");
   const searchedVehicles = categoryVehicles.filter((vehicle) => {
     const statusMatches = vehicleMatchesStatus(vehicle, statusFilter);
@@ -2378,6 +2615,63 @@ export function AutoBaseBoard({
     },
   ];
   const selectedBucket = buckets.find((bucket) => bucket.key === activeFilter) ?? buckets[0];
+  const statusOptions: Array<{ value: VehicleStatusFilter; label: string }> = [
+    { value: "all", label: "Бүх төлөв" },
+    { value: "active", label: "Ажиллаж байгаа" },
+    { value: "warning", label: "Сануулгатай" },
+    { value: "repair", label: "Засвартай" },
+    { value: "inactive", label: "Идэвхгүй" },
+  ];
+  const visibleVehicles = [...selectedBucket.vehicles].sort((left, right) => {
+    if (sortMode === "plate") {
+      return left.plate.localeCompare(right.plate, "mn-MN");
+    }
+    if (sortMode === "deadline") {
+      return earliestDeadlineDays(left) - earliestDeadlineDays(right);
+    }
+    return (
+      statusSortRank(left) - statusSortRank(right) ||
+      left.plate.localeCompare(right.plate, "mn-MN")
+    );
+  });
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+
+    setQueryParam(params, AUTO_BASE_QUERY_PARAMS.department, selectedDepartment.key, ALL_DEPARTMENT_KEY);
+    setQueryParam(params, AUTO_BASE_QUERY_PARAMS.category, selectedCategory.key, ALL_CATEGORY_KEY);
+    setQueryParam(params, AUTO_BASE_QUERY_PARAMS.bucket, selectedBucket.key, "all");
+    setQueryParam(params, AUTO_BASE_QUERY_PARAMS.status, statusFilter, "all");
+    setQueryParam(params, AUTO_BASE_QUERY_PARAMS.search, searchQuery);
+    setQueryParam(params, AUTO_BASE_QUERY_PARAMS.view, viewMode, "grid");
+    setQueryParam(params, AUTO_BASE_QUERY_PARAMS.sort, sortMode, "status");
+    setQueryParam(
+      params,
+      AUTO_BASE_QUERY_PARAMS.vehicle,
+      selectedVehicleId && vehiclesById.has(selectedVehicleId) ? String(selectedVehicleId) : "",
+    );
+
+    const query = params.toString();
+    const nextUrl = `${pathname}${query ? `?${query}` : ""}${url.hash}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (nextUrl !== currentUrl) {
+      window.history.replaceState(window.history.state, "", nextUrl);
+    }
+  }, [
+    activeFilter,
+    pathname,
+    searchQuery,
+    selectedBucket.key,
+    selectedCategory.key,
+    selectedDepartment.key,
+    selectedVehicleId,
+    sortMode,
+    statusFilter,
+    vehiclesById,
+    viewMode,
+  ]);
+
   const applyMetricFilter = (filter: VehicleFilterKey) => {
     setActiveFilter(filter);
     setActiveCategoryKey(ALL_CATEGORY_KEY);
@@ -2388,7 +2682,7 @@ export function AutoBaseBoard({
     {
       key: "all",
       label: "Нийт машин техник",
-      value: board.totalVehicles,
+      value: departmentSummary.total,
       helper: "Бүртгэлтэй",
       icon: Car,
       tone: "default",
@@ -2396,52 +2690,60 @@ export function AutoBaseBoard({
     {
       key: "active",
       label: "Ажиллаж байгаа",
-      value: board.activeCount,
-      helper: "Ажиллаж байна",
-      icon: Truck,
+      value: departmentSummary.active,
+      helper: percentLabel(departmentSummary.active, departmentSummary.total),
+      icon: CheckCircle2,
       tone: "active",
     },
     {
       key: "repair",
       label: "Засвартай",
-      value: board.repairCount,
-      helper: "Засварт байгаа",
+      value: departmentSummary.repair,
+      helper: percentLabel(departmentSummary.repair, departmentSummary.total),
       icon: Wrench,
       tone: "repair",
     },
     {
       key: "insurance",
-      label: "Даатгал сануулах",
-      value: board.insuranceDueCount,
-      helper: "Хугацаа дуусах дөхсөн",
+      label: "Даатгал хугацаа болох",
+      value: departmentSummary.insurance,
+      helper: percentLabel(departmentSummary.insurance, departmentSummary.total),
       icon: AlertTriangle,
-      tone: board.insuranceDueCount > 0 ? "warning" : "default",
+      tone: departmentSummary.insurance > 0 ? "warning" : "default",
     },
     {
       key: "inspection",
-      label: "Үзлэг сануулах",
-      value: board.inspectionDueCount,
-      helper: "Хугацаа дуусах дөхсөн",
-      icon: ShieldAlert,
-      tone: board.inspectionDueCount > 0 ? "danger" : "default",
+      label: "Үзлэг хугацаа болох",
+      value: departmentSummary.inspection,
+      helper: percentLabel(departmentSummary.inspection, departmentSummary.total),
+      icon: CalendarCheck2,
+      tone: departmentSummary.inspection > 0 ? "danger" : "default",
     },
   ];
-  const statusOptions: Array<{ value: VehicleStatusFilter; label: string }> = [
-    { value: "all", label: "Бүх төлөв" },
-    { value: "active", label: "Ажиллаж байгаа" },
-    { value: "warning", label: "Сануулгатай" },
-    { value: "repair", label: "Засвартай" },
-    { value: "inactive", label: "Идэвхгүй" },
-  ];
+  const notificationMessage = error || notice;
+  const shouldShowNotice = Boolean(notificationMessage && !dismissedSystemNotice);
 
   return (
     <>
-      {notice || error ? (
+      {shouldShowNotice ? (
         <div
           className={cx(styles.vehicleNotice, error && styles.vehicleNoticeError)}
           role={error ? "alert" : "status"}
         >
-          {error || notice}
+          <span className={styles.vehicleNoticeIcon}>
+            <CheckCircle2 size={17} aria-hidden />
+          </span>
+          <strong>{notificationMessage}</strong>
+          {!error ? (
+            <button
+              type="button"
+              className={styles.vehicleNoticeClose}
+              onClick={() => setDismissedSystemNotice(true)}
+              aria-label="Мэдэгдлийг хаах"
+            >
+              <X size={17} aria-hidden />
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -2485,9 +2787,9 @@ export function AutoBaseBoard({
               <span className={styles.summaryIcon}>
                 <Icon size={22} aria-hidden />
               </span>
-              <div>
-                <strong>{item.value}</strong>
+              <div className={styles.metricCopy}>
                 <span>{item.label}</span>
+                <strong>{item.value}</strong>
                 <small>{item.helper}</small>
               </div>
             </button>
@@ -2496,42 +2798,45 @@ export function AutoBaseBoard({
       </div>
 
       <section className={styles.vehicleFilterBoard} data-testid="vehicle-filter-board">
-        <h2 className={styles.vehicleCategoryTitle}>Ангиллаар харах</h2>
-        <div className={styles.vehicleControlsRow}>
-          <div className={styles.vehicleCategoryPills} role="tablist" aria-label="Машины ангиллаар шүүх">
-            {categoryFilters.map((category) => (
-              <button
-                key={category.key}
-                type="button"
-                role="tab"
-                aria-selected={selectedCategory.key === category.key}
-                className={cx(
-                  styles.vehicleCategoryPill,
-                  selectedCategory.key === category.key && styles.vehicleCategoryPillSelected,
-                )}
-                onClick={() => {
-                  setActiveCategoryKey(category.key);
+        <div className={styles.vehicleFilterCard}>
+          <div className={styles.vehicleFilterToolbar}>
+            <label className={styles.vehicleSelectField}>
+              <span>Хэлтэс</span>
+              <Building2 size={17} className={styles.vehicleFieldLeadingIcon} aria-hidden />
+              <select
+                value={selectedDepartment.key}
+                onChange={(event) => {
+                  setDepartmentFilterKey(event.target.value);
+                  setActiveCategoryKey(ALL_CATEGORY_KEY);
+                  setActiveFilter("all");
+                  setStatusFilter("all");
+                }}
+              >
+                {departmentFilters.map((department) => (
+                  <option key={department.key} value={department.key}>
+                    {`${department.name} (${department.count})`}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.vehicleSelectField}>
+              <span>Машины төрөл</span>
+              <Truck size={17} className={styles.vehicleFieldLeadingIcon} aria-hidden />
+              <select
+                value={selectedCategory.key}
+                onChange={(event) => {
+                  setActiveCategoryKey(event.target.value);
                   setActiveFilter("all");
                 }}
               >
-                <span>{category.name}</span>
-                <strong>{category.count}</strong>
-              </button>
-            ))}
-          </div>
-
-          <div className={styles.vehicleFilterToolbar}>
-            <label className={styles.vehicleSearchField}>
-              <Search size={18} aria-hidden />
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Хайх (улсын дугаар, загвар, жолооч...)"
-                aria-label="Машин хайх"
-              />
+                {categoryFilters.map((category) => (
+                  <option key={category.key} value={category.key}>
+                    {`${category.name} (${category.count})`}
+                  </option>
+                ))}
+              </select>
             </label>
-            <label className={styles.vehicleSelectField}>
+            <label className={cx(styles.vehicleSelectField, styles.vehicleSelectFieldPlain)}>
               <span>Төлөв</span>
               <select
                 value={statusFilter}
@@ -2547,25 +2852,19 @@ export function AutoBaseBoard({
                 ))}
               </select>
             </label>
-            <div className={styles.vehicleViewToggle} aria-label="Харагдац сонгох">
-              <button
-                type="button"
-                className={cx(styles.vehicleViewButton, viewMode === "grid" && styles.vehicleViewButtonActive)}
-                onClick={() => setViewMode("grid")}
-                aria-pressed={viewMode === "grid"}
-              >
-                <Grid3X3 size={18} aria-hidden />
-              </button>
-              <button
-                type="button"
-                className={cx(styles.vehicleViewButton, viewMode === "list" && styles.vehicleViewButtonActive)}
-                onClick={() => setViewMode("list")}
-                aria-pressed={viewMode === "list"}
-              >
-                <List size={18} aria-hidden />
-              </button>
-            </div>
+            <label className={styles.vehicleSearchField}>
+              <span>Хайлт</span>
+              <Search size={18} className={styles.vehicleFieldLeadingIcon} aria-hidden />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Улсын дугаар, жолооч, загвар..."
+                aria-label="Машин хайх"
+              />
+            </label>
           </div>
+
         </div>
 
         <section
@@ -2583,10 +2882,42 @@ export function AutoBaseBoard({
         >
           <div className={styles.vehicleFilterPanelHeader}>
             <h2>{selectedBucket.title}</h2>
+            <div className={styles.vehicleListTools}>
+              <div className={styles.vehicleViewToggle} aria-label="Харагдац сонгох">
+                <button
+                  type="button"
+                  className={cx(styles.vehicleViewButton, viewMode === "grid" && styles.vehicleViewButtonActive)}
+                  onClick={() => setViewMode("grid")}
+                  aria-pressed={viewMode === "grid"}
+                >
+                  <Grid3X3 size={18} aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className={cx(styles.vehicleViewButton, viewMode === "list" && styles.vehicleViewButtonActive)}
+                  onClick={() => setViewMode("list")}
+                  aria-pressed={viewMode === "list"}
+                >
+                  <List size={18} aria-hidden />
+                </button>
+              </div>
+              <label className={styles.vehicleSortField}>
+                <span>Эрэмбэлэх</span>
+                <select
+                  value={sortMode}
+                  onChange={(event) => setSortMode(event.target.value as VehicleSortMode)}
+                >
+                  <option value="status">Төлөвөөр</option>
+                  <option value="deadline">Хугацаа ойр</option>
+                  <option value="plate">Улсын дугаараар</option>
+                </select>
+                <ChevronDown size={15} className={styles.vehicleFieldChevron} aria-hidden />
+              </label>
+            </div>
           </div>
 
           <VehicleList
-            vehicles={selectedBucket.vehicles}
+            vehicles={visibleVehicles}
             emptyLabel={selectedBucket.emptyLabel}
             viewMode={viewMode}
             onSelectVehicle={(vehicle) => {

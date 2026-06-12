@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { getSession } from "@/lib/auth";
-import { notifyGarbageDailySyncSummary } from "@/lib/garbage-sync-notifications";
+import { notifyGarbageDailySyncSummary, notifyGarbageSyncFailure } from "@/lib/garbage-sync-notifications";
 import { executeOdooKw } from "@/lib/odoo";
 import { fetchWrsDailyVehicleTotals } from "@/lib/wrs-report";
 
@@ -687,6 +687,17 @@ async function createSyncLog(input: {
   }
 }
 
+async function notifyWrsFailure(reportDates: string[], message: string) {
+  await notifyGarbageSyncFailure({
+    syncType: "weight",
+    sourceLabel: "WRS",
+    reportDates,
+    message,
+  }).catch((error) => {
+    console.warn("WRS failure push failed:", error);
+  });
+}
+
 function buildUnmatchedVehicleMessage(unmatched: Array<{ vehicleCode: string; vehicleLabel: string }>) {
   if (!unmatched.length) {
     return "";
@@ -817,6 +828,10 @@ async function importWrsDateRange(startDate: string, endDate: string) {
       recordCount: 0,
       errorMessage: message,
     });
+    await notifyWrsFailure(
+      Array.from(new Set([...emptyDates.map((item) => item.date), ...failedDates.map((item) => item.date)])),
+      failedDates[0]?.error || message,
+    );
     return NextResponse.json(
       {
         error: message,
@@ -933,6 +948,7 @@ async function importWrsDateRange(startDate: string, endDate: string) {
   };
 
   if (unmatched.length && !hasPartialImport) {
+    await notifyWrsFailure(Array.from(new Set(totals.map((total) => total.reportDate))), unmatchedMessage);
     return NextResponse.json(
       {
         ...responsePayload,
@@ -990,6 +1006,7 @@ async function handleRequest(request: Request) {
         recordCount: 0,
         errorMessage: message,
       });
+      await notifyWrsFailure([requestedDate], message);
       return NextResponse.json(
         {
           error: message,
@@ -1091,6 +1108,7 @@ async function handleRequest(request: Request) {
     };
 
     if (unmatched.length && !hasPartialImport) {
+      await notifyWrsFailure([requestedDate], unmatchedMessage);
       return NextResponse.json(
         {
           ...responsePayload,
@@ -1115,6 +1133,7 @@ async function handleRequest(request: Request) {
       state: "failed",
       errorMessage: message,
     });
+    await notifyWrsFailure([requestedDate], message);
 
     return NextResponse.json({ error: message }, { status: 500 });
   }
