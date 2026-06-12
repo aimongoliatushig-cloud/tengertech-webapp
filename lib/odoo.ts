@@ -711,6 +711,7 @@ export type HrEmployeeDirectoryItem = {
   genderKey: string;
   genderLabel: string;
   educationLevel: string;
+  educationRecords?: HrEmployeeEducationRecord[];
   educationAttachmentIds?: number[];
   registerNumber?: string;
   privatePhone?: string;
@@ -759,6 +760,7 @@ export type HrEmployeeDirectoryItem = {
   emergencyContacts?: HrEmployeeEmergencyContact[];
   rewards?: HrEmployeeReward[];
   talentSkills?: HrEmployeeTalentSkill[];
+  documentRecords?: HrEmployeeDocumentRecord[];
 };
 
 export type HrEmployeeFamilyMember = {
@@ -774,6 +776,22 @@ export type HrEmployeeFamilyMember = {
   departmentName: string;
   jobTitle: string;
   note: string;
+};
+
+export type HrEmployeeEducationRecord = {
+  id: string;
+  level: string;
+  field: string;
+  school: string;
+};
+
+export type HrEmployeeDocumentRecord = {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  date: string;
+  attachmentIds?: number[];
 };
 
 export type HrEmployeeEmergencyContact = {

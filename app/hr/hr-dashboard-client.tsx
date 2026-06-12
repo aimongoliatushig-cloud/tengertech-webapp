@@ -1,16 +1,19 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Activity,
   CalendarDays,
+  Check,
   ClipboardPlus,
   FileCheck2,
   FileWarning,
   HeartPulse,
-  ShieldAlert,
+  Hourglass,
   Users,
+  XCircle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -22,7 +25,7 @@ import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 import { HR_NOTIFICATION_HREF } from "./constants";
 import styles from "./hr.module.css";
 
-type DetailKind = "total" | "active" | "timeoff" | "annual_leave" | "sick" | "pending" | "approved" | "rejected";
+type DetailKind = "total" | "active" | "timeoff" | "annual_leave" | "sick" | "pending" | "approved" | "trial";
 
 type StatCard = {
   kind: DetailKind;
@@ -48,7 +51,7 @@ const STAT_CARD_TONE_CLASS: Record<DetailKind, string> = {
   sick: styles.statCardSick,
   pending: styles.statCardPending,
   approved: styles.statCardApproved,
-  rejected: styles.statCardRejected,
+  trial: styles.statCardTrial,
 };
 
 function todayKey() {
@@ -76,6 +79,10 @@ function employeeIsInactive(employee: HrEmployeeDirectoryItem) {
 
 function employeeIsListedActive(employee: HrEmployeeDirectoryItem) {
   return !employeeIsInactive(employee) && !["probation", "leave", "annual_leave", "sick", "business_trip"].includes(employee.statusKey);
+}
+
+function employeeTrialHasEnded(employee: HrEmployeeDirectoryItem, today: string) {
+  return Boolean(employee.trialEndDate && /^\d{4}-\d{2}-\d{2}$/.test(employee.trialEndDate) && employee.trialEndDate <= today);
 }
 
 function conicGradient(slices: ChartSlice[]) {
@@ -168,11 +175,13 @@ function timeoffPriority(request: HrTimeoffRequest) {
 function StatusEmployeeRow({
   employee,
   request,
+  actions,
 }: {
   employee: HrEmployeeDirectoryItem;
   request?: HrTimeoffRequest;
+  actions?: ReactNode;
 }) {
-  return (
+  const rowLink = (
     <Link href={`/hr/employees/${employee.id}`} className={styles.detailRow}>
       <span>
         <strong>{formatEmployeeDisplayName(employee.name)}</strong>
@@ -189,6 +198,17 @@ function StatusEmployeeRow({
       )}
     </Link>
   );
+
+  if (!actions) {
+    return rowLink;
+  }
+
+  return (
+    <div className={styles.detailRowWithActions}>
+      {rowLink}
+      <div className={styles.detailRowActions}>{actions}</div>
+    </div>
+  );
 }
 
 function RequestRow({ request }: { request: HrTimeoffRequest }) {
@@ -204,6 +224,67 @@ function RequestRow({ request }: { request: HrTimeoffRequest }) {
         {request.dateFrom} - {request.dateTo} · {dayLabel(request)}
       </em>
     </Link>
+  );
+}
+
+function DetailGroupHeader({ label, value }: { label: string; value: number }) {
+  return (
+    <div className={styles.detailGroupHeader}>
+      <strong>{label}</strong>
+      <span>{value}</span>
+    </div>
+  );
+}
+
+function TrialConfirmationForm({
+  employee,
+  pending,
+  message,
+  today,
+  onSubmit,
+  onCancel,
+}: {
+  employee: HrEmployeeDirectoryItem;
+  pending: boolean;
+  message?: { text: string; isError: boolean };
+  today: string;
+  onSubmit: (event: FormEvent<HTMLFormElement>, employeeId: number) => void;
+  onCancel: () => void;
+}) {
+  return (
+    <form className={styles.trialActionForm} onSubmit={(event) => onSubmit(event, employee.id)}>
+      <div className={styles.trialActionFormHeader}>
+        <strong>{formatEmployeeDisplayName(employee.name)} - жинхлэх</strong>
+        <button type="button" className={styles.trialActionGhostButton} onClick={onCancel} disabled={pending}>
+          Болих
+        </button>
+      </div>
+      <label>
+        <span>Жинхэлсэн огноо</span>
+        <input name="permanentDate" type="date" defaultValue={today} required />
+      </label>
+      <label>
+        <span>Тушаалын дугаар</span>
+        <input name="orderNumber" required placeholder="Ж: A/01" />
+      </label>
+      <label>
+        <span>Тушаалын файл</span>
+        <input name="files" type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" />
+      </label>
+      <label className={styles.trialActionFormWide}>
+        <span>Тайлбар</span>
+        <textarea name="note" rows={2} placeholder="Заавал биш" />
+      </label>
+      {message ? (
+        <p className={message.isError ? styles.trialActionError : styles.trialActionSuccess}>{message.text}</p>
+      ) : null}
+      <div className={styles.trialActionFormActions}>
+        <button className={styles.trialPromoteButton} disabled={pending}>
+          <Check aria-hidden />
+          <span>{pending ? "Жинхэлж байна..." : "Жинхлэх"}</span>
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -283,6 +364,10 @@ export function HrDashboardClient({
   disciplineRecords?: HrDisciplineRecord[];
 }) {
   const [detailKind, setDetailKind] = useState<DetailKind>("timeoff");
+  const router = useRouter();
+  const [trialActionEmployeeId, setTrialActionEmployeeId] = useState<number | null>(null);
+  const [trialActionPendingEmployeeId, setTrialActionPendingEmployeeId] = useState<number | null>(null);
+  const [trialActionMessage, setTrialActionMessage] = useState<{ employeeId: number; text: string; isError: boolean } | null>(null);
   const today = todayKey();
 
   const currentRequestByEmployee = useMemo(() => {
@@ -299,12 +384,14 @@ export function HrDashboardClient({
 
   const workforceEmployees = employees.filter((employee) => !employeeIsInactive(employee));
   const activeEmployees = workforceEmployees.filter((employee) => employeeIsListedActive(employee) && !currentRequestByEmployee.has(employee.id));
+  const trialEmployees = workforceEmployees.filter((employee) => employee.statusKey === "probation");
+  const trialEndedEmployees = trialEmployees.filter((employee) => employeeTrialHasEnded(employee, today));
+  const trialInProgressEmployees = trialEmployees.filter((employee) => !employeeTrialHasEnded(employee, today));
   const timeoffEmployees = workforceEmployees.filter((employee) => currentRequestByEmployee.get(employee.id)?.requestType === "time_off");
   const annualLeaveEmployees = workforceEmployees.filter((employee) => currentRequestByEmployee.get(employee.id)?.requestType === "annual_leave");
   const sickEmployees = workforceEmployees.filter((employee) => currentRequestByEmployee.get(employee.id)?.requestType === "sick");
   const pendingRequests = requests.filter((request) => ["submitted", "hr_review"].includes(request.state));
   const approvedRequests = requests.filter((request) => request.state === "approved");
-  const rejectedRequests = requests.filter((request) => request.state === "rejected");
   const cardsSource = dashboard?.cards;
 
   const cards: StatCard[] = [
@@ -358,11 +445,11 @@ export function HrDashboardClient({
       note: "HR баталсан",
     },
     {
-      kind: "rejected",
-      label: "Татгалзсан",
-      value: cardsSource?.rejectedRequests ?? rejectedRequests.length,
-      icon: ShieldAlert,
-      note: "HR татгалзсан",
+      kind: "trial",
+      label: "Туршилт",
+      value: trialEmployees.length,
+      icon: Hourglass,
+      note: "Туршилтад байгаа болон дууссан",
     },
   ];
 
@@ -455,6 +542,88 @@ export function HrDashboardClient({
       color: STATUS_COLORS[index % STATUS_COLORS.length],
     }));
 
+  async function submitTrialConfirmation(event: FormEvent<HTMLFormElement>, employeeId: number) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    setTrialActionPendingEmployeeId(employeeId);
+    setTrialActionMessage(null);
+
+    try {
+      const response = await fetch(`/api/hr/employees/${employeeId}/confirm-trial`, {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error || "Ажилтныг жинхлэхэд алдаа гарлаа.");
+      }
+
+      setTrialActionEmployeeId(null);
+      setTrialActionMessage({ employeeId, text: "Ажилтан жинхлэгдлээ.", isError: false });
+      router.refresh();
+    } catch (error) {
+      setTrialActionMessage({
+        employeeId,
+        text: error instanceof Error ? error.message : "Ажилтныг жинхлэхэд алдаа гарлаа.",
+        isError: true,
+      });
+    } finally {
+      setTrialActionPendingEmployeeId(null);
+    }
+  }
+
+  function renderTrialEndedActions(employee: HrEmployeeDirectoryItem) {
+    const isFormOpen = trialActionEmployeeId === employee.id;
+
+    return (
+      <div className={styles.trialActionButtons}>
+        <button
+          type="button"
+          className={styles.trialPromoteButton}
+          onClick={() => {
+            setTrialActionEmployeeId(isFormOpen ? null : employee.id);
+            setTrialActionMessage(null);
+          }}
+          disabled={Boolean(trialActionPendingEmployeeId)}
+        >
+          <Check aria-hidden />
+          <span>Жинхлэх</span>
+        </button>
+        <Link className={styles.trialRejectButton} href={`/hr/archive?employeeId=${employee.id}`}>
+          <XCircle aria-hidden />
+          <span>Татгалзах</span>
+        </Link>
+      </div>
+    );
+  }
+
+  function renderTrialEndedExtra(employee: HrEmployeeDirectoryItem) {
+    const isPending = trialActionPendingEmployeeId === employee.id;
+    const message = trialActionMessage?.employeeId === employee.id ? trialActionMessage : undefined;
+    if (trialActionEmployeeId === employee.id) {
+      return (
+        <div className={styles.trialActionRow}>
+          <TrialConfirmationForm
+            employee={employee}
+            pending={isPending}
+            message={message}
+            today={today}
+            onSubmit={submitTrialConfirmation}
+            onCancel={() => setTrialActionEmployeeId(null)}
+          />
+        </div>
+      );
+    }
+    if (!message) {
+      return null;
+    }
+    return (
+      <p className={`${styles.trialActionInlineMessage} ${message.isError ? styles.trialActionError : styles.trialActionSuccess}`}>
+        {message.text}
+      </p>
+    );
+  }
+
   const selectedCard = cards.find((card) => card.kind === detailKind) ?? cards[0];
   const getDetailContent = (kind: DetailKind) => {
     if (kind === "total") {
@@ -462,6 +631,19 @@ export function HrDashboardClient({
     }
     if (kind === "active") {
       return activeEmployees.map((employee) => <StatusEmployeeRow key={employee.id} employee={employee} />);
+    }
+    if (kind === "trial") {
+      return [
+        <DetailGroupHeader key="trial-in-progress-header" label="Туршилтад байгаа" value={trialInProgressEmployees.length} />,
+        ...trialInProgressEmployees.map((employee) => <StatusEmployeeRow key={`trial-${employee.id}`} employee={employee} />),
+        <DetailGroupHeader key="trial-ended-header" label="Туршилт дууссан" value={trialEndedEmployees.length} />,
+        ...trialEndedEmployees.map((employee) => (
+          <Fragment key={`trial-ended-${employee.id}`}>
+            <StatusEmployeeRow employee={employee} actions={accessMode === "hr" ? renderTrialEndedActions(employee) : undefined} />
+            {renderTrialEndedExtra(employee)}
+          </Fragment>
+        )),
+      ];
     }
     if (kind === "timeoff") {
       return timeoffEmployees.map((employee) => (
@@ -484,7 +666,7 @@ export function HrDashboardClient({
     if (kind === "approved") {
       return approvedRequests.map((request) => <RequestRow key={request.id} request={request} />);
     }
-    return rejectedRequests.map((request) => <RequestRow key={request.id} request={request} />);
+    return [];
   };
   const detailContent = getDetailContent(detailKind);
 

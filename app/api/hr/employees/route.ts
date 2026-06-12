@@ -1,5 +1,5 @@
 import { getSession } from "@/lib/auth";
-import { createEmployee, getEmployees, requireHrAccess, requireHrSpecialistAccess, type HrEmployeeCreateInput } from "@/lib/hr";
+import { createEmployee, createEmployeeTalentSkill, getEmployees, requireHrAccess, requireHrSpecialistAccess, type HrEmployeeCreateInput } from "@/lib/hr";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +44,59 @@ function getNumber(formData: FormData, key: string) {
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
+}
+
+function parseEducationRecords(value: unknown) {
+  if (value === null || value === undefined || value === "") return [];
+
+  let rawRecords: unknown;
+  try {
+    rawRecords = typeof value === "string" ? JSON.parse(value) as unknown : value;
+  } catch {
+    throw new Error("INVALID_EDUCATION_RECORDS");
+  }
+  if (!Array.isArray(rawRecords)) {
+    throw new Error("INVALID_EDUCATION_RECORDS");
+  }
+
+  return rawRecords
+    .map((item, index) => {
+      const record = item && typeof item === "object" ? item as Record<string, unknown> : {};
+      return {
+        id: String(record.id || `education-${index + 1}`),
+        level: String(record.level ?? "").trim(),
+        field: String(record.field ?? "").trim(),
+        school: String(record.school ?? "").trim(),
+      };
+    })
+    .filter((record) => record.level || record.field || record.school);
+}
+
+function parseTalentSkillRecords(value: unknown) {
+  if (value === null || value === undefined || value === "") return [];
+
+  let rawRecords: unknown;
+  try {
+    rawRecords = typeof value === "string" ? JSON.parse(value) as unknown : value;
+  } catch {
+    throw new Error("INVALID_TALENT_SKILL_RECORDS");
+  }
+  if (!Array.isArray(rawRecords)) {
+    throw new Error("INVALID_TALENT_SKILL_RECORDS");
+  }
+
+  return rawRecords
+    .map((item, index) => {
+      const record = item && typeof item === "object" ? item as Record<string, unknown> : {};
+      return {
+        id: String(record.id || `talent-${index + 1}`),
+        name: String(record.name ?? "").trim(),
+        type: String(record.type ?? "").trim(),
+        level: String(record.level ?? "").trim(),
+        note: String(record.note ?? "").trim(),
+      };
+    })
+    .filter((record) => record.name || record.type || record.level || record.note);
 }
 
 async function getOptionalEmployeePhotoBase64(formData: FormData) {
@@ -103,6 +156,12 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const profilePhotoBase64 = await getOptionalEmployeePhotoBase64(formData);
     const educationDocument = await getOptionalEducationDocument(formData);
+    const workType = getString(formData, "workType");
+    const isTrialEmployee = workType === "Туршилтаар";
+    const educationRecords = parseEducationRecords(formData.get("educationRecords"));
+    const primaryEducationRecord = educationRecords[0];
+    const talentSkillRecords = parseTalentSkillRecords(formData.get("talentSkillRecords"));
+    const primaryTalentSkillRecord = talentSkillRecords[0];
     const input: HrEmployeeCreateInput = {
       lastName: getString(formData, "lastName"),
       firstName: getString(formData, "firstName"),
@@ -120,7 +179,7 @@ export async function POST(request: Request) {
       jobTitle: getString(formData, "jobTitle"),
       managerId: getNumber(formData, "managerId"),
       startDate: getString(formData, "startDate"),
-      workType: getString(formData, "workType"),
+      workType,
       isFieldEmployee: formData.get("isFieldEmployee") === "on",
       fieldRole: getString(formData, "fieldRole"),
       workLocation: getString(formData, "workLocation"),
@@ -141,14 +200,15 @@ export async function POST(request: Request) {
       taxNumber: getString(formData, "taxNumber"),
       socialInsuranceStartDate: getString(formData, "socialInsuranceStartDate"),
       annualLeaveNote: getString(formData, "annualLeaveNote"),
-      talent: getString(formData, "talent"),
-      skillLevel: getString(formData, "skillLevel"),
-      previousEmployment: getString(formData, "previousEmployment"),
-      additionalDuty: getString(formData, "additionalDuty"),
-      trialEndDate: getString(formData, "trialEndDate"),
-      educationLevel: getString(formData, "educationLevel"),
-      studyField: getString(formData, "studyField"),
-      studySchool: getString(formData, "studySchool"),
+      talent: primaryTalentSkillRecord?.name || getString(formData, "talent"),
+      skillLevel: primaryTalentSkillRecord?.level || getString(formData, "skillLevel"),
+      previousEmployment: primaryTalentSkillRecord?.type || getString(formData, "previousEmployment"),
+      additionalDuty: primaryTalentSkillRecord?.note || getString(formData, "additionalDuty"),
+      trialEndDate: isTrialEmployee ? getString(formData, "trialEndDate") : "",
+      educationLevel: primaryEducationRecord?.level || getString(formData, "educationLevel"),
+      educationRecords,
+      studyField: primaryEducationRecord?.field || getString(formData, "studyField"),
+      studySchool: primaryEducationRecord?.school || getString(formData, "studySchool"),
       note: getString(formData, "note"),
       profilePhotoBase64,
       ...educationDocument,
@@ -170,6 +230,18 @@ export async function POST(request: Request) {
     }
 
     const employee = await createEmployee(session, input);
+    if (employee?.id && talentSkillRecords.length) {
+      await Promise.all(
+        talentSkillRecords.map((record) =>
+          createEmployeeTalentSkill(session, employee.id, {
+            name: record.name || record.level || record.type || "Ур чадвар",
+            type: record.type,
+            level: record.level,
+            note: record.note,
+          }),
+        ),
+      );
+    }
     return Response.json({ employee }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "HR_ACCESS_DENIED") {
@@ -186,6 +258,12 @@ export async function POST(request: Request) {
     }
     if (error instanceof Error && error.message === "EDUCATION_DOCUMENT_TOO_LARGE") {
       return jsonError("Боловсролын баримт 10MB-аас бага байх ёстой.", 400);
+    }
+    if (error instanceof Error && error.message === "INVALID_EDUCATION_RECORDS") {
+      return jsonError("Боловсролын мөрүүдийн мэдээлэл буруу байна.", 400);
+    }
+    if (error instanceof Error && error.message === "INVALID_TALENT_SKILL_RECORDS") {
+      return jsonError("Ур чадварын мөрүүдийн мэдээлэл буруу байна.", 400);
     }
     console.error("POST /api/hr/employees failed:", error);
     if (isOdooAccessError(error)) {

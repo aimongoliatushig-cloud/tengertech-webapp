@@ -232,7 +232,10 @@
 .statCard {
   display: grid;
   gap: 8px;
-  min-height: 108px;
+  height: 124px;
+  min-height: 124px;
+  align-content: start;
+  overflow: hidden;
   padding: 12px;
   border-color: var(--stat-border, rgba(46, 125, 50, 0.1));
   background: var(--stat-bg, rgba(255, 255, 255, 0.78));
@@ -306,6 +309,24 @@
   line-height: 1.35;
 }
 
+.statCard p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.field .fieldHint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 18px;
+  color: var(--stat-note-color, #66766b);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
 .statCardTotal {
   --stat-bg: linear-gradient(135deg, rgba(232, 244, 235, 0.9), rgba(255, 255, 255, 0.82));
   --stat-border: rgba(46, 125, 50, 0.15);
@@ -360,13 +381,13 @@
   --stat-outline: rgba(11, 128, 92, 0.15);
 }
 
-.statCardRejected {
-  --stat-bg: linear-gradient(135deg, rgba(253, 237, 232, 0.92), rgba(255, 255, 255, 0.84));
-  --stat-border: rgba(184, 62, 36, 0.18);
-  --stat-icon-bg: rgba(250, 224, 216, 0.95);
-  --stat-accent: #b43f24;
-  --stat-hover-border: rgba(184, 62, 36, 0.34);
-  --stat-outline: rgba(184, 62, 36, 0.15);
+.statCardTrial {
+  --stat-bg: linear-gradient(135deg, rgba(235, 243, 255, 0.92), rgba(255, 255, 255, 0.84));
+  --stat-border: rgba(55, 112, 196, 0.18);
+  --stat-icon-bg: rgba(217, 232, 255, 0.95);
+  --stat-accent: #326cb5;
+  --stat-hover-border: rgba(55, 112, 196, 0.34);
+  --stat-outline: rgba(55, 112, 196, 0.15);
 }
 
 .actionPanel,
@@ -793,7 +814,11 @@
 
 .toolbar select,
 .field input,
-.field select,
+.field select {
+  height: 40px;
+  padding: 0 12px;
+}
+
 .field textarea {
   padding: 0 12px;
 }
@@ -804,8 +829,9 @@
 }
 
 .field input[type="file"] {
+  height: 40px;
   min-height: 40px;
-  padding: 8px 12px;
+  padding: 7px 12px;
   line-height: 1.35;
 }
 
@@ -1390,6 +1416,17 @@
   margin-bottom: 16px;
 }
 
+.detailPanel .eyebrow {
+  display: inline;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #1f7a35;
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
 .mobileInlineDetailHeader {
   display: none;
 }
@@ -1401,6 +1438,33 @@
   border: 1px solid rgba(46, 125, 50, 0.1);
   border-radius: 8px;
   background: rgba(247, 251, 247, 0.7);
+}
+
+.detailGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(46, 125, 50, 0.1);
+  background: rgba(232, 244, 235, 0.72);
+  color: #26342d;
+}
+
+.detailGroupHeader strong {
+  font-size: 0.8rem;
+}
+
+.detailGroupHeader span {
+  display: inline-grid;
+  min-width: 26px;
+  min-height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(46, 125, 50, 0.11);
+  color: #2e7d32;
+  font-size: 0.78rem;
+  font-weight: 850;
 }
 
 .detailRow {
@@ -1449,6 +1513,191 @@
   font-style: normal;
   font-weight: 800;
   text-align: right;
+}
+
+.detailRowWithActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 10px;
+  padding-right: 12px;
+  border-bottom: 1px solid rgba(46, 125, 50, 0.1);
+}
+
+.detailRowWithActions .detailRow {
+  border-bottom: 0;
+}
+
+.detailRowActions {
+  display: grid;
+  align-content: center;
+  justify-items: end;
+  gap: 8px;
+  padding: 10px 0;
+}
+
+.trialActionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.trialPromoteButton,
+.trialRejectButton,
+.trialActionGhostButton {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-decoration: none;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.trialPromoteButton {
+  border: 1px solid rgba(46, 125, 50, 0.2);
+  background: rgba(232, 244, 235, 0.92);
+  color: #1f7a35;
+}
+
+.trialPromoteButton:hover {
+  border-color: rgba(46, 125, 50, 0.34);
+  background: rgba(218, 238, 219, 0.95);
+}
+
+.trialPromoteButton:disabled,
+.trialActionGhostButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.trialRejectButton {
+  border: 1px solid rgba(184, 62, 36, 0.2);
+  background: rgba(253, 237, 232, 0.92);
+  color: #b43f24;
+}
+
+.trialRejectButton:hover {
+  border-color: rgba(184, 62, 36, 0.34);
+  background: rgba(250, 224, 216, 0.95);
+}
+
+.trialPromoteButton svg,
+.trialRejectButton svg {
+  width: 14px;
+  height: 14px;
+}
+
+.trialActionRow {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 12px 12px;
+  border-bottom: 1px solid rgba(46, 125, 50, 0.1);
+}
+
+.trialActionForm {
+  display: grid;
+  width: min(720px, 100%);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  border-radius: 8px;
+  background: rgba(248, 252, 249, 0.98);
+  box-shadow: 0 12px 32px rgba(22, 60, 32, 0.1);
+}
+
+.trialActionFormHeader,
+.trialActionFormWide,
+.trialActionError,
+.trialActionSuccess,
+.trialActionFormActions {
+  grid-column: 1 / -1;
+}
+
+.trialActionFormHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trialActionFormHeader strong {
+  color: #203029;
+  font-size: 0.88rem;
+}
+
+.trialActionGhostButton {
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  background: #fff;
+  color: #435247;
+}
+
+.trialActionForm label {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.trialActionForm label span {
+  color: #5d6d61;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.trialActionForm input,
+.trialActionForm textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  border-radius: 8px;
+  background: #fff;
+  color: #203029;
+  font: inherit;
+}
+
+.trialActionForm input {
+  height: 40px;
+  padding: 0 12px;
+}
+
+.trialActionForm textarea {
+  min-height: 70px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.trialActionError,
+.trialActionSuccess {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.trialActionInlineMessage {
+  padding: 0 14px 12px;
+  border-bottom: 1px solid rgba(46, 125, 50, 0.1);
+}
+
+.trialActionError {
+  color: #b43f24;
+}
+
+.trialActionSuccess {
+  color: #1f7a35;
+}
+
+.trialActionFormActions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .statusPill {
@@ -1623,6 +1872,17 @@
   background: rgba(248, 252, 249, 0.82);
 }
 
+.createMultiFieldRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  border-radius: 8px;
+  background: rgba(248, 252, 249, 0.82);
+}
+
 .familyMemberRowActions {
   display: flex;
   flex-wrap: wrap;
@@ -1762,6 +2022,7 @@
 
 .formGrid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  align-items: start;
 }
 
 .formGridTwo {
@@ -1787,10 +2048,12 @@
 
 .searchableSelectButton {
   display: grid;
+  align-content: center;
   width: 100%;
-  min-height: 46px;
+  height: 40px;
+  min-height: 40px;
   gap: 3px;
-  padding: 9px 38px 9px 12px;
+  padding: 0 38px 0 12px;
   border: 1px solid rgba(46, 125, 50, 0.14);
   border-radius: 8px;
   background:
@@ -2728,9 +2991,19 @@
 .hrProfileTabBar {
   display: flex;
   gap: 10px;
+  align-items: stretch;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
   padding: 12px 18px 0;
   border-bottom: 1px solid rgba(30, 70, 42, 0.11);
+}
+
+.hrProfileTabBar::-webkit-scrollbar:vertical {
+  display: none;
+  width: 0;
 }
 
 .hrProfileTab,
@@ -2760,7 +3033,7 @@
 .hrProfileTabActive::after {
   position: absolute;
   right: 0;
-  bottom: -1px;
+  bottom: 0;
   left: 0;
   height: 3px;
   border-radius: 999px 999px 0 0;
@@ -3740,7 +4013,8 @@
   .statCard {
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    min-height: 72px;
+    height: 82px;
+    min-height: 82px;
     gap: 9px;
     padding: 10px;
   }
@@ -3819,6 +4093,31 @@
     grid-template-columns: 1fr;
     gap: 8px;
     padding: 11px 12px;
+  }
+
+  .detailRowWithActions {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding-right: 0;
+  }
+
+  .detailRowActions {
+    justify-items: stretch;
+    padding: 0 12px 12px;
+  }
+
+  .trialActionButtons {
+    justify-content: stretch;
+  }
+
+  .trialPromoteButton,
+  .trialRejectButton {
+    flex: 1 1 130px;
+  }
+
+  .trialActionForm {
+    width: 100%;
+    grid-template-columns: 1fr;
   }
 
   .mobileInlineDetail .detailRow strong,

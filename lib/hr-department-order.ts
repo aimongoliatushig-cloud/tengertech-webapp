@@ -3,7 +3,7 @@ import { fixMojibakeText } from "@/lib/text-normalize";
 export const HR_DEPARTMENT_DISPLAY_ORDER = [
   "Удирдлага",
   "Дотоод хяналт",
-  "Санхүү",
+  "Санхүүгийн хэлтэс",
   "Захиргаа",
   "Авто бааз, хог тээврийн хэлтэс",
   "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
@@ -20,6 +20,49 @@ function normalizeHrDepartmentText(value: unknown) {
 
 function normalizeHrPersonKey(value: unknown) {
   return normalizeHrDepartmentText(value).replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function isHrLeadershipTitle(normalizedTitle: string) {
+  return (
+    normalizedTitle.includes("захирал") ||
+    normalizedTitle.includes("үйл ажиллагаа хариуцсан менежер") ||
+    normalizedTitle.includes("uil ajillagaa hariutssan manager") ||
+    normalizedTitle.includes("operations manager")
+  );
+}
+
+function isHrFinanceTitle(normalizedTitle: string) {
+  return (
+    normalizedTitle.includes("ерөнхий ня-бо") ||
+    normalizedTitle.includes("ерөнхий нягтлан") ||
+    normalizedTitle.includes("нягтлан") ||
+    normalizedTitle.includes("ня-бо") ||
+    normalizedTitle.includes("нябо") ||
+    normalizedTitle.includes("нярав") ||
+    normalizedTitle.includes("accountant") ||
+    normalizedTitle.includes("bookkeeper") ||
+    normalizedTitle.includes("cashier")
+  );
+}
+
+function isHrAdministrationTitle(normalizedTitle: string) {
+  return (
+    normalizedTitle.includes("хуулийн мэргэжилтэн") ||
+    normalizedTitle.includes("тайлан") ||
+    normalizedTitle.includes("төлөвлөгөө") ||
+    normalizedTitle.includes("хүний нөөц") ||
+    normalizedTitle.includes("олон нийт") ||
+    normalizedTitle.includes("харилцах ажилтан") ||
+    normalizedTitle.includes("мэдээлэл") ||
+    normalizedTitle.includes("технолог") ||
+    normalizedTitle.includes("technology") ||
+    normalizedTitle.includes("information") ||
+    normalizedTitle.includes("legal") ||
+    normalizedTitle.includes("human resource") ||
+    normalizedTitle.includes("public relation") ||
+    normalizedTitle.includes("planning") ||
+    normalizedTitle.includes("report")
+  );
 }
 
 export function getHrJobTitleDisplayName(employeeName: string, jobTitle?: string | false | null) {
@@ -61,32 +104,34 @@ export function getHrDepartmentDisplayName(departmentName: string, jobTitle?: st
   }
 
   if (
+    normalizedDepartment.includes("санхүү") ||
+    normalizedDepartment.includes("нягтлан") ||
+    normalizedDepartment.includes("ня-бо") ||
+    normalizedDepartment.includes("finance") ||
+    isHrFinanceTitle(normalizedTitle)
+  ) {
+    return "Санхүүгийн хэлтэс";
+  }
+
+  if (
     (normalizedTitle.includes("тээвэр") && normalizedTitle.includes("хяналт")) ||
     (normalizedTitle.includes("хог") && normalizedTitle.includes("хяналт"))
   ) {
     return "Авто бааз, хог тээврийн хэлтэс";
   }
 
-  if (
-    normalizedTitle.includes("захирал") ||
-    normalizedTitle.includes("үйл ажиллагаа хариуцсан менежер") ||
-    normalizedTitle.includes("uil ajillagaa hariutssan manager") ||
-    normalizedTitle.includes("operations manager") ||
-    normalizedDepartment.includes("удирдлага")
-  ) {
+  if (isHrLeadershipTitle(normalizedTitle)) {
     return "Удирдлага";
   }
-  if (normalizedDepartment.includes("захиргаа")) {
+
+  if (
+    normalizedDepartment.includes("захиргаа") ||
+    (normalizedDepartment.includes("удирдлага") && Boolean(normalizedTitle)) ||
+    isHrAdministrationTitle(normalizedTitle)
+  ) {
     return "Захиргаа";
   }
-  if (
-    normalizedDepartment.includes("санхүү") ||
-    normalizedDepartment.includes("нягтлан") ||
-    normalizedDepartment.includes("ня-бо") ||
-    normalizedDepartment.includes("finance")
-  ) {
-    return "Санхүү";
-  }
+
   if (
     normalizedDepartment.includes("хог") ||
     normalizedDepartment.includes("тээвэр") ||

@@ -12,7 +12,6 @@ import {
   Building2,
   CalendarDays,
   Check,
-  Clock3,
   FileText,
   FileCheck2,
   FilePlus2,
@@ -46,6 +45,88 @@ import styles from "./hr.module.css";
 
 const ALL = "__all__";
 const DEFAULT_EMPLOYEE_STATUS = "Идэвхтэй";
+type HrFamilyMember = NonNullable<HrEmployeeDirectoryItem["familyMembers"]>[number];
+const familyRelationLabels: Record<string, string> = {
+  spouse: "Эхнэр / нөхөр",
+  child: "Хүүхэд",
+  father: "Аав",
+  mother: "Ээж",
+  parent: "Эцэг / эх",
+  sibling: "Ах / эгч / дүү",
+  other: "Бусад",
+};
+
+function getFormDataString(formData: FormData, key: string) {
+  return String(formData.get(key) ?? "").trim();
+}
+
+function isTrialWorkType(value?: string | null) {
+  return String(value || "").trim() === "Туршилтаар";
+}
+
+function createFamilyMemberDraft(formData: FormData, id: number, employeeId: number): HrFamilyMember {
+  const relation = getFormDataString(formData, "relation") || "spouse";
+  const relatedEmployeeId = Number(getFormDataString(formData, "relatedEmployeeId")) || 0;
+
+  return {
+    id,
+    employeeId,
+    relatedEmployeeId,
+    relatedEmployeeName: getFormDataString(formData, "name"),
+    relation,
+    relationLabel: familyRelationLabels[relation] || familyRelationLabels.other,
+    birthYear: getFormDataString(formData, "birthYear"),
+    school: getFormDataString(formData, "school"),
+    phone: getFormDataString(formData, "phone"),
+    departmentName: "",
+    jobTitle: "",
+    note: "",
+  };
+}
+
+type EducationDraftRow = {
+  id: string;
+  level: string;
+  field: string;
+  school: string;
+};
+
+type DocumentDraftRow = {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  date: string;
+  attachmentIds: number[];
+};
+
+type TalentSkillDraftRow = {
+  id: string;
+  name: string;
+  type: string;
+  level: string;
+  note: string;
+};
+
+const educationLevelOptions = [
+  "Бүрэн бус дунд",
+  "Бүрэн дунд",
+  "Мэргэжлийн боловсрол",
+  "Тусгай дунд",
+  "Бакалавр",
+  "Магистр",
+  "Доктор",
+];
+
+const documentTypeOptions = [
+  "Хувийн бичиг баримт",
+  "Жолооны бичиг баримт",
+  "Даатгал",
+  "Эрүүл мэнд",
+  "Боловсрол",
+  "Гэрээ",
+  "Бусад",
+];
 
 function splitEmployeeName(fullName?: string) {
   const parts = String(fullName || "").trim().split(/\s+/).filter(Boolean);
@@ -55,6 +136,67 @@ function splitEmployeeName(fullName?: string) {
   return {
     lastName: parts[0],
     firstName: parts.slice(1).join(" "),
+  };
+}
+
+function educationRowsFromEmployee(employee: HrEmployeeDirectoryItem): EducationDraftRow[] {
+  const rows = employee.educationRecords?.length
+    ? employee.educationRecords
+    : employee.educationLevel || employee.studyField || employee.studySchool
+      ? [{
+          id: "education-1",
+          level: employee.educationLevel || "",
+          field: employee.studyField || "",
+          school: employee.studySchool || "",
+        }]
+      : [];
+
+  return rows.map((row, index) => ({
+    id: row.id || `education-${index + 1}`,
+    level: row.level || "",
+    field: row.field || "",
+    school: row.school || "",
+  }));
+}
+
+function emptyEducationRow(): EducationDraftRow {
+  return {
+    id: `education-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    level: "",
+    field: "",
+    school: "",
+  };
+}
+
+function documentRowsFromEmployee(employee: HrEmployeeDirectoryItem): DocumentDraftRow[] {
+  return (employee.documentRecords || []).map((row, index) => ({
+    id: row.id || `document-${index + 1}`,
+    name: row.name || "",
+    type: row.type || "",
+    status: row.status || "Бүртгэлтэй",
+    date: row.date || "",
+    attachmentIds: Array.isArray(row.attachmentIds) ? row.attachmentIds : [],
+  }));
+}
+
+function emptyDocumentRow(): DocumentDraftRow {
+  return {
+    id: `document-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name: "",
+    type: "",
+    status: "Бүртгэлтэй",
+    date: "",
+    attachmentIds: [],
+  };
+}
+
+function emptyTalentSkillRow(): TalentSkillDraftRow {
+  return {
+    id: `talent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name: "",
+    type: "",
+    level: "",
+    note: "",
   };
 }
 
@@ -380,12 +522,85 @@ export function EmployeeCreateForm({
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
+  const [createWorkType, setCreateWorkType] = useState("Үндсэн");
+  const [createEducationRows, setCreateEducationRows] = useState<EducationDraftRow[]>(() => [emptyEducationRow()]);
+  const [createTalentSkillRows, setCreateTalentSkillRows] = useState<TalentSkillDraftRow[]>(() => [emptyTalentSkillRow()]);
+  const showCreateTrialDates = createWorkType === "Туршилтаар";
+
+  function normalizedCreateEducationRows(rows = createEducationRows) {
+    return rows
+      .map((row, index) => ({
+        id: row.id || `education-${index + 1}`,
+        level: row.level.trim(),
+        field: row.field.trim(),
+        school: row.school.trim(),
+      }))
+      .filter((row) => row.level || row.field || row.school);
+  }
+
+  function updateCreateEducationRow(id: string, field: keyof Omit<EducationDraftRow, "id">, value: string) {
+    setCreateEducationRows((rows) => rows.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
+  }
+
+  function addCreateEducationRow() {
+    setCreateEducationRows((rows) => [...rows, emptyEducationRow()]);
+  }
+
+  function removeCreateEducationRow(id: string) {
+    setCreateEducationRows((rows) => {
+      const nextRows = rows.filter((row) => row.id !== id);
+      return nextRows.length ? nextRows : [emptyEducationRow()];
+    });
+  }
+
+  function normalizedCreateTalentSkillRows(rows = createTalentSkillRows) {
+    return rows
+      .map((row, index) => ({
+        id: row.id || `talent-${index + 1}`,
+        name: row.name.trim(),
+        type: row.type.trim(),
+        level: row.level.trim(),
+        note: row.note.trim(),
+      }))
+      .filter((row) => row.name || row.type || row.level || row.note);
+  }
+
+  function updateCreateTalentSkillRow(id: string, field: keyof Omit<TalentSkillDraftRow, "id">, value: string) {
+    setCreateTalentSkillRows((rows) => rows.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
+  }
+
+  function addCreateTalentSkillRow() {
+    setCreateTalentSkillRows((rows) => [...rows, emptyTalentSkillRow()]);
+  }
+
+  function removeCreateTalentSkillRow(id: string) {
+    setCreateTalentSkillRows((rows) => {
+      const nextRows = rows.filter((row) => row.id !== id);
+      return nextRows.length ? nextRows : [emptyTalentSkillRow()];
+    });
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPending(true);
     setMessage("");
     const formData = new FormData(event.currentTarget);
+    const educationRecords = normalizedCreateEducationRows();
+    const primaryEducation = educationRecords[0];
+    formData.set("educationRecords", JSON.stringify(educationRecords));
+    formData.set("educationLevel", primaryEducation?.level || "");
+    formData.set("studyField", primaryEducation?.field || "");
+    formData.set("studySchool", primaryEducation?.school || "");
+    const talentSkillRecords = normalizedCreateTalentSkillRows();
+    const primaryTalentSkill = talentSkillRecords[0];
+    formData.set("talentSkillRecords", JSON.stringify(talentSkillRecords));
+    formData.set("talent", primaryTalentSkill?.name || "");
+    formData.set("skillLevel", primaryTalentSkill?.level || "");
+    formData.set("previousEmployment", primaryTalentSkill?.type || "");
+    formData.set("additionalDuty", primaryTalentSkill?.note || "");
+    if (!showCreateTrialDates) {
+      formData.delete("trialEndDate");
+    }
 
     try {
       const response = await fetch("/api/hr/employees", {
@@ -404,6 +619,11 @@ export function EmployeeCreateForm({
       setPending(false);
     }
   }
+
+  const savedCreateEducationRows = normalizedCreateEducationRows();
+  const primaryCreateEducation = savedCreateEducationRows[0];
+  const savedCreateTalentSkillRows = normalizedCreateTalentSkillRows();
+  const primaryCreateTalentSkill = savedCreateTalentSkillRows[0];
 
   return (
     <form className={styles.formPanel} onSubmit={submit} noValidate>
@@ -439,16 +659,21 @@ export function EmployeeCreateForm({
         <Select name="departmentId" label="Хэлтэс / алба" options={departments} />
         <Select name="jobId" label="Албан тушаал" options={jobs} />
         <Select name="managerId" label="Удирдлага" options={managers} />
-        <Field name="startDate" label="Ажилд орсон огноо" type="date" />
         <label className={styles.field}>
           <span>Ажиллах төрөл</span>
-          <select name="workType" defaultValue="Үндсэн">
+          <select name="workType" value={createWorkType} onChange={(event) => setCreateWorkType(event.currentTarget.value)}>
             <option>Үндсэн</option>
             <option>Туршилтаар</option>
             <option>Гэрээт</option>
             <option>Улирлын</option>
           </select>
         </label>
+        <Field name="startDate" label="Ажилд орсон огноо" type="date" />
+        {showCreateTrialDates ? (
+          <>
+            <Field name="trialEndDate" label="Туршилт дуусах огноо" type="date" />
+          </>
+        ) : null}
         <Field name="emergencyContact" label="Яаралтай холбоо барих хүн" />
         <Field name="emergencyPhone" label="Яаралтай холбоо барих утас" />
         <Field name="homeAddress" label="Гэрийн хаяг" />
@@ -470,22 +695,53 @@ export function EmployeeCreateForm({
           <h2>Боловсрол</h2>
           <p>Боловсролын түвшин, дипломын чиглэл болон сургууль нь заавал биш.</p>
         </div>
+        <input type="hidden" name="educationRecords" value={JSON.stringify(savedCreateEducationRows)} readOnly />
+        <input type="hidden" name="educationLevel" value={primaryCreateEducation?.level || ""} readOnly />
+        <input type="hidden" name="studyField" value={primaryCreateEducation?.field || ""} readOnly />
+        <input type="hidden" name="studySchool" value={primaryCreateEducation?.school || ""} readOnly />
+        <div className={styles.familyMemberEditList}>
+          {createEducationRows.map((education) => (
+            <div key={education.id} className={styles.familyMemberEditRow}>
+              <label className={styles.field}>
+                <span>Боловсролын түвшин</span>
+                <select value={education.level} onChange={(event) => updateCreateEducationRow(education.id, "level", event.currentTarget.value)}>
+                  <option value="">Сонгох</option>
+                  {educationLevelOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.field}>
+                <span>Диплом / мэргэжил</span>
+                <input value={education.field} onChange={(event) => updateCreateEducationRow(education.id, "field", event.currentTarget.value)} />
+              </label>
+              <label className={styles.field}>
+                <span>Сургууль</span>
+                <input value={education.school} onChange={(event) => updateCreateEducationRow(education.id, "school", event.currentTarget.value)} />
+              </label>
+              <div className={styles.familyMemberRowActions}>
+                <button
+                  type="button"
+                  className={styles.dangerButton}
+                  onClick={() => removeCreateEducationRow(education.id)}
+                  disabled={createEducationRows.length === 1 && !normalizedCreateEducationRows([education]).length}
+                >
+                  <Trash2 aria-hidden />
+                  <span>Устгах</span>
+                </button>
+              </div>
+            </div>
+          ))}
+          <div className={styles.familyMemberRowActions}>
+            <button type="button" className={styles.secondaryButton} onClick={addCreateEducationRow}>
+              <Plus aria-hidden />
+              <span>Мөр нэмэх</span>
+            </button>
+          </div>
+        </div>
         <div className={styles.formGrid}>
-          <label className={styles.field}>
-            <span>Боловсролын түвшин</span>
-            <select name="educationLevel" defaultValue="">
-              <option value="">Сонгох</option>
-              <option value="Бүрэн бус дунд">Бүрэн бус дунд</option>
-              <option value="Бүрэн дунд">Бүрэн дунд</option>
-              <option value="Мэргэжлийн боловсрол">Мэргэжлийн боловсрол</option>
-              <option value="Тусгай дунд">Тусгай дунд</option>
-              <option value="Бакалавр">Бакалавр</option>
-              <option value="Магистр">Магистр</option>
-              <option value="Доктор">Доктор</option>
-            </select>
-          </label>
-          <Field name="studyField" label="Диплом / мэргэжил" />
-          <Field name="studySchool" label="Сургууль" />
           <label className={styles.field}>
             <span>Боловсролын зураг / файл</span>
             <input name="educationDocument" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" />
@@ -511,14 +767,51 @@ export function EmployeeCreateForm({
       <section className={styles.formSection}>
         <div className={styles.formSectionHeader}>
           <h2>Ур чадвар, ажлын түүх</h2>
-          <p>Авьяас, ур чадвар, өмнөх ажил, туршилтын хугацааны мэдээлэл. Заавал бөглөхгүй.</p>
+          <p>Авьяас, ур чадвар болон өмнөх ажлын мэдээлэл. Заавал бөглөхгүй.</p>
         </div>
-        <div className={styles.formGrid}>
-          <Field name="talent" label="Авьяас / спорт / урлаг" />
-          <Field name="skillLevel" label="Ур чадвар ба зэрэглэл" />
-          <Field name="previousEmployment" label="Ажиллаж байсан байгууллагууд" />
-          <Field name="additionalDuty" label="Хавсран ажиллаж буй / нэмэлт ажил" />
-          <Field name="trialEndDate" label="Туршилтын хугацаа дуусах" type="date" />
+        <input type="hidden" name="talentSkillRecords" value={JSON.stringify(savedCreateTalentSkillRows)} readOnly />
+        <input type="hidden" name="talent" value={primaryCreateTalentSkill?.name || ""} readOnly />
+        <input type="hidden" name="skillLevel" value={primaryCreateTalentSkill?.level || ""} readOnly />
+        <input type="hidden" name="previousEmployment" value={primaryCreateTalentSkill?.type || ""} readOnly />
+        <input type="hidden" name="additionalDuty" value={primaryCreateTalentSkill?.note || ""} readOnly />
+        <div className={styles.familyMemberEditList}>
+          {createTalentSkillRows.map((skill) => (
+            <div key={skill.id} className={styles.createMultiFieldRow}>
+              <label className={styles.field}>
+                <span>Авьяас / спорт / урлаг</span>
+                <input value={skill.name} onChange={(event) => updateCreateTalentSkillRow(skill.id, "name", event.currentTarget.value)} />
+              </label>
+              <label className={styles.field}>
+                <span>Ур чадвар ба зэрэглэл</span>
+                <input value={skill.level} onChange={(event) => updateCreateTalentSkillRow(skill.id, "level", event.currentTarget.value)} />
+              </label>
+              <label className={styles.field}>
+                <span>Ажиллаж байсан байгууллагууд</span>
+                <input value={skill.type} onChange={(event) => updateCreateTalentSkillRow(skill.id, "type", event.currentTarget.value)} />
+              </label>
+              <label className={styles.field}>
+                <span>Хавсран ажиллаж буй / нэмэлт ажил</span>
+                <input value={skill.note} onChange={(event) => updateCreateTalentSkillRow(skill.id, "note", event.currentTarget.value)} />
+              </label>
+              <div className={styles.familyMemberRowActions}>
+                <button
+                  type="button"
+                  className={styles.dangerButton}
+                  onClick={() => removeCreateTalentSkillRow(skill.id)}
+                  disabled={createTalentSkillRows.length === 1 && !normalizedCreateTalentSkillRows([skill]).length}
+                >
+                  <Trash2 aria-hidden />
+                  <span>Устгах</span>
+                </button>
+              </div>
+            </div>
+          ))}
+          <div className={styles.familyMemberRowActions}>
+            <button type="button" className={styles.secondaryButton} onClick={addCreateTalentSkillRow}>
+              <Plus aria-hidden />
+              <span>Мөр нэмэх</span>
+            </button>
+          </div>
         </div>
       </section>
 
@@ -849,29 +1142,6 @@ function compactValue(...values: Array<string | number | null | undefined>) {
     .join(", ");
 }
 
-function calculateWorkedDuration(startDate?: string) {
-  if (!startDate || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
-    return "";
-  }
-  const start = new Date(`${startDate}T00:00:00`);
-  const now = new Date();
-  if (Number.isNaN(start.getTime()) || start > now) {
-    return "";
-  }
-  let years = now.getFullYear() - start.getFullYear();
-  let months = now.getMonth() - start.getMonth();
-  if (now.getDate() < start.getDate()) {
-    months -= 1;
-  }
-  if (months < 0) {
-    years -= 1;
-    months += 12;
-  }
-  return [years > 0 ? `${years} жил` : "", months > 0 ? `${months} сар` : ""]
-    .filter(Boolean)
-    .join(" ") || "1 сараас бага";
-}
-
 type DetailPair = {
   label: string;
   value?: string;
@@ -930,8 +1200,6 @@ function getMissingWorkFields(employee: HrEmployeeDirectoryItem) {
     { label: "Албан тушаал", value: employee.jobTitle },
     { label: "Шууд удирдлага", value: employee.managerName },
     { label: "Ажилд орсон огноо", value: employee.startDate },
-    { label: "Гэрээ дуусах огноо", value: employee.contractEndDate },
-    { label: "Зэрэг / дэв", value: employee.gradeRank },
   ];
 
   return importantFields.filter((field) => !hasUsefulValue(field.value));
@@ -1090,6 +1358,10 @@ export function EmployeeDetailTabs({
   const [pending, setPending] = useState(false);
   const [familyMemberPending, setFamilyMemberPending] = useState(false);
   const [familyMemberActionPending, setFamilyMemberActionPending] = useState("");
+  const [familyMembers, setFamilyMembers] = useState<HrFamilyMember[]>(() => employee.familyMembers || []);
+  const [workEditType, setWorkEditType] = useState(employee.workType || "");
+  const [educationRows, setEducationRows] = useState<EducationDraftRow[]>(() => educationRowsFromEmployee(employee));
+  const [documentDraftRows, setDocumentDraftRows] = useState<DocumentDraftRow[]>(() => documentRowsFromEmployee(employee));
   const [recordAddPending, setRecordAddPending] = useState(false);
   const [addingEmergencyContact, setAddingEmergencyContact] = useState(false);
   const [addingReward, setAddingReward] = useState(false);
@@ -1100,6 +1372,7 @@ export function EmployeeDetailTabs({
   const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState("");
   const [removeProfilePhoto, setRemoveProfilePhoto] = useState(false);
   const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
+  const familyMemberDraftIdRef = useRef(-1);
   const initials = employee.name
     .split(/\s+/)
     .filter(Boolean)
@@ -1133,6 +1406,22 @@ export function EmployeeDetailTabs({
       }
     };
   }, [profilePhotoPreviewUrl]);
+
+  useEffect(() => {
+    setFamilyMembers(employee.familyMembers || []);
+  }, [employee.familyMembers]);
+
+  useEffect(() => {
+    setWorkEditType(employee.workType || "");
+  }, [employee.workType]);
+
+  useEffect(() => {
+    setEducationRows(educationRowsFromEmployee(employee));
+  }, [employee]);
+
+  useEffect(() => {
+    setDocumentDraftRows(documentRowsFromEmployee(employee));
+  }, [employee]);
 
   function selectTab(nextTab: string) {
     setTab(nextTab);
@@ -1197,6 +1486,9 @@ export function EmployeeDetailTabs({
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
+    if (formData.has("workType") && !isTrialWorkType(getFormDataString(formData, "workType"))) {
+      formData.set("trialEndDate", "");
+    }
     setPending(true);
     setMessage("");
     setMessageIsError(false);
@@ -1223,26 +1515,99 @@ export function EmployeeDetailTabs({
     }
   }
 
+  function normalizedEducationRows(rows = educationRows) {
+    return rows
+      .map((row, index) => ({
+        id: row.id || `education-${index + 1}`,
+        level: row.level.trim(),
+        field: row.field.trim(),
+        school: row.school.trim(),
+      }))
+      .filter((row) => row.level || row.field || row.school);
+  }
+
+  function updateEducationRow(rowId: string, key: keyof Omit<EducationDraftRow, "id">, value: string) {
+    setEducationRows((rows) =>
+      rows.map((row) => (row.id === rowId ? { ...row, [key]: value } : row)),
+    );
+  }
+
+  function addEducationRow() {
+    setEducationRows((rows) => [...rows, emptyEducationRow()]);
+  }
+
+  function removeEducationRow(rowId: string) {
+    setEducationRows((rows) => rows.filter((row) => row.id !== rowId));
+  }
+
+  function normalizedDocumentRows(rows = documentDraftRows) {
+    return rows
+      .map((row, index) => ({
+        id: row.id || `document-${index + 1}`,
+        name: row.name.trim(),
+        type: row.type.trim(),
+        status: "Бүртгэлтэй",
+        date: row.date.trim(),
+        attachmentIds: Array.isArray(row.attachmentIds) ? row.attachmentIds : [],
+      }))
+      .filter((row) => row.name || row.type || row.date || row.attachmentIds.length);
+  }
+
+  function updateDocumentRow(rowId: string, key: keyof Omit<DocumentDraftRow, "id" | "attachmentIds">, value: string) {
+    setDocumentDraftRows((rows) =>
+      rows.map((row) => (row.id === rowId ? { ...row, [key]: value } : row)),
+    );
+  }
+
+  function handleDocumentFileChange(rowId: string, fileName?: string) {
+    if (!fileName) return;
+    setDocumentDraftRows((rows) =>
+      rows.map((row) => (row.id === rowId && !row.name.trim() ? { ...row, name: fileName } : row)),
+    );
+  }
+
+  function addDocumentRow() {
+    setDocumentDraftRows((rows) => [...rows, emptyDocumentRow()]);
+  }
+
+  function removeDocumentRow(rowId: string) {
+    setDocumentDraftRows((rows) => rows.filter((row) => row.id !== rowId));
+  }
+
   async function submitFamilyMemberAdd(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const draftId = familyMemberDraftIdRef.current;
+    familyMemberDraftIdRef.current -= 1;
+    const draftFamilyMember = createFamilyMemberDraft(formData, draftId, employee.id);
     setFamilyMemberPending(true);
     setMessage("");
     setMessageIsError(false);
+    setFamilyMembers((members) => [...members, draftFamilyMember]);
 
     try {
       const response = await fetch(`/api/hr/employees/${employee.id}/family-members`, {
         method: "POST",
         body: formData,
       });
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      const payload = (await response.json().catch(() => ({}))) as { error?: string; familyMember?: HrFamilyMember };
       if (!response.ok) {
         throw new Error(payload.error || "Гэр бүлийн гишүүн хадгалахад алдаа гарлаа.");
       }
+      const savedFamilyMember = payload.familyMember;
+      if (savedFamilyMember) {
+        setFamilyMembers((members) => {
+          const withoutExistingSaved = members.filter((member) => member.id !== savedFamilyMember.id);
+          return withoutExistingSaved.some((member) => member.id === draftId)
+            ? withoutExistingSaved.map((member) => (member.id === draftId ? savedFamilyMember : member))
+            : [...withoutExistingSaved, savedFamilyMember];
+        });
+      }
+      form.reset();
       setMessage("Гэр бүлийн гишүүн нэмэгдлээ.");
-      setAddingFamilyMember(false);
-      router.refresh();
     } catch (error) {
+      setFamilyMembers((members) => members.filter((member) => member.id !== draftId));
       setMessage(error instanceof Error ? error.message : "Гэр бүлийн гишүүн хадгалахад алдаа гарлаа.");
       setMessageIsError(true);
     } finally {
@@ -1263,12 +1628,17 @@ export function EmployeeDetailTabs({
         method: "PATCH",
         body: formData,
       });
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      const payload = (await response.json().catch(() => ({}))) as { error?: string; familyMember?: HrFamilyMember };
       if (!response.ok) {
         throw new Error(payload.error || "Гэр бүлийн гишүүний мэдээлэл хадгалахад алдаа гарлаа.");
       }
+      const savedFamilyMember = payload.familyMember;
+      if (savedFamilyMember) {
+        setFamilyMembers((members) =>
+          members.map((member) => (member.id === savedFamilyMember.id ? savedFamilyMember : member)),
+        );
+      }
       setMessage("Гэр бүлийн гишүүний мэдээлэл хадгалагдлаа.");
-      router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Гэр бүлийн гишүүний мэдээлэл хадгалахад алдаа гарлаа.");
       setMessageIsError(true);
@@ -1294,8 +1664,8 @@ export function EmployeeDetailTabs({
       if (!response.ok) {
         throw new Error(payload.error || "Гэр бүлийн гишүүний бүртгэл устгахад алдаа гарлаа.");
       }
+      setFamilyMembers((members) => members.filter((member) => member.id !== familyMemberId));
       setMessage("Гэр бүлийн гишүүний бүртгэл устгагдлаа.");
-      router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Гэр бүлийн гишүүний бүртгэл устгахад алдаа гарлаа.");
       setMessageIsError(true);
@@ -1349,6 +1719,7 @@ export function EmployeeDetailTabs({
   ];
 
   const missingWorkFields = getMissingWorkFields(employee);
+  const showTrialEndDate = isTrialWorkType(employee.workType);
 
   const workInfoCards: WorkInfoCardData[] = [
     {
@@ -1359,27 +1730,14 @@ export function EmployeeDetailTabs({
         { label: "Албан тушаал", value: employee.jobTitle },
         { label: "Шууд удирдлага", value: employee.managerName },
         { label: "Ажил эрхлэлтийн төлөв", value: employee.statusLabel },
-        { label: "Зэрэг / дэв", value: employee.gradeRank },
       ],
     },
     {
-      title: "2. Гэрээ ба хугацаа",
-      help: "Гэрээ, эхлэх/дуусах хугацаа, ажилласан хугацааны хяналт.",
+      title: "2. Ажлын хугацаа",
+      help: showTrialEndDate ? "Ажилд орсон болон туршилтын хугацааны мэдээлэл." : "Ажилд орсон огнооны мэдээлэл.",
       rows: [
         { label: "Ажилд орсон огноо", value: employee.startDate },
-        { label: "Гэрээ дуусах огноо", value: employee.contractEndDate },
-        { label: "Туршилтын хугацаа дуусах", value: employee.trialEndDate },
-        { label: "Ажилласан хугацаа", value: calculateWorkedDuration(employee.startDate) },
-      ],
-    },
-    {
-      title: "3. Байршил ба зэрэглэл",
-      help: "Байршил, зэрэглэл болон нэмэлт ажлын ангилал.",
-      rows: [
-        { label: "Ажлын байршил", value: employee.workLocation },
-        { label: "Ажлын загвар / дэв", value: employee.gradeRank },
-        { label: "Ажил эрхлэлтийн төрөл", value: employee.workType },
-        { label: "Нэмэлт тэмдэглэл", value: employee.workAddress },
+        ...(showTrialEndDate ? [{ label: "Туршилтын хугацаа дуусах", value: employee.trialEndDate }] : []),
       ],
     },
   ];
@@ -1406,7 +1764,7 @@ export function EmployeeDetailTabs({
   ];
 
   const familyRows = compactRows(
-    (employee.familyMembers || []).map((member) => ({
+    familyMembers.map((member) => ({
       type: member.relationLabel,
       name: member.relatedEmployeeName,
       birthYear: member.birthYear,
@@ -1465,14 +1823,6 @@ export function EmployeeDetailTabs({
           note: employee.studySchool || "",
       }
       : null,
-    !(employee.talentSkills || []).length && employee.gradeRank
-      ? {
-          name: "Зэрэг / дэв",
-          type: "Ажлын ур чадвар",
-          level: employee.gradeRank,
-          note: employee.jobTitle || "",
-      }
-      : null,
     !(employee.talentSkills || []).length && (employee.biography || employee.notes)
       ? {
           name: "Нэмэлт тэмдэглэл",
@@ -1483,32 +1833,17 @@ export function EmployeeDetailTabs({
       : null,
   ]);
 
-  const documentRows: TableRow[] = [
-    {
-      name: "Иргэний үнэмлэх / регистр",
-      type: "Хувийн бичиг баримт",
-      status: employee.registerNumber ? "Бүртгэлтэй" : "Дутуу",
-      date: "",
-    },
-    {
-      name: "Хөдөлмөрийн гэрээ",
-      type: "Гэрээ",
-      status: employee.contractName || employee.contractEndDate ? "Бүртгэлтэй" : "Дутуу",
-      date: employee.contractEndDate || "",
-    },
-    {
-      name: "Диплом / боловсрол",
-      type: "Боловсрол",
-      status: employee.educationLevel || employee.educationAttachmentIds?.length ? "Бүртгэлтэй" : "Дутуу",
-      date: "",
-    },
-    {
-      name: "Эрүүл мэндийн бичиг",
-      type: "Эрүүл мэнд",
-      status: employee.missingDocumentCount ? `${employee.missingDocumentCount} дутуу` : "Шалгах",
-      date: "",
-    },
-  ];
+  const educationDisplayRows = compactRows(
+    educationRows.map((education) => ({
+      level: education.level,
+      field: education.field,
+      school: education.school,
+    })),
+  );
+
+  const documentRows = documentDraftRows.filter(
+    (document) => document.name || document.type || document.date || document.attachmentIds.length,
+  );
 
   const historyRows = compactRows([
     employee.startDate
@@ -1516,13 +1851,6 @@ export function EmployeeDetailTabs({
           date: employee.startDate,
           title: "Ажилд орсон",
           note: compactValue(employee.jobTitle, employee.departmentName),
-        }
-      : null,
-    employee.contractEndDate
-      ? {
-          date: employee.contractEndDate,
-          title: "Гэрээ дуусах огноо",
-          note: employee.contractName || "Гэрээ",
         }
       : null,
     employee.departureDate
@@ -1536,7 +1864,6 @@ export function EmployeeDetailTabs({
 
   const summaryDetails = [
     { icon: CalendarDays, label: "Ажилд орсон огноо", value: employee.startDate },
-    { icon: Clock3, label: "Ажилласан хугацаа", value: calculateWorkedDuration(employee.startDate) },
     { icon: CalendarDays, label: "Үлдсэн амралт", value: "Бүртгэлгүй" },
     { icon: BriefcaseBusiness, label: "Төлөв", value: employee.statusLabel },
   ];
@@ -1585,6 +1912,39 @@ export function EmployeeDetailTabs({
                 {columns.map((column) => (
                   <td key={column.key}>{row[column.key] || "Бүртгээгүй"}</td>
                 ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  function renderDocumentRecordsTable(rows: DocumentDraftRow[], emptyText: string) {
+    if (!rows.length) {
+      return <div className={styles.hrProfileEmpty}>{emptyText}</div>;
+    }
+
+    return (
+      <div className={styles.hrProfileTableWrap}>
+        <table className={styles.hrProfileTable}>
+          <thead>
+            <tr>
+              <th>Баримт бичиг</th>
+              <th>Төрөл</th>
+              <th>Огноо</th>
+              <th>Файл</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => (
+              <tr key={`${row.id}-${index}`}>
+                <td>{row.name || "Бүртгээгүй"}</td>
+                <td>{row.type || "Бүртгээгүй"}</td>
+                <td>{row.date || "Бүртгээгүй"}</td>
+                <td>
+                  <AttachmentLinks hasAttachment={Boolean(row.attachmentIds.length)} attachmentIds={row.attachmentIds} />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -1739,11 +2099,15 @@ export function EmployeeDetailTabs({
         <div className={styles.hrProfileTwoColumn}>
           {renderPanel(
             "Боловсролын мэдээлэл",
-            renderInfoList([
-              { label: "Боловсролын түвшин", value: employee.educationLevel },
-              { label: "Диплом / мэргэжил", value: employee.studyField },
-              { label: "Сургууль", value: employee.studySchool },
-            ]),
+            renderTable(
+              [
+                { key: "level", label: "Боловсролын түвшин" },
+                { key: "field", label: "Диплом / мэргэжил" },
+                { key: "school", label: "Сургууль" },
+              ],
+              educationDisplayRows,
+              "Боловсролын мэдээлэл бүртгэгдээгүй.",
+            ),
           )}
           {renderPanel(
             "Боловсролын зураг / файл",
@@ -1907,17 +2271,20 @@ export function EmployeeDetailTabs({
         <div className={styles.hrProfileFullWidth}>
           {renderPanel(
             "Баримт бичиг",
-            renderTable(
-              [
-                { key: "name", label: "Баримт бичиг" },
-                { key: "type", label: "Төрөл" },
-                { key: "status", label: "Төлөв" },
-                { key: "date", label: "Огноо" },
-              ],
-              documentRows,
-              "Баримт бичиг бүртгэгдээгүй.",
-            ),
-            mode === "hr" ? renderAddLink("Баримт бичиг нэмэх", `/hr/orders?${employeeQuery}`) : null,
+            renderDocumentRecordsTable(documentRows, "Баримт бичиг бүртгэгдээгүй."),
+            canEdit ? (
+              <button
+                type="button"
+                className={styles.hrProfileAddLink}
+                onClick={() => {
+                  setEditing(true);
+                  setDocumentDraftRows((rows) => (rows.length ? rows : [emptyDocumentRow()]));
+                }}
+              >
+                <Plus aria-hidden />
+                <span>Баримт бичиг нэмэх</span>
+              </button>
+            ) : null,
           )}
         </div>
       );
@@ -2068,21 +2435,18 @@ export function EmployeeDetailTabs({
         <div className={styles.editInfoBanner}>
           <strong>Ажлын мэдээлэл засаж байна</strong>
           <span>
-            Ажилд орсон огноо, гэрээний хугацаа, туршилтын хугацаа, зэрэг / дэв болон ажил эрхлэлтийн төрлийг энд шинэчилнэ. Хэлтэс, албан тушаал,
+            Ажилд орсон огноо, туршилтын хугацаа болон ажил эрхлэлтийн төрлийг энд шинэчилнэ. Хэлтэс, албан тушаал,
             шууд удирдлага өөрчлөх бол ажлын шилжилтийн бүртгэлээр оруулна.
           </span>
         </div>
         <div className={styles.hrProfileTwoColumn}>
           {renderPanel(
-            "Гэрээ ба хугацаа",
+            "Ажлын хугацаа",
             <div className={styles.editCardFields}>
               <Field name="startDate" label="Ажилд орсон огноо" type="date" defaultValue={employee.startDate} />
-              <Field name="contractEndDate" label="Гэрээ дуусах огноо" type="date" defaultValue={employee.contractEndDate} />
-              <Field name="trialEndDate" label="Туршилтын хугацаа дуусах" type="date" defaultValue={employee.trialEndDate} />
-              <Field name="gradeRank" label="Зэрэг / дэв" defaultValue={employee.gradeRank} />
               <label className={styles.field}>
                 <span>Ажил эрхлэлтийн төрөл</span>
-                <select name="workType" defaultValue={employee.workType || ""}>
+                <select name="workType" value={workEditType} onChange={(event) => setWorkEditType(event.currentTarget.value)}>
                   <option value="">Сонгох</option>
                   <option value="Үндсэн">Үндсэн</option>
                   <option value="Туршилтаар">Туршилтаар</option>
@@ -2091,6 +2455,9 @@ export function EmployeeDetailTabs({
                   <option value="Түр">Түр</option>
                 </select>
               </label>
+              {isTrialWorkType(workEditType) ? (
+                <Field name="trialEndDate" label="Туршилтын хугацаа дуусах" type="date" defaultValue={employee.trialEndDate} />
+              ) : null}
             </div>,
           )}
           {renderPanel(
@@ -2110,7 +2477,13 @@ export function EmployeeDetailTabs({
             </div>,
           )}
         </div>
-        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+        <ProfileEditButtons
+          pending={pending}
+          onCancel={() => {
+            setWorkEditType(employee.workType || "");
+            setEditing(false);
+          }}
+        />
       </form>
     );
   }
@@ -2151,13 +2524,18 @@ export function EmployeeDetailTabs({
           <Field name="school" label="Сургууль" />
           <Field name="phone" label="Утас" />
         </div>
-        <ProfileEditButtons pending={familyMemberPending} onCancel={closeFamilyEdit} />
+        <ProfileEditButtons
+          pending={familyMemberPending}
+          onCancel={closeFamilyEdit}
+          submitLabel="Нэмэх"
+          pendingLabel="Нэмж байна..."
+        />
       </form>
     );
   }
 
   function renderFamilyMemberEditList() {
-    const members = employee.familyMembers || [];
+    const members = familyMembers;
     if (!members.length) {
       return <div className={styles.hrProfileEmpty}>Одоогоор гэр бүлийн гишүүн нэмэгдээгүй.</div>;
     }
@@ -2165,9 +2543,10 @@ export function EmployeeDetailTabs({
     return (
       <div className={styles.familyMemberEditList}>
         {members.map((member) => {
+          const isTemporary = member.id < 0;
           const updatePending = familyMemberActionPending === `update-${member.id}`;
           const deletePending = familyMemberActionPending === `delete-${member.id}`;
-          const anyPending = Boolean(familyMemberActionPending);
+          const anyPending = Boolean(familyMemberActionPending) || familyMemberPending;
           return (
             <form
               key={member.id}
@@ -2175,21 +2554,24 @@ export function EmployeeDetailTabs({
               onSubmit={(event) => submitFamilyMemberUpdate(event, member.id)}
               noValidate
             >
-              {renderFamilyRelationField(member.relation, updatePending || deletePending)}
+              {renderFamilyRelationField(member.relation, updatePending || deletePending || isTemporary)}
               <Field name="name" label="Нэр" defaultValue={member.relatedEmployeeName} required />
               <Field name="birthYear" label="Төрсөн он" type="number" defaultValue={member.birthYear} />
               <Field name="school" label="Сургууль" defaultValue={member.school} />
               <Field name="phone" label="Утас" defaultValue={member.phone} />
               <div className={styles.familyMemberRowActions}>
-                <button className={styles.secondaryButton} disabled={updatePending || deletePending || (anyPending && !updatePending)}>
+                <button
+                  className={styles.secondaryButton}
+                  disabled={isTemporary || updatePending || deletePending || (anyPending && !updatePending)}
+                >
                   <Pencil aria-hidden />
-                  <span>{updatePending ? "Хадгалж байна..." : "Хадгалах"}</span>
+                  <span>{isTemporary ? "Нэмж байна..." : updatePending ? "Хадгалж байна..." : "Хадгалах"}</span>
                 </button>
                 <button
                   type="button"
                   className={styles.dangerButton}
                   onClick={() => deleteFamilyMember(member.id)}
-                  disabled={deletePending || updatePending || (anyPending && !deletePending)}
+                  disabled={isTemporary || deletePending || updatePending || (anyPending && !deletePending)}
                 >
                   <Trash2 aria-hidden />
                   <span>{deletePending ? "Устгаж байна..." : "Устгах"}</span>
@@ -2426,33 +2808,78 @@ export function EmployeeDetailTabs({
             </div>,
           )}
         </div>
-        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+        <ProfileEditButtons
+          pending={pending}
+          onCancel={() => {
+            setEducationRows(educationRowsFromEmployee(employee));
+            setEditing(false);
+          }}
+        />
       </form>
     );
   }
 
   function renderEducationEditForm() {
+    const savedEducationRows = normalizedEducationRows();
+    const primaryEducation = savedEducationRows[0];
+
     return (
       <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
+        <input type="hidden" name="educationRecords" value={JSON.stringify(savedEducationRows)} />
+        <input type="hidden" name="educationLevel" value={primaryEducation?.level || ""} />
+        <input type="hidden" name="studyField" value={primaryEducation?.field || ""} />
+        <input type="hidden" name="studySchool" value={primaryEducation?.school || ""} />
         <div className={styles.hrProfileTwoColumn}>
           {renderPanel(
             "Боловсролын мэдээлэл",
-            <div className={styles.editCardFields}>
-              <label className={styles.field}>
-                <span>Боловсролын түвшин</span>
-                <select name="educationLevel" defaultValue={employee.educationLevel || ""}>
-                  <option value="">Сонгох</option>
-                  <option value="Бүрэн бус дунд">Бүрэн бус дунд</option>
-                  <option value="Бүрэн дунд">Бүрэн дунд</option>
-                  <option value="Мэргэжлийн боловсрол">Мэргэжлийн боловсрол</option>
-                  <option value="Тусгай дунд">Тусгай дунд</option>
-                  <option value="Бакалавр">Бакалавр</option>
-                  <option value="Магистр">Магистр</option>
-                  <option value="Доктор">Доктор</option>
-                </select>
-              </label>
-              <Field name="studyField" label="Диплом / мэргэжил" defaultValue={employee.studyField} />
-              <Field name="studySchool" label="Сургууль" defaultValue={employee.studySchool} />
+            <div className={styles.familyMemberEditList}>
+              {educationRows.length ? (
+                educationRows.map((education, index) => (
+                  <div key={education.id} className={styles.familyMemberEditRow}>
+                    <label className={styles.field}>
+                      <span>Боловсролын түвшин</span>
+                      <select value={education.level} onChange={(event) => updateEducationRow(education.id, "level", event.currentTarget.value)}>
+                        <option value="">Сонгох</option>
+                        {educationLevelOptions.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className={styles.field}>
+                      <span>Диплом / мэргэжил</span>
+                      <input
+                        value={education.field}
+                        onChange={(event) => updateEducationRow(education.id, "field", event.currentTarget.value)}
+                      />
+                    </label>
+                    <label className={styles.field}>
+                      <span>Сургууль</span>
+                      <input
+                        value={education.school}
+                        onChange={(event) => updateEducationRow(education.id, "school", event.currentTarget.value)}
+                      />
+                    </label>
+                    <div className={styles.familyMemberRowActions}>
+                      <button
+                        type="button"
+                        className={styles.dangerButton}
+                        onClick={() => removeEducationRow(education.id)}
+                        disabled={pending}
+                        aria-label={`${index + 1}-р боловсролын мөр устгах`}
+                      >
+                        <Trash2 aria-hidden />
+                        <span>Устгах</span>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className={styles.hrProfileEmpty}>Боловсролын мөр нэмээгүй байна.</div>
+              )}
+              <button type="button" className={styles.secondaryButton} onClick={addEducationRow} disabled={pending}>
+                <Plus aria-hidden />
+                <span>Мөр нэмэх</span>
+              </button>
             </div>,
           )}
           {renderPanel(
@@ -2476,31 +2903,90 @@ export function EmployeeDetailTabs({
   }
 
   function renderDocumentEditForm() {
+    const savedDocumentRows = normalizedDocumentRows();
+
     return (
       <form className={styles.profileEditForm} onSubmit={submitProfileEdit} noValidate>
-        <div className={styles.hrProfileTwoColumn}>
+        <input type="hidden" name="documentRecords" value={JSON.stringify(savedDocumentRows)} />
+        <input type="hidden" name="missingDocumentCount" value="0" />
+        <div className={styles.hrProfileFullWidth}>
           {renderPanel(
             "Баримт бичгийн мэдээлэл",
-            <div className={styles.editCardFields}>
-              <Field name="contractEndDate" label="Хөдөлмөрийн гэрээ дуусах" type="date" defaultValue={employee.contractEndDate} />
-              <Field name="missingDocumentCount" label="Дутуу баримтын тоо" type="number" defaultValue={String(employee.missingDocumentCount ?? 0)} />
+            <div className={styles.familyMemberEditList}>
+              {documentDraftRows.length ? (
+                documentDraftRows.map((document, index) => (
+                  <div key={document.id} className={styles.familyMemberEditRow}>
+                    <label className={styles.field}>
+                      <span>Баримт бичиг</span>
+                      <input
+                        value={document.name}
+                        onChange={(event) => updateDocumentRow(document.id, "name", event.currentTarget.value)}
+                        placeholder="Жишээ: Иргэний үнэмлэх"
+                      />
+                    </label>
+                    <label className={styles.field}>
+                      <span>Төрөл</span>
+                      <select value={document.type} onChange={(event) => updateDocumentRow(document.id, "type", event.currentTarget.value)}>
+                        <option value="">Сонгох</option>
+                        {documentTypeOptions.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className={styles.field}>
+                      <span>Огноо</span>
+                      <input
+                        value={document.date}
+                        onChange={(event) => updateDocumentRow(document.id, "date", event.currentTarget.value)}
+                        placeholder="Ж: 2026, 2026-06, 2026-06-12"
+                      />
+                    </label>
+                    <label className={styles.field}>
+                      <span>Файл / зураг</span>
+                      <input
+                        name={`documentFile-${document.id}`}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                        onChange={(event) => handleDocumentFileChange(document.id, event.currentTarget.files?.[0]?.name)}
+                      />
+                      {document.attachmentIds.length ? (
+                        <div className={styles.fieldHint}>
+                          <span>Одоогийн файл:</span>
+                          <AttachmentLinks hasAttachment attachmentIds={document.attachmentIds} />
+                        </div>
+                      ) : null}
+                    </label>
+                    <div className={styles.familyMemberRowActions}>
+                      <button
+                        type="button"
+                        className={styles.dangerButton}
+                        onClick={() => removeDocumentRow(document.id)}
+                        disabled={pending}
+                        aria-label={`${index + 1}-р баримт бичгийн мөр устгах`}
+                      >
+                        <Trash2 aria-hidden />
+                        <span>Устгах</span>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className={styles.hrProfileEmpty}>Баримт бичгийн мөр нэмээгүй байна.</div>
+              )}
+              <button type="button" className={styles.secondaryButton} onClick={addDocumentRow} disabled={pending}>
+                <Plus aria-hidden />
+                <span>Мөр нэмэх</span>
+              </button>
             </div>,
           )}
-          {renderPanel(
-            "Одоогийн төлөв",
-            renderTable(
-              [
-                { key: "name", label: "Баримт бичиг" },
-                { key: "type", label: "Төрөл" },
-                { key: "status", label: "Төлөв" },
-                { key: "date", label: "Огноо" },
-              ],
-              documentRows,
-              "Баримт бичиг бүртгэгдээгүй.",
-            ),
-          )}
         </div>
-        <ProfileEditButtons pending={pending} onCancel={() => setEditing(false)} />
+        <ProfileEditButtons
+          pending={pending}
+          onCancel={() => {
+            setDocumentDraftRows(documentRowsFromEmployee(employee));
+            setEditing(false);
+          }}
+        />
       </form>
     );
   }
@@ -2650,11 +3136,23 @@ export function EmployeeDetailTabs({
   );
 }
 
-function ProfileEditButtons({ pending, onCancel, disabled = false }: { pending: boolean; onCancel: () => void; disabled?: boolean }) {
+function ProfileEditButtons({
+  pending,
+  onCancel,
+  disabled = false,
+  submitLabel = "Хадгалах",
+  pendingLabel = "Хадгалж байна...",
+}: {
+  pending: boolean;
+  onCancel: () => void;
+  disabled?: boolean;
+  submitLabel?: string;
+  pendingLabel?: string;
+}) {
   return (
     <div className={styles.profileEditActions}>
       <button className={styles.primaryButton} disabled={pending || disabled}>
-        {pending ? "Хадгалж байна..." : "Хадгалах"}
+        {pending ? pendingLabel : submitLabel}
       </button>
       <button type="button" className={styles.secondaryButton} onClick={onCancel} disabled={pending}>
         Болих
