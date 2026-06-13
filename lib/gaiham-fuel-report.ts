@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { Browser, Page } from "playwright";
+
 type GaihamApiResponse = {
   success?: boolean;
   hash?: string;
@@ -17,6 +19,17 @@ type GaihamTracker = {
   label: string;
   group_id?: number | null;
   group_label?: string;
+};
+
+type GaihamCredentials = {
+  login: string;
+  password: string;
+};
+
+type GaihamClient = {
+  close: () => Promise<void>;
+  post: <T extends GaihamApiResponse>(path: string, body: Record<string, unknown>) => Promise<T>;
+  transport: "api" | "playwright";
 };
 
 class GaihamApiError extends Error {
@@ -60,10 +73,15 @@ export type GaihamFuelTotalsResult = {
 };
 
 const DEFAULT_GAIHAM_API_BASE_URL = "https://gps.gaikham.com/api-v2";
+const DEFAULT_GAIHAM_WEB_BASE_URL = "https://gps.gaikham.com";
 const DEFAULT_GROUP_LABEL = "\u0425\u0430\u043d-\u0423\u0443\u043b \u0442\u043e\u0445\u0438\u0436\u0438\u043b\u0442";
 const DEFAULT_SOURCE_TITLE = "\u0413\u0430\u0439\u0445\u0430\u043c GPS";
 const DEFAULT_REPORT_RETRIEVE_ATTEMPTS = 10;
 const DEFAULT_REPORT_RETRIEVE_DELAY_MS = 2000;
+
+function webBaseUrl() {
+  return (process.env.GAIHAM_WEB_BASE_URL?.trim() || DEFAULT_GAIHAM_WEB_BASE_URL).replace(/\/+$/, "");
+}
 
 function apiBaseUrl() {
   return (process.env.GAIHAM_API_BASE_URL?.trim() || DEFAULT_GAIHAM_API_BASE_URL).replace(/\/+$/, "");
@@ -136,13 +154,6 @@ function cellRawNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function cellText(value: unknown) {
-  if (isObject(value) && value.v !== undefined) {
-    return String(value.v ?? "").replace(/\s+/g, " ").trim();
-  }
-  return String(value ?? "").replace(/\s+/g, " ").trim();
-}
-
 function assertGaihamSuccess(payload: GaihamApiResponse, action: string) {
   if (payload.success === false) {
     const description = payload.status?.description || `${action} failed.`;
@@ -151,7 +162,7 @@ function assertGaihamSuccess(payload: GaihamApiResponse, action: string) {
   }
 }
 
-async function postGaiham<T extends GaihamApiResponse>(path: string, body: Record<string, unknown>) {
+async function postGaihamApi<T extends GaihamApiResponse>(path: string, body: Record<string, unknown>) {
   const response = await fetch(endpointUrl(path), {
     method: "POST",
     headers: {
@@ -170,21 +181,130 @@ async function postGaiham<T extends GaihamApiResponse>(path: string, body: Recor
   return payload;
 }
 
-async function gaihamHash() {
+function gaihamCredentials(): GaihamCredentials | null {
+  const login =
+    process.env.GAIHAM_REPORT_USERNAME?.trim() ||
+    process.env.GAIHAM_REPORT_LOGIN?.trim() ||
+    process.env.GAIHAM_USERNAME?.trim() ||
+    process.env.GAIHAM_LOGIN?.trim() ||
+    "";
+  const password =
+    process.env.GAIHAM_REPORT_PASSWORD?.trim() ||
+    process.env.GAIHAM_PASSWORD?.trim() ||
+    "";
+
+  return login && password ? { login, password } : null;
+}
+
+async function createPlaywrightClient(): Promise<GaihamClient> {
+  const credentials = gaihamCredentials();
+  if (!credentials) {
+    throw new Error(
+      "Gaiham нэвтрэх нэр/нууц үг тохируулаагүй байна. GAIHAM_REPORT_USERNAME болон GAIHAM_REPORT_PASSWORD хэрэгтэй. Playwright зам ч browser-оор нэвтрэх credential шаарддаг.",
+    );
+  }
+
+  const { chromium } = await import("playwright");
+  const browser: Browser = await chromium.launch({ headless: true });
+  const page: Page = await browser.newPage();
+
+  try {
+    await page.goto(`${webBaseUrl()}/#/login`, {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000,
+    });
+    await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => undefined);
+
+    return {
+      transport: "playwright",
+      close: () => browser.close(),
+      post: async <T extends GaihamApiResponse>(path: string, body: Record<string, unknown>) => {
+        const payload = await page.evaluate(
+          async ({ requestPath, requestBody }) => {
+            const configApiUrl =
+              typeof window !== "undefined" &&
+              "CONFIG" in window &&
+              typeof (window as typeof window & { CONFIG?: { apiUrl?: string } }).CONFIG?.apiUrl === "string"
+                ? (window as typeof window & { CONFIG: { apiUrl: string } }).CONFIG.apiUrl
+                : `${window.location.origin}/api-v2/`;
+            const url = `${configApiUrl.replace(/\/+$/, "")}/${requestPath.replace(/^\/+/, "")}`;
+            const response = await fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(requestBody),
+            });
+            const text = await response.text();
+            let json: unknown = {};
+            try {
+              json = text ? JSON.parse(text) : {};
+            } catch {
+              json = { status: { description: text } };
+            }
+
+            return {
+              ok: response.ok,
+              status: response.status,
+              json,
+            };
+          },
+          {
+            requestPath: path,
+            requestBody: body,
+          },
+        );
+
+        if (!payload.ok) {
+          throw new GaihamApiError(path, payload.status);
+        }
+
+        const responsePayload = payload.json as T;
+        assertGaihamSuccess(responsePayload, path);
+        return responsePayload;
+      },
+    };
+  } catch (error) {
+    await browser.close();
+    throw error;
+  }
+}
+
+async function createGaihamClient(): Promise<GaihamClient> {
+  const forcedTransport = process.env.GAIHAM_REPORT_TRANSPORT?.trim().toLowerCase();
+  const apiKey = process.env.GAIHAM_API_KEY?.trim();
+  const usePlaywright =
+    forcedTransport === "playwright" ||
+    forcedTransport === "browser" ||
+    (!apiKey && forcedTransport !== "api");
+
+  if (usePlaywright) {
+    return createPlaywrightClient();
+  }
+
+  return {
+    transport: "api",
+    close: async () => undefined,
+    post: postGaihamApi,
+  };
+}
+
+async function gaihamHash(client: GaihamClient) {
   const apiKey = process.env.GAIHAM_API_KEY?.trim();
   if (apiKey) {
     return apiKey;
   }
 
-  const login = process.env.GAIHAM_REPORT_USERNAME?.trim();
-  const password = process.env.GAIHAM_REPORT_PASSWORD?.trim();
-  if (!login || !password) {
-    throw new Error("GAIHAM_API_KEY эсвэл GAIHAM_REPORT_USERNAME/GAIHAM_REPORT_PASSWORD тохируулаагүй байна.");
+  const credentials = gaihamCredentials();
+  if (!credentials) {
+    throw new Error(
+      "Gaiham нэвтрэх нэр/нууц үг тохируулаагүй байна. GAIHAM_REPORT_USERNAME болон GAIHAM_REPORT_PASSWORD хэрэгтэй.",
+    );
   }
 
-  const payload = await postGaiham<GaihamApiResponse>("user/auth", {
-    login,
-    password,
+  const payload = await client.post<GaihamApiResponse>("user/auth", {
+    login: credentials.login,
+    password: credentials.password,
   });
   if (!payload.hash) {
     throw new Error("Gaiham user/auth hash буцаасангүй.");
@@ -212,7 +332,7 @@ function trackerFromPayload(item: unknown): GaihamTracker | null {
   };
 }
 
-async function loadTrackers(hash: string) {
+async function loadTrackers(client: GaihamClient, hash: string) {
   const configuredTrackerIds = parseTrackerIds(process.env.GAIHAM_REPORT_TRACKER_IDS);
   if (configuredTrackerIds.length) {
     return configuredTrackerIds.map((id) => ({
@@ -223,7 +343,7 @@ async function loadTrackers(hash: string) {
     }));
   }
 
-  const payload = await postGaiham<GaihamApiResponse>("tracker/list", { hash });
+  const payload = await client.post<GaihamApiResponse>("tracker/list", { hash });
   const trackers = (payload.list ?? []).map(trackerFromPayload).filter((item): item is GaihamTracker => Boolean(item));
   const groupLabel = process.env.GAIHAM_REPORT_GROUP_LABEL?.trim() || DEFAULT_GROUP_LABEL;
   const normalizedGroupLabel = normalizeLabel(groupLabel);
@@ -254,9 +374,9 @@ function reportPlugin() {
   };
 }
 
-async function generateReport(hash: string, requestedDate: string, trackerIds: number[]) {
+async function generateReport(client: GaihamClient, hash: string, requestedDate: string, trackerIds: number[]) {
   const title = `${process.env.GAIHAM_REPORT_SOURCE_LABEL?.trim() || DEFAULT_SOURCE_TITLE} ${requestedDate}`;
-  const payload = await postGaiham<GaihamApiResponse>("report/tracker/generate", {
+  const payload = await client.post<GaihamApiResponse>("report/tracker/generate", {
     hash,
     title,
     trackers: trackerIds,
@@ -280,7 +400,7 @@ async function generateReport(hash: string, requestedDate: string, trackerIds: n
   };
 }
 
-async function retrieveReport(hash: string, reportId: number) {
+async function retrieveReport(client: GaihamClient, hash: string, reportId: number) {
   const attempts = envPositiveInt(
     "GAIHAM_REPORT_RETRIEVE_ATTEMPTS",
     DEFAULT_REPORT_RETRIEVE_ATTEMPTS,
@@ -295,7 +415,7 @@ async function retrieveReport(hash: string, reportId: number) {
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      const payload = await postGaiham<GaihamApiResponse>("report/tracker/retrieve", {
+      const payload = await client.post<GaihamApiResponse>("report/tracker/retrieve", {
         hash,
         report_id: reportId,
       });
@@ -323,8 +443,8 @@ async function retrieveReport(hash: string, reportId: number) {
   throw new Error("Gaiham report/tracker/retrieve тайлан буцаасангүй.");
 }
 
-async function deleteReport(hash: string, reportId: number) {
-  await postGaiham<GaihamApiResponse>("report/tracker/delete", {
+async function deleteReport(client: GaihamClient, hash: string, reportId: number) {
+  await client.post<GaihamApiResponse>("report/tracker/delete", {
     hash,
     report_id: reportId,
   }).catch((error) => {
@@ -535,31 +655,37 @@ export async function fetchGaihamDailyFuelTotals(requestedDate: string): Promise
     throw new Error("Invalid date value. Use YYYY-MM-DD.");
   }
 
-  const hash = await gaihamHash();
-  const trackers = await loadTrackers(hash);
-  if (!trackers.length) {
-    throw new Error("Gaiham дээр тайланд оруулах төхөөрөмж олдсонгүй.");
-  }
-
-  const generated = await generateReport(
-    hash,
-    requestedDate,
-    trackers.map((tracker) => tracker.id),
-  );
-
+  const client = await createGaihamClient();
   try {
-    const report = await retrieveReport(hash, generated.id);
-    const parsed = parseReportTotals(report, trackers, requestedDate);
-    return {
+    const hash = await gaihamHash(client);
+    const trackers = await loadTrackers(client, hash);
+    if (!trackers.length) {
+      throw new Error("Gaiham дээр тайланд оруулах төхөөрөмж олдсонгүй.");
+    }
+
+    const generated = await generateReport(
+      client,
+      hash,
       requestedDate,
-      title: generated.title,
-      reportId: generated.id,
-      trackerCount: trackers.length,
-      sourceRows: parsed.sourceRows,
-      totals: parsed.totals,
-      ignoredSamples: parsed.ignoredSamples,
-    };
+      trackers.map((tracker) => tracker.id),
+    );
+
+    try {
+      const report = await retrieveReport(client, hash, generated.id);
+      const parsed = parseReportTotals(report, trackers, requestedDate);
+      return {
+        requestedDate,
+        title: generated.title,
+        reportId: generated.id,
+        trackerCount: trackers.length,
+        sourceRows: parsed.sourceRows,
+        totals: parsed.totals,
+        ignoredSamples: parsed.ignoredSamples,
+      };
+    } finally {
+      await deleteReport(client, hash, generated.id);
+    }
   } finally {
-    await deleteReport(hash, generated.id);
+    await client.close();
   }
 }

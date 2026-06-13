@@ -476,7 +476,11 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
   );
 
   if (!totals.length) {
-    const message = `Gaiham \u0442\u04af\u043b\u0448\u043d\u0438\u0439 \u0442\u0430\u0439\u043b\u0430\u043d ${startDate} - ${endDate} \u0445\u0443\u0433\u0430\u0446\u0430\u0430\u043d\u0434 \u04e9\u0434\u04e9\u0440 \u0431\u04af\u0440\u044d\u044d\u0440 \u0442\u0430\u0442\u0430\u0445\u0430\u0434 0 \u043c\u04e9\u0440 \u0431\u0443\u0446\u0430\u0430\u043b\u0430\u0430.`;
+    const firstFailure = failedDates.find((item) => item.error.trim())?.error.trim() || "";
+    const message =
+      firstFailure && !emptyDates.length
+        ? firstFailure
+        : `Gaiham \u0442\u04af\u043b\u0448\u043d\u0438\u0439 \u0442\u0430\u0439\u043b\u0430\u043d ${startDate} - ${endDate} \u0445\u0443\u0433\u0430\u0446\u0430\u0430\u043d\u0434 \u04e9\u0434\u04e9\u0440 \u0431\u04af\u0440\u044d\u044d\u0440 \u0442\u0430\u0442\u0430\u0445\u0430\u0434 0 \u043c\u04e9\u0440 \u0431\u0443\u0446\u0430\u0430\u043b\u0430\u0430.`;
     await createSyncLog({
       state: "failed",
       recordCount: 0,
@@ -543,12 +547,14 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
     revalidatePath("/reports");
   }
 
+  const unmatchedMessage = unmatched.length
+    ? `${unmatched.length} машины улсын дугаар авто баазтай таарсангүй.`
+    : "";
+
   await createSyncLog({
-    state: unmatched.length ? "failed" : "success",
+    state: unmatched.length && imported <= 0 ? "failed" : "success",
     recordCount: imported,
-    errorMessage: unmatched.length
-      ? `${unmatched.length} \u043c\u0430\u0448\u0438\u043d\u044b \u0443\u043b\u0441\u044b\u043d \u0434\u0443\u0433\u0430\u0430\u0440 \u0430\u0432\u0442\u043e \u0431\u0430\u0430\u0437\u0442\u0430\u0439 \u0442\u0430\u0430\u0440\u0441\u0430\u043d\u0433\u04af\u0439.`
-      : "",
+    errorMessage: unmatchedMessage,
   });
   if (!unmatched.length) {
     await notifyGarbageDailySyncSummary(Array.from(new Set(totals.map((total) => total.reportDate)))).catch((error) => {
@@ -572,7 +578,7 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
     unmatched,
   };
 
-  if (unmatched.length) {
+  if (unmatched.length && imported <= 0) {
     await notifyGaihamFailure(
       Array.from(new Set(totals.map((total) => total.reportDate))),
       `${unmatched.length} машины улсын дугаар авто баазтай таарсангүй.`,
@@ -587,7 +593,10 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
     );
   }
 
-  return NextResponse.json(responsePayload);
+  return NextResponse.json({
+    ...responsePayload,
+    warning: unmatchedMessage || undefined,
+  });
 }
 
 async function handleRequest(request: Request) {

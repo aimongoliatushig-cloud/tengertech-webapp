@@ -289,8 +289,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
   const isGarbageRouteProject = project.operationType === "garbage";
   const isRoadAreaCleaning =
     isRoadAreaCleaningProject(project.operationType) || project.tasks.some((task) => isRoadAreaCleaningTask(task));
-  const canShowTaskCreateComposer =
-    canCreateTasks && quickActionMode !== "report" && !isRoadAreaCleaning;
+  const canShowTaskCreateComposer = canCreateTasks && quickActionMode !== "report";
   const shouldLoadTaskCreateOptions = canShowTaskCreateComposer;
   const [projectManagerOptions, projectDepartmentOptions] = await Promise.all([
     canEditProject || shouldLoadTaskCreateOptions

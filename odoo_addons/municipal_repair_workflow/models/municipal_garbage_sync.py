@@ -710,7 +710,7 @@ class MunicipalGarbageSyncLog(models.Model):
                             "%s тайлан %s өдөр авто баазтай таарсан мөргүй байна. Дараагийн cron дахин татна." % (delegated_source_label, target_date)
                         )
                     unmatched_count = self._delegated_payload_unmatched_count(payload, total_rows, count)
-                    if unmatched_count:
+                    if unmatched_count and count <= 0:
                         count_label = str(unmatched_count) if unmatched_count > 0 else "зарим"
                         raise ValueError(
                             "%s тайлан %s өдөр %s мөр авто баазтай таарсангүй. Дугаарыг засаад дараагийн cron дахин татна." % (delegated_source_label, target_date, count_label)
