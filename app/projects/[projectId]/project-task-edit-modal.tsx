@@ -21,6 +21,7 @@ type Props = {
   measurementUnitId: number | null;
   description: string;
   canEditContent?: boolean;
+  returnTo?: string;
   departmentUserOptions: SelectOption[];
   crewTeamOptions: Array<{
     id: number;
@@ -70,6 +71,7 @@ export function ProjectTaskEditModal({
   measurementUnitId,
   description,
   canEditContent = true,
+  returnTo,
   departmentUserOptions,
   crewTeamOptions,
   unitOptions,
@@ -223,6 +225,7 @@ export function ProjectTaskEditModal({
               <form action={action} className={styles.modalForm}>
                 <input type="hidden" name="project_id" value={projectId} />
                 <input type="hidden" name="task_id" value={taskId} />
+                {returnTo ? <input type="hidden" name="return_to" value={returnTo} /> : null}
                 <input type="hidden" name="task_assignment_mode" value={useTeam ? "team" : "single"} />
 
                 {canEditContent ? (

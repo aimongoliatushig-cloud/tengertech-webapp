@@ -14,6 +14,7 @@ import { ReportImageLightbox } from "@/app/_components/report-image-lightbox";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import {
   createTaskReportAction,
+  deleteTaskAction,
   deleteTaskReportAction,
   markTaskDoneAction,
   postTaskMessageAction,
@@ -26,6 +27,8 @@ import dashboardStyles from "@/app/page.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import {
   canSubmitWorkspaceReport,
+  canDeleteWorkspaceItems,
+  canEditWorkspaceTaskContent,
   hasCapability,
   isMasterRole,
   isWorkerOnly,
@@ -380,9 +383,11 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
     : quantitySummary
       ? [{ quantity: task.plannedQuantity, unit: task.measurementUnit }]
       : [];
-  const canEditTaskContent = task.createdById === session.uid;
+  const canEditTaskContent =
+    task.createdById === session.uid || canEditWorkspaceTaskContent(session);
   const canAssignTaskTeam = canCreateTasks && Boolean(task.projectId) && !workerMode;
   const canEditTask = canAssignTaskTeam;
+  const canDeleteWorkspace = canDeleteWorkspaceItems(session);
   const taskEditOptions =
     canEditTask && task.projectId
       ? await loadProjectTaskEditOptions(task.projectId, task.operationType, connectionOverrides)
@@ -560,7 +565,8 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
       task.crewMembers.length ||
       task.assignees.length,
   );
-  const showTeamAssignButton = canEditTask && Boolean(task.projectId) && !hasAssignedTeam;
+  const showTeamAssignButton =
+    canEditTask && !canEditTaskContent && Boolean(task.projectId) && !hasAssignedTeam;
   const teamAssignAction = showTeamAssignButton && task.projectId ? (
     <ProjectTaskEditModal
       action={updateTaskAction}
@@ -666,6 +672,35 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 </div>
                 <div className={styles.heroActionGroup}>
                   <StagePill label={task.stageLabel} bucket={task.stageBucket} />
+                  {canEditTask && task.projectId ? (
+                    <ProjectTaskEditModal
+                      action={updateTaskAction}
+                      projectId={task.projectId}
+                      taskId={task.id}
+                      taskName={task.name}
+                      teamLeaderId={task.teamLeaderId}
+                      crewTeamId={task.crewTeamId}
+                      startDateValue={task.startDateValue}
+                      deadlineValue={task.deadlineValue}
+                      plannedQuantity={task.plannedQuantity}
+                      measurementUnitId={task.measurementUnitId}
+                      description={task.description}
+                      canEditContent={canEditTaskContent}
+                      returnTo={`/tasks/${task.id}`}
+                      departmentUserOptions={taskEditDepartmentUserOptions}
+                      crewTeamOptions={taskEditCrewTeamOptions}
+                      unitOptions={taskEditOptions.unitOptions}
+                    />
+                  ) : null}
+                  {canDeleteWorkspace && task.projectId ? (
+                    <form action={deleteTaskAction} className={styles.inlineTaskDeleteForm}>
+                      <input type="hidden" name="project_id" value={task.projectId} />
+                      <input type="hidden" name="task_id" value={task.id} />
+                      <button type="submit" className={styles.dangerButton}>
+                        Даалгавар архивлах
+                      </button>
+                    </form>
+                  ) : null}
                 </div>
               </div>
 

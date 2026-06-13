@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import {
   canDeleteWorkspaceItems,
+  canEditWorkspaceTaskContent,
   canSubmitWorkspaceReport,
   hasCapability,
   isMasterRole,
@@ -2214,7 +2215,8 @@ export async function updateTaskAction(formData: FormData) {
   const plannedQuantityRaw = String(formData.get("planned_quantity") ?? "").trim();
   const unitIdRaw = String(formData.get("unit_id") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
-  const target = projectId ? `/projects/${projectId}` : "/projects";
+  const defaultTarget = projectId ? `/projects/${projectId}` : "/projects";
+  const target = safeInternalPath(String(formData.get("return_to") ?? ""), defaultTarget);
 
   if (!projectId || !taskId) {
     redirectWithMessage(
@@ -2243,7 +2245,8 @@ export async function updateTaskAction(formData: FormData) {
       redirectWithMessage(target, "error", "Даалгавар энэ ажилд хамаарахгүй байна.");
     }
 
-    const canEditTaskContent = task.createdById === session.uid;
+    const canEditTaskContent =
+      task.createdById === session.uid || canEditWorkspaceTaskContent(session);
     const selectedTeamLeaderId = teamLeaderIdRaw ? Number(teamLeaderIdRaw) : null;
     let selectedCrewTeam = crewTeamIdRaw
       ? project.crewTeamOptions.find((team) => team.id === Number(crewTeamIdRaw)) ?? null

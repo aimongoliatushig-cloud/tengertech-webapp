@@ -503,6 +503,18 @@ export function canDeleteWorkspaceItems(context: RoleContext) {
   );
 }
 
+export function canEditWorkspaceTaskContent(context: RoleContext) {
+  const groupFlags = normalizeGroupFlags(context.groupFlags);
+  return Boolean(
+    context.role === "system_admin" ||
+      context.role === "director" ||
+      context.role === "general_manager" ||
+      context.role === "project_manager" ||
+      groupFlags.municipalDirector ||
+      groupFlags.municipalDepartmentHead
+  );
+}
+
 export function isWorkerOnly(context: RoleContext) {
   const groupFlags = normalizeGroupFlags(context.groupFlags);
   return (

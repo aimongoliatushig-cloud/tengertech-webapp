@@ -14,6 +14,7 @@ import { authenticateOdooUser, createOdooConnection } from "@/lib/odoo";
 import {
   canSubmitWorkspaceReport,
   canDeleteWorkspaceItems,
+  canEditWorkspaceTaskContent,
   canAccessAutoBaseOverview,
   canAccessGarbageTransportSettings,
   canAccessProcurementModule,
@@ -341,6 +342,7 @@ export async function signInWithOdooCredentials(
 export {
   canSubmitWorkspaceReport,
   canDeleteWorkspaceItems,
+  canEditWorkspaceTaskContent,
   canAccessAutoBaseOverview,
   canAccessGarbageTransportSettings,
   canAccessProcurementModule,
