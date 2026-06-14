@@ -5016,6 +5016,97 @@ export async function createWorkspaceProject(
   );
 }
 
+function getGarbageMonthRange(dateKey: string) {
+  const match = /^(\d{4})-(\d{2})-\d{2}$/.exec(dateKey);
+  const today = new Date();
+  const year = match ? Number(match[1]) : today.getFullYear();
+  const month = match ? Number(match[2]) : today.getMonth() + 1;
+  const monthPadded = String(month).padStart(2, "0");
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+  return {
+    year,
+    month,
+    startDate: `${year}-${monthPadded}-01`,
+    endDate: `${year}-${monthPadded}-${String(lastDay).padStart(2, "0")}`,
+    name: `${year} оны ${month}-р сарын ажил`,
+  };
+}
+
+export async function getOrCreateGarbageMonthlyWorkspaceProject(
+  input: {
+    workDate: string;
+    managerId?: number | null;
+    departmentId?: number | null;
+    description?: string;
+  },
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  const month = getGarbageMonthRange(input.workDate);
+  const departmentDomain = input.departmentId ? [["ops_department_id", "=", input.departmentId]] : [];
+  const monthlyProjectFields = ["name", "date_start", "date", "ops_department_id"];
+  const monthlyProjects = await readFirstAvailable<ProjectRecord>(
+    [
+      {
+        model: "project.project",
+        domain: [
+          ["mfo_operation_type", "=", "garbage"],
+          ["date_start", "=", month.startDate],
+          ["date", "=", month.endDate],
+          ...departmentDomain,
+        ],
+        fields: monthlyProjectFields,
+        order: "date_start asc, id asc",
+        limit: 1,
+      },
+      {
+        model: "project.project",
+        domain: [
+          ["mfo_operation_type", "=", "garbage"],
+          ["name", "=", month.name],
+          ...departmentDomain,
+        ],
+        fields: monthlyProjectFields,
+        order: "id asc",
+        limit: 1,
+      },
+    ],
+    connectionOverrides,
+  ).catch(() => [] as ProjectRecord[]);
+
+  const existingProject = monthlyProjects[0];
+  if (existingProject) {
+    return {
+      projectId: existingProject.id,
+      created: false,
+      name: existingProject.name,
+      startDate: month.startDate,
+      endDate: month.endDate,
+    };
+  }
+
+  const projectId = await createWorkspaceProject(
+    {
+      name: month.name,
+      managerId: input.managerId,
+      departmentId: input.departmentId,
+      operationType: "garbage",
+      startDate: month.startDate,
+      deadline: month.endDate,
+      description: input.description,
+    },
+    connectionOverrides,
+  );
+
+  return {
+    projectId,
+    created: true,
+    name: month.name,
+    startDate: month.startDate,
+    endDate: month.endDate,
+  };
+}
+
 export async function updateWorkspaceProject(
   projectId: number,
   input: {

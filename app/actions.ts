@@ -58,6 +58,7 @@ import {
   findOrCreateWorkspaceSubdistrictOption,
   forceWorkspaceTaskDone,
   generateSeasonalWorkspaceExecution,
+  getOrCreateGarbageMonthlyWorkspaceProject,
   loadGarbagePointOptions,
   loadGarbageVehicleOptions,
   loadRoadCleaningMasterEmployeeForUser,
@@ -1397,6 +1398,16 @@ export async function createProjectAction(formData: FormData) {
         );
       }
 
+      const monthlyProject = await getOrCreateGarbageMonthlyWorkspaceProject(
+        {
+          workDate: startDate,
+          managerId: session.uid,
+          departmentId: Number(effectiveDepartmentIdRaw),
+          description: projectDescription || undefined,
+        },
+        projectMutationConnection,
+      );
+      const createdProjectId = monthlyProject.projectId;
       const existingVehicleTasks = await executeOdooKw<Array<{ id: number; project_id?: [number, string] | false }>>(
         "project.task",
         "search_read",
@@ -1408,24 +1419,6 @@ export async function createProjectAction(formData: FormData) {
         { fields: ["project_id"], order: "id asc", limit: 500 },
         garbageWorkConnection,
       ).catch(() => []);
-      const existingProjectId =
-        existingVehicleTasks
-          .map((task) => relationIdValue(task.project_id))
-          .find((projectId): projectId is number => Boolean(projectId)) ?? null;
-      const createdProjectId =
-        existingProjectId ??
-        (await createWorkspaceProject(
-          {
-            name: `${resolvedVehicleName} / ${startDate}`,
-            managerId: session.uid,
-            departmentId: Number(effectiveDepartmentIdRaw),
-            operationType: "garbage",
-            startDate,
-            deadline: startDate,
-            description: [projectDescription, vehicleWorkerSummary].filter(Boolean).join("\n") || undefined,
-          },
-          projectMutationConnection,
-        ));
       const existingTaskIds = existingVehicleTasks.map((task) => task.id).filter((id) => Number.isFinite(id));
       const existingStopLines = existingTaskIds.length
         ? await executeOdooKw<Array<{ collection_point_id?: [number, string] | false }>>(
@@ -1447,6 +1440,7 @@ export async function createProjectAction(formData: FormData) {
       const pointsToCreate = points.filter((point) => !existingPointIds.has(point.id));
 
       if (!pointsToCreate.length) {
+        const duplicateMonthlyNotice = `Сонгосон хогийн цэгүүд ${monthlyProject.name} дээр энэ машин, энэ огноогоор аль хэдийн нэмэгдсэн байна.`;
         revalidatePath("/");
         revalidatePath("/projects");
         revalidatePath("/tasks");
@@ -1454,15 +1448,11 @@ export async function createProjectAction(formData: FormData) {
         revalidatePath(`/projects/${createdProjectId}`);
         if (transportInspectorMode) {
           redirect(
-            `/?notice=${encodeURIComponent(
-              "Сонгосон хогийн цэгүүд энэ машины өнөөдрийн ажил дээр аль хэдийн нэмэгдсэн байна.",
-            )}`,
+            `/?notice=${encodeURIComponent(duplicateMonthlyNotice)}`,
           );
         }
         redirect(
-          `/projects/${createdProjectId}?notice=${encodeURIComponent(
-            "Сонгосон хогийн цэгүүд энэ машины өнөөдрийн ажил дээр аль хэдийн нэмэгдсэн байна.",
-          )}`,
+          `/projects/${createdProjectId}?notice=${encodeURIComponent(duplicateMonthlyNotice)}`,
         );
       }
 
@@ -1548,21 +1538,16 @@ export async function createProjectAction(formData: FormData) {
       revalidatePath("/reports");
       revalidatePath("/projects/new");
       revalidatePath(`/projects/${createdProjectId}`);
+      const garbageMonthlyNotice = monthlyProject.created
+        ? `${monthlyProject.name} үүсэж, ${resolvedVehicleName} машинд ${pointsToCreate.length} хогийн цэг нэмэгдлээ.`
+        : `${monthlyProject.name} дээр ${resolvedVehicleName} машины ${pointsToCreate.length} хогийн цэг нэмэгдлээ.`;
       if (transportInspectorMode) {
         redirect(
-          `/?notice=${encodeURIComponent(
-            existingProjectId
-              ? `${resolvedVehicleName} машины өнөөдрийн ажил дээр ${pointsToCreate.length} хогийн цэг нэмэгдлээ.`
-              : `Хог тээвэрлэлтийн ажил амжилттай үүслээ. ${pointsToCreate.length} хогийн цэг нэмэгдлээ.`,
-          )}`,
+          `/?notice=${encodeURIComponent(garbageMonthlyNotice)}`,
         );
       }
       redirect(
-        `/projects/${createdProjectId}?notice=${encodeURIComponent(
-          existingProjectId
-            ? `${resolvedVehicleName} машины өнөөдрийн ажил дээр ${pointsToCreate.length} хогийн цэг нэмэгдлээ.`
-            : `Хог тээвэрлэлтийн ажил амжилттай үүслээ. ${pointsToCreate.length} хогийн цэг нэмэгдлээ.`,
-        )}`,
+        `/projects/${createdProjectId}?notice=${encodeURIComponent(garbageMonthlyNotice)}`,
       );
     } catch (error) {
       rethrowIfRedirectError(error);
@@ -1895,6 +1880,15 @@ export async function createTaskAction(formData: FormData) {
       ]);
       const inspectorEmployeeId = currentEmployees[0]?.id ?? null;
       const effectiveDate = deadline || project.deadline || project.startDate || getTodayDateKey();
+      const monthlyProject = await getOrCreateGarbageMonthlyWorkspaceProject(
+        {
+          workDate: effectiveDate,
+          managerId: session.uid,
+          departmentId: project.departmentId,
+        },
+        connectionOverrides,
+      );
+      const targetProjectId = monthlyProject.projectId;
       const createdTaskIds = await mapWithConcurrency(points, 4, async (point, index) => {
         const subdistrictName = Array.isArray(point.subdistrict_id)
           ? point.subdistrict_id[1]
@@ -1908,7 +1902,7 @@ export async function createTaskAction(formData: FormData) {
           : "";
         const taskId = await createWorkspaceTask(
           {
-            projectId,
+            projectId: targetProjectId,
             name: taskName,
             teamLeaderId: session.uid,
             assigneeUserIds: assignedUserIds,
@@ -1953,7 +1947,7 @@ export async function createTaskAction(formData: FormData) {
           eventType: "new_work_assigned",
           title: "Шинэ хог тээврийн даалгавар",
           body: `${vehicleName} дээр ${createdTaskIds.length} хогийн цэг нэмэгдлээ.`,
-          targetUrl: `/projects/${projectId}`,
+          targetUrl: `/projects/${targetProjectId}`,
           userIds: assignedUserIds,
         }),
         notifyDepartmentHeadsOfWork({
@@ -1962,7 +1956,7 @@ export async function createTaskAction(formData: FormData) {
           connectionOverrides,
           title: "Шинэ хог тээврийн даалгавар бүртгэгдлээ",
           workName: `${vehicleName} дээр ${createdTaskIds.length} хогийн цэг нэмэгдлээ.`,
-          targetUrl: `/projects/${projectId}`,
+          targetUrl: `/projects/${targetProjectId}`,
         }),
       ]);
 
@@ -1975,9 +1969,10 @@ export async function createTaskAction(formData: FormData) {
       revalidatePath("/settings");
       revalidatePath("/settings/garbage-transport");
       revalidatePath(`/projects/${projectId}`);
+      revalidatePath(`/projects/${targetProjectId}`);
       redirect(
-        `/projects/${projectId}?notice=${encodeURIComponent(
-          `${createdTaskIds.length} хогийн цэг даалгавар болж нэмэгдлээ.`,
+        `/projects/${targetProjectId}?notice=${encodeURIComponent(
+          `${monthlyProject.name} дээр ${createdTaskIds.length} хогийн цэг даалгавар болж нэмэгдлээ.`,
         )}`,
       );
     }

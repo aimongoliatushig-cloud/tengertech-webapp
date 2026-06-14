@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from calendar import monthrange
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
@@ -26,6 +28,43 @@ class ProjectProject(models.Model):
     mfo_crew_team_id = fields.Many2one("mfo.crew.team", string="Ажиллах баг")
     ops_department_id = fields.Many2one("hr.department", string="Хэлтэс")
 
+    def _mfo_get_or_create_garbage_monthly_project(self, shift_date, department):
+        date_value = fields.Date.to_date(shift_date) or fields.Date.context_today(self)
+        month_start = date_value.replace(day=1)
+        month_end = date_value.replace(day=monthrange(date_value.year, date_value.month)[1])
+        project_name = "%s оны %s-р сарын ажил" % (date_value.year, date_value.month)
+        domain = [
+            ("mfo_operation_type", "=", "garbage"),
+            ("date_start", "=", month_start),
+            ("date", "=", month_end),
+            ("ops_department_id", "=", department.id),
+        ]
+        project = self.search(domain, limit=1, order="date_start asc, id asc")
+        if not project:
+            project = self.search(
+                [
+                    ("mfo_operation_type", "=", "garbage"),
+                    ("name", "=", project_name),
+                    ("ops_department_id", "=", department.id),
+                ],
+                limit=1,
+                order="id asc",
+            )
+        if project:
+            return project
+
+        return self.create(
+            {
+                "name": project_name,
+                "privacy_visibility": "employees",
+                "mfo_is_operation_project": True,
+                "mfo_operation_type": "garbage",
+                "ops_department_id": department.id,
+                "date_start": month_start,
+                "date": month_end,
+            }
+        )
+
     @api.model
     def action_mfo_create_garbage_daily_project(self, values):
         route = self.env["mfo.route"].browse(values.get("route_id")).exists()
@@ -39,21 +78,11 @@ class ProjectProject(models.Model):
         department = route.department_id or self.env.user.employee_id.department_id or self.env["hr.department"].search([], limit=1)
         if not department:
             raise UserError("Маршрут үүсгэхийн өмнө хэлтэс тохируулна уу.")
-        project = self.create(
-            {
-                "name": "%s - %s" % (route.name, shift_date),
-                "privacy_visibility": "employees",
-                "mfo_is_operation_project": True,
-                "mfo_operation_type": "garbage",
-                "mfo_selected_shift_type": route.shift_type,
-                "mfo_selected_vehicle_id": vehicle_id or False,
-                "mfo_crew_team_id": route.team_id.id or False,
-                "ops_department_id": department.id,
-            }
-        )
+        project = self._mfo_get_or_create_garbage_monthly_project(shift_date, department)
+        task_name = "%s - %s" % (route.name, shift_date)
         work = self.env["municipal.work"].create(
             {
-                "name": project.name,
+                "name": task_name,
                 "department_id": department.id,
                 "work_type_id": self._mfo_get_or_create_garbage_work_type().id,
                 "responsible_user_id": self.env.user.id,
@@ -67,7 +96,7 @@ class ProjectProject(models.Model):
         )
         task = self.env["project.task"].create(
             {
-                "name": project.name,
+                "name": task_name,
                 "project_id": project.id,
                 "mfo_operation_type": "garbage",
                 "mfo_state": "dispatched",
