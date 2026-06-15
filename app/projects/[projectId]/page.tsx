@@ -112,8 +112,12 @@ function getProgressWidth(value: number) {
   return `${Math.max(Math.min(value, 100), 6)}%`;
 }
 
-function isImageAttachment(attachment: { mimetype: string }) {
-  return attachment.mimetype.toLowerCase().startsWith("image/");
+function isImageAttachment(attachment: { mimetype: string; name: string }) {
+  const name = attachment.name.toLowerCase();
+  return (
+    attachment.mimetype.toLowerCase().startsWith("image/") ||
+    [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"].some((extension) => name.endsWith(extension))
+  );
 }
 
 function isPdfAttachment(attachment: { mimetype: string; name: string }) {
@@ -612,11 +616,20 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                                           Нээх
                                         </a>
                                       </div>
-                                      <iframe
-                                        src={attachment.url}
+                                      <object
+                                        data={attachment.url}
+                                        type="application/pdf"
                                         title={attachment.name}
                                         className={styles.attachmentPdfPreview}
-                                      />
+                                      >
+                                        <div className={styles.attachmentPdfFallback}>
+                                          <strong>PDF харагдахгүй байна.</strong>
+                                          <span>Файлыг шинэ цонхонд нээгээд шалгана уу.</span>
+                                          <a href={attachment.url} target="_blank" rel="noreferrer">
+                                            Файл нээх
+                                          </a>
+                                        </div>
+                                      </object>
                                     </div>
                                   );
                                 }

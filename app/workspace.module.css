@@ -4312,6 +4312,26 @@
   min-height: 520px;
 }
 
+.attachmentPdfFallback {
+  display: grid;
+  min-height: 520px;
+  place-items: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--ink-800);
+  text-align: center;
+}
+
+.attachmentPdfFallback strong {
+  color: var(--ink-900);
+}
+
+.attachmentPdfFallback a {
+  color: var(--brand-800);
+  font-weight: 900;
+  text-decoration: none;
+}
+
 .attachmentOpenLink {
   flex: 0 0 auto;
   color: var(--brand-800);
@@ -8535,6 +8555,11 @@
 
   .attachmentPdfPreview {
     min-height: 320px;
+  }
+
+  .attachmentPdfFallback {
+    min-height: 320px;
+    padding: 16px;
   }
 
   .projectTaskFilterRail {

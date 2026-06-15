@@ -9,6 +9,24 @@ type RouteContext = {
   }>;
 };
 
+function inferAttachmentContentType(name: string, mimetype: string) {
+  const normalizedType = mimetype.trim().toLowerCase();
+  if (normalizedType && normalizedType !== "application/octet-stream") {
+    return mimetype;
+  }
+
+  const normalizedName = name.trim().toLowerCase();
+  if (normalizedName.endsWith(".pdf")) return "application/pdf";
+  if (normalizedName.endsWith(".jpg") || normalizedName.endsWith(".jpeg")) return "image/jpeg";
+  if (normalizedName.endsWith(".png")) return "image/png";
+  if (normalizedName.endsWith(".webp")) return "image/webp";
+  if (normalizedName.endsWith(".gif")) return "image/gif";
+  if (normalizedName.endsWith(".mp3")) return "audio/mpeg";
+  if (normalizedName.endsWith(".wav")) return "audio/wav";
+  if (normalizedName.endsWith(".m4a")) return "audio/mp4";
+  return mimetype || "application/octet-stream";
+}
+
 export async function GET(_request: Request, context: RouteContext) {
   const session = await getSession();
   if (!session) {
@@ -32,11 +50,12 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   const body = Buffer.from(attachment.datas, "base64");
+  const contentType = inferAttachmentContentType(attachment.name, attachment.mimetype);
 
   return new Response(body, {
     status: 200,
     headers: {
-      "Content-Type": attachment.mimetype,
+      "Content-Type": contentType,
       "Content-Length": String(body.length),
       "Cache-Control": "private, max-age=300",
       "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(attachment.name)}`,

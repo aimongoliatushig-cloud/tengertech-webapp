@@ -2553,6 +2553,7 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
     "study_school",
     "wage",
     "pay_category",
+    "x_mn_missing_document_count",
     "image_1920",
   ];
   const fields = new Set(await getAvailableFields("hr.employee", desiredFields, session));
@@ -2657,6 +2658,24 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
       {},
       getConnection(session),
     );
+  }
+  const documentRecordsForSave =
+    data.documentRecords !== undefined
+      ? await attachDocumentFilesToEmployeeRecords(session, createdId, data.documentRecords, data.documentAttachments)
+      : undefined;
+  if (documentRecordsForSave !== undefined) {
+    const noteValue = mergeEmployeeManagedNotes(String(values.notes || ""), [
+      [DOCUMENT_RECORDS_NOTE_LABEL, serializeDocumentRecordsForNote(documentRecordsForSave)],
+    ]);
+    const documentValues: Record<string, unknown> = {
+      ...(fields.has("notes") ? { notes: noteValue || false } : {}),
+      ...(fields.has("x_mn_missing_document_count")
+        ? { x_mn_missing_document_count: countMissingDocumentRecords(documentRecordsForSave) }
+        : {}),
+    };
+    if (Object.keys(documentValues).length) {
+      await executeOdooKw<boolean>("hr.employee", "write", [[createdId], documentValues], {}, getConnection(session));
+    }
   }
   await attachFilesToEmployee(session, createdId, educationAttachmentFromInput(data), "Боловсрол", "diploma");
   return getEmployee(session, createdId);

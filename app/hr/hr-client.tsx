@@ -524,6 +524,7 @@ export function EmployeeCreateForm({
   const [message, setMessage] = useState("");
   const [createWorkType, setCreateWorkType] = useState("Үндсэн");
   const [createEducationRows, setCreateEducationRows] = useState<EducationDraftRow[]>(() => [emptyEducationRow()]);
+  const [createDocumentRows, setCreateDocumentRows] = useState<DocumentDraftRow[]>(() => [emptyDocumentRow()]);
   const [createTalentSkillRows, setCreateTalentSkillRows] = useState<TalentSkillDraftRow[]>(() => [emptyTalentSkillRow()]);
   const showCreateTrialDates = createWorkType === "Туршилтаар";
 
@@ -550,6 +551,41 @@ export function EmployeeCreateForm({
     setCreateEducationRows((rows) => {
       const nextRows = rows.filter((row) => row.id !== id);
       return nextRows.length ? nextRows : [emptyEducationRow()];
+    });
+  }
+
+  function normalizedCreateDocumentRows(rows = createDocumentRows) {
+    return rows
+      .map((row, index) => ({
+        id: row.id || `document-${index + 1}`,
+        name: row.name.trim(),
+        type: row.type.trim(),
+        status: row.status || "Бүртгэлтэй",
+        date: row.date.trim(),
+        attachmentIds: Array.isArray(row.attachmentIds) ? row.attachmentIds : [],
+      }))
+      .filter((row) => row.name || row.type || row.date || row.attachmentIds.length);
+  }
+
+  function updateCreateDocumentRow(id: string, field: keyof Omit<DocumentDraftRow, "id" | "attachmentIds">, value: string) {
+    setCreateDocumentRows((rows) => rows.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
+  }
+
+  function handleCreateDocumentFileChange(rowId: string, fileName?: string) {
+    if (!fileName) return;
+    setCreateDocumentRows((rows) =>
+      rows.map((row) => (row.id === rowId && !row.name.trim() ? { ...row, name: fileName } : row)),
+    );
+  }
+
+  function addCreateDocumentRow() {
+    setCreateDocumentRows((rows) => [...rows, emptyDocumentRow()]);
+  }
+
+  function removeCreateDocumentRow(id: string) {
+    setCreateDocumentRows((rows) => {
+      const nextRows = rows.filter((row) => row.id !== id);
+      return nextRows.length ? nextRows : [emptyDocumentRow()];
     });
   }
 
@@ -591,6 +627,7 @@ export function EmployeeCreateForm({
     formData.set("educationLevel", primaryEducation?.level || "");
     formData.set("studyField", primaryEducation?.field || "");
     formData.set("studySchool", primaryEducation?.school || "");
+    formData.set("documentRecords", JSON.stringify(normalizedCreateDocumentRows()));
     const talentSkillRecords = normalizedCreateTalentSkillRows();
     const primaryTalentSkill = talentSkillRecords[0];
     formData.set("talentSkillRecords", JSON.stringify(talentSkillRecords));
@@ -622,6 +659,7 @@ export function EmployeeCreateForm({
 
   const savedCreateEducationRows = normalizedCreateEducationRows();
   const primaryCreateEducation = savedCreateEducationRows[0];
+  const savedCreateDocumentRows = normalizedCreateDocumentRows();
   const savedCreateTalentSkillRows = normalizedCreateTalentSkillRows();
   const primaryCreateTalentSkill = savedCreateTalentSkillRows[0];
 
@@ -747,6 +785,75 @@ export function EmployeeCreateForm({
             <input name="educationDocument" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" />
             <small>JPG, PNG, WebP зураг эсвэл PDF файл 10MB хүртэл.</small>
           </label>
+        </div>
+      </section>
+
+      <section className={styles.formSection}>
+        <div className={styles.formSectionHeader}>
+          <h2>Баримт бичиг</h2>
+          <p>Гэрээ, тушаал, үнэмлэх, диплом болон бусад ажилтны хувийн хэргийн файлыг бүртгэнэ.</p>
+        </div>
+        <input type="hidden" name="documentRecords" value={JSON.stringify(savedCreateDocumentRows)} readOnly />
+        <div className={styles.familyMemberEditList}>
+          {createDocumentRows.map((document, index) => (
+            <div key={document.id} className={styles.familyMemberEditRow}>
+              <label className={styles.field}>
+                <span>Баримт бичиг</span>
+                <input
+                  value={document.name}
+                  onChange={(event) => updateCreateDocumentRow(document.id, "name", event.currentTarget.value)}
+                  placeholder="Жишээ: Иргэний үнэмлэх"
+                />
+              </label>
+              <label className={styles.field}>
+                <span>Төрөл</span>
+                <select value={document.type} onChange={(event) => updateCreateDocumentRow(document.id, "type", event.currentTarget.value)}>
+                  <option value="">Сонгох</option>
+                  {documentTypeOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.field}>
+                <span>Огноо</span>
+                <input
+                  value={document.date}
+                  onChange={(event) => updateCreateDocumentRow(document.id, "date", event.currentTarget.value)}
+                  placeholder="Ж: 2026-06-15"
+                />
+              </label>
+              <label className={styles.field}>
+                <span>Файл / зураг</span>
+                <input
+                  name={`documentFile-${document.id}`}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  onChange={(event) => handleCreateDocumentFileChange(document.id, event.currentTarget.files?.[0]?.name)}
+                />
+                <small>JPG, PNG, WebP зураг эсвэл PDF файл 10MB хүртэл.</small>
+              </label>
+              <div className={styles.familyMemberRowActions}>
+                <button
+                  type="button"
+                  className={styles.dangerButton}
+                  onClick={() => removeCreateDocumentRow(document.id)}
+                  disabled={createDocumentRows.length === 1 && !normalizedCreateDocumentRows([document]).length}
+                  aria-label={`${index + 1}-р баримт бичгийн мөр устгах`}
+                >
+                  <Trash2 aria-hidden />
+                  <span>Устгах</span>
+                </button>
+              </div>
+            </div>
+          ))}
+          <div className={styles.familyMemberRowActions}>
+            <button type="button" className={styles.secondaryButton} onClick={addCreateDocumentRow}>
+              <Plus aria-hidden />
+              <span>Мөр нэмэх</span>
+            </button>
+          </div>
         </div>
       </section>
 

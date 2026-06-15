@@ -5,8 +5,10 @@ export const dynamic = "force-dynamic";
 
 const MAX_EMPLOYEE_PHOTO_SIZE = 5 * 1024 * 1024;
 const MAX_EDUCATION_DOCUMENT_SIZE = 10 * 1024 * 1024;
+const MAX_EMPLOYEE_DOCUMENT_SIZE = 10 * 1024 * 1024;
 const ALLOWED_EMPLOYEE_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const ALLOWED_EDUCATION_DOCUMENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
+const ALLOWED_EMPLOYEE_DOCUMENT_TYPES = ALLOWED_EDUCATION_DOCUMENT_TYPES;
 
 function jsonError(message: string, status = 500) {
   return Response.json({ error: message }, { status });
@@ -99,6 +101,36 @@ function parseTalentSkillRecords(value: unknown) {
     .filter((record) => record.name || record.type || record.level || record.note);
 }
 
+function parseDocumentRecords(value: unknown) {
+  if (value === null || value === undefined || value === "") return [];
+
+  let rawRecords: unknown;
+  try {
+    rawRecords = typeof value === "string" ? JSON.parse(value) as unknown : value;
+  } catch {
+    throw new Error("INVALID_DOCUMENT_RECORDS");
+  }
+  if (!Array.isArray(rawRecords)) {
+    throw new Error("INVALID_DOCUMENT_RECORDS");
+  }
+
+  return rawRecords
+    .map((item, index) => {
+      const record = item && typeof item === "object" ? item as Record<string, unknown> : {};
+      return {
+        id: String(record.id || `document-${index + 1}`),
+        name: String(record.name ?? "").trim(),
+        type: String(record.type ?? "").trim(),
+        status: String(record.status ?? "").trim() || "Бүртгэлтэй",
+        date: String(record.date ?? "").trim(),
+        attachmentIds: Array.isArray(record.attachmentIds)
+          ? record.attachmentIds.map(Number).filter((attachmentId) => Number.isFinite(attachmentId) && attachmentId > 0)
+          : [],
+      };
+    })
+    .filter((record) => record.name || record.type || record.status || record.date || record.attachmentIds.length);
+}
+
 async function getOptionalEmployeePhotoBase64(formData: FormData) {
   const photo = formData.get("profilePhoto");
   if (!(photo instanceof File) || photo.size <= 0) {
@@ -129,6 +161,28 @@ async function getOptionalEducationDocument(formData: FormData) {
     educationAttachmentName: document.name || "Боловсролын баримт",
     educationAttachmentMimeType: document.type || "application/octet-stream",
   };
+}
+
+async function getDocumentAttachments(formData: FormData, documentRecords: ReturnType<typeof parseDocumentRecords>) {
+  const documentAttachments = [];
+  for (const documentRecord of documentRecords) {
+    const documentFile = formData.get(`documentFile-${documentRecord.id}`);
+    if (!(documentFile instanceof File) || documentFile.size <= 0) continue;
+    if (!ALLOWED_EMPLOYEE_DOCUMENT_TYPES.has(documentFile.type)) {
+      throw new Error("INVALID_EMPLOYEE_DOCUMENT_TYPE");
+    }
+    if (documentFile.size > MAX_EMPLOYEE_DOCUMENT_SIZE) {
+      throw new Error("EMPLOYEE_DOCUMENT_TOO_LARGE");
+    }
+    documentAttachments.push({
+      recordId: documentRecord.id,
+      name: documentFile.name || documentRecord.name || "Баримт бичиг",
+      datas: Buffer.from(await documentFile.arrayBuffer()).toString("base64"),
+      mimetype: documentFile.type || "application/octet-stream",
+      documentType: documentRecord.type || "document",
+    });
+  }
+  return documentAttachments;
 }
 
 export async function GET() {
@@ -162,6 +216,8 @@ export async function POST(request: Request) {
     const primaryEducationRecord = educationRecords[0];
     const talentSkillRecords = parseTalentSkillRecords(formData.get("talentSkillRecords"));
     const primaryTalentSkillRecord = talentSkillRecords[0];
+    const documentRecords = parseDocumentRecords(formData.get("documentRecords"));
+    const documentAttachments = await getDocumentAttachments(formData, documentRecords);
     const input: HrEmployeeCreateInput = {
       lastName: getString(formData, "lastName"),
       firstName: getString(formData, "firstName"),
@@ -209,6 +265,8 @@ export async function POST(request: Request) {
       educationRecords,
       studyField: primaryEducationRecord?.field || getString(formData, "studyField"),
       studySchool: primaryEducationRecord?.school || getString(formData, "studySchool"),
+      documentRecords,
+      documentAttachments,
       note: getString(formData, "note"),
       profilePhotoBase64,
       ...educationDocument,
@@ -264,6 +322,15 @@ export async function POST(request: Request) {
     }
     if (error instanceof Error && error.message === "INVALID_TALENT_SKILL_RECORDS") {
       return jsonError("Ур чадварын мөрүүдийн мэдээлэл буруу байна.", 400);
+    }
+    if (error instanceof Error && error.message === "INVALID_DOCUMENT_RECORDS") {
+      return jsonError("Баримт бичгийн мөрүүдийн мэдээлэл буруу байна.", 400);
+    }
+    if (error instanceof Error && error.message === "INVALID_EMPLOYEE_DOCUMENT_TYPE") {
+      return jsonError("Баримт бичигт зөвхөн JPG, PNG, WebP зураг эсвэл PDF файл оруулна уу.", 400);
+    }
+    if (error instanceof Error && error.message === "EMPLOYEE_DOCUMENT_TOO_LARGE") {
+      return jsonError("Баримт бичгийн файл 10MB-аас бага байх ёстой.", 400);
     }
     console.error("POST /api/hr/employees failed:", error);
     if (isOdooAccessError(error)) {
