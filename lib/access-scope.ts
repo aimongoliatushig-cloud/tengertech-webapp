@@ -60,6 +60,7 @@ function isDepartmentHeadTitle(value?: string | null) {
 function getDepartmentNameFromEmployees(
   employees: EmployeeDepartmentRecord[],
   session: AppSession,
+  options: { allowAmbiguousMatch?: boolean } = {},
 ) {
   const recordsWithDepartment = employees.filter((employee) =>
     Array.isArray(employee.department_id),
@@ -68,8 +69,19 @@ function getDepartmentNameFromEmployees(
     const userRelation = employee.user_id;
     return Array.isArray(userRelation) && userRelation[0] === session.uid;
   });
-  const employee = exactUserRecord ?? recordsWithDepartment[0];
-  const departmentRelation = employee?.department_id;
+
+  // user_id яг таарсан ажилтан байвал түүнийг авна. Эс бөгөөс зөвхөн ганц л
+  // бичлэг буцсан (эргэлзээгүй) тохиолдолд эсвэл дуудагч зөвшөөрсөн үед л авна —
+  // өөр хүний хэлтэс рүү санамсаргүй scope болохоос сэргийлнэ.
+  let employee = exactUserRecord;
+  if (!employee && (recordsWithDepartment.length === 1 || options.allowAmbiguousMatch)) {
+    employee = recordsWithDepartment[0];
+  }
+  if (!employee) {
+    return null;
+  }
+
+  const departmentRelation = employee.department_id;
   const rawDepartmentName = Array.isArray(departmentRelation) ? departmentRelation[1] : "";
   const canonicalDepartmentName = normalizeOrganizationUnitName(rawDepartmentName);
 
@@ -112,7 +124,10 @@ async function loadFallbackEmployeeDepartmentName(session: AppSession) {
   }
 
   for (const domain of fallbackDomains) {
-    const employees = await loadEmployeeDepartmentRecords(domain).catch(() => []);
+    const employees = await loadEmployeeDepartmentRecords(domain, {
+      login: session.login,
+      password: session.password,
+    }).catch(() => []);
     const departmentName = getDepartmentNameFromEmployees(employees, session);
     if (departmentName) {
       return departmentName;
@@ -151,7 +166,15 @@ export function shouldScopeToOwnDepartment(
     return true;
   }
 
-  if (flags?.municipalManager) {
+  // Бүх хэлтсийн тайлан харах эрхтэй менежерүүд (canViewAllWorkspaceReports-той
+  // нийцүүлэн) хэлтэст scope болохгүй — өмнө mfoManager/mfoDispatcher/fleetRepairManager
+  // нар scope болж байгаад тайлан харах эрхтэйгээ зөрчиж байсан.
+  if (
+    flags?.municipalManager ||
+    flags?.mfoManager ||
+    flags?.mfoDispatcher ||
+    flags?.fleetRepairManager
+  ) {
     return false;
   }
 
@@ -180,7 +203,7 @@ export async function loadSessionEmployeeDepartmentName(session: AppSession) {
       },
     ).catch(() => []);
     const departmentName =
-      getDepartmentNameFromEmployees(employees, session) ||
+      getDepartmentNameFromEmployees(employees, session, { allowAmbiguousMatch: true }) ||
       await loadFallbackEmployeeDepartmentName(session) ||
       getFallbackDepartmentName(session);
     sessionDepartmentNameCache.set(cacheKey, {

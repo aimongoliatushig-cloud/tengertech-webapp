@@ -674,6 +674,19 @@ export function HrDashboardClient({
     <>
       <div className={styles.chartGrid}>
         <AnimatedPie
+          title="Чөлөөтэй, өвчтэй ажилтны харьцаа"
+          slices={statusSlices.slice(0, 3)}
+          centerLabel="Нийт"
+          centerValue={`${cards[0].value}`}
+          variant="donut"
+        />
+        <AnimatedPie
+          title="Хэлтсийн ажилтаны тоо"
+          slices={departmentSlices}
+          centerLabel="Ажилтан"
+          centerValue={`${cards[0].value}`}
+        />
+        <AnimatedPie
           title="Сахилгын бүртгэлийн төрөл"
           slices={disciplineTypeSlices}
           centerLabel="Нийт"
@@ -721,19 +734,6 @@ export function HrDashboardClient({
               )}
             </div>
           }
-        />
-        <AnimatedPie
-          title="Хэлтсийн ажилтаны тоо"
-          slices={departmentSlices}
-          centerLabel="Ажилтан"
-          centerValue={`${cards[0].value}`}
-        />
-        <AnimatedPie
-          title="Чөлөөтэй, өвчтэй ажилтны харьцаа"
-          slices={statusSlices.slice(0, 3)}
-          centerLabel="Нийт"
-          centerValue={`${cards[0].value}`}
-          variant="donut"
         />
       </div>
 

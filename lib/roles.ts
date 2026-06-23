@@ -1,4 +1,8 @@
 import { isAutoGarbageDepartment } from "@/lib/department-permissions";
+import {
+  isFeeWeightSpecialistPerson,
+  isReportPlanningPerson,
+} from "@/lib/special-access";
 
 export type UserRole =
   | "system_admin"
@@ -148,10 +152,6 @@ function normalizePermissionText(value?: string | null) {
     .trim();
 }
 
-function compactPermissionText(value?: string | null) {
-  return normalizePermissionText(value).replace(/\s+/g, "");
-}
-
 export function isReportPlanningSpecialist(context: RoleContext) {
   const jobTitle = normalizePermissionText(context.employeeJobTitle);
   const hasReportPlanningTitle =
@@ -160,18 +160,15 @@ export function isReportPlanningSpecialist(context: RoleContext) {
     jobTitle.includes("хариуцсан") &&
     jobTitle.includes("мэргэжилтэн");
 
-  const hasCyrillicReportPlanningTitle =
-    jobTitle.includes("тайлан") &&
-    jobTitle.includes("төлөвлөгөө") &&
-    jobTitle.includes("хариуцсан") &&
-    jobTitle.includes("мэргэжилтэн");
-
   return Boolean(
-    hasReportPlanningTitle ||
-      hasCyrillicReportPlanningTitle ||
-      String(context.login ?? "").trim() === "90858504" ||
-      compactPermissionText(context.name) === "бболормаа"
+    hasReportPlanningTitle || isReportPlanningPerson(context.login, context.name),
   );
+}
+
+// Тайлан-only хэрэглэгчийг таних нэгдсэн логик (хуудас болон middleware хоёулаа
+// үүнийг ашиглана — өмнө proxy.ts тусдаа хуулбар бичсэн байсан).
+export function isReportOnlyContext(context: RoleContext) {
+  return context.role === "report_specialist" || isReportPlanningSpecialist(context);
 }
 
 export function canViewGarbageWeightReports(context: RoleContext) {
@@ -179,8 +176,7 @@ export function canViewGarbageWeightReports(context: RoleContext) {
   const jobTitle = normalizePermissionText(context.employeeJobTitle);
   const isFeeSpecialist = Boolean(
     (jobTitle.includes("төлбөр") && jobTitle.includes("хураамж") && jobTitle.includes("мэргэжилтэн")) ||
-      String(context.login ?? "").trim() === "88105116" ||
-      compactPermissionText(context.name) === "бганчимэг",
+      isFeeWeightSpecialistPerson(context.login, context.name),
   );
 
   return Boolean(

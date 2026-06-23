@@ -44,6 +44,7 @@ import {
   canAccessAutoBaseOverview,
   canAccessGarbageTransportSettings,
   canAccessProcurementModule,
+  canViewGarbageWeightReports as canViewGarbageWeightReportsForContext,
   isGarbageDepartmentHead as isGarbageDepartmentHeadRole,
   isReportPlanningSpecialist,
   type RoleGroupFlags,
@@ -76,6 +77,7 @@ type MenuKey =
   | "help"
   | "new-project"
   | "reports"
+  | "reports-fleet"
   | "data-download"
   | "none";
 
@@ -366,6 +368,11 @@ export function AppMenu({
   };
   const reportOnlyMode =
     reportOnlyModeProp || isReportPlanningSpecialist(roleContext);
+  // "Шатахуун, жин" цэс эрхтэй хэрэглэгчид тогтмол харагдахын тулд props-оор
+  // дамжуулаагүй хуудсууд дээр role/flag-аас нь дотооддоо тооцоолно (бусад
+  // эрхийг roleContext-аар тооцдогтой ижил загвар). Эрхийн логик өөрчлөгдөхгүй.
+  const resolvedCanViewGarbageWeightReports =
+    canViewGarbageWeightReports || canViewGarbageWeightReportsForContext(roleContext);
   const roleLooksDepartmentHead =
     roleLabelLower.includes("хэлтсийн дарга") ||
     roleLabelLower.includes("хэлтэсийн дарга") ||
@@ -746,6 +753,26 @@ export function AppMenu({
             href: canWriteReports ? "/reports" : "/review",
             label: "Тайлан",
             icon: BarChart3,
+            // Шатахуун/жингийн тайлан эрхтэй бол "Тайлан"-г dropdown болгож,
+            // "Ажлын тайлан" + "Шатахуун, жин" гэж бүлэглэнэ. Эс бол энгийн холбоос.
+            ...(resolvedCanViewGarbageWeightReports
+              ? {
+                  children: [
+                    {
+                      key: "reports-work",
+                      href: canWriteReports ? "/reports" : "/review",
+                      label: "Ажлын тайлан",
+                      icon: BarChart3,
+                    },
+                    {
+                      key: "reports-fleet",
+                      href: "/reports/fleet",
+                      label: "Шатахуун, жин",
+                      icon: Truck,
+                    },
+                  ],
+                }
+              : {}),
           },
         ]
       : []),
@@ -808,7 +835,7 @@ export function AppMenu({
     if (canViewAllReports && ["data-download", "reports"].includes(item.key)) {
       return true;
     }
-    if (canViewGarbageWeightReports && item.key === "data-download") {
+    if (resolvedCanViewGarbageWeightReports && item.key === "data-download") {
       return true;
     }
     if (item.key.startsWith("hr")) {
@@ -1125,6 +1152,16 @@ export function AppMenu({
     }
     if (item.children?.some((child) => isItemActive(child))) {
       return true;
+    }
+    if (item.key === "reports-work") {
+      return (
+        active === "reports" ||
+        pathname === "/reports" ||
+        (pathname.startsWith("/reports/") && !pathname.startsWith("/reports/fleet"))
+      );
+    }
+    if (item.key === "reports-fleet") {
+      return active === "reports-fleet" || pathname.startsWith("/reports/fleet");
     }
     if (item.key === "hr-dashboard") {
       return pathname === "/hr";

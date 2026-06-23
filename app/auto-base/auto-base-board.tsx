@@ -796,27 +796,29 @@ function AttachmentGallery({
           <span>{selectedAttachment.label}</span>
         </button>
       ) : null}
-      {visibleGroups.map((group) => (
-        <section key={group.key} className={styles.vehicleAttachmentGroup}>
-          <strong>{group.label}</strong>
-          <div className={styles.vehicleAttachmentGrid}>
-            {group.ids.map((id) => (
-              <AttachmentTile
-                key={id}
-                id={id}
-                label={`${group.label} зураг`}
-                previewImages={previewImages}
-                onOpen={
-                  previewImages
-                    ? (attachment) => setSelectedAttachmentId(attachment.id)
-                    : setViewerAttachment
-                }
-                isSelected={previewImages && selectedAttachment?.id === id}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      <div className={styles.vehicleAttachmentGroups}>
+        {visibleGroups.map((group) => (
+          <section key={group.key} className={styles.vehicleAttachmentGroup}>
+            <strong>{group.label}</strong>
+            <div className={styles.vehicleAttachmentGrid}>
+              {group.ids.map((id) => (
+                <AttachmentTile
+                  key={id}
+                  id={id}
+                  label={`${group.label} зураг`}
+                  previewImages={previewImages}
+                  onOpen={
+                    previewImages
+                      ? (attachment) => setSelectedAttachmentId(attachment.id)
+                      : setViewerAttachment
+                  }
+                  isSelected={previewImages && selectedAttachment?.id === id}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
       {viewerAttachment ? (
         <VehicleAttachmentViewer
           attachment={viewerAttachment}

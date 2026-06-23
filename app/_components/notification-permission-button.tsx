@@ -14,6 +14,11 @@ import {
 
 type PushCardStatus = "checking" | "hidden" | "ready" | "warning" | "error";
 
+// Хаасан banner дахин дахин гарч агуулга дарахаас сэргийлж хаалтыг localStorage-д
+// хадгална. Хэрэглэгч нэг хаавал 24 цаг чимээгүй (мэдэгдлийн холболтын логик хэвээр).
+const DISMISS_STORAGE_KEY = "notification-permission-card-dismissed-until";
+const DISMISS_DURATION_MS = 24 * 60 * 60 * 1000;
+
 function getConfiguredSecureUrl() {
   const candidates = [
     process.env.NEXT_PUBLIC_APP_URL,
@@ -76,7 +81,20 @@ export function NotificationPermissionButton() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [lastActionError, setLastActionError] = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    // Анхны утгыг localStorage-аас уншина (24 цаг дотор хаасан бол нуунa).
+    // Card нь diagnostics ачаалагдтал "checking" төлөвт null буцаадаг тул
+    // hydration зөрчил үүсэхгүй.
+    if (typeof window === "undefined") {
+      return false;
+    }
+    try {
+      const until = Number(window.localStorage.getItem(DISMISS_STORAGE_KEY) || 0);
+      return Boolean(until && Date.now() < until);
+    } catch {
+      return false;
+    }
+  });
   const silentSyncEndpoints = useRef(new Set<string>());
   const shouldPromptForNotifications =
     Boolean(pathname) && pathname !== "/login" && !pathname.startsWith("/auth/");
@@ -86,6 +104,18 @@ export function NotificationPermissionButton() {
     setDiagnostics(nextDiagnostics);
     setConnectionStatus(nextDiagnostics.connectionStatus);
     setSecureUrl(getConfiguredSecureUrl());
+  }, []);
+
+  const handleDismiss = useCallback(() => {
+    setDismissed(true);
+    try {
+      window.localStorage.setItem(
+        DISMISS_STORAGE_KEY,
+        String(Date.now() + DISMISS_DURATION_MS),
+      );
+    } catch {
+      // Хадгалж чадахгүй бол ядаж энэ удаад хаагдана.
+    }
   }, []);
 
   useEffect(() => {
@@ -254,7 +284,7 @@ export function NotificationPermissionButton() {
     >
       <button
         type="button"
-        onClick={() => setDismissed(true)}
+        onClick={handleDismiss}
         aria-label="Мэдэгдлийн сануулгыг хаах"
         style={{
           position: "absolute",

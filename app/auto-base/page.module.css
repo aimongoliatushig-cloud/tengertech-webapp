@@ -2124,6 +2124,15 @@
   text-align: center;
 }
 
+/* Зургийн бүлгүүдийг (Урд/Ард/Хажуу/Гэрчилгээ) доош өрөхийн оронд хажуу тийш
+   (horizontal grid) болгож, дээр нь hero зураг үлдээнэ. */
+.vehicleAttachmentGroups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
 .vehicleGalleryHero {
   position: relative;
   display: block;

@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 
 import { buildPublicUrl } from "@/lib/request-url";
 import {
+  isHrOnlyRole,
+  isReportOnlyContext,
+  type RoleContext,
+} from "@/lib/roles";
+import {
   SESSION_COOKIE_MAX_AGE_SECONDS,
   SESSION_COOKIE_NAME,
 } from "@/lib/session";
@@ -156,100 +161,16 @@ async function unsealProxySession(token: string) {
   return JSON.parse(new TextDecoder().decode(decrypted)) as ProxySession;
 }
 
-function hasHrAccess(session: ProxySession) {
-  const flags = session.groupFlags ?? {};
-  const role = session.role;
-  const transportInspectorOnly = Boolean(
-    role === "transport_inspector" ||
-      (flags.mfoInspector && !flags.mfoManager && !flags.mfoDispatcher),
-  );
-  if (transportInspectorOnly) {
-    return false;
-  }
-
-  const masterOrOperationalLeader = Boolean(
-    role === "senior_master" ||
-      role === "team_leader" ||
-      role === "transport_inspector" ||
-      flags.municipalMaster ||
-      flags.mfoInspector ||
-      flags.greenMaster ||
-      flags.fleetRepairTeamLeader,
-  );
-  return Boolean(
-    role === "hr_specialist" ||
-      role === "hr_manager" ||
-      (role !== "worker" &&
-        !masterOrOperationalLeader &&
-        (flags.hrUser || flags.hrManager || flags.municipalHr)),
-  );
-}
-
-function hasDepartmentHeadAccess(session: ProxySession) {
-  const flags = session.groupFlags ?? {};
-  return Boolean(
-    session.role === "project_manager" ||
-      session.role === "senior_master" ||
-      session.role === "team_leader" ||
-      flags.municipalDepartmentHead ||
-      flags.municipalMaster ||
-      flags.municipalManager ||
-      flags.mfoManager ||
-      flags.environmentManager ||
-      flags.improvementManager,
-  );
-}
-
-function hasExecutiveOrAdminAccess(session: ProxySession) {
-  const flags = session.groupFlags ?? {};
-  return Boolean(
-    session.role === "system_admin" ||
-      session.role === "director" ||
-      session.role === "general_manager" ||
-      flags.municipalDirector ||
-      flags.fleetRepairCeo,
-  );
-}
-
-function normalizePermissionText(value?: string | null) {
-  return String(value ?? "")
-    .toLocaleLowerCase("mn-MN")
-    .replace(/[.,/\\]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function compactPermissionText(value?: string | null) {
-  return normalizePermissionText(value).replace(/\s+/g, "");
-}
-
-function isReportOnlySession(session: ProxySession) {
-  const jobTitle = normalizePermissionText(session.employeeJobTitle);
-  const hasReportPlanningTitle =
-    jobTitle.includes("тайлан") &&
-    jobTitle.includes("төлөвлөгөө") &&
-    jobTitle.includes("хариуцсан") &&
-    jobTitle.includes("мэргэжилтэн");
-
-  return Boolean(
-    session.role === "report_specialist" ||
-      hasReportPlanningTitle ||
-      String(session.login ?? "").trim() === "90858504" ||
-      compactPermissionText(session.name) === "бболормаа"
-  );
-}
-
-function isHrOnlySession(session: ProxySession) {
-  if (session.role === "worker") {
-    return false;
-  }
-
-  const explicitHrRole = session.role === "hr_specialist" || session.role === "hr_manager";
-  return (
-    hasHrAccess(session) &&
-    !hasExecutiveOrAdminAccess(session) &&
-    (explicitHrRole || !hasDepartmentHeadAccess(session))
-  );
+// Эрхийн бүх шийдвэрийг lib/roles.ts-аас л дуудна (давхардсан хуулбар логик
+// устгасан). ProxySession-г RoleContext болгож хувиргана.
+function toRoleContext(session: ProxySession): RoleContext {
+  return {
+    role: session.role ?? "",
+    groupFlags: (session.groupFlags ?? null) as RoleContext["groupFlags"],
+    employeeJobTitle: session.employeeJobTitle ?? null,
+    login: session.login ?? null,
+    name: session.name ?? null,
+  };
 }
 
 function isHrAllowedPath(pathname: string) {
@@ -307,7 +228,8 @@ export async function proxy(request: NextRequest) {
   if (sessionToken && !isPublicPath) {
     try {
       const session = await unsealProxySession(sessionToken);
-      if (isReportOnlySession(session)) {
+      const roleContext = toRoleContext(session);
+      if (isReportOnlyContext(roleContext)) {
         if (pathname === "/") {
           return withRefreshedSessionCookie(
             NextResponse.redirect(buildPublicUrl(request, "/reports")),
@@ -330,7 +252,7 @@ export async function proxy(request: NextRequest) {
           );
         }
       }
-      if (isHrOnlySession(session)) {
+      if (isHrOnlyRole(roleContext)) {
         if (pathname === "/") {
           return withRefreshedSessionCookie(
             NextResponse.redirect(buildPublicUrl(request, "/hr")),

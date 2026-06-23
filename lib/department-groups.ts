@@ -78,7 +78,7 @@ export const DEPARTMENT_GROUPS: DepartmentGroupDefinition[] = [
 export const CANONICAL_DEPARTMENT_NAMES = DEPARTMENT_GROUPS.map((group) => group.name);
 
 function normalizeDepartmentText(value?: string | null) {
-  return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  return (value ?? "").trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
 }
 
 export function normalizeOrganizationUnitName(departmentName?: string | null) {
@@ -101,10 +101,11 @@ export function normalizeOrganizationUnitName(departmentName?: string | null) {
     return "Захиргааны алба";
   }
   if (
-    normalized.includes("авто") ||
-    normalized.includes("хог") ||
-    normalized.includes("машин") ||
-    normalized.includes("тээвэр")
+    !normalized.includes("засвар") &&
+    (normalized.includes("авто") ||
+      normalized.includes("хог") ||
+      normalized.includes("машин") ||
+      normalized.includes("тээвэр"))
   ) {
     return "Авто бааз, хог тээвэрлэлтийн хэлтэс";
   }

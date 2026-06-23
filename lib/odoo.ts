@@ -5164,6 +5164,230 @@ async function loadFuelReportsByVehicle(
   return { records, items, byVehicle };
 }
 
+export type FleetFuelWeightReportType = "fuel" | "weight";
+
+export type FleetFuelWeightReportVehicleRow = {
+  vehicleKey: string;
+  vehicleId: number | null;
+  vehicleLabel: string;
+  vehiclePlate: string;
+  departmentName: string;
+  total: number;
+  totalLabel: string;
+  rowCount: number;
+  matched: boolean;
+  weightDaily: FleetVehicleDailyWeightItem[];
+  fuelDaily: FleetVehicleDailyFuelItem[];
+};
+
+export type FleetFuelWeightReport = {
+  type: FleetFuelWeightReportType;
+  startDate: string;
+  endDate: string;
+  unitLabel: string;
+  rows: FleetFuelWeightReportVehicleRow[];
+  summary: {
+    total: number;
+    totalLabel: string;
+    vehicleCount: number;
+    matchedVehicleCount: number;
+    unmatchedCount: number;
+    dayCount: number;
+    dayAverage: number;
+    dayAverageLabel: string;
+    topVehicleLabel: string;
+    topVehicleTotalLabel: string;
+    rowCount: number;
+  };
+  latestReportDate: string;
+};
+
+async function loadFleetReportDepartmentMap(
+  uid: number,
+  connection: OdooConnection,
+) {
+  const vehicles = await safeSearchReadFleetModel<{
+    id: number;
+    municipal_department_id?: OdooRelation;
+  }>(
+    uid,
+    "fleet.vehicle",
+    [],
+    ["id", "municipal_department_id"],
+    { context: { active_test: false }, limit: 2000 },
+    connection,
+  );
+  const departmentByVehicle = new Map<number, string>();
+  for (const vehicle of vehicles) {
+    departmentByVehicle.set(
+      vehicle.id,
+      relationName(vehicle.municipal_department_id ?? false, ""),
+    );
+  }
+  return departmentByVehicle;
+}
+
+export async function loadFleetFuelWeightReport(
+  input: {
+    type: FleetFuelWeightReportType;
+    startDate: string;
+    endDate: string;
+  },
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<FleetFuelWeightReport> {
+  const { type } = input;
+  const startDate = input.startDate;
+  const endDate = input.endDate >= input.startDate ? input.endDate : input.startDate;
+  const unitLabel = type === "fuel" ? "л" : "тонн";
+
+  const requestedConnection = createOdooConnection(connectionOverrides);
+  const auth = await authenticateWithFallback(requestedConnection);
+  if (!auth) {
+    throw new Error("Odoo authentication failed");
+  }
+  const { uid, connection } = auth;
+
+  const departmentByVehicle = await loadFleetReportDepartmentMap(uid, connection);
+
+  const rowsByKey = new Map<string, FleetFuelWeightReportVehicleRow>();
+  const reportDateSet = new Set<string>();
+  let latestReportDate = "";
+
+  const ensureRow = (
+    vehicleId: number | null,
+    vehicleLabel: string,
+    vehiclePlate: string,
+  ): FleetFuelWeightReportVehicleRow => {
+    const key = vehicleId ? `v:${vehicleId}` : "unmatched";
+    const existing = rowsByKey.get(key);
+    if (existing) {
+      return existing;
+    }
+    const departmentName = vehicleId
+      ? departmentByVehicle.get(vehicleId) ?? ""
+      : "";
+    const created: FleetFuelWeightReportVehicleRow = {
+      vehicleKey: key,
+      vehicleId,
+      vehicleLabel: vehicleId
+        ? vehicleLabel || vehiclePlate || `#${vehicleId}`
+        : "Авто баазад таараагүй",
+      vehiclePlate,
+      departmentName,
+      total: 0,
+      totalLabel: "",
+      rowCount: 0,
+      matched: Boolean(vehicleId),
+      weightDaily: [],
+      fuelDaily: [],
+    };
+    rowsByKey.set(key, created);
+    return created;
+  };
+
+  const trackReportDate = (reportDateValue: string) => {
+    if (!reportDateValue) {
+      return;
+    }
+    reportDateSet.add(reportDateValue);
+    if (reportDateValue > latestReportDate) {
+      latestReportDate = reportDateValue;
+    }
+  };
+
+  if (type === "fuel") {
+    const records = await safeSearchReadFleetModel<OdooGarbageFuelReportRecord>(
+      uid,
+      "municipal.garbage.fuel.report",
+      [
+        ["report_date", ">=", startDate],
+        ["report_date", "<=", endDate],
+      ],
+      VEHICLE_FUEL_REPORT_FIELDS,
+      { order: "report_date desc, id desc" },
+      connection,
+    );
+    for (const record of records) {
+      if (record.state === "failed") {
+        continue;
+      }
+      const item = toFleetFuelReportItem(record);
+      const row = ensureRow(item.vehicleId, item.vehicleName, item.vehiclePlate);
+      row.total += item.fuelLiters;
+      row.rowCount += 1;
+      row.fuelDaily.push(item);
+      trackReportDate(item.reportDateValue);
+    }
+  } else {
+    const records = await safeSearchReadFleetModel<OdooGarbageWeightReportRecord>(
+      uid,
+      "municipal.garbage.weight.report",
+      [
+        ["report_date", ">=", startDate],
+        ["report_date", "<=", endDate],
+      ],
+      VEHICLE_WEIGHT_REPORT_FIELDS,
+      { order: "report_date desc, id desc" },
+      connection,
+    );
+    for (const record of records) {
+      if (record.state === "failed") {
+        continue;
+      }
+      const item = toFleetWeightReportItem(record);
+      const row = ensureRow(item.vehicleId, item.vehicleName, item.vehiclePlate);
+      row.total += item.weightTons;
+      row.rowCount += 1;
+      row.weightDaily.push(item);
+      trackReportDate(item.reportDateValue);
+    }
+  }
+
+  const formatTotal = (value: number) =>
+    type === "fuel" ? formatLiters(value) : formatWeight(value, "ton");
+
+  const rows = Array.from(rowsByKey.values())
+    .map((row) => ({
+      ...row,
+      total: Math.round(row.total * 100) / 100,
+      totalLabel: formatTotal(row.total),
+    }))
+    .sort((left, right) => {
+      if (left.matched !== right.matched) {
+        return left.matched ? -1 : 1;
+      }
+      return right.total - left.total;
+    });
+
+  const total = rows.reduce((sum, row) => sum + row.total, 0);
+  const matchedRows = rows.filter((row) => row.matched);
+  const dayCount = reportDateSet.size;
+  const dayAverage = dayCount ? total / dayCount : 0;
+  const topRow = matchedRows[0];
+
+  return {
+    type,
+    startDate,
+    endDate,
+    unitLabel,
+    rows,
+    summary: {
+      total: Math.round(total * 100) / 100,
+      totalLabel: formatTotal(total),
+      vehicleCount: rows.length,
+      matchedVehicleCount: matchedRows.length,
+      unmatchedCount: rows.filter((row) => !row.matched).length,
+      dayCount,
+      dayAverage: Math.round(dayAverage * 100) / 100,
+      dayAverageLabel: formatTotal(dayAverage),
+      topVehicleLabel: topRow?.vehicleLabel ?? "",
+      topVehicleTotalLabel: topRow ? formatTotal(topRow.total) : "",
+      rowCount: rows.reduce((sum, row) => sum + row.rowCount, 0),
+    },
+    latestReportDate,
+  };
+}
+
 async function loadProcurementLinksByVehicle(
   uid: number,
   vehicleIds: number[],
