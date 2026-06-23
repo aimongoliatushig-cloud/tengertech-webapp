@@ -54,13 +54,16 @@ function resolveCardStatus(diagnostics: NotificationDiagnostics | null): PushCar
     return "hidden";
   }
 
+  if (diagnostics.permissionStatus === "denied") {
+    return "hidden";
+  }
+
   if (
     !diagnostics.notificationSupport ||
     !diagnostics.serviceWorkerSupport ||
     !diagnostics.pushManagerSupport ||
     !diagnostics.secureContext ||
-    diagnostics.privateModePossible ||
-    diagnostics.permissionStatus === "denied"
+    diagnostics.privateModePossible
   ) {
     return "warning";
   }
