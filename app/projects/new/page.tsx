@@ -79,7 +79,9 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
   const masterMode = isMasterRole(session.role);
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateSharedWork =
-    session.role === "director" || session.role === "general_manager";
+    session.role === "director" ||
+    session.role === "general_manager" ||
+    session.role === "system_admin";
   const departmentHeadMode = Boolean(
     session.role === "project_manager" || session.groupFlags?.municipalDepartmentHead,
   );

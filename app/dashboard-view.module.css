@@ -221,7 +221,7 @@
 
 .metricsSummary {
   margin-top: 3px;
-  color: #6f7e74;
+  color: #54655a;
   font-size: 0.76rem;
   line-height: 1.35;
 }
@@ -272,7 +272,7 @@
 .donutCenter span {
   display: block;
   margin-top: 5px;
-  color: #6f7e74;
+  color: #54655a;
   font-size: 0.72rem;
   font-weight: 700;
   line-height: 1.1;
@@ -334,7 +334,7 @@
   place-items: center;
   padding: 14px;
   text-align: center;
-  color: #738378;
+  color: #54655a;
   font-size: 0.78rem;
   font-weight: 600;
   pointer-events: none;
@@ -899,7 +899,7 @@
 }
 
 .taskListKicker {
-  color: #6d7b70;
+  color: #54655a;
   font-size: 0.76rem;
   font-weight: 900;
   line-height: 1;
@@ -939,7 +939,7 @@
 }
 
 .inspectorHeaderTools span {
-  color: #6d7b70;
+  color: #54655a;
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
@@ -2306,7 +2306,7 @@
 }
 
 .assignedVehicleKicker {
-  color: #6d7b70;
+  color: #54655a;
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
@@ -4756,22 +4756,27 @@
 }
 
 .executiveCardAction {
+  /* Карт бүхэлдээ дарагддаг тул чанга pill биш, намуухан текст-холбоос болгож,
+     6 карт давтагдсан pill-ээр бүрэлгэхгүй. Hover дээр тодорно. */
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
+  gap: 5px;
   width: fit-content;
-  min-height: 34px;
-  margin-top: 12px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--department-accent, #078251) 11%, #ffffff);
-  color: var(--department-accent, #078251);
-  font-size: 0.74rem;
-  font-weight: 900;
+  margin-top: 10px;
+  color: color-mix(in srgb, var(--department-accent, #078251) 70%, #55655c);
+  font-size: 0.72rem;
+  font-weight: 800;
+  opacity: 0.68;
   transition:
     transform 160ms ease,
-    background 160ms ease;
+    opacity 160ms ease;
+}
+
+.executiveMetricCard:hover .executiveCardAction,
+.executiveMetricCard:focus-visible .executiveCardAction,
+.executiveDepartmentCard:hover .executiveCardAction,
+.executiveDepartmentCard:focus-visible .executiveCardAction {
+  opacity: 1;
 }
 
 .executiveCardAction svg {

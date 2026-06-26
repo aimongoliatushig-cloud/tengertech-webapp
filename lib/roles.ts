@@ -355,7 +355,6 @@ export function getRoleLabel(role: UserRole) {
 
 export function hasCapability(context: RoleContext, capability: Capability) {
   const groupFlags = normalizeGroupFlags(context.groupFlags);
-  const jobTitle = context.employeeJobTitle?.toLocaleLowerCase("mn-MN") ?? "";
 
   switch (capability) {
     case "create_projects":
@@ -399,28 +398,9 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         context.role === "team_leader"
       );
     case "write_workspace_reports":
-      return Boolean(
-        context.role === "system_admin" ||
-        context.role === "general_manager" ||
-        context.role === "project_manager" ||
-        context.role === "public_relations" ||
-        groupFlags.complaintManager ||
-        groupFlags.municipalPublicRelations ||
-        groupFlags.municipalDepartmentHead ||
-        groupFlags.mfoMobile ||
-        groupFlags.mfoDriver ||
-        groupFlags.mfoLoader ||
-        groupFlags.environmentWorker ||
-        groupFlags.greenEngineer ||
-        groupFlags.greenMaster ||
-        groupFlags.improvementWelder ||
-        groupFlags.improvementFieldEngineer ||
-        groupFlags.improvementEngineer ||
-        jobTitle.includes("мастер") ||
-        context.role === "senior_master" ||
-        context.role === "team_leader" ||
-        context.role === "worker"
-      );
+      // Гүйцэтгэлийн тайлан оруулах нь бүх нэвтэрсэн хэрэглэгчид нээлттэй (optional).
+      // Шалгах/батлах урсгал нь тусдаа (canReviewWorkspaceTaskReport)-оор хэвээр хяналттай.
+      return true;
     case "view_quality_center":
       return Boolean(
         context.role === "system_admin" ||
@@ -466,26 +446,9 @@ export function hasCapability(context: RoleContext, capability: Capability) {
   }
 }
 
-export function canSubmitWorkspaceReport(context: RoleContext) {
-  const groupFlags = normalizeGroupFlags(context.groupFlags);
-  const jobTitle = context.employeeJobTitle?.toLocaleLowerCase("mn-MN") ?? "";
-  return Boolean(
-    context.role === "system_admin" ||
-    context.role === "senior_master" ||
-    context.role === "team_leader" ||
-    context.role === "worker" ||
-    groupFlags.municipalDepartmentHead ||
-    jobTitle.includes("мастер") ||
-    groupFlags.mfoMobile ||
-    groupFlags.mfoDriver ||
-    groupFlags.mfoLoader ||
-    groupFlags.environmentWorker ||
-    groupFlags.greenEngineer ||
-    groupFlags.greenMaster ||
-    groupFlags.improvementWelder ||
-    groupFlags.improvementFieldEngineer ||
-    groupFlags.improvementEngineer
-  );
+export function canSubmitWorkspaceReport(_context: RoleContext) {
+  // Гүйцэтгэлийн тайлан илгээх нь бүх нэвтэрсэн хэрэглэгчид нээлттэй (optional).
+  return true;
 }
 
 export function canDeleteWorkspaceItems(context: RoleContext) {

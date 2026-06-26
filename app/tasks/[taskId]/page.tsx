@@ -332,11 +332,8 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const isGarbageTransportTask =
     task.operationType === "garbage" || task.operationType === "garbage_seasonal";
   const photoFirstReportTask = isPhotoFirstReportTask(task.operationType);
-  const canWriteReport =
-    !task.reportsLocked &&
-    task.stageBucket !== "review" &&
-    task.stageBucket !== "done" &&
-    hasCapability(session, "write_workspace_reports");
+  // Тайлан оруулах нь бүх хэрэглэгчид, аль ч шатанд нээлттэй (optional).
+  const canWriteReport = hasCapability(session, "write_workspace_reports");
   const canOpenReportComposer = canWriteReport && canSubmitWorkspaceReport(session);
   const preferReportComposerOverReviewAction =
     Boolean(session.groupFlags?.municipalDepartmentHead) && canOpenReportComposer && !hasSubmittedReport;

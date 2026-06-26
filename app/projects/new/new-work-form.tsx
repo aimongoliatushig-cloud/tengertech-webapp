@@ -2195,7 +2195,7 @@ export function NewWorkForm({
                         .filter(Boolean)
                         .join(" · ")
                     : selectedDepartment
-                      ? "Хэлтсийн дарга олдсонгүй"
+                      ? "Энэ хэлтэст дарга бүртгэгдээгүй байна"
                       : "Эхлээд хэлтэс сонгоно уу"}
                 </div>
                 <input

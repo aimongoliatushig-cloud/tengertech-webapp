@@ -85,20 +85,31 @@ function employeeTrialHasEnded(employee: HrEmployeeDirectoryItem, today: string)
   return Boolean(employee.trialEndDate && /^\d{4}-\d{2}-\d{2}$/.test(employee.trialEndDate) && employee.trialEndDate <= today);
 }
 
+const CHART_SEPARATOR_COLOR = "rgba(255, 255, 255, 0.92)";
+
 function conicGradient(slices: ChartSlice[]) {
   const total = slices.reduce((sum, slice) => sum + slice.value, 0);
   if (!total) {
     return "#e8f1ea";
   }
 
+  const visibleSlices = slices.filter((slice) => slice.value > 0);
+  // Зүсэм олон бол хооронд нь нимгэн цагаан зай тавьж сегмент болгоно.
+  const gap = visibleSlices.length > 1 ? 2.4 : 0;
+  const half = gap / 2;
+
   let current = 0;
-  const stops = slices
-    .filter((slice) => slice.value > 0)
-    .map((slice) => {
-      const start = current;
-      current += (slice.value / total) * 360;
-      return `${slice.color} ${start}deg ${current}deg`;
-    });
+  const stops = visibleSlices.map((slice) => {
+    const start = current;
+    current += (slice.value / total) * 360;
+    const fillStart = Math.min(start + half, current);
+    const fillEnd = Math.max(current - half, fillStart);
+    const segments = [`${slice.color} ${fillStart}deg ${fillEnd}deg`];
+    if (gap > 0) {
+      segments.push(`${CHART_SEPARATOR_COLOR} ${fillEnd}deg ${current}deg`);
+    }
+    return segments.join(", ");
+  });
   return `conic-gradient(${stops.join(", ")})`;
 }
 
@@ -109,7 +120,6 @@ function AnimatedPie({
   centerValue,
   variant = "pie",
   sideContent,
-  chartNote,
 }: {
   title: string;
   slices: ChartSlice[];
@@ -117,14 +127,8 @@ function AnimatedPie({
   centerValue: string;
   variant?: "pie" | "donut";
   sideContent?: ReactNode;
-  chartNote?: string;
 }) {
   const total = slices.reduce((sum, slice) => sum + slice.value, 0);
-  const largestSlice = slices.reduce<ChartSlice | null>(
-    (largest, slice) => (!largest || slice.value > largest.value ? slice : largest),
-    null,
-  );
-  const defaultChartNote = largestSlice ? `${largestSlice.label}: ${formatPercent(largestSlice.value, total)}` : "0%";
   const chartStyle = {
     "--chart-gradient": conicGradient(slices),
   } as CSSProperties;
@@ -140,7 +144,6 @@ function AnimatedPie({
               <strong>{centerValue}</strong>
             </div>
           </div>
-          <strong>{chartNote ?? defaultChartNote}</strong>
         </div>
         <div className={styles.chartSideStack}>
           {sideContent}
@@ -670,71 +673,78 @@ export function HrDashboardClient({
   };
   const detailContent = getDetailContent(detailKind);
 
+  // Эхний donut-д харагдах зүсмүүд ба тэдгээрийн нийлбэр (төв тоо зүсмүүдтэй нийцнэ).
+  const statusChartSlices = statusSlices.slice(0, 3);
+  const statusChartTotal = statusChartSlices.reduce((sum, slice) => sum + slice.value, 0);
+
+  const chartsSection = (
+    <div className={styles.chartGrid}>
+      <AnimatedPie
+        title="Идэвхтэй, чөлөөтэй, амралттай харьцаа"
+        slices={statusChartSlices}
+        centerLabel="Нийт"
+        centerValue={`${statusChartTotal}`}
+        variant="donut"
+      />
+      <AnimatedPie
+        title="Хэлтсийн ажилтаны тоо"
+        slices={departmentSlices}
+        centerLabel="Ажилтан"
+        centerValue={`${cards[0].value}`}
+        variant="donut"
+      />
+      <AnimatedPie
+        title="Сахилгын бүртгэлийн төрөл"
+        slices={disciplineTypeSlices}
+        centerLabel="Нийт"
+        centerValue={`${disciplineRecords.length}`}
+        variant="donut"
+        sideContent={
+          <div className={styles.chartTopList}>
+            <div className={styles.chartTopListHeader}>
+              <strong>Top 5 ажилтан</strong>
+              <span>Нийт {disciplineRecords.length} бүртгэл</span>
+            </div>
+            {disciplineEmployeeLeaders.length ? (
+              disciplineEmployeeLeaders.map((item, index) =>
+                item.employeeId ? (
+                  <Link key={item.employeeId} href={`/hr/employees/${item.employeeId}`} className={styles.chartTopRow}>
+                    <span>{index + 1}</span>
+                    <div>
+                      <strong>{formatEmployeeDisplayName(item.employeeName)}</strong>
+                      <small>{item.departmentName}</small>
+                    </div>
+                    <em>
+                      {item.count} ({formatPercent(item.count, disciplineRecords.length)})
+                    </em>
+                  </Link>
+                ) : (
+                  <div key={item.employeeName} className={styles.chartTopRow}>
+                    <span>{index + 1}</span>
+                    <div>
+                      <strong>{formatEmployeeDisplayName(item.employeeName)}</strong>
+                      <small>{item.departmentName}</small>
+                    </div>
+                    <em>
+                      {item.count} ({formatPercent(item.count, disciplineRecords.length)})
+                    </em>
+                  </div>
+                ),
+              )
+            ) : (
+              <p>Одоогоор сахилгын бүртгэл алга.</p>
+            )}
+          </div>
+        }
+      />
+    </div>
+  );
+
   return (
     <>
-      <div className={styles.chartGrid}>
-        <AnimatedPie
-          title="Чөлөөтэй, өвчтэй ажилтны харьцаа"
-          slices={statusSlices.slice(0, 3)}
-          centerLabel="Нийт"
-          centerValue={`${cards[0].value}`}
-          variant="donut"
-        />
-        <AnimatedPie
-          title="Хэлтсийн ажилтаны тоо"
-          slices={departmentSlices}
-          centerLabel="Ажилтан"
-          centerValue={`${cards[0].value}`}
-        />
-        <AnimatedPie
-          title="Сахилгын бүртгэлийн төрөл"
-          slices={disciplineTypeSlices}
-          centerLabel="Нийт"
-          centerValue={`${disciplineRecords.length}`}
-          variant="donut"
-          chartNote={
-            disciplineTypeSlices[0]
-              ? `${disciplineTypeSlices[0].label}: ${formatPercent(disciplineTypeSlices[0].value, disciplineRecords.length)}`
-              : "0%"
-          }
-          sideContent={
-            <div className={styles.chartTopList}>
-              <div className={styles.chartTopListHeader}>
-                <strong>Top 5 ажилтан</strong>
-                <span>Нийт {disciplineRecords.length} бүртгэл</span>
-              </div>
-              {disciplineEmployeeLeaders.length ? (
-                disciplineEmployeeLeaders.map((item, index) =>
-                  item.employeeId ? (
-                    <Link key={item.employeeId} href={`/hr/employees/${item.employeeId}`} className={styles.chartTopRow}>
-                      <span>{index + 1}</span>
-                      <div>
-                        <strong>{formatEmployeeDisplayName(item.employeeName)}</strong>
-                        <small>{item.departmentName}</small>
-                      </div>
-                      <em>
-                        {item.count} ({formatPercent(item.count, disciplineRecords.length)})
-                      </em>
-                    </Link>
-                  ) : (
-                    <div key={item.employeeName} className={styles.chartTopRow}>
-                      <span>{index + 1}</span>
-                      <div>
-                        <strong>{formatEmployeeDisplayName(item.employeeName)}</strong>
-                        <small>{item.departmentName}</small>
-                      </div>
-                      <em>
-                        {item.count} ({formatPercent(item.count, disciplineRecords.length)})
-                      </em>
-                    </div>
-                  ),
-                )
-              ) : (
-                <p>Одоогоор сахилгын бүртгэл алга.</p>
-              )}
-            </div>
-          }
-        />
+      <div className={styles.statHeading}>
+        <span className={styles.eyebrow}>Үндсэн үзүүлэлт</span>
+        <p>Аль нэг тоон дээр дарж тухайн ажилтан, хүсэлтийн дэлгэрэнгүйг доор хараарай.</p>
       </div>
 
       <section className={styles.statGrid}>
@@ -804,6 +814,8 @@ export function HrDashboardClient({
           )}
         </div>
       </section>
+
+      {chartsSection}
     </>
   );
 }

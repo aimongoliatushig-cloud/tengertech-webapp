@@ -821,10 +821,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                       const canReportFromBoard =
                         (quickActionMode === "report" || isRoadAreaCleaning) &&
                         canOpenQuickReport &&
-                        isRoadAreaCleaningTask(task) &&
-                        !task.reportsLocked &&
-                        task.stageBucket !== "review" &&
-                        task.stageBucket !== "done";
+                        isRoadAreaCleaningTask(task);
                       const photoFirstReportTask =
                         isPhotoFirstReportTask(task.operationType) || isRoadAreaCleaningTask(task);
                       const taskDescription = task.description.trim();
