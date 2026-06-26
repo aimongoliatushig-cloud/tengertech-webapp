@@ -157,7 +157,7 @@ function textRun(text: string, options: { bold?: boolean; size?: number } = {}) 
   return new TextRun({
     text,
     bold: options.bold,
-    font: "Times New Roman",
+    font: "Arial",
     size: options.size ?? 24,
   });
 }
@@ -656,7 +656,7 @@ function buildOfficialHtml(context: OfficialReportContext, imagePayloads: Map<nu
   <style>
     @page { size: A4; margin: 1.5cm 1.5cm 1.5cm 2cm; }
     * { box-sizing: border-box; }
-    body { font-family: "Times New Roman", "Noto Serif", serif; font-size: 12pt; line-height: 1.35; color: #111; }
+    body { font-family: Arial, "Noto Sans", sans-serif; font-size: 12pt; line-height: 1.35; color: #111; }
     .cover { min-height: 25cm; display: flex; flex-direction: column; align-items: center; text-align: center; page-break-after: always; }
     .cover h1 { max-width: 17cm; margin: 2.4cm 0 0; font-size: 15pt; line-height: 1.45; font-weight: 700; text-transform: uppercase; }
     .cover .city { margin-top: 1.1cm; font-weight: 700; }

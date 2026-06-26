@@ -19,7 +19,7 @@ export type XlsxSection = {
 };
 
 // Танай жишиг тайлангийн дагуу — цэвэр албан хэв маяг (лого, өнгөгүй).
-const FONT = "Times New Roman";
+const FONT = "Arial";
 const BORDER_COLOR = "000000";
 
 function thinBorder(): ExcelJS.Borders {

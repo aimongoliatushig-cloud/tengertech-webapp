@@ -32,8 +32,8 @@ export type ReportItem = {
   images?: { base64: string; mimetype: string }[];
 };
 
-// Танай жишиг тайлангийн дагуу — албан хэв маяг (лого, Times New Roman).
-const FONT = "Times New Roman";
+// Танай жишиг тайлангийн дагуу — албан хэв маяг (лого, Arial).
+const FONT = "Arial";
 const BRAND = "1F7A3F";
 
 const NO_BORDER = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };

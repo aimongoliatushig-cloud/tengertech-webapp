@@ -502,7 +502,7 @@ function toOfficialPdfHtml(
   <meta charset="utf-8" />
   <style>
     @page { size: A4; margin: 20mm 15mm 20mm 30mm; }
-    body { color: #000; font-family: "Times New Roman", serif; font-size: 12pt; line-height: 1.5; margin: 0; }
+    body { color: #000; font-family: Arial, "Noto Sans", sans-serif; font-size: 12pt; line-height: 1.5; margin: 0; }
     .logos { display: flex; align-items: center; justify-content: center; gap: 26px; margin-bottom: 4px; }
     .logos .emblem { height: 50px; }
     .logos .eco { height: 40px; }
