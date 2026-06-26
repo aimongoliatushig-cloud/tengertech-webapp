@@ -1,5 +1,6 @@
 import "server-only";
 
+import { prepareUploadFromFile } from "@/lib/image-compress";
 import type { AppSession } from "@/lib/auth";
 import {
   compareHrDepartmentNames,
@@ -3038,11 +3039,11 @@ export async function createLeave(session: AppSession, data: HrLeaveCreateInput)
   if (data.files?.length) {
     for (const file of data.files) {
       if (!file.size) continue;
-      const buffer = Buffer.from(await file.arrayBuffer());
+      const prepared = await prepareUploadFromFile(file);
       attachments.push({
-        name: file.name,
-        datas: buffer.toString("base64"),
-        mimetype: file.type || "application/octet-stream",
+        name: prepared.filename,
+        datas: prepared.base64,
+        mimetype: prepared.mimeType,
       });
     }
   }
@@ -3270,11 +3271,11 @@ async function filesToAttachments(files?: File[]): Promise<HrLeaveAttachmentInpu
   const attachments: HrLeaveAttachmentInput[] = [];
   for (const file of files ?? []) {
     if (!file.size) continue;
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const prepared = await prepareUploadFromFile(file);
     attachments.push({
-      name: file.name,
-      datas: buffer.toString("base64"),
-      mimetype: file.type || "application/octet-stream",
+      name: prepared.filename,
+      datas: prepared.base64,
+      mimetype: prepared.mimeType,
     });
   }
   return attachments;

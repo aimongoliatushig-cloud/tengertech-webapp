@@ -167,6 +167,72 @@
   background: #1b6c38;
 }
 
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #e2ece5;
+  border-radius: 14px;
+}
+
+.filterField {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  flex: 1 1 200px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #46584c;
+}
+
+.filterField select,
+.filterField input {
+  min-height: 38px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid #cfe0d4;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1b2c22;
+  background: #ffffff;
+}
+
+.filterButton {
+  min-height: 38px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: none;
+  background: #1f7a3f;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.filterButton:hover {
+  background: #1b6c38;
+}
+
+.filterClear {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: #46584c;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.filterClear:hover {
+  background: #eef6f0;
+  color: #1f7a3f;
+}
+
 .summaryGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

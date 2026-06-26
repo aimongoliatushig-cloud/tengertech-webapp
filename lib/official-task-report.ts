@@ -16,6 +16,7 @@ import { chromium } from "playwright";
 import pptxgen from "pptxgenjs";
 
 import { executeOdooKw } from "@/lib/odoo";
+import { REPORT_ORG, REPORT_SIGNATURES } from "@/lib/report-document";
 import type { TaskDetail, TaskReportFeedItem } from "@/lib/workspace";
 
 type AttachmentPayload = {
@@ -381,12 +382,11 @@ function buildDocxChildren(
 ) {
   const task = context.task;
   const coverTitle = buildCoverTitle(context);
-  const departmentName = cleanText(context.departmentName);
-  const authorName = cleanText(context.authorName || context.selectedReports[0]?.reporter);
-  const reviewerName = cleanText(context.reviewerName || task.teamLeaderName);
+
   const children: Array<Paragraph | Table> = [
-    paragraph(coverTitle, { center: true, bold: true, size: 28, before: 900, after: 520 }),
-    paragraph("Улаанбаатар хот", { center: true, bold: true, after: 1800 }),
+    paragraph(REPORT_ORG.name, { center: true, bold: true, size: 24, after: 240 }),
+    paragraph(coverTitle, { center: true, bold: true, size: 28, before: 200, after: 520 }),
+    paragraph(REPORT_ORG.place, { center: true, bold: true, after: 60 }),
     paragraph(coverYear(context), { center: true, bold: true, after: 0 }),
     pageBreak(),
   ];
@@ -409,13 +409,13 @@ function buildDocxChildren(
     }
   });
 
-  children.push(
-    paragraph("Хянасан:", { bold: true, before: 260, after: 120 }),
-    paragraph(`${departmentName}`, { after: 80 }),
-    paragraph(`${reviewerName}`, { after: 220 }),
-    paragraph("Илтгэх хуудас бичсэн:", { bold: true, after: 120 }),
-    paragraph(authorName, { after: 0 }),
-  );
+  children.push(paragraph("", { before: 480 }));
+  for (const sign of REPORT_SIGNATURES) {
+    children.push(
+      paragraph(`${sign.role}:`, { bold: true, before: 160, after: 40 }),
+      paragraph(`${sign.position}                              ${sign.name}`, { after: 200 }),
+    );
+  }
 
   return children;
 }

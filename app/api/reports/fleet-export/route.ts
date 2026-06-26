@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { loadFleetFuelWeightReport, type FleetFuelWeightReportType } from "@/lib/odoo";
+import { buildReportWorkbook } from "@/lib/report-xlsx";
 import { canViewGarbageWeightReports } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
@@ -20,20 +21,27 @@ function toCsv(rows: unknown[][]) {
   return `﻿${rows.map((row) => row.map(csvCell).join(",")).join("\n")}\n`;
 }
 
-function escapeHtml(value: unknown) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 type FleetReport = Awaited<ReturnType<typeof loadFleetFuelWeightReport>>;
 
-function buildRows(report: FleetReport) {
-  const valueHeader = report.type === "fuel" ? "Нийт литр" : "Нийт жин (тонн)";
+function filterFleetRows(report: FleetReport, department: string, vehicleNeedle: string) {
+  return report.rows.filter((row) => {
+    if (department && row.departmentName.trim() !== department) {
+      return false;
+    }
+    if (
+      vehicleNeedle &&
+      !`${row.vehicleLabel} ${row.vehiclePlate}`.toLocaleLowerCase("mn-MN").includes(vehicleNeedle)
+    ) {
+      return false;
+    }
+    return true;
+  });
+}
+
+function buildRows(type: FleetFuelWeightReportType, rows: FleetReport["rows"]) {
+  const valueHeader = type === "fuel" ? "Нийт литр" : "Нийт жин (тонн)";
   const header = ["№", "Машин", "Улсын дугаар", "Хэлтэс", valueHeader, "Бүртгэлийн мөр", "Таарсан"];
-  const body = report.rows.map((row, index) => [
+  const body = rows.map((row, index) => [
     index + 1,
     row.vehicleLabel,
     row.vehiclePlate,
@@ -45,36 +53,44 @@ function buildRows(report: FleetReport) {
   return [header, ...body];
 }
 
-function toExcelHtml(title: string, report: FleetReport) {
-  const rows = buildRows(report);
-  const head = rows[0];
-  const dataRows = rows.slice(1);
-  const tableRows = dataRows
-    .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`)
-    .join("");
-
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>${escapeHtml(title)}</title>
-  <style>
-    body { font-family: Arial, sans-serif; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ccd5cf; padding: 6px 8px; text-align: left; }
-    th { background: #eef6f0; }
-  </style>
-</head>
-<body>
-  <h1>${escapeHtml(title)}</h1>
-  <p>Хугацаа: ${escapeHtml(report.startDate)} - ${escapeHtml(report.endDate)}</p>
-  <p>Нийт: ${escapeHtml(report.summary.totalLabel)} · Машин: ${report.summary.matchedVehicleCount} · Өдрийн дундаж: ${escapeHtml(report.summary.dayAverageLabel)}</p>
-  <table>
-    <thead><tr>${head.map((cell) => `<th>${escapeHtml(cell)}</th>`).join("")}</tr></thead>
-    <tbody>${tableRows || `<tr><td colspan="${head.length}">Тайлан олдсонгүй.</td></tr>`}</tbody>
-  </table>
-</body>
-</html>`;
+async function toExcelWorkbook(
+  title: string,
+  type: FleetFuelWeightReportType,
+  report: FleetReport,
+  rows: FleetReport["rows"],
+) {
+  const tableRows = buildRows(type, rows);
+  const num = (value: number) => value.toLocaleString("mn-MN", { maximumFractionDigits: 1 });
+  const total = rows.reduce((sum, row) => sum + (row.total ?? 0), 0);
+  const rowCount = rows.reduce((sum, row) => sum + row.rowCount, 0);
+  const top = rows.length ? rows.reduce((max, row) => (row.total > max.total ? row : max), rows[0]) : null;
+  return buildReportWorkbook({
+    title,
+    meta: [
+      { label: "Тайлангийн төрөл", value: type === "fuel" ? "Шатахуун" : "Хогийн жин" },
+      { label: "Хамрах хугацаа", value: `${report.startDate} - ${report.endDate}` },
+    ],
+    sections: [
+      {
+        caption: "Нэгтгэл үзүүлэлт",
+        headers: ["Үзүүлэлт", "Дүн"],
+        rows: [
+          ["Нийт дүн", `${num(total)} ${report.unitLabel}`],
+          ["Машины тоо", rows.length],
+          ["Бүртгэлийн мөр", rowCount],
+          ["Хамгийн их", top ? `${top.vehicleLabel} (${top.totalLabel})` : "—"],
+        ],
+        columnWidths: [30, 30],
+      },
+      {
+        caption: "Машин тус бүрийн задаргаа",
+        headers: tableRows[0] as string[],
+        rows: tableRows.slice(1) as (string | number)[][],
+        columnWidths: [5, 26, 16, 24, 16, 12, 10],
+      },
+    ],
+    sheetName: type === "fuel" ? "Шатахуун" : "Жин",
+  });
 }
 
 export async function GET(request: Request) {
@@ -101,22 +117,29 @@ export async function GET(request: Request) {
     { login: session.login, password: session.password },
   );
 
+  // Хэлтэс / машинаар шүүх (тайлан дээрх шүүлттэй ижил)
+  const department = getParam(searchParams, "department");
+  const vehicleNeedle = getParam(searchParams, "vehicle").trim().toLocaleLowerCase("mn-MN");
+  const displayRows = filterFleetRows(report, department, vehicleNeedle);
+
   const format = getParam(searchParams, "format") || "csv";
   const typeSlug = type === "fuel" ? "fuel" : "weight";
   const title =
     type === "fuel" ? "Шатахууны тайлан" : "Хогийн жингийн тайлан";
   const fileBase = `fleet-${typeSlug}-${startDate}_${endDate}`;
 
-  if (format === "excel" || format === "xls") {
-    return new Response(toExcelHtml(title, report), {
+  if (format === "excel" || format === "xls" || format === "xlsx") {
+    const buffer = await toExcelWorkbook(title, type, report, displayRows);
+    return new Response(new Uint8Array(buffer), {
       headers: {
-        "Content-Disposition": `attachment; filename="${fileBase}.xls"`,
-        "Content-Type": "application/vnd.ms-excel; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${fileBase}.xlsx"`,
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       },
     });
   }
 
-  return new Response(toCsv(buildRows(report)), {
+  return new Response(toCsv(buildRows(type, displayRows)), {
     headers: {
       "Content-Disposition": `attachment; filename="${fileBase}.csv"`,
       "Content-Type": "text/csv; charset=utf-8",

@@ -1,0 +1,257 @@
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 8px;
+  background: #1f7a3f;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.trigger:hover {
+  background: #1b6c38;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(16, 28, 21, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(820px, 100%);
+  max-height: 88vh;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e2ece5;
+}
+
+.head strong {
+  font-size: 1.05rem;
+  color: #16261c;
+}
+
+.head button {
+  display: inline-flex;
+  padding: 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #46584c;
+  cursor: pointer;
+}
+
+.head button:hover {
+  background: #eef6f0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 18px;
+  background: #f6fbf7;
+  border-bottom: 1px solid #e2ece5;
+  font-size: 0.86rem;
+  color: #3a4a42;
+}
+
+.toolbarActions {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbarActions button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid #cfe0d4;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f7a3f;
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.toolbarActions button:hover {
+  background: #eef6f0;
+}
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+
+.group {
+  margin-bottom: 18px;
+}
+
+.group h4 {
+  margin: 0 0 8px;
+  font-size: 0.92rem;
+  color: #16261c;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.tile {
+  position: relative;
+  margin: 0;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.tile img {
+  display: block;
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 3px solid transparent;
+  transition: border-color 140ms ease, filter 140ms ease;
+}
+
+.tile:hover img {
+  filter: brightness(0.96);
+}
+
+.tileSelected img {
+  border-color: #1f7a3f;
+}
+
+.check {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+.check input {
+  width: 18px;
+  height: 18px;
+  accent-color: #1f7a3f;
+}
+
+.badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1f7a3f;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.empty {
+  padding: 28px 18px;
+  text-align: center;
+  color: #5a6b62;
+  font-size: 0.9rem;
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border-top: 1px solid #e2ece5;
+  background: #ffffff;
+}
+
+.foot a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #cfe0d4;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f7a3f;
+  font-weight: 800;
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+.foot a:hover {
+  background: #eef6f0;
+}
+
+.foot .primary {
+  border-color: transparent;
+  background: #1f7a3f;
+  color: #ffffff;
+}
+
+.foot .primary:hover {
+  background: #1b6c38;
+}
+
+.foot .cancel {
+  margin-left: auto;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #d6ddd8;
+  border-radius: 8px;
+  background: transparent;
+  color: #46584c;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .foot a,
+  .foot .cancel {
+    justify-content: center;
+    margin-left: 0;
+  }
+}

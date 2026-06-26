@@ -17,6 +17,14 @@ import {
 } from "@/lib/department-groups";
 import { executeOdooKw, loadMunicipalSnapshot } from "@/lib/odoo";
 import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
+import { buildReportWorkbook, type XlsxSection } from "@/lib/report-xlsx";
+import { buildReportDocx } from "@/lib/report-docx";
+import {
+  REPORT_ORG,
+  REPORT_SIGNATURES,
+  loadReportEmblemDataUrl,
+  loadReportLogoDataUrl,
+} from "@/lib/report-document";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -137,80 +145,88 @@ function nl2br(value: string) {
   return escapeHtml(value).replace(/\n/g, "<br/>");
 }
 
-function toExcelHtml(title: string, payload: ExportPayload) {
-  const table = (caption: string, headers: string[], rows: unknown[][]) => `
-    <table>
-      <caption>${escapeHtml(caption)}</caption>
-      <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
-      <tbody>${rows
-        .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`)
-        .join("")}</tbody>
-    </table>`;
+const REPORT_DOC_TITLE = "Ажлын гүйцэтгэлийн тайлан";
 
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>${escapeHtml(title)}</title>
-  <style>
-    body { font-family: Arial, sans-serif; }
-    table { border-collapse: collapse; margin-bottom: 24px; width: 100%; }
-    caption { font-weight: 700; margin: 8px 0; text-align: left; }
-    th, td { border: 1px solid #ccd5cf; padding: 6px 8px; text-align: left; }
-    th { background: #eef6f0; }
-  </style>
-</head>
-<body>
-  <h1>${escapeHtml(title)}</h1>
-  <p>Хамрах хүрээ: ${escapeHtml(payload.scope)}</p>
-  <p>Үүсгэсэн: ${escapeHtml(payload.generatedAt)}</p>
-  ${table("Нэгтгэл", ["Үзүүлэлт", "Дүн"], [
-    ["Тайлан", payload.summary.reports],
-    ["Ажил", payload.summary.tasks],
-    ["Хяналт хүлээж буй", payload.summary.reviewItems],
-    ["Хугацаа хэтэрсэн", payload.summary.overdueTasks],
-    ["Зураг", payload.summary.images],
-    ["Аудио", payload.summary.audios],
-  ])}
-  ${table(
-    "Зурагтай ажлын тайлан",
-    ["ID", "Ажил", "Төсөл", "Хэлтэс", "Илгээсэн", "Тоо хэмжээ", "Нэгж", "Зураг", "Аудио", "Огноо", "Тайлбар"],
-    payload.reports.map((report) => [
-      report.id,
-      report.taskName,
-      report.projectName,
-      report.departmentName,
-      report.reporter,
-      report.reportedQuantity,
-      report.measurementUnit,
-      report.imageCount,
-      report.audioCount,
-      report.submittedAt,
-      report.summary,
-    ]),
-  )}
-  ${table(
-    "Ажлын жагсаалт",
-    ["ID", "Ажил", "Төсөл", "Хэлтэс", "Төлөв", "Хариуцагч", "Явц", "Дуусах хугацаа", "Тоо хэмжээ", "Үлдэгдэл"],
-    payload.tasks.map((task) => [
-      task.id,
-      task.name,
-      task.projectName,
-      task.departmentName,
-      task.statusLabel,
-      task.leaderName,
-      `${task.progress}%`,
-      task.deadline,
-      `${task.completedQuantity} ${task.measurementUnit}`,
-      `${task.remainingQuantity} ${task.measurementUnit}`,
-    ]),
-  )}
-</body>
-</html>`;
+function buildWorkReportDoc(payload: ExportPayload): {
+  meta: { label: string; value: string }[];
+  sections: XlsxSection[];
+} {
+  return {
+    meta: [
+      { label: "Хамрах хүрээ", value: payload.scope },
+      { label: "Тайлан гаргасан огноо", value: payload.generatedAt },
+    ],
+    sections: [
+      {
+        caption: "Нэгтгэл үзүүлэлт",
+        headers: ["Үзүүлэлт", "Дүн"],
+        rows: [
+          ["Нийт тайлан", payload.summary.reports],
+          ["Нийт ажил", payload.summary.tasks],
+          ["Хяналт хүлээж буй", payload.summary.reviewItems],
+          ["Хугацаа хэтэрсэн ажил", payload.summary.overdueTasks],
+          ["Хавсаргасан зураг", payload.summary.images],
+          ["Аудио бичлэг", payload.summary.audios],
+        ],
+        columnWidths: [34, 14],
+      },
+      {
+        caption: "Ажлын тайлангийн дэлгэрэнгүй",
+        headers: ["№", "Ажил", "Төсөл", "Хэлтэс", "Илгээсэн", "Тоо хэмжээ", "Нэгж", "Зураг", "Аудио", "Огноо", "Тайлбар"],
+        rows: payload.reports.map((report, index) => [
+          index + 1,
+          report.taskName,
+          report.projectName,
+          report.departmentName,
+          report.reporter,
+          report.reportedQuantity,
+          report.measurementUnit,
+          report.imageCount,
+          report.audioCount,
+          report.submittedAt,
+          report.summary,
+        ]),
+        columnWidths: [5, 28, 20, 18, 16, 11, 9, 8, 8, 16, 40],
+      },
+      {
+        caption: "Ажлын жагсаалт",
+        headers: ["№", "Ажил", "Төсөл", "Хэлтэс", "Төлөв", "Хариуцагч", "Явц", "Дуусах хугацаа", "Гүйцэтгэл", "Үлдэгдэл"],
+        rows: payload.tasks.map((task, index) => [
+          index + 1,
+          task.name,
+          task.projectName,
+          task.departmentName,
+          task.statusLabel,
+          task.leaderName,
+          `${task.progress}%`,
+          task.deadline,
+          `${task.completedQuantity} ${task.measurementUnit}`,
+          `${task.remainingQuantity} ${task.measurementUnit}`,
+        ]),
+        columnWidths: [5, 28, 20, 18, 16, 16, 8, 16, 14, 14],
+      },
+    ],
+  };
 }
 
 function reportNarrative(report: ReportRow) {
   return String(report.text || report.summary || "").trim() || "Ажил хийсэн тайлбар оруулаагүй.";
+}
+
+// "Даалгавар: ..." болон "Гүйцэтгэсэн хэмжээ:" хэсгийг хасч, хийсэн ажлын тайлбарыг гаргана.
+function cleanReportNarrative(report: ReportRow) {
+  const raw = String(report.text || report.summary || "").trim();
+  if (!raw) {
+    return "Ажил хийсэн тайлбар оруулаагүй.";
+  }
+  const blocks = raw
+    .split(/\n\n+/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+  const kept = blocks.filter(
+    (block) => !/^Даалгавар\s*:/i.test(block) && !/^Гүйцэтгэсэн хэмжээ/i.test(block),
+  );
+  return (kept.length ? kept : blocks).join("\n\n").trim() || raw;
 }
 
 async function loadLogoDataUrl() {
@@ -454,67 +470,84 @@ function toOfficialPdfHtml(
   title: string,
   payload: ExportPayload,
   imagePayloads: Map<number, AttachmentPayload>,
+  emblemDataUrl: string,
   logoDataUrl: string,
 ) {
+  const year = new Date().getFullYear();
   const sections = payload.reports
     .slice(0, 30)
     .map(
-      (report, index) => `<section class="detail-block ${index > 0 ? "new-page" : ""}">
-        <h2>Ажил хийсэн тайлбар</h2>
+      (report, index) => `<section class="report ${index > 0 ? "new-page" : ""}">
+        <h2 class="report-title">${escapeHtml(report.taskName || report.projectName)}</h2>
+        <div class="report-meta">
+          <span><b>Хэлтэс:</b> ${escapeHtml(report.departmentName)}</span>
+          <span><b>Илгээгч:</b> ${escapeHtml(report.reporter)}</span>
+          <span><b>Огноо:</b> ${escapeHtml(report.submittedAt)}</span>
+          <span><b>Хэмжээ:</b> ${escapeHtml(`${report.reportedQuantity} ${report.measurementUnit}`.trim())}</span>
+        </div>
         <p class="narrative">${nl2br(reportNarrative(report))}</p>
-        <h2>Зураг</h2>
-        ${reportPhotoGrid(report, imagePayloads)}
+        ${report.images.length ? `<div class="photo-label">Хавсаргасан зураг:</div>${reportPhotoGrid(report, imagePayloads)}` : ""}
       </section>`,
     )
     .join("");
+
+  const signatureRows = REPORT_SIGNATURES.map(
+    (sign) =>
+      `<div class="sign"><div class="sign-role">${escapeHtml(sign.role)}:</div><div class="sign-line"><span>${escapeHtml(sign.position)}</span><b>${escapeHtml(sign.name)}</b></div></div>`,
+  ).join("");
 
   return `<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <style>
-    @page { size: A4; margin: 18mm 16mm; }
-    body {
-      color: #111;
-      font-family: "Times New Roman", Arial, sans-serif;
-      font-size: 12pt;
-      line-height: 1.45;
-      margin: 0;
-    }
-    .cover-header { min-height: 92px; text-align: center; }
-    .logo { display: block; width: 72px; height: 72px; object-fit: contain; margin: 0 auto 10px; }
-    h1 { margin: 0 0 22px; font-size: 18pt; text-align: center; text-transform: uppercase; }
-    h2 { margin: 14px 0 8px; font-size: 13pt; }
-    .detail-block { break-inside: avoid; margin-top: 8px; }
+    @page { size: A4; margin: 20mm 15mm 20mm 30mm; }
+    body { color: #000; font-family: "Times New Roman", serif; font-size: 12pt; line-height: 1.5; margin: 0; }
+    .logos { display: flex; align-items: center; justify-content: center; gap: 26px; margin-bottom: 4px; }
+    .logos .emblem { height: 50px; }
+    .logos .eco { height: 40px; }
+    .rule { border-bottom: 2px solid #1f7a3f; margin-bottom: 12px; }
+    .cover { text-align: center; margin-bottom: 14px; }
+    .cover .org { margin: 0; font-weight: bold; font-size: 13pt; }
+    .cover h1 { margin: 6px 0; font-size: 15pt; font-weight: bold; text-transform: uppercase; }
+    .cover .place { margin: 2px 0; }
+    .meta { margin: 14px 0; }
+    .meta div { margin-bottom: 2px; }
+    .report { break-inside: avoid; margin-bottom: 14px; }
     .new-page { break-before: page; }
-    .narrative { margin: 0 0 14px; text-align: justify; }
-    .photo-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 8px;
-    }
-    .photo {
-      margin: 0;
-      break-inside: avoid;
-      border: 1px solid #d6d6d6;
-      padding: 4px;
-    }
-    .photo img {
-      display: block;
-      width: 100%;
-      max-height: 230px;
-      object-fit: contain;
-    }
+    .report-title { margin: 12px 0 8px; text-align: center; text-transform: uppercase; font-size: 12.5pt; font-weight: bold; }
+    .report-meta { margin-bottom: 6px; font-size: 11pt; }
+    .report-meta span { margin-right: 16px; }
+    .narrative { margin: 0 0 8px; text-align: justify; }
+    .photo-label { margin: 6px 0 4px; font-weight: bold; }
+    .photo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .photo { margin: 0; padding: 3px; border: 1px solid #000; break-inside: avoid; }
+    .photo img { display: block; width: 100%; max-height: 220px; object-fit: contain; }
+    .signatures { margin-top: 36px; break-inside: avoid; }
+    .sign { margin-bottom: 18px; }
+    .sign-role { font-weight: bold; }
+    .sign-line { display: flex; justify-content: space-between; gap: 16px; }
     .muted { color: #555; }
   </style>
 </head>
 <body>
-  <div class="cover-header">
-    ${logoDataUrl ? `<img class="logo" src="${logoDataUrl}" alt="Лого" />` : ""}
+  ${
+    emblemDataUrl || logoDataUrl
+      ? `<div class="logos">${emblemDataUrl ? `<img class="emblem" src="${emblemDataUrl}" alt="" />` : ""}${logoDataUrl ? `<img class="eco" src="${logoDataUrl}" alt="" />` : ""}</div><div class="rule"></div>`
+      : ""
+  }
+  <div class="cover">
+    <p class="org">${escapeHtml(REPORT_ORG.name)}</p>
     <h1>${escapeHtml(title)}</h1>
+    <p class="place">${escapeHtml(REPORT_ORG.place)}</p>
+    <p class="place">${year} он</p>
   </div>
-  ${sections || '<section class="detail-block"><p class="muted">Тайлан олдсонгүй.</p></section>'}
+  <div class="meta">
+    <div><b>Хамрах хүрээ:</b> ${escapeHtml(payload.scope)}</div>
+    <div><b>Тайлан гаргасан огноо:</b> ${escapeHtml(payload.generatedAt)}</div>
+  </div>
+  ${sections || '<p class="muted">Тайлан олдсонгүй.</p>'}
+  <div class="signatures">${signatureRows}</div>
 </body>
 </html>`;
 }
@@ -846,6 +879,20 @@ export async function GET(request: Request) {
   const format = getParam(new URL(request.url).searchParams, "format") || "csv";
   const dateKey = new Date().toISOString().slice(0, 10);
 
+  // Сонгосон зургаар хязгаарлах (imageIds=1,2,3). Хоосон бол бүх зураг.
+  const selectedImageIds = getParam(new URL(request.url).searchParams, "imageIds")
+    .split(",")
+    .map((value) => Number(value.trim()))
+    .filter((value) => Number.isFinite(value) && value > 0);
+  if (selectedImageIds.length) {
+    const allowedImageIds = new Set(selectedImageIds);
+    for (const report of payload.reports) {
+      report.images = report.images.filter((image) => allowedImageIds.has(image.id));
+      report.imageCount = report.images.length;
+    }
+    payload.summary.images = payload.reports.reduce((sum, report) => sum + report.images.length, 0);
+  }
+
   if (format === "json") {
     return Response.json(payload, {
       headers: {
@@ -854,25 +901,67 @@ export async function GET(request: Request) {
     });
   }
 
-  if (format === "excel" || format === "xls") {
-    return new Response(toExcelHtml("Хот тохижилтын тайлан", payload), {
+  if (format === "excel" || format === "xls" || format === "xlsx") {
+    const { meta, sections } = buildWorkReportDoc(payload);
+    const buffer = await buildReportWorkbook({
+      title: REPORT_DOC_TITLE,
+      meta,
+      sections,
+      sheetName: "Ажлын тайлан",
+    });
+    return new Response(new Uint8Array(buffer), {
       headers: {
-        "Content-Disposition": `attachment; filename="municipal-report-${dateKey}.xls"`,
-        "Content-Type": "application/vnd.ms-excel; charset=utf-8",
+        "Content-Disposition": `attachment; filename="ajliin-tailan-${dateKey}.xlsx"`,
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      },
+    });
+  }
+
+  if (format === "word" || format === "docx") {
+    const imagePayloads = await loadReportImagePayloads(payload.reports, {
+      login: session.login,
+      password: session.password,
+    });
+    const items = payload.reports.map((report) => ({
+      title: report.taskName || report.projectName,
+      basis: report.projectName,
+      department: report.departmentName,
+      reporter: report.reporter,
+      date: report.submittedAt,
+      narrative: cleanReportNarrative(report),
+      images: report.images
+        .map((image) => imagePayloads.get(image.id))
+        .filter((attachment): attachment is NonNullable<typeof attachment> =>
+          Boolean(attachment && attachment.datas),
+        )
+        .map((attachment) => ({
+          base64: String(attachment.datas),
+          mimetype: String(attachment.mimetype || "image/jpeg"),
+        })),
+    }));
+    const intro = `Тус төв нь тайлант хугацаанд (${payload.scope}) нийт ${items.length} ажлын тайланг нэгтгэн дараах байдлаар тайлагнаж байна:`;
+    const buffer = await buildReportDocx({ title: REPORT_DOC_TITLE, intro, items });
+    return new Response(new Uint8Array(buffer), {
+      headers: {
+        "Content-Disposition": `attachment; filename="ajliin-tailan-${dateKey}.docx"`,
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       },
     });
   }
 
   if (format === "pdf") {
-    const [imagePayloads, logoDataUrl] = await Promise.all([
+    const [imagePayloads, emblemDataUrl, logoDataUrl] = await Promise.all([
       loadReportImagePayloads(payload.reports, {
         login: session.login,
         password: session.password,
       }),
-      loadLogoDataUrl(),
+      loadReportEmblemDataUrl(),
+      loadReportLogoDataUrl(),
     ]);
     const buffer = await renderPdf(
-      toOfficialPdfHtml("Ажлын тайлан", payload, imagePayloads, logoDataUrl),
+      toOfficialPdfHtml("Ажлын тайлан", payload, imagePayloads, emblemDataUrl, logoDataUrl),
     );
     return new Response(new Uint8Array(buffer), {
       headers: {

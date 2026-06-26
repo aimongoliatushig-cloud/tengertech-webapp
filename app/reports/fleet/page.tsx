@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Download, Fuel, Scale } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
+import { ReportPeriodBar } from "@/app/_components/report-period-bar";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
 import {
@@ -13,14 +14,13 @@ import {
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { loadFleetFuelWeightReport, type FleetFuelWeightReportType } from "@/lib/odoo";
+import { resolveReportPeriod, buildReportPeriodHref } from "@/lib/report-period";
 import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 import { canViewGarbageWeightReports } from "@/lib/roles";
 
 import styles from "./fleet-report.module.css";
 
 export const dynamic = "force-dynamic";
-
-type ReportMode = "month" | "year" | "day" | "range";
 
 type PageProps = {
   searchParams?: Promise<{
@@ -31,141 +31,14 @@ type PageProps = {
     date?: string | string[];
     startDate?: string | string[];
     endDate?: string | string[];
+    department?: string | string[];
+    vehicle?: string | string[];
   }>;
 };
-
-const TIME_ZONE = process.env.APP_TIME_ZONE ?? "Asia/Ulaanbaatar";
-const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const MONTH_KEY_PATTERN = /^\d{4}-\d{2}$/;
-const YEAR_KEY_PATTERN = /^\d{4}$/;
 
 function firstParam(value?: string | string[]) {
   return (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
 }
-
-function todayDateKey() {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
-
-function lastDayOfMonth(year: number, monthIndex: number) {
-  return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
-}
-
-function shiftMonthKey(monthKey: string, delta: number) {
-  const [year, month] = monthKey.split("-").map(Number);
-  const shifted = new Date(Date.UTC(year, month - 1 + delta, 1));
-  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
-function shiftDayKey(dateKey: string, delta: number) {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  const shifted = new Date(Date.UTC(year, month - 1, day + delta));
-  return shifted.toISOString().slice(0, 10);
-}
-
-function monthLabel(monthKey: string) {
-  const [year, month] = monthKey.split("-").map(Number);
-  return `${year} оны ${month}-р сар`;
-}
-
-function buildMonthOptions(currentMonthKey: string, selectedMonthKey: string, count = 24) {
-  const keys = new Set<string>();
-  for (let index = 0; index < count; index += 1) {
-    keys.add(shiftMonthKey(currentMonthKey, -index));
-  }
-  keys.add(selectedMonthKey);
-  return Array.from(keys)
-    .sort((left, right) => (left < right ? 1 : -1))
-    .map((value) => ({ value, label: monthLabel(value) }));
-}
-
-type ResolvedPeriod = {
-  type: FleetFuelWeightReportType;
-  mode: ReportMode;
-  month: string;
-  year: string;
-  date: string;
-  startDate: string;
-  endDate: string;
-  periodLabel: string;
-};
-
-function resolvePeriod(params: {
-  type: string;
-  mode: string;
-  month: string;
-  year: string;
-  date: string;
-  startDate: string;
-  endDate: string;
-}): ResolvedPeriod {
-  const today = todayDateKey();
-  const type: FleetFuelWeightReportType = params.type === "weight" ? "weight" : "fuel";
-  const mode: ReportMode = ["month", "year", "day", "range"].includes(params.mode)
-    ? (params.mode as ReportMode)
-    : "month";
-
-  const month = MONTH_KEY_PATTERN.test(params.month) ? params.month : today.slice(0, 7);
-  const year = YEAR_KEY_PATTERN.test(params.year) ? params.year : today.slice(0, 4);
-  const date = DATE_KEY_PATTERN.test(params.date) ? params.date : today;
-
-  let startDate = "";
-  let endDate = "";
-  let periodLabel = "";
-
-  if (mode === "month") {
-    const [y, m] = month.split("-").map(Number);
-    startDate = `${month}-01`;
-    endDate = `${month}-${String(lastDayOfMonth(y, m - 1)).padStart(2, "0")}`;
-    periodLabel = monthLabel(month);
-  } else if (mode === "year") {
-    startDate = `${year}-01-01`;
-    endDate = `${year}-12-31`;
-    periodLabel = `${year} он`;
-  } else if (mode === "day") {
-    startDate = date;
-    endDate = date;
-    periodLabel = date;
-  } else {
-    const requestedStart = DATE_KEY_PATTERN.test(params.startDate) ? params.startDate : `${today.slice(0, 7)}-01`;
-    const requestedEnd = DATE_KEY_PATTERN.test(params.endDate) ? params.endDate : today;
-    startDate = requestedStart <= requestedEnd ? requestedStart : requestedEnd;
-    endDate = requestedStart <= requestedEnd ? requestedEnd : requestedStart;
-    periodLabel = startDate === endDate ? startDate : `${startDate} - ${endDate}`;
-  }
-
-  return { type, mode, month, year, date, startDate, endDate, periodLabel };
-}
-
-function buildHref(period: ResolvedPeriod, overrides: Partial<ResolvedPeriod>) {
-  const next = { ...period, ...overrides };
-  const search = new URLSearchParams();
-  search.set("type", next.type);
-  search.set("mode", next.mode);
-  if (next.mode === "month") {
-    search.set("month", next.month);
-  } else if (next.mode === "year") {
-    search.set("year", next.year);
-  } else if (next.mode === "day") {
-    search.set("date", next.date);
-  } else {
-    search.set("startDate", next.startDate);
-    search.set("endDate", next.endDate);
-  }
-  return `/reports/fleet?${search.toString()}`;
-}
-
-const MODE_TABS: { key: ReportMode; label: string }[] = [
-  { key: "month", label: "Сараар" },
-  { key: "year", label: "Жилээр" },
-  { key: "day", label: "Өдрөөр" },
-  { key: "range", label: "Хугацаагаар" },
-];
 
 export default async function FleetFuelWeightReportPage({ searchParams }: PageProps) {
   const session = await requireSession();
@@ -184,8 +57,8 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
   const scopedDepartmentName = await loadSessionDepartmentName(session);
 
   const rawParams = (await searchParams) ?? {};
-  const period = resolvePeriod({
-    type: firstParam(rawParams.type),
+  const type: FleetFuelWeightReportType = firstParam(rawParams.type) === "weight" ? "weight" : "fuel";
+  const period = resolveReportPeriod({
     mode: firstParam(rawParams.mode),
     month: firstParam(rawParams.month),
     year: firstParam(rawParams.year),
@@ -198,7 +71,7 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
   let loadError = "";
   try {
     report = await loadFleetFuelWeightReport(
-      { type: period.type, startDate: period.startDate, endDate: period.endDate },
+      { type, startDate: period.startDate, endDate: period.endDate },
       { login: session.login, password: session.password },
     );
   } catch (error) {
@@ -206,40 +79,78 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
     loadError = "Тайлангийн мэдээллийг уншиж чадсангүй. Холболт болон эрхээ шалгана уу.";
   }
 
-  const isFuel = period.type === "fuel";
+  const isFuel = type === "fuel";
   const typeLabel = isFuel ? "Шатахуун" : "Жин";
   const unitLabel = report?.unitLabel ?? (isFuel ? "л" : "тонн");
   const summary = report?.summary;
-  const rows = report?.rows ?? [];
+  const allRows = report?.rows ?? [];
+
+  // Хэлтэс ба машинаар шүүх
+  const departmentOptions = Array.from(
+    new Set(allRows.map((row) => row.departmentName.trim()).filter(Boolean)),
+  ).sort((left, right) => left.localeCompare(right, "mn"));
+  const requestedDepartment = firstParam(rawParams.department);
+  const selectedDepartment = departmentOptions.includes(requestedDepartment) ? requestedDepartment : "";
+  const vehicleQuery = firstParam(rawParams.vehicle);
+  const vehicleNeedle = vehicleQuery.trim().toLocaleLowerCase("mn-MN");
+  const rows = allRows.filter((row) => {
+    if (selectedDepartment && row.departmentName.trim() !== selectedDepartment) {
+      return false;
+    }
+    if (
+      vehicleNeedle &&
+      !`${row.vehicleLabel} ${row.vehiclePlate}`.toLocaleLowerCase("mn-MN").includes(vehicleNeedle)
+    ) {
+      return false;
+    }
+    return true;
+  });
+  const isFiltered = Boolean(selectedDepartment || vehicleNeedle);
+
+  // Шүүсэн үед дүгнэлт картыг шүүсэн жагсаалтаар дахин тооцоолно
+  const numberFmt = (value: number) => value.toLocaleString("mn-MN", { maximumFractionDigits: 1 });
+  const filteredTotal = rows.reduce((sum, row) => sum + (row.total ?? 0), 0);
+  const filteredRowCount = rows.reduce((sum, row) => sum + row.rowCount, 0);
+  const filteredTop = rows.length
+    ? rows.reduce((max, row) => (row.total > max.total ? row : max), rows[0])
+    : null;
+  const dayCount = summary?.dayCount ?? 0;
+  const cardTotal = isFiltered ? `${numberFmt(filteredTotal)} ${unitLabel}` : summary?.totalLabel ?? `0 ${unitLabel}`;
+  const cardVehicleCount = isFiltered ? rows.length : summary?.matchedVehicleCount ?? 0;
+  const cardRowCount = isFiltered ? filteredRowCount : summary?.rowCount ?? 0;
+  const cardDayAverage = isFiltered
+    ? `${numberFmt(dayCount ? filteredTotal / dayCount : filteredTotal)} ${unitLabel}`
+    : summary?.dayAverageLabel ?? `0 ${unitLabel}`;
+  const cardTopTotal = isFiltered ? filteredTop?.totalLabel ?? "—" : summary?.topVehicleTotalLabel || "—";
+  const cardTopLabel = isFiltered ? filteredTop?.vehicleLabel ?? "Дата алга" : summary?.topVehicleLabel || "Дата алга";
 
   const exportParams = new URLSearchParams({
-    type: period.type,
+    type,
     startDate: period.startDate,
     endDate: period.endDate,
   });
+  if (selectedDepartment) {
+    exportParams.set("department", selectedDepartment);
+  }
+  if (vehicleQuery.trim()) {
+    exportParams.set("vehicle", vehicleQuery.trim());
+  }
   const excelHref = `/api/reports/fleet-export?${exportParams.toString()}&format=excel`;
   const csvHref = `/api/reports/fleet-export?${exportParams.toString()}&format=csv`;
 
-  const monthOptions = buildMonthOptions(todayDateKey().slice(0, 7), period.month);
+  // Хэлтсийн шүүлтийн "Цэвэрлэх" холбоос (хугацаа, төрөл хадгална)
+  const clearFilterParams = new URLSearchParams({ type, mode: period.mode });
+  if (period.mode === "month") clearFilterParams.set("month", period.month);
+  else if (period.mode === "year") clearFilterParams.set("year", period.year);
+  else if (period.mode === "day") clearFilterParams.set("date", period.date);
+  else {
+    clearFilterParams.set("startDate", period.startDate);
+    clearFilterParams.set("endDate", period.endDate);
+  }
+  const clearFilterHref = `/reports/fleet?${clearFilterParams.toString()}`;
+
   // Хэлтсийн мэдээлэл байхгүй (бүгд хоосон) бол "—"-ээр дүүрсэн баганыг нуунa.
   const showDepartmentColumn = rows.some((row) => row.departmentName.trim().length > 0);
-  const showStep = period.mode === "month" || period.mode === "year" || period.mode === "day";
-  const prevHref = buildHref(
-    period,
-    period.mode === "month"
-      ? { month: shiftMonthKey(period.month, -1) }
-      : period.mode === "year"
-        ? { year: String(Number(period.year) - 1) }
-        : { date: shiftDayKey(period.date, -1) },
-  );
-  const nextHref = buildHref(
-    period,
-    period.mode === "month"
-      ? { month: shiftMonthKey(period.month, 1) }
-      : period.mode === "year"
-        ? { year: String(Number(period.year) + 1) }
-        : { date: shiftDayKey(period.date, 1) },
-  );
 
   return (
     <main className={shellStyles.shell}>
@@ -276,14 +187,14 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
               <div className={styles.controls}>
                 <div className={styles.typeTabs} role="tablist" aria-label="Тайлангийн төрөл">
                   <Link
-                    href={buildHref(period, { type: "fuel" })}
+                    href={buildReportPeriodHref("/reports/fleet", period, {}, { type: "fuel" })}
                     className={`${styles.typeTab} ${isFuel ? styles.typeTabActive : ""}`}
                   >
                     <Fuel aria-hidden size={18} />
                     Шатахуун
                   </Link>
                   <Link
-                    href={buildHref(period, { type: "weight" })}
+                    href={buildReportPeriodHref("/reports/fleet", period, {}, { type: "weight" })}
                     className={`${styles.typeTab} ${!isFuel ? styles.typeTabActive : ""}`}
                   >
                     <Scale aria-hidden size={18} />
@@ -303,67 +214,51 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
                 </div>
               </div>
 
-              <div className={styles.periodBar}>
-                <div className={styles.modeTabs}>
-                  {MODE_TABS.map((tab) => (
-                    <Link
-                      key={tab.key}
-                      href={buildHref(period, { mode: tab.key })}
-                      className={`${styles.modeTab} ${period.mode === tab.key ? styles.modeTabActive : ""}`}
-                    >
-                      {tab.label}
-                    </Link>
-                  ))}
-                </div>
+              <ReportPeriodBar basePath="/reports/fleet" period={period} extraParams={{ type }} />
 
-                <div className={styles.periodPicker}>
-                  {showStep ? (
-                    <Link href={prevHref} className={styles.stepButton} aria-label="Өмнөх">
-                      ◀
-                    </Link>
-                  ) : null}
-                  <strong className={styles.periodLabel}>{period.periodLabel}</strong>
-                  {showStep ? (
-                    <Link href={nextHref} className={styles.stepButton} aria-label="Дараах">
-                      ▶
-                    </Link>
-                  ) : null}
-                </div>
-
-                <form className={styles.periodForm} action="/reports/fleet" method="get">
-                  <input type="hidden" name="type" value={period.type} />
+              {allRows.length || isFiltered ? (
+                <form className={styles.filterBar} action="/reports/fleet" method="get">
+                  <input type="hidden" name="type" value={type} />
                   <input type="hidden" name="mode" value={period.mode} />
-                  {period.mode === "month" ? (
-                    <select name="month" defaultValue={period.month} aria-label="Сар сонгох">
-                      {monthOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
+                  {period.mode === "month" ? <input type="hidden" name="month" value={period.month} /> : null}
+                  {period.mode === "year" ? <input type="hidden" name="year" value={period.year} /> : null}
+                  {period.mode === "day" ? <input type="hidden" name="date" value={period.date} /> : null}
+                  {period.mode === "range" ? (
+                    <>
+                      <input type="hidden" name="startDate" value={period.startDate} />
+                      <input type="hidden" name="endDate" value={period.endDate} />
+                    </>
+                  ) : null}
+                  <label className={styles.filterField}>
+                    <span>Хэлтэс</span>
+                    <select name="department" defaultValue={selectedDepartment}>
+                      <option value="">Бүх хэлтэс</option>
+                      {departmentOptions.map((department) => (
+                        <option key={department} value={department}>
+                          {department}
                         </option>
                       ))}
                     </select>
-                  ) : null}
-                  {period.mode === "year" ? (
+                  </label>
+                  <label className={styles.filterField}>
+                    <span>Машин</span>
                     <input
-                      type="number"
-                      name="year"
-                      min={2020}
-                      max={2100}
-                      defaultValue={period.year}
-                      aria-label="Жил сонгох"
+                      type="search"
+                      name="vehicle"
+                      defaultValue={vehicleQuery}
+                      placeholder="Нэр эсвэл улсын дугаар"
                     />
+                  </label>
+                  <button type="submit" className={styles.filterButton}>
+                    Шүүх
+                  </button>
+                  {isFiltered ? (
+                    <a className={styles.filterClear} href={clearFilterHref}>
+                      Цэвэрлэх
+                    </a>
                   ) : null}
-                  {period.mode === "day" ? (
-                    <input type="date" name="date" defaultValue={period.date} aria-label="Өдөр сонгох" />
-                  ) : null}
-                  {period.mode === "range" ? (
-                    <>
-                      <input type="date" name="startDate" defaultValue={period.startDate} aria-label="Эхлэх өдөр" />
-                      <input type="date" name="endDate" defaultValue={period.endDate} aria-label="Дуусах өдөр" />
-                    </>
-                  ) : null}
-                  <button type="submit">Харах</button>
                 </form>
-              </div>
+              ) : null}
 
               {loadError ? (
                 <div className={styles.errorCard}>{loadError}</div>
@@ -372,23 +267,23 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
                   <div className={styles.summaryGrid}>
                     <article className={styles.summaryCard}>
                       <span>Нийт {typeLabel.toLocaleLowerCase("mn-MN")}</span>
-                      <strong>{summary?.totalLabel ?? `0 ${unitLabel}`}</strong>
-                      <small>{period.periodLabel}</small>
+                      <strong>{cardTotal}</strong>
+                      <small>{isFiltered ? `${period.periodLabel} · шүүсэн` : period.periodLabel}</small>
                     </article>
                     <article className={styles.summaryCard}>
                       <span>Машины тоо</span>
-                      <strong>{summary?.matchedVehicleCount ?? 0}</strong>
-                      <small>{summary?.rowCount ?? 0} бүртгэлийн мөр</small>
+                      <strong>{cardVehicleCount}</strong>
+                      <small>{cardRowCount} бүртгэлийн мөр</small>
                     </article>
                     <article className={styles.summaryCard}>
                       <span>Өдрийн дундаж</span>
-                      <strong>{summary?.dayAverageLabel ?? `0 ${unitLabel}`}</strong>
-                      <small>{summary?.dayCount ?? 0} өдрийн дата</small>
+                      <strong>{cardDayAverage}</strong>
+                      <small>{dayCount} өдрийн дата</small>
                     </article>
                     <article className={styles.summaryCard}>
                       <span>Хамгийн их</span>
-                      <strong>{summary?.topVehicleTotalLabel || "—"}</strong>
-                      <small>{summary?.topVehicleLabel || "Дата алга"}</small>
+                      <strong>{cardTopTotal}</strong>
+                      <small>{cardTopLabel}</small>
                     </article>
                   </div>
 

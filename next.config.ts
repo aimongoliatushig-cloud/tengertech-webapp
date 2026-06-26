@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // sharp нь native module — server bundle-д оруулахгүйгээр гадны багц болгож externalize хийнэ.
+  serverExternalPackages: ["sharp"],
   experimental: {
     serverActions: {
       bodySizeLimit: "30mb",

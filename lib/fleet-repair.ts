@@ -1,5 +1,6 @@
 import "server-only";
 
+import { prepareUploadFromFile } from "@/lib/image-compress";
 import { loadGarbageWeightLedger } from "@/lib/garbage-weight-ledger";
 import { executeOdooKw, loadFleetVehicleBoard, type OdooConnection } from "@/lib/odoo";
 import type { AppSession } from "@/lib/auth";
@@ -620,11 +621,11 @@ export async function loadFleetRepairRequest(session: AppSession, requestId: num
 }
 
 async function fileToAttachmentPayload(file: File) {
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const prepared = await prepareUploadFromFile(file);
   return {
-    name: file.name || "attachment",
-    mimetype: file.type || "application/octet-stream",
-    datas: buffer.toString("base64"),
+    name: prepared.filename || "attachment",
+    mimetype: prepared.mimeType,
+    datas: prepared.base64,
   };
 }
 

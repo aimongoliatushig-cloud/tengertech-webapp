@@ -13,6 +13,7 @@ import {
 } from "@/lib/auth";
 import { loadSessionDepartmentName, loadSessionEmployeeDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment, getTodayDateKey, pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
+import { prepareAttachment, prepareUploadFromFile } from "@/lib/image-compress";
 import {
   isAutoGarbageDepartment,
   isGarbageTransportDepartment,
@@ -587,14 +588,15 @@ async function createOdooAttachment(
   resId: number,
   connectionOverrides: Record<string, never> | { login: string; password: string },
 ) {
+  const prepared = await prepareUploadFromFile(file);
   return executeOdooKw<number>(
     "ir.attachment",
     "create",
     [
       {
-        name: file.name || "Хавсралт",
-        datas: Buffer.from(await file.arrayBuffer()).toString("base64"),
-        mimetype: file.type || "application/octet-stream",
+        name: prepared.filename || "Хавсралт",
+        datas: prepared.base64,
+        mimetype: prepared.mimeType,
         res_model: resModel,
         res_id: resId,
       },
@@ -605,10 +607,11 @@ async function createOdooAttachment(
 }
 
 async function encodeProcurementUpload(file: File) {
+  const prepared = await prepareUploadFromFile(file);
   return {
-    name: file.name || "Хавсралт",
-    mimetype: file.type || "application/octet-stream",
-    data: Buffer.from(await file.arrayBuffer()).toString("base64"),
+    name: prepared.filename || "Хавсралт",
+    mimetype: prepared.mimeType,
+    data: prepared.base64,
   };
 }
 
@@ -1497,11 +1500,7 @@ export async function createProjectAction(formData: FormData) {
 
       if (projectFiles.length) {
         const attachments = await Promise.all(
-          projectFiles.map(async (file) => ({
-            name: file.name,
-            mimeType: file.type || "application/octet-stream",
-            base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
-          })),
+          projectFiles.map((file) => prepareAttachment(file)),
         );
         await createWorkspaceProjectAttachments(
           createdProjectId,
@@ -1588,11 +1587,7 @@ export async function createProjectAction(formData: FormData) {
 
       if (projectFiles.length) {
         const attachments = await Promise.all(
-          projectFiles.map(async (file) => ({
-            name: file.name,
-            mimeType: file.type || "application/octet-stream",
-            base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
-          })),
+          projectFiles.map((file) => prepareAttachment(file)),
         );
         await createWorkspaceProjectAttachments(projectId, attachments, connectionOverrides);
       }
@@ -1716,11 +1711,7 @@ export async function createProjectAction(formData: FormData) {
 
     if (projectFiles.length) {
       const attachments = await Promise.all(
-        projectFiles.map(async (file) => ({
-          name: file.name,
-          mimeType: file.type || "application/octet-stream",
-          base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
-        })),
+        projectFiles.map((file) => prepareAttachment(file)),
       );
       await createWorkspaceProjectAttachments(projectId, attachments, projectMutationConnection);
     }
@@ -2143,11 +2134,7 @@ export async function createTaskAction(formData: FormData) {
 
     if (taskFiles.length) {
       const attachments = await Promise.all(
-        taskFiles.map(async (file) => ({
-          name: file.name,
-          mimeType: file.type || "application/octet-stream",
-          base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
-        })),
+        taskFiles.map((file) => prepareAttachment(file)),
       );
       await createWorkspaceTaskAttachments(taskId, attachments, connectionOverrides);
     }
@@ -2661,11 +2648,14 @@ export async function createTaskReportAction(formData: FormData) {
 
     const [imageAttachments, audioAttachments] = await timer.step("file_upload_prepare", () => Promise.all([
       Promise.all(
-        imageUploads.map(async (upload) => ({
-          name: getLabeledAttachmentName(upload),
-          mimeType: upload.file.type || getFallbackMimeType(upload.file.name, "image"),
-          base64: Buffer.from(await upload.file.arrayBuffer()).toString("base64"),
-        })),
+        imageUploads.map(async (upload) => {
+          const prepared = await prepareUploadFromFile(upload.file);
+          return {
+            name: getLabeledAttachmentName(upload),
+            mimeType: prepared.mimeType,
+            base64: prepared.base64,
+          };
+        }),
       ),
       Promise.all(
         audioFiles.map(async (file) => ({
@@ -2846,11 +2836,14 @@ export async function updateTaskReportAction(formData: FormData) {
       .join("\n\n");
     const [imageAttachments, audioAttachments] = await timer.step("file_upload_prepare", () => Promise.all([
       Promise.all(
-        imageUploads.map(async (upload) => ({
-          name: getLabeledAttachmentName(upload),
-          mimeType: upload.file.type || getFallbackMimeType(upload.file.name, "image"),
-          base64: Buffer.from(await upload.file.arrayBuffer()).toString("base64"),
-        })),
+        imageUploads.map(async (upload) => {
+          const prepared = await prepareUploadFromFile(upload.file);
+          return {
+            name: getLabeledAttachmentName(upload),
+            mimeType: prepared.mimeType,
+            base64: prepared.base64,
+          };
+        }),
       ),
       Promise.all(
         audioFiles.map(async (file) => ({
@@ -3094,10 +3087,18 @@ export async function postTaskMessageAction(formData: FormData) {
     const attachments = await Promise.all(
       [...imageFiles, ...audioFiles].map(async (file) => {
         const family = file.type.startsWith("audio/") ? "audio" : "image";
+        if (family === "audio") {
+          return {
+            name: file.name,
+            mimeType: file.type || getFallbackMimeType(file.name, "audio"),
+            base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
+          };
+        }
+        const prepared = await prepareUploadFromFile(file);
         return {
           name: file.name,
-          mimeType: file.type || getFallbackMimeType(file.name, family),
-          base64: Buffer.from(await file.arrayBuffer()).toString("base64"),
+          mimeType: prepared.mimeType,
+          base64: prepared.base64,
         };
       }),
     );
@@ -3243,13 +3244,14 @@ export async function uploadFieldStopProofAction(formData: FormData) {
 
   try {
     const connectionOverrides = await getConnectionOverrides();
+    const proofPrepared = await prepareUploadFromFile(uploadedFile);
     await uploadFieldStopProof(
       {
         taskId,
         stopLineId,
         proofType,
-        imageBase64: Buffer.from(await uploadedFile.arrayBuffer()).toString("base64"),
-        fileName: uploadedFile.name,
+        imageBase64: proofPrepared.base64,
+        fileName: proofPrepared.filename,
         description,
         latitude: latitudeRaw ? Number(latitudeRaw) : null,
         longitude: longitudeRaw ? Number(longitudeRaw) : null,

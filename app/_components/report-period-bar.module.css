@@ -1,0 +1,112 @@
+.periodBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid #e2ece5;
+  border-radius: 14px;
+}
+
+.modeTabs {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.modeTab {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #46584c;
+  text-decoration: none;
+}
+
+.modeTab:hover {
+  background: #eef6f0;
+}
+
+.modeTabActive,
+.modeTabActive:hover {
+  background: #1f7a3f;
+  color: #ffffff;
+}
+
+.periodPicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stepButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #cfe0d4;
+  background: #ffffff;
+  color: #1f7a3f;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.stepButton:hover {
+  background: #f1f8f3;
+}
+
+.periodLabel {
+  font-size: 15px;
+  color: #1b2c22;
+  min-width: 130px;
+  text-align: center;
+}
+
+.periodForm {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.periodForm select,
+.periodForm input {
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid #cfe0d4;
+  font-size: 13px;
+  color: #1b2c22;
+  background: #ffffff;
+}
+
+.periodForm button {
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: none;
+  background: #1f7a3f;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.periodForm button:hover {
+  background: #1b6c38;
+}
+
+@media (max-width: 720px) {
+  .periodBar {
+    justify-content: stretch;
+  }
+
+  .modeTabs,
+  .periodPicker,
+  .periodForm {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
-import { ReportImageLightbox } from "@/app/_components/report-image-lightbox";
+import { SelectableReportImageGrid } from "./report-image-select";
+import { ReportDownloadModal } from "./report-download-modal";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
 import {
@@ -41,8 +42,14 @@ import {
 } from "@/lib/master-scope";
 import { loadMunicipalSnapshot } from "@/lib/odoo";
 import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
+import {
+  resolveReportPeriod,
+  appendReportPeriodSearch,
+  type ResolvedReportPeriod,
+} from "@/lib/report-period";
 import { isReportPlanningSpecialist, type RoleGroupFlags } from "@/lib/roles";
 
+import { ReportPeriodBar } from "@/app/_components/report-period-bar";
 import styles from "./reports.module.css";
 
 type PageProps = {
@@ -51,6 +58,10 @@ type PageProps = {
     unit?: string | string[];
     q?: string | string[];
     status?: string | string[];
+    mode?: string | string[];
+    month?: string | string[];
+    year?: string | string[];
+    date?: string | string[];
     startDate?: string | string[];
     endDate?: string | string[];
   }>;
@@ -183,11 +194,6 @@ function getDepartmentParam(value?: string | string[]) {
   return value ?? "";
 }
 
-function getDateParam(value?: string | string[]) {
-  const date = getDepartmentParam(value).trim();
-  return DATE_PARAM_PATTERN.test(date) ? date : "";
-}
-
 function formatQuantity(value: number, unit: string) {
   if (!value) {
     return `0 ${unit}`;
@@ -239,28 +245,6 @@ function isReportInPeriod(
   }
 
   return true;
-}
-
-function getReportPeriodLabel(startDate: string, endDate: string) {
-  if (startDate && endDate) {
-    return startDate === endDate ? `${startDate} өдөр` : `${startDate} - ${endDate}`;
-  }
-  if (startDate) {
-    return `${startDate}-с хойш`;
-  }
-  if (endDate) {
-    return `${endDate} хүртэл`;
-  }
-  return "Бүх хугацаа";
-}
-
-function appendReportPeriodParams(params: URLSearchParams, startDate: string, endDate: string) {
-  if (startDate) {
-    params.set("startDate", startDate);
-  }
-  if (endDate) {
-    params.set("endDate", endDate);
-  }
 }
 
 function formatSubmittedTime(value: string) {
@@ -334,17 +318,17 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const requestedUnit = getDepartmentParam(params.unit);
   const reportSearchQuery = getDepartmentParam(params.q).trim();
   const requestedStatus = getDepartmentParam(params.status);
-  const requestedStartDate = getDateParam(params.startDate);
-  const requestedEndDate = getDateParam(params.endDate);
-  const selectedStartDate =
-    requestedStartDate && requestedEndDate && requestedStartDate > requestedEndDate
-      ? requestedEndDate
-      : requestedStartDate;
-  const selectedEndDate =
-    requestedStartDate && requestedEndDate && requestedStartDate > requestedEndDate
-      ? requestedStartDate
-      : requestedEndDate;
-  const selectedPeriodLabel = getReportPeriodLabel(selectedStartDate, selectedEndDate);
+  const period: ResolvedReportPeriod = resolveReportPeriod({
+    mode: getDepartmentParam(params.mode),
+    month: getDepartmentParam(params.month),
+    year: getDepartmentParam(params.year),
+    date: getDepartmentParam(params.date),
+    startDate: getDepartmentParam(params.startDate),
+    endDate: getDepartmentParam(params.endDate),
+  });
+  const selectedStartDate = period.startDate;
+  const selectedEndDate = period.endDate;
+  const selectedPeriodLabel = period.periodLabel;
   const selectedStatus = REPORT_STATUS_FILTERS.some((item) => item.key === requestedStatus)
     ? requestedStatus
     : "all";
@@ -453,7 +437,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   if (selectedStatus !== "all") {
     preservedFilterParams.set("status", selectedStatus);
   }
-  appendReportPeriodParams(preservedFilterParams, selectedStartDate, selectedEndDate);
+  appendReportPeriodSearch(preservedFilterParams, period);
   const preservedFilterQuery = preservedFilterParams.toString();
   const allDepartmentsHref = `/reports${preservedFilterQuery ? `?${preservedFilterQuery}` : ""}`;
   const normalizedReportSearchQuery = reportSearchQuery.toLocaleLowerCase("mn-MN");
@@ -483,7 +467,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     if (selectedStatus !== "all") {
       hrefParams.set("status", selectedStatus);
     }
-    appendReportPeriodParams(hrefParams, selectedStartDate, selectedEndDate);
+    appendReportPeriodSearch(hrefParams, period);
     const groupReports = snapshot.reports.filter((report) =>
       reportDepartmentMatchesGroup(group, report.departmentName) &&
       isReportInPeriod(report, selectedStartDate, selectedEndDate),
@@ -519,7 +503,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         if (selectedStatus !== "all") {
           hrefParams.set("status", selectedStatus);
         }
-        appendReportPeriodParams(hrefParams, selectedStartDate, selectedEndDate);
+        appendReportPeriodSearch(hrefParams, period);
         const reportCount = filteredReports.filter(
           (report) => report.departmentName === unit && reportMatchesCurrentFilters(report),
         ).length;
@@ -543,11 +527,30 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   if (!departmentScopedMode && selectedUnit) {
     exportParams.set("unit", selectedUnit);
   }
-  appendReportPeriodParams(exportParams, selectedStartDate, selectedEndDate);
+  appendReportPeriodSearch(exportParams, period);
+  // Хугацааны bar болон toolbar хооронд бусад шүүлтийг (хэлтэс, нэгж, хайлт, төлөв) хадгална.
+  const periodBarExtraParams: Record<string, string> = {};
+  if (!departmentScopedMode && selectedGroup) {
+    periodBarExtraParams.department = selectedGroup.name;
+  }
+  if (selectedUnit) {
+    periodBarExtraParams.unit = selectedUnit;
+  }
+  if (reportSearchQuery) {
+    periodBarExtraParams.q = reportSearchQuery;
+  }
+  if (selectedStatus !== "all") {
+    periodBarExtraParams.status = selectedStatus;
+  }
   const visibleReportRows = filteredReports
     .filter(reportMatchesCurrentFilters)
     .sort((left, right) => right.submittedAt.localeCompare(left.submittedAt) || right.id - left.id);
-  const boardReportRows = visibleReportRows.slice(0, 12);
+  const boardReportRows = visibleReportRows.slice(0, 100);
+  // Татах modal-д шүүлтэд хамаарах тайлангуудын зургийг дамжуулна
+  const reportsForDownload = visibleReportRows.map((report) => ({
+    name: report.taskName || report.projectName,
+    images: report.images.map((image) => ({ id: image.id, url: image.url, name: image.name })),
+  }));
   const boardNewReportCount = filteredReports.filter(
     (report) => extractReportDateKey(report) === todayDateKey,
   ).length;
@@ -561,7 +564,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     selectedDepartmentHint?.note ??
     "Авто бааз, ногоон байгууламж, тохижилтын бүх ажлын тайланг нэг урсгалаар харуулж байна";
   const reviewQueueRows = filteredReviewQueue.slice(0, 4);
-  const getExportHref = (format: "csv" | "excel" | "json" | "pdf" | "pptx", reportId?: number) => {
+  const getExportHref = (format: "csv" | "excel" | "word" | "json" | "pdf" | "pptx", reportId?: number) => {
     const params = new URLSearchParams(exportParams);
     params.set("format", format);
     if (reportSearchQuery) {
@@ -615,7 +618,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
             <section className={styles.reportRegistryBoard}>
                 <div className={styles.reportRegistryMetrics}>
-                  <article className={styles.reportRegistryMetricCard}>
+                  <article className={`${styles.reportRegistryMetricCard} ${styles.reportRegistryMetricCardTotal}`}>
                     <span className={styles.reportRegistryMetricIcon}>
                       <ClipboardList aria-hidden />
                     </span>
@@ -625,7 +628,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                       <small>{boardNewReportCount} шинэ тайлан</small>
                     </div>
                   </article>
-                  <article className={styles.reportRegistryMetricCard}>
+                  <article className={`${styles.reportRegistryMetricCard} ${styles.reportRegistryMetricCardPending}`}>
                     <span className={styles.reportRegistryMetricIcon}>
                       <FileClock aria-hidden />
                     </span>
@@ -635,7 +638,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                       <small>{boardReviewCount} хяналт руу орсон</small>
                     </div>
                   </article>
-                  <article className={styles.reportRegistryMetricCard}>
+                  <article className={`${styles.reportRegistryMetricCard} ${styles.reportRegistryMetricCardReview}`}>
                     <span className={styles.reportRegistryMetricIcon}>
                       <ShieldCheck aria-hidden />
                     </span>
@@ -645,7 +648,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                       <small>{filteredReviewQueue.length} даалгавар хяналтад</small>
                     </div>
                   </article>
-                  <article className={styles.reportRegistryMetricCard}>
+                  <article className={`${styles.reportRegistryMetricCard} ${styles.reportRegistryMetricCardApproved}`}>
                     <span className={styles.reportRegistryMetricIcon}>
                       <CheckCircle2 aria-hidden />
                     </span>
@@ -655,7 +658,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                       <small>{filteredReports.length ? Math.round((boardApprovedCount / filteredReports.length) * 100) : 0}% баталгаажсан</small>
                     </div>
                   </article>
-                  <article className={styles.reportRegistryMetricCard}>
+                  <article className={`${styles.reportRegistryMetricCard} ${styles.reportRegistryMetricCardReturned}`}>
                     <span className={styles.reportRegistryMetricIcon}>
                       <XCircle aria-hidden />
                     </span>
@@ -667,12 +670,24 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   </article>
                 </div>
 
+                <ReportPeriodBar basePath="/reports" period={period} extraParams={periodBarExtraParams} />
+
                 <form className={styles.reportRegistryToolbar} action="/reports" method="get">
                   {exportParams.get("department") ? (
                     <input type="hidden" name="department" value={exportParams.get("department") ?? ""} />
                   ) : null}
                   {exportParams.get("unit") ? (
                     <input type="hidden" name="unit" value={exportParams.get("unit") ?? ""} />
+                  ) : null}
+                  <input type="hidden" name="mode" value={period.mode} />
+                  {period.mode === "month" ? <input type="hidden" name="month" value={period.month} /> : null}
+                  {period.mode === "year" ? <input type="hidden" name="year" value={period.year} /> : null}
+                  {period.mode === "day" ? <input type="hidden" name="date" value={period.date} /> : null}
+                  {period.mode === "range" ? (
+                    <>
+                      <input type="hidden" name="startDate" value={period.startDate} />
+                      <input type="hidden" name="endDate" value={period.endDate} />
+                    </>
                   ) : null}
                   <label className={styles.reportRegistrySearch}>
                     <Search aria-hidden />
@@ -692,14 +707,6 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                         </option>
                       ))}
                     </select>
-                  </label>
-                  <label className={styles.reportRegistryDateField}>
-                    <span>Эхлэх өдөр</span>
-                    <input type="date" name="startDate" defaultValue={selectedStartDate} />
-                  </label>
-                  <label className={styles.reportRegistryDateField}>
-                    <span>Дуусах өдөр</span>
-                    <input type="date" name="endDate" defaultValue={selectedEndDate} />
                   </label>
                   <button type="submit" className={styles.reportRegistryFilterButton}>
                     <SlidersHorizontal aria-hidden />
@@ -809,16 +816,14 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                         <small>{selectedPeriodLabel}</small>
                       </div>
                       {visibleReportRows.length ? (
-                        <div className={styles.reportRegistryExportActions}>
-                          <a href={getExportHref("pdf")}>
-                            <Download aria-hidden />
-                            PDF татах
-                          </a>
-                          <a href={getExportHref("excel")}>
-                            <Download aria-hidden />
-                            Excel татах
-                          </a>
-                        </div>
+                        <ReportDownloadModal
+                          reports={reportsForDownload}
+                          hrefs={{
+                            word: getExportHref("word"),
+                            pdf: getExportHref("pdf"),
+                            excel: getExportHref("excel"),
+                          }}
+                        />
                       ) : (
                         <small>{selectedScopeTitle}</small>
                       )}
@@ -890,17 +895,13 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                               </div>
 
                               {report.images.length ? (
-                                <ReportImageLightbox
+                                <SelectableReportImageGrid
                                   images={report.images.map((image) => ({
                                     id: image.id,
                                     url: image.url,
                                     name: image.name,
-                                    alt: `${report.taskName} тайлангийн зураг`,
                                   }))}
                                   gridClassName={styles.reportRegistryAttachmentGrid}
-                                  imageWidth={260}
-                                  imageHeight={180}
-                                  viewerTitle="Тайлангийн зураг"
                                 />
                               ) : null}
 
@@ -924,9 +925,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                                   <Download aria-hidden />
                                   PDF татах
                                 </a>
-                                <a href={getExportHref("pptx", report.id)}>
+                                <a href={getExportHref("word", report.id)}>
                                   <Download aria-hidden />
-                                  PPTX татах
+                                  Word татах
                                 </a>
                               </div>
                             </div>
