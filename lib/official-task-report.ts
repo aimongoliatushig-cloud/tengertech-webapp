@@ -14,6 +14,7 @@ import {
 } from "docx";
 import { chromium } from "playwright";
 import pptxgen from "pptxgenjs";
+import sharp from "sharp";
 
 import { executeOdooKw } from "@/lib/odoo";
 import { REPORT_ORG, REPORT_SIGNATURES } from "@/lib/report-document";
@@ -38,7 +39,6 @@ type OfficialReportContext = {
   };
 };
 
-type DocxImageType = "jpg" | "png" | "gif" | "bmp";
 type PptxSlide = ReturnType<InstanceType<typeof pptxgen>["addSlide"]>;
 
 const A4_MARGINS = {
@@ -224,112 +224,50 @@ async function loadImagePayloads(
   return new Map(attachments.map((attachment) => [attachment.id, attachment]));
 }
 
-function docxImageType(buffer: Buffer): DocxImageType | null {
-  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
-    return "jpg";
-  }
-  if (
-    buffer.length >= 8 &&
-    buffer[0] === 0x89 &&
-    buffer[1] === 0x50 &&
-    buffer[2] === 0x4e &&
-    buffer[3] === 0x47
-  ) {
-    return "png";
-  }
-  if (
-    buffer.length >= 6 &&
-    buffer[0] === 0x47 &&
-    buffer[1] === 0x49 &&
-    buffer[2] === 0x46
-  ) {
-    return "gif";
-  }
-  if (buffer.length >= 2 && buffer[0] === 0x42 && buffer[1] === 0x4d) {
-    return "bmp";
-  }
-
-  return null;
-}
-
-function imageDimensions(buffer: Buffer) {
-  if (
-    buffer.length >= 24 &&
-    buffer[0] === 0x89 &&
-    buffer[1] === 0x50 &&
-    buffer[2] === 0x4e &&
-    buffer[3] === 0x47
-  ) {
-    return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
-  }
-
-  if (buffer.length > 4 && buffer[0] === 0xff && buffer[1] === 0xd8) {
-    let offset = 2;
-    while (offset + 4 < buffer.length) {
-      if (buffer[offset] !== 0xff) {
-        offset += 1;
-        continue;
-      }
-
-      const marker = buffer[offset + 1];
-      const length = buffer.readUInt16BE(offset + 2);
-      if (length < 2 || offset + 2 + length > buffer.length) {
-        break;
-      }
-      if (
-        marker >= 0xc0 &&
-        marker <= 0xcf &&
-        ![0xc4, 0xc8, 0xcc].includes(marker) &&
-        offset + 8 < buffer.length
-      ) {
-        return { width: buffer.readUInt16BE(offset + 7), height: buffer.readUInt16BE(offset + 5) };
-      }
-      offset += 2 + length;
-    }
-  }
-
-  return { width: 4, height: 3 };
-}
-
-function scaledImageSize(buffer: Buffer, maxWidth: number, maxHeight: number) {
-  const dimensions = imageDimensions(buffer);
-  const scale = Math.min(maxWidth / dimensions.width, maxHeight / dimensions.height, 1);
-  return {
-    width: Math.max(1, Math.round(dimensions.width * scale)),
-    height: Math.max(1, Math.round(dimensions.height * scale)),
-  };
-}
-
-function reportImageRuns(
+async function reportImageRuns(
   report: TaskReportFeedItem,
   imagePayloads: Map<number, AttachmentPayload>,
-) {
-  return report.images.flatMap((image) => {
+): Promise<ImageRun[]> {
+  const runs: ImageRun[] = [];
+  for (const image of report.images) {
     const attachment = imagePayloads.get(image.id);
     if (!attachment?.datas) {
-      return [];
+      continue;
     }
 
-    const buffer = Buffer.from(attachment.datas, "base64");
-    const type = docxImageType(buffer);
-    if (!type) {
-      console.warn("Official report skipped unsupported Word image attachment.", {
+    try {
+      // Бүх форматыг (webp, heic, png, эвдэрсэн mimetype г.м) Word найдвартай уншиж
+      // чадах JPEG болгон дахин хувиргаж, EXIF эргэлтийг засна.
+      const input = Buffer.from(attachment.datas, "base64");
+      const data = await sharp(input)
+        .rotate()
+        .flatten({ background: "#ffffff" })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+      const meta = await sharp(data).metadata();
+      const width = meta.width || 270;
+      const height = meta.height || 175;
+      const scale = Math.min(270 / width, 175 / height, 1);
+      runs.push(
+        new ImageRun({
+          data,
+          type: "jpg",
+          transformation: {
+            width: Math.max(1, Math.round(width * scale)),
+            height: Math.max(1, Math.round(height * scale)),
+          },
+        }),
+      );
+    } catch (error) {
+      console.warn("Official report skipped unreadable image attachment.", {
         attachmentId: attachment.id,
         name: attachment.name || image.name,
-        mimetype: attachment.mimetype || "",
+        error: error instanceof Error ? error.message : String(error),
       });
-      return [];
     }
+  }
 
-    const size = scaledImageSize(buffer, 270, 175);
-    return [
-      new ImageRun({
-        data: buffer,
-        type,
-        transformation: size,
-      }),
-    ];
-  });
+  return runs;
 }
 
 function blankImageCell() {
@@ -376,7 +314,7 @@ function imageGridTable(images: ImageRun[]) {
   });
 }
 
-function buildDocxChildren(
+async function buildDocxChildren(
   context: OfficialReportContext,
   imagePayloads: Map<number, AttachmentPayload>,
 ) {
@@ -391,7 +329,8 @@ function buildDocxChildren(
     pageBreak(),
   ];
 
-  context.selectedReports.forEach((report, index) => {
+  for (let index = 0; index < context.selectedReports.length; index += 1) {
+    const report = context.selectedReports[index];
     if (index > 0) {
       children.push(pageBreak());
     }
@@ -403,11 +342,11 @@ function buildDocxChildren(
 
     children.push(...textParagraphs(reportDescription(task, report)));
 
-    const images = reportImageRuns(report, imagePayloads);
+    const images = await reportImageRuns(report, imagePayloads);
     if (images.length) {
       children.push(imageGridTable(images));
     }
-  });
+  }
 
   children.push(paragraph("", { before: 480 }));
   for (const sign of REPORT_SIGNATURES) {
@@ -422,6 +361,7 @@ function buildDocxChildren(
 
 export async function generateOfficialTaskDocx(context: OfficialReportContext) {
   const imagePayloads = await loadImagePayloads(context.selectedReports, context.credentials);
+  const children = await buildDocxChildren(context, imagePayloads);
   const document = new Document({
     sections: [
       {
@@ -430,7 +370,7 @@ export async function generateOfficialTaskDocx(context: OfficialReportContext) {
             margin: A4_MARGINS,
           },
         },
-        children: buildDocxChildren(context, imagePayloads),
+        children,
       },
     ],
   });

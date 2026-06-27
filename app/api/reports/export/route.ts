@@ -516,7 +516,7 @@ function toOfficialPdfHtml(
     .report { break-inside: avoid; margin-bottom: 14px; }
     .new-page { break-before: page; }
     .report-title { margin: 12px 0 8px; text-align: center; text-transform: uppercase; font-size: 12.5pt; font-weight: bold; }
-    .report-meta { margin-bottom: 6px; font-size: 11pt; }
+    .report-meta { margin-bottom: 6px; font-size: 12pt; }
     .report-meta span { margin-right: 16px; }
     .narrative { margin: 0 0 8px; text-align: justify; }
     .photo-label { margin: 6px 0 4px; font-weight: bold; }

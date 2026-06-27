@@ -46,24 +46,23 @@ const BORDERLESS = {
   insideVertical: NO_BORDER,
 };
 
-function imageType(mimetype: string): "jpg" | "png" | "gif" | "bmp" {
-  const value = (mimetype || "").toLowerCase();
-  if (value.includes("png")) return "png";
-  if (value.includes("gif")) return "gif";
-  if (value.includes("bmp")) return "bmp";
-  return "jpg";
-}
-
-async function toImageRun(base64: string, mimetype: string, maxWidth = 250): Promise<ImageRun | null> {
+async function toImageRun(base64: string, _mimetype: string, maxWidth = 250): Promise<ImageRun | null> {
   try {
-    const buffer = Buffer.from(base64, "base64");
-    const meta = await sharp(buffer).metadata();
+    const input = Buffer.from(base64, "base64");
+    // Бүх форматыг (webp, heic, png, эвдэрсэн mimetype г.м) Word найдвартай уншиж
+    // чадах JPEG болгон дахин хувиргаж, EXIF эргэлтийг засна.
+    const data = await sharp(input)
+      .rotate()
+      .flatten({ background: "#ffffff" })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+    const meta = await sharp(data).metadata();
     const width = meta.width || maxWidth;
     const height = meta.height || Math.round(maxWidth * 0.72);
     const scale = Math.min(1, maxWidth / width);
     return new ImageRun({
-      type: imageType(mimetype),
-      data: buffer,
+      type: "jpg",
+      data,
       transformation: { width: Math.round(width * scale), height: Math.round(height * scale) },
     });
   } catch {
@@ -98,7 +97,7 @@ function signatureRow(position: string, name: string): Table {
           new TableCell({
             width: { size: 68, type: WidthType.PERCENTAGE },
             borders: BORDERLESS,
-            children: [new Paragraph({ children: [new TextRun({ text: position, size: 22, font: FONT })] })],
+            children: [new Paragraph({ children: [new TextRun({ text: position, size: 24, font: FONT })] })],
           }),
           new TableCell({
             width: { size: 32, type: WidthType.PERCENTAGE },
@@ -106,7 +105,7 @@ function signatureRow(position: string, name: string): Table {
             children: [
               new Paragraph({
                 alignment: AlignmentType.RIGHT,
-                children: [new TextRun({ text: name, bold: true, size: 22, font: FONT })],
+                children: [new TextRun({ text: name, bold: true, size: 24, font: FONT })],
               }),
             ],
           }),
@@ -211,27 +210,27 @@ export async function buildReportDocx(opts: {
       body.push(
         new Paragraph({
           spacing: { after: 40 },
-          children: [new TextRun({ text: `Үндэслэл: ${item.basis}`, italics: true, size: 21, font: FONT })],
+          children: [new TextRun({ text: `Үндэслэл: ${item.basis}`, italics: true, size: 24, font: FONT })],
         }),
       );
     }
     const metaParts: TextRun[] = [];
     if (item.department) {
       metaParts.push(
-        new TextRun({ text: "Хэлтэс: ", bold: true, size: 22, font: FONT }),
-        new TextRun({ text: `${item.department}    `, size: 22, font: FONT }),
+        new TextRun({ text: "Хэлтэс: ", bold: true, size: 24, font: FONT }),
+        new TextRun({ text: `${item.department}    `, size: 24, font: FONT }),
       );
     }
     if (item.reporter) {
       metaParts.push(
-        new TextRun({ text: "Гүйцэтгэсэн: ", bold: true, size: 22, font: FONT }),
-        new TextRun({ text: `${item.reporter}    `, size: 22, font: FONT }),
+        new TextRun({ text: "Гүйцэтгэсэн: ", bold: true, size: 24, font: FONT }),
+        new TextRun({ text: `${item.reporter}    `, size: 24, font: FONT }),
       );
     }
     if (item.date) {
       metaParts.push(
-        new TextRun({ text: "Огноо: ", bold: true, size: 22, font: FONT }),
-        new TextRun({ text: item.date, size: 22, font: FONT }),
+        new TextRun({ text: "Огноо: ", bold: true, size: 24, font: FONT }),
+        new TextRun({ text: item.date, size: 24, font: FONT }),
       );
     }
     if (metaParts.length) {
@@ -263,7 +262,7 @@ export async function buildReportDocx(opts: {
     body.push(
       new Paragraph({
         spacing: { before: 200, after: 40 },
-        children: [new TextRun({ text: `${sign.role}:`, bold: true, size: 22, font: FONT })],
+        children: [new TextRun({ text: `${sign.role}:`, bold: true, size: 24, font: FONT })],
       }),
       signatureRow(sign.position, sign.name),
     );

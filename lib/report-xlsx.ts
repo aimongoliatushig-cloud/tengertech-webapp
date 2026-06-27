@@ -94,17 +94,17 @@ export async function buildReportWorkbook(opts: {
   // Газар, он
   mergeAcross(row);
   sheet.getRow(row).getCell(1).value = `${REPORT_ORG.place}, ${year} он`;
-  sheet.getRow(row).getCell(1).font = { name: FONT, size: 11, color: { argb: "000000" } };
+  sheet.getRow(row).getCell(1).font = { name: FONT, size: 12, color: { argb: "000000" } };
   sheet.getRow(row).getCell(1).alignment = { horizontal: "center" };
   row += 2;
 
   // Мета мэдээлэл
   for (const item of meta) {
     sheet.getRow(row).getCell(1).value = `${item.label}:`;
-    sheet.getRow(row).getCell(1).font = { name: FONT, size: 11, bold: true };
+    sheet.getRow(row).getCell(1).font = { name: FONT, size: 12, bold: true };
     sheet.mergeCells(row, 2, row, maxCols);
     sheet.getRow(row).getCell(2).value = item.value;
-    sheet.getRow(row).getCell(2).font = { name: FONT, size: 11 };
+    sheet.getRow(row).getCell(2).font = { name: FONT, size: 12 };
     row += 1;
   }
   row += 1;
@@ -114,7 +114,7 @@ export async function buildReportWorkbook(opts: {
     // Хэсгийн гарчиг (ТОМ үсэг, төвлөрсөн)
     mergeAcross(row);
     sheet.getRow(row).getCell(1).value = section.caption.toLocaleUpperCase("mn-MN");
-    sheet.getRow(row).getCell(1).font = { name: FONT, size: 11, bold: true, color: { argb: "000000" } };
+    sheet.getRow(row).getCell(1).font = { name: FONT, size: 12, bold: true, color: { argb: "000000" } };
     sheet.getRow(row).getCell(1).alignment = { horizontal: "center", vertical: "middle" };
     sheet.getRow(row).height = 20;
     row += 1;
@@ -124,7 +124,7 @@ export async function buildReportWorkbook(opts: {
     section.headers.forEach((header, index) => {
       const cell = headerRow.getCell(index + 1);
       cell.value = header;
-      cell.font = { name: FONT, size: 10, bold: true, color: { argb: "000000" } };
+      cell.font = { name: FONT, size: 12, bold: true, color: { argb: "000000" } };
       cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
       cell.border = thinBorder();
     });
@@ -138,7 +138,7 @@ export async function buildReportWorkbook(opts: {
         section.headers.forEach((_, colIndex) => {
           const cell = r.getCell(colIndex + 1);
           cell.value = dataRow[colIndex] ?? "";
-          cell.font = { name: FONT, size: 10, color: { argb: "000000" } };
+          cell.font = { name: FONT, size: 12, color: { argb: "000000" } };
           cell.alignment = { vertical: "top", wrapText: true };
           cell.border = thinBorder();
         });
@@ -147,7 +147,7 @@ export async function buildReportWorkbook(opts: {
     } else {
       mergeAcross(row);
       sheet.getRow(row).getCell(1).value = "Мэдээлэл алга.";
-      sheet.getRow(row).getCell(1).font = { name: FONT, size: 10, italic: true, color: { argb: "555555" } };
+      sheet.getRow(row).getCell(1).font = { name: FONT, size: 12, italic: true, color: { argb: "555555" } };
       sheet.getRow(row).getCell(1).border = thinBorder();
       row += 1;
     }
@@ -166,13 +166,13 @@ export async function buildReportWorkbook(opts: {
   for (const sign of REPORT_SIGNATURES) {
     mergeAcross(row);
     sheet.getRow(row).getCell(1).value = `${sign.role}:`;
-    sheet.getRow(row).getCell(1).font = { name: FONT, size: 11, bold: true };
+    sheet.getRow(row).getCell(1).font = { name: FONT, size: 12, bold: true };
     row += 1;
     sheet.mergeCells(row, 1, row, maxCols - 1);
     sheet.getRow(row).getCell(1).value = sign.position;
-    sheet.getRow(row).getCell(1).font = { name: FONT, size: 11 };
+    sheet.getRow(row).getCell(1).font = { name: FONT, size: 12 };
     sheet.getRow(row).getCell(maxCols).value = sign.name;
-    sheet.getRow(row).getCell(maxCols).font = { name: FONT, size: 11, bold: true };
+    sheet.getRow(row).getCell(maxCols).font = { name: FONT, size: 12, bold: true };
     sheet.getRow(row).getCell(maxCols).alignment = { horizontal: "right" };
     row += 2;
   }
