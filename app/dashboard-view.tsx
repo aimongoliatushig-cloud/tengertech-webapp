@@ -3101,22 +3101,13 @@ function OpenTasksSummaryCard({
   return (
     <Link href={href} className={cn(dashboardStyles.openTasksSummaryLink, className)}>
       <Card className={dashboardStyles.openTasksSummaryCard}>
-        <div className={dashboardStyles.openTasksSummaryTop}>
-          <span className={dashboardStyles.openTasksSummaryIcon}>
-            <ClipboardList />
-          </span>
-          <div className={dashboardStyles.openTasksSummaryText}>
-            <CardTitle>Нээлттэй даалгавар</CardTitle>
-            <CardDescription>
-              Дуусгаагүй даалгаврууд — дарж бүгдийг нь жагсаалтаар нээнэ.
-            </CardDescription>
-          </div>
-          <span className={dashboardStyles.openTasksSummaryCount}>
-            <strong>{openTasks.length}</strong>
-            <ChevronRight />
-          </span>
+        <span className={dashboardStyles.openTasksSummaryIcon}>
+          <ClipboardList />
+        </span>
+        <div className={dashboardStyles.openTasksSummaryText}>
+          <CardTitle>Нээлттэй даалгавар</CardTitle>
+          <CardDescription>Дарж бүх даалгаврыг жагсаалтаар нээнэ.</CardDescription>
         </div>
-
         <div className={dashboardStyles.openTasksSummaryStats}>
           <div className={dashboardStyles.openTasksSummaryStat}>
             <strong>{openTasks.length}</strong>
@@ -3124,13 +3115,14 @@ function OpenTasksSummaryCard({
           </div>
           <div className={dashboardStyles.openTasksSummaryStat}>
             <strong className={overdueCount ? "text-[#EF4444]" : undefined}>{overdueCount}</strong>
-            <span>Хугацаа хэтэрсэн</span>
+            <span>Хэтэрсэн</span>
           </div>
           <div className={dashboardStyles.openTasksSummaryStat}>
             <strong className={reviewCount ? "text-[#B45309]" : undefined}>{reviewCount}</strong>
             <span>Хянах</span>
           </div>
         </div>
+        <ChevronRight className={dashboardStyles.openTasksSummaryChevron} />
       </Card>
     </Link>
   );

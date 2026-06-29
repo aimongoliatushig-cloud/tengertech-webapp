@@ -560,7 +560,14 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const inspectorMobileMode =
     !workerMode &&
     !masterMode &&
-    Boolean(session.role === "transport_inspector" || session.groupFlags?.mfoInspector);
+    Boolean(
+      session.role === "transport_inspector" ||
+        (session.groupFlags?.mfoInspector &&
+          !session.groupFlags?.mfoManager &&
+          !session.groupFlags?.mfoDispatcher &&
+          !session.groupFlags?.municipalDepartmentHead &&
+          !session.groupFlags?.municipalManager),
+    );
 
   let snapshot: DashboardSnapshot;
   let scopedDepartmentName: Awaited<ReturnType<typeof loadSessionDepartmentName>>;
