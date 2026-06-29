@@ -6,7 +6,10 @@ import {
   CalendarDays,
   ClipboardCheck,
   ClipboardList,
+  Download,
+  FileText,
   MoreVertical,
+  Paperclip,
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
@@ -790,6 +793,45 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 <section className={styles.descriptionCard}>
                   <span className={styles.kicker}>Тайлбар</span>
                   <p>{task.description}</p>
+                </section>
+              ) : null}
+
+              {task.attachments.length ? (
+                <section className={styles.attachmentCard}>
+                  <div className={styles.attachmentHead}>
+                    <span className={styles.kicker}>
+                      <Paperclip size={14} strokeWidth={2.3} aria-hidden="true" />
+                      Хавсаргасан файл
+                    </span>
+                    <span className={styles.attachmentCount}>{task.attachments.length}</span>
+                  </div>
+                  <div className={styles.attachmentGrid}>
+                    {task.attachments.map((file) => {
+                      const isImage = file.mimetype.startsWith("image/");
+                      return (
+                        <a
+                          key={file.id}
+                          href={file.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={`${styles.attachmentItem} ${isImage ? styles.attachmentItemImage : ""}`}
+                          title={file.name}
+                        >
+                          <span className={styles.attachmentPreview} aria-hidden="true">
+                            {isImage ? (
+                              <Image src={file.url} alt={file.name} width={46} height={46} />
+                            ) : (
+                              <FileText size={24} strokeWidth={2.1} />
+                            )}
+                          </span>
+                          <span className={styles.attachmentName}>{file.name}</span>
+                          <span className={styles.attachmentAction} aria-hidden="true">
+                            <Download size={15} strokeWidth={2.3} />
+                          </span>
+                        </a>
+                      );
+                    })}
+                  </div>
                 </section>
               ) : null}
             </section>

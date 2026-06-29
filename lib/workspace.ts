@@ -901,6 +901,7 @@ export type TaskDetail = {
   canMarkDone: boolean;
   canReturnForChanges: boolean;
   reportsLocked: boolean;
+  attachments: WorkspaceAttachmentItem[];
   reports: TaskReportFeedItem[];
   messages: TaskMessageItem[];
 };
@@ -4597,6 +4598,33 @@ export async function loadTaskDetail(
       },
     ]),
   );
+  // Даалгаврын өөрийн хавсаргасан файлууд (захирамж, зураг төсөл г.м).
+  const taskAttachmentQuery = (overrides: Partial<OdooConnection>) =>
+    executeOdooKw<OdooAttachmentRecord[]>(
+      "ir.attachment",
+      "search_read",
+      [[["res_model", "=", "project.task"], ["res_id", "=", taskId]]],
+      {
+        fields: ["name", "mimetype"],
+        order: "create_date asc, id asc",
+        limit: 50,
+      },
+      overrides,
+    );
+  let taskAttachmentRecords = await taskAttachmentQuery(connectionOverrides).catch(() => []);
+  if (!sameConnection && !taskAttachmentRecords.length) {
+    taskAttachmentRecords = await taskAttachmentQuery({}).catch(() => []);
+  }
+  const taskAttachments: WorkspaceAttachmentItem[] = taskAttachmentRecords
+    // Чат мессежид аль хэдийн харагдаж буй хавсралтыг давхардуулахгүй.
+    .filter((attachment) => attachment.id > 0 && !messageAttachmentById.has(attachment.id))
+    .map((attachment) => ({
+      id: attachment.id,
+      name: attachment.name || `attachment-${attachment.id}`,
+      mimetype: attachment.mimetype || "application/octet-stream",
+      url: `/api/odoo/attachments/${attachment.id}`,
+    }));
+
   const reportIds = reports.map((report) => report.id).filter((id) => id > 0);
   const fallbackReportAttachments = reportIds.length
     ? await executeOdooKw<OdooAttachmentRecord[]>(
@@ -4910,6 +4938,7 @@ export async function loadTaskDetail(
     canMarkDone: Boolean(task.ops_can_mark_done),
     canReturnForChanges: Boolean(task.ops_can_return_for_changes),
     reportsLocked: Boolean(task.ops_reports_locked),
+    attachments: taskAttachments,
     reports: reports.map((report) => {
       const fallbackAttachments = fallbackReportAttachmentsByReportId.get(report.id) ?? [];
       const imageIds = reportAttachmentIds(report.image_attachment_ids, fallbackAttachments, "image/");
