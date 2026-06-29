@@ -819,7 +819,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                         >
                           <span className={styles.attachmentPreview} aria-hidden="true">
                             {isImage ? (
-                              <Image src={file.url} alt={file.name} width={46} height={46} />
+                              <Image src={file.url} alt={file.name} width={46} height={46} unoptimized />
                             ) : (
                               <FileText size={24} strokeWidth={2.1} />
                             )}
@@ -1092,6 +1092,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                                         alt={attachment.name}
                                         width={180}
                                         height={120}
+                                        unoptimized
                                       />
                                     </a>
                                   ) : attachment.mimetype.startsWith("audio/") ? (
@@ -1256,6 +1257,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                                         alt={attachment.name}
                                         width={180}
                                         height={120}
+                                        unoptimized
                                       />
                                     </a>
                                   ) : attachment.mimetype.startsWith("audio/") ? (
