@@ -566,6 +566,99 @@
   height: 16px;
 }
 
+.openTasksSummaryLink {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.openTasksSummaryCard {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.openTasksSummaryLink:hover .openTasksSummaryCard {
+  transform: translateY(-2px);
+  border-color: #bfe0c9;
+  box-shadow: 0 14px 30px -18px rgba(16, 64, 38, 0.55);
+}
+
+.openTasksSummaryTop {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.openTasksSummaryIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: #e7f4ec;
+  color: #1f7a3f;
+}
+
+.openTasksSummaryIcon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.openTasksSummaryText {
+  flex: 1;
+  min-width: 0;
+}
+
+.openTasksSummaryCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #1f7a3f;
+  font-weight: 900;
+}
+
+.openTasksSummaryCount strong {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.openTasksSummaryCount svg {
+  width: 20px;
+  height: 20px;
+  color: #8a978e;
+}
+
+.openTasksSummaryStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  border-top: 1px solid #eef2ee;
+  padding-top: 12px;
+}
+
+.openTasksSummaryStat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.openTasksSummaryStat strong {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #111b15;
+}
+
+.openTasksSummaryStat span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #6c7a70;
+}
+
 .rightRail {
   display: grid;
   align-content: start;

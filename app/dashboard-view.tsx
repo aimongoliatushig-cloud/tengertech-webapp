@@ -3080,110 +3080,59 @@ function openTasksFor(
     });
 }
 
-function OpenTaskCard({
-  task,
-  currentDateKey,
-}: {
-  task: DashboardSnapshot["taskDirectory"][number];
-  currentDateKey: string;
-}) {
-  const tone = statusTone(task, currentDateKey);
-  const badgeTone =
-    tone === "urgent" ? "red" : tone === "attention" ? "amber" : tone === "good" ? "green" : "slate";
-  const taskName = fixMojibakeText(task.name);
-  const projectName = fixMojibakeText(task.projectName || "Бие даасан даалгавар");
-  const departmentName = fixMojibakeText(task.departmentName);
-  const overdue = isOverdue(task, currentDateKey);
-
-  return (
-    <Link href={task.href} className={dashboardStyles.projectListLink}>
-      <Card className={dashboardStyles.projectListCard}>
-        <div className={dashboardStyles.projectListTop}>
-          <span
-            className={cn(
-              dashboardStyles.projectListIcon,
-              tone === "attention" && dashboardStyles.projectListIconAmber,
-              tone === "muted" && dashboardStyles.projectListIconMuted,
-            )}
-          >
-            <ClipboardList />
-          </span>
-          <Badge tone={badgeTone}>{fixMojibakeText(task.statusLabel || task.stageLabel)}</Badge>
-        </div>
-
-        <div className={dashboardStyles.projectListContent}>
-          <h3 className={dashboardStyles.projectListTitle} title={taskName}>
-            {taskName}
-          </h3>
-          <p className={dashboardStyles.projectListMeta}>
-            Ажил: {projectName} · Алба нэгж: {departmentName}
-          </p>
-        </div>
-
-        <div className={dashboardStyles.projectListDivider} />
-
-        <div className={dashboardStyles.projectListMetrics}>
-          <div className={dashboardStyles.projectListMetric}>
-            <span>Дуусах</span>
-            <strong className={overdue ? "text-[#EF4444]" : undefined}>{task.deadline || "—"}</strong>
-          </div>
-          <div className={dashboardStyles.projectListMetric}>
-            <span>Гүйцэтгэл</span>
-            <strong>{clampPercent(task.progress)}%</strong>
-          </div>
-          <ProgressRing value={task.progress} />
-        </div>
-      </Card>
-    </Link>
-  );
-}
-
-function OpenTasksCard({
+// Дашбоард дээрх товч карт — дарвал /tasks хуудас (даалгаврын жагсаалт) нээгдэнэ.
+function OpenTasksSummaryCard({
   tasks,
   currentDateKey,
-  limit = 12,
+  href = "/tasks",
   className,
 }: {
   tasks: DashboardSnapshot["taskDirectory"];
   currentDateKey: string;
-  limit?: number;
+  href?: string;
   className?: string;
 }) {
   const openTasks = openTasksFor(tasks, currentDateKey);
-  const visible = openTasks.slice(0, limit);
-  const gridClassName = cn(
-    dashboardStyles.taskListBody,
-    dashboardStyles.taskListBodyScrollable,
-    visible.length > 1 && "lg:grid-cols-2 2xl:grid-cols-3",
-  );
+  const overdueCount = openTasks.filter((task) => isOverdue(task, currentDateKey)).length;
+  const reviewCount = openTasks.filter(
+    (task) => task.statusKey === "review" || task.statusKey === "problem",
+  ).length;
 
   return (
-    <Card className={cn(dashboardStyles.taskListCard, className)}>
-      <CardHeader className={dashboardStyles.taskListHeader}>
-        <div className={dashboardStyles.taskListHeaderText}>
-          <CardTitle>Нээлттэй даалгавар</CardTitle>
-          <CardDescription>
-            Дуусгаагүй даалгаврууд — хугацаа хэтэрсэн, хянах шаардлагатай нь эхэнд.
-          </CardDescription>
-        </div>
-        <Badge tone={openTasks.length ? "green" : "slate"}>{openTasks.length} даалгавар</Badge>
-      </CardHeader>
-
-      <div className={gridClassName}>
-        {visible.map((task) => (
-          <OpenTaskCard key={task.id} task={task} currentDateKey={currentDateKey} />
-        ))}
-        {!visible.length ? (
-          <div className={cn("col-span-full", dashboardStyles.taskListEmpty)}>
-            <span className={dashboardStyles.taskListEmptyIcon}>
-              <ClipboardList />
-            </span>
-            <span className="mt-2 block text-[#1F2B24]">Нээлттэй даалгавар алга.</span>
-            <small className="mt-1 block font-medium text-[#8A978E]">Бүх даалгавар дууссан байна.</small>
+    <Link href={href} className={cn(dashboardStyles.openTasksSummaryLink, className)}>
+      <Card className={dashboardStyles.openTasksSummaryCard}>
+        <div className={dashboardStyles.openTasksSummaryTop}>
+          <span className={dashboardStyles.openTasksSummaryIcon}>
+            <ClipboardList />
+          </span>
+          <div className={dashboardStyles.openTasksSummaryText}>
+            <CardTitle>Нээлттэй даалгавар</CardTitle>
+            <CardDescription>
+              Дуусгаагүй даалгаврууд — дарж бүгдийг нь жагсаалтаар нээнэ.
+            </CardDescription>
           </div>
-        ) : null}
-      </div>
-    </Card>
+          <span className={dashboardStyles.openTasksSummaryCount}>
+            <strong>{openTasks.length}</strong>
+            <ChevronRight />
+          </span>
+        </div>
+
+        <div className={dashboardStyles.openTasksSummaryStats}>
+          <div className={dashboardStyles.openTasksSummaryStat}>
+            <strong>{openTasks.length}</strong>
+            <span>Нээлттэй</span>
+          </div>
+          <div className={dashboardStyles.openTasksSummaryStat}>
+            <strong className={overdueCount ? "text-[#EF4444]" : undefined}>{overdueCount}</strong>
+            <span>Хугацаа хэтэрсэн</span>
+          </div>
+          <div className={dashboardStyles.openTasksSummaryStat}>
+            <strong className={reviewCount ? "text-[#B45309]" : undefined}>{reviewCount}</strong>
+            <span>Хянах</span>
+          </div>
+        </div>
+      </Card>
+    </Link>
   );
 }
 
@@ -3377,10 +3326,9 @@ function ExecutiveDashboardView({
             ))}
           </section>
 
-          <OpenTasksCard
+          <OpenTasksSummaryCard
             tasks={dashboardTasks}
             currentDateKey={currentDateKey}
-            limit={9}
             className="mb-5"
           />
 
@@ -3826,7 +3774,7 @@ export function DashboardView({
                 )}
               </Card>
 
-              <OpenTasksCard tasks={dashboardTasks} currentDateKey={currentDateKey} />
+              <OpenTasksSummaryCard tasks={dashboardTasks} currentDateKey={currentDateKey} />
 
               {!workerMode ? <MobilePriorityPanel canWriteReports={canWriteReports} /> : null}
 
