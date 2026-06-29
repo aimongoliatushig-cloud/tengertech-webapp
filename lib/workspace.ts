@@ -4102,7 +4102,9 @@ export async function loadProjectDetail(
         "description",
       ],
       {
-        order: "sequence asc, create_date asc, id asc",
+        // Үүсгэсэн дарааллаар — сүүлд нэмсэн даалгавар жагсаалтын адагт гарна.
+        // (sequence нь kanban-ы гар эрэмбэд зориулагдсан тул дугаарлалт холилддог.)
+        order: "create_date asc, id asc",
         limit: 120,
       },
       connectionOverrides,
