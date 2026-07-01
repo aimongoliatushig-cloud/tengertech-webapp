@@ -63,6 +63,29 @@ type ProjectsAppMenuProps = ComponentProps<typeof AppMenu>;
 type ProjectsWorkspaceHeaderProps = ComponentProps<typeof WorkspaceHeader>;
 const AUTO_BASE_GROUP_NAME = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
 const AUTO_BASE_UNIT_NAME = "Авто бааз";
+const WASTE_TRANSPORT_UNIT_NAME = "Хог тээвэрлэлт";
+
+// Хог тээвэрлэлтийн операц эсэхийг ажлын төрлөөр нь тодорхойлно.
+function isWasteTransportOperation(operationType?: string | null) {
+  return operationType === "garbage" || operationType === "garbage_seasonal";
+}
+
+// "Авто бааз, хог тээвэрлэлт" хэлтэс доторх ажлыг хэлтсийн нэрээр биш,
+// ажлын ТӨРЛӨӨР нь дэд нэгжид хуваарилна:
+//   • Хог тээвэрлэлт → хог тээвэрлэх ажил (garbage / гэнэтийн)
+//   • Авто бааз → машин засвар, худалдан авалт зэрэг бусад ажил
+function matchesAutoBaseUnitWork(
+  unit: string,
+  project: { operationType?: string },
+) {
+  if (unit === WASTE_TRANSPORT_UNIT_NAME) {
+    return isWasteTransportOperation(project.operationType);
+  }
+  if (unit === AUTO_BASE_UNIT_NAME) {
+    return !isWasteTransportOperation(project.operationType);
+  }
+  return false;
+}
 const GREEN_SERVICE_GROUP_NAME = "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
 const IMPROVEMENT_GROUP_NAME = "Тохижилтын хэлтэс";
 const IMPROVEMENT_UNIT_NAME = "Тохижилт үйлчилгээ";
@@ -589,6 +612,9 @@ async function ProjectsPageContent({
       `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`;
 
     if (selectedUnit) {
+      if (isAutoBaseView) {
+        return matchesAutoBaseUnitWork(selectedUnit, project);
+      }
       return matchesUnitScope(
         selectedUnit,
         project.departmentName,
@@ -1152,10 +1178,7 @@ async function ProjectsPageContent({
                                 project.name,
                                 `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`,
                               ),
-                            ).length +
-                              (selectedGroup.name === AUTO_BASE_GROUP_NAME
-                                ? fleetBoard?.totalVehicles ?? autoBaseRepairVehicles.length
-                                : 0)
+                            ).length
                           }
                         </strong>
                       </Link>
@@ -1179,21 +1202,30 @@ async function ProjectsPageContent({
                         }`}
                       >
                         <span>{unit}</span>
-                        {unit === AUTO_BASE_UNIT_NAME ? null : (
-                          <strong>
-                            {snapshot.projects.filter((project) =>
-                              matchesUnitScope(
-                                unit,
-                                project.departmentName,
-                                project.name,
-                                `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`,
-                              ),
-                            ).length}
-                          </strong>
-                        )}
+                        <strong>
+                          {snapshot.projects.filter((project) =>
+                            isAutoBaseView
+                              ? matchesAutoBaseUnitWork(unit, project)
+                              : matchesUnitScope(
+                                  unit,
+                                  project.departmentName,
+                                  project.name,
+                                  `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`,
+                                ),
+                          ).length}
+                        </strong>
                       </Link>
                     );
                   })}
+                  {isAutoBaseView && fleetBoard ? (
+                    <span
+                      className={`${styles.taskFilterChip} ${styles.taskFilterChipStatic}`}
+                      aria-label="Нийт машин техник"
+                    >
+                      <span>Машин</span>
+                      <strong>{fleetBoard.totalVehicles}</strong>
+                    </span>
+                  ) : null}
                 </div>
               </section>
             ) : null}

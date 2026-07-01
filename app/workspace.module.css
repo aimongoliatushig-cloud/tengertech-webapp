@@ -1227,6 +1227,17 @@
   font-size: 0.84rem;
 }
 
+.taskFilterChipStatic {
+  cursor: default;
+  background: rgba(148, 163, 184, 0.14);
+  border-style: dashed;
+}
+
+.taskFilterChipStatic:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 .taskFilterChipActive {
   background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
   border-color: rgba(31, 95, 49, 0.22);

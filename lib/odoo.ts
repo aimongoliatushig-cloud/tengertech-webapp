@@ -221,6 +221,7 @@ type ProjectCard = {
   manager: string;
   managerJobTitle?: string;
   departmentName: string;
+  operationType?: string;
   operationTypeLabel?: string;
   stageLabel: string;
   stageBucket: StageBucket;
@@ -6447,6 +6448,7 @@ async function fetchLiveSnapshot(
         projectTaskDepartments[0] ??
         projectDepartmentById.get(project.id) ??
         resolveNormalizedProjectDepartmentName(project),
+      operationType: project.mfo_operation_type || "",
       operationTypeLabel: operationTypeLabel(project.mfo_operation_type),
       stageLabel: STAGE_LABELS[stageBucket],
       stageBucket,
