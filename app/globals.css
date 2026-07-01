@@ -76,10 +76,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Uniform typography: render all text at a single 12px size.
-   (The dashboard department-status cards keep 15px — see the
-   .executiveDepartmentGrid / .departmentGrid overrides in their modules.) */
-h1, h2, h3, h4, h5, h6,
+/* Typography: headings at 15px, everything else at 12px. */
+h1, h2, h3, h4, h5, h6 {
+  font-size: 15px !important;
+}
+
 p, span, strong, b, small, em, i, u, s,
 a, li, dt, dd, label, button, input, textarea, select, option,
 th, td, caption, time, figcaption, blockquote, address, cite, code, kbd, mark {
