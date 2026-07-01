@@ -337,3 +337,9 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Keep the department-status cards section at 15px while the rest of the app is 12px. */
+.departmentGrid,
+.departmentGrid * {
+  font-size: 15px !important;
+}
