@@ -161,7 +161,7 @@
   align-items: center;
   gap: 6px;
   color: #2e7d32;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 800;
   opacity: 0;
   pointer-events: none;
@@ -302,7 +302,7 @@
   border-radius: 999px;
   background: #cfe9d2;
   color: #2e7d32;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 800;
 }
 
@@ -422,7 +422,7 @@
 
 .profileText small {
   color: #64756b;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1.25;
 }
 
@@ -576,7 +576,7 @@
     border-radius: 999px;
     background: #ef4444;
     color: #fff;
-    font-size: 0.58rem;
+    font-size: 0.75rem;
     font-weight: 900;
     line-height: 1;
   }
@@ -679,7 +679,7 @@
 
   .mobileSheetProfile small {
     color: #64756b;
-    font-size: 0.68rem;
+    font-size: 0.75rem;
     font-weight: 700;
   }
 
@@ -816,7 +816,7 @@
     gap: 3px;
     border-radius: 16px;
     color: #5a6b61;
-    font-size: 0.58rem;
+    font-size: 0.75rem;
     font-weight: 800;
     text-decoration: none;
   }

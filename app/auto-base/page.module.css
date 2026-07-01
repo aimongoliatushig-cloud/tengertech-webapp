@@ -820,7 +820,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -977,7 +977,7 @@
   border-radius: 999px;
   background: rgba(40, 92, 62, 0.08);
   color: var(--brand-900);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -1043,14 +1043,14 @@
 
 .vehicleInfoGrid small {
   color: var(--ink-700);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1.25;
 }
 
 .vehicleInfoGrid strong {
   min-width: 0;
   color: var(--ink-900);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -1096,7 +1096,7 @@
   padding: 0 11px;
   border: 1px solid rgba(255, 255, 255, 0.78);
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 800;
   line-height: 1;
   overflow: hidden;
@@ -1411,7 +1411,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -1586,7 +1586,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0;
 }
@@ -2119,7 +2119,7 @@
 }
 
 .vehicleGalleryPanel .vehicleAttachmentButton span {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   line-height: 1.1;
   text-align: center;
 }
@@ -2387,13 +2387,13 @@
 .vehicleAttachmentPanelPreview .vehicleAttachmentButton span {
   overflow: hidden;
   color: var(--ink-700);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .vehicleGalleryPanel .vehicleAttachmentPanelPreview .vehicleAttachmentButton span {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
 }
 
 .vehicleAttachmentButtonActive {
@@ -2640,7 +2640,7 @@
   border-radius: 999px;
   background: rgba(200, 138, 44, 0.16);
   color: #8b5a13;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -2841,7 +2841,7 @@
   border-radius: 999px;
   background: rgba(31, 95, 49, 0.09);
   color: var(--brand-800);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -2972,7 +2972,7 @@
 .vehicleFileField .vehicleFilePreview small {
   overflow: hidden;
   color: var(--ink-700);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.35;
   text-overflow: ellipsis;
@@ -3170,7 +3170,7 @@
     padding: 0;
     border-radius: 16px;
     flex-direction: column;
-    font-size: 0.74rem;
+    font-size: 0.75rem;
     line-height: 1.1;
   }
 

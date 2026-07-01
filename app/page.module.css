@@ -260,7 +260,7 @@
 
 .userAlert small {
   color: var(--ink-600);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -647,7 +647,7 @@
   border-radius: 999px;
   background: var(--tone-chip-bg);
   color: var(--tone-chip-text);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -1077,7 +1077,7 @@
   .sectionEyebrow {
     min-height: 30px;
     padding: 0 12px;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
   }
 
   .heroMeta {
@@ -1273,7 +1273,7 @@
 .sidebarBrand span {
   max-width: 150px;
   color: #698174;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   line-height: 1.24;
 }
 
@@ -1328,7 +1328,7 @@
   border-radius: 999px;
   background: #e73f35;
   color: #fff;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 1;
 }
@@ -1359,7 +1359,7 @@
 .sidebarHelp span {
   display: block;
   color: #789284;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
 }
 
 .sidebarHelp strong {
@@ -1466,7 +1466,7 @@
 
 .headerUser small {
   color: #77867b;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
 }
 
 .metricGrid {
@@ -1535,7 +1535,7 @@
 
 .metricFoot small {
   color: #7d8d83;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   white-space: nowrap;
 }
 
@@ -1637,7 +1637,7 @@
 .donutCenter small,
 .performanceCenter span {
   color: #718278;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
 }
 
 .donutCenter strong {
@@ -1752,7 +1752,7 @@
   overflow: hidden;
   margin-top: 2px;
   color: #7a8a80;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1766,13 +1766,13 @@
   border-radius: 999px;
   background: var(--tone-chip-bg);
   color: var(--tone-chip-text);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 800;
 }
 
 .rowStatus {
   color: var(--tone-chip-text);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 800;
   text-align: right;
   white-space: nowrap;
@@ -1855,7 +1855,7 @@
 .vehicleMiniRow span {
   overflow: hidden;
   color: #728277;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1877,7 +1877,7 @@
   gap: 0;
   min-width: 820px;
   color: #738479;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -2213,7 +2213,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -2387,7 +2387,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0;
 }

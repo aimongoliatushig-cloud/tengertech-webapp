@@ -41,7 +41,7 @@
 .statCardLabel {
   display: block;
   color: #6b7280;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.25;
 }
@@ -78,7 +78,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1.25;
 }
 
@@ -179,7 +179,7 @@
   gap: 8px;
   padding: 0 12px;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 900;
   line-height: 1;
   box-shadow: 0 8px 18px rgba(27, 73, 38, 0.08);
@@ -192,7 +192,7 @@
   place-items: center;
   padding: 0 6px;
   border-radius: 999px;
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   line-height: 1;
 }
 
@@ -273,7 +273,7 @@
   display: block;
   margin-top: 5px;
   color: #54655a;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.1;
 }
@@ -482,7 +482,7 @@
 
 .quickStatLabel {
   color: #6b7280;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.2;
 }
@@ -498,7 +498,7 @@
 
 .quickStatRate {
   color: #2e7d32;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 900;
   line-height: 1.1;
 }
@@ -630,7 +630,7 @@
 }
 
 .openTasksSummaryStat span {
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: #6c7a70;
   text-transform: uppercase;
@@ -722,7 +722,7 @@
   color: #111b15;
   text-align: center;
   text-decoration: none;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 800;
   line-height: 1.25;
   transition:
@@ -818,7 +818,7 @@
 .sideMiniLabel {
   display: block;
   color: #6b7280;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.15;
 }
@@ -920,7 +920,7 @@
   background: #e7f5e7;
   color: #2e7d32;
   text-align: center;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 900;
   line-height: 1.15;
 }
@@ -1028,7 +1028,7 @@
 
 .inspectorHeaderTools span {
   color: #54655a;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 900;
   line-height: 1;
 }
@@ -1440,7 +1440,7 @@
   border-radius: 999px;
   background: rgba(22, 101, 52, 0.94);
   color: #fff;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 950;
   box-shadow: 0 10px 22px rgba(22, 101, 52, 0.24);
 }
@@ -1487,7 +1487,7 @@
 
 .inspectorVehicleCardStats small {
   color: #4b5563;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 850;
 }
 
@@ -1855,7 +1855,7 @@
 
 .inspectorSelectedVehicleField small {
   color: #64748b;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 900;
   line-height: 1.1;
 }
@@ -1878,7 +1878,7 @@
   border-radius: 999px;
   background: #fff4d6;
   color: #a16207;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-style: normal;
   font-weight: 900;
 }
@@ -2163,7 +2163,7 @@
 
   .inspectorMobileFlowHeader small {
     color: #64748b;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     font-weight: 780;
     line-height: 1.35;
   }
@@ -2205,7 +2205,7 @@
     right: 16px;
     min-height: 26px;
     padding: 0 8px;
-    font-size: 0.66rem;
+    font-size: 0.75rem;
   }
 
   .inspectorControlBar {
@@ -2276,7 +2276,7 @@
 
   .inspectorTimelineBadge {
     justify-self: end;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
   }
 
   .inspectorTimelineDate,
@@ -2395,7 +2395,7 @@
 
 .assignedVehicleKicker {
   color: #54655a;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 900;
   line-height: 1;
 }
@@ -2432,7 +2432,7 @@
 .assignedVehicleStats small,
 .assignedVehicleProgress small {
   color: #6b7280;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 800;
   line-height: 1.15;
 }
@@ -2597,7 +2597,7 @@
   border-radius: var(--ds-radius-control);
   background: #f7fbf8;
   color: #6b7280;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 800;
 }
 
@@ -2645,7 +2645,7 @@
   display: block;
   margin-top: 3px;
   color: #6b7280;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 800;
 }
 
@@ -3140,7 +3140,7 @@
   .assignedVehicleStats small,
   .assignedVehicleProgress small {
     color: #667085;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     font-weight: 850;
   }
 
@@ -3238,7 +3238,7 @@
     min-height: 0;
     padding: 12px 8px;
     border-radius: 14px;
-    font-size: 0.68rem;
+    font-size: 0.75rem;
     line-height: 1.2;
     text-align: center;
   }
@@ -3389,7 +3389,7 @@
   }
 
   .assignedVehicleStats small {
-    font-size: 0.64rem;
+    font-size: 0.75rem;
   }
 
   .assignedVehicleStats strong {
@@ -3402,7 +3402,7 @@
 
   .inspectorVehicleSummaryRow span {
     padding: 10px 5px;
-    font-size: 0.6rem;
+    font-size: 0.75rem;
   }
 
   .inspectorVehicleSummaryRow strong {
@@ -3647,7 +3647,7 @@
   .statCardHelper {
     align-items: center;
     gap: 4px;
-    font-size: 0.68rem;
+    font-size: 0.75rem;
   }
 
   .mobilePriorityPanel {
@@ -3672,7 +3672,7 @@
   .mobilePriorityPanel .sideQuickAction {
     min-height: 76px;
     padding: 10px 6px;
-    font-size: 0.66rem;
+    font-size: 0.75rem;
   }
 
   .mobilePriorityPanel .sideQuickIcon {
@@ -3717,7 +3717,7 @@
   }
 
   .metricsSummary {
-    font-size: 0.72rem;
+    font-size: 0.75rem;
   }
 
   .performancePanel {
@@ -3738,7 +3738,7 @@
   }
 
   .legendLabel {
-    font-size: 0.72rem;
+    font-size: 0.75rem;
   }
 
   .legendValue {
@@ -3746,7 +3746,7 @@
   }
 
   .legendPercent {
-    font-size: 0.68rem;
+    font-size: 0.75rem;
   }
 
   .weeklyChartWrap {
@@ -3966,7 +3966,7 @@
 
 .autoGarbageMetricCard small {
   color: #64748b;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 850;
   line-height: 1.15;
 }
@@ -3983,7 +3983,7 @@
 .autoGarbageMetricCard em {
   margin-top: 5px;
   color: #526179;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-style: normal;
   font-weight: 820;
   line-height: 1.15;
@@ -4208,7 +4208,7 @@
   justify-content: center;
   padding: 0 8px;
   color: #334155;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 900;
   line-height: 1.15;
   text-align: center;
@@ -4263,7 +4263,7 @@
 .autoGarbagePanelHeader p {
   margin: 5px 0 0;
   color: #64748b;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 780;
   line-height: 1.25;
 }
@@ -4277,7 +4277,7 @@
   border-radius: 7px;
   padding: 0 9px;
   color: #64748b;
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   font-weight: 880;
 }
 
@@ -4296,7 +4296,7 @@
 
 .autoGarbageLeaderRank {
   color: #64748b;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 950;
   text-align: center;
 }
@@ -4317,13 +4317,13 @@
 
 .autoGarbageLeaderInfo strong {
   color: #0f172a;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 940;
 }
 
 .autoGarbageLeaderInfo small {
   color: #64748b;
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   font-weight: 760;
 }
 
@@ -4347,7 +4347,7 @@
 
 .autoGarbageLeaderValue {
   color: #0f172a;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 950;
   white-space: nowrap;
 }
@@ -4364,7 +4364,7 @@
   gap: 8px;
   padding: 0 10px 2px;
   color: #64748b;
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   font-weight: 950;
   letter-spacing: 0;
 }
@@ -4413,13 +4413,13 @@
 
 .autoGarbageReportInfo strong {
   color: #0f172a;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 940;
 }
 
 .autoGarbageReportInfo small {
   color: #64748b;
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   font-weight: 760;
 }
 
@@ -4441,13 +4441,13 @@
 
 .autoGarbageReportTime small {
   color: #94a3b8;
-  font-size: 0.58rem;
+  font-size: 0.75rem;
   font-weight: 850;
 }
 
 .autoGarbageReportTime strong {
   color: #334155;
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   font-weight: 900;
 }
 
@@ -4463,7 +4463,7 @@
   padding: 0 8px;
   background: #edf7f1;
   color: #16823d;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   font-weight: 900;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4496,7 +4496,7 @@
   border-radius: 7px;
   background: #f8fbf9;
   color: #16823d;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 920;
   text-decoration: none;
 }
@@ -4527,7 +4527,7 @@
 
 .autoGarbageSummaryPanel small {
   color: #64748b;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 840;
   line-height: 1.15;
 }
@@ -4541,7 +4541,7 @@
 
 .autoGarbageSummaryPanel em {
   color: #526179;
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   font-style: normal;
   font-weight: 780;
   line-height: 1.25;
@@ -4681,7 +4681,7 @@
 }
 
 .executiveHeroForecastHeader span {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 900;
 }
 
@@ -4717,7 +4717,7 @@
 
 .executiveHeroForecastDay small {
   color: #526179;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   font-weight: 850;
   line-height: 1;
 }
@@ -4817,7 +4817,7 @@
   display: block;
   margin-top: 5px;
   color: #526179;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 900;
   line-height: 1.15;
 }
@@ -4852,7 +4852,7 @@
   width: fit-content;
   margin-top: 10px;
   color: color-mix(in srgb, var(--department-accent, #078251) 70%, #55655c);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 800;
   opacity: 0.68;
   transition:
@@ -4912,7 +4912,7 @@
 .executiveRingLarge small {
   margin-top: 6px;
   color: #0f172a;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 800;
   line-height: 1;
 }
@@ -5098,7 +5098,7 @@
   min-width: 0;
   overflow-wrap: anywhere;
   color: #526179;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 850;
   line-height: 1.2;
 }
@@ -5124,7 +5124,7 @@
   align-items: center;
   justify-content: space-between;
   color: #526179;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 900;
 }
 
@@ -5174,7 +5174,7 @@
   display: grid;
   gap: 2px;
   color: #526179;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 850;
 }
 
@@ -5193,7 +5193,7 @@
   background: rgba(255, 255, 255, 0.72);
   color: var(--department-accent);
   font-style: normal;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 900;
 }
 
@@ -5267,7 +5267,7 @@
 
 .executiveSideHeader a {
   color: #526179;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 900;
   text-decoration: none;
 }
@@ -5326,7 +5326,7 @@
 .executiveSideRow small {
   margin-top: 4px;
   color: #526179;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -5343,12 +5343,12 @@
   place-items: center;
   border-radius: 999px;
   color: #fff;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
 }
 
 .executiveSideRow time {
   color: #526179;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
 }
 
 .executiveSideEmpty {
@@ -5501,7 +5501,7 @@
 
 .executiveWeatherDay small {
   color: #526179;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 750;
   line-height: 1.2;
 }
@@ -5720,7 +5720,7 @@
   }
 
   .executiveHeroForecastHeader span {
-    font-size: 0.68rem;
+    font-size: 0.75rem;
   }
 
   .executiveHeroForecastDays {
@@ -5742,7 +5742,7 @@
   }
 
   .executiveHeroForecastDay strong {
-    font-size: 0.72rem;
+    font-size: 0.75rem;
   }
 
   .executiveMetricGrid {
@@ -5766,7 +5766,7 @@
   }
 
   .executiveMetricHeader strong {
-    font-size: 0.74rem;
+    font-size: 0.75rem;
     line-height: 1.2;
   }
 

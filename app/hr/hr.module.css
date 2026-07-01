@@ -88,7 +88,7 @@
 
 .pendingQueueStats small {
   color: #66766b;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 850;
 }
 
@@ -161,7 +161,7 @@
   min-height: 24px;
   padding: 0 8px;
   border-radius: 999px;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-style: normal;
   font-weight: 850;
 }
@@ -678,7 +678,7 @@
 }
 
 .chartCenter span {
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.02em;
   opacity: 0.7;
@@ -704,7 +704,7 @@
   align-items: start;
   gap: 4px 7px;
   color: #2c3a31;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   line-height: 1.25;
 }
 
@@ -730,7 +730,7 @@
   grid-column: 2;
   justify-self: start;
   color: #56655c;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
 }
 
 .chartTopList {
@@ -747,7 +747,7 @@
   display: grid;
   gap: 3px;
   color: #1f2b25;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   line-height: 1.25;
 }
 
@@ -755,7 +755,7 @@
 .chartTopList p {
   margin: 0;
   color: #66766b;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
 }
 
 .chartTopRow {
@@ -782,7 +782,7 @@
   border-radius: 999px;
   background: #2e7d32;
   color: #fff;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 900;
 }
 
@@ -799,13 +799,13 @@
 }
 
 .chartTopRow strong {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
 }
 
 .chartTopRow small,
 .chartTopRow em {
   color: #66766b;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
 }
 
 .chartTopRow em {
@@ -962,7 +962,7 @@
 
 .table th {
   color: #637568;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 850;
 }
 
@@ -1204,7 +1204,7 @@
 .reportMetricCard p {
   margin: 5px 0 0;
   color: #66766b;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 750;
   line-height: 1.25;
 }
@@ -1327,7 +1327,7 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.88);
   color: inherit;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
 }
 
 .reportCardList {
@@ -1803,7 +1803,7 @@
   border-radius: 999px;
   background: rgba(218, 238, 219, 0.92);
   color: #2e7d32;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 850;
   white-space: nowrap;
 }
@@ -2177,7 +2177,7 @@
 .searchableSelectButton small,
 .searchableSelectOption small {
   color: #637568;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 760;
   line-height: 1.25;
 }
@@ -2645,7 +2645,7 @@
 
 .employeeRowLink small {
   color: #66766b;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
 }
 
 .employeeRowLink em {
@@ -2656,7 +2656,7 @@
   border-radius: 999px;
   background: rgba(46, 125, 50, 0.11);
   color: #2e7d32;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-style: normal;
   font-weight: 850;
   text-overflow: ellipsis;
@@ -3432,7 +3432,7 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
   color: #7c4a03;
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 820;
 }
 
@@ -4129,7 +4129,7 @@
   .statCard small {
     display: block;
     color: #334139;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     line-height: 1.2;
   }
 
@@ -4347,7 +4347,7 @@
   .requestTable td::before {
     color: #66766b;
     content: attr(data-label);
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 850;
     line-height: 1.4;
   }

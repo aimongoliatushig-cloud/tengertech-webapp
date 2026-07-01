@@ -91,7 +91,7 @@
   display: block;
   overflow: hidden;
   color: #7d8d83;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -401,7 +401,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: #256b37;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 800;
 }
 
@@ -415,7 +415,7 @@
   border-radius: 999px;
   background: #eef5ef;
   color: #486254;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -553,7 +553,7 @@
 
 .metaRow span {
   color: #75867b;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
 }
 
 .metaRow strong {
@@ -1058,7 +1058,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -1232,7 +1232,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0;
 }
