@@ -299,16 +299,20 @@ function isGreenOrImprovementScope(groupName?: string | null, unitName?: string 
   );
 }
 
+const PROJECT_CARD_TASK_LIMIT = 4;
+
 function ProjectCardLink({
   project,
   href,
   actionLabel,
   hideDepartment = false,
+  tasks = [],
 }: {
   project: ProjectCardItem;
   href: string;
   actionLabel: string;
   hideDepartment?: boolean;
+  tasks?: TaskCardItem[];
 }) {
   const managerTitle = project.managerJobTitle || "Хариуцсан ажилтан";
   const metaParts = [
@@ -340,6 +344,37 @@ function ProjectCardLink({
 
       <div className={styles.progressTrack}>
         <span style={{ width: `${project.completion}%` }} />
+      </div>
+
+      <div className={styles.projectCardTasks}>
+        <div className={styles.projectCardTasksHead}>
+          <span>Даалгаврууд</span>
+          <b>{tasks.length}</b>
+        </div>
+        {tasks.length ? (
+          <ul className={styles.projectCardTaskList}>
+            {tasks.slice(0, PROJECT_CARD_TASK_LIMIT).map((task) => (
+              <li key={task.id} className={styles.projectCardTaskItem}>
+                <span className={styles.projectCardTaskName} title={task.name}>
+                  {task.name}
+                </span>
+                <span className={styles.projectCardTaskAside}>
+                  <StagePill label={task.stageLabel} bucket={task.stageBucket} />
+                  <b>{task.progress}%</b>
+                </span>
+              </li>
+            ))}
+            {tasks.length > PROJECT_CARD_TASK_LIMIT ? (
+              <li className={styles.projectCardTaskMore}>
+                +{tasks.length - PROJECT_CARD_TASK_LIMIT} даалгавар
+              </li>
+            ) : null}
+          </ul>
+        ) : (
+          <p className={styles.projectCardTaskEmpty}>
+            Одоогоор даалгавар бүртгэгдээгүй.
+          </p>
+        )}
       </div>
 
       <div className={styles.cardFooter}>
@@ -702,6 +737,25 @@ async function ProjectsPageContent({
     scopedProjects = scopedProjects.filter((project) => workerProjectNames.has(project.name));
   }
 
+  const projectTasksById = new Map<number, TaskCardItem[]>();
+  const projectTasksByName = new Map<string, TaskCardItem[]>();
+  for (const task of scopedTasks) {
+    if (typeof task.projectId === "number") {
+      const list = projectTasksById.get(task.projectId);
+      if (list) list.push(task);
+      else projectTasksById.set(task.projectId, [task]);
+    }
+    if (task.projectName) {
+      const named = projectTasksByName.get(task.projectName);
+      if (named) named.push(task);
+      else projectTasksByName.set(task.projectName, [task]);
+    }
+  }
+  const resolveProjectTasks = (project: ProjectCardItem): TaskCardItem[] =>
+    projectTasksById.get(project.id) ??
+    projectTasksByName.get(project.name) ??
+    [];
+
   const currentDateKey = getTodayDateKey();
   const overdueProjectNames = new Set(
     scopedTasks
@@ -1000,7 +1054,7 @@ async function ProjectsPageContent({
       ? "Энэ ажил дээр даалгавар нэмэх"
       : quickActionMode === "report"
         ? "Даалгавар сонгох"
-        : "Ажлын даалгавар харах";
+        : "Үүрэг даалгавар харах";
   const buildProjectHref = (projectHref: string) => {
     if (quickActionMode === "none") {
       return projectHref;
@@ -1324,6 +1378,7 @@ async function ProjectsPageContent({
                           <ProjectCardLink
                             key={project.id}
                             project={project}
+                            tasks={resolveProjectTasks(project)}
                             href={buildProjectHref(project.href)}
                             actionLabel={projectCardLabel}
                             hideDepartment={hideDepartmentInProjectCards}
@@ -1530,6 +1585,7 @@ async function ProjectsPageContent({
                           <ProjectCardLink
                             key={project.id}
                             project={project}
+                            tasks={resolveProjectTasks(project)}
                             href={buildProjectHref(project.href)}
                             actionLabel={projectCardLabel}
                             hideDepartment={hideDepartmentInProjectCards}
@@ -1587,6 +1643,7 @@ async function ProjectsPageContent({
                             <ProjectCardLink
                               key={project.id}
                               project={project}
+                              tasks={resolveProjectTasks(project)}
                               href={buildProjectHref(project.href)}
                               actionLabel={projectCardLabel}
                               hideDepartment={hideDepartmentInProjectCards}
@@ -1617,6 +1674,7 @@ async function ProjectsPageContent({
                           <ProjectCardLink
                             key={project.id}
                             project={project}
+                            tasks={resolveProjectTasks(project)}
                             href={buildProjectHref(project.href)}
                             actionLabel={projectCardLabel}
                             hideDepartment={hideDepartmentInProjectCards}
@@ -1680,6 +1738,7 @@ async function ProjectsPageContent({
                         <ProjectCardLink
                           key={project.id}
                           project={project}
+                          tasks={resolveProjectTasks(project)}
                           href={buildProjectHref(project.href)}
                           actionLabel={projectCardLabel}
                           hideDepartment={hideDepartmentInProjectCards}

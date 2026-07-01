@@ -500,7 +500,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                     ? "Тайлан оруулах"
                     : masterMode
                       ? "Ажил нэмэх урсгал"
-                      : "Ажлын даалгавар"}
+                      : "Үүрэг даалгавар"}
               </span>
               <h1>{project.name}</h1>
 
@@ -755,7 +755,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                         ? "Тайлан оруулах даалгавар сонгох"
                         : masterMode
                           ? "Ажил дээрх өнөөдрийн урсгал"
-                          : "Ажлын даалгаврууд"}
+                          : "Үүрэг даалгаврууд"}
                     </h2>
                   </div>
 

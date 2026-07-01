@@ -2218,7 +2218,7 @@ function AutoGarbageTaskCardView({ card }: { card: AutoGarbageTaskCard }) {
       </div>
 
       <div className={dashboardStyles.autoGarbageTaskFooter}>
-        <span>Ажлын даалгавар харах</span>
+        <span>Үүрэг даалгавар харах</span>
         <ChevronRight aria-hidden />
       </div>
     </Link>
