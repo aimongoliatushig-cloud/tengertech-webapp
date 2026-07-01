@@ -59,6 +59,7 @@ type PageProps = {
   searchParams?: Promise<{
     department?: string | string[];
     filter?: string | string[];
+    view?: string | string[];
     tab?: string | string[];
     quickAction?: string | string[];
     work?: string | string[];
@@ -101,6 +102,55 @@ const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "review", label: "Хянаж байгаа" },
   { key: "verified", label: "Дууссан" },
 ];
+
+type TaskViewKey = "list" | "calendar" | "detail";
+const TASK_VIEWS: Array<{ key: TaskViewKey; label: string }> = [
+  { key: "list", label: "Жагсаалт" },
+  { key: "calendar", label: "Календарь" },
+  { key: "detail", label: "Дэлгэрэнгүй" },
+];
+
+function normalizeView(value: string): TaskViewKey {
+  return TASK_VIEWS.some((view) => view.key === value)
+    ? (value as TaskViewKey)
+    : "list";
+}
+
+const TASK_CALENDAR_WEEKDAYS = ["Да", "Мя", "Лх", "Пү", "Ба", "Бя", "Ня"];
+const TASK_CALENDAR_MONTH_NAMES = [
+  "1-р сар",
+  "2-р сар",
+  "3-р сар",
+  "4-р сар",
+  "5-р сар",
+  "6-р сар",
+  "7-р сар",
+  "8-р сар",
+  "9-р сар",
+  "10-р сар",
+  "11-р сар",
+  "12-р сар",
+];
+
+type TaskMonthCell = { day: number; dateKey: string } | null;
+
+function buildTaskMonthCells(year: number, month0: number): TaskMonthCell[] {
+  const first = new Date(Date.UTC(year, month0, 1));
+  const startWeekday = (first.getUTCDay() + 6) % 7; // Monday = 0
+  const daysInMonth = new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
+  const cells: TaskMonthCell[] = [];
+  for (let i = 0; i < startWeekday; i += 1) {
+    cells.push(null);
+  }
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const dateKey = `${year}-${String(month0 + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    cells.push({ day, dateKey });
+  }
+  while (cells.length % 7 !== 0) {
+    cells.push(null);
+  }
+  return cells;
+}
 
 function getParam(value?: string | string[]) {
   if (Array.isArray(value)) {
@@ -786,6 +836,62 @@ export default async function TasksPage({ searchParams }: PageProps) {
     }
     return getVisibleTaskFilterKey(task) === selectedFilter;
   });
+
+  const activeView: TaskViewKey = normalizeView(getParam(params.view));
+  const tasksByDeadline = new Map<string, typeof visibleTasks>();
+  for (const task of visibleTasks) {
+    const dateKey = task.scheduledDate || "";
+    if (!dateKey) {
+      continue;
+    }
+    const bucket = tasksByDeadline.get(dateKey);
+    if (bucket) {
+      bucket.push(task);
+    } else {
+      tasksByDeadline.set(dateKey, [task]);
+    }
+  }
+  const undatedTaskCount = visibleTasks.filter((task) => !task.scheduledDate).length;
+  const taskMonthCounts = new Map<string, number>();
+  for (const [dateKey, bucket] of tasksByDeadline) {
+    const monthKey = dateKey.slice(0, 7);
+    taskMonthCounts.set(monthKey, (taskMonthCounts.get(monthKey) ?? 0) + bucket.length);
+  }
+  let taskAnchorMonthKey = "";
+  let taskAnchorBest = -1;
+  for (const [monthKey, count] of taskMonthCounts) {
+    if (
+      count > taskAnchorBest ||
+      (count === taskAnchorBest && monthKey < taskAnchorMonthKey)
+    ) {
+      taskAnchorBest = count;
+      taskAnchorMonthKey = monthKey;
+    }
+  }
+  const taskCalendarCells: TaskMonthCell[] = taskAnchorMonthKey
+    ? buildTaskMonthCells(
+        Number(taskAnchorMonthKey.slice(0, 4)),
+        Number(taskAnchorMonthKey.slice(5, 7)) - 1,
+      )
+    : [];
+  const taskCalendarMonthLabel = taskAnchorMonthKey
+    ? `${taskAnchorMonthKey.slice(0, 4)} оны ${TASK_CALENDAR_MONTH_NAMES[Number(taskAnchorMonthKey.slice(5, 7)) - 1]}`
+    : "";
+  const buildTaskViewHref = (view: TaskViewKey) => {
+    const linkParams = new URLSearchParams();
+    if (selectedDepartmentParam) {
+      linkParams.set("department", selectedDepartmentParam);
+    }
+    if (activeFilter !== "all") {
+      linkParams.set("filter", activeFilter);
+    }
+    if (view !== "list") {
+      linkParams.set("view", view);
+    }
+    const queryString = linkParams.toString();
+    return `/tasks${queryString ? `?${queryString}` : ""}`;
+  };
+
   const inspectorFilterHref = (filter: FilterKey) => {
     const linkParams = new URLSearchParams();
     if (selectedDepartmentParam) {
@@ -1188,7 +1294,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
               </section>
             ) : null}
 
-            {!workerMode && !inspectorMobileMode ? (
+            {!workerMode && !inspectorMobileMode && masterMode ? (
               <section className={styles.calendarPanel}>
                 <div className={styles.filterHeader}>
                   <div>
@@ -1902,7 +2008,98 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   </div>
                 </div>
 
-                {visibleTasks.length ? (
+                {!inspectorMobileMode ? (
+                  <div className={`${styles.filterScroller} ${styles.taskViewSwitch}`}>
+                    {TASK_VIEWS.map((view) => (
+                      <Link
+                        key={view.key}
+                        href={buildTaskViewHref(view.key)}
+                        className={`${styles.filterChip} ${
+                          activeView === view.key ? styles.filterChipActive : ""
+                        }`}
+                      >
+                        <span>{view.label}</span>
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+
+                {!visibleTasks.length ? (
+                  <div className={styles.emptyState}>
+                    <h3>{inspectorMobileMode ? "Хянах тайлан алга" : "Даалгавар алга"}</h3>
+                    <p>
+                      {inspectorMobileMode
+                        ? "Танд оноогдсон, жолоочоос ирсэн тайлан одоогоор алга."
+                        : "Сонгосон шүүлтэд таарах даалгавар одоогоор харагдахгүй байна."}
+                    </p>
+                  </div>
+                ) : !inspectorMobileMode && activeView === "calendar" ? (
+                  <div className={styles.taskViewCalendar}>
+                    <div className={styles.taskViewCalendarHead}>
+                      <strong>{taskCalendarMonthLabel || "Хугацаа тодорхойгүй"}</strong>
+                      <span>{visibleTasks.length - undatedTaskCount} даалгавар</span>
+                    </div>
+                    {taskCalendarCells.length ? (
+                      <>
+                        <div className={styles.taskViewCalendarWeekdays}>
+                          {TASK_CALENDAR_WEEKDAYS.map((weekday) => (
+                            <span key={weekday}>{weekday}</span>
+                          ))}
+                        </div>
+                        <div className={styles.taskViewCalendarGrid}>
+                          {taskCalendarCells.map((cell, cellIndex) =>
+                            cell ? (
+                              <div key={cell.dateKey} className={styles.taskViewCalendarCell}>
+                                <span className={styles.taskViewCalendarDay}>{cell.day}</span>
+                                {(tasksByDeadline.get(cell.dateKey) ?? []).map((task) => (
+                                  <Link
+                                    key={task.id}
+                                    href={buildTaskHref(task.href)}
+                                    title={task.name}
+                                    className={styles.taskViewCalendarTask}
+                                  >
+                                    {task.name}
+                                  </Link>
+                                ))}
+                              </div>
+                            ) : (
+                              <div
+                                key={`task-calendar-empty-${cellIndex}`}
+                                className={`${styles.taskViewCalendarCell} ${styles.taskViewCalendarCellEmpty}`}
+                              />
+                            ),
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <p className={styles.taskViewCalendarNote}>
+                        Хугацаа тэмдэглэсэн даалгавар алга байна.
+                      </p>
+                    )}
+                    {undatedTaskCount ? (
+                      <div className={styles.taskViewCalendarUndated}>
+                        <span>Хугацаа тэмдэглээгүй {undatedTaskCount} даалгавар</span>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : !inspectorMobileMode && activeView === "list" ? (
+                  <ul className={styles.taskViewCompactList}>
+                    {visibleTasks.map((task) => (
+                      <li key={task.id}>
+                        <Link href={buildTaskHref(task.href)} className={styles.taskViewCompactItem}>
+                          <span className={styles.taskViewCompactName} title={task.name}>
+                            {task.name}
+                          </span>
+                          <span className={styles.taskViewCompactMeta}>
+                            <span className={styles.statusChip}>{task.statusLabel}</span>
+                            <b>{task.progress}%</b>
+                            <small>{task.deadline}</small>
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
                   <div className={styles.taskCardList}>
                   {visibleTasks.map((task) => (
                       <Link key={task.id} href={buildTaskHref(task.href)} className={`${styles.taskCard} ${styles.projectCardLink}`}>
@@ -1941,15 +2138,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
                         ) : null}
                       </Link>
                     ))}
-                  </div>
-                ) : (
-                  <div className={styles.emptyState}>
-                    <h3>{inspectorMobileMode ? "Хянах тайлан алга" : "Даалгавар алга"}</h3>
-                    <p>
-                      {inspectorMobileMode
-                        ? "Танд оноогдсон, жолоочоос ирсэн тайлан одоогоор алга."
-                        : "Сонгосон шүүлтэд таарах даалгавар одоогоор харагдахгүй байна."}
-                    </p>
                   </div>
                 )}
               </section>

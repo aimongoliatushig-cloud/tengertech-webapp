@@ -1241,6 +1241,151 @@
   gap: 12px;
 }
 
+.taskViewSwitch {
+  margin-bottom: 14px;
+}
+
+.taskViewCompactList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.taskViewCompactItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.taskViewCompactItem:hover {
+  transform: translateY(-1px);
+  border-color: rgba(31, 95, 49, 0.16);
+  box-shadow: var(--ds-shadow-panel);
+}
+
+.taskViewCompactName {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-900);
+  font-size: 0.94rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taskViewCompactMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.taskViewCompactMeta b {
+  color: var(--brand-900);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.taskViewCompactMeta small {
+  color: var(--ink-600);
+  font-size: 0.8rem;
+}
+
+.taskViewCalendar {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.taskViewCalendarHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.taskViewCalendarHead strong {
+  color: var(--ink-900);
+  font-size: 1.02rem;
+}
+
+.taskViewCalendarHead span {
+  color: var(--ink-600);
+  font-size: 0.84rem;
+}
+
+.taskViewCalendarWeekdays,
+.taskViewCalendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.taskViewCalendarWeekdays span {
+  padding: 4px 0;
+  color: var(--ink-600);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.taskViewCalendarCell {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  min-height: 92px;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.taskViewCalendarCellEmpty {
+  border-style: dashed;
+  background: rgba(246, 248, 245, 0.6);
+}
+
+.taskViewCalendarDay {
+  color: var(--ink-700);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.taskViewCalendarTask {
+  overflow: hidden;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--ink-900);
+  font-size: 0.74rem;
+  line-height: 1.3;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taskViewCalendarNote,
+.taskViewCalendarUndated {
+  color: var(--ink-600);
+  font-size: 0.82rem;
+}
+
+.taskViewCalendarUndated {
+  padding-top: 8px;
+  border-top: 1px solid var(--line-soft);
+}
+
 .projectList {
   display: grid;
   gap: 12px;
