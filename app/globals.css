@@ -71,8 +71,17 @@ body {
     radial-gradient(circle at top left, rgba(166, 211, 157, 0.16), transparent 24%),
     linear-gradient(180deg, var(--surface-page) 0%, var(--surface-shell) 100%);
   font-family: var(--font-body), sans-serif;
+  font-size: 15px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Uniform typography: render all text at a single 15px size. */
+h1, h2, h3, h4, h5, h6,
+p, span, strong, b, small, em, i, u, s,
+a, li, dt, dd, label, button, input, textarea, select, option,
+th, td, caption, time, figcaption, blockquote, address, cite, code, kbd, mark {
+  font-size: 15px !important;
 }
 
 body[data-mobile-menu-open="true"] {
