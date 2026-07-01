@@ -1528,6 +1528,7 @@
 
 .projectCard {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   padding: 20px;
   border: 1px solid var(--line-soft);
@@ -1607,6 +1608,7 @@
 
 .projectCardTasks {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   padding-top: 12px;
   border-top: 1px solid var(--line-soft);
@@ -1629,6 +1631,7 @@
 
 .projectCardTaskList {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   margin: 0;
   padding: 0;
@@ -1640,6 +1643,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
   padding: 8px 10px;
   border-radius: 8px;
   background: rgba(74, 154, 93, 0.05);
