@@ -1399,7 +1399,7 @@
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.86);
   color: var(--ink-600);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 800;
 }
 
@@ -1675,7 +1675,7 @@
 
 .modalWorkInfoGrid small {
   color: var(--ink-600);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 800;
 }
 
@@ -2830,7 +2830,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -3004,7 +3004,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0;
 }

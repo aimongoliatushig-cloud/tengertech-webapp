@@ -208,7 +208,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-800);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 800;
 }
 
@@ -819,7 +819,7 @@
 
 .vehicleCurrentGrid span {
   color: var(--ink-700);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 800;
 }
 
