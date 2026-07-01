@@ -41,6 +41,7 @@ type PageProps = {
   }>;
   searchParams?: Promise<{
     status?: string | string[];
+    view?: string | string[];
     error?: string | string[];
     notice?: string | string[];
     returnTo?: string | string[];
@@ -60,6 +61,55 @@ const TASK_FILTERS: Array<{ key: TaskFilterKey; label: string }> = [
   { key: "done", label: "Дууссан" },
   { key: "overdue", label: "Хугацаа хэтэрсэн" },
 ];
+type TaskViewKey = "list" | "calendar" | "detail";
+const TASK_VIEWS: Array<{ key: TaskViewKey; label: string }> = [
+  { key: "list", label: "Жагсаалт" },
+  { key: "calendar", label: "Календарь" },
+  { key: "detail", label: "Дэлгэрэнгүй" },
+];
+
+function normalizeView(value: string): TaskViewKey {
+  return TASK_VIEWS.some((view) => view.key === value)
+    ? (value as TaskViewKey)
+    : "list";
+}
+
+const CALENDAR_WEEKDAYS = ["Да", "Мя", "Лх", "Пү", "Ба", "Бя", "Ня"];
+const CALENDAR_MONTH_NAMES = [
+  "1-р сар",
+  "2-р сар",
+  "3-р сар",
+  "4-р сар",
+  "5-р сар",
+  "6-р сар",
+  "7-р сар",
+  "8-р сар",
+  "9-р сар",
+  "10-р сар",
+  "11-р сар",
+  "12-р сар",
+];
+
+type MonthCell = { day: number; dateKey: string } | null;
+
+function buildMonthCells(year: number, month0: number): MonthCell[] {
+  const first = new Date(Date.UTC(year, month0, 1));
+  const startWeekday = (first.getUTCDay() + 6) % 7; // Monday = 0
+  const daysInMonth = new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate();
+  const cells: MonthCell[] = [];
+  for (let i = 0; i < startWeekday; i += 1) {
+    cells.push(null);
+  }
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const dateKey = `${year}-${String(month0 + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    cells.push({ day, dateKey });
+  }
+  while (cells.length % 7 !== 0) {
+    cells.push(null);
+  }
+  return cells;
+}
+
 const AUTO_BASE_HEAD_NAME_TOKENS = ["ц.эрдэнэбат", "ц эрдэнэбат", "эрдэнэбат"];
 
 function normalizeProjectText(value?: string | null) {
@@ -385,6 +435,65 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
 
     return task.stageBucket === activeFilter;
   });
+
+  const activeView: TaskViewKey =
+    quickActionMode !== "none" ? "detail" : normalizeView(getParam(query.view));
+
+  const tasksByDeadline = new Map<string, typeof visibleTasks>();
+  for (const task of visibleTasks) {
+    const dateKey = task.deadlineValue;
+    if (!dateKey) {
+      continue;
+    }
+    const bucket = tasksByDeadline.get(dateKey);
+    if (bucket) {
+      bucket.push(task);
+    } else {
+      tasksByDeadline.set(dateKey, [task]);
+    }
+  }
+  const undatedTasks = visibleTasks.filter((task) => !task.deadlineValue);
+  const monthTaskCounts = new Map<string, number>();
+  for (const [dateKey, bucket] of tasksByDeadline) {
+    const monthKey = dateKey.slice(0, 7);
+    monthTaskCounts.set(monthKey, (monthTaskCounts.get(monthKey) ?? 0) + bucket.length);
+  }
+  let anchorMonthKey = "";
+  let anchorMonthBest = -1;
+  for (const [monthKey, count] of monthTaskCounts) {
+    if (
+      count > anchorMonthBest ||
+      (count === anchorMonthBest && monthKey < anchorMonthKey)
+    ) {
+      anchorMonthBest = count;
+      anchorMonthKey = monthKey;
+    }
+  }
+  const calendarCells: MonthCell[] = anchorMonthKey
+    ? buildMonthCells(
+        Number(anchorMonthKey.slice(0, 4)),
+        Number(anchorMonthKey.slice(5, 7)) - 1,
+      )
+    : [];
+  const calendarMonthLabel = anchorMonthKey
+    ? `${anchorMonthKey.slice(0, 4)} оны ${CALENDAR_MONTH_NAMES[Number(anchorMonthKey.slice(5, 7)) - 1]}`
+    : "";
+
+  const buildTaskViewHref = (view: TaskViewKey) => {
+    const hrefParams = new URLSearchParams();
+    if (activeFilter !== "all") {
+      hrefParams.set("status", activeFilter);
+    }
+    if (view !== "list") {
+      hrefParams.set("view", view);
+    }
+    if (safeReturnTo) {
+      hrefParams.set("returnTo", safeReturnTo);
+    }
+    const queryString = hrefParams.toString();
+    return `/projects/${project.id}${queryString ? `?${queryString}` : ""}`;
+  };
+
   const stageSummary = resolveProjectStage(taskCounts);
   const activeTaskCount = taskCounts.todo + taskCounts.review;
   const completionDegrees = Math.round((project.completion / 100) * 360);
@@ -810,7 +919,95 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                   })}
                 </div>
 
-                {visibleTasks.length ? (
+                {quickActionMode === "none" ? (
+                  <div className={`${styles.taskFilterRail} ${styles.projectTaskViewSwitch}`}>
+                    {TASK_VIEWS.map((view) => (
+                      <Link
+                        key={view.key}
+                        href={buildTaskViewHref(view.key)}
+                        className={`${styles.taskFilterChip} ${
+                          activeView === view.key ? styles.taskFilterChipActive : ""
+                        }`}
+                      >
+                        <span>{view.label}</span>
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+
+                {!visibleTasks.length ? (
+                  <div className={styles.emptyState}>
+                    <h2>Даалгавар алга</h2>
+                    <p>Энэ төлөв дээр харагдах даалгавар одоогоор алга байна.</p>
+                  </div>
+                ) : activeView === "calendar" ? (
+                  <div className={styles.projectTaskCalendar}>
+                    <div className={styles.projectTaskCalendarHead}>
+                      <strong>{calendarMonthLabel || "Хугацаа тодорхойгүй"}</strong>
+                      <span>{visibleTasks.length - undatedTasks.length} даалгавар</span>
+                    </div>
+                    {calendarCells.length ? (
+                      <>
+                        <div className={styles.projectTaskCalendarWeekdays}>
+                          {CALENDAR_WEEKDAYS.map((weekday) => (
+                            <span key={weekday}>{weekday}</span>
+                          ))}
+                        </div>
+                        <div className={styles.projectTaskCalendarGrid}>
+                          {calendarCells.map((cell, cellIndex) =>
+                            cell ? (
+                              <div key={cell.dateKey} className={styles.projectTaskCalendarCell}>
+                                <span className={styles.projectTaskCalendarDay}>{cell.day}</span>
+                                {(tasksByDeadline.get(cell.dateKey) ?? []).map((task) => (
+                                  <Link
+                                    key={task.id}
+                                    href={task.href}
+                                    title={task.name}
+                                    className={`${styles.projectTaskCalendarTask} ${taskCardToneClass(task.stageBucket)}`}
+                                  >
+                                    {task.name}
+                                  </Link>
+                                ))}
+                              </div>
+                            ) : (
+                              <div
+                                key={`calendar-empty-${cellIndex}`}
+                                className={`${styles.projectTaskCalendarCell} ${styles.projectTaskCalendarCellEmpty}`}
+                              />
+                            ),
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <p className={styles.projectTaskCalendarNote}>
+                        Хугацаа тэмдэглэсэн даалгавар алга байна.
+                      </p>
+                    )}
+                    {undatedTasks.length ? (
+                      <div className={styles.projectTaskCalendarUndated}>
+                        <span>Хугацаа тэмдэглээгүй {undatedTasks.length} даалгавар</span>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : activeView === "list" ? (
+                  <ul className={styles.projectTaskCompactList}>
+                    {visibleTasks.map((task, index) => (
+                      <li key={task.id}>
+                        <Link href={task.href} className={styles.projectTaskCompactItem}>
+                          <span className={styles.projectTaskCompactNumber}>{index + 1}</span>
+                          <span className={styles.projectTaskCompactName} title={task.name}>
+                            {task.name}
+                          </span>
+                          <span className={styles.projectTaskCompactMeta}>
+                            <StagePill label={task.stageLabel} bucket={task.stageBucket} />
+                            <b>{task.progress}%</b>
+                            <small>{task.deadline}</small>
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
                   <div className={styles.projectTaskFlowList}>
                     {visibleTasks.map((task, index) => {
                       const reviewHref = `${task.href}?returnTo=${encodeURIComponent(
@@ -930,11 +1127,6 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                         </article>
                       );
                     })}
-                  </div>
-                ) : (
-                  <div className={styles.emptyState}>
-                    <h2>Даалгавар алга</h2>
-                    <p>Энэ төлөв дээр харагдах даалгавар одоогоор алга байна.</p>
                   </div>
                 )}
               </section>
