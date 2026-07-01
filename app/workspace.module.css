@@ -185,8 +185,8 @@
 .heroCard h1 {
   margin: 16px 0 10px;
   font-family: var(--font-body);
-  font-size: clamp(2.2rem, 4vw, 4rem);
-  line-height: 0.96;
+  font-size: clamp(1.5rem, 2.2vw, 2.1rem);
+  line-height: 1.25;
   letter-spacing: 0;
 }
 
@@ -6431,8 +6431,8 @@
 
   .heroCard h1 {
     margin: 12px 0 8px;
-    font-size: clamp(1.9rem, 8vw, 2.55rem);
-    line-height: 1.02;
+    font-size: clamp(1.35rem, 5.5vw, 1.7rem);
+    line-height: 1.3;
   }
 
   .heroCard p {
