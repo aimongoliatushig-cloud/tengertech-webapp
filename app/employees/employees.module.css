@@ -1,0 +1,322 @@
+.page {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* Summary stat cards */
+.summary {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stat {
+  display: grid;
+  gap: 4px;
+  padding: 14px 14px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--line-soft);
+}
+
+.statIcon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--brand-700);
+}
+
+.statValue {
+  color: var(--ink-900);
+  font-size: 24px !important;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.statLabel {
+  color: var(--ink-600);
+  font-size: 12px;
+}
+
+.stat.ok {
+  background: rgba(74, 154, 93, 0.08);
+  border-color: rgba(74, 154, 93, 0.18);
+}
+.stat.ok .statValue,
+.stat.ok .statIcon {
+  color: #0f6e56;
+}
+.stat.warn {
+  background: #faeeda;
+  border-color: rgba(186, 117, 23, 0.22);
+}
+.stat.warn .statValue,
+.stat.warn .statIcon {
+  color: #854f0b;
+}
+
+/* Employee collapsible cards */
+.list {
+  display: grid;
+  gap: 12px;
+}
+
+.emp {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  overflow: hidden;
+}
+
+.empHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+  cursor: pointer;
+  list-style: none;
+  transition: background 140ms ease;
+}
+.empHead::-webkit-details-marker {
+  display: none;
+}
+.empHead:hover {
+  background: rgba(74, 154, 93, 0.04);
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(74, 154, 93, 0.12);
+  color: var(--brand-900);
+  font-size: 13px !important;
+  font-weight: 700;
+}
+
+.empIdentity {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.empName {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-900);
+  font-size: 14px !important;
+  font-weight: 600;
+}
+.empChevron {
+  color: var(--ink-500);
+  transition: transform 160ms ease;
+}
+.emp[open] .empChevron {
+  transform: rotate(180deg);
+}
+.empRole {
+  color: var(--ink-600);
+  font-size: 12px;
+}
+
+.empProgress {
+  display: grid;
+  gap: 5px;
+  width: 168px;
+  flex-shrink: 0;
+}
+.empProgressTop {
+  color: var(--ink-600);
+  font-size: 12px;
+}
+.empProgressTop b {
+  color: var(--ink-900);
+  font-weight: 700;
+}
+.empBar {
+  display: block;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(95, 117, 99, 0.12);
+  overflow: hidden;
+}
+.empBar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--brand-700), #a6d39d);
+}
+
+.empMini {
+  display: flex;
+  gap: 14px;
+  flex-shrink: 0;
+  color: var(--ink-600);
+  font-size: 12px;
+}
+.empMini b {
+  color: var(--ink-900);
+  font-weight: 700;
+}
+.miniWarn {
+  color: #854f0b;
+}
+.miniOk {
+  color: #0f6e56;
+}
+
+/* Task rows */
+.tasks {
+  border-top: 1px solid var(--line-soft);
+  background: rgba(246, 248, 245, 0.6);
+  padding: 4px 16px 10px;
+}
+
+.taskRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line-soft);
+  color: inherit;
+  text-decoration: none;
+}
+.taskRow:last-child {
+  border-bottom: none;
+}
+
+.taskDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot_over {
+  background: #a32d2d;
+}
+.dot_review {
+  background: #ba7517;
+}
+.dot_done {
+  background: #0f6e56;
+}
+.dot_progress {
+  background: var(--brand-700);
+}
+
+.taskMain {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.taskName {
+  overflow: hidden;
+  color: var(--ink-900);
+  font-size: 13px !important;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.taskChips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px !important;
+  font-weight: 600;
+}
+.pill_over {
+  background: #fcebeb;
+  color: #a32d2d;
+}
+.pill_review {
+  background: #faeeda;
+  color: #854f0b;
+}
+.pill_done {
+  background: #e1f5ee;
+  color: #0f6e56;
+}
+.pill_progress {
+  background: rgba(74, 154, 93, 0.1);
+  color: var(--brand-900);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  overflow: hidden;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink-600);
+  font-size: 11px !important;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.taskMeta {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  flex-shrink: 0;
+  text-align: right;
+}
+.taskMeta b {
+  color: var(--brand-900);
+  font-size: 13px !important;
+  font-weight: 700;
+}
+.taskMeta span {
+  color: var(--ink-500);
+  font-size: 11px !important;
+}
+
+.emptyState {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 40px 22px;
+  border: 1px dashed rgba(95, 117, 99, 0.22);
+  border-radius: 12px;
+  background: rgba(246, 248, 245, 0.94);
+  color: var(--ink-700);
+  text-align: center;
+}
+
+@media (max-width: 1080px) {
+  .summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .empHead {
+    flex-wrap: wrap;
+  }
+  .empProgress {
+    width: 100%;
+    order: 3;
+  }
+  .empMini {
+    order: 4;
+  }
+}
