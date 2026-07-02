@@ -141,6 +141,53 @@ async function loadDepartmentManagerUserIds(
   return uniqueUserIds([relationId(employees[0]?.user_id)]);
 }
 
+/**
+ * Хэлтсийн даргыг хүний нөөцөөс (hr.department.manager_id) шууд авч,
+ * холбогдох хэрэглэгчийн { id, name }-ийг буцаана. Дарга бүртгэлгүй бол null.
+ */
+export async function loadDepartmentHeadUser(
+  departmentId?: number | null,
+  connectionOverrides: Partial<OdooConnection> = {},
+): Promise<{ id: number; name: string } | null> {
+  if (!departmentId || !Number.isFinite(departmentId) || departmentId <= 0) {
+    return null;
+  }
+  const fields = await getAvailableFields("hr.department", ["manager_id"]);
+  if (!fields.includes("manager_id")) {
+    return null;
+  }
+  const departments = await executeOdooKw<DepartmentRecord[]>(
+    "hr.department",
+    "search_read",
+    [[["id", "=", departmentId]]],
+    { fields, limit: 1, context: { active_test: false } },
+    connectionOverrides,
+  ).catch((error) => {
+    console.warn("Department head (HR) lookup failed:", error);
+    return [] as DepartmentRecord[];
+  });
+  const managerEmployeeId = relationId(departments[0]?.manager_id);
+  if (!managerEmployeeId) {
+    return null;
+  }
+  const employees = await executeOdooKw<EmployeeUserRecord[]>(
+    "hr.employee",
+    "search_read",
+    [[["id", "=", managerEmployeeId]]],
+    { fields: ["user_id"], limit: 1, context: { active_test: false } },
+    connectionOverrides,
+  ).catch((error) => {
+    console.warn("Department head (HR) user lookup failed:", error);
+    return [] as EmployeeUserRecord[];
+  });
+  const userRelation = employees[0]?.user_id;
+  const userId = relationId(userRelation);
+  if (!userId) {
+    return null;
+  }
+  return { id: userId, name: relationName(userRelation) || `Хэрэглэгч ${userId}` };
+}
+
 export async function loadEmployeeUserId(
   employeeId: number,
   connectionOverrides: Partial<OdooConnection> = {},

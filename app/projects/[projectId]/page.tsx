@@ -17,6 +17,7 @@ import {
   getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { loadDepartmentHeadUser } from "@/lib/notification-recipients";
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import { loadFleetVehicleBoard } from "@/lib/odoo";
 import { isProcurementSetupError, loadProcurementRequests } from "@/lib/procurement";
@@ -542,8 +543,15 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
         isPreferredAutoBaseHeadName(`${manager.name} ${manager.login} ${manager.departmentName ?? ""}`),
       ) ?? null
     : null;
-  const taskDepartmentHeadName = preferredAutoBaseHead?.name ?? project.managerName;
-  const taskDepartmentHeadId = preferredAutoBaseHead?.id ?? project.managerId;
+  // Хэлтсийн даргыг хүний нөөцөөс (hr.department.manager_id) шууд авна
+  const hrDepartmentHead = await loadDepartmentHeadUser(project.departmentId, {
+    login: session.login,
+    password: session.password,
+  });
+  const taskDepartmentHeadName =
+    hrDepartmentHead?.name ?? preferredAutoBaseHead?.name ?? project.managerName;
+  const taskDepartmentHeadId =
+    hrDepartmentHead?.id ?? preferredAutoBaseHead?.id ?? project.managerId;
   const taskCreateBaseProps = {
     action: createTaskAction,
     projectId: project.id,
