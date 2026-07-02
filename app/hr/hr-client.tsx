@@ -357,6 +357,16 @@ function employeeInitials(name: string) {
   return parts.slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("mn-MN") ?? "").join("") || "?";
 }
 
+// Байгууллагын хэмжээнд хамгийн дээр гарах удирдлага: Захирал → Үйл ажиллагаа
+// хариуцсан менежер → Дотоод хяналт. Бусад нь 100 (хэлтсээрээ эрэмбэлэгдэнэ).
+function topLeadershipRank(jobTitle?: string | null) {
+  const title = (jobTitle || "").toLocaleLowerCase("mn-MN");
+  if (title.includes("захирал")) return 0;
+  if (title.includes("үйл ажиллагаа") && title.includes("менежер")) return 1;
+  if (title.includes("дотоод хяналт")) return 2;
+  return 100;
+}
+
 // Хэлтэс доторх дэс дараа: дарга → ерөнхий нягтлан/ХН → менежер → бусад
 function employeeRoleRank(jobTitle?: string | null) {
   const title = (jobTitle || "").toLocaleLowerCase("mn-MN");
@@ -500,9 +510,11 @@ export function EmployeeTable({
       const matchesStatus = matchesEmployeeStatusFilter(employee, status);
       return matchesQuery && matchesDepartment && matchesJobTitle && matchesStatus;
     });
-    // Хэлтсээр бүлэглэн, хэлтэс доторх гол албан тушаалтныг (дарга/ерөнхий нягтлан/ХН) дээр
+    // Захирал → Үйл ажиллагаа хариуцсан менежер → Дотоод хяналт хамгийн дээр,
+    // дараа нь хэлтсээр бүлэглэн, хэлтэс доторх гол албан тушаалтныг (дарга/ерөнхий нягтлан/ХН) дээр
     return [...filtered].sort(
       (left, right) =>
+        topLeadershipRank(left.jobTitle) - topLeadershipRank(right.jobTitle) ||
         (left.departmentName || "").localeCompare(right.departmentName || "", "mn-MN") ||
         employeeRoleRank(left.jobTitle) - employeeRoleRank(right.jobTitle) ||
         left.name.localeCompare(right.name, "mn-MN"),
@@ -3278,7 +3290,15 @@ export function EmployeeDetailTabs({
   return (
     <section id="profile-info" className={styles.hrProfileShell}>
       <div className={styles.hrProfileBreadcrumb}>
-        <Link href="/hr/employees">Ажилтнууд</Link>
+        <Link
+          href={
+            employee.departmentName
+              ? `/hr/employees?department=${encodeURIComponent(employee.departmentName)}`
+              : "/hr/employees"
+          }
+        >
+          Ажилтнууд
+        </Link>
         <span>/</span>
         <strong>Ажилтны дэлгэрэнгүй</strong>
       </div>
