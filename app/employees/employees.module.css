@@ -55,6 +55,104 @@
   color: #854f0b;
 }
 
+/* Assign task */
+.assign {
+  border: 1px solid rgba(74, 154, 93, 0.2);
+  border-radius: 12px;
+  background: rgba(74, 154, 93, 0.05);
+  overflow: hidden;
+}
+.assignSummary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--brand-900);
+  font-size: 14px !important;
+  font-weight: 600;
+}
+.assignSummary::-webkit-details-marker {
+  display: none;
+}
+.assignSummaryIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--brand-700);
+  color: #fff;
+}
+.assignChevron {
+  margin-left: auto;
+  color: var(--brand-700);
+  transition: transform 160ms ease;
+}
+.assign[open] .assignChevron {
+  transform: rotate(180deg);
+}
+.assignForm {
+  display: grid;
+  gap: 14px;
+  padding: 4px 16px 16px;
+}
+.assignGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.assignField {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.assignField span {
+  color: var(--ink-700);
+  font-size: 12px;
+  font-weight: 600;
+}
+.assignField select,
+.assignField input {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink-900);
+}
+.assignField select:focus,
+.assignField input:focus {
+  outline: none;
+  border-color: var(--brand-700);
+}
+.assignBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  justify-self: start;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  background: var(--brand-700);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.assignBtn:hover {
+  background: var(--brand-900);
+}
+
+@media (max-width: 900px) {
+  .assignGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* Filters */
 .filters {
   display: grid;

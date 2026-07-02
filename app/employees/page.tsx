@@ -6,12 +6,14 @@ import {
   ClipboardList,
   Clock3,
   Flag,
+  Plus,
   ShieldCheck,
   Users,
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
+import { createTaskAction } from "@/app/actions";
 import shellStyles from "@/app/workspace.module.css";
 import {
   getSessionRoleLabel,
@@ -218,6 +220,20 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
     return `/employees${queryString ? `?${queryString}` : ""}`;
   };
 
+  const employeeOptionMap = new Map<number, string>();
+  for (const task of personTasks) {
+    if (task.leaderId != null && !employeeOptionMap.has(task.leaderId)) {
+      employeeOptionMap.set(task.leaderId, task.leaderName);
+    }
+  }
+  const employeeOptions = [...employeeOptionMap]
+    .map(([id, name]) => ({ id, name }))
+    .sort((left, right) => left.name.localeCompare(right.name, "mn-MN"));
+  const projectOptions = [...snapshot.projects]
+    .map((project) => ({ id: project.id, name: project.name }))
+    .sort((left, right) => left.name.localeCompare(right.name, "mn-MN"));
+  const canAssignTask = canCreateTasks && employeeOptions.length > 0 && projectOptions.length > 0;
+
   const groups = new Map<string, { name: string; tasks: TaskDirectoryItem[] }>();
   for (const task of deptTasks) {
     const name = task.leaderName?.trim() || "Оноогоогүй";
@@ -282,6 +298,60 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
 
   return shell(
     <div className={styles.page}>
+      {canAssignTask ? (
+        <details className={styles.assign}>
+          <summary className={styles.assignSummary}>
+            <span className={styles.assignSummaryIcon}>
+              <Plus size={16} aria-hidden />
+            </span>
+            Ажилтанд үүрэг даалгавар оноох
+            <ChevronDown size={15} className={styles.assignChevron} aria-hidden />
+          </summary>
+          <form action={createTaskAction} className={styles.assignForm}>
+            <div className={styles.assignGrid}>
+              <label className={styles.assignField}>
+                <span>Ажилтан</span>
+                <select name="team_leader_id" required defaultValue="">
+                  <option value="" disabled>
+                    Сонгох
+                  </option>
+                  {employeeOptions.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.assignField}>
+                <span>Ажил (төсөл)</span>
+                <select name="project_id" required defaultValue="">
+                  <option value="" disabled>
+                    Сонгох
+                  </option>
+                  {projectOptions.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.assignField}>
+                <span>Даалгаврын нэр</span>
+                <input name="name" required placeholder="Жишээ: 15-р хороо мод услах" />
+              </label>
+              <label className={styles.assignField}>
+                <span>Хугацаа</span>
+                <input name="deadline" type="date" />
+              </label>
+            </div>
+            <button type="submit" className={styles.assignBtn}>
+              <Plus size={15} aria-hidden />
+              Даалгавар оноох
+            </button>
+          </form>
+        </details>
+      ) : null}
+
       <section className={styles.summary}>
         {summary.map((item) => {
           const Icon = item.icon;
