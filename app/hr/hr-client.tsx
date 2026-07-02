@@ -304,6 +304,11 @@ export type RegistryColumn = {
   hrefKey?: string;
 };
 
+function employeeInitials(name: string) {
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+  return parts.slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("mn-MN") ?? "").join("") || "?";
+}
+
 function statusLabel(employee: HrEmployeeDirectoryItem) {
   if (!employee.active || ["archived", "terminated", "resigned"].includes(employee.statusKey)) {
     return "Ажлаас чөлөөлсөн";
@@ -454,50 +459,37 @@ export function EmployeeTable({
         Одоогийн шүүлтээр <strong>{visibleEmployees.length}</strong> хүн байна
       </div>
 
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Нэр</th>
-              <th>Алба нэгж</th>
-              <th>Албан тушаал</th>
-              <th>Ажлын нэр</th>
-              <th>Утас</th>
-              <th>Төлөв</th>
-              <th>Ажилд орсон</th>
-              {mode === "department" ? <th>Үйлдэл</th> : null}
-            </tr>
-          </thead>
-          <tbody>
-            {visibleEmployees.map((employee) => (
-              <tr key={employee.id}>
-                <td>
-                  <Link href={`/hr/employees/${employee.id}`}>{formatEmployeeDisplayName(employee.name)}</Link>
-                </td>
-                <td>{employee.departmentName || "Бүртгээгүй"}</td>
-                <td>{employee.jobTitle || "Бүртгээгүй"}</td>
-                <td>{employee.gradeRank || employee.jobTitle || "Бүртгээгүй"}</td>
-                <td>{employee.mobilePhone || "Бүртгээгүй"}</td>
-                <td>
-                  <span className={`${styles.statusPill} ${statusLabel(employee) === "Туршилт дууссан" ? styles.statusPillWarning : ""}`}>
-                    {statusLabel(employee)}
-                  </span>
-                </td>
-                <td>{employee.startDate || "Бүртгээгүй"}</td>
-                {mode === "department" ? (
-                  <td>
-                    <div className={styles.checklist}>
-                      <Link href={`/hr/employees/${employee.id}?edit=profile#profile-info`}>Засах</Link>
-                      <Link href={`/hr/sick?employeeId=${employee.id}&type=time_off`}>Чөлөө хүсэх</Link>
-                      <Link href={`/hr/sick?employeeId=${employee.id}&type=annual_leave`}>Ээлжийн амралт</Link>
-                      <Link href={`/hr/sick?employeeId=${employee.id}&type=sick`}>Өвчтэй бүртгэх</Link>
-                    </div>
-                  </td>
-                ) : null}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className={styles.employeeGrid}>
+        {visibleEmployees.map((employee) => (
+          <Link
+            key={employee.id}
+            href={`/hr/employees/${employee.id}`}
+            className={styles.employeeGridCard}
+          >
+            <span className={styles.employeeGridAvatar}>
+              {employee.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={employee.photoUrl} alt="" className={styles.employeeGridAvatarImg} />
+              ) : (
+                employeeInitials(employee.name)
+              )}
+            </span>
+            <strong className={styles.employeeGridName}>
+              {formatEmployeeDisplayName(employee.name)}
+            </strong>
+            <span className={styles.employeeGridTitle}>
+              {employee.jobTitle || "Албан тушаал бүртгээгүй"}
+            </span>
+            <span className={styles.employeeGridDept}>
+              {employee.departmentName || "Хэлтэс бүртгээгүй"}
+            </span>
+            <span
+              className={`${styles.statusPill} ${statusLabel(employee) === "Туршилт дууссан" ? styles.statusPillWarning : ""}`}
+            >
+              {statusLabel(employee)}
+            </span>
+          </Link>
+        ))}
       </div>
 
       {!visibleEmployees.length ? (
