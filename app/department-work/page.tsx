@@ -22,6 +22,7 @@ import {
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
+import { DEPARTMENT_GROUPS, matchesDepartmentGroup } from "@/lib/department-groups";
 import { loadMunicipalSnapshot, type DashboardSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
 
 import styles from "@/app/employees/employees.module.css";
@@ -57,6 +58,12 @@ function initialsOf(name: string) {
   if (!parts.length) return "?";
   const letters = parts.slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("mn-MN") ?? "");
   return letters.join("") || "?";
+}
+
+function resolveDepartmentGroupName(departmentName?: string | null) {
+  const raw = departmentName?.trim() || "";
+  const group = DEPARTMENT_GROUPS.find((candidate) => matchesDepartmentGroup(candidate, raw));
+  return group?.name ?? (raw || "Тодорхойгүй хэлтэс");
 }
 
 type StatusFilter = "all" | "overdue" | "review" | "progress" | "done";
@@ -185,7 +192,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
   for (const task of baseTasks) {
     const name = groupByProject
       ? task.projectName?.trim() || "Ажилгүй даалгавар"
-      : task.departmentName?.trim() || "Тодорхойгүй хэлтэс";
+      : resolveDepartmentGroupName(task.departmentName);
     const group = groups.get(name);
     if (group) {
       group.tasks.push(task);
