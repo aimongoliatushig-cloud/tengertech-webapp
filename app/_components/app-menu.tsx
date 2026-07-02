@@ -8,6 +8,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   BarChart3,
   Bell,
+  Building2,
   CalendarDays,
   ChevronDown,
   ClipboardCheck,
@@ -59,6 +60,7 @@ type MenuKey =
   | "dashboard"
   | "tasks"
   | "employees"
+  | "department-work"
   | "auto-base"
   | "fleet-repair"
   | "hr"
@@ -738,6 +740,12 @@ export function AppMenu({
             href: "/employees",
             label: "Ажилтны даалгавар",
             icon: Users,
+          },
+          {
+            key: "department-work",
+            href: "/department-work",
+            label: "Хэлтсийн ажил",
+            icon: Building2,
           },
           {
             key: "tasks",

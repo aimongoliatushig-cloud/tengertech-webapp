@@ -1,0 +1,364 @@
+import Link from "next/link";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ClipboardList,
+  Clock3,
+  Building2,
+  Flag,
+  ShieldCheck,
+} from "lucide-react";
+
+import { AppMenu } from "@/app/_components/app-menu";
+import { WorkspaceHeader } from "@/app/_components/workspace-header";
+import shellStyles from "@/app/workspace.module.css";
+import {
+  getSessionRoleLabel,
+  hasCapability,
+  isMasterRole,
+  isWorkerOnly,
+  requireSession,
+} from "@/lib/auth";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
+import { loadMunicipalSnapshot, type DashboardSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
+
+import styles from "@/app/employees/employees.module.css";
+
+export const dynamic = "force-dynamic";
+
+function isTaskDone(task: TaskDirectoryItem) {
+  return task.statusKey === "verified" || task.stageBucket === "done";
+}
+function isTaskReview(task: TaskDirectoryItem) {
+  return (
+    task.stageBucket === "review" ||
+    task.statusKey === "review" ||
+    task.statusKey === "problem"
+  );
+}
+function isTaskOverdue(task: TaskDirectoryItem, todayKey: string) {
+  return Boolean(
+    task.scheduledDate && task.scheduledDate < todayKey && task.statusKey !== "verified",
+  );
+}
+function isTaskInProgress(task: TaskDirectoryItem) {
+  return (
+    !isTaskDone(task) &&
+    (task.stageBucket === "progress" ||
+      task.stageBucket === "todo" ||
+      task.stageBucket === "unknown")
+  );
+}
+
+function initialsOf(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  const letters = parts.slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("mn-MN") ?? "");
+  return letters.join("") || "?";
+}
+
+type StatusFilter = "all" | "overdue" | "review" | "progress" | "done";
+const STATUS_FILTERS: Array<{ key: StatusFilter; label: string }> = [
+  { key: "all", label: "Бүгд" },
+  { key: "overdue", label: "Хугацаа хэтэрсэн" },
+  { key: "review", label: "Батлах хүлээж" },
+  { key: "progress", label: "Хийгдэж буй" },
+  { key: "done", label: "Дууссан" },
+];
+function normalizeStatus(value: string): StatusFilter {
+  return STATUS_FILTERS.some((filter) => filter.key === value)
+    ? (value as StatusFilter)
+    : "all";
+}
+function matchesStatus(task: TaskDirectoryItem, filter: StatusFilter, todayKey: string) {
+  switch (filter) {
+    case "overdue":
+      return isTaskOverdue(task, todayKey);
+    case "review":
+      return isTaskReview(task);
+    case "progress":
+      return isTaskInProgress(task);
+    case "done":
+      return isTaskDone(task);
+    default:
+      return true;
+  }
+}
+function getParam(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+type DepartmentWorkPageProps = {
+  searchParams?: Promise<{ status?: string | string[] }>;
+};
+
+export default async function DepartmentWorkPage({ searchParams }: DepartmentWorkPageProps) {
+  const session = await requireSession();
+  const queryParams = (await searchParams) ?? {};
+  const selectedStatus = normalizeStatus(getParam(queryParams.status));
+
+  const workerMode = isWorkerOnly(session);
+  const masterMode = isMasterRole(session.role);
+  const canCreateProject = hasCapability(session, "create_projects");
+  const canCreateTasks = hasCapability(session, "create_tasks");
+  const canWriteReports = hasCapability(session, "write_workspace_reports");
+  const canViewQualityCenter = hasCapability(session, "view_quality_center");
+  const canUseFieldConsole = hasCapability(session, "use_field_console");
+
+  const shell = (content: React.ReactNode) => (
+    <main className={shellStyles.shell}>
+      <div className={shellStyles.container}>
+        <div className={shellStyles.contentWithMenu}>
+          <aside className={shellStyles.menuColumn}>
+            <AppMenu
+              active="department-work"
+              canCreateProject={canCreateProject}
+              canCreateTasks={canCreateTasks}
+              canWriteReports={canWriteReports}
+              canViewQualityCenter={canViewQualityCenter}
+              canUseFieldConsole={canUseFieldConsole}
+              userName={session.name}
+              userRole={session.role}
+              roleLabel={getSessionRoleLabel(session)}
+              groupFlags={session.groupFlags}
+              masterMode={masterMode}
+              workerMode={workerMode}
+              notificationCount={0}
+            />
+          </aside>
+          <div className={shellStyles.pageContent}>
+            <WorkspaceHeader
+              title="Хэлтсийн ажил"
+              subtitle="Хэлтэс бүрийн ажил, даалгавар, явцыг нэг дороос"
+              userName={session.name}
+              roleLabel={getSessionRoleLabel(session)}
+              notificationCount={0}
+              notificationNote="Хэлтсийн ачааллын нэгдсэн харагдац"
+            />
+            {content}
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+
+  let snapshot: DashboardSnapshot;
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  try {
+    snapshot = await loadMunicipalSnapshot(
+      { login: session.login, password: session.password },
+      { allowFallback: true },
+    );
+  } catch (error) {
+    console.error("Department work page data load failed:", error);
+    return shell(
+      <div className={styles.emptyState}>
+        <h3>Мэдээлэл ачаалж чадсангүй</h3>
+        <p>Odoo холболт түр саатсан байна. Хэсэг хугацааны дараа дахин оролдоно уу.</p>
+      </div>,
+    );
+  }
+
+  const todayKey = getTodayDateKey();
+  const scopedTasks = scopedDepartmentName
+    ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
+    : snapshot.taskDirectory;
+
+  const groups = new Map<string, { name: string; tasks: TaskDirectoryItem[] }>();
+  for (const task of scopedTasks) {
+    const name = task.departmentName?.trim() || "Тодорхойгүй хэлтэс";
+    const group = groups.get(name);
+    if (group) {
+      group.tasks.push(task);
+    } else {
+      groups.set(name, { name, tasks: [task] });
+    }
+  }
+
+  const departments = [...groups.values()]
+    .map((group) => {
+      const assigned = group.tasks.length;
+      const done = group.tasks.filter(isTaskDone).length;
+      const review = group.tasks.filter(isTaskReview).length;
+      const overdue = group.tasks.filter((task) => isTaskOverdue(task, todayKey)).length;
+      const inProgress = group.tasks.filter(isTaskInProgress).length;
+      const progress = assigned
+        ? Math.round(group.tasks.reduce((sum, task) => sum + (task.progress || 0), 0) / assigned)
+        : 0;
+      const projectCount = new Set(group.tasks.map((task) => task.projectName).filter(Boolean)).size;
+      const tasks = [...group.tasks].sort((left, right) => {
+        const rank = (task: TaskDirectoryItem) =>
+          isTaskOverdue(task, todayKey) ? 0 : isTaskReview(task) ? 1 : isTaskDone(task) ? 3 : 2;
+        return rank(left) - rank(right);
+      });
+      const visibleTasks =
+        selectedStatus === "all"
+          ? tasks
+          : tasks.filter((task) => matchesStatus(task, selectedStatus, todayKey));
+      return {
+        name: group.name,
+        assigned,
+        done,
+        review,
+        overdue,
+        inProgress,
+        progress,
+        projectCount,
+        visibleTasks,
+      };
+    })
+    .filter((department) => department.visibleTasks.length > 0)
+    .sort(
+      (left, right) =>
+        right.overdue - left.overdue ||
+        right.review - left.review ||
+        right.assigned - left.assigned,
+    );
+
+  const buildHref = (status: StatusFilter) =>
+    status === "all" ? "/department-work" : `/department-work?status=${status}`;
+
+  const summary = [
+    { key: "dept", label: "Хэлтэс", value: groups.size, icon: Building2, tone: "" },
+    { key: "assigned", label: "Даалгавар", value: scopedTasks.length, icon: ClipboardList, tone: "" },
+    { key: "done", label: "Дууссан", value: scopedTasks.filter(isTaskDone).length, icon: CheckCircle2, tone: "ok" },
+    { key: "prog", label: "Хийгдэж буй", value: scopedTasks.filter(isTaskInProgress).length, icon: Clock3, tone: "" },
+    { key: "over", label: "Хугацаа хэтэрсэн", value: scopedTasks.filter((task) => isTaskOverdue(task, todayKey)).length, icon: AlertTriangle, tone: "warn" },
+    { key: "review", label: "Батлах хүлээж", value: scopedTasks.filter(isTaskReview).length, icon: ShieldCheck, tone: "warn" },
+  ];
+
+  return shell(
+    <div className={styles.page}>
+      <section className={styles.summary}>
+        {summary.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div key={item.key} className={`${styles.stat} ${item.tone ? styles[item.tone] : ""}`}>
+              <span className={styles.statIcon}>
+                <Icon size={16} aria-hidden />
+              </span>
+              <strong className={styles.statValue}>{item.value}</strong>
+              <span className={styles.statLabel}>{item.label}</span>
+            </div>
+          );
+        })}
+      </section>
+
+      <div className={styles.filters}>
+        <div className={styles.filterRow}>
+          {STATUS_FILTERS.map((filter) => {
+            const count =
+              filter.key === "all"
+                ? scopedTasks.length
+                : scopedTasks.filter((task) => matchesStatus(task, filter.key, todayKey)).length;
+            return (
+              <Link
+                key={filter.key}
+                href={buildHref(filter.key)}
+                className={`${styles.filterChip} ${selectedStatus === filter.key ? styles.filterChipActive : ""}`}
+              >
+                <span>{filter.label}</span>
+                <b>{count}</b>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {departments.length ? (
+        <section className={styles.list}>
+          {departments.map((department, index) => (
+            <details
+              key={`${department.name}-${index}`}
+              className={styles.emp}
+              open={selectedStatus !== "all" || index === 0}
+            >
+              <summary className={styles.empHead}>
+                <span className={styles.avatar}>{initialsOf(department.name)}</span>
+                <span className={styles.empIdentity}>
+                  <span className={styles.empName}>
+                    {department.name}
+                    <ChevronDown size={15} className={styles.empChevron} aria-hidden />
+                  </span>
+                  <span className={styles.empRole}>
+                    {department.projectCount} ажил · {department.assigned} даалгавар
+                  </span>
+                </span>
+                <span className={styles.empProgress}>
+                  <span className={styles.empProgressTop}>
+                    Гүйцэтгэл <b>{department.progress}%</b>
+                  </span>
+                  <span className={styles.empBar} aria-hidden>
+                    <i style={{ width: `${department.progress}%` }} />
+                  </span>
+                </span>
+                <span className={styles.empMini}>
+                  <span>
+                    Дууссан <b>{department.done}</b>
+                  </span>
+                  <span>
+                    Хийгдэж буй <b>{department.inProgress}</b>
+                  </span>
+                  {department.overdue > 0 ? (
+                    <span className={styles.miniWarn}>
+                      Хэтэрсэн <b>{department.overdue}</b>
+                    </span>
+                  ) : (
+                    <span className={styles.miniOk}>Асуудалгүй</span>
+                  )}
+                </span>
+              </summary>
+
+              <div className={styles.tasks}>
+                {department.visibleTasks.map((task) => {
+                  const bucket = isTaskOverdue(task, todayKey)
+                    ? "over"
+                    : isTaskDone(task)
+                      ? "done"
+                      : isTaskReview(task)
+                        ? "review"
+                        : "progress";
+                  return (
+                    <Link key={task.id} href={task.href} className={styles.taskRow}>
+                      <span className={`${styles.taskDot} ${styles[`dot_${bucket}`]}`} aria-hidden />
+                      <span className={styles.taskMain}>
+                        <span className={styles.taskName} title={task.name}>
+                          {task.name}
+                        </span>
+                        <span className={styles.taskChips}>
+                          <span className={`${styles.pill} ${styles[`pill_${bucket}`]}`}>
+                            {task.statusLabel}
+                          </span>
+                          {task.leaderName ? (
+                            <span className={styles.chip}>
+                              <Flag size={11} aria-hidden />
+                              {task.leaderName}
+                            </span>
+                          ) : null}
+                          {task.projectName ? (
+                            <span className={styles.chip}>{task.projectName}</span>
+                          ) : null}
+                        </span>
+                      </span>
+                      <span className={styles.taskMeta}>
+                        <b>{task.progress}%</b>
+                        <span>{task.deadline || "Хугацаагүй"}</span>
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </details>
+          ))}
+        </section>
+      ) : (
+        <div className={styles.emptyState}>
+          <h3>Ажил алга</h3>
+          <p>Сонгосон шүүлтэд таарах хэлтсийн ажил одоогоор алга байна.</p>
+        </div>
+      )}
+    </div>,
+  );
+}
