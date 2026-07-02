@@ -169,6 +169,12 @@ function timeoffPriority(request: HrTimeoffRequest) {
   return 1;
 }
 
+function rowInitials(name: string) {
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+  const letters = parts.slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("mn-MN") ?? "");
+  return letters.join("") || "?";
+}
+
 function StatusEmployeeRow({
   employee,
   request,
@@ -179,7 +185,18 @@ function StatusEmployeeRow({
   actions?: ReactNode;
 }) {
   const rowLink = (
-    <Link href={`/hr/employees/${employee.id}`} className={styles.detailRow}>
+    <Link
+      href={`/hr/employees/${employee.id}`}
+      className={`${styles.detailRow} ${styles.detailRowPerson}`}
+    >
+      <span className={styles.detailRowAvatar} aria-hidden>
+        {employee.photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={employee.photoUrl} alt="" className={styles.detailRowAvatarImg} />
+        ) : (
+          rowInitials(employee.name)
+        )}
+      </span>
       <span>
         <strong>{formatEmployeeDisplayName(employee.name)}</strong>
         <small>

@@ -1576,6 +1576,31 @@
     color 160ms ease;
 }
 
+.detailRowPerson {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.detailRowAvatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(46, 125, 50, 0.12);
+  color: #2e7d32;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.detailRowAvatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .detailRow:last-child {
   border-bottom: 0;
 }
