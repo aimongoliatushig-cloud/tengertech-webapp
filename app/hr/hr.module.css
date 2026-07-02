@@ -1864,72 +1864,260 @@
   color: #6b7a72;
 }
 
-.orgTree {
+.orgChart {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: center;
 }
 
-.orgNode {
+/* Дээд шатлалын нуруу: ТУЗ → Захирал → Менежер */
+.orgSpine {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  width: 100%;
 }
 
-.orgChildren {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-left: 22px;
-  padding-left: 16px;
-  border-left: 2px solid rgba(46, 125, 50, 0.18);
-}
-
-.orgCard {
+.orgLevel {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.orgTopBox {
+  display: inline-flex;
+  align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  min-width: 260px;
+  max-width: 420px;
+  padding: 12px 20px;
   border-radius: 12px;
-  border: 1px solid rgba(46, 125, 50, 0.14);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  font-weight: 700;
+  text-align: center;
+  justify-content: center;
+}
+
+.orgTopBox span {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.orgTopBox strong {
+  font-size: 15px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.orgToneBoard {
+  background: #4b5563;
+  border-color: #3f4855;
+  color: #fff;
+}
+
+.orgToneBoard strong {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.orgToneDirector {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+.orgToneOps {
+  background: #dbeafe;
+  border-color: #bfdbfe;
+  color: #1e3a8a;
+}
+
+.orgDash {
+  width: 42px;
+  border-top: 2px dashed #9ca3af;
+  flex-shrink: 0;
+}
+
+.orgAside {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
   background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
 }
 
-.orgNode[data-depth="0"] > .orgCard {
-  background: rgba(46, 125, 50, 0.07);
-  border-color: rgba(46, 125, 50, 0.24);
+.orgAside strong {
+  font-size: 13px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
 }
 
-.orgCardMain {
+.orgConnector {
+  width: 2px;
+  height: 20px;
+  background: rgba(46, 125, 50, 0.35);
+}
+
+.orgDepartments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.orgDept {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  padding: 14px 16px;
 }
 
-.orgCardName {
+.orgDeptHead {
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.orgDeptHead h3 {
+  margin: 0;
   font-size: 14px;
-  font-weight: 700;
-  color: #16241b;
+  font-weight: 800;
+  line-height: 1.3;
 }
 
-.orgCardManager {
-  font-size: 12px;
-  color: #6b7a72;
+.orgDeptCounts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
 }
 
-.orgCardCount {
+.orgDeptLive {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 10px;
+  padding: 3px 10px;
   border-radius: 999px;
-  background: rgba(46, 125, 50, 0.1);
-  color: #2e7d32;
+  background: rgba(255, 255, 255, 0.7);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
+  color: #16241b;
+}
+
+.orgDeptLive em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7a72;
+}
+
+.orgDeptApproved {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7a72;
+}
+
+.orgRoles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  counter-reset: org-role;
+}
+
+.orgRoles li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+  color: #253027;
+}
+
+.orgRoles li span {
+  position: relative;
+  padding-left: 20px;
+  min-width: 0;
+}
+
+.orgRoles li span::before {
+  counter-increment: org-role;
+  content: counter(org-role) ".";
+  position: absolute;
+  left: 0;
+  color: #8a978f;
+  font-size: 11px;
+}
+
+.orgRoles li b {
+  font-weight: 800;
+  color: #16241b;
   flex-shrink: 0;
+}
+
+.orgToneBlue {
+  background: #eef4fe;
+  border-color: #c7dbfb;
+}
+.orgToneBlue .orgDeptHead h3 {
+  color: #1d4ed8;
+}
+
+.orgTonePurple {
+  background: #f6eefe;
+  border-color: #e0cdf6;
+}
+.orgTonePurple .orgDeptHead h3 {
+  color: #7c3aed;
+}
+
+.orgToneAmber {
+  background: #fef7e6;
+  border-color: #f5e2b0;
+}
+.orgToneAmber .orgDeptHead h3 {
+  color: #b45309;
+}
+
+.orgToneGreen {
+  background: #e9f7ed;
+  border-color: #bfe6c8;
+}
+.orgToneGreen .orgDeptHead h3 {
+  color: #15803d;
+}
+
+.orgToneOrange {
+  background: #fdefe0;
+  border-color: #f6d5b3;
+}
+.orgToneOrange .orgDeptHead h3 {
+  color: #c2570c;
+}
+
+@media (max-width: 640px) {
+  .orgDash {
+    display: none;
+  }
+  .orgLevel {
+    gap: 8px;
+  }
+  .orgTopBox {
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 .detailRow:last-child {

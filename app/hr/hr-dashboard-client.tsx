@@ -23,6 +23,7 @@ import type { HrDepartmentNode, HrDisciplineRecord, HrTimeoffDashboardData, HrTi
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
 import { HR_NOTIFICATION_HREF } from "./constants";
+import { OrgChart } from "./org-chart";
 import styles from "./hr.module.css";
 
 type DetailKind = "total" | "active" | "leave" | "requests" | "trial";
@@ -791,42 +792,12 @@ export function HrDashboardClient({
             </span>
             <div>
               <h2>Байгууллагын бүтэц</h2>
-              <p>Хэлтэс, албадын шатлал, дарга болон бүрэлдэхүүний тоо</p>
+              <p>Батлагдсан орон тооны бүтэц. Хэлтсийн нийт тоо Odoo-гоос амьдаар шинэчлэгдэнэ.</p>
             </div>
           </header>
-          <div className={styles.orgTree}>
-            {departmentStructure.map((node) => (
-              <OrgNode key={node.id} node={node} depth={0} />
-            ))}
-          </div>
+          <OrgChart liveCounts={departmentStructure} />
         </section>
       ) : null}
     </>
-  );
-}
-
-function OrgNode({ node, depth }: { node: HrDepartmentNode; depth: number }) {
-  return (
-    <div className={styles.orgNode} data-depth={depth}>
-      <div className={styles.orgCard}>
-        <div className={styles.orgCardMain}>
-          <strong className={styles.orgCardName}>{node.name}</strong>
-          <span className={styles.orgCardManager}>
-            {node.managerName ? node.managerName : "Дарга томилоогүй"}
-          </span>
-        </div>
-        <span className={styles.orgCardCount}>
-          <Users aria-hidden size={13} />
-          {node.memberCount}
-        </span>
-      </div>
-      {node.children.length > 0 ? (
-        <div className={styles.orgChildren}>
-          {node.children.map((child) => (
-            <OrgNode key={child.id} node={child} depth={depth + 1} />
-          ))}
-        </div>
-      ) : null}
-    </div>
   );
 }
