@@ -55,6 +55,45 @@
   color: #854f0b;
 }
 
+/* Filters */
+.filters {
+  display: grid;
+  gap: 8px;
+}
+.filterRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--ink-700);
+  font-size: 12px !important;
+  text-decoration: none;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.filterChip:hover {
+  border-color: rgba(74, 154, 93, 0.35);
+}
+.filterChip b {
+  color: var(--ink-900);
+  font-weight: 700;
+}
+.filterChipActive {
+  background: var(--brand-700);
+  border-color: var(--brand-700);
+  color: #fff;
+}
+.filterChipActive b {
+  color: #fff;
+}
+
 /* Employee collapsible cards */
 .list {
   display: grid;

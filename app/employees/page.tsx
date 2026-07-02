@@ -85,8 +85,49 @@ function mostCommon(values: string[]) {
   return best;
 }
 
-export default async function EmployeesPage() {
+type StatusFilter = "all" | "overdue" | "review" | "progress" | "done";
+const STATUS_FILTERS: Array<{ key: StatusFilter; label: string }> = [
+  { key: "all", label: "Бүгд" },
+  { key: "overdue", label: "Хугацаа хэтэрсэн" },
+  { key: "review", label: "Батлах хүлээж" },
+  { key: "progress", label: "Хийгдэж буй" },
+  { key: "done", label: "Дууссан" },
+];
+
+function normalizeStatus(value: string): StatusFilter {
+  return STATUS_FILTERS.some((filter) => filter.key === value)
+    ? (value as StatusFilter)
+    : "all";
+}
+
+function matchesStatus(task: TaskDirectoryItem, filter: StatusFilter, todayKey: string) {
+  switch (filter) {
+    case "overdue":
+      return isTaskOverdue(task, todayKey);
+    case "review":
+      return isTaskReview(task);
+    case "progress":
+      return isTaskInProgress(task);
+    case "done":
+      return isTaskDone(task);
+    default:
+      return true;
+  }
+}
+
+function getParam(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+type EmployeesPageProps = {
+  searchParams?: Promise<{ status?: string | string[]; dept?: string | string[] }>;
+};
+
+export default async function EmployeesPage({ searchParams }: EmployeesPageProps) {
   const session = await requireSession();
+  const queryParams = (await searchParams) ?? {};
+  const selectedStatus = normalizeStatus(getParam(queryParams.status));
+  const selectedDept = getParam(queryParams.dept).trim();
   const workerMode = isWorkerOnly(session);
   const masterMode = isMasterRole(session.role);
   const canCreateProject = hasCapability(session, "create_projects");
@@ -160,8 +201,25 @@ export default async function EmployeesPage() {
     isIndividualAssignee(task.leaderName, task.leaderId),
   );
 
+  const departmentOptions = [
+    ...new Set(personTasks.map((task) => task.departmentName).filter(Boolean)),
+  ].sort((left, right) => left.localeCompare(right, "mn-MN"));
+  const deptTasks = selectedDept
+    ? personTasks.filter((task) => task.departmentName === selectedDept)
+    : personTasks;
+
+  const buildHref = (patch: { status?: StatusFilter; dept?: string }) => {
+    const next = new URLSearchParams();
+    const status = patch.status ?? selectedStatus;
+    const dept = patch.dept ?? selectedDept;
+    if (status !== "all") next.set("status", status);
+    if (dept) next.set("dept", dept);
+    const queryString = next.toString();
+    return `/employees${queryString ? `?${queryString}` : ""}`;
+  };
+
   const groups = new Map<string, { name: string; tasks: TaskDirectoryItem[] }>();
-  for (const task of personTasks) {
+  for (const task of deptTasks) {
     const name = task.leaderName?.trim() || "Оноогоогүй";
     const key = task.leaderId != null ? `id:${task.leaderId}` : `nm:${name}`;
     const group = groups.get(key);
@@ -188,8 +246,24 @@ export default async function EmployeesPage() {
           isTaskOverdue(task, todayKey) ? 0 : isTaskReview(task) ? 1 : isTaskDone(task) ? 3 : 2;
         return rank(left) - rank(right);
       });
-      return { name: group.name, department, assigned, done, review, overdue, inProgress, progress, tasks };
+      const visibleTasks =
+        selectedStatus === "all"
+          ? tasks
+          : tasks.filter((task) => matchesStatus(task, selectedStatus, todayKey));
+      return {
+        name: group.name,
+        department,
+        assigned,
+        done,
+        review,
+        overdue,
+        inProgress,
+        progress,
+        tasks,
+        visibleTasks,
+      };
     })
+    .filter((employee) => employee.visibleTasks.length > 0)
     .sort(
       (left, right) =>
         right.overdue - left.overdue ||
@@ -199,11 +273,11 @@ export default async function EmployeesPage() {
 
   const summary = [
     { key: "emp", label: "Ажилтан", value: employees.length, icon: Users, tone: "" },
-    { key: "assigned", label: "Даалгавар", value: personTasks.length, icon: ClipboardList, tone: "" },
-    { key: "done", label: "Дууссан", value: personTasks.filter(isTaskDone).length, icon: CheckCircle2, tone: "ok" },
-    { key: "prog", label: "Хийгдэж буй", value: personTasks.filter(isTaskInProgress).length, icon: Clock3, tone: "" },
-    { key: "over", label: "Хугацаа хэтэрсэн", value: personTasks.filter((task) => isTaskOverdue(task, todayKey)).length, icon: AlertTriangle, tone: "warn" },
-    { key: "review", label: "Батлах хүлээж", value: personTasks.filter(isTaskReview).length, icon: ShieldCheck, tone: "warn" },
+    { key: "assigned", label: "Даалгавар", value: deptTasks.length, icon: ClipboardList, tone: "" },
+    { key: "done", label: "Дууссан", value: deptTasks.filter(isTaskDone).length, icon: CheckCircle2, tone: "ok" },
+    { key: "prog", label: "Хийгдэж буй", value: deptTasks.filter(isTaskInProgress).length, icon: Clock3, tone: "" },
+    { key: "over", label: "Хугацаа хэтэрсэн", value: deptTasks.filter((task) => isTaskOverdue(task, todayKey)).length, icon: AlertTriangle, tone: "warn" },
+    { key: "review", label: "Батлах хүлээж", value: deptTasks.filter(isTaskReview).length, icon: ShieldCheck, tone: "warn" },
   ];
 
   return shell(
@@ -223,10 +297,54 @@ export default async function EmployeesPage() {
         })}
       </section>
 
+      <div className={styles.filters}>
+        {departmentOptions.length > 1 ? (
+          <div className={styles.filterRow}>
+            <Link
+              href={buildHref({ dept: "" })}
+              className={`${styles.filterChip} ${selectedDept ? "" : styles.filterChipActive}`}
+            >
+              Бүх хэлтэс
+            </Link>
+            {departmentOptions.map((dept) => (
+              <Link
+                key={dept}
+                href={buildHref({ dept })}
+                className={`${styles.filterChip} ${selectedDept === dept ? styles.filterChipActive : ""}`}
+              >
+                {dept}
+              </Link>
+            ))}
+          </div>
+        ) : null}
+        <div className={styles.filterRow}>
+          {STATUS_FILTERS.map((filter) => {
+            const count =
+              filter.key === "all"
+                ? deptTasks.length
+                : deptTasks.filter((task) => matchesStatus(task, filter.key, todayKey)).length;
+            return (
+              <Link
+                key={filter.key}
+                href={buildHref({ status: filter.key })}
+                className={`${styles.filterChip} ${selectedStatus === filter.key ? styles.filterChipActive : ""}`}
+              >
+                <span>{filter.label}</span>
+                <b>{count}</b>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
       {employees.length ? (
         <section className={styles.list}>
           {employees.map((employee, index) => (
-            <details key={`${employee.name}-${index}`} className={styles.emp} open={index === 0}>
+            <details
+              key={`${employee.name}-${index}`}
+              className={styles.emp}
+              open={selectedStatus !== "all" || Boolean(selectedDept) || index === 0}
+            >
               <summary className={styles.empHead}>
                 <span className={styles.avatar}>{initialsOf(employee.name)}</span>
                 <span className={styles.empIdentity}>
@@ -262,7 +380,7 @@ export default async function EmployeesPage() {
               </summary>
 
               <div className={styles.tasks}>
-                {employee.tasks.map((task) => {
+                {employee.visibleTasks.map((task) => {
                   const bucket = isTaskOverdue(task, todayKey)
                     ? "over"
                     : isTaskDone(task)
