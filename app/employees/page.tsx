@@ -92,7 +92,7 @@ export default async function EmployeesPage() {
         <div className={shellStyles.contentWithMenu}>
           <aside className={shellStyles.menuColumn}>
             <AppMenu
-              active="tasks"
+              active="employees"
               canCreateProject={canCreateProject}
               canCreateTasks={canCreateTasks}
               canWriteReports={canWriteReports}

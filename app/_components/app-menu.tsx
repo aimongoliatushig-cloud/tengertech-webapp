@@ -58,6 +58,7 @@ import styles from "./app-menu.module.css";
 type MenuKey =
   | "dashboard"
   | "tasks"
+  | "employees"
   | "auto-base"
   | "fleet-repair"
   | "hr"
@@ -732,6 +733,12 @@ export function AppMenu({
       : []),
     ...(!workerMode
       ? [
+          {
+            key: "employees",
+            href: "/employees",
+            label: "Ажилтны даалгавар",
+            icon: Users,
+          },
           {
             key: "tasks",
             href: "/tasks?view=today",
