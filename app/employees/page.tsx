@@ -59,6 +59,15 @@ function initialsOf(name: string) {
   return letters.join("") || "?";
 }
 
+const DEPARTMENT_LEADER_TOKENS = ["хэлтэс", "алба", "бааз", "нэгж", "дарга", "менежер"];
+
+function isIndividualAssignee(name: string, leaderId?: number | null) {
+  if (leaderId == null) return false;
+  const normalized = name.trim().toLocaleLowerCase("mn-MN");
+  if (!normalized || normalized === "оноогоогүй") return false;
+  return !DEPARTMENT_LEADER_TOKENS.some((token) => normalized.includes(token));
+}
+
 function mostCommon(values: string[]) {
   const counts = new Map<string, number>();
   for (const value of values) {
@@ -110,7 +119,7 @@ export default async function EmployeesPage() {
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
               title="Ажилтны даалгавар"
-              subtitle="Ажилтан бүрийн даалгавар, явц, гүйцэтгэлийг нэг дороос"
+              subtitle="Тодорхой ажилтанд оноосон даалгавар, явц, гүйцэтгэл (хэлтсийн ажлаас тусад нь)"
               userName={session.name}
               roleLabel={getSessionRoleLabel(session)}
               notificationCount={0}
@@ -145,8 +154,14 @@ export default async function EmployeesPage() {
     ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
     : snapshot.taskDirectory;
 
+  // Only tasks assigned to a specific individual (excludes department-level
+  // or unassigned work — those stay on the department/project views).
+  const personTasks = scopedTasks.filter((task) =>
+    isIndividualAssignee(task.leaderName, task.leaderId),
+  );
+
   const groups = new Map<string, { name: string; tasks: TaskDirectoryItem[] }>();
-  for (const task of scopedTasks) {
+  for (const task of personTasks) {
     const name = task.leaderName?.trim() || "Оноогоогүй";
     const key = task.leaderId != null ? `id:${task.leaderId}` : `nm:${name}`;
     const group = groups.get(key);
@@ -184,11 +199,11 @@ export default async function EmployeesPage() {
 
   const summary = [
     { key: "emp", label: "Ажилтан", value: employees.length, icon: Users, tone: "" },
-    { key: "assigned", label: "Даалгавар", value: scopedTasks.length, icon: ClipboardList, tone: "" },
-    { key: "done", label: "Дууссан", value: scopedTasks.filter(isTaskDone).length, icon: CheckCircle2, tone: "ok" },
-    { key: "prog", label: "Хийгдэж буй", value: scopedTasks.filter(isTaskInProgress).length, icon: Clock3, tone: "" },
-    { key: "over", label: "Хугацаа хэтэрсэн", value: scopedTasks.filter((task) => isTaskOverdue(task, todayKey)).length, icon: AlertTriangle, tone: "warn" },
-    { key: "review", label: "Батлах хүлээж", value: scopedTasks.filter(isTaskReview).length, icon: ShieldCheck, tone: "warn" },
+    { key: "assigned", label: "Даалгавар", value: personTasks.length, icon: ClipboardList, tone: "" },
+    { key: "done", label: "Дууссан", value: personTasks.filter(isTaskDone).length, icon: CheckCircle2, tone: "ok" },
+    { key: "prog", label: "Хийгдэж буй", value: personTasks.filter(isTaskInProgress).length, icon: Clock3, tone: "" },
+    { key: "over", label: "Хугацаа хэтэрсэн", value: personTasks.filter((task) => isTaskOverdue(task, todayKey)).length, icon: AlertTriangle, tone: "warn" },
+    { key: "review", label: "Батлах хүлээж", value: personTasks.filter(isTaskReview).length, icon: ShieldCheck, tone: "warn" },
   ];
 
   return shell(
