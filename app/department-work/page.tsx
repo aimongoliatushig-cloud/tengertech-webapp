@@ -91,13 +91,17 @@ function getParam(value?: string | string[]) {
 }
 
 type DepartmentWorkPageProps = {
-  searchParams?: Promise<{ status?: string | string[] }>;
+  searchParams?: Promise<{
+    status?: string | string[];
+    department?: string | string[];
+  }>;
 };
 
 export default async function DepartmentWorkPage({ searchParams }: DepartmentWorkPageProps) {
   const session = await requireSession();
   const queryParams = (await searchParams) ?? {};
   const selectedStatus = normalizeStatus(getParam(queryParams.status));
+  const departmentParam = getParam(queryParams.department).trim();
 
   const workerMode = isWorkerOnly(session);
   const masterMode = isMasterRole(session.role);
@@ -130,8 +134,12 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
           </aside>
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
-              title="Хэлтсийн ажил"
-              subtitle="Хэлтэс бүрийн ажил, даалгавар, явцыг нэг дороос"
+              title={departmentParam || "Хэлтсийн ажил"}
+              subtitle={
+                departmentParam
+                  ? "Тухайн хэлтсийн ажил, даалгаврыг төслөөр нь"
+                  : "Хэлтэс бүрийн ажил, даалгавар, явцыг нэг дороос"
+              }
               userName={session.name}
               roleLabel={getSessionRoleLabel(session)}
               notificationCount={0}
@@ -166,9 +174,18 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
     ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
     : snapshot.taskDirectory;
 
+  // When a department is selected, scope to it and group by project (ажил);
+  // otherwise show every department grouped by department.
+  const groupByProject = Boolean(departmentParam);
+  const baseTasks = departmentParam
+    ? filterByDepartment(scopedTasks, departmentParam)
+    : scopedTasks;
+
   const groups = new Map<string, { name: string; tasks: TaskDirectoryItem[] }>();
-  for (const task of scopedTasks) {
-    const name = task.departmentName?.trim() || "Тодорхойгүй хэлтэс";
+  for (const task of baseTasks) {
+    const name = groupByProject
+      ? task.projectName?.trim() || "Ажилгүй даалгавар"
+      : task.departmentName?.trim() || "Тодорхойгүй хэлтэс";
     const group = groups.get(name);
     if (group) {
       group.tasks.push(task);
@@ -217,20 +234,39 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
         right.assigned - left.assigned,
     );
 
-  const buildHref = (status: StatusFilter) =>
-    status === "all" ? "/department-work" : `/department-work?status=${status}`;
+  const buildHref = (status: StatusFilter) => {
+    const next = new URLSearchParams();
+    if (departmentParam) next.set("department", departmentParam);
+    if (status !== "all") next.set("status", status);
+    const queryString = next.toString();
+    return `/department-work${queryString ? `?${queryString}` : ""}`;
+  };
 
   const summary = [
-    { key: "dept", label: "Хэлтэс", value: groups.size, icon: Building2, tone: "" },
-    { key: "assigned", label: "Даалгавар", value: scopedTasks.length, icon: ClipboardList, tone: "" },
-    { key: "done", label: "Дууссан", value: scopedTasks.filter(isTaskDone).length, icon: CheckCircle2, tone: "ok" },
-    { key: "prog", label: "Хийгдэж буй", value: scopedTasks.filter(isTaskInProgress).length, icon: Clock3, tone: "" },
-    { key: "over", label: "Хугацаа хэтэрсэн", value: scopedTasks.filter((task) => isTaskOverdue(task, todayKey)).length, icon: AlertTriangle, tone: "warn" },
-    { key: "review", label: "Батлах хүлээж", value: scopedTasks.filter(isTaskReview).length, icon: ShieldCheck, tone: "warn" },
+    { key: "dept", label: groupByProject ? "Ажил" : "Хэлтэс", value: groups.size, icon: Building2, tone: "" },
+    { key: "assigned", label: "Даалгавар", value: baseTasks.length, icon: ClipboardList, tone: "" },
+    { key: "done", label: "Дууссан", value: baseTasks.filter(isTaskDone).length, icon: CheckCircle2, tone: "ok" },
+    { key: "prog", label: "Хийгдэж буй", value: baseTasks.filter(isTaskInProgress).length, icon: Clock3, tone: "" },
+    { key: "over", label: "Хугацаа хэтэрсэн", value: baseTasks.filter((task) => isTaskOverdue(task, todayKey)).length, icon: AlertTriangle, tone: "warn" },
+    { key: "review", label: "Батлах хүлээж", value: baseTasks.filter(isTaskReview).length, icon: ShieldCheck, tone: "warn" },
   ];
 
   return shell(
     <div className={styles.page}>
+      {departmentParam ? (
+        <Link
+          href="/department-work"
+          style={{
+            justifySelf: "start",
+            color: "var(--brand-900)",
+            fontWeight: 600,
+            textDecoration: "none",
+          }}
+        >
+          ← Бүх хэлтэс
+        </Link>
+      ) : null}
+
       <section className={styles.summary}>
         {summary.map((item) => {
           const Icon = item.icon;
@@ -251,8 +287,8 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
           {STATUS_FILTERS.map((filter) => {
             const count =
               filter.key === "all"
-                ? scopedTasks.length
-                : scopedTasks.filter((task) => matchesStatus(task, filter.key, todayKey)).length;
+                ? baseTasks.length
+                : baseTasks.filter((task) => matchesStatus(task, filter.key, todayKey)).length;
             return (
               <Link
                 key={filter.key}
@@ -283,7 +319,9 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
                     <ChevronDown size={15} className={styles.empChevron} aria-hidden />
                   </span>
                   <span className={styles.empRole}>
-                    {department.projectCount} ажил · {department.assigned} даалгавар
+                    {groupByProject
+                      ? `${department.assigned} даалгавар`
+                      : `${department.projectCount} ажил · ${department.assigned} даалгавар`}
                   </span>
                 </span>
                 <span className={styles.empProgress}>

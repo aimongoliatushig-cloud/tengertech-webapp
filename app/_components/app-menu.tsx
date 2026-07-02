@@ -610,7 +610,7 @@ export function AppMenu({
     .filter((group) => !isHiddenDepartmentMenu(group))
     .map((group, index) => ({
       key: `department-${index}`,
-      href: `/projects?department=${encodeURIComponent(group.name)}`,
+      href: `/department-work?department=${encodeURIComponent(group.name)}`,
       label: group.name,
       icon: getDepartmentMenuIcon(group),
       departmentName: group.name,
