@@ -321,7 +321,7 @@ function employeeInitials(name: string) {
 // Зургийг дөрвөлжин болгон "cover" аргаар босоо байрлалаар (offsetYPercent) тайрч Blob болгоно
 function cropImageCover(url: string, offsetYPercent: number, size = 512): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    const img = new Image();
+    const img = document.createElement("img");
     img.onload = () => {
       const naturalW = img.naturalWidth || size;
       const naturalH = img.naturalHeight || size;
