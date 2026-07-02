@@ -485,11 +485,21 @@ export function EmployeeTable({
       ),
     [employees],
   );
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const initialDepartment = searchParams.get("department") || ALL;
   const [department, setDepartment] = useState(initialDepartment);
   const [jobTitle, setJobTitle] = useState(ALL);
   const [status, setStatus] = useState(DEFAULT_EMPLOYEE_STATUS);
+  // Хэлтсийн шүүлтүүрийг URL-д тусгана — дэлгэрэнгүйгээс буцахад шүүлт хадгалагдана
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (department !== ALL) params.set("department", department);
+    const queryString = params.toString();
+    router.replace(queryString ? `/hr/employees?${queryString}` : "/hr/employees", {
+      scroll: false,
+    });
+  }, [department, router]);
 
   const visibleEmployees = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("mn-MN");
@@ -3291,11 +3301,14 @@ export function EmployeeDetailTabs({
     <section id="profile-info" className={styles.hrProfileShell}>
       <div className={styles.hrProfileBreadcrumb}>
         <Link
-          href={
-            employee.departmentName
-              ? `/hr/employees?department=${encodeURIComponent(employee.departmentName)}`
-              : "/hr/employees"
-          }
+          href="/hr/employees"
+          onClick={(event) => {
+            // Хандсан хэсэг (шүүлттэй жагсаалт) рүү нь буцаана
+            if (typeof window !== "undefined" && window.history.length > 1) {
+              event.preventDefault();
+              router.back();
+            }
+          }}
         >
           Ажилтнууд
         </Link>
