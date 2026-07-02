@@ -3577,11 +3577,13 @@ export function TimeoffRequestsClient({
   }, [annualLeaveDateFrom, annualLeaveWorkingDays, editingRequest, selectedRequestType]);
 
   const visibleRequests = useMemo(() => {
-    if (filter === ALL) return requests;
+    // Ноорог (илгээгээгүй) хүсэлтийг жагсаалтад харуулахгүй
+    const base = requests.filter((request) => request.state !== "draft");
+    if (filter === ALL) return base;
     if (filter === "pending") {
-      return requests.filter((request) => request.state === "submitted" || request.state === "hr_review");
+      return base.filter((request) => request.state === "submitted" || request.state === "hr_review");
     }
-    return requests.filter((request) => request.state === filter || request.requestType === filter);
+    return base.filter((request) => request.state === filter || request.requestType === filter);
   }, [filter, requests]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
