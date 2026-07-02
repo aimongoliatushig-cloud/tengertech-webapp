@@ -5853,3 +5853,16 @@
     white-space: normal;
   }
 }
+
+/* Clearer department work cards: restore metric hierarchy over the global 12px rule. */
+.executiveDepartmentStats span { font-size: 13px !important; font-weight: 600 !important; }
+.executiveDepartmentStats strong { font-size: 24px !important; }
+.executiveDepartmentStats .statAlert strong { color: #BA7517 !important; }
+.executiveDepartmentStats .statAlert span { color: #854F0B !important; }
+.executiveDepartmentProgress span { font-size: 13px !important; }
+.executiveDepartmentProgress strong { font-size: 20px !important; }
+.executiveDepartmentFooter span { font-size: 13px !important; }
+.executiveDepartmentFooter strong { font-size: 18px !important; }
+.executiveDepartmentFooter em { font-size: 13px !important; }
+.executiveDepartmentFooter em.footerWarn { background: #FAEEDA !important; color: #854F0B !important; }
+.executiveDepartmentFooter em.footerOk { background: #E1F5EE !important; color: #0F6E56 !important; }

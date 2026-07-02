@@ -2092,15 +2092,15 @@ function ExecutiveDepartmentCard({ department }: { department: ExecutiveDepartme
       </div>
       <div className={dashboardStyles.executiveDepartmentStats}>
         <div>
-          <span>Нийт ажил</span>
+          <span>Нийт</span>
           <strong>{department.total}</strong>
         </div>
         <div>
           <span>Төлөвлөсөн</span>
           <strong>{department.working}</strong>
         </div>
-        <div>
-          <span>Хянах ажил</span>
+        <div className={department.review > 0 ? dashboardStyles.statAlert : undefined}>
+          <span>Хяналтад</span>
           <strong>{department.review}</strong>
         </div>
       </div>
@@ -2118,7 +2118,15 @@ function ExecutiveDepartmentCard({ department }: { department: ExecutiveDepartme
           Хийгдсэн ажил
           <strong>{department.todayDone} / {department.todayTotal}</strong>
         </span>
-        <em>{department.risky} анхаарах</em>
+        <em
+          className={
+            department.risky > 0
+              ? dashboardStyles.footerWarn
+              : dashboardStyles.footerOk
+          }
+        >
+          {department.risky > 0 ? `${department.risky} анхаарах` : "Асуудалгүй"}
+        </em>
       </div>
       <span className={cn(dashboardStyles.executiveCardAction, dashboardStyles.executiveDepartmentAction)}>
         Дэлгэрэнгүй
