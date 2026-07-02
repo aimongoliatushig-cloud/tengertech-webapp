@@ -1189,6 +1189,7 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     userId: getRelationId(record.user_id),
     userName: getRelationName(record.user_id),
     photoUrl: imageDataUrlFromBase64(record.image_128 || record.avatar_128 || record.image_1920),
+    photoLargeUrl: imageDataUrlFromBase64(record.image_1920 || record.image_128 || record.avatar_128),
     employeeCode: record.x_mn_employee_code || `EMP-${String(record.id).padStart(5, "0")}`,
     gradeRank: record.x_mn_grade_rank || "",
     workType,

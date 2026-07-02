@@ -319,7 +319,7 @@ function employeeInitials(name: string) {
 }
 
 // Зургийг дөрвөлжин болгон "cover" аргаар босоо байрлалаар (offsetYPercent) тайрч Blob болгоно
-function cropImageCover(url: string, offsetYPercent: number, size = 512): Promise<Blob> {
+function cropImageCover(url: string, offsetYPercent: number, size = 1024): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = document.createElement("img");
     img.onload = () => {
@@ -343,7 +343,7 @@ function cropImageCover(url: string, offsetYPercent: number, size = 512): Promis
       canvas.toBlob(
         (blob) => (blob ? resolve(blob) : reject(new Error("crop failed"))),
         "image/jpeg",
-        0.9,
+        0.92,
       );
     };
     img.onerror = () => reject(new Error("image load failed"));
@@ -1513,6 +1513,7 @@ export function EmployeeDetailTabs({
   const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState("");
   const [removeProfilePhoto, setRemoveProfilePhoto] = useState(false);
   const [photoOffsetY, setPhotoOffsetY] = useState(50);
+  const [isDraggingPhoto, setIsDraggingPhoto] = useState(false);
   const photoDragRef = useRef<{ startY: number; startOffset: number; height: number } | null>(null);
   const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
   const familyMemberDraftIdRef = useRef(-1);
@@ -1524,7 +1525,7 @@ export function EmployeeDetailTabs({
     .join("")
     .toLocaleUpperCase("mn-MN");
   const showPhoto = Boolean(employee.photoUrl && photoErrorUrl !== employee.photoUrl);
-  const currentProfilePhotoUrl = showPhoto && employee.photoUrl ? employee.photoUrl : "";
+  const currentProfilePhotoUrl = showPhoto ? employee.photoLargeUrl || employee.photoUrl || "" : "";
   const profilePhotoEditUrl = removeProfilePhoto ? "" : profilePhotoPreviewUrl || currentProfilePhotoUrl;
   const employeeNameParts = splitEmployeeName(employee.name);
   const employeeQuery = `employeeId=${employee.id}`;
@@ -1604,16 +1605,17 @@ export function EmployeeDetailTabs({
     setProfilePhotoPreviewUrl(file ? URL.createObjectURL(file) : "");
   }
 
-  function onPhotoPointerDown(event: ReactPointerEvent<HTMLImageElement>) {
+  function onPhotoPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (!profilePhotoEditUrl) return;
     const rect = event.currentTarget.getBoundingClientRect();
     photoDragRef.current = { startY: event.clientY, startOffset: photoOffsetY, height: rect.height || 1 };
+    setIsDraggingPhoto(true);
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
     } catch {}
   }
 
-  function onPhotoPointerMove(event: ReactPointerEvent<HTMLImageElement>) {
+  function onPhotoPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
     const drag = photoDragRef.current;
     if (!drag) return;
     const delta = event.clientY - drag.startY;
@@ -1622,8 +1624,9 @@ export function EmployeeDetailTabs({
     setPhotoOffsetY(Math.max(0, Math.min(100, next)));
   }
 
-  function onPhotoPointerUp(event: ReactPointerEvent<HTMLImageElement>) {
+  function onPhotoPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
     photoDragRef.current = null;
+    setIsDraggingPhoto(false);
     try {
       event.currentTarget.releasePointerCapture(event.pointerId);
     } catch {}
@@ -2495,17 +2498,19 @@ export function EmployeeDetailTabs({
         <span className={styles.profilePhotoEditorLabel}>Профайл зураг</span>
         <div className={styles.profilePhotoUploadBox}>
           {profilePhotoEditUrl ? (
-            <div className={`${styles.profilePhotoDropCard} ${styles.profilePhotoDropCardFilled}`}>
+            <div
+              className={`${styles.profilePhotoDropCard} ${styles.profilePhotoDropCardFilled} ${styles.profilePhotoDraggable} ${isDraggingPhoto ? styles.profilePhotoDragging : ""}`}
+              onPointerDown={onPhotoPointerDown}
+              onPointerMove={onPhotoPointerMove}
+              onPointerUp={onPhotoPointerUp}
+              onPointerCancel={onPhotoPointerUp}
+            >
               <img
                 src={profilePhotoEditUrl}
                 alt={`${employee.name} профиль зураг`}
                 className={styles.profilePhotoImage}
                 style={{ objectPosition: `50% ${photoOffsetY}%` }}
                 draggable={false}
-                onPointerDown={onPhotoPointerDown}
-                onPointerMove={onPhotoPointerMove}
-                onPointerUp={onPhotoPointerUp}
-                onPointerCancel={onPhotoPointerUp}
                 onError={() => {
                   if (profilePhotoPreviewUrl) {
                     setProfilePhotoPreviewUrl("");
@@ -2514,9 +2519,17 @@ export function EmployeeDetailTabs({
                   }
                 }}
               />
-              <label htmlFor={inputId} className={styles.profilePhotoDropOverlay}>
+              <span className={styles.profilePhotoDragBadge} aria-hidden>
+                ⇅ Чирж байрлуулна
+              </span>
+              <button
+                type="button"
+                className={styles.profilePhotoChangeButton}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => profilePhotoInputRef.current?.click()}
+              >
                 Зураг солих
-              </label>
+              </button>
             </div>
           ) : (
             <label htmlFor={inputId} className={styles.profilePhotoDropCard}>

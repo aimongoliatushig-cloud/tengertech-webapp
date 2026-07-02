@@ -699,6 +699,7 @@ export type HrEmployeeDirectoryItem = {
   userId?: number | null;
   userName: string;
   photoUrl: string;
+  photoLargeUrl?: string;
   employeeCode: string;
   gradeRank: string;
   workType?: string;

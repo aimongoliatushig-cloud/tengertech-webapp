@@ -2432,6 +2432,51 @@
   text-align: center;
 }
 
+.profilePhotoDraggable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.profilePhotoDragging {
+  cursor: grabbing;
+  box-shadow: inset 0 0 0 2px rgba(46, 125, 50, 0.55);
+}
+
+.profilePhotoDragBadge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(22, 36, 27, 0.6);
+  color: #ffffff;
+  font-size: 0.72rem;
+  pointer-events: none;
+}
+
+.profilePhotoChangeButton {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  min-height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(22, 36, 27, 0.72);
+  color: #ffffff;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.profilePhotoChangeButton:hover {
+  background: rgba(22, 36, 27, 0.88);
+}
+
 .profilePhotoEmptyState {
   display: grid;
   place-items: center;
