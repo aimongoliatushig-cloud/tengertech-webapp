@@ -588,8 +588,14 @@ export function HrDashboardClient({
     { label: "Эрэгтэй", value: maleCount, color: "#2563eb" },
     { label: "Эмэгтэй", value: femaleCount, color: "#ec4899" },
   ];
+  // Зөвхөн үйлдвэрлэлийн 3 хэлтэс (Захиргаа, Санхүү, Удирдлага-г оруулахгүй)
+  const DEPARTMENT_POSITION_EXCLUDE = ["захиргаа", "санхүү", "удирдлага"];
   const departmentPositionCharts = departmentJobCounts
     .filter((bucket) => bucket.total > 0)
+    .filter((bucket) => {
+      const name = bucket.departmentName.toLowerCase();
+      return !DEPARTMENT_POSITION_EXCLUDE.some((keyword) => name.includes(keyword));
+    })
     .slice()
     .sort((left, right) => right.total - left.total)
     .map((bucket) => ({
@@ -597,7 +603,12 @@ export function HrDashboardClient({
       total: bucket.total,
       slices: bucket.jobCounts
         .slice()
-        .sort((left, right) => right.count - left.count)
+        .sort((left, right) => {
+          // Хэлтсийн даргыг эхэнд, дараа нь тоогоор
+          const leftHead = /дарга/i.test(left.title) ? 0 : 1;
+          const rightHead = /дарга/i.test(right.title) ? 0 : 1;
+          return leftHead - rightHead || right.count - left.count;
+        })
         .map((entry, index) => ({
           label: entry.title,
           value: entry.count,
@@ -828,6 +839,13 @@ export function HrDashboardClient({
   const chartsSection = (
     <div className={styles.chartGrid}>
       <AnimatedPie
+        title="Хэлтсийн ажилтаны тоо"
+        slices={departmentSlices}
+        centerLabel="Ажилтан"
+        centerValue={`${cards[0].value}`}
+        variant="donut"
+      />
+      <AnimatedPie
         title="Идэвхтэй, чөлөөтэй, амралттай харьцаа"
         slices={statusChartSlices}
         centerLabel="Нийт"
@@ -841,13 +859,7 @@ export function HrDashboardClient({
         centerValue={`${maleCount + femaleCount}`}
         variant="donut"
       />
-      <AnimatedPie
-        title="Хэлтсийн ажилтаны тоо"
-        slices={departmentSlices}
-        centerLabel="Ажилтан"
-        centerValue={`${cards[0].value}`}
-        variant="donut"
-      />
+      <TrendLineChart title="Шинэ болон чөлөөлсөн ажилтан (сүүлийн 6 сар)" data={headcountTrend} />
       <AnimatedPie
         title="Сахилгын бүртгэлийн төрөл"
         slices={disciplineTypeSlices}
@@ -892,6 +904,7 @@ export function HrDashboardClient({
           </div>
         }
       />
+      <AgeBarChart title="Насны бүтэц" buckets={ageBuckets} averageAge={averageAge} />
     </div>
   );
 
@@ -923,11 +936,6 @@ export function HrDashboardClient({
           );
         })}
       </section>
-
-      <div className={styles.chartGrid}>
-        <TrendLineChart title="Шинэ болон чөлөөлсөн ажилтан (сүүлийн 6 сар)" data={headcountTrend} />
-        <AgeBarChart title="Насны бүтэц" buckets={ageBuckets} averageAge={averageAge} />
-      </div>
 
       {chartsSection}
 

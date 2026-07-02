@@ -66,7 +66,7 @@ const ORG_DEPARTMENTS: OrgDepartment[] = [
     roles: [
       { title: "Хэлтсийн дарга", count: 1 },
       { title: "Ерөнхий механик", count: 1 },
-      { title: "Талбер, хураамж хариуцсан мэргэжилтэн", count: 1, aliases: ["төлбөр хураамж хариуцсан мэргэжилтэн"] },
+      { title: "Төлбөр, хураамж хариуцсан мэргэжилтэн", count: 1 },
       { title: "Тээвэрлэлтийн хяналтын ажилтан", count: 3 },
       { title: "Хог тээврийн жолооч", count: 14 },
       { title: "Хог тээврийн ачигч", count: 25 },
@@ -74,7 +74,7 @@ const ORG_DEPARTMENTS: OrgDepartment[] = [
       { title: "Гагнуурчин", count: 1 },
       { title: "Харуул", count: 4 },
       { title: "Цахилгаанчин гэрээт", count: 1, aliases: ["цахилгаанчин"] },
-      { title: "Түүвэр хог цэвэрлээчийн ажилтан", count: 8, aliases: ["түүвэр хог цэвэрлэгээний ажилтан"] },
+      { title: "Түүвэр хог цэвэрлэгээний ажилтан", count: 8 },
     ],
   },
   {
@@ -100,7 +100,7 @@ const ORG_DEPARTMENTS: OrgDepartment[] = [
     roles: [
       { title: "Хэлтсийн дарга", count: 1 },
       { title: "Дизайн, талбайн инженер", count: 1, aliases: ["даамал талбайн инженер"] },
-      { title: "Мухачан", count: 1, aliases: ["мужаан"] },
+      { title: "Мужаан", count: 1, aliases: ["мухачан"] },
       { title: "Гагнуурчин", count: 2 },
       { title: "Туслах ажилтан", count: 14 },
       { title: "Жолооч", count: 1 },
@@ -123,6 +123,10 @@ const normalize = (value: string) =>
     .replace(/[.,]/g, "")
     .replace(/\s+/g, " ")
     .trim();
+
+// Хэлтсийн орон тооны бүтэцтэй хамаарахгүй, өөр нэгжид тооцогдох албан тушаал
+// (жишээ нь Дотоод хяналтын ажилтан нь Захирлын шууд харьяа тул хэлтэст ороохгүй).
+const EXCLUDED_TITLES = new Set(["дотоод хяналтын ажилтан"]);
 
 type ComputedRole = {
   title: string;
@@ -151,13 +155,18 @@ function computeDepartment(dept: OrgDepartment, buckets: HrDepartmentJobCounts[]
     return { title: role.title, approved: role.count, filled, extra: false };
   });
 
+  // Өөр нэгжид хамаарах албан тушаалыг (жиш. Дотоод хяналт) энэ хэлтсээс хасна.
+  const excludedCount = counts
+    .filter((entry) => EXCLUDED_TITLES.has(normalize(entry.title)))
+    .reduce((sum, entry) => sum + entry.count, 0);
+
   // Odoo-д бүртгэлтэй боловч батлагдсан бүтцэд ороогүй албан тушаалууд
   const extras: ComputedRole[] = counts
-    .filter((entry) => !usedTitles.has(entry.title))
+    .filter((entry) => !usedTitles.has(entry.title) && !EXCLUDED_TITLES.has(normalize(entry.title)))
     .map((entry) => ({ title: entry.title, approved: 0, filled: entry.count, extra: true }));
 
   const totalApproved = dept.roles.reduce((sum, role) => sum + role.count, 0);
-  const totalFilled = bucket ? bucket.total : 0;
+  const totalFilled = (bucket ? bucket.total : 0) - excludedCount;
   const vacancies = Math.max(0, totalApproved - totalFilled);
 
   return { rows: [...rows, ...extras], totalApproved, totalFilled, vacancies };
