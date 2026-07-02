@@ -44,7 +44,8 @@ export default async function HrDepartmentsPage() {
   }
   for (const [name, count] of employeeCountByDepartment) {
     if (!cardMap.has(name)) {
-      cardMap.set(name, { id: cardMap.size, name, count });
+      // hr.department-д тохирохгүй нэр (id=0) → хянах самбаргүй, шүүлтээр нээнэ
+      cardMap.set(name, { id: 0, name, count });
     }
   }
   const cards = Array.from(cardMap.values());
@@ -72,7 +73,11 @@ export default async function HrDepartmentsPage() {
           {cards.map((department) => (
             <Link
               key={`${department.id}-${department.name}`}
-              href={`/hr/employees?department=${encodeURIComponent(department.name)}`}
+              href={
+                department.id > 0
+                  ? `/hr/departments/${department.id}`
+                  : `/hr/employees?department=${encodeURIComponent(department.name)}`
+              }
               className={styles.departmentTile}
             >
               <span className={styles.statIcon}>

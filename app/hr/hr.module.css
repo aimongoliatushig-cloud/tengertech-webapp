@@ -748,6 +748,13 @@
   font-size: 14px;
 }
 
+/* Хэлтсийн хянах самбар — ажилтны сүлжээ */
+.deptEmployeeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 4px 12px;
+}
+
 .chartCenter {
   position: relative;
   z-index: 1;

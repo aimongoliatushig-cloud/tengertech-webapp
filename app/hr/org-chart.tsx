@@ -14,7 +14,7 @@ type OrgRole = {
 
 type OrgTone = "blue" | "purple" | "amber" | "green" | "orange";
 
-type OrgDepartment = {
+export type OrgDepartment = {
   key: string;
   name: string;
   tone: OrgTone;
@@ -29,7 +29,7 @@ type OrgDepartment = {
  * тушаалын нэрээр тааруулж харьцуулна. Odoo дахь нэр өөр бичигдсэн тохиолдолд
  * `aliases`-аар холбоно.
  */
-const ORG_DEPARTMENTS: OrgDepartment[] = [
+export const ORG_DEPARTMENTS: OrgDepartment[] = [
   {
     key: "finance",
     name: "Санхүүгийн алба",
@@ -128,6 +128,11 @@ const normalize = (value: string) =>
 // (жишээ нь Дотоод хяналтын ажилтан нь Захирлын шууд харьяа тул хэлтэст ороохгүй).
 const EXCLUDED_TITLES = new Set(["дотоод хяналтын ажилтан"]);
 
+/** Тухайн албан тушаал нь хэлтсийн бүтцээс хасагдах эсэх (жиш. Дотоод хяналт). */
+export function isDepartmentExcludedTitle(title: string): boolean {
+  return EXCLUDED_TITLES.has(normalize(title));
+}
+
 type ComputedRole = {
   title: string;
   approved: number;
@@ -180,6 +185,55 @@ function roleStatusClass(role: ComputedRole): string {
   return styles.orgRoleOk;
 }
 
+/** Хэлтсийн нэрээр батлагдсан бүтцийн тодорхойлолтыг олно (түлхүүр үгээр). */
+export function findOrgDepartment(departmentName: string): OrgDepartment | null {
+  const name = departmentName.toLowerCase();
+  return ORG_DEPARTMENTS.find((dept) => dept.match.some((keyword) => name.includes(keyword))) ?? null;
+}
+
+/** Нэг хэлтсийн албан тушаалын бодит/орон тоог харьцуулсан карт. */
+export function DepartmentStructureCard({
+  dept,
+  jobCounts,
+}: {
+  dept: OrgDepartment;
+  jobCounts: HrDepartmentJobCounts[];
+}) {
+  const { rows, totalApproved, totalFilled, vacancies } = computeDepartment(dept, jobCounts);
+  return (
+    <div className={`${styles.orgDept} ${TONE_CLASS[dept.tone]}`}>
+      <div className={styles.orgDeptHead}>
+        <h3>{dept.name}</h3>
+        <div className={styles.orgDeptCounts}>
+          <span className={styles.orgDeptLive}>
+            <Users aria-hidden size={13} />
+            {totalFilled}/{totalApproved} <em>бодит/орон тоо</em>
+          </span>
+          {vacancies > 0 ? (
+            <span className={styles.orgDeptVacant}>{vacancies} сул</span>
+          ) : (
+            <span className={styles.orgDeptFull}>Дүүрсэн</span>
+          )}
+        </div>
+      </div>
+      <ol className={styles.orgRoles}>
+        {rows.map((role, index) => (
+          <li key={`${role.title}-${index}`} className={roleStatusClass(role)}>
+            <span>
+              {role.title}
+              {role.extra ? <i className={styles.orgRoleTag}>орон тоонд заагаагүй</i> : null}
+            </span>
+            <span className={styles.orgRoleCount}>
+              <b>{role.filled}</b>
+              <small>/{role.approved}</small>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 export function OrgChart({ jobCounts }: { jobCounts: HrDepartmentJobCounts[] }) {
   return (
     <div className={styles.orgChart}>
@@ -223,41 +277,9 @@ export function OrgChart({ jobCounts }: { jobCounts: HrDepartmentJobCounts[] }) 
       </div>
 
       <div className={styles.orgDepartments}>
-        {ORG_DEPARTMENTS.map((dept) => {
-          const { rows, totalApproved, totalFilled, vacancies } = computeDepartment(dept, jobCounts);
-          return (
-            <div key={dept.key} className={`${styles.orgDept} ${TONE_CLASS[dept.tone]}`}>
-              <div className={styles.orgDeptHead}>
-                <h3>{dept.name}</h3>
-                <div className={styles.orgDeptCounts}>
-                  <span className={styles.orgDeptLive}>
-                    <Users aria-hidden size={13} />
-                    {totalFilled}/{totalApproved} <em>бодит/орон тоо</em>
-                  </span>
-                  {vacancies > 0 ? (
-                    <span className={styles.orgDeptVacant}>{vacancies} сул</span>
-                  ) : (
-                    <span className={styles.orgDeptFull}>Дүүрсэн</span>
-                  )}
-                </div>
-              </div>
-              <ol className={styles.orgRoles}>
-                {rows.map((role, index) => (
-                  <li key={`${role.title}-${index}`} className={roleStatusClass(role)}>
-                    <span>
-                      {role.title}
-                      {role.extra ? <i className={styles.orgRoleTag}>орон тоонд заагаагүй</i> : null}
-                    </span>
-                    <span className={styles.orgRoleCount}>
-                      <b>{role.filled}</b>
-                      <small>/{role.approved}</small>
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          );
-        })}
+        {ORG_DEPARTMENTS.map((dept) => (
+          <DepartmentStructureCard key={dept.key} dept={dept} jobCounts={jobCounts} />
+        ))}
       </div>
     </div>
   );

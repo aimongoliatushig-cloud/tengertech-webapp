@@ -35,13 +35,13 @@ type StatCard = {
   href: string;
 };
 
-type ChartSlice = {
+export type ChartSlice = {
   label: string;
   value: number;
   color: string;
 };
 
-const STATUS_COLORS = [
+export const STATUS_COLORS = [
   "#16a34a",
   "#2563eb",
   "#f59e0b",
@@ -73,7 +73,7 @@ function todayKey() {
   }).format(new Date());
 }
 
-function formatPercent(value: number, total: number) {
+export function formatPercent(value: number, total: number) {
   if (!total) return "0%";
   const percent = (value / total) * 100;
   return `${Number.isInteger(percent) ? percent : percent.toFixed(1)}%`;
@@ -123,7 +123,7 @@ function conicGradient(slices: ChartSlice[]) {
   return `conic-gradient(${stops.join(", ")})`;
 }
 
-function AnimatedPie({
+export function AnimatedPie({
   title,
   slices,
   centerLabel,
@@ -270,7 +270,7 @@ function TrendLineChart({
   );
 }
 
-function AgeBarChart({
+export function AgeBarChart({
   title,
   buckets,
   averageAge,
