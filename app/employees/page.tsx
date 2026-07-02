@@ -25,6 +25,7 @@ import {
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import { loadMunicipalSnapshot, type DashboardSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
+import { loadAssignableUserOptions } from "@/lib/workspace";
 
 import styles from "./employees.module.css";
 
@@ -220,15 +221,21 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
     return `/employees${queryString ? `?${queryString}` : ""}`;
   };
 
+  const assignableUsers = canCreateTasks
+    ? await loadAssignableUserOptions({ login: session.login, password: session.password })
+    : [];
   const employeeOptionMap = new Map<number, string>();
   for (const task of personTasks) {
     if (task.leaderId != null && !employeeOptionMap.has(task.leaderId)) {
       employeeOptionMap.set(task.leaderId, task.leaderName);
     }
   }
-  const employeeOptions = [...employeeOptionMap]
-    .map(([id, name]) => ({ id, name }))
-    .sort((left, right) => left.name.localeCompare(right.name, "mn-MN"));
+  // Prefer the full assignable-user directory; fall back to existing assignees.
+  const employeeOptions = assignableUsers.length
+    ? assignableUsers.map((user) => ({ id: user.id, name: user.name }))
+    : [...employeeOptionMap]
+        .map(([id, name]) => ({ id, name }))
+        .sort((left, right) => left.name.localeCompare(right.name, "mn-MN"));
   const projectOptions = [...snapshot.projects]
     .map((project) => ({ id: project.id, name: project.name }))
     .sort((left, right) => left.name.localeCompare(right.name, "mn-MN"));

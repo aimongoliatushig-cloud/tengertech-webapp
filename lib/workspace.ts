@@ -1899,6 +1899,73 @@ async function loadDepartmentUserOptions(
   }
 }
 
+export async function loadAssignableUserOptions(
+  connectionOverrides: Partial<OdooConnection>,
+): Promise<SelectOption[]> {
+  try {
+    const employees = await executeOdooKw<EmployeeUserRecord[]>(
+      "hr.employee",
+      "search_read",
+      [[["user_id", "!=", false]]],
+      {
+        fields: [
+          "name",
+          "department_id",
+          "job_id",
+          "job_title",
+          "user_id",
+          "work_phone",
+          "mobile_phone",
+          "work_email",
+        ],
+        order: "name asc",
+        limit: 500,
+      },
+      connectionOverrides,
+    );
+    const userIds = Array.from(
+      new Set(
+        employees
+          .map((employee) => relationId(employee.user_id))
+          .filter((userId): userId is number => Boolean(userId)),
+      ),
+    );
+    const activeUserIds = userIds.length
+      ? await executeOdooKw<Array<{ id: number }>>(
+          "res.users",
+          "search_read",
+          [[["id", "in", userIds], ["active", "=", true], ["share", "=", false]]],
+          { fields: ["id"], limit: userIds.length },
+          connectionOverrides,
+        )
+          .then((users) => new Set(users.map((user) => user.id)))
+          .catch(() => null)
+      : null;
+    const options = employees.reduce<SelectOption[]>((items, employee) => {
+      const userId = relationId(employee.user_id);
+      if (!userId || (activeUserIds && !activeUserIds.has(userId))) {
+        return items;
+      }
+      const phone = employee.mobile_phone || employee.work_phone || "";
+      items.push({
+        id: userId,
+        name: relationName(employee.user_id, employee.name),
+        login: phone || employee.work_email || "",
+        phone: phone || "",
+        role: "department_user",
+        departmentName: relationName(employee.department_id, ""),
+        jobTitle: getEmployeeJobTitle(employee),
+      });
+      return items;
+    }, []);
+    return Array.from(new Map(options.map((option) => [option.id, option])).values()).sort(
+      (left, right) => left.name.localeCompare(right.name, "mn-MN"),
+    );
+  } catch {
+    return [] satisfies SelectOption[];
+  }
+}
+
 async function loadMasterEmployeeUserOptions(
   connectionOverrides: Partial<OdooConnection>,
 ) {
