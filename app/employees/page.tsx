@@ -317,13 +317,21 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
         right.assigned - left.assigned,
     );
 
-  const summary = [
-    { key: "emp", label: "Ажилтан", value: employees.length, icon: Users, tone: "" },
-    { key: "assigned", label: "Даалгавар", value: deptTasks.length, icon: ClipboardList, tone: "" },
-    { key: "done", label: "Дууссан", value: deptTasks.filter(isTaskDone).length, icon: CheckCircle2, tone: "ok" },
-    { key: "prog", label: "Хийгдэж буй", value: deptTasks.filter(isTaskInProgress).length, icon: Clock3, tone: "" },
-    { key: "over", label: "Хугацаа хэтэрсэн", value: deptTasks.filter((task) => isTaskOverdue(task, todayKey)).length, icon: AlertTriangle, tone: "warn" },
-    { key: "review", label: "Батлах хүлээж", value: deptTasks.filter(isTaskReview).length, icon: ShieldCheck, tone: "warn" },
+  // Картууд нь өөрсдөө статусын шүүлтүүр болно (доод статус-эгнээг давхардуулахгүй)
+  const summary: Array<{
+    key: string;
+    label: string;
+    value: number;
+    icon: typeof Users;
+    tone: string;
+    status: StatusFilter | null;
+  }> = [
+    { key: "emp", label: "Ажилтан", value: employees.length, icon: Users, tone: "", status: null },
+    { key: "assigned", label: "Даалгавар", value: deptTasks.length, icon: ClipboardList, tone: "", status: "all" },
+    { key: "done", label: "Дууссан", value: deptTasks.filter(isTaskDone).length, icon: CheckCircle2, tone: "ok", status: "done" },
+    { key: "prog", label: "Хийгдэж буй", value: deptTasks.filter(isTaskInProgress).length, icon: Clock3, tone: "", status: "progress" },
+    { key: "over", label: "Хугацаа хэтэрсэн", value: deptTasks.filter((task) => isTaskOverdue(task, todayKey)).length, icon: AlertTriangle, tone: "warn", status: "overdue" },
+    { key: "review", label: "Батлах хүлээж", value: deptTasks.filter(isTaskReview).length, icon: ShieldCheck, tone: "warn", status: "review" },
   ];
 
   return shell(
@@ -376,14 +384,33 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
       <section className={styles.summary}>
         {summary.map((item) => {
           const Icon = item.icon;
-          return (
-            <div key={item.key} className={`${styles.stat} ${item.tone ? styles[item.tone] : ""}`}>
+          const toneClass = item.tone ? styles[item.tone] : "";
+          const body = (
+            <>
               <span className={styles.statIcon}>
                 <Icon size={16} aria-hidden />
               </span>
               <strong className={styles.statValue}>{item.value}</strong>
               <span className={styles.statLabel}>{item.label}</span>
-            </div>
+            </>
+          );
+          if (!item.status) {
+            return (
+              <div key={item.key} className={`${styles.stat} ${toneClass}`}>
+                {body}
+              </div>
+            );
+          }
+          const active = selectedStatus === item.status;
+          return (
+            <Link
+              key={item.key}
+              href={buildHref({ status: item.status })}
+              className={`${styles.stat} ${styles.statLink} ${toneClass} ${active ? styles.statActive : ""}`}
+              aria-current={active ? "page" : undefined}
+            >
+              {body}
+            </Link>
           );
         })}
       </section>
@@ -408,24 +435,6 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
             ))}
           </div>
         ) : null}
-        <div className={styles.filterRow}>
-          {STATUS_FILTERS.map((filter) => {
-            const count =
-              filter.key === "all"
-                ? deptTasks.length
-                : deptTasks.filter((task) => matchesStatus(task, filter.key, todayKey)).length;
-            return (
-              <Link
-                key={filter.key}
-                href={buildHref({ status: filter.key })}
-                className={`${styles.filterChip} ${selectedStatus === filter.key ? styles.filterChipActive : ""}`}
-              >
-                <span>{filter.label}</span>
-                <b>{count}</b>
-              </Link>
-            );
-          })}
-        </div>
       </div>
 
       {employees.length ? (

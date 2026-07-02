@@ -55,6 +55,21 @@
   color: #854f0b;
 }
 
+/* Картыг шүүлтүүр болгон дарах боломжтой болгох */
+.statLink {
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+}
+.statLink:hover {
+  border-color: var(--brand-700);
+  transform: translateY(-1px);
+}
+.statActive {
+  border-color: var(--brand-700);
+  box-shadow: 0 0 0 1px var(--brand-700);
+}
+
 /* Assign task */
 .assign {
   border: 1px solid rgba(74, 154, 93, 0.2);
