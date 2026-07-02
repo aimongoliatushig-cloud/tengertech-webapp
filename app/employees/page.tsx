@@ -234,7 +234,12 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
   }
   // Prefer the full assignable-user directory; fall back to existing assignees.
   const employeeOptions = assignableUsers.length
-    ? assignableUsers.map((user) => ({ id: user.id, name: user.name }))
+    ? assignableUsers.map((user) => ({
+        id: user.id,
+        name: user.name,
+        jobTitle: user.jobTitle,
+        departmentName: user.departmentName,
+      }))
     : [...employeeOptionMap]
         .map(([id, name]) => ({ id, name }))
         .sort((left, right) => left.name.localeCompare(right.name, "mn-MN"));

@@ -6,6 +6,7 @@ import { CalendarDays, FileText, FolderPen, UserCheck } from "lucide-react";
 import { SearchableSelect, type SearchableSelectOption } from "@/app/_components/searchable-select";
 import styles from "@/app/workspace.module.css";
 import type { DepartmentOption, SelectOption } from "@/lib/workspace";
+import { formatEmployeeMeta } from "@/lib/employee-label";
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
@@ -25,7 +26,7 @@ function buildManagerOptions(users: SelectOption[]): SearchableSelectOption[] {
   return users.map((user) => ({
     id: user.id,
     label: user.name,
-    meta: [user.jobTitle, user.departmentName, user.phone || user.login].filter(Boolean).join(" · "),
+    meta: formatEmployeeMeta(user.jobTitle, user.departmentName),
     keywords: [user.name, user.jobTitle ?? "", user.departmentName ?? "", user.login, user.phone ?? ""],
   }));
 }

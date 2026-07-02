@@ -2,9 +2,16 @@
 
 import { useMemo, useState } from "react";
 
+import { formatEmployeeMeta } from "@/lib/employee-label";
+
 import styles from "./employees.module.css";
 
-type Option = { id: number; name: string };
+type Option = {
+  id: number;
+  name: string;
+  jobTitle?: string;
+  departmentName?: string;
+};
 
 export function EmployeePicker({
   options,
@@ -21,7 +28,9 @@ export function EmployeePicker({
     const normalized = query.trim().toLocaleLowerCase("mn-MN");
     const base = normalized
       ? options.filter((option) =>
-          option.name.toLocaleLowerCase("mn-MN").includes(normalized),
+          `${option.name} ${option.jobTitle ?? ""} ${option.departmentName ?? ""}`
+            .toLocaleLowerCase("mn-MN")
+            .includes(normalized),
         )
       : options;
     return base.slice(0, 40);
@@ -76,7 +85,10 @@ export function EmployeePicker({
                     setOpen(false);
                   }}
                 >
-                  {option.name}
+                  <span>{option.name}</span>
+                  <small style={{ display: "block", fontSize: 12, opacity: 0.65 }}>
+                    {formatEmployeeMeta(option.jobTitle, option.departmentName)}
+                  </small>
                 </button>
               </li>
             ))

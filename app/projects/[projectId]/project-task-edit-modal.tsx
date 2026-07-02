@@ -7,6 +7,7 @@ import { CheckCircle2, ClipboardList, PlusCircle, Ruler } from "lucide-react";
 import { SearchableSelect, type SearchableSelectOption } from "@/app/_components/searchable-select";
 import styles from "@/app/workspace.module.css";
 import type { SelectOption, WorkUnitOption } from "@/lib/workspace";
+import { formatEmployeeMeta } from "@/lib/employee-label";
 
 type Props = {
   action: (formData: FormData) => void | Promise<void>;
@@ -35,10 +36,7 @@ function buildUserOptions(users: SelectOption[]): SearchableSelectOption[] {
   return users.map((user) => ({
     id: user.id,
     label: user.name,
-    meta:
-      [user.jobTitle, user.departmentName, user.phone || user.login]
-        .filter(Boolean)
-        .join(" · ") || "Албан тушаал бүртгэлгүй",
+    meta: formatEmployeeMeta(user.jobTitle, user.departmentName),
     keywords: [
       user.name,
       user.jobTitle ?? "",

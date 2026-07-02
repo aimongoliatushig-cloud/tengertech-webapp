@@ -1045,6 +1045,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                                 <p>
                                   Хариуцсан ажилтан: {task.teamLeaderName}
                                   {task.teamLeaderJobTitle ? ` · ${task.teamLeaderJobTitle}` : ""}
+                                  {project.departmentName ? ` · ${project.departmentName}` : ""}
                                 </p>
                                 {task.assignees.length || task.vehicleName || task.driverName || task.collectorNames.length ? (
                                   <p>
