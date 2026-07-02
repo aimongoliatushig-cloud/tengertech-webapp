@@ -147,6 +147,61 @@
   background: var(--brand-900);
 }
 
+/* Searchable employee picker */
+.picker {
+  position: relative;
+  min-width: 0;
+}
+.pickerInput {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink-900);
+}
+.pickerInput:focus {
+  outline: none;
+  border-color: var(--brand-700);
+}
+.pickerList {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: var(--ds-shadow-panel);
+}
+.pickerItem {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-900);
+  text-align: left;
+  cursor: pointer;
+}
+.pickerItem:hover {
+  background: rgba(74, 154, 93, 0.1);
+}
+.pickerEmpty {
+  padding: 10px;
+  color: var(--ink-600);
+  font-size: 12px;
+  text-align: center;
+}
+
 @media (max-width: 900px) {
   .assignGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

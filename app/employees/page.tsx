@@ -27,6 +27,8 @@ import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import { loadMunicipalSnapshot, type DashboardSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
 import { loadAssignableUserOptions } from "@/lib/workspace";
 
+import { EmployeePicker } from "./employee-picker";
+
 import styles from "./employees.module.css";
 
 export const dynamic = "force-dynamic";
@@ -318,16 +320,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
             <div className={styles.assignGrid}>
               <label className={styles.assignField}>
                 <span>Ажилтан</span>
-                <select name="team_leader_id" required defaultValue="">
-                  <option value="" disabled>
-                    Сонгох
-                  </option>
-                  {employeeOptions.map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.name}
-                    </option>
-                  ))}
-                </select>
+                <EmployeePicker options={employeeOptions} />
               </label>
               <label className={styles.assignField}>
                 <span>Ажил (төсөл)</span>
