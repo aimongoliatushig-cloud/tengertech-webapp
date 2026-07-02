@@ -9,6 +9,8 @@ import {
   Check,
   FileWarning,
   Hourglass,
+  UserMinus,
+  UserPlus,
   Users,
   XCircle,
   type LucideIcon,
@@ -408,6 +410,38 @@ export function HrDashboardClient({
   const approvedRequests = requests.filter((request) => request.state === "approved");
   const cardsSource = dashboard?.cards;
 
+  // Нэмэлт үзүүлэлт: энэ сарын шинэ/чөлөөлсөн, дундаж нас, хүйс
+  const monthPrefix = today.slice(0, 7);
+  const currentYear = Number(today.slice(0, 4));
+  const newThisMonthCount = workforceEmployees.filter(
+    (employee) => (employee.startDate || "").slice(0, 7) === monthPrefix,
+  ).length;
+  const leftThisMonthCount = employees.filter(
+    (employee) => !employee.active && (employee.departureDate || "").slice(0, 7) === monthPrefix,
+  ).length;
+  const employeeAges = workforceEmployees
+    .map((employee) => {
+      const birthYear = Number((employee.birthDate || "").slice(0, 4));
+      return birthYear > 1900 && currentYear ? currentYear - birthYear : null;
+    })
+    .filter((age): age is number => age !== null && age > 14 && age < 100);
+  const averageAge = employeeAges.length
+    ? Math.round(employeeAges.reduce((sum, age) => sum + age, 0) / employeeAges.length)
+    : 0;
+  const maleCount = workforceEmployees.filter((employee) => employee.genderKey === "male").length;
+  const femaleCount = workforceEmployees.filter((employee) => employee.genderKey === "female").length;
+  const leaveTotalCount = timeoffEmployees.length + annualLeaveEmployees.length + sickEmployees.length;
+  const miniMetrics = [
+    { label: "Энэ сарын шинэ ажилтан", value: newThisMonthCount, icon: UserPlus },
+    { label: "Энэ сард чөлөөлсөн", value: leftThisMonthCount, icon: UserMinus },
+    { label: "Чөлөө, амралт, өвчтэй", value: leaveTotalCount, icon: CalendarDays },
+    { label: "Дундаж нас", value: averageAge ? `${averageAge}` : "—", icon: Activity },
+  ];
+  const genderSlices: ChartSlice[] = [
+    { label: "Эрэгтэй", value: maleCount, color: "#3f7ee8" },
+    { label: "Эмэгтэй", value: femaleCount, color: "#ef4d84" },
+  ];
+
   const cards: StatCard[] = [
     {
       kind: "total",
@@ -638,6 +672,13 @@ export function HrDashboardClient({
         variant="donut"
       />
       <AnimatedPie
+        title="Хүйсийн харьцаа"
+        slices={genderSlices}
+        centerLabel="Нийт"
+        centerValue={`${maleCount + femaleCount}`}
+        variant="donut"
+      />
+      <AnimatedPie
         title="Хэлтсийн ажилтаны тоо"
         slices={departmentSlices}
         centerLabel="Ажилтан"
@@ -716,6 +757,23 @@ export function HrDashboardClient({
                 <p>{card.note}</p>
               </div>
             </Link>
+          );
+        })}
+      </section>
+
+      <section className={styles.miniMetrics}>
+        {miniMetrics.map((metric) => {
+          const Icon = metric.icon;
+          return (
+            <div key={metric.label} className={styles.miniMetric}>
+              <span className={styles.miniMetricIcon}>
+                <Icon aria-hidden size={16} />
+              </span>
+              <div>
+                <strong>{metric.value}</strong>
+                <small>{metric.label}</small>
+              </div>
+            </div>
           );
         })}
       </section>

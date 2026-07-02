@@ -1781,6 +1781,49 @@
   min-width: 0;
 }
 
+/* Нэмэлт үзүүлэлт (энэ сарын шинэ/чөлөөлсөн, дундаж нас, чөлөө) */
+.miniMetrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 12px 0 4px;
+}
+
+.miniMetric {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.miniMetricIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(46, 125, 50, 0.1);
+  color: #2e7d32;
+  flex-shrink: 0;
+}
+
+.miniMetric strong {
+  display: block;
+  font-size: 20px;
+  font-weight: 800;
+  color: #16241b;
+  line-height: 1.1;
+}
+
+.miniMetric small {
+  font-size: 11px;
+  color: #6b7a72;
+}
+
 .detailRow:last-child {
   border-bottom: 0;
 }

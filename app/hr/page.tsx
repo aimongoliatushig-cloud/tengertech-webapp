@@ -1,15 +1,8 @@
-import Link from "next/link";
-import { Archive, ClipboardPlus, HeartPulse, Users } from "lucide-react";
-
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
-import { compareHrDepartmentNames } from "@/lib/hr-department-order";
-import { formatEmployeeDisplayName } from "@/lib/hr-name";
 import { getDisciplineRecords, getEmployees, getTimeoffDashboard, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
-import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
-import { fixMojibakeText } from "@/lib/text-normalize";
 
 import { HrDashboardClient } from "./hr-dashboard-client";
 import { HR_NOTIFICATION_HREF } from "./constants";
@@ -17,124 +10,6 @@ import { HrSectionNav } from "./hr-section-nav";
 import styles from "./hr.module.css";
 
 export const dynamic = "force-dynamic";
-
-function normalizeJobTitle(value: string) {
-  return fixMojibakeText(value).trim().toLocaleLowerCase("mn-MN").replace(/\s+/g, " ");
-}
-
-function employeePositionRank(employee: HrEmployeeDirectoryItem) {
-  const jobTitle = normalizeJobTitle(employee.jobTitle || "");
-  if (jobTitle === "захирал" || jobTitle.includes("ерөнхий захирал")) {
-    return 0;
-  }
-  if (jobTitle.includes("дэд захирал")) {
-    return 1;
-  }
-  if (jobTitle.includes("үйл ажиллагаа хариуцсан менежер") || jobTitle.includes("operations manager")) {
-    return 2;
-  }
-  if (
-    jobTitle.includes("хэлтсийн дарга") ||
-    jobTitle.includes("хэлтэсийн дарга") ||
-    jobTitle.includes("албаны дарга") ||
-    jobTitle.includes("department head") ||
-    jobTitle.includes("department manager")
-  ) {
-    return 3;
-  }
-  if (jobTitle.includes("дотоод хяналт") || jobTitle.includes("хяналтын ажилтан") || jobTitle.includes("inspector")) {
-    return 4;
-  }
-  if (jobTitle.includes("даамал")) {
-    return 5;
-  }
-  if (jobTitle.includes("талбайн инженер")) {
-    return 6;
-  }
-  if (jobTitle.includes("менежер") || jobTitle.includes("manager")) {
-    return 7;
-  }
-  if (jobTitle.includes("ахлах мастер")) {
-    return 8;
-  }
-  if (jobTitle.includes("мастер")) {
-    return 9;
-  }
-  if (jobTitle.includes("ерөнхий")) {
-    return 10;
-  }
-  if (jobTitle.includes("ахлах")) {
-    return 11;
-  }
-  if (jobTitle.includes("мэргэжилтэн") || jobTitle.includes("нягтлан") || jobTitle.includes("нярав")) {
-    return 12;
-  }
-  return 20;
-}
-
-function compareEmployeesByPosition(left: HrEmployeeDirectoryItem, right: HrEmployeeDirectoryItem) {
-  return (
-    employeePositionRank(left) - employeePositionRank(right) ||
-    left.name.localeCompare(right.name, "mn")
-  );
-}
-
-function buildDepartmentGroups(employees: HrEmployeeDirectoryItem[]) {
-  const groups = new Map<string, HrEmployeeDirectoryItem[]>();
-  for (const employee of employees) {
-    const departmentName = employee.departmentName || "Хэлтэсгүй";
-    groups.set(departmentName, [...(groups.get(departmentName) ?? []), employee]);
-  }
-
-  return Array.from(groups, ([departmentName, departmentEmployees]) => ({
-    departmentName,
-    employees: departmentEmployees.sort(compareEmployeesByPosition),
-  })).sort((left, right) => compareHrDepartmentNames(left.departmentName, right.departmentName));
-}
-
-function employeeIsActiveWorkforce(employee: HrEmployeeDirectoryItem) {
-  return employee.active && !["archived", "terminated", "resigned"].includes(employee.statusKey);
-}
-
-function DepartmentManpower({ employees }: { employees: HrEmployeeDirectoryItem[] }) {
-  const departmentGroups = buildDepartmentGroups(employees);
-
-  return (
-    <section className={styles.manpowerPanel}>
-      <div className={styles.sectionHeader}>
-        <div>
-          <h2>Хэлтсийн хүн хүч</h2>
-        </div>
-        <p>{employees.length} ажилтны бүртгэл хэлтэс, албаар бүлэглэгдсэн байна.</p>
-      </div>
-
-      <div className={styles.manpowerGrid}>
-        {departmentGroups.map((group) => (
-          <article key={group.departmentName} className={styles.manpowerDepartment}>
-            <header className={styles.manpowerHeader}>
-              <div>
-                <h3>{group.departmentName}</h3>
-                <span>{group.employees.length} ажилтан</span>
-              </div>
-              <strong>{group.employees.length}</strong>
-            </header>
-            <div className={styles.manpowerEmployees} suppressHydrationWarning>
-              {group.employees.map((employee) => (
-                <Link key={employee.id} href={`/hr/employees/${employee.id}`} className={styles.employeeRowLink}>
-                  <span>
-                    <strong>{formatEmployeeDisplayName(employee.name)}</strong>
-                    <small>{employee.jobTitle || "Албан тушаал бүртгээгүй"}</small>
-                  </span>
-                  <em>{employee.statusLabel}</em>
-                </Link>
-              ))}
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 export default async function HrDashboardPage() {
   const session = await requireSession();
@@ -161,18 +36,7 @@ export default async function HrDashboardPage() {
     }),
   ]);
   const mode: "hr" | "department" = access.scope === "hr" ? "hr" : "department";
-  const workforceEmployees = employees.filter(employeeIsActiveWorkforce);
   const requestCards = timeoffDashboard?.cards;
-  const quickActions = access.isHr
-    ? [
-        { href: "/hr/leaves", label: "Ирсэн хүсэлтүүд", icon: ClipboardPlus, tone: "primary" },
-        { href: "/hr/employees", label: "Ажилтны жагсаалт", icon: Users },
-        { href: "/hr/archive", label: "Ажлаас чөлөөлөх", icon: Archive },
-      ]
-    : [
-        { href: "/hr/employees", label: "Манай хэлтсийн ажилтнууд", icon: Users, tone: "primary" },
-        { href: "/hr/sick", label: "Чөлөө / өвчтэй хүсэлт", icon: HeartPulse },
-      ];
 
   return (
     <>
@@ -187,28 +51,6 @@ export default async function HrDashboardPage() {
       />
       <HrSectionNav mode={mode} />
 
-      <section className={styles.quickActionBar} aria-label="Хүний нөөцийн шуурхай үйлдэл">
-        <div className={styles.quickActionHeader}>
-          <span className={styles.eyebrow}>Шуурхай үйлдэл</span>
-          <strong>{access.isHr ? "Өдөр тутмын HR ажиллагаа" : "Хэлтсийн HR ажиллагаа"}</strong>
-        </div>
-        <div className={styles.quickActionGrid}>
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <Link
-                key={action.href}
-                href={action.href}
-                className={`${styles.quickActionLink} ${action.tone === "primary" ? styles.quickActionPrimary : ""}`}
-              >
-                <Icon aria-hidden />
-                <span>{action.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-
       <HrDashboardClient
         accessMode={mode}
         employees={employees}
@@ -216,8 +58,6 @@ export default async function HrDashboardPage() {
         dashboard={timeoffDashboard}
         disciplineRecords={disciplineRecords}
       />
-
-      <DepartmentManpower employees={workforceEmployees} />
     </>
   );
 }
