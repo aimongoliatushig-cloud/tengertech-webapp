@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -307,6 +316,39 @@ export type RegistryColumn = {
 function employeeInitials(name: string) {
   const parts = (name || "").trim().split(/\s+/).filter(Boolean);
   return parts.slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("mn-MN") ?? "").join("") || "?";
+}
+
+// Зургийг дөрвөлжин болгон "cover" аргаар босоо байрлалаар (offsetYPercent) тайрч Blob болгоно
+function cropImageCover(url: string, offsetYPercent: number, size = 512): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const naturalW = img.naturalWidth || size;
+      const naturalH = img.naturalHeight || size;
+      const scale = Math.max(size / naturalW, size / naturalH);
+      const drawW = naturalW * scale;
+      const drawH = naturalH * scale;
+      const offX = (drawW - size) / 2;
+      const clampedY = Math.max(0, Math.min(100, offsetYPercent));
+      const offY = (drawH - size) * (clampedY / 100);
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("canvas unsupported"));
+        return;
+      }
+      ctx.drawImage(img, -offX, -offY, drawW, drawH);
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("crop failed"))),
+        "image/jpeg",
+        0.9,
+      );
+    };
+    img.onerror = () => reject(new Error("image load failed"));
+    img.src = url;
+  });
 }
 
 function statusLabel(employee: HrEmployeeDirectoryItem) {
@@ -1470,6 +1512,8 @@ export function EmployeeDetailTabs({
   const [photoErrorUrl, setPhotoErrorUrl] = useState("");
   const [profilePhotoPreviewUrl, setProfilePhotoPreviewUrl] = useState("");
   const [removeProfilePhoto, setRemoveProfilePhoto] = useState(false);
+  const [photoOffsetY, setPhotoOffsetY] = useState(50);
+  const photoDragRef = useRef<{ startY: number; startOffset: number; height: number } | null>(null);
   const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
   const familyMemberDraftIdRef = useRef(-1);
   const initials = employee.name
@@ -1556,7 +1600,33 @@ export function EmployeeDetailTabs({
     const file = event.currentTarget.files?.[0];
     setRemoveProfilePhoto(false);
     setPhotoErrorUrl("");
+    setPhotoOffsetY(50);
     setProfilePhotoPreviewUrl(file ? URL.createObjectURL(file) : "");
+  }
+
+  function onPhotoPointerDown(event: ReactPointerEvent<HTMLImageElement>) {
+    if (!profilePhotoEditUrl) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    photoDragRef.current = { startY: event.clientY, startOffset: photoOffsetY, height: rect.height || 1 };
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {}
+  }
+
+  function onPhotoPointerMove(event: ReactPointerEvent<HTMLImageElement>) {
+    const drag = photoDragRef.current;
+    if (!drag) return;
+    const delta = event.clientY - drag.startY;
+    // Доош чирэх → зургийн дээд хэсэг харагдана (offset багасна)
+    const next = drag.startOffset - (delta / drag.height) * 100;
+    setPhotoOffsetY(Math.max(0, Math.min(100, next)));
+  }
+
+  function onPhotoPointerUp(event: ReactPointerEvent<HTMLImageElement>) {
+    photoDragRef.current = null;
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {}
   }
 
   function removeSelectedProfilePhoto() {
@@ -1574,6 +1644,7 @@ export function EmployeeDetailTabs({
     }
     setProfilePhotoPreviewUrl("");
     setRemoveProfilePhoto(false);
+    setPhotoOffsetY(50);
   }
 
   function cancelProfileEdit() {
@@ -1587,6 +1658,15 @@ export function EmployeeDetailTabs({
     const formData = new FormData(form);
     if (formData.has("workType") && !isTrialWorkType(getFormDataString(formData, "workType"))) {
       formData.set("trialEndDate", "");
+    }
+    // Профайл зургийг сонгосон байрлалаар нь дөрвөлжин болгон тайрч илгээнэ
+    if (!removeProfilePhoto && profilePhotoEditUrl && (profilePhotoPreviewUrl || photoOffsetY !== 50)) {
+      try {
+        const cropped = await cropImageCover(profilePhotoEditUrl, photoOffsetY);
+        formData.set("profilePhoto", cropped, "profile.jpg");
+      } catch (error) {
+        console.warn("Профайл зураг тайрахад алдаа гарлаа:", error);
+      }
     }
     setPending(true);
     setMessage("");
@@ -2414,14 +2494,18 @@ export function EmployeeDetailTabs({
       <div className={styles.profilePhotoEditor}>
         <span className={styles.profilePhotoEditorLabel}>Профайл зураг</span>
         <div className={styles.profilePhotoUploadBox}>
-          <label
-            htmlFor={inputId}
-            className={`${styles.profilePhotoDropCard} ${profilePhotoEditUrl ? styles.profilePhotoDropCardFilled : ""}`}
-          >
-            {profilePhotoEditUrl ? (
+          {profilePhotoEditUrl ? (
+            <div className={`${styles.profilePhotoDropCard} ${styles.profilePhotoDropCardFilled}`}>
               <img
                 src={profilePhotoEditUrl}
                 alt={`${employee.name} профиль зураг`}
+                className={styles.profilePhotoImage}
+                style={{ objectPosition: `50% ${photoOffsetY}%` }}
+                draggable={false}
+                onPointerDown={onPhotoPointerDown}
+                onPointerMove={onPhotoPointerMove}
+                onPointerUp={onPhotoPointerUp}
+                onPointerCancel={onPhotoPointerUp}
                 onError={() => {
                   if (profilePhotoPreviewUrl) {
                     setProfilePhotoPreviewUrl("");
@@ -2430,14 +2514,19 @@ export function EmployeeDetailTabs({
                   }
                 }}
               />
-            ) : (
+              <label htmlFor={inputId} className={styles.profilePhotoDropOverlay}>
+                Зураг солих
+              </label>
+            </div>
+          ) : (
+            <label htmlFor={inputId} className={styles.profilePhotoDropCard}>
               <span className={styles.profilePhotoEmptyState}>
                 <span className={styles.profilePhotoDefaultAvatar}>{initials || "А"}</span>
                 <strong>Зураг нэмэх</strong>
               </span>
-            )}
-            <span className={styles.profilePhotoDropOverlay}>{profilePhotoEditUrl ? "Зураг солих" : "Зураг сонгох"}</span>
-          </label>
+              <span className={styles.profilePhotoDropOverlay}>Зураг сонгох</span>
+            </label>
+          )}
           {profilePhotoEditUrl ? (
             <button
               type="button"
@@ -2460,6 +2549,9 @@ export function EmployeeDetailTabs({
           />
           {removeProfilePhoto ? <input type="hidden" name="removeProfilePhoto" value="1" /> : null}
         </div>
+        {profilePhotoEditUrl ? (
+          <span className={styles.profilePhotoHint}>Зургийг дээш доош чирж байрлуулна</span>
+        ) : null}
       </div>
     );
   }

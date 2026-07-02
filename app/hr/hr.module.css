@@ -2413,6 +2413,25 @@
   object-fit: cover;
 }
 
+.profilePhotoImage {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.profilePhotoImage:active {
+  cursor: grabbing;
+}
+
+.profilePhotoHint {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #6b7a72;
+  text-align: center;
+}
+
 .profilePhotoEmptyState {
   display: grid;
   place-items: center;
