@@ -555,7 +555,7 @@ export function EmployeeTable({
   const initialDepartment = searchParams.get("department") || ALL;
   const [department, setDepartment] = useState(initialDepartment);
   const [jobTitle, setJobTitle] = useState(ALL);
-  const [status, setStatus] = useState(DEFAULT_EMPLOYEE_STATUS);
+  const [status, setStatus] = useState(searchParams.get("status") || DEFAULT_EMPLOYEE_STATUS);
   // Хэлтсийн шүүлтүүрийг URL-д тусгана — дэлгэрэнгүйгээс буцахад шүүлт хадгалагдана
   useEffect(() => {
     const params = new URLSearchParams();

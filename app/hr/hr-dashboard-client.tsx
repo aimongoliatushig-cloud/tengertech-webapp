@@ -30,6 +30,7 @@ type StatCard = {
   value: number;
   icon: LucideIcon;
   note: string;
+  href: string;
 };
 
 type ChartSlice = {
@@ -377,7 +378,6 @@ export function HrDashboardClient({
   dashboard: HrTimeoffDashboardData | null;
   disciplineRecords?: HrDisciplineRecord[];
 }) {
-  const [detailKind, setDetailKind] = useState<DetailKind>("leave");
   const router = useRouter();
   const [trialActionEmployeeId, setTrialActionEmployeeId] = useState<number | null>(null);
   const [trialActionPendingEmployeeId, setTrialActionPendingEmployeeId] = useState<number | null>(null);
@@ -415,6 +415,7 @@ export function HrDashboardClient({
       value: workforceEmployees.length,
       icon: Users,
       note: accessMode === "hr" ? "Идэвхтэй бүртгэл" : "Миний хэлтэс",
+      href: "/hr/employees?status=__all__",
     },
     {
       kind: "active",
@@ -422,6 +423,7 @@ export function HrDashboardClient({
       value: activeEmployees.length,
       icon: Activity,
       note: "Өнөөдрийн динамик төлөв",
+      href: "/hr/employees?status=Идэвхтэй",
     },
     {
       kind: "leave",
@@ -429,6 +431,7 @@ export function HrDashboardClient({
       value: timeoffEmployees.length + annualLeaveEmployees.length + sickEmployees.length,
       icon: CalendarDays,
       note: "Чөлөө / ээлжийн амралт / өвчтэй",
+      href: "/hr/sick",
     },
     {
       kind: "requests",
@@ -438,6 +441,7 @@ export function HrDashboardClient({
         (cardsSource?.approvedRequests ?? approvedRequests.length),
       icon: FileWarning,
       note: "Хүлээгдэж буй + батлагдсан",
+      href: "/hr/leaves",
     },
     {
       kind: "trial",
@@ -445,6 +449,7 @@ export function HrDashboardClient({
       value: trialEmployees.length,
       icon: Hourglass,
       note: "Туршилтад байгаа болон дууссан",
+      href: "/hr/employees?status=Туршилт",
     },
   ];
 
@@ -619,55 +624,6 @@ export function HrDashboardClient({
     );
   }
 
-  const selectedCard = cards.find((card) => card.kind === detailKind) ?? cards[0];
-  const getDetailContent = (kind: DetailKind) => {
-    if (kind === "total") {
-      return workforceEmployees.map((employee) => <StatusEmployeeRow key={employee.id} employee={employee} />);
-    }
-    if (kind === "active") {
-      return activeEmployees.map((employee) => <StatusEmployeeRow key={employee.id} employee={employee} />);
-    }
-    if (kind === "trial") {
-      return [
-        <DetailGroupHeader key="trial-in-progress-header" label="Туршилтад байгаа" value={trialInProgressEmployees.length} />,
-        ...trialInProgressEmployees.map((employee) => <StatusEmployeeRow key={`trial-${employee.id}`} employee={employee} />),
-        <DetailGroupHeader key="trial-ended-header" label="Туршилт дууссан" value={trialEndedEmployees.length} />,
-        ...trialEndedEmployees.map((employee) => (
-          <Fragment key={`trial-ended-${employee.id}`}>
-            <StatusEmployeeRow employee={employee} actions={accessMode === "hr" ? renderTrialEndedActions(employee) : undefined} />
-            {renderTrialEndedExtra(employee)}
-          </Fragment>
-        )),
-      ];
-    }
-    if (kind === "leave") {
-      return [
-        <DetailGroupHeader key="leave-timeoff-header" label="Чөлөөтэй" value={timeoffEmployees.length} />,
-        ...timeoffEmployees.map((employee) => (
-          <StatusEmployeeRow key={`timeoff-${employee.id}`} employee={employee} request={currentRequestByEmployee.get(employee.id)} />
-        )),
-        <DetailGroupHeader key="leave-annual-header" label="Ээлжийн амралттай" value={annualLeaveEmployees.length} />,
-        ...annualLeaveEmployees.map((employee) => (
-          <StatusEmployeeRow key={`annual-${employee.id}`} employee={employee} request={currentRequestByEmployee.get(employee.id)} />
-        )),
-        <DetailGroupHeader key="leave-sick-header" label="Өвчтэй" value={sickEmployees.length} />,
-        ...sickEmployees.map((employee) => (
-          <StatusEmployeeRow key={`sick-${employee.id}`} employee={employee} request={currentRequestByEmployee.get(employee.id)} />
-        )),
-      ];
-    }
-    if (kind === "requests") {
-      return [
-        <DetailGroupHeader key="req-pending-header" label="Хүлээгдэж буй" value={pendingRequests.length} />,
-        ...pendingRequests.map((request) => <RequestRow key={`pending-${request.id}`} request={request} />),
-        <DetailGroupHeader key="req-approved-header" label="Батлагдсан" value={approvedRequests.length} />,
-        ...approvedRequests.map((request) => <RequestRow key={`approved-${request.id}`} request={request} />),
-      ];
-    }
-    return [];
-  };
-  const detailContent = getDetailContent(detailKind);
-
   // Эхний donut-д харагдах зүсмүүд ба тэдгээрийн нийлбэр (төв тоо зүсмүүдтэй нийцнэ).
   const statusChartSlices = statusSlices.slice(0, 3);
   const statusChartTotal = statusChartSlices.reduce((sum, slice) => sum + slice.value, 0);
@@ -739,75 +695,29 @@ export function HrDashboardClient({
     <>
       <div className={styles.statHeading}>
         <span className={styles.eyebrow}>Үндсэн үзүүлэлт</span>
-        <p>Аль нэг тоон дээр дарж тухайн ажилтан, хүсэлтийн дэлгэрэнгүйг доор хараарай.</p>
+        <p>Аль нэг үзүүлэлт дээр дарж дэлгэрэнгүй жагсаалт руу шилжинэ.</p>
       </div>
 
       <section className={styles.statGrid}>
         {cards.map((card) => {
           const Icon = card.icon;
-          const isActive = detailKind === card.kind;
-          const inlineDetailContent = getDetailContent(card.kind);
           return (
-            <div
+            <Link
               key={card.kind}
-              className={`${styles.statCardWrap} ${isActive ? styles.statCardWrapActive : ""}`}
+              href={card.href}
+              className={`${styles.statCard} ${STAT_CARD_TONE_CLASS[card.kind]}`}
             >
-              <button
-                type="button"
-                className={`${styles.statCard} ${STAT_CARD_TONE_CLASS[card.kind]} ${isActive ? styles.statCardSelected : ""}`}
-                onClick={() => setDetailKind(card.kind)}
-                aria-expanded={isActive}
-              >
-                <span className={styles.statIcon}>
-                  <Icon aria-hidden />
-                </span>
-                <div>
-                  <small>{card.label}</small>
-                  <strong>{card.value}</strong>
-                  <p>{card.note}</p>
-                </div>
-              </button>
-              <div className={styles.mobileInlineDetail}>
-                <div className={styles.mobileInlineDetailHeader}>
-                  <strong>{card.label}</strong>
-                  <span>{card.value}</span>
-                </div>
-                <div className={styles.detailList}>
-                  {inlineDetailContent.length ? (
-                    inlineDetailContent
-                  ) : (
-                    <div className={styles.emptyState}>
-                      <strong>Одоогоор бүртгэл алга.</strong>
-                      <span>Сонгосон үзүүлэлтэд хамаарах ажилтан эсвэл хүсэлт байхгүй байна.</span>
-                    </div>
-                  )}
-                </div>
+              <span className={styles.statIcon}>
+                <Icon aria-hidden />
+              </span>
+              <div>
+                <small>{card.label}</small>
+                <strong>{card.value}</strong>
+                <p>{card.note}</p>
               </div>
-            </div>
+            </Link>
           );
         })}
-      </section>
-
-      {detailKind === "requests" ? <PendingRequestQueue requests={pendingRequests} /> : null}
-
-      <section className={`${styles.detailPanel} ${styles.desktopDetailPanel}`}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <span className={styles.eyebrow}>Дэлгэрэнгүй жагсаалт</span>
-            <h2>{selectedCard.label}</h2>
-          </div>
-          <p>Тоон дээр дарахад тухайн төлөвт багтсан ажилтан, хүсэлтийн дэлгэрэнгүй харагдана.</p>
-        </div>
-        <div className={styles.detailList}>
-          {detailContent.length ? (
-            detailContent
-          ) : (
-            <div className={styles.emptyState}>
-              <strong>Одоогоор бүртгэл алга.</strong>
-              <span>Сонгосон үзүүлэлтэд хамаарах ажилтан эсвэл хүсэлт байхгүй байна.</span>
-            </div>
-          )}
-        </div>
       </section>
 
       {chartsSection}
