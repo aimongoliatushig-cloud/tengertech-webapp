@@ -15,7 +15,6 @@ import {
   FileText,
   Flag,
   CircleHelp,
-  Images,
   LayoutDashboard,
   Leaf,
   ListChecks,
@@ -81,7 +80,6 @@ type MenuKey =
   | "help"
   | "new-project"
   | "reports"
-  | "reports-albums"
   | "reports-fleet"
   | "data-download"
   | "none";
@@ -770,32 +768,26 @@ export function AppMenu({
             href: canWriteReports ? "/reports" : "/review",
             label: "Тайлан",
             icon: BarChart3,
-            // "Тайлан"-г dropdown болгож "Ажлын тайлан" + "Зургийн цомог"
-            // (шатахуун/жингийн эрхтэй бол "Шатахуун, жин"-г нэмж) бүлэглэнэ.
-            children: [
-              {
-                key: "reports-work",
-                href: canWriteReports ? "/reports" : "/review",
-                label: "Ажлын тайлан",
-                icon: BarChart3,
-              },
-              {
-                key: "reports-albums",
-                href: "/reports/albums",
-                label: "Зургийн цомог",
-                icon: Images,
-              },
-              ...(resolvedCanViewGarbageWeightReports
-                ? [
+            // Шатахуун/жингийн тайлан эрхтэй бол "Тайлан"-г dropdown болгож,
+            // "Ажлын тайлан" + "Шатахуун, жин" гэж бүлэглэнэ. Эс бол энгийн холбоос.
+            ...(resolvedCanViewGarbageWeightReports
+              ? {
+                  children: [
+                    {
+                      key: "reports-work",
+                      href: canWriteReports ? "/reports" : "/review",
+                      label: "Ажлын тайлан",
+                      icon: BarChart3,
+                    },
                     {
                       key: "reports-fleet",
                       href: "/reports/fleet",
                       label: "Шатахуун, жин",
                       icon: Truck,
                     },
-                  ]
-                : []),
-            ],
+                  ],
+                }
+              : {}),
           },
         ]
       : []),
