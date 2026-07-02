@@ -223,9 +223,21 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
     return `/employees${queryString ? `?${queryString}` : ""}`;
   };
 
-  const assignableUsers = canCreateTasks
-    ? await loadAssignableUserOptions({ login: session.login, password: session.password })
-    : [];
+  // Ажилтны жинхэнэ хэлтсийг харуулахын тулд бүх ажилтны лавлахыг үргэлж ачаална
+  const assignableUsers = await loadAssignableUserOptions({
+    login: session.login,
+    password: session.password,
+  });
+  // Хүн (user_id) → өөрийн харьяалагдах хэлтэс (HR-ийн department, эцэг замыг хассан)
+  const personDepartmentById = new Map(
+    assignableUsers
+      .filter((user) => (user.departmentName ?? "").trim())
+      .map((user) => {
+        const full = (user.departmentName as string).trim();
+        const leaf = full.includes("/") ? full.slice(full.lastIndexOf("/") + 1).trim() : full;
+        return [user.id, leaf] as const;
+      }),
+  );
   const employeeOptionMap = new Map<number, string>();
   for (const task of personTasks) {
     if (task.leaderId != null && !employeeOptionMap.has(task.leaderId)) {
@@ -270,7 +282,11 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
       const progress = assigned
         ? Math.round(group.tasks.reduce((sum, task) => sum + (task.progress || 0), 0) / assigned)
         : 0;
-      const department = mostCommon(group.tasks.map((task) => task.departmentName));
+      // Хүний хэлтсийг өөрийнх нь HR харьяаллаар (task-ийн хэлтсээр биш) харуулна
+      const leaderId = group.tasks[0]?.leaderId ?? null;
+      const department =
+        (leaderId != null ? personDepartmentById.get(leaderId) : undefined) ||
+        mostCommon(group.tasks.map((task) => task.departmentName));
       const tasks = [...group.tasks].sort((left, right) => {
         const rank = (task: TaskDirectoryItem) =>
           isTaskOverdue(task, todayKey) ? 0 : isTaskReview(task) ? 1 : isTaskDone(task) ? 3 : 2;
