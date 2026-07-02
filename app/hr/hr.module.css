@@ -1703,6 +1703,29 @@
   padding: 4px 0 8px;
 }
 
+/* Албан тушаалын түвшингийн бүлгийн гарчиг (grid-ийн бүтэн мөр) */
+.tierHeader {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 8px 4px 6px;
+  border-bottom: 2px solid rgba(46, 125, 50, 0.18);
+}
+
+.tierHeader:first-child {
+  margin-top: 0;
+}
+
+.tierHeader span {
+  font-size: 13px;
+  font-weight: 800;
+  color: #16241b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
 .employeeGridCard {
   display: flex;
   flex-direction: column;

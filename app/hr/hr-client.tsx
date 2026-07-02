@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Fragment,
   useEffect,
   useMemo,
   useRef,
@@ -443,6 +444,71 @@ function employeeRoleRank(jobTitle?: string | null) {
   return 5;
 }
 
+// Албан тушаалын түвшингээр бүлэглэх дараалал (6 шат + бусад)
+const POSITION_TIER_LABELS = [
+  "Удирдах дээд шат",
+  "Дунд шатны удирдлага",
+  "Анхан шатны удирдлага",
+  "Мэргэжлийн ажилтан",
+  "Техникийн ажилтан",
+  "Үйлдвэрлэл, үйлчилгээний ажилтан",
+  "Бусад",
+];
+
+function positionTierRank(jobTitle?: string | null) {
+  const title = (jobTitle || "").toLocaleLowerCase("mn-MN");
+  if (!title) return 6;
+  // 0 — Удирдах дээд шат
+  if (title.includes("захирал")) return 0;
+  if (title.includes("үйл ажиллагаа") && title.includes("менежер")) return 0;
+  // 1 — Дунд шатны удирдлага
+  if (title.includes("дарга")) return 1;
+  // 2 — Анхан шатны удирдлага (ахлах/мастер/ерөнхий мэргэжилтэн)
+  if (title.includes("ахлах")) return 2;
+  if (title.includes("мастер")) return 2;
+  if (title.includes("ерөнхий механик")) return 2;
+  if (title.includes("ерөнхий ня") || title.includes("ерөнхий нягтлан")) return 2;
+  // 3 — Мэргэжлийн ажилтан
+  if (
+    title.includes("мэргэжилтэн") ||
+    title.includes("инженер") ||
+    title.includes("нягтлан") ||
+    title.includes("ня-бо") ||
+    title.includes("хяналтын ажилтан") ||
+    title.includes("технологи") ||
+    title.includes("хуулийн") ||
+    title.includes("архив") ||
+    title.includes("хүний нөөц") ||
+    title.includes("олон нийт")
+  ) {
+    return 3;
+  }
+  // 4 — Техникийн ажилтан (мэргэжлийн ур чадвартай)
+  if (
+    title.includes("засварчин") ||
+    title.includes("гагнуурчин") ||
+    title.includes("цахилгаанчин") ||
+    title.includes("мужаан") ||
+    title.includes("механик")
+  ) {
+    return 4;
+  }
+  // 5 — Үйлдвэрлэл, үйлчилгээний ажилтан
+  if (
+    title.includes("жолооч") ||
+    title.includes("ачигч") ||
+    title.includes("оператор") ||
+    title.includes("үйлчлэгч") ||
+    title.includes("цэвэрлэг") ||
+    title.includes("туслах") ||
+    title.includes("харуул") ||
+    title.includes("нярав")
+  ) {
+    return 5;
+  }
+  return 6;
+}
+
 // Зургийг дөрвөлжин болгон "cover" аргаар босоо байрлалаар (offsetYPercent) тайрч Blob болгоно
 function cropImageCover(url: string, offsetYPercent: number, size = 1024): Promise<Blob> {
   return new Promise((resolve, reject) => {
@@ -585,10 +651,11 @@ export function EmployeeTable({
       const matchesStatus = matchesEmployeeStatusFilter(employee, status);
       return matchesQuery && matchesDepartment && matchesJobTitle && matchesStatus;
     });
-    // Захирал → Үйл ажиллагаа хариуцсан менежер → Дотоод хяналт хамгийн дээр,
-    // дараа нь хэлтсээр бүлэглэн, хэлтэс доторх гол албан тушаалтныг (дарга/ерөнхий нягтлан/ХН) дээр
+    // Албан тушаалын түвшингээр (6 шат) бүлэглэн эрэмбэлж, шат дотор нь
+    // удирдлага → хэлтэс → гол албан тушаал → нэрээр эрэмбэлнэ.
     return [...filtered].sort(
       (left, right) =>
+        positionTierRank(left.jobTitle) - positionTierRank(right.jobTitle) ||
         topLeadershipRank(left.jobTitle) - topLeadershipRank(right.jobTitle) ||
         (left.departmentName || "").localeCompare(right.departmentName || "", "mn-MN") ||
         employeeRoleRank(left.jobTitle) - employeeRoleRank(right.jobTitle) ||
@@ -646,9 +713,18 @@ export function EmployeeTable({
       </div>
 
       <div className={styles.employeeGrid}>
-        {visibleEmployees.map((employee) => (
+        {visibleEmployees.map((employee, index) => {
+          const tier = positionTierRank(employee.jobTitle);
+          const showTierHeader =
+            index === 0 || tier !== positionTierRank(visibleEmployees[index - 1].jobTitle);
+          return (
+          <Fragment key={employee.id}>
+          {showTierHeader ? (
+            <div className={styles.tierHeader}>
+              <span>{POSITION_TIER_LABELS[tier]}</span>
+            </div>
+          ) : null}
           <Link
-            key={employee.id}
             href={`/hr/employees/${employee.id}`}
             className={styles.employeeGridCard}
           >
@@ -675,7 +751,9 @@ export function EmployeeTable({
               {statusLabel(employee)}
             </span>
           </Link>
-        ))}
+          </Fragment>
+          );
+        })}
       </div>
 
       {!visibleEmployees.length ? (
