@@ -352,6 +352,71 @@ function EmployeeIdentity({
   );
 }
 
+// Бүртгэлийн мөрийг ажилтны картаар харуулах (зураг + нэр + тушаал + хэлтэс + төлөв + дэлгэрэнгүй)
+function RegistryEmployeeCard({
+  record,
+  columns,
+}: {
+  record: RegistryRecord;
+  columns: RegistryColumn[];
+}) {
+  const idCol = columns.find((column) => column.photoKey);
+  const name = idCol ? String(record[idCol.key] ?? "") : "";
+  const jobTitle = idCol?.subKey ? String(record[idCol.subKey] ?? "") : "";
+  const photoUrl = idCol?.photoKey ? String(record[idCol.photoKey] ?? "") : "";
+  const href = idCol?.hrefKey ? String(record[idCol.hrefKey] ?? "") : "";
+  const deptCol = columns.find(
+    (column) => column !== idCol && /department|хэлтэс|алба нэгж/i.test(`${column.key} ${column.label}`),
+  );
+  const statusCol = columns.find((column) => /state|status|төлөв/i.test(`${column.key} ${column.label}`));
+  const dept = deptCol ? String(record[deptCol.key] ?? "") : "";
+  const status = statusCol ? String(record[statusCol.key] ?? "") : "";
+  const metaColumns = columns.filter(
+    (column) => column !== idCol && column !== deptCol && column !== statusCol && column.key !== idCol?.subKey,
+  );
+  const head = (
+    <>
+      <span className={styles.employeeGridAvatar}>
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photoUrl} alt="" className={styles.employeeGridAvatarImg} />
+        ) : (
+          employeeInitials(name)
+        )}
+      </span>
+      <strong className={styles.employeeGridName}>{formatEmployeeDisplayName(name)}</strong>
+      {jobTitle ? <span className={styles.employeeGridTitle}>{jobTitle}</span> : null}
+      {dept ? <span className={styles.employeeGridDept}>{dept}</span> : null}
+      {status ? <span className={styles.statusPill}>{status}</span> : null}
+    </>
+  );
+  return (
+    <div className={styles.registryCard}>
+      {href ? (
+        <Link href={href} className={styles.registryCardHead}>
+          {head}
+        </Link>
+      ) : (
+        <div className={styles.registryCardHead}>{head}</div>
+      )}
+      {metaColumns.length ? (
+        <dl className={styles.registryCardMeta}>
+          {metaColumns.map((column) => {
+            const value = record[column.key];
+            if (value === undefined || value === null || value === "") return null;
+            return (
+              <div key={column.key}>
+                <dt>{column.label}</dt>
+                <dd>{String(value)}</dd>
+              </div>
+            );
+          })}
+        </dl>
+      ) : null}
+    </div>
+  );
+}
+
 function employeeInitials(name: string) {
   const parts = (name || "").trim().split(/\s+/).filter(Boolean);
   return parts.slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("mn-MN") ?? "").join("") || "?";
@@ -3606,45 +3671,58 @@ export function TimeoffRequestsClient({
 
         {message ? <p className={message.includes("алдаа") || message.includes("эрх") ? styles.errorText : styles.successText}>{message}</p> : null}
 
-        <div className={styles.tableWrap}>
-          <table className={`${styles.table} ${styles.requestTable}`}>
-            <thead>
-              <tr>
-                <th>Ажилтан</th>
-                <th>Хэлтэс</th>
-                <th>Төрөл</th>
-                <th>Хугацаа</th>
-                <th>Илгээсэн</th>
-                <th>Төлөв</th>
-                <th>Хавсралт</th>
-                <th>Үйлдэл</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRequests.map((request) => (
-                <tr key={request.id}>
-                  <td>
-                    <EmployeeIdentity
-                      name={request.employeeName}
-                      jobTitle={employeeById.get(request.employeeId)?.jobTitle}
-                      photoUrl={employeeById.get(request.employeeId)?.photoUrl}
-                      href={`/hr/employees/${request.employeeId}`}
+        <div className={styles.registryCardGrid}>
+          {visibleRequests.map((request) => (
+            <div key={request.id} className={styles.registryCard}>
+              <Link href={`/hr/employees/${request.employeeId}`} className={styles.registryCardHead}>
+                <span className={styles.employeeGridAvatar}>
+                  {employeeById.get(request.employeeId)?.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={employeeById.get(request.employeeId)?.photoUrl}
+                      alt=""
+                      className={styles.employeeGridAvatarImg}
                     />
-                  </td>
-                  <td data-label="Хэлтэс">{request.departmentName}</td>
-                  <td data-label="Төрөл">{request.requestTypeLabel}</td>
-                  <td data-label="Хугацаа">
+                  ) : (
+                    employeeInitials(request.employeeName)
+                  )}
+                </span>
+                <strong className={styles.employeeGridName}>
+                  {formatEmployeeDisplayName(request.employeeName)}
+                </strong>
+                {employeeById.get(request.employeeId)?.jobTitle ? (
+                  <span className={styles.employeeGridTitle}>
+                    {employeeById.get(request.employeeId)?.jobTitle}
+                  </span>
+                ) : null}
+                {request.departmentName ? (
+                  <span className={styles.employeeGridDept}>{request.departmentName}</span>
+                ) : null}
+                <span className={styles.statusPill}>{request.stateLabel}</span>
+              </Link>
+              <dl className={styles.registryCardMeta}>
+                <div>
+                  <dt>Төрөл</dt>
+                  <dd>{request.requestTypeLabel}</dd>
+                </div>
+                <div>
+                  <dt>Хугацаа</dt>
+                  <dd>
                     {request.dateFrom} - {request.dateTo}
-                  </td>
-                  <td>{request.submittedBy || "Бүртгээгүй"}</td>
-                  <td data-label="Төлөв">
-                    <span className={styles.statusPill}>{request.stateLabel}</span>
-                  </td>
-                  <td data-label="Хавсралт">
+                  </dd>
+                </div>
+                <div>
+                  <dt>Илгээсэн</dt>
+                  <dd>{request.submittedBy || "Бүртгээгүй"}</dd>
+                </div>
+                <div>
+                  <dt>Хавсралт</dt>
+                  <dd>
                     <AttachmentLinks hasAttachment={request.hasAttachment} attachmentIds={request.attachmentIds} />
-                  </td>
-                  <td data-label="Үйлдэл">
-                    <div className={styles.checklist}>
+                  </dd>
+                </div>
+              </dl>
+              <div className={styles.checklist}>
                       {mode === "hr" && request.state === "submitted" ? (
                         <button
                           type="button"
@@ -3698,12 +3776,9 @@ export function TimeoffRequestsClient({
                           </button>
                         </>
                       ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              </div>
+            </div>
+          ))}
         </div>
 
         {!visibleRequests.length ? (
@@ -4249,7 +4324,13 @@ export function RegistryPage({
             </a>
           </div>
         ) : null}
-        {records.length && columns.length ? (
+        {records.length && columns.length && columns.some((column) => column.photoKey) ? (
+          <div className={styles.registryCardGrid}>
+            {records.map((record) => (
+              <RegistryEmployeeCard key={String(record.id)} record={record} columns={columns} />
+            ))}
+          </div>
+        ) : records.length && columns.length ? (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>

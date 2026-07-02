@@ -1722,6 +1722,64 @@
   line-height: 1.25;
 }
 
+/* Бүртгэлийн ажилтны картан жагсаалт (өвчтэй, чөлөө, сахилга, томилолт, тойрох гэх мэт) */
+.registryCardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+  padding: 4px 0 8px;
+}
+
+.registryCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 14px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(46, 125, 50, 0.12);
+  background: #ffffff;
+}
+
+.registryCardHead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 5px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.registryCardMeta {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid rgba(46, 125, 50, 0.1);
+  padding-top: 10px;
+}
+
+.registryCardMeta > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.registryCardMeta dt {
+  font-size: 11px;
+  color: #8a978f;
+  flex-shrink: 0;
+}
+
+.registryCardMeta dd {
+  margin: 0;
+  font-size: 12px;
+  color: #16241b;
+  text-align: right;
+  min-width: 0;
+}
+
 .detailRow:last-child {
   border-bottom: 0;
 }
