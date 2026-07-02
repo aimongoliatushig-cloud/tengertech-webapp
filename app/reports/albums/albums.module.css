@@ -11,6 +11,42 @@
   margin: 0;
 }
 
+.tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border, #e2e8f0);
+  background: var(--card, #ffffff);
+  color: var(--muted-foreground, #64748b);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.tab:hover {
+  background: var(--muted, #f8fafc);
+}
+
+.tabActive {
+  background: var(--primary, #0f172a);
+  border-color: var(--primary, #0f172a);
+  color: #ffffff;
+}
+
+.projectDate {
+  font-size: 12px;
+  color: var(--muted-foreground, #64748b);
+  white-space: nowrap;
+}
+
 .galleryRoot {
   display: flex;
   flex-direction: column;
@@ -93,6 +129,7 @@
   font-weight: 600;
   color: var(--foreground, #0f172a);
   min-width: 0;
+  flex: 1;
 }
 
 .projectCount {

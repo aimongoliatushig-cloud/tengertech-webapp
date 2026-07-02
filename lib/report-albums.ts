@@ -41,6 +41,146 @@ type ProjectRow = {
 
 const ALBUM_NAME_PREFIX = "🖼";
 
+export type AlbumMonthTask = {
+  taskId: number;
+  taskName: string;
+  departmentName: string;
+  date: string | null;
+  images: AlbumImage[];
+};
+
+export type AlbumMonth = {
+  monthKey: string; // "2026-02" эсвэл "unknown"
+  monthLabel: string;
+  imageCount: number;
+  tasks: AlbumMonthTask[];
+};
+
+type TaskRow = {
+  id: number;
+  name: string;
+  date_deadline: string | false;
+  ops_department_id: [number, string] | false;
+};
+
+const MONTH_UNKNOWN = "unknown";
+
+function monthLabelFromKey(monthKey: string): string {
+  if (monthKey === MONTH_UNKNOWN) {
+    return "Огноо тодорхойгүй";
+  }
+  const [year, month] = monthKey.split("-");
+  return `${year} оны ${Number(month)}-р сар`;
+}
+
+/**
+ * Огноот ажлын (project.task) зурган хавсралтуудыг task-ийн гүйцэтгэлийн
+ * огноогоор нь он-сараар бүлэглэн буцаана.
+ */
+export async function loadReportAlbumMonths(
+  connection: OdooConnection,
+  options: { departmentFilter?: (departmentName: string) => boolean } = {},
+): Promise<AlbumMonth[]> {
+  const attachments = await executeOdooKw<AttachmentRow[]>(
+    "ir.attachment",
+    "search_read",
+    [
+      [
+        ["res_model", "=", "project.task"],
+        ["mimetype", "like", "image"],
+      ],
+    ],
+    {
+      fields: ["name", "res_id"],
+      order: "res_id asc, id asc",
+      limit: 5000,
+    },
+    connection,
+  ).catch(() => [] as AttachmentRow[]);
+
+  if (!attachments.length) {
+    return [];
+  }
+
+  const taskIds = Array.from(new Set(attachments.map((row) => row.res_id)));
+  const tasks = await executeOdooKw<TaskRow[]>(
+    "project.task",
+    "read",
+    [taskIds],
+    { fields: ["name", "date_deadline", "ops_department_id"] },
+    connection,
+  ).catch(() => [] as TaskRow[]);
+
+  const taskById = new Map(tasks.map((task) => [task.id, task]));
+
+  const monthMap = new Map<string, AlbumMonth>();
+  const taskGroupById = new Map<number, AlbumMonthTask>();
+
+  for (const attachment of attachments) {
+    const task = taskById.get(attachment.res_id);
+    if (!task) {
+      continue;
+    }
+
+    const departmentRelation = task.ops_department_id || [0, "Бусад"];
+    const departmentName = fixMojibakeText(departmentRelation[1] || "Бусад");
+    if (options.departmentFilter && !options.departmentFilter(departmentName)) {
+      continue;
+    }
+
+    const date = typeof task.date_deadline === "string" ? task.date_deadline : null;
+    const monthKey = date ? date.slice(0, 7) : MONTH_UNKNOWN;
+
+    let taskGroup = taskGroupById.get(task.id);
+    if (!taskGroup) {
+      taskGroup = {
+        taskId: task.id,
+        taskName: fixMojibakeText(task.name || `Даалгавар ${task.id}`),
+        departmentName,
+        date: date ? date.slice(0, 10) : null,
+        images: [],
+      };
+      taskGroupById.set(task.id, taskGroup);
+
+      let month = monthMap.get(monthKey);
+      if (!month) {
+        month = {
+          monthKey,
+          monthLabel: monthLabelFromKey(monthKey),
+          imageCount: 0,
+          tasks: [],
+        };
+        monthMap.set(monthKey, month);
+      }
+      month.tasks.push(taskGroup);
+    }
+
+    taskGroup.images.push({
+      id: attachment.id,
+      name: fixMojibakeText(attachment.name || `Зураг ${attachment.id}`),
+    });
+  }
+
+  const months = Array.from(monthMap.values());
+  for (const month of months) {
+    month.imageCount = month.tasks.reduce(
+      (sum, task) => sum + task.images.length,
+      0,
+    );
+    month.tasks.sort((left, right) =>
+      (left.date || "").localeCompare(right.date || ""),
+    );
+  }
+  // Он-сараар өсөхөөр эрэмбэлж, "Огноо тодорхойгүй"-г хамгийн сүүлд
+  months.sort((left, right) => {
+    if (left.monthKey === MONTH_UNKNOWN) return 1;
+    if (right.monthKey === MONTH_UNKNOWN) return -1;
+    return left.monthKey.localeCompare(right.monthKey);
+  });
+
+  return months;
+}
+
 /**
  * Тайлангийн зургийн цомог: project.project бичлэгүүдэд хавсаргасан зургууд.
  * Хэлтэс → project → зураг гэсэн бүтцээр бүлэглэн буцаана.
