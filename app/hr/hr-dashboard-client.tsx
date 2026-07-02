@@ -7,10 +7,7 @@ import {
   Activity,
   CalendarDays,
   Check,
-  ClipboardPlus,
-  FileCheck2,
   FileWarning,
-  HeartPulse,
   Hourglass,
   Users,
   XCircle,
@@ -25,7 +22,7 @@ import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 import { HR_NOTIFICATION_HREF } from "./constants";
 import styles from "./hr.module.css";
 
-type DetailKind = "total" | "active" | "timeoff" | "annual_leave" | "sick" | "pending" | "approved" | "trial";
+type DetailKind = "total" | "active" | "leave" | "requests" | "trial";
 
 type StatCard = {
   kind: DetailKind;
@@ -46,11 +43,8 @@ const STATUS_COLORS = ["#2e7d32", "#3f7ee8", "#f2ad13", "#7c6de8", "#9aa4b2", "#
 const STAT_CARD_TONE_CLASS: Record<DetailKind, string> = {
   total: styles.statCardTotal,
   active: styles.statCardActive,
-  timeoff: styles.statCardTimeoff,
-  annual_leave: styles.statCardTimeoff,
-  sick: styles.statCardSick,
-  pending: styles.statCardPending,
-  approved: styles.statCardApproved,
+  leave: styles.statCardTimeoff,
+  requests: styles.statCardPending,
   trial: styles.statCardTrial,
 };
 
@@ -366,7 +360,7 @@ export function HrDashboardClient({
   dashboard: HrTimeoffDashboardData | null;
   disciplineRecords?: HrDisciplineRecord[];
 }) {
-  const [detailKind, setDetailKind] = useState<DetailKind>("timeoff");
+  const [detailKind, setDetailKind] = useState<DetailKind>("leave");
   const router = useRouter();
   const [trialActionEmployeeId, setTrialActionEmployeeId] = useState<number | null>(null);
   const [trialActionPendingEmployeeId, setTrialActionPendingEmployeeId] = useState<number | null>(null);
@@ -413,39 +407,20 @@ export function HrDashboardClient({
       note: "Өнөөдрийн динамик төлөв",
     },
     {
-      kind: "timeoff",
-      label: "Чөлөөтэй",
-      value: timeoffEmployees.length,
-      icon: ClipboardPlus,
-      note: "Батлагдсан хүсэлт хүчинтэй",
-    },
-    {
-      kind: "annual_leave",
-      label: "Ээлжийн амралттай",
-      value: annualLeaveEmployees.length,
+      kind: "leave",
+      label: "Чөлөө, амралт",
+      value: timeoffEmployees.length + annualLeaveEmployees.length + sickEmployees.length,
       icon: CalendarDays,
-      note: "Батлагдсан ээлжийн амралт",
+      note: "Чөлөө / ээлжийн амралт / өвчтэй",
     },
     {
-      kind: "sick",
-      label: "Өвчтэй",
-      value: sickEmployees.length,
-      icon: HeartPulse,
-      note: "Батлагдсан өвчтэй хүсэлт",
-    },
-    {
-      kind: "pending",
-      label: "Хүлээгдэж буй хүсэлт",
-      value: cardsSource?.pendingRequests ?? pendingRequests.length,
+      kind: "requests",
+      label: "Хүсэлт",
+      value:
+        (cardsSource?.pendingRequests ?? pendingRequests.length) +
+        (cardsSource?.approvedRequests ?? approvedRequests.length),
       icon: FileWarning,
-      note: "Илгээсэн / HR шалгаж байна",
-    },
-    {
-      kind: "approved",
-      label: "Батлагдсан",
-      value: cardsSource?.approvedRequests ?? approvedRequests.length,
-      icon: FileCheck2,
-      note: "HR баталсан",
+      note: "Хүлээгдэж буй + батлагдсан",
     },
     {
       kind: "trial",
@@ -457,11 +432,11 @@ export function HrDashboardClient({
   ];
 
   const statusSlices: ChartSlice[] = [
-    { label: "Идэвхтэй ажилтан", value: cards[1].value, color: STATUS_COLORS[0] },
-    { label: "Чөлөөтэй", value: cards[2].value, color: STATUS_COLORS[1] },
-    { label: "Ээлжийн амралттай", value: cards[3].value, color: STATUS_COLORS[2] },
-    { label: "Өвчтэй", value: cards[4].value, color: STATUS_COLORS[3] },
-    { label: "Хүлээгдэж буй хүсэлт", value: cards[5].value, color: STATUS_COLORS[4] },
+    { label: "Идэвхтэй ажилтан", value: activeEmployees.length, color: STATUS_COLORS[0] },
+    { label: "Чөлөөтэй", value: timeoffEmployees.length, color: STATUS_COLORS[1] },
+    { label: "Ээлжийн амралттай", value: annualLeaveEmployees.length, color: STATUS_COLORS[2] },
+    { label: "Өвчтэй", value: sickEmployees.length, color: STATUS_COLORS[3] },
+    { label: "Хүлээгдэж буй хүсэлт", value: pendingRequests.length, color: STATUS_COLORS[4] },
   ];
 
   const disciplineTypeSlices: ChartSlice[] = Array.from(
@@ -648,26 +623,29 @@ export function HrDashboardClient({
         )),
       ];
     }
-    if (kind === "timeoff") {
-      return timeoffEmployees.map((employee) => (
-        <StatusEmployeeRow key={employee.id} employee={employee} request={currentRequestByEmployee.get(employee.id)} />
-      ));
+    if (kind === "leave") {
+      return [
+        <DetailGroupHeader key="leave-timeoff-header" label="Чөлөөтэй" value={timeoffEmployees.length} />,
+        ...timeoffEmployees.map((employee) => (
+          <StatusEmployeeRow key={`timeoff-${employee.id}`} employee={employee} request={currentRequestByEmployee.get(employee.id)} />
+        )),
+        <DetailGroupHeader key="leave-annual-header" label="Ээлжийн амралттай" value={annualLeaveEmployees.length} />,
+        ...annualLeaveEmployees.map((employee) => (
+          <StatusEmployeeRow key={`annual-${employee.id}`} employee={employee} request={currentRequestByEmployee.get(employee.id)} />
+        )),
+        <DetailGroupHeader key="leave-sick-header" label="Өвчтэй" value={sickEmployees.length} />,
+        ...sickEmployees.map((employee) => (
+          <StatusEmployeeRow key={`sick-${employee.id}`} employee={employee} request={currentRequestByEmployee.get(employee.id)} />
+        )),
+      ];
     }
-    if (kind === "annual_leave") {
-      return annualLeaveEmployees.map((employee) => (
-        <StatusEmployeeRow key={employee.id} employee={employee} request={currentRequestByEmployee.get(employee.id)} />
-      ));
-    }
-    if (kind === "sick") {
-      return sickEmployees.map((employee) => (
-        <StatusEmployeeRow key={employee.id} employee={employee} request={currentRequestByEmployee.get(employee.id)} />
-      ));
-    }
-    if (kind === "pending") {
-      return pendingRequests.map((request) => <RequestRow key={request.id} request={request} />);
-    }
-    if (kind === "approved") {
-      return approvedRequests.map((request) => <RequestRow key={request.id} request={request} />);
+    if (kind === "requests") {
+      return [
+        <DetailGroupHeader key="req-pending-header" label="Хүлээгдэж буй" value={pendingRequests.length} />,
+        ...pendingRequests.map((request) => <RequestRow key={`pending-${request.id}`} request={request} />),
+        <DetailGroupHeader key="req-approved-header" label="Батлагдсан" value={approvedRequests.length} />,
+        ...approvedRequests.map((request) => <RequestRow key={`approved-${request.id}`} request={request} />),
+      ];
     }
     return [];
   };
@@ -793,7 +771,7 @@ export function HrDashboardClient({
         })}
       </section>
 
-      {detailKind === "pending" ? <PendingRequestQueue requests={pendingRequests} /> : null}
+      {detailKind === "requests" ? <PendingRequestQueue requests={pendingRequests} /> : null}
 
       <section className={`${styles.detailPanel} ${styles.desktopDetailPanel}`}>
         <div className={styles.sectionHeader}>
