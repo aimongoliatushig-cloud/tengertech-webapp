@@ -1672,6 +1672,56 @@
   line-height: 1.3;
 }
 
+/* Ажилтны нэгдсэн харагдац (зураг + нэр + албан тушаал) — бүх хэсэгт ижил */
+.identityRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.identityAvatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(46, 125, 50, 0.12);
+  color: #2e7d32;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.identityAvatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.identityMain {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.identityName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #16241b;
+  line-height: 1.2;
+}
+
+.identitySub {
+  font-size: 11px;
+  color: #6b7a72;
+  line-height: 1.25;
+}
+
 .detailRow:last-child {
   border-bottom: 0;
 }

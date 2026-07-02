@@ -311,11 +311,61 @@ export type RegistryColumn = {
   key: string;
   label: string;
   hrefKey?: string;
+  // Ажилтны багана — зураг + нэр + албан тушаалаар харуулна
+  photoKey?: string;
+  subKey?: string;
 };
+
+function EmployeeIdentity({
+  name,
+  jobTitle,
+  photoUrl,
+  href,
+}: {
+  name: string;
+  jobTitle?: string;
+  photoUrl?: string;
+  href?: string;
+}) {
+  const body = (
+    <>
+      <span className={styles.identityAvatar}>
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photoUrl} alt="" className={styles.identityAvatarImg} />
+        ) : (
+          employeeInitials(name)
+        )}
+      </span>
+      <span className={styles.identityMain}>
+        <strong className={styles.identityName}>{formatEmployeeDisplayName(name)}</strong>
+        {jobTitle ? <small className={styles.identitySub}>{jobTitle}</small> : null}
+      </span>
+    </>
+  );
+  return href ? (
+    <Link href={href} className={styles.identityRow}>
+      {body}
+    </Link>
+  ) : (
+    <span className={styles.identityRow}>{body}</span>
+  );
+}
 
 function employeeInitials(name: string) {
   const parts = (name || "").trim().split(/\s+/).filter(Boolean);
   return parts.slice(0, 2).map((part) => part[0]?.toLocaleUpperCase("mn-MN") ?? "").join("") || "?";
+}
+
+// Хэлтэс доторх дэс дараа: дарга → ерөнхий нягтлан/ХН → менежер → бусад
+function employeeRoleRank(jobTitle?: string | null) {
+  const title = (jobTitle || "").toLocaleLowerCase("mn-MN");
+  if (title.includes("дарга")) return 0;
+  if (title.includes("ерөнхий ня") || title.includes("ерөнхий нягтлан")) return 1;
+  if (title.includes("хүний нөөц")) return 1;
+  if (title.includes("менежер")) return 2;
+  if (title.includes("нягтлан") || title.includes("ня-бо") || title.includes("мэргэжилтэн")) return 3;
+  return 5;
 }
 
 // Зургийг дөрвөлжин болгон "cover" аргаар босоо байрлалаар (offsetYPercent) тайрч Blob болгоно
@@ -433,7 +483,7 @@ export function EmployeeTable({
 
   const visibleEmployees = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("mn-MN");
-    return employees.filter((employee) => {
+    const filtered = employees.filter((employee) => {
       const matchesQuery = normalizedQuery
         ? [
             employee.name,
@@ -450,6 +500,13 @@ export function EmployeeTable({
       const matchesStatus = matchesEmployeeStatusFilter(employee, status);
       return matchesQuery && matchesDepartment && matchesJobTitle && matchesStatus;
     });
+    // Хэлтсээр бүлэглэн, хэлтэс доторх гол албан тушаалтныг (дарга/ерөнхий нягтлан/ХН) дээр
+    return [...filtered].sort(
+      (left, right) =>
+        (left.departmentName || "").localeCompare(right.departmentName || "", "mn-MN") ||
+        employeeRoleRank(left.jobTitle) - employeeRoleRank(right.jobTitle) ||
+        left.name.localeCompare(right.name, "mn-MN"),
+    );
   }, [department, employees, jobTitle, query, status]);
 
   return (
@@ -3390,6 +3447,10 @@ export function TimeoffRequestsClient({
     requestedType === "sick" ? "sick" : requestedType === "annual_leave" ? "annual_leave" : "time_off";
   const defaultFilter = searchParams.get("state") || searchParams.get("requestType") || ALL;
   const defaultEmployeeId = searchParams.get("employeeId") || "";
+  const employeeById = useMemo(
+    () => new Map(employees.map((employee) => [employee.id, employee])),
+    [employees],
+  );
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [filter, setFilter] = useState(defaultFilter);
@@ -3530,7 +3591,12 @@ export function TimeoffRequestsClient({
               {visibleRequests.map((request) => (
                 <tr key={request.id}>
                   <td>
-                    <Link href={`/hr/employees/${request.employeeId}`}>{formatEmployeeDisplayName(request.employeeName)}</Link>
+                    <EmployeeIdentity
+                      name={request.employeeName}
+                      jobTitle={employeeById.get(request.employeeId)?.jobTitle}
+                      photoUrl={employeeById.get(request.employeeId)?.photoUrl}
+                      href={`/hr/employees/${request.employeeId}`}
+                    />
                   </td>
                   <td data-label="Хэлтэс">{request.departmentName}</td>
                   <td data-label="Төрөл">{request.requestTypeLabel}</td>
@@ -4167,9 +4233,22 @@ export function RegistryPage({
                     {columns.map((column) => {
                       const value = record[column.key];
                       const href = column.hrefKey ? record[column.hrefKey] : "";
+                      const photo = column.photoKey ? record[column.photoKey] : "";
+                      const sub = column.subKey ? record[column.subKey] : "";
                       return (
                         <td key={column.key}>
-                          {href ? <Link href={String(href)}>{String(value || "Бүртгээгүй")}</Link> : String(value || "Бүртгээгүй")}
+                          {column.photoKey ? (
+                            <EmployeeIdentity
+                              name={String(value || "Бүртгээгүй")}
+                              jobTitle={sub ? String(sub) : undefined}
+                              photoUrl={photo ? String(photo) : undefined}
+                              href={href ? String(href) : undefined}
+                            />
+                          ) : href ? (
+                            <Link href={String(href)}>{String(value || "Бүртгээгүй")}</Link>
+                          ) : (
+                            String(value || "Бүртгээгүй")
+                          )}
                         </td>
                       );
                     })}

@@ -5,6 +5,7 @@ import { requireSession,
 import {
   getDepartments,
   getEmployee,
+  getEmployees,
   getEmployeeTransfers,
   getJobs,
   getManagers,
@@ -31,12 +32,14 @@ export default async function HrTransfersPage({ searchParams }: PageProps) {
   const selectedEmployee = Number.isFinite(selectedEmployeeId)
     ? await getEmployee(session, selectedEmployeeId).catch(() => null)
     : null;
-  const [departments, jobs, managers, transferRecords] = await Promise.all([
+  const [departments, jobs, managers, transferRecords, employees] = await Promise.all([
     getDepartments(session),
     getJobs(session),
     getManagers(session),
     getEmployeeTransfers(session),
+    getEmployees(session).catch(() => []),
   ]);
+  const transferEmployeeById = new Map(employees.map((employee) => [employee.id, employee]));
 
   return (
     <>
@@ -68,9 +71,10 @@ export default async function HrTransfersPage({ searchParams }: PageProps) {
           attachmentName: record.attachmentName || "Байхгүй",
           attachmentHref: record.attachmentUrl || "",
           employeeHref: `/hr/employees/${record.employeeId}`,
+          employeePhotoUrl: transferEmployeeById.get(record.employeeId)?.photoUrl || "",
         }))}
         columns={[
-          { key: "employeeName", label: "Ажилтан", hrefKey: "employeeHref" },
+          { key: "employeeName", label: "Ажилтан", hrefKey: "employeeHref", photoKey: "employeePhotoUrl", subKey: "toJob" },
           { key: "date", label: "Огноо" },
           { key: "fromDepartment", label: "Өмнөх хэлтэс" },
           { key: "toDepartment", label: "Шинэ хэлтэс" },

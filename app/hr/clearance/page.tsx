@@ -39,11 +39,14 @@ export default async function HrClearancePage({ searchParams }: PageProps) {
     getClearanceRecords(session).catch(() => []),
   ]);
   const employeeOptions = employees.map((employee) => ({ id: employee.id, name: formatEmployeeDisplayName(employee.name) }));
+  const clearanceEmployeeById = new Map(employees.map((employee) => [employee.id, employee]));
   const registryRecords = records.map((record) => ({
     id: record.id,
     name: record.name,
     employeeId: record.employeeId,
     employeeName: formatEmployeeDisplayName(record.employeeName),
+    employeeHref: record.employeeId ? `/hr/employees/${record.employeeId}` : "",
+    employeePhotoUrl: record.employeeId ? clearanceEmployeeById.get(record.employeeId)?.photoUrl || "" : "",
     departmentId: record.departmentId,
     departmentName: record.departmentName,
     jobTitle: record.jobTitle,
@@ -109,7 +112,7 @@ export default async function HrClearancePage({ searchParams }: PageProps) {
         successMessage="Тойрох хуудас хадгалагдлаа."
         records={registryRecords}
         columns={[
-          { key: "employeeName", label: "Ажилтан" },
+          { key: "employeeName", label: "Ажилтан", hrefKey: "employeeHref", photoKey: "employeePhotoUrl", subKey: "jobTitle" },
           { key: "savedDate", label: "Хадгалсан огноо" },
           { key: "sectionLabel", label: "Шалгах хэсэг" },
           { key: "stateLabel", label: "Төлөв" },

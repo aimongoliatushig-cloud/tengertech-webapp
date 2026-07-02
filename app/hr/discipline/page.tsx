@@ -46,6 +46,7 @@ export default async function HrDisciplinePage({ searchParams }: PageProps) {
     departmentId: record.departmentId,
     departmentName: record.departmentName,
     jobTitle: record.employeeId ? employeeById.get(record.employeeId)?.jobTitle || "" : "",
+    employeePhotoUrl: record.employeeId ? employeeById.get(record.employeeId)?.photoUrl || "" : "",
     violationType: record.violationType,
     violationTypeLabel: record.violationTypeLabel,
     violationDate: record.violationDate,
@@ -88,7 +89,7 @@ export default async function HrDisciplinePage({ searchParams }: PageProps) {
         successMessage="Сахилгын бүртгэл үүсгэгдлээ."
         records={registryRecords}
         columns={[
-          { key: "employeeName", label: "Ажилтан", hrefKey: "employeeHref" },
+          { key: "employeeName", label: "Ажилтан", hrefKey: "employeeHref", photoKey: "employeePhotoUrl", subKey: "jobTitle" },
           { key: "departmentName", label: "Хэлтэс" },
           { key: "violationTypeLabel", label: "Зөрчлийн төрөл" },
           { key: "violationDate", label: "Огноо" },

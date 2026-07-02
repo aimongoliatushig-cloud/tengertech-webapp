@@ -91,11 +91,12 @@ export default async function HrArchivePage({ searchParams }: PageProps) {
           employeeName: formatEmployeeDisplayName(employee.name),
           departmentName: employee.departmentName,
           jobTitle: employee.jobTitle,
+          employeePhotoUrl: employee.photoUrl || "",
           statusLabel: employee.statusLabel,
           href: `/hr/employees/${employee.id}`,
         }))}
         columns={[
-          { key: "employeeName", label: "Ажилтан", hrefKey: "href" },
+          { key: "employeeName", label: "Ажилтан", hrefKey: "href", photoKey: "employeePhotoUrl", subKey: "jobTitle" },
           { key: "departmentName", label: "Хэлтэс" },
           { key: "jobTitle", label: "Албан тушаал" },
           { key: "statusLabel", label: "Төлөв" },
