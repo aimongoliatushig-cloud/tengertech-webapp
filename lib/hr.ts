@@ -2559,6 +2559,61 @@ export async function getDepartmentJobCounts(session: AppSession): Promise<HrDep
   return [...byDepartment.values()];
 }
 
+export type HrHeadcountTrendPoint = {
+  key: string;
+  label: string;
+  hires: number;
+  leaves: number;
+};
+
+/**
+ * Сүүлийн `months` сарын шинэ томилолт (contract_date_start) болон чөлөөлөлт
+ * (departure_date)-ийг сараар тоолж буцаана. Архивласан ажилтныг оруулахын
+ * тулд active_test=false контекст ашиглана.
+ */
+export async function getHeadcountTrend(session: AppSession, months = 6): Promise<HrHeadcountTrendPoint[]> {
+  const records = await executeOdooKw<{ contract_date_start?: string | false; departure_date?: string | false }[]>(
+    "hr.employee",
+    "search_read",
+    [[]],
+    {
+      fields: ["contract_date_start", "departure_date"],
+      context: { active_test: false },
+      limit: 5000,
+    },
+    getConnection(session),
+  ).catch((error) => {
+    console.warn("HR headcount trend could not be loaded:", error);
+    return [] as { contract_date_start?: string | false; departure_date?: string | false }[];
+  });
+
+  const now = new Date();
+  let year = now.getUTCFullYear();
+  let month = now.getUTCMonth() + 1;
+  const points: HrHeadcountTrendPoint[] = [];
+  for (let index = 0; index < months; index += 1) {
+    const key = `${year}-${String(month).padStart(2, "0")}`;
+    points.unshift({ key, label: `${month}-р`, hires: 0, leaves: 0 });
+    month -= 1;
+    if (month < 1) {
+      month = 12;
+      year -= 1;
+    }
+  }
+
+  const byKey = new Map(points.map((point) => [point.key, point]));
+  for (const record of records) {
+    const started = typeof record.contract_date_start === "string" ? record.contract_date_start.slice(0, 7) : "";
+    const hirePoint = started ? byKey.get(started) : undefined;
+    if (hirePoint) hirePoint.hires += 1;
+    const departed = typeof record.departure_date === "string" ? record.departure_date.slice(0, 7) : "";
+    const leavePoint = departed ? byKey.get(departed) : undefined;
+    if (leavePoint) leavePoint.leaves += 1;
+  }
+
+  return points;
+}
+
 export async function getJobs(session: AppSession): Promise<HrOption[]> {
   return executeOdooKw<OdooDictionaryRecord[]>(
     "hr.job",

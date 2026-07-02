@@ -2,7 +2,7 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
-import { getDepartmentJobCounts, getDisciplineRecords, getEmployees, getTimeoffDashboard, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
+import { getDepartmentJobCounts, getDisciplineRecords, getEmployees, getHeadcountTrend, getTimeoffDashboard, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
 
 import { HrDashboardClient } from "./hr-dashboard-client";
 import { HR_NOTIFICATION_HREF } from "./constants";
@@ -17,7 +17,7 @@ export default async function HrDashboardPage() {
   if (!access) {
     return null;
   }
-  const [employees, timeoffDashboard, timeoffRequests, disciplineRecords, departmentJobCounts] = await Promise.all([
+  const [employees, timeoffDashboard, timeoffRequests, disciplineRecords, departmentJobCounts, headcountTrend] = await Promise.all([
     getEmployees(session).catch((error) => {
       console.warn("HR dashboard employee groups could not be loaded:", error);
       return [];
@@ -36,6 +36,10 @@ export default async function HrDashboardPage() {
     }),
     getDepartmentJobCounts(session).catch((error) => {
       console.warn("HR department job counts could not be loaded:", error);
+      return [];
+    }),
+    getHeadcountTrend(session).catch((error) => {
+      console.warn("HR headcount trend could not be loaded:", error);
       return [];
     }),
   ]);
@@ -62,6 +66,7 @@ export default async function HrDashboardPage() {
         dashboard={timeoffDashboard}
         disciplineRecords={disciplineRecords}
         departmentJobCounts={departmentJobCounts}
+        headcountTrend={headcountTrend}
       />
     </>
   );

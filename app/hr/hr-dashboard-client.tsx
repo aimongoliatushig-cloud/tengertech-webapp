@@ -10,8 +10,6 @@ import {
   FileWarning,
   Hourglass,
   Network,
-  UserMinus,
-  UserPlus,
   Users,
   XCircle,
   type LucideIcon,
@@ -19,7 +17,7 @@ import {
 
 import { compareHrDepartmentNames } from "@/lib/hr-department-order";
 import { formatEmployeeDisplayName } from "@/lib/hr-name";
-import type { HrDepartmentJobCounts, HrDisciplineRecord, HrTimeoffDashboardData, HrTimeoffRequest } from "@/lib/hr";
+import type { HrDepartmentJobCounts, HrDisciplineRecord, HrHeadcountTrendPoint, HrTimeoffDashboardData, HrTimeoffRequest } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
 import { HR_NOTIFICATION_HREF } from "./constants";
@@ -43,7 +41,20 @@ type ChartSlice = {
   color: string;
 };
 
-const STATUS_COLORS = ["#2e7d32", "#3f7ee8", "#f2ad13", "#7c6de8", "#9aa4b2", "#ef4d84", "#39b6c8"];
+const STATUS_COLORS = [
+  "#16a34a",
+  "#2563eb",
+  "#f59e0b",
+  "#8b5cf6",
+  "#f43f5e",
+  "#06b6d4",
+  "#84cc16",
+  "#f97316",
+  "#a855f7",
+  "#14b8a6",
+  "#ef4444",
+  "#eab308",
+];
 
 const STAT_CARD_TONE_CLASS: Record<DetailKind, string> = {
   total: styles.statCardTotal,
@@ -159,6 +170,139 @@ function AnimatedPie({
           </div>
         </div>
       </div>
+    </section>
+  );
+}
+
+function TrendLineChart({
+  title,
+  data,
+}: {
+  title: string;
+  data: HrHeadcountTrendPoint[];
+}) {
+  const width = 340;
+  const height = 168;
+  const padX = 26;
+  const padTop = 16;
+  const padBottom = 26;
+  const maxValue = Math.max(1, ...data.map((point) => Math.max(point.hires, point.leaves)));
+  const count = data.length;
+  const x = (index: number) => (count <= 1 ? padX : padX + (index * (width - 2 * padX)) / (count - 1));
+  const y = (value: number) => padTop + (1 - value / maxValue) * (height - padTop - padBottom);
+  const buildLine = (key: "hires" | "leaves") =>
+    data.map((point, index) => `${x(index).toFixed(1)},${y(point[key]).toFixed(1)}`).join(" ");
+  const series: { key: "hires" | "leaves"; color: string; label: string }[] = [
+    { key: "hires", color: "#16a34a", label: "Шинэ томилолт" },
+    { key: "leaves", color: "#ef4444", label: "Чөлөөлсөн" },
+  ];
+
+  return (
+    <section className={styles.chartPanel}>
+      <h2>{title}</h2>
+      <div className={styles.trendChart}>
+        <svg viewBox={`0 0 ${width} ${height}`} role="img" preserveAspectRatio="xMidYMid meet">
+          {[0, 0.5, 1].map((ratio) => {
+            const gy = padTop + ratio * (height - padTop - padBottom);
+            return (
+              <line
+                key={ratio}
+                x1={padX}
+                y1={gy}
+                x2={width - padX}
+                y2={gy}
+                stroke="rgba(15,23,42,0.08)"
+                strokeWidth={1}
+              />
+            );
+          })}
+          {series.map((line) => (
+            <polyline
+              key={line.key}
+              points={buildLine(line.key)}
+              fill="none"
+              stroke={line.color}
+              strokeWidth={2.4}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          ))}
+          {series.map((line) =>
+            data.map((point, index) => (
+              <circle
+                key={`${line.key}-${index}`}
+                cx={x(index)}
+                cy={y(point[line.key])}
+                r={3}
+                fill="#fff"
+                stroke={line.color}
+                strokeWidth={2}
+              />
+            )),
+          )}
+          {data.map((point, index) => (
+            <text
+              key={`label-${index}`}
+              x={x(index)}
+              y={height - 8}
+              textAnchor="middle"
+              fontSize={10}
+              fill="#6b7a72"
+            >
+              {point.label}
+            </text>
+          ))}
+        </svg>
+        <div className={styles.chartLegend}>
+          {series.map((line) => {
+            const total = data.reduce((sum, point) => sum + point[line.key], 0);
+            return (
+              <div key={line.key} className={styles.chartLegendRow}>
+                <span style={{ background: line.color }} />
+                <em>{line.label}</em>
+                <strong>{total}</strong>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AgeBarChart({
+  title,
+  buckets,
+  averageAge,
+}: {
+  title: string;
+  buckets: { label: string; value: number }[];
+  averageAge: number;
+}) {
+  const maxValue = Math.max(1, ...buckets.map((bucket) => bucket.value));
+  return (
+    <section className={styles.chartPanel}>
+      <h2>{title}</h2>
+      <div className={styles.barChart}>
+        {buckets.map((bucket, index) => (
+          <div key={bucket.label} className={styles.barCol}>
+            <span className={styles.barValue}>{bucket.value}</span>
+            <div className={styles.barTrack}>
+              <div
+                className={styles.barFill}
+                style={{
+                  height: `${(bucket.value / maxValue) * 100}%`,
+                  background: STATUS_COLORS[index % STATUS_COLORS.length],
+                }}
+              />
+            </div>
+            <span className={styles.barLabel}>{bucket.label}</span>
+          </div>
+        ))}
+      </div>
+      <p className={styles.barCaption}>
+        Дундаж нас: <strong>{averageAge ? averageAge : "—"}</strong>
+      </p>
     </section>
   );
 }
@@ -376,6 +520,7 @@ export function HrDashboardClient({
   dashboard,
   disciplineRecords = [],
   departmentJobCounts = [],
+  headcountTrend = [],
 }: {
   accessMode: "hr" | "department";
   employees: HrEmployeeDirectoryItem[];
@@ -383,6 +528,7 @@ export function HrDashboardClient({
   dashboard: HrTimeoffDashboardData | null;
   disciplineRecords?: HrDisciplineRecord[];
   departmentJobCounts?: HrDepartmentJobCounts[];
+  headcountTrend?: HrHeadcountTrendPoint[];
 }) {
   const router = useRouter();
   const [trialActionEmployeeId, setTrialActionEmployeeId] = useState<number | null>(null);
@@ -414,15 +560,8 @@ export function HrDashboardClient({
   const approvedRequests = requests.filter((request) => request.state === "approved");
   const cardsSource = dashboard?.cards;
 
-  // Нэмэлт үзүүлэлт: энэ сарын шинэ/чөлөөлсөн, дундаж нас, хүйс
-  const monthPrefix = today.slice(0, 7);
+  // Нэмэлт үзүүлэлт: насны бүтэц, дундаж нас, хүйс
   const currentYear = Number(today.slice(0, 4));
-  const newThisMonthCount = workforceEmployees.filter(
-    (employee) => (employee.startDate || "").slice(0, 7) === monthPrefix,
-  ).length;
-  const leftThisMonthCount = employees.filter(
-    (employee) => !employee.active && (employee.departureDate || "").slice(0, 7) === monthPrefix,
-  ).length;
   const employeeAges = workforceEmployees
     .map((employee) => {
       const birthYear = Number((employee.birthDate || "").slice(0, 4));
@@ -432,19 +571,39 @@ export function HrDashboardClient({
   const averageAge = employeeAges.length
     ? Math.round(employeeAges.reduce((sum, age) => sum + age, 0) / employeeAges.length)
     : 0;
+  const AGE_BUCKET_DEFS: { label: string; min: number; max: number }[] = [
+    { label: "18-25", min: 18, max: 25 },
+    { label: "26-35", min: 26, max: 35 },
+    { label: "36-45", min: 36, max: 45 },
+    { label: "46-55", min: 46, max: 55 },
+    { label: "56+", min: 56, max: 200 },
+  ];
+  const ageBuckets = AGE_BUCKET_DEFS.map((bucket) => ({
+    label: bucket.label,
+    value: employeeAges.filter((age) => age >= bucket.min && age <= bucket.max).length,
+  }));
   const maleCount = workforceEmployees.filter((employee) => employee.genderKey === "male").length;
   const femaleCount = workforceEmployees.filter((employee) => employee.genderKey === "female").length;
-  const leaveTotalCount = timeoffEmployees.length + annualLeaveEmployees.length + sickEmployees.length;
-  const miniMetrics = [
-    { label: "Энэ сарын шинэ ажилтан", value: newThisMonthCount, icon: UserPlus },
-    { label: "Энэ сард чөлөөлсөн", value: leftThisMonthCount, icon: UserMinus },
-    { label: "Чөлөө, амралт, өвчтэй", value: leaveTotalCount, icon: CalendarDays },
-    { label: "Дундаж нас", value: averageAge ? `${averageAge}` : "—", icon: Activity },
-  ];
   const genderSlices: ChartSlice[] = [
-    { label: "Эрэгтэй", value: maleCount, color: "#3f7ee8" },
-    { label: "Эмэгтэй", value: femaleCount, color: "#ef4d84" },
+    { label: "Эрэгтэй", value: maleCount, color: "#2563eb" },
+    { label: "Эмэгтэй", value: femaleCount, color: "#ec4899" },
   ];
+  const departmentPositionCharts = departmentJobCounts
+    .filter((bucket) => bucket.total > 0)
+    .slice()
+    .sort((left, right) => right.total - left.total)
+    .map((bucket) => ({
+      name: bucket.departmentName.split(" / ").pop() || bucket.departmentName,
+      total: bucket.total,
+      slices: bucket.jobCounts
+        .slice()
+        .sort((left, right) => right.count - left.count)
+        .map((entry, index) => ({
+          label: entry.title,
+          value: entry.count,
+          color: STATUS_COLORS[index % STATUS_COLORS.length],
+        })),
+    }));
 
   const cards: StatCard[] = [
     {
@@ -765,24 +924,33 @@ export function HrDashboardClient({
         })}
       </section>
 
-      <section className={styles.miniMetrics}>
-        {miniMetrics.map((metric) => {
-          const Icon = metric.icon;
-          return (
-            <div key={metric.label} className={styles.miniMetric}>
-              <span className={styles.miniMetricIcon}>
-                <Icon aria-hidden size={16} />
-              </span>
-              <div>
-                <strong>{metric.value}</strong>
-                <small>{metric.label}</small>
-              </div>
-            </div>
-          );
-        })}
-      </section>
+      <div className={styles.chartGrid}>
+        <TrendLineChart title="Шинэ болон чөлөөлсөн ажилтан (сүүлийн 6 сар)" data={headcountTrend} />
+        <AgeBarChart title="Насны бүтэц" buckets={ageBuckets} averageAge={averageAge} />
+      </div>
 
       {chartsSection}
+
+      {departmentPositionCharts.length > 0 ? (
+        <>
+          <div className={styles.statHeading}>
+            <span className={styles.eyebrow}>Хэлтсийн бүтэц</span>
+            <p>Хэлтэс тус бүрийн ажилтныг албан тушаалаар харуулав.</p>
+          </div>
+          <div className={styles.chartGrid}>
+            {departmentPositionCharts.map((department) => (
+              <AnimatedPie
+                key={department.name}
+                title={department.name}
+                slices={department.slices}
+                centerLabel="Ажилтан"
+                centerValue={`${department.total}`}
+                variant="donut"
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
 
       {departmentJobCounts.length > 0 ? (
         <section className={styles.orgSection}>
