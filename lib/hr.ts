@@ -2422,6 +2422,80 @@ export async function getDepartments(session: AppSession): Promise<HrOption[]> {
     });
 }
 
+export type HrDepartmentNode = {
+  id: number;
+  name: string;
+  managerName: string | null;
+  memberCount: number;
+  parentId: number | null;
+  children: HrDepartmentNode[];
+};
+
+type HrDepartmentStructureRecord = {
+  id: number;
+  name: string;
+  parent_id?: OdooRelation;
+  manager_id?: OdooRelation;
+  member_ids?: number[];
+};
+
+/**
+ * Odoo-ийн hr.department эцэг-хүү шатлалыг (parent_id) модон бүтцээр буцаана.
+ * Эцэг нь олдохгүй хэлтсийг дээд түвшин гэж үзнэ (Odoo-г хөндөхгүйгээр).
+ */
+export async function getDepartmentStructure(session: AppSession): Promise<HrDepartmentNode[]> {
+  const records = await executeOdooKw<HrDepartmentStructureRecord[]>(
+    "hr.department",
+    "search_read",
+    [[]],
+    { fields: ["name", "parent_id", "manager_id", "member_ids"], order: "name asc", limit: 500 },
+    getConnection(session),
+  ).catch((error) => {
+    console.warn("HR department structure could not be loaded:", error);
+    return [] as HrDepartmentStructureRecord[];
+  });
+
+  const nodesById = new Map<number, HrDepartmentNode>();
+  for (const record of records) {
+    const managerName = Array.isArray(record.manager_id)
+      ? fixMojibakeText(record.manager_id[1]) || null
+      : null;
+    nodesById.set(record.id, {
+      id: record.id,
+      name: fixMojibakeText(record.name) || record.name,
+      managerName,
+      memberCount: Array.isArray(record.member_ids) ? record.member_ids.length : 0,
+      parentId: Array.isArray(record.parent_id) ? record.parent_id[0] : null,
+      children: [],
+    });
+  }
+
+  const roots: HrDepartmentNode[] = [];
+  for (const node of nodesById.values()) {
+    const parent = node.parentId != null ? nodesById.get(node.parentId) : undefined;
+    if (parent) {
+      parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  const sortNodes = (list: HrDepartmentNode[]) => {
+    list.sort(
+      (left, right) =>
+        right.children.length - left.children.length ||
+        right.memberCount - left.memberCount ||
+        left.name.localeCompare(right.name, "mn"),
+    );
+    for (const node of list) {
+      sortNodes(node.children);
+    }
+  };
+  sortNodes(roots);
+
+  return roots;
+}
+
 export async function getJobs(session: AppSession): Promise<HrOption[]> {
   return executeOdooKw<OdooDictionaryRecord[]>(
     "hr.job",

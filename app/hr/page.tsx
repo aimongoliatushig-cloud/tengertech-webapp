@@ -2,7 +2,7 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
-import { getDisciplineRecords, getEmployees, getTimeoffDashboard, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
+import { getDepartmentStructure, getDisciplineRecords, getEmployees, getTimeoffDashboard, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
 
 import { HrDashboardClient } from "./hr-dashboard-client";
 import { HR_NOTIFICATION_HREF } from "./constants";
@@ -17,7 +17,7 @@ export default async function HrDashboardPage() {
   if (!access) {
     return null;
   }
-  const [employees, timeoffDashboard, timeoffRequests, disciplineRecords] = await Promise.all([
+  const [employees, timeoffDashboard, timeoffRequests, disciplineRecords, departmentStructure] = await Promise.all([
     getEmployees(session).catch((error) => {
       console.warn("HR dashboard employee groups could not be loaded:", error);
       return [];
@@ -32,6 +32,10 @@ export default async function HrDashboardPage() {
     }),
     getDisciplineRecords(session).catch((error) => {
       console.warn("HR discipline records could not be loaded:", error);
+      return [];
+    }),
+    getDepartmentStructure(session).catch((error) => {
+      console.warn("HR department structure could not be loaded:", error);
       return [];
     }),
   ]);
@@ -57,6 +61,7 @@ export default async function HrDashboardPage() {
         requests={timeoffRequests}
         dashboard={timeoffDashboard}
         disciplineRecords={disciplineRecords}
+        departmentStructure={departmentStructure}
       />
     </>
   );

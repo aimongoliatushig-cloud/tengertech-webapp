@@ -9,6 +9,7 @@ import {
   Check,
   FileWarning,
   Hourglass,
+  Network,
   UserMinus,
   UserPlus,
   Users,
@@ -18,7 +19,7 @@ import {
 
 import { compareHrDepartmentNames } from "@/lib/hr-department-order";
 import { formatEmployeeDisplayName } from "@/lib/hr-name";
-import type { HrDisciplineRecord, HrTimeoffDashboardData, HrTimeoffRequest } from "@/lib/hr";
+import type { HrDepartmentNode, HrDisciplineRecord, HrTimeoffDashboardData, HrTimeoffRequest } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
 import { HR_NOTIFICATION_HREF } from "./constants";
@@ -373,12 +374,14 @@ export function HrDashboardClient({
   requests,
   dashboard,
   disciplineRecords = [],
+  departmentStructure = [],
 }: {
   accessMode: "hr" | "department";
   employees: HrEmployeeDirectoryItem[];
   requests: HrTimeoffRequest[];
   dashboard: HrTimeoffDashboardData | null;
   disciplineRecords?: HrDisciplineRecord[];
+  departmentStructure?: HrDepartmentNode[];
 }) {
   const router = useRouter();
   const [trialActionEmployeeId, setTrialActionEmployeeId] = useState<number | null>(null);
@@ -779,6 +782,51 @@ export function HrDashboardClient({
       </section>
 
       {chartsSection}
+
+      {departmentStructure.length > 0 ? (
+        <section className={styles.orgSection}>
+          <header className={styles.orgSectionHead}>
+            <span className={styles.orgSectionIcon}>
+              <Network aria-hidden size={16} />
+            </span>
+            <div>
+              <h2>Байгууллагын бүтэц</h2>
+              <p>Хэлтэс, албадын шатлал, дарга болон бүрэлдэхүүний тоо</p>
+            </div>
+          </header>
+          <div className={styles.orgTree}>
+            {departmentStructure.map((node) => (
+              <OrgNode key={node.id} node={node} depth={0} />
+            ))}
+          </div>
+        </section>
+      ) : null}
     </>
+  );
+}
+
+function OrgNode({ node, depth }: { node: HrDepartmentNode; depth: number }) {
+  return (
+    <div className={styles.orgNode} data-depth={depth}>
+      <div className={styles.orgCard}>
+        <div className={styles.orgCardMain}>
+          <strong className={styles.orgCardName}>{node.name}</strong>
+          <span className={styles.orgCardManager}>
+            {node.managerName ? node.managerName : "Дарга томилоогүй"}
+          </span>
+        </div>
+        <span className={styles.orgCardCount}>
+          <Users aria-hidden size={13} />
+          {node.memberCount}
+        </span>
+      </div>
+      {node.children.length > 0 ? (
+        <div className={styles.orgChildren}>
+          {node.children.map((child) => (
+            <OrgNode key={child.id} node={child} depth={depth + 1} />
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
