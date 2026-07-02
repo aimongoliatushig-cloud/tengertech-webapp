@@ -2021,10 +2021,22 @@
   color: #6b7a72;
 }
 
-.orgDeptApproved {
+.orgDeptVacant {
   font-size: 11px;
-  font-weight: 600;
-  color: #6b7a72;
+  font-weight: 700;
+  color: #b91c1c;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(185, 28, 28, 0.1);
+}
+
+.orgDeptFull {
+  font-size: 11px;
+  font-weight: 700;
+  color: #15803d;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(21, 128, 61, 0.1);
 }
 
 .orgRoles {
@@ -2033,7 +2045,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   counter-reset: org-role;
 }
 
@@ -2044,15 +2056,17 @@
   gap: 10px;
   font-size: 12.5px;
   color: #253027;
+  padding: 3px 8px;
+  border-radius: 7px;
 }
 
-.orgRoles li span {
+.orgRoles li > span:first-child {
   position: relative;
   padding-left: 20px;
   min-width: 0;
 }
 
-.orgRoles li span::before {
+.orgRoles li > span:first-child::before {
   counter-increment: org-role;
   content: counter(org-role) ".";
   position: absolute;
@@ -2061,10 +2075,61 @@
   font-size: 11px;
 }
 
-.orgRoles li b {
+.orgRoleTag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.08);
+  color: #64748b;
+  font-size: 10px;
+  font-style: normal;
+  vertical-align: middle;
+}
+
+.orgRoleCount {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.orgRoleCount b {
   font-weight: 800;
   color: #16241b;
-  flex-shrink: 0;
+}
+
+.orgRoleCount small {
+  font-size: 11px;
+  color: #8a978f;
+}
+
+/* Албан тушаалын дүүргэлтийн төлөв */
+.orgRoleOk {
+  background: rgba(21, 128, 61, 0.08);
+}
+
+.orgRolePartial {
+  background: rgba(217, 119, 6, 0.1);
+}
+.orgRolePartial .orgRoleCount b {
+  color: #b45309;
+}
+
+.orgRoleVacant {
+  background: rgba(185, 28, 28, 0.09);
+}
+.orgRoleVacant .orgRoleCount b {
+  color: #b91c1c;
+}
+
+.orgRoleOver .orgRoleCount b {
+  color: #1d4ed8;
+}
+
+.orgRoleExtra {
+  opacity: 0.85;
+}
+.orgRoleExtra .orgRoleCount b {
+  color: #475569;
 }
 
 .orgToneBlue {

@@ -2496,6 +2496,69 @@ export async function getDepartmentStructure(session: AppSession): Promise<HrDep
   return roots;
 }
 
+export type HrDepartmentJobCounts = {
+  departmentId: number;
+  departmentName: string;
+  total: number;
+  jobCounts: { title: string; count: number }[];
+};
+
+type HrEmployeeJobRecord = {
+  id: number;
+  department_id?: OdooRelation;
+  job_id?: OdooRelation;
+  job_title?: string | false;
+};
+
+/**
+ * Идэвхтэй ажилтнуудыг хэлтэс тус бүрт албан тушаалаар (job_id/job_title)
+ * бүлэглэн тоолж буцаана. Байгууллагын бүтэц дээр албан тушаал бүрийн
+ * "бодит / орон тоо"-г харьцуулахад ашиглагдана.
+ */
+export async function getDepartmentJobCounts(session: AppSession): Promise<HrDepartmentJobCounts[]> {
+  const employees = await executeOdooKw<HrEmployeeJobRecord[]>(
+    "hr.employee",
+    "search_read",
+    [[["active", "=", true]]],
+    { fields: ["department_id", "job_id", "job_title"], limit: 2000 },
+    getConnection(session),
+  ).catch((error) => {
+    console.warn("HR department job counts could not be loaded:", error);
+    return [] as HrEmployeeJobRecord[];
+  });
+
+  const byDepartment = new Map<number, HrDepartmentJobCounts>();
+  for (const employee of employees) {
+    if (!Array.isArray(employee.department_id)) continue;
+    const departmentId = employee.department_id[0];
+    let bucket = byDepartment.get(departmentId);
+    if (!bucket) {
+      bucket = {
+        departmentId,
+        departmentName: fixMojibakeText(employee.department_id[1]) || employee.department_id[1],
+        total: 0,
+        jobCounts: [],
+      };
+      byDepartment.set(departmentId, bucket);
+    }
+    const rawTitle = Array.isArray(employee.job_id)
+      ? employee.job_id[1]
+      : typeof employee.job_title === "string"
+        ? employee.job_title
+        : "";
+    const title = fixMojibakeText(rawTitle).trim() || "(албан тушаалгүй)";
+    bucket.total += 1;
+    const existing = bucket.jobCounts.find((entry) => entry.title === title);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      bucket.jobCounts.push({ title, count: 1 });
+    }
+  }
+
+  return [...byDepartment.values()];
+}
+
 export async function getJobs(session: AppSession): Promise<HrOption[]> {
   return executeOdooKw<OdooDictionaryRecord[]>(
     "hr.job",

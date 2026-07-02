@@ -19,7 +19,7 @@ import {
 
 import { compareHrDepartmentNames } from "@/lib/hr-department-order";
 import { formatEmployeeDisplayName } from "@/lib/hr-name";
-import type { HrDepartmentNode, HrDisciplineRecord, HrTimeoffDashboardData, HrTimeoffRequest } from "@/lib/hr";
+import type { HrDepartmentJobCounts, HrDisciplineRecord, HrTimeoffDashboardData, HrTimeoffRequest } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
 import { HR_NOTIFICATION_HREF } from "./constants";
@@ -375,14 +375,14 @@ export function HrDashboardClient({
   requests,
   dashboard,
   disciplineRecords = [],
-  departmentStructure = [],
+  departmentJobCounts = [],
 }: {
   accessMode: "hr" | "department";
   employees: HrEmployeeDirectoryItem[];
   requests: HrTimeoffRequest[];
   dashboard: HrTimeoffDashboardData | null;
   disciplineRecords?: HrDisciplineRecord[];
-  departmentStructure?: HrDepartmentNode[];
+  departmentJobCounts?: HrDepartmentJobCounts[];
 }) {
   const router = useRouter();
   const [trialActionEmployeeId, setTrialActionEmployeeId] = useState<number | null>(null);
@@ -784,7 +784,7 @@ export function HrDashboardClient({
 
       {chartsSection}
 
-      {departmentStructure.length > 0 ? (
+      {departmentJobCounts.length > 0 ? (
         <section className={styles.orgSection}>
           <header className={styles.orgSectionHead}>
             <span className={styles.orgSectionIcon}>
@@ -792,10 +792,10 @@ export function HrDashboardClient({
             </span>
             <div>
               <h2>Байгууллагын бүтэц</h2>
-              <p>Батлагдсан орон тооны бүтэц. Хэлтсийн нийт тоо Odoo-гоос амьдаар шинэчлэгдэнэ.</p>
+              <p>Батлагдсан орон тоо ба бодит томилолт. Албан тушаал бүрийн бодит/орон тоог Odoo-гоос амьдаар харьцуулна.</p>
             </div>
           </header>
-          <OrgChart liveCounts={departmentStructure} />
+          <OrgChart jobCounts={departmentJobCounts} />
         </section>
       ) : null}
     </>
