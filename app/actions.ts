@@ -2105,7 +2105,14 @@ export async function createTaskAction(formData: FormData) {
       };
     }
 
-    const defaultTeamLeaderId = isMasterRole(session.role) ? session.uid : null;
+    // Даалгаврыг хэлтсийн даргад автоматаар оногдуулна (гараар хариуцагч сонгохгүй)
+    const departmentHeadUserIds = project.departmentId
+      ? await loadDepartmentHeadUserIds(project.departmentId, connectionOverrides).catch(
+          () => [] as number[],
+        )
+      : [];
+    const defaultTeamLeaderId =
+      departmentHeadUserIds[0] ?? (isMasterRole(session.role) ? session.uid : null);
     const effectiveTeamLeaderId = teamLeaderIdRaw ? Number(teamLeaderIdRaw) : defaultTeamLeaderId;
     const quantitySummary = quantityRows
       .map((row, index) => `${index + 1}. ${row.plannedQuantity} ${row.unitLabel || ""}`.trim())

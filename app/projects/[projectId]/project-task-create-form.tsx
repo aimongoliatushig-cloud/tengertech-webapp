@@ -83,24 +83,6 @@ function buildUnitOptions(units: WorkUnitOption[]): SearchableSelectOption[] {
   }));
 }
 
-function buildUserOptions(users: SelectOption[]): SearchableSelectOption[] {
-  return users.map((user) => ({
-    id: user.id,
-    label: user.name,
-    meta:
-      [user.jobTitle, user.departmentName, user.phone || user.login]
-        .filter(Boolean)
-        .join(" · ") || "Албан тушаал бүртгэлгүй",
-    keywords: [
-      user.name,
-      user.jobTitle ?? "",
-      user.phone ?? "",
-      user.login,
-      user.departmentName ?? "",
-    ],
-  }));
-}
-
 function preferCommonUnits(units: WorkUnitOption[]) {
   const preferred = ["км", "м³", "м3", "цаг", "машин", "ширхэг"];
   const scored = units
@@ -167,11 +149,8 @@ export function ProjectTaskCreateForm({
       ...departmentUserOptions,
     ];
   }, [departmentHeadId, departmentHeadName, departmentName, departmentUserOptions]);
-  const assigneeOptions = useMemo(
-    () => buildUserOptions(filteredDepartmentUsers),
-    [filteredDepartmentUsers],
-  );
-  const [selectedAssigneeId, setSelectedAssigneeId] = useState<number | null>(null);
+  // Хариуцсан ажилтныг гараар сонгохгүй — даалгавар автоматаар хэлтсийн даргад оногдоно
+  const selectedAssigneeId = departmentHeadId ?? null;
   const [localCrewTeamOptions, setLocalCrewTeamOptions] = useState(crewTeamOptions);
   const [selectedCrewTeamId, setSelectedCrewTeamId] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
@@ -660,18 +639,16 @@ export function ProjectTaskCreateForm({
 
       <section className={styles.assignmentPanel}>
         <input type="hidden" name="task_assignment_mode" value={useTeam ? "team" : "single"} />
+        <input type="hidden" name="team_leader_id" value={departmentHeadId ?? ""} />
         <div className={styles.field}>
-          <label>Хариуцсан ажилтан</label>
-          <SearchableSelect
-            name="team_leader_id"
-            value={selectedAssigneeId}
-            options={assigneeOptions}
-            placeholder="Хариуцсан ажилтан сонгоно уу"
-            disabled={!assigneeOptions.length}
-            searchPlaceholder="Нэр эсвэл утсаар хайна уу"
-            emptyStateLabel="Энэ хэлтэст бүртгэлтэй хэрэглэгч алга."
-            onChange={setSelectedAssigneeId}
-          />
+          <label>Хариуцсан</label>
+          <div className={styles.lockedFieldValue}>
+            <UserRound aria-hidden />
+            <span>{departmentHeadName || "Хэлтсийн дарга"}</span>
+          </div>
+          <small className={styles.inlineConfirmNote}>
+            Даалгавар автоматаар хэлтсийн даргад оногдоно.
+          </small>
         </div>
 
         <label className={styles.teamToggleRow}>
