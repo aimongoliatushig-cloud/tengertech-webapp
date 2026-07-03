@@ -733,7 +733,7 @@ export function AppMenu({
           },
         ]
       : []),
-    ...(!workerMode
+    ...(!workerMode || canCreateTasks
       ? [
           {
             key: "employees",
@@ -741,6 +741,10 @@ export function AppMenu({
             label: "Ажилтны даалгавар",
             icon: Users,
           },
+        ]
+      : []),
+    ...(!workerMode
+      ? [
           {
             key: "department-work",
             href: "/department-work",
