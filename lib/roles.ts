@@ -171,8 +171,14 @@ export function isReportOnlyContext(context: RoleContext) {
   return context.role === "report_specialist" || isReportPlanningSpecialist(context);
 }
 
-// Архив, бичиг хэргийн ажилтан — албан тушаалын нэрээр таних.
+// Архив, бичиг хэргийн ажилтан — Odoo дээр procurementAdministration (office
+// clerk) бүлэгт хамаардаг тул үүнийг гол дохио болгоно; албан тушаалын нэрийг
+// нөөц болгож шалгана.
 export function isRecordsClerk(context: RoleContext) {
+  const groupFlags = normalizeGroupFlags(context.groupFlags);
+  if (groupFlags.procurementAdministration) {
+    return true;
+  }
   const jobTitle = normalizePermissionText(context.employeeJobTitle);
   return jobTitle.includes("бичиг хэрэг");
 }
@@ -485,7 +491,6 @@ export function isWorkerOnly(context: RoleContext) {
   const groupFlags = normalizeGroupFlags(context.groupFlags);
   return (
     context.role === "worker" &&
-    !isRecordsClerk(context) &&
     !groupFlags.mfoManager &&
     !groupFlags.mfoDispatcher &&
     !groupFlags.mfoInspector &&
