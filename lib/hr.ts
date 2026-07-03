@@ -149,6 +149,7 @@ type HrEmployeeSingleSearchRecord = {
   departure_description?: string | false;
   trial_date_end?: string | false;
   notes?: string | false;
+  additional_note?: string | false;
   x_mn_employee_code?: string | false;
   x_mn_grade_rank?: string | false;
   x_mn_employment_status?: string | false;
@@ -1163,7 +1164,7 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
   const status = resolveDirectEmployeeStatus(record);
   const departmentName = getRelationName(record.department_id, "Хэлтэсгүй");
   const jobTitle = getHrJobTitleDisplayName(record.name || "", getRelationName(record.job_id) || record.job_title);
-  const notes = cleanOdooLongText(record.notes);
+  const notes = cleanOdooLongText(record.additional_note ?? record.notes);
   const trialEndDate = record.trial_date_end || getManagedNoteValue(notes, "Туршилтын хугацаа дуусах");
   const workType = getManagedNoteValue(notes, "Ажиллах төрөл");
   const countryOfBirth = getManagedNoteValue(notes, "Төрсөн улс") || getRelationName(record.country_of_birth);
@@ -1171,6 +1172,7 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
   const bankName = getManagedNoteValue(notes, "Банк");
   const bankAccountNumber = getManagedNoteValue(notes, "Дансны дугаар");
   const baseSalary = getManagedNoteValue(notes, "Үндсэн цалин");
+  const payCategoryFromNote = getManagedNoteValue(notes, "Цалингийн ангилал");
   const taxNumber = getManagedNoteValue(notes, "ТТД дугаар");
   const socialInsuranceStartDate = getManagedNoteValue(notes, "НД төлж эхэлсэн огноо");
   const statusKey = status.key === "active" && trialEndDate ? "probation" : status.key;
@@ -1239,7 +1241,7 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     coachName: getRelationName(record.coach_id),
     contractName: getRelationName(record.contract_id),
     wage: Number(record.wage || 0) || numberFromManagedNote(baseSalary),
-    payCategory: record.pay_category || "",
+    payCategory: payCategoryFromNote || record.pay_category || "",
     taxNumber,
     socialInsuranceStartDate,
     departureDate: record.departure_date || "",
@@ -1918,7 +1920,7 @@ export async function getEmployee(session: AppSession, id: number, listedEmploye
     "departure_date",
     "departure_reason_id",
     "departure_description",
-    "notes",
+    "additional_note",
     "x_mn_employee_code",
     "x_mn_grade_rank",
     "x_mn_employment_status",
@@ -2731,7 +2733,7 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
     "birthday",
     "sex",
     "active",
-    "notes",
+    "additional_note",
     "private_street",
     "private_street2",
     "private_city",
@@ -2804,7 +2806,7 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
   if (fields.has("birthday")) values.birthday = data.birthDate || false;
   if (fields.has("sex")) values.sex = data.gender || false;
   if (fields.has("active")) values.active = true;
-  if (fields.has("notes")) values.notes = noteParts.join("\n") || false;
+  if (fields.has("additional_note")) values.additional_note = noteParts.join("\n") || false;
   if (fields.has("private_street")) values.private_street = data.homeAddress || false;
   if (fields.has("private_street2")) {
     values.private_street2 = [data.addressSubdistrict, data.addressDistrict]
@@ -2858,11 +2860,11 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
       ? await attachDocumentFilesToEmployeeRecords(session, createdId, data.documentRecords, data.documentAttachments)
       : undefined;
   if (documentRecordsForSave !== undefined) {
-    const noteValue = mergeEmployeeManagedNotes(String(values.notes || ""), [
+    const noteValue = mergeEmployeeManagedNotes(String(values.additional_note || ""), [
       [DOCUMENT_RECORDS_NOTE_LABEL, serializeDocumentRecordsForNote(documentRecordsForSave)],
     ]);
     const documentValues: Record<string, unknown> = {
-      ...(fields.has("notes") ? { notes: noteValue || false } : {}),
+      ...(fields.has("additional_note") ? { additional_note: noteValue || false } : {}),
       ...(fields.has("x_mn_missing_document_count")
         ? { x_mn_missing_document_count: countMissingDocumentRecords(documentRecordsForSave) }
         : {}),
@@ -2966,7 +2968,7 @@ export async function updateEmployee(
     "pay_category",
     "departure_date",
     "departure_description",
-    "notes",
+    "additional_note",
     "x_mn_missing_document_count",
     "x_mn_performance_score",
     "x_mn_task_completion_percent",
@@ -2994,6 +2996,7 @@ export async function updateEmployee(
     data.bankName !== undefined ? ["Банк", data.bankName] : null,
     data.bankAccountNumber !== undefined ? ["Дансны дугаар", data.bankAccountNumber] : null,
     data.baseSalary !== undefined ? ["Үндсэн цалин", data.baseSalary] : null,
+    data.payCategory !== undefined ? ["Цалингийн ангилал", data.payCategory] : null,
     data.taxNumber !== undefined ? ["ТТД дугаар", data.taxNumber] : null,
     data.socialInsuranceStartDate !== undefined ? ["НД төлж эхэлсэн огноо", data.socialInsuranceStartDate] : null,
     data.talent ? ["Авьяас / спорт / урлаг", data.talent] : null,
@@ -3112,12 +3115,12 @@ export async function updateEmployee(
   if (fields.has("x_mn_employment_status") && data.workType !== undefined) {
     values.x_mn_employment_status = data.workType === "Туршилтаар" || data.workType === "Түр" ? "probation" : "active";
   }
-  if (fields.has("notes") && (data.notes !== undefined || data.note !== undefined || managedNoteParts.length)) {
+  if (fields.has("additional_note") && (data.notes !== undefined || data.note !== undefined || managedNoteParts.length)) {
     const baseNotes =
       data.notes !== undefined || data.note !== undefined
         ? data.notes ?? data.note ?? ""
         : (await getEmployee(session, id))?.notes || "";
-    values.notes = mergeEmployeeManagedNotes(baseNotes, managedNoteParts) || false;
+    values.additional_note = mergeEmployeeManagedNotes(baseNotes, managedNoteParts) || false;
   }
   if (fields.has("active") && data.isFieldEmployee === false) values.active = false;
 

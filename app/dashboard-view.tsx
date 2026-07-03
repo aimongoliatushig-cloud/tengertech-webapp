@@ -3387,16 +3387,6 @@ export function DashboardView({
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const workerMode = isWorkerOnly(session);
-  console.warn("[DEBUG-CLERK]", JSON.stringify({
-    login: session.login,
-    role: session.role,
-    procAdmin: session.groupFlags?.procurementAdministration,
-    jobTitle: session.employeeJobTitle,
-    displayRoleLabel: session.displayRoleLabel,
-    roleVersion: session.roleInferenceVersion,
-    canCreateTasks,
-    workerMode,
-  }));
   const masterMode = isMasterRole(session.role);
   const transportInspectorMode = isTransportInspectorDashboard(session);
   const showHrSummary = Boolean(canViewHr && !workerMode);
