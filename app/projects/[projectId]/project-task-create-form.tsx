@@ -149,8 +149,15 @@ export function ProjectTaskCreateForm({
       ...departmentUserOptions,
     ];
   }, [departmentHeadId, departmentHeadName, departmentName, departmentUserOptions]);
-  // Хариуцсан ажилтныг гараар сонгохгүй — даалгавар автоматаар хэлтсийн даргад оногдоно
-  const selectedAssigneeId = departmentHeadId ?? null;
+  // Хариуцагч ажилтныг сонгоно (анхдагч нь хэлтсийн дарга). Сонгосон хүнд даалгавар
+  // оногдож, мэдэгдэл очно.
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState<number | null>(departmentHeadId ?? null);
+  const assigneeOptions: SearchableSelectOption[] = filteredDepartmentUsers.map((user) => ({
+    id: user.id,
+    label: user.name,
+    meta: user.jobTitle || undefined,
+    keywords: [user.name, user.jobTitle || "", user.login || ""],
+  }));
   const [localCrewTeamOptions, setLocalCrewTeamOptions] = useState(crewTeamOptions);
   const [selectedCrewTeamId, setSelectedCrewTeamId] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
@@ -639,15 +646,19 @@ export function ProjectTaskCreateForm({
 
       <section className={styles.assignmentPanel}>
         <input type="hidden" name="task_assignment_mode" value={useTeam ? "team" : "single"} />
-        <input type="hidden" name="team_leader_id" value={departmentHeadId ?? ""} />
         <div className={styles.field}>
-          <label>Хариуцсан</label>
-          <div className={styles.lockedFieldValue}>
-            <UserRound aria-hidden />
-            <span>{departmentHeadName || "Хэлтсийн дарга"}</span>
-          </div>
+          <label htmlFor="task-assignee">Хариуцагч ажилтан</label>
+          <SearchableSelect
+            name="team_leader_id"
+            value={selectedAssigneeId}
+            options={assigneeOptions}
+            placeholder="Хариуцагч ажилтан сонгоно уу"
+            searchPlaceholder="Ажилтан хайх"
+            emptyStateLabel="Ажилтан алга."
+            onChange={(next) => setSelectedAssigneeId(next)}
+          />
           <small className={styles.inlineConfirmNote}>
-            Даалгавар автоматаар хэлтсийн даргад оногдоно.
+            Сонгосон ажилтанд даалгавар оногдож, мэдэгдэл очно. Анхдагчаар хэлтсийн дарга.
           </small>
         </div>
 
