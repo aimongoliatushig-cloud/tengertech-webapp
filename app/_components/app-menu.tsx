@@ -1080,6 +1080,14 @@ export function AppMenu({
       )
     : baseItems
   ).filter((item) => !isHiddenMenuItem(item));
+  console.warn("[DEBUG-MENU]", JSON.stringify({
+    active,
+    workerMode,
+    canCreateTasks,
+    baseSameAsDefault: baseItems === compactDefaultItems,
+    defaultHasEmployees: defaultItems.some((i) => i.key === "employees"),
+    itemKeys: items.map((i) => i.key),
+  }));
 
   function isProcurementChildActive(item: MenuItem) {
     const state = searchParams.get("state");
