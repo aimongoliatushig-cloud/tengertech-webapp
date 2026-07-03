@@ -171,6 +171,12 @@ export function isReportOnlyContext(context: RoleContext) {
   return context.role === "report_specialist" || isReportPlanningSpecialist(context);
 }
 
+// Архив, бичиг хэргийн ажилтан — албан тушаалын нэрээр таних.
+export function isRecordsClerk(context: RoleContext) {
+  const jobTitle = normalizePermissionText(context.employeeJobTitle);
+  return jobTitle.includes("бичиг хэрэг");
+}
+
 export function canViewGarbageWeightReports(context: RoleContext) {
   const groupFlags = normalizeGroupFlags(context.groupFlags);
   const jobTitle = normalizePermissionText(context.employeeJobTitle);
@@ -395,7 +401,8 @@ export function hasCapability(context: RoleContext, capability: Capability) {
         groupFlags.improvementEngineer ||
         groupFlags.improvementFieldEngineer ||
         context.role === "senior_master" ||
-        context.role === "team_leader"
+        context.role === "team_leader" ||
+        isRecordsClerk(context)
       );
     case "write_workspace_reports":
       // Гүйцэтгэлийн тайлан оруулах нь бүх нэвтэрсэн хэрэглэгчид нээлттэй (optional).
@@ -478,6 +485,7 @@ export function isWorkerOnly(context: RoleContext) {
   const groupFlags = normalizeGroupFlags(context.groupFlags);
   return (
     context.role === "worker" &&
+    !isRecordsClerk(context) &&
     !groupFlags.mfoManager &&
     !groupFlags.mfoDispatcher &&
     !groupFlags.mfoInspector &&
