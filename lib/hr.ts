@@ -3137,13 +3137,31 @@ export async function updateEmployee(
     );
     updatedThroughCustomApi = getOdooResultId(result) === id;
   } catch (error) {
-    if (!isMissingHrCustomEmployeeApiError(error)) {
+    // Custom API байхгүй, эсвэл Odoo хувилбар хооронд байхгүй болсон талбараас
+    // (жиш. notes, pay_category) болж унасан бол шууд write рүү шилжинэ.
+    if (!isMissingHrCustomEmployeeApiError(error) && !getInvalidOdooFieldName(error)) {
       throw error;
     }
-    console.warn("HR custom employee update API unavailable, falling back to direct hr.employee write:", error);
+    console.warn("HR custom employee update API unavailable/failed, falling back to direct hr.employee write:", error);
   }
   if (!updatedThroughCustomApi) {
-    await executeOdooKw<boolean>("hr.employee", "write", [[id], values], {}, getConnection(session));
+    // Odoo дээр байхгүй болсон талбарыг алдаанаас нь илрүүлэн хасаад дахин бичнэ.
+    const writeValues: Record<string, unknown> = { ...values };
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      try {
+        await executeOdooKw<boolean>("hr.employee", "write", [[id], writeValues], {}, getConnection(session));
+        break;
+      } catch (error) {
+        const invalidField = getInvalidOdooFieldName(error);
+        if (invalidField && Object.prototype.hasOwnProperty.call(writeValues, invalidField)) {
+          console.warn(`hr.employee дээр '${invalidField}' талбар байхгүй тул хасаад дахин бичив.`);
+          delete writeValues[invalidField];
+          if (Object.keys(writeValues).length === 0) break;
+          continue;
+        }
+        throw error;
+      }
+    }
   }
   await attachFilesToEmployee(session, id, educationAttachmentFromInput(data), "Боловсрол", "diploma");
   return getEmployee(session, id);
