@@ -3597,11 +3597,13 @@ function ExecutiveDashboardView({
 }) {
   const canViewAllReports = canViewAllWorkspaceReports(session);
   const canViewWeightReports = canViewGarbageWeightReports(session);
-  // Хянах самбар дээр нэвтэрсэн админы ганц хувийн даалгавраа биш,
-  // БАЙГУУЛЛАГЫН нээлттэй даалгаврыг (яаралтай нь эхэндээ) харуулна.
-  const monitoringOpenTasks = openTasksFor(dashboardTasks, currentDateKey).map(
-    directoryTaskToAssigned,
-  );
+  // Хянах самбар (менежер/захирал/хэлтсийн дарга) дээр нэвтэрсэн хэрэглэгчийн
+  // ганц хувийн даалгавраа биш, БАЙГУУЛЛАГЫН нээлттэй, ажилтанд оногдсон
+  // даалгаврыг (яаралтай нь эхэндээ) харуулна. Хэлтэст даалгасан ажил (систем
+  // данс руу оногдсон) энд ХАРАГДАХГҮЙ — тэр нь зөвхөн ажилтны нүүрэнд гарна.
+  const monitoringOpenTasks = openTasksFor(dashboardTasks, currentDateKey)
+    .filter((task) => !task.isDepartmentTask)
+    .map(directoryTaskToAssigned);
   const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
   const activeTasks = Math.max(0, totalTasks - completedTasks);

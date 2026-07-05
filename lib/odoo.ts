@@ -308,6 +308,8 @@ export type TaskDirectoryItem = {
   id: number;
   name: string;
   departmentName: string;
+  /** ops_department_id тодорхой тавигдсан = хэлтэст даалгасан ажил (систем данс руу). */
+  isDepartmentTask?: boolean;
   projectId?: number | null;
   projectName: string;
   stageLabel: string;
@@ -6774,6 +6776,7 @@ async function fetchLiveSnapshot(
         id: task.id,
         name: task.name,
         departmentName: resolveTaskDepartmentName(task, projectDepartmentById),
+        isDepartmentTask: Boolean(relationId(task.ops_department_id ?? false)),
         projectId: Array.isArray(task.project_id) ? task.project_id[0] : null,
         projectName: relationName(task.project_id, "Ажилгүй"),
         stageLabel: STAGE_LABELS[stageBucket],
