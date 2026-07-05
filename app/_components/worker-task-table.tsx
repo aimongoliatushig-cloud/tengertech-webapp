@@ -116,7 +116,7 @@ export function WorkerTaskTable({
         </div>
       </div>
 
-      <div>
+      <div className="max-w-[860px]">
         <div className="grid grid-cols-[32px_minmax(0,1fr)_120px_58px] gap-4 border-b border-[#EEF3EF] px-2 pb-2.5 text-[11px] font-semibold uppercase tracking-wide text-[#8A978E] sm:grid-cols-[36px_minmax(0,1fr)_150px_72px]">
           <span>№</span>
           <span>Даалгавар</span>
@@ -134,7 +134,7 @@ export function WorkerTaskTable({
               <Link
                 key={`wtt-${task.id}`}
                 href={task.href}
-                className="group grid grid-cols-[32px_minmax(0,1fr)_120px_58px] items-center gap-4 border-b border-[#EEF3EF] px-2 py-2.5 transition-colors last:border-b-0 hover:bg-[#F6F8F7] sm:grid-cols-[36px_minmax(0,1fr)_150px_72px]"
+                className="group grid min-h-[64px] grid-cols-[32px_minmax(0,1fr)_120px_58px] items-center gap-4 border-b border-[#EEF3EF] px-2 py-3.5 transition-colors last:border-b-0 hover:bg-[#F6F8F7] sm:grid-cols-[36px_minmax(0,1fr)_150px_72px]"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EEF1EF] text-[13px] font-bold tabular-nums text-[#57655C]">
                   {index + 1}
