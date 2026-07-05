@@ -3313,6 +3313,26 @@ function WorkerHomeView({
     return seg;
   });
 
+  // Ирэх 6 сарын ачаалал — даалгаврын date_deadline-аас бодитоор тооцно.
+  const [curYear, curMonth] = currentDateKey.split("-").map((part) => Number(part));
+  const monthlyLoad = Array.from({ length: 6 }, (_, index) => {
+    let month = (curMonth || 1) + index;
+    let year = curYear || 0;
+    while (month > 12) {
+      month -= 12;
+      year += 1;
+    }
+    const key = `${year}-${String(month).padStart(2, "0")}`;
+    return {
+      key,
+      label: `${month}-р сар`,
+      isCurrent: index === 0,
+      count: assignedTasks.filter((task) => (task.deadline || "").slice(0, 7) === key).length,
+    };
+  });
+  const monthlyMax = Math.max(1, ...monthlyLoad.map((m) => m.count));
+  const monthlyTotal = monthlyLoad.reduce((sum, m) => sum + m.count, 0);
+
   return (
     <main className={shellStyles.shell}>
       <div className={shellStyles.contentWithMenu}>
@@ -3507,6 +3527,34 @@ function WorkerHomeView({
                 )}
               </section>
             </div>
+
+            <section className="rounded-3xl border border-[#E7EBE8] bg-white p-5 shadow-[0_1px_3px_rgba(20,40,30,0.06)]">
+              <div className="mb-4 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-[#16241b]">Ирэх ачаалал</h3>
+                <span className="ml-auto text-xs font-medium text-[#8A978E]">Хугацаа тавьсан даалгавар · сараар</span>
+              </div>
+              {monthlyTotal ? (
+                <div className="flex h-[132px] items-end gap-3">
+                  {monthlyLoad.map((month) => (
+                    <div key={month.key} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
+                      <span className="text-xs font-bold tabular-nums text-[#16241b]">{month.count || ""}</span>
+                      <div
+                        className={cn(
+                          "w-full max-w-[42px] rounded-t-lg",
+                          month.count ? "bg-[#2563EB]" : "bg-[#EDF0EE]",
+                        )}
+                        style={{ height: `${month.count ? Math.max(6, (month.count / monthlyMax) * 100) : 3}%` }}
+                      />
+                      <span className={cn("text-[11px]", month.isCurrent ? "font-bold text-[#16241b]" : "text-[#8A978E]")}>
+                        {month.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="py-8 text-center text-xs font-medium text-[#8A978E]">Хугацаа тавьсан даалгавар алга.</p>
+              )}
+            </section>
 
             <section className="relative overflow-hidden rounded-3xl border border-[#CFE9D6] bg-gradient-to-br from-[#EAF6EC] to-[#F6FBF3] p-5">
               <Leaf className="absolute -right-4 -top-4 h-28 w-28 text-[#4A9A5D]/12" aria-hidden />
