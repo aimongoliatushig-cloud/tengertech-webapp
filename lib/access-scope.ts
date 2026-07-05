@@ -124,10 +124,15 @@ async function loadFallbackEmployeeDepartmentName(session: AppSession) {
   }
 
   for (const domain of fallbackDomains) {
-    const employees = await loadEmployeeDepartmentRecords(domain, {
+    // Хэрэглэгчийн эрхээр, дараа нь admin эрхээр (хязгаарлагдмал эрхтэй
+    // хэрэглэгч hr.employee уншиж чадахгүй тохиолдлыг тойрч).
+    const userEmployees = await loadEmployeeDepartmentRecords(domain, {
       login: session.login,
       password: session.password,
     }).catch(() => []);
+    const employees = userEmployees.length
+      ? userEmployees
+      : await loadEmployeeDepartmentRecords(domain).catch(() => []);
     const departmentName = getDepartmentNameFromEmployees(employees, session);
     if (departmentName) {
       return departmentName;
@@ -195,16 +200,34 @@ export async function loadSessionEmployeeDepartmentName(session: AppSession) {
   }
 
   try {
-    const employees = await loadEmployeeDepartmentRecords(
-      [["user_id", "=", session.uid]],
-      {
-        login: session.login,
-        password: session.password,
-      },
-    ).catch(() => []);
-    const departmentName =
-      getDepartmentNameFromEmployees(employees, session, { allowAmbiguousMatch: true }) ||
-      await loadFallbackEmployeeDepartmentName(session) ||
+    const readOwnEmployee = (
+      connectionOverrides: { login?: string; password?: string } = {},
+    ) =>
+      loadEmployeeDepartmentRecords(
+        [["user_id", "=", session.uid]],
+        connectionOverrides,
+      ).catch(() => []);
+
+    // Эхлээд хэрэглэгчийн өөрийн эрхээр. Хэлтсийн дарга/ажилтан зэрэг
+    // хязгаарлагдмал эрхтэй хэрэглэгч hr.employee уншиж чадахгүй бол admin
+    // эрхээр дахин уншиж, өөрийн хэлтсийг найдвартай тодорхойлно — эс бөгөөс
+    // scope цуцлагдаж, дарга бүх хэлтсийн даалгаврыг хардаг байсан.
+    let employees = await readOwnEmployee({
+      login: session.login,
+      password: session.password,
+    });
+    let departmentName = getDepartmentNameFromEmployees(employees, session, {
+      allowAmbiguousMatch: true,
+    });
+    if (!departmentName) {
+      employees = await readOwnEmployee();
+      departmentName = getDepartmentNameFromEmployees(employees, session, {
+        allowAmbiguousMatch: true,
+      });
+    }
+    departmentName =
+      departmentName ||
+      (await loadFallbackEmployeeDepartmentName(session)) ||
       getFallbackDepartmentName(session);
     sessionDepartmentNameCache.set(cacheKey, {
       value: departmentName,
