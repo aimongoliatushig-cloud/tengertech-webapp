@@ -47,6 +47,7 @@ import { isGreenOrImprovementVehicleScope } from "@/lib/fleet-vehicle-board-scop
 import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 import { canViewGarbageWeightReports } from "@/lib/roles";
 import {
+  type AssignedTaskItem,
   type DashboardSnapshot,
   type FleetVehicleBoard,
   type HrDailyAttendanceSummary,
@@ -72,6 +73,7 @@ type DashboardViewProps = {
   canViewGeneralDashboard?: boolean;
   notificationCount?: number;
   notificationNote?: string;
+  assignedTasks?: AssignedTaskItem[];
   showProcurementHomePanels?: boolean;
   procurementActionPanel?: ReactNode;
 };
@@ -3376,6 +3378,7 @@ export function DashboardView({
   canViewGeneralDashboard = false,
   notificationCount,
   notificationNote,
+  assignedTasks = [],
   showProcurementHomePanels = false,
   procurementActionPanel,
 }: DashboardViewProps) {
@@ -3424,20 +3427,9 @@ export function DashboardView({
     : scopedTasks.length
       ? scopedTasks
       : snapshot.taskDirectory;
-  // Нэвтэрсэн ажилтанд шууд оногдсон (хариуцагч буюу гүйцэтгэгч) даалгаврууд —
-  // аль ч төсөл/хэлтэс үл харгалзан, дуусаагүйг нь эрэмбэлж харуулна.
-  const myAssignedTasks = snapshot.taskDirectory
-    .filter((task) => {
-      const uid = String(session.uid);
-      const isAssignee = (task.assigneeIds ?? []).some(
-        (assigneeId) => String(normalizeTaskAssigneeId(assigneeId)) === uid,
-      );
-      const isLeader = task.leaderId != null && String(task.leaderId) === uid;
-      return (isAssignee || isLeader) && task.statusKey !== "verified";
-    })
-    .sort((left, right) =>
-      (left.scheduledDate || left.deadline || "9999").localeCompare(right.scheduledDate || right.deadline || "9999"),
-    );
+  // Нэвтэрсэн ажилтанд оногдсон дуусаагүй даалгаврууд — service эрхээр татсан
+  // (worker/нярав өөрийн эрхээр project.task уншиж чаддаггүйг тойрсон).
+  const myAssignedTasks = assignedTasks;
   const dashboardProjects = snapshot.projects.filter(hasDashboardWork);
   const workItemStats = dashboardTaskStats(dashboardTasks, currentDateKey);
   const totalTasks = workerMode
@@ -3533,16 +3525,6 @@ export function DashboardView({
     isDepartmentHeadDashboard(session);
   const executiveDashboardMode =
     canViewGeneralDashboard && !workerMode && !departmentHeadDashboardMode;
-
-  console.warn("[DEBUG-MYTASKS]", JSON.stringify({
-    login: session.login,
-    workerMode,
-    execMode: executiveDashboardMode,
-    deptHeadMode: departmentHeadDashboardMode,
-    snapshotTasks: snapshot.taskDirectory.length,
-    myAssigned: myAssignedTasks.length,
-    myAssignedNames: myAssignedTasks.slice(0, 3).map((t) => t.name.slice(0, 20)),
-  }));
 
   if (executiveDashboardMode || departmentHeadDashboardMode) {
     const scopedDashboardTitle = departmentHeadDashboardMode

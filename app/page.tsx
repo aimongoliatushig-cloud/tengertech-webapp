@@ -22,6 +22,8 @@ import {
   loadHrDailyAttendanceSummary,
   loadHrEmployeeDirectory,
   loadMunicipalSnapshot,
+  loadUserAssignedTasks,
+  type AssignedTaskItem,
   type HrDailyAttendanceSummary,
 } from "@/lib/odoo";
 import {
@@ -610,6 +612,7 @@ async function DashboardPageContent({
     totalTasks: departmentScopedTasks.length,
   };
   const notificationSummary = await notificationSummaryPromise;
+  const assignedTasks = await loadUserAssignedTasks(session.uid).catch(() => [] as AssignedTaskItem[]);
   const notificationNote =
     notificationSummary.unreadCount > 0
       ? `${notificationSummary.newCount} шинэ ажил, ${notificationSummary.reviewCount} хянах, ${notificationSummary.overdueCount} хугацаа хэтэрсэн`
@@ -632,6 +635,7 @@ async function DashboardPageContent({
       canViewGeneralDashboard={canViewGeneralDashboard}
       notificationCount={notificationSummary.unreadCount}
       notificationNote={notificationNote}
+      assignedTasks={assignedTasks}
       showProcurementHomePanels={Boolean(procurementActions)}
       procurementActionPanel={
         procurementActions ? (

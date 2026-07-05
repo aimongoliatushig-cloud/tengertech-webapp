@@ -7411,6 +7411,65 @@ function cleanSnapshotText<T>(value: T): T {
   return value;
 }
 
+export type AssignedTaskItem = {
+  id: number;
+  name: string;
+  projectName: string;
+  deadline: string;
+  statusLabel: string;
+  href: string;
+};
+
+// Хэрэглэгчид (uid) оногдсон дуусаагүй даалгаврыг service (admin) эрхээр татна.
+// Worker/нярав өөрийн эрхээр project.task-ийг уншиж чаддаггүй тул нүүр дээр
+// оногдсон даалгавар харагдахгүй байсныг энэ замаар найдвартай харуулна.
+export async function loadUserAssignedTasks(uid: number): Promise<AssignedTaskItem[]> {
+  if (!uid || !Number.isFinite(uid)) return [];
+  const records = await executeOdooKw<
+    Array<{
+      id: number;
+      name?: string;
+      project_id?: OdooRelation;
+      date_deadline?: string | false;
+      stage_id?: OdooRelation;
+    }>
+  >(
+    "project.task",
+    "search_read",
+    [["|", ["user_ids", "in", [uid]], ["ops_team_leader_id", "=", uid]]],
+    { fields: ["name", "project_id", "date_deadline", "stage_id"], order: "date_deadline asc, id desc", limit: 100 },
+    createOdooConnection(),
+  ).catch((error) => {
+    console.warn("loadUserAssignedTasks failed:", error);
+    return [] as Array<{ id: number }>;
+  });
+  return (records as Array<{
+    id: number;
+    name?: string;
+    project_id?: OdooRelation;
+    date_deadline?: string | false;
+    stage_id?: OdooRelation;
+  }>)
+    .filter((record) => {
+      const stage = relationName(record.stage_id ?? false, "").toLocaleLowerCase("mn-MN");
+      return !(
+        stage.includes("дууссан") ||
+        stage.includes("verified") ||
+        stage.includes("done") ||
+        stage.includes("баталсан") ||
+        stage.includes("цуцал")
+      );
+    })
+    .map((record) => ({
+      id: record.id,
+      name: (record.name || "").trim() || "Нэргүй даалгавар",
+      projectName: relationName(record.project_id ?? false, ""),
+      deadline: typeof record.date_deadline === "string" ? record.date_deadline.slice(0, 10) : "",
+      statusLabel: relationName(record.stage_id ?? false, ""),
+      href: `/tasks/${record.id}`,
+    }));
+}
+
 export async function loadMunicipalSnapshot(
   connectionOverrides: Partial<OdooConnection> = {},
   options: { allowFallback?: boolean } = {},
