@@ -7442,7 +7442,8 @@ function deriveAssignedTaskStatus(stageName: string): {
     return { key: "done", label: raw || "Дууссан" };
   }
   if (
-    s.includes("шалгаж") ||
+    // "Шалгаж байна", "Шалгагдаж буй ажил"
+    s.includes("шалга") ||
     s.includes("хянаж") ||
     s.includes("review") ||
     s.includes("хүлээгдэж")
@@ -7450,8 +7451,10 @@ function deriveAssignedTaskStatus(stageName: string): {
     return { key: "review", label: raw || "Шалгаж байна" };
   }
   if (
+    // "Гүйцэтгэж байна", "Явагдаж буй ажил", "Хэрэгжиж байна"
     s.includes("хийгдэж") ||
     s.includes("гүйцэтгэж") ||
+    s.includes("явагд") ||
     s.includes("хэрэгжиж") ||
     s.includes("явц") ||
     s.includes("эхэлсэн") ||
