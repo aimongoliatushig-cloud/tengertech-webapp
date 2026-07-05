@@ -3290,6 +3290,29 @@ function WorkerHomeView({
     { key: "chat", label: "Чат", href: "/chat", icon: MessageSquare, iconBg: "bg-[#EEF1EF]", iconFg: "text-[#16241b]" },
   ];
 
+  // Даалгаврын төлвийн доуннат — бодит оногдсон даалгавраас тооцно.
+  const statusCounts: Record<AssignedTaskStatusKey, number> = { planned: 0, doing: 0, review: 0, done: 0 };
+  for (const task of assignedTasks) {
+    statusCounts[task.statusKey] += 1;
+  }
+  const donutData = [
+    { key: "done", label: "Дууссан", value: statusCounts.done, color: "#2E7D32" },
+    { key: "doing", label: "Хийгдэж байна", value: statusCounts.doing, color: "#E8820A" },
+    { key: "review", label: "Шалгаж байна", value: statusCounts.review, color: "#2563EB" },
+    { key: "planned", label: "Төлөвлөсөн", value: statusCounts.planned, color: "#94A79A" },
+  ].filter((segment) => segment.value > 0);
+  let donutAcc = 0;
+  const donutSegs = donutData.map((segment) => {
+    const pct = total ? (segment.value / total) * 100 : 0;
+    const seg = {
+      ...segment,
+      dash: `${pct.toFixed(2)} ${(100 - pct).toFixed(2)}`,
+      offset: Number((-donutAcc).toFixed(2)),
+    };
+    donutAcc += pct;
+    return seg;
+  });
+
   return (
     <main className={shellStyles.shell}>
       <div className={shellStyles.contentWithMenu}>
@@ -3443,19 +3466,62 @@ function WorkerHomeView({
                 )}
               </section>
 
-              <section className="relative overflow-hidden rounded-3xl border border-[#CFE9D6] bg-gradient-to-br from-[#EAF6EC] to-[#F6FBF3] p-5">
-                <Leaf className="absolute -right-3 -top-3 h-24 w-24 text-[#4A9A5D]/15" aria-hidden />
-                <div className="relative">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/70 text-[#2e7d32]">
-                    <Leaf className="h-5 w-5" />
-                  </span>
-                  <p className="mt-3 text-xs font-bold uppercase tracking-wide text-[#4A9A5D]">Өнөөдрийн уриа</p>
-                  <p className="mt-1 text-sm font-extrabold leading-snug text-[#16351f]">
+              <section className="rounded-3xl border border-[#E7EBE8] bg-white p-5 shadow-[0_1px_3px_rgba(20,40,30,0.06)]">
+                <h3 className="mb-4 text-sm font-bold text-[#16241b]">Даалгаврын төлөв</h3>
+                {total ? (
+                  <div className="flex items-center gap-5">
+                    <div className="relative h-[128px] w-[128px] shrink-0">
+                      <svg viewBox="0 0 140 140" className="h-full w-full" role="img" aria-label={`Гүйцэтгэл ${completionPct} хувь`}>
+                        <g transform="rotate(-90 70 70)" fill="none" strokeWidth="15" pathLength="100">
+                          <circle cx="70" cy="70" r="54" stroke="#EDF0EE" />
+                          {donutSegs.map((segment) => (
+                            <circle
+                              key={segment.key}
+                              cx="70"
+                              cy="70"
+                              r="54"
+                              stroke={segment.color}
+                              strokeDasharray={segment.dash}
+                              strokeDashoffset={segment.offset}
+                            />
+                          ))}
+                        </g>
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <b className="text-2xl font-bold tabular-nums text-[#16241b]">{completionPct}%</b>
+                        <span className="text-[10px] font-medium text-[#8A978E]">Гүйцэтгэл</span>
+                      </div>
+                    </div>
+                    <div className="grid flex-1 gap-2">
+                      {donutData.map((segment) => (
+                        <div key={segment.key} className="flex items-center gap-2 text-xs text-[#57655C]">
+                          <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: segment.color }} />
+                          {segment.label}
+                          <b className="ml-auto tabular-nums text-[#16241b]">{segment.value}</b>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="py-8 text-center text-xs font-medium text-[#8A978E]">Даалгавар байхгүй тул төлөв харагдахгүй.</p>
+                )}
+              </section>
+            </div>
+
+            <section className="relative overflow-hidden rounded-3xl border border-[#CFE9D6] bg-gradient-to-br from-[#EAF6EC] to-[#F6FBF3] p-5">
+              <Leaf className="absolute -right-4 -top-4 h-28 w-28 text-[#4A9A5D]/12" aria-hidden />
+              <div className="relative flex items-center gap-4">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/70 text-[#2e7d32]">
+                  <Leaf className="h-6 w-6" />
+                </span>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-[#4A9A5D]">Өнөөдрийн уриа</p>
+                  <p className="mt-1 text-base font-extrabold leading-snug text-[#16351f]">
                     “Байгалиа хайрлая, ирээдүйгээ хамгаалъя.”
                   </p>
                 </div>
-              </section>
-            </div>
+              </div>
+            </section>
           </div>
         </div>
       </div>
