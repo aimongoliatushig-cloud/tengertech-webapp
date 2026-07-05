@@ -263,6 +263,34 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
     .sort((left, right) => left.name.localeCompare(right.name, "mn-MN"));
   const canAssignTask = canCreateTasks && employeeOptions.length > 0 && projectOptions.length > 0;
 
+  // Харуулахгүй байх хэсэг/ажилтнууд (жижиг үсгээр, дэд-мөрөөр таарна)
+  const EXCLUDED_DEPARTMENTS = [
+    "системийн админ",
+    "хог тээвэр",
+    "цэвэрлэгээ",
+    "авто бааз",
+    "ногоон",
+  ];
+  const EXCLUDED_PEOPLE = [
+    "системийн админ",
+    "уртбаяр",
+    "эрдэнэбат",
+    "эрдэнэбулга",
+    "сонорбилэг",
+    "батсуурь",
+    "чулуун",
+    "чимэдочир",
+    "амарсанаа",
+  ];
+  const isExcludedDept = (name: string) => {
+    const key = name.trim().toLowerCase();
+    return EXCLUDED_DEPARTMENTS.some((needle) => key.includes(needle));
+  };
+  const isExcludedPerson = (name: string) => {
+    const key = name.trim().toLowerCase();
+    return EXCLUDED_PEOPLE.some((needle) => key.includes(needle));
+  };
+
   // Гүйцэтгэгч (assignee) тус бүрээр бүлэглэнэ. Лавлахад байхгүй хэрэглэгч
   // (жиш. системийн данс руу оногдсон хэлтсийн даалгавар) энд орохгүй.
   const groups = new Map<number, { id: number; name: string; tasks: TaskDirectoryItem[] }>();
@@ -315,7 +343,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
         visibleTasks,
       };
     })
-    .filter((employee) => employee.visibleTasks.length > 0)
+    .filter((employee) => employee.visibleTasks.length > 0 && !isExcludedPerson(employee.name))
     .sort(
       (left, right) =>
         right.overdue - left.overdue ||
@@ -358,7 +386,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
       });
       return { name, assigned, done, overdue, progress, visibleTasks };
     })
-    .filter((group) => group.visibleTasks.length > 0)
+    .filter((group) => group.visibleTasks.length > 0 && !isExcludedDept(group.name))
     .sort((left, right) => right.overdue - left.overdue || right.assigned - left.assigned);
 
   // Картууд нь өөрсдөө статусын шүүлтүүр болно (доод статус-эгнээг давхардуулахгүй)
