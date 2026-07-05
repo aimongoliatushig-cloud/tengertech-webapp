@@ -13,10 +13,13 @@ import {
   CloudRain,
   CloudSnow,
   CloudSun,
+  FileText,
+  Folder,
   Fuel,
   HeartPulse,
   Leaf,
   ListChecks,
+  MessageSquare,
   Plus,
   Recycle,
   ShieldCheck,
@@ -3272,6 +3275,20 @@ function WorkerHomeView({
   ];
 
   const notificationItems = assignedTasks.slice(0, 3);
+  const canCreate = canCreateTasks || canCreateProject;
+  const quickActions: Array<{
+    key: string;
+    label: string;
+    href: string;
+    icon: LucideIcon;
+    iconBg: string;
+    iconFg: string;
+  }> = [
+    { key: "report", label: "Тайлан илгээх", href: "/review", icon: FileText, iconBg: "bg-[#E8EEFD]", iconFg: "text-[#2563EB]" },
+    { key: "calendar", label: "Календарь", href: "/tasks?view=today", icon: CalendarDays, iconBg: "bg-[#FCF0DC]", iconFg: "text-[#E8820A]" },
+    { key: "docs", label: "Баримт", href: "/data-download", icon: Folder, iconBg: "bg-[#E7F3E8]", iconFg: "text-[#2E7D32]" },
+    { key: "chat", label: "Чат", href: "/chat", icon: MessageSquare, iconBg: "bg-[#EEF1EF]", iconFg: "text-[#16241b]" },
+  ];
 
   return (
     <main className={shellStyles.shell}>
@@ -3330,52 +3347,66 @@ function WorkerHomeView({
           </section>
 
           <div className="relative z-20 mt-4 grid gap-4">
-            <div className="grid min-w-0 gap-4">
-              {procurementActionPanel ? (
-                <div className={dashboardStyles.procurementTaskPanel}>{procurementActionPanel}</div>
-              ) : null}
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+              <div className="grid min-w-0 content-start gap-4">
+                {procurementActionPanel ? (
+                  <div className={dashboardStyles.procurementTaskPanel}>{procurementActionPanel}</div>
+                ) : null}
 
-              {total ? (
-                <WorkerTaskTable tasks={assignedTasks} currentDateKey={currentDateKey} allHref="/tasks" />
-              ) : (
-                <section className="rounded-3xl border border-[#E4EFE7] bg-white p-8 text-center">
-                  <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F2F8F3] text-[#4A9A5D]">
-                    <ClipboardList className="h-6 w-6" />
-                  </span>
-                  <p className="text-sm font-semibold text-[#1F2B24]">Одоогоор оногдсон даалгавар алга.</p>
-                  <p className="mt-1 text-xs font-medium text-[#8A978E]">Шинэ даалгавар оногдоход энд харагдана.</p>
-                </section>
-              )}
+                {total ? (
+                  <WorkerTaskTable
+                    tasks={assignedTasks}
+                    currentDateKey={currentDateKey}
+                    allHref="/tasks"
+                    maxRows={5}
+                  />
+                ) : (
+                  <section className="rounded-3xl border border-[#E4EFE7] bg-white p-8 text-center">
+                    <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F2F8F3] text-[#4A9A5D]">
+                      <ClipboardList className="h-6 w-6" />
+                    </span>
+                    <p className="text-sm font-semibold text-[#1F2B24]">Одоогоор оногдсон даалгавар алга.</p>
+                    <p className="mt-1 text-xs font-medium text-[#8A978E]">Шинэ даалгавар оногдоход энд харагдана.</p>
+                  </section>
+                )}
+              </div>
 
-              <Link
-                href="/tasks"
-                className="flex min-w-0 items-center gap-3 rounded-3xl border border-[#E4EFE7] bg-white p-4 transition hover:border-[#2e7d32] hover:shadow-[0_8px_22px_rgba(46,125,50,0.08)]"
-              >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#F2F8F3] text-[#4A9A5D]">
-                  <ClipboardList className="h-5 w-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-bold text-[#16241b]">Нээлттэй даалгавар</div>
-                  <div className="text-xs font-medium text-[#8A978E]">Дарж бүх даалгаврыг жагсаалтаар нээнэ.</div>
-                </div>
-                <div className="flex items-center gap-4 sm:gap-6">
-                  <div className="text-center">
-                    <div className="text-lg font-black leading-none text-[#16241b]">{activeCount}</div>
-                    <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-[#8A978E]">Нээлттэй</div>
-                  </div>
-                  <div className="text-center">
-                    <div className={cn("text-lg font-black leading-none", overdueCount ? "text-[#EF4444]" : "text-[#16241b]")}>
-                      {overdueCount}
+              <aside className="grid content-start gap-4">
+                <section className="rounded-3xl border border-[#E7EBE8] bg-white p-4 shadow-[0_1px_3px_rgba(20,40,30,0.06)]">
+                  <h3 className="mb-3 text-sm font-bold text-[#16241b]">Түргэн үйлдэл</h3>
+                  <div className="grid gap-2.5">
+                    <Link
+                      href={canCreate ? "/create" : "/tasks"}
+                      className="flex items-center gap-3 rounded-2xl bg-[#2E7D32] p-3.5 text-white transition hover:bg-[#256a29]"
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
+                        {canCreate ? <Plus className="h-5 w-5" /> : <ListChecks className="h-5 w-5" />}
+                      </span>
+                      <div>
+                        <div className="text-sm font-bold">{canCreate ? "Шинэ даалгавар" : "Миний ажил"}</div>
+                        <div className="text-[11px] text-white/75">{canCreate ? "Ажил үүсгэх" : "Бүх даалгавар"}</div>
+                      </div>
+                    </Link>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {quickActions.map((action) => {
+                        const Icon = action.icon;
+                        return (
+                          <Link
+                            key={action.key}
+                            href={action.href}
+                            className="flex flex-col gap-2 rounded-2xl border border-[#E7EBE8] bg-[#FAFDFB] p-3 transition hover:-translate-y-0.5 hover:border-[#d4dbd7] hover:bg-white"
+                          >
+                            <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl", action.iconBg, action.iconFg)}>
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <span className="text-xs font-bold text-[#16241b]">{action.label}</span>
+                          </Link>
+                        );
+                      })}
                     </div>
-                    <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-[#8A978E]">Хэтэрсэн</div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-lg font-black leading-none text-[#16241b]">{doneCount}</div>
-                    <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-[#8A978E]">Хийсэн</div>
-                  </div>
-                </div>
-                <ChevronRight className="h-5 w-5 shrink-0 text-[#B4C3B8]" />
-              </Link>
+                </section>
+              </aside>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">

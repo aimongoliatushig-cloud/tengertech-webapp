@@ -30,15 +30,21 @@ export function WorkerTaskTable({
   tasks,
   currentDateKey,
   allHref = "/tasks",
+  title = "Өнөөдрийн даалгавар",
+  maxRows,
 }: {
   tasks: AssignedTaskItem[];
   currentDateKey: string;
   allHref?: string;
+  title?: string;
+  maxRows?: number;
 }) {
   const [filter, setFilter] = useState<"all" | AssignedTaskStatusKey>("all");
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const rows = filter === "all" ? tasks : tasks.filter((task) => task.statusKey === filter);
+  const filtered = filter === "all" ? tasks : tasks.filter((task) => task.statusKey === filter);
+  const rows = maxRows ? filtered.slice(0, maxRows) : filtered;
+  const hasMore = maxRows ? filtered.length > maxRows : false;
   const activeCount = tasks.filter((task) => task.statusKey !== "done").length;
   const activeFilterLabel =
     FILTER_OPTIONS.find((option) => option.key === filter)?.label ?? "Бүгд";
@@ -51,7 +57,7 @@ export function WorkerTaskTable({
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[rgba(74,154,93,0.14)] text-[#1b5e20]">
               <ListChecks className="h-4 w-4" />
             </span>
-            Миний даалгавар
+            {title}
           </h2>
           <p className="mt-1 text-xs text-[#6b7a72]">
             {activeCount > 0
@@ -194,7 +200,7 @@ export function WorkerTaskTable({
         href={allHref}
         className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[#1b5e20] transition hover:gap-2"
       >
-        Бүгдийг харах
+        {hasMore ? `Бусад ${filtered.length - rows.length} даалгавар` : "Бүгдийг харах"}
         <ChevronRight className="h-4 w-4" />
       </Link>
     </section>
