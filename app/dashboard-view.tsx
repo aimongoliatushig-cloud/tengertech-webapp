@@ -3382,7 +3382,7 @@ function WorkerHomeView({
                 return (
                   <div
                     key={kpi.key}
-                    className={cn(CARD, "transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(20,40,30,0.08)]")}
+                    className={cn(CARD, "transition-colors hover:border-[#D6DBD8]")}
                   >
                     <span className={cn("mb-4 flex h-11 w-11 items-center justify-center rounded-xl", kpi.iconBg, kpi.iconFg)}>
                       <Icon className="h-5 w-5" />
@@ -3446,7 +3446,7 @@ function WorkerHomeView({
                           <Link
                             key={action.key}
                             href={action.href}
-                            className="flex flex-col gap-3 rounded-2xl border border-[#E7EBE8] bg-[#FAFDFB] p-4 transition hover:-translate-y-0.5 hover:border-[#d4dbd7] hover:bg-white"
+                            className="flex flex-col gap-3 rounded-2xl border border-[#E7EBE8] bg-[#FAFDFB] p-4 transition-colors hover:border-[#D6DBD8] hover:bg-white"
                           >
                             <span className={cn("flex h-11 w-11 items-center justify-center rounded-xl", action.iconBg, action.iconFg)}>
                               <Icon className="h-[18px] w-[18px]" />
@@ -3565,20 +3565,16 @@ function WorkerHomeView({
                 )}
               </section>
 
-              {/* Өнөөдрийн уриа — 12 багана */}
-              <section className={cn(CARD, "relative overflow-hidden xl:col-span-12")}>
-                <Leaf className="absolute -right-5 -top-5 h-28 w-28 text-[#2E7D32]/8" aria-hidden />
-                <div className="relative flex items-center gap-4">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E7F3E8] text-[#2E7D32]">
-                    <Leaf className="h-6 w-6" />
-                  </span>
-                  <div>
-                    <p className="text-[13px] font-semibold uppercase tracking-wide text-[#2E7D32]">Өнөөдрийн уриа</p>
-                    <p className="mt-1 text-lg font-semibold leading-snug text-[#16241b]">
-                      “Байгалиа хайрлая, ирээдүйгээ хамгаалъя.”
-                    </p>
-                  </div>
-                </div>
+              {/* Өдрийн уриа — нам, нэг мөрт хэсэг */}
+              <section className="flex items-center gap-3 rounded-2xl border border-[#E7EBE8] bg-white px-6 py-4 xl:col-span-12">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EEF1EF] text-[#2E7D32]">
+                  <Leaf className="h-[18px] w-[18px]" />
+                </span>
+                <p className="text-sm text-[#57655C]">
+                  <span className="font-semibold text-[#16241b]">Өдрийн уриа</span>
+                  <span className="mx-2 text-[#C7CFCA]">·</span>
+                  “Байгалиа хайрлая, ирээдүйгээ хамгаалъя.”
+                </p>
               </section>
             </div>
           </div>

@@ -184,12 +184,12 @@ export function WorkerTaskTable({
 
                 <span className="flex justify-end">
                   {isDone ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#E7F3E8] px-3 py-2 text-xs font-semibold text-[#1B5E20]">
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-[#8A978E]">
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-[#2E7D32]" />
                       Гүйцэтгэсэн
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#2E7D32] px-3 py-2 text-xs font-semibold text-white transition group-hover:bg-[#256a29]">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#D5E3D8] bg-white px-3 py-2 text-xs font-semibold text-[#1B5E20] transition-colors group-hover:border-[#2E7D32] group-hover:bg-[#2E7D32] group-hover:text-white">
                       <CheckCircle2 className="h-4 w-4 shrink-0" />
                       Тайлан
                     </span>
