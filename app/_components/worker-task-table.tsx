@@ -52,7 +52,7 @@ export function WorkerTaskTable({
     FILTER_OPTIONS.find((option) => option.key === filter)?.label ?? "Бүгд";
 
   return (
-    <section className="min-w-0 rounded-2xl border border-[#E7EBE8] bg-white p-6 shadow-[0_1px_2px_rgba(20,40,30,0.04),0_1px_3px_rgba(20,40,30,0.06)]">
+    <section className="min-w-0 rounded-2xl border border-[#E7EBE8] bg-white p-8 shadow-[0_1px_2px_rgba(20,40,30,0.04),0_1px_3px_rgba(20,40,30,0.06)]">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-base font-semibold text-[#16241b]">
