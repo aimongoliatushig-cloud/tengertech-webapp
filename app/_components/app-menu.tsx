@@ -11,6 +11,7 @@ import {
   Building2,
   CalendarDays,
   ChevronDown,
+  CircleUser,
   ClipboardCheck,
   FileText,
   Flag,
@@ -838,6 +839,18 @@ export function AppMenu({
       icon: Bell,
       badge: notificationCount,
     },
+    // Ажилтан өөрийн профайл (ERP дүгнэлт, хувийн мэдээлэл) руу шууд оръё.
+    ...(workerMode
+      ? [
+          {
+            key: "profile",
+            href: "/profile",
+            label: "Миний профайл",
+            icon: CircleUser,
+            hardNavigate: true,
+          },
+        ]
+      : []),
   ].filter((item) => {
     if (isHiddenMenuItem(item)) {
       return false;
@@ -872,6 +885,7 @@ export function AppMenu({
         "help",
         "review",
         "notifications",
+        "profile",
       ].includes(item.key);
     }
     if (environmentFieldMode) {
@@ -883,6 +897,7 @@ export function AppMenu({
         "help",
         "review",
         "notifications",
+        "profile",
       ].includes(item.key);
     }
     if (repairFieldMode) {
@@ -893,6 +908,7 @@ export function AppMenu({
         "help",
         "review",
         "notifications",
+        "profile",
       ].includes(item.key);
     }
     return !["data-download", "reports", "fleet-repair"].includes(item.key);
@@ -1239,6 +1255,13 @@ export function AppMenu({
         active === "projects" ||
         pathname === "/projects" ||
         pathname.startsWith("/projects/")
+      );
+    }
+    if (item.key === "profile") {
+      return (
+        active === "profile" ||
+        pathname === "/profile" ||
+        pathname.startsWith("/profile/")
       );
     }
     if (item.key === active) {

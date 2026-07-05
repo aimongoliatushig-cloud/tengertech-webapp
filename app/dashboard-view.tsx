@@ -3667,6 +3667,7 @@ export function DashboardView({
             notificationCount={attentionCount}
             notificationNote={effectiveNotificationNote}
             backgroundImage={DASHBOARD_IMAGES.header}
+            showUserMenu={!workerMode}
           />
 
           {showProcurementHomePanels ? (
