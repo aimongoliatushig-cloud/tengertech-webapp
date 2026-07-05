@@ -571,7 +571,7 @@
 
 .actionGhost {
   border-color: rgba(46, 116, 70, 0.12);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--surface-panel);
   color: var(--board-green-900);
 }
 
@@ -621,7 +621,7 @@
   margin-top: 2px;
   border: 2px solid rgba(46, 116, 70, 0.24);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--surface-panel);
 }
 
 .checkboxChecked {
@@ -1385,7 +1385,7 @@
   min-height: var(--ds-control-height);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-control);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--surface-panel);
   color: var(--ink-900);
   box-shadow: none;
 }

@@ -16,7 +16,7 @@
   gap: 4px;
   padding: 14px 14px 12px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--surface-panel);
   border: 1px solid var(--line-soft);
 }
 
@@ -136,7 +136,7 @@
   padding: 9px 11px;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-panel);
   color: var(--ink-900);
 }
 .assignField select:focus,
@@ -173,7 +173,7 @@
   padding: 9px 11px;
   border: 1px solid var(--line-soft);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-panel);
   color: var(--ink-900);
 }
 .pickerInput:focus {
@@ -193,7 +193,7 @@
   list-style: none;
   border: 1px solid var(--line-soft);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface-panel);
   box-shadow: var(--ds-shadow-panel);
 }
 .pickerItem {
@@ -240,7 +240,7 @@
   padding: 6px 12px;
   border: 1px solid var(--line-soft);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--surface-panel);
   color: var(--ink-700);
   font-size: 12px !important;
   text-decoration: none;
@@ -283,7 +283,7 @@
 .emp {
   border: 1px solid var(--line-soft);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--surface-panel);
   overflow: hidden;
 }
 
@@ -482,7 +482,7 @@
   padding: 2px 8px;
   border-radius: 6px;
   border: 1px solid var(--line-soft);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--surface-panel);
   color: var(--ink-600);
   font-size: 11px !important;
   white-space: nowrap;

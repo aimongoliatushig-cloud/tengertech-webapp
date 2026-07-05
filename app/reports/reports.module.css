@@ -5,7 +5,7 @@
   padding: 16px;
   border: 1px solid var(--line-soft);
   border-radius: var(--ds-radius-card);
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--surface-panel);
   box-shadow: var(--ds-shadow-panel);
 }
 
@@ -24,7 +24,7 @@
   border: 1px solid rgba(31, 95, 49, 0.1);
   border-left: 3px solid var(--metric-accent, var(--brand-700));
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--surface-panel);
 }
 
 .reportRegistryMetricCardTotal {
@@ -131,7 +131,7 @@
   min-height: 44px;
   border: 1px solid rgba(31, 95, 49, 0.13);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--surface-panel);
   color: var(--ink-900);
   font: inherit;
 }
@@ -154,7 +154,7 @@
   padding: 0 16px;
   border: 1px solid rgba(31, 95, 49, 0.16);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--surface-panel);
   color: var(--brand-800);
   font-weight: 800;
 }
@@ -199,7 +199,7 @@
   padding: 14px;
   border: 1px solid rgba(31, 95, 49, 0.1);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--surface-panel);
 }
 
 .reportRegistryScopeHeader,
@@ -283,7 +283,7 @@
   height: 28px;
   padding: 0 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--surface-panel);
   color: var(--brand-900);
   font-size: 0.82rem;
 }
@@ -337,7 +337,7 @@
   min-height: 48px;
   justify-content: space-between;
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-panel);
 }
 
 .reportRegistryReviewList {
@@ -383,7 +383,7 @@
 .reportRegistryTableCard {
   border: 1px solid rgba(31, 95, 49, 0.1);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--surface-panel);
 }
 
 .reportRegistrySidebar {
@@ -591,7 +591,7 @@
   padding: 12px;
   border: 1px solid rgba(31, 95, 49, 0.08);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--surface-panel);
 }
 
 .reportRegistryDetailGrid span,
@@ -621,7 +621,7 @@
   padding: 8px;
   border: 1px solid rgba(31, 95, 49, 0.1);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--surface-panel);
   color: var(--ink-800);
   text-decoration: none;
 }
@@ -650,7 +650,7 @@
   padding: 12px;
   border: 1px solid rgba(31, 95, 49, 0.1);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--surface-panel);
 }
 
 .reportRegistryAudioCard audio {
@@ -672,7 +672,7 @@
   padding: 0 14px;
   border: 1px solid rgba(31, 95, 49, 0.14);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--surface-panel);
   color: var(--brand-900);
   font-weight: 800;
   text-decoration: none;
@@ -809,7 +809,7 @@
     overflow: hidden;
     border: 1px solid rgba(31, 95, 49, 0.12);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--surface-panel);
     box-shadow: 0 8px 22px rgba(31, 95, 49, 0.06);
   }
 
