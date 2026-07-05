@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import Link from "next/link";
-import { CheckCircle2, ChevronDown, ChevronRight, ListChecks } from "lucide-react";
+import { ChevronDown, ChevronRight, ListChecks } from "lucide-react";
 
 import type { AssignedTaskItem, AssignedTaskStatusKey } from "@/lib/odoo";
 import { cn } from "@/lib/utils";
@@ -117,12 +117,11 @@ export function WorkerTaskTable({
       </div>
 
       <div>
-        <div className="grid grid-cols-[32px_minmax(0,1fr)_108px_100px] gap-3 border-b border-[#EEF3EF] px-3 pb-3 text-[11px] font-semibold uppercase tracking-wide text-[#8A978E] sm:grid-cols-[32px_minmax(0,1fr)_108px_104px_100px]">
+        <div className="grid grid-cols-[32px_minmax(0,1fr)_120px_58px] gap-4 border-b border-[#EEF3EF] px-3 pb-3 text-[11px] font-semibold uppercase tracking-wide text-[#8A978E] sm:grid-cols-[36px_minmax(0,1fr)_150px_72px]">
           <span>№</span>
-          <span>Даалгаврын нэр</span>
+          <span>Даалгавар</span>
           <span>Төлөв</span>
-          <span className="hidden sm:block">Хугацаа</span>
-          <span className="text-right">Үйлдэл</span>
+          <span className="text-right">Хугацаа</span>
         </div>
 
         {rows.length ? (
@@ -130,30 +129,19 @@ export function WorkerTaskTable({
             const status = STATUS_META[task.statusKey];
             const isDone = task.statusKey === "done";
             const overdue = !isDone && Boolean(task.deadline && task.deadline < currentDateKey);
+            const dueShort = task.deadline ? task.deadline.slice(5) : "—";
             return (
               <Link
                 key={`wtt-${task.id}`}
                 href={task.href}
-                className="group grid min-h-[64px] grid-cols-[32px_minmax(0,1fr)_108px_100px] items-center gap-3 border-b border-[#EEF3EF] px-3 py-3 transition last:border-b-0 hover:bg-[#F6F8F7] sm:grid-cols-[32px_minmax(0,1fr)_108px_104px_100px]"
+                className="group grid min-h-[68px] grid-cols-[32px_minmax(0,1fr)_120px_58px] items-center gap-4 border-b border-[#EEF3EF] px-3 py-3.5 transition-colors last:border-b-0 hover:bg-[#F6F8F7] sm:grid-cols-[36px_minmax(0,1fr)_150px_72px]"
               >
-                <span
-                  className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-lg text-[13px] font-bold tabular-nums",
-                    isDone ? "bg-[#E7F3E8] text-[#1B5E20]" : "bg-[#EEF1EF] text-[#57655C]",
-                  )}
-                >
-                  {isDone ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EEF1EF] text-[13px] font-bold tabular-nums text-[#57655C]">
+                  {index + 1}
                 </span>
 
                 <span className="min-w-0">
-                  <strong
-                    className={cn(
-                      "block truncate text-sm font-semibold",
-                      isDone ? "text-[#5b6b60]" : "text-[#16241b]",
-                    )}
-                  >
-                    {task.name}
-                  </strong>
+                  <strong className="block truncate text-sm font-semibold text-[#16241b]">{task.name}</strong>
                   {task.projectName ? (
                     <span className="mt-0.5 block truncate text-xs font-medium text-[#8A978E]">{task.projectName}</span>
                   ) : null}
@@ -163,7 +151,7 @@ export function WorkerTaskTable({
                   {overdue ? (
                     <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold", OVERDUE_BADGE)}>
                       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#DC2626]" />
-                      Хэтэрсэн
+                      Хугацаа хэтэрсэн
                     </span>
                   ) : (
                     <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold", status.badge)}>
@@ -175,25 +163,11 @@ export function WorkerTaskTable({
 
                 <span
                   className={cn(
-                    "hidden text-[13px] font-semibold tabular-nums sm:block",
+                    "text-right text-[13px] font-semibold tabular-nums",
                     overdue ? "text-[#DC2626]" : "text-[#57655C]",
                   )}
                 >
-                  {task.deadline || "—"}
-                </span>
-
-                <span className="flex justify-end">
-                  {isDone ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-[#8A978E]">
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-[#2E7D32]" />
-                      Гүйцэтгэсэн
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#D5E3D8] bg-white px-3 py-2 text-xs font-semibold text-[#1B5E20] transition-colors group-hover:border-[#2E7D32] group-hover:bg-[#2E7D32] group-hover:text-white">
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
-                      Тайлан
-                    </span>
-                  )}
+                  {dueShort}
                 </span>
               </Link>
             );
