@@ -3674,7 +3674,7 @@ export function DashboardView({
                 </Card>
               ) : null}
 
-              {!workerMode && myAssignedTasks.length ? (
+              {myAssignedTasks.length ? (
                 <Card className={dashboardStyles.taskListCard}>
                   <CardHeader className={dashboardStyles.taskListHeader}>
                     <div className={dashboardStyles.taskListHeaderText}>
