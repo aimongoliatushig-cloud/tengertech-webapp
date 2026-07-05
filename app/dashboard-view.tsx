@@ -2,7 +2,9 @@ import type { CSSProperties, ReactNode } from "react";
 
 import Link from "next/link";
 import {
+  AlertTriangle,
   BarChart3,
+  Bell,
   CalendarDays,
   CheckCircle2,
   ChevronRight,
@@ -11,6 +13,8 @@ import {
   CloudRain,
   CloudSnow,
   CloudSun,
+  FileText,
+  Folder,
   Fuel,
   HeartPulse,
   Leaf,
@@ -27,6 +31,7 @@ import {
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
+import { WorkerTaskTable } from "@/app/_components/worker-task-table";
 import { Badge } from "@/app/_components/ui/badge";
 import {
   Card,
@@ -3172,6 +3177,294 @@ function OpenTasksSummaryCard({
   );
 }
 
+// Ажилтан (worker/нярав) нэвтэрхэд харах хувийн нүүр хуудас: 4 KPI хайрцаг,
+// даалгаврын хүснэгт (шүүлттэй), баруун талд түргэн үйлдэл, мэдэгдэл, уриа.
+function WorkerHomeView({
+  session,
+  roleLabel,
+  scopeLabel,
+  canCreateProject,
+  canCreateTasks,
+  canWriteReports,
+  canViewQualityCenter,
+  canUseFieldConsole,
+  canViewHr,
+  notificationCount,
+  notificationNote,
+  assignedTasks,
+  currentDateKey,
+  departmentScopeName,
+  procurementActionPanel,
+}: {
+  session: AppSession;
+  roleLabel: string;
+  scopeLabel: string;
+  canCreateProject: boolean;
+  canCreateTasks: boolean;
+  canWriteReports: boolean;
+  canViewQualityCenter: boolean;
+  canUseFieldConsole: boolean;
+  canViewHr: boolean;
+  notificationCount: number;
+  notificationNote: string;
+  assignedTasks: AssignedTaskItem[];
+  currentDateKey: string;
+  departmentScopeName: string | null;
+  procurementActionPanel: ReactNode;
+}) {
+  const canViewAllReports = canViewAllWorkspaceReports(session);
+  const canViewWeightReports = canViewGarbageWeightReports(session);
+  const canCreate = canCreateTasks || canCreateProject;
+
+  const total = assignedTasks.length;
+  const doneCount = assignedTasks.filter((task) => task.statusKey === "done").length;
+  const activeCount = total - doneCount;
+  const overdueCount = assignedTasks.filter(
+    (task) => task.statusKey !== "done" && task.deadline && task.deadline < currentDateKey,
+  ).length;
+
+  const kpis: Array<{
+    key: string;
+    label: string;
+    sub: string;
+    value: number;
+    icon: LucideIcon;
+    ring: string;
+    iconWrap: string;
+  }> = [
+    {
+      key: "total",
+      label: "Миний даалгавар",
+      sub: "Нийт даалгавар",
+      value: total,
+      icon: ClipboardList,
+      ring: "border-[#DCEBE0] bg-[#F5FBF6]",
+      iconWrap: "bg-[#4A9A5D] text-white",
+    },
+    {
+      key: "active",
+      label: "Нээлттэй",
+      sub: "Гүйцэтгэж байна",
+      value: activeCount,
+      icon: Clock3,
+      ring: "border-[#D6E6F5] bg-[#F2F8FD]",
+      iconWrap: "bg-[#3B82F6] text-white",
+    },
+    {
+      key: "overdue",
+      label: "Хэтэрсэн",
+      sub: "Хугацаа хэтэрсэн",
+      value: overdueCount,
+      icon: AlertTriangle,
+      ring: "border-[#F5E6C8] bg-[#FDF8EE]",
+      iconWrap: "bg-[#F59E0B] text-white",
+    },
+    {
+      key: "done",
+      label: "Хийж дууссан",
+      sub: "Дууссан даалгавар",
+      value: doneCount,
+      icon: CheckCircle2,
+      ring: "border-[#CFE9D6] bg-[#F1FAF3]",
+      iconWrap: "bg-[#1b7a3e] text-white",
+    },
+  ];
+
+  const quickActions: Array<{ key: string; label: string; href: string; icon: LucideIcon }> = [
+    canCreate
+      ? { key: "create", label: "Шинэ даалгавар", href: "/create", icon: Plus }
+      : { key: "my-tasks", label: "Миний ажил", href: "/tasks", icon: ListChecks },
+    { key: "report", label: "Тайлан оруулах", href: "/review", icon: FileText },
+    { key: "schedule", label: "Хуваарь харах", href: "/tasks?view=today", icon: CalendarDays },
+    { key: "documents", label: "Баримт бичиг", href: "/data-download", icon: Folder },
+  ];
+
+  const notificationItems = assignedTasks.slice(0, 3);
+
+  return (
+    <main className={shellStyles.shell}>
+      <div className={shellStyles.contentWithMenu}>
+        <aside className={shellStyles.menuColumn}>
+          <AppMenu
+            active="dashboard"
+            canCreateProject={canCreateProject}
+            canCreateTasks={canCreateTasks}
+            canWriteReports={canWriteReports}
+            canViewQualityCenter={canViewQualityCenter}
+            canUseFieldConsole={canUseFieldConsole}
+            canViewAllReports={canViewAllReports}
+            canViewGarbageWeightReports={canViewWeightReports}
+            canViewHr={canViewHr}
+            userName={session.name}
+            userRole={session.role}
+            roleLabel={roleLabel}
+            groupFlags={session.groupFlags}
+            workerMode
+            notificationCount={notificationCount}
+            departmentScopeName={departmentScopeName}
+          />
+        </aside>
+
+        <div className={shellStyles.pageContent}>
+          <WorkspaceHeader
+            title={`Сайн байна уу, ${session.name}`}
+            subtitle={scopeLabel}
+            userName={session.name}
+            roleLabel={roleLabel}
+            notificationCount={notificationCount}
+            notificationNote={notificationNote}
+            backgroundImage={DASHBOARD_IMAGES.header}
+            showUserMenu={false}
+          />
+
+          <section className="relative z-20 grid grid-cols-2 gap-3 xl:grid-cols-4">
+            {kpis.map((kpi) => {
+              const Icon = kpi.icon;
+              return (
+                <div
+                  key={kpi.key}
+                  className={cn(
+                    "flex items-center gap-3 rounded-2xl border p-4 shadow-[0_8px_24px_rgba(31,43,36,0.04)]",
+                    kpi.ring,
+                  )}
+                >
+                  <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", kpi.iconWrap)}>
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="truncate text-xs font-bold text-[#516156]">{kpi.label}</div>
+                    <div className="text-2xl font-black leading-tight text-[#16241b]">{kpi.value}</div>
+                    <div className="truncate text-[11px] font-medium text-[#8A978E]">{kpi.sub}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </section>
+
+          <div className="relative z-20 mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="grid min-w-0 gap-4">
+              {procurementActionPanel ? (
+                <div className={dashboardStyles.procurementTaskPanel}>{procurementActionPanel}</div>
+              ) : null}
+
+              {total ? (
+                <WorkerTaskTable tasks={assignedTasks} currentDateKey={currentDateKey} allHref="/tasks" />
+              ) : (
+                <section className="rounded-3xl border border-[#E4EFE7] bg-white p-8 text-center">
+                  <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F2F8F3] text-[#4A9A5D]">
+                    <ClipboardList className="h-6 w-6" />
+                  </span>
+                  <p className="text-sm font-semibold text-[#1F2B24]">Одоогоор оногдсон даалгавар алга.</p>
+                  <p className="mt-1 text-xs font-medium text-[#8A978E]">Шинэ даалгавар оногдоход энд харагдана.</p>
+                </section>
+              )}
+
+              <Link
+                href="/tasks"
+                className="flex items-center gap-3 rounded-3xl border border-[#E4EFE7] bg-white p-4 transition hover:border-[#2e7d32] hover:shadow-[0_8px_22px_rgba(46,125,50,0.08)]"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#F2F8F3] text-[#4A9A5D]">
+                  <ClipboardList className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-bold text-[#16241b]">Нээлттэй даалгавар</div>
+                  <div className="text-xs font-medium text-[#8A978E]">Дарж бүх даалгаврыг жагсаалтаар нээнэ.</div>
+                </div>
+                <div className="flex items-center gap-4 sm:gap-6">
+                  <div className="text-center">
+                    <div className="text-lg font-black leading-none text-[#16241b]">{activeCount}</div>
+                    <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-[#8A978E]">Нээлттэй</div>
+                  </div>
+                  <div className="text-center">
+                    <div className={cn("text-lg font-black leading-none", overdueCount ? "text-[#EF4444]" : "text-[#16241b]")}>
+                      {overdueCount}
+                    </div>
+                    <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-[#8A978E]">Хэтэрсэн</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-black leading-none text-[#16241b]">{doneCount}</div>
+                    <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-[#8A978E]">Хийсэн</div>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 shrink-0 text-[#B4C3B8]" />
+              </Link>
+            </div>
+
+            <aside className="grid content-start gap-4">
+              <section className="rounded-3xl border border-[#E4EFE7] bg-white p-4">
+                <h3 className="mb-3 text-sm font-bold text-[#16241b]">Түргэн үйлдлүүд</h3>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {quickActions.map((action) => {
+                    const Icon = action.icon;
+                    return (
+                      <Link
+                        key={action.key}
+                        href={action.href}
+                        className="flex flex-col gap-2 rounded-2xl border border-[#E8EFE9] bg-[#FAFDFB] p-3 transition hover:border-[#2e7d32] hover:bg-white"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(74,154,93,0.12)] text-[#1b5e20]">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="text-xs font-bold text-[#16241b]">{action.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="rounded-3xl border border-[#E4EFE7] bg-white p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="flex items-center gap-1.5 text-sm font-bold text-[#16241b]">
+                    <Bell className="h-4 w-4 text-[#4A9A5D]" />
+                    Мэдэгдэл
+                  </h3>
+                  <Link href="/notifications" className="text-xs font-bold text-[#1b5e20] hover:underline">
+                    Бүгдийг харах →
+                  </Link>
+                </div>
+                {notificationItems.length ? (
+                  <div className="grid gap-2">
+                    {notificationItems.map((task) => (
+                      <Link
+                        key={`wn-${task.id}`}
+                        href={task.href}
+                        className="flex items-start gap-2 rounded-xl px-1 py-1.5 transition hover:bg-[#F6FBF7]"
+                      >
+                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#4A9A5D]" />
+                        <span className="min-w-0">
+                          <strong className="block truncate text-xs font-semibold text-[#16241b]">{task.name}</strong>
+                          <span className="text-[11px] font-medium text-[#8A978E]">
+                            Танд оногдсон{task.deadline ? ` · ${task.deadline}` : ""}
+                          </span>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs font-medium text-[#8A978E]">Шинэ мэдэгдэл алга.</p>
+                )}
+              </section>
+
+              <section className="relative overflow-hidden rounded-3xl border border-[#CFE9D6] bg-gradient-to-br from-[#EAF6EC] to-[#F6FBF3] p-5">
+                <Leaf className="absolute -right-3 -top-3 h-24 w-24 text-[#4A9A5D]/15" aria-hidden />
+                <div className="relative">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/70 text-[#2e7d32]">
+                    <Leaf className="h-5 w-5" />
+                  </span>
+                  <p className="mt-3 text-xs font-bold uppercase tracking-wide text-[#4A9A5D]">Өнөөдрийн уриа</p>
+                  <p className="mt-1 text-sm font-extrabold leading-snug text-[#16351f]">
+                    “Байгалиа хайрлая, ирээдүйгээ хамгаалъя.”
+                  </p>
+                </div>
+              </section>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
 function ExecutiveDashboardView({
   session,
   roleLabel,
@@ -3629,6 +3922,28 @@ export function DashboardView({
         departmentSectionTitle={scopedDepartmentSectionTitle}
         departmentScopeName={departmentScopeName}
         showDepartmentPerformance
+      />
+    );
+  }
+
+  if (workerMode && !masterMode) {
+    return (
+      <WorkerHomeView
+        session={session}
+        roleLabel={roleLabel}
+        scopeLabel={scopeLabel}
+        canCreateProject={canCreateProject}
+        canCreateTasks={canCreateTasks}
+        canWriteReports={canWriteReports}
+        canViewQualityCenter={canViewQualityCenter}
+        canUseFieldConsole={canUseFieldConsole}
+        canViewHr={canViewHr}
+        notificationCount={attentionCount}
+        notificationNote={effectiveNotificationNote}
+        assignedTasks={myAssignedTasks}
+        currentDateKey={currentDateKey}
+        departmentScopeName={departmentScopeName}
+        procurementActionPanel={procurementActionPanel}
       />
     );
   }
