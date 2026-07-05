@@ -108,83 +108,86 @@ export function WorkerTaskTable({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="min-w-[540px]">
-          <div className="grid grid-cols-[36px_minmax(0,1fr)_128px_112px_32px] items-center gap-2 border-b border-[#EEF3EF] px-2 pb-2 text-[11px] font-bold uppercase tracking-wide text-[#8A978E]">
-            <span>№</span>
-            <span>Даалгаврын нэр</span>
-            <span>Төлөв</span>
-            <span>Хугацаа</span>
-            <span className="text-right">Үйлдэл</span>
-          </div>
+      <div>
+        <div className="grid grid-cols-[28px_minmax(0,1fr)_112px_24px] gap-3 border-b border-[#EEF3EF] px-1 pb-2 text-[11px] font-bold uppercase tracking-wide text-[#8A978E] sm:grid-cols-[32px_minmax(0,1fr)_128px_92px_24px]">
+          <span>№</span>
+          <span>Даалгаврын нэр</span>
+          <span>Төлөв</span>
+          <span className="hidden sm:block">Хугацаа</span>
+          <span className="text-right">Үйлдэл</span>
+        </div>
 
-          {rows.length ? (
-            rows.map((task, index) => {
-              const status = STATUS_META[task.statusKey];
-              const isDone = task.statusKey === "done";
-              const overdue = !isDone && Boolean(task.deadline && task.deadline < currentDateKey);
-              return (
-                <Link
-                  key={`wtt-${task.id}`}
-                  href={task.href}
-                  className="group grid grid-cols-[36px_minmax(0,1fr)_128px_112px_32px] items-center gap-2 rounded-xl px-2 py-2.5 transition hover:bg-[#F6FBF7]"
+        {rows.length ? (
+          rows.map((task, index) => {
+            const status = STATUS_META[task.statusKey];
+            const isDone = task.statusKey === "done";
+            const overdue = !isDone && Boolean(task.deadline && task.deadline < currentDateKey);
+            return (
+              <Link
+                key={`wtt-${task.id}`}
+                href={task.href}
+                className="group grid grid-cols-[28px_minmax(0,1fr)_112px_24px] items-center gap-3 rounded-xl px-1 py-2.5 transition hover:bg-[#F6FBF7] sm:grid-cols-[32px_minmax(0,1fr)_128px_92px_24px]"
+              >
+                <span
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black",
+                    isDone
+                      ? "bg-[rgba(34,197,94,0.14)] text-[#15803d]"
+                      : "bg-[rgba(74,154,93,0.12)] text-[#1b5e20]",
+                  )}
                 >
-                  <span
+                  {isDone ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                </span>
+
+                <span className="min-w-0">
+                  <strong
                     className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black",
-                      isDone
-                        ? "bg-[rgba(34,197,94,0.14)] text-[#15803d]"
-                        : "bg-[rgba(74,154,93,0.12)] text-[#1b5e20]",
+                      "block truncate text-sm font-semibold",
+                      isDone ? "text-[#5b6b60]" : "text-[#16241b]",
                     )}
                   >
-                    {isDone ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
+                    {task.name}
+                  </strong>
+                  <span className={cn("mt-0.5 flex items-center gap-1.5 text-[11px] font-semibold", status.text)}>
+                    <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", status.dot)} />
+                    {task.statusLabel || status.label}
                   </span>
+                </span>
 
-                  <span className="min-w-0">
-                    <strong
-                      className={cn(
-                        "block truncate text-sm font-semibold",
-                        isDone ? "text-[#5b6b60]" : "text-[#16241b]",
-                      )}
-                    >
-                      {task.name}
-                    </strong>
-                    <span className={cn("mt-0.5 flex items-center gap-1.5 text-[11px] font-semibold", status.text)}>
-                      <span className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
-                      {task.statusLabel || status.label}
+                <span className="min-w-0">
+                  {isDone ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(34,197,94,0.12)] px-2.5 py-1 text-[11px] font-extrabold text-[#15803d]">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                      Гүйцэтгэсэн
                     </span>
-                  </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(46,125,65,0.10)] px-2.5 py-1 text-[11px] font-extrabold text-[#1b5e20]">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                      Тайлан оруулах
+                    </span>
+                  )}
+                </span>
 
-                  <span>
-                    {isDone ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(34,197,94,0.12)] px-2.5 py-1 text-[11px] font-extrabold text-[#15803d]">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        Гүйцэтгэсэн
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(46,125,65,0.10)] px-2.5 py-1 text-[11px] font-extrabold text-[#1b5e20]">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        Тайлан оруулах
-                      </span>
-                    )}
-                  </span>
+                <span
+                  className={cn(
+                    "hidden text-xs font-semibold tabular-nums sm:block",
+                    overdue ? "text-[#dc2626]" : "text-[#6b7a72]",
+                  )}
+                >
+                  {task.deadline || "—"}
+                </span>
 
-                  <span className={cn("text-xs font-semibold", overdue ? "text-[#dc2626]" : "text-[#6b7a72]")}>
-                    {task.deadline || "—"}
-                  </span>
-
-                  <span className="flex justify-end text-[#B4C3B8] transition group-hover:text-[#2e7d32]">
-                    <ChevronRight className="h-4 w-4" />
-                  </span>
-                </Link>
-              );
-            })
-          ) : (
-            <div className="px-2 py-8 text-center text-sm font-medium text-[#8A978E]">
-              Энэ төлөвт даалгавар алга.
-            </div>
-          )}
-        </div>
+                <span className="flex justify-end text-[#B4C3B8] transition group-hover:text-[#2e7d32]">
+                  <ChevronRight className="h-4 w-4" />
+                </span>
+              </Link>
+            );
+          })
+        ) : (
+          <div className="px-2 py-8 text-center text-sm font-medium text-[#8A978E]">
+            Энэ төлөвт даалгавар алга.
+          </div>
+        )}
       </div>
 
       <Link
