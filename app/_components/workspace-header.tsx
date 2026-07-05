@@ -5,6 +5,7 @@ import { Bell, CalendarDays, Leaf } from "lucide-react";
 
 import { WorkspaceMobileBackButton } from "./workspace-mobile-back-button";
 import { WorkspaceHeaderUserMenu } from "./workspace-header-user-menu";
+import { ThemeToggle } from "./theme-toggle";
 import styles from "./workspace-header.module.css";
 
 type WorkspaceHeaderProps = {
@@ -106,6 +107,8 @@ export function WorkspaceHeader({
           <CalendarDays aria-hidden />
           <span>{formatHeaderDate()}</span>
         </div>
+
+        <ThemeToggle className={styles.notificationButton} />
 
         <Link
           className={styles.notificationButton}

@@ -55,6 +55,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { PendingLinkIndicator } from "./pending-link-indicator";
+import { ThemeToggle } from "./theme-toggle";
 import styles from "./app-menu.module.css";
 
 type MenuKey =
@@ -1911,6 +1912,8 @@ export function AppMenu({
             <Menu aria-hidden />
             <span>{activeItem.label}</span>
           </button>
+
+          <ThemeToggle className={styles.mobileNotification} />
 
           <Link
             href="/notifications"

@@ -2,6 +2,9 @@
 
 @source "./**/*.{js,ts,jsx,tsx,mdx}";
 
+/* Ангиллаар (class) удирдагдах шөнийн горим: <html class="dark"> */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --ink-950: #112019;
   --ink-900: #18251f;
@@ -181,4 +184,132 @@ button:disabled {
 
 .eco-leaf-float {
   animation: eco-leaf-float 6s ease-in-out infinite;
+}
+
+/* ============================================================
+   Шөнийн горим (dark mode)
+   Суурь өнгийг CSS хувьсагчаар, картуудын хатуу өнгийг утилит
+   override-оор харлуулна. Нүүр хуудас + профайлд зориулав.
+   ============================================================ */
+.dark {
+  --ink-950: #f2f6f3;
+  --ink-900: #e7ece9;
+  --ink-700: #a6b6ab;
+  --ink-600: #8fa196;
+  --surface-page: #0d1512;
+  --surface-shell: #0a110e;
+  --surface-panel: rgba(23, 31, 27, 0.94);
+  --surface-panel-soft: rgba(19, 27, 23, 0.94);
+  --line-soft: rgba(150, 200, 165, 0.14);
+  --line-strong: rgba(150, 200, 165, 0.22);
+  --shadow-soft: rgba(0, 0, 0, 0.4);
+  --status-good-soft: #14231a;
+  --status-attention-soft: #2a2410;
+  --status-urgent-soft: #33201c;
+  --status-muted-soft: #1a221e;
+  --brand-100: #16241d;
+  --brand-200: #1d3226;
+  --ds-page-bg: #0d1512;
+  --ds-rail-bg: rgba(20, 28, 24, 0.94);
+  --ds-header-bg: rgba(16, 23, 20, 0.85);
+  --ds-panel-bg: rgba(22, 30, 26, 0.85);
+  --ds-panel-strong-bg: rgba(25, 34, 29, 0.92);
+  --ds-soft-bg: rgba(32, 44, 37, 0.8);
+  --ds-border: rgba(150, 200, 165, 0.12);
+  --ds-border-strong: rgba(150, 200, 165, 0.2);
+  --ds-shadow-panel: 0 14px 38px rgba(0, 0, 0, 0.42);
+  --ds-shadow-hover: 0 18px 48px rgba(0, 0, 0, 0.52);
+  color-scheme: dark;
+}
+
+.dark body {
+  background:
+    radial-gradient(circle at top left, rgba(60, 110, 72, 0.14), transparent 26%),
+    linear-gradient(180deg, var(--surface-page) 0%, var(--surface-shell) 100%);
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background: rgba(19, 27, 23, 0.92);
+  color: var(--ink-900);
+  border-color: var(--ds-border);
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #6f7f75;
+}
+
+/* --- Картын гадаргуу ба хүрээ --- */
+.dark .bg-white {
+  background-color: #151d19;
+}
+.dark .border-\[\#E7EBE8\],
+.dark .border-\[\#E4EFE7\],
+.dark .border-\[\#EEF3EF\],
+.dark .border-\[\#EEF1EF\] {
+  border-color: #29332d;
+}
+
+/* --- Текстийн өнгө --- */
+.dark .text-\[\#16241b\],
+.dark .text-\[\#1F2B24\],
+.dark .text-\[\#111b15\] {
+  color: #e7ece9;
+}
+.dark .text-\[\#57655C\],
+.dark .text-\[\#3f5147\],
+.dark .text-\[\#697381\] {
+  color: #a6b6ab;
+}
+.dark .text-\[\#8A978E\],
+.dark .text-\[\#B4C3B8\] {
+  color: #83958b;
+}
+
+/* --- Ногоон өргөлт --- */
+.dark .text-\[\#1B5E20\],
+.dark .text-\[\#1b5e20\],
+.dark .text-\[\#2E7D32\],
+.dark .text-\[\#15803d\] {
+  color: #74cf88;
+}
+.dark .bg-\[\#E7F3E8\],
+.dark .bg-\[\#E7F5E7\] {
+  background-color: #1b2a20;
+}
+.dark .bg-\[\#EEF1EF\] {
+  background-color: #202824;
+}
+
+/* --- Hover гадаргуу --- */
+.dark .hover\:bg-\[\#F6FBF7\]:hover,
+.dark .hover\:bg-\[\#F2F8F3\]:hover {
+  background-color: #18211c;
+}
+
+/* --- Цэнхэр / улбар шар / улаан төлөв --- */
+.dark .text-\[\#1D4ED8\],
+.dark .text-\[\#2563EB\] {
+  color: #7aa2ff;
+}
+.dark .bg-\[\#E8EEFD\] {
+  background-color: #1a2436;
+}
+.dark .text-\[\#9A5B05\],
+.dark .text-\[\#B45309\] {
+  color: #e0a355;
+}
+.dark .bg-\[\#FCF0DC\] {
+  background-color: #332a17;
+}
+.dark .text-\[\#DC2626\],
+.dark .text-\[\#dc2626\],
+.dark .text-\[\#B4231C\],
+.dark .text-\[\#b91c1c\] {
+  color: #f2837a;
+}
+.dark .bg-\[\#FCEBEA\] {
+  background-color: #3a1f1d;
 }

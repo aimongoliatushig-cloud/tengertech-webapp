@@ -68,6 +68,20 @@ const EXTENSION_ATTRIBUTE_CLEANUP_SCRIPT = `
 })();
 `;
 
+const THEME_INIT_SCRIPT = `
+(() => {
+  try {
+    const saved = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    if (saved === "dark" || (!saved && prefersDark)) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  } catch (error) {}
+})();
+`;
+
 export const metadata: Metadata = {
   title: "Хот тохижилтын удирдлагын төв",
 };
@@ -84,6 +98,7 @@ export default function RootLayout({
       className={`${display.variable} ${body.variable} ${mono.variable} ${inter.variable}`}
     >
       <body suppressHydrationWarning>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: EXTENSION_ATTRIBUTE_CLEANUP_SCRIPT }} />
         <AppBadgeManager />
         <NotificationPermissionButton />
