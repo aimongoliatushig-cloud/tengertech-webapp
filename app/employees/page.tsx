@@ -200,10 +200,18 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
     ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
     : snapshot.taskDirectory;
 
-  // Only tasks assigned to a specific individual (excludes department-level
-  // or unassigned work — those stay on the department/project views).
+  // Ажилтны лавлах (id → нэр) — гүйцэтгэгчийг таних, систем данс/бусдыг шүүхэд.
+  const assignableUsers = await loadAssignableUserOptions({
+    login: session.login,
+    password: session.password,
+  });
+  const employeeNameById = new Map(assignableUsers.map((user) => [user.id, user.name] as const));
+
+  // Даалгаврыг ЯГ ГҮЙЦЭТГЭХ ажилтнаар (user_ids/assignee) авна. Багийн ахлагч
+  // (дарга) дор бүхэл хэлтсийнх нь ажил хуримтлагдахгүй. Зөвхөн бодит ажилтанд
+  // оногдсон ажлыг үлдээж, систем данс руу орсон хэлтсийн даалгаврыг хасна.
   const personTasks = scopedTasks.filter((task) =>
-    isIndividualAssignee(task.leaderName, task.leaderId),
+    (task.assigneeIds ?? []).some((assigneeId) => employeeNameById.has(assigneeId)),
   );
 
   const departmentOptions = [
@@ -223,11 +231,6 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
     return `/employees${queryString ? `?${queryString}` : ""}`;
   };
 
-  // Ажилтны жинхэнэ хэлтсийг харуулахын тулд бүх ажилтны лавлахыг үргэлж ачаална
-  const assignableUsers = await loadAssignableUserOptions({
-    login: session.login,
-    password: session.password,
-  });
   // Хүн (user_id) → өөрийн харьяалагдах хэлтэс (HR-ийн department, эцэг замыг хассан)
   const personDepartmentById = new Map(
     assignableUsers
@@ -260,15 +263,19 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
     .sort((left, right) => left.name.localeCompare(right.name, "mn-MN"));
   const canAssignTask = canCreateTasks && employeeOptions.length > 0 && projectOptions.length > 0;
 
-  const groups = new Map<string, { name: string; tasks: TaskDirectoryItem[] }>();
+  // Гүйцэтгэгч (assignee) тус бүрээр бүлэглэнэ. Лавлахад байхгүй хэрэглэгч
+  // (жиш. системийн данс руу оногдсон хэлтсийн даалгавар) энд орохгүй.
+  const groups = new Map<number, { id: number; name: string; tasks: TaskDirectoryItem[] }>();
   for (const task of deptTasks) {
-    const name = task.leaderName?.trim() || "Оноогоогүй";
-    const key = task.leaderId != null ? `id:${task.leaderId}` : `nm:${name}`;
-    const group = groups.get(key);
-    if (group) {
-      group.tasks.push(task);
-    } else {
-      groups.set(key, { name, tasks: [task] });
+    for (const assigneeId of task.assigneeIds ?? []) {
+      const name = employeeNameById.get(assigneeId);
+      if (!name) continue;
+      const group = groups.get(assigneeId);
+      if (group) {
+        group.tasks.push(task);
+      } else {
+        groups.set(assigneeId, { id: assigneeId, name, tasks: [task] });
+      }
     }
   }
 
@@ -283,9 +290,8 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
         ? Math.round(group.tasks.reduce((sum, task) => sum + (task.progress || 0), 0) / assigned)
         : 0;
       // Хүний хэлтсийг өөрийнх нь HR харьяаллаар (task-ийн хэлтсээр биш) харуулна
-      const leaderId = group.tasks[0]?.leaderId ?? null;
       const department =
-        (leaderId != null ? personDepartmentById.get(leaderId) : undefined) ||
+        personDepartmentById.get(group.id) ||
         mostCommon(group.tasks.map((task) => task.departmentName));
       const tasks = [...group.tasks].sort((left, right) => {
         const rank = (task: TaskDirectoryItem) =>
