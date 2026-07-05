@@ -3305,7 +3305,7 @@ function WorkerHomeView({
             showUserMenu={false}
           />
 
-          <section className="relative z-20 grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <section className="relative z-20 mt-1 grid grid-cols-2 gap-4 xl:grid-cols-4">
             {kpis.map((kpi) => {
               const Icon = kpi.icon;
               return (
