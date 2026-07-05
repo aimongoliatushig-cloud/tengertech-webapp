@@ -310,6 +310,8 @@ export type TaskDirectoryItem = {
   departmentName: string;
   /** ops_department_id тодорхой тавигдсан = хэлтэст даалгасан ажил (систем данс руу). */
   isDepartmentTask?: boolean;
+  /** Гүйцэтгэгчийн (assignee) жинхэнэ hr.department нэр — хэлтсээр scope хийхэд. */
+  assigneeDepartmentName?: string;
   projectId?: number | null;
   projectName: string;
   stageLabel: string;
@@ -6381,6 +6383,51 @@ async function fetchLiveSnapshot(
     }
   }
 
+  // Гүйцэтгэгчийн (assignee) жинхэнэ hr.department. Даалгаврыг ХЭН гүйцэтгэж
+  // байгаа хүний хэлтсээр scope хийхэд ашиглана — учир нь захирлын үүрэг
+  // даалгаврын төсөл нэг хэлтэст холбогдсон ч гишүүд нь өөр хэлтсийнх байж
+  // болох тул төслийн хэлтсээр scope хийвэл өөр хэлтсийн даргад алдагддаг.
+  const assigneeUserIds = Array.from(
+    new Set(
+      tasks.flatMap((task) =>
+        Array.isArray(task.user_ids) ? task.user_ids : [],
+      ),
+    ),
+  );
+  const assigneeEmployees = assigneeUserIds.length
+    ? await executeKw<OdooEmployeeRecord[]>(
+        uid,
+        "hr.employee",
+        "search_read",
+        [[["user_id", "in", assigneeUserIds]]],
+        {
+          fields: ["user_id", "department_id"],
+          limit: assigneeUserIds.length,
+        },
+        resolvedConnection,
+      ).catch(() => [] as OdooEmployeeRecord[])
+    : [];
+  const assigneeDepartmentByUserId = new Map<number, string>();
+  for (const employee of assigneeEmployees) {
+    const userId = relationId(employee.user_id ?? false);
+    const departmentName = relationName(employee.department_id ?? false, "").trim();
+    if (userId && departmentName && !assigneeDepartmentByUserId.has(userId)) {
+      assigneeDepartmentByUserId.set(
+        userId,
+        normalizeDepartmentUnitName(departmentName),
+      );
+    }
+  }
+  const resolveAssigneeDepartmentName = (userIds?: number[]) => {
+    for (const assigneeId of userIds ?? []) {
+      const departmentName = assigneeDepartmentByUserId.get(assigneeId);
+      if (departmentName) {
+        return departmentName;
+      }
+    }
+    return "";
+  };
+
   const departments = departmentSourceNames.map((department) => {
     const departmentTasks = tasks.filter((task) => {
       const departmentName = resolveNormalizedTaskDepartmentName(
@@ -6777,6 +6824,7 @@ async function fetchLiveSnapshot(
         name: task.name,
         departmentName: resolveTaskDepartmentName(task, projectDepartmentById),
         isDepartmentTask: Boolean(relationId(task.ops_department_id ?? false)),
+        assigneeDepartmentName: resolveAssigneeDepartmentName(task.user_ids),
         projectId: Array.isArray(task.project_id) ? task.project_id[0] : null,
         projectName: relationName(task.project_id, "Ажилгүй"),
         stageLabel: STAGE_LABELS[stageBucket],

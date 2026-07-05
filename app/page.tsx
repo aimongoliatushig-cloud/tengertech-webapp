@@ -583,7 +583,22 @@ async function DashboardPageContent({
     ? filterByDepartment(snapshot.projects, scopedDepartmentName)
     : snapshot.projects;
   const departmentScopedTasks = scopedDepartmentName
-    ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
+    ? snapshot.taskDirectory.filter((task) => {
+        // Хувь ажилтны даалгаврыг ГҮЙЦЭТГЭГЧИЙН жинхэнэ хэлтсээр scope хийнэ.
+        // Захирлын үүрэг даалгаврын төсөл нэг хэлтэст холбоотой ч гишүүд нь
+        // өөр хэлтсийнх байвал төслийн хэлтсээр scope хийхгүй — ингэснээр
+        // хэлтсийн дарга өөрт хамааралгүй ажилтны даалгаврыг харахгүй.
+        const effectiveDepartmentName =
+          !task.isDepartmentTask && task.assigneeDepartmentName
+            ? task.assigneeDepartmentName
+            : task.departmentName;
+        return (
+          filterByDepartment(
+            [{ departmentName: effectiveDepartmentName }],
+            scopedDepartmentName,
+          ).length > 0
+        );
+      })
     : snapshot.taskDirectory;
   const departmentScopedProjectIds = new Set(departmentScopedProjects.map((project) => project.id));
   const departmentScopedProjectNames = new Set(departmentScopedProjects.map((project) => project.name));
