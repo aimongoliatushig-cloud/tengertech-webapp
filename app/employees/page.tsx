@@ -323,6 +323,44 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
         right.assigned - left.assigned,
     );
 
+  // Хэлтсийн ажил: бодит ажилтанд биш (систем данс руу) оногдсон, хэлтэстэй
+  // даалгаврыг ажилтанд тараалгүй, ХЭЛТСЭЭР нь бүлэглэнэ.
+  const departmentWork = scopedTasks.filter(
+    (task) =>
+      (task.assigneeIds?.length ?? 0) > 0 &&
+      !(task.assigneeIds ?? []).some((assigneeId) => employeeNameById.has(assigneeId)) &&
+      Boolean((task.departmentName ?? "").trim()) &&
+      (!selectedDept || task.departmentName.trim() === selectedDept),
+  );
+  const deptGroupMap = new Map<string, TaskDirectoryItem[]>();
+  for (const task of departmentWork) {
+    const key = task.departmentName.trim();
+    const arr = deptGroupMap.get(key);
+    if (arr) arr.push(task);
+    else deptGroupMap.set(key, [task]);
+  }
+  const departmentGroups = [...deptGroupMap.entries()]
+    .map(([name, tasks]) => {
+      const assigned = tasks.length;
+      const done = tasks.filter(isTaskDone).length;
+      const overdue = tasks.filter((task) => isTaskOverdue(task, todayKey)).length;
+      const progress = assigned
+        ? Math.round(tasks.reduce((sum, task) => sum + (task.progress || 0), 0) / assigned)
+        : 0;
+      const visibleTasks = (
+        selectedStatus === "all"
+          ? tasks
+          : tasks.filter((task) => matchesStatus(task, selectedStatus, todayKey))
+      ).sort((left, right) => {
+        const rank = (task: TaskDirectoryItem) =>
+          isTaskOverdue(task, todayKey) ? 0 : isTaskReview(task) ? 1 : isTaskDone(task) ? 3 : 2;
+        return rank(left) - rank(right);
+      });
+      return { name, assigned, done, overdue, progress, visibleTasks };
+    })
+    .filter((group) => group.visibleTasks.length > 0)
+    .sort((left, right) => right.overdue - left.overdue || right.assigned - left.assigned);
+
   // Картууд нь өөрсдөө статусын шүүлтүүр болно (доод статус-эгнээг давхардуулахгүй)
   const summary: Array<{
     key: string;
@@ -445,6 +483,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
 
       {employees.length ? (
         <section className={styles.list}>
+          <h2 className={styles.groupHeading}>Ажилтны даалгавар</h2>
           {employees.map((employee, index) => (
             <details
               key={`${employee.name}-${index}`}
@@ -533,6 +572,87 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
           <p>Одоогоор даалгавар оноогдсон ажилтан харагдахгүй байна.</p>
         </div>
       )}
+
+      {departmentGroups.length ? (
+        <section className={styles.list}>
+          <h2 className={styles.groupHeading}>Хэлтсийн ажил</h2>
+          {departmentGroups.map((group, index) => (
+            <details
+              key={group.name}
+              className={styles.emp}
+              open={selectedStatus !== "all" || Boolean(selectedDept) || index === 0}
+            >
+              <summary className={styles.empHead}>
+                <span className={styles.avatar}>{initialsOf(group.name)}</span>
+                <span className={styles.empIdentity}>
+                  <span className={styles.empName}>
+                    {group.name}
+                    <ChevronDown size={15} className={styles.empChevron} aria-hidden />
+                  </span>
+                  <span className={styles.empRole}>Хэлтэст даалгасан ажил</span>
+                </span>
+                <span className={styles.empProgress}>
+                  <span className={styles.empProgressTop}>
+                    Явц <b>{group.progress}%</b>
+                  </span>
+                  <span className={styles.empBar} aria-hidden>
+                    <i style={{ width: `${group.progress}%` }} />
+                  </span>
+                </span>
+                <span className={styles.empMini}>
+                  <span>
+                    Нийт <b>{group.assigned}</b>
+                  </span>
+                  <span>
+                    Дууссан <b>{group.done}</b>
+                  </span>
+                  {group.overdue > 0 ? (
+                    <span className={styles.miniWarn}>
+                      Хэтэрсэн <b>{group.overdue}</b>
+                    </span>
+                  ) : (
+                    <span className={styles.miniOk}>Асуудалгүй</span>
+                  )}
+                </span>
+              </summary>
+
+              <div className={styles.tasks}>
+                {group.visibleTasks.map((task) => {
+                  const bucket = isTaskOverdue(task, todayKey)
+                    ? "over"
+                    : isTaskDone(task)
+                      ? "done"
+                      : isTaskReview(task)
+                        ? "review"
+                        : "progress";
+                  return (
+                    <Link key={task.id} href={task.href} className={styles.taskRow}>
+                      <span className={`${styles.taskDot} ${styles[`dot_${bucket}`]}`} aria-hidden />
+                      <span className={styles.taskMain}>
+                        <span className={styles.taskName} title={task.name}>
+                          {task.name}
+                        </span>
+                        <span className={styles.taskChips}>
+                          <span className={`${styles.pill} ${styles[`pill_${bucket}`]}`}>
+                            {task.statusLabel}
+                          </span>
+                          {task.projectName ? (
+                            <span className={styles.chip}>{task.projectName}</span>
+                          ) : null}
+                        </span>
+                      </span>
+                      <span className={styles.taskMeta}>
+                        <b>{task.progress}%</b>
+                        <span>{task.deadline || "Хугацаагүй"}</span>
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </details>
+          ))}
+        </section>
+      ) : null}
     </div>,
   );
 }
