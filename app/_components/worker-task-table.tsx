@@ -117,7 +117,7 @@ export function WorkerTaskTable({
       </div>
 
       <div>
-        <div className="grid grid-cols-[32px_minmax(0,1fr)_104px_100px] gap-3 border-b border-[#EEF3EF] px-3 pb-3 text-[11px] font-semibold uppercase tracking-wide text-[#8A978E] sm:grid-cols-[32px_minmax(0,1fr)_112px_88px_100px]">
+        <div className="grid grid-cols-[32px_minmax(0,1fr)_108px_100px] gap-3 border-b border-[#EEF3EF] px-3 pb-3 text-[11px] font-semibold uppercase tracking-wide text-[#8A978E] sm:grid-cols-[32px_minmax(0,1fr)_108px_104px_100px]">
           <span>№</span>
           <span>Даалгаврын нэр</span>
           <span>Төлөв</span>
@@ -134,7 +134,7 @@ export function WorkerTaskTable({
               <Link
                 key={`wtt-${task.id}`}
                 href={task.href}
-                className="group grid min-h-[64px] grid-cols-[32px_minmax(0,1fr)_104px_100px] items-center gap-3 border-b border-[#EEF3EF] px-3 py-3 transition last:border-b-0 hover:bg-[#F6F8F7] sm:grid-cols-[32px_minmax(0,1fr)_112px_88px_100px]"
+                className="group grid min-h-[64px] grid-cols-[32px_minmax(0,1fr)_108px_100px] items-center gap-3 border-b border-[#EEF3EF] px-3 py-3 transition last:border-b-0 hover:bg-[#F6F8F7] sm:grid-cols-[32px_minmax(0,1fr)_108px_104px_100px]"
               >
                 <span
                   className={cn(

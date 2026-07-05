@@ -3298,8 +3298,8 @@ function WorkerHomeView({
   const donutData = [
     { key: "done", label: "Дууссан", value: statusCounts.done, color: "#2E7D32" },
     { key: "doing", label: "Хийгдэж байна", value: statusCounts.doing, color: "#E8820A" },
-    { key: "review", label: "Шалгаж байна", value: statusCounts.review, color: "#2563EB" },
-    { key: "planned", label: "Төлөвлөсөн", value: statusCounts.planned, color: "#94A79A" },
+    { key: "review", label: "Шалгаж байна", value: statusCounts.review, color: "#E8820A" },
+    { key: "planned", label: "Төлөвлөсөн", value: statusCounts.planned, color: "#2563EB" },
   ].filter((segment) => segment.value > 0);
   let donutAcc = 0;
   const donutSegs = donutData.map((segment) => {
@@ -3422,8 +3422,8 @@ function WorkerHomeView({
                 )}
               </div>
 
-              {/* Түргэн үйлдэл — 4 багана */}
-              <aside className="xl:col-span-4">
+              {/* Баруун багана: Түргэн үйлдэл + Мэдэгдэл (4 багана) */}
+              <div className="flex flex-col gap-6 xl:col-span-4">
                 <section className={CARD}>
                   <h3 className={cn(CARD_TITLE, "mb-4")}>Түргэн үйлдэл</h3>
                   <div className="grid gap-3">
@@ -3458,45 +3458,44 @@ function WorkerHomeView({
                     </div>
                   </div>
                 </section>
-              </aside>
 
-              {/* Мэдэгдэл — 6 багана */}
-              <section className={cn(CARD, "xl:col-span-6")}>
-                <div className="mb-4 flex items-center justify-between">
-                  <h3 className={cn(CARD_TITLE, "flex items-center gap-2")}>
-                    <Bell className="h-[18px] w-[18px] text-[#57655C]" />
-                    Мэдэгдэл
-                  </h3>
-                  <Link href="/notifications" className="text-[13px] font-semibold text-[#2563EB] hover:underline">
-                    Бүгдийг харах →
-                  </Link>
-                </div>
-                {notificationItems.length ? (
-                  <div className="grid gap-1">
-                    {notificationItems.map((task) => (
-                      <Link
-                        key={`wn-${task.id}`}
-                        href={task.href}
-                        className="flex items-center gap-3 rounded-xl px-2 py-3 transition hover:bg-[#F6F8F7]"
-                      >
-                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#2563EB]" />
-                        <span className="min-w-0 flex-1">
-                          <strong className="block truncate text-sm font-semibold text-[#16241b]">{task.name}</strong>
-                          <span className="text-xs font-medium text-[#8A978E]">
-                            Танд оногдсон{task.deadline ? ` · ${task.deadline}` : ""}
-                          </span>
-                        </span>
-                        <ChevronRight className="h-4 w-4 shrink-0 text-[#B4C3B8]" />
-                      </Link>
-                    ))}
+                <section className={cn(CARD, "flex-1")}>
+                  <div className="mb-4 flex items-center justify-between">
+                    <h3 className={cn(CARD_TITLE, "flex items-center gap-2")}>
+                      <Bell className="h-[18px] w-[18px] text-[#57655C]" />
+                      Мэдэгдэл
+                    </h3>
+                    <Link href="/notifications" className="text-[13px] font-semibold text-[#2563EB] hover:underline">
+                      Бүгдийг харах →
+                    </Link>
                   </div>
-                ) : (
-                  <p className="py-8 text-center text-sm font-medium text-[#8A978E]">Шинэ мэдэгдэл алга.</p>
-                )}
-              </section>
+                  {notificationItems.length ? (
+                    <div className="grid gap-1">
+                      {notificationItems.map((task) => (
+                        <Link
+                          key={`wn-${task.id}`}
+                          href={task.href}
+                          className="flex items-center gap-3 rounded-xl px-2 py-3 transition hover:bg-[#F6F8F7]"
+                        >
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#2563EB]" />
+                          <span className="min-w-0 flex-1">
+                            <strong className="block truncate text-sm font-semibold text-[#16241b]">{task.name}</strong>
+                            <span className="text-xs font-medium text-[#8A978E]">
+                              Танд оногдсон{task.deadline ? ` · ${task.deadline}` : ""}
+                            </span>
+                          </span>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-[#B4C3B8]" />
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="py-8 text-center text-sm font-medium text-[#8A978E]">Шинэ мэдэгдэл алга.</p>
+                  )}
+                </section>
+              </div>
 
-              {/* Даалгаврын төлөв — 6 багана */}
-              <section className={cn(CARD, "xl:col-span-6")}>
+              {/* Даалгаврын төлөв — 5 багана */}
+              <section className={cn(CARD, "xl:col-span-5")}>
                 <h3 className={cn(CARD_TITLE, "mb-5")}>Даалгаврын төлөв</h3>
                 {total ? (
                   <div className="flex items-center gap-6">
@@ -3537,8 +3536,8 @@ function WorkerHomeView({
                 )}
               </section>
 
-              {/* Ирэх ачаалал — 12 багана */}
-              <section className={cn(CARD, "xl:col-span-12")}>
+              {/* Ирэх ачаалал — 7 багана */}
+              <section className={cn(CARD, "xl:col-span-7")}>
                 <div className="mb-5 flex items-center gap-2">
                   <h3 className={CARD_TITLE}>Ирэх ачаалал</h3>
                   <span className="ml-auto text-[13px] font-medium text-[#8A978E]">Хугацаа тавьсан даалгавар · сараар</span>
