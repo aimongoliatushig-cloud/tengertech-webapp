@@ -1044,6 +1044,69 @@ function numberFromManagedNote(value: string) {
   return Number.isFinite(amount) ? amount : 0;
 }
 
+// hr.employee.certificate / marital нь selection талбар (англи түлхүүртэй). Монгол
+// шошгыг Odoo-ийн түлхүүр рүү буулгаж, буруу утга (KeyError) бичихээс сэргийлнэ.
+const CERTIFICATE_KEY_BY_LABEL: Record<string, string> = {
+  бакалавр: "bachelor",
+  магистр: "master",
+  доктор: "doctor",
+  "доктор (ph.d)": "doctor",
+  дэд: "doctor",
+  "бүрэн дунд": "graduate",
+  дунд: "graduate",
+  "дунд боловсрол": "graduate",
+  "бүрэн бус дунд": "graduate",
+  "тусгай дунд": "graduate",
+  "дипломын дээд": "graduate",
+  "техник мэргэжлийн": "graduate",
+  дээд: "bachelor",
+  graduate: "graduate",
+  bachelor: "bachelor",
+  master: "master",
+  doctor: "doctor",
+  other: "other",
+};
+const CERTIFICATE_LABEL_BY_KEY: Record<string, string> = {
+  graduate: "Дунд",
+  bachelor: "Бакалавр",
+  master: "Магистр",
+  doctor: "Доктор",
+  other: "Бусад",
+};
+function toCertificateKey(value?: string | false): string | false {
+  const raw = String(value ?? "").trim();
+  if (!raw) return false;
+  return CERTIFICATE_KEY_BY_LABEL[raw.toLowerCase()] ?? "other";
+}
+function certificateLabelFromKey(value?: string | false): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  return CERTIFICATE_LABEL_BY_KEY[raw.toLowerCase()] ?? raw;
+}
+
+const MARITAL_KEY_BY_LABEL: Record<string, string> = {
+  "ганц бие": "single",
+  гэрлээгүй: "single",
+  гэрлэсэн: "married",
+  "гэр бүлтэй": "married",
+  "хамтран амьдрагч": "cohabitant",
+  бэлэвсэн: "widower",
+  бэлэвсэрсэн: "widower",
+  салсан: "divorced",
+  цуцалсан: "divorced",
+  "гэр бүл цуцалсан": "divorced",
+  single: "single",
+  married: "married",
+  cohabitant: "cohabitant",
+  widower: "widower",
+  divorced: "divorced",
+};
+function toMaritalKey(value?: string | false): string | false {
+  const raw = String(value ?? "").trim();
+  if (!raw) return false;
+  return MARITAL_KEY_BY_LABEL[raw.toLowerCase()] ?? false;
+}
+
 function getUlaanbaatarDateKey() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Ulaanbaatar",
@@ -1205,7 +1268,7 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     birthDate: record.birthday || "",
     genderKey: record.sex || "",
     genderLabel: resolveDirectEmployeeGenderLabel(record.sex),
-    educationLevel: record.certificate || "",
+    educationLevel: certificateLabelFromKey(record.certificate),
     educationRecords: resolveEducationRecords(notes, record.certificate, record.study_field, record.study_school),
     registerNumber: record.x_mn_registration_number || record.identification_id || "",
     privatePhone: record.private_phone || "",
@@ -2818,12 +2881,12 @@ export async function createEmployee(session: AppSession, data: HrEmployeeCreate
   if (fields.has("place_of_birth")) values.place_of_birth = data.birthPlace || false;
   if (fields.has("country_of_birth") && countryOfBirthId) values.country_of_birth = countryOfBirthId;
   if (fields.has("country_id") && nationalityId) values.country_id = nationalityId;
-  if (fields.has("marital") && data.familyStatus) values.marital = data.familyStatus;
+  if (fields.has("marital") && data.familyStatus) values.marital = toMaritalKey(data.familyStatus);
   if (fields.has("children")) values.children = data.childrenCount || 0;
   if (fields.has("emergency_contact")) values.emergency_contact = data.emergencyContact || false;
   if (fields.has("emergency_phone")) values.emergency_phone = data.emergencyPhone || false;
   const primaryEducationRecord = data.educationRecords !== undefined ? normalizeEducationRecords(data.educationRecords)[0] : null;
-  if (fields.has("certificate")) values.certificate = primaryEducationRecord?.level || data.educationLevel || false;
+  if (fields.has("certificate")) values.certificate = toCertificateKey(primaryEducationRecord?.level || data.educationLevel);
   if (fields.has("study_field")) values.study_field = primaryEducationRecord?.field || data.studyField || false;
   if (fields.has("study_school")) values.study_school = primaryEducationRecord?.school || data.studySchool || false;
   if (fields.has("wage") && data.baseSalary) values.wage = numberFromManagedNote(data.baseSalary);
@@ -3049,7 +3112,7 @@ export async function updateEmployee(
     values.sex = data.genderKey || data.gender || false;
   }
   if (fields.has("marital") && (data.familyStatus !== undefined || data.maritalStatus !== undefined)) {
-    values.marital = data.familyStatus || data.maritalStatus || false;
+    values.marital = toMaritalKey(data.familyStatus || data.maritalStatus);
   }
   if (fields.has("spouse_complete_name") && data.spouseName !== undefined) {
     values.spouse_complete_name = data.spouseName || false;
@@ -3066,7 +3129,7 @@ export async function updateEmployee(
   }
   const primaryEducationRecord = data.educationRecords !== undefined ? normalizeEducationRecords(data.educationRecords)[0] : null;
   if (fields.has("certificate") && (data.educationLevel !== undefined || data.educationRecords !== undefined)) {
-    values.certificate = primaryEducationRecord?.level || data.educationLevel || false;
+    values.certificate = toCertificateKey(primaryEducationRecord?.level || data.educationLevel);
   }
   if (fields.has("study_field") && (data.studyField !== undefined || data.educationRecords !== undefined)) {
     values.study_field = primaryEducationRecord?.field || data.studyField || false;
@@ -3140,11 +3203,8 @@ export async function updateEmployee(
     );
     updatedThroughCustomApi = getOdooResultId(result) === id;
   } catch (error) {
-    // Custom API байхгүй, эсвэл Odoo хувилбар хооронд байхгүй болсон талбараас
-    // (жиш. notes, pay_category) болж унасан бол шууд write рүү шилжинэ.
-    if (!isMissingHrCustomEmployeeApiError(error) && !getInvalidOdooFieldName(error)) {
-      throw error;
-    }
+    // Custom API амжилтгүй болбол (байхгүй, эсвэл Odoo хувилбарын талбар/selection
+    // зөрчил) шууд, тэсвэртэй write рүү шилжиж дахин оролдоно.
     console.warn("HR custom employee update API unavailable/failed, falling back to direct hr.employee write:", error);
   }
   if (!updatedThroughCustomApi) {
