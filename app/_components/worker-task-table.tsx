@@ -126,7 +126,7 @@ export function WorkerTaskTable({
               <Link
                 key={`wtt-${task.id}`}
                 href={task.href}
-                className="group grid grid-cols-[28px_minmax(0,1fr)_112px_24px] items-center gap-3 rounded-xl px-1 py-2.5 transition hover:bg-[#F6FBF7] sm:grid-cols-[32px_minmax(0,1fr)_128px_92px_24px]"
+                className="group grid grid-cols-[28px_minmax(0,1fr)_112px_24px] items-center gap-3 border-b border-[#EEF3EF] px-1 py-3 transition last:border-b-0 hover:bg-[#F6FBF7] sm:grid-cols-[32px_minmax(0,1fr)_128px_92px_24px]"
               >
                 <span
                   className={cn(
