@@ -3220,50 +3220,54 @@ function WorkerHomeView({
     (task) => task.statusKey !== "done" && task.deadline && task.deadline < currentDateKey,
   ).length;
 
+  const completionPct = total ? Math.round((doneCount / total) * 100) : 0;
   const kpis: Array<{
     key: string;
     label: string;
-    sub: string;
-    value: number;
+    value: string;
     icon: LucideIcon;
-    ring: string;
-    iconWrap: string;
+    iconBg: string;
+    iconFg: string;
   }> = [
     {
       key: "total",
-      label: "Миний даалгавар",
-      sub: "Нийт даалгавар",
-      value: total,
+      label: "Нийт даалгавар",
+      value: String(total),
       icon: ClipboardList,
-      ring: "border-[#DCEBE0] bg-[#F5FBF6]",
-      iconWrap: "bg-[#4A9A5D] text-white",
+      iconBg: "bg-[#EEF1EF]",
+      iconFg: "text-[#16241b]",
     },
     {
-      key: "active",
+      key: "open",
       label: "Нээлттэй",
-      sub: "Гүйцэтгэж байна",
-      value: activeCount,
+      value: String(activeCount),
       icon: Clock3,
-      ring: "border-[#D6E6F5] bg-[#F2F8FD]",
-      iconWrap: "bg-[#3B82F6] text-white",
+      iconBg: "bg-[#E8EEFD]",
+      iconFg: "text-[#2563EB]",
     },
     {
       key: "overdue",
-      label: "Хэтэрсэн",
-      sub: "Хугацаа хэтэрсэн",
-      value: overdueCount,
+      label: "Хугацаа хэтэрсэн",
+      value: String(overdueCount),
       icon: AlertTriangle,
-      ring: "border-[#F5E6C8] bg-[#FDF8EE]",
-      iconWrap: "bg-[#F59E0B] text-white",
+      iconBg: "bg-[#FBE9E9]",
+      iconFg: "text-[#DC2626]",
     },
     {
       key: "done",
-      label: "Хийж дууссан",
-      sub: "Дууссан даалгавар",
-      value: doneCount,
+      label: "Дууссан",
+      value: String(doneCount),
       icon: CheckCircle2,
-      ring: "border-[#CFE9D6] bg-[#F1FAF3]",
-      iconWrap: "bg-[#1b7a3e] text-white",
+      iconBg: "bg-[#E7F3E8]",
+      iconFg: "text-[#2E7D32]",
+    },
+    {
+      key: "pct",
+      label: "Гүйцэтгэлийн хувь",
+      value: `${completionPct}%`,
+      icon: BarChart3,
+      iconBg: "bg-[#FCF0DC]",
+      iconFg: "text-[#E8820A]",
     },
   ];
 
@@ -3305,25 +3309,21 @@ function WorkerHomeView({
             showUserMenu={false}
           />
 
-          <section className="relative z-20 mt-1 grid grid-cols-2 gap-4 xl:grid-cols-4">
+          <section className="relative z-20 mt-1 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
             {kpis.map((kpi) => {
               const Icon = kpi.icon;
               return (
                 <div
                   key={kpi.key}
-                  className={cn(
-                    "flex items-center gap-3 rounded-2xl border p-4 shadow-[0_8px_24px_rgba(31,43,36,0.04)]",
-                    kpi.ring,
-                  )}
+                  className="rounded-2xl border border-[#E7EBE8] bg-white p-5 shadow-[0_1px_3px_rgba(20,40,30,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(20,40,30,0.08)]"
                 >
-                  <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", kpi.iconWrap)}>
+                  <span className={cn("mb-3 flex h-10 w-10 items-center justify-center rounded-xl", kpi.iconBg, kpi.iconFg)}>
                     <Icon className="h-5 w-5" />
                   </span>
-                  <div className="min-w-0">
-                    <div className="truncate text-xs font-bold text-[#516156]">{kpi.label}</div>
-                    <div className="text-2xl font-black leading-tight text-[#16241b]">{kpi.value}</div>
-                    <div className="truncate text-[11px] font-medium text-[#8A978E]">{kpi.sub}</div>
+                  <div className="text-[32px] font-bold leading-none tracking-tight tabular-nums text-[#16241b]">
+                    {kpi.value}
                   </div>
+                  <div className="mt-2 text-[13px] font-medium text-[#57655C]">{kpi.label}</div>
                 </div>
               );
             })}
