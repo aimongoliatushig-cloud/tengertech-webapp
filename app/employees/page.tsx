@@ -280,6 +280,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
     "батсуурь",
     "чулуун",
     "чимэдочир",
+    "чимэд-очир",
     "амарсанаа",
     "ганзориг",
   ];
