@@ -281,6 +281,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
     "чулуун",
     "чимэдочир",
     "амарсанаа",
+    "ганзориг",
   ];
   const isExcludedDept = (name: string) => {
     const key = name.trim().toLowerCase();
