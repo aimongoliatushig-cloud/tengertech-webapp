@@ -4,7 +4,6 @@ import Link from "next/link";
 import {
   AlertTriangle,
   BarChart3,
-  Bell,
   CalendarDays,
   CheckCircle2,
   ChevronRight,
@@ -3271,7 +3270,6 @@ function WorkerHomeView({
     },
   ];
 
-  const notificationItems = assignedTasks.slice(0, 3);
 
   // Даалгаврын төлвийн доуннат — бодит оногдсон даалгавраас тооцно.
   const statusCounts: Record<AssignedTaskStatusKey, number> = { planned: 0, doing: 0, review: 0, done: 0 };
@@ -3381,8 +3379,8 @@ function WorkerHomeView({
 
             {/* 12-баганат агуулгын grid */}
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-              {/* Өнөөдрийн даалгавар — 8 багана */}
-              <div className="flex min-w-0 flex-col gap-6 xl:col-span-8">
+              {/* Миний даалгавар — голлуулсан, бүтэн мөр */}
+              <div className="mx-auto flex w-full min-w-0 max-w-[920px] flex-col gap-6 xl:col-span-12">
                 {procurementActionPanel ? (
                   <div className={dashboardStyles.procurementTaskPanel}>{procurementActionPanel}</div>
                 ) : null}
@@ -3403,43 +3401,6 @@ function WorkerHomeView({
                     <p className="mt-1 text-xs font-medium text-[#8A978E]">Шинэ даалгавар оногдоход энд харагдана.</p>
                   </section>
                 )}
-              </div>
-
-              {/* Баруун багана: Мэдэгдэл (4 багана) */}
-              <div className="flex flex-col gap-6 xl:col-span-4">
-                <section className={cn(CARD, "flex-1")}>
-                  <div className="mb-4 flex items-center justify-between">
-                    <h3 className={cn(CARD_TITLE, "flex items-center gap-2")}>
-                      <Bell className="h-[18px] w-[18px] text-[#57655C]" />
-                      Мэдэгдэл
-                    </h3>
-                    <Link href="/notifications" className="text-[13px] font-semibold text-[#2563EB] hover:underline">
-                      Бүгдийг харах →
-                    </Link>
-                  </div>
-                  {notificationItems.length ? (
-                    <div className="grid gap-1">
-                      {notificationItems.map((task) => (
-                        <Link
-                          key={`wn-${task.id}`}
-                          href={task.href}
-                          className="flex items-center gap-3 rounded-xl px-2 py-3 transition hover:bg-[#F6F8F7]"
-                        >
-                          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#2563EB]" />
-                          <span className="min-w-0 flex-1">
-                            <strong className="block truncate text-sm font-semibold text-[#16241b]">{task.name}</strong>
-                            <span className="text-xs font-medium text-[#8A978E]">
-                              Танд оногдсон{task.deadline ? ` · ${task.deadline}` : ""}
-                            </span>
-                          </span>
-                          <ChevronRight className="h-4 w-4 shrink-0 text-[#B4C3B8]" />
-                        </Link>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="py-8 text-center text-sm font-medium text-[#8A978E]">Шинэ мэдэгдэл алга.</p>
-                  )}
-                </section>
               </div>
 
               {/* Даалгаврын төлөв — 5 багана */}
