@@ -4,10 +4,11 @@ import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
-import { getEmployee, getEmployees, requireHrAccess } from "@/lib/hr";
+import { getEmployee, getEmployees, loadEmployeeErpEvaluation, requireHrAccess } from "@/lib/hr";
 import { formatEmployeeDisplayName } from "@/lib/hr-name";
 
 import { EmployeeDetailTabs } from "../../hr-client";
+import { EmployeeErpScorecard } from "../../employee-erp-scorecard";
 import { HrSectionNav } from "../../hr-section-nav";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +34,16 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
     notFound();
   }
   const mode: "hr" | "department" = access.scope === "hr" ? "hr" : "department";
+  const erpEvaluation = await loadEmployeeErpEvaluation(employee.userId).catch(() => ({
+    hasLogin: false,
+    login: "",
+    roleKey: "",
+    lastLoginDate: "",
+    isInternal: false,
+    totalTasks: 0,
+    activeTasks: 0,
+    completedTasks: 0,
+  }));
 
   return (
     <>
@@ -44,6 +55,8 @@ export default async function HrEmployeeDetailPage({ params }: PageProps) {
         notificationNote="Ажилтны дэлгэрэнгүй"
       />
       <HrSectionNav mode={mode} />
+
+      <EmployeeErpScorecard employee={employee} evaluation={erpEvaluation} />
 
       <EmployeeDetailTabs
         employee={employee}

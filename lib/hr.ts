@@ -2679,6 +2679,68 @@ export async function getHeadcountTrend(session: AppSession, months = 6): Promis
   return points;
 }
 
+export type EmployeeErpEvaluation = {
+  hasLogin: boolean;
+  login: string;
+  roleKey: string;
+  lastLoginDate: string;
+  isInternal: boolean;
+  totalTasks: number;
+  activeTasks: number;
+  completedTasks: number;
+};
+
+// Ажилтны нэвтрэлт (res.users) болон даалгаврын гүйцэтгэлийг service (admin)
+// эрхээр татна — worker хэрэглэгч өөрөө уншиж чаддаггүйг тойрч.
+export async function loadEmployeeErpEvaluation(userId?: number | null): Promise<EmployeeErpEvaluation> {
+  const empty: EmployeeErpEvaluation = {
+    hasLogin: false,
+    login: "",
+    roleKey: "",
+    lastLoginDate: "",
+    isInternal: false,
+    totalTasks: 0,
+    activeTasks: 0,
+    completedTasks: 0,
+  };
+  if (!userId || !Number.isFinite(userId)) return empty;
+  const service = createOdooConnection();
+  const [users, tasks] = await Promise.all([
+    executeOdooKw<Array<{ login?: string; ops_user_type?: string | false; login_date?: string | false; share?: boolean }>>(
+      "res.users",
+      "search_read",
+      [[["id", "=", userId]]],
+      { fields: ["login", "ops_user_type", "login_date", "share"], limit: 1 },
+      service,
+    ).catch(() => [] as Array<{ login?: string }>),
+    executeOdooKw<Array<{ id: number; name?: string; project_id?: OdooRelation; stage_id?: OdooRelation }>>(
+      "project.task",
+      "search_read",
+      [["|", ["user_ids", "in", [userId]], ["ops_team_leader_id", "=", userId]]],
+      { fields: ["name", "project_id", "stage_id"], limit: 300 },
+      service,
+    ).catch(() => [] as Array<{ id: number }>),
+  ]);
+  const user = (users as Array<{ login?: string; ops_user_type?: string | false; login_date?: string | false; share?: boolean }>)[0];
+  const realTasks = (tasks as Array<{ id: number; name?: string; project_id?: OdooRelation; stage_id?: OdooRelation }>).filter(
+    (task) => Array.isArray(task.project_id) && !(task.name || "").trim().toLowerCase().startsWith("welcome"),
+  );
+  const completedTasks = realTasks.filter((task) => {
+    const stage = (Array.isArray(task.stage_id) ? task.stage_id[1] : "").toLocaleLowerCase("mn-MN");
+    return stage.includes("дууссан") || stage.includes("verified") || stage.includes("done") || stage.includes("баталсан");
+  }).length;
+  return {
+    hasLogin: Boolean(user?.login),
+    login: user?.login || "",
+    roleKey: typeof user?.ops_user_type === "string" ? user.ops_user_type : "",
+    lastLoginDate: typeof user?.login_date === "string" ? user.login_date.slice(0, 10) : "",
+    isInternal: user ? user.share === false : false,
+    totalTasks: realTasks.length,
+    completedTasks,
+    activeTasks: Math.max(0, realTasks.length - completedTasks),
+  };
+}
+
 export async function getJobs(session: AppSession): Promise<HrOption[]> {
   return executeOdooKw<OdooDictionaryRecord[]>(
     "hr.job",

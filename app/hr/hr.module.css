@@ -5276,3 +5276,100 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ==== Ажилтны ERP дүгнэлтийн самбар ==== */
+.erpCard {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.erpIdRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  background: #fff;
+  border: 1px solid rgba(46, 125, 50, 0.14);
+  border-radius: 20px;
+  padding: 18px 20px;
+}
+.erpAvatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(140deg, #2e7d32, #57ab5c);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.25rem;
+  overflow: hidden;
+}
+.erpAvatarImg { width: 100%; height: 100%; object-fit: cover; }
+.erpIdMain { min-width: 0; }
+.erpIdMain strong { display: block; font-size: 1.4rem; font-weight: 800; color: #16241b; letter-spacing: -0.01em; }
+.erpIdMain small { display: block; color: #6b7a72; font-size: 0.9rem; margin-top: 2px; }
+.erpIdMeta { display: flex; flex-wrap: wrap; gap: 4px 15px; margin-top: 7px; font-size: 0.78rem; color: #6b7a72; }
+.erpIdMeta b { color: #16241b; font-weight: 700; }
+.erpStatusWrap { margin-left: auto; text-align: right; }
+.erpStatusPill {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 13px; border-radius: 999px; font-weight: 800; font-size: 0.82rem;
+}
+.erpStatusDot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.erpStatusWrap small { display: block; color: #6b7a72; font-size: 0.72rem; margin-top: 6px; }
+.erpTone_good { background: rgba(22, 163, 74, 0.12); color: #15803d; }
+.erpTone_warn { background: rgba(217, 119, 6, 0.13); color: #b45309; }
+.erpTone_crit { background: rgba(220, 38, 38, 0.10); color: #dc2626; }
+
+.erpKpiGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.erpKpi {
+  background: #fff; border: 1px solid rgba(46, 125, 50, 0.14); border-radius: 16px;
+  padding: 13px 15px; position: relative; overflow: hidden;
+}
+.erpKpi::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #9aa4b2; }
+.erpKpi_good::before { background: #16a34a; }
+.erpKpi_warn::before { background: #d97706; }
+.erpKpi_crit::before { background: #dc2626; }
+.erpKpiN { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; color: #16241b; font-variant-numeric: tabular-nums; }
+.erpKpi_good .erpKpiN { color: #16a34a; }
+.erpKpi_warn .erpKpiN { color: #d97706; }
+.erpKpi_crit .erpKpiN { color: #dc2626; }
+.erpKpiL { font-size: 0.74rem; color: #6b7a72; margin-top: 2px; }
+
+.erpCols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.erpPanel { background: #fff; border: 1px solid rgba(46, 125, 50, 0.14); border-radius: 18px; padding: 16px 18px; }
+.erpPanel h3 { margin: 0 0 10px; font-size: 0.98rem; font-weight: 800; color: #16241b; display: flex; align-items: center; gap: 8px; }
+.erpTag { margin-left: auto; font-size: 0.68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
+.erpTagGood { background: rgba(22, 163, 74, 0.12); color: #15803d; }
+.erpTagWarn { background: rgba(217, 119, 6, 0.13); color: #b45309; }
+.erpTagCrit { background: rgba(220, 38, 38, 0.10); color: #dc2626; }
+
+.erpRow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid rgba(46, 125, 50, 0.10); font-size: 0.86rem; }
+.erpRow:first-of-type { border-top: 0; }
+.erpRowK { color: #6b7a72; }
+.erpRowV { margin-left: auto; font-weight: 700; color: #16241b; text-align: right; }
+.erpMark { width: 18px; height: 18px; border-radius: 6px; flex: none; display: grid; place-items: center; font-size: 0.68rem; font-weight: 900; color: #fff; }
+.erpMarkOk { background: #16a34a; }
+.erpMarkNo { background: #dc2626; }
+.erpMarkNa { background: #b6c2ba; }
+
+.erpBar { height: 8px; border-radius: 999px; background: rgba(46, 125, 50, 0.12); overflow: hidden; margin-top: 12px; }
+.erpBarFill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2e7d32, #57ab5c); }
+.erpBarLabel { display: block; margin-top: 7px; font-size: 0.78rem; color: #6b7a72; }
+.erpBarLabel b { color: #16241b; }
+
+.erpRec { display: flex; gap: 11px; padding: 9px 0; border-top: 1px solid rgba(46, 125, 50, 0.10); }
+.erpRec:first-of-type { border-top: 0; }
+.erpRecIcon { width: 24px; height: 24px; border-radius: 8px; flex: none; display: grid; place-items: center; font-weight: 900; font-size: 0.8rem; }
+.erpRec_p1 .erpRecIcon { background: rgba(220, 38, 38, 0.10); color: #dc2626; }
+.erpRec_p2 .erpRecIcon { background: rgba(217, 119, 6, 0.13); color: #b45309; }
+.erpRec_p3 .erpRecIcon { background: rgba(46, 125, 50, 0.10); color: #2e7d32; }
+.erpRecText { font-size: 0.86rem; color: #253027; }
+.erpRecText b { font-weight: 700; }
+
+@media (max-width: 720px) {
+  .erpCols { grid-template-columns: 1fr; }
+  .erpStatusWrap { margin-left: 0; text-align: left; width: 100%; }
+}
