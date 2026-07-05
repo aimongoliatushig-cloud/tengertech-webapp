@@ -3538,6 +3538,7 @@ function ExecutiveDashboardView({
   departmentSectionTitle = "Хэлтсүүдийн ажлын нөхцөл байдал",
   departmentScopeName = null,
   showDepartmentPerformance = true,
+  assignedTasks = [],
 }: {
   session: AppSession;
   roleLabel: string;
@@ -3566,9 +3567,12 @@ function ExecutiveDashboardView({
   departmentSectionTitle?: string;
   departmentScopeName?: string | null;
   showDepartmentPerformance?: boolean;
+  assignedTasks?: AssignedTaskItem[];
 }) {
   const canViewAllReports = canViewAllWorkspaceReports(session);
   const canViewWeightReports = canViewGarbageWeightReports(session);
+  const execPersonalTasks = assignedTasks.filter((task) => !task.departmentName);
+  const execDepartmentTasks = assignedTasks.filter((task) => task.departmentName);
   const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
   const activeTasks = Math.max(0, totalTasks - completedTasks);
@@ -3705,6 +3709,29 @@ function ExecutiveDashboardView({
             currentDateKey={currentDateKey}
             className="mb-5"
           />
+
+          {assignedTasks.length ? (
+            <div className="mb-5 grid gap-4 xl:grid-cols-2">
+              {execPersonalTasks.length ? (
+                <WorkerTaskTable
+                  tasks={execPersonalTasks}
+                  title="Ажилтны даалгавар"
+                  currentDateKey={currentDateKey}
+                  allHref="/tasks"
+                  maxRows={5}
+                />
+              ) : null}
+              {execDepartmentTasks.length ? (
+                <WorkerTaskTable
+                  tasks={execDepartmentTasks}
+                  title="Хэлтсийн даалгавар"
+                  currentDateKey={currentDateKey}
+                  allHref="/tasks"
+                  maxRows={5}
+                />
+              ) : null}
+            </div>
+          ) : null}
 
           <div className={dashboardStyles.executiveOperationsGrid}>
             {showDepartmentPerformance ? (
@@ -3967,6 +3994,7 @@ export function DashboardView({
         departmentSectionTitle={scopedDepartmentSectionTitle}
         departmentScopeName={departmentScopeName}
         showDepartmentPerformance
+        assignedTasks={myAssignedTasks}
       />
     );
   }
