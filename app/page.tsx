@@ -568,21 +568,6 @@ async function DashboardPageContent({
         (task.assigneeIds ?? []).some((assigneeId) => String(assigneeId) === currentUserId),
       )?.departmentName ?? null;
   }
-  if (session.uid === 128 || session.uid === 21 || session.uid === 76) {
-    console.error(
-      "[SCOPE-DEBUG]",
-      JSON.stringify({
-        uid: session.uid,
-        role: session.role,
-        jobTitle: session.employeeJobTitle,
-        displayRoleLabel: session.displayRoleLabel,
-        flags: session.groupFlags,
-        shouldScope: shouldScopeToOwnDepartment(session),
-        scopedDepartmentName,
-        generalDashboardMode,
-      }),
-    );
-  }
   const notificationSummaryPromise = loadWorkspaceNotificationSummary(session, {
     snapshot,
     scopedDepartmentName,
