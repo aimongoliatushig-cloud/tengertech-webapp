@@ -3333,6 +3333,11 @@ function WorkerHomeView({
   const monthlyMax = Math.max(1, ...monthlyLoad.map((m) => m.count));
   const monthlyTotal = monthlyLoad.reduce((sum, m) => sum + m.count, 0);
 
+  // Нэгдсэн дизайн систем: бүх карт → 16px радиус, 24px padding, нэг shadow, нэг border.
+  const CARD =
+    "rounded-2xl border border-[#E7EBE8] bg-white p-6 shadow-[0_1px_2px_rgba(20,40,30,0.04),0_1px_3px_rgba(20,40,30,0.06)]";
+  const CARD_TITLE = "text-base font-semibold text-[#16241b]";
+
   return (
     <main className={shellStyles.shell}>
       <div className={shellStyles.contentWithMenu}>
@@ -3369,29 +3374,32 @@ function WorkerHomeView({
             showUserMenu={false}
           />
 
-          <section className="relative z-20 mt-1 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
-            {kpis.map((kpi) => {
-              const Icon = kpi.icon;
-              return (
-                <div
-                  key={kpi.key}
-                  className="rounded-2xl border border-[#E7EBE8] bg-white p-5 shadow-[0_1px_3px_rgba(20,40,30,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(20,40,30,0.08)]"
-                >
-                  <span className={cn("mb-3 flex h-10 w-10 items-center justify-center rounded-xl", kpi.iconBg, kpi.iconFg)}>
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <div className="text-[32px] font-bold leading-none tracking-tight tabular-nums text-[#16241b]">
-                    {kpi.value}
+          <div className="relative z-20 mt-1 flex flex-col gap-8">
+            {/* KPI band — 5 тэнцүү карт */}
+            <section className="grid grid-cols-2 gap-6 md:grid-cols-3 xl:grid-cols-5">
+              {kpis.map((kpi) => {
+                const Icon = kpi.icon;
+                return (
+                  <div
+                    key={kpi.key}
+                    className={cn(CARD, "transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(20,40,30,0.08)]")}
+                  >
+                    <span className={cn("mb-4 flex h-11 w-11 items-center justify-center rounded-xl", kpi.iconBg, kpi.iconFg)}>
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <div className="text-[40px] font-bold leading-none tracking-tight tabular-nums text-[#16241b]">
+                      {kpi.value}
+                    </div>
+                    <div className="mt-2 text-[13px] font-medium text-[#57655C]">{kpi.label}</div>
                   </div>
-                  <div className="mt-2 text-[13px] font-medium text-[#57655C]">{kpi.label}</div>
-                </div>
-              );
-            })}
-          </section>
+                );
+              })}
+            </section>
 
-          <div className="relative z-20 mt-4 grid gap-4">
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-              <div className="grid min-w-0 content-start gap-4">
+            {/* 12-баганат агуулгын grid */}
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+              {/* Өнөөдрийн даалгавар — 8 багана */}
+              <div className="flex min-w-0 flex-col gap-6 xl:col-span-8">
                 {procurementActionPanel ? (
                   <div className={dashboardStyles.procurementTaskPanel}>{procurementActionPanel}</div>
                 ) : null}
@@ -3404,7 +3412,7 @@ function WorkerHomeView({
                     maxRows={5}
                   />
                 ) : (
-                  <section className="rounded-3xl border border-[#E4EFE7] bg-white p-8 text-center">
+                  <section className={cn(CARD, "text-center")}>
                     <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F2F8F3] text-[#4A9A5D]">
                       <ClipboardList className="h-6 w-6" />
                     </span>
@@ -3414,35 +3422,36 @@ function WorkerHomeView({
                 )}
               </div>
 
-              <aside className="grid content-start gap-4">
-                <section className="rounded-3xl border border-[#E7EBE8] bg-white p-4 shadow-[0_1px_3px_rgba(20,40,30,0.06)]">
-                  <h3 className="mb-3 text-sm font-bold text-[#16241b]">Түргэн үйлдэл</h3>
-                  <div className="grid gap-2.5">
+              {/* Түргэн үйлдэл — 4 багана */}
+              <aside className="xl:col-span-4">
+                <section className={CARD}>
+                  <h3 className={cn(CARD_TITLE, "mb-4")}>Түргэн үйлдэл</h3>
+                  <div className="grid gap-3">
                     <Link
                       href={canCreate ? "/create" : "/tasks"}
-                      className="flex items-center gap-3 rounded-2xl bg-[#2E7D32] p-3.5 text-white transition hover:bg-[#256a29]"
+                      className="flex items-center gap-3 rounded-2xl bg-[#2E7D32] p-4 text-white transition hover:bg-[#256a29]"
                     >
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
+                      <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
                         {canCreate ? <Plus className="h-5 w-5" /> : <ListChecks className="h-5 w-5" />}
                       </span>
                       <div>
-                        <div className="text-sm font-bold">{canCreate ? "Шинэ даалгавар" : "Миний ажил"}</div>
-                        <div className="text-[11px] text-white/75">{canCreate ? "Ажил үүсгэх" : "Бүх даалгавар"}</div>
+                        <div className="text-sm font-semibold">{canCreate ? "Шинэ даалгавар" : "Миний ажил"}</div>
+                        <div className="text-[12px] text-white/75">{canCreate ? "Ажил үүсгэх" : "Бүх даалгавар"}</div>
                       </div>
                     </Link>
-                    <div className="grid grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-2 gap-3">
                       {quickActions.map((action) => {
                         const Icon = action.icon;
                         return (
                           <Link
                             key={action.key}
                             href={action.href}
-                            className="flex flex-col gap-2 rounded-2xl border border-[#E7EBE8] bg-[#FAFDFB] p-3 transition hover:-translate-y-0.5 hover:border-[#d4dbd7] hover:bg-white"
+                            className="flex flex-col gap-3 rounded-2xl border border-[#E7EBE8] bg-[#FAFDFB] p-4 transition hover:-translate-y-0.5 hover:border-[#d4dbd7] hover:bg-white"
                           >
-                            <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl", action.iconBg, action.iconFg)}>
-                              <Icon className="h-4 w-4" />
+                            <span className={cn("flex h-11 w-11 items-center justify-center rounded-xl", action.iconBg, action.iconFg)}>
+                              <Icon className="h-[18px] w-[18px]" />
                             </span>
-                            <span className="text-xs font-bold text-[#16241b]">{action.label}</span>
+                            <span className="text-[13px] font-semibold text-[#16241b]">{action.label}</span>
                           </Link>
                         );
                       })}
@@ -3450,47 +3459,48 @@ function WorkerHomeView({
                   </div>
                 </section>
               </aside>
-            </div>
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-              <section className="rounded-3xl border border-[#E4EFE7] bg-white p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="flex items-center gap-1.5 text-sm font-bold text-[#16241b]">
-                    <Bell className="h-4 w-4 text-[#4A9A5D]" />
+              {/* Мэдэгдэл — 6 багана */}
+              <section className={cn(CARD, "xl:col-span-6")}>
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className={cn(CARD_TITLE, "flex items-center gap-2")}>
+                    <Bell className="h-[18px] w-[18px] text-[#57655C]" />
                     Мэдэгдэл
                   </h3>
-                  <Link href="/notifications" className="text-xs font-bold text-[#1b5e20] hover:underline">
+                  <Link href="/notifications" className="text-[13px] font-semibold text-[#2563EB] hover:underline">
                     Бүгдийг харах →
                   </Link>
                 </div>
                 {notificationItems.length ? (
-                  <div className="grid gap-2">
+                  <div className="grid gap-1">
                     {notificationItems.map((task) => (
                       <Link
                         key={`wn-${task.id}`}
                         href={task.href}
-                        className="flex items-start gap-2 rounded-xl px-1 py-1.5 transition hover:bg-[#F6FBF7]"
+                        className="flex items-center gap-3 rounded-xl px-2 py-3 transition hover:bg-[#F6F8F7]"
                       >
-                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#4A9A5D]" />
-                        <span className="min-w-0">
-                          <strong className="block truncate text-xs font-semibold text-[#16241b]">{task.name}</strong>
-                          <span className="text-[11px] font-medium text-[#8A978E]">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#2563EB]" />
+                        <span className="min-w-0 flex-1">
+                          <strong className="block truncate text-sm font-semibold text-[#16241b]">{task.name}</strong>
+                          <span className="text-xs font-medium text-[#8A978E]">
                             Танд оногдсон{task.deadline ? ` · ${task.deadline}` : ""}
                           </span>
                         </span>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-[#B4C3B8]" />
                       </Link>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs font-medium text-[#8A978E]">Шинэ мэдэгдэл алга.</p>
+                  <p className="py-8 text-center text-sm font-medium text-[#8A978E]">Шинэ мэдэгдэл алга.</p>
                 )}
               </section>
 
-              <section className="rounded-3xl border border-[#E7EBE8] bg-white p-5 shadow-[0_1px_3px_rgba(20,40,30,0.06)]">
-                <h3 className="mb-4 text-sm font-bold text-[#16241b]">Даалгаврын төлөв</h3>
+              {/* Даалгаврын төлөв — 6 багана */}
+              <section className={cn(CARD, "xl:col-span-6")}>
+                <h3 className={cn(CARD_TITLE, "mb-5")}>Даалгаврын төлөв</h3>
                 {total ? (
-                  <div className="flex items-center gap-5">
-                    <div className="relative h-[128px] w-[128px] shrink-0">
+                  <div className="flex items-center gap-6">
+                    <div className="relative h-[150px] w-[150px] shrink-0">
                       <svg viewBox="0 0 140 140" className="h-full w-full" role="img" aria-label={`Гүйцэтгэл ${completionPct} хувь`}>
                         <g transform="rotate(-90 70 70)" fill="none" strokeWidth="15" pathLength="100">
                           <circle cx="70" cy="70" r="54" stroke="#EDF0EE" />
@@ -3508,14 +3518,14 @@ function WorkerHomeView({
                         </g>
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <b className="text-2xl font-bold tabular-nums text-[#16241b]">{completionPct}%</b>
-                        <span className="text-[10px] font-medium text-[#8A978E]">Гүйцэтгэл</span>
+                        <b className="text-3xl font-bold tabular-nums text-[#16241b]">{completionPct}%</b>
+                        <span className="text-[11px] font-medium text-[#8A978E]">Гүйцэтгэл</span>
                       </div>
                     </div>
-                    <div className="grid flex-1 gap-2">
+                    <div className="grid flex-1 gap-3">
                       {donutData.map((segment) => (
-                        <div key={segment.key} className="flex items-center gap-2 text-xs text-[#57655C]">
-                          <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: segment.color }} />
+                        <div key={segment.key} className="flex items-center gap-2.5 text-sm text-[#57655C]">
+                          <span className="h-3 w-3 rounded-[4px]" style={{ background: segment.color }} />
                           {segment.label}
                           <b className="ml-auto tabular-nums text-[#16241b]">{segment.value}</b>
                         </div>
@@ -3523,53 +3533,55 @@ function WorkerHomeView({
                     </div>
                   </div>
                 ) : (
-                  <p className="py-8 text-center text-xs font-medium text-[#8A978E]">Даалгавар байхгүй тул төлөв харагдахгүй.</p>
+                  <p className="py-10 text-center text-sm font-medium text-[#8A978E]">Даалгавар байхгүй тул төлөв харагдахгүй.</p>
                 )}
               </section>
+
+              {/* Ирэх ачаалал — 12 багана */}
+              <section className={cn(CARD, "xl:col-span-12")}>
+                <div className="mb-5 flex items-center gap-2">
+                  <h3 className={CARD_TITLE}>Ирэх ачаалал</h3>
+                  <span className="ml-auto text-[13px] font-medium text-[#8A978E]">Хугацаа тавьсан даалгавар · сараар</span>
+                </div>
+                {monthlyTotal ? (
+                  <div className="flex h-[180px] items-end gap-4">
+                    {monthlyLoad.map((month) => (
+                      <div key={month.key} className="flex h-full flex-1 flex-col items-center justify-end gap-2.5">
+                        <span className="text-sm font-bold tabular-nums text-[#16241b]">{month.count || ""}</span>
+                        <div
+                          className={cn(
+                            "w-full max-w-[56px] rounded-t-lg",
+                            month.count ? "bg-[#2563EB]" : "bg-[#EDF0EE]",
+                          )}
+                          style={{ height: `${month.count ? Math.max(6, (month.count / monthlyMax) * 100) : 3}%` }}
+                        />
+                        <span className={cn("text-[12px]", month.isCurrent ? "font-bold text-[#16241b]" : "text-[#8A978E]")}>
+                          {month.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="py-10 text-center text-sm font-medium text-[#8A978E]">Хугацаа тавьсан даалгавар алга.</p>
+                )}
+              </section>
+
+              {/* Өнөөдрийн уриа — 12 багана */}
+              <section className={cn(CARD, "relative overflow-hidden xl:col-span-12")}>
+                <Leaf className="absolute -right-5 -top-5 h-28 w-28 text-[#2E7D32]/8" aria-hidden />
+                <div className="relative flex items-center gap-4">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#E7F3E8] text-[#2E7D32]">
+                    <Leaf className="h-6 w-6" />
+                  </span>
+                  <div>
+                    <p className="text-[13px] font-semibold uppercase tracking-wide text-[#2E7D32]">Өнөөдрийн уриа</p>
+                    <p className="mt-1 text-lg font-semibold leading-snug text-[#16241b]">
+                      “Байгалиа хайрлая, ирээдүйгээ хамгаалъя.”
+                    </p>
+                  </div>
+                </div>
+              </section>
             </div>
-
-            <section className="rounded-3xl border border-[#E7EBE8] bg-white p-5 shadow-[0_1px_3px_rgba(20,40,30,0.06)]">
-              <div className="mb-4 flex items-center gap-2">
-                <h3 className="text-sm font-bold text-[#16241b]">Ирэх ачаалал</h3>
-                <span className="ml-auto text-xs font-medium text-[#8A978E]">Хугацаа тавьсан даалгавар · сараар</span>
-              </div>
-              {monthlyTotal ? (
-                <div className="flex h-[132px] items-end gap-3">
-                  {monthlyLoad.map((month) => (
-                    <div key={month.key} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
-                      <span className="text-xs font-bold tabular-nums text-[#16241b]">{month.count || ""}</span>
-                      <div
-                        className={cn(
-                          "w-full max-w-[42px] rounded-t-lg",
-                          month.count ? "bg-[#2563EB]" : "bg-[#EDF0EE]",
-                        )}
-                        style={{ height: `${month.count ? Math.max(6, (month.count / monthlyMax) * 100) : 3}%` }}
-                      />
-                      <span className={cn("text-[11px]", month.isCurrent ? "font-bold text-[#16241b]" : "text-[#8A978E]")}>
-                        {month.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="py-8 text-center text-xs font-medium text-[#8A978E]">Хугацаа тавьсан даалгавар алга.</p>
-              )}
-            </section>
-
-            <section className="relative overflow-hidden rounded-3xl border border-[#CFE9D6] bg-gradient-to-br from-[#EAF6EC] to-[#F6FBF3] p-5">
-              <Leaf className="absolute -right-4 -top-4 h-28 w-28 text-[#4A9A5D]/12" aria-hidden />
-              <div className="relative flex items-center gap-4">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/70 text-[#2e7d32]">
-                  <Leaf className="h-6 w-6" />
-                </span>
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-[#4A9A5D]">Өнөөдрийн уриа</p>
-                  <p className="mt-1 text-base font-extrabold leading-snug text-[#16351f]">
-                    “Байгалиа хайрлая, ирээдүйгээ хамгаалъя.”
-                  </p>
-                </div>
-              </div>
-            </section>
           </div>
         </div>
       </div>
