@@ -241,30 +241,57 @@ button:disabled {
   color: #6f7f75;
 }
 
-/* --- Картын гадаргуу ба хүрээ --- */
+/* --- Картын гадаргуу --- */
 .dark .bg-white {
   background-color: #151d19;
 }
+.dark .bg-\[\#F6FBF6\],
+.dark .bg-\[\#F6FBF7\] {
+  background-color: #121a16;
+}
+
+/* --- Хүрээ --- */
 .dark .border-\[\#E7EBE8\],
 .dark .border-\[\#E4EFE7\],
 .dark .border-\[\#EEF3EF\],
-.dark .border-\[\#EEF1EF\] {
+.dark .border-\[\#EEF1EF\],
+.dark .border-\[\#E8EFE9\],
+.dark .border-\[\#D6DBD8\] {
   border-color: #29332d;
 }
+.dark .border-\[\#B4C3B8\] {
+  border-color: #3a463f;
+}
+.dark .border-\[\#A5D6A7\],
+.dark .border-\[\#22C55E\],
+.dark .border-\[\#2e7d32\] {
+  border-color: #2f5a3a;
+}
 
-/* --- Текстийн өнгө --- */
+/* --- Текст: үндсэн --- */
 .dark .text-\[\#16241b\],
 .dark .text-\[\#1F2B24\],
-.dark .text-\[\#111b15\] {
+.dark .text-\[\#111b15\],
+.dark .text-\[\#111B15\],
+.dark .text-\[\#1B1B1B\] {
   color: #e7ece9;
 }
+/* --- Текст: хоёрдогч --- */
 .dark .text-\[\#57655C\],
 .dark .text-\[\#3f5147\],
-.dark .text-\[\#697381\] {
+.dark .text-\[\#697381\],
+.dark .text-\[\#526157\],
+.dark .text-\[\#516156\],
+.dark .text-\[\#5b6b60\],
+.dark .text-\[\#6B7280\],
+.dark .text-\[\#6b7a72\],
+.dark .text-\[\#7A897E\] {
   color: #a6b6ab;
 }
+/* --- Текст: бүдэг --- */
 .dark .text-\[\#8A978E\],
-.dark .text-\[\#B4C3B8\] {
+.dark .text-\[\#B4C3B8\],
+.dark .text-\[\#C7CFCA\] {
   color: #83958b;
 }
 
@@ -272,44 +299,64 @@ button:disabled {
 .dark .text-\[\#1B5E20\],
 .dark .text-\[\#1b5e20\],
 .dark .text-\[\#2E7D32\],
-.dark .text-\[\#15803d\] {
+.dark .text-\[\#2e7d32\],
+.dark .text-\[\#15803d\],
+.dark .text-\[\#15803D\],
+.dark .text-\[\#4A9A5D\] {
   color: #74cf88;
 }
 .dark .bg-\[\#E7F3E8\],
-.dark .bg-\[\#E7F5E7\] {
+.dark .bg-\[\#E7F5E7\],
+.dark .bg-\[\#DCFCE7\] {
   background-color: #1b2a20;
 }
-.dark .bg-\[\#EEF1EF\] {
+.dark .bg-\[\#EEF1EF\],
+.dark .bg-\[\#EDF0EE\],
+.dark .bg-\[\#EEF2F1\] {
   background-color: #202824;
 }
 
 /* --- Hover гадаргуу --- */
 .dark .hover\:bg-\[\#F6FBF7\]:hover,
-.dark .hover\:bg-\[\#F2F8F3\]:hover {
+.dark .hover\:bg-\[\#F2F8F3\]:hover,
+.dark .hover\:bg-\[\#F6FBF6\]:hover {
+  background-color: #18211c;
+}
+.dark .bg-\[\#F2F8F3\] {
   background-color: #18211c;
 }
 
-/* --- Цэнхэр / улбар шар / улаан төлөв --- */
+/* --- Цэнхэр --- */
 .dark .text-\[\#1D4ED8\],
 .dark .text-\[\#2563EB\] {
   color: #7aa2ff;
 }
-.dark .bg-\[\#E8EEFD\] {
+.dark .bg-\[\#E8EEFD\],
+.dark .bg-\[\#DBEAFE\] {
   background-color: #1a2436;
 }
+
+/* --- Улбар шар --- */
 .dark .text-\[\#9A5B05\],
-.dark .text-\[\#B45309\] {
+.dark .text-\[\#B45309\],
+.dark .text-\[\#E8820A\] {
   color: #e0a355;
 }
-.dark .bg-\[\#FCF0DC\] {
+.dark .bg-\[\#FCF0DC\],
+.dark .bg-\[\#FEF3C7\] {
   background-color: #332a17;
 }
+
+/* --- Улаан --- */
 .dark .text-\[\#DC2626\],
 .dark .text-\[\#dc2626\],
 .dark .text-\[\#B4231C\],
-.dark .text-\[\#b91c1c\] {
+.dark .text-\[\#b91c1c\],
+.dark .text-\[\#EF4444\] {
   color: #f2837a;
 }
-.dark .bg-\[\#FCEBEA\] {
+.dark .bg-\[\#FCEBEA\],
+.dark .bg-\[\#FBE9E9\],
+.dark .bg-\[\#FEE2E2\] {
   background-color: #3a1f1d;
 }

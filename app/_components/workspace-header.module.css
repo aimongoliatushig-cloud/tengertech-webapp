@@ -669,3 +669,16 @@
     display: none;
   }
 }
+
+/* ===== Шөнийн горим (dark) — header chrome ===== */
+:global(html.dark) .header {
+  background: linear-gradient(120deg, rgba(14, 21, 17, 0.92), rgba(12, 18, 15, 0.72)), var(--workspace-header-image);
+}
+:global(html.dark) .headerUser,
+:global(html.dark) .headerUserMenu,
+:global(html.dark) .datePill,
+:global(html.dark) .notificationButton {
+  background: rgba(21, 29, 25, 0.92);
+  border-color: rgba(150, 200, 165, 0.14);
+  color: var(--ink-900);
+}

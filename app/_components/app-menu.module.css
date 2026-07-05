@@ -872,3 +872,25 @@
     font-weight: 900;
   }
 }
+
+/* ===== Шөнийн горим (dark) — цэсний chrome ===== */
+:global(html.dark) .menuBar,
+:global(html.dark) .mobileTopBar,
+:global(html.dark) .mobileSheet {
+  background: rgba(16, 23, 19, 0.96);
+  border-color: rgba(150, 200, 165, 0.12);
+  color: var(--ink-900);
+}
+:global(html.dark) .profileCard,
+:global(html.dark) .profileMenu,
+:global(html.dark) .mobileSheetFooter {
+  background: rgba(21, 29, 25, 0.98);
+  border-color: rgba(150, 200, 165, 0.12);
+}
+:global(html.dark) .mobileMenuButton,
+:global(html.dark) .mobileNotification,
+:global(html.dark) .mobileProfile {
+  background: #151d19;
+  border-color: rgba(150, 200, 165, 0.14);
+  color: var(--ink-900);
+}
