@@ -3380,7 +3380,7 @@ function WorkerHomeView({
             {/* 12-баганат агуулгын grid */}
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
               {/* Миний даалгавар — голлуулсан, бүтэн мөр */}
-              <div className="mx-auto flex w-full min-w-0 max-w-[760px] flex-col gap-6 xl:col-span-12">
+              <div className="mx-auto flex w-full min-w-0 max-w-[1040px] flex-col gap-6 xl:col-span-12">
                 {procurementActionPanel ? (
                   <div className={dashboardStyles.procurementTaskPanel}>{procurementActionPanel}</div>
                 ) : null}
