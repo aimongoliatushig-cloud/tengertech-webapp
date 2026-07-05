@@ -3329,7 +3329,7 @@ function WorkerHomeView({
             })}
           </section>
 
-          <div className="relative z-20 mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="relative z-20 mt-4 grid gap-4">
             <div className="grid min-w-0 gap-4">
               {procurementActionPanel ? (
                 <div className={dashboardStyles.procurementTaskPanel}>{procurementActionPanel}</div>
@@ -3378,7 +3378,7 @@ function WorkerHomeView({
               </Link>
             </div>
 
-            <aside className="grid content-start gap-4">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
               <section className="rounded-3xl border border-[#E4EFE7] bg-white p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="flex items-center gap-1.5 text-sm font-bold text-[#16241b]">
@@ -3424,7 +3424,7 @@ function WorkerHomeView({
                   </p>
                 </div>
               </section>
-            </aside>
+            </div>
           </div>
         </div>
       </div>
