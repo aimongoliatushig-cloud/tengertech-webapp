@@ -117,7 +117,7 @@ export function WorkerTaskTable({
       </div>
 
       <div>
-        <div className="grid grid-cols-[36px_minmax(0,1fr)_128px_128px] gap-3 border-b border-[#EEF3EF] px-2 pb-3 text-[11px] font-semibold uppercase tracking-wide text-[#8A978E] sm:grid-cols-[40px_minmax(0,1fr)_150px_104px_132px]">
+        <div className="grid grid-cols-[32px_minmax(0,1fr)_104px_100px] gap-3 border-b border-[#EEF3EF] px-3 pb-3 text-[11px] font-semibold uppercase tracking-wide text-[#8A978E] sm:grid-cols-[32px_minmax(0,1fr)_112px_88px_100px]">
           <span>№</span>
           <span>Даалгаврын нэр</span>
           <span>Төлөв</span>
@@ -134,7 +134,7 @@ export function WorkerTaskTable({
               <Link
                 key={`wtt-${task.id}`}
                 href={task.href}
-                className="group grid min-h-[64px] grid-cols-[36px_minmax(0,1fr)_128px_128px] items-center gap-3 border-b border-[#EEF3EF] px-2 py-3 transition last:border-b-0 hover:bg-[#F6F8F7] sm:grid-cols-[40px_minmax(0,1fr)_150px_104px_132px]"
+                className="group grid min-h-[64px] grid-cols-[32px_minmax(0,1fr)_104px_100px] items-center gap-3 border-b border-[#EEF3EF] px-3 py-3 transition last:border-b-0 hover:bg-[#F6F8F7] sm:grid-cols-[32px_minmax(0,1fr)_112px_88px_100px]"
               >
                 <span
                   className={cn(
@@ -163,7 +163,7 @@ export function WorkerTaskTable({
                   {overdue ? (
                     <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold", OVERDUE_BADGE)}>
                       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#DC2626]" />
-                      Хугацаа хэтэрсэн
+                      Хэтэрсэн
                     </span>
                   ) : (
                     <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold", status.badge)}>
