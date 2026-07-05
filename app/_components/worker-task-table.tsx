@@ -116,14 +116,7 @@ export function WorkerTaskTable({
         </div>
       </div>
 
-      <div className="max-w-[860px]">
-        <div className="grid grid-cols-[32px_minmax(0,1fr)_112px_56px] gap-3 border-b border-[#EEF3EF] pb-2.5 text-[11px] font-semibold uppercase tracking-wide text-[#8A978E] sm:grid-cols-[36px_minmax(0,1fr)_118px_72px]">
-          <span>№</span>
-          <span>Даалгавар</span>
-          <span>Төлөв</span>
-          <span className="text-right">Хугацаа</span>
-        </div>
-
+      <div>
         {rows.length ? (
           rows.map((task, index) => {
             const status = STATUS_META[task.statusKey];
@@ -134,36 +127,34 @@ export function WorkerTaskTable({
               <Link
                 key={`wtt-${task.id}`}
                 href={task.href}
-                className="group grid min-h-[64px] grid-cols-[32px_minmax(0,1fr)_112px_56px] items-center gap-3 border-b border-[#EEF3EF] py-3.5 transition-colors last:border-b-0 hover:bg-[#F6F8F7] sm:grid-cols-[36px_minmax(0,1fr)_118px_72px]"
+                className="group flex min-h-[60px] items-center gap-3 border-b border-[#EEF3EF] py-3 transition-colors last:border-b-0 hover:bg-[#F6F8F7]"
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EEF1EF] text-[13px] font-bold tabular-nums text-[#57655C]">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EEF1EF] text-[13px] font-bold tabular-nums text-[#57655C]">
                   {index + 1}
                 </span>
 
-                <span className="min-w-0">
+                <span className="min-w-0 max-w-[440px]">
                   <strong className="block truncate text-sm font-semibold text-[#16241b]">{task.name}</strong>
                   {task.projectName ? (
                     <span className="mt-0.5 block truncate text-xs font-medium text-[#8A978E]">{task.projectName}</span>
                   ) : null}
                 </span>
 
-                <span className="min-w-0">
-                  {overdue ? (
-                    <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold", OVERDUE_BADGE)}>
-                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#DC2626]" />
-                      Хэтэрсэн
-                    </span>
-                  ) : (
-                    <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold", status.badge)}>
-                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", status.dot)} />
-                      {status.label}
-                    </span>
-                  )}
-                </span>
+                {overdue ? (
+                  <span className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold", OVERDUE_BADGE)}>
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#DC2626]" />
+                    Хэтэрсэн
+                  </span>
+                ) : (
+                  <span className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold", status.badge)}>
+                    <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", status.dot)} />
+                    {status.label}
+                  </span>
+                )}
 
                 <span
                   className={cn(
-                    "text-right text-[13px] font-semibold tabular-nums",
+                    "shrink-0 text-[13px] font-semibold tabular-nums",
                     overdue ? "text-[#DC2626]" : "text-[#57655C]",
                   )}
                 >
@@ -173,7 +164,7 @@ export function WorkerTaskTable({
             );
           })
         ) : (
-          <div className="px-2 py-10 text-center text-sm font-medium text-[#8A978E]">
+          <div className="py-10 text-center text-sm font-medium text-[#8A978E]">
             Энэ төлөвт даалгавар алга.
           </div>
         )}
