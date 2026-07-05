@@ -3424,6 +3424,20 @@ export function DashboardView({
     : scopedTasks.length
       ? scopedTasks
       : snapshot.taskDirectory;
+  // Нэвтэрсэн ажилтанд шууд оногдсон (хариуцагч буюу гүйцэтгэгч) даалгаврууд —
+  // аль ч төсөл/хэлтэс үл харгалзан, дуусаагүйг нь эрэмбэлж харуулна.
+  const myAssignedTasks = snapshot.taskDirectory
+    .filter((task) => {
+      const uid = String(session.uid);
+      const isAssignee = (task.assigneeIds ?? []).some(
+        (assigneeId) => String(normalizeTaskAssigneeId(assigneeId)) === uid,
+      );
+      const isLeader = task.leaderId != null && String(task.leaderId) === uid;
+      return (isAssignee || isLeader) && task.statusKey !== "verified";
+    })
+    .sort((left, right) =>
+      (left.scheduledDate || left.deadline || "9999").localeCompare(right.scheduledDate || right.deadline || "9999"),
+    );
   const dashboardProjects = snapshot.projects.filter(hasDashboardWork);
   const workItemStats = dashboardTaskStats(dashboardTasks, currentDateKey);
   const totalTasks = workerMode
@@ -3656,6 +3670,40 @@ export function DashboardView({
                         <small className="mt-1 block font-medium text-[#8A978E]">Нийт ажлын жагсаалтаас алба нэгжийн ажлуудаа харж болно.</small>
                       </div>
                     ) : null}
+                  </div>
+                </Card>
+              ) : null}
+
+              {!workerMode && myAssignedTasks.length ? (
+                <Card className={dashboardStyles.taskListCard}>
+                  <CardHeader className={dashboardStyles.taskListHeader}>
+                    <div className={dashboardStyles.taskListHeaderText}>
+                      <CardTitle>Танд оногдсон даалгавар</CardTitle>
+                      <CardDescription>
+                        Таны нэр дээр хариуцагчаар оногдсон даалгаврууд (бүх төсөл, хэлтэс).
+                      </CardDescription>
+                    </div>
+                    <Badge tone="green">{myAssignedTasks.length}</Badge>
+                  </CardHeader>
+                  <div className="grid gap-2">
+                    {myAssignedTasks.map((task) => (
+                      <Link
+                        key={`assigned-${task.id}`}
+                        href={task.href}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-[#E2ECE4] bg-white p-3 transition hover:border-[#2e7d32]"
+                      >
+                        <span className="min-w-0">
+                          <strong className="block truncate text-sm font-semibold text-[#16241b]">{task.name}</strong>
+                          <small className="block truncate text-xs text-[#6b7a72]">
+                            {task.projectName}
+                            {task.deadline ? ` · ${task.deadline}` : ""}
+                          </small>
+                        </span>
+                        <span className="shrink-0 rounded-full bg-[#eef4fe] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8]">
+                          {task.statusLabel}
+                        </span>
+                      </Link>
+                    ))}
                   </div>
                 </Card>
               ) : null}
