@@ -13,8 +13,6 @@ import {
   CloudRain,
   CloudSnow,
   CloudSun,
-  FileText,
-  Folder,
   Fuel,
   HeartPulse,
   Leaf,
@@ -3214,7 +3212,6 @@ function WorkerHomeView({
 }) {
   const canViewAllReports = canViewAllWorkspaceReports(session);
   const canViewWeightReports = canViewGarbageWeightReports(session);
-  const canCreate = canCreateTasks || canCreateProject;
 
   const total = assignedTasks.length;
   const doneCount = assignedTasks.filter((task) => task.statusKey === "done").length;
@@ -3268,15 +3265,6 @@ function WorkerHomeView({
       ring: "border-[#CFE9D6] bg-[#F1FAF3]",
       iconWrap: "bg-[#1b7a3e] text-white",
     },
-  ];
-
-  const quickActions: Array<{ key: string; label: string; href: string; icon: LucideIcon }> = [
-    canCreate
-      ? { key: "create", label: "Шинэ даалгавар", href: "/create", icon: Plus }
-      : { key: "my-tasks", label: "Миний ажил", href: "/tasks", icon: ListChecks },
-    { key: "report", label: "Тайлан оруулах", href: "/review", icon: FileText },
-    { key: "schedule", label: "Хуваарь харах", href: "/tasks?view=today", icon: CalendarDays },
-    { key: "documents", label: "Баримт бичиг", href: "/data-download", icon: Folder },
   ];
 
   const notificationItems = assignedTasks.slice(0, 3);
@@ -3391,27 +3379,6 @@ function WorkerHomeView({
             </div>
 
             <aside className="grid content-start gap-4">
-              <section className="rounded-3xl border border-[#E4EFE7] bg-white p-4">
-                <h3 className="mb-3 text-sm font-bold text-[#16241b]">Түргэн үйлдлүүд</h3>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {quickActions.map((action) => {
-                    const Icon = action.icon;
-                    return (
-                      <Link
-                        key={action.key}
-                        href={action.href}
-                        className="flex flex-col gap-2 rounded-2xl border border-[#E8EFE9] bg-[#FAFDFB] p-3 transition hover:border-[#2e7d32] hover:bg-white"
-                      >
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(74,154,93,0.12)] text-[#1b5e20]">
-                          <Icon className="h-4 w-4" />
-                        </span>
-                        <span className="text-xs font-bold text-[#16241b]">{action.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </section>
-
               <section className="rounded-3xl border border-[#E4EFE7] bg-white p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="flex items-center gap-1.5 text-sm font-bold text-[#16241b]">
