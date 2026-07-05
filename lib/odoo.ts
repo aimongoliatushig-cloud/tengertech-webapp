@@ -7417,6 +7417,7 @@ export type AssignedTaskItem = {
   id: number;
   name: string;
   projectName: string;
+  departmentName: string;
   deadline: string;
   statusKey: AssignedTaskStatusKey;
   statusLabel: string;
@@ -7483,6 +7484,7 @@ export async function loadUserAssignedTasks(uid: number): Promise<AssignedTaskIt
       id: number;
       name?: string;
       project_id?: OdooRelation;
+      ops_department_id?: OdooRelation;
       date_deadline?: string | false;
       stage_id?: OdooRelation;
     }>
@@ -7490,7 +7492,11 @@ export async function loadUserAssignedTasks(uid: number): Promise<AssignedTaskIt
     "project.task",
     "search_read",
     [["|", ["user_ids", "in", [uid]], ["ops_team_leader_id", "=", uid]]],
-    { fields: ["name", "project_id", "date_deadline", "stage_id"], order: "date_deadline asc, id desc", limit: 100 },
+    {
+      fields: ["name", "project_id", "ops_department_id", "date_deadline", "stage_id"],
+      order: "date_deadline asc, id desc",
+      limit: 100,
+    },
     createOdooConnection(),
   ).catch((error) => {
     console.warn("loadUserAssignedTasks failed:", error);
@@ -7500,6 +7506,7 @@ export async function loadUserAssignedTasks(uid: number): Promise<AssignedTaskIt
     id: number;
     name?: string;
     project_id?: OdooRelation;
+    ops_department_id?: OdooRelation;
     date_deadline?: string | false;
     stage_id?: OdooRelation;
   }>)
@@ -7517,6 +7524,7 @@ export async function loadUserAssignedTasks(uid: number): Promise<AssignedTaskIt
         id: record.id,
         name: (record.name || "").trim() || "Нэргүй даалгавар",
         projectName: relationName(record.project_id ?? false, ""),
+        departmentName: relationName(record.ops_department_id ?? false, ""),
         deadline: typeof record.date_deadline === "string" ? record.date_deadline.slice(0, 10) : "",
         statusKey: status.key,
         statusLabel: status.label,

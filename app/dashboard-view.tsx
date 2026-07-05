@@ -3213,6 +3213,9 @@ function WorkerHomeView({
   const canViewWeightReports = canViewGarbageWeightReports(session);
 
   const total = assignedTasks.length;
+  // Хувийн (хэлтэсгүй) ба хэлтэст даалгасан даалгаврыг тусад нь ялгана.
+  const personalTasks = assignedTasks.filter((task) => !task.departmentName);
+  const departmentTasks = assignedTasks.filter((task) => task.departmentName);
   const doneCount = assignedTasks.filter((task) => task.statusKey === "done").length;
   const activeCount = total - doneCount;
   const overdueCount = assignedTasks.filter(
@@ -3386,12 +3389,26 @@ function WorkerHomeView({
                 ) : null}
 
                 {total ? (
-                  <WorkerTaskTable
-                    tasks={assignedTasks}
-                    currentDateKey={currentDateKey}
-                    allHref="/tasks"
-                    maxRows={5}
-                  />
+                  <>
+                    {personalTasks.length ? (
+                      <WorkerTaskTable
+                        tasks={personalTasks}
+                        title="Миний даалгавар"
+                        currentDateKey={currentDateKey}
+                        allHref="/tasks"
+                        maxRows={5}
+                      />
+                    ) : null}
+                    {departmentTasks.length ? (
+                      <WorkerTaskTable
+                        tasks={departmentTasks}
+                        title="Хэлтсийн даалгавар"
+                        currentDateKey={currentDateKey}
+                        allHref="/tasks"
+                        maxRows={5}
+                      />
+                    ) : null}
+                  </>
                 ) : (
                   <section className={cn(CARD, "text-center")}>
                     <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F2F8F3] text-[#4A9A5D]">
