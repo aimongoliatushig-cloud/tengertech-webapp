@@ -3385,22 +3385,22 @@ function WorkerHomeView({
           />
 
           <div className="relative z-20 mt-1 flex flex-col gap-8">
-            {/* KPI band — 5 тэнцүү карт */}
-            <section className="grid grid-cols-2 gap-6 md:grid-cols-3 xl:grid-cols-5">
+            {/* KPI band — 5 тэнцүү карт (нягт) */}
+            <section className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
               {kpis.map((kpi) => {
                 const Icon = kpi.icon;
                 return (
                   <div
                     key={kpi.key}
-                    className={cn(CARD, "flex flex-col items-center text-center transition-colors hover:border-[#D6DBD8]")}
+                    className={cn(CARD.replace("p-6", "p-3.5"), "flex flex-col items-center text-center transition-colors hover:border-[#D6DBD8]")}
                   >
-                    <span className={cn("mb-3 flex h-9 w-9 items-center justify-center rounded-xl", kpi.iconBg, kpi.iconFg)}>
-                      <Icon className="h-[18px] w-[18px]" />
+                    <span className={cn("mb-1.5 flex h-7 w-7 items-center justify-center rounded-lg", kpi.iconBg, kpi.iconFg)}>
+                      <Icon className="h-4 w-4" />
                     </span>
-                    <div className="text-[32px] font-bold leading-none tracking-tight tabular-nums text-[#16241b]">
+                    <div className="text-[24px] font-bold leading-none tracking-tight tabular-nums text-[#16241b]">
                       {kpi.value}
                     </div>
-                    <div className="mt-2 text-[13px] font-medium text-[#57655C]">{kpi.label}</div>
+                    <div className="mt-1 text-[12px] font-medium text-[#57655C]">{kpi.label}</div>
                   </div>
                 );
               })}
