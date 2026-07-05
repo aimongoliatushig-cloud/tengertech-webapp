@@ -3534,6 +3534,16 @@ export function DashboardView({
   const executiveDashboardMode =
     canViewGeneralDashboard && !workerMode && !departmentHeadDashboardMode;
 
+  console.warn("[DEBUG-MYTASKS]", JSON.stringify({
+    login: session.login,
+    workerMode,
+    execMode: executiveDashboardMode,
+    deptHeadMode: departmentHeadDashboardMode,
+    snapshotTasks: snapshot.taskDirectory.length,
+    myAssigned: myAssignedTasks.length,
+    myAssignedNames: myAssignedTasks.slice(0, 3).map((t) => t.name.slice(0, 20)),
+  }));
+
   if (executiveDashboardMode || departmentHeadDashboardMode) {
     const scopedDashboardTitle = departmentHeadDashboardMode
       ? "Хяналтын самбар"
