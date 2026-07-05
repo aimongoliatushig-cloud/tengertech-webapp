@@ -7451,6 +7451,10 @@ export async function loadUserAssignedTasks(uid: number): Promise<AssignedTaskIt
     stage_id?: OdooRelation;
   }>)
     .filter((record) => {
+      // Odoo-гийн default "Welcome ...!" onboarding таск (төсөлгүй) болон дууссан
+      // даалгаврыг хасна.
+      if (!Array.isArray(record.project_id)) return false;
+      if ((record.name || "").trim().toLowerCase().startsWith("welcome")) return false;
       const stage = relationName(record.stage_id ?? false, "").toLocaleLowerCase("mn-MN");
       return !(
         stage.includes("дууссан") ||

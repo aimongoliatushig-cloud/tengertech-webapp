@@ -3677,25 +3677,39 @@ export function DashboardView({
                     </div>
                     <Badge tone="green">{myAssignedTasks.length}</Badge>
                   </CardHeader>
-                  <div className="grid gap-2">
-                    {myAssignedTasks.map((task) => (
-                      <Link
-                        key={`assigned-${task.id}`}
-                        href={task.href}
-                        className="flex items-center justify-between gap-3 rounded-xl border border-[#E2ECE4] bg-white p-3 transition hover:border-[#2e7d32]"
-                      >
-                        <span className="min-w-0">
-                          <strong className="block truncate text-sm font-semibold text-[#16241b]">{task.name}</strong>
-                          <small className="block truncate text-xs text-[#6b7a72]">
-                            {task.projectName}
-                            {task.deadline ? ` · ${task.deadline}` : ""}
-                          </small>
-                        </span>
-                        <span className="shrink-0 rounded-full bg-[#eef4fe] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8]">
-                          {task.statusLabel}
-                        </span>
-                      </Link>
-                    ))}
+                  <div className="grid gap-2.5">
+                    {myAssignedTasks.map((task) => {
+                      const overdue = Boolean(task.deadline && task.deadline < currentDateKey);
+                      return (
+                        <Link
+                          key={`assigned-${task.id}`}
+                          href={task.href}
+                          className="group flex items-start gap-3 rounded-2xl border border-[#E4EFE7] bg-white p-3.5 transition hover:border-[#2e7d32] hover:shadow-[0_6px_18px_rgba(46,125,50,0.10)]"
+                        >
+                          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EAF5EC] text-[#2e7d32]">
+                            <ClipboardList className="h-4 w-4" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <strong className="block truncate text-sm font-semibold text-[#16241b]">{task.name}</strong>
+                            <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#6b7a72]">
+                              {task.projectName ? <span className="truncate">{task.projectName}</span> : null}
+                              {task.deadline ? (
+                                <span className={cn("inline-flex items-center gap-1", overdue ? "font-semibold text-[#dc2626]" : "")}>
+                                  <CalendarDays className="h-3.5 w-3.5" />
+                                  {task.deadline}
+                                  {overdue ? " · хугацаа хэтэрсэн" : ""}
+                                </span>
+                              ) : null}
+                            </span>
+                          </span>
+                          {task.statusLabel ? (
+                            <span className="shrink-0 self-center rounded-full bg-[#EEF4FE] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8]">
+                              {task.statusLabel}
+                            </span>
+                          ) : null}
+                        </Link>
+                      );
+                    })}
                   </div>
                 </Card>
               ) : null}
