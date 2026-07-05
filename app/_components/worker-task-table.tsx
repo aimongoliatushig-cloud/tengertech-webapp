@@ -128,7 +128,7 @@ export function WorkerTaskTable({
       </div>
 
       <div>
-        <div className="grid grid-cols-[36px_minmax(0,1fr)_140px_100px_54px] gap-4 border-b border-[#EEF3EF] pl-12 pr-6 pb-2.5 text-[11px] font-semibold uppercase tracking-wide text-[#8A978E]">
+        <div className="hidden sm:grid sm:grid-cols-[36px_minmax(0,1fr)_140px_100px_54px] gap-4 border-b border-[#EEF3EF] pl-12 pr-6 pb-2.5 text-[11px] font-semibold uppercase tracking-wide text-[#8A978E]">
           <span>№</span>
           <span>Даалгаврын нэр</span>
           <span>Төлөв</span>
@@ -141,53 +141,66 @@ export function WorkerTaskTable({
             const status = STATUS_META[task.statusKey];
             const isDone = task.statusKey === "done";
             const overdue = !isDone && Boolean(task.deadline && task.deadline < currentDateKey);
+            const statusPill =
+              variant === "monitor" ? (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold",
+                    overdue ? "bg-[#FCEBEA] text-[#B4231C]" : status.badge,
+                  )}
+                >
+                  <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", overdue ? "bg-[#DC2626]" : status.dot)} />
+                  {overdue ? "Хугацаа хэтэрсэн" : status.label}
+                </span>
+              ) : isDone ? (
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#EEF1EF] px-3 py-1.5 text-xs font-semibold text-[#57655C]">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-[#2E7D32]" />
+                  Гүйцэтгэсэн
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#E7F3E8] px-3 py-1.5 text-xs font-semibold text-[#1B5E20]">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  Тайлан оруулах
+                </span>
+              );
+            const dateText = task.deadline || "—";
             return (
               <Link
                 key={`wtt-${task.id}`}
                 href={task.href}
-                className="group grid grid-cols-[36px_minmax(0,1fr)_140px_100px_54px] items-center gap-4 border-b border-[#EEF3EF] pl-12 pr-6 py-3 transition-colors last:border-b-0 hover:bg-[#F6FBF7]"
+                className="group flex items-center gap-3 border-b border-[#EEF3EF] px-4 py-3 transition-colors last:border-b-0 hover:bg-[#F6FBF7] sm:grid sm:grid-cols-[36px_minmax(0,1fr)_140px_100px_54px] sm:gap-4 sm:pl-12 sm:pr-6"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E7F3E8] text-sm font-bold tabular-nums text-[#1B5E20]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#E7F3E8] text-sm font-bold tabular-nums text-[#1B5E20]">
                   {index + 1}
                 </span>
 
-                <span className="min-w-0">
+                <span className="min-w-0 flex-1 sm:flex-none">
                   <strong className="block truncate text-sm font-semibold text-[#16241b]">{task.name}</strong>
                   <span className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium text-[#8A978E]">
                     <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", overdue ? "bg-[#DC2626]" : status.dot)} />
                     {overdue ? "Хугацаа хэтэрсэн" : status.label}
                   </span>
+                  {/* Гар утсанд төлөв + хугацаа нэрийн доор */}
+                  <span className="mt-2 flex flex-wrap items-center gap-2 sm:hidden">
+                    {statusPill}
+                    <span className={cn("text-[12px] font-medium tabular-nums", overdue ? "text-[#DC2626]" : "text-[#8A978E]")}>
+                      {dateText}
+                    </span>
+                  </span>
                 </span>
 
-                <span className="min-w-0">
-                  {variant === "monitor" ? (
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold",
-                        overdue ? "bg-[#FCEBEA] text-[#B4231C]" : status.badge,
-                      )}
-                    >
-                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", overdue ? "bg-[#DC2626]" : status.dot)} />
-                      {overdue ? "Хугацаа хэтэрсэн" : status.label}
-                    </span>
-                  ) : isDone ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#EEF1EF] px-3 py-1.5 text-xs font-semibold text-[#57655C]">
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-[#2E7D32]" />
-                      Гүйцэтгэсэн
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#E7F3E8] px-3 py-1.5 text-xs font-semibold text-[#1B5E20]">
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
-                      Тайлан оруулах
-                    </span>
+                <span className="hidden min-w-0 sm:block">{statusPill}</span>
+
+                <span
+                  className={cn(
+                    "hidden text-[13px] font-medium tabular-nums sm:block",
+                    overdue ? "text-[#DC2626]" : "text-[#57655C]",
                   )}
+                >
+                  {dateText}
                 </span>
 
-                <span className={cn("text-[13px] font-medium tabular-nums", overdue ? "text-[#DC2626]" : "text-[#57655C]")}>
-                  {task.deadline || "—"}
-                </span>
-
-                <span className="flex justify-end text-[#B4C3B8] transition group-hover:text-[#2e7d32]">
+                <span className="ml-auto flex shrink-0 justify-end text-[#B4C3B8] transition group-hover:text-[#2e7d32] sm:ml-0">
                   <ChevronRight className="h-4 w-4" />
                 </span>
               </Link>
