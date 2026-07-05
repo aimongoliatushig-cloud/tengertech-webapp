@@ -7411,18 +7411,68 @@ function cleanSnapshotText<T>(value: T): T {
   return value;
 }
 
+export type AssignedTaskStatusKey = "planned" | "doing" | "review" | "done";
+
 export type AssignedTaskItem = {
   id: number;
   name: string;
   projectName: string;
   deadline: string;
+  statusKey: AssignedTaskStatusKey;
   statusLabel: string;
   href: string;
 };
 
-// Хэрэглэгчид (uid) оногдсон дуусаагүй даалгаврыг service (admin) эрхээр татна.
+// Odoo-гийн stage нэрийг ажилтанд ойлгомжтой 4 төлөвт хөрвүүлнэ.
+function deriveAssignedTaskStatus(stageName: string): {
+  key: AssignedTaskStatusKey;
+  label: string;
+} {
+  const raw = (stageName || "").trim();
+  const s = raw.toLocaleLowerCase("mn-MN");
+  if (
+    s.includes("дууссан") ||
+    s.includes("verified") ||
+    s.includes("done") ||
+    s.includes("баталсан") ||
+    s.includes("хүлээн авсан") ||
+    s.includes("хаагдсан") ||
+    s.includes("биелсэн")
+  ) {
+    return { key: "done", label: raw || "Дууссан" };
+  }
+  if (
+    s.includes("шалгаж") ||
+    s.includes("хянаж") ||
+    s.includes("review") ||
+    s.includes("хүлээгдэж")
+  ) {
+    return { key: "review", label: raw || "Шалгаж байна" };
+  }
+  if (
+    s.includes("хийгдэж") ||
+    s.includes("гүйцэтгэж") ||
+    s.includes("хэрэгжиж") ||
+    s.includes("явц") ||
+    s.includes("эхэлсэн") ||
+    s.includes("progress")
+  ) {
+    return { key: "doing", label: raw || "Хийгдэж байна" };
+  }
+  return { key: "planned", label: raw || "Төлөвлөсөн" };
+}
+
+const ASSIGNED_STATUS_SORT: Record<AssignedTaskStatusKey, number> = {
+  doing: 0,
+  review: 1,
+  planned: 2,
+  done: 3,
+};
+
+// Хэрэглэгчид (uid) оногдсон даалгаврыг service (admin) эрхээр татна.
 // Worker/нярав өөрийн эрхээр project.task-ийг уншиж чаддаггүй тул нүүр дээр
 // оногдсон даалгавар харагдахгүй байсныг энэ замаар найдвартай харуулна.
+// Дууссан даалгаврыг мөн оруулж, төлөвөөр нь эрэмбэлж буцаана.
 export async function loadUserAssignedTasks(uid: number): Promise<AssignedTaskItem[]> {
   if (!uid || !Number.isFinite(uid)) return [];
   const records = await executeOdooKw<
@@ -7451,27 +7501,26 @@ export async function loadUserAssignedTasks(uid: number): Promise<AssignedTaskIt
     stage_id?: OdooRelation;
   }>)
     .filter((record) => {
-      // Odoo-гийн default "Welcome ...!" onboarding таск (төсөлгүй) болон дууссан
-      // даалгаврыг хасна.
+      // Odoo-гийн default "Welcome ...!" onboarding таск (төсөлгүй) болон
+      // цуцалсан даалгаврыг хасна. Дууссаныг харуулна (төлөвөөр нь ялгана).
       if (!Array.isArray(record.project_id)) return false;
       if ((record.name || "").trim().toLowerCase().startsWith("welcome")) return false;
       const stage = relationName(record.stage_id ?? false, "").toLocaleLowerCase("mn-MN");
-      return !(
-        stage.includes("дууссан") ||
-        stage.includes("verified") ||
-        stage.includes("done") ||
-        stage.includes("баталсан") ||
-        stage.includes("цуцал")
-      );
+      return !stage.includes("цуцал");
     })
-    .map((record) => ({
-      id: record.id,
-      name: (record.name || "").trim() || "Нэргүй даалгавар",
-      projectName: relationName(record.project_id ?? false, ""),
-      deadline: typeof record.date_deadline === "string" ? record.date_deadline.slice(0, 10) : "",
-      statusLabel: relationName(record.stage_id ?? false, ""),
-      href: `/tasks/${record.id}`,
-    }));
+    .map((record) => {
+      const status = deriveAssignedTaskStatus(relationName(record.stage_id ?? false, ""));
+      return {
+        id: record.id,
+        name: (record.name || "").trim() || "Нэргүй даалгавар",
+        projectName: relationName(record.project_id ?? false, ""),
+        deadline: typeof record.date_deadline === "string" ? record.date_deadline.slice(0, 10) : "",
+        statusKey: status.key,
+        statusLabel: status.label,
+        href: `/tasks/${record.id}`,
+      };
+    })
+    .sort((a, b) => ASSIGNED_STATUS_SORT[a.statusKey] - ASSIGNED_STATUS_SORT[b.statusKey]);
 }
 
 export async function loadMunicipalSnapshot(

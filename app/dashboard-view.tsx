@@ -48,6 +48,7 @@ import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 import { canViewGarbageWeightReports } from "@/lib/roles";
 import {
   type AssignedTaskItem,
+  type AssignedTaskStatusKey,
   type DashboardSnapshot,
   type FleetVehicleBoard,
   type HrDailyAttendanceSummary,
@@ -156,6 +157,33 @@ function formatMnDate(iso?: string | null): string {
   if (!match) return "";
   return `${match[1]} оны ${Number(match[2])}-р сарын ${Number(match[3])}`;
 }
+
+// Оногдсон даалгаврын төлөв бүрийн шошго ба өнгө (нүүр хуудасны карт).
+const ASSIGNED_STATUS_META: Record<
+  AssignedTaskStatusKey,
+  { label: string; pill: string; dot: string }
+> = {
+  planned: {
+    label: "Төлөвлөсөн",
+    pill: "bg-[#EEF2F1] text-[#516156]",
+    dot: "bg-[#94A79A]",
+  },
+  doing: {
+    label: "Хийгдэж байна",
+    pill: "bg-[#FEF3C7] text-[#B45309]",
+    dot: "bg-[#F59E0B]",
+  },
+  review: {
+    label: "Шалгаж байна",
+    pill: "bg-[#DBEAFE] text-[#1D4ED8]",
+    dot: "bg-[#3B82F6]",
+  },
+  done: {
+    label: "Дууссан",
+    pill: "bg-[#DCFCE7] text-[#15803D]",
+    dot: "bg-[#22C55E]",
+  },
+};
 
 function normalizeTaskAssigneeId(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -3436,6 +3464,26 @@ export function DashboardView({
   // Нэвтэрсэн ажилтанд оногдсон дуусаагүй даалгаврууд — service эрхээр татсан
   // (worker/нярав өөрийн эрхээр project.task уншиж чаддаггүйг тойрсон).
   const myAssignedTasks = assignedTasks;
+  const assignedStatusCounts: Record<AssignedTaskStatusKey, number> = {
+    planned: 0,
+    doing: 0,
+    review: 0,
+    done: 0,
+  };
+  for (const task of myAssignedTasks) {
+    assignedStatusCounts[task.statusKey] += 1;
+  }
+  const assignedDoneCount = assignedStatusCounts.done;
+  const assignedActiveCount = myAssignedTasks.length - assignedDoneCount;
+  const assignedOverdueCount = myAssignedTasks.filter(
+    (task) => task.statusKey !== "done" && task.deadline && task.deadline < currentDateKey,
+  ).length;
+  const assignedSummaryChips = [
+    { key: "all", label: "Нийт", count: myAssignedTasks.length, dot: "bg-[#4A9A5D]" },
+    { key: "doing", label: ASSIGNED_STATUS_META.doing.label, count: assignedStatusCounts.doing, dot: ASSIGNED_STATUS_META.doing.dot },
+    { key: "review", label: ASSIGNED_STATUS_META.review.label, count: assignedStatusCounts.review, dot: ASSIGNED_STATUS_META.review.dot },
+    { key: "done", label: ASSIGNED_STATUS_META.done.label, count: assignedDoneCount, dot: ASSIGNED_STATUS_META.done.dot },
+  ].filter((chip) => chip.key === "all" || chip.count > 0);
   const dashboardProjects = snapshot.projects.filter(hasDashboardWork);
   const workItemStats = dashboardTaskStats(dashboardTasks, currentDateKey);
   const totalTasks = workerMode
@@ -3508,6 +3556,15 @@ export function DashboardView({
   const visibleProjects = masterMode ? sortedProjects : sortedProjects.slice(0, 3);
   const visibleWorkItems = workerMode ? visibleWorkerWorks.length : visibleProjects.length;
   const hasProcurementActionPanel = Boolean(procurementActionPanel);
+  // Worker-ийн өөрийн эрхээр татсан snapshot хоосон байхад (нярав г.м.) "Ажлын
+  // жагсаалт" карт хоосон гарч, дээрх "Миний даалгавар" картыг давхардуулдаг.
+  // Оногдсон даалгавар байгаа, гэхдээ энэ картад харуулах контент байхгүй үед нуулгана.
+  const hideDuplicateWorkerWorkList = Boolean(
+    workerMode &&
+      !hasProcurementActionPanel &&
+      visibleWorkItems === 0 &&
+      myAssignedTasks.length > 0,
+  );
   const projectStatusChips = projectStatusFilterChips(sortedProjects);
   const projectStatusSections = projectStatusChips.map((chip) => ({
     ...chip,
@@ -3676,45 +3733,105 @@ export function DashboardView({
                 <Card className={dashboardStyles.taskListCard}>
                   <CardHeader className={dashboardStyles.taskListHeader}>
                     <div className={dashboardStyles.taskListHeaderText}>
-                      <CardTitle>Танд оногдсон даалгавар</CardTitle>
+                      <CardTitle>Миний даалгавар</CardTitle>
                       <CardDescription>
-                        Таны нэр дээр хариуцагчаар оногдсон даалгаврууд (бүх төсөл, хэлтэс).
+                        {assignedActiveCount > 0
+                          ? `Хийж гүйцэтгэх ${assignedActiveCount} даалгавар байна. Гүйцэтгэсний дараа тайлан оруулна.`
+                          : "Оногдсон бүх даалгаврыг гүйцэтгэсэн байна."}
                       </CardDescription>
                     </div>
                     <Badge tone="green">{myAssignedTasks.length}</Badge>
                   </CardHeader>
+
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {assignedSummaryChips.map((chip) => (
+                      <span
+                        key={chip.key}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-[#E4EFE7] bg-white px-3 py-1 text-xs font-semibold text-[#3f5147]"
+                      >
+                        <span className={cn("h-2 w-2 rounded-full", chip.dot)} />
+                        {chip.label}
+                        <b className="text-[#16241b]">{chip.count}</b>
+                      </span>
+                    ))}
+                    {assignedOverdueCount > 0 ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FEE2E2] px-3 py-1 text-xs font-semibold text-[#b91c1c]">
+                        <span className="h-2 w-2 rounded-full bg-[#ef4444]" />
+                        Хугацаа хэтэрсэн
+                        <b>{assignedOverdueCount}</b>
+                      </span>
+                    ) : null}
+                  </div>
+
                   <div className="grid gap-2.5">
                     {myAssignedTasks.map((task, index) => {
-                      const overdue = Boolean(task.deadline && task.deadline < currentDateKey);
+                      const status = ASSIGNED_STATUS_META[task.statusKey];
+                      const isDone = task.statusKey === "done";
+                      const overdue = !isDone && Boolean(task.deadline && task.deadline < currentDateKey);
                       const dateLabel = formatMnDate(task.deadline);
                       return (
                         <Link
                           key={`assigned-${task.id}`}
                           href={task.href}
-                          className="flex items-center gap-3 rounded-2xl border border-[#E4EFE7] bg-white p-3 transition hover:border-[#2e7d32] hover:shadow-[0_6px_18px_rgba(46,125,50,0.10)]"
+                          className={cn(
+                            "flex items-center gap-3 rounded-2xl border p-3 transition",
+                            isDone
+                              ? "border-[#E8EFE9] bg-[#F6FBF7] hover:border-[#22C55E]"
+                              : "border-[#E4EFE7] bg-white hover:border-[#2e7d32] hover:shadow-[0_6px_18px_rgba(46,125,50,0.10)]",
+                          )}
                         >
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[rgba(74,154,93,0.12)] text-sm font-black text-[#1b5e20]">
-                            {index + 1}
+                          <span
+                            className={cn(
+                              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-black",
+                              isDone
+                                ? "bg-[rgba(34,197,94,0.14)] text-[#15803d]"
+                                : "bg-[rgba(74,154,93,0.12)] text-[#1b5e20]",
+                            )}
+                          >
+                            {isDone ? <CheckCircle2 className="h-4 w-4" /> : index + 1}
                           </span>
                           <span className="min-w-0 flex-1">
-                            <strong className="block truncate text-sm font-semibold text-[#16241b]">{task.name}</strong>
-                            <span
+                            <strong
                               className={cn(
-                                "mt-1 flex items-center gap-1.5 text-xs",
-                                overdue ? "font-semibold text-[#dc2626]" : "text-[#6b7a72]",
+                                "block truncate text-sm font-semibold",
+                                isDone ? "text-[#5b6b60]" : "text-[#16241b]",
                               )}
                             >
-                              <Clock3 className="h-3.5 w-3.5 shrink-0" />
-                              <span className="truncate">
-                                {dateLabel || "Хугацаа заагаагүй"} · {task.statusLabel || "Төлөвлөсөн"}
+                              {task.name}
+                            </strong>
+                            <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                              <span
+                                className={cn(
+                                  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold",
+                                  status.pill,
+                                )}
+                              >
+                                <span className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
+                                {task.statusLabel || status.label}
+                              </span>
+                              <span
+                                className={cn(
+                                  "inline-flex items-center gap-1 text-xs",
+                                  overdue ? "font-semibold text-[#dc2626]" : "text-[#6b7a72]",
+                                )}
+                              >
+                                <Clock3 className="h-3.5 w-3.5 shrink-0" />
+                                {dateLabel || "Хугацаа заагаагүй"}
                                 {overdue ? " · хугацаа хэтэрсэн" : ""}
                               </span>
                             </span>
                           </span>
-                          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[rgba(46,125,65,0.10)] px-3 py-2 text-xs font-extrabold text-[#1b5e20]">
-                            <CheckCircle2 className="h-4 w-4" />
-                            Тайлан оруулах
-                          </span>
+                          {isDone ? (
+                            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[rgba(34,197,94,0.12)] px-3 py-2 text-xs font-extrabold text-[#15803d]">
+                              <CheckCircle2 className="h-4 w-4" />
+                              Гүйцэтгэсэн
+                            </span>
+                          ) : (
+                            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[rgba(46,125,65,0.10)] px-3 py-2 text-xs font-extrabold text-[#1b5e20]">
+                              <CheckCircle2 className="h-4 w-4" />
+                              Тайлан оруулах
+                            </span>
+                          )}
                         </Link>
                       );
                     })}
@@ -3722,6 +3839,7 @@ export function DashboardView({
                 </Card>
               ) : null}
 
+              {hideDuplicateWorkerWorkList ? null : (
               <Card className={dashboardStyles.taskListCard}>
                 <CardHeader className={dashboardStyles.taskListHeader}>
                   <div className={dashboardStyles.taskListHeaderText}>
@@ -3835,6 +3953,7 @@ export function DashboardView({
                   </div>
                 )}
               </Card>
+              )}
 
               <OpenTasksSummaryCard tasks={dashboardTasks} currentDateKey={currentDateKey} />
 
