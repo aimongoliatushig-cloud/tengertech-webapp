@@ -13,13 +13,10 @@ import {
   CloudRain,
   CloudSnow,
   CloudSun,
-  FileText,
-  Folder,
   Fuel,
   HeartPulse,
   Leaf,
   ListChecks,
-  MessageSquare,
   Plus,
   Recycle,
   ShieldCheck,
@@ -3275,20 +3272,6 @@ function WorkerHomeView({
   ];
 
   const notificationItems = assignedTasks.slice(0, 3);
-  const canCreate = canCreateTasks || canCreateProject;
-  const quickActions: Array<{
-    key: string;
-    label: string;
-    href: string;
-    icon: LucideIcon;
-    iconBg: string;
-    iconFg: string;
-  }> = [
-    { key: "report", label: "Тайлан илгээх", href: "/review", icon: FileText, iconBg: "bg-[#E8EEFD]", iconFg: "text-[#2563EB]" },
-    { key: "calendar", label: "Календарь", href: "/tasks?view=today", icon: CalendarDays, iconBg: "bg-[#FCF0DC]", iconFg: "text-[#E8820A]" },
-    { key: "docs", label: "Баримт", href: "/data-download", icon: Folder, iconBg: "bg-[#E7F3E8]", iconFg: "text-[#2E7D32]" },
-    { key: "chat", label: "Чат", href: "/chat", icon: MessageSquare, iconBg: "bg-[#EEF1EF]", iconFg: "text-[#16241b]" },
-  ];
 
   // Даалгаврын төлвийн доуннат — бодит оногдсон даалгавраас тооцно.
   const statusCounts: Record<AssignedTaskStatusKey, number> = { planned: 0, doing: 0, review: 0, done: 0 };
@@ -3422,43 +3405,8 @@ function WorkerHomeView({
                 )}
               </div>
 
-              {/* Баруун багана: Түргэн үйлдэл + Мэдэгдэл (4 багана) */}
+              {/* Баруун багана: Мэдэгдэл (4 багана) */}
               <div className="flex flex-col gap-6 xl:col-span-4">
-                <section className={CARD}>
-                  <h3 className={cn(CARD_TITLE, "mb-4")}>Түргэн үйлдэл</h3>
-                  <div className="grid gap-3">
-                    <Link
-                      href={canCreate ? "/create" : "/tasks"}
-                      className="flex items-center gap-3 rounded-2xl bg-[#2E7D32] p-4 text-white transition hover:bg-[#256a29]"
-                    >
-                      <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
-                        {canCreate ? <Plus className="h-5 w-5" /> : <ListChecks className="h-5 w-5" />}
-                      </span>
-                      <div>
-                        <div className="text-sm font-semibold">{canCreate ? "Шинэ даалгавар" : "Миний ажил"}</div>
-                        <div className="text-[12px] text-white/75">{canCreate ? "Ажил үүсгэх" : "Бүх даалгавар"}</div>
-                      </div>
-                    </Link>
-                    <div className="grid grid-cols-2 gap-3">
-                      {quickActions.map((action) => {
-                        const Icon = action.icon;
-                        return (
-                          <Link
-                            key={action.key}
-                            href={action.href}
-                            className="flex flex-col gap-3 rounded-2xl border border-[#E7EBE8] bg-[#FAFDFB] p-4 transition-colors hover:border-[#D6DBD8] hover:bg-white"
-                          >
-                            <span className={cn("flex h-11 w-11 items-center justify-center rounded-xl", action.iconBg, action.iconFg)}>
-                              <Icon className="h-[18px] w-[18px]" />
-                            </span>
-                            <span className="text-[13px] font-semibold text-[#16241b]">{action.label}</span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </section>
-
                 <section className={cn(CARD, "flex-1")}>
                   <div className="mb-4 flex items-center justify-between">
                     <h3 className={cn(CARD_TITLE, "flex items-center gap-2")}>
