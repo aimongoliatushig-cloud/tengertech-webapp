@@ -32,12 +32,17 @@ export function WorkerTaskTable({
   currentDateKey,
   allHref = "/tasks",
   title = "Миний даалгавар",
+  subtitle,
+  variant = "worker",
   maxRows,
 }: {
   tasks: AssignedTaskItem[];
   currentDateKey: string;
   allHref?: string;
   title?: string;
+  subtitle?: string;
+  /** "worker" — миний хийх даалгавар (Тайлан оруулах). "monitor" — хяналтын жагсаалт (төлөв). */
+  variant?: "worker" | "monitor";
   maxRows?: number;
 }) {
   const [filter, setFilter] = useState<"all" | AssignedTaskStatusKey>("all");
@@ -61,9 +66,11 @@ export function WorkerTaskTable({
             {title}
           </h2>
           <p className="mt-1 text-[13px] text-[#57655C]">
-            {activeCount > 0
-              ? `Хийж гүйцэтгэх ${activeCount} даалгавар байна. Гүйцэтгэсний дараа тайлан оруулна.`
-              : "Оногдсон бүх даалгаврыг гүйцэтгэсэн байна."}
+            {subtitle
+              ? subtitle
+              : activeCount > 0
+                ? `Хийж гүйцэтгэх ${activeCount} даалгавар байна. Гүйцэтгэсний дараа тайлан оруулна.`
+                : "Оногдсон бүх даалгаврыг гүйцэтгэсэн байна."}
           </p>
         </div>
 
@@ -153,7 +160,17 @@ export function WorkerTaskTable({
                 </span>
 
                 <span className="min-w-0">
-                  {isDone ? (
+                  {variant === "monitor" ? (
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold",
+                        overdue ? "bg-[#FCEBEA] text-[#B4231C]" : status.badge,
+                      )}
+                    >
+                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", overdue ? "bg-[#DC2626]" : status.dot)} />
+                      {overdue ? "Хугацаа хэтэрсэн" : status.label}
+                    </span>
+                  ) : isDone ? (
                     <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#EEF1EF] px-3 py-1.5 text-xs font-semibold text-[#57655C]">
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-[#2E7D32]" />
                       Гүйцэтгэсэн

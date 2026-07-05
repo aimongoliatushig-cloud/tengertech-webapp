@@ -54,6 +54,7 @@ import {
   type DashboardSnapshot,
   type FleetVehicleBoard,
   type HrDailyAttendanceSummary,
+  type TaskStatusKey,
 } from "@/lib/odoo";
 import { cn } from "@/lib/utils";
 import { fixMojibakeText } from "@/lib/text-normalize";
@@ -3126,6 +3127,31 @@ function openTasksFor(
     });
 }
 
+// Хянах самбарын даалгаврын хүснэгт нь ажилтны AssignedTaskItem бүтэц хүлээж
+// авдаг тул байгууллагын taskDirectory-г тэр бүтэц рүү хөрвүүлнэ.
+const DIRECTORY_STATUS_TO_ASSIGNED: Record<TaskStatusKey, AssignedTaskStatusKey> = {
+  planned: "planned",
+  working: "doing",
+  review: "review",
+  verified: "done",
+  problem: "doing",
+};
+
+function directoryTaskToAssigned(
+  task: DashboardSnapshot["taskDirectory"][number],
+): AssignedTaskItem {
+  return {
+    id: task.id,
+    name: task.name,
+    projectName: task.projectName,
+    departmentName: task.departmentName,
+    deadline: task.scheduledDate || task.deadline || "",
+    statusKey: DIRECTORY_STATUS_TO_ASSIGNED[task.statusKey] ?? "planned",
+    statusLabel: task.statusLabel,
+    href: task.href,
+  };
+}
+
 // Дашбоард дээрх товч карт — дарвал /tasks хуудас (даалгаврын жагсаалт) нээгдэнэ.
 function OpenTasksSummaryCard({
   tasks,
@@ -3571,8 +3597,11 @@ function ExecutiveDashboardView({
 }) {
   const canViewAllReports = canViewAllWorkspaceReports(session);
   const canViewWeightReports = canViewGarbageWeightReports(session);
-  const execPersonalTasks = assignedTasks.filter((task) => !task.departmentName);
-  const execDepartmentTasks = assignedTasks.filter((task) => task.departmentName);
+  // Хянах самбар дээр нэвтэрсэн админы ганц хувийн даалгавраа биш,
+  // БАЙГУУЛЛАГЫН нээлттэй даалгаврыг (яаралтай нь эхэндээ) харуулна.
+  const monitoringOpenTasks = openTasksFor(dashboardTasks, currentDateKey).map(
+    directoryTaskToAssigned,
+  );
   const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
   const activeTasks = Math.max(0, totalTasks - completedTasks);
@@ -3710,26 +3739,17 @@ function ExecutiveDashboardView({
             className="mb-5"
           />
 
-          {assignedTasks.length ? (
-            <div className="mb-5 grid gap-4 xl:grid-cols-2">
-              {execPersonalTasks.length ? (
-                <WorkerTaskTable
-                  tasks={execPersonalTasks}
-                  title="Ажилтны даалгавар"
-                  currentDateKey={currentDateKey}
-                  allHref="/tasks"
-                  maxRows={5}
-                />
-              ) : null}
-              {execDepartmentTasks.length ? (
-                <WorkerTaskTable
-                  tasks={execDepartmentTasks}
-                  title="Хэлтсийн даалгавар"
-                  currentDateKey={currentDateKey}
-                  allHref="/tasks"
-                  maxRows={5}
-                />
-              ) : null}
+          {monitoringOpenTasks.length ? (
+            <div className="mb-5">
+              <WorkerTaskTable
+                tasks={monitoringOpenTasks}
+                title="Хяналтад буй даалгавар"
+                subtitle={`Байгууллагад нээлттэй ${monitoringOpenTasks.length} даалгавар байна. Яаралтай нь эхэнд.`}
+                variant="monitor"
+                currentDateKey={currentDateKey}
+                allHref="/tasks"
+                maxRows={8}
+              />
             </div>
           ) : null}
 
