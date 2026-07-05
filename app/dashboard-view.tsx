@@ -3382,12 +3382,12 @@ function WorkerHomeView({
                 return (
                   <div
                     key={kpi.key}
-                    className={cn(CARD, "transition-colors hover:border-[#D6DBD8]")}
+                    className={cn(CARD, "flex flex-col items-center text-center transition-colors hover:border-[#D6DBD8]")}
                   >
-                    <span className={cn("mb-4 flex h-11 w-11 items-center justify-center rounded-xl", kpi.iconBg, kpi.iconFg)}>
-                      <Icon className="h-5 w-5" />
+                    <span className={cn("mb-3 flex h-9 w-9 items-center justify-center rounded-xl", kpi.iconBg, kpi.iconFg)}>
+                      <Icon className="h-[18px] w-[18px]" />
                     </span>
-                    <div className="text-[40px] font-bold leading-none tracking-tight tabular-nums text-[#16241b]">
+                    <div className="text-[32px] font-bold leading-none tracking-tight tabular-nums text-[#16241b]">
                       {kpi.value}
                     </div>
                     <div className="mt-2 text-[13px] font-medium text-[#57655C]">{kpi.label}</div>
