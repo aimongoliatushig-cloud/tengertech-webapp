@@ -117,7 +117,7 @@ export function WorkerTaskTable({
       </div>
 
       <div className="max-w-[860px]">
-        <div className="grid grid-cols-[32px_minmax(0,1fr)_120px_58px] gap-4 border-b border-[#EEF3EF] pb-2.5 text-[11px] font-semibold uppercase tracking-wide text-[#8A978E] sm:grid-cols-[36px_minmax(0,1fr)_150px_72px]">
+        <div className="grid grid-cols-[32px_minmax(0,1fr)_112px_56px] gap-3 border-b border-[#EEF3EF] pb-2.5 text-[11px] font-semibold uppercase tracking-wide text-[#8A978E] sm:grid-cols-[36px_minmax(0,1fr)_118px_72px]">
           <span>№</span>
           <span>Даалгавар</span>
           <span>Төлөв</span>
@@ -134,7 +134,7 @@ export function WorkerTaskTable({
               <Link
                 key={`wtt-${task.id}`}
                 href={task.href}
-                className="group grid min-h-[64px] grid-cols-[32px_minmax(0,1fr)_120px_58px] items-center gap-4 border-b border-[#EEF3EF] py-3.5 transition-colors last:border-b-0 hover:bg-[#F6F8F7] sm:grid-cols-[36px_minmax(0,1fr)_150px_72px]"
+                className="group grid min-h-[64px] grid-cols-[32px_minmax(0,1fr)_112px_56px] items-center gap-3 border-b border-[#EEF3EF] py-3.5 transition-colors last:border-b-0 hover:bg-[#F6F8F7] sm:grid-cols-[36px_minmax(0,1fr)_118px_72px]"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EEF1EF] text-[13px] font-bold tabular-nums text-[#57655C]">
                   {index + 1}
@@ -151,7 +151,7 @@ export function WorkerTaskTable({
                   {overdue ? (
                     <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold", OVERDUE_BADGE)}>
                       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#DC2626]" />
-                      Хугацаа хэтэрсэн
+                      Хэтэрсэн
                     </span>
                   ) : (
                     <span className={cn("inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold", status.badge)}>
