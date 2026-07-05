@@ -3361,7 +3361,7 @@ function WorkerHomeView({
 
               <Link
                 href="/tasks"
-                className="flex items-center gap-3 rounded-3xl border border-[#E4EFE7] bg-white p-4 transition hover:border-[#2e7d32] hover:shadow-[0_8px_22px_rgba(46,125,50,0.08)]"
+                className="flex min-w-0 items-center gap-3 rounded-3xl border border-[#E4EFE7] bg-white p-4 transition hover:border-[#2e7d32] hover:shadow-[0_8px_22px_rgba(46,125,50,0.08)]"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#F2F8F3] text-[#4A9A5D]">
                   <ClipboardList className="h-5 w-5" />
