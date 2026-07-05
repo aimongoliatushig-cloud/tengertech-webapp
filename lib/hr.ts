@@ -2741,6 +2741,74 @@ export async function loadEmployeeErpEvaluation(userId?: number | null): Promise
   };
 }
 
+export type ErpScorecardEmployee = {
+  name: string;
+  jobTitle?: string;
+  departmentName?: string;
+  employeeCode?: string;
+  registerNumber?: string;
+  birthDate?: string;
+  missingDocumentCount?: number;
+  taskCompletionPercent?: number;
+  gradeRank?: string;
+  bankAccountNumber?: string;
+  bankName?: string;
+  taxNumber?: string;
+  payCategory?: string;
+  mobilePhone?: string;
+  workPhone?: string;
+  workEmail?: string;
+  privateEmail?: string;
+  photoUrl?: string;
+};
+
+// Нэвтэрсэн ажилтан ӨӨРИЙН профайлаа ERP дүгнэлтэд харуулахад хэрэгтэй өгөгдлийг
+// service (admin) эрхээр татна — worker өөрөө hr.employee уншиж чаддаггүй.
+export async function loadSelfEmployeeScorecard(userId?: number | null): Promise<ErpScorecardEmployee | null> {
+  if (!userId || !Number.isFinite(userId)) return null;
+  const records = await executeOdooKw<Array<Record<string, unknown>>>(
+    "hr.employee",
+    "search_read",
+    [[["user_id", "=", userId]]],
+    {
+      fields: [
+        "name", "job_id", "department_id", "birthday", "additional_note", "image_128",
+        "x_mn_employee_code", "x_mn_registration_number", "x_mn_grade_rank",
+        "x_mn_missing_document_count", "x_mn_task_completion_percent",
+        "x_mn_bank_account_number", "x_mn_bank_name", "x_mn_tax_number",
+        "mobile_phone", "work_phone", "work_email",
+      ],
+      limit: 1,
+    },
+    createOdooConnection(),
+  ).catch(() => [] as Array<Record<string, unknown>>);
+  const record = records[0];
+  if (!record) return null;
+  const str = (value: unknown) => (typeof value === "string" ? value : "");
+  const rel = (value: unknown) => (Array.isArray(value) ? String(value[1] ?? "") : "");
+  const notes = cleanOdooLongText(str(record.additional_note));
+  const image = str(record.image_128);
+  return {
+    name: fixMojibakeText(str(record.name)) || str(record.name),
+    jobTitle: rel(record.job_id),
+    departmentName: rel(record.department_id).split(" / ").pop() || "",
+    employeeCode: str(record.x_mn_employee_code),
+    registerNumber: str(record.x_mn_registration_number),
+    birthDate: str(record.birthday),
+    missingDocumentCount: Number(record.x_mn_missing_document_count || 0),
+    taskCompletionPercent: Number(record.x_mn_task_completion_percent || 0),
+    gradeRank: str(record.x_mn_grade_rank),
+    bankAccountNumber: str(record.x_mn_bank_account_number) || getManagedNoteValue(notes, "Дансны дугаар"),
+    bankName: str(record.x_mn_bank_name) || getManagedNoteValue(notes, "Банк"),
+    taxNumber: str(record.x_mn_tax_number) || getManagedNoteValue(notes, "ТТД дугаар"),
+    payCategory: getManagedNoteValue(notes, "Цалингийн ангилал"),
+    mobilePhone: str(record.mobile_phone),
+    workPhone: str(record.work_phone),
+    workEmail: str(record.work_email),
+    photoUrl: image.length > 100 ? `data:image/jpeg;base64,${image}` : "",
+  };
+}
+
 export async function getJobs(session: AppSession): Promise<HrOption[]> {
   return executeOdooKw<OdooDictionaryRecord[]>(
     "hr.job",

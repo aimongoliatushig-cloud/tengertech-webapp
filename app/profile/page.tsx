@@ -25,7 +25,9 @@ import {
   requireSession,
 } from "@/lib/auth";
 import { isAutoGarbageDepartment } from "@/lib/department-permissions";
+import { loadEmployeeErpEvaluation, loadSelfEmployeeScorecard } from "@/lib/hr";
 import { executeOdooKw, type OdooConnection } from "@/lib/odoo";
+import { EmployeeErpScorecard } from "@/app/hr/employee-erp-scorecard";
 import { getPrimaryAppRole, type RoleGroupFlags } from "@/lib/roles";
 import { loadRouteManagementData } from "@/lib/route-management";
 
@@ -229,13 +231,27 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     password: session.password,
   };
   const showFullProfile = !workerMode;
-  const [routeManagementData, profileInfo] = await Promise.all([
+  const [routeManagementData, profileInfo, selfScorecardEmployee, erpEvaluation] = await Promise.all([
     showFullProfile && canManageCollectionPoints
       ? loadRouteManagementData(connectionOverrides)
       : Promise.resolve(null),
     loadCurrentProfileInfo(session, connectionOverrides),
+    loadSelfEmployeeScorecard(session.uid).catch(() => null),
+    loadEmployeeErpEvaluation(session.uid).catch(() => ({
+      hasLogin: false,
+      login: "",
+      roleKey: "",
+      lastLoginDate: "",
+      isInternal: false,
+      totalTasks: 0,
+      activeTasks: 0,
+      completedTasks: 0,
+    })),
   ]);
   const profileImageUrl = profileInfo.imageUrl;
+  const erpScorecard = selfScorecardEmployee ? (
+    <EmployeeErpScorecard employee={selfScorecardEmployee} evaluation={erpEvaluation} />
+  ) : null;
 
   const appRoleLabel = getAppRoleLabel(
     getPrimaryAppRole({
@@ -466,6 +482,8 @@ export default async function ProfilePage({ searchParams }: PageProps) {
                 <ChevronRight className={styles.mobileProfileChevron} aria-hidden />
               </article>
 
+              {erpScorecard}
+
               <div className={styles.mobileSettingsGroup}>
                 <h2>Хувийн мэдээлэл</h2>
                 <div className={styles.mobileSettingsCard}>
@@ -558,6 +576,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
             </section>
 
             <div className={styles.desktopProfileContent}>
+            {erpScorecard}
             {workerMode ? (
               <>
                 {notice ? <p className={styles.noticeMessage}>{notice}</p> : null}

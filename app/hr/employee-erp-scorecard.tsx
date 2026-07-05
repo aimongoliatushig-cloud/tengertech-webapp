@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { EmployeeErpEvaluation } from "@/lib/hr";
-import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
+import type { EmployeeErpEvaluation, ErpScorecardEmployee } from "@/lib/hr";
 
 import styles from "./hr.module.css";
 
@@ -15,7 +14,7 @@ const ROLE_LABELS: Record<string, string> = {
   system_admin: "Системийн админ",
 };
 
-function employeeAge(birthDate: string): number | null {
+function employeeAge(birthDate?: string): number | null {
   const year = Number((birthDate || "").slice(0, 4));
   if (!(year > 1900)) return null;
   const now = new Date();
@@ -36,7 +35,7 @@ export function EmployeeErpScorecard({
   employee,
   evaluation,
 }: {
-  employee: HrEmployeeDirectoryItem;
+  employee: ErpScorecardEmployee;
   evaluation: EmployeeErpEvaluation;
 }) {
   const age = employeeAge(employee.birthDate);
@@ -137,7 +136,7 @@ export function EmployeeErpScorecard({
           <ErpCheck ok={hasContact} label="Холбоо барих (утас, имэйл)" value={hasContact ? "Бүрэн" : "Дутуу"} />
           <ErpCheck ok={hasDocs} label="Бичиг баримт" value={hasDocs ? "Бүрэн" : `${missingDocs} дутуу`} />
           <ErpCheck ok={hasFinancial} label="Цалин / банк / ТТД / НД" value={hasFinancial ? "Оруулсан" : "Хоосон"} />
-          <ErpCheck na label="Зэрэг дэв" value={hasGrade ? employee.gradeRank : "Бүртгээгүй"} />
+          <ErpCheck na label="Зэрэг дэв" value={hasGrade ? (employee.gradeRank || "") : "Бүртгээгүй"} />
         </div>
 
         <div className={styles.erpPanel}>
