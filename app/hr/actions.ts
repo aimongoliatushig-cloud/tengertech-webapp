@@ -71,6 +71,48 @@ function getOptionalImageFile(formData: FormData, key: string) {
   return value;
 }
 
+export async function archiveHrEmployeeAction(formData: FormData) {
+  const session = await requireSession();
+  try {
+    await requireHrAccess(session);
+  } catch {
+    redirect("/");
+  }
+
+  const employeeId = getEmployeeId(formData);
+  if (!Number.isFinite(employeeId) || employeeId <= 0) {
+    redirectWithMessage(0, "error", "Ажилтны бүртгэл олдсонгүй.", formData);
+  }
+
+  try {
+    // Odoo-д ажилтныг ШУУД устгах нь холбоотой бичлэгүүдээс болж ихэвчлэн
+    // амжилтгүй болж, түүх алддаг. Иймд active=false болгож архивлана —
+    // идэвхтэй жагсаалтаас хасагдана, шаардлагатай бол Odoo-гоос сэргээж болно.
+    await executeOdooKw<boolean>(
+      "hr.employee",
+      "write",
+      [[employeeId], { active: false }],
+      {},
+      {
+        login: session.login,
+        password: session.password,
+      },
+    );
+
+    revalidatePath("/hr");
+    redirect(
+      uiContextPathWithMessage(
+        formData,
+        "/hr",
+        "notice",
+        "Ажилтныг устгаж (архивласан), идэвхтэй жагсаалтаас хаслаа.",
+      ),
+    );
+  } catch (error) {
+    redirectWithMessage(employeeId, "error", getErrorMessage(error), formData);
+  }
+}
+
 export async function updateHrEmployeeRegistrationAction(formData: FormData) {
   const session = await requireSession();
   try {

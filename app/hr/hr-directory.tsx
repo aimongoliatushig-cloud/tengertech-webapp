@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 
-import { updateHrEmployeeRegistrationAction } from "@/app/hr/actions";
+import { archiveHrEmployeeAction, updateHrEmployeeRegistrationAction } from "@/app/hr/actions";
 import { compareHrDepartmentNames } from "@/lib/hr-department-order";
 import { formatEmployeeDisplayName } from "@/lib/hr-name";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
@@ -480,6 +480,26 @@ export function HrDirectory({ departments, initialEmployeeId }: Props) {
                 </button>
                 <SubmitButton />
               </div>
+            </form>
+
+            <form
+              action={archiveHrEmployeeAction}
+              onSubmit={(event) => {
+                if (
+                  !window.confirm(
+                    `${selectedEmployee.name}-г устгах уу?\n\nАжилтан идэвхтэй жагсаалтаас хасагдана (архивлагдана). Шаардлагатай бол Odoo-гоос сэргээж болно.`,
+                  )
+                ) {
+                  event.preventDefault();
+                }
+              }}
+              className={styles.deleteEmployeeForm}
+              style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}
+            >
+              <input type="hidden" name="employee_id" value={selectedEmployee.id} />
+              <button type="submit" className={styles.dangerButton}>
+                Ажилтан устгах
+              </button>
             </form>
           </section>
         </div>
