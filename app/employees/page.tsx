@@ -518,7 +518,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
             <details
               key={`${employee.name}-${index}`}
               className={styles.emp}
-              open={selectedStatus !== "all" || Boolean(selectedDept) || index === 0}
+              open={selectedStatus !== "all" || Boolean(selectedDept)}
             >
               <summary className={styles.empHead}>
                 <span className={styles.avatar}>{initialsOf(employee.name)}</span>
@@ -610,7 +610,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
             <details
               key={group.name}
               className={styles.emp}
-              open={selectedStatus !== "all" || Boolean(selectedDept) || index === 0}
+              open={selectedStatus !== "all" || Boolean(selectedDept)}
             >
               <summary className={styles.empHead}>
                 <span className={styles.avatar}>{initialsOf(group.name)}</span>
