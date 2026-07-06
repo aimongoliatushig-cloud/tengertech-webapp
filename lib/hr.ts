@@ -2581,16 +2581,25 @@ type HrEmployeeJobRecord = {
  * "бодит / орон тоо"-г харьцуулахад ашиглагдана.
  */
 export async function getDepartmentJobCounts(session: AppSession): Promise<HrDepartmentJobCounts[]> {
-  const employees = await executeOdooKw<HrEmployeeJobRecord[]>(
-    "hr.employee",
-    "search_read",
-    [[["active", "=", true]]],
-    { fields: ["department_id", "job_id", "job_title"], limit: 2000 },
-    getConnection(session),
-  ).catch((error) => {
-    console.warn("HR department job counts could not be loaded:", error);
-    return [] as HrEmployeeJobRecord[];
-  });
+  const readJobRecords = (connectionOverrides: { login?: string; password?: string }) =>
+    executeOdooKw<HrEmployeeJobRecord[]>(
+      "hr.employee",
+      "search_read",
+      [[["active", "=", true]]],
+      { fields: ["department_id", "job_id", "job_title"], limit: 2000 },
+      connectionOverrides,
+    ).catch((error) => {
+      console.warn("HR department job counts could not be loaded:", error);
+      return [] as HrEmployeeJobRecord[];
+    });
+
+  // Эхлээд хэрэглэгчийн эрхээр. Уншиж чадаагүй бол (HR үзэгч hr.employee-г
+  // өөрийн эрхээр уншдаггүй) admin эрхээр дахин уншиж, байгууллагын бүтэц дээр
+  // бодит ажилтны тоог бүрэн харуулна.
+  let employees = await readJobRecords(getConnection(session));
+  if (!employees.length) {
+    employees = await readJobRecords({});
+  }
 
   const byDepartment = new Map<number, HrDepartmentJobCounts>();
   for (const employee of employees) {
