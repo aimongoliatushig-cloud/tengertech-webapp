@@ -1,6 +1,7 @@
 import { isAutoGarbageDepartment } from "@/lib/department-permissions";
 import {
   isFeeWeightSpecialistPerson,
+  isInternalControlPerson,
   isReportPlanningPerson,
 } from "@/lib/special-access";
 
@@ -489,6 +490,10 @@ export function canEditWorkspaceTaskContent(context: RoleContext) {
 
 export function isWorkerOnly(context: RoleContext) {
   const groupFlags = normalizeGroupFlags(context.groupFlags);
+  // Дотоод хяналтын ажилтан нь ажилтны нүүр биш, хянах самбар авна.
+  if (isInternalControlPerson(context.login, context.name, context.employeeJobTitle)) {
+    return false;
+  }
   return (
     context.role === "worker" &&
     !groupFlags.mfoManager &&

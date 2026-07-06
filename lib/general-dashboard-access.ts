@@ -1,12 +1,18 @@
 import type { RoleGroupFlags, UserRole } from "@/lib/roles";
-import { isGeneralDashboardPerson, normalizeLoginDigits } from "@/lib/special-access";
+import {
+  isGeneralDashboardPerson,
+  isInternalControlPerson,
+  normalizeLoginDigits,
+} from "@/lib/special-access";
 
 export const GENERAL_DASHBOARD_PATH = "/general-dashboard";
 
 export { normalizeLoginDigits };
 
 type GeneralDashboardAccessContext = {
-  login?: string;
+  login?: string | null;
+  name?: string | null;
+  employeeJobTitle?: string | null;
   role?: UserRole;
   groupFlags?: Partial<RoleGroupFlags> | null;
 };
@@ -16,6 +22,7 @@ export function canAccessGeneralDashboard(context: GeneralDashboardAccessContext
 
   return Boolean(
     isGeneralDashboardPerson(context.login) ||
+      isInternalControlPerson(context.login, context.name, context.employeeJobTitle) ||
       context.role === "director" ||
       context.role === "general_manager" ||
       flags.municipalManager ||

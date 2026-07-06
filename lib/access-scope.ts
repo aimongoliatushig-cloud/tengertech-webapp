@@ -4,6 +4,7 @@ import type { AppSession } from "@/lib/auth";
 import { normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { executeOdooKw } from "@/lib/odoo";
 import { isMasterRole } from "@/lib/roles";
+import { isInternalControlPerson } from "@/lib/special-access";
 
 type EmployeeDepartmentRecord = {
   id: number;
@@ -148,6 +149,11 @@ export function shouldScopeToOwnDepartment(
   },
 ) {
   const flags = session.groupFlags;
+  // Дотоод хяналтын ажилтан нэг хэлтэст хязгаарлагдахгүй — бүх хэлтсийн үйл
+  // ажиллагааг хянана.
+  if (isInternalControlPerson(null, null, session.employeeJobTitle)) {
+    return false;
+  }
   const looksDepartmentHead =
     isDepartmentHeadTitle(session.employeeJobTitle) ||
     isDepartmentHeadTitle(session.displayRoleLabel);

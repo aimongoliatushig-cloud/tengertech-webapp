@@ -28,6 +28,11 @@ const FEE_WEIGHT_SPECIALIST_NAMES = new Set(["бганчимэг"]);
 // Ерөнхий хяналтын самбар тусгайлан нээх login-ууд
 const GENERAL_DASHBOARD_LOGINS = new Set(["99996632", "80007504"]);
 
+// Дотоод хяналтын ажилтан — зөвхөн ХЯНАХ эрх: бүх хэлтсийн үйл ажиллагааны
+// хянах самбарыг унших боловч даалгавар үүсгэх/авахгүй.
+const INTERNAL_CONTROL_LOGINS = new Set(["99015540"]);
+const INTERNAL_CONTROL_NAMES = new Set(["бнарангоо"]);
+
 function matchesLoginOrName(
   login: string | null | undefined,
   name: string | null | undefined,
@@ -47,4 +52,16 @@ export function isFeeWeightSpecialistPerson(login?: string | null, name?: string
 
 export function isGeneralDashboardPerson(login?: string | null) {
   return GENERAL_DASHBOARD_LOGINS.has(normalizeLoginDigits(login));
+}
+
+// Дотоод хяналтын ажилтан эсэх — login/нэр эсвэл албан тушаал ("Дотоод хяналт")-аар.
+export function isInternalControlPerson(
+  login?: string | null,
+  name?: string | null,
+  jobTitle?: string | null,
+) {
+  if (matchesLoginOrName(login, name, INTERNAL_CONTROL_LOGINS, INTERNAL_CONTROL_NAMES)) {
+    return true;
+  }
+  return compactPersonName(jobTitle).includes("дотоодхяналт");
 }
