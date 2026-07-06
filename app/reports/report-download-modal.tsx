@@ -22,6 +22,7 @@ export function ReportDownloadModal({
 
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(() => new Set(allIds));
+  const [note, setNote] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -50,7 +51,9 @@ export function ReportDownloadModal({
       return next;
     });
 
-  const suffix = totalImages > 0 && selected.size > 0 ? `&imageIds=${[...selected].join(",")}` : "";
+  const imageSuffix = totalImages > 0 && selected.size > 0 ? `&imageIds=${[...selected].join(",")}` : "";
+  const noteSuffix = note.trim() ? `&note=${encodeURIComponent(note.trim())}` : "";
+  const suffix = `${imageSuffix}${noteSuffix}`;
 
   const modal =
     open
@@ -122,6 +125,33 @@ export function ReportDownloadModal({
                 </div>
               )}
 
+              <div style={{ padding: "0 20px 4px" }}>
+                <label
+                  htmlFor="report-note"
+                  style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--ink-900)", marginBottom: 6 }}
+                >
+                  Тайлангийн дүгнэлт / тайлбар (заавал биш)
+                </label>
+                <textarea
+                  id="report-note"
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  rows={3}
+                  maxLength={4000}
+                  placeholder="Тайлангийн товч дүгнэлт, тайлбар бичвэл гаргасан баримтад орно."
+                  style={{
+                    width: "100%",
+                    resize: "vertical",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: "1px solid var(--ds-border)",
+                    background: "var(--surface-panel)",
+                    color: "var(--ink-900)",
+                    font: "inherit",
+                  }}
+                />
+              </div>
+
               <footer className={styles.foot}>
                 <a className={styles.primary} href={`${hrefs.word}${suffix}`}>
                   <Download size={16} strokeWidth={2.4} aria-hidden /> Word татах
@@ -129,7 +159,7 @@ export function ReportDownloadModal({
                 <a href={`${hrefs.pdf}${suffix}`}>
                   <Download size={16} strokeWidth={2.4} aria-hidden /> PDF татах
                 </a>
-                <a href={hrefs.excel}>
+                <a href={`${hrefs.excel}${noteSuffix}`}>
                   <Download size={16} strokeWidth={2.4} aria-hidden /> Excel татах
                 </a>
                 <button type="button" className={styles.cancel} onClick={() => setOpen(false)}>

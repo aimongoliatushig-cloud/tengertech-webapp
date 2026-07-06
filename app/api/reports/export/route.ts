@@ -45,6 +45,7 @@ type AttachmentPayload = {
 type ExportPayload = {
   generatedAt: string;
   scope: string;
+  note?: string;
   summary: {
     reports: number;
     tasks: number;
@@ -155,6 +156,7 @@ function buildWorkReportDoc(payload: ExportPayload): {
     meta: [
       { label: "Хамрах хүрээ", value: payload.scope },
       { label: "Тайлан гаргасан огноо", value: payload.generatedAt },
+      ...(payload.note ? [{ label: "Дүгнэлт", value: payload.note }] : []),
     ],
     sections: [
       {
@@ -817,6 +819,7 @@ function buildExportPayload(
   return {
     generatedAt: snapshot.generatedAt,
     scope: periodScope ? `${baseScope} / ${periodScope}` : baseScope,
+    note: getParam(new URL(request.url).searchParams, "note").slice(0, 4000),
     summary: {
       reports: reports.length,
       tasks: tasks.length,
