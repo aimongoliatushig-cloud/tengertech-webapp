@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { fetchOdooAttachmentContent } from "@/lib/odoo";
+import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -40,10 +41,17 @@ export async function GET(_request: Request, context: RouteContext) {
     return new Response("Invalid attachment id", { status: 400 });
   }
 
-  const attachment = await fetchOdooAttachmentContent(numericId, {
+  let attachment = await fetchOdooAttachmentContent(numericId, {
     login: session.login,
     password: session.password,
   });
+
+  // Тайлан харах бүрэн эрхтэй (тайлан хариуцсан мэргэжилтэн, удирдлага г.м.)
+  // хэрэглэгч өөрийн Odoo эрхээр ir.attachment уншиж чаддаггүй тул тайлангийн
+  // зураг эвдэрч гардаг. Ийм эрхтэй үед admin эрхээр дахин татна.
+  if (!attachment && canViewAllWorkspaceReports(session)) {
+    attachment = await fetchOdooAttachmentContent(numericId, {});
+  }
 
   if (!attachment) {
     return new Response("Attachment not found", { status: 404 });
