@@ -15,7 +15,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { compareHrDepartmentNames } from "@/lib/hr-department-order";
+import {
+  compareHrDepartmentNames,
+  getHrDepartmentDisplayName,
+  getHrEmployeeDepartmentDisplayName,
+} from "@/lib/hr-department-order";
 import { formatEmployeeDisplayName } from "@/lib/hr-name";
 import type { HrDepartmentJobCounts, HrDisciplineRecord, HrHeadcountTrendPoint, HrTimeoffDashboardData, HrTimeoffRequest } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
@@ -706,11 +710,18 @@ export function HrDashboardClient({
   const departmentBreakdown = (() => {
     const rows = new Map<string, HrTimeoffDashboardData["departmentBreakdown"][number]>();
     for (const employee of workforceEmployees) {
-      const key = String(employee.departmentId || employee.departmentName || "Хэлтэс бүртгээгүй");
+      // Түүхий departmentId биш, КАНОНЧИЛСОН хэлтсийн нэрээр бүлэглэнэ. Эс бол
+      // нэг departmentId доторх ажилтнууд (жиш. Захиргааны алба) тухайн бүлгийн
+      // эхний ажилтны нэрээр (Нарангоо → "Дотоод хяналт") бүхэлдээ шошголдог.
+      const key = getHrEmployeeDepartmentDisplayName(
+        employee.name,
+        employee.departmentName || "Хэлтэс бүртгээгүй",
+        employee.jobTitle,
+      );
       if (!rows.has(key)) {
         rows.set(key, {
           departmentId: employee.departmentId || 0,
-          departmentName: employee.departmentName || "Хэлтэс бүртгээгүй",
+          departmentName: key,
           totalEmployees: 0,
           activeEmployees: 0,
           timeOffEmployees: 0,
@@ -733,7 +744,7 @@ export function HrDashboardClient({
       }
     }
     for (const request of pendingRequests) {
-      const key = String(request.departmentId || request.departmentName || "Хэлтэс бүртгээгүй");
+      const key = getHrDepartmentDisplayName(request.departmentName || "Хэлтэс бүртгээгүй");
       const row = rows.get(key);
       if (row) row.pendingRequests += 1;
     }
@@ -839,7 +850,7 @@ export function HrDashboardClient({
   const chartsSection = (
     <div className={styles.chartGrid}>
       <AnimatedPie
-        title="Хэлтсийн ажилтаны тоо"
+        title="Байгууллагын ажилтаны тоо"
         slices={departmentSlices}
         centerLabel="Ажилтан"
         centerValue={`${cards[0].value}`}
