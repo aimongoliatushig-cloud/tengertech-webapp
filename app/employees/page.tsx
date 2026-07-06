@@ -489,28 +489,6 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
         })}
       </section>
 
-      <div className={styles.filters}>
-        {departmentOptions.length > 1 ? (
-          <div className={styles.filterRow}>
-            <Link
-              href={buildHref({ dept: "" })}
-              className={`${styles.filterChip} ${selectedDept ? "" : styles.filterChipActive}`}
-            >
-              Бүх хэлтэс
-            </Link>
-            {departmentOptions.map((dept) => (
-              <Link
-                key={dept}
-                href={buildHref({ dept })}
-                className={`${styles.filterChip} ${selectedDept === dept ? styles.filterChipActive : ""}`}
-              >
-                {dept}
-              </Link>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
       {employees.length ? (
         <section className={styles.list}>
           <h2 className={styles.groupHeading}>Ажилтны даалгавар</h2>
