@@ -292,10 +292,16 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   if (workerMode && !canViewAllReports) {
     redirect("/");
   }
-  const snapshotPromise = loadMunicipalSnapshot({
-    login: session.login,
-    password: session.password,
-  });
+  // Бүх тайлан харах эрхтэй (тайлан хариуцсан мэргэжилтэн, удирдлага г.м.)
+  // хэрэглэгч өөрийн Odoo эрхээр project.task/тайланг уншиж чаддаггүй тул
+  // (worker) snapshot хоосон гарч "тайлан алга" харагддаг. Ийм үед admin
+  // эрхээр ачаалж, бодит тайлангуудыг харуулна.
+  const snapshotPromise = canViewAllReports
+    ? loadMunicipalSnapshot()
+    : loadMunicipalSnapshot({
+        login: session.login,
+        password: session.password,
+      });
   const scopedDepartmentNamePromise = canViewAllReports && !departmentHeadLike
     ? Promise.resolve(null)
     : loadSessionDepartmentName(session);
