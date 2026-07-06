@@ -713,11 +713,14 @@ export function HrDashboardClient({
       // Түүхий departmentId биш, КАНОНЧИЛСОН хэлтсийн нэрээр бүлэглэнэ. Эс бол
       // нэг departmentId доторх ажилтнууд (жиш. Захиргааны алба) тухайн бүлгийн
       // эхний ажилтны нэрээр (Нарангоо → "Дотоод хяналт") бүхэлдээ шошголдог.
-      const key = getHrEmployeeDepartmentDisplayName(
+      // "Дотоод хяналт" (1 хүн) нь Захиргааны албаны ажилтан тул Захиргаа руу
+      // бүтнээр нэгтгэж, тусад нь зүсэм гаргахгүй.
+      const canonicalDepartment = getHrEmployeeDepartmentDisplayName(
         employee.name,
         employee.departmentName || "Хэлтэс бүртгээгүй",
         employee.jobTitle,
       );
+      const key = canonicalDepartment === "Дотоод хяналт" ? "Захиргаа" : canonicalDepartment;
       if (!rows.has(key)) {
         rows.set(key, {
           departmentId: employee.departmentId || 0,
@@ -744,7 +747,8 @@ export function HrDashboardClient({
       }
     }
     for (const request of pendingRequests) {
-      const key = getHrDepartmentDisplayName(request.departmentName || "Хэлтэс бүртгээгүй");
+      const canonical = getHrDepartmentDisplayName(request.departmentName || "Хэлтэс бүртгээгүй");
+      const key = canonical === "Дотоод хяналт" ? "Захиргаа" : canonical;
       const row = rows.get(key);
       if (row) row.pendingRequests += 1;
     }
