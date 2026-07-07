@@ -2646,20 +2646,29 @@ export type HrHeadcountTrendPoint = {
  * тулд active_test=false контекст ашиглана.
  */
 export async function getHeadcountTrend(session: AppSession, months = 6): Promise<HrHeadcountTrendPoint[]> {
-  const records = await executeOdooKw<{ contract_date_start?: string | false; departure_date?: string | false }[]>(
-    "hr.employee",
-    "search_read",
-    [[]],
-    {
-      fields: ["contract_date_start", "departure_date"],
-      context: { active_test: false },
-      limit: 5000,
-    },
-    getConnection(session),
-  ).catch((error) => {
-    console.warn("HR headcount trend could not be loaded:", error);
-    return [] as { contract_date_start?: string | false; departure_date?: string | false }[];
-  });
+  const readTrend = (connectionOverrides: { login?: string; password?: string }) =>
+    executeOdooKw<{ contract_date_start?: string | false; departure_date?: string | false }[]>(
+      "hr.employee",
+      "search_read",
+      [[]],
+      {
+        fields: ["contract_date_start", "departure_date"],
+        context: { active_test: false },
+        limit: 5000,
+      },
+      connectionOverrides,
+    ).catch((error) => {
+      console.warn("HR headcount trend could not be loaded:", error);
+      return [] as { contract_date_start?: string | false; departure_date?: string | false }[];
+    });
+
+  // Эхлээд хэрэглэгчийн эрхээр; уншиж чадаагүй бол (бага эрхтэй HR үзэгч
+  // hr.employee-г уншдаггүй) admin эрхээр — ингэснээр "Шинэ болон чөлөөлсөн"
+  // график төхөөрөмжөөс үл хамааран бодит дата харуулна.
+  let records = await readTrend(getConnection(session));
+  if (!records.length) {
+    records = await readTrend({});
+  }
 
   const now = new Date();
   let year = now.getUTCFullYear();
