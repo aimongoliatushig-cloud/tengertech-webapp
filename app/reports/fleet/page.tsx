@@ -42,7 +42,8 @@ function firstParam(value?: string | string[]) {
 
 export default async function FleetFuelWeightReportPage({ searchParams }: PageProps) {
   const session = await requireSession();
-  if (!canViewGarbageWeightReports(session)) {
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  if (!canViewGarbageWeightReports(session, scopedDepartmentName)) {
     redirect("/");
   }
 
@@ -54,7 +55,6 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const canViewAllReports = canViewAllWorkspaceReports(session);
-  const scopedDepartmentName = await loadSessionDepartmentName(session);
 
   const rawParams = (await searchParams) ?? {};
   const type: FleetFuelWeightReportType = firstParam(rawParams.type) === "weight" ? "weight" : "fuel";

@@ -3236,7 +3236,7 @@ function WorkerHomeView({
   procurementActionPanel: ReactNode;
 }) {
   const canViewAllReports = canViewAllWorkspaceReports(session);
-  const canViewWeightReports = canViewGarbageWeightReports(session);
+  const canViewWeightReports = canViewGarbageWeightReports(session, departmentScopeName);
 
   const total = assignedTasks.length;
   // Хувийн (хэлтэсгүй) ба хэлтэст даалгасан даалгаврыг тусад нь ялгана.
@@ -3596,7 +3596,7 @@ function ExecutiveDashboardView({
   assignedTasks?: AssignedTaskItem[];
 }) {
   const canViewAllReports = canViewAllWorkspaceReports(session);
-  const canViewWeightReports = canViewGarbageWeightReports(session);
+  const canViewWeightReports = canViewGarbageWeightReports(session, departmentScopeName);
   // Хянах самбар (менежер/захирал/хэлтсийн дарга) дээр нэвтэрсэн хэрэглэгчийн
   // ганц хувийн даалгавраа биш, БАЙГУУЛЛАГЫН нээлттэй, ажилтанд оногдсон
   // даалгаврыг (яаралтай нь эхэндээ) харуулна. Хэлтэст даалгасан ажил (систем
@@ -3807,7 +3807,7 @@ export function DashboardView({
   const canCreateTasks = hasCapability(session, "create_tasks");
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewAllReports = canViewAllWorkspaceReports(session);
-  const canViewWeightReports = canViewGarbageWeightReports(session);
+  const canViewWeightReports = canViewGarbageWeightReports(session, departmentScopeName);
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const workerMode = isWorkerOnly(session);

@@ -377,7 +377,8 @@ export function AppMenu({
   // дамжуулаагүй хуудсууд дээр role/flag-аас нь дотооддоо тооцоолно (бусад
   // эрхийг roleContext-аар тооцдогтой ижил загвар). Эрхийн логик өөрчлөгдөхгүй.
   const resolvedCanViewGarbageWeightReports =
-    canViewGarbageWeightReports || canViewGarbageWeightReportsForContext(roleContext);
+    canViewGarbageWeightReports ||
+    canViewGarbageWeightReportsForContext(roleContext, departmentScopeName);
   const roleLooksDepartmentHead =
     roleLabelLower.includes("хэлтсийн дарга") ||
     roleLabelLower.includes("хэлтэсийн дарга") ||

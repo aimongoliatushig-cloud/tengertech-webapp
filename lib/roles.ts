@@ -184,7 +184,7 @@ export function isRecordsClerk(context: RoleContext) {
   return jobTitle.includes("бичиг хэрэг");
 }
 
-export function canViewGarbageWeightReports(context: RoleContext) {
+export function canViewGarbageWeightReports(context: RoleContext, departmentName?: string | null) {
   const groupFlags = normalizeGroupFlags(context.groupFlags);
   const jobTitle = normalizePermissionText(context.employeeJobTitle);
   const isFeeSpecialist = Boolean(
@@ -197,6 +197,8 @@ export function canViewGarbageWeightReports(context: RoleContext) {
       isExecutiveContext(context) ||
       isReportPlanningSpecialist(context) ||
       isFeeSpecialist ||
+      // Авто бааз, хог тээвэрлэлтийн хэлтсийн дарга шатахуун/жингийн тайлан харна.
+      isGarbageDepartmentHead(context, departmentName) ||
       groupFlags.municipalManager ||
       groupFlags.mfoManager ||
       groupFlags.mfoDispatcher ||

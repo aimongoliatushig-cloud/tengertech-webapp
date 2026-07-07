@@ -327,7 +327,12 @@ export async function GET(request: Request) {
     return Response.json({ error: "Нэвтрэх шаардлагатай." }, { status: 401 });
   }
   const canViewAllReports = canViewAllWorkspaceReports(session);
-  if (!canAccessFleetRepair(session) && !canViewAllReports && !canViewGarbageWeightReports(session)) {
+  const scopedDepartmentName = await loadSessionEmployeeDepartmentName(session);
+  if (
+    !canAccessFleetRepair(session) &&
+    !canViewAllReports &&
+    !canViewGarbageWeightReports(session, scopedDepartmentName)
+  ) {
     return Response.json({ error: "Хог тээврийн жингийн тайлан харах эрхгүй байна." }, { status: 403 });
   }
 

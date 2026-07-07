@@ -1,3 +1,4 @@
+import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { getSession } from "@/lib/auth";
 import { loadFleetFuelWeightReport, type FleetFuelWeightReportType } from "@/lib/odoo";
 import { buildReportWorkbook } from "@/lib/report-xlsx";
@@ -98,7 +99,8 @@ export async function GET(request: Request) {
   if (!session) {
     return Response.json({ error: "Нэвтрэх шаардлагатай." }, { status: 401 });
   }
-  if (!canViewGarbageWeightReports(session)) {
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  if (!canViewGarbageWeightReports(session, scopedDepartmentName)) {
     return Response.json({ error: "Энэ тайланг харах эрхгүй байна." }, { status: 403 });
   }
 
