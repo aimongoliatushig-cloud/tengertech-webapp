@@ -28,7 +28,7 @@ export default async function HrEmployeesPage() {
         subtitle={mode === "hr" ? "Бүх ажилтны жагсаалт, хайлт, төлөвийн шүүлт" : "Өөрийн хэлтсийн ажилтнуудыг хайж чөлөө / өвчтэй хүсэлт үүсгэнэ"}
         userName={session.name}
         roleLabel={getSessionRoleLabel(session)}
-        notificationCount={employees.length}
+        notificationCount={0}
         notificationNote={`${employees.length} ажилтны бүртгэл`}
       />
       <HrSectionNav mode={mode} />

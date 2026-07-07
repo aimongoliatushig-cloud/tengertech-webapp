@@ -48,7 +48,7 @@ export default async function HrDepartmentDashboardPage({ params }: PageProps) {
         subtitle="Хэлтсийн хянах самбар — ажилтан, орон тоо, бүтэц"
         userName={session.name}
         roleLabel={getSessionRoleLabel(session)}
-        notificationCount={departmentEmployees.length}
+        notificationCount={0}
         notificationNote={`${departmentEmployees.length} ажилтан`}
       />
       <HrSectionNav mode={mode} />

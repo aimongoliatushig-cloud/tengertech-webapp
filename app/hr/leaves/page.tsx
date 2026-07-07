@@ -29,7 +29,7 @@ export default async function HrLeavesPage() {
         subtitle={access.isHr ? "Хэлтсийн даргаас ирсэн чөлөө / өвчтэй хүсэлтийг хянаж батална эсвэл татгалзана" : "Өөрийн хэлтсийн ажилтанд илгээсэн чөлөө / өвчтэй хүсэлтүүд"}
         userName={session.name}
         roleLabel={getSessionRoleLabel(session)}
-        notificationCount={requests.length}
+        notificationCount={0}
         notificationNote="Чөлөө / өвчтэй хүсэлт"
         notificationHref={HR_NOTIFICATION_HREF}
       />

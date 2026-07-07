@@ -58,7 +58,7 @@ export default async function HrDepartmentsPage() {
         subtitle="Хүний нөөцийн бүртгэл дотор алба нэгжээр ажилтнуудаа хурдан харна"
         userName={session.name}
         roleLabel={getSessionRoleLabel(session)}
-        notificationCount={cards.length}
+        notificationCount={0}
         notificationNote={`${cards.length} алба нэгж`}
       />
       <HrSectionNav />

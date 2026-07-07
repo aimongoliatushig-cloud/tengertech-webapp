@@ -40,7 +40,7 @@ export default async function HrSickPage({ searchParams }: PageProps) {
         }
         userName={session.name}
         roleLabel={getSessionRoleLabel(session)}
-        notificationCount={requests.filter((item) => item.requestType === (annualLeaveMode ? "annual_leave" : "sick")).length}
+        notificationCount={0}
         notificationNote={annualLeaveMode ? "Ээлжийн амралт" : "Өвчтэй хүсэлт"}
         notificationHref={HR_NOTIFICATION_HREF}
       />

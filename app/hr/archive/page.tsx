@@ -75,7 +75,7 @@ export default async function HrArchivePage({ searchParams }: PageProps) {
         subtitle="Ажилтныг ажлаас чөлөөлөх шийдвэр, шалтгаан, хавсралтыг бүртгээд идэвхтэй жагсаалтаас хасна"
         userName={session.name}
         roleLabel={getSessionRoleLabel(session)}
-        notificationCount={archivedEmployees.length}
+        notificationCount={0}
         notificationNote="Ажлаас чөлөөлсөн бүртгэл"
       />
       <HrSectionNav />
