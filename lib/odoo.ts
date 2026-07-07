@@ -4944,9 +4944,27 @@ function garbageReportVehicleName(record: {
   vehicle_id?: OdooRelation;
   vehicle_license_plate?: string | false;
 }) {
-  return (
-    relationName(record.vehicle_id ?? false, "") || "Авто баазад таараагүй"
+  const raw = relationName(record.vehicle_id ?? false, "");
+  if (!raw) {
+    return "Авто баазад таараагүй";
+  }
+  const plate =
+    typeof record.vehicle_license_plate === "string"
+      ? record.vehicle_license_plate.trim()
+      : "";
+  // Odoo-гийн машины нэр нь "ангилал/марк/модель/дугаар" бүтэцтэй бөгөөд
+  // тодорхойгүй түвшин "Бусад" болдог тул "Бусад/Бусад/..." давхарлаж гардаг.
+  // Утга агуулаагүй "Бусад" хэсгүүдийг хасаж, зэрэгцээ давхардлыг цэгцэлнэ.
+  const parts = raw
+    .split("/")
+    .map((part) => part.trim())
+    .filter((part) => part && part.toLocaleLowerCase("mn-MN") !== "бусад");
+  const deduped = parts.filter(
+    (part, index) =>
+      index === 0 ||
+      part.toLocaleLowerCase("mn-MN") !== parts[index - 1].toLocaleLowerCase("mn-MN"),
   );
+  return deduped.join(" / ") || plate || "Авто баазад таараагүй";
 }
 
 function toFleetWeightReportItem(
