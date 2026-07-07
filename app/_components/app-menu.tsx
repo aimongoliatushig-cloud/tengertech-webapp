@@ -1011,6 +1011,16 @@ export function AppMenu({
             },
           ]
         : []),
+      ...(resolvedCanViewGarbageWeightReports
+        ? [
+            {
+              key: "reports-fleet",
+              href: "/reports/fleet",
+              label: "Шатахуун, жин",
+              icon: Truck,
+            },
+          ]
+        : []),
       ...(canOpenGarbageSettings && scopedDepartmentIsAutoGarbage
         ? [
             {
