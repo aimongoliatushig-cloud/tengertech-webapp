@@ -99,6 +99,23 @@ export function getHrEmployeeDepartmentDisplayName(
   return getHrDepartmentDisplayName(departmentName, jobTitle);
 }
 
+// Хэлтсийн даргын шууд удирдлага нь Захирал БА Үйл ажиллагаа хариуцсан менежер
+// хоёулаа. Odoo-д parent_id ганц тул дэлгэцэнд хоёуланг нь харуулна.
+export function getHrManagerDisplayName(
+  jobTitle: string | false | null,
+  rawManagerName: string,
+) {
+  const title = normalizeHrDepartmentText(jobTitle);
+  const isDepartmentHead =
+    title.includes("хэлтсийн дарга") ||
+    title.includes("хэлтэсийн дарга") ||
+    title.includes("албаны дарга");
+  if (isDepartmentHead) {
+    return "Захирал, Үйл ажиллагаа хариуцсан менежер";
+  }
+  return rawManagerName;
+}
+
 export function getHrDepartmentDisplayName(departmentName: string, jobTitle?: string | false | null) {
   const normalizedDepartment = normalizeHrDepartmentText(departmentName);
   const normalizedTitle = normalizeHrDepartmentText(jobTitle);

@@ -8,6 +8,7 @@ import {
   getHrEmployeeDepartmentDisplayName,
   getHrDepartmentDisplayName,
   getHrJobTitleDisplayName,
+  getHrManagerDisplayName,
 } from "@/lib/hr-department-order";
 import {
   createOdooConnection,
@@ -821,7 +822,7 @@ function mapHrEmployeeDirectoryApiRecord(record: HrEmployeeDirectoryApiRecord): 
     statusKey,
     statusLabel: normalizeEmployeeStatusLabel(statusKey, record.statusLabel, record.active, trialEndDate),
     managerId: record.managerId ?? null,
-    managerName: record.managerName || "",
+    managerName: getHrManagerDisplayName(jobTitle, record.managerName || ""),
     startDate: record.startDate || "",
     contractEndDate: record.contractEndDate || "",
     trialEndDate,
@@ -1261,7 +1262,7 @@ function mapHrEmployeeSingleSearchRecord(record: HrEmployeeSingleSearchRecord): 
     statusKey,
     statusLabel: normalizeEmployeeStatusLabel(statusKey, status.label, record.active, trialEndDate),
     managerId: getRelationId(record.parent_id),
-    managerName: getRelationName(record.parent_id),
+    managerName: getHrManagerDisplayName(jobTitle, getRelationName(record.parent_id)),
     startDate: record.contract_date_start || "",
     contractEndDate: record.contract_date_end || "",
     trialEndDate,
