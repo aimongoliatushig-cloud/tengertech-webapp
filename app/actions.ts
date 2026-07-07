@@ -2129,7 +2129,14 @@ export async function createTaskAction(formData: FormData) {
         name,
         teamLeaderId: effectiveTeamLeaderId,
         crewTeamId: selectedCrewTeam?.id ?? null,
-        assigneeUserIds: selectedCrewTeam?.memberUserIds ?? [],
+        // Баг (crew) сонгоогүй бол сонгосон ажилтныг (баг ахлагч) гүйцэтгэгч
+        // болгоно. Эс бөгөөс "Ажилтны даалгавар" (гүйцэтгэгчээр бүлэглэдэг)
+        // жагсаалтад оноосон даалгавар харагдахгүй байсан.
+        assigneeUserIds: selectedCrewTeam?.memberUserIds?.length
+          ? selectedCrewTeam.memberUserIds
+          : effectiveTeamLeaderId
+            ? [effectiveTeamLeaderId]
+            : [],
         startDate: startDate || undefined,
         deadline: deadline || undefined,
         measurementUnitId: quantityRows[0]?.measurementUnitId ?? null,
