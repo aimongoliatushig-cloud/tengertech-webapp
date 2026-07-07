@@ -67,7 +67,14 @@ function isHrAdministrationTitle(normalizedTitle: string) {
 
 export function getHrJobTitleDisplayName(employeeName: string, jobTitle?: string | false | null) {
   const normalizedName = normalizeHrPersonKey(employeeName);
-  if (normalizedName === "ганхбаяр" || normalizedName.endsWith("ганхбаяр")) {
+  const normalizedTitle = normalizeHrDepartmentText(jobTitle);
+  // Байгууллагад ганц "Менежер" (Удирдлагын нэгж) = Үйл ажиллагаа хариуцсан
+  // менежер. Odoo-д зүгээр "Менежер" гэж бүртгэгдсэн тул дэлгэцэнд бүтэн нэрээр.
+  if (
+    normalizedName === "ганхбаяр" ||
+    normalizedName.endsWith("ганхбаяр") ||
+    normalizedTitle === "менежер"
+  ) {
     return "Үйл ажиллагаа хариуцсан менежер";
   }
   return fixMojibakeText(String(jobTitle || "Албан тушаал бүртгээгүй")).trim() || "Албан тушаал бүртгээгүй";
