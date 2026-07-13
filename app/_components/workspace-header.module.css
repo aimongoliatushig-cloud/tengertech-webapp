@@ -110,7 +110,7 @@
   min-height: 48px;
   padding: 0 16px;
   border-radius: var(--ds-radius-card);
-  color: #1b1b1b;
+  color: var(--ink-950);
 }
 
 .notificationPermissionButton {
@@ -256,7 +256,7 @@
   height: 48px;
   place-items: center;
   border-radius: var(--ds-radius-card);
-  color: #1b1b1b;
+  color: var(--ink-950);
   text-decoration: none;
   transition:
     transform 180ms ease,
@@ -309,7 +309,7 @@
   min-height: 58px;
   padding: 8px 12px;
   border-radius: var(--ds-radius-card);
-  color: #1b1b1b;
+  color: var(--ink-950);
   font: inherit;
   text-align: left;
   cursor: pointer;
@@ -677,8 +677,58 @@
 :global(html.dark) .headerUser,
 :global(html.dark) .headerUserMenu,
 :global(html.dark) .datePill,
+:global(html.dark) .notificationPermissionButton,
 :global(html.dark) .notificationButton {
   background: rgba(21, 29, 25, 0.92);
   border-color: rgba(150, 200, 165, 0.14);
   color: var(--ink-900);
+}
+
+/* Гарчиг, дэд гарчиг — харанхуй дэвсгэр дээр хар бичиг харагдахгүй байсан. */
+:global(html.dark) .titleBlock h1 {
+  color: #f2f6f3;
+}
+
+:global(html.dark) .titleBlock span {
+  color: #a6b6ab;
+}
+
+:global(html.dark) .headerUser small {
+  color: #8fa196;
+}
+
+:global(html.dark) .notificationButton span {
+  border-color: #151d19;
+}
+
+:global(html.dark) .headerUserMenu::before {
+  border-color: rgba(150, 200, 165, 0.14);
+  background: rgba(21, 29, 25, 0.98);
+}
+
+:global(html.dark) .headerUserMenuLink {
+  color: #e7ece9;
+}
+
+:global(html.dark) .headerUserMenuLink:hover,
+:global(html.dark) .headerUserMenuLink:focus-visible {
+  background: rgba(116, 207, 136, 0.1);
+  color: #74cf88;
+}
+
+:global(html.dark) .mobileGreetingIcon {
+  background: #1b2a20;
+  color: #74cf88;
+}
+
+:global(html.dark) .mobileGreetingIcon span {
+  color: #74cf88;
+}
+
+@media (max-width: 760px) {
+  :global(html.dark) .header {
+    border-color: rgba(150, 200, 165, 0.12);
+    background: #151d19;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+  }
 }

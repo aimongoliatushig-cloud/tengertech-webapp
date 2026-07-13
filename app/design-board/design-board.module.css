@@ -1,4 +1,4 @@
-﻿.page {
+.page {
   --board-green-900: #1d5f34;
   --board-green-800: #2f7747;
   --board-green-700: #42905a;
@@ -1271,7 +1271,7 @@
 .pickerHeader h1,
 .modalTitle,
 .introTitle {
-  color: #1f2b25;
+  color: var(--ink-950);
   font-family: var(--font-body);
   font-size: clamp(1.25rem, 2vw, 1.9rem);
   font-weight: 700;
@@ -1359,7 +1359,7 @@
 .modeChipActive {
   border-color: rgba(31, 95, 49, 0.22);
   background: rgba(76, 158, 92, 0.11);
-  color: #256b37;
+  color: var(--accent-ink);
 }
 
 .field input,

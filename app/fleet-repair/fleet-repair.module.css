@@ -19,7 +19,7 @@
 
 .header h1 {
   margin: 10px 0 8px;
-  color: #1f2b25;
+  color: var(--ink-950);
   font-family: var(--font-body);
   font-size: clamp(1.4rem, 2.4vw, 2rem);
   line-height: 1.12;
@@ -80,7 +80,7 @@
 .primaryButton {
   border-color: rgba(31, 95, 49, 0.22);
   background: rgba(76, 158, 92, 0.12);
-  color: #256b37;
+  color: var(--accent-ink);
 }
 
 .metricGrid {

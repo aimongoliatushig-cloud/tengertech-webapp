@@ -1163,6 +1163,9 @@ type ExecutiveMetric = {
   valueLabel?: string;
   note?: string;
   progress: number;
+  /* Хувь (%) илэрхийлдэг үзүүлэлт дээр л ring зурна — тоон үзүүлэлт дээр
+     заримдаа гарч, заримдаа гардаггүй байсныг жигдэлсэн. */
+  showRing?: boolean;
   href: string;
   icon: LucideIcon;
   tone: "green" | "orange" | "blue" | "purple" | "red" | "teal";
@@ -2084,7 +2087,7 @@ function ExecutiveMetricCard({ metric }: { metric: ExecutiveMetric }) {
             <small className={dashboardStyles.executiveMetricNote}>{metric.note}</small>
           ) : null}
         </div>
-        {metric.progress > 0 && metric.progress < 100 ? (
+        {metric.showRing ? (
           <ExecutiveRing value={metric.progress} tone={metric.tone} />
         ) : null}
       </div>
@@ -2135,11 +2138,11 @@ function ExecutiveDepartmentCard({ department }: { department: ExecutiveDepartme
           <strong>{department.total}</strong>
         </div>
         <div>
-          <span>Төлөвлөсөн</span>
+          <span>Явцад</span>
           <strong>{department.working}</strong>
         </div>
         <div className={department.review > 0 ? dashboardStyles.statAlert : undefined}>
-          <span>Хяналтад</span>
+          <span>Хянах</span>
           <strong>{department.review}</strong>
         </div>
       </div>
@@ -3632,6 +3635,7 @@ function ExecutiveDashboardView({
       label: "нийт гүйцэтгэл",
       value: `${overallProgress}%`,
       progress: overallProgress,
+      showRing: true,
       href: showDepartmentPerformance ? "#department-performance" : scopedProjectsHref(),
       icon: CheckCircle2,
       tone: "green",
@@ -3658,6 +3662,7 @@ function ExecutiveDashboardView({
       label: "техникийн ашиглалт",
       value: `${fleetUsage}%`,
       progress: fleetUsage,
+      showRing: true,
       href: fleetBoardHref,
       icon: Truck,
       tone: "purple",

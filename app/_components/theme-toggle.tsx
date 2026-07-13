@@ -1,21 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 
 /**
  * Өдөр/шөнийн горим сэлгэгч. Горимыг <html class="dark"> дээр тавьж,
  * localStorage-д хадгална. Анхны утгыг layout доторх скрипт (гялбахаас
  * сэргийлж) тавьсан байдаг тул энд зөвхөн уншиж, сэлгэнэ.
+ * useSyncExternalStore ашигласнаар хэд хэдэн toggle (mobile + desktop)
+ * нэг зэрэг зөв төлөвтэй байна.
  */
-export function ThemeToggle({ className }: { className?: string }) {
-  const [isDark, setIsDark] = useState(false);
-  const [ready, setReady] = useState(false);
+function subscribeToThemeClass(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+  return () => observer.disconnect();
+}
 
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-    setReady(true);
-  }, []);
+function readIsDark() {
+  return document.documentElement.classList.contains("dark");
+}
+
+export function ThemeToggle({ className }: { className?: string }) {
+  const isDark = useSyncExternalStore(subscribeToThemeClass, readIsDark, () => false);
 
   const toggle = () => {
     const next = !document.documentElement.classList.contains("dark");
@@ -25,7 +34,6 @@ export function ThemeToggle({ className }: { className?: string }) {
     } catch {
       // localStorage боломжгүй бол чимээгүй өнгөрнө
     }
-    setIsDark(next);
   };
 
   return (
@@ -38,7 +46,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       className={className}
       suppressHydrationWarning
     >
-      {ready && isDark ? <Sun size={18} aria-hidden /> : <Moon size={18} aria-hidden />}
+      {isDark ? <Sun size={18} aria-hidden /> : <Moon size={18} aria-hidden />}
     </button>
   );
 }

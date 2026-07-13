@@ -1,4 +1,4 @@
-﻿.shell {
+.shell {
   min-height: 100vh;
   padding: 24px 24px 44px;
   background:
@@ -1299,7 +1299,7 @@
 
 .sidebarLinkActive {
   background: rgba(76, 158, 92, 0.11);
-  color: #256b37;
+  color: var(--accent-ink);
 }
 
 .sidebarIcon {
@@ -1385,7 +1385,7 @@
 
 .dashboardHeader h1 {
   margin: 0;
-  color: #1f2b25;
+  color: var(--ink-950);
   font-family: var(--font-body);
   font-size: 1.04rem;
   font-weight: 700;
@@ -1457,7 +1457,7 @@
 
 .headerUser span {
   overflow: hidden;
-  color: #26342d;
+  color: var(--ink-950);
   font-size: 0.8rem;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -1561,7 +1561,7 @@
 
 .panelHeader h2 {
   margin: 0;
-  color: #26342d;
+  color: var(--ink-950);
   font-family: var(--font-body);
   font-size: 0.98rem;
   font-weight: 700;
@@ -2230,7 +2230,7 @@
 .pickerHeader h1,
 .modalTitle,
 .introTitle {
-  color: #1f2b25;
+  color: var(--ink-950);
   font-family: var(--font-body);
   font-size: clamp(1.25rem, 2vw, 1.9rem);
   font-weight: 700;
@@ -2318,7 +2318,7 @@
 .modeChipActive {
   border-color: rgba(31, 95, 49, 0.22);
   background: rgba(76, 158, 92, 0.11);
-  color: #256b37;
+  color: var(--accent-ink);
 }
 
 .field input,

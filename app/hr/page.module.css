@@ -1,4 +1,4 @@
-﻿.introCard,
+.introCard,
 .sectionCard,
 .errorCard,
 .noticeCard {
@@ -37,7 +37,7 @@
 
 .introTitle {
   margin: 4px 0;
-  color: #26342d;
+  color: var(--ink-950);
   font-family: var(--font-body);
   font-size: 0.98rem;
   font-weight: 700;
@@ -106,7 +106,7 @@
 
 .sectionHeader h2 {
   margin: 3px 0 0;
-  color: #26342d;
+  color: var(--ink-950);
   font-family: var(--font-body);
   font-size: 0.98rem;
   font-weight: 700;
@@ -121,7 +121,7 @@
   border-radius: 8px;
   background: rgba(74, 154, 93, 0.08);
   border: 1px solid rgba(74, 154, 93, 0.12);
-  color: #26342d;
+  color: var(--ink-950);
   font-size: 0.78rem;
   font-weight: 500;
   line-height: 1.45;
@@ -154,7 +154,7 @@
   border: 0;
   background: transparent;
   outline: none;
-  color: #26342d;
+  color: var(--ink-950);
   font-size: 0.86rem;
 }
 
@@ -180,7 +180,7 @@
 .statusSegmentActive {
   border-color: rgba(43, 126, 64, 0.34) !important;
   background: rgba(74, 154, 93, 0.12) !important;
-  color: #256b37 !important;
+  color: var(--accent-ink) !important;
 }
 
 .departmentExplorer {
@@ -202,7 +202,7 @@
 
 .departmentExplorerHeader h3 {
   margin: 3px 0 0;
-  color: #26342d;
+  color: var(--ink-950);
   font-family: var(--font-body);
   font-size: 0.98rem;
   font-weight: 700;
@@ -309,7 +309,7 @@
 
 .departmentHeader h3 {
   margin: 0;
-  color: #26342d;
+  color: var(--ink-950);
   font-family: var(--font-body);
   font-size: 0.98rem;
   line-height: 1.2;
@@ -400,7 +400,7 @@
   padding: 0 7px;
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
-  color: #256b37;
+  color: var(--accent-ink);
   font-size: 0.75rem;
   font-weight: 800;
 }
@@ -423,7 +423,7 @@
 .status_active,
 .status_rehired {
   background: #edf8ee;
-  color: #256b37;
+  color: var(--accent-ink);
 }
 
 .status_probation {
@@ -482,7 +482,7 @@
 }
 
 .signalOk {
-  color: #256b37 !important;
+  color: var(--accent-ink) !important;
 }
 
 .signalWarn {
@@ -492,7 +492,7 @@
 
 .employeeCard h4 {
   margin: 0;
-  color: #26342d;
+  color: var(--ink-950);
   font-size: 0.9rem;
   line-height: 1.25;
 }
@@ -557,7 +557,7 @@
 }
 
 .metaRow strong {
-  color: #26342d;
+  color: var(--ink-950);
   font-size: 0.8rem;
   word-break: break-word;
 }
@@ -632,7 +632,7 @@
 
 .modalHeader h2 {
   margin: 4px 0;
-  color: #26342d;
+  color: var(--ink-950);
   font-family: var(--font-body);
   font-size: 1.15rem;
   font-weight: 700;
@@ -681,7 +681,7 @@
 .detailItem strong {
   display: block;
   margin-top: 4px;
-  color: #26342d;
+  color: var(--ink-950);
   font-size: 0.88rem;
   line-height: 1.35;
   word-break: break-word;
@@ -696,7 +696,7 @@
 
 .formHeader h3 {
   margin: 0;
-  color: #26342d;
+  color: var(--ink-950);
   font-family: var(--font-body);
   font-size: 0.98rem;
   line-height: 1.2;
@@ -732,7 +732,7 @@
 }
 
 .photoUploadCopy strong {
-  color: #26342d;
+  color: var(--ink-950);
   font-size: 0.88rem;
 }
 
@@ -1075,7 +1075,7 @@
 .pickerHeader h1,
 .modalTitle,
 .introTitle {
-  color: #1f2b25;
+  color: var(--ink-950);
   font-family: var(--font-body);
   font-size: clamp(1.25rem, 2vw, 1.9rem);
   font-weight: 700;
@@ -1163,7 +1163,7 @@
 .modeChipActive {
   border-color: rgba(31, 95, 49, 0.22);
   background: rgba(76, 158, 92, 0.11);
-  color: #256b37;
+  color: var(--accent-ink);
 }
 
 .field input,

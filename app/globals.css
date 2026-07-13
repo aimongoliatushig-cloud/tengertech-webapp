@@ -29,6 +29,8 @@
   --status-urgent-soft: #fff1eb;
   --status-muted: #5f7563;
   --status-muted-soft: #f3f6f2;
+  /* Идэвхтэй chip/товчны ногоон бичиг — dark-д цайвар ногоон болж эргэнэ. */
+  --accent-ink: #256b37;
   --surface-page: #f4faf2;
   --surface-shell: #e8f1e6;
   --surface-panel: rgba(255, 255, 255, 0.92);
@@ -57,7 +59,6 @@
 
 html {
   min-height: 100%;
-  font-size: 12px;
   text-rendering: optimizeLegibility;
 }
 
@@ -74,20 +75,11 @@ body {
     radial-gradient(circle at top left, rgba(166, 211, 157, 0.16), transparent 24%),
     linear-gradient(180deg, var(--surface-page) 0%, var(--surface-shell) 100%);
   font-family: var(--font-body), sans-serif;
-  font-size: 12px;
+  /* Нягт ERP харагдац: тодорхой хэмжээ заагаагүй текст 13px байна.
+     Компонентын түвшний font-size-ууд өөрсдийн шатлалаа хадгална. */
+  font-size: 13px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* Typography: headings at 15px, everything else at 12px. */
-h1, h2, h3, h4, h5, h6 {
-  font-size: 15px !important;
-}
-
-p, span, strong, b, small, em, i, u, s,
-a, li, dt, dd, label, button, input, textarea, select, option,
-th, td, caption, time, figcaption, blockquote, address, cite, code, kbd, mark {
-  font-size: 12px !important;
 }
 
 body[data-mobile-menu-open="true"] {
@@ -209,6 +201,7 @@ button:disabled {
   --status-muted-soft: #1a221e;
   --brand-100: #16241d;
   --brand-200: #1d3226;
+  --accent-ink: #74cf88;
   --ds-page-bg: #0d1512;
   --ds-rail-bg: rgba(20, 28, 24, 0.94);
   --ds-header-bg: rgba(16, 23, 20, 0.85);
@@ -244,6 +237,13 @@ button:disabled {
 /* --- Картын гадаргуу --- */
 .dark .bg-white {
   background-color: #151d19;
+}
+/* Card компонентын хагас тунгалаг цагаан гадаргуу (bg-white/75) */
+.dark .bg-white\/75 {
+  background-color: rgba(21, 29, 25, 0.88);
+}
+.dark .border-white\/65 {
+  border-color: rgba(150, 200, 165, 0.12);
 }
 .dark .bg-\[\#F6FBF6\],
 .dark .bg-\[\#F6FBF7\] {

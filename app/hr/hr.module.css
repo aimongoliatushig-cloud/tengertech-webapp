@@ -49,7 +49,7 @@
 
 .pendingQueueHeader h2 {
   margin: 4px 0 0;
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: clamp(1.2rem, 2vw, 1.6rem);
   line-height: 1.1;
 }
@@ -107,7 +107,7 @@
   border: 1px solid rgba(214, 158, 46, 0.16);
   border-radius: 8px;
   background: var(--surface-panel);
-  color: #1f2b25;
+  color: var(--ink-950);
   text-decoration: none;
   transition:
     border-color 160ms ease,
@@ -173,7 +173,7 @@
 
 .pendingRequestCard small {
   background: rgba(218, 238, 219, 0.84);
-  color: #256b37;
+  color: var(--accent-ink);
 }
 
 .pendingQueueEmpty {
@@ -186,7 +186,7 @@
 }
 
 .pendingQueueEmpty strong {
-  color: #1f2b25;
+  color: var(--ink-950);
 }
 
 .pendingQueueEmpty span {
@@ -216,7 +216,7 @@
 
 .pendingQueueActions a + a {
   background: var(--surface-panel);
-  color: #256b37;
+  color: var(--accent-ink);
   border: 1px solid rgba(46, 125, 50, 0.14);
 }
 
@@ -454,7 +454,7 @@
 }
 
 .quickActionHeader strong {
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: 0.94rem;
   line-height: 1.25;
   overflow-wrap: anywhere;
@@ -603,7 +603,7 @@
 .panel h2,
 .formPanel h2 {
   margin: 3px 0 0;
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: 1.05rem;
   line-height: 1.2;
 }
@@ -840,7 +840,7 @@
 .chartTopListHeader {
   display: grid;
   gap: 3px;
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: 0.75rem;
   line-height: 1.25;
 }
@@ -989,7 +989,7 @@
   border: 1px solid rgba(46, 125, 50, 0.12);
   border-radius: 8px;
   background: var(--surface-panel);
-  color: #1f2b25;
+  color: var(--ink-950);
   font: inherit;
   font-size: 0.84rem;
 }
@@ -1138,7 +1138,7 @@
   border: 1px solid rgba(46, 125, 50, 0.18);
   border-radius: 8px;
   background: var(--surface-panel);
-  color: #1f2b25;
+  color: var(--ink-950);
   font: inherit;
   font-size: 0.78rem;
   font-weight: 850;
@@ -1336,7 +1336,7 @@
 .reportListHeader h2,
 .reportCreateHeader h2 {
   margin: 3px 0 0;
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: 1.08rem;
   line-height: 1.2;
 }
@@ -1465,7 +1465,7 @@
 }
 
 .reportCardBody strong {
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: 0.92rem;
   line-height: 1.25;
   overflow-wrap: anywhere;
@@ -1528,7 +1528,7 @@
 }
 
 .reportEmptyState strong {
-  color: #1f2b25;
+  color: var(--ink-950);
 }
 
 .reportEmptyState span {
@@ -1637,7 +1637,7 @@
   padding: 9px 14px;
   border-bottom: 1px solid rgba(46, 125, 50, 0.1);
   background: rgba(232, 244, 235, 0.72);
-  color: #26342d;
+  color: var(--ink-950);
 }
 
 .detailGroupHeader strong {
@@ -2552,7 +2552,7 @@
 }
 
 .emptyState strong {
-  color: #26342d;
+  color: var(--ink-950);
 }
 
 .formPanel {
@@ -2577,7 +2577,7 @@
 
 .formSectionHeader h2 {
   margin: 0;
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: 1rem;
   line-height: 1.25;
 }
@@ -2735,7 +2735,7 @@
 }
 
 .editReadonlyValue strong {
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: 0.84rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -2828,7 +2828,7 @@
 }
 
 .selectedEmployeeContext strong {
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: 1.04rem;
   line-height: 1.25;
   overflow-wrap: anywhere;
@@ -2880,7 +2880,7 @@
     linear-gradient(45deg, transparent 50%, #637568 50%) calc(100% - 17px) 50% / 7px 7px no-repeat,
     linear-gradient(135deg, #637568 50%, transparent 50%) calc(100% - 12px) 50% / 7px 7px no-repeat,
     rgba(255, 255, 255, 0.94);
-  color: #1f2b25;
+  color: var(--ink-950);
   cursor: pointer;
   font: inherit;
   text-align: left;
@@ -2939,7 +2939,7 @@
   min-height: 38px;
   border: 0;
   background: transparent;
-  color: #1f2b25;
+  color: var(--ink-950);
   font: inherit;
   outline: none;
 }
@@ -2959,7 +2959,7 @@
   border: 0;
   border-bottom: 1px solid rgba(46, 125, 50, 0.08);
   background: transparent;
-  color: #1f2b25;
+  color: var(--ink-950);
   cursor: pointer;
   font: inherit;
   text-align: left;
@@ -3201,7 +3201,7 @@
 
 .successText {
   background: #edf8ee;
-  color: #256b37;
+  color: var(--accent-ink);
 }
 
 .sectionHeader {
@@ -3268,7 +3268,7 @@
 
 .manpowerHeader h3 {
   margin: 0;
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: 0.95rem;
   line-height: 1.25;
   overflow-wrap: anywhere;
@@ -3311,7 +3311,7 @@
   border: 1px solid rgba(46, 125, 50, 0.09);
   border-radius: 8px;
   background: rgba(244, 250, 245, 0.82);
-  color: #1f2b25;
+  color: var(--ink-950);
   text-decoration: none;
 }
 
@@ -3348,7 +3348,7 @@
 
 .reportCategory h3 {
   margin: 0;
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: 0.92rem;
   line-height: 1.25;
 }
@@ -3375,7 +3375,7 @@
   border-radius: 8px;
   background: var(--surface-panel);
   box-shadow: var(--ds-shadow-panel);
-  color: #1f2b25;
+  color: var(--ink-950);
   text-align: center;
 }
 
@@ -3509,7 +3509,7 @@
 }
 
 .infoCard strong {
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: 0.9rem;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
@@ -3532,7 +3532,7 @@
   align-items: center;
   gap: 6px;
   padding: 16px 18px 0;
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: 0.84rem;
   font-weight: 850;
 }
@@ -3627,7 +3627,7 @@
   align-items: center;
   gap: 9px;
   min-width: 0;
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: 0.88rem;
   font-weight: 720;
   line-height: 1.35;
@@ -3723,7 +3723,7 @@
 
 .actionPanelHeader span {
   display: block;
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: 0.86rem;
   font-weight: 900;
 }
@@ -3835,7 +3835,7 @@
   justify-content: flex-start;
   min-height: 38px;
   padding: 9px 10px;
-  color: #1f2b25;
+  color: var(--ink-950);
 }
 
 .moreActionsList a:hover {
@@ -3902,7 +3902,7 @@
   padding: 0 12px 12px;
   border: 0;
   background: transparent;
-  color: #26342d;
+  color: var(--ink-950);
   cursor: pointer;
   font: inherit;
   font-size: 0.84rem;
@@ -4485,7 +4485,7 @@
   padding: 0 12px;
   border-radius: 8px;
   background: rgba(218, 238, 219, 0.72);
-  color: #256b37;
+  color: var(--accent-ink);
   font-size: 0.82rem;
   font-weight: 850;
 }
@@ -4506,7 +4506,7 @@
   border: 1px solid rgba(46, 125, 50, 0.1);
   border-radius: 8px;
   background: var(--surface-panel);
-  color: #1f2b25;
+  color: var(--ink-950);
   text-decoration: none;
 }
 
@@ -4587,7 +4587,7 @@
 
 .accessDenied h1 {
   margin: 10px 0;
-  color: #1f2b25;
+  color: var(--ink-950);
   font-size: clamp(1.5rem, 3vw, 2.2rem);
 }
 
@@ -4954,7 +4954,7 @@
   }
 
   .mobileInlineDetailHeader strong {
-    color: #1f2b25;
+    color: var(--ink-950);
     font-size: 0.96rem;
     line-height: 1.25;
   }
@@ -5373,3 +5373,48 @@
   .erpCols { grid-template-columns: 1fr; }
   .erpStatusWrap { margin-left: 0; text-align: left; width: 100%; }
 }
+
+
+/* ============================================================
+   Шөнийн горим (dark) — HR самбар, диаграм, org chart.
+   Гадаргуу нь харладаг газрын хатуу бараан бичиг, мөн харладаггүй
+   цайвар tone картуудыг энд нэг мөр зохицуулна.
+   ============================================================ */
+:global(html.dark) .donutChart .chartCenter { color: var(--ink-950); }
+:global(html.dark) .chartLegendRow { color: var(--ink-700); }
+:global(html.dark) .chartTopList { border-color: rgba(150, 200, 165, 0.12); background: rgba(27, 42, 32, 0.6); }
+:global(html.dark) .chartTopRow { color: var(--ink-900); }
+:global(html.dark) .chartTopListHeader span,
+:global(html.dark) .chartTopList p { color: var(--ink-700); }
+:global(html.dark) .secondaryButton { background: #1b2a20; color: #74cf88; }
+:global(html.dark) .dangerButton { background: #3a1f1d; border-color: rgba(242, 131, 122, 0.24); color: #f2837a; }
+:global(html.dark) .employeeRowLink { background: rgba(24, 33, 28, 0.85); border-color: rgba(150, 200, 165, 0.1); }
+:global(html.dark) .quickActionLink:hover,
+:global(html.dark) .quickActionLink:focus-visible { background: #1b2a20; color: #74cf88; }
+:global(html.dark) .sectionNavLink { color: var(--ink-700); }
+:global(html.dark) .sectionNavLink:hover,
+:global(html.dark) .sectionNavLink:focus-visible { background: #1b2a20; color: #74cf88; }
+
+/* Org chart */
+:global(html.dark) .orgRoles li { color: var(--ink-900); }
+:global(html.dark) .orgAside { color: var(--ink-900); }
+:global(html.dark) .orgAside strong { background: rgba(150, 200, 165, 0.12); }
+:global(html.dark) .orgRoleTag { background: rgba(150, 200, 165, 0.12); color: #94a3a8; }
+:global(html.dark) .orgDeptHead { border-bottom-color: rgba(150, 200, 165, 0.14); }
+:global(html.dark) .orgToneDirector { background: #202824; border-color: #333b37; color: var(--ink-900); }
+:global(html.dark) .orgToneBlue { background: #1a2436; border-color: #2b3c5e; }
+:global(html.dark) .orgToneBlue .orgDeptHead h3 { color: #7aa2ff; }
+:global(html.dark) .orgTonePurple { background: #251a36; border-color: #43305e; }
+:global(html.dark) .orgTonePurple .orgDeptHead h3 { color: #c4a1f5; }
+:global(html.dark) .orgToneAmber { background: #332a17; border-color: #57462a; }
+:global(html.dark) .orgToneAmber .orgDeptHead h3 { color: #e0a355; }
+:global(html.dark) .orgToneGreen { background: #14231a; border-color: #2f5a3a; }
+:global(html.dark) .orgToneGreen .orgDeptHead h3 { color: #74cf88; }
+:global(html.dark) .orgToneOrange { background: #2f2213; border-color: #55401f; }
+:global(html.dark) .orgToneOrange .orgDeptHead h3 { color: #e8a163; }
+:global(html.dark) .orgRolePartial .orgRoleCount b { color: #e0a355; }
+:global(html.dark) .orgRoleVacant .orgRoleCount b { color: #f2837a; }
+:global(html.dark) .orgRoleOver .orgRoleCount b { color: #7aa2ff; }
+:global(html.dark) .orgRoleExtra .orgRoleCount b { color: #94a3b8; }
+:global(html.dark) .orgDeptVacant { color: #f2837a; background: rgba(242, 131, 122, 0.14); }
+:global(html.dark) .orgDeptFull { color: #74cf88; background: rgba(116, 207, 136, 0.14); }:global(html.dark) .orgToneOps { background: #1a2436; border-color: #2b3c5e; color: #7aa2ff; }
