@@ -1,13 +1,9 @@
 import Link from "next/link";
 import {
-  AlertTriangle,
-  CheckCircle2,
   ChevronDown,
   ClipboardList,
-  Clock3,
   Building2,
   Flag,
-  ShieldCheck,
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
@@ -255,13 +251,12 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
     return `/department-work${queryString ? `?${queryString}` : ""}`;
   };
 
+  // Статусын задаргаа (Дууссан/Хийгдэж буй/Хугацаа хэтэрсэн/Батлах хүлээж) нь
+  // доорх шүүлтийн chip-үүдэд тоотойгоо харагддаг тул дээд картаас давхардуулахгүй
+  // — зөвхөн хамрах хүрээний нэгтгэл (Ажил/Хэлтэс, Даалгавар)-ыг үзүүлнэ.
   const summary = [
     { key: "dept", label: groupByProject ? "Ажил" : "Хэлтэс", value: groups.size, icon: Building2, tone: "" },
     { key: "assigned", label: "Даалгавар", value: baseTasks.length, icon: ClipboardList, tone: "" },
-    { key: "done", label: "Дууссан", value: baseTasks.filter(isTaskDone).length, icon: CheckCircle2, tone: "ok" },
-    { key: "prog", label: "Хийгдэж буй", value: baseTasks.filter(isTaskInProgress).length, icon: Clock3, tone: "" },
-    { key: "over", label: "Хугацаа хэтэрсэн", value: baseTasks.filter((task) => isTaskOverdue(task, todayKey)).length, icon: AlertTriangle, tone: "warn" },
-    { key: "review", label: "Батлах хүлээж", value: baseTasks.filter(isTaskReview).length, icon: ShieldCheck, tone: "warn" },
   ];
 
   return shell(
