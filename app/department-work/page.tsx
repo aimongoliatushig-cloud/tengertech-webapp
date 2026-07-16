@@ -1,9 +1,13 @@
 import Link from "next/link";
 import {
+  AlertTriangle,
+  CheckCircle2,
   ChevronDown,
   ClipboardList,
+  Clock3,
   Building2,
   Flag,
+  ShieldCheck,
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
@@ -251,12 +255,22 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
     return `/department-work${queryString ? `?${queryString}` : ""}`;
   };
 
-  // Статусын задаргаа (Дууссан/Хийгдэж буй/Хугацаа хэтэрсэн/Батлах хүлээж) нь
-  // доорх шүүлтийн chip-үүдэд тоотойгоо харагддаг тул дээд картаас давхардуулахгүй
-  // — зөвхөн хамрах хүрээний нэгтгэл (Ажил/Хэлтэс, Даалгавар)-ыг үзүүлнэ.
-  const summary = [
-    { key: "dept", label: groupByProject ? "Ажил" : "Хэлтэс", value: groups.size, icon: Building2, tone: "" },
-    { key: "assigned", label: "Даалгавар", value: baseTasks.length, icon: ClipboardList, tone: "" },
+  // Нэгтгэл + статусын шүүлтийг нэг эгнээ, адил хэмжээтэй, дарж болох карт болгов.
+  // Карт бүр дээр дарахад тухайн шүүлт рүү шилжинэ.
+  const statCards: Array<{
+    key: string;
+    label: string;
+    value: number;
+    status: StatusFilter;
+    icon: typeof Building2;
+    tone: string;
+  }> = [
+    { key: "dept", label: groupByProject ? "Ажил" : "Хэлтэс", value: groups.size, status: "all", icon: Building2, tone: "" },
+    { key: "all", label: "Бүгд", value: baseTasks.length, status: "all", icon: ClipboardList, tone: "" },
+    { key: "overdue", label: "Хугацаа хэтэрсэн", value: baseTasks.filter((task) => isTaskOverdue(task, todayKey)).length, status: "overdue", icon: AlertTriangle, tone: "warn" },
+    { key: "review", label: "Батлах хүлээж", value: baseTasks.filter(isTaskReview).length, status: "review", icon: ShieldCheck, tone: "warn" },
+    { key: "progress", label: "Хийгдэж буй", value: baseTasks.filter(isTaskInProgress).length, status: "progress", icon: Clock3, tone: "" },
+    { key: "done", label: "Дууссан", value: baseTasks.filter(isTaskDone).length, status: "done", icon: CheckCircle2, tone: "ok" },
   ];
 
   return shell(
@@ -277,42 +291,26 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
 
       <section
         className={styles.summary}
-        style={{ gridTemplateColumns: `repeat(${summary.length}, minmax(0, 1fr))` }}
+        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))" }}
       >
-        {summary.map((item) => {
+        {statCards.map((item) => {
           const Icon = item.icon;
+          const active = item.key !== "dept" && selectedStatus === item.status;
           return (
-            <div key={item.key} className={`${styles.stat} ${item.tone ? styles[item.tone] : ""}`}>
+            <Link
+              key={item.key}
+              href={buildHref(item.status)}
+              className={`${styles.stat} ${styles.statLink} ${item.tone ? styles[item.tone] : ""} ${active ? styles.statActive : ""}`}
+            >
               <span className={styles.statIcon}>
                 <Icon size={16} aria-hidden />
               </span>
               <strong className={styles.statValue}>{item.value}</strong>
               <span className={styles.statLabel}>{item.label}</span>
-            </div>
+            </Link>
           );
         })}
       </section>
-
-      <div className={styles.filters}>
-        <div className={styles.filterRow}>
-          {STATUS_FILTERS.map((filter) => {
-            const count =
-              filter.key === "all"
-                ? baseTasks.length
-                : baseTasks.filter((task) => matchesStatus(task, filter.key, todayKey)).length;
-            return (
-              <Link
-                key={filter.key}
-                href={buildHref(filter.key)}
-                className={`${styles.filterChip} ${selectedStatus === filter.key ? styles.filterChipActive : ""}`}
-              >
-                <span>{filter.label}</span>
-                <b>{count}</b>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
 
       {departments.length ? (
         <section className={styles.list}>
