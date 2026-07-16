@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="municipal_field_ops.Dashboard">
+    <div class="o_mfo_dashboard o_action">
+
+        <!-- Толгой: хэлтэс, огноо, хэрэглэгч, мэдэгдэл -->
+        <div class="o_mfo_header">
+            <div class="o_mfo_header_main">
+                <h1 t-esc="state.data.header.department or 'Хянах самбар'"/>
+                <span class="o_mfo_header_date" t-esc="state.data.header.date"/>
+            </div>
+            <div class="o_mfo_header_side">
+                <span class="o_mfo_user">
+                    <i class="fa fa-user-circle-o me-1"/>
+                    <t t-esc="state.data.header.user"/>
+                </span>
+                <span class="o_mfo_bell" t-att-title="'Мэдэгдэл'">
+                    <i class="fa fa-bell-o"/>
+                    <t t-if="state.data.header.notifications">
+                        <span class="o_mfo_badge" t-esc="state.data.header.notifications"/>
+                    </t>
+                </span>
+                <button class="btn btn-secondary btn-sm" t-on-click="onRefresh">
+                    <i class="fa fa-refresh me-1"/>Шинэчлэх
+                </button>
+            </div>
+        </div>
+
+        <t t-if="state.loading">
+            <div class="o_mfo_state"><i class="fa fa-circle-o-notch fa-spin me-2"/>Ачаалж байна...</div>
+        </t>
+
+        <t t-elif="state.error">
+            <div class="o_mfo_state o_mfo_state_error">
+                <i class="fa fa-exclamation-triangle me-2"/>
+                <t t-esc="state.error"/>
+                <button class="btn btn-primary btn-sm ms-3" t-on-click="onRefresh">Дахин оролдох</button>
+            </div>
+        </t>
+
+        <t t-else="">
+            <!-- KPI картууд -->
+            <div class="o_mfo_kpis">
+                <div class="o_mfo_kpi">
+                    <span class="o_mfo_kpi_icon"><i class="fa fa-tasks"/></span>
+                    <strong t-esc="state.data.kpi.tasks"/>
+                    <span>Нийт ажил</span>
+                </div>
+                <div class="o_mfo_kpi">
+                    <span class="o_mfo_kpi_icon"><i class="fa fa-users"/></span>
+                    <strong t-esc="state.data.kpi.employees"/>
+                    <span>Нийт ажилтан</span>
+                </div>
+                <div class="o_mfo_kpi">
+                    <span class="o_mfo_kpi_icon"><i class="fa fa-truck"/></span>
+                    <strong t-esc="state.data.kpi.vehicles"/>
+                    <span>Нийт машин</span>
+                </div>
+                <div class="o_mfo_kpi o_mfo_kpi_click" t-on-click="openPoints">
+                    <span class="o_mfo_kpi_icon"><i class="fa fa-trash"/></span>
+                    <strong t-esc="state.data.kpi.points"/>
+                    <span>Нийт хогийн цэг</span>
+                </div>
+                <div class="o_mfo_kpi o_mfo_kpi_accent">
+                    <span class="o_mfo_kpi_icon"><i class="fa fa-calendar-check-o"/></span>
+                    <strong t-esc="state.data.kpi.today_tasks"/>
+                    <span>Өнөөдрийн ажил</span>
+                </div>
+            </div>
+
+            <div class="o_mfo_grid">
+                <!-- Хэлтсийн бүтэц (интерактив) -->
+                <section class="o_mfo_card">
+                    <div class="o_mfo_card_head">
+                        <h2>Хэлтсийн бүтэц</h2>
+                        <small>Дарж албан тушаалын задаргааг харна</small>
+                    </div>
+                    <t t-if="!state.data.departments.length">
+                        <div class="o_mfo_empty">Хэлтсийн мэдээлэл алга.</div>
+                    </t>
+                    <t t-foreach="state.data.departments" t-as="dept" t-key="dept.id">
+                        <div class="o_mfo_dept">
+                            <div class="o_mfo_dept_head" t-on-click="() => this.toggleDepartment(dept.id)">
+                                <span class="o_mfo_dept_name">
+                                    <i t-att-class="state.expandedDept === dept.id ? 'fa fa-caret-down me-2' : 'fa fa-caret-right me-2'"/>
+                                    <t t-esc="dept.name"/>
+                                </span>
+                                <span class="o_mfo_dept_meta">
+                                    <t t-if="dept.manager"><small t-esc="dept.manager"/></t>
+                                    <span class="o_mfo_pill" t-esc="dept.total"/>
+                                </span>
+                            </div>
+                            <t t-if="state.expandedDept === dept.id">
+                                <div class="o_mfo_jobs">
+                                    <t t-foreach="dept.jobs" t-as="job" t-key="job.title">
+                                        <div class="o_mfo_job">
+                                            <span t-esc="job.title"/>
+                                            <b t-esc="job.count"/>
+                                        </div>
+                                    </t>
+                                </div>
+                            </t>
+                        </div>
+                    </t>
+                </section>
+
+                <!-- Өнөөдрийн явц -->
+                <section class="o_mfo_card">
+                    <div class="o_mfo_card_head">
+                        <h2>Өнөөдрийн явц</h2>
+                        <small><t t-esc="state.data.progress.done"/> / <t t-esc="state.data.progress.total"/></small>
+                    </div>
+                    <div class="o_mfo_progress_value" t-esc="state.data.progress.percent + '%'"/>
+                    <div class="o_mfo_progress">
+                        <span class="o_mfo_progress_bar" t-attf-style="width: {{ state.data.progress.percent }}%"/>
+                    </div>
+                    <div class="o_mfo_progress_legend">
+                        <span><b t-esc="state.data.progress.done"/> дууссан</span>
+                        <span><b t-esc="state.data.progress.open"/> нээлттэй</span>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Хогийн цэгийн газрын зураг -->
+            <section class="o_mfo_card">
+                <div class="o_mfo_card_head">
+                    <h2>Хогийн цэгийн газрын зураг</h2>
+                    <small><t t-esc="state.data.points.length"/> цэг</small>
+                </div>
+                <t t-if="state.mapError">
+                    <div class="o_mfo_empty" t-esc="state.mapError"/>
+                </t>
+                <t t-elif="!state.data.points.length">
+                    <div class="o_mfo_empty">Координаттай хогийн цэг алга.</div>
+                </t>
+                <div class="o_mfo_map" t-ref="map"/>
+            </section>
+
+            <div class="o_mfo_grid">
+                <!-- Өнөөдрийн маршрут -->
+                <section class="o_mfo_card">
+                    <div class="o_mfo_card_head">
+                        <h2>Өнөөдрийн маршрут</h2>
+                        <button class="btn btn-link btn-sm p-0" t-on-click="openRoutes">Бүгд</button>
+                    </div>
+                    <t t-if="!state.data.routes.length">
+                        <div class="o_mfo_empty">Өнөөдөр маршрут бүртгэгдээгүй.</div>
+                    </t>
+                    <table t-else="" class="o_mfo_table">
+                        <thead>
+                            <tr><th>Маршрут</th><th>Машин</th><th>Жолооч</th><th>Төлөв</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="state.data.routes" t-as="route" t-key="route.id">
+                                <td t-esc="route.route"/>
+                                <td t-esc="route.vehicle"/>
+                                <td t-esc="route.driver"/>
+                                <td><span class="o_mfo_pill" t-esc="route.state"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <!-- Машины төлөв -->
+                <section class="o_mfo_card">
+                    <div class="o_mfo_card_head">
+                        <h2>Машины төлөв</h2>
+                        <small><t t-esc="state.data.vehicles.total"/> машин</small>
+                    </div>
+                    <div class="o_mfo_states">
+                        <t t-foreach="state.data.vehicles.by_state" t-as="st" t-key="st.state">
+                            <span class="o_mfo_pill"><t t-esc="st.state"/>: <b t-esc="st.count"/></span>
+                        </t>
+                    </div>
+                    <t t-if="!state.data.vehicles.rows.length">
+                        <div class="o_mfo_empty">Машин бүртгэгдээгүй.</div>
+                    </t>
+                    <table t-else="" class="o_mfo_table">
+                        <thead>
+                            <tr><th>Машин</th><th>Улсын дугаар</th><th>Жолооч</th><th>Төлөв</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="state.data.vehicles.rows" t-as="v" t-key="v.id">
+                                <td t-esc="v.name"/>
+                                <td t-esc="v.plate"/>
+                                <td t-esc="v.driver"/>
+                                <td t-esc="v.state"/>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+        </t>
+    </div>
+</t>
+
+</templates>

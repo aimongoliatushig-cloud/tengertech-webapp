@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- OWL client action. Tree/list биш — бүрэн client-side компонент. -->
+    <record id="action_mfo_dashboard" model="ir.actions.client">
+        <field name="name">Хянах самбар</field>
+        <field name="tag">mfo_dashboard</field>
+    </record>
+
+    <!-- "Хог тээвэрлэлт" меню дор ХАМГИЙН ЭХЭНД (sequence 5 < Маршрут 10).
+         Одоо байгаа менюнүүдийг огт өөрчлөхгүй, зөвхөн нэмж байна. -->
+    <menuitem id="menu_mfo_dashboard"
+              name="Хянах самбар"
+              parent="menu_mfo_root"
+              action="action_mfo_dashboard"
+              sequence="5"
+              groups="municipal_field_ops.group_mfo_manager,municipal_field_ops.group_mfo_dispatcher,municipal_field_ops.group_mfo_inspector,municipal_field_ops.group_mfo_mobile_user,municipal_field_ops.group_mfo_driver,municipal_field_ops.group_mfo_loader"/>
+</odoo>
