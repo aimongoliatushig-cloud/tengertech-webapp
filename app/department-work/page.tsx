@@ -21,7 +21,7 @@ import {
   requireSession,
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
-import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
+import { filterByDepartment, getTodayDateKey, isDirectiveTaskProject } from "@/lib/dashboard-scope";
 import { DEPARTMENT_GROUPS, matchesDepartmentGroup } from "@/lib/department-groups";
 import { loadMunicipalSnapshot, type DashboardSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
 
@@ -178,8 +178,13 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
   }
 
   const todayKey = getTodayDateKey();
+  // Хэлтэст хязгаарлагдсан хэрэглэгч (хэлтсийн дарга)-д захирал/менежерийн
+  // "үүрэг даалгавар" төрлийн директив төслийг харуулахгүй — эдгээр нь бүх
+  // хэлтэст тарсан дээрээс өгсөн даалгавар. Удирдлага (scope-гүй) хэвээр харна.
   const scopedTasks = scopedDepartmentName
-    ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
+    ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName).filter(
+        (task) => !isDirectiveTaskProject(task.projectName),
+      )
     : snapshot.taskDirectory;
 
   // When a department is selected, scope to it and group by project (ажил);

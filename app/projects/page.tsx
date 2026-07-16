@@ -20,7 +20,7 @@ import {
   getSessionRoleLabel,
 } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
-import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
+import { filterByDepartment, getTodayDateKey, isDirectiveTaskProject } from "@/lib/dashboard-scope";
 import {
   findDepartmentGroupByName,
   findDepartmentGroupByUnit,
@@ -643,6 +643,11 @@ async function ProjectsPageContent({
   }
 
   let scopedProjects = snapshot.projects.filter((project) => {
+    // Хэлтэст хязгаарлагдсан хэрэглэгчид захирал/менежерийн директив төслийг
+    // харуулахгүй (удирдлага хэвээр харна).
+    if (departmentScopedMode && isDirectiveTaskProject(project.name)) {
+      return false;
+    }
     const projectSearchText =
       `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`;
 
@@ -687,6 +692,9 @@ async function ProjectsPageContent({
     return right.completion - left.completion;
   });
   let scopedTasks = snapshot.taskDirectory.filter((task) => {
+    if (departmentScopedMode && isDirectiveTaskProject(task.projectName)) {
+      return false;
+    }
     if (selectedUnit) {
       return matchesUnitScope(
         selectedUnit,
