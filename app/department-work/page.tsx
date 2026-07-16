@@ -275,7 +275,10 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
         </Link>
       ) : null}
 
-      <section className={styles.summary}>
+      <section
+        className={styles.summary}
+        style={{ gridTemplateColumns: `repeat(${summary.length}, minmax(0, 1fr))` }}
+      >
         {summary.map((item) => {
           const Icon = item.icon;
           return (
