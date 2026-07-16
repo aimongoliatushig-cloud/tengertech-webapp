@@ -25,6 +25,7 @@ import {
   PlusCircle,
   Settings,
   ShoppingCart,
+  Trash2,
   Truck,
   Users,
   Wrench,
@@ -64,6 +65,7 @@ type MenuKey =
   | "employees"
   | "department-work"
   | "auto-base"
+  | "auto-base-board"
   | "fleet-repair"
   | "hr"
   | "field"
@@ -656,6 +658,18 @@ export function AppMenu({
     ? [hrMenuItem]
     : [];
 
+  // Авто бааз, хог тээвэрлэлтийн хэлтэс — дэд цэстэй (самбар + хогийн цэг).
+  const autoBaseMenuItem: MenuItem = {
+    key: "auto-base",
+    href: "/auto-base",
+    label: "Авто бааз",
+    icon: Truck,
+    children: [
+      { key: "auto-base-board", href: "/auto-base", label: "Самбар", icon: Truck },
+      { key: "garbage-points", href: "/waste-points", label: "Хогийн цэг", icon: Trash2 },
+    ],
+  };
+
   const roleFocusedItems: MenuItem[] = [
     ...(procurementWorkerMode
       ? [
@@ -726,16 +740,7 @@ export function AppMenu({
     ...hrItems,
     ...roleFocusedItems,
     ...departmentItems,
-    ...(canOpenAutoBase
-      ? [
-          {
-            key: "auto-base",
-            href: "/auto-base",
-            label: "Авто бааз",
-            icon: Truck,
-          },
-        ]
-      : []),
+    ...(canOpenAutoBase ? [autoBaseMenuItem] : []),
     ...(!workerMode || canCreateTasks
       ? [
           {
@@ -944,12 +949,7 @@ export function AppMenu({
         label: "Ажил",
         icon: ListChecks,
       },
-      {
-        key: "auto-base",
-        href: "/auto-base",
-        label: "Авто бааз",
-        icon: Truck,
-      },
+      autoBaseMenuItem,
       {
         key: "reports",
         href: "/reports",
@@ -991,16 +991,7 @@ export function AppMenu({
       ...(canShowHrMenu
         ? [hrMenuItem]
         : []),
-      ...(scopedDepartmentIsAutoGarbage
-        ? [
-            {
-              key: "auto-base",
-              href: "/auto-base",
-              label: "Авто бааз",
-              icon: Truck,
-            },
-          ]
-        : []),
+      ...(scopedDepartmentIsAutoGarbage ? [autoBaseMenuItem] : []),
       ...(showReports
         ? [
             {
@@ -1222,6 +1213,12 @@ export function AppMenu({
     }
     if (item.key === "reports-fleet") {
       return active === "reports-fleet" || pathname.startsWith("/reports/fleet");
+    }
+    if (item.key === "auto-base-board") {
+      return active === "auto-base" || pathname === "/auto-base";
+    }
+    if (item.key === "garbage-points") {
+      return active === "garbage-points" || pathname.startsWith("/waste-points");
     }
     if (item.key === "hr-dashboard") {
       return pathname === "/hr";

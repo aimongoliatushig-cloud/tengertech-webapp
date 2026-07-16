@@ -1,0 +1,515 @@
+.page {
+  display: grid;
+  gap: 18px;
+}
+
+/* --- Дэд навигаци --- */
+.subNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subNavLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line-soft, #e2e8f0);
+  background: var(--surface-panel, #fff);
+  color: var(--ink-900, #0f172a);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.subNavLinkActive {
+  background: var(--brand-700, #16a34a);
+  border-color: var(--brand-700, #16a34a);
+  color: #fff;
+}
+
+/* --- Статистик картууд --- */
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.stat {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--surface-panel, #fff);
+  border: 1px solid var(--line-soft, #e2e8f0);
+}
+
+.statIcon {
+  color: var(--brand-700, #16a34a);
+}
+
+.statValue {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-900, #0f172a);
+}
+
+.statLabel {
+  font-size: 12.5px;
+  color: var(--ink-500, #64748b);
+}
+
+.stat.ok {
+  background: rgba(74, 154, 93, 0.08);
+  border-color: rgba(74, 154, 93, 0.18);
+}
+.stat.ok .statValue,
+.stat.ok .statIcon {
+  color: #0f6e56;
+}
+.stat.warn {
+  background: #faeeda;
+  border-color: rgba(186, 117, 23, 0.22);
+}
+.stat.warn .statValue,
+.stat.warn .statIcon {
+  color: #854f0b;
+}
+.stat.danger {
+  background: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.2);
+}
+.stat.danger .statValue,
+.stat.danger .statIcon {
+  color: #b91c1c;
+}
+
+/* --- Хэсэг --- */
+.card {
+  border: 1px solid var(--line-soft, #e2e8f0);
+  border-radius: 14px;
+  background: var(--surface-panel, #fff);
+  padding: 16px;
+}
+
+.cardHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cardHead h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-900, #0f172a);
+}
+
+.cardHead small {
+  font-size: 12.5px;
+  color: var(--ink-500, #64748b);
+}
+
+/* --- Хуваарилалтын мөр (bar) --- */
+.breakdown {
+  display: grid;
+  gap: 9px;
+}
+
+.breakdownRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 3fr 44px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line-soft, #eef2f7);
+  overflow: hidden;
+}
+
+.barFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--brand-700, #16a34a);
+}
+
+.barCount {
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.khorooGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px;
+}
+
+.khorooChip {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line-soft, #e2e8f0);
+  background: var(--surface-page, #f8fafc);
+  text-decoration: none;
+  color: inherit;
+}
+
+.khorooChip span {
+  font-size: 11.5px;
+  color: var(--ink-500, #64748b);
+}
+
+.khorooChip strong {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Шүүлт --- */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.field {
+  display: grid;
+  gap: 5px;
+}
+
+.field span {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-500, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.field input,
+.field select {
+  min-width: 150px;
+  padding: 8px 11px;
+  border: 1px solid var(--line-soft, #d9e0ea);
+  border-radius: 9px;
+  background: var(--surface-panel, #fff);
+  color: var(--ink-900, #0f172a);
+  font-size: 13.5px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 15px;
+  border-radius: 9px;
+  border: 1px solid var(--line-soft, #d9e0ea);
+  background: var(--surface-panel, #fff);
+  color: var(--ink-900, #0f172a);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.buttonPrimary {
+  background: var(--brand-700, #16a34a);
+  border-color: var(--brand-700, #16a34a);
+  color: #fff;
+}
+
+/* --- Хүснэгт --- */
+.tableScroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1080px;
+}
+
+.table th,
+.table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line-soft, #eef2f7);
+  text-align: left;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.table thead th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink-500, #64748b);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.table tbody tr:hover {
+  background: var(--surface-page, #f8fafc);
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pillOk {
+  background: rgba(74, 154, 93, 0.14);
+  color: #0f6e56;
+}
+.pillWarn {
+  background: #faeeda;
+  color: #854f0b;
+}
+.pillDanger {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+}
+.pillMuted {
+  background: var(--line-soft, #eef2f7);
+  color: var(--ink-500, #64748b);
+}
+.pillBlue {
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+.pillGreen {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+}
+.pillRed {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+}
+
+.fillCell {
+  display: grid;
+  gap: 3px;
+  min-width: 92px;
+}
+
+.fillCell small {
+  font-size: 11px;
+  color: var(--ink-500, #64748b);
+  font-variant-numeric: tabular-nums;
+}
+
+.qrThumb {
+  width: 34px;
+  height: 34px;
+  border-radius: 5px;
+  border: 1px solid var(--line-soft, #e2e8f0);
+  background: #fff;
+  display: block;
+}
+
+.rowActions {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.iconLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line-soft, #e2e8f0);
+  background: var(--surface-panel, #fff);
+  color: var(--ink-900, #0f172a);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.iconLink:hover {
+  border-color: var(--brand-700, #16a34a);
+  color: var(--brand-700, #16a34a);
+}
+
+/* --- Хуудаслалт --- */
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.paginationInfo {
+  font-size: 12.5px;
+  color: var(--ink-500, #64748b);
+}
+
+.paginationLinks {
+  display: flex;
+  gap: 6px;
+}
+
+.pageLink {
+  min-width: 32px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--line-soft, #e2e8f0);
+  background: var(--surface-panel, #fff);
+  color: var(--ink-900, #0f172a);
+  font-size: 13px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.pageLinkActive {
+  background: var(--brand-700, #16a34a);
+  border-color: var(--brand-700, #16a34a);
+  color: #fff;
+  font-weight: 700;
+}
+
+.pageLinkDisabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--ink-500, #64748b);
+  font-size: 13.5px;
+}
+
+/* --- Дэлгэрэнгүй --- */
+.detailGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .detailGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.defList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.defItem {
+  display: grid;
+  gap: 3px;
+}
+
+.defItem span {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-500, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.defItem strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-900, #0f172a);
+  word-break: break-word;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--brand-900, #14532d);
+  font-weight: 600;
+  font-size: 13.5px;
+  text-decoration: none;
+  justify-self: start;
+}
+
+/* --- QR --- */
+.qrCard {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  text-align: center;
+}
+
+.qrImage {
+  width: 100%;
+  max-width: 220px;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  border: 1px solid var(--line-soft, #e2e8f0);
+  background: #fff;
+  padding: 8px;
+}
+
+.qrActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.qrCode {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-900, #0f172a);
+}
+
+/* --- Ажил үүсгэх --- */
+.taskForm {
+  display: grid;
+  gap: 10px;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  border-radius: 11px;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.toastOk {
+  background: color-mix(in srgb, #16a34a 12%, transparent);
+  color: #15803d;
+  border: 1px solid color-mix(in srgb, #16a34a 30%, transparent);
+}
+
+.toastError {
+  background: color-mix(in srgb, #dc2626 12%, transparent);
+  color: #b91c1c;
+  border: 1px solid color-mix(in srgb, #dc2626 30%, transparent);
+}
