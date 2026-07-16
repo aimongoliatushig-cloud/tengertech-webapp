@@ -107,7 +107,6 @@ type TaskRecord = {
   ops_allowed_unit_summary?: string | false;
   priority: string;
   date_deadline: string | false;
-  mfo_planned_start?: string | false;
   mfo_shift_date?: string | false;
   mfo_vehicle_id?: Relation;
   mfo_driver_employee_id?: Relation;
@@ -131,7 +130,8 @@ type ReportRecord = {
   task_id?: Relation;
   reporter_id: Relation;
   report_datetime: string;
-  report_text: string;
+  /** ops.task.report дээр байхгүй (хуучин нэр) — report_summary ашиглана. */
+  report_text?: string;
   report_summary: string | false;
   reported_quantity: number;
   image_count: number;
@@ -4159,7 +4159,6 @@ export async function loadProjectDetail(
         "ops_measurement_unit_id",
         "mfo_operation_type",
         "date_deadline",
-        "mfo_planned_start",
         "state",
         "mfo_state",
         "ops_reports_locked",
@@ -4198,7 +4197,6 @@ export async function loadProjectDetail(
         "task_id",
         "reporter_id",
         "report_datetime",
-        "report_text",
         "report_summary",
         "reported_quantity",
         "image_count",
@@ -4360,7 +4358,7 @@ export async function loadProjectDetail(
       progress: quantitySnapshot.progress,
       deadline: formatDateOnlyLabel(task.date_deadline),
       deadlineValue: formatDateInput(task.date_deadline),
-      startDateValue: formatDateInput(task.mfo_planned_start || false),
+      startDateValue: "",
       teamLeaderId: relationId(task.ops_team_leader_id),
       teamLeaderName: relationName(task.ops_team_leader_id, "Сонгоогүй"),
       teamLeaderJobTitle:
@@ -4587,7 +4585,6 @@ export async function loadTaskDetail(
       [
         "reporter_id",
         "report_datetime",
-        "report_text",
         "report_summary",
         "reported_quantity",
         "image_count",
@@ -4970,7 +4967,7 @@ export async function loadTaskDetail(
     state: task.state,
     deadline: formatDateOnlyLabel(task.date_deadline),
     deadlineValue: formatDateInput(task.date_deadline),
-    startDateValue: formatDateInput(task.mfo_planned_start || false),
+    startDateValue: "",
     scheduledDate: formatDateInput(task.mfo_shift_date || task.date_deadline),
     measurementUnit: formatMeasurementUnit(
       task.ops_measurement_unit_id,
@@ -6082,9 +6079,9 @@ export async function createWorkspaceTask(
   if (input.deadline) {
     optionalValues.date_deadline = input.deadline;
   }
-  if (input.startDate) {
-    optionalValues.mfo_planned_start = dateInputToOdooDatetime(input.startDate);
-  }
+  // startDate нь project.task дээр хадгалагдах талбаргүй (хуучин mfo_planned_start
+  // одоогийн municipal_field_ops-д байхгүй). Төлөвлөсөн огноог mfo_shift_date
+  // (shiftDate) эсвэл date_deadline-аар бүртгэнэ.
   if (input.measurementUnitId) {
     optionalValues.ops_measurement_unit_id = input.measurementUnitId;
   }
@@ -6204,9 +6201,7 @@ export async function updateWorkspaceTask(
   if (input.crewTeamId !== undefined) {
     values.mfo_crew_team_id = input.crewTeamId || false;
   }
-  if (input.startDate !== undefined) {
-    values.mfo_planned_start = input.startDate ? dateInputToOdooDatetime(input.startDate) : false;
-  }
+  // startDate-д харгалзах талбар project.task дээр байхгүй (дээрх тайлбарыг үз).
   if (typeof input.deadline === "string") {
     values.date_deadline = input.deadline || false;
   }

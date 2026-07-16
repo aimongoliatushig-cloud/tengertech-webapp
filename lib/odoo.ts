@@ -133,7 +133,7 @@ type OdooUserRecord = {
   name: string;
   login: string;
   ops_user_type?: string | false;
-  groups_id?: number[];
+  group_ids?: number[];
 };
 
 type OdooAuthEmployeeRecord = {
@@ -628,11 +628,11 @@ async function readUserGroupXmlIds(
   user: OdooUserRecord,
   connection: OdooConnection,
 ) {
-  if (!Array.isArray(user.groups_id)) {
+  if (!Array.isArray(user.group_ids)) {
     return null;
   }
 
-  const directGroupIds = user.groups_id;
+  const directGroupIds = user.group_ids;
   if (!directGroupIds.length) {
     return new Set<string>();
   }
@@ -2150,7 +2150,6 @@ const REPORT_FIELD_VARIANTS: string[][] = [
     "task_id",
     "reporter_id",
     "report_datetime",
-    "report_text",
     "report_summary",
     "reported_quantity",
     "state",
@@ -2166,7 +2165,6 @@ const REPORT_FIELD_VARIANTS: string[][] = [
     "task_id",
     "reporter_id",
     "report_datetime",
-    "report_text",
     "report_summary",
     "reported_quantity",
     "state",
@@ -2180,7 +2178,6 @@ const REPORT_FIELD_VARIANTS: string[][] = [
     "task_id",
     "reporter_id",
     "report_datetime",
-    "report_text",
     "report_summary",
     "reported_quantity",
     "state",
@@ -2192,7 +2189,6 @@ const REPORT_FIELD_VARIANTS: string[][] = [
     "task_id",
     "reporter_id",
     "report_datetime",
-    "report_text",
     "report_summary",
     "reported_quantity",
     "state",
@@ -3785,10 +3781,10 @@ export async function authenticateOdooUser(
     "name",
     "login",
     "ops_user_type",
-    "groups_id",
+    "group_ids",
   ])
     .catch(() => readAuthenticatedUser(["name", "login", "ops_user_type"]))
-    .catch(() => readAuthenticatedUser(["name", "login", "groups_id"]))
+    .catch(() => readAuthenticatedUser(["name", "login", "group_ids"]))
     .catch(() => readAuthenticatedUser(["name", "login"]));
 
   const user = users[0];
@@ -6714,7 +6710,7 @@ async function fetchLiveSnapshot(
         task && Array.isArray(task.project_id) ? task.project_id[0] : null,
       projectName: task ? relationName(task.project_id) : "Ажилгүй",
       summary: htmlToPlainText(report.report_summary) || "Тайлбар оруулаагүй",
-      text: htmlToPlainText(report.report_text),
+      text: htmlToPlainText(report.report_text || report.report_summary),
       state: String(report.state || ""),
       stateLabel: reportStateLabel(report.state),
       stateBucket: reportStateBucket(report.state),

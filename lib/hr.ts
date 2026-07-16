@@ -44,7 +44,7 @@ type CurrentUserRecord = {
   id: number;
   name?: string;
   login?: string;
-  groups_id?: number[];
+  group_ids?: number[];
   ops_user_type?: string | false;
   x_role_key?: string | false;
   x_hr_role?: string | false;
@@ -1473,7 +1473,7 @@ async function readCurrentEmployee(session: AppSession) {
 }
 
 async function readCurrentUser(session: AppSession) {
-  const desiredFields = ["name", "login", "groups_id", "ops_user_type", "x_role_key", "x_hr_role"];
+  const desiredFields = ["name", "login", "group_ids", "ops_user_type", "x_role_key", "x_hr_role"];
   return searchReadFirstWithFieldFallback<CurrentUserRecord>(
     "res.users",
     [["id", "=", session.uid]],
@@ -1563,7 +1563,7 @@ export async function getHrAccessProfile(session: AppSession) {
   }
 
   const [employee, user] = await Promise.all([readCurrentEmployee(session), readCurrentUser(session)]);
-  const groupNames = await readGroupNames(user?.groups_id ?? [], session);
+  const groupNames = await readGroupNames(user?.group_ids ?? [], session);
 
   const jobName = getHrJobTitleDisplayName(employee?.name || session.name, getRelationName(employee?.job_id) || employee?.job_title);
   const departmentName = getRelationName(employee?.department_id);

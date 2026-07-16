@@ -146,7 +146,7 @@ async function loadUsersFromGroups(groupIds: number[]) {
   const users = await executeOdooKw<UserIdRecord[]>(
     "res.users",
     "search_read",
-    [[["active", "=", true], ["groups_id", "in", groupIds]]],
+    [[["active", "=", true], ["group_ids", "in", groupIds]]],
     { fields: ["id"], limit: 300 },
   ).catch((error) => {
     console.warn("HR reviewer users could not be loaded:", error);
