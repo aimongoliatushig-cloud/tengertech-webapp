@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getMockWastePoints } from "./mock-data";
+import { fetchWastePointsFromApi } from "./api";
 import {
   WASTE_STATUS_LABELS,
   WASTE_TYPE_LABELS,
@@ -11,34 +11,29 @@ import {
 } from "./types";
 
 // --- Repository давхарга ---------------------------------------------------
-// Одоогоор mock эх сурвалж. Бодит API-д шилжихэд зөвхөн энэ давхаргыг солино:
-//   const res = await fetch(`${process.env.WASTE_POINTS_API_URL}/api/waste-points?companyId=${companyId}&limit=5000`, {...});
-//   return (await res.json()) as WastePoint[];
-// UI/сервисийн бусад код хэвээр ажиллана.
+// Эх сурвалж: Smart Clean UB API (mock ашиглахгүй). Нэг хүсэлтийн явцад олон
+// хэсэг (жагсаалт + сонголтууд) дууддаг тул богино хугацааны кэштэй.
+
+const CACHE_TTL_MS = 60_000;
+let cache: { at: number; data: WastePoint[] } | null = null;
+let inflight: Promise<WastePoint[]> | null = null;
 
 async function fetchAllWastePoints(): Promise<WastePoint[]> {
-  const apiUrl = process.env.WASTE_POINTS_API_URL;
-  const companyId = process.env.WASTE_POINTS_COMPANY_ID;
-  if (apiUrl && companyId) {
-    try {
-      const res = await fetch(
-        `${apiUrl.replace(/\/$/, "")}/api/waste-points?companyId=${encodeURIComponent(companyId)}&limit=5000`,
-        {
-          headers: process.env.WASTE_POINTS_API_TOKEN
-            ? { Authorization: `Bearer ${process.env.WASTE_POINTS_API_TOKEN}` }
-            : undefined,
-          cache: "no-store",
-        },
-      );
-      if (res.ok) {
-        const data = (await res.json()) as WastePoint[];
-        if (Array.isArray(data)) return data;
-      }
-    } catch (error) {
-      console.warn("Waste points API unavailable, falling back to mock:", error);
-    }
+  if (cache && Date.now() - cache.at < CACHE_TTL_MS) {
+    return cache.data;
   }
-  return getMockWastePoints();
+  if (inflight) {
+    return inflight;
+  }
+  inflight = fetchWastePointsFromApi()
+    .then((data) => {
+      cache = { at: Date.now(), data };
+      return data;
+    })
+    .finally(() => {
+      inflight = null;
+    });
+  return inflight;
 }
 
 // --- Сервисийн давхарга ----------------------------------------------------
@@ -143,9 +138,9 @@ export async function getAllWastePointsFiltered(q: WastePointQuery = {}): Promis
   return applySort(applyFilters(all, q), q.sort);
 }
 
-export async function getWastePointById(id: number): Promise<WastePoint | null> {
+export async function getWastePointById(id: string): Promise<WastePoint | null> {
   const all = await fetchAllWastePoints();
-  return all.find((p) => p.id === id) ?? null;
+  return all.find((p) => p.id === id || p.code === id) ?? null;
 }
 
 export function getKhorooOptions(all: WastePoint[]): string[] {

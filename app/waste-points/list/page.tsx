@@ -18,6 +18,7 @@ import {
 } from "@/lib/waste-points/types";
 
 import { requireWasteAccess } from "../access";
+import { WasteApiError } from "../api-error";
 import { WasteShell } from "../waste-shell";
 import { WasteSubNav } from "../waste-sub-nav";
 import styles from "../waste-points.module.css";
@@ -63,11 +64,30 @@ export default async function WastePointsListPage({ searchParams }: PageProps) {
   const page = Number(firstParam(params.page)) || 1;
 
   const query = { search, type, khoroo, status, sort, page, pageSize: 20 };
-  const [result, allPoints] = await Promise.all([
-    listWastePoints(query),
-    getAllWastePointsFiltered({}),
-  ]);
-  const khorooOptions = getKhorooOptions(allPoints);
+  let result: Awaited<ReturnType<typeof listWastePoints>>;
+  let khorooOptions: string[];
+  try {
+    const [listResult, allPoints] = await Promise.all([
+      listWastePoints(query),
+      getAllWastePointsFiltered({}),
+    ]);
+    result = listResult;
+    khorooOptions = getKhorooOptions(allPoints);
+  } catch (error) {
+    return (
+      <WasteShell
+        session={session}
+        scopedDepartmentName={scopedDepartmentName}
+        title="Хогийн цэгийн жагсаалт"
+        subtitle="Хайлт, шүүлт, эрэмбэ, Excel экспорт"
+      >
+        <div className={styles.page}>
+          <WasteSubNav active="list" />
+          <WasteApiError error={error} retryHref="/waste-points/list" />
+        </div>
+      </WasteShell>
+    );
+  }
 
   const baseParams = new URLSearchParams();
   if (search) baseParams.set("q", search);

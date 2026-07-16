@@ -1,6 +1,7 @@
 import { canAccessAutoBaseOverview, getSession } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { buildReportWorkbook, type XlsxSection } from "@/lib/report-xlsx";
+import { WastePointsApiError } from "@/lib/waste-points/api";
 import { getAllWastePointsFiltered, type WastePointSort } from "@/lib/waste-points/service";
 import {
   WASTE_STATUS_LABELS,
@@ -28,13 +29,26 @@ export async function GET(request: Request) {
   }
 
   const sp = new URL(request.url).searchParams;
-  const points = await getAllWastePointsFiltered({
-    search: getParam(sp, "q"),
-    type: (getParam(sp, "type") || "all") as WastePointType | "all",
-    khoroo: getParam(sp, "khoroo") || "all",
-    status: (getParam(sp, "status") || "all") as WastePointStatus | "all",
-    sort: (getParam(sp, "sort") || "code") as WastePointSort,
-  });
+  let points: Awaited<ReturnType<typeof getAllWastePointsFiltered>>;
+  try {
+    points = await getAllWastePointsFiltered({
+      search: getParam(sp, "q"),
+      type: (getParam(sp, "type") || "all") as WastePointType | "all",
+      khoroo: getParam(sp, "khoroo") || "all",
+      status: (getParam(sp, "status") || "all") as WastePointStatus | "all",
+      sort: (getParam(sp, "sort") || "code") as WastePointSort,
+    });
+  } catch (error) {
+    return Response.json(
+      {
+        error:
+          error instanceof WastePointsApiError
+            ? error.friendly
+            : "Хогийн цэгийн мэдээллийг татаж чадсангүй.",
+      },
+      { status: 502 },
+    );
+  }
 
   const sections: XlsxSection[] = [
     {

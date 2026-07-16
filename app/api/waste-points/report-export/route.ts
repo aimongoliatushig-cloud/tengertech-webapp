@@ -3,6 +3,7 @@ import { chromium } from "playwright";
 import { canAccessAutoBaseOverview, getSession } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { buildReportWorkbook, type XlsxSection } from "@/lib/report-xlsx";
+import { WastePointsApiError } from "@/lib/waste-points/api";
 import { buildWasteReport } from "@/lib/waste-points/service";
 import { groupTaskRows, loadWasteTaskRows } from "@/lib/waste-points/task-report";
 import {
@@ -67,10 +68,24 @@ export async function GET(request: Request) {
   };
   const format = getParam(sp, "format") || "excel";
 
-  const [report, taskRows] = await Promise.all([
-    buildWasteReport(query),
-    loadWasteTaskRows({ dateFrom: query.dateFrom, dateTo: query.dateTo }),
-  ]);
+  let report: Awaited<ReturnType<typeof buildWasteReport>>;
+  let taskRows: Awaited<ReturnType<typeof loadWasteTaskRows>>;
+  try {
+    [report, taskRows] = await Promise.all([
+      buildWasteReport(query),
+      loadWasteTaskRows({ dateFrom: query.dateFrom, dateTo: query.dateTo }),
+    ]);
+  } catch (error) {
+    return Response.json(
+      {
+        error:
+          error instanceof WastePointsApiError
+            ? error.friendly
+            : "Тайлангийн мэдээллийг татаж чадсангүй.",
+      },
+      { status: 502 },
+    );
+  }
   const byVehicle = groupTaskRows(taskRows, "vehicle");
   const byDriver = groupTaskRows(taskRows, "driver");
 

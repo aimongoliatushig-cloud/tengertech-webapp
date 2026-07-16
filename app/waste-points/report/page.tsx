@@ -14,6 +14,7 @@ import {
 } from "@/lib/waste-points/types";
 
 import { requireWasteAccess } from "../access";
+import { WasteApiError } from "../api-error";
 import { WasteShell } from "../waste-shell";
 import { WasteSubNav } from "../waste-sub-nav";
 import styles from "../waste-points.module.css";
@@ -43,12 +44,33 @@ export default async function WastePointsReportPage({ searchParams }: PageProps)
   const dateTo = DATE_RE.test(dateToRaw) ? dateToRaw : "";
 
   const query = { type, khoroo, status, dateFrom, dateTo };
-  const [report, allPoints, taskRows] = await Promise.all([
-    buildWasteReport(query),
-    getAllWastePointsFiltered({}),
-    loadWasteTaskRows({ dateFrom, dateTo }),
-  ]);
-  const khorooOptions = getKhorooOptions(allPoints);
+  let report: Awaited<ReturnType<typeof buildWasteReport>>;
+  let khorooOptions: string[];
+  let taskRows: Awaited<ReturnType<typeof loadWasteTaskRows>>;
+  try {
+    const [reportResult, allPoints, tasks] = await Promise.all([
+      buildWasteReport(query),
+      getAllWastePointsFiltered({}),
+      loadWasteTaskRows({ dateFrom, dateTo }),
+    ]);
+    report = reportResult;
+    khorooOptions = getKhorooOptions(allPoints);
+    taskRows = tasks;
+  } catch (error) {
+    return (
+      <WasteShell
+        session={session}
+        scopedDepartmentName={scopedDepartmentName}
+        title="Хогийн цэгийн тайлан"
+        subtitle="Хороо, төрөл, төлөв, огноо, машин, жолоочоор шүүж Excel/PDF гаргана"
+      >
+        <div className={styles.page}>
+          <WasteSubNav active="report" />
+          <WasteApiError error={error} retryHref="/waste-points/report" />
+        </div>
+      </WasteShell>
+    );
+  }
   const byVehicle = groupTaskRows(taskRows, "vehicle");
   const byDriver = groupTaskRows(taskRows, "driver");
 

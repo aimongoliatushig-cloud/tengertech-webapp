@@ -9,6 +9,7 @@ import {
 } from "@/lib/waste-points/types";
 
 import { requireWasteAccess } from "./access";
+import { WasteApiError } from "./api-error";
 import { WasteShell } from "./waste-shell";
 import { WasteSubNav } from "./waste-sub-nav";
 import styles from "./waste-points.module.css";
@@ -21,7 +22,25 @@ function pct(value: number, total: number) {
 
 export default async function WastePointsDashboardPage() {
   const { session, scopedDepartmentName } = await requireWasteAccess();
-  const stats = await getWastePointStats();
+
+  let stats: Awaited<ReturnType<typeof getWastePointStats>>;
+  try {
+    stats = await getWastePointStats();
+  } catch (error) {
+    return (
+      <WasteShell
+        session={session}
+        scopedDepartmentName={scopedDepartmentName}
+        title="Хогийн цэг"
+        subtitle="Авто бааз, хог тээвэрлэлтийн хэлтэс · хогийн цэгийн нэгдсэн хяналт"
+      >
+        <div className={styles.page}>
+          <WasteSubNav active="dashboard" />
+          <WasteApiError error={error} retryHref="/waste-points" />
+        </div>
+      </WasteShell>
+    );
+  }
 
   return (
     <WasteShell
@@ -178,8 +197,8 @@ export default async function WastePointsDashboardPage() {
 
         <p className={styles.paginationInfo}>
           <MapPin size={13} aria-hidden style={{ verticalAlign: "-2px", marginRight: 4 }} />
-          Бүх цэгийг <Link href="/waste-points/map">газрын зураг дээр</Link> харах боломжтой. Одоогийн
-          өгөгдөл нь жишиг (mock) — бодит API холбогдоход автоматаар солигдоно.
+          Бүх цэгийг <Link href="/waste-points/map">газрын зураг дээр</Link> харах боломжтой. Өгөгдлийг
+          Smart Clean UB системээс шууд татаж байна.
         </p>
       </div>
     </WasteShell>

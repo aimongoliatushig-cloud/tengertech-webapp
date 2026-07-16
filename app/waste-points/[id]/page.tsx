@@ -13,6 +13,7 @@ import {
 
 import { requireWasteAccess } from "../access";
 import { createWastePointTaskAction } from "../actions";
+import { WasteApiError } from "../api-error";
 import { QrViewer } from "../qr-viewer";
 import { WasteShell } from "../waste-shell";
 import styles from "../waste-points.module.css";
@@ -42,7 +43,24 @@ function formatDate(iso: string) {
 export default async function WastePointDetailPage({ params, searchParams }: PageProps) {
   const { session, scopedDepartmentName } = await requireWasteAccess();
   const { id } = await params;
-  const point = await getWastePointById(Number(id));
+
+  let point: Awaited<ReturnType<typeof getWastePointById>>;
+  try {
+    point = await getWastePointById(id);
+  } catch (error) {
+    return (
+      <WasteShell
+        session={session}
+        scopedDepartmentName={scopedDepartmentName}
+        title="Хогийн цэг"
+        subtitle="Дэлгэрэнгүй мэдээлэл"
+      >
+        <div className={styles.page}>
+          <WasteApiError error={error} retryHref={`/waste-points/${id}`} />
+        </div>
+      </WasteShell>
+    );
+  }
   if (!point) {
     notFound();
   }

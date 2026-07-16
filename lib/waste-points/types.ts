@@ -8,7 +8,8 @@ export type WastePointType = "collection_point" | "container" | "illegal_dump";
 export type WastePointStatus = "active" | "full" | "maintenance" | "inactive";
 
 export type WastePoint = {
-  id: number;
+  /** API-аас string ирдэг */
+  id: string;
   code: string;
   name: string;
   type: WastePointType;

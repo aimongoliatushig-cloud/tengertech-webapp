@@ -17,9 +17,9 @@ import {
 const WASTE_TASK_PROJECT = "Хогийн цэгийн ажил (2026)";
 const GARBAGE_DEPARTMENT = "Хог тээвэрлэлтийн хэлтэс";
 
-function backPath(pointId: number, status: "notice" | "error", message: string) {
+function backPath(pointId: string, status: "notice" | "error", message: string) {
   const params = new URLSearchParams({ [status]: message });
-  return `/waste-points/${pointId}?${params.toString()}`;
+  return `/waste-points/${encodeURIComponent(pointId)}?${params.toString()}`;
 }
 
 async function resolveDepartmentId(): Promise<number | null> {
@@ -55,7 +55,7 @@ function deadlineFor(taskType: WasteTaskType): string {
 
 export async function createWastePointTaskAction(formData: FormData) {
   const session = await requireSession();
-  const pointId = Number(String(formData.get("point_id") ?? ""));
+  const pointId = String(formData.get("point_id") ?? "").trim();
   const taskTypeRaw = String(formData.get("task_type") ?? "");
   const note = String(formData.get("note") ?? "").trim().slice(0, 500);
 
@@ -65,11 +65,16 @@ export async function createWastePointTaskAction(formData: FormData) {
   }
 
   const taskType = WASTE_TASK_TYPES.find((t) => t.key === taskTypeRaw);
-  if (!Number.isFinite(pointId) || pointId <= 0 || !taskType) {
-    redirect(backPath(pointId || 0, "error", "Мэдээлэл дутуу байна."));
+  if (!pointId || !taskType) {
+    redirect(backPath(pointId, "error", "Мэдээлэл дутуу байна."));
   }
 
-  const point = await getWastePointById(pointId);
+  let point: Awaited<ReturnType<typeof getWastePointById>>;
+  try {
+    point = await getWastePointById(pointId);
+  } catch {
+    redirect(backPath(pointId, "error", "Хогийн цэгийн системтэй холбогдож чадсангүй."));
+  }
   if (!point) {
     redirect(backPath(pointId, "error", "Хогийн цэг олдсонгүй."));
   }
