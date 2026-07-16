@@ -178,8 +178,8 @@ export default async function WastePointsDashboardPage() {
 
         <p className={styles.paginationInfo}>
           <MapPin size={13} aria-hidden style={{ verticalAlign: "-2px", marginRight: 4 }} />
-          Газрын зураг (Leaflet) дараагийн шатанд нэмэгдэнэ. Одоогийн өгөгдөл нь жишиг (mock) —
-          бодит API холбогдоход автоматаар солигдоно.
+          Бүх цэгийг <Link href="/waste-points/map">газрын зураг дээр</Link> харах боломжтой. Одоогийн
+          өгөгдөл нь жишиг (mock) — бодит API холбогдоход автоматаар солигдоно.
         </p>
       </div>
     </WasteShell>
