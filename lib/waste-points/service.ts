@@ -2,6 +2,8 @@ import "server-only";
 
 import { getMockWastePoints } from "./mock-data";
 import {
+  WASTE_STATUS_LABELS,
+  WASTE_TYPE_LABELS,
   fillLevelBucket,
   type WastePoint,
   type WastePointStatus,
@@ -46,6 +48,9 @@ export type WastePointQuery = {
   type?: WastePointType | "all";
   khoroo?: string; // "all" | "5-р хороо"
   status?: WastePointStatus | "all";
+  /** updatedAt-аар шүүх (YYYY-MM-DD) */
+  dateFrom?: string;
+  dateTo?: string;
   sort?: WastePointSort;
   page?: number;
   pageSize?: number;
@@ -80,6 +85,9 @@ function applyFilters(all: WastePoint[], q: WastePointQuery): WastePoint[] {
     if (q.type && q.type !== "all" && p.type !== q.type) return false;
     if (q.status && q.status !== "all" && p.currentStatus !== q.status) return false;
     if (q.khoroo && q.khoroo !== "all" && p.khorooName !== q.khoroo) return false;
+    const updatedDay = p.updatedAt.slice(0, 10);
+    if (q.dateFrom && updatedDay < q.dateFrom) return false;
+    if (q.dateTo && updatedDay > q.dateTo) return false;
     if (search) {
       const hay = `${p.code} ${p.name} ${p.address} ${p.khorooName}`.toLocaleLowerCase("mn-MN");
       if (!hay.includes(search)) return false;
@@ -144,6 +152,80 @@ export function getKhorooOptions(all: WastePoint[]): string[] {
   return Array.from(new Set(all.map((p) => p.khorooName))).sort(
     (a, b) => khorooNumber(a) - khorooNumber(b),
   );
+}
+
+// --- Тайлангийн агрегац ----------------------------------------------------
+
+export type WasteReportGroup = {
+  key: string;
+  label: string;
+  count: number;
+  avgFill: number;
+  fullCount: number;
+  capacity: number;
+};
+
+export type WasteReport = {
+  points: WastePoint[];
+  total: number;
+  avgFill: number;
+  fullCount: number;
+  totalCapacity: number;
+  byKhoroo: WasteReportGroup[];
+  byType: WasteReportGroup[];
+  byStatus: WasteReportGroup[];
+};
+
+function groupBy(
+  points: WastePoint[],
+  keyOf: (p: WastePoint) => string,
+  labelOf: (key: string) => string,
+  sortKeys?: (a: WasteReportGroup, b: WasteReportGroup) => number,
+): WasteReportGroup[] {
+  const map = new Map<string, WastePoint[]>();
+  for (const p of points) {
+    const key = keyOf(p);
+    const bucket = map.get(key);
+    if (bucket) bucket.push(p);
+    else map.set(key, [p]);
+  }
+  const groups = [...map.entries()].map(([key, list]) => ({
+    key,
+    label: labelOf(key),
+    count: list.length,
+    avgFill: list.length
+      ? Math.round(list.reduce((sum, p) => sum + p.currentFillLevel, 0) / list.length)
+      : 0,
+    fullCount: list.filter((p) => p.currentStatus === "full").length,
+    capacity: list.reduce((sum, p) => sum + p.capacity, 0),
+  }));
+  return sortKeys ? groups.sort(sortKeys) : groups.sort((a, b) => b.count - a.count);
+}
+
+export async function buildWasteReport(q: WastePointQuery = {}): Promise<WasteReport> {
+  const points = await getAllWastePointsFiltered(q);
+  const total = points.length;
+  return {
+    points,
+    total,
+    avgFill: total
+      ? Math.round(points.reduce((sum, p) => sum + p.currentFillLevel, 0) / total)
+      : 0,
+    fullCount: points.filter((p) => p.currentStatus === "full").length,
+    totalCapacity: points.reduce((sum, p) => sum + p.capacity, 0),
+    byKhoroo: groupBy(
+      points,
+      (p) => p.khorooName,
+      (k) => k,
+      (a, b) => khorooNumber(a.key) - khorooNumber(b.key),
+    ),
+    byType: groupBy(points, (p) => p.type, (k) => WASTE_TYPE_LABELS[k as WastePointType] ?? k),
+    byStatus: groupBy(
+      points,
+      (p) => p.currentStatus,
+      (k) => WASTE_STATUS_LABELS[k as WastePointStatus] ?? k,
+    ),
+  };
 }
 
 export type WastePointStats = {
