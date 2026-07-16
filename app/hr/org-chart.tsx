@@ -234,7 +234,28 @@ export function DepartmentStructureCard({
   );
 }
 
-export function OrgChart({ jobCounts }: { jobCounts: HrDepartmentJobCounts[] }) {
+export function OrgChart({
+  jobCounts,
+  scopedDepartmentName = null,
+}: {
+  jobCounts: HrDepartmentJobCounts[];
+  scopedDepartmentName?: string | null;
+}) {
+  // Хэлтсийн дарга гэх мэт нэг хэлтэст хязгаарлагдсан хэрэглэгчид зөвхөн өөрийн
+  // хэлтсийн бүтцийг харуулна (удирдлагын дээд шатны spine-г нуух). Бүх хэлтэс
+  // харах эрхтэй (ХН/удирдлага) хэрэглэгчид бүрэн бүтцийг харна.
+  const scopedDept = scopedDepartmentName ? findOrgDepartment(scopedDepartmentName) : null;
+
+  if (scopedDept) {
+    return (
+      <div className={styles.orgChart}>
+        <div className={styles.orgDepartments}>
+          <DepartmentStructureCard key={scopedDept.key} dept={scopedDept} jobCounts={jobCounts} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.orgChart}>
       <div className={styles.orgSpine}>

@@ -3,6 +3,7 @@ import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
 import { getDepartmentJobCounts, getDisciplineRecords, getEmployees, getHeadcountTrend, getTimeoffDashboard, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
+import { loadSessionDepartmentName } from "@/lib/access-scope";
 
 import { HrDashboardClient } from "./hr-dashboard-client";
 import { HR_NOTIFICATION_HREF } from "./constants";
@@ -44,6 +45,9 @@ export default async function HrDashboardPage() {
     }),
   ]);
   const mode: "hr" | "department" = access.scope === "hr" ? "hr" : "department";
+  // Хэлтэст хязгаарлагдсан хэрэглэгч (хэлтсийн дарга)-д байгууллагын бүтцийг
+  // зөвхөн өөрийн хэлтсээр харуулна. Бүх ХН харах эрхтэйд null → бүрэн бүтэц.
+  const scopedDepartmentName = mode === "department" ? await loadSessionDepartmentName(session) : null;
   const requestCards = timeoffDashboard?.cards;
 
   return (
@@ -67,6 +71,7 @@ export default async function HrDashboardPage() {
         disciplineRecords={disciplineRecords}
         departmentJobCounts={departmentJobCounts}
         headcountTrend={headcountTrend}
+        scopedDepartmentName={scopedDepartmentName}
       />
     </>
   );

@@ -525,6 +525,7 @@ export function HrDashboardClient({
   disciplineRecords = [],
   departmentJobCounts = [],
   headcountTrend = [],
+  scopedDepartmentName = null,
 }: {
   accessMode: "hr" | "department";
   employees: HrEmployeeDirectoryItem[];
@@ -533,6 +534,7 @@ export function HrDashboardClient({
   disciplineRecords?: HrDisciplineRecord[];
   departmentJobCounts?: HrDepartmentJobCounts[];
   headcountTrend?: HrHeadcountTrendPoint[];
+  scopedDepartmentName?: string | null;
 }) {
   const router = useRouter();
   const [trialActionEmployeeId, setTrialActionEmployeeId] = useState<number | null>(null);
@@ -986,7 +988,7 @@ export function HrDashboardClient({
               <p>Батлагдсан орон тоо ба бодит томилолт. Албан тушаал бүрийн бодит/орон тоог Odoo-гоос амьдаар харьцуулна.</p>
             </div>
           </header>
-          <OrgChart jobCounts={departmentJobCounts} />
+          <OrgChart jobCounts={departmentJobCounts} scopedDepartmentName={scopedDepartmentName} />
         </section>
       ) : null}
     </>
