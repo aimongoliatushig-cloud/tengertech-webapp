@@ -255,6 +255,18 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
     return `/department-work${queryString ? `?${queryString}` : ""}`;
   };
 
+  // Хянах самбарын хэлтсийн картан дээр харагддаг гүйцэтгэлийн хэсэг —
+  // дарж ортол алга болдог байсныг энд мөн үзүүлнэ (ижил тооцоолол).
+  const doneCount = baseTasks.filter(isTaskDone).length;
+  const riskyCount = baseTasks.filter(
+    (task) => isTaskOverdue(task, todayKey) || isTaskReview(task),
+  ).length;
+  const overallProgress = baseTasks.length
+    ? Math.round(
+        baseTasks.reduce((sum, task) => sum + (task.progress || 0), 0) / baseTasks.length,
+      )
+    : 0;
+
   // Нэгтгэл + статусын шүүлтийг нэг эгнээ, адил хэмжээтэй, дарж болох карт болгов.
   // Карт бүр дээр дарахад тухайн шүүлт рүү шилжинэ.
   const statCards: Array<{
@@ -311,6 +323,26 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
           );
         })}
       </section>
+
+      {baseTasks.length ? (
+        <section className={styles.progressCard}>
+          <div className={styles.progressHead}>
+            <span>Ажлын гүйцэтгэл</span>
+            <strong>{overallProgress}%</strong>
+          </div>
+          <div className={styles.progressTrack}>
+            <span className={styles.progressFill} style={{ width: `${overallProgress}%` }} />
+          </div>
+          <div className={styles.progressFoot}>
+            <span>
+              Хийгдсэн ажил <b>{doneCount} / {baseTasks.length}</b>
+            </span>
+            {riskyCount ? (
+              <span className={styles.progressRisky}>{riskyCount} анхаарах</span>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       {departments.length ? (
         <section className={styles.list}>
