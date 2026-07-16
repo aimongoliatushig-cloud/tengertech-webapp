@@ -117,6 +117,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
 
   const shell = (content: React.ReactNode) => (
     <main className={shellStyles.shell}>
@@ -136,6 +137,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
               groupFlags={session.groupFlags}
               masterMode={masterMode}
               workerMode={workerMode}
+              departmentScopeName={scopedDepartmentName}
               notificationCount={0}
             />
           </aside>
@@ -160,7 +162,6 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
   );
 
   let snapshot: DashboardSnapshot;
-  const scopedDepartmentName = await loadSessionDepartmentName(session);
   try {
     snapshot = await loadMunicipalSnapshot(
       { login: session.login, password: session.password },
