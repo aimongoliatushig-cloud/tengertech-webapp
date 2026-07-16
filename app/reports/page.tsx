@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   CheckCircle2,
+  ClipboardCheck,
   ClipboardList,
   Download,
   Eye,
@@ -50,6 +51,7 @@ import {
 import { isReportPlanningSpecialist, type RoleGroupFlags } from "@/lib/roles";
 
 import { ReportPeriodBar } from "@/app/_components/report-period-bar";
+import { canManageEvaluation } from "./evaluation/access";
 import styles from "./reports.module.css";
 
 type PageProps = {
@@ -279,6 +281,7 @@ export const dynamic = "force-dynamic";
 export default async function ReportsPage({ searchParams }: PageProps) {
   const session = await requireSession();
   const canViewAllReports = canViewAllWorkspaceReports(session);
+  const canManageEval = canManageEvaluation(session);
   const reportOnlyMode = session.role === "report_specialist" || isReportPlanningSpecialist(session);
   const workerMode = isWorkerOnly(session);
   const reportRoleLabel = getSessionRoleLabel(session).toLocaleLowerCase("mn-MN");
@@ -621,6 +624,16 @@ export default async function ReportsPage({ searchParams }: PageProps) {
               notificationCount={filteredReviewQueue.length}
               notificationNote={`${filteredReviewQueue.length} даалгавар хяналт хүлээж байна`}
             />
+
+            {canManageEval ? (
+              <Link href="/reports/evaluation" className={styles.reportRegistryLaborLink}>
+                <ClipboardCheck aria-hidden size={18} />
+                <span>
+                  <strong>Гүйцэтгэлийн үнэлгээ</strong>
+                  <small>Зам талбайн цэвэрлэгээний сарын үнэлгээ (100 оноо) оруулж тайлан гаргах</small>
+                </span>
+              </Link>
+            ) : null}
 
             <section className={styles.reportRegistryBoard}>
                 <div className={styles.reportRegistryMetrics}>

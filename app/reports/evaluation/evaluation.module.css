@@ -1,0 +1,332 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.toolbarField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.toolbarField span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.toolbarField input {
+  min-width: 200px;
+  padding: 9px 12px;
+  border: 1px solid var(--border, #d9e0ea);
+  border-radius: 10px;
+  background: var(--card, #fff);
+  color: var(--foreground, #0f172a);
+  font-size: 14px;
+}
+
+.toolbarButton {
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border, #d9e0ea);
+  background: var(--card, #fff);
+  color: var(--foreground, #0f172a);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 18px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.bannerNotice {
+  background: color-mix(in srgb, #16a34a 12%, transparent);
+  color: #15803d;
+  border: 1px solid color-mix(in srgb, #16a34a 30%, transparent);
+}
+
+.bannerError {
+  background: color-mix(in srgb, #dc2626 12%, transparent);
+  color: #b91c1c;
+  border: 1px solid color-mix(in srgb, #dc2626 30%, transparent);
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.summaryCard {
+  padding: 16px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  background: var(--card, #fff);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summaryCard span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground, #64748b);
+}
+
+.summaryCard strong {
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground, #0f172a);
+}
+
+.summaryCard strong small {
+  font-size: 14px;
+  color: var(--muted-foreground, #94a3b8);
+  font-weight: 600;
+}
+
+.summaryCardAccent strong {
+  color: #15803d;
+}
+
+.emptyHint {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border: 1px dashed var(--border, #d9e0ea);
+  border-radius: 12px;
+  font-size: 13.5px;
+  color: var(--muted-foreground, #64748b);
+}
+
+.entryForm {
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 16px;
+  background: var(--card, #fff);
+  padding: 16px;
+}
+
+.tableScroll {
+  overflow-x: auto;
+}
+
+.evalTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1180px;
+}
+
+.evalTable th,
+.evalTable td {
+  padding: 6px 7px;
+  border: 1px solid var(--border, #e2e8f0);
+  text-align: left;
+  font-size: 12.5px;
+  vertical-align: top;
+}
+
+.evalTable thead th {
+  font-size: 11px;
+  color: var(--muted-foreground, #475569);
+  font-weight: 700;
+  background: color-mix(in srgb, #16a34a 6%, var(--card, #fff));
+  vertical-align: bottom;
+}
+
+.criterionLabel {
+  display: block;
+  line-height: 1.25;
+}
+
+.criterionMax {
+  display: block;
+  margin-top: 3px;
+  color: #15803d;
+  font-weight: 700;
+}
+
+.evalTable textarea,
+.evalTable input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border, #d9e0ea);
+  border-radius: 8px;
+  background: var(--background, #f8fafc);
+  color: var(--foreground, #0f172a);
+  font-size: 12.5px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.evalTable input:disabled,
+.evalTable textarea:disabled {
+  background: transparent;
+  border-color: transparent;
+  color: var(--foreground, #0f172a);
+}
+
+.colIndex {
+  width: 34px;
+  text-align: center;
+  color: var(--muted-foreground, #64748b);
+}
+
+.colLocation {
+  min-width: 150px;
+}
+
+.colSegment {
+  min-width: 210px;
+}
+
+.colArea {
+  width: 84px;
+}
+
+.colArea input {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.colScore {
+  width: 74px;
+}
+
+.colScore input {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.colTotal {
+  width: 74px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, #16a34a 5%, transparent);
+}
+
+.colRemove {
+  width: 42px;
+  text-align: center;
+}
+
+.removeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+}
+
+.removeButton:hover {
+  background: color-mix(in srgb, #dc2626 12%, transparent);
+}
+
+.signatureFields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.signatureField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 260px;
+}
+
+.signatureField span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground, #64748b);
+}
+
+.signatureField input {
+  padding: 8px 10px;
+  border: 1px solid var(--border, #d9e0ea);
+  border-radius: 8px;
+  background: var(--background, #f8fafc);
+  color: var(--foreground, #0f172a);
+  font-size: 13px;
+}
+
+.signatureField input:disabled {
+  background: transparent;
+  border-color: var(--border, #eef2f7);
+}
+
+.entryActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.addButton,
+.saveButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border, #d9e0ea);
+}
+
+.addButton {
+  background: var(--card, #fff);
+  color: var(--foreground, #0f172a);
+}
+
+.saveButton {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
+
+.readOnlyNote {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--muted-foreground, #64748b);
+}
+
+.downloadRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.downloadButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border, #d9e0ea);
+  background: var(--card, #fff);
+  color: var(--foreground, #0f172a);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}

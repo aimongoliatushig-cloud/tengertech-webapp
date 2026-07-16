@@ -47,6 +47,29 @@ export function getDateKeyFromValue(value?: string | null) {
   return formatDateKey(parsed);
 }
 
+// Захирал/менежер/засаг даргын "үүрэг даалгавар" төрлийн директив төслүүд.
+// Эдгээр нь нэг хэлтэст (ихэвчлэн Тохижилт) хамааруулагдсан ч бүх хэлтсийн
+// ажилтнуудад тарсан дээрээс өгсөн даалгавар байдаг тул хэлтсийн даргын
+// "Ажилтны даалгавар" хянах самбарт оруулахгүй (гүйцэтгэгч ажилтан болон
+// удирдлага хэвээр харна). Ажлын "захирамж"-д тулгуурласан төслүүд нь
+// "даалгавар" гэсэн үггүй тул эндээс хасагдахгүй.
+export function isDirectiveTaskProject(projectName?: string | null): boolean {
+  const text = (projectName ?? "").toLocaleLowerCase("mn-MN");
+  if (!text.includes("даалгавар")) {
+    return false;
+  }
+  return (
+    text.includes("захир") ||
+    text.includes("менежер") ||
+    text.includes("засаг дарг") ||
+    text.includes("нзд") ||
+    text.includes("хороод") ||
+    text.includes("ерөнхий сайд") ||
+    text.includes("онцгой комисс") ||
+    text.includes("шуурхай")
+  );
+}
+
 export function filterByDepartment<T extends { departmentName: string }>(
   items: T[],
   departmentName?: string | null,

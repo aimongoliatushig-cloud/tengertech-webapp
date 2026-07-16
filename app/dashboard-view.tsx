@@ -42,7 +42,7 @@ import dashboardStyles from "@/app/dashboard-view.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import { getSessionRoleLabel, hasCapability, isMasterRole, isWorkerOnly, type AppSession } from "@/lib/auth";
 import { buildDashboardModel, type StatusTone } from "@/lib/dashboard-model";
-import { filterByDepartment } from "@/lib/dashboard-scope";
+import { filterByDepartment, isDirectiveTaskProject } from "@/lib/dashboard-scope";
 import { normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { type FieldAssignment } from "@/lib/field-ops";
 import { isGreenOrImprovementVehicleScope } from "@/lib/fleet-vehicle-board-scope";
@@ -3606,6 +3606,10 @@ function ExecutiveDashboardView({
   // данс руу оногдсон) энд ХАРАГДАХГҮЙ — тэр нь зөвхөн ажилтны нүүрэнд гарна.
   const monitoringOpenTasks = openTasksFor(dashboardTasks, currentDateKey)
     .filter((task) => !task.isDepartmentTask)
+    // Хэлтсийн дарга (departmentScopeName)-ын хянах самбарт захирал/менежерийн
+    // "үүрэг даалгавар" төрлийн директив ажлыг оруулахгүй — эдгээр нь дээрээс
+    // өгсөн, бүх хэлтэст тарсан даалгавар. Удирдлага (scope-гүй) хэвээр харна.
+    .filter((task) => !departmentScopeName || !isDirectiveTaskProject(task.projectName))
     .map(directoryTaskToAssigned);
   const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
