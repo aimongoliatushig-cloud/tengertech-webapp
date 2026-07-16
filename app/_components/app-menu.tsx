@@ -235,8 +235,10 @@ function compactManagerMenuItems(items: MenuItem[]) {
   const dashboardItem = items.find((item) => item.key === "dashboard");
   const hrItem = items.find((item) => item.key === "hr");
   const hrChildren = items.filter((item) => item.key.startsWith("hr-"));
-  const departmentChildren = items.filter((item) =>
-    item.key.startsWith("department-"),
+  // Зөвхөн хэлтсийн жагсаалтын item-үүд (department-0, department-1 ...).
+  // "Хэлтсийн ажил" (department-work) нь хэлтэс биш, тусдаа хуудас тул оруулахгүй.
+  const departmentChildren = items.filter(
+    (item) => /^department-\d+$/.test(item.key),
   );
   const reportItem = items.find((item) => item.key === "reports");
   const communicationChildren = items.filter((item) =>
