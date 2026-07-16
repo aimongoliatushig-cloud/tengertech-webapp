@@ -60,7 +60,7 @@ export const ORG_DEPARTMENTS: OrgDepartment[] = [
   },
   {
     key: "transport",
-    name: "Авто базаа, хог тээвэрлэлтийн хэлтэс",
+    name: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
     tone: "amber",
     match: ["хог тээвэр", "авто баз"],
     roles: [
