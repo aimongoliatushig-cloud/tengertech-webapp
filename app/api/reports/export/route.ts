@@ -871,10 +871,14 @@ export async function GET(request: Request) {
     return Response.json({ error: "Нэвтрэх шаардлагатай." }, { status: 401 });
   }
 
-  const snapshot = await loadMunicipalSnapshot({
-    login: session.login,
-    password: session.password,
-  });
+  // Татаж авах тайлан нь дэлгэц дээрхтэй ижил, шинэлэг байх ёстой.
+  const snapshot = await loadMunicipalSnapshot(
+    {
+      login: session.login,
+      password: session.password,
+    },
+    { skipCache: true },
+  );
   const scopedDepartmentName = canViewAllWorkspaceReports(session)
     ? null
     : await loadSessionDepartmentName(session);

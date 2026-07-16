@@ -299,12 +299,17 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   // хэрэглэгч өөрийн Odoo эрхээр project.task/тайланг уншиж чаддаггүй тул
   // (worker) snapshot хоосон гарч "тайлан алга" харагддаг. Ийм үед admin
   // эрхээр ачаалж, бодит тайлангуудыг харуулна.
+  // Тайлан бол шинэлэг байх ёстой хуудас тул snapshot кэшийг (2 мин) алгасаж
+  // Odoo-гоос шууд татна. Хянах самбар зэрэг бусад хуудас кэштэй хэвээр.
   const snapshotPromise = canViewAllReports
-    ? loadMunicipalSnapshot()
-    : loadMunicipalSnapshot({
-        login: session.login,
-        password: session.password,
-      });
+    ? loadMunicipalSnapshot({}, { skipCache: true })
+    : loadMunicipalSnapshot(
+        {
+          login: session.login,
+          password: session.password,
+        },
+        { skipCache: true },
+      );
   const scopedDepartmentNamePromise = canViewAllReports && !departmentHeadLike
     ? Promise.resolve(null)
     : loadSessionDepartmentName(session);

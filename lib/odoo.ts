@@ -7601,18 +7601,23 @@ export async function loadUserAssignedTasks(uid: number): Promise<AssignedTaskIt
 
 export async function loadMunicipalSnapshot(
   connectionOverrides: Partial<OdooConnection> = {},
-  options: { allowFallback?: boolean } = {},
+  options: { allowFallback?: boolean; skipCache?: boolean } = {},
 ) {
   const connection = createOdooConnection(connectionOverrides);
-  const cachedSnapshot = readCachedMunicipalSnapshot(connection);
-  if (cachedSnapshot) {
-    return cachedSnapshot;
+  // skipCache: тайлангийн хуудас шиг шинэлэг байх ёстой газарт кэш (2 мин) болон
+  // stale давхаргыг алгасаж, Odoo-гоос шууд татна. Үр дүнг кэшэд бичсэн хэвээр
+  // тул бусад хуудсууд (хянах самбар) хурдан хэвээр ажиллана.
+  if (!options.skipCache) {
+    const cachedSnapshot = readCachedMunicipalSnapshot(connection);
+    if (cachedSnapshot) {
+      return cachedSnapshot;
+    }
   }
 
   const cacheKey = getMunicipalSnapshotCacheKey(connection);
-  const staleSnapshot = readCachedMunicipalSnapshot(connection, {
-    allowStale: true,
-  });
+  const staleSnapshot = options.skipCache
+    ? null
+    : readCachedMunicipalSnapshot(connection, { allowStale: true });
   if (staleSnapshot) {
     if (!municipalSnapshotPendingCache.has(cacheKey)) {
       const refreshPromise = (async () => {
