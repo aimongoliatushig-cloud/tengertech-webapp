@@ -2822,7 +2822,9 @@ function buildExecutiveDepartmentMetrics({
       todayDone: done,
       todayTotal: total,
       risky,
-      href: `/projects?department=${encodeURIComponent(hrefDepartmentName || department?.name || name)}&category=planned`,
+      // Цэсний "Хэлтэс, нэгжүүд"-тэй ижил хуудас руу — хэлтсийн дотоод бүтэц
+      // (Ажил + Даалгавар + Хүний нөөц) хаанаас орсноос үл хамаарч ижил байна.
+      href: `/department-work?department=${encodeURIComponent(hrefDepartmentName || department?.name || name)}`,
       icon,
       tone,
       image,
@@ -2916,7 +2918,7 @@ function buildExecutiveDepartmentMetrics({
       todayDone: done,
       todayTotal: total,
       risky,
-      href: `/projects?department=${encodeURIComponent(department.name)}&category=planned`,
+      href: `/department-work?department=${encodeURIComponent(department.name)}`,
       icon: departmentIcon(department.name),
       tone: "green",
       image: DASHBOARD_IMAGES.landscapingWorker,
