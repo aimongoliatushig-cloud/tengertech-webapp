@@ -42,7 +42,7 @@ import dashboardStyles from "@/app/dashboard-view.module.css";
 import shellStyles from "@/app/workspace.module.css";
 import { getSessionRoleLabel, hasCapability, isMasterRole, isWorkerOnly, type AppSession } from "@/lib/auth";
 import { buildDashboardModel, type StatusTone } from "@/lib/dashboard-model";
-import { filterByDepartment, isDirectiveTaskProject } from "@/lib/dashboard-scope";
+import { filterByDepartment } from "@/lib/dashboard-scope";
 import { normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { type FieldAssignment } from "@/lib/field-ops";
 import { isGreenOrImprovementVehicleScope } from "@/lib/fleet-vehicle-board-scope";
@@ -3130,31 +3130,6 @@ function openTasksFor(
     });
 }
 
-// Хянах самбарын даалгаврын хүснэгт нь ажилтны AssignedTaskItem бүтэц хүлээж
-// авдаг тул байгууллагын taskDirectory-г тэр бүтэц рүү хөрвүүлнэ.
-const DIRECTORY_STATUS_TO_ASSIGNED: Record<TaskStatusKey, AssignedTaskStatusKey> = {
-  planned: "planned",
-  working: "doing",
-  review: "review",
-  verified: "done",
-  problem: "doing",
-};
-
-function directoryTaskToAssigned(
-  task: DashboardSnapshot["taskDirectory"][number],
-): AssignedTaskItem {
-  return {
-    id: task.id,
-    name: task.name,
-    projectName: task.projectName,
-    departmentName: task.departmentName,
-    deadline: task.scheduledDate || task.deadline || "",
-    statusKey: DIRECTORY_STATUS_TO_ASSIGNED[task.statusKey] ?? "planned",
-    statusLabel: task.statusLabel,
-    href: task.href,
-  };
-}
-
 // Дашбоард дээрх товч карт — дарвал /tasks хуудас (даалгаврын жагсаалт) нээгдэнэ.
 function OpenTasksSummaryCard({
   tasks,
@@ -3600,17 +3575,6 @@ function ExecutiveDashboardView({
 }) {
   const canViewAllReports = canViewAllWorkspaceReports(session);
   const canViewWeightReports = canViewGarbageWeightReports(session, departmentScopeName);
-  // Хянах самбар (менежер/захирал/хэлтсийн дарга) дээр нэвтэрсэн хэрэглэгчийн
-  // ганц хувийн даалгавраа биш, БАЙГУУЛЛАГЫН нээлттэй, ажилтанд оногдсон
-  // даалгаврыг (яаралтай нь эхэндээ) харуулна. Хэлтэст даалгасан ажил (систем
-  // данс руу оногдсон) энд ХАРАГДАХГҮЙ — тэр нь зөвхөн ажилтны нүүрэнд гарна.
-  const monitoringOpenTasks = openTasksFor(dashboardTasks, currentDateKey)
-    .filter((task) => !task.isDepartmentTask)
-    // Хэлтсийн дарга (departmentScopeName)-ын хянах самбарт захирал/менежерийн
-    // "үүрэг даалгавар" төрлийн директив ажлыг оруулахгүй — эдгээр нь дээрээс
-    // өгсөн, бүх хэлтэст тарсан даалгавар. Удирдлага (scope-гүй) хэвээр харна.
-    .filter((task) => !departmentScopeName || !isDirectiveTaskProject(task.projectName))
-    .map(directoryTaskToAssigned);
   const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
   const activeTasks = Math.max(0, totalTasks - completedTasks);
@@ -3749,20 +3713,6 @@ function ExecutiveDashboardView({
             currentDateKey={currentDateKey}
             className="mb-5"
           />
-
-          {monitoringOpenTasks.length ? (
-            <div className="mb-5">
-              <WorkerTaskTable
-                tasks={monitoringOpenTasks}
-                title="Хяналтад буй даалгавар"
-                subtitle={`Байгууллагад нээлттэй ${monitoringOpenTasks.length} даалгавар байна. Яаралтай нь эхэнд.`}
-                variant="monitor"
-                currentDateKey={currentDateKey}
-                allHref="/tasks"
-                maxRows={8}
-              />
-            </div>
-          ) : null}
 
           <div className={dashboardStyles.executiveOperationsGrid}>
             {showDepartmentPerformance ? (
