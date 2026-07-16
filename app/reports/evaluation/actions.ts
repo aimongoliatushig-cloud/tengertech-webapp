@@ -12,8 +12,8 @@ import {
   DEFAULT_EVALUATOR_ORG,
   isValidEvalMonth,
   sanitizeEvalRows,
-  saveEvalMonth,
 } from "@/lib/road-cleaning-evaluation";
+import { saveEvalMonth } from "@/lib/road-cleaning-evaluation-store";
 
 function evalRedirectPath(
   month: string,

@@ -18,10 +18,10 @@ import {
   EVAL_MAX_TOTAL,
   defaultEvalRows,
   isValidEvalMonth,
-  loadEvalMonth,
   summarizeEval,
   type EvalRow,
 } from "@/lib/road-cleaning-evaluation";
+import { loadEvalMonth } from "@/lib/road-cleaning-evaluation-store";
 
 import { canManageEvaluation, resolveEvalDepartmentName } from "./access";
 import { EvaluationEntryClient } from "./evaluation-entry-client";

@@ -8,10 +8,10 @@ import {
   EVAL_CRITERIA,
   EVAL_MAX_TOTAL,
   isValidEvalMonth,
-  loadEvalMonth,
   rowTotal,
   summarizeEval,
 } from "@/lib/road-cleaning-evaluation";
+import { loadEvalMonth } from "@/lib/road-cleaning-evaluation-store";
 import {
   canManageEvaluation,
   resolveEvalDepartmentName,
