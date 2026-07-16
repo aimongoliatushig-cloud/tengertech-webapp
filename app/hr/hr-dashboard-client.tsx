@@ -21,6 +21,7 @@ import {
   getHrEmployeeDepartmentDisplayName,
 } from "@/lib/hr-department-order";
 import { formatEmployeeDisplayName } from "@/lib/hr-name";
+import { normalizeOrganizationUnitName } from "@/lib/department-groups";
 import type { HrDepartmentJobCounts, HrDisciplineRecord, HrHeadcountTrendPoint, HrTimeoffDashboardData, HrTimeoffRequest } from "@/lib/hr";
 import type { HrEmployeeDirectoryItem } from "@/lib/odoo";
 
@@ -605,7 +606,10 @@ export function HrDashboardClient({
     .slice()
     .sort((left, right) => right.total - left.total)
     .map((bucket) => ({
-      name: bucket.departmentName.split(" / ").pop() || bucket.departmentName,
+      name:
+        normalizeOrganizationUnitName(bucket.departmentName) ||
+        bucket.departmentName.split(" / ").pop() ||
+        bucket.departmentName,
       total: bucket.total,
       slices: bucket.jobCounts
         .slice()
