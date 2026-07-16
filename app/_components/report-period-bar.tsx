@@ -84,6 +84,10 @@ export function ReportPeriodBar({ basePath, period, extraParams = {} }: Props) {
         <input type="hidden" name="mode" value={period.mode} />
         {period.mode === "month" ? (
           <select
+            // Сумаар сар солиход defaultValue дахин үйлчилдэггүй (uncontrolled
+            // select-ийн DOM утга хадгалагдана) тул key-гээр дахин mount хийнэ.
+            // Эс бөгөөс сумны шошго ба select өөр сар харуулна.
+            key={period.month}
             name="month"
             defaultValue={period.month}
             aria-label="Сар сонгох"
@@ -98,6 +102,7 @@ export function ReportPeriodBar({ basePath, period, extraParams = {} }: Props) {
         ) : null}
         {period.mode === "year" ? (
           <input
+            key={period.year}
             type="number"
             name="year"
             min={2020}
@@ -109,6 +114,7 @@ export function ReportPeriodBar({ basePath, period, extraParams = {} }: Props) {
         ) : null}
         {period.mode === "day" ? (
           <input
+            key={period.date}
             type="date"
             name="date"
             defaultValue={period.date}
@@ -118,8 +124,8 @@ export function ReportPeriodBar({ basePath, period, extraParams = {} }: Props) {
         ) : null}
         {period.mode === "range" ? (
           <>
-            <input type="date" name="startDate" defaultValue={period.startDate} aria-label="Эхлэх өдөр" />
-            <input type="date" name="endDate" defaultValue={period.endDate} aria-label="Дуусах өдөр" />
+            <input key={period.startDate} type="date" name="startDate" defaultValue={period.startDate} aria-label="Эхлэх өдөр" />
+            <input key={period.endDate} type="date" name="endDate" defaultValue={period.endDate} aria-label="Дуусах өдөр" />
             <button type="submit">Харах</button>
           </>
         ) : null}
