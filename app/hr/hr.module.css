@@ -5418,3 +5418,42 @@
 :global(html.dark) .orgRoleExtra .orgRoleCount b { color: #94a3b8; }
 :global(html.dark) .orgDeptVacant { color: #f2837a; background: rgba(242, 131, 122, 0.14); }
 :global(html.dark) .orgDeptFull { color: #74cf88; background: rgba(116, 207, 136, 0.14); }:global(html.dark) .orgToneOps { background: #1a2436; border-color: #2b3c5e; color: #7aa2ff; }
+/* --- Хэлтэс доторх албан тушаалын ангилал --- */
+.jobGroup {
+  display: grid;
+  gap: 10px;
+}
+
+.jobGroup + .jobGroup {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--line-soft, #e2e8f0);
+}
+
+.jobGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jobGroupHeader h4 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink-900, #0f172a);
+}
+
+.jobGroupCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(74, 154, 93, 0.14);
+  color: #0f6e56;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

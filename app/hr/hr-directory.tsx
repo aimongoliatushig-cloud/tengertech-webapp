@@ -134,6 +134,50 @@ function matchesEmployee(employee: HrEmployeeDirectoryItem, query: string) {
     .some((value) => value.toLowerCase().includes(normalized));
 }
 
+const JOB_TITLE_FALLBACK = "Албан тушаал бүртгээгүй";
+
+// Албан тушаалын эрэмбэ: удирдах → ахлах → мастер → мэргэжилтэн → бусад.
+// Ингэснээр хэлтэс доторх ангилал бүтцийн дарааллаар харагдана.
+function jobTitleRank(title: string) {
+  const value = title.toLocaleLowerCase("mn-MN");
+  if (value.includes("дарга")) return 0;
+  if (value.includes("ахлах")) return 1;
+  if (value.includes("мастер")) return 2;
+  if (
+    value.includes("инженер") ||
+    value.includes("мэргэжилтэн") ||
+    value.includes("механик") ||
+    value.includes("нягтлан") ||
+    value.includes("ня-бо")
+  ) {
+    return 3;
+  }
+  return 4;
+}
+
+/** Хэлтсийн ажилтнуудыг албан тушаалаар нь ангилна (жиш. Хог тээврийн жолооч, Ачигч). */
+function groupEmployeesByJobTitle<T extends { jobTitle: string }>(employees: T[]) {
+  const groups = new Map<string, T[]>();
+  for (const employee of employees) {
+    const key = (employee.jobTitle || "").trim() || JOB_TITLE_FALLBACK;
+    const bucket = groups.get(key);
+    if (bucket) {
+      bucket.push(employee);
+    } else {
+      groups.set(key, [employee]);
+    }
+  }
+
+  return [...groups.entries()]
+    .map(([jobTitle, list]) => ({ jobTitle, employees: list }))
+    .sort(
+      (left, right) =>
+        jobTitleRank(left.jobTitle) - jobTitleRank(right.jobTitle) ||
+        right.employees.length - left.employees.length ||
+        left.jobTitle.localeCompare(right.jobTitle, "mn"),
+    );
+}
+
 export function HrDirectory({ departments, initialEmployeeId }: Props) {
   const orderedDepartments = useMemo(
     () => departments.slice().sort((left, right) => compareHrDepartmentNames(left.departmentName, right.departmentName)),
@@ -296,8 +340,15 @@ export function HrDirectory({ departments, initialEmployeeId }: Props) {
               <span className={styles.departmentBadge}>{departmentEmployees.length}</span>
             </div>
 
-            <div className={styles.employeeGrid}>
-              {departmentEmployees.map((employee) => (
+            {groupEmployeesByJobTitle(departmentEmployees).map((group) => (
+              <div key={group.jobTitle} className={styles.jobGroup}>
+                <div className={styles.jobGroupHeader}>
+                  <h4>{group.jobTitle}</h4>
+                  <span className={styles.jobGroupCount}>{group.employees.length}</span>
+                </div>
+
+                <div className={styles.employeeGrid}>
+                  {group.employees.map((employee) => (
                 <article
                   key={employee.id}
                   role="button"
@@ -359,8 +410,10 @@ export function HrDirectory({ departments, initialEmployeeId }: Props) {
                     </span>
                   </div>
                 </article>
-              ))}
-            </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </section>
         ))}
       </div>
