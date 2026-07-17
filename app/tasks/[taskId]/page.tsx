@@ -389,9 +389,10 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
       : [];
   const canEditTaskContent =
     task.createdById === session.uid || canEditWorkspaceTaskContent(session);
-  const canManageAttachments = canEditTaskContent;
   const canAssignTaskTeam = canCreateTasks && Boolean(task.projectId) && !workerMode;
   const canEditTask = canAssignTaskTeam;
+  // Даалгавар засах эрхтэй хүн бүр хавсаргасан файлыг нэмэх, устгах боломжтой.
+  const canManageAttachments = canEditTaskContent || canEditTask;
   const canDeleteWorkspace = canDeleteWorkspaceItems(session);
   const taskEditOptions =
     canEditTask && task.projectId

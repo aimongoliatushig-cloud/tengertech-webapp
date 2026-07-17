@@ -2424,7 +2424,9 @@ export async function addTaskAttachmentsAction(formData: FormData) {
     };
     const task = await loadTaskDetail(taskId, connectionOverrides);
     const canManageAttachments =
-      task.createdById === session.uid || canEditWorkspaceTaskContent(session);
+      task.createdById === session.uid ||
+      canEditWorkspaceTaskContent(session) ||
+      hasCapability(session, "create_tasks");
     if (!canManageAttachments) {
       redirectWithMessage(target, "error", "Танд энэ даалгаварт файл хавсаргах эрх байхгүй байна.");
     }
@@ -2466,7 +2468,9 @@ export async function deleteTaskAttachmentAction(formData: FormData) {
     };
     const task = await loadTaskDetail(taskId, connectionOverrides);
     const canManageAttachments =
-      task.createdById === session.uid || canEditWorkspaceTaskContent(session);
+      task.createdById === session.uid ||
+      canEditWorkspaceTaskContent(session) ||
+      hasCapability(session, "create_tasks");
     if (!canManageAttachments) {
       redirectWithMessage(target, "error", "Танд энэ даалгаврын файл устгах эрх байхгүй байна.");
     }
