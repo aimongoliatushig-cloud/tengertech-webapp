@@ -299,87 +299,53 @@ function isGreenOrImprovementScope(groupName?: string | null, unitName?: string 
   );
 }
 
-const PROJECT_CARD_TASK_LIMIT = 4;
-
-function ProjectCardLink({
+function ProjectListRow({
   project,
   href,
   actionLabel,
   hideDepartment = false,
-  tasks = [],
+  taskCount = 0,
 }: {
   project: ProjectCardItem;
   href: string;
   actionLabel: string;
   hideDepartment?: boolean;
-  tasks?: TaskCardItem[];
+  taskCount?: number;
 }) {
   const managerTitle = project.managerJobTitle || "Хариуцсан ажилтан";
   const metaParts = [
     hideDepartment ? null : `Алба нэгж: ${project.departmentName}`,
     `${managerTitle}: ${project.manager}`,
     project.operationTypeLabel,
+    taskCount ? `Даалгавар: ${taskCount}` : null,
   ].filter(Boolean);
 
   return (
-    <Link href={href} className={styles.projectCard}>
-      <div className={styles.projectCardTop}>
-        <span>{project.deadline}</span>
-        <StagePill label={project.stageLabel} bucket={project.stageBucket} />
+    <Link href={href} className={styles.reviewItem} title={actionLabel}>
+      <div className={styles.projectListRowMain}>
+        <div className={styles.projectListRowTop}>
+          <h3>{project.name}</h3>
+          <StagePill label={project.stageLabel} bucket={project.stageBucket} />
+        </div>
+        <p>{metaParts.join(" · ")}</p>
       </div>
 
-      <h3>{project.name}</h3>
-      <p>{metaParts.join(" · ")}</p>
+      <div className={styles.reviewMeta}>
+        <strong>{project.openTasks}</strong>
+        <span>Нээлттэй даалгавар</span>
+        <span>{project.deadline}</span>
+      </div>
 
-      <div className={styles.projectMeta}>
-        <div>
-          <span>Нээлттэй ажил</span>
-          <strong>{project.openTasks}</strong>
-        </div>
-        <div>
-          <span>Гүйцэтгэл</span>
+      <div className={styles.projectListProgress}>
+        <div className={styles.projectListProgressScale}>
           <strong>{project.completion}%</strong>
         </div>
-      </div>
-
-      <div className={styles.progressTrack}>
-        <span style={{ width: `${project.completion}%` }} />
-      </div>
-
-      <div className={styles.projectCardTasks}>
-        <div className={styles.projectCardTasksHead}>
-          <span>Даалгаврууд</span>
-          <b>{tasks.length}</b>
+        <div
+          className={`${styles.progressTrack} ${styles.projectListProgressTrack}`}
+          aria-hidden
+        >
+          <span style={{ width: `${project.completion}%` }} />
         </div>
-        {tasks.length ? (
-          <ul className={styles.projectCardTaskList}>
-            {tasks.slice(0, PROJECT_CARD_TASK_LIMIT).map((task) => (
-              <li key={task.id} className={styles.projectCardTaskItem}>
-                <span className={styles.projectCardTaskName} title={task.name}>
-                  {task.name}
-                </span>
-                <span className={styles.projectCardTaskAside}>
-                  <StagePill label={task.stageLabel} bucket={task.stageBucket} />
-                  <b>{task.progress}%</b>
-                </span>
-              </li>
-            ))}
-            {tasks.length > PROJECT_CARD_TASK_LIMIT ? (
-              <li className={styles.projectCardTaskMore}>
-                +{tasks.length - PROJECT_CARD_TASK_LIMIT} даалгавар
-              </li>
-            ) : null}
-          </ul>
-        ) : (
-          <p className={styles.projectCardTaskEmpty}>
-            Одоогоор даалгавар бүртгэгдээгүй.
-          </p>
-        )}
-      </div>
-
-      <div className={styles.cardFooter}>
-        <span className={styles.cardLinkLabel}>{actionLabel}</span>
-        <strong aria-hidden>→</strong>
       </div>
     </Link>
   );
@@ -1381,12 +1347,12 @@ async function ProjectsPageContent({
                     </div>
 
                     {activeProjects.length ? (
-                      <div className={styles.projectRail}>
+                      <div className={styles.reviewList}>
                         {activeProjects.map((project) => (
-                          <ProjectCardLink
+                          <ProjectListRow
                             key={project.id}
                             project={project}
-                            tasks={resolveProjectTasks(project)}
+                            taskCount={resolveProjectTasks(project).length}
                             href={buildProjectHref(project.href)}
                             actionLabel={projectCardLabel}
                             hideDepartment={hideDepartmentInProjectCards}
@@ -1588,12 +1554,12 @@ async function ProjectsPageContent({
                     </div>
 
                     {activeProjects.length ? (
-                      <div className={styles.projectRail}>
+                      <div className={styles.reviewList}>
                         {activeProjects.map((project) => (
-                          <ProjectCardLink
+                          <ProjectListRow
                             key={project.id}
                             project={project}
-                            tasks={resolveProjectTasks(project)}
+                            taskCount={resolveProjectTasks(project).length}
                             href={buildProjectHref(project.href)}
                             actionLabel={projectCardLabel}
                             hideDepartment={hideDepartmentInProjectCards}
@@ -1646,12 +1612,12 @@ async function ProjectsPageContent({
                       </div>
 
                       {section.projects.length ? (
-                        <div className={styles.projectRail}>
+                        <div className={styles.reviewList}>
                           {section.projects.map((project) => (
-                            <ProjectCardLink
+                            <ProjectListRow
                               key={project.id}
                               project={project}
-                              tasks={resolveProjectTasks(project)}
+                              taskCount={resolveProjectTasks(project).length}
                               href={buildProjectHref(project.href)}
                               actionLabel={projectCardLabel}
                               hideDepartment={hideDepartmentInProjectCards}
@@ -1677,12 +1643,12 @@ async function ProjectsPageContent({
                         <strong>{uncategorizedGreenServiceProjects.length}</strong>
                       </div>
 
-                      <div className={styles.projectRail}>
+                      <div className={styles.reviewList}>
                         {uncategorizedGreenServiceProjects.map((project) => (
-                          <ProjectCardLink
+                          <ProjectListRow
                             key={project.id}
                             project={project}
-                            tasks={resolveProjectTasks(project)}
+                            taskCount={resolveProjectTasks(project).length}
                             href={buildProjectHref(project.href)}
                             actionLabel={projectCardLabel}
                             hideDepartment={hideDepartmentInProjectCards}
@@ -1693,68 +1659,18 @@ async function ProjectsPageContent({
                   ) : null}
                 </div>
               ) : activeProjects.length ? (
-                <>
-                  {masterMode ? (
-                    <div className={styles.reviewList}>
-                      {activeProjects.map((project) => (
-                        <Link
-                          key={project.id}
-                          href={buildProjectHref(project.href)}
-                          className={styles.reviewItem}
-                        >
-                          <div className={styles.projectListRowMain}>
-                            <div className={styles.projectListRowTop}>
-                              <h3>{project.name}</h3>
-                              <StagePill
-                                label={project.stageLabel}
-                                bucket={project.stageBucket}
-                              />
-                            </div>
-                            <p>
-                              {[
-                                `${project.managerJobTitle || "Хариуцсан ажилтан"}: ${project.manager}`,
-                                project.operationTypeLabel,
-                              ]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </p>
-                          </div>
-
-                          <div className={styles.reviewMeta}>
-                            <strong>{project.openTasks}</strong>
-                            <span>Нээлттэй даалгавар</span>
-                            <span>{project.deadline}</span>
-                          </div>
-
-                          <div className={styles.projectListProgress}>
-                            <div className={styles.projectListProgressScale}>
-                              <strong>{project.completion}%</strong>
-                            </div>
-                            <div
-                              className={`${styles.progressTrack} ${styles.projectListProgressTrack}`}
-                              aria-hidden
-                            >
-                              <span style={{ width: `${project.completion}%` }} />
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className={styles.projectRail}>
-                      {activeProjects.map((project) => (
-                        <ProjectCardLink
-                          key={project.id}
-                          project={project}
-                          tasks={resolveProjectTasks(project)}
-                          href={buildProjectHref(project.href)}
-                          actionLabel={projectCardLabel}
-                          hideDepartment={hideDepartmentInProjectCards}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </>
+                <div className={styles.reviewList}>
+                  {activeProjects.map((project) => (
+                    <ProjectListRow
+                      key={project.id}
+                      project={project}
+                      taskCount={resolveProjectTasks(project).length}
+                      href={buildProjectHref(project.href)}
+                      actionLabel={projectCardLabel}
+                      hideDepartment={hideDepartmentInProjectCards}
+                    />
+                  ))}
+                </div>
               ) : (
                 <div className={styles.emptyColumnState}>
                   Одоогоор {selectedDepartmentName} дээр энэ ангиллын ажил алга байна.
