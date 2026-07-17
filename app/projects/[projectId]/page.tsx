@@ -454,6 +454,31 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     }
   }
   const undatedTasks = visibleTasks.filter((task) => !task.deadlineValue);
+  // Жагсаалт харагдацад даалгавруудыг төлөв тус бүрийн гарчгийн доор бүлэглэнэ.
+  const taskListGroups = [
+    {
+      key: "todo",
+      label: "Төлөвлөсөн",
+      tasks: visibleTasks.filter(
+        (task) =>
+          task.stageBucket === "todo" ||
+          task.stageBucket === "progress" ||
+          task.stageBucket === "unknown",
+      ),
+    },
+    {
+      key: "review",
+      label: "Хянаж байгаа",
+      tasks: visibleTasks.filter(
+        (task) => task.stageBucket === "review" || task.stageBucket === "problem",
+      ),
+    },
+    {
+      key: "done",
+      label: "Дууссан",
+      tasks: visibleTasks.filter((task) => task.stageBucket === "done"),
+    },
+  ].filter((group) => group.tasks.length);
   const monthTaskCounts = new Map<string, number>();
   for (const [dateKey, bucket] of tasksByDeadline) {
     const monthKey = dateKey.slice(0, 7);
@@ -998,23 +1023,33 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                     ) : null}
                   </div>
                 ) : activeView === "list" ? (
-                  <ul className={styles.projectTaskCompactList}>
-                    {visibleTasks.map((task, index) => (
-                      <li key={task.id}>
-                        <Link href={task.href} className={styles.projectTaskCompactItem}>
-                          <span className={styles.projectTaskCompactNumber}>{index + 1}</span>
-                          <span className={styles.projectTaskCompactName} title={task.name}>
-                            {task.name}
-                          </span>
-                          <span className={styles.projectTaskCompactMeta}>
-                            <StagePill label={task.stageLabel} bucket={task.stageBucket} />
-                            <b>{task.progress}%</b>
-                            <small>{task.deadline}</small>
-                          </span>
-                        </Link>
-                      </li>
+                  <div className={styles.projectTaskGroupedList}>
+                    {taskListGroups.map((group) => (
+                      <section key={group.key} className={styles.projectTaskGroup}>
+                        <div className={styles.projectTaskGroupHead}>
+                          <h3>{group.label}</h3>
+                          <span>{group.tasks.length}</span>
+                        </div>
+                        <ul className={styles.projectTaskCompactList}>
+                          {group.tasks.map((task, index) => (
+                            <li key={task.id}>
+                              <Link href={task.href} className={styles.projectTaskCompactItem}>
+                                <span className={styles.projectTaskCompactNumber}>{index + 1}</span>
+                                <span className={styles.projectTaskCompactName} title={task.name}>
+                                  {task.name}
+                                </span>
+                                <span className={styles.projectTaskCompactMeta}>
+                                  <StagePill label={task.stageLabel} bucket={task.stageBucket} />
+                                  <b>{task.progress}%</b>
+                                  <small>{task.deadline}</small>
+                                </span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
                     ))}
-                  </ul>
+                  </div>
                 ) : (
                   <div className={styles.projectTaskFlowList}>
                     {visibleTasks.map((task, index) => {
