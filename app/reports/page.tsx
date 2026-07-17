@@ -66,6 +66,7 @@ type PageProps = {
     date?: string | string[];
     startDate?: string | string[];
     endDate?: string | string[];
+    basis?: string | string[];
   }>;
 };
 
@@ -86,6 +87,7 @@ type FeedReport = {
   stateBucket: "review" | "done" | "problem" | "progress";
   submittedDateKey?: string;
   submittedAt: string;
+  taskDateKey?: string;
   images: {
     id: number;
     name: string;
@@ -224,16 +226,31 @@ function extractReportDateKey(report: Pick<FeedReport, "submittedAt" | "submitte
   );
 }
 
+type ReportDateBasis = "report" | "task";
+
+function extractReportPeriodDateKey(
+  report: Pick<FeedReport, "submittedAt" | "submittedDateKey" | "taskName" | "taskDateKey">,
+  basis: ReportDateBasis,
+) {
+  // Даалгаврын огноогоор шүүхэд даалгаврын эхлэх/товлосон огноог хэрэглэнэ;
+  // огноогүй даалгаварт тайлан илгээсэн огноо руу буцна.
+  if (basis === "task" && report.taskDateKey && DATE_PARAM_PATTERN.test(report.taskDateKey)) {
+    return report.taskDateKey;
+  }
+  return extractReportDateKey(report);
+}
+
 function isReportInPeriod(
-  report: Pick<FeedReport, "submittedAt" | "submittedDateKey" | "taskName">,
+  report: Pick<FeedReport, "submittedAt" | "submittedDateKey" | "taskName" | "taskDateKey">,
   startDate: string,
   endDate: string,
+  basis: ReportDateBasis = "report",
 ) {
   if (!startDate && !endDate) {
     return true;
   }
 
-  const reportDate = extractReportDateKey(report);
+  const reportDate = extractReportPeriodDateKey(report, basis);
   if (!reportDate) {
     return false;
   }
@@ -343,6 +360,8 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const selectedStartDate = period.startDate;
   const selectedEndDate = period.endDate;
   const selectedPeriodLabel = period.periodLabel;
+  const selectedDateBasis: ReportDateBasis =
+    getDepartmentParam(params.basis) === "task" ? "task" : "report";
   const selectedStatus = REPORT_STATUS_FILTERS.some((item) => item.key === requestedStatus)
     ? requestedStatus
     : "all";
@@ -405,7 +424,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   filteredReviewQueue = filteredReviewQueue.filter((item) => isOperationalReportDepartment(item.departmentName));
   filteredTaskDirectory = filteredTaskDirectory.filter((task) => isOperationalReportDepartment(task.departmentName));
   filteredReports = filteredReports.filter((report) =>
-    isReportInPeriod(report, selectedStartDate, selectedEndDate),
+    isReportInPeriod(report, selectedStartDate, selectedEndDate, selectedDateBasis),
   );
   if (selectedStartDate || selectedEndDate) {
     const periodTaskIds = new Set(
@@ -438,7 +457,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     : snapshot.reports.filter(
         (report) =>
           isOperationalReportDepartment(report.departmentName) &&
-          isReportInPeriod(report, selectedStartDate, selectedEndDate),
+          isReportInPeriod(report, selectedStartDate, selectedEndDate, selectedDateBasis),
       ).length;
   const visibleReportGroups =
     departmentScopedMode && selectedGroup
@@ -450,6 +469,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   }
   if (selectedStatus !== "all") {
     preservedFilterParams.set("status", selectedStatus);
+  }
+  if (selectedDateBasis === "task") {
+    preservedFilterParams.set("basis", "task");
   }
   appendReportPeriodSearch(preservedFilterParams, period);
   const preservedFilterQuery = preservedFilterParams.toString();
@@ -481,10 +503,13 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     if (selectedStatus !== "all") {
       hrefParams.set("status", selectedStatus);
     }
+    if (selectedDateBasis === "task") {
+      hrefParams.set("basis", "task");
+    }
     appendReportPeriodSearch(hrefParams, period);
     const groupReports = snapshot.reports.filter((report) =>
       reportDepartmentMatchesGroup(group, report.departmentName) &&
-      isReportInPeriod(report, selectedStartDate, selectedEndDate),
+      isReportInPeriod(report, selectedStartDate, selectedEndDate, selectedDateBasis),
     );
     const groupReviewQueue = snapshot.reviewQueue.filter((item) =>
       reportDepartmentMatchesGroup(group, item.departmentName),
@@ -517,6 +542,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         if (selectedStatus !== "all") {
           hrefParams.set("status", selectedStatus);
         }
+        if (selectedDateBasis === "task") {
+          hrefParams.set("basis", "task");
+        }
         appendReportPeriodSearch(hrefParams, period);
         const reportCount = filteredReports.filter(
           (report) => report.departmentName === unit && reportMatchesCurrentFilters(report),
@@ -541,6 +569,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   if (!departmentScopedMode && selectedUnit) {
     exportParams.set("unit", selectedUnit);
   }
+  if (selectedDateBasis === "task") {
+    exportParams.set("basis", "task");
+  }
   appendReportPeriodSearch(exportParams, period);
   // Хугацааны bar болон toolbar хооронд бусад шүүлтийг (хэлтэс, нэгж, хайлт, төлөв) хадгална.
   const periodBarExtraParams: Record<string, string> = {};
@@ -555,6 +586,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   }
   if (selectedStatus !== "all") {
     periodBarExtraParams.status = selectedStatus;
+  }
+  if (selectedDateBasis === "task") {
+    periodBarExtraParams.basis = "task";
   }
   const visibleReportRows = filteredReports
     .filter(reportMatchesCurrentFilters)
@@ -730,6 +764,13 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                           {option.label}
                         </option>
                       ))}
+                    </select>
+                  </label>
+                  <label className={styles.reportRegistrySelect}>
+                    <span>Огнооны суурь</span>
+                    <select name="basis" defaultValue={selectedDateBasis}>
+                      <option value="report">Тайлан илгээсэн огноо</option>
+                      <option value="task">Даалгаврын эхлэх огноо</option>
                     </select>
                   </label>
                   <button type="submit" className={styles.reportRegistryFilterButton}>

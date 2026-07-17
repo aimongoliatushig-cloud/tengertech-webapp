@@ -88,15 +88,20 @@ function extractReportDateKey(report: Pick<ReportRow, "submittedAt" | "submitted
 }
 
 function isReportInPeriod(
-  report: Pick<ReportRow, "submittedAt" | "submittedDateKey" | "taskName">,
+  report: Pick<ReportRow, "submittedAt" | "submittedDateKey" | "taskName" | "taskDateKey">,
   startDate: string,
   endDate: string,
+  dateBasis: "report" | "task" = "report",
 ) {
   if (!startDate && !endDate) {
     return true;
   }
 
-  const reportDate = extractReportDateKey(report);
+  // Даалгаврын огноогоор шүүхэд даалгаврын эхлэх/товлосон огноог хэрэглэнэ.
+  const reportDate =
+    dateBasis === "task" && report.taskDateKey && DATE_PARAM_PATTERN.test(report.taskDateKey)
+      ? report.taskDateKey
+      : extractReportDateKey(report);
   if (!reportDate) {
     return false;
   }
@@ -711,6 +716,8 @@ function buildExportPayload(
       : requestedEndDate;
   const requestedStatus = getParam(searchParams, "status");
   const selectedStatus = REPORT_STATUS_FILTER_KEYS.has(requestedStatus) ? requestedStatus : "all";
+  const selectedDateBasis: "report" | "task" =
+    getParam(searchParams, "basis") === "task" ? "task" : "report";
   const normalizedReportSearchQuery = getParam(searchParams, "q").toLocaleLowerCase("mn-MN");
   const hasReportContentFilter =
     Boolean(selectedStartDate || selectedEndDate || normalizedReportSearchQuery) ||
@@ -763,7 +770,7 @@ function buildExportPayload(
   }
 
   reports = reports.filter((report) => {
-    if (!isReportInPeriod(report, selectedStartDate, selectedEndDate)) {
+    if (!isReportInPeriod(report, selectedStartDate, selectedEndDate, selectedDateBasis)) {
       return false;
     }
     if (selectedStatus !== "all" && report.stateBucket !== selectedStatus) {

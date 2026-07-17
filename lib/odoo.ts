@@ -370,6 +370,8 @@ type ReportFeedItem = {
   audioCount: number;
   submittedDateKey?: string;
   submittedAt: string;
+  // Даалгаврын эхлэх/товлосон огноо (ээлжийн огноо -> дуусах хугацаа -> үүссэн огноо).
+  taskDateKey?: string;
   images: {
     id: number;
     name: string;
@@ -6728,6 +6730,10 @@ async function fetchLiveSnapshot(
       audioCount: Math.max(report.audio_count ?? 0, audios.length),
       submittedDateKey: getDateKeyFromValue(report.report_datetime) ?? "",
       submittedAt: formatCompactDate(report.report_datetime),
+      taskDateKey:
+        getDateKeyFromValue(
+          task?.mfo_shift_date || task?.date_deadline || task?.create_date || null,
+        ) ?? "",
       images,
       audios,
     } satisfies ReportFeedItem;
