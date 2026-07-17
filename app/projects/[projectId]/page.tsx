@@ -459,6 +459,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     {
       key: "todo",
       label: "Төлөвлөсөн",
+      headClass: "",
       tasks: visibleTasks.filter(
         (task) =>
           task.stageBucket === "todo" ||
@@ -469,6 +470,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     {
       key: "review",
       label: "Хянаж байгаа",
+      headClass: styles.projectTaskGroupHeadReview,
       tasks: visibleTasks.filter(
         (task) => task.stageBucket === "review" || task.stageBucket === "problem",
       ),
@@ -476,6 +478,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
     {
       key: "done",
       label: "Дууссан",
+      headClass: styles.projectTaskGroupHeadDone,
       tasks: visibleTasks.filter((task) => task.stageBucket === "done"),
     },
   ].filter((group) => group.tasks.length);
@@ -1026,7 +1029,7 @@ export default async function ProjectDetailPage({ params, searchParams }: PagePr
                   <div className={styles.projectTaskGroupedList}>
                     {taskListGroups.map((group) => (
                       <section key={group.key} className={styles.projectTaskGroup}>
-                        <div className={styles.projectTaskGroupHead}>
+                        <div className={`${styles.projectTaskGroupHead} ${group.headClass}`}>
                           <h3>{group.label}</h3>
                           <span>{group.tasks.length}</span>
                         </div>

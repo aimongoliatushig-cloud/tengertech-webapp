@@ -3679,14 +3679,17 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 0 2px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: rgba(95, 117, 99, 0.12);
 }
 
 .projectTaskGroupHead h3 {
   margin: 0;
-  color: var(--ink-900);
-  font-size: 0.92rem;
+  color: #48614d;
+  font-size: 0.95rem;
   font-weight: 800;
+  letter-spacing: 0.01em;
 }
 
 .projectTaskGroupHead span {
@@ -3697,10 +3700,26 @@
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  background: rgba(74, 154, 93, 0.12);
+  background: rgba(255, 255, 255, 0.85);
   color: var(--brand-900);
   font-size: 0.78rem;
   font-weight: 800;
+}
+
+.projectTaskGroupHeadReview {
+  background: rgba(143, 189, 134, 0.22);
+}
+
+.projectTaskGroupHeadReview h3 {
+  color: #3f7146;
+}
+
+.projectTaskGroupHeadDone {
+  background: rgba(44, 119, 64, 0.16);
+}
+
+.projectTaskGroupHeadDone h3 {
+  color: var(--brand-900);
 }
 
 .projectTaskCompactList {
