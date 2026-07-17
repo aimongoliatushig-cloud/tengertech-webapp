@@ -56,6 +56,7 @@ import {
   deleteWorkspaceTaskReport,
   deleteWorkspaceProject,
   deleteWorkspaceTask,
+  deleteWorkspaceTaskAttachment,
   findOrCreateWorkspaceSubdistrictOption,
   forceWorkspaceTaskDone,
   generateSeasonalWorkspaceExecution,
@@ -2400,6 +2401,87 @@ export async function deleteTaskAction(formData: FormData) {
   } catch (error) {
     rethrowIfRedirectError(error);
     redirectWithMessage(target, "error", getErrorMessage(error));
+  }
+}
+
+export async function addTaskAttachmentsAction(formData: FormData) {
+  const taskId = Number(String(formData.get("task_id") ?? ""));
+  const target = taskId ? `/tasks/${taskId}` : "/tasks";
+  const files = getUploadedFiles(formData, "attachment_files");
+
+  if (!taskId) {
+    redirectWithMessage(target, "error", "Файл хавсаргахад шаардлагатай мэдээлэл дутуу байна.");
+  }
+  if (!files.length) {
+    redirectWithMessage(target, "error", "Хавсаргах файлаа сонгоно уу.", "#task-attachments");
+  }
+
+  try {
+    const session = await requireSession();
+    const connectionOverrides = {
+      login: session.login,
+      password: session.password,
+    };
+    const task = await loadTaskDetail(taskId, connectionOverrides);
+    const canManageAttachments =
+      task.createdById === session.uid || canEditWorkspaceTaskContent(session);
+    if (!canManageAttachments) {
+      redirectWithMessage(target, "error", "Танд энэ даалгаварт файл хавсаргах эрх байхгүй байна.");
+    }
+
+    const attachments = await Promise.all(files.map((file) => prepareAttachment(file)));
+    try {
+      await createWorkspaceTaskAttachments(taskId, attachments, connectionOverrides);
+    } catch {
+      // Odoo талын хандалтын эрх хүрэлцэхгүй бол системийн холболтоор хавсаргана.
+      await createWorkspaceTaskAttachments(taskId, attachments, {
+        url: session.odooUrl,
+        db: session.odooDb,
+      });
+    }
+
+    clearOdooReadCaches();
+    revalidatePath(`/tasks/${taskId}`);
+    redirectWithMessage(target, "notice", "Файл амжилттай хавсаргалаа.", "#task-attachments");
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirectWithMessage(target, "error", getErrorMessage(error), "#task-attachments");
+  }
+}
+
+export async function deleteTaskAttachmentAction(formData: FormData) {
+  const taskId = Number(String(formData.get("task_id") ?? ""));
+  const attachmentId = Number(String(formData.get("attachment_id") ?? ""));
+  const target = taskId ? `/tasks/${taskId}` : "/tasks";
+
+  if (!taskId || !attachmentId) {
+    redirectWithMessage(target, "error", "Файл устгахад шаардлагатай мэдээлэл дутуу байна.");
+  }
+
+  try {
+    const session = await requireSession();
+    const connectionOverrides = {
+      login: session.login,
+      password: session.password,
+    };
+    const task = await loadTaskDetail(taskId, connectionOverrides);
+    const canManageAttachments =
+      task.createdById === session.uid || canEditWorkspaceTaskContent(session);
+    if (!canManageAttachments) {
+      redirectWithMessage(target, "error", "Танд энэ даалгаврын файл устгах эрх байхгүй байна.");
+    }
+
+    await deleteWorkspaceTaskAttachment(taskId, attachmentId, {
+      url: session.odooUrl,
+      db: session.odooDb,
+    });
+
+    clearOdooReadCaches();
+    revalidatePath(`/tasks/${taskId}`);
+    redirectWithMessage(target, "notice", "Хавсаргасан файл устгагдлаа.", "#task-attachments");
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirectWithMessage(target, "error", getErrorMessage(error), "#task-attachments");
   }
 }
 

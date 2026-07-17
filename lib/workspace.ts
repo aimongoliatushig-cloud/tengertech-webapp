@@ -6340,6 +6340,40 @@ export async function createWorkspaceTaskAttachments(
   );
 }
 
+export async function deleteWorkspaceTaskAttachment(
+  taskId: number,
+  attachmentId: number,
+  connectionOverrides: Partial<OdooConnection> = {},
+) {
+  // Зөвхөн тухайн даалгаварт хамаарах хавсралтыг устгана — гаднаас
+  // дурын attachment_id дамжуулж өөр бичлэг устгахаас хамгаална.
+  const records = await executeOdooKw<OdooAttachmentRecord[]>(
+    "ir.attachment",
+    "search_read",
+    [
+      [
+        ["id", "=", attachmentId],
+        ["res_model", "=", "project.task"],
+        ["res_id", "=", taskId],
+      ],
+    ],
+    { fields: ["id"], limit: 1 },
+    connectionOverrides,
+  );
+
+  if (!records.length) {
+    throw new Error("Хавсаргасан файл олдсонгүй эсвэл энэ даалгаварт хамаарахгүй байна.");
+  }
+
+  return executeOdooKw<boolean>(
+    "ir.attachment",
+    "unlink",
+    [[attachmentId]],
+    {},
+    connectionOverrides,
+  );
+}
+
 export async function createWorkspaceProjectAttachments(
   projectId: number,
   attachments: WorkspaceReportAttachmentInput[],
