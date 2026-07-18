@@ -710,46 +710,39 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                 </div>
               </div>
 
-              <div className={`${styles.heroStats} ${reviewFocusedMode ? styles.reviewStats : ""}`}>
-                {!reviewFocusedMode ? (
-                  <>
-                <article className={styles.heroStatCard}>
-                  <span>Хариуцсан хүн</span>
-                  <strong>{taskAssigneeLabel}</strong>
-                </article>
-                  <article className={styles.heroStatCard}>
-                    <span>Хийгдэх хугацаа</span>
-                    <strong>
-                      {workerMode ? (
-                        <CalendarDays size={18} strokeWidth={2.3} aria-hidden="true" />
-                      ) : null}
-                      {task.deadline || "Огноо оруулаагүй"}
-                    </strong>
-                  </article>
+              {!reviewFocusedMode ? (
+                <p className={styles.summaryMetaLine}>
+                  <span>
+                    Хариуцсан хүн: <strong>{taskAssigneeLabel}</strong>
+                  </span>
+                  <span>
+                    {workerMode ? (
+                      <CalendarDays size={16} strokeWidth={2.3} aria-hidden="true" />
+                    ) : null}
+                    Хийгдэх хугацаа: <strong>{task.deadline || "Огноо оруулаагүй"}</strong>
+                  </span>
                   {taskUnitLabel ? (
-                    <article className={styles.heroStatCard}>
-                      <span>Нэгж</span>
-                      <strong>{taskUnitLabel}</strong>
-                    </article>
+                    <span>
+                      Нэгж: <strong>{taskUnitLabel}</strong>
+                    </span>
                   ) : null}
-                  </>
-                ) : (
-                  <>
-                <article className={styles.heroStatCard}>
-                  <span>Төлөв</span>
-                  <strong>{task.stageLabel}</strong>
-                </article>
-                <article className={styles.heroStatCard}>
-                  <span>Явц</span>
-                  <strong>{task.progress}%</strong>
-                </article>
-                <article className={styles.heroStatCard}>
-                  <span>Тайлан</span>
-                  <strong>{task.reports.length}</strong>
-                </article>
-                  </>
-                )}
-              </div>
+                </p>
+              ) : (
+                <div className={`${styles.heroStats} ${styles.reviewStats}`}>
+                  <article className={styles.heroStatCard}>
+                    <span>Төлөв</span>
+                    <strong>{task.stageLabel}</strong>
+                  </article>
+                  <article className={styles.heroStatCard}>
+                    <span>Явц</span>
+                    <strong>{task.progress}%</strong>
+                  </article>
+                  <article className={styles.heroStatCard}>
+                    <span>Тайлан</span>
+                    <strong>{task.reports.length}</strong>
+                  </article>
+                </div>
+              )}
 
               {quantityLines.length ? (
                 <section className={styles.quantityOverview}>
