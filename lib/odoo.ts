@@ -6746,8 +6746,16 @@ async function fetchLiveSnapshot(
         getDateKeyFromValue(
           task?.mfo_shift_date || task?.date_deadline || task?.create_date || null,
         ) ?? "",
+      // Дууссан ажлын огноо: энэ байгууллагад "Хийгдэх хугацаа" нь ажил бодитоор
+      // хийгдсэн өдрийг заадаг тул түүнийг тэргүүлж, дараа нь ээлжийн огноо,
+      // эцэст нь "Дууссан" шатанд шилжсэн системийн огноог хэрэглэнэ.
       taskDoneDateKey: taskIsDone
-        ? getDateKeyFromValue(task?.date_last_stage_update || null) ?? ""
+        ? getDateKeyFromValue(
+            task?.date_deadline ||
+              task?.mfo_shift_date ||
+              task?.date_last_stage_update ||
+              null,
+          ) ?? ""
         : "",
       images,
       audios,
