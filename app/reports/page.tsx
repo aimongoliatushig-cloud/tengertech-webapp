@@ -107,6 +107,9 @@ const REPORT_OPERATIONS_GROUP_NAMES = new Set([
   "Авто бааз, хог тээвэрлэлтийн хэлтэс",
   "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс",
   "Тохижилтын хэлтэс",
+  // Захирал, удирдлагын үүрэг даалгаврын төслүүд Захиргааны алба дээр
+  // бүртгэлтэй тул тэдгээрийн тайланг мөн энд харуулна.
+  "Захиргааны алба",
 ]);
 
 const REPORT_DEPARTMENT_HINTS: Record<string, { eyebrow: string; note: string; initials: string }> = {
@@ -124,6 +127,11 @@ const REPORT_DEPARTMENT_HINTS: Record<string, { eyebrow: string; note: string; i
     eyebrow: "Тохижилт",
     note: "Гудамж, зам талбай, засвар тохижилтын тайлан",
     initials: "ТХ",
+  },
+  "Захиргааны алба": {
+    eyebrow: "Захиргаа",
+    note: "Захирал, удирдлагын үүрэг даалгаврын гүйцэтгэлийн тайлан",
+    initials: "ЗА",
   },
 };
 
@@ -179,6 +187,9 @@ function reportDepartmentMatchesGroup(
   }
   if (group.name === "Тохижилтын хэлтэс") {
     return !hasTransportSignal && !hasCleaningSignal && hasImprovementSignal;
+  }
+  if (group.name === "Захиргааны алба") {
+    return normalized.includes("захиргаа") || normalized.includes("удирдлага");
   }
 
   return false;
