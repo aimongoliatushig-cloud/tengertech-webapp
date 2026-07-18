@@ -879,6 +879,9 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
               <div className={styles.mainColumn}>
                 {showMainActionPanel ? actionPanel : null}
 
+                {/* Тайлан байхгүй бөгөөд "Тайлан оруулах" самбар харагдаж байвал
+                    хоосон жагсаалтын картыг давхарлаж үзүүлэхгүй. */}
+                {task.reports.length || !showMainActionPanel ? (
                 <section className={styles.sectionCard} id="task-reports">
                   <div className={styles.sectionHead}>
                     <div>
@@ -1035,6 +1038,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                     </div>
                   )}
                 </section>
+                ) : null}
                 {reviewFocusedMode ? actionPanel : null}
               </div>
 
@@ -1207,12 +1211,14 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
 
                 {!reviewFocusedMode ? (
                 <aside className={styles.chatterCard}>
-                  <div className={styles.chatterTop}>
+                  {/* Зай хэмнэхийн тулд эвхэгддэг; зурвастай үед нээлттэй эхэлнэ. */}
+                  <details className={styles.chatterCollapse} open={task.messages.length > 0}>
+                  <summary className={styles.chatterTop}>
                     <div>
                       <strong className={styles.actionTitle}>Зурвас ба тэмдэглэл</strong>
                     </div>
                     <span className={styles.chatterCount}>{task.messages.length}</span>
-                  </div>
+                  </summary>
 
                   <form action={postTaskMessageAction} className={styles.chatterComposer}>
                     <input type="hidden" name="task_id" value={task.id} />
@@ -1327,6 +1333,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                       Энэ даалгавар дээр зурвас, тэмдэглэл хараахан алга.
                     </div>
                   )}
+                  </details>
                 </aside>
                 ) : null}
               </div>

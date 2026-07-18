@@ -1045,12 +1045,43 @@
 
 .chatterCard {
   display: grid;
-  gap: 16px;
-  padding: 18px;
+  gap: 12px;
+  padding: 14px;
   border: 1px solid var(--line-soft);
   border-radius: var(--ds-radius-card);
   background: rgba(255, 255, 255, 0.86);
   box-shadow: var(--ds-shadow-panel);
+}
+
+/* Зурвас ба тэмдэглэлийг эвхэгддэг болгох details/summary загвар. */
+.chatterCollapse {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.chatterCollapse > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.chatterCollapse > summary::-webkit-details-marker {
+  display: none;
+}
+
+.chatterCollapse > summary::after {
+  content: "▾";
+  color: var(--brand-800);
+  font-size: 0.85rem;
+}
+
+.chatterCollapse[open] > summary::after {
+  content: "▴";
 }
 
 .chatterTop,
