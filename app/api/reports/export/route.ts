@@ -725,8 +725,9 @@ function buildExportPayload(
   const requestedStatus = getParam(searchParams, "status");
   const selectedStatus = REPORT_STATUS_FILTER_KEYS.has(requestedStatus) ? requestedStatus : "all";
   const requestedBasis = getParam(searchParams, "basis");
+  // Тайлангийн хуудастай адил: үндсэн горим нь ажил хийгдсэн (дууссан) огноо.
   const selectedDateBasis: "report" | "task" | "done" =
-    requestedBasis === "task" ? "task" : requestedBasis === "done" ? "done" : "report";
+    requestedBasis === "task" ? "task" : requestedBasis === "report" ? "report" : "done";
   const normalizedReportSearchQuery = getParam(searchParams, "q").toLocaleLowerCase("mn-MN");
   const hasReportContentFilter =
     Boolean(selectedStartDate || selectedEndDate || normalizedReportSearchQuery) ||

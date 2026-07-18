@@ -388,8 +388,10 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const selectedEndDate = period.endDate;
   const selectedPeriodLabel = period.periodLabel;
   const requestedBasis = getDepartmentParam(params.basis);
+  // Үндсэн горим: тайланг ажил хийгдсэн (дууссан) өдрөөр нь хугацааны шүүлтэд
+  // оруулна — сарын тайлан тухайн сард хийгдсэн ажлаа харуулна.
   const selectedDateBasis: ReportDateBasis =
-    requestedBasis === "task" ? "task" : requestedBasis === "done" ? "done" : "report";
+    requestedBasis === "task" ? "task" : requestedBasis === "report" ? "report" : "done";
   const selectedStatus = REPORT_STATUS_FILTERS.some((item) => item.key === requestedStatus)
     ? requestedStatus
     : "all";
@@ -498,9 +500,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   if (selectedStatus !== "all") {
     preservedFilterParams.set("status", selectedStatus);
   }
-  if (selectedDateBasis !== "report") {
-    preservedFilterParams.set("basis", selectedDateBasis);
-  }
+  preservedFilterParams.set("basis", selectedDateBasis);
   appendReportPeriodSearch(preservedFilterParams, period);
   const preservedFilterQuery = preservedFilterParams.toString();
   const allDepartmentsHref = `/reports${preservedFilterQuery ? `?${preservedFilterQuery}` : ""}`;
@@ -531,9 +531,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     if (selectedStatus !== "all") {
       hrefParams.set("status", selectedStatus);
     }
-    if (selectedDateBasis !== "report") {
-      hrefParams.set("basis", selectedDateBasis);
-    }
+    hrefParams.set("basis", selectedDateBasis);
     appendReportPeriodSearch(hrefParams, period);
     const groupReports = snapshot.reports.filter((report) =>
       reportDepartmentMatchesGroup(group, report.departmentName) &&
@@ -570,9 +568,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
         if (selectedStatus !== "all") {
           hrefParams.set("status", selectedStatus);
         }
-        if (selectedDateBasis !== "report") {
-          hrefParams.set("basis", selectedDateBasis);
-        }
+        hrefParams.set("basis", selectedDateBasis);
         appendReportPeriodSearch(hrefParams, period);
         const reportCount = filteredReports.filter(
           (report) => report.departmentName === unit && reportMatchesCurrentFilters(report),
@@ -597,9 +593,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   if (!departmentScopedMode && selectedUnit) {
     exportParams.set("unit", selectedUnit);
   }
-  if (selectedDateBasis !== "report") {
-    exportParams.set("basis", selectedDateBasis);
-  }
+  exportParams.set("basis", selectedDateBasis);
   appendReportPeriodSearch(exportParams, period);
   // Хугацааны bar болон toolbar хооронд бусад шүүлтийг (хэлтэс, нэгж, хайлт, төлөв) хадгална.
   const periodBarExtraParams: Record<string, string> = {};
@@ -615,9 +609,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   if (selectedStatus !== "all") {
     periodBarExtraParams.status = selectedStatus;
   }
-  if (selectedDateBasis !== "report") {
-    periodBarExtraParams.basis = selectedDateBasis;
-  }
+  periodBarExtraParams.basis = selectedDateBasis;
   const visibleReportRows = filteredReports
     .filter(reportMatchesCurrentFilters)
     .sort((left, right) => right.submittedAt.localeCompare(left.submittedAt) || right.id - left.id);
@@ -797,9 +789,9 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   <label className={styles.reportRegistrySelect}>
                     <span>Огнооны суурь</span>
                     <select name="basis" defaultValue={selectedDateBasis}>
-                      <option value="report">Тайлан илгээсэн огноо</option>
-                      <option value="task">Даалгаврын эхлэх огноо</option>
                       <option value="done">Ажил дууссан огноо</option>
+                      <option value="task">Даалгаврын эхлэх огноо</option>
+                      <option value="report">Тайлан илгээсэн огноо</option>
                     </select>
                   </label>
                   <button type="submit" className={styles.reportRegistryFilterButton}>
