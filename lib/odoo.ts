@@ -71,6 +71,7 @@ type OdooTaskRecord = {
   ops_measurement_unit_code?: string | false;
   priority?: string;
   date_deadline?: string | false;
+  date_last_stage_update?: string | false;
   mfo_shift_date?: string | false;
   mfo_is_operation_project?: boolean;
   mfo_operation_type?: string | false;
@@ -372,6 +373,8 @@ type ReportFeedItem = {
   submittedAt: string;
   // Даалгаврын эхлэх/товлосон огноо (ээлжийн огноо -> дуусах хугацаа -> үүссэн огноо).
   taskDateKey?: string;
+  // Ажил дууссан огноо: даалгавар "Дууссан" төлөвт шилжсэн огноо (дуусаагүй бол хоосон).
+  taskDoneDateKey?: string;
   images: {
     id: number;
     name: string;
@@ -2056,6 +2059,7 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "ops_measurement_unit_code",
     "priority",
     "date_deadline",
+    "date_last_stage_update",
     "mfo_shift_date",
     "state",
     "mfo_is_operation_project",
@@ -2092,6 +2096,7 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "ops_measurement_unit_code",
     "priority",
     "date_deadline",
+    "date_last_stage_update",
     "mfo_shift_date",
     "state",
     "mfo_is_operation_project",
@@ -2121,6 +2126,7 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "ops_measurement_unit_code",
     "priority",
     "date_deadline",
+    "date_last_stage_update",
     "mfo_shift_date",
     "state",
   ],
@@ -2142,6 +2148,7 @@ const TASK_FIELD_VARIANTS: string[][] = [
     "ops_measurement_unit",
     "priority",
     "date_deadline",
+    "date_last_stage_update",
     "mfo_shift_date",
     "state",
   ],
@@ -6697,6 +6704,11 @@ async function fetchLiveSnapshot(
   const reportsFeed = reports.map((report) => {
     const taskId = Array.isArray(report.task_id) ? report.task_id[0] : null;
     const task = taskId ? reportTaskMap.get(taskId) : undefined;
+    const taskIsDone = Boolean(
+      task &&
+        (task.state === "1_done" ||
+          getStageBucket(relationName(task.stage_id, "")) === "done"),
+    );
     const images = buildReportImages(report);
     const audios = buildReportAudios(report);
     return {
@@ -6734,6 +6746,9 @@ async function fetchLiveSnapshot(
         getDateKeyFromValue(
           task?.mfo_shift_date || task?.date_deadline || task?.create_date || null,
         ) ?? "",
+      taskDoneDateKey: taskIsDone
+        ? getDateKeyFromValue(task?.date_last_stage_update || null) ?? ""
+        : "",
       images,
       audios,
     } satisfies ReportFeedItem;
