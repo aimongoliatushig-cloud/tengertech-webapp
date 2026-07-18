@@ -1211,8 +1211,8 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
 
                 {!reviewFocusedMode ? (
                 <aside className={styles.chatterCard}>
-                  {/* Зай хэмнэхийн тулд эвхэгддэг; зурвастай үед нээлттэй эхэлнэ. */}
-                  <details className={styles.chatterCollapse} open={task.messages.length > 0}>
+                  {/* Зай хэмнэхийн тулд үргэлж эвхэгдсэн байдлаар эхэлнэ. */}
+                  <details className={styles.chatterCollapse}>
                   <summary className={styles.chatterTop}>
                     <div>
                       <strong className={styles.actionTitle}>Зурвас ба тэмдэглэл</strong>
@@ -1220,6 +1220,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                     <span className={styles.chatterCount}>{task.messages.length}</span>
                   </summary>
 
+                  <div className={styles.chatterCollapseBody}>
                   <form action={postTaskMessageAction} className={styles.chatterComposer}>
                     <input type="hidden" name="task_id" value={task.id} />
                     <label htmlFor="message_body" className={styles.modalField}>
@@ -1333,6 +1334,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
                       Энэ даалгавар дээр зурвас, тэмдэглэл хараахан алга.
                     </div>
                   )}
+                  </div>
                   </details>
                 </aside>
                 ) : null}

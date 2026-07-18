@@ -1053,10 +1053,17 @@
   box-shadow: var(--ds-shadow-panel);
 }
 
-/* Зурвас ба тэмдэглэлийг эвхэгддэг болгох details/summary загвар. */
+/* Зурвас ба тэмдэглэлийг эвхэгддэг болгох details/summary загвар.
+   Анхаар: details элемент дээр display:grid тавьж болохгүй — зарим хөтчид
+   эвхэлтийг эвддэг тул дотоод body wrapper дээр grid хэрэглэнэ. */
 .chatterCollapse {
+  min-width: 0;
+}
+
+.chatterCollapseBody {
   display: grid;
   gap: 14px;
+  margin-top: 14px;
   min-width: 0;
 }
 
