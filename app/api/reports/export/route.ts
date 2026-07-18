@@ -833,6 +833,28 @@ function buildExportPayload(
     : scopedDepartmentName || selectedUnit || selectedGroup?.name || "Бүх хэлтэс";
   const periodScope = formatReportPeriodScope(selectedStartDate, selectedEndDate);
 
+  // Дэлгэц дээрхтэй адил: "Огноо" баганад сонгосон огнооны сууриар
+  // (үндсэн горимд ажил дууссан огноо) харуулна.
+  if (selectedDateBasis !== "report") {
+    reports = reports.map((report) => {
+      const dateKey =
+        selectedDateBasis === "task" &&
+        report.taskDateKey &&
+        DATE_PARAM_PATTERN.test(report.taskDateKey)
+          ? report.taskDateKey
+          : selectedDateBasis === "done" &&
+              report.taskDoneDateKey &&
+              DATE_PARAM_PATTERN.test(report.taskDoneDateKey)
+            ? report.taskDoneDateKey
+            : "";
+      if (!dateKey) {
+        return report;
+      }
+      const [year, month, day] = dateKey.split("-");
+      return { ...report, submittedAt: `${year}.${month}.${day}` };
+    });
+  }
+
   return {
     generatedAt: snapshot.generatedAt,
     scope: periodScope ? `${baseScope} / ${periodScope}` : baseScope,

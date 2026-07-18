@@ -293,6 +293,11 @@ function isReportInPeriod(
   return true;
 }
 
+function formatDateKeyLabel(dateKey: string) {
+  const [year, month, day] = dateKey.split("-");
+  return `${year}.${month}.${day}`;
+}
+
 function formatSubmittedTime(value: string) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -610,9 +615,31 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     periodBarExtraParams.status = selectedStatus;
   }
   periodBarExtraParams.basis = selectedDateBasis;
+  // Жагсаалтыг сонгосон огнооны сууриар (үндсэн горимд ажил дууссан огноогоор)
+  // эрэмбэлж, мөр дээр мөн тэр огноог харуулна.
   const visibleReportRows = filteredReports
     .filter(reportMatchesCurrentFilters)
-    .sort((left, right) => right.submittedAt.localeCompare(left.submittedAt) || right.id - left.id);
+    .sort(
+      (left, right) =>
+        extractReportPeriodDateKey(right, selectedDateBasis).localeCompare(
+          extractReportPeriodDateKey(left, selectedDateBasis),
+        ) || right.id - left.id,
+    );
+  const periodDateColumnLabel =
+    selectedDateBasis === "done"
+      ? "Дууссан огноо"
+      : selectedDateBasis === "task"
+        ? "Эхлэх огноо"
+        : "Илгээсэн огноо";
+  const formatReportPeriodDateLabel = (report: FeedReport) => {
+    if (selectedDateBasis === "report") {
+      return formatSubmittedTime(report.submittedAt);
+    }
+    const dateKey = extractReportPeriodDateKey(report, selectedDateBasis);
+    return DATE_PARAM_PATTERN.test(dateKey)
+      ? formatDateKeyLabel(dateKey)
+      : formatSubmittedTime(report.submittedAt);
+  };
   const boardReportRows = visibleReportRows.slice(0, 100);
   // Татах modal-д шүүлтэд хамаарах тайлангуудын зургийг дамжуулна
   const reportsForDownload = visibleReportRows.map((report) => ({
@@ -921,7 +948,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                         <span>Тайлангийн нэр</span>
                         <span>Хэлтэс</span>
                         <span>Төрөл</span>
-                        <span>Илгээсэн огноо</span>
+                        <span>{periodDateColumnLabel}</span>
                         <span>Төлөв</span>
                       </div>
                       {boardReportRows.map((report, index) => {
@@ -950,7 +977,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                                   {task?.operationTypeLabel || "Гүйцэтгэлийн тайлан"}
                                 </span>
                               </span>
-                              <span>{formatSubmittedTime(report.submittedAt)}</span>
+                              <span>{formatReportPeriodDateLabel(report)}</span>
                               <span>
                                 <span className={`${styles.reportRegistryStatusBadge} ${statusClass}`}>
                                   {reportStatusLabel(report)}
@@ -964,6 +991,10 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                                 <article>
                                   <span>Илгээгч</span>
                                   <strong>{report.reporter}</strong>
+                                </article>
+                                <article>
+                                  <span>Илгээсэн огноо</span>
+                                  <strong>{formatSubmittedTime(report.submittedAt)}</strong>
                                 </article>
                                 <article>
                                   <span>Хэмжээ</span>
