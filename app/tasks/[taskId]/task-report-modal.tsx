@@ -1051,7 +1051,7 @@ export function TaskReportModal({
                         <textarea
                           id="report_text"
                           name="report_text"
-                          maxLength={500}
+                          maxLength={2000}
                           value={reportText}
                           onChange={(event) => setReportText(event.target.value)}
                           placeholder={
@@ -1061,7 +1061,7 @@ export function TaskReportModal({
                           }
                           required={reportTextRequired}
                         />
-                        <small>{reportText.length}/500</small>
+                        <small>{reportText.length}/2000</small>
                       </span>
                     </label>
                   </section>
@@ -1075,7 +1075,7 @@ export function TaskReportModal({
                       id="report_before_images"
                       name="report_before_images"
                       label="Өмнөх зураг"
-                      maxFiles={5}
+                      maxFiles={10}
                       emptyStateLabel="Өмнөх зураг сонгоогүй байна"
                       existingAttachments={existingImageGroups.beforeImages}
                       removeFieldName="remove_image_attachment_ids"
@@ -1085,7 +1085,7 @@ export function TaskReportModal({
                       id="report_after_images"
                       name="report_after_images"
                       label="Дараах зураг"
-                      maxFiles={5}
+                      maxFiles={10}
                       emptyStateLabel="Дараах зураг сонгоогүй байна"
                       existingAttachments={existingImageGroups.afterImages}
                       removeFieldName="remove_image_attachment_ids"

@@ -276,7 +276,7 @@ export function TaskReportActions({
                       label="Өмнөх зураг нэмэх"
                       accept="image/*"
                       multiple
-                      maxFiles={5}
+                      maxFiles={10}
                       emptyStateLabel="Шинэ өмнөх зураг сонгоогүй байна"
                     />
 
@@ -286,7 +286,7 @@ export function TaskReportActions({
                       label="Дараах зураг нэмэх"
                       accept="image/*"
                       multiple
-                      maxFiles={5}
+                      maxFiles={10}
                       emptyStateLabel="Шинэ дараах зураг сонгоогүй байна"
                     />
 
