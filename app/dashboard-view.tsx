@@ -3716,6 +3716,49 @@ function ExecutiveDashboardView({
             className="mb-5"
           />
 
+          {departmentScopeName && fleetBoard.totalVehicles > 0 ? (
+            <section className={dashboardStyles.departmentVehicleSection} id="department-vehicles">
+              <div className={dashboardStyles.executiveSectionHeader}>
+                <div>
+                  <h2>Хэлтсийн машин техник</h2>
+                  <p>
+                    Нийт {fleetBoard.totalVehicles} машин · Идэвхтэй {fleetBoard.activeCount}
+                    {fleetBoard.repairCount ? ` · Засварт ${fleetBoard.repairCount}` : ""}
+                  </p>
+                </div>
+                <Link href={fleetBoardHref} className={dashboardStyles.departmentVehicleLink}>
+                  Бүгдийг харах
+                </Link>
+              </div>
+              <div className={dashboardStyles.departmentVehicleGrid}>
+                {fleetBoard.allVehicles.slice(0, 12).map((vehicle) => (
+                  <article key={vehicle.id} className={dashboardStyles.departmentVehicleCard}>
+                    <strong>{vehicle.plate || vehicle.name}</strong>
+                    <span>{vehicle.modelName || vehicle.name}</span>
+                    <small>
+                      {vehicle.responsibleDriverName ||
+                        vehicle.fleetDriverName ||
+                        "Жолооч оноогоогүй"}
+                    </small>
+                    <span
+                      className={cn(
+                        dashboardStyles.departmentVehicleStatus,
+                        vehicle.isRepair && dashboardStyles.departmentVehicleStatusRepair,
+                      )}
+                    >
+                      {vehicle.isRepair ? "Засварт" : vehicle.stateLabel || "Идэвхтэй"}
+                    </span>
+                  </article>
+                ))}
+              </div>
+              {fleetBoard.allVehicles.length > 12 ? (
+                <p className={dashboardStyles.departmentVehicleMore}>
+                  +{fleetBoard.allVehicles.length - 12} бусад машиныг «Бүгдийг харах» дээрээс үзнэ.
+                </p>
+              ) : null}
+            </section>
+          ) : null}
+
           <div className={dashboardStyles.executiveOperationsGrid}>
             {showDepartmentPerformance ? (
               <section id="department-performance" className={dashboardStyles.executiveSection}>
