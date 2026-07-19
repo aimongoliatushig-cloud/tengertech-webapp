@@ -65,7 +65,7 @@
   border: 1px solid transparent;
   border-radius: 8px;
   color: #35443b;
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
   font-weight: 700;
   line-height: 1.1;
   text-decoration: none;
@@ -115,7 +115,7 @@
   border: 1px solid transparent;
   border-radius: 8px;
   color: #35443b;
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
   font-weight: 700;
   line-height: 1.1;
   text-decoration: none;
@@ -744,10 +744,6 @@
     padding: 0 12px;
     font-size: var(--fs-sm);
     font-weight: 700;
-  }
-
-  .mobileSheet .menuLinkActive {
-    min-height: 54px;
   }
 
   .mobileSheet .menuIcon {
