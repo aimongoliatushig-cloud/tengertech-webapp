@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans, Inter } from "next/font/google";
+import { IBM_Plex_Mono } from "next/font/google";
 
 import { AppBadgeManager } from "@/app/_components/app-badge-manager";
 import { GlobalLoadingProvider } from "@/app/_components/global-loading";
@@ -8,24 +8,12 @@ import { UiContextPreserver } from "@/app/_components/ui-context-preserver";
 
 import "./globals.css";
 
-const body = IBM_Plex_Sans({
-  variable: "--font-body",
-  subsets: ["latin", "cyrillic"],
-  // 700-г бодитоор ачаалснаар тод текст хөтчийн хуурамч bold биш
-  // жинхэнэ Bold хэлбэрээрээ зурагдана.
-  weight: ["400", "500", "600", "700"],
-});
-
+// Үндсэн текст Arial (системийн фонт) — --font-body болон --font-inter
+// хувьсагчдыг globals.css дээр Arial stack-аар тодорхойлсон.
 const mono = IBM_Plex_Mono({
   variable: "--font-mono",
   subsets: ["latin", "cyrillic"],
   weight: ["400", "500"],
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin", "cyrillic"],
-  weight: ["400", "500", "600", "700"],
 });
 
 const EXTENSION_ATTRIBUTE_CLEANUP_SCRIPT = `
@@ -91,7 +79,7 @@ export default function RootLayout({
     <html
       lang="mn"
       suppressHydrationWarning
-      className={`${body.variable} ${mono.variable} ${inter.variable}`}
+      className={mono.variable}
     >
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />

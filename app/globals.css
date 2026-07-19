@@ -6,6 +6,11 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+  /* Үндсэн фонт: Arial (системийн фонт, монгол кирилл ө/ү-г бүрэн дэмжинэ).
+     Утас/Linux дээр Helvetica, Roboto, Liberation Sans руу буудаг. */
+  --font-body: Arial, "Helvetica Neue", Helvetica, "Liberation Sans", Roboto, sans-serif;
+  --font-inter: var(--font-body);
+
   /* Типографийн нэгдсэн скейл — үсгийн хэмжээг зөвхөн эдгээр token-оор тохируулна. */
   --fs-3xs: 0.72rem;
   --fs-2xs: 0.78rem;
