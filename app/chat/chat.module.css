@@ -87,7 +87,7 @@
   border-radius: var(--ds-radius-card);
   background: rgba(74, 154, 93, 0.14);
   color: var(--brand-900);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .conversationCopy {
@@ -219,7 +219,7 @@
   color: #f7fcf6;
   cursor: pointer;
   font: inherit;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .composer button:disabled {

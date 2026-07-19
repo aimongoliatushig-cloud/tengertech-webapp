@@ -282,7 +282,7 @@
   border-radius: var(--ds-radius-control);
   background: var(--brand-700);
   color: #fff;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .stepItem strong {

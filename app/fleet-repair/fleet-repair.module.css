@@ -212,7 +212,7 @@
 .vehicleReportValues span {
   color: var(--ink-900);
   font-size: 0.95rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .vehicleReportValues strong {
@@ -392,7 +392,7 @@
 
 .quoteCard span,
 .quoteSelected span {
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .quoteCard small,

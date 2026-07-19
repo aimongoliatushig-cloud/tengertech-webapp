@@ -89,7 +89,7 @@
 .pendingQueueStats small {
   color: #66766b;
   font-size: 0.75rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .pendingRequestGrid {
@@ -163,7 +163,7 @@
   border-radius: 999px;
   font-size: 0.75rem;
   font-style: normal;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .pendingRequestCard em {
@@ -210,7 +210,7 @@
   background: #2e7d32;
   color: #fff;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -306,13 +306,13 @@
 .infoCard span {
   color: var(--stat-label-color, #637568);
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .statCard small {
   color: #3a4a42;
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .statIcon svg {
@@ -325,7 +325,7 @@
   margin-top: 1px;
   color: var(--stat-accent, #1f7a35);
   font-size: 1.95rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: -0.01em;
 }
@@ -479,7 +479,7 @@
   background: rgba(246, 251, 247, 0.96);
   color: #203029;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.2;
   text-align: center;
   text-decoration: none;
@@ -558,7 +558,7 @@
   border-radius: 9px;
   color: #4a5a52;
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
   white-space: nowrap;
   text-decoration: none;
@@ -694,8 +694,8 @@
 }
 
 .barValue {
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 0.75rem;
+  font-weight: 700;
   color: var(--ink-900);
 }
 
@@ -730,22 +730,22 @@
 }
 
 .barLabel {
-  font-size: 11px;
+  font-size: 0.69rem;
   color: var(--ink-700);
   white-space: nowrap;
 }
 
 .barCaption {
   margin: 12px 0 0;
-  font-size: 12.5px;
+  font-size: 0.78rem;
   color: var(--ink-700);
   text-align: center;
 }
 
 .barCaption strong {
   color: var(--ink-900);
-  font-weight: 800;
-  font-size: 14px;
+  font-weight: 700;
+  font-size: 0.88rem;
 }
 
 /* Хэлтсийн хянах самбар — ажилтны сүлжээ */
@@ -773,7 +773,7 @@
 
 .chartCenter span {
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.02em;
   opacity: 0.7;
   text-transform: uppercase;
@@ -781,7 +781,7 @@
 
 .chartCenter strong {
   font-size: 1.72rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: -0.01em;
 }
@@ -877,7 +877,7 @@
   background: #2e7d32;
   color: #fff;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .chartTopRow div {
@@ -906,7 +906,7 @@
   grid-column: 2;
   justify-self: start;
   font-style: normal;
-  font-weight: 850;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -934,7 +934,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 0.84rem;
-  font-weight: 850;
+  font-weight: 700;
   text-align: center;
   text-decoration: none;
 }
@@ -958,12 +958,12 @@
   background: rgba(238, 247, 239, 0.86);
   color: #506158;
   font-size: 0.82rem;
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .filterSummary strong {
   color: #1f7a35;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .searchBox {
@@ -1057,12 +1057,12 @@
 .table th {
   color: #637568;
   font-size: 0.75rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .table a {
   color: #1f7a35;
-  font-weight: 850;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -1094,7 +1094,7 @@
   background: rgba(46, 125, 50, 0.08);
   color: #1f7a35;
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1;
   text-decoration: none;
   box-shadow: 0 6px 16px rgba(27, 73, 38, 0.06);
@@ -1141,7 +1141,7 @@
   color: var(--ink-950);
   font: inherit;
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1;
   text-align: center;
   cursor: pointer;
@@ -1283,7 +1283,7 @@
   display: block;
   color: #637568;
   font-size: 0.76rem;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -1299,7 +1299,7 @@
   margin: 5px 0 0;
   color: #66766b;
   font-size: 0.75rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -1382,7 +1382,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 0.76rem;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -1477,7 +1477,7 @@
   margin: 0;
   color: #66766b;
   font-size: 0.76rem;
-  font-weight: 760;
+  font-weight: 700;
   line-height: 1.3;
 }
 
@@ -1582,7 +1582,7 @@
 .reportSideHint span {
   color: #66766b;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .pdfCanvasStack {
@@ -1612,7 +1612,7 @@
   background: transparent;
   color: #1f7a35;
   font-size: 0.9rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.35;
 }
 
@@ -1653,7 +1653,7 @@
   background: rgba(46, 125, 50, 0.11);
   color: #2e7d32;
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .detailRow {
@@ -1684,7 +1684,7 @@
   justify-content: center;
   background: rgba(46, 125, 50, 0.12);
   color: #2e7d32;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -1719,8 +1719,8 @@
 }
 
 .tierHeader span {
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 0.81rem;
+  font-weight: 700;
   color: var(--ink-900);
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -1760,7 +1760,7 @@
   justify-content: center;
   background: rgba(46, 125, 50, 0.12);
   color: #2e7d32;
-  font-size: 22px;
+  font-size: 1.38rem;
   font-weight: 700;
   margin-bottom: 4px;
 }
@@ -1772,19 +1772,19 @@
 }
 
 .employeeGridName {
-  font-size: 14px;
+  font-size: 0.88rem;
   font-weight: 700;
   line-height: 1.2;
 }
 
 .employeeGridTitle {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: #4a5a52;
   line-height: 1.3;
 }
 
 .employeeGridDept {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: #8a978f;
   line-height: 1.3;
 }
@@ -1810,7 +1810,7 @@
   justify-content: center;
   background: rgba(46, 125, 50, 0.12);
   color: #2e7d32;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -1827,14 +1827,14 @@
 }
 
 .identityName {
-  font-size: 13px;
+  font-size: 0.81rem;
   font-weight: 600;
   color: var(--ink-900);
   line-height: 1.2;
 }
 
 .identitySub {
-  font-size: 11px;
+  font-size: 0.69rem;
   color: var(--ink-700);
   line-height: 1.25;
 }
@@ -1884,14 +1884,14 @@
 }
 
 .registryCardMeta dt {
-  font-size: 11px;
+  font-size: 0.69rem;
   color: #8a978f;
   flex-shrink: 0;
 }
 
 .registryCardMeta dd {
   margin: 0;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--ink-900);
   text-align: right;
   min-width: 0;
@@ -1929,14 +1929,14 @@
 
 .miniMetric strong {
   display: block;
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 1.25rem;
+  font-weight: 700;
   color: var(--ink-900);
   line-height: 1.1;
 }
 
 .miniMetric small {
-  font-size: 11px;
+  font-size: 0.69rem;
   color: var(--ink-700);
 }
 
@@ -1969,14 +1969,14 @@
 
 .orgSectionHead h2 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--ink-900);
 }
 
 .orgSectionHead p {
   margin: 2px 0 0;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--ink-700);
 }
 
@@ -2017,12 +2017,12 @@
 }
 
 .orgTopBox span {
-  font-size: 14px;
+  font-size: 0.88rem;
   line-height: 1.25;
 }
 
 .orgTopBox strong {
-  font-size: 15px;
+  font-size: 0.94rem;
   padding: 1px 9px;
   border-radius: 999px;
   background: var(--surface-panel);
@@ -2064,13 +2064,13 @@
   border-radius: 12px;
   border: 1px solid rgba(15, 23, 42, 0.14);
   background: var(--surface-panel);
-  font-size: 13px;
+  font-size: 0.81rem;
   font-weight: 600;
   color: #334155;
 }
 
 .orgAside strong {
-  font-size: 13px;
+  font-size: 0.81rem;
   padding: 1px 8px;
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.06);
@@ -2105,8 +2105,8 @@
 
 .orgDeptHead h3 {
   margin: 0;
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 0.88rem;
+  font-weight: 700;
   line-height: 1.3;
 }
 
@@ -2125,20 +2125,20 @@
   padding: 3px 10px;
   border-radius: 999px;
   background: var(--surface-panel);
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 0.81rem;
+  font-weight: 700;
   color: var(--ink-900);
 }
 
 .orgDeptLive em {
   font-style: normal;
-  font-size: 11px;
+  font-size: 0.69rem;
   font-weight: 600;
   color: var(--ink-700);
 }
 
 .orgDeptVacant {
-  font-size: 11px;
+  font-size: 0.69rem;
   font-weight: 700;
   color: #b91c1c;
   padding: 3px 9px;
@@ -2147,7 +2147,7 @@
 }
 
 .orgDeptFull {
-  font-size: 11px;
+  font-size: 0.69rem;
   font-weight: 700;
   color: #15803d;
   padding: 3px 9px;
@@ -2170,7 +2170,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  font-size: 12.5px;
+  font-size: 0.78rem;
   color: #253027;
   padding: 3px 8px;
   border-radius: 7px;
@@ -2188,7 +2188,7 @@
   position: absolute;
   left: 0;
   color: #8a978f;
-  font-size: 11px;
+  font-size: 0.69rem;
 }
 
 .orgRoleTag {
@@ -2198,7 +2198,7 @@
   border-radius: 6px;
   background: rgba(15, 23, 42, 0.08);
   color: #64748b;
-  font-size: 10px;
+  font-size: 0.62rem;
   font-style: normal;
   vertical-align: middle;
 }
@@ -2209,12 +2209,12 @@
 }
 
 .orgRoleCount b {
-  font-weight: 800;
+  font-weight: 700;
   color: var(--ink-900);
 }
 
 .orgRoleCount small {
-  font-size: 11px;
+  font-size: 0.69rem;
   color: #8a978f;
 }
 
@@ -2331,7 +2331,7 @@
 .detailRow em {
   justify-self: end;
   font-style: normal;
-  font-weight: 800;
+  font-weight: 700;
   text-align: right;
 }
 
@@ -2374,7 +2374,7 @@
   padding: 0 12px;
   border-radius: 8px;
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 700;
   text-decoration: none;
   transition:
     background 160ms ease,
@@ -2470,7 +2470,7 @@
 .trialActionForm label span {
   color: #5d6d61;
   font-size: 0.76rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .trialActionForm input,
@@ -2499,7 +2499,7 @@
 .trialActionSuccess {
   margin: 0;
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .trialActionInlineMessage {
@@ -2529,7 +2529,7 @@
   background: rgba(218, 238, 219, 0.92);
   color: #2e7d32;
   font-size: 0.75rem;
-  font-weight: 850;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -2619,7 +2619,7 @@
 .employeePhotoPlaceholder {
   color: #2e7d32;
   font-size: 2rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .employeeProfileText {
@@ -2630,7 +2630,7 @@
   margin: 6px 0 0;
   color: #66766b;
   font-size: 0.86rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
@@ -2660,7 +2660,7 @@
 .editInfoBanner span {
   color: #5f7065;
   font-size: 0.78rem;
-  font-weight: 760;
+  font-weight: 700;
   line-height: 1.35;
 }
 
@@ -2730,7 +2730,7 @@
 .editReadonlyValue span {
   color: #66766b;
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.3;
 }
 
@@ -2767,7 +2767,7 @@
   background: rgba(238, 247, 239, 0.92);
   color: #1f7a35;
   font-size: 0.84rem;
-  font-weight: 850;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -2810,7 +2810,7 @@
 .selectedEmployeeContext small {
   color: #637568;
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .selectedEmployeeContextHeader {
@@ -2823,7 +2823,7 @@
 .selectedEmployeeContextAction {
   color: #1f7a35;
   font-size: 0.76rem;
-  font-weight: 850;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -2903,7 +2903,7 @@
 .searchableSelectOption small {
   color: #637568;
   font-size: 0.75rem;
-  font-weight: 760;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -2976,7 +2976,7 @@
   padding: 13px 11px;
   color: #637568;
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .checkField {
@@ -2989,7 +2989,7 @@
   border-radius: 8px;
   background: var(--surface-panel);
   font-size: 0.84rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .checkField input {
@@ -3006,7 +3006,7 @@
 .profilePhotoEditorLabel {
   color: #526456;
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .profilePhotoUploadBox {
@@ -3056,7 +3056,7 @@
 .profilePhotoHint {
   display: block;
   margin-top: 6px;
-  font-size: 11px;
+  font-size: 0.69rem;
   color: var(--ink-700);
   text-align: center;
 }
@@ -3125,7 +3125,7 @@
   background: rgba(218, 238, 219, 0.78);
   color: #1f7a35;
   font-size: 1.45rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .profilePhotoEmptyState strong {
@@ -3146,7 +3146,7 @@
   background: rgba(22, 36, 27, 0.72);
   color: #ffffff;
   font-size: 0.76rem;
-  font-weight: 860;
+  font-weight: 700;
 }
 
 .profilePhotoRemoveButton {
@@ -3191,7 +3191,7 @@
   padding: 10px 12px;
   border-radius: 8px;
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .errorText {
@@ -3228,7 +3228,7 @@
   border-radius: 999px;
   background: rgba(218, 238, 219, 0.92);
   color: #2e7d32;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .manpowerPanel {
@@ -3279,7 +3279,7 @@
   margin-top: 3px;
   color: #66766b;
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .manpowerHeader strong {
@@ -3447,7 +3447,7 @@
   color: #2e7d32;
   font-size: 0.75rem;
   font-style: normal;
-  font-weight: 850;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3484,7 +3484,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .tabList .activeTab {
@@ -3534,7 +3534,7 @@
   padding: 16px 18px 0;
   color: var(--ink-950);
   font-size: 0.84rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .hrProfileBreadcrumb a {
@@ -3603,14 +3603,14 @@
   background: rgba(218, 238, 219, 0.96);
   color: #1f7a35;
   font-size: 0.76rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .hrProfileIdentityText p {
   margin: 0;
   color: #334139;
   font-size: 1.05rem;
-  font-weight: 750;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 
@@ -3629,19 +3629,19 @@
   min-width: 0;
   color: var(--ink-950);
   font-size: 0.88rem;
-  font-weight: 720;
+  font-weight: 700;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
 .hrProfileIdentityText li > span:not(.hrProfileEmptyValue) {
   color: #526456;
-  font-weight: 720;
+  font-weight: 700;
 }
 
 .hrProfileEmptyValue {
   color: #8a968d !important;
-  font-weight: 560 !important;
+  font-weight: 600 !important;
 }
 
 .hrProfileIdentityText li svg,
@@ -3682,7 +3682,7 @@
 .hrProfileInfoCard span {
   color: var(--ink-700);
   font-size: 0.78rem;
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .hrProfileHeroMetric strong,
@@ -3725,7 +3725,7 @@
   display: block;
   color: var(--ink-950);
   font-size: 0.86rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .actionPanelHelp {
@@ -3733,7 +3733,7 @@
   margin: 4px 0 0;
   color: #627167;
   font-size: 0.8rem;
-  font-weight: 720;
+  font-weight: 700;
   line-height: 1.42;
 }
 
@@ -3755,7 +3755,7 @@
   gap: 7px;
   border-radius: 8px;
   font-size: 0.82rem;
-  font-weight: 860;
+  font-weight: 700;
   font-family: inherit;
   line-height: 1.2;
   text-decoration: none;
@@ -3808,7 +3808,7 @@
   color: #2c5f3a;
   cursor: pointer;
   font-size: 0.8rem;
-  font-weight: 880;
+  font-weight: 700;
   list-style: none;
 }
 
@@ -3906,7 +3906,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 0.84rem;
-  font-weight: 850;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -4023,7 +4023,7 @@
 .workSnapshotMeta span {
   color: #66766b;
   font-size: 0.76rem;
-  font-weight: 820;
+  font-weight: 700;
 }
 
 .workSnapshotMain strong {
@@ -4038,7 +4038,7 @@
   margin: 0;
   color: var(--ink-700);
   font-size: 0.82rem;
-  font-weight: 740;
+  font-weight: 700;
   line-height: 1.42;
 }
 
@@ -4111,7 +4111,7 @@
   margin: 4px 0 0;
   color: #5f7065;
   font-size: 0.8rem;
-  font-weight: 740;
+  font-weight: 700;
   line-height: 1.42;
 }
 
@@ -4144,7 +4144,7 @@
   margin: 0;
   color: #66766b;
   font-size: 0.76rem;
-  font-weight: 730;
+  font-weight: 700;
   line-height: 1.38;
 }
 
@@ -4164,7 +4164,7 @@
 .workInfoLabel {
   color: #66766b;
   font-size: 0.78rem;
-  font-weight: 780;
+  font-weight: 700;
   line-height: 1.35;
 }
 
@@ -4172,7 +4172,7 @@
   min-width: 0;
   color: #111827;
   font-size: 0.84rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.38;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
@@ -4222,7 +4222,7 @@
   background: var(--surface-panel);
   color: #7c4a03;
   font-size: 0.75rem;
-  font-weight: 820;
+  font-weight: 700;
 }
 
 .workHistoryPanel {
@@ -4353,7 +4353,7 @@
   background: rgba(248, 250, 248, 0.96);
   color: #445048;
   font-size: 0.76rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .hrProfileTable tr:last-child td {
@@ -4370,7 +4370,7 @@
   background: rgba(248, 252, 248, 0.82);
   color: #66766b;
   font-size: 0.86rem;
-  font-weight: 800;
+  font-weight: 700;
   text-align: center;
 }
 
@@ -4382,7 +4382,7 @@
   background: transparent;
   color: #1f7a35;
   font-size: 0.8rem;
-  font-weight: 900;
+  font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
@@ -4416,13 +4416,13 @@
 .hrProfileMetricCard span {
   color: #111827;
   font-size: 0.86rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .hrProfileMetricCard small {
   color: #66766b;
   font-size: 0.76rem;
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .hrProfileActionStack {
@@ -4446,7 +4446,7 @@
 .hrProfileSkillRow span {
   color: #111827;
   font-size: 0.84rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .hrProfileSkillRow strong {
@@ -4487,7 +4487,7 @@
   background: rgba(218, 238, 219, 0.72);
   color: var(--accent-ink);
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .departmentGrid {
@@ -4523,7 +4523,7 @@
   margin-top: 6px;
   color: #66766b;
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .departmentTile small svg {
@@ -4561,7 +4561,7 @@
   border-radius: 8px;
   color: #304139;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -4582,7 +4582,7 @@
 
 .accessDenied span {
   color: #2e7d32;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .accessDenied h1 {
@@ -4967,7 +4967,7 @@
     border-radius: 999px;
     background: rgba(218, 238, 219, 0.92);
     color: #1f7a35;
-    font-weight: 900;
+    font-weight: 700;
   }
 
   .mobileInlineDetail .detailList {
@@ -5137,7 +5137,7 @@
     color: #66766b;
     content: attr(data-label);
     font-size: 0.75rem;
-    font-weight: 850;
+    font-weight: 700;
     line-height: 1.4;
   }
 
@@ -5302,20 +5302,20 @@
   place-items: center;
   background: linear-gradient(140deg, #2e7d32, #57ab5c);
   color: #fff;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 1.25rem;
   overflow: hidden;
 }
 .erpAvatarImg { width: 100%; height: 100%; object-fit: cover; }
 .erpIdMain { min-width: 0; }
-.erpIdMain strong { display: block; font-size: 1.4rem; font-weight: 800; color: var(--ink-900); letter-spacing: -0.01em; }
+.erpIdMain strong { display: block; font-size: 1.4rem; font-weight: 700; color: var(--ink-900); letter-spacing: -0.01em; }
 .erpIdMain small { display: block; color: var(--ink-700); font-size: 0.9rem; margin-top: 2px; }
 .erpIdMeta { display: flex; flex-wrap: wrap; gap: 4px 15px; margin-top: 7px; font-size: 0.78rem; color: var(--ink-700); }
 .erpIdMeta b { color: var(--ink-900); font-weight: 700; }
 .erpStatusWrap { margin-left: auto; text-align: right; }
 .erpStatusPill {
   display: inline-flex; align-items: center; gap: 7px;
-  padding: 7px 13px; border-radius: 999px; font-weight: 800; font-size: 0.82rem;
+  padding: 7px 13px; border-radius: 999px; font-weight: 700; font-size: 0.82rem;
 }
 .erpStatusDot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 .erpStatusWrap small { display: block; color: var(--ink-700); font-size: 0.72rem; margin-top: 6px; }
@@ -5332,7 +5332,7 @@
 .erpKpi_good::before { background: #16a34a; }
 .erpKpi_warn::before { background: #d97706; }
 .erpKpi_crit::before { background: #dc2626; }
-.erpKpiN { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; color: var(--ink-900); font-variant-numeric: tabular-nums; }
+.erpKpiN { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; color: var(--ink-900); font-variant-numeric: tabular-nums; }
 .erpKpi_good .erpKpiN { color: #16a34a; }
 .erpKpi_warn .erpKpiN { color: #d97706; }
 .erpKpi_crit .erpKpiN { color: #dc2626; }
@@ -5340,8 +5340,8 @@
 
 .erpCols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .erpPanel { background: var(--surface-panel); border: 1px solid rgba(46, 125, 50, 0.14); border-radius: 18px; padding: 16px 18px; }
-.erpPanel h3 { margin: 0 0 10px; font-size: 0.98rem; font-weight: 800; color: var(--ink-900); display: flex; align-items: center; gap: 8px; }
-.erpTag { margin-left: auto; font-size: 0.68rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
+.erpPanel h3 { margin: 0 0 10px; font-size: 0.98rem; font-weight: 700; color: var(--ink-900); display: flex; align-items: center; gap: 8px; }
+.erpTag { margin-left: auto; font-size: 0.68rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
 .erpTagGood { background: rgba(22, 163, 74, 0.12); color: #15803d; }
 .erpTagWarn { background: rgba(217, 119, 6, 0.13); color: #b45309; }
 .erpTagCrit { background: rgba(220, 38, 38, 0.10); color: #dc2626; }
@@ -5350,7 +5350,7 @@
 .erpRow:first-of-type { border-top: 0; }
 .erpRowK { color: var(--ink-700); }
 .erpRowV { margin-left: auto; font-weight: 700; color: var(--ink-900); text-align: right; }
-.erpMark { width: 18px; height: 18px; border-radius: 6px; flex: none; display: grid; place-items: center; font-size: 0.68rem; font-weight: 900; color: #fff; }
+.erpMark { width: 18px; height: 18px; border-radius: 6px; flex: none; display: grid; place-items: center; font-size: 0.68rem; font-weight: 700; color: #fff; }
 .erpMarkOk { background: #16a34a; }
 .erpMarkNo { background: #dc2626; }
 .erpMarkNa { background: #b6c2ba; }
@@ -5362,7 +5362,7 @@
 
 .erpRec { display: flex; gap: 11px; padding: 9px 0; border-top: 1px solid rgba(46, 125, 50, 0.10); }
 .erpRec:first-of-type { border-top: 0; }
-.erpRecIcon { width: 24px; height: 24px; border-radius: 8px; flex: none; display: grid; place-items: center; font-weight: 900; font-size: 0.8rem; }
+.erpRecIcon { width: 24px; height: 24px; border-radius: 8px; flex: none; display: grid; place-items: center; font-weight: 700; font-size: 0.8rem; }
 .erpRec_p1 .erpRecIcon { background: rgba(220, 38, 38, 0.10); color: #dc2626; }
 .erpRec_p2 .erpRecIcon { background: rgba(217, 119, 6, 0.13); color: #b45309; }
 .erpRec_p3 .erpRecIcon { background: rgba(46, 125, 50, 0.10); color: #2e7d32; }
@@ -5438,7 +5438,7 @@
 
 .jobGroupHeader h4 {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 0.84rem;
   font-weight: 700;
   color: var(--ink-900, #0f172a);
 }
@@ -5453,7 +5453,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.14);
   color: #0f6e56;
-  font-size: 11.5px;
+  font-size: 0.72rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }

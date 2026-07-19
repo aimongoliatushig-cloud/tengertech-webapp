@@ -209,7 +209,7 @@
   background: #dc2626;
   color: #fff;
   font-size: 0.65rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .dateChip,
@@ -258,7 +258,7 @@
   margin-bottom: 4px !important;
   color: var(--proc-ink) !important;
   font-size: 1.08rem !important;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .pageStack {
@@ -313,7 +313,7 @@
   margin-bottom: 7px;
   color: #25382b;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .segmentedControl {
@@ -335,7 +335,7 @@
   color: #36513f;
   cursor: pointer;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
   text-align: center;
 }
 
@@ -403,7 +403,7 @@
 .infoCard span {
   color: var(--proc-muted);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .kpiCard strong,
@@ -493,13 +493,13 @@
   margin: 0 0 4px;
   color: var(--proc-ink);
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.25;
 }
 
 .requestSummaryHeader h2 {
   font-size: calc(1rem + 2px);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .sectionHeader p,
@@ -534,7 +534,7 @@
   background: var(--proc-green-soft);
   color: var(--proc-green-700);
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .overviewCopy h2 {
@@ -652,7 +652,7 @@
 .dataTable th {
   color: #62756a;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: none;
 }
 
@@ -664,7 +664,7 @@
   display: grid;
   gap: 3px;
   color: var(--proc-ink);
-  font-weight: 850;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -700,14 +700,14 @@
   color: #304a39;
   font: inherit;
   font-size: 0.8rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .tableFooter {
   margin: 12px 0 0;
   color: var(--proc-muted);
   font-size: 0.8rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .pagerButton {
@@ -720,7 +720,7 @@
   background: var(--surface-panel);
   color: #31513e;
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .pagerButtonActive {
@@ -786,7 +786,7 @@
   gap: 6px;
   color: #31513e;
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .fieldLabel input,
@@ -831,7 +831,7 @@
   border-radius: 7px;
   font: inherit;
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.2;
   text-decoration: none;
   cursor: pointer;
@@ -1023,7 +1023,7 @@
 
 .quoteMiniCard span {
   color: var(--brand-900, var(--proc-green-700));
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .quoteMiniCard small {
@@ -1052,7 +1052,7 @@
 .statusBanner {
   padding: 12px 14px;
   font-size: 0.86rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .noticeBanner {
@@ -1082,7 +1082,7 @@
   padding: 0 9px;
   border-radius: 999px;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -1193,7 +1193,7 @@
   border-radius: 8px;
   color: #244535;
   font-size: 1.15rem;
-  font-weight: 900;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -1238,7 +1238,7 @@
 .donutHole span {
   color: var(--proc-muted);
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .legendList {
@@ -1253,7 +1253,7 @@
   gap: 12px;
   color: #314a3a;
   font-size: 0.8rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .legendItem span {
@@ -1294,7 +1294,7 @@
   margin-top: 3px;
   color: var(--proc-muted);
   font-size: 0.76rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .activityList {
@@ -1324,7 +1324,7 @@
   margin-top: 4px;
   color: var(--proc-muted);
   font-size: 0.75rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .statusGuideItem {
@@ -1335,7 +1335,7 @@
   min-height: 30px;
   color: #344c3b;
   font-size: 0.78rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .statusGuideItem > span:first-child {
@@ -1365,7 +1365,7 @@
   background: #f4f8f5;
   color: #314a3a;
   font-size: 0.76rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .dotWarning {
@@ -1417,7 +1417,7 @@
   border-radius: 8px;
   background: var(--proc-bg);
   font-size: 0.75rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .formActionsCard {
@@ -1467,7 +1467,7 @@
   min-height: 34px;
   color: #31513e;
   font-size: 0.76rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .lineImageUpload svg {
@@ -1587,7 +1587,7 @@
   margin-top: 4px;
   color: var(--proc-green-700);
   font-size: 0.75rem;
-  font-weight: 850;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 
@@ -1619,7 +1619,7 @@
   color: var(--proc-ink);
   font: inherit;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.25;
   text-align: left;
   overflow-wrap: anywhere;
@@ -1653,7 +1653,7 @@
   background: #fff5f5;
   color: #b91c1c;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.35;
 }
 
@@ -1754,7 +1754,7 @@
   background: #f7fbf8;
   color: var(--proc-green-700);
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -1786,7 +1786,7 @@
   border-radius: 999px;
   background: var(--surface-panel);
   font-size: 0.8rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .stickyActionBar {
@@ -1921,7 +1921,7 @@
   background: transparent;
   outline: 0;
   color: var(--proc-ink);
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .filterIconButton,
@@ -1961,7 +1961,7 @@
   gap: 6px;
   color: var(--proc-ink);
   font-size: 0.76rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .dateFilterPanel input {
@@ -1973,7 +1973,7 @@
   color: var(--proc-ink);
   font: inherit;
   font-size: 0.82rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .dashboardKpiGrid {
@@ -1998,7 +1998,7 @@
 .dashboardKpiCard span:not(.metricIcon) {
   color: var(--proc-ink);
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -2017,7 +2017,7 @@
 .dashboardKpiCard small {
   color: var(--proc-muted);
   font-size: 0.75rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -2040,7 +2040,7 @@
   background: var(--surface-panel);
   color: var(--proc-ink);
   font-size: 0.84rem;
-  font-weight: 850;
+  font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
 }
@@ -2063,7 +2063,7 @@
 .dashboardPagination > span {
   color: var(--proc-muted);
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .dashboardPagination > div {
@@ -2148,7 +2148,7 @@
   background: var(--proc-green-soft);
   color: var(--proc-green-700);
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .procurementTableShell,
@@ -2181,7 +2181,7 @@
 .completedTable th {
   color: var(--proc-muted);
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .stageTableBody td {
@@ -2228,7 +2228,7 @@
   min-width: 0;
   overflow: hidden;
   font-size: 0.75rem;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2252,7 +2252,7 @@
   background: var(--surface-panel);
   color: currentColor;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .stageArrowDone {
@@ -2374,7 +2374,7 @@
 .completedFactGrid span {
   color: var(--proc-muted);
   font-size: 0.75rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .completedFactGrid strong {
@@ -2484,7 +2484,7 @@
 .progressiveMetaRow {
   color: var(--proc-muted);
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .progressPanelContent {
@@ -2585,7 +2585,7 @@
 
 .documentLinkCard strong {
   font-size: 0.8rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .documentLinkCard small {
@@ -2660,7 +2660,7 @@
 
 .attachmentPreviewCard strong {
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .attachmentPreviewCard small {
@@ -2747,7 +2747,7 @@
   background: var(--proc-green-soft);
   color: var(--proc-green-700);
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -3165,7 +3165,7 @@
     content: attr(data-label);
     color: var(--proc-muted);
     font-size: 0.75rem;
-    font-weight: 900;
+    font-weight: 700;
   }
 
   .mobileDock {
@@ -3192,7 +3192,7 @@
     border-radius: 10px;
     color: #45614d;
     font-size: 0.75rem;
-    font-weight: 850;
+    font-weight: 700;
     text-decoration: none;
   }
 

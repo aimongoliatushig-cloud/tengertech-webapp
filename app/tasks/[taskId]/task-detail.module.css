@@ -170,7 +170,7 @@
 .reportImageGroupHeader strong {
   color: var(--ink-900);
   font-size: 0.95rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .reportImageGroupHeader span {
@@ -182,7 +182,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -219,7 +219,7 @@
 .existingReportTop strong,
 .existingReportText strong {
   color: var(--ink-900);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .existingReportTop small,
@@ -239,7 +239,7 @@
   background: rgba(226, 238, 255, 0.9);
   color: #245283;
   font-size: 0.8rem;
-  font-weight: 900;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -311,7 +311,7 @@
   overflow: hidden;
   color: var(--ink-600);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -451,7 +451,7 @@
   color: #8f2a19;
   font: inherit;
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -524,7 +524,7 @@
   background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
   color: #f7fcf6;
   font: inherit;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
   box-shadow: 0 14px 28px rgba(31, 95, 49, 0.18);
 }
@@ -611,7 +611,7 @@
 .summaryMetaLine strong {
   color: var(--ink-900);
   font-size: 0.95rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .heroStatCard span,
@@ -708,7 +708,7 @@
   color: #f7fcf6;
   font: inherit;
   font-size: 0.9rem;
-  font-weight: 900;
+  font-weight: 700;
   white-space: nowrap;
   box-shadow: 0 12px 24px rgba(31, 95, 49, 0.16);
   cursor: pointer;
@@ -795,7 +795,7 @@
   background: rgba(74, 154, 93, 0.14);
   color: var(--brand-800);
   font-size: 0.8rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .attachmentGrid {
@@ -1118,7 +1118,7 @@
   padding: 0 14px;
   border-radius: 999px;
   font-size: 0.86rem;
-  font-weight: 850;
+  font-weight: 700;
   white-space: nowrap;
   box-shadow: none;
 }
@@ -1132,7 +1132,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-900);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .chatterComposer,
@@ -1216,7 +1216,7 @@
   border-radius: 12px;
   background: var(--brand-700);
   color: #fff;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .messageContent {
@@ -1383,7 +1383,7 @@
     linear-gradient(135deg, #14652a, #2f9346);
   color: #fff;
   font-size: 1.02rem;
-  font-weight: 900;
+  font-weight: 700;
   box-shadow:
     0 16px 34px rgba(28, 111, 50, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.24);
@@ -1526,7 +1526,7 @@
   margin: 0;
   color: var(--ink-700);
   font-size: 0.86rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .garbagePointMetaGrid {
@@ -1545,7 +1545,7 @@
   background: rgba(255, 255, 255, 0.86);
   color: var(--ink-600);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .garbagePointMetaGrid strong {
@@ -1692,7 +1692,7 @@
   margin: 0;
   color: var(--brand-900);
   font-size: 0.86rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .reportComposer {
@@ -1821,7 +1821,7 @@
 .modalWorkInfoGrid small {
   color: var(--ink-600);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .modalWorkInfoGrid strong {
@@ -1931,7 +1931,7 @@
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-800);
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -1953,7 +1953,7 @@
   border-radius: 999px;
   font: inherit;
   font-size: 0.86rem;
-  font-weight: 900;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -2034,7 +2034,7 @@
   color: var(--brand-800);
   font: inherit;
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -2350,7 +2350,7 @@
     overflow: hidden;
     color: #17231c;
     font-size: 1rem;
-    font-weight: 900;
+    font-weight: 700;
     text-align: center;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -2412,7 +2412,7 @@
     gap: 10px;
     color: var(--ink-700);
     font-size: 0.82rem;
-    font-weight: 800;
+    font-weight: 700;
   }
 
   .summaryTop {
@@ -2627,7 +2627,7 @@
     overflow: hidden;
     color: #17231c;
     font-size: 1rem;
-    font-weight: 900;
+    font-weight: 700;
     text-align: center;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -2678,7 +2678,7 @@
     gap: 10px;
     color: var(--ink-700);
     font-size: 0.82rem;
-    font-weight: 800;
+    font-weight: 700;
   }
 
   .summaryTop {
@@ -3332,7 +3332,7 @@
     background: transparent;
     color: var(--ink-900);
     font: inherit;
-    font-weight: 900;
+    font-weight: 700;
     cursor: pointer;
   }
 
@@ -3344,7 +3344,7 @@
     min-width: 0;
     color: #17231c;
     font-size: 0.95rem;
-    font-weight: 900;
+    font-weight: 700;
     text-align: left;
   }
 

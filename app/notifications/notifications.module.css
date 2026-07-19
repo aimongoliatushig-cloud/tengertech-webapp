@@ -47,7 +47,7 @@
   gap: 12px;
   color: var(--ink-600);
   font-size: 0.86rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .readToolbar button {
@@ -127,7 +127,7 @@
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-800);
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .reasonPillUrgent {
@@ -143,7 +143,7 @@
   border-radius: 999px;
   padding: 0 9px;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .unreadPill {
@@ -165,7 +165,7 @@
   background: rgba(15, 23, 42, 0.06);
   color: var(--ink-600);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .notificationMeta {

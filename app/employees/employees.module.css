@@ -28,14 +28,14 @@
 
 .statValue {
   color: var(--ink-900);
-  font-size: 24px !important;
-  font-weight: 800;
+  font-size: 1.5rem !important;
+  font-weight: 700;
   line-height: 1.1;
 }
 
 .statLabel {
   color: var(--ink-600);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .stat.ok {
@@ -85,7 +85,7 @@
   cursor: pointer;
   list-style: none;
   color: var(--brand-900);
-  font-size: 14px !important;
+  font-size: 0.88rem !important;
   font-weight: 600;
 }
 .assignSummary::-webkit-details-marker {
@@ -126,7 +126,7 @@
 }
 .assignField span {
   color: var(--ink-700);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 .assignField select,
@@ -213,7 +213,7 @@
 .pickerEmpty {
   padding: 10px;
   color: var(--ink-600);
-  font-size: 12px;
+  font-size: 0.75rem;
   text-align: center;
 }
 
@@ -242,7 +242,7 @@
   border-radius: 999px;
   background: var(--surface-panel);
   color: var(--ink-700);
-  font-size: 12px !important;
+  font-size: 0.75rem !important;
   text-decoration: none;
   transition: border-color 140ms ease, background 140ms ease;
 }
@@ -270,7 +270,7 @@
 
 .groupHeading {
   margin: 4px 2px 2px;
-  font-size: 15px;
+  font-size: 0.94rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--ink, #16241b);
@@ -313,7 +313,7 @@
   border-radius: 50%;
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-900);
-  font-size: 13px !important;
+  font-size: 0.81rem !important;
   font-weight: 700;
 }
 
@@ -328,7 +328,7 @@
   align-items: center;
   gap: 6px;
   color: var(--ink-900);
-  font-size: 14px !important;
+  font-size: 0.88rem !important;
   font-weight: 600;
 }
 .empChevron {
@@ -340,7 +340,7 @@
 }
 .empRole {
   color: var(--ink-600);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .empProgress {
@@ -351,7 +351,7 @@
 }
 .empProgressTop {
   color: var(--ink-600);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .empProgressTop b {
   color: var(--ink-900);
@@ -376,7 +376,7 @@
   gap: 14px;
   flex-shrink: 0;
   color: var(--ink-600);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .empMini b {
   color: var(--ink-900);
@@ -437,7 +437,7 @@
 .taskName {
   overflow: hidden;
   color: var(--ink-900);
-  font-size: 13px !important;
+  font-size: 0.81rem !important;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -453,7 +453,7 @@
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 11px !important;
+  font-size: 0.69rem !important;
   font-weight: 600;
 }
 .pill_over {
@@ -484,7 +484,7 @@
   border: 1px solid var(--line-soft);
   background: var(--surface-panel);
   color: var(--ink-600);
-  font-size: 11px !important;
+  font-size: 0.69rem !important;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -498,12 +498,12 @@
 }
 .taskMeta b {
   color: var(--brand-900);
-  font-size: 13px !important;
+  font-size: 0.81rem !important;
   font-weight: 700;
 }
 .taskMeta span {
   color: var(--ink-500);
-  font-size: 11px !important;
+  font-size: 0.69rem !important;
 }
 
 .emptyState {
@@ -558,13 +558,13 @@
 }
 
 .progressHead span {
-  font-size: 13px;
+  font-size: 0.81rem;
   font-weight: 600;
   color: var(--ink-500, #64748b);
 }
 
 .progressHead strong {
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--brand-900, #14532d);
@@ -589,7 +589,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 12.5px;
+  font-size: 0.78rem;
   color: var(--ink-500, #64748b);
 }
 
@@ -604,5 +604,5 @@
   background: #faeeda;
   color: #854f0b;
   font-weight: 700;
-  font-size: 11.5px;
+  font-size: 0.72rem;
 }

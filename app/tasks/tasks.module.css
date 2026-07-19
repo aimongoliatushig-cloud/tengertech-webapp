@@ -50,7 +50,7 @@
   margin: 0;
   color: var(--ink-950);
   font-family: var(--font-body);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -280,7 +280,7 @@
 .masterFilterField span {
   color: var(--ink-700);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .masterFilterField input,
@@ -319,7 +319,7 @@
 .masterTableHeader {
   color: var(--ink-700);
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
   background: rgba(248, 252, 248, 0.96);
   border-bottom: 1px solid rgba(74, 154, 93, 0.1);
 }
@@ -355,7 +355,7 @@
 .masterCardProgress em {
   color: var(--ink-700);
   font-style: normal;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .masterProgressCell b,
@@ -385,7 +385,7 @@
   background: rgba(95, 117, 99, 0.1);
   color: var(--ink-700);
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .masterStatusprogress {
@@ -458,7 +458,7 @@
   background: var(--brand-800);
   color: #fff !important;
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .calendarPanel {
@@ -506,7 +506,7 @@
   gap: 8px;
   color: #fff;
   text-decoration: none;
-  font-weight: 900;
+  font-weight: 700;
   transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
@@ -534,7 +534,7 @@
   border-radius: 10px;
   color: var(--ink-700);
   font-size: 0.86rem;
-  font-weight: 900;
+  font-weight: 700;
   transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -601,14 +601,14 @@
   border-radius: 999px;
   background: var(--surface-panel);
   font-size: 1.45rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .workCalendarBrand span {
   display: block;
   color: rgba(255, 255, 255, 0.82);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -637,7 +637,7 @@
   background: var(--surface-panel);
   color: #fff;
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .calendarLegend i {
@@ -676,7 +676,7 @@
   place-items: center;
   color: var(--ink-800);
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .monthDay {
@@ -707,7 +707,7 @@
 
 .monthDayHeader span {
   color: var(--ink-900);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .monthDayMuted .monthDayHeader span {
@@ -782,7 +782,7 @@
 .monthTask span {
   overflow: hidden;
   font-size: 0.75rem;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.22;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -791,7 +791,7 @@
 .monthTask small {
   color: var(--ink-700);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .monthTaskplanned {
@@ -822,7 +822,7 @@
 .monthMore {
   color: var(--brand-800);
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .weekCalendar {
@@ -899,14 +899,14 @@
 .weekDayHeader div strong {
   color: var(--ink-900);
   font-size: 1.4rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
 .weekDayHeader div span {
   color: var(--ink-600);
   font-size: 0.8rem;
-  font-weight: 900;
+  font-weight: 700;
   text-transform: capitalize;
 }
 
@@ -920,7 +920,7 @@
   color: #fff;
   font-size: 0.76rem;
   font-style: normal;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .weekDayTasks {
@@ -949,7 +949,7 @@
   overflow: hidden;
   display: -webkit-box;
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.25;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -958,7 +958,7 @@
 .weekTask small {
   color: var(--ink-700);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .weekEmpty {
@@ -970,7 +970,7 @@
   background: rgba(74, 154, 93, 0.04);
   color: var(--ink-500);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .calendarMonthGrid {
@@ -1113,7 +1113,7 @@
 .timelineTime {
   color: var(--brand-800);
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.8;
   text-align: right;
 }
@@ -1159,7 +1159,7 @@
   background: rgba(74, 154, 93, 0.05);
   color: var(--ink-600);
   font-size: 0.82rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .calendarEmpty {
@@ -1452,7 +1452,7 @@
   background: #2f8d3f;
   color: #fff;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .workerGreeting {
@@ -1474,7 +1474,7 @@
   margin: 0;
   color: #17231c;
   font-size: clamp(1.85rem, 8vw, 2.35rem);
-  font-weight: 900;
+  font-weight: 700;
   letter-spacing: 0;
   line-height: 1.04;
 }
@@ -1509,13 +1509,13 @@
 .workerDepartmentHero span {
   color: var(--brand-800);
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .workerDepartmentHero strong {
   color: #17231c;
   font-size: clamp(1.26rem, 6vw, 1.72rem);
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.18;
 }
 
@@ -1538,7 +1538,7 @@
   background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
   color: #fff;
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 700;
   box-shadow: 0 14px 26px rgba(31, 95, 49, 0.22);
 }
 
@@ -1634,7 +1634,7 @@
   gap: 10px;
   color: #17231c;
   font-size: 1.08rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .workerWeatherCard strong svg {
@@ -1651,7 +1651,7 @@
   background: rgba(218, 238, 219, 0.9);
   color: var(--brand-800) !important;
   font-size: 0.78rem;
-  font-weight: 900 !important;
+  font-weight: 700 !important;
   white-space: nowrap;
 }
 
@@ -1687,7 +1687,7 @@
   background: rgba(240, 248, 239, 0.86);
   color: var(--ink-600);
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .workerHeroSummary strong {
@@ -1757,7 +1757,7 @@
   background: var(--surface-panel);
   color: var(--ink-900);
   font-size: 0.95rem;
-  font-weight: 900;
+  font-weight: 700;
   box-shadow: 0 14px 28px rgba(29, 64, 40, 0.08);
 }
 
@@ -1793,7 +1793,7 @@
   padding-top: 2px;
   color: var(--ink-700);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .workerLineListHeader small {
@@ -1826,7 +1826,7 @@
   background: rgba(240, 248, 239, 0.82);
   color: var(--ink-700);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .inspectorTaskMeta svg {
@@ -1879,7 +1879,7 @@
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-900);
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .workerLineItem div {
@@ -1913,7 +1913,7 @@
   color: #9a3412;
   font-size: 0.75rem;
   font-style: normal;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1926,7 +1926,7 @@
   color: #607083;
   font-size: 0.75rem;
   font-style: normal;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1943,7 +1943,7 @@
   background: rgba(46, 125, 65, 0.1);
   color: var(--brand-900);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -2259,14 +2259,14 @@
   .inspectorPriorityHead span {
     color: var(--ink-600);
     font-size: 0.78rem;
-    font-weight: 900;
+    font-weight: 700;
   }
 
   .inspectorMobileTop h1 {
     margin: 2px 0 0;
     color: #17231c;
     font-size: 1.45rem;
-    font-weight: 900;
+    font-weight: 700;
     line-height: 1.1;
   }
 
@@ -2312,7 +2312,7 @@
     gap: 8px;
     border-radius: 8px;
     font-size: 0.86rem;
-    font-weight: 900;
+    font-weight: 700;
     text-align: center;
   }
 
@@ -2346,7 +2346,7 @@
     background: var(--surface-panel);
     color: var(--ink-700);
     font-size: 0.75rem;
-    font-weight: 850;
+    font-weight: 700;
     text-align: center;
   }
 
@@ -2372,7 +2372,7 @@
   .inspectorPriorityHead a {
     color: var(--brand-800);
     font-size: 0.8rem;
-    font-weight: 900;
+    font-weight: 700;
   }
 
   .inspectorPriorityCard {
@@ -2402,7 +2402,7 @@
     margin-top: 4px;
     color: var(--ink-600);
     font-size: 0.76rem;
-    font-weight: 800;
+    font-weight: 700;
   }
 
   .inspectorPriorityCard > span {
@@ -2412,7 +2412,7 @@
     background: rgba(74, 154, 93, 0.1);
     color: var(--brand-800);
     font-size: 0.75rem;
-    font-weight: 900;
+    font-weight: 700;
     white-space: nowrap;
   }
 
@@ -2424,7 +2424,7 @@
     margin: 0;
     color: var(--ink-700);
     font-size: 0.78rem;
-    font-weight: 850;
+    font-weight: 700;
   }
 
   .inspectorTodayCreated {
@@ -2461,7 +2461,7 @@
     margin-top: 3px;
     color: var(--ink-600);
     font-size: 0.75rem;
-    font-weight: 800;
+    font-weight: 700;
   }
 
   .inspectorTodayCreatedCard > span {
@@ -2471,7 +2471,7 @@
     background: rgba(74, 154, 93, 0.09);
     color: var(--brand-800);
     font-size: 0.75rem;
-    font-weight: 900;
+    font-weight: 700;
     white-space: nowrap;
   }
 
@@ -2482,7 +2482,7 @@
     background: rgba(240, 248, 239, 0.72);
     color: var(--ink-700);
     font-size: 0.84rem;
-    font-weight: 800;
+    font-weight: 700;
   }
 
   .inspectorMobilePage .taskSection {

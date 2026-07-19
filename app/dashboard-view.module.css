@@ -51,7 +51,7 @@
   margin-top: 8px;
   color: #111b15;
   font-size: 1.9rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: 0;
 }
@@ -84,7 +84,7 @@
 
 .statCardPercent {
   flex: 0 0 auto;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -149,7 +149,7 @@
   margin: 8px 0 0;
   color: #111b15;
   font-size: 1.5rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.15;
   letter-spacing: 0;
 }
@@ -159,7 +159,7 @@
   margin: 8px 0 0;
   color: #5e6e64;
   font-size: 0.78rem;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.35;
 }
 
@@ -180,7 +180,7 @@
   padding: 0 12px;
   border-radius: 999px;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   box-shadow: 0 8px 18px rgba(27, 73, 38, 0.08);
 }
@@ -264,7 +264,7 @@
 .donutCenter strong {
   display: block;
   font-size: 1.65rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: 0;
 }
@@ -379,7 +379,7 @@
 .departmentPerformanceHeader span {
   color: #2e7d32;
   font-size: 0.76rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -415,7 +415,7 @@
   min-width: 0;
   color: #1f2b24;
   font-size: 0.82rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -437,7 +437,7 @@
 .departmentPerformanceRow strong {
   color: #1f2b24;
   font-size: 0.84rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   text-align: right;
 }
@@ -452,7 +452,7 @@
   margin: 0;
   color: #111b15;
   font-size: 0.96rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0;
 }
@@ -491,7 +491,7 @@
   display: block;
   color: #111b15;
   font-size: 1.12rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: 0;
 }
@@ -499,7 +499,7 @@
 .quickStatRate {
   color: #2e7d32;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.1;
 }
 
@@ -512,7 +512,7 @@
   margin: 0;
   color: #111b15;
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0;
 }
@@ -535,7 +535,7 @@
   display: block;
   color: #111b15;
   font-size: 1.9rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: 0;
 }
@@ -557,7 +557,7 @@
   color: #111b15;
   text-decoration: none;
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -625,7 +625,7 @@
 
 .openTasksSummaryStat strong {
   font-size: 1.15rem;
-  font-weight: 800;
+  font-weight: 700;
   color: #111b15;
 }
 
@@ -668,7 +668,7 @@
   margin: 0;
   color: #111b15;
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0;
 }
@@ -723,7 +723,7 @@
   text-align: center;
   text-decoration: none;
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.25;
   transition:
     transform 160ms ease,
@@ -769,7 +769,7 @@
 
 .systemRow strong {
   color: #111b15;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .sideMiniGrid {
@@ -810,7 +810,7 @@
   display: block;
   color: #111b15;
   font-size: 1.15rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: 0;
 }
@@ -868,7 +868,7 @@
   margin: 0;
   color: #334238;
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.5;
 }
 
@@ -898,7 +898,7 @@
   display: block;
   color: #111b15;
   font-size: 1.22rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.1;
   letter-spacing: 0;
 }
@@ -921,7 +921,7 @@
   color: #2e7d32;
   text-align: center;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.15;
 }
 
@@ -952,7 +952,7 @@
   margin: 0;
   color: #111b15;
   font-size: 0.86rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0;
   text-shadow: 0 1px 12px rgba(255, 255, 255, 0.78);
@@ -989,7 +989,7 @@
 .taskListKicker {
   color: #54655a;
   font-size: 0.76rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -998,7 +998,7 @@
 .taskListHeaderText :global(h3) {
   color: #111b15;
   font-size: clamp(1.55rem, 1.1rem + 1.2vw, 2.15rem);
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1.05;
   letter-spacing: 0;
 }
@@ -1029,7 +1029,7 @@
 .inspectorHeaderTools span {
   color: #54655a;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -1043,14 +1043,14 @@
   color: #1f2b24;
   font: inherit;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .taskListTitle {
   margin: 0;
   color: #111b15;
   font-size: 1.12rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.15;
   letter-spacing: 0;
 }
@@ -1073,7 +1073,7 @@
   background: linear-gradient(135deg, #2e7d32, #3f9b4b);
   color: #fff;
   font-size: 0.86rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   white-space: nowrap;
   box-shadow: 0 14px 28px rgba(46, 125, 50, 0.22);
@@ -1127,7 +1127,7 @@
   color: #6b7280;
   cursor: pointer;
   font-size: 0.9rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   box-shadow: 0 8px 22px rgba(27, 73, 38, 0.05);
   transition:
@@ -1198,7 +1198,7 @@
   background: #eef6ef;
   color: #2e7d32;
   font-size: 0.8rem;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .taskListBody {
@@ -1290,7 +1290,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 0.86rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .inspectorFilterPills button span {
@@ -1340,7 +1340,7 @@
   color: #111827;
   font: inherit;
   font-size: 0.88rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .inspectorVehicleScroller {
@@ -1441,7 +1441,7 @@
   background: rgba(22, 101, 52, 0.94);
   color: #fff;
   font-size: 0.75rem;
-  font-weight: 950;
+  font-weight: 700;
   box-shadow: 0 10px 22px rgba(22, 101, 52, 0.24);
 }
 
@@ -1460,7 +1460,7 @@
 .inspectorVehicleCardBody > strong {
   color: #111827;
   font-size: 1.12rem;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -1468,7 +1468,7 @@
   overflow: hidden;
   color: #4b5563;
   font-size: 0.84rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1488,13 +1488,13 @@
 .inspectorVehicleCardStats small {
   color: #4b5563;
   font-size: 0.75rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .inspectorVehicleCardStats b {
   color: #111827;
   font-size: 1rem;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .inspectorVehicleProgress {
@@ -1531,7 +1531,7 @@
   color: #111827;
   font-size: 0.78rem;
   font-style: normal;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .inspectorControlBar {
@@ -1548,7 +1548,7 @@
   color: #111827;
   font: inherit;
   font-size: 0.86rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .inspectorControlBar button {
@@ -1622,19 +1622,19 @@
   margin: 0;
   color: #111827;
   font-size: 1.22rem;
-  font-weight: 950;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
 .inspectorSelectedPanel header h2 span {
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .inspectorSelectedPanel header p {
   margin: 12px 0 0;
   color: #475569;
   font-size: 0.95rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .inspectorTaskTimeline {
@@ -1693,7 +1693,7 @@
   overflow: hidden;
   color: #111827;
   font-size: 0.92rem;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1705,7 +1705,7 @@
   gap: 6px;
   color: #64748b;
   font-size: 0.82rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .inspectorTimelineBody small svg {
@@ -1722,7 +1722,7 @@
   background: #eef2f7;
   color: #475569;
   font-size: 0.78rem;
-  font-weight: 950;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -1740,7 +1740,7 @@
 .inspectorTimelineDate {
   color: #64748b;
   font-size: 0.82rem;
-  font-weight: 750;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -1762,7 +1762,7 @@
   background: #fbfdfb;
   color: #64748b;
   font-size: 0.9rem;
-  font-weight: 850;
+  font-weight: 700;
   text-align: center;
 }
 
@@ -1784,7 +1784,7 @@
   margin: 0 0 6px;
   color: #111827;
   font-size: 1.14rem;
-  font-weight: 950;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -1792,7 +1792,7 @@
   margin: -4px 0 4px;
   color: #64748b;
   font-size: 0.82rem;
-  font-weight: 760;
+  font-weight: 700;
   line-height: 1.45;
 }
 
@@ -1804,7 +1804,7 @@
 .inspectorCreatePanel label span {
   color: #475569;
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .inspectorDriverHint {
@@ -1816,7 +1816,7 @@
   background: #f2faf4;
   color: #2f7f46;
   font-size: 0.75rem;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -1856,7 +1856,7 @@
 .inspectorSelectedVehicleField small {
   color: #64748b;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.1;
 }
 
@@ -1865,7 +1865,7 @@
   overflow: hidden;
   color: #111827;
   font-size: 0.92rem;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1880,7 +1880,7 @@
   color: #a16207;
   font-size: 0.75rem;
   font-style: normal;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .inspectorCreatePanel select,
@@ -1894,7 +1894,7 @@
   color: #111827;
   font: inherit;
   font-size: 0.86rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .inspectorCreatePanel select,
@@ -1927,7 +1927,7 @@
 .inspectorCreatePointHeader span {
   color: #475569;
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .inspectorCreatePointHeader strong {
@@ -1939,7 +1939,7 @@
   background: #e5f5e7;
   color: #1f6d34;
   font-size: 0.76rem;
-  font-weight: 950;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -1956,7 +1956,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .inspectorCreatePointTools button:disabled {
@@ -1986,7 +1986,7 @@
   color: #111827;
   cursor: pointer;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.25;
   transition:
     border-color 160ms ease,
@@ -2030,7 +2030,7 @@
   background: #f7faf7;
   color: #64748b;
   font-size: 0.8rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.4;
 }
 
@@ -2041,7 +2041,7 @@
   background: #fff7ed;
   color: #c2410c;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .inspectorCreateActions {
@@ -2062,7 +2062,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 0.86rem;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .inspectorCreateActions > button {
@@ -2157,14 +2157,14 @@
   .inspectorMobileFlowHeader strong {
     color: #111827;
     font-size: 1.04rem;
-    font-weight: 950;
+    font-weight: 700;
     line-height: 1.1;
   }
 
   .inspectorMobileFlowHeader small {
     color: #64748b;
     font-size: 0.75rem;
-    font-weight: 780;
+    font-weight: 700;
     line-height: 1.35;
   }
 
@@ -2233,7 +2233,7 @@
     margin: 2px 2px -4px;
     color: #475569;
     font-size: 0.78rem;
-    font-weight: 950;
+    font-weight: 700;
   }
 
   .inspectorWorkspaceGrid {
@@ -2396,14 +2396,14 @@
 .assignedVehicleKicker {
   color: #54655a;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
 .assignedVehicleContent strong {
   color: #111b15;
   font-size: 1.24rem;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1.05;
   letter-spacing: 0;
 }
@@ -2411,7 +2411,7 @@
 .assignedVehicleContent small {
   color: #6b7280;
   font-size: 0.76rem;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -2433,14 +2433,14 @@
 .assignedVehicleProgress small {
   color: #6b7280;
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.15;
 }
 
 .assignedVehicleStats strong {
   color: #111b15;
   font-size: 0.92rem;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1.1;
 }
 
@@ -2470,7 +2470,7 @@
 .assignedVehicleProgress strong {
   color: #111b15;
   font-size: 0.82rem;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .assignedVehicleProgress i {
@@ -2494,7 +2494,7 @@
   background: #2e7d32;
   color: #fff;
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .assignedVehicleAction svg {
@@ -2539,14 +2539,14 @@
 .inspectorVehicleDetailHeader span {
   color: #2e7d32;
   font-size: 0.76rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .inspectorVehicleDetailHeader h3 {
   margin: 4px 0 0;
   color: #111b15;
   font-size: 1.15rem;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1.15;
   letter-spacing: 0;
 }
@@ -2566,7 +2566,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .inspectorVehicleDetailHeader button:disabled {
@@ -2598,13 +2598,13 @@
   background: #f7fbf8;
   color: #6b7280;
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .inspectorVehicleSummaryRow strong {
   color: #111b15;
   font-size: 1.05rem;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .inspectorTaskRows {
@@ -2635,7 +2635,7 @@
   overflow: hidden;
   color: #1f2b24;
   font-size: 0.86rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.25;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
@@ -2646,7 +2646,7 @@
   margin-top: 3px;
   color: #6b7280;
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .inspectorTaskRow svg {
@@ -2709,14 +2709,14 @@
 .inspectorModalHeader span {
   color: #2e7d32;
   font-size: 0.76rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .inspectorModalHeader h2 {
   margin: 6px 0 4px;
   color: #111b15;
   font-size: clamp(1.55rem, 1.1rem + 1.5vw, 2.2rem);
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1.05;
   letter-spacing: 0;
 }
@@ -2725,7 +2725,7 @@
   margin: 0;
   color: #607168;
   font-size: 0.88rem;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.35;
 }
 
@@ -2743,7 +2743,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .inspectorModalClose svg {
@@ -2770,7 +2770,7 @@
 .inspectorPointHeader span {
   color: #2f3b34;
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .inspectorField select,
@@ -2784,7 +2784,7 @@
   color: #111b15;
   font: inherit;
   font-size: 0.94rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .inspectorPointSection {
@@ -2819,7 +2819,7 @@
   background: #e5f5e7;
   color: #2e7d32;
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .inspectorPointTools {
@@ -2840,7 +2840,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 0.76rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .inspectorPointTools button:disabled {
@@ -2873,7 +2873,7 @@
   color: #1f2b24;
   cursor: pointer;
   font-size: 0.84rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -2896,7 +2896,7 @@
   padding: 12px 14px;
   border-radius: var(--ds-radius-control);
   font-size: 0.84rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.35;
 }
 
@@ -2934,7 +2934,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 0.86rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .inspectorModalSecondary {
@@ -3002,7 +3002,7 @@
     background: linear-gradient(135deg, rgba(237, 248, 235, 0.96), rgba(255, 255, 255, 0.94));
     color: #53605a;
     font-size: 0.94rem;
-    font-weight: 800;
+    font-weight: 700;
     line-height: 1.45;
   }
 
@@ -3064,7 +3064,7 @@
   .assignedVehicleContent small {
     color: #667085;
     font-size: 0.98rem;
-    font-weight: 800;
+    font-weight: 700;
   }
 
   .assignedVehicleStatus {
@@ -3078,7 +3078,7 @@
     padding: 0 13px;
     border-radius: 12px;
     font-size: 0.86rem;
-    font-weight: 900;
+    font-weight: 700;
     line-height: 1.15;
     white-space: normal;
   }
@@ -3141,7 +3141,7 @@
   .assignedVehicleProgress small {
     color: #667085;
     font-size: 0.75rem;
-    font-weight: 850;
+    font-weight: 700;
   }
 
   .assignedVehicleStats strong {
@@ -3502,7 +3502,7 @@
   -webkit-line-clamp: 2;
   color: #1b2520;
   font-size: 1.18rem;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1.28;
   letter-spacing: 0;
 }
@@ -3515,7 +3515,7 @@
   -webkit-line-clamp: 2;
   color: #6b7280;
   font-size: 0.86rem;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.42;
 }
 
@@ -3544,7 +3544,7 @@
   display: block;
   color: #8a978e;
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.1;
 }
 
@@ -3553,7 +3553,7 @@
   margin-top: 8px;
   color: #1b2520;
   font-size: 1.8rem;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: 0;
 }
@@ -3602,7 +3602,7 @@
 .taskListEmptyTitle {
   margin: 0;
   color: #1f2b24;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -3858,7 +3858,7 @@
   margin: 0;
   color: #07130d;
   font-size: 1.55rem;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1.1;
   letter-spacing: 0;
 }
@@ -3867,7 +3867,7 @@
   margin: 8px 0 0;
   color: #526179;
   font-size: 0.82rem;
-  font-weight: 780;
+  font-weight: 700;
   line-height: 1.35;
 }
 
@@ -3889,7 +3889,7 @@
   border-radius: 7px;
   padding: 0 13px;
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -3967,7 +3967,7 @@
 .autoGarbageMetricCard small {
   color: #64748b;
   font-size: 0.75rem;
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.15;
 }
 
@@ -3975,7 +3975,7 @@
   margin-top: 5px;
   color: #0f172a;
   font-size: 1.34rem;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1;
   overflow-wrap: anywhere;
 }
@@ -3985,7 +3985,7 @@
   color: #526179;
   font-size: 0.75rem;
   font-style: normal;
-  font-weight: 820;
+  font-weight: 700;
   line-height: 1.15;
 }
 
@@ -4042,7 +4042,7 @@
   align-items: center;
   color: #637668;
   font-size: 0.84rem;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.35;
 }
 
@@ -4079,7 +4079,7 @@
   margin: 0;
   color: #17231d;
   font-size: 1.08rem;
-  font-weight: 940;
+  font-weight: 700;
   line-height: 1.45;
   letter-spacing: 0;
   overflow-wrap: anywhere;
@@ -4089,7 +4089,7 @@
   margin: 0;
   color: #5f7563;
   font-size: 0.92rem;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.65;
   overflow-wrap: anywhere;
 }
@@ -4115,14 +4115,14 @@
 .autoGarbageCardStats small {
   color: #5f7563;
   font-size: 0.82rem;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.2;
 }
 
 .autoGarbageCardStats strong {
   color: #17231d;
   font-size: 1.25rem;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1;
   overflow-wrap: anywhere;
 }
@@ -4177,7 +4177,7 @@
   background: #ffffff;
   color: #0f172a;
   font-size: 0.76rem;
-  font-weight: 940;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -4209,7 +4209,7 @@
   padding: 0 8px;
   color: #334155;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.15;
   text-align: center;
   text-decoration: none;
@@ -4255,7 +4255,7 @@
   margin: 0;
   color: #101827;
   font-size: 0.92rem;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1.24;
   letter-spacing: 0;
 }
@@ -4264,7 +4264,7 @@
   margin: 5px 0 0;
   color: #64748b;
   font-size: 0.75rem;
-  font-weight: 780;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -4278,7 +4278,7 @@
   padding: 0 9px;
   color: #64748b;
   font-size: 0.75rem;
-  font-weight: 880;
+  font-weight: 700;
 }
 
 .autoGarbageLeaderboard {
@@ -4297,7 +4297,7 @@
 .autoGarbageLeaderRank {
   color: #64748b;
   font-size: 0.75rem;
-  font-weight: 950;
+  font-weight: 700;
   text-align: center;
 }
 
@@ -4318,13 +4318,13 @@
 .autoGarbageLeaderInfo strong {
   color: #0f172a;
   font-size: 0.75rem;
-  font-weight: 940;
+  font-weight: 700;
 }
 
 .autoGarbageLeaderInfo small {
   color: #64748b;
   font-size: 0.75rem;
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .autoGarbageLeaderBar {
@@ -4348,7 +4348,7 @@
 .autoGarbageLeaderValue {
   color: #0f172a;
   font-size: 0.75rem;
-  font-weight: 950;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -4365,7 +4365,7 @@
   padding: 0 10px 2px;
   color: #64748b;
   font-size: 0.75rem;
-  font-weight: 950;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
@@ -4414,20 +4414,20 @@
 .autoGarbageReportInfo strong {
   color: #0f172a;
   font-size: 0.75rem;
-  font-weight: 940;
+  font-weight: 700;
 }
 
 .autoGarbageReportInfo small {
   color: #64748b;
   font-size: 0.75rem;
-  font-weight: 760;
+  font-weight: 700;
 }
 
 .autoGarbageReportInfo em {
   color: #b45309;
   font-size: 0.63rem;
   font-style: normal;
-  font-weight: 820;
+  font-weight: 700;
 }
 
 .autoGarbageReportTime {
@@ -4442,13 +4442,13 @@
 .autoGarbageReportTime small {
   color: #94a3b8;
   font-size: 0.75rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .autoGarbageReportTime strong {
   color: #334155;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .autoGarbageReportState {
@@ -4464,7 +4464,7 @@
   background: #edf7f1;
   color: #16823d;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4479,7 +4479,7 @@
   grid-area: value;
   color: #0f172a;
   font-size: 0.76rem;
-  font-weight: 950;
+  font-weight: 700;
   text-align: right;
   white-space: nowrap;
 }
@@ -4497,7 +4497,7 @@
   background: #f8fbf9;
   color: #16823d;
   font-size: 0.75rem;
-  font-weight: 920;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -4528,14 +4528,14 @@
 .autoGarbageSummaryPanel small {
   color: #64748b;
   font-size: 0.75rem;
-  font-weight: 840;
+  font-weight: 700;
   line-height: 1.15;
 }
 
 .autoGarbageSummaryPanel strong {
   color: #0f172a;
   font-size: 1rem;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -4543,7 +4543,7 @@
   color: #526179;
   font-size: 0.75rem;
   font-style: normal;
-  font-weight: 780;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -4568,14 +4568,14 @@
 .autoGarbageEmptyState strong {
   color: #0f172a;
   font-size: 0.92rem;
-  font-weight: 940;
+  font-weight: 700;
 }
 
 .autoGarbageEmptyState span,
 .autoGarbageEmptyText {
   color: #64748b;
   font-size: 0.76rem;
-  font-weight: 780;
+  font-weight: 700;
   line-height: 1.35;
 }
 
@@ -4642,7 +4642,7 @@
   margin: 0;
   color: #07130d;
   font-size: 1.42rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0;
 }
@@ -4688,7 +4688,7 @@
 .executiveHeroForecastHeader strong {
   color: #07130d;
   font-size: 1.05rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -4725,7 +4725,7 @@
 .executiveHeroForecastDay strong {
   color: #07130d;
   font-size: 0.82rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -4808,7 +4808,7 @@
   display: block;
   color: #030712;
   font-size: 1.8rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: -0.01em;
 }
@@ -4818,7 +4818,7 @@
   margin-top: 5px;
   color: #526179;
   font-size: 0.75rem;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.15;
 }
 
@@ -4839,7 +4839,7 @@
 .executiveMetricNote {
   margin-top: 8px;
   color: #526179;
-  font-weight: 550;
+  font-weight: 600;
   line-height: 1.28;
 }
 
@@ -4853,7 +4853,7 @@
   margin-top: 10px;
   color: color-mix(in srgb, var(--department-accent, #078251) 70%, #55655c);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
   opacity: 0.68;
   transition:
     transform 160ms ease,
@@ -4905,7 +4905,7 @@
 .executiveRingLarge strong {
   color: #030712;
   font-size: 1.6rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -4913,7 +4913,7 @@
   margin-top: 6px;
   color: #0f172a;
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -4933,7 +4933,7 @@
   margin: 0;
   color: #101827;
   font-size: 1.12rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0;
 }
@@ -4942,7 +4942,7 @@
   margin: 6px 0 0;
   color: #526179;
   font-size: 0.84rem;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.35;
 }
 
@@ -5007,7 +5007,7 @@
   display: block;
   color: #101827;
   font-size: 1.08rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -5098,7 +5098,7 @@
   min-width: 0;
   color: #526179;
   font-size: 0.72rem;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -5106,7 +5106,7 @@
   display: block;
   color: #030712;
   font-size: 1.42rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 28px;
 }
 
@@ -5124,13 +5124,13 @@
   justify-content: space-between;
   color: #526179;
   font-size: 0.75rem;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .executiveDepartmentProgress strong {
   color: var(--department-accent);
   font-size: 0.86rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .executiveDepartmentProgress i {
@@ -5166,7 +5166,7 @@
   background: color-mix(in srgb, var(--department-accent) 7%, #ffffff);
   color: #0f172a;
   font-size: 0.76rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .executiveDepartmentFooter span {
@@ -5174,13 +5174,13 @@
   gap: 2px;
   color: #526179;
   font-size: 0.75rem;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .executiveDepartmentFooter strong {
   color: #101827;
   font-size: 1.12rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .executiveDepartmentFooter em {
@@ -5260,7 +5260,7 @@
   margin: 0;
   color: #101827;
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -5357,7 +5357,7 @@
   background: #f6fbf7;
   color: #526179;
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .executiveSloganPanel {
@@ -5414,7 +5414,7 @@
   max-width: 300px;
   margin: 0;
   font-size: 1.18rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0;
   text-shadow: 0 2px 12px rgba(12, 42, 24, 0.28);
@@ -5425,7 +5425,7 @@
   margin: 0;
   color: rgba(255, 255, 255, 0.92);
   font-size: 0.78rem;
-  font-weight: 550;
+  font-weight: 600;
   line-height: 1.45;
 }
 
@@ -5444,7 +5444,7 @@
   background: #fff7ed;
   color: #a44900;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -5481,7 +5481,7 @@
 .executiveWeatherDay span {
   color: #263b63;
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -5494,14 +5494,14 @@
 .executiveWeatherDay strong {
   color: #030712;
   font-size: 1rem;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1;
 }
 
 .executiveWeatherDay small {
   color: #526179;
   font-size: 0.75rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.2;
 }
 

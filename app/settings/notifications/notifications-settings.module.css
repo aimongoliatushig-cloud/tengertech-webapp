@@ -32,7 +32,7 @@
 
 .statusTitle p {
   color: #637469;
-  font-size: 15px;
+  font-size: 0.94rem;
   line-height: 1.5;
   margin: 0;
   max-width: 760px;
@@ -44,7 +44,7 @@
   border-radius: 999px;
   color: #1c7c35;
   display: inline-flex;
-  font-size: 13px;
+  font-size: 0.81rem;
   font-weight: 700;
   gap: 8px;
   padding: 9px 12px;
@@ -75,7 +75,7 @@
   border-radius: 8px;
   cursor: pointer;
   display: inline-flex;
-  font-weight: 800;
+  font-weight: 700;
   gap: 8px;
   min-height: 44px;
   padding: 0 16px;
@@ -101,7 +101,7 @@
 
 .message {
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 0.88rem;
   font-weight: 700;
   line-height: 1.45;
   margin-top: 14px;
@@ -142,20 +142,20 @@
 
 .diagnosticCard strong {
   color: #17251d;
-  font-size: 15px;
+  font-size: 0.94rem;
 }
 
 .diagnosticCard span {
   color: #637469;
-  font-size: 13px;
+  font-size: 0.81rem;
   line-height: 1.45;
 }
 
 .diagnosticValue {
   align-items: center;
   display: inline-flex;
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 0.88rem;
+  font-weight: 700;
   gap: 8px;
 }
 
@@ -183,7 +183,7 @@
 
 .guidePanel h3 {
   color: #17251d;
-  font-size: 18px;
+  font-size: 1.12rem;
   margin: 0;
 }
 

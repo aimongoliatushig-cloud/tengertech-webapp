@@ -57,7 +57,7 @@
   color: #111b15;
   font-family: var(--font-inter), var(--font-body), sans-serif;
   font-size: clamp(1.42rem, 1.6vw, 1.78rem);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0;
   line-height: 1.05;
   overflow-wrap: anywhere;
@@ -123,7 +123,7 @@
   color: #1f7a35;
   font: inherit;
   font-size: 0.76rem;
-  font-weight: 900;
+  font-weight: 700;
   cursor: pointer;
   transition:
     transform 180ms ease,
@@ -196,7 +196,7 @@
   display: block;
   color: #6f490e;
   font-size: 0.84rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.35;
 }
 
@@ -204,7 +204,7 @@
   margin: 8px 0 12px;
   color: #5f6b63;
   font-size: 0.78rem;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.55;
 }
 
@@ -220,7 +220,7 @@
   color: #1f7a35;
   font: inherit;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -245,7 +245,7 @@
 
 .datePill span {
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -289,7 +289,7 @@
   background: #ef4444;
   color: #fff;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -340,7 +340,7 @@
   background: linear-gradient(135deg, #2f8d3b, #137a2c);
   color: #fff;
   font-size: 1rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -371,7 +371,7 @@
 
 .headerUser strong {
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -434,7 +434,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 700;
   text-align: left;
   text-decoration: none;
 }
@@ -556,7 +556,7 @@
   .mobileGreetingIcon span {
     color: #1f6f35;
     font-size: 0.78rem;
-    font-weight: 900;
+    font-weight: 700;
     line-height: 1;
     white-space: nowrap;
   }

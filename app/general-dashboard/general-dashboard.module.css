@@ -54,7 +54,7 @@
 .metricTop strong {
   color: #101827;
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -69,7 +69,7 @@
   display: block;
   color: #030712;
   font-size: 2.25rem;
-  font-weight: 950;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -78,7 +78,7 @@
   margin-top: 10px;
   color: #526179;
   font-size: 0.76rem;
-  font-weight: 750;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -117,14 +117,14 @@
   margin: 0;
   color: #101827;
   font-size: 1.18rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .sectionHeader p {
   margin: 6px 0 0;
   color: #526179;
   font-size: 0.84rem;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .departmentGrid {
@@ -154,7 +154,7 @@
 .departmentTop strong {
   color: #101827;
   font-size: 0.98rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -174,14 +174,14 @@
 .largeRing strong {
   color: #030712;
   font-size: 1.55rem;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .largeRing small {
   margin-top: 4px;
   color: #526179;
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .departmentStats {
@@ -206,7 +206,7 @@
   display: block;
   color: #31405a;
   font-size: 0.75rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .departmentStats strong {
@@ -214,7 +214,7 @@
   margin-top: 8px;
   color: #030712;
   font-size: 1.05rem;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .departmentFooter {
@@ -224,7 +224,7 @@
   margin-top: 16px;
   color: #0f172a;
   font-size: 0.78rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .departmentFooter strong {
@@ -247,7 +247,7 @@
   background: #fff7ed;
   color: #a44900;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .weatherNow svg {
@@ -294,26 +294,26 @@
 .weatherDay span {
   color: #263b63;
   font-size: 0.78rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .weatherDay strong {
   color: #030712;
   font-size: 1rem;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .weatherDay small {
   color: #526179;
   font-size: 0.75rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .noticeCard {
   color: #7c2d12;
   background: #fff7ed;
   font-size: 0.84rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 @media (max-width: 1320px) {

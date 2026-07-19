@@ -89,7 +89,7 @@
   margin-top: 4px;
   color: var(--metric-accent, var(--ink-900));
   font-size: 1.7rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -156,7 +156,7 @@
   border-radius: 8px;
   background: var(--surface-panel);
   color: var(--brand-800);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .reportRegistryFilterButton {
@@ -182,7 +182,7 @@
   border-radius: 8px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-weight: 800;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -264,7 +264,7 @@
 
 .reportRegistryDepartmentTab span {
   color: inherit;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .reportRegistryDepartmentTab small {
@@ -304,7 +304,7 @@
   border-radius: 999px;
   background: rgba(247, 252, 248, 0.8);
   color: var(--ink-800);
-  font-weight: 800;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -467,7 +467,7 @@
   padding: 0 10px;
   border-radius: 999px;
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .reportRegistryTypeBadge {
@@ -520,7 +520,7 @@
   background: rgba(247, 252, 248, 0.9);
   color: var(--ink-700);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
@@ -674,7 +674,7 @@
   border-radius: 8px;
   background: var(--surface-panel);
   color: var(--brand-900);
-  font-weight: 800;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -870,7 +870,7 @@
     background: rgba(31, 95, 49, 0.1);
     color: var(--brand-900);
     font-size: 0.78rem;
-    font-weight: 900;
+    font-weight: 700;
     white-space: nowrap;
   }
 
@@ -913,11 +913,11 @@
 }
 
 .reportRegistryLaborLink strong {
-  font-size: 15px;
+  font-size: 0.94rem;
   font-weight: 700;
 }
 
 .reportRegistryLaborLink small {
-  font-size: 12.5px;
+  font-size: 0.78rem;
   color: var(--muted-foreground, #64748b);
 }

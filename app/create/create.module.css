@@ -80,7 +80,7 @@
   background: var(--surface-panel);
   color: #2e7d32;
   font-size: 0.75rem;
-  font-weight: 900;
+  font-weight: 700;
   opacity: 0;
   pointer-events: none;
   box-shadow: 0 12px 26px rgba(27, 73, 38, 0.12);
@@ -296,14 +296,14 @@
   .mobileCreatePrimary strong {
     color: var(--ink-900);
     font-size: 1rem;
-    font-weight: 900;
+    font-weight: 700;
     line-height: 1.2;
   }
 
   .mobileCreatePrimary small {
     color: var(--ink-600);
     font-size: 0.78rem;
-    font-weight: 750;
+    font-weight: 700;
     line-height: 1.35;
   }
 
@@ -322,7 +322,7 @@
     background: var(--surface-panel);
     color: var(--ink-800);
     font-size: 1rem;
-    font-weight: 900;
+    font-weight: 700;
   }
 
   .mobileCreateUtility svg {

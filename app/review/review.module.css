@@ -51,14 +51,14 @@
   border-radius: 18px;
   background: var(--surface-panel);
   color: var(--brand-800);
-  font-weight: 900;
+  font-weight: 700;
   box-shadow: 0 14px 28px rgba(27, 73, 38, 0.07);
 }
 
 .scopeTotalPill small {
   color: var(--ink-600);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .scopeGrid {
@@ -149,7 +149,7 @@
   background: var(--brand-700);
   color: #fff;
   font-size: 0.82rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .scopeStats {
@@ -169,7 +169,7 @@
 .scopeStat span {
   color: var(--ink-600);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .scopeStat strong {
@@ -467,7 +467,7 @@
   padding: 12px 14px;
   color: #92400e;
   font-size: 0.86rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .reviewSummaryStrip {
@@ -479,7 +479,7 @@
   padding: 0 14px;
   color: #334155;
   font-size: 0.86rem;
-  font-weight: 850;
+  font-weight: 700;
   box-shadow: 0 10px 24px rgba(17, 27, 21, 0.04);
 }
 
@@ -504,7 +504,7 @@
   background: #2f7f46;
   color: #fff;
   font-size: 0.8rem;
-  font-weight: 950;
+  font-weight: 700;
   white-space: nowrap;
   box-shadow: 0 10px 22px rgba(47, 127, 70, 0.2);
 }
@@ -519,7 +519,7 @@
   background: #2f7f46;
   color: #fff;
   font-size: 0.88rem;
-  font-weight: 950;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -540,13 +540,13 @@
 .reviewSideStat span {
   color: #64748b;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .reviewSideStat strong {
   color: #111827;
   font-size: 1.25rem;
-  font-weight: 950;
+  font-weight: 700;
 }
 
 .reviewMobileList {
@@ -616,7 +616,7 @@
   .reviewMobileList h2 {
     color: #102015;
     font-size: 1.35rem;
-    font-weight: 950;
+    font-weight: 700;
     line-height: 1.15;
   }
 
@@ -624,7 +624,7 @@
     margin-top: 5px;
     color: #66736a;
     font-size: 0.86rem;
-    font-weight: 800;
+    font-weight: 700;
     line-height: 1.35;
   }
 
@@ -638,7 +638,7 @@
     background: rgba(47, 127, 70, 0.1);
     color: #1f6d34;
     font-size: 1.15rem;
-    font-weight: 950;
+    font-weight: 700;
   }
 
   .reviewMobileTaskList {
@@ -680,7 +680,7 @@
   .reviewMobileTaskCard strong {
     color: var(--ink-900);
     font-size: 0.98rem;
-    font-weight: 950;
+    font-weight: 700;
     line-height: 1.2;
   }
 
@@ -688,7 +688,7 @@
     overflow: hidden;
     color: #66736a;
     font-size: 0.8rem;
-    font-weight: 800;
+    font-weight: 700;
     line-height: 1.35;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -716,7 +716,7 @@
   .reviewMobileEmpty strong {
     color: #64748b;
     font-size: 1rem;
-    font-weight: 950;
+    font-weight: 700;
   }
 
   .decisionMiniGrid {

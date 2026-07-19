@@ -13,7 +13,7 @@
 }
 
 .toolbarField span {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--muted-foreground, #64748b);
   text-transform: uppercase;
@@ -27,7 +27,7 @@
   border-radius: 10px;
   background: var(--card, #fff);
   color: var(--foreground, #0f172a);
-  font-size: 14px;
+  font-size: 0.88rem;
 }
 
 .toolbarButton {
@@ -36,7 +36,7 @@
   border: 1px solid var(--border, #d9e0ea);
   background: var(--card, #fff);
   color: var(--foreground, #0f172a);
-  font-size: 14px;
+  font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -48,7 +48,7 @@
   padding: 12px 16px;
   border-radius: 12px;
   margin-bottom: 18px;
-  font-size: 14px;
+  font-size: 0.88rem;
   font-weight: 500;
 }
 
@@ -82,19 +82,19 @@
 }
 
 .summaryCard span {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--muted-foreground, #64748b);
 }
 
 .summaryCard strong {
-  font-size: 26px;
+  font-size: 1.62rem;
   font-variant-numeric: tabular-nums;
   color: var(--foreground, #0f172a);
 }
 
 .summaryCard strong small {
-  font-size: 14px;
+  font-size: 0.88rem;
   color: var(--muted-foreground, #94a3b8);
   font-weight: 600;
 }
@@ -108,7 +108,7 @@
   padding: 12px 16px;
   border: 1px dashed var(--border, #d9e0ea);
   border-radius: 12px;
-  font-size: 13.5px;
+  font-size: 0.84rem;
   color: var(--muted-foreground, #64748b);
 }
 
@@ -134,12 +134,12 @@
   padding: 6px 7px;
   border: 1px solid var(--border, #e2e8f0);
   text-align: left;
-  font-size: 12.5px;
+  font-size: 0.78rem;
   vertical-align: top;
 }
 
 .evalTable thead th {
-  font-size: 11px;
+  font-size: 0.69rem;
   color: var(--muted-foreground, #475569);
   font-weight: 700;
   background: color-mix(in srgb, #16a34a 6%, var(--card, #fff));
@@ -166,7 +166,7 @@
   border-radius: 8px;
   background: var(--background, #f8fafc);
   color: var(--foreground, #0f172a);
-  font-size: 12.5px;
+  font-size: 0.78rem;
   font-family: inherit;
   resize: vertical;
 }
@@ -254,7 +254,7 @@
 }
 
 .signatureField span {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--muted-foreground, #64748b);
 }
@@ -265,7 +265,7 @@
   border-radius: 8px;
   background: var(--background, #f8fafc);
   color: var(--foreground, #0f172a);
-  font-size: 13px;
+  font-size: 0.81rem;
 }
 
 .signatureField input:disabled {
@@ -287,7 +287,7 @@
   gap: 6px;
   padding: 10px 18px;
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid var(--border, #d9e0ea);
@@ -306,7 +306,7 @@
 
 .readOnlyNote {
   margin-top: 14px;
-  font-size: 13px;
+  font-size: 0.81rem;
   color: var(--muted-foreground, #64748b);
 }
 
@@ -326,7 +326,7 @@
   border: 1px solid var(--border, #d9e0ea);
   background: var(--card, #fff);
   color: var(--foreground, #0f172a);
-  font-size: 14px;
+  font-size: 0.88rem;
   font-weight: 600;
   text-decoration: none;
 }

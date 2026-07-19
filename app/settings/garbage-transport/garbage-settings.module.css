@@ -209,7 +209,7 @@
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-800);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .backButton {
@@ -225,7 +225,7 @@
   background: rgba(255, 255, 255, 0.84);
   color: var(--brand-900);
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -244,7 +244,7 @@
   margin: 0 0 18px;
   padding: 14px 16px;
   border-radius: var(--ds-radius-control);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .noticeMessage {
@@ -294,7 +294,7 @@
   border-radius: var(--ds-radius-control);
   color: var(--ink-800);
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -379,7 +379,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-900);
-  font-weight: 800;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -404,13 +404,13 @@
 
 .scopeCountPill b {
   font-size: 0.95rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .scopeCountPill small {
   color: var(--brand-900);
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .formGrid,
@@ -561,7 +561,7 @@
 .vehicleCrewLine {
   color: var(--ink-700);
   font-size: 0.8rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .listCard strong,
@@ -652,7 +652,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-900);
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -670,7 +670,7 @@
   background: rgba(235, 247, 235, 0.86);
   color: var(--brand-900);
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 700;
   cursor: pointer;
   list-style: none;
 }
@@ -695,7 +695,7 @@
 .checkField {
   color: var(--ink-900);
   font-size: 0.88rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .field {
@@ -713,7 +713,7 @@
   background: rgba(255, 255, 255, 0.94);
   color: var(--ink-900);
   font: inherit;
-  font-weight: 650;
+  font-weight: 700;
   outline: none;
   transition:
     border-color 160ms ease,
@@ -785,7 +785,7 @@
 .vehicleModalHeader p {
   margin: 0;
   color: var(--ink-700);
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .modalCloseButton {
@@ -797,7 +797,7 @@
   color: var(--brand-900);
   font: inherit;
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -820,7 +820,7 @@
 .vehicleCurrentGrid span {
   color: var(--ink-700);
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .vehicleCurrentGrid strong {
@@ -864,7 +864,7 @@
   padding: 0 8px;
   color: var(--ink-900);
   font-size: 0.9rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .memberToolbar {
@@ -895,7 +895,7 @@
   padding: 0 10px;
   border-radius: 999px;
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .selectedChip {
@@ -1000,7 +1000,7 @@
   padding: 0 16px;
   border-radius: 999px;
   font: inherit;
-  font-weight: 850;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -1067,7 +1067,7 @@
   background: rgba(248, 252, 247, 0.9);
   color: var(--brand-900);
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .extraWorkTypeChip button {
@@ -1118,7 +1118,7 @@
   color: var(--ink-800);
   font: inherit;
   font-size: 0.82rem;
-  font-weight: 850;
+  font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -1171,7 +1171,7 @@
   margin-top: 5px;
   color: var(--ink-700);
   font-size: 0.82rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .pointCards {
@@ -1213,7 +1213,7 @@
   margin-top: 5px;
   color: var(--ink-700);
   font-size: 0.82rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .pointArchiveForm {
@@ -1267,7 +1267,7 @@
   margin-top: 4px;
   color: var(--ink-700);
   font-size: 0.78rem;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .pointEditDetails {
@@ -1286,7 +1286,7 @@
   background: rgba(235, 247, 235, 0.86);
   color: var(--brand-900);
   font-size: 0.78rem;
-  font-weight: 850;
+  font-weight: 700;
   cursor: pointer;
   list-style: none;
 }
