@@ -192,6 +192,12 @@ export function canViewGarbageWeightReports(context: RoleContext, departmentName
       isFeeWeightSpecialistPerson(context.login, context.name),
   );
 
+  // Өөр хэлтэст (Тохижилт, Ногоон байгууламж г.м) харьяалагдах хэрэглэгч MFO
+  // бүлэгт орсон байсан ч шатахуун/жингийн тайлан харахгүй — энэ тайлан зөвхөн
+  // Авто бааз, хог тээвэрлэлтийн хэлтэст хамаарна.
+  const scopedToOtherDepartment =
+    Boolean(departmentName) && !isAutoGarbageDepartment(departmentName);
+
   return Boolean(
     isSystemAdmin(context) ||
       isExecutiveContext(context) ||
@@ -199,12 +205,13 @@ export function canViewGarbageWeightReports(context: RoleContext, departmentName
       isFeeSpecialist ||
       // Авто бааз, хог тээвэрлэлтийн хэлтсийн дарга шатахуун/жингийн тайлан харна.
       isGarbageDepartmentHead(context, departmentName) ||
-      groupFlags.municipalManager ||
-      groupFlags.mfoManager ||
-      groupFlags.mfoDispatcher ||
-      groupFlags.fleetRepairManager ||
-      groupFlags.fleetRepairGeneralManager ||
-      groupFlags.fleetRepairCeo
+      (!scopedToOtherDepartment &&
+        (groupFlags.municipalManager ||
+          groupFlags.mfoManager ||
+          groupFlags.mfoDispatcher ||
+          groupFlags.fleetRepairManager ||
+          groupFlags.fleetRepairGeneralManager ||
+          groupFlags.fleetRepairCeo))
   );
 }
 
