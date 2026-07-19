@@ -100,7 +100,7 @@
   position: relative;
   max-width: 12ch;
   color: #101b15;
-  font-size: clamp(2.6rem, 5.4vw, 5.2rem);
+  font-size: var(--fs-stat);
   font-weight: 700;
   letter-spacing: -0.055em;
   line-height: 0.96;
@@ -110,7 +110,7 @@
   position: relative;
   max-width: 460px;
   color: #5c6b60;
-  font-size: 1rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   line-height: 1.7;
 }
@@ -137,7 +137,7 @@
 
 .formHeader h2 {
   color: #101b15;
-  font-size: clamp(2.25rem, 4vw, 3.5rem);
+  font-size: var(--fs-stat);
   font-weight: 700;
   letter-spacing: -0.04em;
   line-height: 1;
@@ -160,7 +160,7 @@
 
 .field span {
   color: #17241d;
-  font-size: 0.94rem;
+  font-size: var(--fs-md);
   font-weight: 700;
 }
 
@@ -193,7 +193,7 @@
   border-radius: 12px;
   background: #fff1eb;
   color: #9c3c20;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   line-height: 1.55;
 }
@@ -267,10 +267,10 @@
   }
 
   .heroCard h1 {
-    font-size: clamp(2.15rem, 12vw, 3.1rem);
+    font-size: var(--fs-hero-lg);
   }
 
   .heroCard p {
-    font-size: 0.92rem;
+    font-size: var(--fs-sm);
   }
 }

@@ -61,7 +61,7 @@
 
 .scopeColumns h3 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: var(--fs-md);
 }
 
 .scopeChecklist {
@@ -105,13 +105,13 @@
 .scopeOption span {
   min-width: 0;
   overflow-wrap: anywhere;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 .helperText {
   margin: 0;
   color: var(--ink-700);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   line-height: 1.5;
 }
 
@@ -148,7 +148,7 @@
 }
 
 .hero h1 {
-  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-size: var(--fs-hero-lg);
   line-height: 0.98;
 }
 
@@ -189,13 +189,13 @@
 .routeRow span,
 .workTypeCard span {
   color: var(--ink-700);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
 .heroStats strong {
   color: var(--brand-900);
-  font-size: clamp(1.7rem, 3vw, 2.35rem);
+  font-size: var(--fs-hero);
   line-height: 1;
 }
 
@@ -208,7 +208,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-800);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -224,7 +224,7 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.84);
   color: var(--brand-900);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-decoration: none;
 }
@@ -293,7 +293,7 @@
   padding: 0 10px;
   border-radius: var(--ds-radius-control);
   color: var(--ink-800);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-decoration: none;
 }
@@ -358,7 +358,7 @@
 }
 
 .sectionHeader h2 {
-  font-size: clamp(1.45rem, 2.4vw, 2rem);
+  font-size: var(--fs-title);
   line-height: 1.05;
 }
 
@@ -403,13 +403,13 @@
 }
 
 .scopeCountPill b {
-  font-size: 0.95rem;
+  font-size: var(--fs-md);
   font-weight: 700;
 }
 
 .scopeCountPill small {
   color: var(--brand-900);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -470,20 +470,20 @@
   display: block;
   margin-top: 8px;
   color: var(--ink-900);
-  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  font-size: var(--fs-title);
   line-height: 1.15;
 }
 
 .teamListHeader h3 {
   margin: 0;
   color: var(--ink-900);
-  font-size: 1.1rem;
+  font-size: var(--fs-lg);
 }
 
 .routeListHeader h3 {
   margin: 0;
   color: var(--ink-900);
-  font-size: 1.1rem;
+  font-size: var(--fs-lg);
 }
 
 .teamQuickFields {
@@ -560,7 +560,7 @@
 
 .vehicleCrewLine {
   color: var(--ink-700);
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -569,7 +569,7 @@
 .routeRow strong {
   display: block;
   color: var(--ink-900);
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .listCard small {
@@ -634,7 +634,7 @@
 
 .routeCardHeader strong {
   color: var(--ink-900);
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .routeCardHeader small {
@@ -651,7 +651,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-900);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -669,7 +669,7 @@
   border-radius: 999px;
   background: rgba(235, 247, 235, 0.86);
   color: var(--brand-900);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   cursor: pointer;
   list-style: none;
@@ -694,7 +694,7 @@
 .field,
 .checkField {
   color: var(--ink-900);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
@@ -778,7 +778,7 @@
 .vehicleModalHeader h3 {
   margin: 8px 0 4px;
   color: var(--ink-900);
-  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-size: var(--fs-title);
   line-height: 1.05;
 }
 
@@ -796,7 +796,7 @@
   background: rgba(237, 248, 235, 0.92);
   color: var(--brand-900);
   font: inherit;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   cursor: pointer;
 }
@@ -819,7 +819,7 @@
 
 .vehicleCurrentGrid span {
   color: var(--ink-700);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -827,7 +827,7 @@
   min-width: 0;
   overflow-wrap: anywhere;
   color: var(--ink-900);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 .vehicleModalForm {
@@ -863,7 +863,7 @@
 .memberPicker legend {
   padding: 0 8px;
   color: var(--ink-900);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
@@ -894,7 +894,7 @@
   min-height: 30px;
   padding: 0 10px;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -907,7 +907,7 @@
 }
 
 .selectedChip span {
-  font-size: 1rem;
+  font-size: var(--fs-base);
   line-height: 1;
 }
 
@@ -974,13 +974,13 @@
 
 .memberOption strong {
   color: var(--ink-900);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 .memberOption small {
   margin-top: 3px;
   color: var(--ink-700);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1017,7 +1017,7 @@
   border: 1px solid rgba(220, 38, 38, 0.18);
   background: rgba(254, 226, 226, 0.55);
   color: #9f1239;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .ghostDanger:disabled {
@@ -1032,7 +1032,7 @@
   border: 1px solid rgba(74, 154, 93, 0.18);
   background: rgba(235, 247, 235, 0.86);
   color: var(--brand-900);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .workTypeActions {
@@ -1053,7 +1053,7 @@
 .extraWorkTypes h3 {
   margin: 0;
   color: var(--ink-900);
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .extraWorkTypeChip {
@@ -1066,7 +1066,7 @@
   border-radius: 999px;
   background: rgba(248, 252, 247, 0.9);
   color: var(--brand-900);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -1117,7 +1117,7 @@
   background: rgba(255, 255, 255, 0.9);
   color: var(--ink-800);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
@@ -1132,7 +1132,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-900);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
 }
 
 .pointTab:hover,
@@ -1163,14 +1163,14 @@
 .pointListHeader h3 {
   margin: 0;
   color: var(--ink-900);
-  font-size: 1.1rem;
+  font-size: var(--fs-lg);
 }
 
 .pointListHeader small {
   display: block;
   margin-top: 5px;
   color: var(--ink-700);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -1205,14 +1205,14 @@
 
 .pointCardHeader strong {
   color: var(--ink-900);
-  font-size: 1rem;
+  font-size: var(--fs-base);
   line-height: 1.35;
 }
 
 .pointCardHeader small {
   margin-top: 5px;
   color: var(--ink-700);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -1230,7 +1230,7 @@
 
 .subdistrictListHeader strong {
   color: var(--ink-900);
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
 }
 
 .subdistrictCards {
@@ -1259,14 +1259,14 @@
 
 .subdistrictCard strong {
   color: var(--ink-900);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   line-height: 1.35;
 }
 
 .subdistrictCard small {
   margin-top: 4px;
   color: var(--ink-700);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1285,7 +1285,7 @@
   border-radius: 999px;
   background: rgba(235, 247, 235, 0.86);
   color: var(--brand-900);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   cursor: pointer;
   list-style: none;

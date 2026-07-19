@@ -55,7 +55,7 @@
 }
 
 .titleBlock h1 {
-  font-size: 1.04rem;
+  font-size: var(--fs-base);
   line-height: 1.2;
 }
 
@@ -64,7 +64,7 @@
 .subtleNote,
 .emptyState p {
   color: var(--ink-700);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   line-height: 1.45;
 }
 
@@ -79,7 +79,7 @@
   background: transparent;
   color: var(--brand-800);
   font-family: var(--font-body);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -98,11 +98,11 @@
 .taskInfoItem span,
 .progressLabel span {
   color: var(--ink-600);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .userBlock strong {
-  font-size: 0.95rem;
+  font-size: var(--fs-md);
   line-height: 1.25;
 }
 
@@ -112,7 +112,7 @@
 
 .dateFilterForm label {
   color: var(--ink-900);
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -137,7 +137,7 @@
   background: var(--surface-panel);
   color: var(--ink-900);
   font: inherit;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
 }
 
 .dateButton,
@@ -151,7 +151,7 @@
   min-height: 38px;
   padding: 0 14px;
   border-radius: 8px;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -199,13 +199,13 @@
 
 .summaryCard strong {
   font-family: var(--font-body);
-  font-size: 1.55rem;
+  font-size: var(--fs-3xl);
   line-height: 1;
 }
 
 .summaryCard small {
   color: var(--ink-700);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   line-height: 1.35;
 }
 
@@ -245,7 +245,7 @@
 .masterKpiCard em {
   overflow: hidden;
   color: var(--ink-600);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-style: normal;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -254,7 +254,7 @@
 
 .masterKpiCard strong {
   color: var(--ink-900);
-  font-size: 1.55rem;
+  font-size: var(--fs-3xl);
   line-height: 1;
 }
 
@@ -279,7 +279,7 @@
 
 .masterFilterField span {
   color: var(--ink-700);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -293,7 +293,7 @@
   background: var(--surface-panel);
   color: var(--ink-900);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .masterTableShell {
@@ -318,7 +318,7 @@
 
 .masterTableHeader {
   color: var(--ink-700);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   background: rgba(248, 252, 248, 0.96);
   border-bottom: 1px solid rgba(74, 154, 93, 0.1);
@@ -328,7 +328,7 @@
   color: var(--ink-900);
   text-decoration: none;
   border-bottom: 1px solid rgba(74, 154, 93, 0.08);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .masterTableRow:last-child {
@@ -384,7 +384,7 @@
   border-radius: 8px;
   background: rgba(95, 117, 99, 0.1);
   color: var(--ink-700);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -457,7 +457,7 @@
   border-radius: 8px;
   background: var(--brand-800);
   color: #fff !important;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -516,7 +516,7 @@
   padding: 0 16px;
   background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
   box-shadow: 0 14px 30px rgba(31, 95, 49, 0.16);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
 }
 
 .calendarCreateButton:hover {
@@ -533,7 +533,7 @@
   justify-content: center;
   border-radius: 10px;
   color: var(--ink-700);
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
 }
@@ -600,14 +600,14 @@
   border: 2px solid rgba(255, 255, 255, 0.72);
   border-radius: 999px;
   background: var(--surface-panel);
-  font-size: 1.45rem;
+  font-size: var(--fs-2xl);
   font-weight: 700;
 }
 
 .workCalendarBrand span {
   display: block;
   color: rgba(255, 255, 255, 0.82);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -615,7 +615,7 @@
 
 .workCalendarBrand h3 {
   margin: 2px 0 0;
-  font-size: clamp(1.35rem, 2.5vw, 2rem);
+  font-size: var(--fs-title);
   line-height: 1.05;
 }
 
@@ -636,7 +636,7 @@
   padding: 0 10px;
   background: var(--surface-panel);
   color: #fff;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -675,7 +675,7 @@
   min-height: 42px;
   place-items: center;
   color: var(--ink-800);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -722,7 +722,7 @@
   border-radius: 999px;
   background: var(--brand-700);
   color: #fff;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
 }
 
 .calendarDayQuickCreate {
@@ -781,7 +781,7 @@
 
 .monthTask span {
   overflow: hidden;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.22;
   text-overflow: ellipsis;
@@ -790,7 +790,7 @@
 
 .monthTask small {
   color: var(--ink-700);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -821,7 +821,7 @@
 
 .monthMore {
   color: var(--brand-800);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -846,14 +846,14 @@
 .weekCalendarTitle h3 {
   margin: 3px 0 0;
   color: var(--ink-900);
-  font-size: 1.25rem;
+  font-size: var(--fs-xl);
 }
 
 .weekCalendarTop p {
   max-width: 420px;
   margin: 0;
   color: var(--ink-600);
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   line-height: 1.5;
   text-align: right;
 }
@@ -898,14 +898,14 @@
 
 .weekDayHeader div strong {
   color: var(--ink-900);
-  font-size: 1.4rem;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   line-height: 1;
 }
 
 .weekDayHeader div span {
   color: var(--ink-600);
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: capitalize;
 }
@@ -918,7 +918,7 @@
   border-radius: 999px;
   background: var(--brand-700);
   color: #fff;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-style: normal;
   font-weight: 700;
 }
@@ -948,7 +948,7 @@
 .weekTask span {
   overflow: hidden;
   display: -webkit-box;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.25;
   -webkit-box-orient: vertical;
@@ -957,7 +957,7 @@
 
 .weekTask small {
   color: var(--ink-700);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -969,7 +969,7 @@
   border-radius: 13px;
   background: rgba(74, 154, 93, 0.04);
   color: var(--ink-500);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1002,14 +1002,14 @@
 
 .calendarDate {
   color: var(--ink-700);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .calendarDayCard strong {
   color: var(--brand-900);
   font-family: var(--font-body);
-  font-size: 1.55rem;
+  font-size: var(--fs-3xl);
   line-height: 1;
 }
 
@@ -1027,7 +1027,7 @@
   padding: 0 8px;
   background: rgba(74, 154, 93, 0.08);
   color: var(--ink-700);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1058,7 +1058,7 @@
 .timelineDayHeader h3 {
   margin: 4px 0 0;
   color: var(--ink-900);
-  font-size: 1.16rem;
+  font-size: var(--fs-lg);
 }
 
 .timelineDayHeader strong {
@@ -1069,7 +1069,7 @@
   border-radius: 14px;
   background: rgba(46, 125, 50, 0.1);
   color: var(--brand-800);
-  font-size: 1.1rem;
+  font-size: var(--fs-lg);
 }
 
 .timelineItems {
@@ -1112,7 +1112,7 @@
 
 .timelineTime {
   color: var(--brand-800);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.8;
   text-align: right;
@@ -1142,13 +1142,13 @@
 
 .timelineTitleRow strong {
   color: var(--ink-900);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   line-height: 1.35;
 }
 
 .timelineMeta {
   color: var(--ink-600);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   line-height: 1.45;
 }
 
@@ -1158,7 +1158,7 @@
   padding: 13px 14px;
   background: rgba(74, 154, 93, 0.05);
   color: var(--ink-600);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -1167,7 +1167,7 @@
   border: 1px dashed rgba(74, 154, 93, 0.22);
   border-radius: 8px;
   color: var(--ink-700);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   text-align: center;
 }
 
@@ -1177,7 +1177,7 @@
 
 .filterHeader h2,
 .sectionHeader h2 {
-  font-size: 0.98rem;
+  font-size: var(--fs-base);
   line-height: 1.25;
 }
 
@@ -1188,7 +1188,7 @@
   border-radius: 8px;
   background: rgba(74, 154, 93, 0.08);
   border: 1px solid rgba(74, 154, 93, 0.14);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   line-height: 1.5;
   text-align: right;
 }
@@ -1215,7 +1215,7 @@
 
 .filterChip strong {
   color: var(--brand-900);
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .filterChipActive {
@@ -1278,7 +1278,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--ink-900);
-  font-size: 0.94rem;
+  font-size: var(--fs-md);
   line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1293,13 +1293,13 @@
 
 .taskViewCompactMeta b {
   color: var(--brand-900);
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
 .taskViewCompactMeta small {
   color: var(--ink-600);
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
 }
 
 .taskViewCalendar {
@@ -1317,12 +1317,12 @@
 
 .taskViewCalendarHead strong {
   color: var(--ink-900);
-  font-size: 1.02rem;
+  font-size: var(--fs-base);
 }
 
 .taskViewCalendarHead span {
   color: var(--ink-600);
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
 }
 
 .taskViewCalendarWeekdays,
@@ -1335,7 +1335,7 @@
 .taskViewCalendarWeekdays span {
   padding: 4px 0;
   color: var(--ink-600);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   text-align: center;
 }
 
@@ -1358,7 +1358,7 @@
 
 .taskViewCalendarDay {
   color: var(--ink-700);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 600;
 }
 
@@ -1368,7 +1368,7 @@
   border-radius: 6px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--ink-900);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   line-height: 1.3;
   text-decoration: none;
   text-overflow: ellipsis;
@@ -1378,7 +1378,7 @@
 .taskViewCalendarNote,
 .taskViewCalendarUndated {
   color: var(--ink-600);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .taskViewCalendarUndated {
@@ -1451,7 +1451,7 @@
   border-radius: 999px;
   background: #2f8d3f;
   color: #fff;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1462,7 +1462,7 @@
 .workerGreeting span,
 .workerGreeting p {
   color: var(--ink-700);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   line-height: 1.45;
 }
@@ -1473,7 +1473,7 @@
   gap: 8px;
   margin: 0;
   color: #17231c;
-  font-size: clamp(1.85rem, 8vw, 2.35rem);
+  font-size: var(--fs-hero-lg);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.04;
@@ -1508,13 +1508,13 @@
 
 .workerDepartmentHero span {
   color: var(--brand-800);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .workerDepartmentHero strong {
   color: #17231c;
-  font-size: clamp(1.26rem, 6vw, 1.72rem);
+  font-size: var(--fs-title);
   font-weight: 700;
   line-height: 1.18;
 }
@@ -1522,7 +1522,7 @@
 .workerDepartmentHero p {
   margin: 0;
   color: var(--ink-700);
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.5;
 }
@@ -1537,7 +1537,7 @@
   border-radius: 999px;
   background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
   color: #fff;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   box-shadow: 0 14px 26px rgba(31, 95, 49, 0.22);
 }
@@ -1551,7 +1551,7 @@
   border-radius: 999px;
   background: var(--surface-panel);
   color: #fff;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
 }
 
 .workerHeroScene {
@@ -1633,7 +1633,7 @@
   align-items: center;
   gap: 10px;
   color: #17231c;
-  font-size: 1.08rem;
+  font-size: var(--fs-lg);
   font-weight: 700;
 }
 
@@ -1650,7 +1650,7 @@
   border-radius: 999px;
   background: rgba(218, 238, 219, 0.9);
   color: var(--brand-800) !important;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700 !important;
   white-space: nowrap;
 }
@@ -1665,7 +1665,7 @@
   max-width: 540px;
   margin: 6px 0 0;
   color: var(--ink-600);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   line-height: 1.5;
 }
@@ -1686,13 +1686,13 @@
   border-radius: 8px;
   background: rgba(240, 248, 239, 0.86);
   color: var(--ink-600);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .workerHeroSummary strong {
   color: var(--ink-900);
-  font-size: 1.28rem;
+  font-size: var(--fs-xl);
   line-height: 1;
 }
 
@@ -1742,7 +1742,7 @@
 
 .workerWorkTop small {
   color: var(--ink-600);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1756,7 +1756,7 @@
   border-radius: 50%;
   background: var(--surface-panel);
   color: var(--ink-900);
-  font-size: 0.95rem;
+  font-size: var(--fs-md);
   font-weight: 700;
   box-shadow: 0 14px 28px rgba(29, 64, 40, 0.08);
 }
@@ -1775,13 +1775,13 @@
   border-radius: 8px;
   background: rgba(240, 248, 239, 0.92);
   color: var(--ink-600);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .workerWorkStats strong {
   color: var(--ink-900);
-  font-size: 1.35rem;
+  font-size: var(--fs-2xl);
   line-height: 1;
 }
 
@@ -1792,13 +1792,13 @@
   gap: 10px;
   padding-top: 2px;
   color: var(--ink-700);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .workerLineListHeader small {
   color: var(--ink-500);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-align: right;
 }
@@ -1825,7 +1825,7 @@
   border-radius: 999px;
   background: rgba(240, 248, 239, 0.82);
   color: var(--ink-700);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1878,7 +1878,7 @@
   border-radius: 8px;
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-900);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1891,7 +1891,7 @@
 .workerLineItem strong {
   overflow: hidden;
   color: var(--ink-900);
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1902,7 +1902,7 @@
   align-items: center;
   gap: 5px;
   color: var(--ink-600);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1911,7 +1911,7 @@
   overflow: hidden;
   max-width: 100%;
   color: #9a3412;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-style: normal;
   font-weight: 700;
   line-height: 1.35;
@@ -1924,7 +1924,7 @@
   overflow: hidden;
   max-width: 100%;
   color: #607083;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-style: normal;
   font-weight: 700;
   line-height: 1.35;
@@ -1942,7 +1942,7 @@
   border-radius: 999px;
   background: rgba(46, 125, 65, 0.1);
   color: var(--brand-900);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -1979,18 +1979,18 @@
 }
 
 .taskIdentity strong {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   line-height: 1.35;
 }
 
 .taskIdentity span {
   color: var(--ink-700);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .taskRoute {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -2008,7 +2008,7 @@
 
 .taskInfoItem strong,
 .progressLabel strong {
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   color: var(--ink-900);
 }
 
@@ -2037,7 +2037,7 @@
 }
 
 .subtleNote {
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .projectCardFooter {
@@ -2050,7 +2050,7 @@
 
 .projectOpenLabel {
   color: var(--brand-800);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -2075,14 +2075,14 @@
 
 .taskTable th {
   color: var(--ink-600);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .taskTable td {
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
 }
 
 .tableProgress {
@@ -2152,14 +2152,14 @@
   }
 
   .titleBlock h1 {
-    font-size: 1.04rem;
+    font-size: var(--fs-base);
     line-height: 1.2;
   }
 
   .titleBlock p {
     display: block;
     overflow: visible;
-    font-size: 0.78rem;
+    font-size: var(--fs-2xs);
     line-height: 1.45;
   }
 
@@ -2169,7 +2169,7 @@
   }
 
   .userBlock strong {
-    font-size: 0.95rem;
+    font-size: var(--fs-md);
   }
 
   .summaryStrip {
@@ -2258,14 +2258,14 @@
   .inspectorMobileTop span,
   .inspectorPriorityHead span {
     color: var(--ink-600);
-    font-size: 0.78rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
   }
 
   .inspectorMobileTop h1 {
     margin: 2px 0 0;
     color: #17231c;
-    font-size: 1.45rem;
+    font-size: var(--fs-2xl);
     font-weight: 700;
     line-height: 1.1;
   }
@@ -2294,7 +2294,7 @@
     border-radius: 999px;
     background: #d43b31;
     color: #fff;
-    font-size: 0.75rem;
+    font-size: var(--fs-2xs);
   }
 
   .inspectorPrimaryActions {
@@ -2311,7 +2311,7 @@
     justify-content: center;
     gap: 8px;
     border-radius: 8px;
-    font-size: 0.86rem;
+    font-size: var(--fs-xs);
     font-weight: 700;
     text-align: center;
   }
@@ -2345,14 +2345,14 @@
     border-radius: 8px;
     background: var(--surface-panel);
     color: var(--ink-700);
-    font-size: 0.75rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
     text-align: center;
   }
 
   .inspectorMetricGrid strong {
     color: var(--ink-900);
-    font-size: 1.34rem;
+    font-size: var(--fs-2xl);
     line-height: 1;
   }
 
@@ -2371,7 +2371,7 @@
 
   .inspectorPriorityHead a {
     color: var(--brand-800);
-    font-size: 0.8rem;
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
 
@@ -2391,7 +2391,7 @@
     display: -webkit-box;
     overflow: hidden;
     color: var(--ink-900);
-    font-size: 0.92rem;
+    font-size: var(--fs-sm);
     line-height: 1.25;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -2401,7 +2401,7 @@
     display: block;
     margin-top: 4px;
     color: var(--ink-600);
-    font-size: 0.76rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
   }
 
@@ -2411,7 +2411,7 @@
     border-radius: 999px;
     background: rgba(74, 154, 93, 0.1);
     color: var(--brand-800);
-    font-size: 0.75rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
     white-space: nowrap;
   }
@@ -2423,7 +2423,7 @@
     gap: 6px;
     margin: 0;
     color: var(--ink-700);
-    font-size: 0.78rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
   }
 
@@ -2450,7 +2450,7 @@
     display: -webkit-box;
     overflow: hidden;
     color: var(--ink-900);
-    font-size: 0.86rem;
+    font-size: var(--fs-xs);
     line-height: 1.22;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -2460,7 +2460,7 @@
     display: block;
     margin-top: 3px;
     color: var(--ink-600);
-    font-size: 0.75rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
   }
 
@@ -2470,7 +2470,7 @@
     border-radius: 999px;
     background: rgba(74, 154, 93, 0.09);
     color: var(--brand-800);
-    font-size: 0.75rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
     white-space: nowrap;
   }
@@ -2481,7 +2481,7 @@
     border-radius: 8px;
     background: rgba(240, 248, 239, 0.72);
     color: var(--ink-700);
-    font-size: 0.84rem;
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
 
@@ -2556,7 +2556,7 @@
   }
 
   .workerHeroHeader h2 {
-    font-size: 1.18rem;
+    font-size: var(--fs-xl);
     line-height: 1.2;
   }
 
@@ -2593,7 +2593,7 @@
   .workerWorkTop .taskIdentity strong {
     display: -webkit-box;
     overflow: hidden;
-    font-size: 1.22rem;
+    font-size: var(--fs-xl);
     line-height: 1.25;
     white-space: normal;
     -webkit-box-orient: vertical;
@@ -2602,7 +2602,7 @@
 
   .workerWorkTop .taskIdentity small {
     margin-top: 4px;
-    font-size: 0.82rem;
+    font-size: var(--fs-xs);
     line-height: 1.35;
   }
 
@@ -2635,7 +2635,7 @@
   }
 
   .workerWorkStats strong {
-    font-size: 1.48rem;
+    font-size: var(--fs-2xl);
   }
 
   .workerLineListHeader {
@@ -2679,7 +2679,7 @@
   }
 
   .workerLineItem strong {
-    font-size: 0.96rem;
+    font-size: var(--fs-md);
     line-height: 1.32;
     white-space: normal;
   }
@@ -2714,16 +2714,16 @@
   .filterKicker {
     min-height: 0;
     padding: 0;
-    font-size: 0.76rem;
+    font-size: var(--fs-2xs);
   }
 
   .titleBlock h1 {
-    font-size: 1.04rem;
+    font-size: var(--fs-base);
     line-height: 1.2;
   }
 
   .titleBlock p {
-    font-size: 0.78rem;
+    font-size: var(--fs-2xs);
     line-height: 1.45;
   }
 
@@ -2742,13 +2742,13 @@
   }
 
   .summaryCard strong {
-    font-size: 1.55rem;
+    font-size: var(--fs-3xl);
   }
 
   .filterHeader p,
   .sectionHeader p {
     padding: 10px 12px;
-    font-size: 0.78rem;
+    font-size: var(--fs-2xs);
     line-height: 1.5;
   }
 
@@ -2840,11 +2840,11 @@
   .workerWorkStats span {
     min-height: 56px;
     padding: 8px;
-    font-size: 0.75rem;
+    font-size: var(--fs-2xs);
   }
 
   .workerWorkStats strong {
-    font-size: 1.15rem;
+    font-size: var(--fs-lg);
   }
 
   .workerLineItem strong {
@@ -2852,11 +2852,11 @@
   }
 
   .taskIdentity strong {
-    font-size: 0.9rem;
+    font-size: var(--fs-sm);
   }
 
   .taskRoute {
-    font-size: 0.82rem;
+    font-size: var(--fs-xs);
   }
 
   .taskInfoItem {
@@ -2869,7 +2869,7 @@
   }
 
   .subtleNote {
-    font-size: 0.84rem;
+    font-size: var(--fs-xs);
     line-height: 1.5;
   }
 
@@ -3075,7 +3075,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -3094,7 +3094,7 @@
 .introTitle {
   color: var(--ink-950);
   font-family: var(--font-body);
-  font-size: clamp(1.25rem, 2vw, 1.9rem);
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.12;
@@ -3111,7 +3111,7 @@
 .emptyNote,
 .noticeMessage {
   color: var(--ink-700);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.55;
 }
 
@@ -3158,7 +3158,7 @@
   background: var(--ds-panel-strong-bg);
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.2;
@@ -3249,7 +3249,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
 }
@@ -3382,7 +3382,7 @@
   }
 
   .workerHeroHeader h2 {
-    font-size: 1.18rem;
+    font-size: var(--fs-xl);
     line-height: 1.2;
   }
 
@@ -3420,7 +3420,7 @@
   .workerWorkTop .taskIdentity strong {
     display: -webkit-box;
     overflow: hidden;
-    font-size: 1.22rem;
+    font-size: var(--fs-xl);
     line-height: 1.25;
     white-space: normal;
     -webkit-box-orient: vertical;
@@ -3429,7 +3429,7 @@
 
   .workerWorkTop .taskIdentity small {
     margin-top: 4px;
-    font-size: 0.82rem;
+    font-size: var(--fs-xs);
     line-height: 1.35;
   }
 
@@ -3462,7 +3462,7 @@
   }
 
   .workerWorkStats strong {
-    font-size: 1.48rem;
+    font-size: var(--fs-2xl);
   }
 
   .workerLineListHeader {
@@ -3506,7 +3506,7 @@
   }
 
   .workerLineItem strong {
-    font-size: 0.96rem;
+    font-size: var(--fs-md);
     line-height: 1.32;
     white-space: normal;
   }

@@ -7,7 +7,7 @@
 .statHeading p {
   margin: 0;
   color: #5a6b62;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   line-height: 1.4;
 }
 
@@ -50,7 +50,7 @@
 .pendingQueueHeader h2 {
   margin: 4px 0 0;
   color: var(--ink-950);
-  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  font-size: var(--fs-title);
   line-height: 1.1;
 }
 
@@ -58,7 +58,7 @@
   max-width: 680px;
   margin: 8px 0 0;
   color: #66766b;
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.5;
 }
 
@@ -82,13 +82,13 @@
 
 .pendingQueueStats strong {
   color: #9a6517;
-  font-size: 1.55rem;
+  font-size: var(--fs-3xl);
   line-height: 1;
 }
 
 .pendingQueueStats small {
   color: #66766b;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -131,14 +131,14 @@
 
 .pendingRequestCard strong {
   display: block;
-  font-size: 0.96rem;
+  font-size: var(--fs-md);
   line-height: 1.2;
 }
 
 .pendingRequestCard span,
 .pendingRequestCard p {
   color: #66766b;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   line-height: 1.35;
 }
 
@@ -161,7 +161,7 @@
   min-height: 24px;
   padding: 0 8px;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-style: normal;
   font-weight: 700;
 }
@@ -191,7 +191,7 @@
 
 .pendingQueueEmpty span {
   color: #66766b;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
 }
 
 .pendingQueueActions {
@@ -209,7 +209,7 @@
   border-radius: 8px;
   background: #2e7d32;
   color: #fff;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-decoration: none;
 }
@@ -305,13 +305,13 @@
 .field span,
 .infoCard span {
   color: var(--stat-label-color, #637568);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .statCard small {
   color: #3a4a42;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -324,7 +324,7 @@
   display: block;
   margin-top: 1px;
   color: var(--stat-accent, #1f7a35);
-  font-size: 1.95rem;
+  font-size: var(--fs-display);
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.01em;
@@ -334,7 +334,7 @@
 .mutedText {
   margin: 2px 0 0;
   color: var(--stat-note-color, #66766b);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   line-height: 1.35;
 }
 
@@ -351,7 +351,7 @@
   gap: 8px;
   min-height: 18px;
   color: var(--stat-note-color, #66766b);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.3;
 }
@@ -455,7 +455,7 @@
 
 .quickActionHeader strong {
   color: var(--ink-950);
-  font-size: 0.94rem;
+  font-size: var(--fs-md);
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
@@ -478,7 +478,7 @@
   border-radius: 8px;
   background: rgba(246, 251, 247, 0.96);
   color: #203029;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
@@ -557,7 +557,7 @@
   padding: 0 14px;
   border-radius: 9px;
   color: #4a5a52;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -604,7 +604,7 @@
 .formPanel h2 {
   margin: 3px 0 0;
   color: var(--ink-950);
-  font-size: 1.05rem;
+  font-size: var(--fs-lg);
   line-height: 1.2;
 }
 
@@ -694,7 +694,7 @@
 }
 
 .barValue {
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   color: var(--ink-900);
 }
@@ -730,14 +730,14 @@
 }
 
 .barLabel {
-  font-size: 0.69rem;
+  font-size: var(--fs-3xs);
   color: var(--ink-700);
   white-space: nowrap;
 }
 
 .barCaption {
   margin: 12px 0 0;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   color: var(--ink-700);
   text-align: center;
 }
@@ -745,7 +745,7 @@
 .barCaption strong {
   color: var(--ink-900);
   font-weight: 700;
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
 }
 
 /* Хэлтсийн хянах самбар — ажилтны сүлжээ */
@@ -772,7 +772,7 @@
 }
 
 .chartCenter span {
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.02em;
   opacity: 0.7;
@@ -780,7 +780,7 @@
 }
 
 .chartCenter strong {
-  font-size: 1.72rem;
+  font-size: var(--fs-3xl);
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.01em;
@@ -798,7 +798,7 @@
   align-items: start;
   gap: 4px 7px;
   color: #2c3a31;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   line-height: 1.25;
 }
 
@@ -824,7 +824,7 @@
   grid-column: 2;
   justify-self: start;
   color: #56655c;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
 }
 
 .chartTopList {
@@ -841,7 +841,7 @@
   display: grid;
   gap: 3px;
   color: var(--ink-950);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   line-height: 1.25;
 }
 
@@ -849,7 +849,7 @@
 .chartTopList p {
   margin: 0;
   color: #66766b;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
 }
 
 .chartTopRow {
@@ -876,7 +876,7 @@
   border-radius: 999px;
   background: #2e7d32;
   color: #fff;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -893,13 +893,13 @@
 }
 
 .chartTopRow strong {
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
 }
 
 .chartTopRow small,
 .chartTopRow em {
   color: #66766b;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
 }
 
 .chartTopRow em {
@@ -933,7 +933,7 @@
   color: #fff;
   cursor: pointer;
   font: inherit;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-align: center;
   text-decoration: none;
@@ -957,7 +957,7 @@
   border-radius: 8px;
   background: rgba(238, 247, 239, 0.86);
   color: #506158;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -991,7 +991,7 @@
   background: var(--surface-panel);
   color: var(--ink-950);
   font: inherit;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
 }
 
 .searchBox input {
@@ -1043,7 +1043,7 @@
   width: 100%;
   min-width: 860px;
   border-collapse: collapse;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .table th,
@@ -1056,7 +1056,7 @@
 
 .table th {
   color: #637568;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1093,7 +1093,7 @@
   border-radius: 8px;
   background: rgba(46, 125, 50, 0.08);
   color: #1f7a35;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1;
   text-decoration: none;
@@ -1120,7 +1120,7 @@
 .attachmentEmpty,
 .attachmentMissing {
   color: #66766b;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -1140,7 +1140,7 @@
   background: var(--surface-panel);
   color: var(--ink-950);
   font: inherit;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1;
   text-align: center;
@@ -1230,7 +1230,7 @@
 
 .pdfFrameStatus p {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
   line-height: 1.5;
 }
 
@@ -1282,7 +1282,7 @@
 .reportMetricCard small {
   display: block;
   color: #637568;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.25;
 }
@@ -1291,14 +1291,14 @@
   display: block;
   margin-top: 4px;
   color: #142017;
-  font-size: 1.45rem;
+  font-size: var(--fs-2xl);
   line-height: 1;
 }
 
 .reportMetricCard p {
   margin: 5px 0 0;
   color: #66766b;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.25;
 }
@@ -1337,7 +1337,7 @@
 .reportCreateHeader h2 {
   margin: 3px 0 0;
   color: var(--ink-950);
-  font-size: 1.08rem;
+  font-size: var(--fs-lg);
   line-height: 1.2;
 }
 
@@ -1345,7 +1345,7 @@
 .reportCreateHeader p {
   margin: 6px 0 0;
   color: #66766b;
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   line-height: 1.4;
 }
 
@@ -1357,7 +1357,7 @@
   border-radius: 999px;
   background: rgba(218, 238, 219, 0.92);
   color: #1f7a35;
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .reportTypeTabs {
@@ -1381,7 +1381,7 @@
   border-radius: 8px;
   cursor: pointer;
   font: inherit;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1;
 }
@@ -1421,7 +1421,7 @@
   border-radius: 999px;
   background: var(--surface-panel);
   color: inherit;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
 }
 
 .reportCardList {
@@ -1466,7 +1466,7 @@
 
 .reportCardBody strong {
   color: var(--ink-950);
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
@@ -1476,7 +1476,7 @@
 .reportCardMeta span {
   margin: 0;
   color: #66766b;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.3;
 }
@@ -1505,7 +1505,7 @@
 .reportCardActions .dangerButton {
   min-height: 34px;
   padding: 0 10px;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
 }
 
 .reportEmptyState {
@@ -1532,7 +1532,7 @@
 }
 
 .reportEmptyState span {
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   line-height: 1.45;
 }
 
@@ -1576,12 +1576,12 @@
   border-radius: 999px;
   background: #2e7d32;
   color: #fff;
-  font-size: 1.1rem;
+  font-size: var(--fs-lg);
 }
 
 .reportSideHint span {
   color: #66766b;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -1611,7 +1611,7 @@
   border-radius: 0;
   background: transparent;
   color: #1f7a35;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   line-height: 1.35;
 }
@@ -1641,7 +1641,7 @@
 }
 
 .detailGroupHeader strong {
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
 }
 
 .detailGroupHeader span {
@@ -1652,7 +1652,7 @@
   border-radius: 999px;
   background: rgba(46, 125, 50, 0.11);
   color: #2e7d32;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1684,7 +1684,7 @@
   justify-content: center;
   background: rgba(46, 125, 50, 0.12);
   color: #2e7d32;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -1719,7 +1719,7 @@
 }
 
 .tierHeader span {
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--ink-900);
   text-transform: uppercase;
@@ -1760,7 +1760,7 @@
   justify-content: center;
   background: rgba(46, 125, 50, 0.12);
   color: #2e7d32;
-  font-size: 1.38rem;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   margin-bottom: 4px;
 }
@@ -1772,19 +1772,19 @@
 }
 
 .employeeGridName {
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   line-height: 1.2;
 }
 
 .employeeGridTitle {
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   color: #4a5a52;
   line-height: 1.3;
 }
 
 .employeeGridDept {
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   color: #8a978f;
   line-height: 1.3;
 }
@@ -1810,7 +1810,7 @@
   justify-content: center;
   background: rgba(46, 125, 50, 0.12);
   color: #2e7d32;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1827,14 +1827,14 @@
 }
 
 .identityName {
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--ink-900);
   line-height: 1.2;
 }
 
 .identitySub {
-  font-size: 0.69rem;
+  font-size: var(--fs-3xs);
   color: var(--ink-700);
   line-height: 1.25;
 }
@@ -1884,14 +1884,14 @@
 }
 
 .registryCardMeta dt {
-  font-size: 0.69rem;
+  font-size: var(--fs-3xs);
   color: #8a978f;
   flex-shrink: 0;
 }
 
 .registryCardMeta dd {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   color: var(--ink-900);
   text-align: right;
   min-width: 0;
@@ -1929,14 +1929,14 @@
 
 .miniMetric strong {
   display: block;
-  font-size: 1.25rem;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--ink-900);
   line-height: 1.1;
 }
 
 .miniMetric small {
-  font-size: 0.69rem;
+  font-size: var(--fs-3xs);
   color: var(--ink-700);
 }
 
@@ -1969,14 +1969,14 @@
 
 .orgSectionHead h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   color: var(--ink-900);
 }
 
 .orgSectionHead p {
   margin: 2px 0 0;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   color: var(--ink-700);
 }
 
@@ -2017,12 +2017,12 @@
 }
 
 .orgTopBox span {
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.25;
 }
 
 .orgTopBox strong {
-  font-size: 0.94rem;
+  font-size: var(--fs-md);
   padding: 1px 9px;
   border-radius: 999px;
   background: var(--surface-panel);
@@ -2064,13 +2064,13 @@
   border-radius: 12px;
   border: 1px solid rgba(15, 23, 42, 0.14);
   background: var(--surface-panel);
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: #334155;
 }
 
 .orgAside strong {
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   padding: 1px 8px;
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.06);
@@ -2105,7 +2105,7 @@
 
 .orgDeptHead h3 {
   margin: 0;
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   line-height: 1.3;
 }
@@ -2125,20 +2125,20 @@
   padding: 3px 10px;
   border-radius: 999px;
   background: var(--surface-panel);
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--ink-900);
 }
 
 .orgDeptLive em {
   font-style: normal;
-  font-size: 0.69rem;
+  font-size: var(--fs-3xs);
   font-weight: 600;
   color: var(--ink-700);
 }
 
 .orgDeptVacant {
-  font-size: 0.69rem;
+  font-size: var(--fs-3xs);
   font-weight: 700;
   color: #b91c1c;
   padding: 3px 9px;
@@ -2147,7 +2147,7 @@
 }
 
 .orgDeptFull {
-  font-size: 0.69rem;
+  font-size: var(--fs-3xs);
   font-weight: 700;
   color: #15803d;
   padding: 3px 9px;
@@ -2170,7 +2170,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   color: #253027;
   padding: 3px 8px;
   border-radius: 7px;
@@ -2188,7 +2188,7 @@
   position: absolute;
   left: 0;
   color: #8a978f;
-  font-size: 0.69rem;
+  font-size: var(--fs-3xs);
 }
 
 .orgRoleTag {
@@ -2198,7 +2198,7 @@
   border-radius: 6px;
   background: rgba(15, 23, 42, 0.08);
   color: #64748b;
-  font-size: 0.62rem;
+  font-size: var(--fs-3xs);
   font-style: normal;
   vertical-align: middle;
 }
@@ -2214,7 +2214,7 @@
 }
 
 .orgRoleCount small {
-  font-size: 0.69rem;
+  font-size: var(--fs-3xs);
   color: #8a978f;
 }
 
@@ -2325,7 +2325,7 @@
 .detailRow small,
 .detailRow em {
   color: #66766b;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .detailRow em {
@@ -2373,7 +2373,7 @@
   gap: 6px;
   padding: 0 12px;
   border-radius: 8px;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-decoration: none;
   transition:
@@ -2452,7 +2452,7 @@
 
 .trialActionFormHeader strong {
   color: #203029;
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
 }
 
 .trialActionGhostButton {
@@ -2469,7 +2469,7 @@
 
 .trialActionForm label span {
   color: #5d6d61;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -2498,7 +2498,7 @@
 .trialActionError,
 .trialActionSuccess {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -2528,7 +2528,7 @@
   border-radius: 999px;
   background: rgba(218, 238, 219, 0.92);
   color: #2e7d32;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -2578,14 +2578,14 @@
 .formSectionHeader h2 {
   margin: 0;
   color: var(--ink-950);
-  font-size: 1rem;
+  font-size: var(--fs-base);
   line-height: 1.25;
 }
 
 .formSectionHeader p {
   margin: 0;
   color: #66766b;
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   line-height: 1.45;
 }
 
@@ -2618,7 +2618,7 @@
 
 .employeePhotoPlaceholder {
   color: #2e7d32;
-  font-size: 2rem;
+  font-size: var(--fs-display);
   font-weight: 700;
 }
 
@@ -2629,7 +2629,7 @@
 .employeeProfileText p {
   margin: 6px 0 0;
   color: #66766b;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -2653,13 +2653,13 @@
 }
 
 .editInfoBanner strong {
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   line-height: 1.35;
 }
 
 .editInfoBanner span {
   color: #5f7065;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.35;
 }
@@ -2729,14 +2729,14 @@
 
 .editReadonlyValue span {
   color: #66766b;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.3;
 }
 
 .editReadonlyValue strong {
   color: var(--ink-950);
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
@@ -2766,7 +2766,7 @@
   border-radius: 8px;
   background: rgba(238, 247, 239, 0.92);
   color: #1f7a35;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-decoration: none;
 }
@@ -2809,7 +2809,7 @@
 .selectedEmployeeContext span,
 .selectedEmployeeContext small {
   color: #637568;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -2822,14 +2822,14 @@
 
 .selectedEmployeeContextAction {
   color: #1f7a35;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   white-space: nowrap;
 }
 
 .selectedEmployeeContext strong {
   color: var(--ink-950);
-  font-size: 1.04rem;
+  font-size: var(--fs-base);
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
@@ -2857,7 +2857,7 @@
 
 .field small {
   color: #647568;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   line-height: 1.35;
 }
 
@@ -2895,14 +2895,14 @@
 .searchableSelectButton strong,
 .searchableSelectOption strong {
   overflow-wrap: anywhere;
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.25;
 }
 
 .searchableSelectButton small,
 .searchableSelectOption small {
   color: #637568;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.25;
 }
@@ -2975,7 +2975,7 @@
 .searchableSelectEmpty {
   padding: 13px 11px;
   color: #637568;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -2988,7 +2988,7 @@
   border: 1px solid rgba(46, 125, 50, 0.12);
   border-radius: 8px;
   background: var(--surface-panel);
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -3005,7 +3005,7 @@
 
 .profilePhotoEditorLabel {
   color: #526456;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -3056,7 +3056,7 @@
 .profilePhotoHint {
   display: block;
   margin-top: 6px;
-  font-size: 0.69rem;
+  font-size: var(--fs-3xs);
   color: var(--ink-700);
   text-align: center;
 }
@@ -3084,7 +3084,7 @@
   border-radius: 8px;
   background: rgba(22, 36, 27, 0.6);
   color: #ffffff;
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   pointer-events: none;
 }
 
@@ -3098,7 +3098,7 @@
   border-radius: 8px;
   background: rgba(22, 36, 27, 0.72);
   color: #ffffff;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   cursor: pointer;
 }
 
@@ -3124,13 +3124,13 @@
   border-radius: 50%;
   background: rgba(218, 238, 219, 0.78);
   color: #1f7a35;
-  font-size: 1.45rem;
+  font-size: var(--fs-2xl);
   font-weight: 700;
 }
 
 .profilePhotoEmptyState strong {
   color: var(--ink-900);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 .profilePhotoDropOverlay {
@@ -3145,7 +3145,7 @@
   border-radius: 8px;
   background: rgba(22, 36, 27, 0.72);
   color: #ffffff;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -3190,7 +3190,7 @@
   margin: 0;
   padding: 10px 12px;
   border-radius: 8px;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -3215,7 +3215,7 @@
 .sectionHeader p {
   margin: 0;
   color: #66766b;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   line-height: 1.45;
   text-align: right;
 }
@@ -3269,7 +3269,7 @@
 .manpowerHeader h3 {
   margin: 0;
   color: var(--ink-950);
-  font-size: 0.95rem;
+  font-size: var(--fs-md);
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
@@ -3278,13 +3278,13 @@
   display: block;
   margin-top: 3px;
   color: #66766b;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .manpowerHeader strong {
   color: #142017;
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .manpowerEmployees {
@@ -3349,7 +3349,7 @@
 .reportCategory h3 {
   margin: 0;
   color: var(--ink-950);
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
   line-height: 1.25;
 }
 
@@ -3389,7 +3389,7 @@
 .inlineLoading p {
   margin: 0;
   color: #66766b;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   line-height: 1.5;
 }
 
@@ -3406,7 +3406,7 @@
 .recordActions .dangerButton {
   min-height: 34px;
   padding: 0 10px;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .employeeRowLink:hover,
@@ -3429,12 +3429,12 @@
 }
 
 .employeeRowLink strong {
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .employeeRowLink small {
   color: #66766b;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
 }
 
 .employeeRowLink em {
@@ -3445,7 +3445,7 @@
   border-radius: 999px;
   background: rgba(46, 125, 50, 0.11);
   color: #2e7d32;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-style: normal;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -3483,7 +3483,7 @@
   color: #304139;
   cursor: pointer;
   font: inherit;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -3510,7 +3510,7 @@
 
 .infoCard strong {
   color: var(--ink-950);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -3533,7 +3533,7 @@
   gap: 6px;
   padding: 16px 18px 0;
   color: var(--ink-950);
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -3590,7 +3590,7 @@
 .hrProfileNameRow h2 {
   margin: 0;
   color: #111827;
-  font-size: clamp(1.65rem, 2.2vw, 2.3rem);
+  font-size: var(--fs-hero);
   line-height: 1.05;
 }
 
@@ -3602,14 +3602,14 @@
   border-radius: 999px;
   background: rgba(218, 238, 219, 0.96);
   color: #1f7a35;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .hrProfileIdentityText p {
   margin: 0;
   color: #334139;
-  font-size: 1.05rem;
+  font-size: var(--fs-lg);
   font-weight: 700;
   overflow-wrap: anywhere;
 }
@@ -3628,7 +3628,7 @@
   gap: 9px;
   min-width: 0;
   color: var(--ink-950);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -3681,14 +3681,14 @@
 .hrProfileInfoRow span,
 .hrProfileInfoCard span {
   color: var(--ink-700);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .hrProfileHeroMetric strong,
 .hrProfileHeroFacts strong {
   color: #111827;
-  font-size: 0.94rem;
+  font-size: var(--fs-md);
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
@@ -3724,7 +3724,7 @@
 .actionPanelHeader span {
   display: block;
   color: var(--ink-950);
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -3732,7 +3732,7 @@
   max-width: 880px;
   margin: 4px 0 0;
   color: #627167;
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.42;
 }
@@ -3754,7 +3754,7 @@
   justify-content: center;
   gap: 7px;
   border-radius: 8px;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   font-family: inherit;
   line-height: 1.2;
@@ -3807,7 +3807,7 @@
   background: var(--surface-panel);
   color: #2c5f3a;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   list-style: none;
 }
@@ -3905,7 +3905,7 @@
   color: var(--ink-950);
   cursor: pointer;
   font: inherit;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -3945,14 +3945,14 @@
 .hrProfileSubHeader h3 {
   margin: 0;
   color: #111827;
-  font-size: 1.08rem;
+  font-size: var(--fs-lg);
   line-height: 1.25;
 }
 
 .hrProfileContentHeader p {
   margin: 5px 0 0;
   color: #66766b;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
 }
 
 .hrProfileHeaderActions {
@@ -4022,13 +4022,13 @@
 .workSnapshotMain span,
 .workSnapshotMeta span {
   color: #66766b;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .workSnapshotMain strong {
   color: #111827;
-  font-size: 1.1rem;
+  font-size: var(--fs-lg);
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
@@ -4037,7 +4037,7 @@
 .workSnapshotHelp {
   margin: 0;
   color: var(--ink-700);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.42;
 }
@@ -4060,7 +4060,7 @@
 
 .workSnapshotMeta strong {
   color: #111827;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   overflow-wrap: anywhere;
 }
 
@@ -4073,7 +4073,7 @@
   border-radius: 999px;
   background: rgba(218, 238, 219, 0.98);
   color: #1f7a35 !important;
-  font-size: 0.78rem !important;
+  font-size: var(--fs-2xs) !important;
 }
 
 .workSnapshotHelp {
@@ -4103,14 +4103,14 @@
 .workTransferCta h3 {
   margin: 0;
   color: #111827;
-  font-size: 0.94rem;
+  font-size: var(--fs-md);
   line-height: 1.32;
 }
 
 .workTransferCta p {
   margin: 4px 0 0;
   color: #5f7065;
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.42;
 }
@@ -4136,14 +4136,14 @@
 .workInfoCardTitle {
   margin: 0;
   color: #111827;
-  font-size: 0.98rem;
+  font-size: var(--fs-base);
   line-height: 1.25;
 }
 
 .workInfoCardHelp {
   margin: 0;
   color: #66766b;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.38;
 }
@@ -4163,7 +4163,7 @@
 
 .workInfoLabel {
   color: #66766b;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.35;
 }
@@ -4171,7 +4171,7 @@
 .workInfoValue {
   min-width: 0;
   color: #111827;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.38;
   overflow-wrap: anywhere;
@@ -4196,13 +4196,13 @@
 
 .missingWorkBanner strong {
   display: block;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   line-height: 1.35;
 }
 
 .missingWorkBanner span {
   color: #8a6414;
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   line-height: 1.35;
 }
 
@@ -4221,7 +4221,7 @@
   border-radius: 999px;
   background: var(--surface-panel);
   color: #7c4a03;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -4246,13 +4246,13 @@
 .workHistoryHeader h3 {
   margin: 0;
   color: #111827;
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .workHistoryHeader p {
   margin: 4px 0 0;
   color: #66766b;
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   line-height: 1.38;
 }
 
@@ -4265,7 +4265,7 @@
   border-radius: 8px;
   background: rgba(248, 252, 249, 0.82);
   color: #66766b;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   line-height: 1.4;
 }
 
@@ -4315,7 +4315,7 @@
 .hrProfileInfoRow strong,
 .hrProfileInfoCard strong {
   color: #111827;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   line-height: 1.45;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
@@ -4341,7 +4341,7 @@
   padding: 11px 12px;
   border-bottom: 1px solid rgba(30, 70, 42, 0.08);
   color: #111827;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   line-height: 1.4;
   text-align: left;
   vertical-align: top;
@@ -4352,7 +4352,7 @@
 .hrProfileTable th {
   background: rgba(248, 250, 248, 0.96);
   color: #445048;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -4369,7 +4369,7 @@
   border-radius: 8px;
   background: rgba(248, 252, 248, 0.82);
   color: #66766b;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-align: center;
 }
@@ -4381,7 +4381,7 @@
   border: 0;
   background: transparent;
   color: #1f7a35;
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
@@ -4410,18 +4410,18 @@
 
 .hrProfileMetricCard strong {
   color: #1f7a35;
-  font-size: 1.05rem;
+  font-size: var(--fs-lg);
 }
 
 .hrProfileMetricCard span {
   color: #111827;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
 .hrProfileMetricCard small {
   color: #66766b;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -4445,7 +4445,7 @@
 
 .hrProfileSkillRow span {
   color: #111827;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -4466,7 +4466,7 @@
   margin: 0;
   padding-left: 18px;
   color: #111827;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   line-height: 1.45;
 }
 
@@ -4486,7 +4486,7 @@
   border-radius: 8px;
   background: rgba(218, 238, 219, 0.72);
   color: var(--accent-ink);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -4513,7 +4513,7 @@
 .departmentTile strong {
   display: block;
   overflow-wrap: anywhere;
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
 }
 
 .departmentTile small {
@@ -4522,7 +4522,7 @@
   gap: 6px;
   margin-top: 6px;
   color: #66766b;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -4560,7 +4560,7 @@
   border: 1px solid rgba(46, 125, 50, 0.12);
   border-radius: 8px;
   color: #304139;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-decoration: none;
 }
@@ -4588,7 +4588,7 @@
 .accessDenied h1 {
   margin: 10px 0;
   color: var(--ink-950);
-  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  font-size: var(--fs-hero);
 }
 
 .accessDenied p {
@@ -4748,7 +4748,7 @@
   }
 
   .quickActionHeader strong {
-    font-size: 0.9rem;
+    font-size: var(--fs-sm);
   }
 
   .quickActionLink {
@@ -4774,7 +4774,7 @@
   }
 
   .reportMetricCard strong {
-    font-size: 1.25rem;
+    font-size: var(--fs-xl);
   }
 
   .reportListPanel,
@@ -4842,11 +4842,11 @@
   }
 
   .pendingQueueHeader h2 {
-    font-size: 1.18rem;
+    font-size: var(--fs-xl);
   }
 
   .pendingQueueHeader p {
-    font-size: 0.8rem;
+    font-size: var(--fs-xs);
   }
 
   .pendingQueueStats {
@@ -4859,7 +4859,7 @@
   }
 
   .pendingQueueStats strong {
-    font-size: 1.28rem;
+    font-size: var(--fs-xl);
   }
 
   .pendingRequestGrid {
@@ -4918,13 +4918,13 @@
   .statCard small {
     display: block;
     color: #334139;
-    font-size: 0.75rem;
+    font-size: var(--fs-2xs);
     line-height: 1.2;
   }
 
   .statCard strong {
     margin-top: 4px;
-    font-size: 1.25rem;
+    font-size: var(--fs-xl);
   }
 
   .statCard p {
@@ -4955,7 +4955,7 @@
 
   .mobileInlineDetailHeader strong {
     color: var(--ink-950);
-    font-size: 0.96rem;
+    font-size: var(--fs-md);
     line-height: 1.25;
   }
 
@@ -5100,7 +5100,7 @@
     display: block;
     min-width: 0;
     border-collapse: separate;
-    font-size: 0.86rem;
+    font-size: var(--fs-xs);
   }
 
   .requestTable thead {
@@ -5136,7 +5136,7 @@
   .requestTable td::before {
     color: #66766b;
     content: attr(data-label);
-    font-size: 0.75rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
     line-height: 1.4;
   }
@@ -5186,7 +5186,7 @@
     display: inline-flex;
     width: fit-content;
     max-width: 100%;
-    font-size: 1rem;
+    font-size: var(--fs-base);
     line-height: 1.25;
   }
 
@@ -5222,7 +5222,7 @@
   }
 
   .hrProfileNameRow h2 {
-    font-size: 1.45rem;
+    font-size: var(--fs-2xl);
   }
 
   .hrProfileHeroFacts {
@@ -5238,7 +5238,7 @@
   .hrProfileTabActive {
     min-height: 44px;
     padding: 0 8px 10px;
-    font-size: 0.78rem;
+    font-size: var(--fs-2xs);
   }
 
   .hrProfileContentPanel {
@@ -5303,22 +5303,22 @@
   background: linear-gradient(140deg, #2e7d32, #57ab5c);
   color: #fff;
   font-weight: 700;
-  font-size: 1.25rem;
+  font-size: var(--fs-xl);
   overflow: hidden;
 }
 .erpAvatarImg { width: 100%; height: 100%; object-fit: cover; }
 .erpIdMain { min-width: 0; }
-.erpIdMain strong { display: block; font-size: 1.4rem; font-weight: 700; color: var(--ink-900); letter-spacing: -0.01em; }
-.erpIdMain small { display: block; color: var(--ink-700); font-size: 0.9rem; margin-top: 2px; }
-.erpIdMeta { display: flex; flex-wrap: wrap; gap: 4px 15px; margin-top: 7px; font-size: 0.78rem; color: var(--ink-700); }
+.erpIdMain strong { display: block; font-size: var(--fs-2xl); font-weight: 700; color: var(--ink-900); letter-spacing: -0.01em; }
+.erpIdMain small { display: block; color: var(--ink-700); font-size: var(--fs-sm); margin-top: 2px; }
+.erpIdMeta { display: flex; flex-wrap: wrap; gap: 4px 15px; margin-top: 7px; font-size: var(--fs-2xs); color: var(--ink-700); }
 .erpIdMeta b { color: var(--ink-900); font-weight: 700; }
 .erpStatusWrap { margin-left: auto; text-align: right; }
 .erpStatusPill {
   display: inline-flex; align-items: center; gap: 7px;
-  padding: 7px 13px; border-radius: 999px; font-weight: 700; font-size: 0.82rem;
+  padding: 7px 13px; border-radius: 999px; font-weight: 700; font-size: var(--fs-xs);
 }
 .erpStatusDot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-.erpStatusWrap small { display: block; color: var(--ink-700); font-size: 0.72rem; margin-top: 6px; }
+.erpStatusWrap small { display: block; color: var(--ink-700); font-size: var(--fs-3xs); margin-top: 6px; }
 .erpTone_good { background: rgba(22, 163, 74, 0.12); color: #15803d; }
 .erpTone_warn { background: rgba(217, 119, 6, 0.13); color: #b45309; }
 .erpTone_crit { background: rgba(220, 38, 38, 0.10); color: #dc2626; }
@@ -5332,41 +5332,41 @@
 .erpKpi_good::before { background: #16a34a; }
 .erpKpi_warn::before { background: #d97706; }
 .erpKpi_crit::before { background: #dc2626; }
-.erpKpiN { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; color: var(--ink-900); font-variant-numeric: tabular-nums; }
+.erpKpiN { font-size: var(--fs-3xl); font-weight: 700; letter-spacing: -0.02em; color: var(--ink-900); font-variant-numeric: tabular-nums; }
 .erpKpi_good .erpKpiN { color: #16a34a; }
 .erpKpi_warn .erpKpiN { color: #d97706; }
 .erpKpi_crit .erpKpiN { color: #dc2626; }
-.erpKpiL { font-size: 0.74rem; color: var(--ink-700); margin-top: 2px; }
+.erpKpiL { font-size: var(--fs-3xs); color: var(--ink-700); margin-top: 2px; }
 
 .erpCols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .erpPanel { background: var(--surface-panel); border: 1px solid rgba(46, 125, 50, 0.14); border-radius: 18px; padding: 16px 18px; }
-.erpPanel h3 { margin: 0 0 10px; font-size: 0.98rem; font-weight: 700; color: var(--ink-900); display: flex; align-items: center; gap: 8px; }
-.erpTag { margin-left: auto; font-size: 0.68rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+.erpPanel h3 { margin: 0 0 10px; font-size: var(--fs-base); font-weight: 700; color: var(--ink-900); display: flex; align-items: center; gap: 8px; }
+.erpTag { margin-left: auto; font-size: var(--fs-3xs); font-weight: 700; padding: 3px 9px; border-radius: 999px; }
 .erpTagGood { background: rgba(22, 163, 74, 0.12); color: #15803d; }
 .erpTagWarn { background: rgba(217, 119, 6, 0.13); color: #b45309; }
 .erpTagCrit { background: rgba(220, 38, 38, 0.10); color: #dc2626; }
 
-.erpRow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid rgba(46, 125, 50, 0.10); font-size: 0.86rem; }
+.erpRow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid rgba(46, 125, 50, 0.10); font-size: var(--fs-xs); }
 .erpRow:first-of-type { border-top: 0; }
 .erpRowK { color: var(--ink-700); }
 .erpRowV { margin-left: auto; font-weight: 700; color: var(--ink-900); text-align: right; }
-.erpMark { width: 18px; height: 18px; border-radius: 6px; flex: none; display: grid; place-items: center; font-size: 0.68rem; font-weight: 700; color: #fff; }
+.erpMark { width: 18px; height: 18px; border-radius: 6px; flex: none; display: grid; place-items: center; font-size: var(--fs-3xs); font-weight: 700; color: #fff; }
 .erpMarkOk { background: #16a34a; }
 .erpMarkNo { background: #dc2626; }
 .erpMarkNa { background: #b6c2ba; }
 
 .erpBar { height: 8px; border-radius: 999px; background: rgba(46, 125, 50, 0.12); overflow: hidden; margin-top: 12px; }
 .erpBarFill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2e7d32, #57ab5c); }
-.erpBarLabel { display: block; margin-top: 7px; font-size: 0.78rem; color: var(--ink-700); }
+.erpBarLabel { display: block; margin-top: 7px; font-size: var(--fs-2xs); color: var(--ink-700); }
 .erpBarLabel b { color: var(--ink-900); }
 
 .erpRec { display: flex; gap: 11px; padding: 9px 0; border-top: 1px solid rgba(46, 125, 50, 0.10); }
 .erpRec:first-of-type { border-top: 0; }
-.erpRecIcon { width: 24px; height: 24px; border-radius: 8px; flex: none; display: grid; place-items: center; font-weight: 700; font-size: 0.8rem; }
+.erpRecIcon { width: 24px; height: 24px; border-radius: 8px; flex: none; display: grid; place-items: center; font-weight: 700; font-size: var(--fs-xs); }
 .erpRec_p1 .erpRecIcon { background: rgba(220, 38, 38, 0.10); color: #dc2626; }
 .erpRec_p2 .erpRecIcon { background: rgba(217, 119, 6, 0.13); color: #b45309; }
 .erpRec_p3 .erpRecIcon { background: rgba(46, 125, 50, 0.10); color: #2e7d32; }
-.erpRecText { font-size: 0.86rem; color: #253027; }
+.erpRecText { font-size: var(--fs-xs); color: #253027; }
 .erpRecText b { font-weight: 700; }
 
 @media (max-width: 720px) {
@@ -5438,7 +5438,7 @@
 
 .jobGroupHeader h4 {
   margin: 0;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--ink-900, #0f172a);
 }
@@ -5453,7 +5453,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.14);
   color: #0f6e56;
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }

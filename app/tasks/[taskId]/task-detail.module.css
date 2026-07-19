@@ -68,7 +68,7 @@
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -82,7 +82,7 @@
 }
 
 .titleBlock h1 {
-  font-size: clamp(1.25rem, 2.2vw, 1.6rem);
+  font-size: var(--fs-title);
   line-height: 1.15;
 }
 
@@ -141,7 +141,7 @@
 }
 
 .reportReturnReason strong {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 .reportReturnReason p {
@@ -169,7 +169,7 @@
 
 .reportImageGroupHeader strong {
   color: var(--ink-900);
-  font-size: 0.95rem;
+  font-size: var(--fs-md);
   font-weight: 700;
 }
 
@@ -181,7 +181,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -238,7 +238,7 @@
   border-radius: 999px;
   background: rgba(226, 238, 255, 0.9);
   color: #245283;
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -278,7 +278,7 @@
 
 .existingReportMeta strong {
   color: var(--ink-900);
-  font-size: 1.15rem;
+  font-size: var(--fs-lg);
 }
 
 .existingReportImageGrid {
@@ -310,7 +310,7 @@
 .existingReportImageGrid span {
   overflow: hidden;
   color: var(--ink-600);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -369,7 +369,7 @@
   display: grid;
   gap: 6px;
   color: var(--ink-900);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
@@ -403,7 +403,7 @@
 
 .existingAttachmentGroup > strong {
   color: var(--ink-900);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 .editAttachmentList {
@@ -450,7 +450,7 @@
   background: rgba(143, 42, 25, 0.08);
   color: #8f2a19;
   font: inherit;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   cursor: pointer;
 }
@@ -474,14 +474,14 @@
 
 .inlineReportComposer strong {
   color: var(--ink-900);
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .inlineReportComposer p,
 .reportUnavailable {
   margin: 0;
   color: var(--ink-700);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.45;
 }
 
@@ -580,7 +580,7 @@
 
 .quantityChip strong {
   color: var(--brand-900);
-  font-size: 1.05rem;
+  font-size: var(--fs-lg);
 }
 
 .heroStatCard {
@@ -598,7 +598,7 @@
   gap: 4px 18px;
   margin: 0;
   color: var(--ink-600);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
@@ -610,7 +610,7 @@
 
 .summaryMetaLine strong {
   color: var(--ink-900);
-  font-size: 0.95rem;
+  font-size: var(--fs-md);
   font-weight: 700;
 }
 
@@ -623,7 +623,7 @@
 .inputHint,
 .reportBodyLabel {
   color: var(--ink-600);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
 }
 
 .reportBodyLabel {
@@ -635,7 +635,7 @@
   align-items: center;
   gap: 8px;
   font-family: var(--font-body);
-  font-size: 1.45rem;
+  font-size: var(--fs-2xl);
   line-height: 1;
 }
 
@@ -687,7 +687,7 @@
 }
 
 .sectionHead h2 {
-  font-size: clamp(1.25rem, 2.4vw, 1.7rem);
+  font-size: var(--fs-title);
   line-height: 1;
 }
 
@@ -707,7 +707,7 @@
   background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
   color: #f7fcf6;
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   white-space: nowrap;
   box-shadow: 0 12px 24px rgba(31, 95, 49, 0.16);
@@ -734,7 +734,7 @@
 }
 
 .infoCard strong {
-  font-size: 1.05rem;
+  font-size: var(--fs-lg);
   color: var(--ink-900);
 }
 
@@ -746,7 +746,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.08);
   color: var(--ink-900);
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 
@@ -794,7 +794,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.14);
   color: var(--brand-800);
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -844,7 +844,7 @@
 .attachmentName {
   flex: 1;
   min-width: 0;
-  font-size: 0.85rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.25;
   overflow: hidden;
@@ -915,7 +915,7 @@
   border-radius: var(--ds-radius-control);
   background: rgba(255, 255, 255, 0.9);
   color: var(--ink-800);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .attachmentUploadButton {
@@ -930,7 +930,7 @@
   background: rgba(76, 158, 92, 0.11);
   color: var(--accent-ink);
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.2;
   cursor: pointer;
@@ -957,13 +957,13 @@
 
 .actionTitle {
   font-family: var(--font-body);
-  font-size: 1.35rem;
+  font-size: var(--fs-2xl);
   line-height: 1.12;
 }
 
 .modalSubtitle {
   color: var(--ink-700);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   line-height: 1.35;
 }
@@ -1084,7 +1084,7 @@
 .chatterCollapse > summary::after {
   content: "▾";
   color: var(--brand-800);
-  font-size: 0.85rem;
+  font-size: var(--fs-xs);
 }
 
 .chatterCollapse[open] > summary::after {
@@ -1117,7 +1117,7 @@
   min-height: 38px;
   padding: 0 14px;
   border-radius: 999px;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   white-space: nowrap;
   box-shadow: none;
@@ -1171,7 +1171,7 @@
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.72);
   color: var(--ink-800);
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -1179,7 +1179,7 @@
   width: 100%;
   min-width: 0;
   font: inherit;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .messageTimeline {
@@ -1233,7 +1233,7 @@
 .messageKind,
 .chatterEmpty {
   color: var(--ink-600);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .messageKind {
@@ -1286,7 +1286,7 @@
 .messageAudioItem strong,
 .messageFileLink {
   color: var(--ink-900);
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -1365,7 +1365,7 @@
 }
 
 .reviewActionCard .actionTitle {
-  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  font-size: var(--fs-title);
 }
 
 .reviewActionStack {
@@ -1382,7 +1382,7 @@
     linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 42%),
     linear-gradient(135deg, #14652a, #2f9346);
   color: #fff;
-  font-size: 1.02rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   box-shadow:
     0 16px 34px rgba(28, 111, 50, 0.24),
@@ -1431,14 +1431,14 @@
 .reviewResultBar span,
 .reviewReportMeta span {
   color: var(--ink-600);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
 .reviewResultBar strong,
 .reviewReportMeta strong {
   color: var(--ink-900);
-  font-size: 1.08rem;
+  font-size: var(--fs-lg);
   line-height: 1.2;
 }
 
@@ -1518,14 +1518,14 @@
 }
 
 .garbagePointOverview > div:first-child > strong {
-  font-size: 1.15rem;
+  font-size: var(--fs-lg);
   line-height: 1.2;
 }
 
 .garbagePointOverview p {
   margin: 0;
   color: var(--ink-700);
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -1544,12 +1544,12 @@
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.86);
   color: var(--ink-600);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .garbagePointMetaGrid strong {
-  font-size: 0.95rem;
+  font-size: var(--fs-md);
   line-height: 1.2;
 }
 
@@ -1613,7 +1613,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -1668,7 +1668,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.08);
   color: var(--ink-900);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1684,14 +1684,14 @@
 .fileLimitMessage {
   margin: 0;
   color: #8f2a19;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
 .uploadProgressText {
   margin: 0;
   color: var(--brand-900);
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -1820,14 +1820,14 @@
 
 .modalWorkInfoGrid small {
   color: var(--ink-600);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .modalWorkInfoGrid strong {
   overflow: hidden;
   color: var(--ink-900);
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1847,7 +1847,7 @@
   right: 14px;
   bottom: 10px;
   color: var(--ink-600);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1909,14 +1909,14 @@
 
 .reportMediaHeader strong {
   color: var(--ink-900);
-  font-size: 0.95rem;
+  font-size: var(--fs-md);
 }
 
 .reportMediaHeader small,
 .reportMediaFooter small,
 .audioRecorderPanel small {
   color: var(--ink-600);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.35;
 }
@@ -1930,7 +1930,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-800);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -1952,7 +1952,7 @@
   padding: 0 14px;
   border-radius: 999px;
   font: inherit;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   cursor: pointer;
 }
@@ -1981,7 +1981,7 @@
   border: 1px solid rgba(74, 154, 93, 0.16);
   background: rgba(255, 255, 255, 0.9);
   color: var(--brand-900);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .mediaPreviewList {
@@ -2033,7 +2033,7 @@
   background: rgba(255, 255, 255, 0.72);
   color: var(--brand-800);
   font: inherit;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   cursor: pointer;
 }
@@ -2045,7 +2045,7 @@
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.68);
   color: var(--ink-600);
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -2140,7 +2140,7 @@
 .audioRecorderPanel strong {
   overflow: hidden;
   color: var(--ink-900);
-  font-size: 0.94rem;
+  font-size: var(--fs-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2265,7 +2265,7 @@
 }
 
 .reportCardTop strong {
-  font-size: 1.12rem;
+  font-size: var(--fs-lg);
   color: var(--ink-900);
 }
 
@@ -2349,7 +2349,7 @@
   .workerDetailMobileHeader strong {
     overflow: hidden;
     color: #17231c;
-    font-size: 1rem;
+    font-size: var(--fs-base);
     font-weight: 700;
     text-align: center;
     text-overflow: ellipsis;
@@ -2411,7 +2411,7 @@
     justify-items: end;
     gap: 10px;
     color: var(--ink-700);
-    font-size: 0.82rem;
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
 
@@ -2442,19 +2442,19 @@
   }
 
   .titleBlock h1 {
-    font-size: clamp(1.38rem, 6vw, 1.86rem);
+    font-size: var(--fs-title);
     line-height: 1.18;
   }
 
   .taskProjectName {
-    font-size: 0.92rem;
+    font-size: var(--fs-sm);
     line-height: 1.55;
   }
 
   .lead {
     display: -webkit-box;
     overflow: hidden;
-    font-size: 0.9rem;
+    font-size: var(--fs-sm);
     line-height: 1.58;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
@@ -2484,7 +2484,7 @@
   }
 
   .heroStatCard strong {
-    font-size: 1.35rem;
+    font-size: var(--fs-2xl);
     line-height: 1.15;
   }
 
@@ -2526,7 +2526,7 @@
 
   .sectionHead p {
     padding: 10px 12px;
-    font-size: 0.84rem;
+    font-size: var(--fs-xs);
     line-height: 1.5;
   }
 
@@ -2600,7 +2600,7 @@
   .chip {
     min-height: 32px;
     padding: 0 10px;
-    font-size: 0.84rem;
+    font-size: var(--fs-xs);
   }
 }
 
@@ -2626,7 +2626,7 @@
   .workerDetailMobileHeader strong {
     overflow: hidden;
     color: #17231c;
-    font-size: 1rem;
+    font-size: var(--fs-base);
     font-weight: 700;
     text-align: center;
     text-overflow: ellipsis;
@@ -2677,7 +2677,7 @@
     justify-items: end;
     gap: 10px;
     color: var(--ink-700);
-    font-size: 0.82rem;
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
 
@@ -2704,12 +2704,12 @@
   }
 
   .titleBlock h1 {
-    font-size: clamp(1.38rem, 6vw, 1.86rem);
+    font-size: var(--fs-title);
     line-height: 1.18;
   }
 
   .taskProjectName {
-    font-size: 0.92rem;
+    font-size: var(--fs-sm);
     line-height: 1.55;
   }
 
@@ -2733,7 +2733,7 @@
   }
 
   .heroStatCard strong {
-    font-size: 1.35rem;
+    font-size: var(--fs-2xl);
     line-height: 1.15;
   }
 
@@ -2789,7 +2789,7 @@
   .reviewActionCard .reviewDoneButton {
     min-height: 58px;
     border-radius: 14px;
-    font-size: 0.96rem;
+    font-size: var(--fs-md);
   }
 
   .reviewChatCard {
@@ -2975,7 +2975,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -2994,7 +2994,7 @@
 .introTitle {
   color: var(--ink-950);
   font-family: var(--font-body);
-  font-size: clamp(1.25rem, 2vw, 1.9rem);
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.12;
@@ -3011,7 +3011,7 @@
 .emptyNote,
 .noticeMessage {
   color: var(--ink-700);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.55;
 }
 
@@ -3058,7 +3058,7 @@
   background: var(--ds-panel-strong-bg);
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.2;
@@ -3149,7 +3149,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
 }
@@ -3343,7 +3343,7 @@
   .modalMobileChrome strong {
     min-width: 0;
     color: #17231c;
-    font-size: 0.95rem;
+    font-size: var(--fs-md);
     font-weight: 700;
     text-align: left;
   }
@@ -3364,12 +3364,12 @@
   }
 
   .actionTitle {
-    font-size: 1.35rem;
+    font-size: var(--fs-2xl);
     line-height: 1.16;
   }
 
   .modalSubtitle {
-    font-size: 0.86rem;
+    font-size: var(--fs-xs);
   }
 
   .modalForm {
@@ -3516,7 +3516,7 @@
   }
 
   .actionTitle {
-    font-size: 1.22rem;
+    font-size: var(--fs-xl);
   }
 
   .reportMediaActions {

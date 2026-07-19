@@ -30,7 +30,7 @@
   margin: 8px 0 0;
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: clamp(1.45rem, 2vw, 2rem);
+  font-size: var(--fs-title);
   line-height: 1.08;
 }
 
@@ -38,7 +38,7 @@
   max-width: 720px;
   margin: 6px 0 0;
   color: var(--ink-600);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   line-height: 1.55;
 }
 
@@ -57,7 +57,7 @@
 
 .scopeTotalPill small {
   color: var(--ink-600);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -127,7 +127,7 @@
   display: block;
   overflow: hidden;
   color: var(--ink-900);
-  font-size: 0.98rem;
+  font-size: var(--fs-base);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -136,7 +136,7 @@
   display: block;
   margin-top: 3px;
   color: var(--ink-600);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -148,7 +148,7 @@
   border-radius: 999px;
   background: var(--brand-700);
   color: #fff;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -168,13 +168,13 @@
 
 .scopeStat span {
   color: var(--ink-600);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .scopeStat strong {
   color: var(--ink-900);
-  font-size: 1rem;
+  font-size: var(--fs-base);
   line-height: 1;
 }
 
@@ -235,7 +235,7 @@
 
 .cardHeader strong,
 .laneHeader strong {
-  font-size: 2rem;
+  font-size: var(--fs-display);
 }
 
 .cardHeader h2,
@@ -246,12 +246,12 @@
 }
 
 .cardHeader h2 {
-  font-size: clamp(1.45rem, 2vw, 2rem);
+  font-size: var(--fs-title);
   line-height: 1;
 }
 
 .laneHeader h3 {
-  font-size: 1.35rem;
+  font-size: var(--fs-2xl);
   line-height: 1.05;
 }
 
@@ -265,7 +265,7 @@
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -363,11 +363,11 @@
 
 .decisionStat span,
 .miniStat span {
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
 }
 
 .decisionStat strong {
-  font-size: 2.3rem;
+  font-size: var(--fs-stat);
 }
 
 .decisionMiniGrid {
@@ -385,7 +385,7 @@
 .miniStat strong {
   display: block;
   margin-top: 8px;
-  font-size: 1.35rem;
+  font-size: var(--fs-2xl);
 }
 
 .reviewBoard {
@@ -419,13 +419,13 @@
 
 .laneItemTop p {
   margin: 6px 0 0;
-  font-size: 0.94rem;
+  font-size: var(--fs-md);
 }
 
 .laneMeta {
   flex-wrap: wrap;
   color: var(--ink-700);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 .progressTrack {
@@ -466,7 +466,7 @@
 .reviewNotice {
   padding: 12px 14px;
   color: #92400e;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -478,7 +478,7 @@
   min-height: 44px;
   padding: 0 14px;
   color: #334155;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   box-shadow: 0 10px 24px rgba(17, 27, 21, 0.04);
 }
@@ -503,7 +503,7 @@
   padding: 0 16px;
   background: #2f7f46;
   color: #fff;
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   white-space: nowrap;
   box-shadow: 0 10px 22px rgba(47, 127, 70, 0.2);
@@ -518,7 +518,7 @@
   padding: 0 16px;
   background: #2f7f46;
   color: #fff;
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   text-decoration: none;
 }
@@ -539,13 +539,13 @@
 
 .reviewSideStat span {
   color: #64748b;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
 .reviewSideStat strong {
   color: #111827;
-  font-size: 1.25rem;
+  font-size: var(--fs-xl);
   font-weight: 700;
 }
 
@@ -615,7 +615,7 @@
 
   .reviewMobileList h2 {
     color: #102015;
-    font-size: 1.35rem;
+    font-size: var(--fs-2xl);
     font-weight: 700;
     line-height: 1.15;
   }
@@ -623,7 +623,7 @@
   .reviewMobileList p {
     margin-top: 5px;
     color: #66736a;
-    font-size: 0.86rem;
+    font-size: var(--fs-xs);
     font-weight: 700;
     line-height: 1.35;
   }
@@ -637,7 +637,7 @@
     border-radius: 999px;
     background: rgba(47, 127, 70, 0.1);
     color: #1f6d34;
-    font-size: 1.15rem;
+    font-size: var(--fs-lg);
     font-weight: 700;
   }
 
@@ -679,7 +679,7 @@
 
   .reviewMobileTaskCard strong {
     color: var(--ink-900);
-    font-size: 0.98rem;
+    font-size: var(--fs-base);
     font-weight: 700;
     line-height: 1.2;
   }
@@ -687,7 +687,7 @@
   .reviewMobileTaskCard small {
     overflow: hidden;
     color: #66736a;
-    font-size: 0.8rem;
+    font-size: var(--fs-xs);
     font-weight: 700;
     line-height: 1.35;
     text-overflow: ellipsis;
@@ -715,7 +715,7 @@
 
   .reviewMobileEmpty strong {
     color: #64748b;
-    font-size: 1rem;
+    font-size: var(--fs-base);
     font-weight: 700;
   }
 
@@ -736,7 +736,7 @@
 
   .cardHeader strong,
   .laneHeader strong {
-    font-size: 1.6rem;
+    font-size: var(--fs-3xl);
   }
 }
 
@@ -894,7 +894,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -913,7 +913,7 @@
 .introTitle {
   color: var(--ink-950);
   font-family: var(--font-body);
-  font-size: clamp(1.25rem, 2vw, 1.9rem);
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.12;
@@ -930,7 +930,7 @@
 .emptyNote,
 .noticeMessage {
   color: var(--ink-700);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.55;
 }
 
@@ -977,7 +977,7 @@
   background: var(--ds-panel-strong-bg);
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.2;
@@ -1068,7 +1068,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
 }

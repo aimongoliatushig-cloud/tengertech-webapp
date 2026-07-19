@@ -39,7 +39,7 @@
 .dayCardTop strong,
 .lineCardTop strong,
 .warningTop strong {
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .dayMeta,
@@ -83,13 +83,13 @@
 .lineMetaBox span,
 .miniRow span {
   color: var(--ink-600);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .lineMetaBox strong,
 .miniRow strong {
   color: var(--ink-900);
-  font-size: 0.98rem;
+  font-size: var(--fs-base);
 }
 
 .lineDayList {
@@ -107,13 +107,13 @@
 
 .lineDayChip strong {
   color: var(--ink-900);
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
 }
 
 .lineDayChip span,
 .lineDayChip a {
   color: var(--ink-700);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .warningList {

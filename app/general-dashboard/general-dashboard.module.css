@@ -53,7 +53,7 @@
 
 .metricTop strong {
   color: #101827;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.25;
 }
@@ -68,7 +68,7 @@
 .metricValue {
   display: block;
   color: #030712;
-  font-size: 2.25rem;
+  font-size: var(--fs-stat);
   font-weight: 700;
   line-height: 1;
 }
@@ -77,7 +77,7 @@
   display: block;
   margin-top: 10px;
   color: #526179;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.25;
 }
@@ -116,14 +116,14 @@
 .sectionHeader h2 {
   margin: 0;
   color: #101827;
-  font-size: 1.18rem;
+  font-size: var(--fs-xl);
   font-weight: 700;
 }
 
 .sectionHeader p {
   margin: 6px 0 0;
   color: #526179;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -153,7 +153,7 @@
 
 .departmentTop strong {
   color: #101827;
-  font-size: 0.98rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   line-height: 1.25;
 }
@@ -173,14 +173,14 @@
 
 .largeRing strong {
   color: #030712;
-  font-size: 1.55rem;
+  font-size: var(--fs-3xl);
   font-weight: 700;
 }
 
 .largeRing small {
   margin-top: 4px;
   color: #526179;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -205,7 +205,7 @@
 .departmentStats span {
   display: block;
   color: #31405a;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -213,7 +213,7 @@
   display: block;
   margin-top: 8px;
   color: #030712;
-  font-size: 1.05rem;
+  font-size: var(--fs-lg);
   font-weight: 700;
 }
 
@@ -223,7 +223,7 @@
   gap: 16px;
   margin-top: 16px;
   color: #0f172a;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -246,7 +246,7 @@
   border-radius: 8px;
   background: #fff7ed;
   color: #a44900;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -293,26 +293,26 @@
 
 .weatherDay span {
   color: #263b63;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .weatherDay strong {
   color: #030712;
-  font-size: 1rem;
+  font-size: var(--fs-base);
   font-weight: 700;
 }
 
 .weatherDay small {
   color: #526179;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .noticeCard {
   color: #7c2d12;
   background: #fff7ed;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 

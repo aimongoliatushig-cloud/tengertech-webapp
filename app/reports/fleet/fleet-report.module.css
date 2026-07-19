@@ -27,7 +27,7 @@
   padding: 8px 16px;
   border-radius: 9px;
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   color: #2f4438;
   text-decoration: none;
   transition: background 0.15s, color 0.15s;
@@ -62,7 +62,7 @@
   background: #ffffff;
   color: #1f7a3f;
   font-weight: 600;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   text-decoration: none;
 }
 
@@ -91,7 +91,7 @@
 .modeTab {
   padding: 6px 12px;
   border-radius: 8px;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: #46584c;
   text-decoration: none;
@@ -123,7 +123,7 @@
   background: #ffffff;
   color: #1f7a3f;
   text-decoration: none;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
 }
 
 .stepButton:hover {
@@ -131,7 +131,7 @@
 }
 
 .periodLabel {
-  font-size: 0.94rem;
+  font-size: var(--fs-md);
   color: #1b2c22;
   min-width: 130px;
   text-align: center;
@@ -148,7 +148,7 @@
   padding: 7px 10px;
   border-radius: 8px;
   border: 1px solid #cfe0d4;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   color: #1b2c22;
 }
 
@@ -159,7 +159,7 @@
   background: #1f7a3f;
   color: #ffffff;
   font-weight: 600;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   cursor: pointer;
 }
 
@@ -183,7 +183,7 @@
   gap: 5px;
   min-width: 0;
   flex: 1 1 200px;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   color: #46584c;
 }
@@ -194,7 +194,7 @@
   padding: 7px 10px;
   border-radius: 8px;
   border: 1px solid #cfe0d4;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: #1b2c22;
   background: #ffffff;
@@ -208,7 +208,7 @@
   background: #1f7a3f;
   color: #ffffff;
   font-weight: 700;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   cursor: pointer;
 }
 
@@ -223,7 +223,7 @@
   padding: 0 12px;
   border-radius: 8px;
   color: #46584c;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   text-decoration: none;
 }
@@ -250,17 +250,17 @@
 }
 
 .summaryCard span {
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   color: #5b6c61;
 }
 
 .summaryCard strong {
-  font-size: 1.38rem;
+  font-size: var(--fs-2xl);
   color: #15331f;
 }
 
 .summaryCard small {
-  font-size: 0.69rem;
+  font-size: var(--fs-3xs);
   color: #7d8d82;
 }
 
@@ -270,7 +270,7 @@
   background: #fff6e8;
   border: 1px solid #f3d9a8;
   color: #8a5a12;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
 }
 
 .errorCard {
@@ -279,7 +279,7 @@
   background: #fdecec;
   border: 1px solid #f3c0c0;
   color: #98322f;
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
 }
 
 .tableCard {
@@ -311,7 +311,7 @@
 
 .tableHeader {
   background: #f4faf6;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: #56685c;
   border-bottom: 1px solid #e2ece5;
@@ -328,7 +328,7 @@
 .vehicleSummary {
   cursor: pointer;
   list-style: none;
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   color: #233029;
 }
 
@@ -342,7 +342,7 @@
 
 .rowIndex {
   color: #8a9a8f;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
 }
 
 .vehicleName {
@@ -352,12 +352,12 @@
 }
 
 .vehicleName strong {
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   color: #16271d;
 }
 
 .vehicleName small {
-  font-size: 0.69rem;
+  font-size: var(--fs-3xs);
   color: #7d8d82;
 }
 
@@ -383,7 +383,7 @@
 .dailyTable {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
 }
 
 .dailyTable th,
@@ -395,14 +395,14 @@
 }
 
 .dailyTable th {
-  font-size: 0.69rem;
+  font-size: var(--fs-3xs);
   color: #6b7c70;
   font-weight: 600;
 }
 
 .dailyEmpty {
   color: #7d8d82;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   margin: 6px 0 0;
 }
 
@@ -410,11 +410,11 @@
   padding: 28px 16px;
   text-align: center;
   color: #7d8d82;
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
 }
 
 .footnote {
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   color: #7d8d82;
   margin: 0;
 }

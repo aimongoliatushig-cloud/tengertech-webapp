@@ -19,7 +19,7 @@
   border: 1px solid var(--line-soft, #e2e8f0);
   background: var(--surface-panel, #fff);
   color: var(--ink-900, #0f172a);
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   text-decoration: none;
 }
@@ -51,14 +51,14 @@
 }
 
 .statValue {
-  font-size: 1.62rem;
+  font-size: var(--fs-3xl);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--ink-900, #0f172a);
 }
 
 .statLabel {
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   color: var(--ink-500, #64748b);
 }
 
@@ -105,13 +105,13 @@
 
 .cardHead h2 {
   margin: 0;
-  font-size: 0.94rem;
+  font-size: var(--fs-md);
   font-weight: 700;
   color: var(--ink-900, #0f172a);
 }
 
 .cardHead small {
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   color: var(--ink-500, #64748b);
 }
 
@@ -126,7 +126,7 @@
   grid-template-columns: minmax(120px, 1fr) 3fr 44px;
   align-items: center;
   gap: 10px;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
 }
 
 .bar {
@@ -167,12 +167,12 @@
 }
 
 .khorooChip span {
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   color: var(--ink-500, #64748b);
 }
 
 .khorooChip strong {
-  font-size: 1rem;
+  font-size: var(--fs-base);
   font-variant-numeric: tabular-nums;
 }
 
@@ -190,7 +190,7 @@
 }
 
 .field span {
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   font-weight: 600;
   color: var(--ink-500, #64748b);
   text-transform: uppercase;
@@ -205,7 +205,7 @@
   border-radius: 9px;
   background: var(--surface-panel, #fff);
   color: var(--ink-900, #0f172a);
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
 }
 
 .button {
@@ -217,7 +217,7 @@
   border: 1px solid var(--line-soft, #d9e0ea);
   background: var(--surface-panel, #fff);
   color: var(--ink-900, #0f172a);
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
@@ -245,12 +245,12 @@
   padding: 9px 10px;
   border-bottom: 1px solid var(--line-soft, #eef2f7);
   text-align: left;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   vertical-align: middle;
 }
 
 .table thead th {
-  font-size: 0.69rem;
+  font-size: var(--fs-3xs);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: var(--ink-500, #64748b);
@@ -264,7 +264,7 @@
 
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .pill {
@@ -272,7 +272,7 @@
   align-items: center;
   padding: 3px 9px;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -313,7 +313,7 @@
 }
 
 .fillCell small {
-  font-size: 0.69rem;
+  font-size: var(--fs-3xs);
   color: var(--ink-500, #64748b);
   font-variant-numeric: tabular-nums;
 }
@@ -363,7 +363,7 @@
 }
 
 .paginationInfo {
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   color: var(--ink-500, #64748b);
 }
 
@@ -379,7 +379,7 @@
   border: 1px solid var(--line-soft, #e2e8f0);
   background: var(--surface-panel, #fff);
   color: var(--ink-900, #0f172a);
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   text-align: center;
   text-decoration: none;
 }
@@ -400,7 +400,7 @@
   padding: 28px 16px;
   text-align: center;
   color: var(--ink-500, #64748b);
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
 }
 
 /* --- Дэлгэрэнгүй --- */
@@ -429,7 +429,7 @@
 }
 
 .defItem span {
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   font-weight: 600;
   color: var(--ink-500, #64748b);
   text-transform: uppercase;
@@ -437,7 +437,7 @@
 }
 
 .defItem strong {
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--ink-900, #0f172a);
   word-break: break-word;
@@ -449,7 +449,7 @@
   gap: 5px;
   color: var(--brand-900, #14532d);
   font-weight: 600;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   text-decoration: none;
   justify-self: start;
 }
@@ -481,7 +481,7 @@
 
 .qrCode {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--ink-900, #0f172a);
 }
@@ -498,7 +498,7 @@
   gap: 8px;
   padding: 11px 14px;
   border-radius: 11px;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 500;
 }
 
@@ -543,7 +543,7 @@
   border: 1px solid var(--line-soft, #e2e8f0);
   background: var(--surface-panel, #fff);
   color: var(--ink-900, #0f172a);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   cursor: pointer;
 }
@@ -612,7 +612,7 @@
 
 .mapPanelEmpty p {
   margin: 0;
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
 }
 
 /* Leaflet-ийн давхарга аппын цэс/толгойн дээр гарахаас сэргийлэх */
@@ -640,7 +640,7 @@
 
 .apiError h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   color: var(--ink-900, #0f172a);
 }
@@ -648,7 +648,7 @@
 .apiError p {
   margin: 0;
   max-width: 560px;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   line-height: 1.5;
   color: var(--ink-500, #64748b);
 }
@@ -658,12 +658,12 @@
   border-radius: 10px;
   background: var(--surface-page, #f8fafc);
   border: 1px solid var(--line-soft, #eef2f7);
-  font-size: 0.78rem !important;
+  font-size: var(--fs-2xs) !important;
 }
 
 .apiErrorHint code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   padding: 1px 5px;
   border-radius: 4px;
   background: var(--line-soft, #eef2f7);

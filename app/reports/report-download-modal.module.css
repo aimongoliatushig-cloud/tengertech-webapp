@@ -9,7 +9,7 @@
   background: #1f7a3f;
   color: #ffffff;
   font-weight: 700;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   cursor: pointer;
 }
 
@@ -49,7 +49,7 @@
 }
 
 .head strong {
-  font-size: 1.05rem;
+  font-size: var(--fs-lg);
   color: #16261c;
 }
 
@@ -76,7 +76,7 @@
   padding: 12px 18px;
   background: #f6fbf7;
   border-bottom: 1px solid #e2ece5;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   color: #3a4a42;
 }
 
@@ -93,7 +93,7 @@
   background: var(--surface-panel);
   color: #1f7a3f;
   font-weight: 700;
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   cursor: pointer;
 }
 
@@ -113,7 +113,7 @@
 
 .group h4 {
   margin: 0 0 8px;
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
   color: #16261c;
 }
 
@@ -181,7 +181,7 @@
   background: #1f7a3f;
   color: #ffffff;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: var(--fs-xs);
   pointer-events: none;
 }
 
@@ -189,7 +189,7 @@
   padding: 28px 18px;
   text-align: center;
   color: #5a6b62;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 .foot {
@@ -213,7 +213,7 @@
   background: var(--surface-panel);
   color: #1f7a3f;
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   text-decoration: none;
 }
 
@@ -240,7 +240,7 @@
   background: transparent;
   color: #46584c;
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   cursor: pointer;
 }
 

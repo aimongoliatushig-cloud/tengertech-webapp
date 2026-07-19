@@ -30,20 +30,20 @@
 
 .heroMetaCard span {
   color: var(--ink-600);
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
 }
 
 .heroMetaCard strong {
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+  font-size: var(--fs-title);
   line-height: 1;
   letter-spacing: 0;
 }
 
 .heroMetaCard small {
   color: var(--ink-700);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   line-height: 1.55;
 }
 
@@ -63,7 +63,7 @@
 .pickerHeader h2 {
   margin: 6px 0 0;
   font-family: var(--font-body);
-  font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+  font-size: var(--fs-hero);
   line-height: 1;
   letter-spacing: 0;
 }
@@ -116,7 +116,7 @@
 .pickerIdentity strong {
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  font-size: var(--fs-title);
   line-height: 1.05;
   letter-spacing: 0;
 }
@@ -129,7 +129,7 @@
 }
 
 .pickerIdentity span {
-  font-size: 0.94rem;
+  font-size: var(--fs-md);
 }
 
 .pickerMetaGrid {
@@ -149,7 +149,7 @@
 
 .pickerStat strong {
   color: var(--ink-900);
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .pickerCta {
@@ -165,7 +165,7 @@
 }
 
 .pickerFootNote {
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   line-height: 1.55;
 }
 
@@ -359,7 +359,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -378,7 +378,7 @@
 .introTitle {
   color: var(--ink-950);
   font-family: var(--font-body);
-  font-size: clamp(1.25rem, 2vw, 1.9rem);
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.12;
@@ -395,7 +395,7 @@
 .emptyNote,
 .noticeMessage {
   color: var(--ink-700);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.55;
 }
 
@@ -442,7 +442,7 @@
   background: var(--ds-panel-strong-bg);
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.2;
@@ -533,7 +533,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
 }

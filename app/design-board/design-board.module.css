@@ -103,7 +103,7 @@
   background: rgba(56, 123, 73, 0.12);
   color: var(--board-green-900);
   font-family: var(--font-mono), monospace;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -111,7 +111,7 @@
 
 .boardCopy h1 {
   font-family: var(--font-body), sans-serif;
-  font-size: clamp(2.8rem, 4vw, 4.7rem);
+  font-size: var(--fs-stat);
   line-height: 0.92;
   letter-spacing: 0;
 }
@@ -149,7 +149,7 @@
 }
 
 .questionCard strong {
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .questionCard span {
@@ -177,7 +177,7 @@
 }
 
 .boardInfoCard h3 {
-  font-size: 1.9rem;
+  font-size: var(--fs-display);
   line-height: 0.98;
 }
 
@@ -201,7 +201,7 @@
 }
 
 .legendItem p {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 .roleGrid {
@@ -231,7 +231,7 @@
 }
 
 .roleHeaderCopy h2 {
-  font-size: 2.05rem;
+  font-size: var(--fs-display);
   line-height: 0.98;
 }
 
@@ -256,14 +256,14 @@
 .tableHeader span,
 .phoneTopBar span {
   color: var(--board-ink-600);
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0;
 }
 
 .roleMetaCard strong {
   font-family: var(--font-body), sans-serif;
-  font-size: 1.55rem;
+  font-size: var(--fs-3xl);
   line-height: 1;
 }
 
@@ -330,7 +330,7 @@
 
 .metricCard strong {
   font-family: var(--font-body), sans-serif;
-  font-size: clamp(2rem, 2.3vw, 3.2rem);
+  font-size: var(--fs-hero-lg);
   line-height: 0.96;
   letter-spacing: 0;
   color: var(--board-ink-900);
@@ -399,7 +399,7 @@
 .progressRingCard p strong,
 .mobileTaskHero h3,
 .confirmationSheet h4 {
-  font-size: 1.08rem;
+  font-size: var(--fs-lg);
 }
 
 .statusChip {
@@ -415,7 +415,7 @@
   border-radius: 999px;
   background: var(--tone-surface);
   color: var(--tone-text);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -522,7 +522,7 @@
 }
 
 .listCopy strong {
-  font-size: 1rem;
+  font-size: var(--fs-base);
   line-height: 1.45;
 }
 
@@ -535,7 +535,7 @@
 
 .listAside span {
   font-family: var(--font-body), sans-serif;
-  font-size: 1.25rem;
+  font-size: var(--fs-xl);
   line-height: 1;
 }
 
@@ -678,13 +678,13 @@
 
 .progressRingInner strong {
   font-family: var(--font-body), sans-serif;
-  font-size: 2.2rem;
+  font-size: var(--fs-stat);
   line-height: 1;
 }
 
 .progressRingInner span {
   color: var(--board-ink-600);
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
 }
 
 .routeCard {
@@ -699,7 +699,7 @@
 .routeMeta strong {
   display: block;
   margin-top: 6px;
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .routeMetaGrid,
@@ -765,7 +765,7 @@
 }
 
 .phoneTopBar strong {
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
 }
 
 .phoneBody {
@@ -800,7 +800,7 @@
 }
 
 .mobileUtilityCard strong {
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .mapHintCard {
@@ -824,7 +824,7 @@
   background: rgba(65, 140, 88, 0.14);
   color: var(--board-green-900);
   font-family: var(--font-body), sans-serif;
-  font-size: 1.3rem;
+  font-size: var(--fs-xl);
 }
 
 .confirmationSheet {
@@ -858,7 +858,7 @@
 }
 
 .tableRow strong {
-  font-size: 0.96rem;
+  font-size: var(--fs-md);
   line-height: 1.5;
 }
 
@@ -885,7 +885,7 @@
 
 .inventoryValue {
   font-family: var(--font-body), sans-serif;
-  font-size: 2rem;
+  font-size: var(--fs-display);
   line-height: 0.98;
   letter-spacing: 0;
 }
@@ -1024,7 +1024,7 @@
     display: block;
     margin-bottom: 4px;
     color: var(--board-ink-600);
-    font-size: 0.76rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
     letter-spacing: 0;
     text-transform: uppercase;
@@ -1080,7 +1080,7 @@
 
   .boardCopy h1,
   .roleHeaderCopy h2 {
-    font-size: clamp(2rem, 8vw, 2.8rem);
+    font-size: var(--fs-hero-lg);
   }
 
   .roleGrid {
@@ -1254,7 +1254,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -1273,7 +1273,7 @@
 .introTitle {
   color: var(--ink-950);
   font-family: var(--font-body);
-  font-size: clamp(1.25rem, 2vw, 1.9rem);
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.12;
@@ -1290,7 +1290,7 @@
 .emptyNote,
 .noticeMessage {
   color: var(--ink-700);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.55;
 }
 
@@ -1337,7 +1337,7 @@
   background: var(--ds-panel-strong-bg);
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.2;
@@ -1428,7 +1428,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
 }

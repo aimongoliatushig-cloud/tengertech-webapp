@@ -6,6 +6,24 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+  /* Типографийн нэгдсэн скейл — үсгийн хэмжээг зөвхөн эдгээр token-оор тохируулна. */
+  --fs-3xs: 0.72rem;
+  --fs-2xs: 0.78rem;
+  --fs-xs: 0.84rem;
+  --fs-sm: 0.9rem;
+  --fs-md: 0.95rem;
+  --fs-base: 1rem;
+  --fs-lg: 1.1rem;
+  --fs-xl: 1.25rem;
+  --fs-2xl: 1.4rem;
+  --fs-3xl: 1.6rem;
+  --fs-display: 2rem;
+  /* Хуудасны гарчиг, hero, статистикийн урсдаг (responsive) хэмжээнүүд. */
+  --fs-title: clamp(1.35rem, 2.4vw, 1.8rem);
+  --fs-hero: clamp(1.55rem, 2.6vw, 2.1rem);
+  --fs-hero-lg: clamp(2rem, 3vw, 2.8rem);
+  --fs-stat: clamp(2.3rem, 4vw, 3.5rem);
+
   --ink-950: #112019;
   --ink-900: #18251f;
   --ink-700: #536456;
@@ -77,7 +95,7 @@ body {
   font-family: var(--font-body), sans-serif;
   /* Нягт ERP харагдац: тодорхой хэмжээ заагаагүй текст 13px байна.
      Компонентын түвшний font-size-ууд өөрсдийн шатлалаа хадгална. */
-  font-size: 0.81rem;
+  font-size: var(--fs-xs);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

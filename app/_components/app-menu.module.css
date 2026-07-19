@@ -65,7 +65,7 @@
   border: 1px solid transparent;
   border-radius: 8px;
   color: #35443b;
-  font-size: 0.93rem;
+  font-size: var(--fs-md);
   font-weight: 700;
   line-height: 1.1;
   text-decoration: none;
@@ -115,7 +115,7 @@
   border: 1px solid transparent;
   border-radius: 8px;
   color: #35443b;
-  font-size: 0.93rem;
+  font-size: var(--fs-md);
   font-weight: 700;
   line-height: 1.1;
   text-decoration: none;
@@ -161,7 +161,7 @@
   align-items: center;
   gap: 6px;
   color: #2e7d32;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   opacity: 0;
   pointer-events: none;
@@ -213,7 +213,7 @@
   position: absolute;
   margin-top: 82px;
   color: #1f7a35;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
@@ -302,7 +302,7 @@
   border-radius: 999px;
   background: #cfe9d2;
   color: #2e7d32;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -317,7 +317,7 @@
   border-radius: 8px;
   background: #2e7d32;
   color: #fff;
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   text-decoration: none;
   box-shadow: 0 16px 36px rgba(46, 125, 50, 0.2);
@@ -381,7 +381,7 @@
     linear-gradient(135deg, rgba(46, 125, 50, 0.12), rgba(102, 187, 106, 0.18)),
     #fff;
   color: #2e7d32;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   overflow: hidden;
 }
@@ -416,13 +416,13 @@
 
 .profileText strong {
   color: var(--ink-950);
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
 .profileText small {
   color: #64756b;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   line-height: 1.25;
 }
 
@@ -468,7 +468,7 @@
   color: #35443b;
   cursor: pointer;
   font: inherit;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-align: left;
   text-decoration: none;
@@ -537,7 +537,7 @@
     min-width: 0;
     background: transparent;
     color: var(--ink-950);
-    font-size: 0.86rem;
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
 
@@ -578,7 +578,7 @@
     border-radius: 999px;
     background: #ef4444;
     color: #fff;
-    font-size: 0.75rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
     line-height: 1;
   }
@@ -592,7 +592,7 @@
     border-radius: 14px;
     background: #2e7d32;
     color: #fff;
-    font-size: 0.84rem;
+    font-size: var(--fs-xs);
     font-weight: 700;
     text-decoration: none;
   }
@@ -675,13 +675,13 @@
 
   .mobileSheetProfile strong {
     color: #1f2b24;
-    font-size: 0.82rem;
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
 
   .mobileSheetProfile small {
     color: #64756b;
-    font-size: 0.75rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
   }
 
@@ -709,7 +709,7 @@
     color: #35443b;
     cursor: pointer;
     font: inherit;
-    font-size: 0.78rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
     text-decoration: none;
   }
@@ -726,7 +726,7 @@
     gap: 10px;
     padding: 0 12px;
     border-radius: 8px;
-    font-size: 0.9rem;
+    font-size: var(--fs-sm);
     font-weight: 700;
   }
 
@@ -742,7 +742,7 @@
     grid-template-columns: 24px minmax(0, 1fr) auto;
     gap: 10px;
     padding: 0 12px;
-    font-size: 0.9rem;
+    font-size: var(--fs-sm);
     font-weight: 700;
   }
 
@@ -766,7 +766,7 @@
   .mobileSheetHeader span {
     display: block;
     color: #6b7280;
-    font-size: 0.76rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
   }
 
@@ -774,7 +774,7 @@
     display: block;
     margin-top: 2px;
     color: var(--ink-950);
-    font-size: 1.05rem;
+    font-size: var(--fs-lg);
   }
 
   .mobileSheetHeader button {
@@ -818,7 +818,7 @@
     gap: 3px;
     border-radius: 16px;
     color: #5a6b61;
-    font-size: 0.75rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
     text-decoration: none;
   }

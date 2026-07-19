@@ -56,7 +56,7 @@
   margin: 0;
   color: #111b15;
   font-family: var(--font-inter), var(--font-body), sans-serif;
-  font-size: clamp(1.42rem, 1.6vw, 1.78rem);
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.05;
@@ -67,7 +67,7 @@
   min-width: 0;
   overflow: hidden;
   color: #53605a;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   line-height: 1.5;
   /* Нэг мөрөнд таслахын оронд 2 мөр болгож, дэд текст бүтнээр харагдана. */
@@ -122,7 +122,7 @@
   border-radius: var(--ds-radius-card);
   color: #1f7a35;
   font: inherit;
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   cursor: pointer;
   transition:
@@ -195,7 +195,7 @@
 .notificationPermissionHelp strong {
   display: block;
   color: #6f490e;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.35;
 }
@@ -203,7 +203,7 @@
 .notificationPermissionHelp p {
   margin: 8px 0 12px;
   color: #5f6b63;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.55;
 }
@@ -219,7 +219,7 @@
   background: rgba(46, 125, 50, 0.08);
   color: #1f7a35;
   font: inherit;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   cursor: pointer;
 }
@@ -244,7 +244,7 @@
 }
 
 .datePill span {
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -288,7 +288,7 @@
   border-radius: 999px;
   background: #ef4444;
   color: #fff;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1;
 }
@@ -339,7 +339,7 @@
   border-radius: 14px;
   background: linear-gradient(135deg, #2f8d3b, #137a2c);
   color: #fff;
-  font-size: 1rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   line-height: 1;
 }
@@ -370,7 +370,7 @@
 }
 
 .headerUser strong {
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1.25;
 }
@@ -378,7 +378,7 @@
 .headerUser small {
   margin-top: 3px;
   color: #66766c;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 600;
 }
 
@@ -433,7 +433,7 @@
   color: #1f2c22;
   cursor: pointer;
   font: inherit;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-align: left;
   text-decoration: none;
@@ -555,7 +555,7 @@
 
   .mobileGreetingIcon span {
     color: #1f6f35;
-    font-size: 0.78rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
     line-height: 1;
     white-space: nowrap;
@@ -573,7 +573,7 @@
 
   .titleBlock h1 {
     display: block;
-    font-size: clamp(0.96rem, 5vw, 1.12rem);
+    font-size: var(--fs-lg);
     line-height: 1.12;
   }
 
@@ -586,7 +586,7 @@
   .titleBlock span {
     display: -webkit-box;
     overflow: hidden;
-    font-size: 0.75rem;
+    font-size: var(--fs-2xs);
     line-height: 1.3;
     overflow-wrap: anywhere;
     text-overflow: clip;
@@ -615,7 +615,7 @@
     min-height: 44px;
     padding: 0 10px;
     border-radius: 12px;
-    font-size: 0.75rem;
+    font-size: var(--fs-2xs);
   }
 
   .notificationPermissionButton span {
@@ -638,7 +638,7 @@
   }
 
   .datePill span {
-    font-size: 0.76rem;
+    font-size: var(--fs-2xs);
   }
 
   .notificationButton {
@@ -653,11 +653,11 @@
   }
 
   .headerUser strong {
-    font-size: 0.78rem;
+    font-size: var(--fs-2xs);
   }
 
   .headerUser small {
-    font-size: 0.75rem;
+    font-size: var(--fs-2xs);
   }
 
   .leafOne {

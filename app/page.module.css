@@ -99,7 +99,7 @@
 .heroDescription {
   max-width: 680px;
   color: var(--ink-700);
-  font-size: 1rem;
+  font-size: var(--fs-base);
   line-height: 1.72;
 }
 
@@ -114,7 +114,7 @@
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-900);
   font-family: var(--font-mono);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -128,7 +128,7 @@
 }
 
 .heroCopy h1 {
-  font-size: clamp(2rem, 3vw, 3.2rem);
+  font-size: var(--fs-hero-lg);
   line-height: 0.95;
 }
 
@@ -164,7 +164,7 @@
   border-radius: 999px;
   border: 1px solid rgba(31, 95, 49, 0.1);
   background: rgba(255, 255, 255, 0.9);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 .heroAccent {
@@ -191,7 +191,7 @@
 }
 
 .quickFilterLabel {
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -200,7 +200,7 @@
 .quickFilterValue {
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: 1.55rem;
+  font-size: var(--fs-3xl);
   line-height: 0.94;
   letter-spacing: 0;
 }
@@ -231,19 +231,19 @@
 
 .userCard span,
 .sourceNotice strong {
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .userCard strong {
-  font-size: 1.15rem;
+  font-size: var(--fs-lg);
   line-height: 1.2;
 }
 
 .userCard small {
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   line-height: 1.6;
 }
 
@@ -260,7 +260,7 @@
 
 .userAlert small {
   color: var(--ink-600);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -269,7 +269,7 @@
 .userAlert strong {
   color: var(--brand-900);
   font-family: var(--font-body);
-  font-size: 1.65rem;
+  font-size: var(--fs-3xl);
   line-height: 0.92;
   letter-spacing: 0;
 }
@@ -346,14 +346,14 @@
   margin-top: 8px;
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: clamp(1.35rem, 2.1vw, 1.9rem);
+  font-size: var(--fs-title);
   line-height: 1.02;
   letter-spacing: 0;
 }
 
 .focusDescription {
   margin-top: 8px;
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.6;
 }
 
@@ -381,20 +381,20 @@
 .focusPrimaryTop strong,
 .focusSecondaryLink strong {
   color: var(--ink-900);
-  font-size: 1rem;
+  font-size: var(--fs-base);
   line-height: 1.35;
 }
 
 .focusPrimaryTop span {
   color: var(--brand-900);
   font-family: var(--font-body);
-  font-size: 1.2rem;
+  font-size: var(--fs-xl);
   line-height: 1;
   letter-spacing: 0;
 }
 
 .focusPrimary p {
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
   line-height: 1.5;
 }
 
@@ -411,12 +411,12 @@
   padding: 0 10px;
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.08);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .focusPrimaryAction {
   color: var(--brand-900);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
@@ -427,7 +427,7 @@
 .focusSecondaryLink small {
   display: block;
   margin-top: 4px;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   line-height: 1.45;
 }
 
@@ -447,7 +447,7 @@
 .sectionHeader h2,
 .actionListHeader h2 {
   margin-top: 8px;
-  font-size: clamp(1.55rem, 2vw, 2.2rem);
+  font-size: var(--fs-hero);
   line-height: 0.98;
 }
 
@@ -517,7 +517,7 @@
   height: 44px;
   border-radius: var(--ds-radius-card);
   background: rgba(255, 255, 255, 0.88);
-  font-size: 1.2rem;
+  font-size: var(--fs-xl);
 }
 
 .criticalBody {
@@ -527,21 +527,21 @@
 }
 
 .criticalLabel {
-  font-size: 0.98rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   line-height: 1.3;
 }
 
 .criticalValue {
   font-family: var(--font-body);
-  font-size: clamp(2.4rem, 3.2vw, 3.6rem);
+  font-size: var(--fs-stat);
   line-height: 0.9;
   letter-spacing: 0;
 }
 
 .criticalFoot {
   align-self: end;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 
@@ -571,13 +571,13 @@
 
 .ringInner strong {
   font-family: var(--font-body);
-  font-size: clamp(2.2rem, 3vw, 3.4rem);
+  font-size: var(--fs-stat);
   line-height: 0.92;
   letter-spacing: 0;
 }
 
 .ringSubtext {
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
@@ -610,13 +610,13 @@
 }
 
 .barRowHeader strong {
-  font-size: 1rem;
+  font-size: var(--fs-base);
   line-height: 1.3;
 }
 
 .barRowHeader span {
   font-family: var(--font-body);
-  font-size: 1.45rem;
+  font-size: var(--fs-2xl);
   line-height: 1;
   letter-spacing: 0;
 }
@@ -647,7 +647,7 @@
   border-radius: 999px;
   background: var(--tone-chip-bg);
   color: var(--tone-chip-text);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -700,7 +700,7 @@
   background: rgba(31, 95, 49, 0.08);
   color: var(--brand-900);
   font-family: var(--font-body);
-  font-size: 1.1rem;
+  font-size: var(--fs-lg);
 }
 
 .actionRows {
@@ -744,12 +744,12 @@
 }
 
 .actionCopy strong {
-  font-size: 1rem;
+  font-size: var(--fs-base);
   line-height: 1.4;
 }
 
 .actionCopy span {
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.4;
 }
 
@@ -778,7 +778,7 @@
 }
 
 .emptyState strong {
-  font-size: 1.05rem;
+  font-size: var(--fs-lg);
 }
 
 .emptyState span {
@@ -799,7 +799,7 @@
   padding: 0 12px;
   border-radius: 999px;
   background: rgba(246, 249, 246, 0.96);
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -865,7 +865,7 @@
 
 .trendAxis span {
   color: var(--ink-600);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-align: center;
 }
@@ -886,7 +886,7 @@
 
 .trendStatCard strong {
   font-family: var(--font-body);
-  font-size: 2rem;
+  font-size: var(--fs-display);
   line-height: 0.95;
   letter-spacing: 0;
 }
@@ -1061,13 +1061,13 @@
   .heroCopy h1,
   .sectionHeader h2,
   .actionListHeader h2 {
-    font-size: clamp(1.55rem, 8vw, 2.15rem);
+    font-size: var(--fs-hero);
   }
 
   .heroDescription {
     display: -webkit-box;
     overflow: hidden;
-    font-size: 0.88rem;
+    font-size: var(--fs-sm);
     line-height: 1.58;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 4;
@@ -1077,7 +1077,7 @@
   .sectionEyebrow {
     min-height: 30px;
     padding: 0 12px;
-    font-size: 0.75rem;
+    font-size: var(--fs-2xs);
   }
 
   .heroMeta {
@@ -1092,7 +1092,7 @@
   .heroMeta span {
     min-height: 34px;
     padding: 0 12px;
-    font-size: 0.82rem;
+    font-size: var(--fs-xs);
   }
 
   .quickFilterChip {
@@ -1101,7 +1101,7 @@
   }
 
   .quickFilterValue {
-    font-size: 1.28rem;
+    font-size: var(--fs-xl);
   }
 
   .userCard {
@@ -1117,7 +1117,7 @@
   }
 
   .userAlert strong {
-    font-size: 1.4rem;
+    font-size: var(--fs-2xl);
   }
 
   .focusPanel {
@@ -1128,12 +1128,12 @@
 
   .focusHeader h2 {
     margin-top: 6px;
-    font-size: 1.22rem;
+    font-size: var(--fs-xl);
   }
 
   .focusDescription {
     margin-top: 6px;
-    font-size: 0.82rem;
+    font-size: var(--fs-xs);
     line-height: 1.5;
   }
 
@@ -1164,7 +1164,7 @@
   }
 
   .criticalValue {
-    font-size: clamp(2rem, 10vw, 2.8rem);
+    font-size: var(--fs-hero-lg);
   }
 
   .ringCard {
@@ -1177,7 +1177,7 @@
   }
 
   .ringInner strong {
-    font-size: clamp(1.9rem, 10vw, 2.8rem);
+    font-size: var(--fs-hero-lg);
   }
 
   .barRow {
@@ -1186,7 +1186,7 @@
   }
 
   .barRowHeader span {
-    font-size: 1.22rem;
+    font-size: var(--fs-xl);
   }
 
   .trendStatCard {
@@ -1194,7 +1194,7 @@
   }
 
   .trendStatCard strong {
-    font-size: 1.6rem;
+    font-size: var(--fs-3xl);
   }
 }
 
@@ -1273,7 +1273,7 @@
 .sidebarBrand span {
   max-width: 150px;
   color: #698174;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   line-height: 1.24;
 }
 
@@ -1293,7 +1293,7 @@
   padding: 0 10px;
   border-radius: 8px;
   color: #53675b;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
@@ -1328,7 +1328,7 @@
   border-radius: 999px;
   background: #e73f35;
   color: #fff;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1;
 }
@@ -1359,13 +1359,13 @@
 .sidebarHelp span {
   display: block;
   color: #789284;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
 }
 
 .sidebarHelp strong {
   display: block;
   margin-top: 2px;
-  font-size: 0.95rem;
+  font-size: var(--fs-md);
 }
 
 .dashboardHeader {
@@ -1387,7 +1387,7 @@
   margin: 0;
   color: var(--ink-950);
   font-family: var(--font-body);
-  font-size: 1.04rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.2;
@@ -1395,7 +1395,7 @@
 
 .dashboardHeader span {
   color: #728176;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .headerActions {
@@ -1424,7 +1424,7 @@
 
 .datePill span {
   color: #44564b;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1458,7 +1458,7 @@
 .headerUser span {
   overflow: hidden;
   color: var(--ink-950);
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1466,7 +1466,7 @@
 
 .headerUser small {
   color: #77867b;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
 }
 
 .metricGrid {
@@ -1502,11 +1502,11 @@
 .panelSubtle,
 .equipmentHero span {
   color: #75867b;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .metricCopy strong {
-  font-size: 1.55rem;
+  font-size: var(--fs-3xl);
   line-height: 1;
 }
 
@@ -1530,12 +1530,12 @@
 
 .metricFoot b {
   color: var(--tone-chip-text);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .metricFoot small {
   color: #7d8d83;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   white-space: nowrap;
 }
 
@@ -1563,7 +1563,7 @@
   margin: 0;
   color: var(--ink-950);
   font-family: var(--font-body);
-  font-size: 0.98rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.2;
@@ -1637,18 +1637,18 @@
 .donutCenter small,
 .performanceCenter span {
   color: #718278;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
 }
 
 .donutCenter strong {
   color: #1d2a23;
-  font-size: 1.45rem;
+  font-size: var(--fs-2xl);
   line-height: 1;
 }
 
 .performanceCenter strong {
   color: #1d2a23;
-  font-size: 1.75rem;
+  font-size: var(--fs-display);
   line-height: 1;
 }
 
@@ -1664,7 +1664,7 @@
   gap: 8px;
   align-items: center;
   color: #58695f;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .legendDot {
@@ -1675,7 +1675,7 @@
 
 .legendRow strong {
   color: #25332c;
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .legendRow small {
@@ -1693,7 +1693,7 @@
 
 .highlightList > span {
   color: #5c6e63;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1703,7 +1703,7 @@
   gap: 8px;
   align-items: center;
   color: #365b3e;
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
@@ -1740,7 +1740,7 @@
 .weekRow strong {
   display: block;
   overflow: hidden;
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1752,7 +1752,7 @@
   overflow: hidden;
   margin-top: 2px;
   color: #7a8a80;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1766,13 +1766,13 @@
   border-radius: 999px;
   background: var(--tone-chip-bg);
   color: var(--tone-chip-text);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .rowStatus {
   color: var(--tone-chip-text);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-align: right;
   white-space: nowrap;
@@ -1785,7 +1785,7 @@
   width: fit-content;
   margin-top: 12px;
   color: #41a15b;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1804,7 +1804,7 @@
 .equipmentHero strong {
   display: block;
   color: #1f2d26;
-  font-size: 1.7rem;
+  font-size: var(--fs-3xl);
   line-height: 1;
 }
 
@@ -1819,12 +1819,12 @@
 
 .statusRows span {
   color: #6e8075;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .statusRows strong {
   color: #2f9b4f;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
 }
 
 .statusRows div:nth-child(2) strong {
@@ -1848,14 +1848,14 @@
 }
 
 .vehicleMiniRow strong {
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   line-height: 1.25;
 }
 
 .vehicleMiniRow span {
   overflow: hidden;
   color: #728277;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1877,7 +1877,7 @@
   gap: 0;
   min-width: 820px;
   color: #738479;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1917,7 +1917,7 @@
   overflow: hidden;
   padding-right: 10px;
   color: #3f5046;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1955,7 +1955,7 @@
   border: 1px dashed rgba(84, 118, 92, 0.22);
   border-radius: 8px;
   color: #7f8f85;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   text-align: center;
 }
 
@@ -2213,7 +2213,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -2232,7 +2232,7 @@
 .introTitle {
   color: var(--ink-950);
   font-family: var(--font-body);
-  font-size: clamp(1.25rem, 2vw, 1.9rem);
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.12;
@@ -2249,7 +2249,7 @@
 .emptyNote,
 .noticeMessage {
   color: var(--ink-700);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.55;
 }
 
@@ -2296,7 +2296,7 @@
   background: var(--ds-panel-strong-bg);
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.2;
@@ -2387,7 +2387,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
 }
@@ -2449,7 +2449,7 @@
   border-radius: 999px;
   background: rgba(12, 34, 20, 0.78);
   color: #fff;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);

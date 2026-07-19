@@ -28,20 +28,20 @@
 
 .heroMetaCard span {
   color: var(--ink-600);
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
 }
 
 .heroMetaCard strong {
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  font-size: var(--fs-hero);
   line-height: 0.96;
   letter-spacing: 0;
 }
 
 .heroMetaCard small {
   color: var(--ink-700);
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   line-height: 1.5;
 }
 
@@ -79,7 +79,7 @@
   border-radius: 999px;
   background: var(--surface-panel);
   color: #2e7d32;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   opacity: 0;
   pointer-events: none;
@@ -168,7 +168,7 @@
   background: var(--surface-panel);
   border: 1px solid rgba(74, 154, 93, 0.12);
   color: var(--brand-900);
-  font-size: 1.15rem;
+  font-size: var(--fs-lg);
   font-weight: 700;
 }
 
@@ -180,7 +180,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-800);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1;
 }
@@ -198,7 +198,7 @@
 .actionCopy strong {
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: clamp(1.45rem, 2.5vw, 1.95rem);
+  font-size: var(--fs-title);
   line-height: 1;
   letter-spacing: 0;
 }
@@ -229,7 +229,7 @@
 }
 
 .actionFoot strong {
-  font-size: 1.2rem;
+  font-size: var(--fs-xl);
   line-height: 1;
   transition: transform 160ms ease;
 }
@@ -295,14 +295,14 @@
 
   .mobileCreatePrimary strong {
     color: var(--ink-900);
-    font-size: 1rem;
+    font-size: var(--fs-base);
     font-weight: 700;
     line-height: 1.2;
   }
 
   .mobileCreatePrimary small {
     color: var(--ink-600);
-    font-size: 0.78rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
     line-height: 1.35;
   }
@@ -321,7 +321,7 @@
     border-radius: 8px;
     background: var(--surface-panel);
     color: var(--ink-800);
-    font-size: 1rem;
+    font-size: var(--fs-base);
     font-weight: 700;
   }
 
@@ -354,7 +354,7 @@
   }
 
   .actionCopy strong {
-    font-size: 1rem;
+    font-size: var(--fs-base);
     line-height: 1.2;
   }
 }
@@ -513,7 +513,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -532,7 +532,7 @@
 .introTitle {
   color: var(--ink-950);
   font-family: var(--font-body);
-  font-size: clamp(1.25rem, 2vw, 1.9rem);
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.12;
@@ -549,7 +549,7 @@
 .emptyNote,
 .noticeMessage {
   color: var(--ink-700);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.55;
 }
 
@@ -596,7 +596,7 @@
   background: var(--ds-panel-strong-bg);
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.2;
@@ -687,7 +687,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
 }

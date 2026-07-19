@@ -46,7 +46,7 @@
 
 .header strong {
   overflow: hidden;
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -64,7 +64,7 @@
   color: #fff;
   cursor: pointer;
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 

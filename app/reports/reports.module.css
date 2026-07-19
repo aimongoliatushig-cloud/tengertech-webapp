@@ -88,7 +88,7 @@
   display: block;
   margin-top: 4px;
   color: var(--metric-accent, var(--ink-900));
-  font-size: 1.7rem;
+  font-size: var(--fs-3xl);
   font-weight: 700;
   line-height: 1;
 }
@@ -110,7 +110,7 @@
   display: grid;
   gap: 6px;
   color: var(--ink-700);
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -219,7 +219,7 @@
 .reportRegistryScopeHeader strong,
 .reportRegistryReviewHeader strong {
   color: var(--ink-900);
-  font-size: 1.15rem;
+  font-size: var(--fs-lg);
 }
 
 .reportRegistryScopeHeader > strong {
@@ -228,7 +228,7 @@
   border-radius: 999px;
   background: rgba(31, 95, 49, 0.08);
   color: var(--brand-900);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 .reportRegistryDepartmentStrip {
@@ -285,7 +285,7 @@
   border-radius: 999px;
   background: var(--surface-panel);
   color: var(--brand-900);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .reportRegistryUnitStrip {
@@ -318,7 +318,7 @@
   border-radius: 999px;
   background: rgba(31, 95, 49, 0.08);
   color: var(--brand-900);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
 }
 
 .reportRegistryUnitChip:hover,
@@ -430,7 +430,7 @@
   border-radius: 999px;
   background: rgba(31, 95, 49, 0.08);
   color: var(--brand-900);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .reportRegistryTableCard {
@@ -456,7 +456,7 @@
 
 .reportRegistryTableHeader strong {
   color: var(--ink-900);
-  font-size: 1.15rem;
+  font-size: var(--fs-lg);
 }
 
 .reportRegistryTypeBadge,
@@ -466,7 +466,7 @@
   min-height: 28px;
   padding: 0 10px;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -519,7 +519,7 @@
   border-bottom: 1px solid rgba(31, 95, 49, 0.08);
   background: rgba(247, 252, 248, 0.9);
   color: var(--ink-700);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -599,7 +599,7 @@
   display: block;
   margin-bottom: 5px;
   color: var(--ink-600);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -635,7 +635,7 @@
 
 .reportRegistryAttachmentGrid span {
   color: var(--ink-600);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   overflow-wrap: anywhere;
 }
 
@@ -741,7 +741,7 @@
   .reportRegistrySearch input {
     min-height: 50px;
     border-color: rgba(31, 95, 49, 0.16);
-    font-size: 0.95rem;
+    font-size: var(--fs-md);
   }
 
   .reportRegistryScopeHeader,
@@ -773,7 +773,7 @@
   .reportRegistryUnitStripScoped .reportRegistryUnitChip {
     min-height: 54px;
     padding: 0 14px;
-    font-size: 0.95rem;
+    font-size: var(--fs-md);
   }
 
   .reportRegistryTableHeader {
@@ -792,7 +792,7 @@
   }
 
   .reportRegistryTableHeader strong {
-    font-size: 1.35rem;
+    font-size: var(--fs-2xl);
   }
 
   .reportRegistryAccordion {
@@ -838,13 +838,13 @@
   }
 
   .reportRegistryReportTitle strong {
-    font-size: 1rem;
+    font-size: var(--fs-base);
     line-height: 1.28;
   }
 
   .reportRegistryReportTitle small {
     margin-top: 6px;
-    font-size: 0.82rem;
+    font-size: var(--fs-xs);
   }
 
   .reportRegistryAccordionSummary > span:nth-child(3),
@@ -869,7 +869,7 @@
     border-radius: 999px;
     background: rgba(31, 95, 49, 0.1);
     color: var(--brand-900);
-    font-size: 0.78rem;
+    font-size: var(--fs-2xs);
     font-weight: 700;
     white-space: nowrap;
   }
@@ -913,11 +913,11 @@
 }
 
 .reportRegistryLaborLink strong {
-  font-size: 0.94rem;
+  font-size: var(--fs-md);
   font-weight: 700;
 }
 
 .reportRegistryLaborLink small {
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   color: var(--muted-foreground, #64748b);
 }

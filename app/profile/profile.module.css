@@ -23,7 +23,7 @@
   background: linear-gradient(135deg, var(--brand-900), var(--brand-700));
   color: #f7fcf6;
   font-family: var(--font-body);
-  font-size: 1.45rem;
+  font-size: var(--fs-2xl);
   font-weight: 700;
 }
 
@@ -79,7 +79,7 @@
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -94,7 +94,7 @@
 }
 
 .identityCopy h1 {
-  font-size: clamp(1.9rem, 3vw, 2.8rem);
+  font-size: var(--fs-hero-lg);
   line-height: 0.96;
 }
 
@@ -119,7 +119,7 @@
   background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(74, 154, 93, 0.12);
   color: var(--brand-900);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   text-align: center;
 }
@@ -140,7 +140,7 @@
   gap: 7px;
   min-width: 0;
   color: var(--ink-800);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -153,7 +153,7 @@
   background: rgba(255, 255, 255, 0.94);
   color: var(--ink-900);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 .photoField input::file-selector-button {
@@ -165,7 +165,7 @@
   background: rgba(74, 154, 93, 0.14);
   color: var(--brand-900);
   font: inherit;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   cursor: pointer;
 }
@@ -192,7 +192,7 @@
 .profilePhotoCopy h2 {
   margin: 0;
   color: var(--ink-900);
-  font-size: 1.35rem;
+  font-size: var(--fs-2xl);
   line-height: 1.05;
 }
 
@@ -224,7 +224,7 @@
   border-radius: 999px;
   background: linear-gradient(135deg, #1f8b3a, #2e7d32);
   color: #fff;
-  font-size: 3.4rem;
+  font-size: var(--fs-stat);
   font-weight: 700;
   line-height: 1;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
@@ -292,7 +292,7 @@
   margin: 0;
   flex: 1 1 auto;
   color: var(--ink-900);
-  font-size: 1.82rem;
+  font-size: var(--fs-display);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1;
@@ -347,7 +347,7 @@
   border-radius: 999px;
   background: #ef4444;
   color: #fff;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1;
 }
@@ -359,7 +359,7 @@
   border-radius: 16px;
   background: linear-gradient(135deg, #2f8d3b, #137a2c);
   color: #fff;
-  font-size: 1.34rem;
+  font-size: var(--fs-2xl);
   font-weight: 700;
 }
 
@@ -403,7 +403,7 @@
 .mobileProfileIdentity h2 {
   margin: 0;
   color: var(--ink-900);
-  font-size: 1.45rem;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   line-height: 1.08;
 }
@@ -411,7 +411,7 @@
 .mobileProfileIdentity p {
   margin: 0 0 4px;
   color: var(--ink-700);
-  font-size: 1rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   line-height: 1.25;
 }
@@ -422,7 +422,7 @@
   align-items: center;
   gap: 12px;
   color: #5d6673;
-  font-size: 0.95rem;
+  font-size: var(--fs-md);
   font-weight: 600;
   line-height: 1.25;
   overflow-wrap: anywhere;
@@ -451,7 +451,7 @@
 .mobileSettingsGroup h2 {
   margin: 0;
   color: #6b7280;
-  font-size: 1.14rem;
+  font-size: var(--fs-lg);
   font-weight: 700;
   line-height: 1.1;
 }
@@ -510,7 +510,7 @@
 .mobilePanelHeader h2 {
   margin: 0;
   color: var(--ink-900);
-  font-size: 1.08rem;
+  font-size: var(--fs-lg);
   font-weight: 700;
   line-height: 1.2;
 }
@@ -518,7 +518,7 @@
 .mobilePanelHeader p {
   margin: 5px 0 0;
   color: var(--ink-700);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
   line-height: 1.45;
 }
@@ -532,7 +532,7 @@
   display: grid;
   gap: 7px;
   color: var(--ink-900);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
@@ -561,7 +561,7 @@
   background: #2e7d32;
   color: #fff;
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   cursor: pointer;
 }
@@ -581,13 +581,13 @@
 
 .mobileSecurityList small {
   color: var(--ink-700);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .mobileSecurityList strong {
   color: var(--ink-900);
-  font-size: 0.92rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -630,14 +630,14 @@
 .mobileLogoutRow span {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 1.08rem;
+  font-size: var(--fs-lg);
   font-weight: 700;
   line-height: 1.2;
 }
 
 .mobileSettingsRow strong {
   color: #14822f;
-  font-size: 1rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -715,13 +715,13 @@
 
 .summaryCard span,
 .capabilityCard small {
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .summaryCard strong {
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: clamp(1.25rem, 2vw, 1.75rem);
+  font-size: var(--fs-title);
   line-height: 1.05;
 }
 
@@ -743,7 +743,7 @@
 
 .sectionHeader h2,
 .logoutCard h2 {
-  font-size: clamp(1.4rem, 2.6vw, 2rem);
+  font-size: var(--fs-title);
   line-height: 1;
 }
 
@@ -784,13 +784,13 @@
 .linkCopy strong,
 .capabilityCard strong {
   color: var(--ink-900);
-  font-size: 1rem;
+  font-size: var(--fs-base);
   line-height: 1.3;
 }
 
 .linkArrow {
   color: var(--brand-900);
-  font-size: 1.4rem;
+  font-size: var(--fs-2xl);
   font-weight: 700;
 }
 
@@ -820,7 +820,7 @@
   min-height: 34px;
   padding: 0 12px;
   border-radius: 999px;
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -900,7 +900,7 @@
 }
 
 .sessionMetaGrid strong {
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
 }
 
 .emptyNote {
@@ -929,7 +929,7 @@
 .settingsHero h2 {
   margin: 10px 0 8px;
   color: var(--ink-900);
-  font-size: clamp(1.7rem, 3vw, 2.45rem);
+  font-size: var(--fs-hero);
   line-height: 1;
 }
 
@@ -955,13 +955,13 @@
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.82);
   color: var(--ink-700);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
 .settingsStats strong {
   color: var(--brand-900);
-  font-size: 1.55rem;
+  font-size: var(--fs-3xl);
   line-height: 1;
 }
 
@@ -997,12 +997,12 @@
 }
 
 .settingsNav strong {
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .settingsNav span {
   color: var(--ink-700);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .managementPanel {
@@ -1026,7 +1026,7 @@
 .managementHeader h3 {
   margin: 8px 0 0;
   color: var(--ink-900);
-  font-size: 1.2rem;
+  font-size: var(--fs-xl);
 }
 
 .managementHeader p {
@@ -1060,7 +1060,7 @@
 
 .teamCard strong {
   color: var(--ink-900);
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .teamCard small,
@@ -1071,7 +1071,7 @@
 
 .teamCard p {
   margin: 0;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
 }
 
 .teamMetaGrid {
@@ -1088,7 +1088,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-900);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1101,7 +1101,7 @@
   background: rgba(254, 226, 226, 0.55);
   color: #9f1239;
   font: inherit;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   cursor: pointer;
 }
@@ -1126,7 +1126,7 @@
   margin: 8px 0 0;
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: 1.18rem;
+  font-size: var(--fs-xl);
   line-height: 1.2;
 }
 
@@ -1135,7 +1135,7 @@
 .lockedCard p {
   margin: 6px 0 0;
   color: var(--ink-700);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.55;
 }
 
@@ -1149,7 +1149,7 @@
   background: rgba(74, 154, 93, 0.12);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 
@@ -1157,7 +1157,7 @@
   display: grid;
   gap: 8px;
   color: var(--ink-900);
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -1243,7 +1243,7 @@
 .routeListHeader h3 {
   margin: 8px 0 0;
   color: var(--ink-900);
-  font-size: 1.18rem;
+  font-size: var(--fs-xl);
 }
 
 .routeListHeader p {
@@ -1286,7 +1286,7 @@
 .routeTableHead {
   padding: 0 0 10px;
   color: var(--ink-700);
-  font-size: 0.76rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -1431,7 +1431,7 @@
   }
 
   .mobileProfileAvatar {
-    font-size: 2.9rem;
+    font-size: var(--fs-stat);
   }
 
   .mobileCameraButton {
@@ -1440,16 +1440,16 @@
   }
 
   .mobileProfileIdentity h2 {
-    font-size: 1.3rem;
+    font-size: var(--fs-xl);
   }
 
   .mobileProfileIdentity p {
-    font-size: 0.94rem;
+    font-size: var(--fs-md);
   }
 
   .mobileProfileIdentity span {
     gap: 10px;
-    font-size: 0.88rem;
+    font-size: var(--fs-sm);
   }
 
   .mobileSettingsRow,
@@ -1461,7 +1461,7 @@
 
   .mobileSettingsRow span,
   .mobileLogoutRow span {
-    font-size: 1rem;
+    font-size: var(--fs-base);
   }
 
   .profilePhotoForm {
@@ -1666,7 +1666,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -1685,7 +1685,7 @@
 .introTitle {
   color: var(--ink-950);
   font-family: var(--font-body);
-  font-size: clamp(1.25rem, 2vw, 1.9rem);
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.12;
@@ -1702,7 +1702,7 @@
 .emptyNote,
 .noticeMessage {
   color: var(--ink-700);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.55;
 }
 
@@ -1749,7 +1749,7 @@
   background: var(--ds-panel-strong-bg);
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.2;
@@ -1840,7 +1840,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
 }

@@ -1,7 +1,7 @@
 .hint {
   margin: 0 0 8px;
   color: #5a6b62;
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
@@ -63,7 +63,7 @@
   border-radius: 50%;
   background: #1f7a3f;
   color: #ffffff;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   pointer-events: none;
@@ -82,7 +82,7 @@
   border-radius: 8px;
   background: rgba(22, 38, 28, 0.78);
   color: #ffffff;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   text-decoration: none;
 }
 
@@ -108,7 +108,7 @@
 }
 
 .bar strong {
-  font-size: 0.95rem;
+  font-size: var(--fs-md);
 }
 
 .barActions {
@@ -126,7 +126,7 @@
   background: #1f7a3f;
   color: #ffffff;
   font-weight: 700;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   text-decoration: none;
 }
 
@@ -142,7 +142,7 @@
   background: transparent;
   color: #ffffff;
   font-weight: 700;
-  font-size: 0.84rem;
+  font-size: var(--fs-xs);
   cursor: pointer;
 }
 

@@ -3,7 +3,7 @@
 }
 
 .heroCard h1 {
-  font-size: clamp(2rem, 4vw, 3.1rem);
+  font-size: var(--fs-hero-lg);
 }
 
 .heroCard p {
@@ -49,7 +49,7 @@
   display: block;
   margin: 8px 0 6px;
   font-family: var(--font-body);
-  font-size: 1.1rem;
+  font-size: var(--fs-lg);
 }
 
 .routeChipActive {
@@ -78,7 +78,7 @@
   min-height: 36px;
   padding: 0 14px;
   border-radius: 999px;
-  font-size: 0.86rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -125,7 +125,7 @@
 .weightCard span {
   display: block;
   color: var(--ink-600);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
 }
 
 .summaryFacts strong,
@@ -211,7 +211,7 @@
 .stopTop h3 {
   margin: 8px 0 6px;
   font-family: var(--font-body);
-  font-size: clamp(1.35rem, 3vw, 1.8rem);
+  font-size: var(--fs-title);
 }
 
 .stopTop p {
@@ -526,7 +526,7 @@
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -545,7 +545,7 @@
 .introTitle {
   color: var(--ink-950);
   font-family: var(--font-body);
-  font-size: clamp(1.25rem, 2vw, 1.9rem);
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.12;
@@ -562,7 +562,7 @@
 .emptyNote,
 .noticeMessage {
   color: var(--ink-700);
-  font-size: 0.88rem;
+  font-size: var(--fs-sm);
   line-height: 1.55;
 }
 
@@ -609,7 +609,7 @@
   background: var(--ds-panel-strong-bg);
   color: var(--ink-900);
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.2;
@@ -700,7 +700,7 @@
   border-radius: 999px;
   background: rgba(74, 154, 93, 0.1);
   color: var(--brand-800);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0;
 }
