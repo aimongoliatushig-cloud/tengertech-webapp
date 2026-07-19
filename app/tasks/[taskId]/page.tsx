@@ -442,7 +442,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
     : canSubmitForReview
       ? "Гүйцэтгэлийн мэдээллийг шалгалтад шилжүүлнэ."
       : canOpenReportComposer
-        ? "Хийсэн ажлын тайлбар, хэмжээ, зураг болон аудио нотолгоог нэг удаа оруулна."
+        ? "Хийсэн ажлын тайлбар, хэмжээ, зураг болон аудио нотолгоог оруулна. Ажил хэсэгчлэн хийгдсэн бол хэсэг бүрт тусдаа тайлан нэмж оруулж болно."
         : "Энэ төлөв дээр хийх үндсэн үйлдэл алга байна.";
 
   const showReportComposer = !canManageReview && !canMarkDone && !canSubmitForReview && canOpenReportComposer;
