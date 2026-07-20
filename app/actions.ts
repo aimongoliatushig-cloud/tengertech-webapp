@@ -2664,16 +2664,22 @@ export async function createTaskReportAction(formData: FormData) {
     redirect(`${reportPath}?error=${encodeURIComponent("Тайлангийн текстээ оруулна уу.")}`);
   }
 
-  if (!beforeImageFiles.length || !afterImageFiles.length) {
-    redirectWithMessage(reportReturnPath, "error", "Өмнөх зураг болон дараах зургийг заавал оруулна уу.");
+  // Зураг заавал биш — гэхдээ огт хоосон (текст ч, зураг ч, аудио ч үгүй)
+  // тайлан оруулахыг хориглоно.
+  if (!reportText && !imageFiles.length && !audioFiles.length) {
+    redirectWithMessage(
+      reportReturnPath,
+      "error",
+      "Тайлангийн текст, зураг эсвэл аудионы аль нэгийг оруулна уу.",
+    );
   }
 
   if (imageFiles.some((file) => file.type && !file.type.startsWith("image/"))) {
     redirectWithMessage(reportReturnPath, "error", "Зураг хэсэгт зөвхөн зургийн файл сонгоно уу.");
   }
 
-  if (imageFiles.length > 10) {
-    redirectWithMessage(reportReturnPath, "error", "Нэг тайланд дээд тал нь 10 зураг оруулна уу.");
+  if (imageFiles.length > 20) {
+    redirectWithMessage(reportReturnPath, "error", "Нэг тайланд дээд тал нь 20 зураг оруулна уу.");
   }
 
   if (audioFiles.some((file) => file.type && !file.type.startsWith("audio/"))) {
@@ -2864,8 +2870,8 @@ export async function updateTaskReportAction(formData: FormData) {
     redirect(`${reportPath}?error=${encodeURIComponent("Зураг хэсэгт зөвхөн зургийн файл сонгоно уу.")}`);
   }
 
-  if (imageFiles.length > 10) {
-    redirect(`${reportPath}?error=${encodeURIComponent("Нэг тайланд дээд тал нь 10 зураг оруулна уу.")}`);
+  if (imageFiles.length > 20) {
+    redirect(`${reportPath}?error=${encodeURIComponent("Нэг тайланд дээд тал нь 20 зураг оруулна уу.")}`);
   }
 
   if (audioFiles.some((file) => file.type && !file.type.startsWith("audio/"))) {
