@@ -1,9 +1,12 @@
+import Link from "next/link";
+
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { requireSession,
   getSessionRoleLabel,
 } from "@/lib/auth";
 import { getDepartmentJobCounts, getDisciplineRecords, getEmployees, getHeadcountTrend, getTimeoffDashboard, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
+import { loadUserAssignedTasks } from "@/lib/odoo";
 
 import { HrDashboardClient } from "./hr-dashboard-client";
 import { HR_NOTIFICATION_HREF } from "./constants";
@@ -18,6 +21,9 @@ export default async function HrDashboardPage() {
   if (!access) {
     return null;
   }
+  // ХН-ийн хэрэглэгч нүүрэндээ (/hr) шууд ирдэг тул захирал, удирдлагаас
+  // өөрт нь оноосон даалгавруудыг эндээс харуулна.
+  const assignedTasksPromise = loadUserAssignedTasks(session.uid).catch(() => []);
   const [employees, timeoffDashboard, timeoffRequests, disciplineRecords, departmentJobCounts, headcountTrend] = await Promise.all([
     getEmployees(session).catch((error) => {
       console.warn("HR dashboard employee groups could not be loaded:", error);
@@ -44,6 +50,8 @@ export default async function HrDashboardPage() {
       return [];
     }),
   ]);
+  const assignedTasks = await assignedTasksPromise;
+  const activeAssignedTasks = assignedTasks.filter((task) => task.statusKey !== "done");
   const mode: "hr" | "department" = access.scope === "hr" ? "hr" : "department";
   // Хэлтэст хязгаарлагдсан хэрэглэгч (хэлтсийн дарга)-д байгууллагын бүтцийг
   // зөвхөн өөрийн хэлтсээр харуулна. Бүх ХН харах эрхтэйд null → бүрэн бүтэц.
@@ -62,6 +70,45 @@ export default async function HrDashboardPage() {
         notificationHref={HR_NOTIFICATION_HREF}
       />
       <HrSectionNav mode={mode} />
+
+      {assignedTasks.length ? (
+        <section className={styles.assignedTasksCard} id="my-assigned-tasks">
+          <div className={styles.assignedTasksHead}>
+            <div>
+              <h2>Надад оноогдсон даалгавар</h2>
+              <p>Захирал, удирдлагаас танд оноосон үүрэг даалгаврууд</p>
+            </div>
+            <span className={styles.assignedTasksCount}>
+              {activeAssignedTasks.length} идэвхтэй
+            </span>
+          </div>
+          <div className={styles.assignedTasksList}>
+            {assignedTasks.slice(0, 8).map((task) => (
+              <Link key={task.id} href={task.href} className={styles.assignedTaskRow}>
+                <span className={styles.assignedTaskName}>{task.name}</span>
+                <span className={styles.assignedTaskMeta}>
+                  {task.projectName ? <small>{task.projectName}</small> : null}
+                  {task.deadline ? <small>{task.deadline}</small> : null}
+                  <span
+                    className={`${styles.assignedTaskStatus} ${
+                      task.statusKey === "done"
+                        ? styles.assignedTaskStatusDone
+                        : task.statusKey === "review"
+                          ? styles.assignedTaskStatusReview
+                          : ""
+                    }`}
+                  >
+                    {task.statusLabel}
+                  </span>
+                </span>
+              </Link>
+            ))}
+          </div>
+          {assignedTasks.length > 8 ? (
+            <p className={styles.assignedTasksMore}>+{assignedTasks.length - 8} бусад даалгавар</p>
+          ) : null}
+        </section>
+      ) : null}
 
       <HrDashboardClient
         accessMode={mode}

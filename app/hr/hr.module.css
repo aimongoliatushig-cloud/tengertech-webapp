@@ -5457,3 +5457,114 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+/* Надад оноогдсон даалгавар — захирал, удирдлагаас ХН-ийн ажилтанд оноосон
+   үүрэг даалгаврыг /hr нүүрэнд харуулах карт. */
+.assignedTasksCard {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.assignedTasksHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.assignedTasksHead h2 {
+  margin: 0;
+  color: #101827;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+
+.assignedTasksHead p {
+  margin: 2px 0 0;
+  color: #64756b;
+  font-size: var(--fs-2xs);
+}
+
+.assignedTasksCount {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(46, 125, 50, 0.12);
+  color: #1f7a35;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.assignedTasksList {
+  display: grid;
+  gap: 8px;
+}
+
+.assignedTaskRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+  background: #f8faf8;
+  color: #101827;
+  text-decoration: none;
+}
+
+.assignedTaskRow:hover {
+  border-color: rgba(46, 125, 50, 0.35);
+}
+
+.assignedTaskName {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assignedTaskMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.assignedTaskMeta small {
+  color: #64756b;
+  font-size: var(--fs-2xs);
+}
+
+.assignedTaskStatus {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(95, 117, 99, 0.12);
+  color: #48614d;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.assignedTaskStatusReview {
+  background: rgba(143, 189, 134, 0.22);
+  color: #3f7146;
+}
+
+.assignedTaskStatusDone {
+  background: rgba(44, 119, 64, 0.16);
+  color: #1f5f31;
+}
+
+.assignedTasksMore {
+  margin: 0;
+  color: #64756b;
+  font-size: var(--fs-2xs);
+}
