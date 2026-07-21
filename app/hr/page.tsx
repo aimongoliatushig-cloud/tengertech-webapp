@@ -3,6 +3,7 @@ import Link from "next/link";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import { requireSession,
   getSessionRoleLabel,
+  isHrOnlyRole,
 } from "@/lib/auth";
 import { getDepartmentJobCounts, getDisciplineRecords, getEmployees, getHeadcountTrend, getTimeoffDashboard, getTimeoffRequests, requireHrAccess } from "@/lib/hr";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
@@ -21,9 +22,13 @@ export default async function HrDashboardPage() {
   if (!access) {
     return null;
   }
-  // ХН-ийн хэрэглэгч нүүрэндээ (/hr) шууд ирдэг тул захирал, удирдлагаас
-  // өөрт нь оноосон даалгавруудыг эндээс харуулна.
-  const assignedTasksPromise = loadUserAssignedTasks(session.uid).catch(() => []);
+  // Зөвхөн ХН-ийн ажилтан (нүүр хуудас нь /hr) өөрт оноогдсон даалгавраа
+  // эндээс харна; админ, хэлтсийн дарга нар өөрийн хяналтын самбартаа хардаг
+  // тул ХН самбарт давхардуулж үзүүлэхгүй.
+  const showAssignedTasks = isHrOnlyRole(session);
+  const assignedTasksPromise = showAssignedTasks
+    ? loadUserAssignedTasks(session.uid).catch(() => [])
+    : Promise.resolve([]);
   const [employees, timeoffDashboard, timeoffRequests, disciplineRecords, departmentJobCounts, headcountTrend] = await Promise.all([
     getEmployees(session).catch((error) => {
       console.warn("HR dashboard employee groups could not be loaded:", error);
