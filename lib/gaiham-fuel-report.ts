@@ -452,24 +452,42 @@ async function deleteReport(client: GaihamClient, hash: string, reportId: number
   });
 }
 
-function valueNameMatchesFuel(value: string) {
+// \u0426\u044d\u043d\u044d\u0433\u043b\u044d\u043b\u0442, \u0430\u043b\u0434\u0430\u0433\u0434\u0430\u043b, \u0431\u0430\u043a\u043d\u044b \u04af\u043b\u0434\u044d\u0433\u0434\u044d\u043b/\u0442\u04af\u0432\u0448\u0438\u043d, \u0445\u044d\u043c\u043d\u044d\u043b\u0442, \u041b/100\u043a\u043c \u0433\u044d\u0445 \u043c\u044d\u0442
+// \u0417\u0410\u0420\u0426\u0423\u0423\u041b\u0410\u041b\u0422 \u0411\u0418\u0428 \u0443\u0442\u0433\u0443\u0443\u0434\u044b\u0433 \u0445\u0430\u0442\u0443\u0443 \u0445\u0430\u0441\u043d\u0430 \u2014 \u044d\u0434\u0433\u044d\u044d\u0440\u0438\u0439\u0433 \u04e9\u043c\u043d\u04e9 \u043d\u044c \u0437\u0430\u0440\u0446\u0443\u0443\u043b\u0430\u043b\u0442 \u0433\u044d\u0436
+// \u0430\u043d\u0434\u0443\u0443\u0440\u0447 \u0438\u043c\u043f\u043e\u0440\u0442\u043e\u043b\u0441\u043d\u043e\u043e\u0441 0.1\u043b \u0431\u0430 100+\u043b \u0433\u044d\u0441\u044d\u043d \u0433\u0430\u0436\u0438\u0433 \u0443\u0442\u0433\u0443\u0443\u0434 \u04af\u04af\u0441\u0434\u044d\u0433 \u0431\u0430\u0439\u0441\u0430\u043d.
+function valueNameMatchesExcluded(value: string) {
   const normalized = normalizeLabel(value);
   return (
-    /fuel|lit(er|re)|consum|refuel|volume|drain/.test(normalized) ||
-    normalized.includes("\u0442\u04af\u043b\u0448") ||
-    normalized.includes("\u0448\u0430\u0442\u0430\u0445\u0443\u0443\u043d") ||
-    normalized.includes("\u0437\u0430\u0440\u0446\u0443\u0443\u043b") ||
-    normalized.includes("\u043b\u0438\u0442\u0440")
+    /refuel|drain|filling|diff|start|end|level|min|max|avg|100\s*\u043a\u043c|\/100/.test(normalized) ||
+    normalized.includes("\u0446\u044d\u043d\u044d\u0433\u043b\u044d\u043b\u0442") || // \u0446\u044d\u043d\u044d\u0433\u043b\u044d\u043b\u0442
+    normalized.includes("\u0430\u043b\u0434\u0430\u0433\u0434\u0430\u043b") || // \u0430\u043b\u0434\u0430\u0433\u0434\u0430\u043b
+    normalized.includes("\u04af\u043b\u0434\u044d\u0433\u0434\u044d\u043b") || // \u04af\u043b\u0434\u044d\u0433\u0434\u044d\u043b
+    normalized.includes("\u0445\u044d\u043c\u043d\u044d\u043b\u0442") || // \u0445\u044d\u043c\u043d\u044d\u043b\u0442
+    normalized.includes("\u0442\u04af\u0432\u0448\u0438\u043d") // \u0442\u04af\u0432\u0448\u0438\u043d
+  );
+}
+
+// \u0417\u04e9\u0432\u0445\u04e9\u043d \u0436\u0438\u043d\u0445\u044d\u043d\u044d \u0437\u0430\u0440\u0446\u0443\u0443\u043b\u0430\u043b\u0442\u044b\u043d \u0431\u0430\u0433\u0430\u043d\u0430 (\u0417\u0430\u0440\u0446\u0443\u0443\u043b\u0430\u043b\u0442/consumed/used)-\u044b\u0433 \u043b \u0442\u043e\u043e\u043b\u043d\u043e.
+function valueNameMatchesFuel(value: string) {
+  const normalized = normalizeLabel(value);
+  if (valueNameMatchesExcluded(normalized)) {
+    return false;
+  }
+  return (
+    /consum|used|spent/.test(normalized) ||
+    normalized.includes("\u0437\u0430\u0440\u0446\u0443\u0443\u043b") || // \u0437\u0430\u0440\u0446\u0443\u0443\u043b
+    normalized.includes("\u0445\u044d\u0440\u044d\u0433\u043b\u044d\u044d") // \u0445\u044d\u0440\u044d\u0433\u043b\u044d\u044d
   );
 }
 
 function valueNameMatchesPreferredConsumption(value: string) {
   const normalized = normalizeLabel(value);
-  return (
-    /consum|used|spent/.test(normalized) ||
-    normalized.includes("\u0437\u0430\u0440\u0446\u0443\u0443\u043b") ||
-    normalized.includes("\u0445\u044d\u0440\u044d\u0433\u043b\u044d\u044d")
-  );
+  if (valueNameMatchesExcluded(normalized)) {
+    return false;
+  }
+  // \u0411\u043e\u0434\u0438\u0442 \u0445\u044d\u043c\u0436\u0441\u044d\u043d \u0437\u0430\u0440\u0446\u0443\u0443\u043b\u0430\u043b\u0442\u044b\u0433 \u043d\u043e\u0440\u043c\u044b\u043d \u0442\u043e\u043e\u0446\u043e\u043e\u043b\u043b\u043e\u043e\u0441 \u0438\u043b\u04af\u04af\u0434 \u04af\u0437\u043d\u044d.
+  const isNormBased = normalized.includes("\u043d\u043e\u0440\u043c") || normalized.includes("norm");
+  return !isNormBased && valueNameMatchesFuel(normalized);
 }
 
 function rowFuelCandidates(row: Record<string, unknown>, columnsByField: Map<string, string>) {
