@@ -1583,11 +1583,21 @@ export async function getHrAccessProfile(session: AppSession) {
   if (containsHrText(departmentName)) {
     reasons.push("department");
   }
-  if (groupNames.some((groupName) => containsHrText(groupName))) {
+  // "Хүний нөөцийн удирдлага / Хэлтсийн дарга" гэх мэт хэлтсийн даргын бүлэг
+  // нь Odoo-ийн Employees аппын ангиллын нэрээрээ "Хүний нөөц" гэж эхэлдэг тул
+  // бүх байгууллагын HR эрх гэж андуурахгүй — хэлтсийн даргын бүлгийг хасна.
+  if (
+    groupNames.some(
+      (groupName) => containsHrText(groupName) && !isDepartmentHeadGroupName(groupName),
+    )
+  ) {
     reasons.push("HR group name");
   }
   if (
     groupNames.some((groupName) => {
+      if (isDepartmentHeadGroupName(groupName)) {
+        return false;
+      }
       const normalized = normalizeText(groupName);
       return (
         normalized.includes("hr manager") ||
