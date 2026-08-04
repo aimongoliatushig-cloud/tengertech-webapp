@@ -966,7 +966,7 @@ export function AppMenu({
         icon: Settings,
       },
     ] as MenuItem[]
-  ).filter((item) => !["auto-base", "garbage-settings"].includes(item.key));
+  ).filter((item) => item.key !== "garbage-settings");
 
   const scopedDepartmentWorkHref =
     departmentItems[0]?.href ??
@@ -1039,7 +1039,7 @@ export function AppMenu({
         badge: notificationCount,
       },
     ] as MenuItem[]
-  ).filter((item) => !["auto-base", "garbage-settings"].includes(item.key));
+  ).filter((item) => item.key !== "garbage-settings");
 
   const masterItems: MenuItem[] = [
     {
