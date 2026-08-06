@@ -1088,6 +1088,14 @@
   white-space: normal;
 }
 
+.vehicleInfoGrid .vehicleEquipmentYes {
+  color: var(--brand-900);
+}
+
+.vehicleInfoGrid .vehicleEquipmentNo {
+  color: var(--ink-600);
+}
+
 .vehicleMore {
   position: absolute;
   right: 10px;

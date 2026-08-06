@@ -11,8 +11,10 @@ import {
   CheckCircle2,
   ChevronDown,
   Download,
+  Fuel,
   Grid3X3,
   List,
+  Navigation,
   MoreHorizontal,
   Plus,
   Search,
@@ -970,6 +972,20 @@ function VehicleList({
                     <CalendarCheck2 size={15} aria-hidden />
                     <small>Үзлэг</small>
                     <strong>{shortDeadlineLabel(vehicle.inspection)}</strong>
+                  </span>
+                  <span>
+                    <Navigation size={15} aria-hidden />
+                    <small>GPS</small>
+                    <strong className={vehicle.gpsInstalled ? styles.vehicleEquipmentYes : styles.vehicleEquipmentNo}>
+                      {vehicle.gpsInstalled ? "Тийм" : "Үгүй"}
+                    </strong>
+                  </span>
+                  <span>
+                    <Fuel size={15} aria-hidden />
+                    <small>Түлш хэмжигч</small>
+                    <strong className={vehicle.fuelMonitoringInstalled ? styles.vehicleEquipmentYes : styles.vehicleEquipmentNo}>
+                      {vehicle.fuelMonitoringInstalled ? "Тийм" : "Үгүй"}
+                    </strong>
                   </span>
                 </div>
               </div>
