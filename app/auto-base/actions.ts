@@ -350,6 +350,35 @@ async function findOrCreateVehicleType(name: string) {
   return executeOdooKw<number>("municipal.vehicle.type", "create", [values], {});
 }
 
+async function findOrCreateVehicleCategory(name: string) {
+  const normalizedName = name.trim();
+  if (!normalizedName) {
+    return false;
+  }
+
+  const categories = await executeOdooKw<Array<{ id: number }>>(
+    "fleet.vehicle.tag",
+    "search_read",
+    [[['name', '=', normalizedName]]],
+    { fields: ["id"], limit: 1, context: { active_test: false } },
+  ).catch(() => []);
+  if (categories[0]?.id) {
+    return categories[0].id;
+  }
+
+  const fields = await executeOdooKw<OdooFieldMap>(
+    "fleet.vehicle.tag",
+    "fields_get",
+    [],
+    { attributes: ["string", "type", "required", "readonly"] },
+  );
+  const values = pickSupportedValues({ name: normalizedName }, fields);
+  if (!values.name) {
+    throw new Error("Машины ангилал нэмэх боломжтой нэрийн талбар олдсонгүй.");
+  }
+  return executeOdooKw<number>("fleet.vehicle.tag", "create", [values], {});
+}
+
 async function findFleetVehicleStateId(candidateNames: string[], fallbackName: string) {
   const normalizedNames = candidateNames
     .map((name) => name.trim())
@@ -684,8 +713,13 @@ export async function updateFleetVehicleAction(formData: FormData) {
         await findOrCreateVehicleModel(getString(formData, "model_name") || getString(formData, "new_model_name")) ||
         optionalOdooId(getString(formData, "model_id"));
     }
-    if ("category_id" in editableFields && formData.has("category_id")) {
-      values.category_id = optionalOdooId(getString(formData, "category_id"));
+    if (
+      "category_id" in editableFields &&
+      (formData.has("category_id") || formData.has("category_name"))
+    ) {
+      values.category_id =
+        await findOrCreateVehicleCategory(getString(formData, "category_name")) ||
+        optionalOdooId(getString(formData, "category_id"));
     }
     if (
       "municipal_vehicle_type_id" in editableFields &&
@@ -947,13 +981,16 @@ export async function createFleetVehicleAction(formData: FormData) {
     const vehicleTypeId =
       await findOrCreateVehicleType(getString(formData, "vehicle_type_name") || getString(formData, "new_vehicle_type_name")) ||
       optionalOdooId(getString(formData, "municipal_vehicle_type_id"));
+    const categoryId =
+      await findOrCreateVehicleCategory(getString(formData, "category_name")) ||
+      optionalOdooId(getString(formData, "category_id"));
     const values = pickSupportedValues(
       {
         name,
         license_plate: plate,
         active: true,
         model_id: modelId,
-        category_id: optionalOdooId(getString(formData, "category_id")),
+        category_id: categoryId,
         municipal_vehicle_type_id: vehicleTypeId,
         municipal_department_id: optionalOdooId(getString(formData, "municipal_department_id")),
         municipal_capacity: optionalOdooValue(getString(formData, "municipal_capacity")),

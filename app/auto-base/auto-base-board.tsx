@@ -1551,6 +1551,7 @@ function NewVehicleForm({
 }) {
   const modelListId = useId();
   const vehicleTypeListId = useId();
+  const categoryListId = useId();
 
   return (
     <section className={styles.vehicleCreatePanel}>
@@ -1586,6 +1587,16 @@ function NewVehicleForm({
         </label>
 
         <label className={styles.vehicleFormField}>
+          <span>Ангилал</span>
+          <input name="category_name" list={categoryListId} placeholder="Жишээ: Тусгай зориулалтын техник" />
+          <datalist id={categoryListId}>
+            {categoryOptions.map((option) => (
+              <option key={option.id} value={option.name} />
+            ))}
+          </datalist>
+        </label>
+
+        <label className={styles.vehicleFormField}>
           <span>Төрөл</span>
           {vehicleTypeOptions.length ? (
             <>
@@ -1596,16 +1607,7 @@ function NewVehicleForm({
                 ))}
               </datalist>
             </>
-          ) : (
-            <select name="category_id" defaultValue="">
-              <option value="">Сонгоогүй</option>
-              {categoryOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.name}
-                </option>
-              ))}
-            </select>
-          )}
+          ) : null}
         </label>
 
         <label className={styles.vehicleFormField}>
@@ -1795,6 +1797,7 @@ function VehicleDetailModal({
   const [activeTab, setActiveTab] = useState("main");
   const modelListId = useId();
   const vehicleTypeListId = useId();
+  const categoryListId = useId();
   const modalRef = useRef<HTMLElement | null>(null);
   const hasOperationsData =
     vehicle.weightReports.length > 0 ||
@@ -2159,6 +2162,21 @@ function VehicleDetailModal({
           </label>
 
           <label className={styles.vehicleFormField}>
+            <span>Ангилал</span>
+            <input
+              name="category_name"
+              list={categoryListId}
+              defaultValue={vehicle.categoryName}
+              placeholder="Жишээ: Тусгай зориулалтын техник"
+            />
+            <datalist id={categoryListId}>
+              {categoryOptions.map((option) => (
+                <option key={option.id} value={option.name} />
+              ))}
+            </datalist>
+          </label>
+
+          <label className={styles.vehicleFormField}>
             <span>Төрөл</span>
             {vehicleTypeOptions.length ? (
               <>
@@ -2174,16 +2192,7 @@ function VehicleDetailModal({
                   ))}
                 </datalist>
               </>
-            ) : (
-              <select name="category_id" defaultValue={vehicle.categoryId ?? ""}>
-                <option value="">Сонгоогүй</option>
-                {categoryOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
-              </select>
-            )}
+            ) : null}
           </label>
 
           <label className={styles.vehicleFormField}>
