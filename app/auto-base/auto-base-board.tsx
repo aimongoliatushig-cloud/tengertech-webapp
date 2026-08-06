@@ -1627,7 +1627,15 @@ function NewVehicleForm({
 
         <label className={styles.vehicleFormField}>
           <span>Импортлосон огноо</span>
-          <input name="municipal_import_date" type="date" />
+          <input
+            name="municipal_import_date"
+            type="text"
+            inputMode="numeric"
+            placeholder="YYYY-MM-DD"
+            pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
+            maxLength={10}
+            title="Огноог YYYY-MM-DD дарааллаар оруулна уу"
+          />
         </label>
 
         <label className={styles.vehicleFormField}>
@@ -1637,7 +1645,15 @@ function NewVehicleForm({
 
         <label className={styles.vehicleFormField}>
           <span>Үйлдвэрлэсэн огноо</span>
-          <input name="municipal_manufactured_date" type="date" />
+          <input
+            name="municipal_manufactured_date"
+            type="text"
+            inputMode="numeric"
+            placeholder="YYYY-MM-DD"
+            pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
+            maxLength={10}
+            title="Огноог YYYY-MM-DD дарааллаар оруулна уу"
+          />
         </label>
 
         <label className={styles.vehicleFormField}>
@@ -2182,7 +2198,12 @@ function VehicleDetailModal({
             <span>Импортлосон огноо</span>
             <input
               name="municipal_import_date"
-              type="date"
+              type="text"
+              inputMode="numeric"
+              placeholder="YYYY-MM-DD"
+              pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
+              maxLength={10}
+              title="Огноог YYYY-MM-DD дарааллаар оруулна уу"
               defaultValue={vehicle.importedDateValue}
             />
           </label>
@@ -2196,7 +2217,12 @@ function VehicleDetailModal({
             <span>Үйлдвэрлэсэн огноо</span>
             <input
               name="municipal_manufactured_date"
-              type="date"
+              type="text"
+              inputMode="numeric"
+              placeholder="YYYY-MM-DD"
+              pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
+              maxLength={10}
+              title="Огноог YYYY-MM-DD дарааллаар оруулна уу"
               defaultValue={vehicle.manufacturedDateValue}
             />
           </label>
