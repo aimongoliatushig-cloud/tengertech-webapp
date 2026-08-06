@@ -489,6 +489,11 @@ function statusSortRank(vehicle: FleetVehicleBoardItem) {
   return 3;
 }
 
+function retiredVehicleSortRank(vehicle: FleetVehicleBoardItem) {
+  const stateLabel = vehicle.stateLabel.trim().toLocaleLowerCase("mn-MN");
+  return vehicle.isArchived || stateLabel.includes("ашиглалтаас гарсан") ? 1 : 0;
+}
+
 function compareVehiclesByDepartment(
   left: FleetVehicleBoardItem,
   right: FleetVehicleBoardItem,
@@ -2668,6 +2673,11 @@ export function AutoBaseBoard({
     { value: "inactive", label: "Идэвхгүй" },
   ];
   const visibleVehicles = [...selectedBucket.vehicles].sort((left, right) => {
+    const retiredRankDelta = retiredVehicleSortRank(left) - retiredVehicleSortRank(right);
+    if (retiredRankDelta) {
+      return retiredRankDelta;
+    }
+
     if (sortMode === "department") {
       return compareVehiclesByDepartment(left, right);
     }
