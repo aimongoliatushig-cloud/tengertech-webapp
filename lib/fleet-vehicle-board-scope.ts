@@ -34,14 +34,20 @@ export function scopeFleetVehicleBoardByDepartment(
   board: FleetVehicleBoard,
   scopedDepartmentName?: string | null,
 ): FleetVehicleBoard {
-  if (!scopedDepartmentName) {
-    return board;
-  }
-
   const allVehicles = board.allVehicles.filter(
-    (vehicle) =>
-      vehicle.departmentName &&
-      filterByDepartment([{ departmentName: vehicle.departmentName }], scopedDepartmentName).length > 0,
+    (vehicle) => {
+      if (vehicle.isArchived) {
+        return false;
+      }
+      if (!scopedDepartmentName) {
+        return true;
+      }
+      return Boolean(
+        vehicle.departmentName &&
+          filterByDepartment([{ departmentName: vehicle.departmentName }], scopedDepartmentName)
+            .length > 0,
+      );
+    },
   );
   const scopedVehicleIds = new Set(allVehicles.map((vehicle) => vehicle.id));
 
