@@ -581,6 +581,8 @@ export async function updateFleetVehicleAction(formData: FormData) {
           "mfo_active_for_ops",
           "latest_repair_state",
           "x_municipal_operational_status",
+          "x_gps_installed",
+          "x_fuel_monitoring_installed",
           "municipal_department_id",
           "vin_sn",
           "odometer",
@@ -746,6 +748,16 @@ export async function updateFleetVehicleAction(formData: FormData) {
     }
     if ("fuel_type" in editableFields && formData.has("fuel_type")) {
       values.fuel_type = optionalOdooValue(getString(formData, "fuel_type"));
+    }
+    if ("x_gps_installed" in editableFields && formData.has("x_gps_installed")) {
+      values.x_gps_installed = getString(formData, "x_gps_installed") === "true";
+    }
+    if (
+      "x_fuel_monitoring_installed" in editableFields &&
+      formData.has("x_fuel_monitoring_installed")
+    ) {
+      values.x_fuel_monitoring_installed =
+        getString(formData, "x_fuel_monitoring_installed") === "true";
     }
     if (
       "municipal_responsible_driver_id" in editableFields &&
@@ -952,6 +964,9 @@ export async function createFleetVehicleAction(formData: FormData) {
         x_municipal_operational_status:
           optionalOdooValue(getString(formData, "x_municipal_operational_status")) || "available",
         fuel_type: optionalOdooValue(getString(formData, "fuel_type")),
+        x_gps_installed: getString(formData, "x_gps_installed") === "true",
+        x_fuel_monitoring_installed:
+          getString(formData, "x_fuel_monitoring_installed") === "true",
         mfo_active_for_ops: true,
       },
       fields,

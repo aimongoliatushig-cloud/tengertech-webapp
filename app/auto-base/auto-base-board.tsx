@@ -71,6 +71,8 @@ type FleetVehicleBoardItem = {
   odometerLabel: string;
   fuelTypeKey: string;
   fuelTypeLabel: string;
+  gpsInstalled: boolean;
+  fuelMonitoringInstalled: boolean;
   capacity: string;
   importedDate: string;
   importedDateValue: string;
@@ -1626,6 +1628,22 @@ function NewVehicleForm({
         </label>
 
         <label className={styles.vehicleFormField}>
+          <span>GPS суурилуулсан эсэх</span>
+          <select name="x_gps_installed" defaultValue="false">
+            <option value="false">Үгүй</option>
+            <option value="true">Тийм</option>
+          </select>
+        </label>
+
+        <label className={styles.vehicleFormField}>
+          <span>Түлшний хяналтын төхөөрөмжтэй эсэх</span>
+          <select name="x_fuel_monitoring_installed" defaultValue="false">
+            <option value="false">Үгүй</option>
+            <option value="true">Тийм</option>
+          </select>
+        </label>
+
+        <label className={styles.vehicleFormField}>
           <span>Даац</span>
           <input name="municipal_capacity" placeholder="Жишээ: 8 тн" />
         </label>
@@ -1962,6 +1980,8 @@ function VehicleDetailModal({
                   <DetailItem label="Үйлдвэрлэсэн огноо" value={vehicle.manufacturedDate} />
                   <DetailItem label="Суудлын тоо" value={vehicle.seatCountLabel} />
                   <DetailItem label="Төрөл" value={typeSummary} />
+                  <DetailItem label="GPS суурилуулсан эсэх" value={vehicle.gpsInstalled ? "Тийм" : "Үгүй"} />
+                  <DetailItem label="Түлшний хяналтын төхөөрөмжтэй эсэх" value={vehicle.fuelMonitoringInstalled ? "Тийм" : "Үгүй"} />
                   <DetailItem label="Үйл ажиллагаа" value={vehicle.isOperational ? "Ашиглаж байгаа" : "Идэвхгүй"} />
                   <DetailItem label="Засварын төлөв" value={vehicle.latestRepairState} />
                 </div>
@@ -2265,6 +2285,25 @@ function VehicleDetailModal({
                   {option.label}
                 </option>
               ))}
+            </select>
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>GPS суурилуулсан эсэх</span>
+            <select name="x_gps_installed" defaultValue={String(vehicle.gpsInstalled)}>
+              <option value="false">Үгүй</option>
+              <option value="true">Тийм</option>
+            </select>
+          </label>
+
+          <label className={styles.vehicleFormField}>
+            <span>Түлшний хяналтын төхөөрөмжтэй эсэх</span>
+            <select
+              name="x_fuel_monitoring_installed"
+              defaultValue={String(vehicle.fuelMonitoringInstalled)}
+            >
+              <option value="false">Үгүй</option>
+              <option value="true">Тийм</option>
             </select>
           </label>
 

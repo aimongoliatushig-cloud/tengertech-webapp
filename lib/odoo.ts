@@ -864,6 +864,8 @@ type OdooFleetVehicleRecord = {
   municipal_manufactured_date?: string | false;
   municipal_seat_count?: number | false;
   x_municipal_operational_status?: string | false;
+  x_gps_installed?: boolean;
+  x_fuel_monitoring_installed?: boolean;
   vin_sn?: string | false;
   odometer?: number | false;
   fuel_type?: string | false;
@@ -1115,6 +1117,8 @@ export type FleetVehicleBoardItem = {
   odometerLabel: string;
   fuelTypeKey: string;
   fuelTypeLabel: string;
+  gpsInstalled: boolean;
+  fuelMonitoringInstalled: boolean;
   capacity: string;
   importedDate: string;
   importedDateValue: string;
@@ -2357,6 +2361,8 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
     "municipal_manufactured_date",
     "municipal_seat_count",
     "x_municipal_operational_status",
+    "x_gps_installed",
+    "x_fuel_monitoring_installed",
     "vin_sn",
     "odometer",
     "fuel_type",
@@ -5941,6 +5947,8 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
             : "",
         fuelTypeKey: vehicle.fuel_type || "",
         fuelTypeLabel: resolveFleetFuelTypeLabel(vehicle.fuel_type || ""),
+        gpsInstalled: Boolean(vehicle.x_gps_installed),
+        fuelMonitoringInstalled: Boolean(vehicle.x_fuel_monitoring_installed),
         capacity: vehicle.municipal_capacity || "",
         importedDate: formatOptionalCalendarDate(vehicle.municipal_import_date),
         importedDateValue: vehicle.municipal_import_date || "",
