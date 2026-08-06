@@ -5146,7 +5146,7 @@ async function loadRepairHistoryByVehicle(
     appendMapItem(byVehicle, relationId(record.vehicle_id), {
       id: record.id,
       name: record.name || `Засвар #${record.id}`,
-      requestDate: formatOptionalCompactDate(record.request_date),
+      requestDate: formatOptionalCalendarDate(record.request_date),
       dateRange: formatDateRange(
         record.repair_started_at,
         record.repair_done_at,
@@ -5982,10 +5982,10 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
         insurance: {
           company: vehicle.municipal_insurance_company || "",
           policyNumber: vehicle.municipal_insurance_policy_number || "",
-          startDate: formatOptionalCompactDate(
+          startDate: formatOptionalCalendarDate(
             vehicle.municipal_insurance_date_start,
           ),
-          endDate: formatOptionalCompactDate(
+          endDate: formatOptionalCalendarDate(
             vehicle.municipal_insurance_date_end,
           ),
           startDateValue: vehicle.municipal_insurance_date_start || "",
@@ -6010,10 +6010,10 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
           ),
         },
         inspection: {
-          startDate: formatOptionalCompactDate(
+          startDate: formatOptionalCalendarDate(
             vehicle.municipal_inspection_date,
           ),
-          endDate: formatOptionalCompactDate(
+          endDate: formatOptionalCalendarDate(
             vehicle.municipal_next_inspection_date,
           ),
           startDateValue: vehicle.municipal_inspection_date || "",
