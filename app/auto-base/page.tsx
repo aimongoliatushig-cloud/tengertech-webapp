@@ -113,10 +113,10 @@ export default async function AutoBasePage({ searchParams }: AutoBasePageProps) 
 
   try {
     board = scopeFleetVehicleBoardByDepartment(
-      await loadFleetVehicleBoard({
-        login: session.login,
-        password: session.password,
-      }),
+      // The route is already capability-gated above. Load the shared fleet board
+      // with the service connection so Odoo record rules on an individual user do
+      // not silently hide vehicles from the auto-base overview.
+      await loadFleetVehicleBoard(),
       scopedVehicleBoardDepartment,
     );
   } catch (error) {
