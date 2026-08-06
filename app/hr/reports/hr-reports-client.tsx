@@ -246,11 +246,11 @@ export function HrReportsClient({
           <div className={styles.formGridTwo}>
             <label className={styles.field}>
               <span>Эхлэх огноо</span>
-              <input name="dateFrom" type="date" defaultValue={initialFilters.dateFrom || monthStartDate()} required />
+              <input name="dateFrom" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} defaultValue={initialFilters.dateFrom || monthStartDate()} required />
             </label>
             <label className={styles.field}>
               <span>Дуусах огноо</span>
-              <input name="dateTo" type="date" defaultValue={initialFilters.dateTo || todayDate()} required />
+              <input name="dateTo" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} defaultValue={initialFilters.dateTo || todayDate()} required />
             </label>
           </div>
           <button className={styles.primaryButton} type="submit" disabled={pending}>

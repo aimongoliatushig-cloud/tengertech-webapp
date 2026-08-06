@@ -163,7 +163,7 @@ export default async function NewProcurementPage({ searchParams }: PageProps) {
 
                 <label className={styles.fieldLabel}>
                   Шаардлагатай огноо
-                  <input type="date" name="required_date" />
+                  <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} name="required_date" />
                 </label>
                 <label className={`${styles.fieldLabel} ${styles.fieldSpanFull}`}>
                   Тайлбар

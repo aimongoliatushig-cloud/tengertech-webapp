@@ -445,7 +445,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
               </label>
               <label className={styles.assignField}>
                 <span>Хугацаа</span>
-                <input name="deadline" type="date" />
+                <input name="deadline" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} />
               </label>
             </div>
             <button type="submit" className={styles.assignBtn}>

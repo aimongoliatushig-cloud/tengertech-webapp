@@ -131,11 +131,11 @@ export default async function WastePointsReportPage({ searchParams }: PageProps)
             </label>
             <label className={styles.field}>
               <span>Огноо (эхлэх)</span>
-              <input type="date" name="dateFrom" defaultValue={dateFrom} />
+              <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} name="dateFrom" defaultValue={dateFrom} />
             </label>
             <label className={styles.field}>
               <span>Огноо (дуусах)</span>
-              <input type="date" name="dateTo" defaultValue={dateTo} />
+              <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} name="dateTo" defaultValue={dateTo} />
             </label>
             <button type="submit" className={`${styles.button} ${styles.buttonPrimary}`}>
               <SlidersHorizontal size={15} aria-hidden /> Шүүх

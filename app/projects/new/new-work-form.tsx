@@ -1266,7 +1266,7 @@ export function NewWorkForm({
               <input
                 id="start_date"
                 name="start_date"
-                type="date"
+                type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
                 value={shiftDate}
                 onChange={(event) => setShiftDate(event.target.value)}
                 required={isGarbageTransport}
@@ -1443,7 +1443,7 @@ export function NewWorkForm({
 
             <div className={styles.field}>
               <label htmlFor="auto_base_required_date">Шаардлагатай огноо</label>
-              <input id="auto_base_required_date" name="auto_base_required_date" type="date" />
+              <input id="auto_base_required_date" name="auto_base_required_date" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} />
             </div>
           </div>
 
@@ -1754,7 +1754,7 @@ export function NewWorkForm({
                 <input
                   id="seasonal-start-date"
                   name="start_date"
-                  type="date"
+                  type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
                   value={seasonalStartDate}
                   onChange={(event) => setSeasonalStartDate(event.target.value)}
                   required={isSeasonalGarbage}
@@ -1766,7 +1766,7 @@ export function NewWorkForm({
                 <input
                   id="seasonal-deadline"
                   name="deadline"
-                  type="date"
+                  type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
                   required={isSeasonalGarbage}
                 />
               </div>
@@ -1864,7 +1864,7 @@ export function NewWorkForm({
               <input
                 id="work_date"
                 name="work_date"
-                type="date"
+                type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
                 value={cleaningWorkDate}
                 onChange={(event) => setCleaningWorkDate(event.target.value)}
                 required={isRoadAreaCleaning}
@@ -2209,12 +2209,12 @@ export function NewWorkForm({
             <div className={styles.fieldRow}>
               <div className={styles.field}>
                 <label htmlFor="start_date">Эхлэх огноо</label>
-                <input id="start_date" name="start_date" type="date" />
+                <input id="start_date" name="start_date" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} />
               </div>
 
               <div className={styles.field}>
                 <label htmlFor="deadline">Дуусах огноо</label>
-                <input id="deadline" name="deadline" type="date" />
+                <input id="deadline" name="deadline" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} />
               </div>
             </div>
           </section>

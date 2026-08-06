@@ -940,7 +940,7 @@ export function EmployeeCreateForm({
             <option value="other">Бусад</option>
           </select>
         </label>
-        <Field name="birthDate" label="Төрсөн огноо" type="date" />
+        <Field name="birthDate" label="Төрсөн огноо" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} />
         <Field name="countryOfBirth" label="Төрсөн улс" />
         <Field name="nationality" label="Иргэншил" />
         <Field name="phone" label="Гар утас" />
@@ -962,10 +962,10 @@ export function EmployeeCreateForm({
             <option>Улирлын</option>
           </select>
         </label>
-        <Field name="startDate" label="Ажилд орсон огноо" type="date" />
+        <Field name="startDate" label="Ажилд орсон огноо" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} />
         {showCreateTrialDates ? (
           <>
-            <Field name="trialEndDate" label="Туршилт дуусах огноо" type="date" />
+            <Field name="trialEndDate" label="Туршилт дуусах огноо" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} />
           </>
         ) : null}
         <Field name="emergencyContact" label="Яаралтай холбоо барих хүн" />
@@ -1123,7 +1123,7 @@ export function EmployeeCreateForm({
           <Field name="bankAccountNumber" label="Дансны дугаар" />
           <Field name="baseSalary" label="Үндсэн цалин" type="number" />
           <Field name="taxNumber" label="ТТД дугаар" />
-          <Field name="socialInsuranceStartDate" label="НД төлж эхэлсэн огноо" type="date" />
+          <Field name="socialInsuranceStartDate" label="НД төлж эхэлсэн огноо" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} />
         </div>
       </section>
 
@@ -1196,6 +1196,10 @@ function Field({
   required = false,
   defaultValue,
   readOnly = false,
+  inputMode,
+  placeholder,
+  pattern,
+  maxLength,
 }: {
   label: string;
   name: string;
@@ -1203,11 +1207,25 @@ function Field({
   required?: boolean;
   defaultValue?: string;
   readOnly?: boolean;
+  inputMode?: "none" | "text" | "tel" | "url" | "email" | "numeric" | "decimal" | "search";
+  placeholder?: string;
+  pattern?: string;
+  maxLength?: number;
 }) {
   return (
     <label className={styles.field}>
       <span>{label}</span>
-      <input name={name} type={type} required={required} defaultValue={defaultValue} readOnly={readOnly} />
+      <input
+        name={name}
+        type={type}
+        required={required}
+        defaultValue={defaultValue}
+        readOnly={readOnly}
+        inputMode={inputMode}
+        placeholder={placeholder}
+        pattern={pattern}
+        maxLength={maxLength}
+      />
     </label>
   );
 }
@@ -2818,7 +2836,7 @@ export function EmployeeDetailTabs({
                   <option value="other">Бусад</option>
                 </select>
               </label>
-              <Field name="birthDate" label="Төрсөн огноо" type="date" defaultValue={employee.birthDate} />
+              <Field name="birthDate" label="Төрсөн огноо" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} defaultValue={employee.birthDate} />
               <Field name="mobilePhone" label="Гар утас" defaultValue={employee.mobilePhone} />
               <Field name="workEmail" label="Ажлын и-мэйл" type="email" defaultValue={employee.workEmail} />
               {renderProfilePhotoEditor()}
@@ -2843,7 +2861,7 @@ export function EmployeeDetailTabs({
                 </select>
               </label>
               <Field name="spouseName" label="Эхнэр / нөхрийн нэр" defaultValue={employee.spouseName} />
-              <Field name="spouseBirthDate" label="Эхнэр / нөхрийн төрсөн огноо" type="date" defaultValue={employee.spouseBirthDate} />
+              <Field name="spouseBirthDate" label="Эхнэр / нөхрийн төрсөн огноо" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} defaultValue={employee.spouseBirthDate} />
               <Field name="childrenCount" label="Хүүхдийн тоо" type="number" defaultValue={String(employee.childrenCount ?? 0)} />
               <Field name="emergencyContact" label="Яаралтай холбоо барих хүн" defaultValue={employee.emergencyContact} />
               <Field name="emergencyPhone" label="Яаралтай холбоо барих утас" defaultValue={employee.emergencyPhone} />
@@ -2869,7 +2887,7 @@ export function EmployeeDetailTabs({
           {renderPanel(
             "Ажлын хугацаа",
             <div className={styles.editCardFields}>
-              <Field name="startDate" label="Ажилд орсон огноо" type="date" defaultValue={employee.startDate} />
+              <Field name="startDate" label="Ажилд орсон огноо" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} defaultValue={employee.startDate} />
               <label className={styles.field}>
                 <span>Ажил эрхлэлтийн төрөл</span>
                 <select name="workType" value={workEditType} onChange={(event) => setWorkEditType(event.currentTarget.value)}>
@@ -2882,7 +2900,7 @@ export function EmployeeDetailTabs({
                 </select>
               </label>
               {isTrialWorkType(workEditType) ? (
-                <Field name="trialEndDate" label="Туршилтын хугацаа дуусах" type="date" defaultValue={employee.trialEndDate} />
+                <Field name="trialEndDate" label="Туршилтын хугацаа дуусах" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} defaultValue={employee.trialEndDate} />
               ) : null}
             </div>,
           )}
@@ -3117,7 +3135,7 @@ export function EmployeeDetailTabs({
             "1. Шагналын мэдээлэл",
             <div className={styles.editCardFields}>
               <Field name="name" label="Шагналын нэр" required />
-              <Field name="date" label="Огноо" type="date" />
+              <Field name="date" label="Огноо" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} />
               <Field name="orderNo" label="Тушаалын дугаар" />
               <TextAreaField name="note" label="Тайлбар" rows={4} />
             </div>,
@@ -3166,7 +3184,7 @@ export function EmployeeDetailTabs({
               <Field name="name" label="Авьяас, чадвар" required />
               <Field name="type" label="Төрөл" />
               <Field name="level" label="Түвшин" />
-              <Field name="acquiredDate" label="Бүртгэсэн огноо" type="date" />
+              <Field name="acquiredDate" label="Бүртгэсэн огноо" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} />
               <TextAreaField name="note" label="Тодорхойлолт" rows={4} />
             </div>,
           )}
@@ -3221,7 +3239,7 @@ export function EmployeeDetailTabs({
               <Field
                 name="socialInsuranceStartDate"
                 label="НД төлж эхэлсэн огноо"
-                type="date"
+                type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
                 defaultValue={employee.socialInsuranceStartDate}
               />
             </div>,
@@ -3901,7 +3919,7 @@ export function TimeoffRequestsClient({
               <span>Эхлэх огноо</span>
               <input
                 name="dateFrom"
-                type="date"
+                type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
                 required
                 value={annualLeaveDateFrom}
                 onChange={(event) => setAnnualLeaveDateFrom(event.target.value)}
@@ -3921,13 +3939,13 @@ export function TimeoffRequestsClient({
             </label>
             <label className={styles.field}>
               <span>Дуусах огноо</span>
-              <input name="dateTo" type="date" required value={annualLeaveDateTo} readOnly />
+              <input name="dateTo" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} required value={annualLeaveDateTo} readOnly />
             </label>
           </div>
         ) : (
           <div className={styles.formGridTwo}>
-            <Field name="dateFrom" label="Эхлэх огноо" type="date" required defaultValue={editingRequest?.dateFrom} />
-            <Field name="dateTo" label="Дуусах огноо" type="date" required defaultValue={editingRequest?.dateTo} />
+            <Field name="dateFrom" label="Эхлэх огноо" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} required defaultValue={editingRequest?.dateFrom} />
+            <Field name="dateTo" label="Дуусах огноо" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} required defaultValue={editingRequest?.dateTo} />
           </div>
         )}
         <Field name="orderNumber" label="Тушаалын дугаар" defaultValue={editingRequest?.orderNumber || ""} />
@@ -4093,8 +4111,8 @@ export function LeavesClient({
           </select>
         </label>
         <div className={styles.formGridTwo}>
-          <Field name="dateFrom" label="Эхлэх огноо" type="date" required />
-          <Field name="dateTo" label="Дуусах огноо" type="date" required />
+          <Field name="dateFrom" label="Эхлэх огноо" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} required />
+          <Field name="dateTo" label="Дуусах огноо" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} required />
         </div>
         <Field name="orderNumber" label="Тушаалын дугаар" />
         <label className={styles.field}>

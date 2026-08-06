@@ -2280,7 +2280,7 @@ function VehicleDetailModal({
             <span>Даатгал эхлэх огноо</span>
             <input
               name="municipal_insurance_date_start"
-              type="date"
+              type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
               defaultValue={vehicle.insurance.startDateValue || ""}
             />
           </label>
@@ -2289,7 +2289,7 @@ function VehicleDetailModal({
             <span>Даатгал дуусах огноо</span>
             <input
               name="municipal_insurance_date_end"
-              type="date"
+              type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
               defaultValue={vehicle.insurance.endDateValue || ""}
             />
           </label>
@@ -2298,7 +2298,7 @@ function VehicleDetailModal({
             <span>Улсын үзлэгт орсон огноо</span>
             <input
               name="municipal_inspection_date"
-              type="date"
+              type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
               defaultValue={vehicle.inspection.startDateValue || ""}
             />
           </label>
@@ -2307,7 +2307,7 @@ function VehicleDetailModal({
             <span>Дараагийн үзлэгийн огноо</span>
             <input
               name="municipal_next_inspection_date"
-              type="date"
+              type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
               defaultValue={vehicle.inspection.endDateValue || ""}
             />
           </label>

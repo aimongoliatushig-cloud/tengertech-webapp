@@ -962,7 +962,7 @@ function PackageCeoOrderForm({ requestId, pack }: { requestId: number; pack: Pro
         </div>
       ) : null}
       <label className={styles.fieldLabel}>Тушаалын дугаар<input name="order_number" defaultValue={pack.ceo_order_number || ""} /></label>
-      <label className={styles.fieldLabel}>Тушаалын огноо<input type="date" name="order_date" defaultValue={pack.ceo_order_date || ""} required /></label>
+      <label className={styles.fieldLabel}>Тушаалын огноо<input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} name="order_date" defaultValue={pack.ceo_order_date || ""} required /></label>
       <label className={styles.fieldLabel}>Товч утга<textarea name="note" defaultValue={pack.ceo_order_note || pack.ceo_decision_note || ""} /></label>
       <label className={styles.fieldLabel}>Баталсан тушаал<input type="file" name="document_files" multiple required={!pack.ceo_order_attachments?.length} /></label>
       {pack.ceo_order_attachments?.length ? (
@@ -1038,7 +1038,7 @@ function PackagePaymentForm({ requestId, pack }: { requestId: number; pack: Proc
         )}
         <input type="hidden" name="paid_amount" value={Math.max(1, Math.round(pack.paid_amount || pack.amount_total || 0))} />
         <label className={styles.fieldLabel}>Гүйлгээний дугаар<input name="payment_reference" defaultValue={pack.payment_reference || ""} /></label>
-        <label className={styles.fieldLabel}>Төлсөн огноо<input type="date" name="payment_date" defaultValue={pack.payment_date || ""} /></label>
+        <label className={styles.fieldLabel}>Төлсөн огноо<input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} name="payment_date" defaultValue={pack.payment_date || ""} /></label>
         <label className={styles.fieldLabel}>Тайлбар<textarea name="note" defaultValue={pack.payment_note || ""} /></label>
         <label className={styles.fieldLabel}>Баримт<input type="file" name="document_files" multiple /></label>
         <button type="submit" className={styles.primaryButton}>Төлбөр төлөгдсөнийг баталгаажуулах</button>

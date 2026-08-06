@@ -481,7 +481,7 @@ export function ProjectTaskCreateForm({
 
         <div className={styles.field}>
           <label htmlFor="task-deadline">Ажлын өдөр</label>
-          <input id="task-deadline" type="date" value={deadline} readOnly />
+          <input id="task-deadline" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} value={deadline} readOnly />
         </div>
 
         <div className={footerClassName}>
@@ -804,7 +804,7 @@ export function ProjectTaskCreateForm({
           <input
             id="task-start-date"
             name="start_date"
-            type="date"
+            type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
             value={startDateValue}
             onChange={(event) => setStartDateValue(event.target.value)}
           />
@@ -815,7 +815,7 @@ export function ProjectTaskCreateForm({
           <input
             id="task-deadline"
             name="deadline"
-            type="date"
+            type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
             value={deadlineValue}
             onChange={(event) => setDeadlineValue(event.target.value)}
           />

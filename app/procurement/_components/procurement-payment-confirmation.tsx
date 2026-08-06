@@ -81,7 +81,7 @@ export function ProcurementPaymentConfirmation({
           </label>
           <label className={styles.fieldLabel}>
             Төлсөн огноо
-            <input type="date" name="payment_date" defaultValue={paymentDate || ""} required />
+            <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} name="payment_date" defaultValue={paymentDate || ""} required />
           </label>
           <label className={styles.fieldLabel}>
             Тайлбар

@@ -181,7 +181,7 @@ export function ProjectEditModal({
                       <input
                         id="edit-project-start-date"
                         name="start_date"
-                        type="date"
+                        type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
                         value={editedStartDate}
                         onChange={(event) => setEditedStartDate(event.target.value)}
                       />
@@ -192,7 +192,7 @@ export function ProjectEditModal({
                       <input
                         id="edit-project-deadline"
                         name="deadline"
-                        type="date"
+                        type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
                         value={editedDeadline}
                         onChange={(event) => setEditedDeadline(event.target.value)}
                       />

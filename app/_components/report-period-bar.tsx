@@ -109,7 +109,7 @@ export function ReportPeriodBar({ basePath, period, extraParams = {} }: Props) {
           {period.mode === "day" ? (
             <input
               key={period.date}
-              type="date"
+              type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
               name="date"
               defaultValue={period.date}
               aria-label="Өдөр сонгох"
@@ -118,8 +118,8 @@ export function ReportPeriodBar({ basePath, period, extraParams = {} }: Props) {
           ) : null}
           {period.mode === "range" ? (
             <>
-              <input key={period.startDate} type="date" name="startDate" defaultValue={period.startDate} aria-label="Эхлэх өдөр" />
-              <input key={period.endDate} type="date" name="endDate" defaultValue={period.endDate} aria-label="Дуусах өдөр" />
+              <input key={period.startDate} type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} name="startDate" defaultValue={period.startDate} aria-label="Эхлэх өдөр" />
+              <input key={period.endDate} type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} name="endDate" defaultValue={period.endDate} aria-label="Дуусах өдөр" />
               <button type="submit">Харах</button>
             </>
           ) : null}

@@ -673,7 +673,7 @@ export function ProcurementDashboardClient({
           <label>
             Эхлэх огноо
             <input
-              type="date"
+              type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
               value={dateFrom}
               onChange={(event) => {
                 setDateFrom(event.target.value);
@@ -684,7 +684,7 @@ export function ProcurementDashboardClient({
           <label>
             Дуусах огноо
             <input
-              type="date"
+              type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
               value={dateTo}
               onChange={(event) => {
                 setDateTo(event.target.value);
@@ -1293,7 +1293,7 @@ function ActionForm({
         ) : null}
         <p className={styles.subtleText}>Нэхэмжлэх оруулсан нийлүүлэгчээр үргэлжилнэ. Нийлүүлэгч дахин сонгох шаардлагагүй.</p>
         <label className={styles.fieldLabel}>Тушаалын дугаар<input name="order_number" /></label>
-        <label className={styles.fieldLabel}>Тушаалын огноо<input type="date" name="order_date" required /></label>
+        <label className={styles.fieldLabel}>Тушаалын огноо<input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} name="order_date" required /></label>
         <label className={styles.fieldLabel}>Тайлбар<textarea name="note" /></label>
         <label className={styles.fieldLabel}>Тушаалын файл<input type="file" name="document_files" multiple required /></label>
         <button type="submit" className={styles.primaryButton}>Баталсан тушаал оруулах</button>
@@ -1321,7 +1321,7 @@ function ActionForm({
         <label className={styles.fieldLabel}>Дүн<input value={Math.max(1, Math.round(getDisplayTotal(item) || 0))} readOnly /></label>
         <label className={styles.fieldLabel}>Банкны данс<input value={selectedQuote?.bank_account_text || "Бүртгэлгүй"} readOnly /></label>
         <label className={styles.fieldLabel}>Гүйлгээний дугаар<input name="payment_reference" required /></label>
-        <label className={styles.fieldLabel}>Төлсөн огноо<input type="date" name="payment_date" required /></label>
+        <label className={styles.fieldLabel}>Төлсөн огноо<input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} name="payment_date" required /></label>
         <label className={styles.fieldLabel}>Тайлбар<textarea name="note" /></label>
         <label className={styles.fieldLabel}>Төлбөрийн баримт upload<input type="file" name="document_files" multiple required /></label>
         <p className={styles.subtleText}>

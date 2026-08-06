@@ -185,7 +185,7 @@ export function DataDownloadClient() {
               <label htmlFor="wrs-report-date">Огноо</label>
               <input
                 id="wrs-report-date"
-                type="date"
+                type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
                 value={date}
                 max={latestImportDate}
                 onChange={(event) => setDate(event.target.value)}

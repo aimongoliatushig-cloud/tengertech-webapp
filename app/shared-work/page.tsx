@@ -220,11 +220,11 @@ export default async function SharedWorkPage({ searchParams }: PageProps) {
                 </label>
                 <label className={styles.field}>
                   <span>Эхлэх огноо</span>
-                  <input type="datetime-local" name="planned_start_date" />
+                  <input type="text" inputMode="numeric" placeholder="YYYY-MM-DDTHH:mm" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}" maxLength={16} name="planned_start_date" />
                 </label>
                 <label className={styles.field}>
                   <span>Дуусах огноо</span>
-                  <input type="datetime-local" name="planned_end_date" />
+                  <input type="text" inputMode="numeric" placeholder="YYYY-MM-DDTHH:mm" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}" maxLength={16} name="planned_end_date" />
                 </label>
               </div>
               <div>

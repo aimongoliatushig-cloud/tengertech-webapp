@@ -429,7 +429,7 @@ function TrialConfirmationForm({
       </div>
       <label>
         <span>Жинхэлсэн огноо</span>
-        <input name="permanentDate" type="date" defaultValue={today} required />
+        <input name="permanentDate" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} defaultValue={today} required />
       </label>
       <label>
         <span>Тушаалын дугаар</span>

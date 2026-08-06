@@ -475,7 +475,7 @@ export function DashboardInspectorVehiclePanel({
         </button>
         <label>
           <CalendarDays aria-hidden />
-          <input type="date" value={workDate} onChange={(event) => setWorkDate(event.target.value || todayKey())} />
+          <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} value={workDate} onChange={(event) => setWorkDate(event.target.value || todayKey())} />
           <span>{formatDateLabel(workDate)}</span>
         </label>
         <button type="button" onClick={() => setWorkDate((current) => shiftDate(current, 1))} aria-label="Дараах өдөр">
@@ -721,7 +721,7 @@ export function DashboardInspectorVehiclePanel({
           <label>
             <span>Огноо *</span>
             <input
-              type="date"
+              type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
               name="start_date"
               value={workDate}
               onChange={(event) => setWorkDate(event.target.value || todayKey())}
