@@ -2611,6 +2611,7 @@ export function AutoBaseBoard({
         ...option,
         count: counts.get(option.key) ?? 0,
       }))
+      .filter((option) => option.count > 0)
       .sort((left, right) => {
         const rankDelta = preferredCategoryRank(left.name) - preferredCategoryRank(right.name);
         return rankDelta || left.name.localeCompare(right.name, "mn-MN");
