@@ -229,7 +229,7 @@ type FleetVehicleBoard = {
 type VehicleFilterKey = "all" | "active" | "repair" | "insurance" | "inspection" | "inactive";
 type VehicleStatusFilter = "all" | "active" | "warning" | "repair" | "inactive";
 type VehicleViewMode = "grid" | "list";
-type VehicleSortMode = "status" | "plate" | "deadline";
+type VehicleSortMode = "department" | "status" | "plate" | "deadline";
 type VehicleCategoryFilter = {
   key: string;
   id: number | null;
@@ -487,6 +487,22 @@ function statusSortRank(vehicle: FleetVehicleBoardItem) {
   if (tone === "warning") return 1;
   if (tone === "active") return 2;
   return 3;
+}
+
+function compareVehiclesByDepartment(
+  left: FleetVehicleBoardItem,
+  right: FleetVehicleBoardItem,
+) {
+  const leftDepartment = left.departmentName.trim();
+  const rightDepartment = right.departmentName.trim();
+
+  if (!leftDepartment && rightDepartment) return 1;
+  if (leftDepartment && !rightDepartment) return -1;
+
+  return (
+    leftDepartment.localeCompare(rightDepartment, "mn-MN") ||
+    left.plate.localeCompare(right.plate, "mn-MN")
+  );
 }
 
 function primaryVehicleImageUrl(vehicle: FleetVehicleBoardItem) {
@@ -2372,7 +2388,7 @@ export function AutoBaseBoard({
     isVehicleViewMode(initialView) ? initialView : "grid",
   );
   const [sortMode, setSortMode] = useState<VehicleSortMode>(
-    isVehicleSortMode(initialSort) ? initialSort : "status",
+    isVehicleSortMode(initialSort) ? initialSort : "department",
   );
   const [dismissedSystemNotice, setDismissedSystemNotice] = useState(false);
   const selectedVehicle = selectedVehicleId ? vehiclesById.get(selectedVehicleId) ?? null : null;
@@ -2626,6 +2642,9 @@ export function AutoBaseBoard({
     { value: "inactive", label: "Идэвхгүй" },
   ];
   const visibleVehicles = [...selectedBucket.vehicles].sort((left, right) => {
+    if (sortMode === "department") {
+      return compareVehiclesByDepartment(left, right);
+    }
     if (sortMode === "plate") {
       return left.plate.localeCompare(right.plate, "mn-MN");
     }
@@ -2651,7 +2670,7 @@ export function AutoBaseBoard({
     setQueryParam(params, AUTO_BASE_QUERY_PARAMS.status, statusFilter, "all");
     setQueryParam(params, AUTO_BASE_QUERY_PARAMS.search, searchQuery);
     setQueryParam(params, AUTO_BASE_QUERY_PARAMS.view, viewMode, "grid");
-    setQueryParam(params, AUTO_BASE_QUERY_PARAMS.sort, sortMode, "status");
+    setQueryParam(params, AUTO_BASE_QUERY_PARAMS.sort, sortMode, "department");
     setQueryParam(
       params,
       AUTO_BASE_QUERY_PARAMS.vehicle,
@@ -2924,6 +2943,7 @@ export function AutoBaseBoard({
                   value={sortMode}
                   onChange={(event) => setSortMode(event.target.value as VehicleSortMode)}
                 >
+                  <option value="department">Хэлтсээр</option>
                   <option value="status">Төлөвөөр</option>
                   <option value="deadline">Хугацаа ойр</option>
                   <option value="plate">Улсын дугаараар</option>
