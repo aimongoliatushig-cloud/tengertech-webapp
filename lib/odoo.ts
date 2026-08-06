@@ -4945,6 +4945,19 @@ function formatOptionalCompactDate(value?: string | false) {
   return formatCompactDate(value);
 }
 
+function formatOptionalCalendarDate(value?: string | false) {
+  if (!value) {
+    return "";
+  }
+
+  const dateParts = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!dateParts) {
+    return value;
+  }
+
+  return `${dateParts[1]}.${dateParts[2]}.${dateParts[3]}`;
+}
+
 function formatDateRange(start?: string | false, end?: string | false) {
   const startLabel = formatOptionalCompactDate(start);
   const endLabel = formatOptionalCompactDate(end);
@@ -5929,10 +5942,10 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
         fuelTypeKey: vehicle.fuel_type || "",
         fuelTypeLabel: resolveFleetFuelTypeLabel(vehicle.fuel_type || ""),
         capacity: vehicle.municipal_capacity || "",
-        importedDate: formatOptionalCompactDate(vehicle.municipal_import_date),
+        importedDate: formatOptionalCalendarDate(vehicle.municipal_import_date),
         importedDateValue: vehicle.municipal_import_date || "",
         color: vehicle.municipal_color || "",
-        manufacturedDate: formatOptionalCompactDate(
+        manufacturedDate: formatOptionalCalendarDate(
           vehicle.municipal_manufactured_date,
         ),
         manufacturedDateValue: vehicle.municipal_manufactured_date || "",
