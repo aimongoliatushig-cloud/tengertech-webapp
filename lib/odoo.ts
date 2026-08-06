@@ -2706,6 +2706,39 @@ function getFleetVehicleTypeDisplayName(value?: string | false | null) {
   return name;
 }
 
+function getFleetModelDisplayName(value?: string | false | null) {
+  return String(value || "")
+    .split("/")
+    .map((part) => part.trim())
+    .filter(
+      (part) =>
+        part && normalizeFleetClassificationText(part) !== "бусад",
+    )
+    .join("/");
+}
+
+function getFleetVehicleDisplayName(
+  value: string | false | null | undefined,
+  plate: string | false | null | undefined,
+  modelName: string,
+) {
+  const normalizedPlate = normalizeFleetClassificationText(plate);
+  const name = String(value || "")
+    .split("/")
+    .map((part) => part.trim())
+    .filter((part) => {
+      const normalizedPart = normalizeFleetClassificationText(part);
+      return (
+        part &&
+        normalizedPart !== "бусад" &&
+        (!normalizedPlate || normalizedPart !== normalizedPlate)
+      );
+    })
+    .join("/");
+
+  return name || modelName || String(plate || "").trim();
+}
+
 function normalizeFleetVehicleTypeOptions(options: FleetVehicleSelectOption[]) {
   const seen = new Set<string>();
   const normalizedOptions: FleetVehicleSelectOption[] = [];
@@ -5859,17 +5892,22 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
           operationalStatusKey === "available" ||
           operationalStatusKey === "assigned");
 
+      const plate = vehicle.license_plate || vehicle.name || `Машин #${vehicle.id}`;
+      const modelName = getFleetModelDisplayName(
+        relationName(vehicle.model_id ?? false, ""),
+      );
+
       return {
         id: vehicle.id,
-        plate: vehicle.license_plate || vehicle.name || `Машин #${vehicle.id}`,
-        name: vehicle.name || vehicle.license_plate || `Машин #${vehicle.id}`,
+        plate,
+        name: getFleetVehicleDisplayName(vehicle.name, plate, modelName),
         imageUrl: vehicle.municipal_front_photo_ids?.[0]
           ? `/api/odoo/attachments/${vehicle.municipal_front_photo_ids[0]}`
           : imageDataUrl(
               vehicle.image_128 || vehicle.avatar_128 || vehicle.image_1920,
             ),
         modelId: relationId(vehicle.model_id ?? false),
-        modelName: relationName(vehicle.model_id ?? false, ""),
+        modelName,
         categoryId: relationId(vehicle.category_id ?? false),
         categoryName: displayCategoryName,
         vehicleTypeId: relationId(vehicle.municipal_vehicle_type_id ?? false),
