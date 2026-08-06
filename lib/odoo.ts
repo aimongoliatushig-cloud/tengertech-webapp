@@ -5921,9 +5921,7 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
       return {
         id: vehicle.id,
         plate,
-        name:
-          String(vehicle.x_vehicle_custom_name || "").trim() ||
-          getFleetVehicleDisplayName(vehicle.name, plate, modelName),
+        name: String(vehicle.x_vehicle_custom_name || "").trim(),
         imageUrl: vehicle.municipal_front_photo_ids?.[0]
           ? `/api/odoo/attachments/${vehicle.municipal_front_photo_ids[0]}`
           : imageDataUrl(
