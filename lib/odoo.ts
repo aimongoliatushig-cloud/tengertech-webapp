@@ -847,6 +847,7 @@ export type HrDailyAttendanceSummary = {
 type OdooFleetVehicleRecord = {
   id: number;
   name: string;
+  x_vehicle_custom_name?: string | false;
   license_plate?: string | false;
   image_128?: string | false;
   avatar_128?: string | false;
@@ -2345,6 +2346,7 @@ const HR_LEAVE_FIELD_VARIANTS: string[][] = [
 const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
   [
     "name",
+    "x_vehicle_custom_name",
     "license_plate",
     "image_128",
     "image_1920",
@@ -5919,7 +5921,9 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
       return {
         id: vehicle.id,
         plate,
-        name: getFleetVehicleDisplayName(vehicle.name, plate, modelName),
+        name:
+          String(vehicle.x_vehicle_custom_name || "").trim() ||
+          getFleetVehicleDisplayName(vehicle.name, plate, modelName),
         imageUrl: vehicle.municipal_front_photo_ids?.[0]
           ? `/api/odoo/attachments/${vehicle.municipal_front_photo_ids[0]}`
           : imageDataUrl(

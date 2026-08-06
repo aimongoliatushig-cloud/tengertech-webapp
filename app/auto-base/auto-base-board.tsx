@@ -1573,7 +1573,7 @@ function NewVehicleForm({
 
         <label className={styles.vehicleFormField}>
           <span>Машины нэр</span>
-          <input name="name" placeholder="Жишээ: Хог тээврийн машин 01" />
+          <input name="x_vehicle_custom_name" placeholder="Жишээ: Хог тээврийн машин 01" />
         </label>
 
         <label className={styles.vehicleFormField}>
@@ -1970,6 +1970,7 @@ function VehicleDetailModal({
             <div className={styles.vehicleInfoPanelGrid}>
               <VehicleInfoPanel title="Ерөнхий мэдээлэл" icon={Car}>
                 <div className={styles.vehicleDetailGrid}>
+                  <DetailItem label="Машины нэр" value={vehicle.name} />
                   <DetailItem label="Марка / модель" value={vehicle.modelName || vehicle.name} />
                   <DetailItem label="Төрөл" value={vehicle.vehicleTypeName || vehicle.categoryName} />
                   <DetailItem label="Төлөв" value={vehicle.stateLabel} />
@@ -2143,7 +2144,7 @@ function VehicleDetailModal({
 
           <label className={styles.vehicleFormField}>
             <span>Машины нэр</span>
-            <input name="name" defaultValue={vehicle.name} />
+            <input name="x_vehicle_custom_name" defaultValue={vehicle.name} />
           </label>
 
           <label className={styles.vehicleFormField}>

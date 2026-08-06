@@ -602,6 +602,7 @@ export async function updateFleetVehicleAction(formData: FormData) {
       [
         [
           "name",
+          "x_vehicle_custom_name",
           "license_plate",
           "model_id",
           "state_id",
@@ -701,6 +702,14 @@ export async function updateFleetVehicleAction(formData: FormData) {
 
     if ("name" in editableFields && formData.has("name")) {
       values.name = optionalOdooValue(getString(formData, "name"));
+    }
+    if (
+      "x_vehicle_custom_name" in editableFields &&
+      formData.has("x_vehicle_custom_name")
+    ) {
+      values.x_vehicle_custom_name = optionalOdooValue(
+        getString(formData, "x_vehicle_custom_name"),
+      );
     }
     if ("license_plate" in editableFields && formData.has("license_plate")) {
       values.license_plate = optionalOdooValue(getString(formData, "license_plate"));
@@ -962,7 +971,8 @@ export async function createFleetVehicleAction(formData: FormData) {
   await requireAutoBaseWriteAccess();
 
   const plate = getString(formData, "license_plate");
-  const name = getString(formData, "name") || plate;
+  const customName = getString(formData, "x_vehicle_custom_name");
+  const name = customName || plate;
   if (!plate) {
     redirectWithMessage("error", "Машины улсын дугаар оруулна уу.", formData);
   }
@@ -987,6 +997,7 @@ export async function createFleetVehicleAction(formData: FormData) {
     const values = pickSupportedValues(
       {
         name,
+        x_vehicle_custom_name: optionalOdooValue(customName),
         license_plate: plate,
         active: true,
         model_id: modelId,
