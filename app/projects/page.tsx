@@ -608,11 +608,30 @@ async function ProjectsPageContent({
     );
   }
 
+  const scopedTaskProjectNames = new Set(
+    departmentScopedMode
+      ? snapshot.taskDirectory
+          .filter((task) => {
+            const effectiveDepartmentName =
+              !task.isDepartmentTask && task.assigneeDepartmentName
+                ? task.assigneeDepartmentName
+                : task.departmentName;
+            return (
+              filterByDepartment(
+                [{ departmentName: effectiveDepartmentName }],
+                scopedDepartmentName,
+              ).length > 0
+            );
+          })
+          .map((task) => task.projectName)
+      : [],
+  );
+
   let scopedProjects = snapshot.projects.filter((project) => {
-    // Хэлтэст хязгаарлагдсан хэрэглэгчид захирал/менежерийн директив төслийг
-    // харуулахгүй (удирдлага хэвээр харна).
     if (departmentScopedMode && isDirectiveTaskProject(project.name)) {
-      return false;
+      return (
+        project.managerId === session.uid || scopedTaskProjectNames.has(project.name)
+      );
     }
     const projectSearchText =
       `${project.operationTypeLabel ?? ""} ${projectTaskSearchByName.get(project.name) ?? ""}`;
@@ -658,9 +677,6 @@ async function ProjectsPageContent({
     return right.completion - left.completion;
   });
   let scopedTasks = snapshot.taskDirectory.filter((task) => {
-    if (departmentScopedMode && isDirectiveTaskProject(task.projectName)) {
-      return false;
-    }
     if (selectedUnit) {
       return matchesUnitScope(
         selectedUnit,
@@ -678,7 +694,16 @@ async function ProjectsPageContent({
       );
     }
     if (departmentScopedMode) {
-      return filterByDepartment([task], scopedDepartmentName).length > 0;
+      const effectiveDepartmentName =
+        !task.isDepartmentTask && task.assigneeDepartmentName
+          ? task.assigneeDepartmentName
+          : task.departmentName;
+      return (
+        filterByDepartment(
+          [{ departmentName: effectiveDepartmentName }],
+          scopedDepartmentName,
+        ).length > 0
+      );
     }
     return true;
   });
