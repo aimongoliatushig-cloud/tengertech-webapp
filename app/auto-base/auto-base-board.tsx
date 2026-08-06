@@ -10,6 +10,7 @@ import {
   Car,
   CheckCircle2,
   ChevronDown,
+  Download,
   Grid3X3,
   List,
   MoreHorizontal,
@@ -2636,6 +2637,9 @@ export function AutoBaseBoard({
       left.plate.localeCompare(right.plate, "mn-MN")
     );
   });
+  const exportVehicleIds = visibleVehicles.map((vehicle) => vehicle.id).join(",");
+  const exportHref = (format: "xlsx" | "docx" | "pdf") =>
+    `/api/auto-base/export?format=${format}&ids=${encodeURIComponent(exportVehicleIds)}`;
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -2750,6 +2754,17 @@ export function AutoBaseBoard({
       ) : null}
 
       <div className={styles.vehicleBoardActions}>
+        <div className={styles.vehicleExportActions} aria-label="Машины жагсаалт татах">
+          <a className={styles.exportButton} href={exportHref("xlsx")}>
+            <Download size={15} aria-hidden /> Excel
+          </a>
+          <a className={styles.exportButton} href={exportHref("docx")}>
+            <Download size={15} aria-hidden /> Word
+          </a>
+          <a className={styles.exportButton} href={exportHref("pdf")}>
+            <Download size={15} aria-hidden /> PDF
+          </a>
+        </div>
         <button
           type="button"
           className={styles.primaryButton}

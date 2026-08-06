@@ -97,6 +97,37 @@
   margin-bottom: 12px;
 }
 
+.vehicleExportActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.exportButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid rgba(40, 125, 60, 0.24);
+  border-radius: 9px;
+  background: #fff;
+  color: #246b35;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.exportButton:hover,
+.exportButton:focus-visible {
+  border-color: rgba(40, 125, 60, 0.55);
+  background: rgba(40, 125, 60, 0.08);
+  transform: translateY(-1px);
+}
+
 .vehicleBoardActions svg,
 .vehicleModalActions svg,
 .dangerButton svg {
