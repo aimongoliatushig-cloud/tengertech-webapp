@@ -728,6 +728,109 @@ function dateKeysBetween(startDate: string, endDate: string) {
   return dates;
 }
 
+// WRS-ийн тайлангийн портал (DevExpress ReportViewer) заримдаа шинэ огноог
+// тооцолгүй хуучин/кэшлэгдсэн зургаа буцаадаг. Тэр үед өдөр бүр яг ижил
+// машин→жингийн вектор орж ирж, буруу огноогоор давхардан хадгалагддаг.
+// Дараах туслахууд тухайн өдрийн векторыг өмнө хадгалсан өдрүүдтэй тулгаж,
+// бүрэн ижил (хуучин снапшот) бол хадгалахаас сэргийлнэ.
+const WRS_STALE_LOOKBACK_DAYS = 45;
+const WRS_STALE_MIN_VEHICLES = 3;
+
+function weightFingerprintKey(weightKg?: number) {
+  return Math.round(Number(weightKg) || 0);
+}
+
+// Тухайн өдрийн машин→жин вектор (хадгалагдах улсын дугаараар түлхүүрлэсэн).
+function buildDaySnapshotVector(
+  entries: Array<{ vehicle?: FleetVehicleRecord; vehicleCode: string; weightKg: number }>,
+) {
+  const vector = new Map<string, number>();
+  for (const entry of entries) {
+    if (!(entry.weightKg > 0)) {
+      continue;
+    }
+    const code = normalizeVehicleCode(vehicleReportCode(entry.vehicle, entry.vehicleCode));
+    if (!code) {
+      continue;
+    }
+    vector.set(code, Math.max(vector.get(code) ?? 0, weightFingerprintKey(entry.weightKg)));
+  }
+  return vector;
+}
+
+function snapshotsIdentical(left: Map<string, number>, right: Map<string, number>) {
+  if (left.size !== right.size || left.size < WRS_STALE_MIN_VEHICLES) {
+    return false;
+  }
+  for (const [code, weight] of left) {
+    if (right.get(code) !== weight) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Хадгалагдсан өмнөх WRS снапшотуудыг report_date-аар нь бүлэглэн ачаална.
+async function loadPriorWrsSnapshots(fromDate: string, beforeDate: string) {
+  const records = await executeOdooKw<
+    Array<{
+      report_date?: string | false;
+      vehicle_license_plate?: string | false;
+      vehicle_id?: [number, string] | false;
+      weight?: number;
+    }>
+  >("municipal.garbage.weight.report", "search_read", [
+    [
+      ["source", "=", WRS_WEIGHT_SOURCE],
+      ["state", "!=", "failed"],
+      ["report_date", ">=", fromDate],
+      ["report_date", "<", beforeDate],
+    ],
+  ], {
+    fields: ["report_date", "vehicle_license_plate", "vehicle_id", "weight"],
+    limit: 6000,
+    order: "report_date desc",
+  });
+
+  const byDate = new Map<string, Map<string, number>>();
+  for (const record of records) {
+    const date = typeof record.report_date === "string" ? record.report_date : "";
+    if (!date) {
+      continue;
+    }
+    const plate = normalizeVehicleCode(
+      record.vehicle_license_plate ||
+        (Array.isArray(record.vehicle_id) ? record.vehicle_id[1] : ""),
+    );
+    if (!plate) {
+      continue;
+    }
+    let dateVector = byDate.get(date);
+    if (!dateVector) {
+      dateVector = new Map<string, number>();
+      byDate.set(date, dateVector);
+    }
+    dateVector.set(plate, weightFingerprintKey(record.weight));
+  }
+  return byDate;
+}
+
+// Вектор нь өмнөх аль нэг өдөртэй бүрэн ижил бол тэр өдрийн огноог буцаана.
+function findDuplicateSnapshotDate(
+  vector: Map<string, number>,
+  priorByDate: Map<string, Map<string, number>>,
+) {
+  if (vector.size < WRS_STALE_MIN_VEHICLES) {
+    return "";
+  }
+  for (const [date, prior] of priorByDate) {
+    if (snapshotsIdentical(vector, prior)) {
+      return date;
+    }
+  }
+  return "";
+}
+
 async function importWrsDateRange(startDate: string, endDate: string) {
   const [vehicleByCode, garbageDepartmentId] = await Promise.all([
     loadVehicleByCode(),
@@ -849,6 +952,40 @@ async function importWrsDateRange(startDate: string, endDate: string) {
     );
   }
 
+  // Хуучин снапшотыг өдөр тус бүрээр илрүүлнэ. Өмнө хадгалсан өдрүүд болон
+  // энэ багц дотор аль хэдийн зөвшөөрөгдсөн өдрүүдтэй тулгаж, давхардсан
+  // (бүрэн ижил) өдрүүдийг хадгалахаас хасна.
+  const acceptedVectors = await loadPriorWrsSnapshots(
+    shiftDateKey(startDate, -WRS_STALE_LOOKBACK_DAYS),
+    startDate,
+  );
+  const totalsByDate = new Map<string, typeof totals>();
+  for (const total of totals) {
+    const bucket = totalsByDate.get(total.reportDate);
+    if (bucket) {
+      bucket.push(total);
+    } else {
+      totalsByDate.set(total.reportDate, [total]);
+    }
+  }
+  const staleImportDates: Array<{ date: string; sourceDate: string }> = [];
+  for (const date of Array.from(totalsByDate.keys()).sort()) {
+    const vector = buildDaySnapshotVector(
+      (totalsByDate.get(date) ?? []).map((total) => ({
+        vehicle: findVehicleByCode(vehicleByCode, total.vehicleCode),
+        vehicleCode: total.vehicleCode,
+        weightKg: total.weightKg,
+      })),
+    );
+    const sourceDate = findDuplicateSnapshotDate(vector, acceptedVectors);
+    if (sourceDate) {
+      staleImportDates.push({ date, sourceDate });
+    } else if (vector.size >= WRS_STALE_MIN_VEHICLES) {
+      acceptedVectors.set(date, vector);
+    }
+  }
+  const staleDateSet = new Set(staleImportDates.map((item) => item.date));
+
   let created = 0;
   let updated = 0;
   let imported = 0;
@@ -858,6 +995,9 @@ async function importWrsDateRange(startDate: string, endDate: string) {
   const unmatchedTasks: Array<{ vehicleCode: string; vehicleLabel: string; weightKg: number }> = [];
 
   for (const total of totals) {
+    if (staleDateSet.has(total.reportDate)) {
+      continue;
+    }
     const vehicle = findVehicleByCode(vehicleByCode, total.vehicleCode);
     const reportVehicleCode = vehicleReportCode(vehicle, total.vehicleCode);
     if (!vehicle) {
@@ -943,6 +1083,7 @@ async function importWrsDateRange(startDate: string, endDate: string) {
     updated,
     dailyWeightCreated,
     dailyWeightUpdated,
+    staleImportDates,
     unmatched,
     unmatchedTasks,
   };
@@ -1018,6 +1159,38 @@ async function handleRequest(request: Request) {
         { status: 404 },
       );
     }
+
+    // Хуучин снапшот дахин ирсэн эсэхийг шалгах: тухайн өдрийн вектор өмнө
+    // хадгалсан аль нэг өдөртэй бүрэн ижил бол буруу давхардал тул хадгалахгүй.
+    const priorSnapshots = await loadPriorWrsSnapshots(
+      shiftDateKey(requestedDate, -WRS_STALE_LOOKBACK_DAYS),
+      requestedDate,
+    );
+    const dayVector = buildDaySnapshotVector(
+      totals.totals.map((total) => ({
+        vehicle: findVehicleByCode(vehicleByCode, total.vehicleCode),
+        vehicleCode: total.vehicleCode,
+        weightKg: total.netWeightTotal,
+      })),
+    );
+    const staleSourceDate = findDuplicateSnapshotDate(dayVector, priorSnapshots);
+    if (staleSourceDate) {
+      const message = `WRS ${requestedDate} тайлан ${staleSourceDate}-ны өгөгдөлтэй бүрэн ижил (хуучин снапшот дахин ирсэн) тул хадгалсангүй. WRS системийн тайланг шалгана уу.`;
+      await createSyncLog({ state: "failed", recordCount: 0, errorMessage: message });
+      await notifyWrsFailure([requestedDate], message);
+      return NextResponse.json(
+        {
+          ok: false,
+          error: message,
+          requestedDate,
+          staleSourceDate,
+          branchName: totals.branchName,
+          totalRows: totals.totals.length,
+        },
+        { status: 409 },
+      );
+    }
+
     let created = 0;
     let updated = 0;
     let imported = 0;

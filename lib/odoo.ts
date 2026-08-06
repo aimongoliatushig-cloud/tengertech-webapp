@@ -4985,7 +4985,8 @@ function toFleetWeightReportItem(
     reportDateValue:
       typeof record.report_date === "string" ? record.report_date : "",
     weightTons: weightRecordToTons(record.weight, record.unit),
-    weightLabel: formatWeight(record.weight, record.unit),
+    // Өдрийн задаргааг нийт дүнтэй ижил нэгжээр (тонн) харуулж, кг/тонны зөрүүг арилгана.
+    weightLabel: formatWeight(weightRecordToTons(record.weight, record.unit), "ton"),
     source: record.source || "Гадны систем",
     fetchedAt: formatOptionalCompactDate(record.fetched_at),
     fetchedAtValue:
@@ -5231,29 +5232,36 @@ export type FleetFuelWeightReport = {
   latestReportDate: string;
 };
 
-async function loadFleetReportDepartmentMap(
+async function loadFleetReportVehicleMeta(
   uid: number,
   connection: OdooConnection,
 ) {
   const vehicles = await safeSearchReadFleetModel<{
     id: number;
+    license_plate?: string | false;
     municipal_department_id?: OdooRelation;
   }>(
     uid,
     "fleet.vehicle",
     [],
-    ["id", "municipal_department_id"],
+    ["id", "license_plate", "municipal_department_id"],
     { context: { active_test: false }, limit: 2000 },
     connection,
   );
   const departmentByVehicle = new Map<number, string>();
+  const plateByVehicle = new Map<number, string>();
   for (const vehicle of vehicles) {
     departmentByVehicle.set(
       vehicle.id,
       relationName(vehicle.municipal_department_id ?? false, ""),
     );
+    const plate =
+      typeof vehicle.license_plate === "string" ? vehicle.license_plate.trim() : "";
+    if (plate) {
+      plateByVehicle.set(vehicle.id, plate);
+    }
   }
-  return departmentByVehicle;
+  return { departmentByVehicle, plateByVehicle };
 }
 
 export async function loadFleetFuelWeightReport(
@@ -5276,7 +5284,10 @@ export async function loadFleetFuelWeightReport(
   }
   const { uid, connection } = auth;
 
-  const departmentByVehicle = await loadFleetReportDepartmentMap(uid, connection);
+  const { departmentByVehicle, plateByVehicle } = await loadFleetReportVehicleMeta(
+    uid,
+    connection,
+  );
 
   const rowsByKey = new Map<string, FleetFuelWeightReportVehicleRow>();
   const reportDateSet = new Set<string>();
@@ -5298,8 +5309,11 @@ export async function loadFleetFuelWeightReport(
     const created: FleetFuelWeightReportVehicleRow = {
       vehicleKey: key,
       vehicleId,
+      // Жин/түлшний тайланд машиныг зөвхөн улсын дугаараар нь харуулна.
+      // Авто баазын бүртгэлийн жинхэнэ улсын дугаарыг эхэлж, дараа нь тайланд
+      // хадгалагдсан дугаарыг сонгоно.
       vehicleLabel: vehicleId
-        ? vehicleLabel || vehiclePlate || `#${vehicleId}`
+        ? plateByVehicle.get(vehicleId) || vehiclePlate || vehicleLabel || `#${vehicleId}`
         : "Авто баазад таараагүй",
       vehiclePlate,
       departmentName,

@@ -41,11 +41,10 @@ function filterFleetRows(report: FleetReport, department: string, vehicleNeedle:
 
 function buildRows(type: FleetFuelWeightReportType, rows: FleetReport["rows"]) {
   const valueHeader = type === "fuel" ? "Нийт литр" : "Нийт жин (тонн)";
-  const header = ["№", "Машин", "Улсын дугаар", "Хэлтэс", valueHeader, "Бүртгэлийн мөр", "Таарсан"];
+  const header = ["№", "Улсын дугаар", "Хэлтэс", valueHeader, "Бүртгэлийн мөр", "Таарсан"];
   const body = rows.map((row, index) => [
     index + 1,
     row.vehicleLabel,
-    row.vehiclePlate,
     row.departmentName,
     row.total,
     row.rowCount,
@@ -87,7 +86,7 @@ async function toExcelWorkbook(
         caption: "Машин тус бүрийн задаргаа",
         headers: tableRows[0] as string[],
         rows: tableRows.slice(1) as (string | number)[][],
-        columnWidths: [5, 26, 16, 24, 16, 12, 10],
+        columnWidths: [5, 22, 24, 18, 14, 10],
       },
     ],
     sheetName: type === "fuel" ? "Шатахуун" : "Жин",

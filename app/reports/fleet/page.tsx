@@ -320,7 +320,7 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
                               <span className={styles.rowIndex}>{index + 1}</span>
                               <span className={styles.vehicleName}>
                                 <strong>{row.vehicleLabel}</strong>
-                                {row.vehiclePlate && row.vehiclePlate !== row.vehicleLabel ? (
+                                {!row.matched && row.vehiclePlate && row.vehiclePlate !== row.vehicleLabel ? (
                                   <small>{row.vehiclePlate}</small>
                                 ) : null}
                                 {!row.matched ? <small className={styles.unmatchedTag}>Таараагүй</small> : null}
@@ -335,7 +335,7 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
                                   <thead>
                                     <tr>
                                       <th>Огноо</th>
-                                      <th className={styles.alignEnd}>{isFuel ? "Литр" : "Жин"}</th>
+                                      <th className={styles.alignEnd}>{isFuel ? "Литр" : "Жин (тонн)"}</th>
                                       <th>Эх сурвалж</th>
                                     </tr>
                                   </thead>
