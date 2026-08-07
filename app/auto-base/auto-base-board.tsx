@@ -231,7 +231,15 @@ type FleetVehicleBoard = {
 };
 
 type VehicleFilterKey = "all" | "active" | "repair" | "insurance" | "inspection" | "inactive";
-type VehicleStatusFilter = "all" | "active" | "warning" | "repair" | "inactive";
+type VehicleStatusFilter =
+  | "all"
+  | "active"
+  | "warning"
+  | "repair"
+  | "broken"
+  | "to_decommission"
+  | "retired"
+  | "inactive";
 type VehicleViewMode = "grid" | "list";
 type VehicleSortMode = "department" | "status" | "plate" | "deadline";
 type VehicleCategoryFilter = {
@@ -308,7 +316,16 @@ function isVehicleFilterKey(value: string): value is VehicleFilterKey {
 }
 
 function isVehicleStatusFilter(value: string): value is VehicleStatusFilter {
-  return ["all", "active", "warning", "repair", "inactive"].includes(value);
+  return [
+    "all",
+    "active",
+    "warning",
+    "repair",
+    "broken",
+    "to_decommission",
+    "retired",
+    "inactive",
+  ].includes(value);
 }
 
 function isVehicleViewMode(value: string): value is VehicleViewMode {
@@ -446,6 +463,19 @@ function activeRepairForVehicle(vehicle: FleetVehicleBoardItem) {
 function vehicleMatchesStatus(vehicle: FleetVehicleBoardItem, status: VehicleStatusFilter) {
   if (status === "all") {
     return true;
+  }
+  if (status === "broken" || status === "to_decommission" || status === "retired") {
+    return vehicle.operationalStatusKey === status;
+  }
+  if (status === "repair") {
+    return vehicle.isRepair && vehicle.operationalStatusKey !== "broken";
+  }
+  if (status === "inactive") {
+    return (
+      !vehicle.isOperational &&
+      !vehicle.isRepair &&
+      !["broken", "to_decommission", "retired"].includes(vehicle.operationalStatusKey)
+    );
   }
   return vehicleStatusMeta(vehicle).tone === status;
 }
@@ -2781,6 +2811,9 @@ export function AutoBaseBoard({
     { value: "active", label: "Ажиллаж байгаа" },
     { value: "warning", label: "Сануулгатай" },
     { value: "repair", label: "Засвартай" },
+    { value: "broken", label: "Эвдэрсэн" },
+    { value: "to_decommission", label: "Актлах" },
+    { value: "retired", label: "Ашиглалтаас гарсан" },
     { value: "inactive", label: "Идэвхгүй" },
   ];
   const visibleVehicles = [...selectedBucket.vehicles].sort((left, right) => {
