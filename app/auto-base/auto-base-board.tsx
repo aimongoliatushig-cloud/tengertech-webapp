@@ -1135,6 +1135,21 @@ const fuelTypeOptions = [
   { value: "lpg", label: "Газ" },
 ];
 
+function addOneCalendarYear(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return "";
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12) return "";
+  const sourceLastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  if (day < 1 || day > sourceLastDay) return "";
+  const targetYear = year + 1;
+  const lastDay = new Date(Date.UTC(targetYear, month, 0)).getUTCDate();
+  return `${targetYear}-${String(month).padStart(2, "0")}-${String(Math.min(day, lastDay)).padStart(2, "0")}`;
+}
+
 function displayValue(value?: string | number) {
   return value === undefined || value === null || value === "" ? "Бүртгээгүй" : String(value);
 }
@@ -1795,6 +1810,10 @@ function VehicleDetailModal({
   onClose: () => void;
 }) {
   const [activeTab, setActiveTab] = useState("main");
+  const [insuranceStartDate, setInsuranceStartDate] = useState(vehicle.insurance.startDateValue || "");
+  const [insuranceEndDate, setInsuranceEndDate] = useState(vehicle.insurance.endDateValue || "");
+  const [inspectionStartDate, setInspectionStartDate] = useState(vehicle.inspection.startDateValue || "");
+  const [inspectionEndDate, setInspectionEndDate] = useState(vehicle.inspection.endDateValue || "");
   const modelListId = useId();
   const vehicleTypeListId = useId();
   const categoryListId = useId();
@@ -1820,6 +1839,19 @@ function VehicleDetailModal({
   const typeSummary = vehicle.vehicleTypeName || vehicle.categoryName || "Төрөлгүй";
   const activeRepair = activeRepairForVehicle(vehicle);
   const fuelSummary = vehicleFuelSummary(vehicle);
+
+  useEffect(() => {
+    setInsuranceStartDate(vehicle.insurance.startDateValue || "");
+    setInsuranceEndDate(vehicle.insurance.endDateValue || "");
+    setInspectionStartDate(vehicle.inspection.startDateValue || "");
+    setInspectionEndDate(vehicle.inspection.endDateValue || "");
+  }, [
+    vehicle.id,
+    vehicle.insurance.startDateValue,
+    vehicle.insurance.endDateValue,
+    vehicle.inspection.startDateValue,
+    vehicle.inspection.endDateValue,
+  ]);
 
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -2351,7 +2383,12 @@ function VehicleDetailModal({
             <input
               name="municipal_insurance_date_start"
               type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
-              defaultValue={vehicle.insurance.startDateValue || ""}
+              value={insuranceStartDate}
+              onChange={(event) => {
+                const value = event.target.value;
+                setInsuranceStartDate(value);
+                setInsuranceEndDate(addOneCalendarYear(value));
+              }}
             />
           </label>
 
@@ -2360,7 +2397,8 @@ function VehicleDetailModal({
             <input
               name="municipal_insurance_date_end"
               type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
-              defaultValue={vehicle.insurance.endDateValue || ""}
+              value={insuranceEndDate}
+              onChange={(event) => setInsuranceEndDate(event.target.value)}
             />
           </label>
 
@@ -2369,7 +2407,12 @@ function VehicleDetailModal({
             <input
               name="municipal_inspection_date"
               type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
-              defaultValue={vehicle.inspection.startDateValue || ""}
+              value={inspectionStartDate}
+              onChange={(event) => {
+                const value = event.target.value;
+                setInspectionStartDate(value);
+                setInspectionEndDate(addOneCalendarYear(value));
+              }}
             />
           </label>
 
@@ -2378,7 +2421,8 @@ function VehicleDetailModal({
             <input
               name="municipal_next_inspection_date"
               type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
-              defaultValue={vehicle.inspection.endDateValue || ""}
+              value={inspectionEndDate}
+              onChange={(event) => setInspectionEndDate(event.target.value)}
             />
           </label>
 
