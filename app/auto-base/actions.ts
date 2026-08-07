@@ -611,6 +611,7 @@ export async function updateFleetVehicleAction(formData: FormData) {
           "mfo_active_for_ops",
           "latest_repair_state",
           "x_municipal_operational_status",
+          "x_to_decommission",
           "x_gps_installed",
           "x_fuel_monitoring_installed",
           "municipal_department_id",
@@ -753,9 +754,13 @@ export async function updateFleetVehicleAction(formData: FormData) {
       "x_municipal_operational_status" in editableFields &&
       formData.has("x_municipal_operational_status")
     ) {
+      const requestedStatus = getString(formData, "x_municipal_operational_status");
       values.x_municipal_operational_status = optionalOdooValue(
-        getString(formData, "x_municipal_operational_status"),
+        requestedStatus === "to_decommission" ? "inactive" : requestedStatus,
       );
+      if ("x_to_decommission" in editableFields) {
+        values.x_to_decommission = requestedStatus === "to_decommission";
+      }
     }
     if ("municipal_department_id" in editableFields && formData.has("municipal_department_id")) {
       values.municipal_department_id = optionalOdooId(getString(formData, "municipal_department_id"));
@@ -1010,7 +1015,13 @@ export async function createFleetVehicleAction(formData: FormData) {
         municipal_manufactured_date: optionalOdooDate(getString(formData, "municipal_manufactured_date")),
         municipal_seat_count: optionalOdooInteger(getString(formData, "municipal_seat_count"), "Суудлын тоо"),
         x_municipal_operational_status:
-          optionalOdooValue(getString(formData, "x_municipal_operational_status")) || "available",
+          optionalOdooValue(
+            getString(formData, "x_municipal_operational_status") === "to_decommission"
+              ? "inactive"
+              : getString(formData, "x_municipal_operational_status"),
+          ) || "available",
+        x_to_decommission:
+          getString(formData, "x_municipal_operational_status") === "to_decommission",
         fuel_type: optionalOdooValue(getString(formData, "fuel_type")),
         x_gps_installed: getString(formData, "x_gps_installed") === "true",
         x_fuel_monitoring_installed:

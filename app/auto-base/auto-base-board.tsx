@@ -1123,6 +1123,7 @@ const vehicleStatusOptions = [
   { value: "available", label: "Ажиллаж байгаа" },
   { value: "in_repair", label: "Засвартай" },
   { value: "broken", label: "Эвдэрсэн" },
+  { value: "to_decommission", label: "Актлах" },
   { value: "retired", label: "Ашиглалтаас гарсан" },
   { value: "inactive", label: "Идэвхгүй" },
 ];

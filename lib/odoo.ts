@@ -865,6 +865,7 @@ type OdooFleetVehicleRecord = {
   municipal_manufactured_date?: string | false;
   municipal_seat_count?: number | false;
   x_municipal_operational_status?: string | false;
+  x_to_decommission?: boolean;
   x_gps_installed?: boolean;
   x_fuel_monitoring_installed?: boolean;
   vin_sn?: string | false;
@@ -2363,6 +2364,7 @@ const FLEET_VEHICLE_FIELD_VARIANTS: string[][] = [
     "municipal_manufactured_date",
     "municipal_seat_count",
     "x_municipal_operational_status",
+    "x_to_decommission",
     "x_gps_installed",
     "x_fuel_monitoring_installed",
     "vin_sn",
@@ -4854,12 +4856,14 @@ const FLEET_OPERATIONAL_STATUS_LABELS: Record<string, string> = {
   broken: "Эвдэрсэн",
   retired: "Ашиглалтаас гарсан",
   inactive: "Идэвхгүй",
+  to_decommission: "Актлах",
 };
 const FLEET_NON_OPERATIONAL_STATUS_KEYS = new Set([
   "inactive",
   "retired",
   "broken",
   "in_repair",
+  "to_decommission",
 ]);
 
 const FLEET_IMPORT_STATE_LABELS: Record<string, string> = {
@@ -5873,7 +5877,9 @@ async function fetchLiveFleetVehicleBoard(requestedConnection: OdooConnection) {
       const stateLabel = relationName(vehicle.state_id ?? false, "");
       const rawLatestRepairState = vehicle.latest_repair_state || "";
       const latestRepairState = resolveFleetRepairStateLabel(rawLatestRepairState);
-      const operationalStatusKey = vehicle.x_municipal_operational_status || "";
+      const operationalStatusKey = vehicle.x_to_decommission
+        ? "to_decommission"
+        : vehicle.x_municipal_operational_status || "";
       const operationalStatusLabel =
         FLEET_OPERATIONAL_STATUS_LABELS[operationalStatusKey] || "";
       const rawDepartmentName = relationName(
