@@ -28,49 +28,60 @@ const GREEN = "287D3C";
 const LIGHT_GREEN = "EAF4EC";
 const BORDER = "C9D8CD";
 
-type ExportVehicle = FleetVehicleBoardItem & { exportImage: Buffer | null };
-
-function firstPhotoId(vehicle: FleetVehicleBoardItem) {
-  return vehicle.photoGroups.flatMap((group) => group.ids)[0] ?? null;
-}
+type ExportVehicle = FleetVehicleBoardItem & { exportImages: Buffer[] };
 
 function dataUrlBuffer(value: string) {
   const match = value.match(/^data:image\/[a-z0-9.+-]+;base64,(.+)$/i);
   return match ? Buffer.from(match[1], "base64") : null;
 }
 
-async function loadVehicleImage(vehicle: FleetVehicleBoardItem) {
-  try {
-    const attachmentId = firstPhotoId(vehicle);
-    const attachment = attachmentId
-      ? await fetchOdooAttachmentContent(attachmentId)
-      : null;
-    const source = attachment?.datas
-      ? Buffer.from(attachment.datas, "base64")
-      : dataUrlBuffer(vehicle.imageUrl);
-    if (!source) return null;
+async function normalizeVehicleImage(source: Buffer) {
+  return sharp(source)
+    .rotate()
+    .resize(360, 240, { fit: "cover", position: "centre" })
+    .flatten({ background: "#ffffff" })
+    .jpeg({ quality: 78 })
+    .toBuffer();
+}
 
-    return await sharp(source)
-      .rotate()
-      .resize(360, 240, { fit: "cover", position: "centre" })
-      .flatten({ background: "#ffffff" })
-      .jpeg({ quality: 78 })
-      .toBuffer();
-  } catch {
-    return null;
+async function loadVehicleImages(vehicle: FleetVehicleBoardItem) {
+  const attachmentIds = [...new Set(vehicle.photoGroups.flatMap((group) => group.ids))];
+  const images = await Promise.all(
+    attachmentIds.map(async (attachmentId) => {
+      try {
+        const attachment = await fetchOdooAttachmentContent(attachmentId);
+        return attachment?.datas
+          ? await normalizeVehicleImage(Buffer.from(attachment.datas, "base64"))
+          : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  const validImages = images.filter((image): image is Buffer => Boolean(image));
+  if (!validImages.length) {
+    const fallback = dataUrlBuffer(vehicle.imageUrl);
+    if (fallback) {
+      try {
+        validImages.push(await normalizeVehicleImage(fallback));
+      } catch {
+        // Keep the export usable even when the fallback image is invalid.
+      }
+    }
   }
+  return validImages;
 }
 
 export async function prepareFleetVehiclesForExport(
   vehicles: FleetVehicleBoardItem[],
 ): Promise<ExportVehicle[]> {
   const result: ExportVehicle[] = [];
-  for (let index = 0; index < vehicles.length; index += 6) {
-    const batch = vehicles.slice(index, index + 6);
-    const images = await Promise.all(batch.map(loadVehicleImage));
+  for (let index = 0; index < vehicles.length; index += 3) {
+    const batch = vehicles.slice(index, index + 3);
+    const images = await Promise.all(batch.map(loadVehicleImages));
     result.push(...batch.map((vehicle, batchIndex) => ({
       ...vehicle,
-      exportImage: images[batchIndex],
+      exportImages: images[batchIndex],
     })));
   }
   return result;
@@ -198,9 +209,10 @@ export async function buildFleetVehicleXlsx(vehicles: ExportVehicle[]) {
       cell.border = { bottom: { style: "thin", color: { argb: `FF${BORDER}` } } };
     });
     row.getCell(1).alignment = { horizontal: "center", vertical: "middle" };
-    if (vehicle.exportImage) {
+    const primaryImage = vehicle.exportImages[0];
+    if (primaryImage) {
       const imageId = workbook.addImage({
-        base64: vehicle.exportImage.toString("base64"),
+        base64: primaryImage.toString("base64"),
         extension: "jpeg",
       });
       sheet.addImage(imageId, {
@@ -216,6 +228,40 @@ export async function buildFleetVehicleXlsx(vehicles: ExportVehicle[]) {
     from: "A3",
     to: `${lastColumn}${Math.max(3, vehicles.length + 3)}`,
   };
+
+  const photoSheet = workbook.addWorksheet("Зургууд", {
+    views: [{ state: "frozen", ySplit: 1 }],
+    pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1 },
+  });
+  photoSheet.columns = [{ width: 8 }, { width: 20 }, { width: 24 }, { width: 32 }];
+  ["№", "Улсын дугаар", "Зураг", "Зургийн тайлбар"].forEach((header, index) => {
+    const cell = photoSheet.getRow(1).getCell(index + 1);
+    cell.value = header;
+    cell.font = { name: FONT, bold: true, color: { argb: `FF${GREEN}` } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${LIGHT_GREEN}` } };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
+  });
+  let photoRowNumber = 2;
+  for (const vehicle of vehicles) {
+    for (const [imageIndex, image] of vehicle.exportImages.entries()) {
+      const row = photoSheet.getRow(photoRowNumber);
+      row.height = 92;
+      row.getCell(1).value = imageIndex + 1;
+      row.getCell(2).value = vehicle.plate;
+      row.getCell(4).value = `${vehicle.name || vehicle.modelName || vehicle.plate} · Зураг ${imageIndex + 1}`;
+      row.eachCell((cell) => {
+        cell.font = { name: FONT, size: 10 };
+        cell.alignment = { vertical: "middle", wrapText: true };
+        cell.border = { bottom: { style: "thin", color: { argb: `FF${BORDER}` } } };
+      });
+      const imageId = workbook.addImage({ base64: image.toString("base64"), extension: "jpeg" });
+      photoSheet.addImage(imageId, {
+        tl: { col: 2.08, row: photoRowNumber - 0.92 },
+        ext: { width: 145, height: 88 },
+      });
+      photoRowNumber += 1;
+    }
+  }
   const bytes = await workbook.xlsx.writeBuffer();
   return Buffer.from(bytes);
 }
@@ -239,16 +285,23 @@ function docCell(children: (Paragraph | Table)[], width: number) {
 export async function buildFleetVehicleDocx(vehicles: ExportVehicle[]) {
   const rows: TableRow[] = [];
   for (const [index, vehicle] of vehicles.entries()) {
-    const image = vehicle.exportImage
-      ? new ImageRun({ type: "jpg", data: vehicle.exportImage, transformation: { width: 150, height: 100 } })
-      : null;
+    const imageParagraphs = vehicle.exportImages.length
+      ? vehicle.exportImages.map((image, imageIndex) => new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 80 },
+          children: [
+            new ImageRun({ type: "jpg", data: image, transformation: { width: 150, height: 100 } }),
+            new TextRun({ text: `\nЗураг ${imageIndex + 1}`, font: FONT, size: 16 }),
+          ],
+        }))
+      : [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Зураггүй", font: FONT })] })];
     const details = vehicleDetailEntries(vehicle).map(
       ([label, value]) => `${label}: ${display(value)}`,
     );
     rows.push(new TableRow({
       children: [
         docCell([new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(index + 1), bold: true, font: FONT })] })], 500),
-        docCell([new Paragraph({ alignment: AlignmentType.CENTER, children: image ? [image] : [new TextRun({ text: "Зураггүй", font: FONT })] })], 2500),
+        docCell(imageParagraphs, 2500),
         docCell(details.map((text, detailIndex) => new Paragraph({
           spacing: { after: 40 },
           children: [new TextRun({ text, font: FONT, size: 20, bold: detailIndex === 0 })],
@@ -293,19 +346,21 @@ function escapeHtml(value: unknown) {
 
 export async function buildFleetVehiclePdf(vehicles: ExportVehicle[]) {
   const cards = vehicles.map((vehicle, index) => {
-    const image = vehicle.exportImage
-      ? `<img src="data:image/jpeg;base64,${vehicle.exportImage.toString("base64")}" alt="" />`
+    const images = vehicle.exportImages.length
+      ? vehicle.exportImages.map((image, imageIndex) =>
+          `<figure><img src="data:image/jpeg;base64,${image.toString("base64")}" alt="${escapeHtml(vehicle.plate)} зураг ${imageIndex + 1}" /><figcaption>Зураг ${imageIndex + 1}</figcaption></figure>`,
+        ).join("")
       : `<div class="no-image">Зураггүй</div>`;
     const details = vehicleDetailEntries(vehicle)
       .map(([label, value]) => `<p><b>${escapeHtml(label)}:</b> ${escapeHtml(display(value))}</p>`)
       .join("");
-    return `<article><div class="number">${index + 1}</div>${image}<div class="details">
+    return `<article><div class="number">${index + 1}</div><div class="photo-gallery">${images}</div><div class="details">
       <h2>${escapeHtml(vehicle.plate)}</h2>
       ${details}
     </div></article>`;
   }).join("");
   const html = `<!doctype html><html lang="mn"><head><meta charset="utf-8"><style>
-    @page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:#15251a}header{border-bottom:3px solid #287d3c;margin-bottom:8mm;padding-bottom:4mm;display:flex;justify-content:space-between;align-items:end}h1{font-size:20px;margin:0;color:#287d3c}header p{margin:0;font-size:10px}.grid{display:grid;grid-template-columns:1fr;gap:6mm}article{position:relative;display:grid;grid-template-columns:46mm 1fr;gap:5mm;border:1px solid #c9d8cd;border-radius:3mm;padding:4mm;break-inside:avoid;background:#fff}.number{position:absolute;right:3mm;top:2mm;color:#728276;font-size:9px}img,.no-image{width:46mm;height:36mm;object-fit:cover;border-radius:2mm;background:#eef4ef}.no-image{display:flex;align-items:center;justify-content:center;color:#728276;font-size:10px}.details{column-count:3;column-gap:5mm}.details h2{column-span:all;font-size:15px;margin:0 0 2mm;color:#1d6532}.details p{break-inside:avoid;font-size:8px;line-height:1.3;margin:0 0 1mm}</style></head><body>
+    @page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:#15251a}header{border-bottom:3px solid #287d3c;margin-bottom:8mm;padding-bottom:4mm;display:flex;justify-content:space-between;align-items:end}h1{font-size:20px;margin:0;color:#287d3c}header p{margin:0;font-size:10px}.grid{display:grid;grid-template-columns:1fr;gap:6mm}article{position:relative;border:1px solid #c9d8cd;border-radius:3mm;padding:4mm;break-inside:avoid;background:#fff}.number{position:absolute;right:3mm;top:2mm;color:#728276;font-size:9px}.photo-gallery{display:flex;flex-wrap:wrap;gap:2mm;margin-bottom:3mm}.photo-gallery figure{margin:0;break-inside:avoid}.photo-gallery img,.no-image{width:43mm;height:30mm;object-fit:cover;border-radius:2mm;background:#eef4ef}.photo-gallery figcaption{text-align:center;color:#728276;font-size:7px;margin-top:.5mm}.no-image{display:flex;align-items:center;justify-content:center;color:#728276;font-size:10px}.details{column-count:3;column-gap:5mm}.details h2{column-span:all;font-size:15px;margin:0 0 2mm;color:#1d6532}.details p{break-inside:avoid;font-size:8px;line-height:1.3;margin:0 0 1mm}</style></head><body>
     <header><h1>МАШИН ТЕХНИКИЙН ЖАГСААЛТ</h1><p>Нийт ${vehicles.length} машин · ${new Date().toLocaleDateString("mn-MN")}</p></header><main class="grid">${cards}</main></body></html>`;
   const browser = await chromium.launch({ headless: true });
   try {
