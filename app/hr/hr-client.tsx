@@ -210,42 +210,6 @@ function emptyTalentSkillRow(): TalentSkillDraftRow {
   };
 }
 
-function parseDateInput(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-  const [year, month, day] = value.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
-  return date;
-}
-
-function toDateInputValue(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function isRestDay(date: Date) {
-  const day = date.getDay();
-  return day === 0 || day === 6;
-}
-
-function calculateAnnualLeaveEndDate(startDate: string, workingDays: string) {
-  const start = parseDateInput(startDate);
-  const days = Number(workingDays);
-  if (!start || !Number.isFinite(days) || days <= 0) return "";
-
-  const cursor = new Date(start);
-  let countedDays = 0;
-  while (countedDays < Math.floor(days)) {
-    cursor.setDate(cursor.getDate() + 1);
-    if (!isRestDay(cursor)) {
-      countedDays += 1;
-    }
-  }
-  return toDateInputValue(cursor);
-}
-
 function isErrorMessage(message: string) {
   const normalized = message.toLocaleLowerCase("mn-MN");
   return (
@@ -3651,26 +3615,14 @@ export function TimeoffRequestsClient({
   const [editingRequest, setEditingRequest] = useState<HrTimeoffRequest | null>(null);
   const [selectedRequestType, setSelectedRequestType] = useState<HrTimeoffRequestType>(defaultType);
   const [annualLeaveDateFrom, setAnnualLeaveDateFrom] = useState("");
-  const [annualLeaveWorkingDays, setAnnualLeaveWorkingDays] = useState("");
   const [annualLeaveDateTo, setAnnualLeaveDateTo] = useState("");
   const annualLeaveOnlyMode = mode === "hr" && defaultType === "annual_leave";
 
   useEffect(() => {
     if (selectedRequestType !== "annual_leave") return;
     setAnnualLeaveDateFrom(editingRequest?.dateFrom || "");
-    setAnnualLeaveWorkingDays("");
     setAnnualLeaveDateTo(editingRequest?.dateTo || "");
   }, [editingRequest, selectedRequestType]);
-
-  useEffect(() => {
-    if (selectedRequestType !== "annual_leave") return;
-    const calculatedDateTo = calculateAnnualLeaveEndDate(annualLeaveDateFrom, annualLeaveWorkingDays);
-    if (calculatedDateTo) {
-      setAnnualLeaveDateTo(calculatedDateTo);
-    } else if (!editingRequest) {
-      setAnnualLeaveDateTo("");
-    }
-  }, [annualLeaveDateFrom, annualLeaveWorkingDays, editingRequest, selectedRequestType]);
 
   const visibleRequests = useMemo(() => {
     // Ноорог (илгээгээгүй) хүсэлтийг жагсаалтад харуулахгүй
@@ -3926,20 +3878,18 @@ export function TimeoffRequestsClient({
               />
             </label>
             <label className={styles.field}>
-              <span>Амрах ажлын өдөр</span>
-              <input
-                name="annualLeaveWorkingDays"
-                type="number"
-                min="1"
-                step="1"
-                inputMode="numeric"
-                value={annualLeaveWorkingDays}
-                onChange={(event) => setAnnualLeaveWorkingDays(event.target.value)}
-              />
-            </label>
-            <label className={styles.field}>
               <span>Дуусах огноо</span>
-              <input name="dateTo" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} required value={annualLeaveDateTo} readOnly />
+              <input
+                name="dateTo"
+                type="text"
+                inputMode="numeric"
+                placeholder="YYYY-MM-DD"
+                pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
+                maxLength={10}
+                required
+                value={annualLeaveDateTo}
+                onChange={(event) => setAnnualLeaveDateTo(event.target.value)}
+              />
             </label>
           </div>
         ) : (
