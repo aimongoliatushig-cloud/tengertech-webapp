@@ -2480,13 +2480,24 @@ export async function createEmployeeTalentSkill(
 }
 
 export async function getDepartments(session: AppSession): Promise<HrOption[]> {
-  return executeOdooKw<OdooDictionaryRecord[]>(
-    "hr.department",
-    "search_read",
-    [[]],
-    { fields: ["name"], order: "name asc", limit: 500 },
-    getConnection(session),
-  )
+  const loadDepartments = () =>
+    executeOdooKw<OdooDictionaryRecord[]>(
+      "hr.department",
+      "search_read",
+      [[]],
+      { fields: ["name"], order: "name asc", limit: 500 },
+      getConnection(session),
+    );
+
+  return loadDepartments()
+    .catch(async (error) => {
+      // Odoo can briefly lose its PostgreSQL connection while the database
+      // container is restarting. Do not render the employee form with an
+      // empty department selector for a one-off infrastructure hiccup.
+      console.warn("HR departments could not be loaded; retrying once:", error);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return loadDepartments();
+    })
     .then((records) =>
       records
         .map((record) => ({ id: record.id, name: record.name }))
