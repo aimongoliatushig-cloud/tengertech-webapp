@@ -22,6 +22,7 @@ type FleetVehicleRecord = {
 type FuelReportRecord = {
   id: number;
   vehicle_license_plate?: string | false;
+  source?: string | false;
 };
 
 type DepartmentRecord = {
@@ -324,19 +325,21 @@ async function upsertFuelReport(input: {
     [
       [
         ["report_date", "=", input.reportDate],
-        ["source", "=", GAIHAM_FUEL_SOURCE],
       ],
     ],
     {
-      fields: ["id", "vehicle_license_plate"],
+      fields: ["id", "vehicle_license_plate", "source"],
       limit: 5000,
       order: "id desc",
     },
   );
   const normalizedInputCode = normalizeVehicleCode(input.vehicleCode);
-  const existing = existingCandidates.find(
+  const matchingCandidates = existingCandidates.filter(
     (record) => normalizeVehicleCode(record.vehicle_license_plate) === normalizedInputCode,
   );
+  const existing =
+    matchingCandidates.find((record) => normalizeVehicleCode(record.source) === normalizeVehicleCode(GAIHAM_FUEL_SOURCE)) ??
+    matchingCandidates[0];
 
   const values = {
     report_date: input.reportDate,
