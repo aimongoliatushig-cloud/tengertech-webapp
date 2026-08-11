@@ -1688,10 +1688,12 @@ function WorkInformationPanel({
 
 export function EmployeeDetailTabs({
   employee,
+  departments = [],
   canEdit = false,
   mode = "hr",
 }: {
   employee: HrEmployeeDirectoryItem;
+  departments?: HrOption[];
   canEdit?: boolean;
   mode?: "hr" | "department";
 }) {
@@ -2843,14 +2845,21 @@ export function EmployeeDetailTabs({
         <div className={styles.editInfoBanner}>
           <strong>Ажлын мэдээлэл засаж байна</strong>
           <span>
-            Ажилд орсон огноо, туршилтын хугацаа болон ажил эрхлэлтийн төрлийг энд шинэчилнэ. Хэлтэс, албан тушаал,
-            шууд удирдлага өөрчлөх бол ажлын шилжилтийн бүртгэлээр оруулна.
+            Хэлтэс / алба, ажилд орсон огноо, туршилтын хугацаа болон ажил эрхлэлтийн төрлийг энд шинэчилнэ.
+            Албан тушаал, шууд удирдлага өөрчлөх бол ажлын шилжилтийн бүртгэлээр оруулна.
           </span>
         </div>
         <div className={styles.hrProfileTwoColumn}>
           {renderPanel(
             "Ажлын хугацаа",
             <div className={styles.editCardFields}>
+              <Select
+                name="departmentId"
+                label="Хэлтэс / алба"
+                options={departments}
+                defaultValue={employee.departmentId}
+                required
+              />
               <Field name="startDate" label="Ажилд орсон огноо" type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} defaultValue={employee.startDate} />
               <label className={styles.field}>
                 <span>Ажил эрхлэлтийн төрөл</span>
