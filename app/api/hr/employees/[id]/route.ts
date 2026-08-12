@@ -56,6 +56,19 @@ function isFutureDateValue(value: unknown) {
   return !Number.isNaN(parsedDate.getTime()) && parsedDate > today;
 }
 
+function isValidDateValue(value: unknown) {
+  const dateValue = String(value || "").trim();
+  if (!dateValue) return true;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return false;
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return (
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+  );
+}
+
 function parseEducationRecords(value: unknown) {
   if (value === undefined) return undefined;
   if (value === null || value === "") return [];
@@ -193,6 +206,18 @@ function validateEmployeeUpdatePayload(payload: Record<string, unknown>) {
   }
   if (Object.prototype.hasOwnProperty.call(payload, "jobId") && !payload.jobId) {
     throw new Error("EMPLOYEE_JOB_REQUIRED");
+  }
+  const dateFields = [
+    "birthDate",
+    "spouseBirthDate",
+    "startDate",
+    "contractEndDate",
+    "trialEndDate",
+    "socialInsuranceStartDate",
+    "departureDate",
+  ];
+  if (dateFields.some((field) => Object.prototype.hasOwnProperty.call(payload, field) && !isValidDateValue(payload[field]))) {
+    throw new Error("EMPLOYEE_DATE_INVALID");
   }
   if (Object.prototype.hasOwnProperty.call(payload, "startDate") && isFutureDateValue(payload.startDate)) {
     throw new Error("EMPLOYEE_START_DATE_IN_FUTURE");
@@ -404,6 +429,9 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     }
     if (error instanceof Error && error.message === "EMPLOYEE_JOB_REQUIRED") {
       return jsonError("Албан тушаал заавал сонгоно уу.", 400);
+    }
+    if (error instanceof Error && error.message === "EMPLOYEE_DATE_INVALID") {
+      return jsonError("Огноог YYYY-MM-DD хэлбэрээр зөв оруулна уу.", 400);
     }
     if (error instanceof Error && error.message === "EMPLOYEE_START_DATE_IN_FUTURE") {
       return jsonError("Ажилд орсон огноо ирээдүйн огноо байж болохгүй.", 400);

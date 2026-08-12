@@ -1182,6 +1182,11 @@ function Field({
       <input
         name={name}
         type={type}
+        autoComplete={
+          placeholder === "YYYY-MM-DD" || pattern === "[0-9]{4}-[0-9]{2}-[0-9]{2}"
+            ? "off"
+            : undefined
+        }
         required={required}
         defaultValue={defaultValue}
         readOnly={readOnly}
