@@ -13,22 +13,22 @@
   --font-mono: var(--font-body);
 
   /* Типографийн нэгдсэн скейл — үсгийн хэмжээг зөвхөн эдгээр token-оор тохируулна. */
-  --fs-3xs: 1rem;
-  --fs-2xs: 1rem;
-  --fs-xs: 1rem;
-  --fs-sm: 1rem;
-  --fs-md: 1rem;
-  --fs-base: 1rem;
-  --fs-lg: 1.1667rem;
-  --fs-xl: 1.1667rem;
-  --fs-2xl: 1.3333rem;
-  --fs-3xl: 1.3333rem;
-  --fs-display: 1.5rem;
+  --fs-3xs: 10px;
+  --fs-2xs: 10px;
+  --fs-xs: 10px;
+  --fs-sm: 10px;
+  --fs-md: 10px;
+  --fs-base: 10px;
+  --fs-lg: 12px;
+  --fs-xl: 14px;
+  --fs-2xl: 14px;
+  --fs-3xl: 16px;
+  --fs-display: 16px;
   /* Хуудасны гарчиг, hero, статистикийн урсдаг (responsive) хэмжээнүүд. */
-  --fs-title: 1.1667rem;
-  --fs-hero: 1.3333rem;
-  --fs-hero-lg: 1.5rem;
-  --fs-stat: 1.5rem;
+  --fs-title: 14px;
+  --fs-hero: 16px;
+  --fs-hero-lg: 16px;
+  --fs-stat: 16px;
 
   --ink-950: #112019;
   --ink-900: #18251f;
@@ -101,7 +101,7 @@ body {
   font-family: var(--font-body), sans-serif;
   /* Нягт ERP харагдац: тодорхой хэмжээ заагаагүй текст 13px байна.
      Компонентын түвшний font-size-ууд өөрсдийн шатлалаа хадгална. */
-  font-size: 12pt;
+  font-size: 10px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -134,6 +134,24 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+button,
+nav,
+nav a,
+nav button,
+[role="menu"],
+[role="menuitem"] {
+  font-size: 12px;
+}
+
+h1 {
+  font-size: 16px;
+}
+
+h2,
+h3 {
+  font-size: 14px;
 }
 
 input,
