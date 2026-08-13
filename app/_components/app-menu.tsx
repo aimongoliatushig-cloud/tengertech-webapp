@@ -1367,7 +1367,14 @@ export function AppMenu({
     label: "Профайл",
     icon: Settings,
   };
+  const mobileChatAction: MenuItem = {
+    key: "chat",
+    href: "/chat",
+    label: "Чат",
+    icon: MessageSquare,
+  };
   const masterMobileDockItems: MenuItem[] = [
+    mobileHomeAction,
     {
       key: "projects",
       href: scopedDepartmentWorkHref,
@@ -1384,6 +1391,7 @@ export function AppMenu({
           },
         ]
       : []),
+    mobileChatAction,
     mobileProfileAction,
   ];
 
@@ -1424,7 +1432,7 @@ export function AppMenu({
       rolePrimaryItem ?? mobilePrimaryAction ?? fallbackPrimaryItem,
     );
 
-    return [mobileHomeAction, primaryItem, mobileProfileAction].filter(
+    return [mobileHomeAction, primaryItem, mobileChatAction, mobileProfileAction].filter(
       (item): item is MenuItem => Boolean(item),
     );
   };
