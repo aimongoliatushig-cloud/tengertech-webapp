@@ -234,7 +234,7 @@ export default async function WastePointsListPage({ searchParams }: PageProps) {
                         </td>
                         <td>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img className={styles.qrThumb} src={p.qrCode} alt={`${p.code} QR`} />
+                          {p.qrCode ? <img className={styles.qrThumb} src={p.qrCode} alt={`${p.code} QR`} /> : "—"}
                         </td>
                         <td>
                           <span

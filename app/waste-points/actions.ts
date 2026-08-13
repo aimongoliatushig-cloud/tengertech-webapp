@@ -6,8 +6,9 @@ import { redirect } from "next/navigation";
 import { canAccessAutoBaseOverview, requireSession } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { executeOdooKw } from "@/lib/odoo";
-import { getWastePointById } from "@/lib/waste-points/service";
+import { getWastePointById, invalidateWastePointCache } from "@/lib/waste-points/service";
 import { createWastePointInApi, WastePointsApiError } from "@/lib/waste-points/api";
+import { createLocalWastePoint } from "@/lib/waste-points/local-store";
 import {
   WASTE_TASK_TYPES,
   WASTE_TYPE_LABELS,
@@ -48,8 +49,7 @@ export async function createWastePointAction(formData: FormData) {
     redirect(createPath("error", "GPS өргөрөг, уртрагийн утгыг зөв оруулна уу."));
   }
 
-  try {
-    const point = await createWastePointInApi({
+  const input = {
       code,
       name,
       type: type as "collection_point" | "container" | "illegal_dump",
@@ -61,15 +61,21 @@ export async function createWastePointAction(formData: FormData) {
       containerType: formText(formData, "containerType"),
       containerCount: Math.max(0, Math.round(containerCount || 0)),
       capacity: Math.max(0, capacity || 0),
-    });
+  };
+  try {
+    let point;
+    try {
+      point = await createWastePointInApi(input);
+    } catch (error) {
+      if (!(error instanceof WastePointsApiError)) throw error;
+      point = await createLocalWastePoint(input);
+    }
+    invalidateWastePointCache();
     revalidatePath("/waste-points");
     revalidatePath("/waste-points/list");
     redirect(`/waste-points/${encodeURIComponent(point.id)}?notice=${encodeURIComponent("Хогийн цэг амжилттай нэмэгдлээ.")}`);
   } catch (error) {
-    if (error instanceof WastePointsApiError) {
-      redirect(createPath("error", error.friendly));
-    }
-    throw error;
+    redirect(createPath("error", error instanceof Error ? error.message : "Хогийн цэг хадгалахад алдаа гарлаа."));
   }
 }
 

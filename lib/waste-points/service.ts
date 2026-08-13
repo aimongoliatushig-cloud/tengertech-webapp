@@ -1,6 +1,7 @@
 import "server-only";
 
 import { fetchWastePointsFromApi } from "./api";
+import { readLocalWastePoints } from "./local-store";
 import {
   WASTE_STATUS_LABELS,
   WASTE_TYPE_LABELS,
@@ -25,8 +26,10 @@ async function fetchAllWastePoints(): Promise<WastePoint[]> {
   if (inflight) {
     return inflight;
   }
-  inflight = fetchWastePointsFromApi()
-    .then((data) => {
+  inflight = Promise.all([fetchWastePointsFromApi(), readLocalWastePoints()])
+    .then(([remote, local]) => {
+      const remoteKeys = new Set(remote.flatMap((point) => [point.id, point.code]));
+      const data = [...remote, ...local.filter((point) => !remoteKeys.has(point.id) && !remoteKeys.has(point.code))];
       cache = { at: Date.now(), data };
       return data;
     })
@@ -34,6 +37,11 @@ async function fetchAllWastePoints(): Promise<WastePoint[]> {
       inflight = null;
     });
   return inflight;
+}
+
+export function invalidateWastePointCache() {
+  cache = null;
+  inflight = null;
 }
 
 // --- Сервисийн давхарга ----------------------------------------------------
