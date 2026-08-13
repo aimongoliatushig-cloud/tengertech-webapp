@@ -44,6 +44,7 @@ class GaihamApiError extends Error {
 
 type AggregatedFuelTotal = {
   fuelLiters: number;
+  mileageKm: number;
   rowCount: number;
   sampleRows: string[];
   trackerId: number | null;
@@ -56,6 +57,7 @@ export type GaihamFuelVehicleTotal = {
   vehicleCode: string;
   vehicleLabel: string;
   fuelLiters: number;
+  mileageKm: number;
   fuelType: string;
   source: "gaiham_gps";
   rowCount: number;
@@ -363,7 +365,7 @@ function reportPlugin() {
     include_summary_sheet_only: false,
     include_summary_sheet: true,
     use_ignition_data_for_consumption: false,
-    include_mileage_plot: false,
+    include_mileage_plot: true,
     include_speed_plot: false,
     filter: true,
     smoothing: false,
@@ -488,6 +490,57 @@ function valueNameMatchesPreferredConsumption(value: string) {
   // \u0411\u043e\u0434\u0438\u0442 \u0445\u044d\u043c\u0436\u0441\u044d\u043d \u0437\u0430\u0440\u0446\u0443\u0443\u043b\u0430\u043b\u0442\u044b\u0433 \u043d\u043e\u0440\u043c\u044b\u043d \u0442\u043e\u043e\u0446\u043e\u043e\u043b\u043b\u043e\u043e\u0441 \u0438\u043b\u04af\u04af\u0434 \u04af\u0437\u043d\u044d.
   const isNormBased = normalized.includes("\u043d\u043e\u0440\u043c") || normalized.includes("norm");
   return !isNormBased && valueNameMatchesFuel(normalized);
+}
+
+function valueNameMatchesMileage(value: string) {
+  const normalized = normalizeLabel(value);
+  return (
+    /mileage|distance|kilomet(er|re)|\bkm\b/.test(normalized) ||
+    normalized.includes("туулсан") ||
+    normalized.includes("зам") ||
+    normalized.includes("км")
+  );
+}
+
+function rowMileageCandidates(row: Record<string, unknown>, columnsByField: Map<string, string>) {
+  const candidates: Array<{ value: number; score: number; label: string }> = [];
+  for (const [key, value] of Object.entries(row)) {
+    const numberValue = cellRawNumber(value);
+    if (numberValue === null || numberValue < 0) continue;
+    const label = [key, columnsByField.get(key), isObject(value) ? value.name : ""]
+      .filter(Boolean)
+      .join(" ");
+    if (!valueNameMatchesMileage(label)) continue;
+    let score = 1;
+    if (/mileage|distance|туулсан/i.test(label)) score += 8;
+    if (/total|sum|km|км/i.test(label)) score += 2;
+    candidates.push({ value: numberValue, score, label });
+  }
+  return candidates.sort((left, right) => right.score - left.score || right.value - left.value);
+}
+
+function extractSectionMileageKm(section: Record<string, unknown>) {
+  const columns = Array.isArray(section.columns) ? section.columns : [];
+  const columnsByField = new Map<string, string>();
+  for (const column of columns) {
+    if (isObject(column) && typeof column.field === "string") {
+      columnsByField.set(column.field, String(column.title ?? ""));
+    }
+  }
+  const rows = Array.isArray(section.rows) ? section.rows : [];
+  const rowCandidates = rows.flatMap((row) => (isObject(row) ? rowMileageCandidates(row, columnsByField) : []));
+  const data = Array.isArray(section.data) ? section.data : [];
+  const dataCandidates = data.flatMap((item) => {
+    if (!isObject(item)) return [];
+    const total = isObject(item.total) ? rowMileageCandidates(item.total, columnsByField) : [];
+    const itemRows = Array.isArray(item.rows)
+      ? item.rows.flatMap((row) => (isObject(row) ? rowMileageCandidates(row, columnsByField) : []))
+      : [];
+    return [...total, ...itemRows];
+  });
+  return [...rowCandidates, ...dataCandidates].sort(
+    (left, right) => right.score - left.score || right.value - left.value,
+  )[0] ?? null;
 }
 
 function rowFuelCandidates(row: Record<string, unknown>, columnsByField: Map<string, string>) {
@@ -617,8 +670,12 @@ function parseReportTotals(report: unknown, trackers: GaihamTracker[], requested
     const candidates = sections
       .map((section) => (isObject(section) ? extractSectionFuelLiters(section) : null))
       .filter((candidate): candidate is { value: number; score: number; label: string } => Boolean(candidate));
+    const mileageCandidates = sections
+      .map((section) => (isObject(section) ? extractSectionMileageKm(section) : null))
+      .filter((candidate): candidate is { value: number; score: number; label: string } => Boolean(candidate))
+      .sort((left, right) => right.score - left.score || right.value - left.value);
 
-    if (!vehicleCode || !candidates.length) {
+    if (!vehicleCode || (!candidates.length && !mileageCandidates.length)) {
       if (ignoredSamples.length < 12) {
         ignoredSamples.push(vehicleLabel || JSON.stringify(sheet).slice(0, 140));
       }
@@ -627,22 +684,24 @@ function parseReportTotals(report: unknown, trackers: GaihamTracker[], requested
 
     candidates.sort((left, right) => right.score - left.score || right.value - left.value);
     const best = candidates[0];
-    if (!best || best.value <= 0) {
-      continue;
-    }
 
     const current = totalsByVehicle.get(vehicleCode) ?? {
       fuelLiters: 0,
+      mileageKm: 0,
       rowCount: 0,
       sampleRows: [],
       trackerId,
       vehicleLabel: vehicleLabel || vehicleCode,
     };
-    current.fuelLiters += best.value;
+    current.fuelLiters += best?.value ?? 0;
+    current.mileageKm = Math.max(current.mileageKm, mileageCandidates[0]?.value ?? 0);
     current.rowCount += 1;
-    sourceRows += 1;
-    if (current.sampleRows.length < 3) {
+    if (best) sourceRows += 1;
+    if (best && current.sampleRows.length < 3) {
       current.sampleRows.push(`${best.label}: ${best.value}`);
+    }
+    if (mileageCandidates[0] && current.sampleRows.length < 3) {
+      current.sampleRows.push(`${mileageCandidates[0].label}: ${mileageCandidates[0].value}`);
     }
     totalsByVehicle.set(vehicleCode, current);
   }
@@ -654,6 +713,7 @@ function parseReportTotals(report: unknown, trackers: GaihamTracker[], requested
       vehicleCode,
       vehicleLabel: total.vehicleLabel,
       fuelLiters: Math.round(total.fuelLiters * 100) / 100,
+      mileageKm: Math.round(total.mileageKm * 100) / 100,
       fuelType: "",
       source: "gaiham_gps" as const,
       rowCount: total.rowCount,
