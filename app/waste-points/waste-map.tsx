@@ -162,7 +162,11 @@ export function WasteMap({ points }: { points: WastePoint[] }) {
             </div>
 
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className={styles.qrImage} src={toQrSrc(selected.qrCode)} alt={`${selected.code} QR`} />
+            {/^https?:\/\//i.test(selected.qrCode) ? (
+              <a className={`${styles.button} ${styles.buttonPrimary}`} href={selected.qrCode} target="_blank" rel="noreferrer">Smart Clean QR нээх</a>
+            ) : selected.qrCode ? (
+              <img className={styles.qrImage} src={toQrSrc(selected.qrCode)} alt={`${selected.code} QR`} />
+            ) : null}
 
             <div className={styles.defList}>
               <div className={styles.defItem}>

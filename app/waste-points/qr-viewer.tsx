@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Download, Printer } from "lucide-react";
+import { Check, Copy, Download, ExternalLink, Printer } from "lucide-react";
 
 import styles from "./waste-points.module.css";
 
@@ -10,6 +10,7 @@ import styles from "./waste-points.module.css";
 export function toQrSrc(qrCode: string): string {
   const value = (qrCode || "").trim();
   if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return "";
   if (value.startsWith("data:")) return value;
   return `data:image/png;base64,${value}`;
 }
@@ -17,6 +18,7 @@ export function toQrSrc(qrCode: string): string {
 export function QrViewer({ code, qrCode, name }: { code: string; qrCode: string; name: string }) {
   const [copied, setCopied] = useState(false);
   const src = toQrSrc(qrCode);
+  const smartCleanUrl = /^https?:\/\//i.test(qrCode) ? qrCode : "";
 
   const handleCopy = async () => {
     try {
@@ -53,6 +55,30 @@ export function QrViewer({ code, qrCode, name }: { code: string; qrCode: string;
     win.focus();
     win.print();
   };
+
+  if (smartCleanUrl) {
+    return (
+      <div className={styles.qrCard}>
+        <span className={styles.qrCode}>{code}</span>
+        <p className={styles.empty}>Smart Clean UB системийн QR холбоос бүртгэгдсэн.</p>
+        <div className={styles.qrActions}>
+          <a className={`${styles.button} ${styles.buttonPrimary}`} href={smartCleanUrl} target="_blank" rel="noreferrer">
+            <ExternalLink size={15} aria-hidden /> Smart Clean QR нээх
+          </a>
+          <button type="button" className={styles.button} onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(smartCleanUrl);
+              setCopied(true);
+              window.setTimeout(() => setCopied(false), 1800);
+            } catch { setCopied(false); }
+          }}>
+            {copied ? <Check size={15} aria-hidden /> : <Copy size={15} aria-hidden />}
+            {copied ? "Хуулсан" : "Холбоос хуулах"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!src) {
     return <p className={styles.empty}>QR код бүртгэгдээгүй байна.</p>;

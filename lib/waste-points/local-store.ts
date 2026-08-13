@@ -31,7 +31,7 @@ export async function createLocalWastePoint(input: CreateWastePointInput): Promi
     id: `erp-${randomUUID()}`,
     currentFillLevel: 0,
     currentStatus: "active",
-    qrCode: "",
+    qrCode: `https://qr.smartcleanub.mn/qr/${encodeURIComponent(input.code)}`,
     assignedCompany: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
     createdAt: now,
     updatedAt: now,

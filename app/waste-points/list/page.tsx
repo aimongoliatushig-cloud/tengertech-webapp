@@ -234,7 +234,9 @@ export default async function WastePointsListPage({ searchParams }: PageProps) {
                         </td>
                         <td>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          {p.qrCode ? <img className={styles.qrThumb} src={p.qrCode} alt={`${p.code} QR`} /> : "—"}
+                          {p.qrCode && /^https?:\/\//i.test(p.qrCode) ? (
+                            <a className={styles.iconLink} href={p.qrCode} target="_blank" rel="noreferrer" title="Smart Clean QR нээх"><QrCode size={15} aria-hidden /></a>
+                          ) : p.qrCode ? <img className={styles.qrThumb} src={p.qrCode} alt={`${p.code} QR`} /> : "—"}
                         </td>
                         <td>
                           <span
