@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Download, Fuel, Scale } from "lucide-react";
+import { Download, Fuel, Gauge, Scale } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { ReportPeriodBar } from "@/app/_components/report-period-bar";
@@ -57,7 +57,8 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
   const canViewAllReports = canViewAllWorkspaceReports(session);
 
   const rawParams = (await searchParams) ?? {};
-  const type: FleetFuelWeightReportType = firstParam(rawParams.type) === "weight" ? "weight" : "fuel";
+  const requestedType = firstParam(rawParams.type);
+  const type: FleetFuelWeightReportType = requestedType === "weight" || requestedType === "distance" ? requestedType : "fuel";
   const period = resolveReportPeriod({
     mode: firstParam(rawParams.mode),
     month: firstParam(rawParams.month),
@@ -80,8 +81,9 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
   }
 
   const isFuel = type === "fuel";
-  const typeLabel = isFuel ? "Шатахуун" : "Жин";
-  const unitLabel = report?.unitLabel ?? (isFuel ? "л" : "тонн");
+  const isDistance = type === "distance";
+  const typeLabel = isFuel ? "Шатахуун" : isDistance ? "Туулсан км" : "Жин";
+  const unitLabel = report?.unitLabel ?? (isFuel ? "л" : isDistance ? "км" : "тонн");
   const summary = report?.summary;
   const allRows = report?.rows ?? [];
 
@@ -195,10 +197,17 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
                   </Link>
                   <Link
                     href={buildReportPeriodHref("/reports/fleet", period, {}, { type: "weight" })}
-                    className={`${styles.typeTab} ${!isFuel ? styles.typeTabActive : ""}`}
+                    className={`${styles.typeTab} ${type === "weight" ? styles.typeTabActive : ""}`}
                   >
                     <Scale aria-hidden size={18} />
                     Жин
+                  </Link>
+                  <Link
+                    href={buildReportPeriodHref("/reports/fleet", period, {}, { type: "distance" })}
+                    className={`${styles.typeTab} ${isDistance ? styles.typeTabActive : ""}`}
+                  >
+                    <Gauge aria-hidden size={18} />
+                    Туулсан км
                   </Link>
                 </div>
 
@@ -309,7 +318,7 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
 
                     {rows.length ? (
                       rows.map((row, index) => {
-                        const daily = isFuel ? row.fuelDaily : row.weightDaily;
+                        const daily = isFuel ? row.fuelDaily : isDistance ? row.distanceDaily : row.weightDaily;
                         return (
                           <details key={row.vehicleKey} className={styles.vehicleRow}>
                             <summary
@@ -335,20 +344,22 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
                                   <thead>
                                     <tr>
                                       <th>Огноо</th>
-                                      <th className={styles.alignEnd}>{isFuel ? "Литр" : "Жин (тонн)"}</th>
-                                      <th>Эх сурвалж</th>
+                                      <th className={styles.alignEnd}>{isFuel ? "Литр" : isDistance ? "Туулсан км" : "Жин (тонн)"}</th>
+                                      <th>{isDistance ? "Одометр" : "Эх сурвалж"}</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {daily.map((item) => (
                                       <tr key={item.id}>
-                                        <td>{item.reportDateValue || item.reportDate}</td>
+                                        <td>{isDistance ? (item as (typeof row.distanceDaily)[number]).date : (item as (typeof row.fuelDaily)[number] | (typeof row.weightDaily)[number]).reportDateValue || (item as (typeof row.fuelDaily)[number] | (typeof row.weightDaily)[number]).reportDate}</td>
                                         <td className={styles.alignEnd}>
                                           {isFuel
                                             ? (item as (typeof row.fuelDaily)[number]).fuelLabel
-                                            : (item as (typeof row.weightDaily)[number]).weightLabel}
+                                            : isDistance
+                                              ? (item as (typeof row.distanceDaily)[number]).traveledLabel
+                                              : (item as (typeof row.weightDaily)[number]).weightLabel}
                                         </td>
-                                        <td>{item.source}</td>
+                                        <td>{isDistance ? (item as (typeof row.distanceDaily)[number]).odometerLabel : (item as (typeof row.fuelDaily)[number] | (typeof row.weightDaily)[number]).source}</td>
                                       </tr>
                                     ))}
                                   </tbody>

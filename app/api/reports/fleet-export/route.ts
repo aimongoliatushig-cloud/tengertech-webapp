@@ -40,7 +40,7 @@ function filterFleetRows(report: FleetReport, department: string, vehicleNeedle:
 }
 
 function buildRows(type: FleetFuelWeightReportType, rows: FleetReport["rows"]) {
-  const valueHeader = type === "fuel" ? "Нийт литр" : "Нийт жин (тонн)";
+  const valueHeader = type === "fuel" ? "Нийт литр" : type === "weight" ? "Нийт жин (тонн)" : "Туулсан км";
   const header = ["№", "Улсын дугаар", "Хэлтэс", valueHeader, "Бүртгэлийн мөр", "Таарсан"];
   const body = rows.map((row, index) => [
     index + 1,
@@ -67,7 +67,7 @@ async function toExcelWorkbook(
   return buildReportWorkbook({
     title,
     meta: [
-      { label: "Тайлангийн төрөл", value: type === "fuel" ? "Шатахуун" : "Хогийн жин" },
+      { label: "Тайлангийн төрөл", value: type === "fuel" ? "Шатахуун" : type === "weight" ? "Хогийн жин" : "Туулсан км" },
       { label: "Хамрах хугацаа", value: `${report.startDate} - ${report.endDate}` },
     ],
     sections: [
@@ -89,7 +89,7 @@ async function toExcelWorkbook(
         columnWidths: [5, 22, 24, 18, 14, 10],
       },
     ],
-    sheetName: type === "fuel" ? "Шатахуун" : "Жин",
+    sheetName: type === "fuel" ? "Шатахуун" : type === "weight" ? "Жин" : "Туулсан км",
   });
 }
 
@@ -104,7 +104,8 @@ export async function GET(request: Request) {
   }
 
   const searchParams = new URL(request.url).searchParams;
-  const type: FleetFuelWeightReportType = getParam(searchParams, "type") === "weight" ? "weight" : "fuel";
+  const requestedType = getParam(searchParams, "type");
+  const type: FleetFuelWeightReportType = requestedType === "weight" || requestedType === "distance" ? requestedType : "fuel";
   const rawStart = getParam(searchParams, "startDate");
   const rawEnd = getParam(searchParams, "endDate");
   if (!DATE_KEY_PATTERN.test(rawStart) || !DATE_KEY_PATTERN.test(rawEnd)) {
@@ -124,9 +125,9 @@ export async function GET(request: Request) {
   const displayRows = filterFleetRows(report, department, vehicleNeedle);
 
   const format = getParam(searchParams, "format") || "csv";
-  const typeSlug = type === "fuel" ? "fuel" : "weight";
+  const typeSlug = type === "fuel" ? "fuel" : type === "weight" ? "weight" : "distance";
   const title =
-    type === "fuel" ? "Шатахууны тайлан" : "Хогийн жингийн тайлан";
+    type === "fuel" ? "Шатахууны тайлан" : type === "weight" ? "Хогийн жингийн тайлан" : "Туулсан км-ийн тайлан";
   const fileBase = `fleet-${typeSlug}-${startDate}_${endDate}`;
 
   if (format === "excel" || format === "xls" || format === "xlsx") {

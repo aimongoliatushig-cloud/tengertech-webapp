@@ -974,6 +974,13 @@ type OdooGarbageFuelReportRecord = {
   error_message?: string | false;
 };
 
+type OdooFleetOdometerRecord = {
+  id: number;
+  vehicle_id: OdooRelation;
+  date?: string | false;
+  value?: number;
+};
+
 type OdooProcurementLinkRecord = {
   id: number;
   name: string;
@@ -5252,7 +5259,16 @@ async function loadFuelReportsByVehicle(
   return { records, items, byVehicle };
 }
 
-export type FleetFuelWeightReportType = "fuel" | "weight";
+export type FleetFuelWeightReportType = "fuel" | "weight" | "distance";
+
+export type FleetVehicleOdometerItem = {
+  id: number;
+  date: string;
+  odometerKm: number;
+  odometerLabel: string;
+  traveledKm: number;
+  traveledLabel: string;
+};
 
 export type FleetFuelWeightReportVehicleRow = {
   vehicleKey: string;
@@ -5266,6 +5282,7 @@ export type FleetFuelWeightReportVehicleRow = {
   matched: boolean;
   weightDaily: FleetVehicleDailyWeightItem[];
   fuelDaily: FleetVehicleDailyFuelItem[];
+  distanceDaily: FleetVehicleOdometerItem[];
 };
 
 export type FleetFuelWeightReport = {
@@ -5333,7 +5350,7 @@ export async function loadFleetFuelWeightReport(
   const { type } = input;
   const startDate = input.startDate;
   const endDate = input.endDate >= input.startDate ? input.endDate : input.startDate;
-  const unitLabel = type === "fuel" ? "л" : "тонн";
+  const unitLabel = type === "fuel" ? "л" : type === "weight" ? "тонн" : "км";
 
   const requestedConnection = createOdooConnection(connectionOverrides);
   const auth = await authenticateWithFallback(requestedConnection);
@@ -5381,6 +5398,7 @@ export async function loadFleetFuelWeightReport(
       matched: Boolean(vehicleId),
       weightDaily: [],
       fuelDaily: [],
+      distanceDaily: [],
     };
     rowsByKey.set(key, created);
     return created;
@@ -5419,7 +5437,7 @@ export async function loadFleetFuelWeightReport(
       row.fuelDaily.push(item);
       trackReportDate(item.reportDateValue);
     }
-  } else {
+  } else if (type === "weight") {
     const records = await safeSearchReadFleetModel<OdooGarbageWeightReportRecord>(
       uid,
       "municipal.garbage.weight.report",
@@ -5442,10 +5460,62 @@ export async function loadFleetFuelWeightReport(
       row.weightDaily.push(item);
       trackReportDate(item.reportDateValue);
     }
+  } else {
+    const records = await safeSearchReadFleetModel<OdooFleetOdometerRecord>(
+      uid,
+      "fleet.vehicle.odometer",
+      [["date", "<=", endDate]],
+      ["vehicle_id", "date", "value"],
+      { order: "vehicle_id asc, date asc, id asc", limit: 10000 },
+      connection,
+    );
+    const byVehicle = new Map<number, OdooFleetOdometerRecord[]>();
+    for (const record of records) {
+      const vehicleId = relationId(record.vehicle_id);
+      if (!vehicleId || !record.date || typeof record.value !== "number") continue;
+      const items = byVehicle.get(vehicleId) ?? [];
+      items.push(record);
+      byVehicle.set(vehicleId, items);
+    }
+    for (const [vehicleId, items] of byVehicle) {
+      const baseline = items.filter((item) => String(item.date) < startDate).at(-1);
+      const periodItems = items.filter(
+        (item) => String(item.date) >= startDate && String(item.date) <= endDate,
+      );
+      if (!periodItems.length) continue;
+      let previousValue = Number(baseline?.value ?? periodItems[0].value ?? 0);
+      const distanceDaily: FleetVehicleOdometerItem[] = periodItems.map((item) => {
+        const value = Number(item.value ?? 0);
+        const traveledKm = Math.max(0, value - previousValue);
+        previousValue = value;
+        trackReportDate(String(item.date));
+        return {
+          id: item.id,
+          date: String(item.date),
+          odometerKm: value,
+          odometerLabel: `${Math.round(value).toLocaleString("mn-MN")} км`,
+          traveledKm,
+          traveledLabel: `${Math.round(traveledKm).toLocaleString("mn-MN")} км`,
+        };
+      });
+      const totalKm = distanceDaily.reduce((sum, item) => sum + item.traveledKm, 0);
+      const row = ensureRow(
+        vehicleId,
+        relationName(periodItems.at(-1)?.vehicle_id ?? false, `#${vehicleId}`),
+        plateByVehicle.get(vehicleId) ?? "",
+      );
+      row.total = totalKm;
+      row.rowCount = periodItems.length;
+      row.distanceDaily = distanceDaily.slice().reverse();
+    }
   }
 
   const formatTotal = (value: number) =>
-    type === "fuel" ? formatLiters(value) : formatWeight(value, "ton");
+    type === "fuel"
+      ? formatLiters(value)
+      : type === "weight"
+        ? formatWeight(value, "ton")
+        : `${Math.round(value).toLocaleString("mn-MN")} км`;
 
   const rows = Array.from(rowsByKey.values())
     .map((row) => ({
