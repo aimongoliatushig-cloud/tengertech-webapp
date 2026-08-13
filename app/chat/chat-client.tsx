@@ -10,10 +10,6 @@ type Attachment = { id: string; name: string; mimeType: string; size: number };
 type ChatMessage = { id: string; conversationId: string; authorId: number; author: string; roleLabel: string; body: string; sentAt: string; readBy: number[]; attachment?: Attachment };
 type Snapshot = { conversations: Conversation[]; messages: ChatMessage[]; employees: Employee[]; currentUserId: number; onlineUserIds: number[] };
 
-function formatTime(value: string) {
-  return new Intl.DateTimeFormat("mn-MN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
-}
-
 export function ChatClient() {
   const [snapshot, setSnapshot] = useState<Snapshot>({ conversations: [], messages: [], employees: [], currentUserId: 0, onlineUserIds: [] });
   const [sidebarTab, setSidebarTab] = useState<"employees" | "groups">("employees");
@@ -134,9 +130,16 @@ export function ChatClient() {
     </aside>
     <div className={`${styles.messagePanel} ${mobileConversationOpen ? styles.mobileMessageOpen : ""}`}>
       <header className={styles.messageHeader}><button type="button" className={styles.mobileBackButton} onClick={() => setMobileConversationOpen(false)} aria-label="Чатын жагсаалт руу буцах"><ArrowLeft /></button><div><span>{active?.description || "Чат сонгоно уу"}</span><h2>{active ? conversationName(active) : "Харилцаа холбоо"}</h2></div><strong>{messages.length} зурвас</strong></header>
-      <div className={styles.messageList}>{messages.map((message) => <article key={message.id} className={`${styles.messageBubble} ${message.authorId === snapshot.currentUserId ? styles.messageBubbleOwn : ""}`}>
-        <div className={styles.messageMeta}><strong>{message.author}</strong><span>{message.roleLabel}</span><time>{formatTime(message.sentAt)}</time></div>{message.attachment ? attachmentView(message.attachment) : null}{message.body ? <p>{message.body}</p> : null}
-      </article>)}</div>
+      <div className={styles.messageList}>{messages.map((message) => {
+        const author = snapshot.employees.find((employee) => employee.id === message.authorId);
+        const own = message.authorId === snapshot.currentUserId;
+        return <div key={message.id} className={`${styles.messageRow} ${own ? styles.messageRowOwn : ""}`}>
+          <span className={styles.messageAvatar}>{author?.photoUrl ? <img src={author.photoUrl} alt=""/> : null}</span>
+          <article className={`${styles.messageBubble} ${own ? styles.messageBubbleOwn : ""}`}>
+            {message.attachment ? attachmentView(message.attachment) : null}{message.body ? <p>{message.body}</p> : null}
+          </article>
+        </div>;
+      })}</div>
       {error ? <p className={styles.chatError}>{error}</p> : null}
       <form className={styles.composer} onSubmit={send}>{pendingFile ? <div className={styles.pendingFile}><span>{pendingFile.type.startsWith("audio/") ? "Voice: " : "Файл: "}{pendingFile.name}</span><button type="button" onClick={() => setPendingFile(null)}><X/></button></div> : null}<div className={styles.composerRow}><div className={styles.mediaActions}><label title="Зураг эсвэл файл"><Paperclip/><input type="file" accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" onChange={(event) => setPendingFile(event.target.files?.[0] || null)}/></label><label title="Камераар зураг авах"><Camera/><input type="file" accept="image/*" capture="environment" onChange={(event) => setPendingFile(event.target.files?.[0] || null)}/></label><button type="button" className={recording ? styles.recordingButton : ""} onClick={() => void toggleRecording()} title="Voice бичих">{recording ? <Square/> : <Mic/>}</button></div><textarea id="chat_message" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={recording ? "Voice бичиж байна..." : "Зурвасаа бичнэ үү"} rows={2}/><button type="submit" disabled={(!draft.trim() && !pendingFile) || sending}>{sending ? "Илгээж байна..." : "Илгээх"}</button></div></form>
     </div>

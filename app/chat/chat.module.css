@@ -225,6 +225,32 @@
   padding: 18px 4px;
 }
 
+.messageRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 9px;
+}
+
+.messageRowOwn {
+  flex-direction: row-reverse;
+}
+
+.messageAvatar {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  border-radius: 50%;
+  background: var(--chat-accent-soft);
+}
+
+.messageAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .messageBubble {
   width: min(74%, 680px);
   padding: 14px 16px;
@@ -238,29 +264,6 @@
   border-color: rgba(73, 100, 81, 0.24);
   background: #698272;
   color: #ffffff;
-}
-
-.messageMeta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.messageMeta strong {
-  font-size: var(--fs-md);
-}
-
-.messageMeta span,
-.messageMeta time {
-  color: var(--ink-600);
-  font-size: var(--fs-2xs);
-}
-
-.messageBubbleOwn .messageMeta span,
-.messageBubbleOwn .messageMeta time {
-  color: rgba(247, 252, 246, 0.74);
 }
 
 .messageBubble p {
