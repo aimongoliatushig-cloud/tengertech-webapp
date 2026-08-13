@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Archive,
   BarChart3,
@@ -32,6 +32,7 @@ const HR_SECTION_ITEMS: HrSectionItem[] = [
   { key: "hr-dashboard", href: "/hr", label: "Хянах самбар", icon: LayoutDashboard },
   { key: "hr-employees", href: "/hr/employees", label: "Ажилтнууд", icon: Users },
   { key: "hr-requests", href: "/hr/leaves", label: "Чөлөө", icon: ClipboardCheck },
+  { key: "hr-annual-leave", href: "/hr/sick?type=annual_leave", label: "Ээлжийн амралт", icon: CalendarDays },
   { key: "hr-sick", href: "/hr/sick", label: "Өвчтэй", icon: HeartPulse },
   { key: "hr-trips", href: "/hr/trips", label: "Томилолт", icon: Truck },
   { key: "hr-orders", href: "/hr/orders", label: "Тушаал", icon: CalendarDays },
@@ -47,6 +48,7 @@ const DEPARTMENT_SECTION_KEYS = new Set([
   "hr-dashboard",
   "hr-employees",
   "hr-requests",
+  "hr-annual-leave",
   "hr-sick",
   "hr-trips",
   "hr-orders",
@@ -61,6 +63,7 @@ function isActiveSection(pathname: string, href: string) {
 
 export function HrSectionNav({ mode = "hr" }: { mode?: "hr" | "department" }) {
   const pathname = usePathname() ?? "/hr";
+  const searchParams = useSearchParams();
   const items =
     mode === "hr"
       ? HR_SECTION_ITEMS
@@ -71,7 +74,12 @@ export function HrSectionNav({ mode = "hr" }: { mode?: "hr" | "department" }) {
       <div className={styles.sectionNavInner}>
         {items.map((item) => {
           const Icon = item.icon;
-          const active = isActiveSection(pathname, item.href);
+          const annualLeavePage = pathname === "/hr/sick" && searchParams.get("type") === "annual_leave";
+          const active = item.key === "hr-annual-leave"
+            ? annualLeavePage
+            : item.key === "hr-sick"
+              ? pathname === "/hr/sick" && !annualLeavePage
+              : isActiveSection(pathname, item.href);
           return (
             <Link
               key={item.key}

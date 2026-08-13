@@ -3655,13 +3655,15 @@ export function TimeoffRequestsClient({
 
   const visibleRequests = useMemo(() => {
     // Ноорог (илгээгээгүй) хүсэлтийг жагсаалтад харуулахгүй
-    const base = requests.filter((request) => request.state !== "draft");
+    const base = requests.filter(
+      (request) => request.state !== "draft" && request.requestType === defaultType,
+    );
     if (filter === ALL) return base;
     if (filter === "pending") {
       return base.filter((request) => request.state === "submitted" || request.state === "hr_review");
     }
     return base.filter((request) => request.state === filter || request.requestType === filter);
-  }, [filter, requests]);
+  }, [defaultType, filter, requests]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -3736,15 +3738,12 @@ export function TimeoffRequestsClient({
 
         <div className={styles.toolbar}>
           <select value={filter} onChange={(event) => setFilter(event.target.value)}>
-            <option value={ALL}>Бүх хүсэлт</option>
+            <option value={ALL}>Бүх төлөв</option>
             <option value="pending">Хяналт хүлээж буй</option>
             <option value="submitted">Хүлээгдэж буй</option>
             <option value="hr_review">HR шалгаж байна</option>
             <option value="approved">Батлагдсан</option>
             <option value="rejected">Татгалзсан</option>
-            <option value="time_off">Чөлөө</option>
-            <option value="annual_leave">Ээлжийн амралт</option>
-            <option value="sick">Өвчтэй</option>
           </select>
         </div>
 
