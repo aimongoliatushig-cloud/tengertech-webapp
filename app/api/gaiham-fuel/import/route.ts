@@ -17,6 +17,14 @@ type FleetVehicleRecord = {
   license_plate?: string | false;
   name?: string | false;
   municipal_department_id?: [number, string] | false;
+  odometer?: number | false;
+};
+
+type OdometerRecord = {
+  id: number;
+  date?: string | false;
+  value?: number | false;
+  vehicle_id?: [number, string] | false;
 };
 
 type FuelReportRecord = {
@@ -192,7 +200,7 @@ async function loadVehicleByCode() {
     "search_read",
     [[]],
     {
-      fields: ["id", "license_plate", "name", "municipal_department_id"],
+      fields: ["id", "license_plate", "name", "municipal_department_id", "odometer"],
       limit: 700,
       order: "license_plate asc, name asc",
       context: { active_test: false },
@@ -385,6 +393,89 @@ async function createSyncLog(input: {
   }
 }
 
+async function importMileageHistory(
+  totals: Array<{ reportDate: string; vehicleCode: string; mileageKm: number }>,
+  vehicleByCode: Map<string, FleetVehicleRecord>,
+  startDate: string,
+  endDate: string,
+) {
+  const dailyByVehicle = new Map<number, Array<{ date: string; mileageKm: number }>>();
+  const vehicleById = new Map<number, FleetVehicleRecord>();
+  for (const total of totals) {
+    if (total.mileageKm <= 0) continue;
+    const vehicle = findVehicleByCode(vehicleByCode, total.vehicleCode);
+    if (!vehicle) continue;
+    vehicleById.set(vehicle.id, vehicle);
+    const rows = dailyByVehicle.get(vehicle.id) ?? [];
+    rows.push({ date: total.reportDate, mileageKm: total.mileageKm });
+    dailyByVehicle.set(vehicle.id, rows);
+  }
+
+  let created = 0;
+  let updated = 0;
+  const skipped: Array<{ vehicleId: number; vehicleCode: string; reason: string }> = [];
+  const baselineDate = shiftDateKey(startDate, -1);
+
+  for (const [vehicleId, dailyRows] of dailyByVehicle.entries()) {
+    const vehicle = vehicleById.get(vehicleId);
+    if (!vehicle) continue;
+    dailyRows.sort((left, right) => left.date.localeCompare(right.date));
+    const existing = await executeOdooKw<OdometerRecord[]>(
+      "fleet.vehicle.odometer",
+      "search_read",
+      [[ ["vehicle_id", "=", vehicleId] ]],
+      { fields: ["id", "date", "value", "vehicle_id"], limit: 5000, order: "date desc, id desc" },
+    );
+    const latest = existing.find((row) => Number(row.value) > 0 && Boolean(row.date));
+    const anchorValue = Number(latest?.value || vehicle.odometer || 0);
+    const anchorDate = String(latest?.date || endDate);
+    if (!Number.isFinite(anchorValue) || anchorValue <= 0) {
+      skipped.push({
+        vehicleId,
+        vehicleCode: vehicleReportCode(vehicle, String(vehicleId)),
+        reason: "Одоогийн одометрийн баталгаатай утга байхгүй.",
+      });
+      continue;
+    }
+
+    const valuesByDate = new Map<string, number>();
+    let backwardValue = anchorValue;
+    for (const row of [...dailyRows].sort((left, right) => right.date.localeCompare(left.date))) {
+      if (row.date > anchorDate) continue;
+      valuesByDate.set(row.date, backwardValue);
+      backwardValue -= row.mileageKm;
+    }
+    if (dailyRows.some((row) => row.date === startDate)) {
+      valuesByDate.set(baselineDate, backwardValue);
+    }
+
+    let forwardValue = anchorValue;
+    for (const row of dailyRows) {
+      if (row.date <= anchorDate) continue;
+      forwardValue += row.mileageKm;
+      valuesByDate.set(row.date, forwardValue);
+    }
+
+    const existingByDate = new Map(
+      existing.filter((row) => row.date).map((row) => [String(row.date), row]),
+    );
+    for (const [date, rawValue] of Array.from(valuesByDate.entries()).sort()) {
+      const value = Math.max(0, Math.round(rawValue * 100) / 100);
+      const sameDate = existingByDate.get(date);
+      if (sameDate?.id) {
+        if (date === anchorDate && Number(sameDate.value) === anchorValue) continue;
+        await executeOdooKw<boolean>("fleet.vehicle.odometer", "write", [[sameDate.id], { value }]);
+        updated += 1;
+      } else {
+        await executeOdooKw<number>("fleet.vehicle.odometer", "create", [{ vehicle_id: vehicleId, date, value }]);
+        created += 1;
+      }
+    }
+  }
+
+  return { created, updated, skipped, startDate, endDate };
+}
+
 async function notifyGaihamFailure(reportDates: string[], message: string) {
   await notifyGarbageSyncFailure({
     syncType: "fuel",
@@ -480,6 +571,8 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
   const totals = Array.from(totalsByDateVehicle.values()).sort((left, right) =>
     `${left.reportDate}:${left.vehicleCode}`.localeCompare(`${right.reportDate}:${right.vehicleCode}`),
   );
+
+  const mileageImport = await importMileageHistory(totals, vehicleByCode, startDate, endDate);
 
   if (!totals.length) {
     const firstFailure = failedDates.find((item) => item.error.trim())?.error.trim() || "";
@@ -582,6 +675,7 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
     created,
     updated,
     unmatched,
+    mileageImport,
     mileagePreview: totals
       .filter((total) => total.mileageKm > 0)
       .map((total) => ({
