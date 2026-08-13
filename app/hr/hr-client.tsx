@@ -3628,10 +3628,15 @@ export function TimeoffRequestsClient({
   mode?: "hr" | "department";
 }) {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const router = useRouter();
   const requestedType = searchParams.get("type");
   const defaultType: HrTimeoffRequestType =
-    requestedType === "sick" ? "sick" : requestedType === "annual_leave" ? "annual_leave" : "time_off";
+    requestedType === "annual_leave"
+      ? "annual_leave"
+      : requestedType === "sick" || pathname === "/hr/sick"
+        ? "sick"
+        : "time_off";
   const defaultFilter = searchParams.get("state") || searchParams.get("requestType") || ALL;
   const defaultEmployeeId = searchParams.get("employeeId") || "";
   const employeeById = useMemo(
