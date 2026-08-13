@@ -523,14 +523,14 @@ function toOfficialPdfHtml(
     .logos .eco { height: 40px; }
     .rule { border-bottom: 2px solid #1f7a3f; margin-bottom: 12px; }
     .cover { text-align: center; margin-bottom: 14px; }
-    .cover .org { margin: 0; font-weight: bold; font-size: 13pt; }
-    .cover h1 { margin: 6px 0; font-size: 15pt; font-weight: bold; text-transform: uppercase; }
+    .cover .org { margin: 0; font-weight: bold; font-size: 12pt; }
+    .cover h1 { margin: 6px 0; font-size: 12pt; font-weight: bold; text-transform: uppercase; }
     .cover .place { margin: 2px 0; }
     .meta { margin: 14px 0; }
     .meta div { margin-bottom: 2px; }
     .report { break-inside: avoid; margin-bottom: 14px; }
     .new-page { break-before: page; }
-    .report-title { margin: 12px 0 8px; text-align: center; text-transform: uppercase; font-size: 12.5pt; font-weight: bold; }
+    .report-title { margin: 12px 0 8px; text-align: center; text-transform: uppercase; font-size: 12pt; font-weight: bold; }
     .report-meta { margin-bottom: 6px; font-size: 12pt; }
     .report-meta span { margin-right: 16px; }
     .narrative { margin: 0 0 8px; text-align: justify; }
@@ -610,11 +610,11 @@ function toPdfHtml(title: string, payload: ExportPayload) {
     body {
       color: #102016;
       font-family: Arial, "Noto Sans", sans-serif;
-      font-size: 10pt;
+      font-size: 12pt;
       line-height: 1.35;
       margin: 0;
     }
-    h1 { margin: 0 0 8px; font-size: 18pt; text-align: center; }
+    h1 { margin: 0 0 8px; font-size: 12pt; text-align: center; }
     h2 { margin: 12px 0 6px; font-size: 12pt; }
     .report-meta {
       display: grid;
@@ -628,8 +628,8 @@ function toPdfHtml(title: string, payload: ExportPayload) {
       padding: 8px;
       background: #f4faf5;
     }
-    .metric span { display: block; color: #4d5c52; font-size: 8pt; }
-    .metric strong { display: block; margin-top: 2px; font-size: 14pt; }
+    .metric span { display: block; color: #4d5c52; font-size: 12pt; }
+    .metric strong { display: block; margin-top: 2px; font-size: 12pt; }
     table { width: 100%; border-collapse: collapse; margin-top: 8px; }
     th, td { border: 1px solid #9aa8a0; padding: 5px 6px; text-align: left; vertical-align: top; }
     th { background: #e8f3ea; font-weight: 700; }
@@ -646,7 +646,7 @@ function toPdfHtml(title: string, payload: ExportPayload) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 4px 12px;
       color: #25342b;
-      font-size: 9pt;
+      font-size: 12pt;
     }
     .muted { color: #5f6f65; }
   </style>

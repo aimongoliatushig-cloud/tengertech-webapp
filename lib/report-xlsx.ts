@@ -86,7 +86,7 @@ export async function buildReportWorkbook(opts: {
   // Гарчиг (ТОМ үсэг, төвлөрсөн, хар)
   mergeAcross(row);
   sheet.getRow(row).getCell(1).value = title.toLocaleUpperCase("mn-MN");
-  sheet.getRow(row).getCell(1).font = { name: FONT, size: 14, bold: true, color: { argb: "000000" } };
+  sheet.getRow(row).getCell(1).font = { name: FONT, size: 12, bold: true, color: { argb: "000000" } };
   sheet.getRow(row).getCell(1).alignment = { horizontal: "center", vertical: "middle" };
   sheet.getRow(row).height = 24;
   row += 1;
@@ -179,7 +179,7 @@ export async function buildReportWorkbook(opts: {
 
   mergeAcross(row);
   sheet.getRow(row).getCell(1).value = `Тайлан үүсгэсэн огноо: ${reportTodayStamp()}`;
-  sheet.getRow(row).getCell(1).font = { name: FONT, size: 9, italic: true, color: { argb: "555555" } };
+  sheet.getRow(row).getCell(1).font = { name: FONT, size: 12, italic: true, color: { argb: "555555" } };
   sheet.getRow(row).getCell(1).alignment = { horizontal: "right" };
 
   const arrayBuffer = await workbook.xlsx.writeBuffer();

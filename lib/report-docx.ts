@@ -177,8 +177,8 @@ export async function buildReportDocx(opts: {
 
   // Нүүр
   body.push(
-    centered(REPORT_ORG.name, 26, true, 60),
-    centered(opts.title.toLocaleUpperCase("mn-MN"), 30, true, 120),
+    centered(REPORT_ORG.name, 24, true, 60),
+    centered(opts.title.toLocaleUpperCase("mn-MN"), 24, true, 120),
     centered(REPORT_ORG.place, 24, true, 40),
     centered(`${year} он`, 24, true, 200),
   );
@@ -202,7 +202,7 @@ export async function buildReportDocx(opts: {
         alignment: AlignmentType.CENTER,
         spacing: { before: 240, after: 60 },
         children: [
-          new TextRun({ text: `${index + 1}. ${item.title.toLocaleUpperCase("mn-MN")}`, bold: true, size: 25, font: FONT }),
+          new TextRun({ text: `${index + 1}. ${item.title.toLocaleUpperCase("mn-MN")}`, bold: true, size: 24, font: FONT }),
         ],
       }),
     );
