@@ -178,7 +178,7 @@ function buildWorkReportDoc(payload: ExportPayload): {
         headers: ["Үзүүлэлт", "Дүн"],
         rows: [
           ["Нийт тайлан", payload.summary.reports],
-          ["Нийт ажил", payload.summary.tasks],
+          ["Дуусаагүй ажил", payload.summary.tasks],
           ["Хяналт хүлээж буй", payload.summary.reviewItems],
           ["Хугацаа хэтэрсэн ажил", payload.summary.overdueTasks],
           ["Хавсаргасан зураг", payload.summary.images],
@@ -205,7 +205,7 @@ function buildWorkReportDoc(payload: ExportPayload): {
         columnWidths: [5, 28, 20, 18, 16, 11, 9, 8, 8, 16, 40],
       },
       {
-        caption: "Ажлын жагсаалт",
+        caption: "Дуусаагүй ажил",
         headers: ["№", "Ажил", "Төсөл", "Хэлтэс", "Төлөв", "Хариуцагч", "Явц", "Дуусах хугацаа", "Гүйцэтгэл", "Үлдэгдэл"],
         rows: payload.tasks.map((task, index) => [
           index + 1,
@@ -511,6 +511,11 @@ function toOfficialPdfHtml(
     (sign) =>
       `<div class="sign"><div class="sign-role">${escapeHtml(sign.role)}:</div><div class="sign-line"><span>${escapeHtml(sign.position)}</span><b>${escapeHtml(sign.name)}</b></div></div>`,
   ).join("");
+  const unfinishedRows = payload.tasks
+    .map(
+      (task, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(task.name)}</td><td>${escapeHtml(task.departmentName)}</td><td>${escapeHtml(task.statusLabel)}</td><td>${escapeHtml(task.leaderName)}</td><td>${escapeHtml(task.deadline)}</td><td>${task.progress}%</td></tr>`,
+    )
+    .join("");
 
   return `<!doctype html>
 <html>
@@ -563,6 +568,10 @@ function toOfficialPdfHtml(
     <div><b>Тайлан гаргасан огноо:</b> ${escapeHtml(payload.generatedAt)}</div>
   </div>
   ${sections || '<p class="muted">Тайлан олдсонгүй.</p>'}
+  <section class="unfinished">
+    <h2>ДУУСААГҮЙ АЖИЛ</h2>
+    <table><thead><tr><th>№</th><th>Ажил</th><th>Хэлтэс</th><th>Төлөв</th><th>Хариуцагч</th><th>Дуусах хугацаа</th><th>Явц</th></tr></thead><tbody>${unfinishedRows || '<tr><td colspan="7">Дуусаагүй ажил алга.</td></tr>'}</tbody></table>
+  </section>
   <div class="signatures">${signatureRows}</div>
 </body>
 </html>`;
@@ -770,6 +779,14 @@ function buildExportPayload(
     ? filterByDepartment(snapshot.reviewQueue, scopedDepartmentName)
     : snapshot.reviewQueue.filter((item) => matchesSelectedDepartment(item.departmentName));
 
+  const taskIsInSelectedPeriod = (task: TaskRow) => {
+    const dateKey = String(task.scheduledDate || task.deadlineDateTime || task.createdDate || "").slice(0, 10);
+    if (!DATE_PARAM_PATTERN.test(dateKey)) {
+      return false;
+    }
+    return (!selectedStartDate || dateKey >= selectedStartDate) && (!selectedEndDate || dateKey <= selectedEndDate);
+  };
+
   if (isMasterRole(session.role)) {
     const candidateProjects = scopedDepartmentName
       ? filterByDepartment(snapshot.projects, scopedDepartmentName)
@@ -787,6 +804,12 @@ function buildExportPayload(
         : masterTaskIds.has(report.taskId ?? -1),
     );
   }
+
+  // Сарын тайланд тухайн хугацаанд товлогдсон боловч дуусаагүй бүх ажлыг
+  // тайлан илгээсэн эсэхээс үл хамааран тусдаа жагсаалтаар оруулна.
+  const unfinishedTasks = tasks.filter(
+    (task) => task.stageBucket !== "done" && task.statusKey !== "verified" && taskIsInSelectedPeriod(task),
+  );
 
   reports = reports.filter((report) => {
     if (!isReportInPeriod(report, selectedStartDate, selectedEndDate, selectedDateBasis)) {
@@ -825,17 +848,14 @@ function buildExportPayload(
         .filter((projectId): projectId is number => typeof projectId === "number"),
     );
 
-    tasks = tasks.filter(
-      (task) =>
-        selectedTaskIds.has(task.id) ||
-        (typeof task.projectId === "number" && selectedProjectIds.has(task.projectId)),
-    );
     reviewQueue = reviewQueue.filter(
       (item) =>
         selectedTaskIds.has(item.id) ||
         (typeof item.projectId === "number" && selectedProjectIds.has(item.projectId)),
     );
   }
+
+  tasks = unfinishedTasks;
 
   const baseScope = reports.length === 1
     ? reports[0].taskName || reports[0].projectName
@@ -874,7 +894,7 @@ function buildExportPayload(
       reviewItems: reviewQueue.length,
       images: reports.reduce((sum, report) => sum + report.imageCount, 0),
       audios: reports.reduce((sum, report) => sum + report.audioCount, 0),
-      overdueTasks: tasks.filter((task) => task.statusKey === "problem").length,
+      overdueTasks: unfinishedTasks.filter((task) => task.statusKey === "problem").length,
     },
     reports,
     tasks,
@@ -995,7 +1015,18 @@ export async function GET(request: Request) {
           mimetype: String(attachment.mimetype || "image/jpeg"),
         })),
     }));
-    const intro = `Тус төв нь тайлант хугацаанд (${payload.scope}) нийт ${items.length} ажлын тайланг нэгтгэн дараах байдлаар тайлагнаж байна:`;
+    items.push(
+      ...payload.tasks.map((task) => ({
+        title: `Дуусаагүй ажил: ${task.name}`,
+        basis: task.projectName,
+        department: task.departmentName,
+        reporter: task.leaderName,
+        date: task.deadline,
+        narrative: `Төлөв: ${task.statusLabel}. Явц: ${task.progress}%. Гүйцэтгэл: ${task.completedQuantity} ${task.measurementUnit}. Үлдэгдэл: ${task.remainingQuantity} ${task.measurementUnit}.`,
+        images: [],
+      })),
+    );
+    const intro = `Тус төв нь тайлант хугацаанд (${payload.scope}) нийт ${payload.reports.length} ажлын тайлан, ${payload.tasks.length} дуусаагүй ажлыг нэгтгэн дараах байдлаар тайлагнаж байна:`;
     const buffer = await buildReportDocx({ title: REPORT_DOC_TITLE, intro, items });
     return new Response(new Uint8Array(buffer), {
       headers: {
