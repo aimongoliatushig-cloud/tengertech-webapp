@@ -427,18 +427,12 @@ async function importMileageHistory(
       { fields: ["id", "date", "value", "vehicle_id"], limit: 5000, order: "date desc, id desc" },
     );
     const latest = existing.find((row) => Number(row.value) > 0 && Boolean(row.date));
-    const anchorValue = Number(latest?.value || vehicle.odometer || 0);
-    const anchorDate = String(latest?.date || endDate);
-    if (!Number.isFinite(anchorValue) || anchorValue <= 0) {
-      skipped.push({
-        vehicleId,
-        vehicleCode: vehicleReportCode(vehicle, String(vehicleId)),
-        reason: "Одоогийн одометрийн баталгаатай утга байхгүй.",
-      });
-      continue;
-    }
+    const hasAnchor = Number(latest?.value || vehicle.odometer || 0) > 0;
+    const anchorValue = hasAnchor ? Number(latest?.value || vehicle.odometer) : 0;
+    const anchorDate = hasAnchor ? String(latest?.date || endDate) : baselineDate;
 
     const valuesByDate = new Map<string, number>();
+    if (!hasAnchor) valuesByDate.set(baselineDate, 0);
     let backwardValue = anchorValue;
     for (const row of [...dailyRows].sort((left, right) => right.date.localeCompare(left.date))) {
       if (row.date > anchorDate) continue;

@@ -494,6 +494,9 @@ function valueNameMatchesPreferredConsumption(value: string) {
 
 function valueNameMatchesMileage(value: string) {
   const normalized = normalizeLabel(value);
+  if (/start|end/.test(normalized) || normalized.includes("эхэлсэн") || normalized.includes("дууссан")) {
+    return false;
+  }
   return (
     /mileage|distance|kilomet(er|re)|\bkm\b/.test(normalized) ||
     normalized.includes("туулсан") ||
