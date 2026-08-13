@@ -117,7 +117,7 @@ export function ProjectEditModal({
                   </div>
 
                   <div className={styles.field}>
-                    <label htmlFor="edit-project-name">Ажлын нэр</label>
+                    <label htmlFor="edit-project-name">Захирамж, үүрэг даалгаврын нэр</label>
                     <input
                       id="edit-project-name"
                       name="name"

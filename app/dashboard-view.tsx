@@ -719,8 +719,8 @@ function segmentedDonutStyle(parts: Array<{ value: number; color: string }>, tot
 
 function MobilePriorityPanel({ canWriteReports }: { canWriteReports: boolean }) {
   const quickActions = [
-    { label: "Шинэ ажил үүсгэх", href: "/create", icon: Plus },
-    { label: "Ажлын жагсаалт", href: "/projects", icon: ListChecks },
+    { label: "Захирамж, үүрэг даалгавар үүсгэх", href: "/create", icon: Plus },
+    { label: "Захирамж, үүрэг даалгаврын жагсаалт", href: "/projects", icon: ListChecks },
     { label: "Тайлан харах", href: canWriteReports ? "/reports" : "/review", icon: BarChart3 },
     { label: "Календар харах", href: "/tasks?view=today", icon: CalendarDays },
   ];
@@ -1034,8 +1034,8 @@ function RightPanel({
     ? systemInfoRows
     : systemInfoRows.filter((_, index) => index !== 0);
   const quickActions = [
-    { label: "Шинэ ажил үүсгэх", href: "/create", icon: Plus },
-    { label: "Ажлын жагсаалт", href: "/projects", icon: ListChecks },
+    { label: "Захирамж, үүрэг даалгавар үүсгэх", href: "/create", icon: Plus },
+    { label: "Захирамж, үүрэг даалгаврын жагсаалт", href: "/projects", icon: ListChecks },
     { label: "Тайлан харах", href: canWriteReports ? "/reports" : "/review", icon: BarChart3 },
     { label: "Календарь харах", href: "/tasks?view=today", icon: CalendarDays },
   ];
@@ -2607,14 +2607,14 @@ export function AutoGarbageWorkBoard({
     <section className={dashboardStyles.autoGarbageBoard}>
       <div className={dashboardStyles.autoGarbageHeader}>
         <div>
-          <h2>Ажлын жагсаалт</h2>
+          <h2>Захирамж, үүрэг даалгаврын жагсаалт</h2>
           <p>Авто бааз, хог тээвэрлэлтийн хэлтэс · Нийт {model.tasks.length} ажил</p>
         </div>
         <div className={dashboardStyles.autoGarbageToolbar}>
           {canCreateWork ? (
             <Link href="/create" className={dashboardStyles.autoGarbagePrimaryButton}>
               <Plus aria-hidden />
-              Шинэ ажил
+              Захирамж, үүрэг даалгавар
             </Link>
           ) : null}
         </div>
@@ -2622,7 +2622,7 @@ export function AutoGarbageWorkBoard({
 
       <div className={dashboardStyles.autoGarbageMetricGrid}>
         <AutoGarbageMetricCard
-          label="Нийт ажил"
+          label="Нийт захирамж, үүрэг даалгавар"
           value={String(model.stats.total)}
           helper="Бүгд"
           icon={ClipboardList}
@@ -4258,7 +4258,7 @@ export function DashboardView({
               <Card className={dashboardStyles.taskListCard}>
                 <CardHeader className={dashboardStyles.taskListHeader}>
                   <div className={dashboardStyles.taskListHeaderText}>
-                    <CardTitle>{masterMode ? "Алба нэгжийн бүх ажил" : "Ажлын жагсаалт"}</CardTitle>
+                    <CardTitle>{masterMode ? "Алба нэгжийн бүх захирамж, үүрэг даалгавар" : "Захирамж, үүрэг даалгаврын жагсаалт"}</CardTitle>
                     {masterMode ? (
                       <CardDescription>
                         Энэ хэсэгт нэгжийн нийт ажил харагдана. Мастер бүр нэг нэгнийхээ ажлын явцыг хянаж болно.

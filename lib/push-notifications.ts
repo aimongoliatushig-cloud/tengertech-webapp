@@ -72,7 +72,7 @@ type PushEventInput = {
 
 const EVENT_DEFAULTS: Record<PushEventType, { title: string; body: string; targetUrl: string }> = {
   new_work_assigned: {
-    title: "Шинэ ажил оноогдлоо",
+    title: "Шинэ захирамж, үүрэг даалгавар оноогдлоо",
     body: "Танд шинэ ажил оноогдсон байна.",
     targetUrl: "/tasks",
   },

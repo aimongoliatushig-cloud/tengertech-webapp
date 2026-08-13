@@ -196,7 +196,7 @@ export default async function SharedWorkPage({ searchParams }: PageProps) {
             <form action={createSharedWorkAction} className={styles.sharedWorkCreateForm}>
               <div className={styles.sharedWorkInlineGrid}>
                 <label className={styles.field}>
-                  <span>Ажлын нэр</span>
+                  <span>Захирамж, үүрэг даалгаврын нэр</span>
                   <input name="name" placeholder="Их цэвэрлэгээ" required />
                 </label>
                 <label className={styles.field}>

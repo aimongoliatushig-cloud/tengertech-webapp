@@ -486,7 +486,7 @@ export function NewWorkForm({
       ? "Гэнэтийн ажил үүсгэх"
       : isRoadAreaCleaning
         ? "Зам талбайн цэвэрлэгээний ажил үүсгэх"
-      : "Ажил үүсгэх";
+      : "Захирамж, үүрэг даалгавар үүсгэх";
 
   const generatedName = useMemo(() => {
     if (!isGarbageTransport) {
@@ -868,7 +868,7 @@ export function NewWorkForm({
   const showGreenWorkflowSelector = supportsRoadAreaCleaning && !isSharedWork;
   const isGreenWorkflowSelectScreen = showGreenWorkflowSelector && greenWorkflowStep === "select";
   const mobileScreenTitle = isGreenWorkflowSelectScreen
-    ? "Ажил нэмэх"
+    ? "Захирамж, үүрэг даалгавар нэмэх"
     : isRoadAreaCleaning
       ? "Хурдан үүсгэх"
       : "Ногоон байгууламжийн ажил";
@@ -880,7 +880,7 @@ export function NewWorkForm({
       ? "Ажлын нэр, хариуцах хүн, эхлэх болон дуусах хугацааг оруулаад энгийн ажил үүсгэнэ."
       : isRoadAreaCleaning
         ? "Цэвэрлэх талбай, ажиллах хугацаа, хариуцах ажилтныг бүртгэж зам талбайн цэвэрлэгээний ажлыг шууд үүсгэнэ."
-      : "Ажлын нэр, хариуцсан хэлтсийн дарга, хугацаагаа оруулна.";
+      : "Захирамж, үүрэг даалгаврын нэр, хариуцсан хэлтсийн дарга, хугацаагаа оруулна.";
   const selectedDepartmentLabel =
     isSharedWork
       ? sharedDepartmentIds.length
@@ -964,12 +964,12 @@ export function NewWorkForm({
         <>
       <div className={styles.createWorkIntro}>
         <div className={styles.createWorkIntroCopy}>
-          <span className={styles.formBadge}>Ажил нэмэх урсгал</span>
+          <span className={styles.formBadge}>Захирамж, үүрэг даалгавар нэмэх урсгал</span>
           <h2>{formModeLabel}</h2>
           <p>{formModeDescription}</p>
         </div>
 
-        <div className={styles.createWorkSteps} aria-label="Ажил үүсгэх алхам">
+        <div className={styles.createWorkSteps} aria-label="Захирамж, үүрэг даалгавар үүсгэх алхам">
           <div className={styles.createWorkStep}>
             <span><Layers3 aria-hidden /></span>
             <strong>Хэлтэс ба горим</strong>
@@ -2167,7 +2167,7 @@ export function NewWorkForm({
               <strong>Үндсэн мэдээлэл</strong>
             </div>
             <div className={styles.field}>
-              <label htmlFor="name">Ажлын нэр</label>
+              <label htmlFor="name">Захирамж, үүрэг даалгаврын нэр</label>
               <input
                 id="name"
                 name="name"

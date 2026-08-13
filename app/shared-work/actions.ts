@@ -171,7 +171,7 @@ export async function createSharedWorkAction(formData: FormData) {
     const name = getString(formData, "name");
     const departmentIds = getIds(formData, "department_ids");
     if (!name) {
-      throw new Error("Ажлын нэр оруулна уу.");
+      throw new Error("Захирамж, үүрэг даалгаврын нэр оруулна уу.");
     }
     if (!departmentIds.length) {
       throw new Error("Оролцох хэлтэс сонгоно уу.");

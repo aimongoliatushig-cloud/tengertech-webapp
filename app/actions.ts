@@ -483,7 +483,7 @@ async function notifyDepartmentHeadsOfWork(input: {
 
   await notifyPushQuietly({
     eventType: "new_work_assigned",
-    title: input.title || "Шинэ ажил бүртгэгдлээ",
+    title: input.title || "Шинэ захирамж, үүрэг даалгавар бүртгэгдлээ",
     body: input.workName,
     targetUrl: input.targetUrl,
     userIds,
@@ -1037,7 +1037,7 @@ export async function createProjectAction(formData: FormData) {
       if (assignedRoadCleaningUserIds.size) {
         await notifyPushQuietly({
           eventType: "new_work_assigned",
-          title: "Шинэ ажил оноогдлоо",
+          title: "Шинэ захирамж, үүрэг даалгавар оноогдлоо",
           body:
             createdCount > 1
               ? `${createdCount} зам талбайн цэвэрлэгээний ажил танд оноогдлоо.`
@@ -1723,7 +1723,7 @@ export async function createProjectAction(formData: FormData) {
       departmentId: effectiveDepartmentIdRaw ? Number(effectiveDepartmentIdRaw) : null,
       actorUserId: session.uid,
       connectionOverrides,
-      title: "Шинэ ажил бүртгэгдлээ",
+      title: "Шинэ захирамж, үүрэг даалгавар бүртгэгдлээ",
       workName: name,
       targetUrl: `/projects/${projectId}`,
     });
@@ -1786,7 +1786,7 @@ export async function createTaskAction(formData: FormData) {
     redirectWithMessage(
       `/projects/${projectId || ""}`,
       "error",
-      "Ажил үүсгэхэд шаардлагатай талбар дутуу байна.",
+      "Захирамж, үүрэг даалгавар үүсгэхэд шаардлагатай талбар дутуу байна.",
       "#task-create-form",
     );
   }
@@ -2157,7 +2157,7 @@ export async function createTaskAction(formData: FormData) {
     await Promise.all([
       notifyPushQuietly({
         eventType: "new_work_assigned",
-        title: "Шинэ ажил оноогдлоо",
+        title: "Шинэ захирамж, үүрэг даалгавар оноогдлоо",
         body: name,
         targetUrl: `/tasks/${taskId}`,
         userIds: Array.from(
@@ -2189,7 +2189,7 @@ export async function createTaskAction(formData: FormData) {
     revalidatePath("/settings");
     revalidatePath("/settings/garbage-transport");
     revalidatePath(`/projects/${projectId}`);
-    redirect(`/tasks/${taskId}?notice=${encodeURIComponent("Шинэ ажил амжилттай үүслээ.")}`);
+    redirect(`/tasks/${taskId}?notice=${encodeURIComponent("Шинэ захирамж, үүрэг даалгавар амжилттай үүслээ.")}`);
   } catch (error) {
     rethrowIfRedirectError(error);
     redirectWithMessage(`/projects/${projectId}`, "error", getErrorMessage(error), "#task-create-form");

@@ -1306,7 +1306,7 @@ export function AppMenu({
     ? {
         key: "new-project",
         href: "/create",
-        label: "Шинэ ажил",
+        label: "Захирамж, үүрэг даалгавар",
         icon: PlusCircle,
       }
     : null;
@@ -1335,7 +1335,7 @@ export function AppMenu({
           {
             key: "new-project",
             href: "/create",
-            label: "Ажил нэмэх",
+            label: "Захирамж, үүрэг даалгавар нэмэх",
             icon: PlusCircle,
           },
         ]
@@ -1860,7 +1860,7 @@ export function AppMenu({
         {canCreate ? (
           <Link href="/create" prefetch={false} className={styles.createButton}>
             <PlusCircle aria-hidden />
-            <span>Шинэ ажил</span>
+            <span>Захирамж, үүрэг даалгавар</span>
             <PendingLinkIndicator
               className={styles.createLoadingHint}
               overlayClassName={styles.linkLoadingOverlay}

@@ -102,7 +102,7 @@ const GREEN_SERVICE_UNITS = [
   },
 ] as const;
 const PROJECT_FILTERS: Array<{ key: ProjectFilterKey; label: string }> = [
-  { key: "all", label: "Нийт ажил" },
+  { key: "all", label: "Нийт захирамж, үүрэг даалгавар" },
   { key: "planned", label: "Төлөвлөсөн" },
   { key: "review", label: "Хянаж байгаа" },
   { key: "done", label: "Дууссан" },
@@ -902,7 +902,7 @@ async function ProjectsPageContent({
   ] as const;
   const insightSummaryCards = [
     {
-      label: "Нийт ажил",
+      label: "Нийт захирамж, үүрэг даалгавар",
       value: String(scopedProjects.length),
       note: "Бүртгэлтэй ажил",
     },
@@ -943,7 +943,7 @@ async function ProjectsPageContent({
   };
   const summaryCards = [
     {
-      label: "Нийт ажил",
+      label: "Нийт захирамж, үүрэг даалгавар",
       value: String(scopedProjects.length),
       delta: "100%",
       note: "Энэ нэгж дээр бүртгэлтэй бүх ажил",
@@ -1165,7 +1165,7 @@ async function ProjectsPageContent({
             {showCreateWorkButton && !showCreateWorkButtonInUnitSection ? (
               <div className={styles.buttonRow}>
                 <Link href={newWorkHref} className={styles.primaryButton}>
-                  Ажил нэмэх
+                  Захирамж, үүрэг даалгавар нэмэх
                 </Link>
               </div>
             ) : null}
@@ -1190,7 +1190,7 @@ async function ProjectsPageContent({
                     <div className={styles.sectionHeaderActions}>
                       {showCreateWorkButtonInUnitSection ? (
                         <Link href={newWorkHref} className={styles.primaryButton}>
-                          Ажил нэмэх
+                          Захирамж, үүрэг даалгавар нэмэх
                         </Link>
                       ) : null}
                       {canShowGarbageTransportSettings || canShowCleaningAreaSettings ? (
@@ -1301,7 +1301,7 @@ async function ProjectsPageContent({
               <div className={styles.sectionHeader}>
                 <div>
                   <span className={styles.sectionKicker}>
-                    {showAutoBaseFleet ? "Авто баазын самбар" : masterMode ? masterProjectSectionLabel : "Ажлын жагсаалт"}
+                    {showAutoBaseFleet ? "Авто баазын самбар" : masterMode ? masterProjectSectionLabel : "Захирамж, үүрэг даалгаврын жагсаалт"}
                   </span>
                   <h2>{showAutoBaseFleet ? "Машин техникийн бүртгэл" : masterMode ? selectedDepartmentName : filterTitle}</h2>
                   <small className={styles.sectionNote}>
@@ -1571,7 +1571,7 @@ async function ProjectsPageContent({
                   <section className={styles.unitProjectSection}>
                     <div className={styles.unitProjectSectionHeader}>
                       <div>
-                        <span className={styles.unitProjectSectionKicker}>Ажлын жагсаалт</span>
+                        <span className={styles.unitProjectSectionKicker}>Захирамж, үүрэг даалгаврын жагсаалт</span>
                         <h3>Хог тээвэрлэлт болон бүртгэлтэй ажил</h3>
                         <p>Энэ хэлтэст бүртгэлтэй project ажлууд.</p>
                       </div>

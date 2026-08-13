@@ -61,11 +61,11 @@ export default async function CreateHubPage() {
       ? [
           {
             key: "project",
-            title: "Ажил нэмэх",
-            note: "Шинэ ажил, төсөл бүртгэж ажлын үндсэн урсгалыг нээнэ.",
+            title: "Захирамж, үүрэг даалгавар нэмэх",
+            note: "Шинэ захирамж, үүрэг даалгавар бүртгэж үндсэн урсгалыг нээнэ.",
             href: "/projects/new",
             accent: styles.actionProject,
-            badge: "Шинэ ажил",
+            badge: "Шинэ бүртгэл",
             icon: "＋",
           } satisfies ActionCard,
         ]
@@ -130,22 +130,22 @@ export default async function CreateHubPage() {
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
               title="Нэмэх төв"
-              subtitle="Шинэ ажил, даалгавар, тайлангийн эхлэлийг эндээс сонгоно"
+              subtitle="Захирамж, үүрэг даалгавар, тайлангийн эхлэлийг эндээс сонгоно"
               userName={session.name}
               roleLabel={getSessionRoleLabel(session)}
               notificationCount={actionCards.length}
               notificationNote={`${actionCards.length} боломжит үйлдэл нээлттэй байна`}
             />
 
-            <section className={styles.mobileCreateHome} aria-label="Шинэ ажил үүсгэх mobile урсгал">
+            <section className={styles.mobileCreateHome} aria-label="Захирамж, үүрэг даалгавар үүсгэх mobile урсгал">
               <div className={styles.mobileCreatePrimaryGrid}>
                 {canCreateProject ? (
                   <Link href="/projects/new" className={styles.mobileCreatePrimary}>
                     <span aria-hidden>
                       <Truck size={24} strokeWidth={2.5} />
                     </span>
-                    <strong>{transportInspectorMode ? "Хогийн цэгийн ажил" : "Ажил нэмэх"}</strong>
-                    <small>{transportInspectorMode ? "Машин, хороо, олон цэг сонгох" : "Шинэ ажил бүртгэх"}</small>
+                    <strong>{transportInspectorMode ? "Хогийн цэгийн ажил" : "Захирамж, үүрэг даалгавар нэмэх"}</strong>
+                    <small>{transportInspectorMode ? "Машин, хороо, олон цэг сонгох" : "Шинэ бүртгэл үүсгэх"}</small>
                   </Link>
                 ) : null}
 
@@ -175,8 +175,8 @@ export default async function CreateHubPage() {
                 {workerMode
                   ? "Танд нээлттэй байгаа тайлангийн урсгалыг эндээс шууд эхлүүлнэ. Даалгавраа сонгоод тайлангаа оруулахад хангалттай."
                   : masterMode
-                    ? "Өөрийн алба нэгжийн шинэ ажил, даалгавар, тайлангийн зөв урсгалыг эндээс нэг товшилтоор сонгоно."
-                    : "Шинэ ажил, даалгавар, тайлангийн аль урсгал руу орохоо эндээс сонгоно."}
+                    ? "Өөрийн алба нэгжийн захирамж, үүрэг даалгавар, тайлангийн зөв урсгалыг эндээс нэг товшилтоор сонгоно."
+                    : "Захирамж, үүрэг даалгавар, тайлангийн аль урсгал руу орохоо эндээс сонгоно."}
               </p>
 
               <div className={styles.heroMetaGrid}>

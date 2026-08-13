@@ -219,7 +219,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
 
           <div className={styles.pageContent}>
             <WorkspaceHeader
-              title={masterMode ? "Зам талбайн цэвэрлэгээний ажил нэмэх" : "Ажил нэмэх"}
+              title={masterMode ? "Зам талбайн цэвэрлэгээний ажил нэмэх" : "Захирамж, үүрэг даалгавар нэмэх"}
               subtitle={
                 masterMode
                   ? "Мөр бүрээс нэг ажил үүсэж, стандарт 4 даалгавар автоматаар нэмэгдэнэ"
@@ -249,7 +249,7 @@ export default async function NewProjectPage({ searchParams }: PageProps) {
               <section className={styles.emptyState}>
                 <h2>Ажил бүртгэх эрх алга</h2>
                 <p>
-                  Шинэ ажил нэмэх боломж одоогоор зөвхөн шаардлагатай эрхтэй хэрэглэгч дээр
+                  Захирамж, үүрэг даалгавар нэмэх боломж одоогоор зөвхөн шаардлагатай эрхтэй хэрэглэгч дээр
                   нээлттэй байна.
                 </p>
               </section>

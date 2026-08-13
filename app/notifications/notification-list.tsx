@@ -26,7 +26,7 @@ export type NotificationListItem = {
 function reasonLabel(reason: NotificationListItem["reasons"][number]) {
   switch (reason) {
     case "new":
-      return "Шинэ ажил";
+      return "Шинэ захирамж, үүрэг даалгавар";
     case "review":
       return "Хянах";
     case "overdue":

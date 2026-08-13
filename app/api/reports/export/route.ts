@@ -570,7 +570,7 @@ function toOfficialPdfHtml(
   ${sections || '<p class="muted">Тайлан олдсонгүй.</p>'}
   <section class="unfinished">
     <h2>ДУУСААГҮЙ АЖИЛ</h2>
-    <table><thead><tr><th>№</th><th>Ажил</th><th>Хэлтэс</th><th>Төлөв</th><th>Хариуцагч</th><th>Дуусах хугацаа</th><th>Явц</th></tr></thead><tbody>${unfinishedRows || '<tr><td colspan="7">Дуусаагүй ажил алга.</td></tr>'}</tbody></table>
+    <table><thead><tr><th>№</th><th>Захирамж, үүрэг даалгавар</th><th>Хэлтэс</th><th>Төлөв</th><th>Хариуцагч</th><th>Дуусах хугацаа</th><th>Явц</th></tr></thead><tbody>${unfinishedRows || '<tr><td colspan="7">Дуусаагүй ажил алга.</td></tr>'}</tbody></table>
   </section>
   <div class="signatures">${signatureRows}</div>
 </body>
@@ -666,7 +666,7 @@ function toPdfHtml(title: string, payload: ExportPayload) {
   <div class="muted">Хамрах хүрээ: ${escapeHtml(payload.scope)} · Үүсгэсэн: ${escapeHtml(payload.generatedAt)}</div>
   <div class="report-meta">
     <div class="metric"><span>Тайлан</span><strong>${payload.summary.reports}</strong></div>
-    <div class="metric"><span>Ажил</span><strong>${payload.summary.tasks}</strong></div>
+    <div class="metric"><span>Захирамж, үүрэг даалгавар</span><strong>${payload.summary.tasks}</strong></div>
     <div class="metric"><span>Хяналт хүлээж буй</span><strong>${payload.summary.reviewItems}</strong></div>
     <div class="metric"><span>Хавсралт</span><strong>${payload.summary.images} зураг / ${payload.summary.audios} аудио</strong></div>
   </div>

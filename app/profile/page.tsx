@@ -301,7 +301,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
           }
         : {
             href: "/projects",
-            label: "Ажлын жагсаалт",
+            label: "Захирамж, үүрэг даалгаврын жагсаалт",
             note: "Ажил, төслийн ерөнхий урсгал",
           },
     canManageCollectionPoints
@@ -350,7 +350,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
 
   const capabilities: CapabilityCard[] = [
     {
-      label: "Шинэ ажил нээх",
+      label: "Захирамж, үүрэг даалгавар нээх",
       note: "Төсөл, ажил шинээр бүртгэж эхлүүлэх",
       enabled: canCreateProject,
     },
