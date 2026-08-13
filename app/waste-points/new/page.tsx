@@ -42,7 +42,7 @@ export default async function NewWastePointPage({ searchParams }: PageProps) {
             <label className={styles.field}><span>Код *</span><input name="code" required placeholder="Жишээ: ХЦ-001" /></label>
             <label className={styles.field}><span>Нэр *</span><input name="name" required placeholder="Хогийн цэгийн нэр" /></label>
             <label className={styles.field}><span>Төрөл *</span><select name="type" required>{(Object.keys(WASTE_TYPE_LABELS) as WastePointType[]).map((type) => <option key={type} value={type}>{WASTE_TYPE_LABELS[type]}</option>)}</select></label>
-            <label className={styles.field}><span>Дүүрэг</span><input name="districtName" defaultValue="Баянзүрх дүүрэг" /></label>
+            <label className={styles.field}><span>Дүүрэг</span><input name="districtName" defaultValue="Хан-Уул дүүрэг" /></label>
             <label className={styles.field}><span>Хороо</span><input name="khorooName" placeholder="Жишээ: 7-р хороо" /></label>
             <label className={`${styles.field} ${styles.fieldWide}`}><span>Хаяг</span><input name="address" placeholder="Дэлгэрэнгүй хаяг, байршлын тайлбар" /></label>
             <label className={styles.field}><span>GPS өргөрөг *</span><input name="latitude" type="number" step="any" required placeholder="47.91880" /></label>
