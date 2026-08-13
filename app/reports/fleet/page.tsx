@@ -17,6 +17,7 @@ import { loadFleetFuelWeightReport, type FleetFuelWeightReportType } from "@/lib
 import { resolveReportPeriod, buildReportPeriodHref } from "@/lib/report-period";
 import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 import { canViewGarbageWeightReports } from "@/lib/roles";
+import { compareHrDepartmentNames } from "@/lib/hr-department-order";
 
 import styles from "./fleet-report.module.css";
 
@@ -85,12 +86,15 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
   const typeLabel = isFuel ? "Шатахуун" : isDistance ? "Туулсан км" : "Жин";
   const unitLabel = report?.unitLabel ?? (isFuel ? "л" : isDistance ? "км" : "тонн");
   const summary = report?.summary;
-  const allRows = report?.rows ?? [];
+  const allRows = [...(report?.rows ?? [])].sort((left, right) => {
+    const departmentOrder = compareHrDepartmentNames(left.departmentName, right.departmentName);
+    return departmentOrder || left.vehicleLabel.localeCompare(right.vehicleLabel, "mn", { numeric: true });
+  });
 
   // Хэлтэс ба машинаар шүүх
   const departmentOptions = Array.from(
     new Set(allRows.map((row) => row.departmentName.trim()).filter(Boolean)),
-  ).sort((left, right) => left.localeCompare(right, "mn"));
+  ).sort(compareHrDepartmentNames);
   const requestedDepartment = firstParam(rawParams.department);
   const selectedDepartment = departmentOptions.includes(requestedDepartment) ? requestedDepartment : "";
   const vehicleQuery = firstParam(rawParams.vehicle);

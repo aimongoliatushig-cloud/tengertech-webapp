@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { loadFleetFuelWeightReport, type FleetFuelWeightReportType } from "@/lib/odoo";
 import { buildReportWorkbook } from "@/lib/report-xlsx";
 import { canViewGarbageWeightReports } from "@/lib/roles";
+import { compareHrDepartmentNames } from "@/lib/hr-department-order";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -36,6 +37,9 @@ function filterFleetRows(report: FleetReport, department: string, vehicleNeedle:
       return false;
     }
     return true;
+  }).sort((left, right) => {
+    const departmentOrder = compareHrDepartmentNames(left.departmentName, right.departmentName);
+    return departmentOrder || left.vehicleLabel.localeCompare(right.vehicleLabel, "mn", { numeric: true });
   });
 }
 
