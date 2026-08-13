@@ -2834,7 +2834,7 @@ function buildExecutiveDepartmentMetrics({
 
   const metrics = [
     buildDepartment(
-      "Авто бааз, хог тээвэрлэлт",
+      "Авто бааз, хог тээвэрлэлтийн хэлтэс",
       ["Авто", "Хог", "хог", "тээвэр"],
       Truck,
       "blue",

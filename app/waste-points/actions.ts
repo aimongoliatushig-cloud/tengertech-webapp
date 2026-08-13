@@ -15,7 +15,8 @@ import {
 } from "@/lib/waste-points/types";
 
 const WASTE_TASK_PROJECT = "Хогийн цэгийн ажил (2026)";
-const GARBAGE_DEPARTMENT = "Хог тээвэрлэлтийн хэлтэс";
+const GARBAGE_DEPARTMENT = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
+const LEGACY_GARBAGE_DEPARTMENT = "Хог тээвэрлэлтийн хэлтэс";
 
 function backPath(pointId: string, status: "notice" | "error", message: string) {
   const params = new URLSearchParams({ [status]: message });
@@ -26,7 +27,7 @@ async function resolveDepartmentId(): Promise<number | null> {
   const rows = await executeOdooKw<{ id: number }[]>(
     "hr.department",
     "search_read",
-    [[["name", "=", GARBAGE_DEPARTMENT]]],
+    [[["name", "in", [GARBAGE_DEPARTMENT, LEGACY_GARBAGE_DEPARTMENT]]]],
     { fields: ["id"], limit: 1 },
   );
   return rows[0]?.id ?? null;

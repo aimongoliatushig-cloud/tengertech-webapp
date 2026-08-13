@@ -741,7 +741,7 @@ export function DashboardInspectorVehiclePanel({
           </label>
 
           {!departmentId ? (
-            <p className={dashboardStyles.inspectorCreateError}>Хог тээвэрлэлтийн хэлтэс олдсонгүй. Тохиргоогоо шалгана уу.</p>
+            <p className={dashboardStyles.inspectorCreateError}>Авто бааз, хог тээвэрлэлтийн хэлтэс олдсонгүй. Тохиргоогоо шалгана уу.</p>
           ) : null}
 
           <div className={dashboardStyles.inspectorCreateActions}>

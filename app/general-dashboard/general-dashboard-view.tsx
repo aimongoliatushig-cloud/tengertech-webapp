@@ -301,7 +301,7 @@ function buildDepartmentMetrics(snapshot: DashboardSnapshot, currentDateKey: str
   };
 
   return [
-    buildDepartment("Авто бааз, хог тээвэрлэлт", ["Авто", "Хог", "хог", "тээвэр"], Truck, "blue"),
+    buildDepartment("Авто бааз, хог тээвэрлэлтийн хэлтэс", ["Авто", "Хог", "хог", "тээвэр"], Truck, "blue"),
     buildDepartment("Гудамж цэвэрлэгээ", ["Гудамж", "цэвэр"], Recycle, "orange"),
     buildDepartment("Ногоон байгууламж", ["Ногоон", "мод", "зүлэг"], Leaf, "green"),
     buildDepartment("Тохижилт үйлчилгээ", ["Тохижилт", "үйлчилгээ"], Wrench, "purple"),
