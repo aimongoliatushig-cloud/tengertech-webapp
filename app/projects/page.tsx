@@ -1126,7 +1126,7 @@ async function ProjectsPageContent({
     departmentScopeName: scopedDepartmentName,
   };
   const workspaceHeaderProps: ProjectsWorkspaceHeaderProps = {
-    title: isOverdueFilter ? "Хугацаа хэтэрсэн ажил" : masterMode ? "Хяналтын самбар" : "Ажлын самбар",
+    title: isOverdueFilter ? "Хугацаа хэтэрсэн захирамж, үүрэг даалгавар" : masterMode ? "Хяналтын самбар" : "Захирамж, үүрэг даалгавар",
     subtitle: isOverdueFilter ? "Хугацаа өнгөрсөн даалгавартай ажлууд" : selectedDepartmentName,
     userName: session.name,
     roleLabel,

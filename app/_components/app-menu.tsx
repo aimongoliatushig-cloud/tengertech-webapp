@@ -247,10 +247,22 @@ function compactManagerMenuItems(items: MenuItem[]) {
   );
   const settingChildren = items.filter((item) => item.key === "settings");
   const procurementItem = items.find((item) => item.key === "procurement");
+  const dataDownloadItem = items.find((item) => item.key === "data-download");
+  const workChildren: MenuItem[] = [
+    { key: "projects", href: "/projects", label: "Бүх бүртгэл", icon: ListChecks },
+    { key: "new-project", href: "/create", label: "Шинээр бүртгэх", icon: PlusCircle },
+    { key: "tasks", href: "/tasks", label: "Даалгаврын жагсаалт", icon: ClipboardCheck },
+    { key: "department-work", href: "/department-work", label: "Хэлтсээр харах", icon: Building2 },
+    { key: "employees", href: "/employees", label: "Ажилтнаар харах", icon: Users },
+    { key: "work-calendar", href: "/tasks?view=today", label: "Календарь", icon: CalendarDays },
+  ];
   const groupedKeys = new Set([
     "dashboard",
     ...(hrItem ? [hrItem.key] : []),
     "procurement",
+    "employees",
+    "department-work",
+    "tasks",
     ...hrChildren.map((item) => item.key),
     ...departmentChildren.map((item) => item.key),
     ...(reportItem ? [reportItem.key] : []),
@@ -259,7 +271,6 @@ function compactManagerMenuItems(items: MenuItem[]) {
     ...settingChildren.map((item) => item.key),
   ]);
   const dashboardRoutedKeys = new Set([
-    "auto-base",
     "garbage-settings",
     "cleaning-areas",
     "tasks",
@@ -280,8 +291,15 @@ function compactManagerMenuItems(items: MenuItem[]) {
       Flag,
       departmentChildren,
     ),
+    createMenuGroup(
+      "manager-work",
+      "Захирамж, үүрэг даалгавар",
+      ListChecks,
+      workChildren,
+    ),
     procurementItem ? { ...procurementItem, label: "Худалдан авалт" } : null,
     reportItem ? { ...reportItem, label: "Тайлан" } : null,
+    dataDownloadItem ? { ...dataDownloadItem, label: "Тайлан татах" } : null,
     createMenuGroup(
       "manager-communication",
       "Харилцаа холбоо",
@@ -774,7 +792,7 @@ export function AppMenu({
     {
       key: "data-download",
       href: "/data-download",
-      label: "Баримт бичиг",
+      label: "Тайлан татах",
       icon: FileText,
     },
     ...(showReports
@@ -952,6 +970,21 @@ export function AppMenu({
         href: departmentItems[0]?.href ?? "/projects",
         label: "Захирамж, үүрэг даалгавар",
         icon: ListChecks,
+        children: [
+          {
+            key: "projects-all",
+            href: departmentItems[0]?.href ?? "/projects",
+            label: "Бүх бүртгэл",
+            icon: ListChecks,
+          },
+          ...(canCreateProject || canCreateTasks
+            ? [{ key: "new-project", href: "/create", label: "Шинээр бүртгэх", icon: PlusCircle }]
+            : []),
+          { key: "tasks", href: "/tasks", label: "Даалгаврын жагсаалт", icon: ClipboardCheck },
+          { key: "department-work", href: "/department-work", label: "Хэлтсээр харах", icon: Building2 },
+          { key: "employees", href: "/employees", label: "Ажилтнаар харах", icon: Users },
+          { key: "work-calendar", href: "/tasks?view=today", label: "Календарь", icon: CalendarDays },
+        ],
       },
       autoBaseMenuItem,
       {
@@ -978,6 +1011,22 @@ export function AppMenu({
   const scopedDepartmentIsAutoGarbage = Boolean(
     isAutoGarbageDepartment(departmentScopeName),
   );
+  const scopedWorkMenuItem: MenuItem = {
+    key: "projects",
+    href: scopedDepartmentWorkHref,
+    label: "Захирамж, үүрэг даалгавар",
+    icon: ListChecks,
+    children: [
+      { key: "projects-all", href: scopedDepartmentWorkHref, label: "Бүх бүртгэл", icon: ListChecks },
+      ...(canCreateProject || canCreateTasks
+        ? [{ key: "new-project", href: "/create", label: "Шинээр бүртгэх", icon: PlusCircle }]
+        : []),
+      { key: "tasks", href: "/tasks", label: "Даалгаврын жагсаалт", icon: ClipboardCheck },
+      { key: "department-work", href: "/department-work", label: "Хэлтсээр харах", icon: Building2 },
+      { key: "employees", href: "/employees", label: "Ажилтнаар харах", icon: Users },
+      { key: "work-calendar", href: "/tasks?view=today", label: "Календарь", icon: CalendarDays },
+    ],
+  };
   const scopedDepartmentHeadItems: MenuItem[] = (
     [
       {
@@ -986,12 +1035,7 @@ export function AppMenu({
         label: "Хяналтын самбар",
         icon: LayoutDashboard,
       },
-      {
-        key: "projects",
-        href: scopedDepartmentWorkHref,
-        label: "Захирамж, үүрэг даалгавар",
-        icon: ListChecks,
-      },
+      scopedWorkMenuItem,
       ...(canShowHrMenu
         ? [hrMenuItem]
         : []),
@@ -1044,12 +1088,7 @@ export function AppMenu({
   ).filter((item) => item.key !== "garbage-settings");
 
   const masterItems: MenuItem[] = [
-    {
-      key: "projects",
-      href: scopedDepartmentWorkHref,
-      label: "Захирамж, үүрэг даалгавар",
-      icon: ListChecks,
-    },
+    scopedWorkMenuItem,
   ];
 
   const transportInspectorItems: MenuItem[] = [
@@ -1865,7 +1904,7 @@ export function AppMenu({
         {canCreate ? (
           <Link href="/create" prefetch={false} className={styles.createButton}>
             <PlusCircle aria-hidden />
-            <span>Захирамж, үүрэг даалгавар</span>
+            <span>Шинээр бүртгэх</span>
             <PendingLinkIndicator
               className={styles.createLoadingHint}
               overlayClassName={styles.linkLoadingOverlay}
