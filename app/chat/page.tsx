@@ -61,7 +61,7 @@ export default async function ChatPage() {
               notificationNote="Шинэ зурвас"
             />
 
-            <ChatClient userName={session.name} roleLabel={roleLabel} />
+            <ChatClient />
           </div>
         </div>
       </div>

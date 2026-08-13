@@ -566,6 +566,128 @@
   border-color: var(--ds-border);
 }
 
+.iconButton {
+  display: inline-grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: var(--brand-800);
+  background: var(--brand-100);
+  cursor: pointer;
+}
+
+.iconButton svg,
+.conversationAvatar svg,
+.searchBox svg {
+  width: 20px;
+  height: 20px;
+}
+
+.chatError {
+  margin: 0 20px 8px;
+  color: #b42318;
+}
+
+.modalBackdrop {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(17, 32, 25, 0.48);
+}
+
+.chatModal {
+  display: grid;
+  width: min(560px, 100%);
+  max-height: min(720px, 90vh);
+  gap: 14px;
+  padding: 20px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(17, 32, 25, 0.24);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modalHeader div,
+.employeeOption > span:last-child {
+  display: grid;
+  gap: 4px;
+}
+
+.modalHeader span,
+.employeeOption small {
+  color: var(--ink-700);
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+}
+
+.searchBox input,
+.groupNameInput {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+}
+
+.groupNameInput {
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+}
+
+.employeeList {
+  display: grid;
+  max-height: 420px;
+  gap: 6px;
+  overflow-y: auto;
+}
+
+.employeeOption {
+  display: grid;
+  grid-template-columns: auto 42px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 9px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.employeeOption:hover {
+  background: var(--brand-100);
+}
+
+.createChatButton {
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 700;
+  background: var(--brand-800);
+  cursor: pointer;
+}
+
+.createChatButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .badge,
 .actionBadge,
 .countBadge,
@@ -650,5 +772,4 @@
     grid-template-columns: 1fr;
   }
 }
-
 
