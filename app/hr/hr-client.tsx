@@ -1176,6 +1176,7 @@ function Field({
   pattern?: string;
   maxLength?: number;
 }) {
+  const isDateField = placeholder === "YYYY-MM-DD" || pattern === "[0-9]{4}-[0-9]{2}-[0-9]{2}";
   return (
     <label className={styles.field}>
       <span>{label}</span>
@@ -1194,9 +1195,23 @@ function Field({
         placeholder={placeholder}
         pattern={pattern}
         maxLength={maxLength}
+        onInput={
+          isDateField
+            ? (event) => {
+                event.currentTarget.value = formatDateInput(event.currentTarget.value);
+              }
+            : undefined
+        }
       />
     </label>
   );
+}
+
+function formatDateInput(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 4) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
 }
 
 type SearchableOption = {
@@ -3888,7 +3903,7 @@ export function TimeoffRequestsClient({
                 type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10}
                 required
                 value={annualLeaveDateFrom}
-                onChange={(event) => setAnnualLeaveDateFrom(event.target.value)}
+                onChange={(event) => setAnnualLeaveDateFrom(formatDateInput(event.target.value))}
               />
             </label>
             <label className={styles.field}>
@@ -3902,7 +3917,7 @@ export function TimeoffRequestsClient({
                 maxLength={10}
                 required
                 value={annualLeaveDateTo}
-                onChange={(event) => setAnnualLeaveDateTo(event.target.value)}
+                onChange={(event) => setAnnualLeaveDateTo(formatDateInput(event.target.value))}
               />
             </label>
           </div>
