@@ -3651,6 +3651,25 @@ export function TimeoffRequestsClient({
   const [annualLeaveDateFrom, setAnnualLeaveDateFrom] = useState("");
   const [annualLeaveDateTo, setAnnualLeaveDateTo] = useState("");
   const annualLeaveOnlyMode = mode === "hr" && defaultType === "annual_leave";
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ulaanbaatar",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
+  function annualLeavePeriodStatus(request: HrTimeoffRequest) {
+    if (request.dateTo < today) return "ended";
+    if (request.dateFrom > today) return "upcoming";
+    return "active";
+  }
+
+  function annualLeavePeriodLabel(request: HrTimeoffRequest) {
+    const status = annualLeavePeriodStatus(request);
+    if (status === "ended") return "Дууссан";
+    if (status === "upcoming") return "Эхлээгүй";
+    return "Идэвхтэй";
+  }
 
   useEffect(() => {
     if (selectedRequestType !== "annual_leave") return;
@@ -3667,8 +3686,14 @@ export function TimeoffRequestsClient({
     if (filter === "pending") {
       return base.filter((request) => request.state === "submitted" || request.state === "hr_review");
     }
+    if (filter.startsWith("annual_period_")) {
+      const periodStatus = filter.replace("annual_period_", "");
+      return base.filter(
+        (request) => request.state === "approved" && annualLeavePeriodStatus(request) === periodStatus,
+      );
+    }
     return base.filter((request) => request.state === filter || request.requestType === filter);
-  }, [defaultType, filter, requests]);
+  }, [defaultType, filter, requests, today]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -3749,6 +3774,13 @@ export function TimeoffRequestsClient({
             <option value="hr_review">HR шалгаж байна</option>
             <option value="approved">Батлагдсан</option>
             <option value="rejected">Татгалзсан</option>
+            {annualLeaveOnlyMode ? (
+              <>
+                <option value="annual_period_active">Амралт идэвхтэй</option>
+                <option value="annual_period_upcoming">Амралт эхлээгүй</option>
+                <option value="annual_period_ended">Амралт дууссан</option>
+              </>
+            ) : null}
           </select>
         </div>
 
@@ -3782,6 +3814,9 @@ export function TimeoffRequestsClient({
                   <span className={styles.employeeGridDept}>{request.departmentName}</span>
                 ) : null}
                 <span className={styles.statusPill}>{request.stateLabel}</span>
+                {annualLeaveOnlyMode && request.state === "approved" ? (
+                  <span className={styles.statusPill}>{annualLeavePeriodLabel(request)}</span>
+                ) : null}
               </Link>
               <dl className={styles.registryCardMeta}>
                 <div>
