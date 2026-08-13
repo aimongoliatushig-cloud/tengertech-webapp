@@ -21,7 +21,7 @@ export function ChatClient() {
   const [selected, setSelected] = useState<number[]>([]);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
-  const [mobileConversationOpen, setMobileConversationOpen] = useState(true);
+  const [mobileConversationOpen, setMobileConversationOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [recording, setRecording] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
