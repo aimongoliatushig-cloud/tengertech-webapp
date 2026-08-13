@@ -283,7 +283,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
     icon: typeof Building2;
     tone: string;
   }> = [
-    { key: "dept", label: groupByProject ? "Ажил" : "Хэлтэс", value: groups.size, status: "all", icon: Building2, tone: "" },
+    { key: "dept", label: groupByProject ? "Захирамж, үүрэг даалгавар" : "Хэлтэс", value: groups.size, status: "all", icon: Building2, tone: "" },
     { key: "all", label: "Бүгд", value: baseTasks.length, status: "all", icon: ClipboardList, tone: "" },
     { key: "overdue", label: "Хугацаа хэтэрсэн", value: baseTasks.filter((task) => isTaskOverdue(task, todayKey)).length, status: "overdue", icon: AlertTriangle, tone: "warn" },
     { key: "review", label: "Батлах хүлээж", value: baseTasks.filter(isTaskReview).length, status: "review", icon: ShieldCheck, tone: "warn" },

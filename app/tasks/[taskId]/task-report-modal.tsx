@@ -992,7 +992,7 @@ export function TaskReportModal({
                     {parentWorkInfo ? (
                       <div className={styles.modalWorkInfoGrid}>
                         <span>
-                          <small>Ажил</small>
+                          <small>Захирамж, үүрэг даалгавар</small>
                           <strong>{parentWorkInfo.workName || "—"}</strong>
                         </span>
                         <span>

@@ -1757,7 +1757,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                               <ClipboardCheck size={22} strokeWidth={2.4} />
                             </span>
                             <div className={styles.taskIdentity}>
-                              <span>Ажил</span>
+                              <span>Захирамж, үүрэг даалгавар</span>
                               <strong>{work.name}</strong>
                               <small>{work.departmentName}</small>
                             </div>

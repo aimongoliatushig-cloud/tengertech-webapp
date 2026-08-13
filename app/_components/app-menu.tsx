@@ -948,7 +948,7 @@ export function AppMenu({
       {
         key: "projects",
         href: departmentItems[0]?.href ?? "/projects",
-        label: "Ажил",
+        label: "Захирамж, үүрэг даалгавар",
         icon: ListChecks,
       },
       autoBaseMenuItem,
@@ -987,7 +987,7 @@ export function AppMenu({
       {
         key: "projects",
         href: scopedDepartmentWorkHref,
-        label: "Ажил",
+        label: "Захирамж, үүрэг даалгавар",
         icon: ListChecks,
       },
       ...(canShowHrMenu
@@ -1045,7 +1045,7 @@ export function AppMenu({
     {
       key: "projects",
       href: scopedDepartmentWorkHref,
-      label: "Ажил",
+      label: "Захирамж, үүрэг даалгавар",
       icon: ListChecks,
     },
   ];
@@ -1327,7 +1327,7 @@ export function AppMenu({
     {
       key: "projects",
       href: scopedDepartmentWorkHref,
-      label: "Ажил",
+      label: "Захирамж, үүрэг даалгавар",
       icon: ListChecks,
     },
     ...(canCreateProject || canCreateTasks
@@ -1409,7 +1409,7 @@ export function AppMenu({
             {
               key: "projects",
               href: departmentItems[0]?.href ?? "/projects",
-              label: "Ажил",
+              label: "Захирамж, үүрэг даалгавар",
               icon: ListChecks,
             },
             {
@@ -1436,7 +1436,7 @@ export function AppMenu({
               {
                 key: "projects",
                 href: scopedDepartmentWorkHref,
-                label: "Ажил",
+                label: "Захирамж, үүрэг даалгавар",
                 icon: ListChecks,
               },
               ...(canShowHrMenu
@@ -1519,7 +1519,7 @@ export function AppMenu({
                       {
                         key: "tasks",
                         href: "/tasks",
-                        label: "Ажил",
+                        label: "Захирамж, үүрэг даалгавар",
                         icon: ListChecks,
                       },
                       {
@@ -1554,7 +1554,7 @@ export function AppMenu({
                         {
                           key: "tasks",
                           href: "/tasks",
-                          label: "Ажил",
+                          label: "Захирамж, үүрэг даалгавар",
                           icon: ListChecks,
                         },
                         {
@@ -1623,7 +1623,7 @@ export function AppMenu({
                           {
                             key: "tasks",
                             href: "/tasks",
-                            label: "Ажил",
+                            label: "Захирамж, үүрэг даалгавар",
                             icon: ListChecks,
                           },
                           {

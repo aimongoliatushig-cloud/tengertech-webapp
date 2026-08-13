@@ -93,7 +93,7 @@ export function ProjectEditModal({
     isOpen
       ? (
           <div className={styles.modalOverlay} role="presentation">
-            <div className={styles.modalDialog} role="dialog" aria-modal="true" aria-label="Ажил засах">
+            <div className={styles.modalDialog} role="dialog" aria-modal="true" aria-label="Захирамж, үүрэг даалгавар засах">
               <div className={styles.modalHeader}>
                 <div className={styles.modalTitleGroup}>
                   <span className={styles.eyebrow}>Ажил засах</span>

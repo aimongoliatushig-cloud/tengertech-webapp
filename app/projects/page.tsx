@@ -1364,7 +1364,7 @@ async function ProjectsPageContent({
                   <section className={styles.unitProjectSection}>
                     <div className={styles.unitProjectSectionHeader}>
                       <div>
-                        <span className={styles.unitProjectSectionKicker}>Ажил</span>
+                        <span className={styles.unitProjectSectionKicker}>Захирамж, үүрэг даалгавар</span>
                         <h3>Хугацаа хэтэрсэн ажил</h3>
                         <p>Дотроо хугацаа хэтэрсэн даалгавартай ажлууд.</p>
                       </div>
