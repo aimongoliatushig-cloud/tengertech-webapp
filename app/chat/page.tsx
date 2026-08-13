@@ -1,70 +1,37 @@
-import { AppMenu } from "@/app/_components/app-menu";
-import { WorkspaceHeader } from "@/app/_components/workspace-header";
-import shellStyles from "@/app/workspace.module.css";
-import {
-  hasCapability,
-  isMasterRole,
-  isWorkerOnly,
-  requireSession,
-  getSessionRoleLabel,
-} from "@/lib/auth";
-import { loadSessionDepartmentName } from "@/lib/access-scope";
+import Link from "next/link";
+import { ArrowLeft, Bell, MessageCircle } from "lucide-react";
 
+import { getSessionRoleLabel, requireSession } from "@/lib/auth";
 import { ChatClient } from "./chat-client";
+import styles from "./chat.module.css";
 
 export const dynamic = "force-dynamic";
 
 export default async function ChatPage() {
   const session = await requireSession();
   const roleLabel = getSessionRoleLabel(session);
-  const masterMode = isMasterRole(session.role);
-  const workerMode = isWorkerOnly(session);
-  const canCreateProject = hasCapability(session, "create_projects");
-  const canCreateTasks = hasCapability(session, "create_tasks");
-  const canWriteReports = hasCapability(session, "write_workspace_reports");
-  const canViewQualityCenter = hasCapability(session, "view_quality_center");
-  const canUseFieldConsole = hasCapability(session, "use_field_console");
-  const departmentScopeName =
-    session.role === "project_manager" || masterMode || workerMode
-      ? await loadSessionDepartmentName(session)
-      : null;
 
   return (
-    <main className={shellStyles.shell}>
-      <div className={shellStyles.container}>
-        <div className={shellStyles.contentWithMenu}>
-          <aside className={shellStyles.menuColumn}>
-            <AppMenu
-              active="chat"
-              canCreateProject={canCreateProject}
-              canCreateTasks={canCreateTasks}
-              canWriteReports={canWriteReports}
-              canViewQualityCenter={canViewQualityCenter}
-              canUseFieldConsole={canUseFieldConsole}
-              userName={session.name}
-              userRole={session.role}
-              roleLabel={roleLabel}
-              groupFlags={session.groupFlags}
-              masterMode={masterMode}
-              workerMode={workerMode}
-              departmentScopeName={departmentScopeName}
-            />
-          </aside>
-
-          <div className={shellStyles.pageContent}>
-            <WorkspaceHeader
-              title="Чат"
-              subtitle="Дотоод багуудын шуурхай холбоо"
-              userName={session.name}
-              roleLabel={roleLabel}
-              notificationCount={0}
-              notificationNote="Шинэ зурвас"
-            />
-
-            <ChatClient />
+    <main className={styles.standalonePage}>
+      <header className={styles.standaloneHeader}>
+        <div className={styles.headerBrand}>
+          <Link href="/" className={styles.erpBackLink}>
+            <ArrowLeft aria-hidden />
+            <span>ERP рүү буцах</span>
+          </Link>
+          <span className={styles.headerDivider} />
+          <div className={styles.chatBrand}>
+            <span className={styles.brandIcon}><MessageCircle aria-hidden /></span>
+            <div><strong>Харилцаа холбоо</strong><small>Байгууллагын дотоод чат</small></div>
           </div>
         </div>
-      </div>
+        <div className={styles.headerUser}>
+          <Link href="/notifications" className={styles.notificationLink} aria-label="Мэдэгдэл"><Bell aria-hidden /></Link>
+          <span className={styles.userAvatar}>{session.name.slice(0, 1).toUpperCase()}</span>
+          <div><strong>{session.name}</strong><small>{roleLabel}</small></div>
+        </div>
+      </header>
+      <div className={styles.standaloneContent}><ChatClient /></div>
     </main>
   );
 }

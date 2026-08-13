@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { MessageCirclePlus, Search, Users, X } from "lucide-react";
+import { ArrowLeft, MessageCirclePlus, Search, Users, X } from "lucide-react";
 import styles from "./chat.module.css";
 
 type Employee = { id: number; name: string; department: string; jobTitle: string; photoUrl: string };
@@ -23,6 +23,7 @@ export function ChatClient() {
   const [selected, setSelected] = useState<number[]>([]);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const [mobileConversationOpen, setMobileConversationOpen] = useState(false);
 
   const load = useCallback(async () => {
     const response = await fetch("/api/chat", { cache: "no-store" });
@@ -79,20 +80,20 @@ export function ChatClient() {
   }
 
   return <section className={styles.chatShell}>
-    <aside className={styles.conversationPanel}>
+    <aside className={`${styles.conversationPanel} ${mobileConversationOpen ? styles.mobileListHidden : ""}`}>
       <div className={styles.panelHeader}><span>Харилцан яриа</span><button type="button" className={styles.iconButton} onClick={() => setShowCreate(true)} title="Шинэ чат"><MessageCirclePlus /></button></div>
       <div className={styles.conversationList}>{snapshot.conversations.map((item) => {
         const last = snapshot.messages.filter((message) => message.conversationId === item.id).at(-1);
         const unread = snapshot.messages.filter((message) => message.conversationId === item.id && !message.readBy.includes(snapshot.currentUserId)).length;
-        return <button key={item.id} type="button" className={`${styles.conversationButton} ${item.id === active?.id ? styles.conversationButtonActive : ""}`} onClick={() => setActiveId(item.id)}>
+        return <button key={item.id} type="button" className={`${styles.conversationButton} ${item.id === active?.id ? styles.conversationButtonActive : ""}`} onClick={() => { setActiveId(item.id); setMobileConversationOpen(true); }}>
           <span className={styles.conversationAvatar}>{item.type === "group" || item.type === "general" ? <Users /> : conversationName(item).slice(0, 1)}</span>
           <span className={styles.conversationCopy}><strong>{conversationName(item)}</strong><small>{last?.body || item.description}</small></span>
           {unread > 0 ? <span className={styles.conversationCount}>{unread}</span> : null}
         </button>;
       })}</div>
     </aside>
-    <div className={styles.messagePanel}>
-      <header className={styles.messageHeader}><div><span>{active?.description || "Чат сонгоно уу"}</span><h2>{active ? conversationName(active) : "Харилцаа холбоо"}</h2></div><strong>{messages.length} зурвас</strong></header>
+    <div className={`${styles.messagePanel} ${mobileConversationOpen ? styles.mobileMessageOpen : ""}`}>
+      <header className={styles.messageHeader}><button type="button" className={styles.mobileBackButton} onClick={() => setMobileConversationOpen(false)} aria-label="Чатын жагсаалт руу буцах"><ArrowLeft /></button><div><span>{active?.description || "Чат сонгоно уу"}</span><h2>{active ? conversationName(active) : "Харилцаа холбоо"}</h2></div><strong>{messages.length} зурвас</strong></header>
       <div className={styles.messageList}>{messages.map((message) => <article key={message.id} className={`${styles.messageBubble} ${message.authorId === snapshot.currentUserId ? styles.messageBubbleOwn : ""}`}>
         <div className={styles.messageMeta}><strong>{message.author}</strong><span>{message.roleLabel}</span><time>{formatTime(message.sentAt)}</time></div><p>{message.body}</p>
       </article>)}</div>
