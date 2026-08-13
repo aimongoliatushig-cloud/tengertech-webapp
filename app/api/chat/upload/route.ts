@@ -1,7 +1,9 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { getSessionRoleLabel, requireSession } from "@/lib/auth";
-import { addChatMessage } from "@/lib/chat-store";
+import { addChatMessage, getChatRecipientIds } from "@/lib/chat-store";
+import { loadHrEmployeeDirectory } from "@/lib/odoo";
+import { notifyPushEvent } from "@/lib/push-notifications";
 
 export const runtime = "nodejs";
 const MAX_SIZE = 15 * 1024 * 1024;
@@ -20,6 +22,10 @@ export async function POST(request: Request) {
   await fs.writeFile(path.join(directory, id), Buffer.from(await file.arrayBuffer()));
   try {
     const message = await addChatMessage({ userId: session.uid, author: session.name, roleLabel: getSessionRoleLabel(session), conversationId, body, attachment: { id, name: file.name.slice(0, 180), mimeType: file.type, size: file.size } });
+    const employees = await loadHrEmployeeDirectory().catch(() => []);
+    const allUserIds = employees.flatMap((item) => item.active && item.userId ? [item.userId] : []);
+    const userIds = await getChatRecipientIds(conversationId, session.uid, allUserIds);
+    if (userIds.length) await notifyPushEvent({ eventType: "chat_message", title: session.name, body: body.trim() || "Зураг, дуу эсвэл файл илгээлээ.", targetUrl: "/chat", userIds }).catch((error) => console.warn("Chat upload push failed:", error));
     return Response.json({ message });
   } catch (error) { await fs.unlink(path.join(directory, id)).catch(() => undefined); throw error; }
 }

@@ -338,6 +338,18 @@ export function AppMenu({
 }: AppMenuProps) {
   void getDockLabel;
   void canViewQualityCenter;
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const refreshUnread = async () => {
+      const response = await fetch("/api/chat/unread", { cache: "no-store" }).catch(() => null);
+      if (response?.ok) setChatUnreadCount(Math.max(0, Number((await response.json()).unread) || 0));
+    };
+    void refreshUnread();
+    const events = new EventSource("/api/chat/events");
+    events.addEventListener("chat", () => void refreshUnread());
+    return () => events.close();
+  }, []);
   void canUseFieldConsole;
   void variant;
 
@@ -1372,6 +1384,7 @@ export function AppMenu({
     href: "/chat",
     label: "Чат",
     icon: MessageSquare,
+    badge: chatUnreadCount,
   };
   const masterMobileDockItems: MenuItem[] = [
     mobileHomeAction,
@@ -2083,6 +2096,7 @@ export function AppMenu({
             >
               <Icon aria-hidden />
               <span>{item.label}</span>
+              {item.badge ? <span className={styles.dockBadge}>{item.badge > 99 ? "99+" : item.badge}</span> : null}
               <PendingLinkIndicator
                 className={styles.dockLoadingHint}
                 overlayClassName={styles.linkLoadingOverlay}

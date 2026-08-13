@@ -40,8 +40,9 @@ export function ChatClient() {
     const heartbeat = () => void fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "presence" }) });
     heartbeat();
     const presenceTimer = window.setInterval(heartbeat, 25_000);
-    const timer = window.setInterval(() => void load(), 5000);
-    return () => { window.clearInterval(timer); window.clearInterval(presenceTimer); };
+    const events = new EventSource("/api/chat/events");
+    events.addEventListener("chat", () => void load());
+    return () => { events.close(); window.clearInterval(presenceTimer); };
   }, [load]);
 
   const active = snapshot.conversations.find((item) => item.id === activeId) ?? snapshot.conversations[0];

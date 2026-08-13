@@ -94,6 +94,14 @@ export async function getChatSnapshot(userId: number) {
   return { conversations, messages: store.messages.filter((item) => ids.has(item.conversationId)), onlineUserIds: Object.entries(store.presence).filter(([, seen]) => Date.now() - new Date(seen).getTime() < 60_000).map(([id]) => Number(id)) };
 }
 
+export async function getChatRecipientIds(conversationId: string, senderId: number, generalUserIds: number[] = []) {
+  const store = await readStore();
+  const conversation = store.conversations.find((item) => item.id === conversationId);
+  if (!conversation || !canAccess(conversation, senderId)) return [];
+  const candidates = conversation.type === "general" ? generalUserIds : conversation.memberIds;
+  return Array.from(new Set(candidates.filter((id) => id > 0 && id !== senderId)));
+}
+
 export async function updateChatPresence(userId: number) {
   return mutate((store) => { store.presence[String(userId)] = new Date().toISOString(); return true; });
 }

@@ -1,6 +1,7 @@
 import { getSessionRoleLabel, requireSession } from "@/lib/auth";
-import { addChatMessage, createChatConversation, getChatSnapshot, markChatRead, updateChatPresence } from "@/lib/chat-store";
+import { addChatMessage, createChatConversation, getChatRecipientIds, getChatSnapshot, markChatRead, updateChatPresence } from "@/lib/chat-store";
 import { loadHrEmployeeDirectory } from "@/lib/odoo";
+import { notifyPushEvent } from "@/lib/push-notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +39,9 @@ export async function POST(request: Request) {
     }
     if (input.action === "message" && input.conversationId) {
       const message = await addChatMessage({ userId: session.uid, author: session.name, roleLabel: getSessionRoleLabel(session), conversationId: input.conversationId, body: input.body ?? "" });
+      const employees = await directory();
+      const userIds = await getChatRecipientIds(input.conversationId, session.uid, employees.map((item) => item.id));
+      if (userIds.length) await notifyPushEvent({ eventType: "chat_message", title: session.name, body: message.body || "Хавсралт илгээлээ.", targetUrl: "/chat", userIds }).catch((error) => console.warn("Chat push failed:", error));
       return Response.json({ message });
     }
     return Response.json({ error: "Буруу хүсэлт байна." }, { status: 400 });

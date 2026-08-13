@@ -37,6 +37,7 @@ export type PushEventType =
   | "procurement_stage_changed"
   | "shared_work_created"
   | "shared_work_task_completed"
+  | "chat_message"
   | "test";
 
 type StoredPushSubscription = BrowserPushSubscription & {
@@ -150,6 +151,11 @@ const EVENT_DEFAULTS: Record<PushEventType, { title: string; body: string; targe
     title: "Хэлтсийн ажил дууслаа",
     body: "Хамтарсан ажлын нэг хэлтсийн явц дууссан төлөвт орлоо.",
     targetUrl: "/shared-work",
+  },
+  chat_message: {
+    title: "Шинэ чат ирлээ",
+    body: "Танд шинэ зурвас ирсэн байна.",
+    targetUrl: "/chat",
   },
   test: {
     title: "Туршилтын мэдэгдэл",
