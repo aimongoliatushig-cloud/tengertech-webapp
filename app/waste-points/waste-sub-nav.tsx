@@ -1,16 +1,17 @@
 import Link from "next/link";
-import { BarChart3, LayoutDashboard, List, Map } from "lucide-react";
+import { BarChart3, LayoutDashboard, List, Map, PlusCircle } from "lucide-react";
 
 import styles from "./waste-points.module.css";
 
 const ITEMS = [
   { key: "dashboard", href: "/waste-points", label: "Хянах самбар", icon: LayoutDashboard },
   { key: "list", href: "/waste-points/list", label: "Хогийн цэгийн жагсаалт", icon: List },
+  { key: "new", href: "/waste-points/new", label: "Хогийн цэг нэмэх", icon: PlusCircle },
   { key: "map", href: "/waste-points/map", label: "Газрын зураг", icon: Map },
   { key: "report", href: "/waste-points/report", label: "Тайлан", icon: BarChart3 },
 ] as const;
 
-export function WasteSubNav({ active }: { active: "dashboard" | "list" | "map" | "report" }) {
+export function WasteSubNav({ active }: { active: "dashboard" | "list" | "new" | "map" | "report" }) {
   return (
     <nav className={styles.subNav} aria-label="Хогийн цэгийн хэсгүүд">
       {ITEMS.map((item) => {

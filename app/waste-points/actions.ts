@@ -7,6 +7,7 @@ import { canAccessAutoBaseOverview, requireSession } from "@/lib/auth";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { executeOdooKw } from "@/lib/odoo";
 import { getWastePointById } from "@/lib/waste-points/service";
+import { createWastePointInApi, WastePointsApiError } from "@/lib/waste-points/api";
 import {
   WASTE_TASK_TYPES,
   WASTE_TYPE_LABELS,
@@ -17,6 +18,60 @@ import {
 const WASTE_TASK_PROJECT = "Хогийн цэгийн ажил (2026)";
 const GARBAGE_DEPARTMENT = "Авто бааз, хог тээвэрлэлтийн хэлтэс";
 const LEGACY_GARBAGE_DEPARTMENT = "Хог тээвэрлэлтийн хэлтэс";
+
+function createPath(status: "notice" | "error", message: string) {
+  return `/waste-points/new?${new URLSearchParams({ [status]: message }).toString()}`;
+}
+
+function formText(formData: FormData, name: string, max = 200) {
+  return String(formData.get(name) ?? "").trim().slice(0, max);
+}
+
+export async function createWastePointAction(formData: FormData) {
+  const session = await requireSession();
+  const scopedDepartmentName = await loadSessionDepartmentName(session);
+  if (!canAccessAutoBaseOverview(session, scopedDepartmentName)) {
+    redirect(createPath("error", "Танд хогийн цэг нэмэх эрх байхгүй байна."));
+  }
+
+  const code = formText(formData, "code", 50);
+  const name = formText(formData, "name");
+  const type = formText(formData, "type", 30);
+  const latitude = Number(formData.get("latitude"));
+  const longitude = Number(formData.get("longitude"));
+  const containerCount = Number(formData.get("containerCount") || 0);
+  const capacity = Number(formData.get("capacity") || 0);
+  if (!code || !name || !["collection_point", "container", "illegal_dump"].includes(type)) {
+    redirect(createPath("error", "Код, нэр, төрлийн мэдээллийг бүрэн оруулна уу."));
+  }
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+    redirect(createPath("error", "GPS өргөрөг, уртрагийн утгыг зөв оруулна уу."));
+  }
+
+  try {
+    const point = await createWastePointInApi({
+      code,
+      name,
+      type: type as "collection_point" | "container" | "illegal_dump",
+      latitude,
+      longitude,
+      districtName: formText(formData, "districtName"),
+      khorooName: formText(formData, "khorooName"),
+      address: formText(formData, "address", 500),
+      containerType: formText(formData, "containerType"),
+      containerCount: Math.max(0, Math.round(containerCount || 0)),
+      capacity: Math.max(0, capacity || 0),
+    });
+    revalidatePath("/waste-points");
+    revalidatePath("/waste-points/list");
+    redirect(`/waste-points/${encodeURIComponent(point.id)}?notice=${encodeURIComponent("Хогийн цэг амжилттай нэмэгдлээ.")}`);
+  } catch (error) {
+    if (error instanceof WastePointsApiError) {
+      redirect(createPath("error", error.friendly));
+    }
+    throw error;
+  }
+}
 
 function backPath(pointId: string, status: "notice" | "error", message: string) {
   const params = new URLSearchParams({ [status]: message });

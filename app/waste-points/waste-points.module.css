@@ -229,6 +229,54 @@
   color: #fff;
 }
 
+.createPointForm {
+  display: grid;
+  gap: 18px;
+}
+
+.createPointForm .cardHead h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.formGrid .field input,
+.formGrid .field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+}
+
+.fieldWide {
+  grid-column: 1 / -1;
+}
+
+.formActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.formActions span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-500, #64748b);
+  font-size: var(--fs-2xs);
+}
+
+@media (max-width: 720px) {
+  .formGrid { grid-template-columns: 1fr; }
+  .fieldWide { grid-column: auto; }
+}
+
 /* --- Хүснэгт --- */
 .tableScroll {
   overflow-x: auto;

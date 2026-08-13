@@ -45,6 +45,20 @@ type RawWastePoint = {
   updatedAt?: string;
 };
 
+export type CreateWastePointInput = {
+  code: string;
+  name: string;
+  type: WastePointType;
+  latitude: number;
+  longitude: number;
+  districtName: string;
+  khorooName: string;
+  address: string;
+  containerType: string;
+  containerCount: number;
+  capacity: number;
+};
+
 function num(value: unknown, fallback = 0): number {
   const parsed = typeof value === "number" ? value : Number.parseFloat(String(value ?? ""));
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -160,4 +174,48 @@ export async function fetchWastePointsFromApi(): Promise<WastePoint[]> {
   }
 
   return list.map((item) => mapWastePoint(item as RawWastePoint)).filter((p) => p.id);
+}
+
+export async function createWastePointInApi(input: CreateWastePointInput): Promise<WastePoint> {
+  const url = `${API_URL.replace(/\/$/, "")}/api/waste-points`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...(API_TOKEN ? { Authorization: `Bearer ${API_TOKEN}` } : {}),
+      },
+      body: JSON.stringify({
+        ...input,
+        companyId: COMPANY_ID,
+        currentFillLevel: 0,
+        currentStatus: "active",
+      }),
+      cache: "no-store",
+    });
+  } catch (error) {
+    throw new WastePointsApiError(
+      0,
+      "Хогийн цэгийн системтэй холбогдож чадсангүй.",
+      error instanceof Error ? error.message : undefined,
+    );
+  }
+
+  if (res.status === 401 || res.status === 403) {
+    throw new WastePointsApiError(res.status, "Хогийн цэг нэмэх API эрх тохируулагдаагүй байна.");
+  }
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new WastePointsApiError(res.status, `Хогийн цэг хадгалахад алдаа гарлаа (${res.status}).`, detail);
+  }
+
+  const payload = (await res.json()) as RawWastePoint | { wastePoint?: RawWastePoint };
+  const raw: RawWastePoint | undefined =
+    "wastePoint" in payload ? payload.wastePoint : (payload as RawWastePoint);
+  if (!raw) {
+    throw new WastePointsApiError(res.status, "Хадгалсан хогийн цэгийн мэдээлэл буцаж ирсэнгүй.");
+  }
+  return mapWastePoint(raw);
 }
