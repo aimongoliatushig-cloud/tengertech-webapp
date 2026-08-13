@@ -182,7 +182,7 @@ export async function buildFleetVehicleXlsx(vehicles: ExportVehicle[]) {
   sheet.mergeCells(`A2:${lastColumn}2`);
   sheet.getCell("A2").value = `Нийт ${vehicles.length} машин · ${new Date().toLocaleDateString("mn-MN")}`;
   sheet.getCell("A2").alignment = { horizontal: "right" };
-  sheet.getCell("A2").font = { name: FONT, size: 10, italic: true };
+  sheet.getCell("A2").font = { name: FONT, size: 12 };
 
   const headerRow = sheet.getRow(3);
   headers.forEach((header, index) => {
@@ -204,7 +204,7 @@ export async function buildFleetVehicleXlsx(vehicles: ExportVehicle[]) {
       row.getCell(detailIndex + 3).value = display(value);
     });
     row.eachCell((cell) => {
-      cell.font = { name: FONT, size: 10 };
+      cell.font = { name: FONT, size: 12 };
       cell.alignment = { vertical: "middle", wrapText: true };
       cell.border = { bottom: { style: "thin", color: { argb: `FF${BORDER}` } } };
     });
@@ -250,7 +250,7 @@ export async function buildFleetVehicleXlsx(vehicles: ExportVehicle[]) {
       row.getCell(2).value = vehicle.plate;
       row.getCell(4).value = `${vehicle.name || vehicle.modelName || vehicle.plate} · Зураг ${imageIndex + 1}`;
       row.eachCell((cell) => {
-        cell.font = { name: FONT, size: 10 };
+        cell.font = { name: FONT, size: 12 };
         cell.alignment = { vertical: "middle", wrapText: true };
         cell.border = { bottom: { style: "thin", color: { argb: `FF${BORDER}` } } };
       });
@@ -291,7 +291,7 @@ export async function buildFleetVehicleDocx(vehicles: ExportVehicle[]) {
           spacing: { after: 80 },
           children: [
             new ImageRun({ type: "jpg", data: image, transformation: { width: 150, height: 100 } }),
-            new TextRun({ text: `\nЗураг ${imageIndex + 1}`, font: FONT, size: 16 }),
+            new TextRun({ text: `\nЗураг ${imageIndex + 1}`, font: FONT, size: 24 }),
           ],
         }))
       : [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Зураггүй", font: FONT })] })];
@@ -304,7 +304,7 @@ export async function buildFleetVehicleDocx(vehicles: ExportVehicle[]) {
         docCell(imageParagraphs, 2500),
         docCell(details.map((text, detailIndex) => new Paragraph({
           spacing: { after: 40 },
-          children: [new TextRun({ text, font: FONT, size: 20, bold: detailIndex === 0 })],
+          children: [new TextRun({ text, font: FONT, size: 24, bold: detailIndex === 0 })],
         })), 6200),
       ],
     }));
@@ -327,7 +327,7 @@ export async function buildFleetVehicleDocx(vehicles: ExportVehicle[]) {
         new Paragraph({
           alignment: AlignmentType.RIGHT,
           spacing: { after: 180 },
-          children: [new TextRun({ text: `Нийт ${vehicles.length} машин · ${new Date().toLocaleDateString("mn-MN")}`, italics: true, size: 18, font: FONT })],
+          children: [new TextRun({ text: `Нийт ${vehicles.length} машин · ${new Date().toLocaleDateString("mn-MN")}`, size: 24, font: FONT })],
         }),
         new Table({ width: { size: 9200, type: WidthType.DXA }, rows }),
       ],
@@ -360,7 +360,7 @@ export async function buildFleetVehiclePdf(vehicles: ExportVehicle[]) {
     </div></article>`;
   }).join("");
   const html = `<!doctype html><html lang="mn"><head><meta charset="utf-8"><style>
-    @page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:#15251a}header{border-bottom:3px solid #287d3c;margin-bottom:8mm;padding-bottom:4mm;display:flex;justify-content:space-between;align-items:end}h1{font-size:20px;margin:0;color:#287d3c}header p{margin:0;font-size:10px}.grid{display:grid;grid-template-columns:1fr;gap:6mm}article{position:relative;border:1px solid #c9d8cd;border-radius:3mm;padding:4mm;break-inside:avoid;background:#fff}.number{position:absolute;right:3mm;top:2mm;color:#728276;font-size:9px}.photo-gallery{display:flex;flex-wrap:wrap;gap:2mm;margin-bottom:3mm}.photo-gallery figure{margin:0;break-inside:avoid}.photo-gallery img,.no-image{width:43mm;height:30mm;object-fit:cover;border-radius:2mm;background:#eef4ef}.photo-gallery figcaption{text-align:center;color:#728276;font-size:7px;margin-top:.5mm}.no-image{display:flex;align-items:center;justify-content:center;color:#728276;font-size:10px}.details{column-count:3;column-gap:5mm}.details h2{column-span:all;font-size:15px;margin:0 0 2mm;color:#1d6532}.details p{break-inside:avoid;font-size:8px;line-height:1.3;margin:0 0 1mm}</style></head><body>
+    @page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;font-size:12pt;color:#15251a}header{border-bottom:3px solid #287d3c;margin-bottom:8mm;padding-bottom:4mm;display:flex;justify-content:space-between;align-items:end}h1{font-size:16pt;margin:0;color:#287d3c}header p{margin:0;font-size:12pt}.grid{display:grid;grid-template-columns:1fr;gap:6mm}article{position:relative;border:1px solid #c9d8cd;border-radius:3mm;padding:4mm;break-inside:avoid;background:#fff}.number{position:absolute;right:3mm;top:2mm;color:#728276;font-size:12pt}.photo-gallery{display:flex;flex-wrap:wrap;gap:2mm;margin-bottom:3mm}.photo-gallery figure{margin:0;break-inside:avoid}.photo-gallery img,.no-image{width:43mm;height:30mm;object-fit:cover;border-radius:2mm;background:#eef4ef}.photo-gallery figcaption{text-align:center;color:#728276;font-size:12pt;margin-top:.5mm}.no-image{display:flex;align-items:center;justify-content:center;color:#728276;font-size:12pt}.details{column-count:3;column-gap:5mm}.details h2{column-span:all;font-size:14pt;margin:0 0 2mm;color:#1d6532}.details p{break-inside:avoid;font-size:12pt;line-height:1.3;margin:0 0 1mm}</style></head><body>
     <header><h1>МАШИН ТЕХНИКИЙН ЖАГСААЛТ</h1><p>Нийт ${vehicles.length} машин · ${new Date().toLocaleDateString("mn-MN")}</p></header><main class="grid">${cards}</main></body></html>`;
   const browser = await chromium.launch({ headless: true });
   try {

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono } from "next/font/google";
 
 import { AppBadgeManager } from "@/app/_components/app-badge-manager";
 import { GlobalLoadingProvider } from "@/app/_components/global-loading";
@@ -10,12 +9,6 @@ import "./globals.css";
 
 // Үндсэн текст Arial (системийн фонт) — --font-body болон --font-inter
 // хувьсагчдыг globals.css дээр Arial stack-аар тодорхойлсон.
-const mono = IBM_Plex_Mono({
-  variable: "--font-mono",
-  subsets: ["latin", "cyrillic"],
-  weight: ["400", "500"],
-});
-
 const EXTENSION_ATTRIBUTE_CLEANUP_SCRIPT = `
 (() => {
   const attribute = "bis_skin_checked";
@@ -76,11 +69,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="mn"
-      suppressHydrationWarning
-      className={mono.variable}
-    >
+    <html lang="mn" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: EXTENSION_ATTRIBUTE_CLEANUP_SCRIPT }} />

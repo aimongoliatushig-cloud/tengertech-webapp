@@ -10,24 +10,25 @@
      Утас/Linux дээр Helvetica, Roboto, Liberation Sans руу буудаг. */
   --font-body: Arial, "Helvetica Neue", Helvetica, "Liberation Sans", Roboto, sans-serif;
   --font-inter: var(--font-body);
+  --font-mono: var(--font-body);
 
   /* Типографийн нэгдсэн скейл — үсгийн хэмжээг зөвхөн эдгээр token-оор тохируулна. */
-  --fs-3xs: 0.72rem;
-  --fs-2xs: 0.78rem;
-  --fs-xs: 0.84rem;
-  --fs-sm: 0.9rem;
-  --fs-md: 0.95rem;
+  --fs-3xs: 1rem;
+  --fs-2xs: 1rem;
+  --fs-xs: 1rem;
+  --fs-sm: 1rem;
+  --fs-md: 1rem;
   --fs-base: 1rem;
-  --fs-lg: 1.1rem;
-  --fs-xl: 1.25rem;
-  --fs-2xl: 1.4rem;
-  --fs-3xl: 1.6rem;
-  --fs-display: 2rem;
+  --fs-lg: 1.1667rem;
+  --fs-xl: 1.1667rem;
+  --fs-2xl: 1.3333rem;
+  --fs-3xl: 1.3333rem;
+  --fs-display: 1.5rem;
   /* Хуудасны гарчиг, hero, статистикийн урсдаг (responsive) хэмжээнүүд. */
-  --fs-title: clamp(1.35rem, 2.4vw, 1.8rem);
-  --fs-hero: clamp(1.55rem, 2.6vw, 2.1rem);
-  --fs-hero-lg: clamp(2rem, 3vw, 2.8rem);
-  --fs-stat: clamp(2.3rem, 4vw, 3.5rem);
+  --fs-title: 1.1667rem;
+  --fs-hero: 1.3333rem;
+  --fs-hero-lg: 1.5rem;
+  --fs-stat: 1.5rem;
 
   --ink-950: #112019;
   --ink-900: #18251f;
@@ -100,7 +101,7 @@ body {
   font-family: var(--font-body), sans-serif;
   /* Нягт ERP харагдац: тодорхой хэмжээ заагаагүй текст 13px байна.
      Компонентын түвшний font-size-ууд өөрсдийн шатлалаа хадгална. */
-  font-size: var(--fs-xs);
+  font-size: 12pt;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

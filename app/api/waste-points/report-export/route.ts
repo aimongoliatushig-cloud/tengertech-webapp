@@ -187,17 +187,17 @@ export async function GET(request: Request) {
   const html = `<!doctype html>
 <html><head><meta charset="utf-8" /><style>
   @page { size: A4; margin: 14mm 10mm; }
-  body { color: #111; font-family: Arial, "Noto Sans", sans-serif; font-size: 9.5pt; }
-  h1 { font-size: 15pt; text-align: center; margin: 0 0 4px; }
-  .scope { text-align: center; color: #475569; font-size: 9pt; margin: 0 0 14px; }
-  h2 { font-size: 11pt; margin: 16px 0 6px; }
+  body { color: #111; font-family: Arial, sans-serif; font-size: 12pt; }
+  h1 { font-size: 16pt; text-align: center; margin: 0 0 4px; }
+  .scope { text-align: center; color: #475569; font-size: 12pt; margin: 0 0 14px; }
+  h2 { font-size: 14pt; margin: 16px 0 6px; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
   th, td { border: 1px solid #94a3b8; padding: 5px 7px; text-align: left; }
-  th { background: #e8f3ea; font-size: 8.5pt; }
+  th { background: #e8f3ea; font-size: 12pt; }
   .cards { display: flex; gap: 8px; margin-bottom: 10px; }
   .card { flex: 1; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; text-align: center; }
-  .card b { display: block; font-size: 15pt; }
-  .card span { font-size: 8pt; color: #475569; }
+  .card b { display: block; font-size: 16pt; }
+  .card span { font-size: 12pt; color: #475569; }
 </style></head>
 <body>
   <h1>${escapeHtml(title)}</h1>

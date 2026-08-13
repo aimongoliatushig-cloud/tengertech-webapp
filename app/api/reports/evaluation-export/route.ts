@@ -155,20 +155,20 @@ export async function GET(request: Request) {
 <html><head><meta charset="utf-8" />
 <style>
   @page { size: A4 landscape; margin: 12mm 10mm; }
-  body { color: #111; font-family: Arial, "Noto Sans", sans-serif; font-size: 8.5pt; }
+  body { color: #111; font-family: Arial, sans-serif; font-size: 12pt; }
   .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
-  .head h1 { font-size: 11pt; margin: 0; font-weight: 700; }
-  .head .date { font-size: 9pt; }
+  .head h1 { font-size: 16pt; margin: 0; font-weight: 700; }
+  .head .date { font-size: 12pt; }
   table { width: 100%; border-collapse: collapse; table-layout: fixed; }
   th, td { border: 1px solid #333; padding: 4px 5px; vertical-align: top; word-wrap: break-word; }
-  th { font-size: 7.6pt; text-align: center; vertical-align: middle; background: #f2f7f3; }
-  td { font-size: 8.2pt; }
+  th { font-size: 12pt; text-align: center; vertical-align: middle; background: #f2f7f3; }
+  td { font-size: 12pt; }
   td.c { text-align: center; }
   td.num { text-align: center; font-variant-numeric: tabular-nums; }
   td.total { font-weight: 700; }
-  td.seg { font-size: 7.6pt; }
+  td.seg { font-size: 12pt; }
   .max { display: block; color: #15803d; font-weight: 700; }
-  .signs { display: flex; justify-content: space-between; margin-top: 22px; font-size: 9pt; }
+  .signs { display: flex; justify-content: space-between; margin-top: 22px; font-size: 12pt; }
   .signs .block { width: 48%; }
   .signs .role { margin: 0 0 14px; font-weight: 600; }
   .signs .line { margin: 0; }

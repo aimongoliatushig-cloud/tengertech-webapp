@@ -77,7 +77,7 @@ function documentShell(title: string, body: string, options: { autoPrint?: boole
     @page { size: A4; margin: 18mm; }
     body {
       color: #111827;
-      font-family: Arial, "Times New Roman", sans-serif;
+      font-family: Arial, sans-serif;
       font-size: 12pt;
       line-height: 1.45;
       margin: 0;
@@ -96,7 +96,7 @@ function documentShell(title: string, body: string, options: { autoPrint?: boole
     .photo img { display: block; max-width: 100%; height: auto; }
     .task-image-group { margin: 12px 0; break-inside: avoid; }
     .task-image-group h3 { margin: 0 0 6px; }
-    .report-caption { margin: 4px 0 8px; color: #4b5563; font-size: 10.5pt; }
+    .report-caption { margin: 4px 0 8px; color: #4b5563; font-size: 12pt; }
     .signature { margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
     .signature div { border-top: 1px solid #111827; padding-top: 6px; text-align: center; }
     @media print {

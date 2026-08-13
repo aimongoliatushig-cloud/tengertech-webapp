@@ -604,7 +604,7 @@ function buildOfficialHtml(context: OfficialReportContext, imagePayloads: Map<nu
     h2 { max-width: 17cm; margin: 0 auto 14pt; text-align: center; font-size: 14pt; line-height: 1.35; font-weight: 700; text-transform: uppercase; }
     p { margin: 0 0 10pt; text-align: justify; text-indent: 1cm; }
     .date-line { display: flex; justify-content: space-between; margin-bottom: 10pt; }
-    .report-date { font-size: 11pt; }
+    .report-date { font-size: 12pt; }
     .work-item { break-inside: auto; }
     .work-item.new-page { page-break-before: always; }
     .images { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8pt 10pt; margin-top: 8pt; }

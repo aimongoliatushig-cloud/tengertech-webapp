@@ -241,13 +241,13 @@ function buildReportHtml(input: {
   <style>
     @page { size: A4 landscape; margin: 12mm; }
     * { box-sizing: border-box; }
-    body { margin: 0; color: #000; background: #fff; font-family: Arial, "Helvetica Neue", sans-serif; font-size: 10px; }
+    body { margin: 0; color: #000; background: #fff; font-family: Arial, sans-serif; font-size: 12pt; }
     .page { width: 100%; min-height: 100vh; padding: 18px 20px 28px; border: 1px solid #f97316; }
     header { text-align: center; margin: 10px 0 22px; }
-    h1 { margin: 0; font-size: 15px; font-weight: 800; letter-spacing: 0; }
-    .subtitle { margin-top: 6px; font-style: italic; }
-    .meta { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; font-size: 10px; }
-    .meta strong { font-size: 11px; }
+    h1 { margin: 0; font-size: 16pt; font-weight: 800; letter-spacing: 0; }
+    .subtitle { margin-top: 6px; font-style: normal; }
+    .meta { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; font-size: 12pt; }
+    .meta strong { font-size: 12pt; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     th, td { border: 1px solid #000; padding: 3px 4px; vertical-align: middle; line-height: 1.2; word-break: break-word; }
     th { text-align: center; font-weight: 800; }
@@ -256,8 +256,8 @@ function buildReportHtml(input: {
     .num { text-align: right; white-space: nowrap; }
     .summary-line td { border-left: 0; border-right: 0; font-weight: 800; }
     .summary-line .summary { text-align: right; }
-    .bullets { width: 52%; margin: 28px auto 38px; font-size: 11px; line-height: 1.8; }
-    .sign { text-align: center; margin-top: 26px; font-size: 11px; }
+    .bullets { width: 52%; margin: 28px auto 38px; font-size: 12pt; line-height: 1.8; }
+    .sign { text-align: center; margin-top: 26px; font-size: 12pt; }
     footer { display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 5px; font-weight: 700; }
     .empty { text-align: center; padding: 20px; font-weight: 700; }
     @media print {

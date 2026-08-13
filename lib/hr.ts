@@ -5277,17 +5277,17 @@ async function renderFallbackPdfWithPlaywright(
     @page { size: A4 landscape; margin: 14mm; }
     * { box-sizing: border-box; }
     html, body, table, th, td, h1, p, div, span { font-family: Arial, sans-serif !important; }
-    body { margin: 0; color: #1f2b25; font-size: 11px; }
+    body { margin: 0; color: #1f2b25; font-size: 12pt; }
     header { display: block; margin-bottom: 16px; }
     .logo { width: 64px; height: 64px; object-fit: contain; }
     .placeholder { display: grid; width: 64px; height: 64px; place-items: center; border: 1px solid #cfd8d1; color: #2e7d32; font-weight: 700; }
-    h1 { margin: 0 0 6px; font-size: 20px; line-height: 1.2; }
-    .meta { color: #526257; font-size: 11px; }
+    h1 { margin: 0 0 6px; font-size: 16pt; line-height: 1.2; }
+    .meta { color: #526257; font-size: 12pt; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     th, td { padding: 7px 6px; border: 1px solid #d9e3dc; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
     th { background: #eef7ef; color: #244d2f; font-weight: 700; }
     tbody tr:nth-child(even) td { background: #f8fbf8; }
-    footer { margin-top: 12px; color: #66766b; font-size: 10px; }
+    footer { margin-top: 12px; color: #66766b; font-size: 12pt; }
   </style>
 </head>
 <body>
