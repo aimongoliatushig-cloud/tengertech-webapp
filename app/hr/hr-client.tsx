@@ -3731,7 +3731,7 @@ export function TimeoffRequestsClient({
   }
 
   return (
-    <div className={`${mode === "hr" ? styles.singleColumn : styles.twoColumn} ${annualLeaveOnlyMode ? styles.formFirstColumn : ""}`}>
+    <div className={mode === "hr" ? styles.singleColumn : styles.twoColumn}>
       <section className={styles.panel}>
         <div className={styles.sectionHeader}>
           <div>
