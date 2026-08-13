@@ -147,7 +147,7 @@ export async function buildReportWorkbook(opts: {
     } else {
       mergeAcross(row);
       sheet.getRow(row).getCell(1).value = "Мэдээлэл алга.";
-      sheet.getRow(row).getCell(1).font = { name: FONT, size: 12, italic: true, color: { argb: "555555" } };
+      sheet.getRow(row).getCell(1).font = { name: FONT, size: 12, color: { argb: "555555" } };
       sheet.getRow(row).getCell(1).border = thinBorder();
       row += 1;
     }
@@ -179,7 +179,7 @@ export async function buildReportWorkbook(opts: {
 
   mergeAcross(row);
   sheet.getRow(row).getCell(1).value = `Тайлан үүсгэсэн огноо: ${reportTodayStamp()}`;
-  sheet.getRow(row).getCell(1).font = { name: FONT, size: 12, italic: true, color: { argb: "555555" } };
+  sheet.getRow(row).getCell(1).font = { name: FONT, size: 12, color: { argb: "555555" } };
   sheet.getRow(row).getCell(1).alignment = { horizontal: "right" };
 
   const arrayBuffer = await workbook.xlsx.writeBuffer();

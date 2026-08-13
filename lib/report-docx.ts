@@ -210,7 +210,7 @@ export async function buildReportDocx(opts: {
       body.push(
         new Paragraph({
           spacing: { after: 40 },
-          children: [new TextRun({ text: `Үндэслэл: ${item.basis}`, italics: true, size: 24, font: FONT })],
+          children: [new TextRun({ text: `Үндэслэл: ${item.basis}`, size: 24, font: FONT })],
         }),
       );
     }
