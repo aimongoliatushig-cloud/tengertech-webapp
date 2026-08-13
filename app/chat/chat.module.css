@@ -274,10 +274,24 @@
 
 .composerRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 10px;
   align-items: end;
 }
+
+.mediaActions { display: flex; gap: 6px; align-items: center; }
+.mediaActions label,
+.mediaActions button { display: inline-grid; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 50%; color: var(--brand-900); background: var(--brand-100); cursor: pointer; }
+.mediaActions input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.mediaActions svg,.pendingFile svg,.fileAttachment svg { width: 20px; height: 20px; }
+.mediaActions .recordingButton { color: white; background: #d92d20; animation: recordingPulse 1.2s infinite; }
+@keyframes recordingPulse { 50% { opacity: .65; } }
+.pendingFile { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border-radius: 10px; color: var(--brand-900); background: var(--brand-100); }
+.pendingFile button { display: inline-grid; width: 30px; height: 30px; place-items: center; border: 0; border-radius: 50%; background: white; cursor: pointer; }
+.chatImage { display: block; max-width: min(360px,100%); max-height: 360px; margin-bottom: 8px; border-radius: 12px; object-fit: cover; }
+.chatAudio { width: min(360px,100%); margin-bottom: 6px; }
+.fileAttachment { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding: 10px; border-radius: 10px; color: var(--ink-900); background: rgba(255,255,255,.8); }
+.fileAttachment span { display: grid; gap: 2px; }.fileAttachment small { color: var(--ink-600); }
 
 .composer textarea {
   width: 100%;
@@ -359,6 +373,7 @@
   .composerRow {
     grid-template-columns: 1fr;
   }
+  .mediaActions { justify-content: flex-start; }
 }
 
 

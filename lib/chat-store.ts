@@ -23,6 +23,7 @@ export type StoredChatMessage = {
   body: string;
   sentAt: string;
   readBy: number[];
+  attachment?: { id: string; name: string; mimeType: string; size: number };
 };
 
 type ChatStore = { conversations: ChatConversation[]; messages: StoredChatMessage[]; presence: Record<string, string> };
@@ -119,21 +120,28 @@ export async function createChatConversation(input: { userId: number; memberIds:
   });
 }
 
-export async function addChatMessage(input: { userId: number; author: string; roleLabel: string; conversationId: string; body: string }) {
+export async function addChatMessage(input: { userId: number; author: string; roleLabel: string; conversationId: string; body: string; attachment?: StoredChatMessage["attachment"] }) {
   return mutate((store) => {
     const conversation = store.conversations.find((item) => item.id === input.conversationId);
     if (!conversation || !canAccess(conversation, input.userId)) throw new Error("CHAT_ACCESS_DENIED");
     const body = input.body.trim().slice(0, 4000);
-    if (!body) throw new Error("CHAT_MESSAGE_REQUIRED");
+    if (!body && !input.attachment) throw new Error("CHAT_MESSAGE_REQUIRED");
     const sentAt = new Date().toISOString();
     const message: StoredChatMessage = {
       id: crypto.randomUUID(), conversationId: conversation.id, authorId: input.userId,
-      author: input.author, roleLabel: input.roleLabel, body, sentAt, readBy: [input.userId],
+      author: input.author, roleLabel: input.roleLabel, body, sentAt, readBy: [input.userId], attachment: input.attachment,
     };
     store.messages.push(message);
     conversation.updatedAt = sentAt;
     return message;
   });
+}
+
+export async function canAccessChatAttachment(userId: number, attachmentId: string) {
+  const store = await readStore();
+  const message = store.messages.find((item) => item.attachment?.id === attachmentId);
+  const conversation = message && store.conversations.find((item) => item.id === message.conversationId);
+  return Boolean(conversation && canAccess(conversation, userId));
 }
 
 export async function markChatRead(userId: number, conversationId: string) {

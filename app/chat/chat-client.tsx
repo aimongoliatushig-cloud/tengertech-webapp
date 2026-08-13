@@ -1,12 +1,13 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, MessageCirclePlus, Search, Users, X } from "lucide-react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Camera, FileText, MessageCirclePlus, Mic, Paperclip, Search, Square, Users, X } from "lucide-react";
 import styles from "./chat.module.css";
 
 type Employee = { id: number; name: string; department: string; jobTitle: string; photoUrl: string };
 type Conversation = { id: string; type: "general" | "direct" | "group"; name: string; description: string; memberIds: number[]; updatedAt: string };
-type ChatMessage = { id: string; conversationId: string; authorId: number; author: string; roleLabel: string; body: string; sentAt: string; readBy: number[] };
+type Attachment = { id: string; name: string; mimeType: string; size: number };
+type ChatMessage = { id: string; conversationId: string; authorId: number; author: string; roleLabel: string; body: string; sentAt: string; readBy: number[]; attachment?: Attachment };
 type Snapshot = { conversations: Conversation[]; messages: ChatMessage[]; employees: Employee[]; currentUserId: number; onlineUserIds: number[] };
 
 function formatTime(value: string) {
@@ -25,6 +26,10 @@ export function ChatClient() {
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const [mobileConversationOpen, setMobileConversationOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [recording, setRecording] = useState(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   const load = useCallback(async () => {
     const response = await fetch("/api/chat", { cache: "no-store" });
@@ -62,9 +67,13 @@ export function ChatClient() {
 
   async function send(event: FormEvent) {
     event.preventDefault();
-    if (!draft.trim() || !active || sending) return;
+    if ((!draft.trim() && !pendingFile) || !active || sending) return;
     setSending(true); setError("");
-    try { await post({ action: "message", conversationId: active.id, body: draft }); setDraft(""); await load(); }
+    try {
+      if (pendingFile) { const form = new FormData(); form.set("file", pendingFile); form.set("conversationId", active.id); form.set("body", draft); const response = await fetch("/api/chat/upload", { method: "POST", body: form }); if (!response.ok) throw new Error((await response.json()).error); }
+      else await post({ action: "message", conversationId: active.id, body: draft });
+      setDraft(""); setPendingFile(null); await load();
+    }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Зурвас илгээж чадсангүй."); }
     finally { setSending(false); }
   }
@@ -89,6 +98,24 @@ export function ChatClient() {
     catch { setError("Хувийн чат нээж чадсангүй."); }
   }
 
+  async function toggleRecording() {
+    if (recording) { recorderRef.current?.stop(); setRecording(false); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream); chunksRef.current = [];
+      recorder.ondataavailable = (event) => { if (event.data.size) chunksRef.current.push(event.data); };
+      recorder.onstop = () => { const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" }); setPendingFile(new File([blob], `voice-${Date.now()}.webm`, { type: blob.type })); stream.getTracks().forEach((track) => track.stop()); };
+      recorder.start(); recorderRef.current = recorder; setRecording(true);
+    } catch { setError("Микрофон ашиглах зөвшөөрөл шаардлагатай."); }
+  }
+
+  function attachmentView(attachment: Attachment) {
+    const url = `/api/chat/media/${attachment.id}`;
+    if (attachment.mimeType.startsWith("image/")) return <a href={url} target="_blank"><img className={styles.chatImage} src={url} alt={attachment.name}/></a>;
+    if (attachment.mimeType.startsWith("audio/")) return <audio className={styles.chatAudio} controls preload="metadata" src={url}/>;
+    return <a className={styles.fileAttachment} href={url} target="_blank"><FileText/><span><strong>{attachment.name}</strong><small>{Math.ceil(attachment.size / 1024)} KB</small></span></a>;
+  }
+
   return <section className={styles.chatShell}>
     <aside className={`${styles.conversationPanel} ${mobileConversationOpen ? styles.mobileListHidden : ""}`}>
       <div className={styles.directoryTabs}><button type="button" className={sidebarTab === "employees" ? styles.directoryTabActive : ""} onClick={() => setSidebarTab("employees")}>Албан хаагч</button><button type="button" className={sidebarTab === "groups" ? styles.directoryTabActive : ""} onClick={() => setSidebarTab("groups")}>Бүлэг</button></div>
@@ -108,10 +135,10 @@ export function ChatClient() {
     <div className={`${styles.messagePanel} ${mobileConversationOpen ? styles.mobileMessageOpen : ""}`}>
       <header className={styles.messageHeader}><button type="button" className={styles.mobileBackButton} onClick={() => setMobileConversationOpen(false)} aria-label="Чатын жагсаалт руу буцах"><ArrowLeft /></button><div><span>{active?.description || "Чат сонгоно уу"}</span><h2>{active ? conversationName(active) : "Харилцаа холбоо"}</h2></div><strong>{messages.length} зурвас</strong></header>
       <div className={styles.messageList}>{messages.map((message) => <article key={message.id} className={`${styles.messageBubble} ${message.authorId === snapshot.currentUserId ? styles.messageBubbleOwn : ""}`}>
-        <div className={styles.messageMeta}><strong>{message.author}</strong><span>{message.roleLabel}</span><time>{formatTime(message.sentAt)}</time></div><p>{message.body}</p>
+        <div className={styles.messageMeta}><strong>{message.author}</strong><span>{message.roleLabel}</span><time>{formatTime(message.sentAt)}</time></div>{message.attachment ? attachmentView(message.attachment) : null}{message.body ? <p>{message.body}</p> : null}
       </article>)}</div>
       {error ? <p className={styles.chatError}>{error}</p> : null}
-      <form className={styles.composer} onSubmit={send}><label htmlFor="chat_message">Зурвас</label><div className={styles.composerRow}><textarea id="chat_message" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Зурвасаа бичнэ үү" rows={2}/><button type="submit" disabled={!draft.trim() || sending}>{sending ? "Илгээж байна..." : "Илгээх"}</button></div></form>
+      <form className={styles.composer} onSubmit={send}>{pendingFile ? <div className={styles.pendingFile}><span>{pendingFile.type.startsWith("audio/") ? "Voice: " : "Файл: "}{pendingFile.name}</span><button type="button" onClick={() => setPendingFile(null)}><X/></button></div> : null}<div className={styles.composerRow}><div className={styles.mediaActions}><label title="Зураг эсвэл файл"><Paperclip/><input type="file" accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" onChange={(event) => setPendingFile(event.target.files?.[0] || null)}/></label><label title="Камераар зураг авах"><Camera/><input type="file" accept="image/*" capture="environment" onChange={(event) => setPendingFile(event.target.files?.[0] || null)}/></label><button type="button" className={recording ? styles.recordingButton : ""} onClick={() => void toggleRecording()} title="Voice бичих">{recording ? <Square/> : <Mic/>}</button></div><textarea id="chat_message" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={recording ? "Voice бичиж байна..." : "Зурвасаа бичнэ үү"} rows={2}/><button type="submit" disabled={(!draft.trim() && !pendingFile) || sending}>{sending ? "Илгээж байна..." : "Илгээх"}</button></div></form>
     </div>
     {showCreate ? <div className={styles.modalBackdrop}><div className={styles.chatModal} role="dialog" aria-modal="true" aria-label="Шинэ чат"><div className={styles.modalHeader}><div><strong>Шинэ чат эсвэл групп</strong><span>Ажилтнуудаа сонгоно уу</span></div><button type="button" className={styles.iconButton} onClick={() => setShowCreate(false)}><X /></button></div>
       <label className={styles.searchBox}><Search/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Нэр, хэлтэс, албан тушаал..."/></label>
