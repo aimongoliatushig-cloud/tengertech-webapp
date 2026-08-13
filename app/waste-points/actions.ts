@@ -62,8 +62,8 @@ export async function createWastePointAction(formData: FormData) {
       containerCount: Math.max(0, Math.round(containerCount || 0)),
       capacity: Math.max(0, capacity || 0),
   };
+  let point;
   try {
-    let point;
     try {
       point = await createWastePointInApi(input);
     } catch (error) {
@@ -73,10 +73,10 @@ export async function createWastePointAction(formData: FormData) {
     invalidateWastePointCache();
     revalidatePath("/waste-points");
     revalidatePath("/waste-points/list");
-    redirect(`/waste-points/${encodeURIComponent(point.id)}?notice=${encodeURIComponent("Хогийн цэг амжилттай нэмэгдлээ.")}`);
   } catch (error) {
     redirect(createPath("error", error instanceof Error ? error.message : "Хогийн цэг хадгалахад алдаа гарлаа."));
   }
+  redirect(`/waste-points/${encodeURIComponent(point.id)}?notice=${encodeURIComponent("Хогийн цэг амжилттай нэмэгдлээ.")}`);
 }
 
 function backPath(pointId: string, status: "notice" | "error", message: string) {
