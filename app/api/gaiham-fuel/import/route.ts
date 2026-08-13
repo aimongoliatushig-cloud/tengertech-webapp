@@ -414,6 +414,7 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
       vehicleCode: string;
       vehicleLabel: string;
       fuelLiters: number;
+      mileageKm: number;
       fuelType: string;
       rowCount: number;
       sampleRows: string[];
@@ -447,12 +448,14 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
           vehicleCode,
           vehicleLabel: total.vehicleLabel,
           fuelLiters: 0,
+          mileageKm: 0,
           fuelType: total.fuelType,
           rowCount: 0,
           sampleRows: [],
         };
 
         current.fuelLiters += total.fuelLiters;
+        current.mileageKm = Math.max(current.mileageKm, total.mileageKm);
         current.rowCount += total.rowCount;
         for (const sample of total.sampleRows) {
           if (current.sampleRows.length >= 3) {
@@ -579,6 +582,15 @@ async function importGaihamDateRange(startDate: string, endDate: string) {
     created,
     updated,
     unmatched,
+    mileagePreview: totals
+      .filter((total) => total.mileageKm > 0)
+      .map((total) => ({
+        reportDate: total.reportDate,
+        vehicleCode: total.vehicleCode,
+        vehicleLabel: total.vehicleLabel,
+        mileageKm: total.mileageKm,
+        sampleRows: total.sampleRows.filter((sample) => /mileage|distance|туулсан|зам|км/i.test(sample)),
+      })),
   };
 
   if (unmatched.length && imported <= 0) {
