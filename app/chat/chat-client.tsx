@@ -7,14 +7,15 @@ import styles from "./chat.module.css";
 type Employee = { id: number; name: string; department: string; jobTitle: string; photoUrl: string };
 type Conversation = { id: string; type: "general" | "direct" | "group"; name: string; description: string; memberIds: number[]; updatedAt: string };
 type ChatMessage = { id: string; conversationId: string; authorId: number; author: string; roleLabel: string; body: string; sentAt: string; readBy: number[] };
-type Snapshot = { conversations: Conversation[]; messages: ChatMessage[]; employees: Employee[]; currentUserId: number };
+type Snapshot = { conversations: Conversation[]; messages: ChatMessage[]; employees: Employee[]; currentUserId: number; onlineUserIds: number[] };
 
 function formatTime(value: string) {
   return new Intl.DateTimeFormat("mn-MN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 }
 
 export function ChatClient() {
-  const [snapshot, setSnapshot] = useState<Snapshot>({ conversations: [], messages: [], employees: [], currentUserId: 0 });
+  const [snapshot, setSnapshot] = useState<Snapshot>({ conversations: [], messages: [], employees: [], currentUserId: 0, onlineUserIds: [] });
+  const [sidebarTab, setSidebarTab] = useState<"employees" | "groups">("employees");
   const [activeId, setActiveId] = useState("");
   const [draft, setDraft] = useState("");
   const [search, setSearch] = useState("");
@@ -35,13 +36,17 @@ export function ChatClient() {
 
   useEffect(() => {
     void load();
+    const heartbeat = () => void fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "presence" }) });
+    heartbeat();
+    const presenceTimer = window.setInterval(heartbeat, 25_000);
     const timer = window.setInterval(() => void load(), 5000);
-    return () => window.clearInterval(timer);
+    return () => { window.clearInterval(timer); window.clearInterval(presenceTimer); };
   }, [load]);
 
   const active = snapshot.conversations.find((item) => item.id === activeId) ?? snapshot.conversations[0];
   const messages = useMemo(() => snapshot.messages.filter((item) => item.conversationId === active?.id), [snapshot.messages, active?.id]);
   const filteredEmployees = snapshot.employees.filter((item) => item.id !== snapshot.currentUserId && `${item.name} ${item.department} ${item.jobTitle}`.toLowerCase().includes(search.toLowerCase()));
+  const groupedEmployees = useMemo(() => Object.entries(filteredEmployees.reduce<Record<string, Employee[]>>((groups, employee) => { const key = employee.department || "Бусад"; (groups[key] ||= []).push(employee); return groups; }, {})), [filteredEmployees]);
 
   useEffect(() => {
     if (!active?.id) return;
@@ -79,9 +84,17 @@ export function ChatClient() {
     return snapshot.employees.find((employee) => item.memberIds.includes(employee.id) && employee.id !== snapshot.currentUserId)?.name || item.name;
   }
 
+  async function openEmployee(employeeId: number) {
+    try { const value = await post({ action: "conversation", memberIds: [employeeId], name: "" }); await load(); setActiveId(value.conversation.id); setMobileConversationOpen(true); }
+    catch { setError("Хувийн чат нээж чадсангүй."); }
+  }
+
   return <section className={styles.chatShell}>
     <aside className={`${styles.conversationPanel} ${mobileConversationOpen ? styles.mobileListHidden : ""}`}>
-      <div className={styles.panelHeader}><span>Харилцан яриа</span><button type="button" className={styles.iconButton} onClick={() => setShowCreate(true)} title="Шинэ чат"><MessageCirclePlus /></button></div>
+      <div className={styles.directoryTabs}><button type="button" className={sidebarTab === "employees" ? styles.directoryTabActive : ""} onClick={() => setSidebarTab("employees")}>Албан хаагч</button><button type="button" className={sidebarTab === "groups" ? styles.directoryTabActive : ""} onClick={() => setSidebarTab("groups")}>Бүлэг</button></div>
+      <label className={styles.directorySearch}><Search/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Хайх..."/></label>
+      <div className={styles.directoryStats}><span>Нийт: <strong>{filteredEmployees.length}</strong></span><span>Идэвхтэй: <strong>{snapshot.onlineUserIds.filter((id) => id !== snapshot.currentUserId).length}</strong></span>{sidebarTab === "groups" ? <button type="button" onClick={() => setShowCreate(true)}><MessageCirclePlus/> Бүлэг үүсгэх</button> : null}</div>
+      {sidebarTab === "employees" ? <div className={styles.employeeDirectory}>{groupedEmployees.map(([department, employees]) => <section key={department}><h3>{department}</h3>{employees.map((employee) => <button key={employee.id} type="button" className={styles.directoryEmployee} onClick={() => void openEmployee(employee.id)}><span className={styles.directoryAvatar}>{employee.photoUrl ? <img src={employee.photoUrl} alt=""/> : employee.name.split(" ").map((part) => part[0]).join("").slice(-2)}<i className={snapshot.onlineUserIds.includes(employee.id) ? styles.onlineDot : styles.offlineDot}/></span><span><strong>{employee.name}</strong><small>{employee.jobTitle || "Ажилтан"}</small></span></button>)}</section>)}</div> :
       <div className={styles.conversationList}>{snapshot.conversations.map((item) => {
         const last = snapshot.messages.filter((message) => message.conversationId === item.id).at(-1);
         const unread = snapshot.messages.filter((message) => message.conversationId === item.id && !message.readBy.includes(snapshot.currentUserId)).length;
@@ -90,7 +103,7 @@ export function ChatClient() {
           <span className={styles.conversationCopy}><strong>{conversationName(item)}</strong><small>{last?.body || item.description}</small></span>
           {unread > 0 ? <span className={styles.conversationCount}>{unread}</span> : null}
         </button>;
-      })}</div>
+      })}</div>}
     </aside>
     <div className={`${styles.messagePanel} ${mobileConversationOpen ? styles.mobileMessageOpen : ""}`}>
       <header className={styles.messageHeader}><button type="button" className={styles.mobileBackButton} onClick={() => setMobileConversationOpen(false)} aria-label="Чатын жагсаалт руу буцах"><ArrowLeft /></button><div><span>{active?.description || "Чат сонгоно уу"}</span><h2>{active ? conversationName(active) : "Харилцаа холбоо"}</h2></div><strong>{messages.length} зурвас</strong></header>

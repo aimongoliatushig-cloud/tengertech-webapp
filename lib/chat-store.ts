@@ -25,7 +25,7 @@ export type StoredChatMessage = {
   readBy: number[];
 };
 
-type ChatStore = { conversations: ChatConversation[]; messages: StoredChatMessage[] };
+type ChatStore = { conversations: ChatConversation[]; messages: StoredChatMessage[]; presence: Record<string, string> };
 
 const DATA_FILE = path.join(process.cwd(), "data", "chat-store.json");
 let writeQueue = Promise.resolve();
@@ -43,7 +43,7 @@ function initialStore(): ChatStore {
       createdAt: timestamp,
       updatedAt: timestamp,
     }],
-    messages: [],
+    messages: [], presence: {},
   };
 }
 
@@ -56,6 +56,7 @@ async function readStore(): Promise<ChatStore> {
         ? value.conversations
         : base.conversations,
       messages: Array.isArray(value.messages) ? value.messages : [],
+      presence: value.presence && typeof value.presence === "object" ? value.presence : {},
     };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT" || error instanceof SyntaxError) return initialStore();
@@ -89,7 +90,11 @@ export async function getChatSnapshot(userId: number) {
   const store = await readStore();
   const conversations = store.conversations.filter((item) => canAccess(item, userId));
   const ids = new Set(conversations.map((item) => item.id));
-  return { conversations, messages: store.messages.filter((item) => ids.has(item.conversationId)) };
+  return { conversations, messages: store.messages.filter((item) => ids.has(item.conversationId)), onlineUserIds: Object.entries(store.presence).filter(([, seen]) => Date.now() - new Date(seen).getTime() < 60_000).map(([id]) => Number(id)) };
+}
+
+export async function updateChatPresence(userId: number) {
+  return mutate((store) => { store.presence[String(userId)] = new Date().toISOString(); return true; });
 }
 
 export async function createChatConversation(input: { userId: number; memberIds: number[]; name?: string }) {

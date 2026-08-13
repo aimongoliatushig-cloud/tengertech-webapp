@@ -1,5 +1,5 @@
 import { getSessionRoleLabel, requireSession } from "@/lib/auth";
-import { addChatMessage, createChatConversation, getChatSnapshot, markChatRead } from "@/lib/chat-store";
+import { addChatMessage, createChatConversation, getChatSnapshot, markChatRead, updateChatPresence } from "@/lib/chat-store";
 import { loadHrEmployeeDirectory } from "@/lib/odoo";
 
 export const runtime = "nodejs";
@@ -23,6 +23,10 @@ export async function POST(request: Request) {
   const session = await requireSession();
   const input = await request.json() as { action?: string; conversationId?: string; body?: string; memberIds?: number[]; name?: string };
   try {
+    if (input.action === "presence") {
+      await updateChatPresence(session.uid);
+      return Response.json({ ok: true });
+    }
     if (input.action === "conversation") {
       const validIds = new Set((await directory()).map((item) => item.id));
       const memberIds = (input.memberIds ?? []).map(Number).filter((id) => validIds.has(id));
