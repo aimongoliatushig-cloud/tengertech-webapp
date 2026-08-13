@@ -26,8 +26,11 @@ async function fetchAllWastePoints(): Promise<WastePoint[]> {
   if (inflight) {
     return inflight;
   }
-  inflight = Promise.all([fetchWastePointsFromApi(), readLocalWastePoints()])
-    .then(([remote, local]) => {
+  inflight = Promise.allSettled([fetchWastePointsFromApi(), readLocalWastePoints()])
+    .then(([remoteResult, localResult]) => {
+      if (localResult.status === "rejected") throw localResult.reason;
+      const remote = remoteResult.status === "fulfilled" ? remoteResult.value : [];
+      const local = localResult.value;
       const remoteKeys = new Set(remote.flatMap((point) => [point.id, point.code]));
       const data = [...remote, ...local.filter((point) => !remoteKeys.has(point.id) && !remoteKeys.has(point.code))];
       cache = { at: Date.now(), data };
