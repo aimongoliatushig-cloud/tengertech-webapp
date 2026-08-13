@@ -19,6 +19,7 @@ import { executeOdooKw, loadMunicipalSnapshot } from "@/lib/odoo";
 import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
 import { buildReportWorkbook, type XlsxSection } from "@/lib/report-xlsx";
 import { buildReportDocx } from "@/lib/report-docx";
+import { resolveReportPeriod } from "@/lib/report-period";
 import {
   REPORT_ORG,
   REPORT_SIGNATURES,
@@ -712,8 +713,16 @@ function buildExportPayload(
   const requestedDepartment = getParam(searchParams, "department");
   const requestedUnit = getParam(searchParams, "unit");
   const requestedReportId = Number(getParam(searchParams, "reportId"));
-  const requestedStartDate = getDateParam(searchParams, "startDate");
-  const requestedEndDate = getDateParam(searchParams, "endDate");
+  const resolvedPeriod = resolveReportPeriod({
+    mode: getParam(searchParams, "mode"),
+    month: getParam(searchParams, "month"),
+    year: getParam(searchParams, "year"),
+    date: getParam(searchParams, "date"),
+    startDate: getParam(searchParams, "startDate"),
+    endDate: getParam(searchParams, "endDate"),
+  });
+  const requestedStartDate = getDateParam(searchParams, "startDate") || resolvedPeriod.startDate;
+  const requestedEndDate = getDateParam(searchParams, "endDate") || resolvedPeriod.endDate;
   const selectedStartDate =
     requestedStartDate && requestedEndDate && requestedStartDate > requestedEndDate
       ? requestedEndDate

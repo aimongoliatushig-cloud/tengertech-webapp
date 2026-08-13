@@ -600,6 +600,10 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   }
   exportParams.set("basis", selectedDateBasis);
   appendReportPeriodSearch(exportParams, period);
+  // Export API-д сонгосон хугацааны бодит хил заавал очно. Зөвхөн
+  // mode/month дамжвал хуучин API бүх хугацааны тайлан татдаг байсан.
+  exportParams.set("startDate", selectedStartDate);
+  exportParams.set("endDate", selectedEndDate);
   // Хугацааны bar болон toolbar хооронд бусад шүүлтийг (хэлтэс, нэгж, хайлт, төлөв) хадгална.
   const periodBarExtraParams: Record<string, string> = {};
   if (!departmentScopedMode && selectedGroup) {
