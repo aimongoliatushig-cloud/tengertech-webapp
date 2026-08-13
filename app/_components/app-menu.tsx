@@ -74,6 +74,7 @@ type MenuKey =
   | "shared-work"
   | "profile"
   | "garbage-points"
+  | "garbage-points-new"
   | "garbage-settings"
   | "cleaning-areas"
   | "settings"
@@ -669,6 +670,7 @@ export function AppMenu({
     children: [
       { key: "auto-base-board", href: "/auto-base", label: "Самбар", icon: Truck },
       { key: "garbage-points", href: "/waste-points", label: "Хогийн цэг", icon: Trash2 },
+      { key: "garbage-points-new", href: "/waste-points/new", label: "Хогийн цэг нэмэх", icon: PlusCircle },
     ],
   };
 
@@ -1220,7 +1222,10 @@ export function AppMenu({
       return active === "auto-base" || pathname === "/auto-base";
     }
     if (item.key === "garbage-points") {
-      return active === "garbage-points" || pathname.startsWith("/waste-points");
+      return active === "garbage-points" || (pathname.startsWith("/waste-points") && pathname !== "/waste-points/new");
+    }
+    if (item.key === "garbage-points-new") {
+      return pathname === "/waste-points/new";
     }
     if (item.key === "hr-dashboard") {
       return pathname === "/hr";

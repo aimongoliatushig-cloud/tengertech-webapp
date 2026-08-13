@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -2963,6 +2964,12 @@ export function AutoBaseBoard({
           <a className={styles.exportButton} href={exportHref("pdf")}>
             <Download size={15} aria-hidden /> PDF
           </a>
+          <Link className={styles.exportButton} href="/waste-points">
+            <Trash2 size={15} aria-hidden /> Хогийн цэг
+          </Link>
+          <Link className={styles.primaryButton} href="/waste-points/new">
+            <Plus size={16} aria-hidden /> Хогийн цэг нэмэх
+          </Link>
         </div>
         <button
           type="button"
