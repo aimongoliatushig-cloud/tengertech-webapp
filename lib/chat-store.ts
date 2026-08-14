@@ -145,6 +145,21 @@ export async function addChatMessage(input: { userId: number; author: string; ro
   });
 }
 
+export async function deleteChatMessage(userId: number, messageId: string) {
+  return mutate((store) => {
+    const index = store.messages.findIndex((message) => message.id === messageId);
+    if (index < 0) throw new Error("CHAT_MESSAGE_NOT_FOUND");
+    const message = store.messages[index];
+    if (message.authorId !== userId) throw new Error("CHAT_DELETE_DENIED");
+    store.messages.splice(index, 1);
+    const conversation = store.conversations.find((item) => item.id === message.conversationId);
+    if (conversation) {
+      conversation.updatedAt = store.messages.filter((item) => item.conversationId === conversation.id).at(-1)?.sentAt || conversation.createdAt;
+    }
+    return message;
+  });
+}
+
 export async function canAccessChatAttachment(userId: number, attachmentId: string) {
   const store = await readStore();
   const message = store.messages.find((item) => item.attachment?.id === attachmentId);

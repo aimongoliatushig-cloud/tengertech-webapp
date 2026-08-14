@@ -252,11 +252,39 @@
 }
 
 .messageBubble {
+  position: relative;
   width: min(74%, 680px);
   padding: 14px 16px;
   border: 1px solid rgba(74, 154, 93, 0.12);
   border-radius: var(--ds-radius-card);
   background: rgba(255, 255, 255, 0.9);
+}
+
+.deleteMessageButton {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.14);
+  opacity: 0;
+  cursor: pointer;
+}
+
+.messageBubble:hover .deleteMessageButton,
+.deleteMessageButton:focus-visible {
+  opacity: 1;
+}
+
+.deleteMessageButton svg { width: 15px; height: 15px; }
+
+@media (hover: none) {
+  .deleteMessageButton { opacity: 0.78; }
 }
 
 .messageBubbleOwn {

@@ -1,5 +1,7 @@
+import { promises as fs } from "node:fs";
+import path from "node:path";
 import { getSessionRoleLabel, requireSession } from "@/lib/auth";
-import { addChatMessage, createChatConversation, getChatRecipientIds, getChatSnapshot, markChatRead, updateChatPresence } from "@/lib/chat-store";
+import { addChatMessage, createChatConversation, deleteChatMessage, getChatRecipientIds, getChatSnapshot, markChatRead, updateChatPresence } from "@/lib/chat-store";
 import { loadHrEmployeeDirectory } from "@/lib/odoo";
 import { notifyPushEvent } from "@/lib/push-notifications";
 
@@ -22,7 +24,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const session = await requireSession();
-  const input = await request.json() as { action?: string; conversationId?: string; body?: string; memberIds?: number[]; name?: string };
+  const input = await request.json() as { action?: string; conversationId?: string; messageId?: string; body?: string; memberIds?: number[]; name?: string };
   try {
     if (input.action === "presence") {
       await updateChatPresence(session.uid);
@@ -37,6 +39,11 @@ export async function POST(request: Request) {
       await markChatRead(session.uid, input.conversationId);
       return Response.json({ ok: true });
     }
+    if (input.action === "delete" && input.messageId) {
+      const message = await deleteChatMessage(session.uid, input.messageId);
+      if (message.attachment?.id) await fs.unlink(path.join(process.cwd(), "data", "chat-media", message.attachment.id)).catch(() => undefined);
+      return Response.json({ ok: true });
+    }
     if (input.action === "message" && input.conversationId) {
       const message = await addChatMessage({ userId: session.uid, author: session.name, roleLabel: getSessionRoleLabel(session), conversationId: input.conversationId, body: input.body ?? "" });
       const employees = await directory();
@@ -46,7 +53,7 @@ export async function POST(request: Request) {
     }
     return Response.json({ error: "Буруу хүсэлт байна." }, { status: 400 });
   } catch (error) {
-    const denied = error instanceof Error && error.message === "CHAT_ACCESS_DENIED";
+    const denied = error instanceof Error && ["CHAT_ACCESS_DENIED", "CHAT_DELETE_DENIED"].includes(error.message);
     return Response.json({ error: denied ? "Энэ чатад хандах эрхгүй байна." : "Хүсэлтийг гүйцэтгэж чадсангүй." }, { status: denied ? 403 : 400 });
   }
 }

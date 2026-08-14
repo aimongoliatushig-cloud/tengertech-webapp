@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Camera, FileText, MessageCirclePlus, Mic, Paperclip, Search, Square, Users, X } from "lucide-react";
+import { ArrowLeft, Camera, FileText, MessageCirclePlus, Mic, Paperclip, Search, Square, Trash2, Users, X } from "lucide-react";
 import styles from "./chat.module.css";
 
 type Employee = { id: number; name: string; department: string; jobTitle: string; photoUrl: string };
@@ -85,6 +85,13 @@ export function ChatClient() {
     finally { setSending(false); }
   }
 
+  async function removeMessage(messageId: string) {
+    if (!window.confirm("Энэ зурвасыг устгах уу?")) return;
+    setError("");
+    try { await post({ action: "delete", messageId }); await load(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Зурвас устгаж чадсангүй."); }
+  }
+
   function conversationName(item: Conversation) {
     if (item.type !== "direct") return item.name;
     return snapshot.employees.find((employee) => item.memberIds.includes(employee.id) && employee.id !== snapshot.currentUserId)?.name || item.name;
@@ -137,6 +144,7 @@ export function ChatClient() {
         return <div key={message.id} className={`${styles.messageRow} ${own ? styles.messageRowOwn : ""}`}>
           <span className={styles.messageAvatar}>{author?.photoUrl ? <img src={author.photoUrl} alt=""/> : null}</span>
           <article className={`${styles.messageBubble} ${own ? styles.messageBubbleOwn : ""}`}>
+            {own ? <button type="button" className={styles.deleteMessageButton} onClick={() => void removeMessage(message.id)} aria-label="Зурвас устгах" title="Устгах"><Trash2/></button> : null}
             {message.attachment ? attachmentView(message.attachment) : null}{message.body ? <p>{message.body}</p> : null}
           </article>
         </div>;
