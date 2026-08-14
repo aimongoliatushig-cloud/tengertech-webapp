@@ -13,12 +13,12 @@
   --font-mono: var(--font-body);
 
   /* Типографийн нэгдсэн скейл — үсгийн хэмжээг зөвхөн эдгээр token-оор тохируулна. */
-  --fs-3xs: 10px;
-  --fs-2xs: 10px;
-  --fs-xs: 10px;
-  --fs-sm: 10px;
-  --fs-md: 10px;
-  --fs-base: 10px;
+  --fs-3xs: 11px;
+  --fs-2xs: 11px;
+  --fs-xs: 11px;
+  --fs-sm: 11px;
+  --fs-md: 11px;
+  --fs-base: 11px;
   --fs-lg: 12px;
   --fs-xl: 14px;
   --fs-2xl: 14px;
@@ -101,7 +101,7 @@ body {
   font-family: var(--font-body), sans-serif;
   /* Нягт ERP харагдац: тодорхой хэмжээ заагаагүй текст 13px байна.
      Компонентын түвшний font-size-ууд өөрсдийн шатлалаа хадгална. */
-  font-size: 10px;
+  font-size: 11px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
