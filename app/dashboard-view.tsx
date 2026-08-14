@@ -3593,7 +3593,6 @@ function ExecutiveDashboardView({
   const canViewWeightReports = canViewGarbageWeightReports(session, departmentScopeName);
   const overallProgress = workItemStats.progress || percent(completedTasks, totalTasks);
   const fleetUsage = percent(fleetBoard.activeCount, fleetBoard.totalVehicles);
-  const activeTasks = Math.max(0, totalTasks - completedTasks);
   const scopedProjectsHref = (category?: string) => {
     const params = new URLSearchParams();
     if (departmentScopeName) {
@@ -3625,6 +3624,10 @@ function ExecutiveDashboardView({
     : conclusionTone === "attention"
       ? "Хяналт шаардлагатай"
       : "Хэвийн";
+  const openDashboardTasks = openTasksFor(dashboardTasks, currentDateKey);
+  const openTaskReviewCount = openDashboardTasks.filter(
+    (task) => task.statusKey === "review" || task.statusKey === "problem",
+  ).length;
   const metrics: ExecutiveMetric[] = [
     {
       label: "нийт гүйцэтгэл",
@@ -3672,10 +3675,12 @@ function ExecutiveDashboardView({
       tone: "orange",
     },
     {
-      label: "нээлттэй ажил",
-      value: String(activeTasks),
-      progress: 100,
-      href: scopedProjectsHref(),
+      label: "нээлттэй даалгавар",
+      value: String(openDashboardTasks.length),
+      valueLabel: "Даалгавар",
+      note: `Хэтэрсэн: ${overdueTasks} · Хянах: ${openTaskReviewCount}`,
+      progress: percent(openDashboardTasks.length - overdueTasks, openDashboardTasks.length),
+      href: "/tasks",
       icon: ClipboardList,
       tone: "green",
     },
@@ -3758,12 +3763,6 @@ function ExecutiveDashboardView({
               <ExecutiveMetricCard key={metric.label} metric={metric} />
             ))}
           </section>
-
-          <OpenTasksSummaryCard
-            tasks={dashboardTasks}
-            currentDateKey={currentDateKey}
-            className="mb-5"
-          />
 
           {departmentScopeName && fleetBoard.totalVehicles > 0 ? (
             <section className={dashboardStyles.departmentVehicleSection} id="department-vehicles">
