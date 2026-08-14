@@ -16,6 +16,7 @@ import {
   HeartPulse,
   Leaf,
   ListChecks,
+  MapPinned,
   Plus,
   Recycle,
   ShieldCheck,
@@ -80,6 +81,17 @@ type DashboardViewProps = {
   assignedTasks?: AssignedTaskItem[];
   showProcurementHomePanels?: boolean;
   procurementActionPanel?: ReactNode;
+  wastePointSummary?: WastePointSummary;
+};
+
+type WastePointSummary = {
+  total: number;
+  active: number;
+  full: number;
+  maintenance: number;
+  inactive: number;
+  khorooCount: number;
+  available: boolean;
 };
 
 const DASHBOARD_IMAGES = {
@@ -3545,6 +3557,7 @@ function ExecutiveDashboardView({
   departmentScopeName = null,
   showDepartmentPerformance = true,
   assignedTasks = [],
+  wastePointSummary,
 }: {
   session: AppSession;
   roleLabel: string;
@@ -3574,6 +3587,7 @@ function ExecutiveDashboardView({
   departmentScopeName?: string | null;
   showDepartmentPerformance?: boolean;
   assignedTasks?: AssignedTaskItem[];
+  wastePointSummary?: WastePointSummary;
 }) {
   const canViewAllReports = canViewAllWorkspaceReports(session);
   const canViewWeightReports = canViewGarbageWeightReports(session, departmentScopeName);
@@ -3654,6 +3668,18 @@ function ExecutiveDashboardView({
       icon: ClipboardList,
       tone: "green",
     },
+    ...(wastePointSummary?.available
+      ? [{
+          label: "хогийн цэг",
+          value: String(wastePointSummary.total),
+          valueLabel: `${wastePointSummary.khorooCount} хороонд бүртгэлтэй`,
+          note: `Хэвийн: ${wastePointSummary.active} · Дүүрсэн: ${wastePointSummary.full} · Засварт: ${wastePointSummary.maintenance}`,
+          progress: percent(wastePointSummary.active, wastePointSummary.total),
+          href: "/waste-points/list",
+          icon: MapPinned,
+          tone: "green" as const,
+        }]
+      : []),
   ];
   const departmentMetrics = buildExecutiveDepartmentMetrics({
     snapshot,
@@ -3732,6 +3758,7 @@ function ExecutiveDashboardView({
               <p><strong>{overdueTasks}</strong><span>Хугацаа хэтэрсэн</span></p>
               <p><strong>{fleetBoard.repairCount}</strong><span>Засвартай техник</span></p>
               <p><strong>{absentEmployees}</strong><span>Өвчтэй, чөлөөтэй</span></p>
+              {wastePointSummary?.available ? <p><strong>{wastePointSummary.total}</strong><span>Бүртгэлтэй хогийн цэг</span></p> : null}
             </div>
             <p className={dashboardStyles.executiveConclusionText}>
               {overdueTasks > 0 ? `${overdueTasks} хугацаа хэтэрсэн ажлыг нэн түрүүнд хариуцагчаар шийдвэрлүүлэх; ` : ""}
@@ -3838,6 +3865,7 @@ export function DashboardView({
   assignedTasks = [],
   showProcurementHomePanels = false,
   procurementActionPanel,
+  wastePointSummary,
 }: DashboardViewProps) {
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -4053,6 +4081,7 @@ export function DashboardView({
         departmentScopeName={departmentScopeName}
         showDepartmentPerformance
         assignedTasks={myAssignedTasks}
+        wastePointSummary={wastePointSummary}
       />
     );
   }

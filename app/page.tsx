@@ -48,6 +48,7 @@ import {
   type GarbageVehicleOption,
 } from "@/lib/workspace";
 import { loadWorkspaceNotificationSummary } from "@/lib/workspace-notifications";
+import { getAllWastePointsFiltered } from "@/lib/waste-points/service";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,16 @@ const EMPTY_HR_ATTENDANCE_SUMMARY: HrDailyAttendanceSummary = {
   leaveToday: 0,
   generatedAt: "",
   source: "empty",
+};
+
+const EMPTY_WASTE_POINT_SUMMARY = {
+  total: 0,
+  active: 0,
+  full: 0,
+  maintenance: 0,
+  inactive: 0,
+  khorooCount: 0,
+  available: false,
 };
 
 const EMPTY_WEATHER_SNAPSHOT: Awaited<ReturnType<typeof loadUlaanbaatarWeather>> = {
@@ -500,6 +511,22 @@ async function DashboardPageContent({
         return null;
       })
     : Promise.resolve(null);
+  const wastePointSummaryPromise = generalDashboardMode
+    ? getAllWastePointsFiltered()
+        .then((points) => ({
+          total: points.length,
+          active: points.filter((point) => point.currentStatus === "active").length,
+          full: points.filter((point) => point.currentStatus === "full").length,
+          maintenance: points.filter((point) => point.currentStatus === "maintenance").length,
+          inactive: points.filter((point) => point.currentStatus === "inactive").length,
+          khorooCount: new Set(points.map((point) => point.khorooName).filter(Boolean)).size,
+          available: true,
+        }))
+        .catch((error) => {
+          console.warn("Waste point summary could not be loaded for dashboard:", error);
+          return EMPTY_WASTE_POINT_SUMMARY;
+        })
+    : Promise.resolve(EMPTY_WASTE_POINT_SUMMARY);
 
   let scopedDepartmentName = await departmentScopeNamePromise;
   if (transportInspectorMode) {
@@ -549,6 +576,7 @@ async function DashboardPageContent({
     assignedGarbagePointOptions,
     garbageDepartmentId,
     procurementActions,
+    wastePointSummary,
   ] = await Promise.all([
     snapshotPromise,
     weatherPromise,
@@ -559,6 +587,7 @@ async function DashboardPageContent({
     assignedGarbagePointOptionsPromise,
     garbageDepartmentIdPromise,
     procurementActionsPromise,
+    wastePointSummaryPromise,
   ]);
 
   if (!scopedDepartmentName && workerMode) {
@@ -652,6 +681,7 @@ async function DashboardPageContent({
       notificationNote={notificationNote}
       assignedTasks={assignedTasks}
       showProcurementHomePanels={Boolean(procurementActions)}
+      wastePointSummary={wastePointSummary}
       procurementActionPanel={
         procurementActions ? (
           <ProcurementActionRequiredList
