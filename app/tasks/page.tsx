@@ -39,6 +39,7 @@ import {
   findDepartmentGroupByName,
   findDepartmentGroupByUnit,
   matchesDepartmentGroup,
+  normalizeOrganizationUnitName,
 } from "@/lib/department-groups";
 import { loadMunicipalSnapshot, type DashboardSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
 import {
@@ -959,6 +960,12 @@ export default async function TasksPage({ searchParams }: PageProps) {
       : inspectorMobileMode
         ? "Миний хянах тайлан"
       : scopedDepartmentName || selectedDepartmentUnit || selectedDepartmentGroup?.name || selectedDepartment?.name || "Бүх алба хэлтэс";
+  const departmentFilterOptions = Array.from(new Set([
+    ...DEPARTMENT_GROUPS.map((group) => group.name),
+    ...snapshot.departments
+      .map((department) => normalizeOrganizationUnitName(department.name) || department.name.trim())
+      .filter(Boolean),
+  ]));
   const masterFlowKicker = seniorMasterMode ? "Ахлах мастерын хяналт" : "Мастерын ажил";
   const masterFlowDescription = seniorMasterMode
     ? "Ахлах мастер өөрийн алба нэгжийн өнөөдөр явах бүх ажил, бүх мастерийн тайланг нэг дор хянана."
@@ -1522,21 +1529,9 @@ export default async function TasksPage({ searchParams }: PageProps) {
                           className={styles.dateInput}
                         >
                           <option value="all">Бүх алба хэлтэс</option>
-                          {DEPARTMENT_GROUPS.map((group) => (
-                            <option key={group.name} value={group.name}>
-                              {group.name}
-                            </option>
-                          ))}
-                          {DEPARTMENT_GROUPS.flatMap((group) =>
-                            group.units.map((unit) => (
-                              <option key={`${group.name}:${unit}`} value={unit}>
-                                {unit}
-                              </option>
-                            )),
-                          )}
-                          {snapshot.departments.map((department) => (
-                            <option key={department.name} value={department.name}>
-                              {department.name}
+                          {departmentFilterOptions.map((departmentName) => (
+                            <option key={departmentName} value={departmentName}>
+                              {departmentName}
                             </option>
                           ))}
                         </select>
