@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AppBadgeManager } from "@/app/_components/app-badge-manager";
 import { GlobalLoadingProvider } from "@/app/_components/global-loading";
+import { FloatingChat } from "@/app/_components/floating-chat";
 import { NotificationPermissionButton } from "@/app/_components/notification-permission-button";
 import { UiContextPreserver } from "@/app/_components/ui-context-preserver";
 
@@ -77,6 +78,7 @@ export default function RootLayout({
         <NotificationPermissionButton />
         <UiContextPreserver />
         <GlobalLoadingProvider>{children}</GlobalLoadingProvider>
+        <FloatingChat />
       </body>
     </html>
   );

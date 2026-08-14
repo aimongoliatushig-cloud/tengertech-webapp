@@ -7,13 +7,14 @@ import styles from "./chat.module.css";
 
 export const dynamic = "force-dynamic";
 
-export default async function ChatPage() {
+export default async function ChatPage({ searchParams }: { searchParams: Promise<{ embedded?: string }> }) {
   const session = await requireSession();
   const roleLabel = getSessionRoleLabel(session);
+  const embedded = (await searchParams).embedded === "1";
 
   return (
-    <main className={styles.standalonePage}>
-      <header className={styles.standaloneHeader}>
+    <main className={`${styles.standalonePage} ${embedded ? styles.embeddedPage : ""}`}>
+      {!embedded ? <header className={styles.standaloneHeader}>
         <div className={styles.headerBrand}>
           <Link href="/" className={styles.erpBackLink}>
             <ArrowLeft aria-hidden />
@@ -30,7 +31,7 @@ export default async function ChatPage() {
           <span className={styles.userAvatar}>{session.name.slice(0, 1).toUpperCase()}</span>
           <div><strong>{session.name}</strong><small>{roleLabel}</small></div>
         </div>
-      </header>
+      </header> : null}
       <div className={styles.standaloneContent}><ChatClient /></div>
     </main>
   );
