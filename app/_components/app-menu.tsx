@@ -338,18 +338,6 @@ export function AppMenu({
 }: AppMenuProps) {
   void getDockLabel;
   void canViewQualityCenter;
-  const [chatUnreadCount, setChatUnreadCount] = useState(0);
-
-  useEffect(() => {
-    const refreshUnread = async () => {
-      const response = await fetch("/api/chat/unread", { cache: "no-store" }).catch(() => null);
-      if (response?.ok) setChatUnreadCount(Math.max(0, Number((await response.json()).unread) || 0));
-    };
-    void refreshUnread();
-    const events = new EventSource("/api/chat/events");
-    events.addEventListener("chat", () => void refreshUnread());
-    return () => events.close();
-  }, []);
   void canUseFieldConsole;
   void variant;
 
@@ -1379,13 +1367,6 @@ export function AppMenu({
     label: "Профайл",
     icon: Settings,
   };
-  const mobileChatAction: MenuItem = {
-    key: "chat",
-    href: "/chat",
-    label: "Чат",
-    icon: MessageSquare,
-    badge: chatUnreadCount,
-  };
   const masterMobileDockItems: MenuItem[] = [
     mobileHomeAction,
     {
@@ -1404,7 +1385,6 @@ export function AppMenu({
           },
         ]
       : []),
-    mobileChatAction,
     mobileProfileAction,
   ];
 
@@ -1445,7 +1425,7 @@ export function AppMenu({
       rolePrimaryItem ?? mobilePrimaryAction ?? fallbackPrimaryItem,
     );
 
-    return [mobileHomeAction, primaryItem, mobileChatAction, mobileProfileAction].filter(
+    return [mobileHomeAction, primaryItem, mobileProfileAction].filter(
       (item): item is MenuItem => Boolean(item),
     );
   };
