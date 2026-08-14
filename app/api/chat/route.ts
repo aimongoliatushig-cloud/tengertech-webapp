@@ -8,16 +8,33 @@ import { notifyPushEvent } from "@/lib/push-notifications";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-async function directory() {
+const DIRECTORY_CACHE_TTL_MS = 5 * 60 * 1000;
+type ChatDirectoryEmployee = { id: number; name: string; department: string; jobTitle: string; photoUrl: string };
+let directoryCache: { expiresAt: number; employees: ChatDirectoryEmployee[] } | null = null;
+
+async function directory(): Promise<ChatDirectoryEmployee[]> {
+  if (directoryCache && directoryCache.expiresAt > Date.now()) {
+    return directoryCache.employees;
+  }
   const employees = await loadHrEmployeeDirectory().catch(() => []);
-  return employees.filter((item) => item.active && item.userId).map((item) => ({
+  const mapped = employees.filter((item) => item.active && item.userId).map((item) => ({
     id: item.userId as number, name: item.name, department: item.departmentName,
     jobTitle: item.jobTitle, photoUrl: item.photoUrl,
   }));
+  directoryCache = { expiresAt: Date.now() + DIRECTORY_CACHE_TTL_MS, employees: mapped };
+  return mapped;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await requireSession();
+  const view = new URL(request.url).searchParams.get("view");
+  if (view === "directory") {
+    return Response.json({ employees: await directory(), currentUserId: session.uid });
+  }
+  if (view === "snapshot") {
+    const snapshot = await getChatSnapshot(session.uid);
+    return Response.json({ ...snapshot, currentUserId: session.uid });
+  }
   const [snapshot, employees] = await Promise.all([getChatSnapshot(session.uid), directory()]);
   return Response.json({ ...snapshot, employees, currentUserId: session.uid });
 }

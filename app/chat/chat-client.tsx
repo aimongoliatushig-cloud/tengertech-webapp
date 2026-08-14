@@ -28,22 +28,35 @@ export function ChatClient() {
   const chunksRef = useRef<Blob[]>([]);
 
   const load = useCallback(async () => {
-    const response = await fetch("/api/chat", { cache: "no-store" });
+    const response = await fetch("/api/chat?view=snapshot", { cache: "no-store" });
     if (!response.ok) return;
-    const value = await response.json() as Snapshot;
-    setSnapshot(value);
+    const value = await response.json() as Omit<Snapshot, "employees">;
+    setSnapshot((current) => ({ ...current, ...value }));
     setActiveId((current) => current || value.conversations[0]?.id || "");
   }, []);
 
+  const loadDirectory = useCallback(async () => {
+    const response = await fetch("/api/chat?view=directory");
+    if (!response.ok) return;
+    const value = await response.json() as Pick<Snapshot, "employees" | "currentUserId">;
+    setSnapshot((current) => ({ ...current, ...value }));
+    try { window.sessionStorage.setItem("chat-employee-directory", JSON.stringify(value)); } catch {}
+  }, []);
+
   useEffect(() => {
+    try {
+      const cached = window.sessionStorage.getItem("chat-employee-directory");
+      if (cached) setSnapshot((current) => ({ ...current, ...JSON.parse(cached) as Pick<Snapshot, "employees" | "currentUserId"> }));
+    } catch {}
     void load();
+    void loadDirectory();
     const heartbeat = () => void fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "presence" }) });
     heartbeat();
     const presenceTimer = window.setInterval(heartbeat, 25_000);
     const events = new EventSource("/api/chat/events");
     events.addEventListener("chat", () => void load());
     return () => { events.close(); window.clearInterval(presenceTimer); };
-  }, [load]);
+  }, [load, loadDirectory]);
 
   const active = snapshot.conversations.find((item) => item.id === activeId) ?? snapshot.conversations[0];
   const messages = useMemo(() => snapshot.messages.filter((item) => item.conversationId === active?.id), [snapshot.messages, active?.id]);
