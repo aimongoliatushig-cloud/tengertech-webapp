@@ -91,7 +91,7 @@ export default async function GarbageRouteDashboardPage({ searchParams }: PagePr
   return <main className={styles.page}>
     <header className={styles.header}>
       <div><Link href="/auto-base"><ArrowLeft /> Авто бааз</Link><h1>GPS маршрут ба хогийн цэгийн бүртгэл</h1><p>Gaiham GPS-ийн хөдөлгөөнийг бүртгэлтэй хогийн цэгийн координаттай автоматаар тулгав.</p></div>
-      <form method="get"><label htmlFor="route-date">Огноо</label><input id="route-date" name="date" type="date" defaultValue={requestedDate}/><button type="submit">Харах</button></form>
+      <div className={styles.headerActions}><form method="get"><label htmlFor="route-date">Огноо</label><input id="route-date" name="date" type="date" defaultValue={requestedDate}/><button type="submit">Харах</button></form><div className={styles.exports}><a href={`/api/garbage-routes/export?date=${requestedDate}&format=xlsx`}>Excel</a><a href={`/api/garbage-routes/export?date=${requestedDate}&format=pdf`}>PDF</a></div></div>
     </header>
     <section className={styles.metrics}>
       <article><Truck/><span>Хөдөлгөөнтэй машин</span><strong>{routeResult.activeTrackerCount}</strong><small>Нийт {routeResult.trackerCount} GPS</small></article>
@@ -101,15 +101,16 @@ export default async function GarbageRouteDashboardPage({ searchParams }: PagePr
     </section>
     <section className={styles.list}>
       <div className={styles.sectionTitle}><h2>Машинуудын маршрут</h2><span>{requestedDate}</span></div>
-      {vehicles.length ? vehicles.map((vehicle) => <article key={vehicle.trackerId} className={styles.vehicleCard}>
-        <div className={styles.vehicleSummary}>
+      {vehicles.length ? vehicles.map((vehicle) => <details key={vehicle.trackerId} className={styles.vehicleCard}>
+        <summary className={styles.vehicleSummary}>
           <div><span className={styles.vehicleIcon}><Truck/></span><div><h3>{vehicle.vehicleCode}</h3><small>{vehicle.vehicleLabel}</small></div></div>
           <dl><div><dt>Туулсан</dt><dd>{vehicle.distanceKm.toFixed(1)} км</dd></div><div><dt>Хөдөлгөөн</dt><dd>{timeLabel(vehicle.startedAt)}–{timeLabel(vehicle.endedAt)}</dd></div><div><dt>Очсон цэг</dt><dd>{vehicle.visits.length}</dd></div><div><dt>Ачсан жин</dt><dd>{vehicle.weightTons.toFixed(2)} тн</dd></div></dl>
-        </div>
+          <span className={styles.expandHint}>Дэлгэрэнгүй</span>
+        </summary>
         {vehicle.visits.length ? <ol className={styles.visits}>{vehicle.visits.map((visit) => <li key={visit.point.id}>
           <span className={styles.visitNumber}>{visit.point.code}</span><div><strong>{visit.point.name}</strong><small>{visit.point.khorooName} · {Math.round(visit.closestMeters)} м дотор</small></div><div className={styles.visitTime}><strong>{timeLabel(visit.firstAt)}–{timeLabel(visit.lastAt)}</strong><small>{durationMinutes(visit.firstAt, visit.lastAt)} минут · GPS баталгаатай</small></div>
         </li>)}</ol> : <p className={styles.emptyVisits}>Бүртгэлтэй хогийн цэгийн 100 метрийн радиуст очсон GPS цэг илрээгүй.</p>}
-      </article>) : <div className={styles.empty}>Энэ өдөр Gaiham GPS хөдөлгөөний мэдээлэл бүртгэгдээгүй байна.</div>}
+      </details>) : <div className={styles.empty}>Энэ өдөр Gaiham GPS хөдөлгөөний мэдээлэл бүртгэгдээгүй байна.</div>}
     </section>
   </main>;
 }
