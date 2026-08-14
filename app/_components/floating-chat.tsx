@@ -13,6 +13,7 @@ export function FloatingChat() {
   const dragRef = useRef<{ pointerId: number; startX: number; startY: number; left: number; top: number; width: number; height: number } | null>(null);
   const suppressClickRef = useRef(false);
   const hidden = pathname === "/chat" || pathname.startsWith("/auth/") || pathname === "/login";
+  const dockRight = position ? position.x > (typeof window === "undefined" ? 720 : window.innerWidth / 2) : false;
 
   useEffect(() => {
     if (hidden) return;
@@ -87,7 +88,7 @@ export function FloatingChat() {
   if (hidden) return null;
   return <>
     {open ? <button type="button" className={styles.backdrop} aria-label="Чат хаах" onClick={() => setOpen(false)}/> : null}
-    <aside className={`${styles.drawer} ${open ? styles.drawerOpen : ""}`} aria-hidden={!open}>
+    <aside className={`${styles.drawer} ${dockRight ? styles.drawerRight : ""} ${open ? styles.drawerOpen : ""}`} aria-hidden={!open}>
       <header><strong>Чат</strong><button type="button" onClick={() => setOpen(false)} aria-label="Чат хаах"><X/></button></header>
       {open ? <iframe src="/chat?embedded=1" title="Байгууллагын чат" allow="camera; microphone"/> : null}
     </aside>
