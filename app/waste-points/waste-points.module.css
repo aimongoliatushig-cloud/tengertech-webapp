@@ -716,3 +716,118 @@
   border-radius: 4px;
   background: var(--line-soft, #eef2f7);
 }
+
+/* Гар утасны дэлгэцэнд бүх хогийн цэгийн хуудсыг viewport дотор барина. */
+@media (max-width: 720px) {
+  .page,
+  .card,
+  .mapWrap,
+  .mapLayout,
+  .mapPanel,
+  .detailGrid,
+  .createPointForm {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .page {
+    gap: 12px;
+  }
+
+  .subNav {
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 2px 0 6px;
+    scrollbar-width: thin;
+    overscroll-behavior-x: contain;
+  }
+
+  .subNavLink {
+    flex: 0 0 auto;
+    padding: 7px 10px;
+    white-space: nowrap;
+  }
+
+  .statGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .stat,
+  .card {
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .cardHead {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .breakdownRow {
+    grid-template-columns: minmax(90px, 1.2fr) minmax(70px, 1fr) 28px;
+    gap: 7px;
+  }
+
+  .khorooGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filters,
+  .mapToolbar,
+  .pagination,
+  .formActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .field,
+  .field input,
+  .field select,
+  .button,
+  .paginationLinks {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .paginationLinks {
+    overflow-x: auto;
+    padding-bottom: 3px;
+  }
+
+  .tableScroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .table {
+    width: max-content;
+    max-width: none;
+  }
+
+  .defList {
+    grid-template-columns: 1fr;
+  }
+
+  .mapCanvas {
+    width: 100%;
+    height: min(58vh, 390px);
+  }
+
+  .qrActions .button {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 380px) {
+  .statGrid,
+  .khorooGrid {
+    grid-template-columns: 1fr;
+  }
+}
