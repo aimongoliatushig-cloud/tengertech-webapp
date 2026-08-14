@@ -28,7 +28,7 @@ export function FloatingChat() {
     {open ? <button type="button" className={styles.backdrop} aria-label="Чат хаах" onClick={() => setOpen(false)}/> : null}
     <aside className={`${styles.drawer} ${open ? styles.drawerOpen : ""}`} aria-hidden={!open}>
       <header><strong>Чат</strong><button type="button" onClick={() => setOpen(false)} aria-label="Чат хаах"><X/></button></header>
-      {open ? <iframe src="/chat?embedded=1" title="Байгууллагын чат"/> : null}
+      {open ? <iframe src="/chat?embedded=1" title="Байгууллагын чат" allow="camera; microphone"/> : null}
     </aside>
     <button type="button" className={styles.launcher} onClick={() => setOpen((value) => !value)} aria-label={open ? "Чат хаах" : "Чат нээх"}>
       {open ? <X/> : <MessageSquare/>}<span>Чат</span>{unread > 0 ? <b>{unread > 99 ? "99+" : unread}</b> : null}
