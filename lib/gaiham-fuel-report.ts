@@ -74,6 +74,34 @@ export type GaihamFuelTotalsResult = {
   ignoredSamples: string[];
 };
 
+export type GaihamTrackPoint = {
+  lat: number;
+  lng: number;
+  getTime: string;
+  speed: number;
+  mileageKm: number;
+  address: string;
+};
+
+export type GaihamDailyVehicleRoute = {
+  requestedDate: string;
+  trackerId: number;
+  vehicleCode: string;
+  vehicleLabel: string;
+  distanceKm: number;
+  trackCount: number;
+  startedAt: string;
+  endedAt: string;
+  points: GaihamTrackPoint[];
+};
+
+export type GaihamDailyRoutesResult = {
+  requestedDate: string;
+  trackerCount: number;
+  activeTrackerCount: number;
+  routes: GaihamDailyVehicleRoute[];
+};
+
 const DEFAULT_GAIHAM_API_BASE_URL = "https://gps.gaikham.com/api-v2";
 const DEFAULT_GAIHAM_WEB_BASE_URL = "https://gps.gaikham.com";
 const DEFAULT_GROUP_LABEL = "\u0425\u0430\u043d-\u0423\u0443\u043b \u0442\u043e\u0445\u0438\u0436\u0438\u043b\u0442";
@@ -769,4 +797,97 @@ export async function fetchGaihamDailyFuelTotals(requestedDate: string): Promise
   } finally {
     await client.close();
   }
+}
+
+function gaihamTrackPoint(value: unknown): GaihamTrackPoint | null {
+  if (!isObject(value)) return null;
+  const lat = Number(value.lat);
+  const lng = Number(value.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return {
+    lat,
+    lng,
+    getTime: String(value.get_time || ""),
+    speed: Number(value.speed) || 0,
+    mileageKm: Number(value.mileage) || 0,
+    address: String(value.address || ""),
+  };
+}
+
+async function mapWithConcurrency<T, R>(items: T[], concurrency: number, mapper: (item: T) => Promise<R>) {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await mapper(items[index]);
+    }
+  }));
+  return results;
+}
+
+const dailyRouteCache = new Map<string, { expiresAt: number; value: GaihamDailyRoutesResult }>();
+const dailyRoutePending = new Map<string, Promise<GaihamDailyRoutesResult>>();
+
+async function loadGaihamDailyRoutes(requestedDate: string): Promise<GaihamDailyRoutesResult> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
+    throw new Error("Invalid date value. Use YYYY-MM-DD.");
+  }
+  const client = await createGaihamClient();
+  try {
+    const hash = await gaihamHash(client);
+    const trackers = await loadTrackers(client, hash);
+    const routes = await mapWithConcurrency(trackers, 4, async (tracker) => {
+      try {
+        const from = `${requestedDate} 00:00:00`;
+        const to = `${requestedDate} 23:59:59`;
+        const [trackPayload, pointPayload] = await Promise.all([
+          client.post<GaihamApiResponse>("track/list", {
+            hash, tracker_id: tracker.id, from, to, filter: false, count_events: false,
+          }),
+          client.post<GaihamApiResponse>("track/read", {
+            hash, tracker_id: tracker.id, from, to, filter: false, simplify: false, include_gsm_lbs: false,
+          }),
+        ]);
+        const trackItems = (trackPayload.list ?? []).filter(isObject);
+        const points = (pointPayload.list ?? []).map(gaihamTrackPoint).filter((point): point is GaihamTrackPoint => Boolean(point));
+        if (!trackItems.length && !points.length) return null;
+        const distanceKm = trackItems.reduce((sum, track) => sum + (Number(track.length) || 0), 0);
+        return {
+          requestedDate,
+          trackerId: tracker.id,
+          vehicleCode: extractVehicleCode(tracker.label) || tracker.label,
+          vehicleLabel: tracker.label,
+          distanceKm: Math.round(distanceKm * 100) / 100,
+          trackCount: trackItems.length,
+          startedAt: String(trackItems[0]?.start_date || points[0]?.getTime || ""),
+          endedAt: String(trackItems.at(-1)?.end_date || points.at(-1)?.getTime || ""),
+          points,
+        } satisfies GaihamDailyVehicleRoute;
+      } catch (error) {
+        console.warn(`Gaiham route could not be loaded for tracker ${tracker.id}:`, error);
+        return null;
+      }
+    });
+    const activeRoutes = routes.filter((route): route is GaihamDailyVehicleRoute => Boolean(route));
+    return { requestedDate, trackerCount: trackers.length, activeTrackerCount: activeRoutes.length, routes: activeRoutes };
+  } finally {
+    await client.close();
+  }
+}
+
+export async function fetchGaihamDailyRoutes(requestedDate: string): Promise<GaihamDailyRoutesResult> {
+  const cached = dailyRouteCache.get(requestedDate);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  const pending = dailyRoutePending.get(requestedDate);
+  if (pending) return pending;
+  const request = loadGaihamDailyRoutes(requestedDate)
+    .then((value) => {
+      dailyRouteCache.set(requestedDate, { expiresAt: Date.now() + 5 * 60 * 1000, value });
+      return value;
+    })
+    .finally(() => dailyRoutePending.delete(requestedDate));
+  dailyRoutePending.set(requestedDate, request);
+  return request;
 }

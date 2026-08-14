@@ -2967,6 +2967,9 @@ export function AutoBaseBoard({
           <Link className={styles.exportButton} href="/waste-points">
             <Trash2 size={15} aria-hidden /> Хогийн цэг
           </Link>
+          <Link className={styles.exportButton} href="/garbage-routes/dashboard">
+            <Navigation size={15} aria-hidden /> GPS маршрут
+          </Link>
           <Link className={styles.primaryButton} href="/waste-points/new">
             <Plus size={16} aria-hidden /> Хогийн цэг нэмэх
           </Link>
