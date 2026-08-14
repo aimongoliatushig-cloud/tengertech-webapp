@@ -4068,7 +4068,7 @@ export function DashboardView({
         subtitle={scopedDashboardSubtitle}
         departmentSectionTitle={scopedDepartmentSectionTitle}
         departmentScopeName={departmentScopeName}
-        showDepartmentPerformance
+        showDepartmentPerformance={departmentHeadDashboardMode}
         assignedTasks={myAssignedTasks}
         wastePointSummary={wastePointSummary}
       />
