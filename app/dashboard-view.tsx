@@ -3630,7 +3630,7 @@ function ExecutiveDashboardView({
   ).length;
   const metrics: ExecutiveMetric[] = [
     {
-      label: "нийт гүйцэтгэл",
+      label: "захирамж, үүрэг даалгаврын гүйцэтгэл",
       value: `${overallProgress}%`,
       progress: overallProgress,
       showRing: true,
