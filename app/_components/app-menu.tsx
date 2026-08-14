@@ -22,6 +22,7 @@ import {
   LogOut,
   Menu,
   MessageSquare,
+  Navigation,
   PlusCircle,
   Settings,
   ShoppingCart,
@@ -66,6 +67,7 @@ type MenuKey =
   | "department-work"
   | "auto-base"
   | "auto-base-board"
+  | "gps-routes"
   | "fleet-repair"
   | "hr"
   | "field"
@@ -687,6 +689,7 @@ export function AppMenu({
     icon: Truck,
     children: [
       { key: "auto-base-board", href: "/auto-base", label: "Самбар", icon: Truck },
+      { key: "gps-routes", href: "/garbage-routes/dashboard", label: "GPS маршрут", icon: Navigation },
       { key: "garbage-points", href: "/waste-points", label: "Хогийн цэг", icon: Trash2 },
       { key: "garbage-points-new", href: "/waste-points/new", label: "Хогийн цэг нэмэх", icon: PlusCircle },
     ],
@@ -1259,6 +1262,9 @@ export function AppMenu({
     }
     if (item.key === "auto-base-board") {
       return active === "auto-base" || pathname === "/auto-base";
+    }
+    if (item.key === "gps-routes") {
+      return pathname === "/garbage-routes/dashboard";
     }
     if (item.key === "garbage-points") {
       return active === "garbage-points" || (pathname.startsWith("/waste-points") && pathname !== "/waste-points/new");
