@@ -33,7 +33,7 @@ function distanceMeters(point: GaihamTrackPoint, target: WastePoint) {
 }
 
 function pointVisits(points: GaihamTrackPoint[], wastePoints: WastePoint[]) {
-  const radius = Math.max(20, Math.min(Number(process.env.GAIHAM_WASTE_POINT_RADIUS_METERS) || 100, 500));
+  const radius = 20;
   const visits = new Map<string, { point: WastePoint; firstAt: string; lastAt: string; samples: number; closestMeters: number }>();
   for (const gpsPoint of points) {
     let nearest: WastePoint | null = null;
@@ -126,7 +126,7 @@ export default async function GarbageRouteDashboardPage({ searchParams }: PagePr
         </summary>
         {vehicle.visits.length ? <ol className={styles.visits}>{vehicle.visits.map((visit) => <li key={visit.point.id}>
           <span className={styles.visitNumber}>{visit.point.code}</span><div><strong>{visit.point.name}</strong><small>{visit.point.khorooName} · {Math.round(visit.closestMeters)} м дотор</small></div><div className={styles.visitTime}><strong>{timeLabel(visit.firstAt)}–{timeLabel(visit.lastAt)}</strong><small>{durationMinutes(visit.firstAt, visit.lastAt)} минут · GPS баталгаатай</small></div>
-        </li>)}</ol> : <p className={styles.emptyVisits}>Бүртгэлтэй хогийн цэгийн 100 метрийн радиуст очсон GPS цэг илрээгүй.</p>}
+        </li>)}</ol> : <p className={styles.emptyVisits}>Бүртгэлтэй хогийн цэгийн 20 метрийн радиуст очсон GPS цэг илрээгүй.</p>}
       </details>) : <div className={styles.empty}>Энэ өдөр Gaiham GPS хөдөлгөөний мэдээлэл бүртгэгдээгүй байна.</div>}
     </section>
   </main>;
