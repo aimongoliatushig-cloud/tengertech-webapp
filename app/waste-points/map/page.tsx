@@ -9,8 +9,12 @@ import styles from "../waste-points.module.css";
 
 export const dynamic = "force-dynamic";
 
-export default async function WastePointsMapPage() {
+type PageProps = { searchParams?: Promise<{ point?: string | string[] }> };
+
+export default async function WastePointsMapPage({ searchParams }: PageProps) {
   const { session, scopedDepartmentName } = await requireWasteAccess();
+  const rawPoint = (await searchParams)?.point;
+  const initialPointId = typeof rawPoint === "string" ? rawPoint : "";
 
   let points: Awaited<ReturnType<typeof getAllWastePointsFiltered>>;
   try {
@@ -40,7 +44,7 @@ export default async function WastePointsMapPage() {
     >
       <div className={styles.page}>
         <WasteSubNav active="map" />
-        <WasteMap points={points} />
+        <WasteMap points={points} initialPointId={initialPointId} />
       </div>
     </WasteShell>
   );

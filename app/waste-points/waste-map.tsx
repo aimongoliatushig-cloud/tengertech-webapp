@@ -27,10 +27,11 @@ const TYPE_COLOR: Record<WastePointType, string> = {
 // Хан-Уул дүүргийн төв орчим
 const DEFAULT_CENTER: [number, number] = [47.88, 106.86];
 
-export function WasteMap({ points }: { points: WastePoint[] }) {
+export function WasteMap({ points, initialPointId = "" }: { points: WastePoint[]; initialPointId?: string }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<unknown>(null);
-  const [selected, setSelected] = useState<WastePoint | null>(null);
+  const initialPoint = points.find((point) => String(point.id) === initialPointId) ?? null;
+  const [selected, setSelected] = useState<WastePoint | null>(initialPoint);
   const [ready, setReady] = useState(false);
   const [typeFilter, setTypeFilter] = useState<WastePointType | "all">("all");
 
@@ -106,8 +107,13 @@ export function WasteMap({ points }: { points: WastePoint[] }) {
       });
 
       if (visible.length) {
-        const bounds = L.latLngBounds(visible.map((p) => [p.latitude, p.longitude] as [number, number]));
-        map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+        const focusedPoint = initialPointId ? visible.find((point) => String(point.id) === initialPointId) : null;
+        if (focusedPoint) {
+          map.setView([focusedPoint.latitude, focusedPoint.longitude], 18);
+        } else {
+          const bounds = L.latLngBounds(visible.map((p) => [p.latitude, p.longitude] as [number, number]));
+          map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+        }
       }
     })();
 
@@ -117,7 +123,7 @@ export function WasteMap({ points }: { points: WastePoint[] }) {
         (m as import("leaflet").Marker).remove();
       }
     };
-  }, [ready, visible]);
+  }, [initialPointId, ready, visible]);
 
   return (
     <div className={styles.mapWrap}>
