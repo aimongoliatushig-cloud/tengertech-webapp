@@ -3663,6 +3663,17 @@ function ExecutiveDashboardView({
   });
   const activityRows = buildExecutiveActivityRows(snapshot, dashboardTasks);
   const alertCount = reviewTasks + overdueTasks + fleetBoard.repairCount;
+  const absentEmployees = hrAttendanceSummary.sickToday + hrAttendanceSummary.leaveToday;
+  const conclusionTone = overdueTasks > 0 || fleetBoard.repairCount > 0
+    ? "warning"
+    : reviewTasks > 0
+      ? "attention"
+      : "normal";
+  const conclusionTitle = conclusionTone === "warning"
+    ? "Шуурхай анхаарах асуудал байна"
+    : conclusionTone === "attention"
+      ? "Хяналтын шатны ажлуудыг шийдвэрлэх шаардлагатай"
+      : "Үйл ажиллагаа хэвийн байна";
 
   return (
     <main className={cn(shellStyles.shell, dashboardStyles.executiveShell)}>
@@ -3708,6 +3719,27 @@ function ExecutiveDashboardView({
             {metrics.map((metric) => (
               <ExecutiveMetricCard key={metric.label} metric={metric} />
             ))}
+          </section>
+
+          <section className={cn(dashboardStyles.executiveConclusion, dashboardStyles[`executiveConclusion_${conclusionTone}`])}>
+            <div className={dashboardStyles.executiveConclusionLead}>
+              {conclusionTone === "normal" ? <CheckCircle2 aria-hidden /> : <AlertTriangle aria-hidden />}
+              <div><span>Автомат дүгнэлт</span><h2>{conclusionTitle}</h2></div>
+            </div>
+            <div className={dashboardStyles.executiveConclusionGrid}>
+              <p><strong>{overallProgress}%</strong><span>Нийт гүйцэтгэл</span></p>
+              <p><strong>{reviewTasks}</strong><span>Хяналт хүлээж буй</span></p>
+              <p><strong>{overdueTasks}</strong><span>Хугацаа хэтэрсэн</span></p>
+              <p><strong>{fleetBoard.repairCount}</strong><span>Засвартай техник</span></p>
+              <p><strong>{absentEmployees}</strong><span>Өвчтэй, чөлөөтэй</span></p>
+            </div>
+            <p className={dashboardStyles.executiveConclusionText}>
+              {overdueTasks > 0 ? `${overdueTasks} хугацаа хэтэрсэн ажлыг нэн түрүүнд хариуцагчаар шийдвэрлүүлэх; ` : ""}
+              {reviewTasks > 0 ? `${reviewTasks} хяналт хүлээж буй ажлыг баталгаажуулах; ` : ""}
+              {fleetBoard.repairCount > 0 ? `${fleetBoard.repairCount} засвартай техникийн бэлэн байдлыг шалгах; ` : ""}
+              {overdueTasks === 0 && reviewTasks === 0 && fleetBoard.repairCount === 0 ? "Онцгой эрсдэл илрээгүй. Өдөр тутмын хяналтыг хэвийн үргэлжлүүлнэ." : "ажлын явцыг өдөр тутам шинэчилж хянана."}
+            </p>
+            {!snapshot.generatedAt ? <small className={dashboardStyles.executiveConclusionWarning}>Ажлын мэдээллийн эх үүсвэр шинэчлэгдээгүй тул дүгнэлтийг шийдвэрийн цорын ганц үндэслэл болгож болохгүй.</small> : null}
           </section>
 
           <OpenTasksSummaryCard

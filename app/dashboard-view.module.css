@@ -4736,6 +4736,28 @@
   margin-bottom: 20px;
 }
 
+.executiveConclusion { display: grid; gap: 14px; margin: -2px 0 20px; padding: 16px 18px; border: 1px solid rgba(46,125,50,.16); border-radius: 8px; background: rgba(255,255,255,.94); box-shadow: 0 12px 30px rgba(27,73,38,.06); }
+.executiveConclusion_warning { border-color: rgba(190,101,35,.28); background: #fffaf2; }
+.executiveConclusion_attention { border-color: rgba(31,111,181,.22); background: #f7fbff; }
+.executiveConclusionLead { display: flex; align-items: center; gap: 11px; }
+.executiveConclusionLead > svg { width: 24px; height: 24px; color: #2e7d32; }
+.executiveConclusion_warning .executiveConclusionLead > svg { color: #b5651d; }
+.executiveConclusion_attention .executiveConclusionLead > svg { color: #256fa7; }
+.executiveConclusionLead span { color: #637068; font-size: var(--fs-2xs); font-weight: 700; }
+.executiveConclusionLead h2 { margin: 2px 0 0; color: #18251f; font-size: var(--fs-title); }
+.executiveConclusionGrid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 8px; }
+.executiveConclusionGrid p { display: grid; gap: 2px; padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,.76); }
+.executiveConclusionGrid strong { color: #18251f; font-size: var(--fs-xl); }
+.executiveConclusionGrid span { color: #637068; font-size: var(--fs-2xs); }
+.executiveConclusionText { margin: 0; color: #425149; font-size: var(--fs-base); line-height: 1.55; }
+.executiveConclusionWarning { color: #a34f25; font-size: var(--fs-2xs); font-weight: 700; }
+
+@media (max-width: 720px) {
+  .executiveConclusion { padding: 14px; }
+  .executiveConclusionGrid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .executiveConclusionGrid p:last-child { grid-column: 1 / -1; }
+}
+
 .executiveMetricCard,
 .executiveDepartmentCard,
 .executiveWeatherPanel,
