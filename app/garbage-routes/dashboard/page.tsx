@@ -13,7 +13,7 @@ import styles from "./route-dashboard.module.css";
 
 export const dynamic = "force-dynamic";
 
-type PageProps = { searchParams?: Promise<{ date?: string | string[] }> };
+type PageProps = { searchParams?: Promise<{ date?: string | string[]; department?: string | string[] }> };
 
 function currentDateKey() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ulaanbaatar" }).format(new Date());
@@ -66,7 +66,10 @@ export default async function GarbageRouteDashboardPage({ searchParams }: PagePr
   const session = await requireSession();
   const departmentName = await loadSessionDepartmentName(session);
   if (!canAccessAutoBaseOverview(session, departmentName)) redirect("/");
-  const rawDate = (await searchParams)?.date;
+  const params = await searchParams;
+  const rawDate = params?.date;
+  const rawDepartment = params?.department;
+  const requestedDepartment = typeof rawDepartment === "string" ? rawDepartment : "";
   const requestedDate = typeof rawDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : currentDateKey();
   const [routeResult, wastePoints, fleetBoard] = await Promise.all([
     fetchGaihamDailyRoutes(requestedDate),
@@ -79,11 +82,25 @@ export default async function GarbageRouteDashboardPage({ searchParams }: PagePr
     const key = normalizeVehicle(row.vehiclePlate || row.vehicleName);
     weightByVehicle.set(key, (weightByVehicle.get(key) ?? 0) + row.weightTons);
   }
-  const vehicles = routeResult.routes.map((route) => ({
-    ...route,
-    visits: pointVisits(route.points, wastePoints),
-    weightTons: weightByVehicle.get(normalizeVehicle(route.vehicleCode)) ?? 0,
-  })).sort((left, right) => right.visits.length - left.visits.length || right.distanceKm - left.distanceKm);
+  const fleetByVehicle = new Map<string, NonNullable<typeof fleetBoard>["allVehicles"][number]>();
+  for (const vehicle of fleetBoard?.allVehicles ?? []) {
+    for (const value of [vehicle.plate, vehicle.name]) {
+      const key = normalizeVehicle(value);
+      if (key) fleetByVehicle.set(key, vehicle);
+    }
+  }
+  const departmentOptions = Array.from(new Set((fleetBoard?.allVehicles ?? []).map((vehicle) => vehicle.departmentName).filter(Boolean))).sort((a, b) => a.localeCompare(b, "mn"));
+  const vehicles = routeResult.routes.map((route) => {
+    const fleetVehicle = fleetByVehicle.get(normalizeVehicle(route.vehicleCode)) ?? fleetByVehicle.get(normalizeVehicle(route.vehicleLabel));
+    return {
+      ...route,
+      imageUrl: fleetVehicle?.imageUrl ?? "",
+      departmentName: fleetVehicle?.departmentName ?? "Хэлтэс бүртгээгүй",
+      visits: pointVisits(route.points, wastePoints),
+      weightTons: weightByVehicle.get(normalizeVehicle(route.vehicleCode)) ?? 0,
+    };
+  }).filter((vehicle) => !requestedDepartment || vehicle.departmentName === requestedDepartment)
+    .sort((left, right) => right.visits.length - left.visits.length || right.distanceKm - left.distanceKm);
   const totalVisits = vehicles.reduce((sum, vehicle) => sum + vehicle.visits.length, 0);
   const totalDistance = vehicles.reduce((sum, vehicle) => sum + vehicle.distanceKm, 0);
   const totalWeight = vehicles.reduce((sum, vehicle) => sum + vehicle.weightTons, 0);
@@ -91,10 +108,10 @@ export default async function GarbageRouteDashboardPage({ searchParams }: PagePr
   return <main className={styles.page}>
     <header className={styles.header}>
       <div><Link href="/auto-base"><ArrowLeft /> Авто бааз</Link><h1>GPS маршрут ба хогийн цэгийн бүртгэл</h1><p>Gaiham GPS-ийн хөдөлгөөнийг бүртгэлтэй хогийн цэгийн координаттай автоматаар тулгав.</p></div>
-      <div className={styles.headerActions}><form method="get"><label htmlFor="route-date">Огноо</label><input id="route-date" name="date" type="date" defaultValue={requestedDate}/><button type="submit">Харах</button></form><div className={styles.exports}><a href={`/api/garbage-routes/export?date=${requestedDate}&format=xlsx`}>Excel</a><a href={`/api/garbage-routes/export?date=${requestedDate}&format=pdf`}>PDF</a></div></div>
+      <div className={styles.headerActions}><form method="get"><label htmlFor="route-department">Хэлтэс</label><select id="route-department" name="department" defaultValue={requestedDepartment}><option value="">Бүх хэлтэс</option>{departmentOptions.map((department) => <option key={department} value={department}>{department}</option>)}</select><label htmlFor="route-date">Огноо</label><input id="route-date" name="date" type="date" defaultValue={requestedDate}/><button type="submit">Харах</button></form><div className={styles.exports}><a href={`/api/garbage-routes/export?date=${requestedDate}&department=${encodeURIComponent(requestedDepartment)}&format=xlsx`}>Excel</a><a href={`/api/garbage-routes/export?date=${requestedDate}&department=${encodeURIComponent(requestedDepartment)}&format=pdf`}>PDF</a></div></div>
     </header>
     <section className={styles.metrics}>
-      <article><Truck/><span>Хөдөлгөөнтэй машин</span><strong>{routeResult.activeTrackerCount}</strong><small>Нийт {routeResult.trackerCount} GPS</small></article>
+      <article><Truck/><span>Хөдөлгөөнтэй машин</span><strong>{vehicles.length}</strong><small>{requestedDepartment || `Нийт ${routeResult.trackerCount} GPS`}</small></article>
       <article><MapPin/><span>Хогийн цэгийн очилт</span><strong>{totalVisits}</strong><small>{wastePoints.length} цэгтэй тулгасан</small></article>
       <article><Navigation/><span>Нийт туулсан зам</span><strong>{totalDistance.toFixed(1)} км</strong><small>Gaiham GPS</small></article>
       <article><Truck/><span>Ачсан жин</span><strong>{totalWeight.toFixed(2)} тн</strong><small>Жингийн тайлантай холбосон</small></article>
@@ -103,7 +120,7 @@ export default async function GarbageRouteDashboardPage({ searchParams }: PagePr
       <div className={styles.sectionTitle}><h2>Машинуудын маршрут</h2><span>{requestedDate}</span></div>
       {vehicles.length ? vehicles.map((vehicle) => <details key={vehicle.trackerId} className={styles.vehicleCard}>
         <summary className={styles.vehicleSummary}>
-          <div><span className={styles.vehicleIcon}><Truck/></span><div><h3>{vehicle.vehicleCode}</h3><small>{vehicle.vehicleLabel}</small></div></div>
+          <div>{vehicle.imageUrl ? <img className={styles.vehiclePhoto} src={vehicle.imageUrl} alt={vehicle.vehicleCode}/> : <span className={styles.vehicleIcon}><Truck/></span>}<div><h3>{vehicle.vehicleCode}</h3><small>{vehicle.vehicleLabel} · {vehicle.departmentName}</small></div></div>
           <dl><div><dt>Туулсан</dt><dd>{vehicle.distanceKm.toFixed(1)} км</dd></div><div><dt>Хөдөлгөөн</dt><dd>{timeLabel(vehicle.startedAt)}–{timeLabel(vehicle.endedAt)}</dd></div><div><dt>Очсон цэг</dt><dd>{vehicle.visits.length}</dd></div><div><dt>Ачсан жин</dt><dd>{vehicle.weightTons.toFixed(2)} тн</dd></div></dl>
           <span className={styles.expandHint}>Дэлгэрэнгүй</span>
         </summary>
