@@ -17,6 +17,7 @@ import {
   Leaf,
   ListChecks,
   MapPinned,
+  Navigation,
   Plus,
   Recycle,
   ShieldCheck,
@@ -82,6 +83,7 @@ type DashboardViewProps = {
   showProcurementHomePanels?: boolean;
   procurementActionPanel?: ReactNode;
   wastePointSummary?: WastePointSummary;
+  gpsRouteSummary?: GpsRouteSummary;
 };
 
 type WastePointSummary = {
@@ -91,6 +93,13 @@ type WastePointSummary = {
   maintenance: number;
   inactive: number;
   khorooCount: number;
+  available: boolean;
+};
+
+type GpsRouteSummary = {
+  trackerCount: number;
+  activeVehicleCount: number;
+  totalDistanceKm: number;
   available: boolean;
 };
 
@@ -3558,6 +3567,7 @@ function ExecutiveDashboardView({
   showDepartmentPerformance = true,
   assignedTasks = [],
   wastePointSummary,
+  gpsRouteSummary,
 }: {
   session: AppSession;
   roleLabel: string;
@@ -3588,6 +3598,7 @@ function ExecutiveDashboardView({
   showDepartmentPerformance?: boolean;
   assignedTasks?: AssignedTaskItem[];
   wastePointSummary?: WastePointSummary;
+  gpsRouteSummary?: GpsRouteSummary;
 }) {
   const canViewAllReports = canViewAllWorkspaceReports(session);
   const canViewWeightReports = canViewGarbageWeightReports(session, departmentScopeName);
@@ -3694,6 +3705,18 @@ function ExecutiveDashboardView({
           href: "/waste-points/list",
           icon: MapPinned,
           tone: "green" as const,
+        }]
+      : []),
+    ...(gpsRouteSummary?.available
+      ? [{
+          label: "GPS маршрут",
+          value: String(gpsRouteSummary.activeVehicleCount),
+          valueLabel: "Хөдөлгөөнтэй машин",
+          note: `Нийт ${gpsRouteSummary.trackerCount} GPS · ${gpsRouteSummary.totalDistanceKm.toFixed(1)} км`,
+          progress: percent(gpsRouteSummary.activeVehicleCount, gpsRouteSummary.trackerCount),
+          href: "/garbage-routes/dashboard",
+          icon: Navigation,
+          tone: "blue" as const,
         }]
       : []),
     {
@@ -3855,6 +3878,7 @@ export function DashboardView({
   showProcurementHomePanels = false,
   procurementActionPanel,
   wastePointSummary,
+  gpsRouteSummary,
 }: DashboardViewProps) {
   const canCreateProject = hasCapability(session, "create_projects");
   const canCreateTasks = hasCapability(session, "create_tasks");
@@ -4071,6 +4095,7 @@ export function DashboardView({
         showDepartmentPerformance
         assignedTasks={myAssignedTasks}
         wastePointSummary={wastePointSummary}
+        gpsRouteSummary={gpsRouteSummary}
       />
     );
   }

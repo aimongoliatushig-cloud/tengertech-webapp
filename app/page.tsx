@@ -15,6 +15,7 @@ import {
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import { loadAssignedGarbageTasks } from "@/lib/field-ops";
 import { canAccessGeneralDashboard } from "@/lib/general-dashboard-access";
+import { fetchGaihamDailyRoutes } from "@/lib/gaiham-fuel-report";
 import { scopeFleetVehicleBoardByDepartment } from "@/lib/fleet-vehicle-board-scope";
 import { canAccessHr } from "@/lib/hr";
 import {
@@ -104,6 +105,17 @@ const EMPTY_WASTE_POINT_SUMMARY = {
   khorooCount: 0,
   available: false,
 };
+
+const EMPTY_GPS_ROUTE_SUMMARY = {
+  trackerCount: 0,
+  activeVehicleCount: 0,
+  totalDistanceKm: 0,
+  available: false,
+};
+
+function dashboardDateKey() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ulaanbaatar" }).format(new Date());
+}
 
 const EMPTY_WEATHER_SNAPSHOT: Awaited<ReturnType<typeof loadUlaanbaatarWeather>> = {
   city: "Улаанбаатар",
@@ -527,6 +539,19 @@ async function DashboardPageContent({
           return EMPTY_WASTE_POINT_SUMMARY;
         })
     : Promise.resolve(EMPTY_WASTE_POINT_SUMMARY);
+  const gpsRouteSummaryPromise = generalDashboardMode
+    ? fetchGaihamDailyRoutes(dashboardDateKey())
+        .then((result) => ({
+          trackerCount: result.trackerCount,
+          activeVehicleCount: result.activeTrackerCount,
+          totalDistanceKm: result.routes.reduce((sum, route) => sum + route.distanceKm, 0),
+          available: true,
+        }))
+        .catch((error) => {
+          console.warn("GPS route summary could not be loaded for dashboard:", error);
+          return EMPTY_GPS_ROUTE_SUMMARY;
+        })
+    : Promise.resolve(EMPTY_GPS_ROUTE_SUMMARY);
 
   let scopedDepartmentName = await departmentScopeNamePromise;
   if (transportInspectorMode) {
@@ -577,6 +602,7 @@ async function DashboardPageContent({
     garbageDepartmentId,
     procurementActions,
     wastePointSummary,
+    gpsRouteSummary,
   ] = await Promise.all([
     snapshotPromise,
     weatherPromise,
@@ -588,6 +614,7 @@ async function DashboardPageContent({
     garbageDepartmentIdPromise,
     procurementActionsPromise,
     wastePointSummaryPromise,
+    gpsRouteSummaryPromise,
   ]);
 
   if (!scopedDepartmentName && workerMode) {
@@ -682,6 +709,7 @@ async function DashboardPageContent({
       assignedTasks={assignedTasks}
       showProcurementHomePanels={Boolean(procurementActions)}
       wastePointSummary={wastePointSummary}
+      gpsRouteSummary={gpsRouteSummary}
       procurementActionPanel={
         procurementActions ? (
           <ProcurementActionRequiredList
