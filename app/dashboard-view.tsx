@@ -20,6 +20,7 @@ import {
   Navigation,
   Plus,
   Recycle,
+  Scale,
   ShieldCheck,
   Sun,
   Truck,
@@ -3718,6 +3719,30 @@ function ExecutiveDashboardView({
           icon: Navigation,
           tone: "blue" as const,
         }]
+      : []),
+    ...(canViewWeightReports
+      ? [
+          {
+            label: "Шатахуун",
+            value: fleetBoard.todayFuelLabel,
+            valueLabel: "Өнөөдрийн зарцуулалт",
+            note: `${fleetBoard.fuelReportRows.length} тайлан бүртгэгдсэн`,
+            progress: fleetBoard.fuelReportRows.length > 0 ? 100 : 0,
+            href: `/reports/fleet?type=fuel&mode=day&date=${currentDateKey}`,
+            icon: Fuel,
+            tone: "orange" as const,
+          },
+          {
+            label: "Жин",
+            value: fleetBoard.todayWeightLabel,
+            valueLabel: "Өнөөдрийн тээвэрлэлт",
+            note: `${fleetBoard.weightReportRows.length} тайлан бүртгэгдсэн`,
+            progress: fleetBoard.weightReportRows.length > 0 ? 100 : 0,
+            href: `/reports/fleet?type=weight&mode=day&date=${currentDateKey}`,
+            icon: Scale,
+            tone: "purple" as const,
+          },
+        ]
       : []),
     {
       label: "автомат дүгнэлт",
