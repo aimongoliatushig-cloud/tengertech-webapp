@@ -160,7 +160,7 @@ async function loginIfNeeded(page: Page) {
         );
       },
       undefined,
-      { timeout: 60_000 },
+      { timeout: 10_000 },
     )
     .catch(() => undefined);
 
@@ -171,34 +171,15 @@ async function loginIfNeeded(page: Page) {
     .first();
 
   const clicked = await loginButton
-    .click({ timeout: 15_000 })
+    .click({ timeout: 5_000 })
     .then(() => true)
     .catch(() => false);
 
   if (!clicked) {
-    await page.evaluate(() => {
-      const candidates = Array.from(document.querySelectorAll("button"));
-      const button = candidates.find((candidate) => {
-        const style = window.getComputedStyle(candidate);
-        const rect = candidate.getBoundingClientRect();
-        const title = candidate.getAttribute("title") ?? "";
-        return (
-          !candidate.disabled &&
-          style.display !== "none" &&
-          style.visibility !== "hidden" &&
-          rect.width > 0 &&
-          rect.height > 0 &&
-          (candidate.classList.contains("xaf-primary-toolbar-btn") ||
-            candidate.classList.contains("dxbl-btn-primary") ||
-            /\(enter\)/i.test(title))
-        );
-      });
-
-      if (!button) {
-        throw new Error("WRS visible login button was not found.");
-      }
-      button.click();
-    });
+    await page
+      .locator("button.xaf-primary-toolbar-btn, button.dxbl-btn-primary")
+      .first()
+      .evaluate((button) => (button as HTMLButtonElement).click());
   }
 
   await page.waitForURL((url) => !url.pathname.includes("/LoginPage"), {
