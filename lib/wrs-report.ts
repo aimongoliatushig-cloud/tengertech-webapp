@@ -182,9 +182,15 @@ async function loginIfNeeded(page: Page) {
       .evaluate((button) => (button as HTMLButtonElement).click());
   }
 
-  await page.waitForURL((url) => !url.pathname.includes("/LoginPage"), {
-    timeout: 60_000,
-  });
+  await page
+    .waitForURL((url) => !url.pathname.includes("/LoginPage"), {
+      timeout: 30_000,
+    })
+    .catch(() => {
+      throw new Error(
+        "WRS серверийн нэвтрэх хуудас бүрэн ачаалагдсангүй. WRS серверийн Blazor холболтыг шалгаад дахин оролдоно уу.",
+      );
+    });
   await page.waitForLoadState("domcontentloaded");
 }
 
