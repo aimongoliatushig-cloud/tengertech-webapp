@@ -138,11 +138,68 @@ async function loginIfNeeded(page: Page) {
 
   const loginInput = page.locator('input[type="text"]').first();
   const passwordInput = page.locator('input[type="password"]').first();
-  const submitButton = page.locator("button").first();
 
   await loginInput.fill(WRS_REPORT_LOGIN);
   await passwordInput.fill(WRS_REPORT_PASSWORD);
-  await submitButton.click();
+
+  await page
+    .waitForFunction(
+      () => {
+        const loadingPanel = document.getElementById("applicationLoadingPanel");
+        if (!loadingPanel) {
+          return true;
+        }
+        const style = window.getComputedStyle(loadingPanel);
+        const rect = loadingPanel.getBoundingClientRect();
+        return (
+          style.display === "none" ||
+          style.visibility === "hidden" ||
+          style.pointerEvents === "none" ||
+          rect.width === 0 ||
+          rect.height === 0
+        );
+      },
+      undefined,
+      { timeout: 60_000 },
+    )
+    .catch(() => undefined);
+
+  const loginButton = page
+    .locator(
+      "button.xaf-primary-toolbar-btn:visible:not([disabled]), button.dxbl-btn-primary:visible:not([disabled])",
+    )
+    .first();
+
+  const clicked = await loginButton
+    .click({ timeout: 15_000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!clicked) {
+    await page.evaluate(() => {
+      const candidates = Array.from(document.querySelectorAll("button"));
+      const button = candidates.find((candidate) => {
+        const style = window.getComputedStyle(candidate);
+        const rect = candidate.getBoundingClientRect();
+        const title = candidate.getAttribute("title") ?? "";
+        return (
+          !candidate.disabled &&
+          style.display !== "none" &&
+          style.visibility !== "hidden" &&
+          rect.width > 0 &&
+          rect.height > 0 &&
+          (candidate.classList.contains("xaf-primary-toolbar-btn") ||
+            candidate.classList.contains("dxbl-btn-primary") ||
+            /\(enter\)/i.test(title))
+        );
+      });
+
+      if (!button) {
+        throw new Error("WRS visible login button was not found.");
+      }
+      button.click();
+    });
+  }
 
   await page.waitForURL((url) => !url.pathname.includes("/LoginPage"), {
     timeout: 60_000,
