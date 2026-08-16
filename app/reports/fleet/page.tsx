@@ -20,7 +20,6 @@ import { canViewGarbageWeightReports } from "@/lib/roles";
 import { compareHrDepartmentNames } from "@/lib/hr-department-order";
 
 import styles from "./fleet-report.module.css";
-import { FleetReportImages } from "./fleet-report-images";
 
 export const dynamic = "force-dynamic";
 
@@ -351,17 +350,10 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
                                       <th>Огноо</th>
                                       <th className={styles.alignEnd}>{isFuel ? "Литр" : isDistance ? "Туулсан км" : "Жин (тонн)"}</th>
                                       <th>{isDistance ? "Одометр" : "Эх сурвалж"}</th>
-                                      <th>Зураг</th>
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {daily.map((item) => {
-                                      const reportModel = isFuel
-                                        ? "municipal.garbage.fuel.report" as const
-                                        : isDistance
-                                          ? "fleet.vehicle.odometer" as const
-                                          : "municipal.garbage.weight.report" as const;
-                                      return (
+                                    {daily.map((item) => (
                                       <tr key={item.id}>
                                         <td>{isDistance ? (item as (typeof row.distanceDaily)[number]).date : (item as (typeof row.fuelDaily)[number] | (typeof row.weightDaily)[number]).reportDateValue || (item as (typeof row.fuelDaily)[number] | (typeof row.weightDaily)[number]).reportDate}</td>
                                         <td className={styles.alignEnd}>
@@ -372,16 +364,8 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
                                               : (item as (typeof row.weightDaily)[number]).weightLabel}
                                         </td>
                                         <td>{isDistance ? (item as (typeof row.distanceDaily)[number]).odometerLabel : (item as (typeof row.fuelDaily)[number] | (typeof row.weightDaily)[number]).source}</td>
-                                        <td>
-                                          <FleetReportImages
-                                            model={reportModel}
-                                            recordId={item.id}
-                                            images={item.images}
-                                          />
-                                        </td>
                                       </tr>
-                                      );
-                                    })}
+                                    ))}
                                   </tbody>
                                 </table>
                               ) : (
