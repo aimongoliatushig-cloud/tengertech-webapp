@@ -49,7 +49,7 @@ import { normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { type FieldAssignment } from "@/lib/field-ops";
 import { isGreenOrImprovementVehicleScope } from "@/lib/fleet-vehicle-board-scope";
 import { canViewAllWorkspaceReports } from "@/lib/report-permissions";
-import { canViewGarbageWeightReports } from "@/lib/roles";
+import { canAccessAutoBaseOverview, canViewGarbageWeightReports } from "@/lib/roles";
 import {
   type AssignedTaskItem,
   type AssignedTaskStatusKey,
@@ -4066,6 +4066,10 @@ export function DashboardView({
     isDepartmentHeadDashboard(session);
   const executiveDashboardMode =
     canViewGeneralDashboard && !workerMode && !departmentHeadDashboardMode;
+  const canViewWasteAndGpsCards = canAccessAutoBaseOverview(
+    session,
+    departmentScopeName,
+  );
 
   if (executiveDashboardMode || departmentHeadDashboardMode) {
     const scopedDashboardTitle = departmentHeadDashboardMode
@@ -4108,8 +4112,8 @@ export function DashboardView({
         departmentScopeName={departmentScopeName}
         showDepartmentPerformance
         assignedTasks={myAssignedTasks}
-        wastePointSummary={wastePointSummary}
-        gpsRouteSummary={gpsRouteSummary}
+        wastePointSummary={canViewWasteAndGpsCards ? wastePointSummary : undefined}
+        gpsRouteSummary={canViewWasteAndGpsCards ? gpsRouteSummary : undefined}
       />
     );
   }
