@@ -351,6 +351,35 @@
   gap: 2px;
 }
 
+.vehicleIdentity {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.vehicleIdentity img,
+.vehicleImagePlaceholder {
+  width: 48px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  border: 1px solid #dce9df;
+}
+
+.vehicleIdentity img {
+  display: block;
+  object-fit: cover;
+  background: #f2f7f3;
+}
+
+.vehicleImagePlaceholder {
+  display: grid;
+  place-items: center;
+  color: #779182;
+  background: #f2f7f3;
+}
+
 .vehicleName strong {
   font-size: var(--fs-sm);
   color: #16271d;

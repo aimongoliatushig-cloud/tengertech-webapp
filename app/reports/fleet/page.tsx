@@ -332,7 +332,17 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
                             >
                               <span className={styles.rowIndex}>{index + 1}</span>
                               <span className={styles.vehicleName}>
-                                <strong>{row.vehicleLabel}</strong>
+                                <span className={styles.vehicleIdentity}>
+                                  {row.vehicleImageUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={row.vehicleImageUrl} alt={`${row.vehicleLabel} машины зураг`} />
+                                  ) : (
+                                    <span className={styles.vehicleImagePlaceholder} aria-hidden>
+                                      <Gauge size={18} />
+                                    </span>
+                                  )}
+                                  <strong>{row.vehicleLabel}</strong>
+                                </span>
                                 {!row.matched && row.vehiclePlate && row.vehiclePlate !== row.vehicleLabel ? (
                                   <small>{row.vehiclePlate}</small>
                                 ) : null}
