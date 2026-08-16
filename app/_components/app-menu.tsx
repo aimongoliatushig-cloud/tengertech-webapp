@@ -636,13 +636,37 @@ export function AppMenu({
 
   const departmentItems: MenuItem[] = visibleDepartmentGroups
     .filter((group) => !isHiddenDepartmentMenu(group))
-    .map((group, index) => ({
-      key: `department-${index}`,
-      href: `/department-work?department=${encodeURIComponent(group.name)}`,
-      label: group.name,
-      icon: getDepartmentMenuIcon(group),
-      departmentName: group.name,
-    }));
+    .map((group, index) => {
+      const departmentHref = `/department-work?department=${encodeURIComponent(group.name)}`;
+      const isAutoBaseDepartment = isAutoGarbageDepartment(group.name);
+      return {
+        key: `department-${index}`,
+        href: departmentHref,
+        label: group.name,
+        icon: getDepartmentMenuIcon(group),
+        departmentName: group.name,
+        children:
+          isAutoBaseDepartment && canOpenAutoBase
+            ? [
+                {
+                  key: "auto-garbage-department-work",
+                  href: departmentHref,
+                  label: "Захирамж, үүрэг даалгавар",
+                  icon: ListChecks,
+                },
+                {
+                  key: "auto-base-board",
+                  href: "/auto-base",
+                  label: "Авто бааз",
+                  icon: Truck,
+                },
+              ]
+            : undefined,
+      };
+    });
+  const hasNestedAutoBaseMenu = departmentItems.some((item) =>
+    item.children?.some((child) => child.key === "auto-base-board"),
+  );
 
   const hasHrSpecialistMenuAccess = canManageHr === true;
   const departmentHrMenuKeys = new Set([
@@ -765,7 +789,7 @@ export function AppMenu({
     ...hrItems,
     ...roleFocusedItems,
     ...departmentItems,
-    ...(canOpenAutoBase ? [autoBaseMenuItem] : []),
+    ...(canOpenAutoBase && !hasNestedAutoBaseMenu ? [autoBaseMenuItem] : []),
     ...(!workerMode || canCreateTasks
       ? [
           {
