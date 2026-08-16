@@ -1071,6 +1071,7 @@ export type FleetVehicleDailyWeightItem = {
   fetchedAtValue: string;
   stateLabel: string;
   errorMessage: string;
+  images: FleetReportImage[];
 };
 
 export type FleetVehicleDailyFuelItem = {
@@ -1088,6 +1089,13 @@ export type FleetVehicleDailyFuelItem = {
   fetchedAtValue: string;
   stateLabel: string;
   errorMessage: string;
+  images: FleetReportImage[];
+};
+
+export type FleetReportImage = {
+  id: number;
+  name: string;
+  url: string;
 };
 
 export type FleetVehicleProcurementLink = {
@@ -5060,6 +5068,7 @@ function toFleetWeightReportItem(
       FLEET_IMPORT_STATE_LABELS[String(record.state || "")] ||
       String(record.state || ""),
     errorMessage: record.error_message || "",
+    images: [],
   };
 }
 
@@ -5086,7 +5095,49 @@ function toFleetFuelReportItem(
       FLEET_IMPORT_STATE_LABELS[String(record.state || "")] ||
       String(record.state || ""),
     errorMessage: record.error_message || "",
+    images: [],
   };
+}
+
+type FleetReportAttachmentRecord = {
+  id: number;
+  name?: string | false;
+  res_model?: string | false;
+  res_id?: number | false;
+};
+
+async function loadFleetReportImages(
+  uid: number,
+  model: string,
+  recordIds: number[],
+  connection: OdooConnection,
+) {
+  const byRecordId = new Map<number, FleetReportImage[]>();
+  if (!recordIds.length) return byRecordId;
+  const attachments = await safeSearchReadFleetModel<FleetReportAttachmentRecord>(
+    uid,
+    "ir.attachment",
+    [
+      ["res_model", "=", model],
+      ["res_id", "in", recordIds],
+      ["mimetype", "ilike", "image/"],
+    ],
+    ["name", "res_model", "res_id"],
+    { order: "id asc", limit: 5000 },
+    connection,
+  );
+  for (const attachment of attachments) {
+    const recordId = Number(attachment.res_id || 0);
+    if (!recordId) continue;
+    const images = byRecordId.get(recordId) ?? [];
+    images.push({
+      id: attachment.id,
+      name: String(attachment.name || `image-${attachment.id}`),
+      url: `/api/odoo/attachments/${attachment.id}`,
+    });
+    byRecordId.set(recordId, images);
+  }
+  return byRecordId;
 }
 
 async function safeSearchReadFleetModel<T>(
@@ -5268,6 +5319,7 @@ export type FleetVehicleOdometerItem = {
   odometerLabel: string;
   traveledKm: number;
   traveledLabel: string;
+  images: FleetReportImage[];
 };
 
 export type FleetFuelWeightReportVehicleRow = {
@@ -5426,11 +5478,18 @@ export async function loadFleetFuelWeightReport(
       { order: "report_date desc, id desc" },
       connection,
     );
+    const imagesByRecordId = await loadFleetReportImages(
+      uid,
+      "municipal.garbage.fuel.report",
+      records.map((record) => record.id),
+      connection,
+    );
     for (const record of records) {
       if (record.state === "failed") {
         continue;
       }
       const item = toFleetFuelReportItem(record);
+      item.images = imagesByRecordId.get(record.id) ?? [];
       const row = ensureRow(item.vehicleId, item.vehicleName, item.vehiclePlate);
       row.total += item.fuelLiters;
       row.rowCount += 1;
@@ -5449,11 +5508,18 @@ export async function loadFleetFuelWeightReport(
       { order: "report_date desc, id desc" },
       connection,
     );
+    const imagesByRecordId = await loadFleetReportImages(
+      uid,
+      "municipal.garbage.weight.report",
+      records.map((record) => record.id),
+      connection,
+    );
     for (const record of records) {
       if (record.state === "failed") {
         continue;
       }
       const item = toFleetWeightReportItem(record);
+      item.images = imagesByRecordId.get(record.id) ?? [];
       const row = ensureRow(item.vehicleId, item.vehicleName, item.vehiclePlate);
       row.total += item.weightTons;
       row.rowCount += 1;
@@ -5470,6 +5536,12 @@ export async function loadFleetFuelWeightReport(
       connection,
     );
     const byVehicle = new Map<number, OdooFleetOdometerRecord[]>();
+    const imagesByRecordId = await loadFleetReportImages(
+      uid,
+      "fleet.vehicle.odometer",
+      records.map((record) => record.id),
+      connection,
+    );
     for (const record of records) {
       const vehicleId = relationId(record.vehicle_id);
       if (!vehicleId || !record.date || typeof record.value !== "number") continue;
@@ -5496,6 +5568,7 @@ export async function loadFleetFuelWeightReport(
           odometerLabel: `${Math.round(value).toLocaleString("mn-MN")} км`,
           traveledKm,
           traveledLabel: `${Math.round(traveledKm).toLocaleString("mn-MN")} км`,
+          images: imagesByRecordId.get(item.id) ?? [],
         };
       });
       const totalKm = distanceDaily.reduce((sum, item) => sum + item.traveledKm, 0);

@@ -406,6 +406,69 @@
   margin: 6px 0 0;
 }
 
+.reportImagesCell {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 150px;
+}
+
+.reportImageList {
+  display: flex;
+  gap: 4px;
+}
+
+.reportImageList a,
+.reportImageList img {
+  display: block;
+  width: 38px;
+  height: 38px;
+  border-radius: 7px;
+}
+
+.reportImageList img {
+  object-fit: cover;
+  border: 1px solid #dce9df;
+}
+
+.hiddenImageInput {
+  display: none;
+}
+
+.addImageButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid #b9d8c2;
+  border-radius: 8px;
+  background: #f1faf3;
+  color: #24713b;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.addImageButton:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.imageError {
+  width: 100%;
+  color: #b42318;
+}
+
+.spin {
+  animation: fleetImageSpin 0.8s linear infinite;
+}
+
+@keyframes fleetImageSpin {
+  to { transform: rotate(360deg); }
+}
+
 .empty {
   padding: 28px 16px;
   text-align: center;
