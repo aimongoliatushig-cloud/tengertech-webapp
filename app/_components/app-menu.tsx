@@ -639,14 +639,33 @@ export function AppMenu({
     .map((group, index) => {
       const departmentHref = `/department-work?department=${encodeURIComponent(group.name)}`;
       const isAutoBaseDepartment = isAutoGarbageDepartment(group.name);
+      const isGreenCleaningDepartment =
+        group.name === "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
+      const greenCleaningChildren: MenuItem[] = isGreenCleaningDepartment
+        ? [
+            {
+              key: "green-service-work",
+              href: `/projects?department=${encodeURIComponent(group.name)}&unit=${encodeURIComponent("Ногоон байгууламж")}`,
+              label: "Ногоон байгууламж",
+              icon: Leaf,
+            },
+            {
+              key: "road-cleaning-work",
+              href: `/projects?department=${encodeURIComponent(group.name)}&unit=${encodeURIComponent("Цэвэрлэгээ үйлчилгээ")}`,
+              label: "Зам талбайн цэвэрлэгээ үйлчилгээ",
+              icon: Trash2,
+            },
+          ]
+        : [];
       return {
         key: `department-${index}`,
         href: departmentHref,
         label: group.name,
         icon: getDepartmentMenuIcon(group),
         departmentName: group.name,
-        children:
-          isAutoBaseDepartment && canOpenAutoBase
+        children: isGreenCleaningDepartment
+          ? greenCleaningChildren
+          : isAutoBaseDepartment && canOpenAutoBase
             ? [
                 {
                   key: "auto-garbage-department-work",
@@ -1317,6 +1336,12 @@ export function AppMenu({
     }
     if (item.key === "garbage-points-new") {
       return pathname === "/waste-points/new";
+    }
+    if (item.key === "green-service-work") {
+      return pathname === "/projects" && searchParams.get("unit") === "Ногоон байгууламж";
+    }
+    if (item.key === "road-cleaning-work") {
+      return pathname === "/projects" && searchParams.get("unit") === "Цэвэрлэгээ үйлчилгээ";
     }
     if (item.key === "hr-dashboard") {
       return pathname === "/hr";
