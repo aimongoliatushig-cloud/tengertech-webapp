@@ -660,6 +660,28 @@ export function AppMenu({
                   label: "Авто бааз",
                   icon: Truck,
                 },
+                {
+                  key: "garbage-points",
+                  href: "/waste-points",
+                  label: "Хогийн цэг",
+                  icon: Trash2,
+                },
+                {
+                  key: "gps-routes",
+                  href: "/garbage-routes/dashboard",
+                  label: "GPS маршрут",
+                  icon: Navigation,
+                },
+                ...(resolvedCanViewGarbageWeightReports
+                  ? [
+                      {
+                        key: "reports-fleet",
+                        href: "/reports/fleet",
+                        label: "Шатахуун, жин, км",
+                        icon: BarChart3,
+                      },
+                    ]
+                  : []),
               ]
             : undefined,
       };
