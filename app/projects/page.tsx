@@ -50,12 +50,13 @@ type PageProps = {
     autoPanel?: string | string[];
     dateFrom?: string | string[];
     dateTo?: string | string[];
+    search?: string | string[];
     notice?: string | string[];
     error?: string | string[];
   }>;
 };
 
-type ProjectFilterKey = "all" | "planned" | "review" | "done" | "overdue";
+type ProjectFilterKey = "all" | "planned" | "review" | "done" | "unfinished" | "overdue";
 type QuickActionMode = "task" | "report" | "none";
 type AutoGarbagePanelMode = "overview" | "weight" | "fuel";
 type ProjectCardItem = DashboardSnapshot["projects"][number];
@@ -105,6 +106,7 @@ const GREEN_SERVICE_UNITS = [
 ] as const;
 const PROJECT_FILTERS: Array<{ key: ProjectFilterKey; label: string }> = [
   { key: "all", label: "Нийт захирамж, үүрэг даалгавар" },
+  { key: "unfinished", label: "Дуусаагүй" },
   { key: "planned", label: "Төлөвлөсөн" },
   { key: "review", label: "Хянаж байгаа" },
   { key: "done", label: "Дууссан" },
@@ -138,6 +140,10 @@ function getDepartmentParam(value?: string | string[]) {
 function normalizeDateFilter(value?: string | string[]) {
   const date = getDepartmentParam(value).trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "";
+}
+
+function normalizeSearchFilter(value?: string | string[]) {
+  return getDepartmentParam(value).trim().slice(0, 120);
 }
 
 function getTaskDateKey(task: TaskCardItem) {
@@ -535,6 +541,9 @@ async function ProjectsPageContent({
   const dateFrom = normalizeDateFilter(params.dateFrom);
   const dateTo = normalizeDateFilter(params.dateTo);
   const hasDateFilter = Boolean(dateFrom || dateTo);
+  const searchFilter = normalizeSearchFilter(params.search);
+  const normalizedSearchFilter = searchFilter.toLocaleLowerCase("mn-MN");
+  const hasListFilter = hasDateFilter || Boolean(searchFilter) || activeFilter !== "all";
 
   const detectedGroup =
     departmentScopedMode
@@ -546,9 +555,6 @@ async function ProjectsPageContent({
         : null;
 
   const selectedGroup = detectedGroup;
-  if (selectedGroup && activeFilter !== "overdue") {
-    activeFilter = "all";
-  }
   const isOverdueFilter = activeFilter === "overdue";
   const availableUnits = selectedGroup ? getAvailableUnits(selectedGroup) : [];
 
@@ -769,6 +775,47 @@ async function ProjectsPageContent({
     );
   }
 
+
+  if (normalizedSearchFilter) {
+    const directlyMatchedProjects = new Set(
+      scopedProjects
+        .filter((project) =>
+          `${project.name} ${project.manager} ${project.departmentName}`
+            .toLocaleLowerCase("mn-MN")
+            .includes(normalizedSearchFilter),
+        )
+        .map((project) => project.id),
+    );
+    const directlyMatchedProjectNames = new Set(
+      scopedProjects
+        .filter((project) => directlyMatchedProjects.has(project.id))
+        .map((project) => project.name),
+    );
+    scopedTasks = scopedTasks.filter((task) => {
+      if (
+        (typeof task.projectId === "number" && directlyMatchedProjects.has(task.projectId)) ||
+        directlyMatchedProjectNames.has(task.projectName)
+      ) {
+        return true;
+      }
+      return `${task.name} ${task.projectName} ${task.leaderName} ${task.departmentName}`
+        .toLocaleLowerCase("mn-MN")
+        .includes(normalizedSearchFilter);
+    });
+    const matchedProjectIds = new Set(
+      scopedTasks
+        .map((task) => task.projectId)
+        .filter((projectId): projectId is number => typeof projectId === "number"),
+    );
+    const matchedProjectNames = new Set(scopedTasks.map((task) => task.projectName));
+    scopedProjects = scopedProjects.filter(
+      (project) =>
+        directlyMatchedProjects.has(project.id) ||
+        matchedProjectIds.has(project.id) ||
+        matchedProjectNames.has(project.name),
+    );
+  }
+
   const projectTasksById = new Map<number, TaskCardItem[]>();
   const projectTasksByName = new Map<string, TaskCardItem[]>();
   for (const task of scopedTasks) {
@@ -833,6 +880,10 @@ async function ProjectsPageContent({
           return project.stageBucket === "done";
         }
 
+        if (activeFilter === "unfinished") {
+          return project.stageBucket !== "done";
+        }
+
         if (activeFilter === "overdue") {
           return overdueProjectNames.has(project.name);
         }
@@ -858,6 +909,7 @@ async function ProjectsPageContent({
       (project) => project.stageBucket === "review" || project.stageBucket === "problem",
     ).length,
     done: scopedProjects.filter((project) => project.stageBucket === "done").length,
+    unfinished: scopedProjects.filter((project) => project.stageBucket !== "done").length,
     overdue: overdueProjectNames.size,
   } satisfies Record<ProjectFilterKey, number>;
 
@@ -973,9 +1025,17 @@ async function ProjectsPageContent({
     }
     if (includeDate && dateFrom) hrefParams.set("dateFrom", dateFrom);
     if (includeDate && dateTo) hrefParams.set("dateTo", dateTo);
+    if (includeDate && searchFilter) hrefParams.set("search", searchFilter);
 
     return `/projects${hrefParams.toString() ? `?${hrefParams.toString()}` : ""}`;
   };
+  const clearListFilterParams = new URLSearchParams();
+  if (selectedGroup?.name) clearListFilterParams.set("department", selectedGroup.name);
+  if (selectedUnit) clearListFilterParams.set("unit", selectedUnit);
+  if (quickActionMode !== "none") clearListFilterParams.set("quickAction", quickActionMode);
+  const clearListFilterHref = `/projects${
+    clearListFilterParams.toString() ? `?${clearListFilterParams.toString()}` : ""
+  }`;
   const summaryCards = [
     {
       label: "Нийт захирамж, үүрэг даалгавар",
@@ -1047,6 +1107,8 @@ async function ProjectsPageContent({
       ? "Хянаж байгаа"
       : activeFilter === "done"
         ? "Дууссан"
+      : activeFilter === "unfinished"
+        ? "Дуусаагүй"
       : activeFilter === "overdue"
         ? "Хугацаа хэтэрсэн"
       : activeFilter === "planned"
@@ -1058,6 +1120,8 @@ async function ProjectsPageContent({
       ? "Хяналт, баталгаажуулалт хүлээж буй ажлуудыг харуулна"
       : activeFilter === "done"
         ? "Бүрэн дууссан ажлуудыг харуулна"
+      : activeFilter === "unfinished"
+        ? "Дуусаагүй болон гүйцэтгэл үргэлжилж байгаа ажлуудыг харуулна"
       : activeFilter === "overdue"
         ? "Хугацаа өнгөрсөн даалгавартай ажлуудыг харуулна"
       : activeFilter === "planned"
@@ -1078,6 +1142,7 @@ async function ProjectsPageContent({
   }
   if (dateFrom) selectionParams.set("dateFrom", dateFrom);
   if (dateTo) selectionParams.set("dateTo", dateTo);
+  if (searchFilter) selectionParams.set("search", searchFilter);
   const selectionReturnTo = `/projects${selectionParams.toString() ? `?${selectionParams.toString()}` : ""}`;
   const quickActionMessage =
     quickActionMode === "task"
@@ -1252,6 +1317,8 @@ async function ProjectsPageContent({
                     }
                     if (dateFrom) hrefParams.set("dateFrom", dateFrom);
                     if (dateTo) hrefParams.set("dateTo", dateTo);
+                    if (searchFilter) hrefParams.set("search", searchFilter);
+                    if (activeFilter !== "all") hrefParams.set("category", activeFilter);
 
                     return (
                       <Link
@@ -1285,6 +1352,8 @@ async function ProjectsPageContent({
                     }
                     if (dateFrom) hrefParams.set("dateFrom", dateFrom);
                     if (dateTo) hrefParams.set("dateTo", dateTo);
+                    if (searchFilter) hrefParams.set("search", searchFilter);
+                    if (activeFilter !== "all") hrefParams.set("category", activeFilter);
                     return (
                       <Link
                         key={unit}
@@ -1359,8 +1428,27 @@ async function ProjectsPageContent({
                 <form method="get" action="/projects" className={styles.dateFilterBar}>
                   {selectedGroup?.name ? <input type="hidden" name="department" value={selectedGroup.name} /> : null}
                   {selectedUnit ? <input type="hidden" name="unit" value={selectedUnit} /> : null}
-                  {activeFilter !== "all" ? <input type="hidden" name="category" value={activeFilter} /> : null}
                   {quickActionMode !== "none" ? <input type="hidden" name="quickAction" value={quickActionMode} /> : null}
+                  <label className={styles.dateFilterSearch}>
+                    <span>Ажил, даалгаврын нэр</span>
+                    <input
+                      type="search"
+                      name="search"
+                      defaultValue={searchFilter}
+                      placeholder="Нэрээр хайх"
+                    />
+                  </label>
+                  <label>
+                    <span>Төлөв</span>
+                    <select name="category" defaultValue={activeFilter}>
+                      <option value="all">Бүгд</option>
+                      <option value="unfinished">Дуусаагүй</option>
+                      <option value="done">Дууссан</option>
+                      <option value="planned">Төлөвлөсөн</option>
+                      <option value="review">Хянаж байгаа</option>
+                      <option value="overdue">Хугацаа хэтэрсэн</option>
+                    </select>
+                  </label>
                   <label>
                     <span>Эхлэх огноо</span>
                     <input type="date" name="dateFrom" defaultValue={dateFrom} max={dateTo || undefined} />
@@ -1369,16 +1457,16 @@ async function ProjectsPageContent({
                     <span>Дуусах огноо</span>
                     <input type="date" name="dateTo" defaultValue={dateTo} min={dateFrom || undefined} />
                   </label>
-                  <button type="submit" className={styles.primaryButton}>Хугацаагаар шүүх</button>
-                  {hasDateFilter ? (
-                    <Link href={buildScopedListHref(activeFilter, false)} className={styles.secondaryButton}>
+                  <button type="submit" className={styles.primaryButton}>Шүүх</button>
+                  {hasListFilter ? (
+                    <Link href={clearListFilterHref} className={styles.secondaryButton}>
                       Шүүлтүүр арилгах
                     </Link>
                   ) : null}
                   <small>
-                    {hasDateFilter
-                      ? `${dateFrom || "Эхнээс"} – ${dateTo || "Өнөөдрийг хүртэл"} хугацааны ажил, даалгавар`
-                      : "Ажил болон үүрэг даалгаврыг гүйцэтгэх хугацаагаар шүүнэ."}
+                    {hasListFilter
+                      ? `${activeProjects.length} ажил · ${scopedTasks.length} даалгавар шүүлтэд таарлаа.`
+                      : "Нэр, төлөв болон гүйцэтгэх хугацаагаар ажил, үүрэг даалгаврыг шүүнэ."}
                   </small>
                 </form>
               ) : null}
