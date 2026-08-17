@@ -95,6 +95,7 @@ export default async function GarbageRouteDashboardPage({ searchParams }: PagePr
     return {
       ...route,
       imageUrl: fleetVehicle?.imageUrl ?? "",
+      vehicleTypeName: fleetVehicle?.vehicleTypeName || fleetVehicle?.categoryName || "Төрөл бүртгээгүй",
       departmentName: fleetVehicle?.departmentName ?? "Хэлтэс бүртгээгүй",
       visits: pointVisits(route.points, wastePoints),
       weightTons: weightByVehicle.get(normalizeVehicle(route.vehicleCode)) ?? 0,
@@ -120,7 +121,7 @@ export default async function GarbageRouteDashboardPage({ searchParams }: PagePr
       <div className={styles.sectionTitle}><h2>Машинуудын маршрут</h2><span>{requestedDate}</span></div>
       {vehicles.length ? vehicles.map((vehicle) => <details key={vehicle.trackerId} className={styles.vehicleCard}>
         <summary className={styles.vehicleSummary}>
-          <div>{vehicle.imageUrl ? <img className={styles.vehiclePhoto} src={vehicle.imageUrl} alt={vehicle.vehicleCode}/> : <span className={styles.vehicleIcon}><Truck/></span>}<div><h3>{vehicle.vehicleCode}</h3><small>{vehicle.vehicleLabel} · {vehicle.departmentName}</small></div></div>
+          <div>{vehicle.imageUrl ? <img className={styles.vehiclePhoto} src={vehicle.imageUrl} alt={vehicle.vehicleCode}/> : <span className={styles.vehicleIcon}><Truck/></span>}<div><h3>{vehicle.vehicleCode}</h3><small>{vehicle.vehicleLabel} · {vehicle.vehicleTypeName} · {vehicle.departmentName}</small></div></div>
           <dl><div><dt>Туулсан</dt><dd>{vehicle.distanceKm.toFixed(1)} км</dd></div><div><dt>Хөдөлгөөн</dt><dd>{timeLabel(vehicle.startedAt)}–{timeLabel(vehicle.endedAt)}</dd></div><div><dt>Очсон цэг</dt><dd>{vehicle.visits.length}</dd></div><div><dt>Ачсан жин</dt><dd>{vehicle.weightTons.toFixed(2)} тн</dd></div></dl>
           <span className={styles.expandHint}>Дэлгэрэнгүй</span>
         </summary>

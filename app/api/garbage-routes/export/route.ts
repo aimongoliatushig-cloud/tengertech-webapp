@@ -100,6 +100,7 @@ export async function GET(request: Request) {
       const fleetVehicle = fleetByVehicle.get(normalizeVehicle(route.vehicleCode)) ?? fleetByVehicle.get(normalizeVehicle(route.vehicleLabel));
       return {
         ...route,
+        vehicleTypeName: fleetVehicle?.vehicleTypeName || fleetVehicle?.categoryName || "Төрөл бүртгээгүй",
         departmentName: fleetVehicle?.departmentName ?? "Хэлтэс бүртгээгүй",
         visits: pointVisits(route.points, wastePoints),
         weightTons: weightByVehicle.get(normalizeVehicle(route.vehicleCode)) ?? 0,
@@ -112,12 +113,12 @@ export async function GET(request: Request) {
     const rows: (string | number)[][] = [];
     vehicles.forEach((vehicle, vehicleIndex) => {
       if (!vehicle.visits.length) {
-        rows.push([vehicleIndex + 1, vehicle.vehicleCode, vehicle.vehicleLabel, vehicle.departmentName, `${timeLabel(vehicle.startedAt)}–${timeLabel(vehicle.endedAt)}`, Number(vehicle.distanceKm.toFixed(1)), 0, "", "", "", "", "", Number(vehicle.weightTons.toFixed(2))]);
+        rows.push([vehicleIndex + 1, vehicle.vehicleCode, vehicle.vehicleLabel, vehicle.vehicleTypeName, vehicle.departmentName, `${timeLabel(vehicle.startedAt)}–${timeLabel(vehicle.endedAt)}`, Number(vehicle.distanceKm.toFixed(1)), 0, "", "", "", "", "", Number(vehicle.weightTons.toFixed(2))]);
         return;
       }
       vehicle.visits.forEach((visit, visitIndex) => rows.push([
         visitIndex === 0 ? vehicleIndex + 1 : "", visitIndex === 0 ? vehicle.vehicleCode : "", visitIndex === 0 ? vehicle.vehicleLabel : "",
-        visitIndex === 0 ? vehicle.departmentName : "", visitIndex === 0 ? `${timeLabel(vehicle.startedAt)}–${timeLabel(vehicle.endedAt)}` : "", visitIndex === 0 ? Number(vehicle.distanceKm.toFixed(1)) : "",
+        visitIndex === 0 ? vehicle.vehicleTypeName : "", visitIndex === 0 ? vehicle.departmentName : "", visitIndex === 0 ? `${timeLabel(vehicle.startedAt)}–${timeLabel(vehicle.endedAt)}` : "", visitIndex === 0 ? Number(vehicle.distanceKm.toFixed(1)) : "",
         visitIndex + 1, visit.point.code, visit.point.name, visit.point.khorooName,
         `${timeLabel(visit.firstAt)}–${timeLabel(visit.lastAt)}`, `${durationMinutes(visit.firstAt, visit.lastAt)} мин · ${Math.round(visit.closestMeters)} м`,
         visitIndex === 0 ? Number(vehicle.weightTons.toFixed(2)) : "",
@@ -132,14 +133,14 @@ export async function GET(request: Request) {
           { label: "Хөдөлгөөнтэй машин", value: String(vehicles.length) }, { label: "Хогийн цэгийн очилт", value: String(totalVisits) },
           { label: "Нийт туулсан зам", value: `${totalDistance.toFixed(1)} км` }, { label: "Нийт ачсан жин", value: `${totalWeight.toFixed(2)} тн` },
         ],
-        sections: [{ caption: "Машины маршрут", headers: ["№", "Улсын дугаар", "GPS нэр", "Хэлтэс", "Хөдөлгөөн", "Км", "Цэгийн дараалал", "Код", "Хогийн цэг", "Хороо", "Очсон цаг", "Саатал / зай", "Жин (тн)"], rows, columnWidths: [5, 14, 22, 28, 14, 9, 12, 12, 28, 14, 14, 18, 10] }],
+        sections: [{ caption: "Машины маршрут", headers: ["№", "Улсын дугаар", "GPS нэр", "Автомашины төрөл", "Хэлтэс", "Хөдөлгөөн", "Км", "Цэгийн дараалал", "Код", "Хогийн цэг", "Хороо", "Очсон цаг", "Саатал / зай", "Жин (тн)"], rows, columnWidths: [5, 14, 22, 22, 28, 14, 9, 12, 12, 28, 14, 14, 18, 10] }],
         sheetName: "GPS маршрут",
       });
       return new Response(new Uint8Array(buffer), { headers: { "Content-Disposition": `attachment; filename="gps-marshrut-${date}.xlsx"`, "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } });
     }
 
     const tableRows = rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("");
-    const html = `<!doctype html><html><head><meta charset="utf-8"><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;font-size:12pt;color:#111}h1{text-align:center;font-size:16pt;margin:0 0 6px}.meta{text-align:center;margin:0 0 12px}table{width:100%;border-collapse:collapse;font-size:9pt}th,td{border:1px solid #777;padding:4px;vertical-align:top}th{background:#e8f3ea;font-weight:700}</style></head><body><h1>GPS маршрут ба хогийн цэгийн тайлан</h1><p class="meta">Огноо: ${date} · Хэлтэс: ${escapeHtml(requestedDepartment || "Бүх хэлтэс")} · Машин: ${vehicles.length} · Очилт: ${totalVisits} · Зам: ${totalDistance.toFixed(1)} км · Жин: ${totalWeight.toFixed(2)} тн</p><table><thead><tr>${["№","Улсын дугаар","GPS нэр","Хэлтэс","Хөдөлгөөн","Км","Д/д","Код","Хогийн цэг","Хороо","Очсон цаг","Саатал / зай","Жин (тн)"].map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${tableRows}</tbody></table></body></html>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;font-size:12pt;color:#111}h1{text-align:center;font-size:16pt;margin:0 0 6px}.meta{text-align:center;margin:0 0 12px}table{width:100%;border-collapse:collapse;font-size:9pt}th,td{border:1px solid #777;padding:4px;vertical-align:top}th{background:#e8f3ea;font-weight:700}</style></head><body><h1>GPS маршрут ба хогийн цэгийн тайлан</h1><p class="meta">Огноо: ${date} · Хэлтэс: ${escapeHtml(requestedDepartment || "Бүх хэлтэс")} · Машин: ${vehicles.length} · Очилт: ${totalVisits} · Зам: ${totalDistance.toFixed(1)} км · Жин: ${totalWeight.toFixed(2)} тн</p><table><thead><tr>${["№","Улсын дугаар","GPS нэр","Автомашины төрөл","Хэлтэс","Хөдөлгөөн","Км","Д/д","Код","Хогийн цэг","Хороо","Очсон цаг","Саатал / зай","Жин (тн)"].map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${tableRows}</tbody></table></body></html>`;
     const browser = await chromium.launch({ headless: true });
     try {
       const page = await browser.newPage();

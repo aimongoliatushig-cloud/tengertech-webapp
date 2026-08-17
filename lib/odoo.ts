@@ -5276,6 +5276,7 @@ export type FleetFuelWeightReportVehicleRow = {
   vehicleLabel: string;
   vehiclePlate: string;
   vehicleImageUrl: string;
+  vehicleTypeName: string;
   departmentName: string;
   total: number;
   totalLabel: string;
@@ -5316,6 +5317,8 @@ async function loadFleetReportVehicleMeta(
     id: number;
     license_plate?: string | false;
     municipal_department_id?: OdooRelation;
+    municipal_vehicle_type_id?: OdooRelation;
+    category_id?: OdooRelation;
     municipal_front_photo_ids?: number[];
     image_128?: string | false;
     avatar_128?: string | false;
@@ -5328,6 +5331,8 @@ async function loadFleetReportVehicleMeta(
       "id",
       "license_plate",
       "municipal_department_id",
+      "municipal_vehicle_type_id",
+      "category_id",
       "municipal_front_photo_ids",
       "image_128",
       "avatar_128",
@@ -5339,6 +5344,7 @@ async function loadFleetReportVehicleMeta(
   const departmentByVehicle = new Map<number, string>();
   const plateByVehicle = new Map<number, string>();
   const imageByVehicle = new Map<number, string>();
+  const typeByVehicle = new Map<number, string>();
   for (const vehicle of vehicles) {
     departmentByVehicle.set(
       vehicle.id,
@@ -5354,8 +5360,16 @@ async function loadFleetReportVehicleMeta(
       ? `/api/odoo/attachments/${frontPhotoId}`
       : imageDataUrl(vehicle.image_128 || vehicle.avatar_128 || vehicle.image_1920);
     if (vehicleImage) imageByVehicle.set(vehicle.id, vehicleImage);
+    const vehicleTypeName =
+      getFleetVehicleTypeDisplayName(
+        relationName(vehicle.municipal_vehicle_type_id ?? false, ""),
+      ) ||
+      getFleetVehicleTypeDisplayName(
+        relationName(vehicle.category_id ?? false, ""),
+      );
+    if (vehicleTypeName) typeByVehicle.set(vehicle.id, vehicleTypeName);
   }
-  return { departmentByVehicle, plateByVehicle, imageByVehicle };
+  return { departmentByVehicle, plateByVehicle, imageByVehicle, typeByVehicle };
 }
 
 export async function loadFleetFuelWeightReport(
@@ -5378,7 +5392,7 @@ export async function loadFleetFuelWeightReport(
   }
   const { uid, connection } = auth;
 
-  const { departmentByVehicle, plateByVehicle, imageByVehicle } = await loadFleetReportVehicleMeta(
+  const { departmentByVehicle, plateByVehicle, imageByVehicle, typeByVehicle } = await loadFleetReportVehicleMeta(
     uid,
     connection,
   );
@@ -5411,6 +5425,7 @@ export async function loadFleetFuelWeightReport(
         : "Авто баазад таараагүй",
       vehiclePlate,
       vehicleImageUrl: vehicleId ? imageByVehicle.get(vehicleId) ?? "" : "",
+      vehicleTypeName: vehicleId ? typeByVehicle.get(vehicleId) ?? "Төрөл бүртгээгүй" : "Төрөл тодорхойгүй",
       departmentName,
       total: 0,
       totalLabel: "",

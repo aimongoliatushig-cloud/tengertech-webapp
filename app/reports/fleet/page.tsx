@@ -343,6 +343,7 @@ export default async function FleetFuelWeightReportPage({ searchParams }: PagePr
                                   )}
                                   <strong>{row.vehicleLabel}</strong>
                                 </span>
+                                <small>Төрөл: {row.vehicleTypeName}</small>
                                 {!row.matched && row.vehiclePlate && row.vehiclePlate !== row.vehicleLabel ? (
                                   <small>{row.vehiclePlate}</small>
                                 ) : null}
