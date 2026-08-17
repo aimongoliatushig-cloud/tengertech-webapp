@@ -240,28 +240,9 @@ function compactManagerMenuItems(items: MenuItem[]) {
   const hrChildren = items.filter((item) => item.key.startsWith("hr-"));
   // Зөвхөн хэлтсийн жагсаалтын item-үүд (department-0, department-1 ...).
   // "Хэлтсийн ажил" (department-work) нь хэлтэс биш, тусдаа хуудас тул оруулахгүй.
-  const departmentChildren = items
-    .filter((item) => /^department-\d+$/.test(item.key))
-    .flatMap((item) => {
-      const autoBaseChild = item.children?.find(
-        (child) => child.key === "auto-base-board",
-      );
-      return [
-        // Менежерийн цэс нэг түвшний dropdown тул хэлтсийн доторх дэд цэсийг
-        // parent дээр үлдээвэл харагддаггүй. Хэлтсийг энгийн холбоос болгож,
-        // "Авто бааз"-ыг яг дараагийн мөрөнд гаргана.
-        { ...item, children: undefined },
-        ...(autoBaseChild
-          ? [
-              {
-                ...autoBaseChild,
-                key: "manager-auto-base-board",
-                label: "Авто бааз",
-              },
-            ]
-          : []),
-      ];
-    });
+  const departmentChildren = items.filter(
+    (item) => /^department-\d+$/.test(item.key),
+  );
   const reportItem = items.find((item) => item.key === "reports");
   const communicationChildren = items.filter((item) =>
     ["chat", "help", "review", "notifications"].includes(item.key),
@@ -1870,6 +1851,75 @@ export function AppMenu({
                   {item.children?.map((child) => {
                     const ChildIcon = child.icon;
                     const childActive = isItemActive(child);
+                    const childHasChildren = Boolean(child.children?.length);
+                    const childExpanded =
+                      childHasChildren &&
+                      (childActive || expandedGroups[child.key]);
+
+                    if (childHasChildren) {
+                      return (
+                        <div key={child.key} className={styles.nestedMenuGroup}>
+                          <button
+                            type="button"
+                            className={cn(
+                              styles.submenuLink,
+                              styles.nestedMenuButton,
+                              childActive && styles.submenuLinkActive,
+                            )}
+                            aria-expanded={childExpanded}
+                            aria-controls={`submenu-${child.key}`}
+                            onClick={() =>
+                              setExpandedGroups((current) => ({
+                                ...current,
+                                [child.key]: !childExpanded,
+                              }))
+                            }
+                          >
+                            <span className={styles.submenuIcon} aria-hidden>
+                              <ChildIcon />
+                            </span>
+                            <span className={styles.menuLabel}>{child.label}</span>
+                            <ChevronDown
+                              aria-hidden
+                              className={cn(
+                                styles.menuGroupChevron,
+                                childExpanded && styles.menuGroupChevronOpen,
+                              )}
+                            />
+                          </button>
+                          {childExpanded ? (
+                            <div id={`submenu-${child.key}`} className={styles.nestedSubmenuList}>
+                              {child.children?.map((grandchild) => {
+                                const GrandchildIcon = grandchild.icon;
+                                const grandchildActive = isItemActive(grandchild);
+                                return (
+                                  <MenuLink
+                                    key={grandchild.key}
+                                    item={grandchild}
+                                    className={cn(
+                                      styles.submenuLink,
+                                      styles.nestedSubmenuLink,
+                                      grandchildActive && styles.submenuLinkActive,
+                                    )}
+                                    ariaCurrent={grandchildActive ? "page" : undefined}
+                                    onClick={() => setIsOpen(false)}
+                                  >
+                                    <span className={styles.submenuIcon} aria-hidden>
+                                      <GrandchildIcon />
+                                    </span>
+                                    <span className={styles.menuLabel}>{grandchild.label}</span>
+                                    <PendingLinkIndicator
+                                      className={styles.linkLoadingHint}
+                                      overlayClassName={styles.linkLoadingOverlay}
+                                    />
+                                  </MenuLink>
+                                );
+                              })}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    }
 
                     return (
                       <MenuLink

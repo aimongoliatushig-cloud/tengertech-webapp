@@ -153,6 +153,32 @@
   color: currentColor;
 }
 
+.nestedMenuGroup {
+  display: grid;
+  gap: 6px;
+}
+
+.nestedMenuButton {
+  width: 100%;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.nestedSubmenuList {
+  display: grid;
+  gap: 6px;
+  margin-left: 22px;
+  padding-left: 10px;
+  border-left: 2px solid rgba(46, 125, 50, 0.14);
+}
+
+.nestedSubmenuLink {
+  min-height: 42px;
+  font-size: var(--fs-xs);
+  background: rgba(247, 251, 247, 0.72);
+}
+
 .linkLoadingHint,
 .createLoadingHint,
 .profileLoadingHint,
