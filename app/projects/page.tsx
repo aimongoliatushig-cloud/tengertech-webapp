@@ -48,6 +48,8 @@ type PageProps = {
     quickAction?: string | string[];
     vehicle?: string | string[];
     autoPanel?: string | string[];
+    dateFrom?: string | string[];
+    dateTo?: string | string[];
     notice?: string | string[];
     error?: string | string[];
   }>;
@@ -131,6 +133,15 @@ function getDepartmentParam(value?: string | string[]) {
     return value[0] ?? "";
   }
   return value ?? "";
+}
+
+function normalizeDateFilter(value?: string | string[]) {
+  const date = getDepartmentParam(value).trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "";
+}
+
+function getTaskDateKey(task: TaskCardItem) {
+  return task.scheduledDate || task.deadlineDateTime?.slice(0, 10) || "";
 }
 
 function normalizeProjectFilter(value: string): ProjectFilterKey {
@@ -521,6 +532,9 @@ async function ProjectsPageContent({
   const selectedAutoBaseVehicleId = Number(getDepartmentParam(params.vehicle) ?? "");
   const autoBaseNotice = getDepartmentParam(params.notice) ?? "";
   const autoBaseError = getDepartmentParam(params.error) ?? "";
+  const dateFrom = normalizeDateFilter(params.dateFrom);
+  const dateTo = normalizeDateFilter(params.dateTo);
+  const hasDateFilter = Boolean(dateFrom || dateTo);
 
   const detectedGroup =
     departmentScopedMode
@@ -736,6 +750,25 @@ async function ProjectsPageContent({
     scopedProjects = scopedProjects.filter((project) => workerProjectNames.has(project.name));
   }
 
+  if (hasDateFilter) {
+    scopedTasks = scopedTasks.filter((task) => {
+      const taskDate = getTaskDateKey(task);
+      if (!taskDate) return false;
+      if (dateFrom && taskDate < dateFrom) return false;
+      if (dateTo && taskDate > dateTo) return false;
+      return true;
+    });
+    const datedProjectIds = new Set(
+      scopedTasks
+        .map((task) => task.projectId)
+        .filter((projectId): projectId is number => typeof projectId === "number"),
+    );
+    const datedProjectNames = new Set(scopedTasks.map((task) => task.projectName));
+    scopedProjects = scopedProjects.filter(
+      (project) => datedProjectIds.has(project.id) || datedProjectNames.has(project.name),
+    );
+  }
+
   const projectTasksById = new Map<number, TaskCardItem[]>();
   const projectTasksByName = new Map<string, TaskCardItem[]>();
   for (const task of scopedTasks) {
@@ -924,7 +957,7 @@ async function ProjectsPageContent({
       : progressGap > 0
         ? `Даалгаврын явц ажлынхаас ${progressGap}% өндөр байна.`
         : `Ажлын явц даалгаврынхаас ${Math.abs(progressGap)}% өндөр байна.`;
-  const buildScopedListHref = (filter: ProjectFilterKey) => {
+  const buildScopedListHref = (filter: ProjectFilterKey, includeDate = true) => {
     const hrefParams = new URLSearchParams();
     if (selectedGroup?.name) {
       hrefParams.set("department", selectedGroup.name);
@@ -938,6 +971,8 @@ async function ProjectsPageContent({
     if (quickActionMode !== "none") {
       hrefParams.set("quickAction", quickActionMode);
     }
+    if (includeDate && dateFrom) hrefParams.set("dateFrom", dateFrom);
+    if (includeDate && dateTo) hrefParams.set("dateTo", dateTo);
 
     return `/projects${hrefParams.toString() ? `?${hrefParams.toString()}` : ""}`;
   };
@@ -1041,6 +1076,8 @@ async function ProjectsPageContent({
   if (quickActionMode !== "none") {
     selectionParams.set("quickAction", quickActionMode);
   }
+  if (dateFrom) selectionParams.set("dateFrom", dateFrom);
+  if (dateTo) selectionParams.set("dateTo", dateTo);
   const selectionReturnTo = `/projects${selectionParams.toString() ? `?${selectionParams.toString()}` : ""}`;
   const quickActionMessage =
     quickActionMode === "task"
@@ -1213,6 +1250,8 @@ async function ProjectsPageContent({
                     if (quickActionMode !== "none") {
                       hrefParams.set("quickAction", quickActionMode);
                     }
+                    if (dateFrom) hrefParams.set("dateFrom", dateFrom);
+                    if (dateTo) hrefParams.set("dateTo", dateTo);
 
                     return (
                       <Link
@@ -1244,6 +1283,8 @@ async function ProjectsPageContent({
                     if (quickActionMode !== "none") {
                       hrefParams.set("quickAction", quickActionMode);
                     }
+                    if (dateFrom) hrefParams.set("dateFrom", dateFrom);
+                    if (dateTo) hrefParams.set("dateTo", dateTo);
                     return (
                       <Link
                         key={unit}
@@ -1313,6 +1354,34 @@ async function ProjectsPageContent({
                   </small>
                 </div>
               </div>
+
+              {!showAutoBaseFleet ? (
+                <form method="get" action="/projects" className={styles.dateFilterBar}>
+                  {selectedGroup?.name ? <input type="hidden" name="department" value={selectedGroup.name} /> : null}
+                  {selectedUnit ? <input type="hidden" name="unit" value={selectedUnit} /> : null}
+                  {activeFilter !== "all" ? <input type="hidden" name="category" value={activeFilter} /> : null}
+                  {quickActionMode !== "none" ? <input type="hidden" name="quickAction" value={quickActionMode} /> : null}
+                  <label>
+                    <span>Эхлэх огноо</span>
+                    <input type="date" name="dateFrom" defaultValue={dateFrom} max={dateTo || undefined} />
+                  </label>
+                  <label>
+                    <span>Дуусах огноо</span>
+                    <input type="date" name="dateTo" defaultValue={dateTo} min={dateFrom || undefined} />
+                  </label>
+                  <button type="submit" className={styles.primaryButton}>Хугацаагаар шүүх</button>
+                  {hasDateFilter ? (
+                    <Link href={buildScopedListHref(activeFilter, false)} className={styles.secondaryButton}>
+                      Шүүлтүүр арилгах
+                    </Link>
+                  ) : null}
+                  <small>
+                    {hasDateFilter
+                      ? `${dateFrom || "Эхнээс"} – ${dateTo || "Өнөөдрийг хүртэл"} хугацааны ажил, даалгавар`
+                      : "Ажил болон үүрэг даалгаврыг гүйцэтгэх хугацаагаар шүүнэ."}
+                  </small>
+                </form>
+              ) : null}
 
               {showServiceMiniDashboard ? (
                 <div className={styles.serviceMiniDashboard}>

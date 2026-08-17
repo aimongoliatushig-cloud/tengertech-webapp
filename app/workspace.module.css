@@ -290,6 +290,44 @@
   text-align: right;
 }
 
+.dateFilterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+  margin: -4px 0 18px;
+  padding: 12px;
+  border: 1px solid rgba(74, 154, 93, 0.18);
+  border-radius: var(--ds-radius-card);
+  background: rgba(247, 252, 246, 0.86);
+}
+
+.dateFilterBar label {
+  display: grid;
+  gap: 5px;
+  min-width: 180px;
+  color: var(--ink-700);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.dateFilterBar input[type="date"] {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid rgba(74, 154, 93, 0.24);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink-900);
+  font: inherit;
+  font-weight: 500;
+}
+
+.dateFilterBar > small {
+  flex: 1 1 100%;
+  color: var(--ink-600);
+  font-size: var(--fs-xs);
+}
+
 .sectionKicker,
 .sectionNote {
   display: block;
@@ -6452,6 +6490,17 @@
 }
 
 @media (max-width: 720px) {
+  .dateFilterBar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .dateFilterBar label,
+  .dateFilterBar .primaryButton,
+  .dateFilterBar .secondaryButton {
+    width: 100%;
+  }
+
   .shell {
     padding: 12px 10px calc(96px + env(safe-area-inset-bottom, 0px));
   }
@@ -8902,5 +8951,3 @@
     min-height: 0;
   }
 }
-
-
