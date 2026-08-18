@@ -101,14 +101,30 @@ type DepartmentWorkPageProps = {
   searchParams?: Promise<{
     status?: string | string[];
     department?: string | string[];
+    search?: string | string[];
+    dateFrom?: string | string[];
+    dateTo?: string | string[];
   }>;
 };
+
+function normalizeDateFilter(value?: string | string[]) {
+  const date = getParam(value).trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "";
+}
 
 export default async function DepartmentWorkPage({ searchParams }: DepartmentWorkPageProps) {
   const session = await requireSession();
   const queryParams = (await searchParams) ?? {};
   const selectedStatus = normalizeStatus(getParam(queryParams.status));
-  const departmentParam = getParam(queryParams.department).trim();
+  const requestedDepartment = getParam(queryParams.department).trim();
+  const departmentParam = requestedDepartment === "all" ? "" : requestedDepartment;
+  const searchFilter = getParam(queryParams.search).trim().slice(0, 120);
+  const normalizedSearchFilter = searchFilter.toLocaleLowerCase("mn-MN");
+  const dateFrom = normalizeDateFilter(queryParams.dateFrom);
+  const dateTo = normalizeDateFilter(queryParams.dateTo);
+  const hasListFilter = Boolean(
+    departmentParam || searchFilter || dateFrom || dateTo || selectedStatus !== "all",
+  );
 
   const workerMode = isWorkerOnly(session);
   const masterMode = isMasterRole(session.role);
@@ -196,9 +212,23 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
   // When a department is selected, scope to it and group by project (ажил);
   // otherwise show every department grouped by department.
   const groupByProject = Boolean(departmentParam);
-  const baseTasks = departmentParam
+  const departmentTasks = departmentParam
     ? filterByDepartment(scopedTasks, departmentParam)
     : scopedTasks;
+  const baseTasks = departmentTasks.filter((task) => {
+    if (normalizedSearchFilter) {
+      const searchText = `${task.name} ${task.projectName} ${task.leaderName} ${task.departmentName}`
+        .toLocaleLowerCase("mn-MN");
+      if (!searchText.includes(normalizedSearchFilter)) return false;
+    }
+    if (dateFrom || dateTo) {
+      const taskDate = task.scheduledDate || task.deadlineDateTime?.slice(0, 10) || "";
+      if (!taskDate) return false;
+      if (dateFrom && taskDate < dateFrom) return false;
+      if (dateTo && taskDate > dateTo) return false;
+    }
+    return true;
+  });
 
   const groups = new Map<string, { name: string; tasks: TaskDirectoryItem[] }>();
   for (const task of baseTasks) {
@@ -257,9 +287,18 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
     const next = new URLSearchParams();
     if (departmentParam) next.set("department", departmentParam);
     if (status !== "all") next.set("status", status);
+    if (searchFilter) next.set("search", searchFilter);
+    if (dateFrom) next.set("dateFrom", dateFrom);
+    if (dateTo) next.set("dateTo", dateTo);
     const queryString = next.toString();
     return `/department-work${queryString ? `?${queryString}` : ""}`;
   };
+
+  const clearFilterParams = new URLSearchParams();
+  if (scopedDepartmentName) clearFilterParams.set("department", scopedDepartmentName);
+  const clearFilterHref = `/department-work${
+    clearFilterParams.toString() ? `?${clearFilterParams.toString()}` : ""
+  }`;
 
   // Хянах самбарын хэлтсийн картан дээр харагддаг гүйцэтгэлийн хэсэг —
   // дарж ортол алга болдог байсныг энд мөн үзүүлнэ (ижил тооцоолол).
@@ -306,6 +345,49 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
           ← Бүх хэлтэс
         </Link>
       ) : null}
+
+      <form method="get" action="/department-work" className={shellStyles.dateFilterBar}>
+        {scopedDepartmentName ? (
+          <input type="hidden" name="department" value={departmentParam || scopedDepartmentName} />
+        ) : (
+          <label className={shellStyles.departmentFilterField}>
+            <span>Хэлтэс / алба</span>
+            <select name="department" defaultValue={departmentParam || "all"}>
+              <option value="all">Бүх хэлтэс</option>
+              {DEPARTMENT_GROUPS.map((department) => (
+                <option key={department.name} value={department.name}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label className={shellStyles.dateFilterSearch}>
+          <span>Ажил, даалгаврын нэр</span>
+          <input type="search" name="search" defaultValue={searchFilter} placeholder="Нэрээр хайх" />
+        </label>
+        <label>
+          <span>Төлөв</span>
+          <select name="status" defaultValue={selectedStatus}>
+            {STATUS_FILTERS.map((filter) => (
+              <option key={filter.key} value={filter.key}>{filter.label}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>Эхлэх огноо</span>
+          <input type="date" name="dateFrom" defaultValue={dateFrom} max={dateTo || undefined} />
+        </label>
+        <label>
+          <span>Дуусах огноо</span>
+          <input type="date" name="dateTo" defaultValue={dateTo} min={dateFrom || undefined} />
+        </label>
+        <button type="submit" className={shellStyles.primaryButton}>Шүүх</button>
+        {hasListFilter ? (
+          <Link href={clearFilterHref} className={shellStyles.secondaryButton}>Шүүлтүүр арилгах</Link>
+        ) : null}
+        <small>{baseTasks.length} даалгавар шүүлтэд таарлаа.</small>
+      </form>
 
       <section
         className={styles.summary}
