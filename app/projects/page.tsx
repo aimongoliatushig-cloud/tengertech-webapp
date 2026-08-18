@@ -22,6 +22,7 @@ import {
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment, getTodayDateKey, isDirectiveTaskProject } from "@/lib/dashboard-scope";
 import {
+  DEPARTMENT_GROUPS,
   findDepartmentGroupByName,
   findDepartmentGroupByUnit,
   getAvailableUnits,
@@ -1426,7 +1427,21 @@ async function ProjectsPageContent({
 
               {!showAutoBaseFleet ? (
                 <form method="get" action="/projects" className={styles.dateFilterBar}>
-                  {selectedGroup?.name ? <input type="hidden" name="department" value={selectedGroup.name} /> : null}
+                  {departmentScopedMode ? (
+                    selectedGroup?.name ? <input type="hidden" name="department" value={selectedGroup.name} /> : null
+                  ) : (
+                    <label className={styles.departmentFilterField}>
+                      <span>Хэлтэс / алба</span>
+                      <select name="department" defaultValue={selectedGroup?.name || "all"}>
+                        <option value="all">Бүх хэлтэс</option>
+                        {DEPARTMENT_GROUPS.map((department) => (
+                          <option key={department.name} value={department.name}>
+                            {department.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   {selectedUnit ? <input type="hidden" name="unit" value={selectedUnit} /> : null}
                   {quickActionMode !== "none" ? <input type="hidden" name="quickAction" value={quickActionMode} /> : null}
                   <label className={styles.dateFilterSearch}>

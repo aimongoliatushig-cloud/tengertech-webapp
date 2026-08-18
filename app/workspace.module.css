@@ -315,6 +315,10 @@
   flex: 1 1 260px;
 }
 
+.dateFilterBar .departmentFilterField {
+  flex: 1 1 280px;
+}
+
 .dateFilterBar input[type="date"],
 .dateFilterBar input[type="search"],
 .dateFilterBar select {
