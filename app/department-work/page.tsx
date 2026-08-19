@@ -153,7 +153,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
   const periodFilter = normalizePeriod(getParam(queryParams.period));
   const selectedUnit = normalizeGreenServiceUnit(getParam(queryParams.unit));
   const hasListFilter = Boolean(
-    departmentParam || searchFilter || dateFrom || dateTo || employeeFilter || periodFilter !== "all" || selectedStatus !== "all",
+    searchFilter || dateFrom || dateTo || employeeFilter || periodFilter !== "all" || selectedStatus !== "all",
   );
 
   const workerMode = isWorkerOnly(session);
@@ -423,8 +423,8 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
 
       <form method="get" action="/department-work" className={shellStyles.dateFilterBar}>
         {selectedUnit ? <input type="hidden" name="unit" value={selectedUnit} /> : null}
-        {scopedDepartmentName ? (
-          <input type="hidden" name="department" value={departmentParam || scopedDepartmentName} />
+        {scopedDepartmentName || departmentParam ? (
+          <input type="hidden" name="department" value={departmentParam || scopedDepartmentName || ""} />
         ) : (
           <label className={shellStyles.departmentFilterField}>
             <span>Хэлтэс / алба</span>
