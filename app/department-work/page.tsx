@@ -8,6 +8,14 @@ import {
   Building2,
   Flag,
   ShieldCheck,
+  Leaf,
+  Trash2,
+  Truck,
+  Wrench,
+  Hammer,
+  Search,
+  UserRound,
+  CalendarDays,
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
@@ -25,7 +33,7 @@ import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import { DEPARTMENT_GROUPS, matchesDepartmentGroup } from "@/lib/department-groups";
 import { loadMunicipalSnapshot, type DashboardSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
 
-import styles from "@/app/employees/employees.module.css";
+import styles from "./department-work.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +75,7 @@ function resolveDepartmentGroupName(departmentName?: string | null) {
 }
 
 type StatusFilter = "all" | "overdue" | "review" | "progress" | "done";
+type PeriodFilter = "all" | "today" | "week" | "month";
 const STATUS_FILTERS: Array<{ key: StatusFilter; label: string }> = [
   { key: "all", label: "Бүгд" },
   { key: "overdue", label: "Хугацаа хэтэрсэн" },
@@ -78,6 +87,9 @@ function normalizeStatus(value: string): StatusFilter {
   return STATUS_FILTERS.some((filter) => filter.key === value)
     ? (value as StatusFilter)
     : "all";
+}
+function normalizePeriod(value: string): PeriodFilter {
+  return ["today", "week", "month"].includes(value) ? (value as PeriodFilter) : "all";
 }
 function matchesStatus(task: TaskDirectoryItem, filter: StatusFilter, todayKey: string) {
   switch (filter) {
@@ -104,6 +116,8 @@ type DepartmentWorkPageProps = {
     search?: string | string[];
     dateFrom?: string | string[];
     dateTo?: string | string[];
+    employee?: string | string[];
+    period?: string | string[];
   }>;
 };
 
@@ -122,8 +136,10 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
   const normalizedSearchFilter = searchFilter.toLocaleLowerCase("mn-MN");
   const dateFrom = normalizeDateFilter(queryParams.dateFrom);
   const dateTo = normalizeDateFilter(queryParams.dateTo);
+  const employeeFilter = getParam(queryParams.employee).trim();
+  const periodFilter = normalizePeriod(getParam(queryParams.period));
   const hasListFilter = Boolean(
-    departmentParam || searchFilter || dateFrom || dateTo || selectedStatus !== "all",
+    departmentParam || searchFilter || dateFrom || dateTo || employeeFilter || periodFilter !== "all" || selectedStatus !== "all",
   );
 
   const workerMode = isWorkerOnly(session);
@@ -227,8 +243,21 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
       if (dateFrom && taskDate < dateFrom) return false;
       if (dateTo && taskDate > dateTo) return false;
     }
+    if (employeeFilter && task.leaderName !== employeeFilter) return false;
+    if (periodFilter !== "all") {
+      const taskDate = task.scheduledDate || task.deadlineDateTime?.slice(0, 10) || "";
+      if (!taskDate) return false;
+      const today = new Date(`${todayKey}T00:00:00`);
+      const target = new Date(`${taskDate}T00:00:00`);
+      const dayDiff = Math.floor((target.getTime() - today.getTime()) / 86_400_000);
+      if (periodFilter === "today" && dayDiff !== 0) return false;
+      if (periodFilter === "week" && (dayDiff < 0 || dayDiff > 7)) return false;
+      if (periodFilter === "month" && (target.getFullYear() !== today.getFullYear() || target.getMonth() !== today.getMonth())) return false;
+    }
     return true;
   });
+
+  const employeeOptions = Array.from(new Set(departmentTasks.map((task) => task.leaderName).filter(Boolean))).sort((a, b) => a.localeCompare(b, "mn"));
 
   const groups = new Map<string, { name: string; tasks: TaskDirectoryItem[] }>();
   for (const task of baseTasks) {
@@ -312,6 +341,30 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
       )
     : 0;
 
+  const categoryDefinitions = [
+    { key: "green", label: "Ногоон байгууламж", keywords: ["ногоон", "мод", "зүлэг", "цэцэг", "усал"], icon: Leaf, tone: "green" },
+    { key: "cleaning", label: "Цэвэрлэгээ", keywords: ["цэвэр", "талбай", "явган", "ариутгал"], icon: Trash2, tone: "blue" },
+    { key: "garbage", label: "Хог тээвэр", keywords: ["хог", "тээвэр", "маршрут"], icon: Truck, tone: "orange" },
+    { key: "repair", label: "Техник, засвар", keywords: ["засвар", "техник", "машин", "тоноглол"], icon: Wrench, tone: "purple" },
+    { key: "improvement", label: "Тохижилт", keywords: ["тохиж", "сандал", "хашаа", "гэрэлтүүл"], icon: Hammer, tone: "teal" },
+  ] as const;
+  const categoryStats = categoryDefinitions.map((category) => {
+    const tasks = baseTasks.filter((task) => {
+      const text = `${task.name} ${task.projectName} ${task.departmentName}`.toLocaleLowerCase("mn-MN");
+      return category.keywords.some((keyword) => text.includes(keyword));
+    });
+    const progress = tasks.length ? Math.round(tasks.reduce((sum, task) => sum + (task.progress || 0), 0) / tasks.length) : 0;
+    return { ...category, count: tasks.length, progress };
+  }).filter((category) => category.count > 0);
+
+  const upcomingTasks = [...departmentTasks]
+    .filter((task) => !isTaskDone(task) && Boolean(task.scheduledDate || task.deadlineDateTime))
+    .sort((a, b) => (a.scheduledDate || a.deadlineDateTime || "").localeCompare(b.scheduledDate || b.deadlineDateTime || ""))
+    .slice(0, 5);
+  const myTasks = departmentTasks.filter((task) => task.leaderName && task.leaderName === session.name);
+  const myDone = myTasks.filter(isTaskDone).length;
+  const myProgress = myTasks.length ? Math.round(myDone / myTasks.length * 100) : 0;
+
   // Нэгтгэл + статусын шүүлтийг нэг эгнээ, адил хэмжээтэй, дарж болох карт болгов.
   // Карт бүр дээр дарахад тухайн шүүлт рүү шилжинэ.
   const statCards: Array<{
@@ -364,8 +417,9 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
         )}
         <label className={shellStyles.dateFilterSearch}>
           <span>Ажил, даалгаврын нэр</span>
-          <input type="search" name="search" defaultValue={searchFilter} placeholder="Нэрээр хайх" />
+          <span className={styles.searchWrap}><Search size={15} aria-hidden /><input type="search" name="search" defaultValue={searchFilter} placeholder="Ажил, даалгавар хайх..." /></span>
         </label>
+        <label><span>Хариуцагч</span><select name="employee" defaultValue={employeeFilter}><option value="">Бүгд</option>{employeeOptions.map((employee) => <option key={employee} value={employee}>{employee}</option>)}</select></label>
         <label>
           <span>Төлөв</span>
           <select name="status" defaultValue={selectedStatus}>
@@ -374,6 +428,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
             ))}
           </select>
         </label>
+        <label><span>Хугацаа</span><select name="period" defaultValue={periodFilter}><option value="all">Бүгд</option><option value="today">Өнөөдөр</option><option value="week">7 хоног</option><option value="month">Энэ сар</option></select></label>
         <label>
           <span>Эхлэх огноо</span>
           <input type="date" name="dateFrom" defaultValue={dateFrom} max={dateTo || undefined} />
@@ -432,8 +487,11 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
         </section>
       ) : null}
 
+      {categoryStats.length ? <section className={styles.categorySection}><h2>Ажлын ангилал</h2><div className={styles.categoryGrid}>{categoryStats.map((category) => { const Icon = category.icon; return <article key={category.key} className={`${styles.categoryCard} ${styles[`category_${category.tone}`]}`}><span className={styles.categoryIcon}><Icon size={22} aria-hidden /></span><span><strong>{category.label}</strong><small>{category.count} ажил</small></span><b>{category.progress}%</b><span className={styles.categoryTrack}><i style={{ width: `${category.progress}%` }} /></span></article>; })}</div></section> : null}
+
+      <div className={styles.boardGrid}>
       {departments.length ? (
-        <section className={styles.list}>
+        <section className={styles.list}><div className={styles.listHeading}><div><h2>Даалгаврын жагсаалт</h2><span>{baseTasks.length} нийт ажил</span></div><div className={styles.statusTabs}>{STATUS_FILTERS.map((filter) => <Link key={filter.key} href={buildHref(filter.key)} className={selectedStatus === filter.key ? styles.activeTab : ""}>{filter.label}</Link>)}</div></div>
           {departments.map((department, index) => (
             <details
               key={`${department.name}-${index}`}
@@ -526,6 +584,11 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
           <p>Сонгосон шүүлтэд таарах хэлтсийн ажил одоогоор алга байна.</p>
         </div>
       )}
+      <aside className={styles.insightColumn}>
+        <section className={styles.sideCard}><div className={styles.sideHeading}><div><CalendarDays size={17} aria-hidden /><h2>Ойрын хугацааны ажлууд</h2></div><span>{upcomingTasks.length}</span></div><div className={styles.upcomingList}>{upcomingTasks.length ? upcomingTasks.map((task, index) => { const date = task.scheduledDate || task.deadlineDateTime?.slice(0,10) || ""; return <Link key={task.id} href={task.href} className={styles.upcomingItem}><i className={styles[`accent_${["green","blue","purple","orange","teal"][index % 5]}`]} /><time><b>{date.slice(8,10) || "—"}</b><small>{date.slice(5,7)}-р сар</small></time><span><strong>{task.name}</strong><small>{task.departmentName}</small></span><b>›</b></Link>; }) : <p className={styles.muted}>Ойрын хугацааны ажил алга.</p>}</div><Link href={buildHref("all")} className={styles.viewAll}>Бүгдийг харах</Link></section>
+        <section className={styles.sideCard}><div className={styles.sideHeading}><div><UserRound size={17} aria-hidden /><h2>Миний ажлын явц</h2></div></div><div className={styles.personalProgress}><div className={styles.progressRing} style={{ "--progress": `${myProgress * 3.6}deg` } as React.CSSProperties}><span>{myProgress}%</span></div><ul><li><b>{myTasks.length}</b> ажил ногдсон</li><li><b>{myDone}</b> ажил дууссан</li><li><b>{Math.max(myTasks.length - myDone, 0)}</b> ажил явагдаж буй</li></ul></div></section>
+      </aside>
+      </div>
     </div>,
   );
 }
