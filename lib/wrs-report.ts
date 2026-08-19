@@ -455,9 +455,32 @@ async function selectBranch(page: Page, branchId: string) {
   return WRS_REQUIRED_BRANCH_NAME;
 }
 
-async function waitForReportRender(page: Page) {
+async function readRenderedReportSignature(page: Page) {
+  return page.evaluate(() => {
+    const selectors = [
+      ".dxbrv-report-preview-content",
+      ".dxbrv-document-surface",
+      '[role="document"]',
+      '[aria-label*="Document Page"]',
+    ];
+    const content = selectors
+      .flatMap((selector) =>
+        Array.from(document.querySelectorAll(selector)).map(
+          (element) => element.textContent ?? "",
+        ),
+      )
+      .join("\n")
+      .replace(/\s+/g, " ")
+      .trim();
+    const pageLabel =
+      document.querySelector('[role="status"][aria-label]')?.getAttribute("aria-label") ?? "";
+    return `${pageLabel}|${content}`.slice(0, 50_000);
+  });
+}
+
+async function waitForReportRender(page: Page, previousSignature: string) {
   await page.waitForFunction(
-    (buttonLabel) => {
+    ({ buttonLabel, previousSignature }) => {
       const submitButton = Array.from(document.querySelectorAll("button")).find(
         (button) => (button.textContent ?? "").trim() === buttonLabel,
       ) as HTMLButtonElement | undefined;
@@ -468,10 +491,31 @@ async function waitForReportRender(page: Page) {
 
       const pageLabel =
         document.querySelector('[role="status"][aria-label]')?.getAttribute("aria-label") ?? "";
+      const selectors = [
+        ".dxbrv-report-preview-content",
+        ".dxbrv-document-surface",
+        '[role="document"]',
+        '[aria-label*="Document Page"]',
+      ];
+      const content = selectors
+        .flatMap((selector) =>
+          Array.from(document.querySelectorAll(selector)).map(
+            (element) => element.textContent ?? "",
+          ),
+        )
+        .join("\n")
+        .replace(/\s+/g, " ")
+        .trim();
+      const currentSignature = `${pageLabel}|${content}`.slice(0, 50_000);
 
-      return /of\s+\d+/i.test(pageLabel) && !/^\s*0\s+of\s+0\s*$/i.test(pageLabel);
+      return (
+        /of\s+\d+/i.test(pageLabel) &&
+        !/^\s*0\s+of\s+0\s*$/i.test(pageLabel) &&
+        Boolean(content) &&
+        (!previousSignature || currentSignature !== previousSignature)
+      );
     },
-    SUBMIT_BUTTON_LABEL,
+    { buttonLabel: SUBMIT_BUTTON_LABEL, previousSignature },
     {
       timeout: 120_000,
     },
@@ -569,10 +613,10 @@ async function prepareWrsReportPage(
     }
 
     await page.keyboard.press("Escape").catch(() => undefined);
+    const previousReportSignature = await readRenderedReportSignature(page);
     await clickSubmitButton(page);
-    await page.waitForTimeout(2_000);
 
-    await waitForReportRender(page);
+    await waitForReportRender(page, previousReportSignature);
 
     return {
       browser,
