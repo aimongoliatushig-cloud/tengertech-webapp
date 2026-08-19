@@ -56,7 +56,17 @@ export async function getCalculation(session: AppSession, id: number) {
   };
 }
 
-function commands(rows: Record<string, unknown>[] = []) { return rows.map((source) => { const row = { ...source }; delete row.id; delete row.total; return [0, 0, row]; }); }
+function commands(rows: Record<string, unknown>[] = []) {
+  return rows.map((source) => {
+    const row = { ...source };
+    delete row.id;
+    delete row.total;
+    if (Array.isArray(row.material_id)) {
+      row.material_id = Number(row.material_id[0]);
+    }
+    return [0, 0, row];
+  });
+}
 function values(payload: CalculationPayload): Record<string, unknown> {
   return { work_name: payload.work_name, work_type: payload.work_type || false, date: payload.date, location: payload.location, description: payload.description || false, quantity: payload.quantity, unit: payload.unit, status: payload.status,
     material_line_ids: commands(payload.materials), labor_line_ids: commands(payload.labor), equipment_line_ids: commands(payload.equipment), transport_line_ids: commands(payload.transport), other_line_ids: commands(payload.other) };
