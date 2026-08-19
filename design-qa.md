@@ -1,45 +1,40 @@
 # Design QA
 
-- Source visual truth: `C:\Users\user\AppData\Local\Temp\codex-clipboard-5a5bf7ac-da11-4c55-85a3-ba974e8c71bd.png`
-- Source pixels: 817 × 638
-- Implementation target: `http://localhost:4173/tasks`
-- Intended viewport: desktop, 1366 × 900 CSS px, device scale factor 1
-- State: authenticated task dashboard, list view
-- Implementation screenshot: unavailable (local route redirects to `/login`)
+- Source visual truth: `C:/Users/user/AppData/Local/Temp/codex-clipboard-2aefdf1c-d729-4e6c-a875-b872865b1939.png`
+- Source dimensions: 798 × 622 px
+- Implementation: `https://webapp.srv1545037.hstgr.cloud/department-work`
+- Intended viewport: desktop, 1440 × 900 CSS px, device scale factor 1
+- State: authenticated department orders and assignments dashboard
 
 ## Full-view comparison evidence
 
-The source was opened and inspected. It defines five KPI cards, an overall progress row, five category cards, a search/filter row, a two-column task/upcoming layout, compact progress rows, and responsive hierarchy. The implementation could not be captured in the same authenticated state because the local browser session is not signed in.
+The source screenshot was opened and reviewed. The deployed implementation route was opened in the in-app browser, but the browser session was redirected to the login screen. Therefore an authenticated implementation screenshot representing the same state could not be captured.
 
 ## Focused region comparison evidence
 
-Blocked for the same authentication reason. Source regions for the KPI strip, filter row, task rows, and right rail were inspected; no equivalent browser-rendered implementation capture is available yet.
+Blocked by authentication before the dashboard content was rendered. Focused comparisons for the KPI cards, overall progress, category cards, filters, task list, upcoming tasks, and personal progress were not possible.
 
 ## Findings
 
-- [P1] Browser-rendered implementation evidence is missing.
-  - Location: `/tasks`
-  - Evidence: local navigation redirects to `/login`.
-  - Impact: typography, spacing, category wrapping, task-row density, and mobile breakpoints cannot be visually confirmed against the supplied image.
-  - Fix: sign into the local preview with an authorized test account, capture the dashboard at desktop and mobile widths, then repeat the visual comparison.
-
-## Required fidelity surfaces
-
-- Fonts and typography: implemented with the existing application typography tokens; browser comparison blocked.
-- Spacing and layout rhythm: reference structure implemented; browser comparison blocked.
-- Colors and visual tokens: semantic green, red, orange, blue, purple, and teal states implemented; browser comparison blocked.
-- Image and icon fidelity: the reference's standard interface icons are represented with the application's existing icon library. The decorative illustration was intentionally omitted to keep the existing product asset language; browser comparison blocked.
-- Copy and content: Mongolian labels and live task data are connected; browser comparison blocked.
+- No code-build or deployment blocker was found: the production build and TypeScript checks passed, the container started, and the public login endpoint returned HTTP 200.
+- Visual comparison remains blocked because the QA browser does not have an authenticated ERP session.
 
 ## Comparison history
 
-- Initial implementation: production build and TypeScript checks passed. Visual comparison remains blocked before its first authenticated capture.
+- Initial pass: source opened successfully; implementation redirected to login. No same-state comparison or visual fixes could be completed.
 
-## Implementation checklist
+## Primary interactions tested
 
-- Authenticate the local browser session with an approved account.
-- Capture desktop and mobile task-list states.
-- Compare source and implementation together.
-- Fix any P0/P1/P2 differences and repeat capture.
+- Production route navigation and authentication redirect.
+- Public endpoint availability.
+- Production container startup.
+
+## Console errors checked
+
+No browser console errors were observed before the authentication redirect. Server logs show the application is ready; an existing Odoo group-field fallback warning remains unrelated to this dashboard change.
+
+## Final result
 
 final result: blocked
+
+Blocker: an authenticated browser session is required to capture and compare the deployed department dashboard against the supplied reference.
