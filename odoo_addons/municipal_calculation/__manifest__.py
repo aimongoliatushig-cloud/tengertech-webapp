@@ -2,7 +2,7 @@
 {
     "name": "Тохижилтын тооцоолол",
     "summary": "Тохижилтын хэлтсийн ажлын өртөг тооцоолол, материалын сан",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.1.0",
     "category": "Operations/Municipal",
     "author": "TengerTech",
     "license": "LGPL-3",
@@ -14,4 +14,3 @@
     "installable": True,
     "application": False,
 }
-

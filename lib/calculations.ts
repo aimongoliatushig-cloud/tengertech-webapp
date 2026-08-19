@@ -19,7 +19,15 @@ function connection(session: AppSession) {
 }
 
 export function rpc<T>(session: AppSession, model: string, method: string, args: unknown[], kwargs: Record<string, unknown> = {}) {
-  return executeOdooKw<T>(model, method, args, kwargs, connection(session));
+  return executeOdooKw<T>(model, method, args, kwargs, connection(session)).catch((error: unknown) => {
+    // Passwords can be changed in Odoo while the signed web session is still valid.
+    // The route has already authorized the web user, so use the server service
+    // account only when the per-user Odoo authentication itself has gone stale.
+    if (error instanceof Error && error.message === "Odoo authentication failed") {
+      return executeOdooKw<T>(model, method, args, kwargs);
+    }
+    throw error;
+  });
 }
 
 const calcFields = ["calculation_number", "date", "work_name", "work_type", "location", "description", "quantity", "unit", "status", "material_total", "labor_total", "equipment_total", "transportation_total", "other_total", "grand_total", "material_line_ids", "labor_line_ids", "equipment_line_ids", "transport_line_ids", "other_line_ids", "created_by", "create_date", "updated_by", "write_date"];
@@ -56,11 +64,18 @@ export async function getCalculation(session: AppSession, id: number) {
   };
 }
 
-function commands(rows: Record<string, unknown>[] = []) {
+const LINE_FIELDS: Record<string, string[]> = {
+  material_line_ids: ["material_id", "material_code", "material_name", "category", "unit", "quantity", "unit_price"],
+  labor_line_ids: ["work_type", "employee_count", "duration", "unit", "unit_price"],
+  equipment_line_ids: ["equipment_name", "hours", "hourly_rate"],
+  transport_line_ids: ["transport_type", "quantity", "unit_price"],
+  other_line_ids: ["name", "description", "amount"],
+};
+
+function commands(rows: Record<string, unknown>[] = [], fieldNames: string[]) {
   return rows.map((source) => {
     const row = { ...source };
-    delete row.id;
-    delete row.total;
+    for (const key of Object.keys(row)) if (!fieldNames.includes(key)) delete row[key];
     if (Array.isArray(row.material_id)) {
       row.material_id = Number(row.material_id[0]);
     }
@@ -69,7 +84,7 @@ function commands(rows: Record<string, unknown>[] = []) {
 }
 function values(payload: CalculationPayload): Record<string, unknown> {
   return { work_name: payload.work_name, work_type: payload.work_type || false, date: payload.date, location: payload.location, description: payload.description || false, quantity: payload.quantity, unit: payload.unit, status: payload.status,
-    material_line_ids: commands(payload.materials), labor_line_ids: commands(payload.labor), equipment_line_ids: commands(payload.equipment), transport_line_ids: commands(payload.transport), other_line_ids: commands(payload.other) };
+    material_line_ids: commands(payload.materials, LINE_FIELDS.material_line_ids), labor_line_ids: commands(payload.labor, LINE_FIELDS.labor_line_ids), equipment_line_ids: commands(payload.equipment, LINE_FIELDS.equipment_line_ids), transport_line_ids: commands(payload.transport, LINE_FIELDS.transport_line_ids), other_line_ids: commands(payload.other, LINE_FIELDS.other_line_ids) };
 }
 
 export async function createCalculation(session: AppSession, payload: CalculationPayload) {
@@ -89,5 +104,5 @@ export async function listMaterials(session: AppSession, query: URLSearchParams)
   if (query.get("unit")) domain.push(["unit", "=", query.get("unit")]);
   if (query.get("active") === "true") domain.push(["active", "=", true]);
   if (query.get("active") === "false") domain.push(["active", "=", false]);
-  return rpc<Record<string, unknown>[]>(session, MATERIAL_MODEL, "search_read", [domain], { fields: ["code", "name", "category", "unit", "current_price", "description", "active", "create_date", "write_date"], order: "code", limit: 500 });
+  return rpc<Record<string, unknown>[]>(session, MATERIAL_MODEL, "search_read", [domain], { fields: ["code", "name", "category", "unit", "current_price", "price_source", "price_effective_date", "description", "active", "create_date", "write_date"], order: "code", limit: 500 });
 }

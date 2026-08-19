@@ -14,6 +14,8 @@ class MunicipalMaterial(models.Model):
     category = fields.Char(string="Ангилал", required=True, index=True)
     unit = fields.Char(string="Нэгж", required=True)
     current_price = fields.Float(string="Одоогийн нэгж үнэ", default=0, required=True)
+    price_source = fields.Char(string="Үнийн эх сурвалж")
+    price_effective_date = fields.Date(string="Үнийн огноо")
     description = fields.Text(string="Тайлбар")
     active = fields.Boolean(string="Идэвхтэй", default=True)
     price_history_ids = fields.One2many("municipal.calculation.material.price", "material_id", string="Үнийн түүх")
@@ -49,6 +51,7 @@ class MunicipalMaterial(models.Model):
             "price": new_price,
             "effective_date": fields.Date.context_today(self),
             "changed_by": self.env.user.id,
+            "source": self.price_source,
         })
 
 
@@ -62,6 +65,7 @@ class MunicipalMaterialPrice(models.Model):
     price = fields.Float(string="Шинэ үнэ", required=True)
     effective_date = fields.Date(string="Хүчин төгөлдөр огноо", required=True, default=fields.Date.context_today)
     changed_by = fields.Many2one("res.users", string="Өөрчилсөн", default=lambda self: self.env.user, readonly=True)
+    source = fields.Char(string="Эх сурвалж")
 
     _price_non_negative = models.Constraint("CHECK(price >= 0 AND old_price >= 0)", "Үнэ сөрөг байж болохгүй.")
 
@@ -235,4 +239,3 @@ class CalculationOtherLine(models.Model):
     description = fields.Char()
     amount = fields.Float(default=0, required=True)
     _amount_non_negative = models.Constraint("CHECK(amount >= 0)", "Бусад зардал сөрөг байж болохгүй.")
-

@@ -22,7 +22,7 @@ export async function GET(request: Request) {
   const query = new URL(request.url).searchParams;
   try {
     if (query.get("resource") === "materials") return Response.json(await listMaterials(auth.session!, query));
-    if (query.get("resource") === "prices") return Response.json(await rpc(auth.session!, PRICE_MODEL, "search_read", [[]], { fields: ["material_id", "old_price", "price", "effective_date", "changed_by", "create_date"], order: "effective_date desc, id desc", limit: 1000 }));
+    if (query.get("resource") === "prices") return Response.json(await rpc(auth.session!, PRICE_MODEL, "search_read", [[]], { fields: ["material_id", "old_price", "price", "effective_date", "source", "changed_by", "create_date"], order: "effective_date desc, id desc", limit: 1000 }));
     const id = Number(query.get("id"));
     return Response.json(id > 0 ? await getCalculation(auth.session!, id) : await listCalculations(auth.session!, query));
   } catch (error) { return errorResponse(error); }
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     if (body.action === "copy") return Response.json({ id: await rpc<number>(auth.session!, "municipal.calculation", "copy", [Number(body.id)], {}) });
     if (body.resource === "material") {
       if (auth.session!.role !== "system_admin") return Response.json({ error: "Материалын санг зөвхөн администратор өөрчилнө." }, { status: 403 });
-      return Response.json({ id: await rpc<number>(auth.session!, MATERIAL_MODEL, "create", [{ name: body.name, category: body.category, unit: body.unit, current_price: Number(body.current_price || 0), description: body.description || false, active: body.active !== false }]) });
+      return Response.json({ id: await rpc<number>(auth.session!, MATERIAL_MODEL, "create", [{ name: body.name, category: body.category, unit: body.unit, current_price: Number(body.current_price || 0), price_source: "Гараар оруулсан үнэ", price_effective_date: new Date().toISOString().slice(0, 10), description: body.description || false, active: body.active !== false }]) });
     }
     return Response.json({ id: await createCalculation(auth.session!, body as CalculationPayload) }, { status: 201 });
   } catch (error) { return errorResponse(error); }
@@ -47,7 +47,7 @@ export async function PUT(request: Request) {
     const body = await request.json();
     if (body.resource === "material") {
       if (auth.session!.role !== "system_admin") return Response.json({ error: "Материалын санг зөвхөн администратор өөрчилнө." }, { status: 403 });
-      return Response.json({ ok: await rpc<boolean>(auth.session!, MATERIAL_MODEL, "write", [[Number(body.id)], { name: body.name, category: body.category, unit: body.unit, current_price: Number(body.current_price || 0), description: body.description || false, active: body.active !== false }]) });
+      return Response.json({ ok: await rpc<boolean>(auth.session!, MATERIAL_MODEL, "write", [[Number(body.id)], { name: body.name, category: body.category, unit: body.unit, current_price: Number(body.current_price || 0), price_source: "Гараар шинэчилсэн үнэ", price_effective_date: new Date().toISOString().slice(0, 10), description: body.description || false, active: body.active !== false }]) });
     }
     return Response.json({ ok: await updateCalculation(auth.session!, Number(body.id), body as CalculationPayload) });
   } catch (error) { return errorResponse(error); }
