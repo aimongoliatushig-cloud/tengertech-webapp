@@ -394,16 +394,15 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
     key: string;
     label: string;
     value: number;
-    status: StatusFilter;
     icon: typeof Building2;
     tone: string;
   }> = [
-    { key: "dept", label: groupByProject ? "Захирамж, үүрэг даалгавар" : "Хэлтэс", value: groups.size, status: "all", icon: Building2, tone: "" },
-    { key: "all", label: "Бүгд", value: baseTasks.length, status: "all", icon: ClipboardList, tone: "" },
-    { key: "overdue", label: "Хугацаа хэтэрсэн", value: baseTasks.filter((task) => isTaskOverdue(task, todayKey)).length, status: "overdue", icon: AlertTriangle, tone: "warn" },
-    { key: "review", label: "Батлах хүлээж", value: baseTasks.filter(isTaskReview).length, status: "review", icon: ShieldCheck, tone: "warn" },
-    { key: "progress", label: "Хийгдэж буй", value: baseTasks.filter(isTaskInProgress).length, status: "progress", icon: Clock3, tone: "" },
-    { key: "done", label: "Дууссан", value: baseTasks.filter(isTaskDone).length, status: "done", icon: CheckCircle2, tone: "ok" },
+    { key: "dept", label: groupByProject ? "Захирамж, үүрэг даалгавар" : "Хэлтэс", value: groups.size, icon: Building2, tone: "" },
+    { key: "all", label: "Бүгд", value: baseTasks.length, icon: ClipboardList, tone: "" },
+    { key: "overdue", label: "Хугацаа хэтэрсэн", value: baseTasks.filter((task) => isTaskOverdue(task, todayKey)).length, icon: AlertTriangle, tone: "warn" },
+    { key: "review", label: "Батлах хүлээж", value: baseTasks.filter(isTaskReview).length, icon: ShieldCheck, tone: "warn" },
+    { key: "progress", label: "Хийгдэж буй", value: baseTasks.filter(isTaskInProgress).length, icon: Clock3, tone: "" },
+    { key: "done", label: "Дууссан", value: baseTasks.filter(isTaskDone).length, icon: CheckCircle2, tone: "ok" },
   ];
 
   return shell(
@@ -474,19 +473,17 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
       >
         {statCards.map((item) => {
           const Icon = item.icon;
-          const active = item.key !== "dept" && selectedStatus === item.status;
           return (
-            <Link
+            <article
               key={item.key}
-              href={buildHref(item.status)}
-              className={`${styles.stat} ${styles.statLink} ${item.tone ? styles[item.tone] : ""} ${active ? styles.statActive : ""}`}
+              className={`${styles.stat} ${item.tone ? styles[item.tone] : ""}`}
             >
               <span className={styles.statIcon}>
                 <Icon size={16} aria-hidden />
               </span>
               <strong className={styles.statValue}>{item.value}</strong>
               <span className={styles.statLabel}>{item.label}</span>
-            </Link>
+            </article>
           );
         })}
       </section>
@@ -515,7 +512,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
 
       <div className={styles.boardGrid}>
       {departments.length ? (
-        <section className={styles.list}><div className={styles.listHeading}><div><h2>Даалгаврын жагсаалт</h2><span>{baseTasks.length} нийт ажил</span></div><div className={styles.statusTabs}>{STATUS_FILTERS.map((filter) => <Link key={filter.key} href={buildHref(filter.key)} className={selectedStatus === filter.key ? styles.activeTab : ""}>{filter.label}</Link>)}</div></div>
+        <section className={styles.list}><div className={styles.listHeading}><div><h2>Даалгаврын жагсаалт</h2><span>{baseTasks.length} нийт ажил</span></div></div>
           {departments.map((department, index) => (
             <details
               key={`${department.name}-${index}`}
