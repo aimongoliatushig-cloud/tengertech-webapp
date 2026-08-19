@@ -20,6 +20,7 @@ import {
   Leaf,
   ListChecks,
   LogOut,
+  MapPinned,
   Menu,
   MessageSquare,
   Navigation,
@@ -660,6 +661,12 @@ export function AppMenu({
               href: `/department-work?department=${encodeURIComponent(group.name)}&unit=${encodeURIComponent("Цэвэрлэгээ үйлчилгээ")}`,
               label: "Зам талбайн цэвэрлэгээ үйлчилгээ",
               icon: Trash2,
+            },
+            {
+              key: "cleaning-areas",
+              href: "/cleaning-areas#ecoroad",
+              label: "Eco Road үзлэг",
+              icon: MapPinned,
             },
             {
               key: "green-clean-reports",
