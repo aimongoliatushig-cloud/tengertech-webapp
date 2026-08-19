@@ -53,6 +53,8 @@ export async function PUT(request: Request) {
   const auth = await authorize(true); if ("error" in auth) return auth.error;
   try {
     const body = await request.json();
+    if (body.resource === "package") return Response.json({ ok: await rpc<boolean>(auth.session!, PACKAGE_MODEL, "write", [[Number(body.id)], workPackageUpdateValues(body)]) });
+    if (body.resource === "labor_rate") { if (auth.session!.role !== "system_admin") return Response.json({ error: "Ажлын хөлсний санг зөвхөн администратор өөрчилнө." }, { status: 403 }); return Response.json({ ok: await rpc<boolean>(auth.session!, LABOR_RATE_MODEL, "write", [[Number(body.id)], { name: body.name, unit: body.unit, current_rate: Number(body.current_rate || 0), active: body.active !== false }]) }); }
     if (body.resource === "material") {
       if (auth.session!.role !== "system_admin") return Response.json({ error: "Материалын санг зөвхөн администратор өөрчилнө." }, { status: 403 });
       return Response.json({ ok: await rpc<boolean>(auth.session!, MATERIAL_MODEL, "write", [[Number(body.id)], { name: body.name, category: body.category, unit: body.unit, current_price: Number(body.current_price || 0), price_source: "Гараар шинэчилсэн үнэ", price_effective_date: new Date().toISOString().slice(0, 10), description: body.description || false, active: body.active !== false }]) });

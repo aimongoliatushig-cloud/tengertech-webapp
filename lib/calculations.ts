@@ -123,13 +123,15 @@ export async function listWorkPackages(session: AppSession, query: URLSearchPara
 export async function getWorkPackage(session: AppSession, id: number) {
   const rows = await rpc<Record<string, unknown>[]>(session, PACKAGE_MODEL, "read", [[id]], { fields: packageFields });
   const row = rows[0]; if (!row) return null;
-  const ids = (field: string) => (row[field] as number[] | undefined) || [];
+  const packageLines = (model: string, fields: string[]) => rpc<Record<string, unknown>[]>(
+    session, model, "search_read", [[['package_id', '=', id]]], { fields, order: "id" },
+  );
   return { ...row,
-    materials: await readLines(session, "municipal.calculation.work.package.material", ids("material_line_ids"), ["material_id", "norm", "unit", "unit_price"]),
-    labor: await readLines(session, "municipal.calculation.work.package.labor", ids("labor_line_ids"), ["labor_rate_id", "norm", "unit", "unit_price", "required"]),
-    equipment: await readLines(session, "municipal.calculation.work.package.equipment", ids("equipment_line_ids"), ["name", "norm", "unit", "unit_price"]),
-    transport: await readLines(session, "municipal.calculation.work.package.transport", ids("transport_line_ids"), ["name", "norm", "unit", "unit_price"]),
-    other: await readLines(session, "municipal.calculation.work.package.other", ids("other_line_ids"), ["name", "description", "norm", "unit", "unit_price"]),
+    materials: await packageLines("municipal.calculation.work.package.material", ["material_id", "norm", "unit", "unit_price"]),
+    labor: await packageLines("municipal.calculation.work.package.labor", ["labor_rate_id", "norm", "unit", "unit_price", "required"]),
+    equipment: await packageLines("municipal.calculation.work.package.equipment", ["name", "norm", "unit", "unit_price"]),
+    transport: await packageLines("municipal.calculation.work.package.transport", ["name", "norm", "unit", "unit_price"]),
+    other: await packageLines("municipal.calculation.work.package.other", ["name", "description", "norm", "unit", "unit_price"]),
   };
 }
 
