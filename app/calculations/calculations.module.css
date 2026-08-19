@@ -1,4 +1,49 @@
 .page{display:grid;gap:18px;padding:4px 0 56px;color:#14241b}.header{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:22px 24px;border:1px solid #d8e8dc;border-radius:18px;background:linear-gradient(135deg,#fff,#edf8ef)}.header span{color:#23833d;font-weight:700}.header h1{display:flex;align-items:center;gap:10px;margin:4px 0;font-size:26px}.header h1 svg{width:28px}.header p{margin:0;color:#66746b}.primary,.sectionTitle button{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:11px;background:#24833a;color:#fff;padding:12px 18px;font-weight:700;cursor:pointer}.primary svg,.sectionTitle button svg{width:18px}.tabs{display:flex;gap:7px;overflow:auto;padding:5px;border:1px solid #dce8df;border-radius:14px;background:#fff}.tabs button{display:flex;align-items:center;gap:7px;white-space:nowrap;border:0;border-radius:10px;background:transparent;padding:11px 14px;color:#5d6c62;font-weight:700;cursor:pointer}.tabs svg{width:18px}.tabs .active{background:#e7f5ea;color:#157832}.card{border:1px solid #dce8df;border-radius:16px;background:#fff;padding:20px;box-shadow:0 5px 20px rgba(28,74,40,.04)}.card h2{margin:0 0 17px;font-size:17px}.card h2 small{font-weight:400;color:#7d8a81}.filters{display:flex;gap:10px;align-items:center}.filters label{display:flex;align-items:center;gap:8px;min-width:300px;border:1px solid #d8e5dc;border-radius:11px;padding:0 12px;background:#fff}.filters label svg{width:18px;color:#23833d}.filters input,.filters select{width:100%;border:0;outline:0;padding:12px;background:transparent}.filters>select{border:1px solid #d8e5dc;border-radius:11px;padding:12px;background:#fff}.tableWrap{overflow:auto}.tableWrap table{width:100%;border-collapse:collapse;min-width:800px}.tableWrap th{padding:13px 12px;text-align:left;color:#607067;font-size:12px;border-bottom:1px solid #dce8df;background:#f7faf8}.tableWrap td{padding:13px 12px;border-bottom:1px solid #e7eee9}.amount,.lineTotal{text-align:right;font-weight:700;white-space:nowrap}.badge{display:inline-block;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700}.draft{background:#edf0ee;color:#58625c}.calculated{background:#fff2d9;color:#9c5d00}.approved{background:#e2f4e6;color:#157832}.actions{display:flex;gap:5px}.actions button,.actions a,.tableWrap td>button,.lineTotal button{display:inline-flex;border:0;border-radius:8px;background:#eef6f0;color:#237f3a;padding:7px;cursor:pointer}.actions svg,.tableWrap td>button svg,.lineTotal svg{width:16px;height:16px}.message{padding:12px 16px;border-radius:11px;background:#eef8ef;color:#176d2d}.loading{position:fixed;z-index:80;right:24px;top:90px;padding:10px 16px;border-radius:12px;background:#183d24;color:#fff}.formLayout{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:18px;align-items:start}.formMain{display:grid;gap:16px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.grid label,.modal label{display:grid;gap:6px;color:#536258;font-weight:600}.grid input,.grid select,.grid textarea,.modal input,.lineTable input,.lineTable select{width:100%;box-sizing:border-box;border:1px solid #d6e4da;border-radius:10px;background:#fff;padding:11px;color:#17281d}.grid textarea{min-height:80px;resize:vertical}.full{grid-column:1/-1}.sectionTitle{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:12px}.sectionTitle h2{margin:0}.sectionTitle button{padding:9px 13px}.lineTable input,.lineTable select{min-width:110px;padding:9px}.lineTable td:first-child input,.lineTable td:first-child select{min-width:220px}.lineTable small{display:block;margin-top:5px;color:#76827a}.lineTotal button{margin-left:8px;padding:5px;background:#fff1ef;color:#c33}.summary{position:sticky;top:20px;border:1px solid #cfe3d3;border-radius:16px;background:#f4fbf5;padding:20px}.summary h2{margin:0 0 18px}.summaryLine{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #d9e8dc}.grand{display:grid;gap:9px;margin-top:18px;padding:17px;border-radius:13px;background:#1f7d36;color:#fff}.grand span{font-size:11px;font-weight:700}.grand strong{font-size:25px}.formActions{display:flex;justify-content:flex-end;gap:9px}.formActions button{border:1px solid #cfe0d3;border-radius:10px;background:#fff;padding:11px 18px;font-weight:700;cursor:pointer}.formActions .primary{background:#24833a;color:#fff;border-color:#24833a}.modal{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:rgba(10,30,16,.42);padding:20px}.modal>div{display:grid;gap:13px;width:min(480px,100%);border-radius:17px;background:#fff;padding:24px;box-shadow:0 24px 70px rgba(0,0,0,.2)}.modal h2{margin:0}.modal label:has(input[type=checkbox]){display:flex;align-items:center}.modal input[type=checkbox]{width:auto}.modal .formActions{margin-top:8px}
 @media(max-width:1000px){.formLayout{grid-template-columns:1fr}.summary{position:static;order:-1}.header{align-items:flex-start}.filters{flex-wrap:wrap}.filters label{min-width:220px;flex:1}}
-@media(max-width:640px){.page{gap:12px;padding-bottom:85px}.header{display:grid;padding:17px}.header h1{font-size:21px}.header .primary{width:100%}.tabs{margin-inline:-4px}.grid{grid-template-columns:1fr}.full{grid-column:auto}.card{padding:14px}.filters{display:grid}.filters label{min-width:0}.tableWrap table{min-width:720px}.summary strong{font-size:13px}.grand strong{font-size:22px}}
-
+@media(max-width:640px){
+  .page{gap:12px;padding:0 0 96px;max-width:100vw;overflow:hidden}
+  .header{display:grid;padding:16px;border-radius:14px}
+  .header h1{font-size:21px;line-height:1.25}
+  .header p{font-size:12px;line-height:1.5}
+  .header .primary{width:100%;min-height:48px}
+  .tabs{margin-inline:0;padding:4px;scrollbar-width:none;scroll-snap-type:x proximity}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{min-height:44px;padding:10px 12px;scroll-snap-align:start}
+  .grid{grid-template-columns:1fr}
+  .full{grid-column:auto}
+  .card{padding:14px;border-radius:14px}
+  .card h2{font-size:16px}
+  .filters{display:grid;width:100%}
+  .filters label{min-width:0;width:100%;min-height:46px}
+  .filters>select{width:100%;min-height:46px}
+  .formLayout{display:flex;flex-direction:column}
+  .formMain{width:100%}
+  .summary{width:100%;box-sizing:border-box;order:-1;padding:16px}
+  .summaryLine{font-size:12px}
+  .summaryLine strong{font-size:13px}
+  .grand strong{font-size:22px;overflow-wrap:anywhere}
+  .sectionTitle{align-items:stretch;flex-direction:column}
+  .sectionTitle button{width:100%;min-height:44px}
+  .formActions{position:static;margin:0 0 84px;padding:12px 0 0;background:transparent;box-shadow:none}
+  .formActions button{flex:1;min-height:46px}
+  .modal{align-items:end;padding:0}
+  .modal>div{width:100%;max-height:88dvh;overflow:auto;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom))}
+  .modal .formActions{margin:8px 0 0;padding:0}
+  .mobileCards{overflow:visible}
+  .mobileCards table,.mobileLineCards table{display:block;min-width:0}
+  .mobileCards thead,.mobileLineCards thead{display:none}
+  .mobileCards tbody,.mobileLineCards tbody{display:grid;gap:12px}
+  .mobileCards tr,.mobileLineCards tr{display:grid;border:1px solid #d8e6dc;border-radius:13px;background:#fff;padding:12px;box-shadow:0 3px 12px rgba(24,67,35,.05)}
+  .mobileCards td,.mobileLineCards td{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;width:100%;box-sizing:border-box;padding:8px 0;border-bottom:1px dashed #e1eae4;text-align:right;white-space:normal}
+  .mobileCards td:last-child,.mobileLineCards td:last-child{border-bottom:0}
+  .mobileCards td::before,.mobileLineCards td::before{content:attr(data-label);flex:0 0 38%;color:#718078;font-size:11px;font-weight:700;text-align:left}
+  .mobileCards .actions{justify-content:flex-end;flex-wrap:wrap}
+  .mobileCards .actions::before{align-self:center}
+  .mobileCards .actions button,.mobileCards .actions a{min-width:42px;min-height:42px;align-items:center;justify-content:center}
+  .mobileLineCards{overflow:visible}
+  .mobileLineCards td>input,.mobileLineCards td>select,.mobileLineCards td>div{min-width:0;width:62%}
+  .mobileLineCards td:first-child input,.mobileLineCards td:first-child select{min-width:0}
+  .mobileLineCards td small{max-width:62%;margin-left:auto}
+  .mobileLineCards .lineTotal{align-items:center;font-size:14px}
+  .mobileLineCards .lineTotal button{min-width:38px;min-height:38px;align-items:center;justify-content:center}
+}
