@@ -85,6 +85,10 @@ class MunicipalCalculation(models.Model):
     quantity = fields.Float(string="Тоо хэмжээ", default=1, required=True)
     unit = fields.Char(string="Хэмжих нэгж", required=True)
     status = fields.Selection([("draft", "Ноорог"), ("calculated", "Тооцоолсон"), ("approved", "Баталгаажсан")], string="Төлөв", default="draft", required=True, tracking=True, index=True)
+    work_package_id = fields.Many2one("municipal.calculation.work.package", string="Эх ажлын багц", ondelete="set null", readonly=True)
+    work_package_code = fields.Char(string="Багцын кодын snapshot", readonly=True)
+    work_package_name = fields.Char(string="Багцын нэрийн snapshot", readonly=True)
+    work_package_base_unit = fields.Char(string="Багцын суурь нэгжийн snapshot", readonly=True)
     material_line_ids = fields.One2many("municipal.calculation.line.material", "calculation_id", copy=True)
     labor_line_ids = fields.One2many("municipal.calculation.line.labor", "calculation_id", copy=True)
     equipment_line_ids = fields.One2many("municipal.calculation.line.equipment", "calculation_id", copy=True)
@@ -147,6 +151,7 @@ class CalculationMaterialLine(models.Model):
     unit = fields.Char(required=True)
     quantity = fields.Float(default=1, required=True)
     unit_price = fields.Float(default=0, required=True)
+    norm = fields.Float(string="Багцын нормын snapshot", default=0)
     total = fields.Float(compute="_compute_total", store=True)
 
     @api.onchange("material_id")
@@ -190,6 +195,7 @@ class CalculationLaborLine(models.Model):
     duration = fields.Float(default=1, required=True)
     unit = fields.Char(default="хоног", required=True)
     unit_price = fields.Float(default=0, required=True)
+    norm = fields.Float(string="Багцын нормын snapshot", default=0)
     total = fields.Float(compute="_compute_total", store=True)
     @api.depends("employee_count", "duration", "unit_price")
     def _compute_total(self):
@@ -206,6 +212,7 @@ class CalculationEquipmentLine(models.Model):
     equipment_name = fields.Char(required=True)
     hours = fields.Float(default=1, required=True)
     hourly_rate = fields.Float(default=0, required=True)
+    norm = fields.Float(string="Багцын нормын snapshot", default=0)
     total = fields.Float(compute="_compute_total", store=True)
     @api.depends("hours", "hourly_rate")
     def _compute_total(self):
@@ -222,6 +229,7 @@ class CalculationTransportLine(models.Model):
     transport_type = fields.Char(required=True)
     quantity = fields.Float(default=1, required=True)
     unit_price = fields.Float(default=0, required=True)
+    norm = fields.Float(string="Багцын нормын snapshot", default=0)
     total = fields.Float(compute="_compute_total", store=True)
     @api.depends("quantity", "unit_price")
     def _compute_total(self):
@@ -238,4 +246,5 @@ class CalculationOtherLine(models.Model):
     name = fields.Char(required=True)
     description = fields.Char()
     amount = fields.Float(default=0, required=True)
+    norm = fields.Float(string="Багцын нормын snapshot", default=0)
     _amount_non_negative = models.Constraint("CHECK(amount >= 0)", "Бусад зардал сөрөг байж болохгүй.")

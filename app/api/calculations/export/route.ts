@@ -25,6 +25,7 @@ function section(title: string, headers: string[], rows: unknown[][]) {
 
 function html(c: Row) {
   const materials = (c.materials as Row[] || []).map(r => [r.material_name, r.unit, r.quantity, money(r.unit_price), money(r.total)]);
+  if (c.work_package_name) materials.unshift([`Ажлын багц: ${text(c.work_package_code)} — ${text(c.work_package_name)}`, `Суурь нэгж: ${text(c.work_package_base_unit)}`, `${text(c.quantity)} ${text(c.unit)}`, "", ""]);
   const labor = (c.labor as Row[] || []).map(r => [r.work_type, r.employee_count, r.duration, r.unit, money(r.unit_price), money(r.total)]);
   const equipment = (c.equipment as Row[] || []).map(r => [r.equipment_name, r.hours, money(r.hourly_rate), money(r.total)]);
   const transport = (c.transport as Row[] || []).map(r => [r.transport_type, r.quantity, money(r.unit_price), money(r.total)]);
@@ -37,6 +38,7 @@ async function workbook(c: Row) {
   ws.mergeCells("A1:F1"); ws.getCell("A1").value = "ХАН-УУЛ ДҮҮРГИЙН ТОХИЖИЛТ ҮЙЛЧИЛГЭЭНИЙ ТӨВ ОНӨААТҮГ"; ws.getCell("A1").font = { bold: true, size: 14 }; ws.getCell("A1").alignment = { horizontal: "center" };
   ws.mergeCells("A2:F2"); ws.getCell("A2").value = "АЖЛЫН ТООЦООЛОЛ"; ws.getCell("A2").font = { bold: true, size: 16 }; ws.getCell("A2").alignment = { horizontal: "center" };
   [["Тооцооллын №", c.calculation_number], ["Огноо", c.date], ["Ажлын нэр", c.work_name], ["Байршил", c.location], ["Тоо хэмжээ", `${c.quantity} ${c.unit}`]].forEach(row => ws.addRow(row));
+  if (c.work_package_name) { ws.addRow(["Ажлын багц", `${c.work_package_code} — ${c.work_package_name}`]); ws.addRow(["Суурь нэгж", c.work_package_base_unit]); }
   const add = (title: string, headers: string[], rows: unknown[][]) => { ws.addRow([]); const t = ws.addRow([title]); t.font = { bold: true, size: 13 }; const h = ws.addRow(headers); h.font = { bold: true }; h.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "DDEFE1" } }; rows.forEach(row => ws.addRow(row)); };
   add("Материал", ["Материал", "Нэгж", "Тоо хэмжээ", "Нэгж үнэ", "Нийт"], (c.materials as Row[] || []).map(r => [r.material_name, r.unit, r.quantity, r.unit_price, r.total]));
   add("Ажлын хөлс", ["Ажил", "Хүний тоо", "Хугацаа", "Нэгж", "Үнэлгээ", "Нийт"], (c.labor as Row[] || []).map(r => [r.work_type, r.employee_count, r.duration, r.unit, r.unit_price, r.total]));

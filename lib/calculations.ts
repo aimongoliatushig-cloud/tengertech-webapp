@@ -6,10 +6,14 @@ import { executeOdooKw } from "@/lib/odoo";
 export const CALCULATION_MODEL = "municipal.calculation";
 export const MATERIAL_MODEL = "municipal.calculation.material";
 export const PRICE_MODEL = "municipal.calculation.material.price";
+export const PACKAGE_MODEL = "municipal.calculation.work.package";
+export const LABOR_RATE_MODEL = "municipal.calculation.labor.rate";
+export const LABOR_HISTORY_MODEL = "municipal.calculation.labor.rate.history";
 
 export type CalculationPayload = {
   work_name: string; work_type?: string; date: string; location: string; description?: string;
   quantity: number; unit: string; status: "draft" | "calculated" | "approved";
+  work_package_id?: number; work_package_code?: string; work_package_name?: string; work_package_base_unit?: string;
   materials?: Record<string, unknown>[]; labor?: Record<string, unknown>[];
   equipment?: Record<string, unknown>[]; transport?: Record<string, unknown>[]; other?: Record<string, unknown>[];
 };
@@ -30,7 +34,7 @@ export function rpc<T>(session: AppSession, model: string, method: string, args:
   });
 }
 
-const calcFields = ["calculation_number", "date", "work_name", "work_type", "location", "description", "quantity", "unit", "status", "material_total", "labor_total", "equipment_total", "transportation_total", "other_total", "grand_total", "material_line_ids", "labor_line_ids", "equipment_line_ids", "transport_line_ids", "other_line_ids", "created_by", "create_date", "updated_by", "write_date"];
+const calcFields = ["calculation_number", "date", "work_name", "work_type", "location", "description", "quantity", "unit", "status", "work_package_id", "work_package_code", "work_package_name", "work_package_base_unit", "material_total", "labor_total", "equipment_total", "transportation_total", "other_total", "grand_total", "material_line_ids", "labor_line_ids", "equipment_line_ids", "transport_line_ids", "other_line_ids", "created_by", "create_date", "updated_by", "write_date"];
 
 export async function listCalculations(session: AppSession, query: URLSearchParams) {
   const domain: unknown[] = [];
@@ -56,34 +60,32 @@ export async function getCalculation(session: AppSession, id: number) {
   const ids = (name: string) => (row[name] as number[] | undefined) ?? [];
   return {
     ...row,
-    materials: await readLines(session, "municipal.calculation.line.material", ids("material_line_ids"), ["material_id", "material_code", "material_name", "category", "unit", "quantity", "unit_price", "total"]),
-    labor: await readLines(session, "municipal.calculation.line.labor", ids("labor_line_ids"), ["work_type", "employee_count", "duration", "unit", "unit_price", "total"]),
-    equipment: await readLines(session, "municipal.calculation.line.equipment", ids("equipment_line_ids"), ["equipment_name", "hours", "hourly_rate", "total"]),
-    transport: await readLines(session, "municipal.calculation.line.transport", ids("transport_line_ids"), ["transport_type", "quantity", "unit_price", "total"]),
-    other: await readLines(session, "municipal.calculation.line.other", ids("other_line_ids"), ["name", "description", "amount"]),
+    materials: await readLines(session, "municipal.calculation.line.material", ids("material_line_ids"), ["material_id", "material_code", "material_name", "category", "unit", "quantity", "unit_price", "norm", "total"]),
+    labor: await readLines(session, "municipal.calculation.line.labor", ids("labor_line_ids"), ["work_type", "employee_count", "duration", "unit", "unit_price", "norm", "total"]),
+    equipment: await readLines(session, "municipal.calculation.line.equipment", ids("equipment_line_ids"), ["equipment_name", "hours", "hourly_rate", "norm", "total"]),
+    transport: await readLines(session, "municipal.calculation.line.transport", ids("transport_line_ids"), ["transport_type", "quantity", "unit_price", "norm", "total"]),
+    other: await readLines(session, "municipal.calculation.line.other", ids("other_line_ids"), ["name", "description", "amount", "norm"]),
   };
 }
 
 const LINE_FIELDS: Record<string, string[]> = {
-  material_line_ids: ["material_id", "material_code", "material_name", "category", "unit", "quantity", "unit_price"],
-  labor_line_ids: ["work_type", "employee_count", "duration", "unit", "unit_price"],
-  equipment_line_ids: ["equipment_name", "hours", "hourly_rate"],
-  transport_line_ids: ["transport_type", "quantity", "unit_price"],
-  other_line_ids: ["name", "description", "amount"],
+  material_line_ids: ["material_id", "material_code", "material_name", "category", "unit", "quantity", "unit_price", "norm"],
+  labor_line_ids: ["work_type", "employee_count", "duration", "unit", "unit_price", "norm"],
+  equipment_line_ids: ["equipment_name", "hours", "hourly_rate", "norm"],
+  transport_line_ids: ["transport_type", "quantity", "unit_price", "norm"],
+  other_line_ids: ["name", "description", "amount", "norm"],
 };
 
 function commands(rows: Record<string, unknown>[] = [], fieldNames: string[]) {
   return rows.map((source) => {
     const row = { ...source };
     for (const key of Object.keys(row)) if (!fieldNames.includes(key)) delete row[key];
-    if (Array.isArray(row.material_id)) {
-      row.material_id = Number(row.material_id[0]);
-    }
+    for (const key of Object.keys(row)) if (key.endsWith("_id") && Array.isArray(row[key])) row[key] = Number((row[key] as unknown[])[0]);
     return [0, 0, row];
   });
 }
 function values(payload: CalculationPayload): Record<string, unknown> {
-  return { work_name: payload.work_name, work_type: payload.work_type || false, date: payload.date, location: payload.location, description: payload.description || false, quantity: payload.quantity, unit: payload.unit, status: payload.status,
+  return { work_name: payload.work_name, work_type: payload.work_type || false, date: payload.date, location: payload.location, description: payload.description || false, quantity: payload.quantity, unit: payload.unit, status: payload.status, work_package_id: payload.work_package_id || false, work_package_code: payload.work_package_code || false, work_package_name: payload.work_package_name || false, work_package_base_unit: payload.work_package_base_unit || false,
     material_line_ids: commands(payload.materials, LINE_FIELDS.material_line_ids), labor_line_ids: commands(payload.labor, LINE_FIELDS.labor_line_ids), equipment_line_ids: commands(payload.equipment, LINE_FIELDS.equipment_line_ids), transport_line_ids: commands(payload.transport, LINE_FIELDS.transport_line_ids), other_line_ids: commands(payload.other, LINE_FIELDS.other_line_ids) };
 }
 
@@ -105,4 +107,49 @@ export async function listMaterials(session: AppSession, query: URLSearchParams)
   if (query.get("active") === "true") domain.push(["active", "=", true]);
   if (query.get("active") === "false") domain.push(["active", "=", false]);
   return rpc<Record<string, unknown>[]>(session, MATERIAL_MODEL, "search_read", [domain], { fields: ["code", "name", "category", "unit", "current_price", "price_source", "price_effective_date", "description", "active", "create_date", "write_date"], order: "code", limit: 500 });
+}
+
+const packageFields = ["code", "name", "category", "base_unit", "description", "active", "component_count", "material_line_ids", "labor_line_ids", "equipment_line_ids", "transport_line_ids", "other_line_ids", "created_by", "create_date", "updated_by", "write_date"];
+
+export async function listWorkPackages(session: AppSession, query: URLSearchParams) {
+  const domain: unknown[] = [];
+  const search = query.get("search")?.trim();
+  if (search) domain.push("|", "|", ["code", "ilike", search], ["name", "ilike", search], ["category", "ilike", search]);
+  if (query.get("category")) domain.push(["category", "=", query.get("category")]);
+  if (query.get("active") !== "all") domain.push(["active", "=", true]);
+  return rpc<Record<string, unknown>[]>(session, PACKAGE_MODEL, "search_read", [domain], { fields: packageFields, order: "code", limit: 200 });
+}
+
+export async function getWorkPackage(session: AppSession, id: number) {
+  const rows = await rpc<Record<string, unknown>[]>(session, PACKAGE_MODEL, "read", [[id]], { fields: packageFields });
+  const row = rows[0]; if (!row) return null;
+  const ids = (field: string) => (row[field] as number[] | undefined) || [];
+  return { ...row,
+    materials: await readLines(session, "municipal.calculation.work.package.material", ids("material_line_ids"), ["material_id", "norm", "unit", "unit_price"]),
+    labor: await readLines(session, "municipal.calculation.work.package.labor", ids("labor_line_ids"), ["labor_rate_id", "norm", "unit", "unit_price", "required"]),
+    equipment: await readLines(session, "municipal.calculation.work.package.equipment", ids("equipment_line_ids"), ["name", "norm", "unit", "unit_price"]),
+    transport: await readLines(session, "municipal.calculation.work.package.transport", ids("transport_line_ids"), ["name", "norm", "unit", "unit_price"]),
+    other: await readLines(session, "municipal.calculation.work.package.other", ids("other_line_ids"), ["name", "description", "norm", "unit", "unit_price"]),
+  };
+}
+
+const packageLineFields: Record<string, string[]> = {
+  material_line_ids: ["material_id", "norm", "unit", "unit_price"], labor_line_ids: ["labor_rate_id", "norm", "unit", "unit_price", "required"],
+  equipment_line_ids: ["name", "norm", "unit", "unit_price"], transport_line_ids: ["name", "norm", "unit", "unit_price"], other_line_ids: ["name", "description", "norm", "unit", "unit_price"],
+};
+export function workPackageValues(body: Record<string, unknown>): Record<string, unknown> {
+  const fieldKey: Record<string, string> = { materials: "material_line_ids", labor: "labor_line_ids", equipment: "equipment_line_ids", transport: "transport_line_ids", other: "other_line_ids" };
+  const rows = (key: string) => commands((body[key] as Record<string, unknown>[] | undefined) || [], packageLineFields[fieldKey[key]]);
+  return { name: body.name, category: body.category, base_unit: body.base_unit, description: body.description || false, active: body.active !== false,
+    material_line_ids: rows("materials"), labor_line_ids: rows("labor"), equipment_line_ids: rows("equipment"), transport_line_ids: rows("transport"), other_line_ids: rows("other") };
+}
+
+export function workPackageUpdateValues(body: Record<string, unknown>) {
+  const vals = workPackageValues(body);
+  for (const key of Object.keys(packageLineFields)) vals[key] = [[5, 0, 0], ...((vals[key] as unknown[]) || [])];
+  return vals;
+}
+
+export async function listLaborRates(session: AppSession) {
+  return rpc<Record<string, unknown>[]>(session, LABOR_RATE_MODEL, "search_read", [[]], { fields: ["code", "name", "unit", "current_rate", "active", "create_date", "write_date"], order: "code", limit: 300 });
 }
