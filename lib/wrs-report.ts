@@ -6,6 +6,7 @@ import { chromium, type Browser, type Page } from "playwright";
 
 const DEFAULT_WRS_REPORT_URL =
   "http://wrs.ubservice.mn/ReportViewer_DetailView/66683522-e7a2-41ec-bce4-f5123a09485c";
+const WRS_WASTE_DATA_URL = "http://wrs.ubservice.mn/WasteData_ListView";
 const WRS_REPORT_URL = process.env.WRS_REPORT_URL?.trim() || DEFAULT_WRS_REPORT_URL;
 const WRS_REPORT_LOGIN = process.env.WRS_REPORT_LOGIN?.trim() || "5673461";
 const WRS_REPORT_PASSWORD = process.env.WRS_REPORT_PASSWORD?.trim() || WRS_REPORT_LOGIN;
@@ -1167,50 +1168,104 @@ export async function fetchWrsDailyReport(requestedDate: string): Promise<WrsRep
 export async function fetchWrsDailyVehicleTotals(
   requestedDate: string,
 ): Promise<WrsNormalizedTotalsResult> {
-  const { browser, branchName, page } = await prepareWrsReportPage(requestedDate);
+  if (!isValidDateValue(requestedDate)) {
+    throw new Error("Invalid date value. Use YYYY-MM-DD.");
+  }
+
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({
+    acceptDownloads: true,
+    viewport: { width: 1800, height: 1200 },
+  });
+  const page = await context.newPage();
 
   try {
-    const header = await readReportHeader(page);
-    const weightRows = await extractWeightReportRows(page, requestedDate);
-    if (weightRows.length) {
-      return {
-        requestedDate,
-        branchName,
-        title: header.title,
-        pageLabel: header.pageLabel,
-        totalPages: parseTotalPages(header.pageLabel),
-        extractedLineCount: weightRows.length,
-        totals: aggregateWeightRows(weightRows, requestedDate, branchName),
-        ignoredSamples: [],
-      };
+    await page.goto(WRS_WASTE_DATA_URL, {
+      waitUntil: "domcontentloaded",
+      timeout: 120_000,
+    });
+    await page.waitForTimeout(4_000);
+    await loginIfNeeded(page);
+
+    if (!page.url().includes("/WasteData_ListView")) {
+      await page.goto(WRS_WASTE_DATA_URL, {
+        waitUntil: "domcontentloaded",
+        timeout: 120_000,
+      });
     }
 
-    const exportedRows = await extractExportedWeightReportRows(page, requestedDate);
-    if (exportedRows.length) {
-      return {
-        requestedDate,
-        branchName,
-        title: header.title,
-        pageLabel: header.pageLabel,
-        totalPages: parseTotalPages(header.pageLabel),
-        extractedLineCount: exportedRows.length,
-        totals: aggregateWeightRows(exportedRows, requestedDate, branchName),
-        ignoredSamples: [],
-      };
+    const exportButton = page.locator('button[title*="CSV"]:visible').first();
+    await exportButton.waitFor({ state: "visible", timeout: 120_000 });
+    const downloadPromise = page.waitForEvent("download", { timeout: 120_000 });
+    await exportButton.click({ timeout: 30_000 });
+    const download = await downloadPromise;
+    const downloadPath = await download.path();
+    if (!downloadPath) {
+      throw new Error("WRS WasteData CSV файл татагдсангүй.");
     }
 
-    const textLines = await extractReportTextLines(page);
-    const aggregated = aggregateVehicleTotals(textLines, requestedDate, branchName);
+    const csv = await readFile(downloadPath, "latin1");
+    const totals = new Map<string, AggregatedVehicleTotal>();
+    let extractedLineCount = 0;
+
+    for (const rawLine of csv.split(/\r?\n/).slice(1)) {
+      if (!rawLine.trim()) continue;
+      const cells = rawLine.split(";");
+      const reportDate = (cells[3] ?? "").trim().slice(0, 10);
+      const vehicleLabel = (cells[6] ?? "").trim();
+      const vehicleCode = vehicleLabel.replace(/\D/g, "");
+      const garbageWeight = Number(
+        (cells[17] ?? "").replace(/,/g, "").replace(/[^\d.\-]/g, ""),
+      );
+
+      if (
+        reportDate !== requestedDate ||
+        vehicleCode.length < 3 ||
+        !Number.isFinite(garbageWeight) ||
+        garbageWeight <= 0
+      ) {
+        continue;
+      }
+
+      extractedLineCount += 1;
+      const current = totals.get(vehicleCode) ?? {
+        netWeightTotal: 0,
+        rowCount: 0,
+        samples: [],
+        vehicleLabel: vehicleLabel || vehicleCode,
+      };
+      current.netWeightTotal += garbageWeight;
+      current.rowCount += 1;
+      if (current.samples.length < 3) {
+        current.samples.push(`${reportDate} ${vehicleLabel} ${garbageWeight} кг`);
+      }
+      totals.set(vehicleCode, current);
+    }
+
+    const branchName = WRS_REQUIRED_BRANCH_NAME;
+    const normalizedTotals = Array.from(totals.entries())
+      .map(([vehicleCode, total]) => ({
+        vehicleCode,
+        vehicleLabel: total.vehicleLabel || vehicleCode,
+        branchName,
+        requestedDate,
+        netWeightTotal: total.netWeightTotal,
+        source: "wrs_normalized" as const,
+        externalReference: `${requestedDate}:${vehicleCode}`,
+        rowCount: total.rowCount,
+        sampleRows: total.samples,
+      }))
+      .sort((left, right) => left.vehicleCode.localeCompare(right.vehicleCode));
 
     return {
       requestedDate,
       branchName,
-      title: header.title,
-      pageLabel: header.pageLabel,
-      totalPages: parseTotalPages(header.pageLabel),
-      extractedLineCount: textLines.length,
-      totals: aggregated.totals,
-      ignoredSamples: aggregated.ignoredSamples,
+      title: "WRS WasteData CSV",
+      pageLabel: null,
+      totalPages: null,
+      extractedLineCount,
+      totals: normalizedTotals,
+      ignoredSamples: [],
     };
   } finally {
     await browser.close();
