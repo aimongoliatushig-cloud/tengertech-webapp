@@ -19,6 +19,10 @@
               sequence="5"
               groups="municipal_environment_services.group_environment_worker"/>
 
+    <menuitem id="menu_green_clean_work_template" name="Ажлын загвар" parent="menu_green_root" action="action_green_clean_work_template" sequence="7" groups="municipal_environment_services.group_green_master,municipal_environment_services.group_environment_manager,municipal_core.group_municipal_admin"/>
+    <menuitem id="menu_green_clean_category" name="Ажлын ангилал" parent="menu_green_root" action="action_green_clean_categories" sequence="8" groups="municipal_environment_services.group_environment_manager,municipal_core.group_municipal_admin"/>
+    <menuitem id="menu_green_clean_unit" name="Хэмжих нэгж" parent="menu_green_root" action="action_green_clean_units" sequence="9" groups="municipal_environment_services.group_environment_manager,municipal_core.group_municipal_admin"/>
+
     <menuitem id="menu_green_location"
               name="Байршил"
               parent="menu_green_root"

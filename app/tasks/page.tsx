@@ -1842,6 +1842,8 @@ export default async function TasksPage({ searchParams }: PageProps) {
                                   deleteAction={deleteTaskReportAction}
                                   taskId={Number(task.id)}
                                   simpleMobile
+                                  measurementUnit={task.measurementUnit}
+                                  requireQuantity={Boolean(task.plannedQuantity)}
                                   workItemName={task.name}
                                   parentWorkInfo={{
                                     workName: task.projectName,
@@ -1854,6 +1856,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                                   triggerClassName={styles.workerLineItem}
                                   triggerDisabled={Boolean(blockedReportReason)}
                                   triggerDisabledReason={blockedReportReason}
+                                  enableLocation={task.departmentName.toLocaleLowerCase("mn-MN").includes("ногоон байгууламж") && task.departmentName.toLocaleLowerCase("mn-MN").includes("цэвэрлэгээ үйлчилгээ")}
                                   triggerContent={
                                     <>
                                       <span className={styles.workerTaskNumber}>{index + 1}</span>

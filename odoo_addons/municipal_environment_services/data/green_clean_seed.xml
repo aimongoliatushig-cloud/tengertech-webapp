@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="green_clean_category_tree_planting" model="green.clean.work.category"><field name="name">Мод тарих</field><field name="code">tree_planting</field><field name="section">green</field><field name="sequence">10</field></record>
+    <record id="green_clean_category_tree_shaping" model="green.clean.work.category"><field name="name">Мод хэлбэржүүлэх</field><field name="code">tree_shaping</field><field name="section">green</field><field name="sequence">20</field></record>
+    <record id="green_clean_category_tree_watering" model="green.clean.work.category"><field name="name">Мод услах</field><field name="code">tree_watering</field><field name="section">green</field><field name="sequence">30</field></record>
+    <record id="green_clean_category_tree_care" model="green.clean.work.category"><field name="name">Мод, бут арчлах</field><field name="code">tree_care</field><field name="section">green</field><field name="sequence">40</field></record>
+    <record id="green_clean_category_tree_replanting" model="green.clean.work.category"><field name="name">Мод, бут нөхөн тарих</field><field name="code">tree_replanting</field><field name="section">green</field><field name="sequence">50</field></record>
+    <record id="green_clean_category_flower_planting" model="green.clean.work.category"><field name="name">Цэцэг тарих</field><field name="code">flower_planting</field><field name="section">green</field><field name="sequence">60</field></record>
+    <record id="green_clean_category_flower_care" model="green.clean.work.category"><field name="name">Цэцгийн мандлын арчилгаа</field><field name="code">flower_care</field><field name="section">green</field><field name="sequence">70</field></record>
+    <record id="green_clean_category_lawn_planting" model="green.clean.work.category"><field name="name">Зүлэг тарих</field><field name="code">lawn_planting</field><field name="section">green</field><field name="sequence">80</field></record>
+    <record id="green_clean_category_lawn_care" model="green.clean.work.category"><field name="name">Зүлэг арчлах</field><field name="code">lawn_care</field><field name="section">green</field><field name="sequence">90</field></record>
+    <record id="green_clean_category_soil" model="green.clean.work.category"><field name="name">Хөрс боловсруулах</field><field name="code">soil</field><field name="section">green</field><field name="sequence">100</field></record>
+    <record id="green_clean_category_green_other" model="green.clean.work.category"><field name="name">Бусад</field><field name="code">green_other</field><field name="section">green</field><field name="sequence">110</field></record>
+
+    <record id="green_clean_category_road_cleaning" model="green.clean.work.category"><field name="name">Зам талбайн цэвэрлэгээ</field><field name="code">road_cleaning</field><field name="section">cleaning</field><field name="sequence">210</field></record>
+    <record id="green_clean_category_sidewalk" model="green.clean.work.category"><field name="name">Явган замын цэвэрлэгээ</field><field name="code">sidewalk_cleaning</field><field name="section">cleaning</field><field name="sequence">220</field></record>
+    <record id="green_clean_category_bin" model="green.clean.work.category"><field name="name">Хогийн сав цэвэрлэгээ</field><field name="code">bin_cleaning</field><field name="section">cleaning</field><field name="sequence">230</field></record>
+    <record id="green_clean_category_illegal_dump" model="green.clean.work.category"><field name="name">Ил задгай хог цэвэрлэгээ</field><field name="code">illegal_dump</field><field name="section">cleaning</field><field name="sequence">240</field></record>
+    <record id="green_clean_category_carcass" model="green.clean.work.category"><field name="name">Малын сэг зэм цэвэрлэгээ</field><field name="code">carcass</field><field name="section">cleaning</field><field name="sequence">250</field></record>
+    <record id="green_clean_category_flood" model="green.clean.work.category"><field name="name">Үерийн дараах цэвэрлэгээ</field><field name="code">flood_cleanup</field><field name="section">cleaning</field><field name="sequence">260</field></record>
+    <record id="green_clean_category_dam" model="green.clean.work.category"><field name="name">Үерийн далан цэвэрлэгээ</field><field name="code">flood_dam</field><field name="section">cleaning</field><field name="sequence">270</field></record>
+    <record id="green_clean_category_ditch" model="green.clean.work.category"><field name="name">Шуудуу цэвэрлэгээ</field><field name="code">ditch</field><field name="section">cleaning</field><field name="sequence">280</field></record>
+    <record id="green_clean_category_public_area" model="green.clean.work.category"><field name="name">Нийтийн эзэмшлийн талбайн цэвэрлэгээ</field><field name="code">public_area</field><field name="section">cleaning</field><field name="sequence">290</field></record>
+    <record id="green_clean_category_disinfection" model="green.clean.work.category"><field name="name">Ариутгал</field><field name="code">disinfection</field><field name="section">cleaning</field><field name="sequence">300</field></record>
+    <record id="green_clean_category_clean_other" model="green.clean.work.category"><field name="name">Бусад</field><field name="code">clean_other</field><field name="section">cleaning</field><field name="sequence">310</field></record>
+
+    <record id="green_clean_unit_piece" model="green.clean.unit"><field name="name">ширхэг</field><field name="code">ш</field><field name="sequence">10</field></record>
+    <record id="green_clean_unit_meter" model="green.clean.unit"><field name="name">метр</field><field name="code">м</field><field name="sequence">20</field></record>
+    <record id="green_clean_unit_square_meter" model="green.clean.unit"><field name="name">квадрат метр</field><field name="code">м²</field><field name="sequence">30</field></record>
+    <record id="green_clean_unit_cubic_meter" model="green.clean.unit"><field name="name">куб метр</field><field name="code">м³</field><field name="sequence">40</field></record>
+    <record id="green_clean_unit_liter" model="green.clean.unit"><field name="name">литр</field><field name="code">л</field><field name="sequence">50</field></record>
+    <record id="green_clean_unit_kg" model="green.clean.unit"><field name="name">килограмм</field><field name="code">кг</field><field name="sequence">60</field></record>
+    <record id="green_clean_unit_ton" model="green.clean.unit"><field name="name">тонн</field><field name="code">тонн</field><field name="sequence">70</field></record>
+    <record id="green_clean_unit_hectare" model="green.clean.unit"><field name="name">гектар</field><field name="code">га</field><field name="sequence">80</field></record>
+    <record id="green_clean_unit_time" model="green.clean.unit"><field name="name">удаа</field><field name="code">удаа</field><field name="sequence">90</field></record>
+    <record id="green_clean_unit_route" model="green.clean.unit"><field name="name">маршрут</field><field name="code">маршрут</field><field name="sequence">100</field></record>
+
+    <record id="green_clean_weekday_0" model="green.clean.weekday"><field name="name">Даваа</field><field name="code">0</field><field name="sequence">10</field></record>
+    <record id="green_clean_weekday_1" model="green.clean.weekday"><field name="name">Мягмар</field><field name="code">1</field><field name="sequence">20</field></record>
+    <record id="green_clean_weekday_2" model="green.clean.weekday"><field name="name">Лхагва</field><field name="code">2</field><field name="sequence">30</field></record>
+    <record id="green_clean_weekday_3" model="green.clean.weekday"><field name="name">Пүрэв</field><field name="code">3</field><field name="sequence">40</field></record>
+    <record id="green_clean_weekday_4" model="green.clean.weekday"><field name="name">Баасан</field><field name="code">4</field><field name="sequence">50</field></record>
+    <record id="green_clean_weekday_5" model="green.clean.weekday"><field name="name">Бямба</field><field name="code">5</field><field name="sequence">60</field></record>
+    <record id="green_clean_weekday_6" model="green.clean.weekday"><field name="name">Ням</field><field name="code">6</field><field name="sequence">70</field></record>
+</odoo>

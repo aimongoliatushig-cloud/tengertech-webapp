@@ -331,6 +331,21 @@ class ProjectTask(models.Model):
             "report_summary": values.get("report_text") or values.get("report_summary") or "",
             "reported_quantity": values.get("reported_quantity") or 0,
         }
+        optional_report_fields = {
+            "green_clean_gps_latitude": values.get("gps_latitude"),
+            "green_clean_gps_longitude": values.get("gps_longitude"),
+            "green_clean_location_name": values.get("location_name"),
+            "green_clean_start_datetime": values.get("start_datetime"),
+            "green_clean_end_datetime": values.get("end_datetime"),
+            "green_clean_watered_tree_count": values.get("watered_tree_count"),
+            "green_clean_liters_per_tree": values.get("liters_per_tree"),
+            "green_clean_photo_type": values.get("photo_type"),
+            "green_clean_watering_vehicle_id": values.get("watering_vehicle_id"),
+            "green_clean_watering_driver_id": values.get("watering_driver_id"),
+        }
+        for field_name, field_value in optional_report_fields.items():
+            if field_name in self.env["ops.task.report"]._fields and field_value not in (None, ""):
+                report_values[field_name] = field_value
         if "ops_measurement_unit_code" in self._fields and self.ops_measurement_unit_code:
             report_values["task_measurement_unit_code"] = self.ops_measurement_unit_code
         elif "ops_measurement_unit" in self._fields and self.ops_measurement_unit:

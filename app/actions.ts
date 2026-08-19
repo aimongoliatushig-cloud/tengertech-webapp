@@ -2645,6 +2645,19 @@ export async function createTaskReportAction(formData: FormData) {
   const submitToken = String(formData.get("report_submit_token") ?? "").trim();
   const quantityRaw = String(formData.get("reported_quantity") ?? "").trim();
   const reportedQuantity = quantityRaw ? Number(quantityRaw) : 0;
+  const gpsLatitudeRaw = String(formData.get("gps_latitude") ?? "").trim();
+  const gpsLongitudeRaw = String(formData.get("gps_longitude") ?? "").trim();
+  const gpsLatitude = gpsLatitudeRaw ? Number(gpsLatitudeRaw) : null;
+  const gpsLongitude = gpsLongitudeRaw ? Number(gpsLongitudeRaw) : null;
+  const locationName = String(formData.get("location_name") ?? "").trim();
+  const wateredTreeCountRaw = String(formData.get("watered_tree_count") ?? "").trim();
+  const litersPerTreeRaw = String(formData.get("liters_per_tree") ?? "").trim();
+  const wateredTreeCount = wateredTreeCountRaw ? Number(wateredTreeCountRaw) : null;
+  const litersPerTree = litersPerTreeRaw ? Number(litersPerTreeRaw) : null;
+  const startDatetime = String(formData.get("start_datetime") ?? "").trim();
+  const endDatetime = String(formData.get("end_datetime") ?? "").trim();
+  const wateringVehicleId = Number(String(formData.get("watering_vehicle_id") ?? "")) || null;
+  const wateringDriverId = Number(String(formData.get("watering_driver_id") ?? "")) || null;
   const quantityLineValues = formData
     .getAll("reported_quantity_line")
     .map((value) => String(value).trim());
@@ -2714,6 +2727,18 @@ export async function createTaskReportAction(formData: FormData) {
     if (quantityRaw && (Number.isNaN(reportedQuantity) || reportedQuantity < 0)) {
       redirectWithMessage(reportReturnPath, "error", "Гүйцэтгэсэн хэмжээ буруу байна.");
     }
+    if (
+      (gpsLatitudeRaw && (gpsLatitude === null || !Number.isFinite(gpsLatitude))) ||
+      (gpsLongitudeRaw && (gpsLongitude === null || !Number.isFinite(gpsLongitude)))
+    ) {
+      redirectWithMessage(reportReturnPath, "error", "GPS байршлын мэдээлэл буруу байна.");
+    }
+    if (
+      (wateredTreeCountRaw && (wateredTreeCount === null || !Number.isFinite(wateredTreeCount) || wateredTreeCount < 0)) ||
+      (litersPerTreeRaw && (litersPerTree === null || !Number.isFinite(litersPerTree) || litersPerTree < 0))
+    ) {
+      redirectWithMessage(reportReturnPath, "error", "Усалгааны тоо хэмжээ буруу байна.");
+    }
     timer.mark("validation_done", {
       imageCount: imageFiles.length,
       audioCount: audioFiles.length,
@@ -2779,6 +2804,15 @@ export async function createTaskReportAction(formData: FormData) {
         reportedQuantity: odooReportedQuantity,
         imageAttachments,
         audioAttachments,
+        gpsLatitude,
+        gpsLongitude,
+        locationName,
+        wateredTreeCount,
+        litersPerTree,
+        startDatetime,
+        endDatetime,
+        wateringVehicleId,
+        wateringDriverId,
       },
       connectionOverrides,
     ));
@@ -2835,6 +2869,11 @@ export async function updateTaskReportAction(formData: FormData) {
   const reportText = String(formData.get("report_text") ?? "").trim();
   const reportedQuantityRaw = String(formData.get("reported_quantity") ?? "").trim();
   const reportedQuantity = reportedQuantityRaw ? Number(reportedQuantityRaw) : null;
+  const gpsLatitudeRaw = String(formData.get("gps_latitude") ?? "").trim();
+  const gpsLongitudeRaw = String(formData.get("gps_longitude") ?? "").trim();
+  const gpsLatitude = gpsLatitudeRaw ? Number(gpsLatitudeRaw) : null;
+  const gpsLongitude = gpsLongitudeRaw ? Number(gpsLongitudeRaw) : null;
+  const locationName = String(formData.get("location_name") ?? "").trim();
   const quantityLineValues = formData
     .getAll("reported_quantity_line")
     .map((value) => String(value).trim());
@@ -2864,6 +2903,13 @@ export async function updateTaskReportAction(formData: FormData) {
     (reportedQuantity === null || Number.isNaN(reportedQuantity) || reportedQuantity < 0)
   ) {
     redirect(`${reportPath}?error=${encodeURIComponent("Гүйцэтгэсэн хэмжээ буруу байна.")}`);
+  }
+
+  if (
+    (gpsLatitudeRaw && (gpsLatitude === null || !Number.isFinite(gpsLatitude))) ||
+    (gpsLongitudeRaw && (gpsLongitude === null || !Number.isFinite(gpsLongitude)))
+  ) {
+    redirect(`${reportPath}?error=${encodeURIComponent("GPS байршлын мэдээлэл буруу байна.")}`);
   }
 
   if (imageFiles.some((file) => file.type && !file.type.startsWith("image/"))) {
@@ -2965,6 +3011,9 @@ export async function updateTaskReportAction(formData: FormData) {
       {
         reportText: effectiveReportText,
         reportedQuantity: effectiveReportedQuantity,
+        gpsLatitude,
+        gpsLongitude,
+        locationName,
         imageAttachments,
         audioAttachments,
         removeImageAttachmentIds,

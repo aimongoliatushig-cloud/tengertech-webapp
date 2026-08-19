@@ -2,7 +2,7 @@
 
 import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
-import { Camera, ImagePlus, Mic, RotateCcw, Square, X } from "lucide-react";
+import { Camera, ImagePlus, MapPin, Mic, RotateCcw, Square, X } from "lucide-react";
 
 import { ReportImageLightbox } from "@/app/_components/report-image-lightbox";
 import { compressInputImages, createCompressedCameraImageFile } from "./report-upload-utils";
@@ -63,6 +63,12 @@ type Props = {
   triggerContent?: ReactNode;
   triggerDisabled?: boolean;
   triggerDisabledReason?: string;
+  enableLocation?: boolean;
+  watering?: {
+    litersPerTree: number;
+    vehicleId?: number | null;
+    driverId?: number | null;
+  };
 };
 
 type PhotoReportFieldProps = {
@@ -827,17 +833,39 @@ export function TaskReportModal({
   triggerContent,
   triggerDisabled = false,
   triggerDisabledReason,
+  enableLocation = false,
+  watering,
 }: Props) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [mounted, setMounted] = useState(false);
   const [reportText, setReportText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [gpsLocation, setGpsLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [gpsStatus, setGpsStatus] = useState("");
+  const [wateredTreeCount, setWateredTreeCount] = useState(0);
+  const [litersPerTree, setLitersPerTree] = useState(watering?.litersPerTree || 0);
   const generatedSubmitToken = useId();
   const submitToken = `${generatedSubmitToken}-${taskId}-${existingReport?.id ?? "new"}`;
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const captureLocation = () => {
+    if (!navigator.geolocation) {
+      setGpsStatus("Энэ төхөөрөмж GPS байршил дэмжихгүй байна.");
+      return;
+    }
+    setGpsStatus("Байршил авч байна...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setGpsLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+        setGpsStatus("Байршил амжилттай авлаа.");
+      },
+      () => setGpsStatus("Байршил авах боломжгүй байна. GPS зөвшөөрлөө шалгана уу."),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
+    );
+  };
 
   useEffect(() => {
     setIsOpen(defaultOpen);
@@ -878,7 +906,7 @@ export function TaskReportModal({
 
   const hasMultipleQuantityLines = quantityLines.length > 1;
   const shouldShowQuantity =
-    !simpleMobile &&
+    (!simpleMobile || enableLocation) &&
     !hasMultipleQuantityLines &&
     (requireQuantity ?? (!quantityOptional && Boolean(measurementUnit?.trim())));
   const quantityLabel = `Хийсэн хэмжээ${measurementUnit ? ` (${measurementUnit})` : ""}`;
@@ -1064,6 +1092,45 @@ export function TaskReportModal({
                         <small>{reportText.length}/2000</small>
                       </span>
                     </label>
+
+                    {enableLocation ? (
+                      <div className={styles.modalField}>
+                        <span>Байршил</span>
+                        <input type="hidden" name="gps_latitude" value={gpsLocation?.latitude ?? ""} />
+                        <input type="hidden" name="gps_longitude" value={gpsLocation?.longitude ?? ""} />
+                        <input name="location_name" type="text" placeholder="Хороо, гудамж, талбай" />
+                        <button type="button" className={styles.mediaActionButton} onClick={captureLocation}>
+                          <MapPin size={17} strokeWidth={2.4} aria-hidden="true" />
+                          {gpsLocation ? "Байршил шинэчлэх" : "Байршил авах"}
+                        </button>
+                        {gpsStatus ? <small>{gpsStatus}</small> : null}
+                      </div>
+                    ) : null}
+
+                    {watering ? (
+                      <div className={styles.reportQuantityLines}>
+                        <span className={styles.reportBodyLabel}>Усалгааны мэдээлэл</span>
+                        <label className={styles.modalField}>
+                          <span>Усалсан модны тоо</span>
+                          <input name="watered_tree_count" type="number" min="0" step="1" inputMode="numeric" onChange={(event) => setWateredTreeCount(Number(event.target.value) || 0)} required />
+                        </label>
+                        <label className={styles.modalField}>
+                          <span>Нэг модонд ногдох литр</span>
+                          <input name="liters_per_tree" type="number" min="0" step="0.01" inputMode="decimal" value={litersPerTree || ""} onChange={(event) => setLitersPerTree(Number(event.target.value) || 0)} required />
+                        </label>
+                        <small>Нийт ус: {(wateredTreeCount * litersPerTree).toLocaleString("mn-MN")} л</small>
+                        <label className={styles.modalField}>
+                          <span>Эхлэх цаг</span>
+                          <input name="start_datetime" type="datetime-local" required />
+                        </label>
+                        <label className={styles.modalField}>
+                          <span>Дуусах цаг</span>
+                          <input name="end_datetime" type="datetime-local" required />
+                        </label>
+                        <input type="hidden" name="watering_vehicle_id" value={watering.vehicleId ?? ""} />
+                        <input type="hidden" name="watering_driver_id" value={watering.driverId ?? ""} />
+                      </div>
+                    ) : null}
                   </section>
 
                   <section className={`${styles.modalSectionCard} ${styles.attachmentSectionCard}`}>

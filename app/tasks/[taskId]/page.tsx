@@ -518,6 +518,12 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
             reportTextRequired={!photoFirstReportTask}
             simpleMobile={workerMode || photoFirstReportTask}
             workItemName={task.name}
+            enableLocation={task.greenCleanTask && task.requiresGps}
+            watering={task.wateringLitersPerTree > 0 ? {
+              litersPerTree: task.wateringLitersPerTree,
+              vehicleId: task.wateringVehicleId,
+              driverId: task.wateringDriverId,
+            } : undefined}
           />
         ) : null}
       </div>

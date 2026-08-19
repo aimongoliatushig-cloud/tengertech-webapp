@@ -123,6 +123,12 @@ type TaskRecord = {
   ops_can_mark_done?: boolean;
   ops_can_return_for_changes?: boolean;
   ops_reports_locked?: boolean;
+  green_clean_template_id?: Relation;
+  green_clean_requires_gps?: boolean;
+  green_clean_location_name?: string | false;
+  green_clean_watering_liters_per_tree?: number;
+  green_clean_watering_vehicle_id?: Relation;
+  green_clean_watering_driver_id?: Relation;
 };
 
 type ReportRecord = {
@@ -901,6 +907,12 @@ export type TaskDetail = {
   canMarkDone: boolean;
   canReturnForChanges: boolean;
   reportsLocked: boolean;
+  greenCleanTask: boolean;
+  requiresGps: boolean;
+  locationName: string;
+  wateringLitersPerTree: number;
+  wateringVehicleId: number | null;
+  wateringDriverId: number | null;
   attachments: WorkspaceAttachmentItem[];
   reports: TaskReportFeedItem[];
   messages: TaskMessageItem[];
@@ -4162,6 +4174,12 @@ export async function loadProjectDetail(
         "state",
         "mfo_state",
         "ops_reports_locked",
+        "green_clean_template_id",
+        "green_clean_requires_gps",
+        "green_clean_location_name",
+        "green_clean_watering_liters_per_tree",
+        "green_clean_watering_vehicle_id",
+        "green_clean_watering_driver_id",
         "mfo_shift_date",
         "mfo_vehicle_id",
         "mfo_driver_employee_id",
@@ -4554,6 +4572,12 @@ export async function loadTaskDetail(
         "ops_can_mark_done",
         "ops_can_return_for_changes",
         "ops_reports_locked",
+        "green_clean_template_id",
+        "green_clean_requires_gps",
+        "green_clean_location_name",
+        "green_clean_watering_liters_per_tree",
+        "green_clean_watering_vehicle_id",
+        "green_clean_watering_driver_id",
       ],
       {
         limit: 1,
@@ -5002,6 +5026,12 @@ export async function loadTaskDetail(
     canMarkDone: Boolean(task.ops_can_mark_done),
     canReturnForChanges: Boolean(task.ops_can_return_for_changes),
     reportsLocked: Boolean(task.ops_reports_locked),
+    greenCleanTask: Boolean(relationId(task.green_clean_template_id ?? false)),
+    requiresGps: Boolean(task.green_clean_requires_gps),
+    locationName: String(task.green_clean_location_name || ""),
+    wateringLitersPerTree: Number(task.green_clean_watering_liters_per_tree || 0),
+    wateringVehicleId: relationId(task.green_clean_watering_vehicle_id ?? false),
+    wateringDriverId: relationId(task.green_clean_watering_driver_id ?? false),
     attachments: taskAttachments,
     reports: reports.map((report) => {
       const fallbackAttachments = fallbackReportAttachmentsByReportId.get(report.id) ?? [];
@@ -6459,6 +6489,15 @@ export async function createWorkspaceTaskReport(
     reportedQuantity: number;
     imageAttachments?: WorkspaceReportAttachmentInput[];
     audioAttachments?: WorkspaceReportAttachmentInput[];
+    gpsLatitude?: number | null;
+    gpsLongitude?: number | null;
+    locationName?: string;
+    wateredTreeCount?: number | null;
+    litersPerTree?: number | null;
+    startDatetime?: string;
+    endDatetime?: string;
+    wateringVehicleId?: number | null;
+    wateringDriverId?: number | null;
   },
   connectionOverrides: Partial<OdooConnection> = {},
 ) {
@@ -6472,6 +6511,15 @@ export async function createWorkspaceTaskReport(
         reported_quantity: input.reportedQuantity,
         image_attachments: [],
         audio_attachments: [],
+        gps_latitude: input.gpsLatitude ?? null,
+        gps_longitude: input.gpsLongitude ?? null,
+        location_name: input.locationName?.trim() || "",
+        watered_tree_count: input.wateredTreeCount ?? null,
+        liters_per_tree: input.litersPerTree ?? null,
+        start_datetime: input.startDatetime || null,
+        end_datetime: input.endDatetime || null,
+        watering_vehicle_id: input.wateringVehicleId ?? null,
+        watering_driver_id: input.wateringDriverId ?? null,
       },
     ],
     {},
@@ -6533,6 +6581,9 @@ export async function updateWorkspaceTaskReport(
   input: {
     reportText: string;
     reportedQuantity?: number | null;
+    gpsLatitude?: number | null;
+    gpsLongitude?: number | null;
+    locationName?: string;
     imageAttachments?: WorkspaceReportAttachmentInput[];
     audioAttachments?: WorkspaceReportAttachmentInput[];
     removeImageAttachmentIds?: number[];
@@ -6556,6 +6607,16 @@ export async function updateWorkspaceTaskReport(
     fieldNames.has("reported_quantity")
   ) {
     values.reported_quantity = input.reportedQuantity;
+  }
+
+  if (typeof input.gpsLatitude === "number" && Number.isFinite(input.gpsLatitude)) {
+    if (fieldNames.has("green_clean_gps_latitude")) values.green_clean_gps_latitude = input.gpsLatitude;
+  }
+  if (typeof input.gpsLongitude === "number" && Number.isFinite(input.gpsLongitude)) {
+    if (fieldNames.has("green_clean_gps_longitude")) values.green_clean_gps_longitude = input.gpsLongitude;
+  }
+  if (input.locationName?.trim() && fieldNames.has("green_clean_location_name")) {
+    values.green_clean_location_name = input.locationName.trim();
   }
 
   const updated = Object.keys(values).length
