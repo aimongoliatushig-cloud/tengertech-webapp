@@ -110,6 +110,21 @@ class MunicipalWorkPackage(models.Model):
         default = dict(default or {}, code=_("Шинэ"), name=_("%s — хуулбар") % self.name)
         return super().copy(default)
 
+    def get_snapshot_payload(self):
+        """Return one package and all norm lines in a web-friendly snapshot."""
+        self.ensure_one()
+        relation = lambda record: [record.id, record.display_name] if record else False
+        common = lambda line: {"id": line.id, "norm": line.norm, "unit": line.unit, "unit_price": line.unit_price}
+        return {
+            "id": self.id, "code": self.code, "name": self.name, "category": self.category,
+            "base_unit": self.base_unit, "description": self.description or "", "active": self.active,
+            "materials": [dict(common(line), material_id=relation(line.material_id)) for line in self.material_line_ids],
+            "labor": [dict(common(line), labor_rate_id=relation(line.labor_rate_id), required=line.required) for line in self.labor_line_ids],
+            "equipment": [dict(common(line), name=line.name) for line in self.equipment_line_ids],
+            "transport": [dict(common(line), name=line.name) for line in self.transport_line_ids],
+            "other": [dict(common(line), name=line.name, description=line.description or "") for line in self.other_line_ids],
+        }
+
 
 class PackageLineMixin(models.AbstractModel):
     _name = "municipal.calculation.work.package.line.mixin"

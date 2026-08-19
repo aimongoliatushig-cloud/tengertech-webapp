@@ -121,18 +121,7 @@ export async function listWorkPackages(session: AppSession, query: URLSearchPara
 }
 
 export async function getWorkPackage(session: AppSession, id: number) {
-  const rows = await rpc<Record<string, unknown>[]>(session, PACKAGE_MODEL, "read", [[id]], { fields: packageFields });
-  const row = rows[0]; if (!row) return null;
-  const packageLines = (model: string, fields: string[]) => rpc<Record<string, unknown>[]>(
-    session, model, "search_read", [[['package_id', '=', id]]], { fields, order: "id" },
-  );
-  return { ...row,
-    materials: await packageLines("municipal.calculation.work.package.material", ["material_id", "norm", "unit", "unit_price"]),
-    labor: await packageLines("municipal.calculation.work.package.labor", ["labor_rate_id", "norm", "unit", "unit_price", "required"]),
-    equipment: await packageLines("municipal.calculation.work.package.equipment", ["name", "norm", "unit", "unit_price"]),
-    transport: await packageLines("municipal.calculation.work.package.transport", ["name", "norm", "unit", "unit_price"]),
-    other: await packageLines("municipal.calculation.work.package.other", ["name", "description", "norm", "unit", "unit_price"]),
-  };
+  return rpc<Record<string, unknown> | null>(session, PACKAGE_MODEL, "get_snapshot_payload", [[id]], {});
 }
 
 const packageLineFields: Record<string, string[]> = {
