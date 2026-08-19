@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { hasCapability, requireSession } from "@/lib/auth";
 import { executeOdooKw, type OdooConnection } from "@/lib/odoo";
 import { createLocalRoadCleaningArea } from "@/lib/road-cleaning-area-store";
+import { importEcoRoadInspections } from "@/lib/ecoroad-import";
 import {
   assignRoadCleaningMasterToEmployees,
   createRoadCleaningArea,
@@ -506,5 +507,28 @@ export async function archiveCleaningTeamAction(formData: FormData) {
     rethrowIfRedirectError(error);
     const message = error instanceof Error ? error.message : "Баг устгахад алдаа гарлаа.";
     redirectWithStatus("error", message, "teams");
+  }
+}
+
+export async function importEcoRoadInspectionsAction() {
+  const session = await requireSession();
+  if (!hasCapability(session, "create_projects")) {
+    redirectWithStatus("error", "Eco Road мэдээлэл импортлох эрхгүй байна.", "ecoroad");
+  }
+  try {
+    const result = await importEcoRoadInspections();
+    revalidatePath("/cleaning-areas");
+    redirectWithStatus(
+      "notice",
+      `Eco Road-оос ${result.received} үзлэг уншлаа. ${result.created} шинэ, ${result.updated} шинэчлэгдсэн.`,
+      "ecoroad",
+    );
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirectWithStatus(
+      "error",
+      error instanceof Error ? error.message : "Eco Road импорт хийхэд алдаа гарлаа.",
+      "ecoroad",
+    );
   }
 }

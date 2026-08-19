@@ -12,6 +12,7 @@ import {
   createCleaningTeamAction,
   createTodayCleaningWorksAction,
   updateCleaningTeamAction,
+  importEcoRoadInspectionsAction,
 } from "@/app/cleaning-areas/actions";
 import { CleaningAreaForm } from "@/app/cleaning-areas/cleaning-area-form";
 import { MasterAssignmentPanel } from "@/app/cleaning-areas/master-assignment-panel";
@@ -31,6 +32,7 @@ import {
   loadRoadCleaningTeamOptions,
   type RoadCleaningEmployeeOption,
 } from "@/lib/workspace";
+import { loadEcoRoadInspections } from "@/lib/ecoroad-import";
 
 type PageProps = {
   searchParams?: Promise<{
@@ -116,13 +118,14 @@ export default async function CleaningAreasPage({ searchParams }: PageProps) {
     login: session.login,
     password: session.password,
   };
-  const [areaOptions, employeeOptions, subdistrictOptions, teamOptions, sessionDepartmentName] =
+  const [areaOptions, employeeOptions, subdistrictOptions, teamOptions, sessionDepartmentName, ecoRoadInspections] =
     await Promise.all([
       loadRoadCleaningAreaOptions(connectionOverrides),
       loadRoadCleaningEmployeeOptions(connectionOverrides),
       loadGarbageSubdistrictOptions(connectionOverrides).catch(() => []),
       loadRoadCleaningTeamOptions(connectionOverrides).catch(() => []),
       loadSessionDepartmentName(session),
+      loadEcoRoadInspections(),
     ]);
 
   const canCreateProject = hasCapability(session, "create_projects");
@@ -215,6 +218,32 @@ export default async function CleaningAreasPage({ searchParams }: PageProps) {
             {noticeMessage ? (
               <div className={`${styles.message} ${styles.noticeMessage}`}>{noticeMessage}</div>
             ) : null}
+
+            <section id="ecoroad" className={styles.formCard}>
+              <span className={styles.formBadge}>Eco Road</span>
+              <h2>Зам талбайн хяналтын үзлэг</h2>
+              <p>
+                Нийт <b>{ecoRoadInspections.length}</b> үзлэг импортлогдсон.
+              </p>
+              <form action={importEcoRoadInspectionsAction} className={styles.buttonRow}>
+                <button type="submit" className={styles.primaryButton}>Eco Road-оос импортлох</button>
+              </form>
+              <div className={styles.settingsList}>
+                {ecoRoadInspections.slice(0, 8).map((inspection) => (
+                  <article key={inspection.id} className={styles.settingsListItem}>
+                    <div className={styles.settingsListHeader}>
+                      <div>
+                        <strong>{inspection.submittedBy || "Тодорхойгүй ажилтан"}</strong>
+                        <small>{inspection.submittedAt ? new Date(inspection.submittedAt).toLocaleString("mn-MN", { timeZone: "Asia/Ulaanbaatar" }) : "Огноогүй"}</small>
+                      </div>
+                      <b>{inspection.adjustedScore}/100</b>
+                    </div>
+                    <p>{inspection.responsibilities.join(" · ") || "Үйлчилгээ тодорхойгүй"}</p>
+                    <small>{inspection.photoCount} зураг · {inspection.gps.latitude !== null ? "GPS бүртгэлтэй" : "GPS байхгүй"} · {inspection.violationCount} зөрчил</small>
+                  </article>
+                ))}
+              </div>
+            </section>
 
             <section className={styles.formCard}>
               <span className={styles.formBadge}>Өдөр тутмын ажил</span>
