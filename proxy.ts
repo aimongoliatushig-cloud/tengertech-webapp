@@ -20,6 +20,7 @@ const PUBLIC_PATHS = new Set([
   "/api/gaiham-fuel/import",
   "/api/wrs-report/import",
   "/api/wrs-report/normalized",
+  "/api/ecoroad/import",
 ]);
 const AUTH_ACTION_PATHS = new Set([
   "/auth/login",
