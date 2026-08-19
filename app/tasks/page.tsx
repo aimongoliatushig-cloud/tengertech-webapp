@@ -1551,50 +1551,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   </p>
                 </div>
               </div>
-
-              {!masterMode && !departmentScopedMode ? (
-                <div className={styles.pageHeaderAside}>
-                  {workerMode ? (
-                    <div className={styles.userBlock}>
-                      <span>Өнөөдрийн ажил</span>
-                      <strong>{canUseFieldConsole ? "Өнөөдрийн ажил нээх" : "Талбайн ажилгүй"}</strong>
-                      <small>
-                        {canUseFieldConsole
-                          ? "Өнөөдөрт оноогдсон хогийн цэг, талбайн урсгал руу шууд орно."
-                          : "Энэ хэрэглэгч дээр талбайн ажил харах эрх идэвхгүй байна."}
-                      </small>
-                      {canUseFieldConsole ? (
-                        <Link href="/field" className={styles.dateButton}>
-                          Өнөөдрийн ажил
-                        </Link>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <form className={styles.dateFilterForm} method="get">
-                      <label htmlFor="tasks-department">Алба нэгж</label>
-                      <div className={styles.dateRow}>
-                        <select
-                          id="tasks-department"
-                          name="department"
-                          defaultValue={selectedDepartmentParam || "all"}
-                          className={styles.dateInput}
-                        >
-                          <option value="all">Бүх алба хэлтэс</option>
-                          {departmentFilterOptions.map((departmentName) => (
-                            <option key={departmentName} value={departmentName}>
-                              {departmentName}
-                            </option>
-                          ))}
-                        </select>
-                        <input type="hidden" name="filter" value={activeFilter} />
-                        <button type="submit" className={styles.dateButton}>
-                          Харах
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </div>
-              ) : null}
             </header>
             ) : null}
 
