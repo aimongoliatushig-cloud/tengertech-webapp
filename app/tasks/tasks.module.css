@@ -2134,6 +2134,104 @@
   }
 }
 
+/* Task dashboard — compact operational layout based on the approved reference. */
+.taskDashboard { display: grid; gap: 16px; margin-bottom: 16px; }
+.taskKpiGrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.taskKpi { display: grid; grid-template-columns: 38px minmax(0, 1fr); align-items: center; gap: 10px; min-height: 82px; padding: 12px; border: 1px solid #dfe8e1; border-radius: 10px; background: #fff; color: #178346; }
+.taskKpi div { display: grid; min-width: 0; }
+.taskKpi strong { color: #153d24; font-size: 20px; line-height: 1.05; }
+.taskKpi span { color: #263b2d; font-size: 11px; font-weight: 700; }
+.taskKpi small { margin-top: 3px; color: #7b8c80; font-size: 10px; }
+.taskKpiactive { background: #f5fbf6; }
+.taskKpidanger { border-color: #f3d7d7; background: #fff8f8; color: #ef4444; }
+.taskKpireview { border-color: #f0dfc9; background: #fffaf3; color: #e89021; }
+.taskKpidone { background: #f3faf5; color: #16854a; }
+.taskProgressOverview { display: grid; grid-template-columns: 105px minmax(0, 1fr) 64px; align-items: center; gap: 16px; padding: 12px 16px; border-bottom: 1px solid #e1e9e3; }
+.taskProgressOverview > div { display: grid; }
+.taskProgressOverview span { color: #4d6254; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.taskProgressOverview strong { color: #168346; font-size: 24px; }
+.taskProgressOverview small { color: #77897c; font-size: 10px; }
+.taskProgressTrack { height: 10px; overflow: hidden; border-radius: 999px; background: #e8ece9; }
+.taskProgressTrack i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #17833e, #54a35e); }
+.taskProgressOverview > svg { justify-self: end; color: #8ebc78; }
+.taskCategorySection { display: grid; gap: 9px; }
+.taskCategorySection > strong { color: #53665a; font-size: 11px; text-transform: uppercase; }
+.taskCategoryGrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.taskCategoryCard { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 11px; border: 1px solid #deeadf; border-radius: 9px; color: #25844c; }
+.taskCategoryCard div { display: grid; min-width: 0; }
+.taskCategoryCard strong { overflow: hidden; color: #33463a; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.taskCategoryCard small { color: #738579; font-size: 10px; }
+.taskCategoryCard > span { grid-column: 1 / 3; height: 5px; overflow: hidden; border-radius: 99px; background: #e8eeea; }
+.taskCategoryCard > span i { display: block; height: 100%; background: currentColor; }
+.taskCategoryCard b { font-size: 10px; }
+.taskCategoryblue { color: #367dc4; background: #f8fbff; }
+.taskCategoryorange { color: #f18b21; background: #fffaf5; }
+.taskCategorypurple { color: #7351ad; background: #fbf9ff; }
+.taskCategoryteal { color: #159f96; background: #f5fffe; }
+.taskDashboardFilters { display: grid; grid-template-columns: minmax(210px, 1fr) minmax(160px, .55fr) 170px auto auto; align-items: center; gap: 10px; }
+.taskDashboardFilters select, .taskSearchField { min-height: 40px; border: 1px solid #dfe7e1; border-radius: 8px; background: #fff; color: #45594a; font: inherit; font-size: 11px; }
+.taskDashboardFilters select { padding: 0 11px; }
+.taskSearchField { display: flex; align-items: center; gap: 8px; padding: 0 11px; }
+.taskSearchField svg { color: #7b8d80; }
+.taskSearchField input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; }
+.taskViewIcons { display: inline-flex; gap: 5px; color: #41614b; }
+.taskViewIcons svg:first-child { padding: 7px; box-sizing: content-box; border-radius: 7px; background: #eef6f0; }
+.taskViewIcons svg:last-child { padding: 7px; box-sizing: content-box; }
+.taskDashboardBody { display: grid; grid-template-columns: minmax(0, 1fr) 270px; align-items: start; gap: 14px; }
+.taskDashboardBody .taskSection { min-width: 0; }
+.taskViewCompactItem { grid-template-columns: 34px minmax(200px, 1.8fr) minmax(100px, .7fr) minmax(110px, .65fr) minmax(100px, .65fr) auto; gap: 10px; padding: 10px 12px 10px 8px; border-left: 4px solid #58a767; }
+.taskRowTone1 .taskViewCompactItem { border-left-color: #3b82c4; }
+.taskRowTone2 .taskViewCompactItem { border-left-color: #f28c28; }
+.taskRowTone3 .taskViewCompactItem { border-left-color: #7351ad; }
+.taskRowTone4 .taskViewCompactItem { border-left-color: #1aa39a; }
+.taskRowIcon { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; background: #eff7f0; color: #278448; }
+.taskViewCompactName { display: grid; gap: 3px; white-space: normal; }
+.taskViewCompactName strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.taskViewCompactName small, .taskRowDetail small { overflow: hidden; color: #7d8e82; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.taskRowDetail { display: grid; gap: 3px; min-width: 0; }
+.taskRowDetail strong { overflow: hidden; color: #405246; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.taskRowDetail em { color: #df4646; font-size: 9px; font-style: normal; }
+.taskRowProgress { display: grid; gap: 5px; }
+.taskRowProgress b { color: #385444; font-size: 11px; }
+.taskRowProgress > span { width: 100%; height: 5px; overflow: hidden; border-radius: 99px; background: #e6ece8; }
+.taskRowProgress i { display: block; height: 100%; background: #359353; }
+.taskDashboardAside { display: grid; gap: 12px; }
+.taskDashboardAside > section { padding: 13px; border: 1px solid #dfe8e1; border-radius: 10px; background: #fff; }
+.taskAsideTitle { display: flex; justify-content: space-between; gap: 10px; color: #247f46; }
+.taskAsideTitle div { display: grid; }
+.taskAsideTitle span { color: #31453a; font-size: 12px; font-weight: 700; }
+.taskAsideTitle small { color: #829087; font-size: 10px; }
+.taskUpcomingList { display: grid; gap: 7px; margin-top: 10px; }
+.taskUpcomingList > a { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 8px; border: 1px solid #e4ebe6; border-left: 3px solid #36a15b; border-radius: 7px; color: inherit; text-decoration: none; }
+.taskUpcomingList time { display: grid; color: #243c2e; font-size: 14px; font-weight: 700; text-align: center; }
+.taskUpcomingList time small, .taskUpcomingList span small { color: #819086; font-size: 9px; font-weight: 400; }
+.taskUpcomingList span { display: grid; min-width: 0; }
+.taskUpcomingList span strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.taskWorkloadCard { display: grid; gap: 7px; }
+.taskWorkloadCard > span { font-size: 11px; font-weight: 700; }
+.taskWorkloadCard > strong { color: #218248; font-size: 22px; }
+.taskWorkloadCard > div { height: 7px; overflow: hidden; border-radius: 99px; background: #e5ece7; }
+.taskWorkloadCard i { display: block; height: 100%; background: #36a15b; }
+.taskWorkloadCard small { color: #75877b; font-size: 10px; }
+
+@media (max-width: 1180px) {
+  .taskKpiGrid, .taskCategoryGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .taskDashboardBody { grid-template-columns: 1fr; }
+  .taskDashboardAside { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .taskKpiGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .taskCategoryGrid { grid-template-columns: 1fr 1fr; }
+  .taskProgressOverview { grid-template-columns: 90px minmax(0, 1fr); }
+  .taskProgressOverview > svg { display: none; }
+  .taskDashboardFilters { grid-template-columns: 1fr; }
+  .taskViewIcons { display: none; }
+  .taskViewCompactItem { grid-template-columns: 34px minmax(0, 1fr) auto; }
+  .taskRowDetail, .taskRowProgress { display: none; }
+  .taskDashboardAside { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 820px) {
   .pageHeader,
   .calendarPanel,

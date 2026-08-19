@@ -1,16 +1,25 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
+  AlertTriangle,
   Bell,
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
   Clock3,
+  FileCheck2,
+  Grid2X2,
   Leaf,
+  List,
   ListChecks,
   MapPin,
   Plus,
+  Search,
   Sun,
+  Trash2,
+  Trees,
+  Truck,
+  Wrench,
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
@@ -831,12 +840,60 @@ export default async function TasksPage({ searchParams }: PageProps) {
         verified: scopedTasks.filter((task) => getVisibleTaskFilterKey(task) === "verified").length,
       };
 
+  const normalizedTaskSearch = masterSearchQuery.toLocaleLowerCase("mn-MN");
   const visibleTasks = scopedTasks.filter((task) => {
     if (selectedFilter === "all") {
-      return true;
+      // Continue with the shared text/status filters below.
+    } else if (getVisibleTaskFilterKey(task) !== selectedFilter) {
+      return false;
     }
-    return getVisibleTaskFilterKey(task) === selectedFilter;
+    const matchesSearch =
+      !normalizedTaskSearch ||
+      [task.name, task.projectName, task.departmentName, task.leaderName]
+        .join(" ")
+        .toLocaleLowerCase("mn-MN")
+        .includes(normalizedTaskSearch);
+    const matchesStatus =
+      masterStatusFilter === "all" ||
+      (masterStatusFilter === "done" && task.statusKey === "verified") ||
+      (masterStatusFilter === "review" && (task.statusKey === "review" || task.statusKey === "problem")) ||
+      (masterStatusFilter === "todo" && task.statusKey !== "verified" && task.statusKey !== "review" && task.statusKey !== "problem");
+    return matchesSearch && matchesStatus;
   });
+
+  const dashboardOverdueTasks = scopedTasks.filter(
+    (task) => task.statusKey !== "verified" && Boolean(task.scheduledDate) && (task.scheduledDate ?? "") < todayDateKey,
+  );
+  const dashboardInProgressTasks = scopedTasks.filter(
+    (task) => task.statusKey !== "verified" && task.statusKey !== "review" && task.statusKey !== "problem",
+  );
+  const dashboardReviewTasks = scopedTasks.filter(
+    (task) => task.statusKey === "review" || task.statusKey === "problem",
+  );
+  const dashboardDoneTasks = scopedTasks.filter((task) => task.statusKey === "verified");
+  const dashboardProgress = scopedTasks.length
+    ? Math.round(scopedTasks.reduce((total, task) => total + task.progress, 0) / scopedTasks.length)
+    : 0;
+  const dashboardCategories = [
+    { label: "Ногоон байгууламж", keywords: ["ногоон", "мод", "зүлэг"], icon: Trees, tone: "green" },
+    { label: "Цэвэрлэгээ", keywords: ["цэвэрлэгээ", "зам талбай"], icon: Trash2, tone: "blue" },
+    { label: "Хог тээвэр", keywords: ["хог", "тээвэр"], icon: Truck, tone: "orange" },
+    { label: "Техник, засвар", keywords: ["техник", "засвар"], icon: Wrench, tone: "purple" },
+    { label: "Тохижилт", keywords: ["тохижилт"], icon: Leaf, tone: "teal" },
+  ].map((category) => ({
+    ...category,
+    tasks: scopedTasks.filter((task) =>
+      category.keywords.some((keyword) =>
+        `${task.departmentName} ${task.projectName} ${task.operationTypeLabel}`
+          .toLocaleLowerCase("mn-MN")
+          .includes(keyword),
+      ),
+    ),
+  }));
+  const dashboardUpcomingTasks = [...scopedTasks]
+    .filter((task) => task.statusKey !== "verified" && Boolean(task.scheduledDate))
+    .sort((left, right) => (left.scheduledDate ?? "").localeCompare(right.scheduledDate ?? ""))
+    .slice(0, 5);
 
   const activeView: TaskViewKey = normalizeView(getParam(params.view));
   const tasksByDeadline = new Map<string, typeof visibleTasks>();
@@ -1592,22 +1649,47 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   </article>
                 </section>
               ) : (
-                <section className={styles.summaryStrip}>
-                  <article className={styles.summaryCard}>
-                    <span>Сонгосон алба нэгж</span>
-                    <strong>{selectedDepartmentLabel}</strong>
-                    <small>{`${snapshot.departments.length} алба нэгжээс шүүж байна`}</small>
-                  </article>
-                  <article className={styles.summaryCard}>
-                    <span>Нийт даалгавар</span>
-                    <strong>{counts.all}</strong>
-                    <small>Бүх даалгавар</small>
-                  </article>
-                  <article className={styles.summaryCard}>
-                    <span>Нийт ажил</span>
-                    <strong>{scopedProjects.length}</strong>
-                    <small>Энэ шүүлтэд хамаарах ажлууд</small>
-                  </article>
+                <section className={styles.taskDashboard} aria-label="Даалгаврын нэгдсэн үзүүлэлт">
+                  <div className={styles.taskKpiGrid}>
+                    {[
+                      { label: "Нийт ажил", value: counts.all, note: "Бүх даалгавар", icon: ClipboardCheck, tone: "neutral" },
+                      { label: "Хийгдэж буй", value: dashboardInProgressTasks.length, note: "Явцтай", icon: Clock3, tone: "active" },
+                      { label: "Хугацаа хэтэрсэн", value: dashboardOverdueTasks.length, note: "Анхаарах", icon: AlertTriangle, tone: "danger" },
+                      { label: "Батлах хүлээж буй", value: dashboardReviewTasks.length, note: "Шийдвэр гарах", icon: FileCheck2, tone: "review" },
+                      { label: "Дууссан", value: dashboardDoneTasks.length, note: "Бүрэн дууссан", icon: CheckCircle2, tone: "done" },
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <article key={item.label} className={`${styles.taskKpi} ${styles[`taskKpi${item.tone}`]}`}>
+                          <Icon size={25} strokeWidth={2.2} aria-hidden="true" />
+                          <div><strong>{item.value}</strong><span>{item.label}</span><small>{item.note}</small></div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                  <div className={styles.taskProgressOverview}>
+                    <div><span>Нийт гүйцэтгэл</span><strong>{dashboardProgress}%</strong><small>{dashboardDoneTasks.length} / {counts.all} ажил дууссан</small></div>
+                    <span className={styles.taskProgressTrack}><i style={{ width: `${dashboardProgress}%` }} /></span>
+                    <ClipboardCheck size={50} strokeWidth={1.4} aria-hidden="true" />
+                  </div>
+                  <div className={styles.taskCategorySection}>
+                    <strong>Ажлын ангилал</strong>
+                    <div className={styles.taskCategoryGrid}>
+                      {dashboardCategories.map((category) => {
+                        const Icon = category.icon;
+                        const progress = category.tasks.length
+                          ? Math.round(category.tasks.reduce((sum, task) => sum + task.progress, 0) / category.tasks.length)
+                          : 0;
+                        return (
+                          <article key={category.label} className={`${styles.taskCategoryCard} ${styles[`taskCategory${category.tone}`]}`}>
+                            <Icon size={24} strokeWidth={2.1} aria-hidden="true" />
+                            <div><strong>{category.label}</strong><small>{category.tasks.length} ажил</small></div>
+                            <span><i style={{ width: `${progress}%` }} /></span><b>{progress}%</b>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </section>
               )
             ) : null}
@@ -1708,7 +1790,26 @@ export default async function TasksPage({ searchParams }: PageProps) {
                     Шүүх
                   </button>
                 </form>
-              ) : null}
+              ) : (
+                <form className={styles.taskDashboardFilters} method="get" aria-label="Даалгавар шүүх">
+                  <label className={styles.taskSearchField}>
+                    <Search size={17} aria-hidden="true" />
+                    <input name="q" type="search" defaultValue={masterSearchQuery} placeholder="Ажил, даалгавар хайх..." />
+                  </label>
+                  {!departmentScopedMode ? (
+                    <select name="department" defaultValue={selectedDepartmentParam || "all"} aria-label="Хэлтэс">
+                      <option value="all">Хэлтэс: Бүгд</option>
+                      {departmentFilterOptions.map((departmentName) => <option key={departmentName} value={departmentName}>{departmentName}</option>)}
+                    </select>
+                  ) : null}
+                  <select name="status" defaultValue={masterStatusFilter} aria-label="Төлөв">
+                    <option value="all">Төлөв: Бүгд</option><option value="todo">Хийгдэж буй</option><option value="review">Батлах хүлээж буй</option><option value="done">Дууссан</option>
+                  </select>
+                  <input type="hidden" name="filter" value={activeFilter} />
+                  <button type="submit" className={styles.dateButton}>Шүүх</button>
+                  <span className={styles.taskViewIcons} aria-label="Харагдац"><List size={17} /><Grid2X2 size={17} /></span>
+                </form>
+              )}
             </section>
             ) : null}
 
@@ -1993,6 +2094,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 )}
               </section>
             ) : (
+              <div className={styles.taskDashboardBody}>
               <section className={styles.taskSection}>
                 <div className={styles.sectionHeader}>
                   <div>
@@ -2000,6 +2102,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                       {inspectorMobileMode ? "Жолоочоос ирсэн тайлан" : "Даалгаврын жагсаалт"}
                     </span>
                     <h2>{selectedDepartmentLabel}</h2>
+                    <p>{visibleTasks.length} даалгаврыг төлөв, хугацаа, гүйцэтгэлээр харуулж байна.</p>
                   </div>
                 </div>
 
@@ -2079,20 +2182,33 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   </div>
                 ) : !inspectorMobileMode && activeView === "list" ? (
                   <ul className={styles.taskViewCompactList}>
-                    {visibleTasks.map((task) => (
-                      <li key={task.id}>
+                    {visibleTasks.map((task, index) => {
+                      const overdue = task.statusKey !== "verified" && Boolean(task.scheduledDate) && (task.scheduledDate ?? "") < todayDateKey;
+                      return (
+                      <li key={task.id} className={styles[`taskRowTone${index % 5}`]}>
                         <Link href={buildTaskHref(task.href)} className={styles.taskViewCompactItem}>
+                          <span className={styles.taskRowIcon} aria-hidden="true"><ClipboardCheck size={18} /></span>
                           <span className={styles.taskViewCompactName} title={task.name}>
-                            {task.name}
+                            <strong>{task.name}</strong>
+                            <small>{task.projectName} · {task.departmentName}</small>
+                          </span>
+                          <span className={styles.taskRowDetail}>
+                            <small>Хариуцагч</small><strong>{task.leaderName || "Сонгоогүй"}</strong>
+                          </span>
+                          <span className={styles.taskRowDetail}>
+                            <small>Хугацаа</small><strong>{task.deadline}</strong>
+                            {overdue ? <em>Хугацаа хэтэрсэн</em> : null}
+                          </span>
+                          <span className={styles.taskRowProgress}>
+                            <b>{task.progress}%</b><span><i style={{ width: `${task.progress}%` }} /></span>
                           </span>
                           <span className={styles.taskViewCompactMeta}>
                             <span className={styles.statusChip}>{task.statusLabel}</span>
-                            <b>{task.progress}%</b>
-                            <small>{task.deadline}</small>
+                            <ChevronRight size={17} aria-hidden="true" />
                           </span>
                         </Link>
                       </li>
-                    ))}
+                    );})}
                   </ul>
                 ) : (
                   <div className={styles.taskCardList}>
@@ -2136,6 +2252,28 @@ export default async function TasksPage({ searchParams }: PageProps) {
                   </div>
                 )}
               </section>
+              {!inspectorMobileMode ? (
+                <aside className={styles.taskDashboardAside}>
+                  <section>
+                    <div className={styles.taskAsideTitle}><div><span>Ойрын хугацааны ажлууд</span><small>Хугацаагаар эрэмбэлсэн</small></div><Clock3 size={20} /></div>
+                    <div className={styles.taskUpcomingList}>
+                      {dashboardUpcomingTasks.length ? dashboardUpcomingTasks.map((task) => (
+                        <Link key={`upcoming-${task.id}`} href={buildTaskHref(task.href)}>
+                          <time>{task.scheduledDate?.slice(8, 10) || "—"}<small>{task.scheduledDate?.slice(5, 7) || ""}-р сар</small></time>
+                          <span><strong>{task.name}</strong><small>{task.leaderName || task.departmentName}</small></span>
+                          <ChevronRight size={16} />
+                        </Link>
+                      )) : <p>Ойрын хугацаатай ажил алга.</p>}
+                    </div>
+                  </section>
+                  <section className={styles.taskWorkloadCard}>
+                    <span>Сонгосон хүрээний явц</span><strong>{dashboardProgress}%</strong>
+                    <div><i style={{ width: `${dashboardProgress}%` }} /></div>
+                    <small>{dashboardInProgressTasks.length} ажил хийгдэж байна</small>
+                  </section>
+                </aside>
+              ) : null}
+              </div>
             )}
 
 
