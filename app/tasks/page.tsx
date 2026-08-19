@@ -1550,12 +1550,6 @@ export default async function TasksPage({ searchParams }: PageProps) {
                         : "Бүх даалгаврыг алба нэгж, ажил, төлөвөөр нь нэг дороос харуулна. Хянаж байгаа даалгавруудыг эхэнд нь ялгаж, дэлгэрэнгүй рүү шууд нээнэ."}
                   </p>
                 </div>
-
-                <div className={styles.userBlock}>
-                  <span>Сүүлд шинэчлэгдсэн</span>
-                  <strong>{snapshot.generatedAt}</strong>
-                  <small>{selectedDepartmentLabel}</small>
-                </div>
               </div>
 
               {!masterMode && !departmentScopedMode ? (
