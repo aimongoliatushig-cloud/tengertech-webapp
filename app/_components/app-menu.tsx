@@ -10,6 +10,7 @@ import {
   Bell,
   Building2,
   CalendarDays,
+  Calculator,
   ChevronDown,
   CircleUser,
   ClipboardCheck,
@@ -88,6 +89,7 @@ type MenuKey =
   | "help"
   | "new-project"
   | "reports"
+  | "calculations"
   | "reports-fleet"
   | "data-download"
   | "none";
@@ -642,6 +644,7 @@ export function AppMenu({
       const isAutoBaseDepartment = isAutoGarbageDepartment(group.name);
       const isGreenCleaningDepartment =
         group.name === "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс";
+      const isImprovementDepartment = group.name === "Тохижилтын хэлтэс";
       const greenCleaningChildren: MenuItem[] = isGreenCleaningDepartment
         ? [
             {
@@ -684,6 +687,11 @@ export function AppMenu({
         departmentName: group.name,
         children: isGreenCleaningDepartment
           ? greenCleaningChildren
+          : isImprovementDepartment
+            ? [
+                { key: "improvement-work", href: departmentHref, label: "Захирамж, үүрэг даалгавар", icon: ListChecks },
+                { key: "calculations", href: "/calculations", label: "Тооцоолол", icon: Calculator },
+              ]
           : isAutoBaseDepartment && canOpenAutoBase
             ? [
                 {
@@ -1098,6 +1106,9 @@ export function AppMenu({
   const scopedDepartmentIsAutoGarbage = Boolean(
     isAutoGarbageDepartment(departmentScopeName),
   );
+  const scopedDepartmentIsImprovement =
+    departmentScopeName === "Тохижилтын хэлтэс" ||
+    departmentScopeName === "Тохижилт үйлчилгээ";
   const scopedWorkMenuItem: MenuItem = {
     key: "projects",
     href: scopedDepartmentWorkHref,
@@ -1123,6 +1134,16 @@ export function AppMenu({
         icon: LayoutDashboard,
       },
       scopedWorkMenuItem,
+      ...(scopedDepartmentIsImprovement
+        ? [
+            {
+              key: "calculations",
+              href: "/calculations",
+              label: "Тооцоолол",
+              icon: Calculator,
+            },
+          ]
+        : []),
       ...(canShowHrMenu
         ? [hrMenuItem]
         : []),
