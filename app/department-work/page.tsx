@@ -76,6 +76,7 @@ function resolveDepartmentGroupName(departmentName?: string | null) {
 
 type StatusFilter = "all" | "overdue" | "review" | "progress" | "done";
 type PeriodFilter = "all" | "today" | "week" | "month";
+type GreenServiceUnit = "Ногоон байгууламж" | "Цэвэрлэгээ үйлчилгээ";
 const STATUS_FILTERS: Array<{ key: StatusFilter; label: string }> = [
   { key: "all", label: "Бүгд" },
   { key: "overdue", label: "Хугацаа хэтэрсэн" },
@@ -90,6 +91,17 @@ function normalizeStatus(value: string): StatusFilter {
 }
 function normalizePeriod(value: string): PeriodFilter {
   return ["today", "week", "month"].includes(value) ? (value as PeriodFilter) : "all";
+}
+function normalizeGreenServiceUnit(value: string): GreenServiceUnit | "" {
+  return value === "Ногоон байгууламж" || value === "Цэвэрлэгээ үйлчилгээ" ? value : "";
+}
+function matchesGreenServiceUnit(task: TaskDirectoryItem, unit: GreenServiceUnit) {
+  const operationType = task.operationType.toLocaleLowerCase("mn-MN");
+  const text = `${task.name} ${task.projectName} ${task.operationTypeLabel}`.toLocaleLowerCase("mn-MN");
+  if (unit === "Ногоон байгууламж") {
+    return operationType === "green_maintenance" || ["ногоон", "мод", "зүлэг", "ургамал", "усалгаа", "цэцэг"].some((keyword) => text.includes(keyword));
+  }
+  return ["street_cleaning", "road_area_cleaning"].includes(operationType) || ["цэвэрлэгээ", "цэвэрлэх", "зам талбай", "гудамж", "ариутгал"].some((keyword) => text.includes(keyword));
 }
 function matchesStatus(task: TaskDirectoryItem, filter: StatusFilter, todayKey: string) {
   switch (filter) {
@@ -118,6 +130,7 @@ type DepartmentWorkPageProps = {
     dateTo?: string | string[];
     employee?: string | string[];
     period?: string | string[];
+    unit?: string | string[];
   }>;
 };
 
@@ -138,6 +151,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
   const dateTo = normalizeDateFilter(queryParams.dateTo);
   const employeeFilter = getParam(queryParams.employee).trim();
   const periodFilter = normalizePeriod(getParam(queryParams.period));
+  const selectedUnit = normalizeGreenServiceUnit(getParam(queryParams.unit));
   const hasListFilter = Boolean(
     departmentParam || searchFilter || dateFrom || dateTo || employeeFilter || periodFilter !== "all" || selectedStatus !== "all",
   );
@@ -175,9 +189,11 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
           </aside>
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
-              title={departmentParam || "Хэлтсийн ажил"}
+              title={selectedUnit || departmentParam || "Хэлтсийн ажил"}
               subtitle={
-                departmentParam
+                selectedUnit
+                  ? `${selectedUnit} нэгжийн захирамж, үүрэг даалгавар, гүйцэтгэл`
+                  : departmentParam
                   ? "Тухайн хэлтсийн ажил, даалгаврыг төслөөр нь"
                   : "Хэлтэс бүрийн ажил, даалгавар, явцыг нэг дороос"
               }
@@ -231,7 +247,10 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
   const departmentTasks = departmentParam
     ? filterByDepartment(scopedTasks, departmentParam)
     : scopedTasks;
-  const baseTasks = departmentTasks.filter((task) => {
+  const unitTasks = selectedUnit
+    ? departmentTasks.filter((task) => matchesGreenServiceUnit(task, selectedUnit))
+    : departmentTasks;
+  const baseTasks = unitTasks.filter((task) => {
     if (normalizedSearchFilter) {
       const searchText = `${task.name} ${task.projectName} ${task.leaderName} ${task.departmentName}`
         .toLocaleLowerCase("mn-MN");
@@ -257,7 +276,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
     return true;
   });
 
-  const employeeOptions = Array.from(new Set(departmentTasks.map((task) => task.leaderName).filter(Boolean))).sort((a, b) => a.localeCompare(b, "mn"));
+  const employeeOptions = Array.from(new Set(unitTasks.map((task) => task.leaderName).filter(Boolean))).sort((a, b) => a.localeCompare(b, "mn"));
 
   const groups = new Map<string, { name: string; tasks: TaskDirectoryItem[] }>();
   for (const task of baseTasks) {
@@ -315,16 +334,20 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
   const buildHref = (status: StatusFilter) => {
     const next = new URLSearchParams();
     if (departmentParam) next.set("department", departmentParam);
+    if (selectedUnit) next.set("unit", selectedUnit);
     if (status !== "all") next.set("status", status);
     if (searchFilter) next.set("search", searchFilter);
     if (dateFrom) next.set("dateFrom", dateFrom);
     if (dateTo) next.set("dateTo", dateTo);
+    if (employeeFilter) next.set("employee", employeeFilter);
+    if (periodFilter !== "all") next.set("period", periodFilter);
     const queryString = next.toString();
     return `/department-work${queryString ? `?${queryString}` : ""}`;
   };
 
   const clearFilterParams = new URLSearchParams();
-  if (scopedDepartmentName) clearFilterParams.set("department", scopedDepartmentName);
+  if (departmentParam || scopedDepartmentName) clearFilterParams.set("department", departmentParam || scopedDepartmentName || "");
+  if (selectedUnit) clearFilterParams.set("unit", selectedUnit);
   const clearFilterHref = `/department-work${
     clearFilterParams.toString() ? `?${clearFilterParams.toString()}` : ""
   }`;
@@ -357,11 +380,11 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
     return { ...category, count: tasks.length, progress };
   }).filter((category) => category.count > 0);
 
-  const upcomingTasks = [...departmentTasks]
+  const upcomingTasks = [...unitTasks]
     .filter((task) => !isTaskDone(task) && Boolean(task.scheduledDate || task.deadlineDateTime))
     .sort((a, b) => (a.scheduledDate || a.deadlineDateTime || "").localeCompare(b.scheduledDate || b.deadlineDateTime || ""))
     .slice(0, 5);
-  const myTasks = departmentTasks.filter((task) => task.leaderName && task.leaderName === session.name);
+  const myTasks = unitTasks.filter((task) => task.leaderName && task.leaderName === session.name);
   const myDone = myTasks.filter(isTaskDone).length;
   const myProgress = myTasks.length ? Math.round(myDone / myTasks.length * 100) : 0;
 
@@ -400,6 +423,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
       ) : null}
 
       <form method="get" action="/department-work" className={shellStyles.dateFilterBar}>
+        {selectedUnit ? <input type="hidden" name="unit" value={selectedUnit} /> : null}
         {scopedDepartmentName ? (
           <input type="hidden" name="department" value={departmentParam || scopedDepartmentName} />
         ) : (

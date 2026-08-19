@@ -651,13 +651,13 @@ export function AppMenu({
             },
             {
               key: "green-service-work",
-              href: `/projects?department=${encodeURIComponent(group.name)}&unit=${encodeURIComponent("Ногоон байгууламж")}`,
+              href: `/department-work?department=${encodeURIComponent(group.name)}&unit=${encodeURIComponent("Ногоон байгууламж")}`,
               label: "Ногоон байгууламж",
               icon: Leaf,
             },
             {
               key: "road-cleaning-work",
-              href: `/projects?department=${encodeURIComponent(group.name)}&unit=${encodeURIComponent("Цэвэрлэгээ үйлчилгээ")}`,
+              href: `/department-work?department=${encodeURIComponent(group.name)}&unit=${encodeURIComponent("Цэвэрлэгээ үйлчилгээ")}`,
               label: "Зам талбайн цэвэрлэгээ үйлчилгээ",
               icon: Trash2,
             },
@@ -1350,10 +1350,10 @@ export function AppMenu({
       return pathname === "/waste-points/new";
     }
     if (item.key === "green-service-work") {
-      return pathname === "/projects" && searchParams.get("unit") === "Ногоон байгууламж";
+      return pathname === "/department-work" && searchParams.get("unit") === "Ногоон байгууламж";
     }
     if (item.key === "road-cleaning-work") {
-      return pathname === "/projects" && searchParams.get("unit") === "Цэвэрлэгээ үйлчилгээ";
+      return pathname === "/department-work" && searchParams.get("unit") === "Цэвэрлэгээ үйлчилгээ";
     }
     if (item.key === "hr-dashboard") {
       return pathname === "/hr";
