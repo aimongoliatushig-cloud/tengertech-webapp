@@ -15,6 +15,8 @@ const WRS_REQUIRED_BRANCH_NAME =
   process.env.WRS_REPORT_BRANCH_NAME?.trim() || WRS_DEFAULT_BRANCH_NAME;
 const PARAMETER_CAPTION_SELECTOR = "label.dxbrv-params-caption[for]";
 const SUBMIT_BUTTON_LABEL = "Submit";
+const WRS_BLAZOR_READY_TIMEOUT_MS = 120_000;
+const WRS_LOGIN_NAVIGATION_TIMEOUT_MS = 90_000;
 
 type ParameterMap = {
   endDateId: string;
@@ -136,33 +138,59 @@ async function loginIfNeeded(page: Page) {
     return;
   }
 
+  // WRS is a Blazor Server application. When its WebSocket transport is not
+  // available it falls back to long polling, and the visible form can remain
+  // covered by the application loading panel for more than a minute. Waiting
+  // for the actual interactive state prevents clicks from being intercepted.
+  await page
+    .waitForFunction(
+      () => {
+        const loadingPanel = document.getElementById("applicationLoadingPanel");
+        const loadingPanelIsInactive = (() => {
+          if (!loadingPanel) return true;
+          const style = window.getComputedStyle(loadingPanel);
+          const rect = loadingPanel.getBoundingClientRect();
+          return (
+            style.display === "none" ||
+            style.visibility === "hidden" ||
+            style.pointerEvents === "none" ||
+            rect.width === 0 ||
+            rect.height === 0
+          );
+        })();
+        const loginInput = document.querySelector<HTMLInputElement>('input[type="text"]');
+        const passwordInput = document.querySelector<HTMLInputElement>('input[type="password"]');
+        const loginButton = Array.from(document.querySelectorAll<HTMLButtonElement>("button")).find(
+          (button) => {
+            const style = window.getComputedStyle(button);
+            const rect = button.getBoundingClientRect();
+            return (
+              !button.disabled &&
+              style.display !== "none" &&
+              style.visibility !== "hidden" &&
+              rect.width > 0 &&
+              rect.height > 0 &&
+              (button.classList.contains("xaf-primary-toolbar-btn") ||
+                button.classList.contains("dxbl-btn-primary"))
+            );
+          },
+        );
+        return Boolean(loadingPanelIsInactive && loginInput && passwordInput && loginButton);
+      },
+      undefined,
+      { timeout: WRS_BLAZOR_READY_TIMEOUT_MS },
+    )
+    .catch(() => {
+      throw new Error(
+        "WRS нэвтрэх хуудасны Blazor холболт 120 секундэд бэлэн болсонгүй.",
+      );
+    });
+
   const loginInput = page.locator('input[type="text"]').first();
   const passwordInput = page.locator('input[type="password"]').first();
 
   await loginInput.fill(WRS_REPORT_LOGIN);
   await passwordInput.fill(WRS_REPORT_PASSWORD);
-
-  await page
-    .waitForFunction(
-      () => {
-        const loadingPanel = document.getElementById("applicationLoadingPanel");
-        if (!loadingPanel) {
-          return true;
-        }
-        const style = window.getComputedStyle(loadingPanel);
-        const rect = loadingPanel.getBoundingClientRect();
-        return (
-          style.display === "none" ||
-          style.visibility === "hidden" ||
-          style.pointerEvents === "none" ||
-          rect.width === 0 ||
-          rect.height === 0
-        );
-      },
-      undefined,
-      { timeout: 10_000 },
-    )
-    .catch(() => undefined);
 
   const loginButton = page
     .locator(
@@ -171,7 +199,7 @@ async function loginIfNeeded(page: Page) {
     .first();
 
   const clicked = await loginButton
-    .click({ timeout: 5_000 })
+    .click({ timeout: 30_000 })
     .then(() => true)
     .catch(() => false);
 
@@ -184,7 +212,7 @@ async function loginIfNeeded(page: Page) {
 
   await page
     .waitForURL((url) => !url.pathname.includes("/LoginPage"), {
-      timeout: 30_000,
+      timeout: WRS_LOGIN_NAVIGATION_TIMEOUT_MS,
     })
     .catch(() => {
       throw new Error(
