@@ -1318,12 +1318,15 @@ function MaterialLibrary({
             </label>
             <label>
               Ангилал
-              <input
+              <select
                 value={editing.category || ""}
                 onChange={(e) =>
                   setEditing({ ...editing, category: e.target.value })
                 }
-              />
+              >
+                <option value="">Ангилал сонгох</option>
+                {categories.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
             </label>
             <label>
               Нэгж
@@ -1379,10 +1382,10 @@ function MaterialPriceHistory({ materials, history, canManage, reload }: { mater
     <div className={styles.sectionTitle}><h2>Материалын үнийн түүх <small>{rows.length} бүртгэл</small></h2>{canManage && <button onClick={() => setEditing({ name: "", category: "", unit: "ш", current_price: 0, active: true })}><Plus /> Материал нэмэх</button>}</div>
     <div className={styles.filters}><select value={category} onChange={(event) => setCategory(event.target.value)}><option value="">Бүх ангилал</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
     <div className={`${styles.tableWrap} ${styles.mobileCards}`}><table><thead><tr><th>№</th><th>Материал</th><th>Ангилал</th><th>Хуучин үнэ</th><th>Шинэ үнэ</th>{canManage && <th>Үйлдэл</th>}</tr></thead><tbody>{rows.map(({ item, material }, index) => <tr key={String(item.id || index)}><td data-label="№">{index + 1}</td><td data-label="Материал"><strong>{material?.code ? `${material.code} · ` : ""}{material?.name || (Array.isArray(item.material_id) ? item.material_id[1] : "")}</strong></td><td data-label="Ангилал">{material?.category || "Ангилалгүй"}</td><td data-label="Хуучин үнэ">{money.format(num(item.old_price))}₮</td><td data-label="Шинэ үнэ">{money.format(num(item.price))}₮</td>{canManage && <td data-label="Үйлдэл">{material && <button aria-label={`${material.name} үнэ засах`} title="Үнэ засах" onClick={() => setEditing(material)}><Pencil /></button>}</td>}</tr>)}</tbody></table></div>
-    {editing && <MaterialEditor editing={editing} setEditing={setEditing} onSave={saveMaterial} />}
+    {editing && <MaterialEditor editing={editing} categories={categories} setEditing={setEditing} onSave={saveMaterial} />}
   </div>;
 }
 
-function MaterialEditor({ editing, setEditing, onSave }: { editing: Partial<Material>; setEditing: (value: Partial<Material> | null) => void; onSave: () => void }) {
-  return <div className={styles.modal}><div><h2>{editing.id ? "Материал болон үнэ засах" : "Материал нэмэх"}</h2><label>Нэр<input value={editing.name || ""} onChange={(event) => setEditing({ ...editing, name: event.target.value })} /></label><label>Ангилал<input value={editing.category || ""} onChange={(event) => setEditing({ ...editing, category: event.target.value })} /></label><label>Нэгж<input value={editing.unit || ""} onChange={(event) => setEditing({ ...editing, unit: event.target.value })} /></label><label>Нэгж үнэ<input inputMode="decimal" type="number" min="0" value={editing.current_price || 0} onChange={(event) => setEditing({ ...editing, current_price: num(event.target.value) })} /></label><label><input type="checkbox" checked={editing.active !== false} onChange={(event) => setEditing({ ...editing, active: event.target.checked })} /> Идэвхтэй</label><div className={styles.formActions}><button onClick={() => setEditing(null)}>Болих</button><button className={styles.primary} onClick={onSave}>Хадгалах</button></div></div></div>;
+function MaterialEditor({ editing, categories, setEditing, onSave }: { editing: Partial<Material>; categories: string[]; setEditing: (value: Partial<Material> | null) => void; onSave: () => void }) {
+  return <div className={styles.modal}><div><h2>{editing.id ? "Материал болон үнэ засах" : "Материал нэмэх"}</h2><label>Нэр<input value={editing.name || ""} onChange={(event) => setEditing({ ...editing, name: event.target.value })} /></label><label>Ангилал<select value={editing.category || ""} onChange={(event) => setEditing({ ...editing, category: event.target.value })}><option value="">Ангилал сонгох</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label>Нэгж<input value={editing.unit || ""} onChange={(event) => setEditing({ ...editing, unit: event.target.value })} /></label><label>Нэгж үнэ<input inputMode="decimal" type="number" min="0" value={editing.current_price || 0} onChange={(event) => setEditing({ ...editing, current_price: num(event.target.value) })} /></label><label><input type="checkbox" checked={editing.active !== false} onChange={(event) => setEditing({ ...editing, active: event.target.checked })} /> Идэвхтэй</label><div className={styles.formActions}><button onClick={() => setEditing(null)}>Болих</button><button className={styles.primary} onClick={onSave}>Хадгалах</button></div></div></div>;
 }
