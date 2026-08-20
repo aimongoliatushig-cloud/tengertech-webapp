@@ -3960,6 +3960,13 @@ export async function createEmployeeTransfer(session: AppSession, data: HrEmploy
   if (fields.has("job_id") && data.newJobId) values.job_id = data.newJobId;
   if (fields.has("parent_id") && data.newManagerId) values.parent_id = data.newManagerId;
 
+  const changedValues = Object.fromEntries(
+    Object.entries(values).filter(([field, value]) => getRelationId(oldSnapshot[field as keyof HrEmployeeTransferSnapshot]) !== Number(value)),
+  );
+  if (!Object.keys(changedValues).length) {
+    throw new Error("Сонгосон хэлтэс, албан тушаал, удирдлага одоогийн мэдээлэлтэй ижил байна.");
+  }
+
   const attachments = await filesToAttachments(data.files);
   const transferDetailNote = [data.reason, formatHrOrderNumberLine(data.orderNumber)].filter(Boolean).join("\n");
   let historyId = 0;
@@ -3970,7 +3977,7 @@ export async function createEmployeeTransfer(session: AppSession, data: HrEmploy
       [
         {
           employeeId: data.employeeId,
-          values,
+          values: changedValues,
           effectiveDate: data.effectiveDate,
           reason: data.reason,
           orderNumber: data.orderNumber,
@@ -3988,8 +3995,8 @@ export async function createEmployeeTransfer(session: AppSession, data: HrEmploy
     console.warn("HR custom employee transfer API unavailable, falling back to direct employee write/history:", error);
   }
   if (!historyId) {
-    if (Object.keys(values).length) {
-      await executeOdooKw<boolean>("hr.employee", "write", [[data.employeeId], values], {}, getConnection(session));
+    if (Object.keys(changedValues).length) {
+      await executeOdooKw<boolean>("hr.employee", "write", [[data.employeeId], changedValues], {}, getConnection(session));
     }
     const newSnapshot = await readEmployeeTransferSnapshot(session, data.employeeId);
     historyId = await executeOdooKw<number>(

@@ -863,6 +863,13 @@ class HrEmployee(models.Model):
             "job_id": employee.job_id.id,
             "parent_id": employee.parent_id.id,
         }
+        values = {
+            key: value
+            for key, value in values.items()
+            if int(value or 0) != int(previous.get(key) or 0)
+        }
+        if not values:
+            raise UserError("Сонгосон хэлтэс, албан тушаал, удирдлага одоогийн мэдээлэлтэй ижил байна.")
         employee.write(values)
         history = self.env["hr.custom.mn.employee.history"].sudo().create(
             {
