@@ -648,12 +648,6 @@ export function AppMenu({
       const greenCleaningChildren: MenuItem[] = isGreenCleaningDepartment
         ? [
             {
-              key: "green-clean-today",
-              href: `/tasks?department=${encodeURIComponent(group.name)}`,
-              label: "Өнөөдрийн ажил, гүйцэтгэл",
-              icon: ClipboardCheck,
-            },
-            {
               key: "green-service-work",
               href: `/department-work?department=${encodeURIComponent(group.name)}&unit=${encodeURIComponent("Ногоон байгууламж")}`,
               label: "Ногоон байгууламж",
@@ -670,12 +664,6 @@ export function AppMenu({
               href: "/cleaning-areas#ecoroad",
               label: "Eco Road үзлэг",
               icon: MapPinned,
-            },
-            {
-              key: "green-clean-reports",
-              href: `/reports?department=${encodeURIComponent(group.name)}`,
-              label: "Тайлан, KPI",
-              icon: BarChart3,
             },
           ]
         : [];
