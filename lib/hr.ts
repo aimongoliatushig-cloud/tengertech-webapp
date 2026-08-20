@@ -1701,7 +1701,9 @@ export async function requireHrSpecialistAccess(session: AppSession) {
 
 export async function requireDepartmentHeadTimeoffRequestAccess(session: AppSession, requestType?: HrTimeoffRequestType) {
   const profile = await getHrAccessProfile(session);
-  if (profile.isHr && requestType === "annual_leave") {
+  // Cancellation does not carry a request type. HR users must still be able to
+  // cancel a request they can review; creation remains limited to annual leave.
+  if (profile.isHr && (!requestType || requestType === "annual_leave")) {
     return profile;
   }
   if (profile.isHr || !profile.isDepartmentHead) {

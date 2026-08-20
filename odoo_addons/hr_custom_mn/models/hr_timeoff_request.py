@@ -225,7 +225,18 @@ class MunicipalHrTimeoffRequest(models.Model):
         for request in self:
             if request.state in FINAL_STATES:
                 raise UserError("Эцэслэгдсэн хүсэлтийг цуцлах боломжгүй.")
-            if not self._current_user_is_hr_reviewer() and request.submitted_by != self.env.user:
+            can_cancel_draft = (
+                request.state == "draft"
+                and (
+                    request.create_uid == self.env.user
+                    or self._employee_in_current_department(request.employee_id)
+                )
+            )
+            if (
+                not self._current_user_is_hr_reviewer()
+                and request.submitted_by != self.env.user
+                and not can_cancel_draft
+            ):
                 raise AccessError("Зөвхөн өөрийн илгээсэн хүсэлтийг цуцлах боломжтой.")
         return self.write({"state": "cancelled"})
 
