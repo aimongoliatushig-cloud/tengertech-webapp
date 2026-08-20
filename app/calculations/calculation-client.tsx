@@ -1,80 +1,1388 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Calculator, Copy, Download, FilePlus2, FileText, History, Library, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import {
+  Calculator,
+  Copy,
+  Download,
+  FilePlus2,
+  FileText,
+  History,
+  Library,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import styles from "./calculations.module.css";
 import { LaborRateLibrary, PackageLibrary } from "./package-library";
 
-type Material = { id: number; code: string; name: string; category: string; unit: string; current_price: number; price_source?: string; price_effective_date?: string; description?: string; active: boolean };
-type Calculation = { id: number; calculation_number: string; date: string; work_name: string; work_type?: string; location: string; description?: string; quantity: number; unit: string; status: string; work_package_id?: number; work_package_code?: string; work_package_name?: string; work_package_base_unit?: string; material_total: number; labor_total: number; equipment_total: number; transportation_total: number; other_total: number; grand_total: number; materials?: AnyRow[]; labor?: AnyRow[]; equipment?: AnyRow[]; transport?: AnyRow[]; other?: AnyRow[] };
-type WorkPackage = { id: number; code: string; name: string; category: string; base_unit: string; description?: string; active: boolean; component_count?: number; materials?: AnyRow[]; labor?: AnyRow[]; equipment?: AnyRow[]; transport?: AnyRow[]; other?: AnyRow[] };
-type LaborRate = { id: number; code: string; name: string; unit: string; current_rate: number; active: boolean };
-type AnyRow = Record<string, string | number | boolean | [number, string] | undefined>;
-type Tab = "list" | "form" | "materials" | "history" | "packages" | "laborRates";
+type Material = {
+  id: number;
+  code: string;
+  name: string;
+  category: string;
+  unit: string;
+  current_price: number;
+  price_source?: string;
+  price_effective_date?: string;
+  description?: string;
+  active: boolean;
+};
+type Calculation = {
+  id: number;
+  calculation_number: string;
+  date: string;
+  work_name: string;
+  work_type?: string;
+  location: string;
+  description?: string;
+  quantity: number;
+  unit: string;
+  status: string;
+  work_package_id?: number;
+  work_package_code?: string;
+  work_package_name?: string;
+  work_package_base_unit?: string;
+  material_total: number;
+  labor_total: number;
+  equipment_total: number;
+  transportation_total: number;
+  other_total: number;
+  grand_total: number;
+  materials?: AnyRow[];
+  labor?: AnyRow[];
+  equipment?: AnyRow[];
+  transport?: AnyRow[];
+  other?: AnyRow[];
+};
+type WorkPackage = {
+  id: number;
+  code: string;
+  name: string;
+  category: string;
+  base_unit: string;
+  description?: string;
+  active: boolean;
+  component_count?: number;
+  materials?: AnyRow[];
+  labor?: AnyRow[];
+  equipment?: AnyRow[];
+  transport?: AnyRow[];
+  other?: AnyRow[];
+};
+type LaborRate = {
+  id: number;
+  code: string;
+  name: string;
+  unit: string;
+  current_rate: number;
+  active: boolean;
+};
+type AnyRow = Record<
+  string,
+  string | number | boolean | [number, string] | undefined
+>;
+type Tab =
+  "list" | "form" | "materials" | "history" | "packages" | "laborRates";
 
 const money = new Intl.NumberFormat("mn-MN", { maximumFractionDigits: 0 });
 const today = new Date().toISOString().slice(0, 10);
-const emptyForm = (): Calculation => ({ id: 0, calculation_number: "Автоматаар", date: today, work_name: "", work_type: "", location: "", description: "", quantity: 1, unit: "м²", status: "draft", material_total: 0, labor_total: 0, equipment_total: 0, transportation_total: 0, other_total: 0, grand_total: 0, materials: [], labor: [], equipment: [], transport: [], other: [] });
+const emptyForm = (): Calculation => ({
+  id: 0,
+  calculation_number: "Автоматаар",
+  date: today,
+  work_name: "",
+  work_type: "",
+  location: "",
+  description: "",
+  quantity: 1,
+  unit: "м²",
+  status: "draft",
+  material_total: 0,
+  labor_total: 0,
+  equipment_total: 0,
+  transportation_total: 0,
+  other_total: 0,
+  grand_total: 0,
+  materials: [],
+  labor: [],
+  equipment: [],
+  transport: [],
+  other: [],
+});
 const num = (value: unknown) => Math.max(0, Number(value) || 0);
-const relationId = (value: unknown) => Array.isArray(value) ? Number(value[0]) : Number(value);
+const relationId = (value: unknown) =>
+  Array.isArray(value) ? Number(value[0]) : Number(value);
 
-export default function CalculationClient({ isAdmin }: { isAdmin: boolean }) {
-  const [tab, setTab] = useState<Tab>("list"); const [calculations, setCalculations] = useState<Calculation[]>([]); const [materials, setMaterials] = useState<Material[]>([]); const [history, setHistory] = useState<AnyRow[]>([]); const [packages, setPackages] = useState<WorkPackage[]>([]); const [laborRates, setLaborRates] = useState<LaborRate[]>([]); const [laborHistory, setLaborHistory] = useState<AnyRow[]>([]); const [packageForm, setPackageForm] = useState<WorkPackage | null>(null); const [form, setForm] = useState<Calculation>(emptyForm); const [search, setSearch] = useState(""); const [status, setStatus] = useState(""); const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
-  const loadCalculations = useCallback(async () => { const c = await fetch(`/api/calculations?search=${encodeURIComponent(search)}&status=${status}`).then(r => r.json()); setCalculations(Array.isArray(c) ? c : []); }, [search, status]);
-  const loadReferences = useCallback(async () => { const [m, h, p, l, lh] = await Promise.all([fetch("/api/calculations?resource=materials").then(r => r.json()), fetch("/api/calculations?resource=prices").then(r => r.json()), fetch("/api/calculations?resource=packages&active=all").then(r => r.json()), fetch("/api/calculations?resource=labor_rates").then(r => r.json()), fetch("/api/calculations?resource=labor_history").then(r => r.json())]); setMaterials(Array.isArray(m) ? m : []); setHistory(Array.isArray(h) ? h : []); setPackages(Array.isArray(p) ? p : []); setLaborRates(Array.isArray(l) ? l : []); setLaborHistory(Array.isArray(lh) ? lh : []); }, []);
-  const reloadAll = useCallback(async () => { setBusy(true); try { await Promise.all([loadCalculations(), loadReferences()]); } finally { setBusy(false); } }, [loadCalculations, loadReferences]);
-  useEffect(() => { setBusy(true); void loadReferences().finally(() => setBusy(false)); }, [loadReferences]);
-  useEffect(() => { const timer = window.setTimeout(() => { setBusy(true); void loadCalculations().finally(() => setBusy(false)); }, 250); return () => window.clearTimeout(timer); }, [loadCalculations]);
+export default function CalculationClient({
+  isAdmin,
+  canManageMaterials,
+}: {
+  isAdmin: boolean;
+  canManageMaterials: boolean;
+}) {
+  const [tab, setTab] = useState<Tab>("list");
+  const [calculations, setCalculations] = useState<Calculation[]>([]);
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [history, setHistory] = useState<AnyRow[]>([]);
+  const [packages, setPackages] = useState<WorkPackage[]>([]);
+  const [laborRates, setLaborRates] = useState<LaborRate[]>([]);
+  const [laborHistory, setLaborHistory] = useState<AnyRow[]>([]);
+  const [packageForm, setPackageForm] = useState<WorkPackage | null>(null);
+  const [form, setForm] = useState<Calculation>(emptyForm);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const loadCalculations = useCallback(async () => {
+    const c = await fetch(
+      `/api/calculations?search=${encodeURIComponent(search)}&status=${status}`,
+    ).then((r) => r.json());
+    setCalculations(Array.isArray(c) ? c : []);
+  }, [search, status]);
+  const loadReferences = useCallback(async () => {
+    const [m, h, p, l, lh] = await Promise.all([
+      fetch("/api/calculations?resource=materials").then((r) => r.json()),
+      fetch("/api/calculations?resource=prices").then((r) => r.json()),
+      fetch("/api/calculations?resource=packages&active=all").then((r) =>
+        r.json(),
+      ),
+      fetch("/api/calculations?resource=labor_rates").then((r) => r.json()),
+      fetch("/api/calculations?resource=labor_history").then((r) => r.json()),
+    ]);
+    setMaterials(Array.isArray(m) ? m : []);
+    setHistory(Array.isArray(h) ? h : []);
+    setPackages(Array.isArray(p) ? p : []);
+    setLaborRates(Array.isArray(l) ? l : []);
+    setLaborHistory(Array.isArray(lh) ? lh : []);
+  }, []);
+  const reloadAll = useCallback(async () => {
+    setBusy(true);
+    try {
+      await Promise.all([loadCalculations(), loadReferences()]);
+    } finally {
+      setBusy(false);
+    }
+  }, [loadCalculations, loadReferences]);
+  useEffect(() => {
+    setBusy(true);
+    void loadReferences().finally(() => setBusy(false));
+  }, [loadReferences]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setBusy(true);
+      void loadCalculations().finally(() => setBusy(false));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [loadCalculations]);
   const totals = useMemo(() => {
-    const material = (form.materials || []).reduce((s, r) => s + num(r.quantity) * num(r.unit_price), 0);
-    const labor = (form.labor || []).reduce((s, r) => s + num(r.employee_count) * num(r.duration) * num(r.unit_price), 0);
-    const equipment = (form.equipment || []).reduce((s, r) => s + num(r.hours) * num(r.hourly_rate), 0);
-    const transport = (form.transport || []).reduce((s, r) => s + num(r.quantity) * num(r.unit_price), 0);
+    const material = (form.materials || []).reduce(
+      (s, r) => s + num(r.quantity) * num(r.unit_price),
+      0,
+    );
+    const labor = (form.labor || []).reduce(
+      (s, r) => s + num(r.employee_count) * num(r.duration) * num(r.unit_price),
+      0,
+    );
+    const equipment = (form.equipment || []).reduce(
+      (s, r) => s + num(r.hours) * num(r.hourly_rate),
+      0,
+    );
+    const transport = (form.transport || []).reduce(
+      (s, r) => s + num(r.quantity) * num(r.unit_price),
+      0,
+    );
     const other = (form.other || []).reduce((s, r) => s + num(r.amount), 0);
-    return { material, labor, equipment, transport, other, grand: material + labor + equipment + transport + other };
+    return {
+      material,
+      labor,
+      equipment,
+      transport,
+      other,
+      grand: material + labor + equipment + transport + other,
+    };
   }, [form]);
-  function update<K extends keyof Calculation>(key: K, value: Calculation[K]) { setForm(prev => ({ ...prev, [key]: value })); }
-  function lineUpdate(kind: "materials" | "labor" | "equipment" | "transport" | "other", index: number, key: string, value: string | number) { setForm(prev => ({ ...prev, [kind]: (prev[kind] || []).map((row, i) => i === index ? { ...row, [key]: value } : row) })); }
-  function addLine(kind: "materials" | "labor" | "equipment" | "transport" | "other") { const defaults: Record<string, AnyRow> = { materials: { material_id: 0, material_code: "", material_name: "", category: "", unit: "", quantity: 1, unit_price: 0 }, labor: { work_type: "Ерөнхий ажилтан", employee_count: 1, duration: 1, unit: "хоног", unit_price: 100000 }, equipment: { equipment_name: "Ерөнхий техник", hours: 1, hourly_rate: 85000 }, transport: { transport_type: "Хот доторх тээвэр (рейс)", quantity: 1, unit_price: 150000 }, other: { name: "", description: "", amount: 0 } }; setForm(prev => ({ ...prev, [kind]: [...(prev[kind] || []), defaults[kind]] })); }
-  function removeLine(kind: "materials" | "labor" | "equipment" | "transport" | "other", index: number) { setForm(prev => ({ ...prev, [kind]: (prev[kind] || []).filter((_, i) => i !== index) })); }
-  function selectMaterial(index: number, id: number) { const material = materials.find(item => item.id === id); if (!material) return; setForm(prev => ({ ...prev, materials: (prev.materials || []).map((row, i) => i === index ? { ...row, material_id: material.id, material_code: material.code, material_name: material.name, category: material.category, unit: material.unit, unit_price: material.current_price } : row) })); }
-  function clearMaterial(index: number) { setForm(prev => ({ ...prev, materials: (prev.materials || []).map((row, i) => i === index ? { ...row, material_id: 0, material_code: "", material_name: "", category: "", unit: "", unit_price: 0 } : row) })); }
-  async function edit(id: number) { setBusy(true); const data = await fetch(`/api/calculations?id=${id}`).then(r => r.json()); setForm(data); setTab("form"); setBusy(false); }
-  async function save() { if (!form.work_name.trim() || !form.location.trim() || !form.date || !form.unit.trim()) { setMessage("Ажлын нэр, байршил, огноо, нэгжийг бөглөнө үү."); return; } if ((form.materials || []).some(r => !relationId(r.material_id))) { setMessage("Материалын бүх мөрөнд материал сонгоно уу."); return; } setBusy(true); setMessage(""); const response = await fetch("/api/calculations", { method: form.id ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) }); const data = await response.json(); if (!response.ok) setMessage(data.error || "Хадгалж чадсангүй."); else { setMessage("Тооцоолол хадгалагдлаа."); setTab("list"); setForm(emptyForm()); await loadCalculations(); } setBusy(false); }
-  async function copyCalculation(id: number) { await fetch("/api/calculations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "copy", id }) }); await loadCalculations(); }
-  async function remove(id: number) { if (!confirm("Энэ тооцооллыг устгах уу?")) return; await fetch(`/api/calculations?id=${id}`, { method: "DELETE" }); await loadCalculations(); }
-  async function applyPackage(id: number) { const response = await fetch(`/api/calculations?resource=packages&package_id=${id}&_=${Date.now()}`, { cache: "no-store" }); const p = await response.json() as WorkPackage; const quantity = Math.max(0, form.quantity || 0); if (!response.ok || !p?.id || !quantity) { setMessage("Ажлын багц болон 0-ээс их тоо хэмжээ сонгоно уу."); return; } const materialById = new Map(materials.map(m => [m.id, m])); const laborById = new Map(laborRates.map(l => [l.id, l])); setForm(prev => ({ ...prev, work_name: prev.work_name || p.name, work_type: p.category, unit: p.base_unit, work_package_id: p.id, work_package_code: p.code, work_package_name: p.name, work_package_base_unit: p.base_unit,
-    materials: (p.materials || []).map(r => { const id = relationId(r.material_id); const m = materialById.get(id); return { material_id: id, material_code: m?.code || "", material_name: m?.name || "", category: m?.category || "", unit: String(r.unit || m?.unit || ""), norm: num(r.norm), quantity: quantity * num(r.norm), unit_price: m?.current_price ?? num(r.unit_price) }; }), labor: (p.labor || []).map(r => { const l = laborById.get(relationId(r.labor_rate_id)); return { work_type: l?.name || (Array.isArray(r.labor_rate_id) ? r.labor_rate_id[1] : ""), employee_count: 1, duration: quantity * num(r.norm), unit: String(r.unit || l?.unit || "хүн/өдөр"), norm: num(r.norm), unit_price: l?.current_rate ?? num(r.unit_price) }; }), equipment: (p.equipment || []).map(r => ({ equipment_name: String(r.name || ""), hours: quantity * num(r.norm), hourly_rate: num(r.unit_price), norm: num(r.norm) })), transport: (p.transport || []).map(r => ({ transport_type: String(r.name || ""), quantity: quantity * num(r.norm), unit_price: num(r.unit_price), norm: num(r.norm) })), other: (p.other || []).map(r => ({ name: String(r.name || ""), description: String(r.description || ""), amount: quantity * num(r.norm) * num(r.unit_price), norm: num(r.norm) })) })); setMessage(`${p.name} багцын норм × ${quantity} ${p.base_unit} тооцоологдлоо.`); }
+  function update<K extends keyof Calculation>(key: K, value: Calculation[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+  function lineUpdate(
+    kind: "materials" | "labor" | "equipment" | "transport" | "other",
+    index: number,
+    key: string,
+    value: string | number,
+  ) {
+    setForm((prev) => ({
+      ...prev,
+      [kind]: (prev[kind] || []).map((row, i) =>
+        i === index ? { ...row, [key]: value } : row,
+      ),
+    }));
+  }
+  function addLine(
+    kind: "materials" | "labor" | "equipment" | "transport" | "other",
+  ) {
+    const defaults: Record<string, AnyRow> = {
+      materials: {
+        material_id: 0,
+        material_code: "",
+        material_name: "",
+        category: "",
+        unit: "",
+        quantity: 1,
+        unit_price: 0,
+      },
+      labor: {
+        work_type: "Ерөнхий ажилтан",
+        employee_count: 1,
+        duration: 1,
+        unit: "хоног",
+        unit_price: 100000,
+      },
+      equipment: {
+        equipment_name: "Ерөнхий техник",
+        hours: 1,
+        hourly_rate: 85000,
+      },
+      transport: {
+        transport_type: "Хот доторх тээвэр (рейс)",
+        quantity: 1,
+        unit_price: 150000,
+      },
+      other: { name: "", description: "", amount: 0 },
+    };
+    setForm((prev) => ({
+      ...prev,
+      [kind]: [...(prev[kind] || []), defaults[kind]],
+    }));
+  }
+  function removeLine(
+    kind: "materials" | "labor" | "equipment" | "transport" | "other",
+    index: number,
+  ) {
+    setForm((prev) => ({
+      ...prev,
+      [kind]: (prev[kind] || []).filter((_, i) => i !== index),
+    }));
+  }
+  function selectMaterial(index: number, id: number) {
+    const material = materials.find((item) => item.id === id);
+    if (!material) return;
+    setForm((prev) => ({
+      ...prev,
+      materials: (prev.materials || []).map((row, i) =>
+        i === index
+          ? {
+              ...row,
+              material_id: material.id,
+              material_code: material.code,
+              material_name: material.name,
+              category: material.category,
+              unit: material.unit,
+              unit_price: material.current_price,
+            }
+          : row,
+      ),
+    }));
+  }
+  function clearMaterial(index: number) {
+    setForm((prev) => ({
+      ...prev,
+      materials: (prev.materials || []).map((row, i) =>
+        i === index
+          ? {
+              ...row,
+              material_id: 0,
+              material_code: "",
+              material_name: "",
+              category: "",
+              unit: "",
+              unit_price: 0,
+            }
+          : row,
+      ),
+    }));
+  }
+  async function edit(id: number) {
+    setBusy(true);
+    const data = await fetch(`/api/calculations?id=${id}`).then((r) =>
+      r.json(),
+    );
+    setForm(data);
+    setTab("form");
+    setBusy(false);
+  }
+  async function save() {
+    if (
+      !form.work_name.trim() ||
+      !form.location.trim() ||
+      !form.date ||
+      !form.unit.trim()
+    ) {
+      setMessage("Ажлын нэр, байршил, огноо, нэгжийг бөглөнө үү.");
+      return;
+    }
+    if ((form.materials || []).some((r) => !relationId(r.material_id))) {
+      setMessage("Материалын бүх мөрөнд материал сонгоно уу.");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    const response = await fetch("/api/calculations", {
+      method: form.id ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const data = await response.json();
+    if (!response.ok) setMessage(data.error || "Хадгалж чадсангүй.");
+    else {
+      setMessage("Тооцоолол хадгалагдлаа.");
+      setTab("list");
+      setForm(emptyForm());
+      await loadCalculations();
+    }
+    setBusy(false);
+  }
+  async function copyCalculation(id: number) {
+    await fetch("/api/calculations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "copy", id }),
+    });
+    await loadCalculations();
+  }
+  async function remove(id: number) {
+    if (!confirm("Энэ тооцооллыг устгах уу?")) return;
+    await fetch(`/api/calculations?id=${id}`, { method: "DELETE" });
+    await loadCalculations();
+  }
+  async function applyPackage(id: number) {
+    const response = await fetch(
+      `/api/calculations?resource=packages&package_id=${id}&_=${Date.now()}`,
+      { cache: "no-store" },
+    );
+    const p = (await response.json()) as WorkPackage;
+    const quantity = Math.max(0, form.quantity || 0);
+    if (!response.ok || !p?.id || !quantity) {
+      setMessage("Ажлын багц болон 0-ээс их тоо хэмжээ сонгоно уу.");
+      return;
+    }
+    const materialById = new Map(materials.map((m) => [m.id, m]));
+    const laborById = new Map(laborRates.map((l) => [l.id, l]));
+    setForm((prev) => ({
+      ...prev,
+      work_name: prev.work_name || p.name,
+      work_type: p.category,
+      unit: p.base_unit,
+      work_package_id: p.id,
+      work_package_code: p.code,
+      work_package_name: p.name,
+      work_package_base_unit: p.base_unit,
+      materials: (p.materials || []).map((r) => {
+        const id = relationId(r.material_id);
+        const m = materialById.get(id);
+        return {
+          material_id: id,
+          material_code: m?.code || "",
+          material_name: m?.name || "",
+          category: m?.category || "",
+          unit: String(r.unit || m?.unit || ""),
+          norm: num(r.norm),
+          quantity: quantity * num(r.norm),
+          unit_price: m?.current_price ?? num(r.unit_price),
+        };
+      }),
+      labor: (p.labor || []).map((r) => {
+        const l = laborById.get(relationId(r.labor_rate_id));
+        return {
+          work_type:
+            l?.name ||
+            (Array.isArray(r.labor_rate_id) ? r.labor_rate_id[1] : ""),
+          employee_count: 1,
+          duration: quantity * num(r.norm),
+          unit: String(r.unit || l?.unit || "хүн/өдөр"),
+          norm: num(r.norm),
+          unit_price: l?.current_rate ?? num(r.unit_price),
+        };
+      }),
+      equipment: (p.equipment || []).map((r) => ({
+        equipment_name: String(r.name || ""),
+        hours: quantity * num(r.norm),
+        hourly_rate: num(r.unit_price),
+        norm: num(r.norm),
+      })),
+      transport: (p.transport || []).map((r) => ({
+        transport_type: String(r.name || ""),
+        quantity: quantity * num(r.norm),
+        unit_price: num(r.unit_price),
+        norm: num(r.norm),
+      })),
+      other: (p.other || []).map((r) => ({
+        name: String(r.name || ""),
+        description: String(r.description || ""),
+        amount: quantity * num(r.norm) * num(r.unit_price),
+        norm: num(r.norm),
+      })),
+    }));
+    setMessage(
+      `${p.name} багцын норм × ${quantity} ${p.base_unit} тооцоологдлоо.`,
+    );
+  }
 
-  return <section className={styles.page}>
-    <header className={styles.header}><div><span>Тохижилтын хэлтэс</span><h1><Calculator /> Тооцоолол</h1><p>Материал, ажлын хөлс, техник, тээвэр болон бусад зардлын нэгдсэн тооцоо</p></div><button className={styles.primary} onClick={() => { setForm(emptyForm()); setTab("form"); }}><Plus /> Шинэ тооцоолол</button></header>
-    <nav className={styles.tabs}><button className={tab === "list" ? styles.active : ""} onClick={() => setTab("list")}><Calculator />Тооцооллын жагсаалт</button><button className={tab === "form" ? styles.active : ""} onClick={() => setTab("form")}><FilePlus2 />Шинэ тооцоолол</button><button className={tab === "materials" ? styles.active : ""} onClick={() => setTab("materials")}><Library />Материалын сан</button><button className={tab === "history" ? styles.active : ""} onClick={() => setTab("history")}><History />Материалын үнийн түүх</button><button className={tab === "packages" ? styles.active : ""} onClick={() => setTab("packages")}><Library />Ажлын багц</button><button className={tab === "laborRates" ? styles.active : ""} onClick={() => setTab("laborRates")}><History />Ажлын хөлсний үнэлгээ</button></nav>
-    {message && <div className={styles.message}>{message}</div>}{busy && <div className={styles.loading}>Уншиж байна…</div>}
-    {tab === "list" && <><div className={styles.filters}><label><Search /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Дугаар, ажлын нэр, байршил…" /></label><select value={status} onChange={e => setStatus(e.target.value)}><option value="">Бүх төлөв</option><option value="draft">Ноорог</option><option value="calculated">Тооцоолсон</option><option value="approved">Баталгаажсан</option></select></div><div className={`${styles.tableWrap} ${styles.mobileCards}`}><table><thead><tr><th>№</th><th>Тооцооллын №</th><th>Ажлын нэр</th><th>Байршил</th><th>Огноо</th><th>Нийт дүн</th><th>Төлөв</th><th>Үйлдэл</th></tr></thead><tbody>{calculations.map((c, i) => <tr key={c.id}><td data-label="№">{i + 1}</td><td data-label="Тооцооллын №"><strong>{c.calculation_number}</strong></td><td data-label="Ажлын нэр">{c.work_name}</td><td data-label="Байршил">{c.location}</td><td data-label="Огноо">{c.date}</td><td data-label="Нийт дүн" className={styles.amount}>{money.format(c.grand_total)}₮</td><td data-label="Төлөв"><span className={`${styles.badge} ${styles[c.status]}`}>{c.status === "draft" ? "Ноорог" : c.status === "approved" ? "Баталгаажсан" : "Тооцоолсон"}</span></td><td data-label="Үйлдэл" className={styles.actions}><button aria-label="Харах, засах" title="Харах/засах" onClick={() => edit(c.id)}><Pencil /></button><button aria-label="Хуулбарлах" title="Хуулбарлах" onClick={() => copyCalculation(c.id)}><Copy /></button><a aria-label="Excel татах" title="Албан ёсны Excel татах" href={`/api/calculations/export?id=${c.id}&format=xlsx`}><Download /></a><a aria-label="Word татах" title="Албан ёсны Word татах" href={`/api/calculations/export?id=${c.id}&format=docx`}><FileText /></a><a aria-label="PDF татах" title="PDF татах" href={`/api/calculations/export?id=${c.id}&format=pdf`}><FilePlus2 /></a><button aria-label="Устгах" title="Устгах" onClick={() => remove(c.id)}><Trash2 /></button></td></tr>)}</tbody></table></div></>}
-    {tab === "form" && <div className={styles.formLayout}><div className={styles.formMain}><div className={styles.card}><h2>Ажлын багцаас үүсгэх</h2><div className={styles.grid}><label>Ажлын багц<select defaultValue="" onChange={e => void applyPackage(Number(e.target.value))}><option value="">Багц сонгох…</option>{packages.filter(p => p.active).map(p => <option key={p.id} value={p.id}>{p.code} · {p.name} ({p.base_unit})</option>)}</select></label><label>Ажлын тоо хэмжээ<input type="number" min="0.0001" value={form.quantity} onChange={e => update("quantity", num(e.target.value))} /></label></div><small>Багц сонгоход норм ба тухайн үеийн үнэ тооцооллын snapshot болж хуулна.</small></div><div className={styles.card}><h2>Ерөнхий мэдээлэл</h2><div className={styles.grid}><label>Тооцооллын №<input value={form.calculation_number} disabled /></label><label>Огноо<input type="date" value={form.date} onChange={e => update("date", e.target.value)} /></label><label>Ажлын нэр<input value={form.work_name} onChange={e => update("work_name", e.target.value)} /></label><label>Ажлын төрөл<input value={form.work_type || ""} onChange={e => update("work_type", e.target.value)} /></label><label>Байршил<input value={form.location} onChange={e => update("location", e.target.value)} /></label><label>Төлөв<select value={form.status} onChange={e => update("status", e.target.value)}><option value="draft">Ноорог</option><option value="calculated">Тооцоолсон</option><option value="approved">Баталгаажсан</option></select></label><label>Тоо хэмжээ<input type="number" min="0" value={form.quantity} onChange={e => update("quantity", num(e.target.value))} /></label><label>Хэмжих нэгж<input value={form.unit} onChange={e => update("unit", e.target.value)} /></label><label className={styles.full}>Ажлын тайлбар<textarea value={form.description || ""} onChange={e => update("description", e.target.value)} /></label></div></div>
-      <LineSection title="Материал" addLabel="Материал нэмэх" onAdd={() => addLine("materials")} headers={["Материал", "Нэгж", "Тоо хэмжээ", "Нэгж үнэ", "Нийт"]}>{(form.materials || []).map((r, i) => <tr key={i}><td data-label="Материал"><MaterialSearchSelect materials={materials} selectedId={relationId(r.material_id)} onSelect={id => selectMaterial(i, id)} onClear={() => clearMaterial(i)} /><small>{String(r.category || "")}</small></td><td data-label="Нэгж">{String(r.unit || "")}</td><td data-label="Тоо хэмжээ"><input inputMode="decimal" type="number" min="0" value={num(r.quantity)} onChange={e => lineUpdate("materials", i, "quantity", num(e.target.value))} /></td><td data-label="Нэгж үнэ"><input inputMode="decimal" type="number" min="0" value={num(r.unit_price)} onChange={e => lineUpdate("materials", i, "unit_price", num(e.target.value))} /></td><td data-label="Нийт" className={styles.lineTotal}>{money.format(num(r.quantity) * num(r.unit_price))}₮<button aria-label="Материалын мөр устгах" onClick={() => removeLine("materials", i)}><X /></button></td></tr>)}</LineSection>
-      <LineSection title="Ажлын хөлс" addLabel="Ажлын хөлс нэмэх" onAdd={() => addLine("labor")} headers={["Ажлын төрөл", "Хүний тоо", "Хугацаа", "Нэгж", "Нэгж үнэлгээ", "Нийт"]}>{(form.labor || []).map((r, i) => <tr key={i}><td data-label="Ажлын төрөл"><input value={String(r.work_type || "")} onChange={e => lineUpdate("labor", i, "work_type", e.target.value)} /></td><td data-label="Хүний тоо"><input inputMode="numeric" type="number" min="0" value={num(r.employee_count)} onChange={e => lineUpdate("labor", i, "employee_count", num(e.target.value))} /></td><td data-label="Хугацаа"><input inputMode="decimal" type="number" min="0" value={num(r.duration)} onChange={e => lineUpdate("labor", i, "duration", num(e.target.value))} /></td><td data-label="Нэгж"><input value={String(r.unit || "хоног")} onChange={e => lineUpdate("labor", i, "unit", e.target.value)} /></td><td data-label="Нэгж үнэлгээ"><input inputMode="decimal" type="number" min="0" value={num(r.unit_price)} onChange={e => lineUpdate("labor", i, "unit_price", num(e.target.value))} /></td><td data-label="Нийт" className={styles.lineTotal}>{money.format(num(r.employee_count) * num(r.duration) * num(r.unit_price))}₮<button aria-label="Ажлын хөлсний мөр устгах" onClick={() => removeLine("labor", i)}><X /></button></td></tr>)}</LineSection>
-      <SimpleLines kind="equipment" title="Техник" headers={["Техникийн нэр", "Ажилласан цаг", "Нэг цагийн үнэ", "Нийт"]} rows={form.equipment || []} fields={["equipment_name", "hours", "hourly_rate"]} addLine={addLine} lineUpdate={lineUpdate} removeLine={removeLine} money={money} />
-      <SimpleLines kind="transport" title="Тээвэр" headers={["Тээврийн төрөл", "Тоо", "Нэгж үнэ", "Нийт"]} rows={form.transport || []} fields={["transport_type", "quantity", "unit_price"]} addLine={addLine} lineUpdate={lineUpdate} removeLine={removeLine} money={money} />
-      <SimpleLines kind="other" title="Бусад зардал" headers={["Зардлын нэр", "Тайлбар", "Дүн", ""]} rows={form.other || []} fields={["name", "description", "amount"]} addLine={addLine} lineUpdate={lineUpdate} removeLine={removeLine} money={money} />
-      <p className={styles.message}>Зах зээлийн лавлах үнэлгээ: материалын үнэ 2026-08-19-ний эх сурвалжтай; ажлын хөлс, техник, тээврийн санал болгосон үнийг шаардлагатай бол нийлүүлэгчийн үнийн саналаар засна.</p><div className={styles.formActions}><button onClick={() => { setTab("list"); setForm(emptyForm()); }}>Болих</button><button className={styles.primary} disabled={busy} onClick={save}>Хадгалах</button></div></div>
-      <aside className={styles.summary}><h2>Зардлын нэгтгэл</h2><Summary label="Материалын зардал" value={totals.material} /><Summary label="Ажлын хөлс" value={totals.labor} /><Summary label="Техникийн зардал" value={totals.equipment} /><Summary label="Тээврийн зардал" value={totals.transport} /><Summary label="Бусад зардал" value={totals.other} /><div className={styles.grand}><span>НИЙТ ТООЦООЛСОН ӨРТӨГ</span><strong>{money.format(totals.grand)}₮</strong></div></aside></div>}
-    {tab === "materials" && <MaterialLibrary materials={materials} isAdmin={isAdmin} reload={reloadAll} />}
-    {tab === "history" && <div className={styles.card}><h2>Материалын үнийн түүх</h2><div className={`${styles.tableWrap} ${styles.mobileCards}`}><table><thead><tr><th>Огноо</th><th>Материал</th><th>Хуучин үнэ</th><th>Шинэ үнэ</th><th>Эх сурвалж</th><th>Өөрчилсөн</th></tr></thead><tbody>{history.map((h, i) => <tr key={i}><td data-label="Огноо">{String(h.effective_date || "")}</td><td data-label="Материал">{Array.isArray(h.material_id) ? h.material_id[1] : ""}</td><td data-label="Хуучин үнэ">{money.format(num(h.old_price))}₮</td><td data-label="Шинэ үнэ">{money.format(num(h.price))}₮</td><td data-label="Эх сурвалж">{String(h.source || "-")}</td><td data-label="Өөрчилсөн">{Array.isArray(h.changed_by) ? h.changed_by[1] : ""}</td></tr>)}</tbody></table></div></div>}
-    {tab === "packages" && <PackageLibrary packages={packages} materials={materials} laborRates={laborRates} editing={packageForm} setEditing={setPackageForm} reload={reloadAll} setMessage={setMessage} />}
-    {tab === "laborRates" && <LaborRateLibrary rates={laborRates} history={laborHistory} isAdmin={isAdmin} reload={reloadAll} />}
-  </section>;
+  return (
+    <section className={styles.page}>
+      <header className={styles.header}>
+        <div>
+          <span>Тохижилтын хэлтэс</span>
+          <h1>
+            <Calculator /> Тооцоолол
+          </h1>
+          <p>
+            Материал, ажлын хөлс, техник, тээвэр болон бусад зардлын нэгдсэн
+            тооцоо
+          </p>
+        </div>
+        <button
+          className={styles.primary}
+          onClick={() => {
+            setForm(emptyForm());
+            setTab("form");
+          }}
+        >
+          <Plus /> Шинэ тооцоолол
+        </button>
+      </header>
+      <nav className={styles.tabs}>
+        <button
+          className={tab === "list" ? styles.active : ""}
+          onClick={() => setTab("list")}
+        >
+          <Calculator />
+          Тооцооллын жагсаалт
+        </button>
+        <button
+          className={tab === "form" ? styles.active : ""}
+          onClick={() => setTab("form")}
+        >
+          <FilePlus2 />
+          Шинэ тооцоолол
+        </button>
+        <button
+          className={tab === "materials" ? styles.active : ""}
+          onClick={() => setTab("materials")}
+        >
+          <Library />
+          Материалын сан
+        </button>
+        <button
+          className={tab === "history" ? styles.active : ""}
+          onClick={() => setTab("history")}
+        >
+          <History />
+          Материалын үнийн түүх
+        </button>
+        <button
+          className={tab === "packages" ? styles.active : ""}
+          onClick={() => setTab("packages")}
+        >
+          <Library />
+          Ажлын багц
+        </button>
+        <button
+          className={tab === "laborRates" ? styles.active : ""}
+          onClick={() => setTab("laborRates")}
+        >
+          <History />
+          Ажлын хөлсний үнэлгээ
+        </button>
+      </nav>
+      {message && <div className={styles.message}>{message}</div>}
+      {busy && <div className={styles.loading}>Уншиж байна…</div>}
+      {tab === "list" && (
+        <>
+          <div className={styles.filters}>
+            <label>
+              <Search />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Дугаар, ажлын нэр, байршил…"
+              />
+            </label>
+            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="">Бүх төлөв</option>
+              <option value="draft">Ноорог</option>
+              <option value="calculated">Тооцоолсон</option>
+              <option value="approved">Баталгаажсан</option>
+            </select>
+          </div>
+          <div className={`${styles.tableWrap} ${styles.mobileCards}`}>
+            <table>
+              <thead>
+                <tr>
+                  <th>№</th>
+                  <th>Тооцооллын №</th>
+                  <th>Ажлын нэр</th>
+                  <th>Байршил</th>
+                  <th>Огноо</th>
+                  <th>Нийт дүн</th>
+                  <th>Төлөв</th>
+                  <th>Үйлдэл</th>
+                </tr>
+              </thead>
+              <tbody>
+                {calculations.map((c, i) => (
+                  <tr key={c.id}>
+                    <td data-label="№">{i + 1}</td>
+                    <td data-label="Тооцооллын №">
+                      <strong>{c.calculation_number}</strong>
+                    </td>
+                    <td data-label="Ажлын нэр">{c.work_name}</td>
+                    <td data-label="Байршил">{c.location}</td>
+                    <td data-label="Огноо">{c.date}</td>
+                    <td data-label="Нийт дүн" className={styles.amount}>
+                      {money.format(c.grand_total)}₮
+                    </td>
+                    <td data-label="Төлөв">
+                      <span className={`${styles.badge} ${styles[c.status]}`}>
+                        {c.status === "draft"
+                          ? "Ноорог"
+                          : c.status === "approved"
+                            ? "Баталгаажсан"
+                            : "Тооцоолсон"}
+                      </span>
+                    </td>
+                    <td data-label="Үйлдэл" className={styles.actions}>
+                      <button
+                        aria-label="Харах, засах"
+                        title="Харах/засах"
+                        onClick={() => edit(c.id)}
+                      >
+                        <Pencil />
+                      </button>
+                      <button
+                        aria-label="Хуулбарлах"
+                        title="Хуулбарлах"
+                        onClick={() => copyCalculation(c.id)}
+                      >
+                        <Copy />
+                      </button>
+                      <a
+                        aria-label="Excel татах"
+                        title="Албан ёсны Excel татах"
+                        href={`/api/calculations/export?id=${c.id}&format=xlsx`}
+                      >
+                        <Download />
+                      </a>
+                      <a
+                        aria-label="Word татах"
+                        title="Албан ёсны Word татах"
+                        href={`/api/calculations/export?id=${c.id}&format=docx`}
+                      >
+                        <FileText />
+                      </a>
+                      <a
+                        aria-label="PDF татах"
+                        title="PDF татах"
+                        href={`/api/calculations/export?id=${c.id}&format=pdf`}
+                      >
+                        <FilePlus2 />
+                      </a>
+                      <button
+                        aria-label="Устгах"
+                        title="Устгах"
+                        onClick={() => remove(c.id)}
+                      >
+                        <Trash2 />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+      {tab === "form" && (
+        <div className={styles.formLayout}>
+          <div className={styles.formMain}>
+            <div className={styles.card}>
+              <h2>Ажлын багцаас үүсгэх</h2>
+              <div className={styles.grid}>
+                <label>
+                  Ажлын багц
+                  <select
+                    defaultValue=""
+                    onChange={(e) => void applyPackage(Number(e.target.value))}
+                  >
+                    <option value="">Багц сонгох…</option>
+                    {packages
+                      .filter((p) => p.active)
+                      .map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.code} · {p.name} ({p.base_unit})
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label>
+                  Ажлын тоо хэмжээ
+                  <input
+                    type="number"
+                    min="0.0001"
+                    value={form.quantity}
+                    onChange={(e) => update("quantity", num(e.target.value))}
+                  />
+                </label>
+              </div>
+              <small>
+                Багц сонгоход норм ба тухайн үеийн үнэ тооцооллын snapshot болж
+                хуулна.
+              </small>
+            </div>
+            <div className={styles.card}>
+              <h2>Ерөнхий мэдээлэл</h2>
+              <div className={styles.grid}>
+                <label>
+                  Тооцооллын №<input value={form.calculation_number} disabled />
+                </label>
+                <label>
+                  Огноо
+                  <input
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => update("date", e.target.value)}
+                  />
+                </label>
+                <label>
+                  Ажлын нэр
+                  <input
+                    value={form.work_name}
+                    onChange={(e) => update("work_name", e.target.value)}
+                  />
+                </label>
+                <label>
+                  Ажлын төрөл
+                  <input
+                    value={form.work_type || ""}
+                    onChange={(e) => update("work_type", e.target.value)}
+                  />
+                </label>
+                <label>
+                  Байршил
+                  <input
+                    value={form.location}
+                    onChange={(e) => update("location", e.target.value)}
+                  />
+                </label>
+                <label>
+                  Төлөв
+                  <select
+                    value={form.status}
+                    onChange={(e) => update("status", e.target.value)}
+                  >
+                    <option value="draft">Ноорог</option>
+                    <option value="calculated">Тооцоолсон</option>
+                    <option value="approved">Баталгаажсан</option>
+                  </select>
+                </label>
+                <label>
+                  Тоо хэмжээ
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.quantity}
+                    onChange={(e) => update("quantity", num(e.target.value))}
+                  />
+                </label>
+                <label>
+                  Хэмжих нэгж
+                  <input
+                    value={form.unit}
+                    onChange={(e) => update("unit", e.target.value)}
+                  />
+                </label>
+                <label className={styles.full}>
+                  Ажлын тайлбар
+                  <textarea
+                    value={form.description || ""}
+                    onChange={(e) => update("description", e.target.value)}
+                  />
+                </label>
+              </div>
+            </div>
+            <LineSection
+              title="Материал"
+              addLabel="Материал нэмэх"
+              onAdd={() => addLine("materials")}
+              headers={["Материал", "Нэгж", "Тоо хэмжээ", "Нэгж үнэ", "Нийт"]}
+            >
+              {(form.materials || []).map((r, i) => (
+                <tr key={i}>
+                  <td data-label="Материал">
+                    <MaterialSearchSelect
+                      materials={materials}
+                      selectedId={relationId(r.material_id)}
+                      onSelect={(id) => selectMaterial(i, id)}
+                      onClear={() => clearMaterial(i)}
+                    />
+                    <small>{String(r.category || "")}</small>
+                  </td>
+                  <td data-label="Нэгж">{String(r.unit || "")}</td>
+                  <td data-label="Тоо хэмжээ">
+                    <input
+                      inputMode="decimal"
+                      type="number"
+                      min="0"
+                      value={num(r.quantity)}
+                      onChange={(e) =>
+                        lineUpdate(
+                          "materials",
+                          i,
+                          "quantity",
+                          num(e.target.value),
+                        )
+                      }
+                    />
+                  </td>
+                  <td data-label="Нэгж үнэ">
+                    <input
+                      inputMode="decimal"
+                      type="number"
+                      min="0"
+                      value={num(r.unit_price)}
+                      onChange={(e) =>
+                        lineUpdate(
+                          "materials",
+                          i,
+                          "unit_price",
+                          num(e.target.value),
+                        )
+                      }
+                    />
+                  </td>
+                  <td data-label="Нийт" className={styles.lineTotal}>
+                    {money.format(num(r.quantity) * num(r.unit_price))}₮
+                    <button
+                      aria-label="Материалын мөр устгах"
+                      onClick={() => removeLine("materials", i)}
+                    >
+                      <X />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </LineSection>
+            <LineSection
+              title="Ажлын хөлс"
+              addLabel="Ажлын хөлс нэмэх"
+              onAdd={() => addLine("labor")}
+              headers={[
+                "Ажлын төрөл",
+                "Хүний тоо",
+                "Хугацаа",
+                "Нэгж",
+                "Нэгж үнэлгээ",
+                "Нийт",
+              ]}
+            >
+              {(form.labor || []).map((r, i) => (
+                <tr key={i}>
+                  <td data-label="Ажлын төрөл">
+                    <input
+                      value={String(r.work_type || "")}
+                      onChange={(e) =>
+                        lineUpdate("labor", i, "work_type", e.target.value)
+                      }
+                    />
+                  </td>
+                  <td data-label="Хүний тоо">
+                    <input
+                      inputMode="numeric"
+                      type="number"
+                      min="0"
+                      value={num(r.employee_count)}
+                      onChange={(e) =>
+                        lineUpdate(
+                          "labor",
+                          i,
+                          "employee_count",
+                          num(e.target.value),
+                        )
+                      }
+                    />
+                  </td>
+                  <td data-label="Хугацаа">
+                    <input
+                      inputMode="decimal"
+                      type="number"
+                      min="0"
+                      value={num(r.duration)}
+                      onChange={(e) =>
+                        lineUpdate("labor", i, "duration", num(e.target.value))
+                      }
+                    />
+                  </td>
+                  <td data-label="Нэгж">
+                    <input
+                      value={String(r.unit || "хоног")}
+                      onChange={(e) =>
+                        lineUpdate("labor", i, "unit", e.target.value)
+                      }
+                    />
+                  </td>
+                  <td data-label="Нэгж үнэлгээ">
+                    <input
+                      inputMode="decimal"
+                      type="number"
+                      min="0"
+                      value={num(r.unit_price)}
+                      onChange={(e) =>
+                        lineUpdate(
+                          "labor",
+                          i,
+                          "unit_price",
+                          num(e.target.value),
+                        )
+                      }
+                    />
+                  </td>
+                  <td data-label="Нийт" className={styles.lineTotal}>
+                    {money.format(
+                      num(r.employee_count) *
+                        num(r.duration) *
+                        num(r.unit_price),
+                    )}
+                    ₮
+                    <button
+                      aria-label="Ажлын хөлсний мөр устгах"
+                      onClick={() => removeLine("labor", i)}
+                    >
+                      <X />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </LineSection>
+            <SimpleLines
+              kind="equipment"
+              title="Техник"
+              headers={[
+                "Техникийн нэр",
+                "Ажилласан цаг",
+                "Нэг цагийн үнэ",
+                "Нийт",
+              ]}
+              rows={form.equipment || []}
+              fields={["equipment_name", "hours", "hourly_rate"]}
+              addLine={addLine}
+              lineUpdate={lineUpdate}
+              removeLine={removeLine}
+              money={money}
+            />
+            <SimpleLines
+              kind="transport"
+              title="Тээвэр"
+              headers={["Тээврийн төрөл", "Тоо", "Нэгж үнэ", "Нийт"]}
+              rows={form.transport || []}
+              fields={["transport_type", "quantity", "unit_price"]}
+              addLine={addLine}
+              lineUpdate={lineUpdate}
+              removeLine={removeLine}
+              money={money}
+            />
+            <SimpleLines
+              kind="other"
+              title="Бусад зардал"
+              headers={["Зардлын нэр", "Тайлбар", "Дүн", ""]}
+              rows={form.other || []}
+              fields={["name", "description", "amount"]}
+              addLine={addLine}
+              lineUpdate={lineUpdate}
+              removeLine={removeLine}
+              money={money}
+            />
+            <p className={styles.message}>
+              Зах зээлийн лавлах үнэлгээ: материалын үнэ 2026-08-19-ний эх
+              сурвалжтай; ажлын хөлс, техник, тээврийн санал болгосон үнийг
+              шаардлагатай бол нийлүүлэгчийн үнийн саналаар засна.
+            </p>
+            <div className={styles.formActions}>
+              <button
+                onClick={() => {
+                  setTab("list");
+                  setForm(emptyForm());
+                }}
+              >
+                Болих
+              </button>
+              <button className={styles.primary} disabled={busy} onClick={save}>
+                Хадгалах
+              </button>
+            </div>
+          </div>
+          <aside className={styles.summary}>
+            <h2>Зардлын нэгтгэл</h2>
+            <Summary label="Материалын зардал" value={totals.material} />
+            <Summary label="Ажлын хөлс" value={totals.labor} />
+            <Summary label="Техникийн зардал" value={totals.equipment} />
+            <Summary label="Тээврийн зардал" value={totals.transport} />
+            <Summary label="Бусад зардал" value={totals.other} />
+            <div className={styles.grand}>
+              <span>НИЙТ ТООЦООЛСОН ӨРТӨГ</span>
+              <strong>{money.format(totals.grand)}₮</strong>
+            </div>
+          </aside>
+        </div>
+      )}
+      {tab === "materials" && (
+        <MaterialLibrary
+          materials={materials}
+          canManage={canManageMaterials}
+          reload={reloadAll}
+        />
+      )}
+      {tab === "history" && (
+        <MaterialPriceHistory
+          materials={materials}
+          history={history}
+          canManage={canManageMaterials}
+          reload={reloadAll}
+        />
+      )}
+      {tab === "packages" && (
+        <PackageLibrary
+          packages={packages}
+          materials={materials}
+          laborRates={laborRates}
+          editing={packageForm}
+          setEditing={setPackageForm}
+          reload={reloadAll}
+          setMessage={setMessage}
+        />
+      )}
+      {tab === "laborRates" && (
+        <LaborRateLibrary
+          rates={laborRates}
+          history={laborHistory}
+          isAdmin={isAdmin}
+          reload={reloadAll}
+        />
+      )}
+    </section>
+  );
 }
 
-function LineSection({ title, addLabel, onAdd, headers, children }: { title: string; addLabel: string; onAdd: () => void; headers: string[]; children: React.ReactNode }) { return <div className={styles.card}><div className={styles.sectionTitle}><h2>{title}</h2><button onClick={onAdd}><Plus /> {addLabel}</button></div><div className={`${styles.tableWrap} ${styles.mobileLineCards}`}><table className={styles.lineTable}><thead><tr>{headers.map(h => <th key={h}>{h}</th>)}</tr></thead><tbody>{children}</tbody></table></div></div>; }
-function Summary({ label, value }: { label: string; value: number }) { return <div className={styles.summaryLine}><span>{label}</span><strong>{money.format(value)}₮</strong></div>; }
-function MaterialSearchSelect({ materials, selectedId, onSelect, onClear }: { materials: Material[]; selectedId: number; onSelect: (id: number) => void; onClear: () => void }) {
-  const selected = materials.find(material => material.id === selectedId); const selectedLabel = selected ? `${selected.code} · ${selected.name}` : "";
-  const [query, setQuery] = useState(selectedLabel); const [open, setOpen] = useState(false); const [activeIndex, setActiveIndex] = useState(0);
-  useEffect(() => { if (!open) setQuery(selectedLabel); }, [selectedLabel, open]);
-  const results = useMemo(() => { const normalized = query.trim().toLocaleLowerCase("mn-MN"); return materials.filter(material => material.active && (!normalized || `${material.code} ${material.name} ${material.category}`.toLocaleLowerCase("mn-MN").includes(normalized))).slice(0, 30); }, [materials, query]);
-  function choose(material: Material) { onSelect(material.id); setQuery(`${material.code} · ${material.name}`); setOpen(false); setActiveIndex(0); }
-  return <div className={styles.materialSearch}><Search aria-hidden="true" /><input role="combobox" aria-label="Материал хайх" aria-expanded={open} aria-autocomplete="list" autoComplete="off" placeholder="Код эсвэл материалын нэр бичнэ үү…" value={query} onFocus={() => setOpen(true)} onChange={event => { const value = event.target.value; setQuery(value); setOpen(true); setActiveIndex(0); if (value !== selectedLabel) onClear(); }} onKeyDown={event => { if (event.key === "ArrowDown") { event.preventDefault(); setOpen(true); setActiveIndex(index => Math.min(index + 1, results.length - 1)); } else if (event.key === "ArrowUp") { event.preventDefault(); setActiveIndex(index => Math.max(index - 1, 0)); } else if (event.key === "Enter" && open && results[activeIndex]) { event.preventDefault(); choose(results[activeIndex]); } else if (event.key === "Escape") setOpen(false); }} onBlur={() => window.setTimeout(() => setOpen(false), 150)} />{open && <div className={styles.materialResults} role="listbox">{results.length ? results.map((material, index) => <button type="button" role="option" aria-selected={material.id === selectedId} className={index === activeIndex ? styles.highlighted : ""} key={material.id} onMouseDown={event => event.preventDefault()} onClick={() => choose(material)}><strong>{material.code}</strong><span>{material.name}</span><small>{material.category} · {material.unit} · {money.format(material.current_price)}₮</small></button>) : <p>Тохирох материал олдсонгүй.</p>}</div>}</div>;
+function LineSection({
+  title,
+  addLabel,
+  onAdd,
+  headers,
+  children,
+}: {
+  title: string;
+  addLabel: string;
+  onAdd: () => void;
+  headers: string[];
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={styles.card}>
+      <div className={styles.sectionTitle}>
+        <h2>{title}</h2>
+        <button onClick={onAdd}>
+          <Plus /> {addLabel}
+        </button>
+      </div>
+      <div className={`${styles.tableWrap} ${styles.mobileLineCards}`}>
+        <table className={styles.lineTable}>
+          <thead>
+            <tr>
+              {headers.map((h) => (
+                <th key={h}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>{children}</tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
-function SimpleLines({ kind, title, headers, rows, fields, addLine, lineUpdate, removeLine }: { kind: "equipment" | "transport" | "other"; title: string; headers: string[]; rows: AnyRow[]; fields: string[]; addLine: (k: "equipment" | "transport" | "other") => void; lineUpdate: (k: "equipment" | "transport" | "other", i: number, f: string, v: string | number) => void; removeLine: (k: "equipment" | "transport" | "other", i: number) => void; money: Intl.NumberFormat }) { return <LineSection title={title} addLabel={`${title} нэмэх`} onAdd={() => addLine(kind)} headers={headers}>{rows.map((r, i) => { const total = kind === "equipment" ? num(r.hours) * num(r.hourly_rate) : kind === "transport" ? num(r.quantity) * num(r.unit_price) : num(r.amount); return <tr key={i}>{fields.map((field, fi) => <td data-label={headers[fi]} key={field}><input inputMode={fi > 0 || field === "amount" ? "decimal" : undefined} type={fi > 0 || field === "amount" ? "number" : "text"} min={fi > 0 || field === "amount" ? 0 : undefined} value={String(r[field] ?? "")} onChange={e => lineUpdate(kind, i, field, fi > 0 || field === "amount" ? num(e.target.value) : e.target.value)} /></td>)}<td data-label="Нийт" className={styles.lineTotal}>{money.format(total)}₮<button aria-label={`${title} мөр устгах`} onClick={() => removeLine(kind, i)}><X /></button></td></tr>; })}</LineSection>; }
-function MaterialLibrary({ materials, isAdmin, reload }: { materials: Material[]; isAdmin: boolean; reload: () => Promise<void> }) { const [q, setQ] = useState(""); const [editing, setEditing] = useState<Partial<Material> | null>(null); const filtered = materials.filter(m => `${m.code} ${m.name}`.toLowerCase().includes(q.toLowerCase())); async function saveMaterial() { if (!editing?.name || !editing.category || !editing.unit) return; await fetch("/api/calculations", { method: editing.id ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...editing, resource: "material" }) }); setEditing(null); await reload(); } return <div className={styles.card}><div className={styles.sectionTitle}><h2>Материалын сан <small>{materials.length} материал</small></h2>{isAdmin && <button onClick={() => setEditing({ name: "", category: "", unit: "ш", current_price: 0, active: true })}><Plus />Материал нэмэх</button>}</div><div className={styles.filters}><label><Search /><input placeholder="Код, нэрээр хайх" value={q} onChange={e => setQ(e.target.value)} /></label></div><div className={`${styles.tableWrap} ${styles.mobileCards}`}><table><thead><tr><th>Код</th><th>Материал</th><th>Ангилал</th><th>Нэгж</th><th>Одоогийн үнэ</th><th>Үнийн огноо</th><th>Төлөв</th>{isAdmin && <th />}</tr></thead><tbody>{filtered.map(m => <tr key={m.id}><td data-label="Код">{m.code}</td><td data-label="Материал"><strong>{m.name}</strong><small>{m.price_source || ""}</small></td><td data-label="Ангилал">{m.category}</td><td data-label="Нэгж">{m.unit}</td><td data-label="Одоогийн үнэ">{money.format(m.current_price)}₮</td><td data-label="Үнийн огноо">{m.price_effective_date || "-"}</td><td data-label="Төлөв">{m.active ? "Идэвхтэй" : "Идэвхгүй"}</td>{isAdmin && <td data-label="Үйлдэл"><button aria-label="Материал засах" onClick={() => setEditing(m)}><Pencil /></button></td>}</tr>)}</tbody></table></div>{editing && <div className={styles.modal}><div><h2>{editing.id ? "Материал засах" : "Материал нэмэх"}</h2><label>Нэр<input value={editing.name || ""} onChange={e => setEditing({ ...editing, name: e.target.value })} /></label><label>Ангилал<input value={editing.category || ""} onChange={e => setEditing({ ...editing, category: e.target.value })} /></label><label>Нэгж<input value={editing.unit || ""} onChange={e => setEditing({ ...editing, unit: e.target.value })} /></label><label>Нэгж үнэ<input inputMode="decimal" type="number" min="0" value={editing.current_price || 0} onChange={e => setEditing({ ...editing, current_price: num(e.target.value) })} /></label><label><input type="checkbox" checked={editing.active !== false} onChange={e => setEditing({ ...editing, active: e.target.checked })} /> Идэвхтэй</label><div className={styles.formActions}><button onClick={() => setEditing(null)}>Болих</button><button className={styles.primary} onClick={saveMaterial}>Хадгалах</button></div></div></div>}</div>; }
+function Summary({ label, value }: { label: string; value: number }) {
+  return (
+    <div className={styles.summaryLine}>
+      <span>{label}</span>
+      <strong>{money.format(value)}₮</strong>
+    </div>
+  );
+}
+function MaterialSearchSelect({
+  materials,
+  selectedId,
+  onSelect,
+  onClear,
+}: {
+  materials: Material[];
+  selectedId: number;
+  onSelect: (id: number) => void;
+  onClear: () => void;
+}) {
+  const selected = materials.find((material) => material.id === selectedId);
+  const selectedLabel = selected ? `${selected.code} · ${selected.name}` : "";
+  const [query, setQuery] = useState(selectedLabel);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  useEffect(() => {
+    if (!open) setQuery(selectedLabel);
+  }, [selectedLabel, open]);
+  const results = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase("mn-MN");
+    return materials
+      .filter(
+        (material) =>
+          material.active &&
+          (!normalized ||
+            `${material.code} ${material.name} ${material.category}`
+              .toLocaleLowerCase("mn-MN")
+              .includes(normalized)),
+      )
+      .slice(0, 30);
+  }, [materials, query]);
+  function choose(material: Material) {
+    onSelect(material.id);
+    setQuery(`${material.code} · ${material.name}`);
+    setOpen(false);
+    setActiveIndex(0);
+  }
+  return (
+    <div className={styles.materialSearch}>
+      <Search aria-hidden="true" />
+      <input
+        role="combobox"
+        aria-label="Материал хайх"
+        aria-expanded={open}
+        aria-autocomplete="list"
+        autoComplete="off"
+        placeholder="Код эсвэл материалын нэр бичнэ үү…"
+        value={query}
+        onFocus={() => setOpen(true)}
+        onChange={(event) => {
+          const value = event.target.value;
+          setQuery(value);
+          setOpen(true);
+          setActiveIndex(0);
+          if (value !== selectedLabel) onClear();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            setOpen(true);
+            setActiveIndex((index) => Math.min(index + 1, results.length - 1));
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            setActiveIndex((index) => Math.max(index - 1, 0));
+          } else if (event.key === "Enter" && open && results[activeIndex]) {
+            event.preventDefault();
+            choose(results[activeIndex]);
+          } else if (event.key === "Escape") setOpen(false);
+        }}
+        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
+      />
+      {open && (
+        <div className={styles.materialResults} role="listbox">
+          {results.length ? (
+            results.map((material, index) => (
+              <button
+                type="button"
+                role="option"
+                aria-selected={material.id === selectedId}
+                className={index === activeIndex ? styles.highlighted : ""}
+                key={material.id}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => choose(material)}
+              >
+                <strong>{material.code}</strong>
+                <span>{material.name}</span>
+                <small>
+                  {material.category} · {material.unit} ·{" "}
+                  {money.format(material.current_price)}₮
+                </small>
+              </button>
+            ))
+          ) : (
+            <p>Тохирох материал олдсонгүй.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+function SimpleLines({
+  kind,
+  title,
+  headers,
+  rows,
+  fields,
+  addLine,
+  lineUpdate,
+  removeLine,
+}: {
+  kind: "equipment" | "transport" | "other";
+  title: string;
+  headers: string[];
+  rows: AnyRow[];
+  fields: string[];
+  addLine: (k: "equipment" | "transport" | "other") => void;
+  lineUpdate: (
+    k: "equipment" | "transport" | "other",
+    i: number,
+    f: string,
+    v: string | number,
+  ) => void;
+  removeLine: (k: "equipment" | "transport" | "other", i: number) => void;
+  money: Intl.NumberFormat;
+}) {
+  return (
+    <LineSection
+      title={title}
+      addLabel={`${title} нэмэх`}
+      onAdd={() => addLine(kind)}
+      headers={headers}
+    >
+      {rows.map((r, i) => {
+        const total =
+          kind === "equipment"
+            ? num(r.hours) * num(r.hourly_rate)
+            : kind === "transport"
+              ? num(r.quantity) * num(r.unit_price)
+              : num(r.amount);
+        return (
+          <tr key={i}>
+            {fields.map((field, fi) => (
+              <td data-label={headers[fi]} key={field}>
+                <input
+                  inputMode={
+                    fi > 0 || field === "amount" ? "decimal" : undefined
+                  }
+                  type={fi > 0 || field === "amount" ? "number" : "text"}
+                  min={fi > 0 || field === "amount" ? 0 : undefined}
+                  value={String(r[field] ?? "")}
+                  onChange={(e) =>
+                    lineUpdate(
+                      kind,
+                      i,
+                      field,
+                      fi > 0 || field === "amount"
+                        ? num(e.target.value)
+                        : e.target.value,
+                    )
+                  }
+                />
+              </td>
+            ))}
+            <td data-label="Нийт" className={styles.lineTotal}>
+              {money.format(total)}₮
+              <button
+                aria-label={`${title} мөр устгах`}
+                onClick={() => removeLine(kind, i)}
+              >
+                <X />
+              </button>
+            </td>
+          </tr>
+        );
+      })}
+    </LineSection>
+  );
+}
+function MaterialLibrary({
+  materials,
+  canManage,
+  reload,
+}: {
+  materials: Material[];
+  canManage: boolean;
+  reload: () => Promise<void>;
+}) {
+  const [q, setQ] = useState("");
+  const [category, setCategory] = useState("");
+  const [editing, setEditing] = useState<Partial<Material> | null>(null);
+  const categories = [...new Set(materials.map((m) => m.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "mn"));
+  const filtered = materials
+    .filter((m) => (!category || m.category === category) && `${m.code} ${m.name}`.toLowerCase().includes(q.toLowerCase()))
+    .sort((a, b) => a.category.localeCompare(b.category, "mn") || a.code.localeCompare(b.code));
+  async function saveMaterial() {
+    if (!editing?.name || !editing.category || !editing.unit) return;
+    await fetch("/api/calculations", {
+      method: editing.id ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...editing, resource: "material" }),
+    });
+    setEditing(null);
+    await reload();
+  }
+  return (
+    <div className={styles.card}>
+      <div className={styles.sectionTitle}>
+        <h2>
+          Материалын сан <small>{materials.length} материал</small>
+        </h2>
+        {canManage && (
+          <button
+            onClick={() =>
+              setEditing({
+                name: "",
+                category: "",
+                unit: "ш",
+                current_price: 0,
+                active: true,
+              })
+            }
+          >
+            <Plus />
+            Материал нэмэх
+          </button>
+        )}
+      </div>
+      <div className={styles.filters}>
+        <label>
+          <Search />
+          <input
+            placeholder="Код, нэрээр хайх"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </label>
+        <select value={category} onChange={(e) => setCategory(e.target.value)}>
+          <option value="">Бүх ангилал</option>
+          {categories.map((item) => <option key={item} value={item}>{item}</option>)}
+        </select>
+      </div>
+      <div className={`${styles.tableWrap} ${styles.mobileCards}`}>
+        <table>
+          <thead>
+            <tr>
+              <th>№</th>
+              <th>Код</th>
+              <th>Материал</th>
+              <th>Ангилал</th>
+              <th>Нэгж</th>
+              <th>Одоогийн үнэ</th>
+              <th>Төлөв</th>
+              {canManage && <th />}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((m, index) => (
+              <tr key={m.id}>
+                <td data-label="№">{index + 1}</td>
+                <td data-label="Код">{m.code}</td>
+                <td data-label="Материал">
+                  <strong>{m.name}</strong>
+                </td>
+                <td data-label="Ангилал">{m.category}</td>
+                <td data-label="Нэгж">{m.unit}</td>
+                <td data-label="Одоогийн үнэ">
+                  {money.format(m.current_price)}₮
+                </td>
+                <td data-label="Төлөв">{m.active ? "Идэвхтэй" : "Идэвхгүй"}</td>
+                {canManage && (
+                  <td data-label="Үйлдэл">
+                    <button
+                      aria-label="Материал засах"
+                      onClick={() => setEditing(m)}
+                    >
+                      <Pencil />
+                    </button>
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {editing && (
+        <div className={styles.modal}>
+          <div>
+            <h2>{editing.id ? "Материал засах" : "Материал нэмэх"}</h2>
+            <label>
+              Нэр
+              <input
+                value={editing.name || ""}
+                onChange={(e) =>
+                  setEditing({ ...editing, name: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              Ангилал
+              <input
+                value={editing.category || ""}
+                onChange={(e) =>
+                  setEditing({ ...editing, category: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              Нэгж
+              <input
+                value={editing.unit || ""}
+                onChange={(e) =>
+                  setEditing({ ...editing, unit: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              Нэгж үнэ
+              <input
+                inputMode="decimal"
+                type="number"
+                min="0"
+                value={editing.current_price || 0}
+                onChange={(e) =>
+                  setEditing({ ...editing, current_price: num(e.target.value) })
+                }
+              />
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={editing.active !== false}
+                onChange={(e) =>
+                  setEditing({ ...editing, active: e.target.checked })
+                }
+              />{" "}
+              Идэвхтэй
+            </label>
+            <div className={styles.formActions}>
+              <button onClick={() => setEditing(null)}>Болих</button>
+              <button className={styles.primary} onClick={saveMaterial}>
+                Хадгалах
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MaterialPriceHistory({ materials, history, canManage, reload }: { materials: Material[]; history: AnyRow[]; canManage: boolean; reload: () => Promise<void> }) {
+  const [category, setCategory] = useState(""); const [editing, setEditing] = useState<Partial<Material> | null>(null);
+  const materialById = useMemo(() => new Map(materials.map((material) => [material.id, material])), [materials]);
+  const categories = useMemo(() => [...new Set(materials.map((material) => material.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, "mn")), [materials]);
+  const rows = useMemo(() => history.map((item) => { const id = relationId(item.material_id); return { item, material: materialById.get(id) }; }).filter(({ material }) => !category || material?.category === category), [history, materialById, category]);
+  async function saveMaterial() { if (!editing?.name || !editing.category || !editing.unit) return; const response = await fetch("/api/calculations", { method: editing.id ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...editing, resource: "material" }) }); if (!response.ok) return; setEditing(null); await reload(); }
+  return <div className={styles.card}>
+    <div className={styles.sectionTitle}><h2>Материалын үнийн түүх <small>{rows.length} бүртгэл</small></h2>{canManage && <button onClick={() => setEditing({ name: "", category: "", unit: "ш", current_price: 0, active: true })}><Plus /> Материал нэмэх</button>}</div>
+    <div className={styles.filters}><select value={category} onChange={(event) => setCategory(event.target.value)}><option value="">Бүх ангилал</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
+    <div className={`${styles.tableWrap} ${styles.mobileCards}`}><table><thead><tr><th>№</th><th>Материал</th><th>Ангилал</th><th>Хуучин үнэ</th><th>Шинэ үнэ</th>{canManage && <th>Үйлдэл</th>}</tr></thead><tbody>{rows.map(({ item, material }, index) => <tr key={String(item.id || index)}><td data-label="№">{index + 1}</td><td data-label="Материал"><strong>{material?.code ? `${material.code} · ` : ""}{material?.name || (Array.isArray(item.material_id) ? item.material_id[1] : "")}</strong></td><td data-label="Ангилал">{material?.category || "Ангилалгүй"}</td><td data-label="Хуучин үнэ">{money.format(num(item.old_price))}₮</td><td data-label="Шинэ үнэ">{money.format(num(item.price))}₮</td>{canManage && <td data-label="Үйлдэл">{material && <button aria-label={`${material.name} үнэ засах`} title="Үнэ засах" onClick={() => setEditing(material)}><Pencil /></button>}</td>}</tr>)}</tbody></table></div>
+    {editing && <MaterialEditor editing={editing} setEditing={setEditing} onSave={saveMaterial} />}
+  </div>;
+}
+
+function MaterialEditor({ editing, setEditing, onSave }: { editing: Partial<Material>; setEditing: (value: Partial<Material> | null) => void; onSave: () => void }) {
+  return <div className={styles.modal}><div><h2>{editing.id ? "Материал болон үнэ засах" : "Материал нэмэх"}</h2><label>Нэр<input value={editing.name || ""} onChange={(event) => setEditing({ ...editing, name: event.target.value })} /></label><label>Ангилал<input value={editing.category || ""} onChange={(event) => setEditing({ ...editing, category: event.target.value })} /></label><label>Нэгж<input value={editing.unit || ""} onChange={(event) => setEditing({ ...editing, unit: event.target.value })} /></label><label>Нэгж үнэ<input inputMode="decimal" type="number" min="0" value={editing.current_price || 0} onChange={(event) => setEditing({ ...editing, current_price: num(event.target.value) })} /></label><label><input type="checkbox" checked={editing.active !== false} onChange={(event) => setEditing({ ...editing, active: event.target.checked })} /> Идэвхтэй</label><div className={styles.formActions}><button onClick={() => setEditing(null)}>Болих</button><button className={styles.primary} onClick={onSave}>Хадгалах</button></div></div></div>;
+}
