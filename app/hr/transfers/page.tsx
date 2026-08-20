@@ -57,6 +57,7 @@ export default async function HrTransfersPage({ searchParams }: PageProps) {
         submitEndpoint="/api/hr/transfers"
         submitLabel="Шилжилт бүртгэх"
         successMessage="Шилжилт хөдөлгөөн бүртгэгдлээ."
+        allowRecordDelete
         records={transferRecords.map((record) => ({
           id: record.id,
           employeeName: formatEmployeeDisplayName(record.employeeName),

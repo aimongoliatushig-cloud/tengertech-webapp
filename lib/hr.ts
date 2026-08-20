@@ -3922,6 +3922,17 @@ export async function getEmployeeTransfers(session: AppSession): Promise<HrEmplo
   return records.map((record) => normalizeTransferHistory(record, attachmentsByHistoryId));
 }
 
+export async function deleteEmployeeTransfer(session: AppSession, recordId: number) {
+  await requireHrSpecialistAccess(session);
+  return executeOdooKw<boolean>(
+    "hr.custom.mn.employee.history",
+    "delete_hr_custom_mn_transfer_history",
+    [recordId],
+    {},
+    getConnection(session),
+  );
+}
+
 function ensureDateOrder(value: string, label: string) {
   if (!value) {
     throw new Error(`${label} заавал оруулна уу.`);

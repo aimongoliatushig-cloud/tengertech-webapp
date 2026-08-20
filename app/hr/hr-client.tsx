@@ -321,9 +321,11 @@ function EmployeeIdentity({
 function RegistryEmployeeCard({
   record,
   columns,
+  deleteAction,
 }: {
   record: RegistryRecord;
   columns: RegistryColumn[];
+  deleteAction?: ReactNode;
 }) {
   const idCol = columns.find((column) => column.photoKey);
   const name = idCol ? String(record[idCol.key] ?? "") : "";
@@ -378,6 +380,7 @@ function RegistryEmployeeCard({
           })}
         </dl>
       ) : null}
+      {deleteAction ? <div className={styles.recordActions}>{deleteAction}</div> : null}
     </div>
   );
 }
@@ -4241,6 +4244,7 @@ export function RegistryPage({
   createAnchorLabel = "Шинэ бүртгэл үүсгэх",
   hideCreateAnchor = false,
   allowRecordActions = false,
+  allowRecordDelete = false,
 }: {
   title: string;
   description: string;
@@ -4255,6 +4259,7 @@ export function RegistryPage({
   createAnchorLabel?: string;
   hideCreateAnchor?: boolean;
   allowRecordActions?: boolean;
+  allowRecordDelete?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -4304,10 +4309,10 @@ export function RegistryPage({
   }
 
   async function deleteRecord(record: RegistryRecord) {
-    if (!submitEndpoint || !allowRecordActions || !record.id) {
+    if (!submitEndpoint || (!allowRecordActions && !allowRecordDelete) || !record.id) {
       return;
     }
-    if (!window.confirm("Энэ сахилгын бүртгэлийг устгах уу?")) {
+    if (!window.confirm("Энэ бүртгэлийг устгах уу? Ажилтны одоогийн мэдээлэл өөрчлөгдөхгүй.")) {
       return;
     }
 
@@ -4516,7 +4521,22 @@ export function RegistryPage({
         {records.length && columns.length && columns.some((column) => column.photoKey) ? (
           <div className={styles.registryCardGrid}>
             {records.map((record) => (
-              <RegistryEmployeeCard key={String(record.id)} record={record} columns={columns} />
+              <RegistryEmployeeCard
+                key={String(record.id)}
+                record={record}
+                columns={columns}
+                deleteAction={allowRecordActions || allowRecordDelete ? (
+                  <button
+                    type="button"
+                    className={styles.dangerButton}
+                    disabled={deletePendingId === String(record.id)}
+                    onClick={() => deleteRecord(record)}
+                  >
+                    <Trash2 aria-hidden />
+                    {deletePendingId === String(record.id) ? "Устгаж байна..." : "Устгах"}
+                  </button>
+                ) : undefined}
+              />
             ))}
           </div>
         ) : records.length && columns.length ? (
@@ -4527,7 +4547,7 @@ export function RegistryPage({
                   {columns.map((column) => (
                     <th key={column.key}>{column.label}</th>
                   ))}
-                  {allowRecordActions ? <th>Үйлдэл</th> : null}
+                  {allowRecordActions || allowRecordDelete ? <th>Үйлдэл</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -4555,10 +4575,10 @@ export function RegistryPage({
                         </td>
                       );
                     })}
-                    {allowRecordActions ? (
+                    {allowRecordActions || allowRecordDelete ? (
                       <td>
                         <div className={styles.recordActions}>
-                          <a
+                          {allowRecordActions ? <a
                             href="#new-registry-record"
                             className={styles.secondaryButton}
                             onClick={() => {
@@ -4568,7 +4588,7 @@ export function RegistryPage({
                           >
                             <Pencil aria-hidden />
                             Засах
-                          </a>
+                          </a> : null}
                           <button
                             type="button"
                             className={styles.dangerButton}
