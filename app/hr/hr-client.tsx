@@ -3680,10 +3680,7 @@ export function TimeoffRequestsClient({
   }, [editingRequest, selectedRequestType]);
 
   const visibleRequests = useMemo(() => {
-    // Ноорог (илгээгээгүй) хүсэлтийг жагсаалтад харуулахгүй
-    const base = requests.filter(
-      (request) => request.state !== "draft" && request.requestType === defaultType,
-    );
+    const base = requests.filter((request) => request.requestType === defaultType);
     if (filter === ALL) return base;
     if (filter === "pending") {
       return base.filter((request) => request.state === "submitted" || request.state === "hr_review");
@@ -3723,7 +3720,13 @@ export function TimeoffRequestsClient({
       if (!response.ok) {
         throw new Error(payload.error || "Хүсэлт илгээхэд алдаа гарлаа.");
       }
-      setMessage(editingRequest ? "Хүсэлт шинэчлэгдлээ." : formData.get("intent") === "draft" ? "Ноорог хадгалагдлаа." : "Хүсэлт HR-д илгээгдлээ.");
+      setMessage(
+        editingRequest
+          ? "Хүсэлт шинэчлэгдлээ."
+          : formData.get("intent") === "draft"
+            ? "Ноорог хадгалагдлаа. Жагсаалтаас засаж, илгээж болно."
+            : "Хүсэлт HR-д илгээгдлээ.",
+      );
       setEditingRequest(null);
       setSelectedRequestType(defaultType);
       router.refresh();
@@ -3771,6 +3774,7 @@ export function TimeoffRequestsClient({
         <div className={styles.toolbar}>
           <select value={filter} onChange={(event) => setFilter(event.target.value)}>
             <option value={ALL}>Бүх төлөв</option>
+            <option value="draft">Ноорог</option>
             <option value="pending">Хяналт хүлээж буй</option>
             <option value="submitted">Хүлээгдэж буй</option>
             <option value="hr_review">HR шалгаж байна</option>
@@ -3879,7 +3883,7 @@ export function TimeoffRequestsClient({
                           </button>
                         </>
                       ) : null}
-                      {mode === "department" && !["approved", "rejected", "cancelled"].includes(request.state) ? (
+                      {(mode === "department" || request.state === "draft") && !["approved", "rejected", "cancelled"].includes(request.state) ? (
                         <>
                           <button
                             type="button"
