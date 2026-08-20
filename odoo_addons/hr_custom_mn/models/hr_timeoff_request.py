@@ -171,7 +171,7 @@ class MunicipalHrTimeoffRequest(models.Model):
                 employee = self.env["hr.employee"].sudo().browse(vals["employee_id"]).exists()
             self._check_employee_scope(employee)
         result = super().write(vals)
-        if vals.get("state") and vals.get("state") != "draft":
+        if vals.get("state") in ("submitted", "hr_review", "approved"):
             self._require_attachments()
         return result
 
