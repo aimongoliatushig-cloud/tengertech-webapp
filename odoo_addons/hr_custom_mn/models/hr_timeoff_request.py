@@ -240,6 +240,23 @@ class MunicipalHrTimeoffRequest(models.Model):
                 raise AccessError("Зөвхөн өөрийн илгээсэн хүсэлтийг цуцлах боломжтой.")
         return self.write({"state": "cancelled"})
 
+    @api.model
+    def delete_hr_timeoff_request(self, request_id):
+        request = self.browse(int(request_id)).exists()
+        if not request:
+            raise UserError("Хүсэлт олдсонгүй.")
+        if request.state not in ("draft", "cancelled"):
+            raise UserError("Зөвхөн ноорог эсвэл цуцлагдсан хүсэлтийг устгах боломжтой.")
+        can_delete = (
+            self._current_user_is_hr_reviewer()
+            or request.create_uid == self.env.user
+            or self._employee_in_current_department(request.employee_id)
+        )
+        if not can_delete:
+            raise AccessError("Энэ хүсэлтийг устгах эрх хүрэлцэхгүй байна.")
+        request.sudo().unlink()
+        return True
+
     def _validate_ready_for_submit(self):
         for request in self:
             if not request.employee_id:

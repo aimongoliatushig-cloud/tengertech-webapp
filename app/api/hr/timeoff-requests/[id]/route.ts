@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth";
 import {
+  deleteTimeoffRequest,
   requireHrAccess,
   updateTimeoffRequest,
   type HrTimeoffRequestCreateInput,
@@ -78,5 +79,26 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     }
     console.error("PATCH /api/hr/timeoff-requests/[id] failed:", error);
     return jsonError(error instanceof Error ? error.message : "Хүсэлт засахад алдаа гарлаа.");
+  }
+}
+
+export async function DELETE(_request: Request, ctx: RouteCtx) {
+  const session = await getSession();
+  if (!session) return jsonError("Нэвтрэх шаардлагатай.", 401);
+
+  try {
+    const { id } = await ctx.params;
+    const requestId = Number(id);
+    if (!Number.isFinite(requestId) || requestId <= 0) {
+      return jsonError("Хүсэлтийн дугаар буруу байна.", 400);
+    }
+    await deleteTimeoffRequest(session, requestId);
+    return Response.json({ ok: true });
+  } catch (error) {
+    if (error instanceof Error && error.message === "HR_ACCESS_DENIED") {
+      return jsonError("Хүсэлт устгах эрх хүрэлцэхгүй байна.", 403);
+    }
+    console.error("DELETE /api/hr/timeoff-requests/[id] failed:", error);
+    return jsonError(error instanceof Error ? error.message : "Хүсэлт устгахад алдаа гарлаа.");
   }
 }

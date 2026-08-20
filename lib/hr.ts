@@ -4930,6 +4930,17 @@ export async function actionTimeoffRequest(
   return normalizeTimeoffRequest(result);
 }
 
+export async function deleteTimeoffRequest(session: AppSession, requestId: number) {
+  await requireHrAccess(session);
+  return executeOdooKw<boolean>(
+    "municipal.hr.timeoff.request",
+    "delete_hr_timeoff_request",
+    [requestId],
+    {},
+    getConnection(session),
+  );
+}
+
 function clearanceStateLabel(state: string) {
   switch (state) {
     case "draft":

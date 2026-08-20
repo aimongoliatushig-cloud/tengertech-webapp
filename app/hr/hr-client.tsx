@@ -3651,6 +3651,7 @@ export function TimeoffRequestsClient({
   const [annualLeaveDateFrom, setAnnualLeaveDateFrom] = useState("");
   const [annualLeaveDateTo, setAnnualLeaveDateTo] = useState("");
   const [annualLeaveDays, setAnnualLeaveDays] = useState("");
+  const requestFormRef = useRef<HTMLFormElement>(null);
   const annualLeaveOnlyMode = mode === "hr" && defaultType === "annual_leave";
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Ulaanbaatar",
@@ -3678,6 +3679,11 @@ export function TimeoffRequestsClient({
     setAnnualLeaveDateTo(editingRequest?.dateTo || "");
     setAnnualLeaveDays(editingRequest?.durationDays ? String(editingRequest.durationDays) : "");
   }, [editingRequest, selectedRequestType]);
+
+  useEffect(() => {
+    if (!editingRequest) return;
+    requestFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [editingRequest]);
 
   const visibleRequests = useMemo(() => {
     const base = requests.filter((request) => request.requestType === defaultType);
@@ -3739,6 +3745,7 @@ export function TimeoffRequestsClient({
   }
 
   async function runAction(requestId: number, action: "hr_review" | "approve" | "reject" | "cancel") {
+    if (action === "cancel" && !window.confirm("Энэ хүсэлтийг цуцлах уу?")) return;
     setPending(true);
     setMessage("");
     try {
@@ -3755,6 +3762,24 @@ export function TimeoffRequestsClient({
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Үйлдэл хийхэд алдаа гарлаа.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function deleteRequest(requestId: number) {
+    if (!window.confirm("Энэ хүсэлтийг бүр мөсөн устгах уу? Энэ үйлдлийг буцаах боломжгүй.")) return;
+    setPending(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/hr/timeoff-requests/${requestId}`, { method: "DELETE" });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Хүсэлт устгахад алдаа гарлаа.");
+      if (editingRequest?.id === requestId) setEditingRequest(null);
+      setMessage("Хүсэлт устгагдлаа.");
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Хүсэлт устгахад алдаа гарлаа.");
     } finally {
       setPending(false);
     }
@@ -3904,7 +3929,29 @@ export function TimeoffRequestsClient({
                           >
                             Цуцлах
                           </button>
+                          {request.state === "draft" || request.state === "cancelled" ? (
+                            <button
+                              type="button"
+                              className={`${styles.actionButton} ${styles.actionButtonReject}`}
+                              onClick={() => deleteRequest(request.id)}
+                              disabled={pending}
+                            >
+                              <Trash2 size={16} aria-hidden="true" />
+                              Устгах
+                            </button>
+                          ) : null}
                         </>
+                      ) : null}
+                      {request.state === "cancelled" ? (
+                        <button
+                          type="button"
+                          className={`${styles.actionButton} ${styles.actionButtonReject}`}
+                          onClick={() => deleteRequest(request.id)}
+                          disabled={pending}
+                        >
+                          <Trash2 size={16} aria-hidden="true" />
+                          Устгах
+                        </button>
                       ) : null}
               </div>
             </div>
@@ -3919,8 +3966,8 @@ export function TimeoffRequestsClient({
         ) : null}
       </section>
 
-      {mode === "department" || defaultType === "annual_leave" ? (
-      <form key={editingRequest?.id ?? "new"} className={styles.formPanel} onSubmit={submit} noValidate>
+      {mode === "department" || defaultType === "annual_leave" || editingRequest ? (
+      <form ref={requestFormRef} key={editingRequest?.id ?? "new"} className={styles.formPanel} onSubmit={submit} noValidate>
         <h2>{editingRequest ? "Хүсэлт засах" : selectedRequestType === "annual_leave" ? "Ээлжийн амралт бүртгэх" : "Чөлөө / өвчтэй хүсэлт"}</h2>
         {message ? <p className={isErrorMessage(message) ? styles.errorText : styles.successText}>{message}</p> : null}
         <EmployeeSelect
