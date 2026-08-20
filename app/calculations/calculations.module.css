@@ -47,3 +47,7 @@
   .mobileLineCards .lineTotal{align-items:center;font-size:14px}
   .mobileLineCards .lineTotal button{min-width:38px;min-height:38px;align-items:center;justify-content:center}
 }
+
+.materialSearch{position:relative;display:flex;align-items:center;min-width:270px}.materialSearch>svg{position:absolute;left:11px;z-index:1;width:17px;color:#23833d;pointer-events:none}.materialSearch>input{padding-left:36px!important}.materialResults{position:absolute;z-index:60;top:calc(100% + 5px);left:0;width:min(480px,80vw);max-height:300px;overflow:auto;border:1px solid #bfd8c5;border-radius:11px;background:#fff;box-shadow:0 14px 34px rgba(20,60,30,.18)}.materialResults button{display:grid;width:100%;gap:2px;border:0;border-bottom:1px solid #edf2ee;background:#fff;padding:9px 12px;text-align:left;color:#17281d;cursor:pointer}.materialResults button:hover,.materialResults .highlighted{background:#e9f6ec}.materialResults button strong{color:#197733}.materialResults button span{font-weight:600}.materialResults button small{margin:0;color:#748078}.materialResults p{margin:0;padding:14px;color:#748078}
+
+@media(max-width:720px){.materialSearch{min-width:0;width:62%}.materialResults{right:0;left:auto;width:min(430px,90vw)}}
