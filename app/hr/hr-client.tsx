@@ -3650,6 +3650,7 @@ export function TimeoffRequestsClient({
   const [selectedRequestType, setSelectedRequestType] = useState<HrTimeoffRequestType>(defaultType);
   const [annualLeaveDateFrom, setAnnualLeaveDateFrom] = useState("");
   const [annualLeaveDateTo, setAnnualLeaveDateTo] = useState("");
+  const [annualLeaveDays, setAnnualLeaveDays] = useState("");
   const annualLeaveOnlyMode = mode === "hr" && defaultType === "annual_leave";
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Ulaanbaatar",
@@ -3675,6 +3676,7 @@ export function TimeoffRequestsClient({
     if (selectedRequestType !== "annual_leave") return;
     setAnnualLeaveDateFrom(editingRequest?.dateFrom || "");
     setAnnualLeaveDateTo(editingRequest?.dateTo || "");
+    setAnnualLeaveDays(editingRequest?.durationDays ? String(editingRequest.durationDays) : "");
   }, [editingRequest, selectedRequestType]);
 
   const visibleRequests = useMemo(() => {
@@ -3829,6 +3831,12 @@ export function TimeoffRequestsClient({
                     {request.dateFrom} - {request.dateTo}
                   </dd>
                 </div>
+                {request.requestType === "annual_leave" ? (
+                  <div>
+                    <dt>Амралтын хоног</dt>
+                    <dd>{request.durationDays} хоног</dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt>Илгээсэн</dt>
                   <dd>{request.submittedBy || "Бүртгээгүй"}</dd>
@@ -3957,6 +3965,20 @@ export function TimeoffRequestsClient({
                 required
                 value={annualLeaveDateTo}
                 onChange={(event) => setAnnualLeaveDateTo(formatDateInput(event.target.value))}
+              />
+            </label>
+            <label className={styles.field}>
+              <span>Амралтын хоног</span>
+              <input
+                name="durationDays"
+                type="number"
+                inputMode="numeric"
+                min="1"
+                step="1"
+                placeholder="Жишээ: 15"
+                required
+                value={annualLeaveDays}
+                onChange={(event) => setAnnualLeaveDays(event.target.value.replace(/[^0-9]/g, ""))}
               />
             </label>
           </div>

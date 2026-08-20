@@ -626,6 +626,7 @@ export type HrTimeoffRequestCreateInput = {
   requestType: HrTimeoffRequestType;
   dateFrom: string;
   dateTo: string;
+  durationDays?: number;
   reason: string;
   orderNumber?: string;
   note?: string;
@@ -4852,6 +4853,7 @@ export async function createTimeoffRequest(session: AppSession, data: HrTimeoffR
           requestType: data.requestType,
           dateFrom: data.dateFrom,
           dateTo: data.dateTo,
+          durationDays: data.durationDays,
           orderNumber: data.orderNumber,
           reason: data.reason,
           note: data.note,
@@ -4885,6 +4887,7 @@ export async function updateTimeoffRequest(session: AppSession, requestId: numbe
           requestType: data.requestType,
           dateFrom: data.dateFrom,
           dateTo: data.dateTo,
+          durationDays: data.durationDays,
           orderNumber: data.orderNumber,
           reason: data.reason,
           note: data.note,

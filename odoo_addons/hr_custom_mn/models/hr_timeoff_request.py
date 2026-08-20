@@ -89,7 +89,7 @@ class MunicipalHrTimeoffRequest(models.Model):
         required=True,
     )
     active = fields.Boolean(default=True)
-    duration_days = fields.Integer(string="Нийт өдөр", compute="_compute_duration_days", store=True)
+    duration_days = fields.Integer(string="Амралтын хоног", default=0, tracking=True)
     is_current = fields.Boolean(string="Өнөөдөр хүчинтэй", compute="_compute_current_flags")
     current_status_effect = fields.Selection(
         [("none", "Нөлөөгүй"), ("time_off", "Чөлөөтэй"), ("annual_leave", "Ээлжийн амралттай"), ("sick", "Өвчтэй")],
@@ -104,14 +104,6 @@ class MunicipalHrTimeoffRequest(models.Model):
         for request in self:
             if request.employee_id.department_id:
                 request.department_id = request.employee_id.department_id
-
-    @api.depends("date_from", "date_to")
-    def _compute_duration_days(self):
-        for request in self:
-            if request.date_from and request.date_to and request.date_to >= request.date_from:
-                request.duration_days = (request.date_to - request.date_from).days + 1
-            else:
-                request.duration_days = 0
 
     @api.depends("state", "request_type", "date_from", "date_to")
     def _compute_current_flags(self):
@@ -247,6 +239,8 @@ class MunicipalHrTimeoffRequest(models.Model):
                 raise UserError("Эхлэх болон дуусах огноо заавал оруулна уу.")
             if request.date_to < request.date_from:
                 raise UserError("Дуусах огноо эхлэх огнооноос өмнө байж болохгүй.")
+            if request.request_type == "annual_leave" and request.duration_days <= 0:
+                raise UserError("Ээлжийн амралтын хоногийг оруулна уу.")
             if not (request.reason or "").strip():
                 if request.request_type == "annual_leave":
                     request.reason = "Ээлжийн амралт"
@@ -264,6 +258,8 @@ class MunicipalHrTimeoffRequest(models.Model):
             raise UserError("Эхлэх болон дуусах огноо заавал оруулна уу.")
         if vals.get("date_to") < vals.get("date_from"):
             raise UserError("Дуусах огноо эхлэх огнооноос өмнө байж болохгүй.")
+        if vals.get("request_type") == "annual_leave" and int(vals.get("duration_days") or 0) <= 0:
+            raise UserError("Ээлжийн амралтын хоногийг оруулна уу.")
         if not (vals.get("reason") or "").strip() and vals.get("request_type") == "annual_leave":
             vals["reason"] = "Ээлжийн амралт"
         if not (vals.get("reason") or "").strip():
@@ -386,6 +382,7 @@ class MunicipalHrTimeoffRequest(models.Model):
                 "request_type": payload.get("requestType") or "time_off",
                 "date_from": payload.get("dateFrom"),
                 "date_to": payload.get("dateTo"),
+                "duration_days": int(payload.get("durationDays") or 0),
                 "order_no": payload.get("orderNumber") or "",
                 "reason": payload.get("reason") or ("Ээлжийн амралт" if payload.get("requestType") == "annual_leave" else ""),
                 "note": payload.get("note") or "",
@@ -409,6 +406,8 @@ class MunicipalHrTimeoffRequest(models.Model):
             values["date_from"] = payload.get("dateFrom")
         if "dateTo" in payload:
             values["date_to"] = payload.get("dateTo")
+        if "durationDays" in payload:
+            values["duration_days"] = int(payload.get("durationDays") or 0)
         if "orderNumber" in payload:
             values["order_no"] = payload.get("orderNumber")
         if "reason" in payload:

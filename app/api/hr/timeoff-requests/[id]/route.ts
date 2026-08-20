@@ -16,6 +16,11 @@ function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
+function getNumber(formData: FormData, key: string) {
+  const value = Number(formData.get(key) ?? "");
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
 function files(formData: FormData, key: string) {
   return formData.getAll(key).filter((value): value is File => value instanceof File && value.size > 0);
 }
@@ -46,6 +51,7 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
       requestType: requestType(getString(formData, "requestType")),
       dateFrom: getString(formData, "dateFrom"),
       dateTo: getString(formData, "dateTo"),
+      durationDays: getNumber(formData, "durationDays"),
       orderNumber: getString(formData, "orderNumber"),
       reason: getString(formData, "reason"),
       note: getString(formData, "note"),
@@ -55,6 +61,7 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
 
     if (!input.dateFrom || !input.dateTo) return jsonError("Эхлэх болон дуусах огноо заавал оруулна уу.", 400);
     if (input.dateTo < input.dateFrom) return jsonError("Дуусах огноо эхлэх огнооноос өмнө байж болохгүй.", 400);
+    if (input.requestType === "annual_leave" && !input.durationDays) return jsonError("Ээлжийн амралтын хоногийг оруулна уу.", 400);
     if (!input.reason && input.requestType === "annual_leave") input.reason = "Ээлжийн амралт";
     if (!input.reason) return jsonError("Шалтгаан заавал оруулна уу.", 400);
 

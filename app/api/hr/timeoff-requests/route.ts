@@ -71,6 +71,7 @@ export async function POST(request: Request) {
       requestType: requestType(getString(formData, "requestType")),
       dateFrom: getString(formData, "dateFrom"),
       dateTo: getString(formData, "dateTo"),
+      durationDays: getNumber(formData, "durationDays"),
       orderNumber: getString(formData, "orderNumber"),
       reason: getString(formData, "reason"),
       note: getString(formData, "note"),
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
     if (!input.requestType) return jsonError("Хүсэлтийн төрөл заавал сонгоно уу.", 400);
     if (!input.dateFrom || !input.dateTo) return jsonError("Эхлэх болон дуусах огноо заавал оруулна уу.", 400);
     if (input.dateTo < input.dateFrom) return jsonError("Дуусах огноо эхлэх огнооноос өмнө байж болохгүй.", 400);
+    if (input.requestType === "annual_leave" && !input.durationDays) return jsonError("Ээлжийн амралтын хоногийг оруулна уу.", 400);
     if (!input.reason && input.requestType === "annual_leave") input.reason = "Ээлжийн амралт";
     if (!input.reason) return jsonError("Шалтгаан заавал оруулна уу.", 400);
     if (input.submit && input.requestType === "annual_leave" && !input.files?.length) {
