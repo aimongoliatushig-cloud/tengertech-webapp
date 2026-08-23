@@ -574,7 +574,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
         </section>
       ) : null}
 
-      {categoryStats.length && !selectedUnit ? <section className={styles.categorySection}><h2>Ажлын ангилал</h2><div className={styles.categoryGrid}>{categoryStats.map((category) => { const Icon = category.icon; return <article key={category.key} className={`${styles.categoryCard} ${styles[`category_${category.tone}`]}`}><span className={styles.categoryIcon}><Icon size={22} aria-hidden /></span><span><strong>{category.label}</strong><small>{category.count} ажил</small></span><b>{category.progress}%</b><span className={styles.categoryTrack}><i style={{ width: `${category.progress}%` }} /></span></article>; })}</div></section> : null}
+      {categoryStats.length && !selectedUnit && !departmentParam ? <section className={styles.categorySection}><h2>Ажлын ангилал</h2><div className={styles.categoryGrid}>{categoryStats.map((category) => { const Icon = category.icon; return <article key={category.key} className={`${styles.categoryCard} ${styles[`category_${category.tone}`]}`}><span className={styles.categoryIcon}><Icon size={22} aria-hidden /></span><span><strong>{category.label}</strong><small>{category.count} ажил</small></span><b>{category.progress}%</b><span className={styles.categoryTrack}><i style={{ width: `${category.progress}%` }} /></span></article>; })}</div></section> : null}
 
       <div className={styles.boardGrid}>
       {departments.length ? (
