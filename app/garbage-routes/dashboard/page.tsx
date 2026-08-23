@@ -54,8 +54,10 @@ function distanceMeters(point: GaihamTrackPoint, target: Pick<WastePoint, "latit
   return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+const WASTE_POINT_VISIT_RADIUS_METERS = 10;
+
 function pointVisits(points: GaihamTrackPoint[], wastePoints: WastePoint[]) {
-  const radius = 5;
+  const radius = WASTE_POINT_VISIT_RADIUS_METERS;
   const visits = new Map<string, { point: WastePoint; firstAt: string; lastAt: string; samples: number; closestMeters: number }>();
   for (const gpsPoint of points) {
     let nearest: WastePoint | null = null;
@@ -166,8 +168,8 @@ function matchTicketToGps(
   }
   let start = nearestIndex;
   let end = nearestIndex;
-  while (start > 0 && distanceMeters(points[start - 1], center) <= 5) start -= 1;
-  while (end + 1 < points.length && distanceMeters(points[end + 1], center) <= 5) end += 1;
+  while (start > 0 && distanceMeters(points[start - 1], center) <= WASTE_POINT_VISIT_RADIUS_METERS) start -= 1;
+  while (end + 1 < points.length && distanceMeters(points[end + 1], center) <= WASTE_POINT_VISIT_RADIUS_METERS) end += 1;
   return { entryAt: points[start].getTime, exitAt: points[end].getTime, closestMeters: nearestDistance };
 }
 
@@ -254,7 +256,7 @@ export default async function GarbageRouteDashboardPage({ searchParams }: PagePr
         {vehicle.tickets.length ? <div className={styles.weightTrips}><h4>Морингийн хогийн цэгийн жингийн бүртгэл</h4>{vehicle.tickets.map((ticket) => <div className={styles.weightTrip} key={ticket.id}><div><strong>Тасалбар {ticket.ticket_number || ticket.id}</strong><small>Жинлэсэн: {String(ticket.report_time || "-").slice(0, 8)}</small></div><div><span>Орсон</span><b>{ticket.gps.entryAt ? timeLabel(ticket.gps.entryAt) : "GPS таараагүй"}</b></div><div><span>Гарсан</span><b>{ticket.gps.exitAt ? timeLabel(ticket.gps.exitAt) : "GPS таараагүй"}</b></div><div><span>Цэвэр жин</span><b>{((Number(ticket.garbage_weight_kg) || 0) / 1000).toFixed(2)} тн</b></div></div>)}</div> : null}
         {vehicle.visits.length ? <ol className={styles.visits}>{vehicle.visits.map((visit) => <li key={visit.point.id}>
           <Link className={styles.visitMapLink} href={`/waste-points/map?point=${encodeURIComponent(visit.point.id)}`} title="Газрын зураг дээр харах"><span className={styles.visitNumber}>{visit.point.code}</span><div><strong>{visit.point.name}</strong><small>{visit.point.khorooName} · {Math.round(visit.closestMeters)} м дотор · Газрын зураг нээх</small></div></Link><div className={styles.visitTime}><strong>{timeLabel(visit.firstAt)}–{timeLabel(visit.lastAt)}</strong><small>{durationMinutes(visit.firstAt, visit.lastAt)} минут · GPS баталгаатай</small></div>
-        </li>)}</ol> : <p className={styles.emptyVisits}>Бүртгэлтэй хогийн цэгийн 5 метрийн радиуст очсон GPS цэг илрээгүй.</p>}
+        </li>)}</ol> : <p className={styles.emptyVisits}>Бүртгэлтэй хогийн цэгийн 10 метрийн радиуст очсон GPS цэг илрээгүй.</p>}
       </details>) : <div className={styles.empty}>Энэ өдөр Gaiham GPS хөдөлгөөний мэдээлэл бүртгэгдээгүй байна.</div>}
     </section>
   </main>;
