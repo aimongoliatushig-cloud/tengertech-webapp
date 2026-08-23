@@ -100,6 +100,12 @@ function matchesGreenServiceUnit(task: TaskDirectoryItem, unit: GreenServiceUnit
   const operationType = task.operationType.toLocaleLowerCase("mn-MN");
   const greenOperation = operationType === "green_maintenance";
   const cleaningOperation = ["street_cleaning", "road_area_cleaning"].includes(operationType);
+  const taskName = task.name.toLocaleLowerCase("mn-MN");
+  const nonRoadCleaningKeywords = ["малын сэг", "сэг зэм"];
+
+  // Малын сэг зэм устгал, тээвэрлэлт нь зам талбайн цэвэрлэгээний
+  // гүйцэтгэл биш тул энэ хоёр нэгжийн самбарт оруулахгүй.
+  if (nonRoadCleaningKeywords.some((keyword) => taskName.includes(keyword))) return false;
   // Project names often contain the combined department title
   // ("Ногоон байгууламж, цэвэрлэгээ үйлчилгээ..."). Using that title for
   // keyword inference puts every green task into the cleaning unit as well.
@@ -107,7 +113,6 @@ function matchesGreenServiceUnit(task: TaskDirectoryItem, unit: GreenServiceUnit
   if (greenOperation) return unit === "Ногоон байгууламж";
   if (cleaningOperation) return unit === "Цэвэрлэгээ үйлчилгээ";
 
-  const taskName = task.name.toLocaleLowerCase("mn-MN");
   const greenKeywords = ["ногоон байгууламж", "мод", "зүлэг", "ургамал", "усалгаа", "цэцэг"];
   const cleaningKeywords = ["зам талбай", "замын", "гудамж", "цэвэрлэгээ", "цэвэрлэх", "ариутгал"];
   const greenByName = greenKeywords.some((keyword) => taskName.includes(keyword));
