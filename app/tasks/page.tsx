@@ -1658,7 +1658,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
             <section className={styles.filterPanel} aria-label="Ажлын төлөвөөр шүүх">
               {seniorMasterMode ? (
                 <div className={styles.filterScroller}>
-                  {([ 
+                  {([
                     { key: "today", label: "Өнөөдрийн ажил", count: masterDashboardProjects.length },
                     { key: "review", label: "Хянах ажил", count: seniorMasterReviewTasks.length },
                   ] satisfies Array<{ key: MasterTabKey; label: string; count: number }>).map((tab) => {
