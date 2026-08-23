@@ -6506,13 +6506,29 @@
 @media (max-width: 720px) {
   .dateFilterBar {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .dateFilterBar label,
   .dateFilterBar .primaryButton,
   .dateFilterBar .secondaryButton {
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .dateFilterBar input[type="date"],
+  .dateFilterBar input[type="search"],
+  .dateFilterBar select {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .shell {
