@@ -320,7 +320,6 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
     return true;
   });
 
-  const employeeOptions = Array.from(new Set(unitTasks.map((task) => task.leaderName).filter(Boolean))).sort((a, b) => a.localeCompare(b, "mn"));
 
   const groups = new Map<string, { name: string; tasks: TaskDirectoryItem[] }>();
   for (const task of baseTasks) {
@@ -574,41 +573,12 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
         {selectedUnit ? <input type="hidden" name="unit" value={selectedUnit} /> : null}
         {scopedDepartmentName || departmentParam ? (
           <input type="hidden" name="department" value={departmentParam || scopedDepartmentName || ""} />
-        ) : (
-          <label className={shellStyles.departmentFilterField}>
-            <span>Хэлтэс / алба</span>
-            <select name="department" defaultValue={departmentParam || "all"}>
-              <option value="all">Бүх хэлтэс</option>
-              {DEPARTMENT_GROUPS.map((department) => (
-                <option key={department.name} value={department.name}>
-                  {department.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        ) : null}
         <label className={shellStyles.dateFilterSearch}>
           <span>Ажил, даалгаврын нэр</span>
           <span className={styles.searchWrap}><Search size={15} aria-hidden /><input type="search" name="search" defaultValue={searchFilter} placeholder="Ажил, даалгавар хайх..." /></span>
         </label>
-        <label><span>Хариуцагч</span><select name="employee" defaultValue={employeeFilter}><option value="">Бүгд</option>{employeeOptions.map((employee) => <option key={employee} value={employee}>{employee}</option>)}</select></label>
-        <label>
-          <span>Төлөв</span>
-          <select name="status" defaultValue={selectedStatus}>
-            {STATUS_FILTERS.map((filter) => (
-              <option key={filter.key} value={filter.key}>{filter.label}</option>
-            ))}
-          </select>
-        </label>
         <label><span>Хугацаа</span><select name="period" defaultValue={periodFilter}><option value="all">Бүгд</option><option value="today">Өнөөдөр</option><option value="week">7 хоног</option><option value="month">Энэ сар</option></select></label>
-        <label>
-          <span>Эхлэх огноо</span>
-          <input type="date" name="dateFrom" defaultValue={dateFrom} max={dateTo || undefined} />
-        </label>
-        <label>
-          <span>Дуусах огноо</span>
-          <input type="date" name="dateTo" defaultValue={dateTo} min={dateFrom || undefined} />
-        </label>
         <button type="submit" className={shellStyles.primaryButton}>Шүүх</button>
         {hasListFilter ? (
           <Link href={clearFilterHref} className={shellStyles.secondaryButton}>Шүүлтүүр арилгах</Link>
