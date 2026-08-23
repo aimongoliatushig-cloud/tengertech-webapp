@@ -64,6 +64,15 @@ type FilterKey = "all" | "planned" | "review" | "verified";
 type MasterTabKey = "today" | "review";
 type MasterStatusFilter = "all" | "todo" | "overdue" | "review" | "done";
 type QuickActionMode = "none" | "report";
+type TaskCategoryKey = "green" | "cleaning" | "waste" | "repair" | "improvement";
+
+const TASK_CATEGORIES = [
+  { key: "green", label: "Ногоон байгууламж", keywords: ["ногоон", "мод", "зүлэг"], icon: Trees, tone: "green" },
+  { key: "cleaning", label: "Цэвэрлэгээ", keywords: ["цэвэрлэгээ", "зам талбай"], icon: Trash2, tone: "blue" },
+  { key: "waste", label: "Хог тээвэр", keywords: ["хог", "тээвэр"], icon: Truck, tone: "orange" },
+  { key: "repair", label: "Техник, засвар", keywords: ["техник", "засвар"], icon: Wrench, tone: "purple" },
+  { key: "improvement", label: "Тохижилт", keywords: ["тохижилт"], icon: Leaf, tone: "teal" },
+] as const;
 
 type PageProps = {
   searchParams?: Promise<{
@@ -77,6 +86,7 @@ type PageProps = {
     q?: string | string[];
     status?: string | string[];
     employee?: string | string[];
+    category?: string | string[];
   }>;
 };
 
@@ -601,6 +611,10 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const masterSearchQuery = getParam(params.q).trim();
   const masterStatusFilter = normalizeMasterStatus(getParam(params.status));
   const masterEmployeeFilter = getParam(params.employee).trim();
+  const requestedCategory = getParam(params.category);
+  const selectedTaskCategory: TaskCategoryKey | "" = TASK_CATEGORIES.some((category) => category.key === requestedCategory)
+    ? requestedCategory as TaskCategoryKey
+    : "";
   const requestedWorkNameKey = normalizeWorkName(requestedWorkName);
   const hasRequestedWorkerWork = Boolean(requestedWorkId || requestedWorkNameKey);
   const todayDateKey = getTodayDateKey();
@@ -841,6 +855,13 @@ export default async function TasksPage({ searchParams }: PageProps) {
       };
 
   const normalizedTaskSearch = masterSearchQuery.toLocaleLowerCase("mn-MN");
+  const matchesTaskCategory = (task: (typeof scopedTasks)[number], categoryKey: TaskCategoryKey) => {
+    const category = TASK_CATEGORIES.find((item) => item.key === categoryKey);
+    if (!category) return true;
+    const searchableText = `${task.departmentName} ${task.projectName} ${task.operationTypeLabel}`
+      .toLocaleLowerCase("mn-MN");
+    return category.keywords.some((keyword) => searchableText.includes(keyword));
+  };
   const visibleTasks = scopedTasks.filter((task) => {
     if (selectedFilter === "all") {
       // Continue with the shared text/status filters below.
@@ -853,13 +874,14 @@ export default async function TasksPage({ searchParams }: PageProps) {
         .join(" ")
         .toLocaleLowerCase("mn-MN")
         .includes(normalizedTaskSearch);
+    const matchesCategory = !selectedTaskCategory || matchesTaskCategory(task, selectedTaskCategory);
     const matchesStatus =
       masterStatusFilter === "all" ||
       (masterStatusFilter === "done" && task.statusKey === "verified") ||
       (masterStatusFilter === "review" && (task.statusKey === "review" || task.statusKey === "problem")) ||
       (masterStatusFilter === "overdue" && task.statusKey !== "verified" && Boolean(task.scheduledDate) && (task.scheduledDate ?? "") < todayDateKey) ||
       (masterStatusFilter === "todo" && task.statusKey !== "verified" && task.statusKey !== "review" && task.statusKey !== "problem");
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesCategory && matchesStatus;
   });
 
   const dashboardOverdueTasks = scopedTasks.filter(
@@ -875,21 +897,9 @@ export default async function TasksPage({ searchParams }: PageProps) {
   const dashboardProgress = scopedTasks.length
     ? Math.round(scopedTasks.reduce((total, task) => total + task.progress, 0) / scopedTasks.length)
     : 0;
-  const dashboardCategories = [
-    { label: "Ногоон байгууламж", keywords: ["ногоон", "мод", "зүлэг"], icon: Trees, tone: "green" },
-    { label: "Цэвэрлэгээ", keywords: ["цэвэрлэгээ", "зам талбай"], icon: Trash2, tone: "blue" },
-    { label: "Хог тээвэр", keywords: ["хог", "тээвэр"], icon: Truck, tone: "orange" },
-    { label: "Техник, засвар", keywords: ["техник", "засвар"], icon: Wrench, tone: "purple" },
-    { label: "Тохижилт", keywords: ["тохижилт"], icon: Leaf, tone: "teal" },
-  ].map((category) => ({
+  const dashboardCategories = TASK_CATEGORIES.map((category) => ({
     ...category,
-    tasks: scopedTasks.filter((task) =>
-      category.keywords.some((keyword) =>
-        `${task.departmentName} ${task.projectName} ${task.operationTypeLabel}`
-          .toLocaleLowerCase("mn-MN")
-          .includes(keyword),
-      ),
-    ),
+    tasks: scopedTasks.filter((task) => matchesTaskCategory(task, category.key)),
   }));
   const dashboardUpcomingTasks = [...scopedTasks]
     .filter((task) => task.statusKey !== "verified" && Boolean(task.scheduledDate))
@@ -1640,12 +1650,21 @@ export default async function TasksPage({ searchParams }: PageProps) {
                         const progress = category.tasks.length
                           ? Math.round(category.tasks.reduce((sum, task) => sum + task.progress, 0) / category.tasks.length)
                           : 0;
+                        const categoryParams = new URLSearchParams();
+                        if (selectedDepartmentParam) categoryParams.set("department", selectedDepartmentParam);
+                        if (masterStatusFilter !== "all") categoryParams.set("status", masterStatusFilter);
+                        categoryParams.set("category", category.key);
                         return (
-                          <article key={category.label} className={`${styles.taskCategoryCard} ${styles[`taskCategory${category.tone}`]}`}>
+                          <Link
+                            key={category.label}
+                            href={`/tasks?${categoryParams.toString()}`}
+                            className={`${styles.taskCategoryCard} ${styles.taskCategoryLink} ${styles[`taskCategory${category.tone}`]} ${selectedTaskCategory === category.key ? styles.taskCategorySelected : ""}`}
+                            aria-current={selectedTaskCategory === category.key ? "page" : undefined}
+                          >
                             <Icon size={24} strokeWidth={2.1} aria-hidden="true" />
                             <div><strong>{category.label}</strong><small>{category.tasks.length} ажил</small></div>
                             <span><i style={{ width: `${progress}%` }} /></span><b>{progress}%</b>
-                          </article>
+                          </Link>
                         );
                       })}
                     </div>
@@ -1727,6 +1746,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 </form>
               ) : (
                 <form className={styles.taskDashboardFilters} method="get" aria-label="Даалгавар шүүх">
+                  {selectedTaskCategory ? <input type="hidden" name="category" value={selectedTaskCategory} /> : null}
                   <label className={styles.taskSearchField}>
                     <Search size={17} aria-hidden="true" />
                     <input name="q" type="search" defaultValue={masterSearchQuery} placeholder="Ажил, даалгавар хайх..." />
