@@ -510,6 +510,65 @@ export async function archiveCleaningTeamAction(formData: FormData) {
   }
 }
 
+export async function createRecurringWorkTemplateAction(formData: FormData) {
+  const session = await requireSession();
+  if (!hasCapability(session, "create_tasks")) {
+    redirectWithStatus("error", "Давтагдах ажлын загвар үүсгэх эрхгүй байна.", "recurring-work");
+  }
+
+  const connection = { login: session.login, password: session.password };
+  const name = getText(formData, "name");
+  const categoryId = getOptionalId(formData, "category_id");
+  const unitId = getOptionalId(formData, "unit_id");
+  const responsibleEmployeeId = getOptionalId(formData, "responsible_employee_id");
+  const startDate = getText(formData, "start_date") || getTodayValue();
+  const endDate = getText(formData, "end_date");
+  const dailyQuantity = Number(getText(formData, "daily_planned_quantity") || "0");
+
+  if (!name || !categoryId || !unitId) {
+    redirectWithStatus("error", "Ажлын нэр, ангилал, хэмжих нэгжийг бүрэн сонгоно уу.", "recurring-work");
+  }
+
+  try {
+    const departmentId = await loadGreenCleaningDepartmentId(connection);
+    if (!departmentId) {
+      throw new Error("Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс олдсонгүй.");
+    }
+    const code = `DAILY-${Date.now().toString(36).toUpperCase()}`;
+    await createOdooRecord(
+      "green.clean.work.template",
+      {
+        name,
+        code,
+        department_id: departmentId,
+        category_id: categoryId,
+        unit_id: unitId,
+        work_kind: "recurring",
+        frequency: "daily",
+        daily_planned_quantity: Number.isFinite(dailyQuantity) && dailyQuantity >= 0 ? dailyQuantity : 0,
+        responsible_employee_id: responsibleEmployeeId || false,
+        start_date: startDate,
+        end_date: endDate || false,
+        generation_time: 5,
+        requires_photo: formData.get("requires_photo") === "on",
+        requires_gps: formData.get("requires_gps") === "on",
+        requires_approval: formData.get("requires_approval") === "on",
+        active: true,
+      },
+      connection,
+    );
+    revalidatePath("/cleaning-areas");
+    redirectWithStatus("notice", "Өдөр тутмын давтагдах ажлын загвар хадгалагдлаа.", "recurring-work");
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    redirectWithStatus(
+      "error",
+      error instanceof Error ? error.message : "Ажлын загвар хадгалахад алдаа гарлаа.",
+      "recurring-work",
+    );
+  }
+}
+
 export async function importEcoRoadInspectionsAction() {
   const session = await requireSession();
   if (!hasCapability(session, "create_projects")) {

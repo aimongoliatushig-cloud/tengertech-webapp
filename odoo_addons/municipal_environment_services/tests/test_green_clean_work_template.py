@@ -57,3 +57,19 @@ class TestGreenCleanWorkTemplate(TransactionCase):
             ),
             1,
         )
+
+    def test_thursday_schedule(self):
+        thursday = self.env.ref("municipal_environment_services.green_clean_weekday_3")
+        template = self._template(
+            work_kind="recurring",
+            frequency="weekdays",
+            weekday_ids=[(6, 0, [thursday.id])],
+        )
+        self.assertFalse(template._should_generate_on(date(2026, 8, 19)))  # Wednesday
+        self.assertTrue(template._should_generate_on(date(2026, 8, 20)))  # Thursday
+
+    def test_semi_monthly_schedule(self):
+        template = self._template(work_kind="recurring", frequency="semi_monthly")
+        self.assertTrue(template._should_generate_on(date(2026, 8, 15)))
+        self.assertTrue(template._should_generate_on(date(2026, 8, 30)))
+        self.assertFalse(template._should_generate_on(date(2026, 8, 31)))

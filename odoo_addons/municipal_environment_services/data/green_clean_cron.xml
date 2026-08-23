@@ -8,6 +8,7 @@
         <field name="interval_number">1</field>
         <field name="interval_type">days</field>
         <field name="active">True</field>
-        <field name="nextcall">2026-01-01 07:00:00</field>
+        <!-- 20:50 UTC = дараагийн өдрийн 04:50 Asia/Ulaanbaatar -->
+        <field name="nextcall">2026-01-01 20:50:00</field>
     </record>
 </odoo>

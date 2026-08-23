@@ -11,6 +11,7 @@ import {
   createCleaningAreaAction,
   createCleaningTeamAction,
   createTodayCleaningWorksAction,
+  createRecurringWorkTemplateAction,
   updateCleaningTeamAction,
   importEcoRoadInspectionsAction,
 } from "@/app/cleaning-areas/actions";
@@ -33,6 +34,7 @@ import {
   type RoadCleaningEmployeeOption,
 } from "@/lib/workspace";
 import { loadEcoRoadInspections } from "@/lib/ecoroad-import";
+import { executeOdooKw } from "@/lib/odoo";
 
 type PageProps = {
   searchParams?: Promise<{
@@ -105,6 +107,46 @@ function formatWorkingDays(keys: string[]) {
   return labels.length === WORKING_DAY_OPTIONS.length ? "Өдөр бүр" : labels.join(", ");
 }
 
+type NamedRecord = { id: number; name: string };
+type RecurringTemplateRecord = {
+  id: number;
+  name: string;
+  daily_planned_quantity: number;
+  start_date: string | false;
+  end_date: string | false;
+  responsible_employee_id: [number, string] | false;
+  generated_task_count: number;
+  frequency: string;
+  active: boolean;
+};
+
+async function loadRecurringWorkSetup(connection: { login: string; password: string }) {
+  const call = async <T,>(model: string, domain: unknown[], fields: string[]) => {
+    try {
+      return await executeOdooKw<T[]>(model, "search_read", [domain], { fields, order: "name asc" }, connection);
+    } catch {
+      return executeOdooKw<T[]>(model, "search_read", [domain], { fields, order: "name asc" });
+    }
+  };
+  const [templates, categories, units] = await Promise.all([
+    call<RecurringTemplateRecord>("green.clean.work.template", [["work_kind", "=", "recurring"]], [
+      "name", "frequency", "daily_planned_quantity", "start_date", "end_date", "responsible_employee_id", "generated_task_count", "active",
+    ]).catch(() => []),
+    call<NamedRecord>("green.clean.work.category", [["active", "=", true]], ["name"]).catch(() => []),
+    call<NamedRecord>("green.clean.unit", [["active", "=", true]], ["name"]).catch(() => []),
+  ]);
+  return { templates, categories, units };
+}
+
+function recurringFrequencyLabel(value: string) {
+  if (value === "weekdays") return "Пүрэв гараг бүр";
+  if (value === "semi_monthly") return "Сар бүрийн 15, 30-нд";
+  if (value === "daily") return "Өдөр бүр";
+  if (value === "weekly") return "7 хоног бүр";
+  if (value === "monthly") return "Сар бүр";
+  return "Тогтмол давтамжтай";
+}
+
 export default async function CleaningAreasPage({ searchParams }: PageProps) {
   const session = await requireSession();
   if (isWorkerOnly(session)) {
@@ -118,7 +160,7 @@ export default async function CleaningAreasPage({ searchParams }: PageProps) {
     login: session.login,
     password: session.password,
   };
-  const [areaOptions, employeeOptions, subdistrictOptions, teamOptions, sessionDepartmentName, ecoRoadInspections] =
+  const [areaOptions, employeeOptions, subdistrictOptions, teamOptions, sessionDepartmentName, ecoRoadInspections, recurringSetup] =
     await Promise.all([
       loadRoadCleaningAreaOptions(connectionOverrides),
       loadRoadCleaningEmployeeOptions(connectionOverrides),
@@ -126,6 +168,7 @@ export default async function CleaningAreasPage({ searchParams }: PageProps) {
       loadRoadCleaningTeamOptions(connectionOverrides).catch(() => []),
       loadSessionDepartmentName(session),
       loadEcoRoadInspections(),
+      loadRecurringWorkSetup(connectionOverrides),
     ]);
 
   const canCreateProject = hasCapability(session, "create_projects");
@@ -253,6 +296,82 @@ export default async function CleaningAreasPage({ searchParams }: PageProps) {
                   Өнөөдрийн ажил үүсгэх
                 </button>
               </form>
+            </section>
+
+            <section id="recurring-work" className={styles.formCard}>
+              <span className={styles.formBadge}>Ажлын загвар</span>
+              <h2>Өдөр тутам давтагдах ажил</h2>
+              <p>Энд нэг удаа бүртгэсэн ажил өдөр бүр автоматаар тусдаа даалгавар болж үүснэ.</p>
+
+              {canCreateTasks ? (
+                <form action={createRecurringWorkTemplateAction} className={styles.createWorkForm}>
+                  <div className={styles.fieldRow}>
+                    <div className={styles.field}>
+                      <label htmlFor="recurring_name">Ажлын нэр</label>
+                      <input id="recurring_name" name="name" required placeholder="Жишээ: Зам талбай цэвэрлэх" />
+                    </div>
+                    <div className={styles.field}>
+                      <label htmlFor="recurring_category">Ангилал</label>
+                      <select id="recurring_category" name="category_id" required>
+                        <option value="">Сонгох</option>
+                        {recurringSetup.categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                      </select>
+                    </div>
+                    <div className={styles.field}>
+                      <label htmlFor="recurring_unit">Хэмжих нэгж</label>
+                      <select id="recurring_unit" name="unit_id" required>
+                        <option value="">Сонгох</option>
+                        {recurringSetup.units.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className={styles.fieldRow}>
+                    <div className={styles.field}>
+                      <label htmlFor="recurring_quantity">Өдрийн төлөвлөгөөт хэмжээ</label>
+                      <input id="recurring_quantity" name="daily_planned_quantity" type="number" min="0" step="0.01" defaultValue="0" />
+                    </div>
+                    <div className={styles.field}>
+                      <label htmlFor="recurring_employee">Хариуцсан ажилтан</label>
+                      <select id="recurring_employee" name="responsible_employee_id">
+                        <option value="">Дараа сонгох</option>
+                        {employeeOptions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                      </select>
+                    </div>
+                    <div className={styles.field}>
+                      <label htmlFor="recurring_start">Эхлэх огноо</label>
+                      <input id="recurring_start" name="start_date" type="date" defaultValue={todayValue()} required />
+                    </div>
+                    <div className={styles.field}>
+                      <label htmlFor="recurring_end">Дуусах огноо</label>
+                      <input id="recurring_end" name="end_date" type="date" />
+                    </div>
+                  </div>
+                  <div className={styles.buttonRow}>
+                    <label><input type="checkbox" name="requires_photo" defaultChecked /> Зураг шаардана</label>
+                    <label><input type="checkbox" name="requires_gps" defaultChecked /> GPS шаардана</label>
+                    <label><input type="checkbox" name="requires_approval" defaultChecked /> Батлах шаардлагатай</label>
+                    <button type="submit" className={styles.primaryButton}>Загвар хадгалах</button>
+                  </div>
+                </form>
+              ) : null}
+
+              <div className={styles.settingsList}>
+                {recurringSetup.templates.map((item) => (
+                  <article key={item.id} className={styles.settingsListItem}>
+                    <div className={styles.settingsListHeader}>
+                      <div>
+                        <strong>{item.name}</strong>
+                        <span>{item.responsible_employee_id ? item.responsible_employee_id[1] : "Хариуцагч сонгоогүй"}</span>
+                      </div>
+                      <b>{item.generated_task_count} ажил</b>
+                    </div>
+                    <small>
+                      {recurringFrequencyLabel(item.frequency)} · {item.daily_planned_quantity || 0} · {item.start_date || "Эхлэх огноогүй"}
+                      {item.end_date ? ` – ${item.end_date}` : ""} · {item.active ? "Идэвхтэй" : "Идэвхгүй"}
+                    </small>
+                  </article>
+                ))}
+              </div>
             </section>
 
             <section id="teams" className={styles.formCard}>

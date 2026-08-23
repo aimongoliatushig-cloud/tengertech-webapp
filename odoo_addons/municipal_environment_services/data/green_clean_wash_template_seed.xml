@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <function model="green.clean.work.template" name="seed_recurring_wash_templates"/>
+</odoo>

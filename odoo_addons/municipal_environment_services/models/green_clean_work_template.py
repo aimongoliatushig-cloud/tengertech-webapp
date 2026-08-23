@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import calendar
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
 
 GREEN_CLEAN_DEPARTMENT_NAME = "Ногоон байгууламж, цэвэрлэгээ үйлчилгээний хэлтэс"
+ULAANBAATAR_TZ = ZoneInfo("Asia/Ulaanbaatar")
 
 
 class GreenCleanWorkCategory(models.Model):
@@ -61,6 +63,7 @@ class GreenCleanWorkTemplate(models.Model):
             ("daily", "Өдөр бүр"),
             ("weekly", "7 хоног бүр"),
             ("monthly", "Сар бүр"),
+            ("semi_monthly", "Сар бүрийн 15, 30-нд"),
             ("twice_weekly", "7 хоногт 2 удаа"),
             ("three_weekly", "7 хоногт 3 удаа"),
             ("weekdays", "Тодорхой гараг"),
@@ -90,7 +93,7 @@ class GreenCleanWorkTemplate(models.Model):
     gps_longitude = fields.Float(string="GPS уртраг", digits=(10, 7))
     start_date = fields.Date(string="Эхлэх огноо", required=True, default=fields.Date.context_today)
     end_date = fields.Date(string="Дуусах огноо")
-    generation_time = fields.Float(string="Үүсгэх цаг", default=7.0)
+    generation_time = fields.Float(string="Ажил эхлэх цаг", default=5.0)
     requires_photo = fields.Boolean(string="Фото шаардах", default=True)
     requires_gps = fields.Boolean(string="GPS шаардах", default=True)
     requires_approval = fields.Boolean(string="Батлах шаардах", default=True)
@@ -153,6 +156,8 @@ class GreenCleanWorkTemplate(models.Model):
         if self.frequency == "monthly":
             last_day = calendar.monthrange(target_date.year, target_date.month)[1]
             return target_date.day == min(self.day_of_month, last_day)
+        if self.frequency == "semi_monthly":
+            return target_date.day in (15, 30)
         if self.frequency == "twice_weekly":
             return target_date.weekday() in (0, 3)
         if self.frequency == "three_weekly":
@@ -218,7 +223,14 @@ class GreenCleanWorkTemplate(models.Model):
             planned = template.daily_planned_quantity or template.total_planned_quantity
             if template.work_kind == "quantity" and template.total_planned_quantity:
                 planned = min(planned, remaining)
-            scheduled_start = datetime.combine(target_date, time.min) + timedelta(hours=template.generation_time or 7.0)
+            local_start = datetime.combine(
+                target_date,
+                time.min,
+                tzinfo=ULAANBAATAR_TZ,
+            ) + timedelta(hours=template.generation_time or 5.0)
+            scheduled_start = local_start.astimezone(timezone.utc).replace(tzinfo=None)
+            local_deadline = datetime.combine(target_date, time.max, tzinfo=ULAANBAATAR_TZ)
+            scheduled_deadline = local_deadline.astimezone(timezone.utc).replace(tzinfo=None)
             task_name = "%s — %s" % (target_date.strftime("%Y.%m.%d"), template.name)
             work = self.env["municipal.work"].sudo().create(
                 {
@@ -229,7 +241,7 @@ class GreenCleanWorkTemplate(models.Model):
                     "responsible_employee_id": template.responsible_employee_id.id or False,
                     "manager_id": template.team_leader_id.id or False,
                     "start_datetime": scheduled_start,
-                    "deadline_datetime": datetime.combine(target_date, time.max),
+                    "deadline_datetime": scheduled_deadline,
                     "planned_quantity": planned,
                     "unit_of_measure": template.unit_id.code,
                     "location_text": template.location_name or template.location_id.name or template.khoroo,
@@ -276,7 +288,9 @@ class GreenCleanWorkTemplate(models.Model):
 
     @api.model
     def cron_generate_green_clean_tasks(self):
-        today = fields.Date.context_today(self)
+        # Cron сервер UTC дээр ажилладаг. Өдрийн ажлыг Улаанбаатарын
+        # тухайн өдрөөр үүсгэхгүй бол 04:50-д өмнөх өдрийн ажил үүсдэг.
+        today = datetime.now(ULAANBAATAR_TZ).date()
         templates = self.sudo().search([("active", "=", True), ("work_kind", "in", ["recurring", "quantity"])])
         templates.action_generate_task(today)
         return True
@@ -324,6 +338,59 @@ class GreenCleanWorkTemplate(models.Model):
                     "watering_liters_per_tree": liters,
                 }
             )
+        return True
+
+    @api.model
+    def seed_recurring_wash_templates(self):
+        department = self.env["hr.department"].sudo().search(
+            [("name", "ilike", "Ногоон байгууламж"), ("name", "ilike", "цэвэрлэгээ үйлчилгээ")],
+            limit=1,
+        )
+        if not department:
+            return False
+
+        category_model = self.env["green.clean.work.category"].sudo()
+        unit_model = self.env["green.clean.unit"].sudo()
+        thursday = self.env["green.clean.weekday"].sudo().search([("code", "=", "3")], limit=1)
+        unit_piece = unit_model.search([("code", "=", "ш")], limit=1)
+        unit_meter = unit_model.search([("code", "=", "м")], limit=1)
+        unit_square_meter = unit_model.search([("code", "=", "м²")], limit=1)
+
+        definitions = [
+            ("GC-WASH-BUS-STOP", "Автобусны буудал угаах", "bus_stop_washing", "Автобусны буудлын угаалга", unit_piece, 18, "weekdays"),
+            ("GC-WASH-BIN", "Хогийн сав угаах", "bin_washing", "Хогийн савны угаалга", unit_piece, 16, "weekdays"),
+            ("GC-WASH-MONUMENT", "Хөшөө угаах", "monument_washing", "Хөшөөний угаалга", unit_piece, 1, "weekdays"),
+            ("GC-WASH-SIDEWALK", "Явган зам угаах", "sidewalk_washing", "Явган замын угаалга", unit_square_meter, 0, "weekdays"),
+            ("GC-WASH-FENCE", "Хайс угаах", "fence_washing", "Хайсны угаалга", unit_meter, 0, "weekdays"),
+            ("GC-WASH-CURB", "Хашлага угаах", "curb_washing", "Хашлагын угаалга", unit_meter, 0, "weekdays"),
+            ("GC-WASH-VEHICLE", "Машин угаах", "vehicle_washing", "Машин угаалга", unit_piece, 0, "semi_monthly"),
+        ]
+
+        for sequence, (code, name, category_code, category_name, unit, quantity, frequency) in enumerate(definitions, 320):
+            category = category_model.search([("code", "=", category_code)], limit=1)
+            if not category:
+                category = category_model.create(
+                    {"name": category_name, "code": category_code, "section": "cleaning", "sequence": sequence}
+                )
+            if not unit or self.sudo().search_count([("code", "=", code)]):
+                continue
+            values = {
+                "name": name,
+                "code": code,
+                "department_id": department.id,
+                "category_id": category.id,
+                "unit_id": unit.id,
+                "work_kind": "recurring",
+                "frequency": frequency,
+                "daily_planned_quantity": quantity,
+                "generation_time": 5.0,
+                "requires_photo": True,
+                "requires_gps": True,
+                "requires_approval": True,
+            }
+            if frequency == "weekdays" and thursday:
+                values["weekday_ids"] = [(6, 0, [thursday.id])]
+            self.sudo().create(values)
         return True
 
 

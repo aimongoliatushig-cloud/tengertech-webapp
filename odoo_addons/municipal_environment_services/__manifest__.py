@@ -18,6 +18,7 @@
         "security/ir.model.access.csv",
         "data/green_clean_seed.xml",
         "data/green_clean_template_seed.xml",
+        "data/green_clean_wash_template_seed.xml",
         "data/green_clean_cron.xml",
         "views/municipal_green_views.xml",
         "views/municipal_improvement_views.xml",
