@@ -448,8 +448,6 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
           <a
             className={styles.roadResponsibilityImageLink}
             href="/department-work/naadamchid-road-responsibility.png"
-            target="_blank"
-            rel="noreferrer"
             aria-label="Хариуцсан замын зургийг бүтэн хэмжээгээр нээх"
           >
             <Image
