@@ -539,17 +539,22 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
       >
         {statCards.map((item) => {
           const Icon = item.icon;
+          const cardStatus = item.key === "dept" ? "all" : item.key as StatusFilter;
+          const isActive = item.key !== "dept" && selectedStatus === cardStatus;
           return (
-            <article
+            <Link
               key={item.key}
-              className={`${styles.stat} ${item.tone ? styles[item.tone] : ""}`}
+              href={buildHref(cardStatus)}
+              className={`${styles.stat} ${styles.statLink} ${item.tone ? styles[item.tone] : ""} ${isActive ? styles.statActive : ""}`}
+              aria-current={isActive ? "page" : undefined}
+              title={`${item.label}: ${item.value}`}
             >
               <span className={styles.statIcon}>
                 <Icon size={16} aria-hidden />
               </span>
               <strong className={styles.statValue}>{item.value}</strong>
               <span className={styles.statLabel}>{item.label}</span>
-            </article>
+            </Link>
           );
         })}
       </section>
