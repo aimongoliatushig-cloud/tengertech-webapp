@@ -32,7 +32,7 @@ function distanceMeters(point: GaihamTrackPoint, target: WastePoint) {
 }
 
 function pointVisits(points: GaihamTrackPoint[], wastePoints: WastePoint[]) {
-  const radius = 20;
+  const radius = 5;
   const visits = new Map<string, { point: WastePoint; firstAt: string; lastAt: string; closestMeters: number }>();
   for (const gpsPoint of points) {
     let nearest: WastePoint | null = null;
