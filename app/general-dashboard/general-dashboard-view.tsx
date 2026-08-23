@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { Card } from "@/app/_components/ui/card";
@@ -66,6 +67,25 @@ const TONE_COLORS: Record<Tone, string> = {
   purple: "#453f99",
   red: "#ef4444",
 };
+
+const departmentShowcaseImages = [
+  {
+    title: "Тохижилтын хэлтэс",
+    subtitle: "Гүйцэтгэх үйл ажиллагаа, хариуцсан хороод",
+    src: "/department-work/improvement-department-overview.png",
+    width: 1536,
+    height: 1024,
+    href: "/department-work?department=Тохижилтын%20хэлтэс",
+  },
+  {
+    title: "Зам талбайн цэвэрлэгээ үйлчилгээ",
+    subtitle: "Хариуцсан зам талбайн зураглал",
+    src: "/department-work/naadamchid-road-responsibility.png",
+    width: 1578,
+    height: 997,
+    href: "/department-work?department=Ногоон%20байгууламж%2C%20цэвэрлэгээ%20үйлчилгээний%20хэлтэс&unit=Цэвэрлэгээ%20үйлчилгээ",
+  },
+] as const;
 
 function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -402,6 +422,38 @@ export function GeneralDashboardView({
             notificationCount={reviewTasks + overdueTasks}
             notificationNote={`${reviewTasks + overdueTasks} анхаарах ажил байна`}
           />
+
+          <section className={styles.showcase} aria-labelledby="general-dashboard-showcase-title">
+            <div className={styles.showcaseHeading}>
+              <div>
+                <span>Хэлтсүүдийн танилцуулга</span>
+                <h2 id="general-dashboard-showcase-title">Зураг, мэдээлэл</h2>
+              </div>
+              <small>Зураг дээр дарж тухайн хэлтэс рүү орно</small>
+            </div>
+            <div className={styles.showcaseViewport}>
+              <div className={styles.showcaseTrack}>
+                {[...departmentShowcaseImages, ...departmentShowcaseImages].map((item, index) => (
+                  <Link
+                    className={styles.showcaseCard}
+                    href={item.href}
+                    key={`${item.src}-${index}`}
+                    aria-hidden={index >= departmentShowcaseImages.length ? true : undefined}
+                    tabIndex={index >= departmentShowcaseImages.length ? -1 : undefined}
+                  >
+                    <Image
+                      src={item.src}
+                      alt={index < departmentShowcaseImages.length ? item.title : ""}
+                      width={item.width}
+                      height={item.height}
+                      sizes="(max-width: 720px) 82vw, 520px"
+                    />
+                    <span><strong>{item.title}</strong><small>{item.subtitle}</small></span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
 
           <section className={styles.metricGrid}>
             {metrics.map((metric) => (

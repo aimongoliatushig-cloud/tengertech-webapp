@@ -5,6 +5,24 @@
     linear-gradient(180deg, #f8fafc 0%, #f3f7fb 100%);
 }
 
+.showcase { min-width: 0; overflow: hidden; border: 1px solid rgba(15, 23, 42, .06); border-radius: 10px; background: var(--surface-panel); box-shadow: 0 14px 38px rgba(15, 23, 42, .06); }
+.showcaseHeading { display: flex; align-items: end; justify-content: space-between; gap: 16px; padding: 13px 16px; }
+.showcaseHeading span { display: block; margin-bottom: 3px; color: #52715e; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.showcaseHeading h2 { margin: 0; color: #17231c; font-size: 16px; }
+.showcaseHeading > small { color: #66776d; font-size: 10px; }
+.showcaseViewport { overflow: hidden; padding-bottom: 12px; }
+.showcaseTrack { display: flex; width: max-content; gap: 12px; padding: 0 12px; animation: dashboardShowcaseScroll 28s linear infinite; }
+.showcaseViewport:hover .showcaseTrack, .showcaseViewport:focus-within .showcaseTrack { animation-play-state: paused; }
+.showcaseCard { position: relative; flex: 0 0 520px; height: 220px; overflow: hidden; border: 1px solid #dce7df; border-radius: 10px; background: #e9efeb; color: #fff; text-decoration: none; }
+.showcaseCard > img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .25s ease; }
+.showcaseCard:hover > img { transform: scale(1.02); }
+.showcaseCard > span { position: absolute; right: 0; bottom: 0; left: 0; padding: 28px 14px 12px; background: linear-gradient(transparent, rgba(4, 39, 17, .9)); }
+.showcaseCard strong, .showcaseCard small { display: block; }
+.showcaseCard strong { font-size: 14px; }
+.showcaseCard small { margin-top: 3px; color: #e1eee5; font-size: 10px; }
+@keyframes dashboardShowcaseScroll { to { transform: translateX(calc(-50% - 6px)); } }
+@media (prefers-reduced-motion: reduce) { .showcaseTrack { animation: none; } .showcaseViewport { overflow-x: auto; } .showcaseCard > img { transition: none; } }
+
 .metricGrid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -331,6 +349,11 @@
 }
 
 @media (max-width: 720px) {
+  .showcaseHeading { align-items: flex-start; flex-direction: column; padding: 12px; }
+  .showcaseHeading h2 { font-size: 14px; }
+  .showcaseCard { flex-basis: 82vw; height: 160px; }
+  .showcaseTrack { animation-duration: 22s; }
+
   .metricGrid,
   .departmentGrid,
   .weatherGrid {
