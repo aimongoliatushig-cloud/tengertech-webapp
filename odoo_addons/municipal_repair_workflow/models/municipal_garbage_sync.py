@@ -53,6 +53,45 @@ class MunicipalGarbageWeightReport(models.Model):
             report.name = "%s - %s - %s" % (plate, report.report_date or "", report.state or "")
 
 
+class MunicipalGarbageWeightTicket(models.Model):
+    _name = "municipal.garbage.weight.ticket"
+    _description = "WRS Garbage Weight Ticket"
+    _order = "report_date desc, report_time desc, id desc"
+
+    name = fields.Char(string="Нэр", compute="_compute_name", store=True)
+    external_reference = fields.Char(string="Гадаад дугаар", required=True, index=True)
+    ticket_number = fields.Char(string="Тасалбарын дугаар", required=True, index=True)
+    report_date = fields.Date(string="Огноо", required=True, index=True)
+    report_time = fields.Char(string="Жинлэсэн цаг", index=True)
+    vehicle_id = fields.Many2one("fleet.vehicle", string="Машин", index=True, ondelete="set null")
+    department_id = fields.Many2one("hr.department", string="Хэлтэс", index=True, ondelete="set null")
+    vehicle_license_plate = fields.Char(string="Машины улсын дугаар", index=True)
+    branch_name = fields.Char(string="Хогийн цэг")
+    carrier_name = fields.Char(string="Тээвэрлэгч")
+    from_location = fields.Char(string="Ачилтын байршил")
+    district = fields.Char(string="Дүүрэг")
+    waste_type = fields.Char(string="Хогийн төрөл")
+    vehicle_weight_kg = fields.Float(string="Машины жин (кг)")
+    garbage_weight_kg = fields.Float(string="Цэвэр жин (кг)")
+    total_weight_kg = fields.Float(string="Нийт жин (кг)")
+    source = fields.Char(string="Эх сурвалж", default="WRS", required=True)
+    fetched_at = fields.Datetime(string="Татсан огноо", default=fields.Datetime.now, index=True)
+
+    _sql_constraints = [
+        ("external_reference_unique", "unique(external_reference)", "WRS тасалбар давхардаж болохгүй."),
+    ]
+
+    @api.depends("ticket_number", "vehicle_license_plate", "report_date", "report_time")
+    def _compute_name(self):
+        for ticket in self:
+            ticket.name = "%s - %s - %s %s" % (
+                ticket.ticket_number or "WRS",
+                ticket.vehicle_license_plate or ticket.vehicle_id.license_plate or "Машин",
+                ticket.report_date or "",
+                ticket.report_time or "",
+            )
+
+
 class MunicipalGarbageFuelReport(models.Model):
     _name = "municipal.garbage.fuel.report"
     _description = "Municipal Garbage Truck Daily Fuel Report"

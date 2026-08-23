@@ -6,7 +6,11 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { notifyGarbageDailySyncSummary, notifyGarbageSyncFailure } from "@/lib/garbage-sync-notifications";
 import { executeOdooKw } from "@/lib/odoo";
-import { fetchWrsDailyVehicleTotals } from "@/lib/wrs-report";
+import {
+  fetchWrsDailyVehicleTotals,
+  fetchWrsWeightRows,
+  type WrsWeightReportRow,
+} from "@/lib/wrs-report";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -37,6 +41,10 @@ type ProjectTaskRecord = {
 };
 
 type DailyWeightTotalRecord = {
+  id: number;
+};
+
+type WeightTicketRecord = {
   id: number;
 };
 
@@ -664,6 +672,78 @@ async function upsertDailyWeightTotal(input: {
   return "created" as const;
 }
 
+async function upsertWeightTicket(input: {
+  row: WrsWeightReportRow;
+  branchName: string;
+  vehicle?: FleetVehicleRecord;
+  departmentId?: number | null;
+}) {
+  const vehicleCode = vehicleReportCode(input.vehicle, input.row.vehicleCode);
+  const externalReference = [
+    "wrs-ticket",
+    input.row.reportDate,
+    input.row.ticketNumber || input.row.sequence,
+    normalizeVehicleCode(vehicleCode),
+  ].join(":");
+  const existing = await executeOdooKw<WeightTicketRecord[]>(
+    "municipal.garbage.weight.ticket",
+    "search_read",
+    [[["external_reference", "=", externalReference]]],
+    { fields: ["id"], limit: 1 },
+  );
+  const values = {
+    external_reference: externalReference,
+    ticket_number: input.row.ticketNumber || String(input.row.sequence),
+    report_date: input.row.reportDate,
+    report_time: input.row.reportTime || "",
+    vehicle_id: input.vehicle?.id ?? false,
+    department_id:
+      relationId(input.vehicle?.municipal_department_id ?? false) ?? input.departmentId ?? false,
+    vehicle_license_plate: vehicleCode,
+    branch_name: input.branchName,
+    carrier_name: input.row.carrierName || "",
+    from_location: input.row.fromLocation || "",
+    district: input.row.district || "",
+    waste_type: input.row.wasteType || "",
+    vehicle_weight_kg: input.row.vehicleWeightKg,
+    garbage_weight_kg: input.row.garbageWeightKg,
+    total_weight_kg: input.row.totalWeightKg,
+    source: "WRS",
+    fetched_at: currentOdooDateTime(),
+  };
+  if (existing[0]?.id) {
+    await executeOdooKw<boolean>(
+      "municipal.garbage.weight.ticket",
+      "write",
+      [[existing[0].id], values],
+    );
+    return "updated" as const;
+  }
+  await executeOdooKw<number>("municipal.garbage.weight.ticket", "create", [values]);
+  return "created" as const;
+}
+
+async function importWeightTicketsForDate(
+  reportDate: string,
+  vehicleByCode: Map<string, FleetVehicleRecord>,
+  departmentId?: number | null,
+) {
+  const result = await fetchWrsWeightRows(reportDate);
+  let created = 0;
+  let updated = 0;
+  for (const row of result.rows) {
+    const status = await upsertWeightTicket({
+      row,
+      branchName: result.branchName,
+      vehicle: findVehicleByCode(vehicleByCode, row.vehicleCode),
+      departmentId,
+    });
+    if (status === "created") created += 1;
+    else updated += 1;
+  }
+  return { created, updated, total: result.rows.length };
+}
+
 async function createSyncLog(input: {
   state: "success" | "failed";
   recordCount?: number;
@@ -842,6 +922,9 @@ async function importWrsDateRange(startDate: string, endDate: string) {
   const branchNames = new Set<string>();
   let sourceRows = 0;
   let extractedLineCount = 0;
+  let ticketCreated = 0;
+  let ticketUpdated = 0;
+  const ticketWarnings: Array<{ date: string; error: string }> = [];
 
   const totalsByDateVehicle = new Map<
     string,
@@ -871,6 +954,21 @@ async function importWrsDateRange(startDate: string, endDate: string) {
       }
 
       importedDates.push(reportDate);
+
+      try {
+        const ticketResult = await importWeightTicketsForDate(
+          reportDate,
+          vehicleByCode,
+          garbageDepartmentId,
+        );
+        ticketCreated += ticketResult.created;
+        ticketUpdated += ticketResult.updated;
+      } catch (error) {
+        ticketWarnings.push({
+          date: reportDate,
+          error: error instanceof Error ? error.message : "WRS тасалбар татахад алдаа гарлаа.",
+        });
+      }
 
       for (const total of dailyResult.totals) {
         const vehicleCode = normalizeVehicleCode(total.vehicleCode);
@@ -947,6 +1045,9 @@ async function importWrsDateRange(startDate: string, endDate: string) {
         importedDates,
         emptyDates,
         failedDates,
+        ticketCreated,
+        ticketUpdated,
+        ticketWarnings,
       },
       { status: 404 },
     );
@@ -1050,6 +1151,7 @@ async function importWrsDateRange(startDate: string, endDate: string) {
     revalidatePath("/projects");
     revalidatePath("/tasks");
     revalidatePath("/reports");
+    revalidatePath("/garbage-routes/dashboard");
   }
 
   const unmatchedMessage = buildUnmatchedVehicleMessage(unmatched);
@@ -1083,6 +1185,9 @@ async function importWrsDateRange(startDate: string, endDate: string) {
     updated,
     dailyWeightCreated,
     dailyWeightUpdated,
+    ticketCreated,
+    ticketUpdated,
+    ticketWarnings,
     staleImportDates,
     unmatched,
     unmatchedTasks,
@@ -1158,6 +1263,18 @@ async function handleRequest(request: Request) {
         },
         { status: 404 },
       );
+    }
+
+    let ticketImport = { created: 0, updated: 0, total: 0 };
+    let ticketWarning = "";
+    try {
+      ticketImport = await importWeightTicketsForDate(
+        requestedDate,
+        vehicleByCode,
+        garbageDepartmentId,
+      );
+    } catch (error) {
+      ticketWarning = error instanceof Error ? error.message : "WRS тасалбар татахад алдаа гарлаа.";
     }
 
     // Хуучин снапшот дахин ирсэн эсэхийг шалгах: тухайн өдрийн вектор өмнө
@@ -1250,6 +1367,7 @@ async function handleRequest(request: Request) {
       revalidatePath("/projects");
       revalidatePath("/tasks");
       revalidatePath("/reports");
+      revalidatePath("/garbage-routes/dashboard");
     }
 
     const unmatchedMessage = buildUnmatchedVehicleMessage(unmatched);
@@ -1278,6 +1396,8 @@ async function handleRequest(request: Request) {
       dailyWeightUpdated,
       unmatched,
       unmatchedTasks,
+      ticketImport,
+      ticketWarning: ticketWarning || undefined,
     };
 
     if (unmatched.length && !hasPartialImport) {
