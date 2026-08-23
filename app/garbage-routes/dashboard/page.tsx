@@ -1,13 +1,24 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, MapPin, Navigation, Truck } from "lucide-react";
+import { MapPin, Navigation, Truck } from "lucide-react";
 
+import { AppMenu } from "@/app/_components/app-menu";
+import { WorkspaceHeader } from "@/app/_components/workspace-header";
+import shellStyles from "@/app/workspace.module.css";
 import { loadSessionDepartmentName } from "@/lib/access-scope";
-import { canAccessAutoBaseOverview, requireSession } from "@/lib/auth";
+import {
+  canAccessAutoBaseOverview,
+  getSessionRoleLabel,
+  hasCapability,
+  isMasterRole,
+  isWorkerOnly,
+  requireSession,
+} from "@/lib/auth";
 import { fetchGaihamDailyRoutes, type GaihamTrackPoint } from "@/lib/gaiham-fuel-report";
 import { loadFleetVehicleBoard } from "@/lib/odoo";
 import { getAllWastePointsFiltered } from "@/lib/waste-points/service";
 import type { WastePoint } from "@/lib/waste-points/types";
+import { loadWorkspaceNotificationCount } from "@/lib/workspace-notifications";
 
 import styles from "./route-dashboard.module.css";
 
@@ -66,6 +77,8 @@ export default async function GarbageRouteDashboardPage({ searchParams }: PagePr
   const session = await requireSession();
   const departmentName = await loadSessionDepartmentName(session);
   if (!canAccessAutoBaseOverview(session, departmentName)) redirect("/");
+  const notificationCount = await loadWorkspaceNotificationCount(session);
+  const roleLabel = getSessionRoleLabel(session);
   const params = await searchParams;
   const rawDate = params?.date;
   const rawDepartment = params?.department;
@@ -106,9 +119,9 @@ export default async function GarbageRouteDashboardPage({ searchParams }: PagePr
   const totalDistance = vehicles.reduce((sum, vehicle) => sum + vehicle.distanceKm, 0);
   const totalWeight = vehicles.reduce((sum, vehicle) => sum + vehicle.weightTons, 0);
 
-  return <main className={styles.page}>
+  const content = <main className={styles.page}>
     <header className={styles.header}>
-      <div><Link href="/auto-base"><ArrowLeft /> Авто бааз</Link><h1>GPS маршрут ба хогийн цэгийн бүртгэл</h1><p>Gaiham GPS-ийн хөдөлгөөнийг бүртгэлтэй хогийн цэгийн координаттай автоматаар тулгав.</p></div>
+      <div><h2>Маршрут ба хогийн цэгийн бүртгэл</h2><p>Gaiham GPS-ийн хөдөлгөөнийг бүртгэлтэй хогийн цэгийн координаттай автоматаар тулгав.</p></div>
       <div className={styles.headerActions}><form method="get"><label htmlFor="route-department">Хэлтэс</label><select id="route-department" name="department" defaultValue={requestedDepartment}><option value="">Бүх хэлтэс</option>{departmentOptions.map((department) => <option key={department} value={department}>{department}</option>)}</select><label htmlFor="route-date">Огноо</label><input id="route-date" name="date" type="date" defaultValue={requestedDate}/><button type="submit">Харах</button></form><div className={styles.exports}><a href={`/api/garbage-routes/export?date=${requestedDate}&department=${encodeURIComponent(requestedDepartment)}&format=xlsx`}>Excel</a><a href={`/api/garbage-routes/export?date=${requestedDate}&department=${encodeURIComponent(requestedDepartment)}&format=pdf`}>PDF</a></div></div>
     </header>
     <section className={styles.metrics}>
@@ -131,4 +144,41 @@ export default async function GarbageRouteDashboardPage({ searchParams }: PagePr
       </details>) : <div className={styles.empty}>Энэ өдөр Gaiham GPS хөдөлгөөний мэдээлэл бүртгэгдээгүй байна.</div>}
     </section>
   </main>;
+
+  return (
+    <main className={shellStyles.shell}>
+      <div className={shellStyles.container}>
+        <div className={shellStyles.contentWithMenu}>
+          <aside className={shellStyles.menuColumn}>
+            <AppMenu
+              active="gps-routes"
+              canCreateProject={hasCapability(session, "create_projects")}
+              canCreateTasks={hasCapability(session, "create_tasks")}
+              canWriteReports={hasCapability(session, "write_workspace_reports")}
+              canViewQualityCenter={hasCapability(session, "view_quality_center")}
+              canUseFieldConsole={hasCapability(session, "use_field_console")}
+              userName={session.name}
+              userRole={session.role}
+              roleLabel={roleLabel}
+              groupFlags={session.groupFlags}
+              notificationCount={notificationCount}
+              masterMode={isMasterRole(session.role)}
+              workerMode={isWorkerOnly(session)}
+              departmentScopeName={departmentName}
+            />
+          </aside>
+          <div className={shellStyles.pageContent}>
+            <WorkspaceHeader
+              title="GPS маршрут"
+              subtitle="Автомашины маршрут, хогийн цэгийн очилт, туулсан замын хяналт"
+              userName={session.name}
+              roleLabel={roleLabel}
+              notificationCount={notificationCount}
+            />
+            {content}
+          </div>
+        </div>
+      </div>
+    </main>
+  );
 }
