@@ -81,6 +81,14 @@ type GreenServiceUnit = "Ногоон байгууламж" | "Цэвэрлэг�
 
 const departmentShowcaseImages = [
   {
+    title: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
+    subtitle: "Хог ачилт, тээвэрлэлтийн үйл ажиллагаа",
+    src: "/department-work/auto-base-garbage-transport-overview.png",
+    width: 1536,
+    height: 1024,
+    href: "/department-work?department=Авто%20бааз%2C%20хог%20тээвэрлэлтийн%20хэлтэс",
+  },
+  {
     title: "Тохижилтын хэлтэс",
     subtitle: "Гүйцэтгэх үйл ажиллагаа, хариуцсан хороод",
     src: "/department-work/improvement-department-overview.png",
@@ -523,6 +531,33 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
               className={styles.roadResponsibilityImage}
               src="/department-work/improvement-department-overview.png"
               alt="Тохижилтын хэлтсийн хариуцсан хороод, гүйцэтгэх үйл ажиллагаа, ажлын үе шат"
+              width={1536}
+              height={1024}
+              sizes="(max-width: 720px) 100vw, (max-width: 1200px) 90vw, 900px"
+              priority
+            />
+          </a>
+        </section>
+      ) : null}
+
+      {departmentParam === "Авто бааз, хог тээвэрлэлтийн хэлтэс" ? (
+        <section className={styles.roadResponsibility} aria-labelledby="auto-base-overview-title">
+          <div className={styles.roadResponsibilityHeading}>
+            <div>
+              <span>Хэлтсийн танилцуулга</span>
+              <h2 id="auto-base-overview-title">Хог ачилт, тээвэрлэлтийн үйл ажиллагаа</h2>
+            </div>
+            <strong>Хариуцсан 8 хороо</strong>
+          </div>
+          <a
+            className={styles.roadResponsibilityImageLink}
+            href="/department-work/auto-base-garbage-transport-overview.png"
+            aria-label="Авто бааз, хог тээвэрлэлтийн хэлтсийн танилцуулгыг бүтэн хэмжээгээр нээх"
+          >
+            <Image
+              className={styles.roadResponsibilityImage}
+              src="/department-work/auto-base-garbage-transport-overview.png"
+              alt="Авто бааз, хог тээвэрлэлтийн хэлтсийн хариуцсан хороод, хог ачилт тээвэрлэлтийн үйл ажиллагаа"
               width={1536}
               height={1024}
               sizes="(max-width: 720px) 100vw, (max-width: 1200px) 90vw, 900px"

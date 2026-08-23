@@ -70,6 +70,14 @@ const TONE_COLORS: Record<Tone, string> = {
 
 const departmentShowcaseImages = [
   {
+    title: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
+    subtitle: "Хог ачилт, тээвэрлэлтийн үйл ажиллагаа",
+    src: "/department-work/auto-base-garbage-transport-overview.png",
+    width: 1536,
+    height: 1024,
+    href: "/department-work?department=Авто%20бааз%2C%20хог%20тээвэрлэлтийн%20хэлтэс",
+  },
+  {
     title: "Тохижилтын хэлтэс",
     subtitle: "Гүйцэтгэх үйл ажиллагаа, хариуцсан хороод",
     src: "/department-work/improvement-department-overview.png",
