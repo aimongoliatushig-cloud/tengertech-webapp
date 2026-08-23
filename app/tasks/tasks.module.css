@@ -2138,6 +2138,10 @@
 .taskDashboard { display: grid; gap: 16px; margin-bottom: 16px; }
 .taskKpiGrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .taskKpi { display: grid; grid-template-columns: 38px minmax(0, 1fr); align-items: center; gap: 10px; min-height: 82px; padding: 12px; border: 1px solid #dfe8e1; border-radius: 10px; background: #fff; color: #178346; }
+.taskKpiLink { text-decoration: none; cursor: pointer; transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease; }
+.taskKpiLink:hover { transform: translateY(-2px); border-color: #77bb8a; box-shadow: 0 7px 18px rgba(22, 111, 54, .12); }
+.taskKpiLink:focus-visible { outline: 3px solid rgba(28, 137, 61, .24); outline-offset: 2px; }
+.taskKpiSelected { border-color: #18823d; box-shadow: inset 0 0 0 1px #18823d, 0 7px 18px rgba(22, 111, 54, .1); }
 .taskKpi div { display: grid; min-width: 0; }
 .taskKpi strong { color: #153d24; font-size: 20px; line-height: 1.05; }
 .taskKpi span { color: #263b2d; font-size: 11px; font-weight: 700; }

@@ -62,7 +62,7 @@ import { TaskReportModal } from "./[taskId]/task-report-modal";
 
 type FilterKey = "all" | "planned" | "review" | "verified";
 type MasterTabKey = "today" | "review";
-type MasterStatusFilter = "all" | "todo" | "review" | "done";
+type MasterStatusFilter = "all" | "todo" | "overdue" | "review" | "done";
 type QuickActionMode = "none" | "report";
 
 type PageProps = {
@@ -187,7 +187,7 @@ function normalizeMasterStatus(value: string): MasterStatusFilter {
   if (value === "progress") {
     return "todo";
   }
-  return value === "todo" || value === "review" || value === "done"
+  return value === "todo" || value === "overdue" || value === "review" || value === "done"
     ? value
     : "all";
 }
@@ -857,6 +857,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
       masterStatusFilter === "all" ||
       (masterStatusFilter === "done" && task.statusKey === "verified") ||
       (masterStatusFilter === "review" && (task.statusKey === "review" || task.statusKey === "problem")) ||
+      (masterStatusFilter === "overdue" && task.statusKey !== "verified" && Boolean(task.scheduledDate) && (task.scheduledDate ?? "") < todayDateKey) ||
       (masterStatusFilter === "todo" && task.statusKey !== "verified" && task.statusKey !== "review" && task.statusKey !== "problem");
     return matchesSearch && matchesStatus;
   });
@@ -1602,18 +1603,27 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 <section className={styles.taskDashboard} aria-label="Даалгаврын нэгдсэн үзүүлэлт">
                   <div className={styles.taskKpiGrid}>
                     {[
-                      { label: "Нийт ажил", value: counts.all, note: "Бүх даалгавар", icon: ClipboardCheck, tone: "neutral" },
-                      { label: "Хийгдэж буй", value: dashboardInProgressTasks.length, note: "Явцтай", icon: Clock3, tone: "active" },
-                      { label: "Хугацаа хэтэрсэн", value: dashboardOverdueTasks.length, note: "Анхаарах", icon: AlertTriangle, tone: "danger" },
-                      { label: "Батлах хүлээж буй", value: dashboardReviewTasks.length, note: "Шийдвэр гарах", icon: FileCheck2, tone: "review" },
-                      { label: "Дууссан", value: dashboardDoneTasks.length, note: "Бүрэн дууссан", icon: CheckCircle2, tone: "done" },
+                      { label: "Нийт ажил", value: counts.all, note: "Бүх даалгавар", icon: ClipboardCheck, tone: "neutral", status: "all" },
+                      { label: "Хийгдэж буй", value: dashboardInProgressTasks.length, note: "Явцтай", icon: Clock3, tone: "active", status: "todo" },
+                      { label: "Хугацаа хэтэрсэн", value: dashboardOverdueTasks.length, note: "Анхаарах", icon: AlertTriangle, tone: "danger", status: "overdue" },
+                      { label: "Батлах хүлээж буй", value: dashboardReviewTasks.length, note: "Шийдвэр гарах", icon: FileCheck2, tone: "review", status: "review" },
+                      { label: "Дууссан", value: dashboardDoneTasks.length, note: "Бүрэн дууссан", icon: CheckCircle2, tone: "done", status: "done" },
                     ].map((item) => {
                       const Icon = item.icon;
+                      const cardParams = new URLSearchParams();
+                      if (selectedDepartmentParam) cardParams.set("department", selectedDepartmentParam);
+                      if (item.status !== "all") cardParams.set("status", item.status);
+                      const cardHref = cardParams.toString() ? `/tasks?${cardParams.toString()}` : "/tasks";
                       return (
-                        <article key={item.label} className={`${styles.taskKpi} ${styles[`taskKpi${item.tone}`]}`}>
+                        <Link
+                          key={item.label}
+                          href={cardHref}
+                          className={`${styles.taskKpi} ${styles.taskKpiLink} ${styles[`taskKpi${item.tone}`]} ${masterStatusFilter === item.status ? styles.taskKpiSelected : ""}`}
+                          aria-current={masterStatusFilter === item.status ? "page" : undefined}
+                        >
                           <Icon size={25} strokeWidth={2.2} aria-hidden="true" />
                           <div><strong>{item.value}</strong><span>{item.label}</span><small>{item.note}</small></div>
-                        </article>
+                        </Link>
                       );
                     })}
                   </div>
@@ -1646,9 +1656,9 @@ export default async function TasksPage({ searchParams }: PageProps) {
 
             {!workerMode && !inspectorMobileMode ? (
             <section className={styles.filterPanel} aria-label="Ажлын төлөвөөр шүүх">
-              <div className={styles.filterScroller}>
-                {seniorMasterMode ? (
-                  ([
+              {seniorMasterMode ? (
+                <div className={styles.filterScroller}>
+                  {([ 
                     { key: "today", label: "Өнөөдрийн ажил", count: masterDashboardProjects.length },
                     { key: "review", label: "Хянах ажил", count: seniorMasterReviewTasks.length },
                   ] satisfies Array<{ key: MasterTabKey; label: string; count: number }>).map((tab) => {
@@ -1673,34 +1683,9 @@ export default async function TasksPage({ searchParams }: PageProps) {
                         <strong>{tab.count}</strong>
                       </Link>
                     );
-                  })
-                ) : FILTERS.map((filter) => {
-                  const params = new URLSearchParams();
-                  if (!workerMode && selectedDepartmentParam) {
-                    params.set("department", selectedDepartmentParam);
-                  }
-                  if (filter.key !== "all") {
-                    params.set("filter", filter.key);
-                  }
-                  if (quickActionMode !== "none") {
-                    params.set("quickAction", quickActionMode);
-                  }
-                  const href = params.toString() ? `/tasks?${params.toString()}` : "/tasks";
-
-                  return (
-                    <Link
-                      key={filter.key}
-                      href={href}
-                      className={`${styles.filterChip} ${
-                        selectedFilter === filter.key ? styles.filterChipActive : ""
-                      }`}
-                    >
-                      <span>{filter.label}</span>
-                      <strong>{counts[filter.key]}</strong>
-                    </Link>
-                  );
-                })}
-              </div>
+                  })}
+                </div>
+              ) : null}
               {masterMode ? (
                 <form className={styles.masterFilterForm} method="get" aria-label="Ажил шүүх">
                   {selectedDepartmentParam ? (
@@ -1753,7 +1738,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                     </select>
                   ) : null}
                   <select name="status" defaultValue={masterStatusFilter} aria-label="Төлөв">
-                    <option value="all">Төлөв: Бүгд</option><option value="todo">Хийгдэж буй</option><option value="review">Батлах хүлээж буй</option><option value="done">Дууссан</option>
+                    <option value="all">Төлөв: Бүгд</option><option value="todo">Хийгдэж буй</option><option value="overdue">Хугацаа хэтэрсэн</option><option value="review">Батлах хүлээж буй</option><option value="done">Дууссан</option>
                   </select>
                   <input type="hidden" name="filter" value={activeFilter} />
                   <button type="submit" className={styles.dateButton}>Шүүх</button>
