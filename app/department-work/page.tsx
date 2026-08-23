@@ -641,7 +641,6 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
             <details
               key={`${department.name}-${index}`}
               className={styles.emp}
-              open={selectedStatus !== "all" || index === 0}
             >
               <summary className={styles.empHead}>
                 <span className={styles.avatar}>{initialsOf(department.name)}</span>
