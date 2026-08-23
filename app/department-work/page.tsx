@@ -396,7 +396,12 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
     { key: "repair", label: "Техник, засвар", keywords: ["засвар", "техник", "машин", "тоноглол"], icon: Wrench, tone: "purple" },
     { key: "improvement", label: "Тохижилт", keywords: ["тохиж", "сандал", "хашаа", "гэрэлтүүл"], icon: Hammer, tone: "teal" },
   ] as const;
-  const categoryStats = categoryDefinitions.map((category) => {
+  const visibleCategoryDefinitions = selectedUnit === "Ногоон байгууламж"
+    ? categoryDefinitions.filter((category) => category.key === "green")
+    : selectedUnit === "Цэвэрлэгээ үйлчилгээ"
+      ? categoryDefinitions.filter((category) => category.key === "cleaning")
+      : categoryDefinitions;
+  const categoryStats = visibleCategoryDefinitions.map((category) => {
     const tasks = baseTasks.filter((task) => {
       if (category.key === "green") return matchesGreenServiceUnit(task, "Ногоон байгууламж");
       if (category.key === "cleaning") return matchesGreenServiceUnit(task, "Цэвэрлэгээ үйлчилгээ");
