@@ -97,11 +97,21 @@ function normalizeGreenServiceUnit(value: string): GreenServiceUnit | "" {
 }
 function matchesGreenServiceUnit(task: TaskDirectoryItem, unit: GreenServiceUnit) {
   const operationType = task.operationType.toLocaleLowerCase("mn-MN");
-  const text = `${task.name} ${task.projectName} ${task.operationTypeLabel}`.toLocaleLowerCase("mn-MN");
+  const greenOperation = operationType === "green_maintenance";
+  const cleaningOperation = ["street_cleaning", "road_area_cleaning"].includes(operationType);
+  // Project names often contain the combined department title
+  // ("Ногоон байгууламж, цэвэрлэгээ үйлчилгээ..."). Using that title for
+  // keyword inference puts every green task into the cleaning unit as well.
+  // Prefer the explicit operation type and only infer from the task itself.
+  const text = `${task.name} ${task.operationTypeLabel}`.toLocaleLowerCase("mn-MN");
   if (unit === "Ногоон байгууламж") {
-    return operationType === "green_maintenance" || ["ногоон", "мод", "зүлэг", "ургамал", "усалгаа", "цэцэг"].some((keyword) => text.includes(keyword));
+    if (greenOperation) return true;
+    if (cleaningOperation) return false;
+    return ["ногоон", "мод", "зүлэг", "ургамал", "усалгаа", "цэцэг"].some((keyword) => text.includes(keyword));
   }
-  return ["street_cleaning", "road_area_cleaning"].includes(operationType) || ["цэвэрлэгээ", "цэвэрлэх", "зам талбай", "гудамж", "ариутгал"].some((keyword) => text.includes(keyword));
+  if (cleaningOperation) return true;
+  if (greenOperation) return false;
+  return ["цэвэрлэгээ", "цэвэрлэх", "зам талбай", "гудамж", "ариутгал"].some((keyword) => text.includes(keyword));
 }
 function matchesStatus(task: TaskDirectoryItem, filter: StatusFilter, todayKey: string) {
   switch (filter) {
