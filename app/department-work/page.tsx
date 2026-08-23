@@ -78,6 +78,25 @@ function resolveDepartmentGroupName(departmentName?: string | null) {
 type StatusFilter = "all" | "overdue" | "review" | "progress" | "done";
 type PeriodFilter = "all" | "today" | "week" | "month";
 type GreenServiceUnit = "Ногоон байгууламж" | "Цэвэрлэгээ үйлчилгээ";
+
+const departmentShowcaseImages = [
+  {
+    title: "Тохижилтын хэлтэс",
+    subtitle: "Гүйцэтгэх үйл ажиллагаа, хариуцсан хороод",
+    src: "/department-work/improvement-department-overview.png",
+    width: 1536,
+    height: 1024,
+    href: "/department-work?department=Тохижилтын%20хэлтэс",
+  },
+  {
+    title: "Зам талбайн цэвэрлэгээ үйлчилгээ",
+    subtitle: "Хариуцсан зам талбайн зураглал",
+    src: "/department-work/naadamchid-road-responsibility.png",
+    width: 1578,
+    height: 997,
+    href: "/department-work?department=Ногоон%20байгууламж%2C%20цэвэрлэгээ%20үйлчилгээний%20хэлтэс&unit=Цэвэрлэгээ%20үйлчилгээ",
+  },
+] as const;
 const STATUS_FILTERS: Array<{ key: StatusFilter; label: string }> = [
   { key: "all", label: "Бүгд" },
   { key: "overdue", label: "Хугацаа хэтэрсэн" },
@@ -511,6 +530,43 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
               priority
             />
           </a>
+        </section>
+      ) : null}
+
+      {!departmentParam && !selectedUnit ? (
+        <section className={styles.departmentShowcase} aria-labelledby="department-showcase-title">
+          <div className={styles.departmentShowcaseHeading}>
+            <div>
+              <span>Хэлтсүүдийн танилцуулга</span>
+              <h2 id="department-showcase-title">Оруулсан зураг, мэдээлэл</h2>
+            </div>
+            <small>Зураг дээр дарж тухайн хэлтэс рүү орно</small>
+          </div>
+          <div className={styles.departmentShowcaseViewport}>
+            <div className={styles.departmentShowcaseTrack}>
+              {[...departmentShowcaseImages, ...departmentShowcaseImages].map((item, index) => (
+                <Link
+                  className={styles.departmentShowcaseCard}
+                  href={item.href}
+                  key={`${item.src}-${index}`}
+                  aria-hidden={index >= departmentShowcaseImages.length ? true : undefined}
+                  tabIndex={index >= departmentShowcaseImages.length ? -1 : undefined}
+                >
+                  <Image
+                    src={item.src}
+                    alt={index < departmentShowcaseImages.length ? item.title : ""}
+                    width={item.width}
+                    height={item.height}
+                    sizes="(max-width: 720px) 82vw, 520px"
+                  />
+                  <span>
+                    <strong>{item.title}</strong>
+                    <small>{item.subtitle}</small>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
         </section>
       ) : null}
 
