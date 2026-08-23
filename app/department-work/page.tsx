@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -431,6 +432,42 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
         >
           ← Бүх хэлтэс
         </Link>
+      ) : null}
+
+      {selectedUnit === "Цэвэрлэгээ үйлчилгээ" ? (
+        <section className={styles.roadResponsibility} aria-labelledby="road-responsibility-title">
+          <div className={styles.roadResponsibilityHeading}>
+            <div>
+              <span>Хариуцсан зам талбай</span>
+              <h2 id="road-responsibility-title">
+                Яармагийн давхар гүүр, Наадамчдын зам, Нүхтийн зам
+              </h2>
+            </div>
+            <strong>Нийт урт 326,400 м</strong>
+          </div>
+          <a
+            className={styles.roadResponsibilityImageLink}
+            href="/department-work/naadamchid-road-responsibility.png"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Хариуцсан замын зургийг бүтэн хэмжээгээр нээх"
+          >
+            <Image
+              className={styles.roadResponsibilityImage}
+              src="/department-work/naadamchid-road-responsibility.png"
+              alt="Яармагийн давхар гүүр, Наадамчдын зам, Нүхтийн замын хариуцсан хэсгийн зураг"
+              width={1578}
+              height={997}
+              sizes="(max-width: 720px) 100vw, (max-width: 1200px) 90vw, 1200px"
+              priority
+            />
+          </a>
+          <div className={styles.roadLengthGrid} aria-label="Замын хэсгийн урт">
+            <span><b>Яармагийн давхар гүүр</b>97,500 м</span>
+            <span><b>Наадамчдын зам</b>190,400 м</span>
+            <span><b>Нүхтийн зам</b>38,500 м</span>
+          </div>
+        </section>
       ) : null}
 
       <form method="get" action="/department-work" className={shellStyles.dateFilterBar}>
