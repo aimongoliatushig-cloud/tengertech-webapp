@@ -104,15 +104,24 @@ function matchesGreenServiceUnit(task: TaskDirectoryItem, unit: GreenServiceUnit
   // ("Ногоон байгууламж, цэвэрлэгээ үйлчилгээ..."). Using that title for
   // keyword inference puts every green task into the cleaning unit as well.
   // Prefer the explicit operation type and only infer from the task itself.
-  const text = `${task.name} ${task.operationTypeLabel}`.toLocaleLowerCase("mn-MN");
-  if (unit === "Ногоон байгууламж") {
-    if (greenOperation) return true;
-    if (cleaningOperation) return false;
-    return ["ногоон", "мод", "зүлэг", "ургамал", "усалгаа", "цэцэг"].some((keyword) => text.includes(keyword));
-  }
-  if (cleaningOperation) return true;
-  if (greenOperation) return false;
-  return ["цэвэрлэгээ", "цэвэрлэх", "зам талбай", "гудамж", "ариутгал"].some((keyword) => text.includes(keyword));
+  if (greenOperation) return unit === "Ногоон байгууламж";
+  if (cleaningOperation) return unit === "Цэвэрлэгээ үйлчилгээ";
+
+  const taskName = task.name.toLocaleLowerCase("mn-MN");
+  const greenKeywords = ["ногоон байгууламж", "мод", "зүлэг", "ургамал", "усалгаа", "цэцэг"];
+  const cleaningKeywords = ["зам талбай", "замын", "гудамж", "цэвэрлэгээ", "цэвэрлэх", "ариутгал"];
+  const greenByName = greenKeywords.some((keyword) => taskName.includes(keyword));
+  const cleaningByName = cleaningKeywords.some((keyword) => taskName.includes(keyword));
+
+  // "Ногоон байгууламжийн түүвэр цэвэрлэгээ" шиг нэрэнд хоёр
+  // түлхүүр зэрэг ордог. Ийм үед ногоон байгууламжийг давуу ангилна.
+  if (greenByName) return unit === "Ногоон байгууламж";
+  if (cleaningByName) return unit === "Цэвэрлэгээ үйлчилгээ";
+
+  const label = task.operationTypeLabel.toLocaleLowerCase("mn-MN");
+  const greenByLabel = greenKeywords.some((keyword) => label.includes(keyword));
+  const cleaningByLabel = cleaningKeywords.some((keyword) => label.includes(keyword));
+  return unit === "Ногоон байгууламж" ? greenByLabel : cleaningByLabel;
 }
 function matchesStatus(task: TaskDirectoryItem, filter: StatusFilter, todayKey: string) {
   switch (filter) {
