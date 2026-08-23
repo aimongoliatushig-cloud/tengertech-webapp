@@ -383,7 +383,9 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
   ] as const;
   const categoryStats = categoryDefinitions.map((category) => {
     const tasks = baseTasks.filter((task) => {
-      const text = `${task.name} ${task.projectName} ${task.departmentName}`.toLocaleLowerCase("mn-MN");
+      if (category.key === "green") return matchesGreenServiceUnit(task, "Ногоон байгууламж");
+      if (category.key === "cleaning") return matchesGreenServiceUnit(task, "Цэвэрлэгээ үйлчилгээ");
+      const text = `${task.name} ${task.projectName}`.toLocaleLowerCase("mn-MN");
       return category.keywords.some((keyword) => text.includes(keyword));
     });
     const progress = tasks.length ? Math.round(tasks.reduce((sum, task) => sum + (task.progress || 0), 0) / tasks.length) : 0;
