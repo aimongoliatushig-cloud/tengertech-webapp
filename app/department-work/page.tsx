@@ -487,6 +487,33 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
         </section>
       ) : null}
 
+      {departmentParam === "Тохижилтын хэлтэс" ? (
+        <section className={styles.roadResponsibility} aria-labelledby="improvement-overview-title">
+          <div className={styles.roadResponsibilityHeading}>
+            <div>
+              <span>Хэлтсийн танилцуулга</span>
+              <h2 id="improvement-overview-title">Тохижилтын хэлтсийн гүйцэтгэх үйл ажиллагаа</h2>
+            </div>
+            <strong>Хариуцсан 8 хороо</strong>
+          </div>
+          <a
+            className={styles.roadResponsibilityImageLink}
+            href="/department-work/improvement-department-overview.png"
+            aria-label="Тохижилтын хэлтсийн танилцуулгыг бүтэн хэмжээгээр нээх"
+          >
+            <Image
+              className={styles.roadResponsibilityImage}
+              src="/department-work/improvement-department-overview.png"
+              alt="Тохижилтын хэлтсийн хариуцсан хороод, гүйцэтгэх үйл ажиллагаа, ажлын үе шат"
+              width={1536}
+              height={1024}
+              sizes="(max-width: 720px) 100vw, (max-width: 1200px) 90vw, 900px"
+              priority
+            />
+          </a>
+        </section>
+      ) : null}
+
       <form method="get" action="/department-work" className={shellStyles.dateFilterBar}>
         {selectedUnit ? <input type="hidden" name="unit" value={selectedUnit} /> : null}
         {scopedDepartmentName || departmentParam ? (
