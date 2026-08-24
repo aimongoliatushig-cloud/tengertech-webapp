@@ -26,6 +26,7 @@ import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import { loadMunicipalSnapshot, type DashboardSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
 import { loadAssignableUserOptions } from "@/lib/workspace";
+import { HIDE_OVERDUE_UI } from "@/lib/ui-feature-flags";
 
 import { EmployeePicker } from "./employee-picker";
 
@@ -407,7 +408,14 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
     { key: "prog", label: "Хийгдэж буй", value: deptTasks.filter(isTaskInProgress).length, icon: Clock3, tone: "", status: "progress" },
     { key: "over", label: "Хугацаа хэтэрсэн", value: deptTasks.filter((task) => isTaskOverdue(task, todayKey)).length, icon: AlertTriangle, tone: "warn", status: "overdue" },
     { key: "review", label: "Батлах хүлээж", value: deptTasks.filter(isTaskReview).length, icon: ShieldCheck, tone: "warn", status: "review" },
-  ];
+  ].filter((item) => !HIDE_OVERDUE_UI || item.status !== "overdue") as Array<{
+    key: string;
+    label: string;
+    value: number;
+    icon: typeof Users;
+    tone: string;
+    status: StatusFilter | null;
+  }>;
 
   return shell(
     <div className={styles.page}>
@@ -523,7 +531,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
                   <span>
                     Дууссан <b>{employee.done}</b>
                   </span>
-                  {employee.overdue > 0 ? (
+                  {!HIDE_OVERDUE_UI && employee.overdue > 0 ? (
                     <span className={styles.miniWarn}>
                       Хэтэрсэн <b>{employee.overdue}</b>
                     </span>
@@ -615,7 +623,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
                   <span>
                     Дууссан <b>{group.done}</b>
                   </span>
-                  {group.overdue > 0 ? (
+                  {!HIDE_OVERDUE_UI && group.overdue > 0 ? (
                     <span className={styles.miniWarn}>
                       Хэтэрсэн <b>{group.overdue}</b>
                     </span>

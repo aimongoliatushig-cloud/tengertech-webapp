@@ -17,6 +17,7 @@ import { loadReadNotificationKeys } from "@/lib/notification-state";
 import { loadMunicipalSnapshot, type DashboardSnapshot } from "@/lib/odoo";
 import { fixMojibakeText } from "@/lib/text-normalize";
 import { loadProcurementNotificationRecords } from "@/lib/workspace-notifications";
+import { HIDE_OVERDUE_UI } from "@/lib/ui-feature-flags";
 
 import { NotificationList, type NotificationListItem } from "./notification-list";
 import styles from "./notifications.module.css";
@@ -69,6 +70,7 @@ function isOverdue(task: DashboardSnapshot["taskDirectory"][number], todayDateKe
 }
 
 function addReason(item: NotificationItem, reason: NotificationItem["reasons"][number]) {
+  if (HIDE_OVERDUE_UI && reason === "overdue") return;
   if (!item.reasons.includes(reason)) {
     item.reasons.push(reason);
   }

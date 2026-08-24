@@ -7,6 +7,7 @@ import { CheckCircle2, ChevronDown, ChevronRight, ListChecks } from "lucide-reac
 
 import type { AssignedTaskItem, AssignedTaskStatusKey } from "@/lib/odoo";
 import { cn } from "@/lib/utils";
+import { HIDE_OVERDUE_UI } from "@/lib/ui-feature-flags";
 
 const STATUS_META: Record<
   AssignedTaskStatusKey,
@@ -137,7 +138,7 @@ export function WorkerTaskTable({
           rows.map((task, index) => {
             const status = STATUS_META[task.statusKey];
             const isDone = task.statusKey === "done";
-            const overdue = !isDone && Boolean(task.deadline && task.deadline < currentDateKey);
+            const overdue = !HIDE_OVERDUE_UI && !isDone && Boolean(task.deadline && task.deadline < currentDateKey);
             // Ижилхэн "Хугацаа хэтэрсэн" гэж мөр бүрт давтахын оронд хэдэн
             // хоногоор хэтэрснийг харуулна — жагсаалт дотор эрэмбэлэгдэх
             // яаралтай байдлыг нэг харцаар ялгаж өгнө.

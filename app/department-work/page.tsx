@@ -33,6 +33,7 @@ import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import { DEPARTMENT_GROUPS, matchesDepartmentGroup } from "@/lib/department-groups";
 import { loadMunicipalSnapshot, type DashboardSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
+import { HIDE_OVERDUE_UI } from "@/lib/ui-feature-flags";
 
 import styles from "./department-work.module.css";
 
@@ -407,7 +408,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
   // дарж ортол алга болдог байсныг энд мөн үзүүлнэ (ижил тооцоолол).
   const doneCount = baseTasks.filter(isTaskDone).length;
   const riskyCount = baseTasks.filter(
-    (task) => isTaskOverdue(task, todayKey) || isTaskReview(task),
+    (task) => (!HIDE_OVERDUE_UI && isTaskOverdue(task, todayKey)) || isTaskReview(task),
   ).length;
   const overallProgress = baseTasks.length
     ? Math.round(
@@ -461,7 +462,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
     { key: "review", label: "Батлах хүлээж", value: baseTasks.filter(isTaskReview).length, icon: ShieldCheck, tone: "warn" },
     { key: "progress", label: "Хийгдэж буй", value: baseTasks.filter(isTaskInProgress).length, icon: Clock3, tone: "" },
     { key: "done", label: "Дууссан", value: baseTasks.filter(isTaskDone).length, icon: CheckCircle2, tone: "ok" },
-  ];
+  ].filter((item) => !HIDE_OVERDUE_UI || item.key !== "overdue");
 
   return shell(
     <div className={styles.page}>
@@ -705,7 +706,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
                   <span>
                     Хийгдэж буй <b>{department.inProgress}</b>
                   </span>
-                  {department.overdue > 0 ? (
+                  {!HIDE_OVERDUE_UI && department.overdue > 0 ? (
                     <span className={styles.miniWarn}>
                       Хэтэрсэн <b>{department.overdue}</b>
                     </span>

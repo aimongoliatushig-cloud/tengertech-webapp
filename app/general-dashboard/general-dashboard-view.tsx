@@ -27,6 +27,7 @@ import { hasCapability, type AppSession,
 import { type DashboardSnapshot, type FleetVehicleBoard, type HrDailyAttendanceSummary } from "@/lib/odoo";
 import { cn } from "@/lib/utils";
 import { type WeatherSnapshot } from "@/lib/weather";
+import { HIDE_OVERDUE_UI } from "@/lib/ui-feature-flags";
 
 type GeneralDashboardViewProps = {
   session: AppSession;
@@ -369,7 +370,7 @@ export function GeneralDashboardView({
     : snapshot.departments.length
       ? Math.round(snapshot.departments.reduce((sum, department) => sum + clampPercent(department.completion), 0) / snapshot.departments.length)
       : 0;
-  const metrics: Metric[] = [
+  const metrics = ([
     { label: "нийт гүйцэтгэл", value: `${progress}%`, progress, icon: CheckCircle2, tone: "green" },
     { label: "хянах ажил", value: String(reviewTasks), progress: percent(reviewTasks, totalTasks), icon: ShieldCheck, tone: "blue" },
     {
@@ -396,7 +397,7 @@ export function GeneralDashboardView({
       tone: "orange",
     },
     { label: "нээлттэй ажил", value: String(Math.max(0, totalTasks - completedTasks)), progress: 100, icon: ClipboardList, tone: "green" },
-  ];
+  ] satisfies Metric[]).filter((metric) => !HIDE_OVERDUE_UI || metric.label !== "хугацаа хэтэрсэн ажил");
   const departmentMetrics = buildDepartmentMetrics(snapshot, currentDateKey);
 
   return (
@@ -417,7 +418,7 @@ export function GeneralDashboardView({
             roleLabel={roleLabel}
             groupFlags={session.groupFlags}
             workerMode={false}
-            notificationCount={reviewTasks + overdueTasks}
+            notificationCount={reviewTasks + (HIDE_OVERDUE_UI ? 0 : overdueTasks)}
           />
         </aside>
 
@@ -427,8 +428,8 @@ export function GeneralDashboardView({
             subtitle="Бүх хэлтсийн ажлын нэгдсэн бодит тойм"
             userName={session.name}
             roleLabel={roleLabel}
-            notificationCount={reviewTasks + overdueTasks}
-            notificationNote={`${reviewTasks + overdueTasks} анхаарах ажил байна`}
+            notificationCount={reviewTasks + (HIDE_OVERDUE_UI ? 0 : overdueTasks)}
+            notificationNote={`${reviewTasks + (HIDE_OVERDUE_UI ? 0 : overdueTasks)} анхаарах ажил байна`}
           />
 
           <section className={styles.showcase} aria-labelledby="general-dashboard-showcase-title">

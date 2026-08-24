@@ -56,6 +56,7 @@ import {
   filterTasksForResponsibleMaster,
 } from "@/lib/master-scope";
 import { loadWorkspaceNotificationSummary } from "@/lib/workspace-notifications";
+import { HIDE_OVERDUE_UI } from "@/lib/ui-feature-flags";
 
 import styles from "./tasks.module.css";
 import { TaskReportModal } from "./[taskId]/task-report-modal";
@@ -1618,7 +1619,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                       { label: "Хугацаа хэтэрсэн", value: dashboardOverdueTasks.length, note: "Анхаарах", icon: AlertTriangle, tone: "danger", status: "overdue" },
                       { label: "Батлах хүлээж буй", value: dashboardReviewTasks.length, note: "Шийдвэр гарах", icon: FileCheck2, tone: "review", status: "review" },
                       { label: "Дууссан", value: dashboardDoneTasks.length, note: "Бүрэн дууссан", icon: CheckCircle2, tone: "done", status: "done" },
-                    ].map((item) => {
+                    ].filter((item) => !HIDE_OVERDUE_UI || item.status !== "overdue").map((item) => {
                       const Icon = item.icon;
                       const cardParams = new URLSearchParams();
                       if (selectedDepartmentParam) cardParams.set("department", selectedDepartmentParam);
@@ -1758,7 +1759,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                     </select>
                   ) : null}
                   <select name="status" defaultValue={masterStatusFilter} aria-label="Төлөв">
-                    <option value="all">Төлөв: Бүгд</option><option value="todo">Хийгдэж буй</option><option value="overdue">Хугацаа хэтэрсэн</option><option value="review">Батлах хүлээж буй</option><option value="done">Дууссан</option>
+                    <option value="all">Төлөв: Бүгд</option><option value="todo">Хийгдэж буй</option>{!HIDE_OVERDUE_UI ? <option value="overdue">Хугацаа хэтэрсэн</option> : null}<option value="review">Батлах хүлээж буй</option><option value="done">Дууссан</option>
                   </select>
                   <input type="hidden" name="filter" value={activeFilter} />
                   <button type="submit" className={styles.dateButton}>Шүүх</button>
@@ -2141,7 +2142,7 @@ export default async function TasksPage({ searchParams }: PageProps) {
                 ) : !inspectorMobileMode && activeView === "list" ? (
                   <ul className={styles.taskViewCompactList}>
                     {visibleTasks.map((task, index) => {
-                      const overdue = task.statusKey !== "verified" && Boolean(task.scheduledDate) && (task.scheduledDate ?? "") < todayDateKey;
+                      const overdue = !HIDE_OVERDUE_UI && task.statusKey !== "verified" && Boolean(task.scheduledDate) && (task.scheduledDate ?? "") < todayDateKey;
                       return (
                       <li key={task.id} className={styles[`taskRowTone${index % 5}`]}>
                         <Link href={buildTaskHref(task.href)} className={styles.taskViewCompactItem}>

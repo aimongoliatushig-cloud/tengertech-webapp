@@ -284,6 +284,7 @@ function getWorkspaceNotificationSummaryCacheKey(
 }
 
 function addReason(reasons: NotificationReason[], reason: NotificationReason) {
+  if (HIDE_OVERDUE_UI && reason === "overdue") return;
   if (!reasons.includes(reason)) {
     reasons.push(reason);
   }
@@ -577,3 +578,4 @@ export async function loadProcurementNotificationCount(session: AppSession) {
   );
   return records.filter((record) => !readKeys.has(record.key)).length;
 }
+import { HIDE_OVERDUE_UI } from "@/lib/ui-feature-flags";

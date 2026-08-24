@@ -40,6 +40,7 @@ import {
   filterTasksForResponsibleMaster,
 } from "@/lib/master-scope";
 import { loadWorkspaceNotificationCount } from "@/lib/workspace-notifications";
+import { HIDE_OVERDUE_UI } from "@/lib/ui-feature-flags";
 
 type PageProps = {
   searchParams?: Promise<{
@@ -1037,7 +1038,7 @@ async function ProjectsPageContent({
   const clearListFilterHref = `/projects${
     clearListFilterParams.toString() ? `?${clearListFilterParams.toString()}` : ""
   }`;
-  const summaryCards = [
+  const summaryCards = ([
     {
       label: "Нийт захирамж, үүрэг даалгавар",
       value: String(scopedProjects.length),
@@ -1083,7 +1084,7 @@ async function ProjectsPageContent({
       tone: styles.summaryCardPrimary,
       href: buildScopedListHref("done"),
     },
-  ] as const;
+  ] as const).filter((card) => !HIDE_OVERDUE_UI || card.label !== "Хугацаа хэтэрсэн");
   const showServiceMiniDashboard =
     !showAutoBaseFleet &&
     !showAutoBaseCombined &&
@@ -1461,7 +1462,7 @@ async function ProjectsPageContent({
                       <option value="done">Дууссан</option>
                       <option value="planned">Төлөвлөсөн</option>
                       <option value="review">Хянаж байгаа</option>
-                      <option value="overdue">Хугацаа хэтэрсэн</option>
+                      {!HIDE_OVERDUE_UI ? <option value="overdue">Хугацаа хэтэрсэн</option> : null}
                     </select>
                   </label>
                   <label>

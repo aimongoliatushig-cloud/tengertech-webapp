@@ -61,6 +61,7 @@ import {
 import { cn } from "@/lib/utils";
 import { fixMojibakeText } from "@/lib/text-normalize";
 import { type WeatherSnapshot } from "@/lib/weather";
+import { HIDE_OVERDUE_UI } from "@/lib/ui-feature-flags";
 import { type GarbagePointOption, type GarbageVehicleOption } from "@/lib/workspace";
 
 type DashboardViewProps = {
@@ -3639,7 +3640,7 @@ function ExecutiveDashboardView({
   const openTaskReviewCount = openDashboardTasks.filter(
     (task) => task.statusKey === "review" || task.statusKey === "problem",
   ).length;
-  const metrics: ExecutiveMetric[] = [
+  const metrics = ([
     {
       label: "захирамж, үүрэг даалгаврын гүйцэтгэл",
       value: `${overallProgress}%`,
@@ -3689,7 +3690,7 @@ function ExecutiveDashboardView({
       label: "нээлттэй даалгавар",
       value: String(openDashboardTasks.length),
       valueLabel: "Даалгавар",
-      note: `Хэтэрсэн: ${overdueTasks} · Хянах: ${openTaskReviewCount}`,
+      note: HIDE_OVERDUE_UI ? `Хянах: ${openTaskReviewCount}` : `Хэтэрсэн: ${overdueTasks} · Хянах: ${openTaskReviewCount}`,
       progress: percent(openDashboardTasks.length - overdueTasks, openDashboardTasks.length),
       href: "/tasks",
       icon: ClipboardList,
@@ -3738,14 +3739,16 @@ function ExecutiveDashboardView({
       value: String(conclusionIssueCount),
       valueLabel: conclusionTitle,
       note: conclusionIssueCount > 0
-        ? `Хугацаа хэтэрсэн: ${overdueTasks} · Хянах: ${reviewTasks} · Засварт: ${fleetBoard.repairCount}`
+        ? HIDE_OVERDUE_UI
+          ? `Хянах: ${reviewTasks} · Засварт: ${fleetBoard.repairCount}`
+          : `Хугацаа хэтэрсэн: ${overdueTasks} · Хянах: ${reviewTasks} · Засварт: ${fleetBoard.repairCount}`
         : "Онцгой эрсдэл илрээгүй",
       progress: conclusionIssueCount > 0 ? 0 : 100,
       href: overdueTasks > 0 ? scopedProjectsHref("overdue") : reviewTasks > 0 ? "/review" : scopedProjectsHref(),
       icon: conclusionTone === "normal" ? CheckCircle2 : AlertTriangle,
       tone: conclusionTone === "warning" ? "orange" : conclusionTone === "attention" ? "blue" : "green",
     },
-  ];
+  ] satisfies ExecutiveMetric[]).filter((metric) => !HIDE_OVERDUE_UI || metric.label !== "хугацаа хэтэрсэн ажил");
   const departmentMetrics = buildExecutiveDepartmentMetrics({
     snapshot,
     tasks: dashboardTasks,
@@ -3977,13 +3980,13 @@ export function DashboardView({
     ? dashboardTasks.filter((task) => task.statusKey === "review" || task.statusKey === "problem").length
     : dashboardProjects.filter((project) => project.stageBucket === "review" || project.stageBucket === "problem").length;
   const overdueTaskItems = dashboardTasks.filter((task) => isOverdue(task, currentDateKey));
-  const overdueTasks = workerMode ? overdueTaskItems.length : countTaskWorkItems(overdueTaskItems);
+  const overdueTasks = HIDE_OVERDUE_UI ? 0 : workerMode ? overdueTaskItems.length : countTaskWorkItems(overdueTaskItems);
   const newIncomingTaskItems = dashboardTasks.filter((task) => isNewIncomingTask(task, currentDateKey));
   const newIncomingTasks = workerMode ? newIncomingTaskItems.length : countTaskWorkItems(newIncomingTaskItems);
   const notificationTaskItems = dashboardTasks.filter(
     (task) =>
       isNewIncomingTask(task, currentDateKey) ||
-      isOverdue(task, currentDateKey) ||
+      (!HIDE_OVERDUE_UI && isOverdue(task, currentDateKey)) ||
       task.statusKey === "review" ||
       task.issueFlag,
   );
