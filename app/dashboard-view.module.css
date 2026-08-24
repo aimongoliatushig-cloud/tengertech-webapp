@@ -6049,3 +6049,118 @@
   background: #14231a;
   color: #74cf88;
 }
+.generalShowcase {
+  min-width: 0;
+  overflow: hidden;
+  margin: 16px 0;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.06);
+}
+
+.generalShowcaseHeading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 16px;
+}
+
+.generalShowcaseHeading span {
+  display: block;
+  margin-bottom: 3px;
+  color: #52715e;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.generalShowcaseHeading h2 {
+  margin: 0;
+  color: #17231c;
+  font-size: 16px;
+}
+
+.generalShowcaseHeading > small {
+  color: #66776d;
+  font-size: 11px;
+}
+
+.generalShowcaseViewport {
+  overflow: hidden;
+  padding-bottom: 12px;
+}
+
+.generalShowcaseTrack {
+  display: flex;
+  width: max-content;
+  gap: 12px;
+  padding: 0 12px;
+  animation: generalDashboardShowcaseScroll 34s linear infinite;
+}
+
+.generalShowcaseViewport:hover .generalShowcaseTrack,
+.generalShowcaseViewport:focus-within .generalShowcaseTrack {
+  animation-play-state: paused;
+}
+
+.generalShowcaseCard {
+  position: relative;
+  flex: 0 0 520px;
+  height: 220px;
+  overflow: hidden;
+  border: 1px solid #dce7df;
+  border-radius: 12px;
+  background: #e9efeb;
+  cursor: zoom-in;
+}
+
+.generalShowcaseCard img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.25s ease;
+}
+
+.generalShowcaseCard:hover img {
+  transform: scale(1.02);
+}
+
+.generalShowcaseCard span {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 28px 14px 12px;
+  background: linear-gradient(transparent, rgba(4, 39, 17, 0.9));
+  color: #fff;
+  text-align: left;
+}
+
+.generalShowcaseCard strong,
+.generalShowcaseCard small {
+  display: block;
+}
+
+.generalShowcaseCard strong { font-size: 14px; }
+.generalShowcaseCard small { margin-top: 3px; color: #e1eee5; font-size: 11px; }
+
+@keyframes generalDashboardShowcaseScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-50% - 6px)); }
+}
+
+@media (max-width: 720px) {
+  .generalShowcaseHeading { align-items: flex-start; flex-direction: column; padding: 12px; }
+  .generalShowcaseHeading h2 { font-size: 14px; }
+  .generalShowcaseCard { flex-basis: 84vw; height: 160px; }
+  .generalShowcaseTrack { animation-duration: 25s; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .generalShowcaseTrack { animation: none; }
+  .generalShowcaseViewport { overflow-x: auto; }
+  .generalShowcaseCard img { transition: none; }
+}

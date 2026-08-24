@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
+import { ReportImageLightbox } from "@/app/_components/report-image-lightbox";
 import { WorkerTaskTable } from "@/app/_components/worker-task-table";
 import { Badge } from "@/app/_components/ui/badge";
 import {
@@ -116,6 +117,30 @@ const DASHBOARD_IMAGES = {
 };
 
 const DASHBOARD_TIME_ZONE = "Asia/Ulaanbaatar";
+
+const GENERAL_DASHBOARD_SHOWCASE_IMAGES = [
+  {
+    title: "Авто бааз, хог тээвэрлэлтийн хэлтэс",
+    subtitle: "Хог ачилт, тээвэрлэлтийн үйл ажиллагаа",
+    src: "/department-work/auto-base-garbage-transport-overview.png",
+    width: 1536,
+    height: 1024,
+  },
+  {
+    title: "Тохижилтын хэлтэс",
+    subtitle: "Гүйцэтгэх үйл ажиллагаа, хариуцсан хороод",
+    src: "/department-work/improvement-department-overview.png",
+    width: 1536,
+    height: 1024,
+  },
+  {
+    title: "Зам талбайн цэвэрлэгээ үйлчилгээ",
+    subtitle: "Хариуцсан зам талбайн зураглал",
+    src: "/department-work/naadamchid-road-responsibility.png",
+    width: 1578,
+    height: 997,
+  },
+] as const;
 
 function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -3797,6 +3822,40 @@ function ExecutiveDashboardView({
             alertCount={alertCount}
             weather={weather}
           />
+
+          {showDepartmentPerformance && !departmentScopeName ? (
+            <section
+              className={dashboardStyles.generalShowcase}
+              aria-labelledby="general-dashboard-showcase-title"
+            >
+              <div className={dashboardStyles.generalShowcaseHeading}>
+                <div>
+                  <span>Хэлтсүүдийн танилцуулга</span>
+                  <h2 id="general-dashboard-showcase-title">Зураг, мэдээлэл</h2>
+                </div>
+                <small>Зураг дээр дарж томруулна</small>
+              </div>
+              <div className={dashboardStyles.generalShowcaseViewport}>
+                <ReportImageLightbox
+                  images={[...GENERAL_DASHBOARD_SHOWCASE_IMAGES, ...GENERAL_DASHBOARD_SHOWCASE_IMAGES].map(
+                    (item, index) => ({
+                      id: `${item.src}-${index}`,
+                      url: item.src,
+                      name: item.title,
+                      alt: item.title,
+                      caption: `${item.title} — ${item.subtitle}`,
+                    }),
+                  )}
+                  gridClassName={dashboardStyles.generalShowcaseTrack}
+                  triggerClassName={dashboardStyles.generalShowcaseCard}
+                  imageWidth={1536}
+                  imageHeight={1024}
+                  showCaption
+                  viewerTitle="Хэлтсийн танилцуулга"
+                />
+              </div>
+            </section>
+          ) : null}
 
           <section className={dashboardStyles.executiveMetricGrid}>
             {metrics.map((metric) => (
