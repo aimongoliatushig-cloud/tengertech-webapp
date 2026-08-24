@@ -541,7 +541,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
         </section>
       ) : null}
 
-      {departmentParam === "Авто бааз, хог тээвэрлэлтийн хэлтэс" ? (
+      {resolveDepartmentGroupName(departmentParam || scopedDepartmentName) === "Авто бааз, хог тээвэрлэлтийн хэлтэс" ? (
         <section className={styles.roadResponsibility} aria-labelledby="auto-base-overview-title">
           <div className={styles.roadResponsibilityHeading}>
             <div>
@@ -550,21 +550,35 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
             </div>
             <strong>Хариуцсан 8 хороо</strong>
           </div>
-          <a
-            className={styles.roadResponsibilityImageLink}
-            href="/department-work/auto-base-garbage-transport-overview.png"
-            aria-label="Авто бааз, хог тээвэрлэлтийн хэлтсийн танилцуулгыг бүтэн хэмжээгээр нээх"
-          >
-            <Image
-              className={styles.roadResponsibilityImage}
-              src="/department-work/auto-base-garbage-transport-overview.png"
-              alt="Авто бааз, хог тээвэрлэлтийн хэлтсийн хариуцсан хороод, хог ачилт тээвэрлэлтийн үйл ажиллагаа"
-              width={1536}
-              height={1024}
-              sizes="(max-width: 720px) 100vw, (max-width: 1200px) 90vw, 900px"
-              priority
-            />
-          </a>
+          <div className={styles.autoBaseOverviewGrid}>
+            <div className={styles.autoBaseGoogleMap}>
+              <iframe
+                src="https://maps.google.com/maps?q=47.8864,106.9057&z=12&output=embed"
+                title="Хан-Уул дүүргийн Google газрын зураг"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+              />
+              <Link href="/waste-points/map" className={styles.autoBaseMapLink}>
+                Бүртгэлтэй хогийн цэгүүдийг харах →
+              </Link>
+            </div>
+            <a
+              className={styles.roadResponsibilityImageLink}
+              href="/department-work/auto-base-garbage-transport-overview.png"
+              aria-label="Авто бааз, хог тээвэрлэлтийн хэлтсийн танилцуулгыг бүтэн хэмжээгээр нээх"
+            >
+              <Image
+                className={styles.roadResponsibilityImage}
+                src="/department-work/auto-base-garbage-transport-overview.png"
+                alt="Авто бааз, хог тээвэрлэлтийн хэлтсийн хариуцсан хороод, хог ачилт тээвэрлэлтийн үйл ажиллагаа"
+                width={1536}
+                height={1024}
+                sizes="(max-width: 720px) 92vw, (max-width: 1200px) 50vw, 700px"
+                priority
+              />
+            </a>
+          </div>
         </section>
       ) : null}
 
