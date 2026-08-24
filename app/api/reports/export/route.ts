@@ -876,7 +876,9 @@ function buildExportPayload(
 
   const baseScope = reports.length === 1
     ? reports[0].taskName || reports[0].projectName
-    : scopedDepartmentName || selectedUnit || selectedGroup?.name || "Бүх хэлтэс";
+    : isRecordsClerk(session)
+      ? "Ажилтны үүрэг даалгавар"
+      : scopedDepartmentName || selectedUnit || selectedGroup?.name || "Бүх хэлтэс";
   const periodScope = formatReportPeriodScope(selectedStartDate, selectedEndDate);
 
   // Дэлгэц дээрхтэй адил: "Огноо" баганад сонгосон огнооны сууриар
