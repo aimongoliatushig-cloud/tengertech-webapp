@@ -1246,20 +1246,6 @@ export function AppMenu({
       )
     : baseItems
   ).filter((item) => !isHiddenMenuItem(item));
-  console.warn("[DEBUG-MENU]", JSON.stringify({
-    active,
-    workerMode,
-    canCreateTasks,
-    empCond: !workerMode || canCreateTasks,
-    mfoFieldMode,
-    environmentFieldMode,
-    repairFieldMode,
-    hrFocusedMode,
-    baseSameAsDefault: baseItems === compactDefaultItems,
-    defaultHasEmployees: defaultItems.some((i) => i.key === "employees"),
-    itemKeys: items.map((i) => i.key),
-  }));
-
   function isProcurementChildActive(item: MenuItem) {
     const state = searchParams.get("state");
     const panel = searchParams.get("panel");

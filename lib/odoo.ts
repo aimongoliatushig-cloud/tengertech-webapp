@@ -148,7 +148,6 @@ type OdooAuthEmployeeRecord = {
 type OdooGroupMembershipRecord = {
   id: number;
   implied_ids?: number[];
-  trans_implied_ids?: number[];
 };
 
 type OdooExternalIdRecord = {
@@ -603,7 +602,9 @@ async function expandUserGroupIds(
       "search_read",
       [[["id", "in", frontier]]],
       {
-        fields: ["implied_ids", "trans_implied_ids"],
+        // This Odoo version has no `trans_implied_ids`. Recursively following
+        // `implied_ids` below yields the same transitive membership set.
+        fields: ["implied_ids"],
         limit: frontier.length,
       },
       connection,
@@ -611,10 +612,7 @@ async function expandUserGroupIds(
     const next: number[] = [];
 
     for (const group of groups) {
-      for (const impliedId of [
-        ...(group.implied_ids ?? []),
-        ...(group.trans_implied_ids ?? []),
-      ]) {
+      for (const impliedId of group.implied_ids ?? []) {
         if (!allGroupIds.has(impliedId)) {
           allGroupIds.add(impliedId);
           next.push(impliedId);
