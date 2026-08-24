@@ -28,6 +28,7 @@ import { loadMunicipalSnapshot, type DashboardSnapshot, type TaskDirectoryItem }
 import { isRecordsClerk } from "@/lib/roles";
 import { loadAssignableUserOptions } from "@/lib/workspace";
 import { HIDE_OVERDUE_UI } from "@/lib/ui-feature-flags";
+import { isNonEmployeeAssignmentAccount } from "@/lib/employee-assignment-scope";
 
 import { EmployeePicker } from "./employee-picker";
 
@@ -214,12 +215,22 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
         },
   );
   const employeeNameById = new Map(assignableUsers.map((user) => [user.id, user.name] as const));
+  const excludedEmployeeUserIds = new Set(
+    assignableUsers
+      .filter((user) => isNonEmployeeAssignmentAccount(user.name))
+      .map((user) => user.id),
+  );
 
   // Даалгаврыг ЯГ ГҮЙЦЭТГЭХ ажилтнаар (user_ids/assignee) авна. Багийн ахлагч
   // (дарга) дор бүхэл хэлтсийнх нь ажил хуримтлагдахгүй. Зөвхөн бодит ажилтанд
   // оногдсон ажлыг үлдээж, систем данс руу орсон хэлтсийн даалгаврыг хасна.
-  const personTasks = scopedTasks.filter((task) =>
-    (task.assigneeIds ?? []).some((assigneeId) => employeeNameById.has(assigneeId)),
+  const personTasks = scopedTasks.filter(
+    (task) =>
+      !task.isDepartmentTask &&
+      (task.assigneeIds ?? []).some(
+        (assigneeId) =>
+          employeeNameById.has(assigneeId) && !excludedEmployeeUserIds.has(assigneeId),
+      ),
   );
 
   const departmentOptions = [
@@ -257,7 +268,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
   }
   // Prefer the full assignable-user directory; fall back to existing assignees.
   const employeeOptions = assignableUsers.length
-    ? assignableUsers.map((user) => ({
+    ? assignableUsers.filter((user) => !excludedEmployeeUserIds.has(user.id)).map((user) => ({
         id: user.id,
         name: user.name,
         jobTitle: user.jobTitle,
@@ -279,26 +290,12 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
     "авто бааз",
     "ногоон",
   ];
-  const EXCLUDED_PEOPLE = [
-    "системийн админ",
-    "уртбаяр",
-    "эрдэнэбат",
-    "эрдэнэбулга",
-    "сонорбилэг",
-    "батсуурь",
-    "чулуун",
-    "чимэдочир",
-    "чимэд-очир",
-    "амарсанаа",
-    "ганзориг",
-  ];
   const isExcludedDept = (name: string) => {
     const key = name.trim().toLowerCase();
     return EXCLUDED_DEPARTMENTS.some((needle) => key.includes(needle));
   };
   const isExcludedPerson = (name: string) => {
-    const key = name.trim().toLowerCase();
-    return EXCLUDED_PEOPLE.some((needle) => key.includes(needle));
+    return isNonEmployeeAssignmentAccount(name);
   };
 
   // Гүйцэтгэгч (assignee) тус бүрээр бүлэглэнэ. Лавлахад байхгүй хэрэглэгч
@@ -356,7 +353,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
     .filter(
       (employee) =>
         employee.visibleTasks.length > 0 &&
-        (recordsClerkMode || !isExcludedPerson(employee.name)),
+        !isExcludedPerson(employee.name),
     )
     .sort(
       (left, right) =>

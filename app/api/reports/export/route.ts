@@ -1,5 +1,7 @@
 import { getSession, isMasterRole } from "@/lib/auth";
 import { isRecordsClerk } from "@/lib/roles";
+import { loadAssignableUserOptions } from "@/lib/workspace";
+import { isNonEmployeeAssignmentAccount } from "@/lib/employee-assignment-scope";
 import { chromium } from "playwright";
 import pptxgen from "pptxgenjs";
 import { readFile } from "node:fs/promises";
@@ -718,6 +720,7 @@ function buildExportPayload(
   request: Request,
   scopedDepartmentName: string | null,
   session: NonNullable<Awaited<ReturnType<typeof getSession>>>,
+  excludedEmployeeUserIds: Set<number> = new Set(),
 ) {
   const searchParams = new URL(request.url).searchParams;
   const requestedDepartment = getParam(searchParams, "department");
@@ -782,7 +785,9 @@ function buildExportPayload(
 
   if (isRecordsClerk(session)) {
     tasks = snapshot.taskDirectory.filter(
-      (task) => !task.isDepartmentTask && (task.assigneeIds?.length ?? 0) > 0,
+      (task) =>
+        !task.isDepartmentTask &&
+        (task.assigneeIds ?? []).some((id) => !excludedEmployeeUserIds.has(id)),
     );
     const employeeTaskIds = new Set(tasks.map((task) => task.id));
     reports = snapshot.reports.filter(
@@ -953,19 +958,33 @@ export async function GET(request: Request) {
 
   // Татаж авах тайлан нь дэлгэц дээрхтэй ижил, шинэлэг байх ёстой.
   const recordsClerkMode = isRecordsClerk(session);
-  const snapshot = await loadMunicipalSnapshot(
-    recordsClerkMode
-      ? {}
-      : {
-          login: session.login,
-          password: session.password,
-        },
-    { skipCache: true },
+  const [snapshot, scopedDepartmentName, assignableUsers] = await Promise.all([
+    loadMunicipalSnapshot(
+      recordsClerkMode
+        ? {}
+        : {
+            login: session.login,
+            password: session.password,
+          },
+      { skipCache: true },
+    ),
+    canViewAllWorkspaceReports(session) || recordsClerkMode
+      ? Promise.resolve(null)
+      : loadSessionDepartmentName(session),
+    recordsClerkMode ? loadAssignableUserOptions({}) : Promise.resolve([]),
+  ]);
+  const excludedEmployeeUserIds = new Set(
+    assignableUsers
+      .filter((user) => isNonEmployeeAssignmentAccount(user.name))
+      .map((user) => user.id),
   );
-  const scopedDepartmentName = canViewAllWorkspaceReports(session) || recordsClerkMode
-    ? null
-    : await loadSessionDepartmentName(session);
-  const payload = buildExportPayload(snapshot, request, scopedDepartmentName, session);
+  const payload = buildExportPayload(
+    snapshot,
+    request,
+    scopedDepartmentName,
+    session,
+    excludedEmployeeUserIds,
+  );
   const format = getParam(new URL(request.url).searchParams, "format") || "csv";
   const dateKey = new Date().toISOString().slice(0, 10);
 

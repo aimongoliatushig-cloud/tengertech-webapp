@@ -1221,6 +1221,7 @@ export function AppMenu({
   const recordsClerkItems: MenuItem[] = [
     { key: "employees", href: "/employees", label: "Ажилтны үүрэг даалгавар", icon: Users },
     { key: "reports", href: "/reports", label: "Ажилтны тайлан", icon: BarChart3 },
+    { key: "procurement", href: procurementLandingHref, label: "Худалдан авалт", icon: ShoppingCart },
   ];
 
   const baseItems = (

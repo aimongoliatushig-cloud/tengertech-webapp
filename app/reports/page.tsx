@@ -49,6 +49,8 @@ import {
   type ResolvedReportPeriod,
 } from "@/lib/report-period";
 import { isRecordsClerk, isReportPlanningSpecialist, type RoleGroupFlags } from "@/lib/roles";
+import { loadAssignableUserOptions } from "@/lib/workspace";
+import { isNonEmployeeAssignmentAccount } from "@/lib/employee-assignment-scope";
 
 import { ReportPeriodBar } from "@/app/_components/report-period-bar";
 import { canManageEvaluation } from "./evaluation/access";
@@ -371,9 +373,10 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const masterMode = isMasterRole(session.role);
   const seniorMasterMode = session.role === "senior_master";
-  const [snapshot, scopedDepartmentName] = await Promise.all([
+  const [snapshot, scopedDepartmentName, assignableUsers] = await Promise.all([
     snapshotPromise,
     scopedDepartmentNamePromise,
+    recordsClerkMode ? loadAssignableUserOptions({}) : Promise.resolve([]),
   ]);
   const departmentScopedMode = Boolean(scopedDepartmentName);
 
@@ -436,8 +439,15 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
     : snapshot.taskDirectory.filter((task) => matchesSelectedDepartment(task.departmentName));
   if (recordsClerkMode) {
+    const excludedEmployeeUserIds = new Set(
+      assignableUsers
+        .filter((user) => isNonEmployeeAssignmentAccount(user.name))
+        .map((user) => user.id),
+    );
     filteredTaskDirectory = snapshot.taskDirectory.filter(
-      (task) => !task.isDepartmentTask && (task.assigneeIds?.length ?? 0) > 0,
+      (task) =>
+        !task.isDepartmentTask &&
+        (task.assigneeIds ?? []).some((id) => !excludedEmployeeUserIds.has(id)),
     );
     const employeeTaskIds = new Set(filteredTaskDirectory.map((task) => task.id));
     filteredReports = snapshot.reports.filter(
@@ -714,9 +724,11 @@ export default async function ReportsPage({ searchParams }: PageProps) {
 
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
-              title={reportOnlyMode ? "Тайлангийн төв" : "Тайлан"}
+              title={recordsClerkMode ? "Ажилтны тайлан" : reportOnlyMode ? "Тайлангийн төв" : "Тайлан"}
               subtitle={
-                reportOnlyMode
+                recordsClerkMode
+                  ? "Ажилтанд оноосон үүрэг даалгаврын гүйцэтгэл, тайлан"
+                  : reportOnlyMode
                   ? "Хэлтэс бүрийн гүйцэтгэл, зурагтай нотолгоо, жингийн тайланг нэг дороос харна"
                   : "Өдрийн тайлан, зураг, аудио урсгал"
               }
