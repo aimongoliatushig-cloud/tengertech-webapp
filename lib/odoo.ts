@@ -641,9 +641,15 @@ async function readUserGroupXmlIds(
   }
 
   try {
-    const groupIds = await expandUserGroupIds(uid, directGroupIds, connection);
+    // Ordinary users can read their own group_ids but cannot read ir.model.data.
+    // Resolve the static group metadata through the cached service session while
+    // keeping the user's actual direct group ids as the source of truth.
+    const serviceAuth = await authenticateWithFallback(createOdooConnection());
+    const lookupUid = serviceAuth?.uid ?? uid;
+    const lookupConnection = serviceAuth?.connection ?? connection;
+    const groupIds = await expandUserGroupIds(lookupUid, directGroupIds, lookupConnection);
     const externalIds = await executeKw<OdooExternalIdRecord[]>(
-      uid,
+      lookupUid,
       "ir.model.data",
       "search_read",
       [
@@ -656,7 +662,7 @@ async function readUserGroupXmlIds(
         fields: ["module", "name", "res_id"],
         limit: Math.max(groupIds.length * 3, 1),
       },
-      connection,
+      lookupConnection,
     );
 
     return new Set(
