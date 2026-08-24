@@ -503,6 +503,12 @@ export function isWorkerOnly(context: RoleContext) {
   if (isInternalControlPerson(context.login, context.name, context.employeeJobTitle)) {
     return false;
   }
+  // Архив, бичиг хэргийн ажилтан захирлын захирамж, үүрэг даалгаврыг
+  // бүртгэж, ажилтанд оноож, нэгдсэн жагсаалтаар хянадаг тул зөвхөн өөрт
+  // оноогдсон ажлыг хардаг энгийн ажилтны горимд оруулахгүй.
+  if (isRecordsClerk(context)) {
+    return false;
+  }
   return (
     context.role === "worker" &&
     !groupFlags.mfoManager &&

@@ -3,7 +3,7 @@ import "server-only";
 import type { AppSession } from "@/lib/auth";
 import { normalizeOrganizationUnitName } from "@/lib/department-groups";
 import { executeOdooKw } from "@/lib/odoo";
-import { isMasterRole } from "@/lib/roles";
+import { isMasterRole, isRecordsClerk } from "@/lib/roles";
 import { isInternalControlPerson } from "@/lib/special-access";
 
 type EmployeeDepartmentRecord = {
@@ -152,6 +152,11 @@ export function shouldScopeToOwnDepartment(
   // Дотоод хяналтын ажилтан нэг хэлтэст хязгаарлагдахгүй — бүх хэлтсийн үйл
   // ажиллагааг хянана.
   if (isInternalControlPerson(null, null, session.employeeJobTitle)) {
+    return false;
+  }
+  // Архив, бичиг хэргийн ажилтан захирлын даалгаврыг бүх алба, хэлтсийн
+  // ажилтанд оноох ёстой тул өөрийн Захиргааны албанд scope хийхгүй.
+  if (isRecordsClerk(session)) {
     return false;
   }
   const looksDepartmentHead =
