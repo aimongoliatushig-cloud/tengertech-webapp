@@ -670,6 +670,23 @@
   z-index: 1;
 }
 
+.compactMapWrap .mapLayout {
+  display: block;
+}
+
+.compactMapWrap .mapCanvas {
+  width: 100%;
+  height: 300px;
+  border: 0;
+  border-radius: 0;
+}
+
+@media (max-width: 720px) {
+  .compactMapWrap .mapCanvas {
+    height: 210px;
+  }
+}
+
 /* --- API алдааны төлөв --- */
 .apiError {
   display: grid;

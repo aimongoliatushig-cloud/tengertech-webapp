@@ -34,6 +34,8 @@ import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import { DEPARTMENT_GROUPS, matchesDepartmentGroup } from "@/lib/department-groups";
 import { loadMunicipalSnapshot, type DashboardSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
 import { HIDE_OVERDUE_UI } from "@/lib/ui-feature-flags";
+import { getAllWastePointsFiltered } from "@/lib/waste-points/service";
+import { WasteMap } from "@/app/waste-points/waste-map";
 
 import styles from "./department-work.module.css";
 
@@ -217,6 +219,15 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
   const scopedDepartmentName = await loadSessionDepartmentName(session);
+  const showAutoBaseOverview =
+    resolveDepartmentGroupName(departmentParam || scopedDepartmentName) ===
+    "Авто бааз, хог тээвэрлэлтийн хэлтэс";
+  const autoBaseWastePointsPromise = showAutoBaseOverview
+    ? getAllWastePointsFiltered({}).catch((error) => {
+        console.error("Department work waste point map load failed:", error);
+        return [];
+      })
+    : Promise.resolve([]);
 
   const shell = (content: React.ReactNode) => (
     <main className={shellStyles.shell}>
@@ -446,6 +457,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
   const myTasks = unitTasks.filter((task) => task.leaderName && task.leaderName === session.name);
   const myDone = myTasks.filter(isTaskDone).length;
   const myProgress = myTasks.length ? Math.round(myDone / myTasks.length * 100) : 0;
+  const autoBaseWastePoints = await autoBaseWastePointsPromise;
 
   // Нэгтгэл + статусын шүүлтийг нэг эгнээ, адил хэмжээтэй, дарж болох карт болгов.
   // Карт бүр дээр дарахад тухайн шүүлт рүү шилжинэ.
@@ -541,7 +553,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
         </section>
       ) : null}
 
-      {resolveDepartmentGroupName(departmentParam || scopedDepartmentName) === "Авто бааз, хог тээвэрлэлтийн хэлтэс" ? (
+      {showAutoBaseOverview ? (
         <section className={styles.roadResponsibility} aria-labelledby="auto-base-overview-title">
           <div className={styles.roadResponsibilityHeading}>
             <div>
@@ -552,13 +564,11 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
           </div>
           <div className={styles.autoBaseOverviewGrid}>
             <div className={styles.autoBaseGoogleMap}>
-              <iframe
-                src="https://maps.google.com/maps?q=47.8864,106.9057&z=12&output=embed"
-                title="Хан-Уул дүүргийн Google газрын зураг"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                allowFullScreen
-              />
+              {autoBaseWastePoints.length ? (
+                <WasteMap points={autoBaseWastePoints} compact />
+              ) : (
+                <div className={styles.autoBaseMapEmpty}>Хогийн цэгийн мэдээлэл ачаалсангүй.</div>
+              )}
               <Link href="/waste-points/map" className={styles.autoBaseMapLink}>
                 Бүртгэлтэй хогийн цэгүүдийг харах →
               </Link>

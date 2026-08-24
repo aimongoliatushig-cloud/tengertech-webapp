@@ -27,7 +27,15 @@ const TYPE_COLOR: Record<WastePointType, string> = {
 // Хан-Уул дүүргийн төв орчим
 const DEFAULT_CENTER: [number, number] = [47.88, 106.86];
 
-export function WasteMap({ points, initialPointId = "" }: { points: WastePoint[]; initialPointId?: string }) {
+export function WasteMap({
+  points,
+  initialPointId = "",
+  compact = false,
+}: {
+  points: WastePoint[];
+  initialPointId?: string;
+  compact?: boolean;
+}) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<unknown>(null);
   const initialPoint = points.find((point) => String(point.id) === initialPointId) ?? null;
@@ -126,8 +134,8 @@ export function WasteMap({ points, initialPointId = "" }: { points: WastePoint[]
   }, [initialPointId, ready, visible]);
 
   return (
-    <div className={styles.mapWrap}>
-      <div className={styles.mapToolbar}>
+    <div className={`${styles.mapWrap} ${compact ? styles.compactMapWrap : ""}`}>
+      {!compact ? <div className={styles.mapToolbar}>
         <div className={styles.mapLegend}>
           {(Object.keys(TYPE_COLOR) as WastePointType[]).map((t) => (
             <button
@@ -148,12 +156,12 @@ export function WasteMap({ points, initialPointId = "" }: { points: WastePoint[]
           ) : null}
         </div>
         <span className={styles.paginationInfo}>{visible.length} цэг харуулж байна</span>
-      </div>
+      </div> : null}
 
       <div className={styles.mapLayout}>
         <div ref={containerRef} className={styles.mapCanvas} />
 
-        {selected ? (
+        {!compact && selected ? (
           <aside className={styles.mapPanel}>
             <div className={styles.cardHead}>
               <h2>{selected.name}</h2>
@@ -220,12 +228,12 @@ export function WasteMap({ points, initialPointId = "" }: { points: WastePoint[]
               <Eye size={15} aria-hidden /> Дэлгэрэнгүй
             </Link>
           </aside>
-        ) : (
+        ) : !compact ? (
           <aside className={`${styles.mapPanel} ${styles.mapPanelEmpty}`}>
             <MapPin size={26} aria-hidden />
             <p>Цэг дээр дарж дэлгэрэнгүй мэдээлэл, QR болон ажил үүсгэх хэсгийг нээнэ.</p>
           </aside>
-        )}
+        ) : null}
       </div>
     </div>
   );
