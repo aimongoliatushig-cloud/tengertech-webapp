@@ -11,6 +11,7 @@ import {
   isMasterRole,
   requireSession,
 } from "@/lib/auth";
+import { isRecordsClerk } from "@/lib/roles";
 import { loadSessionDepartmentName, loadSessionEmployeeDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment, getTodayDateKey, pickPrimaryDepartmentName } from "@/lib/dashboard-scope";
 import { prepareAttachment, prepareUploadFromFile } from "@/lib/image-compress";
@@ -1802,10 +1803,15 @@ export async function createTaskAction(formData: FormData) {
       );
     }
 
-    const connectionOverrides = {
-      login: session.login,
-      password: session.password,
-    };
+    // Архив, бичиг хэргийн ажилтан захирлаас ирсэн даалгаврыг бүх хэлтсийн
+    // ажилтанд хуваарилна. Түүний Odoo дансанд төслийн/HR лавлахын өргөн ACL
+    // өгөхгүйгээр зөвхөн баталгаажсан create_tasks үйлдлийг service эрхээр хийнэ.
+    const connectionOverrides: Record<string, never> | { login: string; password: string } = isRecordsClerk(session)
+      ? {}
+      : {
+          login: session.login,
+          password: session.password,
+        };
     const project = await loadProjectDetail(projectId, connectionOverrides);
 
     if (garbageTaskMode && project.operationType === "garbage") {

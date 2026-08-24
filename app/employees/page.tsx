@@ -25,6 +25,7 @@ import {
 import { loadSessionDepartmentName } from "@/lib/access-scope";
 import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import { loadMunicipalSnapshot, type DashboardSnapshot, type TaskDirectoryItem } from "@/lib/odoo";
+import { isRecordsClerk } from "@/lib/roles";
 import { loadAssignableUserOptions } from "@/lib/workspace";
 import { HIDE_OVERDUE_UI } from "@/lib/ui-feature-flags";
 
@@ -141,6 +142,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
   const canWriteReports = hasCapability(session, "write_workspace_reports");
   const canViewQualityCenter = hasCapability(session, "view_quality_center");
   const canUseFieldConsole = hasCapability(session, "use_field_console");
+  const recordsClerkMode = isRecordsClerk(session);
   const scopedDepartmentName = await loadSessionDepartmentName(session);
 
   const shell = (content: React.ReactNode) => (
@@ -184,7 +186,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
   let snapshot: DashboardSnapshot;
   try {
     snapshot = await loadMunicipalSnapshot(
-      { login: session.login, password: session.password },
+      recordsClerkMode ? {} : { login: session.login, password: session.password },
       { allowFallback: true },
     );
   } catch (error) {
@@ -203,10 +205,14 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
     : snapshot.taskDirectory;
 
   // Ажилтны лавлах (id → нэр) — гүйцэтгэгчийг таних, систем данс/бусдыг шүүхэд.
-  const assignableUsers = await loadAssignableUserOptions({
-    login: session.login,
-    password: session.password,
-  });
+  const assignableUsers = await loadAssignableUserOptions(
+    recordsClerkMode
+      ? {}
+      : {
+          login: session.login,
+          password: session.password,
+        },
+  );
   const employeeNameById = new Map(assignableUsers.map((user) => [user.id, user.name] as const));
 
   // Даалгаврыг ЯГ ГҮЙЦЭТГЭХ ажилтнаар (user_ids/assignee) авна. Багийн ахлагч
