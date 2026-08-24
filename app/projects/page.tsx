@@ -1260,14 +1260,22 @@ async function ProjectsPageContent({
 
             {isAutoBaseView ? (
               <section className={styles.departmentMediaStrip} aria-label="Авто бааз, хог тээвэрлэлтийн хэлтсийн зураг, газрын зураг">
-                <Link href="/waste-points/map" className={styles.departmentMapCard}>
-                  <span className={styles.departmentMapIcon}><MapPin size={34} aria-hidden /></span>
-                  <span>
-                    <strong>Хогийн цэгийн газрын зураг</strong>
-                    <small>Бүртгэлтэй бүх хогийн цэгийг газрын зураг дээр харах</small>
-                  </span>
-                  <b>Газрын зураг нээх →</b>
-                </Link>
+                <div className={styles.departmentMapCard}>
+                  <iframe
+                    src="https://maps.google.com/maps?q=47.8864,106.9057&z=12&output=embed"
+                    title="Хан-Уул дүүргийн Google газрын зураг"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                  />
+                  <Link href="/waste-points/map" className={styles.departmentMapCaption}>
+                    <span className={styles.departmentMapIcon}><MapPin size={22} aria-hidden /></span>
+                    <span>
+                      <strong>Хогийн цэгийн газрын зураг</strong>
+                      <small>Бүртгэлтэй цэгүүдийг дэлгэрэнгүй харах →</small>
+                    </span>
+                  </Link>
+                </div>
                 <a
                   href="/department-work/auto-base-garbage-transport-overview.png"
                   className={styles.departmentOverviewCard}
