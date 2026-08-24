@@ -1,8 +1,9 @@
 import { type ComponentProps, Suspense } from "react";
 
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, Settings, Truck } from "lucide-react";
+import { ArrowLeft, MapPin, Settings, Truck } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
 import { AutoBaseBoard } from "@/app/auto-base/auto-base-board";
@@ -1256,6 +1257,34 @@ async function ProjectsPageContent({
                 notificationCountPromise={notificationCountPromise}
               />
             </Suspense>
+
+            {showAutoBaseCombined ? (
+              <section className={styles.departmentMediaStrip} aria-label="Авто бааз, хог тээвэрлэлтийн хэлтсийн зураг, газрын зураг">
+                <Link href="/waste-points/map" className={styles.departmentMapCard}>
+                  <span className={styles.departmentMapIcon}><MapPin size={34} aria-hidden /></span>
+                  <span>
+                    <strong>Хогийн цэгийн газрын зураг</strong>
+                    <small>Бүртгэлтэй бүх хогийн цэгийг газрын зураг дээр харах</small>
+                  </span>
+                  <b>Газрын зураг нээх →</b>
+                </Link>
+                <a
+                  href="/department-work/auto-base-garbage-transport-overview.png"
+                  className={styles.departmentOverviewCard}
+                  aria-label="Авто бааз, хог тээвэрлэлтийн хэлтсийн танилцуулгыг бүтэн хэмжээгээр нээх"
+                >
+                  <Image
+                    src="/department-work/auto-base-garbage-transport-overview.png"
+                    alt="Авто бааз, хог тээвэрлэлтийн хэлтсийн хог ачилт, тээвэрлэлтийн үйл ажиллагаа"
+                    width={1536}
+                    height={1024}
+                    sizes="(max-width: 720px) 86vw, 50vw"
+                    priority
+                  />
+                  <span><strong>Хог ачилт, тээвэрлэлтийн үйл ажиллагаа</strong><small>Зураг дээр дарж бүтэн хэмжээгээр харах</small></span>
+                </a>
+              </section>
+            ) : null}
 
             {isOverdueFilter ? (
               <div className={styles.buttonRow}>
