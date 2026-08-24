@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -20,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
+import { ReportImageLightbox } from "@/app/_components/report-image-lightbox";
 import { WorkspaceHeader } from "@/app/_components/workspace-header";
 import shellStyles from "@/app/workspace.module.css";
 import {
@@ -108,6 +108,15 @@ const departmentShowcaseImages = [
     href: "/department-work?department=Ногоон%20байгууламж%2C%20цэвэрлэгээ%20үйлчилгээний%20хэлтэс&unit=Цэвэрлэгээ%20үйлчилгээ",
   },
 ] as const;
+const departmentShowcaseLightboxImages = [...departmentShowcaseImages, ...departmentShowcaseImages].map(
+  (item, index) => ({
+    id: `${item.src}-${index}`,
+    url: item.src,
+    name: item.title,
+    alt: item.title,
+    caption: item.title,
+  }),
+);
 const STATUS_FILTERS: Array<{ key: StatusFilter; label: string }> = [
   { key: "all", label: "Бүгд" },
   { key: "overdue", label: "Хугацаа хэтэрсэн" },
@@ -503,21 +512,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
             </div>
             <strong>Нийт урт 326,400 м</strong>
           </div>
-          <a
-            className={styles.roadResponsibilityImageLink}
-            href="/department-work/naadamchid-road-responsibility.png"
-            aria-label="Хариуцсан замын зургийг бүтэн хэмжээгээр нээх"
-          >
-            <Image
-              className={styles.roadResponsibilityImage}
-              src="/department-work/naadamchid-road-responsibility.png"
-              alt="Яармагийн давхар гүүр, Наадамчдын зам, Нүхтийн замын хариуцсан хэсгийн зураг"
-              width={1578}
-              height={997}
-              sizes="(max-width: 720px) 100vw, (max-width: 1200px) 90vw, 1200px"
-              priority
-            />
-          </a>
+          <ReportImageLightbox images={[{ id: "road-map", url: "/department-work/naadamchid-road-responsibility.png", name: "Хариуцсан зам талбай", alt: "Яармагийн давхар гүүр, Наадамчдын зам, Нүхтийн замын хариуцсан хэсгийн зураг" }]} triggerClassName={styles.roadResponsibilityImageLink} imageClassName={styles.roadResponsibilityImage} imageWidth={1578} imageHeight={997} viewerTitle="Хариуцсан зам талбай" />
           <div className={styles.roadLengthGrid} aria-label="Замын хэсгийн урт">
             <span><b>Яармагийн давхар гүүр</b>97,500 м</span>
             <span><b>Наадамчдын зам</b>190,400 м</span>
@@ -535,21 +530,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
             </div>
             <strong>Хариуцсан 8 хороо</strong>
           </div>
-          <a
-            className={styles.roadResponsibilityImageLink}
-            href="/department-work/improvement-department-overview.png"
-            aria-label="Тохижилтын хэлтсийн танилцуулгыг бүтэн хэмжээгээр нээх"
-          >
-            <Image
-              className={styles.roadResponsibilityImage}
-              src="/department-work/improvement-department-overview.png"
-              alt="Тохижилтын хэлтсийн хариуцсан хороод, гүйцэтгэх үйл ажиллагаа, ажлын үе шат"
-              width={1536}
-              height={1024}
-              sizes="(max-width: 720px) 100vw, (max-width: 1200px) 90vw, 900px"
-              priority
-            />
-          </a>
+          <ReportImageLightbox images={[{ id: "improvement-overview", url: "/department-work/improvement-department-overview.png", name: "Тохижилтын хэлтсийн танилцуулга", alt: "Тохижилтын хэлтсийн хариуцсан хороод, гүйцэтгэх үйл ажиллагаа, ажлын үе шат" }]} triggerClassName={styles.roadResponsibilityImageLink} imageClassName={styles.roadResponsibilityImage} imageWidth={1536} imageHeight={1024} viewerTitle="Тохижилтын хэлтсийн танилцуулга" />
         </section>
       ) : null}
 
@@ -573,21 +554,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
                 Бүртгэлтэй хогийн цэгүүдийг харах →
               </Link>
             </div>
-            <a
-              className={styles.roadResponsibilityImageLink}
-              href="/department-work/auto-base-garbage-transport-overview.png"
-              aria-label="Авто бааз, хог тээвэрлэлтийн хэлтсийн танилцуулгыг бүтэн хэмжээгээр нээх"
-            >
-              <Image
-                className={styles.roadResponsibilityImage}
-                src="/department-work/auto-base-garbage-transport-overview.png"
-                alt="Авто бааз, хог тээвэрлэлтийн хэлтсийн хариуцсан хороод, хог ачилт тээвэрлэлтийн үйл ажиллагаа"
-                width={1536}
-                height={1024}
-                sizes="(max-width: 720px) 92vw, (max-width: 1200px) 50vw, 700px"
-                priority
-              />
-            </a>
+            <ReportImageLightbox images={[{ id: "auto-base-overview", url: "/department-work/auto-base-garbage-transport-overview.png", name: "Авто бааз, хог тээвэрлэлтийн хэлтсийн танилцуулга", alt: "Авто бааз, хог тээвэрлэлтийн хэлтсийн хариуцсан хороод, хог ачилт тээвэрлэлтийн үйл ажиллагаа" }]} gridClassName={styles.autoBaseImageLightbox} triggerClassName={styles.roadResponsibilityImageLink} imageClassName={styles.roadResponsibilityImage} imageWidth={1536} imageHeight={1024} viewerTitle="Авто бааз, хог тээвэрлэлтийн хэлтэс" />
           </div>
         </section>
       ) : null}
@@ -602,29 +569,7 @@ export default async function DepartmentWorkPage({ searchParams }: DepartmentWor
             <small>Зураг дээр дарж тухайн хэлтэс рүү орно</small>
           </div>
           <div className={styles.departmentShowcaseViewport}>
-            <div className={styles.departmentShowcaseTrack}>
-              {[...departmentShowcaseImages, ...departmentShowcaseImages].map((item, index) => (
-                <Link
-                  className={styles.departmentShowcaseCard}
-                  href={item.href}
-                  key={`${item.src}-${index}`}
-                  aria-hidden={index >= departmentShowcaseImages.length ? true : undefined}
-                  tabIndex={index >= departmentShowcaseImages.length ? -1 : undefined}
-                >
-                  <Image
-                    src={item.src}
-                    alt={index < departmentShowcaseImages.length ? item.title : ""}
-                    width={item.width}
-                    height={item.height}
-                    sizes="(max-width: 720px) 82vw, 520px"
-                  />
-                  <span>
-                    <strong>{item.title}</strong>
-                    <small>{item.subtitle}</small>
-                  </span>
-                </Link>
-              ))}
-            </div>
+            <ReportImageLightbox images={departmentShowcaseLightboxImages} gridClassName={styles.departmentShowcaseTrack} triggerClassName={styles.departmentShowcaseCard} imageWidth={1536} imageHeight={1024} showCaption viewerTitle="Хэлтсийн танилцуулга" />
           </div>
         </section>
       ) : null}

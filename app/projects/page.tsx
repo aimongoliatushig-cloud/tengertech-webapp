@@ -1,11 +1,11 @@
 import { type ComponentProps, Suspense } from "react";
 
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft, MapPin, Settings, Truck } from "lucide-react";
 
 import { AppMenu } from "@/app/_components/app-menu";
+import { ReportImageLightbox } from "@/app/_components/report-image-lightbox";
 import { AutoBaseBoard } from "@/app/auto-base/auto-base-board";
 import { AutoGarbageWorkBoard } from "@/app/dashboard-view";
 import { LoadingShell } from "@/app/_components/loading-shell";
@@ -1276,21 +1276,15 @@ async function ProjectsPageContent({
                     </span>
                   </Link>
                 </div>
-                <a
-                  href="/department-work/auto-base-garbage-transport-overview.png"
-                  className={styles.departmentOverviewCard}
-                  aria-label="Авто бааз, хог тээвэрлэлтийн хэлтсийн танилцуулгыг бүтэн хэмжээгээр нээх"
-                >
-                  <Image
-                    src="/department-work/auto-base-garbage-transport-overview.png"
-                    alt="Авто бааз, хог тээвэрлэлтийн хэлтсийн хог ачилт, тээвэрлэлтийн үйл ажиллагаа"
-                    width={1536}
-                    height={1024}
-                    sizes="(max-width: 720px) 86vw, 50vw"
-                    priority
-                  />
-                  <span><strong>Хог ачилт, тээвэрлэлтийн үйл ажиллагаа</strong><small>Зураг дээр дарж бүтэн хэмжээгээр харах</small></span>
-                </a>
+                <ReportImageLightbox
+                  images={[{ id: "auto-base-projects-overview", url: "/department-work/auto-base-garbage-transport-overview.png", name: "Хог ачилт, тээвэрлэлтийн үйл ажиллагаа", alt: "Авто бааз, хог тээвэрлэлтийн хэлтсийн хог ачилт, тээвэрлэлтийн үйл ажиллагаа", caption: "Хог ачилт, тээвэрлэлтийн үйл ажиллагаа" }]}
+                  gridClassName={styles.departmentOverviewLightbox}
+                  triggerClassName={styles.departmentOverviewCard}
+                  imageWidth={1536}
+                  imageHeight={1024}
+                  showCaption
+                  viewerTitle="Авто бааз, хог тээвэрлэлтийн хэлтэс"
+                />
               </section>
             ) : null}
 

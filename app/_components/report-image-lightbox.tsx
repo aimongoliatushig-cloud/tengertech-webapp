@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowLeft } from "lucide-react";
+import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -102,9 +102,9 @@ export function ReportImageLightbox({
                 onClick={(event) => event.stopPropagation()}
               >
                 <header className={styles.header}>
-                  <button type="button" className={styles.backButton} onClick={() => setActiveImage(null)}>
-                    <ArrowLeft size={20} strokeWidth={2.4} aria-hidden="true" />
-                    Буцах
+                  <button type="button" className={styles.backButton} onClick={() => setActiveImage(null)} aria-label="Зураг хаах">
+                    <X size={22} strokeWidth={2.4} aria-hidden="true" />
+                    Хаах
                   </button>
                   <strong>{activeTitle}</strong>
                 </header>
