@@ -1258,7 +1258,7 @@ async function ProjectsPageContent({
               />
             </Suspense>
 
-            {showAutoBaseCombined ? (
+            {isAutoBaseView ? (
               <section className={styles.departmentMediaStrip} aria-label="Авто бааз, хог тээвэрлэлтийн хэлтсийн зураг, газрын зураг">
                 <Link href="/waste-points/map" className={styles.departmentMapCard}>
                   <span className={styles.departmentMapIcon}><MapPin size={34} aria-hidden /></span>
