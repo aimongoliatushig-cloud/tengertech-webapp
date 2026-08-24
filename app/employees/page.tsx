@@ -353,7 +353,11 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
         visibleTasks,
       };
     })
-    .filter((employee) => employee.visibleTasks.length > 0 && !isExcludedPerson(employee.name))
+    .filter(
+      (employee) =>
+        employee.visibleTasks.length > 0 &&
+        (recordsClerkMode || !isExcludedPerson(employee.name)),
+    )
     .sort(
       (left, right) =>
         right.overdue - left.overdue ||
@@ -377,7 +381,7 @@ export default async function EmployeesPage({ searchParams }: EmployeesPageProps
     if (arr) arr.push(task);
     else deptGroupMap.set(key, [task]);
   }
-  const departmentGroups = [...deptGroupMap.entries()]
+  const departmentGroups = recordsClerkMode ? [] : [...deptGroupMap.entries()]
     .map(([name, tasks]) => {
       const assigned = tasks.length;
       const done = tasks.filter(isTaskDone).length;

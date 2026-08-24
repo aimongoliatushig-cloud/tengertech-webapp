@@ -1,4 +1,5 @@
 import { getSession, isMasterRole } from "@/lib/auth";
+import { isRecordsClerk } from "@/lib/roles";
 import { chromium } from "playwright";
 import pptxgen from "pptxgenjs";
 import { readFile } from "node:fs/promises";
@@ -779,6 +780,17 @@ function buildExportPayload(
     ? filterByDepartment(snapshot.reviewQueue, scopedDepartmentName)
     : snapshot.reviewQueue.filter((item) => matchesSelectedDepartment(item.departmentName));
 
+  if (isRecordsClerk(session)) {
+    tasks = snapshot.taskDirectory.filter(
+      (task) => !task.isDepartmentTask && (task.assigneeIds?.length ?? 0) > 0,
+    );
+    const employeeTaskIds = new Set(tasks.map((task) => task.id));
+    reports = snapshot.reports.filter(
+      (report) => typeof report.taskId === "number" && employeeTaskIds.has(report.taskId),
+    );
+    reviewQueue = snapshot.reviewQueue.filter((item) => employeeTaskIds.has(item.id));
+  }
+
   const taskIsInSelectedPeriod = (task: TaskRow) => {
     const dateKey = String(task.scheduledDate || task.deadlineDateTime || task.createdDate || "").slice(0, 10);
     if (!DATE_PARAM_PATTERN.test(dateKey)) {
@@ -940,14 +952,17 @@ export async function GET(request: Request) {
   }
 
   // Татаж авах тайлан нь дэлгэц дээрхтэй ижил, шинэлэг байх ёстой.
+  const recordsClerkMode = isRecordsClerk(session);
   const snapshot = await loadMunicipalSnapshot(
-    {
-      login: session.login,
-      password: session.password,
-    },
+    recordsClerkMode
+      ? {}
+      : {
+          login: session.login,
+          password: session.password,
+        },
     { skipCache: true },
   );
-  const scopedDepartmentName = canViewAllWorkspaceReports(session)
+  const scopedDepartmentName = canViewAllWorkspaceReports(session) || recordsClerkMode
     ? null
     : await loadSessionDepartmentName(session);
   const payload = buildExportPayload(snapshot, request, scopedDepartmentName, session);

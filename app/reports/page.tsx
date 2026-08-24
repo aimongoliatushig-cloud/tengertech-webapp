@@ -48,7 +48,7 @@ import {
   appendReportPeriodSearch,
   type ResolvedReportPeriod,
 } from "@/lib/report-period";
-import { isReportPlanningSpecialist, type RoleGroupFlags } from "@/lib/roles";
+import { isRecordsClerk, isReportPlanningSpecialist, type RoleGroupFlags } from "@/lib/roles";
 
 import { ReportPeriodBar } from "@/app/_components/report-period-bar";
 import { canManageEvaluation } from "./evaluation/access";
@@ -330,6 +330,7 @@ export const dynamic = "force-dynamic";
 export default async function ReportsPage({ searchParams }: PageProps) {
   const session = await requireSession();
   const canViewAllReports = canViewAllWorkspaceReports(session);
+  const recordsClerkMode = isRecordsClerk(session);
   const canManageEval = canManageEvaluation(session);
   const reportOnlyMode = session.role === "report_specialist" || isReportPlanningSpecialist(session);
   const workerMode = isWorkerOnly(session);
@@ -341,7 +342,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     reportRoleLabel.includes("хэлтсийн дарга") ||
     reportRoleLabel.includes("хэлтэсийн дарга") ||
     reportRoleLabel.includes("албаны дарга");
-  if (workerMode && !canViewAllReports) {
+  if (workerMode && !canViewAllReports && !recordsClerkMode) {
     redirect("/");
   }
   // Бүх тайлан харах эрхтэй (тайлан хариуцсан мэргэжилтэн, удирдлага г.м.)
@@ -350,7 +351,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   // эрхээр ачаалж, бодит тайлангуудыг харуулна.
   // Тайлан бол шинэлэг байх ёстой хуудас тул snapshot кэшийг (2 мин) алгасаж
   // Odoo-гоос шууд татна. Хянах самбар зэрэг бусад хуудас кэштэй хэвээр.
-  const snapshotPromise = canViewAllReports
+  const snapshotPromise = canViewAllReports || recordsClerkMode
     ? loadMunicipalSnapshot({}, { skipCache: true })
     : loadMunicipalSnapshot(
         {
@@ -434,6 +435,16 @@ export default async function ReportsPage({ searchParams }: PageProps) {
   let filteredTaskDirectory = departmentScopedMode
     ? filterByDepartment(snapshot.taskDirectory, scopedDepartmentName)
     : snapshot.taskDirectory.filter((task) => matchesSelectedDepartment(task.departmentName));
+  if (recordsClerkMode) {
+    filteredTaskDirectory = snapshot.taskDirectory.filter(
+      (task) => !task.isDepartmentTask && (task.assigneeIds?.length ?? 0) > 0,
+    );
+    const employeeTaskIds = new Set(filteredTaskDirectory.map((task) => task.id));
+    filteredReports = snapshot.reports.filter(
+      (report) => typeof report.taskId === "number" && employeeTaskIds.has(report.taskId),
+    );
+    filteredReviewQueue = snapshot.reviewQueue.filter((item) => employeeTaskIds.has(item.id));
+  }
   if (masterMode) {
     const candidateProjects = departmentScopedMode
       ? filterByDepartment(snapshot.projects, scopedDepartmentName)
@@ -831,6 +842,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                   </button>
                 </form>
 
+                {!recordsClerkMode ? (
                 <section className={styles.reportRegistryScopePanel} aria-label="Тайлангийн хамрах хүрээ">
                   {!showScopedUnitOnlyPicker ? (
                     <div className={styles.reportRegistryScopeHeader}>
@@ -902,6 +914,7 @@ export default async function ReportsPage({ searchParams }: PageProps) {
                     </div>
                   ) : null}
                 </section>
+                ) : null}
 
                 {reviewQueueRows.length ? (
                   <section className={styles.reportRegistryReviewQueue} aria-label="Хяналт хүлээж буй ажил">

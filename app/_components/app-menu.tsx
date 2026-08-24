@@ -52,6 +52,7 @@ import {
   canAccessProcurementModule,
   canViewGarbageWeightReports as canViewGarbageWeightReportsForContext,
   isGarbageDepartmentHead as isGarbageDepartmentHeadRole,
+  isRecordsClerk,
   isReportPlanningSpecialist,
   type RoleGroupFlags,
   type UserRole,
@@ -401,6 +402,7 @@ export function AppMenu({
   };
   const reportOnlyMode =
     reportOnlyModeProp || isReportPlanningSpecialist(roleContext);
+  const recordsClerkMode = isRecordsClerk(roleContext);
   // "Шатахуун, жин" цэс эрхтэй хэрэглэгчид тогтмол харагдахын тулд props-оор
   // дамжуулаагүй хуудсууд дээр role/flag-аас нь дотооддоо тооцоолно (бусад
   // эрхийг roleContext-аар тооцдогтой ижил загвар). Эрхийн логик өөрчлөгдөхгүй.
@@ -1216,9 +1218,15 @@ export function AppMenu({
       icon: BarChart3,
     },
   ];
+  const recordsClerkItems: MenuItem[] = [
+    { key: "employees", href: "/employees", label: "Ажилтны үүрэг даалгавар", icon: Users },
+    { key: "reports", href: "/reports", label: "Ажилтны тайлан", icon: BarChart3 },
+  ];
 
   const baseItems = (
-    masterMode
+    recordsClerkMode
+      ? recordsClerkItems
+      : masterMode
       ? masterItems
       : reportOnlyMode
       ? reportOnlyItems
@@ -1534,8 +1542,10 @@ export function AppMenu({
       (item): item is MenuItem => Boolean(item),
     );
   };
-  const rawMobileDockItems: MenuItem[] = masterMode
-    ? masterItems
+  const rawMobileDockItems: MenuItem[] = recordsClerkMode
+    ? recordsClerkItems
+    : masterMode
+      ? masterItems
     : transportInspectorMode
     ? [
         { key: "dashboard", href: "/", label: "Нүүр", icon: LayoutDashboard },

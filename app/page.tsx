@@ -12,6 +12,7 @@ import {
   isWorkerOnly,
   requireSession,
 } from "@/lib/auth";
+import { isRecordsClerk } from "@/lib/roles";
 import { filterByDepartment } from "@/lib/dashboard-scope";
 import { loadAssignedGarbageTasks } from "@/lib/field-ops";
 import { canAccessGeneralDashboard } from "@/lib/general-dashboard-access";
@@ -415,6 +416,9 @@ async function loadScopedHrAttendanceSummary(
 
 export default async function Home() {
   const session = await requireSession();
+  if (isRecordsClerk(session)) {
+    redirect("/employees");
+  }
   const workerMode = isWorkerOnly(session);
   const masterMode = isMasterRole(session.role);
   if (!workerMode && isHrOnlyRole(session)) {
