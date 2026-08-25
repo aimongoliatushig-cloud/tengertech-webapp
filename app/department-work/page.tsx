@@ -160,6 +160,7 @@ function matchesGreenServiceUnit(task: TaskDirectoryItem, unit: GreenServiceUnit
     "цэвэрлэгээ",
     "цэвэрлэх",
     "ариутгал",
+    "машин угаалга",
     "наадамчдын зам",
     "нүхтийн зам",
     "яармагийн давхар гүүр",
