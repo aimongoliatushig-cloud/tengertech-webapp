@@ -153,7 +153,17 @@ function matchesGreenServiceUnit(task: TaskDirectoryItem, unit: GreenServiceUnit
   if (cleaningOperation) return unit === "Цэвэрлэгээ үйлчилгээ";
 
   const greenKeywords = ["ногоон байгууламж", "мод", "зүлэг", "ургамал", "усалгаа", "цэцэг"];
-  const cleaningKeywords = ["зам талбай", "замын", "гудамж", "цэвэрлэгээ", "цэвэрлэх", "ариутгал"];
+  const cleaningKeywords = [
+    "зам талбай",
+    "замын",
+    "гудамж",
+    "цэвэрлэгээ",
+    "цэвэрлэх",
+    "ариутгал",
+    "наадамчдын зам",
+    "нүхтийн зам",
+    "яармагийн давхар гүүр",
+  ];
   const greenByName = greenKeywords.some((keyword) => taskName.includes(keyword));
   const cleaningByName = cleaningKeywords.some((keyword) => taskName.includes(keyword));
 
