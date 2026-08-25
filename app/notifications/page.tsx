@@ -15,7 +15,10 @@ import { filterByDepartment, getTodayDateKey } from "@/lib/dashboard-scope";
 import { getHrAccessProfile, getTimeoffRequests, type HrTimeoffRequest } from "@/lib/hr";
 import { loadReadNotificationKeys } from "@/lib/notification-state";
 import { loadMunicipalSnapshot, type DashboardSnapshot } from "@/lib/odoo";
+import { isNonEmployeeAssignmentAccount } from "@/lib/employee-assignment-scope";
+import { isRecordsClerk } from "@/lib/roles";
 import { fixMojibakeText } from "@/lib/text-normalize";
+import { loadAssignableUserOptions } from "@/lib/workspace";
 import { loadProcurementNotificationRecords } from "@/lib/workspace-notifications";
 import { HIDE_OVERDUE_UI } from "@/lib/ui-feature-flags";
 
@@ -212,10 +215,13 @@ export const dynamic = "force-dynamic";
 
 export default async function NotificationsPage() {
   const session = await requireSession();
+  const recordsClerkMode = isRecordsClerk(session);
   const snapshotPromise = loadMunicipalSnapshot({
-    login: session.login,
-    password: session.password,
+    ...(recordsClerkMode ? {} : { login: session.login, password: session.password }),
   });
+  const assignableUsersPromise = recordsClerkMode
+    ? loadAssignableUserOptions({})
+    : Promise.resolve([]);
   const scopedDepartmentNamePromise = loadSessionDepartmentName(session);
   const hrAccessProfilePromise = getHrAccessProfile(session).catch((error) => {
     console.warn("HR notification access profile could not be loaded:", error);
@@ -230,7 +236,10 @@ export default async function NotificationsPage() {
       : [],
   );
 
-  const snapshot = await snapshotPromise;
+  const [snapshot, assignableUsers] = await Promise.all([
+    snapshotPromise,
+    assignableUsersPromise,
+  ]);
   let scopedDepartmentName = await scopedDepartmentNamePromise;
   if (!scopedDepartmentName && isWorkerOnly(session)) {
     const currentUserId = String(session.uid);
@@ -269,16 +278,34 @@ export default async function NotificationsPage() {
           isAssignedToCurrentUser(task),
       )
     : snapshot.taskDirectory;
+  const employeeNameById = new Map(
+    assignableUsers.map((user) => [user.id, user.name] as const),
+  );
+  const excludedEmployeeUserIds = new Set(
+    assignableUsers
+      .filter((user) => isNonEmployeeAssignmentAccount(user.name))
+      .map((user) => user.id),
+  );
+  const isEmployeeAssignment = (task: DashboardSnapshot["taskDirectory"][number]) =>
+    !task.isDepartmentTask &&
+    (task.assigneeIds ?? []).some(
+      (assigneeId) =>
+        employeeNameById.has(assigneeId) && !excludedEmployeeUserIds.has(assigneeId),
+    );
   const projectById = new Map(departmentScopedProjects.map((project) => [project.id, project]));
   const groupedByWorkMode = workerMode || masterMode || executiveWorkMode;
-  const visibleTasks = workerMode
-    ? departmentScopedTasks.filter(isAssignedToCurrentUser)
-    : departmentScopedTasks;
-  const procurementNotifications = await loadProcurementNotificationRecords(session, {
-    scopedDepartmentName,
-  }).catch(() => []);
+  const visibleTasks = recordsClerkMode
+    ? departmentScopedTasks.filter(isEmployeeAssignment)
+    : workerMode
+      ? departmentScopedTasks.filter(isAssignedToCurrentUser)
+      : departmentScopedTasks;
+  const procurementNotifications = recordsClerkMode
+    ? []
+    : await loadProcurementNotificationRecords(session, {
+        scopedDepartmentName,
+      }).catch(() => []);
   const visibleTaskById = new Map(visibleTasks.map((task) => [task.id, task]));
-  const visibleReviewQueue = workerMode
+  const visibleReviewQueue = workerMode || recordsClerkMode
     ? []
     : scopedDepartmentName
       ? filterByDepartment(snapshot.reviewQueue, scopedDepartmentName)
@@ -383,7 +410,7 @@ export default async function NotificationsPage() {
     addReason(item, "review");
   }
 
-  const hrRequests = await hrRequestsPromise;
+  const hrRequests = recordsClerkMode ? [] : await hrRequestsPromise;
   for (const request of hrRequests) {
     if (request.state !== "submitted" && request.state !== "hr_review") {
       continue;
@@ -476,7 +503,11 @@ export default async function NotificationsPage() {
           <div className={shellStyles.pageContent}>
             <WorkspaceHeader
               title="Мэдэгдэл"
-              subtitle="Танд ирсэн шинэ ажил, хянах болон анхаарах зүйлс"
+              subtitle={
+                recordsClerkMode
+                  ? "Ажилтанд оноосон даалгаврын шинэ болон анхаарах мэдэгдэл"
+                  : "Танд ирсэн шинэ ажил, хянах болон анхаарах зүйлс"
+              }
               userName={session.name}
               roleLabel={getSessionRoleLabel(session)}
               notificationCount={unreadCount}
@@ -487,7 +518,11 @@ export default async function NotificationsPage() {
               <div className={styles.listHeader}>
                 <div>
                   <h2>Мэдэгдлийн жагсаалт</h2>
-                  <p>{scopedDepartmentName ?? "Бүх алба хэлтэс"} доторх танд харагдах мэдэгдэл.</p>
+                  <p>
+                    {recordsClerkMode
+                      ? "Зөвхөн бодит ажилтанд оноосон даалгаврын мэдэгдэл."
+                      : `${scopedDepartmentName ?? "Бүх алба хэлтэс"} доторх танд харагдах мэдэгдэл.`}
+                  </p>
                 </div>
               </div>
 
