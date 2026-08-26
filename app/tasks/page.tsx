@@ -652,14 +652,22 @@ export default async function TasksPage({ searchParams }: PageProps) {
   let snapshot: DashboardSnapshot;
   let scopedDepartmentName: Awaited<ReturnType<typeof loadSessionDepartmentName>>;
   const scopedDepartmentNamePromise = loadSessionDepartmentName(session);
+  // HR specialists only render tasks assigned to themselves below. Loading the
+  // same complete municipal directory with each HR user's credentials creates
+  // another very large cache entry and makes their first visit unnecessarily
+  // slow. Reuse the service snapshot and keep mutations authenticated by the
+  // session inside their respective server actions.
+  const snapshotConnection = hrPersonalTaskMode
+    ? {}
+    : {
+        login: session.login,
+        password: session.password,
+      };
 
   try {
     [snapshot, scopedDepartmentName] = await Promise.all([
       loadMunicipalSnapshot(
-        {
-          login: session.login,
-          password: session.password,
-        },
+        snapshotConnection,
         { allowFallback: false },
       ),
       scopedDepartmentNamePromise,

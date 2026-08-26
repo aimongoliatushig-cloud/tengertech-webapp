@@ -1325,8 +1325,13 @@ type CachedOdooModelReadAccess = {
 const MUNICIPAL_SNAPSHOT_CACHE_TTL_MS = 2 * 60_000;
 const FLEET_VEHICLE_BOARD_CACHE_TTL_MS = 60_000;
 const DASHBOARD_STALE_CACHE_TTL_MS = 10 * 60_000;
-const MAX_ODOO_READ_RPC_CACHE_ENTRIES = 300;
-const MAX_MUNICIPAL_SNAPSHOT_CACHE_ENTRIES = 40;
+// A municipal snapshot contains the complete project/task/report directory and
+// can be tens of megabytes. Keeping one copy per recently signed-in employee
+// caused the Next.js process to grow past 1 GB and spend noticeable time in GC.
+// A small shared working set is enough because stale snapshots are refreshed in
+// the background and the common service connection is reused across pages.
+const MAX_ODOO_READ_RPC_CACHE_ENTRIES = 120;
+const MAX_MUNICIPAL_SNAPSHOT_CACHE_ENTRIES = 8;
 const municipalSnapshotCache = new Map<string, CachedMunicipalSnapshot>();
 const fleetVehicleBoardCache = new Map<string, CachedFleetVehicleBoard>();
 const municipalSnapshotPendingCache = new Map<
